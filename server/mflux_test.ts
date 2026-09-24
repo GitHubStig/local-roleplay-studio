@@ -36,6 +36,20 @@ Deno.test('mfluxArgs builds the command line from settings', () => {
   ])
 })
 
+Deno.test('mfluxArgs uses the small size presets', () => {
+  const args = mfluxArgs(
+    findImageModel('flux2-klein-4b')!,
+    request('/d', { size: 'square-small' }),
+    'o.png',
+  )
+  assertEquals(args.slice(args.indexOf('--width'), args.indexOf('--width') + 4), [
+    '--width',
+    '512',
+    '--height',
+    '512',
+  ])
+})
+
 Deno.test('mfluxArgs passes the base model and skips quantize for pre-quantized weights', () => {
   const args = mfluxArgs(findImageModel('z-image-turbo')!, request('/d', { quantize: 4 }), 'o.png')
   assertEquals(args.slice(0, 4), [

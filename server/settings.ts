@@ -11,6 +11,9 @@ export const SIZE_PRESETS: readonly SizePreset[] = [
   { id: 'portrait', label: 'Portrait 832×1216', width: 832, height: 1216 },
   { id: 'square', label: 'Square 1024×1024', width: 1024, height: 1024 },
   { id: 'landscape', label: 'Landscape 1216×832', width: 1216, height: 832 },
+  { id: 'portrait-small', label: 'Small portrait 512×768 (faster)', width: 512, height: 768 },
+  { id: 'square-small', label: 'Small square 512×512 (fastest)', width: 512, height: 512 },
+  { id: 'landscape-small', label: 'Small landscape 768×512 (faster)', width: 768, height: 512 },
 ]
 
 export const QUANTIZE_OPTIONS = [null, 4, 8] as const
