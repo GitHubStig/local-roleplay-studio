@@ -14,7 +14,7 @@ const handler = createHandler({
   listTextModels: () => listOllamaModels(),
   scenarios: dirScenarioLibrary(new URL('../scenarios/', import.meta.url)),
   sessions: dirSessionStore(new URL('../sessions/', import.meta.url)),
-  textModel: (model) => ollamaTextModel(model),
+  textModel: (model, think) => ollamaTextModel(model, { think }),
   // IMAGE_GENERATOR=placeholder renders SVG cards instead, for working without mflux.
   imageGenerator: Deno.env.get('IMAGE_GENERATOR') === 'placeholder'
     ? placeholderImageGenerator()

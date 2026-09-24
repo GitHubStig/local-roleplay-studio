@@ -26,6 +26,8 @@ export type SeedMode = 'random' | 'fixed'
 export interface Settings {
   /** Ollama model name; empty until the player picks one. */
   textModel: string
+  /** Let the Text Model reason before answering: slower, often more accurate. */
+  thinking: boolean
   imageModel: string
   steps: number
   size: string
@@ -37,6 +39,7 @@ export interface Settings {
 
 export const DEFAULT_SETTINGS: Settings = {
   textModel: '',
+  thinking: false,
   imageModel: IMAGE_MODELS[0].id,
   steps: IMAGE_MODELS[0].defaultSteps,
   size: SIZE_PRESETS[0].id,
@@ -59,6 +62,9 @@ export function validateSettings(input: unknown): ValidationResult {
   const issues: string[] = []
 
   if (typeof s.textModel !== 'string') issues.push('textModel must be a string')
+  if (s.thinking !== undefined && typeof s.thinking !== 'boolean') {
+    issues.push('thinking must be true or false')
+  }
   if (typeof s.imageModel !== 'string' || !findImageModel(s.imageModel)) {
     issues.push(`imageModel must be one of: ${IMAGE_MODELS.map((m) => m.id).join(', ')}`)
   }
@@ -83,6 +89,7 @@ export function validateSettings(input: unknown): ValidationResult {
     ok: true,
     settings: {
       textModel: s.textModel as string,
+      thinking: (s.thinking as boolean | undefined) ?? false,
       imageModel: s.imageModel as string,
       steps: s.steps as number,
       size: s.size as string,

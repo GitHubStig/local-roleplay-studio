@@ -36,6 +36,11 @@ const textModelChoices = computed(() => {
   return current && !models.includes(current) ? [current, ...models] : models
 })
 
+/** Thinking only applies to Text Models that support it. */
+const canThink = computed(() =>
+  !!form.value && (options.value?.thinkingModels ?? []).includes(form.value.textModel)
+)
+
 function onImageModelChange() {
   const model = options.value?.imageModels.find((m) => m.id === form.value?.imageModel)
   if (form.value && model) form.value.steps = model.defaultSteps
@@ -77,6 +82,20 @@ async function save() {
           </select>
           <span v-if="options.textModelsError" class="text-sm text-warn">
             {{ options.textModelsError }}
+          </span>
+        </label>
+
+        <label class="flex items-start gap-2">
+          <input v-model="form.thinking" type="checkbox" class="mt-1" :disabled="!canThink" />
+          <span class="flex flex-col gap-0.5">
+            <span>Thinking</span>
+            <span class="text-sm text-muted">
+              The Text Model reasons before answering, and you can watch it. Often more
+              accurate, but each Turn takes longer.
+              <template v-if="form.textModel && !canThink">
+                {{ form.textModel }} can't think.
+              </template>
+            </span>
           </span>
         </label>
 

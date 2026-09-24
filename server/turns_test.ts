@@ -361,3 +361,47 @@ Deno.test("runTurn shows the Scenario's refusal instead of a narration that cont
     const done = await runTurn(deps, session, scenario, 'Sit', () => {}, signal())
     assertEquals(done.narration, 'She sits.')
   }))
+
+Deno.test("runTurn streams the Text Model's thinking and saves it with the Turn", () =>
+  withTempDir(async (root) => {
+    const events: TurnEvent[] = []
+    const turn = await runTurn(
+      {
+        store: dirSessionStore(root),
+        textModel: scriptedTextModel([reply('standing', { thinking: 'She should stand. Done.' })]),
+        imageGenerator: fakeImageGenerator(),
+      },
+      newSession(),
+      testScenario,
+      null,
+      (e) => events.push(e),
+      signal(),
+    )
+    const thinking = events.filter((e) => e.type === 'thinking')
+    assertEquals(
+      thinking.map((e) => e.type === 'thinking' && e.text).join(''),
+      'She should stand. Done.',
+    )
+    assertEquals(turn.thinking, 'She should stand. Done.')
+  }))
+
+Deno.test('runTurn marks thinking from a retry as a restart, and saves no thinking when off', () =>
+  withTempDir(async (root) => {
+    const events: TurnEvent[] = []
+    const session = newSession()
+    const deps = {
+      store: dirSessionStore(root),
+      textModel: scriptedTextModel([
+        new Error('bad JSON'),
+        reply('standing', { thinking: 'Second try.' }),
+        reply('sitting'),
+      ]),
+      imageGenerator: fakeImageGenerator(),
+    }
+    // The failed first attempt streamed nothing here, but the retry's first chunk says restart.
+    await runTurn(deps, session, testScenario, null, (e) => events.push(e), signal())
+    const first = events.find((e) => e.type === 'thinking')
+    assertEquals(first, { type: 'thinking', text: 'Second ', restart: true })
+    const plain = await runTurn(deps, session, testScenario, 'Sit', () => {}, signal())
+    assertEquals('thinking' in plain, false)
+  }))

@@ -12,6 +12,7 @@ vi.mock('../api', async (importOriginal) => ({
 
 const settings: api.Settings = {
   textModel: 'llama3:latest',
+  thinking: false,
   imageModel: 'z-image-turbo',
   steps: 9,
   size: 'portrait',
@@ -22,6 +23,7 @@ const settings: api.Settings = {
 
 const options: api.SettingsOptions = {
   textModels: ['gemma4:31b-mlx', 'llama3:latest'],
+  thinkingModels: [],
   imageModels: [
     { id: 'z-image-turbo', label: 'Z-Image Turbo', defaultSteps: 9 },
     { id: 'flux2-klein-4b', label: 'FLUX.2 Klein 4B', defaultSteps: 4 },
@@ -51,6 +53,27 @@ describe('SettingsView', () => {
     await flushPromises()
     expect(api.saveSettings).toHaveBeenCalledWith({ ...settings, textModel: 'gemma4:31b-mlx' })
     expect(wrapper.text()).toContain('Applies from the next Session')
+  })
+
+  it('offers Thinking only for Text Models that can think', async () => {
+    vi.mocked(api.getSettingsOptions).mockResolvedValue({
+      ...options,
+      thinkingModels: ['gemma4:31b-mlx'],
+    })
+    const wrapper = mount(SettingsView)
+    await flushPromises()
+    const toggle = () => wrapper.find('input[type=checkbox]')
+    expect(toggle().attributes('disabled')).toBeDefined()
+    expect(wrapper.text()).toContain("llama3:latest can't think.")
+
+    await wrapper.findAll('select')[0].setValue('gemma4:31b-mlx')
+    expect(toggle().attributes('disabled')).toBeUndefined()
+    await toggle().setValue(true)
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+    expect(api.saveSettings).toHaveBeenCalledWith(
+      expect.objectContaining({ textModel: 'gemma4:31b-mlx', thinking: true }),
+    )
   })
 
   it('shows a warning when Ollama is unreachable', async () => {

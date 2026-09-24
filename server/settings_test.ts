@@ -1,6 +1,6 @@
 import { assertEquals } from '@std/assert'
 import { join, toFileUrl } from '@std/path'
-import { DEFAULT_SETTINGS, fileSettingsStore } from './settings.ts'
+import { DEFAULT_SETTINGS, fileSettingsStore, validateSettings } from './settings.ts'
 
 async function withTempDir(fn: (dir: string) => Promise<void>) {
   const dir = await Deno.makeTempDir()
@@ -49,3 +49,12 @@ Deno.test('fileSettingsStore saves to a file URL whose path has spaces', () =>
     await store.save({ ...DEFAULT_SETTINGS, textModel: 'llama3:latest' })
     assertEquals((await store.load()).textModel, 'llama3:latest')
   }))
+
+Deno.test('validateSettings defaults thinking to off and rejects non-booleans', () => {
+  const { thinking: _, ...withoutThinking } = DEFAULT_SETTINGS
+  const result = validateSettings(withoutThinking)
+  assertEquals(result.ok && result.settings.thinking, false)
+  assertEquals(validateSettings({ ...DEFAULT_SETTINGS, thinking: 'yes' }).ok, false)
+  const on = validateSettings({ ...DEFAULT_SETTINGS, thinking: true })
+  assertEquals(on.ok && on.settings.thinking, true)
+})

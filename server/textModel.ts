@@ -8,6 +8,8 @@ export interface TurnText {
   outcome: Outcome
   narration: string
   scene: Scene
+  /** The model's reasoning before it answered, when thinking is on and supported. */
+  thinking?: string
 }
 
 export interface TurnRequest {
@@ -18,7 +20,12 @@ export interface TurnRequest {
 }
 
 export interface TextModel {
-  write(req: TurnRequest, signal: AbortSignal): Promise<TurnText>
+  /** `onThinking` receives the model's reasoning as it streams in, when thinking is on. */
+  write(
+    req: TurnRequest,
+    signal: AbortSignal,
+    onThinking?: (chunk: string) => void,
+  ): Promise<TurnText>
 }
 
 const OUTPUT_RULES = `# Output
@@ -83,29 +90,79 @@ export function parseTurnText(content: string, scenario: Scenario): TurnText {
   return { outcome: outcome as Outcome, narration: narration.trim(), scene: scene as Scene }
 }
 
-export function ollamaTextModel(model: string, baseUrl = OLLAMA_URL): TextModel {
+export interface OllamaOptions {
+  /** Ask the model to reason before answering. Ignored by models that can't. */
+  think?: boolean
+  baseUrl?: string
+}
+
+/** Splits an NDJSON byte stream into parsed objects. */
+async function* ndjson(body: ReadableStream<Uint8Array>): AsyncGenerator<Record<string, unknown>> {
+  let buffer = ''
+  for await (const chunk of body.pipeThrough(new TextDecoderStream())) {
+    buffer += chunk
+    let end: number
+    while ((end = buffer.indexOf('\n')) !== -1) {
+      const line = buffer.slice(0, end).trim()
+      buffer = buffer.slice(end + 1)
+      if (line) yield JSON.parse(line)
+    }
+  }
+  if (buffer.trim()) yield JSON.parse(buffer)
+}
+
+export function ollamaTextModel(model: string, opts: OllamaOptions = {}): TextModel {
+  const baseUrl = opts.baseUrl ?? OLLAMA_URL
+  let think = opts.think ?? false
+
+  async function chat(req: TurnRequest, signal: AbortSignal) {
+    return await fetch(new URL('/api/chat', baseUrl), {
+      method: 'POST',
+      signal,
+      body: JSON.stringify({
+        model,
+        stream: true,
+        think,
+        format: outputSchema(req.scenario),
+        messages: [
+          { role: 'system', content: systemMessage(req.scenario) },
+          { role: 'user', content: userMessage(req) },
+        ],
+      }),
+    })
+  }
+
   return {
-    async write(req, signal) {
-      const res = await fetch(new URL('/api/chat', baseUrl), {
-        method: 'POST',
-        signal,
-        body: JSON.stringify({
-          model,
-          stream: false,
-          think: false,
-          format: outputSchema(req.scenario),
-          messages: [
-            { role: 'system', content: systemMessage(req.scenario) },
-            { role: 'user', content: userMessage(req) },
-          ],
-        }),
-      })
+    async write(req, signal, onThinking) {
+      let res = await chat(req, signal)
       if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        // Models without thinking reject `think: true`; carry on without it.
+        if (think && /think/i.test(String(body.error))) {
+          think = false
+          res = await chat(req, signal)
+        } else {
+          throw new Error(`Ollama: ${body.error ?? res.status}`)
+        }
+      }
+      if (!res.ok || !res.body) {
         const body = await res.json().catch(() => ({}))
         throw new Error(`Ollama: ${body.error ?? res.status}`)
       }
-      const body = await res.json() as { message?: { content?: string } }
-      return parseTurnText(body.message?.content ?? '', req.scenario)
+
+      let content = ''
+      let thinking = ''
+      for await (const part of ndjson(res.body)) {
+        if (part.error) throw new Error(`Ollama: ${part.error}`)
+        const message = part.message as { content?: string; thinking?: string } | undefined
+        if (message?.thinking) {
+          thinking += message.thinking
+          onThinking?.(message.thinking)
+        }
+        if (message?.content) content += message.content
+      }
+      const text = parseTurnText(content, req.scenario)
+      return thinking.trim() ? { ...text, thinking: thinking.trim() } : text
     },
   }
 }

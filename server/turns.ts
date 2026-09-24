@@ -16,6 +16,8 @@ import type { TextModel, TurnText } from './textModel.ts'
 export type TurnEvent =
   /** `queued`: waiting for another Session's render to finish. */
   | { type: 'phase'; phase: 'text' | 'queued' | 'image' }
+  /** More of the Text Model's reasoning; `restart` when a retry starts reasoning afresh. */
+  | { type: 'thinking'; text: string; restart?: boolean }
   /** Image Model steps completed so far. */
   | { type: 'progress'; step: number; total: number }
   /** The new Scene before its image exists; provisional until `committed`. */
@@ -62,11 +64,16 @@ async function writeText(
   textModel: TextModel,
   req: Parameters<TextModel['write']>[0],
   signal: AbortSignal,
+  emit: (event: TurnEvent) => void,
 ): Promise<TurnText> {
   let lastError: unknown
   for (let attempt = 1; attempt <= TEXT_ATTEMPTS; attempt++) {
+    let restart = attempt > 1
     try {
-      return await textModel.write(req, signal)
+      return await textModel.write(req, signal, (text) => {
+        emit({ type: 'thinking', text, ...(restart ? { restart } : {}) })
+        restart = false
+      })
     } catch (err) {
       if (signal.aborted) throw err
       lastError = err
@@ -92,7 +99,7 @@ export async function runTurn(
   const index = session.turns.length
 
   emit({ type: 'phase', phase: 'text' })
-  const text = await writeText(deps.textModel, { scenario, scene, action }, signal)
+  const text = await writeText(deps.textModel, { scenario, scene, action }, signal, emit)
 
   // The engine, not the Text Model, guarantees a declined or unclear Action changes nothing.
   // The Opening Turn always counts as done.
@@ -151,6 +158,7 @@ export async function runTurn(
       scene: nextScene,
       narration,
       outcome,
+      ...(text.thinking ? { thinking: text.thinking } : {}),
       imagePrompt,
       image,
       createdAt: new Date().toISOString(),

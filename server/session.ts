@@ -21,6 +21,8 @@ export interface Turn {
   outcome: Outcome
   /** The full prompt sent to the Image Model, prefix included. */
   imagePrompt: string
+  /** The Text Model's reasoning for this Turn, when thinking was on. */
+  thinking?: string
   /** File name of this Turn's image inside the Session directory. */
   image: string
   createdAt: string

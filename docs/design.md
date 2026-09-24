@@ -33,7 +33,9 @@ current Scene + Action ──► Text Model (Ollama) ──► { outcome, narrat
    The reply is constrained by a JSON schema (Ollama's `format`) whose `scene` property is the
    Scenario's Scene schema. `outcome` (`done`, `declined` or `unclear`) comes first in the
    schema, so the model decides before it
-   narrates. `think` is off for speed.
+   narrates. Ollama's reply is streamed. With **Thinking** on (a Setting, for models that
+   support it) the model reasons first; its reasoning streams to the player as it's written
+   and is saved with the Turn. Models that can't think are asked again without it.
 2. **Retry.** An unusable reply (bad JSON, missing required Scene fields) is retried once, then
    the Turn fails.
 3. **Engine rules** ([ADR 0002](adr/0002-guardrails-enforced-by-the-engine.md)):
@@ -106,7 +108,9 @@ in [open-threads.md](open-threads.md).
   "Viewing Turn 1 of 4 · Back to latest", and the text box says the next Direction continues from
   the latest Turn: Directions always build on the latest Turn, never on the one being viewed. Declined Turns are labelled and tinted amber, Unclear
   Turns ("Didn't understand") blue, both in the log and on the caption. **Scene** shows the
-  viewed Turn's Scene fields and its image prompt. Because the Session id is in the URL,
+  viewed Turn's Scene fields, its thinking (collapsed, when there was any) and its image prompt.
+  While a thinking model reasons, the reasoning streams into the caption area under
+  "Thinking…" and gives way to the Narration once it arrives. Because the Session id is in the URL,
   reloading the page keeps you in the Session. The image crossfades (700 ms) when a new Turn
   arrives or another Turn is picked; the next image is preloaded first, so there is no blank
   frame.
@@ -123,7 +127,7 @@ in [open-threads.md](open-threads.md).
   on its own: if its Opening Turn fails there, you're taken Home with the reason when you return
   to it.
 - **Settings** (`/settings`): Text Model (installed Ollama models, minus OCR and dedicated
-  vision-language models), Image Model, steps (reset to the model's default when the Image Model
+  vision-language models), Thinking (on or off; only for models that support it), Image Model, steps (reset to the model's default when the Image Model
   changes), quantization, size (six presets from 512×512 to 1216×832) and seed (random per
   Session, or fixed).
 - **Theme:** Light (a parchment tint), Dark or System, remembered per browser. It's a display
@@ -167,7 +171,7 @@ All under `/api`; the Vite dev server proxies it to the Deno server.
 | `GET /sessions/:id/images/:file` | A Turn's image |
 
 A Turn's stream emits `phase` (`text`, then `queued` if another Session is rendering, then
-`image`), `text` (the provisional Scene and Narration),
+`image`), `thinking` (reasoning chunks; `restart` when a retry begins afresh), `text` (the provisional Scene and Narration),
 `progress` (image steps), then exactly one of `committed`, `failed` or `cancelled`.
 `sessionDiscarded` on the last two tells the client that an Opening Turn took the Session with it.
 

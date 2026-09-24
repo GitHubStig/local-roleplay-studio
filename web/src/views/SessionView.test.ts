@@ -292,6 +292,45 @@ describe('SessionView', () => {
     expect(wrapper.find('main img').attributes('src')).toContain('turn-4.png')
   })
 
+  it('streams the thinking in the caption area until the Narration arrives', async () => {
+    let emit!: (e: api.TurnEvent) => void
+    vi.mocked(api.streamTurn).mockImplementation((_id, _action, onEvent) => {
+      emit = onEvent
+      return new Promise(() => {})
+    })
+    const { wrapper } = await mountIt()
+    await wrapper.find('textarea').setValue('Sit')
+    await buttonNamed(wrapper, 'Send').trigger('click')
+    emit({ type: 'thinking', text: 'She could sit ' })
+    emit({ type: 'thinking', text: 'on the stool.' })
+    await flushPromises()
+    expect(wrapper.find('[data-thinking]').text()).toContain('She could sit on the stool.')
+    expect(wrapper.find('[data-caption]').exists()).toBe(false)
+
+    emit({ type: 'thinking', text: 'Fresh try.', restart: true })
+    await flushPromises()
+    expect(wrapper.find('[data-thinking]').text()).not.toContain('stool')
+
+    emit({ type: 'text', outcome: 'done', narration: 'Maya sits.', scene: {} })
+    await flushPromises()
+    expect(wrapper.find('[data-thinking]').exists()).toBe(false)
+    expect(wrapper.find('[data-caption]').text()).toBe('Maya sits.')
+  })
+
+  it("shows a Turn's saved thinking in the Scene tab", async () => {
+    vi.mocked(api.getSession).mockResolvedValue(
+      session([turn(0, null), turn(1, 'Sit', { thinking: 'The stool is free.' })]),
+    )
+    const { wrapper } = await mountIt()
+    await wrapper.findAll('[role=tab]')[1].trigger('click')
+    expect(wrapper.find('[data-turn-thinking]').text()).toBe('The stool is free.')
+    // The Opening had no thinking.
+    await wrapper.findAll('[role=tab]')[0].trigger('click')
+    await wrapper.findAll('aside [data-turn]')[0].trigger('click')
+    await wrapper.findAll('[role=tab]')[1].trigger('click')
+    expect(wrapper.find('[data-turn-thinking]').exists()).toBe(false)
+  })
+
   it('has no End or Reset', async () => {
     const { wrapper } = await mountIt()
     const labels = wrapper.findAll('button').map((b) => b.text())

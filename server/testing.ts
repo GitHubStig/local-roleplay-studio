@@ -34,12 +34,15 @@ export const scenarioLibrary: ScenarioLibrary = {
 export function scriptedTextModel(replies: (TurnText | Error)[]): TextModel & { calls: number } {
   const model = {
     calls: 0,
-    write(_req: unknown, signal: AbortSignal) {
+    write(_req: unknown, signal: AbortSignal, onThinking?: (chunk: string) => void) {
       model.calls++
       signal.throwIfAborted()
       const next = replies.shift()
       if (!next) return Promise.reject(new Error('no scripted reply left'))
-      return next instanceof Error ? Promise.reject(next) : Promise.resolve(next)
+      if (next instanceof Error) return Promise.reject(next)
+      // Streams any scripted reasoning word by word, as Ollama does.
+      for (const word of next.thinking?.split(/(?<= )/) ?? []) onThinking?.(word)
+      return Promise.resolve(next)
     },
   }
   return model

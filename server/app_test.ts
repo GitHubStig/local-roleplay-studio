@@ -1,5 +1,6 @@
 import { assertEquals, assertMatch } from '@std/assert'
 import { createHandler } from './app.ts'
+import type { TextModelInfo } from './ollama.ts'
 import type { ImageGenerator } from './imageGenerator.ts'
 import { dirSessionStore } from './session.ts'
 import { DEFAULT_SETTINGS, type Settings, type SettingsStore } from './settings.ts'
@@ -28,7 +29,7 @@ function memoryStore(initial: Settings = { ...DEFAULT_SETTINGS }): SettingsStore
 
 interface SetupOptions {
   root?: string
-  listTextModels?: () => Promise<string[]>
+  listTextModels?: () => Promise<TextModelInfo[]>
   textModel?: TextModel
   imageGenerator?: ImageGenerator
   settings?: Partial<Settings>
@@ -40,7 +41,12 @@ function setup(opts: SetupOptions = {}) {
   const sessions = dirSessionStore(opts.root ?? '/nonexistent')
   const handler = createHandler({
     settings,
-    listTextModels: opts.listTextModels ?? (() => Promise.resolve(['llama3:latest'])),
+    listTextModels: opts.listTextModels ??
+      (() =>
+        Promise.resolve([
+          { name: 'llama3:latest', thinking: false },
+          { name: 'qwen3.8:27b-mlx', thinking: true },
+        ])),
     scenarios: scenarioLibrary,
     sessions,
     textModel: () => opts.textModel ?? scriptedTextModel([]),
@@ -108,7 +114,8 @@ Deno.test('PUT /api/settings rejects a non-JSON body', async () => {
 
 Deno.test('GET /api/settings/options lists Ollama and image models', async () => {
   const body = await (await setup().call('GET', '/api/settings/options')).json()
-  assertEquals(body.textModels, ['llama3:latest'])
+  assertEquals(body.textModels, ['llama3:latest', 'qwen3.8:27b-mlx'])
+  assertEquals(body.thinkingModels, ['qwen3.8:27b-mlx'])
   assertEquals(body.imageModels[0].id, 'flux2-klein-4b')
 })
 

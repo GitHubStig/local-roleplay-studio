@@ -90,6 +90,9 @@ const blocker = computed(() => {
 
       <p class="text-sm text-muted">
         Text Model <span class="text-fg">{{ settings.textModel || 'not set' }}</span>
+        <span v-if="settings.thinking && options.thinkingModels.includes(settings.textModel)">
+          (thinking)
+        </span>
         · Image Model <span class="text-fg">{{ imageModelLabel }}</span>
         ·
         <RouterLink to="/settings" class="underline">change in Settings</RouterLink>

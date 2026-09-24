@@ -1,6 +1,7 @@
 import { extname, join } from '@std/path'
 import type { ImageGenerator } from './imageGenerator.ts'
 import { IMAGE_MODELS } from './imageModels.ts'
+import type { TextModelInfo } from './ollama.ts'
 import { type ScenarioLibrary, summarise } from './scenario.ts'
 import type { Session, SessionStore } from './session.ts'
 import { type SettingsStore, SIZE_PRESETS, validateSettings } from './settings.ts'
@@ -10,10 +11,10 @@ import { runTurn, type TurnEvent, UndoError, undoLatestTurn } from './turns.ts'
 
 export interface AppDeps {
   settings: SettingsStore
-  listTextModels: () => Promise<string[]>
+  listTextModels: () => Promise<TextModelInfo[]>
   scenarios: ScenarioLibrary
   sessions: SessionStore
-  textModel: (model: string) => TextModel
+  textModel: (model: string, thinking: boolean) => TextModel
   imageGenerator: ImageGenerator
   newSessionId?: () => string
   randomSeed?: () => number
@@ -122,7 +123,10 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
           await runTurn(
             {
               store: deps.sessions,
-              textModel: deps.textModel(session.settings.textModel),
+              textModel: deps.textModel(
+                session.settings.textModel,
+                session.settings.thinking ?? false,
+              ),
               imageGenerator: deps.imageGenerator,
               renderQueue,
             },
@@ -187,15 +191,16 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     }],
 
     ['GET', new URLPattern({ pathname: '/api/settings/options' }), async () => {
-      let textModels: string[] = []
+      let models: TextModelInfo[] = []
       let textModelsError: string | undefined
       try {
-        textModels = await deps.listTextModels()
+        models = await deps.listTextModels()
       } catch (err) {
         textModelsError = `Could not reach Ollama: ${(err as Error).message}`
       }
       return json({
-        textModels,
+        textModels: models.map((m) => m.name),
+        thinkingModels: models.filter((m) => m.thinking).map((m) => m.name),
         textModelsError,
         imageModels: IMAGE_MODELS.map(({ id, label, defaultSteps }) => ({
           id,

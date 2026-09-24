@@ -35,11 +35,21 @@ async function showModel(baseUrl: string, name: string): Promise<OllamaModelInfo
   }
 }
 
-/** Names of the installed Ollama models usable as a Text Model, e.g. `llama3:latest`. */
-export async function listOllamaModels(baseUrl = OLLAMA_URL): Promise<string[]> {
+export interface TextModelInfo {
+  /** e.g. `llama3:latest` */
+  name: string
+  /** Can reason before answering (Ollama's `thinking` capability). */
+  thinking: boolean
+}
+
+/** The installed Ollama models usable as a Text Model, by name. */
+export async function listOllamaModels(baseUrl = OLLAMA_URL): Promise<TextModelInfo[]> {
   const res = await fetch(new URL('/api/tags', baseUrl))
   if (!res.ok) throw new Error(`Ollama responded ${res.status}`)
   const body = await res.json() as { models?: { name: string }[] }
   const models = await Promise.all((body.models ?? []).map((m) => showModel(baseUrl, m.name)))
-  return models.filter(isTextModel).map((m) => m.name).sort()
+  return models
+    .filter(isTextModel)
+    .map((m) => ({ name: m.name, thinking: m.capabilities?.includes('thinking') ?? false }))
+    .sort((a, b) => a.name.localeCompare(b.name))
 }

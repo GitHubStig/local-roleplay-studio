@@ -64,6 +64,7 @@ beforeEach(() => {
   vi.mocked(api.cancelTurn).mockReset()
   vi.mocked(api.getSettings).mockResolvedValue({
     textModel: 'llama3:latest',
+    thinking: false,
     imageModel: 'flux2-klein-4b',
     steps: 4,
     size: 'portrait',
@@ -73,6 +74,7 @@ beforeEach(() => {
   })
   vi.mocked(api.getSettingsOptions).mockResolvedValue({
     textModels: ['llama3:latest'],
+    thinkingModels: [],
     imageModels: [],
     sizePresets: [],
   })

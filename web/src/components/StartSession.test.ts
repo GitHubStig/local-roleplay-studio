@@ -13,6 +13,7 @@ vi.mock('../api', async (importOriginal) => ({
 
 const settings: api.Settings = {
   textModel: 'llama3:latest',
+  thinking: false,
   imageModel: 'z-image-turbo',
   steps: 9,
   size: 'portrait',
@@ -23,6 +24,7 @@ const settings: api.Settings = {
 
 const options: api.SettingsOptions = {
   textModels: ['llama3:latest'],
+  thinkingModels: [],
   imageModels: [{ id: 'z-image-turbo', label: 'Z-Image Turbo', defaultSteps: 9 }],
   sizePresets: [],
 }

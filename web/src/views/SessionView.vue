@@ -32,6 +32,8 @@ interface Pending {
   phase: 'text' | 'queued' | 'image'
   /** Started elsewhere (before a reload, in another tab); followed by polling the Session. */
   detached?: boolean
+  /** The Text Model's reasoning so far, when thinking is on. */
+  thinking?: string
   progress?: { step: number; total: number }
   narration?: string
   outcome?: Outcome
@@ -212,6 +214,12 @@ function onEvent(event: TurnEvent) {
     case 'progress':
       pending.value = { ...pending.value!, progress: { step: event.step, total: event.total } }
       break
+    case 'thinking':
+      pending.value = {
+        ...pending.value!,
+        thinking: (event.restart ? '' : pending.value?.thinking ?? '') + event.text,
+      }
+      break
     case 'text':
       pending.value = { ...pending.value!, ...event }
       break
@@ -319,6 +327,16 @@ const frameStyle = computed(() => ({
 
 /** The caption: the provisional Narration while a Turn runs, else the shown Turn's. */
 const captionText = computed(() => pending.value?.narration ?? shown.value?.narration ?? '')
+
+/** The reasoning streaming in, shown in the caption's place until the Narration arrives. */
+const liveThinking = computed(() =>
+  pending.value?.thinking && !pending.value.narration ? pending.value.thinking : ''
+)
+const thinkingBox = ref<HTMLElement | null>(null)
+watch(liveThinking, async () => {
+  await nextTick()
+  thinkingBox.value?.scrollTo({ top: thinkingBox.value.scrollHeight })
+})
 const captionOutcome = computed(() =>
   pending.value?.narration ? pending.value.outcome : shown.value?.outcome
 )
@@ -404,7 +422,23 @@ const sceneEntries = (scene: Scene) =>
               <span class="animate-pulse">{{ phaseLabel }}</span>
             </div>
 
-            <template v-if="captionText">
+            <div
+              v-if="liveThinking && !captionHidden"
+              class="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/80 via-black/60 to-transparent px-5 pb-4 pt-12 text-white"
+              data-thinking
+            >
+              <span class="mb-1 inline-block animate-pulse text-xs font-medium text-white/80">
+                Thinking…
+              </span>
+              <p
+                ref="thinkingBox"
+                class="max-h-28 overflow-y-auto whitespace-pre-line text-xs italic leading-relaxed text-white/70"
+              >
+                {{ liveThinking }}
+              </p>
+            </div>
+
+            <template v-else-if="captionText">
               <div
                 v-if="!captionHidden"
                 class="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/80 via-black/60 to-transparent px-5 pb-4 pt-12 text-white"
@@ -581,6 +615,12 @@ const sceneEntries = (scene: Scene) =>
                 <dd v-for="line in lines" :key="line" class="text-muted">{{ line }}</dd>
               </div>
             </dl>
+            <details v-if="shown.thinking" :key="`thinking-${shown.index}`" class="mt-4 text-muted">
+              <summary class="cursor-pointer select-none">Thinking</summary>
+              <p class="mt-1 whitespace-pre-line text-xs leading-relaxed" data-turn-thinking>
+                {{ shown.thinking }}
+              </p>
+            </details>
             <details :key="shown.index" class="mt-4 text-muted" open>
               <summary class="cursor-pointer select-none">Image prompt</summary>
               <p class="mt-1 text-xs leading-relaxed">{{ shown.imagePrompt }}</p>

@@ -7,6 +7,7 @@ export type SeedMode = 'random' | 'fixed'
 
 export interface Settings {
   textModel: string
+  thinking: boolean
   imageModel: string
   steps: number
   size: string
@@ -30,6 +31,8 @@ export interface SizePreset {
 
 export interface SettingsOptions {
   textModels: string[]
+  /** The Text Models that can reason before answering. */
+  thinkingModels: string[]
   textModelsError?: string
   imageModels: ImageModelOption[]
   sizePresets: SizePreset[]
@@ -97,6 +100,8 @@ export interface Turn {
   scene: Scene
   narration: string
   outcome: Outcome
+  /** The Text Model's reasoning, when thinking was on. */
+  thinking?: string
   imagePrompt: string
   image: string
   createdAt: string
@@ -116,6 +121,7 @@ export interface Session {
 export type TurnEvent =
   /** `queued`: waiting for another Session's render to finish. */
   | { type: 'phase'; phase: 'text' | 'queued' | 'image' }
+  | { type: 'thinking'; text: string; restart?: boolean }
   | { type: 'progress'; step: number; total: number }
   | { type: 'text'; outcome: Outcome; narration: string; scene: Scene }
   | { type: 'committed'; turn: Turn }

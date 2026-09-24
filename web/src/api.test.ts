@@ -12,6 +12,7 @@ afterEach(() => vi.unstubAllGlobals())
 
 const settings: Settings = {
   textModel: 'llama3:latest',
+  thinking: false,
   imageModel: 'z-image-turbo',
   steps: 9,
   size: 'portrait',
