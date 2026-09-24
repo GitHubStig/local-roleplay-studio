@@ -55,7 +55,7 @@ Closing a Session for good, invoked only by a button, never by typing an Action.
 _Avoid_: Stop, quit
 
 **Reset**:
-Discarding the current Session and starting a fresh one from the same Scenario, invoked only by a button.
+Ending the current Session and starting a fresh one from the same Scenario, invoked only by a button.
 _Avoid_: Restart, new game
 
 ### Photoshoot
