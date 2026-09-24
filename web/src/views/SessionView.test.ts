@@ -270,6 +270,28 @@ describe('SessionView', () => {
     expect(localStorage.getItem('draft:s1')).toBeNull()
   })
 
+  it('says when an earlier Turn is shown, and returns to the latest', async () => {
+    vi.mocked(api.getSession).mockResolvedValue(
+      session([turn(0, null), turn(1, 'Sit'), turn(2, 'Stand'), turn(3, 'Kneel'), turn(4, 'Wave')]),
+    )
+    const { wrapper } = await mountIt()
+    expect(wrapper.find('[data-viewing]').exists()).toBe(false)
+
+    await wrapper.findAll('aside [data-turn]')[1].trigger('click')
+    expect(wrapper.find('[data-viewing]').text()).toContain('Viewing Turn 1 of 4')
+    expect(wrapper.find('textarea').attributes('placeholder')).toContain(
+      'continues from Turn 4, the latest Turn',
+    )
+
+    await wrapper.findAll('aside [data-turn]')[0].trigger('click')
+    expect(wrapper.find('[data-viewing]').text()).toContain('Viewing the Opening of 4')
+
+    await buttonNamed(wrapper, 'Back to latest').trigger('click')
+    await loadImages()
+    expect(wrapper.find('[data-viewing]').exists()).toBe(false)
+    expect(wrapper.find('main img').attributes('src')).toContain('turn-4.png')
+  })
+
   it('has no End or Reset', async () => {
     const { wrapper } = await mountIt()
     const labels = wrapper.findAll('button').map((b) => b.text())

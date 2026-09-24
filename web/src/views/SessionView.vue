@@ -66,6 +66,10 @@ const shown = computed(() => {
   const turns = session.value?.turns ?? []
   return viewing.value === null ? turns.at(-1) : turns[viewing.value]
 })
+const latest = computed(() => session.value?.turns.at(-1))
+/** Looking at an earlier Turn; the next Direction still continues from the latest one. */
+const viewingOlder = computed(() => !!shown.value && shown.value.index !== latest.value?.index)
+const turnName = (index: number) => (index === 0 ? 'the Opening' : `Turn ${index}`)
 
 /** Loads the Session; false if it no longer exists (the player is sent Home). */
 async function load(): Promise<boolean> {
@@ -320,6 +324,21 @@ const sceneEntries = (scene: Scene) =>
             </span>
 
             <div
+              v-if="viewingOlder"
+              class="absolute right-3 top-3 flex items-center gap-2 rounded-full bg-black/70 py-1 pl-3 pr-1 text-sm text-white"
+              data-viewing
+            >
+              <span>Viewing {{ turnName(shown!.index) }} of {{ latest!.index }}</span>
+              <button
+                type="button"
+                class="rounded-full bg-white/15 px-2.5 py-0.5 hover:bg-white/25"
+                @click="viewing = null"
+              >
+                Back to latest
+              </button>
+            </div>
+
+            <div
               v-if="busy"
               class="absolute left-3 top-3 rounded-full bg-black/70 px-3 py-1 text-sm text-white"
               role="status"
@@ -379,7 +398,9 @@ const sceneEntries = (scene: Scene) =>
           <textarea
             v-model="draft"
             class="h-24 resize-none rounded-lg border border-line bg-surface p-3 disabled:opacity-60"
-            placeholder="Your Direction… (Enter to send, Shift+Enter for a new line)"
+            :placeholder="viewingOlder
+            ? `Your Direction continues from ${turnName(latest!.index)}, the latest Turn…`
+            : 'Your Direction… (Enter to send, Shift+Enter for a new line)'"
             :disabled="busy"
             @keydown="onKeydown"
           />

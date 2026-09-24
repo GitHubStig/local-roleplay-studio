@@ -99,7 +99,9 @@ in [open-threads.md](open-threads.md).
   the text box is locked and **Cancel** replaces **Send**; a failed Turn's error shows in the
   button row. Typed text is always treated as an Action; there are no typed commands.
   The right panel has two tabs. **Turn Log** shows a thumbnail, the Action and the Narration per
-  Turn; clicking one shows that Turn. Declined Turns are labelled and tinted amber, Unclear
+  Turn; clicking one shows that Turn. While an earlier Turn is shown, a pill on the image reads
+  "Viewing Turn 1 of 4 · Back to latest", and the text box says the next Direction continues from
+  the latest Turn: Directions always build on the latest Turn, never on the one being viewed. Declined Turns are labelled and tinted amber, Unclear
   Turns ("Didn't understand") blue, both in the log and on the caption. **Scene** shows the
   viewed Turn's Scene fields and its image prompt. Because the Session id is in the URL,
   reloading the page keeps you in the Session. The image crossfades (700 ms) when a new Turn
