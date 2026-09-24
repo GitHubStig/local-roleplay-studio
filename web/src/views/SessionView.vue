@@ -11,6 +11,7 @@ import {
 } from 'vue'
 import { onBeforeRouteLeave, useRouter } from 'vue-router'
 import { clearCurrentSession, setCurrentSession } from '../composables/useCurrentSession'
+import { useStoredFlag } from '../composables/useStoredFlag'
 import { diffWords } from '../diff'
 import {
   ApiError,
@@ -53,26 +54,9 @@ const viewing = ref<number | null>(null)
 const log = ref<HTMLElement | null>(null)
 const panel = ref<'log' | 'prompt'>('log')
 
-const CAPTION_KEY = 'caption-hidden'
-/** A per-browser viewing preference, like the theme. */
-const captionHidden = ref(readCaptionHidden())
-
-function readCaptionHidden(): boolean {
-  try {
-    return localStorage.getItem(CAPTION_KEY) === '1'
-  } catch {
-    return false
-  }
-}
-
-watch(captionHidden, (hidden) => {
-  try {
-    if (hidden) localStorage.setItem(CAPTION_KEY, '1')
-    else localStorage.removeItem(CAPTION_KEY)
-  } catch {
-    // Not remembered this time; still applies until reload.
-  }
-})
+/** Viewing preferences, remembered per browser. */
+const captionHidden = useStoredFlag('caption-hidden')
+const removedHidden = useStoredFlag('diff-removed-hidden')
 
 const busy = computed(() => pending.value !== null)
 /** This Session's Turn is waiting for another Session's render to finish. */
@@ -659,21 +643,37 @@ const promptDiff = computed(() => {
             <p v-if="shown.timings" class="mb-3 text-xs text-muted" data-timings>
               {{ timingsLabel(shown.timings) }}
             </p>
+            <div v-if="shown.index > 0" class="mb-2 flex flex-col gap-1 text-xs text-muted">
+              <label class="flex w-fit cursor-pointer items-center gap-1.5">
+                <input
+                  type="checkbox"
+                  :checked="!removedHidden"
+                  data-show-removed
+                  @change="removedHidden = !($event.target as HTMLInputElement).checked"
+                />
+                Show removed words
+              </label>
+              <p>
+                <span class="rounded bg-info/20 px-1 text-fg">added</span>
+                <template v-if="!removedHidden">
+                  and <span class="text-danger line-through">removed</span>
+                </template>
+                since Turn {{ shown.index - 1 }}. Rendered with "adult," in front.
+              </p>
+            </div>
             <p class="leading-relaxed" data-prompt>
               <template v-for="(part, i) in promptDiff" :key="i">
                 <span
+                  v-if="part.kind !== 'removed' || !removedHidden"
                   :class="{
                     'rounded bg-info/20 text-fg': part.kind === 'added',
                     'text-danger line-through opacity-70': part.kind === 'removed',
                   }"
                   :data-diff="part.kind"
-                >{{ part.text }}</span>{{ ' ' }}
+                >{{ part.text }}</span><template
+                  v-if="part.kind !== 'removed' || !removedHidden"
+                >{{ ' ' }}</template>
               </template>
-            </p>
-            <p v-if="shown.index > 0" class="mt-2 text-xs text-muted">
-              <span class="rounded bg-info/20 px-1 text-fg">added</span> and
-              <span class="text-danger line-through">removed</span> since Turn {{ shown.index - 1 }}.
-              Rendered with "adult," in front.
             </p>
             <details v-if="shown.thinking" :key="`thinking-${shown.index}`" class="mt-4 text-muted">
               <summary class="cursor-pointer select-none">Thinking</summary>

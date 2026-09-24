@@ -205,6 +205,24 @@ describe('SessionView', () => {
     expect(panel.text()).toContain('since Turn 0')
   })
 
+  it('can hide the removed words, remembering the choice', async () => {
+    vi.mocked(api.getSession).mockResolvedValue(
+      session([turn(0, null), turn(1, 'Sit', { prompt: promptFor(1).replace('calm', 'scared') })]),
+    )
+    const { wrapper } = await mountIt()
+    await wrapper.findAll('[role=tab]')[1].trigger('click')
+    expect(wrapper.findAll('[data-diff=removed]')).toHaveLength(1)
+
+    await wrapper.find('[data-show-removed]').setValue(false)
+    expect(wrapper.findAll('[data-diff=removed]')).toHaveLength(0)
+    expect(wrapper.findAll('[data-diff=added]')).toHaveLength(1)
+    expect(wrapper.find('[data-prompt]').text()).toBe(promptFor(1).replace('calm', 'scared'))
+    expect(localStorage.getItem('diff-removed-hidden')).toBe('1')
+
+    await wrapper.find('[data-show-removed]').setValue(true)
+    expect(wrapper.findAll('[data-diff=removed]')).toHaveLength(1)
+  })
+
   it("shows how long the viewed Turn's steps took", async () => {
     vi.mocked(api.getSession).mockResolvedValue(
       session([
