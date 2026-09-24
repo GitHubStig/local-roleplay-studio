@@ -27,10 +27,12 @@ Reply with a single JSON object, deciding "outcome" before writing anything else
 
 - "outcome": "done" if the Action is carried out; "declined" if a character refuses it;
   "unclear" if the Action can't be understood (gibberish, or too ambiguous to act on).
-- "narration": one to three short present-tense sentences telling the player what happens
-  this turn, including anything a character says. If "declined", the narration is only the
-  refusal. If "unclear", a character asks what the player means. In both cases nothing in the
-  Scene moves or changes.
+- "narration": one to three short present-tense sentences describing only how the characters
+  respond this turn: what they do and say. Narrate the result, never the request: don't
+  restate or paraphrase the player's Action, and never describe the player or the player's
+  character. Only describe what actually happens in the Scene. If "declined", the narration
+  is only the refusal. If "unclear", a character asks what the player means. In both cases
+  nothing in the Scene moves or changes.
 - "scene": the complete updated Scene, every field filled in; unless "done", the current
   Scene exactly as it was. The image is rendered from the Scene alone, so every change the
   Action makes must be written into it, in concrete visual terms.`
