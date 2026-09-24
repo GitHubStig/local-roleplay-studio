@@ -35,6 +35,7 @@ interface SetupOptions {
 }
 
 function setup(opts: SetupOptions = {}) {
+  let sessionCount = 0
   const settings = memoryStore({ ...DEFAULT_SETTINGS, ...opts.settings })
   const sessions = dirSessionStore(opts.root ?? '/nonexistent')
   const handler = createHandler({
@@ -44,7 +45,7 @@ function setup(opts: SetupOptions = {}) {
     sessions,
     textModel: () => opts.textModel ?? scriptedTextModel([]),
     imageGenerator: opts.imageGenerator ?? fakeImageGenerator(),
-    newSessionId: () => 's1',
+    newSessionId: () => `s${++sessionCount}`,
     randomSeed: () => 1234,
   })
   const call = (method: string, path: string, body?: unknown) =>
@@ -226,21 +227,6 @@ Deno.test('Cancel aborts the Turn in progress and rejects overlapping Turns', ()
     assertEquals(rest.includes('"sessionDiscarded":true'), true)
   }))
 
-Deno.test('End closes a Session to further Turns', () =>
-  withTempDir(async (root) => {
-    const { call } = setup({
-      root,
-      settings: { textModel: 'x' },
-      textModel: scriptedTextModel([reply('standing')]),
-    })
-    await call('POST', '/api/sessions', { scenarioId: 'test' })
-    await readEvents(await call('POST', '/api/sessions/s1/turns', {}))
-    const ended = await (await call('POST', '/api/sessions/s1/end')).json()
-    assertEquals(ended.status, 'ended')
-    assertEquals((await call('POST', '/api/sessions/s1/turns', { action: 'Sit' })).status, 409)
-    assertEquals((await call('POST', '/api/sessions/s1/end')).status, 409)
-  }))
-
 Deno.test('DELETE /api/sessions/:id/turns/:index undoes only the latest Turn', () =>
   withTempDir(async (root) => {
     const { call } = setup({
@@ -277,4 +263,86 @@ Deno.test('Undo is refused while a Turn is in progress', () =>
     assertEquals((await call('DELETE', '/api/sessions/s1/turns/0')).status, 409)
     await call('POST', '/api/sessions/s1/cancel')
     for (let r = await reader.read(); !r.done; r = await reader.read()) { /* drain */ }
+  }))
+
+Deno.test('GET /api/sessions lists Sessions newest first with their activity', () =>
+  withTempDir(async (root) => {
+    const { call } = setup({
+      root,
+      settings: { textModel: 'x' },
+      textModel: scriptedTextModel([reply('standing'), reply('sitting'), reply('kneeling')]),
+    })
+    assertEquals(await (await call('GET', '/api/sessions')).json(), [])
+    await call('POST', '/api/sessions', { scenarioId: 'test' })
+    await readEvents(await call('POST', '/api/sessions/s1/turns', {}))
+    await call('POST', '/api/sessions', { scenarioId: 'test' })
+    await readEvents(await call('POST', '/api/sessions/s2/turns', {}))
+    // Timestamps have millisecond resolution; make s1's latest Turn clearly the newest.
+    await new Promise((r) => setTimeout(r, 5))
+    await readEvents(await call('POST', '/api/sessions/s1/turns', { action: 'Sit' }))
+
+    const list = await (await call('GET', '/api/sessions')).json()
+    assertEquals(list.map((s: { id: string }) => s.id), ['s1', 's2'])
+    assertEquals(list[0].scenarioTitle, 'Test Shoot')
+    assertEquals(list[0].turns, 2)
+    assertMatch(list[0].latestImage, /^turn-1-/)
+    assertEquals(list[0].activity, null)
+  }))
+
+Deno.test('DELETE /api/sessions/:id removes a Session and its images', () =>
+  withTempDir(async (root) => {
+    const { call } = setup({
+      root,
+      settings: { textModel: 'x' },
+      textModel: scriptedTextModel([reply('standing')]),
+    })
+    await call('POST', '/api/sessions', { scenarioId: 'test' })
+    await readEvents(await call('POST', '/api/sessions/s1/turns', {}))
+    assertEquals((await call('DELETE', '/api/sessions/s1')).status, 204)
+    assertEquals((await call('GET', '/api/sessions/s1')).status, 404)
+    assertEquals(await Deno.stat(`${root}/s1`).then(() => true, () => false), false)
+    assertEquals((await call('DELETE', '/api/sessions/s1')).status, 404)
+  }))
+
+/** Reads SSE text from a stream until `marker` appears; returns everything read so far. */
+async function readUntil(reader: ReadableStreamDefaultReader<string>, marker: string) {
+  let seen = ''
+  while (!seen.includes(marker)) {
+    const r = await reader.read()
+    if (r.done) throw new Error(`stream ended before ${marker}; got: ${seen}`)
+    seen += r.value
+  }
+  return seen
+}
+
+Deno.test('Images render one at a time across Sessions; a waiting Turn is queued', () =>
+  withTempDir(async (root) => {
+    const { call } = setup({
+      root,
+      settings: { textModel: 'x' },
+      textModel: scriptedTextModel([reply('standing'), reply('sitting')]),
+      imageGenerator: fakeImageGenerator({ hang: true }),
+    })
+    await call('POST', '/api/sessions', { scenarioId: 'test' })
+    await call('POST', '/api/sessions', { scenarioId: 'test' })
+    const a = (await call('POST', '/api/sessions/s1/turns', {})).body!
+      .pipeThrough(new TextDecoderStream()).getReader()
+    await readUntil(a, '"phase":"image"')
+
+    const b = (await call('POST', '/api/sessions/s2/turns', {})).body!
+      .pipeThrough(new TextDecoderStream()).getReader()
+    await readUntil(b, '"phase":"queued"')
+    const list = await (await call('GET', '/api/sessions')).json()
+    const activity = Object.fromEntries(
+      list.map((s: { id: string; activity: string }) => [s.id, s.activity]),
+    )
+    assertEquals(activity, { s1: 'image', s2: 'queued' })
+    assertEquals((await call('DELETE', '/api/sessions/s2')).status, 409)
+
+    // Cancelling A's render lets B's start.
+    await call('POST', '/api/sessions/s1/cancel')
+    await readUntil(a, 'event: cancelled')
+    await readUntil(b, '"phase":"image"')
+    await call('POST', '/api/sessions/s2/cancel')
+    await readUntil(b, 'event: cancelled')
   }))

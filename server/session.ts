@@ -33,7 +33,6 @@ export interface Session {
   settings: Settings
   /** The seed every image in this Session is rendered with. */
   seed: number
-  status: 'active' | 'ended'
   createdAt: string
   turns: Turn[]
 }
@@ -44,6 +43,8 @@ export interface SessionStore {
   /** Absolute directory holding a Session's JSON and images. */
   dir(id: string): string
   load(id: string): Promise<Session | undefined>
+  /** Every saved Session; unreadable ones are skipped. */
+  list(): Promise<Session[]>
   save(session: Session): Promise<void>
   remove(id: string): Promise<void>
 }
@@ -51,7 +52,8 @@ export interface SessionStore {
 const SESSION_ID = /^[a-z0-9-]+$/
 
 /** Brings a Session saved by an older version up to date. */
-function upgrade(session: Session): Session {
+function upgrade(session: Session & { status?: string }): Session {
+  delete session.status
   for (const turn of session.turns as (Turn & { declined?: boolean })[]) {
     if (!turn.outcome) turn.outcome = turn.declined ? 'declined' : 'done'
     delete turn.declined
@@ -76,6 +78,21 @@ export function dirSessionStore(root: string | URL): SessionStore {
         if (err instanceof Deno.errors.NotFound) return undefined
         throw err
       }
+    },
+    async list() {
+      let entries: Deno.DirEntry[]
+      try {
+        entries = await Array.fromAsync(Deno.readDir(base))
+      } catch (err) {
+        if (err instanceof Deno.errors.NotFound) return []
+        throw err
+      }
+      const sessions = await Promise.all(
+        entries
+          .filter((e) => e.isDirectory && SESSION_ID.test(e.name))
+          .map((e) => this.load(e.name).catch(() => undefined)),
+      )
+      return sessions.filter((s): s is Session => s !== undefined)
     },
     async save(session) {
       const d = dir(session.id)

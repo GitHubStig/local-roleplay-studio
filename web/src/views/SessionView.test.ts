@@ -26,15 +26,11 @@ const turn = (index: number, action: string | null, extra: Partial<api.Turn> = {
   ...extra,
 })
 
-const session = (
-  turns: api.Turn[] = [],
-  status: api.Session['status'] = 'active',
-): api.Session => ({
+const session = (turns: api.Turn[] = []): api.Session => ({
   id: 's1',
   scenarioId: 'photoshoot',
   settings: {} as api.Settings,
   seed: 1,
-  status,
   createdAt: '2026-09-24T00:00:00.000Z',
   turns,
 })
@@ -247,10 +243,37 @@ describe('SessionView', () => {
     expect(wrapper.find('[role=alert]').text()).toBe('Turn 1 is not the latest Turn')
   })
 
-  it('shows an ended Session as read-only', async () => {
-    vi.mocked(api.getSession).mockResolvedValue(session([turn(0, null)], 'ended'))
+  it('shows when its render is waiting for another Session', async () => {
+    let emit!: (e: api.TurnEvent) => void
+    vi.mocked(api.streamTurn).mockImplementation((_id, _action, onEvent) => {
+      emit = onEvent
+      return new Promise(() => {})
+    })
     const { wrapper } = await mountIt()
-    expect(wrapper.find('textarea').exists()).toBe(false)
-    expect(wrapper.text()).toContain('This Session has ended.')
+    await wrapper.find('textarea').setValue('Sit')
+    await buttonNamed(wrapper, 'Send').trigger('click')
+    emit({ type: 'text', outcome: 'done', narration: 'Maya sits.', scene: {} })
+    emit({ type: 'phase', phase: 'queued' })
+    await flushPromises()
+    expect(wrapper.find('[role=status]').text()).toContain('Waiting for another render')
+  })
+
+  it('remembers an unsent Direction per Session', async () => {
+    localStorage.setItem('draft:s1', 'Kneel on one knee')
+    const { wrapper } = await mountIt()
+    expect((wrapper.find('textarea').element as HTMLTextAreaElement).value).toBe(
+      'Kneel on one knee',
+    )
+    await wrapper.find('textarea').setValue('Stand up')
+    expect(localStorage.getItem('draft:s1')).toBe('Stand up')
+    await wrapper.find('textarea').setValue('')
+    expect(localStorage.getItem('draft:s1')).toBeNull()
+  })
+
+  it('has no End or Reset', async () => {
+    const { wrapper } = await mountIt()
+    const labels = wrapper.findAll('button').map((b) => b.text())
+    expect(labels).not.toContain('End')
+    expect(labels).not.toContain('Reset')
   })
 })

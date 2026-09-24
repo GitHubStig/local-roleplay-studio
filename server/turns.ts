@@ -1,6 +1,7 @@
 import { equal } from '@std/assert'
 import { join } from '@std/path'
 import type { ImageGenerator } from './imageGenerator.ts'
+import { RenderQueue } from './renderQueue.ts'
 import type { Scenario } from './scenario.ts'
 import {
   currentScene,
@@ -13,7 +14,8 @@ import type { TextModel, TurnText } from './textModel.ts'
 
 /** Progress of a Turn, streamed to the player as it happens. */
 export type TurnEvent =
-  | { type: 'phase'; phase: 'text' | 'image' }
+  /** `queued`: waiting for another Session's render to finish. */
+  | { type: 'phase'; phase: 'text' | 'queued' | 'image' }
   /** Image Model steps completed so far. */
   | { type: 'progress'; step: number; total: number }
   /** The new Scene before its image exists; provisional until `committed`. */
@@ -24,6 +26,8 @@ export interface TurnDeps {
   store: SessionStore
   textModel: TextModel
   imageGenerator: ImageGenerator
+  /** Shared across Sessions so only one image renders at a time. */
+  renderQueue?: RenderQueue
 }
 
 const TEXT_ATTEMPTS = 2
@@ -109,22 +113,29 @@ export async function runTurn(
       image = previous!.image
       imagePrompt = previous!.imagePrompt
     } else {
-      emit({ type: 'phase', phase: 'image' })
       imagePrompt = `${scenario.imagePrefix}, ${sceneToPrompt(nextScene)}`
-      signal.throwIfAborted()
-      await Deno.mkdir(dir, { recursive: true })
-      image = await deps.imageGenerator.generate(
-        {
-          prompt: imagePrompt,
-          seed: session.seed,
-          settings: session.settings,
-          dir,
-          name: imageName(index),
-        },
+      const release = await (deps.renderQueue ?? new RenderQueue()).acquire(
         signal,
-        (step, total) => emit({ type: 'progress', step, total }),
+        () => emit({ type: 'phase', phase: 'queued' }),
       )
-      wroteImage = true
+      try {
+        emit({ type: 'phase', phase: 'image' })
+        await Deno.mkdir(dir, { recursive: true })
+        image = await deps.imageGenerator.generate(
+          {
+            prompt: imagePrompt,
+            seed: session.seed,
+            settings: session.settings,
+            dir,
+            name: imageName(index),
+          },
+          signal,
+          (step, total) => emit({ type: 'progress', step, total }),
+        )
+        wroteImage = true
+      } finally {
+        release()
+      }
     }
     signal.throwIfAborted()
 

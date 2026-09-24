@@ -11,7 +11,7 @@ const { currentSessionId } = useCurrentSession()
 
 /** Play returns to the Session in progress, if any. */
 const playTo = computed(() => (currentSessionId.value ? `/sessions/${currentSessionId.value}` : '/'))
-const onPlay = computed(() => route.name === 'play' || route.name === 'session')
+const onPlay = computed(() => route.name === 'session')
 
 onMounted(async () => {
   try {
@@ -26,7 +26,9 @@ onMounted(async () => {
   <div class="flex h-screen flex-col bg-canvas text-fg">
     <header class="flex items-center justify-between border-b border-line px-4 py-3">
       <nav class="flex items-center gap-4">
-        <h1 class="text-lg font-semibold">RPG</h1>
+        <h1 class="text-lg font-semibold">
+          <RouterLink to="/" title="Home: your Sessions and new ones">RPG</RouterLink>
+        </h1>
         <RouterLink :to="playTo" class="text-sm text-muted" :class="{ '!text-fg': onPlay }">
           Play
         </RouterLink>
@@ -44,9 +46,10 @@ onMounted(async () => {
         <ThemeToggle />
       </div>
     </header>
-    <!-- The Session screen stays alive while visiting Settings, so a running Turn survives. -->
+    <!-- Up to 5 Session screens stay alive while you visit Home, Settings or other Sessions, so
+         drafts, the viewed Turn and running Turns survive switching back and forth. -->
     <RouterView v-slot="{ Component, route: r }">
-      <KeepAlive include="SessionView" :max="1">
+      <KeepAlive include="SessionView" :max="5">
         <component :is="Component" :key="r.path" class="min-h-0 flex-1" />
       </KeepAlive>
     </RouterView>

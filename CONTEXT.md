@@ -15,7 +15,7 @@ The fixed facts a Scenario declares, such as place, characters and tone, that ev
 _Avoid_: Config, context, world
 
 **Session**:
-One playthrough of a Scenario, from its opening Scene until the player ends or resets it.
+One playthrough of a Scenario, from its opening Scene onwards; it can be left and returned to at any time, and lasts until deleted.
 _Avoid_: Game, run, playthrough
 
 **Scene**:
@@ -61,14 +61,6 @@ _Avoid_: Abort, stop, undo
 **Undo**:
 Removing the latest Turn so the Scene is the previous Turn's again; the Opening Turn can't be undone.
 _Avoid_: Delete turn, revert, rollback
-
-**End**:
-Closing a Session for good, invoked only by a button, never by typing an Action.
-_Avoid_: Stop, quit
-
-**Reset**:
-Ending the current Session and starting a fresh one from the same Scenario, invoked only by a button.
-_Avoid_: Restart, new game
 
 ### Photoshoot
 

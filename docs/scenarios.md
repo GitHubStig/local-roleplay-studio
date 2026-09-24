@@ -2,7 +2,7 @@
 
 A **Scenario** is one Markdown file in `scenarios/`. The file name, minus `.md`, is its id
 (`photoshoot.md` → `photoshoot`). Files are read fresh on every request, so a new or edited
-Scenario shows up on the Start Session screen without a restart. A running Session picks up an
+Scenario shows up on Home, under *Start a new Session*, without a restart. A running Session picks up an
 edited Scenario from its next Turn.
 
 [`scenarios/photoshoot.md`](../scenarios/photoshoot.md) is a complete, working example.
@@ -12,7 +12,7 @@ edited Scenario from its next Turn.
 ```markdown
 ---
 title: Studio Photoshoot
-description: One or two sentences for the Start Session screen.
+description: One or two sentences for its card on Home.
 setup:
   location: …
   subject: …
@@ -37,7 +37,7 @@ How to write the opening Scene.
 
 | Field | Required | What it is |
 |---|---|---|
-| `title` | yes | Shown on the Start Session card |
+| `title` | yes | Shown on the Scenario's card on Home |
 | `description` | yes | Shown under the title |
 | `setup` | yes | A YAML mapping of fixed facts (place, characters, tone, …). Passed to the Text Model on every Turn as a `# Setup` section. Every Scene must stay within it. For the photoshoot, this is the Shoot Brief. |
 | `imagePrefix` | yes | Text the **engine** puts in front of every image prompt, whatever the Text Model writes. Put the facts that must hold in every image here: who the characters are, what they wear, the style. |
@@ -88,6 +88,6 @@ character refuses is up to the Scenario, in its `## System` section:
 
 ## Checking a Scenario
 
-Open the Start Session screen. A file that fails to parse is listed there with every problem
+Open Home. A file that fails to parse is listed under *Start a new Session* with every problem
 found (missing fields, a schema that isn't `type: object`, a missing section). A valid file
 appears as a card.

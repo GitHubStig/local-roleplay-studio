@@ -4,7 +4,7 @@ import { createMemoryHistory, createRouter } from 'vue-router'
 import * as api from './api'
 import App from './App.vue'
 import { clearCurrentSession } from './composables/useCurrentSession'
-import PlayView from './views/PlayView.vue'
+import HomeView from './views/HomeView.vue'
 import SessionView from './views/SessionView.vue'
 import SettingsView from './views/SettingsView.vue'
 
@@ -15,6 +15,9 @@ vi.mock('./api', async (importOriginal) => ({
   getSettings: vi.fn(),
   getSettingsOptions: vi.fn(),
   getScenarios: vi.fn(async () => ({ scenarios: [], errors: [] })),
+  listSessions: vi.fn(async () => []),
+  streamTurn: vi.fn(),
+  cancelTurn: vi.fn(),
 }))
 
 const session: api.Session = {
@@ -22,7 +25,6 @@ const session: api.Session = {
   scenarioId: 'photoshoot',
   settings: {} as api.Settings,
   seed: 1,
-  status: 'active',
   createdAt: '2026-09-24T00:00:00.000Z',
   turns: [{
     index: 0,
@@ -40,7 +42,7 @@ async function mountApp(path: string) {
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [
-      { path: '/', name: 'play', component: PlayView },
+      { path: '/', name: 'home', component: HomeView },
       { path: '/sessions/:id', name: 'session', component: SessionView, props: true },
       { path: '/settings', name: 'settings', component: SettingsView },
     ],
@@ -99,21 +101,68 @@ describe('App navigation', () => {
     expect((wrapper.find('textarea').element as HTMLTextAreaElement).value).toBe(
       'Sit on the stool',
     )
-    expect(api.getSession).toHaveBeenCalledTimes(1)
+    // Loaded once, then re-checked on return; the screen itself was kept, not rebuilt.
+    expect(api.getSession).toHaveBeenCalledTimes(2)
   })
 
-  it('forgets a Session that no longer exists and goes to Start Session', async () => {
+  it('RPG leads Home', async () => {
+    const { wrapper } = await mountApp('/sessions/s1')
+    expect(wrapper.find('h1 a').attributes('href')).toBe('/')
+  })
+
+  it('keeps each Session as it was when switching between two', async () => {
+    vi.mocked(api.getSession).mockImplementation(async (id) => ({
+      ...structuredClone(session),
+      id,
+    }))
+    const { wrapper, router } = await mountApp('/sessions/s1')
+    await wrapper.find('textarea').setValue('Direction for one')
+    await router.push('/')
+    await router.push('/sessions/s2')
+    await flushPromises()
+    await wrapper.find('textarea').setValue('Direction for two')
+    expect(playLink(wrapper).attributes('href')).toBe('/sessions/s2')
+
+    await router.push('/sessions/s1')
+    await flushPromises()
+    expect((wrapper.find('textarea').element as HTMLTextAreaElement).value).toBe(
+      'Direction for one',
+    )
+    await router.push('/sessions/s2')
+    await flushPromises()
+    expect((wrapper.find('textarea').element as HTMLTextAreaElement).value).toBe(
+      'Direction for two',
+    )
+  })
+
+  it("won't leave a Session while its Turn waits for another render", async () => {
+    let emit!: (e: api.TurnEvent) => void
+    vi.mocked(api.streamTurn).mockImplementation((_id, _action, onEvent) => {
+      emit = onEvent
+      return new Promise(() => {})
+    })
+    const { wrapper, router } = await mountApp('/sessions/s1')
+    await wrapper.find('textarea').setValue('Sit')
+    await wrapper.findAll('button').find((b) => b.text() === 'Send')!.trigger('click')
+    emit({ type: 'phase', phase: 'queued' })
+    await flushPromises()
+
+    await router.push('/settings').catch(() => {})
+    await flushPromises()
+    expect(router.currentRoute.value.path).toBe('/sessions/s1')
+    expect(wrapper.find('[role=alert]').text()).toContain('Cancel this Turn to leave')
+
+    emit({ type: 'phase', phase: 'image' })
+    await flushPromises()
+    await router.push('/settings')
+    await flushPromises()
+    expect(router.currentRoute.value.path).toBe('/settings')
+  })
+
+  it('forgets a Session that no longer exists and goes Home', async () => {
     vi.mocked(api.getSession).mockRejectedValue(new api.ApiError('Session not found', 404))
     const { wrapper, router } = await mountApp('/sessions/s1')
     expect(router.currentRoute.value.path).toBe('/')
-    expect(playLink(wrapper).attributes('href')).toBe('/')
-  })
-
-  it('forgets an ended Session', async () => {
-    vi.mocked(api.getSession).mockResolvedValue({ ...structuredClone(session), status: 'ended' })
-    const { wrapper, router } = await mountApp('/sessions/s1')
-    await router.push('/settings')
-    await flushPromises()
     expect(playLink(wrapper).attributes('href')).toBe('/')
   })
 })

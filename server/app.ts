@@ -5,6 +5,7 @@ import { type ScenarioLibrary, summarise } from './scenario.ts'
 import type { Session, SessionStore } from './session.ts'
 import { type SettingsStore, SIZE_PRESETS, validateSettings } from './settings.ts'
 import type { TextModel } from './textModel.ts'
+import { RenderQueue } from './renderQueue.ts'
 import { runTurn, type TurnEvent, UndoError, undoLatestTurn } from './turns.ts'
 
 export interface AppDeps {
@@ -51,14 +52,16 @@ const defaultSeed = () => crypto.getRandomValues(new Uint32Array(1))[0]
 export function createHandler(deps: AppDeps): (req: Request) => Promise<Response> {
   const newSessionId = deps.newSessionId ?? defaultSessionId
   const randomSeed = deps.randomSeed ?? defaultSeed
-  /** The Turn in progress per Session; at most one each. */
-  const activeTurns = new Map<string, AbortController>()
+  /** The Turn in progress per Session (at most one each) and the step it has reached. */
+  const activeTurns = new Map<
+    string,
+    { controller: AbortController; phase: 'text' | 'queued' | 'image' }
+  >()
+  /** One image render at a time, across all Sessions. */
+  const renderQueue = new RenderQueue()
 
-  async function loadActive(id: string): Promise<Session | Response> {
-    const session = await deps.sessions.load(id)
-    if (!session) return error('Session not found', 404)
-    if (session.status !== 'active') return error('Session has ended', 409)
-    return session
+  async function loadSession(id: string): Promise<Session | Response> {
+    return (await deps.sessions.load(id)) ?? error('Session not found', 404)
   }
 
   const routes: Route[] = [
@@ -115,12 +118,42 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
         scenarioId: body.scenarioId,
         settings,
         seed: settings.seedMode === 'fixed' ? settings.seed : randomSeed(),
-        status: 'active',
         createdAt: new Date().toISOString(),
         turns: [],
       }
       await deps.sessions.save(session)
       return json(session, 201)
+    }],
+
+    ['GET', new URLPattern({ pathname: '/api/sessions' }), async () => {
+      const [sessions, { scenarios }] = await Promise.all([
+        deps.sessions.list(),
+        deps.scenarios.list(),
+      ])
+      const titles = new Map(scenarios.map((s) => [s.id, s.title]))
+      const summaries = sessions.map((s) => {
+        const latest = s.turns.at(-1)
+        return {
+          id: s.id,
+          scenarioId: s.scenarioId,
+          scenarioTitle: titles.get(s.scenarioId) ?? s.scenarioId,
+          turns: s.turns.length,
+          latestImage: latest?.image ?? null,
+          createdAt: s.createdAt,
+          updatedAt: latest?.createdAt ?? s.createdAt,
+          activity: activeTurns.get(s.id)?.phase ?? null,
+        }
+      })
+      summaries.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+      return json(summaries)
+    }],
+
+    ['DELETE', new URLPattern({ pathname: '/api/sessions/:id' }), async (_req, p) => {
+      const session = await loadSession(p.id!)
+      if (session instanceof Response) return session
+      if (activeTurns.has(session.id)) return error('Cancel the Turn in progress first', 409)
+      await deps.sessions.remove(session.id)
+      return new Response(null, { status: 204 })
     }],
 
     ['GET', new URLPattern({ pathname: '/api/sessions/:id' }), async (_req, p) => {
@@ -129,7 +162,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     }],
 
     ['POST', new URLPattern({ pathname: '/api/sessions/:id/turns' }), async (req, p) => {
-      const session = await loadActive(p.id!)
+      const session = await loadSession(p.id!)
       if (session instanceof Response) return session
       if (activeTurns.has(session.id)) return error('A Turn is already in progress', 409)
 
@@ -146,7 +179,8 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       if (!scenario) return error(`Scenario "${session.scenarioId}" no longer exists`, 409)
 
       const controller = new AbortController()
-      activeTurns.set(session.id, controller)
+      const active = { controller, phase: 'text' as 'text' | 'queued' | 'image' }
+      activeTurns.set(session.id, active)
       const encoder = new TextEncoder()
 
       const stream = new ReadableStream<Uint8Array>({
@@ -164,11 +198,15 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
                 store: deps.sessions,
                 textModel: deps.textModel(session.settings.textModel),
                 imageGenerator: deps.imageGenerator,
+                renderQueue,
               },
               session,
               scenario,
               action,
-              (e: TurnEvent) => send(e.type, e),
+              (e: TurnEvent) => {
+                if (e.type === 'phase') active.phase = e.phase
+                send(e.type, e)
+              },
               controller.signal,
             )
           } catch (err) {
@@ -203,12 +241,12 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     }],
 
     ['POST', new URLPattern({ pathname: '/api/sessions/:id/cancel' }), (_req, p) => {
-      activeTurns.get(p.id!)?.abort(new Error('Cancelled by player'))
+      activeTurns.get(p.id!)?.controller.abort(new Error('Cancelled by player'))
       return Promise.resolve(new Response(null, { status: 204 }))
     }],
 
     ['DELETE', new URLPattern({ pathname: '/api/sessions/:id/turns/:index' }), async (_req, p) => {
-      const session = await loadActive(p.id!)
+      const session = await loadSession(p.id!)
       if (session instanceof Response) return session
       if (activeTurns.has(session.id)) return error('Cancel the Turn in progress first', 409)
       const index = Number(p.index)
@@ -219,15 +257,6 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
         if (err instanceof UndoError) return error(err.message, 409)
         throw err
       }
-    }],
-
-    ['POST', new URLPattern({ pathname: '/api/sessions/:id/end' }), async (_req, p) => {
-      const session = await loadActive(p.id!)
-      if (session instanceof Response) return session
-      if (activeTurns.has(session.id)) return error('Cancel the Turn in progress first', 409)
-      const ended: Session = { ...session, status: 'ended' }
-      await deps.sessions.save(ended)
-      return json(ended)
     }],
 
     ['GET', new URLPattern({ pathname: '/api/sessions/:id/images/:file' }), async (_req, p) => {

@@ -1,12 +1,10 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, nextTick, onActivated, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { onBeforeRouteLeave, useRouter } from 'vue-router'
 import { clearCurrentSession, setCurrentSession } from '../composables/useCurrentSession'
 import {
   ApiError,
   cancelTurn,
-  createSession,
-  endSession,
   getSession,
   imageUrl,
   type Outcome,
@@ -22,7 +20,7 @@ const router = useRouter()
 
 /** The Turn in progress: provisional until committed. */
 interface Pending {
-  phase: 'text' | 'image'
+  phase: 'text' | 'queued' | 'image'
   progress?: { step: number; total: number }
   narration?: string
   outcome?: Outcome
@@ -62,34 +60,79 @@ watch(captionHidden, (hidden) => {
 })
 
 const busy = computed(() => pending.value !== null)
-const active = computed(() => session.value?.status === 'active')
+/** This Session's Turn is waiting for another Session's render to finish. */
+const queued = computed(() => pending.value?.phase === 'queued')
 const shown = computed(() => {
   const turns = session.value?.turns ?? []
   return viewing.value === null ? turns.at(-1) : turns[viewing.value]
 })
 
-onMounted(async () => {
+/** Loads the Session; false if it no longer exists (the player is sent Home). */
+async function load(): Promise<boolean> {
   try {
     session.value = await getSession(props.id)
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) {
       clearCurrentSession(props.id)
+      forgetDraft()
       router.replace('/')
-      return
+      return false
     }
     loadError.value = (err as Error).message
-    return
+    return false
   }
-  if (session.value.status === 'active' && session.value.turns.length === 0) {
-    await runTurn(null)
-  }
+  // Play leads back to the Session opened last.
+  setCurrentSession(props.id)
+  return true
+}
+
+let mounted = false
+onMounted(async () => {
+  if (!(await load())) return
+  mounted = true
+  if (session.value!.turns.length === 0) await runTurn(null)
 })
 
-// Play leads back here while the Session is active.
-watch(() => session.value?.status, (status) => {
-  if (status === 'active') setCurrentSession(props.id)
-  else if (status === 'ended') clearCurrentSession(props.id)
+// Coming back to a kept-alive Session: pick up changes made elsewhere (another tab, a delete
+// from Home), unless a Turn is running here.
+onActivated(async () => {
+  if (mounted && !busy.value) await load()
 })
+
+// --- The unsent Direction, remembered per Session so it survives a reload.
+const draftKey = `draft:${props.id}`
+try {
+  draft.value = localStorage.getItem(draftKey) ?? ''
+} catch {
+  // Storage blocked; the draft just isn't remembered.
+}
+watch(draft, (text) => {
+  try {
+    if (text) localStorage.setItem(draftKey, text)
+    else localStorage.removeItem(draftKey)
+  } catch {
+    // Not remembered this time.
+  }
+})
+function forgetDraft() {
+  try {
+    localStorage.removeItem(draftKey)
+  } catch {
+    // Nothing stored.
+  }
+}
+
+// --- While this Turn waits in the render queue, stay here: no leaving, no reloading.
+onBeforeRouteLeave(() => {
+  if (!queued.value) return true
+  turnError.value = 'Waiting for another render. Cancel this Turn to leave.'
+  return false
+})
+function warnBeforeUnload(e: BeforeUnloadEvent) {
+  if (queued.value) e.preventDefault()
+}
+window.addEventListener('beforeunload', warnBeforeUnload)
+onBeforeUnmount(() => window.removeEventListener('beforeunload', warnBeforeUnload))
 
 watch([() => session.value?.turns.length, panel], async () => {
   await nextTick()
@@ -142,7 +185,7 @@ async function runTurn(action: string | null) {
 
 function submit() {
   const action = draft.value.trim()
-  if (action && !busy.value && active.value) runTurn(action)
+  if (action && !busy.value) runTurn(action)
 }
 
 function onKeydown(e: KeyboardEvent) {
@@ -158,7 +201,7 @@ async function cancel() {
 }
 
 /** Undo is possible for any Turn after the Opening Turn, while nothing is running. */
-const canUndo = computed(() => active.value && !busy.value && (session.value?.turns.length ?? 0) > 1)
+const canUndo = computed(() => !busy.value && (session.value?.turns.length ?? 0) > 1)
 const undoing = ref(false)
 
 /** Removes the latest Turn and puts its Direction back in the text box to edit and resend. */
@@ -175,26 +218,6 @@ async function undo() {
     turnError.value = (err as Error).message
   } finally {
     undoing.value = false
-  }
-}
-
-async function end() {
-  if (!confirm('End this Session? You can start a new one afterwards.')) return
-  try {
-    session.value = await endSession(props.id)
-  } catch (err) {
-    turnError.value = (err as Error).message
-  }
-}
-
-async function reset() {
-  if (!confirm('Reset: end this Session and start a fresh one from the same Scenario?')) return
-  try {
-    if (active.value) await endSession(props.id)
-    const next = await createSession(session.value!.scenarioId)
-    router.push(`/sessions/${next.id}`)
-  } catch (err) {
-    turnError.value = (err as Error).message
   }
 }
 
@@ -246,6 +269,7 @@ const OUTCOME_LABELS: Partial<Record<Outcome, string>> = {
 
 const phaseLabel = computed(() => {
   if (pending.value?.cancelling) return 'Cancelling…'
+  if (pending.value?.phase === 'queued') return 'Waiting for another render…'
   if (pending.value?.phase !== 'image') return 'Writing the Scene…'
   const p = pending.value.progress
   return p ? `Rendering the image… ${p.step}/${p.total}` : 'Rendering the image…'
@@ -351,7 +375,7 @@ const sceneEntries = (scene: Scene) =>
           </div>
         </section>
 
-        <div v-if="active" class="flex shrink-0 flex-col gap-2">
+        <div class="flex shrink-0 flex-col gap-2">
           <textarea
             v-model="draft"
             class="h-24 resize-none rounded-lg border border-line bg-surface p-3 disabled:opacity-60"
@@ -394,31 +418,9 @@ const sceneEntries = (scene: Scene) =>
             >
               Undo
             </button>
-            <button
-              type="button"
-              class="rounded-lg border border-line px-3 py-2 text-sm disabled:opacity-50"
-              :disabled="busy"
-              @click="reset"
-            >
-              Reset
-            </button>
-            <button
-              type="button"
-              class="rounded-lg border border-line px-3 py-2 text-sm disabled:opacity-50"
-              :disabled="busy"
-              @click="end"
-            >
-              End
-            </button>
           </div>
         </div>
 
-        <div v-else class="flex shrink-0 items-center gap-4 rounded-lg border border-line p-3 text-sm">
-          <span class="text-muted">This Session has ended.</span>
-          <RouterLink to="/" class="rounded-lg bg-fg px-3 py-1.5 font-medium text-canvas">
-            New Session
-          </RouterLink>
-        </div>
       </main>
 
       <aside class="flex w-80 flex-col border-l border-line">

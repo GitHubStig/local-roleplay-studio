@@ -44,7 +44,9 @@ current Scene + Action ──► Text Model (Ollama) ──► { outcome, narrat
    - The Opening Turn always counts as done.
    - The image prompt is built by the engine: the Scenario's `imagePrefix`, then every Scene
      field as a labelled phrase (`subject pose: …, camera angle: low, set backdrop: …`).
-4. **Image step.** The mflux CLI renders the image with the Session's seed and settings. Its step
+4. **Image step.** Images render one at a time across all Sessions: if another Session is
+   rendering, this Turn waits in a queue (shown as "Waiting for another render…", and
+   cancellable). Then the mflux CLI renders the image with the Session's seed and settings. Its step
    counter is streamed to the player as progress
    ([ADR 0004](adr/0004-images-from-the-mflux-cli.md)).
 5. **Commit.** The Turn is appended to `session.json`.
@@ -58,7 +60,7 @@ A Turn commits whole or not at all ([ADR 0003](adr/0003-turns-are-all-or-nothing
 | Text Model fails twice | Turn fails; Scene unchanged; the Action stays in the text box |
 | Image Model fails | Turn fails; Scene unchanged; any partial image is deleted |
 | Player presses **Cancel** | Ollama request aborted, mflux process killed; Scene unchanged |
-| Opening Turn fails or is cancelled | The Session is discarded; back to Start Session with the error |
+| Opening Turn fails or is cancelled | The Session is discarded; back Home with the error |
 
 While a Turn runs, the new Scene text is shown **provisionally** (dimmed) as soon as the Text
 Model returns, with "Rendering the image… 2/4" beneath it. It becomes real only when the image
@@ -81,16 +83,21 @@ in [open-threads.md](open-threads.md).
 
 ## Screens
 
-- **Start Session** (`/`): Scenario cards (a lone Scenario is preselected), a report of any
-  Scenario files that failed to load, and the current Text and Image Models. Start is blocked,
-  with the reason shown, if no Text Model is set or the chosen one is no longer installed.
+- **Home** (`/`, also reached by clicking **RPG**): **Your Sessions**, one card per saved
+  Session, newest first: the latest image, the Scenario, the Turn count, when it was last played,
+  and what a running Turn is doing ("Writing…", "Waiting to render…", "Rendering…"; the list
+  refreshes every 2 s while anything runs). Hovering a card shows **Delete**, which asks for
+  confirmation and is disabled while that Session has a Turn running. Below, **Start a new
+  Session**: Scenario cards (a lone Scenario is preselected), a report of any Scenario files that
+  failed to load, and the current Text and Image Models. Start is blocked, with the reason shown,
+  if no Text Model is set or the chosen one is no longer installed.
 - **Session** (`/sessions/:id`): the image fills everything above a fixed-height text box, so
   it never resizes as the text changes. The Narration is a caption over the bottom of the photo
   (provisional text shows dimmed and in italics while a Turn runs); the caption can be hidden,
   and that choice is remembered per browser. The Turn's status ("Rendering the image… 2/4") is a
   pill in the image's top corner. Enter sends; Shift+Enter adds a new line. While a Turn runs,
   the text box is locked and **Cancel** replaces **Send**; a failed Turn's error shows in the
-  button row. **End** and **Reset** are buttons only; typed text is always treated as an Action.
+  button row. Typed text is always treated as an Action; there are no typed commands.
   The right panel has two tabs. **Turn Log** shows a thumbnail, the Action and the Narration per
   Turn; clicking one shows that Turn. Declined Turns are labelled and tinted amber, Unclear
   Turns ("Didn't understand") blue, both in the log and on the caption. **Scene** shows the
@@ -98,9 +105,14 @@ in [open-threads.md](open-threads.md).
   reloading the page keeps you in the Session. The image crossfades (700 ms) when a new Turn
   arrives or another Turn is picked; the next image is preloaded first, so there is no blank
   frame.
-- **Navigation:** **Play** leads back to the Session in progress (remembered per browser) and
-  to Start Session when there is none. The Session screen stays alive while you visit Settings,
-  so a running Turn and a half-typed Direction survive the trip.
+- **Navigation:** **RPG** leads Home; **Play** leads back to the Session opened last
+  (remembered per browser), or Home when there is none. Up to five Session screens stay alive in
+  memory while you visit Home, Settings or other Sessions, so each keeps its half-typed Direction,
+  viewed Turn, tab and any running Turn. The unsent Direction is also saved per Session in the
+  browser, so it survives a reload. Returning to a Session re-checks it with the server (unless a
+  Turn is running there); a Session deleted meanwhile sends you Home. While a Session's Turn is
+  **waiting in the render queue**, you can't leave that Session (links, Back and reload are
+  blocked) until it starts rendering or you cancel it.
 - **Settings** (`/settings`): Text Model (installed Ollama models, minus OCR and dedicated
   vision-language models), Image Model, steps (reset to the model's default when the Image Model
   changes), quantization, size (six presets from 512×512 to 1216×832) and seed (random per
@@ -115,8 +127,8 @@ Turn in the Turn Log, never for the Opening Turn, and never while a Turn runs. I
 a random suffix, so a Turn made after an Undo never reuses the undone Turn's file name, and the
 browser can't show a stale cached image.
 
-**Reset** ends the current Session (it stays on disk) and starts a new one from the same
-Scenario. **End** marks the Session ended; it becomes read-only.
+There is no End or Reset. A Session is simply left and returned to; to start over, start a new
+Session from Home, and delete old ones there.
 
 ## Storage
 
@@ -136,15 +148,17 @@ All under `/api`; the Vite dev server proxies it to the Deno server.
 | `GET`, `PUT /settings` | Read or save Settings (`400` with a list of issues if invalid) |
 | `GET /settings/options` | Text Models from Ollama, Image Models, size presets; still answers if Ollama is down |
 | `GET /scenarios` | Scenario summaries plus files that failed to load |
+| `GET /sessions` | Session summaries, newest first, with each one's current activity |
 | `POST /sessions` | Start a Session from `{ scenarioId }` |
+| `DELETE /sessions/:id` | Delete a Session and its images (`409` while a Turn runs) |
 | `GET /sessions/:id` | A Session with its Turns |
 | `POST /sessions/:id/turns` | Run a Turn (`{ action }`, or `{}` for the Opening Turn) as a server-sent event stream |
 | `POST /sessions/:id/cancel` | Cancel the Turn in progress |
 | `DELETE /sessions/:id/turns/:index` | Undo the latest Turn; `:index` must name it (`409` otherwise, and for the Opening Turn or while a Turn runs) |
-| `POST /sessions/:id/end` | End the Session |
 | `GET /sessions/:id/images/:file` | A Turn's image |
 
-A Turn's stream emits `phase` (`text` / `image`), `text` (the provisional Scene and Narration),
+A Turn's stream emits `phase` (`text`, then `queued` if another Session is rendering, then
+`image`), `text` (the provisional Scene and Narration),
 `progress` (image steps), then exactly one of `committed`, `failed` or `cancelled`.
 `sessionDiscarded` on the last two tells the client that an Opening Turn took the Session with it.
 
@@ -167,7 +181,8 @@ The design Q&A, and what changed later.
 | Turn state | The Scene only, no history (ADR 0001) | — |
 | Text Model output | One JSON call | Originally `{ scene, imagePrompt }`; now the engine builds the image prompt from the Scene |
 | Settings | Server-side `settings.json`; apply from the next Session | Small sizes added |
-| Side panel | Turn Log with thumbnails; End/Reset as buttons only | — |
+| Side panel | Turn Log with thumbnails; End/Reset as buttons only | End and Reset removed; Sessions are listed, opened and deleted on Home |
+| Several Sessions rendering | Queue images one at a time across Sessions | A queued Turn keeps you in its Session |
 | Direction areas | Pose, camera, lighting, set: defined by the Scenario, not the engine | — |
 | Every Turn renders | Yes; no separate "take the shot" | — |
 | Subject consistency | Fixed description + fixed seed; edit-based rendering deferred | — |

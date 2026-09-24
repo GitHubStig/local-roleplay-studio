@@ -107,13 +107,13 @@ export interface Session {
   scenarioId: string
   settings: Settings
   seed: number
-  status: 'active' | 'ended'
   createdAt: string
   turns: Turn[]
 }
 
 export type TurnEvent =
-  | { type: 'phase'; phase: 'text' | 'image' }
+  /** `queued`: waiting for another Session's render to finish. */
+  | { type: 'phase'; phase: 'text' | 'queued' | 'image' }
   | { type: 'progress'; step: number; total: number }
   | { type: 'text'; outcome: Outcome; narration: string; scene: Scene }
   | { type: 'committed'; turn: Turn }
@@ -131,7 +131,28 @@ export const createSession = (scenarioId: string) => post<Session>('/api/session
 
 export const getSession = (id: string) => request<Session>(`/api/sessions/${id}`)
 
-export const endSession = (id: string) => post<Session>(`/api/sessions/${id}/end`)
+/** A saved Session as listed on Home. */
+export interface SessionSummary {
+  id: string
+  scenarioId: string
+  scenarioTitle: string
+  turns: number
+  latestImage: string | null
+  createdAt: string
+  updatedAt: string
+  /** What a Turn in progress is doing, or null when idle. */
+  activity: 'text' | 'queued' | 'image' | null
+}
+
+export const listSessions = () => request<SessionSummary[]>('/api/sessions')
+
+export async function deleteSession(id: string): Promise<void> {
+  const res = await fetch(`/api/sessions/${id}`, { method: 'DELETE' })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new ApiError(body.error ?? `Delete failed: ${res.status}`, res.status)
+  }
+}
 
 /** Undoes the latest Turn, which must be Turn `index`; returns the updated Session. */
 export const undoTurn = (id: string, index: number) =>

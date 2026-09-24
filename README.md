@@ -38,8 +38,9 @@ ollama serve        # if Ollama isn't already running
 deno task dev       # starts the API on :8787 and the web app on :5180
 ```
 
-Open <http://localhost:5180>, go to **Settings**, choose a Text Model, then **Play** → **Start
-Session**.
+Open <http://localhost:5180>, go to **Settings**, choose a Text Model, then go **Home** (click
+**RPG**) and press **Start Session**. Your Sessions are listed on Home; open one to carry on,
+or delete it.
 
 ## Tasks
 
@@ -76,12 +77,13 @@ docs/             Design, Scenario format, ADRs and open threads
 CONTEXT.md        Glossary of the game's terms
 ```
 
-Sessions stay on disk after they end. Delete folders in `sessions/` to reclaim space.
+Sessions stay on disk until you delete them from Home (or remove their folder in `sessions/`
+while no Turn is running).
 
 ## Writing a new Scenario
 
-Add a Markdown file to `scenarios/`. It appears on the Start Session screen without a restart.
-If a file has a problem, the Start Session screen lists every issue found in it. The format is
+Add a Markdown file to `scenarios/`. It appears on Home, under *Start a new Session*, without a
+restart. If a file has a problem, Home lists every issue found in it. The format is
 documented in [docs/scenarios.md](docs/scenarios.md).
 
 ## Known quirks

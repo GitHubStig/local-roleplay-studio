@@ -16,7 +16,6 @@ const newSession = (): Session => ({
   scenarioId: 'test',
   settings: { ...DEFAULT_SETTINGS, textModel: 'fake' },
   seed: 7,
-  status: 'active',
   createdAt: '2026-09-24T00:00:00.000Z',
   turns: [],
 })
