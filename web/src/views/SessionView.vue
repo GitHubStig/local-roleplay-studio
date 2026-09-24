@@ -19,6 +19,7 @@ const router = useRouter()
 /** The Turn in progress: provisional until committed. */
 interface Pending {
   phase: 'text' | 'image'
+  progress?: { step: number; total: number }
   narration?: string
   declined?: boolean
   scene?: Scene
@@ -63,6 +64,9 @@ function onEvent(event: TurnEvent) {
   switch (event.type) {
     case 'phase':
       pending.value = { ...pending.value, phase: event.phase }
+      break
+    case 'progress':
+      pending.value = { ...pending.value!, progress: { step: event.step, total: event.total } }
       break
     case 'text':
       pending.value = { ...pending.value!, ...event }
@@ -137,7 +141,9 @@ async function reset() {
 
 const phaseLabel = computed(() => {
   if (pending.value?.cancelling) return 'Cancelling…'
-  return pending.value?.phase === 'image' ? 'Rendering the image…' : 'Writing the Scene…'
+  if (pending.value?.phase !== 'image') return 'Writing the Scene…'
+  const p = pending.value.progress
+  return p ? `Rendering the image… ${p.step}/${p.total}` : 'Rendering the image…'
 })
 
 const sceneEntries = (scene: Scene) =>

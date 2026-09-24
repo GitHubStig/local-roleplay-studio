@@ -4,26 +4,32 @@ export interface ImageModel {
   label: string
   /** The `mflux-generate-*` executable. */
   command: string
-  /** Value passed to `--model`. */
+  /** Value passed to `--model`: a built-in name or a Hugging Face repo. */
   model: string
+  /** Value passed to `--base-model` when `model` is a repo mflux can't classify by name. */
+  baseModel?: string
+  /** Weights already quantized, so `--quantize` must not be passed. */
+  preQuantized?: boolean
   /** mflux's own default step count for this model. */
   defaultSteps: number
 }
 
 export const IMAGE_MODELS: readonly ImageModel[] = [
   {
-    id: 'z-image-turbo',
-    label: 'Z-Image Turbo',
-    command: 'mflux-generate-z-image-turbo',
-    model: 'z-image-turbo',
-    defaultSteps: 9,
-  },
-  {
     id: 'flux2-klein-4b',
     label: 'FLUX.2 Klein 4B',
     command: 'mflux-generate-flux2',
     model: 'flux2-klein-4b',
     defaultSteps: 4,
+  },
+  {
+    id: 'z-image-turbo',
+    label: 'Z-Image Turbo (4-bit)',
+    command: 'mflux-generate-z-image-turbo',
+    model: 'filipstrand/Z-Image-Turbo-mflux-4bit',
+    baseModel: 'z-image-turbo',
+    preQuantized: true,
+    defaultSteps: 9,
   },
   {
     id: 'krea-2',

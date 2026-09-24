@@ -7,6 +7,8 @@ import type { TextModel, TurnText } from './textModel.ts'
 /** Progress of a Turn, streamed to the player as it happens. */
 export type TurnEvent =
   | { type: 'phase'; phase: 'text' | 'image' }
+  /** Image Model steps completed so far. */
+  | { type: 'progress'; step: number; total: number }
   /** The new Scene before its image exists; provisional until `committed`. */
   | { type: 'text'; narration: string; declined: boolean; scene: Turn['scene'] }
   | { type: 'committed'; turn: Turn }
@@ -73,13 +75,17 @@ export async function runTurn(
       imagePrompt = `${scenario.imagePrefix}, ${text.imagePrompt}`
       signal.throwIfAborted()
       await Deno.mkdir(dir, { recursive: true })
-      image = await deps.imageGenerator.generate({
-        prompt: imagePrompt,
-        seed: session.seed,
-        settings: session.settings,
-        dir,
-        name: `turn-${index}`,
-      }, signal)
+      image = await deps.imageGenerator.generate(
+        {
+          prompt: imagePrompt,
+          seed: session.seed,
+          settings: session.settings,
+          dir,
+          name: `turn-${index}`,
+        },
+        signal,
+        (step, total) => emit({ type: 'progress', step, total }),
+      )
       wroteImage = true
     }
     signal.throwIfAborted()

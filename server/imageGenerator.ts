@@ -13,7 +13,11 @@ export interface ImageRequest {
 
 export interface ImageGenerator {
   /** Renders the image and returns the file name it wrote inside `dir`. */
-  generate(req: ImageRequest, signal: AbortSignal): Promise<string>
+  generate(
+    req: ImageRequest,
+    signal: AbortSignal,
+    onProgress?: (step: number, total: number) => void,
+  ): Promise<string>
 }
 
 const escapeXml = (s: string) => s.replace(/[<>&"']/g, (c) => `&#${c.charCodeAt(0)};`)

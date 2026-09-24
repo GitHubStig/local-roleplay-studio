@@ -108,7 +108,7 @@ Deno.test('PUT /api/settings rejects a non-JSON body', async () => {
 Deno.test('GET /api/settings/options lists Ollama and image models', async () => {
   const body = await (await setup().call('GET', '/api/settings/options')).json()
   assertEquals(body.textModels, ['llama3:latest'])
-  assertEquals(body.imageModels[0].id, 'z-image-turbo')
+  assertEquals(body.imageModels[0].id, 'flux2-klein-4b')
 })
 
 Deno.test('GET /api/settings/options still answers when Ollama is down', async () => {

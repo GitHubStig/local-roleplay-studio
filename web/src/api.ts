@@ -111,6 +111,7 @@ export interface Session {
 
 export type TurnEvent =
   | { type: 'phase'; phase: 'text' | 'image' }
+  | { type: 'progress'; step: number; total: number }
   | { type: 'text'; narration: string; declined: boolean; scene: Scene }
   | { type: 'committed'; turn: Turn }
   | { type: 'failed'; message: string; sessionDiscarded: boolean }
