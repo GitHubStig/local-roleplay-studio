@@ -11,6 +11,16 @@ export type Outcome = 'done' | 'declined' | 'unclear'
 
 export const OUTCOMES: readonly Outcome[] = ['done', 'declined', 'unclear']
 
+/** How long a Turn's steps took, in seconds (one decimal place). */
+export interface TurnTimings {
+  /** Writing the new Image Prompt, including the Limits check. */
+  text: number
+  /** Waiting for another Session's render to finish; only present if it had to wait. */
+  queued?: number
+  /** Rendering the image; null when the previous image was reused. */
+  image: number | null
+}
+
 /** A committed Turn. The Opening Turn has index 0 and no Action. */
 export interface Turn {
   index: number
@@ -26,6 +36,8 @@ export interface Turn {
   thinking?: string
   /** File name of this Turn's image inside the Session directory. */
   image: string
+  /** Saved from when timings were added; older Turns have none. */
+  timings?: TurnTimings
   createdAt: string
 }
 

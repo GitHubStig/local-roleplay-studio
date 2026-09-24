@@ -6,7 +6,13 @@ import { crossedLimit } from './limits.ts'
 import { mightNameAPerson } from './textModel.ts'
 import { RenderQueue } from './renderQueue.ts'
 import type { Scenario } from './scenario.ts'
-import { type Outcome, type Session, type SessionStore, type Turn } from './session.ts'
+import {
+  type Outcome,
+  type Session,
+  type SessionStore,
+  type Turn,
+  type TurnTimings,
+} from './session.ts'
 import type { TextModel, TurnText } from './textModel.ts'
 
 /** Progress of a Turn, streamed to the player as it happens. */
@@ -30,6 +36,9 @@ export interface TurnDeps {
 }
 
 const TEXT_ATTEMPTS = 2
+
+/** Seconds since `start` (a `performance.now()` reading), to one decimal place. */
+const secondsSince = (start: number) => Math.round((performance.now() - start) / 100) / 10
 
 /**
  * A fresh image file name (without extension) for Turn `index`. The random suffix means a name is
@@ -75,6 +84,7 @@ export async function runTurn(
   const index = session.turns.length
 
   emit({ type: 'phase', phase: 'text' })
+  const textStart = performance.now()
   let outcome: Outcome
   let narration: string
   let nextPrompt: ImagePrompt
@@ -123,6 +133,7 @@ export async function runTurn(
     }
   }
   emit({ type: 'text', outcome, narration, prompt: nextPrompt })
+  const timings: TurnTimings = { text: secondsSince(textStart), image: null }
 
   // Nothing to render if the Image Prompt didn't change: declined, unclear, or a done Action the
   // Text Model left without effect. Reuse the previous image.
@@ -140,10 +151,17 @@ export async function runTurn(
       promptText = previous!.promptText
     } else {
       promptText = renderPrompt(nextPrompt)
+      const queueStart = performance.now()
+      let waited = false
       const release = await (deps.renderQueue ?? new RenderQueue()).acquire(
         signal,
-        () => emit({ type: 'phase', phase: 'queued' }),
+        () => {
+          waited = true
+          emit({ type: 'phase', phase: 'queued' })
+        },
       )
+      if (waited) timings.queued = secondsSince(queueStart)
+      const imageStart = performance.now()
       try {
         emit({ type: 'phase', phase: 'image' })
         await Deno.mkdir(dir, { recursive: true })
@@ -158,6 +176,7 @@ export async function runTurn(
           signal,
           (step, total) => emit({ type: 'progress', step, total }),
         )
+        timings.image = secondsSince(imageStart)
       } finally {
         release()
       }
@@ -173,6 +192,7 @@ export async function runTurn(
       ...(thinking ? { thinking } : {}),
       promptText,
       image,
+      timings,
       createdAt: new Date().toISOString(),
     }
     await deps.store.save({ ...session, turns: [...session.turns, turn] })

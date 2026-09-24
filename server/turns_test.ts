@@ -11,6 +11,7 @@ import {
   withTempDir,
 } from './testing.ts'
 import { runTurn, type TurnEvent, UndoError, undoLatestTurn } from './turns.ts'
+import { RenderQueue } from './renderQueue.ts'
 import { renderPrompt } from './imagePrompt.ts'
 
 const newSession = (): Session => ({
@@ -441,4 +442,49 @@ Deno.test('runTurn marks thinking from a retry as a restart, and saves no thinki
     assertEquals(first, { type: 'thinking', text: 'Second ', restart: true })
     const plain = await runTurn(deps, session, testScenario, 'Sit', () => {}, signal())
     assertEquals('thinking' in plain, false)
+  }))
+
+Deno.test('runTurn records how long the text and image steps took', () =>
+  withTempDir(async (root) => {
+    const session = newSession()
+    const images = fakeImageGenerator()
+    const deps = {
+      store: dirSessionStore(root),
+      textModel: scriptedTextModel([reply('standing'), reply('standing')]),
+      imageGenerator: {
+        async generate(...args: Parameters<typeof images.generate>) {
+          await new Promise((r) => setTimeout(r, 120))
+          return images.generate(...args)
+        },
+      },
+    }
+    const opening = await runTurn(deps, session, testScenario, null, () => {}, signal())
+    assertEquals(typeof opening.timings!.text, 'number')
+    assertEquals(opening.timings!.image! >= 0.1, true)
+    assertEquals('queued' in opening.timings!, false)
+
+    // Nothing changed, so the image is reused: no image time.
+    const reused = await runTurn(deps, session, testScenario, 'Stay', () => {}, signal())
+    assertEquals(reused.timings!.image, null)
+  }))
+
+Deno.test('runTurn records time spent waiting for another render', () =>
+  withTempDir(async (root) => {
+    const queue = new RenderQueue()
+    const release = await queue.acquire(new AbortController().signal)
+    setTimeout(release, 150)
+    const turn = await runTurn(
+      {
+        store: dirSessionStore(root),
+        textModel: scriptedTextModel([reply('standing')]),
+        imageGenerator: fakeImageGenerator(),
+        renderQueue: queue,
+      },
+      newSession(),
+      testScenario,
+      null,
+      () => {},
+      signal(),
+    )
+    assertEquals(turn.timings!.queued! >= 0.1, true)
   }))
