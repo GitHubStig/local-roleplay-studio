@@ -36,6 +36,6 @@ onMounted(async () => {
         <ThemeToggle />
       </div>
     </header>
-    <RouterView class="min-h-0 flex-1" />
+    <RouterView :key="$route.path" class="min-h-0 flex-1" />
   </div>
 </template>

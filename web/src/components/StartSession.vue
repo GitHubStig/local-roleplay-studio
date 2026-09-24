@@ -9,6 +9,7 @@ import {
   type SettingsOptions,
 } from '../api'
 
+defineProps<{ error?: string }>()
 const emit = defineEmits<{ start: [scenarioId: string] }>()
 
 const list = ref<ScenarioList | null>(null)
@@ -106,6 +107,10 @@ const blocker = computed(() => {
           </button>
           <span v-if="blocker" class="text-sm text-warn">{{ blocker }}</span>
         </div>
+
+        <p v-if="error" class="text-sm text-danger" role="alert">
+          Couldn't start the Session: {{ error }}
+        </p>
       </template>
     </div>
   </div>

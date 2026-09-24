@@ -34,6 +34,14 @@ _Avoid_: Round, step, move
 The first Turn of a Session, which writes the opening Scene from the Scenario instead of from an Action.
 _Avoid_: Turn 0, intro, setup
 
+**Narration**:
+The short account of what happened in a Turn, written for the player; like the rest of the Turn Log, never fed back to the text model.
+_Avoid_: Description, message, response
+
+**Declined Turn**:
+A Turn whose Action a character refused; its Scene and image are the previous Turn's, unchanged.
+_Avoid_: Rejected, refused, blocked
+
 **Turn Log**:
 The ordered record of a Session's Turns, kept for the player to review; never fed back into the text model.
 _Avoid_: History, conversation, chat log

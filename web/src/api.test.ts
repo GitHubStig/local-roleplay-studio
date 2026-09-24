@@ -1,5 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ApiError, getHealth, saveSettings, type Settings } from './api'
+import {
+  ApiError,
+  createSseParser,
+  getHealth,
+  saveSettings,
+  type Settings,
+  streamTurn,
+} from './api'
 
 afterEach(() => vi.unstubAllGlobals())
 
@@ -49,5 +56,51 @@ describe('saveSettings', () => {
     const err = await saveSettings(settings).catch((e) => e)
     expect(err).toBeInstanceOf(ApiError)
     expect(err.issues).toEqual(['steps bad'])
+  })
+})
+
+describe('createSseParser', () => {
+  it('parses events split across chunks', () => {
+    const events: unknown[] = []
+    const parse = createSseParser((e) => events.push(e))
+    parse('event: phase\ndata: {"type":"phase","ph')
+    parse('ase":"text"}\n\nevent: cancelled\ndata: {"type":"cancelled","sessionDiscarded":false}\n')
+    expect(events).toEqual([{ type: 'phase', phase: 'text' }])
+    parse('\n')
+    expect(events).toHaveLength(2)
+  })
+})
+
+describe('streamTurn', () => {
+  const sse = (...events: object[]) =>
+    new Response(events.map((e) => `event: x\ndata: ${JSON.stringify(e)}\n\n`).join(''))
+
+  it('delivers every event and sends the Action', async () => {
+    const fetch = vi.fn(async () =>
+      sse({ type: 'phase', phase: 'text' }, { type: 'cancelled', sessionDiscarded: false })
+    )
+    vi.stubGlobal('fetch', fetch)
+    const events: unknown[] = []
+    await streamTurn('s1', 'Sit', (e) => events.push(e))
+    expect(events).toHaveLength(2)
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/sessions/s1/turns',
+      expect.objectContaining({ body: '{"action":"Sit"}' }),
+    )
+  })
+
+  it('reports a stream that ends without a final event', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => sse({ type: 'phase', phase: 'text' })))
+    const events: { type: string }[] = []
+    await streamTurn('s1', null, (e) => events.push(e))
+    expect(events.at(-1)?.type).toBe('failed')
+  })
+
+  it('throws when the server refuses the Turn', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => Response.json({ error: 'A Turn is already in progress' }, { status: 409 })),
+    )
+    await expect(streamTurn('s1', 'Sit', () => {})).rejects.toThrow('already in progress')
   })
 })
