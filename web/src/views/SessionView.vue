@@ -161,6 +161,26 @@ async function reset() {
   }
 }
 
+/** The image on screen; it only changes once the next one has loaded, for a clean crossfade. */
+const displayed = ref<{ src: string; alt: string } | null>(null)
+
+watch(
+  () => shown.value && { src: imageUrl(props.id, shown.value.image), alt: shown.value.imagePrompt },
+  (next) => {
+    if (!next) return
+    if (next.src === displayed.value?.src) return
+    const img = new Image()
+    const show = () => {
+      // Skip if the player has already moved on to another Turn.
+      if (shown.value && imageUrl(props.id, shown.value.image) === next.src) displayed.value = next
+    }
+    img.onload = show
+    img.onerror = show
+    img.src = next.src
+  },
+  { immediate: true },
+)
+
 /** Width ÷ height of this Session's images; every Turn shares one size. Portrait until known. */
 const aspect = ref(832 / 1216)
 
@@ -209,15 +229,24 @@ const sceneEntries = (scene: Scene) =>
           class="flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-lg border border-line bg-surface [container-type:size]"
         >
           <div class="relative overflow-hidden" :style="frameStyle">
-            <img
-              v-if="shown"
-              :src="imageUrl(session.id, shown.image)"
-              :alt="shown.imagePrompt"
-              class="h-full w-full object-contain"
-              @load="onImageLoad"
-            />
+            <!-- Crossfade: the next image is preloaded, then fades in over the last one. -->
+            <Transition
+              enter-active-class="transition-opacity duration-700 ease-out"
+              enter-from-class="opacity-0"
+              leave-active-class="transition-opacity duration-700 ease-in"
+              leave-to-class="opacity-0"
+            >
+              <img
+                v-if="displayed"
+                :key="displayed.src"
+                :src="displayed.src"
+                :alt="displayed.alt"
+                class="absolute inset-0 h-full w-full object-contain"
+                @load="onImageLoad"
+              />
+            </Transition>
             <span
-              v-else-if="!busy"
+              v-if="!displayed && !busy"
               class="absolute inset-0 flex items-center justify-center text-muted"
             >
               No image yet

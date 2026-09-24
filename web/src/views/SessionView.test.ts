@@ -1,5 +1,5 @@
 import { flushPromises, mount } from '@vue/test-utils'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import * as api from '../api'
 import SessionView from './SessionView.vue'
@@ -46,7 +46,22 @@ async function mountIt() {
   await router.push('/sessions/s1')
   const wrapper = mount(SessionView, { props: { id: 's1' }, global: { plugins: [router] } })
   await flushPromises()
+  await loadImages()
   return { wrapper, router }
+}
+
+/** Stands in for the browser's image loader; `load` finishes the next pending preload. */
+const preloads: (() => void)[] = []
+class FakeImage {
+  onload: (() => void) | null = null
+  onerror: (() => void) | null = null
+  set src(_: string) {
+    preloads.push(() => this.onload?.())
+  }
+}
+const loadImages = async () => {
+  while (preloads.length) preloads.shift()!()
+  await flushPromises()
 }
 
 const buttonNamed = (wrapper: Awaited<ReturnType<typeof mountIt>>['wrapper'], name: string) =>
@@ -54,9 +69,13 @@ const buttonNamed = (wrapper: Awaited<ReturnType<typeof mountIt>>['wrapper'], na
 
 beforeEach(() => {
   localStorage.clear()
+  preloads.length = 0
+  vi.stubGlobal('Image', FakeImage)
   vi.mocked(api.streamTurn).mockReset()
   vi.mocked(api.getSession).mockResolvedValue(session([turn(0, null)]))
 })
+
+afterEach(() => vi.unstubAllGlobals())
 
 describe('SessionView', () => {
   it('runs the Opening Turn for a new Session, showing provisional text first', async () => {
@@ -79,7 +98,7 @@ describe('SessionView', () => {
 
     emit({ type: 'committed', turn: turn(0, null, { narration: 'Maya arrives.' }) })
     finish()
-    await flushPromises()
+    await loadImages()
     expect(wrapper.find('[data-provisional]').exists()).toBe(false)
     expect(wrapper.find('img').attributes('src')).toBe('/api/sessions/s1/images/turn-0.png')
   })
@@ -136,6 +155,9 @@ describe('SessionView', () => {
     const { wrapper } = await mountIt()
     expect(wrapper.find('main img').attributes('src')).toContain('turn-1.png')
     await wrapper.findAll('aside [data-turn]')[0].trigger('click')
+    // The old image stays until the new one has loaded, then crossfades.
+    expect(wrapper.find('main img').attributes('src')).toContain('turn-1.png')
+    await loadImages()
     expect(wrapper.find('main img').attributes('src')).toContain('turn-0.png')
   })
 
