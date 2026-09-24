@@ -98,7 +98,12 @@ export async function runTurn(
   // The Opening Turn always counts as done.
   const outcome: Outcome = previous === undefined ? 'done' : text.outcome
   const nextScene = outcome === 'done' ? text.scene : previous!.scene
-  emit({ type: 'text', outcome, narration: text.narration, scene: nextScene })
+  // A refusal must read as one: a small Text Model sometimes narrates the refused Action happening.
+  const lines = scenario.declinedNarration
+  const narration = outcome === 'declined' && lines.length
+    ? lines[Math.floor(Math.random() * lines.length)]
+    : text.narration
+  emit({ type: 'text', outcome, narration, scene: nextScene })
 
   // Nothing to render if the Scene didn't change: declined, unclear, or a done Action that the
   // Text Model left without effect. Reuse the previous image.
@@ -144,7 +149,7 @@ export async function runTurn(
       index,
       action,
       scene: nextScene,
-      narration: text.narration,
+      narration,
       outcome,
       imagePrompt,
       image,

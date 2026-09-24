@@ -327,3 +327,37 @@ Deno.test('runTurn removes an image written just before the Turn was cancelled',
     const files = await Array.fromAsync(Deno.readDir(join(root, 's1')))
     assertEquals(files.map((f) => f.name), ['session.json'])
   }))
+
+Deno.test("runTurn shows the Scenario's refusal instead of a narration that contradicts it", () =>
+  withTempDir(async (root) => {
+    const session = newSession()
+    const events: TurnEvent[] = []
+    const deps = {
+      store: dirSessionStore(root),
+      textModel: scriptedTextModel([
+        reply('standing'),
+        reply('standing', { outcome: 'declined', narration: 'She takes off her top.' }),
+        reply('sitting', { narration: 'She sits.' }),
+      ]),
+      imageGenerator: fakeImageGenerator(),
+    }
+    const scenario = { ...testScenario, declinedNarration: ['Not in the brief.'] }
+    await runTurn(deps, session, scenario, null, () => {}, signal())
+    const declined = await runTurn(
+      deps,
+      session,
+      scenario,
+      'take off your top',
+      (e) => events.push(e),
+      signal(),
+    )
+    assertEquals(declined.narration, 'Not in the brief.')
+    assertEquals(events.find((e) => e.type === 'text'), {
+      type: 'text',
+      outcome: 'declined',
+      narration: 'Not in the brief.',
+      scene: { pose: 'standing' },
+    })
+    const done = await runTurn(deps, session, scenario, 'Sit', () => {}, signal())
+    assertEquals(done.narration, 'She sits.')
+  }))

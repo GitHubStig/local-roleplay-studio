@@ -80,3 +80,16 @@ Deno.test('dirScenarioLibrary treats a missing directory as empty', async () => 
   assertEquals(scenarios, [])
   assertEquals(errors, [])
 })
+
+Deno.test('parseScenario reads declinedNarration as a string or a list', () => {
+  const withList = valid.replace(
+    'title: Test Shoot',
+    'title: Test Shoot\ndeclinedNarration: [No., Nope.]',
+  )
+  assertEquals(parseScenario('t', withList).declinedNarration, ['No.', 'Nope.'])
+  const withString = valid.replace('title: Test Shoot', 'title: Test Shoot\ndeclinedNarration: No.')
+  assertEquals(parseScenario('t', withString).declinedNarration, ['No.'])
+  assertEquals(parseScenario('t', valid).declinedNarration, [])
+  const bad = valid.replace('title: Test Shoot', 'title: Test Shoot\ndeclinedNarration: [1, ""]')
+  assertThrows(() => parseScenario('t', bad), Error, 'declinedNarration')
+})

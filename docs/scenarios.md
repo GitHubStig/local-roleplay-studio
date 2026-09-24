@@ -40,6 +40,7 @@ How to write the opening Scene.
 | `title` | yes | Shown on the Scenario's card on Home |
 | `description` | yes | Shown under the title |
 | `setup` | yes | A YAML mapping of fixed facts (place, characters, tone, …). Passed to the Text Model on every Turn as a `# Setup` section. Every Scene must stay within it. For the photoshoot, this is the Shoot Brief. |
+| `declinedNarration` | no | A line, or a list of lines (one is picked at random), shown **instead of** the Text Model's narration on a Declined Turn. Small models sometimes narrate the refused Action happening; this makes a refusal always read as one. |
 | `imagePrefix` | yes | Text the **engine** puts in front of every image prompt, whatever the Text Model writes. Put the facts that must hold in every image here: who the characters are, what they wear, the style. |
 | `sceneSchema` | yes | A JSON Schema, written in YAML, with `type: object`. It defines the shape of this Scenario's Scene. |
 
@@ -82,6 +83,9 @@ character refuses is up to the Scenario, in its `## System` section:
 - Say how a character reacts to an Action that makes no sense (e.g. "asks what you mean").
   The engine asks the Text Model to mark it `outcome: unclear` and keeps the Scene; without
   this guidance, small models tend to invent a change from gibberish.
+- Set `declinedNarration`, so refusals read the same whichever model is playing.
+- Anything that can change during a Session (a jacket on or off) belongs in the Scene schema,
+  ideally as an `enum`, not in `imagePrefix`; the prefix is for what never changes.
 - Anything that must never appear in an image belongs in `imagePrefix` as a positive fact
   (e.g. "fully clothed in …"), not only as a rule in the System prompt. Some Image Models
   ignore negative prompts, and the engine doesn't send one.

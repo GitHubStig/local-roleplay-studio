@@ -11,6 +11,11 @@ export interface Scenario {
   setup: Record<string, unknown>
   /** Prepended by the engine to every image prompt, whatever the Text Model writes. */
   imagePrefix: string
+  /**
+   * Narrations used instead of the Text Model's on a Declined Turn (one picked at random), so a
+   * refusal always reads as a refusal. Empty: the Text Model's narration is kept.
+   */
+  declinedNarration: string[]
   /** JSON schema for this Scenario's Scene. */
   sceneSchema: Record<string, unknown>
   /** Standing instructions for the Text Model on every Turn. */
@@ -79,6 +84,15 @@ export function parseScenario(id: string, text: string): Scenario {
   const setup = attrs.setup
   if (!isRecord(setup)) issues.push('setup must be a mapping')
 
+  const declined = attrs.declinedNarration ?? []
+  const declinedNarration = (typeof declined === 'string' ? [declined] : declined) as unknown[]
+  if (
+    !Array.isArray(declinedNarration) ||
+    declinedNarration.some((d) => typeof d !== 'string' || !d.trim())
+  ) {
+    issues.push('declinedNarration must be a string or a list of non-empty strings')
+  }
+
   const sceneSchema = attrs.sceneSchema
   if (!isRecord(sceneSchema) || sceneSchema.type !== 'object') {
     issues.push('sceneSchema must be a JSON schema with type: object')
@@ -97,6 +111,9 @@ export function parseScenario(id: string, text: string): Scenario {
     description,
     setup: setup as Record<string, unknown>,
     imagePrefix,
+    declinedNarration: Array.isArray(declinedNarration)
+      ? (declinedNarration as string[]).map((d) => d.trim())
+      : [],
     sceneSchema: sceneSchema as Record<string, unknown>,
     systemPrompt,
     openingPrompt,
