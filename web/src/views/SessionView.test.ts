@@ -1,4 +1,4 @@
-import { flushPromises, mount } from '@vue/test-utils'
+import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import * as api from '../api'
@@ -74,6 +74,8 @@ beforeEach(() => {
 })
 
 afterEach(() => vi.unstubAllGlobals())
+// Unmounted screens would leave window listeners (e.g. "Leave site?") behind for later tests.
+enableAutoUnmount(afterEach)
 
 describe('SessionView', () => {
   it('runs the Opening Turn for a new Session, showing provisional text first', async () => {
@@ -348,6 +350,26 @@ describe('SessionView', () => {
     await wrapper.findAll('aside [data-turn]')[0].trigger('click')
     await wrapper.findAll('[role=tab]')[1].trigger('click')
     expect(wrapper.find('[data-turn-thinking]').exists()).toBe(false)
+  })
+
+  it('asks before a reload or leaving the site while its Turn runs', async () => {
+    const leaving = () => {
+      const e = new Event('beforeunload', { cancelable: true })
+      window.dispatchEvent(e)
+      return e.defaultPrevented
+    }
+    let finish!: () => void
+    vi.mocked(api.streamTurn).mockImplementation(() => new Promise((r) => (finish = r)))
+    const { wrapper } = await mountIt()
+    expect(leaving()).toBe(false)
+
+    await wrapper.find('textarea').setValue('Sit')
+    await buttonNamed(wrapper, 'Send').trigger('click')
+    expect(leaving()).toBe(true)
+
+    finish()
+    await flushPromises()
+    expect(leaving()).toBe(false)
   })
 
   it('has no End or Reset', async () => {

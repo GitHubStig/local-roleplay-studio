@@ -142,10 +142,13 @@ in [open-threads.md](open-threads.md).
   viewed Turn, tab and any running Turn. The unsent Action is also saved per Session in the
   browser, so it survives a reload. Returning to a Session re-checks it with the server (unless a
   Turn is running there); a Session deleted meanwhile sends you Home. While a Session's Turn is
-  **waiting in the render queue**, you can't leave that Session (links, Back and reload are
-  blocked) until it starts rendering or you cancel it. A Session screen that finds a Turn already
-  running which it didn't start (after a page reload, or from another tab) shows its progress
-  with **Cancel** and follows it until it finishes. A Session in the background never navigates
+  **waiting in the render queue**, you can't leave that Session within the app either (links and
+  Back are blocked) until it starts rendering or you cancel it. Reloading, closing the tab or leaving the
+  site drops the page's connection to a running Turn, which **cancels** it (the Action stays in
+  the text box, and a cancelled Opening Turn discards the Session); so while a Turn runs, the
+  browser asks "Leave site?" first. A Session screen that finds a Turn already running which it
+  didn't start (from another tab, or a screen that dropped out of memory) shows its progress with
+  **Cancel** and follows it until it finishes. A Session in the background never navigates
   on its own: if its Opening Turn fails there, you're taken Home with the reason when you return
   to it.
 - **Settings** (`/settings`): Text Model (installed Ollama models, minus OCR and dedicated

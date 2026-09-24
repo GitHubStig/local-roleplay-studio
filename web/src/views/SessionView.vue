@@ -195,8 +195,14 @@ onBeforeRouteLeave(() => {
   turnError.value = 'Waiting for another render. Cancel this Turn to leave.'
   return false
 })
+// Reloading, closing the tab or leaving the site drops this page's connection to a running Turn,
+// which cancels it; the browser asks first ("Leave site?"). It can't show our own wording. A Turn
+// this page is only following (started elsewhere) isn't affected, so no warning for that.
 function warnBeforeUnload(e: BeforeUnloadEvent) {
-  if (queued.value) e.preventDefault()
+  if (busy.value && !pending.value?.detached) {
+    e.preventDefault()
+    e.returnValue = '' // older browsers need this as well
+  }
 }
 window.addEventListener('beforeunload', warnBeforeUnload)
 onBeforeUnmount(() => window.removeEventListener('beforeunload', warnBeforeUnload))
