@@ -51,10 +51,10 @@ Only `##` headings count, matched case-insensitively. Other text outside these t
 ignored.
 
 - **`## System`:** the rules of the world and the characters, including what a character
-  refuses. The engine appends the Setup and the output rules (the `declined` / `narration` /
+  refuses. The engine appends the Setup and the output rules (the `outcome` / `narration` /
   `scene` JSON), so don't restate the JSON format here.
-- **`## Opening`:** what the opening Scene should be. Be concrete. The Opening Turn can't be
-  declined.
+- **`## Opening`:** what the opening Scene should be. Be concrete. The Opening Turn always
+  counts as done.
 
 ## Designing the Scene schema
 
@@ -73,12 +73,15 @@ The Scene is the only state carried from Turn to Turn, and the image is rendered
 
 ## Refusals and guardrails
 
-A character can refuse an Action: the Text Model sets `declined: true`, and the engine keeps the
+A character can refuse an Action: the Text Model sets `outcome: declined`, and the engine keeps the
 previous Scene and image ([ADR 0002](adr/0002-guardrails-enforced-by-the-engine.md)). What a
 character refuses is up to the Scenario, in its `## System` section:
 
 - List the refusal reasons explicitly, and say that everything else is accepted. Small models
   otherwise refuse ordinary Actions too.
+- Say how a character reacts to an Action that makes no sense (e.g. "asks what you mean").
+  The engine asks the Text Model to mark it `outcome: unclear` and keeps the Scene; without
+  this guidance, small models tend to invent a change from gibberish.
 - Anything that must never appear in an image belongs in `imagePrefix` as a positive fact
   (e.g. "fully clothed in …"), not only as a rule in the System prompt. Some Image Models
   ignore negative prompts, and the engine doesn't send one.

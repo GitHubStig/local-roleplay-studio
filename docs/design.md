@@ -18,9 +18,9 @@ expression and gaze; the camera; the lighting; and the set.
 ## The Turn loop
 
 ```
-current Scene + Action ──► Text Model (Ollama) ──► { declined, narration, scene }
+current Scene + Action ──► Text Model (Ollama) ──► { outcome, narration, scene }
                                                           │
-                          engine: declined? keep the previous Scene and image
+             engine: declined / unclear / unchanged? keep the previous Scene and image
                                                           │
              imagePrefix + labelled Scene fields ──► Image Model (mflux) ──► turn-N.png
                                                           │
@@ -31,14 +31,17 @@ current Scene + Action ──► Text Model (Ollama) ──► { declined, narra
    and the output rules as the system message, plus **only** the current Scene and the Action as
    the user message. It never sees earlier Turns ([ADR 0001](adr/0001-scene-is-sole-turn-state.md)).
    The reply is constrained by a JSON schema (Ollama's `format`) whose `scene` property is the
-   Scenario's Scene schema. `declined` comes first in the schema, so the model decides before it
+   Scenario's Scene schema. `outcome` (`done`, `declined` or `unclear`) comes first in the
+   schema, so the model decides before it
    narrates. `think` is off for speed.
 2. **Retry.** An unusable reply (bad JSON, missing required Scene fields) is retried once, then
    the Turn fails.
 3. **Engine rules** ([ADR 0002](adr/0002-guardrails-enforced-by-the-engine.md)):
-   - A **Declined Turn** keeps the previous Scene and image, whatever the model returned, and
-     renders nothing.
-   - The Opening Turn can't be declined.
+   - A **Declined Turn** or an **Unclear Turn** keeps the previous Scene and image, whatever
+     the model returned, and renders nothing.
+   - A done Turn whose Scene came back unchanged also reuses the previous image rather than
+     spending a render on the same picture.
+   - The Opening Turn always counts as done.
    - The image prompt is built by the engine: the Scenario's `imagePrefix`, then every Scene
      field as a labelled phrase (`subject pose: …, camera angle: low, set backdrop: …`).
 4. **Image step.** The mflux CLI renders the image with the Session's seed and settings. Its step
@@ -89,7 +92,8 @@ in [open-threads.md](open-threads.md).
   the text box is locked and **Cancel** replaces **Send**; a failed Turn's error shows in the
   button row. **End** and **Reset** are buttons only; typed text is always treated as an Action.
   The right panel has two tabs. **Turn Log** shows a thumbnail, the Action and the Narration per
-  Turn; clicking one shows that Turn, and Declined Turns are tinted amber. **Scene** shows the
+  Turn; clicking one shows that Turn. Declined Turns are labelled and tinted amber, Unclear
+  Turns ("Didn't understand") blue, both in the log and on the caption. **Scene** shows the
   viewed Turn's Scene fields and its image prompt. Because the Session id is in the URL,
   reloading the page keeps you in the Session. The image crossfades (700 ms) when a new Turn
   arrives or another Turn is picked; the next image is preloaded first, so there is no blank

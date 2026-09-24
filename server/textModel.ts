@@ -1,12 +1,12 @@
 import { stringify } from '@std/yaml'
 import { OLLAMA_URL } from './ollama.ts'
 import type { Scenario } from './scenario.ts'
-import type { Scene } from './session.ts'
+import { type Outcome, OUTCOMES, type Scene } from './session.ts'
 
 /** What the Text Model produces for one Turn, before the engine applies its rules. */
 export interface TurnText {
+  outcome: Outcome
   narration: string
-  declined: boolean
   scene: Scene
 }
 
@@ -23,15 +23,17 @@ export interface TextModel {
 
 const OUTPUT_RULES = `# Output
 
-Reply with a single JSON object, deciding "declined" before writing anything else:
+Reply with a single JSON object, deciding "outcome" before writing anything else:
 
-- "declined": true only if the Action is refused.
+- "outcome": "done" if the Action is carried out; "declined" if a character refuses it;
+  "unclear" if the Action can't be understood (gibberish, or too ambiguous to act on).
 - "narration": one to three short present-tense sentences telling the player what happens
-  this turn, including anything a character says. If "declined" is true, the narration is
-  only the refusal: nothing in the Scene moves or changes.
-- "scene": the complete updated Scene, every field filled in; if "declined" is true, the
-  current Scene exactly as it was. The image is rendered from the Scene alone, so every
-  change the Action makes must be written into it, in concrete visual terms.`
+  this turn, including anything a character says. If "declined", the narration is only the
+  refusal. If "unclear", a character asks what the player means. In both cases nothing in the
+  Scene moves or changes.
+- "scene": the complete updated Scene, every field filled in; unless "done", the current
+  Scene exactly as it was. The image is rendered from the Scene alone, so every change the
+  Action makes must be written into it, in concrete visual terms.`
 
 export function systemMessage(scenario: Scenario): string {
   return `${scenario.systemPrompt}\n\n# Setup\n\n${stringify(scenario.setup)}\n${OUTPUT_RULES}`
@@ -39,7 +41,7 @@ export function systemMessage(scenario: Scenario): string {
 
 export function userMessage({ scenario, scene, action }: TurnRequest): string {
   if (scene === null || action === null) {
-    return `This is the Opening Turn; set "declined" to false.\n\n${scenario.openingPrompt}`
+    return `This is the Opening Turn; set "outcome" to "done".\n\n${scenario.openingPrompt}`
   }
   return `Current Scene:\n\n${JSON.stringify(scene, null, 2)}\n\nThe player's Action:\n\n${action}`
 }
@@ -47,13 +49,13 @@ export function userMessage({ scenario, scene, action }: TurnRequest): string {
 export function outputSchema(scenario: Scenario) {
   return {
     type: 'object',
-    // Order matters: the model commits to accepting or declining before it narrates.
+    // Order matters: the model commits to an outcome before it narrates.
     properties: {
-      declined: { type: 'boolean' },
+      outcome: { type: 'string', enum: OUTCOMES },
       narration: { type: 'string' },
       scene: scenario.sceneSchema,
     },
-    required: ['declined', 'narration', 'scene'],
+    required: ['outcome', 'narration', 'scene'],
   }
 }
 
@@ -65,17 +67,18 @@ export function parseTurnText(content: string, scenario: Scenario): TurnText {
   } catch {
     throw new Error('Text Model reply was not valid JSON')
   }
-  const { narration, declined, scene } = out
-  if (typeof narration !== 'string' || typeof declined !== 'boolean') {
-    throw new Error('Text Model reply is missing narration or declined')
+  const { outcome, narration, scene } = out
+  if (!OUTCOMES.includes(outcome as Outcome)) {
+    throw new Error(`Text Model reply has no valid outcome (got ${JSON.stringify(outcome)})`)
   }
+  if (typeof narration !== 'string') throw new Error('Text Model reply is missing narration')
   if (typeof scene !== 'object' || scene === null || Array.isArray(scene)) {
     throw new Error('Text Model reply has no scene object')
   }
   const required = (scenario.sceneSchema.required ?? []) as string[]
   const missing = required.filter((key) => !(key in scene))
   if (missing.length > 0) throw new Error(`Text Model scene is missing: ${missing.join(', ')}`)
-  return { narration: narration.trim(), declined, scene: scene as Scene }
+  return { outcome: outcome as Outcome, narration: narration.trim(), scene: scene as Scene }
 }
 
 export function ollamaTextModel(model: string, baseUrl = OLLAMA_URL): TextModel {

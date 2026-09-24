@@ -91,7 +91,7 @@ Deno.test('runTurn keeps the previous Scene and image when a Direction is declin
     const session = newSession()
     const textModel = scriptedTextModel([
       reply('standing'),
-      reply('something else', { declined: true, narration: 'She declines.' }),
+      reply('something else', { outcome: 'declined', narration: 'She declines.' }),
     ])
     const deps = { store, textModel, imageGenerator: images }
     await runTurn(deps, session, testScenario, null, () => {}, signal())
@@ -103,7 +103,7 @@ Deno.test('runTurn keeps the previous Scene and image when a Direction is declin
       () => {},
       signal(),
     )
-    assertEquals(turn.declined, true)
+    assertEquals(turn.outcome, 'declined')
     assertEquals(turn.scene, { pose: 'standing' })
     assertEquals(turn.image, 'turn-0.png')
     assertEquals(turn.narration, 'She declines.')
@@ -173,3 +173,63 @@ Deno.test('sceneToPrompt labels nested fields and skips empty ones', () => {
     'subject pose: crouched low, camera angle: low, set backdrop: burnt orange, set props: stool',
   )
 })
+
+Deno.test('runTurn keeps the Scene and image when an Action is unclear', () =>
+  withTempDir(async (root) => {
+    const images = fakeImageGenerator()
+    const session = newSession()
+    const textModel = scriptedTextModel([
+      reply('standing'),
+      reply('invented pose', { outcome: 'unclear', narration: 'Sorry, what do you mean?' }),
+    ])
+    const deps = { store: dirSessionStore(root), textModel, imageGenerator: images }
+    await runTurn(deps, session, testScenario, null, () => {}, signal())
+    const events: TurnEvent[] = []
+    const turn = await runTurn(
+      deps,
+      session,
+      testScenario,
+      'asdf qwer',
+      (e) => events.push(e),
+      signal(),
+    )
+    assertEquals(turn.outcome, 'unclear')
+    assertEquals(turn.scene, { pose: 'standing' })
+    assertEquals(turn.image, 'turn-0.png')
+    assertEquals(images.prompts.length, 1)
+    assertEquals(events.map((e) => e.type), ['phase', 'text', 'committed'])
+  }))
+
+Deno.test('runTurn skips rendering when a done Action leaves the Scene unchanged', () =>
+  withTempDir(async (root) => {
+    const images = fakeImageGenerator()
+    const session = newSession()
+    const deps = {
+      store: dirSessionStore(root),
+      textModel: scriptedTextModel([reply('standing'), reply('standing')]),
+      imageGenerator: images,
+    }
+    await runTurn(deps, session, testScenario, null, () => {}, signal())
+    const turn = await runTurn(deps, session, testScenario, 'Lean on the wall', () => {}, signal())
+    assertEquals(turn.outcome, 'done')
+    assertEquals(turn.image, 'turn-0.png')
+    assertEquals(images.prompts.length, 1)
+  }))
+
+Deno.test('runTurn treats the Opening Turn as done whatever the Text Model says', () =>
+  withTempDir(async (root) => {
+    const turn = await runTurn(
+      {
+        store: dirSessionStore(root),
+        textModel: scriptedTextModel([reply('standing', { outcome: 'unclear' })]),
+        imageGenerator: fakeImageGenerator(),
+      },
+      newSession(),
+      testScenario,
+      null,
+      () => {},
+      signal(),
+    )
+    assertEquals(turn.outcome, 'done')
+    assertEquals(turn.image, 'turn-0.png')
+  }))

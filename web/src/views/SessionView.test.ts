@@ -18,7 +18,7 @@ const turn = (index: number, action: string | null, extra: Partial<api.Turn> = {
   action,
   scene: { subject: { pose: `pose ${index}` } },
   narration: `Narration ${index}.`,
-  declined: false,
+  outcome: 'done',
   imagePrompt: `prompt ${index}`,
   image: `turn-${index}.png`,
   createdAt: '2026-09-24T00:00:00.000Z',
@@ -89,7 +89,7 @@ describe('SessionView', () => {
     })
     const { wrapper } = await mountIt()
 
-    emit({ type: 'text', narration: 'Maya arrives.', declined: false, scene: {} })
+    emit({ type: 'text', narration: 'Maya arrives.', outcome: 'done', scene: {} })
     emit({ type: 'phase', phase: 'image' })
     emit({ type: 'progress', step: 2, total: 4 })
     await flushPromises()
@@ -180,6 +180,23 @@ describe('SessionView', () => {
     expect(panel.text()).toContain('pose: pose 1')
     expect(panel.text()).toContain('prompt 1')
     expect(panel.find('details').attributes('open')).toBeDefined()
+  })
+
+  it('labels declined and unclear Turns in the caption and the Turn Log', async () => {
+    vi.mocked(api.getSession).mockResolvedValue(
+      session([
+        turn(0, null),
+        turn(1, 'Take the jacket off', { outcome: 'declined' }),
+        turn(2, 'asdf qwer', { outcome: 'unclear' }),
+      ]),
+    )
+    const { wrapper } = await mountIt()
+    expect(wrapper.find('[data-outcome]').text()).toBe("Didn't understand")
+    const log = wrapper.find('aside').text()
+    expect(log).toContain('Declined')
+    expect(log).toContain("Didn't understand")
+    await wrapper.findAll('aside [data-turn]')[0].trigger('click')
+    expect(wrapper.find('[data-outcome]').exists()).toBe(false)
   })
 
   it('shows an ended Session as read-only', async () => {

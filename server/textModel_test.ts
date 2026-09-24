@@ -27,23 +27,35 @@ Deno.test('outputSchema embeds the Scenario scene schema', () => {
 
 Deno.test('parseTurnText accepts a complete reply', () => {
   const text = parseTurnText(
-    JSON.stringify({ narration: ' Hi. ', declined: false, scene: { pose: 'x' } }),
+    JSON.stringify({ outcome: 'done', narration: ' Hi. ', scene: { pose: 'x' } }),
     testScenario,
   )
   assertEquals(text.narration, 'Hi.')
 })
 
+Deno.test('parseTurnText rejects an unknown outcome', () => {
+  assertThrows(
+    () =>
+      parseTurnText(
+        JSON.stringify({ outcome: 'maybe', narration: 'x', scene: { pose: 'x' } }),
+        testScenario,
+      ),
+    Error,
+    'no valid outcome',
+  )
+})
+
 Deno.test('parseTurnText rejects bad replies', () => {
   assertThrows(() => parseTurnText('nope', testScenario), Error, 'not valid JSON')
   assertThrows(
-    () => parseTurnText(JSON.stringify({ narration: 'x', declined: false }), testScenario),
+    () => parseTurnText(JSON.stringify({ outcome: 'done', narration: 'x' }), testScenario),
     Error,
     'no scene',
   )
   assertThrows(
     () =>
       parseTurnText(
-        JSON.stringify({ narration: 'x', declined: false, scene: {} }),
+        JSON.stringify({ outcome: 'done', narration: 'x', scene: {} }),
         testScenario,
       ),
     Error,

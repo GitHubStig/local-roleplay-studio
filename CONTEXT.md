@@ -38,9 +38,17 @@ _Avoid_: Turn 0, intro, setup
 The short account of what happened in a Turn, written for the player; like the rest of the Turn Log, never fed back to the text model.
 _Avoid_: Description, message, response
 
+**Outcome**:
+How a Turn's Action was received: done, declined or unclear. Only a done Action can change the Scene.
+_Avoid_: Result, status, verdict
+
 **Declined Turn**:
 A Turn whose Action a character refused; its Scene and image are the previous Turn's, unchanged.
 _Avoid_: Rejected, refused, blocked
+
+**Unclear Turn**:
+A Turn whose Action couldn't be understood (gibberish, or too vague to act on); a character asks what was meant, and the Scene and image are unchanged.
+_Avoid_: Invalid, failed, error
 
 **Turn Log**:
 The ordered record of a Session's Turns, kept for the player to review; never fed back into the text model.

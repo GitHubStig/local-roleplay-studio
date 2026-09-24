@@ -4,7 +4,7 @@ status: accepted
 
 # Guardrails are enforced by the engine, not by the models
 
-The Text Models this game runs locally include uncensored ones, and Image Models such as Z-Image Turbo ignore negative prompts. So the rules that matter most can't depend on either model behaving. The Scenario says what a character refuses (in its System prompt), but the engine enforces the outcome: a Declined Turn keeps the previous Scene and image, whatever the Text Model returned, and renders nothing; the Opening Turn can't be declined; and every image prompt starts with the Scenario's `imagePrefix`, which states the fixed facts (for the photoshoot: an adult, fully clothed in the brief's wardrobe) ahead of anything the Text Model wrote.
+The Text Models this game runs locally include uncensored ones, and Image Models such as Z-Image Turbo ignore negative prompts. So the rules that matter most can't depend on either model behaving. The Scenario says what a character refuses (in its System prompt), but the engine enforces the result: a Declined or Unclear Turn keeps the previous Scene and image, whatever the Text Model returned, and renders nothing; the Opening Turn always counts as done; and every image prompt starts with the Scenario's `imagePrefix`, which states the fixed facts (for the photoshoot: an adult, fully clothed in the brief's wardrobe) ahead of anything the Text Model wrote.
 
 ## Considered Options
 

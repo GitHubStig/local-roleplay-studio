@@ -13,6 +13,7 @@
   --muted: #6e573b;
   --ok: #3f6b2a;
   --warn: #8f520c;
+  --info: #2c5a86;
   --danger: #962a1c;
 }
 
@@ -25,6 +26,7 @@
   --muted: var(--color-neutral-400);
   --ok: var(--color-emerald-400);
   --warn: var(--color-amber-400);
+  --info: var(--color-sky-400);
   --danger: var(--color-red-400);
 }
 
@@ -36,5 +38,6 @@
   --color-muted: var(--muted);
   --color-ok: var(--ok);
   --color-warn: var(--warn);
+  --color-info: var(--info);
   --color-danger: var(--danger);
 }

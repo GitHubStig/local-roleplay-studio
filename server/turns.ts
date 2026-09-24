@@ -1,7 +1,14 @@
+import { equal } from '@std/assert'
 import { join } from '@std/path'
 import type { ImageGenerator } from './imageGenerator.ts'
 import type { Scenario } from './scenario.ts'
-import { currentScene, type Session, type SessionStore, type Turn } from './session.ts'
+import {
+  currentScene,
+  type Outcome,
+  type Session,
+  type SessionStore,
+  type Turn,
+} from './session.ts'
 import type { TextModel, TurnText } from './textModel.ts'
 
 /** Progress of a Turn, streamed to the player as it happens. */
@@ -10,7 +17,7 @@ export type TurnEvent =
   /** Image Model steps completed so far. */
   | { type: 'progress'; step: number; total: number }
   /** The new Scene before its image exists; provisional until `committed`. */
-  | { type: 'text'; narration: string; declined: boolean; scene: Turn['scene'] }
+  | { type: 'text'; outcome: Outcome; narration: string; scene: Turn['scene'] }
   | { type: 'committed'; turn: Turn }
 
 export interface TurnDeps {
@@ -77,19 +84,24 @@ export async function runTurn(
   emit({ type: 'phase', phase: 'text' })
   const text = await writeText(deps.textModel, { scenario, scene, action }, signal)
 
-  // The engine, not the Text Model, guarantees a declined Direction changes nothing.
-  const declined = previous !== undefined && text.declined
-  const nextScene = declined ? previous.scene : text.scene
-  emit({ type: 'text', narration: text.narration, declined, scene: nextScene })
+  // The engine, not the Text Model, guarantees a declined or unclear Action changes nothing.
+  // The Opening Turn always counts as done.
+  const outcome: Outcome = previous === undefined ? 'done' : text.outcome
+  const nextScene = outcome === 'done' ? text.scene : previous!.scene
+  emit({ type: 'text', outcome, narration: text.narration, scene: nextScene })
+
+  // Nothing to render if the Scene didn't change: declined, unclear, or a done Action that the
+  // Text Model left without effect. Reuse the previous image.
+  const reuseImage = previous !== undefined && equal(nextScene, previous.scene)
 
   const dir = deps.store.dir(session.id)
   let image: string
   let imagePrompt: string
   let wroteImage = false
   try {
-    if (declined) {
-      image = previous.image
-      imagePrompt = previous.imagePrompt
+    if (reuseImage) {
+      image = previous!.image
+      imagePrompt = previous!.imagePrompt
     } else {
       emit({ type: 'phase', phase: 'image' })
       imagePrompt = `${scenario.imagePrefix}, ${sceneToPrompt(nextScene)}`
@@ -115,7 +127,7 @@ export async function runTurn(
       action,
       scene: nextScene,
       narration: text.narration,
-      declined,
+      outcome,
       imagePrompt,
       image,
       createdAt: new Date().toISOString(),

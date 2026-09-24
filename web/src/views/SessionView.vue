@@ -9,6 +9,7 @@ import {
   endSession,
   getSession,
   imageUrl,
+  type Outcome,
   type Scene,
   type Session,
   streamTurn,
@@ -23,7 +24,7 @@ interface Pending {
   phase: 'text' | 'image'
   progress?: { step: number; total: number }
   narration?: string
-  declined?: boolean
+  outcome?: Outcome
   scene?: Scene
   cancelling?: boolean
 }
@@ -211,9 +212,15 @@ const frameStyle = computed(() => ({
 
 /** The caption: the provisional Narration while a Turn runs, else the shown Turn's. */
 const captionText = computed(() => pending.value?.narration ?? shown.value?.narration ?? '')
-const captionDeclined = computed(() =>
-  pending.value?.narration ? pending.value.declined : shown.value?.declined
+const captionOutcome = computed(() =>
+  pending.value?.narration ? pending.value.outcome : shown.value?.outcome
 )
+
+/** Labels for the Outcomes that leave the Scene unchanged. */
+const OUTCOME_LABELS: Partial<Record<Outcome, string>> = {
+  declined: 'Declined',
+  unclear: "Didn't understand",
+}
 
 const phaseLabel = computed(() => {
   if (pending.value?.cancelling) return 'Cancelling…'
@@ -279,11 +286,22 @@ const sceneEntries = (scene: Scene) =>
                 v-if="!captionHidden"
                 class="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/80 via-black/60 to-transparent px-5 pb-4 pt-12 text-white"
               >
+                <span
+                  v-if="captionOutcome && OUTCOME_LABELS[captionOutcome]"
+                  class="mb-1 inline-block rounded-full px-2 py-0.5 text-xs font-medium"
+                  :class="captionOutcome === 'declined'
+                  ? 'bg-amber-300/20 text-amber-300'
+                  : 'bg-sky-300/20 text-sky-300'"
+                  data-outcome
+                >
+                  {{ OUTCOME_LABELS[captionOutcome] }}
+                </span>
                 <p
                   class="max-h-24 overflow-y-auto pr-10 text-sm leading-relaxed"
                   :class="{
                     'italic opacity-75': pending?.narration,
-                    'text-amber-300': captionDeclined,
+                    'text-amber-300': captionOutcome === 'declined',
+                    'text-sky-300': captionOutcome === 'unclear',
                   }"
                   :data-provisional="pending?.narration ? '' : undefined"
                   data-caption
@@ -404,7 +422,20 @@ const sceneEntries = (scene: Scene) =>
               />
               <span class="flex min-w-0 flex-col gap-1">
                 <span class="font-medium">{{ turn.action ?? 'Opening' }}</span>
-                <span class="line-clamp-3 text-muted" :class="{ 'text-warn': turn.declined }">
+                <span
+                  v-if="OUTCOME_LABELS[turn.outcome]"
+                  class="text-xs font-medium"
+                  :class="turn.outcome === 'declined' ? 'text-warn' : 'text-info'"
+                >
+                  {{ OUTCOME_LABELS[turn.outcome] }}
+                </span>
+                <span
+                  class="line-clamp-3 text-muted"
+                  :class="{
+                    'text-warn': turn.outcome === 'declined',
+                    'text-info': turn.outcome === 'unclear',
+                  }"
+                >
                   {{ turn.narration }}
                 </span>
               </span>

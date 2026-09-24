@@ -88,12 +88,15 @@ export const getScenarios = () => request<ScenarioList>('/api/scenarios')
 
 export type Scene = Record<string, unknown>
 
+/** How a Turn's Action was received; only `done` changes the Scene. */
+export type Outcome = 'done' | 'declined' | 'unclear'
+
 export interface Turn {
   index: number
   action: string | null
   scene: Scene
   narration: string
-  declined: boolean
+  outcome: Outcome
   imagePrompt: string
   image: string
   createdAt: string
@@ -112,7 +115,7 @@ export interface Session {
 export type TurnEvent =
   | { type: 'phase'; phase: 'text' | 'image' }
   | { type: 'progress'; step: number; total: number }
-  | { type: 'text'; narration: string; declined: boolean; scene: Scene }
+  | { type: 'text'; outcome: Outcome; narration: string; scene: Scene }
   | { type: 'committed'; turn: Turn }
   | { type: 'failed'; message: string; sessionDiscarded: boolean }
   | { type: 'cancelled'; sessionDiscarded: boolean }

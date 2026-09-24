@@ -46,8 +46,8 @@ export function scriptedTextModel(replies: (TurnText | Error)[]): TextModel & { 
 }
 
 export const reply = (pose: string, extra: Partial<TurnText> = {}): TurnText => ({
+  outcome: 'done',
   narration: `Now ${pose}.`,
-  declined: false,
   scene: { pose },
   ...extra,
 })

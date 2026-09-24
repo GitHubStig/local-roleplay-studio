@@ -29,7 +29,7 @@ const session: api.Session = {
     action: null,
     scene: {},
     narration: 'Maya arrives.',
-    declined: false,
+    outcome: 'done',
     imagePrompt: 'p',
     image: 'turn-0.png',
     createdAt: '2026-09-24T00:00:00.000Z',
