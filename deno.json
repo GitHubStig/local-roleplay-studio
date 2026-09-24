@@ -1,0 +1,26 @@
+{
+  "workspace": [
+    "./server",
+    "./web"
+  ],
+  "nodeModulesDir": "auto",
+  "tasks": {
+    "dev:server": "cd server && deno task dev",
+    "dev:web": "cd web && deno task dev",
+    "dev": {
+      "description": "Run the Deno server and the Vite dev server together",
+      "dependencies": [
+        "dev:server",
+        "dev:web"
+      ]
+    },
+    "test": "cd server && deno task test && cd ../web && deno task test",
+    "build": "cd web && deno task build",
+    "check": "cd server && deno check main.ts app_test.ts && cd ../web && deno task typecheck"
+  },
+  "fmt": {
+    "semiColons": false,
+    "singleQuote": true,
+    "lineWidth": 100
+  }
+}

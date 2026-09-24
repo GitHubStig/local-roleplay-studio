@@ -1,0 +1,8 @@
+{
+  "name": "@rpg/server",
+  "exports": "./main.ts",
+  "tasks": {
+    "dev": "deno run --watch --allow-net --allow-read --allow-write --allow-run --allow-env main.ts",
+    "test": "deno test --allow-net --allow-read --allow-write --allow-run --allow-env"
+  }
+}
