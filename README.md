@@ -19,9 +19,9 @@ The vocabulary (Scenario, Session, Image Prompt, Turn, Action, …) is defined i
 - **macOS on Apple silicon.** mflux runs on MLX.
 - **[Deno](https://deno.com) 2.9+** runs the server, the web app's tooling and the tests.
 - **Node.js 24+**, only for the Vue type check (see [Known quirks](#known-quirks)).
-- **Ollama** with at least one chat model. Recommended: `gemma4:31b-mlx` or `qwen3.8:27b-mlx`
-  (about 8 s per Turn once loaded; they follow the prompt rules reliably). Small models such as
-  `maternion/spark-x2.5-heretic:4b` are faster but often apply only part of an Action.
+- **Ollama** with at least one chat model. Recommended: `gemma4:31b-mlx` (about 10 s per Turn
+  once loaded, Thinking off). Small models (4–8B) can't reliably follow the prompt format; see
+  [docs/models.md](docs/models.md) for the comparison.
 - **mflux 0.20**: `uv tool install mflux`.
 - **Image model weights, downloaded once.** The game runs mflux with Hugging Face downloads
   blocked, so each Image Model must be fetched beforehand. Run the command below online once;
@@ -103,6 +103,7 @@ documented in [docs/scenarios.md](docs/scenarios.md).
 
 - [docs/design.md](docs/design.md): how the game works (Turn loop, failure handling, UI, storage)
 - [docs/scenarios.md](docs/scenarios.md): the Scenario file format
+- [docs/models.md](docs/models.md): which Text and Image Models to use, and why
 - [docs/adr/](docs/adr/): architecture decisions and why they were made
 - [docs/open-threads.md](docs/open-threads.md): ideas deliberately deferred
 - [CONTEXT.md](CONTEXT.md): glossary

@@ -1,6 +1,7 @@
 # Design
 
-How it works, as agreed during design and adjusted since. Terms in **bold** are defined
+How it works, as agreed during design and adjusted since. Which models to run is in
+[models.md](models.md). Terms in **bold** are defined
 in [CONTEXT.md](../CONTEXT.md). The reasoning behind the bigger choices is in [adr/](adr/).
 
 ## What it is
