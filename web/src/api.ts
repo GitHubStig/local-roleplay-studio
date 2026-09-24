@@ -89,23 +89,12 @@ export interface ScenarioList {
 
 export const getScenarios = () => request<ScenarioList>('/api/scenarios')
 
-/** The nine sections of an Image Prompt, in the order they're joined for the Image Model. */
-export const SECTIONS = [
-  { key: 'subject', label: 'Subject and identity' },
-  { key: 'pose', label: 'Pose and limbs' },
-  { key: 'expression', label: 'Expression' },
-  { key: 'camera', label: 'Camera angle and framing' },
-  { key: 'clothing', label: 'Clothing' },
-  { key: 'environment', label: 'Environment' },
-  { key: 'lighting', label: 'Lighting' },
-  { key: 'color', label: 'Color' },
-  { key: 'style', label: 'Art style and medium' },
-] as const
-
-export type SectionKey = (typeof SECTIONS)[number]['key']
-
-/** A Session's whole state at one Turn: what the image shows, section by section. */
-export type ImagePrompt = Record<SectionKey, string>
+/**
+ * A Session's whole state at one Turn: one paragraph describing the image, written in this order:
+ * subject and identity → pose and limbs → expression → camera angle and framing → clothing →
+ * environment → lighting → color → art style and medium.
+ */
+export type ImagePrompt = string
 
 /** How a Turn's Action was received; only `done` changes the Image Prompt. */
 export type Outcome = 'done' | 'declined' | 'unclear'

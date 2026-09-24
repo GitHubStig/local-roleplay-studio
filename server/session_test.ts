@@ -43,3 +43,16 @@ Deno.test('dirSessionStore works in a directory whose path has spaces', () =>
     assertEquals((await store.list()).length, 1)
     assertEquals(await Deno.stat(join(dir, 's1', 'session.json')).then(() => true), true)
   }))
+
+Deno.test('dirSessionStore joins Image Prompts saved as nine Sections into one paragraph', () =>
+  withTempDir(async (root) => {
+    await Deno.mkdir(join(root, 's1'))
+    await Deno.writeTextFile(
+      join(root, 's1', 'session.json'),
+      JSON.stringify({
+        id: 's1',
+        turns: [{ index: 0, outcome: 'done', prompt: { subject: 'A woman.', pose: 'Sitting.' } }],
+      }),
+    )
+    assertEquals((await dirSessionStore(root).load('s1'))!.turns[0].prompt, 'A woman. Sitting.')
+  }))

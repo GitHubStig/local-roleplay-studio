@@ -8,7 +8,7 @@ description: >-
 setup:
   subject: >-
     Maya Okafor, a fictional 31-year-old professional fitness model: tall and athletic, warm
-    brown skin, close-cropped natural hair, easy smile.
+    brown skin, close-cropped natural hair.
   location: >-
     A bright daylight photo studio with a sweeping seamless paper backdrop, softboxes, strip
     lights, reflectors, a haze machine, apple boxes, a wooden stool and a jump box.

@@ -1,70 +1,29 @@
 /**
- * The nine sections of an Image Prompt, in the order they're joined for the Image Model:
- * subject and identity → pose and limbs → expression → camera angle and framing → clothing →
- * environment → lighting → color → art style and medium.
+ * The nine sentences of an Image Prompt, in order. Each sentence covers one aspect only, so
+ * every detail is said once, in one place, and changing an aspect means rewriting one sentence.
  */
-export const SECTIONS = [
-  {
-    key: 'subject',
-    label: 'subject and identity',
-    covers: 'who is shown: age, build, skin, hair, face; never pose, clothing or setting',
-  },
-  { key: 'pose', label: 'pose and limbs', covers: 'body position, limbs and hands' },
-  { key: 'expression', label: 'expression', covers: 'facial expression and where they look' },
-  {
-    key: 'camera',
-    label: 'camera angle and framing',
-    covers: 'camera angle, lens and how much of the subject is in frame',
-  },
-  { key: 'clothing', label: 'clothing', covers: 'every garment and accessory worn' },
-  { key: 'environment', label: 'environment', covers: 'the location, backdrop and props' },
-  { key: 'lighting', label: 'lighting', covers: 'the light sources, their direction and quality' },
-  { key: 'color', label: 'color', covers: 'the palette and color grading' },
-  {
-    key: 'style',
-    label: 'art style and medium',
-    covers: 'the medium (photograph, painting, render…) and its style',
-  },
+export const PROMPT_ORDER = [
+  { aspect: 'subject and identity', covers: 'who they are: age, build, skin, hair, face' },
+  { aspect: 'pose and limbs', covers: 'body position, limbs and hands' },
+  { aspect: 'expression', covers: 'facial expression and where they look' },
+  { aspect: 'camera angle and framing', covers: 'angle, lens and how much is in frame' },
+  { aspect: 'clothing', covers: 'every garment and accessory' },
+  { aspect: 'environment', covers: 'the location, backdrop and props' },
+  { aspect: 'lighting', covers: 'the light sources, their direction and quality' },
+  { aspect: 'color', covers: 'the palette and grading' },
+  { aspect: 'art style and medium', covers: 'photograph, painting, render… and its style' },
 ] as const
 
-export type SectionKey = (typeof SECTIONS)[number]['key']
-
-/** The whole state of a Session at one Turn: what the next image shows, section by section. */
-export type ImagePrompt = Record<SectionKey, string>
-
-/** JSON schema for an Image Prompt, for the Text Model's structured output. */
-export function imagePromptSchema() {
-  return {
-    type: 'object',
-    properties: Object.fromEntries(
-      SECTIONS.map((s) => [s.key, { type: 'string', description: `${s.label}: ${s.covers}` }]),
-    ),
-    required: SECTIONS.map((s) => s.key),
-  }
-}
-
-/** Checks a value is a complete Image Prompt; throws naming the sections that are missing. */
-export function parseImagePrompt(value: unknown): ImagePrompt {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-    throw new Error('Image Prompt must be an object')
-  }
-  const v = value as Record<string, unknown>
-  const missing = SECTIONS.filter((s) => typeof v[s.key] !== 'string' || !String(v[s.key]).trim())
-  if (missing.length > 0) {
-    throw new Error(`Image Prompt is missing: ${missing.map((s) => s.key).join(', ')}`)
-  }
-  return Object.fromEntries(SECTIONS.map((s) => [s.key, String(v[s.key]).trim()])) as ImagePrompt
-}
+/**
+ * The whole state of a Session at one Turn: one paragraph of nine sentences, one per aspect of
+ * `PROMPT_ORDER`, details within a sentence separated by commas or semicolons.
+ */
+export type ImagePrompt = string
 
 /**
- * The text sent to the Image Model: the sections in order. It always starts with "adult": every
- * person depicted is an adult, whatever the sections say.
+ * The text sent to the Image Model. It always starts with "adult": every person depicted is an
+ * adult, whatever the paragraph says.
  */
 export function renderPrompt(prompt: ImagePrompt): string {
-  return ['adult', ...SECTIONS.map((s) => prompt[s.key])].join(', ')
-}
-
-/** The sections whose text differs between two Image Prompts. */
-export function changedSections(before: ImagePrompt, after: ImagePrompt): SectionKey[] {
-  return SECTIONS.filter((s) => before[s.key] !== after[s.key]).map((s) => s.key)
+  return `adult, ${prompt}`
 }

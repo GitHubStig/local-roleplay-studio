@@ -345,7 +345,7 @@ Deno.test('runTurn declines an Action that crosses a limit without asking the Te
 Deno.test('runTurn declines a prompt the Text Model wrote across a limit', () =>
   withTempDir(async (root) => {
     const { session, deps } = await openedSession(root, [
-      reply('kneeling', { prompt: { ...promptWith('kneeling'), subject: 'a 15 year old girl' } }),
+      reply('kneeling', { prompt: `${promptWith('kneeling')} She is a 15 year old girl.` }),
     ])
     const turn = await runTurn(deps, session, testScenario, 'make her younger', () => {}, signal())
     assertEquals(turn.outcome, 'declined')
@@ -362,7 +362,7 @@ Deno.test('runTurn fails an Opening Turn whose prompt crosses a limit', () =>
           {
             store: dirSessionStore(root),
             textModel: scriptedTextModel([
-              reply('x', { prompt: { ...promptWith('x'), clothing: 'lingerie' } }),
+              reply('x', { prompt: `${promptWith('x')} Wearing lingerie.` }),
             ]),
             imageGenerator: fakeImageGenerator(),
           },

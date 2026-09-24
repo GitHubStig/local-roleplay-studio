@@ -15,7 +15,7 @@ export const OUTCOMES: readonly Outcome[] = ['done', 'declined', 'unclear']
 export interface Turn {
   index: number
   action: string | null
-  /** The Session's whole state after this Turn. */
+  /** The Session's whole state after this Turn: one paragraph describing the image. */
   prompt: ImagePrompt
   /** A terse list of what changed, for the player; never fed back to the Text Model. */
   narration: string
@@ -60,6 +60,11 @@ function upgrade(session: Session & { status?: string }): Session {
   for (const turn of session.turns as (Turn & { declined?: boolean })[]) {
     if (!turn.outcome) turn.outcome = turn.declined ? 'declined' : 'done'
     delete turn.declined
+    // Image Prompts were once nine separate Sections; they're one paragraph now.
+    const prompt = turn.prompt as unknown
+    if (typeof prompt === 'object' && prompt !== null) {
+      turn.prompt = Object.values(prompt).map((v) => String(v).trim()).join(' ')
+    }
   }
   return session
 }

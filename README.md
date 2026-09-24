@@ -1,8 +1,9 @@
 # RPG
 
 A turn-based text-to-image prompt generator that runs entirely on your Mac. You say what to
-change; a local language model (via [Ollama](https://ollama.com)) edits a nine-part image prompt
-(subject → pose → expression → camera → clothing → environment → lighting → color → style); a
+change; a local language model (via [Ollama](https://ollama.com)) rewrites an image prompt, one
+paragraph with a sentence each for subject → pose → expression → camera → clothing →
+environment → lighting → color → style; a
 local image model (via [mflux](https://github.com/filipstrand/mflux)) renders it. Then you change
 something else.
 
@@ -10,7 +11,7 @@ The first Scenario is a **studio photoshoot** with Maya, a fictional fitness mod
 the prompt can be changed, within four limits the engine enforces: everyone depicted is an
 adult, no sexual or nude imagery, no real identifiable people, no restraint or captivity.
 
-The vocabulary (Scenario, Session, Image Prompt, Section, Turn, Action, …) is defined in
+The vocabulary (Scenario, Session, Image Prompt, Turn, Action, …) is defined in
 [CONTEXT.md](CONTEXT.md). The design is in [docs/design.md](docs/design.md).
 
 ## Requirements
@@ -18,9 +19,9 @@ The vocabulary (Scenario, Session, Image Prompt, Section, Turn, Action, …) is 
 - **macOS on Apple silicon.** mflux runs on MLX.
 - **[Deno](https://deno.com) 2.9+** runs the server, the web app's tooling and the tests.
 - **Node.js 24+**, only for the Vue type check (see [Known quirks](#known-quirks)).
-- **Ollama** with at least one chat model, e.g. `ollama pull llama3`. Tested with `llama3:latest`
-  (about 10 s per Turn) and `maternion/spark-x2.5-heretic:4b` (about 20 s per Turn, better
-  narration).
+- **Ollama** with at least one chat model. Recommended: `gemma4:31b-mlx` or `qwen3.8:27b-mlx`
+  (about 8 s per Turn once loaded; they follow the prompt rules reliably). Small models such as
+  `maternion/spark-x2.5-heretic:4b` are faster but often apply only part of an Action.
 - **mflux 0.20**: `uv tool install mflux`.
 - **Image model weights, downloaded once.** The game runs mflux with Hugging Face downloads
   blocked, so each Image Model must be fetched beforehand. Run the command below online once;

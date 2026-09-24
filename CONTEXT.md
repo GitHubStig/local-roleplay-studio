@@ -19,12 +19,8 @@ One playthrough of a Scenario, from its opening Image Prompt onwards; it can be 
 _Avoid_: Game, run, playthrough
 
 **Image Prompt**:
-The single authoritative description of the current image, written as nine Sections in a fixed order; the only state carried from one Turn to the next, and exactly what the Image Model renders.
-_Avoid_: Scene, prompt string, description, state
-
-**Section**:
-One of the nine fixed parts of an Image Prompt: subject and identity, pose and limbs, expression, camera angle and framing, clothing, environment, lighting, color, art style and medium.
-_Avoid_: Field, part, slot
+The single authoritative description of the current image: one paragraph of nine sentences, one per aspect in a fixed order (subject and identity, pose and limbs, expression, camera angle and framing, clothing, environment, lighting, color, art style and medium); the only state carried from one Turn to the next, and exactly what the Image Model renders.
+_Avoid_: Scene, sections, description, state
 
 **Action**:
 The free text the player submits describing what to change in the image.
@@ -39,7 +35,7 @@ The first Turn of a Session, which writes the opening Image Prompt from the Scen
 _Avoid_: Turn 0, intro, setup
 
 **Narration**:
-A terse list of what a Turn changed, one short phrase per changed Section, written for the player; like the rest of the Turn Log, never fed back to the text model.
+A terse list of what a Turn changed, one short phrase per changed aspect, written for the player; like the rest of the Turn Log, never fed back to the text model.
 _Avoid_: Description, message, response, story
 
 **Limit**:

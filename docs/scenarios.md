@@ -5,7 +5,7 @@ file name, minus `.md`, is its id (`photoshoot.md` → `photoshoot`). Files are 
 every request, so a new or edited Scenario shows up on Home, under *Start a new Session*,
 without a restart.
 
-A Scenario only shapes the **opening** Image Prompt. After that, every Section can be changed by
+A Scenario only shapes the **opening** Image Prompt. After that, any of it can be changed by
 an Action; the only lines no Action can cross are the engine's four Limits
 ([ADR 0002](adr/0002-guardrails-enforced-by-the-engine.md)).
 
@@ -46,29 +46,31 @@ Use YAML's `>-` for long text: it folds lines into one paragraph.
 Only `##` headings count, matched case-insensitively.
 
 - **`## Opening`** (required): what the opening image should be. Be concrete: the Text Model
-  turns it, plus the Setup, into the nine Sections.
+  turns it, plus the Setup, into the nine sentences.
 - **`## System`** (optional): notes the Text Model gets on every Turn, after the engine's own
   rules. Use it for things like "keep Maya recognisably the same person". Don't restate the
-  Sections, the Limits or the reply format; the engine supplies those.
+  prompt format, the Limits or the reply format; the engine supplies those.
 
 ## The Image Prompt
 
-Every Scenario produces the same nine Sections, in this order:
+Every Scenario produces the same shape: one paragraph of nine sentences, one per aspect, in this
+order, with details inside a sentence separated by commas or semicolons:
 
-| Section | Covers |
-|---|---|
-| subject and identity | who is shown: age, build, skin, hair, face |
-| pose and limbs | body position, limbs and hands |
-| expression | facial expression and where they look |
-| camera angle and framing | angle, lens, how much is in frame |
-| clothing | every garment and accessory |
-| environment | location, backdrop and props |
-| lighting | light sources, direction and quality |
-| color | palette and grading |
-| art style and medium | photograph, painting, render… and its style |
+| # | Aspect | Covers |
+|---|---|---|
+| 1 | subject and identity | who they are: age, build, skin, hair, face |
+| 2 | pose and limbs | body position, limbs and hands |
+| 3 | expression | facial expression and where they look |
+| 4 | camera angle and framing | angle, lens, how much is in frame |
+| 5 | clothing | every garment and accessory |
+| 6 | environment | location, backdrop and props |
+| 7 | lighting | light sources, direction and quality |
+| 8 | color | palette and grading |
+| 9 | art style and medium | photograph, painting, render… and its style |
 
-The engine joins them in order, starting with "adult", and that exact text is what the Image
-Model renders.
+The engine renders "adult, " plus the paragraph. Keep each Setup fact in its own aspect: a
+subject described as having "an easy smile" puts an expression into the identity sentence, and
+it will contradict a later "make her scared".
 
 ## Checking a Scenario
 

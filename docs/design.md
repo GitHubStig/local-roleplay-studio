@@ -10,11 +10,11 @@ player starts a **Session** from it and plays **Turns**: each Turn, the player w
 **Action** (what to change), the **Text Model** edits the **Image Prompt**, and the **Image
 Model** renders it. There is no score and no end; a Session lasts until it's deleted.
 
-The Image Prompt is nine **Sections** in a fixed order: subject and identity → pose and limbs →
-expression → camera angle and framing → clothing → environment → lighting → color → art style
-and medium ([ADR 0005](adr/0005-image-prompt-is-the-state.md)). Every Section can be changed;
-the engine's four **Limits** are the only lines an Action can't cross
-([ADR 0002](adr/0002-guardrails-enforced-by-the-engine.md)).
+The Image Prompt is one paragraph of nine sentences, one per aspect in a fixed order: subject
+and identity → pose and limbs → expression → camera angle and framing → clothing → environment
+→ lighting → color → art style and medium ([ADR 0005](adr/0005-image-prompt-is-the-state.md)).
+Anything in it can be changed; the engine's four **Limits** are the only lines an Action can't
+cross ([ADR 0002](adr/0002-guardrails-enforced-by-the-engine.md)).
 
 The first Scenario is a studio photoshoot with Maya, a fictional fitness model.
 
@@ -28,18 +28,19 @@ current Image Prompt + Action ──► Text Model (Ollama) ──► { outcome,
                                                               │
      engine: declined / unclear / Limit crossed / unchanged? keep the previous prompt and image
                                                               │
-      "adult, " + the nine Sections in order ──► Image Model (mflux) ──► turn-N-xxxx.png
+                  "adult, " + the paragraph ──► Image Model (mflux) ──► turn-N-xxxx.png
                                                               │
                                         commit: append the Turn to session.json
 ```
 
 1. **Limits on the Action.** The Action is checked against the Limits' term list before the Text
    Model is asked. An Action that looks like it names someone (a capitalised full name, "look
-   like", "resemble") also gets a narrow yes/no question to the Text Model about real people. A
+   like", "resemble"; names inside a style clause such as "in the style of Michelangelo" don't
+   count) also gets a narrow yes/no question to the Text Model about real people. A
    crossed Limit declines the Turn at once: the Narration names the Limit.
-2. **Text step.** The system message is the engine's rules (what each Section covers; edit only
-   the affected Sections and copy the rest word for word; replace rather than append; the
-   Limits; the reply format), then the Scenario's notes, plus its **Setup** on the Opening Turn
+2. **Text step.** The system message is the engine's rules (the nine sentences and what each
+   covers; rewrite only the affected sentences and copy the rest word for word; remove whatever
+   a change contradicts; the Limits; the reply format), then the Scenario's notes, plus its **Setup** on the Opening Turn
    only. The user message is **only** the current Image Prompt and the Action; the Text Model
    never sees earlier Turns ([ADR 0001](adr/0001-scene-is-sole-turn-state.md)). The reply is
    constrained by a JSON schema (Ollama's `format`), with `outcome` (`done`, `declined` or
@@ -48,7 +49,7 @@ current Image Prompt + Action ──► Text Model (Ollama) ──► { outcome,
    **Thinking** on (a Setting, for models that support it) the model reasons first; its
    reasoning streams to the player and is saved with the Turn. Models that can't think are asked
    again without it.
-3. **Retry and limits on the call.** An unusable reply (bad JSON, a missing or empty Section, or
+3. **Retry and limits on the call.** An unusable reply (bad JSON, an empty prompt, or
    one cut off by the length cap) is retried once, then the Turn fails. Every Text Model call has
    a token cap (2,048 tokens; 12,288 with thinking; 32 for the real-person question) and a time
    limit (2 minutes; 10 with thinking; 30 s for the real-person question). Small models writing
@@ -60,7 +61,7 @@ current Image Prompt + Action ──► Text Model (Ollama) ──► { outcome,
      whatever the model returned, and renders nothing.
    - A done Turn whose Image Prompt came back unchanged also reuses the previous image.
    - The Opening Turn always counts as done; if its prompt crosses a Limit, it fails.
-   - The text rendered is `adult, ` followed by the nine Sections in order.
+   - The text rendered is `adult, ` followed by the paragraph.
 5. **Image step.** Images render one at a time across all Sessions: if another Session is
    rendering, this Turn waits in a queue (shown as "Waiting for another render…", and
    cancellable). Then the mflux CLI renders the image with the Session's seed and settings. Its
@@ -92,8 +93,8 @@ racing a Turn).
 
 - **Seed:** fixed for the whole Session: the fixed seed from Settings, or a random one picked
   when the Session starts.
-- **Subject description:** carried in the *subject and identity* Section, which the Text Model
-  copies word for word unless an Action changes it.
+- **Subject description:** carried in the first sentence (subject and identity), which the Text
+  Model copies word for word unless an Action changes it.
 - **Settings are copied into each Session when it starts,** so changing Settings mid-Session
   never changes the Image Model, seed or size of a running Session. Changes apply from the next
   Session.
@@ -124,9 +125,8 @@ in [open-threads.md](open-threads.md).
   "Viewing Turn 1 of 4 · Back to latest", and the text box says the next Action continues from
   the latest Turn: Actions always build on the latest Turn, never on the one being viewed. Declined Turns are labelled and tinted amber, Unclear
   Turns ("Didn't understand") blue, both in the log and on the caption. **Prompt** shows the
-  viewed Turn's nine Sections, with the ones that Turn changed highlighted and marked
-  "changed", then its thinking (collapsed, when there was any) and the full prompt text exactly
-  as rendered (expanded).
+  viewed Turn's Image Prompt as a word-level diff against the Turn before it (added words
+  highlighted, removed words struck through), then its thinking (collapsed, when there was any).
   While a thinking model reasons, the reasoning streams into the caption area under
   "Thinking…" and gives way to the Narration once it arrives. Because the Session id is in the URL,
   reloading the page keeps you in the Session. The image crossfades (700 ms) when a new Turn
@@ -209,12 +209,12 @@ The design Q&A, and what changed later.
 | Goal | Open sandbox; no scoring | — |
 | Backend | Deno HTTP server; Vite proxies `/api` | — |
 | Images | mflux CLI per image, behind `ImageGenerator` | Downloads blocked (ADR 0004) |
-| Turn state | The Scene only, no history (ADR 0001) | The nine-Section Image Prompt (ADR 0005) |
-| Text Model output | One JSON call | `{ outcome, narration, prompt }`; the engine joins the Sections |
+| Turn state | The Scene only, no history (ADR 0001) | The Image Prompt: one paragraph of nine sentences (ADR 0005) |
+| Text Model output | One JSON call | `{ outcome, narration, prompt }`, the prompt as one paragraph |
 | Settings | Server-side `settings.json`; apply from the next Session | Small sizes added |
 | Side panel | Turn Log with thumbnails; End/Reset as buttons only | End and Reset removed; Sessions are listed, opened and deleted on Home |
 | Several Sessions rendering | Queue images one at a time across Sessions | A queued Turn keeps you in its Session |
-| What an Action can change | Pose, camera, lighting, set, per Scenario | Anything, in any of the nine Sections, within the four Limits |
+| What an Action can change | Pose, camera, lighting, set, per Scenario | Anything in the prompt, within the four Limits |
 | Limits | Per-Scenario brief, character refusals | Four engine Limits: term list + real-person check (ADR 0002) |
 | Narration | Character prose | A terse list of what changed |
 | Every Turn renders | Yes; no separate "take the shot" | — |

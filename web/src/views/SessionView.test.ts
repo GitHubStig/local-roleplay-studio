@@ -169,28 +169,24 @@ describe('SessionView', () => {
     expect(wrapper.find('[data-caption]').exists()).toBe(true)
   })
 
-  it("shows the viewed Turn's Image Prompt in the Prompt tab, marking changed sections", async () => {
+  it("shows the viewed Turn's Image Prompt as a word diff against the Turn before", async () => {
     vi.mocked(api.getSession).mockResolvedValue(
-      session([turn(0, null), turn(1, 'Sit', { prompt: { ...promptFor(1), color: 'teal' } })]),
+      session([turn(0, null), turn(1, 'Sit', { prompt: promptFor(1).replace('calm', 'scared') })]),
     )
     const { wrapper } = await mountIt()
     await wrapper.findAll('[role=tab]')[1].trigger('click')
     const panel = wrapper.find('[role=tabpanel]')
     expect(panel.text()).toContain('Turn 1 · Sit')
-    expect(panel.find('[data-section=pose]').text()).toContain('Pose and limbs')
-    expect(panel.find('[data-section=pose]').text()).toContain('pose 1')
-    expect(panel.findAll('[data-changed]').map((d) => d.attributes('data-section'))).toEqual([
-      'pose',
-      'color',
-    ])
-    expect(panel.find('[data-prompt-text]').text()).toBe('prompt 1')
-    expect(panel.find('details[open]').exists()).toBe(true)
+    expect(panel.findAll('[data-diff=removed]').map((d) => d.text())).toEqual(['0, calm,'])
+    expect(panel.findAll('[data-diff=added]').map((d) => d.text())).toEqual(['1, scared,'])
+    expect(panel.text()).toContain('since Turn 0')
   })
 
-  it('marks nothing as changed on the Opening Turn', async () => {
+  it('shows the Opening prompt without any diff', async () => {
     const { wrapper } = await mountIt()
     await wrapper.findAll('[role=tab]')[1].trigger('click')
-    expect(wrapper.findAll('[data-changed]')).toHaveLength(0)
+    expect(wrapper.findAll('[data-diff=added], [data-diff=removed]')).toHaveLength(0)
+    expect(wrapper.find('[data-prompt]').text()).toBe(promptFor(0))
   })
 
   it('labels declined and unclear Turns in the caption and the Turn Log', async () => {

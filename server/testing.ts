@@ -26,17 +26,8 @@ export const scenarioLibrary: ScenarioLibrary = {
 }
 
 /** An Image Prompt that differs from others only in its pose. */
-export const promptWith = (pose: string): ImagePrompt => ({
-  subject: 'a person',
-  pose,
-  expression: 'calm',
-  camera: 'eye level',
-  clothing: 'running gear',
-  environment: 'a studio',
-  lighting: 'softbox',
-  color: 'neutral',
-  style: 'photo',
-})
+export const promptWith = (pose: string): ImagePrompt =>
+  `A person, ${pose}, calm, eye level, running gear, in a studio, softbox light, neutral tones, photo.`
 
 /**
  * A Text Model that replies from a queue; an Error in the queue is thrown instead. It says an

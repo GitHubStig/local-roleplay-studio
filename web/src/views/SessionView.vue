@@ -11,6 +11,7 @@ import {
 } from 'vue'
 import { onBeforeRouteLeave, useRouter } from 'vue-router'
 import { clearCurrentSession, setCurrentSession } from '../composables/useCurrentSession'
+import { diffWords } from '../diff'
 import {
   ApiError,
   cancelTurn,
@@ -18,7 +19,6 @@ import {
   imageUrl,
   type Outcome,
   type ImagePrompt,
-  SECTIONS,
   type Session,
   streamTurn,
   type TurnEvent,
@@ -356,12 +356,12 @@ const phaseLabel = computed(() => {
   return p ? `Rendering the image… ${p.step}/${p.total}` : 'Rendering the image…'
 })
 
-/** Sections the shown Turn changed, compared with the Turn before it. */
-const changed = computed(() => {
+/** The shown Turn's Image Prompt, word-diffed against the Turn before it (none for the Opening). */
+const promptDiff = computed(() => {
   const turn = shown.value
-  const before = turn && session.value?.turns[turn.index - 1]
-  if (!turn || !before) return new Set<string>()
-  return new Set(SECTIONS.filter((s) => turn.prompt[s.key] !== before.prompt[s.key]).map((s) => s.key))
+  if (!turn) return []
+  const before = session.value?.turns[turn.index - 1]
+  return before ? diffWords(before.prompt, turn.prompt) : [{ kind: 'same' as const, text: turn.prompt }]
 })
 </script>
 
@@ -610,31 +610,27 @@ const changed = computed(() => {
             <p class="mb-3 text-muted">
               Turn {{ shown.index }} · {{ shown.action ?? 'Opening' }}
             </p>
-            <dl class="flex flex-col gap-2">
-              <div
-                v-for="s in SECTIONS"
-                :key="s.key"
-                class="rounded border-l-2 py-1 pl-2"
-                :class="changed.has(s.key) ? 'border-info bg-surface' : 'border-transparent'"
-                :data-section="s.key"
-                :data-changed="changed.has(s.key) ? '' : undefined"
-              >
-                <dt class="flex items-center gap-2 font-medium">
-                  {{ s.label }}
-                  <span v-if="changed.has(s.key)" class="text-xs font-normal text-info">changed</span>
-                </dt>
-                <dd class="text-muted">{{ shown.prompt[s.key] }}</dd>
-              </div>
-            </dl>
+            <p class="leading-relaxed" data-prompt>
+              <template v-for="(part, i) in promptDiff" :key="i">
+                <span
+                  :class="{
+                    'rounded bg-info/20 text-fg': part.kind === 'added',
+                    'text-danger line-through opacity-70': part.kind === 'removed',
+                  }"
+                  :data-diff="part.kind"
+                >{{ part.text }}</span>{{ ' ' }}
+              </template>
+            </p>
+            <p v-if="shown.index > 0" class="mt-2 text-xs text-muted">
+              <span class="rounded bg-info/20 px-1 text-fg">added</span> and
+              <span class="text-danger line-through">removed</span> since Turn {{ shown.index - 1 }}.
+              Rendered with "adult," in front.
+            </p>
             <details v-if="shown.thinking" :key="`thinking-${shown.index}`" class="mt-4 text-muted">
               <summary class="cursor-pointer select-none">Thinking</summary>
               <p class="mt-1 whitespace-pre-line text-xs leading-relaxed" data-turn-thinking>
                 {{ shown.thinking }}
               </p>
-            </details>
-            <details :key="shown.index" class="mt-4 text-muted" open>
-              <summary class="cursor-pointer select-none">Full prompt</summary>
-              <p class="mt-1 text-xs leading-relaxed" data-prompt-text>{{ shown.promptText }}</p>
             </details>
           </template>
           <p v-else class="text-muted">No prompt yet.</p>
