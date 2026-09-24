@@ -98,7 +98,7 @@ describe('SessionView', () => {
     emit({ type: 'progress', step: 2, total: 4 })
     await flushPromises()
     expect(wrapper.find('[data-provisional]').text()).toBe('Maya arrives.')
-    expect(wrapper.find('[role=status]').text()).toContain('Rendering the image… 2/4')
+    expect(wrapper.find('[role=status]').text()).toContain('Rendering the image… step 2 of 4')
     expect(wrapper.find('[data-rendering]').attributes('data-rendering')).toBe('image')
     expect(wrapper.find('[data-writing]').exists()).toBe(false)
 

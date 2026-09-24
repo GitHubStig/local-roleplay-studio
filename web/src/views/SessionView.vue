@@ -367,7 +367,7 @@ const phaseLabel = computed(() => {
   if (pending.value?.phase === 'queued') return 'Waiting for another render…'
   if (pending.value?.phase !== 'image') return 'Writing the prompt…'
   const p = pending.value.progress
-  return p ? `Rendering the image… ${p.step}/${p.total}` : 'Rendering the image…'
+  return p ? `Rendering the image… step ${p.step} of ${p.total}` : 'Rendering the image…'
 })
 
 /** The shown Turn's Image Prompt, word-diffed against the Turn before it (none for the Opening). */

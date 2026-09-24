@@ -82,7 +82,7 @@ A Turn commits whole or not at all ([ADR 0003](adr/0003-turns-are-all-or-nothing
 | Opening Turn fails or is cancelled | The Session is discarded; back Home with the error |
 
 While a Turn runs, the new Narration is shown **provisionally** (dimmed) as soon as the Text
-Model returns, with "Rendering the image… 2/4" beneath it. It becomes real only when the image
+Model returns, with "Rendering the image… step 2 of 4" beneath it. It becomes real only when the image
 arrives.
 
 Only one Turn runs per Session at a time; the server refuses a second with `409`. Turns, Undo and
@@ -117,7 +117,7 @@ in [open-threads.md](open-threads.md).
 - **Session** (`/sessions/:id`): the image fills everything above a fixed-height text box, so
   it never resizes as the text changes. The Narration is a caption over the bottom of the photo
   (provisional text shows dimmed and in italics while a Turn runs); the caption can be hidden,
-  and that choice is remembered per browser. The Turn's status ("Rendering the image… 2/4") is a
+  and that choice is remembered per browser. The Turn's status ("Rendering the image… step 2 of 4") is a
   pill in the image's top corner. Enter sends; Shift+Enter adds a new line. While a Turn runs,
   the text box is locked and **Cancel** replaces **Send**; a failed Turn's error shows in the
   button row. Typed text is always treated as an Action; there are no typed commands.
