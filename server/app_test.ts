@@ -181,7 +181,7 @@ Deno.test('Turns stream progress and commit, then serve their image', () =>
 
     const image = await call('GET', '/api/sessions/s1/images/turn-1.png')
     assertEquals(image.headers.get('Content-Type'), 'image/png')
-    assertEquals(await image.text(), 'studio photo, sitting')
+    assertEquals(await image.text(), 'studio photo, pose: sitting')
     assertEquals((await call('GET', '/api/sessions/s1/images/session.json')).status, 404)
   }))
 

@@ -8,7 +8,6 @@ export interface TurnText {
   narration: string
   declined: boolean
   scene: Scene
-  imagePrompt: string
 }
 
 export interface TurnRequest {
@@ -31,8 +30,8 @@ Reply with a single JSON object, deciding "declined" before writing anything els
   this turn, including anything a character says. If "declined" is true, the narration is
   only the refusal: nothing in the Scene moves or changes.
 - "scene": the complete updated Scene, every field filled in; if "declined" is true, the
-  current Scene exactly as it was.
-- "imagePrompt": the Scene as comma-separated visual phrases for an image model.`
+  current Scene exactly as it was. The image is rendered from the Scene alone, so every
+  change the Action makes must be written into it, in concrete visual terms.`
 
 export function systemMessage(scenario: Scenario): string {
   return `${scenario.systemPrompt}\n\n# Setup\n\n${stringify(scenario.setup)}\n${OUTPUT_RULES}`
@@ -53,9 +52,8 @@ export function outputSchema(scenario: Scenario) {
       declined: { type: 'boolean' },
       narration: { type: 'string' },
       scene: scenario.sceneSchema,
-      imagePrompt: { type: 'string' },
     },
-    required: ['declined', 'narration', 'scene', 'imagePrompt'],
+    required: ['declined', 'narration', 'scene'],
   }
 }
 
@@ -67,7 +65,7 @@ export function parseTurnText(content: string, scenario: Scenario): TurnText {
   } catch {
     throw new Error('Text Model reply was not valid JSON')
   }
-  const { narration, declined, scene, imagePrompt } = out
+  const { narration, declined, scene } = out
   if (typeof narration !== 'string' || typeof declined !== 'boolean') {
     throw new Error('Text Model reply is missing narration or declined')
   }
@@ -77,8 +75,7 @@ export function parseTurnText(content: string, scenario: Scenario): TurnText {
   const required = (scenario.sceneSchema.required ?? []) as string[]
   const missing = required.filter((key) => !(key in scene))
   if (missing.length > 0) throw new Error(`Text Model scene is missing: ${missing.join(', ')}`)
-  if (typeof imagePrompt !== 'string') throw new Error('Text Model reply has no imagePrompt')
-  return { narration: narration.trim(), declined, scene: scene as Scene, imagePrompt }
+  return { narration: narration.trim(), declined, scene: scene as Scene }
 }
 
 export function ollamaTextModel(model: string, baseUrl = OLLAMA_URL): TextModel {

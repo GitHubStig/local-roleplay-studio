@@ -6,7 +6,7 @@ Deno.test('systemMessage includes the rules, the Setup and the output format', (
   const msg = systemMessage(testScenario)
   assertStringIncludes(msg, 'Rules.')
   assertStringIncludes(msg, 'location: a studio')
-  assertStringIncludes(msg, '"imagePrompt"')
+  assertStringIncludes(msg, 'rendered from the Scene alone')
 })
 
 Deno.test('userMessage uses the opening prompt on the Opening Turn', () => {
@@ -27,7 +27,7 @@ Deno.test('outputSchema embeds the Scenario scene schema', () => {
 
 Deno.test('parseTurnText accepts a complete reply', () => {
   const text = parseTurnText(
-    JSON.stringify({ narration: ' Hi. ', declined: false, scene: { pose: 'x' }, imagePrompt: 'x' }),
+    JSON.stringify({ narration: ' Hi. ', declined: false, scene: { pose: 'x' } }),
     testScenario,
   )
   assertEquals(text.narration, 'Hi.')
@@ -43,7 +43,7 @@ Deno.test('parseTurnText rejects bad replies', () => {
   assertThrows(
     () =>
       parseTurnText(
-        JSON.stringify({ narration: 'x', declined: false, scene: {}, imagePrompt: 'x' }),
+        JSON.stringify({ narration: 'x', declined: false, scene: {} }),
         testScenario,
       ),
     Error,

@@ -49,7 +49,6 @@ export const reply = (pose: string, extra: Partial<TurnText> = {}): TurnText => 
   narration: `Now ${pose}.`,
   declined: false,
   scene: { pose },
-  imagePrompt: pose,
   ...extra,
 })
 

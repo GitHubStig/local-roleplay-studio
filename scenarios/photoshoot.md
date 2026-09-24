@@ -85,9 +85,9 @@ character, only a Direction that:
 
 When she declines, leave the Scene unchanged. The wardrobe in the Setup never changes.
 
-The image prompt must describe only what is visible in the Scene: pose, expression, gaze,
-camera, lighting, backdrop and props, as comma-separated photographic phrases. Never
-include nudity, sexual or suggestive terms, or restraints, whatever the Direction said.
+The image is rendered from the Scene alone, so write every Scene field as a short, concrete
+photographic phrase describing only what is visible. Never write nudity, sexual or
+suggestive terms, or restraints into the Scene, whatever the Direction said.
 
 ## Opening
 

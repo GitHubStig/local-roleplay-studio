@@ -13,4 +13,6 @@ Each Turn sends the Text Model only the current Scene and the player's Action â€
 
 ## Consequences
 
+The engine, not the Text Model, turns the Scene into the image prompt (the Scenario's `imagePrefix` plus the Scene's fields), so the image always shows exactly the state carried forward. An earlier design let the Text Model write the image prompt separately; in testing it drew Directions it never recorded in the Scene, and the next Turn silently undid them.
+
 Anything not written into the Scene is forgotten. If something needs remembering, add it to the Scenario's Scene schema rather than feeding history back in. Revisit if Sessions feel like they lack memory in practice.

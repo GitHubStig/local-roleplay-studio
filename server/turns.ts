@@ -21,6 +21,26 @@ export interface TurnDeps {
 
 const TEXT_ATTEMPTS = 2
 
+/**
+ * Describes a Scene for the Image Model as labelled phrases, e.g. `camera angle: low`, so the
+ * image always shows exactly the state that is carried to the next Turn.
+ */
+export function sceneToPrompt(scene: Turn['scene']): string {
+  const phrases: string[] = []
+  const visit = (value: unknown, label: string) => {
+    if (Array.isArray(value)) {
+      const items = value.filter((v) => typeof v === 'string' && v.trim())
+      if (items.length) phrases.push(`${label}: ${items.join(', ')}`)
+    } else if (typeof value === 'object' && value !== null) {
+      for (const [key, v] of Object.entries(value)) visit(v, label ? `${label} ${key}` : key)
+    } else if (value !== null && value !== undefined && String(value).trim()) {
+      phrases.push(`${label}: ${String(value).trim()}`)
+    }
+  }
+  visit(scene, '')
+  return phrases.join(', ')
+}
+
 async function writeText(
   textModel: TextModel,
   req: Parameters<TextModel['write']>[0],
@@ -39,7 +59,7 @@ async function writeText(
 }
 
 /**
- * Runs one Turn: Text Model, then Image Model, then commit. The Turn commits whole or not at
+ * Runs one Turn: Text Model, then Image Model (prompted from the Scene), then commit. The Turn commits whole or not at
  * all: on failure or abort the Session on disk is untouched and any image written is removed.
  */
 export async function runTurn(
@@ -72,7 +92,7 @@ export async function runTurn(
       imagePrompt = previous.imagePrompt
     } else {
       emit({ type: 'phase', phase: 'image' })
-      imagePrompt = `${scenario.imagePrefix}, ${text.imagePrompt}`
+      imagePrompt = `${scenario.imagePrefix}, ${sceneToPrompt(nextScene)}`
       signal.throwIfAborted()
       await Deno.mkdir(dir, { recursive: true })
       image = await deps.imageGenerator.generate(

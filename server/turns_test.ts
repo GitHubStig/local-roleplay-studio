@@ -9,7 +9,7 @@ import {
   testScenario,
   withTempDir,
 } from './testing.ts'
-import { runTurn, type TurnEvent } from './turns.ts'
+import { runTurn, sceneToPrompt, type TurnEvent } from './turns.ts'
 
 const newSession = (): Session => ({
   id: 's1',
@@ -39,7 +39,7 @@ Deno.test('runTurn commits the Opening Turn with prefixed image prompt', () =>
     )
     assertEquals(turn.index, 0)
     assertEquals(turn.image, 'turn-0.png')
-    assertEquals(images.prompts, ['studio photo, standing'])
+    assertEquals(images.prompts, ['studio photo, pose: standing'])
     assertEquals(events.map((e) => e.type), ['phase', 'text', 'phase', 'committed'])
     assertEquals((await store.load('s1'))?.turns.length, 1)
   }))
@@ -161,3 +161,15 @@ Deno.test('runTurn aborted mid-image removes nothing committed', () =>
     const files = await Array.fromAsync(Deno.readDir(join(root, 's1')))
     assertEquals(files.map((f) => f.name), ['session.json'])
   }))
+
+Deno.test('sceneToPrompt labels nested fields and skips empty ones', () => {
+  assertEquals(
+    sceneToPrompt({
+      subject: { pose: 'crouched low', expression: '' },
+      camera: { angle: 'low' },
+      set: { backdrop: 'burnt orange', props: ['stool', ''] },
+      lighting: { extras: [] },
+    }),
+    'subject pose: crouched low, camera angle: low, set backdrop: burnt orange, set props: stool',
+  )
+})
