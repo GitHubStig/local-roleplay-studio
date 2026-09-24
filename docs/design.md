@@ -122,7 +122,8 @@ in [open-threads.md](open-threads.md).
   unclear one leaves your Action there to reword. While a Turn runs,
   the text box is locked and **Cancel** replaces **Send**; a failed Turn's error shows in the
   button row. Typed text is always treated as an Action; there are no typed commands.
-  The right panel has two tabs. **Turn Log** shows a thumbnail, the Action and the Narration per
+  The right side has two panels: side by side on wide windows (1280 px and up), as tabs on
+  narrower ones. **Turn Log** shows a thumbnail, the Action and the Narration per
   Turn; clicking one shows that Turn. While an earlier Turn is shown, a pill on the image reads
   "Viewing Turn 1 of 4 · Back to latest", and the text box shows the Action that made that
   Turn, read-only (still selectable, to copy), with Send disabled; "Back to latest" brings your

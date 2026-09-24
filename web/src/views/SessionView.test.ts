@@ -198,7 +198,7 @@ describe('SessionView', () => {
     )
     const { wrapper } = await mountIt()
     await wrapper.findAll('[role=tab]')[1].trigger('click')
-    const panel = wrapper.find('[role=tabpanel]')
+    const panel = wrapper.find('[data-prompt-panel]')
     expect(panel.text()).toContain('Turn 1 · Sit')
     expect(panel.findAll('[data-diff=removed]').map((d) => d.text())).toEqual(['0, calm,'])
     expect(panel.findAll('[data-diff=added]').map((d) => d.text())).toEqual(['1, scared,'])
@@ -243,6 +243,19 @@ describe('SessionView', () => {
     const { wrapper } = await mountIt()
     await wrapper.findAll('[role=tab]')[1].trigger('click')
     expect(wrapper.find('[data-timings]').exists()).toBe(false)
+  })
+
+  it('shows Turn Log and Prompt together on wide windows, as tabs on narrow ones', async () => {
+    const { wrapper } = await mountIt()
+    const log = () => wrapper.find('[data-log-panel]').classes()
+    const prompt = () => wrapper.find('[data-prompt-panel]').classes()
+    // Both are always in the page; below xl only the selected tab's panel is displayed.
+    expect(log()).toContain('flex')
+    expect(prompt()).toEqual(expect.arrayContaining(['hidden', 'xl:flex']))
+    await wrapper.findAll('[role=tab]')[1].trigger('click')
+    expect(log()).toEqual(expect.arrayContaining(['hidden', 'xl:flex']))
+    expect(prompt()).toContain('flex')
+    expect(wrapper.find('[role=tablist]').classes()).toContain('xl:hidden')
   })
 
   it('shows the Opening prompt without any diff', async () => {

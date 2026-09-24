@@ -567,8 +567,9 @@ const promptDiff = computed(() => {
 
       </main>
 
-      <aside class="flex w-80 flex-col border-l border-line">
-        <div role="tablist" class="flex border-b border-line text-sm">
+      <!-- Narrow windows: Turn Log and Prompt as tabs. From xl up: side by side, tabs hidden. -->
+      <aside class="flex w-80 flex-col border-l border-line xl:w-auto xl:flex-row">
+        <div role="tablist" class="flex border-b border-line text-sm xl:hidden">
           <button
             v-for="tab in [{ id: 'log', label: 'Turn Log' }, { id: 'prompt', label: 'Prompt' }] as const"
             :key="tab.id"
@@ -582,7 +583,15 @@ const promptDiff = computed(() => {
           </button>
         </div>
 
-        <ol v-if="panel === 'log'" ref="log" class="flex-1 overflow-y-auto" role="tabpanel">
+        <section
+          class="min-h-0 flex-1 flex-col xl:w-72 xl:flex-none xl:border-r xl:border-line"
+          :class="panel === 'log' ? 'flex' : 'hidden xl:flex'"
+          data-log-panel
+        >
+          <h2 class="hidden border-b border-line px-4 py-2 text-sm font-medium xl:block">
+            Turn Log
+          </h2>
+          <ol ref="log" class="flex-1 overflow-y-auto" role="tabpanel">
           <li v-for="turn in session.turns" :key="turn.index" class="group relative">
             <button
               type="button"
@@ -633,9 +642,18 @@ const promptDiff = computed(() => {
             {{ pending?.detached ? 'A Turn in progress' : draft.trim() || 'Opening' }} —
             {{ phaseLabel }}
           </li>
-        </ol>
+          </ol>
+        </section>
 
-        <div v-else class="flex-1 overflow-y-auto p-4 text-sm" role="tabpanel">
+        <section
+          class="min-h-0 flex-1 flex-col xl:w-[28rem] xl:flex-none"
+          :class="panel === 'prompt' ? 'flex' : 'hidden xl:flex'"
+          data-prompt-panel
+        >
+          <h2 class="hidden border-b border-line px-4 py-2 text-sm font-medium xl:block">
+            Prompt
+          </h2>
+          <div class="flex-1 overflow-y-auto p-4 text-sm" role="tabpanel">
           <template v-if="shown">
             <p class="text-muted" :class="shown.timings ? 'mb-1' : 'mb-3'">
               Turn {{ shown.index }} · {{ shown.action ?? 'Opening' }}
@@ -683,7 +701,8 @@ const promptDiff = computed(() => {
             </details>
           </template>
           <p v-else class="text-muted">No prompt yet.</p>
-        </div>
+          </div>
+        </section>
       </aside>
     </template>
 
