@@ -29,6 +29,12 @@ export interface TurnDeps {
 const TEXT_ATTEMPTS = 2
 
 /**
+ * A fresh image file name (without extension) for Turn `index`. The random suffix means a name is
+ * never reused after an Undo, so a browser can cache images forever without showing a stale one.
+ */
+export const imageName = (index: number) => `turn-${index}-${crypto.randomUUID().slice(0, 8)}`
+
+/**
  * Describes a Scene for the Image Model as labelled phrases, e.g. `camera angle: low`, so the
  * image always shows exactly the state that is carried to the next Turn.
  */
@@ -113,7 +119,7 @@ export async function runTurn(
           seed: session.seed,
           settings: session.settings,
           dir,
-          name: `turn-${index}`,
+          name: imageName(index),
         },
         signal,
         (step, total) => emit({ type: 'progress', step, total }),
@@ -140,4 +146,31 @@ export async function runTurn(
     if (wroteImage) await Deno.remove(join(dir, image!)).catch(() => {})
     throw err
   }
+}
+
+export class UndoError extends Error {}
+
+/**
+ * Removes the latest Turn, so the previous Turn's Scene is current again. `index` must name the
+ * latest Turn, so a repeated request can't undo two. The Opening Turn can't be undone. The
+ * image file is deleted only when no remaining Turn still shows it.
+ */
+export async function undoLatestTurn(
+  store: SessionStore,
+  session: Session,
+  index: number,
+): Promise<Session> {
+  const latest = session.turns.at(-1)
+  if (!latest || latest.index !== index) {
+    throw new UndoError(`Turn ${index} is not the latest Turn`)
+  }
+  if (session.turns.length === 1) throw new UndoError("The Opening Turn can't be undone")
+
+  const turns = session.turns.slice(0, -1)
+  const updated: Session = { ...session, turns }
+  await store.save(updated)
+  if (!turns.some((t) => t.image === latest.image)) {
+    await Deno.remove(join(store.dir(session.id), latest.image)).catch(() => {})
+  }
+  return updated
 }

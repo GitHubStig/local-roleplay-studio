@@ -133,6 +133,10 @@ export const getSession = (id: string) => request<Session>(`/api/sessions/${id}`
 
 export const endSession = (id: string) => post<Session>(`/api/sessions/${id}/end`)
 
+/** Undoes the latest Turn, which must be Turn `index`; returns the updated Session. */
+export const undoTurn = (id: string, index: number) =>
+  request<Session>(`/api/sessions/${id}/turns/${index}`, { method: 'DELETE' })
+
 export async function cancelTurn(id: string): Promise<void> {
   await fetch(`/api/sessions/${id}/cancel`, { method: 'POST' })
 }

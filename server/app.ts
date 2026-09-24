@@ -5,7 +5,7 @@ import { type ScenarioLibrary, summarise } from './scenario.ts'
 import type { Session, SessionStore } from './session.ts'
 import { type SettingsStore, SIZE_PRESETS, validateSettings } from './settings.ts'
 import type { TextModel } from './textModel.ts'
-import { runTurn, type TurnEvent } from './turns.ts'
+import { runTurn, type TurnEvent, UndoError, undoLatestTurn } from './turns.ts'
 
 export interface AppDeps {
   settings: SettingsStore
@@ -25,7 +25,8 @@ type Route = [
   handle: (req: Request, p: Params) => Promise<Response>,
 ]
 
-const IMAGE_FILE = /^turn-\d+\.(png|svg)$/
+/** Turn images: `turn-3-1a2b3c4d.png`, or `turn-3.png` from Sessions saved before unique names. */
+const IMAGE_FILE = /^turn-\d+(-[0-9a-f]{8})?\.(png|svg)$/
 const CONTENT_TYPES: Record<string, string> = { '.png': 'image/png', '.svg': 'image/svg+xml' }
 
 const json = (body: unknown, status = 200) => Response.json(body, { status })
@@ -204,6 +205,20 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     ['POST', new URLPattern({ pathname: '/api/sessions/:id/cancel' }), (_req, p) => {
       activeTurns.get(p.id!)?.abort(new Error('Cancelled by player'))
       return Promise.resolve(new Response(null, { status: 204 }))
+    }],
+
+    ['DELETE', new URLPattern({ pathname: '/api/sessions/:id/turns/:index' }), async (_req, p) => {
+      const session = await loadActive(p.id!)
+      if (session instanceof Response) return session
+      if (activeTurns.has(session.id)) return error('Cancel the Turn in progress first', 409)
+      const index = Number(p.index)
+      if (!Number.isInteger(index)) return error('Turn index must be a number', 400)
+      try {
+        return json(await undoLatestTurn(deps.sessions, session, index))
+      } catch (err) {
+        if (err instanceof UndoError) return error(err.message, 409)
+        throw err
+      }
     }],
 
     ['POST', new URLPattern({ pathname: '/api/sessions/:id/end' }), async (_req, p) => {

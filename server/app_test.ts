@@ -1,4 +1,4 @@
-import { assertEquals } from '@std/assert'
+import { assertEquals, assertMatch } from '@std/assert'
 import { createHandler } from './app.ts'
 import type { ImageGenerator } from './imageGenerator.ts'
 import { dirSessionStore } from './session.ts'
@@ -177,9 +177,10 @@ Deno.test('Turns stream progress and commit, then serve their image', () =>
     })
 
     const session = await (await call('GET', '/api/sessions/s1')).json()
-    assertEquals(session.turns.map((t: { image: string }) => t.image), ['turn-0.png', 'turn-1.png'])
+    const [firstImage, secondImage] = session.turns.map((t: { image: string }) => t.image)
+    assertMatch(firstImage, /^turn-0-[0-9a-f]{8}\.png$/)
 
-    const image = await call('GET', '/api/sessions/s1/images/turn-1.png')
+    const image = await call('GET', `/api/sessions/s1/images/${secondImage}`)
     assertEquals(image.headers.get('Content-Type'), 'image/png')
     assertEquals(await image.text(), 'studio photo, pose: sitting')
     assertEquals((await call('GET', '/api/sessions/s1/images/session.json')).status, 404)
@@ -238,4 +239,42 @@ Deno.test('End closes a Session to further Turns', () =>
     assertEquals(ended.status, 'ended')
     assertEquals((await call('POST', '/api/sessions/s1/turns', { action: 'Sit' })).status, 409)
     assertEquals((await call('POST', '/api/sessions/s1/end')).status, 409)
+  }))
+
+Deno.test('DELETE /api/sessions/:id/turns/:index undoes only the latest Turn', () =>
+  withTempDir(async (root) => {
+    const { call } = setup({
+      root,
+      settings: { textModel: 'x' },
+      textModel: scriptedTextModel([reply('standing'), reply('sitting')]),
+    })
+    await call('POST', '/api/sessions', { scenarioId: 'test' })
+    await readEvents(await call('POST', '/api/sessions/s1/turns', {}))
+    await readEvents(await call('POST', '/api/sessions/s1/turns', { action: 'Sit' }))
+
+    assertEquals((await call('DELETE', '/api/sessions/s1/turns/0')).status, 409)
+    assertEquals((await call('DELETE', '/api/sessions/s1/turns/x')).status, 400)
+    const res = await call('DELETE', '/api/sessions/s1/turns/1')
+    assertEquals(res.status, 200)
+    assertEquals((await res.json()).turns.length, 1)
+    assertEquals((await call('DELETE', '/api/sessions/s1/turns/1')).status, 409)
+    assertEquals((await call('DELETE', '/api/sessions/s1/turns/0')).status, 409)
+  }))
+
+Deno.test('Undo is refused while a Turn is in progress', () =>
+  withTempDir(async (root) => {
+    const { call } = setup({
+      root,
+      settings: { textModel: 'x' },
+      textModel: scriptedTextModel([reply('standing'), reply('sitting')]),
+      imageGenerator: fakeImageGenerator({ hang: true }),
+    })
+    await call('POST', '/api/sessions', { scenarioId: 'test' })
+    const res = await call('POST', '/api/sessions/s1/turns', {})
+    const reader = res.body!.pipeThrough(new TextDecoderStream()).getReader()
+    let seen = ''
+    while (!seen.includes('"phase":"image"')) seen += (await reader.read()).value
+    assertEquals((await call('DELETE', '/api/sessions/s1/turns/0')).status, 409)
+    await call('POST', '/api/sessions/s1/cancel')
+    for (let r = await reader.read(); !r.done; r = await reader.read()) { /* drain */ }
   }))

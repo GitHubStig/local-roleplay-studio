@@ -14,6 +14,7 @@ import {
   type Session,
   streamTurn,
   type TurnEvent,
+  undoTurn,
 } from '../api'
 
 const props = defineProps<{ id: string }>()
@@ -154,6 +155,27 @@ function onKeydown(e: KeyboardEvent) {
 async function cancel() {
   if (pending.value) pending.value = { ...pending.value, cancelling: true }
   await cancelTurn(props.id)
+}
+
+/** Undo is possible for any Turn after the Opening Turn, while nothing is running. */
+const canUndo = computed(() => active.value && !busy.value && (session.value?.turns.length ?? 0) > 1)
+const undoing = ref(false)
+
+/** Removes the latest Turn and puts its Direction back in the text box to edit and resend. */
+async function undo() {
+  const latest = session.value?.turns.at(-1)
+  if (!canUndo.value || !latest || undoing.value) return
+  undoing.value = true
+  turnError.value = ''
+  try {
+    session.value = await undoTurn(props.id, latest.index)
+    viewing.value = null
+    if (!draft.value.trim() && latest.action) draft.value = latest.action
+  } catch (err) {
+    turnError.value = (err as Error).message
+  } finally {
+    undoing.value = false
+  }
 }
 
 async function end() {
@@ -366,6 +388,15 @@ const sceneEntries = (scene: Scene) =>
             <button
               type="button"
               class="rounded-lg border border-line px-3 py-2 text-sm disabled:opacity-50"
+              :disabled="!canUndo || undoing"
+              title="Undo the latest Turn and put its Direction back in the box"
+              @click="undo"
+            >
+              Undo
+            </button>
+            <button
+              type="button"
+              class="rounded-lg border border-line px-3 py-2 text-sm disabled:opacity-50"
               :disabled="busy"
               @click="reset"
             >
@@ -406,7 +437,7 @@ const sceneEntries = (scene: Scene) =>
         </div>
 
         <ol v-if="panel === 'log'" ref="log" class="flex-1 overflow-y-auto" role="tabpanel">
-          <li v-for="turn in session.turns" :key="turn.index">
+          <li v-for="turn in session.turns" :key="turn.index" class="group relative">
             <button
               type="button"
               class="flex w-full gap-3 border-b border-line p-3 text-left text-sm hover:bg-surface"
@@ -439,6 +470,17 @@ const sceneEntries = (scene: Scene) =>
                   {{ turn.narration }}
                 </span>
               </span>
+            </button>
+            <button
+              v-if="canUndo && turn.index === session.turns.at(-1)?.index"
+              type="button"
+              class="absolute right-2 top-2 rounded border border-line bg-canvas px-2 py-0.5 text-xs text-muted opacity-0 hover:text-fg focus:opacity-100 group-hover:opacity-100 disabled:opacity-50"
+              :disabled="undoing"
+              title="Undo this Turn"
+              data-undo
+              @click="undo"
+            >
+              Undo
             </button>
           </li>
           <li v-if="busy" class="p-3 text-sm italic text-muted">

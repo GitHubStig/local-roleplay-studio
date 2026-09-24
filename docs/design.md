@@ -108,6 +108,13 @@ in [open-threads.md](open-threads.md).
 - **Theme:** Light (a parchment tint), Dark or System, remembered per browser. It's a display
   preference, not a Setting.
 
+**Undo** removes the latest Turn: the previous Turn's Scene is current again, its image is
+deleted unless an earlier Turn still shows it, and the undone Direction goes back into the text
+box (unless you've started typing a new one). It's offered in the button row and on the latest
+Turn in the Turn Log, never for the Opening Turn, and never while a Turn runs. Image files carry
+a random suffix, so a Turn made after an Undo never reuses the undone Turn's file name, and the
+browser can't show a stale cached image.
+
 **Reset** ends the current Session (it stays on disk) and starts a new one from the same
 Scenario. **End** marks the Session ended; it becomes read-only.
 
@@ -117,7 +124,7 @@ Scenario. **End** marks the Session ended; it becomes read-only.
 |---|---|---|
 | Settings | `settings.json` | Missing, corrupt or invalid → defaults; missing fields filled from defaults |
 | Scenarios | `scenarios/*.md` | Read fresh on every request, so edits need no restart |
-| Sessions | `sessions/<id>/session.json` + `turn-N.png` | Id is `YYYYMMDD-HHMMSS-xxxx`; files are written to a temp file, then renamed |
+| Sessions | `sessions/<id>/session.json` + `turn-N-xxxxxxxx.png` | Id is `YYYYMMDD-HHMMSS-xxxx`; files are written to a temp file, then renamed |
 
 ## API
 
@@ -133,6 +140,7 @@ All under `/api`; the Vite dev server proxies it to the Deno server.
 | `GET /sessions/:id` | A Session with its Turns |
 | `POST /sessions/:id/turns` | Run a Turn (`{ action }`, or `{}` for the Opening Turn) as a server-sent event stream |
 | `POST /sessions/:id/cancel` | Cancel the Turn in progress |
+| `DELETE /sessions/:id/turns/:index` | Undo the latest Turn; `:index` must name it (`409` otherwise, and for the Opening Turn or while a Turn runs) |
 | `POST /sessions/:id/end` | End the Session |
 | `GET /sessions/:id/images/:file` | A Turn's image |
 

@@ -58,6 +58,10 @@ _Avoid_: History, conversation, chat log
 Abandoning the Turn in progress so the Scene stays as it was; cancelling the Opening Turn abandons the Session.
 _Avoid_: Abort, stop, undo
 
+**Undo**:
+Removing the latest Turn so the Scene is the previous Turn's again; the Opening Turn can't be undone.
+_Avoid_: Delete turn, revert, rollback
+
 **End**:
 Closing a Session for good, invoked only by a button, never by typing an Action.
 _Avoid_: Stop, quit

@@ -11,6 +11,7 @@ vi.mock('../api', async (importOriginal) => ({
   cancelTurn: vi.fn(),
   endSession: vi.fn(),
   createSession: vi.fn(),
+  undoTurn: vi.fn(),
 }))
 
 const turn = (index: number, action: string | null, extra: Partial<api.Turn> = {}): api.Turn => ({
@@ -197,6 +198,53 @@ describe('SessionView', () => {
     expect(log).toContain("Didn't understand")
     await wrapper.findAll('aside [data-turn]')[0].trigger('click')
     expect(wrapper.find('[data-outcome]').exists()).toBe(false)
+  })
+
+  it('undoes the latest Turn and puts its Direction back in the text box', async () => {
+    vi.mocked(api.getSession).mockResolvedValue(session([turn(0, null), turn(1, 'Sit down')]))
+    vi.mocked(api.undoTurn).mockResolvedValue(session([turn(0, null)]))
+    const { wrapper } = await mountIt()
+    await buttonNamed(wrapper, 'Undo').trigger('click')
+    await loadImages()
+    expect(api.undoTurn).toHaveBeenCalledWith('s1', 1)
+    expect(wrapper.findAll('aside [data-turn]')).toHaveLength(1)
+    expect((wrapper.find('textarea').element as HTMLTextAreaElement).value).toBe('Sit down')
+    expect(wrapper.find('main img').attributes('src')).toContain('turn-0.png')
+  })
+
+  it('keeps a half-typed Direction instead of overwriting it on Undo', async () => {
+    vi.mocked(api.getSession).mockResolvedValue(session([turn(0, null), turn(1, 'Sit down')]))
+    vi.mocked(api.undoTurn).mockResolvedValue(session([turn(0, null)]))
+    const { wrapper } = await mountIt()
+    await wrapper.find('textarea').setValue('Kneel')
+    await wrapper.find('[data-undo]').trigger('click')
+    await flushPromises()
+    expect((wrapper.find('textarea').element as HTMLTextAreaElement).value).toBe('Kneel')
+  })
+
+  it('offers Undo only after the Opening Turn, on the latest Turn', async () => {
+    const { wrapper } = await mountIt()
+    expect(buttonNamed(wrapper, 'Undo').attributes('disabled')).toBeDefined()
+    expect(wrapper.find('[data-undo]').exists()).toBe(false)
+
+    vi.mocked(api.getSession).mockResolvedValue(
+      session([turn(0, null), turn(1, 'Sit'), turn(2, 'Stand')]),
+    )
+    const { wrapper: longer } = await mountIt()
+    expect(buttonNamed(longer, 'Undo').attributes('disabled')).toBeUndefined()
+    expect(longer.findAll('[data-undo]')).toHaveLength(1)
+    expect(longer.findAll('aside li')[2].find('[data-undo]').exists()).toBe(true)
+  })
+
+  it('shows why an Undo was refused', async () => {
+    vi.mocked(api.getSession).mockResolvedValue(session([turn(0, null), turn(1, 'Sit')]))
+    vi.mocked(api.undoTurn).mockRejectedValue(
+      new api.ApiError('Turn 1 is not the latest Turn', 409),
+    )
+    const { wrapper } = await mountIt()
+    await buttonNamed(wrapper, 'Undo').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[role=alert]').text()).toBe('Turn 1 is not the latest Turn')
   })
 
   it('shows an ended Session as read-only', async () => {
