@@ -262,7 +262,8 @@ async function runTurn(action: string | null) {
 
 function submit() {
   const action = draft.value.trim()
-  if (action && !busy.value) runTurn(action)
+  // While an earlier Turn is shown, the box holds that Turn's Action, not the draft.
+  if (action && !busy.value && !viewingOlder.value) runTurn(action)
 }
 
 function onKeydown(e: KeyboardEvent) {
@@ -513,12 +514,21 @@ const promptDiff = computed(() => {
             :class="{ 'render-sweep': writing }"
             :data-writing="writing ? '' : undefined"
           >
+            <!-- An earlier Turn shows the Action that made it, read-only (still selectable to copy). -->
             <textarea
+              v-if="viewingOlder"
+              :value="shown!.action ?? ''"
+              class="h-24 flex-1 cursor-default resize-none rounded-lg border border-dashed border-line bg-canvas p-3 text-muted"
+              placeholder="The Opening Turn has no Action."
+              readonly
+              :aria-label="`The Action sent on ${turnName(shown!.index)}`"
+              data-past-action
+            />
+            <textarea
+              v-else
               v-model="draft"
               class="h-24 flex-1 resize-none rounded-lg border border-line bg-surface p-3 disabled:opacity-60"
-              :placeholder="viewingOlder
-              ? `Your change continues from ${turnName(latest!.index)}, the latest Turn…`
-              : 'What to change… (Enter to send, Shift+Enter for a new line)'"
+              placeholder="What to change… (Enter to send, Shift+Enter for a new line)"
               :disabled="busy"
               @keydown="onKeydown"
             />
@@ -528,7 +538,7 @@ const promptDiff = computed(() => {
               v-if="!busy"
               type="button"
               class="rounded-lg bg-fg px-4 py-2 font-medium text-canvas disabled:opacity-50"
-              :disabled="!draft.trim()"
+              :disabled="!draft.trim() || viewingOlder"
               @click="submit"
             >
               Send

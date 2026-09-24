@@ -298,19 +298,31 @@ describe('SessionView', () => {
     const { wrapper } = await mountIt()
     expect(wrapper.find('[data-viewing]').exists()).toBe(false)
 
+    await wrapper.find('textarea').setValue('my draft')
+
     await wrapper.findAll('aside [data-turn]')[1].trigger('click')
     expect(wrapper.find('[data-viewing]').text()).toContain('Viewing Turn 1 of 4')
-    expect(wrapper.find('textarea').attributes('placeholder')).toContain(
-      'continues from Turn 4, the latest Turn',
-    )
+    const past = wrapper.find('[data-past-action]')
+    expect((past.element as HTMLTextAreaElement).value).toBe('Sit')
+    expect(past.attributes('readonly')).toBeDefined()
+    expect(buttonNamed(wrapper, 'Send').attributes('disabled')).toBeDefined()
+    // Enter in the read-only box must not send the hidden draft.
+    await past.trigger('keydown', { key: 'Enter' })
+    expect(api.streamTurn).not.toHaveBeenCalled()
 
     await wrapper.findAll('aside [data-turn]')[0].trigger('click')
     expect(wrapper.find('[data-viewing]').text()).toContain('Viewing the Opening of 4')
+    expect((wrapper.find('[data-past-action]').element as HTMLTextAreaElement).value).toBe('')
+    expect(wrapper.find('[data-past-action]').attributes('placeholder')).toBe(
+      'The Opening Turn has no Action.',
+    )
 
     await buttonNamed(wrapper, 'Back to latest').trigger('click')
     await loadImages()
     expect(wrapper.find('[data-viewing]').exists()).toBe(false)
     expect(wrapper.find('main img').attributes('src')).toContain('turn-4.png')
+    expect((wrapper.find('textarea').element as HTMLTextAreaElement).value).toBe('my draft')
+    expect(buttonNamed(wrapper, 'Send').attributes('disabled')).toBeUndefined()
   })
 
   it('streams the thinking in the caption area until the Narration arrives', async () => {

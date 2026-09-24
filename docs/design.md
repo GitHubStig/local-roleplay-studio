@@ -123,8 +123,9 @@ in [open-threads.md](open-threads.md).
   button row. Typed text is always treated as an Action; there are no typed commands.
   The right panel has two tabs. **Turn Log** shows a thumbnail, the Action and the Narration per
   Turn; clicking one shows that Turn. While an earlier Turn is shown, a pill on the image reads
-  "Viewing Turn 1 of 4 · Back to latest", and the text box says the next Action continues from
-  the latest Turn: Actions always build on the latest Turn, never on the one being viewed. Declined Turns are labelled and tinted amber, Unclear
+  "Viewing Turn 1 of 4 · Back to latest", and the text box shows the Action that made that
+  Turn, read-only (still selectable, to copy), with Send disabled; "Back to latest" brings your
+  draft back. Actions always build on the latest Turn, never on the one being viewed. Declined Turns are labelled and tinted amber, Unclear
   Turns ("Didn't understand") blue, both in the log and on the caption. **Prompt** shows the
   viewed Turn's Image Prompt as a word-level diff against the Turn before it (added words
   highlighted, removed words struck through), then its thinking (collapsed, when there was any).
