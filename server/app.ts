@@ -60,8 +60,112 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
   /** One image render at a time, across all Sessions. */
   const renderQueue = new RenderQueue()
 
+  /**
+   * What each Session is busy with. Every change to a Session (a Turn, Undo, delete) takes this
+   * lock *before* reading the Session, so no request ever acts on a copy another request is about
+   * to change.
+   */
+  const locks = new Map<string, 'turn' | 'undo' | 'delete'>()
+  const BUSY_MESSAGES = {
+    turn: 'A Turn is already in progress',
+    undo: 'An Undo is in progress',
+    delete: 'This Session is being deleted',
+  } as const
+
+  /** Takes the Session's lock, or returns a 409 saying what holds it. */
+  function lock(id: string, what: 'turn' | 'undo' | 'delete'): Response | null {
+    const holder = locks.get(id)
+    if (holder) return error(BUSY_MESSAGES[holder], 409)
+    locks.set(id, what)
+    return null
+  }
+  const unlock = (id: string) => locks.delete(id)
+
   async function loadSession(id: string): Promise<Session | Response> {
     return (await deps.sessions.load(id)) ?? error('Session not found', 404)
+  }
+
+  /**
+   * Validates a Turn request and starts streaming it. The caller holds the Session's lock;
+   * `onStreaming` hands it over to the stream, which releases it when the Turn ends.
+   */
+  async function startTurn(req: Request, id: string, onStreaming: () => void) {
+    const session = await loadSession(id)
+    if (session instanceof Response) return session
+    const body = await readJson(req) as { action?: unknown } | undefined
+    const opening = session.turns.length === 0
+    let action: string | null = null
+    if (!opening) {
+      if (typeof body?.action !== 'string' || !body.action.trim()) {
+        return error('action is required', 400)
+      }
+      action = body.action.trim()
+    }
+    const scenario = await deps.scenarios.get(session.scenarioId)
+    if (!scenario) return error(`Scenario "${session.scenarioId}" no longer exists`, 409)
+
+    const controller = new AbortController()
+    const active = { controller, phase: 'text' as 'text' | 'queued' | 'image' }
+    activeTurns.set(session.id, active)
+    const encoder = new TextEncoder()
+
+    const stream = new ReadableStream<Uint8Array>({
+      async start(sink) {
+        const send = (event: string, data: unknown) => {
+          try {
+            sink.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`))
+          } catch {
+            // Client already gone; the Turn is being aborted.
+          }
+        }
+        try {
+          await runTurn(
+            {
+              store: deps.sessions,
+              textModel: deps.textModel(session.settings.textModel),
+              imageGenerator: deps.imageGenerator,
+              renderQueue,
+            },
+            session,
+            scenario,
+            action,
+            (e: TurnEvent) => {
+              if (e.type === 'phase') active.phase = e.phase
+              send(e.type, e)
+            },
+            controller.signal,
+          )
+        } catch (err) {
+          // A Session whose Opening Turn never committed never started.
+          if (opening) await deps.sessions.remove(session.id)
+          const sessionDiscarded = opening
+          if (controller.signal.aborted) {
+            send('cancelled', { type: 'cancelled', sessionDiscarded })
+          } else {
+            send('failed', { type: 'failed', message: (err as Error).message, sessionDiscarded })
+          }
+        } finally {
+          activeTurns.delete(session.id)
+          unlock(session.id)
+          try {
+            sink.close()
+          } catch {
+            // Already closed by a disconnect.
+          }
+        }
+      },
+      cancel() {
+        controller.abort(new Error('Client disconnected'))
+      },
+    })
+
+    onStreaming()
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+      },
+    })
   }
 
   const routes: Route[] = [
@@ -149,11 +253,16 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     }],
 
     ['DELETE', new URLPattern({ pathname: '/api/sessions/:id' }), async (_req, p) => {
-      const session = await loadSession(p.id!)
-      if (session instanceof Response) return session
-      if (activeTurns.has(session.id)) return error('Cancel the Turn in progress first', 409)
-      await deps.sessions.remove(session.id)
-      return new Response(null, { status: 204 })
+      const busy = lock(p.id!, 'delete')
+      if (busy) return busy
+      try {
+        const session = await loadSession(p.id!)
+        if (session instanceof Response) return session
+        await deps.sessions.remove(session.id)
+        return new Response(null, { status: 204 })
+      } finally {
+        unlock(p.id!)
+      }
     }],
 
     ['GET', new URLPattern({ pathname: '/api/sessions/:id' }), async (_req, p) => {
@@ -162,82 +271,15 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     }],
 
     ['POST', new URLPattern({ pathname: '/api/sessions/:id/turns' }), async (req, p) => {
-      const session = await loadSession(p.id!)
-      if (session instanceof Response) return session
-      if (activeTurns.has(session.id)) return error('A Turn is already in progress', 409)
-
-      const body = await readJson(req) as { action?: unknown } | undefined
-      const opening = session.turns.length === 0
-      let action: string | null = null
-      if (!opening) {
-        if (typeof body?.action !== 'string' || !body.action.trim()) {
-          return error('action is required', 400)
-        }
-        action = body.action.trim()
+      const busy = lock(p.id!, 'turn')
+      if (busy) return busy
+      // Held until the Turn's stream finishes; released here if we return before streaming.
+      let streaming = false
+      try {
+        return await startTurn(req, p.id!, () => (streaming = true))
+      } finally {
+        if (!streaming) unlock(p.id!)
       }
-      const scenario = await deps.scenarios.get(session.scenarioId)
-      if (!scenario) return error(`Scenario "${session.scenarioId}" no longer exists`, 409)
-
-      const controller = new AbortController()
-      const active = { controller, phase: 'text' as 'text' | 'queued' | 'image' }
-      activeTurns.set(session.id, active)
-      const encoder = new TextEncoder()
-
-      const stream = new ReadableStream<Uint8Array>({
-        async start(sink) {
-          const send = (event: string, data: unknown) => {
-            try {
-              sink.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`))
-            } catch {
-              // Client already gone; the Turn is being aborted.
-            }
-          }
-          try {
-            await runTurn(
-              {
-                store: deps.sessions,
-                textModel: deps.textModel(session.settings.textModel),
-                imageGenerator: deps.imageGenerator,
-                renderQueue,
-              },
-              session,
-              scenario,
-              action,
-              (e: TurnEvent) => {
-                if (e.type === 'phase') active.phase = e.phase
-                send(e.type, e)
-              },
-              controller.signal,
-            )
-          } catch (err) {
-            // A Session whose Opening Turn never committed never started.
-            if (opening) await deps.sessions.remove(session.id)
-            const sessionDiscarded = opening
-            if (controller.signal.aborted) {
-              send('cancelled', { type: 'cancelled', sessionDiscarded })
-            } else {
-              send('failed', { type: 'failed', message: (err as Error).message, sessionDiscarded })
-            }
-          } finally {
-            activeTurns.delete(session.id)
-            try {
-              sink.close()
-            } catch {
-              // Already closed by a disconnect.
-            }
-          }
-        },
-        cancel() {
-          controller.abort(new Error('Client disconnected'))
-        },
-      })
-
-      return new Response(stream, {
-        headers: {
-          'Content-Type': 'text/event-stream',
-          'Cache-Control': 'no-cache',
-        },
-      })
     }],
 
     ['POST', new URLPattern({ pathname: '/api/sessions/:id/cancel' }), (_req, p) => {
@@ -246,16 +288,19 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     }],
 
     ['DELETE', new URLPattern({ pathname: '/api/sessions/:id/turns/:index' }), async (_req, p) => {
-      const session = await loadSession(p.id!)
-      if (session instanceof Response) return session
-      if (activeTurns.has(session.id)) return error('Cancel the Turn in progress first', 409)
       const index = Number(p.index)
       if (!Number.isInteger(index)) return error('Turn index must be a number', 400)
+      const busy = lock(p.id!, 'undo')
+      if (busy) return busy
       try {
+        const session = await loadSession(p.id!)
+        if (session instanceof Response) return session
         return json(await undoLatestTurn(deps.sessions, session, index))
       } catch (err) {
         if (err instanceof UndoError) return error(err.message, 409)
         throw err
+      } finally {
+        unlock(p.id!)
       }
     }],
 

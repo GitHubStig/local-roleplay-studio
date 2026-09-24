@@ -66,7 +66,10 @@ While a Turn runs, the new Scene text is shown **provisionally** (dimmed) as soo
 Model returns, with "Rendering the image… 2/4" beneath it. It becomes real only when the image
 arrives.
 
-Only one Turn runs per Session at a time; the server refuses a second with `409`.
+Only one Turn runs per Session at a time; the server refuses a second with `409`. Turns, Undo and
+deleting a Session all take a per-Session lock *before* reading the Session, so two requests can
+never act on the same Session at once (e.g. two tabs sending at the same moment, or an Undo
+racing a Turn).
 
 ## Consistency
 
