@@ -65,11 +65,11 @@ _Avoid_: Delete turn, revert, rollback
 ### Photoshoot
 
 **Subject**:
-The fictional adult professional being photographed; a character with their own voice who can decline a direction in character.
+The fictional adult professional being photographed; a working model who follows every Direction within the Shoot Brief's limits, with a voice of their own.
 _Avoid_: Model, victim, character, person
 
 **Shoot Brief**:
-The Setup of a photoshoot Scenario: the location, the Subject's appearance and wardrobe, and the tone.
+The Setup of a photoshoot Scenario: the location, the Subject's appearance and wardrobe (including what may change), the tone, and the limits no Direction can cross.
 _Avoid_: Brief, prompt, goal, objectives
 
 **Direction**:
