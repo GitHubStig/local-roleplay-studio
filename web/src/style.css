@@ -58,6 +58,11 @@
   }
 }
 
+/* The ring is sized to the element itself, never to some ancestor further up. */
+.render-sweep {
+  position: relative;
+}
+
 .render-sweep::after {
   content: '';
   position: absolute;

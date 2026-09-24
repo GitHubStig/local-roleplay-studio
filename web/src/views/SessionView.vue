@@ -81,7 +81,7 @@ const shown = computed(() => {
   return viewing.value === null ? turns.at(-1) : turns[viewing.value]
 })
 const latest = computed(() => session.value?.turns.at(-1))
-/** Looking at an earlier Turn; the next Direction still continues from the latest one. */
+/** Looking at an earlier Turn; the next Action still continues from the latest one. */
 const viewingOlder = computed(() => !!shown.value && shown.value.index !== latest.value?.index)
 const turnName = (index: number) => (index === 0 ? 'the Opening' : `Turn ${index}`)
 
@@ -166,7 +166,7 @@ function follow() {
 }
 onBeforeUnmount(() => clearTimeout(followTimer))
 
-// --- The unsent Direction, remembered per Session so it survives a reload.
+// --- The unsent Action, remembered per Session so it survives a reload.
 const draftKey = `draft:${props.id}`
 try {
   draft.value = localStorage.getItem(draftKey) ?? ''
@@ -275,7 +275,7 @@ async function cancel() {
 const canUndo = computed(() => !busy.value && (session.value?.turns.length ?? 0) > 1)
 const undoing = ref(false)
 
-/** Removes the latest Turn and puts its Direction back in the text box to edit and resend. */
+/** Removes the latest Turn and puts its Action back in the text box to edit and resend. */
 async function undo() {
   const latest = session.value?.turns.at(-1)
   if (!canUndo.value || !latest || undoing.value) return
@@ -291,6 +291,9 @@ async function undo() {
     undoing.value = false
   }
 }
+
+/** The text box's border sweeps while the Text Model writes the new prompt. */
+const writing = computed(() => pending.value?.phase === 'text' && !pending.value.cancelling)
 
 /** The frame's border sweeps while an image renders (or waits to), until the new one lands. */
 const renderingPhase = computed(() =>
@@ -498,15 +501,22 @@ const promptDiff = computed(() => {
         </section>
 
         <div class="flex shrink-0 flex-col gap-2">
-          <textarea
-            v-model="draft"
-            class="h-24 resize-none rounded-lg border border-line bg-surface p-3 disabled:opacity-60"
-            :placeholder="viewingOlder
-            ? `Your Direction continues from ${turnName(latest!.index)}, the latest Turn…`
-            : 'Your Direction… (Enter to send, Shift+Enter for a new line)'"
-            :disabled="busy"
-            @keydown="onKeydown"
-          />
+          <!-- The sweep shows here while the Text Model writes, then moves to the image. -->
+          <div
+            class="flex rounded-lg"
+            :class="{ 'render-sweep': writing }"
+            :data-writing="writing ? '' : undefined"
+          >
+            <textarea
+              v-model="draft"
+              class="h-24 flex-1 resize-none rounded-lg border border-line bg-surface p-3 disabled:opacity-60"
+              :placeholder="viewingOlder
+              ? `Your change continues from ${turnName(latest!.index)}, the latest Turn…`
+              : 'What to change… (Enter to send, Shift+Enter for a new line)'"
+              :disabled="busy"
+              @keydown="onKeydown"
+            />
+          </div>
           <div class="flex items-center gap-2">
             <button
               v-if="!busy"
@@ -537,7 +547,7 @@ const promptDiff = computed(() => {
               type="button"
               class="rounded-lg border border-line px-3 py-2 text-sm disabled:opacity-50"
               :disabled="!canUndo || undoing"
-              title="Undo the latest Turn and put its Direction back in the box"
+              title="Undo the latest Turn and put its Action back in the box"
               @click="undo"
             >
               Undo

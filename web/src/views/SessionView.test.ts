@@ -87,19 +87,25 @@ describe('SessionView', () => {
     })
     const { wrapper } = await mountIt()
 
+    await flushPromises()
+    expect(wrapper.find('[data-writing]').exists()).toBe(true)
+    expect(wrapper.find('[data-rendering]').exists()).toBe(false)
+
     emit({ type: 'text', narration: 'Maya arrives.', outcome: 'done', prompt: promptFor(0) })
     emit({ type: 'phase', phase: 'image' })
     emit({ type: 'progress', step: 2, total: 4 })
     await flushPromises()
     expect(wrapper.find('[data-provisional]').text()).toBe('Maya arrives.')
     expect(wrapper.find('[role=status]').text()).toContain('Rendering the image… 2/4')
-    expect(wrapper.find('.render-sweep').attributes('data-rendering')).toBe('image')
+    expect(wrapper.find('[data-rendering]').attributes('data-rendering')).toBe('image')
+    expect(wrapper.find('[data-writing]').exists()).toBe(false)
 
     emit({ type: 'committed', turn: turn(0, null, { narration: 'Maya arrives.' }) })
     finish()
     await loadImages()
     expect(wrapper.find('[data-provisional]').exists()).toBe(false)
     expect(wrapper.find('.render-sweep').exists()).toBe(false)
+    expect(wrapper.find('[data-writing]').exists()).toBe(false)
     expect(wrapper.find('img').attributes('src')).toBe('/api/sessions/s1/images/turn-0.png')
   })
 
@@ -268,7 +274,7 @@ describe('SessionView', () => {
     emit({ type: 'phase', phase: 'queued' })
     await flushPromises()
     expect(wrapper.find('[role=status]').text()).toContain('Waiting for another render')
-    expect(wrapper.find('.render-sweep').attributes('data-rendering')).toBe('queued')
+    expect(wrapper.find('[data-rendering]').attributes('data-rendering')).toBe('queued')
   })
 
   it('remembers an unsent Direction per Session', async () => {
