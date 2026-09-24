@@ -34,6 +34,28 @@ const draft = ref('')
 /** Index of the Turn shown in the main panel; null follows the latest. */
 const viewing = ref<number | null>(null)
 const log = ref<HTMLElement | null>(null)
+const panel = ref<'log' | 'scene'>('log')
+
+const CAPTION_KEY = 'caption-hidden'
+/** A per-browser viewing preference, like the theme. */
+const captionHidden = ref(readCaptionHidden())
+
+function readCaptionHidden(): boolean {
+  try {
+    return localStorage.getItem(CAPTION_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+watch(captionHidden, (hidden) => {
+  try {
+    if (hidden) localStorage.setItem(CAPTION_KEY, '1')
+    else localStorage.removeItem(CAPTION_KEY)
+  } catch {
+    // Not remembered this time; still applies until reload.
+  }
+})
 
 const busy = computed(() => pending.value !== null)
 const active = computed(() => session.value?.status === 'active')
@@ -54,7 +76,7 @@ onMounted(async () => {
   }
 })
 
-watch(() => session.value?.turns.length, async () => {
+watch([() => session.value?.turns.length, panel], async () => {
   await nextTick()
   log.value?.scrollTo({ top: log.value.scrollHeight, behavior: 'smooth' })
 })
@@ -139,6 +161,26 @@ async function reset() {
   }
 }
 
+/** Width ÷ height of this Session's images; every Turn shares one size. Portrait until known. */
+const aspect = ref(832 / 1216)
+
+function onImageLoad(e: Event) {
+  const img = e.target as HTMLImageElement
+  if (img.naturalWidth && img.naturalHeight) aspect.value = img.naturalWidth / img.naturalHeight
+}
+
+/** The largest box of the image's proportions that fits the panel (`cq*` = panel size). */
+const frameStyle = computed(() => ({
+  width: `min(100cqw, calc(100cqh * ${aspect.value}))`,
+  height: `min(100cqh, calc(100cqw / ${aspect.value}))`,
+}))
+
+/** The caption: the provisional Narration while a Turn runs, else the shown Turn's. */
+const captionText = computed(() => pending.value?.narration ?? shown.value?.narration ?? '')
+const captionDeclined = computed(() =>
+  pending.value?.narration ? pending.value.declined : shown.value?.declined
+)
+
 const phaseLabel = computed(() => {
   if (pending.value?.cancelling) return 'Cancelling…'
   if (pending.value?.phase !== 'image') return 'Writing the Scene…'
@@ -161,48 +203,72 @@ const sceneEntries = (scene: Scene) =>
 
     <template v-else-if="session">
       <main class="flex min-w-0 flex-1 flex-col gap-3 p-4">
+        <!-- The image takes all space above the fixed-height controls, so it never resizes. The
+             frame inside is sized to the image's proportions so the caption sits on the photo. -->
         <section
-          class="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-lg border border-line bg-surface"
+          class="flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-lg border border-line bg-surface [container-type:size]"
         >
-          <img
-            v-if="shown"
-            :src="imageUrl(session.id, shown.image)"
-            :alt="shown.imagePrompt"
-            class="h-full w-full object-contain"
-          />
-          <span v-else-if="!busy" class="text-muted">No image yet</span>
-          <div
-            v-if="busy"
-            class="absolute inset-x-0 bottom-0 flex items-center justify-between gap-3 bg-canvas/85 px-4 py-2 text-sm"
-            role="status"
-          >
-            <span class="animate-pulse">{{ phaseLabel }}</span>
+          <div class="relative overflow-hidden" :style="frameStyle">
+            <img
+              v-if="shown"
+              :src="imageUrl(session.id, shown.image)"
+              :alt="shown.imagePrompt"
+              class="h-full w-full object-contain"
+              @load="onImageLoad"
+            />
+            <span
+              v-else-if="!busy"
+              class="absolute inset-0 flex items-center justify-center text-muted"
+            >
+              No image yet
+            </span>
+
+            <div
+              v-if="busy"
+              class="absolute left-3 top-3 rounded-full bg-black/70 px-3 py-1 text-sm text-white"
+              role="status"
+            >
+              <span class="animate-pulse">{{ phaseLabel }}</span>
+            </div>
+
+            <template v-if="captionText">
+              <div
+                v-if="!captionHidden"
+                class="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/80 via-black/60 to-transparent px-5 pb-4 pt-12 text-white"
+              >
+                <p
+                  class="max-h-24 overflow-y-auto pr-10 text-sm leading-relaxed"
+                  :class="{
+                    'italic opacity-75': pending?.narration,
+                    'text-amber-300': captionDeclined,
+                  }"
+                  :data-provisional="pending?.narration ? '' : undefined"
+                  data-caption
+                >
+                  {{ captionText }}
+                </p>
+                <button
+                  type="button"
+                  class="absolute bottom-3 right-3 rounded px-1.5 text-xs text-white/70 hover:text-white"
+                  title="Hide caption"
+                  @click="captionHidden = true"
+                >
+                  Hide
+                </button>
+              </div>
+              <button
+                v-else
+                type="button"
+                class="absolute bottom-3 right-3 rounded-full bg-black/70 px-3 py-1 text-xs text-white"
+                @click="captionHidden = false"
+              >
+                Show caption
+              </button>
+            </template>
           </div>
         </section>
 
-        <div class="max-h-40 overflow-y-auto text-sm">
-          <p v-if="pending?.narration" class="italic text-muted" data-provisional>
-            {{ pending.narration }}
-          </p>
-          <template v-else-if="shown">
-            <p :class="{ 'text-warn': shown.declined }">{{ shown.narration }}</p>
-            <details class="mt-1 text-muted">
-              <summary class="cursor-pointer select-none">Scene details</summary>
-              <dl class="mt-1 grid grid-cols-[auto_1fr] gap-x-3">
-                <template v-for="[key, lines] in sceneEntries(shown.scene)" :key="key">
-                  <dt class="font-medium capitalize">{{ key }}</dt>
-                  <dd>
-                    <div v-for="line in lines" :key="line">{{ line }}</div>
-                  </dd>
-                </template>
-              </dl>
-            </details>
-          </template>
-        </div>
-
-        <p v-if="turnError" class="text-sm text-danger" role="alert">{{ turnError }}</p>
-
-        <div v-if="active" class="flex flex-col gap-2">
+        <div v-if="active" class="flex shrink-0 flex-col gap-2">
           <textarea
             v-model="draft"
             class="h-24 resize-none rounded-lg border border-line bg-surface p-3 disabled:opacity-60"
@@ -229,7 +295,13 @@ const sceneEntries = (scene: Scene) =>
             >
               Cancel
             </button>
-            <span class="flex-1" />
+            <p
+              class="min-w-0 flex-1 truncate text-sm text-danger"
+              :title="turnError"
+              role="alert"
+            >
+              {{ turnError }}
+            </p>
             <button
               type="button"
               class="rounded-lg border border-line px-3 py-2 text-sm disabled:opacity-50"
@@ -249,7 +321,7 @@ const sceneEntries = (scene: Scene) =>
           </div>
         </div>
 
-        <div v-else class="flex items-center gap-4 rounded-lg border border-line p-3 text-sm">
+        <div v-else class="flex shrink-0 items-center gap-4 rounded-lg border border-line p-3 text-sm">
           <span class="text-muted">This Session has ended.</span>
           <RouterLink to="/" class="rounded-lg bg-fg px-3 py-1.5 font-medium text-canvas">
             New Session
@@ -258,14 +330,28 @@ const sceneEntries = (scene: Scene) =>
       </main>
 
       <aside class="flex w-80 flex-col border-l border-line">
-        <h2 class="border-b border-line px-4 py-2 text-sm font-medium">Turn Log</h2>
-        <ol ref="log" class="flex-1 overflow-y-auto">
+        <div role="tablist" class="flex border-b border-line text-sm">
+          <button
+            v-for="tab in [{ id: 'log', label: 'Turn Log' }, { id: 'scene', label: 'Scene' }] as const"
+            :key="tab.id"
+            type="button"
+            role="tab"
+            class="flex-1 px-4 py-2 text-muted aria-selected:border-b-2 aria-selected:border-fg aria-selected:font-medium aria-selected:text-fg"
+            :aria-selected="panel === tab.id"
+            @click="panel = tab.id"
+          >
+            {{ tab.label }}
+          </button>
+        </div>
+
+        <ol v-if="panel === 'log'" ref="log" class="flex-1 overflow-y-auto" role="tabpanel">
           <li v-for="turn in session.turns" :key="turn.index">
             <button
               type="button"
               class="flex w-full gap-3 border-b border-line p-3 text-left text-sm hover:bg-surface"
               :class="{ 'bg-surface': shown?.index === turn.index }"
               :aria-current="shown?.index === turn.index"
+              data-turn
               @click="viewing = turn.index === session.turns.length - 1 ? null : turn.index"
             >
               <img
@@ -285,6 +371,25 @@ const sceneEntries = (scene: Scene) =>
             {{ draft.trim() || 'Opening' }} — {{ phaseLabel }}
           </li>
         </ol>
+
+        <div v-else class="flex-1 overflow-y-auto p-4 text-sm" role="tabpanel">
+          <template v-if="shown">
+            <p class="mb-3 text-muted">
+              Turn {{ shown.index }} · {{ shown.action ?? 'Opening' }}
+            </p>
+            <dl class="flex flex-col gap-3">
+              <div v-for="[key, lines] in sceneEntries(shown.scene)" :key="key">
+                <dt class="font-medium capitalize">{{ key }}</dt>
+                <dd v-for="line in lines" :key="line" class="text-muted">{{ line }}</dd>
+              </div>
+            </dl>
+            <details class="mt-4 text-muted">
+              <summary class="cursor-pointer select-none">Image prompt</summary>
+              <p class="mt-1 text-xs leading-relaxed">{{ shown.imagePrompt }}</p>
+            </details>
+          </template>
+          <p v-else class="text-muted">No Scene yet.</p>
+        </div>
       </aside>
     </template>
 

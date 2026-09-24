@@ -81,12 +81,16 @@ in [open-threads.md](open-threads.md).
 - **Start Session** (`/`): Scenario cards (a lone Scenario is preselected), a report of any
   Scenario files that failed to load, and the current Text and Image Models. Start is blocked,
   with the reason shown, if no Text Model is set or the chosen one is no longer installed.
-- **Session** (`/sessions/:id`): the image fills the main panel, with the Narration and an
-  expandable *Scene details* below it, then the text box. Enter sends; Shift+Enter adds a new
-  line. While a Turn runs, the text box is locked and **Cancel** replaces **Send**. **End** and
-  **Reset** are buttons only; typed text is always treated as an Action. The right panel is
-  the **Turn Log**: a thumbnail, the Action and the Narration per Turn. Clicking one shows that
-  Turn's image, and Declined Turns are tinted amber. Because the Session id is in the URL,
+- **Session** (`/sessions/:id`): the image fills everything above a fixed-height text box, so
+  it never resizes as the text changes. The Narration is a caption over the bottom of the photo
+  (provisional text shows dimmed and in italics while a Turn runs); the caption can be hidden,
+  and that choice is remembered per browser. The Turn's status ("Rendering the image… 2/4") is a
+  pill in the image's top corner. Enter sends; Shift+Enter adds a new line. While a Turn runs,
+  the text box is locked and **Cancel** replaces **Send**; a failed Turn's error shows in the
+  button row. **End** and **Reset** are buttons only; typed text is always treated as an Action.
+  The right panel has two tabs. **Turn Log** shows a thumbnail, the Action and the Narration per
+  Turn; clicking one shows that Turn, and Declined Turns are tinted amber. **Scene** shows the
+  viewed Turn's Scene fields and its image prompt. Because the Session id is in the URL,
   reloading the page keeps you in the Session.
 - **Settings** (`/settings`): Text Model (installed Ollama models, minus OCR and dedicated
   vision-language models), Image Model, steps (reset to the model's default when the Image Model

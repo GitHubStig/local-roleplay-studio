@@ -49,7 +49,11 @@ async function mountIt() {
   return { wrapper, router }
 }
 
+const buttonNamed = (wrapper: Awaited<ReturnType<typeof mountIt>>['wrapper'], name: string) =>
+  wrapper.findAll('button').find((b) => b.text() === name)!
+
 beforeEach(() => {
+  localStorage.clear()
   vi.mocked(api.streamTurn).mockReset()
   vi.mocked(api.getSession).mockResolvedValue(session([turn(0, null)]))
 })
@@ -100,7 +104,7 @@ describe('SessionView', () => {
     })
     const { wrapper } = await mountIt()
     await wrapper.find('textarea').setValue('Sit down')
-    await wrapper.find('button').trigger('click')
+    await buttonNamed(wrapper, 'Send').trigger('click')
     await flushPromises()
     expect(wrapper.find('[role=alert]').text()).toBe('mflux crashed')
     expect((wrapper.find('textarea').element as HTMLTextAreaElement).value).toBe('Sit down')
@@ -110,11 +114,10 @@ describe('SessionView', () => {
     vi.mocked(api.streamTurn).mockImplementation(() => new Promise(() => {}))
     const { wrapper } = await mountIt()
     await wrapper.find('textarea').setValue('Sit down')
-    await wrapper.find('button').trigger('click')
+    await buttonNamed(wrapper, 'Send').trigger('click')
     await flushPromises()
     expect(wrapper.find('textarea').attributes('disabled')).toBeDefined()
-    const cancel = wrapper.findAll('button').find((b) => b.text() === 'Cancel')!
-    await cancel.trigger('click')
+    await buttonNamed(wrapper, 'Cancel').trigger('click')
     expect(api.cancelTurn).toHaveBeenCalledWith('s1')
   })
 
@@ -132,8 +135,28 @@ describe('SessionView', () => {
     vi.mocked(api.getSession).mockResolvedValue(session([turn(0, null), turn(1, 'Sit')]))
     const { wrapper } = await mountIt()
     expect(wrapper.find('main img').attributes('src')).toContain('turn-1.png')
-    await wrapper.findAll('aside button')[0].trigger('click')
+    await wrapper.findAll('aside [data-turn]')[0].trigger('click')
     expect(wrapper.find('main img').attributes('src')).toContain('turn-0.png')
+  })
+
+  it('shows the Narration as a caption over the image, which can be hidden', async () => {
+    const { wrapper } = await mountIt()
+    expect(wrapper.find('[data-caption]').text()).toBe('Narration 0.')
+    await wrapper.findAll('main button').find((b) => b.text() === 'Hide')!.trigger('click')
+    expect(wrapper.find('[data-caption]').exists()).toBe(false)
+    expect(localStorage.getItem('caption-hidden')).toBe('1')
+    await wrapper.findAll('main button').find((b) => b.text() === 'Show caption')!.trigger('click')
+    expect(wrapper.find('[data-caption]').exists()).toBe(true)
+  })
+
+  it('shows the Scene of the viewed Turn in the Scene tab', async () => {
+    vi.mocked(api.getSession).mockResolvedValue(session([turn(0, null), turn(1, 'Sit')]))
+    const { wrapper } = await mountIt()
+    await wrapper.findAll('[role=tab]')[1].trigger('click')
+    const panel = wrapper.find('[role=tabpanel]')
+    expect(panel.text()).toContain('Turn 1 · Sit')
+    expect(panel.text()).toContain('pose: pose 1')
+    expect(panel.text()).toContain('prompt 1')
   })
 
   it('shows an ended Session as read-only', async () => {
