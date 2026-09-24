@@ -1,4 +1,4 @@
-import { assertEquals } from 'jsr:@std/assert@1'
+import { assertEquals } from '@std/assert'
 import { isTextModel } from './ollama.ts'
 
 const chat = ['completion', 'vision', 'tools', 'thinking']
@@ -18,7 +18,10 @@ Deno.test('isTextModel drops OCR models', () => {
 
 Deno.test('isTextModel drops dedicated vision-language models', () => {
   assertEquals(isTextModel({ name: 'qwen3-vl:4b', capabilities: chat }), false)
-  assertEquals(isTextModel({ name: 'renamed:4b', capabilities: chat, families: ['qwen3vl'] }), false)
+  assertEquals(
+    isTextModel({ name: 'renamed:4b', capabilities: chat, families: ['qwen3vl'] }),
+    false,
+  )
 })
 
 Deno.test('isTextModel drops models that cannot generate text', () => {

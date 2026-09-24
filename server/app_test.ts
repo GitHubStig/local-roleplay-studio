@@ -1,5 +1,6 @@
-import { assertEquals } from 'jsr:@std/assert@1'
+import { assertEquals } from '@std/assert'
 import { createHandler } from './app.ts'
+import { parseScenario, type ScenarioLibrary } from './scenario.ts'
 import { DEFAULT_SETTINGS, type Settings, type SettingsStore } from './settings.ts'
 
 function memoryStore(initial: Settings = { ...DEFAULT_SETTINGS }): SettingsStore & {
@@ -16,9 +17,31 @@ function memoryStore(initial: Settings = { ...DEFAULT_SETTINGS }): SettingsStore
   return store
 }
 
+const scenarioText = `---
+title: Test Shoot
+description: A short test.
+imagePrefix: studio photo
+setup: { location: a studio }
+sceneSchema: { type: object }
+---
+## System
+Rules.
+## Opening
+Start.
+`
+
+const scenarios: ScenarioLibrary = {
+  list: () =>
+    Promise.resolve({
+      scenarios: [parseScenario('test', scenarioText)],
+      errors: [{ file: 'broken.md', message: 'title must be a non-empty string' }],
+    }),
+  get: () => Promise.resolve(undefined),
+}
+
 function setup(listTextModels = () => Promise.resolve(['llama3:latest'])) {
   const settings = memoryStore()
-  return { settings, handler: createHandler({ settings, listTextModels }) }
+  return { settings, handler: createHandler({ settings, listTextModels, scenarios }) }
 }
 
 const put = (body: unknown) =>
@@ -80,4 +103,12 @@ Deno.test('GET /api/settings/options still answers when Ollama is down', async (
   const body = await res.json()
   assertEquals(body.textModels, [])
   assertEquals(body.textModelsError, 'Could not reach Ollama: connection refused')
+})
+
+Deno.test('GET /api/scenarios lists summaries and load errors', async () => {
+  const res = await setup().handler(new Request('http://localhost/api/scenarios'))
+  assertEquals(await res.json(), {
+    scenarios: [{ id: 'test', title: 'Test Shoot', description: 'A short test.' }],
+    errors: [{ file: 'broken.md', message: 'title must be a non-empty string' }],
+  })
 })

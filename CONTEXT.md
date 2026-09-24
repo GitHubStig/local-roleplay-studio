@@ -10,6 +10,10 @@ A turn-based, text-driven role-playing simulator: the player types what they do,
 A file that defines how a Session begins: the opening premise the first Scene is written from.
 _Avoid_: Prompt file, template, level
 
+**Setup**:
+The fixed facts a Scenario declares, such as place, characters and tone, that every Scene in its Sessions must stay within.
+_Avoid_: Config, context, world
+
 **Session**:
 One playthrough of a Scenario, from its opening Scene until the player ends or resets it.
 _Avoid_: Game, run, playthrough
@@ -53,7 +57,7 @@ The fictional adult professional being photographed; a character with their own 
 _Avoid_: Model, victim, character, person
 
 **Shoot Brief**:
-The fixed setup of a photoshoot Scenario — location, the Subject's appearance and wardrobe, and tone — that every Scene must stay within.
+The Setup of a photoshoot Scenario: the location, the Subject's appearance and wardrobe, and the tone.
 _Avoid_: Brief, prompt, goal, objectives
 
 **Direction**:

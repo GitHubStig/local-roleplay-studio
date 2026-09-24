@@ -1,17 +1,12 @@
+<script setup lang="ts">
+import StartSession from '../components/StartSession.vue'
+
+// Sessions arrive with the Turn engine; until then Play is the Start Session screen.
+function start(scenarioId: string) {
+  console.info(`Session start requested for Scenario "${scenarioId}"`)
+}
+</script>
+
 <template>
-  <div class="flex">
-    <main class="flex flex-1 flex-col gap-4 p-4">
-      <section
-        class="flex flex-1 items-center justify-center rounded-lg border border-line text-muted"
-      >
-        Scene image
-      </section>
-      <textarea
-        class="h-24 resize-none rounded-lg border border-line bg-surface p-3"
-        placeholder="Your Action…"
-        disabled
-      />
-    </main>
-    <aside class="w-80 border-l border-line p-4 text-muted">Turn Log</aside>
-  </div>
+  <StartSession @start="start" />
 </template>

@@ -67,3 +67,21 @@ export const saveSettings = (settings: Settings) =>
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(settings),
   })
+
+export interface ScenarioSummary {
+  id: string
+  title: string
+  description: string
+}
+
+export interface ScenarioLoadError {
+  file: string
+  message: string
+}
+
+export interface ScenarioList {
+  scenarios: ScenarioSummary[]
+  errors: ScenarioLoadError[]
+}
+
+export const getScenarios = () => request<ScenarioList>('/api/scenarios')

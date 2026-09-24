@@ -30,10 +30,13 @@ describe('saveSettings', () => {
     const fetch = vi.fn(async () => Response.json(settings))
     vi.stubGlobal('fetch', fetch)
     await expect(saveSettings(settings)).resolves.toEqual(settings)
-    expect(fetch).toHaveBeenCalledWith('/api/settings', expect.objectContaining({
-      method: 'PUT',
-      body: JSON.stringify(settings),
-    }))
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/settings',
+      expect.objectContaining({
+        method: 'PUT',
+        body: JSON.stringify(settings),
+      }),
+    )
   })
 
   it('surfaces validation issues from the server', async () => {

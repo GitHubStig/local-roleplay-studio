@@ -1,9 +1,11 @@
 import { IMAGE_MODELS } from './imageModels.ts'
-import { SIZE_PRESETS, type SettingsStore, validateSettings } from './settings.ts'
+import { type ScenarioLibrary, summarise } from './scenario.ts'
+import { type SettingsStore, SIZE_PRESETS, validateSettings } from './settings.ts'
 
 export interface AppDeps {
   settings: SettingsStore
   listTextModels: () => Promise<string[]>
+  scenarios: ScenarioLibrary
 }
 
 export function createHandler(deps: AppDeps): (req: Request) => Promise<Response> {
@@ -33,6 +35,11 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
         }
         await deps.settings.save(result.settings)
         return Response.json(result.settings)
+      }
+
+      case 'GET /api/scenarios': {
+        const { scenarios, errors } = await deps.scenarios.list()
+        return Response.json({ scenarios: scenarios.map(summarise), errors })
       }
 
       case 'GET /api/settings/options': {

@@ -1,5 +1,5 @@
-import { assertEquals } from 'jsr:@std/assert@1'
-import { join } from 'jsr:@std/path@1'
+import { assertEquals } from '@std/assert'
+import { join } from '@std/path'
 import { DEFAULT_SETTINGS, fileSettingsStore } from './settings.ts'
 
 async function withTempDir(fn: (dir: string) => Promise<void>) {
