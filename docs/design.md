@@ -129,7 +129,9 @@ in [open-threads.md](open-threads.md).
   highlighted, removed words struck through), then its thinking (collapsed, when there was any).
   While a thinking model reasons, the reasoning streams into the caption area under
   "Thinking…" and gives way to the Narration once it arrives. Because the Session id is in the URL,
-  reloading the page keeps you in the Session. The image crossfades (700 ms) when a new Turn
+  reloading the page keeps you in the Session. While an image renders, a blue-to-violet light sweeps around the
+  image frame's edge, sized to the image; while it waits in the render queue the sweep is slower
+  and dimmer. The image crossfades (700 ms) when a new Turn
   arrives or another Turn is picked; the next image is preloaded first, so there is no blank
   frame.
 - **Navigation:** **RPG** leads Home; **Play** leads back to the Session opened last

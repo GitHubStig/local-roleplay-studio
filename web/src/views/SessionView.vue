@@ -292,6 +292,11 @@ async function undo() {
   }
 }
 
+/** The frame's border sweeps while an image renders (or waits to), until the new one lands. */
+const renderingPhase = computed(() =>
+  pending.value?.phase === 'image' || pending.value?.phase === 'queued' ? pending.value.phase : null
+)
+
 /** The image on screen; it only changes once the next one has loaded, for a clean crossfade. */
 const displayed = ref<{ src: string; alt: string } | null>(null)
 
@@ -376,7 +381,12 @@ const promptDiff = computed(() => {
         <section
           class="flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-lg border border-line bg-surface [container-type:size]"
         >
-          <div class="relative overflow-hidden" :style="frameStyle">
+          <div
+            class="relative overflow-hidden rounded-md"
+            :class="{ 'render-sweep': renderingPhase }"
+            :style="frameStyle"
+            :data-rendering="renderingPhase ?? undefined"
+          >
             <!-- Crossfade: the next image is preloaded, then fades in over the last one. -->
             <Transition
               enter-active-class="transition-opacity duration-700 ease-out"

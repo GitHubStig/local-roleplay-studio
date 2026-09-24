@@ -41,3 +41,51 @@
   --color-info: var(--info);
   --color-danger: var(--danger);
 }
+
+/*
+ * A light that sweeps around the image frame while a Turn renders. The ring is drawn by a
+ * rotating conic gradient masked down to a thin border, so it follows the frame's exact size.
+ */
+@property --sweep-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes sweep {
+  to {
+    --sweep-angle: 360deg;
+  }
+}
+
+.render-sweep::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  padding: 4px;
+  border-radius: inherit;
+  pointer-events: none;
+  /* Saturated colors, no white, so the sweep reads on bright and dark images alike. */
+  background: conic-gradient(
+    from var(--sweep-angle),
+    transparent 0% 45%,
+    color-mix(in oklab, var(--info) 70%, transparent) 60%,
+    var(--info) 72%,
+    #a78bfa 84%,
+    #7c3aed 92%,
+    transparent 100%
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  animation: sweep 1.6s linear infinite;
+}
+
+/* Waiting in the render queue: the same sweep, slower and dimmer. */
+.render-sweep[data-rendering='queued']::after {
+  opacity: 0.45;
+  animation-duration: 4s;
+}
