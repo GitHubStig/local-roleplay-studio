@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { createSession, deleteSession, imageUrl, listSessions, type SessionSummary } from '../api'
 import StartSession from '../components/StartSession.vue'
@@ -13,25 +13,42 @@ const sessions = ref<SessionSummary[] | null>(null)
 const listError = ref('')
 const deleteError = ref('')
 /** Why the last attempt to start failed, e.g. the Opening Turn errored. */
-const startError = ref(typeof route.query.error === 'string' ? route.query.error : '')
+const startError = ref('')
 
 let poll: ReturnType<typeof setTimeout> | undefined
+let alive = true
 
 /** Loads the list; while any Session has a Turn running, refreshes every 2 s to track it. */
 async function load() {
   clearTimeout(poll)
   try {
-    sessions.value = await listSessions()
+    const list = await listSessions()
+    if (!alive) return
+    sessions.value = list
     listError.value = ''
   } catch (err) {
-    listError.value = (err as Error).message
+    if (alive) listError.value = (err as Error).message
     return
   }
   if (sessions.value.some((s) => s.activity)) poll = setTimeout(load, 2000)
 }
 
 onMounted(load)
-onBeforeUnmount(() => clearTimeout(poll))
+onBeforeUnmount(() => {
+  alive = false
+  clearTimeout(poll)
+})
+
+// A failed Opening Turn sends the player here with `?error=`, possibly while already on Home.
+watch(
+  () => route.query.error,
+  (error) => {
+    if (typeof error !== 'string') return
+    startError.value = error
+    load()
+  },
+  { immediate: true },
+)
 
 async function start(scenarioId: string) {
   startError.value = ''

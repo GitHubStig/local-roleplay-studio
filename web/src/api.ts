@@ -52,7 +52,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     const body = await res.json().catch(() => ({}))
     throw new ApiError(body.error ?? `Request failed: ${res.status}`, res.status, body.issues)
   }
-  return res.json()
+  return res.status === 204 ? (undefined as T) : res.json()
 }
 
 export const getHealth = () => request<Health>('/api/health')
@@ -109,6 +109,8 @@ export interface Session {
   seed: number
   createdAt: string
   turns: Turn[]
+  /** What a Turn in progress is doing, or null when idle (only from `getSession`). */
+  activity?: 'text' | 'queued' | 'image' | null
 }
 
 export type TurnEvent =
@@ -146,13 +148,8 @@ export interface SessionSummary {
 
 export const listSessions = () => request<SessionSummary[]>('/api/sessions')
 
-export async function deleteSession(id: string): Promise<void> {
-  const res = await fetch(`/api/sessions/${id}`, { method: 'DELETE' })
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}))
-    throw new ApiError(body.error ?? `Delete failed: ${res.status}`, res.status)
-  }
-}
+export const deleteSession = (id: string) =>
+  request<void>(`/api/sessions/${id}`, { method: 'DELETE' })
 
 /** Undoes the latest Turn, which must be Turn `index`; returns the updated Session. */
 export const undoTurn = (id: string, index: number) =>

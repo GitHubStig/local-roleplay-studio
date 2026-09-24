@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { getHealth } from './api'
 import { useCurrentSession } from './composables/useCurrentSession'
@@ -13,12 +13,24 @@ const { currentSessionId } = useCurrentSession()
 const playTo = computed(() => (currentSessionId.value ? `/sessions/${currentSessionId.value}` : '/'))
 const onPlay = computed(() => route.name === 'session')
 
-onMounted(async () => {
+async function checkServer() {
   try {
     serverOnline.value = (await getHealth()).ok
   } catch {
     serverOnline.value = false
   }
+}
+
+// Re-checked every 15 s and whenever the window regains focus.
+let healthTimer: ReturnType<typeof setInterval> | undefined
+onMounted(() => {
+  checkServer()
+  healthTimer = setInterval(checkServer, 15000)
+  window.addEventListener('focus', checkServer)
+})
+onBeforeUnmount(() => {
+  clearInterval(healthTimer)
+  window.removeEventListener('focus', checkServer)
 })
 </script>
 

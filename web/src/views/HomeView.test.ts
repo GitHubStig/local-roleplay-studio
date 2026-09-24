@@ -93,6 +93,28 @@ describe('HomeView', () => {
     expect(wrapper.find('[data-delete]').attributes('disabled')).toBeDefined()
   })
 
+  it('shows an Opening failure that arrives while already on Home', async () => {
+    const { wrapper, router } = await mountIt()
+    await router.replace({ path: '/', query: { error: 'Ollama: model not found' } })
+    await flushPromises()
+    expect(wrapper.text()).toContain("Couldn't start the Session: Ollama: model not found")
+  })
+
+  it('stops polling once Home is left, even mid-request', async () => {
+    vi.useFakeTimers()
+    try {
+      let answer!: (list: api.SessionSummary[]) => void
+      vi.mocked(api.listSessions).mockImplementation(() => new Promise((r) => (answer = r)))
+      const { wrapper } = await mountIt()
+      wrapper.unmount()
+      answer([summary('a', { activity: 'image' })])
+      await vi.advanceTimersByTimeAsync(10000)
+      expect(api.listSessions).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('starts a new Session and opens it', async () => {
     vi.mocked(api.getScenarios).mockResolvedValue({
       scenarios: [{ id: 'photoshoot', title: 'Studio Photoshoot', description: '' }],

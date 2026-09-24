@@ -1,5 +1,14 @@
 <script setup lang="ts">
-import { computed, nextTick, onActivated, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import {
+  computed,
+  nextTick,
+  onActivated,
+  onBeforeUnmount,
+  onDeactivated,
+  onMounted,
+  ref,
+  watch,
+} from 'vue'
 import { onBeforeRouteLeave, useRouter } from 'vue-router'
 import { clearCurrentSession, setCurrentSession } from '../composables/useCurrentSession'
 import {
@@ -21,6 +30,8 @@ const router = useRouter()
 /** The Turn in progress: provisional until committed. */
 interface Pending {
   phase: 'text' | 'queued' | 'image'
+  /** Started elsewhere (before a reload, in another tab); followed by polling the Session. */
+  detached?: boolean
   progress?: { step: number; total: number }
   narration?: string
   outcome?: Outcome
@@ -71,37 +82,86 @@ const latest = computed(() => session.value?.turns.at(-1))
 const viewingOlder = computed(() => !!shown.value && shown.value.index !== latest.value?.index)
 const turnName = (index: number) => (index === 0 ? 'the Opening' : `Turn ${index}`)
 
-/** Loads the Session; false if it no longer exists (the player is sent Home). */
+// A kept-alive screen keeps running in the background; it must only navigate while on screen.
+let onScreen = true
+/** Where to go once back on screen, if the Session went away while in the background. */
+let leaveOnReturn: { path: string; query: Record<string, string> } | null = null
+
+function leave(query: Record<string, string> = {}) {
+  clearCurrentSession(props.id)
+  forgetDraft()
+  if (onScreen) router.replace({ path: '/', query })
+  else leaveOnReturn = { path: '/', query }
+}
+
+/** Loads the Session; false if it couldn't be (gone: the player is sent Home). */
 async function load(): Promise<boolean> {
   try {
     session.value = await getSession(props.id)
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) {
-      clearCurrentSession(props.id)
-      forgetDraft()
-      router.replace('/')
+      leave()
       return false
     }
     loadError.value = (err as Error).message
     return false
   }
+  loadError.value = ''
   // Play leads back to the Session opened last.
   setCurrentSession(props.id)
   return true
 }
 
-let mounted = false
-onMounted(async () => {
-  if (!(await load())) return
-  mounted = true
-  if (session.value!.turns.length === 0) await runTurn(null)
-})
+let started = false
+let starting = false
+/** First successful load: follow a Turn already running, or write the opening Scene. */
+async function start() {
+  if (started || starting) return
+  starting = true
+  try {
+    if (!(await load())) return
+    started = true
+  } finally {
+    starting = false
+  }
+  if (session.value!.activity) follow()
+  else if (session.value!.turns.length === 0) await runTurn(null)
+}
+
+onMounted(start)
 
 // Coming back to a kept-alive Session: pick up changes made elsewhere (another tab, a delete
-// from Home), unless a Turn is running here.
+// from Home), unless a Turn is running here. Retries if the first load failed. Vue also calls
+// this right after the first mount, which `start` already covers.
+let firstActivation = true
 onActivated(async () => {
-  if (mounted && !busy.value) await load()
+  onScreen = true
+  if (firstActivation) return (firstActivation = false)
+  if (leaveOnReturn) return router.replace(leaveOnReturn)
+  if (!started) return start()
+  if (busy.value) return
+  if ((await load()) && session.value!.activity) follow()
 })
+onDeactivated(() => (onScreen = false))
+
+// --- A Turn this screen didn't start (page reloaded, another tab): show it and allow Cancel.
+let followTimer: ReturnType<typeof setTimeout> | undefined
+function follow() {
+  pending.value = { phase: session.value!.activity!, detached: true }
+  const poll = async () => {
+    if (!(await load())) return (pending.value = null)
+    const activity = session.value!.activity
+    if (activity) {
+      pending.value = { ...pending.value!, phase: activity }
+      followTimer = setTimeout(poll, 1500)
+    } else {
+      pending.value = null
+      viewing.value = null
+    }
+  }
+  followTimer = setTimeout(poll, 1500)
+}
+onBeforeUnmount(() => clearTimeout(followTimer))
 
 // --- The unsent Direction, remembered per Session so it survives a reload.
 const draftKey = `draft:${props.id}`
@@ -165,9 +225,7 @@ function onEvent(event: TurnEvent) {
     case 'cancelled':
       pending.value = null
       if (event.sessionDiscarded) {
-        clearCurrentSession(props.id)
-        const query = event.type === 'failed' ? { error: event.message } : {}
-        router.replace({ path: '/', query })
+        leave(event.type === 'failed' ? { error: event.message } : {})
       } else if (event.type === 'failed') {
         turnError.value = event.message
       }
@@ -507,7 +565,8 @@ const sceneEntries = (scene: Scene) =>
             </button>
           </li>
           <li v-if="busy" class="p-3 text-sm italic text-muted">
-            {{ draft.trim() || 'Opening' }} — {{ phaseLabel }}
+            {{ pending?.detached ? 'A Turn in progress' : draft.trim() || 'Opening' }} —
+            {{ phaseLabel }}
           </li>
         </ol>
 
