@@ -65,23 +65,23 @@ async function save() {
     <div class="mx-auto max-w-xl">
       <h2 class="mb-6 text-xl font-semibold">Settings</h2>
 
-      <p v-if="loadError" class="text-red-400">Could not load settings: {{ loadError }}</p>
-      <p v-else-if="!form || !options" class="text-neutral-400">Loading…</p>
+      <p v-if="loadError" class="text-danger">Could not load settings: {{ loadError }}</p>
+      <p v-else-if="!form || !options" class="text-muted">Loading…</p>
 
       <form v-else class="flex flex-col gap-5" @submit.prevent="save">
         <label class="flex flex-col gap-1">
-          <span class="text-sm text-neutral-300">Text Model</span>
+          <span class="text-sm text-muted">Text Model</span>
           <select v-model="form.textModel" class="field">
             <option value="" disabled>Choose an Ollama model…</option>
             <option v-for="m in textModelChoices" :key="m" :value="m">{{ m }}</option>
           </select>
-          <span v-if="options.textModelsError" class="text-sm text-amber-400">
+          <span v-if="options.textModelsError" class="text-sm text-warn">
             {{ options.textModelsError }}
           </span>
         </label>
 
         <label class="flex flex-col gap-1">
-          <span class="text-sm text-neutral-300">Image Model</span>
+          <span class="text-sm text-muted">Image Model</span>
           <select v-model="form.imageModel" class="field" @change="onImageModelChange">
             <option v-for="m in options.imageModels" :key="m.id" :value="m.id">
               {{ m.label }}
@@ -91,11 +91,11 @@ async function save() {
 
         <div class="grid grid-cols-2 gap-4">
           <label class="flex flex-col gap-1">
-            <span class="text-sm text-neutral-300">Steps</span>
+            <span class="text-sm text-muted">Steps</span>
             <input v-model.number="form.steps" type="number" min="1" max="100" class="field" />
           </label>
           <label class="flex flex-col gap-1">
-            <span class="text-sm text-neutral-300">Quantize</span>
+            <span class="text-sm text-muted">Quantize</span>
             <select v-model="form.quantize" class="field">
               <option v-for="q in quantizeChoices" :key="String(q.value)" :value="q.value">
                 {{ q.label }}
@@ -105,14 +105,14 @@ async function save() {
         </div>
 
         <label class="flex flex-col gap-1">
-          <span class="text-sm text-neutral-300">Size</span>
+          <span class="text-sm text-muted">Size</span>
           <select v-model="form.size" class="field">
             <option v-for="p in options.sizePresets" :key="p.id" :value="p.id">{{ p.label }}</option>
           </select>
         </label>
 
         <fieldset class="flex flex-col gap-2">
-          <legend class="mb-1 text-sm text-neutral-300">Seed</legend>
+          <legend class="mb-1 text-sm text-muted">Seed</legend>
           <label class="flex items-center gap-2">
             <input v-model="form.seedMode" type="radio" value="random" />
             New random seed each Session
@@ -133,17 +133,17 @@ async function save() {
         <div class="flex items-center gap-4">
           <button
             type="submit"
-            class="rounded-lg bg-neutral-100 px-4 py-2 font-medium text-neutral-900 disabled:opacity-50"
+            class="rounded-lg bg-fg px-4 py-2 font-medium text-canvas disabled:opacity-50"
             :disabled="saving"
           >
             {{ saving ? 'Saving…' : 'Save' }}
           </button>
-          <span v-if="status?.kind === 'saved'" class="text-sm text-emerald-400">
+          <span v-if="status?.kind === 'saved'" class="text-sm text-ok">
             {{ status.message }}
           </span>
         </div>
 
-        <div v-if="status?.kind === 'error'" class="text-sm text-red-400">
+        <div v-if="status?.kind === 'error'" class="text-sm text-danger">
           <p>{{ status.message }}</p>
           <ul v-if="status.issues?.length" class="list-inside list-disc">
             <li v-for="issue in status.issues" :key="issue">{{ issue }}</li>
@@ -158,6 +158,6 @@ async function save() {
 @reference "../style.css";
 
 .field {
-  @apply rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 disabled:opacity-50;
+  @apply rounded-lg border border-line bg-surface px-3 py-2 disabled:opacity-50;
 }
 </style>

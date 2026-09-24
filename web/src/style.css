@@ -1,1 +1,39 @@
 @import "tailwindcss";
+
+/* `dark:` follows the .dark class on <html>, set by useTheme() and the pre-paint script in index.html. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  color-scheme: light;
+  --canvas: var(--color-neutral-50);
+  --surface: var(--color-white);
+  --line: var(--color-neutral-200);
+  --fg: var(--color-neutral-900);
+  --muted: var(--color-neutral-500);
+  --ok: var(--color-emerald-600);
+  --warn: var(--color-amber-600);
+  --danger: var(--color-red-600);
+}
+
+:root.dark {
+  color-scheme: dark;
+  --canvas: var(--color-neutral-950);
+  --surface: var(--color-neutral-900);
+  --line: var(--color-neutral-800);
+  --fg: var(--color-neutral-100);
+  --muted: var(--color-neutral-400);
+  --ok: var(--color-emerald-400);
+  --warn: var(--color-amber-400);
+  --danger: var(--color-red-400);
+}
+
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-line: var(--line);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
+  --color-danger: var(--danger);
+}
