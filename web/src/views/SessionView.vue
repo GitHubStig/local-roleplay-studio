@@ -235,7 +235,8 @@ function onEvent(event: TurnEvent) {
       s.turns.push(event.turn)
       pending.value = null
       viewing.value = null
-      draft.value = ''
+      // Only a done Turn used up the Action; a declined or unclear one stays to be reworded.
+      if (event.turn.outcome === 'done') draft.value = ''
       break
     case 'failed':
     case 'cancelled':

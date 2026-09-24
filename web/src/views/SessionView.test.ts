@@ -125,6 +125,18 @@ describe('SessionView', () => {
     expect(wrapper.findAll('aside li')).toHaveLength(2)
   })
 
+  it('keeps the Action in the text box when the Turn is declined or unclear', async () => {
+    for (const outcome of ['declined', 'unclear'] as const) {
+      vi.mocked(api.streamTurn).mockImplementationOnce(async (_id, _action, onEvent) => {
+        onEvent({ type: 'committed', turn: turn(1, 'make it weird', { outcome }) })
+      })
+      const { wrapper } = await mountIt()
+      await wrapper.find('textarea').setValue('make it weird')
+      await buttonNamed(wrapper, 'Send').trigger('click')
+      await flushPromises()
+      expect((wrapper.find('textarea').element as HTMLTextAreaElement).value).toBe('make it weird')
+    }
+  })
 
   it('keeps the Direction and shows the error when a Turn fails', async () => {
     vi.mocked(api.streamTurn).mockImplementation(async (_id, _action, onEvent) => {

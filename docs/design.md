@@ -118,7 +118,8 @@ in [open-threads.md](open-threads.md).
   it never resizes as the text changes. The Narration is a caption over the bottom of the photo
   (provisional text shows dimmed and in italics while a Turn runs); the caption can be hidden,
   and that choice is remembered per browser. The Turn's status ("Rendering the image… step 2 of 4") is a
-  pill in the image's top corner. Enter sends; Shift+Enter adds a new line. While a Turn runs,
+  pill in the image's top corner. Enter sends; Shift+Enter adds a new line. A done Turn clears the text box; a declined or
+  unclear one leaves your Action there to reword. While a Turn runs,
   the text box is locked and **Cancel** replaces **Send**; a failed Turn's error shows in the
   button row. Typed text is always treated as an Action; there are no typed commands.
   The right panel has two tabs. **Turn Log** shows a thumbnail, the Action and the Narration per
