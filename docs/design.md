@@ -91,7 +91,12 @@ in [open-threads.md](open-threads.md).
   The right panel has two tabs. **Turn Log** shows a thumbnail, the Action and the Narration per
   Turn; clicking one shows that Turn, and Declined Turns are tinted amber. **Scene** shows the
   viewed Turn's Scene fields and its image prompt. Because the Session id is in the URL,
-  reloading the page keeps you in the Session.
+  reloading the page keeps you in the Session. The image crossfades (700 ms) when a new Turn
+  arrives or another Turn is picked; the next image is preloaded first, so there is no blank
+  frame.
+- **Navigation:** **Play** leads back to the Session in progress (remembered per browser) and
+  to Start Session when there is none. The Session screen stays alive while you visit Settings,
+  so a running Turn and a half-typed Direction survive the trip.
 - **Settings** (`/settings`): Text Model (installed Ollama models, minus OCR and dedicated
   vision-language models), Image Model, steps (reset to the model's default when the Image Model
   changes), quantization, size (six presets from 512×512 to 1216×832) and seed (random per

@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { clearCurrentSession, setCurrentSession } from '../composables/useCurrentSession'
 import {
+  ApiError,
   cancelTurn,
   createSession,
   endSession,
@@ -68,12 +70,23 @@ onMounted(async () => {
   try {
     session.value = await getSession(props.id)
   } catch (err) {
+    if (err instanceof ApiError && err.status === 404) {
+      clearCurrentSession(props.id)
+      router.replace('/')
+      return
+    }
     loadError.value = (err as Error).message
     return
   }
   if (session.value.status === 'active' && session.value.turns.length === 0) {
     await runTurn(null)
   }
+})
+
+// Play leads back here while the Session is active.
+watch(() => session.value?.status, (status) => {
+  if (status === 'active') setCurrentSession(props.id)
+  else if (status === 'ended') clearCurrentSession(props.id)
 })
 
 watch([() => session.value?.turns.length, panel], async () => {
@@ -103,6 +116,7 @@ function onEvent(event: TurnEvent) {
     case 'cancelled':
       pending.value = null
       if (event.sessionDiscarded) {
+        clearCurrentSession(props.id)
         const query = event.type === 'failed' ? { error: event.message } : {}
         router.replace({ path: '/', query })
       } else if (event.type === 'failed') {
