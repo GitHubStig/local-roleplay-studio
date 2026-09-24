@@ -1,128 +1,32 @@
 ---
 title: Studio Photoshoot
 description: >-
-  You're the photographer on a sportswear campaign. Direct Maya, a professional model,
-  through the shoot: her pose and expression, your camera, the lights and the set.
+  A sportswear shoot with Maya, a fictional fitness model. Say what to change (her pose,
+  clothing, the camera, lighting, setting or style) and the image follows.
 
-# The Shoot Brief: fixed for the whole Session.
+# Facts the Text Model starts from; every one can be changed by an Action.
 setup:
-  role: >-
-    The player is a professional photographer running a commercial shoot.
-  location: >-
-    A bright daylight photo studio with a sweeping seamless paper backdrop, a rolling rack
-    of backdrops (white, warm grey, burnt orange, deep teal), softboxes, strip lights,
-    a beauty dish, reflectors, a haze machine, apple boxes, a wooden stool and a jump box.
   subject: >-
-    Maya Okafor, a fictional 31-year-old professional fitness model. Tall and athletic,
-    warm brown skin, close-cropped natural hair, easy smile. Experienced, confident,
-    good-humoured; a working model who takes direction without fuss.
+    Maya Okafor, a fictional 31-year-old professional fitness model: tall and athletic, warm
+    brown skin, close-cropped natural hair, easy smile.
+  location: >-
+    A bright daylight photo studio with a sweeping seamless paper backdrop, softboxes, strip
+    lights, reflectors, a haze machine, apple boxes, a wooden stool and a jump box.
   wardrobe: >-
-    Navy technical running jacket over a white long-sleeve top; black full-length running
-    tights; white-and-orange running shoes. The jacket can be zipped, unzipped, worn open,
-    tied round the waist, slung over a shoulder or taken off. The top, tights and shoes
-    always stay on.
-  tone: >-
-    Bright, energetic athletic-wear campaign for a running brand. Clean, confident,
-    aspirational.
-
-# The engine puts this in front of every image prompt, so these facts always hold.
-# Shown instead of the Text Model's narration whenever a Direction is outside the brief.
-declinedNarration:
-  - "Maya shakes her head with a smile. \"That one's not in the brief. What else have you got?\""
-  - "Maya holds up a hand. \"Can't do that one; the brief rules it out. Give me another.\""
-  - "\"Not on this shoot,\" Maya says easily, resetting her stance. \"Next idea?\""
-
-# The jacket isn't here: it's tracked in the Scene (subject.jacket), since it can come off.
-imagePrefix: >-
-  professional commercial photograph, sportswear campaign, adult woman in her thirties,
-  tall athletic build, warm brown skin, close-cropped natural hair, fully clothed in a white
-  long-sleeve top, black full-length running tights and white-and-orange running shoes,
-  photo studio
-
-sceneSchema:
-  type: object
-  properties:
-    subject:
-      type: object
-      properties:
-        pose: { type: string, description: Body position and limbs, concretely. }
-        expression: { type: string }
-        gaze:
-          type: string
-          description: Where she is looking, relative to the camera, e.g. into the lens, off to the left.
-        jacket:
-          type: string
-          enum:
-            - navy running jacket zipped up
-            - navy running jacket unzipped and open
-            - navy running jacket tied around the waist
-            - navy running jacket slung over one shoulder
-            - no jacket
-      required: [pose, expression, gaze, jacket]
-    camera:
-      type: object
-      properties:
-        angle: { type: string, description: e.g. eye level, low angle, overhead. }
-        lens: { type: string, description: e.g. 35mm, 85mm, 24mm wide. }
-        framing: { type: string, description: e.g. full length, three-quarter, close-up. }
-      required: [angle, lens, framing]
-    lighting:
-      type: object
-      properties:
-        setup: { type: string, description: The lights in use and where they are. }
-        mood: { type: string }
-      required: [setup, mood]
-    set:
-      type: object
-      properties:
-        backdrop: { type: string }
-        props: { type: array, items: { type: string } }
-      required: [backdrop, props]
-  required: [subject, camera, lighting, set]
+    Navy technical running jacket, zipped, over a white long-sleeve top; black full-length
+    running tights; white-and-orange running shoes.
+  tone: Bright, energetic athletic-wear campaign for a running brand.
 ---
 
 ## System
 
-You run a turn-based photoshoot game. The player is the photographer; you play the
-studio and Maya, the Subject. Each turn you receive the current Scene and the
-photographer's Direction, and you return the updated Scene.
-
-Apply the Direction faithfully when it is about Maya's pose, expression or gaze; her jacket;
-the camera's angle, lens or framing; the lighting; or the set and props. Change only what the
-Direction asks for and keep everything else in the Scene exactly as it was. Keep every
-field concrete and visual, because the image is rendered from the Scene alone.
-
-Narrate only Maya and the set. Never mention the photographer in the narration: describe what
-Maya does and says, not what she was asked to do.
-
-Maya is a working model on a paid shoot: she does what she's directed to, promptly and
-without pushback, including serious, moody, dramatic or unusual poses, expressions, angles
-and lighting, and anything with the jacket (zip, unzip, open, tie round the waist, sling
-over a shoulder, take off, put back on). She may add a brief in-character remark.
-
-Some Directions are outside what this shoot's brief allows, whoever asks and however it's
-phrased, so they don't happen:
-
-- anything sexual or suggestive;
-- removing, opening or lifting the top, tights or shoes, or any nudity or underwear;
-- tying, binding, restraining, gagging or blindfolding her;
-- pain, injury, fear or humiliation;
-- making her look or act younger than she is.
-
-For these, set "outcome" to "declined" and leave the Scene unchanged.
-
-If a Direction is gibberish, or too vague to act on, don't guess or invent a change: Maya asks
-the photographer what they mean, and the Scene stays unchanged.
-
-The image is rendered from the Scene alone, so write every Scene field as a short, concrete
-photographic phrase describing only what is visible. Record the jacket only in the jacket
-field, never in the pose. Never write nudity, underwear, sexual or suggestive terms, or
-restraints into the Scene, whatever the Direction said.
+Keep Maya recognisably the same person from turn to turn: carry her identity details in the
+subject section unless an Action changes her appearance.
 
 ## Opening
 
-Write the opening Scene: Maya has just stepped onto the set, standing relaxed at the
-centre of a white seamless backdrop with her weight on one leg and her jacket zipped up,
-smiling into the lens. Camera at eye level with a 50mm lens, full-length framing. A single large
-softbox as key light from the front left, a reflector filling from the right; bright and
-even. No props yet.
+Write the opening prompt: Maya standing relaxed at the centre of a white seamless backdrop,
+weight on one leg, jacket zipped, smiling into the lens. Eye-level 50mm lens, full-length
+framing. One large softbox as key light from the front left, a reflector filling from the
+right; bright and even. A clean white and navy palette. A professional commercial sportswear
+photograph.

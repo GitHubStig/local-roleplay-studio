@@ -2,6 +2,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import * as api from './api'
+import { promptFor } from './testing'
 import App from './App.vue'
 import { clearCurrentSession } from './composables/useCurrentSession'
 import HomeView from './views/HomeView.vue'
@@ -29,10 +30,10 @@ const session: api.Session = {
   turns: [{
     index: 0,
     action: null,
-    scene: {},
+    prompt: promptFor(0),
     narration: 'Maya arrives.',
     outcome: 'done',
-    imagePrompt: 'p',
+    promptText: 'p',
     image: 'turn-0.png',
     createdAt: '2026-09-24T00:00:00.000Z',
   }],

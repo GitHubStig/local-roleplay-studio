@@ -5,14 +5,8 @@ import { dirScenarioLibrary, parseScenario } from './scenario.ts'
 const valid = `---
 title: Test Shoot
 description: A short test.
-imagePrefix: studio photo, adult subject
 setup:
   location: a studio
-sceneSchema:
-  type: object
-  properties:
-    pose: { type: string }
-  required: [pose]
 ---
 
 ## System
@@ -29,25 +23,20 @@ Deno.test('parseScenario reads frontmatter and prompt sections', () => {
   assertEquals(s.id, 'test')
   assertEquals(s.title, 'Test Shoot')
   assertEquals(s.setup, { location: 'a studio' })
-  assertEquals(s.imagePrefix, 'studio photo, adult subject')
-  assertEquals(s.sceneSchema.required, ['pose'])
   assertEquals(s.systemPrompt, 'Stay in the studio.')
   assertEquals(s.openingPrompt, 'The Subject arrives.')
 })
 
+Deno.test('parseScenario needs only a title, a description and an Opening', () => {
+  const s = parseScenario('min', `---\ntitle: T\ndescription: D\n---\n## Opening\nGo.\n`)
+  assertEquals(s.setup, {})
+  assertEquals(s.systemPrompt, '')
+})
+
 Deno.test('parseScenario lists every problem at once', () => {
-  const text = `---\ntitle: ""\nsceneSchema:\n  type: array\n---\n\n## System\n\nx\n`
+  const text = `---\ntitle: ""\nsetup: [1]\n---\n\n## System\n\nx\n`
   const err = assertThrows(() => parseScenario('bad', text))
-  for (
-    const expected of [
-      'title',
-      'description',
-      'imagePrefix',
-      'setup',
-      'sceneSchema',
-      '"## Opening"',
-    ]
-  ) {
+  for (const expected of ['title', 'description', 'setup', '"## Opening"']) {
     if (!(err as Error).message.includes(expected)) {
       throw new Error(`missing "${expected}" in: ${(err as Error).message}`)
     }
@@ -79,17 +68,4 @@ Deno.test('dirScenarioLibrary treats a missing directory as empty', async () => 
   const { scenarios, errors } = await dirScenarioLibrary('/nonexistent/scenarios').list()
   assertEquals(scenarios, [])
   assertEquals(errors, [])
-})
-
-Deno.test('parseScenario reads declinedNarration as a string or a list', () => {
-  const withList = valid.replace(
-    'title: Test Shoot',
-    'title: Test Shoot\ndeclinedNarration: [No., Nope.]',
-  )
-  assertEquals(parseScenario('t', withList).declinedNarration, ['No.', 'Nope.'])
-  const withString = valid.replace('title: Test Shoot', 'title: Test Shoot\ndeclinedNarration: No.')
-  assertEquals(parseScenario('t', withString).declinedNarration, ['No.'])
-  assertEquals(parseScenario('t', valid).declinedNarration, [])
-  const bad = valid.replace('title: Test Shoot', 'title: Test Shoot\ndeclinedNarration: [1, ""]')
-  assertThrows(() => parseScenario('t', bad), Error, 'declinedNarration')
 })

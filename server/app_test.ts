@@ -1,5 +1,6 @@
 import { assertEquals, assertMatch } from '@std/assert'
 import { createHandler } from './app.ts'
+import { renderPrompt } from './imagePrompt.ts'
 import type { TextModelInfo } from './ollama.ts'
 import type { ImageGenerator } from './imageGenerator.ts'
 import { dirSessionStore } from './session.ts'
@@ -7,6 +8,7 @@ import { DEFAULT_SETTINGS, type Settings, type SettingsStore } from './settings.
 import type { TextModel } from './textModel.ts'
 import {
   fakeImageGenerator,
+  promptWith,
   reply,
   scenarioLibrary,
   scriptedTextModel,
@@ -190,7 +192,7 @@ Deno.test('Turns stream progress and commit, then serve their image', () =>
 
     const image = await call('GET', `/api/sessions/s1/images/${secondImage}`)
     assertEquals(image.headers.get('Content-Type'), 'image/png')
-    assertEquals(await image.text(), 'studio photo, pose: sitting')
+    assertEquals(await image.text(), renderPrompt(promptWith('sitting')))
     assertEquals((await call('GET', '/api/sessions/s1/images/session.json')).status, 404)
   }))
 

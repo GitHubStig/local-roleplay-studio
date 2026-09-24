@@ -4,12 +4,14 @@ import { DEFAULT_SETTINGS } from './settings.ts'
 import { dirSessionStore, type Session } from './session.ts'
 import {
   fakeImageGenerator,
+  promptWith,
   reply,
   scriptedTextModel,
   testScenario,
   withTempDir,
 } from './testing.ts'
-import { runTurn, sceneToPrompt, type TurnEvent, UndoError, undoLatestTurn } from './turns.ts'
+import { runTurn, type TurnEvent, UndoError, undoLatestTurn } from './turns.ts'
+import { renderPrompt } from './imagePrompt.ts'
 
 const newSession = (): Session => ({
   id: 's1',
@@ -38,7 +40,7 @@ Deno.test('runTurn commits the Opening Turn with prefixed image prompt', () =>
     )
     assertEquals(turn.index, 0)
     assertMatch(turn.image, /^turn-0-[0-9a-f]{8}\.png$/)
-    assertEquals(images.prompts, ['studio photo, pose: standing'])
+    assertEquals(images.prompts, [renderPrompt(promptWith('standing'))])
     assertEquals(events.map((e) => e.type), ['phase', 'text', 'phase', 'committed'])
     assertEquals((await store.load('s1'))?.turns.length, 1)
   }))
@@ -55,7 +57,7 @@ Deno.test('runTurn retries a failed Text Model reply once', () =>
       signal(),
     )
     assertEquals(textModel.calls, 2)
-    assertEquals(turn.scene, { pose: 'standing' })
+    assertEquals(turn.prompt, promptWith('standing'))
   }))
 
 Deno.test('runTurn gives up after the retry and leaves the Session untouched', () =>
@@ -103,7 +105,7 @@ Deno.test('runTurn keeps the previous Scene and image when a Direction is declin
       signal(),
     )
     assertEquals(turn.outcome, 'declined')
-    assertEquals(turn.scene, { pose: 'standing' })
+    assertEquals(turn.prompt, promptWith('standing'))
     assertEquals(turn.image, session.turns[0].image)
     assertEquals(turn.narration, 'She declines.')
     assertEquals(images.prompts.length, 1)
@@ -161,18 +163,6 @@ Deno.test('runTurn aborted mid-image removes nothing committed', () =>
     assertEquals(files.map((f) => f.name), ['session.json'])
   }))
 
-Deno.test('sceneToPrompt labels nested fields and skips empty ones', () => {
-  assertEquals(
-    sceneToPrompt({
-      subject: { pose: 'crouched low', expression: '' },
-      camera: { angle: 'low' },
-      set: { backdrop: 'burnt orange', props: ['stool', ''] },
-      lighting: { extras: [] },
-    }),
-    'subject pose: crouched low, camera angle: low, set backdrop: burnt orange, set props: stool',
-  )
-})
-
 Deno.test('runTurn keeps the Scene and image when an Action is unclear', () =>
   withTempDir(async (root) => {
     const images = fakeImageGenerator()
@@ -193,7 +183,7 @@ Deno.test('runTurn keeps the Scene and image when an Action is unclear', () =>
       signal(),
     )
     assertEquals(turn.outcome, 'unclear')
-    assertEquals(turn.scene, { pose: 'standing' })
+    assertEquals(turn.prompt, promptWith('standing'))
     assertEquals(turn.image, session.turns[0].image)
     assertEquals(images.prompts.length, 1)
     assertEquals(events.map((e) => e.type), ['phase', 'text', 'committed'])
@@ -257,7 +247,7 @@ Deno.test('undoLatestTurn restores the previous Scene and deletes the image', ()
     const { store, session } = await sessionWithTurns(root, [reply('standing'), reply('sitting')])
     const undone = session.turns[1]
     const updated = await undoLatestTurn(store, session, 1)
-    assertEquals(updated.turns.map((t) => t.scene), [{ pose: 'standing' }])
+    assertEquals(updated.turns.map((t) => t.prompt), [promptWith('standing')])
     assertEquals((await store.load('s1'))?.turns.length, 1)
     assertEquals(await imageExists(root, undone.image), false)
     assertEquals(await imageExists(root, session.turns[0].image), true)
@@ -328,38 +318,85 @@ Deno.test('runTurn removes an image written just before the Turn was cancelled',
     assertEquals(files.map((f) => f.name), ['session.json'])
   }))
 
-Deno.test("runTurn shows the Scenario's refusal instead of a narration that contradicts it", () =>
+async function openedSession(
+  root: string,
+  replies: ReturnType<typeof reply>[],
+  realPeople: string[] = [],
+) {
+  const session = newSession()
+  const textModel = scriptedTextModel([reply('standing'), ...replies], realPeople)
+  const images = fakeImageGenerator()
+  const deps = { store: dirSessionStore(root), textModel, imageGenerator: images }
+  await runTurn(deps, session, testScenario, null, () => {}, signal())
+  return { session, textModel, images, deps }
+}
+
+Deno.test('runTurn declines an Action that crosses a limit without asking the Text Model', () =>
   withTempDir(async (root) => {
-    const session = newSession()
-    const events: TurnEvent[] = []
-    const deps = {
-      store: dirSessionStore(root),
-      textModel: scriptedTextModel([
-        reply('standing'),
-        reply('standing', { outcome: 'declined', narration: 'She takes off her top.' }),
-        reply('sitting', { narration: 'She sits.' }),
-      ]),
-      imageGenerator: fakeImageGenerator(),
-    }
-    const scenario = { ...testScenario, declinedNarration: ['Not in the brief.'] }
-    await runTurn(deps, session, scenario, null, () => {}, signal())
+    const { session, textModel, images, deps } = await openedSession(root, [])
+    const turn = await runTurn(deps, session, testScenario, 'make her topless', () => {}, signal())
+    assertEquals(turn.outcome, 'declined')
+    assertEquals(turn.narration, 'Declined: no sexual or nude imagery.')
+    assertEquals(turn.prompt, promptWith('standing'))
+    assertEquals(textModel.calls, 1) // the Opening Turn only
+    assertEquals(images.prompts.length, 1)
+  }))
+
+Deno.test('runTurn declines a prompt the Text Model wrote across a limit', () =>
+  withTempDir(async (root) => {
+    const { session, deps } = await openedSession(root, [
+      reply('kneeling', { prompt: { ...promptWith('kneeling'), subject: 'a 15 year old girl' } }),
+    ])
+    const turn = await runTurn(deps, session, testScenario, 'make her younger', () => {}, signal())
+    assertEquals(turn.outcome, 'declined')
+    assertEquals(turn.narration, 'Declined: everyone depicted must be an adult.')
+    assertEquals(turn.prompt, promptWith('standing'))
+    assertEquals(turn.image, session.turns[0].image)
+  }))
+
+Deno.test('runTurn fails an Opening Turn whose prompt crosses a limit', () =>
+  withTempDir(async (root) => {
+    await assertRejects(
+      () =>
+        runTurn(
+          {
+            store: dirSessionStore(root),
+            textModel: scriptedTextModel([
+              reply('x', { prompt: { ...promptWith('x'), clothing: 'lingerie' } }),
+            ]),
+            imageGenerator: fakeImageGenerator(),
+          },
+          newSession(),
+          testScenario,
+          null,
+          () => {},
+          signal(),
+        ),
+      Error,
+      'crossed a limit: no sexual or nude imagery',
+    )
+  }))
+
+Deno.test('runTurn asks about real people only when an Action might name one', () =>
+  withTempDir(async (root) => {
+    const { session, textModel, deps } = await openedSession(
+      root,
+      [reply('crouching')],
+      ['Serena Williams'],
+    )
     const declined = await runTurn(
       deps,
       session,
-      scenario,
-      'take off your top',
-      (e) => events.push(e),
+      testScenario,
+      'make her look like Serena Williams',
+      () => {},
       signal(),
     )
-    assertEquals(declined.narration, 'Not in the brief.')
-    assertEquals(events.find((e) => e.type === 'text'), {
-      type: 'text',
-      outcome: 'declined',
-      narration: 'Not in the brief.',
-      scene: { pose: 'standing' },
-    })
-    const done = await runTurn(deps, session, scenario, 'Sit', () => {}, signal())
-    assertEquals(done.narration, 'She sits.')
+    assertEquals(declined.outcome, 'declined')
+    assertEquals(declined.narration, 'Declined: no real, identifiable people.')
+    const done = await runTurn(deps, session, testScenario, 'crouch low', () => {}, signal())
+    assertEquals(done.outcome, 'done')
+    assertEquals(textModel.personChecks, ['make her look like Serena Williams'])
   }))
 
 Deno.test("runTurn streams the Text Model's thinking and saves it with the Turn", () =>

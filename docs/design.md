@@ -1,57 +1,72 @@
 # Design
 
-How the game works, as agreed during design and adjusted since. Terms in **bold** are defined
+How it works, as agreed during design and adjusted since. Terms in **bold** are defined
 in [CONTEXT.md](../CONTEXT.md). The reasoning behind the bigger choices is in [adr/](adr/).
 
-## The game
+## What it is
 
-A single-player, turn-based sandbox. A **Scenario** file sets up the world. The player starts a
-**Session** from it and plays **Turns**: each Turn, the player writes an **Action**, the **Text
-Model** rewrites the **Scene**, and the **Image Model** renders it. There is no score and no win
-condition; the Session runs until the player ends it.
+A turn-based text-to-image prompt generator. A **Scenario** file describes a starting image. The
+player starts a **Session** from it and plays **Turns**: each Turn, the player writes an
+**Action** (what to change), the **Text Model** edits the **Image Prompt**, and the **Image
+Model** renders it. There is no score and no end; a Session lasts until it's deleted.
 
-The first Scenario is a studio photoshoot. The player is the photographer and directs the
-**Subject** (Maya, a fictional adult professional model) within a fixed **Shoot Brief**.
-Photoshoot Actions are called **Directions** and cover four areas: the Subject's pose,
-expression and gaze; the camera; the lighting; and the set.
+The Image Prompt is nine **Sections** in a fixed order: subject and identity → pose and limbs →
+expression → camera angle and framing → clothing → environment → lighting → color → art style
+and medium ([ADR 0005](adr/0005-image-prompt-is-the-state.md)). Every Section can be changed;
+the engine's four **Limits** are the only lines an Action can't cross
+([ADR 0002](adr/0002-guardrails-enforced-by-the-engine.md)).
+
+The first Scenario is a studio photoshoot with Maya, a fictional fitness model.
 
 ## The Turn loop
 
 ```
-current Scene + Action ──► Text Model (Ollama) ──► { outcome, narration, scene }
-                                                          │
-             engine: declined / unclear / unchanged? keep the previous Scene and image
-                                                          │
-             imagePrefix + labelled Scene fields ──► Image Model (mflux) ──► turn-N.png
-                                                          │
-                                   commit: append the Turn to session.json
+Action ──► Limits check (term list; a real-person question if it names someone)
+   │           └─ crossed ──► Declined: prompt and image unchanged
+   ▼
+current Image Prompt + Action ──► Text Model (Ollama) ──► { outcome, narration, prompt }
+                                                              │
+     engine: declined / unclear / Limit crossed / unchanged? keep the previous prompt and image
+                                                              │
+      "adult, " + the nine Sections in order ──► Image Model (mflux) ──► turn-N-xxxx.png
+                                                              │
+                                        commit: append the Turn to session.json
 ```
 
-1. **Text step.** The Text Model receives the Scenario's System prompt, its **Setup** (as YAML)
-   and the output rules as the system message, plus **only** the current Scene and the Action as
-   the user message. It never sees earlier Turns ([ADR 0001](adr/0001-scene-is-sole-turn-state.md)).
-   The reply is constrained by a JSON schema (Ollama's `format`) whose `scene` property is the
-   Scenario's Scene schema. `outcome` (`done`, `declined` or `unclear`) comes first in the
-   schema, so the model decides before it
-   narrates. Ollama's reply is streamed. With **Thinking** on (a Setting, for models that
-   support it) the model reasons first; its reasoning streams to the player as it's written
-   and is saved with the Turn. Models that can't think are asked again without it.
-2. **Retry.** An unusable reply (bad JSON, missing required Scene fields) is retried once, then
-   the Turn fails.
-3. **Engine rules** ([ADR 0002](adr/0002-guardrails-enforced-by-the-engine.md)):
-   - A **Declined Turn** or an **Unclear Turn** keeps the previous Scene and image, whatever
-     the model returned, and renders nothing.
-   - A done Turn whose Scene came back unchanged also reuses the previous image rather than
-     spending a render on the same picture.
-   - The Opening Turn always counts as done.
-   - The image prompt is built by the engine: the Scenario's `imagePrefix`, then every Scene
-     field as a labelled phrase (`subject pose: …, camera angle: low, set backdrop: …`).
-4. **Image step.** Images render one at a time across all Sessions: if another Session is
+1. **Limits on the Action.** The Action is checked against the Limits' term list before the Text
+   Model is asked. An Action that looks like it names someone (a capitalised full name, "look
+   like", "resemble") also gets a narrow yes/no question to the Text Model about real people. A
+   crossed Limit declines the Turn at once: the Narration names the Limit.
+2. **Text step.** The system message is the engine's rules (what each Section covers; edit only
+   the affected Sections and copy the rest word for word; replace rather than append; the
+   Limits; the reply format), then the Scenario's notes, plus its **Setup** on the Opening Turn
+   only. The user message is **only** the current Image Prompt and the Action; the Text Model
+   never sees earlier Turns ([ADR 0001](adr/0001-scene-is-sole-turn-state.md)). The reply is
+   constrained by a JSON schema (Ollama's `format`), with `outcome` (`done`, `declined` or
+   `unclear`) first, so the model decides before it writes. The Narration is a terse list of what
+   changed ("Pose: crouching low. Environment: teal backdrop."). Ollama's reply is streamed. With
+   **Thinking** on (a Setting, for models that support it) the model reasons first; its
+   reasoning streams to the player and is saved with the Turn. Models that can't think are asked
+   again without it.
+3. **Retry and limits on the call.** An unusable reply (bad JSON, a missing or empty Section, or
+   one cut off by the length cap) is retried once, then the Turn fails. Every Text Model call has
+   a token cap (2,048 tokens; 12,288 with thinking; 32 for the real-person question) and a time
+   limit (2 minutes; 10 with thinking; 30 s for the real-person question). Small models writing
+   JSON under a schema occasionally never stop, padding with whitespace; without the caps one
+   such reply blocked Ollama, and every later request behind it, for 14 minutes.
+4. **Engine rules** ([ADR 0002](adr/0002-guardrails-enforced-by-the-engine.md)):
+   - The new Image Prompt is checked against the Limits too; crossing one declines the Turn.
+   - A **Declined Turn** or an **Unclear Turn** keeps the previous Image Prompt and image,
+     whatever the model returned, and renders nothing.
+   - A done Turn whose Image Prompt came back unchanged also reuses the previous image.
+   - The Opening Turn always counts as done; if its prompt crosses a Limit, it fails.
+   - The text rendered is `adult, ` followed by the nine Sections in order.
+5. **Image step.** Images render one at a time across all Sessions: if another Session is
    rendering, this Turn waits in a queue (shown as "Waiting for another render…", and
-   cancellable). Then the mflux CLI renders the image with the Session's seed and settings. Its step
-   counter is streamed to the player as progress
+   cancellable). Then the mflux CLI renders the image with the Session's seed and settings. Its
+   step counter is streamed to the player as progress
    ([ADR 0004](adr/0004-images-from-the-mflux-cli.md)).
-5. **Commit.** The Turn is appended to `session.json`.
+6. **Commit.** The Turn is appended to `session.json`.
 
 ### All or nothing
 
@@ -59,12 +74,12 @@ A Turn commits whole or not at all ([ADR 0003](adr/0003-turns-are-all-or-nothing
 
 | What happens | Result |
 |---|---|
-| Text Model fails twice | Turn fails; Scene unchanged; the Action stays in the text box |
-| Image Model fails | Turn fails; Scene unchanged; any partial image is deleted |
-| Player presses **Cancel** | Ollama request aborted, mflux process killed; Scene unchanged |
+| Text Model fails twice | Turn fails; Image Prompt unchanged; the Action stays in the text box |
+| Image Model fails | Turn fails; Image Prompt unchanged; any partial image is deleted |
+| Player presses **Cancel** | Ollama request aborted, mflux process killed; Image Prompt unchanged |
 | Opening Turn fails or is cancelled | The Session is discarded; back Home with the error |
 
-While a Turn runs, the new Scene text is shown **provisionally** (dimmed) as soon as the Text
+While a Turn runs, the new Narration is shown **provisionally** (dimmed) as soon as the Text
 Model returns, with "Rendering the image… 2/4" beneath it. It becomes real only when the image
 arrives.
 
@@ -77,7 +92,8 @@ racing a Turn).
 
 - **Seed:** fixed for the whole Session: the fixed seed from Settings, or a random one picked
   when the Session starts.
-- **Subject description:** in the `imagePrefix`, so it's in every image prompt.
+- **Subject description:** carried in the *subject and identity* Section, which the Text Model
+  copies word for word unless an Action changes it.
 - **Settings are copied into each Session when it starts,** so changing Settings mid-Session
   never changes the Image Model, seed or size of a running Session. Changes apply from the next
   Session.
@@ -105,10 +121,12 @@ in [open-threads.md](open-threads.md).
   button row. Typed text is always treated as an Action; there are no typed commands.
   The right panel has two tabs. **Turn Log** shows a thumbnail, the Action and the Narration per
   Turn; clicking one shows that Turn. While an earlier Turn is shown, a pill on the image reads
-  "Viewing Turn 1 of 4 · Back to latest", and the text box says the next Direction continues from
-  the latest Turn: Directions always build on the latest Turn, never on the one being viewed. Declined Turns are labelled and tinted amber, Unclear
-  Turns ("Didn't understand") blue, both in the log and on the caption. **Scene** shows the
-  viewed Turn's Scene fields, its thinking (collapsed, when there was any) and its image prompt.
+  "Viewing Turn 1 of 4 · Back to latest", and the text box says the next Action continues from
+  the latest Turn: Actions always build on the latest Turn, never on the one being viewed. Declined Turns are labelled and tinted amber, Unclear
+  Turns ("Didn't understand") blue, both in the log and on the caption. **Prompt** shows the
+  viewed Turn's nine Sections, with the ones that Turn changed highlighted and marked
+  "changed", then its thinking (collapsed, when there was any) and the full prompt text exactly
+  as rendered (expanded).
   While a thinking model reasons, the reasoning streams into the caption area under
   "Thinking…" and gives way to the Narration once it arrives. Because the Session id is in the URL,
   reloading the page keeps you in the Session. The image crossfades (700 ms) when a new Turn
@@ -116,8 +134,8 @@ in [open-threads.md](open-threads.md).
   frame.
 - **Navigation:** **RPG** leads Home; **Play** leads back to the Session opened last
   (remembered per browser), or Home when there is none. Up to five Session screens stay alive in
-  memory while you visit Home, Settings or other Sessions, so each keeps its half-typed Direction,
-  viewed Turn, tab and any running Turn. The unsent Direction is also saved per Session in the
+  memory while you visit Home, Settings or other Sessions, so each keeps its half-typed Action,
+  viewed Turn, tab and any running Turn. The unsent Action is also saved per Session in the
   browser, so it survives a reload. Returning to a Session re-checks it with the server (unless a
   Turn is running there); a Session deleted meanwhile sends you Home. While a Session's Turn is
   **waiting in the render queue**, you can't leave that Session (links, Back and reload are
@@ -133,8 +151,8 @@ in [open-threads.md](open-threads.md).
 - **Theme:** Light (a parchment tint), Dark or System, remembered per browser. It's a display
   preference, not a Setting.
 
-**Undo** removes the latest Turn: the previous Turn's Scene is current again, its image is
-deleted unless an earlier Turn still shows it, and the undone Direction goes back into the text
+**Undo** removes the latest Turn: the previous Turn's Image Prompt is current again, its image is
+deleted unless an earlier Turn still shows it, and the undone Action goes back into the text
 box (unless you've started typing a new one). It's offered in the button row and on the latest
 Turn in the Turn Log, never for the Opening Turn, and never while a Turn runs. Image files carry
 a random suffix, so a Turn made after an Undo never reuses the undone Turn's file name, and the
@@ -171,7 +189,7 @@ All under `/api`; the Vite dev server proxies it to the Deno server.
 | `GET /sessions/:id/images/:file` | A Turn's image |
 
 A Turn's stream emits `phase` (`text`, then `queued` if another Session is rendering, then
-`image`), `thinking` (reasoning chunks; `restart` when a retry begins afresh), `text` (the provisional Scene and Narration),
+`image`), `thinking` (reasoning chunks; `restart` when a retry begins afresh), `text` (the provisional Image Prompt and Narration),
 `progress` (image steps), then exactly one of `committed`, `failed` or `cancelled`.
 `sessionDiscarded` on the last two tells the client that an Opening Turn took the Session with it.
 
@@ -187,16 +205,18 @@ The design Q&A, and what changed later.
 
 | Decision | Chosen | Changed since |
 |---|---|---|
-| Premise | Studio photoshoot with a fictional adult professional Subject and guardrails | — |
+| Premise | Studio photoshoot with a fictional adult professional Subject and guardrails | Now a text-to-image prompt generator; the photoshoot is its first Scenario |
 | Goal | Open sandbox; no scoring | — |
 | Backend | Deno HTTP server; Vite proxies `/api` | — |
 | Images | mflux CLI per image, behind `ImageGenerator` | Downloads blocked (ADR 0004) |
-| Turn state | The Scene only, no history (ADR 0001) | — |
-| Text Model output | One JSON call | Originally `{ scene, imagePrompt }`; now the engine builds the image prompt from the Scene |
+| Turn state | The Scene only, no history (ADR 0001) | The nine-Section Image Prompt (ADR 0005) |
+| Text Model output | One JSON call | `{ outcome, narration, prompt }`; the engine joins the Sections |
 | Settings | Server-side `settings.json`; apply from the next Session | Small sizes added |
 | Side panel | Turn Log with thumbnails; End/Reset as buttons only | End and Reset removed; Sessions are listed, opened and deleted on Home |
 | Several Sessions rendering | Queue images one at a time across Sessions | A queued Turn keeps you in its Session |
-| Direction areas | Pose, camera, lighting, set: defined by the Scenario, not the engine | — |
+| What an Action can change | Pose, camera, lighting, set, per Scenario | Anything, in any of the nine Sections, within the four Limits |
+| Limits | Per-Scenario brief, character refusals | Four engine Limits: term list + real-person check (ADR 0002) |
+| Narration | Character prose | A terse list of what changed |
 | Every Turn renders | Yes; no separate "take the shot" | — |
 | Subject consistency | Fixed description + fixed seed; edit-based rendering deferred | — |
 | Failures | All or nothing (ADR 0003) | — |

@@ -17,7 +17,8 @@ import {
   getSession,
   imageUrl,
   type Outcome,
-  type Scene,
+  type ImagePrompt,
+  SECTIONS,
   type Session,
   streamTurn,
   type TurnEvent,
@@ -37,7 +38,7 @@ interface Pending {
   progress?: { step: number; total: number }
   narration?: string
   outcome?: Outcome
-  scene?: Scene
+  prompt?: ImagePrompt
   cancelling?: boolean
 }
 
@@ -49,7 +50,7 @@ const draft = ref('')
 /** Index of the Turn shown in the main panel; null follows the latest. */
 const viewing = ref<number | null>(null)
 const log = ref<HTMLElement | null>(null)
-const panel = ref<'log' | 'scene'>('log')
+const panel = ref<'log' | 'prompt'>('log')
 
 const CAPTION_KEY = 'caption-hidden'
 /** A per-browser viewing preference, like the theme. */
@@ -116,7 +117,7 @@ async function load(): Promise<boolean> {
 
 let started = false
 let starting = false
-/** First successful load: follow a Turn already running, or write the opening Scene. */
+/** First successful load: follow a Turn already running, or write the opening prompt. */
 async function start() {
   if (started || starting) return
   starting = true
@@ -295,7 +296,7 @@ async function undo() {
 const displayed = ref<{ src: string; alt: string } | null>(null)
 
 watch(
-  () => shown.value && { src: imageUrl(props.id, shown.value.image), alt: shown.value.imagePrompt },
+  () => shown.value && { src: imageUrl(props.id, shown.value.image), alt: shown.value.promptText },
   (next) => {
     if (!next) return
     if (next.src === displayed.value?.src) return
@@ -341,7 +342,7 @@ const captionOutcome = computed(() =>
   pending.value?.narration ? pending.value.outcome : shown.value?.outcome
 )
 
-/** Labels for the Outcomes that leave the Scene unchanged. */
+/** Labels for the Outcomes that leave the Image Prompt unchanged. */
 const OUTCOME_LABELS: Partial<Record<Outcome, string>> = {
   declined: 'Declined',
   unclear: "Didn't understand",
@@ -350,18 +351,18 @@ const OUTCOME_LABELS: Partial<Record<Outcome, string>> = {
 const phaseLabel = computed(() => {
   if (pending.value?.cancelling) return 'Cancelling…'
   if (pending.value?.phase === 'queued') return 'Waiting for another render…'
-  if (pending.value?.phase !== 'image') return 'Writing the Scene…'
+  if (pending.value?.phase !== 'image') return 'Writing the prompt…'
   const p = pending.value.progress
   return p ? `Rendering the image… ${p.step}/${p.total}` : 'Rendering the image…'
 })
 
-const sceneEntries = (scene: Scene) =>
-  Object.entries(scene).map(([key, value]) => [
-    key,
-    typeof value === 'object' && value !== null
-      ? Object.entries(value).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') || '—' : v}`)
-      : [String(value)],
-  ] as const)
+/** Sections the shown Turn changed, compared with the Turn before it. */
+const changed = computed(() => {
+  const turn = shown.value
+  const before = turn && session.value?.turns[turn.index - 1]
+  if (!turn || !before) return new Set<string>()
+  return new Set(SECTIONS.filter((s) => turn.prompt[s.key] !== before.prompt[s.key]).map((s) => s.key))
+})
 </script>
 
 <template>
@@ -539,7 +540,7 @@ const sceneEntries = (scene: Scene) =>
       <aside class="flex w-80 flex-col border-l border-line">
         <div role="tablist" class="flex border-b border-line text-sm">
           <button
-            v-for="tab in [{ id: 'log', label: 'Turn Log' }, { id: 'scene', label: 'Scene' }] as const"
+            v-for="tab in [{ id: 'log', label: 'Turn Log' }, { id: 'prompt', label: 'Prompt' }] as const"
             :key="tab.id"
             type="button"
             role="tab"
@@ -609,10 +610,20 @@ const sceneEntries = (scene: Scene) =>
             <p class="mb-3 text-muted">
               Turn {{ shown.index }} · {{ shown.action ?? 'Opening' }}
             </p>
-            <dl class="flex flex-col gap-3">
-              <div v-for="[key, lines] in sceneEntries(shown.scene)" :key="key">
-                <dt class="font-medium capitalize">{{ key }}</dt>
-                <dd v-for="line in lines" :key="line" class="text-muted">{{ line }}</dd>
+            <dl class="flex flex-col gap-2">
+              <div
+                v-for="s in SECTIONS"
+                :key="s.key"
+                class="rounded border-l-2 py-1 pl-2"
+                :class="changed.has(s.key) ? 'border-info bg-surface' : 'border-transparent'"
+                :data-section="s.key"
+                :data-changed="changed.has(s.key) ? '' : undefined"
+              >
+                <dt class="flex items-center gap-2 font-medium">
+                  {{ s.label }}
+                  <span v-if="changed.has(s.key)" class="text-xs font-normal text-info">changed</span>
+                </dt>
+                <dd class="text-muted">{{ shown.prompt[s.key] }}</dd>
               </div>
             </dl>
             <details v-if="shown.thinking" :key="`thinking-${shown.index}`" class="mt-4 text-muted">
@@ -622,11 +633,11 @@ const sceneEntries = (scene: Scene) =>
               </p>
             </details>
             <details :key="shown.index" class="mt-4 text-muted" open>
-              <summary class="cursor-pointer select-none">Image prompt</summary>
-              <p class="mt-1 text-xs leading-relaxed">{{ shown.imagePrompt }}</p>
+              <summary class="cursor-pointer select-none">Full prompt</summary>
+              <p class="mt-1 text-xs leading-relaxed" data-prompt-text>{{ shown.promptText }}</p>
             </details>
           </template>
-          <p v-else class="text-muted">No Scene yet.</p>
+          <p v-else class="text-muted">No prompt yet.</p>
         </div>
       </aside>
     </template>

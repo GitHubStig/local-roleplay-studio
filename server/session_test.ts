@@ -12,8 +12,8 @@ Deno.test('dirSessionStore upgrades Turns saved with the old declined flag', () 
       JSON.stringify({
         id: 's1',
         turns: [
-          { index: 0, declined: false, scene: {} },
-          { index: 1, declined: true, scene: {} },
+          { index: 0, declined: false, prompt: {} },
+          { index: 1, declined: true, prompt: {} },
         ],
       }),
     )

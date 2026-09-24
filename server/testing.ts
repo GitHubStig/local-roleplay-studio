@@ -1,17 +1,12 @@
 import type { ImageGenerator } from './imageGenerator.ts'
 import { parseScenario, type ScenarioLibrary } from './scenario.ts'
+import type { ImagePrompt } from './imagePrompt.ts'
 import type { TextModel, TurnText } from './textModel.ts'
 
 export const scenarioText = `---
 title: Test Shoot
 description: A short test.
-imagePrefix: studio photo
 setup: { location: a studio }
-sceneSchema:
-  type: object
-  properties:
-    pose: { type: string }
-  required: [pose]
 ---
 ## System
 Rules.
@@ -30,10 +25,30 @@ export const scenarioLibrary: ScenarioLibrary = {
   get: (id) => Promise.resolve(id === 'test' ? testScenario : undefined),
 }
 
-/** A Text Model that replies from a queue; an Error in the queue is thrown instead. */
-export function scriptedTextModel(replies: (TurnText | Error)[]): TextModel & { calls: number } {
+/** An Image Prompt that differs from others only in its pose. */
+export const promptWith = (pose: string): ImagePrompt => ({
+  subject: 'a person',
+  pose,
+  expression: 'calm',
+  camera: 'eye level',
+  clothing: 'running gear',
+  environment: 'a studio',
+  lighting: 'softbox',
+  color: 'neutral',
+  style: 'photo',
+})
+
+/**
+ * A Text Model that replies from a queue; an Error in the queue is thrown instead. It says an
+ * Action names a real person when it mentions `realPeople`.
+ */
+export function scriptedTextModel(
+  replies: (TurnText | Error)[],
+  realPeople: string[] = [],
+): TextModel & { calls: number; personChecks: string[] } {
   const model = {
     calls: 0,
+    personChecks: [] as string[],
     write(_req: unknown, signal: AbortSignal, onThinking?: (chunk: string) => void) {
       model.calls++
       signal.throwIfAborted()
@@ -44,14 +59,18 @@ export function scriptedTextModel(replies: (TurnText | Error)[]): TextModel & { 
       for (const word of next.thinking?.split(/(?<= )/) ?? []) onThinking?.(word)
       return Promise.resolve(next)
     },
+    namesRealPerson(action: string) {
+      model.personChecks.push(action)
+      return Promise.resolve(realPeople.some((name) => action.includes(name)))
+    },
   }
   return model
 }
 
 export const reply = (pose: string, extra: Partial<TurnText> = {}): TurnText => ({
   outcome: 'done',
-  narration: `Now ${pose}.`,
-  scene: { pose },
+  narration: `Pose: ${pose}.`,
+  prompt: promptWith(pose),
   ...extra,
 })
 

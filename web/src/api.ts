@@ -89,20 +89,37 @@ export interface ScenarioList {
 
 export const getScenarios = () => request<ScenarioList>('/api/scenarios')
 
-export type Scene = Record<string, unknown>
+/** The nine sections of an Image Prompt, in the order they're joined for the Image Model. */
+export const SECTIONS = [
+  { key: 'subject', label: 'Subject and identity' },
+  { key: 'pose', label: 'Pose and limbs' },
+  { key: 'expression', label: 'Expression' },
+  { key: 'camera', label: 'Camera angle and framing' },
+  { key: 'clothing', label: 'Clothing' },
+  { key: 'environment', label: 'Environment' },
+  { key: 'lighting', label: 'Lighting' },
+  { key: 'color', label: 'Color' },
+  { key: 'style', label: 'Art style and medium' },
+] as const
 
-/** How a Turn's Action was received; only `done` changes the Scene. */
+export type SectionKey = (typeof SECTIONS)[number]['key']
+
+/** A Session's whole state at one Turn: what the image shows, section by section. */
+export type ImagePrompt = Record<SectionKey, string>
+
+/** How a Turn's Action was received; only `done` changes the Image Prompt. */
 export type Outcome = 'done' | 'declined' | 'unclear'
 
 export interface Turn {
   index: number
   action: string | null
-  scene: Scene
+  prompt: ImagePrompt
   narration: string
   outcome: Outcome
   /** The Text Model's reasoning, when thinking was on. */
   thinking?: string
-  imagePrompt: string
+  /** The exact text sent to the Image Model. */
+  promptText: string
   image: string
   createdAt: string
 }
@@ -123,7 +140,7 @@ export type TurnEvent =
   | { type: 'phase'; phase: 'text' | 'queued' | 'image' }
   | { type: 'thinking'; text: string; restart?: boolean }
   | { type: 'progress'; step: number; total: number }
-  | { type: 'text'; outcome: Outcome; narration: string; scene: Scene }
+  | { type: 'text'; outcome: Outcome; narration: string; prompt: ImagePrompt }
   | { type: 'committed'; turn: Turn }
   | { type: 'failed'; message: string; sessionDiscarded: boolean }
   | { type: 'cancelled'; sessionDiscarded: boolean }

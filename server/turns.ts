@@ -1,15 +1,12 @@
 import { equal } from '@std/assert'
 import { join } from '@std/path'
 import type { ImageGenerator } from './imageGenerator.ts'
+import { type ImagePrompt, renderPrompt } from './imagePrompt.ts'
+import { crossedLimit } from './limits.ts'
+import { mightNameAPerson } from './textModel.ts'
 import { RenderQueue } from './renderQueue.ts'
 import type { Scenario } from './scenario.ts'
-import {
-  currentScene,
-  type Outcome,
-  type Session,
-  type SessionStore,
-  type Turn,
-} from './session.ts'
+import { type Outcome, type Session, type SessionStore, type Turn } from './session.ts'
 import type { TextModel, TurnText } from './textModel.ts'
 
 /** Progress of a Turn, streamed to the player as it happens. */
@@ -20,8 +17,8 @@ export type TurnEvent =
   | { type: 'thinking'; text: string; restart?: boolean }
   /** Image Model steps completed so far. */
   | { type: 'progress'; step: number; total: number }
-  /** The new Scene before its image exists; provisional until `committed`. */
-  | { type: 'text'; outcome: Outcome; narration: string; scene: Turn['scene'] }
+  /** The new Image Prompt before its image exists; provisional until `committed`. */
+  | { type: 'text'; outcome: Outcome; narration: string; prompt: ImagePrompt }
   | { type: 'committed'; turn: Turn }
 
 export interface TurnDeps {
@@ -39,26 +36,6 @@ const TEXT_ATTEMPTS = 2
  * never reused after an Undo, so a browser can cache images forever without showing a stale one.
  */
 export const imageName = (index: number) => `turn-${index}-${crypto.randomUUID().slice(0, 8)}`
-
-/**
- * Describes a Scene for the Image Model as labelled phrases, e.g. `camera angle: low`, so the
- * image always shows exactly the state that is carried to the next Turn.
- */
-export function sceneToPrompt(scene: Turn['scene']): string {
-  const phrases: string[] = []
-  const visit = (value: unknown, label: string) => {
-    if (Array.isArray(value)) {
-      const items = value.filter((v) => typeof v === 'string' && v.trim())
-      if (items.length) phrases.push(`${label}: ${items.join(', ')}`)
-    } else if (typeof value === 'object' && value !== null) {
-      for (const [key, v] of Object.entries(value)) visit(v, label ? `${label} ${key}` : key)
-    } else if (value !== null && value !== undefined && String(value).trim()) {
-      phrases.push(`${label}: ${String(value).trim()}`)
-    }
-  }
-  visit(scene, '')
-  return phrases.join(', ')
-}
 
 async function writeText(
   textModel: TextModel,
@@ -83,7 +60,7 @@ async function writeText(
 }
 
 /**
- * Runs one Turn: Text Model, then Image Model (prompted from the Scene), then commit. The Turn commits whole or not at
+ * Runs one Turn: Text Model, then Image Model (rendering the Image Prompt), then commit. The Turn commits whole or not at
  * all: on failure or abort the Session on disk is untouched and any image written is removed.
  */
 export async function runTurn(
@@ -95,39 +72,74 @@ export async function runTurn(
   signal: AbortSignal,
 ): Promise<Turn> {
   const previous = session.turns.at(-1)
-  const scene = currentScene(session)
   const index = session.turns.length
 
   emit({ type: 'phase', phase: 'text' })
-  const text = await writeText(deps.textModel, { scenario, scene, action }, signal, emit)
+  let outcome: Outcome
+  let narration: string
+  let nextPrompt: ImagePrompt
+  let thinking: string | undefined
 
-  // The engine, not the Text Model, guarantees a declined or unclear Action changes nothing.
-  // The Opening Turn always counts as done.
-  const outcome: Outcome = previous === undefined ? 'done' : text.outcome
-  const nextScene = outcome === 'done' ? text.scene : previous!.scene
-  // A refusal must read as one: a small Text Model sometimes narrates the refused Action happening.
-  const lines = scenario.declinedNarration
-  const narration = outcome === 'declined' && lines.length
-    ? lines[Math.floor(Math.random() * lines.length)]
-    : text.narration
-  emit({ type: 'text', outcome, narration, scene: nextScene })
+  // The engine, not the Text Model, enforces the limits (ADR 0002). An Action that plainly
+  // crosses one is declined without asking the Text Model at all.
+  let actionLimit = previous && action ? crossedLimit(action)?.message : undefined
+  // Real people can't be caught by a term list: ask the Text Model a narrow yes/no question.
+  if (previous && action && !actionLimit && mightNameAPerson(action)) {
+    if (await deps.textModel.namesRealPerson(action, signal)) {
+      actionLimit = 'no real, identifiable people'
+    }
+  }
+  if (previous && actionLimit) {
+    outcome = 'declined'
+    narration = `Declined: ${actionLimit}.`
+    nextPrompt = previous.prompt
+  } else {
+    const text = await writeText(
+      deps.textModel,
+      { scenario, prompt: previous?.prompt ?? null, action },
+      signal,
+      emit,
+    )
+    thinking = text.thinking
+    const promptLimit = crossedLimit(renderPrompt(text.prompt))
+    if (!previous) {
+      // The Opening Turn always counts as done, so it can't be declined: it fails instead.
+      if (promptLimit) throw new Error(`The opening prompt crossed a limit: ${promptLimit.message}`)
+      outcome = 'done'
+      narration = text.narration
+      nextPrompt = text.prompt
+    } else if (text.outcome !== 'done') {
+      outcome = text.outcome
+      narration = text.narration
+      nextPrompt = previous.prompt
+    } else if (promptLimit) {
+      outcome = 'declined'
+      narration = `Declined: ${promptLimit.message}.`
+      nextPrompt = previous.prompt
+    } else {
+      outcome = 'done'
+      narration = text.narration
+      nextPrompt = text.prompt
+    }
+  }
+  emit({ type: 'text', outcome, narration, prompt: nextPrompt })
 
-  // Nothing to render if the Scene didn't change: declined, unclear, or a done Action that the
+  // Nothing to render if the Image Prompt didn't change: declined, unclear, or a done Action the
   // Text Model left without effect. Reuse the previous image.
-  const reuseImage = previous !== undefined && equal(nextScene, previous.scene)
+  const reuseImage = previous !== undefined && equal(nextPrompt, previous.prompt)
 
   const dir = deps.store.dir(session.id)
   let image: string
-  let imagePrompt: string
+  let promptText: string
   // Named up front so a failed or cancelled Turn can remove whatever the generator wrote, even if
   // it finished writing just as the Turn was cancelled.
   const name = imageName(index)
   try {
     if (reuseImage) {
       image = previous!.image
-      imagePrompt = previous!.imagePrompt
+      promptText = previous!.promptText
     } else {
-      imagePrompt = `${scenario.imagePrefix}, ${sceneToPrompt(nextScene)}`
+      promptText = renderPrompt(nextPrompt)
       const release = await (deps.renderQueue ?? new RenderQueue()).acquire(
         signal,
         () => emit({ type: 'phase', phase: 'queued' }),
@@ -137,7 +149,7 @@ export async function runTurn(
         await Deno.mkdir(dir, { recursive: true })
         image = await deps.imageGenerator.generate(
           {
-            prompt: imagePrompt,
+            prompt: promptText,
             seed: session.seed,
             settings: session.settings,
             dir,
@@ -155,11 +167,11 @@ export async function runTurn(
     const turn: Turn = {
       index,
       action,
-      scene: nextScene,
+      prompt: nextPrompt,
       narration,
       outcome,
-      ...(text.thinking ? { thinking: text.thinking } : {}),
-      imagePrompt,
+      ...(thinking ? { thinking } : {}),
+      promptText,
       image,
       createdAt: new Date().toISOString(),
     }

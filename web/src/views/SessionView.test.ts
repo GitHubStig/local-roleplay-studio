@@ -2,6 +2,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import * as api from '../api'
+import { promptFor } from '../testing'
 import SessionView from './SessionView.vue'
 
 vi.mock('../api', async (importOriginal) => ({
@@ -17,10 +18,10 @@ vi.mock('../api', async (importOriginal) => ({
 const turn = (index: number, action: string | null, extra: Partial<api.Turn> = {}): api.Turn => ({
   index,
   action,
-  scene: { subject: { pose: `pose ${index}` } },
+  prompt: promptFor(index),
   narration: `Narration ${index}.`,
   outcome: 'done',
-  imagePrompt: `prompt ${index}`,
+  promptText: `prompt ${index}`,
   image: `turn-${index}.png`,
   createdAt: '2026-09-24T00:00:00.000Z',
   ...extra,
@@ -86,7 +87,7 @@ describe('SessionView', () => {
     })
     const { wrapper } = await mountIt()
 
-    emit({ type: 'text', narration: 'Maya arrives.', outcome: 'done', scene: {} })
+    emit({ type: 'text', narration: 'Maya arrives.', outcome: 'done', prompt: promptFor(0) })
     emit({ type: 'phase', phase: 'image' })
     emit({ type: 'progress', step: 2, total: 4 })
     await flushPromises()
@@ -168,15 +169,28 @@ describe('SessionView', () => {
     expect(wrapper.find('[data-caption]').exists()).toBe(true)
   })
 
-  it('shows the Scene of the viewed Turn in the Scene tab', async () => {
-    vi.mocked(api.getSession).mockResolvedValue(session([turn(0, null), turn(1, 'Sit')]))
+  it("shows the viewed Turn's Image Prompt in the Prompt tab, marking changed sections", async () => {
+    vi.mocked(api.getSession).mockResolvedValue(
+      session([turn(0, null), turn(1, 'Sit', { prompt: { ...promptFor(1), color: 'teal' } })]),
+    )
     const { wrapper } = await mountIt()
     await wrapper.findAll('[role=tab]')[1].trigger('click')
     const panel = wrapper.find('[role=tabpanel]')
     expect(panel.text()).toContain('Turn 1 · Sit')
-    expect(panel.text()).toContain('pose: pose 1')
-    expect(panel.text()).toContain('prompt 1')
-    expect(panel.find('details').attributes('open')).toBeDefined()
+    expect(panel.find('[data-section=pose]').text()).toContain('Pose and limbs')
+    expect(panel.find('[data-section=pose]').text()).toContain('pose 1')
+    expect(panel.findAll('[data-changed]').map((d) => d.attributes('data-section'))).toEqual([
+      'pose',
+      'color',
+    ])
+    expect(panel.find('[data-prompt-text]').text()).toBe('prompt 1')
+    expect(panel.find('details[open]').exists()).toBe(true)
+  })
+
+  it('marks nothing as changed on the Opening Turn', async () => {
+    const { wrapper } = await mountIt()
+    await wrapper.findAll('[role=tab]')[1].trigger('click')
+    expect(wrapper.findAll('[data-changed]')).toHaveLength(0)
   })
 
   it('labels declined and unclear Turns in the caption and the Turn Log', async () => {
@@ -252,7 +266,7 @@ describe('SessionView', () => {
     const { wrapper } = await mountIt()
     await wrapper.find('textarea').setValue('Sit')
     await buttonNamed(wrapper, 'Send').trigger('click')
-    emit({ type: 'text', outcome: 'done', narration: 'Maya sits.', scene: {} })
+    emit({ type: 'text', outcome: 'done', narration: 'Maya sits.', prompt: promptFor(0) })
     emit({ type: 'phase', phase: 'queued' })
     await flushPromises()
     expect(wrapper.find('[role=status]').text()).toContain('Waiting for another render')
@@ -311,13 +325,13 @@ describe('SessionView', () => {
     await flushPromises()
     expect(wrapper.find('[data-thinking]').text()).not.toContain('stool')
 
-    emit({ type: 'text', outcome: 'done', narration: 'Maya sits.', scene: {} })
+    emit({ type: 'text', outcome: 'done', narration: 'Maya sits.', prompt: promptFor(0) })
     await flushPromises()
     expect(wrapper.find('[data-thinking]').exists()).toBe(false)
     expect(wrapper.find('[data-caption]').text()).toBe('Maya sits.')
   })
 
-  it("shows a Turn's saved thinking in the Scene tab", async () => {
+  it("shows a Turn's saved thinking in the Prompt tab", async () => {
     vi.mocked(api.getSession).mockResolvedValue(
       session([turn(0, null), turn(1, 'Sit', { thinking: 'The stool is free.' })]),
     )

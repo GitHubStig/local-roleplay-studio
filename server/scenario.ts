@@ -7,17 +7,8 @@ export interface Scenario {
   id: string
   title: string
   description: string
-  /** Fixed facts every Scene must stay within, given to the Text Model verbatim. */
+  /** Facts for the Text Model (who, where, the look), given to it verbatim; may be empty. */
   setup: Record<string, unknown>
-  /** Prepended by the engine to every image prompt, whatever the Text Model writes. */
-  imagePrefix: string
-  /**
-   * Narrations used instead of the Text Model's on a Declined Turn (one picked at random), so a
-   * refusal always reads as a refusal. Empty: the Text Model's narration is kept.
-   */
-  declinedNarration: string[]
-  /** JSON schema for this Scenario's Scene. */
-  sceneSchema: Record<string, unknown>
   /** Standing instructions for the Text Model on every Turn. */
   systemPrompt: string
   /** How to write the opening Scene on the Opening Turn. */
@@ -79,29 +70,13 @@ export function parseScenario(id: string, text: string): Scenario {
   }
   const title = str('title')
   const description = str('description')
-  const imagePrefix = str('imagePrefix')
 
-  const setup = attrs.setup
+  const setup = attrs.setup ?? {}
   if (!isRecord(setup)) issues.push('setup must be a mapping')
-
-  const declined = attrs.declinedNarration ?? []
-  const declinedNarration = (typeof declined === 'string' ? [declined] : declined) as unknown[]
-  if (
-    !Array.isArray(declinedNarration) ||
-    declinedNarration.some((d) => typeof d !== 'string' || !d.trim())
-  ) {
-    issues.push('declinedNarration must be a string or a list of non-empty strings')
-  }
-
-  const sceneSchema = attrs.sceneSchema
-  if (!isRecord(sceneSchema) || sceneSchema.type !== 'object') {
-    issues.push('sceneSchema must be a JSON schema with type: object')
-  }
 
   const parts = sections(body)
   const systemPrompt = parts.get('system') ?? ''
   const openingPrompt = parts.get('opening') ?? ''
-  if (!systemPrompt) issues.push('body needs a non-empty "## System" section')
   if (!openingPrompt) issues.push('body needs a non-empty "## Opening" section')
 
   if (issues.length > 0) throw new Error(issues.join('; '))
@@ -110,11 +85,6 @@ export function parseScenario(id: string, text: string): Scenario {
     title,
     description,
     setup: setup as Record<string, unknown>,
-    imagePrefix,
-    declinedNarration: Array.isArray(declinedNarration)
-      ? (declinedNarration as string[]).map((d) => d.trim())
-      : [],
-    sceneSchema: sceneSchema as Record<string, unknown>,
     systemPrompt,
     openingPrompt,
   }

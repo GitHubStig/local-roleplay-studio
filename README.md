@@ -1,14 +1,16 @@
 # RPG
 
-A turn-based, text-driven role-playing simulator that runs entirely on your Mac. You type an
-Action; a local language model (via [Ollama](https://ollama.com)) rewrites the Scene; a local
-image model (via [mflux](https://github.com/filipstrand/mflux)) renders it. Then you act again.
+A turn-based text-to-image prompt generator that runs entirely on your Mac. You say what to
+change; a local language model (via [Ollama](https://ollama.com)) edits a nine-part image prompt
+(subject → pose → expression → camera → clothing → environment → lighting → color → style); a
+local image model (via [mflux](https://github.com/filipstrand/mflux)) renders it. Then you change
+something else.
 
-The first Scenario is a **studio photoshoot**. You play the photographer, and you direct Maya,
-a fictional professional fitness model, through a sportswear campaign: her pose and expression,
-your camera, the lighting and the set.
+The first Scenario is a **studio photoshoot** with Maya, a fictional fitness model. Anything in
+the prompt can be changed, within four limits the engine enforces: everyone depicted is an
+adult, no sexual or nude imagery, no real identifiable people, no restraint or captivity.
 
-The game's vocabulary (Scenario, Session, Scene, Turn, Action, …) is defined in
+The vocabulary (Scenario, Session, Image Prompt, Section, Turn, Action, …) is defined in
 [CONTEXT.md](CONTEXT.md). The design is in [docs/design.md](docs/design.md).
 
 ## Requirements

@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: accepted; the state is now the Image Prompt, see ADR 0005
 ---
 
 # The Scene is the only state carried between Turns
@@ -13,6 +13,6 @@ Each Turn sends the Text Model only the current Scene and the player's Action â€
 
 ## Consequences
 
-The engine, not the Text Model, turns the Scene into the image prompt (the Scenario's `imagePrefix` plus the Scene's fields), so the image always shows exactly the state carried forward. An earlier design let the Text Model write the image prompt separately; in testing it drew Directions it never recorded in the Scene, and the next Turn silently undid them.
+Anything not written into the state is forgotten. If something needs remembering, it has to be in the state itself rather than fed back in as history. Revisit if Sessions feel like they lack memory in practice.
 
-Anything not written into the Scene is forgotten. If something needs remembering, add it to the Scenario's Scene schema rather than feeding history back in. Revisit if Sessions feel like they lack memory in practice.
+Since ADR 0005 the state is the nine-Section Image Prompt rather than a Scenario-shaped Scene; everything above still holds, with "Image Prompt" for "Scene".

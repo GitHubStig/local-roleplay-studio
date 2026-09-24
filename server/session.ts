@@ -1,11 +1,11 @@
 import { fromFileUrl, join } from '@std/path'
+import type { ImagePrompt } from './imagePrompt.ts'
 import type { Settings } from './settings.ts'
 
-export type Scene = Record<string, unknown>
-
 /**
- * How a Turn's Action was received. Only `done` can change the Scene; `declined` (a character
- * refused) and `unclear` (the Action couldn't be understood) leave the Scene and image as they were.
+ * How a Turn's Action was received. Only `done` can change the Image Prompt; `declined` (it
+ * crossed a limit) and `unclear` (it couldn't be understood) leave the Image Prompt and image as
+ * they were.
  */
 export type Outcome = 'done' | 'declined' | 'unclear'
 
@@ -15,12 +15,13 @@ export const OUTCOMES: readonly Outcome[] = ['done', 'declined', 'unclear']
 export interface Turn {
   index: number
   action: string | null
-  scene: Scene
-  /** What happened this Turn, for the player; never fed back to the Text Model. */
+  /** The Session's whole state after this Turn. */
+  prompt: ImagePrompt
+  /** A terse list of what changed, for the player; never fed back to the Text Model. */
   narration: string
   outcome: Outcome
-  /** The full prompt sent to the Image Model, prefix included. */
-  imagePrompt: string
+  /** The exact text sent to the Image Model: the sections joined in order. */
+  promptText: string
   /** The Text Model's reasoning for this Turn, when thinking was on. */
   thinking?: string
   /** File name of this Turn's image inside the Session directory. */
@@ -39,7 +40,7 @@ export interface Session {
   turns: Turn[]
 }
 
-export const currentScene = (s: Session): Scene | null => s.turns.at(-1)?.scene ?? null
+export const currentPrompt = (s: Session): ImagePrompt | null => s.turns.at(-1)?.prompt ?? null
 
 export interface SessionStore {
   /** Absolute directory holding a Session's JSON and images. */
