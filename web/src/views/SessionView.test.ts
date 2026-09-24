@@ -157,6 +157,7 @@ describe('SessionView', () => {
     expect(panel.text()).toContain('Turn 1 · Sit')
     expect(panel.text()).toContain('pose: pose 1')
     expect(panel.text()).toContain('prompt 1')
+    expect(panel.find('details').attributes('open')).toBeDefined()
   })
 
   it('shows an ended Session as read-only', async () => {

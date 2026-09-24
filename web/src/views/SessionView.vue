@@ -383,7 +383,7 @@ const sceneEntries = (scene: Scene) =>
                 <dd v-for="line in lines" :key="line" class="text-muted">{{ line }}</dd>
               </div>
             </dl>
-            <details class="mt-4 text-muted">
+            <details :key="shown.index" class="mt-4 text-muted" open>
               <summary class="cursor-pointer select-none">Image prompt</summary>
               <p class="mt-1 text-xs leading-relaxed">{{ shown.imagePrompt }}</p>
             </details>
