@@ -4,15 +4,16 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
+  /* Parchment: aged paper backgrounds, sepia ink text. */
   color-scheme: light;
-  --canvas: var(--color-neutral-50);
-  --surface: var(--color-white);
-  --line: var(--color-neutral-200);
-  --fg: var(--color-neutral-900);
-  --muted: var(--color-neutral-500);
-  --ok: var(--color-emerald-600);
-  --warn: var(--color-amber-600);
-  --danger: var(--color-red-600);
+  --canvas: #ede0bf;
+  --surface: #f6ecd2;
+  --line: #d2bf93;
+  --fg: #3a2817;
+  --muted: #6e573b;
+  --ok: #3f6b2a;
+  --warn: #8f520c;
+  --danger: #962a1c;
 }
 
 :root.dark {
