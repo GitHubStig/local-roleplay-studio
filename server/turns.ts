@@ -107,7 +107,9 @@ export async function runTurn(
   const dir = deps.store.dir(session.id)
   let image: string
   let imagePrompt: string
-  let wroteImage = false
+  // Named up front so a failed or cancelled Turn can remove whatever the generator wrote, even if
+  // it finished writing just as the Turn was cancelled.
+  const name = imageName(index)
   try {
     if (reuseImage) {
       image = previous!.image
@@ -127,12 +129,11 @@ export async function runTurn(
             seed: session.seed,
             settings: session.settings,
             dir,
-            name: imageName(index),
+            name,
           },
           signal,
           (step, total) => emit({ type: 'progress', step, total }),
         )
-        wroteImage = true
       } finally {
         release()
       }
@@ -154,7 +155,9 @@ export async function runTurn(
     emit({ type: 'committed', turn })
     return turn
   } catch (err) {
-    if (wroteImage) await Deno.remove(join(dir, image!)).catch(() => {})
+    for (const ext of ['png', 'svg']) {
+      await Deno.remove(join(dir, `${name}.${ext}`)).catch(() => {})
+    }
     throw err
   }
 }

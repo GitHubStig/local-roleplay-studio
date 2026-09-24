@@ -41,6 +41,33 @@ function lastMeaningfulLine(stderr: string): string {
     'no output'
 }
 
+/** mflux processes still running, killed if the server stops or restarts so the GPU is freed. */
+const running = new Set<Deno.ChildProcess>()
+
+function killAll() {
+  for (const child of running) {
+    try {
+      child.kill()
+    } catch {
+      // Already exited.
+    }
+  }
+}
+
+let cleanupInstalled = false
+function installCleanup() {
+  if (cleanupInstalled) return
+  cleanupInstalled = true
+  // `deno run --watch` fires `unload` when it restarts the server; Ctrl+C and kill don't.
+  globalThis.addEventListener('unload', killAll)
+  for (const signal of ['SIGINT', 'SIGTERM'] as const) {
+    Deno.addSignalListener(signal, () => {
+      killAll()
+      Deno.exit(signal === 'SIGINT' ? 130 : 143)
+    })
+  }
+}
+
 export interface MfluxOptions {
   models?: readonly ImageModel[]
   /** Block Hugging Face downloads so a missing model fails fast instead of fetching GBs. */
@@ -66,6 +93,9 @@ export function mfluxImageGenerator(opts: MfluxOptions = {}): ImageGenerator {
         stderr: 'piped',
         signal,
       }).spawn()
+      installCleanup()
+      running.add(child)
+      child.status.finally(() => running.delete(child))
 
       let stderr = ''
       for await (const chunk of child.stderr.pipeThrough(new TextDecoderStream())) {

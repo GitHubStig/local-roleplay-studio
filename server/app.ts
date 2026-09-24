@@ -267,7 +267,9 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
 
     ['GET', new URLPattern({ pathname: '/api/sessions/:id' }), async (_req, p) => {
       const session = await deps.sessions.load(p.id!)
-      return session ? json(session) : error('Session not found', 404)
+      if (!session) return error('Session not found', 404)
+      // `activity` lets a screen that didn't start the running Turn (reloaded, another tab) show it.
+      return json({ ...session, activity: activeTurns.get(session.id)?.phase ?? null })
     }],
 
     ['POST', new URLPattern({ pathname: '/api/sessions/:id/turns' }), async (req, p) => {

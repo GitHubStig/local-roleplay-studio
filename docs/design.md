@@ -117,7 +117,11 @@ in [open-threads.md](open-threads.md).
   browser, so it survives a reload. Returning to a Session re-checks it with the server (unless a
   Turn is running there); a Session deleted meanwhile sends you Home. While a Session's Turn is
   **waiting in the render queue**, you can't leave that Session (links, Back and reload are
-  blocked) until it starts rendering or you cancel it.
+  blocked) until it starts rendering or you cancel it. A Session screen that finds a Turn already
+  running which it didn't start (after a page reload, or from another tab) shows its progress
+  with **Cancel** and follows it until it finishes. A Session in the background never navigates
+  on its own: if its Opening Turn fails there, you're taken Home with the reason when you return
+  to it.
 - **Settings** (`/settings`): Text Model (installed Ollama models, minus OCR and dedicated
   vision-language models), Image Model, steps (reset to the model's default when the Image Model
   changes), quantization, size (six presets from 512×512 to 1216×832) and seed (random per
@@ -156,7 +160,7 @@ All under `/api`; the Vite dev server proxies it to the Deno server.
 | `GET /sessions` | Session summaries, newest first, with each one's current activity |
 | `POST /sessions` | Start a Session from `{ scenarioId }` |
 | `DELETE /sessions/:id` | Delete a Session and its images (`409` while a Turn runs) |
-| `GET /sessions/:id` | A Session with its Turns |
+| `GET /sessions/:id` | A Session with its Turns, plus `activity`: what a running Turn is doing, or `null` |
 | `POST /sessions/:id/turns` | Run a Turn (`{ action }`, or `{}` for the Opening Turn) as a server-sent event stream |
 | `POST /sessions/:id/cancel` | Cancel the Turn in progress |
 | `DELETE /sessions/:id/turns/:index` | Undo the latest Turn; `:index` must name it (`409` otherwise, and for the Opening Turn or while a Turn runs) |

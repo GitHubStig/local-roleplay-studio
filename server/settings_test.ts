@@ -1,5 +1,5 @@
 import { assertEquals } from '@std/assert'
-import { join } from '@std/path'
+import { join, toFileUrl } from '@std/path'
 import { DEFAULT_SETTINGS, fileSettingsStore } from './settings.ts'
 
 async function withTempDir(fn: (dir: string) => Promise<void>) {
@@ -40,4 +40,12 @@ Deno.test('fileSettingsStore falls back to defaults on a corrupt file', () =>
     const path = join(dir, 'settings.json')
     await Deno.writeTextFile(path, '{ nope')
     assertEquals(await fileSettingsStore(path).load(), DEFAULT_SETTINGS)
+  }))
+
+Deno.test('fileSettingsStore saves to a file URL whose path has spaces', () =>
+  withTempDir(async (dir) => {
+    const url = toFileUrl(join(dir, 'my settings ü.json'))
+    const store = fileSettingsStore(url)
+    await store.save({ ...DEFAULT_SETTINGS, textModel: 'llama3:latest' })
+    assertEquals((await store.load()).textModel, 'llama3:latest')
   }))

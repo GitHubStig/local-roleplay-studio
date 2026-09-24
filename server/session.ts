@@ -1,4 +1,4 @@
-import { join } from '@std/path'
+import { fromFileUrl, join } from '@std/path'
 import type { Settings } from './settings.ts'
 
 export type Scene = Record<string, unknown>
@@ -63,7 +63,7 @@ function upgrade(session: Session & { status?: string }): Session {
 
 /** Stores each Session as `<root>/<id>/session.json` plus its images. */
 export function dirSessionStore(root: string | URL): SessionStore {
-  const base = root instanceof URL ? root.pathname : root
+  const base = root instanceof URL ? fromFileUrl(root) : root
   const dir = (id: string) => {
     if (!SESSION_ID.test(id)) throw new Error(`Invalid Session id: ${id}`)
     return join(base, id)

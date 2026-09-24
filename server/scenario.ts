@@ -1,5 +1,5 @@
 import { extract } from '@std/front-matter/yaml'
-import { basename, extname, join } from '@std/path'
+import { basename, extname, fromFileUrl, join } from '@std/path'
 
 /** A Scenario file, parsed. See `scenarios/*.md`. */
 export interface Scenario {
@@ -111,7 +111,7 @@ export interface ScenarioLibrary {
 
 /** Reads Scenarios fresh from `dir` on every call, so edits apply without a restart. */
 export function dirScenarioLibrary(dir: string | URL): ScenarioLibrary {
-  const root = dir instanceof URL ? dir.pathname : dir
+  const root = dir instanceof URL ? fromFileUrl(dir) : dir
 
   async function list() {
     const scenarios: Scenario[] = []

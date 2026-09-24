@@ -332,6 +332,8 @@ Deno.test('Images render one at a time across Sessions; a waiting Turn is queued
     const b = (await call('POST', '/api/sessions/s2/turns', {})).body!
       .pipeThrough(new TextDecoderStream()).getReader()
     await readUntil(b, '"phase":"queued"')
+    assertEquals((await (await call('GET', '/api/sessions/s1')).json()).activity, 'image')
+    assertEquals((await (await call('GET', '/api/sessions/s2')).json()).activity, 'queued')
     const list = await (await call('GET', '/api/sessions')).json()
     const activity = Object.fromEntries(
       list.map((s: { id: string; activity: string }) => [s.id, s.activity]),

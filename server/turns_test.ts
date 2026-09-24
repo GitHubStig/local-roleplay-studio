@@ -296,3 +296,34 @@ Deno.test('a Turn after an Undo gets a fresh image name', () =>
     assertEquals(redo.index, 1)
     assertNotEquals(redo.image, undoneImage)
   }))
+
+Deno.test('runTurn removes an image written just before the Turn was cancelled', () =>
+  withTempDir(async (root) => {
+    const store = dirSessionStore(root)
+    const session = newSession()
+    await store.save(session)
+    const controller = new AbortController()
+    await assertRejects(() =>
+      runTurn(
+        {
+          store,
+          textModel: scriptedTextModel([reply('standing')]),
+          // Finishes writing, then the Turn is cancelled before the generator returns.
+          imageGenerator: {
+            async generate(req) {
+              await Deno.writeTextFile(join(req.dir, `${req.name}.png`), 'png')
+              controller.abort(new Error('Cancelled by player'))
+              throw controller.signal.reason
+            },
+          },
+        },
+        session,
+        testScenario,
+        null,
+        () => {},
+        controller.signal,
+      )
+    )
+    const files = await Array.fromAsync(Deno.readDir(join(root, 's1')))
+    assertEquals(files.map((f) => f.name), ['session.json'])
+  }))

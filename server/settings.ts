@@ -1,3 +1,4 @@
+import { fromFileUrl } from '@std/path'
 import { findImageModel, IMAGE_MODELS } from './imageModels.ts'
 
 export interface SizePreset {
@@ -123,7 +124,7 @@ export function fileSettingsStore(path: string | URL): SettingsStore {
       return result.settings
     },
     async save(settings) {
-      const tmp = `${path instanceof URL ? path.pathname : path}.tmp`
+      const tmp = `${path instanceof URL ? fromFileUrl(path) : path}.tmp`
       await Deno.writeTextFile(tmp, JSON.stringify(settings, null, 2) + '\n')
       await Deno.rename(tmp, path)
     },
