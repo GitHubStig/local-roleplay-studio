@@ -125,6 +125,7 @@ describe('SessionView', () => {
     expect(wrapper.findAll('aside li')).toHaveLength(2)
   })
 
+
   it('keeps the Direction and shows the error when a Turn fails', async () => {
     vi.mocked(api.streamTurn).mockImplementation(async (_id, _action, onEvent) => {
       onEvent({ type: 'failed', message: 'mflux crashed', sessionDiscarded: false })
@@ -190,6 +191,28 @@ describe('SessionView', () => {
     expect(panel.findAll('[data-diff=removed]').map((d) => d.text())).toEqual(['0, calm,'])
     expect(panel.findAll('[data-diff=added]').map((d) => d.text())).toEqual(['1, scared,'])
     expect(panel.text()).toContain('since Turn 0')
+  })
+
+  it("shows how long the viewed Turn's steps took", async () => {
+    vi.mocked(api.getSession).mockResolvedValue(
+      session([
+        turn(0, null, { timings: { text: 9.8, queued: 12.3, image: 5.1 } }),
+        turn(1, 'Stay', { timings: { text: 3, image: null } }),
+      ]),
+    )
+    const { wrapper } = await mountIt()
+    await wrapper.findAll('[role=tab]')[1].trigger('click')
+    expect(wrapper.find('[data-timings]').text()).toBe('Text 3.0 s · Image reused')
+    await wrapper.findAll('[role=tab]')[0].trigger('click')
+    await wrapper.findAll('aside [data-turn]')[0].trigger('click')
+    await wrapper.findAll('[role=tab]')[1].trigger('click')
+    expect(wrapper.find('[data-timings]').text()).toBe('Text 9.8 s · Waited 12.3 s · Image 5.1 s')
+  })
+
+  it('shows no timings for Turns saved before they were recorded', async () => {
+    const { wrapper } = await mountIt()
+    await wrapper.findAll('[role=tab]')[1].trigger('click')
+    expect(wrapper.find('[data-timings]').exists()).toBe(false)
   })
 
   it('shows the Opening prompt without any diff', async () => {

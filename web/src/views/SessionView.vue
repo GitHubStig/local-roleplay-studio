@@ -21,6 +21,7 @@ import {
   type ImagePrompt,
   type Session,
   streamTurn,
+  type Turn,
   type TurnEvent,
   undoTurn,
 } from '../api'
@@ -297,6 +298,14 @@ async function undo() {
   } finally {
     undoing.value = false
   }
+}
+
+/** "Text 9.8 s · Waited 12.3 s · Image 5.1 s", or "Image reused" when nothing was rendered. */
+function timingsLabel(t: NonNullable<Turn['timings']>): string {
+  const parts = [`Text ${t.text.toFixed(1)} s`]
+  if (t.queued !== undefined) parts.push(`Waited ${t.queued.toFixed(1)} s`)
+  parts.push(t.image === null ? 'Image reused' : `Image ${t.image.toFixed(1)} s`)
+  return parts.join(' · ')
 }
 
 /** The text box's border sweeps while the Text Model writes the new prompt. */
@@ -643,8 +652,11 @@ const promptDiff = computed(() => {
 
         <div v-else class="flex-1 overflow-y-auto p-4 text-sm" role="tabpanel">
           <template v-if="shown">
-            <p class="mb-3 text-muted">
+            <p class="text-muted" :class="shown.timings ? 'mb-1' : 'mb-3'">
               Turn {{ shown.index }} · {{ shown.action ?? 'Opening' }}
+            </p>
+            <p v-if="shown.timings" class="mb-3 text-xs text-muted" data-timings>
+              {{ timingsLabel(shown.timings) }}
             </p>
             <p class="leading-relaxed" data-prompt>
               <template v-for="(part, i) in promptDiff" :key="i">

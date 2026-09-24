@@ -127,7 +127,8 @@ in [open-threads.md](open-threads.md).
   Turn, read-only (still selectable, to copy), with Send disabled; "Back to latest" brings your
   draft back. Actions always build on the latest Turn, never on the one being viewed. Declined Turns are labelled and tinted amber, Unclear
   Turns ("Didn't understand") blue, both in the log and on the caption. **Prompt** shows the
-  viewed Turn's Image Prompt as a word-level diff against the Turn before it (added words
+  viewed Turn's timings ("Text 9.8 s · Waited 12.3 s · Image 5.1 s", or "Image reused"; also
+  saved per Turn in `session.json`), its Image Prompt as a word-level diff against the Turn before it (added words
   highlighted, removed words struck through), then its thinking (collapsed, when there was any).
   While a thinking model reasons, the reasoning streams into the caption area under
   "Thinking…" and gives way to the Narration once it arrives. Because the Session id is in the URL,

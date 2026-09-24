@@ -107,6 +107,8 @@ export interface Turn {
   outcome: Outcome
   /** The Text Model's reasoning, when thinking was on. */
   thinking?: string
+  /** Seconds each step took; missing on Turns saved before timings were recorded. */
+  timings?: { text: number; queued?: number; image: number | null }
   /** The exact text sent to the Image Model. */
   promptText: string
   image: string
