@@ -38,6 +38,27 @@ export const IMAGE_MODELS: readonly ImageModel[] = [
     model: 'krea-2',
     defaultSteps: 8,
   },
+  {
+    id: 'ernie-image-turbo',
+    label: 'ERNIE-Image Turbo',
+    command: 'mflux-generate-ernie-image-turbo',
+    model: 'ernie-image-turbo',
+    defaultSteps: 8,
+  },
+  {
+    id: 'boogu-image-turbo',
+    label: 'Boogu Image Turbo',
+    command: 'mflux-generate-boogu',
+    model: 'boogu-image-turbo',
+    defaultSteps: 4,
+  },
+  {
+    id: 'qwen-image-2.1',
+    label: 'Qwen-Image 2.1',
+    command: 'mflux-generate-qwen-2.1',
+    model: 'qwen-image-2.1',
+    defaultSteps: 40,
+  },
 ]
 
 export function findImageModel(id: string): ImageModel | undefined {

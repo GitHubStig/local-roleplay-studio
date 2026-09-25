@@ -90,7 +90,15 @@ starts missing implied changes.
 |---|---|---|
 | **FLUX.2 Klein 4B** | 832×1216: ~10–13 s · 512×768: ~5 s · 512×512: ~4 s | Follows the subject description (skin, hair) and keeps her consistent across Frames with a fixed seed. Peak memory ~17.6 GB at 832×1216, ~10.5 GB at 512 px. |
 | Z-Image Turbo (4-bit) | 832×1216: ~42 s (9 steps) | Ignored the subject's described skin tone and hair. |
-| Krea 2 | — | Not downloaded; downloads are blocked during play ([ADR 0004](adr/0004-images-from-the-mflux-cli.md)). |
+| Krea 2 (Turbo) | 512×512: ~32 s (8 steps) | Peak memory ~39 GB. |
+| ERNIE-Image Turbo | 512×512: ~18 s (8 steps) | Peak memory ~25 GB. |
+| Boogu Image Turbo | 512×512: ~16 s (4 steps) | Peak memory ~29 GB. |
+| Qwen-Image 2.1 | 512×512: ~38 s (40 steps) | Peak memory ~35 GB. |
+
+Timings for the last four are one test image each (2026-09-25, 48 GB Mac, no quantization,
+including model loading), not a comparison of how well they follow the prompt or keep a
+subject consistent. FLUX.2 Klein 9B is built into mflux too, but isn't offered until its
+weights are downloaded.
 
 Model loading is only ~5 s of an image, so keeping the Image Model loaded in a separate process
 isn't worth it yet ([open-threads.md](open-threads.md)).
@@ -99,4 +107,6 @@ isn't worth it yet ([open-threads.md](open-threads.md)).
 
 The Text Model and the Image Model share the Mac's memory. gemma4 31B (~19 GB) plus FLUX.2 Klein
 (~10.5 GB at 512 px, ~17.6 GB at 832×1216) fits comfortably on a large-memory Mac; on a smaller
-one, use the 512 px sizes.
+one, use the 512 px sizes. The larger Image Models (Krea 2, Qwen-Image 2.1, Boogu, ERNIE) peak
+at 25–39 GB even at 512 px: next to gemma4 on a 48 GB Mac they can push the system into swap,
+so set **Quantize** (8 or 4 bit) in Settings to shrink them.
