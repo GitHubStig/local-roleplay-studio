@@ -575,7 +575,10 @@ const promptDiff = computed(() => {
                 class="h-20 w-14 shrink-0 rounded object-cover"
               />
               <span class="flex min-w-0 flex-col gap-1">
-                <span class="font-medium">{{ frame.action ?? 'Opening' }}</span>
+                <!-- Capped here; the Prompt tab and the text box show it in full. -->
+                <span class="line-clamp-2 font-medium" :title="frame.action ?? undefined" data-action>
+                  {{ frame.action ?? 'Opening' }}
+                </span>
                 <span
                   v-if="OUTCOME_LABELS[frame.outcome]"
                   class="text-xs font-medium"
@@ -606,7 +609,7 @@ const promptDiff = computed(() => {
               Undo
             </button>
           </li>
-          <li v-if="busy" class="p-3 text-sm italic text-muted">
+          <li v-if="busy" class="line-clamp-3 p-3 text-sm italic text-muted">
             {{ pending?.detached ? 'A Frame in progress' : draft.trim() || 'Opening' }} —
             {{ phaseLabel }}
           </li>
