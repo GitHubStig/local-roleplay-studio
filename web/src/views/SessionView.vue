@@ -11,7 +11,9 @@ import {
 } from 'vue'
 import { onBeforeRouteLeave, useRouter } from 'vue-router'
 import { clearCurrentSession, setCurrentSession } from '../composables/useCurrentSession'
+import FrameImage from '../components/FrameImage.vue'
 import { useStoredFlag } from '../composables/useStoredFlag'
+import { useStoredText } from '../composables/useStoredText'
 import { diffWords } from '../diff'
 import {
   ApiError,
@@ -20,9 +22,9 @@ import {
   imageUrl,
   type Outcome,
   type ImagePrompt,
-  type Session,
+  type ChainSession,
   streamFrame,
-  type Frame,
+  type ChainFrame,
   type FrameEvent,
   undoFrame,
 } from '../api'
@@ -44,11 +46,12 @@ interface Pending {
   cancelling?: boolean
 }
 
-const session = ref<Session | null>(null)
+const session = ref<ChainSession | null>(null)
 const loadError = ref('')
 const pending = ref<Pending | null>(null)
 const frameError = ref('')
-const draft = ref('')
+/** The unsent Action, remembered per Session so it survives a reload. */
+const draft = useStoredText(`draft:${props.id}`)
 /** Index of the Frame shown in the main panel; null follows the latest. */
 const viewing = ref<number | null>(null)
 const log = ref<HTMLElement | null>(null)
@@ -77,7 +80,7 @@ let leaveOnReturn: { path: string; query: Record<string, string> } | null = null
 
 function leave(query: Record<string, string> = {}) {
   clearCurrentSession(props.id)
-  forgetDraft()
+  draft.value = ''
   if (onScreen) router.replace({ path: '/', query })
   else leaveOnReturn = { path: '/', query }
 }
@@ -85,7 +88,13 @@ function leave(query: Record<string, string> = {}) {
 /** Loads the Session; false if it couldn't be (gone: the player is sent Home). */
 async function load(): Promise<boolean> {
   try {
-    session.value = await getSession(props.id)
+    const loaded = await getSession(props.id)
+    // This screen is for Chains; a Storyboard has its own.
+    if (loaded.kind === 'storyboard') {
+      router.replace(`/storyboards/${props.id}`)
+      return false
+    }
+    session.value = loaded
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) {
       leave()
@@ -96,7 +105,7 @@ async function load(): Promise<boolean> {
   }
   loadError.value = ''
   // Play leads back to the Session opened last.
-  setCurrentSession(props.id)
+  setCurrentSession(props.id, 'chain')
   return true
 }
 
@@ -150,29 +159,6 @@ function follow() {
   followTimer = setTimeout(poll, 1500)
 }
 onBeforeUnmount(() => clearTimeout(followTimer))
-
-// --- The unsent Action, remembered per Session so it survives a reload.
-const draftKey = `draft:${props.id}`
-try {
-  draft.value = localStorage.getItem(draftKey) ?? ''
-} catch {
-  // Storage blocked; the draft just isn't remembered.
-}
-watch(draft, (text) => {
-  try {
-    if (text) localStorage.setItem(draftKey, text)
-    else localStorage.removeItem(draftKey)
-  } catch {
-    // Not remembered this time.
-  }
-})
-function forgetDraft() {
-  try {
-    localStorage.removeItem(draftKey)
-  } catch {
-    // Nothing stored.
-  }
-}
 
 // --- While this Frame waits in the render queue, stay here: no leaving, no reloading.
 onBeforeRouteLeave(() => {
@@ -286,7 +272,7 @@ async function undo() {
 }
 
 /** "Text 9.8 s · Waited 12.3 s · Image 5.1 s", or "Image reused" when nothing was rendered. */
-function timingsLabel(t: NonNullable<Frame['timings']>): string {
+function timingsLabel(t: NonNullable<ChainFrame['timings']>): string {
   const parts = [`Text ${t.text.toFixed(1)} s`]
   if (t.queued !== undefined) parts.push(`Waited ${t.queued.toFixed(1)} s`)
   parts.push(t.image === null ? 'Image reused' : `Image ${t.image.toFixed(1)} s`)
@@ -300,40 +286,6 @@ const writing = computed(() => pending.value?.phase === 'text' && !pending.value
 const renderingPhase = computed(() =>
   pending.value?.phase === 'image' || pending.value?.phase === 'queued' ? pending.value.phase : null
 )
-
-/** The image on screen; it only changes once the next one has loaded, for a clean crossfade. */
-const displayed = ref<{ src: string; alt: string } | null>(null)
-
-watch(
-  () => shown.value && { src: imageUrl(props.id, shown.value.image), alt: shown.value.promptText },
-  (next) => {
-    if (!next) return
-    if (next.src === displayed.value?.src) return
-    const img = new Image()
-    const show = () => {
-      // Skip if the player has already moved on to another Frame.
-      if (shown.value && imageUrl(props.id, shown.value.image) === next.src) displayed.value = next
-    }
-    img.onload = show
-    img.onerror = show
-    img.src = next.src
-  },
-  { immediate: true },
-)
-
-/** Width ÷ height of this Session's images; every Frame shares one size. Portrait until known. */
-const aspect = ref(832 / 1216)
-
-function onImageLoad(e: Event) {
-  const img = e.target as HTMLImageElement
-  if (img.naturalWidth && img.naturalHeight) aspect.value = img.naturalWidth / img.naturalHeight
-}
-
-/** The largest box of the image's proportions that fits the panel (`cq*` = panel size). */
-const frameStyle = computed(() => ({
-  width: `min(100cqw, calc(100cqh * ${aspect.value}))`,
-  height: `min(100cqh, calc(100cqw / ${aspect.value}))`,
-}))
 
 /** The caption: the provisional Narration while a Frame runs, else the shown Frame's. */
 const captionText = computed(() => pending.value?.narration ?? shown.value?.narration ?? '')
@@ -380,126 +332,97 @@ const promptDiff = computed(() => {
 
     <template v-else-if="session">
       <main class="flex min-w-0 flex-1 flex-col gap-3 p-4">
-        <!-- The image takes all space above the fixed-height controls, so it never resizes. The
-             frame inside is sized to the image's proportions so the caption sits on the photo. -->
-        <section
-          class="flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-lg border border-line bg-surface [container-type:size]"
+        <FrameImage
+          :src="shown ? imageUrl(session.id, shown.image) : null"
+          :alt="shown?.promptText"
+          :rendering="renderingPhase"
+          :empty-text="busy ? undefined : 'No image yet'"
         >
           <div
-            class="relative overflow-hidden rounded-md"
-            :class="{ 'render-sweep': renderingPhase }"
-            :style="frameStyle"
-            :data-rendering="renderingPhase ?? undefined"
+            v-if="viewingOlder"
+            class="absolute right-3 top-3 flex items-center gap-2 rounded-full bg-black/70 py-1 pl-3 pr-1 text-sm text-white"
+            data-viewing
           >
-            <!-- Crossfade: the next image is preloaded, then fades in over the last one. -->
-            <Transition
-              enter-active-class="transition-opacity duration-700 ease-out"
-              enter-from-class="opacity-0"
-              leave-active-class="transition-opacity duration-700 ease-in"
-              leave-to-class="opacity-0"
+            <span>Viewing {{ frameName(shown!.index) }} of {{ latest!.index }}</span>
+            <button
+              type="button"
+              class="rounded-full bg-white/15 px-2.5 py-0.5 hover:bg-white/25"
+              @click="viewing = null"
             >
-              <img
-                v-if="displayed"
-                :key="displayed.src"
-                :src="displayed.src"
-                :alt="displayed.alt"
-                class="absolute inset-0 h-full w-full object-contain"
-                @load="onImageLoad"
-              />
-            </Transition>
-            <span
-              v-if="!displayed && !busy"
-              class="absolute inset-0 flex items-center justify-center text-muted"
-            >
-              No image yet
+              Back to latest
+            </button>
+          </div>
+
+          <div
+            v-if="busy"
+            class="absolute left-3 top-3 rounded-full bg-black/70 px-3 py-1 text-sm text-white"
+            role="status"
+          >
+            <span class="animate-pulse">{{ phaseLabel }}</span>
+          </div>
+
+          <div
+            v-if="liveThinking && !captionHidden"
+            class="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/80 via-black/60 to-transparent px-5 pb-4 pt-12 text-white"
+            data-thinking
+          >
+            <span class="mb-1 inline-block animate-pulse text-xs font-medium text-white/80">
+              Thinking…
             </span>
-
-            <div
-              v-if="viewingOlder"
-              class="absolute right-3 top-3 flex items-center gap-2 rounded-full bg-black/70 py-1 pl-3 pr-1 text-sm text-white"
-              data-viewing
+            <p
+              ref="thinkingBox"
+              class="max-h-28 overflow-y-auto whitespace-pre-line text-xs italic leading-relaxed text-white/70"
             >
-              <span>Viewing {{ frameName(shown!.index) }} of {{ latest!.index }}</span>
-              <button
-                type="button"
-                class="rounded-full bg-white/15 px-2.5 py-0.5 hover:bg-white/25"
-                @click="viewing = null"
-              >
-                Back to latest
-              </button>
-            </div>
+              {{ liveThinking }}
+            </p>
+          </div>
 
+          <template v-else-if="captionText">
             <div
-              v-if="busy"
-              class="absolute left-3 top-3 rounded-full bg-black/70 px-3 py-1 text-sm text-white"
-              role="status"
-            >
-              <span class="animate-pulse">{{ phaseLabel }}</span>
-            </div>
-
-            <div
-              v-if="liveThinking && !captionHidden"
+              v-if="!captionHidden"
               class="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/80 via-black/60 to-transparent px-5 pb-4 pt-12 text-white"
-              data-thinking
             >
-              <span class="mb-1 inline-block animate-pulse text-xs font-medium text-white/80">
-                Thinking…
+              <span
+                v-if="captionOutcome && OUTCOME_LABELS[captionOutcome]"
+                class="mb-1 inline-block rounded-full px-2 py-0.5 text-xs font-medium"
+                :class="captionOutcome === 'declined'
+                ? 'bg-amber-300/20 text-amber-300'
+                : 'bg-sky-300/20 text-sky-300'"
+                data-outcome
+              >
+                {{ OUTCOME_LABELS[captionOutcome] }}
               </span>
               <p
-                ref="thinkingBox"
-                class="max-h-28 overflow-y-auto whitespace-pre-line text-xs italic leading-relaxed text-white/70"
+                class="max-h-24 overflow-y-auto pr-10 text-sm leading-relaxed"
+                :class="{
+                  'italic opacity-75': pending?.narration,
+                  'text-amber-300': captionOutcome === 'declined',
+                  'text-sky-300': captionOutcome === 'unclear',
+                }"
+                :data-provisional="pending?.narration ? '' : undefined"
+                data-caption
               >
-                {{ liveThinking }}
+                {{ captionText }}
               </p>
-            </div>
-
-            <template v-else-if="captionText">
-              <div
-                v-if="!captionHidden"
-                class="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/80 via-black/60 to-transparent px-5 pb-4 pt-12 text-white"
-              >
-                <span
-                  v-if="captionOutcome && OUTCOME_LABELS[captionOutcome]"
-                  class="mb-1 inline-block rounded-full px-2 py-0.5 text-xs font-medium"
-                  :class="captionOutcome === 'declined'
-                  ? 'bg-amber-300/20 text-amber-300'
-                  : 'bg-sky-300/20 text-sky-300'"
-                  data-outcome
-                >
-                  {{ OUTCOME_LABELS[captionOutcome] }}
-                </span>
-                <p
-                  class="max-h-24 overflow-y-auto pr-10 text-sm leading-relaxed"
-                  :class="{
-                    'italic opacity-75': pending?.narration,
-                    'text-amber-300': captionOutcome === 'declined',
-                    'text-sky-300': captionOutcome === 'unclear',
-                  }"
-                  :data-provisional="pending?.narration ? '' : undefined"
-                  data-caption
-                >
-                  {{ captionText }}
-                </p>
-                <button
-                  type="button"
-                  class="absolute bottom-3 right-3 rounded px-1.5 text-xs text-white/70 hover:text-white"
-                  title="Hide caption"
-                  @click="captionHidden = true"
-                >
-                  Hide
-                </button>
-              </div>
               <button
-                v-else
                 type="button"
-                class="absolute bottom-3 right-3 rounded-full bg-black/70 px-3 py-1 text-xs text-white"
-                @click="captionHidden = false"
+                class="absolute bottom-3 right-3 rounded px-1.5 text-xs text-white/70 hover:text-white"
+                title="Hide caption"
+                @click="captionHidden = true"
               >
-                Show caption
+                Hide
               </button>
-            </template>
-          </div>
-        </section>
+            </div>
+            <button
+              v-else
+              type="button"
+              class="absolute bottom-3 right-3 rounded-full bg-black/70 px-3 py-1 text-xs text-white"
+              @click="captionHidden = false"
+            >
+              Show caption
+            </button>
+          </template>
+        </FrameImage>
 
         <div class="flex shrink-0 flex-col gap-2">
           <!-- The sweep shows here while the Text Model writes, then moves to the image. -->

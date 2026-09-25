@@ -137,12 +137,15 @@ in [open-threads.md](open-threads.md).
 ## Screens
 
 - **Home** (`/`, also reached by clicking **RPG**): **Your Sessions**, one card per saved
-  Session, newest first: the latest image, the Scenario, the Frame count, when it was last played,
+  Session, newest first: the latest rendered image, its title (the Scenario, or the start of the
+  Brief), its kind (Chain or Storyboard), the Frame count, when it was last played,
   and what a running Frame is doing ("Writing…", "Waiting to render…", "Rendering…"; the list
   refreshes every 2 s while anything runs). Hovering a card shows **Delete**, which asks for
   confirmation and is disabled while that Session has a Frame running. Below, **Start a new
-  Session**: Scenario cards (a lone Scenario is preselected), a report of any Scenario files that
-  failed to load, and the current Text and Image Models. Start is blocked, with the reason shown,
+  Session**: the kind (Chain or Storyboard), then Scenario cards (a lone Scenario is preselected)
+  or **Your own Brief** (a text box, up to 4000 characters), the Frame count for a Storyboard
+  (1–16, default 8), a report of any Scenario files that failed to load, and the current Text and
+  Image Models. Start is blocked, with the reason shown,
   if no Text Model is set or the chosen one is no longer installed.
 - **Session** (`/sessions/:id`): the image fills everything above a fixed-height text box, so
   it never resizes as the text changes. The Narration is a caption over the bottom of the photo
@@ -171,6 +174,20 @@ in [open-threads.md](open-threads.md).
   and dimmer. The image crossfades (700 ms) when a new Frame
   arrives or another Frame is picked; the next image is preloaded first, so there is no blank
   frame.
+- **Storyboard** (`/storyboards/:id`): opening a new Storyboard plans it straight away. The
+  Frames list fills in as the plan streams: Beats first (each marked "Writing…"), then each
+  Frame's sentences; the status pill counts "Writing Frame 3 of 8…". The main area shows the
+  selected Frame's image (or "Not rendered yet"), its Beat as a caption and a pill with its status:
+  **Draft** (never rendered), **Rendered**, **Changed since render** (stale) or **Blocked**. Below
+  it: an Action box that edits the selected Frame (Enter sends; a declined or unclear Action stays
+  to reword; the Narration shows in the button row), **Render / Re-render Frame N**, and
+  **Render all (N)**, which renders every draft or stale Frame in turn, skipping blocked ones,
+  until done or cancelled. The Frames list shows each Frame's thumbnail (dimmed when stale), Beat
+  and status. The Prompt panel has the **Look** (subject and art style, saved for every Frame) and
+  the selected Frame's seven sentences, each editable by hand with its own Save, then the full
+  prompt and the Frame's timings. The panels, the render sweep and the unsent Action (remembered
+  per Session) work as on the Session screen. A Chain opened at a Storyboard's address, or the
+  other way round, is sent to its own screen.
 - **Navigation:** **RPG** leads Home; **Play** leads back to the Session opened last
   (remembered per browser), or Home when there is none. Up to five Session screens stay alive in
   memory while you visit Home, Settings or other Sessions, so each keeps its half-typed Action,

@@ -224,3 +224,14 @@ Deno.test('editFrameByAction leaves everything as it was when declined or unclea
     assertEquals(unclear.outcome, 'unclear')
     assertEquals(unclear.session, session)
   }))
+
+Deno.test('composePrompt ends each part as a sentence so they never run together', () => {
+  assertEquals(
+    composePrompt({ subject: 'A tall man ', style: 'Manga ink' }, 'He jumps.'),
+    'A tall man. He jumps. Manga ink.',
+  )
+  assertEquals(
+    composePrompt({ subject: 'She asks "why?"', style: 'Oil paint!' }, ''),
+    'She asks "why?" Oil paint!',
+  )
+})

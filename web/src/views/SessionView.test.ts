@@ -18,8 +18,8 @@ vi.mock('../api', async (importOriginal) => ({
 const frame = (
   index: number,
   action: string | null,
-  extra: Partial<api.Frame> = {},
-): api.Frame => ({
+  extra: Partial<api.ChainFrame> = {},
+): api.ChainFrame => ({
   index,
   action,
   prompt: promptFor(index),
@@ -31,7 +31,7 @@ const frame = (
   ...extra,
 })
 
-const session = (frames: api.Frame[] = []): api.Session => ({
+const session = (frames: api.ChainFrame[] = []): api.ChainSession => ({
   id: 's1',
   kind: 'chain',
   brief: null,

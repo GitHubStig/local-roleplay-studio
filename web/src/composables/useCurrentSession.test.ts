@@ -15,6 +15,17 @@ describe('useCurrentSession', () => {
     expect((await load()).useCurrentSession().currentSessionId.value).toBe('s1')
   })
 
+  it('remembers whether it is a Chain or a Storyboard', async () => {
+    const m = await load()
+    m.setCurrentSession('s1')
+    expect(m.useCurrentSession().currentSessionKind.value).toBe('chain')
+    m.setCurrentSession('sb', 'storyboard')
+    vi.resetModules()
+    expect((await load()).useCurrentSession().currentSessionKind.value).toBe('storyboard')
+    ;(await load()).clearCurrentSession('sb')
+    expect(localStorage.getItem('current-session-kind')).toBeNull()
+  })
+
   it('only forgets the Session it is asked about', async () => {
     const m = await load()
     m.setCurrentSession('s2')

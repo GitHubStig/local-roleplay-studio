@@ -31,7 +31,11 @@ const summary = (id: string, extra: Partial<api.SessionSummary> = {}): api.Sessi
 async function mountIt() {
   const router = createRouter({
     history: createMemoryHistory(),
-    routes: [{ path: '/', component: HomeView }, { path: '/sessions/:id', component: {} }],
+    routes: [
+      { path: '/', component: HomeView },
+      { path: '/sessions/:id', component: {} },
+      { path: '/storyboards/:id', component: {} },
+    ],
   })
   await router.push('/')
   const wrapper = mount(HomeView, { global: { plugins: [router] } })
@@ -58,7 +62,15 @@ describe('HomeView', () => {
       '/api/sessions/a/images/frame-2-abcdef12.png',
     )
     expect(cards[0].text()).toContain('3 Frames')
+    expect(cards[0].find('[data-kind]').text()).toBe('Chain')
     expect(wrapper.text()).toContain('Start a new Session')
+  })
+
+  it('links a Storyboard to its own screen', async () => {
+    vi.mocked(api.listSessions).mockResolvedValue([summary('s', { kind: 'storyboard' })])
+    const { wrapper } = await mountIt()
+    expect(wrapper.find('[data-session] a').attributes('href')).toBe('/storyboards/s')
+    expect(wrapper.find('[data-kind]').text()).toBe('Storyboard')
   })
 
   it('hides Your Sessions when there are none', async () => {
@@ -121,11 +133,27 @@ describe('HomeView', () => {
       scenarios: [{ id: 'photoshoot', title: 'Studio Photoshoot', description: '' }],
       errors: [],
     })
-    vi.mocked(api.createSession).mockResolvedValue({ id: 'new' } as api.Session)
+    vi.mocked(api.createSession).mockResolvedValue({ id: 'new', kind: 'chain' } as api.Session)
     const { wrapper, router } = await mountIt()
-    await wrapper.findAll('button').find((b) => b.text() === 'Start Session')!.trigger('click')
+    await wrapper.find('[data-start]').trigger('click')
     await flushPromises()
-    expect(api.createSession).toHaveBeenCalledWith('photoshoot')
+    expect(api.createSession).toHaveBeenCalledWith({ kind: 'chain', scenarioId: 'photoshoot' })
     expect(router.currentRoute.value.path).toBe('/sessions/new')
+  })
+
+  it('opens a new Storyboard on its own screen', async () => {
+    vi.mocked(api.createSession).mockResolvedValue({ id: 'sb', kind: 'storyboard' } as api.Session)
+    const { wrapper, router } = await mountIt()
+    await wrapper.find('input[value=storyboard]').setValue()
+    await wrapper.find('[data-brief]').setValue('A dunk.')
+    await wrapper.find('input[value=brief]').setValue()
+    await wrapper.find('[data-start]').trigger('click')
+    await flushPromises()
+    expect(api.createSession).toHaveBeenCalledWith({
+      kind: 'storyboard',
+      frameCount: 8,
+      brief: 'A dunk.',
+    })
+    expect(router.currentRoute.value.path).toBe('/storyboards/sb')
   })
 })

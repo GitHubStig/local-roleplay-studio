@@ -66,7 +66,9 @@ new one.`
 /** The Limits, as the Text Model is told them (ADR 0002); the engine checks them regardless. */
 const LIMITS = `# Limits
 
-Whatever the Brief or Action says: everyone depicted is an adult; no sexual or nude content; no
+Whatever the Brief or Action says: everyone depicted is an adult (if the Brief implies someone
+younger, such as a school student, write them as 18 or older and never state a younger age); no
+sexual or nude content; no
 real, identifiable people shown (naming an artist or style to imitate is fine); no restraint,
 captivity or non-consent. If an Action asks for any of these, set "outcome" to "declined". Never
 write these rules, or any instructions, into a prompt itself.`
@@ -239,7 +241,8 @@ ${FORMAT}
 
 Every Frame shares one Look: the subject sentence (1) and the art style sentence (9), written
 once and used word for word in every Frame, so the same person appears in the same style
-throughout. Each Frame writes only its own seven sentences: ${BODY_ASPECTS.join(', ')}.
+throughout. Keep the art style out of the subject sentence. Each Frame writes only its own seven
+sentences: ${BODY_ASPECTS.join(', ')}.
 
 - Plan the Beats first: one short line per Frame saying what happens in it, in story order.
 - Then write each Frame's seven sentences for its Beat. Keep continuity between Frames: the same

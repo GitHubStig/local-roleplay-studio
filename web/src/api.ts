@@ -96,10 +96,18 @@ export const getScenarios = () => request<ScenarioList>('/api/scenarios')
  */
 export type ImagePrompt = string
 
-/** How a Frame's Action was received; only `done` changes the Image Prompt. */
+/** How an Action was received; only `done` changes an Image Prompt. */
 export type Outcome = 'done' | 'declined' | 'unclear'
 
-export interface Frame {
+/** Seconds each step took; missing on Frames saved before timings were recorded. */
+export interface FrameTimings {
+  text: number
+  queued?: number
+  image: number | null
+}
+
+/** A Chain Frame: made from the previous one by an Action. */
+export interface ChainFrame {
   index: number
   action: string | null
   prompt: ImagePrompt
@@ -107,20 +115,45 @@ export interface Frame {
   outcome: Outcome
   /** The Text Model's reasoning, when thinking was on. */
   thinking?: string
-  /** Seconds each step took; missing on Frames saved before timings were recorded. */
-  timings?: { text: number; queued?: number; image: number | null }
+  timings?: FrameTimings
   /** The exact text sent to the Image Model. */
   promptText: string
   image: string
   createdAt: string
 }
 
+/** A Storyboard Frame: planned from a Beat, then edited and rendered on its own. */
+export interface StoryboardFrame {
+  index: number
+  /** What happens in this Frame. */
+  beat: string
+  /** Its own seven sentences; the prompt adds the Look's subject before and style after. */
+  body: string
+  prompt: ImagePrompt
+  promptText: string
+  /** Null until rendered. */
+  image: string | null
+  /** The prompt changed since the image was rendered. */
+  stale?: boolean
+  /** It crosses a Limit and can't be rendered until edited. */
+  blocked?: string
+  timings?: FrameTimings
+  createdAt: string
+}
+
+/** The identity and art style every Storyboard Frame shares. */
+export interface Look {
+  subject: string
+  style: string
+}
+
 /** A Chain makes each Frame from the previous one; a Storyboard plans all its Frames together. */
 export type SessionKind = 'chain' | 'storyboard'
 
-export interface Session {
+type Activity = 'text' | 'queued' | 'image'
+
+interface SessionBase {
   id: string
-  kind: SessionKind
   /** The typed Brief it started from; null when started from a Scenario. */
   brief: string | null
   /** The Scenario it started from; null when started from a typed Brief. */
@@ -128,20 +161,56 @@ export interface Session {
   settings: Settings
   seed: number
   createdAt: string
-  frames: Frame[]
-  /** What a Frame in progress is doing, or null when idle (only from `getSession`). */
-  activity?: 'text' | 'queued' | 'image' | null
+  /** What work in progress is doing, or null when idle (only from `getSession`). */
+  activity?: Activity | null
+  /** Which Frame that work is on, for Storyboards (only from `getSession`). */
+  activeFrame?: number | null
 }
 
-export type FrameEvent =
+export interface ChainSession extends SessionBase {
+  kind: 'chain'
+  frames: ChainFrame[]
+}
+
+export interface StoryboardSession extends SessionBase {
+  kind: 'storyboard'
+  frameCount: number
+  /** Null until planned. */
+  look: Look | null
+  frames: StoryboardFrame[]
+}
+
+export type Session = ChainSession | StoryboardSession
+
+/** Progress any streamed work reports: its phase, the model's reasoning, render steps. */
+export type ProgressEvent =
   /** `queued`: waiting for another Session's render to finish. */
-  | { type: 'phase'; phase: 'text' | 'queued' | 'image' }
+  | { type: 'phase'; phase: Activity }
   | { type: 'thinking'; text: string; restart?: boolean }
   | { type: 'progress'; step: number; total: number }
-  | { type: 'text'; outcome: Outcome; narration: string; prompt: ImagePrompt }
-  | { type: 'committed'; frame: Frame }
+
+/** How streamed work ends when it doesn't succeed. */
+export type EndEvent =
   | { type: 'failed'; message: string; sessionDiscarded: boolean }
   | { type: 'cancelled'; sessionDiscarded: boolean }
+
+/** A Chain Frame's stream. */
+export type FrameEvent =
+  | ProgressEvent
+  | EndEvent
+  | { type: 'text'; outcome: Outcome; narration: string; prompt: ImagePrompt }
+  | { type: 'committed'; frame: ChainFrame }
+
+/** A Storyboard's streams: planning, rendering a Frame, editing a Frame by Action. */
+export type StoryboardEvent =
+  | ProgressEvent
+  | EndEvent
+  | { type: 'look'; look: Look }
+  | { type: 'beats'; beats: string[] }
+  | { type: 'planned-frame'; frame: StoryboardFrame }
+  | { type: 'planned'; session: StoryboardSession }
+  | { type: 'rendered'; frame: StoryboardFrame }
+  | { type: 'edited'; outcome: Outcome; narration: string; session: StoryboardSession }
 
 const post = <T>(path: string, body?: unknown) =>
   request<T>(path, {
@@ -150,7 +219,12 @@ const post = <T>(path: string, body?: unknown) =>
     body: body === undefined ? undefined : JSON.stringify(body),
   })
 
-export const createSession = (scenarioId: string) => post<Session>('/api/sessions', { scenarioId })
+/** What a new Session starts from: a saved Scenario or a typed Brief. */
+export type SessionStart =
+  & { kind: SessionKind; frameCount?: number }
+  & ({ scenarioId: string; brief?: never } | { brief: string; scenarioId?: never })
+
+export const createSession = (start: SessionStart) => post<Session>('/api/sessions', start)
 
 export const getSession = (id: string) => request<Session>(`/api/sessions/${id}`)
 
@@ -174,9 +248,24 @@ export const listSessions = () => request<SessionSummary[]>('/api/sessions')
 export const deleteSession = (id: string) =>
   request<void>(`/api/sessions/${id}`, { method: 'DELETE' })
 
-/** Undoes the latest Frame, which must be Frame `index`; returns the updated Session. */
+/** Undoes a Chain's latest Frame, which must be Frame `index`; returns the updated Session. */
 export const undoFrame = (id: string, index: number) =>
-  request<Session>(`/api/sessions/${id}/frames/${index}`, { method: 'DELETE' })
+  request<ChainSession>(`/api/sessions/${id}/frames/${index}`, { method: 'DELETE' })
+
+const put = <T>(path: string, body: unknown) =>
+  request<T>(path, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+
+/** Replaces a Storyboard Frame's own sentences, typed by hand. */
+export const saveFrameBody = (id: string, index: number, body: string) =>
+  put<StoryboardSession>(`/api/sessions/${id}/frames/${index}`, { body })
+
+/** Replaces a Storyboard's Look; every Frame's prompt follows. */
+export const saveLook = (id: string, look: Look) =>
+  put<StoryboardSession>(`/api/sessions/${id}/look`, look)
 
 export async function cancelFrame(id: string): Promise<void> {
   await fetch(`/api/sessions/${id}/cancel`, { method: 'POST' })
@@ -186,7 +275,7 @@ export const imageUrl = (sessionId: string, file: string) =>
   `/api/sessions/${sessionId}/images/${file}`
 
 /** Splits a server-sent event stream into parsed events, across arbitrary chunk boundaries. */
-export function createSseParser(onEvent: (event: FrameEvent) => void) {
+export function createSseParser<E>(onEvent: (event: E) => void) {
   let buffer = ''
   return (chunk: string) => {
     buffer += chunk
@@ -201,29 +290,27 @@ export function createSseParser(onEvent: (event: FrameEvent) => void) {
 }
 
 /**
- * Runs a Frame (the Opening Frame when `action` is null), reporting progress through `onEvent`.
- * Resolves once the stream closes; a stream that closes without a final event is reported as
- * a failure.
+ * POSTs to a streaming route and reports its events. `finalTypes` are the events that end the
+ * work; a stream that closes without one is reported as a failure (a lost connection).
  */
-export async function streamFrame(
-  sessionId: string,
-  action: string | null,
-  onEvent: (event: FrameEvent) => void,
+async function streamEvents<E extends { type: string }>(
+  path: string,
+  body: unknown,
+  finalTypes: string[],
+  onEvent: (event: E | EndEvent) => void,
 ): Promise<void> {
-  const res = await fetch(`/api/sessions/${sessionId}/frames`, {
+  const res = await fetch(path, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(action === null ? {} : { action }),
+    body: JSON.stringify(body ?? {}),
   })
   if (!res.ok || !res.body) {
-    const body = await res.json().catch(() => ({}))
-    throw new ApiError(body.error ?? `Frame failed: ${res.status}`, res.status)
+    const err = await res.json().catch(() => ({}))
+    throw new ApiError(err.error ?? `Request failed: ${res.status}`, res.status)
   }
   let finished = false
-  const parse = createSseParser((event) => {
-    if (event.type === 'committed' || event.type === 'failed' || event.type === 'cancelled') {
-      finished = true
-    }
+  const parse = createSseParser<E>((event) => {
+    if ([...finalTypes, 'failed', 'cancelled'].includes(event.type)) finished = true
     onEvent(event)
   })
   const reader = res.body.pipeThrough(new TextDecoderStream()).getReader()
@@ -232,3 +319,47 @@ export async function streamFrame(
     onEvent({ type: 'failed', message: 'Lost connection to the server', sessionDiscarded: false })
   }
 }
+
+/** Runs a Chain Frame (the Opening Frame when `action` is null), reporting its progress. */
+export const streamFrame = (
+  sessionId: string,
+  action: string | null,
+  onEvent: (event: FrameEvent) => void,
+) =>
+  streamEvents<FrameEvent>(
+    `/api/sessions/${sessionId}/frames`,
+    action === null ? {} : { action },
+    ['committed'],
+    onEvent,
+  )
+
+/** Plans a Storyboard, reporting its Look, Beats and Frames as they arrive. */
+export const planStoryboard = (sessionId: string, onEvent: (event: StoryboardEvent) => void) =>
+  streamEvents<StoryboardEvent>(`/api/sessions/${sessionId}/plan`, {}, ['planned'], onEvent)
+
+/** Renders (or re-renders) one Storyboard Frame. */
+export const renderStoryboardFrame = (
+  sessionId: string,
+  index: number,
+  onEvent: (event: StoryboardEvent) => void,
+) =>
+  streamEvents<StoryboardEvent>(
+    `/api/sessions/${sessionId}/frames/${index}/render`,
+    {},
+    ['rendered'],
+    onEvent,
+  )
+
+/** Edits one Storyboard Frame through the Text Model, following an Action. */
+export const editStoryboardFrame = (
+  sessionId: string,
+  index: number,
+  action: string,
+  onEvent: (event: StoryboardEvent) => void,
+) =>
+  streamEvents<StoryboardEvent>(
+    `/api/sessions/${sessionId}/frames/${index}/edit`,
+    { action },
+    ['edited'],
+    onEvent,
+  )

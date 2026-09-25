@@ -29,7 +29,14 @@ export type StoryboardEvent =
 export class LimitError extends Error {}
 
 /** A Storyboard Frame's Image Prompt: the Look's subject, the Frame's own sentences, the style. */
-export const composePrompt = (look: Look, body: string) => `${look.subject} ${body} ${look.style}`
+export const composePrompt = (look: Look, body: string) =>
+  [look.subject, body, look.style].map(asSentences).filter(Boolean).join(' ')
+
+/** Trimmed text that ends a sentence, so parts written apart don't run together. */
+const asSentences = (text: string) => {
+  const t = text.trim()
+  return !t || /[.!?]["')\]]?$/.test(t) ? t : `${t}.`
+}
 
 /**
  * Builds a Frame from its Beat and sentences, marking it blocked (unrenderable until edited) if its

@@ -21,4 +21,7 @@ Anything inside the Limits is the player's to direct, and the Text Model's to ca
 
 ## Consequences
 
-A term list is blunt. It aims at unambiguous phrases and leaves ordinary photography language alone ("jacket tied around the waist", "sports bra", "forced perspective", "baby blue"), which the tests pin down; a determined rephrasing can still slip past it, and the Text Model's own instruction to decline is the second line. The real-person question costs about half a second, and only on Actions that look like they name someone.
+A term list is blunt. It catches any stated age under 18, in digits or words ("sixteen year
+old", "aged 16"): in testing, a Storyboard Brief about a high school player led the Text Model to
+write "a sixteen year old" despite being told everyone is an adult, so the model is now also told
+to write implied minors as 18 or older. It aims at unambiguous phrases and leaves ordinary photography language alone ("jacket tied around the waist", "sports bra", "forced perspective", "baby blue"), which the tests pin down; a determined rephrasing can still slip past it, and the Text Model's own instruction to decline is the second line. The real-person question costs about half a second, and only on Actions that look like they name someone.

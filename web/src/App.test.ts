@@ -8,6 +8,7 @@ import { clearCurrentSession } from './composables/useCurrentSession'
 import HomeView from './views/HomeView.vue'
 import SessionView from './views/SessionView.vue'
 import SettingsView from './views/SettingsView.vue'
+import StoryboardView from './views/StoryboardView.vue'
 
 vi.mock('./api', async (importOriginal) => ({
   ...(await importOriginal<typeof api>()),
@@ -47,6 +48,7 @@ async function mountApp(path: string) {
     routes: [
       { path: '/', name: 'home', component: HomeView },
       { path: '/sessions/:id', name: 'session', component: SessionView, props: true },
+      { path: '/storyboards/:id', name: 'storyboard', component: StoryboardView, props: true },
       { path: '/settings', name: 'settings', component: SettingsView },
     ],
   })
@@ -110,6 +112,33 @@ describe('App navigation', () => {
     )
     // Loaded once, then re-checked on return; the screen itself was kept, not rebuilt.
     expect(api.getSession).toHaveBeenCalledTimes(2)
+  })
+
+  it('returns to a Storyboard in progress from Settings', async () => {
+    vi.mocked(api.getSession).mockResolvedValue({
+      id: 'sb',
+      kind: 'storyboard',
+      brief: 'A first dunk.',
+      scenarioId: null,
+      settings: {} as api.Settings,
+      seed: 1,
+      createdAt: '2026-09-25T00:00:00.000Z',
+      frameCount: 1,
+      look: { subject: 'A student.', style: 'Manga.' },
+      frames: [{
+        index: 0,
+        beat: 'The dunk.',
+        body: 'Body.',
+        prompt: promptFor(0),
+        promptText: 'p',
+        image: null,
+        createdAt: '2026-09-25T00:00:00.000Z',
+      }],
+    })
+    const { wrapper, router } = await mountApp('/storyboards/sb')
+    await router.push('/settings')
+    await flushPromises()
+    expect(playLink(wrapper).attributes('href')).toBe('/storyboards/sb')
   })
 
   it('RPG leads Home', async () => {

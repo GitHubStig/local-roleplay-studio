@@ -5,7 +5,9 @@ change; a local language model (via [Ollama](https://ollama.com)) rewrites an im
 paragraph with a sentence each for subject → pose → expression → camera → clothing →
 environment → lighting → color → style; a
 local image model (via [mflux](https://github.com/filipstrand/mflux)) renders it. Then you change
-something else.
+something else. That's a **Chain**. A **Storyboard** instead plans a whole sequence at once
+(a manga page, a video storyboard) from a Brief you type: every Frame's prompt is written up
+front, sharing one Look, and you edit and render each Frame as you like.
 
 The first Scenario is a **studio photoshoot** with Maya, a fictional fitness model. Anything in
 the prompt can be changed, within four limits the engine enforces: everyone depicted is an

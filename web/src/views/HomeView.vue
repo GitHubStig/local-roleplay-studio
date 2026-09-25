@@ -1,9 +1,17 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { createSession, deleteSession, imageUrl, listSessions, type SessionSummary } from '../api'
+import {
+  createSession,
+  deleteSession,
+  imageUrl,
+  listSessions,
+  type SessionStart,
+  type SessionSummary,
+} from '../api'
 import StartSession from '../components/StartSession.vue'
 import { clearCurrentSession, useCurrentSession } from '../composables/useCurrentSession'
+import { sessionPath } from '../sessionPath'
 
 const route = useRoute()
 const router = useRouter()
@@ -50,11 +58,11 @@ watch(
   { immediate: true },
 )
 
-async function start(scenarioId: string) {
+async function start(start: SessionStart) {
   startError.value = ''
   try {
-    const session = await createSession(scenarioId)
-    router.push(`/sessions/${session.id}`)
+    const session = await createSession(start)
+    router.push(sessionPath(session.id, session.kind))
   } catch (err) {
     startError.value = (err as Error).message
   }
@@ -112,7 +120,7 @@ function ago(iso: string): string {
         <ul class="grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] gap-4">
           <li v-for="s in sessions" :key="s.id" class="group relative" data-session>
             <RouterLink
-              :to="`/sessions/${s.id}`"
+              :to="sessionPath(s.id, s.kind)"
               class="flex h-full flex-col overflow-hidden rounded-lg border border-line bg-surface hover:border-fg"
               :class="{ 'border-fg': s.id === currentSessionId }"
             >
@@ -126,6 +134,9 @@ function ago(iso: string): string {
               </div>
               <div class="flex flex-col gap-1 p-3 text-sm">
                 <span class="font-medium">{{ s.title }}</span>
+                <span class="text-xs uppercase tracking-wide text-muted" data-kind>
+                  {{ s.kind === 'storyboard' ? 'Storyboard' : 'Chain' }}
+                </span>
                 <span class="text-muted">
                   {{ s.frames }} {{ s.frames === 1 ? 'Frame' : 'Frames' }} · {{ ago(s.updatedAt) }}
                 </span>

@@ -41,7 +41,7 @@ const mountIt = async () => {
   return wrapper
 }
 const startButton = (w: Awaited<ReturnType<typeof mountIt>>) =>
-  w.find('button').element as HTMLButtonElement
+  w.find('[data-start]').element as HTMLButtonElement
 
 beforeEach(() => {
   vi.mocked(api.getScenarios).mockResolvedValue({ scenarios: [photoshoot], errors: [] })
@@ -54,8 +54,36 @@ describe('StartSession', () => {
     const wrapper = await mountIt()
     expect(wrapper.text()).toContain('Studio Photoshoot')
     expect(startButton(wrapper).disabled).toBe(false)
-    await wrapper.find('button').trigger('click')
-    expect(wrapper.emitted('start')).toEqual([['photoshoot']])
+    await wrapper.find('[data-start]').trigger('click')
+    expect(wrapper.emitted('start')).toEqual([[{ kind: 'chain', scenarioId: 'photoshoot' }]])
+  })
+
+  it('starts a Storyboard from a typed Brief with a Frame count', async () => {
+    const wrapper = await mountIt()
+    await wrapper.find('input[value=storyboard]').setValue()
+    await wrapper.find('input[value=brief]').setValue()
+    expect(startButton(wrapper).disabled).toBe(true)
+    expect(wrapper.text()).toContain('Write the Brief.')
+    await wrapper.find('[data-brief]').setValue('  A student dunks for the first time.  ')
+    await wrapper.find('[data-frame-count]').setValue(6)
+    expect(startButton(wrapper).textContent?.trim()).toBe('Start Storyboard')
+    await wrapper.find('[data-start]').trigger('click')
+    expect(wrapper.emitted('start')).toEqual([[
+      { kind: 'storyboard', frameCount: 6, brief: 'A student dunks for the first time.' },
+    ]])
+  })
+
+  it('limits a Storyboard to 16 Frames', async () => {
+    const wrapper = await mountIt()
+    await wrapper.find('input[value=storyboard]').setValue()
+    await wrapper.find('[data-frame-count]').setValue(17)
+    expect(startButton(wrapper).disabled).toBe(true)
+    expect(wrapper.text()).toContain('1 to 16 Frames')
+  })
+
+  it('offers no Frame count for a Chain', async () => {
+    const wrapper = await mountIt()
+    expect(wrapper.find('[data-frame-count]').exists()).toBe(false)
   })
 
   it('requires a choice when there are several Scenarios', async () => {

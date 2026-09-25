@@ -71,6 +71,10 @@ export async function withRetry<T>(
     } catch (err) {
       if (signal.aborted) throw err
       lastError = err
+      console.warn(
+        `Text Model attempt ${attempt} of ${TEXT_ATTEMPTS} failed:`,
+        (err as Error).message,
+      )
     }
   }
   throw lastError

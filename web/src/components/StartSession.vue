@@ -5,18 +5,36 @@ import {
   getSettings,
   getSettingsOptions,
   type ScenarioList,
+  type SessionKind,
+  type SessionStart,
   type Settings,
   type SettingsOptions,
 } from '../api'
 
 defineProps<{ error?: string }>()
-const emit = defineEmits<{ start: [scenarioId: string] }>()
+const emit = defineEmits<{ start: [start: SessionStart] }>()
+
+/** The Brief's length limit, as the server enforces it. */
+const BRIEF_MAX = 4000
+
+const KINDS: { id: SessionKind; label: string; hint: string }[] = [
+  { id: 'chain', label: 'Chain', hint: 'Each Frame is made from the one before by an Action.' },
+  {
+    id: 'storyboard',
+    label: 'Storyboard',
+    hint: 'All Frames are planned at once; edit and render each one.',
+  },
+]
 
 const list = ref<ScenarioList | null>(null)
 const settings = ref<Settings | null>(null)
 const options = ref<SettingsOptions | null>(null)
 const loadError = ref('')
+const kind = ref<SessionKind>('chain')
+/** A Scenario's id, or `brief` to type one. */
 const selected = ref('')
+const brief = ref('')
+const frameCount = ref(8)
 
 onMounted(async () => {
   try {
@@ -43,9 +61,27 @@ const blocker = computed(() => {
   if (!options.value?.textModels.includes(settings.value.textModel)) {
     return `The Text Model "${settings.value.textModel}" isn't available in Ollama.`
   }
-  if (!selected.value) return 'Choose a Scenario.'
+  if (!selected.value) return 'Choose a Scenario, or write your own Brief.'
+  if (selected.value === 'brief' && !brief.value.trim()) return 'Write the Brief.'
+  if (brief.value.length > BRIEF_MAX) return `Keep the Brief under ${BRIEF_MAX} characters.`
+  const n = frameCount.value
+  if (kind.value === 'storyboard' && !(Number.isInteger(n) && n >= 1 && n <= 16)) {
+    return 'A Storyboard has 1 to 16 Frames.'
+  }
   return null
 })
+
+function start() {
+  const from = selected.value === 'brief'
+    ? { brief: brief.value.trim() }
+    : { scenarioId: selected.value }
+  emit(
+    'start',
+    kind.value === 'storyboard'
+      ? { kind: 'storyboard', frameCount: frameCount.value, ...from }
+      : { kind: 'chain', ...from },
+  )
+}
 </script>
 
 <template>
@@ -56,12 +92,23 @@ const blocker = computed(() => {
     <p v-else-if="!list || !settings || !options" class="text-muted">Loading…</p>
 
     <template v-else>
-      <p v-if="list.scenarios.length === 0" class="text-muted">
-        No Scenarios found. Add a Markdown file to <code>scenarios/</code>.
-      </p>
+      <fieldset class="flex flex-wrap gap-3">
+        <legend class="sr-only">Kind</legend>
+        <label
+          v-for="k in KINDS"
+          :key="k.id"
+          class="flex min-w-60 flex-1 cursor-pointer gap-3 rounded-lg border border-line bg-surface p-4 has-checked:border-fg"
+        >
+          <input v-model="kind" type="radio" name="kind" :value="k.id" class="mt-1" />
+          <span class="flex flex-col gap-1">
+            <span class="font-medium">{{ k.label }}</span>
+            <span class="text-sm text-muted">{{ k.hint }}</span>
+          </span>
+        </label>
+      </fieldset>
 
-      <fieldset v-else class="flex flex-col gap-3">
-        <legend class="sr-only">Scenario</legend>
+      <fieldset class="flex flex-col gap-3">
+        <legend class="mb-2 text-sm text-muted">Start from a Scenario, or write your own Brief</legend>
         <label
           v-for="s in list.scenarios"
           :key="s.id"
@@ -73,7 +120,37 @@ const blocker = computed(() => {
             <span class="text-sm text-muted">{{ s.description }}</span>
           </span>
         </label>
+        <label
+          class="flex cursor-pointer gap-3 rounded-lg border border-line bg-surface p-4 has-checked:border-fg"
+        >
+          <input v-model="selected" type="radio" name="scenario" value="brief" class="mt-1" />
+          <span class="flex flex-1 flex-col gap-2">
+            <span class="font-medium">Your own Brief</span>
+            <textarea
+              v-model="brief"
+              class="h-28 resize-y rounded border border-line bg-canvas p-2 text-sm"
+              :placeholder="kind === 'storyboard'
+              ? 'The story to tell, e.g. a high school student dunks for the first time, manga style.'
+              : 'Who is in the picture, where, and in what style.'"
+              :maxlength="BRIEF_MAX"
+              data-brief
+              @focus="selected = 'brief'"
+            />
+          </span>
+        </label>
       </fieldset>
+
+      <label v-if="kind === 'storyboard'" class="flex items-center gap-3 text-sm">
+        Frames
+        <input
+          v-model.number="frameCount"
+          type="number"
+          min="1"
+          max="16"
+          class="w-20 rounded border border-line bg-surface px-2 py-1"
+          data-frame-count
+        />
+      </label>
 
       <div
         v-if="list.errors.length"
@@ -103,9 +180,10 @@ const blocker = computed(() => {
           type="button"
           class="rounded-lg bg-fg px-4 py-2 font-medium text-canvas disabled:opacity-50"
           :disabled="blocker !== null"
-          @click="emit('start', selected)"
+          data-start
+          @click="start"
         >
-          Start Session
+          Start {{ kind === 'storyboard' ? 'Storyboard' : 'Chain' }}
         </button>
         <span v-if="blocker" class="text-sm text-warn">{{ blocker }}</span>
       </div>

@@ -8,6 +8,10 @@ Deno.test('crossedLimit catches minors, sexual content and restraint', () => {
     const t of [
       'make her a teenager',
       'a 15 year old girl',
+      'a sixteen year old basketball player',
+      'a seventeen-year-old runner',
+      'a student aged 16',
+      'aged 16 years',
       'little girl in a park',
       'schoolgirl outfit',
     ]
@@ -39,6 +43,10 @@ Deno.test('crossedLimit leaves ordinary photography language alone', () => {
       'cuffed jeans, battle ropes in the background',
       'kid leather gloves'.replace('kid ', ''),
       'a 25 year old athlete',
+      'a twenty-one year old athlete',
+      'an eighteen year old runner',
+      'aged 18, tall',
+      'aged twenty-five',
       'youthful energy, bright colors',
     ]
   ) {

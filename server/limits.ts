@@ -11,6 +11,29 @@ export interface Limit {
   pattern: RegExp
 }
 
+/** An age under 18, in digits or words. */
+const UNDER_18 = `(?:1[0-7]|[1-9]|${
+  [
+    'one',
+    'two',
+    'three',
+    'four',
+    'five',
+    'six',
+    'seven',
+    'eight',
+    'nine',
+    'ten',
+    'eleven',
+    'twelve',
+    'thirteen',
+    'fourteen',
+    'fifteen',
+    'sixteen',
+    'seventeen',
+  ].join('|')
+})`
+
 const words = (...terms: string[]) => new RegExp(`\\b(?:${terms.join('|')})\\b`, 'i')
 
 export const LIMITS: readonly Limit[] = [
@@ -37,8 +60,10 @@ export const LIMITS: readonly Limit[] = [
           'little (?:girl|boy)s?',
           'young (?:girl|boy)s?',
         ).source,
-        // Any age under 18: "15 year old", "9-yr-old", "17 years old".
-        String.raw`\b(?:1[0-7]|[1-9])[- ]?(?:years?|yrs?)[- ]?old\b`,
+        // Any age under 18: "15 year old", "sixteen-year-old", "9-yr-old", "aged 17".
+        // (Not the end of "twenty-one year old".)
+        String.raw`(?<!ty[- ])\b${UNDER_18}[- ]?(?:years?|yrs?)[- ]?old\b`,
+        String.raw`\bage[ds]? ${UNDER_18}\b`,
       ].join('|'),
       'i',
     ),

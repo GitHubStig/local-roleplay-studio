@@ -3,15 +3,18 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { getHealth } from './api'
 import { useCurrentSession } from './composables/useCurrentSession'
+import { sessionPath } from './sessionPath'
 import ThemeToggle from './components/ThemeToggle.vue'
 
 const serverOnline = ref<boolean | null>(null)
 const route = useRoute()
-const { currentSessionId } = useCurrentSession()
+const { currentSessionId, currentSessionKind } = useCurrentSession()
 
 /** Play returns to the Session in progress, if any. */
-const playTo = computed(() => (currentSessionId.value ? `/sessions/${currentSessionId.value}` : '/'))
-const onPlay = computed(() => route.name === 'session')
+const playTo = computed(() =>
+  currentSessionId.value ? sessionPath(currentSessionId.value, currentSessionKind.value) : '/'
+)
+const onPlay = computed(() => route.name === 'session' || route.name === 'storyboard')
 
 async function checkServer() {
   try {
@@ -61,7 +64,7 @@ onBeforeUnmount(() => {
     <!-- Up to 5 Session screens stay alive while you visit Home, Settings or other Sessions, so
          drafts, the viewed Frame and running Frames survive switching back and forth. -->
     <RouterView v-slot="{ Component, route: r }">
-      <KeepAlive include="SessionView" :max="5">
+      <KeepAlive :include="['SessionView', 'StoryboardView']" :max="5">
         <component :is="Component" :key="r.path" class="min-h-0 flex-1" />
       </KeepAlive>
     </RouterView>
