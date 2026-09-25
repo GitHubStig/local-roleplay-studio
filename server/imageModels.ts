@@ -10,7 +10,7 @@ export interface ImageModel {
   baseModel?: string
   /** Weights already quantized, so `--quantize` must not be passed. */
   preQuantized?: boolean
-  /** mflux's own default step count for this model. */
+  /** Steps to use when the model is picked: mflux's own default, unless fewer look as good. */
   defaultSteps: number
 }
 
@@ -57,7 +57,8 @@ export const IMAGE_MODELS: readonly ImageModel[] = [
     label: 'Qwen-Image 2.1',
     command: 'mflux-generate-qwen-2.1',
     model: 'qwen-image-2.1',
-    defaultSteps: 40,
+    // mflux defaults to 40; 25 looks just as good at 512 px and is much faster.
+    defaultSteps: 25,
   },
 ]
 

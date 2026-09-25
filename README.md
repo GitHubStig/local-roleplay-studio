@@ -36,7 +36,7 @@ The vocabulary (Scenario, Session, Image Prompt, Frame, Action, …) is defined 
   | Krea 2 Turbo (~32 s at 512 px) | `mflux-generate-krea2 --model krea-2 --prompt test --output /tmp/x.png` |
   | ERNIE-Image Turbo (~18 s at 512 px) | `mflux-generate-ernie-image-turbo --model ernie-image-turbo --prompt test --output /tmp/x.png` |
   | Boogu Image Turbo (~16 s at 512 px) | `mflux-generate-boogu --model boogu-image-turbo --prompt test --output /tmp/x.png` |
-  | Qwen-Image 2.1 (~38 s at 512 px) | `mflux-generate-qwen-2.1 --model qwen-image-2.1 --prompt test --output /tmp/x.png` |
+  | Qwen-Image 2.1 (~23 s at 512 px, 25 steps) | `mflux-generate-qwen-2.1 --model qwen-image-2.1 --prompt test --output /tmp/x.png` |
 
 ## Getting started
 

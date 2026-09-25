@@ -93,7 +93,7 @@ starts missing implied changes.
 | Krea 2 (Turbo) | 512×512: ~32 s (8 steps) | Peak memory ~39 GB. |
 | ERNIE-Image Turbo | 512×512: ~18 s (8 steps) | Peak memory ~25 GB. |
 | Boogu Image Turbo | 512×512: ~16 s (4 steps) | Peak memory ~29 GB. |
-| Qwen-Image 2.1 | 512×512: ~38 s (40 steps) | Peak memory ~35 GB. |
+| Qwen-Image 2.1 | 512×512: ~23 s (25 steps) · ~38 s (40, mflux's default) | 25 steps looks as good as 40 at 512 px, so it's our default. Peak memory ~35 GB. |
 
 Timings for the last four are one test image each (2026-09-25, 48 GB Mac, no quantization,
 including model loading), not a comparison of how well they follow the prompt or keep a
