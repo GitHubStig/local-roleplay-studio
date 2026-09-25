@@ -363,6 +363,7 @@ const timingsLabel = (f: StoryboardFrame) => {
           :src="current?.image ? imageUrl(session.id, current.upscaled ?? current.image) : null"
           :alt="current?.promptText"
           :rendering="renderingHere"
+          :hide-size="busy"
           :empty-text="current ? (current.blocked ? 'Blocked: edit this Frame first' : 'Not rendered yet') : 'Planning…'"
         >
           <div

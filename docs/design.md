@@ -181,7 +181,8 @@ in [open-threads.md](open-threads.md).
   same render queue, with the same sweep and step count. The original stays as the thumbnail; the
   main view shows the upscaled image. The button reads **Upscaled**, disabled, once done, and
   every Chain Frame that reuses that image shares the upscale (saved as `upscaled` on the Frame,
-  in a `-2048` file next to the original).
+  in a `-2048` file next to the original). Hovering the image shows its size in pixels in the top-left
+  corner ("768×512", then "3072×2048" once upscaled), except while the status pill is there.
 - **Storyboard** (`/storyboards/:id`): opening a new Storyboard plans it straight away. The
   Frames list fills in as the plan streams: Beats first (each marked "Writing…"), then each
   Frame's sentences; the status pill counts "Writing Frame 3 of 8…". The main area shows the

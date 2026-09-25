@@ -367,6 +367,7 @@ const promptDiff = computed(() => {
           :src="shown ? imageUrl(session.id, shown.upscaled ?? shown.image) : null"
           :alt="shown?.promptText"
           :rendering="renderingPhase"
+          :hide-size="busy"
           :empty-text="busy ? undefined : 'No image yet'"
         >
           <div

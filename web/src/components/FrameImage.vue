@@ -9,6 +9,11 @@ const props = defineProps<{
   rendering?: 'image' | 'queued' | null
   /** Shown when there's no image. */
   emptyText?: string
+  /**
+   * Hide the size chip, which otherwise shows the image's pixel size in the top-left corner on
+   * hover; screens hide it while their status pill is there.
+   */
+  hideSize?: boolean
 }>()
 
 /** The image on screen; it only changes once the next one has loaded, for a clean crossfade. */
@@ -36,10 +41,15 @@ watch(
 
 /** Width ÷ height of the images shown; portrait until the first one loads. */
 const aspect = ref(832 / 1216)
+/** Pixel size of the image on screen, once loaded. */
+const size = ref<{ width: number; height: number } | null>(null)
 
 function onImageLoad(e: Event) {
   const img = e.target as HTMLImageElement
-  if (img.naturalWidth && img.naturalHeight) aspect.value = img.naturalWidth / img.naturalHeight
+  if (img.naturalWidth && img.naturalHeight) {
+    aspect.value = img.naturalWidth / img.naturalHeight
+    size.value = { width: img.naturalWidth, height: img.naturalHeight }
+  }
 }
 
 /** The largest box of the image's proportions that fits the panel (`cq*` = panel size). */
@@ -56,7 +66,7 @@ const frameStyle = computed(() => ({
     class="flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-lg border border-line bg-surface [container-type:size]"
   >
     <div
-      class="relative overflow-hidden rounded-md"
+      class="group relative overflow-hidden rounded-md"
       :class="{ 'render-sweep': rendering }"
       :style="frameStyle"
       :data-rendering="rendering ?? undefined"
@@ -82,6 +92,13 @@ const frameStyle = computed(() => ({
         class="absolute inset-0 flex items-center justify-center px-6 text-center text-muted"
       >
         {{ emptyText }}
+      </span>
+      <span
+        v-if="displayed && size && !hideSize"
+        class="pointer-events-none absolute left-3 top-3 rounded-full bg-black/70 px-3 py-1 text-sm tabular-nums text-white opacity-0 transition-opacity group-hover:opacity-100"
+        data-size
+      >
+        {{ size.width }}×{{ size.height }}
       </span>
       <!-- Pills, captions and anything else drawn over the image. -->
       <slot />

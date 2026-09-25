@@ -502,4 +502,14 @@ describe('SessionView', () => {
     const button = wrapper.find('[data-upscale]')
     expect([button.text(), button.attributes('disabled')]).toEqual(['Upscaled', ''])
   })
+
+  it('shows the pixel size of the image on screen in a chip', async () => {
+    const { wrapper } = await mountIt()
+    expect(wrapper.find('[data-size]').exists()).toBe(false)
+    const img = wrapper.find('main img')
+    Object.defineProperty(img.element, 'naturalWidth', { value: 768 })
+    Object.defineProperty(img.element, 'naturalHeight', { value: 512 })
+    await img.trigger('load')
+    expect(wrapper.find('[data-size]').text()).toBe('768×512')
+  })
 })
