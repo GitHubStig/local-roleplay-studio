@@ -15,6 +15,7 @@ vi.mock('../api', async (importOriginal) => ({
   saveFrameBody: vi.fn(),
   saveLook: vi.fn(),
   cancelFrame: vi.fn(),
+  upscaleFrame: vi.fn(),
 }))
 
 const look: api.Look = { subject: 'A tall student.', style: 'Manga ink.' }
@@ -260,5 +261,26 @@ describe('StoryboardView', () => {
     await wrapper.find('[data-frame-editor]').trigger('submit')
     await flushPromises()
     expect(wrapper.find('[role=alert]').text()).toBe('This crosses a limit: no minors')
+  })
+
+  it('upscales a rendered Frame, marking it Upscaled', async () => {
+    const rendered = frame(0, { image: 'frame-0-aaaaaaaa.png' })
+    vi.mocked(api.getSession).mockResolvedValue(storyboard([rendered, frame(1)]))
+    vi.mocked(api.upscaleFrame).mockImplementation(async (_id, _i, onEvent) =>
+      onEvent({
+        type: 'upscaled',
+        session: storyboard([{ ...rendered, upscaled: 'frame-0-aaaaaaaa-2048.png' }, frame(1)]),
+      })
+    )
+    const { wrapper } = await mountIt()
+    await wrapper.find('[data-upscale]').trigger('click')
+    await flushPromises()
+    expect(api.upscaleFrame).toHaveBeenCalledWith('sb', 0, expect.any(Function))
+    expect(wrapper.findAll('[data-status]')[0].text()).toBe('Upscaled')
+    expect(wrapper.find('[data-upscale]').attributes('disabled')).toBeDefined()
+
+    // A Frame with no image yet can't be upscaled.
+    await wrapper.findAll('[data-frame]')[1].trigger('click')
+    expect(wrapper.find('[data-upscale]').attributes('disabled')).toBeDefined()
   })
 })

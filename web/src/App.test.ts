@@ -76,12 +76,14 @@ beforeEach(() => {
     quantize: null,
     seedMode: 'random',
     seed: 1,
+    upscaler: 'seedvr2-7b',
   })
   vi.mocked(api.getSettingsOptions).mockResolvedValue({
     textModels: ['llama3:latest'],
     thinkingModels: [],
     imageModels: [],
     sizePresets: [],
+    upscalers: [],
   })
 })
 

@@ -574,3 +574,95 @@ Deno.test('Cancelling a plan discards the Storyboard', () =>
     assertEquals(rest.includes('"sessionDiscarded":true'), true)
     assertEquals((await call('GET', '/api/sessions/s1')).status, 404)
   }))
+
+Deno.test('Upscaling keeps the original, flags every Frame showing that image, and runs once', () =>
+  withTempDir(async (root) => {
+    const images = fakeImageGenerator()
+    const { call } = setup({
+      root,
+      settings: { textModel: 'x' },
+      imageGenerator: images,
+      // The second Action changes nothing, so its Frame reuses the Opening's image.
+      textModel: scriptedTextModel([reply('standing'), reply('standing'), reply('standing')]),
+    })
+    await call('POST', '/api/sessions', { scenarioId: 'test' })
+    await readEvents(await call('POST', '/api/sessions/s1/frames', {}))
+    await readEvents(await call('POST', '/api/sessions/s1/frames', { action: 'Stay' }))
+
+    const events = await readEvents(await call('POST', '/api/sessions/s1/frames/1/upscale'))
+    assertEquals(events.map(([e]) => e), ['phase', 'upscaled'])
+    const [opening, second] = (events.at(-1)![1].session as {
+      frames: { image: string; upscaled?: string }[]
+    }).frames
+    assertMatch(second.upscaled!, /^frame-0-[0-9a-f]{8}-2048\.png$/)
+    assertEquals([opening.upscaled, second.image], [second.upscaled, opening.image])
+    assertEquals(images.upscaled, [opening.image])
+    assertEquals(images.upscalers, ['seedvr2-7b'])
+    assertEquals((await call('GET', `/api/sessions/s1/images/${second.upscaled}`)).status, 200)
+
+    assertEquals((await call('POST', '/api/sessions/s1/frames/0/upscale')).status, 409)
+    assertEquals((await call('POST', '/api/sessions/s1/frames/7/upscale')).status, 404)
+
+    // A Frame that reuses an upscaled image is upscaled too.
+    const third = await readEvents(
+      await call('POST', '/api/sessions/s1/frames', { action: 'Stay' }),
+    )
+    assertEquals((third.at(-1)![1].frame as { upscaled?: string }).upscaled, second.upscaled)
+  }))
+
+Deno.test('A failed upscale leaves the Frame as it was', () =>
+  withTempDir(async (root) => {
+    const images = fakeImageGenerator()
+    const { call } = setup({
+      root,
+      settings: { textModel: 'x' },
+      imageGenerator: images,
+      textModel: scriptedTextModel([reply('standing')]),
+    })
+    await call('POST', '/api/sessions', { scenarioId: 'test' })
+    await readEvents(await call('POST', '/api/sessions/s1/frames', {}))
+    images.upscale = () => Promise.reject(new Error('SeedVR2 upscaler failed: out of memory'))
+    const events = await readEvents(await call('POST', '/api/sessions/s1/frames/0/upscale'))
+    assertEquals(events.at(-1)![1].message, 'SeedVR2 upscaler failed: out of memory')
+    const session = await (await call('GET', '/api/sessions/s1')).json()
+    assertEquals(session.frames[0].upscaled, undefined)
+    assertEquals(session.activity, null)
+  }))
+
+Deno.test('A Storyboard Frame upscales once rendered; a re-render replaces the upscale', () =>
+  withTempDir(async (root) => {
+    const { call } = setup({
+      root,
+      settings: { textModel: 'x' },
+      textModel: scriptedTextModel([], [], { plans: [planOf(2)] }),
+    })
+    await call('POST', '/api/sessions', { kind: 'storyboard', brief: 'A dunk.', frameCount: 2 })
+    await readEvents(await call('POST', '/api/sessions/s1/plan'))
+    assertEquals((await call('POST', '/api/sessions/s1/frames/0/upscale')).status, 409)
+
+    await readEvents(await call('POST', '/api/sessions/s1/frames/0/render'))
+    const up = await readEvents(await call('POST', '/api/sessions/s1/frames/0/upscale'))
+    const upscaled = (up.at(-1)![1].session as { frames: { upscaled?: string }[] }).frames[0]
+      .upscaled!
+    assertMatch(upscaled, /-2048\.png$/)
+
+    const rerender = await readEvents(await call('POST', '/api/sessions/s1/frames/0/render'))
+    assertEquals((rerender.at(-1)![1].frame as { upscaled?: string }).upscaled, undefined)
+    assertEquals((await call('GET', `/api/sessions/s1/images/${upscaled}`)).status, 404)
+  }))
+
+Deno.test('Upscale uses the upscaler chosen in Settings now, even mid-Session', () =>
+  withTempDir(async (root) => {
+    const images = fakeImageGenerator()
+    const { call, settings } = setup({
+      root,
+      settings: { textModel: 'x' },
+      imageGenerator: images,
+      textModel: scriptedTextModel([reply('standing')]),
+    })
+    await call('POST', '/api/sessions', { scenarioId: 'test' })
+    await readEvents(await call('POST', '/api/sessions/s1/frames', {}))
+    settings.current = { ...settings.current, upscaler: 'seedvr2-3b' }
+    await readEvents(await call('POST', '/api/sessions/s1/frames/0/upscale'))
+    assertEquals(images.upscalers, ['seedvr2-3b'])
+  }))

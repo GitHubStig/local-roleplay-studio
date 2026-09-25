@@ -10,7 +10,13 @@ import {
   testScenario,
   withTempDir,
 } from './testing.ts'
-import { type FrameEvent, runChainFrame, UndoError, undoLatestFrame } from './frames.ts'
+import {
+  type FrameEvent,
+  runChainFrame,
+  UndoError,
+  undoLatestFrame,
+  upscaleFrame,
+} from './frames.ts'
 import { RenderQueue } from './renderQueue.ts'
 import { renderPrompt } from './imagePrompt.ts'
 
@@ -263,6 +269,19 @@ Deno.test('undoLatestFrame restores the previous Scene and deletes the image', (
     assertEquals(await imageExists(root, session.frames[0].image), true)
   }))
 
+Deno.test("undoLatestFrame deletes the undone Frame's upscale too", () =>
+  withTempDir(async (root) => {
+    const { store, session, deps } = await sessionWithFrames(root, [
+      reply('standing'),
+      reply('sitting'),
+    ])
+    const upscaled = await upscaleFrame(deps, session, 1, 'seedvr2-7b', () => {}, signal())
+    const latest = upscaled.frames[1]
+    assertEquals(await imageExists(root, latest.upscaled!), true)
+    await undoLatestFrame(store, upscaled as typeof session, 1)
+    assertEquals(await imageExists(root, latest.upscaled!), false)
+  }))
+
 Deno.test('undoLatestFrame keeps an image a remaining Frame still shows', () =>
   withTempDir(async (root) => {
     const { store, session } = await sessionWithFrames(root, [
@@ -310,6 +329,7 @@ Deno.test('runChainFrame removes an image written just before the Frame was canc
           textModel: scriptedTextModel([reply('standing')]),
           // Finishes writing, then the Frame is cancelled before the generator returns.
           imageGenerator: {
+            ...fakeImageGenerator(),
             async generate(req) {
               await Deno.writeTextFile(join(req.dir, `${req.name}.png`), 'png')
               controller.abort(new Error('Cancelled by player'))
@@ -475,6 +495,7 @@ Deno.test('runChainFrame records how long the text and image steps took', () =>
       store: dirSessionStore(root),
       textModel: scriptedTextModel([reply('standing'), reply('standing')]),
       imageGenerator: {
+        ...images,
         async generate(...args: Parameters<typeof images.generate>) {
           await new Promise((r) => setTimeout(r, 120))
           return images.generate(...args)

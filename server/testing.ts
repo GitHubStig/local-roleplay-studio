@@ -111,9 +111,17 @@ export const reply = (pose: string, extra: Partial<FrameText> = {}): FrameText =
 /** Writes a tiny file per image; can be told to fail or to wait for an abort. */
 export function fakeImageGenerator(
   opts: { fail?: boolean; hang?: boolean } = {},
-): ImageGenerator & { prompts: string[] } {
+): ImageGenerator & {
+  prompts: string[]
+  upscaled: string[]
+  upscalers: string[]
+} {
   const gen = {
     prompts: [] as string[],
+    /** The images asked to be upscaled. */
+    upscaled: [] as string[],
+    /** The upscaler model each was upscaled with. */
+    upscalers: [] as string[],
     async generate(req: { prompt: string; dir: string; name: string }, signal: AbortSignal) {
       gen.prompts.push(req.prompt)
       signal.throwIfAborted()
@@ -125,6 +133,23 @@ export function fakeImageGenerator(
       }
       const file = `${req.name}.png`
       await Deno.writeTextFile(`${req.dir}/${file}`, req.prompt)
+      return file
+    },
+    async upscale(
+      req: { model: string; image: string; dir: string; name: string },
+      signal: AbortSignal,
+    ) {
+      gen.upscaled.push(req.image)
+      gen.upscalers.push(req.model)
+      signal.throwIfAborted()
+      if (opts.fail) throw new Error('mflux crashed')
+      if (opts.hang) {
+        await new Promise((_, reject) =>
+          signal.addEventListener('abort', () => reject(signal.reason), { once: true })
+        )
+      }
+      const file = `${req.name}.png`
+      await Deno.copyFile(`${req.dir}/${req.image}`, `${req.dir}/${file}`)
       return file
     },
   }

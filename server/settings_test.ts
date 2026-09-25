@@ -58,3 +58,12 @@ Deno.test('validateSettings defaults thinking to off and rejects non-booleans', 
   const on = validateSettings({ ...DEFAULT_SETTINGS, thinking: true })
   assertEquals(on.ok && on.settings.thinking, true)
 })
+
+Deno.test('validateSettings defaults the upscaler to SeedVR2 7B and accepts only known ones', () => {
+  const { upscaler: _, ...withoutUpscaler } = DEFAULT_SETTINGS
+  const result = validateSettings(withoutUpscaler)
+  assertEquals(result.ok && result.settings.upscaler, 'seedvr2-7b')
+  const small = validateSettings({ ...DEFAULT_SETTINGS, upscaler: 'seedvr2-3b' })
+  assertEquals(small.ok && small.settings.upscaler, 'seedvr2-3b')
+  assertEquals(validateSettings({ ...DEFAULT_SETTINGS, upscaler: 'esrgan' }).ok, false)
+})

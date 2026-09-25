@@ -27,6 +27,7 @@ import {
   type ChainFrame,
   type FrameEvent,
   undoFrame,
+  upscaleFrame,
 } from '../api'
 
 const props = defineProps<{ id: string }>()
@@ -44,6 +45,8 @@ interface Pending {
   outcome?: Outcome
   prompt?: ImagePrompt
   cancelling?: boolean
+  /** Upscaling this Frame's image rather than making a new Frame. */
+  upscaling?: number
 }
 
 const session = ref<ChainSession | null>(null)
@@ -250,6 +253,27 @@ async function cancel() {
   await cancelFrame(props.id)
 }
 
+/** Upscales the shown Frame's image to 2048 px; every Frame showing that image gets it. */
+async function upscale() {
+  const frame = shown.value
+  if (!frame || frame.upscaled || busy.value) return
+  frameError.value = ''
+  pending.value = { phase: 'image', upscaling: frame.index }
+  try {
+    await upscaleFrame(props.id, frame.index, (event) => {
+      if (event.type === 'phase') pending.value = { ...pending.value!, phase: event.phase }
+      else if (event.type === 'progress') {
+        pending.value = { ...pending.value!, progress: { step: event.step, total: event.total } }
+      } else if (event.type === 'upscaled') session.value = event.session as ChainSession
+      else if (event.type === 'failed') frameError.value = event.message
+    })
+  } catch (err) {
+    frameError.value = (err as Error).message
+  } finally {
+    pending.value = null
+  }
+}
+
 /** Undo is possible for any Frame after the Opening Frame, while nothing is running. */
 const canUndo = computed(() => !busy.value && (session.value?.frames.length ?? 0) > 1)
 const undoing = ref(false)
@@ -284,7 +308,11 @@ const writing = computed(() => pending.value?.phase === 'text' && !pending.value
 
 /** The frame's border sweeps while an image renders (or waits to), until the new one lands. */
 const renderingPhase = computed(() =>
-  pending.value?.phase === 'image' || pending.value?.phase === 'queued' ? pending.value.phase : null
+  // An upscale sweeps only the Frame it is upscaling.
+  (pending.value?.phase === 'image' || pending.value?.phase === 'queued') &&
+    (pending.value.upscaling === undefined || pending.value.upscaling === shown.value?.index)
+    ? pending.value.phase
+    : null
 )
 
 /** The caption: the provisional Narration while a Frame runs, else the shown Frame's. */
@@ -314,7 +342,10 @@ const phaseLabel = computed(() => {
   if (pending.value?.phase === 'queued') return 'Waiting for another render…'
   if (pending.value?.phase !== 'image') return 'Writing the prompt…'
   const p = pending.value.progress
-  return p ? `Rendering the image… step ${p.step} of ${p.total}` : 'Rendering the image…'
+  const doing = pending.value.upscaling === undefined
+    ? 'Rendering the image…'
+    : `Upscaling ${frameName(pending.value.upscaling)}…`
+  return p ? `${doing} step ${p.step} of ${p.total}` : doing
 })
 
 /** The shown Frame's Image Prompt, word-diffed against the Frame before it (none for the Opening). */
@@ -333,7 +364,7 @@ const promptDiff = computed(() => {
     <template v-else-if="session">
       <main class="flex min-w-0 flex-1 flex-col gap-3 p-4">
         <FrameImage
-          :src="shown ? imageUrl(session.id, shown.image) : null"
+          :src="shown ? imageUrl(session.id, shown.upscaled ?? shown.image) : null"
           :alt="shown?.promptText"
           :rendering="renderingPhase"
           :empty-text="busy ? undefined : 'No image yet'"
@@ -468,6 +499,19 @@ const promptDiff = computed(() => {
               @click="cancel"
             >
               Cancel
+            </button>
+            <button
+              v-if="shown"
+              type="button"
+              class="rounded-lg border border-line px-3 py-2 text-sm disabled:opacity-50"
+              :disabled="busy || !!shown.upscaled"
+              :title="shown.upscaled
+              ? `${frameName(shown.index)} is upscaled to 2048 px`
+              : `Upscale ${frameName(shown.index)} to 2048 px with SeedVR2`"
+              data-upscale
+              @click="upscale"
+            >
+              {{ shown.upscaled ? 'Upscaled' : 'Upscale' }}
             </button>
             <p
               class="min-w-0 flex-1 truncate text-sm text-danger"

@@ -130,6 +130,14 @@ async function save() {
           </select>
         </label>
 
+        <label class="flex flex-col gap-1">
+          <span class="text-sm text-muted">Upscaler</span>
+          <select v-model="form.upscaler" class="field" data-upscaler>
+            <option v-for="u in options.upscalers" :key="u.id" :value="u.id">{{ u.label }}</option>
+          </select>
+          <span class="text-sm text-muted">Used by Upscale; applies to the next upscale.</span>
+        </label>
+
         <fieldset class="flex flex-col gap-2">
           <legend class="mb-1 text-sm text-muted">Seed</legend>
           <label class="flex items-center gap-2">

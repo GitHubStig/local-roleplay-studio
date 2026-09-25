@@ -19,6 +19,7 @@ const settings: api.Settings = {
   quantize: null,
   seedMode: 'random',
   seed: 42,
+  upscaler: 'seedvr2-7b',
 }
 
 const options: api.SettingsOptions = {
@@ -29,6 +30,10 @@ const options: api.SettingsOptions = {
     { id: 'flux2-klein-4b', label: 'FLUX.2 Klein 4B', defaultSteps: 4 },
   ],
   sizePresets: [{ id: 'portrait', label: 'Portrait', width: 832, height: 1216 }],
+  upscalers: [
+    { id: 'seedvr2-7b', label: 'SeedVR2 7B' },
+    { id: 'seedvr2-3b', label: 'SeedVR2 3B' },
+  ],
 }
 
 beforeEach(() => {
@@ -53,6 +58,15 @@ describe('SettingsView', () => {
     await flushPromises()
     expect(api.saveSettings).toHaveBeenCalledWith({ ...settings, textModel: 'gemma4:31b-mlx' })
     expect(wrapper.text()).toContain('Applies from the next Session')
+  })
+
+  it('saves the chosen upscaler', async () => {
+    const wrapper = mount(SettingsView)
+    await flushPromises()
+    await wrapper.find('[data-upscaler]').setValue('seedvr2-3b')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+    expect(api.saveSettings).toHaveBeenCalledWith({ ...settings, upscaler: 'seedvr2-3b' })
   })
 
   it('offers Thinking only for Text Models that can think', async () => {

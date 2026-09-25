@@ -88,6 +88,10 @@ _Avoid_: Abort, stop
 Removing a Chain's latest Frame so the previous Frame is current again; the Opening Frame can't be undone.
 _Avoid_: Delete frame, revert, rollback
 
+**Upscale**:
+Enlarging a rendered Frame's image so its shortest edge is 2048 px, with the SeedVR2 upscaler; the original image is kept, and an upscaled Frame is flagged so it isn't upscaled twice. A re-render drops the upscale.
+_Avoid_: Enhance, HD, super-resolution
+
 ### Configuration
 
 **Text Model**:

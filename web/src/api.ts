@@ -14,6 +14,8 @@ export interface Settings {
   quantize: Quantize
   seedMode: SeedMode
   seed: number
+  /** Which SeedVR2 model Upscale uses; applies to the next upscale, even mid-Session. */
+  upscaler: string
 }
 
 export interface ImageModelOption {
@@ -36,6 +38,7 @@ export interface SettingsOptions {
   textModelsError?: string
   imageModels: ImageModelOption[]
   sizePresets: SizePreset[]
+  upscalers: { id: string; label: string }[]
 }
 
 export class ApiError extends Error {
@@ -119,6 +122,8 @@ export interface ChainFrame {
   /** The exact text sent to the Image Model. */
   promptText: string
   image: string
+  /** The image upscaled to 2048 px, once upscaled. */
+  upscaled?: string
   createdAt: string
 }
 
@@ -133,6 +138,8 @@ export interface StoryboardFrame {
   promptText: string
   /** Null until rendered. */
   image: string | null
+  /** The image upscaled to 2048 px, once upscaled; a re-render drops it. */
+  upscaled?: string
   /** The prompt changed since the image was rendered. */
   stale?: boolean
   /** It crosses a Limit and can't be rendered until edited. */
@@ -200,6 +207,9 @@ export type FrameEvent =
   | EndEvent
   | { type: 'text'; outcome: Outcome; narration: string; prompt: ImagePrompt }
   | { type: 'committed'; frame: ChainFrame }
+
+/** An upscale's stream: ends with the Session, every Frame showing that image now upscaled. */
+export type UpscaleEvent = ProgressEvent | EndEvent | { type: 'upscaled'; session: Session }
 
 /** A Storyboard's streams: planning, rendering a Frame, editing a Frame by Action. */
 export type StoryboardEvent =
@@ -361,5 +371,18 @@ export const editStoryboardFrame = (
     `/api/sessions/${sessionId}/frames/${index}/edit`,
     { action },
     ['edited'],
+    onEvent,
+  )
+
+/** Upscales one Frame's image to 2048 px, in a Chain or a Storyboard. */
+export const upscaleFrame = (
+  sessionId: string,
+  index: number,
+  onEvent: (event: UpscaleEvent) => void,
+) =>
+  streamEvents<UpscaleEvent>(
+    `/api/sessions/${sessionId}/frames/${index}/upscale`,
+    {},
+    ['upscaled'],
     onEvent,
   )

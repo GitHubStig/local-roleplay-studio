@@ -1,6 +1,7 @@
 import { equal } from '@std/assert'
 import { join } from '@std/path'
 import type { ImageGenerator } from './imageGenerator.ts'
+import type { Upscaler } from './imageModels.ts'
 import { type ImagePrompt, renderPrompt } from './imagePrompt.ts'
 import { crossedLimit } from './limits.ts'
 import { mightNameAPerson } from './textModel.ts'
@@ -31,6 +32,9 @@ export type FrameEvent =
   /** The new Image Prompt before its image exists; provisional until `committed`. */
   | { type: 'text'; outcome: Outcome; narration: string; prompt: ImagePrompt }
   | { type: 'committed'; frame: ChainFrame }
+
+/** Progress of an upscale; ends with the Session, every Frame showing that image now upscaled. */
+export type UpscaleEvent = ProgressEvent | { type: 'upscaled'; session: Session }
 
 export interface FrameDeps {
   store: SessionStore
@@ -220,9 +224,11 @@ export async function runChainFrame(
   // it finished writing just as the Frame was cancelled.
   const name = imageName(index)
   try {
+    let upscaled: string | undefined
     if (reuseImage) {
       image = previous!.image
       promptText = previous!.promptText
+      upscaled = previous!.upscaled
     } else {
       promptText = renderPrompt(nextPrompt)
       image = await renderImage(deps, session, promptText, name, timings, emit, signal)
@@ -238,6 +244,7 @@ export async function runChainFrame(
       ...(thinking ? { thinking } : {}),
       promptText,
       image,
+      ...(upscaled ? { upscaled } : {}),
       timings,
       createdAt: new Date().toISOString(),
     }
@@ -274,6 +281,56 @@ export async function undoLatestFrame(
   await store.save(updated)
   if (!frames.some((t) => t.image === latest.image)) {
     await Deno.remove(join(store.dir(session.id), latest.image)).catch(() => {})
+    if (latest.upscaled) {
+      await Deno.remove(join(store.dir(session.id), latest.upscaled)).catch(() => {})
+    }
   }
   return updated
+}
+
+export class UpscaleError extends Error {}
+
+/**
+ * Upscales Frame `index`'s image to 2048 px through the shared render queue, then marks every
+ * Frame showing that image (a Chain Frame reuses the image before it when nothing changed) as
+ * upscaled. Keeps the original image, which thumbnails and re-renders still use.
+ */
+export async function upscaleFrame(
+  deps: FrameDeps,
+  session: Session,
+  index: number,
+  upscaler: Upscaler,
+  emit: (event: UpscaleEvent) => void,
+  signal: AbortSignal,
+): Promise<Session> {
+  const frame = session.frames[index]
+  if (!frame?.image) throw new UpscaleError(`Frame ${index + 1} has no image to upscale`)
+  if (frame.upscaled) throw new UpscaleError(`Frame ${index + 1} is already upscaled`)
+  const image = frame.image
+
+  const name = `${image.replace(/\.\w+$/, '')}-2048`
+  const dir = deps.store.dir(session.id)
+  const release = await (deps.renderQueue ?? new RenderQueue()).acquire(
+    signal,
+    () => emit({ type: 'phase', phase: 'queued' }),
+  )
+  try {
+    emit({ type: 'phase', phase: 'image' })
+    const upscaled = await deps.imageGenerator.upscale(
+      { model: upscaler, image, seed: session.seed, dir, name },
+      signal,
+      (step, total) => emit({ type: 'progress', step, total }),
+    )
+    signal.throwIfAborted()
+    const frames = session.frames.map((f) => (f.image === image ? { ...f, upscaled } : f))
+    const updated = { ...session, frames } as Session
+    await deps.store.save(updated)
+    emit({ type: 'upscaled', session: updated })
+    return updated
+  } catch (err) {
+    await removeImage(dir, name)
+    throw err
+  } finally {
+    release()
+  }
 }

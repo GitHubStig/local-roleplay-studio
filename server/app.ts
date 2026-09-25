@@ -1,6 +1,6 @@
 import { extname, join } from '@std/path'
 import type { ImageGenerator } from './imageGenerator.ts'
-import { IMAGE_MODELS } from './imageModels.ts'
+import { IMAGE_MODELS, UPSCALERS } from './imageModels.ts'
 import { crossedLimit } from './limits.ts'
 import type { TextModelInfo } from './ollama.ts'
 import { briefScenario, type Scenario, type ScenarioLibrary, summarise } from './scenario.ts'
@@ -8,7 +8,14 @@ import type { ChainSession, Session, SessionStore, StoryboardSession } from './s
 import { type SettingsStore, SIZE_PRESETS, validateSettings } from './settings.ts'
 import type { TextModel } from './textModel.ts'
 import { RenderQueue } from './renderQueue.ts'
-import { type FrameDeps, runChainFrame, UndoError, undoLatestFrame } from './frames.ts'
+import {
+  type FrameDeps,
+  runChainFrame,
+  UndoError,
+  undoLatestFrame,
+  UpscaleError,
+  upscaleFrame,
+} from './frames.ts'
 import {
   editFrameByAction,
   LimitError,
@@ -36,8 +43,11 @@ type Route = [
   handle: (req: Request, p: Params) => Promise<Response>,
 ]
 
-/** Frame images: `frame-3-1a2b3c4d.png`, or `frame-3.png` without the unique suffix. */
-const IMAGE_FILE = /^frame-\d+(-[0-9a-f]{8})?\.(png|svg)$/
+/**
+ * Frame images: `frame-3-1a2b3c4d.png`, or `frame-3.png` without the unique suffix; `-2048` marks
+ * an upscaled one.
+ */
+const IMAGE_FILE = /^frame-\d+(-[0-9a-f]{8})?(-2048)?\.(png|svg)$/
 const CONTENT_TYPES: Record<string, string> = { '.png': 'image/png', '.svg': 'image/svg+xml' }
 
 /** Storyboards plan between 1 and 16 Frames; 8 unless asked otherwise. */
@@ -64,7 +74,7 @@ function defaultSessionId(): string {
 const defaultSeed = () => crypto.getRandomValues(new Uint32Array(1))[0]
 
 type Phase = 'text' | 'queued' | 'image'
-type LockKind = 'frame' | 'undo' | 'delete' | 'plan' | 'render' | 'edit'
+type LockKind = 'frame' | 'undo' | 'delete' | 'plan' | 'render' | 'edit' | 'upscale'
 
 export function createHandler(deps: AppDeps): (req: Request) => Promise<Response> {
   const newSessionId = deps.newSessionId ?? defaultSessionId
@@ -92,6 +102,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     plan: 'The Storyboard is being planned',
     render: 'A Frame is rendering',
     edit: 'A Frame is being edited',
+    upscale: 'A Frame is being upscaled',
   }
 
   /** Takes the Session's lock, or returns a 409 saying what holds it. */
@@ -195,7 +206,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       return res
     } catch (err) {
       if (err instanceof LimitError) return error(err.message, 422)
-      if (err instanceof UndoError) return error(err.message, 409)
+      if (err instanceof UndoError || err instanceof UpscaleError) return error(err.message, 409)
       throw err
     } finally {
       if (!streaming) unlock(id)
@@ -204,7 +215,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
 
   const needsChain = (s: Session): s is ChainSession => s.kind === 'chain'
   const needsStoryboard = (s: Session): s is StoryboardSession => s.kind === 'storyboard'
-  const frameIndexOf = (s: StoryboardSession, raw: string | undefined): number | Response => {
+  const frameIndexOf = (s: Session, raw: string | undefined): number | Response => {
     const index = Number(raw)
     if (!Number.isInteger(index) || !s.frames[index]) return error('No such Frame', 404)
     return index
@@ -246,6 +257,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
           defaultSteps,
         })),
         sizePresets: SIZE_PRESETS,
+        upscalers: UPSCALERS,
       })
     }],
 
@@ -396,6 +408,24 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
         return json(await undoLatestFrame(deps.sessions, session, index))
       })
     }],
+
+    [
+      'POST',
+      new URLPattern({ pathname: '/api/sessions/:id/frames/:index/upscale' }),
+      (_req, p) =>
+        locked(p.id!, 'upscale', async (session) => {
+          const index = frameIndexOf(session, p.index)
+          if (index instanceof Response) return index
+          const frame = session.frames[index]
+          if (!frame.image) return error(`Frame ${index + 1} has no image to upscale`, 409)
+          if (frame.upscaled) return error(`Frame ${index + 1} is already upscaled`, 409)
+          // The current Settings, not the Session's copy: the upscaler doesn't change the Frames.
+          const { upscaler } = await deps.settings.load()
+          return stream(session, index, false, async (send, signal) => {
+            await upscaleFrame(frameDeps(session), session, index, upscaler, send, signal)
+          })
+        }),
+    ],
 
     // --- Storyboards ---------------------------------------------------------------------------
 

@@ -13,6 +13,8 @@ import {
   renderStoryboardFrame,
   saveFrameBody,
   saveLook,
+  upscaleFrame,
+  type UpscaleEvent,
   type StoryboardEvent,
   type StoryboardFrame,
   type StoryboardSession,
@@ -32,9 +34,9 @@ const selected = ref(0)
 const panel = ref<'frames' | 'prompt'>('frames')
 const message = ref<{ kind: 'error' | Outcome; text: string } | null>(null)
 
-/** Work in progress: planning, rendering (one Frame, or all of them in turn) or an edit. */
+/** Work in progress: planning, rendering (one Frame, or all of them in turn), an edit or an upscale. */
 interface Work {
-  kind: 'plan' | 'render' | 'edit'
+  kind: 'plan' | 'render' | 'edit' | 'upscale'
   phase: 'text' | 'queued' | 'image'
   frameIndex: number | null
   progress?: { step: number; total: number }
@@ -139,7 +141,7 @@ onBeforeUnmount(() => clearTimeout(followTimer))
 // --- Streamed work.
 
 /** Updates the progress shown for whatever is running; returns true for a final event. */
-function track(event: StoryboardEvent): boolean {
+function track(event: StoryboardEvent | UpscaleEvent): boolean {
   switch (event.type) {
     case 'phase':
       work.value = { ...work.value!, phase: event.phase }
@@ -210,6 +212,15 @@ async function render(index: number): Promise<boolean> {
 const toRender = computed(() =>
   (session.value?.frames ?? []).filter((f) => !f.blocked && (!f.image || f.stale))
 )
+
+/** Upscales one rendered Frame's image to 2048 px. */
+async function upscale(index: number) {
+  await run({ kind: 'upscale', phase: 'image', frameIndex: index }, () =>
+    upscaleFrame(props.id, index, (event) => {
+      if (track(event)) return
+      if (event.type === 'upscaled') session.value = event.session as StoryboardSession
+    }))
+}
 
 async function renderAll() {
   renderingAll = true
@@ -301,6 +312,7 @@ function status(f: StoryboardFrame): { label: string; tone: string } {
   if (f.blocked) return { label: 'Blocked', tone: 'text-danger' }
   if (!f.image) return { label: 'Draft', tone: 'text-muted' }
   if (f.stale) return { label: 'Changed since render', tone: 'text-warn' }
+  if (f.upscaled) return { label: 'Upscaled', tone: 'text-ok' }
   return { label: 'Rendered', tone: 'text-ok' }
 }
 
@@ -317,13 +329,14 @@ const statusLabel = computed(() => {
   if (w.kind === 'edit') return `Editing Frame ${(w.frameIndex ?? 0) + 1}…`
   if (w.phase === 'queued') return 'Waiting for another render…'
   const p = w.progress
-  const which = `Frame ${(w.frameIndex ?? 0) + 1}`
-  return p ? `Rendering ${which}… step ${p.step} of ${p.total}` : `Rendering ${which}…`
+  const doing = `${w.kind === 'upscale' ? 'Upscaling' : 'Rendering'} Frame ${(w.frameIndex ?? 0) + 1}…`
+  return p ? `${doing} step ${p.step} of ${p.total}` : doing
 })
 
 /** The image frame sweeps while the selected Frame renders; the text box while it's edited. */
 const renderingHere = computed(() =>
-  work.value?.kind === 'render' && work.value.frameIndex === selected.value &&
+  (work.value?.kind === 'render' || work.value?.kind === 'upscale') &&
+    work.value.frameIndex === selected.value &&
     (work.value.phase === 'image' || work.value.phase === 'queued')
     ? work.value.phase
     : null
@@ -347,7 +360,7 @@ const timingsLabel = (f: StoryboardFrame) => {
     <template v-else-if="session">
       <main class="flex min-w-0 flex-1 flex-col gap-3 p-4">
         <FrameImage
-          :src="current?.image ? imageUrl(session.id, current.image) : null"
+          :src="current?.image ? imageUrl(session.id, current.upscaled ?? current.image) : null"
           :alt="current?.promptText"
           :rendering="renderingHere"
           :empty-text="current ? (current.blocked ? 'Blocked: edit this Frame first' : 'Not rendered yet') : 'Planning…'"
@@ -417,6 +430,18 @@ const timingsLabel = (f: StoryboardFrame) => {
                 @click="renderAll"
               >
                 Render all{{ toRender.length ? ` (${toRender.length})` : '' }}
+              </button>
+              <button
+                type="button"
+                class="rounded-lg border border-line px-3 py-2 text-sm disabled:opacity-50"
+                :disabled="!current?.image || !!current.upscaled"
+                :title="current?.upscaled
+                ? `Frame ${selected + 1} is upscaled to 2048 px`
+                : `Upscale Frame ${selected + 1} to 2048 px with SeedVR2`"
+                data-upscale
+                @click="current && upscale(current.index)"
+              >
+                {{ current?.upscaled ? 'Upscaled' : 'Upscale' }}
               </button>
             </template>
             <button
@@ -495,7 +520,13 @@ const timingsLabel = (f: StoryboardFrame) => {
                   <span class="line-clamp-3">{{ f.beat }}</span>
                   <span v-if="'pending' in f" class="animate-pulse text-xs text-muted">Writing…</span>
                   <span v-else class="text-xs font-medium" :class="status(f).tone" data-status>
-                    {{ work?.kind === 'render' && work.frameIndex === f.index ? 'Rendering…' : status(f).label }}
+                    {{
+                      work?.frameIndex === f.index && work.kind === 'render'
+                      ? 'Rendering…'
+                      : work?.frameIndex === f.index && work.kind === 'upscale'
+                      ? 'Upscaling…'
+                      : status(f).label
+                    }}
                   </span>
                 </span>
               </button>

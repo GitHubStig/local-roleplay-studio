@@ -100,6 +100,14 @@ including model loading), not a comparison of how well they follow the prompt or
 subject consistent. FLUX.2 Klein 9B is built into mflux too, but isn't offered until its
 weights are downloaded.
 
+### Upscaler
+
+Upscale uses **SeedVR2 7B** by default (`seedvr2-7b`, `mflux-upscale-seedvr2 --resolution 2048`);
+3B can be chosen in **Settings → Upscaler**. From a
+512×512 image to 2048×2048: 7B ~46 s, 3B ~41 s, most of it loading the model; both add real
+texture (fabric weave, skin) over plain resizing, 7B slightly cleaner. Peak memory ~39 GB for
+either, so, like the larger Image Models, it can push a 48 GB Mac into swap next to gemma4.
+
 Model loading is only ~5 s of an image, so keeping the Image Model loaded in a separate process
 isn't worth it yet ([open-threads.md](open-threads.md)).
 

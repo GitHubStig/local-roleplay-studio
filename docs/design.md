@@ -115,6 +115,7 @@ After planning, each Frame is independent:
 | **Render** | Renders one Frame through the shared queue; a re-render replaces its image (the old file is deleted once the new one is saved). |
 | **Edit by hand** | Replaces a Frame's seven sentences; stray labels are stripped. A rendered Frame is marked **stale** until re-rendered. Refused if it crosses a Limit. |
 | **Edit the Look** | Rewrites every Frame's prompt; rendered Frames become stale. |
+| **Upscale** | As for a Chain Frame (below); a re-render or Undo deletes the upscale with the image. |
 | **Edit by Action** | The Text Model rewrites that Frame (and the Look, if the Action changes identity or style), after the same Action Limits check as a Chain. Declined or unclear Actions change nothing. |
 
 Each Frame records how long its text took (the wait for its part of the plan, or its latest
@@ -174,6 +175,13 @@ in [open-threads.md](open-threads.md).
   and dimmer. The image crossfades (700 ms) when a new Frame
   arrives or another Frame is picked; the next image is preloaded first, so there is no blank
   frame.
+  **Upscale** (beside Send, and beside Render all on a Storyboard) enlarges the shown Frame's
+  image to 2048 px on its shortest edge with the SeedVR2 model chosen in Settings (7B by default, or 3B;
+  `mflux-upscale-seedvr2`), through the
+  same render queue, with the same sweep and step count. The original stays as the thumbnail; the
+  main view shows the upscaled image. The button reads **Upscaled**, disabled, once done, and
+  every Chain Frame that reuses that image shares the upscale (saved as `upscaled` on the Frame,
+  in a `-2048` file next to the original).
 - **Storyboard** (`/storyboards/:id`): opening a new Storyboard plans it straight away. The
   Frames list fills in as the plan streams: Beats first (each marked "Writing…"), then each
   Frame's sentences; the status pill counts "Writing Frame 3 of 8…". The main area shows the
@@ -205,8 +213,9 @@ in [open-threads.md](open-threads.md).
   to it.
 - **Settings** (`/settings`): Text Model (installed Ollama models, minus OCR and dedicated
   vision-language models), Thinking (on or off; only for models that support it), Image Model, steps (reset to the model's default when the Image Model
-  changes), quantization, size (six presets from 512×512 to 1216×832) and seed (random per
-  Session, or fixed).
+  changes), quantization, size (six presets from 512×512 to 1216×832), seed (random per
+  Session, or fixed) and Upscaler (SeedVR2 7B or 3B). Settings are copied into a Session when it
+  starts, except the Upscaler, which is read at each upscale: it can't change how Frames look.
 - **Theme:** Light (a parchment tint), Dark or System, remembered per browser. It's a display
   preference, not a Setting.
 
@@ -249,6 +258,7 @@ All under `/api`; the Vite dev server proxies it to the Deno server.
 | `PUT /sessions/:id/frames/:index` | Storyboard: replace a Frame's sentences, `{ body }` (`422` if it crosses a Limit) |
 | `PUT /sessions/:id/look` | Storyboard: replace the Look, `{ subject, style }` |
 | `POST /sessions/:id/cancel` | Cancel the Frame in progress |
+| `POST /sessions/:id/frames/:index/upscale` | Either kind: upscale one rendered Frame's image to 2048 px, streaming progress then `upscaled` (`session`); `409` if it has no image or is already upscaled |
 | `DELETE /sessions/:id/frames/:index` | Undo the latest Frame; `:index` must name it (`409` otherwise, and for the Opening Frame or while a Frame runs) |
 | `GET /sessions/:id/images/:file` | A Frame's image |
 

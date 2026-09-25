@@ -19,6 +19,7 @@ const settings: Settings = {
   quantize: null,
   seedMode: 'random',
   seed: 42,
+  upscaler: 'seedvr2-7b',
 }
 
 describe('getHealth', () => {

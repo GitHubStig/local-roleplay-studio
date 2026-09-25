@@ -1,5 +1,5 @@
 import { fromFileUrl } from '@std/path'
-import { findImageModel, IMAGE_MODELS } from './imageModels.ts'
+import { findImageModel, IMAGE_MODELS, type Upscaler, UPSCALERS } from './imageModels.ts'
 
 export interface SizePreset {
   id: string
@@ -35,6 +35,8 @@ export interface Settings {
   seedMode: SeedMode
   /** Used only when `seedMode` is `fixed`. */
   seed: number
+  /** Which SeedVR2 model Upscale uses; read when upscaling, so it applies mid-Session too. */
+  upscaler: Upscaler
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -46,6 +48,7 @@ export const DEFAULT_SETTINGS: Settings = {
   quantize: null,
   seedMode: 'random',
   seed: 42,
+  upscaler: UPSCALERS[0].id,
 }
 
 const MAX_SEED = 2 ** 32 - 1
@@ -84,6 +87,10 @@ export function validateSettings(input: unknown): ValidationResult {
     issues.push(`seed must be an integer from 0 to ${MAX_SEED}`)
   }
 
+  if (s.upscaler !== undefined && !UPSCALERS.some((u) => u.id === s.upscaler)) {
+    issues.push(`upscaler must be one of: ${UPSCALERS.map((u) => u.id).join(', ')}`)
+  }
+
   if (issues.length > 0) return { ok: false, issues }
   return {
     ok: true,
@@ -96,6 +103,7 @@ export function validateSettings(input: unknown): ValidationResult {
       quantize: s.quantize as Quantize,
       seedMode: s.seedMode as SeedMode,
       seed: s.seed as number,
+      upscaler: (s.upscaler as Upscaler | undefined) ?? DEFAULT_SETTINGS.upscaler,
     },
   }
 }

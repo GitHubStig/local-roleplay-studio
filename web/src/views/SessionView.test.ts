@@ -13,6 +13,7 @@ vi.mock('../api', async (importOriginal) => ({
   endSession: vi.fn(),
   createSession: vi.fn(),
   undoFrame: vi.fn(),
+  upscaleFrame: vi.fn(),
 }))
 
 const frame = (
@@ -473,5 +474,32 @@ describe('SessionView', () => {
     const labels = wrapper.findAll('button').map((b) => b.text())
     expect(labels).not.toContain('End')
     expect(labels).not.toContain('Reset')
+  })
+
+  it('upscales the shown Frame and then shows the upscaled image', async () => {
+    let emit!: (e: api.UpscaleEvent) => void
+    let finish!: () => void
+    vi.mocked(api.upscaleFrame).mockImplementation((_id, _index, onEvent) =>
+      new Promise<void>((resolve) => {
+        emit = onEvent
+        finish = resolve
+      })
+    )
+    const { wrapper } = await mountIt()
+    await wrapper.find('[data-upscale]').trigger('click')
+    expect(api.upscaleFrame).toHaveBeenCalledWith('s1', 0, expect.any(Function))
+    emit({ type: 'progress', step: 1, total: 1 })
+    await flushPromises()
+    expect(wrapper.find('[role=status]').text()).toContain('Upscaling the Opening… step 1 of 1')
+
+    emit({ type: 'upscaled', session: session([frame(0, null, { upscaled: 'frame-0-2048.png' })]) })
+    finish()
+    await flushPromises()
+    await loadImages()
+    expect(wrapper.find('main img').attributes('src')).toBe(
+      '/api/sessions/s1/images/frame-0-2048.png',
+    )
+    const button = wrapper.find('[data-upscale]')
+    expect([button.text(), button.attributes('disabled')]).toEqual(['Upscaled', ''])
   })
 })

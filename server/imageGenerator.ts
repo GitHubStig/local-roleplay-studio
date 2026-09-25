@@ -11,6 +11,21 @@ export interface ImageRequest {
   name: string
 }
 
+export interface UpscaleRequest {
+  /** Which upscaler model, e.g. `seedvr2-7b`. */
+  model: string
+  /** File name of the image to upscale, inside `dir`. */
+  image: string
+  seed: number
+  /** Directory to read from and write into. */
+  dir: string
+  /** File name without extension; the upscaler picks the extension. */
+  name: string
+}
+
+/** The shortest edge of an upscaled image, in pixels. */
+export const UPSCALED_EDGE = 2048
+
 export interface ImageGenerator {
   /** Renders the image and returns the file name it wrote inside `dir`. */
   generate(
@@ -18,6 +33,27 @@ export interface ImageGenerator {
     signal: AbortSignal,
     onProgress?: (step: number, total: number) => void,
   ): Promise<string>
+  /**
+   * Upscales a rendered image so its shortest edge is `UPSCALED_EDGE`, and returns the file name
+   * it wrote inside `dir`.
+   */
+  upscale(
+    req: UpscaleRequest,
+    signal: AbortSignal,
+    onProgress?: (step: number, total: number) => void,
+  ): Promise<string>
+}
+
+/** Waits `ms`, or rejects as soon as `signal` aborts. */
+function delay(ms: number, signal: AbortSignal): Promise<void> {
+  signal.throwIfAborted()
+  return new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(resolve, ms)
+    signal.addEventListener('abort', () => {
+      clearTimeout(timer)
+      reject(signal.reason)
+    }, { once: true })
+  })
 }
 
 const escapeXml = (s: string) => s.replace(/[<>&"']/g, (c) => `&#${c.charCodeAt(0)};`)
@@ -37,18 +73,20 @@ function wrap(text: string, width: number): string[] {
   return lines
 }
 
-/** Stands in for mflux: writes an SVG card showing the prompt, after an optional delay. */
+/**
+ * Stands in for mflux: writes an SVG card showing the prompt, after an optional delay. Upscaling
+ * copies the card under the new name.
+ */
 export function placeholderImageGenerator(delayMs = 1500): ImageGenerator {
   return {
+    async upscale({ image, dir, name }, signal) {
+      await delay(delayMs, signal)
+      const file = `${name}${image.slice(image.lastIndexOf('.'))}`
+      await Deno.copyFile(join(dir, image), join(dir, file))
+      return file
+    },
     async generate({ prompt, seed, dir, name }, signal) {
-      signal.throwIfAborted()
-      await new Promise<void>((resolve, reject) => {
-        const timer = setTimeout(resolve, delayMs)
-        signal.addEventListener('abort', () => {
-          clearTimeout(timer)
-          reject(signal.reason)
-        }, { once: true })
-      })
+      await delay(delayMs, signal)
       const hue = seed % 360
       const lines = wrap(prompt, 48).slice(0, 22)
       const text = lines

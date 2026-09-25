@@ -20,6 +20,7 @@ const settings: api.Settings = {
   quantize: null,
   seedMode: 'random',
   seed: 42,
+  upscaler: 'seedvr2-7b',
 }
 
 const options: api.SettingsOptions = {
@@ -27,6 +28,10 @@ const options: api.SettingsOptions = {
   thinkingModels: [],
   imageModels: [{ id: 'z-image-turbo', label: 'Z-Image Turbo', defaultSteps: 9 }],
   sizePresets: [],
+  upscalers: [
+    { id: 'seedvr2-7b', label: 'SeedVR2 7B' },
+    { id: 'seedvr2-3b', label: 'SeedVR2 3B' },
+  ],
 }
 
 const photoshoot = { id: 'photoshoot', title: 'Studio Photoshoot', description: 'Direct a shoot.' }

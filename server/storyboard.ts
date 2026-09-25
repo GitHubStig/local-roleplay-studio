@@ -171,7 +171,8 @@ export async function renderStoryboardFrame(
   try {
     const image = await renderImage(deps, session, frame.promptText, name, timings, emit, signal)
     signal.throwIfAborted()
-    const { stale: _, ...rest } = frame
+    // A new image replaces the old one and its upscale.
+    const { stale: _, upscaled: __, ...rest } = frame
     const rendered: StoryboardFrame = { ...rest, image, timings }
     const frames = session.frames.map((f) => f.index === index ? rendered : f)
     await deps.store.save({ ...session, frames })
@@ -179,6 +180,7 @@ export async function renderStoryboardFrame(
     if (frame.image && frame.image !== image) {
       await removeImage(dir, frame.image.replace(/\.\w+$/, ''))
     }
+    if (frame.upscaled) await removeImage(dir, frame.upscaled.replace(/\.\w+$/, ''))
     emit({ type: 'rendered', frame: rendered })
     return rendered
   } catch (err) {

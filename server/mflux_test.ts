@@ -2,7 +2,7 @@ import { assertEquals, assertRejects } from '@std/assert'
 import { join } from '@std/path'
 import type { ImageRequest } from './imageGenerator.ts'
 import { findImageModel, type ImageModel } from './imageModels.ts'
-import { mfluxArgs, mfluxImageGenerator, parseProgress } from './mflux.ts'
+import { mfluxArgs, mfluxImageGenerator, parseProgress, upscaleArgs } from './mflux.ts'
 import { DEFAULT_SETTINGS } from './settings.ts'
 import { withTempDir } from './testing.ts'
 
@@ -156,5 +156,26 @@ Deno.test('mfluxImageGenerator rejects an unknown Image Model', async () => {
       ),
     Error,
     'Unknown Image Model',
+  )
+})
+
+Deno.test('upscaleArgs upscales the shortest edge to 2048 with the chosen SeedVR2 model', () => {
+  assertEquals(
+    upscaleArgs(
+      { model: 'seedvr2-7b', image: 'frame-0-1a2b3c4d.png', seed: 7, dir: '/d', name: 'x' },
+      '/d/x.png',
+    ),
+    [
+      '--model',
+      'seedvr2-7b',
+      '--image-path',
+      '/d/frame-0-1a2b3c4d.png',
+      '--resolution',
+      '2048',
+      '--seed',
+      '7',
+      '--output',
+      '/d/x.png',
+    ],
   )
 })

@@ -30,6 +30,8 @@ interface FrameBase {
   promptText: string
   /** File name of this Frame's image inside the Session directory; null until rendered. */
   image: string | null
+  /** File name of the image upscaled to 2048 px, once the player has upscaled it. */
+  upscaled?: string
   timings?: FrameTimings
   createdAt: string
 }
