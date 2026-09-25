@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { usePinchZoom } from '../composables/usePinchZoom'
 
 const props = defineProps<{
   /** The image to show; null for none. */
@@ -39,6 +40,11 @@ watch(
   { immediate: true },
 )
 
+/** Pinch to zoom the image, not the page; each new image starts unzoomed. */
+const frame = ref<HTMLElement | null>(null)
+const { zoomed, layerStyle, view, reset } = usePinchZoom(frame)
+watch(() => displayed.value?.src, reset)
+
 /** Width ÷ height of the images shown; portrait until the first one loads. */
 const aspect = ref(832 / 1216)
 /** Pixel size of the image on screen, once loaded. */
@@ -66,11 +72,14 @@ const frameStyle = computed(() => ({
     class="flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-lg border border-line bg-surface [container-type:size]"
   >
     <div
+      ref="frame"
       class="group relative overflow-hidden rounded-md"
-      :class="{ 'render-sweep': rendering }"
+      :class="{ 'render-sweep': rendering, 'cursor-grab active:cursor-grabbing': zoomed }"
       :style="frameStyle"
       :data-rendering="rendering ?? undefined"
     >
+      <!-- The zoomed layer: only the image scales, not what's drawn over it. -->
+      <div class="absolute inset-0 origin-top-left" :style="layerStyle" data-zoom-layer>
       <!-- Crossfade: the next image is preloaded, then fades in over the last one. -->
       <Transition
         enter-active-class="transition-opacity duration-700 ease-out"
@@ -84,9 +93,11 @@ const frameStyle = computed(() => ({
           :src="displayed.src"
           :alt="displayed.alt"
           class="absolute inset-0 h-full w-full object-contain"
+          draggable="false"
           @load="onImageLoad"
         />
       </Transition>
+      </div>
       <span
         v-if="!displayed && emptyText"
         class="absolute inset-0 flex items-center justify-center px-6 text-center text-muted"
@@ -98,7 +109,8 @@ const frameStyle = computed(() => ({
         class="pointer-events-none absolute left-3 top-3 rounded-full bg-black/70 px-3 py-1 text-sm tabular-nums text-white opacity-0 transition-opacity group-hover:opacity-100"
         data-size
       >
-        {{ size.width }}×{{ size.height }}
+        {{ size.width }}×{{ size.height }}<template v-if="zoomed">
+          · {{ Math.round(view.scale * 100) }}%</template>
       </span>
       <!-- Pills, captions and anything else drawn over the image. -->
       <slot />

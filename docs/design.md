@@ -183,6 +183,9 @@ in [open-threads.md](open-threads.md).
   every Chain Frame that reuses that image shares the upscale (saved as `upscaled` on the Frame,
   in a `-2048` file next to the original). Hovering the image shows its size in pixels in the top-left
   corner ("768×512", then "3072×2048" once upscaled), except while the status pill is there.
+  Pinching the trackpad over the image zooms the image, not the page (up to 8×, toward the
+  pointer, with the zoom level added to the size chip); while zoomed in, two-finger scrolling or
+  dragging pans, and a double-click resets. Each new image starts unzoomed.
 - **Storyboard** (`/storyboards/:id`): opening a new Storyboard plans it straight away. The
   Frames list fills in as the plan streams: Beats first (each marked "Writing…"), then each
   Frame's sentences; the status pill counts "Writing Frame 3 of 8…". The main area shows the
