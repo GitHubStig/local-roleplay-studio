@@ -19,7 +19,7 @@ const summary = (id: string, extra: Partial<api.SessionSummary> = {}): api.Sessi
   id,
   kind: 'chain',
   scenarioId: 'photoshoot',
-  scenarioTitle: 'Studio Photoshoot',
+  title: 'Studio Photoshoot',
   frames: 3,
   latestImage: 'frame-2-abcdef12.png',
   createdAt: new Date().toISOString(),

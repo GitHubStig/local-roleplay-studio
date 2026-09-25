@@ -1,6 +1,7 @@
 # Writing a Scenario
 
-A **Scenario** is one Markdown file in `scenarios/`: the starting point for a Session. The
+A **Scenario** is a saved Brief: one Markdown file in `scenarios/` that a Session can start from
+instead of a typed Brief. The
 file name, minus `.md`, is its id (`photoshoot.md` → `photoshoot`). Files are read fresh on
 every request, so a new or edited Scenario shows up on Home, under *Start a new Session*,
 without a restart.

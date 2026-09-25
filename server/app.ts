@@ -1,13 +1,22 @@
 import { extname, join } from '@std/path'
 import type { ImageGenerator } from './imageGenerator.ts'
 import { IMAGE_MODELS } from './imageModels.ts'
+import { crossedLimit } from './limits.ts'
 import type { TextModelInfo } from './ollama.ts'
-import { type ScenarioLibrary, summarise } from './scenario.ts'
-import type { Session, SessionStore } from './session.ts'
+import { briefScenario, type Scenario, type ScenarioLibrary, summarise } from './scenario.ts'
+import type { ChainSession, Session, SessionStore, StoryboardSession } from './session.ts'
 import { type SettingsStore, SIZE_PRESETS, validateSettings } from './settings.ts'
 import type { TextModel } from './textModel.ts'
 import { RenderQueue } from './renderQueue.ts'
-import { type FrameEvent, runChainFrame, UndoError, undoLatestFrame } from './frames.ts'
+import { type FrameDeps, runChainFrame, UndoError, undoLatestFrame } from './frames.ts'
+import {
+  editFrameByAction,
+  LimitError,
+  planStoryboard,
+  renderStoryboardFrame,
+  setFrameBody,
+  setLook,
+} from './storyboard.ts'
 
 export interface AppDeps {
   settings: SettingsStore
@@ -27,9 +36,13 @@ type Route = [
   handle: (req: Request, p: Params) => Promise<Response>,
 ]
 
-/** Frame images: `frame-3-1a2b3c4d.png`, or `frame-3.png` from Sessions saved before unique names. */
+/** Frame images: `frame-3-1a2b3c4d.png`, or `frame-3.png` without the unique suffix. */
 const IMAGE_FILE = /^frame-\d+(-[0-9a-f]{8})?\.(png|svg)$/
 const CONTENT_TYPES: Record<string, string> = { '.png': 'image/png', '.svg': 'image/svg+xml' }
+
+/** Storyboards plan between 1 and 16 Frames; 8 unless asked otherwise. */
+const FRAME_COUNT = { min: 1, max: 16, default: 8 }
+const MAX_BRIEF_LENGTH = 4000
 
 const json = (body: unknown, status = 200) => Response.json(body, { status })
 const error = (message: string, status: number, extra: object = {}) =>
@@ -50,31 +63,39 @@ function defaultSessionId(): string {
 
 const defaultSeed = () => crypto.getRandomValues(new Uint32Array(1))[0]
 
+type Phase = 'text' | 'queued' | 'image'
+type LockKind = 'frame' | 'undo' | 'delete' | 'plan' | 'render' | 'edit'
+
 export function createHandler(deps: AppDeps): (req: Request) => Promise<Response> {
   const newSessionId = deps.newSessionId ?? defaultSessionId
   const randomSeed = deps.randomSeed ?? defaultSeed
-  /** The Frame in progress per Session (at most one each) and the step it has reached. */
-  const activeFrames = new Map<
+  /**
+   * The work in progress per Session (at most one each): the step it has reached, and which Frame
+   * it is on for Storyboard work.
+   */
+  const active = new Map<
     string,
-    { controller: AbortController; phase: 'text' | 'queued' | 'image' }
+    { controller: AbortController; phase: Phase; frameIndex: number | null }
   >()
   /** One image render at a time, across all Sessions. */
   const renderQueue = new RenderQueue()
 
   /**
-   * What each Session is busy with. Every change to a Session (a Frame, Undo, delete) takes this
-   * lock *before* reading the Session, so no request ever acts on a copy another request is about
-   * to change.
+   * What each Session is busy with. Every change to a Session takes this lock *before* reading the
+   * Session, so no request ever acts on a copy another request is about to change.
    */
-  const locks = new Map<string, 'frame' | 'undo' | 'delete'>()
-  const BUSY_MESSAGES = {
+  const locks = new Map<string, LockKind>()
+  const BUSY_MESSAGES: Record<LockKind, string> = {
     frame: 'A Frame is already in progress',
     undo: 'An Undo is in progress',
     delete: 'This Session is being deleted',
-  } as const
+    plan: 'The Storyboard is being planned',
+    render: 'A Frame is rendering',
+    edit: 'A Frame is being edited',
+  }
 
   /** Takes the Session's lock, or returns a 409 saying what holds it. */
-  function lock(id: string, what: 'frame' | 'undo' | 'delete'): Response | null {
+  function lock(id: string, what: LockKind): Response | null {
     const holder = locks.get(id)
     if (holder) return error(BUSY_MESSAGES[holder], 409)
     locks.set(id, what)
@@ -86,70 +107,57 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     return (await deps.sessions.load(id)) ?? error('Session not found', 404)
   }
 
-  /**
-   * Validates a Frame request and starts streaming it. The caller holds the Session's lock;
-   * `onStreaming` hands it over to the stream, which releases it when the Frame ends.
-   */
-  async function startFrame(req: Request, id: string, onStreaming: () => void) {
-    const session = await loadSession(id)
-    if (session instanceof Response) return session
-    const body = await readJson(req) as { action?: unknown } | undefined
-    const opening = session.frames.length === 0
-    let action: string | null = null
-    if (!opening) {
-      if (typeof body?.action !== 'string' || !body.action.trim()) {
-        return error('action is required', 400)
-      }
-      action = body.action.trim()
-    }
-    const scenario = await deps.scenarios.get(session.scenarioId)
-    if (!scenario) return error(`Scenario "${session.scenarioId}" no longer exists`, 409)
+  /** The Scenario a Session starts from: its saved Scenario, or its typed Brief. */
+  async function scenarioFor(session: Session): Promise<Scenario | Response> {
+    if (session.brief) return briefScenario(session.brief)
+    const scenario = session.scenarioId ? await deps.scenarios.get(session.scenarioId) : undefined
+    return scenario ?? error(`Scenario "${session.scenarioId}" no longer exists`, 409)
+  }
 
+  const frameDeps = (session: Session): FrameDeps => ({
+    store: deps.sessions,
+    textModel: deps.textModel(session.settings.textModel, session.settings.thinking ?? false),
+    imageGenerator: deps.imageGenerator,
+    renderQueue,
+  })
+
+  /**
+   * Runs a piece of work as a server-sent event stream. The caller holds the Session's lock; the
+   * stream releases it when the work ends. Dropping the connection cancels the work.
+   * `discardOnFailure` removes the Session if the work fails (an Opening Frame, or a plan).
+   */
+  function stream(
+    session: Session,
+    frameIndex: number | null,
+    discardOnFailure: boolean,
+    run: (send: (event: { type: string }) => void, signal: AbortSignal) => Promise<void>,
+  ): Response {
     const controller = new AbortController()
-    const active = { controller, phase: 'text' as 'text' | 'queued' | 'image' }
-    activeFrames.set(session.id, active)
+    const work = { controller, phase: 'text' as Phase, frameIndex }
+    active.set(session.id, work)
     const encoder = new TextEncoder()
 
-    const stream = new ReadableStream<Uint8Array>({
+    const body = new ReadableStream<Uint8Array>({
       async start(sink) {
-        const send = (event: string, data: unknown) => {
+        const send = (event: { type: string; phase?: Phase }) => {
+          if (event.type === 'phase' && event.phase) work.phase = event.phase
           try {
-            sink.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`))
+            sink.enqueue(encoder.encode(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`))
           } catch {
-            // Client already gone; the Frame is being aborted.
+            // Client already gone; the work is being aborted.
           }
         }
         try {
-          await runChainFrame(
-            {
-              store: deps.sessions,
-              textModel: deps.textModel(
-                session.settings.textModel,
-                session.settings.thinking ?? false,
-              ),
-              imageGenerator: deps.imageGenerator,
-              renderQueue,
-            },
-            session,
-            scenario,
-            action,
-            (e: FrameEvent) => {
-              if (e.type === 'phase') active.phase = e.phase
-              send(e.type, e)
-            },
-            controller.signal,
-          )
+          await run(send, controller.signal)
         } catch (err) {
-          // A Session whose Opening Frame never committed never started.
-          if (opening) await deps.sessions.remove(session.id)
-          const sessionDiscarded = opening
-          if (controller.signal.aborted) {
-            send('cancelled', { type: 'cancelled', sessionDiscarded })
-          } else {
-            send('failed', { type: 'failed', message: (err as Error).message, sessionDiscarded })
+          if (discardOnFailure) await deps.sessions.remove(session.id)
+          const sessionDiscarded = discardOnFailure
+          if (controller.signal.aborted) send({ type: 'cancelled', sessionDiscarded } as never)
+          else {
+            send({ type: 'failed', message: (err as Error).message, sessionDiscarded } as never)
           }
         } finally {
-          activeFrames.delete(session.id)
+          active.delete(session.id)
           unlock(session.id)
           try {
             sink.close()
@@ -162,14 +170,44 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
         controller.abort(new Error('Client disconnected'))
       },
     })
-
-    onStreaming()
-    return new Response(stream, {
-      headers: {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-      },
+    return new Response(body, {
+      headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' },
     })
+  }
+
+  /**
+   * Takes the Session's lock, loads it, and runs `handle`; the lock is released when `handle`
+   * returns, unless it returned a stream, which releases it when the stream ends.
+   */
+  async function locked(
+    id: string,
+    kind: LockKind,
+    handle: (session: Session) => Promise<Response>,
+  ): Promise<Response> {
+    const busy = lock(id, kind)
+    if (busy) return busy
+    let streaming = false
+    try {
+      const session = await loadSession(id)
+      if (session instanceof Response) return session
+      const res = await handle(session)
+      streaming = res.headers.get('Content-Type') === 'text/event-stream'
+      return res
+    } catch (err) {
+      if (err instanceof LimitError) return error(err.message, 422)
+      if (err instanceof UndoError) return error(err.message, 409)
+      throw err
+    } finally {
+      if (!streaming) unlock(id)
+    }
+  }
+
+  const needsChain = (s: Session): s is ChainSession => s.kind === 'chain'
+  const needsStoryboard = (s: Session): s is StoryboardSession => s.kind === 'storyboard'
+  const frameIndexOf = (s: StoryboardSession, raw: string | undefined): number | Response => {
+    const index = Number(raw)
+    if (!Number.isInteger(index) || !s.frames[index]) return error('No such Frame', 404)
+    return index
   }
 
   const routes: Route[] = [
@@ -216,21 +254,52 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       return json({ scenarios: scenarios.map(summarise), errors })
     }],
 
+    // --- Sessions ------------------------------------------------------------------------------
+
     ['POST', new URLPattern({ pathname: '/api/sessions' }), async (req) => {
-      const body = await readJson(req) as { scenarioId?: unknown } | undefined
-      if (typeof body?.scenarioId !== 'string') return error('scenarioId is required', 400)
-      if (!(await deps.scenarios.get(body.scenarioId))) return error('Scenario not found', 404)
+      const body = await readJson(req) as
+        | { kind?: unknown; scenarioId?: unknown; brief?: unknown; frameCount?: unknown }
+        | undefined
+      const kind = body?.kind ?? 'chain'
+      if (kind !== 'chain' && kind !== 'storyboard') {
+        return error('kind must be "chain" or "storyboard"', 400)
+      }
+      const scenarioId = typeof body?.scenarioId === 'string' ? body.scenarioId : null
+      const brief = typeof body?.brief === 'string' && body.brief.trim() ? body.brief.trim() : null
+      if (!scenarioId === !brief) return error('Give either a scenarioId or a brief', 400)
+      if (brief && brief.length > MAX_BRIEF_LENGTH) {
+        return error(`A Brief can be at most ${MAX_BRIEF_LENGTH} characters`, 400)
+      }
+      if (brief) {
+        const limit = crossedLimit(brief)?.message
+        if (limit) return error(`The Brief crosses a limit: ${limit}`, 422)
+      }
+      if (scenarioId && !(await deps.scenarios.get(scenarioId))) {
+        return error('Scenario not found', 404)
+      }
+      let frameCount = FRAME_COUNT.default
+      if (kind === 'storyboard' && body?.frameCount !== undefined) {
+        frameCount = Number(body.frameCount)
+        if (
+          !Number.isInteger(frameCount) || frameCount < FRAME_COUNT.min ||
+          frameCount > FRAME_COUNT.max
+        ) {
+          return error(`frameCount must be ${FRAME_COUNT.min}–${FRAME_COUNT.max}`, 400)
+        }
+      }
       const settings = await deps.settings.load()
       if (!settings.textModel) return error('Choose a Text Model in Settings first', 400)
-      const session: Session = {
+      const base = {
         id: newSessionId(),
-        kind: 'chain',
-        scenarioId: body.scenarioId,
+        brief,
+        scenarioId,
         settings,
         seed: settings.seedMode === 'fixed' ? settings.seed : randomSeed(),
         createdAt: new Date().toISOString(),
-        frames: [],
       }
+      const session: Session = kind === 'chain'
+        ? { ...base, kind, frames: [] }
+        : { ...base, kind, frameCount, look: null, frames: [] }
       await deps.sessions.save(session)
       return json(session, 201)
     }],
@@ -242,76 +311,198 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       ])
       const titles = new Map(scenarios.map((s) => [s.id, s.title]))
       const summaries = sessions.map((s) => {
-        const latest = s.frames.at(-1)
+        const rendered = s.frames.filter((f) => f.image)
+        const updatedAt = s.frames.reduce(
+          (latest, f) => f.createdAt > latest ? f.createdAt : latest,
+          s.createdAt,
+        )
         return {
           id: s.id,
           kind: s.kind,
           scenarioId: s.scenarioId,
-          scenarioTitle: titles.get(s.scenarioId) ?? s.scenarioId,
+          title: s.brief
+            ? briefScenario(s.brief).title
+            : titles.get(s.scenarioId ?? '') ?? s.scenarioId,
           frames: s.frames.length,
-          latestImage: latest?.image ?? null,
+          latestImage: rendered.at(-1)?.image ?? null,
           createdAt: s.createdAt,
-          updatedAt: latest?.createdAt ?? s.createdAt,
-          activity: activeFrames.get(s.id)?.phase ?? null,
+          updatedAt,
+          activity: active.get(s.id)?.phase ?? null,
         }
       })
       summaries.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
       return json(summaries)
     }],
 
-    ['DELETE', new URLPattern({ pathname: '/api/sessions/:id' }), async (_req, p) => {
-      const busy = lock(p.id!, 'delete')
-      if (busy) return busy
-      try {
-        const session = await loadSession(p.id!)
-        if (session instanceof Response) return session
-        await deps.sessions.remove(session.id)
-        return new Response(null, { status: 204 })
-      } finally {
-        unlock(p.id!)
-      }
-    }],
+    [
+      'DELETE',
+      new URLPattern({ pathname: '/api/sessions/:id' }),
+      (_req, p) =>
+        locked(p.id!, 'delete', async (session) => {
+          await deps.sessions.remove(session.id)
+          return new Response(null, { status: 204 })
+        }),
+    ],
 
     ['GET', new URLPattern({ pathname: '/api/sessions/:id' }), async (_req, p) => {
       const session = await deps.sessions.load(p.id!)
       if (!session) return error('Session not found', 404)
-      // `activity` lets a screen that didn't start the running Frame (reloaded, another tab) show it.
-      return json({ ...session, activity: activeFrames.get(session.id)?.phase ?? null })
-    }],
-
-    ['POST', new URLPattern({ pathname: '/api/sessions/:id/frames' }), async (req, p) => {
-      const busy = lock(p.id!, 'frame')
-      if (busy) return busy
-      // Held until the Frame's stream finishes; released here if we return before streaming.
-      let streaming = false
-      try {
-        return await startFrame(req, p.id!, () => (streaming = true))
-      } finally {
-        if (!streaming) unlock(p.id!)
-      }
+      // `activity` lets a screen that didn't start the running work (another tab) show it.
+      const work = active.get(session.id)
+      return json({
+        ...session,
+        activity: work?.phase ?? null,
+        activeFrame: work?.frameIndex ?? null,
+      })
     }],
 
     ['POST', new URLPattern({ pathname: '/api/sessions/:id/cancel' }), (_req, p) => {
-      activeFrames.get(p.id!)?.controller.abort(new Error('Cancelled by player'))
+      active.get(p.id!)?.controller.abort(new Error('Cancelled by player'))
       return Promise.resolve(new Response(null, { status: 204 }))
     }],
 
-    ['DELETE', new URLPattern({ pathname: '/api/sessions/:id/frames/:index' }), async (_req, p) => {
+    // --- Chains --------------------------------------------------------------------------------
+
+    [
+      'POST',
+      new URLPattern({ pathname: '/api/sessions/:id/frames' }),
+      (req, p) =>
+        locked(p.id!, 'frame', async (session) => {
+          if (!needsChain(session)) return error('Only a Chain makes Frames from Actions', 409)
+          const body = await readJson(req) as { action?: unknown } | undefined
+          const opening = session.frames.length === 0
+          let action: string | null = null
+          if (!opening) {
+            if (typeof body?.action !== 'string' || !body.action.trim()) {
+              return error('action is required', 400)
+            }
+            action = body.action.trim()
+          }
+          const scenario = await scenarioFor(session)
+          if (scenario instanceof Response) return scenario
+          return stream(session, null, opening, async (send, signal) => {
+            await runChainFrame(frameDeps(session), session, scenario, action, send, signal)
+          })
+        }),
+    ],
+
+    ['DELETE', new URLPattern({ pathname: '/api/sessions/:id/frames/:index' }), (_req, p) => {
       const index = Number(p.index)
-      if (!Number.isInteger(index)) return error('Frame index must be a number', 400)
-      const busy = lock(p.id!, 'undo')
-      if (busy) return busy
-      try {
-        const session = await loadSession(p.id!)
-        if (session instanceof Response) return session
-        return json(await undoLatestFrame(deps.sessions, session, index))
-      } catch (err) {
-        if (err instanceof UndoError) return error(err.message, 409)
-        throw err
-      } finally {
-        unlock(p.id!)
+      if (!Number.isInteger(index)) {
+        return Promise.resolve(error('Frame index must be a number', 400))
       }
+      return locked(p.id!, 'undo', async (session) => {
+        if (!needsChain(session)) return error('Only a Chain has Undo', 409)
+        return json(await undoLatestFrame(deps.sessions, session, index))
+      })
     }],
+
+    // --- Storyboards ---------------------------------------------------------------------------
+
+    [
+      'POST',
+      new URLPattern({ pathname: '/api/sessions/:id/plan' }),
+      (_req, p) =>
+        locked(p.id!, 'plan', async (session) => {
+          if (!needsStoryboard(session)) return error('Only a Storyboard is planned', 409)
+          if (session.frames.length > 0) return error('This Storyboard is already planned', 409)
+          const scenario = await scenarioFor(session)
+          if (scenario instanceof Response) return scenario
+          // A Storyboard that never got planned never started, like a Chain's Opening Frame.
+          return stream(session, null, true, async (send, signal) => {
+            await planStoryboard(frameDeps(session), session, scenario, send, signal)
+          })
+        }),
+    ],
+
+    [
+      'POST',
+      new URLPattern({ pathname: '/api/sessions/:id/frames/:index/render' }),
+      (_req, p) =>
+        locked(p.id!, 'render', async (session) => {
+          if (!needsStoryboard(session)) {
+            return error('Only a Storyboard renders Frames on demand', 409)
+          }
+          const index = frameIndexOf(session, p.index)
+          if (index instanceof Response) {
+            return index
+          }
+          const blocked = session.frames[index].blocked
+          if (blocked) return error(`Frame ${index + 1} crosses a limit: ${blocked}`, 422)
+          return stream(session, index, false, async (send, signal) => {
+            await renderStoryboardFrame(frameDeps(session), session, index, send, signal)
+          })
+        }),
+    ],
+
+    [
+      'POST',
+      new URLPattern({ pathname: '/api/sessions/:id/frames/:index/edit' }),
+      (req, p) =>
+        locked(p.id!, 'edit', async (session) => {
+          if (!needsStoryboard(session)) {
+            return error('Only a Storyboard edits Frames in place', 409)
+          }
+          const index = frameIndexOf(session, p.index)
+          if (index instanceof Response) {
+            return index
+          }
+          const body = await readJson(req) as { action?: unknown } | undefined
+          if (typeof body?.action !== 'string' || !body.action.trim()) {
+            return error('action is required', 400)
+          }
+          const action = body.action.trim()
+          const scenario = await scenarioFor(session)
+          if (scenario instanceof Response) return scenario
+          return stream(session, index, false, async (send, signal) => {
+            const result = await editFrameByAction(
+              frameDeps(session),
+              session,
+              scenario,
+              index,
+              action,
+              send,
+              signal,
+            )
+            send({ type: 'edited', ...result } as never)
+          })
+        }),
+    ],
+
+    [
+      'PUT',
+      new URLPattern({ pathname: '/api/sessions/:id/frames/:index' }),
+      (req, p) =>
+        locked(p.id!, 'edit', async (session) => {
+          if (!needsStoryboard(session)) return error('Only a Storyboard edits Frames by hand', 409)
+          const index = frameIndexOf(session, p.index)
+          if (index instanceof Response) return index
+          const body = await readJson(req) as { body?: unknown } | undefined
+          if (typeof body?.body !== 'string') return error('body is required', 400)
+          return json(await setFrameBody({ store: deps.sessions }, session, index, body.body))
+        }),
+    ],
+
+    [
+      'PUT',
+      new URLPattern({ pathname: '/api/sessions/:id/look' }),
+      (req, p) =>
+        locked(p.id!, 'edit', async (session) => {
+          if (!needsStoryboard(session) || !session.look) {
+            return error('Only a planned Storyboard has a Look', 409)
+          }
+          const body = await readJson(req) as { subject?: unknown; style?: unknown } | undefined
+          if (typeof body?.subject !== 'string' || typeof body?.style !== 'string') {
+            return error('subject and style are required', 400)
+          }
+          return json(
+            await setLook({ store: deps.sessions }, session, {
+              subject: body.subject,
+              style: body.style,
+            }),
+          )
+        }),
+    ],
 
     ['GET', new URLPattern({ pathname: '/api/sessions/:id/images/:file' }), async (_req, p) => {
       if (!IMAGE_FILE.test(p.file!)) return error('Not found', 404)

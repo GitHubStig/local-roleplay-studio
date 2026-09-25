@@ -6,9 +6,10 @@ in [CONTEXT.md](../CONTEXT.md). The reasoning behind the bigger choices is in [a
 
 ## What it is
 
-A text-to-image prompt generator. Every Session is currently a **Chain**: each Frame is made
-from the previous one by an Action (Storyboards, which plan all their Frames together, are being
-built). A **Scenario** file describes a starting image. The
+A text-to-image prompt generator. Every Session starts from a **Brief** (typed, or a saved
+**Scenario**) and is one of two kinds: a **Chain**, where each Frame is made from the previous
+one by an Action, or a **Storyboard**, whose Frames are planned together and then edited and
+rendered one by one. (The Storyboard screen is being built; its engine and API are below.) The
 player starts a **Session** from it and plays **Frames**: each Frame, the player writes an
 **Action** (what to change), the **Text Model** edits the **Image Prompt**, and the **Image
 Model** renders it. There is no score and no end; a Session lasts until it's deleted.
@@ -91,6 +92,33 @@ Only one Frame runs per Session at a time; the server refuses a second with `409
 deleting a Session all take a per-Session lock *before* reading the Session, so two requests can
 never act on the same Session at once (e.g. two tabs sending at the same moment, or an Undo
 racing a Frame).
+
+## Storyboards
+
+A Storyboard is started from a Brief and a Frame count (1–16, default 8), then **planned** in one
+Text Model call ([ADR 0006](adr/0006-storyboards-plan-in-one-call.md)):
+
+1. **Limits on the Brief:** the term list and, if it names someone, the real-person question.
+   The Brief is also checked with the term list when the Storyboard is created.
+2. **The plan streams in:** the **Look** (identity and art style, shared by every Frame), the
+   **Beats** (one line per Frame), then each Frame's seven sentences (pose, expression, camera,
+   clothing, environment, lighting, color), each shown the moment it's complete.
+3. **Frames are assembled:** Look subject + the Frame's sentences + Look style, rendered with
+   "adult, " in front. A Frame whose prompt crosses a Limit is saved **blocked** and can't be
+   rendered until edited.
+4. **All or nothing:** a failed or cancelled plan discards the Storyboard.
+
+After planning, each Frame is independent:
+
+| Operation | What it does |
+|---|---|
+| **Render** | Renders one Frame through the shared queue; a re-render replaces its image (the old file is deleted once the new one is saved). |
+| **Edit by hand** | Replaces a Frame's seven sentences; stray labels are stripped. A rendered Frame is marked **stale** until re-rendered. Refused if it crosses a Limit. |
+| **Edit the Look** | Rewrites every Frame's prompt; rendered Frames become stale. |
+| **Edit by Action** | The Text Model rewrites that Frame (and the Look, if the Action changes identity or style), after the same Action Limits check as a Chain. Declined or unclear Actions change nothing. |
+
+Each Frame records how long its text took (the wait for its part of the plan, or its latest
+edit) and its latest render.
 
 ## Consistency
 
@@ -194,10 +222,15 @@ All under `/api`; the Vite dev server proxies it to the Deno server.
 | `GET /settings/options` | Text Models from Ollama, Image Models, size presets; still answers if Ollama is down |
 | `GET /scenarios` | Scenario summaries plus files that failed to load |
 | `GET /sessions` | Session summaries, newest first, with each one's current activity |
-| `POST /sessions` | Start a Session from `{ scenarioId }` |
+| `POST /sessions` | Start a Session: `{ kind?: "chain" \| "storyboard", scenarioId \| brief, frameCount? }` |
 | `DELETE /sessions/:id` | Delete a Session and its images (`409` while a Frame runs) |
 | `GET /sessions/:id` | A Session with its Frames, plus `activity`: what a running Frame is doing, or `null` |
-| `POST /sessions/:id/frames` | Run a Frame (`{ action }`, or `{}` for the Opening Frame) as a server-sent event stream |
+| `POST /sessions/:id/frames` | Chain: run a Frame (`{ action }`, or `{}` for the Opening Frame) as a server-sent event stream |
+| `POST /sessions/:id/plan` | Storyboard: plan it, streaming `look`, `beats`, `planned-frame` × N, then `planned` |
+| `POST /sessions/:id/frames/:index/render` | Storyboard: render one Frame, streaming progress then `rendered` |
+| `POST /sessions/:id/frames/:index/edit` | Storyboard: edit one Frame by `{ action }`, streaming then `edited` (`outcome`, `narration`, `session`) |
+| `PUT /sessions/:id/frames/:index` | Storyboard: replace a Frame's sentences, `{ body }` (`422` if it crosses a Limit) |
+| `PUT /sessions/:id/look` | Storyboard: replace the Look, `{ subject, style }` |
 | `POST /sessions/:id/cancel` | Cancel the Frame in progress |
 | `DELETE /sessions/:id/frames/:index` | Undo the latest Frame; `:index` must name it (`409` otherwise, and for the Opening Frame or while a Frame runs) |
 | `GET /sessions/:id/images/:file` | A Frame's image |

@@ -2,8 +2,11 @@ import { assertEquals, assertStringIncludes, assertThrows } from '@std/assert'
 import {
   mightNameAPerson,
   outputSchema,
+  parseFrameBody,
   parseFrameText,
+  plainSentences,
   realPersonQuestion,
+  storyboardPlanSchema,
   systemMessage,
   userMessage,
 } from './textModel.ts'
@@ -94,4 +97,48 @@ Deno.test('mightNameAPerson flags names and lookalike requests, not ordinary edi
   ) {
     assertEquals(mightNameAPerson(a), false, a)
   }
+})
+
+Deno.test('plainSentences strips aspect labels and list markers a model writes in', () => {
+  assertEquals(
+    plainSentences(
+      'He sprints; calves taut.- Expression: Intense focus.\n- Camera angle and framing: Low 24mm. Lighting: harsh.',
+    ),
+    'He sprints; calves taut. Intense focus. Low 24mm. harsh.',
+  )
+  assertEquals(
+    plainSentences('Her style: bold. A man. 3. Colour: teal.'),
+    'Her style: bold. A man. teal.',
+  )
+})
+
+Deno.test('parseFrameBody joins the seven fields into one paragraph, in order', () => {
+  assertEquals(
+    parseFrameBody({
+      color: 'Grey tones',
+      pose: 'He leaps',
+      expression: 'Fierce focus.',
+      camera: 'Low angle, 24mm',
+      clothing: 'White jersey',
+      environment: 'An empty indoor court',
+      lighting: 'Hard spotlight',
+    }),
+    'He leaps. Fierce focus. Low angle, 24mm. White jersey. An empty indoor court. Hard spotlight. Grey tones.',
+  )
+  assertEquals(parseFrameBody({ body: 'Already a paragraph.' }), 'Already a paragraph.')
+  assertThrows(() => parseFrameBody({ pose: 'x' }), Error, 'missing: expression, camera')
+})
+
+Deno.test('storyboardPlanSchema requires all seven fields for every Frame', () => {
+  const schema = storyboardPlanSchema(4)
+  assertEquals(schema.properties.frames.minItems, 4)
+  assertEquals(schema.properties.frames.items.required, [
+    'pose',
+    'expression',
+    'camera',
+    'clothing',
+    'environment',
+    'lighting',
+    'color',
+  ])
 })

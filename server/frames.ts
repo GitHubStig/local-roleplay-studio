@@ -7,7 +7,8 @@ import { mightNameAPerson } from './textModel.ts'
 import { RenderQueue } from './renderQueue.ts'
 import type { Scenario } from './scenario.ts'
 import {
-  type Frame,
+  type ChainFrame,
+  type ChainSession,
   type FrameTimings,
   type Outcome,
   type Session,
@@ -15,17 +16,21 @@ import {
 } from './session.ts'
 import type { FrameText, TextModel } from './textModel.ts'
 
-/** Progress of a Frame, streamed to the player as it happens. */
-export type FrameEvent =
+/** Progress any piece of work reports as it happens, in a Chain or a Storyboard. */
+export type ProgressEvent =
   /** `queued`: waiting for another Session's render to finish. */
   | { type: 'phase'; phase: 'text' | 'queued' | 'image' }
   /** More of the Text Model's reasoning; `restart` when a retry starts reasoning afresh. */
   | { type: 'thinking'; text: string; restart?: boolean }
   /** Image Model steps completed so far. */
   | { type: 'progress'; step: number; total: number }
+
+/** Progress of a Chain Frame, streamed to the player as it happens. */
+export type FrameEvent =
+  | ProgressEvent
   /** The new Image Prompt before its image exists; provisional until `committed`. */
   | { type: 'text'; outcome: Outcome; narration: string; prompt: ImagePrompt }
-  | { type: 'committed'; frame: Frame }
+  | { type: 'committed'; frame: ChainFrame }
 
 export interface FrameDeps {
   store: SessionStore
@@ -38,7 +43,7 @@ export interface FrameDeps {
 const TEXT_ATTEMPTS = 2
 
 /** Seconds since `start` (a `performance.now()` reading), to one decimal place. */
-const secondsSince = (start: number) => Math.round((performance.now() - start) / 100) / 10
+export const secondsSince = (start: number) => Math.round((performance.now() - start) / 100) / 10
 
 /**
  * A fresh image file name (without extension) for Frame `index`. The random suffix means a name is
@@ -46,17 +51,20 @@ const secondsSince = (start: number) => Math.round((performance.now() - start) /
  */
 export const imageName = (index: number) => `frame-${index}-${crypto.randomUUID().slice(0, 8)}`
 
-async function writeText(
-  textModel: TextModel,
-  req: Parameters<TextModel['write']>[0],
+/**
+ * Runs a Text Model call, retrying once if its reply is unusable. Streams the model's reasoning as
+ * `thinking` events, marking a retry's first chunk as a restart.
+ */
+export async function withRetry<T>(
+  call: (onThinking: (chunk: string) => void) => Promise<T>,
   signal: AbortSignal,
-  emit: (event: FrameEvent) => void,
-): Promise<FrameText> {
+  emit: (event: ProgressEvent) => void,
+): Promise<T> {
   let lastError: unknown
   for (let attempt = 1; attempt <= TEXT_ATTEMPTS; attempt++) {
     let restart = attempt > 1
     try {
-      return await textModel.write(req, signal, (text) => {
+      return await call((text) => {
         emit({ type: 'thinking', text, ...(restart ? { restart } : {}) })
         restart = false
       })
@@ -69,17 +77,79 @@ async function writeText(
 }
 
 /**
- * Runs one Frame: Text Model, then Image Model (rendering the Image Prompt), then commit. The Frame commits whole or not at
- * all: on failure or abort the Session on disk is untouched and any image written is removed.
+ * Which Limit an Action (or a Brief) crosses, if any (ADR 0002): the term list first, then, for
+ * text that looks like it names someone, a narrow real-person question to the Text Model.
+ */
+export async function limitCrossedBy(
+  text: string,
+  textModel: TextModel,
+  signal: AbortSignal,
+): Promise<string | undefined> {
+  const listed = crossedLimit(text)?.message
+  if (listed) return listed
+  if (mightNameAPerson(text) && await textModel.namesRealPerson(text, signal)) {
+    return 'no real, identifiable people'
+  }
+  return undefined
+}
+
+/**
+ * Renders `promptText` into `<dir>/<name>.png` through the shared render queue, recording how long
+ * it waited and how long it rendered into `timings`. Returns the image's file name.
+ */
+export async function renderImage(
+  deps: FrameDeps,
+  session: Session,
+  promptText: string,
+  name: string,
+  timings: FrameTimings,
+  emit: (event: ProgressEvent) => void,
+  signal: AbortSignal,
+): Promise<string> {
+  const queueStart = performance.now()
+  let waited = false
+  const release = await (deps.renderQueue ?? new RenderQueue()).acquire(signal, () => {
+    waited = true
+    emit({ type: 'phase', phase: 'queued' })
+  })
+  if (waited) timings.queued = secondsSince(queueStart)
+  const imageStart = performance.now()
+  try {
+    emit({ type: 'phase', phase: 'image' })
+    const dir = deps.store.dir(session.id)
+    await Deno.mkdir(dir, { recursive: true })
+    const image = await deps.imageGenerator.generate(
+      { prompt: promptText, seed: session.seed, settings: session.settings, dir, name },
+      signal,
+      (step, total) => emit({ type: 'progress', step, total }),
+    )
+    timings.image = secondsSince(imageStart)
+    return image
+  } finally {
+    release()
+  }
+}
+
+/** Deletes whatever image a generator may have written under `name`, e.g. after a Cancel. */
+export async function removeImage(dir: string, name: string): Promise<void> {
+  for (const ext of ['png', 'svg']) {
+    await Deno.remove(join(dir, `${name}.${ext}`)).catch(() => {})
+  }
+}
+
+/**
+ * Runs one Chain Frame: Text Model, then Image Model (rendering the Image Prompt), then commit. The
+ * Frame commits whole or not at all: on failure or abort the Session on disk is untouched and any
+ * image written is removed.
  */
 export async function runChainFrame(
   deps: FrameDeps,
-  session: Session,
+  session: ChainSession,
   scenario: Scenario,
   action: string | null,
   emit: (event: FrameEvent) => void,
   signal: AbortSignal,
-): Promise<Frame> {
+): Promise<ChainFrame> {
   const previous = session.frames.at(-1)
   const index = session.frames.length
 
@@ -91,22 +161,22 @@ export async function runChainFrame(
   let thinking: string | undefined
 
   // The engine, not the Text Model, enforces the limits (ADR 0002). An Action that plainly
-  // crosses one is declined without asking the Text Model at all.
-  let actionLimit = previous && action ? crossedLimit(action)?.message : undefined
-  // Real people can't be caught by a term list: ask the Text Model a narrow yes/no question.
-  if (previous && action && !actionLimit && mightNameAPerson(action)) {
-    if (await deps.textModel.namesRealPerson(action, signal)) {
-      actionLimit = 'no real, identifiable people'
-    }
-  }
+  // crosses one is declined without asking the Text Model to write anything.
+  const actionLimit = previous && action
+    ? await limitCrossedBy(action, deps.textModel, signal)
+    : undefined
   if (previous && actionLimit) {
     outcome = 'declined'
     narration = `Declined: ${actionLimit}.`
     nextPrompt = previous.prompt
   } else {
-    const text = await writeText(
-      deps.textModel,
-      { scenario, prompt: previous?.prompt ?? null, action },
+    const text: FrameText = await withRetry(
+      (onThinking) =>
+        deps.textModel.write(
+          { scenario, prompt: previous?.prompt ?? null, action },
+          signal,
+          onThinking,
+        ),
       signal,
       emit,
     )
@@ -151,39 +221,11 @@ export async function runChainFrame(
       promptText = previous!.promptText
     } else {
       promptText = renderPrompt(nextPrompt)
-      const queueStart = performance.now()
-      let waited = false
-      const release = await (deps.renderQueue ?? new RenderQueue()).acquire(
-        signal,
-        () => {
-          waited = true
-          emit({ type: 'phase', phase: 'queued' })
-        },
-      )
-      if (waited) timings.queued = secondsSince(queueStart)
-      const imageStart = performance.now()
-      try {
-        emit({ type: 'phase', phase: 'image' })
-        await Deno.mkdir(dir, { recursive: true })
-        image = await deps.imageGenerator.generate(
-          {
-            prompt: promptText,
-            seed: session.seed,
-            settings: session.settings,
-            dir,
-            name,
-          },
-          signal,
-          (step, total) => emit({ type: 'progress', step, total }),
-        )
-        timings.image = secondsSince(imageStart)
-      } finally {
-        release()
-      }
+      image = await renderImage(deps, session, promptText, name, timings, emit, signal)
     }
     signal.throwIfAborted()
 
-    const frame: Frame = {
+    const frame: ChainFrame = {
       index,
       action,
       prompt: nextPrompt,
@@ -200,9 +242,7 @@ export async function runChainFrame(
     emit({ type: 'committed', frame })
     return frame
   } catch (err) {
-    for (const ext of ['png', 'svg']) {
-      await Deno.remove(join(dir, `${name}.${ext}`)).catch(() => {})
-    }
+    await removeImage(dir, name)
     throw err
   }
 }
@@ -210,15 +250,15 @@ export async function runChainFrame(
 export class UndoError extends Error {}
 
 /**
- * Removes the latest Frame, so the previous Frame's Scene is current again. `index` must name the
+ * Removes a Chain's latest Frame, so the previous Frame's Image Prompt is current again. `index` must name the
  * latest Frame, so a repeated request can't undo two. The Opening Frame can't be undone. The
  * image file is deleted only when no remaining Frame still shows it.
  */
 export async function undoLatestFrame(
   store: SessionStore,
-  session: Session,
+  session: ChainSession,
   index: number,
-): Promise<Session> {
+): Promise<ChainSession> {
   const latest = session.frames.at(-1)
   if (!latest || latest.index !== index) {
     throw new UndoError(`Frame ${index} is not the latest Frame`)
@@ -226,7 +266,7 @@ export async function undoLatestFrame(
   if (session.frames.length === 1) throw new UndoError("The Opening Frame can't be undone")
 
   const frames = session.frames.slice(0, -1)
-  const updated: Session = { ...session, frames }
+  const updated: ChainSession = { ...session, frames }
   await store.save(updated)
   if (!frames.some((t) => t.image === latest.image)) {
     await Deno.remove(join(store.dir(session.id), latest.image)).catch(() => {})

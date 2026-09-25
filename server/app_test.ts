@@ -8,6 +8,7 @@ import { DEFAULT_SETTINGS, type Settings, type SettingsStore } from './settings.
 import type { TextModel } from './textModel.ts'
 import {
   fakeImageGenerator,
+  planOf,
   promptWith,
   reply,
   scenarioLibrary,
@@ -295,7 +296,7 @@ Deno.test('GET /api/sessions lists Sessions newest first with their activity', (
 
     const list = await (await call('GET', '/api/sessions')).json()
     assertEquals(list.map((s: { id: string }) => s.id), ['s1', 's2'])
-    assertEquals(list[0].scenarioTitle, 'Test Shoot')
+    assertEquals(list[0].title, 'Test Shoot')
     assertEquals(list[0].frames, 2)
     assertMatch(list[0].latestImage, /^frame-1-/)
     assertEquals(list[0].activity, null)
@@ -435,4 +436,141 @@ Deno.test('A Session is free again after a Frame, a failed Frame, an early refus
     )
     assertEquals(last.at(-1)![0], 'committed')
     assertEquals((await call('DELETE', '/api/sessions/s1')).status, 204)
+  }))
+
+// --- Briefs and Storyboards ----------------------------------------------------------------
+
+Deno.test('POST /api/sessions starts from a typed Brief or a Scenario, not both', () =>
+  withTempDir(async (root) => {
+    const { call } = setup({ root, settings: { textModel: 'x' } })
+    const chain = await (await call('POST', '/api/sessions', { brief: 'A knight in fog.' })).json()
+    assertEquals([chain.kind, chain.brief, chain.scenarioId], ['chain', 'A knight in fog.', null])
+    assertEquals(
+      (await call('POST', '/api/sessions', { brief: 'x', scenarioId: 'test' })).status,
+      400,
+    )
+    assertEquals((await call('POST', '/api/sessions', {})).status, 400)
+    assertEquals((await call('POST', '/api/sessions', { brief: 'a child on a swing' })).status, 422)
+  }))
+
+Deno.test('POST /api/sessions makes a Storyboard with a Frame count', () =>
+  withTempDir(async (root) => {
+    const { call } = setup({ root, settings: { textModel: 'x' } })
+    const board = await (await call('POST', '/api/sessions', {
+      kind: 'storyboard',
+      brief: 'A dunk.',
+      frameCount: 5,
+    })).json()
+    assertEquals([board.kind, board.frameCount, board.look, board.frames], [
+      'storyboard',
+      5,
+      null,
+      [],
+    ])
+    const byDefault =
+      await (await call('POST', '/api/sessions', { kind: 'storyboard', brief: 'x' })).json()
+    assertEquals(byDefault.frameCount, 8)
+    for (const frameCount of [0, 17, 2.5]) {
+      assertEquals(
+        (await call('POST', '/api/sessions', { kind: 'storyboard', brief: 'x', frameCount }))
+          .status,
+        400,
+      )
+    }
+  }))
+
+Deno.test('A Storyboard plans, renders, and is edited by hand and by Action over the API', () =>
+  withTempDir(async (root) => {
+    const newLook = { subject: 'A tall adult athlete.', style: 'Watercolour.' }
+    const { call } = setup({
+      root,
+      settings: { textModel: 'x' },
+      textModel: scriptedTextModel([], [], {
+        plans: [planOf(3)],
+        edits: [{
+          outcome: 'done',
+          narration: 'Pose: soaring.',
+          body: 'He soars.',
+          look: planOf(3).look,
+        }],
+      }),
+    })
+    await call('POST', '/api/sessions', { kind: 'storyboard', brief: 'A dunk.', frameCount: 3 })
+
+    const plan = await readEvents(await call('POST', '/api/sessions/s1/plan'))
+    assertEquals(plan.map(([e]) => e), [
+      'phase',
+      'look',
+      'beats',
+      'planned-frame',
+      'planned-frame',
+      'planned-frame',
+      'planned',
+    ])
+    assertEquals((await call('POST', '/api/sessions/s1/plan')).status, 409)
+
+    const render = await readEvents(await call('POST', '/api/sessions/s1/frames/2/render'))
+    assertEquals(render.at(-1)![0], 'rendered')
+    assertEquals((await call('POST', '/api/sessions/s1/frames/9/render')).status, 404)
+
+    const byHand = await (await call('PUT', '/api/sessions/s1/frames/2', { body: 'He lands.' }))
+      .json()
+    assertEquals([byHand.frames[2].body, byHand.frames[2].stale], ['He lands.', true])
+    assertEquals((await call('PUT', '/api/sessions/s1/frames/0', { body: 'Nude.' })).status, 422)
+
+    const look = await (await call('PUT', '/api/sessions/s1/look', newLook)).json()
+    assertEquals(look.look, newLook)
+
+    const edit = await readEvents(
+      await call('POST', '/api/sessions/s1/frames/0/edit', { action: 'soar' }),
+    )
+    const [, edited] = edit.at(-1)!
+    assertEquals([
+      edited.type,
+      edited.outcome,
+      (edited.session as { frames: { body: string }[] }).frames[0].body,
+    ], [
+      'edited',
+      'done',
+      'He soars.',
+    ])
+  }))
+
+Deno.test("Chains and Storyboards refuse each other's routes", () =>
+  withTempDir(async (root) => {
+    const { call } = setup({ root, settings: { textModel: 'x' } })
+    await call('POST', '/api/sessions', { brief: 'A knight.' }) // s1, a Chain
+    await call('POST', '/api/sessions', { kind: 'storyboard', brief: 'A dunk.' }) // s2
+    assertEquals((await call('POST', '/api/sessions/s1/plan')).status, 409)
+    assertEquals(
+      (await call('PUT', '/api/sessions/s1/look', { subject: 'a', style: 'b' })).status,
+      409,
+    )
+    assertEquals((await call('POST', '/api/sessions/s2/frames', { action: 'x' })).status, 409)
+    assertEquals((await call('DELETE', '/api/sessions/s2/frames/0')).status, 409)
+    assertEquals(
+      (await call('PUT', '/api/sessions/s2/look', { subject: 'a', style: 'b' })).status,
+      409,
+    )
+  }))
+
+Deno.test('Cancelling a plan discards the Storyboard', () =>
+  withTempDir(async (root) => {
+    let release!: () => void
+    const hanging = scriptedTextModel([], [], {})
+    hanging.planStoryboard = (_req, signal) =>
+      new Promise((_, reject) => {
+        release = () => reject(signal.reason)
+        signal.addEventListener('abort', release, { once: true })
+      })
+    const { call } = setup({ root, settings: { textModel: 'x' }, textModel: hanging })
+    await call('POST', '/api/sessions', { kind: 'storyboard', brief: 'A dunk.' })
+    const res = await call('POST', '/api/sessions/s1/plan')
+    const reader = res.body!.pipeThrough(new TextDecoderStream()).getReader()
+    await readUntil(reader, '"phase":"text"')
+    assertEquals((await (await call('GET', '/api/sessions/s1')).json()).activity, 'text')
+    await call('POST', '/api/sessions/s1/cancel')
+    const rest = await readUntil(reader, 'event: cancelled')
+    assertEquals(rest.includes('"sessionDiscarded":true'), true)
+    assertEquals((await call('GET', '/api/sessions/s1')).status, 404)
   }))

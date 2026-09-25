@@ -24,6 +24,7 @@ vi.mock('./api', async (importOriginal) => ({
 const session: api.Session = {
   id: 's1',
   kind: 'chain',
+  brief: null,
   scenarioId: 'photoshoot',
   settings: {} as api.Settings,
   seed: 1,

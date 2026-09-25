@@ -61,7 +61,7 @@ async function start(scenarioId: string) {
 }
 
 async function remove(s: SessionSummary) {
-  const what = `${s.scenarioTitle}, ${s.frames} ${s.frames === 1 ? 'Frame' : 'Frames'}`
+  const what = `${s.title}, ${s.frames} ${s.frames === 1 ? 'Frame' : 'Frames'}`
   if (!confirm(`Delete this Session (${what}) and its images? This can't be undone.`)) return
   deleteError.value = ''
   try {
@@ -125,7 +125,7 @@ function ago(iso: string): string {
                 />
               </div>
               <div class="flex flex-col gap-1 p-3 text-sm">
-                <span class="font-medium">{{ s.scenarioTitle }}</span>
+                <span class="font-medium">{{ s.title }}</span>
                 <span class="text-muted">
                   {{ s.frames }} {{ s.frames === 1 ? 'Frame' : 'Frames' }} · {{ ago(s.updatedAt) }}
                 </span>

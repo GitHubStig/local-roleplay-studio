@@ -34,6 +34,7 @@ const frame = (
 const session = (frames: api.Frame[] = []): api.Session => ({
   id: 's1',
   kind: 'chain',
+  brief: null,
   scenarioId: 'photoshoot',
   settings: {} as api.Settings,
   seed: 1,

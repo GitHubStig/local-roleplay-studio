@@ -138,3 +138,18 @@ export const summarise = ({ id, title, description }: Scenario): ScenarioSummary
   title,
   description,
 })
+
+/**
+ * A typed Brief standing in for a Scenario: no Setup or notes, and the Brief itself as the
+ * opening instructions. Lets the engine treat both starting points the same way.
+ */
+export function briefScenario(brief: string): Scenario {
+  return {
+    id: '',
+    title: brief.length > 60 ? `${brief.slice(0, 57).trimEnd()}…` : brief,
+    description: brief,
+    setup: {},
+    systemPrompt: '',
+    openingPrompt: brief,
+  }
+}

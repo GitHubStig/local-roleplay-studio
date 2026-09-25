@@ -1,7 +1,13 @@
 import type { ImageGenerator } from './imageGenerator.ts'
 import { parseScenario, type ScenarioLibrary } from './scenario.ts'
 import type { ImagePrompt } from './imagePrompt.ts'
-import type { FrameText, TextModel } from './textModel.ts'
+import type {
+  FrameText,
+  PlanHandlers,
+  StoryboardEdit,
+  StoryboardPlan,
+  TextModel,
+} from './textModel.ts'
 
 export const scenarioText = `---
 title: Test Shoot
@@ -29,34 +35,71 @@ export const scenarioLibrary: ScenarioLibrary = {
 export const promptWith = (pose: string): ImagePrompt =>
   `A person, ${pose}, calm, eye level, running gear, in a studio, softbox light, neutral tones, photo.`
 
+/** Scripted Storyboard replies for `scriptedTextModel`. */
+export interface Scripts {
+  plans?: (StoryboardPlan | Error)[]
+  edits?: (StoryboardEdit | Error)[]
+}
+
 /**
- * A Text Model that replies from a queue; an Error in the queue is thrown instead. It says an
- * Action names a real person when it mentions `realPeople`.
+ * A Text Model that replies from queues; an Error in a queue is thrown instead. It says an Action
+ * names a real person when it mentions one of `realPeople`.
  */
 export function scriptedTextModel(
   replies: (FrameText | Error)[],
   realPeople: string[] = [],
+  scripts: Scripts = {},
 ): TextModel & { calls: number; personChecks: string[] } {
+  const next = <T>(queue: (T | Error)[] | undefined, what: string): Promise<T> => {
+    const item = queue?.shift()
+    if (!item) return Promise.reject(new Error(`no scripted ${what} left`))
+    return item instanceof Error ? Promise.reject(item) : Promise.resolve(item)
+  }
   const model = {
     calls: 0,
     personChecks: [] as string[],
     write(_req: unknown, signal: AbortSignal, onThinking?: (chunk: string) => void) {
       model.calls++
       signal.throwIfAborted()
-      const next = replies.shift()
-      if (!next) return Promise.reject(new Error('no scripted reply left'))
-      if (next instanceof Error) return Promise.reject(next)
+      const item = replies[0]
       // Streams any scripted reasoning word by word, as Ollama does.
-      for (const word of next.thinking?.split(/(?<= )/) ?? []) onThinking?.(word)
-      return Promise.resolve(next)
+      if (item && !(item instanceof Error)) {
+        for (const word of item.thinking?.split(/(?<= )/) ?? []) onThinking?.(word)
+      }
+      return next(replies, 'reply')
     },
     namesRealPerson(action: string) {
       model.personChecks.push(action)
       return Promise.resolve(realPeople.some((name) => action.includes(name)))
     },
+    async planStoryboard(_req: unknown, signal: AbortSignal, on: PlanHandlers = {}) {
+      model.calls++
+      signal.throwIfAborted()
+      const plan = await next(scripts.plans, 'plan')
+      on.look?.(plan.look)
+      on.beats?.(plan.beats)
+      plan.bodies.forEach((body, i) => on.frame?.(i, body))
+      return plan
+    },
+    editStoryboardFrame(_req: unknown, signal: AbortSignal) {
+      model.calls++
+      signal.throwIfAborted()
+      return next(scripts.edits, 'edit')
+    },
   }
   return model
 }
+
+/** A scripted Storyboard plan with `n` Frames. */
+export const planOf = (n: number, extra: Partial<StoryboardPlan> = {}): StoryboardPlan => ({
+  look: { subject: 'A tall adult athlete.', style: 'A pencil sketch.' },
+  beats: Array.from({ length: n }, (_, i) => `Beat ${i + 1}`),
+  bodies: Array.from(
+    { length: n },
+    (_, i) => `Pose ${i + 1}. Calm. Wide shot. Kit. Court. Light. Grey.`,
+  ),
+  ...extra,
+})
 
 export const reply = (pose: string, extra: Partial<FrameText> = {}): FrameText => ({
   outcome: 'done',

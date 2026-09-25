@@ -1,7 +1,7 @@
 import { assertEquals, assertMatch, assertNotEquals, assertRejects } from '@std/assert'
 import { join } from '@std/path'
 import { DEFAULT_SETTINGS } from './settings.ts'
-import { dirSessionStore, type Session } from './session.ts'
+import { type ChainSession, dirSessionStore } from './session.ts'
 import {
   fakeImageGenerator,
   promptWith,
@@ -14,9 +14,10 @@ import { type FrameEvent, runChainFrame, UndoError, undoLatestFrame } from './fr
 import { RenderQueue } from './renderQueue.ts'
 import { renderPrompt } from './imagePrompt.ts'
 
-const newSession = (): Session => ({
+const newSession = (): ChainSession => ({
   id: 's1',
   kind: 'chain',
+  brief: null,
   scenarioId: 'test',
   settings: { ...DEFAULT_SETTINGS, textModel: 'fake' },
   seed: 7,

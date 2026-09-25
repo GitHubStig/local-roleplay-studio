@@ -121,7 +121,10 @@ export type SessionKind = 'chain' | 'storyboard'
 export interface Session {
   id: string
   kind: SessionKind
-  scenarioId: string
+  /** The typed Brief it started from; null when started from a Scenario. */
+  brief: string | null
+  /** The Scenario it started from; null when started from a typed Brief. */
+  scenarioId: string | null
   settings: Settings
   seed: number
   createdAt: string
@@ -155,8 +158,9 @@ export const getSession = (id: string) => request<Session>(`/api/sessions/${id}`
 export interface SessionSummary {
   id: string
   kind: SessionKind
-  scenarioId: string
-  scenarioTitle: string
+  scenarioId: string | null
+  /** The Scenario's title, or the start of the typed Brief. */
+  title: string
   frames: number
   latestImage: string | null
   createdAt: string

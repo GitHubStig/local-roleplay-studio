@@ -16,6 +16,7 @@ Deno.test('dirSessionStore works in a directory whose path has spaces', () =>
     await store.save({
       id: 's1',
       kind: 'chain',
+      brief: null,
       scenarioId: 'test',
       settings: DEFAULT_SETTINGS,
       seed: 1,
