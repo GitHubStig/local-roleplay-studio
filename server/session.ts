@@ -3,7 +3,7 @@ import type { ImagePrompt } from './imagePrompt.ts'
 import type { Settings } from './settings.ts'
 
 /**
- * How a Turn's Action was received. Only `done` can change the Image Prompt; `declined` (it
+ * How a Frame's Action was received. Only `done` can change the Image Prompt; `declined` (it
  * crossed a limit) and `unclear` (it couldn't be understood) leave the Image Prompt and image as
  * they were.
  */
@@ -11,8 +11,8 @@ export type Outcome = 'done' | 'declined' | 'unclear'
 
 export const OUTCOMES: readonly Outcome[] = ['done', 'declined', 'unclear']
 
-/** How long a Turn's steps took, in seconds (one decimal place). */
-export interface TurnTimings {
+/** How long a Frame's steps took, in seconds (one decimal place). */
+export interface FrameTimings {
   /** Writing the new Image Prompt, including the Limits check. */
   text: number
   /** Waiting for another Session's render to finish; only present if it had to wait. */
@@ -21,38 +21,45 @@ export interface TurnTimings {
   image: number | null
 }
 
-/** A committed Turn. The Opening Turn has index 0 and no Action. */
-export interface Turn {
+/** A committed Frame. The Opening Frame has index 0 and no Action. */
+export interface Frame {
   index: number
   action: string | null
-  /** The Session's whole state after this Turn: one paragraph describing the image. */
+  /** The Session's whole state after this Frame: one paragraph describing the image. */
   prompt: ImagePrompt
   /** A terse list of what changed, for the player; never fed back to the Text Model. */
   narration: string
   outcome: Outcome
   /** The exact text sent to the Image Model: the sections joined in order. */
   promptText: string
-  /** The Text Model's reasoning for this Turn, when thinking was on. */
+  /** The Text Model's reasoning for this Frame, when thinking was on. */
   thinking?: string
-  /** File name of this Turn's image inside the Session directory. */
+  /** File name of this Frame's image inside the Session directory. */
   image: string
-  /** Saved from when timings were added; older Turns have none. */
-  timings?: TurnTimings
+  /** Saved from when timings were added; older Frames have none. */
+  timings?: FrameTimings
   createdAt: string
 }
 
+/**
+ * What kind of Session: a Chain makes each Frame from the previous one by an Action; a
+ * Storyboard plans all its Frames together from the Brief.
+ */
+export type SessionKind = 'chain' | 'storyboard'
+
 export interface Session {
   id: string
+  kind: SessionKind
   scenarioId: string
   /** Settings as they were when the Session started; later edits don't apply. */
   settings: Settings
   /** The seed every image in this Session is rendered with. */
   seed: number
   createdAt: string
-  turns: Turn[]
+  frames: Frame[]
 }
 
-export const currentPrompt = (s: Session): ImagePrompt | null => s.turns.at(-1)?.prompt ?? null
+export const currentPrompt = (s: Session): ImagePrompt | null => s.frames.at(-1)?.prompt ?? null
 
 export interface SessionStore {
   /** Absolute directory holding a Session's JSON and images. */
@@ -66,21 +73,6 @@ export interface SessionStore {
 
 const SESSION_ID = /^[a-z0-9-]+$/
 
-/** Brings a Session saved by an older version up to date. */
-function upgrade(session: Session & { status?: string }): Session {
-  delete session.status
-  for (const turn of session.turns as (Turn & { declined?: boolean })[]) {
-    if (!turn.outcome) turn.outcome = turn.declined ? 'declined' : 'done'
-    delete turn.declined
-    // Image Prompts were once nine separate Sections; they're one paragraph now.
-    const prompt = turn.prompt as unknown
-    if (typeof prompt === 'object' && prompt !== null) {
-      turn.prompt = Object.values(prompt).map((v) => String(v).trim()).join(' ')
-    }
-  }
-  return session
-}
-
 /** Stores each Session as `<root>/<id>/session.json` plus its images. */
 export function dirSessionStore(root: string | URL): SessionStore {
   const base = root instanceof URL ? fromFileUrl(root) : root
@@ -93,7 +85,7 @@ export function dirSessionStore(root: string | URL): SessionStore {
     async load(id) {
       if (!SESSION_ID.test(id)) return undefined
       try {
-        return upgrade(JSON.parse(await Deno.readTextFile(join(dir(id), 'session.json'))))
+        return JSON.parse(await Deno.readTextFile(join(dir(id), 'session.json')))
       } catch (err) {
         if (err instanceof Deno.errors.NotFound) return undefined
         throw err

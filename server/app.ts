@@ -7,7 +7,7 @@ import type { Session, SessionStore } from './session.ts'
 import { type SettingsStore, SIZE_PRESETS, validateSettings } from './settings.ts'
 import type { TextModel } from './textModel.ts'
 import { RenderQueue } from './renderQueue.ts'
-import { runTurn, type TurnEvent, UndoError, undoLatestTurn } from './turns.ts'
+import { type FrameEvent, runChainFrame, UndoError, undoLatestFrame } from './frames.ts'
 
 export interface AppDeps {
   settings: SettingsStore
@@ -27,8 +27,8 @@ type Route = [
   handle: (req: Request, p: Params) => Promise<Response>,
 ]
 
-/** Turn images: `turn-3-1a2b3c4d.png`, or `turn-3.png` from Sessions saved before unique names. */
-const IMAGE_FILE = /^turn-\d+(-[0-9a-f]{8})?\.(png|svg)$/
+/** Frame images: `frame-3-1a2b3c4d.png`, or `frame-3.png` from Sessions saved before unique names. */
+const IMAGE_FILE = /^frame-\d+(-[0-9a-f]{8})?\.(png|svg)$/
 const CONTENT_TYPES: Record<string, string> = { '.png': 'image/png', '.svg': 'image/svg+xml' }
 
 const json = (body: unknown, status = 200) => Response.json(body, { status })
@@ -53,8 +53,8 @@ const defaultSeed = () => crypto.getRandomValues(new Uint32Array(1))[0]
 export function createHandler(deps: AppDeps): (req: Request) => Promise<Response> {
   const newSessionId = deps.newSessionId ?? defaultSessionId
   const randomSeed = deps.randomSeed ?? defaultSeed
-  /** The Turn in progress per Session (at most one each) and the step it has reached. */
-  const activeTurns = new Map<
+  /** The Frame in progress per Session (at most one each) and the step it has reached. */
+  const activeFrames = new Map<
     string,
     { controller: AbortController; phase: 'text' | 'queued' | 'image' }
   >()
@@ -62,19 +62,19 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
   const renderQueue = new RenderQueue()
 
   /**
-   * What each Session is busy with. Every change to a Session (a Turn, Undo, delete) takes this
+   * What each Session is busy with. Every change to a Session (a Frame, Undo, delete) takes this
    * lock *before* reading the Session, so no request ever acts on a copy another request is about
    * to change.
    */
-  const locks = new Map<string, 'turn' | 'undo' | 'delete'>()
+  const locks = new Map<string, 'frame' | 'undo' | 'delete'>()
   const BUSY_MESSAGES = {
-    turn: 'A Turn is already in progress',
+    frame: 'A Frame is already in progress',
     undo: 'An Undo is in progress',
     delete: 'This Session is being deleted',
   } as const
 
   /** Takes the Session's lock, or returns a 409 saying what holds it. */
-  function lock(id: string, what: 'turn' | 'undo' | 'delete'): Response | null {
+  function lock(id: string, what: 'frame' | 'undo' | 'delete'): Response | null {
     const holder = locks.get(id)
     if (holder) return error(BUSY_MESSAGES[holder], 409)
     locks.set(id, what)
@@ -87,14 +87,14 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
   }
 
   /**
-   * Validates a Turn request and starts streaming it. The caller holds the Session's lock;
-   * `onStreaming` hands it over to the stream, which releases it when the Turn ends.
+   * Validates a Frame request and starts streaming it. The caller holds the Session's lock;
+   * `onStreaming` hands it over to the stream, which releases it when the Frame ends.
    */
-  async function startTurn(req: Request, id: string, onStreaming: () => void) {
+  async function startFrame(req: Request, id: string, onStreaming: () => void) {
     const session = await loadSession(id)
     if (session instanceof Response) return session
     const body = await readJson(req) as { action?: unknown } | undefined
-    const opening = session.turns.length === 0
+    const opening = session.frames.length === 0
     let action: string | null = null
     if (!opening) {
       if (typeof body?.action !== 'string' || !body.action.trim()) {
@@ -107,7 +107,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
 
     const controller = new AbortController()
     const active = { controller, phase: 'text' as 'text' | 'queued' | 'image' }
-    activeTurns.set(session.id, active)
+    activeFrames.set(session.id, active)
     const encoder = new TextEncoder()
 
     const stream = new ReadableStream<Uint8Array>({
@@ -116,11 +116,11 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
           try {
             sink.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`))
           } catch {
-            // Client already gone; the Turn is being aborted.
+            // Client already gone; the Frame is being aborted.
           }
         }
         try {
-          await runTurn(
+          await runChainFrame(
             {
               store: deps.sessions,
               textModel: deps.textModel(
@@ -133,14 +133,14 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
             session,
             scenario,
             action,
-            (e: TurnEvent) => {
+            (e: FrameEvent) => {
               if (e.type === 'phase') active.phase = e.phase
               send(e.type, e)
             },
             controller.signal,
           )
         } catch (err) {
-          // A Session whose Opening Turn never committed never started.
+          // A Session whose Opening Frame never committed never started.
           if (opening) await deps.sessions.remove(session.id)
           const sessionDiscarded = opening
           if (controller.signal.aborted) {
@@ -149,7 +149,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
             send('failed', { type: 'failed', message: (err as Error).message, sessionDiscarded })
           }
         } finally {
-          activeTurns.delete(session.id)
+          activeFrames.delete(session.id)
           unlock(session.id)
           try {
             sink.close()
@@ -224,11 +224,12 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       if (!settings.textModel) return error('Choose a Text Model in Settings first', 400)
       const session: Session = {
         id: newSessionId(),
+        kind: 'chain',
         scenarioId: body.scenarioId,
         settings,
         seed: settings.seedMode === 'fixed' ? settings.seed : randomSeed(),
         createdAt: new Date().toISOString(),
-        turns: [],
+        frames: [],
       }
       await deps.sessions.save(session)
       return json(session, 201)
@@ -241,16 +242,17 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       ])
       const titles = new Map(scenarios.map((s) => [s.id, s.title]))
       const summaries = sessions.map((s) => {
-        const latest = s.turns.at(-1)
+        const latest = s.frames.at(-1)
         return {
           id: s.id,
+          kind: s.kind,
           scenarioId: s.scenarioId,
           scenarioTitle: titles.get(s.scenarioId) ?? s.scenarioId,
-          turns: s.turns.length,
+          frames: s.frames.length,
           latestImage: latest?.image ?? null,
           createdAt: s.createdAt,
           updatedAt: latest?.createdAt ?? s.createdAt,
-          activity: activeTurns.get(s.id)?.phase ?? null,
+          activity: activeFrames.get(s.id)?.phase ?? null,
         }
       })
       summaries.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
@@ -273,36 +275,36 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     ['GET', new URLPattern({ pathname: '/api/sessions/:id' }), async (_req, p) => {
       const session = await deps.sessions.load(p.id!)
       if (!session) return error('Session not found', 404)
-      // `activity` lets a screen that didn't start the running Turn (reloaded, another tab) show it.
-      return json({ ...session, activity: activeTurns.get(session.id)?.phase ?? null })
+      // `activity` lets a screen that didn't start the running Frame (reloaded, another tab) show it.
+      return json({ ...session, activity: activeFrames.get(session.id)?.phase ?? null })
     }],
 
-    ['POST', new URLPattern({ pathname: '/api/sessions/:id/turns' }), async (req, p) => {
-      const busy = lock(p.id!, 'turn')
+    ['POST', new URLPattern({ pathname: '/api/sessions/:id/frames' }), async (req, p) => {
+      const busy = lock(p.id!, 'frame')
       if (busy) return busy
-      // Held until the Turn's stream finishes; released here if we return before streaming.
+      // Held until the Frame's stream finishes; released here if we return before streaming.
       let streaming = false
       try {
-        return await startTurn(req, p.id!, () => (streaming = true))
+        return await startFrame(req, p.id!, () => (streaming = true))
       } finally {
         if (!streaming) unlock(p.id!)
       }
     }],
 
     ['POST', new URLPattern({ pathname: '/api/sessions/:id/cancel' }), (_req, p) => {
-      activeTurns.get(p.id!)?.controller.abort(new Error('Cancelled by player'))
+      activeFrames.get(p.id!)?.controller.abort(new Error('Cancelled by player'))
       return Promise.resolve(new Response(null, { status: 204 }))
     }],
 
-    ['DELETE', new URLPattern({ pathname: '/api/sessions/:id/turns/:index' }), async (_req, p) => {
+    ['DELETE', new URLPattern({ pathname: '/api/sessions/:id/frames/:index' }), async (_req, p) => {
       const index = Number(p.index)
-      if (!Number.isInteger(index)) return error('Turn index must be a number', 400)
+      if (!Number.isInteger(index)) return error('Frame index must be a number', 400)
       const busy = lock(p.id!, 'undo')
       if (busy) return busy
       try {
         const session = await loadSession(p.id!)
         if (session instanceof Response) return session
-        return json(await undoLatestTurn(deps.sessions, session, index))
+        return json(await undoLatestFrame(deps.sessions, session, index))
       } catch (err) {
         if (err instanceof UndoError) return error(err.message, 409)
         throw err

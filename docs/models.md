@@ -11,7 +11,7 @@ from the next Session.
 
 ### What the job asks of the model
 
-Each Turn the Text Model gets the current Image Prompt (one paragraph of nine sentences, one per
+Each Frame the Text Model gets the current Image Prompt (one paragraph of nine sentences, one per
 aspect: subject → pose → expression → camera → clothing → environment → lighting → color →
 style) and an Action, and must return the paragraph with only the affected sentences rewritten,
 everything the change contradicts removed, and the rest copied word for word
@@ -36,7 +36,7 @@ The telling cases are 3 (the pose sentence also says "relaxed", so it must chang
 
 ### Results
 
-| Model | Size | Result | Text per Turn |
+| Model | Size | Result | Text per Frame |
 |---|---|---|---|
 | **`gemma4:31b-mlx`** | 31B | **All correct.** Changes only what's asked; answers the repeat with *unclear*. | ~10 s |
 | `orcarouter/Qwen3.8-27B-Uncensored:mlx-4bit` | 27B | All correct, richest prose, but also adjusts things not asked for (Mars lighting and palette; changed "scared" to "aggressive" on the boxing Action). | ~17 s |
@@ -54,7 +54,7 @@ The telling cases are 3 (the pose sentence also says "relaxed", so it must chang
   related details, at the cost of changes you didn't ask for.
 - Uncensored models make no difference to what's rendered: the engine's Limits check every
   Action and every prompt whichever model wrote it ([ADR 0002](adr/0002-guardrails-enforced-by-the-engine.md)).
-- The first Turn after switching model is slower while Ollama loads it (gemma4: ~20 s).
+- The first Frame after switching model is slower while Ollama loads it (gemma4: ~20 s).
 - Earlier, with a structured JSON Scene, spark-x2.5 also marked a wardrobe change it had been
   told to refuse as done: small models are unreliable at following rules, not just formats.
 
@@ -64,7 +64,7 @@ Thinking makes the model reason before it answers, which is exactly what catches
 ("not relaxed" also affects the pose). It costs time, and with a small model it didn't pay off.
 Measured on spark-x2.5 4B (an earlier version of the prompt format, four Actions):
 
-| spark-x2.5 4B | Correct | Text per Turn |
+| spark-x2.5 4B | Correct | Text per Frame |
 |---|---|---|
 | Thinking off | 2 of 4 | ~3 s |
 | Thinking on | 3 of 4 | 12 s to 102 s (160 s for the opening) |
@@ -77,7 +77,7 @@ starts missing implied changes.
 - **Runaway replies.** Small models writing JSON under a schema occasionally never stop, padding
   with whitespace until their context fills. One such reply from spark blocked Ollama, and every
   request queued behind it, for 14 minutes. Every Text Model call now has a token cap and a time
-  limit (see [design.md](design.md#the-turn-loop)).
+  limit (see [design.md](design.md#the-frame-loop)).
 - **The Setup matters.** Describing Maya's identity as including "an easy smile" put an
   expression into the identity sentence, which then contradicted "make her scared". Keep each
   Setup fact in its own aspect ([scenarios.md](scenarios.md)).
@@ -88,7 +88,7 @@ starts missing implied changes.
 
 | Model | Time per image | Notes |
 |---|---|---|
-| **FLUX.2 Klein 4B** | 832×1216: ~10–13 s · 512×768: ~5 s · 512×512: ~4 s | Follows the subject description (skin, hair) and keeps her consistent across Turns with a fixed seed. Peak memory ~17.6 GB at 832×1216, ~10.5 GB at 512 px. |
+| **FLUX.2 Klein 4B** | 832×1216: ~10–13 s · 512×768: ~5 s · 512×512: ~4 s | Follows the subject description (skin, hair) and keeps her consistent across Frames with a fixed seed. Peak memory ~17.6 GB at 832×1216, ~10.5 GB at 512 px. |
 | Z-Image Turbo (4-bit) | 832×1216: ~42 s (9 steps) | Ignored the subject's described skin tone and hair. |
 | Krea 2 | — | Not downloaded; downloads are blocked during play ([ADR 0004](adr/0004-images-from-the-mflux-cli.md)). |
 

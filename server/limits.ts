@@ -6,7 +6,7 @@
  */
 export interface Limit {
   id: 'minors' | 'sexual' | 'restraint'
-  /** Shown to the player when a Turn is declined for it. */
+  /** Shown to the player when a Frame is declined for it. */
   message: string
   pattern: RegExp
 }

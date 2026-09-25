@@ -9,9 +9,9 @@ export interface Scenario {
   description: string
   /** Facts for the Text Model (who, where, the look), given to it verbatim; may be empty. */
   setup: Record<string, unknown>
-  /** Standing instructions for the Text Model on every Turn. */
+  /** Standing instructions for the Text Model on every Frame. */
   systemPrompt: string
-  /** How to write the opening Scene on the Opening Turn. */
+  /** How to write the opening Scene on the Opening Frame. */
   openingPrompt: string
 }
 

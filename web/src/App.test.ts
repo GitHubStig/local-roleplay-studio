@@ -17,24 +17,25 @@ vi.mock('./api', async (importOriginal) => ({
   getSettingsOptions: vi.fn(),
   getScenarios: vi.fn(async () => ({ scenarios: [], errors: [] })),
   listSessions: vi.fn(async () => []),
-  streamTurn: vi.fn(),
-  cancelTurn: vi.fn(),
+  streamFrame: vi.fn(),
+  cancelFrame: vi.fn(),
 }))
 
 const session: api.Session = {
   id: 's1',
+  kind: 'chain',
   scenarioId: 'photoshoot',
   settings: {} as api.Settings,
   seed: 1,
   createdAt: '2026-09-24T00:00:00.000Z',
-  turns: [{
+  frames: [{
     index: 0,
     action: null,
     prompt: promptFor(0),
     narration: 'Maya arrives.',
     outcome: 'done',
     promptText: 'p',
-    image: 'turn-0.png',
+    image: 'frame-0.png',
     createdAt: '2026-09-24T00:00:00.000Z',
   }],
 }
@@ -61,8 +62,8 @@ beforeEach(() => {
   localStorage.clear()
   clearCurrentSession('s1')
   vi.mocked(api.getSession).mockReset().mockResolvedValue(structuredClone(session))
-  vi.mocked(api.streamTurn).mockReset()
-  vi.mocked(api.cancelTurn).mockReset()
+  vi.mocked(api.streamFrame).mockReset()
+  vi.mocked(api.cancelFrame).mockReset()
   vi.mocked(api.getSettings).mockResolvedValue({
     textModel: 'llama3:latest',
     thinking: false,
@@ -140,9 +141,9 @@ describe('App navigation', () => {
     )
   })
 
-  it("won't leave a Session while its Turn waits for another render", async () => {
-    let emit!: (e: api.TurnEvent) => void
-    vi.mocked(api.streamTurn).mockImplementation((_id, _action, onEvent) => {
+  it("won't leave a Session while its Frame waits for another render", async () => {
+    let emit!: (e: api.FrameEvent) => void
+    vi.mocked(api.streamFrame).mockImplementation((_id, _action, onEvent) => {
       emit = onEvent
       return new Promise(() => {})
     })
@@ -155,7 +156,7 @@ describe('App navigation', () => {
     await router.push('/settings').catch(() => {})
     await flushPromises()
     expect(router.currentRoute.value.path).toBe('/sessions/s1')
-    expect(wrapper.find('[role=alert]').text()).toContain('Cancel this Turn to leave')
+    expect(wrapper.find('[role=alert]').text()).toContain('Cancel this Frame to leave')
 
     emit({ type: 'phase', phase: 'image' })
     await flushPromises()
@@ -164,17 +165,17 @@ describe('App navigation', () => {
     expect(router.currentRoute.value.path).toBe('/settings')
   })
 
-  it('writes the Opening Turn exactly once for a new Session', async () => {
-    vi.mocked(api.getSession).mockResolvedValue({ ...structuredClone(session), turns: [] })
-    vi.mocked(api.streamTurn).mockImplementation(() => new Promise(() => {}))
+  it('writes the Opening Frame exactly once for a new Session', async () => {
+    vi.mocked(api.getSession).mockResolvedValue({ ...structuredClone(session), frames: [] })
+    vi.mocked(api.streamFrame).mockImplementation(() => new Promise(() => {}))
     await mountApp('/sessions/s1')
-    expect(api.streamTurn).toHaveBeenCalledTimes(1)
+    expect(api.streamFrame).toHaveBeenCalledTimes(1)
   })
 
   it("doesn't pull the player Home when a background Session's Opening fails", async () => {
-    vi.mocked(api.getSession).mockResolvedValue({ ...structuredClone(session), turns: [] })
-    let emit!: (e: api.TurnEvent) => void
-    vi.mocked(api.streamTurn).mockImplementation((_id, _action, onEvent) => {
+    vi.mocked(api.getSession).mockResolvedValue({ ...structuredClone(session), frames: [] })
+    let emit!: (e: api.FrameEvent) => void
+    vi.mocked(api.streamFrame).mockImplementation((_id, _action, onEvent) => {
       emit = onEvent
       return new Promise(() => {})
     })
@@ -204,14 +205,14 @@ describe('App navigation', () => {
     expect(wrapper.find('textarea').exists()).toBe(true)
   })
 
-  it('follows a Turn it did not start, with Cancel, until it finishes', async () => {
+  it('follows a Frame it did not start, with Cancel, until it finishes', async () => {
     vi.useFakeTimers()
     try {
       const running = { ...structuredClone(session), activity: 'image' as const }
       const done = {
         ...structuredClone(session),
         activity: null,
-        turns: [...session.turns, { ...session.turns[0], index: 1, action: 'Sit' }],
+        frames: [...session.frames, { ...session.frames[0], index: 1, action: 'Sit' }],
       }
       vi.mocked(api.getSession).mockResolvedValueOnce(running).mockResolvedValueOnce(running)
         .mockResolvedValue(done)
@@ -219,13 +220,13 @@ describe('App navigation', () => {
       expect(wrapper.find('[role=status]').text()).toContain('Rendering the image')
       expect(wrapper.find('textarea').attributes('disabled')).toBeDefined()
       await wrapper.findAll('button').find((b) => b.text() === 'Cancel')!.trigger('click')
-      expect(api.cancelTurn).toHaveBeenCalledWith('s1')
+      expect(api.cancelFrame).toHaveBeenCalledWith('s1')
 
       await vi.advanceTimersByTimeAsync(1500)
       expect(wrapper.find('[role=status]').exists()).toBe(true)
       await vi.advanceTimersByTimeAsync(1500)
       expect(wrapper.find('[role=status]').exists()).toBe(false)
-      expect(wrapper.findAll('aside [data-turn]')).toHaveLength(2)
+      expect(wrapper.findAll('aside [data-frame]')).toHaveLength(2)
     } finally {
       vi.useRealTimers()
     }

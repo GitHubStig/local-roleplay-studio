@@ -91,7 +91,7 @@ async function save() {
             <span>Thinking</span>
             <span class="text-sm text-muted">
               The Text Model reasons before answering, and you can watch it. Often more
-              accurate, but each Turn takes longer.
+              accurate, but each Frame takes longer.
               <template v-if="form.textModel && !canThink">
                 {{ form.textModel }} can't think.
               </template>

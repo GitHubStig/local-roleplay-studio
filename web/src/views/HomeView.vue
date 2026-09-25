@@ -12,13 +12,13 @@ const { currentSessionId } = useCurrentSession()
 const sessions = ref<SessionSummary[] | null>(null)
 const listError = ref('')
 const deleteError = ref('')
-/** Why the last attempt to start failed, e.g. the Opening Turn errored. */
+/** Why the last attempt to start failed, e.g. the Opening Frame errored. */
 const startError = ref('')
 
 let poll: ReturnType<typeof setTimeout> | undefined
 let alive = true
 
-/** Loads the list; while any Session has a Turn running, refreshes every 2 s to track it. */
+/** Loads the list; while any Session has a Frame running, refreshes every 2 s to track it. */
 async function load() {
   clearTimeout(poll)
   try {
@@ -39,7 +39,7 @@ onBeforeUnmount(() => {
   clearTimeout(poll)
 })
 
-// A failed Opening Turn sends the player here with `?error=`, possibly while already on Home.
+// A failed Opening Frame sends the player here with `?error=`, possibly while already on Home.
 watch(
   () => route.query.error,
   (error) => {
@@ -61,7 +61,7 @@ async function start(scenarioId: string) {
 }
 
 async function remove(s: SessionSummary) {
-  const what = `${s.scenarioTitle}, ${s.turns} ${s.turns === 1 ? 'Turn' : 'Turns'}`
+  const what = `${s.scenarioTitle}, ${s.frames} ${s.frames === 1 ? 'Frame' : 'Frames'}`
   if (!confirm(`Delete this Session (${what}) and its images? This can't be undone.`)) return
   deleteError.value = ''
   try {
@@ -127,7 +127,7 @@ function ago(iso: string): string {
               <div class="flex flex-col gap-1 p-3 text-sm">
                 <span class="font-medium">{{ s.scenarioTitle }}</span>
                 <span class="text-muted">
-                  {{ s.turns }} {{ s.turns === 1 ? 'Turn' : 'Turns' }} · {{ ago(s.updatedAt) }}
+                  {{ s.frames }} {{ s.frames === 1 ? 'Frame' : 'Frames' }} · {{ ago(s.updatedAt) }}
                 </span>
                 <span v-if="s.activity" class="animate-pulse text-info" data-activity>
                   {{ ACTIVITY_LABELS[s.activity] }}
@@ -139,7 +139,7 @@ function ago(iso: string): string {
               type="button"
               class="absolute right-2 top-2 rounded border border-line bg-canvas/90 px-2 py-0.5 text-xs text-danger opacity-0 focus:opacity-100 group-hover:opacity-100 disabled:cursor-not-allowed disabled:text-muted"
               :disabled="s.activity !== null"
-              :title="s.activity ? 'A Turn is running in this Session' : 'Delete this Session'"
+              :title="s.activity ? 'A Frame is running in this Session' : 'Delete this Session'"
               data-delete
               @click="remove(s)"
             >

@@ -1,7 +1,7 @@
 import type { ImageGenerator } from './imageGenerator.ts'
 import { parseScenario, type ScenarioLibrary } from './scenario.ts'
 import type { ImagePrompt } from './imagePrompt.ts'
-import type { TextModel, TurnText } from './textModel.ts'
+import type { FrameText, TextModel } from './textModel.ts'
 
 export const scenarioText = `---
 title: Test Shoot
@@ -34,7 +34,7 @@ export const promptWith = (pose: string): ImagePrompt =>
  * Action names a real person when it mentions `realPeople`.
  */
 export function scriptedTextModel(
-  replies: (TurnText | Error)[],
+  replies: (FrameText | Error)[],
   realPeople: string[] = [],
 ): TextModel & { calls: number; personChecks: string[] } {
   const model = {
@@ -58,7 +58,7 @@ export function scriptedTextModel(
   return model
 }
 
-export const reply = (pose: string, extra: Partial<TurnText> = {}): TurnText => ({
+export const reply = (pose: string, extra: Partial<FrameText> = {}): FrameText => ({
   outcome: 'done',
   narration: `Pose: ${pose}.`,
   prompt: promptWith(pose),

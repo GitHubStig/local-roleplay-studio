@@ -2,7 +2,7 @@ import { assertEquals, assertStringIncludes, assertThrows } from '@std/assert'
 import {
   mightNameAPerson,
   outputSchema,
-  parseTurnText,
+  parseFrameText,
   realPersonQuestion,
   systemMessage,
   userMessage,
@@ -19,14 +19,14 @@ Deno.test('systemMessage has the paragraph rules, the order, the limits and the 
   assertStringIncludes(msg, 'Rules.')
 })
 
-Deno.test('systemMessage gives the Setup only on the Opening Turn', () => {
+Deno.test('systemMessage gives the Setup only on the Opening Frame', () => {
   assertStringIncludes(systemMessage(testScenario, true), 'location: a studio')
   assertEquals(systemMessage(testScenario, false).includes('location: a studio'), false)
 })
 
-Deno.test('userMessage uses the opening instructions on the Opening Turn', () => {
+Deno.test('userMessage uses the opening instructions on the Opening Frame', () => {
   const msg = userMessage({ scenario: testScenario, prompt: null, action: null })
-  assertStringIncludes(msg, 'first turn')
+  assertStringIncludes(msg, 'This is the opening')
   assertStringIncludes(msg, 'Start.')
 })
 
@@ -42,8 +42,8 @@ Deno.test('outputSchema asks for the outcome first, then one prompt string', () 
   assertEquals(schema.properties.prompt.type, 'string')
 })
 
-Deno.test('parseTurnText accepts a complete reply and flattens the paragraph', () => {
-  const text = parseTurnText(
+Deno.test('parseFrameText accepts a complete reply and flattens the paragraph', () => {
+  const text = parseFrameText(
     JSON.stringify({
       outcome: 'done',
       narration: ' Pose: sitting. ',
@@ -54,15 +54,15 @@ Deno.test('parseTurnText accepts a complete reply and flattens the paragraph', (
   assertEquals(text.prompt, 'A woman, sitting.')
 })
 
-Deno.test('parseTurnText rejects bad replies', () => {
-  assertThrows(() => parseTurnText('nope'), Error, 'not valid JSON')
+Deno.test('parseFrameText rejects bad replies', () => {
+  assertThrows(() => parseFrameText('nope'), Error, 'not valid JSON')
   assertThrows(
-    () => parseTurnText(JSON.stringify({ outcome: 'maybe', narration: 'x', prompt: 'x' })),
+    () => parseFrameText(JSON.stringify({ outcome: 'maybe', narration: 'x', prompt: 'x' })),
     Error,
     'no valid outcome',
   )
   assertThrows(
-    () => parseTurnText(JSON.stringify({ outcome: 'done', narration: 'x', prompt: '  ' })),
+    () => parseFrameText(JSON.stringify({ outcome: 'done', narration: 'x', prompt: '  ' })),
     Error,
     'no prompt',
   )

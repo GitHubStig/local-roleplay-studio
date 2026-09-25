@@ -15,7 +15,7 @@ export const PROMPT_ORDER = [
 ] as const
 
 /**
- * The whole state of a Session at one Turn: one paragraph of nine sentences, one per aspect of
+ * The whole state of a Session at one Frame: one paragraph of nine sentences, one per aspect of
  * `PROMPT_ORDER`, details within a sentence separated by commas or semicolons.
  */
 export type ImagePrompt = string

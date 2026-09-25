@@ -11,7 +11,7 @@ const request = (dir: string, extra: Partial<ImageRequest['settings']> = {}): Im
   seed: 7,
   settings: { ...DEFAULT_SETTINGS, imageModel: 'fake', steps: 3, ...extra },
   dir,
-  name: 'turn-0',
+  name: 'frame-0',
 })
 
 Deno.test('mfluxArgs builds the command line from settings', () => {
@@ -97,7 +97,7 @@ echo png > "$out"`,
       new AbortController().signal,
       (step, total) => progress.push(`${step}/${total}`),
     )
-    assertEquals(file, 'turn-0.png')
+    assertEquals(file, 'frame-0.png')
     assertEquals(await Deno.readTextFile(join(dir, file)), 'png\n')
     assertEquals(progress.at(-1), '3/3')
   }))

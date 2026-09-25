@@ -7,16 +7,16 @@ import { mightNameAPerson } from './textModel.ts'
 import { RenderQueue } from './renderQueue.ts'
 import type { Scenario } from './scenario.ts'
 import {
+  type Frame,
+  type FrameTimings,
   type Outcome,
   type Session,
   type SessionStore,
-  type Turn,
-  type TurnTimings,
 } from './session.ts'
-import type { TextModel, TurnText } from './textModel.ts'
+import type { FrameText, TextModel } from './textModel.ts'
 
-/** Progress of a Turn, streamed to the player as it happens. */
-export type TurnEvent =
+/** Progress of a Frame, streamed to the player as it happens. */
+export type FrameEvent =
   /** `queued`: waiting for another Session's render to finish. */
   | { type: 'phase'; phase: 'text' | 'queued' | 'image' }
   /** More of the Text Model's reasoning; `restart` when a retry starts reasoning afresh. */
@@ -25,9 +25,9 @@ export type TurnEvent =
   | { type: 'progress'; step: number; total: number }
   /** The new Image Prompt before its image exists; provisional until `committed`. */
   | { type: 'text'; outcome: Outcome; narration: string; prompt: ImagePrompt }
-  | { type: 'committed'; turn: Turn }
+  | { type: 'committed'; frame: Frame }
 
-export interface TurnDeps {
+export interface FrameDeps {
   store: SessionStore
   textModel: TextModel
   imageGenerator: ImageGenerator
@@ -41,17 +41,17 @@ const TEXT_ATTEMPTS = 2
 const secondsSince = (start: number) => Math.round((performance.now() - start) / 100) / 10
 
 /**
- * A fresh image file name (without extension) for Turn `index`. The random suffix means a name is
+ * A fresh image file name (without extension) for Frame `index`. The random suffix means a name is
  * never reused after an Undo, so a browser can cache images forever without showing a stale one.
  */
-export const imageName = (index: number) => `turn-${index}-${crypto.randomUUID().slice(0, 8)}`
+export const imageName = (index: number) => `frame-${index}-${crypto.randomUUID().slice(0, 8)}`
 
 async function writeText(
   textModel: TextModel,
   req: Parameters<TextModel['write']>[0],
   signal: AbortSignal,
-  emit: (event: TurnEvent) => void,
-): Promise<TurnText> {
+  emit: (event: FrameEvent) => void,
+): Promise<FrameText> {
   let lastError: unknown
   for (let attempt = 1; attempt <= TEXT_ATTEMPTS; attempt++) {
     let restart = attempt > 1
@@ -69,19 +69,19 @@ async function writeText(
 }
 
 /**
- * Runs one Turn: Text Model, then Image Model (rendering the Image Prompt), then commit. The Turn commits whole or not at
+ * Runs one Frame: Text Model, then Image Model (rendering the Image Prompt), then commit. The Frame commits whole or not at
  * all: on failure or abort the Session on disk is untouched and any image written is removed.
  */
-export async function runTurn(
-  deps: TurnDeps,
+export async function runChainFrame(
+  deps: FrameDeps,
   session: Session,
   scenario: Scenario,
   action: string | null,
-  emit: (event: TurnEvent) => void,
+  emit: (event: FrameEvent) => void,
   signal: AbortSignal,
-): Promise<Turn> {
-  const previous = session.turns.at(-1)
-  const index = session.turns.length
+): Promise<Frame> {
+  const previous = session.frames.at(-1)
+  const index = session.frames.length
 
   emit({ type: 'phase', phase: 'text' })
   const textStart = performance.now()
@@ -113,7 +113,7 @@ export async function runTurn(
     thinking = text.thinking
     const promptLimit = crossedLimit(renderPrompt(text.prompt))
     if (!previous) {
-      // The Opening Turn always counts as done, so it can't be declined: it fails instead.
+      // The Opening Frame always counts as done, so it can't be declined: it fails instead.
       if (promptLimit) throw new Error(`The opening prompt crossed a limit: ${promptLimit.message}`)
       outcome = 'done'
       narration = text.narration
@@ -133,7 +133,7 @@ export async function runTurn(
     }
   }
   emit({ type: 'text', outcome, narration, prompt: nextPrompt })
-  const timings: TurnTimings = { text: secondsSince(textStart), image: null }
+  const timings: FrameTimings = { text: secondsSince(textStart), image: null }
 
   // Nothing to render if the Image Prompt didn't change: declined, unclear, or a done Action the
   // Text Model left without effect. Reuse the previous image.
@@ -142,8 +142,8 @@ export async function runTurn(
   const dir = deps.store.dir(session.id)
   let image: string
   let promptText: string
-  // Named up front so a failed or cancelled Turn can remove whatever the generator wrote, even if
-  // it finished writing just as the Turn was cancelled.
+  // Named up front so a failed or cancelled Frame can remove whatever the generator wrote, even if
+  // it finished writing just as the Frame was cancelled.
   const name = imageName(index)
   try {
     if (reuseImage) {
@@ -183,7 +183,7 @@ export async function runTurn(
     }
     signal.throwIfAborted()
 
-    const turn: Turn = {
+    const frame: Frame = {
       index,
       action,
       prompt: nextPrompt,
@@ -195,10 +195,10 @@ export async function runTurn(
       timings,
       createdAt: new Date().toISOString(),
     }
-    await deps.store.save({ ...session, turns: [...session.turns, turn] })
-    session.turns.push(turn)
-    emit({ type: 'committed', turn })
-    return turn
+    await deps.store.save({ ...session, frames: [...session.frames, frame] })
+    session.frames.push(frame)
+    emit({ type: 'committed', frame })
+    return frame
   } catch (err) {
     for (const ext of ['png', 'svg']) {
       await Deno.remove(join(dir, `${name}.${ext}`)).catch(() => {})
@@ -210,25 +210,25 @@ export async function runTurn(
 export class UndoError extends Error {}
 
 /**
- * Removes the latest Turn, so the previous Turn's Scene is current again. `index` must name the
- * latest Turn, so a repeated request can't undo two. The Opening Turn can't be undone. The
- * image file is deleted only when no remaining Turn still shows it.
+ * Removes the latest Frame, so the previous Frame's Scene is current again. `index` must name the
+ * latest Frame, so a repeated request can't undo two. The Opening Frame can't be undone. The
+ * image file is deleted only when no remaining Frame still shows it.
  */
-export async function undoLatestTurn(
+export async function undoLatestFrame(
   store: SessionStore,
   session: Session,
   index: number,
 ): Promise<Session> {
-  const latest = session.turns.at(-1)
+  const latest = session.frames.at(-1)
   if (!latest || latest.index !== index) {
-    throw new UndoError(`Turn ${index} is not the latest Turn`)
+    throw new UndoError(`Frame ${index} is not the latest Frame`)
   }
-  if (session.turns.length === 1) throw new UndoError("The Opening Turn can't be undone")
+  if (session.frames.length === 1) throw new UndoError("The Opening Frame can't be undone")
 
-  const turns = session.turns.slice(0, -1)
-  const updated: Session = { ...session, turns }
+  const frames = session.frames.slice(0, -1)
+  const updated: Session = { ...session, frames }
   await store.save(updated)
-  if (!turns.some((t) => t.image === latest.image)) {
+  if (!frames.some((t) => t.image === latest.image)) {
     await Deno.remove(join(store.dir(session.id), latest.image)).catch(() => {})
   }
   return updated

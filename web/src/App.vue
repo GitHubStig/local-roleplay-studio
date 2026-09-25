@@ -59,7 +59,7 @@ onBeforeUnmount(() => {
       </div>
     </header>
     <!-- Up to 5 Session screens stay alive while you visit Home, Settings or other Sessions, so
-         drafts, the viewed Turn and running Turns survive switching back and forth. -->
+         drafts, the viewed Frame and running Frames survive switching back and forth. -->
     <RouterView v-slot="{ Component, route: r }">
       <KeepAlive include="SessionView" :max="5">
         <component :is="Component" :key="r.path" class="min-h-0 flex-1" />

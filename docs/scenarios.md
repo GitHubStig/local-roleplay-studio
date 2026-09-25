@@ -24,7 +24,7 @@ setup:
 
 ## System
 
-Optional notes for the Text Model on every Turn.
+Optional notes for the Text Model on every Frame.
 
 ## Opening
 
@@ -37,7 +37,7 @@ What the opening image should be.
 |---|---|---|
 | `title` | yes | Shown on the Scenario's card on Home |
 | `description` | yes | Shown under the title |
-| `setup` | no | A YAML mapping of facts (who, where, what they wear, the tone). Given to the Text Model **only on the Opening Turn**, to write the opening Image Prompt from. |
+| `setup` | no | A YAML mapping of facts (who, where, what they wear, the tone). Given to the Text Model **only on the Opening Frame**, to write the opening Image Prompt from. |
 
 Use YAML's `>-` for long text: it folds lines into one paragraph.
 
@@ -46,8 +46,8 @@ Use YAML's `>-` for long text: it folds lines into one paragraph.
 Only `##` headings count, matched case-insensitively.
 
 - **`## Opening`** (required): what the opening image should be. Be concrete: the Text Model
-  turns it, plus the Setup, into the nine sentences.
-- **`## System`** (optional): notes the Text Model gets on every Turn, after the engine's own
+  frames it, plus the Setup, into the nine sentences.
+- **`## System`** (optional): notes the Text Model gets on every Frame, after the engine's own
   rules. Use it for things like "keep Maya recognisably the same person". Don't restate the
   prompt format, the Limits or the reply format; the engine supplies those.
 

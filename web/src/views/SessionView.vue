@@ -15,22 +15,22 @@ import { useStoredFlag } from '../composables/useStoredFlag'
 import { diffWords } from '../diff'
 import {
   ApiError,
-  cancelTurn,
+  cancelFrame,
   getSession,
   imageUrl,
   type Outcome,
   type ImagePrompt,
   type Session,
-  streamTurn,
-  type Turn,
-  type TurnEvent,
-  undoTurn,
+  streamFrame,
+  type Frame,
+  type FrameEvent,
+  undoFrame,
 } from '../api'
 
 const props = defineProps<{ id: string }>()
 const router = useRouter()
 
-/** The Turn in progress: provisional until committed. */
+/** The Frame in progress: provisional until committed. */
 interface Pending {
   phase: 'text' | 'queued' | 'image'
   /** Started elsewhere (before a reload, in another tab); followed by polling the Session. */
@@ -47,9 +47,9 @@ interface Pending {
 const session = ref<Session | null>(null)
 const loadError = ref('')
 const pending = ref<Pending | null>(null)
-const turnError = ref('')
+const frameError = ref('')
 const draft = ref('')
-/** Index of the Turn shown in the main panel; null follows the latest. */
+/** Index of the Frame shown in the main panel; null follows the latest. */
 const viewing = ref<number | null>(null)
 const log = ref<HTMLElement | null>(null)
 const panel = ref<'log' | 'prompt'>('log')
@@ -59,16 +59,16 @@ const captionHidden = useStoredFlag('caption-hidden')
 const removedHidden = useStoredFlag('diff-removed-hidden')
 
 const busy = computed(() => pending.value !== null)
-/** This Session's Turn is waiting for another Session's render to finish. */
+/** This Session's Frame is waiting for another Session's render to finish. */
 const queued = computed(() => pending.value?.phase === 'queued')
 const shown = computed(() => {
-  const turns = session.value?.turns ?? []
-  return viewing.value === null ? turns.at(-1) : turns[viewing.value]
+  const frames = session.value?.frames ?? []
+  return viewing.value === null ? frames.at(-1) : frames[viewing.value]
 })
-const latest = computed(() => session.value?.turns.at(-1))
-/** Looking at an earlier Turn; the next Action still continues from the latest one. */
+const latest = computed(() => session.value?.frames.at(-1))
+/** Looking at an earlier Frame; the next Action still continues from the latest one. */
 const viewingOlder = computed(() => !!shown.value && shown.value.index !== latest.value?.index)
-const turnName = (index: number) => (index === 0 ? 'the Opening' : `Turn ${index}`)
+const frameName = (index: number) => (index === 0 ? 'the Opening' : `Frame ${index}`)
 
 // A kept-alive screen keeps running in the background; it must only navigate while on screen.
 let onScreen = true
@@ -102,7 +102,7 @@ async function load(): Promise<boolean> {
 
 let started = false
 let starting = false
-/** First successful load: follow a Turn already running, or write the opening prompt. */
+/** First successful load: follow a Frame already running, or write the opening prompt. */
 async function start() {
   if (started || starting) return
   starting = true
@@ -113,13 +113,13 @@ async function start() {
     starting = false
   }
   if (session.value!.activity) follow()
-  else if (session.value!.turns.length === 0) await runTurn(null)
+  else if (session.value!.frames.length === 0) await runChainFrame(null)
 }
 
 onMounted(start)
 
 // Coming back to a kept-alive Session: pick up changes made elsewhere (another tab, a delete
-// from Home), unless a Turn is running here. Retries if the first load failed. Vue also calls
+// from Home), unless a Frame is running here. Retries if the first load failed. Vue also calls
 // this right after the first mount, which `start` already covers.
 let firstActivation = true
 onActivated(async () => {
@@ -132,7 +132,7 @@ onActivated(async () => {
 })
 onDeactivated(() => (onScreen = false))
 
-// --- A Turn this screen didn't start (page reloaded, another tab): show it and allow Cancel.
+// --- A Frame this screen didn't start (page reloaded, another tab): show it and allow Cancel.
 let followTimer: ReturnType<typeof setTimeout> | undefined
 function follow() {
   pending.value = { phase: session.value!.activity!, detached: true }
@@ -174,14 +174,14 @@ function forgetDraft() {
   }
 }
 
-// --- While this Turn waits in the render queue, stay here: no leaving, no reloading.
+// --- While this Frame waits in the render queue, stay here: no leaving, no reloading.
 onBeforeRouteLeave(() => {
   if (!queued.value) return true
-  turnError.value = 'Waiting for another render. Cancel this Turn to leave.'
+  frameError.value = 'Waiting for another render. Cancel this Frame to leave.'
   return false
 })
-// Reloading, closing the tab or leaving the site drops this page's connection to a running Turn,
-// which cancels it; the browser asks first ("Leave site?"). It can't show our own wording. A Turn
+// Reloading, closing the tab or leaving the site drops this page's connection to a running Frame,
+// which cancels it; the browser asks first ("Leave site?"). It can't show our own wording. A Frame
 // this page is only following (started elsewhere) isn't affected, so no warning for that.
 function warnBeforeUnload(e: BeforeUnloadEvent) {
   if (busy.value && !pending.value?.detached) {
@@ -192,12 +192,12 @@ function warnBeforeUnload(e: BeforeUnloadEvent) {
 window.addEventListener('beforeunload', warnBeforeUnload)
 onBeforeUnmount(() => window.removeEventListener('beforeunload', warnBeforeUnload))
 
-watch([() => session.value?.turns.length, panel], async () => {
+watch([() => session.value?.frames.length, panel], async () => {
   await nextTick()
   log.value?.scrollTo({ top: log.value.scrollHeight, behavior: 'smooth' })
 })
 
-function onEvent(event: TurnEvent) {
+function onEvent(event: FrameEvent) {
   const s = session.value!
   switch (event.type) {
     case 'phase':
@@ -216,11 +216,11 @@ function onEvent(event: TurnEvent) {
       pending.value = { ...pending.value!, ...event }
       break
     case 'committed':
-      s.turns.push(event.turn)
+      s.frames.push(event.frame)
       pending.value = null
       viewing.value = null
-      // Only a done Turn used up the Action; a declined or unclear one stays to be reworded.
-      if (event.turn.outcome === 'done') draft.value = ''
+      // Only a done Frame used up the Action; a declined or unclear one stays to be reworded.
+      if (event.frame.outcome === 'done') draft.value = ''
       break
     case 'failed':
     case 'cancelled':
@@ -228,19 +228,19 @@ function onEvent(event: TurnEvent) {
       if (event.sessionDiscarded) {
         leave(event.type === 'failed' ? { error: event.message } : {})
       } else if (event.type === 'failed') {
-        turnError.value = event.message
+        frameError.value = event.message
       }
       break
   }
 }
 
-async function runTurn(action: string | null) {
-  turnError.value = ''
+async function runChainFrame(action: string | null) {
+  frameError.value = ''
   pending.value = { phase: 'text' }
   try {
-    await streamTurn(props.id, action, onEvent)
+    await streamFrame(props.id, action, onEvent)
   } catch (err) {
-    turnError.value = (err as Error).message
+    frameError.value = (err as Error).message
   } finally {
     pending.value = null
   }
@@ -248,8 +248,8 @@ async function runTurn(action: string | null) {
 
 function submit() {
   const action = draft.value.trim()
-  // While an earlier Turn is shown, the box holds that Turn's Action, not the draft.
-  if (action && !busy.value && !viewingOlder.value) runTurn(action)
+  // While an earlier Frame is shown, the box holds that Frame's Action, not the draft.
+  if (action && !busy.value && !viewingOlder.value) runChainFrame(action)
 }
 
 function onKeydown(e: KeyboardEvent) {
@@ -261,32 +261,32 @@ function onKeydown(e: KeyboardEvent) {
 
 async function cancel() {
   if (pending.value) pending.value = { ...pending.value, cancelling: true }
-  await cancelTurn(props.id)
+  await cancelFrame(props.id)
 }
 
-/** Undo is possible for any Turn after the Opening Turn, while nothing is running. */
-const canUndo = computed(() => !busy.value && (session.value?.turns.length ?? 0) > 1)
+/** Undo is possible for any Frame after the Opening Frame, while nothing is running. */
+const canUndo = computed(() => !busy.value && (session.value?.frames.length ?? 0) > 1)
 const undoing = ref(false)
 
-/** Removes the latest Turn and puts its Action back in the text box to edit and resend. */
+/** Removes the latest Frame and puts its Action back in the text box to edit and resend. */
 async function undo() {
-  const latest = session.value?.turns.at(-1)
+  const latest = session.value?.frames.at(-1)
   if (!canUndo.value || !latest || undoing.value) return
   undoing.value = true
-  turnError.value = ''
+  frameError.value = ''
   try {
-    session.value = await undoTurn(props.id, latest.index)
+    session.value = await undoFrame(props.id, latest.index)
     viewing.value = null
     if (!draft.value.trim() && latest.action) draft.value = latest.action
   } catch (err) {
-    turnError.value = (err as Error).message
+    frameError.value = (err as Error).message
   } finally {
     undoing.value = false
   }
 }
 
 /** "Text 9.8 s · Waited 12.3 s · Image 5.1 s", or "Image reused" when nothing was rendered. */
-function timingsLabel(t: NonNullable<Turn['timings']>): string {
+function timingsLabel(t: NonNullable<Frame['timings']>): string {
   const parts = [`Text ${t.text.toFixed(1)} s`]
   if (t.queued !== undefined) parts.push(`Waited ${t.queued.toFixed(1)} s`)
   parts.push(t.image === null ? 'Image reused' : `Image ${t.image.toFixed(1)} s`)
@@ -311,7 +311,7 @@ watch(
     if (next.src === displayed.value?.src) return
     const img = new Image()
     const show = () => {
-      // Skip if the player has already moved on to another Turn.
+      // Skip if the player has already moved on to another Frame.
       if (shown.value && imageUrl(props.id, shown.value.image) === next.src) displayed.value = next
     }
     img.onload = show
@@ -321,7 +321,7 @@ watch(
   { immediate: true },
 )
 
-/** Width ÷ height of this Session's images; every Turn shares one size. Portrait until known. */
+/** Width ÷ height of this Session's images; every Frame shares one size. Portrait until known. */
 const aspect = ref(832 / 1216)
 
 function onImageLoad(e: Event) {
@@ -335,7 +335,7 @@ const frameStyle = computed(() => ({
   height: `min(100cqh, calc(100cqw / ${aspect.value}))`,
 }))
 
-/** The caption: the provisional Narration while a Turn runs, else the shown Turn's. */
+/** The caption: the provisional Narration while a Frame runs, else the shown Frame's. */
 const captionText = computed(() => pending.value?.narration ?? shown.value?.narration ?? '')
 
 /** The reasoning streaming in, shown in the caption's place until the Narration arrives. */
@@ -365,12 +365,12 @@ const phaseLabel = computed(() => {
   return p ? `Rendering the image… step ${p.step} of ${p.total}` : 'Rendering the image…'
 })
 
-/** The shown Turn's Image Prompt, word-diffed against the Turn before it (none for the Opening). */
+/** The shown Frame's Image Prompt, word-diffed against the Frame before it (none for the Opening). */
 const promptDiff = computed(() => {
-  const turn = shown.value
-  if (!turn) return []
-  const before = session.value?.turns[turn.index - 1]
-  return before ? diffWords(before.prompt, turn.prompt) : [{ kind: 'same' as const, text: turn.prompt }]
+  const frame = shown.value
+  if (!frame) return []
+  const before = session.value?.frames[frame.index - 1]
+  return before ? diffWords(before.prompt, frame.prompt) : [{ kind: 'same' as const, text: frame.prompt }]
 })
 </script>
 
@@ -419,7 +419,7 @@ const promptDiff = computed(() => {
               class="absolute right-3 top-3 flex items-center gap-2 rounded-full bg-black/70 py-1 pl-3 pr-1 text-sm text-white"
               data-viewing
             >
-              <span>Viewing {{ turnName(shown!.index) }} of {{ latest!.index }}</span>
+              <span>Viewing {{ frameName(shown!.index) }} of {{ latest!.index }}</span>
               <button
                 type="button"
                 class="rounded-full bg-white/15 px-2.5 py-0.5 hover:bg-white/25"
@@ -508,14 +508,14 @@ const promptDiff = computed(() => {
             :class="{ 'render-sweep': writing }"
             :data-writing="writing ? '' : undefined"
           >
-            <!-- An earlier Turn shows the Action that made it, read-only (still selectable to copy). -->
+            <!-- An earlier Frame shows the Action that made it, read-only (still selectable to copy). -->
             <textarea
               v-if="viewingOlder"
               :value="shown!.action ?? ''"
               class="h-24 flex-1 cursor-default resize-none rounded-lg border border-dashed border-line bg-canvas p-3 text-muted"
-              placeholder="The Opening Turn has no Action."
+              placeholder="The Opening Frame has no Action."
               readonly
-              :aria-label="`The Action sent on ${turnName(shown!.index)}`"
+              :aria-label="`The Action sent on ${frameName(shown!.index)}`"
               data-past-action
             />
             <textarea
@@ -548,16 +548,16 @@ const promptDiff = computed(() => {
             </button>
             <p
               class="min-w-0 flex-1 truncate text-sm text-danger"
-              :title="turnError"
+              :title="frameError"
               role="alert"
             >
-              {{ turnError }}
+              {{ frameError }}
             </p>
             <button
               type="button"
               class="rounded-lg border border-line px-3 py-2 text-sm disabled:opacity-50"
               :disabled="!canUndo || undoing"
-              title="Undo the latest Turn and put its Action back in the box"
+              title="Undo the latest Frame and put its Action back in the box"
               @click="undo"
             >
               Undo
@@ -567,11 +567,11 @@ const promptDiff = computed(() => {
 
       </main>
 
-      <!-- Narrow windows: Turn Log and Prompt as tabs. From xl up: side by side, tabs hidden. -->
+      <!-- Narrow windows: Frames and Prompt as tabs. From xl up: side by side, tabs hidden. -->
       <aside class="flex w-80 flex-col border-l border-line xl:w-auto xl:flex-row">
         <div role="tablist" class="flex border-b border-line text-sm xl:hidden">
           <button
-            v-for="tab in [{ id: 'log', label: 'Turn Log' }, { id: 'prompt', label: 'Prompt' }] as const"
+            v-for="tab in [{ id: 'log', label: 'Frames' }, { id: 'prompt', label: 'Prompt' }] as const"
             :key="tab.id"
             type="button"
             role="tab"
@@ -589,49 +589,49 @@ const promptDiff = computed(() => {
           data-log-panel
         >
           <h2 class="hidden border-b border-line px-4 py-2 text-sm font-medium xl:block">
-            Turn Log
+            Frames
           </h2>
           <ol ref="log" class="flex-1 overflow-y-auto" role="tabpanel">
-          <li v-for="turn in session.turns" :key="turn.index" class="group relative">
+          <li v-for="frame in session.frames" :key="frame.index" class="group relative">
             <button
               type="button"
               class="flex w-full gap-3 border-b border-line p-3 text-left text-sm hover:bg-surface"
-              :class="{ 'bg-surface': shown?.index === turn.index }"
-              :aria-current="shown?.index === turn.index"
-              data-turn
-              @click="viewing = turn.index === session.turns.length - 1 ? null : turn.index"
+              :class="{ 'bg-surface': shown?.index === frame.index }"
+              :aria-current="shown?.index === frame.index"
+              data-frame
+              @click="viewing = frame.index === session.frames.length - 1 ? null : frame.index"
             >
               <img
-                :src="imageUrl(session.id, turn.image)"
+                :src="imageUrl(session.id, frame.image)"
                 alt=""
                 class="h-20 w-14 shrink-0 rounded object-cover"
               />
               <span class="flex min-w-0 flex-col gap-1">
-                <span class="font-medium">{{ turn.action ?? 'Opening' }}</span>
+                <span class="font-medium">{{ frame.action ?? 'Opening' }}</span>
                 <span
-                  v-if="OUTCOME_LABELS[turn.outcome]"
+                  v-if="OUTCOME_LABELS[frame.outcome]"
                   class="text-xs font-medium"
-                  :class="turn.outcome === 'declined' ? 'text-warn' : 'text-info'"
+                  :class="frame.outcome === 'declined' ? 'text-warn' : 'text-info'"
                 >
-                  {{ OUTCOME_LABELS[turn.outcome] }}
+                  {{ OUTCOME_LABELS[frame.outcome] }}
                 </span>
                 <span
                   class="line-clamp-3 text-muted"
                   :class="{
-                    'text-warn': turn.outcome === 'declined',
-                    'text-info': turn.outcome === 'unclear',
+                    'text-warn': frame.outcome === 'declined',
+                    'text-info': frame.outcome === 'unclear',
                   }"
                 >
-                  {{ turn.narration }}
+                  {{ frame.narration }}
                 </span>
               </span>
             </button>
             <button
-              v-if="canUndo && turn.index === session.turns.at(-1)?.index"
+              v-if="canUndo && frame.index === session.frames.at(-1)?.index"
               type="button"
               class="absolute right-2 top-2 rounded border border-line bg-canvas px-2 py-0.5 text-xs text-muted opacity-0 hover:text-fg focus:opacity-100 group-hover:opacity-100 disabled:opacity-50"
               :disabled="undoing"
-              title="Undo this Turn"
+              title="Undo this Frame"
               data-undo
               @click="undo"
             >
@@ -639,7 +639,7 @@ const promptDiff = computed(() => {
             </button>
           </li>
           <li v-if="busy" class="p-3 text-sm italic text-muted">
-            {{ pending?.detached ? 'A Turn in progress' : draft.trim() || 'Opening' }} —
+            {{ pending?.detached ? 'A Frame in progress' : draft.trim() || 'Opening' }} —
             {{ phaseLabel }}
           </li>
           </ol>
@@ -656,7 +656,7 @@ const promptDiff = computed(() => {
           <div class="flex-1 overflow-y-auto p-4 text-sm" role="tabpanel">
           <template v-if="shown">
             <p class="text-muted" :class="shown.timings ? 'mb-1' : 'mb-3'">
-              Turn {{ shown.index }} · {{ shown.action ?? 'Opening' }}
+              Frame {{ shown.index }} · {{ shown.action ?? 'Opening' }}
             </p>
             <p v-if="shown.timings" class="mb-3 text-xs text-muted" data-timings>
               {{ timingsLabel(shown.timings) }}
@@ -676,7 +676,7 @@ const promptDiff = computed(() => {
                 <template v-if="!removedHidden">
                   and <span class="text-danger line-through">removed</span>
                 </template>
-                since Turn {{ shown.index - 1 }}. Rendered with "adult," in front.
+                since Frame {{ shown.index - 1 }}. Rendered with "adult," in front.
               </p>
             </div>
             <p class="leading-relaxed" data-prompt>
@@ -695,7 +695,7 @@ const promptDiff = computed(() => {
             </p>
             <details v-if="shown.thinking" :key="`thinking-${shown.index}`" class="mt-4 text-muted">
               <summary class="cursor-pointer select-none">Thinking</summary>
-              <p class="mt-1 whitespace-pre-line text-xs leading-relaxed" data-turn-thinking>
+              <p class="mt-1 whitespace-pre-line text-xs leading-relaxed" data-frame-thinking>
                 {{ shown.thinking }}
               </p>
             </details>

@@ -6,8 +6,10 @@ in [CONTEXT.md](../CONTEXT.md). The reasoning behind the bigger choices is in [a
 
 ## What it is
 
-A turn-based text-to-image prompt generator. A **Scenario** file describes a starting image. The
-player starts a **Session** from it and plays **Turns**: each Turn, the player writes an
+A text-to-image prompt generator. Every Session is currently a **Chain**: each Frame is made
+from the previous one by an Action (Storyboards, which plan all their Frames together, are being
+built). A **Scenario** file describes a starting image. The
+player starts a **Session** from it and plays **Frames**: each Frame, the player writes an
 **Action** (what to change), the **Text Model** edits the **Image Prompt**, and the **Image
 Model** renders it. There is no score and no end; a Session lasts until it's deleted.
 
@@ -19,7 +21,7 @@ cross ([ADR 0002](adr/0002-guardrails-enforced-by-the-engine.md)).
 
 The first Scenario is a studio photoshoot with Maya, a fictional fitness model.
 
-## The Turn loop
+## The Frame loop
 
 ```
 Action ──► Limits check (term list; a real-person question if it names someone)
@@ -29,66 +31,66 @@ current Image Prompt + Action ──► Text Model (Ollama) ──► { outcome,
                                                               │
      engine: declined / unclear / Limit crossed / unchanged? keep the previous prompt and image
                                                               │
-                  "adult, " + the paragraph ──► Image Model (mflux) ──► turn-N-xxxx.png
+                  "adult, " + the paragraph ──► Image Model (mflux) ──► frame-N-xxxx.png
                                                               │
-                                        commit: append the Turn to session.json
+                                        commit: append the Frame to session.json
 ```
 
 1. **Limits on the Action.** The Action is checked against the Limits' term list before the Text
    Model is asked. An Action that looks like it names someone (a capitalised full name, "look
    like", "resemble"; names inside a style clause such as "in the style of Michelangelo" don't
    count) also gets a narrow yes/no question to the Text Model about real people. A
-   crossed Limit declines the Turn at once: the Narration names the Limit.
+   crossed Limit declines the Frame at once: the Narration names the Limit.
 2. **Text step.** The system message is the engine's rules (the nine sentences and what each
    covers; rewrite only the affected sentences and copy the rest word for word; remove whatever
-   a change contradicts; the Limits; the reply format), then the Scenario's notes, plus its **Setup** on the Opening Turn
+   a change contradicts; the Limits; the reply format), then the Scenario's notes, plus its **Setup** on the Opening Frame
    only. The user message is **only** the current Image Prompt and the Action; the Text Model
-   never sees earlier Turns ([ADR 0001](adr/0001-scene-is-sole-turn-state.md)). The reply is
+   never sees earlier Frames ([ADR 0001](adr/0001-scene-is-sole-frame-state.md)). The reply is
    constrained by a JSON schema (Ollama's `format`), with `outcome` (`done`, `declined` or
    `unclear`) first, so the model decides before it writes. The Narration is a terse list of what
    changed ("Pose: crouching low. Environment: teal backdrop."). Ollama's reply is streamed. With
    **Thinking** on (a Setting, for models that support it) the model reasons first; its
-   reasoning streams to the player and is saved with the Turn. Models that can't think are asked
+   reasoning streams to the player and is saved with the Frame. Models that can't think are asked
    again without it.
 3. **Retry and limits on the call.** An unusable reply (bad JSON, an empty prompt, or
-   one cut off by the length cap) is retried once, then the Turn fails. Every Text Model call has
+   one cut off by the length cap) is retried once, then the Frame fails. Every Text Model call has
    a token cap (2,048 tokens; 12,288 with thinking; 32 for the real-person question) and a time
    limit (2 minutes; 10 with thinking; 30 s for the real-person question). Small models writing
    JSON under a schema occasionally never stop, padding with whitespace; without the caps one
    such reply blocked Ollama, and every later request behind it, for 14 minutes.
 4. **Engine rules** ([ADR 0002](adr/0002-guardrails-enforced-by-the-engine.md)):
-   - The new Image Prompt is checked against the Limits too; crossing one declines the Turn.
-   - A **Declined Turn** or an **Unclear Turn** keeps the previous Image Prompt and image,
+   - The new Image Prompt is checked against the Limits too; crossing one declines the Frame.
+   - A **Declined Frame** or an **Unclear Frame** keeps the previous Image Prompt and image,
      whatever the model returned, and renders nothing.
-   - A done Turn whose Image Prompt came back unchanged also reuses the previous image.
-   - The Opening Turn always counts as done; if its prompt crosses a Limit, it fails.
+   - A done Frame whose Image Prompt came back unchanged also reuses the previous image.
+   - The Opening Frame always counts as done; if its prompt crosses a Limit, it fails.
    - The text rendered is `adult, ` followed by the paragraph.
 5. **Image step.** Images render one at a time across all Sessions: if another Session is
-   rendering, this Turn waits in a queue (shown as "Waiting for another render…", and
+   rendering, this Frame waits in a queue (shown as "Waiting for another render…", and
    cancellable). Then the mflux CLI renders the image with the Session's seed and settings. Its
    step counter is streamed to the player as progress
    ([ADR 0004](adr/0004-images-from-the-mflux-cli.md)).
-6. **Commit.** The Turn is appended to `session.json`.
+6. **Commit.** The Frame is appended to `session.json`.
 
 ### All or nothing
 
-A Turn commits whole or not at all ([ADR 0003](adr/0003-turns-are-all-or-nothing.md)):
+A Frame commits whole or not at all ([ADR 0003](adr/0003-frames-are-all-or-nothing.md)):
 
 | What happens | Result |
 |---|---|
-| Text Model fails twice | Turn fails; Image Prompt unchanged; the Action stays in the text box |
-| Image Model fails | Turn fails; Image Prompt unchanged; any partial image is deleted |
+| Text Model fails twice | Frame fails; Image Prompt unchanged; the Action stays in the text box |
+| Image Model fails | Frame fails; Image Prompt unchanged; any partial image is deleted |
 | Player presses **Cancel** | Ollama request aborted, mflux process killed; Image Prompt unchanged |
-| Opening Turn fails or is cancelled | The Session is discarded; back Home with the error |
+| Opening Frame fails or is cancelled | The Session is discarded; back Home with the error |
 
-While a Turn runs, the new Narration is shown **provisionally** (dimmed) as soon as the Text
+While a Frame runs, the new Narration is shown **provisionally** (dimmed) as soon as the Text
 Model returns, with "Rendering the image… step 2 of 4" beneath it. It becomes real only when the image
 arrives.
 
-Only one Turn runs per Session at a time; the server refuses a second with `409`. Turns, Undo and
+Only one Frame runs per Session at a time; the server refuses a second with `409`. Frames, Undo and
 deleting a Session all take a per-Session lock *before* reading the Session, so two requests can
 never act on the same Session at once (e.g. two tabs sending at the same moment, or an Undo
-racing a Turn).
+racing a Frame).
 
 ## Consistency
 
@@ -100,37 +102,37 @@ racing a Turn).
   never changes the Image Model, seed or size of a running Session. Changes apply from the next
   Session.
 
-In testing, FLUX.2 Klein 4B keeps Maya's face, hair and outfit consistent across Turns. Z-Image
+In testing, FLUX.2 Klein 4B keeps Maya's face, hair and outfit consistent across Frames. Z-Image
 Turbo ignores her described appearance. If drift becomes a problem, see *edit-based rendering*
 in [open-threads.md](open-threads.md).
 
 ## Screens
 
 - **Home** (`/`, also reached by clicking **RPG**): **Your Sessions**, one card per saved
-  Session, newest first: the latest image, the Scenario, the Turn count, when it was last played,
-  and what a running Turn is doing ("Writing…", "Waiting to render…", "Rendering…"; the list
+  Session, newest first: the latest image, the Scenario, the Frame count, when it was last played,
+  and what a running Frame is doing ("Writing…", "Waiting to render…", "Rendering…"; the list
   refreshes every 2 s while anything runs). Hovering a card shows **Delete**, which asks for
-  confirmation and is disabled while that Session has a Turn running. Below, **Start a new
+  confirmation and is disabled while that Session has a Frame running. Below, **Start a new
   Session**: Scenario cards (a lone Scenario is preselected), a report of any Scenario files that
   failed to load, and the current Text and Image Models. Start is blocked, with the reason shown,
   if no Text Model is set or the chosen one is no longer installed.
 - **Session** (`/sessions/:id`): the image fills everything above a fixed-height text box, so
   it never resizes as the text changes. The Narration is a caption over the bottom of the photo
-  (provisional text shows dimmed and in italics while a Turn runs); the caption can be hidden,
-  and that choice is remembered per browser. The Turn's status ("Rendering the image… step 2 of 4") is a
-  pill in the image's top corner. Enter sends; Shift+Enter adds a new line. A done Turn clears the text box; a declined or
-  unclear one leaves your Action there to reword. While a Turn runs,
-  the text box is locked and **Cancel** replaces **Send**; a failed Turn's error shows in the
+  (provisional text shows dimmed and in italics while a Frame runs); the caption can be hidden,
+  and that choice is remembered per browser. The Frame's status ("Rendering the image… step 2 of 4") is a
+  pill in the image's top corner. Enter sends; Shift+Enter adds a new line. A done Frame clears the text box; a declined or
+  unclear one leaves your Action there to reword. While a Frame runs,
+  the text box is locked and **Cancel** replaces **Send**; a failed Frame's error shows in the
   button row. Typed text is always treated as an Action; there are no typed commands.
   The right side has two panels: side by side on wide windows (1280 px and up), as tabs on
-  narrower ones. **Turn Log** shows a thumbnail, the Action and the Narration per
-  Turn; clicking one shows that Turn. While an earlier Turn is shown, a pill on the image reads
-  "Viewing Turn 1 of 4 · Back to latest", and the text box shows the Action that made that
-  Turn, read-only (still selectable, to copy), with Send disabled; "Back to latest" brings your
-  draft back. Actions always build on the latest Turn, never on the one being viewed. Declined Turns are labelled and tinted amber, Unclear
-  Turns ("Didn't understand") blue, both in the log and on the caption. **Prompt** shows the
-  viewed Turn's timings ("Text 9.8 s · Waited 12.3 s · Image 5.1 s", or "Image reused"; also
-  saved per Turn in `session.json`), its Image Prompt as a word-level diff against the Turn before it (added words
+  narrower ones. **Frames list** shows a thumbnail, the Action and the Narration per
+  Frame; clicking one shows that Frame. While an earlier Frame is shown, a pill on the image reads
+  "Viewing Frame 1 of 4 · Back to latest", and the text box shows the Action that made that
+  Frame, read-only (still selectable, to copy), with Send disabled; "Back to latest" brings your
+  draft back. Actions always build on the latest Frame, never on the one being viewed. Declined Frames are labelled and tinted amber, Unclear
+  Frames ("Didn't understand") blue, both in the log and on the caption. **Prompt** shows the
+  viewed Frame's timings ("Text 9.8 s · Waited 12.3 s · Image 5.1 s", or "Image reused"; also
+  saved per Frame in `session.json`), its Image Prompt as a word-level diff against the Frame before it (added words
   highlighted, removed words struck through; a "Show removed words" switch hides the struck-out
   words, remembered per browser), then its thinking (collapsed, when there was any).
   While a thinking model reasons, the reasoning streams into the caption area under
@@ -138,23 +140,23 @@ in [open-threads.md](open-threads.md).
   reloading the page keeps you in the Session. While the Text Model writes the new prompt, a blue-to-violet light
   sweeps around the text box; while an image renders, the same light sweeps around the
   image frame's edge, sized to the image; while it waits in the render queue the sweep is slower
-  and dimmer. The image crossfades (700 ms) when a new Turn
-  arrives or another Turn is picked; the next image is preloaded first, so there is no blank
+  and dimmer. The image crossfades (700 ms) when a new Frame
+  arrives or another Frame is picked; the next image is preloaded first, so there is no blank
   frame.
 - **Navigation:** **RPG** leads Home; **Play** leads back to the Session opened last
   (remembered per browser), or Home when there is none. Up to five Session screens stay alive in
   memory while you visit Home, Settings or other Sessions, so each keeps its half-typed Action,
-  viewed Turn, tab and any running Turn. The unsent Action is also saved per Session in the
+  viewed Frame, tab and any running Frame. The unsent Action is also saved per Session in the
   browser, so it survives a reload. Returning to a Session re-checks it with the server (unless a
-  Turn is running there); a Session deleted meanwhile sends you Home. While a Session's Turn is
+  Frame is running there); a Session deleted meanwhile sends you Home. While a Session's Frame is
   **waiting in the render queue**, you can't leave that Session within the app either (links and
   Back are blocked) until it starts rendering or you cancel it. Reloading, closing the tab or leaving the
-  site drops the page's connection to a running Turn, which **cancels** it (the Action stays in
-  the text box, and a cancelled Opening Turn discards the Session); so while a Turn runs, the
-  browser asks "Leave site?" first. A Session screen that finds a Turn already running which it
+  site drops the page's connection to a running Frame, which **cancels** it (the Action stays in
+  the text box, and a cancelled Opening Frame discards the Session); so while a Frame runs, the
+  browser asks "Leave site?" first. A Session screen that finds a Frame already running which it
   didn't start (from another tab, or a screen that dropped out of memory) shows its progress with
   **Cancel** and follows it until it finishes. A Session in the background never navigates
-  on its own: if its Opening Turn fails there, you're taken Home with the reason when you return
+  on its own: if its Opening Frame fails there, you're taken Home with the reason when you return
   to it.
 - **Settings** (`/settings`): Text Model (installed Ollama models, minus OCR and dedicated
   vision-language models), Thinking (on or off; only for models that support it), Image Model, steps (reset to the model's default when the Image Model
@@ -163,11 +165,11 @@ in [open-threads.md](open-threads.md).
 - **Theme:** Light (a parchment tint), Dark or System, remembered per browser. It's a display
   preference, not a Setting.
 
-**Undo** removes the latest Turn: the previous Turn's Image Prompt is current again, its image is
-deleted unless an earlier Turn still shows it, and the undone Action goes back into the text
+**Undo** removes the latest Frame: the previous Frame's Image Prompt is current again, its image is
+deleted unless an earlier Frame still shows it, and the undone Action goes back into the text
 box (unless you've started typing a new one). It's offered in the button row and on the latest
-Turn in the Turn Log, never for the Opening Turn, and never while a Turn runs. Image files carry
-a random suffix, so a Turn made after an Undo never reuses the undone Turn's file name, and the
+Frame in the Frames list, never for the Opening Frame, and never while a Frame runs. Image files carry
+a random suffix, so a Frame made after an Undo never reuses the undone Frame's file name, and the
 browser can't show a stale cached image.
 
 There is no End or Reset. A Session is simply left and returned to; to start over, start a new
@@ -179,7 +181,7 @@ Session from Home, and delete old ones there.
 |---|---|---|
 | Settings | `settings.json` | Missing, corrupt or invalid → defaults; missing fields filled from defaults |
 | Scenarios | `scenarios/*.md` | Read fresh on every request, so edits need no restart |
-| Sessions | `sessions/<id>/session.json` + `turn-N-xxxxxxxx.png` | Id is `YYYYMMDD-HHMMSS-xxxx`; files are written to a temp file, then renamed |
+| Sessions | `sessions/<id>/session.json` + `frame-N-xxxxxxxx.png` | Id is `YYYYMMDD-HHMMSS-xxxx`; files are written to a temp file, then renamed |
 
 ## API
 
@@ -193,17 +195,17 @@ All under `/api`; the Vite dev server proxies it to the Deno server.
 | `GET /scenarios` | Scenario summaries plus files that failed to load |
 | `GET /sessions` | Session summaries, newest first, with each one's current activity |
 | `POST /sessions` | Start a Session from `{ scenarioId }` |
-| `DELETE /sessions/:id` | Delete a Session and its images (`409` while a Turn runs) |
-| `GET /sessions/:id` | A Session with its Turns, plus `activity`: what a running Turn is doing, or `null` |
-| `POST /sessions/:id/turns` | Run a Turn (`{ action }`, or `{}` for the Opening Turn) as a server-sent event stream |
-| `POST /sessions/:id/cancel` | Cancel the Turn in progress |
-| `DELETE /sessions/:id/turns/:index` | Undo the latest Turn; `:index` must name it (`409` otherwise, and for the Opening Turn or while a Turn runs) |
-| `GET /sessions/:id/images/:file` | A Turn's image |
+| `DELETE /sessions/:id` | Delete a Session and its images (`409` while a Frame runs) |
+| `GET /sessions/:id` | A Session with its Frames, plus `activity`: what a running Frame is doing, or `null` |
+| `POST /sessions/:id/frames` | Run a Frame (`{ action }`, or `{}` for the Opening Frame) as a server-sent event stream |
+| `POST /sessions/:id/cancel` | Cancel the Frame in progress |
+| `DELETE /sessions/:id/frames/:index` | Undo the latest Frame; `:index` must name it (`409` otherwise, and for the Opening Frame or while a Frame runs) |
+| `GET /sessions/:id/images/:file` | A Frame's image |
 
-A Turn's stream emits `phase` (`text`, then `queued` if another Session is rendering, then
+A Frame's stream emits `phase` (`text`, then `queued` if another Session is rendering, then
 `image`), `thinking` (reasoning chunks; `restart` when a retry begins afresh), `text` (the provisional Image Prompt and Narration),
 `progress` (image steps), then exactly one of `committed`, `failed` or `cancelled`.
-`sessionDiscarded` on the last two tells the client that an Opening Turn took the Session with it.
+`sessionDiscarded` on the last two tells the client that an Opening Frame took the Session with it.
 
 ## Stack
 
@@ -221,19 +223,19 @@ The design Q&A, and what changed later.
 | Goal | Open sandbox; no scoring | — |
 | Backend | Deno HTTP server; Vite proxies `/api` | — |
 | Images | mflux CLI per image, behind `ImageGenerator` | Downloads blocked (ADR 0004) |
-| Turn state | The Scene only, no history (ADR 0001) | The Image Prompt: one paragraph of nine sentences (ADR 0005) |
+| Frame state | The Scene only, no history (ADR 0001) | The Image Prompt: one paragraph of nine sentences (ADR 0005) |
 | Text Model output | One JSON call | `{ outcome, narration, prompt }`, the prompt as one paragraph |
 | Settings | Server-side `settings.json`; apply from the next Session | Small sizes added |
-| Side panel | Turn Log with thumbnails; End/Reset as buttons only | End and Reset removed; Sessions are listed, opened and deleted on Home |
-| Several Sessions rendering | Queue images one at a time across Sessions | A queued Turn keeps you in its Session |
+| Side panel | Frames list with thumbnails; End/Reset as buttons only | End and Reset removed; Sessions are listed, opened and deleted on Home |
+| Several Sessions rendering | Queue images one at a time across Sessions | A queued Frame keeps you in its Session |
 | What an Action can change | Pose, camera, lighting, set, per Scenario | Anything in the prompt, within the four Limits |
 | Limits | Per-Scenario brief, character refusals | Four engine Limits: term list + real-person check (ADR 0002) |
 | Narration | Character prose | A terse list of what changed |
-| Every Turn renders | Yes; no separate "take the shot" | — |
+| Every Frame renders | Yes; no separate "take the shot" | — |
 | Subject consistency | Fixed description + fixed seed; edit-based rendering deferred | — |
 | Failures | All or nothing (ADR 0003) | — |
 | Waiting | Show text first, then the image, over SSE | Step progress added |
-| During a Turn | Text box locked; Cancel button | — |
+| During a Frame | Text box locked; Cancel button | — |
 | Scenario format | Markdown with YAML frontmatter in `scenarios/` | — |
 | Persistence | Sessions saved to disk; resume UI deferred | — |
 | Toolchain | Deno for everything | `vue-tsc` runs on Node |

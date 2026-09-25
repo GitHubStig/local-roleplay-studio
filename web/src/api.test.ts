@@ -5,7 +5,7 @@ import {
   getHealth,
   saveSettings,
   type Settings,
-  streamTurn,
+  streamFrame,
 } from './api'
 
 afterEach(() => vi.unstubAllGlobals())
@@ -72,7 +72,7 @@ describe('createSseParser', () => {
   })
 })
 
-describe('streamTurn', () => {
+describe('streamFrame', () => {
   const sse = (...events: object[]) =>
     new Response(events.map((e) => `event: x\ndata: ${JSON.stringify(e)}\n\n`).join(''))
 
@@ -82,10 +82,10 @@ describe('streamTurn', () => {
     )
     vi.stubGlobal('fetch', fetch)
     const events: unknown[] = []
-    await streamTurn('s1', 'Sit', (e) => events.push(e))
+    await streamFrame('s1', 'Sit', (e) => events.push(e))
     expect(events).toHaveLength(2)
     expect(fetch).toHaveBeenCalledWith(
-      '/api/sessions/s1/turns',
+      '/api/sessions/s1/frames',
       expect.objectContaining({ body: '{"action":"Sit"}' }),
     )
   })
@@ -93,15 +93,17 @@ describe('streamTurn', () => {
   it('reports a stream that ends without a final event', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => sse({ type: 'phase', phase: 'text' })))
     const events: { type: string }[] = []
-    await streamTurn('s1', null, (e) => events.push(e))
+    await streamFrame('s1', null, (e) => events.push(e))
     expect(events.at(-1)?.type).toBe('failed')
   })
 
-  it('throws when the server refuses the Turn', async () => {
+  it('throws when the server refuses the Frame', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () => Response.json({ error: 'A Turn is already in progress' }, { status: 409 })),
+      vi.fn(async () =>
+        Response.json({ error: 'A Frame is already in progress' }, { status: 409 })
+      ),
     )
-    await expect(streamTurn('s1', 'Sit', () => {})).rejects.toThrow('already in progress')
+    await expect(streamFrame('s1', 'Sit', () => {})).rejects.toThrow('already in progress')
   })
 })

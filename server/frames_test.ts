@@ -10,28 +10,29 @@ import {
   testScenario,
   withTempDir,
 } from './testing.ts'
-import { runTurn, type TurnEvent, UndoError, undoLatestTurn } from './turns.ts'
+import { type FrameEvent, runChainFrame, UndoError, undoLatestFrame } from './frames.ts'
 import { RenderQueue } from './renderQueue.ts'
 import { renderPrompt } from './imagePrompt.ts'
 
 const newSession = (): Session => ({
   id: 's1',
+  kind: 'chain',
   scenarioId: 'test',
   settings: { ...DEFAULT_SETTINGS, textModel: 'fake' },
   seed: 7,
   createdAt: '2026-09-24T00:00:00.000Z',
-  turns: [],
+  frames: [],
 })
 
 const signal = () => new AbortController().signal
 
-Deno.test('runTurn commits the Opening Turn with prefixed image prompt', () =>
+Deno.test('runChainFrame commits the Opening Frame with prefixed image prompt', () =>
   withTempDir(async (root) => {
     const store = dirSessionStore(root)
     const images = fakeImageGenerator()
     const session = newSession()
-    const events: TurnEvent[] = []
-    const turn = await runTurn(
+    const events: FrameEvent[] = []
+    const frame = await runChainFrame(
       { store, textModel: scriptedTextModel([reply('standing')]), imageGenerator: images },
       session,
       testScenario,
@@ -39,17 +40,17 @@ Deno.test('runTurn commits the Opening Turn with prefixed image prompt', () =>
       (e) => events.push(e),
       signal(),
     )
-    assertEquals(turn.index, 0)
-    assertMatch(turn.image, /^turn-0-[0-9a-f]{8}\.png$/)
+    assertEquals(frame.index, 0)
+    assertMatch(frame.image, /^frame-0-[0-9a-f]{8}\.png$/)
     assertEquals(images.prompts, [renderPrompt(promptWith('standing'))])
     assertEquals(events.map((e) => e.type), ['phase', 'text', 'phase', 'committed'])
-    assertEquals((await store.load('s1'))?.turns.length, 1)
+    assertEquals((await store.load('s1'))?.frames.length, 1)
   }))
 
-Deno.test('runTurn retries a failed Text Model reply once', () =>
+Deno.test('runChainFrame retries a failed Text Model reply once', () =>
   withTempDir(async (root) => {
     const textModel = scriptedTextModel([new Error('bad JSON'), reply('standing')])
-    const turn = await runTurn(
+    const frame = await runChainFrame(
       { store: dirSessionStore(root), textModel, imageGenerator: fakeImageGenerator() },
       newSession(),
       testScenario,
@@ -58,17 +59,17 @@ Deno.test('runTurn retries a failed Text Model reply once', () =>
       signal(),
     )
     assertEquals(textModel.calls, 2)
-    assertEquals(turn.prompt, promptWith('standing'))
+    assertEquals(frame.prompt, promptWith('standing'))
   }))
 
-Deno.test('runTurn gives up after the retry and leaves the Session untouched', () =>
+Deno.test('runChainFrame gives up after the retry and leaves the Session untouched', () =>
   withTempDir(async (root) => {
     const store = dirSessionStore(root)
     const session = newSession()
     await store.save(session)
     await assertRejects(
       () =>
-        runTurn(
+        runChainFrame(
           {
             store,
             textModel: scriptedTextModel([new Error('one'), new Error('two')]),
@@ -83,10 +84,10 @@ Deno.test('runTurn gives up after the retry and leaves the Session untouched', (
       Error,
       'two',
     )
-    assertEquals((await store.load('s1'))?.turns, [])
+    assertEquals((await store.load('s1'))?.frames, [])
   }))
 
-Deno.test('runTurn keeps the previous Scene and image when a Direction is declined', () =>
+Deno.test('runChainFrame keeps the previous Scene and image when a Direction is declined', () =>
   withTempDir(async (root) => {
     const store = dirSessionStore(root)
     const images = fakeImageGenerator()
@@ -96,8 +97,8 @@ Deno.test('runTurn keeps the previous Scene and image when a Direction is declin
       reply('something else', { outcome: 'declined', narration: 'She declines.' }),
     ])
     const deps = { store, textModel, imageGenerator: images }
-    await runTurn(deps, session, testScenario, null, () => {}, signal())
-    const turn = await runTurn(
+    await runChainFrame(deps, session, testScenario, null, () => {}, signal())
+    const frame = await runChainFrame(
       deps,
       session,
       testScenario,
@@ -105,21 +106,21 @@ Deno.test('runTurn keeps the previous Scene and image when a Direction is declin
       () => {},
       signal(),
     )
-    assertEquals(turn.outcome, 'declined')
-    assertEquals(turn.prompt, promptWith('standing'))
-    assertEquals(turn.image, session.turns[0].image)
-    assertEquals(turn.narration, 'She declines.')
+    assertEquals(frame.outcome, 'declined')
+    assertEquals(frame.prompt, promptWith('standing'))
+    assertEquals(frame.image, session.frames[0].image)
+    assertEquals(frame.narration, 'She declines.')
     assertEquals(images.prompts.length, 1)
   }))
 
-Deno.test('runTurn rolls back when the image fails', () =>
+Deno.test('runChainFrame rolls back when the image fails', () =>
   withTempDir(async (root) => {
     const store = dirSessionStore(root)
     const session = newSession()
     await store.save(session)
     await assertRejects(
       () =>
-        runTurn(
+        runChainFrame(
           {
             store,
             textModel: scriptedTextModel([reply('standing')]),
@@ -134,17 +135,17 @@ Deno.test('runTurn rolls back when the image fails', () =>
       Error,
       'mflux crashed',
     )
-    assertEquals(session.turns, [])
-    assertEquals((await store.load('s1'))?.turns, [])
+    assertEquals(session.frames, [])
+    assertEquals((await store.load('s1'))?.frames, [])
   }))
 
-Deno.test('runTurn aborted mid-image removes nothing committed', () =>
+Deno.test('runChainFrame aborted mid-image removes nothing committed', () =>
   withTempDir(async (root) => {
     const store = dirSessionStore(root)
     const session = newSession()
     await store.save(session)
     const controller = new AbortController()
-    const run = runTurn(
+    const run = runChainFrame(
       {
         store,
         textModel: scriptedTextModel([reply('standing')]),
@@ -159,12 +160,12 @@ Deno.test('runTurn aborted mid-image removes nothing committed', () =>
       controller.signal,
     )
     await assertRejects(() => run)
-    assertEquals((await store.load('s1'))?.turns, [])
+    assertEquals((await store.load('s1'))?.frames, [])
     const files = await Array.fromAsync(Deno.readDir(join(root, 's1')))
     assertEquals(files.map((f) => f.name), ['session.json'])
   }))
 
-Deno.test('runTurn keeps the Scene and image when an Action is unclear', () =>
+Deno.test('runChainFrame keeps the Scene and image when an Action is unclear', () =>
   withTempDir(async (root) => {
     const images = fakeImageGenerator()
     const session = newSession()
@@ -173,9 +174,9 @@ Deno.test('runTurn keeps the Scene and image when an Action is unclear', () =>
       reply('invented pose', { outcome: 'unclear', narration: 'Sorry, what do you mean?' }),
     ])
     const deps = { store: dirSessionStore(root), textModel, imageGenerator: images }
-    await runTurn(deps, session, testScenario, null, () => {}, signal())
-    const events: TurnEvent[] = []
-    const turn = await runTurn(
+    await runChainFrame(deps, session, testScenario, null, () => {}, signal())
+    const events: FrameEvent[] = []
+    const frame = await runChainFrame(
       deps,
       session,
       testScenario,
@@ -183,14 +184,14 @@ Deno.test('runTurn keeps the Scene and image when an Action is unclear', () =>
       (e) => events.push(e),
       signal(),
     )
-    assertEquals(turn.outcome, 'unclear')
-    assertEquals(turn.prompt, promptWith('standing'))
-    assertEquals(turn.image, session.turns[0].image)
+    assertEquals(frame.outcome, 'unclear')
+    assertEquals(frame.prompt, promptWith('standing'))
+    assertEquals(frame.image, session.frames[0].image)
     assertEquals(images.prompts.length, 1)
     assertEquals(events.map((e) => e.type), ['phase', 'text', 'committed'])
   }))
 
-Deno.test('runTurn skips rendering when a done Action leaves the Scene unchanged', () =>
+Deno.test('runChainFrame skips rendering when a done Action leaves the Scene unchanged', () =>
   withTempDir(async (root) => {
     const images = fakeImageGenerator()
     const session = newSession()
@@ -199,16 +200,23 @@ Deno.test('runTurn skips rendering when a done Action leaves the Scene unchanged
       textModel: scriptedTextModel([reply('standing'), reply('standing')]),
       imageGenerator: images,
     }
-    await runTurn(deps, session, testScenario, null, () => {}, signal())
-    const turn = await runTurn(deps, session, testScenario, 'Lean on the wall', () => {}, signal())
-    assertEquals(turn.outcome, 'done')
-    assertEquals(turn.image, session.turns[0].image)
+    await runChainFrame(deps, session, testScenario, null, () => {}, signal())
+    const frame = await runChainFrame(
+      deps,
+      session,
+      testScenario,
+      'Lean on the wall',
+      () => {},
+      signal(),
+    )
+    assertEquals(frame.outcome, 'done')
+    assertEquals(frame.image, session.frames[0].image)
     assertEquals(images.prompts.length, 1)
   }))
 
-Deno.test('runTurn treats the Opening Turn as done whatever the Text Model says', () =>
+Deno.test('runChainFrame treats the Opening Frame as done whatever the Text Model says', () =>
   withTempDir(async (root) => {
-    const turn = await runTurn(
+    const frame = await runChainFrame(
       {
         store: dirSessionStore(root),
         textModel: scriptedTextModel([reply('standing', { outcome: 'unclear' })]),
@@ -220,11 +228,11 @@ Deno.test('runTurn treats the Opening Turn as done whatever the Text Model says'
       () => {},
       signal(),
     )
-    assertEquals(turn.outcome, 'done')
-    assertMatch(turn.image, /^turn-0-[0-9a-f]{8}\.png$/)
+    assertEquals(frame.outcome, 'done')
+    assertMatch(frame.image, /^frame-0-[0-9a-f]{8}\.png$/)
   }))
 
-async function sessionWithTurns(root: string, replies: ReturnType<typeof reply>[]) {
+async function sessionWithFrames(root: string, replies: ReturnType<typeof reply>[]) {
   const store = dirSessionStore(root)
   const session = newSession()
   const deps = {
@@ -233,9 +241,9 @@ async function sessionWithTurns(root: string, replies: ReturnType<typeof reply>[
     textModel: scriptedTextModel([...replies]),
     imageGenerator: fakeImageGenerator(),
   }
-  await runTurn(deps, session, testScenario, null, () => {}, signal())
+  await runChainFrame(deps, session, testScenario, null, () => {}, signal())
   for (let i = 1; i < replies.length; i++) {
-    await runTurn(deps, session, testScenario, `Action ${i}`, () => {}, signal())
+    await runChainFrame(deps, session, testScenario, `Action ${i}`, () => {}, signal())
   }
   return { store, session, deps }
 }
@@ -243,63 +251,63 @@ async function sessionWithTurns(root: string, replies: ReturnType<typeof reply>[
 const imageExists = (root: string, file: string) =>
   Deno.stat(join(root, 's1', file)).then(() => true, () => false)
 
-Deno.test('undoLatestTurn restores the previous Scene and deletes the image', () =>
+Deno.test('undoLatestFrame restores the previous Scene and deletes the image', () =>
   withTempDir(async (root) => {
-    const { store, session } = await sessionWithTurns(root, [reply('standing'), reply('sitting')])
-    const undone = session.turns[1]
-    const updated = await undoLatestTurn(store, session, 1)
-    assertEquals(updated.turns.map((t) => t.prompt), [promptWith('standing')])
-    assertEquals((await store.load('s1'))?.turns.length, 1)
+    const { store, session } = await sessionWithFrames(root, [reply('standing'), reply('sitting')])
+    const undone = session.frames[1]
+    const updated = await undoLatestFrame(store, session, 1)
+    assertEquals(updated.frames.map((t) => t.prompt), [promptWith('standing')])
+    assertEquals((await store.load('s1'))?.frames.length, 1)
     assertEquals(await imageExists(root, undone.image), false)
-    assertEquals(await imageExists(root, session.turns[0].image), true)
+    assertEquals(await imageExists(root, session.frames[0].image), true)
   }))
 
-Deno.test('undoLatestTurn keeps an image a remaining Turn still shows', () =>
+Deno.test('undoLatestFrame keeps an image a remaining Frame still shows', () =>
   withTempDir(async (root) => {
-    const { store, session } = await sessionWithTurns(root, [
+    const { store, session } = await sessionWithFrames(root, [
       reply('standing'),
       reply('x', { outcome: 'declined' }),
     ])
-    assertEquals(session.turns[1].image, session.turns[0].image)
-    await undoLatestTurn(store, session, 1)
-    assertEquals(await imageExists(root, session.turns[0].image), true)
+    assertEquals(session.frames[1].image, session.frames[0].image)
+    await undoLatestFrame(store, session, 1)
+    assertEquals(await imageExists(root, session.frames[0].image), true)
   }))
 
-Deno.test('undoLatestTurn refuses anything but the latest Turn, and the Opening Turn', () =>
+Deno.test('undoLatestFrame refuses anything but the latest Frame, and the Opening Frame', () =>
   withTempDir(async (root) => {
-    const { store, session } = await sessionWithTurns(root, [reply('standing'), reply('sitting')])
-    await assertRejects(() => undoLatestTurn(store, session, 0), UndoError, 'not the latest')
-    const updated = await undoLatestTurn(store, session, 1)
-    await assertRejects(() => undoLatestTurn(store, updated, 1), UndoError, 'not the latest')
-    await assertRejects(() => undoLatestTurn(store, updated, 0), UndoError, "can't be undone")
+    const { store, session } = await sessionWithFrames(root, [reply('standing'), reply('sitting')])
+    await assertRejects(() => undoLatestFrame(store, session, 0), UndoError, 'not the latest')
+    const updated = await undoLatestFrame(store, session, 1)
+    await assertRejects(() => undoLatestFrame(store, updated, 1), UndoError, 'not the latest')
+    await assertRejects(() => undoLatestFrame(store, updated, 0), UndoError, "can't be undone")
   }))
 
-Deno.test('a Turn after an Undo gets a fresh image name', () =>
+Deno.test('a Frame after an Undo gets a fresh image name', () =>
   withTempDir(async (root) => {
-    const { store, session, deps } = await sessionWithTurns(root, [
+    const { store, session, deps } = await sessionWithFrames(root, [
       reply('standing'),
       reply('sitting'),
     ])
-    const undoneImage = session.turns[1].image
-    const updated = await undoLatestTurn(store, session, 1)
+    const undoneImage = session.frames[1].image
+    const updated = await undoLatestFrame(store, session, 1)
     deps.textModel = scriptedTextModel([reply('kneeling')])
-    const redo = await runTurn(deps, updated, testScenario, 'Kneel', () => {}, signal())
+    const redo = await runChainFrame(deps, updated, testScenario, 'Kneel', () => {}, signal())
     assertEquals(redo.index, 1)
     assertNotEquals(redo.image, undoneImage)
   }))
 
-Deno.test('runTurn removes an image written just before the Turn was cancelled', () =>
+Deno.test('runChainFrame removes an image written just before the Frame was cancelled', () =>
   withTempDir(async (root) => {
     const store = dirSessionStore(root)
     const session = newSession()
     await store.save(session)
     const controller = new AbortController()
     await assertRejects(() =>
-      runTurn(
+      runChainFrame(
         {
           store,
           textModel: scriptedTextModel([reply('standing')]),
-          // Finishes writing, then the Turn is cancelled before the generator returns.
+          // Finishes writing, then the Frame is cancelled before the generator returns.
           imageGenerator: {
             async generate(req) {
               await Deno.writeTextFile(join(req.dir, `${req.name}.png`), 'png')
@@ -328,38 +336,52 @@ async function openedSession(
   const textModel = scriptedTextModel([reply('standing'), ...replies], realPeople)
   const images = fakeImageGenerator()
   const deps = { store: dirSessionStore(root), textModel, imageGenerator: images }
-  await runTurn(deps, session, testScenario, null, () => {}, signal())
+  await runChainFrame(deps, session, testScenario, null, () => {}, signal())
   return { session, textModel, images, deps }
 }
 
-Deno.test('runTurn declines an Action that crosses a limit without asking the Text Model', () =>
+Deno.test('runChainFrame declines an Action that crosses a limit without asking the Text Model', () =>
   withTempDir(async (root) => {
     const { session, textModel, images, deps } = await openedSession(root, [])
-    const turn = await runTurn(deps, session, testScenario, 'make her topless', () => {}, signal())
-    assertEquals(turn.outcome, 'declined')
-    assertEquals(turn.narration, 'Declined: no sexual or nude imagery.')
-    assertEquals(turn.prompt, promptWith('standing'))
-    assertEquals(textModel.calls, 1) // the Opening Turn only
+    const frame = await runChainFrame(
+      deps,
+      session,
+      testScenario,
+      'make her topless',
+      () => {},
+      signal(),
+    )
+    assertEquals(frame.outcome, 'declined')
+    assertEquals(frame.narration, 'Declined: no sexual or nude imagery.')
+    assertEquals(frame.prompt, promptWith('standing'))
+    assertEquals(textModel.calls, 1) // the Opening Frame only
     assertEquals(images.prompts.length, 1)
   }))
 
-Deno.test('runTurn declines a prompt the Text Model wrote across a limit', () =>
+Deno.test('runChainFrame declines a prompt the Text Model wrote across a limit', () =>
   withTempDir(async (root) => {
     const { session, deps } = await openedSession(root, [
       reply('kneeling', { prompt: `${promptWith('kneeling')} She is a 15 year old girl.` }),
     ])
-    const turn = await runTurn(deps, session, testScenario, 'make her younger', () => {}, signal())
-    assertEquals(turn.outcome, 'declined')
-    assertEquals(turn.narration, 'Declined: everyone depicted must be an adult.')
-    assertEquals(turn.prompt, promptWith('standing'))
-    assertEquals(turn.image, session.turns[0].image)
+    const frame = await runChainFrame(
+      deps,
+      session,
+      testScenario,
+      'make her younger',
+      () => {},
+      signal(),
+    )
+    assertEquals(frame.outcome, 'declined')
+    assertEquals(frame.narration, 'Declined: everyone depicted must be an adult.')
+    assertEquals(frame.prompt, promptWith('standing'))
+    assertEquals(frame.image, session.frames[0].image)
   }))
 
-Deno.test('runTurn fails an Opening Turn whose prompt crosses a limit', () =>
+Deno.test('runChainFrame fails an Opening Frame whose prompt crosses a limit', () =>
   withTempDir(async (root) => {
     await assertRejects(
       () =>
-        runTurn(
+        runChainFrame(
           {
             store: dirSessionStore(root),
             textModel: scriptedTextModel([
@@ -378,14 +400,14 @@ Deno.test('runTurn fails an Opening Turn whose prompt crosses a limit', () =>
     )
   }))
 
-Deno.test('runTurn asks about real people only when an Action might name one', () =>
+Deno.test('runChainFrame asks about real people only when an Action might name one', () =>
   withTempDir(async (root) => {
     const { session, textModel, deps } = await openedSession(
       root,
       [reply('crouching')],
       ['Serena Williams'],
     )
-    const declined = await runTurn(
+    const declined = await runChainFrame(
       deps,
       session,
       testScenario,
@@ -395,15 +417,15 @@ Deno.test('runTurn asks about real people only when an Action might name one', (
     )
     assertEquals(declined.outcome, 'declined')
     assertEquals(declined.narration, 'Declined: no real, identifiable people.')
-    const done = await runTurn(deps, session, testScenario, 'crouch low', () => {}, signal())
+    const done = await runChainFrame(deps, session, testScenario, 'crouch low', () => {}, signal())
     assertEquals(done.outcome, 'done')
     assertEquals(textModel.personChecks, ['make her look like Serena Williams'])
   }))
 
-Deno.test("runTurn streams the Text Model's thinking and saves it with the Turn", () =>
+Deno.test("runChainFrame streams the Text Model's thinking and saves it with the Frame", () =>
   withTempDir(async (root) => {
-    const events: TurnEvent[] = []
-    const turn = await runTurn(
+    const events: FrameEvent[] = []
+    const frame = await runChainFrame(
       {
         store: dirSessionStore(root),
         textModel: scriptedTextModel([reply('standing', { thinking: 'She should stand. Done.' })]),
@@ -420,12 +442,12 @@ Deno.test("runTurn streams the Text Model's thinking and saves it with the Turn"
       thinking.map((e) => e.type === 'thinking' && e.text).join(''),
       'She should stand. Done.',
     )
-    assertEquals(turn.thinking, 'She should stand. Done.')
+    assertEquals(frame.thinking, 'She should stand. Done.')
   }))
 
-Deno.test('runTurn marks thinking from a retry as a restart, and saves no thinking when off', () =>
+Deno.test('runChainFrame marks thinking from a retry as a restart, and saves no thinking when off', () =>
   withTempDir(async (root) => {
-    const events: TurnEvent[] = []
+    const events: FrameEvent[] = []
     const session = newSession()
     const deps = {
       store: dirSessionStore(root),
@@ -437,14 +459,14 @@ Deno.test('runTurn marks thinking from a retry as a restart, and saves no thinki
       imageGenerator: fakeImageGenerator(),
     }
     // The failed first attempt streamed nothing here, but the retry's first chunk says restart.
-    await runTurn(deps, session, testScenario, null, (e) => events.push(e), signal())
+    await runChainFrame(deps, session, testScenario, null, (e) => events.push(e), signal())
     const first = events.find((e) => e.type === 'thinking')
     assertEquals(first, { type: 'thinking', text: 'Second ', restart: true })
-    const plain = await runTurn(deps, session, testScenario, 'Sit', () => {}, signal())
+    const plain = await runChainFrame(deps, session, testScenario, 'Sit', () => {}, signal())
     assertEquals('thinking' in plain, false)
   }))
 
-Deno.test('runTurn records how long the text and image steps took', () =>
+Deno.test('runChainFrame records how long the text and image steps took', () =>
   withTempDir(async (root) => {
     const session = newSession()
     const images = fakeImageGenerator()
@@ -458,22 +480,22 @@ Deno.test('runTurn records how long the text and image steps took', () =>
         },
       },
     }
-    const opening = await runTurn(deps, session, testScenario, null, () => {}, signal())
+    const opening = await runChainFrame(deps, session, testScenario, null, () => {}, signal())
     assertEquals(typeof opening.timings!.text, 'number')
     assertEquals(opening.timings!.image! >= 0.1, true)
     assertEquals('queued' in opening.timings!, false)
 
     // Nothing changed, so the image is reused: no image time.
-    const reused = await runTurn(deps, session, testScenario, 'Stay', () => {}, signal())
+    const reused = await runChainFrame(deps, session, testScenario, 'Stay', () => {}, signal())
     assertEquals(reused.timings!.image, null)
   }))
 
-Deno.test('runTurn records time spent waiting for another render', () =>
+Deno.test('runChainFrame records time spent waiting for another render', () =>
   withTempDir(async (root) => {
     const queue = new RenderQueue()
     const release = await queue.acquire(new AbortController().signal)
     setTimeout(release, 150)
-    const turn = await runTurn(
+    const frame = await runChainFrame(
       {
         store: dirSessionStore(root),
         textModel: scriptedTextModel([reply('standing')]),
@@ -486,5 +508,5 @@ Deno.test('runTurn records time spent waiting for another render', () =>
       () => {},
       signal(),
     )
-    assertEquals(turn.timings!.queued! >= 0.1, true)
+    assertEquals(frame.timings!.queued! >= 0.1, true)
   }))

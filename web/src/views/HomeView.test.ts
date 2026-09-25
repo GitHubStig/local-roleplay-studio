@@ -17,10 +17,11 @@ vi.mock('../api', async (importOriginal) => ({
 
 const summary = (id: string, extra: Partial<api.SessionSummary> = {}): api.SessionSummary => ({
   id,
+  kind: 'chain',
   scenarioId: 'photoshoot',
   scenarioTitle: 'Studio Photoshoot',
-  turns: 3,
-  latestImage: 'turn-2-abcdef12.png',
+  frames: 3,
+  latestImage: 'frame-2-abcdef12.png',
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
   activity: null,
@@ -54,9 +55,9 @@ describe('HomeView', () => {
     expect(cards).toHaveLength(2)
     expect(cards[0].find('a').attributes('href')).toBe('/sessions/a')
     expect(cards[0].find('img').attributes('src')).toBe(
-      '/api/sessions/a/images/turn-2-abcdef12.png',
+      '/api/sessions/a/images/frame-2-abcdef12.png',
     )
-    expect(cards[0].text()).toContain('3 Turns')
+    expect(cards[0].text()).toContain('3 Frames')
     expect(wrapper.text()).toContain('Start a new Session')
   })
 

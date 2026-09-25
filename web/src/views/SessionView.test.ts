@@ -8,32 +8,37 @@ import SessionView from './SessionView.vue'
 vi.mock('../api', async (importOriginal) => ({
   ...(await importOriginal<typeof api>()),
   getSession: vi.fn(),
-  streamTurn: vi.fn(),
-  cancelTurn: vi.fn(),
+  streamFrame: vi.fn(),
+  cancelFrame: vi.fn(),
   endSession: vi.fn(),
   createSession: vi.fn(),
-  undoTurn: vi.fn(),
+  undoFrame: vi.fn(),
 }))
 
-const turn = (index: number, action: string | null, extra: Partial<api.Turn> = {}): api.Turn => ({
+const frame = (
+  index: number,
+  action: string | null,
+  extra: Partial<api.Frame> = {},
+): api.Frame => ({
   index,
   action,
   prompt: promptFor(index),
   narration: `Narration ${index}.`,
   outcome: 'done',
   promptText: `prompt ${index}`,
-  image: `turn-${index}.png`,
+  image: `frame-${index}.png`,
   createdAt: '2026-09-24T00:00:00.000Z',
   ...extra,
 })
 
-const session = (turns: api.Turn[] = []): api.Session => ({
+const session = (frames: api.Frame[] = []): api.Session => ({
   id: 's1',
+  kind: 'chain',
   scenarioId: 'photoshoot',
   settings: {} as api.Settings,
   seed: 1,
   createdAt: '2026-09-24T00:00:00.000Z',
-  turns,
+  frames,
 })
 
 async function mountIt() {
@@ -69,8 +74,8 @@ beforeEach(() => {
   localStorage.clear()
   preloads.length = 0
   vi.stubGlobal('Image', FakeImage)
-  vi.mocked(api.streamTurn).mockReset()
-  vi.mocked(api.getSession).mockResolvedValue(session([turn(0, null)]))
+  vi.mocked(api.streamFrame).mockReset()
+  vi.mocked(api.getSession).mockResolvedValue(session([frame(0, null)]))
 })
 
 afterEach(() => vi.unstubAllGlobals())
@@ -78,11 +83,11 @@ afterEach(() => vi.unstubAllGlobals())
 enableAutoUnmount(afterEach)
 
 describe('SessionView', () => {
-  it('runs the Opening Turn for a new Session, showing provisional text first', async () => {
+  it('runs the Opening Frame for a new Session, showing provisional text first', async () => {
     vi.mocked(api.getSession).mockResolvedValue(session())
-    let emit!: (e: api.TurnEvent) => void
+    let emit!: (e: api.FrameEvent) => void
     let finish!: () => void
-    vi.mocked(api.streamTurn).mockImplementation((_id, action, onEvent) => {
+    vi.mocked(api.streamFrame).mockImplementation((_id, action, onEvent) => {
       expect(action).toBeNull()
       emit = onEvent
       return new Promise((r) => (finish = r))
@@ -102,33 +107,33 @@ describe('SessionView', () => {
     expect(wrapper.find('[data-rendering]').attributes('data-rendering')).toBe('image')
     expect(wrapper.find('[data-writing]').exists()).toBe(false)
 
-    emit({ type: 'committed', turn: turn(0, null, { narration: 'Maya arrives.' }) })
+    emit({ type: 'committed', frame: frame(0, null, { narration: 'Maya arrives.' }) })
     finish()
     await loadImages()
     expect(wrapper.find('[data-provisional]').exists()).toBe(false)
     expect(wrapper.find('.render-sweep').exists()).toBe(false)
     expect(wrapper.find('[data-writing]').exists()).toBe(false)
-    expect(wrapper.find('img').attributes('src')).toBe('/api/sessions/s1/images/turn-0.png')
+    expect(wrapper.find('img').attributes('src')).toBe('/api/sessions/s1/images/frame-0.png')
   })
 
   it('sends the Direction on Enter and clears it once committed', async () => {
-    vi.mocked(api.streamTurn).mockImplementation(async (_id, _action, onEvent) => {
-      onEvent({ type: 'committed', turn: turn(1, 'Sit down') })
+    vi.mocked(api.streamFrame).mockImplementation(async (_id, _action, onEvent) => {
+      onEvent({ type: 'committed', frame: frame(1, 'Sit down') })
     })
     const { wrapper } = await mountIt()
     const textarea = wrapper.find('textarea')
     await textarea.setValue('Sit down')
     await textarea.trigger('keydown', { key: 'Enter' })
     await flushPromises()
-    expect(api.streamTurn).toHaveBeenCalledWith('s1', 'Sit down', expect.any(Function))
+    expect(api.streamFrame).toHaveBeenCalledWith('s1', 'Sit down', expect.any(Function))
     expect((textarea.element as HTMLTextAreaElement).value).toBe('')
     expect(wrapper.findAll('aside li')).toHaveLength(2)
   })
 
-  it('keeps the Action in the text box when the Turn is declined or unclear', async () => {
+  it('keeps the Action in the text box when the Frame is declined or unclear', async () => {
     for (const outcome of ['declined', 'unclear'] as const) {
-      vi.mocked(api.streamTurn).mockImplementationOnce(async (_id, _action, onEvent) => {
-        onEvent({ type: 'committed', turn: turn(1, 'make it weird', { outcome }) })
+      vi.mocked(api.streamFrame).mockImplementationOnce(async (_id, _action, onEvent) => {
+        onEvent({ type: 'committed', frame: frame(1, 'make it weird', { outcome }) })
       })
       const { wrapper } = await mountIt()
       await wrapper.find('textarea').setValue('make it weird')
@@ -138,8 +143,8 @@ describe('SessionView', () => {
     }
   })
 
-  it('keeps the Direction and shows the error when a Turn fails', async () => {
-    vi.mocked(api.streamTurn).mockImplementation(async (_id, _action, onEvent) => {
+  it('keeps the Direction and shows the error when a Frame fails', async () => {
+    vi.mocked(api.streamFrame).mockImplementation(async (_id, _action, onEvent) => {
       onEvent({ type: 'failed', message: 'mflux crashed', sessionDiscarded: false })
     })
     const { wrapper } = await mountIt()
@@ -150,20 +155,20 @@ describe('SessionView', () => {
     expect((wrapper.find('textarea').element as HTMLTextAreaElement).value).toBe('Sit down')
   })
 
-  it('offers Cancel while a Turn runs', async () => {
-    vi.mocked(api.streamTurn).mockImplementation(() => new Promise(() => {}))
+  it('offers Cancel while a Frame runs', async () => {
+    vi.mocked(api.streamFrame).mockImplementation(() => new Promise(() => {}))
     const { wrapper } = await mountIt()
     await wrapper.find('textarea').setValue('Sit down')
     await buttonNamed(wrapper, 'Send').trigger('click')
     await flushPromises()
     expect(wrapper.find('textarea').attributes('disabled')).toBeDefined()
     await buttonNamed(wrapper, 'Cancel').trigger('click')
-    expect(api.cancelTurn).toHaveBeenCalledWith('s1')
+    expect(api.cancelFrame).toHaveBeenCalledWith('s1')
   })
 
-  it('returns to the start screen when the Opening Turn is discarded', async () => {
+  it('returns to the start screen when the Opening Frame is discarded', async () => {
     vi.mocked(api.getSession).mockResolvedValue(session())
-    vi.mocked(api.streamTurn).mockImplementation(async (_id, _action, onEvent) => {
+    vi.mocked(api.streamFrame).mockImplementation(async (_id, _action, onEvent) => {
       onEvent({ type: 'failed', message: 'Ollama: model not found', sessionDiscarded: true })
     })
     const { router } = await mountIt()
@@ -171,15 +176,15 @@ describe('SessionView', () => {
     expect(router.currentRoute.value.query.error).toBe('Ollama: model not found')
   })
 
-  it('shows an earlier Turn when picked from the Turn Log', async () => {
-    vi.mocked(api.getSession).mockResolvedValue(session([turn(0, null), turn(1, 'Sit')]))
+  it('shows an earlier Frame when picked from the Frames', async () => {
+    vi.mocked(api.getSession).mockResolvedValue(session([frame(0, null), frame(1, 'Sit')]))
     const { wrapper } = await mountIt()
-    expect(wrapper.find('main img').attributes('src')).toContain('turn-1.png')
-    await wrapper.findAll('aside [data-turn]')[0].trigger('click')
+    expect(wrapper.find('main img').attributes('src')).toContain('frame-1.png')
+    await wrapper.findAll('aside [data-frame]')[0].trigger('click')
     // The old image stays until the new one has loaded, then crossfades.
-    expect(wrapper.find('main img').attributes('src')).toContain('turn-1.png')
+    expect(wrapper.find('main img').attributes('src')).toContain('frame-1.png')
     await loadImages()
-    expect(wrapper.find('main img').attributes('src')).toContain('turn-0.png')
+    expect(wrapper.find('main img').attributes('src')).toContain('frame-0.png')
   })
 
   it('shows the Narration as a caption over the image, which can be hidden', async () => {
@@ -192,22 +197,28 @@ describe('SessionView', () => {
     expect(wrapper.find('[data-caption]').exists()).toBe(true)
   })
 
-  it("shows the viewed Turn's Image Prompt as a word diff against the Turn before", async () => {
+  it("shows the viewed Frame's Image Prompt as a word diff against the Frame before", async () => {
     vi.mocked(api.getSession).mockResolvedValue(
-      session([turn(0, null), turn(1, 'Sit', { prompt: promptFor(1).replace('calm', 'scared') })]),
+      session([
+        frame(0, null),
+        frame(1, 'Sit', { prompt: promptFor(1).replace('calm', 'scared') }),
+      ]),
     )
     const { wrapper } = await mountIt()
     await wrapper.findAll('[role=tab]')[1].trigger('click')
     const panel = wrapper.find('[data-prompt-panel]')
-    expect(panel.text()).toContain('Turn 1 · Sit')
+    expect(panel.text()).toContain('Frame 1 · Sit')
     expect(panel.findAll('[data-diff=removed]').map((d) => d.text())).toEqual(['0, calm,'])
     expect(panel.findAll('[data-diff=added]').map((d) => d.text())).toEqual(['1, scared,'])
-    expect(panel.text()).toContain('since Turn 0')
+    expect(panel.text()).toContain('since Frame 0')
   })
 
   it('can hide the removed words, remembering the choice', async () => {
     vi.mocked(api.getSession).mockResolvedValue(
-      session([turn(0, null), turn(1, 'Sit', { prompt: promptFor(1).replace('calm', 'scared') })]),
+      session([
+        frame(0, null),
+        frame(1, 'Sit', { prompt: promptFor(1).replace('calm', 'scared') }),
+      ]),
     )
     const { wrapper } = await mountIt()
     await wrapper.findAll('[role=tab]')[1].trigger('click')
@@ -223,29 +234,29 @@ describe('SessionView', () => {
     expect(wrapper.findAll('[data-diff=removed]')).toHaveLength(1)
   })
 
-  it("shows how long the viewed Turn's steps took", async () => {
+  it("shows how long the viewed Frame's steps took", async () => {
     vi.mocked(api.getSession).mockResolvedValue(
       session([
-        turn(0, null, { timings: { text: 9.8, queued: 12.3, image: 5.1 } }),
-        turn(1, 'Stay', { timings: { text: 3, image: null } }),
+        frame(0, null, { timings: { text: 9.8, queued: 12.3, image: 5.1 } }),
+        frame(1, 'Stay', { timings: { text: 3, image: null } }),
       ]),
     )
     const { wrapper } = await mountIt()
     await wrapper.findAll('[role=tab]')[1].trigger('click')
     expect(wrapper.find('[data-timings]').text()).toBe('Text 3.0 s · Image reused')
     await wrapper.findAll('[role=tab]')[0].trigger('click')
-    await wrapper.findAll('aside [data-turn]')[0].trigger('click')
+    await wrapper.findAll('aside [data-frame]')[0].trigger('click')
     await wrapper.findAll('[role=tab]')[1].trigger('click')
     expect(wrapper.find('[data-timings]').text()).toBe('Text 9.8 s · Waited 12.3 s · Image 5.1 s')
   })
 
-  it('shows no timings for Turns saved before they were recorded', async () => {
+  it('shows no timings for Frames saved before they were recorded', async () => {
     const { wrapper } = await mountIt()
     await wrapper.findAll('[role=tab]')[1].trigger('click')
     expect(wrapper.find('[data-timings]').exists()).toBe(false)
   })
 
-  it('shows Turn Log and Prompt together on wide windows, as tabs on narrow ones', async () => {
+  it('shows Frames and Prompt together on wide windows, as tabs on narrow ones', async () => {
     const { wrapper } = await mountIt()
     const log = () => wrapper.find('[data-log-panel]').classes()
     const prompt = () => wrapper.find('[data-prompt-panel]').classes()
@@ -265,12 +276,12 @@ describe('SessionView', () => {
     expect(wrapper.find('[data-prompt]').text()).toBe(promptFor(0))
   })
 
-  it('labels declined and unclear Turns in the caption and the Turn Log', async () => {
+  it('labels declined and unclear Frames in the caption and the Frames', async () => {
     vi.mocked(api.getSession).mockResolvedValue(
       session([
-        turn(0, null),
-        turn(1, 'Take the jacket off', { outcome: 'declined' }),
-        turn(2, 'asdf qwer', { outcome: 'unclear' }),
+        frame(0, null),
+        frame(1, 'Take the jacket off', { outcome: 'declined' }),
+        frame(2, 'asdf qwer', { outcome: 'unclear' }),
       ]),
     )
     const { wrapper } = await mountIt()
@@ -278,25 +289,25 @@ describe('SessionView', () => {
     const log = wrapper.find('aside').text()
     expect(log).toContain('Declined')
     expect(log).toContain("Didn't understand")
-    await wrapper.findAll('aside [data-turn]')[0].trigger('click')
+    await wrapper.findAll('aside [data-frame]')[0].trigger('click')
     expect(wrapper.find('[data-outcome]').exists()).toBe(false)
   })
 
-  it('undoes the latest Turn and puts its Direction back in the text box', async () => {
-    vi.mocked(api.getSession).mockResolvedValue(session([turn(0, null), turn(1, 'Sit down')]))
-    vi.mocked(api.undoTurn).mockResolvedValue(session([turn(0, null)]))
+  it('undoes the latest Frame and puts its Direction back in the text box', async () => {
+    vi.mocked(api.getSession).mockResolvedValue(session([frame(0, null), frame(1, 'Sit down')]))
+    vi.mocked(api.undoFrame).mockResolvedValue(session([frame(0, null)]))
     const { wrapper } = await mountIt()
     await buttonNamed(wrapper, 'Undo').trigger('click')
     await loadImages()
-    expect(api.undoTurn).toHaveBeenCalledWith('s1', 1)
-    expect(wrapper.findAll('aside [data-turn]')).toHaveLength(1)
+    expect(api.undoFrame).toHaveBeenCalledWith('s1', 1)
+    expect(wrapper.findAll('aside [data-frame]')).toHaveLength(1)
     expect((wrapper.find('textarea').element as HTMLTextAreaElement).value).toBe('Sit down')
-    expect(wrapper.find('main img').attributes('src')).toContain('turn-0.png')
+    expect(wrapper.find('main img').attributes('src')).toContain('frame-0.png')
   })
 
   it('keeps a half-typed Direction instead of overwriting it on Undo', async () => {
-    vi.mocked(api.getSession).mockResolvedValue(session([turn(0, null), turn(1, 'Sit down')]))
-    vi.mocked(api.undoTurn).mockResolvedValue(session([turn(0, null)]))
+    vi.mocked(api.getSession).mockResolvedValue(session([frame(0, null), frame(1, 'Sit down')]))
+    vi.mocked(api.undoFrame).mockResolvedValue(session([frame(0, null)]))
     const { wrapper } = await mountIt()
     await wrapper.find('textarea').setValue('Kneel')
     await wrapper.find('[data-undo]').trigger('click')
@@ -304,13 +315,13 @@ describe('SessionView', () => {
     expect((wrapper.find('textarea').element as HTMLTextAreaElement).value).toBe('Kneel')
   })
 
-  it('offers Undo only after the Opening Turn, on the latest Turn', async () => {
+  it('offers Undo only after the Opening Frame, on the latest Frame', async () => {
     const { wrapper } = await mountIt()
     expect(buttonNamed(wrapper, 'Undo').attributes('disabled')).toBeDefined()
     expect(wrapper.find('[data-undo]').exists()).toBe(false)
 
     vi.mocked(api.getSession).mockResolvedValue(
-      session([turn(0, null), turn(1, 'Sit'), turn(2, 'Stand')]),
+      session([frame(0, null), frame(1, 'Sit'), frame(2, 'Stand')]),
     )
     const { wrapper: longer } = await mountIt()
     expect(buttonNamed(longer, 'Undo').attributes('disabled')).toBeUndefined()
@@ -319,19 +330,19 @@ describe('SessionView', () => {
   })
 
   it('shows why an Undo was refused', async () => {
-    vi.mocked(api.getSession).mockResolvedValue(session([turn(0, null), turn(1, 'Sit')]))
-    vi.mocked(api.undoTurn).mockRejectedValue(
-      new api.ApiError('Turn 1 is not the latest Turn', 409),
+    vi.mocked(api.getSession).mockResolvedValue(session([frame(0, null), frame(1, 'Sit')]))
+    vi.mocked(api.undoFrame).mockRejectedValue(
+      new api.ApiError('Frame 1 is not the latest Frame', 409),
     )
     const { wrapper } = await mountIt()
     await buttonNamed(wrapper, 'Undo').trigger('click')
     await flushPromises()
-    expect(wrapper.find('[role=alert]').text()).toBe('Turn 1 is not the latest Turn')
+    expect(wrapper.find('[role=alert]').text()).toBe('Frame 1 is not the latest Frame')
   })
 
   it('shows when its render is waiting for another Session', async () => {
-    let emit!: (e: api.TurnEvent) => void
-    vi.mocked(api.streamTurn).mockImplementation((_id, _action, onEvent) => {
+    let emit!: (e: api.FrameEvent) => void
+    vi.mocked(api.streamFrame).mockImplementation((_id, _action, onEvent) => {
       emit = onEvent
       return new Promise(() => {})
     })
@@ -357,43 +368,49 @@ describe('SessionView', () => {
     expect(localStorage.getItem('draft:s1')).toBeNull()
   })
 
-  it('says when an earlier Turn is shown, and returns to the latest', async () => {
+  it('says when an earlier Frame is shown, and returns to the latest', async () => {
     vi.mocked(api.getSession).mockResolvedValue(
-      session([turn(0, null), turn(1, 'Sit'), turn(2, 'Stand'), turn(3, 'Kneel'), turn(4, 'Wave')]),
+      session([
+        frame(0, null),
+        frame(1, 'Sit'),
+        frame(2, 'Stand'),
+        frame(3, 'Kneel'),
+        frame(4, 'Wave'),
+      ]),
     )
     const { wrapper } = await mountIt()
     expect(wrapper.find('[data-viewing]').exists()).toBe(false)
 
     await wrapper.find('textarea').setValue('my draft')
 
-    await wrapper.findAll('aside [data-turn]')[1].trigger('click')
-    expect(wrapper.find('[data-viewing]').text()).toContain('Viewing Turn 1 of 4')
+    await wrapper.findAll('aside [data-frame]')[1].trigger('click')
+    expect(wrapper.find('[data-viewing]').text()).toContain('Viewing Frame 1 of 4')
     const past = wrapper.find('[data-past-action]')
     expect((past.element as HTMLTextAreaElement).value).toBe('Sit')
     expect(past.attributes('readonly')).toBeDefined()
     expect(buttonNamed(wrapper, 'Send').attributes('disabled')).toBeDefined()
     // Enter in the read-only box must not send the hidden draft.
     await past.trigger('keydown', { key: 'Enter' })
-    expect(api.streamTurn).not.toHaveBeenCalled()
+    expect(api.streamFrame).not.toHaveBeenCalled()
 
-    await wrapper.findAll('aside [data-turn]')[0].trigger('click')
+    await wrapper.findAll('aside [data-frame]')[0].trigger('click')
     expect(wrapper.find('[data-viewing]').text()).toContain('Viewing the Opening of 4')
     expect((wrapper.find('[data-past-action]').element as HTMLTextAreaElement).value).toBe('')
     expect(wrapper.find('[data-past-action]').attributes('placeholder')).toBe(
-      'The Opening Turn has no Action.',
+      'The Opening Frame has no Action.',
     )
 
     await buttonNamed(wrapper, 'Back to latest').trigger('click')
     await loadImages()
     expect(wrapper.find('[data-viewing]').exists()).toBe(false)
-    expect(wrapper.find('main img').attributes('src')).toContain('turn-4.png')
+    expect(wrapper.find('main img').attributes('src')).toContain('frame-4.png')
     expect((wrapper.find('textarea').element as HTMLTextAreaElement).value).toBe('my draft')
     expect(buttonNamed(wrapper, 'Send').attributes('disabled')).toBeUndefined()
   })
 
   it('streams the thinking in the caption area until the Narration arrives', async () => {
-    let emit!: (e: api.TurnEvent) => void
-    vi.mocked(api.streamTurn).mockImplementation((_id, _action, onEvent) => {
+    let emit!: (e: api.FrameEvent) => void
+    vi.mocked(api.streamFrame).mockImplementation((_id, _action, onEvent) => {
       emit = onEvent
       return new Promise(() => {})
     })
@@ -416,28 +433,28 @@ describe('SessionView', () => {
     expect(wrapper.find('[data-caption]').text()).toBe('Maya sits.')
   })
 
-  it("shows a Turn's saved thinking in the Prompt tab", async () => {
+  it("shows a Frame's saved thinking in the Prompt tab", async () => {
     vi.mocked(api.getSession).mockResolvedValue(
-      session([turn(0, null), turn(1, 'Sit', { thinking: 'The stool is free.' })]),
+      session([frame(0, null), frame(1, 'Sit', { thinking: 'The stool is free.' })]),
     )
     const { wrapper } = await mountIt()
     await wrapper.findAll('[role=tab]')[1].trigger('click')
-    expect(wrapper.find('[data-turn-thinking]').text()).toBe('The stool is free.')
+    expect(wrapper.find('[data-frame-thinking]').text()).toBe('The stool is free.')
     // The Opening had no thinking.
     await wrapper.findAll('[role=tab]')[0].trigger('click')
-    await wrapper.findAll('aside [data-turn]')[0].trigger('click')
+    await wrapper.findAll('aside [data-frame]')[0].trigger('click')
     await wrapper.findAll('[role=tab]')[1].trigger('click')
-    expect(wrapper.find('[data-turn-thinking]').exists()).toBe(false)
+    expect(wrapper.find('[data-frame-thinking]').exists()).toBe(false)
   })
 
-  it('asks before a reload or leaving the site while its Turn runs', async () => {
+  it('asks before a reload or leaving the site while its Frame runs', async () => {
     const leaving = () => {
       const e = new Event('beforeunload', { cancelable: true })
       window.dispatchEvent(e)
       return e.defaultPrevented
     }
     let finish!: () => void
-    vi.mocked(api.streamTurn).mockImplementation(() => new Promise((r) => (finish = r)))
+    vi.mocked(api.streamFrame).mockImplementation(() => new Promise((r) => (finish = r)))
     const { wrapper } = await mountIt()
     expect(leaving()).toBe(false)
 

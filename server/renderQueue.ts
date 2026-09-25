@@ -1,13 +1,13 @@
 /**
  * Lets one image render at a time across every Session. Two renders at once would compete for
- * GPU memory (FLUX.2 Klein alone peaks near 18 GB), so later Turns wait their turn, in order.
+ * GPU memory (FLUX.2 Klein alone peaks near 18 GB), so later Frames wait their frame, in order.
  */
 export class RenderQueue {
   #busy = false
   #waiting: (() => void)[] = []
 
   /**
-   * Resolves with a release function once it's this caller's turn to render. Calls `onWait`
+   * Resolves with a release function once it's this caller's go to render. Calls `onWait`
    * first if another render is in progress. Rejects if `signal` aborts while waiting.
    */
   async acquire(signal: AbortSignal, onWait?: () => void): Promise<() => void> {

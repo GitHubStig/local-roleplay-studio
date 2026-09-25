@@ -142,9 +142,10 @@ Deno.test('POST /api/sessions snapshots settings and resolves the seed', () =>
     assertEquals(res.status, 201)
     const session = await res.json()
     assertEquals(session.id, 's1')
+    assertEquals(session.kind, 'chain')
     assertEquals(session.seed, 1234)
     assertEquals(session.settings.textModel, 'llama3:latest')
-    assertEquals(session.turns, [])
+    assertEquals(session.frames, [])
   }))
 
 Deno.test('POST /api/sessions uses a fixed seed when set', () =>
@@ -166,7 +167,7 @@ Deno.test('POST /api/sessions refuses without a Text Model or a known Scenario',
   assertEquals((await call('POST', '/api/sessions', {})).status, 400)
 })
 
-Deno.test('Turns stream progress and commit, then serve their image', () =>
+Deno.test('Frames stream progress and commit, then serve their image', () =>
   withTempDir(async (root) => {
     const { call } = setup({
       root,
@@ -175,20 +176,22 @@ Deno.test('Turns stream progress and commit, then serve their image', () =>
     })
     await call('POST', '/api/sessions', { scenarioId: 'test' })
 
-    const opening = await readEvents(await call('POST', '/api/sessions/s1/turns', {}))
+    const opening = await readEvents(await call('POST', '/api/sessions/s1/frames', {}))
     assertEquals(opening.map(([e]) => e), ['phase', 'text', 'phase', 'committed'])
 
-    assertEquals((await call('POST', '/api/sessions/s1/turns', {})).status, 400)
-    const second = await readEvents(await call('POST', '/api/sessions/s1/turns', { action: 'Sit' }))
-    assertEquals(second.at(-1)![1].turn, {
-      ...(second.at(-1)![1].turn as object),
+    assertEquals((await call('POST', '/api/sessions/s1/frames', {})).status, 400)
+    const second = await readEvents(
+      await call('POST', '/api/sessions/s1/frames', { action: 'Sit' }),
+    )
+    assertEquals(second.at(-1)![1].frame, {
+      ...(second.at(-1)![1].frame as object),
       index: 1,
       action: 'Sit',
     })
 
     const session = await (await call('GET', '/api/sessions/s1')).json()
-    const [firstImage, secondImage] = session.turns.map((t: { image: string }) => t.image)
-    assertMatch(firstImage, /^turn-0-[0-9a-f]{8}\.png$/)
+    const [firstImage, secondImage] = session.frames.map((t: { image: string }) => t.image)
+    assertMatch(firstImage, /^frame-0-[0-9a-f]{8}\.png$/)
 
     const image = await call('GET', `/api/sessions/s1/images/${secondImage}`)
     assertEquals(image.headers.get('Content-Type'), 'image/png')
@@ -196,7 +199,7 @@ Deno.test('Turns stream progress and commit, then serve their image', () =>
     assertEquals((await call('GET', '/api/sessions/s1/images/session.json')).status, 404)
   }))
 
-Deno.test('A failed Opening Turn discards the Session', () =>
+Deno.test('A failed Opening Frame discards the Session', () =>
   withTempDir(async (root) => {
     const { call } = setup({
       root,
@@ -205,7 +208,7 @@ Deno.test('A failed Opening Turn discards the Session', () =>
       imageGenerator: fakeImageGenerator({ fail: true }),
     })
     await call('POST', '/api/sessions', { scenarioId: 'test' })
-    const events = await readEvents(await call('POST', '/api/sessions/s1/turns', {}))
+    const events = await readEvents(await call('POST', '/api/sessions/s1/frames', {}))
     assertEquals(events.at(-1), [
       'failed',
       { type: 'failed', message: 'mflux crashed', sessionDiscarded: true },
@@ -213,7 +216,7 @@ Deno.test('A failed Opening Turn discards the Session', () =>
     assertEquals((await call('GET', '/api/sessions/s1')).status, 404)
   }))
 
-Deno.test('Cancel aborts the Turn in progress and rejects overlapping Turns', () =>
+Deno.test('Cancel aborts the Frame in progress and rejects overlapping Frames', () =>
   withTempDir(async (root) => {
     const { call } = setup({
       root,
@@ -222,12 +225,12 @@ Deno.test('Cancel aborts the Turn in progress and rejects overlapping Turns', ()
       imageGenerator: fakeImageGenerator({ hang: true }),
     })
     await call('POST', '/api/sessions', { scenarioId: 'test' })
-    const res = await call('POST', '/api/sessions/s1/turns', {})
+    const res = await call('POST', '/api/sessions/s1/frames', {})
     const reader = res.body!.pipeThrough(new TextDecoderStream()).getReader()
     let seen = ''
     while (!seen.includes('"phase":"image"')) seen += (await reader.read()).value
 
-    assertEquals((await call('POST', '/api/sessions/s1/turns', {})).status, 409)
+    assertEquals((await call('POST', '/api/sessions/s1/frames', {})).status, 409)
     assertEquals((await call('POST', '/api/sessions/s1/cancel')).status, 204)
 
     let rest = ''
@@ -236,7 +239,7 @@ Deno.test('Cancel aborts the Turn in progress and rejects overlapping Turns', ()
     assertEquals(rest.includes('"sessionDiscarded":true'), true)
   }))
 
-Deno.test('DELETE /api/sessions/:id/turns/:index undoes only the latest Turn', () =>
+Deno.test('DELETE /api/sessions/:id/frames/:index undoes only the latest Frame', () =>
   withTempDir(async (root) => {
     const { call } = setup({
       root,
@@ -244,19 +247,19 @@ Deno.test('DELETE /api/sessions/:id/turns/:index undoes only the latest Turn', (
       textModel: scriptedTextModel([reply('standing'), reply('sitting')]),
     })
     await call('POST', '/api/sessions', { scenarioId: 'test' })
-    await readEvents(await call('POST', '/api/sessions/s1/turns', {}))
-    await readEvents(await call('POST', '/api/sessions/s1/turns', { action: 'Sit' }))
+    await readEvents(await call('POST', '/api/sessions/s1/frames', {}))
+    await readEvents(await call('POST', '/api/sessions/s1/frames', { action: 'Sit' }))
 
-    assertEquals((await call('DELETE', '/api/sessions/s1/turns/0')).status, 409)
-    assertEquals((await call('DELETE', '/api/sessions/s1/turns/x')).status, 400)
-    const res = await call('DELETE', '/api/sessions/s1/turns/1')
+    assertEquals((await call('DELETE', '/api/sessions/s1/frames/0')).status, 409)
+    assertEquals((await call('DELETE', '/api/sessions/s1/frames/x')).status, 400)
+    const res = await call('DELETE', '/api/sessions/s1/frames/1')
     assertEquals(res.status, 200)
-    assertEquals((await res.json()).turns.length, 1)
-    assertEquals((await call('DELETE', '/api/sessions/s1/turns/1')).status, 409)
-    assertEquals((await call('DELETE', '/api/sessions/s1/turns/0')).status, 409)
+    assertEquals((await res.json()).frames.length, 1)
+    assertEquals((await call('DELETE', '/api/sessions/s1/frames/1')).status, 409)
+    assertEquals((await call('DELETE', '/api/sessions/s1/frames/0')).status, 409)
   }))
 
-Deno.test('Undo is refused while a Turn is in progress', () =>
+Deno.test('Undo is refused while a Frame is in progress', () =>
   withTempDir(async (root) => {
     const { call } = setup({
       root,
@@ -265,11 +268,11 @@ Deno.test('Undo is refused while a Turn is in progress', () =>
       imageGenerator: fakeImageGenerator({ hang: true }),
     })
     await call('POST', '/api/sessions', { scenarioId: 'test' })
-    const res = await call('POST', '/api/sessions/s1/turns', {})
+    const res = await call('POST', '/api/sessions/s1/frames', {})
     const reader = res.body!.pipeThrough(new TextDecoderStream()).getReader()
     let seen = ''
     while (!seen.includes('"phase":"image"')) seen += (await reader.read()).value
-    assertEquals((await call('DELETE', '/api/sessions/s1/turns/0')).status, 409)
+    assertEquals((await call('DELETE', '/api/sessions/s1/frames/0')).status, 409)
     await call('POST', '/api/sessions/s1/cancel')
     for (let r = await reader.read(); !r.done; r = await reader.read()) { /* drain */ }
   }))
@@ -283,18 +286,18 @@ Deno.test('GET /api/sessions lists Sessions newest first with their activity', (
     })
     assertEquals(await (await call('GET', '/api/sessions')).json(), [])
     await call('POST', '/api/sessions', { scenarioId: 'test' })
-    await readEvents(await call('POST', '/api/sessions/s1/turns', {}))
+    await readEvents(await call('POST', '/api/sessions/s1/frames', {}))
     await call('POST', '/api/sessions', { scenarioId: 'test' })
-    await readEvents(await call('POST', '/api/sessions/s2/turns', {}))
-    // Timestamps have millisecond resolution; make s1's latest Turn clearly the newest.
+    await readEvents(await call('POST', '/api/sessions/s2/frames', {}))
+    // Timestamps have millisecond resolution; make s1's latest Frame clearly the newest.
     await new Promise((r) => setTimeout(r, 5))
-    await readEvents(await call('POST', '/api/sessions/s1/turns', { action: 'Sit' }))
+    await readEvents(await call('POST', '/api/sessions/s1/frames', { action: 'Sit' }))
 
     const list = await (await call('GET', '/api/sessions')).json()
     assertEquals(list.map((s: { id: string }) => s.id), ['s1', 's2'])
     assertEquals(list[0].scenarioTitle, 'Test Shoot')
-    assertEquals(list[0].turns, 2)
-    assertMatch(list[0].latestImage, /^turn-1-/)
+    assertEquals(list[0].frames, 2)
+    assertMatch(list[0].latestImage, /^frame-1-/)
     assertEquals(list[0].activity, null)
   }))
 
@@ -306,7 +309,7 @@ Deno.test('DELETE /api/sessions/:id removes a Session and its images', () =>
       textModel: scriptedTextModel([reply('standing')]),
     })
     await call('POST', '/api/sessions', { scenarioId: 'test' })
-    await readEvents(await call('POST', '/api/sessions/s1/turns', {}))
+    await readEvents(await call('POST', '/api/sessions/s1/frames', {}))
     assertEquals((await call('DELETE', '/api/sessions/s1')).status, 204)
     assertEquals((await call('GET', '/api/sessions/s1')).status, 404)
     assertEquals(await Deno.stat(`${root}/s1`).then(() => true, () => false), false)
@@ -324,7 +327,7 @@ async function readUntil(reader: ReadableStreamDefaultReader<string>, marker: st
   return seen
 }
 
-Deno.test('Images render one at a time across Sessions; a waiting Turn is queued', () =>
+Deno.test('Images render one at a time across Sessions; a waiting Frame is queued', () =>
   withTempDir(async (root) => {
     const { call } = setup({
       root,
@@ -334,11 +337,11 @@ Deno.test('Images render one at a time across Sessions; a waiting Turn is queued
     })
     await call('POST', '/api/sessions', { scenarioId: 'test' })
     await call('POST', '/api/sessions', { scenarioId: 'test' })
-    const a = (await call('POST', '/api/sessions/s1/turns', {})).body!
+    const a = (await call('POST', '/api/sessions/s1/frames', {})).body!
       .pipeThrough(new TextDecoderStream()).getReader()
     await readUntil(a, '"phase":"image"')
 
-    const b = (await call('POST', '/api/sessions/s2/turns', {})).body!
+    const b = (await call('POST', '/api/sessions/s2/frames', {})).body!
       .pipeThrough(new TextDecoderStream()).getReader()
     await readUntil(b, '"phase":"queued"')
     assertEquals((await (await call('GET', '/api/sessions/s1')).json()).activity, 'image')
@@ -358,7 +361,7 @@ Deno.test('Images render one at a time across Sessions; a waiting Turn is queued
     await readUntil(b, 'event: cancelled')
   }))
 
-Deno.test('Two Turns sent at once for one Session: only one runs', () =>
+Deno.test('Two Frames sent at once for one Session: only one runs', () =>
   withTempDir(async (root) => {
     const { call } = setup({
       root,
@@ -366,21 +369,21 @@ Deno.test('Two Turns sent at once for one Session: only one runs', () =>
       textModel: scriptedTextModel([reply('standing'), reply('sitting'), reply('kneeling')]),
     })
     await call('POST', '/api/sessions', { scenarioId: 'test' })
-    await readEvents(await call('POST', '/api/sessions/s1/turns', {}))
+    await readEvents(await call('POST', '/api/sessions/s1/frames', {}))
 
     const [a, b] = await Promise.all([
-      call('POST', '/api/sessions/s1/turns', { action: 'Sit' }),
-      call('POST', '/api/sessions/s1/turns', { action: 'Kneel' }),
+      call('POST', '/api/sessions/s1/frames', { action: 'Sit' }),
+      call('POST', '/api/sessions/s1/frames', { action: 'Kneel' }),
     ])
     assertEquals([a.status, b.status].sort(), [200, 409])
     await readEvents(a.status === 200 ? a : b)
     await (a.status === 200 ? b : a).body?.cancel()
 
     const session = await (await call('GET', '/api/sessions/s1')).json()
-    assertEquals(session.turns.map((t: { index: number }) => t.index), [0, 1])
+    assertEquals(session.frames.map((t: { index: number }) => t.index), [0, 1])
   }))
 
-Deno.test('Undo and a Turn sent at once never bring back the undone Turn', () =>
+Deno.test('Undo and a Frame sent at once never bring back the undone Frame', () =>
   withTempDir(async (root) => {
     const { call } = setup({
       root,
@@ -388,26 +391,26 @@ Deno.test('Undo and a Turn sent at once never bring back the undone Turn', () =>
       textModel: scriptedTextModel([reply('standing'), reply('sitting'), reply('kneeling')]),
     })
     await call('POST', '/api/sessions', { scenarioId: 'test' })
-    await readEvents(await call('POST', '/api/sessions/s1/turns', {}))
-    await readEvents(await call('POST', '/api/sessions/s1/turns', { action: 'Sit' }))
+    await readEvents(await call('POST', '/api/sessions/s1/frames', {}))
+    await readEvents(await call('POST', '/api/sessions/s1/frames', { action: 'Sit' }))
 
-    const [undo, turn] = await Promise.all([
-      call('DELETE', '/api/sessions/s1/turns/1'),
-      call('POST', '/api/sessions/s1/turns', { action: 'Kneel' }),
+    const [undo, frame] = await Promise.all([
+      call('DELETE', '/api/sessions/s1/frames/1'),
+      call('POST', '/api/sessions/s1/frames', { action: 'Kneel' }),
     ])
-    if (turn.status === 200) await readEvents(turn)
-    else await turn.body?.cancel()
-    assertEquals([undo.status, turn.status].includes(409), true)
+    if (frame.status === 200) await readEvents(frame)
+    else await frame.body?.cancel()
+    assertEquals([undo.status, frame.status].includes(409), true)
 
-    // Whatever won, every Turn is numbered in order and its image exists.
+    // Whatever won, every Frame is numbered in order and its image exists.
     const session = await (await call('GET', '/api/sessions/s1')).json()
-    session.turns.forEach((t: { index: number }, i: number) => assertEquals(t.index, i))
-    for (const t of session.turns as { image: string }[]) {
+    session.frames.forEach((t: { index: number }, i: number) => assertEquals(t.index, i))
+    for (const t of session.frames as { image: string }[]) {
       assertEquals((await call('GET', `/api/sessions/s1/images/${t.image}`)).status, 200)
     }
   }))
 
-Deno.test('A Session is free again after a Turn, a failed Turn, an early refusal and an Undo', () =>
+Deno.test('A Session is free again after a Frame, a failed Frame, an early refusal and an Undo', () =>
   withTempDir(async (root) => {
     const { call } = setup({
       root,
@@ -421,13 +424,15 @@ Deno.test('A Session is free again after a Turn, a failed Turn, an early refusal
       ]),
     })
     await call('POST', '/api/sessions', { scenarioId: 'test' })
-    await readEvents(await call('POST', '/api/sessions/s1/turns', {}))
-    const failed = await readEvents(await call('POST', '/api/sessions/s1/turns', { action: 'A' }))
+    await readEvents(await call('POST', '/api/sessions/s1/frames', {}))
+    const failed = await readEvents(await call('POST', '/api/sessions/s1/frames', { action: 'A' }))
     assertEquals(failed.at(-1)![0], 'failed')
-    assertEquals((await call('POST', '/api/sessions/s1/turns', {})).status, 400)
-    await readEvents(await call('POST', '/api/sessions/s1/turns', { action: 'Sit' }))
-    assertEquals((await call('DELETE', '/api/sessions/s1/turns/1')).status, 200)
-    const last = await readEvents(await call('POST', '/api/sessions/s1/turns', { action: 'Kneel' }))
+    assertEquals((await call('POST', '/api/sessions/s1/frames', {})).status, 400)
+    await readEvents(await call('POST', '/api/sessions/s1/frames', { action: 'Sit' }))
+    assertEquals((await call('DELETE', '/api/sessions/s1/frames/1')).status, 200)
+    const last = await readEvents(
+      await call('POST', '/api/sessions/s1/frames', { action: 'Kneel' }),
+    )
     assertEquals(last.at(-1)![0], 'committed')
     assertEquals((await call('DELETE', '/api/sessions/s1')).status, 204)
   }))

@@ -4,8 +4,8 @@ import { OLLAMA_URL } from './ollama.ts'
 import type { Scenario } from './scenario.ts'
 import { type Outcome, OUTCOMES } from './session.ts'
 
-/** What the Text Model produces for one Turn, before the engine applies its rules. */
-export interface TurnText {
+/** What the Text Model produces for one Frame, before the engine applies its rules. */
+export interface FrameText {
   outcome: Outcome
   narration: string
   prompt: ImagePrompt
@@ -13,9 +13,9 @@ export interface TurnText {
   thinking?: string
 }
 
-export interface TurnRequest {
+export interface FrameRequest {
   scenario: Scenario
-  /** Null on the Opening Turn. */
+  /** Null on the Opening Frame. */
   prompt: ImagePrompt | null
   action: string | null
 }
@@ -23,10 +23,10 @@ export interface TurnRequest {
 export interface TextModel {
   /** `onThinking` receives the model's reasoning as it streams in, when thinking is on. */
   write(
-    req: TurnRequest,
+    req: FrameRequest,
     signal: AbortSignal,
     onThinking?: (chunk: string) => void,
-  ): Promise<TurnText>
+  ): Promise<FrameText>
   /** Whether an Action asks to depict a real, identifiable person. */
   namesRealPerson(action: string, signal: AbortSignal): Promise<boolean>
 }
@@ -41,7 +41,7 @@ ${PROMPT_ORDER.map((p, i) => `${i + 1}. ${p.aspect}: ${p.covers}.`).join('\n')}
 Within a sentence, separate details with commas or semicolons. Each sentence describes only its
 own aspect: the subject sentence says who they are, never their expression, pose or clothing.
 
-Each turn you receive the current prompt and the player's Action: an instruction to change the
+Each time, you receive the current prompt and the player's Action: an instruction to change the
 image. Rewrite the paragraph with the Action applied:
 
 - Rewrite only the sentences for the aspects the Action affects; copy every other sentence
@@ -66,7 +66,7 @@ Reply with a single JSON object, deciding "outcome" before anything else:
 - "outcome": "done" if you applied the Action; "declined" if it crosses a limit; "unclear" if
   it can't be understood (gibberish, or too vague to act on).
 - "narration": a terse list of what changed, e.g. "Expression: scared. Style: 80s airbrush
-  fantasy." On the first turn, one short sentence summing up the opening image instead. If
+  fantasy." For the opening prompt, one short sentence summing up the image instead. If
   "declined", say which limit. If "unclear", ask briefly what to change.
 - "prompt": the whole paragraph; unless "done", the current prompt exactly as it was.`
 
@@ -79,9 +79,9 @@ export function systemMessage(scenario: Scenario, opening: boolean): string {
   return parts.join('\n\n')
 }
 
-export function userMessage({ scenario, prompt, action }: TurnRequest): string {
+export function userMessage({ scenario, prompt, action }: FrameRequest): string {
   if (prompt === null || action === null) {
-    return `This is the first turn: write the opening prompt from these instructions, and set ` +
+    return `This is the opening: write the opening prompt from these instructions, and set ` +
       `"outcome" to "done".\n\n${scenario.openingPrompt}`
   }
   return `Current prompt:\n\n${prompt}\n\nThe player's Action:\n\n${action}`
@@ -101,7 +101,7 @@ export function outputSchema() {
 }
 
 /** Checks the Text Model's reply; throws with a reason if it can't be used. */
-export function parseTurnText(content: string): TurnText {
+export function parseFrameText(content: string): FrameText {
   let out: Record<string, unknown>
   try {
     out = JSON.parse(content)
@@ -179,7 +179,7 @@ export function ollamaTextModel(model: string, opts: OllamaOptions = {}): TextMo
   let think = opts.think ?? false
   const limits = { ...TIME_LIMIT_MS, ...opts.timeLimits }
 
-  function chat(req: TurnRequest, signal: AbortSignal) {
+  function chat(req: FrameRequest, signal: AbortSignal) {
     return fetch(new URL('/api/chat', baseUrl), {
       method: 'POST',
       signal,
@@ -198,10 +198,10 @@ export function ollamaTextModel(model: string, opts: OllamaOptions = {}): TextMo
   }
 
   async function write(
-    req: TurnRequest,
+    req: FrameRequest,
     signal: AbortSignal,
     onThinking?: (chunk: string) => void,
-  ): Promise<TurnText> {
+  ): Promise<FrameText> {
     let res = await chat(req, signal)
     if (!res.ok) {
       const body = await res.json().catch(() => ({}))
@@ -232,7 +232,7 @@ export function ollamaTextModel(model: string, opts: OllamaOptions = {}): TextMo
       if (part.done) stopped = String(part.done_reason ?? '')
     }
     if (stopped === 'length') throw new Error('The Text Model ran past its length limit')
-    const text = parseTurnText(content)
+    const text = parseFrameText(content)
     return thinking.trim() ? { ...text, thinking: thinking.trim() } : text
   }
 

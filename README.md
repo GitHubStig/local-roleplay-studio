@@ -1,6 +1,6 @@
 # RPG
 
-A turn-based text-to-image prompt generator that runs entirely on your Mac. You say what to
+A text-to-image prompt generator that runs entirely on your Mac. You say what to
 change; a local language model (via [Ollama](https://ollama.com)) rewrites an image prompt, one
 paragraph with a sentence each for subject → pose → expression → camera → clothing →
 environment → lighting → color → style; a
@@ -11,7 +11,7 @@ The first Scenario is a **studio photoshoot** with Maya, a fictional fitness mod
 the prompt can be changed, within four limits the engine enforces: everyone depicted is an
 adult, no sexual or nude imagery, no real identifiable people, no restraint or captivity.
 
-The vocabulary (Scenario, Session, Image Prompt, Turn, Action, …) is defined in
+The vocabulary (Scenario, Session, Image Prompt, Frame, Action, …) is defined in
 [CONTEXT.md](CONTEXT.md). The design is in [docs/design.md](docs/design.md).
 
 ## Requirements
@@ -19,7 +19,7 @@ The vocabulary (Scenario, Session, Image Prompt, Turn, Action, …) is defined i
 - **macOS on Apple silicon.** mflux runs on MLX.
 - **[Deno](https://deno.com) 2.9+** runs the server, the web app's tooling and the tests.
 - **Node.js 24+**, only for the Vue type check (see [Known quirks](#known-quirks)).
-- **Ollama** with at least one chat model. Recommended: `gemma4:31b-mlx` (about 10 s per Turn
+- **Ollama** with at least one chat model. Recommended: `gemma4:31b-mlx` (about 10 s per Frame
   once loaded, Thinking off). Small models (4–8B) can't reliably follow the prompt format; see
   [docs/models.md](docs/models.md) for the comparison.
 - **mflux 0.20**: `uv tool install mflux`.
@@ -73,15 +73,15 @@ Everything else is chosen on the Settings page and saved to `settings.json`.
 ```
 scenarios/        Scenario files, one Markdown file each (see docs/scenarios.md)
 settings.json     Your Settings (gitignored; created on first save)
-sessions/<id>/    Each Session: session.json plus one image per Turn (gitignored)
-server/           Deno API: settings, Scenarios, Sessions, the Turn engine, Ollama and mflux
+sessions/<id>/    Each Session: session.json plus one image per Frame (gitignored)
+server/           Deno API: settings, Scenarios, Sessions, the Frame engine, Ollama and mflux
 web/              Vue 3 + Vite + Tailwind 4 web app
 docs/             Design, Scenario format, ADRs and open threads
 CONTEXT.md        Glossary of the game's terms
 ```
 
 Sessions stay on disk until you delete them from Home (or remove their folder in `sessions/`
-while no Turn is running).
+while no Frame is running).
 
 ## Writing a new Scenario
 
@@ -96,12 +96,12 @@ documented in [docs/scenarios.md](docs/scenarios.md).
   `node …/vue-tsc`. Everything else runs on Deno.
 - **TypeScript is on 6.0, not 7.** `vue-tsc` 3.3 can't run on TypeScript 7 (the Go rewrite no
   longer ships `lib/tsc`). Upgrade once Vue's tooling supports it.
-- **One Turn at a time.** mflux can't usefully render two images at once on one Mac, so a
-  Session accepts no new Action while a Turn is running.
+- **One Frame at a time.** mflux can't usefully render two images at once on one Mac, so a
+  Session accepts no new Action while a Frame is running.
 
 ## Documentation
 
-- [docs/design.md](docs/design.md): how the game works (Turn loop, failure handling, UI, storage)
+- [docs/design.md](docs/design.md): how the game works (Frame loop, failure handling, UI, storage)
 - [docs/scenarios.md](docs/scenarios.md): the Scenario file format
 - [docs/models.md](docs/models.md): which Text and Image Models to use, and why
 - [docs/adr/](docs/adr/): architecture decisions and why they were made
