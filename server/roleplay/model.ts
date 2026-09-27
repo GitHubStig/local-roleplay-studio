@@ -10,10 +10,15 @@ import {
   REPLY_FIELDS,
   replySchema,
 } from './prompt.ts'
-import type { Cast, Reply } from './types.ts'
-import type { Look } from '../session.ts'
-import { lookSchema, parseFrameBody, parseLook } from '../textModel.ts'
-import { artFrameSchema, wholeSentences } from './art.ts'
+import type { Cast, Reply, RoleplayLook, Shown } from './types.ts'
+import { parseFrameBody } from '../textModel.ts'
+import {
+  artFrameSchema,
+  parseRoleplayLook,
+  parseShown,
+  roleplayLookSchema,
+  wholeSentences,
+} from './art.ts'
 
 /** A reply's fields as each one completes, and the model's reasoning as it streams. */
 export interface ReplyHandlers {
@@ -34,13 +39,13 @@ export interface RoleplayModel {
     messages: ChatMessage[],
     signal: AbortSignal,
     onThinking?: (chunk: string) => void,
-  ): Promise<{ look: Look; thinking?: string }>
-  /** The Art Agent: one Frame's seven sentences, joined into a paragraph. */
+  ): Promise<{ look: RoleplayLook; thinking?: string }>
+  /** The Art Agent: who one Frame's picture shows, and its seven sentences as a paragraph. */
   pictureFrame(
     messages: ChatMessage[],
     signal: AbortSignal,
     onThinking?: (chunk: string) => void,
-  ): Promise<{ body: string; thinking?: string }>
+  ): Promise<{ body: string; shown: Shown; thinking?: string }>
   /** The Character's next reply to the conversation so far (or the opening, to none). */
   reply(
     messages: ChatMessage[],
@@ -99,12 +104,12 @@ export function ollamaRoleplayModel(
       within(signal, limit(), async (s) => {
         const { content, thinking } = await chat.stream({
           messages,
-          format: lookSchema,
+          format: roleplayLookSchema,
           maxTokens: MAX_TOKENS.art,
           signal: s,
           onThinking,
         })
-        return withThinking({ look: parseLook(parseJson(content)) }, thinking)
+        return withThinking({ look: parseRoleplayLook(parseJson(content)) }, thinking)
       }),
 
     pictureFrame: (messages, signal, onThinking) =>
@@ -117,7 +122,10 @@ export function ollamaRoleplayModel(
           onThinking,
         })
         const fields = wholeSentences(parseJson(content) as Record<string, unknown>)
-        return withThinking({ body: parseFrameBody(fields) }, thinking)
+        return withThinking(
+          { body: parseFrameBody(fields), shown: parseShown(fields) },
+          thinking,
+        )
       }),
 
     reply: (messages, signal, on = {}) =>

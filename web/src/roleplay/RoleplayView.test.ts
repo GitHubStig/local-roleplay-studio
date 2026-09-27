@@ -288,13 +288,14 @@ describe('RoleplayView', () => {
     await box.setValue('Next move')
     expect(buttonNamed(wrapper, 'Send').attributes('disabled')).toBeDefined()
 
-    const look = { subject: 'Elena, 38.', style: 'Oil painting.' }
+    const look = { character: 'Elena, 38.', persona: 'Cal, 25.', style: 'Oil painting.' }
     const done = {
       ...roleplaySession([{
         ...frame(0, null, 'Get inside.'),
         promptText: 'adult, Elena, 38. She waits. Oil painting.',
         pictureTimings: { text: 24.6 },
         blocked: 'no sexual or nude imagery',
+        shown: 'character' as const,
       }]),
       look,
     }
@@ -305,14 +306,15 @@ describe('RoleplayView', () => {
     expect(wrapper.find('[data-image-prompt]').text()).toContain('adult, Elena, 38. She waits.')
     expect(wrapper.find('[data-image-prompt] summary').text()).toContain('crosses a limit')
     expect(wrapper.find('[data-picture-timings]').text()).toBe('Pictured in 24.6 s')
+    expect(wrapper.find('[data-shown]').text()).toBe('Shows Elena')
     expect(wrapper.find('[data-reply]').classes()).not.toContain('render-sweep')
     expect(wrapper.find('[data-picture-button]').text()).toBe('Picture again')
 
     vi.mocked(roleplay.saveLook).mockResolvedValue({ ...done, look: { ...look, style: 'Ink.' } })
-    await wrapper.findAll('[data-look] textarea')[1].setValue('Ink.')
+    await wrapper.findAll('[data-look] textarea')[2].setValue('Ink.')
     await wrapper.find('[data-look]').trigger('submit')
     await flushPromises()
-    expect(roleplay.saveLook).toHaveBeenCalledWith('r1', { subject: 'Elena, 38.', style: 'Ink.' })
+    expect(roleplay.saveLook).toHaveBeenCalledWith('r1', { ...look, style: 'Ink.' })
   })
 
   it("doesn't scroll the conversation while a Frame is pictured", async () => {
@@ -322,7 +324,7 @@ describe('RoleplayView', () => {
     const scroll = vi.fn()
     ;(wrapper.find('[data-transcript]').element as HTMLElement).scrollTo = scroll
     await wrapper.find('[data-picture-button]').trigger('click')
-    stream.emit({ type: 'look', look: { subject: 'Elena.', style: 'Ink.' } })
+    stream.emit({ type: 'look', look: { character: 'Elena.', persona: 'Cal.', style: 'Ink.' } })
     stream.finish()
     await flushPromises()
     expect(scroll).not.toHaveBeenCalled()

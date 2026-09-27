@@ -1,5 +1,21 @@
 import type { Look, SessionBase } from '../session.ts'
 
+/**
+ * A Roleplay's Look: each person's identity sentence, and the art style, used word for word in
+ * every picture. A picture includes only the identities of the people it shows.
+ */
+export interface RoleplayLook {
+  /** The Character's identity: name, age, build, skin, hair, face. */
+  character: string
+  /** The Persona's identity, the same way. */
+  persona: string
+  /** The art style and medium. */
+  style: string
+}
+
+/** Who a picture shows. */
+export type Shown = 'both' | 'character' | 'persona'
+
 /** Who the Text Model plays. */
 export interface Character {
   name: string
@@ -67,6 +83,8 @@ export interface RoleplayFrame {
   promptText?: string
   /** Why the picture can't be rendered: its Image Prompt crosses a Limit. */
   blocked?: string
+  /** Who the picture shows; pictures from before this was recorded show both. */
+  shown?: Shown
   /** For debugging: seconds the latest picture took, and the Art Agent's reasoning, if any. */
   pictureTimings?: { text: number }
   pictureThinking?: string
@@ -80,8 +98,12 @@ export interface RoleplaySession extends SessionBase {
   kind: 'roleplay'
   /** Null until the Roleplay is set up. */
   cast: Cast | null
-  /** Who is shown and in what style, shared by every picture; written when one is first pictured. */
-  look?: Look | null
+  /**
+   * Who is shown and in what style, shared by every picture; written when one is first pictured.
+   * A Look with a single `subject` sentence is from before pictures chose who is shown: the next
+   * picture replaces it.
+   */
+  look?: RoleplayLook | Look | null
   /** For debugging: seconds the Look took to write, and the Art Agent's reasoning, if any. */
   lookTimings?: { text: number }
   lookThinking?: string

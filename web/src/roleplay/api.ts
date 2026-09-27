@@ -39,6 +39,16 @@ export interface Cast {
   setting: Setting
 }
 
+/** Each person's identity sentence and the art style, shared by every picture. */
+export interface RoleplayLook {
+  character: string
+  persona: string
+  style: string
+}
+
+/** Who a picture shows. */
+export type Shown = 'both' | 'character' | 'persona'
+
 /** The Character's reply: a thought, what they do, what they say. */
 export interface Reply {
   internal: string
@@ -59,6 +69,8 @@ export interface RoleplayFrame {
   promptText?: string
   /** The Image Prompt crosses a Limit. */
   blocked?: string
+  /** Who the picture shows. */
+  shown?: Shown
   /** For debugging: how long the latest picture took, and the Art Agent's reasoning. */
   pictureTimings?: { text: number }
   pictureThinking?: string
@@ -71,7 +83,8 @@ export interface RoleplaySession extends SessionBase {
   /** Null until set up. */
   cast: Cast | null
   /** Who is shown and in what style in every picture; written when one is first pictured. */
-  look?: Look | null
+  /** A single-sentence `subject` Look is from before pictures chose who is shown. */
+  look?: RoleplayLook | Look | null
   lookTimings?: { text: number }
   lookThinking?: string
   frames: RoleplayFrame[]
@@ -84,7 +97,7 @@ export type RoleplayEvent =
   | { type: 'reply-part'; key: keyof Reply; value: string }
   | { type: 'replied'; frame: RoleplayFrame; session: RoleplaySession }
   | { type: 'declined'; message: string }
-  | { type: 'look'; look: Look }
+  | { type: 'look'; look: RoleplayLook }
   | { type: 'pictured'; frame: RoleplayFrame; session: RoleplaySession }
 
 const base = (id: string) => `/api/sessions/${id}/roleplay`
@@ -113,7 +126,8 @@ export const pictureFrame = (
 ) => streamEvents<RoleplayEvent>(`${base(id)}/frames/${index}/picture`, {}, ['pictured'], onEvent)
 
 /** Replaces the Look, rewriting every pictured Frame's Image Prompt. */
-export const saveLook = (id: string, look: Look) => put<RoleplaySession>(`${base(id)}/look`, look)
+export const saveLook = (id: string, look: RoleplayLook) =>
+  put<RoleplaySession>(`${base(id)}/look`, look)
 
 /** Replaces the Cast; applies from the next reply. */
 export const saveCast = (id: string, cast: Cast) => put<RoleplaySession>(`${base(id)}/cast`, cast)

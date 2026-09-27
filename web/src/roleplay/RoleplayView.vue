@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onActivated, onBeforeUnmount, onDeactivated, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { ApiError, cancelFrame, getSession, type Look } from '../api'
+import { ApiError, cancelFrame, getSession } from '../api'
 import { clearCurrentSession, setCurrentSession } from '../composables/useCurrentSession'
 import { useStoredFlag } from '../composables/useStoredFlag'
 import { useStoredText } from '../composables/useStoredText'
@@ -10,7 +10,9 @@ import {
   type Cast,
   type Reply,
   type RoleplayEvent,
+  type RoleplayLook,
   type RoleplaySession,
+  type Shown,
   beginRoleplay,
   pictureFrame,
   saveCast,
@@ -255,7 +257,7 @@ const statusLabel = computed(() => {
   if (p.kind === 'cast') return cast.value ? 'Rewriting the Cast…' : 'Writing the Cast…'
   if (p.kind === 'begin') return `${characterName.value} is starting the scene…`
   if (p.kind === 'picture') {
-    return session.value?.look
+    return currentLook.value
       ? `Picturing Frame ${p.frameIndex}…`
       : `Writing the Look, then picturing Frame ${p.frameIndex}…`
   }
@@ -304,13 +306,26 @@ function setField(f: CastField, value: string) {
 
 // --- The Look, editable by hand once written.
 
-const lookDraft = ref<Look | null>(null)
-watch(() => session.value?.look, (l) => (lookDraft.value = l ? { ...l } : null), { immediate: true })
+/** The Look to edit; an older single-sentence Look isn't shown, since the next picture replaces it. */
+const currentLook = computed(() => {
+  const look = session.value?.look
+  return look && 'character' in look ? look : null
+})
+const lookDraft = ref<RoleplayLook | null>(null)
+watch(currentLook, (l) => (lookDraft.value = l ? { ...l } : null), { immediate: true })
 const lookChanged = computed(() =>
-  !!lookDraft.value && !!session.value?.look &&
-  (lookDraft.value.subject.trim() !== session.value.look.subject ||
-    lookDraft.value.style.trim() !== session.value.look.style)
+  !!lookDraft.value && !!currentLook.value &&
+  (['character', 'persona', 'style'] as const).some((k) =>
+    lookDraft.value![k].trim() !== currentLook.value![k]
+  )
 )
+
+/** "Kael and Elara Vance", "Kael", …: who a picture shows. */
+function shownNames(shown: Shown | undefined): string {
+  if (shown === 'character') return characterName.value
+  if (shown === 'persona') return personaName.value
+  return `${characterName.value} and ${personaName.value}`
+}
 async function saveLookDraft() {
   if (!lookDraft.value) return
   notice.value = null
@@ -389,7 +404,7 @@ async function saveCastDraft(): Promise<boolean> {
               <div class="flex max-w-prose flex-col gap-1 text-xs" data-picture>
                 <p v-if="picturing === frame.index" class="flex items-center gap-2" data-picturing>
                   <span class="animate-pulse text-info">
-                    {{ session.look ? 'Picturing this moment…' : 'Writing the Look, then picturing…' }}
+                    {{ currentLook ? 'Picturing this moment…' : 'Writing the Look, then picturing…' }}
                   </span>
                   <button
                     type="button"
@@ -415,6 +430,7 @@ async function saveCastDraft(): Promise<boolean> {
                     Image Prompt
                     <span v-if="frame.blocked" class="text-warn">· crosses a limit ({{ frame.blocked }})</span>
                   </summary>
+                  <p class="mt-1" data-shown>Shows {{ shownNames(frame.shown) }}</p>
                   <p class="mt-1 leading-relaxed">{{ frame.promptText }}</p>
                   <p v-if="frame.pictureTimings" class="mt-1" data-picture-timings>
                     Pictured in {{ frame.pictureTimings.text.toFixed(1) }} s
@@ -548,10 +564,19 @@ async function saveCastDraft(): Promise<boolean> {
         >
           <h2 class="font-medium">Look <span class="font-normal text-muted">· every picture</span></h2>
           <label class="flex flex-col gap-1 text-xs text-muted">
-            Who is shown
+            {{ characterName }}
             <textarea
-              v-model="lookDraft.subject"
-              rows="4"
+              v-model="lookDraft.character"
+              rows="3"
+              class="resize-y rounded border border-line bg-surface p-2 text-sm text-fg"
+              :disabled="busy"
+            />
+          </label>
+          <label class="flex flex-col gap-1 text-xs text-muted">
+            {{ personaName }}
+            <textarea
+              v-model="lookDraft.persona"
+              rows="3"
               class="resize-y rounded border border-line bg-surface p-2 text-sm text-fg"
               :disabled="busy"
             />

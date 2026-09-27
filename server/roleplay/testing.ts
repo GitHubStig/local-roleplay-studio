@@ -1,8 +1,7 @@
 import type { ChatMessage } from '../ollamaChat.ts'
 import type { RoleplayModel } from './model.ts'
 import { REPLY_FIELDS } from './prompt.ts'
-import type { Look } from '../session.ts'
-import type { Cast, Reply } from './types.ts'
+import type { Cast, Reply, RoleplayLook } from './types.ts'
 
 export const testCast: Cast = {
   character: {
@@ -41,7 +40,7 @@ export function scriptedRoleplayModel(
   script: {
     casts?: (Cast | Error)[]
     replies?: (Reply | Error)[]
-    looks?: (Look | Error)[]
+    looks?: (RoleplayLook | Error)[]
     bodies?: (string | Error)[]
   },
 ): RoleplayModel & { asked: ChatMessage[][]; art: ChatMessage[][] } {
@@ -66,7 +65,11 @@ export function scriptedRoleplayModel(
     async pictureFrame(messages: ChatMessage[], signal: AbortSignal) {
       model.art.push(messages)
       signal.throwIfAborted()
-      return { body: await next(script.bodies, 'picture'), thinking: 'Kael first, then the bar.' }
+      return {
+        body: await next(script.bodies, 'picture'),
+        shown: 'both' as const,
+        thinking: 'Kael first, then the bar.',
+      }
     },
     async reply(
       messages: ChatMessage[],

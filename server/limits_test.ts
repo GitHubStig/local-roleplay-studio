@@ -27,6 +27,8 @@ Deno.test('crossedLimit catches minors, sexual content and restraint', () => {
       'leaving her slender upper body bare',
       'she wears only a white towel wrapped around her waist',
       'a towel around her hips',
+      'exposing her wet hair and upper torso',
+      'she wears only a waist-wrapped towel and a ring',
       'a thick white towel wrapped securely around her waist',
     ]
   ) {

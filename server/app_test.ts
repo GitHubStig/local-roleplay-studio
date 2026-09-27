@@ -786,7 +786,7 @@ Deno.test('A Roleplay Frame is pictured over the API, and its Look can be edited
       roleplayModel: scriptedRoleplayModel({
         casts: [testCast],
         replies: [replyOf('You are late.')],
-        looks: [{ subject: 'Mira Vance, 34.', style: 'Ink.' }],
+        looks: [{ character: 'Mira Vance, 34.', persona: 'Sam Reyes, 25.', style: 'Ink.' }],
         bodies: [body],
       }),
     })
@@ -802,11 +802,15 @@ Deno.test('A Roleplay Frame is pictured over the API, and its Look can be edited
     assertEquals((await call('POST', '/api/sessions/s1/roleplay/frames/5/picture')).status, 404)
 
     const look = await call('PUT', '/api/sessions/s1/roleplay/look', {
-      subject: 'Mira Vance, 34.',
+      character: 'Mira Vance, 34.',
+      persona: 'Sam Reyes, 25.',
       style: 'Watercolour.',
     })
     const session = await look.json()
-    assertEquals(session.frames[0].promptText, `adult, Mira Vance, 34. ${body} Watercolour.`)
+    assertEquals(
+      session.frames[0].promptText,
+      `adult, Mira Vance, 34. Sam Reyes, 25. ${body} Watercolour.`,
+    )
     assertEquals(
       (await call('PUT', '/api/sessions/s1/roleplay/look', { subject: 'x' })).status,
       400,

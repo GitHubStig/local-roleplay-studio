@@ -1,11 +1,22 @@
-import { assertEquals, assertStringIncludes } from '@std/assert'
+import { assertEquals, assertStringIncludes, assertThrows } from '@std/assert'
 import { setLimitsEnabled } from '../limits.ts'
 import { DEFAULT_SETTINGS } from '../settings.ts'
-import { artFrameMessages, pictured, storyText, wholeSentences } from './art.ts'
+import {
+  artFrameMessages,
+  parseRoleplayLook,
+  parseShown,
+  pictured,
+  storyText,
+  wholeSentences,
+} from './art.ts'
 import { replyOf, testCast } from './testing.ts'
 import type { RoleplaySession } from './types.ts'
 
-const look = { subject: 'Mira Vance, a tall woman of 34.', style: 'An oil painting.' }
+const look = {
+  character: 'Mira Vance, a tall woman of 34.',
+  persona: 'Sam Reyes, a slight man of 25.',
+  style: 'An oil painting.',
+}
 
 const session: RoleplaySession = {
   id: 'r1',
@@ -58,10 +69,15 @@ Deno.test('Undressed people are covered in pictures only while the Limits are on
 })
 
 Deno.test('pictured composes the Image Prompt and blocks one that crosses a Limit in force', () => {
-  const frame = pictured(session.frames[1], look, 'She stands at the rail.')
+  const frame = pictured(session.frames[1], look, 'She stands at the rail.', 'character')
   assertEquals(
     frame.promptText,
     'adult, Mira Vance, a tall woman of 34. She stands at the rail. An oil painting.',
+  )
+  assertEquals(frame.shown, 'character')
+  assertEquals(
+    pictured(session.frames[1], look, 'They talk.').prompt,
+    'Mira Vance, a tall woman of 34. Sam Reyes, a slight man of 25. They talk. An oil painting.',
   )
   assertEquals(frame.blocked, undefined)
   const bare = pictured(session.frames[1], look, 'She wears only a towel.')
@@ -84,4 +100,18 @@ Deno.test('wholeSentences drops a sentence the length cap cut off', () => {
   })
   assertEquals(wholeSentences({ pose: 'She stands' }), { pose: 'She stands' })
   assertEquals(wholeSentences({ pose: 'She says "go."' }), { pose: 'She says "go."' })
+})
+
+Deno.test('parseShown and parseRoleplayLook', () => {
+  const shown = (character: unknown, persona: unknown) =>
+    parseShown({ character_shown: character, persona_shown: persona })
+  assertEquals([shown(true, false), shown(false, true), shown(true, true), shown(false, false)], [
+    'character',
+    'persona',
+    'both',
+    'both',
+  ])
+  assertEquals(parseShown({}), 'both')
+  assertEquals(parseRoleplayLook(look), look)
+  assertThrows(() => parseRoleplayLook({ character: 'Mira.', style: 'Ink.' }), Error, 'identities')
 })

@@ -200,7 +200,7 @@ const body = (pose: string) =>
 Deno.test('pictureFrame writes the Look once, then each Frame from the story up to it', () =>
   withTempDir(async (root) => {
     const { deps, session, store } = await setUp(root, [replyOf('Take the wheel.')])
-    const look = { subject: 'Mira Vance, a tall woman of 34.', style: 'An oil painting.' }
+    const look = { character: 'Mira Vance, a tall woman of 34.', persona: 'Sam.', style: 'Oil.' }
     const scripted = scriptedRoleplayModel({
       looks: [look],
       bodies: [body('Mira grips the wheel.'), body('Mira points ahead.')],
@@ -228,7 +228,7 @@ Deno.test('setLook rewrites every pictured Frame, and refuses an incomplete Look
   withTempDir(async (root) => {
     const { deps, session, store } = await setUp(root)
     const scripted = scriptedRoleplayModel({
-      looks: [{ subject: 'Mira.', style: 'Ink.' }],
+      looks: [{ character: 'Mira.', persona: 'Sam.', style: 'Ink.' }],
       bodies: [body('Mira waits.')],
     })
     const pictured = await pictureFrame(
@@ -239,7 +239,47 @@ Deno.test('setLook rewrites every pictured Frame, and refuses an incomplete Look
       () => {},
       signal(),
     )
-    const restyled = await setLook(store, pictured, { subject: 'Mira.', style: 'Watercolour.' })
+    const restyled = await setLook(store, pictured, {
+      character: 'Mira.',
+      persona: 'Sam.',
+      style: 'Watercolour.',
+    })
     assertStringIncludes(restyled.frames[0].promptText!, 'Watercolour.')
     await assertRejects(() => setLook(store, pictured, { subject: 'Mira.' }), CastError)
+
+    // A Look from before pictures chose who is shown is replaced by the next picture.
+    const old = { ...restyled, look: { subject: 'Mira and Sam.', style: 'Ink.' } }
+    const again = scriptedRoleplayModel({
+      looks: [{ character: 'Mira.', persona: 'Sam.', style: 'Pastel.' }],
+      bodies: [body('Mira waits.')],
+    })
+    const renewed = await pictureFrame(
+      { ...deps, roleplayModel: again },
+      old,
+      scenario,
+      0,
+      () => {},
+      signal(),
+    )
+    assertEquals(renewed.look, { character: 'Mira.', persona: 'Sam.', style: 'Pastel.' })
+  }))
+
+Deno.test('A picture that crosses a Limit is tried once more, told which', () =>
+  withTempDir(async (root) => {
+    const { deps, session } = await setUp(root)
+    const scripted = scriptedRoleplayModel({
+      looks: [{ character: 'Mira.', persona: 'Sam.', style: 'Ink.' }],
+      bodies: [body('Mira wears only a towel.'), body('Mira wears a robe.')],
+    })
+    const done = await pictureFrame(
+      { ...deps, roleplayModel: scripted },
+      session,
+      scenario,
+      0,
+      () => {},
+      signal(),
+    )
+    assertEquals(done.frames[0].blocked, undefined)
+    assertStringIncludes(done.frames[0].body!, 'a robe')
+    assertStringIncludes(scripted.art[2][1].content, 'crossed a limit (no sexual or nude imagery)')
   }))
