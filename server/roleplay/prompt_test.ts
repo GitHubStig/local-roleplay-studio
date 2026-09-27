@@ -74,6 +74,10 @@ Deno.test('parseReplyText trims fields and needs actions or dialogue', () => {
     { internal: 'hm', actions: 'She waits.', dialogue: '' },
   )
   assertThrows(() => parseReplyText('{"internal":"x","actions":"","dialogue":""}'))
+  assertEquals(
+    parseReplyText('{"internal":"","actions":"He waits.","dialogue":"..."}').dialogue,
+    '',
+  )
   assertThrows(() => parseReplyText('not json'), Error, 'valid JSON')
 })
 

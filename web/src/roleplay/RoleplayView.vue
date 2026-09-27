@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onActivated, onBeforeUnmount, onDeactivated, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { ApiError, cancelFrame, getSession } from '../api'
+import { ApiError, cancelFrame, getSession, type Look } from '../api'
 import { clearCurrentSession, setCurrentSession } from '../composables/useCurrentSession'
 import { useStoredFlag } from '../composables/useStoredFlag'
 import { useStoredText } from '../composables/useStoredText'
@@ -12,7 +12,9 @@ import {
   type RoleplayEvent,
   type RoleplaySession,
   beginRoleplay,
+  pictureFrame,
   saveCast,
+  saveLook,
   sendMessage,
   undoExchange,
   writeCast,
@@ -32,7 +34,9 @@ const transcript = ref<HTMLElement | null>(null)
 
 /** The exchange in progress: the message sent, and the reply as it arrives. */
 interface Pending {
-  kind: 'cast' | 'begin' | 'message'
+  kind: 'cast' | 'begin' | 'message' | 'picture'
+  /** The Frame being pictured. */
+  frameIndex?: number
   message?: string
   reply: Partial<Reply>
   thinking?: string
@@ -42,6 +46,15 @@ interface Pending {
 }
 const pending = ref<Pending | null>(null)
 const busy = computed(() => pending.value !== null)
+/** The Character is writing into the conversation (not picturing a Frame beside it). */
+const replying = computed(() => {
+  const kind = pending.value?.kind
+  return !!pending.value && !pending.value.detached && (kind === 'message' || kind === 'begin')
+})
+/** The Frame being pictured, if any. */
+const picturing = computed(() =>
+  pending.value?.kind === 'picture' ? pending.value.frameIndex ?? null : null
+)
 
 const cast = computed(() => session.value?.cast ?? null)
 /** The Cast is written but the scene hasn't begun: the player reviews it first. */
@@ -136,6 +149,9 @@ function onEvent(event: RoleplayEvent) {
       // The message was used; a declined or failed one stays in the box to reword.
       if (p.kind === 'message') draft.value = ''
       break
+    case 'pictured':
+      session.value = event.session
+      break
     case 'declined':
       notice.value = { kind: 'declined', text: event.message }
       break
@@ -170,6 +186,12 @@ async function begin() {
   await run({ kind: 'begin', reply: {} }, () => beginRoleplay(props.id, onEvent))
 }
 
+/** Pictures a Frame: the Art Agent writes its Image Prompt (not rendered yet). */
+function picture(index: number) {
+  if (busy.value) return
+  run({ kind: 'picture', frameIndex: index, reply: {} }, () => pictureFrame(props.id, index, onEvent))
+}
+
 function send() {
   const text = draft.value.trim()
   if (!text || busy.value || !begun.value) return
@@ -201,8 +223,12 @@ async function undo() {
   }
 }
 
-// Keep the newest exchange in view.
-watch([() => session.value?.frames.length, () => pending.value?.reply, () => pending.value?.message], async () => {
+// Keep the newest exchange in view as the conversation grows (not while picturing a Frame).
+watch([
+  () => session.value?.frames.length,
+  () => (replying.value ? pending.value!.reply : null),
+  () => (replying.value ? pending.value!.message : null),
+], async () => {
   await nextTick()
   // Jump on opening; glide while a reply comes in.
   transcript.value?.scrollTo({
@@ -228,6 +254,11 @@ const statusLabel = computed(() => {
   if (p.detached) return 'A reply is being written in another tab…'
   if (p.kind === 'cast') return cast.value ? 'Rewriting the Cast…' : 'Writing the Cast…'
   if (p.kind === 'begin') return `${characterName.value} is starting the scene…`
+  if (p.kind === 'picture') {
+    return session.value?.look
+      ? `Picturing Frame ${p.frameIndex}…`
+      : `Writing the Look, then picturing Frame ${p.frameIndex}…`
+  }
   return `${characterName.value} is replying…`
 })
 
@@ -269,6 +300,25 @@ function setField(f: CastField, value: string) {
   const group = castDraft.value![f.group] as unknown as Record<string, unknown>
   group[f.key] = f.key === 'age' ? Number(value) : value
   castSaved.value = false
+}
+
+// --- The Look, editable by hand once written.
+
+const lookDraft = ref<Look | null>(null)
+watch(() => session.value?.look, (l) => (lookDraft.value = l ? { ...l } : null), { immediate: true })
+const lookChanged = computed(() =>
+  !!lookDraft.value && !!session.value?.look &&
+  (lookDraft.value.subject.trim() !== session.value.look.subject ||
+    lookDraft.value.style.trim() !== session.value.look.style)
+)
+async function saveLookDraft() {
+  if (!lookDraft.value) return
+  notice.value = null
+  try {
+    session.value = await saveLook(props.id, lookDraft.value)
+  } catch (err) {
+    notice.value = { kind: 'error', text: (err as Error).message }
+  }
 }
 
 /** Saves the edited Cast; false if it was refused. */
@@ -317,7 +367,11 @@ async function saveCastDraft(): Promise<boolean> {
                 {{ frame.message }}
               </p>
             </li>
-            <li class="flex flex-col gap-1.5" data-reply>
+            <li
+              class="-mx-2 flex flex-col gap-1.5 rounded-lg p-2"
+              :class="{ 'render-sweep': picturing === frame.index }"
+              data-reply
+            >
               <span class="text-xs text-muted">{{ characterName }}</span>
               <p
                 v-if="frame.reply.internal && !thoughtsHidden"
@@ -332,6 +386,45 @@ async function saveCastDraft(): Promise<boolean> {
               <p v-if="frame.reply.dialogue" class="max-w-prose text-lg" data-dialogue>
                 “{{ frame.reply.dialogue }}”
               </p>
+              <div class="flex max-w-prose flex-col gap-1 text-xs" data-picture>
+                <p v-if="picturing === frame.index" class="flex items-center gap-2" data-picturing>
+                  <span class="animate-pulse text-info">
+                    {{ session.look ? 'Picturing this moment…' : 'Writing the Look, then picturing…' }}
+                  </span>
+                  <button
+                    type="button"
+                    class="text-danger underline-offset-2 hover:underline disabled:opacity-50"
+                    :disabled="pending?.cancelling"
+                    @click="cancel"
+                  >
+                    Cancel
+                  </button>
+                </p>
+                <button
+                  v-else
+                  type="button"
+                  class="w-fit text-muted underline-offset-2 hover:text-fg hover:underline disabled:opacity-50"
+                  :disabled="busy"
+                  data-picture-button
+                  @click="picture(frame.index)"
+                >
+                  {{ frame.promptText ? 'Picture again' : 'Picture this' }}
+                </button>
+                <details v-if="frame.promptText" class="text-muted" data-image-prompt>
+                  <summary class="cursor-pointer select-none">
+                    Image Prompt
+                    <span v-if="frame.blocked" class="text-warn">· crosses a limit ({{ frame.blocked }})</span>
+                  </summary>
+                  <p class="mt-1 leading-relaxed">{{ frame.promptText }}</p>
+                  <p v-if="frame.pictureTimings" class="mt-1" data-picture-timings>
+                    Pictured in {{ frame.pictureTimings.text.toFixed(1) }} s
+                  </p>
+                  <details v-if="frame.pictureThinking" class="mt-1">
+                    <summary class="cursor-pointer select-none">Reasoning</summary>
+                    <p class="mt-1 whitespace-pre-wrap leading-relaxed">{{ frame.pictureThinking }}</p>
+                  </details>
+                </details>
+              </div>
             </li>
           </template>
 
@@ -363,7 +456,9 @@ async function saveCastDraft(): Promise<boolean> {
           </li>
 
           <!-- The exchange in progress. -->
-          <template v-if="pending && !pending.detached && pending.kind !== 'cast'">
+          <template
+            v-if="pending && !pending.detached && pending.kind !== 'cast' && pending.kind !== 'picture'"
+          >
             <li v-if="pending.message" class="flex flex-col items-end gap-1" data-pending-message>
               <span class="text-xs text-muted">{{ personaName }}</span>
               <p class="max-w-prose whitespace-pre-wrap rounded-lg bg-fg/80 px-3 py-2 text-canvas">
@@ -391,23 +486,25 @@ async function saveCastDraft(): Promise<boolean> {
         <div class="flex shrink-0 flex-col gap-2">
           <div
             class="flex rounded-lg"
-            :class="{ 'render-sweep': busy && !pending?.cancelling }"
-            :data-writing="busy ? '' : undefined"
+            :class="{ 'render-sweep': replying && !pending?.cancelling }"
+            :data-writing="replying ? '' : undefined"
           >
             <textarea
               v-model="draft"
               class="h-20 flex-1 resize-none rounded-lg border border-line bg-surface p-3 disabled:opacity-60"
               :placeholder="`What ${personaName} says or does… (Enter to send, Shift+Enter for a new line)`"
-              :disabled="busy || !begun"
+              :disabled="!begun || (busy && picturing === null)"
               @keydown="onKeydown"
             />
           </div>
           <div class="flex items-center gap-2">
+            <!-- While a Frame is pictured, keep typing; Send waits (one thing at a time per Session). -->
             <button
-              v-if="!busy"
+              v-if="!busy || picturing !== null"
               type="button"
               class="rounded-lg bg-fg px-4 py-2 font-medium text-canvas disabled:opacity-50"
-              :disabled="!draft.trim() || !begun"
+              :disabled="!draft.trim() || !begun || busy"
+              :title="picturing !== null ? 'Waiting for the picture to finish' : undefined"
               @click="send"
             >
               Send
@@ -442,13 +539,47 @@ async function saveCastDraft(): Promise<boolean> {
         </div>
       </main>
 
-      <aside class="flex w-80 flex-col border-l border-line xl:w-96" data-cast-panel>
+      <aside class="flex w-80 flex-col overflow-y-auto border-l border-line xl:w-96" data-cast-panel>
+        <form
+          v-if="lookDraft"
+          class="flex flex-col gap-2 border-b border-line p-4 text-sm"
+          data-look
+          @submit.prevent="saveLookDraft"
+        >
+          <h2 class="font-medium">Look <span class="font-normal text-muted">· every picture</span></h2>
+          <label class="flex flex-col gap-1 text-xs text-muted">
+            Who is shown
+            <textarea
+              v-model="lookDraft.subject"
+              rows="4"
+              class="resize-y rounded border border-line bg-surface p-2 text-sm text-fg"
+              :disabled="busy"
+            />
+          </label>
+          <label class="flex flex-col gap-1 text-xs text-muted">
+            Art style and medium
+            <textarea
+              v-model="lookDraft.style"
+              rows="3"
+              class="resize-y rounded border border-line bg-surface p-2 text-sm text-fg"
+              :disabled="busy"
+            />
+          </label>
+          <button
+            v-if="lookChanged"
+            type="submit"
+            class="w-fit rounded border border-line px-3 py-1 text-xs disabled:opacity-50"
+            :disabled="busy"
+          >
+            Save Look
+          </button>
+        </form>
         <h2 class="border-b border-line px-4 py-2 text-sm font-medium">Cast</h2>
         <p v-if="!castDraft" class="p-4 text-sm text-muted">
           <span v-if="busy" class="animate-pulse">Writing the Cast from your Brief…</span>
           <template v-else>No Cast yet.</template>
         </p>
-        <form v-else class="flex flex-1 flex-col gap-5 overflow-y-auto p-4 text-sm" @submit.prevent="saveCastDraft">
+        <form v-else class="flex flex-col gap-5 p-4 text-sm" @submit.prevent="saveCastDraft">
           <fieldset v-for="g in GROUPS" :key="g.id" class="flex flex-col gap-2">
             <legend class="mb-1 font-medium">{{ g.title() }}</legend>
             <label v-for="f in CAST_FIELDS.filter((f) => f.group === g.id)" :key="f.key" class="flex flex-col gap-1 text-xs text-muted">

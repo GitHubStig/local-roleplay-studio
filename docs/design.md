@@ -145,6 +145,25 @@ The prompts are Markdown files in `server/prompts/roleplay/` (`cast.md`, `cast-r
 `character.md`, `opening-request.md`, `limits.md`, `limits-adults-only.md`), each with a note at
 the top saying when it's used and what it's filled with; edits apply on the next call.
 
+**Picturing a Frame** (the Art Agent; no rendering yet): **Picture this** under a Reply writes
+that Frame's Image Prompt, in the same shape as a Storyboard Frame's. The first time, a call
+writes the Roleplay's **Look** from the Cast and Brief (who is shown, and the art style, fitted to
+the story's period). Then a call reads the story up to the Frame (each Message and what the
+Character did and said; thoughts left out, as a picture can't show them) and writes the Frame's
+seven sentences, each capped at 280 characters, as a third-person view of that moment. The Image
+Prompt is the Look's subject, those sentences, then its style; it's checked against the Limits in
+force and shown under the Reply (marked if it crosses one). While a Frame is pictured, the light
+sweeps round that Reply, which says "Picturing this moment…" (or "Writing the Look, then
+picturing…") with its own Cancel; the conversation doesn't scroll, and the text box stays still
+and usable, with Send waiting until the picture is done. For debugging, each picture's time and the Art
+Agent's reasoning (when Thinking is on) are saved on the Frame (`pictureTimings`,
+`pictureThinking`) and the Look's on the Session (`lookTimings`, `lookThinking`); the Image
+Prompt block shows the time, with the reasoning collapsed under it. While the Limits are on, the Art
+Agent is told to dress anyone the story has undressed; while they're off, only that everyone shown
+is an adult. The Look is editable in the side panel, rewriting every pictured Frame. Replies are
+written with Ollama's `repeat_penalty` 1.15 over the whole conversation, which stopped long
+Roleplays looping on their own refrains.
+
 A Scenario can start a Roleplay too: its Setup facts and Opening serve as the Brief (its notes,
 written for image prompts, are left out). Frames have `image: null`: rendering a Roleplay is the
 planned Art Agent ([open-threads.md](open-threads.md)).
@@ -309,6 +328,8 @@ All under `/api`; the Vite dev server proxies it to the Deno server.
 | `POST /sessions/:id/roleplay/begin` | Roleplay: the opening Reply, streaming `reply-part` per field, then `replied` (`frame`, `session`) |
 | `POST /sessions/:id/roleplay/messages` | Roleplay: send `{ text }`, streaming `reply-part` (`key`, `value`) per field, then `replied`, or `declined` (`message`) |
 | `DELETE /sessions/:id/roleplay/frames/:index` | Roleplay: undo the latest exchange (`409` for any other, and for the opening) |
+| `POST /sessions/:id/roleplay/frames/:index/picture` | Roleplay: picture one Frame, streaming `phase`, `look` (the first time), then `pictured` (`frame`, `session`) |
+| `PUT /sessions/:id/roleplay/look` | Roleplay: replace the Look, `{ subject, style }`, rewriting every pictured Frame (`400` if incomplete, `422` if it crosses a Limit) |
 | `PUT /sessions/:id/roleplay/cast` | Roleplay: replace the Cast (`400` if incomplete or the Character is under 18, `422` if it crosses a Limit) |
 
 A Frame's stream emits `phase` (`text`, then `queued` if another Session is rendering, then

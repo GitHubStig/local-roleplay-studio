@@ -84,13 +84,15 @@ const str = (v: unknown) => (typeof v === 'string' ? v.trim() : '')
 export function parseReply(value: unknown): Reply {
   const o = (typeof value === 'object' && value !== null ? value : {}) as Record<string, unknown>
   const reply = { internal: str(o.internal), actions: str(o.actions), dialogue: str(o.dialogue) }
+  // A silent Character sometimes "says" just an ellipsis.
+  if (/^[\s.…]*$/.test(reply.dialogue)) reply.dialogue = ''
   if (!reply.actions && !reply.dialogue) throw new Error('The reply had no actions or dialogue')
   return reply
 }
 
 export const parseReplyText = (content: string): Reply => parseReply(parseJson(content))
 
-function parseJson(content: string): unknown {
+export function parseJson(content: string): unknown {
   try {
     return JSON.parse(content)
   } catch {
@@ -152,7 +154,7 @@ export const castSchema = () =>
     }),
   })
 
-/** A Cast that's incomplete, or whose Character is under 18. */
+/** A hand edit that's incomplete: a Cast (or a Character under 18), or a Look. */
 export class CastError extends Error {}
 
 /** Checks and tidies a Cast; throws a CastError listing what's wrong. */

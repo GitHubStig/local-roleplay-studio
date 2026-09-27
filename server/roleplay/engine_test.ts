@@ -5,14 +5,17 @@ import { briefScenario } from '../scenario.ts'
 import { scriptedTextModel, withTempDir } from '../testing.ts'
 import {
   beginRoleplay,
+  pictureFrame,
   RoleplayError,
   type RoleplayEvent,
   RoleplayLimitError,
   sendMessage,
   setCast,
+  setLook,
   undoLatestExchange,
   writeCast,
 } from './engine.ts'
+import { CastError } from './prompt.ts'
 import { replyOf, scriptedRoleplayModel, testCast } from './testing.ts'
 import type { RoleplaySession } from './types.ts'
 
@@ -189,4 +192,54 @@ Deno.test('setCast saves an edited Cast and refuses one that crosses a Limit', (
     assertEquals((await setCast(store, session, renamed)).cast?.persona.name, 'Alex')
     const bad = { ...testCast, setting: { ...testCast.setting, place: 'A nude beach.' } }
     await assertRejects(() => setCast(store, session, bad), RoleplayLimitError)
+  }))
+
+const body = (pose: string) =>
+  `${pose} She frowns. A wide shot. A navy coat. The bridge. Lamplight. Deep blues.`
+
+Deno.test('pictureFrame writes the Look once, then each Frame from the story up to it', () =>
+  withTempDir(async (root) => {
+    const { deps, session, store } = await setUp(root, [replyOf('Take the wheel.')])
+    const look = { subject: 'Mira Vance, a tall woman of 34.', style: 'An oil painting.' }
+    const scripted = scriptedRoleplayModel({
+      looks: [look],
+      bodies: [body('Mira grips the wheel.'), body('Mira points ahead.')],
+    })
+    const art = { ...deps, roleplayModel: scripted }
+    const two = (await sendMessage(deps, session, 'Sorry.', () => {}, signal()))!
+    const events: RoleplayEvent[] = []
+    const first = await pictureFrame(art, two, scenario, 1, (e) => events.push(e), signal())
+    assertEquals(events.map((e) => e.type), ['phase', 'look', 'pictured'])
+    assertEquals(first.look, look)
+    assertStringIncludes(first.frames[1].promptText!, 'adult, Mira Vance, a tall woman of 34.')
+    assertStringIncludes(scripted.art[1][1].content, 'Picture Frame 1.')
+    // Kept for debugging: how long each call took, and any reasoning.
+    assertEquals(typeof first.lookTimings?.text, 'number')
+    assertEquals(typeof first.frames[1].pictureTimings?.text, 'number')
+    assertEquals(first.frames[1].pictureThinking, 'Kael first, then the bar.')
+
+    const second = await pictureFrame(art, first, scenario, 0, () => {}, signal())
+    assertEquals(scripted.art.length, 3) // the Look is written only once
+    assertStringIncludes(second.frames[0].promptText!, 'Mira points ahead.')
+    assertEquals(((await store.load('r1')) as RoleplaySession).frames[1].body, first.frames[1].body)
+  }))
+
+Deno.test('setLook rewrites every pictured Frame, and refuses an incomplete Look', () =>
+  withTempDir(async (root) => {
+    const { deps, session, store } = await setUp(root)
+    const scripted = scriptedRoleplayModel({
+      looks: [{ subject: 'Mira.', style: 'Ink.' }],
+      bodies: [body('Mira waits.')],
+    })
+    const pictured = await pictureFrame(
+      { ...deps, roleplayModel: scripted },
+      session,
+      scenario,
+      0,
+      () => {},
+      signal(),
+    )
+    const restyled = await setLook(store, pictured, { subject: 'Mira.', style: 'Watercolour.' })
+    assertStringIncludes(restyled.frames[0].promptText!, 'Watercolour.')
+    await assertRejects(() => setLook(store, pictured, { subject: 'Mira.' }), CastError)
   }))

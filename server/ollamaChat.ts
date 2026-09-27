@@ -12,6 +12,8 @@ export interface ChatCall {
   format: object
   /** Token cap for the reply; thinking gets `thinkingTokens` on top when it's on. */
   maxTokens: number
+  /** Other Ollama sampling options, e.g. `repeat_penalty`. */
+  options?: Record<string, number>
   signal: AbortSignal
   onThinking?: (chunk: string) => void
   onContent?: (chunk: string) => void
@@ -85,9 +87,12 @@ export function ollamaChat(
     get thinks() {
       return think
     },
-    async stream({ messages, format, maxTokens, signal, onThinking, onContent }) {
+    async stream({ messages, format, maxTokens, options, signal, onThinking, onContent }) {
       const body = () => ({
-        options: { num_predict: think ? maxTokens + opts.thinkingTokens : maxTokens },
+        options: {
+          ...options,
+          num_predict: think ? maxTokens + opts.thinkingTokens : maxTokens,
+        },
         format,
         messages,
       })

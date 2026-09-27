@@ -183,7 +183,8 @@ const BODY_FIELDS = [
   ['color', 7],
 ] as const
 
-const frameSchema = {
+/** A Frame's seven sentences as required fields, one per aspect (Storyboards, Roleplay pictures). */
+export const frameSchema = {
   type: 'object',
   properties: Object.fromEntries(
     BODY_FIELDS.map(([key, i]) => [
@@ -310,7 +311,8 @@ export function storyboardPlanMessages({ scenario, frameCount }: StoryboardPlanR
   }
 }
 
-const lookSchema = {
+/** A Look: the subject-and-identity and art-style sentences Frames share. */
+export const lookSchema = {
   type: 'object',
   properties: {
     subject: { type: 'string', description: 'sentence 1, subject and identity' },

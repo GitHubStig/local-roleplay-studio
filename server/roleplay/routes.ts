@@ -3,11 +3,13 @@ import type { Scenario } from '../scenario.ts'
 import type { Session } from '../session.ts'
 import {
   beginRoleplay,
+  pictureFrame,
   type RoleplayDeps,
   RoleplayError,
   RoleplayLimitError,
   sendMessage,
   setCast,
+  setLook,
   undoLatestExchange,
   writeCast,
 } from './engine.ts'
@@ -22,7 +24,7 @@ export interface RoleplayRouteContext {
   /** Takes the Session's lock, loads it and runs `handle` (see app.ts). */
   locked(
     id: string,
-    kind: 'setup' | 'frame' | 'undo' | 'edit',
+    kind: 'setup' | 'frame' | 'undo' | 'edit' | 'render',
     handle: (session: Session) => Promise<Response>,
   ): Promise<Response>
   /** Runs work as a server-sent event stream (see app.ts). */
@@ -43,7 +45,7 @@ export function roleplayRoutes(ctx: RoleplayRouteContext): Route[] {
   /** Runs `handle` on a Roleplay, turning the engine's refusals into responses. */
   const withRoleplay = (
     id: string,
-    kind: 'setup' | 'frame' | 'undo' | 'edit',
+    kind: 'setup' | 'frame' | 'undo' | 'edit' | 'render',
     handle: (session: RoleplaySession) => Promise<Response>,
   ) =>
     ctx.locked(id, kind, async (session) => {
@@ -100,6 +102,29 @@ export function roleplayRoutes(ctx: RoleplayRouteContext): Route[] {
         const index = Number(p.index)
         if (!Number.isInteger(index)) return error('Frame index must be a number', 400)
         return json(await undoLatestExchange(ctx.deps(session).store, session, index))
+      })],
+
+    [
+      'POST',
+      path('frames/:index/picture'),
+      (_req, p) =>
+        withRoleplay(p.id!, 'render', async (session) => {
+          const index = Number(p.index)
+          if (!Number.isInteger(index) || !session.frames[index]) {
+            return error('No such Frame', 404)
+          }
+          const scenario = await ctx.scenarioFor(session)
+          if (scenario instanceof Response) return scenario
+          return ctx.stream(session, index, false, async (send, signal) => {
+            await pictureFrame(ctx.deps(session), session, scenario, index, send, signal)
+          })
+        }),
+    ],
+
+    ['PUT', path('look'), (req, p) =>
+      withRoleplay(p.id!, 'edit', async (session) => {
+        if (!session.look) return error('This Roleplay has no Look yet', 409)
+        return json(await setLook(ctx.deps(session).store, session, await readJson(req)))
       })],
 
     ['PUT', path('cast'), (req, p) =>

@@ -18,6 +18,8 @@ vi.mock('./api', async (importOriginal) => ({
   sendMessage: vi.fn(),
   undoExchange: vi.fn(),
   saveCast: vi.fn(),
+  pictureFrame: vi.fn(),
+  saveLook: vi.fn(),
 }))
 
 const cast: roleplay.Cast = {
@@ -266,5 +268,63 @@ describe('RoleplayView', () => {
     vi.mocked(api.getSession).mockResolvedValue({ ...roleplaySession(), kind: 'chain' } as never)
     const { router } = await mountIt()
     expect(router.currentRoute.value.path).toBe('/sessions/r1')
+  })
+
+  it('pictures a Frame and shows its Image Prompt under the Reply, with the Look to edit', async () => {
+    const stream = held()
+    vi.mocked(roleplay.pictureFrame).mockImplementation((_id, _i, onEvent) => stream.call(onEvent))
+    const { wrapper } = await mountIt()
+    expect(wrapper.find('[data-look]').exists()).toBe(false)
+    await wrapper.find('[data-picture-button]').trigger('click')
+    expect(roleplay.pictureFrame).toHaveBeenCalledWith('r1', 0, expect.any(Function))
+    expect(wrapper.find('[role=status]').text()).toBe('Writing the Look, then picturing Frame 0…')
+    // Shown where it was asked for: the Reply sweeps and says so, with its own Cancel; the text
+    // box stays usable and still, and Send waits.
+    expect(wrapper.find('[data-reply]').classes()).toContain('render-sweep')
+    expect(wrapper.find('[data-picturing]').text()).toContain('Writing the Look, then picturing…')
+    expect(wrapper.find('[data-writing]').exists()).toBe(false)
+    const box = wrapper.find('textarea:not([data-field])')
+    expect(box.attributes('disabled')).toBeUndefined()
+    await box.setValue('Next move')
+    expect(buttonNamed(wrapper, 'Send').attributes('disabled')).toBeDefined()
+
+    const look = { subject: 'Elena, 38.', style: 'Oil painting.' }
+    const done = {
+      ...roleplaySession([{
+        ...frame(0, null, 'Get inside.'),
+        promptText: 'adult, Elena, 38. She waits. Oil painting.',
+        pictureTimings: { text: 24.6 },
+        blocked: 'no sexual or nude imagery',
+      }]),
+      look,
+    }
+    stream.emit({ type: 'look', look })
+    stream.emit({ type: 'pictured', frame: done.frames[0], session: done })
+    stream.finish()
+    await flushPromises()
+    expect(wrapper.find('[data-image-prompt]').text()).toContain('adult, Elena, 38. She waits.')
+    expect(wrapper.find('[data-image-prompt] summary').text()).toContain('crosses a limit')
+    expect(wrapper.find('[data-picture-timings]').text()).toBe('Pictured in 24.6 s')
+    expect(wrapper.find('[data-reply]').classes()).not.toContain('render-sweep')
+    expect(wrapper.find('[data-picture-button]').text()).toBe('Picture again')
+
+    vi.mocked(roleplay.saveLook).mockResolvedValue({ ...done, look: { ...look, style: 'Ink.' } })
+    await wrapper.findAll('[data-look] textarea')[1].setValue('Ink.')
+    await wrapper.find('[data-look]').trigger('submit')
+    await flushPromises()
+    expect(roleplay.saveLook).toHaveBeenCalledWith('r1', { subject: 'Elena, 38.', style: 'Ink.' })
+  })
+
+  it("doesn't scroll the conversation while a Frame is pictured", async () => {
+    const stream = held()
+    vi.mocked(roleplay.pictureFrame).mockImplementation((_id, _i, onEvent) => stream.call(onEvent))
+    const { wrapper } = await mountIt()
+    const scroll = vi.fn()
+    ;(wrapper.find('[data-transcript]').element as HTMLElement).scrollTo = scroll
+    await wrapper.find('[data-picture-button]').trigger('click')
+    stream.emit({ type: 'look', look: { subject: 'Elena.', style: 'Ink.' } })
+    stream.finish()
+    await flushPromises()
+    expect(scroll).not.toHaveBeenCalled()
   })
 })

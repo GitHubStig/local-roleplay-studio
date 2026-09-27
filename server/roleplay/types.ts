@@ -1,4 +1,4 @@
-import type { SessionBase } from '../session.ts'
+import type { Look, SessionBase } from '../session.ts'
 
 /** Who the Text Model plays. */
 export interface Character {
@@ -58,6 +58,18 @@ export interface RoleplayFrame {
   thinking?: string
   /** Seconds the reply took. */
   timings?: { text: number }
+  /**
+   * Once pictured by the Art Agent: the Frame's seven sentences, and its Image Prompt (the Look's
+   * subject, these, then the Look's style) as written and as sent to the Image Model.
+   */
+  body?: string
+  prompt?: string
+  promptText?: string
+  /** Why the picture can't be rendered: its Image Prompt crosses a Limit. */
+  blocked?: string
+  /** For debugging: seconds the latest picture took, and the Art Agent's reasoning, if any. */
+  pictureTimings?: { text: number }
+  pictureThinking?: string
   /** Rendering is deferred: no Roleplay Frame has an image yet. */
   image: null
   createdAt: string
@@ -68,5 +80,10 @@ export interface RoleplaySession extends SessionBase {
   kind: 'roleplay'
   /** Null until the Roleplay is set up. */
   cast: Cast | null
+  /** Who is shown and in what style, shared by every picture; written when one is first pictured. */
+  look?: Look | null
+  /** For debugging: seconds the Look took to write, and the Art Agent's reasoning, if any. */
+  lookTimings?: { text: number }
+  lookThinking?: string
   frames: RoleplayFrame[]
 }

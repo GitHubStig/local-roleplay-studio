@@ -1,6 +1,7 @@
 import type { ChatMessage } from '../ollamaChat.ts'
 import type { RoleplayModel } from './model.ts'
 import { REPLY_FIELDS } from './prompt.ts'
+import type { Look } from '../session.ts'
 import type { Cast, Reply } from './types.ts'
 
 export const testCast: Cast = {
@@ -37,8 +38,13 @@ export const replyOf = (dialogue: string, extra: Partial<Reply> = {}): Reply => 
  * was asked for. Streams each reply's fields as the real one does.
  */
 export function scriptedRoleplayModel(
-  script: { casts?: (Cast | Error)[]; replies?: (Reply | Error)[] },
-): RoleplayModel & { asked: ChatMessage[][] } {
+  script: {
+    casts?: (Cast | Error)[]
+    replies?: (Reply | Error)[]
+    looks?: (Look | Error)[]
+    bodies?: (string | Error)[]
+  },
+): RoleplayModel & { asked: ChatMessage[][]; art: ChatMessage[][] } {
   const next = <T>(queue: (T | Error)[] | undefined, what: string): Promise<T> => {
     const item = queue?.shift()
     if (!item) return Promise.reject(new Error(`no scripted ${what} left`))
@@ -49,6 +55,18 @@ export function scriptedRoleplayModel(
     async writeCast(_scenario: unknown, signal: AbortSignal) {
       signal.throwIfAborted()
       return { cast: await next(script.casts, 'Cast') }
+    },
+    /** The messages each Art Agent call was given. */
+    art: [] as ChatMessage[][],
+    async writeLook(messages: ChatMessage[], signal: AbortSignal) {
+      model.art.push(messages)
+      signal.throwIfAborted()
+      return { look: await next(script.looks, 'Look') }
+    },
+    async pictureFrame(messages: ChatMessage[], signal: AbortSignal) {
+      model.art.push(messages)
+      signal.throwIfAborted()
+      return { body: await next(script.bodies, 'picture'), thinking: 'Kael first, then the bar.' }
     },
     async reply(
       messages: ChatMessage[],

@@ -776,3 +776,39 @@ Deno.test('Turning the Limits off in Settings applies at once, except the adult 
       422,
     )
   }))
+
+Deno.test('A Roleplay Frame is pictured over the API, and its Look can be edited', () =>
+  withTempDir(async (root) => {
+    const body = 'Mira waits. She frowns. A wide shot. A navy coat. The bridge. Lamplight. Blues.'
+    const { call } = setup({
+      root,
+      settings: { textModel: 'x' },
+      roleplayModel: scriptedRoleplayModel({
+        casts: [testCast],
+        replies: [replyOf('You are late.')],
+        looks: [{ subject: 'Mira Vance, 34.', style: 'Ink.' }],
+        bodies: [body],
+      }),
+    })
+    await call('POST', '/api/sessions', { kind: 'roleplay', brief: 'A storm at sea.' })
+    await readEvents(await call('POST', '/api/sessions/s1/roleplay/cast'))
+    assertEquals((await call('PUT', '/api/sessions/s1/roleplay/look', {})).status, 409)
+    await readEvents(await call('POST', '/api/sessions/s1/roleplay/begin'))
+
+    const events = await readEvents(
+      await call('POST', '/api/sessions/s1/roleplay/frames/0/picture'),
+    )
+    assertEquals(events.map(([e]) => e), ['phase', 'look', 'pictured'])
+    assertEquals((await call('POST', '/api/sessions/s1/roleplay/frames/5/picture')).status, 404)
+
+    const look = await call('PUT', '/api/sessions/s1/roleplay/look', {
+      subject: 'Mira Vance, 34.',
+      style: 'Watercolour.',
+    })
+    const session = await look.json()
+    assertEquals(session.frames[0].promptText, `adult, Mira Vance, 34. ${body} Watercolour.`)
+    assertEquals(
+      (await call('PUT', '/api/sessions/s1/roleplay/look', { subject: 'x' })).status,
+      400,
+    )
+  }))

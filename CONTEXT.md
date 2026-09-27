@@ -72,6 +72,10 @@ _Avoid_: Scene, location, world
 What the player writes in a Roleplay: what their Persona says or does.
 _Avoid_: Action, prompt, input
 
+**Art Agent**:
+The Text Model's job of turning a Roleplay Frame into an Image Prompt: a Look for the Roleplay, written once, then each pictured Frame's sentences from the story up to it.
+_Avoid_: Illustrator, image agent, art bot
+
 **Reply**:
 The Character's answer to a Message: a brief thought, what they do, and what they say, as three separate fields.
 _Avoid_: Response, completion, output, narration

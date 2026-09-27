@@ -4,7 +4,11 @@ import type { Scenario } from '../scenario.ts'
 import type { SessionStore } from '../session.ts'
 import type { TextModel } from '../textModel.ts'
 import type { RoleplayModel } from './model.ts'
-import { openingMessages, parseCast, roleplayMessages } from './prompt.ts'
+import { CastError, openingMessages, parseCast, roleplayMessages } from './prompt.ts'
+import { artFrameMessages, artLookMessages, pictured } from './art.ts'
+import { renderPrompt } from '../imagePrompt.ts'
+import type { Look } from '../session.ts'
+import { parseLook } from '../textModel.ts'
 import type { Cast, Reply, RoleplayFrame, RoleplaySession } from './types.ts'
 
 /** Progress of a Roleplay's setup or reply, streamed to the player as it happens. */
@@ -17,6 +21,10 @@ export type RoleplayEvent =
   | { type: 'replied'; frame: RoleplayFrame; session: RoleplaySession }
   /** The message or the reply crossed a Limit: nothing was saved. */
   | { type: 'declined'; message: string }
+  /** The Art Agent's Look, written the first time a Frame is pictured. */
+  | { type: 'look'; look: Look }
+  /** A Frame's picture: its Image Prompt, not yet rendered. */
+  | { type: 'pictured'; frame: RoleplayFrame; session: RoleplaySession }
 
 export interface RoleplayDeps {
   store: SessionStore
@@ -159,6 +167,86 @@ export async function sendMessage(
     return null
   }
   return await commit(deps, session, message, reply, start, emit)
+}
+
+/**
+ * Pictures Frame `index` with the Art Agent: writes the Roleplay's Look first if it has none,
+ * then the Frame's seven sentences from the story up to it, and saves its Image Prompt. Picturing
+ * a Frame again replaces its picture. The Image Prompt is checked against the Limits in force; one
+ * that crosses them is saved as blocked, like a Storyboard Frame.
+ */
+export async function pictureFrame(
+  deps: RoleplayDeps,
+  session: RoleplaySession,
+  scenario: Scenario,
+  index: number,
+  emit: (event: RoleplayEvent) => void,
+  signal: AbortSignal,
+): Promise<RoleplaySession> {
+  if (!session.cast || !session.frames[index]) throw new RoleplayError(`There is no Frame ${index}`)
+  emit({ type: 'phase', phase: 'text' })
+  let current = session
+  if (!current.look) {
+    const start = performance.now()
+    const messages = await artLookMessages(current, scenario)
+    const { look, thinking } = await withRetry(
+      (onThinking) => deps.roleplayModel.writeLook(messages, signal, onThinking),
+      signal,
+      emit,
+    )
+    const { lookThinking: _, ...rest } = current
+    current = {
+      ...rest,
+      look,
+      lookTimings: { text: secondsSince(start) },
+      ...(thinking ? { lookThinking: thinking } : {}),
+    }
+    emit({ type: 'look', look })
+  }
+  const start = performance.now()
+  const messages = await artFrameMessages(current, index)
+  const { body, thinking } = await withRetry(
+    (onThinking) => deps.roleplayModel.pictureFrame(messages, signal, onThinking),
+    signal,
+    emit,
+  )
+  signal.throwIfAborted()
+  const { pictureThinking: _, ...previous } = current.frames[index]
+  const frame: RoleplayFrame = {
+    ...pictured(previous, current.look!, body),
+    pictureTimings: { text: secondsSince(start) },
+    ...(thinking ? { pictureThinking: thinking } : {}),
+  }
+  const updated: RoleplaySession = {
+    ...current,
+    frames: current.frames.map((f) => (f.index === index ? frame : f)),
+  }
+  await deps.store.save(updated)
+  emit({ type: 'pictured', frame, session: updated })
+  return updated
+}
+
+/** Replaces the Look, edited by hand, and rewrites every pictured Frame's Image Prompt with it. */
+export async function setLook(
+  store: SessionStore,
+  session: RoleplaySession,
+  value: unknown,
+): Promise<RoleplaySession> {
+  let look: Look
+  try {
+    look = parseLook(value)
+  } catch {
+    throw new CastError('The Look needs both a subject and a style')
+  }
+  const limit = crossedLimit(renderPrompt(`${look.subject} ${look.style}`))
+  if (limit) throw new RoleplayLimitError(`That crosses a limit: ${limit.message}`)
+  const updated: RoleplaySession = {
+    ...session,
+    look,
+    frames: session.frames.map((f) => (f.body ? pictured(f, look, f.body) : f)),
+  }
+  await store.save(updated)
+  return updated
 }
 
 /** Removes the latest exchange, so the player can say something else. The opening stays. */

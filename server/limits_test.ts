@@ -18,7 +18,18 @@ Deno.test('crossedLimit catches minors, sexual content and restraint', () => {
   ) {
     assertEquals(hit(t), 'minors', t)
   }
-  for (const t of ['take everything off, fully nude', 'topless', 'sexy lingerie', 'lacy bra']) {
+  for (
+    const t of [
+      'take everything off, fully nude',
+      'topless',
+      'sexy lingerie',
+      'lacy bra',
+      'leaving her slender upper body bare',
+      'she wears only a white towel wrapped around her waist',
+      'a towel around her hips',
+      'a thick white towel wrapped securely around her waist',
+    ]
+  ) {
     assertEquals(hit(t), 'sexual', t)
   }
   for (
@@ -27,6 +38,7 @@ Deno.test('crossedLimit catches minors, sexual content and restraint', () => {
       'wrists bound behind her back',
       'blindfolded and gagged',
       'held hostage',
+      'holding the rope loop tightly around her wrists',
     ]
   ) {
     assertEquals(hit(t), 'restraint', t)
