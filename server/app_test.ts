@@ -815,4 +815,14 @@ Deno.test('A Roleplay Frame is pictured over the API, and its Look can be edited
       (await call('PUT', '/api/sessions/s1/roleplay/look', { subject: 'x' })).status,
       400,
     )
+
+    const render = await readEvents(await call('POST', '/api/sessions/s1/roleplay/frames/0/render'))
+    assertEquals(render.at(-1)![0], 'rendered')
+    const image = (render.at(-1)![1].frame as { image: string }).image
+    assertEquals((await call('GET', `/api/sessions/s1/images/${image}`)).status, 200)
+    // Upscale works on a Roleplay picture like any Frame's image.
+    const up = await readEvents(await call('POST', '/api/sessions/s1/frames/0/upscale'))
+    assertEquals(up.at(-1)![0], 'upscaled')
+    const [card] = await (await call('GET', '/api/sessions')).json()
+    assertEquals(card.latestImage, image)
   }))

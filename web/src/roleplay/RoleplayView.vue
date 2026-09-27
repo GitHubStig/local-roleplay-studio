@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onActivated, onBeforeUnmount, onDeactivated, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { ApiError, cancelFrame, getSession } from '../api'
+import { ApiError, cancelFrame, getSession, imageUrl, upscaleFrame } from '../api'
 import { clearCurrentSession, setCurrentSession } from '../composables/useCurrentSession'
 import { useStoredFlag } from '../composables/useStoredFlag'
 import { useStoredText } from '../composables/useStoredText'
@@ -15,6 +15,7 @@ import {
   type Shown,
   beginRoleplay,
   pictureFrame,
+  renderFrame,
   saveCast,
   saveLook,
   sendMessage,
@@ -36,9 +37,12 @@ const transcript = ref<HTMLElement | null>(null)
 
 /** The exchange in progress: the message sent, and the reply as it arrives. */
 interface Pending {
-  kind: 'cast' | 'begin' | 'message' | 'picture'
-  /** The Frame being pictured. */
+  kind: 'cast' | 'begin' | 'message' | 'picture' | 'render' | 'upscale'
+  /** The Frame being pictured, rendered or upscaled. */
   frameIndex?: number
+  /** For a render or upscale: waiting in the queue, or running, and its steps. */
+  phase?: 'text' | 'queued' | 'image'
+  progress?: { step: number; total: number }
   message?: string
   reply: Partial<Reply>
   thinking?: string
@@ -53,10 +57,25 @@ const replying = computed(() => {
   const kind = pending.value?.kind
   return !!pending.value && !pending.value.detached && (kind === 'message' || kind === 'begin')
 })
-/** The Frame being pictured, if any. */
-const picturing = computed(() =>
-  pending.value?.kind === 'picture' ? pending.value.frameIndex ?? null : null
-)
+/** The Frame being pictured, rendered or upscaled, if any. */
+const picturing = computed(() => {
+  const kind = pending.value?.kind
+  return kind === 'picture' || kind === 'render' || kind === 'upscale'
+    ? pending.value!.frameIndex ?? null
+    : null
+})
+
+/** What's happening to that Frame, said where it happens. */
+const pictureStatus = computed(() => {
+  const p = pending.value
+  if (!p || picturing.value === null) return ''
+  if (p.kind === 'picture') {
+    return currentLook.value ? 'Picturing this moment…' : 'Writing the Look, then picturing…'
+  }
+  if (p.phase === 'queued') return 'Waiting for another render…'
+  const doing = p.kind === 'upscale' ? 'Upscaling to 2048 px…' : 'Rendering…'
+  return p.progress ? `${doing} step ${p.progress.step} of ${p.progress.total}` : doing
+})
 
 const cast = computed(() => session.value?.cast ?? null)
 /** The Cast is written but the scene hasn't begun: the player reviews it first. */
@@ -152,7 +171,14 @@ function onEvent(event: RoleplayEvent) {
       if (p.kind === 'message') draft.value = ''
       break
     case 'pictured':
+    case 'rendered':
       session.value = event.session
+      break
+    case 'phase':
+      pending.value = { ...p, phase: event.phase }
+      break
+    case 'progress':
+      pending.value = { ...p, progress: { step: event.step, total: event.total } }
       break
     case 'declined':
       notice.value = { kind: 'declined', text: event.message }
@@ -192,6 +218,22 @@ async function begin() {
 function picture(index: number) {
   if (busy.value) return
   run({ kind: 'picture', frameIndex: index, reply: {} }, () => pictureFrame(props.id, index, onEvent))
+}
+
+/** Renders a pictured Frame. */
+function render(index: number) {
+  if (busy.value) return
+  run({ kind: 'render', frameIndex: index, reply: {} }, () => renderFrame(props.id, index, onEvent))
+}
+
+/** Upscales a rendered Frame's picture to 2048 px. */
+function upscale(index: number) {
+  if (busy.value) return
+  run({ kind: 'upscale', frameIndex: index, reply: {} }, () =>
+    upscaleFrame(props.id, index, (event) => {
+      if (event.type === 'upscaled') session.value = event.session as RoleplaySession
+      else onEvent(event as RoleplayEvent)
+    }))
 }
 
 function send() {
@@ -239,6 +281,18 @@ watch([
   })
 })
 
+/**
+ * A picture loading after the conversation scrolled to its end pushes the end out of view; if
+ * the player is still at the end (within a picture's height), keep it there.
+ */
+function onPictureLoad(e: Event) {
+  const list = transcript.value
+  const img = e.target as HTMLImageElement
+  if (!list) return
+  const fromEnd = list.scrollHeight - list.scrollTop - list.clientHeight
+  if (fromEnd <= img.clientHeight + 80) list.scrollTo({ top: list.scrollHeight, behavior: 'auto' })
+}
+
 // Leaving the site or reloading drops the connection to running work, which cancels it.
 function warnBeforeUnload(e: BeforeUnloadEvent) {
   if (busy.value && !pending.value?.detached) {
@@ -256,11 +310,7 @@ const statusLabel = computed(() => {
   if (p.detached) return 'A reply is being written in another tab…'
   if (p.kind === 'cast') return cast.value ? 'Rewriting the Cast…' : 'Writing the Cast…'
   if (p.kind === 'begin') return `${characterName.value} is starting the scene…`
-  if (p.kind === 'picture') {
-    return currentLook.value
-      ? `Picturing Frame ${p.frameIndex}…`
-      : `Writing the Look, then picturing Frame ${p.frameIndex}…`
-  }
+  if (picturing.value !== null) return `Frame ${p.frameIndex}: ${pictureStatus.value}`
   return `${characterName.value} is replying…`
 })
 
@@ -385,6 +435,7 @@ async function saveCastDraft(): Promise<boolean> {
             <li
               class="-mx-2 flex flex-col gap-1.5 rounded-lg p-2"
               :class="{ 'render-sweep': picturing === frame.index }"
+              :data-rendering="picturing === frame.index && pending?.phase === 'queued' ? 'queued' : undefined"
               data-reply
             >
               <span class="text-xs text-muted">{{ characterName }}</span>
@@ -402,10 +453,28 @@ async function saveCastDraft(): Promise<boolean> {
                 “{{ frame.reply.dialogue }}”
               </p>
               <div class="flex max-w-prose flex-col gap-1 text-xs" data-picture>
+                <a
+                  v-if="frame.image"
+                  :href="imageUrl(session.id, frame.upscaled ?? frame.image)"
+                  target="_blank"
+                  class="relative mt-1 block w-fit"
+                  title="Open full size"
+                  data-picture-image
+                >
+                  <img
+                    :src="imageUrl(session.id, frame.image)"
+                    :alt="frame.promptText"
+                    class="max-h-80 rounded-md"
+                    :class="{ 'opacity-50': frame.stale }"
+                    @load="onPictureLoad"
+                  />
+                  <span
+                    v-if="frame.stale"
+                    class="absolute left-2 top-2 rounded-full bg-black/70 px-2 py-0.5 text-white"
+                  >Changed since render</span>
+                </a>
                 <p v-if="picturing === frame.index" class="flex items-center gap-2" data-picturing>
-                  <span class="animate-pulse text-info">
-                    {{ currentLook ? 'Picturing this moment…' : 'Writing the Look, then picturing…' }}
-                  </span>
+                  <span class="animate-pulse text-info">{{ pictureStatus }}</span>
                   <button
                     type="button"
                     class="text-danger underline-offset-2 hover:underline disabled:opacity-50"
@@ -415,16 +484,38 @@ async function saveCastDraft(): Promise<boolean> {
                     Cancel
                   </button>
                 </p>
-                <button
-                  v-else
-                  type="button"
-                  class="w-fit text-muted underline-offset-2 hover:text-fg hover:underline disabled:opacity-50"
-                  :disabled="busy"
-                  data-picture-button
-                  @click="picture(frame.index)"
-                >
-                  {{ frame.promptText ? 'Picture again' : 'Picture this' }}
-                </button>
+                <p v-else class="flex flex-wrap items-center gap-x-3">
+                  <button
+                    type="button"
+                    class="text-muted underline-offset-2 hover:text-fg hover:underline disabled:opacity-50"
+                    :disabled="busy"
+                    data-picture-button
+                    @click="picture(frame.index)"
+                  >
+                    {{ frame.promptText ? 'Picture again' : 'Picture this' }}
+                  </button>
+                  <button
+                    v-if="frame.promptText && !frame.blocked"
+                    type="button"
+                    class="text-muted underline-offset-2 hover:text-fg hover:underline disabled:opacity-50"
+                    :disabled="busy"
+                    data-render-button
+                    @click="render(frame.index)"
+                  >
+                    {{ frame.image ? 'Re-render' : 'Render' }}
+                  </button>
+                  <button
+                    v-if="frame.image"
+                    type="button"
+                    class="text-muted underline-offset-2 hover:text-fg hover:underline disabled:opacity-50"
+                    :disabled="busy || !!frame.upscaled"
+                    :title="frame.upscaled ? 'Upscaled to 2048 px' : 'Upscale to 2048 px with SeedVR2'"
+                    data-upscale-button
+                    @click="upscale(frame.index)"
+                  >
+                    {{ frame.upscaled ? 'Upscaled' : 'Upscale' }}
+                  </button>
+                </p>
                 <details v-if="frame.promptText" class="text-muted" data-image-prompt>
                   <summary class="cursor-pointer select-none">
                     Image Prompt

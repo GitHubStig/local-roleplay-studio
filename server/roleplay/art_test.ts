@@ -69,24 +69,27 @@ Deno.test('Undressed people are covered in pictures only while the Limits are on
 })
 
 Deno.test('pictured composes the Image Prompt and blocks one that crosses a Limit in force', () => {
-  const frame = pictured(session.frames[1], look, 'She stands at the rail.', 'character')
+  const frame = pictured(session.frames[1], look, testCast, 'She stands at the rail.', 'character')
   assertEquals(
     frame.promptText,
     'adult, Mira Vance, a tall woman of 34. She stands at the rail. An oil painting.',
   )
   assertEquals(frame.shown, 'character')
   assertEquals(
-    pictured(session.frames[1], look, 'They talk.').prompt,
+    pictured(session.frames[1], look, testCast, 'They talk.').prompt,
     'Mira Vance, a tall woman of 34. Sam Reyes, a slight man of 25. They talk. An oil painting.',
   )
   assertEquals(frame.blocked, undefined)
-  const bare = pictured(session.frames[1], look, 'She wears only a towel.')
+  const bare = pictured(session.frames[1], look, testCast, 'She wears only a towel.')
   assertEquals(bare.blocked, 'no sexual or nude imagery')
   setLimitsEnabled(false)
   try {
-    assertEquals(pictured(session.frames[1], look, 'She wears only a towel.').blocked, undefined)
     assertEquals(
-      pictured(session.frames[1], look, 'A child at the rail.').blocked,
+      pictured(session.frames[1], look, testCast, 'She wears only a towel.').blocked,
+      undefined,
+    )
+    assertEquals(
+      pictured(session.frames[1], look, testCast, 'A child at the rail.').blocked,
       'everyone depicted must be an adult',
     )
   } finally {
@@ -114,4 +117,34 @@ Deno.test('parseShown and parseRoleplayLook', () => {
   assertEquals(parseShown({}), 'both')
   assertEquals(parseRoleplayLook(look), look)
   assertThrows(() => parseRoleplayLook({ character: 'Mira.', style: 'Ink.' }), Error, 'identities')
+})
+
+Deno.test('While the Limits are on, a picture of both people must name what each wears', () => {
+  const frame = session.frames[1]
+  const both = (clothing: string) => pictured(frame, look, testCast, 'They talk.', 'both', clothing)
+  assertEquals(both('Mira wears a coat; Sam wears oilskins.').blocked, undefined)
+  assertEquals(
+    both('Mira wears a heavy coat.').blocked,
+    "everyone shown must be dressed (name each person's clothes)",
+  )
+  // One person shown: "She wears…" is fine.
+  assertEquals(
+    pictured(frame, look, testCast, 'She waits.', 'character', 'She wears a coat.').blocked,
+    undefined,
+  )
+  setLimitsEnabled(false)
+  try {
+    assertEquals(both('Mira wears a heavy coat.').blocked, undefined)
+  } finally {
+    setLimitsEnabled(true)
+  }
+})
+
+Deno.test('A rendered picture whose Image Prompt changes is marked stale', () => {
+  const rendered = {
+    ...pictured(session.frames[1], look, testCast, 'She waits.', 'character'),
+    image: 'frame-1-aaaaaaaa.png',
+  }
+  assertEquals(pictured(rendered, look, testCast, 'She waits.', 'character').stale, undefined)
+  assertEquals(pictured(rendered, look, testCast, 'She runs.', 'character').stale, true)
 })

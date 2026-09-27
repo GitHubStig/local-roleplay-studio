@@ -4,6 +4,7 @@ import type { Session } from '../session.ts'
 import {
   beginRoleplay,
   pictureFrame,
+  renderRoleplayFrame,
   type RoleplayDeps,
   RoleplayError,
   RoleplayLimitError,
@@ -117,6 +118,22 @@ export function roleplayRoutes(ctx: RoleplayRouteContext): Route[] {
           if (scenario instanceof Response) return scenario
           return ctx.stream(session, index, false, async (send, signal) => {
             await pictureFrame(ctx.deps(session), session, scenario, index, send, signal)
+          })
+        }),
+    ],
+
+    [
+      'POST',
+      path('frames/:index/render'),
+      (_req, p) =>
+        withRoleplay(p.id!, 'render', async (session) => {
+          const index = Number(p.index)
+          const frame = Number.isInteger(index) ? session.frames[index] : undefined
+          if (!frame) return error('No such Frame', 404)
+          if (!frame.promptText) return error(`Frame ${index} isn't pictured yet`, 409)
+          if (frame.blocked) return error(`Frame ${index} crosses a limit: ${frame.blocked}`, 422)
+          return ctx.stream(session, index, false, async (send, signal) => {
+            await renderRoleplayFrame(ctx.deps(session), session, index, send, signal)
           })
         }),
     ],

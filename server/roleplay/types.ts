@@ -85,11 +85,19 @@ export interface RoleplayFrame {
   blocked?: string
   /** Who the picture shows; pictures from before this was recorded show both. */
   shown?: Shown
+  /** The picture's clothing sentence, checked to dress everyone shown while the Limits are on. */
+  clothing?: string
   /** For debugging: seconds the latest picture took, and the Art Agent's reasoning, if any. */
   pictureTimings?: { text: number }
   pictureThinking?: string
-  /** Rendering is deferred: no Roleplay Frame has an image yet. */
-  image: null
+  /** File name of the rendered picture inside the Session directory; null until rendered. */
+  image: string | null
+  /** The picture upscaled to 2048 px, once upscaled; a re-render drops it. */
+  upscaled?: string
+  /** The Image Prompt changed since the picture was rendered. */
+  stale?: boolean
+  /** Seconds the latest render waited for another and took, as for any Frame. */
+  renderTimings?: { queued?: number; image: number | null }
   createdAt: string
 }
 

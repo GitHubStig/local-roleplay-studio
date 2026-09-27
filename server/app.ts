@@ -219,6 +219,8 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       scenarioFor,
       deps: (session) => ({
         store: deps.sessions,
+        imageGenerator: deps.imageGenerator,
+        renderQueue,
         textModel: deps.textModel(session.settings.textModel, session.settings.thinking ?? false),
         roleplayModel: roleplayModel(
           session.settings.textModel,

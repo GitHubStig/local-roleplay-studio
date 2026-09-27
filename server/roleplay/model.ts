@@ -45,7 +45,7 @@ export interface RoleplayModel {
     messages: ChatMessage[],
     signal: AbortSignal,
     onThinking?: (chunk: string) => void,
-  ): Promise<{ body: string; shown: Shown; thinking?: string }>
+  ): Promise<{ body: string; shown: Shown; clothing: string; thinking?: string }>
   /** The Character's next reply to the conversation so far (or the opening, to none). */
   reply(
     messages: ChatMessage[],
@@ -123,7 +123,11 @@ export function ollamaRoleplayModel(
         })
         const fields = wholeSentences(parseJson(content) as Record<string, unknown>)
         return withThinking(
-          { body: parseFrameBody(fields), shown: parseShown(fields) },
+          {
+            body: parseFrameBody(fields),
+            shown: parseShown(fields),
+            clothing: String(fields.clothing ?? ''),
+          },
           thinking,
         )
       }),

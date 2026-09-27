@@ -2,10 +2,11 @@ import { assertEquals, assertRejects, assertStringIncludes } from '@std/assert'
 import { dirSessionStore } from '../session.ts'
 import { DEFAULT_SETTINGS } from '../settings.ts'
 import { briefScenario } from '../scenario.ts'
-import { scriptedTextModel, withTempDir } from '../testing.ts'
+import { fakeImageGenerator, scriptedTextModel, withTempDir } from '../testing.ts'
 import {
   beginRoleplay,
   pictureFrame,
+  renderRoleplayFrame,
   RoleplayError,
   type RoleplayEvent,
   RoleplayLimitError,
@@ -43,7 +44,12 @@ async function setUp(
     casts: [testCast],
     replies: [replyOf('You are late.'), ...(replies ?? [])],
   })
-  const deps = { store, roleplayModel, textModel: scriptedTextModel([], ['Taylor Swift']) }
+  const deps = {
+    store,
+    roleplayModel,
+    textModel: scriptedTextModel([], ['Taylor Swift']),
+    imageGenerator: fakeImageGenerator(),
+  }
   const events: RoleplayEvent[] = []
   const emit = (e: RoleplayEvent) => events.push(e)
   const cast = await writeCast(deps, newSession(), scenario, emit, signal())
@@ -76,7 +82,12 @@ Deno.test('beginRoleplay writes the opening from the Cast as edited, and only on
   withTempDir(async (root) => {
     const store = dirSessionStore(root)
     const roleplayModel = scriptedRoleplayModel({ casts: [testCast], replies: [replyOf('Hi.')] })
-    const deps = { store, roleplayModel, textModel: scriptedTextModel([]) }
+    const deps = {
+      store,
+      roleplayModel,
+      textModel: scriptedTextModel([]),
+      imageGenerator: fakeImageGenerator(),
+    }
     const written = await writeCast(deps, newSession(), scenario, () => {}, signal())
     const edited = await setCast(store, written, {
       ...testCast,
@@ -108,7 +119,12 @@ Deno.test('writeCast fails, saving nothing, when the Cast crosses a Limit', () =
     await assertRejects(
       () =>
         writeCast(
-          { store, roleplayModel, textModel: scriptedTextModel([]) },
+          {
+            store,
+            roleplayModel,
+            textModel: scriptedTextModel([]),
+            imageGenerator: fakeImageGenerator(),
+          },
           newSession(),
           scenario,
           () => {},
@@ -282,4 +298,61 @@ Deno.test('A picture that crosses a Limit is tried once more, told which', () =>
     assertEquals(done.frames[0].blocked, undefined)
     assertStringIncludes(done.frames[0].body!, 'a robe')
     assertStringIncludes(scripted.art[2][1].content, 'crossed a limit (no sexual or nude imagery)')
+  }))
+
+Deno.test('renderRoleplayFrame renders a pictured Frame, replacing any earlier image', () =>
+  withTempDir(async (root) => {
+    const { deps, session, store } = await setUp(root)
+    const images = fakeImageGenerator()
+    const scripted = scriptedRoleplayModel({
+      looks: [{ character: 'Mira.', persona: 'Sam.', style: 'Ink.' }],
+      bodies: [body('Mira waits.'), body('Mira runs.')],
+    })
+    const art = { ...deps, roleplayModel: scripted, imageGenerator: images }
+    await assertRejects(
+      () => renderRoleplayFrame(art, session, 0, () => {}, signal()),
+      RoleplayError,
+    )
+
+    const pictured = await pictureFrame(art, session, scenario, 0, () => {}, signal())
+    const events: RoleplayEvent[] = []
+    const first = await renderRoleplayFrame(art, pictured, 0, (e) => events.push(e), signal())
+    assertEquals(events.at(-1)!.type, 'rendered')
+    assertEquals(images.prompts, [pictured.frames[0].promptText])
+    const firstImage = first.frames[0].image!
+    assertEquals(await Deno.stat(`${store.dir('r1')}/${firstImage}`).then(() => true), true)
+
+    // Pictured again: the image is kept but stale, until rendered again.
+    const repictured = await pictureFrame(art, first, scenario, 0, () => {}, signal())
+    assertEquals([repictured.frames[0].image, repictured.frames[0].stale], [firstImage, true])
+    const second = await renderRoleplayFrame(art, repictured, 0, () => {}, signal())
+    assertEquals(second.frames[0].stale, undefined)
+    assertEquals(
+      await Deno.stat(`${store.dir('r1')}/${firstImage}`).then(() => true, () => false),
+      false,
+    )
+  }))
+
+Deno.test('Undoing an exchange deletes its picture', () =>
+  withTempDir(async (root) => {
+    const { deps, session, store } = await setUp(root, [replyOf('Take the wheel.')])
+    const scripted = scriptedRoleplayModel({
+      looks: [{ character: 'Mira.', persona: 'Sam.', style: 'Ink.' }],
+      bodies: [body('Mira points.')],
+    })
+    const art = { ...deps, roleplayModel: scripted }
+    const two = (await sendMessage(deps, session, 'Sorry.', () => {}, signal()))!
+    const rendered = await renderRoleplayFrame(
+      art,
+      await pictureFrame(art, two, scenario, 1, () => {}, signal()),
+      1,
+      () => {},
+      signal(),
+    )
+    const image = rendered.frames[1].image!
+    await undoLatestExchange(store, rendered, 1)
+    assertEquals(
+      await Deno.stat(`${store.dir('r1')}/${image}`).then(() => true, () => false),
+      false,
+    )
   }))

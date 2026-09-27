@@ -157,7 +157,14 @@ sentences, then the style; a picture that crosses a Limit is written once more, 
 force and shown under the Reply (marked if it crosses one). While a Frame is pictured, the light
 sweeps round that Reply, which says "Picturing this moment…" (or "Writing the Look, then
 picturing…") with its own Cancel; the conversation doesn't scroll, and the text box stays still
-and usable, with Send waiting until the picture is done. For debugging, each picture's time and the Art
+and usable, with Send waiting until the picture is done. With the Limits on, a picture of both people must name what each
+wears in its clothing sentence, or it's blocked (and written once more): told to keep within the
+Limits, the Art Agent sometimes left an undressed person's clothing out instead of dressing them.
+**Render** / **Re-render** under a pictured Reply renders it through the shared render queue with
+the Session's Image Model, seed and size, and shows the picture inline (click for full size),
+with progress, the sweep and Cancel in place; **Upscale** works as on any Frame. Picturing a
+rendered Frame again, or editing the Look, marks its picture "Changed since render" until it's
+re-rendered; Undo deletes the undone exchange's picture. For debugging, each picture's time and the Art
 Agent's reasoning (when Thinking is on) are saved on the Frame (`pictureTimings`,
 `pictureThinking`) and the Look's on the Session (`lookTimings`, `lookThinking`); the Image
 Prompt block shows the time, with the reasoning collapsed under it. While the Limits are on, the Art

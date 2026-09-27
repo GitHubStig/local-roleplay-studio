@@ -1,4 +1,14 @@
-import { limitCrossedBy, type ProgressEvent, secondsSince, withRetry } from '../frames.ts'
+import {
+  imageName,
+  limitCrossedBy,
+  type ProgressEvent,
+  removeImage,
+  renderImage,
+  secondsSince,
+  withRetry,
+} from '../frames.ts'
+import type { ImageGenerator } from '../imageGenerator.ts'
+import type { RenderQueue } from '../renderQueue.ts'
 import { activeProseLimits, crossedLimit } from '../limits.ts'
 import type { Scenario } from '../scenario.ts'
 import type { SessionStore } from '../session.ts'
@@ -29,12 +39,17 @@ export type RoleplayEvent =
   | { type: 'look'; look: RoleplayLook }
   /** A Frame's picture: its Image Prompt, not yet rendered. */
   | { type: 'pictured'; frame: RoleplayFrame; session: RoleplaySession }
+  /** A Frame's picture, rendered. */
+  | { type: 'rendered'; frame: RoleplayFrame; session: RoleplaySession }
 
 export interface RoleplayDeps {
   store: SessionStore
   roleplayModel: RoleplayModel
   /** For the real-person question the Limits ask (ADR 0002). */
   textModel: TextModel
+  /** For rendering pictures, through the render queue every Session shares. */
+  imageGenerator: ImageGenerator
+  renderQueue?: RenderQueue
 }
 
 /** The text of a Cast and a reply that the Limits check. */
@@ -188,6 +203,7 @@ export async function pictureFrame(
   signal: AbortSignal,
 ): Promise<RoleplaySession> {
   if (!session.cast || !session.frames[index]) throw new RoleplayError(`There is no Frame ${index}`)
+  const cast = session.cast
   emit({ type: 'phase', phase: 'text' })
   let current = session
   // No Look yet, or one from before pictures chose who is shown: write one.
@@ -206,7 +222,7 @@ export async function pictureFrame(
       lookTimings: { text: secondsSince(start) },
       ...(thinking ? { lookThinking: thinking } : {}),
       // Frames pictured with an older Look take the new one.
-      frames: current.frames.map((f) => (f.body ? pictured(f, look, f.body, f.shown) : f)),
+      frames: current.frames.map((f) => (f.body ? pictured(f, look, cast, f.body, f.shown) : f)),
     }
     emit({ type: 'look', look })
   }
@@ -215,13 +231,13 @@ export async function pictureFrame(
   const { pictureThinking: _, ...previous } = current.frames[index]
   const messages = await artFrameMessages(current, index)
   const draw = async () => {
-    const { body, shown, thinking } = await withRetry(
+    const { body, shown, clothing, thinking } = await withRetry(
       (onThinking) => deps.roleplayModel.pictureFrame(messages, signal, onThinking),
       signal,
       emit,
     )
     signal.throwIfAborted()
-    return { frame: pictured(previous, look, body, shown), thinking }
+    return { frame: pictured(previous, look, cast, body, shown, clothing), thinking }
   }
   let { frame: drawn, thinking } = await draw()
   // A picture that crosses a Limit gets one more try, told which; the second is kept either way.
@@ -264,10 +280,56 @@ export async function setLook(
   const updated: RoleplaySession = {
     ...session,
     look,
-    frames: session.frames.map((f) => (f.body ? pictured(f, look, f.body, f.shown) : f)),
+    frames: session.frames.map((f) =>
+      f.body && session.cast ? pictured(f, look, session.cast, f.body, f.shown) : f
+    ),
   }
   await store.save(updated)
   return updated
+}
+
+/**
+ * Renders Frame `index`'s picture through the shared render queue. A new render replaces the old
+ * image and its upscale. Refused for a Frame that isn't pictured or whose picture crosses a Limit.
+ */
+export async function renderRoleplayFrame(
+  deps: RoleplayDeps,
+  session: RoleplaySession,
+  index: number,
+  emit: (event: RoleplayEvent) => void,
+  signal: AbortSignal,
+): Promise<RoleplaySession> {
+  const frame = session.frames[index]
+  if (!frame?.promptText) throw new RoleplayError(`Frame ${index} isn't pictured yet`)
+  if (frame.blocked) {
+    throw new RoleplayLimitError(`Frame ${index} crosses a limit: ${frame.blocked}`)
+  }
+  const timings: { queued?: number; image: number | null; text: number } = {
+    text: 0,
+    image: null,
+  }
+  const name = imageName(index)
+  const dir = deps.store.dir(session.id)
+  try {
+    const image = await renderImage(deps, session, frame.promptText, name, timings, emit, signal)
+    signal.throwIfAborted()
+    const { stale: _, upscaled: __, ...rest } = frame
+    const { text: ___, ...renderTimings } = timings
+    const rendered: RoleplayFrame = { ...rest, image, renderTimings }
+    const updated: RoleplaySession = {
+      ...session,
+      frames: session.frames.map((f) => (f.index === index ? rendered : f)),
+    }
+    await deps.store.save(updated)
+    for (const old of [frame.image, frame.upscaled]) {
+      if (old && old !== image) await removeImage(dir, old.replace(/\.\w+$/, ''))
+    }
+    emit({ type: 'rendered', frame: rendered, session: updated })
+    return updated
+  } catch (err) {
+    await removeImage(dir, name)
+    throw err
+  }
 }
 
 /** Removes the latest exchange, so the player can say something else. The opening stays. */
@@ -283,6 +345,9 @@ export async function undoLatestExchange(
   if (latest.message === null) throw new RoleplayError("The opening can't be undone")
   const updated = { ...session, frames: session.frames.slice(0, -1) }
   await store.save(updated)
+  for (const file of [latest.image, latest.upscaled]) {
+    if (file) await removeImage(store.dir(session.id), file.replace(/\.\w+$/, ''))
+  }
   return updated
 }
 

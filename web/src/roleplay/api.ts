@@ -71,10 +71,17 @@ export interface RoleplayFrame {
   blocked?: string
   /** Who the picture shows. */
   shown?: Shown
+  clothing?: string
+  /** The rendered picture's upscale. */
+  upscaled?: string
+  /** The Image Prompt changed since the picture was rendered. */
+  stale?: boolean
+  renderTimings?: { queued?: number; image: number | null }
   /** For debugging: how long the latest picture took, and the Art Agent's reasoning. */
   pictureTimings?: { text: number }
   pictureThinking?: string
-  image: null
+  /** The rendered picture; null until rendered. */
+  image: string | null
   createdAt: string
 }
 
@@ -99,6 +106,7 @@ export type RoleplayEvent =
   | { type: 'declined'; message: string }
   | { type: 'look'; look: RoleplayLook }
   | { type: 'pictured'; frame: RoleplayFrame; session: RoleplaySession }
+  | { type: 'rendered'; frame: RoleplayFrame; session: RoleplaySession }
 
 const base = (id: string) => `/api/sessions/${id}/roleplay`
 
@@ -124,6 +132,13 @@ export const pictureFrame = (
   index: number,
   onEvent: (event: RoleplayEvent) => void,
 ) => streamEvents<RoleplayEvent>(`${base(id)}/frames/${index}/picture`, {}, ['pictured'], onEvent)
+
+/** Renders a pictured Frame through the shared render queue. */
+export const renderFrame = (
+  id: string,
+  index: number,
+  onEvent: (event: RoleplayEvent) => void,
+) => streamEvents<RoleplayEvent>(`${base(id)}/frames/${index}/render`, {}, ['rendered'], onEvent)
 
 /** Replaces the Look, rewriting every pictured Frame's Image Prompt. */
 export const saveLook = (id: string, look: RoleplayLook) =>

@@ -19,6 +19,7 @@ vi.mock('./api', async (importOriginal) => ({
   undoExchange: vi.fn(),
   saveCast: vi.fn(),
   pictureFrame: vi.fn(),
+  renderFrame: vi.fn(),
   saveLook: vi.fn(),
 }))
 
@@ -277,7 +278,7 @@ describe('RoleplayView', () => {
     expect(wrapper.find('[data-look]').exists()).toBe(false)
     await wrapper.find('[data-picture-button]').trigger('click')
     expect(roleplay.pictureFrame).toHaveBeenCalledWith('r1', 0, expect.any(Function))
-    expect(wrapper.find('[role=status]').text()).toBe('Writing the Look, then picturing Frame 0…')
+    expect(wrapper.find('[role=status]').text()).toBe('Frame 0: Writing the Look, then picturing…')
     // Shown where it was asked for: the Reply sweeps and says so, with its own Cancel; the text
     // box stays usable and still, and Send waits.
     expect(wrapper.find('[data-reply]').classes()).toContain('render-sweep')
@@ -328,5 +329,44 @@ describe('RoleplayView', () => {
     stream.finish()
     await flushPromises()
     expect(scroll).not.toHaveBeenCalled()
+  })
+
+  it('renders a pictured Frame in place, then shows the picture under its Reply', async () => {
+    const pictured = {
+      ...frame(0, null, 'Get inside.'),
+      promptText: 'adult, Elena, 38. She waits. Ink.',
+    }
+    vi.mocked(api.getSession).mockResolvedValue({
+      ...roleplaySession([pictured]),
+      look: { character: 'Elena, 38.', persona: 'Cal, 25.', style: 'Ink.' },
+    })
+    const stream = held()
+    vi.mocked(roleplay.renderFrame).mockImplementation((_id, _i, onEvent) => stream.call(onEvent))
+    const { wrapper } = await mountIt()
+    expect(wrapper.find('[data-upscale-button]').exists()).toBe(false)
+    await wrapper.find('[data-render-button]').trigger('click')
+    expect(roleplay.renderFrame).toHaveBeenCalledWith('r1', 0, expect.any(Function))
+
+    stream.emit({ type: 'phase', phase: 'queued' })
+    await flushPromises()
+    expect(wrapper.find('[data-picturing]').text()).toContain('Waiting for another render…')
+    expect(wrapper.find('[data-reply]').attributes('data-rendering')).toBe('queued')
+    stream.emit({ type: 'phase', phase: 'image' })
+    stream.emit({ type: 'progress', step: 2, total: 4 })
+    await flushPromises()
+    expect(wrapper.find('[data-picturing]').text()).toContain('Rendering… step 2 of 4')
+
+    const done = {
+      ...roleplaySession([{ ...pictured, image: 'frame-0-aaaaaaaa.png' }]),
+      look: { character: 'Elena, 38.', persona: 'Cal, 25.', style: 'Ink.' },
+    }
+    stream.emit({ type: 'rendered', frame: done.frames[0], session: done })
+    stream.finish()
+    await flushPromises()
+    expect(wrapper.find('[data-picture-image] img').attributes('src')).toBe(
+      '/api/sessions/r1/images/frame-0-aaaaaaaa.png',
+    )
+    expect(wrapper.find('[data-render-button]').text()).toBe('Re-render')
+    expect(wrapper.find('[data-upscale-button]').text()).toBe('Upscale')
   })
 })

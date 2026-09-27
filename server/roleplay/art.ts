@@ -12,7 +12,7 @@ import { loadPrompt } from '../promptFiles.ts'
 import type { Scenario } from '../scenario.ts'
 import { composePrompt } from '../storyboard.ts'
 import { frameSchema, plainSentences } from '../textModel.ts'
-import type { RoleplayFrame, RoleplayLook, RoleplaySession, Shown } from './types.ts'
+import type { Cast, RoleplayFrame, RoleplayLook, RoleplaySession, Shown } from './types.ts'
 
 /**
  * A Frame's seven sentences, each capped in length. A long story gives the Art Agent a lot to say:
@@ -157,16 +157,48 @@ export async function artFrameMessages(
   ]
 }
 
-/** A Frame with its picture's sentences, its Image Prompt, and whether it crosses a Limit. */
+/**
+ * While the Limits are on, a picture showing both people must say what each wears. Told to keep
+ * within the Limits, the Art Agent sometimes leaves an undressed person's clothing out instead of
+ * dressing them, and an image model left to guess may not dress them either.
+ */
+export function undressed(
+  cast: Cast,
+  shown: Shown,
+  clothing: string | undefined,
+): string | undefined {
+  if (!limitsEnabled() || shown !== 'both' || clothing === undefined) return undefined
+  const firstName = (name: string) => name.split(/\s+/)[0].toLowerCase()
+  const text = clothing.toLowerCase()
+  const missing = [cast.character.name, cast.persona.name].some((n) => !text.includes(firstName(n)))
+  return missing ? "everyone shown must be dressed (name each person's clothes)" : undefined
+}
+
+/**
+ * A Frame with its picture's sentences, its Image Prompt, and whether it crosses a Limit. A
+ * rendered picture whose Image Prompt changes is marked stale until rendered again.
+ */
 export function pictured(
   frame: RoleplayFrame,
   look: RoleplayLook,
+  cast: Cast,
   body: string,
   shown: Shown = 'both',
+  clothing = frame.clothing,
 ): RoleplayFrame {
-  const { blocked: _, ...rest } = frame
+  const { blocked: _, stale: __, ...rest } = frame
   const prompt = composePrompt({ subject: identityFor(look, shown), style: look.style }, body)
   const promptText = renderPrompt(prompt)
-  const blocked = crossedLimit(promptText)?.message
-  return { ...rest, body, shown, prompt, promptText, ...(blocked ? { blocked } : {}) }
+  const blocked = crossedLimit(promptText)?.message ?? undressed(cast, shown, clothing)
+  const stale = !!frame.image && (frame.stale || promptText !== frame.promptText)
+  return {
+    ...rest,
+    body,
+    shown,
+    ...(clothing !== undefined ? { clothing } : {}),
+    prompt,
+    promptText,
+    ...(blocked ? { blocked } : {}),
+    ...(stale ? { stale } : {}),
+  }
 }

@@ -68,6 +68,7 @@ export function scriptedRoleplayModel(
       return {
         body: await next(script.bodies, 'picture'),
         shown: 'both' as const,
+        clothing: 'Mira wears a navy coat; Sam wears oilskins.',
         thinking: 'Kael first, then the bar.',
       }
     },
