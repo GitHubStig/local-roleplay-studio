@@ -282,15 +282,17 @@ watch([
 })
 
 /**
- * A picture loading after the conversation scrolled to its end pushes the end out of view; if
- * the player is still at the end (within a picture's height), keep it there.
+ * Pictures load after the conversation has scrolled to its end, pushing the end out of view. Until
+ * the player scrolls away from the end, keep it there as each picture loads.
  */
-function onPictureLoad(e: Event) {
+let atEnd = true
+function onTranscriptScroll() {
+  const list = transcript.value!
+  atEnd = list.scrollHeight - list.scrollTop - list.clientHeight < 40
+}
+function onPictureLoad() {
   const list = transcript.value
-  const img = e.target as HTMLImageElement
-  if (!list) return
-  const fromEnd = list.scrollHeight - list.scrollTop - list.clientHeight
-  if (fromEnd <= img.clientHeight + 80) list.scrollTo({ top: list.scrollHeight, behavior: 'auto' })
+  if (list && atEnd) list.scrollTo({ top: list.scrollHeight, behavior: 'auto' })
 }
 
 // Leaving the site or reloading drops the connection to running work, which cancels it.
@@ -422,6 +424,7 @@ async function saveCastDraft(): Promise<boolean> {
 
         <ol
           ref="transcript"
+          @scroll.passive="onTranscriptScroll"
           class="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto rounded-lg border border-line bg-surface p-4"
           data-transcript
         >
@@ -433,38 +436,101 @@ async function saveCastDraft(): Promise<boolean> {
               </p>
             </li>
             <li
-              class="-mx-2 flex flex-col gap-1.5 rounded-lg p-2"
+              class="-mx-2 rounded-lg p-2"
               :class="{ 'render-sweep': picturing === frame.index }"
               :data-rendering="picturing === frame.index && pending?.phase === 'queued' ? 'queued' : undefined"
               data-reply
             >
-              <span class="text-xs text-muted">{{ characterName }}</span>
-              <p
-                v-if="frame.reply.internal && !thoughtsHidden"
-                class="max-w-prose text-sm italic text-muted"
-                data-internal
-              >
-                {{ frame.reply.internal }}
-              </p>
-              <p v-if="frame.reply.actions" class="max-w-prose italic" data-actions>
-                {{ frame.reply.actions }}
-              </p>
-              <p v-if="frame.reply.dialogue" class="max-w-prose text-lg" data-dialogue>
-                “{{ frame.reply.dialogue }}”
-              </p>
-              <div class="flex max-w-prose flex-col gap-1 text-xs" data-picture>
+              <!-- Text on the left, its picture beside it on wide windows (stacked on narrow ones). -->
+              <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:gap-5">
+                <div class="flex min-w-0 flex-1 flex-col gap-1.5">
+                  <span class="text-xs text-muted">{{ characterName }}</span>
+                  <p
+                    v-if="frame.reply.internal && !thoughtsHidden"
+                    class="max-w-prose text-sm italic text-muted"
+                    data-internal
+                  >
+                    {{ frame.reply.internal }}
+                  </p>
+                  <p v-if="frame.reply.actions" class="max-w-prose italic" data-actions>
+                    {{ frame.reply.actions }}
+                  </p>
+                  <p v-if="frame.reply.dialogue" class="max-w-prose text-lg" data-dialogue>
+                    “{{ frame.reply.dialogue }}”
+                  </p>
+                  <div class="flex max-w-prose flex-col gap-1 text-xs" data-picture>
+                    <p v-if="picturing === frame.index" class="flex items-center gap-2" data-picturing>
+                      <span class="animate-pulse text-info">{{ pictureStatus }}</span>
+                      <button
+                        type="button"
+                        class="text-danger underline-offset-2 hover:underline disabled:opacity-50"
+                        :disabled="pending?.cancelling"
+                        @click="cancel"
+                      >
+                        Cancel
+                      </button>
+                    </p>
+                    <p v-else class="flex flex-wrap items-center gap-x-3">
+                      <button
+                        type="button"
+                        class="text-muted underline-offset-2 hover:text-fg hover:underline disabled:opacity-50"
+                        :disabled="busy"
+                        data-picture-button
+                        @click="picture(frame.index)"
+                      >
+                        {{ frame.promptText ? 'Picture again' : 'Picture this' }}
+                      </button>
+                      <button
+                        v-if="frame.promptText && !frame.blocked"
+                        type="button"
+                        class="text-muted underline-offset-2 hover:text-fg hover:underline disabled:opacity-50"
+                        :disabled="busy"
+                        data-render-button
+                        @click="render(frame.index)"
+                      >
+                        {{ frame.image ? 'Re-render' : 'Render' }}
+                      </button>
+                      <button
+                        v-if="frame.image"
+                        type="button"
+                        class="text-muted underline-offset-2 hover:text-fg hover:underline disabled:opacity-50"
+                        :disabled="busy || !!frame.upscaled"
+                        :title="frame.upscaled ? 'Upscaled to 2048 px' : 'Upscale to 2048 px with SeedVR2'"
+                        data-upscale-button
+                        @click="upscale(frame.index)"
+                      >
+                        {{ frame.upscaled ? 'Upscaled' : 'Upscale' }}
+                      </button>
+                    </p>
+                    <details v-if="frame.promptText" class="text-muted" data-image-prompt>
+                      <summary class="cursor-pointer select-none">
+                        Image Prompt
+                        <span v-if="frame.blocked" class="text-warn">· crosses a limit ({{ frame.blocked }})</span>
+                      </summary>
+                      <p class="mt-1" data-shown>Shows {{ shownNames(frame.shown) }}</p>
+                      <p class="mt-1 leading-relaxed">{{ frame.promptText }}</p>
+                      <p v-if="frame.pictureTimings" class="mt-1" data-picture-timings>
+                        Pictured in {{ frame.pictureTimings.text.toFixed(1) }} s
+                      </p>
+                      <details v-if="frame.pictureThinking" class="mt-1">
+                        <summary class="cursor-pointer select-none">Reasoning</summary>
+                        <p class="mt-1 whitespace-pre-wrap leading-relaxed">{{ frame.pictureThinking }}</p>
+                      </details>
+                    </details>
+                  </div>
+                </div>
                 <a
                   v-if="frame.image"
                   :href="imageUrl(session.id, frame.upscaled ?? frame.image)"
                   target="_blank"
-                  class="relative mt-1 block w-fit"
+                  class="relative block w-full max-w-sm shrink-0 lg:w-72 lg:max-w-none xl:w-80"
                   title="Open full size"
                   data-picture-image
                 >
                   <img
                     :src="imageUrl(session.id, frame.image)"
                     :alt="frame.promptText"
-                    class="max-h-80 rounded-md"
+                    class="w-full rounded-md"
                     :class="{ 'opacity-50': frame.stale }"
                     @load="onPictureLoad"
                   />
@@ -473,64 +539,6 @@ async function saveCastDraft(): Promise<boolean> {
                     class="absolute left-2 top-2 rounded-full bg-black/70 px-2 py-0.5 text-white"
                   >Changed since render</span>
                 </a>
-                <p v-if="picturing === frame.index" class="flex items-center gap-2" data-picturing>
-                  <span class="animate-pulse text-info">{{ pictureStatus }}</span>
-                  <button
-                    type="button"
-                    class="text-danger underline-offset-2 hover:underline disabled:opacity-50"
-                    :disabled="pending?.cancelling"
-                    @click="cancel"
-                  >
-                    Cancel
-                  </button>
-                </p>
-                <p v-else class="flex flex-wrap items-center gap-x-3">
-                  <button
-                    type="button"
-                    class="text-muted underline-offset-2 hover:text-fg hover:underline disabled:opacity-50"
-                    :disabled="busy"
-                    data-picture-button
-                    @click="picture(frame.index)"
-                  >
-                    {{ frame.promptText ? 'Picture again' : 'Picture this' }}
-                  </button>
-                  <button
-                    v-if="frame.promptText && !frame.blocked"
-                    type="button"
-                    class="text-muted underline-offset-2 hover:text-fg hover:underline disabled:opacity-50"
-                    :disabled="busy"
-                    data-render-button
-                    @click="render(frame.index)"
-                  >
-                    {{ frame.image ? 'Re-render' : 'Render' }}
-                  </button>
-                  <button
-                    v-if="frame.image"
-                    type="button"
-                    class="text-muted underline-offset-2 hover:text-fg hover:underline disabled:opacity-50"
-                    :disabled="busy || !!frame.upscaled"
-                    :title="frame.upscaled ? 'Upscaled to 2048 px' : 'Upscale to 2048 px with SeedVR2'"
-                    data-upscale-button
-                    @click="upscale(frame.index)"
-                  >
-                    {{ frame.upscaled ? 'Upscaled' : 'Upscale' }}
-                  </button>
-                </p>
-                <details v-if="frame.promptText" class="text-muted" data-image-prompt>
-                  <summary class="cursor-pointer select-none">
-                    Image Prompt
-                    <span v-if="frame.blocked" class="text-warn">· crosses a limit ({{ frame.blocked }})</span>
-                  </summary>
-                  <p class="mt-1" data-shown>Shows {{ shownNames(frame.shown) }}</p>
-                  <p class="mt-1 leading-relaxed">{{ frame.promptText }}</p>
-                  <p v-if="frame.pictureTimings" class="mt-1" data-picture-timings>
-                    Pictured in {{ frame.pictureTimings.text.toFixed(1) }} s
-                  </p>
-                  <details v-if="frame.pictureThinking" class="mt-1">
-                    <summary class="cursor-pointer select-none">Reasoning</summary>
-                    <p class="mt-1 whitespace-pre-wrap leading-relaxed">{{ frame.pictureThinking }}</p>
-                  </details>
-                </details>
               </div>
             </li>
           </template>
