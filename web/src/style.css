@@ -3,6 +3,14 @@
 /* `dark:` follows the .dark class on <html>, set by useTheme() and the pre-paint script in index.html. */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Tailwind 4 leaves buttons with the default cursor; every enabled button here is clickable. */
+@layer base {
+  button:not(:disabled),
+  summary {
+    cursor: pointer;
+  }
+}
+
 :root {
   /* Parchment: aged paper backgrounds, sepia ink text. */
   color-scheme: light;
