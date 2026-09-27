@@ -6,6 +6,7 @@ import {
   deleteSession,
   imageUrl,
   listSessions,
+  type SessionKind,
   type SessionStart,
   type SessionSummary,
 } from '../api'
@@ -86,6 +87,12 @@ async function remove(s: SessionSummary) {
   await load()
 }
 
+const KIND_LABELS: Record<SessionKind, string> = {
+  chain: 'Chain',
+  storyboard: 'Storyboard',
+  roleplay: 'Roleplay',
+}
+
 const ACTIVITY_LABELS = {
   text: 'Writing…',
   queued: 'Waiting to render…',
@@ -131,11 +138,18 @@ function ago(iso: string): string {
                   alt=""
                   class="h-full w-full object-cover"
                 />
+                <p
+                  v-else-if="s.excerpt"
+                  class="line-clamp-[9] p-4 font-serif text-sm italic leading-relaxed text-muted"
+                  data-excerpt
+                >
+                  “{{ s.excerpt }}”
+                </p>
               </div>
               <div class="flex flex-col gap-1 p-3 text-sm">
                 <span class="font-medium">{{ s.title }}</span>
                 <span class="text-xs uppercase tracking-wide text-muted" data-kind>
-                  {{ s.kind === 'storyboard' ? 'Storyboard' : 'Chain' }}
+                  {{ KIND_LABELS[s.kind] }}
                 </span>
                 <span class="text-muted">
                   {{ s.frames }} {{ s.frames === 1 ? 'Frame' : 'Frames' }} · {{ ago(s.updatedAt) }}

@@ -20,6 +20,7 @@ const settings: Settings = {
   seedMode: 'random',
   seed: 42,
   upscaler: 'seedvr2-7b',
+  limits: true,
 }
 
 describe('getHealth', () => {

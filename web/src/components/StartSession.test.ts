@@ -21,6 +21,7 @@ const settings: api.Settings = {
   seedMode: 'random',
   seed: 42,
   upscaler: 'seedvr2-7b',
+  limits: true,
 }
 
 const options: api.SettingsOptions = {
@@ -84,6 +85,15 @@ describe('StartSession', () => {
     await wrapper.find('[data-frame-count]').setValue(17)
     expect(startButton(wrapper).disabled).toBe(true)
     expect(wrapper.text()).toContain('1 to 16 Frames')
+  })
+
+  it('starts a Roleplay from a Scenario, with no Frame count', async () => {
+    const wrapper = await mountIt()
+    await wrapper.find('input[value=roleplay]').setValue()
+    expect(wrapper.find('[data-frame-count]').exists()).toBe(false)
+    expect(startButton(wrapper).textContent?.trim()).toBe('Start Roleplay')
+    await wrapper.find('[data-start]').trigger('click')
+    expect(wrapper.emitted('start')).toEqual([[{ kind: 'roleplay', scenarioId: 'photoshoot' }]])
   })
 
   it('offers no Frame count for a Chain', async () => {

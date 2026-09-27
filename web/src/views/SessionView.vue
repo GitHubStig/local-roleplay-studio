@@ -14,6 +14,7 @@ import { clearCurrentSession, setCurrentSession } from '../composables/useCurren
 import FrameImage from '../components/FrameImage.vue'
 import { useStoredFlag } from '../composables/useStoredFlag'
 import { useStoredText } from '../composables/useStoredText'
+import { sessionPath } from '../sessionPath'
 import { diffWords } from '../diff'
 import {
   ApiError,
@@ -92,9 +93,9 @@ function leave(query: Record<string, string> = {}) {
 async function load(): Promise<boolean> {
   try {
     const loaded = await getSession(props.id)
-    // This screen is for Chains; a Storyboard has its own.
-    if (loaded.kind === 'storyboard') {
-      router.replace(`/storyboards/${props.id}`)
+    // This screen is for Chains; the other kinds have their own.
+    if (loaded.kind !== 'chain') {
+      router.replace(sessionPath(props.id, loaded.kind))
       return false
     }
     session.value = loaded

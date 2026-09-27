@@ -14,7 +14,8 @@ function read(): string | null {
 
 function readKind(): SessionKind {
   try {
-    return localStorage.getItem(KIND_KEY) === 'storyboard' ? 'storyboard' : 'chain'
+    const kind = localStorage.getItem(KIND_KEY)
+    return kind === 'storyboard' || kind === 'roleplay' ? kind : 'chain'
   } catch {
     return 'chain'
   }

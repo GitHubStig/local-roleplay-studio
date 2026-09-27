@@ -17,12 +17,25 @@ const emit = defineEmits<{ start: [start: SessionStart] }>()
 /** The Brief's length limit, as the server enforces it. */
 const BRIEF_MAX = 4000
 
+const BRIEF_HINTS: Record<SessionKind, string> = {
+  chain: 'Who is in the picture, where, and in what style.',
+  storyboard:
+    'The story to tell, e.g. a high school student dunks for the first time, manga style.',
+  roleplay:
+    'Who you meet, where, and who you are, e.g. a lighthouse keeper in a winter storm; I wash up at her door.',
+}
+
 const KINDS: { id: SessionKind; label: string; hint: string }[] = [
   { id: 'chain', label: 'Chain', hint: 'Each Frame is made from the one before by an Action.' },
   {
     id: 'storyboard',
     label: 'Storyboard',
     hint: 'All Frames are planned at once; edit and render each one.',
+  },
+  {
+    id: 'roleplay',
+    label: 'Roleplay',
+    hint: 'Talk with a Character, who replies in character. Text only for now.',
   },
 ]
 
@@ -79,7 +92,7 @@ function start() {
     'start',
     kind.value === 'storyboard'
       ? { kind: 'storyboard', frameCount: frameCount.value, ...from }
-      : { kind: 'chain', ...from },
+      : { kind: kind.value, ...from },
   )
 }
 </script>
@@ -129,9 +142,7 @@ function start() {
             <textarea
               v-model="brief"
               class="h-28 resize-y rounded border border-line bg-canvas p-2 text-sm"
-              :placeholder="kind === 'storyboard'
-              ? 'The story to tell, e.g. a high school student dunks for the first time, manga style.'
-              : 'Who is in the picture, where, and in what style.'"
+              :placeholder="BRIEF_HINTS[kind]"
               :maxlength="BRIEF_MAX"
               data-brief
               @focus="selected = 'brief'"
@@ -183,7 +194,7 @@ function start() {
           data-start
           @click="start"
         >
-          Start {{ kind === 'storyboard' ? 'Storyboard' : 'Chain' }}
+          Start {{ KINDS.find((k) => k.id === kind)!.label }}
         </button>
         <span v-if="blocker" class="text-sm text-warn">{{ blocker }}</span>
       </div>

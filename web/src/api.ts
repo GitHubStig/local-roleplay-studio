@@ -1,3 +1,4 @@
+import type { RoleplaySession } from './roleplay/api'
 export interface Health {
   ok: boolean
 }
@@ -16,6 +17,8 @@ export interface Settings {
   seed: number
   /** Which SeedVR2 model Upscale uses; applies to the next upscale, even mid-Session. */
   upscaler: string
+  /** The Limits; off, only "everyone depicted is an adult" is enforced. Applies at once. */
+  limits: boolean
 }
 
 export interface ImageModelOption {
@@ -52,7 +55,7 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, init)
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
@@ -155,11 +158,11 @@ export interface Look {
 }
 
 /** A Chain makes each Frame from the previous one; a Storyboard plans all its Frames together. */
-export type SessionKind = 'chain' | 'storyboard'
+export type SessionKind = 'chain' | 'storyboard' | 'roleplay'
 
-type Activity = 'text' | 'queued' | 'image'
+export type Activity = 'text' | 'queued' | 'image'
 
-interface SessionBase {
+export interface SessionBase {
   id: string
   /** The typed Brief it started from; null when started from a Scenario. */
   brief: string | null
@@ -187,7 +190,7 @@ export interface StoryboardSession extends SessionBase {
   frames: StoryboardFrame[]
 }
 
-export type Session = ChainSession | StoryboardSession
+export type Session = ChainSession | StoryboardSession | RoleplaySession
 
 /** Progress any streamed work reports: its phase, the model's reasoning, render steps. */
 export type ProgressEvent =
@@ -222,7 +225,7 @@ export type StoryboardEvent =
   | { type: 'rendered'; frame: StoryboardFrame }
   | { type: 'edited'; outcome: Outcome; narration: string; session: StoryboardSession }
 
-const post = <T>(path: string, body?: unknown) =>
+export const post = <T>(path: string, body?: unknown) =>
   request<T>(path, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -247,6 +250,8 @@ export interface SessionSummary {
   title: string
   frames: number
   latestImage: string | null
+  /** A Roleplay's latest line, shown on its card in place of an image. */
+  excerpt?: string | null
   createdAt: string
   updatedAt: string
   /** What a Frame in progress is doing, or null when idle. */
@@ -262,7 +267,7 @@ export const deleteSession = (id: string) =>
 export const undoFrame = (id: string, index: number) =>
   request<ChainSession>(`/api/sessions/${id}/frames/${index}`, { method: 'DELETE' })
 
-const put = <T>(path: string, body: unknown) =>
+export const put = <T>(path: string, body: unknown) =>
   request<T>(path, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
@@ -303,7 +308,8 @@ export function createSseParser<E>(onEvent: (event: E) => void) {
  * POSTs to a streaming route and reports its events. `finalTypes` are the events that end the
  * work; a stream that closes without one is reported as a failure (a lost connection).
  */
-async function streamEvents<E extends { type: string }>(
+/** Streams a POST's server-sent events to `onEvent` until one of `finalTypes`, or an end. */
+export async function streamEvents<E extends { type: string }>(
   path: string,
   body: unknown,
   finalTypes: string[],

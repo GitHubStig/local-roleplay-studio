@@ -20,6 +20,7 @@ const settings: api.Settings = {
   seedMode: 'random',
   seed: 42,
   upscaler: 'seedvr2-7b',
+  limits: true,
 }
 
 const options: api.SettingsOptions = {
@@ -58,6 +59,16 @@ describe('SettingsView', () => {
     await flushPromises()
     expect(api.saveSettings).toHaveBeenCalledWith({ ...settings, textModel: 'gemma4:31b-mlx' })
     expect(wrapper.text()).toContain('Applies from the next Session')
+  })
+
+  it('turns the Limits off', async () => {
+    const wrapper = mount(SettingsView)
+    await flushPromises()
+    expect((wrapper.find('[data-limits]').element as HTMLInputElement).checked).toBe(true)
+    await wrapper.find('[data-limits]').setValue(false)
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+    expect(api.saveSettings).toHaveBeenCalledWith({ ...settings, limits: false })
   })
 
   it('saves the chosen upscaler', async () => {

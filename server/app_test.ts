@@ -6,6 +6,8 @@ import type { ImageGenerator } from './imageGenerator.ts'
 import { dirSessionStore } from './session.ts'
 import { DEFAULT_SETTINGS, type Settings, type SettingsStore } from './settings.ts'
 import type { TextModel } from './textModel.ts'
+import type { RoleplayModel } from './roleplay/model.ts'
+import { replyOf, scriptedRoleplayModel, testCast } from './roleplay/testing.ts'
 import {
   fakeImageGenerator,
   planOf,
@@ -35,6 +37,7 @@ interface SetupOptions {
   listTextModels?: () => Promise<TextModelInfo[]>
   textModel?: TextModel
   imageGenerator?: ImageGenerator
+  roleplayModel?: RoleplayModel
   settings?: Partial<Settings>
 }
 
@@ -54,6 +57,7 @@ function setup(opts: SetupOptions = {}) {
     sessions,
     textModel: () => opts.textModel ?? scriptedTextModel([]),
     imageGenerator: opts.imageGenerator ?? fakeImageGenerator(),
+    roleplayModel: () => opts.roleplayModel ?? scriptedRoleplayModel({}),
     newSessionId: () => `s${++sessionCount}`,
     randomSeed: () => 1234,
   })
@@ -665,4 +669,110 @@ Deno.test('Upscale uses the upscaler chosen in Settings now, even mid-Session', 
     settings.current = { ...settings.current, upscaler: 'seedvr2-3b' }
     await readEvents(await call('POST', '/api/sessions/s1/frames/0/upscale'))
     assertEquals(images.upscalers, ['seedvr2-3b'])
+  }))
+
+Deno.test("A Roleplay's Cast is written and reviewed, then it begins, is talked to, undone and edited", () =>
+  withTempDir(async (root) => {
+    const { call } = setup({
+      root,
+      settings: { textModel: 'x' },
+      roleplayModel: scriptedRoleplayModel({
+        casts: [testCast, testCast],
+        replies: [replyOf('You are late.'), replyOf('Take the wheel.')],
+      }),
+    })
+    const created = await (await call('POST', '/api/sessions', {
+      kind: 'roleplay',
+      brief: 'A storm at sea.',
+    })).json()
+    assertEquals([created.kind, created.cast, created.frames], ['roleplay', null, []])
+    assertEquals(
+      (await call('POST', '/api/sessions/s1/roleplay/messages', { text: 'Hi' })).status,
+      409,
+    )
+
+    const written = await readEvents(await call('POST', '/api/sessions/s1/roleplay/cast'))
+    assertEquals(written.map(([e]) => e), ['phase', 'cast'])
+    // Not begun yet: no Messages, but the Cast can be rewritten.
+    assertEquals(
+      (await call('POST', '/api/sessions/s1/roleplay/messages', { text: 'Hi' })).status,
+      409,
+    )
+    const rewritten = await readEvents(await call('POST', '/api/sessions/s1/roleplay/cast'))
+    assertEquals(rewritten.at(-1)![0], 'cast')
+
+    const begun = await readEvents(await call('POST', '/api/sessions/s1/roleplay/begin'))
+    assertEquals(begun.map(([e]) => e), [
+      'phase',
+      'reply-part',
+      'reply-part',
+      'reply-part',
+      'replied',
+    ])
+    assertEquals((await call('POST', '/api/sessions/s1/roleplay/begin')).status, 409)
+    assertEquals((await call('POST', '/api/sessions/s1/roleplay/cast')).status, 409)
+
+    assertEquals(
+      (await call('POST', '/api/sessions/s1/roleplay/messages', { text: ' ' })).status,
+      400,
+    )
+    const talk = await readEvents(
+      await call('POST', '/api/sessions/s1/roleplay/messages', { text: 'Sorry, captain.' }),
+    )
+    assertEquals(talk.map(([e]) => e), [
+      'phase',
+      'reply-part',
+      'reply-part',
+      'reply-part',
+      'replied',
+    ])
+
+    const undone = await (await call('DELETE', '/api/sessions/s1/roleplay/frames/1')).json()
+    assertEquals(undone.frames.length, 1)
+    assertEquals((await call('DELETE', '/api/sessions/s1/roleplay/frames/0')).status, 409)
+
+    const young = { ...testCast, character: { ...testCast.character, age: 16 } }
+    assertEquals((await call('PUT', '/api/sessions/s1/roleplay/cast', young)).status, 400)
+    const renamed = { ...testCast, persona: { ...testCast.persona, name: 'Alex' } }
+    const edited = await (await call('PUT', '/api/sessions/s1/roleplay/cast', renamed)).json()
+    assertEquals(edited.cast.persona.name, 'Alex')
+
+    const [summary] = await (await call('GET', '/api/sessions')).json()
+    assertEquals([summary.kind, summary.frames, summary.latestImage], ['roleplay', 1, null])
+    assertEquals(summary.excerpt, 'You are late.')
+  }))
+
+Deno.test('A failed first Cast discards the Roleplay; other kinds refuse Roleplay routes', () =>
+  withTempDir(async (root) => {
+    const { call } = setup({
+      root,
+      settings: { textModel: 'x' },
+      roleplayModel: scriptedRoleplayModel({ casts: [new Error('down'), new Error('down')] }),
+    })
+    await call('POST', '/api/sessions', { kind: 'roleplay', scenarioId: 'test' })
+    const events = await readEvents(await call('POST', '/api/sessions/s1/roleplay/cast'))
+    assertEquals(events.at(-1)![1], { type: 'failed', message: 'down', sessionDiscarded: true })
+    assertEquals((await call('GET', '/api/sessions/s1')).status, 404)
+
+    await call('POST', '/api/sessions', { scenarioId: 'test' })
+    assertEquals((await call('POST', '/api/sessions/s2/roleplay/cast')).status, 409)
+  }))
+
+Deno.test('Turning the Limits off in Settings applies at once, except the adult Limit', () =>
+  withTempDir(async (root) => {
+    const { call, settings } = setup({ root, settings: { textModel: 'x' } })
+    try {
+      settings.current = { ...settings.current, limits: false }
+      const nude = await call('POST', '/api/sessions', { brief: 'A nude figure study.' })
+      assertEquals(nude.status, 201)
+      const young = await call('POST', '/api/sessions', { brief: 'A fifteen-year-old runner.' })
+      assertEquals(young.status, 422)
+    } finally {
+      settings.current = { ...settings.current, limits: true }
+      await call('GET', '/api/sessions')
+    }
+    assertEquals(
+      (await call('POST', '/api/sessions', { brief: 'A nude figure study.' })).status,
+      422,
+    )
   }))

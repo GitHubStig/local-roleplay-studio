@@ -37,6 +37,11 @@ export interface Settings {
   seed: number
   /** Which SeedVR2 model Upscale uses; read when upscaling, so it applies mid-Session too. */
   upscaler: Upscaler
+  /**
+   * The Limits (ADR 0002); on by default. Off, only "everyone depicted is an adult" is enforced.
+   * Read on every request, so it applies mid-Session too.
+   */
+  limits: boolean
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -49,6 +54,7 @@ export const DEFAULT_SETTINGS: Settings = {
   seedMode: 'random',
   seed: 42,
   upscaler: UPSCALERS[0].id,
+  limits: true,
 }
 
 const MAX_SEED = 2 ** 32 - 1
@@ -87,6 +93,9 @@ export function validateSettings(input: unknown): ValidationResult {
     issues.push(`seed must be an integer from 0 to ${MAX_SEED}`)
   }
 
+  if (s.limits !== undefined && typeof s.limits !== 'boolean') {
+    issues.push('limits must be true or false')
+  }
   if (s.upscaler !== undefined && !UPSCALERS.some((u) => u.id === s.upscaler)) {
     issues.push(`upscaler must be one of: ${UPSCALERS.map((u) => u.id).join(', ')}`)
   }
@@ -104,6 +113,7 @@ export function validateSettings(input: unknown): ValidationResult {
       seedMode: s.seedMode as SeedMode,
       seed: s.seed as number,
       upscaler: (s.upscaler as Upscaler | undefined) ?? DEFAULT_SETTINGS.upscaler,
+      limits: (s.limits as boolean | undefined) ?? true,
     },
   }
 }

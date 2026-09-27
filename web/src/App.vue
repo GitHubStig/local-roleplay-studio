@@ -14,7 +14,9 @@ const { currentSessionId, currentSessionKind } = useCurrentSession()
 const playTo = computed(() =>
   currentSessionId.value ? sessionPath(currentSessionId.value, currentSessionKind.value) : '/'
 )
-const onPlay = computed(() => route.name === 'session' || route.name === 'storyboard')
+const onPlay = computed(() =>
+  route.name === 'session' || route.name === 'storyboard' || route.name === 'roleplay'
+)
 
 async function checkServer() {
   try {
@@ -64,7 +66,7 @@ onBeforeUnmount(() => {
     <!-- Up to 5 Session screens stay alive while you visit Home, Settings or other Sessions, so
          drafts, the viewed Frame and running Frames survive switching back and forth. -->
     <RouterView v-slot="{ Component, route: r }">
-      <KeepAlive :include="['SessionView', 'StoryboardView']" :max="5">
+      <KeepAlive :include="['SessionView', 'StoryboardView', 'RoleplayView']" :max="5">
         <component :is="Component" :key="r.path" class="min-h-0 flex-1" />
       </KeepAlive>
     </RouterView>

@@ -1,5 +1,6 @@
 import { fromFileUrl, join } from '@std/path'
 import type { ImagePrompt } from './imagePrompt.ts'
+import type { RoleplaySession } from './roleplay/types.ts'
 import type { Settings } from './settings.ts'
 
 /**
@@ -77,9 +78,9 @@ export interface Look {
  * What kind of Session: a Chain makes each Frame from the previous one by an Action; a
  * Storyboard plans all its Frames together from the Brief.
  */
-export type SessionKind = 'chain' | 'storyboard'
+export type SessionKind = 'chain' | 'storyboard' | 'roleplay'
 
-interface SessionBase {
+export interface SessionBase {
   id: string
   /** The typed Brief this Session started from; null when it started from a Scenario. */
   brief: string | null
@@ -106,7 +107,7 @@ export interface StoryboardSession extends SessionBase {
   frames: StoryboardFrame[]
 }
 
-export type Session = ChainSession | StoryboardSession
+export type Session = ChainSession | StoryboardSession | RoleplaySession
 
 export const currentPrompt = (s: ChainSession): ImagePrompt | null =>
   s.frames.at(-1)?.prompt ?? null

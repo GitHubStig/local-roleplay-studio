@@ -3,13 +3,16 @@ export interface JsonStreamHandlers {
   value?: (key: string, value: unknown) => void
   /** An object or array element inside the top-level array under `key` has finished. */
   element?: (key: string, index: number, value: unknown) => void
+  /** A string value of the top-level object has finished, e.g. a Roleplay reply's field. */
+  text?: (key: string, value: string) => void
 }
 
 /**
  * Reads a JSON object as it streams in, and reports each top-level container value, and each
  * container element of a top-level array, the moment it is complete. It lets a long reply (a
  * Storyboard's Look, Beats and Frames) be shown piece by piece while the Text Model still writes.
- * Only containers are reported; plain strings and numbers are left to the final parse.
+ * Containers are reported through `value`, top-level strings through `text`; numbers and other
+ * plain values are left to the final parse.
  */
 export class JsonStreamReader {
   #text = ''
@@ -19,6 +22,8 @@ export class JsonStreamReader {
   #stringStart = -1
   /** The most recent string at the top level: the key of whatever opens next. */
   #lastKey = ''
+  /** At the top level, between a key's colon and the next comma: a string here is a value. */
+  #afterColon = false
   #stack: { open: '{' | '['; key: string; start: number }[] = []
   #counts = new Map<string, number>()
   #on: JsonStreamHandlers
@@ -37,7 +42,9 @@ export class JsonStreamReader {
         else if (c === '"') {
           this.#inString = false
           if (this.#stack.length === 1) {
-            this.#lastKey = this.#text.slice(this.#stringStart + 1, this.#pos)
+            const raw = this.#text.slice(this.#stringStart, this.#pos + 1)
+            if (this.#afterColon) this.#on.text?.(this.#lastKey, JSON.parse(raw))
+            else this.#lastKey = JSON.parse(raw)
           }
         }
         continue
@@ -45,6 +52,8 @@ export class JsonStreamReader {
       if (c === '"') {
         this.#inString = true
         this.#stringStart = this.#pos
+      } else if (this.#stack.length === 1 && (c === ':' || c === ',')) {
+        this.#afterColon = c === ':'
       } else if (c === '{' || c === '[') {
         const key = this.#stack.length === 1 ? this.#lastKey : this.#stack.at(-1)?.key ?? ''
         this.#stack.push({ open: c, key, start: this.#pos })

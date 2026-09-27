@@ -1,5 +1,10 @@
 import type { SessionKind } from './api'
 
-/** Where a Session's screen lives: Chains and Storyboards each have their own. */
-export const sessionPath = (id: string, kind: SessionKind = 'chain') =>
-  kind === 'storyboard' ? `/storyboards/${id}` : `/sessions/${id}`
+const SCREENS: Record<SessionKind, string> = {
+  chain: '/sessions',
+  storyboard: '/storyboards',
+  roleplay: '/roleplay',
+}
+
+/** Where a Session's screen lives: each kind has its own. */
+export const sessionPath = (id: string, kind: SessionKind = 'chain') => `${SCREENS[kind]}/${id}`

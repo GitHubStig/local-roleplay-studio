@@ -3,6 +3,7 @@ import HomeView from './views/HomeView.vue'
 import SessionView from './views/SessionView.vue'
 import SettingsView from './views/SettingsView.vue'
 import StoryboardView from './views/StoryboardView.vue'
+import RoleplayView from './roleplay/RoleplayView.vue'
 
 export const router = createRouter({
   history: createWebHistory(),
@@ -10,6 +11,7 @@ export const router = createRouter({
     { path: '/', name: 'home', component: HomeView },
     { path: '/sessions/:id', name: 'session', component: SessionView, props: true },
     { path: '/storyboards/:id', name: 'storyboard', component: StoryboardView, props: true },
+    { path: '/roleplay/:id', name: 'roleplay', component: RoleplayView, props: true },
     { path: '/settings', name: 'settings', component: SettingsView },
   ],
 })

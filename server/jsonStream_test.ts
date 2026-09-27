@@ -38,3 +38,13 @@ Deno.test('JsonStreamReader reports nothing for an element that has not finished
   const seen = events([reply.slice(0, reply.indexOf('He leaps'))])
   assertEquals(seen.length, 3)
 })
+
+Deno.test('JsonStreamReader reports top-level strings through text, one character at a time too', () => {
+  const content = JSON.stringify({ internal: 'Late \\again.', actions: 'She looks "up".', n: 3 })
+  for (const chunks of [[content], [...content]]) {
+    const seen: unknown[] = []
+    const reader = new JsonStreamReader({ text: (key, value) => seen.push([key, value]) })
+    for (const chunk of chunks) reader.feed(chunk)
+    assertEquals(seen, [['internal', 'Late \\again.'], ['actions', 'She looks "up".']])
+  }
+})

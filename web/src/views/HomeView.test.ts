@@ -66,6 +66,15 @@ describe('HomeView', () => {
     expect(wrapper.text()).toContain('Start a new Session')
   })
 
+  it("shows a Roleplay's latest line in place of an image", async () => {
+    vi.mocked(api.listSessions).mockResolvedValue([
+      summary('r', { kind: 'roleplay', latestImage: null, excerpt: 'Sit down.' }),
+    ])
+    const { wrapper } = await mountIt()
+    expect(wrapper.find('[data-session] a').attributes('href')).toBe('/roleplay/r')
+    expect(wrapper.find('[data-excerpt]').text()).toBe('“Sit down.”')
+  })
+
   it('links a Storyboard to its own screen', async () => {
     vi.mocked(api.listSessions).mockResolvedValue([summary('s', { kind: 'storyboard' })])
     const { wrapper } = await mountIt()

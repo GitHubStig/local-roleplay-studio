@@ -1,0 +1,192 @@
+import { limitCrossedBy, type ProgressEvent, secondsSince, withRetry } from '../frames.ts'
+import { activeProseLimits, crossedLimit } from '../limits.ts'
+import type { Scenario } from '../scenario.ts'
+import type { SessionStore } from '../session.ts'
+import type { TextModel } from '../textModel.ts'
+import type { RoleplayModel } from './model.ts'
+import { openingMessages, parseCast, roleplayMessages } from './prompt.ts'
+import type { Cast, Reply, RoleplayFrame, RoleplaySession } from './types.ts'
+
+/** Progress of a Roleplay's setup or reply, streamed to the player as it happens. */
+export type RoleplayEvent =
+  | ProgressEvent
+  /** The Cast, once written. */
+  | { type: 'cast'; cast: Cast; session: RoleplaySession }
+  /** One field of the reply, the moment the model finishes writing it. */
+  | { type: 'reply-part'; key: keyof Reply; value: string }
+  | { type: 'replied'; frame: RoleplayFrame; session: RoleplaySession }
+  /** The message or the reply crossed a Limit: nothing was saved. */
+  | { type: 'declined'; message: string }
+
+export interface RoleplayDeps {
+  store: SessionStore
+  roleplayModel: RoleplayModel
+  /** For the real-person question the Limits ask (ADR 0002). */
+  textModel: TextModel
+}
+
+/** The text of a Cast and a reply that the Limits check. */
+const castText = ({ character, persona, setting }: Cast) =>
+  [...Object.values(character), ...Object.values(persona), ...Object.values(setting)].join('\n')
+const replyText = (r: Reply) => [r.internal, r.actions, r.dialogue].join('\n')
+
+export class RoleplayError extends Error {}
+/** A hand edit crosses a Limit. */
+export class RoleplayLimitError extends Error {}
+
+/**
+ * Writes the Cast from the Roleplay's Brief (or Scenario), for the player to review before the
+ * scene begins. Can be rewritten until then. Refused if the Cast crosses a Limit.
+ */
+export async function writeCast(
+  deps: RoleplayDeps,
+  session: RoleplaySession,
+  scenario: Scenario,
+  emit: (event: RoleplayEvent) => void,
+  signal: AbortSignal,
+): Promise<RoleplaySession> {
+  if (session.frames.length) throw new RoleplayError('The scene has already begun')
+  emit({ type: 'phase', phase: 'text' })
+  const { cast } = await withRetry(
+    (onThinking) => deps.roleplayModel.writeCast(scenario, signal, onThinking),
+    signal,
+    emit,
+  )
+  signal.throwIfAborted()
+  const limit = crossedLimit(castText(cast))
+  if (limit) throw new Error(`The Cast crossed a limit: ${limit.message}`)
+  const updated: RoleplaySession = { ...session, cast }
+  await deps.store.save(updated)
+  emit({ type: 'cast', cast, session: updated })
+  return updated
+}
+
+/**
+ * Begins the scene: the Character's opening Reply, written from the Cast as the player left it,
+ * becomes the Opening Frame. A Reply that crosses a Limit fails, and Begin can be tried again.
+ */
+export async function beginRoleplay(
+  deps: RoleplayDeps,
+  session: RoleplaySession,
+  emit: (event: RoleplayEvent) => void,
+  signal: AbortSignal,
+): Promise<RoleplaySession> {
+  if (!session.cast) throw new RoleplayError('This Roleplay has no Cast yet')
+  if (session.frames.length) throw new RoleplayError('The scene has already begun')
+  emit({ type: 'phase', phase: 'text' })
+  const start = performance.now()
+  const messages = await openingMessages(session.cast)
+  const reply = await withRetry(
+    (onThinking) =>
+      deps.roleplayModel.reply(messages, signal, {
+        thinking: onThinking,
+        field: (key, value) => emit({ type: 'reply-part', key, value }),
+      }),
+    signal,
+    emit,
+  )
+  signal.throwIfAborted()
+  const limit = crossedLimit(replyText(reply), activeProseLimits())
+  if (limit) throw new Error(`The opening crossed a limit (${limit.message}); try Begin again.`)
+  return await commit(deps, session, null, reply, start, emit)
+}
+
+/** Saves a Reply (and the Message it answers) as the next Frame. */
+async function commit(
+  deps: RoleplayDeps,
+  session: RoleplaySession,
+  message: string | null,
+  reply: Reply & { thinking?: string },
+  start: number,
+  emit: (event: RoleplayEvent) => void,
+): Promise<RoleplaySession> {
+  const { thinking, ...fields } = reply
+  const frame: RoleplayFrame = {
+    index: session.frames.length,
+    message,
+    reply: fields,
+    ...(thinking ? { thinking } : {}),
+    timings: { text: secondsSince(start) },
+    image: null,
+    createdAt: new Date().toISOString(),
+  }
+  const updated: RoleplaySession = { ...session, frames: [...session.frames, frame] }
+  await deps.store.save(updated)
+  emit({ type: 'replied', frame, session: updated })
+  return updated
+}
+
+/**
+ * Sends the player's message and saves the Character's reply as a new Frame. A message or reply
+ * that crosses a Limit is declined: nothing is saved, and the player can reword it.
+ */
+export async function sendMessage(
+  deps: RoleplayDeps,
+  session: RoleplaySession,
+  message: string,
+  emit: (event: RoleplayEvent) => void,
+  signal: AbortSignal,
+): Promise<RoleplaySession | null> {
+  if (!session.cast || !session.frames.length) {
+    throw new RoleplayError('The scene has not begun yet')
+  }
+  emit({ type: 'phase', phase: 'text' })
+  const start = performance.now()
+
+  const messageLimit = await limitCrossedBy(message, deps.textModel, signal)
+  if (messageLimit) {
+    emit({ type: 'declined', message: `Declined: ${messageLimit}.` })
+    return null
+  }
+
+  const messages = await roleplayMessages(session, message)
+  const reply = await withRetry(
+    (onThinking) =>
+      deps.roleplayModel.reply(messages, signal, {
+        thinking: onThinking,
+        field: (key, value) => emit({ type: 'reply-part', key, value }),
+      }),
+    signal,
+    emit,
+  )
+  signal.throwIfAborted()
+  const replyLimit = crossedLimit(replyText(reply), activeProseLimits())
+  if (replyLimit) {
+    emit({
+      type: 'declined',
+      message: `The reply crossed a limit (${replyLimit.message}); try again or reword.`,
+    })
+    return null
+  }
+  return await commit(deps, session, message, reply, start, emit)
+}
+
+/** Removes the latest exchange, so the player can say something else. The opening stays. */
+export async function undoLatestExchange(
+  store: SessionStore,
+  session: RoleplaySession,
+  index: number,
+): Promise<RoleplaySession> {
+  const latest = session.frames.at(-1)
+  if (!latest || latest.index !== index) {
+    throw new RoleplayError(`Frame ${index} is not the latest Frame`)
+  }
+  if (latest.message === null) throw new RoleplayError("The opening can't be undone")
+  const updated = { ...session, frames: session.frames.slice(0, -1) }
+  await store.save(updated)
+  return updated
+}
+
+/** Replaces the Cast, edited by hand; applies from the next reply. */
+export async function setCast(
+  store: SessionStore,
+  session: RoleplaySession,
+  value: unknown,
+): Promise<RoleplaySession> {
+  const cast = parseCast(value)
+  const limit = crossedLimit(castText(cast))
+  if (limit) throw new RoleplayLimitError(`That crosses a limit: ${limit.message}`)
+  const updated = { ...session, cast }
+  await store.save(updated)
+  return updated
+}

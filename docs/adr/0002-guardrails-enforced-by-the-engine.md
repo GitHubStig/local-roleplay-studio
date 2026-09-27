@@ -21,6 +21,8 @@ Anything inside the Limits is the player's to direct, and the Text Model's to ca
 
 ## Consequences
 
+**The Limits can be switched off in Settings** (on by default), after they cost repeated false declines while testing Roleplays. Off, the engine skips the sexual, restraint and real-person checks and the Text Model is told only that everyone depicted is an adult. That one Limit is never switched off: with uncensored models and an image generator, it is the line that must hold whatever the player chooses. The switch is read on every request, so it applies to running Sessions at once.
+
 A term list is blunt. It catches any stated age under 18, in digits or words ("sixteen year
 old", "aged 16"): in testing, a Storyboard Brief about a high school player led the Text Model to
 write "a sixteen year old" despite being told everyone is an adult, so the model is now also told

@@ -67,3 +67,12 @@ Deno.test('validateSettings defaults the upscaler to SeedVR2 7B and accepts only
   assertEquals(small.ok && small.settings.upscaler, 'seedvr2-3b')
   assertEquals(validateSettings({ ...DEFAULT_SETTINGS, upscaler: 'esrgan' }).ok, false)
 })
+
+Deno.test('validateSettings keeps the Limits on unless turned off', () => {
+  const { limits: _, ...withoutLimits } = DEFAULT_SETTINGS
+  const result = validateSettings(withoutLimits)
+  assertEquals(result.ok && result.settings.limits, true)
+  const off = validateSettings({ ...DEFAULT_SETTINGS, limits: false })
+  assertEquals(off.ok && off.settings.limits, false)
+  assertEquals(validateSettings({ ...DEFAULT_SETTINGS, limits: 'no' }).ok, false)
+})

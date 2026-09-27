@@ -7,12 +7,12 @@ in [CONTEXT.md](../CONTEXT.md). The reasoning behind the bigger choices is in [a
 ## What it is
 
 A text-to-image prompt generator. Every Session starts from a **Brief** (typed, or a saved
-**Scenario**) and is one of two kinds: a **Chain**, where each Frame is made from the previous
-one by an Action, or a **Storyboard**, whose Frames are planned together and then edited and
-rendered one by one. (The Storyboard screen is being built; its engine and API are below.) The
-player starts a **Session** from it and plays **Frames**: each Frame, the player writes an
-**Action** (what to change), the **Text Model** edits the **Image Prompt**, and the **Image
-Model** renders it. There is no score and no end; a Session lasts until it's deleted.
+**Scenario**) and is one of three kinds: a **Chain**, where each Frame is made from the
+previous one by an Action; a **Storyboard**, whose Frames are planned together and then edited
+and rendered one by one; or a **Roleplay**, a conversation with a Character (text only for now;
+see [Roleplays](#roleplays)). In a Chain, each Frame the player writes an **Action** (what to
+change), the **Text Model** edits the **Image Prompt**, and the **Image Model** renders it.
+There is no score and no end; a Session lasts until it's deleted.
 
 The Image Prompt is one paragraph of nine sentences, one per aspect in a fixed order: subject
 and identity → pose and limbs → expression → camera angle and framing → clothing → environment
@@ -121,6 +121,34 @@ After planning, each Frame is independent:
 Each Frame records how long its text took (the wait for its part of the plan, or its latest
 edit) and its latest render.
 
+## Roleplays
+
+A Roleplay is its own module (`server/roleplay/`, `web/src/roleplay/`), with its own routes
+under `/api/sessions/:id/roleplay/` ([ADR 0007](adr/0007-roleplay-is-a-conversation-with-a-cast.md)).
+
+1. **The Cast** (when the screen first opens): one Text Model call writes the **Cast** (the
+   Character, the Persona the player plays, the Setting) from the Brief, checked against every
+   Limit. The player reviews it: edits it, or has it rewritten. A failed or cancelled first Cast
+   discards the Session.
+2. **Begin**: the Character's opening Reply, written under the same system message as every
+   later Reply (so it follows the Cast as edited), becomes the Opening Frame.
+3. **Each Message**: checked against every Limit (the term list, then the real-person question
+   if it names someone), then the whole conversation goes to the Text Model: the system message
+   (rules, Cast, reply format, Limits; the same every call), the opening Reply, each Message and
+   Reply in turn, and the new Message. The Reply streams in field by field (`internal`,
+   `actions`, `dialogue`) and is checked for minors (without the colloquial "kid") and sexual
+   content. Either declined saves nothing and leaves the Message in the box.
+4. **Undo** removes the latest exchange and puts its Message back in the box; the opening can't
+   be undone. **The Cast** can be edited by hand at any time; it applies from the next Reply.
+
+The prompts are Markdown files in `server/prompts/roleplay/` (`cast.md`, `cast-request.md`,
+`character.md`, `opening-request.md`, `limits.md`, `limits-adults-only.md`), each with a note at
+the top saying when it's used and what it's filled with; edits apply on the next call.
+
+A Scenario can start a Roleplay too: its Setup facts and Opening serve as the Brief (its notes,
+written for image prompts, are left out). Frames have `image: null`: rendering a Roleplay is the
+planned Art Agent ([open-threads.md](open-threads.md)).
+
 ## Consistency
 
 - **Seed:** fixed for the whole Session: the fixed seed from Settings, or a random one picked
@@ -200,6 +228,17 @@ in [open-threads.md](open-threads.md).
   prompt and the Frame's timings. The panels, the render sweep and the unsent Action (remembered
   per Session) work as on the Session screen. A Chain opened at a Storyboard's address, or the
   other way round, is sent to its own screen.
+- **Roleplay** (`/roleplay/:id`): a new Roleplay opens on its Cast, written from the Brief, with
+  **Begin** and **Rewrite Cast** in the conversation area; Begin saves any unsaved Cast edits
+  first, and the text box stays locked until the scene begins. Then the conversation fills the
+  main area: the player's Messages
+  on the right, the Character's Replies on the left, each as the thought (small, muted; hidden
+  with **Hide thoughts**, remembered per browser), the actions in italics and the dialogue in
+  quotes. While the Character replies, the Message shows at once and the Reply fills in field by
+  field, with the same light sweeping round the text box. Enter sends; Cancel, Undo and the
+  unsent Message (remembered per Session) work as on the Session screen. The right panel is the
+  Cast, editable, with **Save Cast**. On Home, a Roleplay's card shows the Character's latest line
+  in place of an image.
 - **Navigation:** **RPG** leads Home; **Play** leads back to the Session opened last
   (remembered per browser), or Home when there is none. Up to five Session screens stay alive in
   memory while you visit Home, Settings or other Sessions, so each keeps its half-typed Action,
@@ -218,8 +257,9 @@ in [open-threads.md](open-threads.md).
 - **Settings** (`/settings`): Text Model (installed Ollama models, minus OCR and dedicated
   vision-language models), Thinking (on or off; only for models that support it), Image Model, steps (reset to the model's default when the Image Model
   changes), quantization, size (six presets from 512×512 to 1216×832), seed (random per
-  Session, or fixed) and Upscaler (SeedVR2 7B or 3B). Settings are copied into a Session when it
-  starts, except the Upscaler, which is read at each upscale: it can't change how Frames look.
+  Session, or fixed), Upscaler (SeedVR2 7B or 3B) and Limits (on by default; off leaves only
+  "everyone depicted is an adult"). Settings are copied into a Session when it starts, except the
+  Upscaler and Limits, which apply at once.
 - **Theme:** Light (a parchment tint), Dark or System, remembered per browser. It's a display
   preference, not a Setting.
 
@@ -252,7 +292,7 @@ All under `/api`; the Vite dev server proxies it to the Deno server.
 | `GET /settings/options` | Text Models from Ollama, Image Models, size presets; still answers if Ollama is down |
 | `GET /scenarios` | Scenario summaries plus files that failed to load |
 | `GET /sessions` | Session summaries, newest first, with each one's current activity |
-| `POST /sessions` | Start a Session: `{ kind?: "chain" \| "storyboard", scenarioId \| brief, frameCount? }` |
+| `POST /sessions` | Start a Session: `{ kind?: "chain" \| "storyboard" \| "roleplay", scenarioId \| brief, frameCount? }` |
 | `DELETE /sessions/:id` | Delete a Session and its images (`409` while a Frame runs) |
 | `GET /sessions/:id` | A Session with its Frames, plus `activity`: what a running Frame is doing, or `null` |
 | `POST /sessions/:id/frames` | Chain: run a Frame (`{ action }`, or `{}` for the Opening Frame) as a server-sent event stream |
@@ -265,6 +305,11 @@ All under `/api`; the Vite dev server proxies it to the Deno server.
 | `POST /sessions/:id/frames/:index/upscale` | Either kind: upscale one rendered Frame's image to 2048 px, streaming progress then `upscaled` (`session`); `409` if it has no image or is already upscaled |
 | `DELETE /sessions/:id/frames/:index` | Undo the latest Frame; `:index` must name it (`409` otherwise, and for the Opening Frame or while a Frame runs) |
 | `GET /sessions/:id/images/:file` | A Frame's image |
+| `POST /sessions/:id/roleplay/cast` | Roleplay: write (or, before it begins, rewrite) the Cast, streaming `phase`, `thinking`, then `cast` (`cast`, `session`) |
+| `POST /sessions/:id/roleplay/begin` | Roleplay: the opening Reply, streaming `reply-part` per field, then `replied` (`frame`, `session`) |
+| `POST /sessions/:id/roleplay/messages` | Roleplay: send `{ text }`, streaming `reply-part` (`key`, `value`) per field, then `replied`, or `declined` (`message`) |
+| `DELETE /sessions/:id/roleplay/frames/:index` | Roleplay: undo the latest exchange (`409` for any other, and for the opening) |
+| `PUT /sessions/:id/roleplay/cast` | Roleplay: replace the Cast (`400` if incomplete or the Character is under 18, `422` if it crosses a Limit) |
 
 A Frame's stream emits `phase` (`text`, then `queued` if another Session is rendering, then
 `image`), `thinking` (reasoning chunks; `restart` when a retry begins afresh), `text` (the provisional Image Prompt and Narration),

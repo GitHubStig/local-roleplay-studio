@@ -138,6 +138,18 @@ async function save() {
           <span class="text-sm text-muted">Used by Upscale; applies to the next upscale.</span>
         </label>
 
+        <label class="flex items-start gap-2">
+          <input v-model="form.limits" type="checkbox" class="mt-1" data-limits />
+          <span class="flex flex-col gap-0.5">
+            <span>Limits</span>
+            <span class="text-sm text-muted">
+              On: no sexual or nude content, real people, or restraint, and everyone is an adult.
+              Off: only "everyone depicted is an adult" is enforced; it can't be turned off.
+              Applies at once, to running Sessions too.
+            </span>
+          </span>
+        </label>
+
         <fieldset class="flex flex-col gap-2">
           <legend class="mb-1 text-sm text-muted">Seed</legend>
           <label class="flex items-center gap-2">

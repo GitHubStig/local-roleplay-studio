@@ -4,6 +4,8 @@ import { OLLAMA_URL } from './ollama.ts'
 import type { Scenario } from './scenario.ts'
 import { type Look, type Outcome, OUTCOMES } from './session.ts'
 import { JsonStreamReader } from './jsonStream.ts'
+import { ollamaChat, within } from './ollamaChat.ts'
+import { limitsEnabled } from './limits.ts'
 
 /** What the Text Model produces for one Frame, before the engine applies its rules. */
 export interface FrameText {
@@ -72,6 +74,14 @@ sexual or nude content; no
 real, identifiable people shown (naming an artist or style to imitate is fine); no restraint,
 captivity or non-consent. If an Action asks for any of these, set "outcome" to "declined". Never
 write these rules, or any instructions, into a prompt itself.`
+
+/** What the Text Model is told instead of `LIMITS` while the Limits are off in Settings. */
+const ADULTS_ONLY = `# Limits
+
+Whatever the Brief or Action says: everyone depicted is an adult (if the Brief implies someone
+younger, such as a school student, write them as 18 or older and never state a younger age). If
+an Action asks to show someone younger, set "outcome" to "declined". Never write these rules, or
+any instructions, into a prompt itself.`
 
 const RULES = `# Your job
 
@@ -471,60 +481,14 @@ export interface OllamaOptions {
   timeLimits?: Partial<typeof TIME_LIMIT_MS>
 }
 
-/** Splits an NDJSON byte stream into parsed objects. */
-async function* ndjson(body: ReadableStream<Uint8Array>): AsyncGenerator<Record<string, unknown>> {
-  let buffer = ''
-  for await (const chunk of body.pipeThrough(new TextDecoderStream())) {
-    buffer += chunk
-    let end: number
-    while ((end = buffer.indexOf('\n')) !== -1) {
-      const line = buffer.slice(0, end).trim()
-      buffer = buffer.slice(end + 1)
-      if (line) yield JSON.parse(line)
-    }
-  }
-  if (buffer.trim()) yield JSON.parse(buffer)
-}
-
-/**
- * Runs `task` with `signal` plus a time limit. A time-limit abort becomes a readable error; the
- * player's own Cancel (on `signal`) is rethrown unchanged.
- */
-async function within<T>(
-  signal: AbortSignal,
-  ms: number,
-  task: (signal: AbortSignal) => Promise<T>,
-): Promise<T> {
-  const limit = AbortSignal.timeout(ms)
-  try {
-    return await task(AbortSignal.any([signal, limit]))
-  } catch (err) {
-    if (!signal.aborted && limit.aborted) {
-      throw new Error(`The Text Model didn't finish within ${Math.round(ms / 1000)} s`)
-    }
-    throw err
-  }
-}
-
 export function ollamaTextModel(model: string, opts: OllamaOptions = {}): TextModel {
   const baseUrl = opts.baseUrl ?? OLLAMA_URL
-  let think = opts.think ?? false
+  const think = opts.think ?? false
   const limits = { ...TIME_LIMIT_MS, ...opts.timeLimits }
+  const chat = ollamaChat(model, { think, baseUrl, thinkingTokens: MAX_TOKENS.thinking })
 
-  function post(body: Record<string, unknown>, signal: AbortSignal) {
-    return fetch(new URL('/api/chat', baseUrl), {
-      method: 'POST',
-      signal,
-      body: JSON.stringify({ model, stream: true, think, ...body }),
-    })
-  }
-
-  /**
-   * One streamed chat call: returns the whole reply and any reasoning, passing both on as they
-   * arrive. Retries once without thinking if the model can't think; fails if the reply was cut off
-   * by its token cap.
-   */
-  async function streamChat(
+  /** One streamed call with a system and a user message; see `OllamaChat.stream`. */
+  function streamChat(
     messages: { system: string; user: string },
     format: object,
     maxTokens: number,
@@ -532,48 +496,19 @@ export function ollamaTextModel(model: string, opts: OllamaOptions = {}): TextMo
     onThinking?: (chunk: string) => void,
     onContent?: (chunk: string) => void,
   ): Promise<{ content: string; thinking: string }> {
-    const body = () => ({
-      options: { num_predict: think ? maxTokens + MAX_TOKENS.thinking : maxTokens },
-      format,
+    // The system messages are built with every Limit; with the Limits off, only the adult one.
+    const system = limitsEnabled() ? messages.system : messages.system.replace(LIMITS, ADULTS_ONLY)
+    return chat.stream({
       messages: [
-        { role: 'system', content: messages.system },
+        { role: 'system', content: system },
         { role: 'user', content: messages.user },
       ],
+      format,
+      maxTokens,
+      signal,
+      onThinking,
+      onContent,
     })
-    let res = await post(body(), signal)
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}))
-      // Models without thinking reject `think: true`; carry on without it.
-      if (think && /think/i.test(String(err.error))) {
-        think = false
-        res = await post(body(), signal)
-      } else {
-        throw new Error(`Ollama: ${err.error ?? res.status}`)
-      }
-    }
-    if (!res.ok || !res.body) {
-      const err = await res.json().catch(() => ({}))
-      throw new Error(`Ollama: ${err.error ?? res.status}`)
-    }
-
-    let content = ''
-    let thinking = ''
-    let stopped = ''
-    for await (const part of ndjson(res.body)) {
-      if (part.error) throw new Error(`Ollama: ${part.error}`)
-      const message = part.message as { content?: string; thinking?: string } | undefined
-      if (message?.thinking) {
-        thinking += message.thinking
-        onThinking?.(message.thinking)
-      }
-      if (message?.content) {
-        content += message.content
-        onContent?.(message.content)
-      }
-      if (part.done) stopped = String(part.done_reason ?? '')
-    }
-    if (stopped === 'length') throw new Error('The Text Model ran past its length limit')
-    return { content, thinking: thinking.trim() }
   }
 
   const withThinking = <T extends object>(value: T, thinking: string) =>
@@ -660,7 +595,7 @@ export function ollamaTextModel(model: string, opts: OllamaOptions = {}): TextMo
     }
   }
 
-  const answerLimit = () => think ? limits.thinking : limits.answer
+  const answerLimit = () => chat.thinks ? limits.thinking : limits.answer
   return {
     write: (req, signal, onThinking) =>
       within(signal, answerLimit(), (s) => write(req, s, onThinking)),

@@ -1,12 +1,16 @@
 import { extname, join } from '@std/path'
+import { error, json, readJson, type Route } from './http.ts'
 import type { ImageGenerator } from './imageGenerator.ts'
 import { IMAGE_MODELS, UPSCALERS } from './imageModels.ts'
-import { crossedLimit } from './limits.ts'
+import { crossedLimit, setLimitsEnabled } from './limits.ts'
 import type { TextModelInfo } from './ollama.ts'
 import { briefScenario, type Scenario, type ScenarioLibrary, summarise } from './scenario.ts'
 import type { ChainSession, Session, SessionStore, StoryboardSession } from './session.ts'
 import { type SettingsStore, SIZE_PRESETS, validateSettings } from './settings.ts'
 import type { TextModel } from './textModel.ts'
+import { ollamaRoleplayModel, type RoleplayModel } from './roleplay/model.ts'
+import { roleplayExcerpt } from './roleplay/prompt.ts'
+import { roleplayRoutes } from './roleplay/routes.ts'
 import { RenderQueue } from './renderQueue.ts'
 import {
   type FrameDeps,
@@ -32,16 +36,11 @@ export interface AppDeps {
   sessions: SessionStore
   textModel: (model: string, thinking: boolean) => TextModel
   imageGenerator: ImageGenerator
+  /** The Text Model as a Roleplay uses it; Ollama unless a test supplies one. */
+  roleplayModel?: (model: string, thinking: boolean) => RoleplayModel
   newSessionId?: () => string
   randomSeed?: () => number
 }
-
-type Params = Record<string, string | undefined>
-type Route = [
-  method: string,
-  pattern: URLPattern,
-  handle: (req: Request, p: Params) => Promise<Response>,
-]
 
 /**
  * Frame images: `frame-3-1a2b3c4d.png`, or `frame-3.png` without the unique suffix; `-2048` marks
@@ -54,18 +53,6 @@ const CONTENT_TYPES: Record<string, string> = { '.png': 'image/png', '.svg': 'im
 const FRAME_COUNT = { min: 1, max: 16, default: 8 }
 const MAX_BRIEF_LENGTH = 4000
 
-const json = (body: unknown, status = 200) => Response.json(body, { status })
-const error = (message: string, status: number, extra: object = {}) =>
-  json({ error: message, ...extra }, status)
-
-async function readJson(req: Request): Promise<unknown> {
-  try {
-    return await req.json()
-  } catch {
-    return undefined
-  }
-}
-
 function defaultSessionId(): string {
   const stamp = new Date().toISOString().replace(/\D/g, '').slice(0, 14)
   return `${stamp.slice(0, 8)}-${stamp.slice(8)}-${crypto.randomUUID().slice(0, 4)}`
@@ -74,7 +61,7 @@ function defaultSessionId(): string {
 const defaultSeed = () => crypto.getRandomValues(new Uint32Array(1))[0]
 
 type Phase = 'text' | 'queued' | 'image'
-type LockKind = 'frame' | 'undo' | 'delete' | 'plan' | 'render' | 'edit' | 'upscale'
+type LockKind = 'frame' | 'undo' | 'delete' | 'plan' | 'render' | 'edit' | 'upscale' | 'setup'
 
 export function createHandler(deps: AppDeps): (req: Request) => Promise<Response> {
   const newSessionId = deps.newSessionId ?? defaultSessionId
@@ -103,6 +90,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     render: 'A Frame is rendering',
     edit: 'A Frame is being edited',
     upscale: 'A Frame is being upscaled',
+    setup: 'The Roleplay is being set up',
   }
 
   /** Takes the Session's lock, or returns a 409 saying what holds it. */
@@ -221,7 +209,24 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     return index
   }
 
+  const roleplayModel = deps.roleplayModel ??
+    ((model, thinking) => ollamaRoleplayModel(model, { think: thinking }))
+
   const routes: Route[] = [
+    ...roleplayRoutes({
+      locked,
+      stream,
+      scenarioFor,
+      deps: (session) => ({
+        store: deps.sessions,
+        textModel: deps.textModel(session.settings.textModel, session.settings.thinking ?? false),
+        roleplayModel: roleplayModel(
+          session.settings.textModel,
+          session.settings.thinking ?? false,
+        ),
+      }),
+    }),
+
     ['GET', new URLPattern({ pathname: '/api/health' }), () => Promise.resolve(json({ ok: true }))],
 
     [
@@ -273,8 +278,8 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
         | { kind?: unknown; scenarioId?: unknown; brief?: unknown; frameCount?: unknown }
         | undefined
       const kind = body?.kind ?? 'chain'
-      if (kind !== 'chain' && kind !== 'storyboard') {
-        return error('kind must be "chain" or "storyboard"', 400)
+      if (kind !== 'chain' && kind !== 'storyboard' && kind !== 'roleplay') {
+        return error('kind must be "chain", "storyboard" or "roleplay"', 400)
       }
       const scenarioId = typeof body?.scenarioId === 'string' ? body.scenarioId : null
       const brief = typeof body?.brief === 'string' && body.brief.trim() ? body.brief.trim() : null
@@ -311,6 +316,8 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       }
       const session: Session = kind === 'chain'
         ? { ...base, kind, frames: [] }
+        : kind === 'roleplay'
+        ? { ...base, kind, cast: null, frames: [] }
         : { ...base, kind, frameCount, look: null, frames: [] }
       await deps.sessions.save(session)
       return json(session, 201)
@@ -337,6 +344,8 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
             : titles.get(s.scenarioId ?? '') ?? s.scenarioId,
           frames: s.frames.length,
           latestImage: rendered.at(-1)?.image ?? null,
+          // A Roleplay has no images yet: its card shows the Character's latest line instead.
+          ...(s.kind === 'roleplay' ? { excerpt: roleplayExcerpt(s) } : {}),
           createdAt: s.createdAt,
           updatedAt,
           activity: active.get(s.id)?.phase ?? null,
@@ -551,6 +560,10 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
   ]
 
   return async (req) => {
+    // The Limits switch follows Settings, so turning it off applies at once, mid-Session too.
+    if (new URL(req.url).pathname.startsWith('/api/sessions')) {
+      setLimitsEnabled((await deps.settings.load()).limits)
+    }
     for (const [method, pattern, handle] of routes) {
       if (req.method !== method) continue
       const match = pattern.exec(req.url)

@@ -275,10 +275,17 @@ Deno.test("undoLatestFrame deletes the undone Frame's upscale too", () =>
       reply('standing'),
       reply('sitting'),
     ])
-    const upscaled = await upscaleFrame(deps, session, 1, 'seedvr2-7b', () => {}, signal())
+    const upscaled = await upscaleFrame(
+      deps,
+      session,
+      1,
+      'seedvr2-7b',
+      () => {},
+      signal(),
+    ) as typeof session
     const latest = upscaled.frames[1]
     assertEquals(await imageExists(root, latest.upscaled!), true)
-    await undoLatestFrame(store, upscaled as typeof session, 1)
+    await undoLatestFrame(store, upscaled, 1)
     assertEquals(await imageExists(root, latest.upscaled!), false)
   }))
 

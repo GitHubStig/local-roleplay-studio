@@ -3,7 +3,7 @@ import { join } from '@std/path'
 import type { ImageGenerator } from './imageGenerator.ts'
 import type { Upscaler } from './imageModels.ts'
 import { type ImagePrompt, renderPrompt } from './imagePrompt.ts'
-import { crossedLimit } from './limits.ts'
+import { crossedLimit, limitsEnabled } from './limits.ts'
 import { mightNameAPerson } from './textModel.ts'
 import { RenderQueue } from './renderQueue.ts'
 import type { Scenario } from './scenario.ts'
@@ -95,7 +95,7 @@ export async function limitCrossedBy(
 ): Promise<string | undefined> {
   const listed = crossedLimit(text)?.message
   if (listed) return listed
-  if (mightNameAPerson(text) && await textModel.namesRealPerson(text, signal)) {
+  if (limitsEnabled() && mightNameAPerson(text) && await textModel.namesRealPerson(text, signal)) {
     return 'no real, identifiable people'
   }
   return undefined

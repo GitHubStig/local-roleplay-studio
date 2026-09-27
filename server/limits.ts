@@ -36,38 +36,47 @@ const UNDER_18 = `(?:1[0-7]|[1-9]|${
 
 const words = (...terms: string[]) => new RegExp(`\\b(?:${terms.join('|')})\\b`, 'i')
 
+/**
+ * Words for minors. "Kid" is on the list for Actions, Briefs and image prompts, but not for a
+ * Character's prose, where it's an everyday way to address an adult ("Listen, kid").
+ */
+const COLLOQUIAL_MINOR_TERMS = ['kids?']
+const MINOR_TERMS = [
+  'child(?:ren)?',
+  'toddlers?',
+  'infants?',
+  'teens?',
+  'teenage(?:rs?)?',
+  'pre-?teens?',
+  'adolescents?',
+  'under-?age',
+  'school ?girls?',
+  'school ?boys?',
+  'school uniform',
+  'lol(?:i|ita)',
+  'shota',
+  'little (?:girl|boy)s?',
+  'young (?:girl|boy)s?',
+]
+
+/** The minors Limit over `terms`, plus any stated age under 18. */
+const minors = (terms: string[]): Limit => ({
+  id: 'minors',
+  message: 'everyone depicted must be an adult',
+  pattern: new RegExp(
+    [
+      words(...terms).source,
+      // Any age under 18: "15 year old", "sixteen-year-old", "9-yr-old", "aged 17".
+      // (Not the end of "twenty-one year old".)
+      String.raw`(?<!ty[- ])\b${UNDER_18}[- ]?(?:years?|yrs?)[- ]?old\b`,
+      String.raw`\bage[ds]? ${UNDER_18}\b`,
+    ].join('|'),
+    'i',
+  ),
+})
+
 export const LIMITS: readonly Limit[] = [
-  {
-    id: 'minors',
-    message: 'everyone depicted must be an adult',
-    pattern: new RegExp(
-      [
-        words(
-          'child(?:ren)?',
-          'kids?',
-          'toddlers?',
-          'infants?',
-          'teens?',
-          'teenage(?:rs?)?',
-          'pre-?teens?',
-          'adolescents?',
-          'under-?age',
-          'school ?girls?',
-          'school ?boys?',
-          'school uniform',
-          'lol(?:i|ita)',
-          'shota',
-          'little (?:girl|boy)s?',
-          'young (?:girl|boy)s?',
-        ).source,
-        // Any age under 18: "15 year old", "sixteen-year-old", "9-yr-old", "aged 17".
-        // (Not the end of "twenty-one year old".)
-        String.raw`(?<!ty[- ])\b${UNDER_18}[- ]?(?:years?|yrs?)[- ]?old\b`,
-        String.raw`\bage[ds]? ${UNDER_18}\b`,
-      ].join('|'),
-      'i',
-    ),
-  },
+  minors([...MINOR_TERMS, ...COLLOQUIAL_MINOR_TERMS]),
   {
     id: 'sexual',
     message: 'no sexual or nude imagery',
@@ -146,7 +155,38 @@ export const LIMITS: readonly Limit[] = [
   },
 ]
 
-/** The first limit `text` crosses, if any. */
-export function crossedLimit(text: string): Limit | undefined {
-  return LIMITS.find((l) => l.pattern.test(text))
+/**
+ * The Limits a Roleplay Character's own prose is checked against (ADR 0007): minors (without the
+ * colloquial "kid") and sexual content. Restraint is left out: its words are everyday in prose.
+ */
+export const PROSE_LIMITS: readonly Limit[] = [
+  minors(MINOR_TERMS),
+  LIMITS.find((l) => l.id === 'sexual')!,
+]
+
+/**
+ * Whether the Limits are on (Settings → Limits; on by default). Off, only one stays: everyone
+ * depicted is an adult. It is never switched off: with uncensored models and an image generator,
+ * it is the one line that must hold whatever the player chooses.
+ */
+let enabled = true
+const ALWAYS: readonly Limit[] = [minors(MINOR_TERMS)]
+
+export const limitsEnabled = () => enabled
+/** Set from Settings on every request, so a change applies at once. */
+export function setLimitsEnabled(on: boolean) {
+  enabled = on
+}
+
+/** The Limits in force: all of them, or only the adult Limit when they're off. */
+export const activeLimits = (): readonly Limit[] => (enabled ? LIMITS : ALWAYS)
+/** The same for a Roleplay Character's prose. */
+export const activeProseLimits = (): readonly Limit[] => (enabled ? PROSE_LIMITS : ALWAYS)
+
+/** The first of `limits` (the Limits in force, unless given) that `text` crosses, if any. */
+export function crossedLimit(
+  text: string,
+  limits: readonly Limit[] = activeLimits(),
+): Limit | undefined {
+  return limits.find((l) => l.pattern.test(text))
 }

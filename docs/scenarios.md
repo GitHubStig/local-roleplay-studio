@@ -6,7 +6,11 @@ file name, minus `.md`, is its id (`photoshoot.md` → `photoshoot`). Files are 
 every request, so a new or edited Scenario shows up on Home, under *Start a new Session*,
 without a restart.
 
-A Scenario only shapes the **opening** Image Prompt. After that, any of it can be changed by
+A Scenario can start any kind of Session. For a Roleplay, its Setup and `## Opening` serve as
+the Brief the Cast is written from, and its `## System` notes (written for image prompts) are
+left out.
+
+In a Chain, a Scenario only shapes the **opening** Image Prompt. After that, any of it can be changed by
 an Action; the only lines no Action can cross are the engine's four Limits
 ([ADR 0002](adr/0002-guardrails-enforced-by-the-engine.md)).
 
