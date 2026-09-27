@@ -367,6 +367,10 @@ describe('RoleplayView', () => {
       '/api/sessions/r1/images/frame-0-aaaaaaaa.png',
     )
     expect(wrapper.find('[data-render-button]').text()).toBe('Re-render')
+    // Clicking the picture opens it in the viewer, not a new tab.
+    await wrapper.find('[data-picture-image]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-image-viewer] [data-image-frame]').exists()).toBe(true)
     expect(wrapper.find('[data-upscale-button]').text()).toBe('Upscale')
   })
 })

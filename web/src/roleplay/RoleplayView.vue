@@ -5,6 +5,7 @@ import { ApiError, cancelFrame, getSession, imageUrl, upscaleFrame } from '../ap
 import { clearCurrentSession, setCurrentSession } from '../composables/useCurrentSession'
 import { useStoredFlag } from '../composables/useStoredFlag'
 import { useStoredText } from '../composables/useStoredText'
+import ImageViewer from '../components/ImageViewer.vue'
 import { sessionPath } from '../sessionPath'
 import {
   type Cast,
@@ -34,6 +35,8 @@ const notice = ref<{ kind: 'error' | 'declined'; text: string } | null>(null)
 const draft = useStoredText(`draft:${props.id}`)
 const thoughtsHidden = useStoredFlag('roleplay-thoughts-hidden')
 const transcript = ref<HTMLElement | null>(null)
+/** The picture open in the viewer, if any. */
+const viewing = ref<{ src: string; alt: string } | null>(null)
 
 /** The exchange in progress: the message sent, and the reply as it arrives. */
 interface Pending {
@@ -519,13 +522,16 @@ async function saveCastDraft(): Promise<boolean> {
                     </details>
                   </div>
                 </div>
-                <a
+                <button
                   v-if="frame.image"
-                  :href="imageUrl(session.id, frame.upscaled ?? frame.image)"
-                  target="_blank"
+                  type="button"
                   class="relative block w-full max-w-sm shrink-0 lg:w-72 lg:max-w-none xl:w-80"
-                  title="Open full size"
+                  title="Look closer"
                   data-picture-image
+                  @click="viewing = {
+                    src: imageUrl(session.id, frame.upscaled ?? frame.image),
+                    alt: frame.promptText ?? '',
+                  }"
                 >
                   <img
                     :src="imageUrl(session.id, frame.image)"
@@ -538,7 +544,7 @@ async function saveCastDraft(): Promise<boolean> {
                     v-if="frame.stale"
                     class="absolute left-2 top-2 rounded-full bg-black/70 px-2 py-0.5 text-white"
                   >Changed since render</span>
-                </a>
+                </button>
               </div>
             </li>
           </template>
@@ -746,5 +752,7 @@ async function saveCastDraft(): Promise<boolean> {
     </template>
 
     <p v-else class="p-6 text-muted">Loading…</p>
+
+    <ImageViewer :src="viewing?.src ?? null" :alt="viewing?.alt" @close="viewing = null" />
   </div>
 </template>

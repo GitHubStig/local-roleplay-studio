@@ -15,6 +15,10 @@ const props = defineProps<{
    * hover; screens hide it while their status pill is there.
    */
   hideSize?: boolean
+  /** No panel around the image (border and background), e.g. inside a dialog. */
+  bare?: boolean
+  /** Show a new image at once: no preload wait and no crossfade, e.g. in a viewer. */
+  instant?: boolean
 }>()
 
 /** The image on screen; it only changes once the next one has loaded, for a clean crossfade. */
@@ -28,6 +32,10 @@ watch(
       return
     }
     if (src === displayed.value?.src) return
+    if (props.instant) {
+      displayed.value = { src, alt: props.alt ?? '' }
+      return
+    }
     const img = new Image()
     // Skip if another image was asked for meanwhile.
     const show = () => {
@@ -69,10 +77,12 @@ const frameStyle = computed(() => ({
   <!-- The image takes all the space it's given and never resizes as text around it changes. The
        frame inside is sized to the image's proportions, so overlays sit on the image itself. -->
   <section
-    class="flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-lg border border-line bg-surface [container-type:size]"
+    class="flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-lg [container-type:size]"
+    :class="{ 'border border-line bg-surface': !bare }"
   >
     <div
       ref="frame"
+      data-image-frame
       class="group relative overflow-hidden rounded-md"
       :class="{ 'render-sweep': rendering, 'cursor-grab active:cursor-grabbing': zoomed }"
       :style="frameStyle"
@@ -82,6 +92,7 @@ const frameStyle = computed(() => ({
       <div class="absolute inset-0 origin-top-left" :style="layerStyle" data-zoom-layer>
       <!-- Crossfade: the next image is preloaded, then fades in over the last one. -->
       <Transition
+        :css="!instant"
         enter-active-class="transition-opacity duration-700 ease-out"
         enter-from-class="opacity-0"
         leave-active-class="transition-opacity duration-700 ease-in"
