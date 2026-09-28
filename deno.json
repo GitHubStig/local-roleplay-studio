@@ -16,7 +16,7 @@
     },
     "test": "cd server && deno task test && cd ../web && deno task test",
     "build": "cd web && deno task build",
-    "check": "cd server && deno check main.ts app_test.ts && cd ../web && deno task typecheck"
+    "check": "cd server && deno check . && cd ../web && deno task typecheck"
   },
   "fmt": {
     "semiColons": false,

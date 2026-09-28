@@ -1,4 +1,5 @@
 import { error, json, readJson, type Route } from '../http.ts'
+import type { StreamEvent } from '../app.ts'
 import type { Scenario } from '../scenario.ts'
 import type { Session, SessionStore } from '../session.ts'
 import { JOB_KINDS, type JobKind, type RoleplayJobs } from './jobs.ts'
@@ -32,7 +33,7 @@ export interface RoleplayRouteContext {
     session: Session,
     frameIndex: number | null,
     discardOnFailure: boolean,
-    run: (send: (event: { type: string }) => void, signal: AbortSignal) => Promise<void>,
+    run: (send: (event: StreamEvent) => void, signal: AbortSignal) => Promise<void>,
   ): Response
   scenarioFor(session: Session): Promise<Scenario | Response>
   deps(session: Session): RoleplayDeps

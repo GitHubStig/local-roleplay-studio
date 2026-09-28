@@ -62,6 +62,9 @@ function defaultSessionId(): string {
 const defaultSeed = () => crypto.getRandomValues(new Uint32Array(1))[0]
 
 type Phase = 'text' | 'queued' | 'image'
+
+/** One server-sent event of a work stream: its `type`, plus whatever that event carries. */
+export type StreamEvent = { type: string; phase?: Phase; [field: string]: unknown }
 type LockKind = 'frame' | 'undo' | 'delete' | 'plan' | 'render' | 'edit' | 'upscale' | 'setup'
 
 export function createHandler(deps: AppDeps): (req: Request) => Promise<Response> {
@@ -130,7 +133,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     session: Session,
     frameIndex: number | null,
     discardOnFailure: boolean,
-    run: (send: (event: { type: string }) => void, signal: AbortSignal) => Promise<void>,
+    run: (send: (event: StreamEvent) => void, signal: AbortSignal) => Promise<void>,
   ): Response {
     const controller = new AbortController()
     const work = { controller, phase: 'text' as Phase, frameIndex }
@@ -139,7 +142,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
 
     const body = new ReadableStream<Uint8Array>({
       async start(sink) {
-        const send = (event: { type: string; phase?: Phase }) => {
+        const send = (event: StreamEvent) => {
           if (event.type === 'phase' && event.phase) work.phase = event.phase
           try {
             sink.enqueue(encoder.encode(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`))
@@ -152,10 +155,8 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
         } catch (err) {
           if (discardOnFailure) await deps.sessions.remove(session.id)
           const sessionDiscarded = discardOnFailure
-          if (controller.signal.aborted) send({ type: 'cancelled', sessionDiscarded } as never)
-          else {
-            send({ type: 'failed', message: (err as Error).message, sessionDiscarded } as never)
-          }
+          if (controller.signal.aborted) send({ type: 'cancelled', sessionDiscarded })
+          else send({ type: 'failed', message: (err as Error).message, sessionDiscarded })
         } finally {
           active.delete(session.id)
           unlock(session.id)
@@ -514,7 +515,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
               send,
               signal,
             )
-            send({ type: 'edited', ...result } as never)
+            send({ type: 'edited', ...result })
           })
         }),
     ],
