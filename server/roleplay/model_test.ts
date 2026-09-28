@@ -29,7 +29,7 @@ Deno.test('Replies penalise repeating the conversation; Cast calls do not', asyn
     assertEquals(answer, { internal: '', actions: 'Kael waits.', dialogue: '' })
     assertEquals(reply.requests[0].options, {
       repeat_penalty: 1.15,
-      repeat_last_n: -1,
+      repeat_last_n: 131_072,
       num_predict: 1024,
     })
 

@@ -63,7 +63,15 @@ const MAX_TOKENS = { reply: 1024, cast: 1024, art: 1600, thinking: 12288 }
  * read as before. An instruction not to repeat didn't help; presence and frequency penalties broke
  * the output.
  */
-const REPLY_SAMPLING = { repeat_penalty: 1.15, repeat_last_n: -1 }
+const REPLY_SAMPLING = {
+  repeat_penalty: 1.15,
+  /**
+   * The whole conversation: as many tokens as a Text Model's context holds (131,072 for gemma4
+   * here). Not -1, Ollama's documented "the whole context": the MLX engine accepts it, but models on
+   * the GGUF engine refuse it ("Value must be between 0 <= value").
+   */
+  repeat_last_n: 131_072,
+}
 const TIME_LIMIT_MS = { answer: 2 * 60_000, thinking: 10 * 60_000 }
 
 export interface OllamaRoleplayOptions {
