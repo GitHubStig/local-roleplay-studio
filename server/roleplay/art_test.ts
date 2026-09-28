@@ -112,7 +112,7 @@ Deno.test('parseShown and parseRoleplayLook', () => {
     'character',
     'persona',
     'both',
-    'both',
+    'none',
   ])
   assertEquals(parseShown({}), 'both')
   assertEquals(parseRoleplayLook(look), look)
@@ -147,4 +147,11 @@ Deno.test('A rendered picture whose Image Prompt changes is marked stale', () =>
   }
   assertEquals(pictured(rendered, look, testCast, 'She waits.', 'character').stale, undefined)
   assertEquals(pictured(rendered, look, testCast, 'She runs.', 'character').stale, true)
+})
+
+Deno.test('A picture of no one has no identity sentences', () => {
+  const empty = pictured(session.frames[1], look, testCast, 'The door stands closed.', 'none')
+  assertEquals(empty.prompt, 'The door stands closed. An oil painting.')
+  assertEquals(empty.promptText, 'adult, The door stands closed. An oil painting.')
+  assertEquals(empty.blocked, undefined)
 })

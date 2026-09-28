@@ -18,7 +18,10 @@ looks like, and the art style), the story so far, and one moment of it: the Fram
 of that moment. First say who is in it: "character_shown" for {{character.name}} and
 "persona_shown" for {{persona.name}}, each true or false. Someone upstairs, in another room, out
 of sight or gone by that moment is not in the picture; say false, and leave them out of the
-sentences entirely. Then seven sentences, one per aspect, about only the people shown:
+sentences entirely. Then seven sentences, one per aspect, about only the people shown. If
+neither is in the picture, it's of the place alone: the pose, expression and clothing sentences
+then describe the scene (its objects, their stillness, what's left behind) and never mention
+people, faces or their absence.
 
 - pose: where each person is and what their body, limbs and hands are doing at that moment.
 - expression: each person's facial expression and where they look.

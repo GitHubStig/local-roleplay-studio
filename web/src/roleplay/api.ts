@@ -48,7 +48,7 @@ export interface RoleplayLook {
 }
 
 /** Who a picture shows. */
-export type Shown = 'both' | 'character' | 'persona'
+export type Shown = 'both' | 'character' | 'persona' | 'none'
 
 /** The Character's reply: a thought, what they do, what they say. */
 export interface Reply {

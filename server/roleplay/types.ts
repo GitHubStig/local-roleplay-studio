@@ -13,8 +13,8 @@ export interface RoleplayLook {
   style: string
 }
 
-/** Who a picture shows. */
-export type Shown = 'both' | 'character' | 'persona'
+/** Who a picture shows: both, one of them, or no one (an empty room, a closed door). */
+export type Shown = 'both' | 'character' | 'persona' | 'none'
 
 /** Who the Text Model plays. */
 export interface Character {

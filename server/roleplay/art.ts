@@ -35,13 +35,17 @@ export const artFrameSchema = {
   required: ['character_shown', 'persona_shown', ...frameSchema.required],
 }
 
-/** Who a picture shows, from the Art Agent's reply; both unless it shows only one of them. */
+/**
+ * Who a picture shows, from the Art Agent's reply; a person it didn't answer for counts as shown.
+ * Neither means no one: the picture is of the place alone.
+ */
 export function parseShown(fields: Record<string, unknown>): Shown {
   const character = fields.character_shown !== false
   const persona = fields.persona_shown !== false
-  if (character && !persona) return 'character'
-  if (persona && !character) return 'persona'
-  return 'both'
+  if (character && persona) return 'both'
+  if (character) return 'character'
+  if (persona) return 'persona'
+  return 'none'
 }
 
 const sentence = (description: string) => ({ type: 'string', description })
@@ -74,8 +78,9 @@ export function parseRoleplayLook(value: unknown): RoleplayLook {
   return look
 }
 
-/** The identity sentences for who a picture shows. */
+/** The identity sentences for who a picture shows; none for a picture of no one. */
 export function identityFor(look: RoleplayLook, shown: Shown): string {
+  if (shown === 'none') return ''
   if (shown === 'character') return look.character
   if (shown === 'persona') return look.persona
   return `${look.character} ${look.persona}`

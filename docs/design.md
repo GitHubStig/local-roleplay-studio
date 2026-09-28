@@ -164,7 +164,8 @@ writes the Roleplay's **Look** from the Cast and Brief: an identity sentence for
 one for the Persona, and the art style, fitted to the story's period. Then a call reads the story
 up to the Frame (each Message and what the Character did and said; thoughts left out, as a
 picture can't show them), says whether each person is in the picture (someone upstairs or gone
-isn't), and writes the Frame's seven sentences, each capped at 280 characters, as a third-person
+isn't; if neither is, the picture is of the place alone, with no identity sentences and nothing
+said about people or their absence), and writes the Frame's seven sentences, each capped at 280 characters, as a third-person
 view of that moment. The Image Prompt is the identity sentences of the people shown, those
 sentences, then the style; a picture that crosses a Limit is written once more, told which; it's checked against the Limits in
 force and shown under the Reply (marked if it crosses one). While a Frame is pictured, the light

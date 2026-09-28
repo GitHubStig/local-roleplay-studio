@@ -455,6 +455,7 @@ const lookChanged = computed(() =>
 
 /** "Kael and Elara Vance", "Kael", …: who a picture shows. */
 function shownNames(shown: Shown | undefined): string {
+  if (shown === 'none') return 'no one'
   if (shown === 'character') return characterName.value
   if (shown === 'persona') return personaName.value
   return `${characterName.value} and ${personaName.value}`
