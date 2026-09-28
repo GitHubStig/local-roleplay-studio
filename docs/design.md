@@ -284,7 +284,9 @@ in [open-threads.md](open-threads.md).
   field, with the same light sweeping round the text box. Enter sends; Cancel, Undo and the
   unsent Message (remembered per Session) work as on the Session screen. The right panel is the
   Cast, editable, with **Save Cast**. On Home, a Roleplay's card shows the Character's latest line
-  in place of an image.
+  in place of an image. In the Look & Cast panel every text box grows to fit its text (no inner scrolling, so the
+  panel scrolls as one) and collapses to a one-line preview by its label, remembered per browser
+  (`CollapsibleTextarea`, `v-autosize`).
 - **Navigation:** **RPG** leads Home; **Play** leads back to the Session opened last
   (remembered per browser), or Home when there is none. Up to five Session screens stay alive in
   memory while you visit Home, Settings or other Sessions, so each keeps its half-typed Action,

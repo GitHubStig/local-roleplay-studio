@@ -5,6 +5,7 @@ import { ApiError, cancelFrame, getSession, imageUrl } from '../api'
 import { clearCurrentSession, setCurrentSession } from '../composables/useCurrentSession'
 import { useStoredFlag } from '../composables/useStoredFlag'
 import { useStoredText } from '../composables/useStoredText'
+import CollapsibleTextarea from '../components/CollapsibleTextarea.vue'
 import ImageViewer from '../components/ImageViewer.vue'
 import { sessionPath } from '../sessionPath'
 import {
@@ -173,7 +174,7 @@ const viewer = computed(() => {
   if (!frame || !session.value) return null
   return {
     src: imageUrl(session.value.id, frame.upscaled ?? frame.image!),
-    alt: frame.promptText ?? '',
+    alt: `Picture of Frame ${frame.index}`,
     label: `Frame ${frame.index} · ${viewed.value + 1} of ${rendered.value.length}`,
   }
 })
@@ -637,7 +638,7 @@ async function saveCastDraft(): Promise<boolean> {
                 >
                   <img
                     :src="imageUrl(session.id, frame.image)"
-                    :alt="frame.promptText"
+                    :alt="`Picture of Frame ${frame.index}`"
                     class="w-full rounded-md"
                     :class="{ 'opacity-50': frame.stale }"
                     @load="onPictureLoad"
@@ -838,33 +839,24 @@ async function saveCastDraft(): Promise<boolean> {
           @submit.prevent="saveLookDraft"
         >
           <h2 class="font-medium">Look <span class="font-normal text-muted">· every picture</span></h2>
-          <label class="flex flex-col gap-1 text-xs text-muted">
-            {{ characterName }}
-            <textarea
-              v-model="lookDraft.character"
-              rows="3"
-              class="resize-y rounded border border-line bg-surface p-2 text-sm text-fg"
-              :disabled="busy"
-            />
-          </label>
-          <label class="flex flex-col gap-1 text-xs text-muted">
-            {{ personaName }}
-            <textarea
-              v-model="lookDraft.persona"
-              rows="3"
-              class="resize-y rounded border border-line bg-surface p-2 text-sm text-fg"
-              :disabled="busy"
-            />
-          </label>
-          <label class="flex flex-col gap-1 text-xs text-muted">
-            Art style and medium
-            <textarea
-              v-model="lookDraft.style"
-              rows="3"
-              class="resize-y rounded border border-line bg-surface p-2 text-sm text-fg"
-              :disabled="busy"
-            />
-          </label>
+          <CollapsibleTextarea
+            id="look.character"
+            v-model="lookDraft.character"
+            :label="characterName"
+            :disabled="busy"
+          />
+          <CollapsibleTextarea
+            id="look.persona"
+            v-model="lookDraft.persona"
+            :label="personaName"
+            :disabled="busy"
+          />
+          <CollapsibleTextarea
+            id="look.style"
+            v-model="lookDraft.style"
+            label="Art style and medium"
+            :disabled="busy"
+          />
           <button
             v-if="lookChanged"
             type="submit"
@@ -882,19 +874,18 @@ async function saveCastDraft(): Promise<boolean> {
         <form v-else class="flex flex-col gap-5 p-4 text-sm" @submit.prevent="saveCastDraft">
           <fieldset v-for="g in GROUPS" :key="g.id" class="flex flex-col gap-2">
             <legend class="mb-1 font-medium">{{ g.title() }}</legend>
-            <label v-for="f in CAST_FIELDS.filter((f) => f.group === g.id)" :key="f.key" class="flex flex-col gap-1 text-xs text-muted">
+            <template v-for="f in CAST_FIELDS.filter((f) => f.group === g.id)" :key="f.key">
+            <CollapsibleTextarea
+              v-if="f.long"
+              :id="`${g.id}.${f.key}`"
+              :model-value="fieldValue(f)"
+              :label="f.label"
+              :disabled="busy"
+              @update:model-value="setField(f, $event)"
+            />
+            <label v-else class="flex flex-col gap-1 text-xs text-muted">
               {{ f.label }}
-              <textarea
-                v-if="f.long"
-                :value="fieldValue(f)"
-                rows="5"
-                class="resize-y rounded border border-line bg-surface p-2 text-sm text-fg"
-                :disabled="busy"
-                :data-field="`${g.id}.${f.key}`"
-                @input="setField(f, ($event.target as HTMLTextAreaElement).value)"
-              />
               <input
-                v-else
                 :value="fieldValue(f)"
                 :type="f.key === 'age' ? 'number' : 'text'"
                 :min="f.key === 'age' ? 18 : undefined"
@@ -904,6 +895,7 @@ async function saveCastDraft(): Promise<boolean> {
                 @input="setField(f, ($event.target as HTMLInputElement).value)"
               />
             </label>
+            </template>
           </fieldset>
           <div class="flex items-center gap-3">
             <button
