@@ -35,7 +35,7 @@ const KINDS: { id: SessionKind; label: string; hint: string }[] = [
   {
     id: 'roleplay',
     label: 'Roleplay',
-    hint: 'Talk with a Character, who replies in character. Text only for now.',
+    hint: 'Talk with a Character, who replies in character; picture any moment as you go.',
   },
 ]
 

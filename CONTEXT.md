@@ -1,6 +1,6 @@
 # RPG
 
-A local text-to-image prompt generator: the player describes what to make, a text model writes image prompts, and an image model renders them, one image at a time (a Chain) or as a planned sequence (a Storyboard). A Roleplay is a conversation with a Character instead, text only for now.
+A local text-to-image prompt generator: the player describes what to make, a text model writes image prompts, and an image model renders them, one image at a time (a Chain) or as a planned sequence (a Storyboard). A Roleplay is a conversation with a Character instead, any moment of which can be pictured.
 
 The terms below are the domain's terms. Refer to things by them in code, docs and the UI.
 
@@ -33,7 +33,7 @@ A kind of Session whose Frames are all planned and written together from the Bri
 _Avoid_: Comic, manga, shot list, sequence
 
 **Roleplay**:
-A kind of Session in which the player talks with a Character, one exchange per Frame. Text only for now: rendering is deferred to a planned Art Agent.
+A kind of Session in which the player talks with a Character, one exchange per Frame. Any Frame can be pictured by the Art Agent, then rendered.
 _Avoid_: Chat, conversation mode, story mode
 
 **Frame**:

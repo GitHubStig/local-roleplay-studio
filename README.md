@@ -9,7 +9,8 @@ something else. That's a **Chain**. A **Storyboard** instead plans a whole seque
 (a manga page, a video storyboard) from a Brief you type: every Frame's prompt is written up
 front, sharing one Look, and you edit and render each Frame as you like. A **Roleplay** is a
 conversation: set up from your Brief, a Character with a goal of their own talks with the
-character you play, replying with a thought, what they do and what they say (text only for now).
+character you play, replying with a thought, what they do and what they say; any moment can be
+pictured and rendered as you go.
 
 The first Scenario is a **studio photoshoot** with Maya, a fictional fitness model. Anything in
 the prompt can be changed, within four limits the engine enforces: everyone depicted is an

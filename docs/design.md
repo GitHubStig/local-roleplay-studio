@@ -9,8 +9,8 @@ in [CONTEXT.md](../CONTEXT.md). The reasoning behind the bigger choices is in [a
 A text-to-image prompt generator. Every Session starts from a **Brief** (typed, or a saved
 **Scenario**) and is one of three kinds: a **Chain**, where each Frame is made from the
 previous one by an Action; a **Storyboard**, whose Frames are planned together and then edited
-and rendered one by one; or a **Roleplay**, a conversation with a Character (text only for now;
-see [Roleplays](#roleplays)). In a Chain, each Frame the player writes an **Action** (what to
+and rendered one by one; or a **Roleplay**, a conversation with a Character whose moments can be
+pictured and rendered as it goes (see [Roleplays](#roleplays)). In a Chain, each Frame the player writes an **Action** (what to
 change), the **Text Model** edits the **Image Prompt**, and the **Image Model** renders it.
 There is no score and no end; a Session lasts until it's deleted.
 
@@ -193,8 +193,7 @@ written with Ollama's `repeat_penalty` 1.15 over the whole conversation, which s
 Roleplays looping on their own refrains.
 
 A Scenario can start a Roleplay too: its Setup facts and Opening serve as the Brief (its notes,
-written for image prompts, are left out). Frames have `image: null`: rendering a Roleplay is the
-planned Art Agent ([open-threads.md](open-threads.md)).
+written for image prompts, are left out).
 
 ## Consistency
 
