@@ -103,6 +103,7 @@ export const LIMITS: readonly Limit[] = [
           'bare (?:breasts?|buttocks|bottom|chest|torso|upper body)',
           '(?:chest|torso|upper body|breasts?) (?:is |are |left )?(?:bare|exposed|uncovered)',
           '(?:only|nothing but|just) an? (?:[\\w-]+ ){0,2}(?:towel|sheet)',
+          '(?:wears?|wearing|in) (?:only|nothing but|just) (?:an? |her |his |their )?(?:[\\w-]+ ){0,2}(?:locket|necklace|pendant|chain|choker|jewel\\w*|ring|earrings?|bracelets?|anklets?|smile)',
           'expos(?:es|ing|ed) (?:her|his|their) (?:\\w+ ){0,5}(?:chest|torso|body|breasts?)',
           '(?:towel|sheet)(?: \\w+){0,2} (?:around|at) (?:her|his|their|the) (?:waist|hips)',
           'exposed (?:breasts?|nipples?|buttocks|genitals)',

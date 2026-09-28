@@ -15,24 +15,21 @@ import { frameSchema, plainSentences } from '../textModel.ts'
 import type { Cast, RoleplayFrame, RoleplayLook, RoleplaySession, Shown } from './types.ts'
 
 /**
- * A Frame's seven sentences, each capped in length. A long story gives the Art Agent a lot to say:
- * without the cap it wrote three or four sentences per aspect for a busy Frame. The cap cuts a
- * field off mid-sentence, so `wholeSentences` drops what it cut.
+ * A Frame's seven sentences, then whether each person is in the picture: a yes or no per person
+ * (offered a choice of "both", "character" or "persona", the model always took the first).
+ *
+ * The yes/no answers come last: put first, gemma4 wrote them and then only blank lines until its
+ * token cap, 6 times in 6 (as words "yes"/"no" first, 3 in 6); last, 0 in 6. Nor is there a
+ * `maxLength` per field, which did the same; `trimFields` keeps the sentences short instead.
  */
 export const artFrameSchema = {
   type: 'object',
   properties: {
-    // First, so the sentences are written knowing who is in the picture. A yes or no per person:
-    // offered a choice of "both", "character" or "persona", the model always took the first.
+    ...frameSchema.properties,
     character_shown: { type: 'boolean', description: 'is the character in the picture?' },
     persona_shown: { type: 'boolean', description: 'is the persona in the picture?' },
-    ...Object.fromEntries(
-      Object.entries(frameSchema.properties).map((
-        [key, field],
-      ) => [key, { ...field, maxLength: 280 }]),
-    ),
   },
-  required: ['character_shown', 'persona_shown', ...frameSchema.required],
+  required: [...frameSchema.required, 'character_shown', 'persona_shown'],
 }
 
 /**
@@ -86,13 +83,25 @@ export function identityFor(look: RoleplayLook, shown: Shown): string {
   return `${look.character} ${look.persona}`
 }
 
-/** Each field's text up to its last complete sentence, or all of it if none is complete. */
-export function wholeSentences(fields: Record<string, unknown>): Record<string, unknown> {
+/** How long each of a picture's sentences may run, in characters. */
+export const FIELD_LENGTH = 280
+
+/**
+ * Keeps each field to its whole sentences within `FIELD_LENGTH` characters, and always its first.
+ * A long story gives the Art Agent a lot to say: left alone, Qwen3.8 wrote three or four sentences
+ * per aspect for a busy Frame, and a long prompt dilutes, or is cut off by, the Image Model.
+ */
+export function trimFields(fields: Record<string, unknown>): Record<string, unknown> {
   return Object.fromEntries(
     Object.entries(fields).map(([key, value]) => {
-      if (typeof value !== 'string' || /[.!?]["')\]]?\s*$/.test(value)) return [key, value]
-      const end = Math.max(value.lastIndexOf('.'), value.lastIndexOf('!'), value.lastIndexOf('?'))
-      return [key, end > 0 ? value.slice(0, end + 1) : value]
+      if (typeof value !== 'string' || value.length <= FIELD_LENGTH) return [key, value]
+      const sentences = value.match(/[^.!?]+[.!?]+["')\]]?\s*/g) ?? [value]
+      let kept = sentences[0]
+      for (const next of sentences.slice(1)) {
+        if ((kept + next).trim().length > FIELD_LENGTH) break
+        kept += next
+      }
+      return [key, kept.trim()]
     }),
   )
 }

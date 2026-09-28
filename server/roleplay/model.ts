@@ -17,7 +17,7 @@ import {
   parseRoleplayLook,
   parseShown,
   roleplayLookSchema,
-  wholeSentences,
+  trimFields,
 } from './art.ts'
 
 /** A reply's fields as each one completes, and the model's reasoning as it streams. */
@@ -121,7 +121,7 @@ export function ollamaRoleplayModel(
           signal: s,
           onThinking,
         })
-        const fields = wholeSentences(parseJson(content) as Record<string, unknown>)
+        const fields = trimFields(parseJson(content) as Record<string, unknown>)
         return withThinking(
           {
             body: parseFrameBody(fields),

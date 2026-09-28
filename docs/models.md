@@ -82,6 +82,41 @@ starts missing implied changes.
   expression into the identity sentence, which then contradicted "make her scared". Keep each
   Setup fact in its own aspect ([scenarios.md](scenarios.md)).
 
+## Art Agent (picturing Roleplay Frames)
+
+The Art Agent uses the Session's Text Model. Measured 2026-09-28 on six Frames of a 30-Frame
+Roleplay (the Kael tavern scene), all on the same fixed Look, picked for what had tripped it
+before: someone alone (6, 29), an empty room (7), and three with both people and detail the Limits block (9, 16, 24).
+
+**Thinking: not worth it.** Qwen3.8 27B (uncensored), Thinking off against on:
+
+| | Off | On |
+|---|---|---|
+| Time per picture | 24–49 s | 135–536 s (5–22×) |
+| Reasoning | none | 6,000–18,000 characters |
+| Who's in the picture | right on all five | same, except Frame 29: it invented Elara as a distant figure, and the picture was blocked |
+
+With Thinking the sentences were more cinematic and one per aspect, and once more accurate (Frame 16), but it also dropped a detail in Frame 24. No gain in correctness,
+at 2–9 minutes a picture, so there's no Art Agent Thinking setting.
+
+**gemma4 is better at it than Qwen3.8, and faster** (both Thinking off):
+
+| Frame | gemma4 31B | Qwen3.8 27B (uncensored) |
+|---|---|---|
+| Time per picture | **12–20 s** | 18–57 s |
+| 16: Elara and the two men | right: who does what | wrong: what she does given to the two men |
+| 24: Elara awake, the others asleep | right | wrong: "all three asleep", Elara left out |
+| 7: Kael walks into the back room | shows him turning to go | shows the empty room, but still wrote "no visible garments" |
+| 6, 9, 29 | right | right; richer prose |
+
+gemma4 is the more literal reader of the story, which is what a picture needs. That makes a
+separate Art Agent model worth considering when the Character is played by another model.
+
+**Two schema traps, both gemma4:** with the yes/no "is this person in the picture" answers first in
+the reply, gemma4 wrote them and then only blank lines until its token cap, 6 times in 6 (as
+"yes"/"no" words, 3 in 6); with them last, 0 in 6. A `maxLength` on each sentence did the same. So
+the answers come last and the sentences are trimmed in code (`trimFields`).
+
 ## Image Model
 
 **Use FLUX.2 Klein 4B** (`flux2-klein-4b`, the default), 4 steps.

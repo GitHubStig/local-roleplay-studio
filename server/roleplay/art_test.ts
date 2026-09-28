@@ -7,7 +7,7 @@ import {
   parseShown,
   pictured,
   storyText,
-  wholeSentences,
+  trimFields,
 } from './art.ts'
 import { replyOf, testCast } from './testing.ts'
 import type { RoleplaySession } from './types.ts'
@@ -97,12 +97,14 @@ Deno.test('pictured composes the Image Prompt and blocks one that crosses a Limi
   }
 })
 
-Deno.test('wholeSentences drops a sentence the length cap cut off', () => {
-  assertEquals(wholeSentences({ pose: 'She stands. He sits at the bar. In' }), {
-    pose: 'She stands. He sits at the bar.',
-  })
-  assertEquals(wholeSentences({ pose: 'She stands' }), { pose: 'She stands' })
-  assertEquals(wholeSentences({ pose: 'She says "go."' }), { pose: 'She says "go."' })
+Deno.test('trimFields keeps whole sentences within the length, and always the first', () => {
+  const long = 'He stands at the window. '.repeat(20).trim()
+  const trimmed = trimFields({ pose: long, shown: true }).pose as string
+  assertEquals(trimmed.length <= 280, true)
+  assertEquals(trimmed.endsWith('window.'), true)
+  const one = 'A'.repeat(300) + '.'
+  assertEquals(trimFields({ pose: one }), { pose: one })
+  assertEquals(trimFields({ pose: 'Short.' }), { pose: 'Short.' })
 })
 
 Deno.test('parseShown and parseRoleplayLook', () => {
