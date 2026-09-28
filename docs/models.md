@@ -82,6 +82,28 @@ starts missing implied changes.
   expression into the identity sentence, which then contradicted "make her scared". Keep each
   Setup fact in its own aspect ([scenarios.md](scenarios.md)).
 
+### A third model: `pdurlej/gemma-4-26B-A4B-it-heretic` (2026-09-28)
+
+A 25B mixture-of-experts gemma 4 (about 4B parameters active per token), uncensored ("heretic"),
+GGUF Q4_K_M rather than MLX. Replayed on the same seven Actions, Thinking off, beside fresh runs of
+the other two:
+
+| | gemma4 31B | gemma-4 26B-A4B heretic | Qwen3.8 27B (uncensored) |
+|---|---|---|---|
+| Time per Action | 9.0 s | **3.2–3.3 s** (warmed up; 4 s to load) | 18.5 s |
+| 3: scared, not relaxed | right (pose too) | right (pose too) | right, but also changed the camera |
+| 4: space | right: replaced Mars | right: replaced Mars | kept Mars under the stars |
+| 6: boxing stance | right | right | right, and made her "aggressive" unasked |
+| 7: the repeat | **unclear** (right) | **wrong, 3 runs in 3:** undid the stance ("arms resting at her sides") | changed the stance again |
+| Copying unchanged sentences | exact | **garbled one each run, 3 in 3:** "her *simplicity* arms", "*certainly* balanced", "pulled *enough* to her chest" | exact |
+| 2: remove the studio backdrop (already gone) | wrong this time: put the white studio back | changed nothing | changed nothing |
+
+The heretic model is about 3× faster than gemma4 31B (timed again after a first run shared the
+machine with other work), but in every run it garbled a sentence it should have copied word for
+word, somewhere different each time, and undid the boxing stance on the repeat. In a Chain each
+Frame builds on the last, so a garbled word stays in the prompt: for prompting, gemma4 31B stays
+the pick.
+
 ## Art Agent (picturing Roleplay Frames)
 
 The Art Agent uses the Session's Text Model. Measured 2026-09-28 on six Frames of a 30-Frame
@@ -109,7 +131,13 @@ at 2–9 minutes a picture, so there's no Art Agent Thinking setting.
 | 7: Kael walks into the back room | shows him turning to go | shows the empty room, but still wrote "no visible garments" |
 | 6, 9, 29 | right | right; richer prose |
 
-gemma4 is the more literal reader of the story, which is what a picture needs. That makes a
+gemma4 is the more literal reader of the story, which is what a picture needs.
+
+The heretic gemma-4 26B-A4B (2026-09-28, the same six Frames, Thinking off) is **the fastest by
+far: 3–9 s a picture**, against 12–35 s for gemma4 31B and 20–68 s for Qwen3.8 in the same run. It
+wrote one clean sentence per aspect and got who's in each picture right (Kael alone in 6, 7 and
+29; both in 9, 16 and 24; Qwen put only Elara in 16). It carries a little less detail than gemma4
+31B, which kept more of the story's props in 9 and 24 (pictures blocked while the Limits are on). Qwen3.8 again wrote about absences ("Elara Vance is absent from the frame"). That makes a
 separate Art Agent model worth considering when the Character is played by another model.
 
 **Two schema traps, both gemma4:** with the yes/no "is this person in the picture" answers first in
