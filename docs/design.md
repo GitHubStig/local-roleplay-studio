@@ -286,7 +286,7 @@ in [open-threads.md](open-threads.md).
   Cast, editable, with **Save Cast**. On Home, a Roleplay's card shows the Character's latest line
   in place of an image. In the Look & Cast panel every text box grows to fit its text (no inner scrolling, so the
   panel scrolls as one) and collapses to a one-line preview by its label, remembered per browser
-  (`CollapsibleTextarea`, `v-autosize`).
+  (`CollapsibleTextarea`, sized by VueUse's `useTextareaAutosize`).
 - **Navigation:** **RPG** leads Home; **Play** leads back to the Session opened last
   (remembered per browser), or Home when there is none. Up to five Session screens stay alive in
   memory while you visit Home, Settings or other Sessions, so each keeps its half-typed Action,
@@ -372,7 +372,10 @@ A Frame's stream emits `phase` (`text`, then `queued` if another Session is rend
 ## Stack
 
 Deno workspace: `server/` (Deno HTTP, no framework) and `web/` (Vue 3, Vite, Tailwind 4,
-vue-router), both run by Deno. Tests: `deno test` for the server, Vitest with happy-dom for the
+vue-router, VueUse), both run by Deno. VueUse handles the browser plumbing: remembered settings
+and drafts (`useLocalStorage`, saved at once), the theme (`useColorMode`), growing text boxes
+(`useTextareaAutosize`), event listeners and the server check (`useEventListener`,
+`useIntervalFn`). Polling stays hand-written: each poll has its own rules for when to stop. Tests: `deno test` for the server, Vitest with happy-dom for the
 web app. The mflux CLI is also exercised in tests through a fake executable.
 
 ## Decisions log

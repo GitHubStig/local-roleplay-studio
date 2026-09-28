@@ -1,4 +1,5 @@
-import { computed, onBeforeUnmount, onMounted, type Ref, ref } from 'vue'
+import { useEventListener } from '@vueuse/core'
+import { computed, type Ref, ref } from 'vue'
 
 /** Safari's trackpad pinch event (not in TypeScript's DOM types). */
 interface GestureEvent extends UIEvent {
@@ -81,29 +82,17 @@ export function usePinchZoom(frame: Ref<HTMLElement | null>) {
   }
   const onPointerUp = () => (drag = null)
 
-  // Registered by hand: Vue's listeners can't be made non-passive, and a passive one can't cancel
-  // the page zoom.
-  const listeners: [string, (e: never) => void, AddEventListenerOptions?][] = [
-    ['wheel', onWheel, { passive: false }],
-    ['gesturestart', onGestureStart, { passive: false }],
-    ['gesturechange', onGestureChange, { passive: false }],
-    ['gestureend', (e: Event) => e.preventDefault(), { passive: false }],
-    ['pointerdown', onPointerDown],
-    ['pointermove', onPointerMove],
-    ['pointerup', onPointerUp],
-    ['pointercancel', onPointerUp],
-    ['dblclick', reset],
-  ]
-  onMounted(() => {
-    for (const [type, fn, opts] of listeners) {
-      frame.value?.addEventListener(type, fn as EventListener, opts)
-    }
-  })
-  onBeforeUnmount(() => {
-    for (const [type, fn] of listeners) {
-      frame.value?.removeEventListener(type, fn as EventListener)
-    }
-  })
+  // Not Vue's listeners: those can't be made non-passive, and a passive one can't cancel the page
+  // zoom.
+  const cancellable = { passive: false }
+  useEventListener(frame, 'wheel', onWheel, cancellable)
+  useEventListener(frame, 'gesturestart', onGestureStart, cancellable)
+  useEventListener(frame, 'gesturechange', onGestureChange, cancellable)
+  useEventListener(frame, 'gestureend', (e: Event) => e.preventDefault(), cancellable)
+  useEventListener(frame, 'pointerdown', onPointerDown)
+  useEventListener(frame, 'pointermove', onPointerMove)
+  useEventListener(frame, ['pointerup', 'pointercancel'], onPointerUp)
+  useEventListener(frame, 'dblclick', reset)
 
   const layerStyle = computed(() =>
     zoomed.value

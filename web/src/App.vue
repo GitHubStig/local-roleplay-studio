@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { useEventListener, useIntervalFn } from '@vueuse/core'
+import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { getHealth } from './api'
 import { useCurrentSession } from './composables/useCurrentSession'
@@ -27,16 +28,8 @@ async function checkServer() {
 }
 
 // Re-checked every 15 s and whenever the window regains focus.
-let healthTimer: ReturnType<typeof setInterval> | undefined
-onMounted(() => {
-  checkServer()
-  healthTimer = setInterval(checkServer, 15000)
-  window.addEventListener('focus', checkServer)
-})
-onBeforeUnmount(() => {
-  clearInterval(healthTimer)
-  window.removeEventListener('focus', checkServer)
-})
+useIntervalFn(checkServer, 15000, { immediateCallback: true })
+useEventListener(window, 'focus', checkServer)
 </script>
 
 <template>

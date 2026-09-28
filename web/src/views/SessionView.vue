@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useEventListener } from '@vueuse/core'
 import {
   computed,
   nextTick,
@@ -179,8 +180,7 @@ function warnBeforeUnload(e: BeforeUnloadEvent) {
     e.returnValue = '' // older browsers need this as well
   }
 }
-window.addEventListener('beforeunload', warnBeforeUnload)
-onBeforeUnmount(() => window.removeEventListener('beforeunload', warnBeforeUnload))
+useEventListener(window, 'beforeunload', warnBeforeUnload)
 
 watch([() => session.value?.frames.length, panel], async () => {
   await nextTick()

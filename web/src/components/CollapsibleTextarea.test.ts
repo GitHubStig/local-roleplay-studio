@@ -1,6 +1,6 @@
 import { mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it } from 'vitest'
-import { defineComponent, h, ref } from 'vue'
+import { defineComponent, h, nextTick, ref } from 'vue'
 import CollapsibleTextarea from './CollapsibleTextarea.vue'
 
 beforeEach(() => localStorage.clear())
@@ -24,7 +24,8 @@ describe('CollapsibleTextarea', () => {
   it('edits its text, and grows to fit it instead of scrolling', async () => {
     const wrapper = mount(host())
     const box = wrapper.find('textarea')
-    expect((box.element as HTMLTextAreaElement).style.overflowY).toBe('hidden')
+    await nextTick()
+    expect(box.classes()).toContain('overflow-hidden')
     expect((box.element as HTMLTextAreaElement).style.height).toMatch(/px$/)
     await box.setValue('A short woman.')
     expect(wrapper.find('output').text()).toBe('A short woman.')

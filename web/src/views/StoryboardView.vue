@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useEventListener } from '@vueuse/core'
 import { computed, onActivated, onBeforeUnmount, onDeactivated, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
@@ -302,8 +303,7 @@ function warnBeforeUnload(e: BeforeUnloadEvent) {
     e.returnValue = ''
   }
 }
-window.addEventListener('beforeunload', warnBeforeUnload)
-onBeforeUnmount(() => window.removeEventListener('beforeunload', warnBeforeUnload))
+useEventListener(window, 'beforeunload', warnBeforeUnload)
 
 // --- Labels.
 

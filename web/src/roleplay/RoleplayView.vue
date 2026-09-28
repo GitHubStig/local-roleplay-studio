@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useEventListener } from '@vueuse/core'
 import { computed, nextTick, onActivated, onBeforeUnmount, onDeactivated, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ApiError, cancelFrame, getSession, imageUrl } from '../api'
@@ -384,8 +385,7 @@ function warnBeforeUnload(e: BeforeUnloadEvent) {
     e.returnValue = ''
   }
 }
-window.addEventListener('beforeunload', warnBeforeUnload)
-onBeforeUnmount(() => window.removeEventListener('beforeunload', warnBeforeUnload))
+useEventListener(window, 'beforeunload', warnBeforeUnload)
 
 const statusLabel = computed(() => {
   const p = pending.value

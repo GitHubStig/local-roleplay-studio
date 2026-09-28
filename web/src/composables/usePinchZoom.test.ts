@@ -1,10 +1,10 @@
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
-import { defineComponent, h, ref } from 'vue'
+import { defineComponent, h, nextTick, ref } from 'vue'
 import { usePinchZoom } from './usePinchZoom'
 
-/** A 400×300 frame at the page's origin. */
-function mountFrame() {
+/** A 400×300 frame at the page's origin, its listeners attached (a tick after mounting). */
+async function mountFrame() {
   let zoom!: ReturnType<typeof usePinchZoom>
   const wrapper = mount(
     defineComponent(() => {
@@ -18,6 +18,7 @@ function mountFrame() {
   Object.defineProperty(el, 'clientWidth', { value: 400 })
   Object.defineProperty(el, 'clientHeight', { value: 300 })
   el.getBoundingClientRect = () => ({ left: 0, top: 0, width: 400, height: 300 }) as DOMRect
+  await nextTick()
   return { el, zoom: () => zoom, wrapper }
 }
 
@@ -48,8 +49,8 @@ const pinch = (el: HTMLElement, deltaY: number, x = 200, y = 150) =>
   wheel(el, { deltaY, ctrlKey: true, x, y })
 
 describe('usePinchZoom', () => {
-  it('zooms on a trackpad pinch instead of the page, around the pointer', () => {
-    const { el, zoom } = mountFrame()
+  it('zooms on a trackpad pinch instead of the page, around the pointer', async () => {
+    const { el, zoom } = await mountFrame()
     const e = pinch(el, -100 * Math.log(2)) // exp(0.01 × 69.3…) = 2×
     expect(e.defaultPrevented).toBe(true)
     const { scale, x, y } = zoom().view.value
@@ -58,8 +59,8 @@ describe('usePinchZoom', () => {
     expect([x, y].map((n) => Math.round(n))).toEqual([-200, -150])
   })
 
-  it('never zooms out below 1× or in past 8×, and lets ordinary scrolling through when not zoomed', () => {
-    const { el, zoom } = mountFrame()
+  it('never zooms out below 1× or in past 8×, and lets ordinary scrolling through when not zoomed', async () => {
+    const { el, zoom } = await mountFrame()
     pinch(el, 500)
     expect(zoom().view.value.scale).toBe(1)
     expect(wheel(el, { deltaY: 40 }).defaultPrevented).toBe(false)
@@ -67,15 +68,15 @@ describe('usePinchZoom', () => {
     expect(zoom().view.value.scale).toBe(8)
   })
 
-  it('pans with two-finger scrolling while zoomed, without leaving a gap at the edges', () => {
-    const { el, zoom } = mountFrame()
+  it('pans with two-finger scrolling while zoomed, without leaving a gap at the edges', async () => {
+    const { el, zoom } = await mountFrame()
     pinch(el, -100 * Math.log(2), 0, 0) // 2× anchored at the top-left
     wheel(el, { deltaX: 50, deltaY: 1000 })
     expect(zoom().view.value).toMatchObject({ x: -50, y: -300 })
   })
 
-  it('resets on double-click', () => {
-    const { el, zoom } = mountFrame()
+  it('resets on double-click', async () => {
+    const { el, zoom } = await mountFrame()
     pinch(el, -100)
     el.dispatchEvent(new MouseEvent('dblclick'))
     expect(zoom().view.value).toEqual({ scale: 1, x: 0, y: 0 })

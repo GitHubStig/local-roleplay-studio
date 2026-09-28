@@ -2,7 +2,7 @@ import { nextTick } from 'vue'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 let systemDark = false
-const listeners: (() => void)[] = []
+const listeners: ((e: { matches: boolean }) => void)[] = []
 
 beforeEach(() => {
   vi.resetModules()
@@ -14,7 +14,8 @@ beforeEach(() => {
     get matches() {
       return systemDark
     },
-    addEventListener: (_: string, fn: () => void) => listeners.push(fn),
+    addEventListener: (_: string, fn: (e: { matches: boolean }) => void) => listeners.push(fn),
+    removeEventListener: () => {},
   }))
 })
 
@@ -35,7 +36,8 @@ describe('useTheme', () => {
     await load()
     expect(isDark()).toBe(false)
     systemDark = true
-    listeners.forEach((fn) => fn())
+    listeners.forEach((fn) => fn({ matches: systemDark }))
+    await nextTick()
     expect(isDark()).toBe(true)
   })
 
@@ -46,18 +48,19 @@ describe('useTheme', () => {
     await nextTick()
     expect(isDark()).toBe(false)
     expect(localStorage.getItem('theme')).toBe('light')
-    listeners.forEach((fn) => fn())
+    listeners.forEach((fn) => fn({ matches: systemDark }))
     expect(isDark()).toBe(false)
   })
 
-  it('restores a saved choice and forgets it when set back to system', async () => {
+  it('restores a saved choice, and stores "auto" when set back to system', async () => {
     localStorage.setItem('theme', 'dark')
     const { preference } = await load()
     expect(preference.value).toBe('dark')
     expect(isDark()).toBe(true)
     preference.value = 'system'
     await nextTick()
-    expect(localStorage.getItem('theme')).toBeNull()
+    // index.html's pre-paint script treats anything but light/dark as "follow the system".
+    expect(localStorage.getItem('theme')).toBe('auto')
     expect(isDark()).toBe(false)
   })
 })
