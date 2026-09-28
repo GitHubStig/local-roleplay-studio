@@ -8,6 +8,7 @@ import { useStoredFlag } from '../composables/useStoredFlag'
 import { useStoredText } from '../composables/useStoredText'
 import CollapsibleTextarea from '../components/CollapsibleTextarea.vue'
 import ImageViewer from '../components/ImageViewer.vue'
+import { cleanReply } from './reply'
 import { sessionPath } from '../sessionPath'
 import {
   type Cast,
@@ -191,6 +192,10 @@ function stepViewer(step: number) {
 const sideTab = ref<'cast' | 'queue'>('cast')
 
 const cast = computed(() => session.value?.cast ?? null)
+/** The Frames as shown: Replies tidied of stray quote marks and JSON fragments. */
+const shownFrames = computed(() =>
+  (session.value?.frames ?? []).map((f) => ({ ...f, reply: cleanReply(f.reply) }))
+)
 /** The Cast is written but the scene hasn't begun: the player reviews it first. */
 const reviewing = computed(() => !!cast.value && session.value!.frames.length === 0)
 const begun = computed(() => (session.value?.frames.length ?? 0) > 0)
@@ -510,7 +515,7 @@ async function saveCastDraft(): Promise<boolean> {
           class="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto rounded-lg border border-line bg-surface p-4"
           data-transcript
         >
-          <template v-for="frame in session.frames" :key="frame.index">
+          <template v-for="frame in shownFrames" :key="frame.index">
             <li v-if="frame.message !== null" class="flex flex-col items-end gap-1" data-message>
               <span class="text-xs text-muted">{{ personaName }}</span>
               <p class="max-w-prose whitespace-pre-wrap rounded-lg bg-fg px-3 py-2 text-canvas">

@@ -5,6 +5,7 @@ import { testScenario } from '../testing.ts'
 import {
   CastError,
   castMessages,
+  cleanReply,
   openingMessages,
   parseCast,
   parseReplyText,
@@ -103,4 +104,20 @@ Deno.test('castMessages gives a Scenario its Setup facts, and a typed Brief none
   const [system, fromScenario] = await castMessages(testScenario)
   assertStringIncludes(system.content, 'If the Persona pushes toward any of these')
   assertEquals(fromScenario.content.includes('Facts:\n\nnone'), false)
+})
+
+Deno.test('cleanReply takes quote marks and JSON leftovers off, and quotes alone mean silence', () => {
+  const clean = (dialogue: string, actions = 'She waits.') =>
+    cleanReply({ internal: '', actions, dialogue })
+  assertEquals(clean('"I\'m quite well, Mr. Vance."').dialogue, "I'm quite well, Mr. Vance.")
+  assertEquals(clean('“Keep going. Please.”}').dialogue, 'Keep going. Please.')
+  assertEquals(
+    clean("“N-nothing is wrong,” she answers, “simply... a bit warm.”}'}'}").dialogue,
+    'N-nothing is wrong,” she answers, “simply... a bit warm.',
+  )
+  assertEquals(clean('"').dialogue, '')
+  assertEquals(clean('...').dialogue, '')
+  assertEquals(clean('Fine.', 'She nods."}').actions, 'She nods.')
+  // Quotes inside the speech stay.
+  assertEquals(clean('He said "no" twice.').dialogue, 'He said "no" twice.')
 })

@@ -26,7 +26,8 @@ const limitsFor = (values: PromptValues) =>
 
 /** The Character's latest line, for a Roleplay's card on Home. */
 export function roleplayExcerpt(session: RoleplaySession): string | null {
-  const reply = session.frames.at(-1)?.reply
+  const last = session.frames.at(-1)?.reply
+  const reply = last ? cleanReply(last) : undefined
   const text = reply ? reply.dialogue || reply.actions : ''
   if (!text) return null
   return text.length > 160 ? `${text.slice(0, 157).trimEnd()}…` : text
@@ -48,7 +49,7 @@ export async function roleplayMessages(
   const messages: ChatMessage[] = [{ role: 'system', content: await roleplaySystem(session.cast) }]
   for (const frame of session.frames) {
     if (frame.message !== null) messages.push({ role: 'user', content: frame.message })
-    messages.push({ role: 'assistant', content: replyContent(frame.reply) })
+    messages.push({ role: 'assistant', content: replyContent(cleanReply(frame.reply)) })
   }
   messages.push({ role: 'user', content: message })
   return messages
@@ -83,11 +84,34 @@ const str = (v: unknown) => (typeof v === 'string' ? v.trim() : '')
 /** Reads a Reply; throws if it has neither actions nor dialogue. */
 export function parseReply(value: unknown): Reply {
   const o = (typeof value === 'object' && value !== null ? value : {}) as Record<string, unknown>
-  const reply = { internal: str(o.internal), actions: str(o.actions), dialogue: str(o.dialogue) }
-  // A silent Character sometimes "says" just an ellipsis.
-  if (/^[\s.…]*$/.test(reply.dialogue)) reply.dialogue = ''
+  const reply = cleanReply({
+    internal: str(o.internal),
+    actions: str(o.actions),
+    dialogue: str(o.dialogue),
+  })
   if (!reply.actions && !reply.dialogue) throw new Error('The reply had no actions or dialogue')
   return reply
+}
+
+/** JSON left at the end of a field: a stray brace, with or without quotes around it (`"}'}'}`). */
+const TRAILING_JSON = /["'“”‘’\s]*[}\]][\s"'“”‘’}\]]*$/
+/** Quote marks around the whole of the dialogue: the screen adds its own. */
+const OUTER_QUOTES = /^["'“”‘’\s]+|["“”\s]+$/g
+
+/**
+ * Tidies a Reply the model wrote: JSON fragments off the end of any field, quote marks off the
+ * dialogue (the screen quotes it), and a dialogue of only quotes or an ellipsis counted as
+ * silence. Used on new Replies, and on saved ones as they're sent back to the model, so it stops
+ * copying its own mistakes.
+ */
+export function cleanReply(reply: Reply): Reply {
+  const tidy = (text: string) => text.replace(TRAILING_JSON, '').trim()
+  const dialogue = tidy(reply.dialogue).replace(OUTER_QUOTES, '').trim()
+  return {
+    internal: tidy(reply.internal),
+    actions: tidy(reply.actions),
+    dialogue: /^[\s.…"'“”‘’]*$/.test(dialogue) ? '' : dialogue,
+  }
 }
 
 export const parseReplyText = (content: string): Reply => parseReply(parseJson(content))
