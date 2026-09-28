@@ -14,6 +14,7 @@ import type { Scenario } from '../scenario.ts'
 import type { SessionStore } from '../session.ts'
 import type { TextModel } from '../textModel.ts'
 import type { RoleplayModel } from './model.ts'
+import { GoneError, updateSession } from './update.ts'
 import { CastError, openingMessages, parseCast, roleplayMessages } from './prompt.ts'
 import {
   artFrameMessages,
@@ -128,17 +129,19 @@ async function commit(
   emit: (event: RoleplayEvent) => void,
 ): Promise<RoleplaySession> {
   const { thinking, ...fields } = reply
-  const frame: RoleplayFrame = {
-    index: session.frames.length,
-    message,
-    reply: fields,
-    ...(thinking ? { thinking } : {}),
-    timings: { text: secondsSince(start) },
-    image: null,
-    createdAt: new Date().toISOString(),
-  }
-  const updated: RoleplaySession = { ...session, frames: [...session.frames, frame] }
-  await deps.store.save(updated)
+  let frame!: RoleplayFrame
+  const updated = await updateSession(deps.store, session.id, (latest) => {
+    frame = {
+      index: latest.frames.length,
+      message,
+      reply: fields,
+      ...(thinking ? { thinking } : {}),
+      timings: { text: secondsSince(start) },
+      image: null,
+      createdAt: new Date().toISOString(),
+    }
+    return { ...latest, frames: [...latest.frames, frame] }
+  })
   emit({ type: 'replied', frame, session: updated })
   return updated
 }
@@ -249,16 +252,30 @@ export async function pictureFrame(
     }
     ;({ frame: drawn, thinking } = await draw())
   }
-  const frame: RoleplayFrame = {
-    ...drawn,
-    pictureTimings: { text: secondsSince(start) },
-    ...(thinking ? { pictureThinking: thinking } : {}),
-  }
-  const updated: RoleplaySession = {
-    ...current,
-    frames: current.frames.map((f) => (f.index === index ? frame : f)),
-  }
-  await deps.store.save(updated)
+  // Saved onto the Roleplay as it is now: the conversation may have moved on meanwhile.
+  const wroteLook = current.look !== session.look
+  let frame!: RoleplayFrame
+  const updated = await updateSession(deps.store, session.id, (latest) => {
+    const now = latest.frames[index]
+    if (!now) throw new GoneError(`Frame ${index} no longer exists`)
+    const { pictureThinking: _, ...kept } = now
+    frame = {
+      ...pictured(kept, look, cast, drawn.body!, drawn.shown, drawn.clothing),
+      pictureTimings: { text: secondsSince(start) },
+      ...(thinking ? { pictureThinking: thinking } : {}),
+    }
+    const withLook: RoleplaySession = wroteLook
+      ? {
+        ...latest,
+        look,
+        lookTimings: current.lookTimings,
+        ...(current.lookThinking ? { lookThinking: current.lookThinking } : {}),
+        // Frames pictured with an older Look take the new one.
+        frames: latest.frames.map((f) => (f.body ? pictured(f, look, cast, f.body, f.shown) : f)),
+      }
+      : latest
+    return { ...withLook, frames: withLook.frames.map((f) => (f.index === index ? frame : f)) }
+  })
   emit({ type: 'pictured', frame, session: updated })
   return updated
 }
@@ -277,15 +294,13 @@ export async function setLook(
   }
   const limit = crossedLimit(renderPrompt(`${look.character} ${look.persona} ${look.style}`))
   if (limit) throw new RoleplayLimitError(`That crosses a limit: ${limit.message}`)
-  const updated: RoleplaySession = {
-    ...session,
+  return await updateSession(store, session.id, (latest) => ({
+    ...latest,
     look,
-    frames: session.frames.map((f) =>
-      f.body && session.cast ? pictured(f, look, session.cast, f.body, f.shown) : f
+    frames: latest.frames.map((f) =>
+      f.body && latest.cast ? pictured(f, look, latest.cast, f.body, f.shown) : f
     ),
-  }
-  await store.save(updated)
-  return updated
+  }))
 }
 
 /**
@@ -313,15 +328,18 @@ export async function renderRoleplayFrame(
   try {
     const image = await renderImage(deps, session, frame.promptText, name, timings, emit, signal)
     signal.throwIfAborted()
-    const { stale: _, upscaled: __, ...rest } = frame
     const { text: ___, ...renderTimings } = timings
-    const rendered: RoleplayFrame = { ...rest, image, renderTimings }
-    const updated: RoleplaySession = {
-      ...session,
-      frames: session.frames.map((f) => (f.index === index ? rendered : f)),
-    }
-    await deps.store.save(updated)
-    for (const old of [frame.image, frame.upscaled]) {
+    let rendered!: RoleplayFrame
+    let replaced: (string | undefined)[] = []
+    const updated = await updateSession(deps.store, session.id, (latest) => {
+      const current = latest.frames[index]
+      if (!current) throw new GoneError(`Frame ${index} no longer exists`)
+      const { stale: _, upscaled: __, ...rest } = current
+      rendered = { ...rest, image, renderTimings }
+      replaced = [current.image ?? undefined, current.upscaled]
+      return { ...latest, frames: latest.frames.map((f) => (f.index === index ? rendered : f)) }
+    })
+    for (const old of replaced) {
       if (old && old !== image) await removeImage(dir, old.replace(/\.\w+$/, ''))
     }
     emit({ type: 'rendered', frame: rendered, session: updated })
@@ -343,8 +361,10 @@ export async function undoLatestExchange(
     throw new RoleplayError(`Frame ${index} is not the latest Frame`)
   }
   if (latest.message === null) throw new RoleplayError("The opening can't be undone")
-  const updated = { ...session, frames: session.frames.slice(0, -1) }
-  await store.save(updated)
+  const updated = await updateSession(store, session.id, (latest) => ({
+    ...latest,
+    frames: latest.frames.slice(0, -1),
+  }))
   for (const file of [latest.image, latest.upscaled]) {
     if (file) await removeImage(store.dir(session.id), file.replace(/\.\w+$/, ''))
   }
@@ -360,7 +380,5 @@ export async function setCast(
   const cast = parseCast(value)
   const limit = crossedLimit(castText(cast))
   if (limit) throw new RoleplayLimitError(`That crosses a limit: ${limit.message}`)
-  const updated = { ...session, cast }
-  await store.save(updated)
-  return updated
+  return await updateSession(store, session.id, (latest) => ({ ...latest, cast }))
 }

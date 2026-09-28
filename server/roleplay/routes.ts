@@ -1,10 +1,9 @@
 import { error, json, readJson, type Route } from '../http.ts'
 import type { Scenario } from '../scenario.ts'
-import type { Session } from '../session.ts'
+import type { Session, SessionStore } from '../session.ts'
+import { JOB_KINDS, type JobKind, type RoleplayJobs } from './jobs.ts'
 import {
   beginRoleplay,
-  pictureFrame,
-  renderRoleplayFrame,
   type RoleplayDeps,
   RoleplayError,
   RoleplayLimitError,
@@ -37,6 +36,9 @@ export interface RoleplayRouteContext {
   ): Response
   scenarioFor(session: Session): Promise<Scenario | Response>
   deps(session: Session): RoleplayDeps
+  /** The Roleplays' background work: pictures, renders, upscales. */
+  jobs: RoleplayJobs
+  store: SessionStore
 }
 
 /** The routes only a Roleplay has, under `/api/sessions/:id/roleplay/`. */
@@ -102,41 +104,44 @@ export function roleplayRoutes(ctx: RoleplayRouteContext): Route[] {
       withRoleplay(p.id!, 'undo', async (session) => {
         const index = Number(p.index)
         if (!Number.isInteger(index)) return error('Frame index must be a number', 400)
-        return json(await undoLatestExchange(ctx.deps(session).store, session, index))
+        const undone = await undoLatestExchange(ctx.deps(session).store, session, index)
+        ctx.jobs.cancelWhere(session.id, (job) => job.frameIndex === index)
+        return json(undone)
       })],
 
-    [
-      'POST',
-      path('frames/:index/picture'),
-      (_req, p) =>
-        withRoleplay(p.id!, 'render', async (session) => {
-          const index = Number(p.index)
-          if (!Number.isInteger(index) || !session.frames[index]) {
-            return error('No such Frame', 404)
-          }
-          const scenario = await ctx.scenarioFor(session)
-          if (scenario instanceof Response) return scenario
-          return ctx.stream(session, index, false, async (send, signal) => {
-            await pictureFrame(ctx.deps(session), session, scenario, index, send, signal)
-          })
-        }),
-    ],
+    // Background work, queued; none of it holds the Roleplay's lock.
+    ['GET', path('jobs'), async (_req, p) => {
+      const session = await ctx.store.load(p.id!)
+      if (!session) return error('Session not found', 404)
+      return json(ctx.jobs.list(session.id))
+    }],
 
-    [
-      'POST',
-      path('frames/:index/render'),
-      (_req, p) =>
-        withRoleplay(p.id!, 'render', async (session) => {
-          const index = Number(p.index)
-          const frame = Number.isInteger(index) ? session.frames[index] : undefined
-          if (!frame) return error('No such Frame', 404)
-          if (!frame.promptText) return error(`Frame ${index} isn't pictured yet`, 409)
-          if (frame.blocked) return error(`Frame ${index} crosses a limit: ${frame.blocked}`, 422)
-          return ctx.stream(session, index, false, async (send, signal) => {
-            await renderRoleplayFrame(ctx.deps(session), session, index, send, signal)
-          })
-        }),
-    ],
+    ['POST', path('jobs'), async (req, p) => {
+      const session = await ctx.store.load(p.id!)
+      if (!session) return error('Session not found', 404)
+      if (session.kind !== 'roleplay') return error('Only a Roleplay has this', 409)
+      const body = await readJson(req) as { kind?: unknown; frameIndex?: unknown } | undefined
+      const kind = body?.kind as JobKind
+      if (!JOB_KINDS.includes(kind)) {
+        return error(`kind must be one of: ${JOB_KINDS.join(', ')}`, 400)
+      }
+      const index = Number(body?.frameIndex)
+      if (!Number.isInteger(index) || !session.frames[index]) return error('No such Frame', 404)
+      ctx.jobs.enqueue(session, kind, index)
+      return json(ctx.jobs.list(session.id), 201)
+    }],
+
+    ['POST', path('jobs/:job/retry'), (_req, p) =>
+      Promise.resolve(
+        ctx.jobs.retry(p.id!, p.job!)
+          ? json(ctx.jobs.list(p.id!))
+          : error('No such failed job', 404),
+      )],
+
+    ['DELETE', path('jobs/:job'), (_req, p) =>
+      Promise.resolve(
+        ctx.jobs.cancel(p.id!, p.job!) ? json(ctx.jobs.list(p.id!)) : error('No such job', 404),
+      )],
 
     ['PUT', path('look'), (req, p) =>
       withRoleplay(p.id!, 'edit', async (session) => {

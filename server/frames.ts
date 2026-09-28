@@ -302,6 +302,15 @@ export async function upscaleFrame(
   upscaler: Upscaler,
   emit: (event: UpscaleEvent) => void,
   signal: AbortSignal,
+  /**
+   * Saves the change onto the Session. By default onto `session` as given; a Roleplay passes its
+   * `updateSession`, since its conversation may have moved on while the upscale ran.
+   */
+  save: (change: (s: Session) => Session) => Promise<Session> = async (change) => {
+    const updated = change(session)
+    await deps.store.save(updated)
+    return updated
+  },
 ): Promise<Session> {
   const frame = session.frames[index]
   if (!frame?.image) throw new UpscaleError(`Frame ${index + 1} has no image to upscale`)
@@ -322,9 +331,12 @@ export async function upscaleFrame(
       (step, total) => emit({ type: 'progress', step, total }),
     )
     signal.throwIfAborted()
-    const frames = session.frames.map((f) => (f.image === image ? { ...f, upscaled } : f))
-    const updated = { ...session, frames } as Session
-    await deps.store.save(updated)
+    const updated = await save((latest) =>
+      ({
+        ...latest,
+        frames: latest.frames.map((f) => (f.image === image ? { ...f, upscaled } : f)),
+      }) as Session
+    )
     emit({ type: 'upscaled', session: updated })
     return updated
   } catch (err) {

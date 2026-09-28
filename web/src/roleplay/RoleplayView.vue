@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onActivated, onBeforeUnmount, onDeactivated, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { ApiError, cancelFrame, getSession, imageUrl, upscaleFrame } from '../api'
+import { ApiError, cancelFrame, getSession, imageUrl } from '../api'
 import { clearCurrentSession, setCurrentSession } from '../composables/useCurrentSession'
 import { useStoredFlag } from '../composables/useStoredFlag'
 import { useStoredText } from '../composables/useStoredText'
@@ -15,8 +15,12 @@ import {
   type RoleplaySession,
   type Shown,
   beginRoleplay,
-  pictureFrame,
-  renderFrame,
+  cancelJob,
+  type Job,
+  type JobKind,
+  listJobs,
+  queueJob,
+  retryJob,
   saveCast,
   saveLook,
   sendMessage,
@@ -40,12 +44,7 @@ const viewing = ref<{ src: string; alt: string } | null>(null)
 
 /** The exchange in progress: the message sent, and the reply as it arrives. */
 interface Pending {
-  kind: 'cast' | 'begin' | 'message' | 'picture' | 'render' | 'upscale'
-  /** The Frame being pictured, rendered or upscaled. */
-  frameIndex?: number
-  /** For a render or upscale: waiting in the queue, or running, and its steps. */
-  phase?: 'text' | 'queued' | 'image'
-  progress?: { step: number; total: number }
+  kind: 'cast' | 'begin' | 'message'
   message?: string
   reply: Partial<Reply>
   thinking?: string
@@ -60,25 +59,112 @@ const replying = computed(() => {
   const kind = pending.value?.kind
   return !!pending.value && !pending.value.detached && (kind === 'message' || kind === 'begin')
 })
-/** The Frame being pictured, rendered or upscaled, if any. */
-const picturing = computed(() => {
-  const kind = pending.value?.kind
-  return kind === 'picture' || kind === 'render' || kind === 'upscale'
-    ? pending.value!.frameIndex ?? null
-    : null
-})
+// --- Background work: pictures, renders and upscales, queued on the server.
 
-/** What's happening to that Frame, said where it happens. */
-const pictureStatus = computed(() => {
-  const p = pending.value
-  if (!p || picturing.value === null) return ''
-  if (p.kind === 'picture') {
+/** The Roleplay's jobs: running, then queued, then failed (until dismissed). */
+const jobs = ref<Job[]>([])
+const openJobs = computed(() => jobs.value.filter((j) => j.status !== 'failed'))
+const runningJob = computed(() => jobs.value.find((j) => j.status === 'running') ?? null)
+const jobsFor = (index: number) => jobs.value.filter((j) => j.frameIndex === index)
+/** A job of this kind is already queued or running on this Frame. */
+const hasJob = (index: number, kind: JobKind) =>
+  openJobs.value.some((j) => j.frameIndex === index && j.kind === kind)
+
+const JOB_NAMES: Record<JobKind, string> = {
+  picture: 'Picture',
+  render: 'Render',
+  upscale: 'Upscale',
+}
+
+/** What a job is doing, in a few words. */
+function jobStatus(job: Job): string {
+  if (job.status === 'failed') return `Failed: ${job.error}`
+  if (job.status === 'queued') return 'Queued'
+  if (job.kind === 'picture') {
     return currentLook.value ? 'Picturing this moment…' : 'Writing the Look, then picturing…'
   }
-  if (p.phase === 'queued') return 'Waiting for another render…'
-  const doing = p.kind === 'upscale' ? 'Upscaling to 2048 px…' : 'Rendering…'
-  return p.progress ? `${doing} step ${p.progress.step} of ${p.progress.total}` : doing
-})
+  if (job.phase === 'queued') return 'Waiting for another render…'
+  const doing = job.kind === 'upscale' ? 'Upscaling to 2048 px…' : 'Rendering…'
+  return job.progress ? `${doing} step ${job.progress.step} of ${job.progress.total}` : doing
+}
+
+async function queue(kind: JobKind, index: number) {
+  try {
+    jobs.value = await queueJob(props.id, kind, index)
+    watchJobs()
+  } catch (err) {
+    notice.value = { kind: 'error', text: (err as Error).message }
+  }
+}
+
+/** Cancels a queued or running job, or dismisses a failed one. */
+async function dropJob(job: Job) {
+  try {
+    jobs.value = await cancelJob(props.id, job.id)
+  } catch {
+    await refreshJobs()
+  }
+}
+
+/** Puts a failed job back in the queue. */
+async function retry(job: Job) {
+  try {
+    jobs.value = await retryJob(props.id, job.id)
+    watchJobs()
+  } catch {
+    await refreshJobs()
+  }
+}
+
+/**
+ * Follows the queue while anything is queued or running: a job that finishes (or fails) has
+ * changed the Roleplay, so it's reloaded.
+ */
+let jobTimer: ReturnType<typeof setTimeout> | undefined
+async function refreshJobs() {
+  clearTimeout(jobTimer)
+  let now: Job[]
+  try {
+    now = await listJobs(props.id)
+  } catch {
+    return
+  }
+  const settled = openJobs.value.some((j) =>
+    !now.some((n) => n.id === j.id && n.status !== 'failed')
+  )
+  jobs.value = now
+  if (settled) await reload()
+  watchJobs()
+}
+function watchJobs() {
+  clearTimeout(jobTimer)
+  if (openJobs.value.length) jobTimer = setTimeout(refreshJobs, 1000)
+}
+onBeforeUnmount(() => clearTimeout(jobTimer))
+
+/** Reloads the Roleplay after background work, without disturbing a reply in progress. */
+async function reload() {
+  try {
+    const loaded = await getSession(props.id)
+    if (loaded.kind === 'roleplay') session.value = loaded
+  } catch {
+    // Picked up on the next change.
+  }
+}
+
+/** The Frame the Queue tab last jumped to, highlighted for a moment. */
+const highlighted = ref<number | null>(null)
+let highlightTimer: ReturnType<typeof setTimeout> | undefined
+function goToFrame(index: number) {
+  transcript.value?.querySelector(`[data-frame-index="${index}"]`)
+    ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  highlighted.value = index
+  clearTimeout(highlightTimer)
+  highlightTimer = setTimeout(() => (highlighted.value = null), 1600)
+}
+
+/** The side panel's tab: the Look and Cast, or the queue. */
+const sideTab = ref<'cast' | 'queue'>('cast')
 
 const cast = computed(() => session.value?.cast ?? null)
 /** The Cast is written but the scene hasn't begun: the player reviews it first. */
@@ -125,6 +211,7 @@ async function start() {
   if (started) return
   if (!(await load())) return
   started = true
+  refreshJobs()
   if (session.value!.activity) follow()
   else if (!session.value!.cast) await rewriteCast()
 }
@@ -136,6 +223,7 @@ onActivated(async () => {
   if (firstActivation) return (firstActivation = false)
   if (leaveOnReturn) return router.replace(leaveOnReturn)
   if (!started) return start()
+  refreshJobs()
   if (!busy.value && (await load()) && session.value!.activity) follow()
 })
 onDeactivated(() => (onScreen = false))
@@ -173,16 +261,6 @@ function onEvent(event: RoleplayEvent) {
       // The message was used; a declined or failed one stays in the box to reword.
       if (p.kind === 'message') draft.value = ''
       break
-    case 'pictured':
-    case 'rendered':
-      session.value = event.session
-      break
-    case 'phase':
-      pending.value = { ...p, phase: event.phase }
-      break
-    case 'progress':
-      pending.value = { ...p, progress: { step: event.step, total: event.total } }
-      break
     case 'declined':
       notice.value = { kind: 'declined', text: event.message }
       break
@@ -215,28 +293,6 @@ async function begin() {
   if (busy.value) return
   if (castChanged.value && !(await saveCastDraft())) return
   await run({ kind: 'begin', reply: {} }, () => beginRoleplay(props.id, onEvent))
-}
-
-/** Pictures a Frame: the Art Agent writes its Image Prompt (not rendered yet). */
-function picture(index: number) {
-  if (busy.value) return
-  run({ kind: 'picture', frameIndex: index, reply: {} }, () => pictureFrame(props.id, index, onEvent))
-}
-
-/** Renders a pictured Frame. */
-function render(index: number) {
-  if (busy.value) return
-  run({ kind: 'render', frameIndex: index, reply: {} }, () => renderFrame(props.id, index, onEvent))
-}
-
-/** Upscales a rendered Frame's picture to 2048 px. */
-function upscale(index: number) {
-  if (busy.value) return
-  run({ kind: 'upscale', frameIndex: index, reply: {} }, () =>
-    upscaleFrame(props.id, index, (event) => {
-      if (event.type === 'upscaled') session.value = event.session as RoleplaySession
-      else onEvent(event as RoleplayEvent)
-    }))
 }
 
 function send() {
@@ -315,7 +371,6 @@ const statusLabel = computed(() => {
   if (p.detached) return 'A reply is being written in another tab…'
   if (p.kind === 'cast') return cast.value ? 'Rewriting the Cast…' : 'Writing the Cast…'
   if (p.kind === 'begin') return `${characterName.value} is starting the scene…`
-  if (picturing.value !== null) return `Frame ${p.frameIndex}: ${pictureStatus.value}`
   return `${characterName.value} is replying…`
 })
 
@@ -439,9 +494,15 @@ async function saveCastDraft(): Promise<boolean> {
               </p>
             </li>
             <li
-              class="-mx-2 rounded-lg p-2"
-              :class="{ 'render-sweep': picturing === frame.index }"
-              :data-rendering="picturing === frame.index && pending?.phase === 'queued' ? 'queued' : undefined"
+              class="-mx-2 rounded-lg p-2 transition-shadow duration-500"
+              :class="{
+                'render-sweep': runningJob?.frameIndex === frame.index,
+                'ring-2 ring-info': highlighted === frame.index,
+              }"
+              :data-rendering="runningJob?.frameIndex === frame.index && runningJob.phase === 'queued'
+              ? 'queued'
+              : undefined"
+              :data-frame-index="frame.index"
               data-reply
             >
               <!-- Text on the left, its picture beside it on wide windows (stacked on narrow ones). -->
@@ -462,45 +523,67 @@ async function saveCastDraft(): Promise<boolean> {
                     “{{ frame.reply.dialogue }}”
                   </p>
                   <div class="flex max-w-prose flex-col gap-1 text-xs" data-picture>
-                    <p v-if="picturing === frame.index" class="flex items-center gap-2" data-picturing>
-                      <span class="animate-pulse text-info">{{ pictureStatus }}</span>
+                    <!-- This Frame's queued, running and failed jobs, each cancellable in place. -->
+                    <p
+                      v-for="job in jobsFor(frame.index)"
+                      :key="job.id"
+                      class="flex items-center gap-2"
+                      data-frame-job
+                    >
+                      <span
+                        :class="{
+                          'animate-pulse text-info': job.status === 'running',
+                          'text-muted': job.status === 'queued',
+                          'text-danger': job.status === 'failed',
+                        }"
+                      >
+                        {{ JOB_NAMES[job.kind] }} · {{ jobStatus(job) }}
+                      </span>
+                      <button
+                        v-if="job.status === 'failed'"
+                        type="button"
+                        class="text-fg underline-offset-2 hover:underline"
+                        data-retry
+                        @click="retry(job)"
+                      >
+                        Retry
+                      </button>
                       <button
                         type="button"
-                        class="text-danger underline-offset-2 hover:underline disabled:opacity-50"
-                        :disabled="pending?.cancelling"
-                        @click="cancel"
+                        class="text-danger underline-offset-2 hover:underline"
+                        @click="dropJob(job)"
                       >
-                        Cancel
+                        {{ job.status === 'failed' ? 'Dismiss' : 'Cancel' }}
                       </button>
                     </p>
-                    <p v-else class="flex flex-wrap items-center gap-x-3">
+                    <p class="flex flex-wrap items-center gap-x-3">
                       <button
                         type="button"
                         class="text-muted underline-offset-2 hover:text-fg hover:underline disabled:opacity-50"
-                        :disabled="busy"
+                        :disabled="hasJob(frame.index, 'picture')"
                         data-picture-button
-                        @click="picture(frame.index)"
+                        @click="queue('picture', frame.index)"
                       >
                         {{ frame.promptText ? 'Picture again' : 'Picture this' }}
                       </button>
                       <button
-                        v-if="frame.promptText && !frame.blocked"
+                        v-if="(frame.promptText && !frame.blocked) || hasJob(frame.index, 'picture')"
                         type="button"
                         class="text-muted underline-offset-2 hover:text-fg hover:underline disabled:opacity-50"
-                        :disabled="busy"
+                        :disabled="hasJob(frame.index, 'render')"
                         data-render-button
-                        @click="render(frame.index)"
+                        @click="queue('render', frame.index)"
                       >
                         {{ frame.image ? 'Re-render' : 'Render' }}
                       </button>
                       <button
-                        v-if="frame.image"
+                        v-if="frame.image || hasJob(frame.index, 'render')"
                         type="button"
                         class="text-muted underline-offset-2 hover:text-fg hover:underline disabled:opacity-50"
-                        :disabled="busy || !!frame.upscaled"
+                        :disabled="!!frame.upscaled || hasJob(frame.index, 'upscale')"
                         :title="frame.upscaled ? 'Upscaled to 2048 px' : 'Upscale to 2048 px with SeedVR2'"
                         data-upscale-button
-                        @click="upscale(frame.index)"
+                        @click="queue('upscale', frame.index)"
                       >
                         {{ frame.upscaled ? 'Upscaled' : 'Upscale' }}
                       </button>
@@ -578,7 +661,7 @@ async function saveCastDraft(): Promise<boolean> {
 
           <!-- The exchange in progress. -->
           <template
-            v-if="pending && !pending.detached && pending.kind !== 'cast' && pending.kind !== 'picture'"
+            v-if="pending && !pending.detached && pending.kind !== 'cast'"
           >
             <li v-if="pending.message" class="flex flex-col items-end gap-1" data-pending-message>
               <span class="text-xs text-muted">{{ personaName }}</span>
@@ -614,18 +697,16 @@ async function saveCastDraft(): Promise<boolean> {
               v-model="draft"
               class="h-20 flex-1 resize-none rounded-lg border border-line bg-surface p-3 disabled:opacity-60"
               :placeholder="`What ${personaName} says or does… (Enter to send, Shift+Enter for a new line)`"
-              :disabled="!begun || (busy && picturing === null)"
+              :disabled="!begun || busy"
               @keydown="onKeydown"
             />
           </div>
           <div class="flex items-center gap-2">
-            <!-- While a Frame is pictured, keep typing; Send waits (one thing at a time per Session). -->
             <button
-              v-if="!busy || picturing !== null"
+              v-if="!busy"
               type="button"
               class="rounded-lg bg-fg px-4 py-2 font-medium text-canvas disabled:opacity-50"
-              :disabled="!draft.trim() || !begun || busy"
-              :title="picturing !== null ? 'Waiting for the picture to finish' : undefined"
+              :disabled="!draft.trim() || !begun"
               @click="send"
             >
               Send
@@ -660,7 +741,77 @@ async function saveCastDraft(): Promise<boolean> {
         </div>
       </main>
 
-      <aside class="flex w-80 flex-col overflow-y-auto border-l border-line xl:w-96" data-cast-panel>
+      <aside class="flex w-80 flex-col border-l border-line xl:w-96" data-side-panel>
+        <div role="tablist" class="flex shrink-0 border-b border-line text-sm">
+          <button
+            v-for="tab in [
+              { id: 'cast', label: 'Look & Cast' },
+              { id: 'queue', label: openJobs.length ? `Queue (${openJobs.length})` : 'Queue' },
+            ] as const"
+            :key="tab.id"
+            type="button"
+            role="tab"
+            class="flex-1 px-4 py-2 text-muted aria-selected:border-b-2 aria-selected:border-fg aria-selected:font-medium aria-selected:text-fg"
+            :aria-selected="sideTab === tab.id"
+            :data-tab="tab.id"
+            @click="sideTab = tab.id"
+          >
+            {{ tab.label }}
+          </button>
+        </div>
+
+        <!-- The queue: what's running, queued and failed; click one to go to its Frame. -->
+        <section v-if="sideTab === 'queue'" class="min-h-0 flex-1 overflow-y-auto" data-queue>
+          <p v-if="!jobs.length" class="p-4 text-sm text-muted">
+            Nothing queued. Picture, Render and Upscale under a Reply add work here, to run while
+            you carry on.
+          </p>
+          <ol v-else>
+            <li
+              v-for="job in jobs"
+              :key="job.id"
+              class="flex items-start gap-2 border-b border-line p-3 text-sm hover:bg-surface"
+              data-queue-item
+            >
+              <button
+                type="button"
+                class="flex min-w-0 flex-1 flex-col gap-0.5 text-left"
+                :title="`Go to Frame ${job.frameIndex}`"
+                @click="goToFrame(job.frameIndex)"
+              >
+                <span class="font-medium">{{ JOB_NAMES[job.kind] }} · Frame {{ job.frameIndex }}</span>
+                <span
+                  class="text-xs"
+                  :class="{
+                    'animate-pulse text-info': job.status === 'running',
+                    'text-muted': job.status === 'queued',
+                    'text-danger': job.status === 'failed',
+                  }"
+                >
+                  {{ jobStatus(job) }}
+                </span>
+              </button>
+              <button
+                v-if="job.status === 'failed'"
+                type="button"
+                class="shrink-0 text-xs text-fg underline-offset-2 hover:underline"
+                data-retry
+                @click="retry(job)"
+              >
+                Retry
+              </button>
+              <button
+                type="button"
+                class="shrink-0 text-xs text-danger underline-offset-2 hover:underline"
+                @click="dropJob(job)"
+              >
+                {{ job.status === 'failed' ? 'Dismiss' : 'Cancel' }}
+              </button>
+            </li>
+          </ol>
+        </section>
+
+        <div v-else class="min-h-0 flex-1 overflow-y-auto" data-cast-panel>
         <form
           v-if="lookDraft"
           class="flex flex-col gap-2 border-b border-line p-4 text-sm"
@@ -748,6 +899,7 @@ async function saveCastDraft(): Promise<boolean> {
             </span>
           </div>
         </form>
+        </div>
       </aside>
     </template>
 

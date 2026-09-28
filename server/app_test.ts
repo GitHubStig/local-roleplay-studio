@@ -777,52 +777,132 @@ Deno.test('Turning the Limits off in Settings applies at once, except the adult 
     )
   }))
 
-Deno.test('A Roleplay Frame is pictured over the API, and its Look can be edited', () =>
-  withTempDir(async (root) => {
-    const body = 'Mira waits. She frowns. A wide shot. A navy coat. The bridge. Lamplight. Blues.'
-    const { call } = setup({
-      root,
-      settings: { textModel: 'x' },
-      roleplayModel: scriptedRoleplayModel({
-        casts: [testCast],
-        replies: [replyOf('You are late.')],
-        looks: [{ character: 'Mira Vance, 34.', persona: 'Sam Reyes, 25.', style: 'Ink.' }],
-        bodies: [body],
-      }),
-    })
-    await call('POST', '/api/sessions', { kind: 'roleplay', brief: 'A storm at sea.' })
-    await readEvents(await call('POST', '/api/sessions/s1/roleplay/cast'))
-    assertEquals((await call('PUT', '/api/sessions/s1/roleplay/look', {})).status, 409)
-    await readEvents(await call('POST', '/api/sessions/s1/roleplay/begin'))
+/** Waits until a Roleplay's queue has no queued or running jobs, and returns what's left. */
+async function settled(call: ReturnType<typeof setup>['call'], id = 's1') {
+  for (let i = 0; i < 200; i++) {
+    const jobs = await (await call('GET', `/api/sessions/${id}/roleplay/jobs`)).json()
+    if (!jobs.some((j: { status: string }) => j.status !== 'failed')) return jobs
+    await new Promise((r) => setTimeout(r, 5))
+  }
+  throw new Error('jobs never settled')
+}
 
-    const events = await readEvents(
-      await call('POST', '/api/sessions/s1/roleplay/frames/0/picture'),
-    )
-    assertEquals(events.map(([e]) => e), ['phase', 'look', 'pictured'])
-    assertEquals((await call('POST', '/api/sessions/s1/roleplay/frames/5/picture')).status, 404)
+/** A begun Roleplay whose Art Agent will write `bodies` in turn. */
+async function roleplayWithArt(
+  root: string,
+  bodies: string[],
+  extra: Partial<SetupOptions> = {},
+) {
+  const harness = setup({
+    root,
+    settings: { textModel: 'x' },
+    roleplayModel: scriptedRoleplayModel({
+      casts: [testCast],
+      replies: [replyOf('You are late.'), replyOf('Take the wheel.')],
+      looks: [{ character: 'Mira Vance, 34.', persona: 'Sam Reyes, 25.', style: 'Ink.' }],
+      bodies,
+    }),
+    ...extra,
+  })
+  const { call } = harness
+  await call('POST', '/api/sessions', { kind: 'roleplay', brief: 'A storm at sea.' })
+  await readEvents(await call('POST', '/api/sessions/s1/roleplay/cast'))
+  await readEvents(await call('POST', '/api/sessions/s1/roleplay/begin'))
+  return harness
+}
+
+const artBody = 'Mira waits. She frowns. A wide shot. A navy coat. The bridge. Lamplight. Blues.'
+
+Deno.test('Picturing, rendering and upscaling a Roleplay Frame are queued jobs, run in order', () =>
+  withTempDir(async (root) => {
+    const { call } = await roleplayWithArt(root, [artBody])
+    assertEquals((await call('PUT', '/api/sessions/s1/roleplay/look', {})).status, 409)
+    const enqueue = (kind: string, frameIndex = 0) =>
+      call('POST', '/api/sessions/s1/roleplay/jobs', { kind, frameIndex })
+    assertEquals((await enqueue('picture', 5)).status, 404)
+    assertEquals((await enqueue('paint')).status, 400)
+
+    // Queued back to back: the render waits for the picture, the upscale for the render.
+    const queued = await (await enqueue('picture')).json()
+    await enqueue('render')
+    await enqueue('upscale')
+    assertEquals(queued.length, 1)
+    assertEquals(await settled(call), [])
+
+    const session = await (await call('GET', '/api/sessions/s1')).json()
+    const frame = session.frames[0]
+    assertEquals(frame.promptText, `adult, Mira Vance, 34. Sam Reyes, 25. ${artBody} Ink.`)
+    assertEquals((await call('GET', `/api/sessions/s1/images/${frame.image}`)).status, 200)
+    assertMatch(frame.upscaled, /-2048\.png$/)
 
     const look = await call('PUT', '/api/sessions/s1/roleplay/look', {
       character: 'Mira Vance, 34.',
       persona: 'Sam Reyes, 25.',
       style: 'Watercolour.',
     })
-    const session = await look.json()
-    assertEquals(
-      session.frames[0].promptText,
-      `adult, Mira Vance, 34. Sam Reyes, 25. ${body} Watercolour.`,
-    )
-    assertEquals(
-      (await call('PUT', '/api/sessions/s1/roleplay/look', { subject: 'x' })).status,
-      400,
-    )
-
-    const render = await readEvents(await call('POST', '/api/sessions/s1/roleplay/frames/0/render'))
-    assertEquals(render.at(-1)![0], 'rendered')
-    const image = (render.at(-1)![1].frame as { image: string }).image
-    assertEquals((await call('GET', `/api/sessions/s1/images/${image}`)).status, 200)
-    // Upscale works on a Roleplay picture like any Frame's image.
-    const up = await readEvents(await call('POST', '/api/sessions/s1/frames/0/upscale'))
-    assertEquals(up.at(-1)![0], 'upscaled')
+    assertEquals((await look.json()).frames[0].stale, true)
     const [card] = await (await call('GET', '/api/sessions')).json()
-    assertEquals(card.latestImage, image)
+    assertEquals(card.latestImage, frame.image)
+  }))
+
+Deno.test('A failed job stays listed to retry or dismiss', () =>
+  withTempDir(async (root) => {
+    const { call } = await roleplayWithArt(root, [])
+    // Rendering a Frame that was never pictured fails.
+    await call('POST', '/api/sessions/s1/roleplay/jobs', { kind: 'render', frameIndex: 0 })
+    const [failed] = await settled(call)
+    assertEquals([failed.status, failed.error], ['failed', "Frame 0 isn't pictured yet"])
+    // Kept, so it can be retried: back in the queue, where it fails again (still no picture).
+    const retried = await call('POST', `/api/sessions/s1/roleplay/jobs/${failed.id}/retry`)
+    assertEquals(retried.status, 200)
+    const [again] = await settled(call)
+    assertEquals([again.id, again.status], [failed.id, 'failed'])
+    assertEquals((await call('POST', '/api/sessions/s1/roleplay/jobs/nope/retry')).status, 404)
+    const dismissed = await call('DELETE', `/api/sessions/s1/roleplay/jobs/${failed.id}`)
+    assertEquals(await dismissed.json(), [])
+    assertEquals((await call('DELETE', '/api/sessions/s1/roleplay/jobs/nope')).status, 404)
+  }))
+
+Deno.test('The conversation carries on while a job runs, and neither overwrites the other', () =>
+  withTempDir(async (root) => {
+    let release!: () => void
+    const images = fakeImageGenerator()
+    const held = new Promise<void>((r) => (release = r))
+    const slow = {
+      ...images,
+      async generate(...args: Parameters<typeof images.generate>) {
+        await held
+        return images.generate(...args)
+      },
+    }
+    const { call } = await roleplayWithArt(root, [artBody], { imageGenerator: slow })
+    await call('POST', '/api/sessions/s1/roleplay/jobs', { kind: 'picture', frameIndex: 0 })
+    await settled(call)
+    await call('POST', '/api/sessions/s1/roleplay/jobs', { kind: 'render', frameIndex: 0 })
+    await new Promise((r) => setTimeout(r, 20))
+
+    // The render is running; a Message still goes through.
+    const talk = await readEvents(
+      await call('POST', '/api/sessions/s1/roleplay/messages', { text: 'Sorry.' }),
+    )
+    assertEquals(talk.at(-1)![0], 'replied')
+    release()
+    await settled(call)
+    const session = await (await call('GET', '/api/sessions/s1')).json()
+    assertEquals(session.frames.length, 2)
+    assertMatch(session.frames[0].image, /^frame-0-/)
+  }))
+
+Deno.test('Undoing an exchange cancels its jobs; deleting the Roleplay cancels them all', () =>
+  withTempDir(async (root) => {
+    const images = fakeImageGenerator({ hang: true })
+    const { call } = await roleplayWithArt(root, [artBody, artBody], { imageGenerator: images })
+    await readEvents(await call('POST', '/api/sessions/s1/roleplay/messages', { text: 'Sorry.' }))
+    for (const frameIndex of [1, 1]) {
+      await call('POST', '/api/sessions/s1/roleplay/jobs', { kind: 'picture', frameIndex })
+    }
+    await call('POST', '/api/sessions/s1/roleplay/jobs', { kind: 'render', frameIndex: 1 })
+    await settled(call).catch(() => {})
+    assertEquals((await call('DELETE', '/api/sessions/s1/roleplay/frames/1')).status, 200)
+    assertEquals(await settled(call), [])
   }))

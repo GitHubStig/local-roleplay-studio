@@ -145,7 +145,20 @@ The prompts are Markdown files in `server/prompts/roleplay/` (`cast.md`, `cast-r
 `character.md`, `opening-request.md`, `limits.md`, `limits-adults-only.md`), each with a note at
 the top saying when it's used and what it's filled with; edits apply on the next call.
 
-**Picturing a Frame** (the Art Agent; no rendering yet): **Picture this** under a Reply writes
+**Pictures, renders and upscales are queued jobs** (`server/roleplay/jobs.ts`): the player can ask
+for several and carry on with the conversation. Each Roleplay runs its jobs one at a time, in the
+order asked (renders and upscales also wait their turn in the render queue every Session shares).
+Jobs don't hold the Roleplay's lock; every change to a Roleplay (a Reply, a picture, a render, an
+edit) is saved by reloading it and applying just that change, one at a time
+(`roleplay/update.ts`), so none overwrites another. The queue lives in memory: restarting the
+server forgets it. A job asked for before what it needs exists (a render queued behind its
+picture) waits its turn and fails with a reason if that still isn't there; failed jobs stay
+listed, with **Retry** (back to the end of the queue) and **Dismiss**. Undoing an exchange cancels its jobs; deleting the Roleplay cancels all
+of them. On the screen, each Frame lists its jobs with Cancel (the running one sweeps its Reply),
+and a **Queue** tab beside **Look & Cast** lists them all; clicking one scrolls smoothly to its
+Frame and highlights it.
+
+**Picturing a Frame** (the Art Agent): **Picture this** under a Reply writes
 that Frame's Image Prompt, in the same shape as a Storyboard Frame's. The first time, a call
 writes the Roleplay's **Look** from the Cast and Brief: an identity sentence for the Character,
 one for the Persona, and the art style, fitted to the story's period. Then a call reads the story
@@ -340,7 +353,10 @@ All under `/api`; the Vite dev server proxies it to the Deno server.
 | `POST /sessions/:id/roleplay/begin` | Roleplay: the opening Reply, streaming `reply-part` per field, then `replied` (`frame`, `session`) |
 | `POST /sessions/:id/roleplay/messages` | Roleplay: send `{ text }`, streaming `reply-part` (`key`, `value`) per field, then `replied`, or `declined` (`message`) |
 | `DELETE /sessions/:id/roleplay/frames/:index` | Roleplay: undo the latest exchange (`409` for any other, and for the opening) |
-| `POST /sessions/:id/roleplay/frames/:index/picture` | Roleplay: picture one Frame, streaming `phase`, `look` (the first time), then `pictured` (`frame`, `session`) |
+| `GET /sessions/:id/roleplay/jobs` | Roleplay: its background jobs (picture, render, upscale): running, queued, then failed, each with its `phase`, `progress` or `error` |
+| `POST /sessions/:id/roleplay/jobs` | Roleplay: queue `{ kind: "picture" \| "render" \| "upscale", frameIndex }`; returns the queue (asking twice for the same job queues it once) |
+| `POST /sessions/:id/roleplay/jobs/:job/retry` | Roleplay: put a failed job back at the end of the queue (`404` if there's no such failed job) |
+| `DELETE /sessions/:id/roleplay/jobs/:job` | Roleplay: cancel a queued or running job, or dismiss a failed one |
 | `PUT /sessions/:id/roleplay/look` | Roleplay: replace the Look, `{ subject, style }`, rewriting every pictured Frame (`400` if incomplete, `422` if it crosses a Limit) |
 | `PUT /sessions/:id/roleplay/cast` | Roleplay: replace the Cast (`400` if incomplete or the Character is under 18, `422` if it crosses a Limit) |
 

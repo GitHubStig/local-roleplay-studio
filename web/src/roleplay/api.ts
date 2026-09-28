@@ -2,6 +2,7 @@ import {
   type EndEvent,
   type Look,
   type ProgressEvent,
+  post,
   put,
   request,
   type SessionBase,
@@ -105,8 +106,6 @@ export type RoleplayEvent =
   | { type: 'replied'; frame: RoleplayFrame; session: RoleplaySession }
   | { type: 'declined'; message: string }
   | { type: 'look'; look: RoleplayLook }
-  | { type: 'pictured'; frame: RoleplayFrame; session: RoleplaySession }
-  | { type: 'rendered'; frame: RoleplayFrame; session: RoleplaySession }
 
 const base = (id: string) => `/api/sessions/${id}/roleplay`
 
@@ -126,19 +125,35 @@ export const sendMessage = (id: string, text: string, onEvent: (event: RoleplayE
 export const undoExchange = (id: string, index: number) =>
   request<RoleplaySession>(`${base(id)}/frames/${index}`, { method: 'DELETE' })
 
-/** Pictures a Frame with the Art Agent: its Image Prompt (and the Look, the first time). */
-export const pictureFrame = (
-  id: string,
-  index: number,
-  onEvent: (event: RoleplayEvent) => void,
-) => streamEvents<RoleplayEvent>(`${base(id)}/frames/${index}/picture`, {}, ['pictured'], onEvent)
+/** Background work on a Frame: picturing, rendering or upscaling it. */
+export type JobKind = 'picture' | 'render' | 'upscale'
 
-/** Renders a pictured Frame through the shared render queue. */
-export const renderFrame = (
-  id: string,
-  index: number,
-  onEvent: (event: RoleplayEvent) => void,
-) => streamEvents<RoleplayEvent>(`${base(id)}/frames/${index}/render`, {}, ['rendered'], onEvent)
+/** A queued, running or failed job. Finished jobs drop off the list. */
+export interface Job {
+  id: string
+  kind: JobKind
+  frameIndex: number
+  status: 'queued' | 'running' | 'failed'
+  phase?: 'text' | 'queued' | 'image'
+  progress?: { step: number; total: number }
+  error?: string
+  createdAt: string
+}
+
+/** The Roleplay's jobs: running, then queued in order, then failed. */
+export const listJobs = (id: string) => request<Job[]>(`${base(id)}/jobs`)
+
+/** Queues a job on a Frame; returns the whole queue. Asking twice for the same job queues it once. */
+export const queueJob = (id: string, kind: JobKind, frameIndex: number) =>
+  post<Job[]>(`${base(id)}/jobs`, { kind, frameIndex })
+
+/** Puts a failed job back in the queue; returns the queue. */
+export const retryJob = (id: string, jobId: string) =>
+  post<Job[]>(`${base(id)}/jobs/${jobId}/retry`)
+
+/** Cancels a queued or running job, or dismisses a failed one; returns the queue. */
+export const cancelJob = (id: string, jobId: string) =>
+  request<Job[]>(`${base(id)}/jobs/${jobId}`, { method: 'DELETE' })
 
 /** Replaces the Look, rewriting every pictured Frame's Image Prompt. */
 export const saveLook = (id: string, look: RoleplayLook) =>

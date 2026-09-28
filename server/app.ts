@@ -11,6 +11,7 @@ import type { TextModel } from './textModel.ts'
 import { ollamaRoleplayModel, type RoleplayModel } from './roleplay/model.ts'
 import { roleplayExcerpt } from './roleplay/prompt.ts'
 import { roleplayRoutes } from './roleplay/routes.ts'
+import { RoleplayJobs } from './roleplay/jobs.ts'
 import { RenderQueue } from './renderQueue.ts'
 import {
   type FrameDeps,
@@ -211,22 +212,29 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
 
   const roleplayModel = deps.roleplayModel ??
     ((model, thinking) => ollamaRoleplayModel(model, { think: thinking }))
+  const roleplayDeps = (session: Session) => ({
+    store: deps.sessions,
+    imageGenerator: deps.imageGenerator,
+    renderQueue,
+    textModel: deps.textModel(session.settings.textModel, session.settings.thinking ?? false),
+    roleplayModel: roleplayModel(session.settings.textModel, session.settings.thinking ?? false),
+  })
+  /** Roleplays' queued pictures, renders and upscales. */
+  const roleplayJobs = new RoleplayJobs({
+    store: deps.sessions,
+    deps: roleplayDeps,
+    scenarioFor,
+    upscaler: async () => (await deps.settings.load()).upscaler,
+  })
 
   const routes: Route[] = [
     ...roleplayRoutes({
       locked,
       stream,
       scenarioFor,
-      deps: (session) => ({
-        store: deps.sessions,
-        imageGenerator: deps.imageGenerator,
-        renderQueue,
-        textModel: deps.textModel(session.settings.textModel, session.settings.thinking ?? false),
-        roleplayModel: roleplayModel(
-          session.settings.textModel,
-          session.settings.thinking ?? false,
-        ),
-      }),
+      deps: roleplayDeps,
+      jobs: roleplayJobs,
+      store: deps.sessions,
     }),
 
     ['GET', new URLPattern({ pathname: '/api/health' }), () => Promise.resolve(json({ ok: true }))],
@@ -350,7 +358,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
           ...(s.kind === 'roleplay' ? { excerpt: roleplayExcerpt(s) } : {}),
           createdAt: s.createdAt,
           updatedAt,
-          activity: active.get(s.id)?.phase ?? null,
+          activity: active.get(s.id)?.phase ?? roleplayJobs.activity(s.id),
         }
       })
       summaries.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
@@ -362,6 +370,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       new URLPattern({ pathname: '/api/sessions/:id' }),
       (_req, p) =>
         locked(p.id!, 'delete', async (session) => {
+          roleplayJobs.cancelWhere(session.id, () => true)
           await deps.sessions.remove(session.id)
           return new Response(null, { status: 204 })
         }),
