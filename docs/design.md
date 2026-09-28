@@ -372,10 +372,13 @@ A Frame's stream emits `phase` (`text`, then `queued` if another Session is rend
 ## Stack
 
 Deno workspace: `server/` (Deno HTTP, no framework) and `web/` (Vue 3, Vite, Tailwind 4,
-vue-router, VueUse), both run by Deno. VueUse handles the browser plumbing: remembered settings
-and drafts (`useLocalStorage`, saved at once), the theme (`useColorMode`), growing text boxes
-(`useTextareaAutosize`), event listeners and the server check (`useEventListener`,
-`useIntervalFn`). Polling stays hand-written: each poll has its own rules for when to stop. Tests: `deno test` for the server, Vitest with happy-dom for the
+vue-router, VueUse), both run by Deno. VueUse handles the browser plumbing: the theme
+(`useColorMode`), growing text boxes (`useTextareaAutosize`), event listeners and the server check
+(`useEventListener`, `useIntervalFn`). Everything remembered per browser (toggles, drafts, the
+theme, Play's last Session) goes through one helper, `useStoredString` in
+`web/src/composables/storage.ts`: saved at once, never synced from other tabs (each tab keeps its
+own draft), and held in memory for the visit when the browser blocks storage. Polling stays
+hand-written: each poll has its own rules for when to stop. Tests: `deno test` for the server, Vitest with happy-dom for the
 web app. The mflux CLI is also exercised in tests through a fake executable.
 
 ## Decisions log

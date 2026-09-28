@@ -52,15 +52,36 @@ describe('useTheme', () => {
     expect(isDark()).toBe(false)
   })
 
-  it('restores a saved choice, and stores "auto" when set back to system', async () => {
+  it('restores a saved choice and forgets it when set back to system', async () => {
     localStorage.setItem('theme', 'dark')
     const { preference } = await load()
     expect(preference.value).toBe('dark')
     expect(isDark()).toBe(true)
     preference.value = 'system'
     await nextTick()
-    // index.html's pre-paint script treats anything but light/dark as "follow the system".
-    expect(localStorage.getItem('theme')).toBe('auto')
+    expect(localStorage.getItem('theme')).toBeNull()
     expect(isDark()).toBe(false)
+  })
+
+  it('treats an unexpected stored value as the system', async () => {
+    localStorage.setItem('theme', 'purple')
+    systemDark = true
+    const { preference } = await load()
+    expect(preference.value).toBe('system')
+    expect(isDark()).toBe(true)
+  })
+
+  it('keeps working after the component that first used it is gone', async () => {
+    const { mount } = await import('@vue/test-utils')
+    const { defineComponent, h } = await import('vue')
+    const mod = await import('./useTheme')
+    const first = mount(defineComponent(() => {
+      mod.useTheme()
+      return () => h('div')
+    }))
+    first.unmount()
+    mod.useTheme().preference.value = 'dark'
+    await nextTick()
+    expect(isDark()).toBe(true)
   })
 })

@@ -5,6 +5,14 @@ import CollapsibleTextarea from './CollapsibleTextarea.vue'
 
 beforeEach(() => localStorage.clear())
 
+// happy-dom doesn't lay text out: give each line of a textarea 20 px of scroll height.
+Object.defineProperty(HTMLTextAreaElement.prototype, 'scrollHeight', {
+  configurable: true,
+  get(this: HTMLTextAreaElement) {
+    return this.value.split('\n').length * 20
+  },
+})
+
 const host = (initial = 'A tall woman\nof 34.') =>
   defineComponent(() => {
     const text = ref(initial)
@@ -24,11 +32,15 @@ describe('CollapsibleTextarea', () => {
   it('edits its text, and grows to fit it instead of scrolling', async () => {
     const wrapper = mount(host())
     const box = wrapper.find('textarea')
+    const height = () => (box.element as HTMLTextAreaElement).style.height
     await nextTick()
-    expect(box.classes()).toContain('overflow-hidden')
-    expect((box.element as HTMLTextAreaElement).style.height).toMatch(/px$/)
-    await box.setValue('A short woman.')
-    expect(wrapper.find('output').text()).toBe('A short woman.')
+    await nextTick()
+    expect(height()).toBe('40px') // two lines
+    await box.setValue('One\nTwo\nThree\nFour')
+    await nextTick()
+    await nextTick()
+    expect(height()).toBe('80px')
+    expect(wrapper.find('output').text()).toBe('One\nTwo\nThree\nFour')
   })
 
   it('collapses to a one-line preview by its label, remembered per browser', async () => {

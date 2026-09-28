@@ -1,12 +1,12 @@
-import { useLocalStorage } from '@vueuse/core'
 import { computed, type WritableComputedRef } from 'vue'
+import { useStoredString } from './storage'
 
 /**
  * Text remembered per browser under `key`, e.g. an unsent Action, so it survives a reload. Emptying
- * it forgets it. Storage can be blocked (private mode); the text then just isn't remembered.
+ * it forgets it. If storage is blocked, the text works for this visit but isn't remembered.
  */
 export function useStoredText(key: string): WritableComputedRef<string> {
-  const stored = useLocalStorage<string | null>(key, null, { writeDefaults: false, flush: 'sync' })
+  const stored = useStoredString(key)
   return computed({
     get: () => stored.value ?? '',
     set: (text) => (stored.value = text || null),
