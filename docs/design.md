@@ -177,7 +177,9 @@ Limits, the Art Agent sometimes left an undressed person's clothing out instead 
 the Session's Image Model, seed and size, and shows the picture beside its Reply (below it on
 windows under 1024 px). Clicking a picture opens it in a viewer (`ImageViewer`, a dialog around
 the same `FrameImage` as the Session screen, so it zooms and pans the same way); Esc, Close or a
-click outside the image dismisses it, and "Open full size" opens the file itself,
+click outside the image dismisses it, and "Open full size" opens the file itself. In the viewer,
+← and → (or ‹ ›) step to the previous or next rendered Frame, scrolling the conversation behind to
+it,
 with progress, the sweep and Cancel in place; **Upscale** works as on any Frame. Picturing a
 rendered Frame again, or editing the Look, marks its picture "Changed since render" until it's
 re-rendered; Undo deletes the undone exchange's picture. For debugging, each picture's time and the Art

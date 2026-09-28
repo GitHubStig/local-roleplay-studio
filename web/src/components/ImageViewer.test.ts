@@ -41,4 +41,30 @@ describe('ImageViewer', () => {
     await wrapper.find('button[aria-label=Close]').trigger('click')
     expect((wrapper.find('dialog').element as HTMLDialogElement).open).toBe(false)
   })
+
+  it('asks for the previous or next image with the arrow keys and ‹ ›, when there is one', async () => {
+    const wrapper = mountIt()
+    await wrapper.setProps({
+      src: '/x.png',
+      label: 'Frame 3 · 2 of 3',
+      hasPrevious: true,
+      hasNext: false,
+    })
+    await flushPromises()
+    expect(wrapper.find('[data-viewer-label]').text()).toBe('Frame 3 · 2 of 3')
+    await wrapper.find('dialog').trigger('keydown', { key: 'ArrowLeft' })
+    await wrapper.find('dialog').trigger('keydown', { key: 'ArrowRight' })
+    expect(wrapper.emitted('previous')).toHaveLength(1)
+    expect(wrapper.emitted('next')).toBeUndefined()
+    expect(wrapper.find('[data-next]').attributes('disabled')).toBeDefined()
+    await wrapper.find('[data-previous]').trigger('click')
+    expect(wrapper.emitted('previous')).toHaveLength(2)
+  })
+
+  it('shows no ‹ › when there is nothing to step through', async () => {
+    const wrapper = mountIt()
+    await wrapper.setProps({ src: '/x.png' })
+    await flushPromises()
+    expect(wrapper.find('[data-previous]').exists()).toBe(false)
+  })
 })

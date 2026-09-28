@@ -39,8 +39,8 @@ const notice = ref<{ kind: 'error' | 'declined'; text: string } | null>(null)
 const draft = useStoredText(`draft:${props.id}`)
 const thoughtsHidden = useStoredFlag('roleplay-thoughts-hidden')
 const transcript = ref<HTMLElement | null>(null)
-/** The picture open in the viewer, if any. */
-const viewing = ref<{ src: string; alt: string } | null>(null)
+/** The Frame whose picture is open in the viewer, if any. */
+const viewing = ref<number | null>(null)
 
 /** The exchange in progress: the message sent, and the reply as it arrives. */
 interface Pending {
@@ -161,6 +161,28 @@ function goToFrame(index: number) {
   highlighted.value = index
   clearTimeout(highlightTimer)
   highlightTimer = setTimeout(() => (highlighted.value = null), 1600)
+}
+
+// --- The picture viewer: ← and → step through the rendered Frames.
+
+/** The Frames with a rendered picture, in order. */
+const rendered = computed(() => (session.value?.frames ?? []).filter((f) => f.image))
+const viewed = computed(() => rendered.value.findIndex((f) => f.index === viewing.value))
+const viewer = computed(() => {
+  const frame = viewed.value >= 0 ? rendered.value[viewed.value] : null
+  if (!frame || !session.value) return null
+  return {
+    src: imageUrl(session.value.id, frame.upscaled ?? frame.image!),
+    alt: frame.promptText ?? '',
+    label: `Frame ${frame.index} · ${viewed.value + 1} of ${rendered.value.length}`,
+  }
+})
+/** Shows the rendered Frame `step` places away, and scrolls the conversation behind to it. */
+function stepViewer(step: number) {
+  const frame = rendered.value[viewed.value + step]
+  if (!frame) return
+  viewing.value = frame.index
+  goToFrame(frame.index)
 }
 
 /** The side panel's tab: the Look and Cast, or the queue. */
@@ -611,10 +633,7 @@ async function saveCastDraft(): Promise<boolean> {
                   class="relative block w-full max-w-sm shrink-0 lg:w-72 lg:max-w-none xl:w-80"
                   title="Look closer"
                   data-picture-image
-                  @click="viewing = {
-                    src: imageUrl(session.id, frame.upscaled ?? frame.image),
-                    alt: frame.promptText ?? '',
-                  }"
+                  @click="viewing = frame.index"
                 >
                   <img
                     :src="imageUrl(session.id, frame.image)"
@@ -905,6 +924,15 @@ async function saveCastDraft(): Promise<boolean> {
 
     <p v-else class="p-6 text-muted">Loading…</p>
 
-    <ImageViewer :src="viewing?.src ?? null" :alt="viewing?.alt" @close="viewing = null" />
+    <ImageViewer
+      :src="viewer?.src ?? null"
+      :alt="viewer?.alt"
+      :label="viewer?.label"
+      :has-previous="viewed > 0"
+      :has-next="viewed >= 0 && viewed < rendered.length - 1"
+      @previous="stepViewer(-1)"
+      @next="stepViewer(1)"
+      @close="viewing = null"
+    />
   </div>
 </template>

@@ -390,4 +390,31 @@ describe('RoleplayView', () => {
     expect(wrapper.find('[data-queue-item]').text()).toContain('Queued')
     expect(wrapper.find('[data-frame-job] [data-retry]').exists()).toBe(false)
   })
+
+  it('steps through the rendered Frames in the viewer, scrolling the conversation to each', async () => {
+    const withImage = (index: number, message: string | null) => ({
+      ...frame(index, message, `Line ${index}.`),
+      image: `frame-${index}-aaaaaaaa.png`,
+    })
+    vi.mocked(api.getSession).mockResolvedValue(
+      roleplaySession([withImage(0, null), frame(1, 'Hi.', 'No picture.'), withImage(2, 'Go.')]),
+    )
+    const { wrapper } = await mountIt()
+    const last = wrapper.find('[data-frame-index="0"]').element as HTMLElement
+    last.scrollIntoView = vi.fn()
+    await wrapper.findAll('[data-picture-image]')[1].trigger('click')
+    await flushPromises()
+    const viewer = () => wrapper.find('[data-image-viewer]')
+    expect(viewer().find('[data-viewer-label]').text()).toBe('Frame 2 · 2 of 2')
+    expect(viewer().find('[data-next]').attributes('disabled')).toBeDefined()
+
+    // ← skips Frame 1, which has no picture.
+    await viewer().trigger('keydown', { key: 'ArrowLeft' })
+    await flushPromises()
+    expect(viewer().find('[data-viewer-label]').text()).toBe('Frame 0 · 1 of 2')
+    expect(viewer().find('[data-image-frame] img').attributes('src')).toBe(
+      '/api/sessions/r1/images/frame-0-aaaaaaaa.png',
+    )
+    expect(last.scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'center' })
+  })
 })
