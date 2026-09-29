@@ -417,8 +417,8 @@ const CAST_FIELDS: CastField[] = [
   { group: 'persona', key: 'role', label: 'Who they are to the Character', long: true },
   { group: 'persona', key: 'appearance', label: 'Appearance', long: true },
   { group: 'setting', key: 'place', label: 'Place', long: true },
-  { group: 'setting', key: 'time', label: 'Time' },
-  { group: 'setting', key: 'weather', label: 'Weather' },
+  { group: 'setting', key: 'time', label: 'Time', long: true },
+  { group: 'setting', key: 'weather', label: 'Weather', long: true },
 ]
 const GROUPS: { id: keyof Cast; title: () => string }[] = [
   { id: 'character', title: () => `Character · ${characterName.value}` },
@@ -882,7 +882,9 @@ async function saveCastDraft(): Promise<boolean> {
           <template v-else>No Cast yet.</template>
         </p>
         <form v-else class="flex flex-col gap-5 p-4 text-sm" @submit.prevent="saveCastDraft">
-          <fieldset v-for="g in GROUPS" :key="g.id" class="flex flex-col gap-2">
+          <!-- min-w-0: a fieldset is otherwise as wide as its widest unwrappable line, which a
+               collapsed field's one-line preview is -->
+          <fieldset v-for="g in GROUPS" :key="g.id" class="flex min-w-0 flex-col gap-2">
             <legend class="mb-1 font-medium">{{ g.title() }}</legend>
             <template v-for="f in CAST_FIELDS.filter((f) => f.group === g.id)" :key="f.key">
             <CollapsibleTextarea
