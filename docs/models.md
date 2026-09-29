@@ -151,8 +151,8 @@ the answers come last and the sentences are trimmed in code (`trimFields`).
 Settings → Art Agent style can have the Art Agent write each aspect as short comma-separated tags
 instead of a sentence (`prompts/roleplay/art-frame-tags.md`). The identities stay the Look's
 sentences; only the seven aspects become tags, and clothing tags still name each person, so the
-Limits' clothing check works the same. **Prose stays the default: it won on both installed Image
-Models.** Measured on three Frames of the Kael tavern Roleplay (6: Kael alone; 9 and 12: both), each Art Agent writing prose, Danbooru-style tags
+Limits' clothing check works the same. **Prose stays the default: it won on all six installed
+Image Models.** Measured on three Frames of the Kael tavern Roleplay (6: Kael alone; 9 and 12: both), each Art Agent writing prose, Danbooru-style tags
 (`1boy, 1girl, from below, …`) and plain descriptive tags
 (`Kael pointing at the floor, Elara wool robe, …`), Thinking off.
 
@@ -174,17 +174,34 @@ Who's in the picture, right of three:
   until its token cap. One comma-separated string per aspect, with the yes/no answers last (as for
   prose), finished every time in a retest.
 
-Rendered (gemma4's three prompt sets, 512×512, seed 7, clothing the Limits would block changed by hand):
+Rendered on every installed Image Model (gemma4's three prompt sets, 512×512, seed 7, the model's
+default steps, clothing the Limits would block changed by hand). Frame 6 is Kael alone at the window with his pipe; 9,
+Kael at the foot of the stairs pointing up at Elara on the balcony; 12, Elara at the top of the
+stairs with knives, Kael crouched at the bottom. The tags for 6 named both people (the Art Agent's
+miss above), so a second person there is the prompt's fault, not the Image Model's:
 
-| Image Model               | Prose                 | Booru tags                                                    | Plain tags                                      |
-| ------------------------- | --------------------- | ------------------------------------------------------------- | ----------------------------------------------- |
-| FLUX.2 Klein 4B (~5 s)    | all right             | 9: who does what swapped; 12: three people (a second `1girl`) | 6: wrong identity; 9 and 12 right               |
-| Qwen-Image 2.1 (~26–32 s) | all right, and staged | everyone faces the viewer; Elara added to 6; no staging       | 6 right; 9: the wrong person pointing; 12 close |
+| Image Model                 | Prose                                    | Booru tags                                                             | Plain tags                                              |
+| --------------------------- | ---------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------- |
+| FLUX.2 Klein 4B (~5 s)      | all right                                | 9: who does what swapped; 12: three people (a second `1girl`)          | 6: wrong identity; 9 and 12 right                       |
+| Boogu Image Turbo (~11 s)   | all right, and staged                    | 6: Kael with Elara's ponytail; 9: no staging; 12: Kael holds the knife | 6: the same ponytail; 9: on one level; 12 right         |
+| Z-Image Turbo 4-bit (~12 s) | all right, and staged                    | Elara added to 6; 9: she points, no balcony; 12: two Kaels             | 6 right; 9: on one level; 12 close                      |
+| ERNIE-Image Turbo (~19 s)   | 6 and 12 right; 9 right but on one level | 6 right; 9 and 12: an extra person                                     | 6: Kael with Elara's ponytail; 9: no pointing; 12 right |
+| Qwen-Image 2.1 (~26–32 s)   | all right, and staged                    | everyone faces the viewer; Elara added to 6; no staging                | 6 right; 9: the wrong person pointing; 12 close         |
+| Krea 2 (~32–45 s)           | all right, and the best staged           | 3, 3 and 4 people: each `1boy` / `1girl` read as another one           | Elara added to 6; 9 and 12 right                        |
 
-Both installed Image Models read prompts with an LLM text encoder, which understands sentences: tags
-can't say who does what to whom, and with two people that's what goes wrong. Booru tags are worst:
-their vocabulary is for anime checkpoints trained on Danbooru, none of which are installed. So the
-Tags style writes plain tags; it's there for speed, or for a future tag-trained Image Model.
+Prose was right on all six Image Models (ERNIE flattened one balcony); no tag set was right on
+any. Tags can't say who does what to whom, or where each person is, and with two people that's what
+goes wrong: swapped actions, one person's features on the other (a ponytail is only "hers" in a
+sentence), and everyone on one level facing the viewer. Booru tags are worst, adding people on four
+of the six: their vocabulary is for anime checkpoints trained on Danbooru, none of which are
+installed. So the Tags style writes plain tags; it's there for speed, or for a future tag-trained
+Image Model.
+
+**Best Image Models for tags:** FLUX.2 Klein 4B and Krea 2, the only two that got both two-person
+Frames (9 and 12) right from plain tags; ERNIE and Boogu got one, Qwen-Image and Z-Image neither
+quite. Frame 6 is left out, since its tags named both people. Tags are for speed, so FLUX.2 Klein
+(~5 s a picture) is the one to pair them with; Krea 2 stages them best, at 30–45 s. Three Frames,
+one seed and one Art Agent is enough to rank them roughly, not to split close neighbours.
 
 ## Image Model
 
