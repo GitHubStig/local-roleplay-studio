@@ -4,7 +4,7 @@ The Art Agent's picture call, system message, when Settings ask for tags instead
 engine puts the Look's identity sentences for the people shown before them and its style sentence
 after. The identities stay sentences: turned into tags, they lost detail or went missing.
 
-Measured 2026-09-29 (docs/models.md): prose beat tags on all six installed Image Models,
+Measured 2026-09-29 (docs/models.md): prose beat tags on all seven installed Image Models,
 since tags can't say who does what to whom. These are plain descriptive tags, which did better
 than Danbooru-style ones (1girl, from below, …).
 

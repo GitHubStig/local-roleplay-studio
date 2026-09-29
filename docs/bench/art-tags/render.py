@@ -19,6 +19,7 @@ SEED, SIZE = 7, 512
 # As in server/imageModels.ts: id → the mflux command, its model arguments, and default steps.
 MODELS = {
     'flux2-klein-4b': ('mflux-generate-flux2', ['--model', 'flux2-klein-4b'], 4),
+    'flux2-klein-9b': ('mflux-generate-flux2', ['--model', 'flux2-klein-9b'], 4),
     'z-image-turbo': ('mflux-generate-z-image-turbo',
                       ['--model', 'filipstrand/Z-Image-Turbo-mflux-4bit', '--base-model', 'z-image-turbo'], 9),
     'krea-2': ('mflux-generate-krea2', ['--model', 'krea-2'], 8),

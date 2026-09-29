@@ -23,6 +23,13 @@ export const IMAGE_MODELS: readonly ImageModel[] = [
     defaultSteps: 4,
   },
   {
+    id: 'flux2-klein-9b',
+    label: 'FLUX.2 Klein 9B',
+    command: 'mflux-generate-flux2',
+    model: 'flux2-klein-9b',
+    defaultSteps: 4,
+  },
+  {
     id: 'z-image-turbo',
     label: 'Z-Image Turbo (4-bit)',
     command: 'mflux-generate-z-image-turbo',

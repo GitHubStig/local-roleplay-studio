@@ -151,7 +151,7 @@ the answers come last and the sentences are trimmed in code (`trimFields`).
 Settings → Art Agent style can have the Art Agent write each aspect as short comma-separated tags
 instead of a sentence (`prompts/roleplay/art-frame-tags.md`). The identities stay the Look's
 sentences; only the seven aspects become tags, and clothing tags still name each person, so the
-Limits' clothing check works the same. **Prose stays the default: it won on all six installed
+Limits' clothing check works the same. **Prose stays the default: it won on all seven installed
 Image Models.** Measured on three Frames of the Kael tavern Roleplay (6: Kael alone; 9 and 12: both), each Art Agent writing prose, Danbooru-style tags
 (`1boy, 1girl, from below, …`) and plain descriptive tags
 (`Kael pointing at the floor, Elara wool robe, …`), Thinking off.
@@ -183,23 +183,24 @@ miss above), so a second person there is the prompt's fault, not the Image Model
 | Image Model                 | Prose                                    | Booru tags                                                             | Plain tags                                              |
 | --------------------------- | ---------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------- |
 | FLUX.2 Klein 4B (~5 s)      | all right                                | 9: who does what swapped; 12: three people (a second `1girl`)          | 6: wrong identity; 9 and 12 right                       |
+| FLUX.2 Klein 9B (~8 s)      | all right, and staged                    | 6: Kael with Elara's ponytail; 9: an extra child; 12: two Kaels        | Elara added to 6; 9: pointing across, not up; 12 right  |
 | Boogu Image Turbo (~11 s)   | all right, and staged                    | 6: Kael with Elara's ponytail; 9: no staging; 12: Kael holds the knife | 6: the same ponytail; 9: on one level; 12 right         |
 | Z-Image Turbo 4-bit (~12 s) | all right, and staged                    | Elara added to 6; 9: she points, no balcony; 12: two Kaels             | 6 right; 9: on one level; 12 close                      |
 | ERNIE-Image Turbo (~19 s)   | 6 and 12 right; 9 right but on one level | 6 right; 9 and 12: an extra person                                     | 6: Kael with Elara's ponytail; 9: no pointing; 12 right |
 | Qwen-Image 2.1 (~26–32 s)   | all right, and staged                    | everyone faces the viewer; Elara added to 6; no staging                | 6 right; 9: the wrong person pointing; 12 close         |
 | Krea 2 (~32–45 s)           | all right, and the best staged           | 3, 3 and 4 people: each `1boy` / `1girl` read as another one           | Elara added to 6; 9 and 12 right                        |
 
-Prose was right on all six Image Models (ERNIE flattened one balcony); no tag set was right on
+Prose was right on all seven Image Models (ERNIE flattened one balcony); no tag set was right on
 any. Tags can't say who does what to whom, or where each person is, and with two people that's what
 goes wrong: swapped actions, one person's features on the other (a ponytail is only "hers" in a
-sentence), and everyone on one level facing the viewer. Booru tags are worst, adding people on four
-of the six: their vocabulary is for anime checkpoints trained on Danbooru, none of which are
+sentence), and everyone on one level facing the viewer. Booru tags are worst, adding people on five
+of the seven: their vocabulary is for anime checkpoints trained on Danbooru, none of which are
 installed. So the Tags style writes plain tags; it's there for speed, or for a future tag-trained
 Image Model.
 
 **Best Image Models for tags:** FLUX.2 Klein 4B and Krea 2, the only two that got both two-person
-Frames (9 and 12) right from plain tags; ERNIE and Boogu got one, Qwen-Image and Z-Image neither
-quite. Frame 6 is left out, since its tags named both people. Tags are for speed, so FLUX.2 Klein
+Frames (9 and 12) right from plain tags; ERNIE, Boogu and Klein 9B got one, Qwen-Image and Z-Image neither
+quite. Frame 6 is left out, since its tags named both people. Tags are for speed, so FLUX.2 Klein 4B
 (~5 s a picture) is the one to pair them with; Krea 2 stages them best, at 30–45 s. Three Frames,
 one seed and one Art Agent is enough to rank them roughly, not to split close neighbours.
 
@@ -213,6 +214,7 @@ new Image Model on the same prompts (and when to write a fresh set instead).
 | Model | Time per image | Notes |
 |---|---|---|
 | **FLUX.2 Klein 4B** | 832×1216: ~10–13 s · 512×768: ~5 s · 512×512: ~4 s | Follows the subject description (skin, hair) and keeps her consistent across Frames with a fixed seed. Peak memory ~17.6 GB at 832×1216, ~10.5 GB at 512 px. |
+| FLUX.2 Klein 9B | 832×1216: ~22 s · 512×768: ~10 s · 512×512: ~8 s (4 steps) | Stages two people a little better than 4B from prose (someone up on a balcony stays up there); no better from tags. Peak memory ~28 GB at 832×1216, ~21 GB at 512 px. Not yet checked for keeping a subject consistent across Frames. |
 | Z-Image Turbo (4-bit) | 832×1216: ~42 s (9 steps) | Ignored the subject's described skin tone and hair. |
 | Krea 2 (Turbo) | 512×512: ~32 s (8 steps) | Peak memory ~39 GB. |
 | ERNIE-Image Turbo | 512×512: ~18 s (8 steps) | Peak memory ~25 GB. |
@@ -221,8 +223,8 @@ new Image Model on the same prompts (and when to write a fresh set instead).
 
 Timings for the last four are one test image each (2026-09-25, 48 GB Mac, no quantization,
 including model loading), not a comparison of how well they follow the prompt or keep a
-subject consistent. FLUX.2 Klein 9B is built into mflux too, but isn't offered until its
-weights are downloaded.
+subject consistent. FLUX.2 Klein 9B (added 2026-09-29) is about twice as slow as 4B and needs twice
+the memory, which next to gemma4 on a 48 GB Mac is tight; 4B stays the default.
 
 ### Upscaler
 

@@ -35,6 +35,7 @@ The vocabulary (Scenario, Session, Image Prompt, Frame, Action, …) is defined 
   | Image Model | Download once with |
   |---|---|
   | FLUX.2 Klein 4B (default, ~13 s per image) | `mflux-generate-flux2 --model flux2-klein-4b --prompt test --steps 4 --output /tmp/x.png` |
+  | FLUX.2 Klein 9B (~8 s at 512 px, ~22 s at 832×1216) | `mflux-generate-flux2 --model flux2-klein-9b --prompt test --steps 4 --output /tmp/x.png` |
   | Z-Image Turbo, 4-bit (~42 s per image) | `mflux-generate-z-image-turbo --model filipstrand/Z-Image-Turbo-mflux-4bit --base-model z-image-turbo --prompt test --output /tmp/x.png` |
   | Krea 2 Turbo (~32 s at 512 px) | `mflux-generate-krea2 --model krea-2 --prompt test --output /tmp/x.png` |
   | ERNIE-Image Turbo (~18 s at 512 px) | `mflux-generate-ernie-image-turbo --model ernie-image-turbo --prompt test --output /tmp/x.png` |
