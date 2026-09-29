@@ -1,0 +1,65 @@
+[
+ {
+  "style": "prose",
+  "index": 6,
+  "seconds": 30.2,
+  "shown": "character",
+  "prompt": "adult, Kael, a 42-year-old man with a lean, rigid build, weathered tanned skin marked by old scars, short unkempt brown hair, and a scarred, angular face with tired, piercing eyes. Kael stands with his back to the staircase, facing a rain-streaked window with his hand raising a lit pipe to his lips. Kael has his eyes closed and a tight, clenched jaw. A third-person medium shot from a side angle, focusing on Kael against the window. Kael wears a weathered brown leather coat over a coarse linen shirt and dark trousers. A dim, gritty tavern interior with a grimy glass window and a wooden floor. Chiaroscuro lighting with deep shadows and a warm, flickering amber glow from an unseen oil lamp. A moody palette of deep browns, charcoal grays, and rich amber highlights. A moody, cinematic oil painting with heavy, visible brushstrokes, utilizing a chiaroscuro lighting scheme with deep shadows and warm, flickering amber highlights to evoke a gritty, 18th-century atmospheric realism."
+ },
+ {
+  "style": "prose",
+  "index": 9,
+  "seconds": 16.6,
+  "shown": "both",
+  "prompt": "adult, Kael, a 42-year-old man with a lean, rigid build, weathered tanned skin marked by old scars, short unkempt brown hair, and a scarred, angular face with tired, piercing eyes. Elara Vance, a 20-year-old woman with a slender build, pale skin flushed by the cold, dark hair pulled back neatly, and a face with sharp, intelligent features and focused, calculating eyes. Kael stands at the base of the wooden stairs, pointing a finger upward toward Elara, who leans over the balcony railing above him. Kael stares up with hard, piercing eyes and a tight jaw, while Elara looks down at him with a calculating, focused gaze. A low-angle third-person shot looking up from the floor of the tavern toward the balcony. Kael wears a heavy leather coat over dark trousers, and Elara is wrapped in a white towel covering her chest, with a silver locket hanging around her neck. A gritty 18th-century tavern with a warped wooden bar, a narrow creaking staircase, and a towel lying on the floorboards. Chiaroscuro lighting with a flickering amber oil lamp creating deep shadows and bright highlights. A moody palette of deep browns, charcoal grays, and warm, glowing amber tones with heavy oil paint textures. A moody, cinematic oil painting with heavy, visible brushstrokes, utilizing a chiaroscuro lighting scheme with deep shadows and warm, flickering amber highlights to evoke a gritty, 18th-century atmospheric realism."
+ },
+ {
+  "style": "prose",
+  "index": 12,
+  "seconds": 13.5,
+  "shown": "both",
+  "prompt": "adult, Kael, a 42-year-old man with a lean, rigid build, weathered tanned skin marked by old scars, short unkempt brown hair, and a scarred, angular face with tired, piercing eyes. Elara Vance, a 20-year-old woman with a slender build, pale skin flushed by the cold, dark hair pulled back neatly, and a face with sharp, intelligent features and focused, calculating eyes. Elara Vance stands poised at the top of the stairs with knives held ready, while Kael crouches on the bottom step, bracing one hand against the wooden bar. Elara Vance looks down with a triumphant, mocking gaze, and Kael stares up at her with sharp, focused eyes and blood on his lips. A low-angle wide shot from the floor of the tavern, looking up the staircase toward the balcony. Elara Vance wears a silver locket and a white towel wrapped securely around her chest, while Kael wears a weathered leather coat and dark trousers. A gritty 18th-century tavern with a groaning wooden staircase, a warped bar counter, and a discarded towel on the floor. Chiaroscuro lighting with deep shadows and warm, flickering amber highlights from a nearby oil lamp. A moody palette of deep browns, ochre, and charcoal grays with high contrast grading. A moody, cinematic oil painting with heavy, visible brushstrokes, utilizing a chiaroscuro lighting scheme with deep shadows and warm, flickering amber highlights to evoke a gritty, 18th-century atmospheric realism."
+ },
+ {
+  "style": "booru",
+  "index": 6,
+  "seconds": 8.9,
+  "shown": "true/true",
+  "prompt": "adult, 1boy, middle-aged man, lean build, tanned skin, scarred skin, short hair, unkempt hair, brown hair, angular face, scar on face, tired eyes, piercing eyes, 1girl, young adult, slender build, pale skin, dark hair, ponytail, sharp features, calculating eyes, solo, standing, back turned, holding pipe, smoking, eyes closed, tight jaw, neutral expression, upper body, profile, medium shot, leather coat, gloves, indoors, tavern, window, rain, grimy glass, dim lighting, flickering light, shadow, moody lighting, muted colors, gray, brown, dark tones, oil painting (medium), traditional media, heavy brushstrokes, chiaroscuro, deep shadows, amber lighting, flickering light, cinematic lighting, gritty, 18th century"
+ },
+ {
+  "style": "booru",
+  "index": 9,
+  "seconds": 10.9,
+  "shown": "true/true",
+  "prompt": "adult, 1boy, middle-aged man, lean build, tanned skin, scarred skin, short hair, unkempt hair, brown hair, angular face, scar on face, tired eyes, piercing eyes, 1girl, young adult, slender build, pale skin, dark hair, ponytail, sharp features, calculating eyes, 1girl, 1boy, 2people, standing, looking up, looking down, pointing, from below, serious, hard gaze, seductive, smirk, wide shot, cowboy shot, 1girl, nude, silver locket, 1boy, leather coat, trousers, gloves, indoors, tavern, stairs, wooden railing, balcony, dim lighting, oil lamp, chiaroscuro, orange glow, dark brown, deep grey, orange, silver, oil painting (medium), traditional media, heavy brushstrokes, chiaroscuro, deep shadows, amber lighting, flickering light, cinematic lighting, gritty, 18th century"
+ },
+ {
+  "style": "booru",
+  "index": 12,
+  "seconds": 10.4,
+  "shown": "true/true",
+  "prompt": "adult, 1boy, middle-aged man, lean build, tanned skin, scarred skin, short hair, unkempt hair, brown hair, angular face, scar on face, tired eyes, piercing eyes, 1girl, young adult, slender build, pale skin, dark hair, ponytail, sharp features, calculating eyes, 1girl, 1boy, 2people, standing, holding knife, looking down, crouching, leaning on bar, spitting blood, from below, smirk, arrogant, sharp eyes, glared, pain, grimace, wide shot, low angle, dynamic angle, 1girl: nude, silver locket, 1boy: leather coat, brown pants, boots, indoors, tavern, wooden stairs, bar counter, rain, window, dim lighting, oil lamp, flickering light, chiaroscuro, dark brown, grey, muted colors, orange ember, oil painting (medium), traditional media, heavy brushstrokes, chiaroscuro, deep shadows, amber lighting, flickering light, cinematic lighting, gritty, 18th century"
+ },
+ {
+  "style": "plain",
+  "index": 6,
+  "seconds": 6.5,
+  "shown": "true/true",
+  "prompt": "adult, 42 years old, lean build, rigid posture, weathered tanned skin, old scars, short unkempt brown hair, angular face, facial scars, tired piercing eyes, 20 years old, slender build, pale skin, flushed cheeks, dark hair, neat ponytail, sharp features, calculating eyes, standing, closed eyes, medium shot, weathered leather coat, grimy window, low light, muted grays, cinematic oil painting, heavy brushstrokes, chiaroscuro lighting, deep shadows, flickering amber highlights, gritty, 18th century realism"
+ },
+ {
+  "style": "plain",
+  "index": 9,
+  "seconds": 11.5,
+  "shown": "true/true",
+  "prompt": "adult, 42 years old, lean build, rigid posture, weathered tanned skin, old scars, short unkempt brown hair, angular face, facial scars, tired piercing eyes, 20 years old, slender build, pale skin, flushed cheeks, dark hair, neat ponytail, sharp features, calculating eyes, kael standing on first step, looking up, pointing finger, elara standing on balcony, leaning over railing, kael hard gaze, stern, elara seductive, confident, challenging, low-angle shot, looking up, depth of field, kael weathered leather coat, elara nude, silver locket pendant, wooden staircase, balcony railing, dim tavern, towel on floor, flickering oil lamp, dramatic shadows, high contrast, dark browns, charcoal gray, shimmering silver, amber glow, cinematic oil painting, heavy brushstrokes, chiaroscuro lighting, deep shadows, flickering amber highlights, gritty, 18th century realism"
+ },
+ {
+  "style": "plain",
+  "index": 12,
+  "seconds": 11.1,
+  "shown": "true/true",
+  "prompt": "adult, 42 years old, lean build, rigid posture, weathered tanned skin, old scars, short unkempt brown hair, angular face, facial scars, tired piercing eyes, 20 years old, slender build, pale skin, flushed cheeks, dark hair, neat ponytail, sharp features, calculating eyes, Kael crouching on floor, bracing against wooden bar, Elara standing top of stairs, holding sharp knives, dynamic action shot, Kael spitting blood, sharp focused glare, Elara mocking smirk, triumphant look, low-angle shot, wide shot, dramatic perspective, Kael in weathered leather coat, Elara bare upper body, towel on floor, silver locket around neck, dark rustic tavern, narrow wooden staircase, worn floorboards, rainy window background, flickering oil lamp, dim moody atmosphere, high contrast shadows, muted browns, charcoal gray, silver metallic glint, deep crimson blood, cinematic oil painting, heavy brushstrokes, chiaroscuro lighting, deep shadows, flickering amber highlights, gritty, 18th century realism"
+ }
+]

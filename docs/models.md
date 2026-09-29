@@ -203,6 +203,9 @@ quite. Frame 6 is left out, since its tags named both people. Tags are for speed
 (~5 s a picture) is the one to pair them with; Krea 2 stages them best, at 30–45 s. Three Frames,
 one seed and one Art Agent is enough to rank them roughly, not to split close neighbours.
 
+The prompts, grids and render script are kept in [bench/art-tags/](bench/art-tags/), to compare a
+new Image Model on the same prompts (and when to write a fresh set instead).
+
 ## Image Model
 
 **Use FLUX.2 Klein 4B** (`flux2-klein-4b`, the default), 4 steps.
