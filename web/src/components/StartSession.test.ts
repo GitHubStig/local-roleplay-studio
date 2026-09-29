@@ -23,6 +23,7 @@ const settings: api.Settings = {
   upscaler: 'seedvr2-7b',
   limits: true,
   artModel: '',
+  artStyle: 'prose',
 }
 
 const options: api.SettingsOptions = {

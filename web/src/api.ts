@@ -21,6 +21,8 @@ export interface Settings {
   limits: boolean
   /** The model that pictures Roleplay Frames; '' for the Session's Text Model. Applies at once. */
   artModel: string
+  /** Whether the Art Agent writes prose (better) or tags. Applies at once. */
+  artStyle: 'prose' | 'tags'
 }
 
 export interface ImageModelOption {

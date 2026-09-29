@@ -14,6 +14,9 @@ import type { Cast, Reply, RoleplayLook, Shown } from './types.ts'
 import { parseFrameBody } from '../textModel.ts'
 import {
   artFrameSchema,
+  type ArtStyle,
+  artTagsSchema,
+  joinTags,
   parseRoleplayLook,
   parseShown,
   roleplayLookSchema,
@@ -47,6 +50,7 @@ export interface RoleplayModel {
     messages: ChatMessage[],
     signal: AbortSignal,
     onThinking?: (chunk: string) => void,
+    style?: ArtStyle,
   ): Promise<{ body: string; shown: Shown; clothing: string; thinking?: string }>
   /** The Character's next reply to the conversation so far (or the opening, to none). */
   reply(
@@ -123,11 +127,11 @@ export function ollamaRoleplayModel(
         return withThinking({ look: parseRoleplayLook(parseJson(content)) }, thinking)
       }),
 
-    pictureFrame: (messages, signal, onThinking) =>
+    pictureFrame: (messages, signal, onThinking, style = 'prose') =>
       within(signal, limit(), async (s) => {
         const { content, thinking } = await chat.stream({
           messages,
-          format: artFrameSchema,
+          format: style === 'tags' ? artTagsSchema : artFrameSchema,
           maxTokens: MAX_TOKENS.art,
           signal: s,
           onThinking,
@@ -135,7 +139,7 @@ export function ollamaRoleplayModel(
         const fields = trimFields(parseJson(content) as Record<string, unknown>)
         return withThinking(
           {
-            body: parseFrameBody(fields),
+            body: style === 'tags' ? joinTags(fields) : parseFrameBody(fields),
             shown: parseShown(fields),
             clothing: String(fields.clothing ?? ''),
           },

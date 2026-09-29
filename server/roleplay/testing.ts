@@ -45,7 +45,7 @@ export function scriptedRoleplayModel(
     /** Reported as the model's name; 'scripted' unless given. */
     name?: string
   },
-): RoleplayModel & { asked: ChatMessage[][]; art: ChatMessage[][] } {
+): RoleplayModel & { asked: ChatMessage[][]; art: ChatMessage[][]; styles: string[] } {
   const next = <T>(queue: (T | Error)[] | undefined, what: string): Promise<T> => {
     const item = queue?.shift()
     if (!item) return Promise.reject(new Error(`no scripted ${what} left`))
@@ -58,14 +58,21 @@ export function scriptedRoleplayModel(
       signal.throwIfAborted()
       return { cast: await next(script.casts, 'Cast') }
     },
-    /** The messages each Art Agent call was given. */
+    /** The messages each Art Agent call was given, and the style each picture was asked in. */
     art: [] as ChatMessage[][],
+    styles: [] as string[],
     async writeLook(messages: ChatMessage[], signal: AbortSignal) {
       model.art.push(messages)
       signal.throwIfAborted()
       return { look: await next(script.looks, 'Look') }
     },
-    async pictureFrame(messages: ChatMessage[], signal: AbortSignal) {
+    async pictureFrame(
+      messages: ChatMessage[],
+      signal: AbortSignal,
+      _onThinking?: unknown,
+      style?: string,
+    ) {
+      model.styles.push(style ?? 'prose')
       model.art.push(messages)
       signal.throwIfAborted()
       return {

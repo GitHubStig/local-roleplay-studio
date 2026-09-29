@@ -143,6 +143,17 @@ async function save() {
         </label>
 
         <label class="flex flex-col gap-1">
+          <span class="text-sm text-muted">Art Agent style</span>
+          <select v-model="form.artStyle" class="field" data-art-style>
+            <option value="prose">Prose (recommended)</option>
+            <option value="tags">Tags</option>
+          </select>
+          <span class="text-sm text-muted">
+            How pictures are written. Tags are about twice as fast, but mix up who does what.
+          </span>
+        </label>
+
+        <label class="flex flex-col gap-1">
           <span class="text-sm text-muted">Upscaler</span>
           <select v-model="form.upscaler" class="field" data-upscaler>
             <option v-for="u in options.upscalers" :key="u.id" :value="u.id">{{ u.label }}</option>

@@ -19,6 +19,7 @@ import { CastError, openingMessages, parseCast, roleplayMessages } from './promp
 import {
   artFrameMessages,
   artLookMessages,
+  type ArtStyle,
   isRoleplayLook,
   parseRoleplayLook,
   pictured,
@@ -50,6 +51,8 @@ export interface RoleplayDeps {
   textModel: TextModel
   /** The Art Agent's model when Settings name one; otherwise pictures use `roleplayModel`. */
   artModel?: RoleplayModel
+  /** Whether the Art Agent writes prose (the default) or tags. */
+  artStyle?: ArtStyle
   /** For rendering pictures, through the render queue every Session shares. */
   imageGenerator: ImageGenerator
   renderQueue?: RenderQueue
@@ -236,10 +239,11 @@ export async function pictureFrame(
   const start = performance.now()
   const look = current.look as RoleplayLook
   const { pictureThinking: _, ...previous } = current.frames[index]
-  const messages = await artFrameMessages(current, index)
+  const style = deps.artStyle ?? 'prose'
+  const messages = await artFrameMessages(current, index, style)
   const draw = async () => {
     const { body, shown, clothing, thinking } = await withRetry(
-      (onThinking) => art.pictureFrame(messages, signal, onThinking),
+      (onThinking) => art.pictureFrame(messages, signal, onThinking, style),
       signal,
       emit,
     )
@@ -262,11 +266,12 @@ export async function pictureFrame(
   const updated = await updateSession(deps.store, session.id, (latest) => {
     const now = latest.frames[index]
     if (!now) throw new GoneError(`Frame ${index} no longer exists`)
-    const { pictureThinking: _, ...kept } = now
+    const { pictureThinking: _, pictureStyle: __, ...kept } = now
     frame = {
       ...pictured(kept, look, cast, drawn.body!, drawn.shown, drawn.clothing),
       pictureTimings: { text: secondsSince(start) },
       pictureModel: art.name,
+      ...(style === 'tags' ? { pictureStyle: 'tags' as const } : {}),
       ...(thinking ? { pictureThinking: thinking } : {}),
     }
     const withLook: RoleplaySession = wroteLook

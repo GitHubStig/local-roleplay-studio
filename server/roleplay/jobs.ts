@@ -16,6 +16,7 @@ import {
   type RoleplayEvent,
 } from './engine.ts'
 import type { RoleplayModel } from './model.ts'
+import type { ArtStyle } from './art.ts'
 import type { RoleplaySession } from './types.ts'
 import { updateSession } from './update.ts'
 
@@ -43,6 +44,8 @@ export interface JobContext {
   upscaler(): Promise<Upscaler>
   /** The Art Agent's model chosen in Settings now, if one is; else pictures use the Text Model. */
   artModel(session: Session): Promise<RoleplayModel | undefined>
+  /** Whether the Art Agent writes prose or tags, as chosen in Settings now. */
+  artStyle(): Promise<ArtStyle>
 }
 
 export class RoleplayJobs {
@@ -164,7 +167,12 @@ export class RoleplayJobs {
       if (e.type === 'progress') job.progress = { step: e.step, total: e.total }
     }
     const artModel = job.kind === 'picture' ? await this.#ctx.artModel(session) : undefined
-    const withDeps = { ...this.#ctx.deps(session), ...(artModel ? { artModel } : {}) }
+    const artStyle = job.kind === 'picture' ? await this.#ctx.artStyle() : undefined
+    const withDeps = {
+      ...this.#ctx.deps(session),
+      ...(artModel ? { artModel } : {}),
+      ...(artStyle ? { artStyle } : {}),
+    }
     if (job.kind === 'picture') {
       const scenario = await this.#ctx.scenarioFor(session)
       if (scenario instanceof Response) throw new Error((await scenario.json()).error)

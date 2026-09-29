@@ -146,6 +146,46 @@ the reply, gemma4 wrote them and then only blank lines until its token cap, 6 ti
 "yes"/"no" words, 3 in 6); with them last, 0 in 6. A `maxLength` on each sentence did the same. So
 the answers come last and the sentences are trimmed in code (`trimFields`).
 
+### Tags instead of prose (2026-09-29)
+
+Settings → Art Agent style can have the Art Agent write each aspect as short comma-separated tags
+instead of a sentence (`prompts/roleplay/art-frame-tags.md`). The identities stay the Look's
+sentences; only the seven aspects become tags, and clothing tags still name each person, so the
+Limits' clothing check works the same. **Prose stays the default: it won on both installed Image
+Models.** Measured on three Frames of the Kael tavern Roleplay (6: Kael alone; 9 and 12: both), each Art Agent writing prose, Danbooru-style tags
+(`1boy, 1girl, from below, …`) and plain descriptive tags
+(`Kael pointing at the floor, Elara wool robe, …`), Thinking off.
+
+Who's in the picture, right of three:
+
+|       | gemma4 31B | heretic 26B-A4B | Qwen3.8 27B |
+| ----- | ---------- | --------------- | ----------- |
+| Prose | 3          | 3               | 3           |
+| Booru | 2          | 3               | 1           |
+| Plain | 2          | 2               | 2           |
+
+- **Tags are about twice as fast to write**, and half as long: 450–950 characters a prompt against
+  1,000–1,950 for prose. Prose per picture: gemma4 14–30 s, heretic 4–8 s, Qwen3.8 19–25 s.
+- **Tags follow the story more literally, and ignore "dress them" far more.** gemma4's tags, in both styles, kept clothing the Limits would block, and so did the heretic's booru tags. (Its prose also did once, which the Limits now catch.)
+- **Qwen3.8 as a tag writer:** the least reliable. Booru tags got who's shown right once in three,
+  and its plain tags were the shortest (about 200 characters), dropping names so the aspects no
+  longer said who was who. Its prose was right on all three.
+- The two tag schemas were first written as arrays of strings; gemma4 then wrote only blank lines
+  until its token cap. One comma-separated string per aspect, with the yes/no answers last (as for
+  prose), finished every time in a retest.
+
+Rendered (gemma4's three prompt sets, 512×512, seed 7, clothing the Limits would block changed by hand):
+
+| Image Model               | Prose                 | Booru tags                                                    | Plain tags                                      |
+| ------------------------- | --------------------- | ------------------------------------------------------------- | ----------------------------------------------- |
+| FLUX.2 Klein 4B (~5 s)    | all right             | 9: who does what swapped; 12: three people (a second `1girl`) | 6: wrong identity; 9 and 12 right               |
+| Qwen-Image 2.1 (~26–32 s) | all right, and staged | everyone faces the viewer; Elara added to 6; no staging       | 6 right; 9: the wrong person pointing; 12 close |
+
+Both installed Image Models read prompts with an LLM text encoder, which understands sentences: tags
+can't say who does what to whom, and with two people that's what goes wrong. Booru tags are worst:
+their vocabulary is for anime checkpoints trained on Danbooru, none of which are installed. So the
+Tags style writes plain tags; it's there for speed, or for a future tag-trained Image Model.
+
 ## Image Model
 
 **Use FLUX.2 Klein 4B** (`flux2-klein-4b`, the default), 4 steps.

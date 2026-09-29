@@ -22,6 +22,7 @@ const settings: api.Settings = {
   upscaler: 'seedvr2-7b',
   limits: true,
   artModel: '',
+  artStyle: 'prose',
 }
 
 const options: api.SettingsOptions = {
@@ -75,6 +76,15 @@ describe('SettingsView', () => {
     await wrapper.find('form').trigger('submit')
     await flushPromises()
     expect(api.saveSettings).toHaveBeenCalledWith({ ...settings, artModel: 'gemma4:31b-mlx' })
+  })
+
+  it('has the Art Agent write tags instead of prose', async () => {
+    const wrapper = mount(SettingsView)
+    await flushPromises()
+    await wrapper.find('[data-art-style]').setValue('tags')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+    expect(api.saveSettings).toHaveBeenCalledWith({ ...settings, artStyle: 'tags' })
   })
 
   it('turns the Limits off', async () => {

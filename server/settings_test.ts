@@ -85,3 +85,12 @@ Deno.test('validateSettings leaves the Art Agent on the Text Model unless one is
   assertEquals(set.ok && set.settings.artModel, 'gemma4:31b-mlx')
   assertEquals(validateSettings({ ...DEFAULT_SETTINGS, artModel: 3 }).ok, false)
 })
+
+Deno.test('validateSettings has the Art Agent write prose unless tags are chosen', () => {
+  const { artStyle: _, ...without } = DEFAULT_SETTINGS
+  const result = validateSettings(without)
+  assertEquals(result.ok && result.settings.artStyle, 'prose')
+  const tags = validateSettings({ ...DEFAULT_SETTINGS, artStyle: 'tags' })
+  assertEquals(tags.ok && tags.settings.artStyle, 'tags')
+  assertEquals(validateSettings({ ...DEFAULT_SETTINGS, artStyle: 'booru' }).ok, false)
+})

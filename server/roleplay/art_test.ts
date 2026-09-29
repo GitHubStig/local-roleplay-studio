@@ -3,6 +3,7 @@ import { setLimitsEnabled } from '../limits.ts'
 import { DEFAULT_SETTINGS } from '../settings.ts'
 import {
   artFrameMessages,
+  joinTags,
   parseRoleplayLook,
   parseShown,
   pictured,
@@ -156,4 +157,20 @@ Deno.test('A picture of no one has no identity sentences', () => {
   assertEquals(empty.prompt, 'The door stands closed. An oil painting.')
   assertEquals(empty.promptText, 'adult, The door stands closed. An oil painting.')
   assertEquals(empty.blocked, undefined)
+})
+
+Deno.test('The tags style asks for tags, and joins them in aspect order', async () => {
+  assertStringIncludes((await artFrameMessages(session, 1, 'tags'))[0].content, 'short tags')
+  assertEquals((await artFrameMessages(session, 1))[0].content.includes('short tags'), false)
+  assertEquals(
+    joinTags({
+      color: 'grey, silver',
+      pose: 'Mira steadying Sam,',
+      camera: ' ',
+      clothing: 'Mira oilskin coat, Sam wool jumper.',
+      persona_shown: true,
+    }),
+    'Mira steadying Sam, Mira oilskin coat, Sam wool jumper, grey, silver',
+  )
+  assertThrows(() => joinTags({ pose: '', character_shown: true }), Error, 'no tags')
 })

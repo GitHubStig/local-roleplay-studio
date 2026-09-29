@@ -167,7 +167,9 @@ up to the Frame (each Message and what the Character did and said; thoughts left
 picture can't show them), says whether each person is in the picture (someone upstairs or gone
 isn't; if neither is, the picture is of the place alone, with no identity sentences and nothing
 said about people or their absence), and writes the Frame's seven sentences, each capped at 280 characters, as a third-person
-view of that moment. The Image Prompt is the identity sentences of the people shown, those
+view of that moment (or, with Settings → Art Agent style set to tags, a few short tags per aspect,
+recorded as `pictureStyle` and shown as "as tags"; prose is the default, as it did better, see
+[models.md](models.md)). The Image Prompt is the identity sentences of the people shown, those
 sentences, then the style; a picture that crosses a Limit is written once more, told which; it's checked against the Limits in
 force and shown under the Reply (marked if it crosses one). While a Frame is pictured, the light
 sweeps round that Reply, which says "Picturing this moment…" (or "Writing the Look, then
@@ -307,9 +309,10 @@ in [open-threads.md](open-threads.md).
   vision-language models), Thinking (on or off; only for models that support it), Image Model, steps (reset to the model's default when the Image Model
   changes), quantization, size (six presets from 512×512 to 1216×832), seed (random per
   Session, or fixed), Upscaler (SeedVR2 7B or 3B), Art Agent model (the model that pictures
-  Roleplay Frames, with Thinking off, or "Same as the Text Model") and Limits (on by default; off
-  leaves only "everyone depicted is an adult"). Settings are copied into a Session when it starts,
-  except the Upscaler, Art Agent model and Limits, which apply at once.
+  Roleplay Frames, with Thinking off, or "Same as the Text Model"), Art Agent style (prose,
+  recommended, or tags) and Limits (on by default; off leaves only "everyone depicted is an adult").
+  Settings are copied into a Session when it starts, except the Upscaler, Art Agent model and style,
+  and Limits, which apply at once.
 - **Theme:** Light (a parchment tint), Dark or System, remembered per browser. It's a display
   preference, not a Setting.
 

@@ -1,8 +1,8 @@
 import {
   type EndEvent,
   type Look,
-  type ProgressEvent,
   post,
+  type ProgressEvent,
   put,
   request,
   type SessionBase,
@@ -82,6 +82,8 @@ export interface RoleplayFrame {
   pictureTimings?: { text: number }
   /** The model that wrote the latest picture. */
   pictureModel?: string
+  /** Written as tags (Settings → Art Agent style); absent for prose. */
+  pictureStyle?: 'tags'
   pictureThinking?: string
   /** The rendered picture; null until rendered. */
   image: string | null

@@ -1,5 +1,6 @@
 import { fromFileUrl } from '@std/path'
 import { findImageModel, IMAGE_MODELS, type Upscaler, UPSCALERS } from './imageModels.ts'
+import { ART_STYLES, type ArtStyle } from './roleplay/art.ts'
 
 export interface SizePreset {
   id: string
@@ -42,6 +43,8 @@ export interface Settings {
    * Read when a picture is made, so it applies to running Sessions too.
    */
   artModel: string
+  /** Whether the Art Agent writes prose (the default, and better) or tags. Applies at once. */
+  artStyle: ArtStyle
   /**
    * The Limits (ADR 0002); on by default. Off, only "everyone depicted is an adult" is enforced.
    * Read on every request, so it applies mid-Session too.
@@ -60,6 +63,7 @@ export const DEFAULT_SETTINGS: Settings = {
   seed: 42,
   upscaler: UPSCALERS[0].id,
   artModel: '',
+  artStyle: 'prose',
   limits: true,
 }
 
@@ -102,6 +106,9 @@ export function validateSettings(input: unknown): ValidationResult {
   if (s.limits !== undefined && typeof s.limits !== 'boolean') {
     issues.push('limits must be true or false')
   }
+  if (s.artStyle !== undefined && !ART_STYLES.includes(s.artStyle as ArtStyle)) {
+    issues.push(`artStyle must be one of: ${ART_STYLES.join(', ')}`)
+  }
   if (s.artModel !== undefined && typeof s.artModel !== 'string') {
     issues.push('artModel must be a string')
   }
@@ -123,6 +130,7 @@ export function validateSettings(input: unknown): ValidationResult {
       seed: s.seed as number,
       upscaler: (s.upscaler as Upscaler | undefined) ?? DEFAULT_SETTINGS.upscaler,
       artModel: (s.artModel as string | undefined) ?? '',
+      artStyle: (s.artStyle as ArtStyle | undefined) ?? 'prose',
       limits: (s.limits as boolean | undefined) ?? true,
     },
   }

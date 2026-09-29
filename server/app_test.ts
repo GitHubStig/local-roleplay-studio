@@ -910,6 +910,27 @@ Deno.test('Undoing an exchange cancels its jobs; deleting the Roleplay cancels t
     assertEquals(await settled(call), [])
   }))
 
+Deno.test('Pictures are written as tags when Settings ask, recorded on the Frame', () =>
+  withTempDir(async (root) => {
+    const artist = scriptedRoleplayModel({
+      name: 'artist',
+      looks: [{ character: 'Mira Vance, 34.', persona: 'Sam Reyes, 25.', style: 'Ink.' }],
+      bodies: [artBody, artBody],
+    })
+    const { call, settings } = await roleplayWithArt(root, [], { roleplayModels: { artist } })
+    settings.current = { ...settings.current, artModel: 'artist', artStyle: 'tags' }
+    await call('POST', '/api/sessions/s1/roleplay/jobs', { kind: 'picture', frameIndex: 0 })
+    assertEquals(await settled(call), [])
+    let session = await (await call('GET', '/api/sessions/s1')).json()
+    assertEquals(session.frames[0].pictureStyle, 'tags')
+    settings.current = { ...settings.current, artStyle: 'prose' }
+    await call('POST', '/api/sessions/s1/roleplay/jobs', { kind: 'picture', frameIndex: 0 })
+    assertEquals(await settled(call), [])
+    session = await (await call('GET', '/api/sessions/s1')).json()
+    assertEquals(session.frames[0].pictureStyle, undefined)
+    assertEquals(artist.styles, ['tags', 'prose'])
+  }))
+
 Deno.test('Pictures use the Art Agent model set in Settings, recorded on the Frame', () =>
   withTempDir(async (root) => {
     const artist = scriptedRoleplayModel({

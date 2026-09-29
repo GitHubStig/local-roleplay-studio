@@ -309,6 +309,8 @@ describe('RoleplayView', () => {
         promptText: 'adult, Elena, 38. She waits. Oil painting.',
         shown: 'character',
         pictureTimings: { text: 24.6 },
+        pictureModel: 'gemma4',
+        pictureStyle: 'tags',
       }]),
       look,
     })
@@ -317,7 +319,9 @@ describe('RoleplayView', () => {
     expect(wrapper.find('[data-reply]').classes()).not.toContain('render-sweep')
     expect(wrapper.find('[data-image-prompt]').text()).toContain('adult, Elena, 38. She waits.')
     expect(wrapper.find('[data-shown]').text()).toBe('Shows Elena')
-    expect(wrapper.find('[data-picture-timings]').text()).toBe('Pictured in 24.6 s')
+    expect(wrapper.find('[data-picture-timings]').text()).toBe(
+      'Pictured in 24.6 s by gemma4, as tags',
+    )
     expect(wrapper.find('[data-picture-button]').text()).toBe('Picture again')
 
     vi.mocked(roleplay.saveLook).mockResolvedValue({ ...roleplaySession(), look })
