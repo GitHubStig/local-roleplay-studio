@@ -42,6 +42,8 @@ export function scriptedRoleplayModel(
     replies?: (Reply | Error)[]
     looks?: (RoleplayLook | Error)[]
     bodies?: (string | Error)[]
+    /** Reported as the model's name; 'scripted' unless given. */
+    name?: string
   },
 ): RoleplayModel & { asked: ChatMessage[][]; art: ChatMessage[][] } {
   const next = <T>(queue: (T | Error)[] | undefined, what: string): Promise<T> => {
@@ -50,6 +52,7 @@ export function scriptedRoleplayModel(
     return item instanceof Error ? Promise.reject(item) : Promise.resolve(item)
   }
   const model = {
+    name: script.name ?? 'scripted',
     asked: [] as ChatMessage[][],
     async writeCast(_scenario: unknown, signal: AbortSignal) {
       signal.throwIfAborted()

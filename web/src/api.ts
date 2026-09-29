@@ -19,6 +19,8 @@ export interface Settings {
   upscaler: string
   /** The Limits; off, only "everyone depicted is an adult" is enforced. Applies at once. */
   limits: boolean
+  /** The model that pictures Roleplay Frames; '' for the Session's Text Model. Applies at once. */
+  artModel: string
 }
 
 export interface ImageModelOption {

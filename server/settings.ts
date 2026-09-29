@@ -38,6 +38,11 @@ export interface Settings {
   /** Which SeedVR2 model Upscale uses; read when upscaling, so it applies mid-Session too. */
   upscaler: Upscaler
   /**
+   * The Ollama model that pictures Roleplay Frames (the Art Agent); '' for the Session's Text Model.
+   * Read when a picture is made, so it applies to running Sessions too.
+   */
+  artModel: string
+  /**
    * The Limits (ADR 0002); on by default. Off, only "everyone depicted is an adult" is enforced.
    * Read on every request, so it applies mid-Session too.
    */
@@ -54,6 +59,7 @@ export const DEFAULT_SETTINGS: Settings = {
   seedMode: 'random',
   seed: 42,
   upscaler: UPSCALERS[0].id,
+  artModel: '',
   limits: true,
 }
 
@@ -96,6 +102,9 @@ export function validateSettings(input: unknown): ValidationResult {
   if (s.limits !== undefined && typeof s.limits !== 'boolean') {
     issues.push('limits must be true or false')
   }
+  if (s.artModel !== undefined && typeof s.artModel !== 'string') {
+    issues.push('artModel must be a string')
+  }
   if (s.upscaler !== undefined && !UPSCALERS.some((u) => u.id === s.upscaler)) {
     issues.push(`upscaler must be one of: ${UPSCALERS.map((u) => u.id).join(', ')}`)
   }
@@ -113,6 +122,7 @@ export function validateSettings(input: unknown): ValidationResult {
       seedMode: s.seedMode as SeedMode,
       seed: s.seed as number,
       upscaler: (s.upscaler as Upscaler | undefined) ?? DEFAULT_SETTINGS.upscaler,
+      artModel: (s.artModel as string | undefined) ?? '',
       limits: (s.limits as boolean | undefined) ?? true,
     },
   }

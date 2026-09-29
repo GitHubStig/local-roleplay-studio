@@ -158,7 +158,8 @@ of them. On the screen, each Frame lists its jobs with Cancel (the running one s
 and a **Queue** tab beside **Look & Cast** lists them all; clicking one scrolls smoothly to its
 Frame and highlights it.
 
-**Picturing a Frame** (the Art Agent): **Picture this** under a Reply writes
+**Picturing a Frame** (the Art Agent; by the Session's Text Model, or the Art Agent model set in
+Settings, recorded on each picture as `pictureModel` and on the Look as `lookModel`): **Picture this** under a Reply writes
 that Frame's Image Prompt, in the same shape as a Storyboard Frame's. The first time, a call
 writes the Roleplay's **Look** from the Cast and Brief: an identity sentence for the Character,
 one for the Persona, and the art style, fitted to the story's period. Then a call reads the story
@@ -305,9 +306,10 @@ in [open-threads.md](open-threads.md).
 - **Settings** (`/settings`): Text Model (installed Ollama models, minus OCR and dedicated
   vision-language models), Thinking (on or off; only for models that support it), Image Model, steps (reset to the model's default when the Image Model
   changes), quantization, size (six presets from 512×512 to 1216×832), seed (random per
-  Session, or fixed), Upscaler (SeedVR2 7B or 3B) and Limits (on by default; off leaves only
-  "everyone depicted is an adult"). Settings are copied into a Session when it starts, except the
-  Upscaler and Limits, which apply at once.
+  Session, or fixed), Upscaler (SeedVR2 7B or 3B), Art Agent model (the model that pictures
+  Roleplay Frames, with Thinking off, or "Same as the Text Model") and Limits (on by default; off
+  leaves only "everyone depicted is an adult"). Settings are copied into a Session when it starts,
+  except the Upscaler, Art Agent model and Limits, which apply at once.
 - **Theme:** Light (a parchment tint), Dark or System, remembered per browser. It's a display
   preference, not a Setting.
 

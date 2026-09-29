@@ -48,6 +48,8 @@ export interface RoleplayDeps {
   roleplayModel: RoleplayModel
   /** For the real-person question the Limits ask (ADR 0002). */
   textModel: TextModel
+  /** The Art Agent's model when Settings name one; otherwise pictures use `roleplayModel`. */
+  artModel?: RoleplayModel
   /** For rendering pictures, through the render queue every Session shares. */
   imageGenerator: ImageGenerator
   renderQueue?: RenderQueue
@@ -207,6 +209,7 @@ export async function pictureFrame(
 ): Promise<RoleplaySession> {
   if (!session.cast || !session.frames[index]) throw new RoleplayError(`There is no Frame ${index}`)
   const cast = session.cast
+  const art = deps.artModel ?? deps.roleplayModel
   emit({ type: 'phase', phase: 'text' })
   let current = session
   // No Look yet, or one from before pictures chose who is shown: write one.
@@ -214,7 +217,7 @@ export async function pictureFrame(
     const start = performance.now()
     const messages = await artLookMessages(current, scenario)
     const { look, thinking } = await withRetry(
-      (onThinking) => deps.roleplayModel.writeLook(messages, signal, onThinking),
+      (onThinking) => art.writeLook(messages, signal, onThinking),
       signal,
       emit,
     )
@@ -223,6 +226,7 @@ export async function pictureFrame(
       ...rest,
       look,
       lookTimings: { text: secondsSince(start) },
+      lookModel: art.name,
       ...(thinking ? { lookThinking: thinking } : {}),
       // Frames pictured with an older Look take the new one.
       frames: current.frames.map((f) => (f.body ? pictured(f, look, cast, f.body, f.shown) : f)),
@@ -235,7 +239,7 @@ export async function pictureFrame(
   const messages = await artFrameMessages(current, index)
   const draw = async () => {
     const { body, shown, clothing, thinking } = await withRetry(
-      (onThinking) => deps.roleplayModel.pictureFrame(messages, signal, onThinking),
+      (onThinking) => art.pictureFrame(messages, signal, onThinking),
       signal,
       emit,
     )
@@ -262,6 +266,7 @@ export async function pictureFrame(
     frame = {
       ...pictured(kept, look, cast, drawn.body!, drawn.shown, drawn.clothing),
       pictureTimings: { text: secondsSince(start) },
+      pictureModel: art.name,
       ...(thinking ? { pictureThinking: thinking } : {}),
     }
     const withLook: RoleplaySession = wroteLook
@@ -269,6 +274,7 @@ export async function pictureFrame(
         ...latest,
         look,
         lookTimings: current.lookTimings,
+        lookModel: current.lookModel,
         ...(current.lookThinking ? { lookThinking: current.lookThinking } : {}),
         // Frames pictured with an older Look take the new one.
         frames: latest.frames.map((f) => (f.body ? pictured(f, look, cast, f.body, f.shown) : f)),

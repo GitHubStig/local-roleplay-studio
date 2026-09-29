@@ -76,3 +76,12 @@ Deno.test('validateSettings keeps the Limits on unless turned off', () => {
   assertEquals(off.ok && off.settings.limits, false)
   assertEquals(validateSettings({ ...DEFAULT_SETTINGS, limits: 'no' }).ok, false)
 })
+
+Deno.test('validateSettings leaves the Art Agent on the Text Model unless one is set', () => {
+  const { artModel: _, ...without } = DEFAULT_SETTINGS
+  const result = validateSettings(without)
+  assertEquals(result.ok && result.settings.artModel, '')
+  const set = validateSettings({ ...DEFAULT_SETTINGS, artModel: 'gemma4:31b-mlx' })
+  assertEquals(set.ok && set.settings.artModel, 'gemma4:31b-mlx')
+  assertEquals(validateSettings({ ...DEFAULT_SETTINGS, artModel: 3 }).ok, false)
+})

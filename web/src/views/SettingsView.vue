@@ -131,6 +131,18 @@ async function save() {
         </label>
 
         <label class="flex flex-col gap-1">
+          <span class="text-sm text-muted">Art Agent model</span>
+          <select v-model="form.artModel" class="field" data-art-model>
+            <option value="">Same as the Text Model</option>
+            <option v-for="m in textModelChoices" :key="m" :value="m">{{ m }}</option>
+          </select>
+          <span class="text-sm text-muted">
+            Pictures Roleplay Frames (Thinking off); applies to the next picture, in running
+            Sessions too.
+          </span>
+        </label>
+
+        <label class="flex flex-col gap-1">
           <span class="text-sm text-muted">Upscaler</span>
           <select v-model="form.upscaler" class="field" data-upscaler>
             <option v-for="u in options.upscalers" :key="u.id" :value="u.id">{{ u.label }}</option>

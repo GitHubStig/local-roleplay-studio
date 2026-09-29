@@ -625,7 +625,9 @@ async function saveCastDraft(): Promise<boolean> {
                       <p class="mt-1" data-shown>Shows {{ shownNames(frame.shown) }}</p>
                       <p class="mt-1 leading-relaxed">{{ frame.promptText }}</p>
                       <p v-if="frame.pictureTimings" class="mt-1" data-picture-timings>
-                        Pictured in {{ frame.pictureTimings.text.toFixed(1) }} s
+                        Pictured in {{ frame.pictureTimings.text.toFixed(1) }} s<template
+                          v-if="frame.pictureModel"
+                        > by {{ frame.pictureModel }}</template>
                       </p>
                       <details v-if="frame.pictureThinking" class="mt-1">
                         <summary class="cursor-pointer select-none">Reasoning</summary>

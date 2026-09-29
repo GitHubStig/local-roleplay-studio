@@ -28,6 +28,8 @@ export interface ReplyHandlers {
 
 /** The Text Model's two jobs in a Roleplay. */
 export interface RoleplayModel {
+  /** The Ollama model's name, recorded with what it writes. */
+  readonly name: string
   /** Writes the Cast from a Brief (or a Scenario). */
   writeCast(
     scenario: Scenario,
@@ -96,6 +98,7 @@ export function ollamaRoleplayModel(
     thinking ? { ...value, thinking } : value
 
   return {
+    name: model,
     writeCast: (scenario, signal, onThinking) =>
       within(signal, limit(), async (s) => {
         const { content, thinking } = await chat.stream({

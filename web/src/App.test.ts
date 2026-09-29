@@ -78,6 +78,7 @@ beforeEach(() => {
     seed: 1,
     upscaler: 'seedvr2-7b',
     limits: true,
+    artModel: '',
   })
   vi.mocked(api.getSettingsOptions).mockResolvedValue({
     textModels: ['llama3:latest'],

@@ -87,8 +87,9 @@ export interface RoleplayFrame {
   shown?: Shown
   /** The picture's clothing sentence, checked to dress everyone shown while the Limits are on. */
   clothing?: string
-  /** For debugging: seconds the latest picture took, and the Art Agent's reasoning, if any. */
+  /** For debugging: seconds the latest picture took, the model that wrote it, and its reasoning. */
   pictureTimings?: { text: number }
+  pictureModel?: string
   pictureThinking?: string
   /** File name of the rendered picture inside the Session directory; null until rendered. */
   image: string | null
@@ -112,8 +113,9 @@ export interface RoleplaySession extends SessionBase {
    * picture replaces it.
    */
   look?: RoleplayLook | Look | null
-  /** For debugging: seconds the Look took to write, and the Art Agent's reasoning, if any. */
+  /** For debugging: seconds the Look took to write, the model that wrote it, and its reasoning. */
   lookTimings?: { text: number }
+  lookModel?: string
   lookThinking?: string
   frames: RoleplayFrame[]
 }

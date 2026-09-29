@@ -22,6 +22,7 @@ const settings: api.Settings = {
   seed: 42,
   upscaler: 'seedvr2-7b',
   limits: true,
+  artModel: '',
 }
 
 const options: api.SettingsOptions = {

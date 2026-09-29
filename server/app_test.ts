@@ -38,6 +38,8 @@ interface SetupOptions {
   textModel?: TextModel
   imageGenerator?: ImageGenerator
   roleplayModel?: RoleplayModel
+  /** Roleplay models by Ollama model name, e.g. a separate Art Agent's. */
+  roleplayModels?: Record<string, RoleplayModel>
   settings?: Partial<Settings>
 }
 
@@ -57,7 +59,8 @@ function setup(opts: SetupOptions = {}) {
     sessions,
     textModel: () => opts.textModel ?? scriptedTextModel([]),
     imageGenerator: opts.imageGenerator ?? fakeImageGenerator(),
-    roleplayModel: () => opts.roleplayModel ?? scriptedRoleplayModel({}),
+    roleplayModel: (model) =>
+      opts.roleplayModels?.[model] ?? opts.roleplayModel ?? scriptedRoleplayModel({}),
     newSessionId: () => `s${++sessionCount}`,
     randomSeed: () => 1234,
   })
@@ -905,4 +908,20 @@ Deno.test('Undoing an exchange cancels its jobs; deleting the Roleplay cancels t
     await settled(call).catch(() => {})
     assertEquals((await call('DELETE', '/api/sessions/s1/roleplay/frames/1')).status, 200)
     assertEquals(await settled(call), [])
+  }))
+
+Deno.test('Pictures use the Art Agent model set in Settings, recorded on the Frame', () =>
+  withTempDir(async (root) => {
+    const artist = scriptedRoleplayModel({
+      name: 'artist',
+      looks: [{ character: 'Mira Vance, 34.', persona: 'Sam Reyes, 25.', style: 'Ink.' }],
+      bodies: [artBody],
+    })
+    const { call, settings } = await roleplayWithArt(root, [], { roleplayModels: { artist } })
+    settings.current = { ...settings.current, artModel: 'artist' }
+    await call('POST', '/api/sessions/s1/roleplay/jobs', { kind: 'picture', frameIndex: 0 })
+    assertEquals(await settled(call), [])
+    const session = await (await call('GET', '/api/sessions/s1')).json()
+    assertEquals([session.lookModel, session.frames[0].pictureModel], ['artist', 'artist'])
+    assertEquals(artist.art.length, 2)
   }))

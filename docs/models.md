@@ -137,8 +137,9 @@ The heretic gemma-4 26B-A4B (2026-09-28, the same six Frames, Thinking off) is *
 far: 3–9 s a picture**, against 12–35 s for gemma4 31B and 20–68 s for Qwen3.8 in the same run. It
 wrote one clean sentence per aspect and got who's in each picture right (Kael alone in 6, 7 and
 29; both in 9, 16 and 24; Qwen put only Elara in 16). It carries a little less detail than gemma4
-31B, which kept more of the story's props in 9 and 24 (pictures blocked while the Limits are on). Qwen3.8 again wrote about absences ("Elara Vance is absent from the frame"). That makes a
-separate Art Agent model worth considering when the Character is played by another model.
+31B, which kept more of the story's props in 9 and 24 (pictures blocked while the Limits are on). Qwen3.8 again wrote about absences ("Elara Vance is absent from the frame"). Settings → Art
+Agent model sets a separate model for pictures (Thinking off), so the Character can be played by
+one model and pictured by another.
 
 **Two schema traps, both gemma4:** with the yes/no "is this person in the picture" answers first in
 the reply, gemma4 wrote them and then only blank lines until its token cap, 6 times in 6 (as

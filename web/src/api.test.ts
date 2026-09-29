@@ -21,6 +21,7 @@ const settings: Settings = {
   seed: 42,
   upscaler: 'seedvr2-7b',
   limits: true,
+  artModel: '',
 }
 
 describe('getHealth', () => {

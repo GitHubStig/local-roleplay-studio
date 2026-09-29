@@ -80,6 +80,8 @@ export interface RoleplayFrame {
   renderTimings?: { queued?: number; image: number | null }
   /** For debugging: how long the latest picture took, and the Art Agent's reasoning. */
   pictureTimings?: { text: number }
+  /** The model that wrote the latest picture. */
+  pictureModel?: string
   pictureThinking?: string
   /** The rendered picture; null until rendered. */
   image: string | null

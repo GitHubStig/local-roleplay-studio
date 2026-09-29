@@ -21,6 +21,7 @@ const settings: api.Settings = {
   seed: 42,
   upscaler: 'seedvr2-7b',
   limits: true,
+  artModel: '',
 }
 
 const options: api.SettingsOptions = {
@@ -59,6 +60,21 @@ describe('SettingsView', () => {
     await flushPromises()
     expect(api.saveSettings).toHaveBeenCalledWith({ ...settings, textModel: 'gemma4:31b-mlx' })
     expect(wrapper.text()).toContain('Applies from the next Session')
+  })
+
+  it('sets a separate Art Agent model, from the installed Text Models', async () => {
+    const wrapper = mount(SettingsView)
+    await flushPromises()
+    const select = wrapper.find('[data-art-model]')
+    expect(select.findAll('option').map((o) => o.text())).toEqual([
+      'Same as the Text Model',
+      'gemma4:31b-mlx',
+      'llama3:latest',
+    ])
+    await select.setValue('gemma4:31b-mlx')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+    expect(api.saveSettings).toHaveBeenCalledWith({ ...settings, artModel: 'gemma4:31b-mlx' })
   })
 
   it('turns the Limits off', async () => {
