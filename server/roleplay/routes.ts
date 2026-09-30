@@ -14,18 +14,22 @@ import {
   undoLatestExchange,
   writeCast,
 } from './engine.ts'
+import type { RoleplayModel } from './model.ts'
 import { CastError } from './prompt.ts'
+import { suggestMessage } from './suggest.ts'
 import type { RoleplaySession } from './types.ts'
 
 /** A player's message can be at most this long. */
 const MAX_MESSAGE_LENGTH = 4000
+
+type RoleplayLockKind = 'setup' | 'frame' | 'undo' | 'edit' | 'render' | 'suggest'
 
 /** What the app lends a Session kind's routes: its locks, streams and models. */
 export interface RoleplayRouteContext {
   /** Takes the Session's lock, loads it and runs `handle` (see app.ts). */
   locked(
     id: string,
-    kind: 'setup' | 'frame' | 'undo' | 'edit' | 'render',
+    kind: RoleplayLockKind,
     handle: (session: Session) => Promise<Response>,
   ): Promise<Response>
   /** Runs work as a server-sent event stream (see app.ts). */
@@ -37,6 +41,8 @@ export interface RoleplayRouteContext {
   ): Response
   scenarioFor(session: Session): Promise<Scenario | Response>
   deps(session: Session): RoleplayDeps
+  /** The model Suggest writes with: the Session's Text Model, Thinking off. */
+  suggestModel(session: Session): RoleplayModel
   /** The Roleplays' background work: pictures, renders, upscales. */
   jobs: RoleplayJobs
   store: SessionStore
@@ -49,7 +55,7 @@ export function roleplayRoutes(ctx: RoleplayRouteContext): Route[] {
   /** Runs `handle` on a Roleplay, turning the engine's refusals into responses. */
   const withRoleplay = (
     id: string,
-    kind: 'setup' | 'frame' | 'undo' | 'edit' | 'render',
+    kind: RoleplayLockKind,
     handle: (session: RoleplaySession) => Promise<Response>,
   ) =>
     ctx.locked(id, kind, async (session) => {
@@ -98,6 +104,20 @@ export function roleplayRoutes(ctx: RoleplayRouteContext): Route[] {
         }
         return ctx.stream(session, session.frames.length, false, async (send, signal) => {
           await sendMessage(ctx.deps(session), session, text, send, signal)
+        })
+      })],
+
+    // Writes a Message for the player to edit or send; nothing is saved.
+    ['POST', path('suggest'), (req, p) =>
+      withRoleplay(p.id!, 'suggest', async (session) => {
+        if (!session.frames.length) return error('The scene has not begun yet', 409)
+        const body = await readJson(req) as { draft?: unknown } | undefined
+        const draft = typeof body?.draft === 'string' ? body.draft : ''
+        if (draft.length > MAX_MESSAGE_LENGTH) {
+          return error(`A message can be at most ${MAX_MESSAGE_LENGTH} characters`, 400)
+        }
+        return ctx.stream(session, null, false, async (send, signal) => {
+          await suggestMessage(ctx.suggestModel(session), session, draft, send, signal)
         })
       })],
 

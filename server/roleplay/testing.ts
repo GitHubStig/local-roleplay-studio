@@ -42,10 +42,16 @@ export function scriptedRoleplayModel(
     replies?: (Reply | Error)[]
     looks?: (RoleplayLook | Error)[]
     bodies?: (string | Error)[]
+    suggestions?: (string | Error)[]
     /** Reported as the model's name; 'scripted' unless given. */
     name?: string
   },
-): RoleplayModel & { asked: ChatMessage[][]; art: ChatMessage[][]; styles: string[] } {
+): RoleplayModel & {
+  asked: ChatMessage[][]
+  art: ChatMessage[][]
+  styles: string[]
+  suggested: ChatMessage[][]
+} {
   const next = <T>(queue: (T | Error)[] | undefined, what: string): Promise<T> => {
     const item = queue?.shift()
     if (!item) return Promise.reject(new Error(`no scripted ${what} left`))
@@ -92,6 +98,18 @@ export function scriptedRoleplayModel(
       const reply = await next(script.replies, 'reply')
       for (const key of REPLY_FIELDS) on.field?.(key, reply[key])
       return reply
+    },
+    /** The messages each Suggest call was given. */
+    suggested: [] as ChatMessage[][],
+    async suggest(messages: ChatMessage[], signal: AbortSignal, onText?: (chunk: string) => void) {
+      model.suggested.push(messages)
+      signal.throwIfAborted()
+      const text = await next(script.suggestions, 'suggestion')
+      // Streamed in two pieces, as the real one streams many.
+      const half = Math.ceil(text.length / 2)
+      onText?.(text.slice(0, half))
+      onText?.(text.slice(half))
+      return text
     },
   }
   return model

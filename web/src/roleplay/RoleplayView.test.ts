@@ -16,6 +16,7 @@ vi.mock('./api', async (importOriginal) => ({
   writeCast: vi.fn(),
   beginRoleplay: vi.fn(),
   sendMessage: vi.fn(),
+  suggestMessage: vi.fn(),
   undoExchange: vi.fn(),
   saveCast: vi.fn(),
   listJobs: vi.fn(),
@@ -107,6 +108,7 @@ beforeEach(() => {
       roleplay.writeCast,
       roleplay.beginRoleplay,
       roleplay.sendMessage,
+      roleplay.suggestMessage,
       roleplay.undoExchange,
       roleplay.saveCast,
     ]
@@ -213,6 +215,53 @@ describe('RoleplayView', () => {
       'CalDid anyone else make it?',
     ])
     expect((wrapper.find('textarea').element as HTMLTextAreaElement).value).toBe('')
+  })
+
+  it('suggests a message into the box, from what was typed, without sending it', async () => {
+    const stream = held()
+    vi.mocked(roleplay.suggestMessage).mockImplementation((_id, _draft, onEvent) =>
+      stream.call(onEvent)
+    )
+    const { wrapper } = await mountIt()
+    const box = () => wrapper.find('textarea').element as HTMLTextAreaElement
+    await wrapper.find('textarea').setValue('ask about the others')
+    await wrapper.find('[data-suggest]').trigger('click')
+    expect(roleplay.suggestMessage).toHaveBeenCalledWith(
+      'r1',
+      'ask about the others',
+      expect.any(Function),
+    )
+    expect(wrapper.find('[role=status]').text()).toBe("Suggesting Cal's message…")
+    expect(wrapper.find('[data-suggesting]').exists()).toBe(true)
+    expect(wrapper.find('[data-pending-reply]').exists()).toBe(false)
+    expect(buttonNamed(wrapper, 'Cancel').exists()).toBe(true)
+
+    stream.emit({ type: 'suggestion-part', text: 'Cal: I ask' })
+    await flushPromises()
+    expect(box().value).toBe('Cal: I ask')
+    stream.emit({ type: 'suggestion', text: 'I ask whether anyone else made it.' })
+    stream.finish()
+    await flushPromises()
+    expect(box().value).toBe('I ask whether anyone else made it.')
+    expect(box().disabled).toBe(false)
+    expect(roleplay.sendMessage).not.toHaveBeenCalled()
+  })
+
+  it('puts back what was typed when a suggestion fails', async () => {
+    vi.mocked(roleplay.suggestMessage).mockImplementation(async (_id, _draft, onEvent) => {
+      onEvent({ type: 'suggestion-part', text: 'I pull' })
+      onEvent({
+        type: 'failed',
+        message: 'The suggestion crossed a limit',
+        sessionDiscarded: false,
+      })
+    })
+    const { wrapper } = await mountIt()
+    await wrapper.find('textarea').setValue('grab her')
+    await wrapper.find('[data-suggest]').trigger('click')
+    await flushPromises()
+    expect((wrapper.find('textarea').element as HTMLTextAreaElement).value).toBe('grab her')
+    expect(wrapper.find('[role=alert]').text()).toBe('The suggestion crossed a limit')
   })
 
   it('keeps a declined message in the box to reword', async () => {

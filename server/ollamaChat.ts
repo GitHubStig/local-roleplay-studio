@@ -8,8 +8,8 @@ export interface ChatMessage {
 
 export interface ChatCall {
   messages: ChatMessage[]
-  /** JSON schema the reply must follow (Ollama's structured output). */
-  format: object
+  /** JSON schema the reply must follow (Ollama's structured output); none for plain text. */
+  format?: object
   /** Token cap for the reply; thinking gets `thinkingTokens` on top when it's on. */
   maxTokens: number
   /** Other Ollama sampling options, e.g. `repeat_penalty`. */

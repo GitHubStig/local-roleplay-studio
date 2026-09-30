@@ -58,9 +58,15 @@ export interface RoleplayModel {
     signal: AbortSignal,
     on?: ReplyHandlers,
   ): Promise<Reply & { thinking?: string }>
+  /** Suggest: the player's next Message, as plain text (see `suggest.ts` for the messages). */
+  suggest(
+    messages: ChatMessage[],
+    signal: AbortSignal,
+    onText?: (chunk: string) => void,
+  ): Promise<string>
 }
 
-const MAX_TOKENS = { reply: 1024, cast: 1024, art: 1600, thinking: 12288 }
+const MAX_TOKENS = { reply: 1024, cast: 1024, art: 1600, suggest: 400, thinking: 12288 }
 
 /**
  * Penalise repeating anything already in the conversation. Without it, a long Roleplay's Replies
@@ -166,6 +172,17 @@ export function ollamaRoleplayModel(
           onContent: (chunk) => reader.feed(chunk),
         })
         return withThinking(parseReplyText(content), thinking)
+      }),
+
+    suggest: (messages, signal, onText) =>
+      within(signal, limit(), async (s) => {
+        const { content } = await chat.stream({
+          messages,
+          maxTokens: MAX_TOKENS.suggest,
+          signal: s,
+          onContent: onText,
+        })
+        return content
       }),
   }
 }

@@ -745,6 +745,43 @@ Deno.test("A Roleplay's Cast is written and reviewed, then it begins, is talked 
     assertEquals(summary.excerpt, 'You are late.')
   }))
 
+Deno.test('Suggest streams a Message for the player, from their draft, and saves nothing', () =>
+  withTempDir(async (root) => {
+    const model = scriptedRoleplayModel({
+      casts: [testCast],
+      replies: [replyOf('You are late.')],
+      suggestions: ['Sam: I ask about the cargo.'],
+    })
+    const { call } = setup({
+      root,
+      settings: { textModel: 'x', thinking: true },
+      roleplayModel: model,
+    })
+    await call('POST', '/api/sessions', { kind: 'roleplay', brief: 'A storm at sea.' })
+    await readEvents(await call('POST', '/api/sessions/s1/roleplay/cast'))
+    const suggest = (draft?: unknown) =>
+      call('POST', '/api/sessions/s1/roleplay/suggest', draft === undefined ? {} : { draft })
+    assertEquals((await suggest()).status, 409)
+
+    await readEvents(await call('POST', '/api/sessions/s1/roleplay/begin'))
+    assertEquals((await suggest('x'.repeat(4001))).status, 400)
+    const events = await readEvents(await suggest('cargo?'))
+    assertEquals(events.map(([e]) => e), [
+      'phase',
+      'suggestion-part',
+      'suggestion-part',
+      'suggestion',
+    ])
+    assertEquals(events.at(-1)![1].text, 'I ask about the cargo.')
+    assertMatch(model.suggested[0][1].content, /cargo\?/)
+    const session = await (await call('GET', '/api/sessions/s1')).json()
+    assertEquals(session.frames.length, 1)
+
+    // Out of suggestions: the stream reports the failure, and the Roleplay is free again.
+    assertEquals((await readEvents(await suggest())).at(-1)![0], 'failed')
+    assertEquals((await suggest()).status, 200)
+  }))
+
 Deno.test('A failed first Cast discards the Roleplay; other kinds refuse Roleplay routes', () =>
   withTempDir(async (root) => {
     const { call } = setup({

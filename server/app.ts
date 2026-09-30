@@ -65,7 +65,16 @@ type Phase = 'text' | 'queued' | 'image'
 
 /** One server-sent event of a work stream: its `type`, plus whatever that event carries. */
 export type StreamEvent = { type: string; phase?: Phase; [field: string]: unknown }
-type LockKind = 'frame' | 'undo' | 'delete' | 'plan' | 'render' | 'edit' | 'upscale' | 'setup'
+type LockKind =
+  | 'frame'
+  | 'undo'
+  | 'delete'
+  | 'plan'
+  | 'render'
+  | 'edit'
+  | 'upscale'
+  | 'setup'
+  | 'suggest'
 
 export function createHandler(deps: AppDeps): (req: Request) => Promise<Response> {
   const newSessionId = deps.newSessionId ?? defaultSessionId
@@ -95,6 +104,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     edit: 'A Frame is being edited',
     upscale: 'A Frame is being upscaled',
     setup: 'The Roleplay is being set up',
+    suggest: 'A message is being suggested',
   }
 
   /** Takes the Session's lock, or returns a 409 saying what holds it. */
@@ -243,6 +253,8 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       stream,
       scenarioFor,
       deps: roleplayDeps,
+      // Thinking off, as for pictures: a suggestion is a draft, and it should come quickly.
+      suggestModel: (session) => roleplayModel(session.settings.textModel, false),
       jobs: roleplayJobs,
       store: deps.sessions,
     }),

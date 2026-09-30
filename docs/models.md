@@ -207,6 +207,38 @@ one seed and one Art Agent is enough to rank them roughly, not to split close ne
 The prompts, grids and render script are kept in [bench/art-tags/](bench/art-tags/), to compare a
 new Image Model on the same prompts (and when to write a fresh set instead).
 
+## Suggest (writing the player's next Message)
+
+Suggest uses the Session's Text Model, Thinking off. Measured 2026-09-30 on the Kael tavern
+Roleplay, cut after Frames 1, 4, 12, 26 and 28 (points where the next move needn't cross a Limit),
+with an empty box and with two typed steers, on one model at a time. The player writes short,
+lowercase, often without "I" (median 21 words).
+
+**Told only to match "their length and tone", every model tidied the player up:** "I take a slow
+sip of the ale, ignoring the taste. I set the mug down and look him straight in the eye…", and the
+heretic once wrote the Persona as "she", at length. Telling them the player's usual length in words
+(the median of their last five Messages) and to keep their capitalisation and dropped "I", even if
+it isn't polished, fixed it on all three:
+
+| After Frame | gemma4 31B | heretic 26B-A4B | Qwen3.8 27B (uncensored) |
+| ----------- | ---------- | --------------- | ------------------------ |
+| 1 | take a sip and set the mug down. i'm not here for the drink, kail. i'm here for you. | takes a sip of the bitter ale and watches him closely. | sip it, but the rain's not stopping. who are you? |
+| 4, steer "flip him a coin, hint i might have more later" | flip a coin onto the bar and slide it toward him. "for the room. i might have more for you later." | slides a gold coin across the wood toward him, eyes flickering with a secret. "consider that a tip. i might have more for you later." | grabs the key and flips a coin on the bar. "for now. more to discuss in the morning, if you're free." |
+| 28 | walk into the cold rain and disappear into the mist | step out into the rain and let the cold soak my skin, disappearing into the mist. | walk out into the rain, not looking back. |
+| Time per suggestion | 1.4–13 s | **0.2–2.5 s** | 1–22 s |
+
+All three kept to the Persona's own actions and words, moved the scene on (none just nodded or
+waited), and wrote typed steers out faithfully ("tell him the debt is paid": "the debt is paid now,
+old man."). gemma4 once copied the lowercase into a misspelling ("kail"). Time grows with the
+story: each suggestion reads all of it, though Ollama reuses the part that hasn't changed since the
+last one. The heretic is the fastest by far and as good here, so a Roleplay played on it gets
+near-instant suggestions; a separate Suggest model setting, like the Art Agent's, could come if
+another Text Model feels slow.
+
+With all three models loaded at once, a 48 GB Mac swapped: gemma4 took up to 64 s and Qwen3.8 ran
+past the 2-minute limit. Ollama keeps a model loaded for a few minutes after its last use, so
+switching Text Models back and forth has the same effect.
+
 ## Image Model
 
 **Use FLUX.2 Klein 4B** (`flux2-klein-4b`, the default), 4 steps.

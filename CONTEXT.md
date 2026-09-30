@@ -69,7 +69,7 @@ Where and when a Roleplay's scene starts: the place, the time of day and the wea
 _Avoid_: Scene, location, world
 
 **Message**:
-What the player writes in a Roleplay: what their Persona says or does.
+What the player writes in a Roleplay: what their Persona says or does. **Suggest** can write one for them, into the box, to edit or send.
 _Avoid_: Action, prompt, input
 
 **Art Agent**:

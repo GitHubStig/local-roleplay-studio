@@ -140,9 +140,21 @@ under `/api/sessions/:id/roleplay/` ([ADR 0007](adr/0007-roleplay-is-a-conversat
    content. Either declined saves nothing and leaves the Message in the box.
 4. **Undo** removes the latest exchange and puts its Message back in the box; the opening can't
    be undone. **The Cast** can be edited by hand at any time; it applies from the next Reply.
+5. **Suggest**, beside Send, writes a Message for the player into the box, streamed as it's
+   written, to edit or send (nothing is saved, and a sent suggestion is checked like any other
+   Message). The Session's Text Model, Thinking off, reads the story as the Persona knows it (each
+   Message and what the Character did and said; no thoughts), the Persona, and the player's last
+   five Messages with their usual length in words, and writes the next Message as the player would
+   type it: their capitalisation, person and length, only the Persona's own actions and words, and
+   a move that takes the scene on. Anything already in the box is the player's steer ("ask about
+   the cargo"), written out as a whole Message. The suggestion is tidied (an introduction, the
+   Persona's name in front, or quotes around it are dropped) and checked against the Limits' term
+   list; a failed or cancelled one puts back what was typed. It holds the Roleplay's lock while it
+   writes, so a Message can't be sent meanwhile.
 
 The prompts are Markdown files in `server/prompts/roleplay/` (`cast.md`, `cast-request.md`,
-`character.md`, `opening-request.md`, `limits.md`, `limits-adults-only.md`), each with a note at
+`character.md`, `opening-request.md`, `limits.md`, `limits-adults-only.md`, and Suggest's
+`suggest.md`, `suggest-request.md`, `suggest-limits*.md`), each with a note at
 the top saying when it's used and what it's filled with; edits apply on the next call.
 
 **Pictures, renders and upscales are queued jobs** (`server/roleplay/jobs.ts`): the player can ask
@@ -361,6 +373,7 @@ All under `/api`; the Vite dev server proxies it to the Deno server.
 | `POST /sessions/:id/roleplay/cast` | Roleplay: write (or, before it begins, rewrite) the Cast, streaming `phase`, `thinking`, then `cast` (`cast`, `session`) |
 | `POST /sessions/:id/roleplay/begin` | Roleplay: the opening Reply, streaming `reply-part` per field, then `replied` (`frame`, `session`) |
 | `POST /sessions/:id/roleplay/messages` | Roleplay: send `{ text }`, streaming `reply-part` (`key`, `value`) per field, then `replied`, or `declined` (`message`) |
+| `POST /sessions/:id/roleplay/suggest` | Roleplay: suggest a Message from `{ draft? }`, streaming `suggestion-part` (`text`, all of it so far), then `suggestion` (`text`, tidied); nothing is saved |
 | `DELETE /sessions/:id/roleplay/frames/:index` | Roleplay: undo the latest exchange (`409` for any other, and for the opening) |
 | `GET /sessions/:id/roleplay/jobs` | Roleplay: its background jobs (picture, render, upscale): running, queued, then failed, each with its `phase`, `progress` or `error` |
 | `POST /sessions/:id/roleplay/jobs` | Roleplay: queue `{ kind: "picture" \| "render" \| "upscale", frameIndex }`; returns the queue (asking twice for the same job queues it once) |

@@ -22,6 +22,6 @@
     "semiColons": false,
     "singleQuote": true,
     "lineWidth": 100,
-    "exclude": ["**/*.md", "web/index.html", "web/public/"]
+    "exclude": ["**/*.md", "docs/bench/", "web/index.html", "web/public/"]
   }
 }

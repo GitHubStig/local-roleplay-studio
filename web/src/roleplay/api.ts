@@ -110,6 +110,9 @@ export type RoleplayEvent =
   | { type: 'replied'; frame: RoleplayFrame; session: RoleplaySession }
   | { type: 'declined'; message: string }
   | { type: 'look'; look: RoleplayLook }
+  /** Suggest: the message as written so far, then the whole of it, tidied. */
+  | { type: 'suggestion-part'; text: string }
+  | { type: 'suggestion'; text: string }
 
 const base = (id: string) => `/api/sessions/${id}/roleplay`
 
@@ -124,6 +127,16 @@ export const beginRoleplay = (id: string, onEvent: (event: RoleplayEvent) => voi
 /** Sends the player's message; ends with the reply, or `declined` if it crossed a Limit. */
 export const sendMessage = (id: string, text: string, onEvent: (event: RoleplayEvent) => void) =>
   streamEvents<RoleplayEvent>(`${base(id)}/messages`, { text }, ['replied', 'declined'], onEvent)
+
+/**
+ * Writes a message for the player to edit or send, from the story and what they've typed so far
+ * (`draft`, if any). Nothing is saved.
+ */
+export const suggestMessage = (
+  id: string,
+  draft: string,
+  onEvent: (event: RoleplayEvent) => void,
+) => streamEvents<RoleplayEvent>(`${base(id)}/suggest`, { draft }, ['suggestion'], onEvent)
 
 /** Removes the latest exchange. */
 export const undoExchange = (id: string, index: number) =>

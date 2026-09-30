@@ -27,6 +27,7 @@ import {
   saveCast,
   saveLook,
   sendMessage,
+  suggestMessage,
   undoExchange,
   writeCast,
 } from './api'
@@ -47,7 +48,7 @@ const viewing = ref<number | null>(null)
 
 /** The exchange in progress: the message sent, and the reply as it arrives. */
 interface Pending {
-  kind: 'cast' | 'begin' | 'message'
+  kind: 'cast' | 'begin' | 'message' | 'suggest'
   message?: string
   reply: Partial<Reply>
   thinking?: string
@@ -62,6 +63,8 @@ const replying = computed(() => {
   const kind = pending.value?.kind
   return !!pending.value && !pending.value.detached && (kind === 'message' || kind === 'begin')
 })
+/** A message is being suggested into the text box. */
+const suggesting = computed(() => pending.value?.kind === 'suggest')
 // --- Background work: pictures, renders and upscales, queued on the server.
 
 /** The Roleplay's jobs: running, then queued, then failed (until dismissed). */
@@ -290,6 +293,10 @@ function onEvent(event: RoleplayEvent) {
       // The message was used; a declined or failed one stays in the box to reword.
       if (p.kind === 'message') draft.value = ''
       break
+    case 'suggestion-part':
+    case 'suggestion':
+      draft.value = event.text
+      break
     case 'declined':
       notice.value = { kind: 'declined', text: event.message }
       break
@@ -328,6 +335,22 @@ function send() {
   const text = draft.value.trim()
   if (!text || busy.value || !begun.value) return
   run({ kind: 'message', message: text, reply: {} }, () => sendMessage(props.id, text, onEvent))
+}
+
+/**
+ * Writes a message into the box, from the story and whatever's typed there. If it fails or is
+ * cancelled, the box gets back what was typed.
+ */
+async function suggest() {
+  if (busy.value || !begun.value) return
+  const typed = draft.value
+  let suggested = false
+  await run({ kind: 'suggest', reply: {} }, () =>
+    suggestMessage(props.id, typed, (event) => {
+      if (event.type === 'suggestion') suggested = true
+      onEvent(event)
+    }))
+  if (!suggested) draft.value = typed
 }
 
 function onKeydown(e: KeyboardEvent) {
@@ -399,6 +422,7 @@ const statusLabel = computed(() => {
   if (p.detached) return 'A reply is being written in another tab…'
   if (p.kind === 'cast') return cast.value ? 'Rewriting the Cast…' : 'Writing the Cast…'
   if (p.kind === 'begin') return `${characterName.value} is starting the scene…`
+  if (p.kind === 'suggest') return `Suggesting ${personaName.value}'s message…`
   return `${characterName.value} is replying…`
 })
 
@@ -690,9 +714,7 @@ async function saveCastDraft(): Promise<boolean> {
           </li>
 
           <!-- The exchange in progress. -->
-          <template
-            v-if="pending && !pending.detached && pending.kind !== 'cast'"
-          >
+          <template v-if="pending && replying">
             <li v-if="pending.message" class="flex flex-col items-end gap-1" data-pending-message>
               <span class="text-xs text-muted">{{ personaName }}</span>
               <p class="max-w-prose whitespace-pre-wrap rounded-lg bg-fg/80 px-3 py-2 text-canvas">
@@ -720,12 +742,14 @@ async function saveCastDraft(): Promise<boolean> {
         <div class="flex shrink-0 flex-col gap-2">
           <div
             class="flex rounded-lg"
-            :class="{ 'render-sweep': replying && !pending?.cancelling }"
+            :class="{ 'render-sweep': (replying || suggesting) && !pending?.cancelling }"
             :data-writing="replying ? '' : undefined"
+            :data-suggesting="suggesting ? '' : undefined"
           >
             <textarea
               v-model="draft"
-              class="h-20 flex-1 resize-none rounded-lg border border-line bg-surface p-3 disabled:opacity-60"
+              rows="5"
+              class="flex-1 resize-none rounded-lg border border-line bg-surface p-3 disabled:opacity-60"
               :placeholder="`What ${personaName} says or does… (Enter to send, Shift+Enter for a new line)`"
               :disabled="!begun || busy"
               @keydown="onKeydown"
@@ -740,6 +764,19 @@ async function saveCastDraft(): Promise<boolean> {
               @click="send"
             >
               Send
+            </button>
+            <button
+              v-if="!busy"
+              type="button"
+              class="rounded-lg border border-line px-3 py-2 text-sm disabled:opacity-50"
+              :disabled="!begun"
+              :title="draft.trim()
+                ? `Write ${personaName}'s message out from what you've typed`
+                : `Suggest what ${personaName} might say or do next`"
+              data-suggest
+              @click="suggest"
+            >
+              Suggest
             </button>
             <button
               v-else-if="!pending?.detached"
