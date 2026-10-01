@@ -986,5 +986,358 @@
   "heretic_26b_a4b": "16/16 twice",
   "gemma4_31b": "15/16 then 16/16 (missed Elara 29: normal for slow)",
   "before_rules": "asked for mood, emotion, pace and sound too: both models marked most lines slow; without the \"usual manner\" and \"when unsure, normal\" rules the heretic missed Kael 1 and 4 (slow)"
+ },
+ "thoughts": {
+  "note": "Round 7: thoughts directed as the app does, spoken plain and whispered (<|style:whispering|>); the player preferred whispered, and no sounds in thoughts (a cough in the mind sounded wrong).",
+  "lines": [
+   {
+    "char": "kael",
+    "id": "kael-07ac-2",
+    "text": "She keeps her eyes on the door, not on me. A habit of the hunted. Or the hunter. That locket is a lie made of metal.",
+    "delivery": {
+     "pace": "normal",
+     "sound": "none"
+    },
+    "plain": {
+     "sent": "She keeps her eyes on the door, not on me. A habit of the hunted. Or the hunter. That locket is a lie made of metal.",
+     "seconds": 6.39,
+     "audio": 8.44,
+     "measure": {
+      "pitch": 95.0,
+      "hnr": 12.0,
+      "centroid": 1223.0
+     }
+    },
+    "whisper": {
+     "sent": "<|style:whispering|>She keeps her eyes on the door, not on me. A habit of the hunted. Or the hunter. That locket is a lie made of metal.",
+     "seconds": 6.68,
+     "audio": 8.88,
+     "measure": {
+      "pitch": 86.0,
+      "hnr": 10.9,
+      "centroid": 1296.0
+     }
+    }
+   },
+   {
+    "char": "kael",
+    "id": "kael-07ac-8",
+    "text": "She\u2019s wet. She\u2019s cold. She\u2019s standing on the landing like she owns the air in my lungs. And she\u2019s asking for a massage. I know what she\u2019s asking for. I know exactly what that cold is hiding.",
+    "delivery": {
+     "pace": "slow",
+     "sound": "none"
+    },
+    "plain": {
+     "sent": "<|prosody:speed_slow|>She\u2019s wet. <|prosody:pause|>She\u2019s cold. <|prosody:pause|>She\u2019s standing on the landing like she owns the air in my lungs. <|prosody:pause|>And she\u2019s asking for a massage. <|prosody:pause|>I know what she\u2019s asking for. <|prosody:pause|>I know exactly what that cold is hiding.",
+     "seconds": 11.2,
+     "audio": 14.96,
+     "measure": {
+      "pitch": 93.0,
+      "hnr": 11.1,
+      "centroid": 1315.0
+     }
+    },
+    "whisper": {
+     "sent": "<|style:whispering|><|prosody:speed_slow|>She\u2019s wet. <|prosody:pause|>She\u2019s cold. <|prosody:pause|>She\u2019s standing on the landing like she owns the air in my lungs. <|prosody:pause|>And she\u2019s asking for a massage. <|prosody:pause|>I know what she\u2019s asking for. <|prosody:pause|>I know exactly what that cold is hiding.",
+     "seconds": 10.54,
+     "audio": 14.24,
+     "measure": {
+      "pitch": 82.0,
+      "hnr": 9.3,
+      "centroid": 1334.0
+     }
+    }
+   },
+   {
+    "char": "kael",
+    "id": "kael-07ac-13",
+    "text": "Pain is a clear line in the dark. I see the letter. I see the debt. I see that she isn\u2019t here to pay. She\u2019s here to collect. I\u2019m the bill.",
+    "delivery": {
+     "pace": "slow",
+     "sound": "cough"
+    },
+    "plain": {
+     "sent": "<|sfx:cough|>Ahem <|prosody:speed_slow|>Pain is a clear line in the dark. <|prosody:pause|>I see the letter. <|prosody:pause|>I see the debt. <|prosody:pause|>I see that she isn\u2019t here to pay. <|prosody:pause|>She\u2019s here to collect. <|prosody:pause|>I\u2019m the bill.",
+     "seconds": 9.01,
+     "audio": 12.08,
+     "measure": {
+      "pitch": 102.0,
+      "hnr": 9.5,
+      "centroid": 1430.0
+     }
+    },
+    "whisper": {
+     "sent": "<|sfx:cough|>Ahem <|style:whispering|><|prosody:speed_slow|>Pain is a clear line in the dark. <|prosody:pause|>I see the letter. <|prosody:pause|>I see the debt. <|prosody:pause|>I see that she isn\u2019t here to pay. <|prosody:pause|>She\u2019s here to collect. <|prosody:pause|>I\u2019m the bill.",
+     "seconds": 9.35,
+     "audio": 12.56,
+     "measure": {
+      "pitch": 99.0,
+      "hnr": 11.2,
+      "centroid": 1437.0
+     }
+    }
+   },
+   {
+    "char": "kael",
+    "id": "kael-07ac-18",
+    "text": "She\u2019s buying her freedom with her skin. And I\u2019m the merchant. I don\u2019t sell. I lend. And I always collect with interest.",
+    "delivery": {
+     "pace": "slow",
+     "sound": "none"
+    },
+    "plain": {
+     "sent": "<|prosody:speed_slow|>She\u2019s buying her freedom with her skin. <|prosody:pause|>And I\u2019m the merchant. <|prosody:pause|>I don\u2019t sell. <|prosody:pause|>I lend. <|prosody:pause|>And I always collect with interest.",
+     "seconds": 7.21,
+     "audio": 9.6,
+     "measure": {
+      "pitch": 99.0,
+      "hnr": 9.8,
+      "centroid": 1334.0
+     }
+    },
+    "whisper": {
+     "sent": "<|style:whispering|><|prosody:speed_slow|>She\u2019s buying her freedom with her skin. <|prosody:pause|>And I\u2019m the merchant. <|prosody:pause|>I don\u2019t sell. <|prosody:pause|>I lend. <|prosody:pause|>And I always collect with interest.",
+     "seconds": 7.68,
+     "audio": 10.24,
+     "measure": {
+      "pitch": 85.0,
+      "hnr": 10.6,
+      "centroid": 1252.0
+     }
+    }
+   },
+   {
+    "char": "kael",
+    "id": "kael-07ac-25",
+    "text": "The silence is louder than the rain. I didn't hear the ropes come loose. I didn't hear the knives move. I\u2019m not dead. I\u2019m just... still. I\u2019m counting the breaths again. Two men. Two silent breaths. It\u2019s done. I paid the price. I didn\u2019t know the price was blood.",
+    "delivery": {
+     "pace": "slow",
+     "sound": "none"
+    },
+    "plain": {
+     "sent": "<|prosody:speed_slow|>The silence is louder than the rain. <|prosody:pause|>I didn't hear the ropes come loose. <|prosody:pause|>I didn't hear the knives move. <|prosody:pause|>I\u2019m not dead. <|prosody:pause|>I\u2019m just... <|prosody:pause|>still. <|prosody:pause|>I\u2019m counting the breaths again. <|prosody:pause|>Two men. <|prosody:pause|>Two silent breaths. <|prosody:pause|>It\u2019s done. <|prosody:pause|>I paid the price. <|prosody:pause|>I didn\u2019t know the price was blood.",
+     "seconds": 16.83,
+     "audio": 22.56,
+     "measure": {
+      "pitch": 92.0,
+      "hnr": 11.3,
+      "centroid": 1296.0
+     }
+    },
+    "whisper": {
+     "sent": "<|style:whispering|><|prosody:speed_slow|>The silence is louder than the rain. <|prosody:pause|>I didn't hear the ropes come loose. <|prosody:pause|>I didn't hear the knives move. <|prosody:pause|>I\u2019m not dead. <|prosody:pause|>I\u2019m just... <|prosody:pause|>still. <|prosody:pause|>I\u2019m counting the breaths again. <|prosody:pause|>Two men. <|prosody:pause|>Two silent breaths. <|prosody:pause|>It\u2019s done. <|prosody:pause|>I paid the price. <|prosody:pause|>I didn\u2019t know the price was blood.",
+     "seconds": 16.01,
+     "audio": 21.64,
+     "measure": {
+      "pitch": 91.0,
+      "hnr": 10.8,
+      "centroid": 1320.0
+     }
+    }
+   },
+   {
+    "char": "kael",
+    "id": "kael-07ac-29",
+    "text": "A parting gift. A little poison in the quiet. She\u2019s not gone. She\u2019s just\u2026 lingering. And I\u2019m the one who\u2019s suffering. And I didn\u2019t even know I was the one who did it. I just bought a tavern. And I lost it. And she\u2019s the one who lived. And I\u2019m the one who\u2019s broken. And the rain is still falling. And the gold is still in my pocket. And the locket is on the floor. And I\u2019m still alive. And that\u2019s the worst part.",
+    "delivery": {
+     "pace": "slow",
+     "sound": "none"
+    },
+    "plain": {
+     "sent": "<|prosody:speed_slow|>A parting gift. <|prosody:pause|>A little poison in the quiet. <|prosody:pause|>She\u2019s not gone. <|prosody:pause|>She\u2019s just\u2026 <|prosody:pause|>lingering. <|prosody:pause|>And I\u2019m the one who\u2019s suffering. <|prosody:pause|>And I didn\u2019t even know I was the one who did it. <|prosody:pause|>I just bought a tavern. <|prosody:pause|>And I lost it. <|prosody:pause|>And she\u2019s the one who lived. <|prosody:pause|>And I\u2019m the one who\u2019s broken. <|prosody:pause|>And the rain is still falling. <|prosody:pause|>And the gold is still in my pocket. <|prosody:pause|>And the locket is on the floor. <|prosody:pause|>And I\u2019m still alive. <|prosody:pause|>And that\u2019s the worst part.",
+     "seconds": 22.23,
+     "audio": 29.28,
+     "measure": {
+      "pitch": 108.0,
+      "hnr": 12.3,
+      "centroid": 1255.0
+     }
+    },
+    "whisper": {
+     "sent": "<|style:whispering|><|prosody:speed_slow|>A parting gift. <|prosody:pause|>A little poison in the quiet. <|prosody:pause|>She\u2019s not gone. <|prosody:pause|>She\u2019s just\u2026 <|prosody:pause|>lingering. <|prosody:pause|>And I\u2019m the one who\u2019s suffering. <|prosody:pause|>And I didn\u2019t even know I was the one who did it. <|prosody:pause|>I just bought a tavern. <|prosody:pause|>And I lost it. <|prosody:pause|>And she\u2019s the one who lived. <|prosody:pause|>And I\u2019m the one who\u2019s broken. <|prosody:pause|>And the rain is still falling. <|prosody:pause|>And the gold is still in my pocket. <|prosody:pause|>And the locket is on the floor. <|prosody:pause|>And I\u2019m still alive. <|prosody:pause|>And that\u2019s the worst part.",
+     "seconds": 22.92,
+     "audio": 30.6,
+     "measure": {
+      "pitch": 96.0,
+      "hnr": 11.7,
+      "centroid": 1272.0
+     }
+    }
+   },
+   {
+    "char": "elara",
+    "id": "elara-b215-2",
+    "text": "He's cautious, testing the waters to see if I'm another local headache or a real threat. Time to dangle the carrot without revealing the whole feast.",
+    "delivery": {
+     "pace": "normal",
+     "sound": "none"
+    },
+    "plain": {
+     "sent": "He's cautious, testing the waters to see if I'm another local headache or a real threat. Time to dangle the carrot without revealing the whole feast.",
+     "seconds": 7.65,
+     "audio": 10.0,
+     "measure": {
+      "pitch": 170.0,
+      "hnr": 12.9,
+      "centroid": 1547.0
+     }
+    },
+    "whisper": {
+     "sent": "<|style:whispering|>He's cautious, testing the waters to see if I'm another local headache or a real threat. Time to dangle the carrot without revealing the whole feast.",
+     "seconds": 7.6,
+     "audio": 10.08,
+     "measure": {
+      "pitch": 181.0,
+      "hnr": 12.3,
+      "centroid": 1585.0
+     }
+    }
+   },
+   {
+    "char": "elara",
+    "id": "elara-b215-6",
+    "text": "His distrust is thick as this harbor fog. I need to show him that his survival is intrinsically tied to my success.",
+    "delivery": {
+     "pace": "slow",
+     "sound": "none"
+    },
+    "plain": {
+     "sent": "<|prosody:speed_slow|>His distrust is thick as this harbor fog. <|prosody:pause|>I need to show him that his survival is intrinsically tied to my success.",
+     "seconds": 5.72,
+     "audio": 7.44,
+     "measure": {
+      "pitch": 195.0,
+      "hnr": 10.9,
+      "centroid": 1567.0
+     }
+    },
+    "whisper": {
+     "sent": "<|style:whispering|><|prosody:speed_slow|>His distrust is thick as this harbor fog. <|prosody:pause|>I need to show him that his survival is intrinsically tied to my success.",
+     "seconds": 6.82,
+     "audio": 8.44,
+     "measure": {
+      "pitch": 178.0,
+      "hnr": 9.5,
+      "centroid": 1825.0
+     }
+    }
+   },
+   {
+    "char": "elara",
+    "id": "elara-b215-12",
+    "text": "He's haunted by the memory of a massacre. He needs to know that this isn't just a game of logistics, but a commitment to his safety.",
+    "delivery": {
+     "pace": "slow",
+     "sound": "none"
+    },
+    "plain": {
+     "sent": "<|prosody:speed_slow|>He's haunted by the memory of a massacre. <|prosody:pause|>He needs to know that this isn't just a game of logistics, but a commitment to his safety.",
+     "seconds": 6.42,
+     "audio": 8.44,
+     "measure": {
+      "pitch": 169.0,
+      "hnr": 13.6,
+      "centroid": 1484.0
+     }
+    },
+    "whisper": {
+     "sent": "<|style:whispering|><|prosody:speed_slow|>He's haunted by the memory of a massacre. <|prosody:pause|>He needs to know that this isn't just a game of logistics, but a commitment to his safety.",
+     "seconds": 6.66,
+     "audio": 8.64,
+     "measure": {
+      "pitch": 178.0,
+      "hnr": 12.5,
+      "centroid": 1635.0
+     }
+    }
+   },
+   {
+    "char": "elara",
+    "id": "elara-e211-11",
+    "text": "His fingers are like ice. He isn't even looking at me as a woman anymore\u2014just as another variable in his equation.",
+    "delivery": {
+     "pace": "slow",
+     "sound": "none"
+    },
+    "plain": {
+     "sent": "<|prosody:speed_slow|>His fingers are like ice. <|prosody:pause|>He isn't even looking at me as a woman anymore\u2014just as another variable in his equation.",
+     "seconds": 5.96,
+     "audio": 7.76,
+     "measure": {
+      "pitch": 174.0,
+      "hnr": 15.6,
+      "centroid": 1389.0
+     }
+    },
+    "whisper": {
+     "sent": "<|style:whispering|><|prosody:speed_slow|>His fingers are like ice. <|prosody:pause|>He isn't even looking at me as a woman anymore\u2014just as another variable in his equation.",
+     "seconds": 6.3,
+     "audio": 8.16,
+     "measure": {
+      "pitch": 177.0,
+      "hnr": 14.8,
+      "centroid": 1494.0
+     }
+    }
+   },
+   {
+    "char": "elara",
+    "id": "elara-e211-23",
+    "text": "He's given up. The man who fought the world is just... resting. And I'm stuck here, lashed to a rotting door like a piece of cargo.",
+    "delivery": {
+     "pace": "slow",
+     "sound": "none"
+    },
+    "plain": {
+     "sent": "<|prosody:speed_slow|>He's given up. <|prosody:pause|>The man who fought the world is just... <|prosody:pause|>resting. <|prosody:pause|>And I'm stuck here, lashed to a rotting door like a piece of cargo.",
+     "seconds": 7.71,
+     "audio": 9.92,
+     "measure": {
+      "pitch": 170.0,
+      "hnr": 14.4,
+      "centroid": 1576.0
+     }
+    },
+    "whisper": {
+     "sent": "<|style:whispering|><|prosody:speed_slow|>He's given up. <|prosody:pause|>The man who fought the world is just... <|prosody:pause|>resting. <|prosody:pause|>And I'm stuck here, lashed to a rotting door like a piece of cargo.",
+     "seconds": 7.6,
+     "audio": 9.88,
+     "measure": {
+      "pitch": 184.0,
+      "hnr": 12.4,
+      "centroid": 1757.0
+     }
+    }
+   },
+   {
+    "char": "elara",
+    "id": "elara-e211-29",
+    "text": "The click of that latch sounded far too much like a coffin lid. He's alone again, and I'm out here in the storm with nothing but my secrets and a grudge.",
+    "delivery": {
+     "pace": "slow",
+     "sound": "none"
+    },
+    "plain": {
+     "sent": "<|prosody:speed_slow|>The click of that latch sounded far too much like a coffin lid. <|prosody:pause|>He's alone again, and I'm out here in the storm with nothing but my secrets and a grudge.",
+     "seconds": 7.51,
+     "audio": 9.44,
+     "measure": {
+      "pitch": 172.0,
+      "hnr": 13.5,
+      "centroid": 1446.0
+     }
+    },
+    "whisper": {
+     "sent": "<|style:whispering|><|prosody:speed_slow|>The click of that latch sounded far too much like a coffin lid. <|prosody:pause|>He's alone again, and I'm out here in the storm with nothing but my secrets and a grudge.",
+     "seconds": 7.82,
+     "audio": 9.68,
+     "measure": {
+      "pitch": 175.0,
+      "hnr": 13.2,
+      "centroid": 1602.0
+     }
+    }
+   }
+  ]
  }
 }

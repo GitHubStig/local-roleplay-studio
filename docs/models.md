@@ -329,6 +329,12 @@ read Kael's clipped, flat manner as weary (two lines slow, every run); two rules
 usual manner is never a reason to change pace; when unsure, normal): the heretic 16 of 16 twice,
 gemma4 31B 15 and 16. At the default temperature the same line came back slow one time in two.
 
+**Round 7, thoughts** (2026-10-01): six thoughts each for Kael and Elara, directed as the app does
+(told it's a private thought), spoken plain and with Higgs's whispering style. Whispered sounded
+better, and kept the voice: Kael 82–99 Hz against his 97, Elara 175–184 against her 170, unlike the
+emotion tags; Higgs's whisper is hushed and breathy rather than toneless. A cough the director put
+on Kael's thought sounded wrong in the mind, so thoughts take a pace but never a sound.
+
 Other notes:
 
 - Gemma4 asked to write Higgs tags freely used only pauses, mid-phrase ("Keep <pause> it

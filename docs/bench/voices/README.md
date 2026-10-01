@@ -32,8 +32,9 @@ pitch.
 
 - `expression/`: Round 6 (2026-10-01), four ways to add expression on Higgs TTS 3, on Kael's six
   lines and Elara's ten: `clips/` has each line untagged and with pace and sounds (the one the
-  app uses), `moods/` each Character's mood clips, and `results.json` the deliveries, pitches and
-  how the Text Models scored as directors.
+  app uses), `moods/` each Character's mood clips, `thoughts/` Round 7's thoughts plain and
+  whispered (the app whispers), and `results.json` the deliveries, pitches and how the Text Models
+  scored as directors.
 
 ## Trying a new model
 
