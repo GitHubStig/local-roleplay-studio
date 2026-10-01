@@ -74,6 +74,24 @@ export const getSettings = () => request<Settings>('/api/settings')
 
 export const getSettingsOptions = () => request<SettingsOptions>('/api/settings/options')
 
+/** A saved quantized copy of an Image Model, made by the first render that needed it. */
+export interface QuantizedCopy {
+  name: string
+  modelId: string
+  bits: number
+  mflux: string
+  bytes: number
+  createdAt: string
+}
+
+export const listQuantized = () => request<QuantizedCopy[]>('/api/settings/quantized')
+
+/** Deletes a saved copy (the next render that needs it saves it again); returns the rest. */
+export const deleteQuantized = (name: string) =>
+  request<QuantizedCopy[]>(`/api/settings/quantized/${encodeURIComponent(name)}`, {
+    method: 'DELETE',
+  })
+
 export const saveSettings = (settings: Settings) =>
   request<Settings>('/api/settings', {
     method: 'PUT',

@@ -8,6 +8,8 @@ vi.mock('../api', async (importOriginal) => ({
   getSettings: vi.fn(),
   getSettingsOptions: vi.fn(),
   saveSettings: vi.fn(),
+  listQuantized: vi.fn(),
+  deleteQuantized: vi.fn(),
 }))
 
 const settings: api.Settings = {
@@ -40,6 +42,7 @@ const options: api.SettingsOptions = {
 }
 
 beforeEach(() => {
+  vi.mocked(api.listQuantized).mockReset().mockResolvedValue([])
   vi.mocked(api.getSettings).mockResolvedValue({ ...settings })
   vi.mocked(api.getSettingsOptions).mockResolvedValue(options)
   vi.mocked(api.saveSettings).mockImplementation(async (s) => s)
@@ -85,6 +88,28 @@ describe('SettingsView', () => {
     await wrapper.find('form').trigger('submit')
     await flushPromises()
     expect(api.saveSettings).toHaveBeenCalledWith({ ...settings, artStyle: 'tags' })
+  })
+
+  it('lists saved quantized copies with their size, and deletes them', async () => {
+    const copy = {
+      name: 'flux2-klein-4b-8bit-mflux0.20.0',
+      modelId: 'flux2-klein-4b',
+      bits: 8,
+      mflux: '0.20.0',
+      bytes: 6_200_000_000,
+      createdAt: '2026-10-01T00:00:00.000Z',
+    }
+    vi.mocked(api.listQuantized).mockResolvedValue([copy])
+    vi.mocked(api.deleteQuantized).mockResolvedValue([])
+    const wrapper = mount(SettingsView)
+    await flushPromises()
+    expect(wrapper.find('[data-quantized-copy]').text()).toContain(
+      'FLUX.2 Klein 4B, 8-bit · 6.2 GB · mflux 0.20.0',
+    )
+    await wrapper.find('[data-quantized-copy] button').trigger('click')
+    await flushPromises()
+    expect(api.deleteQuantized).toHaveBeenCalledWith(copy.name)
+    expect(wrapper.find('[data-quantized]').exists()).toBe(false)
   })
 
   it('turns the Limits off', async () => {

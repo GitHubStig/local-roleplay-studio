@@ -10,6 +10,7 @@ import { type SettingsStore, SIZE_PRESETS, validateSettings } from './settings.t
 import type { TextModel } from './textModel.ts'
 import { ollamaRoleplayModel, type RoleplayModel } from './roleplay/model.ts'
 import type { VoiceEngine } from './voice.ts'
+import type { QuantizedStore } from './quantized.ts'
 import { roleplayExcerpt } from './roleplay/prompt.ts'
 import { roleplayRoutes } from './roleplay/routes.ts'
 import { RoleplayJobs } from './roleplay/jobs.ts'
@@ -42,6 +43,8 @@ export interface AppDeps {
   roleplayModel?: (model: string, thinking: boolean) => RoleplayModel
   /** Speaks Roleplay Characters' lines; without it, voices are unavailable. */
   voice?: VoiceEngine
+  /** Saved quantized copies of Image Models, listed and deleted from Settings. */
+  quantized?: QuantizedStore
   newSessionId?: () => string
   randomSeed?: () => number
 }
@@ -288,6 +291,22 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       await deps.settings.save(result.settings)
       return json(result.settings)
     }],
+
+    // Saved quantized copies of Image Models: made by the first render that needs one.
+    [
+      'GET',
+      new URLPattern({ pathname: '/api/settings/quantized' }),
+      async () => json(await deps.quantized?.list() ?? []),
+    ],
+
+    [
+      'DELETE',
+      new URLPattern({ pathname: '/api/settings/quantized/:name' }),
+      async (_req, p) =>
+        (await deps.quantized?.remove(p.name!))
+          ? json(await deps.quantized!.list())
+          : error('No such saved copy', 404),
+    ],
 
     ['GET', new URLPattern({ pathname: '/api/settings/options' }), async () => {
       let models: TextModelInfo[] = []

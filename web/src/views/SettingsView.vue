@@ -2,8 +2,11 @@
 import { computed, onMounted, ref } from 'vue'
 import {
   ApiError,
+  deleteQuantized,
   getSettings,
   getSettingsOptions,
+  listQuantized,
+  type QuantizedCopy,
   saveSettings,
   type Settings,
   type SettingsOptions,
@@ -27,7 +30,20 @@ onMounted(async () => {
   } catch (err) {
     loadError.value = (err as Error).message
   }
+  copies.value = await listQuantized().catch(() => [])
 })
+
+/** Saved quantized copies of Image Models, with their sizes on disk. */
+const copies = ref<QuantizedCopy[]>([])
+const modelLabel = (id: string) => options.value?.imageModels.find((m) => m.id === id)?.label ?? id
+const gigabytes = (bytes: number) => `${(bytes / 1e9).toFixed(1)} GB`
+async function removeCopy(name: string) {
+  try {
+    copies.value = await deleteQuantized(name)
+  } catch (err) {
+    status.value = { kind: 'error', message: (err as Error).message }
+  }
+}
 
 /** Keep a stored Text Model visible even if Ollama no longer lists it. */
 const textModelChoices = computed(() => {
@@ -121,9 +137,30 @@ async function save() {
               </option>
             </select>
             <span class="text-sm text-muted">
-              Converted at every render: slightly slower, and no lower peak memory.
+              Saved as a smaller copy the first time a model renders with it (about 10 s), then
+              loaded directly: about 8 GB less memory on the larger models.
             </span>
           </label>
+        </div>
+
+        <div v-if="copies.length" class="flex flex-col gap-1" data-quantized>
+          <span class="text-sm text-muted">Saved copies (in ~/.cache/rpg/quantized)</span>
+          <ul class="flex flex-col gap-1 text-sm">
+            <li v-for="c in copies" :key="c.name" class="flex items-center gap-3" data-quantized-copy>
+              <span class="min-w-0 flex-1 truncate">
+                {{ modelLabel(c.modelId) }}, {{ c.bits }}-bit
+                <span class="text-muted">· {{ gigabytes(c.bytes) }} · mflux {{ c.mflux }}</span>
+              </span>
+              <button
+                type="button"
+                class="text-danger underline-offset-2 hover:underline"
+                :title="`Delete; the next ${c.bits}-bit render with this model saves it again`"
+                @click="removeCopy(c.name)"
+              >
+                Delete
+              </button>
+            </li>
+          </ul>
         </div>
 
         <label class="flex flex-col gap-1">

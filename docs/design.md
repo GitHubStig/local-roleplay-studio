@@ -350,7 +350,9 @@ in [open-threads.md](open-threads.md).
   to it.
 - **Settings** (`/settings`): Text Model (installed Ollama models, minus OCR and dedicated
   vision-language models), Thinking (on or off; only for models that support it), Image Model, steps (reset to the model's default when the Image Model
-  changes), quantization, size (six presets from 512×512 to 1216×832), seed (random per
+  changes), quantization (8 or 4 bit: the first render with a model saves a smaller copy of it in
+  `~/.cache/rpg/quantized` and later ones load it, 3.5–8 GB less memory; Settings lists the copies
+  with their sizes, to delete), size (six presets from 512×512 to 1216×832), seed (random per
   Session, or fixed), Upscaler (SeedVR2 7B or 3B), Art Agent model (the model that pictures
   Roleplay Frames, with Thinking off, or "Same as the Text Model"), Art Agent style (prose,
   recommended, or tags) and Limits (on by default; off leaves only "everyone depicted is an adult").
@@ -386,6 +388,8 @@ All under `/api`; the Vite dev server proxies it to the Deno server.
 | `GET /health` | Liveness |
 | `GET`, `PUT /settings` | Read or save Settings (`400` with a list of issues if invalid) |
 | `GET /settings/options` | Text Models from Ollama, Image Models, size presets; still answers if Ollama is down |
+| `GET /settings/quantized` | Saved quantized copies of Image Models: `name`, `modelId`, `bits`, `mflux` version, `bytes` |
+| `DELETE /settings/quantized/:name` | Delete a saved copy (the next render that needs it saves it again); returns the rest |
 | `GET /scenarios` | Scenario summaries plus files that failed to load |
 | `GET /sessions` | Session summaries, newest first, with each one's current activity |
 | `POST /sessions` | Start a Session: `{ kind?: "chain" \| "storyboard" \| "roleplay", scenarioId \| brief, frameCount? }` |

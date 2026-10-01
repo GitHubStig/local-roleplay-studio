@@ -8,6 +8,8 @@ import { DEFAULT_SETTINGS, type Settings, type SettingsStore } from './settings.
 import type { TextModel } from './textModel.ts'
 import type { RoleplayModel } from './roleplay/model.ts'
 import { fakeVoiceEngine, type VoiceEngine } from './voice.ts'
+import { type QuantizedStore, quantizedStore } from './quantized.ts'
+import { findImageModel } from './imageModels.ts'
 import { replyOf, scriptedRoleplayModel, testCast } from './roleplay/testing.ts'
 import {
   fakeImageGenerator,
@@ -42,6 +44,7 @@ interface SetupOptions {
   /** Roleplay models by Ollama model name, e.g. a separate Art Agent's. */
   roleplayModels?: Record<string, RoleplayModel>
   voice?: VoiceEngine
+  quantized?: QuantizedStore
   settings?: Partial<Settings>
 }
 
@@ -64,6 +67,7 @@ function setup(opts: SetupOptions = {}) {
     roleplayModel: (model) =>
       opts.roleplayModels?.[model] ?? opts.roleplayModel ?? scriptedRoleplayModel({}),
     voice: opts.voice,
+    quantized: opts.quantized,
     newSessionId: () => `s${++sessionCount}`,
     randomSeed: () => 1234,
   })
@@ -90,6 +94,26 @@ async function readEvents(res: Response): Promise<[string, Record<string, unknow
     return [event, data]
   })
 }
+
+Deno.test('Settings list saved quantized copies, and delete them', () =>
+  withTempDir(async (root) => {
+    const quantized = quantizedStore(root, {
+      mfluxVersion: () => Promise.resolve('0.20.0'),
+      save: (_m, _b, path) => Deno.mkdir(path, { recursive: true }),
+    })
+    await quantized.ensure(findImageModel('qwen-image-2.1')!, 8, new AbortController().signal)
+    const { call } = setup({ quantized })
+    const listed = await (await call('GET', '/api/settings/quantized')).json()
+    assertEquals(listed.map((c: { name: string; modelId: string }) => [c.name, c.modelId]), [
+      ['qwen-image-2.1-8bit-mflux0.20.0', 'qwen-image-2.1'],
+    ])
+    assertEquals((await call('DELETE', '/api/settings/quantized/nope-8bit-mflux1')).status, 404)
+    assertEquals(
+      await (await call('DELETE', `/api/settings/quantized/${listed[0].name}`)).json(),
+      [],
+    )
+    assertEquals(await (await setup().call('GET', '/api/settings/quantized')).json(), [])
+  }))
 
 Deno.test('GET /api/health reports ok', async () => {
   const res = await setup().call('GET', '/api/health')

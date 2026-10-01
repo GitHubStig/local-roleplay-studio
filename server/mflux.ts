@@ -7,16 +7,28 @@ import {
   type UpscaleRequest,
 } from './imageGenerator.ts'
 import { findImageModel, IMAGE_MODELS, type ImageModel } from './imageModels.ts'
+import { type QuantizedStore, quantizedStore } from './quantized.ts'
 import { SIZE_PRESETS } from './settings.ts'
 
-/** The mflux command line for one image. */
-export function mfluxArgs(model: ImageModel, req: ImageRequest, output: string): string[] {
+/**
+ * The mflux command line for one image. With a saved quantized copy (`saved`, its folder), the
+ * render loads that, named by the model it's based on; otherwise a Quantize setting converts the
+ * full weights as it goes (slower, and no lower peak: see quantized.ts).
+ */
+export function mfluxArgs(
+  model: ImageModel,
+  req: ImageRequest,
+  output: string,
+  saved?: string,
+): string[] {
   const { settings } = req
   const size = SIZE_PRESETS.find((p) => p.id === settings.size) ?? SIZE_PRESETS[0]
+  const quantize = settings.quantize && !model.preQuantized && !saved
   return [
     '--model',
-    model.model,
-    ...(model.baseModel ? ['--base-model', model.baseModel] : []),
+    saved ?? model.model,
+    ...(saved ? ['--base-model', model.baseModel ?? model.model] : []),
+    ...(!saved && model.baseModel ? ['--base-model', model.baseModel] : []),
     '--prompt',
     req.prompt,
     '--seed',
@@ -27,7 +39,7 @@ export function mfluxArgs(model: ImageModel, req: ImageRequest, output: string):
     String(size.width),
     '--height',
     String(size.height),
-    ...(settings.quantize && !model.preQuantized ? ['--quantize', String(settings.quantize)] : []),
+    ...(quantize ? ['--quantize', String(settings.quantize)] : []),
     '--output',
     output,
   ]
@@ -107,6 +119,38 @@ export interface MfluxOptions {
   models?: readonly ImageModel[]
   /** Block Hugging Face downloads so a missing model fails fast instead of fetching GBs. */
   offline?: boolean
+  /** Saved quantized copies to render from when Settings ask for Quantize. */
+  quantized?: QuantizedStore
+}
+
+/** The mflux version `uv` has installed, e.g. `0.20.0`; `unknown` if it can't tell. */
+async function installedMfluxVersion(): Promise<string> {
+  try {
+    const { stdout } = await new Deno.Command('uv', { args: ['tool', 'list'], stderr: 'null' })
+      .output()
+    return new TextDecoder().decode(stdout).match(/^mflux v(\S+)/m)?.[1] ?? 'unknown'
+  } catch {
+    return 'unknown'
+  }
+}
+
+/** Saved quantized copies made with `mflux-save`, kept in `root` (`~/.cache/rpg/quantized`). */
+export function mfluxQuantizedStore(
+  root: string,
+  opts: { offline?: boolean } = {},
+): QuantizedStore {
+  let version: Promise<string> | null = null
+  return quantizedStore(root, {
+    mfluxVersion: () => (version ??= installedMfluxVersion()),
+    save: (model, bits, path, signal) =>
+      runCommand(
+        'mflux-save',
+        ['--model', model.model, '--quantize', String(bits), '--path', path],
+        `Saving ${model.label} at ${bits}-bit`,
+        opts.offline ?? true,
+        signal,
+      ),
+  })
 }
 
 /** Renders images by running the `mflux-generate-*` CLI once per image. */
@@ -136,9 +180,23 @@ export function mfluxImageGenerator(opts: MfluxOptions = {}): ImageGenerator {
       if (!model) throw new Error(`Unknown Image Model "${req.settings.imageModel}"`)
 
       const file = `${req.name}.png`
+      // Render from a saved quantized copy (made now if there's none yet); if saving one fails
+      // for this model, convert as it goes instead, as mflux's --quantize does.
+      const bits = req.settings.quantize
+      let saved: string | undefined
+      if (bits && !model.preQuantized && opts.quantized) {
+        saved = await opts.quantized.ensure(model, bits, signal).catch((err) => {
+          signal.throwIfAborted()
+          console.warn(
+            `No saved ${bits}-bit copy of ${model.label}; converting as it goes:`,
+            err.message,
+          )
+          return undefined
+        })
+      }
       await run(
         model.command,
-        mfluxArgs(model, req, join(req.dir, file)),
+        mfluxArgs(model, req, join(req.dir, file), saved),
         model.label,
         signal,
         onProgress,
