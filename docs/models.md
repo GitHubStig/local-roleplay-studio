@@ -355,3 +355,12 @@ The Text Model and the Image Model share the Mac's memory. gemma4 31B (~19 GB) p
 one, use the 512 px sizes. The larger Image Models (Krea 2, Qwen-Image 2.1, Boogu, ERNIE) peak
 at 25–39 GB even at 512 px: next to gemma4 on a 48 GB Mac they can push the system into swap,
 so set **Quantize** (8 or 4 bit) in Settings to shrink them.
+
+**Python's version doesn't change memory or speed** (2026-10-01, uv's Python 3.14.4 against
+3.11.15, same Mac, nothing else loaded): FLUX.2 Klein 4B at 512 px peaked at 10.53 GB on both and
+rendered in ~4.0 s against ~4.4 s (within `uv run`'s own overhead); Higgs TTS 3 peaked at 10.1 GB
+on both and spoke the same three lines in 2.55–2.84 s on both. The work runs in MLX's compiled
+code on the GPU; Python only drives it. The memory is the models' weights: see the memory
+headroom thread in [open-threads.md](open-threads.md). mflux, mlx-audio and the voice service run
+on uv's own Python (`--managed-python`, `python-preference = "only-managed"`), apart from any
+other Python on the Mac.
