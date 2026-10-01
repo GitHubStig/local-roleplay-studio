@@ -90,6 +90,8 @@ export interface RoleplayFrame {
   image: string | null
   /** The Character's line, spoken; in an earlier voice when `speech.ref` isn't the voice's now. */
   speech?: Speech
+  /** The Character's thought, spoken (whispered) in the same voice. */
+  thoughtSpeech?: Speech
   createdAt: string
 }
 
@@ -169,7 +171,7 @@ export const undoExchange = (id: string, index: number) =>
  * Background work on a Frame: picturing, rendering, upscaling or speaking it; `voice` designs a new
  * take of the Character's voice (filed under the opening Frame).
  */
-export type JobKind = 'picture' | 'render' | 'upscale' | 'voice' | 'speak'
+export type JobKind = 'picture' | 'render' | 'upscale' | 'voice' | 'speak' | 'speak-thought'
 
 /** A queued, running or failed job. Finished jobs drop off the list. */
 export interface Job {

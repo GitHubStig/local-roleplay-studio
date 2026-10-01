@@ -146,6 +146,39 @@ Deno.test('Each line is directed from its moment, and spoken with that pace and 
     assertEquals([said(1).pace, said(1).sound], [undefined, undefined])
   }))
 
+Deno.test('A thought is spoken whispered, as its own audio, without a sound', () =>
+  withTempDir(async (root) => {
+    const { store, voice, files } = await setup(root)
+    const base = roleplay()
+    const session: RoleplaySession = {
+      ...base,
+      voice: { description: 'A voice.', ref: 'voice-aaaaaaaa.wav' },
+      frames: [
+        { ...base.frames[0], reply: replyOf('Hold on.', { internal: 'He is late again.' }) },
+        base.frames[1],
+      ],
+    }
+    await store.save(session)
+    const model = scriptedRoleplayModel({ deliveries: [{ pace: 'slow', sound: 'cough' }] })
+    const deps = { store, voice, model }
+    const thought = await speakFrame(deps, session, 0, () => {}, signal, 'thought')
+
+    const speech = thought.frames[0].thoughtSpeech!
+    assertEquals(speech.delivery, { pace: 'slow', sound: 'none' })
+    assertEquals(speech.file.startsWith('thought-0-'), true)
+    assertEquals(thought.frames[0].speech, undefined)
+    const req = voice.calls[0].req as SpeakRequest
+    assertEquals([req.text, req.whisper, req.sound], ['He is late again.', true, 'none'])
+    assertStringIncludes(model.directed[0][1].content, 'a private thought')
+    assertEquals(await files(), [speech.file])
+
+    await assertRejects(
+      () => speakFrame(deps, thought, 1, () => {}, signal, 'thought'),
+      Error,
+      'no thought',
+    )
+  }))
+
 Deno.test('parseDelivery plays anything it does not recognise as written', () => {
   assertEquals(parseDelivery({ pace: 'fast', sound: 'laughter' }), {
     pace: 'fast',

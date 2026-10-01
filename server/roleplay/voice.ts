@@ -15,7 +15,7 @@ import { RenderQueue } from '../renderQueue.ts'
 import type { SessionStore } from '../session.ts'
 import type { Delivery, VoiceEngine } from '../voice.ts'
 import type { RoleplayModel } from './model.ts'
-import type { RoleplaySession, RoleplayVoice, Speech } from './types.ts'
+import type { RoleplayFrame, RoleplaySession, RoleplayVoice, Speech } from './types.ts'
 import { GoneError, updateSession } from './update.ts'
 
 /** What every reference clip says: a few varied sentences, so the clip carries the whole voice. */
@@ -62,10 +62,18 @@ export interface VoiceDeps {
   renderQueue?: RenderQueue
 }
 
+/** What of a Reply is spoken: its dialogue, or the Character's private thought. */
+export type SpokenPart = 'dialogue' | 'thought'
+export const SPOKEN_PARTS: readonly SpokenPart[] = ['dialogue', 'thought']
+
+/** The words of a Reply's part to speak; '' if it has none. */
+export const spokenText = (frame: RoleplayFrame, part: SpokenPart) =>
+  speakable(part === 'thought' ? frame.reply.internal : frame.reply.dialogue)
+
 export type VoiceEvent =
   | { type: 'phase'; phase: 'text' | 'queued' | 'audio' }
   | { type: 'voice'; voice: RoleplayVoice; session: RoleplaySession }
-  | { type: 'spoken'; index: number; speech: Speech; session: RoleplaySession }
+  | { type: 'spoken'; index: number; part: SpokenPart; speech: Speech; session: RoleplaySession }
 
 /** The call that describes the Character's voice from the Cast. */
 export async function voiceMessages(session: RoleplaySession): Promise<ChatMessage[]> {
@@ -77,10 +85,11 @@ export async function voiceMessages(session: RoleplaySession): Promise<ChatMessa
   ]
 }
 
-/** The call that directs how Frame `index`'s line is spoken, from the moment around it. */
+/** The call that directs how Frame `index`'s line (or thought) is spoken, from the moment around it. */
 export async function deliveryMessages(
   session: RoleplaySession,
   index: number,
+  part: SpokenPart = 'dialogue',
 ): Promise<ChatMessage[]> {
   const cast = session.cast
   const frame = session.frames[index]
@@ -94,7 +103,10 @@ export async function deliveryMessages(
         message: frame.message ?? 'none: this opens the scene',
         actions: frame.reply.actions || 'nothing',
         internal: frame.reply.internal || 'nothing',
-        line: speakable(frame.reply.dialogue),
+        line: part === 'thought'
+          ? `The line is a private thought, heard by the reader alone and never said aloud, so ` +
+            `choose only its pace; its sound is "none": ${spokenText(frame, part)}`
+          : `The line: ${spokenText(frame, part)}`,
       }),
     },
   ]
@@ -110,7 +122,9 @@ export function speakable(dialogue: string): string {
 }
 
 const voiceFile = () => `voice-${crypto.randomUUID().slice(0, 8)}.wav`
-const speechFile = (index: number) => `speech-${index}-${crypto.randomUUID().slice(0, 8)}.wav`
+const speechFile = (index: number, part: SpokenPart) =>
+  `${part === 'thought' ? 'thought' : 'speech'}-${index}-${crypto.randomUUID().slice(0, 8)}.wav`
+const SPEECH_KEY = { dialogue: 'speech', thought: 'thoughtSpeech' } as const
 
 const engine = (deps: VoiceDeps) => {
   if (!deps.voice) throw new VoiceError("Voices aren't available on this server")
@@ -195,25 +209,34 @@ export async function speakFrame(
   index: number,
   emit: (event: VoiceEvent) => void,
   signal: AbortSignal,
+  part: SpokenPart = 'dialogue',
 ): Promise<RoleplaySession> {
   const voice = engine(deps)
   const frame = session.frames[index]
   if (!frame) throw new VoiceError(`There is no Frame ${index}`)
-  const text = speakable(frame.reply.dialogue)
-  if (!text) throw new VoiceError(`Frame ${index} has nothing to say aloud`)
+  const text = spokenText(frame, part)
+  if (!text) {
+    throw new VoiceError(
+      `Frame ${index} has ${part === 'thought' ? 'no thought' : 'nothing'} to say aloud`,
+    )
+  }
   let current = session
   if (!current.voice?.ref) current = await designVoice(deps, current, emit, signal)
   const ref = current.voice!.ref!
   // How it's said: a pace and a sound. A failed direction isn't a failed line: it's said as written.
   emit({ type: 'phase', phase: 'text' })
-  const delivery = await deps.model.directLine(await deliveryMessages(current, index), signal)
+  const directed = await deps.model.directLine(await deliveryMessages(current, index, part), signal)
     .catch((err) => {
       signal.throwIfAborted()
       console.warn(`Directing Frame ${index}'s line failed; speaking it as written:`, err.message)
       return undefined
     })
+  // A thought is whispered, and has no sound: a sigh or a cough is the body's, not the mind's.
+  const thought = part === 'thought'
+  const delivery = directed && thought ? { ...directed, sound: 'none' as const } : directed
   const dir = deps.store.dir(session.id)
-  const file = speechFile(index)
+  const file = speechFile(index, part)
+  const key = SPEECH_KEY[part]
   try {
     const { result: audio, queued } = await inTurn(deps, emit, signal, async () => {
       const start = performance.now()
@@ -221,6 +244,7 @@ export async function speakFrame(
         {
           text,
           ...delivery,
+          ...(thought ? { whisper: true } : {}),
           ref: join(dir, ref),
           refText: REF_TEXT,
           seed: session.seed + index,
@@ -241,14 +265,14 @@ export async function speakFrame(
     const updated = await updateSession(deps.store, session.id, (latest) => {
       const now = latest.frames[index]
       if (!now) throw new GoneError(`Frame ${index} no longer exists`)
-      old = now.speech?.file
+      old = now[key]?.file
       return {
         ...latest,
-        frames: latest.frames.map((f) => (f.index === index ? { ...f, speech } : f)),
+        frames: latest.frames.map((f) => (f.index === index ? { ...f, [key]: speech } : f)),
       }
     })
     if (old && old !== file) await Deno.remove(join(dir, old)).catch(() => {})
-    emit({ type: 'spoken', index, speech, session: updated })
+    emit({ type: 'spoken', index, part, speech, session: updated })
     return updated
   } catch (err) {
     await Deno.remove(join(dir, file)).catch(() => {})

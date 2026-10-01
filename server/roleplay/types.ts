@@ -104,6 +104,8 @@ export interface RoleplayFrame {
   renderTimings?: { queued?: number; image: number | null }
   /** The Character's line, spoken; out of date when its voice isn't the Roleplay's voice now. */
   speech?: Speech
+  /** The Character's thought (`internal`), spoken in the same voice; out of date likewise. */
+  thoughtSpeech?: Speech
   createdAt: string
 }
 

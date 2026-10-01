@@ -21,9 +21,19 @@ import type { RoleplaySession } from './types.ts'
 import { designVoice, speakFrame } from './voice.ts'
 import { updateSession } from './update.ts'
 
-/** `voice` designs a new take of the Character's voice; `speak` voices one Frame's dialogue. */
-export type JobKind = 'picture' | 'render' | 'upscale' | 'voice' | 'speak'
-export const JOB_KINDS: readonly JobKind[] = ['picture', 'render', 'upscale', 'voice', 'speak']
+/**
+ * `voice` designs a new take of the Character's voice; `speak` voices one Frame's dialogue, and
+ * `speak-thought` its thought.
+ */
+export type JobKind = 'picture' | 'render' | 'upscale' | 'voice' | 'speak' | 'speak-thought'
+export const JOB_KINDS: readonly JobKind[] = [
+  'picture',
+  'render',
+  'upscale',
+  'voice',
+  'speak',
+  'speak-thought',
+]
 
 export interface Job {
   id: string
@@ -172,7 +182,7 @@ export class RoleplayJobs {
       if (e.type === 'progress') job.progress = { step: e.step, total: e.total }
     }
     // The Art Agent's model pictures Frames, and describes the Character's voice as it does the Look.
-    const artModel = ['picture', 'voice', 'speak'].includes(job.kind)
+    const artModel = ['picture', 'voice', 'speak', 'speak-thought'].includes(job.kind)
       ? await this.#ctx.artModel(session)
       : undefined
     const artStyle = job.kind === 'picture' ? await this.#ctx.artStyle() : undefined
@@ -185,10 +195,13 @@ export class RoleplayJobs {
       const scenario = await this.#ctx.scenarioFor(session)
       if (scenario instanceof Response) throw new Error((await scenario.json()).error)
       await pictureFrame(withDeps, session, scenario, job.frameIndex, emit, signal)
-    } else if (job.kind === 'voice' || job.kind === 'speak') {
+    } else if (job.kind === 'voice' || job.kind === 'speak' || job.kind === 'speak-thought') {
       const voiceDeps = { ...withDeps, model: withDeps.artModel ?? withDeps.roleplayModel }
       if (job.kind === 'voice') await designVoice(voiceDeps, session, emit, signal)
-      else await speakFrame(voiceDeps, session, job.frameIndex, emit, signal)
+      else {
+        const part = job.kind === 'speak-thought' ? 'thought' : 'dialogue'
+        await speakFrame(voiceDeps, session, job.frameIndex, emit, signal, part)
+      }
     } else if (job.kind === 'render') {
       await renderRoleplayFrame(withDeps, session, job.frameIndex, emit, signal)
     } else {

@@ -23,6 +23,8 @@ export interface Delivery {
 
 export interface SpeakRequest extends Partial<Delivery> {
   text: string
+  /** Hushed and breathy, still in the voice: how a Character's thought is spoken. */
+  whisper?: boolean
   /** The voice to clone: a reference clip from `design`, and what it says. */
   ref: string
   refText: string

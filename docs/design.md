@@ -171,7 +171,10 @@ under `/api/sessions/:id/roleplay/` ([ADR 0007](adr/0007-roleplay-is-a-conversat
    sound before it (none, a sigh, a laugh, a cough) (`voice-delivery.md`); the voice service turns
    them into Higgs's pace, pause and sound tags, which held the voice. The pick is saved with the
    line (`speech.delivery`) and shown beside Listen ("slowly, with a sigh"). If directing fails,
-   the line is spoken as written.
+   the line is spoken as written. A Reply's thought (`internal`) has its own Listen, hidden with
+   the thoughts: it's spoken whispered (Higgs's whispering style, which kept the voice), with a
+   pace but never a sound (a cough in the mind sounded wrong), and saved apart from the dialogue's
+   (`thoughtSpeech`, `thought-<index>-…wav`). Speak replies speaks the dialogue only.
    On screen, a Reply with something to say has **Listen**: it plays the line, speaking it first
    (or again, if it was spoken in an earlier voice) and playing it once it's ready. **Speak
    replies** (remembered per browser) speaks each new Reply as it arrives. The **Voice** panel in
@@ -396,14 +399,14 @@ All under `/api`; the Vite dev server proxies it to the Deno server.
 | `POST /sessions/:id/cancel` | Cancel the Frame in progress |
 | `POST /sessions/:id/frames/:index/upscale` | Either kind: upscale one rendered Frame's image to 2048 px, streaming progress then `upscaled` (`session`); `409` if it has no image or is already upscaled |
 | `DELETE /sessions/:id/frames/:index` | Undo the latest Frame; `:index` must name it (`409` otherwise, and for the Opening Frame or while a Frame runs) |
-| `GET /sessions/:id/images/:file` | A Frame's image, or a Roleplay's audio (`voice-…wav`, `speech-…wav`) |
+| `GET /sessions/:id/images/:file` | A Frame's image, or a Roleplay's audio (`voice-…wav`, `speech-…wav`, `thought-…wav`) |
 | `POST /sessions/:id/roleplay/cast` | Roleplay: write (or, before it begins, rewrite) the Cast, streaming `phase`, `thinking`, then `cast` (`cast`, `session`) |
 | `POST /sessions/:id/roleplay/begin` | Roleplay: the opening Reply, streaming `reply-part` per field, then `replied` (`frame`, `session`) |
 | `POST /sessions/:id/roleplay/messages` | Roleplay: send `{ text }`, streaming `reply-part` (`key`, `value`) per field, then `replied`, or `declined` (`message`) |
 | `POST /sessions/:id/roleplay/suggest` | Roleplay: suggest a Message from `{ draft? }`, streaming `suggestion-part` (`text`, all of it so far), then `suggestion` (`text`, tidied); nothing is saved |
 | `DELETE /sessions/:id/roleplay/frames/:index` | Roleplay: undo the latest exchange (`409` for any other, and for the opening) |
 | `GET /sessions/:id/roleplay/jobs` | Roleplay: its background jobs (picture, render, upscale, voice, speak): running, queued, then failed, each with its `phase`, `progress` or `error` |
-| `POST /sessions/:id/roleplay/jobs` | Roleplay: queue `{ kind: "picture" \| "render" \| "upscale" \| "voice" \| "speak", frameIndex }` (`voice` designs a new take of the Character's voice; `409` to speak a Frame with nothing to say aloud); returns the queue (asking twice for the same job queues it once) |
+| `POST /sessions/:id/roleplay/jobs` | Roleplay: queue `{ kind: "picture" \| "render" \| "upscale" \| "voice" \| "speak" \| "speak-thought", frameIndex }` (`voice` designs a new take of the Character's voice; `speak-thought` speaks the Frame's thought, whispered; `409` to speak a Frame with nothing to say aloud, or no thought); returns the queue (asking twice for the same job queues it once) |
 | `POST /sessions/:id/roleplay/jobs/:job/retry` | Roleplay: put a failed job back at the end of the queue (`404` if there's no such failed job) |
 | `DELETE /sessions/:id/roleplay/jobs/:job` | Roleplay: cancel a queued or running job, or dismiss a failed one |
 | `PUT /sessions/:id/roleplay/look` | Roleplay: replace the Look, `{ subject, style }`, rewriting every pictured Frame (`400` if incomplete, `422` if it crosses a Limit) |

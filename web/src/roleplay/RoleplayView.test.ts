@@ -402,6 +402,35 @@ describe('RoleplayView', () => {
       expect(roleplay.queueJob).toHaveBeenCalledWith('r1', 'speak', 0)
     })
 
+    it('speaks a thought on its own Listen, and hides it with the thoughts', async () => {
+      vi.mocked(roleplay.queueJob).mockResolvedValue([
+        job({ kind: 'speak-thought', status: 'running', phase: 'audio' }),
+      ])
+      const { wrapper } = await mountIt()
+      await wrapper.find('[data-listen-thought]').trigger('click')
+      await flushPromises()
+      expect(roleplay.queueJob).toHaveBeenCalledWith('r1', 'speak-thought', 0)
+      expect(wrapper.find('[data-frame-job]').text()).toContain('Listen to thought')
+
+      vi.mocked(roleplay.listJobs).mockResolvedValue([])
+      vi.mocked(api.getSession).mockResolvedValue({
+        ...roleplaySession([{
+          ...frame(0, null, 'Get inside.'),
+          thoughtSpeech: { file: 'thought-0-cccccccc.wav', ref: voice.ref, timings: { audio: 2 } },
+        }]),
+        cast,
+        voice,
+      })
+      await new Promise((r) => setTimeout(r, 1100))
+      await flushPromises()
+      expect(played).toEqual(['thought-0-cccccccc.wav'])
+      expect(wrapper.find('[data-listen-thought]').text()).toBe('Stop')
+      expect(wrapper.find('[data-listen]').text()).toBe('Listen')
+
+      await wrapper.find('[data-hide-thoughts]').setValue(true)
+      expect(wrapper.find('[data-listen-thought]').exists()).toBe(false)
+    })
+
     it('has nothing to Listen to in a line of only "…"', async () => {
       vi.mocked(api.getSession).mockResolvedValue(roleplaySession([frame(0, null, '...')]))
       const { wrapper } = await mountIt()

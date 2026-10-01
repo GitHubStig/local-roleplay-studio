@@ -17,7 +17,7 @@ import {
 import type { RoleplayModel } from './model.ts'
 import { CastError } from './prompt.ts'
 import { suggestMessage } from './suggest.ts'
-import { setVoiceDescription, speakable, VoiceError } from './voice.ts'
+import { setVoiceDescription, spokenText, VoiceError } from './voice.ts'
 import type { RoleplaySession } from './types.ts'
 
 /** A player's message can be at most this long. */
@@ -149,8 +149,11 @@ export function roleplayRoutes(ctx: RoleplayRouteContext): Route[] {
       }
       const index = Number(body?.frameIndex)
       if (!Number.isInteger(index) || !session.frames[index]) return error('No such Frame', 404)
-      if (kind === 'speak' && !speakable(session.frames[index].reply.dialogue)) {
+      if (kind === 'speak' && !spokenText(session.frames[index], 'dialogue')) {
         return error(`Frame ${index} has nothing to say aloud`, 409)
+      }
+      if (kind === 'speak-thought' && !spokenText(session.frames[index], 'thought')) {
+        return error(`Frame ${index} has no thought to say aloud`, 409)
       }
       ctx.jobs.enqueue(session, kind, index)
       return json(ctx.jobs.list(session.id), 201)

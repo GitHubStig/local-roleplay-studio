@@ -51,8 +51,11 @@ export interface AppDeps {
  * an upscaled one.
  */
 const IMAGE_FILE = /^frame-\d+(-[0-9a-f]{8})?(-2048)?\.(png|svg)$/
-/** A Roleplay's audio: its Character's voice (`voice-1a2b3c4d.wav`) and spoken lines (`speech-3-…`). */
-const AUDIO_FILE = /^(voice|speech-\d+)-[0-9a-f]{8}\.wav$/
+/**
+ * A Roleplay's audio: its Character's voice (`voice-1a2b3c4d.wav`), spoken lines (`speech-3-…`)
+ * and spoken thoughts (`thought-3-…`).
+ */
+const AUDIO_FILE = /^(voice|(speech|thought)-\d+)-[0-9a-f]{8}\.wav$/
 const CONTENT_TYPES: Record<string, string> = {
   '.png': 'image/png',
   '.svg': 'image/svg+xml',

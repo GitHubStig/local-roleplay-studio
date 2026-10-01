@@ -383,8 +383,8 @@ export async function undoLatestExchange(
   for (const file of [latest.image, latest.upscaled]) {
     if (file) await removeImage(store.dir(session.id), file.replace(/\.\w+$/, ''))
   }
-  if (latest.speech) {
-    await Deno.remove(join(store.dir(session.id), latest.speech.file)).catch(() => {})
+  for (const speech of [latest.speech, latest.thoughtSpeech]) {
+    if (speech) await Deno.remove(join(store.dir(session.id), speech.file)).catch(() => {})
   }
   return updated
 }

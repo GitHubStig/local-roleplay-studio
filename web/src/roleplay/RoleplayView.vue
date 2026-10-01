@@ -17,6 +17,7 @@ import {
   type RoleplayLook,
   type RoleplaySession,
   type Shown,
+  type RoleplayFrame,
   type Speech,
   beginRoleplay,
   cancelJob,
@@ -87,13 +88,14 @@ const JOB_NAMES: Record<JobKind, string> = {
   upscale: 'Upscale',
   voice: 'Voice',
   speak: 'Listen',
+  'speak-thought': 'Listen to thought',
 }
 
 /** What a job is doing, in a few words. */
 function jobStatus(job: Job): string {
   if (job.status === 'failed') return `Failed: ${job.error}`
   if (job.status === 'queued') return 'Queued'
-  if (job.kind === 'voice' || job.kind === 'speak') {
+  if (job.kind === 'voice' || job.kind === 'speak' || job.kind === 'speak-thought') {
     if (job.phase === 'queued') return 'Waiting for another render…'
     if (job.phase === 'text') return 'Describing the voice…'
     if (job.kind === 'voice' || !session.value?.voice?.ref) return 'Designing the voice…'
@@ -208,8 +210,14 @@ function stepViewer(step: number) {
 
 /** New Replies are spoken as they arrive; remembered per browser. */
 const autoplay = useStoredFlag('roleplay-voice-autoplay')
-/** Whether a line has words to say aloud (a Reply of only "…" doesn't). */
-const canSpeak = (frame: { reply: Reply }) => /[A-Za-z]/.test(frame.reply.dialogue)
+/** What of a Reply is spoken: its dialogue, or the Character's thought (whispered). */
+type Part = 'dialogue' | 'thought'
+const SPEAK_JOB = { dialogue: 'speak', thought: 'speak-thought' } as const
+const speechOf = (frame: RoleplayFrame, part: Part) =>
+  part === 'thought' ? frame.thoughtSpeech : frame.speech
+/** Whether a part has words to say aloud (a Reply of only "…" doesn't). */
+const canSpeak = (frame: { reply: Reply }, part: Part = 'dialogue') =>
+  /[A-Za-z]/.test(part === 'thought' ? frame.reply.internal : frame.reply.dialogue)
 /** How a spoken line was directed, in a few words: "slowly, with a sigh"; '' if plainly. */
 function deliveryWords(speech?: Speech): string {
   const d = speech?.delivery
@@ -218,50 +226,53 @@ function deliveryWords(speech?: Speech): string {
   const sound = { none: '', sigh: 'a sigh', laughter: 'a laugh', cough: 'a cough' }[d.sound]
   return [pace, sound && `with ${sound}`].filter(Boolean).join(', ')
 }
-/** A Frame's audio is in the Character's voice as it is now. */
-const spokenNow = (frame: { speech?: { ref: string } }) =>
-  !!frame.speech && frame.speech.ref === session.value?.voice?.ref
+/** A part's audio is in the Character's voice as it is now. */
+const spokenNow = (speech?: Speech) => !!speech && speech.ref === session.value?.voice?.ref
 
 const player = new Audio()
-/** What's playing: a Frame's index, or 'voice' for the voice's reference clip. */
-const playing = ref<number | 'voice' | null>(null)
+/** What's playing: a Frame's part (`3`, `3:thought`), or 'voice' for the voice's reference clip. */
+const playing = ref<string | null>(null)
+const partKey = (index: number, part: Part) => (part === 'thought' ? `${index}:thought` : `${index}`)
 function stopAudio() {
   player.pause()
   playing.value = null
 }
 useEventListener(player, 'ended', () => (playing.value = null))
-function play(file: string, what: number | 'voice') {
+function play(file: string, what: string) {
   stopAudio()
   player.src = imageUrl(props.id, file)
   // Browsers return a promise; some test environments return nothing.
   Promise.resolve(player.play()).then(() => (playing.value = what), () => (playing.value = null))
 }
 
-/** Frames to play once they've been spoken: asked to Listen to, or new while autoplay is on. */
-const toPlay = new Set<number>()
+/** Parts to play once they've been spoken: asked to Listen to, or new while autoplay is on. */
+const toPlay = new Map<string, { index: number; part: Part }>()
 /**
- * Plays a Frame's line, speaking it first (in the voice as it is now) if it hasn't been, or was
- * spoken in an earlier voice.
+ * Plays a Frame's line or thought, speaking it first (in the voice as it is now) if it hasn't
+ * been, or was spoken in an earlier voice.
  */
-function listen(index: number) {
+function listen(index: number, part: Part = 'dialogue') {
   const frame = session.value?.frames[index]
   if (!frame) return
-  if (playing.value === index) return stopAudio()
-  if (frame.speech && spokenNow(frame)) return play(frame.speech.file, index)
-  toPlay.add(index)
-  if (!hasJob(index, 'speak')) queue('speak', index)
+  const key = partKey(index, part)
+  if (playing.value === key) return stopAudio()
+  const speech = speechOf(frame, part)
+  if (speech && spokenNow(speech)) return play(speech.file, key)
+  toPlay.set(key, { index, part })
+  if (!hasJob(index, SPEAK_JOB[part])) queue(SPEAK_JOB[part], index)
 }
 // Play what was waiting to be spoken, once it is; forget it if speaking failed or it was undone.
 watch([() => session.value?.frames, jobs], () => {
-  for (const index of [...toPlay]) {
+  for (const [key, { index, part }] of [...toPlay]) {
     const frame = session.value?.frames[index]
     const failed = jobs.value.some((j) =>
-      j.frameIndex === index && j.kind === 'speak' && j.status === 'failed'
+      j.frameIndex === index && j.kind === SPEAK_JOB[part] && j.status === 'failed'
     )
-    if (!frame || failed) toPlay.delete(index)
-    else if (frame.speech && spokenNow(frame) && !hasJob(index, 'speak')) {
-      toPlay.delete(index)
-      play(frame.speech.file, index)
+    const speech = frame && speechOf(frame, part)
+    if (!frame || failed) toPlay.delete(key)
+    else if (speech && spokenNow(speech) && !hasJob(index, SPEAK_JOB[part])) {
+      toPlay.delete(key)
+      play(speech.file, key)
     }
   }
 })
@@ -385,7 +396,7 @@ function onEvent(event: RoleplayEvent) {
       // The message was used; a declined or failed one stays in the box to reword.
       if (p.kind === 'message') draft.value = ''
       if (autoplay.value && canSpeak(event.frame)) {
-        toPlay.add(event.frame.index)
+        toPlay.set(partKey(event.frame.index, 'dialogue'), { index: event.frame.index, part: 'dialogue' })
         queue('speak', event.frame.index)
       }
       break
@@ -673,6 +684,20 @@ async function saveCastDraft(): Promise<boolean> {
                     data-internal
                   >
                     {{ frame.reply.internal }}
+                    <button
+                      v-if="canSpeak(frame, 'thought')"
+                      type="button"
+                      class="ml-1 not-italic underline-offset-2 hover:text-fg hover:underline disabled:opacity-50"
+                      :class="{ 'text-info': playing === partKey(frame.index, 'thought') }"
+                      :disabled="hasJob(frame.index, 'speak-thought')"
+                      :title="frame.thoughtSpeech && !spokenNow(frame.thoughtSpeech)
+                        ? 'Spoken in an earlier voice: Listen speaks it again'
+                        : `Hear ${characterName} think it, whispered`"
+                      data-listen-thought
+                      @click="listen(frame.index, 'thought')"
+                    >
+                      {{ playing === partKey(frame.index, 'thought') ? 'Stop' : 'Listen' }}
+                    </button>
                   </p>
                   <p v-if="frame.reply.actions" class="max-w-prose italic" data-actions>
                     {{ frame.reply.actions }}
@@ -719,18 +744,18 @@ async function saveCastDraft(): Promise<boolean> {
                         v-if="canSpeak(frame)"
                         type="button"
                         class="text-muted underline-offset-2 hover:text-fg hover:underline disabled:opacity-50"
-                        :class="{ 'text-info': playing === frame.index }"
+                        :class="{ 'text-info': playing === partKey(frame.index, 'dialogue') }"
                         :disabled="hasJob(frame.index, 'speak')"
-                        :title="frame.speech && !spokenNow(frame)
+                        :title="frame.speech && !spokenNow(frame.speech)
                           ? 'Spoken in an earlier voice: Listen speaks it again'
                           : `Hear ${characterName} say it`"
                         data-listen
                         @click="listen(frame.index)"
                       >
-                        {{ playing === frame.index ? 'Stop' : 'Listen' }}
+                        {{ playing === partKey(frame.index, 'dialogue') ? 'Stop' : 'Listen' }}
                       </button>
                       <span
-                        v-if="spokenNow(frame) && deliveryWords(frame.speech)"
+                        v-if="spokenNow(frame.speech) && deliveryWords(frame.speech)"
                         class="-ml-2 text-muted"
                         data-delivery
                       >· {{ deliveryWords(frame.speech) }}</span>
