@@ -383,8 +383,29 @@ isn't worth it yet ([open-threads.md](open-threads.md)).
 The Text Model and the Image Model share the Mac's memory. gemma4 31B (~19 GB) plus FLUX.2 Klein
 (~10.5 GB at 512 px, ~17.6 GB at 832×1216) fits comfortably on a large-memory Mac; on a smaller
 one, use the 512 px sizes. The larger Image Models (Krea 2, Qwen-Image 2.1, Boogu, ERNIE) peak
-at 25–39 GB even at 512 px: next to gemma4 on a 48 GB Mac they can push the system into swap,
-so set **Quantize** (8 or 4 bit) in Settings to shrink them.
+at 25–39 GB even at 512 px: next to gemma4 on a 48 GB Mac they can push the system into swap.
+
+**Settings → Quantize doesn't lower the peak** (2026-10-01, 512 px, the art-tags test set's nine
+prompts). mflux loads the full weights and converts them as it goes, so the peak comes first:
+
+| Image Model | Off | 8-bit, converted each render | 8-bit, converted once and saved |
+| ----------- | --- | ---------------------------- | ------------------------------- |
+| FLUX.2 Klein 4B | 4.1 s, 10.5 GB | 4.9 s, 10.5 GB | not tried |
+| FLUX.2 Klein 9B | 9.6 s, 20.9 GB | 10.4 s, 20.9 GB | 7.1 s, 12.6 GB |
+| Qwen-Image 2.1 | 28.7 s, 20.5 GB | 34.1 s, 20.5 GB | 28.5 s, 13.4 GB |
+
+Saved once (`mflux-save --quantize 8`, 7–10 s; 17 GB for Klein 9B, 22 GB for Qwen-Image, on top
+of the originals) and rendered from that copy (`--model <path> --base-model <id>`), 8-bit saves
+about 8 GB at the same speed or faster, with the same pictures as converting each time. Against
+full precision the pictures keep their composition and only fine detail shifts (mean pixel
+difference about 1 of 255 on Qwen-Image, 5–11 on the Kleins). The app doesn't use saved copies
+yet (see the memory headroom thread in [open-threads.md](open-threads.md)). Qwen-Image 2.1's peak
+here, 20.5 GB, is lower than the ~35 GB measured on 2026-09-25 with an earlier setup.
+
+**The voice service** (2026-10-01) held 36 GB with only Higgs (~10 GB) loaded: MLX keeps each
+generation's working memory for reuse. Its cache is now capped and cleared after every request,
+and it stays at 9.1–9.7 GB over a run of long lines. Reloading Higgs takes 1.9 s warm and 3.2 s
+straight after Qwen-Image, so it now unloads after a minute unused instead of ten.
 
 **Python's version doesn't change memory or speed** (2026-10-01, uv's Python 3.14.4 against
 3.11.15, same Mac, nothing else loaded): FLUX.2 Klein 4B at 512 px peaked at 10.53 GB on both and

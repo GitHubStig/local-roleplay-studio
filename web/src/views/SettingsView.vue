@@ -18,7 +18,7 @@ const status = ref<{ kind: 'saved' | 'error'; message: string; issues?: string[]
 const quantizeChoices = [
   { value: null, label: 'None (full precision)' },
   { value: 8, label: '8-bit' },
-  { value: 4, label: '4-bit (fastest)' },
+  { value: 4, label: '4-bit' },
 ] as const
 
 onMounted(async () => {
@@ -120,6 +120,9 @@ async function save() {
                 {{ q.label }}
               </option>
             </select>
+            <span class="text-sm text-muted">
+              Converted at every render: slightly slower, and no lower peak memory.
+            </span>
           </label>
         </div>
 
