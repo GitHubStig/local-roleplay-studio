@@ -259,7 +259,7 @@ export interface SessionSummary {
   createdAt: string
   updatedAt: string
   /** What a Frame in progress is doing, or null when idle. */
-  activity: 'text' | 'queued' | 'image' | null
+  activity: 'text' | 'queued' | 'image' | 'audio' | null
 }
 
 export const listSessions = () => request<SessionSummary[]>('/api/sessions')

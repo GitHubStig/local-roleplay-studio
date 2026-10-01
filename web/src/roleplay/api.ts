@@ -1,4 +1,5 @@
 import {
+  type Activity,
   type EndEvent,
   type Look,
   post,
@@ -87,10 +88,27 @@ export interface RoleplayFrame {
   pictureThinking?: string
   /** The rendered picture; null until rendered. */
   image: string | null
+  /** The Character's line, spoken; in an earlier voice when `speech.ref` isn't the voice's now. */
+  speech?: Speech
   createdAt: string
 }
 
-export interface RoleplaySession extends SessionBase {
+/** A Frame's dialogue spoken in the Character's voice. */
+export interface Speech {
+  file: string
+  /** The reference clip of the voice it was spoken in. */
+  ref: string
+  timings: { queued?: number; audio: number }
+}
+
+/** The Character's voice: a description, and the reference clip designed from it (once designed). */
+export interface RoleplayVoice {
+  description: string
+  ref?: string
+  model?: string
+}
+
+export interface RoleplaySession extends Omit<SessionBase, 'activity'> {
   kind: 'roleplay'
   /** Null until set up. */
   cast: Cast | null
@@ -99,6 +117,9 @@ export interface RoleplaySession extends SessionBase {
   look?: RoleplayLook | Look | null
   lookTimings?: { text: number }
   lookThinking?: string
+  voice?: RoleplayVoice
+  /** As for any Session, or speaking a line (audio). */
+  activity?: Activity | 'audio' | null
   frames: RoleplayFrame[]
 }
 
@@ -142,8 +163,11 @@ export const suggestMessage = (
 export const undoExchange = (id: string, index: number) =>
   request<RoleplaySession>(`${base(id)}/frames/${index}`, { method: 'DELETE' })
 
-/** Background work on a Frame: picturing, rendering or upscaling it. */
-export type JobKind = 'picture' | 'render' | 'upscale'
+/**
+ * Background work on a Frame: picturing, rendering, upscaling or speaking it; `voice` designs a new
+ * take of the Character's voice (filed under the opening Frame).
+ */
+export type JobKind = 'picture' | 'render' | 'upscale' | 'voice' | 'speak'
 
 /** A queued, running or failed job. Finished jobs drop off the list. */
 export interface Job {
@@ -151,7 +175,8 @@ export interface Job {
   kind: JobKind
   frameIndex: number
   status: 'queued' | 'running' | 'failed'
-  phase?: 'text' | 'queued' | 'image'
+  /** Writing (text), waiting for a render (queued), rendering (image), or speaking (audio). */
+  phase?: Activity | 'audio'
   progress?: { step: number; total: number }
   error?: string
   createdAt: string
@@ -175,6 +200,10 @@ export const cancelJob = (id: string, jobId: string) =>
 /** Replaces the Look, rewriting every pictured Frame's Image Prompt. */
 export const saveLook = (id: string, look: RoleplayLook) =>
   put<RoleplaySession>(`${base(id)}/look`, look)
+
+/** Replaces the voice description; the voice is designed again from it. */
+export const saveVoice = (id: string, description: string) =>
+  put<RoleplaySession>(`${base(id)}/voice`, { description })
 
 /** Replaces the Cast; applies from the next reply. */
 export const saveCast = (id: string, cast: Cast) => put<RoleplaySession>(`${base(id)}/cast`, cast)

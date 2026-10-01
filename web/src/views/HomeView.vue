@@ -97,6 +97,7 @@ const ACTIVITY_LABELS = {
   text: 'Writing…',
   queued: 'Waiting to render…',
   image: 'Rendering…',
+  audio: 'Speaking…',
 } as const
 
 const relative = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' })

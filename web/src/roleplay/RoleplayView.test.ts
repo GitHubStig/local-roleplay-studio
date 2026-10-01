@@ -24,6 +24,7 @@ vi.mock('./api', async (importOriginal) => ({
   cancelJob: vi.fn(),
   retryJob: vi.fn(),
   saveLook: vi.fn(),
+  saveVoice: vi.fn(),
 }))
 
 const cast: roleplay.Cast = {
@@ -308,7 +309,7 @@ describe('RoleplayView', () => {
     }))
     const { wrapper } = await mountIt()
     await wrapper.find('[data-field="persona.name"]').setValue('Callum')
-    await wrapper.find('[data-cast-panel] form').trigger('submit')
+    await wrapper.find('[data-cast-form]').trigger('submit')
     await flushPromises()
     expect(roleplay.saveCast).toHaveBeenCalledWith('r1', {
       ...cast,
@@ -331,6 +332,116 @@ describe('RoleplayView', () => {
     status: 'queued',
     createdAt: '2026-09-27T00:00:00.000Z',
     ...extra,
+  })
+
+  describe('voices', () => {
+    const voice = { description: 'A gruff woman of forty.', ref: 'voice-aaaaaaaa.wav' }
+    const spoken = (ref = voice.ref) => ({
+      ...frame(0, null, 'Get inside.'),
+      speech: { file: 'speech-0-bbbbbbbb.wav', ref, timings: { audio: 1.2 } },
+    })
+    let played: string[]
+    beforeEach(() => {
+      played = []
+      vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(
+        function (this: HTMLMediaElement) {
+          played.push(this.src.replace(/^.*\/images\//, ''))
+          return Promise.resolve()
+        },
+      )
+      vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {})
+      vi.mocked(roleplay.queueJob).mockReset()
+    })
+    afterEach(() => vi.restoreAllMocks())
+
+    it('speaks a line on Listen, then plays it once it is ready', async () => {
+      vi.mocked(roleplay.queueJob).mockResolvedValue([
+        job({ kind: 'speak', status: 'running', phase: 'audio' }),
+      ])
+      const { wrapper } = await mountIt()
+      await wrapper.find('[data-listen]').trigger('click')
+      await flushPromises()
+      expect(roleplay.queueJob).toHaveBeenCalledWith('r1', 'speak', 0)
+      expect(wrapper.find('[data-frame-job]').text()).toContain('Listen · Designing the voice…')
+      expect(wrapper.find('[data-listen]').attributes('disabled')).toBeDefined()
+
+      vi.mocked(roleplay.listJobs).mockResolvedValue([])
+      vi.mocked(api.getSession).mockResolvedValue({ ...roleplaySession([spoken()]), cast, voice })
+      await new Promise((r) => setTimeout(r, 1100))
+      await flushPromises()
+      expect(played).toEqual(['speech-0-bbbbbbbb.wav'])
+      expect(wrapper.find('[data-listen]').text()).toBe('Stop')
+    })
+
+    it('plays a line already spoken, and speaks again one spoken in an earlier voice', async () => {
+      vi.mocked(api.getSession).mockResolvedValue({ ...roleplaySession([spoken()]), cast, voice })
+      const { wrapper } = await mountIt()
+      await wrapper.find('[data-listen]').trigger('click')
+      await flushPromises()
+      expect([played, vi.mocked(roleplay.queueJob).mock.calls]).toEqual([
+        ['speech-0-bbbbbbbb.wav'],
+        [],
+      ])
+
+      vi.mocked(api.getSession).mockResolvedValue({
+        ...roleplaySession([spoken('voice-cccccccc.wav')]),
+        cast,
+        voice,
+      })
+      const { wrapper: other } = await mountIt()
+      vi.mocked(roleplay.queueJob).mockResolvedValue([job({ kind: 'speak' })])
+      expect(other.find('[data-listen]').attributes('title')).toContain('earlier voice')
+      await other.find('[data-listen]').trigger('click')
+      await flushPromises()
+      expect(roleplay.queueJob).toHaveBeenCalledWith('r1', 'speak', 0)
+    })
+
+    it('has nothing to Listen to in a line of only "…"', async () => {
+      vi.mocked(api.getSession).mockResolvedValue(roleplaySession([frame(0, null, '...')]))
+      const { wrapper } = await mountIt()
+      expect(wrapper.find('[data-listen]').exists()).toBe(false)
+    })
+
+    it('speaks each new reply while Speak replies is on', async () => {
+      vi.mocked(roleplay.queueJob).mockResolvedValue([job({ kind: 'speak', frameIndex: 1 })])
+      const done = roleplaySession([frame(0, null, 'Get inside.'), frame(1, 'Hello.', 'Sit.')])
+      vi.mocked(roleplay.sendMessage).mockImplementation(async (_id, _text, onEvent) =>
+        onEvent({ type: 'replied', frame: done.frames[1], session: done })
+      )
+      const { wrapper } = await mountIt()
+      await wrapper.find('[data-autoplay]').setValue(true)
+      await wrapper.find('textarea').setValue('Hello.')
+      await buttonNamed(wrapper, 'Send').trigger('click')
+      await flushPromises()
+      expect(roleplay.queueJob).toHaveBeenCalledWith('r1', 'speak', 1)
+    })
+
+    it('edits the voice, designs it again, and plays it', async () => {
+      vi.mocked(api.getSession).mockResolvedValue({ ...roleplaySession([spoken()]), cast, voice })
+      vi.mocked(roleplay.saveVoice).mockResolvedValue({
+        ...roleplaySession([spoken()]),
+        cast,
+        voice: { description: 'A deep man.' },
+      })
+      vi.mocked(roleplay.queueJob).mockResolvedValue([
+        job({ kind: 'voice', status: 'running', phase: 'audio' }),
+      ])
+      const { wrapper } = await mountIt()
+      const panel = wrapper.find('[data-voice]')
+      await panel.find('[data-play-voice]').trigger('click')
+      await flushPromises()
+      expect(played).toEqual(['voice-aaaaaaaa.wav'])
+
+      await panel.find('[data-voice-description]').setValue('A deep man.')
+      await panel.trigger('submit')
+      await flushPromises()
+      expect(roleplay.saveVoice).toHaveBeenCalledWith('r1', 'A deep man.')
+      expect(roleplay.queueJob).toHaveBeenCalledWith('r1', 'voice', 0)
+      expect(wrapper.find('[data-voice-job]').text()).toContain('Designing the voice…')
+      // Designing the voice is the Roleplay's, not the opening Frame's.
+      expect(wrapper.find('[data-frame-job]').exists()).toBe(false)
+      expect(wrapper.find('[data-reply]').classes()).not.toContain('render-sweep')
+    })
   })
 
   it('queues picturing, shows it on the Frame, and shows the result once the job is done', async () => {

@@ -26,6 +26,7 @@ import {
   retryJob,
   saveCast,
   saveLook,
+  saveVoice,
   sendMessage,
   suggestMessage,
   undoExchange,
@@ -71,7 +72,10 @@ const suggesting = computed(() => pending.value?.kind === 'suggest')
 const jobs = ref<Job[]>([])
 const openJobs = computed(() => jobs.value.filter((j) => j.status !== 'failed'))
 const runningJob = computed(() => jobs.value.find((j) => j.status === 'running') ?? null)
-const jobsFor = (index: number) => jobs.value.filter((j) => j.frameIndex === index)
+/** A Frame's jobs; designing the voice is the Roleplay's, shown in the Voice panel instead. */
+const jobsFor = (index: number) =>
+  jobs.value.filter((j) => j.frameIndex === index && j.kind !== 'voice')
+const voiceJob = computed(() => jobs.value.find((j) => j.kind === 'voice') ?? null)
 /** A job of this kind is already queued or running on this Frame. */
 const hasJob = (index: number, kind: JobKind) =>
   openJobs.value.some((j) => j.frameIndex === index && j.kind === kind)
@@ -80,12 +84,20 @@ const JOB_NAMES: Record<JobKind, string> = {
   picture: 'Picture',
   render: 'Render',
   upscale: 'Upscale',
+  voice: 'Voice',
+  speak: 'Listen',
 }
 
 /** What a job is doing, in a few words. */
 function jobStatus(job: Job): string {
   if (job.status === 'failed') return `Failed: ${job.error}`
   if (job.status === 'queued') return 'Queued'
+  if (job.kind === 'voice' || job.kind === 'speak') {
+    if (job.phase === 'queued') return 'Waiting for another render…'
+    if (job.phase === 'text') return 'Describing the voice…'
+    if (job.kind === 'voice' || !session.value?.voice?.ref) return 'Designing the voice…'
+    return 'Speaking…'
+  }
   if (job.kind === 'picture') {
     return currentLook.value ? 'Picturing this moment…' : 'Writing the Look, then picturing…'
   }
@@ -191,6 +203,77 @@ function stepViewer(step: number) {
   goToFrame(frame.index)
 }
 
+// --- Voices: the Character speaks their lines.
+
+/** New Replies are spoken as they arrive; remembered per browser. */
+const autoplay = useStoredFlag('roleplay-voice-autoplay')
+/** Whether a line has words to say aloud (a Reply of only "…" doesn't). */
+const canSpeak = (frame: { reply: Reply }) => /[A-Za-z]/.test(frame.reply.dialogue)
+/** A Frame's audio is in the Character's voice as it is now. */
+const spokenNow = (frame: { speech?: { ref: string } }) =>
+  !!frame.speech && frame.speech.ref === session.value?.voice?.ref
+
+const player = new Audio()
+/** What's playing: a Frame's index, or 'voice' for the voice's reference clip. */
+const playing = ref<number | 'voice' | null>(null)
+function stopAudio() {
+  player.pause()
+  playing.value = null
+}
+useEventListener(player, 'ended', () => (playing.value = null))
+function play(file: string, what: number | 'voice') {
+  stopAudio()
+  player.src = imageUrl(props.id, file)
+  // Browsers return a promise; some test environments return nothing.
+  Promise.resolve(player.play()).then(() => (playing.value = what), () => (playing.value = null))
+}
+
+/** Frames to play once they've been spoken: asked to Listen to, or new while autoplay is on. */
+const toPlay = new Set<number>()
+/**
+ * Plays a Frame's line, speaking it first (in the voice as it is now) if it hasn't been, or was
+ * spoken in an earlier voice.
+ */
+function listen(index: number) {
+  const frame = session.value?.frames[index]
+  if (!frame) return
+  if (playing.value === index) return stopAudio()
+  if (frame.speech && spokenNow(frame)) return play(frame.speech.file, index)
+  toPlay.add(index)
+  if (!hasJob(index, 'speak')) queue('speak', index)
+}
+// Play what was waiting to be spoken, once it is; forget it if speaking failed or it was undone.
+watch([() => session.value?.frames, jobs], () => {
+  for (const index of [...toPlay]) {
+    const frame = session.value?.frames[index]
+    const failed = jobs.value.some((j) =>
+      j.frameIndex === index && j.kind === 'speak' && j.status === 'failed'
+    )
+    if (!frame || failed) toPlay.delete(index)
+    else if (frame.speech && spokenNow(frame) && !hasJob(index, 'speak')) {
+      toPlay.delete(index)
+      play(frame.speech.file, index)
+    }
+  }
+})
+
+/** The voice description as edited in the side panel. */
+const voiceDraft = ref('')
+watch(() => session.value?.voice?.description, (d) => (voiceDraft.value = d ?? ''), { immediate: true })
+const voiceChanged = computed(() =>
+  !!voiceDraft.value.trim() && voiceDraft.value.trim() !== (session.value?.voice?.description ?? '')
+)
+/** Saves an edited description, then designs the voice from it. */
+async function saveVoiceDraft() {
+  notice.value = null
+  try {
+    session.value = await saveVoice(props.id, voiceDraft.value)
+    await queue('voice', 0)
+  } catch (err) {
+    notice.value = { kind: 'error', text: (err as Error).message }
+  }
+}
+
 /** The side panel's tab: the Look and Cast, or the queue. */
 const sideTab = ref<'cast' | 'queue'>('cast')
 
@@ -292,6 +375,10 @@ function onEvent(event: RoleplayEvent) {
       session.value = event.session
       // The message was used; a declined or failed one stays in the box to reword.
       if (p.kind === 'message') draft.value = ''
+      if (autoplay.value && canSpeak(event.frame)) {
+        toPlay.add(event.frame.index)
+        queue('speak', event.frame.index)
+      }
       break
     case 'suggestion-part':
     case 'suggestion':
@@ -527,10 +614,19 @@ async function saveCastDraft(): Promise<boolean> {
               {{ characterName }} and {{ personaName }} · {{ cast.setting.place }}
             </template>
           </p>
-          <label class="flex shrink-0 cursor-pointer items-center gap-1.5 text-muted">
-            <input v-model="thoughtsHidden" type="checkbox" data-hide-thoughts />
-            Hide thoughts
-          </label>
+          <div class="flex shrink-0 items-center gap-4">
+            <label
+              class="flex cursor-pointer items-center gap-1.5 text-muted"
+              :title="`Speak each new reply in ${characterName}'s voice`"
+            >
+              <input v-model="autoplay" type="checkbox" data-autoplay />
+              Speak replies
+            </label>
+            <label class="flex cursor-pointer items-center gap-1.5 text-muted">
+              <input v-model="thoughtsHidden" type="checkbox" data-hide-thoughts />
+              Hide thoughts
+            </label>
+          </div>
         </div>
 
         <ol
@@ -549,7 +645,7 @@ async function saveCastDraft(): Promise<boolean> {
             <li
               class="-mx-2 rounded-lg p-2 transition-shadow duration-500"
               :class="{
-                'render-sweep': runningJob?.frameIndex === frame.index,
+                'render-sweep': runningJob?.frameIndex === frame.index && runningJob.kind !== 'voice',
                 'ring-2 ring-info': highlighted === frame.index,
               }"
               :data-rendering="runningJob?.frameIndex === frame.index && runningJob.phase === 'queued'
@@ -610,6 +706,20 @@ async function saveCastDraft(): Promise<boolean> {
                       </button>
                     </p>
                     <p class="flex flex-wrap items-center gap-x-3">
+                      <button
+                        v-if="canSpeak(frame)"
+                        type="button"
+                        class="text-muted underline-offset-2 hover:text-fg hover:underline disabled:opacity-50"
+                        :class="{ 'text-info': playing === frame.index }"
+                        :disabled="hasJob(frame.index, 'speak')"
+                        :title="frame.speech && !spokenNow(frame)
+                          ? 'Spoken in an earlier voice: Listen speaks it again'
+                          : `Hear ${characterName} say it`"
+                        data-listen
+                        @click="listen(frame.index)"
+                      >
+                        {{ playing === frame.index ? 'Stop' : 'Listen' }}
+                      </button>
                       <button
                         type="button"
                         class="text-muted underline-offset-2 hover:text-fg hover:underline disabled:opacity-50"
@@ -913,12 +1023,79 @@ async function saveCastDraft(): Promise<boolean> {
             Save Look
           </button>
         </form>
+        <form
+          v-if="cast"
+          class="flex flex-col gap-2 border-b border-line p-4 text-sm"
+          data-voice
+          @submit.prevent="saveVoiceDraft"
+        >
+          <h2 class="font-medium">
+            Voice <span class="font-normal text-muted">· how {{ characterName }} sounds</span>
+          </h2>
+          <textarea
+            v-model="voiceDraft"
+            rows="3"
+            class="resize-y rounded border border-line bg-surface p-2 text-sm text-fg"
+            :placeholder="`Described from the Cast the first time ${characterName} speaks, or describe it yourself: age, pitch, texture, manner.`"
+            :disabled="!!voiceJob && voiceJob.status !== 'failed'"
+            data-voice-description
+          />
+          <p v-if="voiceJob" class="flex items-center gap-2 text-xs" data-voice-job>
+            <span
+              :class="{
+                'animate-pulse text-info': voiceJob.status === 'running',
+                'text-muted': voiceJob.status === 'queued',
+                'text-danger': voiceJob.status === 'failed',
+              }"
+            >{{ jobStatus(voiceJob) }}</span>
+            <button
+              type="button"
+              class="text-danger underline-offset-2 hover:underline"
+              @click="dropJob(voiceJob)"
+            >
+              {{ voiceJob.status === 'failed' ? 'Dismiss' : 'Cancel' }}
+            </button>
+          </p>
+          <div class="flex flex-wrap items-center gap-2">
+            <button
+              v-if="voiceChanged"
+              type="submit"
+              class="rounded border border-line px-3 py-1 text-xs disabled:opacity-50"
+              :disabled="!!voiceJob && voiceJob.status !== 'failed'"
+            >
+              Save and design
+            </button>
+            <button
+              v-if="session.voice?.ref"
+              type="button"
+              class="rounded border border-line px-3 py-1 text-xs"
+              :class="{ 'text-info': playing === 'voice' }"
+              data-play-voice
+              @click="playing === 'voice' ? stopAudio() : play(session.voice.ref, 'voice')"
+            >
+              {{ playing === 'voice' ? 'Stop' : 'Play voice' }}
+            </button>
+            <button
+              v-if="!voiceChanged"
+              type="button"
+              class="rounded border border-line px-3 py-1 text-xs disabled:opacity-50"
+              :disabled="!!voiceJob && voiceJob.status !== 'failed'"
+              :title="session.voice?.ref
+                ? 'Design the voice again from this description: lines already spoken keep the old one'
+                : 'Design the voice now'"
+              data-new-take
+              @click="queue('voice', 0)"
+            >
+              {{ session.voice?.ref ? 'New take' : 'Design voice' }}
+            </button>
+          </div>
+        </form>
         <h2 class="border-b border-line px-4 py-2 text-sm font-medium">Cast</h2>
         <p v-if="!castDraft" class="p-4 text-sm text-muted">
           <span v-if="busy" class="animate-pulse">Writing the Cast from your Brief…</span>
           <template v-else>No Cast yet.</template>
         </p>
-        <form v-else class="flex flex-col gap-5 p-4 text-sm" @submit.prevent="saveCastDraft">
+        <form v-else class="flex flex-col gap-5 p-4 text-sm" data-cast-form @submit.prevent="saveCastDraft">
           <!-- min-w-0: a fieldset is otherwise as wide as its widest unwrappable line, which a
                collapsed field's one-line preview is -->
           <fieldset v-for="g in GROUPS" :key="g.id" class="flex min-w-0 flex-col gap-2">

@@ -166,6 +166,12 @@ under `/api/sessions/:id/roleplay/` ([ADR 0007](adr/0007-roleplay-is-a-conversat
    over HTTP on localhost: Qwen3-TTS VoiceDesign designs, Higgs TTS 3 clones, one model loaded at a
    time and unloaded after ten minutes unused. Lines carry no emotion tags: in testing they pulled
    the cloned voice off the Character, up to a woman's pitch (docs/models.md).
+   On screen, a Reply with something to say has **Listen**: it plays the line, speaking it first
+   (or again, if it was spoken in an earlier voice) and playing it once it's ready. **Speak
+   replies** (remembered per browser) speaks each new Reply as it arrives. The **Voice** panel in
+   Look & Cast shows the description: **Play voice** plays the reference clip, **New take**
+   designs the voice again from the same description, and an edited one is saved with **Save and
+   design**. Designing the voice shows its progress there, not on the opening Frame.
 
 The prompts are Markdown files in `server/prompts/roleplay/` (`cast.md`, `cast-request.md`,
 `character.md`, `opening-request.md`, `limits.md`, `limits-adults-only.md`, and Suggest's
