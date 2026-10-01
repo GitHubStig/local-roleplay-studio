@@ -1,0 +1,517 @@
+{
+ "voices": {
+  "soft": "A young woman of about twenty with a soft, low, warm voice; breathy and intimate, close to a murmur, unhurried and teasing, with a smile in it.",
+  "app-before": "A young woman with a high, melodic pitch and a smooth, velvety texture. Her speech is rhythmic and playful, delivered with a teasing, lyrical cadence that feels intentionally charming and polished."
+ },
+ "lines": [
+  {
+   "id": "p0",
+   "text": "It\u2019s a long trek from the capital just to find a seat this dreary, Master Kael. I trust the storm hasn't dampened your hospitality along with my hemline?",
+   "moment": "teasing welcome"
+  },
+  {
+   "id": "p5",
+   "text": "No great endeavor comes without its share of ink and parchment, darling. The catch is simply that we expect results. In return for our influence, we require access to those hidden veins of trade you once navigated so expertly. It isn't a trap; it's a partnership. Or are you afraid you can't handle the responsibility of being important again?",
+   "moment": "flirty provocation"
+  },
+  {
+   "id": "p12",
+   "text": "Because unlike the old days, we aren't flying blind under a single lantern. We bring intelligence, coordination, and a scale of power that makes a slaughter nearly impossible. You won't be leading a group of desperate boys into a trap; you'll be directing a disciplined machine. Tell me, Kael... don't you miss having the power to tilt the scales in your favor?",
+   "moment": "seductive challenge"
+  },
+  {
+   "id": "s3",
+   "text": "Weight implies importance, wouldn't you agree? Some things are much harder to carry than others\u2014certain memories, certain debts... even a piece of silver. But tell me, Kael, do you find yourself interested in the cost of things, or just their shine?",
+   "moment": "playful insinuation"
+  },
+  {
+   "id": "s11",
+   "text": "If I pick up the cloth, Kael, it won't be to serve you. It will be to wipe the blood off the floor once we're done negotiating. So, tell me... what exactly do you think you're buying with this little display of strength?",
+   "moment": "cold threat"
+  },
+  {
+   "id": "s14",
+   "text": "Yes, a debt. A very large, very overdue debt. And if you don't start answering my questions correctly, Kael, I might find that interest becomes far more painful than a mere puncture wound.",
+   "moment": "menacing"
+  },
+  {
+   "id": "s23",
+   "text": "Good'? Is that all you have left to say, Kael? Just 'good' while the world falls apart around us? Look at me! Tell me there's more to this story than a pile of useless gold and a broken man!",
+   "moment": "angry, pleading"
+  },
+  {
+   "id": "s25",
+   "text": "Don't you dare fade away on me! If you fall asleep now, Kael, you'll wake up to find everything you ever protected has been stripped away. Wake up and fight for something besides a pocketful of worthless coin!",
+   "moment": "desperate, shouting"
+  },
+  {
+   "id": "s26",
+   "text": "No. Travelers are easy to understand, Kael. They arrive, they stay for a night, and they leave. I am much more permanent than that. Now, are you going to use that locket to bribe your way out of this, or are you going to realize it's the only thing in this room that still has a purpose?",
+   "moment": "calm, superior"
+  },
+  {
+   "id": "s29",
+   "text": "Quiet. Yes, Kael. Everything is quiet now. Except for the sound of the truth, which is still screaming in my ears.",
+   "moment": "quiet, haunted"
+  }
+ ],
+ "clips": {
+  "chatterbox-soft-p0": {
+   "pitch": 179.0,
+   "hnr": 12.7,
+   "centroid": 1574.0,
+   "heard": "I'll see it that's a long trek from the capital just to find a seat this dreary, Master Cale. I trust the storm hasn't dampened your hospitality along with my hem wine.",
+   "missing": 3,
+   "words": 28,
+   "seconds": 4.57,
+   "audio": 10.56
+  },
+  "chatterbox-soft-p12": {
+   "pitch": 173.0,
+   "hnr": 14.7,
+   "centroid": 1339.0,
+   "heard": "Because unlike the old days, we aren't flying blind under a single lantern. We bring intelligence, coordination, and a scale of power that makes the slaughter nearly impossible. You won't be leading a group of desperate boys into a trap. You'll be directing a disciplined machine. Tell me, Carl, don't you miss having the power to tilt the scales in your favor?",
+   "missing": 1,
+   "words": 62,
+   "seconds": 8.81,
+   "audio": 19.56
+  },
+  "chatterbox-soft-p5": {
+   "pitch": 177.0,
+   "hnr": 13.9,
+   "centroid": 1501.0,
+   "heard": "No great endeavor comes without its share of ink and parchment, darling. The catch is simply that we expect results. In return for our influence, we require access to those hidden veins of trade you once navigated so expertly. It isn't a trap. It's a partnership. Or are you afraid you can't handle the responsibility of being important again?",
+   "missing": 0,
+   "words": 59,
+   "seconds": 9.81,
+   "audio": 21.56
+  },
+  "chatterbox-soft-s11": {
+   "pitch": 174.0,
+   "hnr": 15.3,
+   "centroid": 1438.0,
+   "heard": "If I pick up the cloth kale, it won't be to serve you. It will be to wipe the blood off the floor once we're done negotiating. So, tell me, what exactly do you think you're buying with this little display of strength?",
+   "missing": 1,
+   "words": 43,
+   "seconds": 4.48,
+   "audio": 10.24
+  },
+  "chatterbox-soft-s14": {
+   "pitch": 177.0,
+   "hnr": 14.8,
+   "centroid": 1452.0,
+   "heard": "Yes, a debt. A very large, very overdue debt. And if you don't start answering my questions correctly, Kyle, I might find that interest becomes far more painful than a mere puncture wound.",
+   "missing": 1,
+   "words": 33,
+   "seconds": 4.71,
+   "audio": 10.72
+  },
+  "chatterbox-soft-s23": {
+   "pitch": 179.0,
+   "hnr": 14.0,
+   "centroid": 1460.0,
+   "heard": "Good? Is that all you have left to say, Kyle? Just good. While the world falls apart around us, look at me. Tell me there's more to this story than a pile of useless gold and a broken man.",
+   "missing": 1,
+   "words": 39,
+   "seconds": 5.06,
+   "audio": 11.76
+  },
+  "chatterbox-soft-s25": {
+   "pitch": 179.0,
+   "hnr": 14.5,
+   "centroid": 1537.0,
+   "heard": "Don't you dare fade away on me. If you fall asleep now, Kale, you'll wake up to find everything you ever protected has been stripped away. Wake up and fight for something besides a pocketful of worthless coin.",
+   "missing": 1,
+   "words": 38,
+   "seconds": 5.43,
+   "audio": 12.44
+  },
+  "chatterbox-soft-s26": {
+   "pitch": 169.0,
+   "hnr": 14.1,
+   "centroid": 1472.0,
+   "heard": "No. Travelers are easy to understand, Kale. They arrive, they stay for a night, and they leave. I am much more permanent than that. Now, are you going to use that locket to bribe your way out of this, or are you going to realize it's the only thing in this room that still has a purpose?",
+   "missing": 1,
+   "words": 57,
+   "seconds": 8.19,
+   "audio": 18.32
+  },
+  "chatterbox-soft-s29": {
+   "pitch": 182.0,
+   "hnr": 12.1,
+   "centroid": 1789.0,
+   "heard": "Quiet. Yes, Kyle. Everything is quiet now, except for the sound of the truth, which is still screaming in my ears.",
+   "missing": 1,
+   "words": 21,
+   "seconds": 3.47,
+   "audio": 7.96
+  },
+  "chatterbox-soft-s3": {
+   "pitch": 170.0,
+   "hnr": 13.9,
+   "centroid": 1528.0,
+   "heard": "Weight implies importance, wouldn't you agree? Some things are much harder to carry than others certain memories, certain debts, even a piece of silver. But tell me, Cale, do you find yourself interested in the cost of things or just their shine?",
+   "missing": 1,
+   "words": 42,
+   "seconds": 6.62,
+   "audio": 15.0
+  },
+  "higgs-soft-p0": {
+   "pitch": 177.0,
+   "hnr": 12.6,
+   "centroid": 1627.0,
+   "heard": "It's a long trek from the capital just to find a seat this dreary. Master Kale, I trust the storm hasn't dampened your hospitality, along with my hemline.",
+   "missing": 1,
+   "words": 28,
+   "seconds": 8.39,
+   "audio": 10.32
+  },
+  "higgs-soft-p12": {
+   "pitch": 172.0,
+   "hnr": 15.3,
+   "centroid": 1387.0,
+   "heard": "Because unlike the old days, we aren't flying blind under a single lantern. We bring intelligence, coordination, and a scale of power that makes a slaughter nearly impossible. You won't be leading a group of desperate boys into a trap. You'll be directing a disciplined machine. Tell me, Kale, don't you miss having the power to tilt the scales in your favor?",
+   "missing": 1,
+   "words": 62,
+   "seconds": 18.17,
+   "audio": 22.8
+  },
+  "higgs-soft-p5": {
+   "pitch": 174.0,
+   "hnr": 14.1,
+   "centroid": 1346.0,
+   "heard": "No great endeavor comes without its share of ink and parchment, darling. The catch is simply that we expect results. In return for our influence, we require access to those hidden veins of trade you once navigated so expertly. It isn't a trap, it's a partnership. Or are you afraid you can't handle the responsibility of being important again?",
+   "missing": 0,
+   "words": 59,
+   "seconds": 17.3,
+   "audio": 22.04
+  },
+  "higgs-soft-s11": {
+   "pitch": 167.0,
+   "hnr": 13.4,
+   "centroid": 1499.0,
+   "heard": "If I pick up the cloth, Kale, it won't be to serve you. It will be to wipe the blood off the floor once we're done negotiating. So, tell me, what exactly do you think you're buying with this little display of strength?",
+   "missing": 1,
+   "words": 43,
+   "seconds": 10.45,
+   "audio": 12.88
+  },
+  "higgs-soft-s14": {
+   "pitch": 178.0,
+   "hnr": 14.8,
+   "centroid": 1378.0,
+   "heard": "Yes, a debt. A very large, very overdue debt. And if you don't start answering my questions correctly, Kale, I might find that interest becomes far more painful than a mere puncture wound.",
+   "missing": 1,
+   "words": 33,
+   "seconds": 10.25,
+   "audio": 12.64
+  },
+  "higgs-soft-s23": {
+   "pitch": 174.0,
+   "hnr": 14.0,
+   "centroid": 1394.0,
+   "heard": "Good? Is that all you have left to say, Kale? Just, good. While the world falls apart around us? Look at me. Tell me there's more to this story than a pile of useless gold and a broken man.",
+   "missing": 1,
+   "words": 39,
+   "seconds": 9.48,
+   "audio": 11.76
+  },
+  "higgs-soft-s25": {
+   "pitch": 214.0,
+   "hnr": 14.5,
+   "centroid": 1543.0,
+   "heard": "Don't you dare fade away on me. If you fall asleep now, Kale, you'll wake up to find everything you ever protected has been stripped away. Wake up and fight for something besides a pocketful of worthless coin.",
+   "missing": 1,
+   "words": 38,
+   "seconds": 9.17,
+   "audio": 11.52
+  },
+  "higgs-soft-s26": {
+   "pitch": 167.0,
+   "hnr": 14.8,
+   "centroid": 1442.0,
+   "heard": "No. Travelers are easy to understand, Kale. They arrive, they stay for a night, and they leave. I am much more permanent than that. Now, are you going to use that locket to bribe your way out of this? Or are you going to realize it's the only thing in this room that still has a purpose?",
+   "missing": 1,
+   "words": 57,
+   "seconds": 14.34,
+   "audio": 17.8
+  },
+  "higgs-soft-s29": {
+   "pitch": 164.0,
+   "hnr": 10.9,
+   "centroid": 1741.0,
+   "heard": "Quiet. Yes, Kale. Everything is quiet now. Except for the sound of the truth, which is still screaming in my ears.",
+   "missing": 1,
+   "words": 21,
+   "seconds": 8.8,
+   "audio": 10.64
+  },
+  "higgs-soft-s3": {
+   "pitch": 177.0,
+   "hnr": 13.8,
+   "centroid": 1459.0,
+   "heard": "Weight implies importance, wouldn't you agree? Some things are much harder to carry than others. Certain memories, certain debts, even a piece of silver. But tell me, Kale, do you find yourself interested in the cost of things, or just their shine?",
+   "missing": 1,
+   "words": 42,
+   "seconds": 13.57,
+   "audio": 16.4
+  },
+  "kugel-p0": {
+   "pitch": 192.0,
+   "hnr": 12.0,
+   "centroid": 1467.0,
+   "heard": "It's a long trek from the capital just to find a seat this dreary, Master KL. I trust the storm hasn't dampened your hospitality along with my hemline.",
+   "missing": 1,
+   "words": 28,
+   "seconds": 70.36,
+   "audio": 8.8
+  },
+  "kugel-p12": {
+   "pitch": 151.0,
+   "hnr": 10.0,
+   "centroid": 1634.0,
+   "heard": "Because unlike the old days, we aren't flying blind under a single lantern. We bring intelligence, coordination, and a scale of power that makes a slaughter nearly impossible. You won't be leading a group of desperate boys into a trap. You'll be directing a disciplined machine. Tell me, Kale, don't you miss having the power to tilt the scales in your favor?",
+   "missing": 1,
+   "words": 62,
+   "seconds": 127.83,
+   "audio": 15.73
+  },
+  "kugel-p5": {
+   "pitch": 174.0,
+   "hnr": 10.6,
+   "centroid": 1508.0,
+   "heard": "No great endeavor comes without its share of ink and parchment, darling. The catch is simply that we expect results. In return for our influence, we require access to those hidden veins of trade you once navigated so expertly. It isn't a trap, it's a partnership. Or are you afraid you can't handle the responsibility of being important again?",
+   "missing": 0,
+   "words": 59,
+   "seconds": 112.23,
+   "audio": 14.27
+  },
+  "kugel-s11": {
+   "pitch": 138.0,
+   "hnr": 10.5,
+   "centroid": 1041.0,
+   "heard": "If I pick up the cloth, Kale, it won't be to serve you. It will be to wipe the blood off the floor once we're done negotiating. So, tell me what exactly do you think you're buying with this little display of strength?",
+   "missing": 1,
+   "words": 43,
+   "seconds": 90.67,
+   "audio": 11.07
+  },
+  "kugel-s14": {
+   "pitch": 123.0,
+   "hnr": 8.3,
+   "centroid": 1344.0,
+   "heard": "Yes, a debt. A very large, very overdue debt. And if you don't start answering my questions correctly, Kael, I might find that interest becomes far more painful than a mere puncture wound.",
+   "missing": 0,
+   "words": 33,
+   "seconds": 83.18,
+   "audio": 10.0
+  },
+  "kugel-s23": {
+   "pitch": 308.0,
+   "hnr": 10.0,
+   "centroid": 2305.0,
+   "heard": "Good? Is that all you have left to say, Kyle? Just good while the world falls apart around us? Look at me! Tell me there's more to this story than a pile of useless gold and a broken man!",
+   "missing": 1,
+   "words": 39,
+   "seconds": 79.37,
+   "audio": 9.87
+  },
+  "kugel-s25": {
+   "pitch": 246.0,
+   "hnr": 9.8,
+   "centroid": 2025.0,
+   "heard": "Don't you dare fade away on me! If you fall asleep now, Kale, you'll wake up to find everything you ever protected has been stripped away. Wake up and fight for something besides a pocketful of worthless coin!",
+   "missing": 1,
+   "words": 38,
+   "seconds": 87.16,
+   "audio": 10.93
+  },
+  "kugel-s26": {
+   "pitch": 182.0,
+   "hnr": 10.2,
+   "centroid": 1664.0,
+   "heard": "No, travelers are easy to understand, Kale. They arrive, they stay for a night, and they leave. I am much more permanent than that. Now, are you going to use that locket to bribe your way out of this, or are you going to realize it's the only thing in this room that still has a purpose?",
+   "missing": 1,
+   "words": 57,
+   "seconds": 101.2,
+   "audio": 12.67
+  },
+  "kugel-s29": {
+   "pitch": 159.0,
+   "hnr": 6.8,
+   "centroid": 1873.0,
+   "heard": "Quiet? Yes, Kale. Everything is quiet now, except for the sound of the truth, which is still screaming in my ears.",
+   "missing": 1,
+   "words": 21,
+   "seconds": 50.15,
+   "audio": 6.27
+  },
+  "kugel-s3": {
+   "pitch": 183.0,
+   "hnr": 11.8,
+   "centroid": 1316.0,
+   "heard": "Weight implies importance, wouldn't you agree? Some things are much harder to carry than others. Certain memories, certain debts, even a piece of silver. But tell me, Kale, do you find yourself interested in the cost of things or just their shine?",
+   "missing": 1,
+   "words": 42,
+   "seconds": 98.12,
+   "audio": 11.87
+  },
+  "qwen-clone-soft-p0": {
+   "pitch": 188.0,
+   "hnr": 14.3,
+   "centroid": 1441.0,
+   "heard": "It's a long trek from the capital just to find a seat this dreary master kale. I trust the storm hasn't dampened your hospitality along with my hemline.",
+   "missing": 1,
+   "words": 28,
+   "seconds": 3.32,
+   "audio": 8.4
+  },
+  "qwen-clone-soft-p12": {
+   "pitch": 176.0,
+   "hnr": 14.9,
+   "centroid": 1242.0,
+   "heard": "Because unlike the old days, we aren't flying blind under a single lantern. We bring intelligence, coordination, and a scale of power that makes a slaughter nearly impossible. You won't be leading a group of desperate boys into a trap. You'll be directing a disciplined machine. Tell me, Kale, don't you miss having the power to tilt the scales in your favor?",
+   "missing": 1,
+   "words": 62,
+   "seconds": 7.43,
+   "audio": 19.68
+  },
+  "qwen-clone-soft-p5": {
+   "pitch": 165.0,
+   "hnr": 14.2,
+   "centroid": 1255.0,
+   "heard": "No great endeavor comes without its share of ink and parchment, darling. The catch is simply that we expect results. In return for our influence, we require access to those hidden veins of trade you once navigated so expertly. It isn't a trap, it's a partnership. Or are you afraid you can't handle the responsibility of being important again?",
+   "missing": 0,
+   "words": 59,
+   "seconds": 7.51,
+   "audio": 19.76
+  },
+  "qwen-clone-soft-s11": {
+   "pitch": 169.0,
+   "hnr": 14.7,
+   "centroid": 1395.0,
+   "heard": "If I pick up the cloth, Kale, it won't be to serve you. It will be to wipe the blood off the floor once we're done negotiating. So, tell me, what exactly do you think you're buying with this little display of strength?",
+   "missing": 1,
+   "words": 43,
+   "seconds": 5.11,
+   "audio": 13.44
+  },
+  "qwen-clone-soft-s14": {
+   "pitch": 181.0,
+   "hnr": 15.8,
+   "centroid": 1302.0,
+   "heard": "Yes. A debt. A very large, very overdue debt. And if you don't start answering my questions correctly, Kael, I might find that interest becomes far more painful than a mere puncture wound.",
+   "missing": 0,
+   "words": 33,
+   "seconds": 4.27,
+   "audio": 11.12
+  },
+  "qwen-clone-soft-s23": {
+   "pitch": 185.0,
+   "hnr": 14.4,
+   "centroid": 1456.0,
+   "heard": "Good? Is that all you have left to say, Kale? Just good while the world falls apart around us? Look at me. Tell me there's more to this story than a pile of useless gold and a broken man.",
+   "missing": 1,
+   "words": 39,
+   "seconds": 4.65,
+   "audio": 11.68
+  },
+  "qwen-clone-soft-s25": {
+   "pitch": 180.0,
+   "hnr": 16.1,
+   "centroid": 1418.0,
+   "heard": "Don't you dare fade away on me. If you fall asleep now, Kale, you'll wake up to find everything you ever protected has been stripped away. Wake up and fight for something besides a pocketful of worthless coin.",
+   "missing": 1,
+   "words": 38,
+   "seconds": 4.67,
+   "audio": 12.08
+  },
+  "qwen-clone-soft-s26": {
+   "pitch": 170.0,
+   "hnr": 17.1,
+   "centroid": 1354.0,
+   "heard": "No. Travelers are easy to understand, Kale. They arrive, they stay for a night, and they leave. I am much more permanent than that. Now, are you going to use that locket to bribe your way out of this? Or are you going to realize it's the only thing in this room that still has a purpose?",
+   "missing": 1,
+   "words": 57,
+   "seconds": 6.69,
+   "audio": 17.12
+  },
+  "qwen-clone-soft-s29": {
+   "pitch": 166.0,
+   "hnr": 12.6,
+   "centroid": 1454.0,
+   "heard": "Quiet. Yes, Kale, everything is quiet now, except for the sound of the truth which is still screaming in my ears.",
+   "missing": 1,
+   "words": 21,
+   "seconds": 2.91,
+   "audio": 7.36
+  },
+  "qwen-clone-soft-s3": {
+   "pitch": 195.0,
+   "hnr": 15.8,
+   "centroid": 1406.0,
+   "heard": "Weight implies importance, wouldn't you agree? Some things are much harder to carry than others. Certain memories, certain debts, even a piece of silver. But tell me, Kale, do you find yourself interested in the cost of things, or just their shine?",
+   "missing": 1,
+   "words": 42,
+   "seconds": 5.59,
+   "audio": 14.72
+  },
+  "ref-app": {
+   "pitch": 338.0,
+   "hnr": 14.4,
+   "centroid": 1683.0
+  },
+  "ref-soft": {
+   "pitch": 170.0,
+   "hnr": 13.1,
+   "centroid": 1682.0
+  }
+ },
+ "redesigned": [
+  {
+   "who": "elara-proposal",
+   "description": "A woman in her early twenties with a smooth, mid-range voice. Her delivery is rhythmic and teasing, possessing a polished, calculating cadence that can turn softly breathy when she is being provocative.",
+   "pitch": 230.0
+  },
+  {
+   "who": "elara-proposal",
+   "description": "A woman in her early twenties with a smooth, mid-register voice. Her speech is rhythmic and teasing, delivered with a polished, calculated grace that feels both warm and predatory.",
+   "pitch": 211.0
+  },
+  {
+   "who": "elara-proposal",
+   "description": "A woman in her early twenties with a smooth, mid-range voice. Her delivery is rhythmic and teasing, possessing a calculated, playful cadence that remains poised and polished.",
+   "pitch": 271.0
+  },
+  {
+   "who": "elara-swap",
+   "description": "A woman in her early twenties with a smooth, low-mid register and a warm, teasing manner. Her delivery is unhurried and polite, though it can shift into a quiet, chillingly controlled stillness.",
+   "pitch": 169.0
+  },
+  {
+   "who": "elara-swap",
+   "description": "A woman in her early twenties with a smooth, low-mid register and a teasing warmth. Her delivery is unhurried and polished, transitioning easily from a charming, melodic tone to a quiet, cold, and clipped precision.",
+   "pitch": 205.0
+  },
+  {
+   "who": "elara-swap",
+   "description": "A woman in her early twenties with a smooth, low-mid register and a teasing warmth. Her delivery is unhurried and polite, though it can instantly shift into a quiet, clipped, and chillingly cold manner.",
+   "pitch": 165.0
+  },
+  {
+   "who": "kael",
+   "description": "A man in his early forties with a low, gravelly register. His delivery is clipped, flat, and guarded, carrying a dry, sardonic weight in every short, blunt word.",
+   "pitch": 88.0
+  },
+  {
+   "who": "kael",
+   "description": "A man in his early forties with a low, gravelly register and a flat, quiet strength. His delivery is clipped and sardonic, characterized by a weary, blunt manner that feels guarded and transactional.",
+   "pitch": 90.0
+  },
+  {
+   "who": "kael",
+   "description": "A man in his early forties with a low, gravelly register and a weary, flat tone. His delivery is clipped and guarded, characterized by a dry, sardonic rasp that feels blunt and transactionally cold.",
+   "pitch": 103.0
+  }
+ ]
+}

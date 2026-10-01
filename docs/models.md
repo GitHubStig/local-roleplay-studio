@@ -284,6 +284,27 @@ for every line. In the app's own first run, gemma4's description of Kael ("low p
 gravelly, husky texture") came out deeper than the test voice: 70–79 Hz against 97, which may help
 with the missing gruffness.
 
+**Round 4, a woman's voice** (2026-10-01): ten of Elara's lines, teasing to furious, from two new
+Roleplays, in a soft voice written by hand ("soft, low, warm…"), untagged:
+
+| Setup | Pitch (ref 170 Hz) | Held the voice | Breathiness, HNR (ref 13.1 dB) | Per second of speech | Heard |
+| ----- | ------------------ | -------------- | ------------------------------ | -------------------- | ----- |
+| **Higgs TTS 3** | 164–214 | 9 of 10 | 13.8 | 0.8 s | **best** |
+| Qwen3-TTS clone | 165–195 | 10 of 10 | 15.0 | 0.4 s | decent but bland |
+| Chatterbox | 169–182 | 10 of 10 | 14.0 | 0.45 s | weird, inconsistent, "not a native speaker" |
+| KugelAudio (7B, own voice) | 123–308 | 1 of 10 | 10.0 | 8 s | a man on one line |
+
+Untagged, nothing drifted, Higgs included, as with Kael. KugelAudio can't clone in mlx-audio and
+ships four preset voices, so it can't give a Character their own voice. Higgs stays.
+
+**The voice prompt made Elara a child.** Described by gemma4 from her Cast as "a high, melodic
+pitch… lyrical cadence", VoiceDesign made her 338 Hz, high and chirpy (a woman's speaking voice is
+about 160–230 Hz). VoiceDesign takes words literally, so `voice.md` now asks for a natural adult
+voice: an adult age ("a woman in her early twenties"), a register (low, low-mid, mid), and none of
+the words that push a voice young or extreme (high-pitched, chirpy, girlish, melodic, lyrical…).
+Three descriptions each, designed: Elara 165–271 Hz (one take at the upper edge; New take fixes
+that), Kael 88–103 Hz, all stating an adult age.
+
 Other notes:
 
 - Gemma4 asked to write Higgs tags freely used only pauses, mid-phrase ("Keep <pause> it
@@ -292,7 +313,7 @@ Other notes:
 - Speaker-similarity scores (Qwen3-TTS's speaker encoder) didn't separate voices: a woman's scored
   0.95 against Kael, as close as his own lines. Pitch and listening are the tests.
 - Also looked at: VibeVoice (long multi-speaker podcasts; no per-line emotion control; the 7B was
-  withdrawn), Kokoro (preset voices only), Voxtral TTS, CSM and OmniVoice (no emotion control).
+  withdrawn; KugelAudio, tested above, is built on it), Kokoro (preset voices only), Voxtral TTS, CSM and OmniVoice (no emotion control).
   Higgs TTS 3 is research and non-commercial licensed; Qwen3-TTS is Apache 2.0, Chatterbox MIT.
 - mlx-audio doesn't map Higgs's renamed repo (`bosonai/higgs-tts-3-4b`) to its model by itself:
   load it with `model_type='higgs_audio_v3'`. Its codec needs torch.

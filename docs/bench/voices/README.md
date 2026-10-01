@@ -21,6 +21,14 @@ pitch.
   model heard, and its median pitch; the delivery gemma4 chose for each line; and the stability
   test (eight lines × three seeds per setting) behind round 3.
 - `render.py`, `pitch.py`: speak the lines with a setup, and measure pitch.
+- `elara/`: a woman's voice (2026-10-01). Ten of Elara Vance's lines, teasing to furious, from two
+  Roleplays (a flirty business proposal, and the tavern story with the roles swapped; the texts
+  are in `elara/results.json`), in a soft voice written by hand (`ref-soft.wav`, 170 Hz), on
+  Higgs TTS 3, Chatterbox, Qwen3-TTS cloning and KugelAudio (which can't clone, so it picks its
+  own voice). `ref-app-too-high.mp3` is the voice the app first designed for her, at 338 Hz: a
+  child's, from the description "a high, melodic pitch… lyrical". `results.json` has each clip's
+  pitch, breathiness (harmonics-to-noise) and brightness (spectral centroid), what speech-to-text
+  heard, and the voices the fixed prompt describes.
 
 ## Trying a new model
 
