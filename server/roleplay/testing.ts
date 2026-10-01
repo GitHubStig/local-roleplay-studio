@@ -43,6 +43,7 @@ export function scriptedRoleplayModel(
     looks?: (RoleplayLook | Error)[]
     bodies?: (string | Error)[]
     suggestions?: (string | Error)[]
+    voices?: (string | Error)[]
     /** Reported as the model's name; 'scripted' unless given. */
     name?: string
   },
@@ -98,6 +99,10 @@ export function scriptedRoleplayModel(
       const reply = await next(script.replies, 'reply')
       for (const key of REPLY_FIELDS) on.field?.(key, reply[key])
       return reply
+    },
+    async writeVoice(_messages: ChatMessage[], signal: AbortSignal) {
+      signal.throwIfAborted()
+      return { description: await next(script.voices, 'voice') }
     },
     /** The messages each Suggest call was given. */
     suggested: [] as ChatMessage[][],

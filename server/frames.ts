@@ -20,7 +20,7 @@ import type { FrameText, TextModel } from './textModel.ts'
 /** Progress any piece of work reports as it happens, in a Chain or a Storyboard. */
 export type ProgressEvent =
   /** `queued`: waiting for another Session's render to finish. */
-  | { type: 'phase'; phase: 'text' | 'queued' | 'image' }
+  | { type: 'phase'; phase: 'text' | 'queued' | 'image' | 'audio' }
   /** More of the Text Model's reasoning; `restart` when a retry starts reasoning afresh. */
   | { type: 'thinking'; text: string; restart?: boolean }
   /** Image Model steps completed so far. */

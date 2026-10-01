@@ -18,10 +18,12 @@ import {
 import type { RoleplayModel } from './model.ts'
 import type { ArtStyle } from './art.ts'
 import type { RoleplaySession } from './types.ts'
+import { designVoice, speakFrame } from './voice.ts'
 import { updateSession } from './update.ts'
 
-export type JobKind = 'picture' | 'render' | 'upscale'
-export const JOB_KINDS: readonly JobKind[] = ['picture', 'render', 'upscale']
+/** `voice` designs a new take of the Character's voice; `speak` voices one Frame's dialogue. */
+export type JobKind = 'picture' | 'render' | 'upscale' | 'voice' | 'speak'
+export const JOB_KINDS: readonly JobKind[] = ['picture', 'render', 'upscale', 'voice', 'speak']
 
 export interface Job {
   id: string
@@ -29,8 +31,11 @@ export interface Job {
   frameIndex: number
   /** Failed jobs stay listed, with their error, until dismissed. */
   status: 'queued' | 'running' | 'failed'
-  /** While running: writing (text), waiting for another render (queued), or rendering (image). */
-  phase?: 'text' | 'queued' | 'image'
+  /**
+   * While running: writing (text), waiting for another render (queued), rendering (image), or
+   * speaking (audio).
+   */
+  phase?: 'text' | 'queued' | 'image' | 'audio'
   progress?: { step: number; total: number }
   error?: string
   createdAt: string
@@ -166,7 +171,10 @@ export class RoleplayJobs {
       if (e.type === 'phase') job.phase = e.phase
       if (e.type === 'progress') job.progress = { step: e.step, total: e.total }
     }
-    const artModel = job.kind === 'picture' ? await this.#ctx.artModel(session) : undefined
+    // The Art Agent's model pictures Frames, and describes the Character's voice as it does the Look.
+    const artModel = ['picture', 'voice', 'speak'].includes(job.kind)
+      ? await this.#ctx.artModel(session)
+      : undefined
     const artStyle = job.kind === 'picture' ? await this.#ctx.artStyle() : undefined
     const withDeps = {
       ...this.#ctx.deps(session),
@@ -177,6 +185,10 @@ export class RoleplayJobs {
       const scenario = await this.#ctx.scenarioFor(session)
       if (scenario instanceof Response) throw new Error((await scenario.json()).error)
       await pictureFrame(withDeps, session, scenario, job.frameIndex, emit, signal)
+    } else if (job.kind === 'voice' || job.kind === 'speak') {
+      const voiceDeps = { ...withDeps, model: withDeps.artModel ?? withDeps.roleplayModel }
+      if (job.kind === 'voice') await designVoice(voiceDeps, session, emit, signal)
+      else await speakFrame(voiceDeps, session, job.frameIndex, emit, signal)
     } else if (job.kind === 'render') {
       await renderRoleplayFrame(withDeps, session, job.frameIndex, emit, signal)
     } else {

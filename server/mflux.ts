@@ -1,4 +1,5 @@
 import { join } from '@std/path'
+import { track } from './children.ts'
 import {
   type ImageGenerator,
   type ImageRequest,
@@ -65,33 +66,6 @@ function lastMeaningfulLine(stderr: string): string {
     'no output'
 }
 
-/** mflux processes still running, killed if the server stops or restarts so the GPU is freed. */
-const running = new Set<Deno.ChildProcess>()
-
-function killAll() {
-  for (const child of running) {
-    try {
-      child.kill()
-    } catch {
-      // Already exited.
-    }
-  }
-}
-
-let cleanupInstalled = false
-function installCleanup() {
-  if (cleanupInstalled) return
-  cleanupInstalled = true
-  // `deno run --watch` fires `unload` when it restarts the server; Ctrl+C and kill don't.
-  globalThis.addEventListener('unload', killAll)
-  for (const signal of ['SIGINT', 'SIGTERM'] as const) {
-    Deno.addSignalListener(signal, () => {
-      killAll()
-      Deno.exit(signal === 'SIGINT' ? 130 : 143)
-    })
-  }
-}
-
 /** Runs one mflux command to completion, reporting its progress; throws if it fails. */
 async function runCommand(
   command: string,
@@ -108,9 +82,7 @@ async function runCommand(
     stderr: 'piped',
     signal,
   }).spawn()
-  installCleanup()
-  running.add(child)
-  child.status.finally(() => running.delete(child))
+  track(child)
 
   let stderr = ''
   for await (const chunk of child.stderr.pipeThrough(new TextDecoderStream())) {

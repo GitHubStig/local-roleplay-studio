@@ -151,10 +151,25 @@ under `/api/sessions/:id/roleplay/` ([ADR 0007](adr/0007-roleplay-is-a-conversat
    Persona's name in front, or quotes around it are dropped) and checked against the Limits' term
    list; a failed or cancelled one puts back what was typed. It holds the Roleplay's lock while it
    writes, so a Message can't be sent meanwhile.
+6. **Voices**: the Character can speak their lines (`server/roleplay/voice.ts`). The first time a
+   line is spoken, the Art Agent's model describes the Character's voice from the Cast in plain
+   acoustic terms (`voice.md`: age, pitch, texture, manner), and the voice service designs a voice
+   from it as a reference clip (`voice-…wav`, saved with the Roleplay as `voice.ref`). Every line
+   is then spoken by cloning that clip (`frame.speech`, `speech-<index>-…wav`), so the Character
+   sounds the same throughout; a line whose `speech.ref` isn't the voice's clip now was spoken in
+   an earlier voice. Only `dialogue` is spoken, without emphasis marks; a line of only "…" has
+   nothing to say. The description is editable: changing it removes the clip, and the next line
+   (or a new take) designs one from the new description. Designing and speaking are queued jobs
+   (`voice`, `speak`) that wait their turn in the render queue, so a voice and an image never
+   compete for memory. Undo removes the undone exchange's audio. The voice service
+   (`voice/serve.py`, mlx-audio) is a Python process the server starts on first use and talks to
+   over HTTP on localhost: Qwen3-TTS VoiceDesign designs, Higgs TTS 3 clones, one model loaded at a
+   time and unloaded after ten minutes unused. Lines carry no emotion tags: in testing they pulled
+   the cloned voice off the Character, up to a woman's pitch (docs/models.md).
 
 The prompts are Markdown files in `server/prompts/roleplay/` (`cast.md`, `cast-request.md`,
 `character.md`, `opening-request.md`, `limits.md`, `limits-adults-only.md`, and Suggest's
-`suggest.md`, `suggest-request.md`, `suggest-limits*.md`), each with a note at
+`suggest.md`, `suggest-request.md`, `suggest-limits*.md`, and the voice's `voice.md`), each with a note at
 the top saying when it's used and what it's filled with; edits apply on the next call.
 
 **Pictures, renders and upscales are queued jobs** (`server/roleplay/jobs.ts`): the player can ask
@@ -369,17 +384,18 @@ All under `/api`; the Vite dev server proxies it to the Deno server.
 | `POST /sessions/:id/cancel` | Cancel the Frame in progress |
 | `POST /sessions/:id/frames/:index/upscale` | Either kind: upscale one rendered Frame's image to 2048 px, streaming progress then `upscaled` (`session`); `409` if it has no image or is already upscaled |
 | `DELETE /sessions/:id/frames/:index` | Undo the latest Frame; `:index` must name it (`409` otherwise, and for the Opening Frame or while a Frame runs) |
-| `GET /sessions/:id/images/:file` | A Frame's image |
+| `GET /sessions/:id/images/:file` | A Frame's image, or a Roleplay's audio (`voice-…wav`, `speech-…wav`) |
 | `POST /sessions/:id/roleplay/cast` | Roleplay: write (or, before it begins, rewrite) the Cast, streaming `phase`, `thinking`, then `cast` (`cast`, `session`) |
 | `POST /sessions/:id/roleplay/begin` | Roleplay: the opening Reply, streaming `reply-part` per field, then `replied` (`frame`, `session`) |
 | `POST /sessions/:id/roleplay/messages` | Roleplay: send `{ text }`, streaming `reply-part` (`key`, `value`) per field, then `replied`, or `declined` (`message`) |
 | `POST /sessions/:id/roleplay/suggest` | Roleplay: suggest a Message from `{ draft? }`, streaming `suggestion-part` (`text`, all of it so far), then `suggestion` (`text`, tidied); nothing is saved |
 | `DELETE /sessions/:id/roleplay/frames/:index` | Roleplay: undo the latest exchange (`409` for any other, and for the opening) |
-| `GET /sessions/:id/roleplay/jobs` | Roleplay: its background jobs (picture, render, upscale): running, queued, then failed, each with its `phase`, `progress` or `error` |
-| `POST /sessions/:id/roleplay/jobs` | Roleplay: queue `{ kind: "picture" \| "render" \| "upscale", frameIndex }`; returns the queue (asking twice for the same job queues it once) |
+| `GET /sessions/:id/roleplay/jobs` | Roleplay: its background jobs (picture, render, upscale, voice, speak): running, queued, then failed, each with its `phase`, `progress` or `error` |
+| `POST /sessions/:id/roleplay/jobs` | Roleplay: queue `{ kind: "picture" \| "render" \| "upscale" \| "voice" \| "speak", frameIndex }` (`voice` designs a new take of the Character's voice; `409` to speak a Frame with nothing to say aloud); returns the queue (asking twice for the same job queues it once) |
 | `POST /sessions/:id/roleplay/jobs/:job/retry` | Roleplay: put a failed job back at the end of the queue (`404` if there's no such failed job) |
 | `DELETE /sessions/:id/roleplay/jobs/:job` | Roleplay: cancel a queued or running job, or dismiss a failed one |
 | `PUT /sessions/:id/roleplay/look` | Roleplay: replace the Look, `{ subject, style }`, rewriting every pictured Frame (`400` if incomplete, `422` if it crosses a Limit) |
+| `PUT /sessions/:id/roleplay/voice` | Roleplay: replace the voice description, `{ description }`, dropping the voice's clip until it's designed again (`400` if empty, too long, or it crosses a Limit) |
 | `PUT /sessions/:id/roleplay/cast` | Roleplay: replace the Cast (`400` if incomplete or the Character is under 18, `422` if it crosses a Limit) |
 
 A Frame's stream emits `phase` (`text`, then `queued` if another Session is rendering, then

@@ -17,6 +17,7 @@ import {
 import type { RoleplayModel } from './model.ts'
 import { CastError } from './prompt.ts'
 import { suggestMessage } from './suggest.ts'
+import { setVoiceDescription, speakable, VoiceError } from './voice.ts'
 import type { RoleplaySession } from './types.ts'
 
 /** A player's message can be at most this long. */
@@ -66,7 +67,7 @@ export function roleplayRoutes(ctx: RoleplayRouteContext): Route[] {
         if (err instanceof RoleplayError) return error(err.message, 409)
         if (err instanceof RoleplayLimitError) return error(err.message, 422)
         // A hand-edited Cast that's incomplete, or a Character under 18.
-        if (err instanceof CastError) return error(err.message, 400)
+        if (err instanceof CastError || err instanceof VoiceError) return error(err.message, 400)
         throw err
       }
     })
@@ -148,6 +149,9 @@ export function roleplayRoutes(ctx: RoleplayRouteContext): Route[] {
       }
       const index = Number(body?.frameIndex)
       if (!Number.isInteger(index) || !session.frames[index]) return error('No such Frame', 404)
+      if (kind === 'speak' && !speakable(session.frames[index].reply.dialogue)) {
+        return error(`Frame ${index} has nothing to say aloud`, 409)
+      }
       ctx.jobs.enqueue(session, kind, index)
       return json(ctx.jobs.list(session.id), 201)
     }],
@@ -168,6 +172,15 @@ export function roleplayRoutes(ctx: RoleplayRouteContext): Route[] {
       withRoleplay(p.id!, 'edit', async (session) => {
         if (!session.look) return error('This Roleplay has no Look yet', 409)
         return json(await setLook(ctx.deps(session).store, session, await readJson(req)))
+      })],
+
+    // The Character's voice in words; a new description needs a new voice (the `voice` job).
+    ['PUT', path('voice'), (req, p) =>
+      withRoleplay(p.id!, 'edit', async (session) => {
+        if (!session.cast) return error('This Roleplay has not been set up', 409)
+        return json(
+          await setVoiceDescription(ctx.deps(session).store, session, await readJson(req)),
+        )
       })],
 
     ['PUT', path('cast'), (req, p) =>

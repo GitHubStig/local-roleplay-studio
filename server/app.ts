@@ -9,6 +9,7 @@ import type { ChainSession, Session, SessionStore, StoryboardSession } from './s
 import { type SettingsStore, SIZE_PRESETS, validateSettings } from './settings.ts'
 import type { TextModel } from './textModel.ts'
 import { ollamaRoleplayModel, type RoleplayModel } from './roleplay/model.ts'
+import type { VoiceEngine } from './voice.ts'
 import { roleplayExcerpt } from './roleplay/prompt.ts'
 import { roleplayRoutes } from './roleplay/routes.ts'
 import { RoleplayJobs } from './roleplay/jobs.ts'
@@ -39,6 +40,8 @@ export interface AppDeps {
   imageGenerator: ImageGenerator
   /** The Text Model as a Roleplay uses it; Ollama unless a test supplies one. */
   roleplayModel?: (model: string, thinking: boolean) => RoleplayModel
+  /** Speaks Roleplay Characters' lines; without it, voices are unavailable. */
+  voice?: VoiceEngine
   newSessionId?: () => string
   randomSeed?: () => number
 }
@@ -48,7 +51,13 @@ export interface AppDeps {
  * an upscaled one.
  */
 const IMAGE_FILE = /^frame-\d+(-[0-9a-f]{8})?(-2048)?\.(png|svg)$/
-const CONTENT_TYPES: Record<string, string> = { '.png': 'image/png', '.svg': 'image/svg+xml' }
+/** A Roleplay's audio: its Character's voice (`voice-1a2b3c4d.wav`) and spoken lines (`speech-3-…`). */
+const AUDIO_FILE = /^(voice|speech-\d+)-[0-9a-f]{8}\.wav$/
+const CONTENT_TYPES: Record<string, string> = {
+  '.png': 'image/png',
+  '.svg': 'image/svg+xml',
+  '.wav': 'audio/wav',
+}
 
 /** Storyboards plan between 1 and 16 Frames; 8 unless asked otherwise. */
 const FRAME_COUNT = { min: 1, max: 16, default: 8 }
@@ -61,7 +70,7 @@ function defaultSessionId(): string {
 
 const defaultSeed = () => crypto.getRandomValues(new Uint32Array(1))[0]
 
-type Phase = 'text' | 'queued' | 'image'
+type Phase = 'text' | 'queued' | 'image' | 'audio'
 
 /** One server-sent event of a work stream: its `type`, plus whatever that event carries. */
 export type StreamEvent = { type: string; phase?: Phase; [field: string]: unknown }
@@ -229,6 +238,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     renderQueue,
     textModel: deps.textModel(session.settings.textModel, session.settings.thinking ?? false),
     roleplayModel: roleplayModel(session.settings.textModel, session.settings.thinking ?? false),
+    voice: deps.voice,
   })
   /** Roleplays' queued pictures, renders and upscales. */
   const roleplayJobs = new RoleplayJobs({
@@ -577,7 +587,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     ],
 
     ['GET', new URLPattern({ pathname: '/api/sessions/:id/images/:file' }), async (_req, p) => {
-      if (!IMAGE_FILE.test(p.file!)) return error('Not found', 404)
+      if (!IMAGE_FILE.test(p.file!) && !AUDIO_FILE.test(p.file!)) return error('Not found', 404)
       try {
         const data = await Deno.readFile(join(deps.sessions.dir(p.id!), p.file!))
         return new Response(data, {

@@ -101,7 +101,31 @@ export interface RoleplayFrame {
   stale?: boolean
   /** Seconds the latest render waited for another and took, as for any Frame. */
   renderTimings?: { queued?: number; image: number | null }
+  /** The Character's line, spoken; out of date when its voice isn't the Roleplay's voice now. */
+  speech?: Speech
   createdAt: string
+}
+
+/** A Frame's dialogue spoken in the Character's voice. */
+export interface Speech {
+  /** WAV file inside the Session directory. */
+  file: string
+  /** The voice it was spoken in: the reference clip, as `RoleplayVoice.ref`. */
+  ref: string
+  /** Seconds it waited for a render and took to speak. */
+  timings: { queued?: number; audio: number }
+}
+
+/**
+ * The Character's voice: a description in words, written from the Cast and editable, and the
+ * reference clip designed from it, which every line is spoken by cloning.
+ */
+export interface RoleplayVoice {
+  description: string
+  /** WAV file inside the Session directory; absent until designed, or after the description changes. */
+  ref?: string
+  /** The model that wrote the description, until it's edited by hand. */
+  model?: string
 }
 
 /** A conversation with a Character, one Frame per exchange. */
@@ -119,5 +143,7 @@ export interface RoleplaySession extends SessionBase {
   lookTimings?: { text: number }
   lookModel?: string
   lookThinking?: string
+  /** The Character's voice; written the first time a line is spoken. */
+  voice?: RoleplayVoice
   frames: RoleplayFrame[]
 }

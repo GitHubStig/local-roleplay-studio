@@ -22,6 +22,7 @@ import {
   roleplayLookSchema,
   trimFields,
 } from './art.ts'
+import { voiceSchema } from './voice.ts'
 
 /** A reply's fields as each one completes, and the model's reasoning as it streams. */
 export interface ReplyHandlers {
@@ -58,6 +59,8 @@ export interface RoleplayModel {
     signal: AbortSignal,
     on?: ReplyHandlers,
   ): Promise<Reply & { thinking?: string }>
+  /** Describes the Character's voice (see `voice.ts` for the messages). */
+  writeVoice(messages: ChatMessage[], signal: AbortSignal): Promise<{ description: string }>
   /** Suggest: the player's next Message, as plain text (see `suggest.ts` for the messages). */
   suggest(
     messages: ChatMessage[],
@@ -66,7 +69,7 @@ export interface RoleplayModel {
   ): Promise<string>
 }
 
-const MAX_TOKENS = { reply: 1024, cast: 1024, art: 1600, suggest: 400, thinking: 12288 }
+const MAX_TOKENS = { reply: 1024, cast: 1024, art: 1600, suggest: 400, voice: 300, thinking: 12288 }
 
 /**
  * Penalise repeating anything already in the conversation. Without it, a long Roleplay's Replies
@@ -172,6 +175,22 @@ export function ollamaRoleplayModel(
           onContent: (chunk) => reader.feed(chunk),
         })
         return withThinking(parseReplyText(content), thinking)
+      }),
+
+    writeVoice: (messages, signal) =>
+      within(signal, limit(), async (s) => {
+        const { content } = await chat.stream({
+          messages,
+          format: voiceSchema,
+          maxTokens: MAX_TOKENS.voice,
+          signal: s,
+        })
+        const description = String(
+          (parseJson(content) as { description?: unknown }).description ?? '',
+        )
+          .replace(/\s+/g, ' ').trim()
+        if (!description) throw new Error('The Text Model described no voice')
+        return { description }
       }),
 
     suggest: (messages, signal, onText) =>

@@ -13,6 +13,8 @@ import { activeProseLimits, crossedLimit } from '../limits.ts'
 import type { Scenario } from '../scenario.ts'
 import type { SessionStore } from '../session.ts'
 import type { TextModel } from '../textModel.ts'
+import type { VoiceEngine } from '../voice.ts'
+import { join } from '@std/path'
 import type { RoleplayModel } from './model.ts'
 import { GoneError, updateSession } from './update.ts'
 import { CastError, openingMessages, parseCast, roleplayMessages } from './prompt.ts'
@@ -53,6 +55,8 @@ export interface RoleplayDeps {
   artModel?: RoleplayModel
   /** Whether the Art Agent writes prose (the default) or tags. */
   artStyle?: ArtStyle
+  /** The voice service, when voices are available. */
+  voice?: VoiceEngine
   /** For rendering pictures, through the render queue every Session shares. */
   imageGenerator: ImageGenerator
   renderQueue?: RenderQueue
@@ -378,6 +382,9 @@ export async function undoLatestExchange(
   }))
   for (const file of [latest.image, latest.upscaled]) {
     if (file) await removeImage(store.dir(session.id), file.replace(/\.\w+$/, ''))
+  }
+  if (latest.speech) {
+    await Deno.remove(join(store.dir(session.id), latest.speech.file)).catch(() => {})
   }
   return updated
 }

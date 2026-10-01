@@ -43,6 +43,12 @@ The vocabulary (Scenario, Session, Image Prompt, Frame, Action, …) is defined 
   | Qwen-Image 2.1 (~23 s at 512 px, 25 steps) | `mflux-generate-qwen-2.1 --model qwen-image-2.1 --prompt test --output /tmp/x.png` |
   | SeedVR2 upscaler, 7B and 3B (Upscale, ~46 s to 2048 px) | `mflux-upscale-seedvr2 --model seedvr2-7b --image-path /tmp/x.png --resolution 2048 --output /tmp/y.png` (one download holds both) |
 
+- **Voices (optional), for Roleplay Characters:** [uv](https://docs.astral.sh/uv/) runs the voice
+  service (`voice/serve.py`), which installs its own Python packages (mlx-audio, torch) on first
+  use. Fetch its two models once (about 12 GB: Qwen3-TTS VoiceDesign and Higgs TTS 3) with
+  `uv run voice/serve.py --download`. Without them, Roleplays work as before and Speak fails with a
+  reason; set `VOICES=off` to leave them silent.
+
 ## Getting started
 
 ```sh
@@ -72,6 +78,7 @@ or delete it.
 | `PORT` | `8787` | API server port. The Vite proxy expects 8787. |
 | `OLLAMA_HOST` | `http://localhost:11434` | Where Ollama listens |
 | `IMAGE_GENERATOR` | (mflux) | Set to `placeholder` to render SVG cards instead of running mflux, for working without a GPU |
+| `VOICES` | (on) | Set to `off` to leave Roleplay Characters silent, without starting the voice service |
 
 The web app's dev server is pinned to port **5180** and fails, rather than picking another port,
 if something else is using it.

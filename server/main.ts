@@ -6,6 +6,7 @@ import { dirScenarioLibrary } from './scenario.ts'
 import { dirSessionStore } from './session.ts'
 import { fileSettingsStore } from './settings.ts'
 import { ollamaTextModel } from './textModel.ts'
+import { voiceService } from './voice.ts'
 
 const port = Number(Deno.env.get('PORT') ?? 8787)
 
@@ -19,6 +20,8 @@ const handler = createHandler({
   imageGenerator: Deno.env.get('IMAGE_GENERATOR') === 'placeholder'
     ? placeholderImageGenerator()
     : mfluxImageGenerator(),
+  // VOICES=off leaves Roleplays silent, for working without the voice service.
+  voice: Deno.env.get('VOICES') === 'off' ? undefined : voiceService(),
 })
 
 Deno.serve({ port }, handler)

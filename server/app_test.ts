@@ -7,6 +7,7 @@ import { dirSessionStore } from './session.ts'
 import { DEFAULT_SETTINGS, type Settings, type SettingsStore } from './settings.ts'
 import type { TextModel } from './textModel.ts'
 import type { RoleplayModel } from './roleplay/model.ts'
+import { fakeVoiceEngine, type VoiceEngine } from './voice.ts'
 import { replyOf, scriptedRoleplayModel, testCast } from './roleplay/testing.ts'
 import {
   fakeImageGenerator,
@@ -40,6 +41,7 @@ interface SetupOptions {
   roleplayModel?: RoleplayModel
   /** Roleplay models by Ollama model name, e.g. a separate Art Agent's. */
   roleplayModels?: Record<string, RoleplayModel>
+  voice?: VoiceEngine
   settings?: Partial<Settings>
 }
 
@@ -61,6 +63,7 @@ function setup(opts: SetupOptions = {}) {
     imageGenerator: opts.imageGenerator ?? fakeImageGenerator(),
     roleplayModel: (model) =>
       opts.roleplayModels?.[model] ?? opts.roleplayModel ?? scriptedRoleplayModel({}),
+    voice: opts.voice,
     newSessionId: () => `s${++sessionCount}`,
     randomSeed: () => 1234,
   })
@@ -966,6 +969,53 @@ Deno.test('Pictures are written as tags when Settings ask, recorded on the Frame
     session = await (await call('GET', '/api/sessions/s1')).json()
     assertEquals(session.frames[0].pictureStyle, undefined)
     assertEquals(artist.styles, ['tags', 'prose'])
+  }))
+
+Deno.test("Speaking a Frame designs the Character's voice first, and serves the audio", () =>
+  withTempDir(async (root) => {
+    const voice = fakeVoiceEngine()
+    const model = scriptedRoleplayModel({
+      casts: [testCast],
+      replies: [replyOf('You are late.'), replyOf('...')],
+      voices: ['A low, husky woman.'],
+    })
+    const { call } = setup({ root, settings: { textModel: 'x' }, roleplayModel: model, voice })
+    await call('POST', '/api/sessions', { kind: 'roleplay', brief: 'A storm at sea.' })
+    await readEvents(await call('POST', '/api/sessions/s1/roleplay/cast'))
+    await readEvents(await call('POST', '/api/sessions/s1/roleplay/begin'))
+    await readEvents(await call('POST', '/api/sessions/s1/roleplay/messages', { text: 'Sorry.' }))
+    const job = (kind: string, frameIndex: number) =>
+      call('POST', '/api/sessions/s1/roleplay/jobs', { kind, frameIndex })
+    assertEquals((await job('speak', 1)).status, 409)
+
+    assertEquals((await job('speak', 0)).status, 201)
+    assertEquals(await settled(call), [])
+    let session = await (await call('GET', '/api/sessions/s1')).json()
+    const { ref } = session.voice
+    assertEquals(session.voice, { description: 'A low, husky woman.', model: 'scripted', ref })
+    assertEquals(session.frames[0].speech.ref, ref)
+    const audio = await call('GET', `/api/sessions/s1/images/${session.frames[0].speech.file}`)
+    assertEquals([audio.status, audio.headers.get('Content-Type')], [200, 'audio/wav'])
+    assertMatch(await audio.text(), /fake speak: You are late\./)
+
+    // A new description drops the voice; the next take designs it from that description.
+    const put = await call('PUT', '/api/sessions/s1/roleplay/voice', { description: 'A deep man.' })
+    assertEquals((await put.json()).voice, { description: 'A deep man.' })
+    assertEquals((await call('PUT', '/api/sessions/s1/roleplay/voice', {})).status, 400)
+    await job('voice', 0)
+    assertEquals(await settled(call), [])
+    session = await (await call('GET', '/api/sessions/s1')).json()
+    assertEquals(session.voice.description, 'A deep man.')
+    assertEquals(voice.calls.map((c) => c.kind), ['design', 'speak', 'design'])
+    assertEquals((voice.calls[2].req as { description: string }).description, 'A deep man.')
+  }))
+
+Deno.test('Without a voice service, speaking fails with a reason', () =>
+  withTempDir(async (root) => {
+    const { call } = await roleplayWithArt(root, [])
+    await call('POST', '/api/sessions/s1/roleplay/jobs', { kind: 'speak', frameIndex: 0 })
+    const [failed] = await settled(call)
+    assertMatch(failed.error, /aren't available/)
   }))
 
 Deno.test('Pictures use the Art Agent model set in Settings, recorded on the Frame', () =>
