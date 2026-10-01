@@ -687,8 +687,8 @@ async function saveCastDraft(): Promise<boolean> {
                     <button
                       v-if="canSpeak(frame, 'thought')"
                       type="button"
-                      class="ml-1 not-italic underline-offset-2 hover:text-fg hover:underline disabled:opacity-50"
-                      :class="{ 'text-info': playing === partKey(frame.index, 'thought') }"
+                      class="action ml-1.5 not-italic align-middle"
+                      :class="{ 'action-on': playing === partKey(frame.index, 'thought') }"
                       :disabled="hasJob(frame.index, 'speak-thought')"
                       :title="frame.thoughtSpeech && !spokenNow(frame.thoughtSpeech)
                         ? 'Spoken in an earlier voice: Listen speaks it again'
@@ -696,7 +696,7 @@ async function saveCastDraft(): Promise<boolean> {
                       data-listen-thought
                       @click="listen(frame.index, 'thought')"
                     >
-                      {{ playing === partKey(frame.index, 'thought') ? 'Stop' : 'Listen' }}
+                      {{ playing === partKey(frame.index, 'thought') ? '■ Stop' : '▶ Listen' }}
                     </button>
                   </p>
                   <p v-if="frame.reply.actions" class="max-w-prose italic" data-actions>
@@ -739,12 +739,12 @@ async function saveCastDraft(): Promise<boolean> {
                         {{ job.status === 'failed' ? 'Dismiss' : 'Cancel' }}
                       </button>
                     </p>
-                    <p class="flex flex-wrap items-center gap-x-3">
+                    <p class="flex flex-wrap items-center gap-1.5">
                       <button
                         v-if="canSpeak(frame)"
                         type="button"
-                        class="text-muted underline-offset-2 hover:text-fg hover:underline disabled:opacity-50"
-                        :class="{ 'text-info': playing === partKey(frame.index, 'dialogue') }"
+                        class="action"
+                        :class="{ 'action-on': playing === partKey(frame.index, 'dialogue') }"
                         :disabled="hasJob(frame.index, 'speak')"
                         :title="frame.speech && !spokenNow(frame.speech)
                           ? 'Spoken in an earlier voice: Listen speaks it again'
@@ -752,16 +752,16 @@ async function saveCastDraft(): Promise<boolean> {
                         data-listen
                         @click="listen(frame.index)"
                       >
-                        {{ playing === partKey(frame.index, 'dialogue') ? 'Stop' : 'Listen' }}
+                        {{ playing === partKey(frame.index, 'dialogue') ? '■ Stop' : '▶ Listen' }}
                       </button>
                       <span
                         v-if="spokenNow(frame.speech) && deliveryWords(frame.speech)"
-                        class="-ml-2 text-muted"
+                        class="mr-1.5 text-muted"
                         data-delivery
                       >· {{ deliveryWords(frame.speech) }}</span>
                       <button
                         type="button"
-                        class="text-muted underline-offset-2 hover:text-fg hover:underline disabled:opacity-50"
+                        class="action"
                         :disabled="hasJob(frame.index, 'picture')"
                         data-picture-button
                         @click="queue('picture', frame.index)"
@@ -771,7 +771,7 @@ async function saveCastDraft(): Promise<boolean> {
                       <button
                         v-if="(frame.promptText && !frame.blocked) || hasJob(frame.index, 'picture')"
                         type="button"
-                        class="text-muted underline-offset-2 hover:text-fg hover:underline disabled:opacity-50"
+                        class="action"
                         :disabled="hasJob(frame.index, 'render')"
                         data-render-button
                         @click="queue('render', frame.index)"
@@ -781,7 +781,7 @@ async function saveCastDraft(): Promise<boolean> {
                       <button
                         v-if="frame.image || hasJob(frame.index, 'render')"
                         type="button"
-                        class="text-muted underline-offset-2 hover:text-fg hover:underline disabled:opacity-50"
+                        class="action"
                         :disabled="!!frame.upscaled || hasJob(frame.index, 'upscale')"
                         :title="frame.upscaled ? 'Upscaled to 2048 px' : 'Upscale to 2048 px with SeedVR2'"
                         data-upscale-button
@@ -1193,3 +1193,17 @@ async function saveCastDraft(): Promise<boolean> {
     />
   </div>
 </template>
+
+<style scoped>
+@reference "../style.css";
+
+/* A Reply's own actions (Listen, Picture this, Render…): small, quiet buttons beside it. */
+.action {
+  @apply inline-flex items-center gap-1 rounded-md border border-line bg-surface px-2 py-0.5 text-xs
+    text-muted transition-colors hover:border-muted hover:text-fg disabled:opacity-50
+    disabled:hover:border-line disabled:hover:text-muted;
+}
+.action-on {
+  @apply border-info text-info hover:border-info hover:text-info;
+}
+</style>

@@ -375,7 +375,7 @@ describe('RoleplayView', () => {
       await new Promise((r) => setTimeout(r, 1100))
       await flushPromises()
       expect(played).toEqual(['speech-0-bbbbbbbb.wav'])
-      expect(wrapper.find('[data-listen]').text()).toBe('Stop')
+      expect(wrapper.find('[data-listen]').text()).toBe('■ Stop')
     })
 
     it('plays a line already spoken, and speaks again one spoken in an earlier voice', async () => {
@@ -424,8 +424,8 @@ describe('RoleplayView', () => {
       await new Promise((r) => setTimeout(r, 1100))
       await flushPromises()
       expect(played).toEqual(['thought-0-cccccccc.wav'])
-      expect(wrapper.find('[data-listen-thought]').text()).toBe('Stop')
-      expect(wrapper.find('[data-listen]').text()).toBe('Listen')
+      expect(wrapper.find('[data-listen-thought]').text()).toBe('■ Stop')
+      expect(wrapper.find('[data-listen]').text()).toBe('▶ Listen')
 
       await wrapper.find('[data-hide-thoughts]').setValue(true)
       expect(wrapper.find('[data-listen-thought]').exists()).toBe(false)
