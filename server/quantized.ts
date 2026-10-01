@@ -7,7 +7,9 @@
  * A copy is made the first time a render needs it, inside the render queue, and kept until it's
  * deleted (Settings lists them) or made by an older mflux, when the next render replaces it. Each
  * lives in its own folder, `<model>-<bits>bit-mflux<version>`, marked finished by a `copy.json`,
- * so one interrupted halfway is never used.
+ * so one interrupted halfway is never used. This is mflux's own route for quantized weights,
+ * not a new one: docs/models.md explains its two loading paths, and why copies are made here
+ * rather than downloaded.
  */
 import { join } from '@std/path'
 import type { ImageModel } from './imageModels.ts'

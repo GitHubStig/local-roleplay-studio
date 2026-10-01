@@ -403,7 +403,25 @@ full precision the pictures keep their composition and only fine detail shifts (
 difference about 1 of 255 on Qwen-Image, 5–11 on the Kleins). The app saves a copy the first time a
 render needs it (`server/quantized.ts`), in `~/.cache/rpg/quantized/<model>-<bits>bit-mflux<version>`,
 inside the render queue; a copy made by another mflux is replaced on next use, Settings lists the
-copies with their sizes to delete, and if saving fails the render converts as it goes. Qwen-Image 2.1's peak
+copies with their sizes to delete, and if saving fails the render converts as it goes.
+
+**Why mflux converts after loading, and why the app saves its own copies.** mflux has two loading
+paths (`models/common/weights/loading/weight_applier.py`, mflux 0.20): original weights with
+`--quantize` are loaded into the model whole and then converted (`nn.quantize`), so full precision
+is in memory first; weights saved already quantized (by `mflux-save`, which records their bit
+width) have the model set up quantized first and the small weights loaded straight into it, so
+full precision never is. The first suits most users: one download serves every bit width (3, 4, 5,
+6, 8 or none), with no extra disk, no step beforehand and nothing to go stale when mflux or the
+model updates; it costs peak memory and a little speed, which only matter next to other big models
+on a 48 GB Mac. The saved copies use mflux's own second path; the app adds only when a copy is
+made, where it's kept, replacing it after an mflux update, and listing it in Settings.
+
+The mflux project also publishes copies already converted, in the same format
+(`mflux-community/flux2-klein-4b-mflux-q3` … `-q8`, `flux2-klein-9b-mflux-q3` … `-q5`). Converting
+locally fits better: 6–10 s against an 8–17 GB download per model and bit width; every Image Model
+and bit width, where the published ones cover some (no 8-bit Klein 9B or Qwen-Image 2.1 there,
+2026-10-01); no extra download for an app that runs mflux offline; and made by the installed mflux.
+A published copy would only save the conversion on a fresh machine, for the models it covers. Qwen-Image 2.1's peak
 here, 20.5 GB, is lower than the ~35 GB measured on 2026-09-25 with an earlier setup.
 
 **The voice service** (2026-10-01) held 36 GB with only Higgs (~10 GB) loaded: MLX keeps each
