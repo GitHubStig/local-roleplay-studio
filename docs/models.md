@@ -385,21 +385,25 @@ The Text Model and the Image Model share the Mac's memory. gemma4 31B (~19 GB) p
 one, use the 512 px sizes. The larger Image Models (Krea 2, Qwen-Image 2.1, Boogu, ERNIE) peak
 at 25–39 GB even at 512 px: next to gemma4 on a 48 GB Mac they can push the system into swap.
 
-**Settings → Quantize doesn't lower the peak** (2026-10-01, 512 px, the art-tags test set's nine
-prompts). mflux loads the full weights and converts them as it goes, so the peak comes first:
+**Quantizing as mflux does it doesn't lower the peak** (2026-10-01, 512 px, the art-tags test
+set's nine prompts): `--quantize` loads the full weights and converts them as it goes, so the peak
+comes first. So Settings → Quantize renders from a copy saved once instead:
 
 | Image Model | Off | 8-bit, converted each render | 8-bit, converted once and saved |
 | ----------- | --- | ---------------------------- | ------------------------------- |
-| FLUX.2 Klein 4B | 4.1 s, 10.5 GB | 4.9 s, 10.5 GB | not tried |
+| FLUX.2 Klein 4B | 4.1 s, 10.5 GB | 4.9 s, 10.5 GB | 4.3 s, 7.0 GB |
 | FLUX.2 Klein 9B | 9.6 s, 20.9 GB | 10.4 s, 20.9 GB | 7.1 s, 12.6 GB |
 | Qwen-Image 2.1 | 28.7 s, 20.5 GB | 34.1 s, 20.5 GB | 28.5 s, 13.4 GB |
 
-Saved once (`mflux-save --quantize 8`, 7–10 s; 17 GB for Klein 9B, 22 GB for Qwen-Image, on top
-of the originals) and rendered from that copy (`--model <path> --base-model <id>`), 8-bit saves
-about 8 GB at the same speed or faster, with the same pictures as converting each time. Against
+Saved once (`mflux-save --quantize 8`, 6–10 s; 8.6 GB for Klein 4B, 17 GB for Klein 9B, 22 GB for
+Qwen-Image, on top of the originals) and rendered from that copy (`--model <path> --base-model
+<id>`), 8-bit saves 3.5–8 GB at the same speed or faster, with the same pictures as converting each
+time. Against
 full precision the pictures keep their composition and only fine detail shifts (mean pixel
-difference about 1 of 255 on Qwen-Image, 5–11 on the Kleins). The app doesn't use saved copies
-yet (see the memory headroom thread in [open-threads.md](open-threads.md)). Qwen-Image 2.1's peak
+difference about 1 of 255 on Qwen-Image, 5–11 on the Kleins). The app saves a copy the first time a
+render needs it (`server/quantized.ts`), in `~/.cache/rpg/quantized/<model>-<bits>bit-mflux<version>`,
+inside the render queue; a copy made by another mflux is replaced on next use, Settings lists the
+copies with their sizes to delete, and if saving fails the render converts as it goes. Qwen-Image 2.1's peak
 here, 20.5 GB, is lower than the ~35 GB measured on 2026-09-25 with an earlier setup.
 
 **The voice service** (2026-10-01) held 36 GB with only Higgs (~10 GB) loaded: MLX keeps each
