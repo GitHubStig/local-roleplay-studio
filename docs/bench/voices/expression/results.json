@@ -1,0 +1,990 @@
+{
+ "note": "Round 6: four ways to add expression on Higgs TTS 3; deliveries set by hand (chosen_by_gemma4 is the Text Model asked for mood, emotion, pace and sound). Pitch \"held\" = within 20% of the voice.",
+ "moods": {
+  "kael": {
+   "base_pitch": 97,
+   "playful": {
+    "tries": [
+     {
+      "pitch": 189,
+      "seconds": 5.11
+     },
+     {
+      "pitch": 121,
+      "seconds": 4.93
+     },
+     {
+      "pitch": 154,
+      "seconds": 6.8
+     },
+     {
+      "pitch": 169,
+      "seconds": 4.55
+     },
+     {
+      "pitch": 163,
+      "seconds": 5.12
+     },
+     {
+      "pitch": 110,
+      "seconds": 4.59
+     }
+    ],
+    "held": true,
+    "untagged": true
+   },
+   "angry": {
+    "tries": [
+     {
+      "pitch": 345,
+      "seconds": 4.89
+     },
+     {
+      "pitch": 225,
+      "seconds": 4.42
+     },
+     {
+      "pitch": 271,
+      "seconds": 4.51
+     },
+     {
+      "pitch": 261,
+      "seconds": 4.53
+     },
+     {
+      "pitch": 322,
+      "seconds": 4.37
+     },
+     {
+      "pitch": 113,
+      "seconds": 4.96
+     }
+    ],
+    "held": true,
+    "untagged": true
+   },
+   "hurt": {
+    "tries": [
+     {
+      "pitch": 196,
+      "seconds": 4.87
+     },
+     {
+      "pitch": 207,
+      "seconds": 5.02
+     },
+     {
+      "pitch": 194,
+      "seconds": 5.0
+     },
+     {
+      "pitch": 188,
+      "seconds": 4.8
+     },
+     {
+      "pitch": 189,
+      "seconds": 4.71
+     },
+     {
+      "pitch": 97,
+      "seconds": 4.31
+     }
+    ],
+    "held": true,
+    "untagged": true
+   },
+   "scared": {
+    "tries": [
+     {
+      "pitch": 107,
+      "seconds": 4.43
+     }
+    ],
+    "held": true
+   },
+   "intimate": {
+    "tries": [
+     {
+      "pitch": 99,
+      "seconds": 5.03
+     }
+    ],
+    "held": true
+   }
+  },
+  "elara": {
+   "base_pitch": 170,
+   "playful": {
+    "tries": [
+     {
+      "pitch": 229,
+      "seconds": 4.5
+     },
+     {
+      "pitch": 279,
+      "seconds": 4.89
+     },
+     {
+      "pitch": 236,
+      "seconds": 4.68
+     },
+     {
+      "pitch": 181,
+      "seconds": 4.88
+     }
+    ],
+    "held": true
+   },
+   "angry": {
+    "tries": [
+     {
+      "pitch": 250,
+      "seconds": 7.91
+     },
+     {
+      "pitch": 267,
+      "seconds": 4.32
+     },
+     {
+      "pitch": 254,
+      "seconds": 4.91
+     },
+     {
+      "pitch": 172,
+      "seconds": 5.77
+     }
+    ],
+    "held": true
+   },
+   "hurt": {
+    "tries": [
+     {
+      "pitch": 194,
+      "seconds": 4.82
+     }
+    ],
+    "held": true
+   },
+   "scared": {
+    "tries": [
+     {
+      "pitch": 197,
+      "seconds": 5.36
+     }
+    ],
+    "held": true
+   },
+   "intimate": {
+    "tries": [
+     {
+      "pitch": 146,
+      "seconds": 5.68
+     }
+    ],
+    "held": true
+   }
+  }
+ },
+ "lines": [
+  {
+   "id": "kael-07ac-1",
+   "char": "kael",
+   "text": "Drink. It\u2019s bitter. Like my mood.",
+   "choice": {
+    "mood": "neutral",
+    "emotion": "bitterness",
+    "pace": "normal",
+    "sound": "none"
+   },
+   "chosen_by_gemma4": {
+    "mood": "neutral",
+    "emotion": "disgust",
+    "pace": "slow",
+    "sound": "none"
+   },
+   "results": {
+    "untagged": {
+     "pitch": 81,
+     "seconds": 2.63,
+     "held": true
+    },
+    "gentle": {
+     "sent": "Drink. It\u2019s bitter. Like my mood.",
+     "pitch": 81,
+     "seconds": 2.63,
+     "held": true
+    },
+    "mood": {
+     "mood": "neutral",
+     "pitch": 81,
+     "seconds": 2.62,
+     "held": true
+    },
+    "guarded": {
+     "sent": "<|emotion:bitterness|>Drink. It\u2019s bitter. Like my mood.",
+     "tries": [
+      {
+       "pitch": 112,
+       "seconds": 2.48
+      }
+     ],
+     "held": true
+    }
+   }
+  },
+  {
+   "id": "kael-07ac-4",
+   "char": "kael",
+   "text": "Third door on the left. Don't knock on the other two.",
+   "choice": {
+    "mood": "neutral",
+    "emotion": "determination",
+    "pace": "normal",
+    "sound": "none"
+   },
+   "chosen_by_gemma4": {
+    "mood": "intimate",
+    "emotion": "surprise",
+    "pace": "slow",
+    "sound": "none"
+   },
+   "results": {
+    "untagged": {
+     "pitch": 111,
+     "seconds": 2.71,
+     "held": true
+    },
+    "gentle": {
+     "sent": "Third door on the left. Don't knock on the other two.",
+     "pitch": 111,
+     "seconds": 2.7,
+     "held": true
+    },
+    "mood": {
+     "mood": "neutral",
+     "pitch": 111,
+     "seconds": 2.7,
+     "held": true
+    },
+    "guarded": {
+     "sent": "<|emotion:determination|>Third door on the left. Don't knock on the other two.",
+     "tries": [
+      {
+       "pitch": 149,
+       "seconds": 2.93
+      },
+      {
+       "pitch": 132,
+       "seconds": 3.13
+      },
+      {
+       "pitch": 209,
+       "seconds": 2.85
+      }
+     ],
+     "held": false,
+     "fell_back": true
+    }
+   }
+  },
+  {
+   "id": "kael-07ac-13",
+   "char": "kael",
+   "text": "Debt?",
+   "choice": {
+    "mood": "hurt",
+    "emotion": "helplessness",
+    "pace": "slow",
+    "sound": "cough"
+   },
+   "chosen_by_gemma4": {
+    "mood": "hurt",
+    "emotion": "pride",
+    "pace": "slow",
+    "sound": "none"
+   },
+   "results": {
+    "untagged": {
+     "pitch": 109,
+     "seconds": 0.9,
+     "held": true
+    },
+    "gentle": {
+     "sent": "<|sfx:cough|>Ahem <|prosody:speed_slow|>Debt?",
+     "pitch": 156,
+     "seconds": 1.4,
+     "held": false
+    },
+    "mood": {
+     "mood": "hurt",
+     "pitch": null,
+     "seconds": 0.95,
+     "held": true
+    },
+    "guarded": {
+     "sent": "<|sfx:cough|>Ahem <|emotion:helplessness|><|prosody:speed_slow|>Debt?",
+     "tries": [
+      {
+       "pitch": 87,
+       "seconds": 1.55
+      }
+     ],
+     "held": true
+    }
+   }
+  },
+  {
+   "id": "kael-07ac-17",
+   "char": "kael",
+   "text": "You\u2019re mine. They\u2019re tools.",
+   "choice": {
+    "mood": "angry",
+    "emotion": "anger",
+    "pace": "slow",
+    "sound": "none"
+   },
+   "chosen_by_gemma4": {
+    "mood": "intimate",
+    "emotion": "determination",
+    "pace": "slow",
+    "sound": "none"
+   },
+   "results": {
+    "untagged": {
+     "pitch": 83,
+     "seconds": 2.1,
+     "held": true
+    },
+    "gentle": {
+     "sent": "<|prosody:speed_slow|>You\u2019re mine. <|prosody:pause|>They\u2019re tools.",
+     "pitch": 85,
+     "seconds": 2.53,
+     "held": true
+    },
+    "mood": {
+     "mood": "angry",
+     "pitch": 107,
+     "seconds": 2.1,
+     "held": true
+    },
+    "guarded": {
+     "sent": "<|emotion:anger|><|prosody:speed_slow|>You\u2019re mine. They\u2019re tools.",
+     "tries": [
+      {
+       "pitch": 291,
+       "seconds": 2.27
+      },
+      {
+       "pitch": 254,
+       "seconds": 2.27
+      },
+      {
+       "pitch": 362,
+       "seconds": 2.02
+      }
+     ],
+     "held": false,
+     "fell_back": true
+    }
+   }
+  },
+  {
+   "id": "kael-07ac-20",
+   "char": "kael",
+   "text": "Don\u2019t break her. She\u2019s the only one who knows the rest.",
+   "choice": {
+    "mood": "hurt",
+    "emotion": "helplessness",
+    "pace": "slow",
+    "sound": "sigh"
+   },
+   "chosen_by_gemma4": {
+    "mood": "intimate",
+    "emotion": "pride",
+    "pace": "slow",
+    "sound": "none"
+   },
+   "results": {
+    "untagged": {
+     "pitch": 108,
+     "seconds": 3.23,
+     "held": true
+    },
+    "gentle": {
+     "sent": "<|sfx:sigh|>Uh <|prosody:speed_slow|>Don\u2019t break her. <|prosody:pause|>She\u2019s the only one who knows the rest.",
+     "pitch": 101,
+     "seconds": 4.17,
+     "held": true
+    },
+    "mood": {
+     "mood": "hurt",
+     "pitch": 100,
+     "seconds": 2.87,
+     "held": true
+    },
+    "guarded": {
+     "sent": "<|sfx:sigh|>Uh <|emotion:helplessness|><|prosody:speed_slow|>Don\u2019t break her. She\u2019s the only one who knows the rest.",
+     "tries": [
+      {
+       "pitch": 96,
+       "seconds": 4.25
+      }
+     ],
+     "held": true
+    }
+   }
+  },
+  {
+   "id": "kael-07ac-25",
+   "char": "kael",
+   "text": "You\u2019re not a traveler.",
+   "choice": {
+    "mood": "neutral",
+    "emotion": "surprise",
+    "pace": "slow",
+    "sound": "none"
+   },
+   "chosen_by_gemma4": {
+    "mood": "neutral",
+    "emotion": "disgust",
+    "pace": "slow",
+    "sound": "none"
+   },
+   "results": {
+    "untagged": {
+     "pitch": 87,
+     "seconds": 1.71,
+     "held": true
+    },
+    "gentle": {
+     "sent": "<|prosody:speed_slow|>You\u2019re not a traveler.",
+     "pitch": 109,
+     "seconds": 1.88,
+     "held": true
+    },
+    "mood": {
+     "mood": "neutral",
+     "pitch": 87,
+     "seconds": 1.73,
+     "held": true
+    },
+    "guarded": {
+     "sent": "<|emotion:surprise|><|prosody:speed_slow|>You\u2019re not a traveler.",
+     "tries": [
+      {
+       "pitch": 246,
+       "seconds": 1.68
+      },
+      {
+       "pitch": 170,
+       "seconds": 1.61
+      },
+      {
+       "pitch": 172,
+       "seconds": 1.72
+      }
+     ],
+     "held": false,
+     "fell_back": true
+    }
+   }
+  },
+  {
+   "id": "elara-b215-0",
+   "char": "elara",
+   "text": "It\u2019s a long trek from the capital just to find a seat this dreary, Master Kael. I trust the storm hasn't dampened your hospitality along with my hemline?",
+   "choice": {
+    "mood": "playful",
+    "emotion": "amusement",
+    "pace": "normal",
+    "sound": "none"
+   },
+   "chosen_by_gemma4": {
+    "mood": "playful",
+    "emotion": "amusement",
+    "pace": "normal",
+    "sound": "none"
+   },
+   "results": {
+    "untagged": {
+     "pitch": 176,
+     "seconds": 8.55,
+     "held": true
+    },
+    "gentle": {
+     "sent": "It\u2019s a long trek from the capital just to find a seat this dreary, Master Kael. I trust the storm hasn't dampened your hospitality along with my hemline?",
+     "pitch": 176,
+     "seconds": 8.8,
+     "held": true
+    },
+    "mood": {
+     "mood": "playful",
+     "pitch": 175,
+     "seconds": 8.12,
+     "held": true
+    },
+    "guarded": {
+     "sent": "<|emotion:amusement|>It\u2019s a long trek from the capital just to find a seat this dreary, Master Kael. I trust the storm hasn't dampened your hospitality along with my hemline?",
+     "tries": [
+      {
+       "pitch": 204,
+       "seconds": 8.25
+      },
+      {
+       "pitch": 238,
+       "seconds": 8.63
+      },
+      {
+       "pitch": 209,
+       "seconds": 9.09
+      }
+     ],
+     "held": false,
+     "fell_back": true
+    }
+   }
+  },
+  {
+   "id": "elara-b215-5",
+   "char": "elara",
+   "text": "No great endeavor comes without its share of ink and parchment, darling. The catch is simply that we expect results. In return for our influence, we require access to those hidden veins of trade you once navigated so expertly. It isn't a trap; it's a partnership. Or are you afraid you can't handle the responsibility of being important again?",
+   "choice": {
+    "mood": "playful",
+    "emotion": "amusement",
+    "pace": "normal",
+    "sound": "laughter"
+   },
+   "chosen_by_gemma4": {
+    "mood": "playful",
+    "emotion": "amusement",
+    "pace": "normal",
+    "sound": "laughter"
+   },
+   "results": {
+    "untagged": {
+     "pitch": 174,
+     "seconds": 18.15,
+     "held": true
+    },
+    "gentle": {
+     "sent": "<|sfx:laughter|>Heh No great endeavor comes without its share of ink and parchment, darling. The catch is simply that we expect results. In return for our influence, we require access to those hidden veins of trade you once navigated so expertly. It isn't a trap; it's a partnership. Or are you afraid you can't handle the responsibility of being important again?",
+     "pitch": 176,
+     "seconds": 17.37,
+     "held": true
+    },
+    "mood": {
+     "mood": "playful",
+     "pitch": 188,
+     "seconds": 17.61,
+     "held": true
+    },
+    "guarded": {
+     "sent": "<|sfx:laughter|>Heh <|emotion:amusement|>No great endeavor comes without its share of ink and parchment, darling. The catch is simply that we expect results. In return for our influence, we require access to those hidden veins of trade you once navigated so expertly. It isn't a trap; it's a partnership. Or are you afraid you can't handle the responsibility of being important again?",
+     "tries": [
+      {
+       "pitch": 181,
+       "seconds": 18.1
+      }
+     ],
+     "held": true
+    }
+   }
+  },
+  {
+   "id": "elara-b215-12",
+   "char": "elara",
+   "text": "Because unlike the old days, we aren't flying blind under a single lantern. We bring intelligence, coordination, and a scale of power that makes a slaughter nearly impossible. You won't be leading a group of desperate boys into a trap; you'll be directing a disciplined machine. Tell me, Kael... don't you miss having the power to tilt the scales in your favor?",
+   "choice": {
+    "mood": "intimate",
+    "emotion": "surprise",
+    "pace": "slow",
+    "sound": "none"
+   },
+   "chosen_by_gemma4": {
+    "mood": "intimate",
+    "emotion": "surprise",
+    "pace": "slow",
+    "sound": "none"
+   },
+   "results": {
+    "untagged": {
+     "pitch": 172,
+     "seconds": 17.58,
+     "held": true
+    },
+    "gentle": {
+     "sent": "<|prosody:speed_slow|>Because unlike the old days, we aren't flying blind under a single lantern. <|prosody:pause|>We bring intelligence, coordination, and a scale of power that makes a slaughter nearly impossible. <|prosody:pause|>You won't be leading a group of desperate boys into a trap; you'll be directing a disciplined machine. <|prosody:pause|>Tell me, Kael... <|prosody:pause|>don't you miss having the power to tilt the scales in your favor?",
+     "pitch": 168,
+     "seconds": 17.49,
+     "held": true
+    },
+    "mood": {
+     "mood": "intimate",
+     "pitch": 189,
+     "seconds": 17.19,
+     "held": true
+    },
+    "guarded": {
+     "sent": "<|emotion:surprise|><|prosody:speed_slow|>Because unlike the old days, we aren't flying blind under a single lantern. We bring intelligence, coordination, and a scale of power that makes a slaughter nearly impossible. You won't be leading a group of desperate boys into a trap; you'll be directing a disciplined machine. Tell me, Kael... don't you miss having the power to tilt the scales in your favor?",
+     "tries": [
+      {
+       "pitch": 266,
+       "seconds": 16.76
+      },
+      {
+       "pitch": 290,
+       "seconds": 17.66
+      },
+      {
+       "pitch": 297,
+       "seconds": 16.02
+      }
+     ],
+     "held": false,
+     "fell_back": true
+    }
+   }
+  },
+  {
+   "id": "elara-e211-3",
+   "char": "elara",
+   "text": "Weight implies importance, wouldn't you agree? Some things are much harder to carry than others\u2014certain memories, certain debts... even a piece of silver. But tell me, Kael, do you find yourself interested in the cost of things, or just their shine?",
+   "choice": {
+    "mood": "playful",
+    "emotion": "amusement",
+    "pace": "slow",
+    "sound": "none"
+   },
+   "chosen_by_gemma4": {
+    "mood": "playful",
+    "emotion": "amusement",
+    "pace": "slow",
+    "sound": "none"
+   },
+   "results": {
+    "untagged": {
+     "pitch": 177,
+     "seconds": 12.44,
+     "held": true
+    },
+    "gentle": {
+     "sent": "<|prosody:speed_slow|>Weight implies importance, wouldn't you agree? <|prosody:pause|>Some things are much harder to carry than others\u2014certain memories, certain debts... <|prosody:pause|>even a piece of silver. <|prosody:pause|>But tell me, Kael, do you find yourself interested in the cost of things, or just their shine?",
+     "pitch": 175,
+     "seconds": 12.91,
+     "held": true
+    },
+    "mood": {
+     "mood": "playful",
+     "pitch": 178,
+     "seconds": 12.13,
+     "held": true
+    },
+    "guarded": {
+     "sent": "<|emotion:amusement|><|prosody:speed_slow|>Weight implies importance, wouldn't you agree? Some things are much harder to carry than others\u2014certain memories, certain debts... even a piece of silver. But tell me, Kael, do you find yourself interested in the cost of things, or just their shine?",
+     "tries": [
+      {
+       "pitch": 165,
+       "seconds": 13.77
+      }
+     ],
+     "held": true
+    }
+   }
+  },
+  {
+   "id": "elara-e211-11",
+   "char": "elara",
+   "text": "If I pick up the cloth, Kael, it won't be to serve you. It will be to wipe the blood off the floor once we're done negotiating. So, tell me... what exactly do you think you're buying with this little display of strength?",
+   "choice": {
+    "mood": "angry",
+    "emotion": "anger",
+    "pace": "slow",
+    "sound": "none"
+   },
+   "chosen_by_gemma4": {
+    "mood": "neutral",
+    "emotion": "contemplation",
+    "pace": "slow",
+    "sound": "none"
+   },
+   "results": {
+    "untagged": {
+     "pitch": 168,
+     "seconds": 9.83,
+     "held": true
+    },
+    "gentle": {
+     "sent": "<|prosody:speed_slow|>If I pick up the cloth, Kael, it won't be to serve you. <|prosody:pause|>It will be to wipe the blood off the floor once we're done negotiating. <|prosody:pause|>So, tell me... <|prosody:pause|>what exactly do you think you're buying with this little display of strength?",
+     "pitch": 168,
+     "seconds": 10.29,
+     "held": true
+    },
+    "mood": {
+     "mood": "angry",
+     "pitch": 181,
+     "seconds": 10.29,
+     "held": true
+    },
+    "guarded": {
+     "sent": "<|emotion:anger|><|prosody:speed_slow|>If I pick up the cloth, Kael, it won't be to serve you. It will be to wipe the blood off the floor once we're done negotiating. So, tell me... what exactly do you think you're buying with this little display of strength?",
+     "tries": [
+      {
+       "pitch": 295,
+       "seconds": 9.22
+      },
+      {
+       "pitch": 282,
+       "seconds": 9.88
+      },
+      {
+       "pitch": 281,
+       "seconds": 9.49
+      }
+     ],
+     "held": false,
+     "fell_back": true
+    }
+   }
+  },
+  {
+   "id": "elara-e211-14",
+   "char": "elara",
+   "text": "Yes, a debt. A very large, very overdue debt. And if you don't start answering my questions correctly, Kael, I might find that interest becomes far more painful than a mere puncture wound.",
+   "choice": {
+    "mood": "angry",
+    "emotion": "determination",
+    "pace": "normal",
+    "sound": "none"
+   },
+   "chosen_by_gemma4": {
+    "mood": "neutral",
+    "emotion": "confusion",
+    "pace": "slow",
+    "sound": "none"
+   },
+   "results": {
+    "untagged": {
+     "pitch": 178,
+     "seconds": 9.67,
+     "held": true
+    },
+    "gentle": {
+     "sent": "Yes, a debt. A very large, very overdue debt. And if you don't start answering my questions correctly, Kael, I might find that interest becomes far more painful than a mere puncture wound.",
+     "pitch": 178,
+     "seconds": 9.44,
+     "held": true
+    },
+    "mood": {
+     "mood": "angry",
+     "pitch": 174,
+     "seconds": 9.77,
+     "held": true
+    },
+    "guarded": {
+     "sent": "<|emotion:determination|>Yes, a debt. A very large, very overdue debt. And if you don't start answering my questions correctly, Kael, I might find that interest becomes far more painful than a mere puncture wound.",
+     "tries": [
+      {
+       "pitch": 199,
+       "seconds": 9.07
+      }
+     ],
+     "held": true
+    }
+   }
+  },
+  {
+   "id": "elara-e211-23",
+   "char": "elara",
+   "text": "Good'? Is that all you have left to say, Kael? Just 'good' while the world falls apart around us? Look at me! Tell me there's more to this story than a pile of useless gold and a broken man!",
+   "choice": {
+    "mood": "angry",
+    "emotion": "fear",
+    "pace": "fast",
+    "sound": "none"
+   },
+   "chosen_by_gemma4": {
+    "mood": "angry",
+    "emotion": "fear",
+    "pace": "fast",
+    "sound": "none"
+   },
+   "results": {
+    "untagged": {
+     "pitch": 173,
+     "seconds": 8.79,
+     "held": true
+    },
+    "gentle": {
+     "sent": "<|prosody:speed_fast|>Good'? Is that all you have left to say, Kael? Just 'good' while the world falls apart around us? Look at me! Tell me there's more to this story than a pile of useless gold and a broken man!",
+     "pitch": 191,
+     "seconds": 8.91,
+     "held": true
+    },
+    "mood": {
+     "mood": "angry",
+     "pitch": 207,
+     "seconds": 9.21,
+     "held": false
+    },
+    "guarded": {
+     "sent": "<|emotion:fear|><|prosody:speed_fast|>Good'? Is that all you have left to say, Kael? Just 'good' while the world falls apart around us? Look at me! Tell me there's more to this story than a pile of useless gold and a broken man!",
+     "tries": [
+      {
+       "pitch": 169,
+       "seconds": 9.41
+      }
+     ],
+     "held": true
+    }
+   }
+  },
+  {
+   "id": "elara-e211-25",
+   "char": "elara",
+   "text": "Don't you dare fade away on me! If you fall asleep now, Kael, you'll wake up to find everything you ever protected has been stripped away. Wake up and fight for something besides a pocketful of worthless coin!",
+   "choice": {
+    "mood": "angry",
+    "emotion": "fear",
+    "pace": "fast",
+    "sound": "none"
+   },
+   "chosen_by_gemma4": {
+    "mood": "angry",
+    "emotion": "fear",
+    "pace": "fast",
+    "sound": "none"
+   },
+   "results": {
+    "untagged": {
+     "pitch": 214,
+     "seconds": 8.68,
+     "held": false
+    },
+    "gentle": {
+     "sent": "<|prosody:speed_fast|>Don't you dare fade away on me! If you fall asleep now, Kael, you'll wake up to find everything you ever protected has been stripped away. Wake up and fight for something besides a pocketful of worthless coin!",
+     "pitch": 216,
+     "seconds": 8.23,
+     "held": false
+    },
+    "mood": {
+     "mood": "angry",
+     "pitch": 196,
+     "seconds": 9.21,
+     "held": true
+    },
+    "guarded": {
+     "sent": "<|emotion:fear|><|prosody:speed_fast|>Don't you dare fade away on me! If you fall asleep now, Kael, you'll wake up to find everything you ever protected has been stripped away. Wake up and fight for something besides a pocketful of worthless coin!",
+     "tries": [
+      {
+       "pitch": 157,
+       "seconds": 8.78
+      }
+     ],
+     "held": true
+    }
+   }
+  },
+  {
+   "id": "elara-e211-26",
+   "char": "elara",
+   "text": "No. Travelers are easy to understand, Kael. They arrive, they stay for a night, and they leave. I am much more permanent than that. Now, are you going to use that locket to bribe your way out of this, or are you going to realize it's the only thing in this room that still has a purpose?",
+   "choice": {
+    "mood": "playful",
+    "emotion": "amusement",
+    "pace": "slow",
+    "sound": "laughter"
+   },
+   "chosen_by_gemma4": {
+    "mood": "playful",
+    "emotion": "amusement",
+    "pace": "slow",
+    "sound": "laughter"
+   },
+   "results": {
+    "untagged": {
+     "pitch": 167,
+     "seconds": 13.58,
+     "held": true
+    },
+    "gentle": {
+     "sent": "<|sfx:laughter|>Heh <|prosody:speed_slow|>No. <|prosody:pause|>Travelers are easy to understand, Kael. <|prosody:pause|>They arrive, they stay for a night, and they leave. <|prosody:pause|>I am much more permanent than that. <|prosody:pause|>Now, are you going to use that locket to bribe your way out of this, or are you going to realize it's the only thing in this room that still has a purpose?",
+     "pitch": 160,
+     "seconds": 14.92,
+     "held": true
+    },
+    "mood": {
+     "mood": "playful",
+     "pitch": 210,
+     "seconds": 14.94,
+     "held": false
+    },
+    "guarded": {
+     "sent": "<|sfx:laughter|>Heh <|emotion:amusement|><|prosody:speed_slow|>No. Travelers are easy to understand, Kael. They arrive, they stay for a night, and they leave. I am much more permanent than that. Now, are you going to use that locket to bribe your way out of this, or are you going to realize it's the only thing in this room that still has a purpose?",
+     "tries": [
+      {
+       "pitch": 207,
+       "seconds": 15.51
+      },
+      {
+       "pitch": 174,
+       "seconds": 15.89
+      }
+     ],
+     "held": true
+    }
+   }
+  },
+  {
+   "id": "elara-e211-29",
+   "char": "elara",
+   "text": "Quiet. Yes, Kael. Everything is quiet now. Except for the sound of the truth, which is still screaming in my ears.",
+   "choice": {
+    "mood": "hurt",
+    "emotion": "sadness",
+    "pace": "slow",
+    "sound": "none"
+   },
+   "chosen_by_gemma4": {
+    "mood": "neutral",
+    "emotion": "bitterness",
+    "pace": "slow",
+    "sound": "none"
+   },
+   "results": {
+    "untagged": {
+     "pitch": 166,
+     "seconds": 8.09,
+     "held": true
+    },
+    "gentle": {
+     "sent": "<|prosody:speed_slow|>Quiet. <|prosody:pause|>Yes, Kael. <|prosody:pause|>Everything is quiet now. <|prosody:pause|>Except for the sound of the truth, which is still screaming in my ears.",
+     "pitch": 140,
+     "seconds": 8.33,
+     "held": true
+    },
+    "mood": {
+     "mood": "hurt",
+     "pitch": 196,
+     "seconds": 6.74,
+     "held": true
+    },
+    "guarded": {
+     "sent": "<|emotion:sadness|><|prosody:speed_slow|>Quiet. Yes, Kael. Everything is quiet now. Except for the sound of the truth, which is still screaming in my ears.",
+     "tries": [
+      {
+       "pitch": 168,
+       "seconds": 7.39
+      }
+     ],
+     "held": true
+    }
+   }
+  }
+ ],
+ "director": {
+  "task": "pace and sound only, voice-delivery.md, temperature 0.3",
+  "heretic_26b_a4b": "16/16 twice",
+  "gemma4_31b": "15/16 then 16/16 (missed Elara 29: normal for slow)",
+  "before_rules": "asked for mood, emotion, pace and sound too: both models marked most lines slow; without the \"usual manner\" and \"when unsure, normal\" rules the heretic missed Kael 1 and 4 (slow)"
+ }
+}

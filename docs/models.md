@@ -305,6 +305,30 @@ the words that push a voice young or extreme (high-pitched, chirpy, girlish, mel
 Three descriptions each, designed: Elara 165–271 Hz (one take at the upper edge; New take fixes
 that), Kael 88–103 Hz, all stating an adult age.
 
+**Round 6, more expression without breaking the voice** (2026-10-01): Kael's six test lines and
+Elara's ten (soft voice), each four ways on Higgs TTS 3, deliveries set by hand so the methods are
+judged and not the directing:
+
+| Method | Voice held (pitch within 20%) | Heard |
+| ------ | ----------------------------- | ----- |
+| untagged (as before) | 15 of 16 | the baseline |
+| **pace and sounds**: a pace, pauses between sentences when slow, a sigh, laugh or cough first | 14 of 16 | **better than untagged** |
+| mood clips: each Character speaks five charged sentences (playful, angry, hurt, scared, intimate) in their own cloned voice; a line is cloned from the clip of its mood | 14 of 16 | too subtle: cloning copies the timbre, little of the mood |
+| emotion tag + pitch guard: re-speak a line that strays, up to three times, else untagged | 10 of 16; 6 fell back | no different from pace and sounds |
+
+The guard defeats itself: in Higgs a strong emotion and a pitch shift come together, so it throws
+away the takes where the tag did something and keeps the subtle ones. Making Kael's mood clips
+drifted the same way (angry: 345 Hz on all five tagged tries, against his 97). A voice also rises
+naturally when shouting (Elara's desperate line at 214 Hz against 170 is right), so ±20% can't
+tell "angrier" from "someone else"; a man turning into a woman is far outside it.
+
+So lines are directed with a pace and a sound, by the Art Agent's model (`voice-delivery.md`, at
+temperature 0.3). Asked for mood and emotion too, both gemma4s over-acted, marking nearly every
+line slow. Narrowed to pace and sound with "normal" the default, the heretic gemma-4 26B-A4B still
+read Kael's clipped, flat manner as weary (two lines slow, every run); two rules fixed that (their
+usual manner is never a reason to change pace; when unsure, normal): the heretic 16 of 16 twice,
+gemma4 31B 15 and 16. At the default temperature the same line came back slow one time in two.
+
 Other notes:
 
 - Gemma4 asked to write Higgs tags freely used only pauses, mid-phrase ("Keep <pause> it

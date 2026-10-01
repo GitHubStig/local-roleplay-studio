@@ -30,6 +30,11 @@ pitch.
   pitch, breathiness (harmonics-to-noise) and brightness (spectral centroid), what speech-to-text
   heard, and the voices the fixed prompt describes.
 
+- `expression/`: Round 6 (2026-10-01), four ways to add expression on Higgs TTS 3, on Kael's six
+  lines and Elara's ten: `clips/` has each line untagged and with pace and sounds (the one the
+  app uses), `moods/` each Character's mood clips, and `results.json` the deliveries, pitches and
+  how the Text Models scored as directors.
+
 ## Trying a new model
 
 1. Add it to `SETUPS` in `render.py`: its repo, and how a line (and the reference clip) is passed.
