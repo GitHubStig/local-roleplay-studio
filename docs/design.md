@@ -164,7 +164,8 @@ under `/api/sessions/:id/roleplay/` ([ADR 0007](adr/0007-roleplay-is-a-conversat
    compete for memory. Undo removes the undone exchange's audio. The voice service
    (`voice/serve.py`, mlx-audio) is a Python process the server starts on first use and talks to
    over HTTP on localhost: Qwen3-TTS VoiceDesign designs, Higgs TTS 3 clones, one model loaded at a
-   time and unloaded after ten minutes unused. Lines carry no emotion tags: in testing they pulled
+   time and unloaded after a minute unused (it reloads in 2–3 s), its MLX cache cleared after
+   every request. Lines carry no emotion tags: in testing they pulled
    the cloned voice off the Character, up to a woman's pitch (docs/models.md). Each line is
    directed instead: before it's spoken, the Art Agent's model reads the moment (the Message
    before it, what the Character does and thinks) and picks a pace (normal, slow or fast) and a

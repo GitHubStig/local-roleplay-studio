@@ -18,7 +18,10 @@ localhost. Measured 2026-09-30 (docs/models.md):
   held the voice too, and sounded better than plain to the player.
 
 One model is loaded at a time, and unloaded after a while unused, so it doesn't sit on 7-10 GB of
-memory next to the Text Model and the Image Model. `--download` fetches both models and exits.
+memory next to the Text Model and the Image Model. MLX keeps the working memory of each generation
+for reuse unless told otherwise: left alone, the service grew to 36 GB with only Higgs (~10 GB)
+loaded, so its cache is capped and cleared after every request. `--download` fetches both models
+and exits.
 """
 import argparse
 import json
@@ -37,6 +40,9 @@ DESIGN_MODEL = 'mlx-community/Qwen3-TTS-12Hz-1.7B-VoiceDesign-bf16'
 SPEAK_MODEL = 'bosonai/higgs-tts-3-4b'
 # Steadier than the default (1.0, no top-k): with these, the cloned voice stayed put.
 SPEAK_SAMPLING = dict(temperature=0.5, top_k=30)
+
+# MLX's buffer cache: what it may keep between requests (it's cleared after each one anyway).
+mx.set_cache_limit(512 * 1024**2)
 
 lock = threading.Lock()
 loaded = {'repo': None, 'model': None, 'used': 0.0}
@@ -117,7 +123,10 @@ class Handler(BaseHTTPRequestHandler):
         try:
             req = json.loads(self.rfile.read(int(self.headers.get('Content-Length', 0))) or b'{}')
             with lock:
-                result = work(req)
+                try:
+                    result = work(req)
+                finally:
+                    mx.clear_cache()
             self.reply(200, result)
         except Exception as err:  # Reported to the server, which shows it on the job.
             self.reply(500, {'error': f'{type(err).__name__}: {err}'})
@@ -137,7 +146,8 @@ def unload_when_idle(idle):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--port', type=int, default=8791)
-    parser.add_argument('--idle', type=int, default=600, help='seconds unused before unloading')
+    # Reloading Higgs takes 2-3 s (even straight after a 20 GB Image Model), so it needn't linger.
+    parser.add_argument('--idle', type=int, default=60, help='seconds unused before unloading')
     parser.add_argument('--download', action='store_true', help='fetch both models and exit')
     args = parser.parse_args()
     if args.download:
