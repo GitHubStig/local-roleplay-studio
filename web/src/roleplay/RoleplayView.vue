@@ -17,6 +17,7 @@ import {
   type RoleplayLook,
   type RoleplaySession,
   type Shown,
+  type Speech,
   beginRoleplay,
   cancelJob,
   type Job,
@@ -209,6 +210,14 @@ function stepViewer(step: number) {
 const autoplay = useStoredFlag('roleplay-voice-autoplay')
 /** Whether a line has words to say aloud (a Reply of only "…" doesn't). */
 const canSpeak = (frame: { reply: Reply }) => /[A-Za-z]/.test(frame.reply.dialogue)
+/** How a spoken line was directed, in a few words: "slowly, with a sigh"; '' if plainly. */
+function deliveryWords(speech?: Speech): string {
+  const d = speech?.delivery
+  if (!d) return ''
+  const pace = { normal: '', slow: 'slowly', fast: 'quickly' }[d.pace]
+  const sound = { none: '', sigh: 'a sigh', laughter: 'a laugh', cough: 'a cough' }[d.sound]
+  return [pace, sound && `with ${sound}`].filter(Boolean).join(', ')
+}
 /** A Frame's audio is in the Character's voice as it is now. */
 const spokenNow = (frame: { speech?: { ref: string } }) =>
   !!frame.speech && frame.speech.ref === session.value?.voice?.ref
@@ -720,6 +729,11 @@ async function saveCastDraft(): Promise<boolean> {
                       >
                         {{ playing === frame.index ? 'Stop' : 'Listen' }}
                       </button>
+                      <span
+                        v-if="spokenNow(frame) && deliveryWords(frame.speech)"
+                        class="-ml-2 text-muted"
+                        data-delivery
+                      >· {{ deliveryWords(frame.speech) }}</span>
                       <button
                         type="button"
                         class="text-muted underline-offset-2 hover:text-fg hover:underline disabled:opacity-50"

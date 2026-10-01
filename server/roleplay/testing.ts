@@ -1,5 +1,6 @@
 import type { ChatMessage } from '../ollamaChat.ts'
 import type { RoleplayModel } from './model.ts'
+import type { Delivery } from '../voice.ts'
 import { REPLY_FIELDS } from './prompt.ts'
 import type { Cast, Reply, RoleplayLook } from './types.ts'
 
@@ -44,6 +45,8 @@ export function scriptedRoleplayModel(
     bodies?: (string | Error)[]
     suggestions?: (string | Error)[]
     voices?: (string | Error)[]
+    /** How each line is directed; plain unless scripted. */
+    deliveries?: (Delivery | Error)[]
     /** Reported as the model's name; 'scripted' unless given. */
     name?: string
   },
@@ -52,6 +55,7 @@ export function scriptedRoleplayModel(
   art: ChatMessage[][]
   styles: string[]
   suggested: ChatMessage[][]
+  directed: ChatMessage[][]
 } {
   const next = <T>(queue: (T | Error)[] | undefined, what: string): Promise<T> => {
     const item = queue?.shift()
@@ -99,6 +103,14 @@ export function scriptedRoleplayModel(
       const reply = await next(script.replies, 'reply')
       for (const key of REPLY_FIELDS) on.field?.(key, reply[key])
       return reply
+    },
+    /** The messages each line's directing was given. */
+    directed: [] as ChatMessage[][],
+    async directLine(messages: ChatMessage[], signal: AbortSignal): Promise<Delivery> {
+      model.directed.push(messages)
+      signal.throwIfAborted()
+      if (!script.deliveries?.length) return { pace: 'normal', sound: 'none' }
+      return await next(script.deliveries, 'delivery')
     },
     async writeVoice(_messages: ChatMessage[], signal: AbortSignal) {
       signal.throwIfAborted()

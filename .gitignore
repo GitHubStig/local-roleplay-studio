@@ -4,3 +4,4 @@ node_modules
 # Runtime data
 settings.json
 sessions/
+__pycache__/

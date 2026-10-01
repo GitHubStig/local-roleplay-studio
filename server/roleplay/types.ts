@@ -1,4 +1,5 @@
 import type { Look, SessionBase } from '../session.ts'
+import type { Delivery } from '../voice.ts'
 
 /**
  * A Roleplay's Look: each person's identity sentence, and the art style, used word for word in
@@ -114,6 +115,8 @@ export interface Speech {
   ref: string
   /** Seconds it waited for a render and took to speak. */
   timings: { queued?: number; audio: number }
+  /** How it was directed: absent if directing failed and it was spoken as written. */
+  delivery?: Delivery
 }
 
 /**

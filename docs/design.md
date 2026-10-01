@@ -165,7 +165,13 @@ under `/api/sessions/:id/roleplay/` ([ADR 0007](adr/0007-roleplay-is-a-conversat
    (`voice/serve.py`, mlx-audio) is a Python process the server starts on first use and talks to
    over HTTP on localhost: Qwen3-TTS VoiceDesign designs, Higgs TTS 3 clones, one model loaded at a
    time and unloaded after ten minutes unused. Lines carry no emotion tags: in testing they pulled
-   the cloned voice off the Character, up to a woman's pitch (docs/models.md).
+   the cloned voice off the Character, up to a woman's pitch (docs/models.md). Each line is
+   directed instead: before it's spoken, the Art Agent's model reads the moment (the Message
+   before it, what the Character does and thinks) and picks a pace (normal, slow or fast) and a
+   sound before it (none, a sigh, a laugh, a cough) (`voice-delivery.md`); the voice service turns
+   them into Higgs's pace, pause and sound tags, which held the voice. The pick is saved with the
+   line (`speech.delivery`) and shown beside Listen ("slowly, with a sigh"). If directing fails,
+   the line is spoken as written.
    On screen, a Reply with something to say has **Listen**: it plays the line, speaking it first
    (or again, if it was spoken in an earlier voice) and playing it once it's ready. **Speak
    replies** (remembered per browser) speaks each new Reply as it arrives. The **Voice** panel in

@@ -99,6 +99,8 @@ export interface Speech {
   /** The reference clip of the voice it was spoken in. */
   ref: string
   timings: { queued?: number; audio: number }
+  /** How it was directed; absent if it was spoken as written. */
+  delivery?: { pace: 'normal' | 'slow' | 'fast'; sound: 'none' | 'sigh' | 'laughter' | 'cough' }
 }
 
 /** The Character's voice: a description, and the reference clip designed from it (once designed). */

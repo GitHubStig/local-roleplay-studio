@@ -15,7 +15,13 @@ export interface DesignRequest {
   out: string
 }
 
-export interface SpeakRequest {
+/** How a line is delivered, beyond its words: a pace, and a sound just before it. */
+export interface Delivery {
+  pace: 'normal' | 'slow' | 'fast'
+  sound: 'none' | 'sigh' | 'laughter' | 'cough'
+}
+
+export interface SpeakRequest extends Partial<Delivery> {
   text: string
   /** The voice to clone: a reference clip from `design`, and what it says. */
   ref: string

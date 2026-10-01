@@ -13,7 +13,7 @@ import type { ChatMessage } from '../ollamaChat.ts'
 import { loadPrompt } from '../promptFiles.ts'
 import { RenderQueue } from '../renderQueue.ts'
 import type { SessionStore } from '../session.ts'
-import type { VoiceEngine } from '../voice.ts'
+import type { Delivery, VoiceEngine } from '../voice.ts'
 import type { RoleplayModel } from './model.ts'
 import type { RoleplaySession, RoleplayVoice, Speech } from './types.ts'
 import { GoneError, updateSession } from './update.ts'
@@ -30,6 +30,26 @@ export const voiceSchema = {
   type: 'object',
   properties: { description: { type: 'string', description: 'the voice, in at most 50 words' } },
   required: ['description'],
+}
+
+export const deliverySchema = {
+  type: 'object',
+  properties: {
+    pace: { type: 'string', enum: ['normal', 'slow', 'fast'] },
+    sound: { type: 'string', enum: ['none', 'sigh', 'laughter', 'cough'] },
+  },
+  required: ['pace', 'sound'],
+}
+
+/** Reads a line's direction; anything it doesn't recognise is played as written. */
+export function parseDelivery(value: unknown): Delivery {
+  const v = (value ?? {}) as Record<string, unknown>
+  const pick = <T extends string>(x: unknown, options: readonly T[], fallback: T): T =>
+    options.includes(x as T) ? x as T : fallback
+  return {
+    pace: pick(v.pace, ['normal', 'slow', 'fast'] as const, 'normal'),
+    sound: pick(v.sound, ['none', 'sigh', 'laughter', 'cough'] as const, 'none'),
+  }
 }
 
 export class VoiceError extends Error {}
@@ -54,6 +74,29 @@ export async function voiceMessages(session: RoleplaySession): Promise<ChatMessa
   return [
     { role: 'system', content: await loadPrompt('roleplay/voice', { character }) },
     { role: 'user', content: 'Describe the voice.' },
+  ]
+}
+
+/** The call that directs how Frame `index`'s line is spoken, from the moment around it. */
+export async function deliveryMessages(
+  session: RoleplaySession,
+  index: number,
+): Promise<ChatMessage[]> {
+  const cast = session.cast
+  const frame = session.frames[index]
+  if (!cast || !frame) throw new VoiceError(`There is no Frame ${index}`)
+  return [
+    { role: 'system', content: await loadPrompt('roleplay/voice-delivery', { ...cast }) },
+    {
+      role: 'user',
+      content: await loadPrompt('roleplay/voice-delivery-request', {
+        ...cast,
+        message: frame.message ?? 'none: this opens the scene',
+        actions: frame.reply.actions || 'nothing',
+        internal: frame.reply.internal || 'nothing',
+        line: speakable(frame.reply.dialogue),
+      }),
+    },
   ]
 }
 
@@ -161,6 +204,14 @@ export async function speakFrame(
   let current = session
   if (!current.voice?.ref) current = await designVoice(deps, current, emit, signal)
   const ref = current.voice!.ref!
+  // How it's said: a pace and a sound. A failed direction isn't a failed line: it's said as written.
+  emit({ type: 'phase', phase: 'text' })
+  const delivery = await deps.model.directLine(await deliveryMessages(current, index), signal)
+    .catch((err) => {
+      signal.throwIfAborted()
+      console.warn(`Directing Frame ${index}'s line failed; speaking it as written:`, err.message)
+      return undefined
+    })
   const dir = deps.store.dir(session.id)
   const file = speechFile(index)
   try {
@@ -169,6 +220,7 @@ export async function speakFrame(
       await voice.speak(
         {
           text,
+          ...delivery,
           ref: join(dir, ref),
           refText: REF_TEXT,
           seed: session.seed + index,
@@ -179,7 +231,12 @@ export async function speakFrame(
       return secondsSince(start)
     })
     signal.throwIfAborted()
-    const speech: Speech = { file, ref, timings: { ...(queued ? { queued } : {}), audio } }
+    const speech: Speech = {
+      file,
+      ref,
+      timings: { ...(queued ? { queued } : {}), audio },
+      ...(delivery ? { delivery } : {}),
+    }
     let old: string | undefined
     const updated = await updateSession(deps.store, session.id, (latest) => {
       const now = latest.frames[index]

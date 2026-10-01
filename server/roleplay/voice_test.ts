@@ -3,11 +3,12 @@ import { join } from '@std/path'
 import { dirSessionStore } from '../session.ts'
 import { DEFAULT_SETTINGS } from '../settings.ts'
 import { withTempDir } from '../testing.ts'
-import { fakeVoiceEngine } from '../voice.ts'
+import { fakeVoiceEngine, type SpeakRequest } from '../voice.ts'
 import { replyOf, scriptedRoleplayModel, testCast } from './testing.ts'
 import type { RoleplaySession } from './types.ts'
 import {
   designVoice,
+  parseDelivery,
   REF_TEXT,
   setVoiceDescription,
   speakable,
@@ -93,6 +94,8 @@ Deno.test('Speaking a line first describes and designs the voice, then clones it
     ])
     assertEquals(voice.calls[1].req, {
       text: 'Hold the wheel.',
+      pace: 'normal',
+      sound: 'none',
       ref: join(root, 'r1', ref),
       refText: REF_TEXT,
       seed: 100,
@@ -102,9 +105,11 @@ Deno.test('Speaking a line first describes and designs the voice, then clones it
       'text',
       'audio',
       'voice',
+      'text',
       'audio',
       'spoken',
     ])
+    assertEquals(speech.delivery, { pace: 'normal', sound: 'none' })
     assertEquals(await files(), [speech.file, ref].sort())
 
     // Again: the same voice, and the old audio is replaced.
@@ -112,6 +117,46 @@ Deno.test('Speaking a line first describes and designs the voice, then clones it
     assertEquals(again.voice!.ref, ref)
     assertEquals(await files(), [again.frames[0].speech!.file, ref].sort())
   }))
+
+Deno.test('Each line is directed from its moment, and spoken with that pace and sound', () =>
+  withTempDir(async (root) => {
+    const { store, voice } = await setup(root)
+    const session = { ...roleplay(), voice: { description: 'A voice.', ref: 'voice-aaaaaaaa.wav' } }
+    await store.save(session)
+    const model = scriptedRoleplayModel({
+      deliveries: [{ pace: 'slow', sound: 'sigh' }, new Error('Ollama: down')],
+    })
+    const deps = { store, voice, model }
+    const said = (i: number) => voice.calls[i].req as SpeakRequest
+    const directed = await speakFrame(deps, session, 0, () => {}, signal)
+    assertEquals(directed.frames[0].speech!.delivery, { pace: 'slow', sound: 'sigh' })
+    assertEquals([said(0).pace, said(0).sound], ['slow', 'sigh'])
+    const [system, request] = model.directed[0]
+    assertStringIncludes(system.content, 'voice actor for Mira Vance')
+    assertStringIncludes(
+      request.content,
+      'What Sam Reyes just did or said: none: this opens the scene',
+    )
+    assertStringIncludes(request.content, 'What Mira Vance does: Mira grips the wheel.')
+    assertStringIncludes(request.content, 'The line: Hold the wheel.')
+
+    // A failed direction isn't a failed line: it's spoken as written.
+    const plain = await speakFrame(deps, directed, 0, () => {}, signal)
+    assertEquals(plain.frames[0].speech!.delivery, undefined)
+    assertEquals([said(1).pace, said(1).sound], [undefined, undefined])
+  }))
+
+Deno.test('parseDelivery plays anything it does not recognise as written', () => {
+  assertEquals(parseDelivery({ pace: 'fast', sound: 'laughter' }), {
+    pace: 'fast',
+    sound: 'laughter',
+  })
+  assertEquals(parseDelivery({ pace: 'very slow', sound: 'scream' }), {
+    pace: 'normal',
+    sound: 'none',
+  })
+  assertEquals(parseDelivery(null), { pace: 'normal', sound: 'none' })
+})
 
 Deno.test('A new take of the voice replaces its clip; lines spoken in the old one keep theirs', () =>
   withTempDir(async (root) => {

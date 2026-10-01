@@ -338,7 +338,12 @@ describe('RoleplayView', () => {
     const voice = { description: 'A gruff woman of forty.', ref: 'voice-aaaaaaaa.wav' }
     const spoken = (ref = voice.ref) => ({
       ...frame(0, null, 'Get inside.'),
-      speech: { file: 'speech-0-bbbbbbbb.wav', ref, timings: { audio: 1.2 } },
+      speech: {
+        file: 'speech-0-bbbbbbbb.wav',
+        ref,
+        timings: { audio: 1.2 },
+        delivery: { pace: 'slow' as const, sound: 'sigh' as const },
+      },
     })
     let played: string[]
     beforeEach(() => {
@@ -382,6 +387,7 @@ describe('RoleplayView', () => {
         ['speech-0-bbbbbbbb.wav'],
         [],
       ])
+      expect(wrapper.find('[data-delivery]').text()).toBe('· slowly, with a sigh')
 
       vi.mocked(api.getSession).mockResolvedValue({
         ...roleplaySession([spoken('voice-cccccccc.wav')]),

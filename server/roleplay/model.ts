@@ -22,7 +22,8 @@ import {
   roleplayLookSchema,
   trimFields,
 } from './art.ts'
-import { voiceSchema } from './voice.ts'
+import { deliverySchema, parseDelivery, voiceSchema } from './voice.ts'
+import type { Delivery } from '../voice.ts'
 
 /** A reply's fields as each one completes, and the model's reasoning as it streams. */
 export interface ReplyHandlers {
@@ -61,6 +62,8 @@ export interface RoleplayModel {
   ): Promise<Reply & { thinking?: string }>
   /** Describes the Character's voice (see `voice.ts` for the messages). */
   writeVoice(messages: ChatMessage[], signal: AbortSignal): Promise<{ description: string }>
+  /** Directs one line: its pace, and a sound before it (see `voice.ts` for the messages). */
+  directLine(messages: ChatMessage[], signal: AbortSignal): Promise<Delivery>
   /** Suggest: the player's next Message, as plain text (see `suggest.ts` for the messages). */
   suggest(
     messages: ChatMessage[],
@@ -69,7 +72,15 @@ export interface RoleplayModel {
   ): Promise<string>
 }
 
-const MAX_TOKENS = { reply: 1024, cast: 1024, art: 1600, suggest: 400, voice: 300, thinking: 12288 }
+const MAX_TOKENS = {
+  reply: 1024,
+  cast: 1024,
+  art: 1600,
+  suggest: 400,
+  voice: 300,
+  delivery: 60,
+  thinking: 12288,
+}
 
 /**
  * Penalise repeating anything already in the conversation. Without it, a long Roleplay's Replies
@@ -191,6 +202,19 @@ export function ollamaRoleplayModel(
           .replace(/\s+/g, ' ').trim()
         if (!description) throw new Error('The Text Model described no voice')
         return { description }
+      }),
+
+    directLine: (messages, signal) =>
+      within(signal, limit(), async (s) => {
+        const { content } = await chat.stream({
+          messages,
+          format: deliverySchema,
+          maxTokens: MAX_TOKENS.delivery,
+          // Steady picks: at the default temperature the same line came back slow one time in two.
+          options: { temperature: 0.3 },
+          signal: s,
+        })
+        return parseDelivery(parseJson(content))
       }),
 
     suggest: (messages, signal, onText) =>

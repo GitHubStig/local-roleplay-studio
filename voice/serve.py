@@ -14,13 +14,15 @@ localhost. Measured 2026-09-30 (docs/models.md):
   description. Done once per Character; the clip is saved with the Roleplay.
 - speak: Higgs TTS 3 clones that clip for each line. Without emotion or style tags and with
   steadier sampling it held the voice in 24 renders of 24; with emotion tags, in 6, drifting up
-  to a woman's pitch.
+  to a woman's pitch. A line can come with a pace and a sound (a sigh, a laugh, a cough), which
+  held the voice too, and sounded better than plain to the player.
 
 One model is loaded at a time, and unloaded after a while unused, so it doesn't sit on 7-10 GB of
 memory next to the Text Model and the Image Model. `--download` fetches both models and exits.
 """
 import argparse
 import json
+import re
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -69,10 +71,24 @@ def design(req):
                     text=req['text'], instruct=req['description'])
 
 
+# A sound is its tag followed at once by the sound itself, as Higgs's model card says.
+SOUNDS = {'sigh': 'Uh', 'laughter': 'Heh', 'cough': 'Ahem'}
+PACES = {'slow': '<|prosody:speed_slow|>', 'fast': '<|prosody:speed_fast|>'}
+
+
+def directed(text, pace=None, sound=None):
+    """The line with Higgs's tags for its pace and sound; a slow line also pauses between sentences."""
+    if pace == 'slow':
+        text = re.sub(r'([.!?…]) (?=\S)', r'\1 <|prosody:pause|>', text)
+    before = f'<|sfx:{sound}|>{SOUNDS[sound]} ' if sound in SOUNDS else ''
+    return before + PACES.get(pace, '') + text
+
+
 def speak(req):
     m = model(SPEAK_MODEL)
     ref = load_audio(req['ref'], sample_rate=m.sample_rate)
-    return generate(m, req['out'], req.get('seed', 0), text=req['text'], ref_audio=ref,
+    text = directed(req['text'], req.get('pace'), req.get('sound'))
+    return generate(m, req['out'], req.get('seed', 0), text=text, ref_audio=ref,
                     ref_text=req['refText'], **SPEAK_SAMPLING)
 
 
