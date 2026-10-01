@@ -424,9 +424,13 @@ and bit width, where the published ones cover some (no 8-bit Klein 9B or Qwen-Im
 A published copy would only save the conversion on a fresh machine, for the models it covers. Qwen-Image 2.1's peak
 here, 20.5 GB, is lower than the ~35 GB measured on 2026-09-25 with an earlier setup.
 
-**The voice service** (2026-10-01) held 36 GB with only Higgs (~10 GB) loaded: MLX keeps each
-generation's working memory for reuse. Its cache is now capped and cleared after every request,
-and it stays at 9.1–9.7 GB over a run of long lines. Reloading Higgs takes 1.9 s warm and 3.2 s
+**The voice service** (2026-10-01) held 36 GB with only Higgs (~10 GB) loaded, and later 46 GB
+with nothing loaded. Two causes: MLX keeps each generation's working memory for reuse (now capped
+and cleared after every request: 9.1–9.7 GB over a run of long lines), and the models hold
+reference cycles, so an unloaded model stayed in memory until Python's cycle collector happened to
+run: every idle unload and every switch between VoiceDesign and Higgs left one behind. Unloading
+now collects them: designing, speaking and unloading three times over goes 4.6 → 8.8 → 0 GB each
+round. Its `/health` reports the memory it holds (`gb`). Reloading Higgs takes 1.9 s warm and 3.2 s
 straight after Qwen-Image, so it now unloads after a minute unused instead of ten.
 
 **Python's version doesn't change memory or speed** (2026-10-01, uv's Python 3.14.4 against

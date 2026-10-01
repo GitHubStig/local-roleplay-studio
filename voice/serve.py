@@ -24,6 +24,7 @@ loaded, so its cache is capped and cleared after every request. `--download` fet
 and exits.
 """
 import argparse
+import gc
 import json
 import re
 import threading
@@ -61,6 +62,10 @@ def model(repo):
 
 def unload():
     loaded.update(repo=None, model=None)
+    # The models hold reference cycles, so dropping them frees nothing until Python's cycle
+    # collector runs, which it rarely does here: every unload and every switch between the two
+    # models left one behind (46 GB with none loaded). Collect now, then hand back MLX's memory.
+    gc.collect()
     mx.clear_cache()
 
 
@@ -113,7 +118,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         if self.path == '/health':
-            return self.reply(200, {'ok': True, 'loaded': loaded['repo']})
+            return self.reply(200, {'ok': True, 'loaded': loaded['repo'],
+                                    'gb': round(mx.get_active_memory() / 1e9, 1)})
         self.reply(404, {'error': 'Not found'})
 
     def do_POST(self):
