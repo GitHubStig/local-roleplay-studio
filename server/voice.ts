@@ -37,6 +37,8 @@ export interface VoiceServiceOptions {
   offline?: boolean
   /** How long the service may take to start; its first start installs its Python packages. */
   startLimitMs?: number
+  /** The command that starts it, given the port; `uv run voice/serve.py` unless a test says. */
+  command?: (port: number) => string[]
 }
 
 const SCRIPT = new URL('../voice/serve.py', import.meta.url)
@@ -52,9 +54,11 @@ export function voiceService(opts: VoiceServiceOptions = {}): VoiceEngine {
 
   async function start(): Promise<void> {
     if (await healthy()) return
+    const [cmd, ...args] = opts.command?.(port) ??
+      ['uv', 'run', '--quiet', SCRIPT.pathname, '--port', String(port)]
     const child = track(
-      new Deno.Command('uv', {
-        args: ['run', '--quiet', SCRIPT.pathname, '--port', String(port)],
+      new Deno.Command(cmd, {
+        args,
         env: opts.offline ?? true ? { HF_HUB_OFFLINE: '1' } : {},
         stdout: 'null',
         stderr: 'piped',
@@ -77,17 +81,26 @@ export function voiceService(opts: VoiceServiceOptions = {}): VoiceEngine {
     throw new Error(`The voice service didn't start (needs uv and its models; see README): ${why}`)
   }
 
-  async function call(path: string, body: object, signal: AbortSignal): Promise<void> {
+  const ready = () =>
     starting ??= start().catch((err) => {
       starting = null
       throw err
     })
-    await starting
-    const res = await fetch(`${base}${path}`, {
-      method: 'POST',
-      body: JSON.stringify(body),
-      signal,
-    })
+  const post = (path: string, body: object, signal: AbortSignal) =>
+    fetch(`${base}${path}`, { method: 'POST', body: JSON.stringify(body), signal })
+
+  async function call(path: string, body: object, signal: AbortSignal): Promise<void> {
+    await ready()
+    let res: Response
+    try {
+      res = await post(path, body, signal)
+    } catch (err) {
+      if (signal.aborted) throw err
+      // Gone since it started (it crashed, ran out of memory, or was stopped): start it again.
+      starting = null
+      await ready()
+      res = await post(path, body, signal)
+    }
     const reply = await res.json().catch(() => ({}))
     if (!res.ok) {
       // A service that died since it started is started again next time.
