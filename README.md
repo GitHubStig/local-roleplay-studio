@@ -27,7 +27,7 @@ The vocabulary (Scenario, Session, Image Prompt, Frame, Action, …) is defined 
 - **Ollama** with at least one chat model. Recommended: `gemma4:31b-mlx` (about 10 s per Frame
   once loaded, Thinking off). Small models (4–8B) can't reliably follow the prompt format; see
   [docs/models.md](docs/models.md) for the comparison.
-- **mflux 0.20**: `uv tool install mflux`.
+- **mflux 0.20**: `uv tool install --managed-python --python 3.14 mflux`. (uv's own Python, kept apart from any other Python on the Mac; mflux runs on 3.10 or newer.)
 - **Image model weights, downloaded once.** The game runs mflux with Hugging Face downloads
   blocked, so each Image Model must be fetched beforehand. Run the command below online once;
   it saves the weights to `~/.cache/huggingface`.

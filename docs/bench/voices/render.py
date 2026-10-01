@@ -1,8 +1,9 @@
 # /// script
-# requires-python = ">=3.11,<3.13"
+# requires-python = ">=3.14,<3.15"
 # dependencies = ["mlx-audio", "torch"]
 # [tool.uv]
 # prerelease = "allow"
+# python-preference = "only-managed"
 # ///
 """
 Speaks Kael's lines in his designed voice (kael-ref.wav) with one TTS setup, to compare with the

@@ -1,8 +1,9 @@
 # /// script
-# requires-python = ">=3.11,<3.13"
+# requires-python = ">=3.14,<3.15"
 # dependencies = ["mlx-audio", "torch"]
 # [tool.uv]
 # prerelease = "allow"
+# python-preference = "only-managed"
 # ///
 """
 The voice service: Roleplay Characters' voices, spoken locally with mlx-audio. The Deno server
