@@ -1,0 +1,1738 @@
+{
+ "reference_pitch_hz": 97.0,
+ "round1": {
+  "qwen-clone": [
+   {
+    "frame": 1,
+    "text": "Drink. It's bitter. Like my mood.",
+    "note": "dry and sardonic",
+    "sent": "Drink. It's bitter. Like my mood.",
+    "seconds": 5.71,
+    "audio_seconds": 3.04,
+    "peak_gb": 8.2,
+    "heard": "Drink. It's bitter. Like my mood.",
+    "pitch_hz": 87.0
+   },
+   {
+    "frame": 4,
+    "text": "Third door on the left. Don't knock on the other two.",
+    "note": "a flat, quiet warning",
+    "sent": "Third door on the left. Don't knock on the other two.",
+    "seconds": 1.38,
+    "audio_seconds": 3.12,
+    "peak_gb": 8.8,
+    "heard": "Third door on the left, don't knock on the other two.",
+    "pitch_hz": 95.0
+   },
+   {
+    "frame": 13,
+    "text": "Debt?",
+    "note": "gasping in pain, just stabbed",
+    "sent": "Debt?",
+    "seconds": 0.51,
+    "audio_seconds": 0.72,
+    "peak_gb": 8.5,
+    "heard": "Debt?",
+    "pitch_hz": 107.0
+   },
+   {
+    "frame": 17,
+    "text": "You're mine. They're tools.",
+    "note": "menacing, through gritted teeth, bloodied",
+    "sent": "You're mine. They're tools.",
+    "seconds": 1.3,
+    "audio_seconds": 2.96,
+    "peak_gb": 8.7,
+    "heard": "You're mine. They're tools.",
+    "pitch_hz": 90.0
+   },
+   {
+    "frame": 20,
+    "text": "Don't break her. She's the only one who knows the rest.",
+    "note": "weak and exhausted, barely conscious",
+    "sent": "Don't break her. She's the only one who knows the rest.",
+    "seconds": 1.45,
+    "audio_seconds": 3.36,
+    "peak_gb": 8.9,
+    "heard": "Don't break her. She's the only one who knows the rest.",
+    "pitch_hz": 106.0
+   },
+   {
+    "frame": 25,
+    "text": "You're not a traveler.",
+    "note": "stunned, quietly realising",
+    "sent": "You're not a traveler.",
+    "seconds": 0.62,
+    "audio_seconds": 1.04,
+    "peak_gb": 8.6,
+    "heard": "You're not a traveler.",
+    "pitch_hz": 115.0
+   }
+  ],
+  "qwen-design": [
+   {
+    "frame": 1,
+    "text": "Drink. It's bitter. Like my mood.",
+    "note": "dry and sardonic",
+    "sent": "Drink. It's bitter. Like my mood.",
+    "seconds": 1.65,
+    "audio_seconds": 4.4,
+    "peak_gb": 7.5,
+    "heard": "Drink. It's bitter. Like my mood.",
+    "pitch_hz": 92.0
+   },
+   {
+    "frame": 4,
+    "text": "Third door on the left. Don't knock on the other two.",
+    "note": "a flat, quiet warning",
+    "sent": "Third door on the left. Don't knock on the other two.",
+    "seconds": 1.35,
+    "audio_seconds": 3.68,
+    "peak_gb": 7.2,
+    "heard": "Third door on the left. Don't knock on the other two.",
+    "pitch_hz": 96.0
+   },
+   {
+    "frame": 13,
+    "text": "Debt?",
+    "note": "gasping in pain, just stabbed",
+    "sent": "Debt?",
+    "seconds": 0.72,
+    "audio_seconds": 1.28,
+    "peak_gb": 5.7,
+    "heard": "Oh, dead?",
+    "pitch_hz": 150.0
+   },
+   {
+    "frame": 17,
+    "text": "You're mine. They're tools.",
+    "note": "menacing, through gritted teeth, bloodied",
+    "sent": "You're mine. They're tools.",
+    "seconds": 1.12,
+    "audio_seconds": 3.04,
+    "peak_gb": 6.9,
+    "heard": "You're mine. They're tools.",
+    "pitch_hz": 81.0
+   },
+   {
+    "frame": 20,
+    "text": "Don't break her. She's the only one who knows the rest.",
+    "note": "weak and exhausted, barely conscious",
+    "sent": "Don't break her. She's the only one who knows the rest.",
+    "seconds": 1.52,
+    "audio_seconds": 4.16,
+    "peak_gb": 7.4,
+    "heard": "Don't break her. She's the only one who knows the rest.",
+    "pitch_hz": 109.0
+   },
+   {
+    "frame": 25,
+    "text": "You're not a traveler.",
+    "note": "stunned, quietly realising",
+    "sent": "You're not a traveler.",
+    "seconds": 0.55,
+    "audio_seconds": 1.36,
+    "peak_gb": 5.7,
+    "heard": "You're not a traveler.",
+    "pitch_hz": 115.0
+   }
+  ],
+  "chatterbox": [
+   {
+    "frame": 1,
+    "text": "Drink. It's bitter. Like my mood.",
+    "note": "dry and sardonic",
+    "sent": "Drink. It's bitter. Like my mood.",
+    "seconds": 7.65,
+    "audio_seconds": 3.32,
+    "peak_gb": 4.3,
+    "heard": "drink it's bitter, like my mood.",
+    "pitch_hz": 101.0
+   },
+   {
+    "frame": 4,
+    "text": "Third door on the left. Don't knock on the other two.",
+    "note": "a flat, quiet warning",
+    "sent": "Third door on the left. Don't knock on the other two.",
+    "seconds": 1.98,
+    "audio_seconds": 3.4,
+    "peak_gb": 4.3,
+    "heard": "Third door on the left. Don't knock on the other two.",
+    "pitch_hz": 91.0
+   },
+   {
+    "frame": 13,
+    "text": "Debt?",
+    "note": "gasping in pain, just stabbed",
+    "sent": "Debt?",
+    "seconds": 0.67,
+    "audio_seconds": 0.88,
+    "peak_gb": 4.0,
+    "heard": "Debts?",
+    "pitch_hz": 97.0
+   },
+   {
+    "frame": 17,
+    "text": "You're mine. They're tools.",
+    "note": "menacing, through gritted teeth, bloodied",
+    "sent": "You're mine. They're tools.",
+    "seconds": 1.31,
+    "audio_seconds": 2.68,
+    "peak_gb": 4.2,
+    "heard": "You're mine. They're tools.",
+    "pitch_hz": 103.0
+   },
+   {
+    "frame": 20,
+    "text": "Don't break her. She's the only one who knows the rest.",
+    "note": "weak and exhausted, barely conscious",
+    "sent": "Don't break her. She's the only one who knows the rest.",
+    "seconds": 1.56,
+    "audio_seconds": 3.44,
+    "peak_gb": 4.3,
+    "heard": "Don't break her. She's the only one who knows the rest.",
+    "pitch_hz": 99.0
+   },
+   {
+    "frame": 25,
+    "text": "You're not a traveler.",
+    "note": "stunned, quietly realising",
+    "sent": "You're not a traveler.",
+    "seconds": 0.94,
+    "audio_seconds": 1.68,
+    "peak_gb": 4.1,
+    "heard": "You're not a traveler.",
+    "pitch_hz": 97.0
+   }
+  ],
+  "higgs3": [
+   {
+    "frame": 1,
+    "text": "Drink. It's bitter. Like my mood.",
+    "note": "dry and sardonic",
+    "sent": "<|emotion:bitterness|><|prosody:expressive_low|>Drink. It's bitter. Like my mood.",
+    "seconds": 3.51,
+    "audio_seconds": 3.12,
+    "peak_gb": 9.9,
+    "heard": "Drink, it's bitter, like my mood.",
+    "pitch_hz": 105.0
+   },
+   {
+    "frame": 4,
+    "text": "Third door on the left. Don't knock on the other two.",
+    "note": "a flat, quiet warning",
+    "sent": "<|prosody:expressive_low|>Third door on the left. <|prosody:pause|>Don't knock on the other two.",
+    "seconds": 3.21,
+    "audio_seconds": 3.84,
+    "peak_gb": 10.1,
+    "heard": "Third door on the left. Don't knock on the other two.",
+    "pitch_hz": 112.0
+   },
+   {
+    "frame": 13,
+    "text": "Debt?",
+    "note": "gasping in pain, just stabbed",
+    "sent": "<|emotion:surprise|><|sfx:sigh|>Uh<|prosody:pause|> Debt?",
+    "seconds": 1.45,
+    "audio_seconds": 1.48,
+    "peak_gb": 10.1,
+    "heard": "Uh debt?",
+    "pitch_hz": null
+   },
+   {
+    "frame": 17,
+    "text": "You're mine. They're tools.",
+    "note": "menacing, through gritted teeth, bloodied",
+    "sent": "<|emotion:anger|>You're mine. <|prosody:pause|>They're tools.",
+    "seconds": 2.12,
+    "audio_seconds": 2.48,
+    "peak_gb": 10.1,
+    "heard": "You're mine. They're tools.",
+    "pitch_hz": 227.0
+   },
+   {
+    "frame": 20,
+    "text": "Don't break her. She's the only one who knows the rest.",
+    "note": "weak and exhausted, barely conscious",
+    "sent": "<|emotion:helplessness|><|prosody:speed_slow|>Don't break her. <|prosody:pause|>She's the only one who knows the rest.",
+    "seconds": 3.47,
+    "audio_seconds": 4.4,
+    "peak_gb": 10.1,
+    "heard": "Don't break her. She's the only one who knows the rest.",
+    "pitch_hz": 141.0
+   },
+   {
+    "frame": 25,
+    "text": "You're not a traveler.",
+    "note": "stunned, quietly realising",
+    "sent": "<|emotion:surprise|><|prosody:speed_slow|>You're not a traveler.",
+    "seconds": 1.57,
+    "audio_seconds": 1.72,
+    "peak_gb": 10.1,
+    "heard": "You're not a traveler.",
+    "pitch_hz": 241.0
+   }
+  ]
+ },
+ "conversation": [
+  {
+   "frame": 0,
+   "line": "We\u2019re closed.",
+   "delivery": {
+    "emotion": "helplessness",
+    "style": "none",
+    "pace": "slow",
+    "sound": "none"
+   },
+   "tagged": "<|emotion:helplessness|><|prosody:speed_slow|>We\u2019re closed.",
+   "pitch_hz": {
+    "round2_tagged": 86.0,
+    "round3_untagged": 94.0
+   }
+  },
+  {
+   "frame": 1,
+   "line": "Drink. It\u2019s bitter. Like my mood.",
+   "delivery": {
+    "emotion": "amusement",
+    "style": "none",
+    "pace": "normal",
+    "sound": "none"
+   },
+   "tagged": "<|emotion:amusement|>Drink. It\u2019s bitter. Like my mood.",
+   "pitch_hz": {
+    "round2_tagged": 87.0,
+    "round3_untagged": 85.0
+   }
+  },
+  {
+   "frame": 2,
+   "line": "Nice trinket. Heavy.",
+   "delivery": {
+    "emotion": "amusement",
+    "style": "none",
+    "pace": "normal",
+    "sound": "none"
+   },
+   "tagged": "<|emotion:amusement|>Nice trinket. Heavy.",
+   "pitch_hz": {
+    "round2_tagged": 130.0,
+    "round3_untagged": 109.0
+   }
+  },
+  {
+   "frame": 3,
+   "line": "Keep it buttoned.",
+   "delivery": {
+    "emotion": "disgust",
+    "style": "none",
+    "pace": "slow",
+    "sound": "none"
+   },
+   "tagged": "<|emotion:disgust|><|prosody:speed_slow|>Keep it buttoned.",
+   "pitch_hz": {
+    "round2_tagged": 231.0,
+    "round3_untagged": 119.0
+   }
+  },
+  {
+   "frame": 4,
+   "line": "Third door on the left. Don't knock on the other two.",
+   "delivery": {
+    "emotion": "longing",
+    "style": "none",
+    "pace": "normal",
+    "sound": "none"
+   },
+   "tagged": "<|emotion:longing|>Third door on the left. Don't knock on the other two.",
+   "pitch_hz": {
+    "round2_tagged": 86.0,
+    "round3_untagged": 111.0
+   }
+  },
+  {
+   "frame": 5,
+   "line": "It\u2019s late.",
+   "delivery": {
+    "emotion": "surprise",
+    "style": "none",
+    "pace": "slow",
+    "sound": "none"
+   },
+   "tagged": "<|emotion:surprise|><|prosody:speed_slow|>It\u2019s late.",
+   "pitch_hz": {
+    "round2_tagged": 243.0,
+    "round3_untagged": 102.0
+   }
+  },
+  {
+   "frame": 6,
+   "line": "Don\u2019t break the pipes.",
+   "delivery": {
+    "emotion": "amusement",
+    "style": "none",
+    "pace": "slow",
+    "sound": "none"
+   },
+   "tagged": "<|emotion:amusement|><|prosody:speed_slow|>Don\u2019t break the pipes.",
+   "pitch_hz": {
+    "round2_tagged": 191.0,
+    "round3_untagged": 104.0
+   }
+  },
+  {
+   "frame": 7,
+   "line": "Sleep tight.",
+   "delivery": {
+    "emotion": "amusement",
+    "style": "none",
+    "pace": "slow",
+    "sound": "none"
+   },
+   "tagged": "<|emotion:amusement|><|prosody:speed_slow|>Sleep tight.",
+   "pitch_hz": {
+    "round2_tagged": 119.0,
+    "round3_untagged": 108.0
+   }
+  },
+  {
+   "frame": 8,
+   "line": "Massage is a service. Not a conversation.",
+   "delivery": {
+    "emotion": "amusement",
+    "style": "whispering",
+    "pace": "slow",
+    "sound": "none"
+   },
+   "tagged": "<|emotion:amusement|><|style:whispering|><|prosody:speed_slow|>Massage is a service. Not a conversation.",
+   "pitch_hz": {
+    "round2_tagged": 185.0,
+    "round3_untagged": 106.0
+   }
+  },
+  {
+   "frame": 9,
+   "line": "Pick it up.",
+   "delivery": {
+    "emotion": "fear",
+    "style": "none",
+    "pace": "slow",
+    "sound": "none"
+   },
+   "tagged": "<|emotion:fear|><|prosody:speed_slow|>Pick it up.",
+   "pitch_hz": {
+    "round2_tagged": 102.0,
+    "round3_untagged": null
+   }
+  },
+  {
+   "frame": 10,
+   "line": "Not me. You.",
+   "delivery": {
+    "emotion": "disgust",
+    "style": "none",
+    "pace": "slow",
+    "sound": "none"
+   },
+   "tagged": "<|emotion:disgust|><|prosody:speed_slow|>Not me. You.",
+   "pitch_hz": {
+    "round2_tagged": 164.0,
+    "round3_untagged": 108.0
+   }
+  },
+  {
+   "frame": 11,
+   "line": "Done?",
+   "delivery": {
+    "emotion": "amusement",
+    "style": "none",
+    "pace": "slow",
+    "sound": "none"
+   },
+   "tagged": "<|emotion:amusement|><|prosody:speed_slow|>Done?",
+   "pitch_hz": {
+    "round2_tagged": 297.0,
+    "round3_untagged": 108.0
+   }
+  },
+  {
+   "frame": 12,
+   "line": "Knew it wasn\u2019t for the rain.",
+   "delivery": {
+    "emotion": "amusement",
+    "style": "none",
+    "pace": "slow",
+    "sound": "cough"
+   },
+   "tagged": "<|sfx:cough|>Ahem <|emotion:amusement|><|prosody:speed_slow|>Knew it wasn\u2019t for the rain.",
+   "pitch_hz": {
+    "round2_tagged": 99.0,
+    "round3_untagged": 98.0
+   }
+  },
+  {
+   "frame": 13,
+   "line": "Debt?",
+   "delivery": {
+    "emotion": "shame",
+    "style": "none",
+    "pace": "slow",
+    "sound": "none"
+   },
+   "tagged": "<|emotion:shame|><|prosody:speed_slow|>Debt?",
+   "pitch_hz": {
+    "round2_tagged": 109.0,
+    "round3_untagged": 109.0
+   }
+  },
+  {
+   "frame": 14,
+   "line": "Who?",
+   "delivery": {
+    "emotion": "shame",
+    "style": "none",
+    "pace": "slow",
+    "sound": "none"
+   },
+   "tagged": "<|emotion:shame|><|prosody:speed_slow|>Who?",
+   "pitch_hz": {
+    "round2_tagged": 89.0,
+    "round3_untagged": 139.0
+   }
+  },
+  {
+   "frame": 15,
+   "line": "Took you long enough.",
+   "delivery": {
+    "emotion": "amusement",
+    "style": "none",
+    "pace": "slow",
+    "sound": "none"
+   },
+   "tagged": "<|emotion:amusement|><|prosody:speed_slow|>Took you long enough.",
+   "pitch_hz": {
+    "round2_tagged": 117.0,
+    "round3_untagged": 96.0
+   }
+  },
+  {
+   "frame": 16,
+   "line": "Tight. Make it tight.",
+   "delivery": {
+    "emotion": "bitterness",
+    "style": "none",
+    "pace": "slow",
+    "sound": "none"
+   },
+   "tagged": "<|emotion:bitterness|><|prosody:speed_slow|>Tight. Make it tight.",
+   "pitch_hz": {
+    "round2_tagged": 135.0,
+    "round3_untagged": 108.0
+   }
+  },
+  {
+   "frame": 17,
+   "line": "You\u2019re mine. They\u2019re tools.",
+   "delivery": {
+    "emotion": "determination",
+    "style": "none",
+    "pace": "slow",
+    "sound": "none"
+   },
+   "tagged": "<|emotion:determination|><|prosody:speed_slow|>You\u2019re mine. They\u2019re tools.",
+   "pitch_hz": {
+    "round2_tagged": 336.0,
+    "round3_untagged": 83.0
+   }
+  },
+  {
+   "frame": 18,
+   "line": "Debt is paid in coin. Not skin.",
+   "delivery": {
+    "emotion": "contemplation",
+    "style": "none",
+    "pace": "slow",
+    "sound": "none"
+   },
+   "tagged": "<|emotion:contemplation|><|prosody:speed_slow|>Debt is paid in coin. Not skin.",
+   "pitch_hz": {
+    "round2_tagged": 85.0,
+    "round3_untagged": 106.0
+   }
+  },
+  {
+   "frame": 19,
+   "line": "Choke on the letter.",
+   "delivery": {
+    "emotion": "amusement",
+    "style": "whispering",
+    "pace": "slow",
+    "sound": "none"
+   },
+   "tagged": "<|emotion:amusement|><|style:whispering|><|prosody:speed_slow|>Choke on the letter.",
+   "pitch_hz": {
+    "round2_tagged": 100.0,
+    "round3_untagged": 103.0
+   }
+  },
+  {
+   "frame": 20,
+   "line": "Don\u2019t break her. She\u2019s the only one who knows the rest.",
+   "delivery": {
+    "emotion": "shame",
+    "style": "whispering",
+    "pace": "slow",
+    "sound": "none"
+   },
+   "tagged": "<|emotion:shame|><|style:whispering|><|prosody:speed_slow|>Don\u2019t break her. She\u2019s the only one who knows the rest.",
+   "pitch_hz": {
+    "round2_tagged": 188.0,
+    "round3_untagged": 108.0
+   }
+  },
+  {
+   "frame": 21,
+   "line": "Tie her up. Not to the bed. To the door.",
+   "delivery": {
+    "emotion": "surprise",
+    "style": "whispering",
+    "pace": "slow",
+    "sound": "none"
+   },
+   "tagged": "<|emotion:surprise|><|style:whispering|><|prosody:speed_slow|>Tie her up. Not to the bed. To the door.",
+   "pitch_hz": {
+    "round2_tagged": 180.0,
+    "round3_untagged": 106.0
+   }
+  },
+  {
+   "frame": 22,
+   "line": "Good.",
+   "delivery": {
+    "emotion": "helplessness",
+    "style": "none",
+    "pace": "slow",
+    "sound": "none"
+   },
+   "tagged": "<|emotion:helplessness|><|prosody:speed_slow|>Good.",
+   "pitch_hz": {
+    "round2_tagged": null,
+    "round3_untagged": 84.0
+   }
+  },
+  {
+   "frame": 23,
+   "line": "Stay away from her.",
+   "delivery": {
+    "emotion": "helplessness",
+    "style": "none",
+    "pace": "slow",
+    "sound": "none"
+   },
+   "tagged": "<|emotion:helplessness|><|prosody:speed_slow|>Stay away from her.",
+   "pitch_hz": {
+    "round2_tagged": 89.0,
+    "round3_untagged": 119.0
+   }
+  },
+  {
+   "frame": 25,
+   "line": "You\u2019re not a traveler.",
+   "delivery": {
+    "emotion": "shame",
+    "style": "whispering",
+    "pace": "slow",
+    "sound": "none"
+   },
+   "tagged": "<|emotion:shame|><|style:whispering|><|prosody:speed_slow|>You\u2019re not a traveler.",
+   "pitch_hz": {
+    "round2_tagged": 97.0,
+    "round3_untagged": 87.0
+   }
+  },
+  {
+   "frame": 26,
+   "line": "Who did it?",
+   "delivery": {
+    "emotion": "helplessness",
+    "style": "whispering",
+    "pace": "slow",
+    "sound": "none"
+   },
+   "tagged": "<|emotion:helplessness|><|style:whispering|><|prosody:speed_slow|>Who did it?",
+   "pitch_hz": {
+    "round2_tagged": 105.0,
+    "round3_untagged": 114.0
+   }
+  },
+  {
+   "frame": 27,
+   "line": "Don\u2019t come back.",
+   "delivery": {
+    "emotion": "helplessness",
+    "style": "whispering",
+    "pace": "slow",
+    "sound": "none"
+   },
+   "tagged": "<|emotion:helplessness|><|style:whispering|><|prosody:speed_slow|>Don\u2019t come back.",
+   "pitch_hz": {
+    "round2_tagged": 167.0,
+    "round3_untagged": 104.0
+   }
+  },
+  {
+   "frame": 28,
+   "line": "Quiet.",
+   "delivery": {
+    "emotion": "helplessness",
+    "style": "whispering",
+    "pace": "slow",
+    "sound": "none"
+   },
+   "tagged": "<|emotion:helplessness|><|style:whispering|><|prosody:speed_slow|>Quiet.",
+   "pitch_hz": {
+    "round2_tagged": null,
+    "round3_untagged": 119.0
+   }
+  },
+  {
+   "frame": 29,
+   "line": "I did.",
+   "delivery": {
+    "emotion": "helplessness",
+    "style": "whispering",
+    "pace": "slow",
+    "sound": "none"
+   },
+   "tagged": "<|emotion:helplessness|><|style:whispering|><|prosody:speed_slow|>I did.",
+   "pitch_hz": {
+    "round2_tagged": 201.0,
+    "round3_untagged": 104.0
+   }
+  }
+ ],
+ "stability": {
+  "default": [
+   {
+    "frame": 0,
+    "seed": 1,
+    "text": "<|emotion:helplessness|><|prosody:speed_slow|>We\u2019re closed.",
+    "pitch_hz": 89.0
+   },
+   {
+    "frame": 0,
+    "seed": 2,
+    "text": "<|emotion:helplessness|><|prosody:speed_slow|>We\u2019re closed.",
+    "pitch_hz": 90.0
+   },
+   {
+    "frame": 0,
+    "seed": 3,
+    "text": "<|emotion:helplessness|><|prosody:speed_slow|>We\u2019re closed.",
+    "pitch_hz": 82.0
+   },
+   {
+    "frame": 1,
+    "seed": 1,
+    "text": "<|emotion:amusement|>Drink. It\u2019s bitter. Like my mood.",
+    "pitch_hz": 143.0
+   },
+   {
+    "frame": 1,
+    "seed": 2,
+    "text": "<|emotion:amusement|>Drink. It\u2019s bitter. Like my mood.",
+    "pitch_hz": 116.0
+   },
+   {
+    "frame": 1,
+    "seed": 3,
+    "text": "<|emotion:amusement|>Drink. It\u2019s bitter. Like my mood.",
+    "pitch_hz": 110.0
+   },
+   {
+    "frame": 3,
+    "seed": 1,
+    "text": "<|emotion:disgust|><|prosody:speed_slow|>Keep it buttoned.",
+    "pitch_hz": 158.0
+   },
+   {
+    "frame": 3,
+    "seed": 2,
+    "text": "<|emotion:disgust|><|prosody:speed_slow|>Keep it buttoned.",
+    "pitch_hz": 204.0
+   },
+   {
+    "frame": 3,
+    "seed": 3,
+    "text": "<|emotion:disgust|><|prosody:speed_slow|>Keep it buttoned.",
+    "pitch_hz": 158.0
+   },
+   {
+    "frame": 5,
+    "seed": 1,
+    "text": "<|emotion:surprise|><|prosody:speed_slow|>It\u2019s late.",
+    "pitch_hz": 201.0
+   },
+   {
+    "frame": 5,
+    "seed": 2,
+    "text": "<|emotion:surprise|><|prosody:speed_slow|>It\u2019s late.",
+    "pitch_hz": 208.0
+   },
+   {
+    "frame": 5,
+    "seed": 3,
+    "text": "<|emotion:surprise|><|prosody:speed_slow|>It\u2019s late.",
+    "pitch_hz": 157.0
+   },
+   {
+    "frame": 8,
+    "seed": 1,
+    "text": "<|emotion:amusement|><|style:whispering|><|prosody:speed_slow|>Massage is a service. Not a conversation.",
+    "pitch_hz": 145.0
+   },
+   {
+    "frame": 8,
+    "seed": 2,
+    "text": "<|emotion:amusement|><|style:whispering|><|prosody:speed_slow|>Massage is a service. Not a conversation.",
+    "pitch_hz": 205.0
+   },
+   {
+    "frame": 8,
+    "seed": 3,
+    "text": "<|emotion:amusement|><|style:whispering|><|prosody:speed_slow|>Massage is a service. Not a conversation.",
+    "pitch_hz": 141.0
+   },
+   {
+    "frame": 17,
+    "seed": 1,
+    "text": "<|emotion:determination|><|prosody:speed_slow|>You\u2019re mine. They\u2019re tools.",
+    "pitch_hz": 214.0
+   },
+   {
+    "frame": 17,
+    "seed": 2,
+    "text": "<|emotion:determination|><|prosody:speed_slow|>You\u2019re mine. They\u2019re tools.",
+    "pitch_hz": 345.0
+   },
+   {
+    "frame": 17,
+    "seed": 3,
+    "text": "<|emotion:determination|><|prosody:speed_slow|>You\u2019re mine. They\u2019re tools.",
+    "pitch_hz": 128.0
+   },
+   {
+    "frame": 20,
+    "seed": 1,
+    "text": "<|emotion:shame|><|style:whispering|><|prosody:speed_slow|>Don\u2019t break her. She\u2019s the only one who knows the rest.",
+    "pitch_hz": 160.0
+   },
+   {
+    "frame": 20,
+    "seed": 2,
+    "text": "<|emotion:shame|><|style:whispering|><|prosody:speed_slow|>Don\u2019t break her. She\u2019s the only one who knows the rest.",
+    "pitch_hz": 172.0
+   },
+   {
+    "frame": 20,
+    "seed": 3,
+    "text": "<|emotion:shame|><|style:whispering|><|prosody:speed_slow|>Don\u2019t break her. She\u2019s the only one who knows the rest.",
+    "pitch_hz": 180.0
+   },
+   {
+    "frame": 29,
+    "seed": 1,
+    "text": "<|emotion:helplessness|><|style:whispering|><|prosody:speed_slow|>I did.",
+    "pitch_hz": 162.0
+   },
+   {
+    "frame": 29,
+    "seed": 2,
+    "text": "<|emotion:helplessness|><|style:whispering|><|prosody:speed_slow|>I did.",
+    "pitch_hz": 92.0
+   },
+   {
+    "frame": 29,
+    "seed": 3,
+    "text": "<|emotion:helplessness|><|style:whispering|><|prosody:speed_slow|>I did.",
+    "pitch_hz": 162.0
+   }
+  ],
+  "boson": [
+   {
+    "frame": 0,
+    "seed": 1,
+    "text": "<|emotion:helplessness|><|prosody:speed_slow|>We\u2019re closed.",
+    "pitch_hz": 93.0
+   },
+   {
+    "frame": 0,
+    "seed": 2,
+    "text": "<|emotion:helplessness|><|prosody:speed_slow|>We\u2019re closed.",
+    "pitch_hz": 83.0
+   },
+   {
+    "frame": 0,
+    "seed": 3,
+    "text": "<|emotion:helplessness|><|prosody:speed_slow|>We\u2019re closed.",
+    "pitch_hz": 81.0
+   },
+   {
+    "frame": 1,
+    "seed": 1,
+    "text": "<|emotion:amusement|>Drink. It\u2019s bitter. Like my mood.",
+    "pitch_hz": 112.0
+   },
+   {
+    "frame": 1,
+    "seed": 2,
+    "text": "<|emotion:amusement|>Drink. It\u2019s bitter. Like my mood.",
+    "pitch_hz": 130.0
+   },
+   {
+    "frame": 1,
+    "seed": 3,
+    "text": "<|emotion:amusement|>Drink. It\u2019s bitter. Like my mood.",
+    "pitch_hz": 112.0
+   },
+   {
+    "frame": 3,
+    "seed": 1,
+    "text": "<|emotion:disgust|><|prosody:speed_slow|>Keep it buttoned.",
+    "pitch_hz": 220.0
+   },
+   {
+    "frame": 3,
+    "seed": 2,
+    "text": "<|emotion:disgust|><|prosody:speed_slow|>Keep it buttoned.",
+    "pitch_hz": 127.0
+   },
+   {
+    "frame": 3,
+    "seed": 3,
+    "text": "<|emotion:disgust|><|prosody:speed_slow|>Keep it buttoned.",
+    "pitch_hz": 106.0
+   },
+   {
+    "frame": 5,
+    "seed": 1,
+    "text": "<|emotion:surprise|><|prosody:speed_slow|>It\u2019s late.",
+    "pitch_hz": 186.0
+   },
+   {
+    "frame": 5,
+    "seed": 2,
+    "text": "<|emotion:surprise|><|prosody:speed_slow|>It\u2019s late.",
+    "pitch_hz": 178.0
+   },
+   {
+    "frame": 5,
+    "seed": 3,
+    "text": "<|emotion:surprise|><|prosody:speed_slow|>It\u2019s late.",
+    "pitch_hz": 159.0
+   },
+   {
+    "frame": 8,
+    "seed": 1,
+    "text": "<|emotion:amusement|><|style:whispering|><|prosody:speed_slow|>Massage is a service. Not a conversation.",
+    "pitch_hz": 83.0
+   },
+   {
+    "frame": 8,
+    "seed": 2,
+    "text": "<|emotion:amusement|><|style:whispering|><|prosody:speed_slow|>Massage is a service. Not a conversation.",
+    "pitch_hz": 88.0
+   },
+   {
+    "frame": 8,
+    "seed": 3,
+    "text": "<|emotion:amusement|><|style:whispering|><|prosody:speed_slow|>Massage is a service. Not a conversation.",
+    "pitch_hz": 111.0
+   },
+   {
+    "frame": 17,
+    "seed": 1,
+    "text": "<|emotion:determination|><|prosody:speed_slow|>You\u2019re mine. They\u2019re tools.",
+    "pitch_hz": 124.0
+   },
+   {
+    "frame": 17,
+    "seed": 2,
+    "text": "<|emotion:determination|><|prosody:speed_slow|>You\u2019re mine. They\u2019re tools.",
+    "pitch_hz": 322.0
+   },
+   {
+    "frame": 17,
+    "seed": 3,
+    "text": "<|emotion:determination|><|prosody:speed_slow|>You\u2019re mine. They\u2019re tools.",
+    "pitch_hz": 152.0
+   },
+   {
+    "frame": 20,
+    "seed": 1,
+    "text": "<|emotion:shame|><|style:whispering|><|prosody:speed_slow|>Don\u2019t break her. She\u2019s the only one who knows the rest.",
+    "pitch_hz": 160.0
+   },
+   {
+    "frame": 20,
+    "seed": 2,
+    "text": "<|emotion:shame|><|style:whispering|><|prosody:speed_slow|>Don\u2019t break her. She\u2019s the only one who knows the rest.",
+    "pitch_hz": 195.0
+   },
+   {
+    "frame": 20,
+    "seed": 3,
+    "text": "<|emotion:shame|><|style:whispering|><|prosody:speed_slow|>Don\u2019t break her. She\u2019s the only one who knows the rest.",
+    "pitch_hz": 190.0
+   },
+   {
+    "frame": 29,
+    "seed": 1,
+    "text": "<|emotion:helplessness|><|style:whispering|><|prosody:speed_slow|>I did.",
+    "pitch_hz": 176.0
+   },
+   {
+    "frame": 29,
+    "seed": 2,
+    "text": "<|emotion:helplessness|><|style:whispering|><|prosody:speed_slow|>I did.",
+    "pitch_hz": 94.0
+   },
+   {
+    "frame": 29,
+    "seed": 3,
+    "text": "<|emotion:helplessness|><|style:whispering|><|prosody:speed_slow|>I did.",
+    "pitch_hz": 147.0
+   }
+  ],
+  "tight": [
+   {
+    "frame": 0,
+    "seed": 1,
+    "text": "<|emotion:helplessness|><|prosody:speed_slow|>We\u2019re closed.",
+    "pitch_hz": 90.0
+   },
+   {
+    "frame": 0,
+    "seed": 2,
+    "text": "<|emotion:helplessness|><|prosody:speed_slow|>We\u2019re closed.",
+    "pitch_hz": 86.0
+   },
+   {
+    "frame": 0,
+    "seed": 3,
+    "text": "<|emotion:helplessness|><|prosody:speed_slow|>We\u2019re closed.",
+    "pitch_hz": 104.0
+   },
+   {
+    "frame": 1,
+    "seed": 1,
+    "text": "<|emotion:amusement|>Drink. It\u2019s bitter. Like my mood.",
+    "pitch_hz": 130.0
+   },
+   {
+    "frame": 1,
+    "seed": 2,
+    "text": "<|emotion:amusement|>Drink. It\u2019s bitter. Like my mood.",
+    "pitch_hz": 102.0
+   },
+   {
+    "frame": 1,
+    "seed": 3,
+    "text": "<|emotion:amusement|>Drink. It\u2019s bitter. Like my mood.",
+    "pitch_hz": 110.0
+   },
+   {
+    "frame": 3,
+    "seed": 1,
+    "text": "<|emotion:disgust|><|prosody:speed_slow|>Keep it buttoned.",
+    "pitch_hz": 299.0
+   },
+   {
+    "frame": 3,
+    "seed": 2,
+    "text": "<|emotion:disgust|><|prosody:speed_slow|>Keep it buttoned.",
+    "pitch_hz": 266.0
+   },
+   {
+    "frame": 3,
+    "seed": 3,
+    "text": "<|emotion:disgust|><|prosody:speed_slow|>Keep it buttoned.",
+    "pitch_hz": 204.0
+   },
+   {
+    "frame": 5,
+    "seed": 1,
+    "text": "<|emotion:surprise|><|prosody:speed_slow|>It\u2019s late.",
+    "pitch_hz": 120.0
+   },
+   {
+    "frame": 5,
+    "seed": 2,
+    "text": "<|emotion:surprise|><|prosody:speed_slow|>It\u2019s late.",
+    "pitch_hz": 102.0
+   },
+   {
+    "frame": 5,
+    "seed": 3,
+    "text": "<|emotion:surprise|><|prosody:speed_slow|>It\u2019s late.",
+    "pitch_hz": 167.0
+   },
+   {
+    "frame": 8,
+    "seed": 1,
+    "text": "<|emotion:amusement|><|style:whispering|><|prosody:speed_slow|>Massage is a service. Not a conversation.",
+    "pitch_hz": 93.0
+   },
+   {
+    "frame": 8,
+    "seed": 2,
+    "text": "<|emotion:amusement|><|style:whispering|><|prosody:speed_slow|>Massage is a service. Not a conversation.",
+    "pitch_hz": 95.0
+   },
+   {
+    "frame": 8,
+    "seed": 3,
+    "text": "<|emotion:amusement|><|style:whispering|><|prosody:speed_slow|>Massage is a service. Not a conversation.",
+    "pitch_hz": 102.0
+   },
+   {
+    "frame": 17,
+    "seed": 1,
+    "text": "<|emotion:determination|><|prosody:speed_slow|>You\u2019re mine. They\u2019re tools.",
+    "pitch_hz": 138.0
+   },
+   {
+    "frame": 17,
+    "seed": 2,
+    "text": "<|emotion:determination|><|prosody:speed_slow|>You\u2019re mine. They\u2019re tools.",
+    "pitch_hz": 126.0
+   },
+   {
+    "frame": 17,
+    "seed": 3,
+    "text": "<|emotion:determination|><|prosody:speed_slow|>You\u2019re mine. They\u2019re tools.",
+    "pitch_hz": 250.0
+   },
+   {
+    "frame": 20,
+    "seed": 1,
+    "text": "<|emotion:shame|><|style:whispering|><|prosody:speed_slow|>Don\u2019t break her. She\u2019s the only one who knows the rest.",
+    "pitch_hz": 152.0
+   },
+   {
+    "frame": 20,
+    "seed": 2,
+    "text": "<|emotion:shame|><|style:whispering|><|prosody:speed_slow|>Don\u2019t break her. She\u2019s the only one who knows the rest.",
+    "pitch_hz": 196.0
+   },
+   {
+    "frame": 20,
+    "seed": 3,
+    "text": "<|emotion:shame|><|style:whispering|><|prosody:speed_slow|>Don\u2019t break her. She\u2019s the only one who knows the rest.",
+    "pitch_hz": 198.0
+   },
+   {
+    "frame": 29,
+    "seed": 1,
+    "text": "<|emotion:helplessness|><|style:whispering|><|prosody:speed_slow|>I did.",
+    "pitch_hz": 128.0
+   },
+   {
+    "frame": 29,
+    "seed": 2,
+    "text": "<|emotion:helplessness|><|style:whispering|><|prosody:speed_slow|>I did.",
+    "pitch_hz": 147.0
+   },
+   {
+    "frame": 29,
+    "seed": 3,
+    "text": "<|emotion:helplessness|><|style:whispering|><|prosody:speed_slow|>I did.",
+    "pitch_hz": 87.0
+   }
+  ],
+  "tight-emotion-only": [
+   {
+    "frame": 0,
+    "seed": 1,
+    "text": "<|emotion:helplessness|>We\u2019re closed.",
+    "pitch_hz": 90.0
+   },
+   {
+    "frame": 0,
+    "seed": 2,
+    "text": "<|emotion:helplessness|>We\u2019re closed.",
+    "pitch_hz": 91.0
+   },
+   {
+    "frame": 0,
+    "seed": 3,
+    "text": "<|emotion:helplessness|>We\u2019re closed.",
+    "pitch_hz": 90.0
+   },
+   {
+    "frame": 1,
+    "seed": 1,
+    "text": "<|emotion:amusement|>Drink. It\u2019s bitter. Like my mood.",
+    "pitch_hz": 130.0
+   },
+   {
+    "frame": 1,
+    "seed": 2,
+    "text": "<|emotion:amusement|>Drink. It\u2019s bitter. Like my mood.",
+    "pitch_hz": 102.0
+   },
+   {
+    "frame": 1,
+    "seed": 3,
+    "text": "<|emotion:amusement|>Drink. It\u2019s bitter. Like my mood.",
+    "pitch_hz": 110.0
+   },
+   {
+    "frame": 3,
+    "seed": 1,
+    "text": "<|emotion:disgust|>Keep it buttoned.",
+    "pitch_hz": 240.0
+   },
+   {
+    "frame": 3,
+    "seed": 2,
+    "text": "<|emotion:disgust|>Keep it buttoned.",
+    "pitch_hz": 215.0
+   },
+   {
+    "frame": 3,
+    "seed": 3,
+    "text": "<|emotion:disgust|>Keep it buttoned.",
+    "pitch_hz": 258.0
+   },
+   {
+    "frame": 5,
+    "seed": 1,
+    "text": "<|emotion:surprise|>It\u2019s late.",
+    "pitch_hz": 110.0
+   },
+   {
+    "frame": 5,
+    "seed": 2,
+    "text": "<|emotion:surprise|>It\u2019s late.",
+    "pitch_hz": null
+   },
+   {
+    "frame": 5,
+    "seed": 3,
+    "text": "<|emotion:surprise|>It\u2019s late.",
+    "pitch_hz": 154.0
+   },
+   {
+    "frame": 8,
+    "seed": 1,
+    "text": "<|emotion:amusement|>Massage is a service. Not a conversation.",
+    "pitch_hz": 131.0
+   },
+   {
+    "frame": 8,
+    "seed": 2,
+    "text": "<|emotion:amusement|>Massage is a service. Not a conversation.",
+    "pitch_hz": 120.0
+   },
+   {
+    "frame": 8,
+    "seed": 3,
+    "text": "<|emotion:amusement|>Massage is a service. Not a conversation.",
+    "pitch_hz": 108.0
+   },
+   {
+    "frame": 17,
+    "seed": 1,
+    "text": "<|emotion:determination|>You\u2019re mine. They\u2019re tools.",
+    "pitch_hz": 124.0
+   },
+   {
+    "frame": 17,
+    "seed": 2,
+    "text": "<|emotion:determination|>You\u2019re mine. They\u2019re tools.",
+    "pitch_hz": 167.0
+   },
+   {
+    "frame": 17,
+    "seed": 3,
+    "text": "<|emotion:determination|>You\u2019re mine. They\u2019re tools.",
+    "pitch_hz": 156.0
+   },
+   {
+    "frame": 20,
+    "seed": 1,
+    "text": "<|emotion:shame|>Don\u2019t break her. She\u2019s the only one who knows the rest.",
+    "pitch_hz": 100.0
+   },
+   {
+    "frame": 20,
+    "seed": 2,
+    "text": "<|emotion:shame|>Don\u2019t break her. She\u2019s the only one who knows the rest.",
+    "pitch_hz": 107.0
+   },
+   {
+    "frame": 20,
+    "seed": 3,
+    "text": "<|emotion:shame|>Don\u2019t break her. She\u2019s the only one who knows the rest.",
+    "pitch_hz": 201.0
+   },
+   {
+    "frame": 29,
+    "seed": 1,
+    "text": "<|emotion:helplessness|>I did.",
+    "pitch_hz": 90.0
+   },
+   {
+    "frame": 29,
+    "seed": 2,
+    "text": "<|emotion:helplessness|>I did.",
+    "pitch_hz": 85.0
+   },
+   {
+    "frame": 29,
+    "seed": 3,
+    "text": "<|emotion:helplessness|>I did.",
+    "pitch_hz": 97.0
+   }
+  ],
+  "tight-plain": [
+   {
+    "frame": 0,
+    "seed": 1,
+    "text": "We\u2019re closed.",
+    "pitch_hz": 94.0
+   },
+   {
+    "frame": 0,
+    "seed": 2,
+    "text": "We\u2019re closed.",
+    "pitch_hz": 98.0
+   },
+   {
+    "frame": 0,
+    "seed": 3,
+    "text": "We\u2019re closed.",
+    "pitch_hz": 103.0
+   },
+   {
+    "frame": 1,
+    "seed": 1,
+    "text": "Drink. It\u2019s bitter. Like my mood.",
+    "pitch_hz": 85.0
+   },
+   {
+    "frame": 1,
+    "seed": 2,
+    "text": "Drink. It\u2019s bitter. Like my mood.",
+    "pitch_hz": 99.0
+   },
+   {
+    "frame": 1,
+    "seed": 3,
+    "text": "Drink. It\u2019s bitter. Like my mood.",
+    "pitch_hz": 94.0
+   },
+   {
+    "frame": 3,
+    "seed": 1,
+    "text": "Keep it buttoned.",
+    "pitch_hz": 119.0
+   },
+   {
+    "frame": 3,
+    "seed": 2,
+    "text": "Keep it buttoned.",
+    "pitch_hz": 109.0
+   },
+   {
+    "frame": 3,
+    "seed": 3,
+    "text": "Keep it buttoned.",
+    "pitch_hz": 88.0
+   },
+   {
+    "frame": 5,
+    "seed": 1,
+    "text": "It\u2019s late.",
+    "pitch_hz": 102.0
+   },
+   {
+    "frame": 5,
+    "seed": 2,
+    "text": "It\u2019s late.",
+    "pitch_hz": 99.0
+   },
+   {
+    "frame": 5,
+    "seed": 3,
+    "text": "It\u2019s late.",
+    "pitch_hz": 88.0
+   },
+   {
+    "frame": 8,
+    "seed": 1,
+    "text": "Massage is a service. Not a conversation.",
+    "pitch_hz": 106.0
+   },
+   {
+    "frame": 8,
+    "seed": 2,
+    "text": "Massage is a service. Not a conversation.",
+    "pitch_hz": 106.0
+   },
+   {
+    "frame": 8,
+    "seed": 3,
+    "text": "Massage is a service. Not a conversation.",
+    "pitch_hz": 105.0
+   },
+   {
+    "frame": 17,
+    "seed": 1,
+    "text": "You\u2019re mine. They\u2019re tools.",
+    "pitch_hz": 83.0
+   },
+   {
+    "frame": 17,
+    "seed": 2,
+    "text": "You\u2019re mine. They\u2019re tools.",
+    "pitch_hz": 90.0
+   },
+   {
+    "frame": 17,
+    "seed": 3,
+    "text": "You\u2019re mine. They\u2019re tools.",
+    "pitch_hz": 104.0
+   },
+   {
+    "frame": 20,
+    "seed": 1,
+    "text": "Don\u2019t break her. She\u2019s the only one who knows the rest.",
+    "pitch_hz": 108.0
+   },
+   {
+    "frame": 20,
+    "seed": 2,
+    "text": "Don\u2019t break her. She\u2019s the only one who knows the rest.",
+    "pitch_hz": 113.0
+   },
+   {
+    "frame": 20,
+    "seed": 3,
+    "text": "Don\u2019t break her. She\u2019s the only one who knows the rest.",
+    "pitch_hz": 114.0
+   },
+   {
+    "frame": 29,
+    "seed": 1,
+    "text": "I did.",
+    "pitch_hz": 104.0
+   },
+   {
+    "frame": 29,
+    "seed": 2,
+    "text": "I did.",
+    "pitch_hz": 85.0
+   },
+   {
+    "frame": 29,
+    "seed": 3,
+    "text": "I did.",
+    "pitch_hz": 80.0
+   }
+  ],
+  "tight-emotion-only-longref": [
+   {
+    "frame": 0,
+    "seed": 1,
+    "text": "<|emotion:helplessness|>We\u2019re closed.",
+    "pitch_hz": 86.0
+   },
+   {
+    "frame": 0,
+    "seed": 2,
+    "text": "<|emotion:helplessness|>We\u2019re closed.",
+    "pitch_hz": 90.0
+   },
+   {
+    "frame": 0,
+    "seed": 3,
+    "text": "<|emotion:helplessness|>We\u2019re closed.",
+    "pitch_hz": 90.0
+   },
+   {
+    "frame": 1,
+    "seed": 1,
+    "text": "<|emotion:amusement|>Drink. It\u2019s bitter. Like my mood.",
+    "pitch_hz": 95.0
+   },
+   {
+    "frame": 1,
+    "seed": 2,
+    "text": "<|emotion:amusement|>Drink. It\u2019s bitter. Like my mood.",
+    "pitch_hz": 100.0
+   },
+   {
+    "frame": 1,
+    "seed": 3,
+    "text": "<|emotion:amusement|>Drink. It\u2019s bitter. Like my mood.",
+    "pitch_hz": 96.0
+   },
+   {
+    "frame": 3,
+    "seed": 1,
+    "text": "<|emotion:disgust|>Keep it buttoned.",
+    "pitch_hz": 229.0
+   },
+   {
+    "frame": 3,
+    "seed": 2,
+    "text": "<|emotion:disgust|>Keep it buttoned.",
+    "pitch_hz": 256.0
+   },
+   {
+    "frame": 3,
+    "seed": 3,
+    "text": "<|emotion:disgust|>Keep it buttoned.",
+    "pitch_hz": 243.0
+   },
+   {
+    "frame": 5,
+    "seed": 1,
+    "text": "<|emotion:surprise|>It\u2019s late.",
+    "pitch_hz": 201.0
+   },
+   {
+    "frame": 5,
+    "seed": 2,
+    "text": "<|emotion:surprise|>It\u2019s late.",
+    "pitch_hz": 175.0
+   },
+   {
+    "frame": 5,
+    "seed": 3,
+    "text": "<|emotion:surprise|>It\u2019s late.",
+    "pitch_hz": 127.0
+   },
+   {
+    "frame": 8,
+    "seed": 1,
+    "text": "<|emotion:amusement|>Massage is a service. Not a conversation.",
+    "pitch_hz": 144.0
+   },
+   {
+    "frame": 8,
+    "seed": 2,
+    "text": "<|emotion:amusement|>Massage is a service. Not a conversation.",
+    "pitch_hz": 124.0
+   },
+   {
+    "frame": 8,
+    "seed": 3,
+    "text": "<|emotion:amusement|>Massage is a service. Not a conversation.",
+    "pitch_hz": 108.0
+   },
+   {
+    "frame": 17,
+    "seed": 1,
+    "text": "<|emotion:determination|>You\u2019re mine. They\u2019re tools.",
+    "pitch_hz": 109.0
+   },
+   {
+    "frame": 17,
+    "seed": 2,
+    "text": "<|emotion:determination|>You\u2019re mine. They\u2019re tools.",
+    "pitch_hz": 121.0
+   },
+   {
+    "frame": 17,
+    "seed": 3,
+    "text": "<|emotion:determination|>You\u2019re mine. They\u2019re tools.",
+    "pitch_hz": 162.0
+   },
+   {
+    "frame": 20,
+    "seed": 1,
+    "text": "<|emotion:shame|>Don\u2019t break her. She\u2019s the only one who knows the rest.",
+    "pitch_hz": 99.0
+   },
+   {
+    "frame": 20,
+    "seed": 2,
+    "text": "<|emotion:shame|>Don\u2019t break her. She\u2019s the only one who knows the rest.",
+    "pitch_hz": 107.0
+   },
+   {
+    "frame": 20,
+    "seed": 3,
+    "text": "<|emotion:shame|>Don\u2019t break her. She\u2019s the only one who knows the rest.",
+    "pitch_hz": 90.0
+   },
+   {
+    "frame": 29,
+    "seed": 1,
+    "text": "<|emotion:helplessness|>I did.",
+    "pitch_hz": 105.0
+   },
+   {
+    "frame": 29,
+    "seed": 2,
+    "text": "<|emotion:helplessness|>I did.",
+    "pitch_hz": 94.0
+   },
+   {
+    "frame": 29,
+    "seed": 3,
+    "text": "<|emotion:helplessness|>I did.",
+    "pitch_hz": 88.0
+   }
+  ],
+  "tight-no-emotion": [
+   {
+    "frame": 0,
+    "seed": 1,
+    "text": "<|prosody:speed_slow|>We\u2019re closed.",
+    "pitch_hz": 94.0
+   },
+   {
+    "frame": 0,
+    "seed": 2,
+    "text": "<|prosody:speed_slow|>We\u2019re closed.",
+    "pitch_hz": 93.0
+   },
+   {
+    "frame": 0,
+    "seed": 3,
+    "text": "<|prosody:speed_slow|>We\u2019re closed.",
+    "pitch_hz": 103.0
+   },
+   {
+    "frame": 1,
+    "seed": 1,
+    "text": "Drink. It\u2019s bitter. Like my mood.",
+    "pitch_hz": 85.0
+   },
+   {
+    "frame": 1,
+    "seed": 2,
+    "text": "Drink. It\u2019s bitter. Like my mood.",
+    "pitch_hz": 99.0
+   },
+   {
+    "frame": 1,
+    "seed": 3,
+    "text": "Drink. It\u2019s bitter. Like my mood.",
+    "pitch_hz": 94.0
+   },
+   {
+    "frame": 3,
+    "seed": 1,
+    "text": "<|prosody:speed_slow|>Keep it buttoned.",
+    "pitch_hz": 103.0
+   },
+   {
+    "frame": 3,
+    "seed": 2,
+    "text": "<|prosody:speed_slow|>Keep it buttoned.",
+    "pitch_hz": 104.0
+   },
+   {
+    "frame": 3,
+    "seed": 3,
+    "text": "<|prosody:speed_slow|>Keep it buttoned.",
+    "pitch_hz": 104.0
+   },
+   {
+    "frame": 5,
+    "seed": 1,
+    "text": "<|prosody:speed_slow|>It\u2019s late.",
+    "pitch_hz": 95.0
+   },
+   {
+    "frame": 5,
+    "seed": 2,
+    "text": "<|prosody:speed_slow|>It\u2019s late.",
+    "pitch_hz": 98.0
+   },
+   {
+    "frame": 5,
+    "seed": 3,
+    "text": "<|prosody:speed_slow|>It\u2019s late.",
+    "pitch_hz": 93.0
+   },
+   {
+    "frame": 8,
+    "seed": 1,
+    "text": "<|prosody:speed_slow|>Massage is a service. Not a conversation.",
+    "pitch_hz": 99.0
+   },
+   {
+    "frame": 8,
+    "seed": 2,
+    "text": "<|prosody:speed_slow|>Massage is a service. Not a conversation.",
+    "pitch_hz": 95.0
+   },
+   {
+    "frame": 8,
+    "seed": 3,
+    "text": "<|prosody:speed_slow|>Massage is a service. Not a conversation.",
+    "pitch_hz": 97.0
+   },
+   {
+    "frame": 17,
+    "seed": 1,
+    "text": "<|prosody:speed_slow|>You\u2019re mine. They\u2019re tools.",
+    "pitch_hz": 96.0
+   },
+   {
+    "frame": 17,
+    "seed": 2,
+    "text": "<|prosody:speed_slow|>You\u2019re mine. They\u2019re tools.",
+    "pitch_hz": 80.0
+   },
+   {
+    "frame": 17,
+    "seed": 3,
+    "text": "<|prosody:speed_slow|>You\u2019re mine. They\u2019re tools.",
+    "pitch_hz": 104.0
+   },
+   {
+    "frame": 20,
+    "seed": 1,
+    "text": "<|prosody:speed_slow|>Don\u2019t break her. She\u2019s the only one who knows the rest.",
+    "pitch_hz": 100.0
+   },
+   {
+    "frame": 20,
+    "seed": 2,
+    "text": "<|prosody:speed_slow|>Don\u2019t break her. She\u2019s the only one who knows the rest.",
+    "pitch_hz": 107.0
+   },
+   {
+    "frame": 20,
+    "seed": 3,
+    "text": "<|prosody:speed_slow|>Don\u2019t break her. She\u2019s the only one who knows the rest.",
+    "pitch_hz": 110.0
+   },
+   {
+    "frame": 29,
+    "seed": 1,
+    "text": "<|prosody:speed_slow|>I did.",
+    "pitch_hz": 102.0
+   },
+   {
+    "frame": 29,
+    "seed": 2,
+    "text": "<|prosody:speed_slow|>I did.",
+    "pitch_hz": 84.0
+   },
+   {
+    "frame": 29,
+    "seed": 3,
+    "text": "<|prosody:speed_slow|>I did.",
+    "pitch_hz": 86.0
+   }
+  ]
+ }
+}

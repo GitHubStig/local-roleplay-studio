@@ -239,6 +239,64 @@ With all three models loaded at once, a 48 GB Mac swapped: gemma4 took up to 64 
 past the 2-minute limit. Ollama keeps a model loaded for a few minutes after its last use, so
 switching Text Models back and forth has the same effect.
 
+## Voices (speaking a Roleplay Character's lines)
+
+Measured 2026-09-30 on a 48 GB Mac, everything through mlx-audio. The brief: each Character's voice
+**unique** (designed for them) and **expressive** (suiting each moment), and the same voice from the
+first line to the last. The lines and clips are kept in [bench/voices/](bench/voices/).
+
+**Round 1, six lines** of Kael's (dry, a flat warning, just stabbed, menacing, exhausted, stunned),
+in a voice designed from his Cast by Qwen3-TTS VoiceDesign:
+
+| Setup | Voice | Emotion control | Per line | Peak memory | Heard |
+| ----- | ----- | --------------- | -------- | ----------- | ----- |
+| Higgs TTS 3 (4B), cloning | the designed clip | inline tags (`<\|emotion:anger\|>`, pauses, sighs…) | 1.5–3.5 s | ~10 GB | usable |
+| Qwen3-TTS VoiceDesign (1.7B), afresh per line | redesigned from the description each time | instructions in words | 0.5–1.7 s | ~7 GB | usable, but drifts |
+| Qwen3-TTS Base (1.7B), cloning | the designed clip | none: cloning ignores instructions | 0.5–1.5 s | ~9 GB | generic |
+| Chatterbox, cloning | the designed clip | one intensity dial | 0.7–2 s | ~4 GB | generic |
+
+Speech-to-text heard the right words on all but one-word lines ("Debt?" as "Oh, dead?" or
+"Debts?"); no tag was ever read aloud. The two that cloned without steering the delivery sounded
+generic; VoiceDesign drifts from line to line, as nothing anchors it. So: design the voice once,
+clone it with Higgs.
+
+**Round 2, the whole conversation** (29 lines, emotion, style, pace and sounds chosen by gemma4
+from each Reply): **Higgs drifted**. Kael's first lines were right; then his voice rose, and six
+lines were a woman's. Pitch tracked what was heard: the designed clip is 97 Hz, the lines heard as
+right 86–87 Hz, the six heard as a woman's 167–336 Hz. Over eight lines, three seeds each, at
+70–125 Hz:
+
+| Higgs TTS 3 | Kael's pitch held |
+| ----------- | ----------------- |
+| emotion + style tags, default sampling (temperature 1.0, no top-k) | 6 of 24 |
+| Boson's sampling (0.8, top-k 50) | 11 of 24 |
+| steadier sampling (0.5, top-k 30) | 11 of 24 |
+| steadier, emotion tag only | 14 of 24 |
+| steadier, emotion tag only, an 18 s reference instead of 8 s | 16 of 24 |
+| **steadier, untagged** | **24 of 24** |
+| **steadier, pace, pauses and sounds only** | **24 of 24** |
+
+The emotion and style tags pull the clone off the voice ("disgust" put "Keep it buttoned" near
+240 Hz on every seed). **Round 3**, all 29 lines untagged with steadier sampling: one voice
+throughout, "not gruff enough but consistent". That's what the app does: the Text Model describes
+the voice from the Cast in sound terms, VoiceDesign designs it once, and Higgs clones it, untagged,
+for every line. In the app's own first run, gemma4's description of Kael ("low pitch with a
+gravelly, husky texture") came out deeper than the test voice: 70–79 Hz against 97, which may help
+with the missing gruffness.
+
+Other notes:
+
+- Gemma4 asked to write Higgs tags freely used only pauses, mid-phrase ("Keep <pause> it
+  buttoned"); given fixed choices (an emotion, a style, a pace, a sound) it overused "slow",
+  "sadness" and whispering. Moot while the tags stay off; pace and sounds are safe if wanted.
+- Speaker-similarity scores (Qwen3-TTS's speaker encoder) didn't separate voices: a woman's scored
+  0.95 against Kael, as close as his own lines. Pitch and listening are the tests.
+- Also looked at: VibeVoice (long multi-speaker podcasts; no per-line emotion control; the 7B was
+  withdrawn), Kokoro (preset voices only), Voxtral TTS, CSM and OmniVoice (no emotion control).
+  Higgs TTS 3 is research and non-commercial licensed; Qwen3-TTS is Apache 2.0, Chatterbox MIT.
+- mlx-audio doesn't map Higgs's renamed repo (`bosonai/higgs-tts-3-4b`) to its model by itself:
+  load it with `model_type='higgs_audio_v3'`. Its codec needs torch.
+
 ## Image Model
 
 **Use FLUX.2 Klein 4B** (`flux2-klein-4b`, the default), 4 steps.
