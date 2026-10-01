@@ -400,6 +400,50 @@ alternative if WebGPU or a smaller bundle turns out to matter.
 ship it as the 3D view with the 2.5D mode as the fallback. If it degrades on oil-painting textures,
 ship the 2.5D view with clamped orbit, and revisit the panorama route.
 
+## Trial results (measured 2026-10-01)
+
+Four pictures from the Kael tavern Roleplay (1024×1024, Qwen-Image 2.1): the wide room (Frame 0),
+the staircase (8), a close-up of two faces (10) and the dark empty room (7), on an M5 Pro Mac.
+
+**SHARP, Apple's official code on the Mac GPU (`sharp predict --device mps`), works well.** About
+4 s of inference per picture (plus ~15 s the first time, loading), ~15 GB peak memory, 1,179,648
+splats in a 63 MB `.ply`, scene depths sensible (e.g. 0.77–7.06 for the staircase). In Spark, it
+stays coherent at 15° and 30° from the original view, with faces intact and the areas the picture
+never showed (behind heads, beside the bar) filled with plausible, blurred content. SHARP assumes a
+30 mm lens without EXIF; it shows the picture slightly zoomed in.
+
+**The MLX port (starkdmi/ml_sharp_mlx) gave flat output** with the checkpoint Apple publishes now:
+every splat at almost the same distance (1.42–1.52), a picture on a card, though its speed (4.7 s)
+and memory (15.1 GB) matched. The official code is as fast, so the port isn't needed.
+
+**2.5D from Depth Pro (mflux)** took ~1.7 s per picture (plus ~72 s the first time, downloading its
+1.9 GB weights), ~16 GB peak, 0.41M splats (640² grid) in 23 MB. It breaks visibly at 15°: holes and
+loose specks wherever something near meets something far. SHARP is clearly better.
+
+Orbiting around the scene's median depth swept near subjects out of frame; orbiting around a nearer
+point (the 25th percentile of SHARP's depths) keeps the main subjects in view.
+
+### Compression (for later; the app keeps the lossless `.ply` for now)
+
+Converted with [splat-transform](https://github.com/playcanvas/splat-transform) 3.8.0 (1–2 s per
+picture; runnable with `deno run npm:@playcanvas/splat-transform`, so no Node install), loaded in
+Spark 2.3.0 in Chromium on the M5 Pro, averaged over the four pictures:
+
+| Format | Size | Load and decode | Drawing | Against the `.ply` (PSNR, same view) |
+| ------ | ---- | --------------- | ------- | ----------------------------------- |
+| `.ply` | 63 MB | ~118 ms | 60 fps (display cap) | reference |
+| `.compressed.ply` | 19 MB (3.3× smaller) | ~114 ms | 60 fps | 57–62 dB |
+| `.sog` | 11.6 MB (5.4× smaller) | ~240 ms | 60 fps | 53–57 dB |
+| `.spz` | ~14.6 MB | Spark rejected splat-transform's file ("Invalid gzip header") | | |
+
+The formats are lossy (lower-precision positions, colours, sizes and rotations), but above ~40 dB
+the difference isn't visible. Smaller than the 10–20× expected above: SHARP writes no higher-order
+spherical harmonics, usually the bulk of a splat file. Compression saves only disk and transfer:
+Spark unpacks every format into the same 16 bytes per splat on the GPU (~19 MB for 1.18M splats),
+so graphics memory and drawing cost are the same; the JavaScript heap stayed at 68 MB. SOG only
+costs ~120 ms more to decode, once, in Spark's workers. If space matters later, SOG is the pick
+(`.compressed.ply` if opening speed matters more).
+
 ## Could not verify
 
 - SHARP's timing and peak memory on Apple Silicon through MLX or MPS (only the Core ML port's
