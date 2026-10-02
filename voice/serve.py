@@ -1,6 +1,6 @@
 # /// script
 # requires-python = ">=3.14,<3.15"
-# dependencies = ["mlx-audio", "torch"]
+# dependencies = ["mlx-audio", "torch", "soundfile"]
 # [tool.uv]
 # prerelease = "allow"
 # python-preference = "only-managed"
@@ -38,6 +38,7 @@ from huggingface_hub import try_to_load_from_cache
 from mlx_audio.audio_io import write as write_audio
 from mlx_audio.tts.utils import load_model
 from mlx_audio.utils import load_audio
+import soundfile
 
 DESIGN_MODEL = 'mlx-community/Qwen3-TTS-12Hz-1.7B-VoiceDesign-bf16'
 SPEAK_MODEL = 'bosonai/higgs-tts-3-4b'
@@ -90,7 +91,16 @@ def generate(m, out, seed, **kwargs):
     mx.random.seed(seed)
     start = time.time()
     audio = np.concatenate([np.asarray(r.audio) for r in m.generate(**kwargs)])
-    write_audio(out, audio, m.sample_rate)
+    if out.endswith('.mp3'):
+        # Spoken lines: 96 kbps mono, a quarter of the WAV, encoded in milliseconds by libsndfile
+        # (bundled with soundfile; mlx-audio's own MP3 needs ffmpeg). Compression level 0.4 is
+        # libsndfile's 96 kbps step at a constant bitrate (0.6 gives 64 kbps). In listening tests
+        # neither could be told from the WAV, whispers included; 96 leaves a margin.
+        soundfile.write(out, audio, m.sample_rate, format='MP3', subtype='MPEG_LAYER_III',
+                        compression_level=0.4, bitrate_mode='CONSTANT')
+    else:
+        # The reference clip stays lossless: every line is cloned from it.
+        write_audio(out, audio, m.sample_rate)
     return {'seconds': round(time.time() - start, 2), 'duration': round(len(audio) / m.sample_rate, 2)}
 
 

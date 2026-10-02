@@ -53,7 +53,7 @@ async function setup(root: string, voices: string[] = ['A low, husky woman of th
   const files = async () => {
     const names: string[] = []
     for await (const e of Deno.readDir(store.dir('r1'))) {
-      if (e.name.endsWith('.wav')) names.push(e.name)
+      if (/\.(wav|mp3)$/.test(e.name)) names.push(e.name)
     }
     return names.sort()
   }

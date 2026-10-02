@@ -122,8 +122,9 @@ export function speakable(dialogue: string): string {
 }
 
 const voiceFile = () => `voice-${crypto.randomUUID().slice(0, 8)}.wav`
+/** Spoken lines are MP3 (96 kbps, a quarter of the WAV); the voice's reference clip stays WAV. */
 const speechFile = (index: number, part: SpokenPart) =>
-  `${part === 'thought' ? 'thought' : 'speech'}-${index}-${crypto.randomUUID().slice(0, 8)}.wav`
+  `${part === 'thought' ? 'thought' : 'speech'}-${index}-${crypto.randomUUID().slice(0, 8)}.mp3`
 const SPEECH_KEY = { dialogue: 'speech', thought: 'thoughtSpeech' } as const
 
 const engine = (deps: VoiceDeps) => {

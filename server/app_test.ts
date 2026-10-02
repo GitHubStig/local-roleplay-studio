@@ -1023,7 +1023,8 @@ Deno.test("Speaking a Frame designs the Character's voice first, and serves the 
     assertEquals(session.voice, { description: 'A low, husky woman.', model: 'scripted', ref })
     assertEquals(session.frames[0].speech.ref, ref)
     const audio = await call('GET', `/api/sessions/s1/images/${session.frames[0].speech.file}`)
-    assertEquals([audio.status, audio.headers.get('Content-Type')], [200, 'audio/wav'])
+    assertEquals([audio.status, audio.headers.get('Content-Type')], [200, 'audio/mpeg'])
+    assertMatch(session.frames[0].speech.file, /^speech-0-[0-9a-f]{8}\.mp3$/)
     assertMatch(await audio.text(), /fake speak: You are late\./)
 
     // A new description drops the voice; the next take designs it from that description.

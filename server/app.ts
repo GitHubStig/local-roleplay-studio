@@ -59,16 +59,17 @@ export interface AppDeps {
  */
 const IMAGE_FILE = /^frame-\d+(-[0-9a-f]{8})?(-2048)?\.(png|svg)$/
 /**
- * A Roleplay's audio: its Character's voice (`voice-1a2b3c4d.wav`), spoken lines (`speech-3-…`)
- * and spoken thoughts (`thought-3-…`).
+ * A Roleplay's audio: its Character's voice (`voice-1a2b3c4d.wav`, lossless), spoken lines (`speech-3-…`)
+ * and spoken thoughts (`thought-3-…`): MP3, or WAV from before 2026-10-02.
  */
-const AUDIO_FILE = /^(voice|(speech|thought)-\d+)-[0-9a-f]{8}\.wav$/
+const AUDIO_FILE = /^(voice-[0-9a-f]{8}\.wav|(speech|thought)-\d+-[0-9a-f]{8}\.(mp3|wav))$/
 /** A Roleplay Frame's 3D scene: `scene-3-1a2b3c4d.ply`. */
 const SCENE_FILE = /^scene-\d+-[0-9a-f]{8}\.ply$/
 const CONTENT_TYPES: Record<string, string> = {
   '.png': 'image/png',
   '.svg': 'image/svg+xml',
   '.wav': 'audio/wav',
+  '.mp3': 'audio/mpeg',
   '.ply': 'application/octet-stream',
 }
 

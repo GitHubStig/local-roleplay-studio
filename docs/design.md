@@ -155,7 +155,8 @@ under `/api/sessions/:id/roleplay/` ([ADR 0007](adr/0007-roleplay-is-a-conversat
    line is spoken, the Art Agent's model describes the Character's voice from the Cast in plain
    acoustic terms (`voice.md`: age, pitch, texture, manner), and the voice service designs a voice
    from it as a reference clip (`voice-…wav`, saved with the Roleplay as `voice.ref`). Every line
-   is then spoken by cloning that clip (`frame.speech`, `speech-<index>-…wav`), so the Character
+   is then spoken by cloning that clip (`frame.speech`, `speech-<index>-…mp3`; 96 kbps, a quarter
+   of the WAV it was before 2026-10-02, whose lines still play), so the Character
    sounds the same throughout; a line whose `speech.ref` isn't the voice's clip now was spoken in
    an earlier voice. Only `dialogue` is spoken, without emphasis marks; a line of only "…" has
    nothing to say. The description is editable: changing it removes the clip, and the next line
@@ -175,7 +176,7 @@ under `/api/sessions/:id/roleplay/` ([ADR 0007](adr/0007-roleplay-is-a-conversat
    the line is spoken as written. A Reply's thought (`internal`) has its own Listen, hidden with
    the thoughts: it's spoken whispered (Higgs's whispering style, which kept the voice), with a
    pace but never a sound (a cough in the mind sounded wrong), and saved apart from the dialogue's
-   (`thoughtSpeech`, `thought-<index>-…wav`). Speak replies speaks the dialogue only.
+   (`thoughtSpeech`, `thought-<index>-…mp3`). Speak replies speaks the dialogue only.
    On screen, a Reply with something to say has **Listen**: it plays the line, speaking it first
    (or again, if it was spoken in an earlier voice) and playing it once it's ready. **Speak
    replies** (remembered per browser) speaks each new Reply as it arrives. The **Voice** panel in
@@ -420,7 +421,7 @@ All under `/api`; the Vite dev server proxies it to the Deno server.
 | `POST /sessions/:id/cancel` | Cancel the Frame in progress |
 | `POST /sessions/:id/frames/:index/upscale` | Either kind: upscale one rendered Frame's image to 2048 px, streaming progress then `upscaled` (`session`); `409` if it has no image or is already upscaled |
 | `DELETE /sessions/:id/frames/:index` | Undo the latest Frame; `:index` must name it (`409` otherwise, and for the Opening Frame or while a Frame runs) |
-| `GET /sessions/:id/images/:file` | A Frame's image, a Roleplay's audio (`voice-…wav`, `speech-…wav`, `thought-…wav`), or a Roleplay Frame's 3D scene (`scene-…ply`) |
+| `GET /sessions/:id/images/:file` | A Frame's image, a Roleplay's audio (`voice-…wav`, `speech-…mp3`, `thought-…mp3`, or `.wav` from before), or a Roleplay Frame's 3D scene (`scene-…ply`) |
 | `POST /sessions/:id/roleplay/cast` | Roleplay: write (or, before it begins, rewrite) the Cast, streaming `phase`, `thinking`, then `cast` (`cast`, `session`) |
 | `POST /sessions/:id/roleplay/begin` | Roleplay: the opening Reply, streaming `reply-part` per field, then `replied` (`frame`, `session`) |
 | `POST /sessions/:id/roleplay/messages` | Roleplay: send `{ text }`, streaming `reply-part` (`key`, `value`) per field, then `replied`, or `declined` (`message`) |

@@ -348,6 +348,25 @@ Other notes:
 - mlx-audio doesn't map Higgs's renamed repo (`bosonai/higgs-tts-3-4b`) to its model by itself:
   load it with `model_type='higgs_audio_v3'`. Its codec needs torch.
 
+### Audio format (2026-10-02)
+
+Spoken lines and thoughts are saved as **MP3 at 96 kbps** (24 kHz mono, what Higgs speaks); the
+voice's reference clip stays WAV, since every line is cloned from it, and lines spoken before stay
+WAV and keep playing. A line is about a quarter of its WAV (a 7.7 s line: 360 KB against 90 KB; a
+200-line Roleplay ~7 MB instead of ~30 MB). Listened to on Kael's voice and both Elara voices, a
+line and a whispered thought each, at 64, 96 and 128 kbps: none could be told from the WAV, so 96
+was picked as the margin over 64 for whispers (mostly breath, which MP3 handles worst).
+
+- **Encoder:** libsndfile through soundfile (bundled in its wheel), in 3–4 ms a line; mlx-audio's
+  own MP3, FLAC and Ogg go through ffmpeg, which the app otherwise doesn't need. libsndfile takes a
+  compression level, not a bitrate: at a constant bitrate 0.4 gives 96 kbps, 0.6 64, 0.25 128.
+  Its `.ogg`/`vorbis` in mlx-audio are FLAC inside Ogg, nearly FLAC-sized.
+- **Memory and speed:** none to speak of. Browsers decode any format to PCM to play it, and
+  encoding takes milliseconds against seconds to speak the line: the saving is disk.
+- **Playback:** every browser plays MP3 (checked in Chromium: full length, `canPlayType`
+  "probably"), and VS Code's audio preview opens `.mp3` and `.wav` but not FLAC or M4A. Ogg Opus
+  would be ~3× smaller again but Safari's support is unconfirmed.
+
 ## Image Model
 
 **Use FLUX.2 Klein 4B** (`flux2-klein-4b`, the default), 4 steps.
