@@ -565,6 +565,89 @@ ran unchanged on MPS (`device='mps'`), M5 Pro:
 - **What it is for:** one Character to turn all the way round, without the room. SHARP keeps the
   whole picture from near its own view in 11 s; the two do different jobs.
 
+## Turnaround trial (2026-10-02): text → four views → mesh
+
+A Character drawn from several sides, then built from all of them, instead of guessing their back
+from one picture.
+
+- **Four views in one picture.** Qwen-Image 2.1 (8-bit saved copy) drew a clean turnaround sheet
+  of Elara from her Look in one try: "a character turnaround reference sheet … four full-length
+  views side by side … front, left side in profile, back, right side in profile … the same dress
+  … plain light grey background, soft even lighting". 1536×768 (four 384×768 panels), 116 s,
+  38.6 GB peak. Face, hair, dress, collar, cuffs and boots matched across the views. Flaw: **both
+  side views faced the same way** (common with turnaround prompts); with a symmetrical outfit,
+  mirroring one gives the other side.
+- **Transparency:** mflux 0.20's Qwen-Image 2.1 can't output it (the VAE's fourth channel carries
+  edit masks; decoding returns RGB). [mflux PR #741](https://github.com/mflux-community/mflux/pull/741)
+  (merged 2026-09-27, unreleased; 0.20.0 is from 2026-09-21) adds `mflux-generate-qwen-2.1-edit`,
+  reference editing with up to ten pictures, which keeps a transparent input transparent; text-only
+  generation is unchanged. A plain backdrop cut out (BiRefNet, rembg) does the same job. The
+  reference editing is itself a way to bigger views: one picture per side, each from the front
+  view as reference.
+- **Views to shape: [Hunyuan3D-2mv](https://huggingface.co/tencent/Hunyuan3D-2mv)** (Tencent,
+  March 2025; Tencent community license, not for the EU, UK or South Korea), the only open
+  multi-view shape model. It takes named views; its **left** view faces left in the picture
+  (checked against its own examples), so `left` was panel 2 mirrored and `right` panel 2. Runs
+  on MPS with plain PyTorch (`hy3dgen` from the repo at `f8db630`) but **needs transformers 4.x**:
+  5.x renamed its DINOv2 encoder's layers, and the checkpoint won't load. The mesh's outline
+  matched each view's cut-out at IoU 0.89–0.95: it followed the drawings, and the back of the head
+  was hair, with no ghost face (TripoSplat's single-picture failure).
+
+  | Model | Steps | Octree | Triangles | Time | Peak | Detail |
+  |---|---|---|---|---|---|---|
+  | mv-turbo | 5 | 380 | 347k | 14 s | ~13 GB | soft bodice, blobby buttons |
+  | mv-turbo | 5 | 640 | 961k | 14 s | 23 GB | smoother, same detail |
+  | mv (full) | 30 | 380 | 335k | 98 s | 10 GB | pointed waist, distinct buttons, collar edge, cuffs, fingers |
+  | mv (full) | 30 | 512 | 590k | 96 s | 15 GB | the same, smoother curves |
+
+  Triangle count (octree resolution) only samples the shape more finely; the full model at ~30
+  steps makes finer shapes. The face stayed soft in all of them: it had ~60 px in each 384 px view.
+- **Colour:** 2mv makes shape only, and Tencent's texture painter needs CUDA. Projecting the four
+  views onto the vertices (each vertex coloured from the views that face it, weighted by how
+  directly, with a depth test per view so a torso doesn't take an arm's colour; the 14 % of
+  vertices no view saw take the nearest coloured neighbour's) gave a body right all the way round
+  (deep blue dress, white lace, boots, dark hair), the most consistent figure of the trials, but a
+  blurry face, smeared at 45° where the front and side views meet slightly out of line. An 8 MB
+  `.glb`; three.js shows it with its GLTF loader (no splats needed). Two catches in the viewer:
+  trimesh's export has no normals (compute them, or the lit shape renders black), and vertex
+  colours painted from sRGB pictures must be converted to linear.
+- **Bigger views:** the same prompt at 2048×1024 gave 512 px views (229 s): a much clearer face
+  and buttons. Both side views faced the same way again (mirrored as before). The full model at
+  512 built a 646k-triangle shape from them in 95 s.
+- **Baking the views onto the surface as splats** (the user's idea): the mesh as the surface and
+  depth test only; 1.5M flat discs scattered evenly over it (`trimesh.sample.sample_surface_even`),
+  each sized to the spacing and thin along the normal, coloured from the views with bilinear
+  sampling, written as a standard 3DGS `.ply` in three.js axes (80 MB). Softer and more painterly
+  than the painted mesh (16 MB, polygon seams up close), and finer colour than vertices can hold.
+  ~70 s. The whole pipeline is ~6½ min on the Mac: sheet 229 s, shape 95 s, bake 70 s.
+- **What went wrong in baking, and what fixed it:**
+  1. *Orientation.* Hunyuan3D's mesh faces +z; a silhouette can't tell front from back (the
+     search once picked the back), so fix it rather than search. Seen from +x (90°) the face
+     points left in the picture, so the `right` view (nose pointing right) goes at 90° and `left`
+     at 270°; swapping them paints each profile onto the back of the head, facing backwards.
+  2. *Fit.* Fitting each view to the mesh by its outline's edges let one edge shift a whole view;
+     search the shift and scale whose outline best matches the cut-out (IoU 0.92–0.95), and fit the
+     head separately for the side views.
+  3. *Edges.* A cut-out's outermost pixels are darker; don't colour from the 2 px edge.
+  4. *The face.* The real limit: the drawn profile puts her eyes and nose further forward than the
+     mesh's flatter face, so wherever a side view paints the face its features land on the cheek
+     (a second face, or dark streaks under the eyes). Sharper view weights (power 3, 12, 40; 40
+     leaves hard patches), a looser depth test, and choosing views by the surface direction
+     averaged over 2–4 cm all left the streaks; a bake from the front view alone was clean.
+     Painting the face from the front view only (head points facing forward with dot > 0.3)
+     gave a clean face from the front to ~30° but a seam down the cheek in profile; fading the side
+     views across the cheek instead brought back a ghost of the profile's eye. Blending can only
+     move the mismatch, not remove it.
+- **Next step, if it's pursued:** make the side views agree with the mesh: render the bare mesh
+  from each side and have the Image Model paint over that render (image to image) in the Look's
+  style, so the profile matches the geometry exactly. Warping the side views to the mesh's
+  outline would help less.
+- **Other Hunyuan3D releases** (Hugging Face, checked 2026-10-02): 2.1 (June 2025) has a better
+  shape model and a PBR painter but takes one picture only; Omni (September 2025, on 2.1) adds
+  point cloud, voxel, bounding-box and skeleton controls, not views; **2.5 and 3.0 have no open
+  weights** (Tencent's site and API only). HunyuanWorld 1.0 is scenes and worlds (panorama, then
+  layered meshes), not characters.
+
 ## Could not verify
 
 - SHARP's timing and peak memory on Apple Silicon through MLX or MPS (only the Core ML port's
