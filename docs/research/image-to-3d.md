@@ -496,6 +496,44 @@ brushwork into something more photographic and slightly hazier. Since SHARP work
 2048 px upscale gives it more real pixels than a 1024 px original, so the app uses the upscale
 when there is one; whether the upscale itself looks right is the upscaler's doing.
 
+## Panorama trial (2026-10-02): tried, not adopted
+
+The experimental route above, run on the Kael tavern's wide shot (Frame 0, 1024 px): HY-Pano 2.0's
+LoRA (810 MB, `tencent/HY-World-2.0`, `HY-Pano-2.0/pytorch_lora_weights.safetensors`) on
+Qwen-Image-Edit-2509 through mflux 0.20, at 1952×960, then MoGe (`Ruicheng/moge-vitl`, MIT, on
+MPS) for depth, one splat per pixel, viewed from the middle in Spark.
+
+- **mflux loads the LoRA as is**, once its keys are renamed (`transformer.` → `diffusion_model.`):
+  every layer it touches (attention, `img_mlp`, `txt_mlp`) maps. Its CFG matches Tencent's
+  (norm-rescaled, scale 7.5). Qwen-Image 2.1 can't take it: a different design (32 layers of
+  4096 against 2509's 60 of 3072), and text-to-image only in mflux. Qwen-Image-2512 is
+  text-to-image too; Qwen-Image-Edit-2511 shares 2509's design, so the LoRA would load, but it
+  was trained on 2509 (not tried).
+- **mflux's edit command gave a stretched copy, not a panorama.** It encodes the input picture at
+  the *output* size, so the square picture arrived already filling the 2:1 frame and was only
+  repainted. Tencent's pipeline (diffusers) encodes it at ~1024² in its own shape, as a separate
+  picture; with mflux's sizing patched to do the same, the model expanded it into a full room.
+  This affects any mflux Qwen edit whose output size differs from its input.
+- **Result:** a true 360° (the left and right edges joined about as smoothly as neighbouring
+  columns), and looking around from the middle was convincing: a coherent invented room (bar
+  and shelves, a candle, a window, a door onto the rain, beamed ceiling) with no gaps. But it
+  **repaints the picture**: faces, poses and clothes change, and oil-paint brushwork turns into
+  smoother digital painting. One depth layer means turning works and stepping doesn't (holes and
+  specks behind people half a metre from the middle); MoGe put the room ~1 m around the viewer,
+  so near things looked blurry. MoGe took ~20 s and 8 GB.
+- **Cost on the 48 GB M5 Pro:** a 58 GB download (2509 at full precision). Loaded with
+  `--quantize 8` it peaked at 62.6 GB, swapped, and ran 81 s per step (50 min for a first run,
+  mostly loading). From a saved 8-bit copy (`mflux-save`, LoRA baked in; 35 GB: transformer
+  20 GB, text encoder 14 GB kept at full precision): 17 min for 20 steps, 55.6 GB peak, still
+  over memory. Tencent's 40 steps would be ~35 min.
+- **The download stalled once:** after ~40 min Hugging Face closed the connections and the
+  downloader waited on them indefinitely; resuming with `snapshot_download` and
+  `HF_HUB_DOWNLOAD_TIMEOUT=60` finished it.
+
+Not adopted: tens of minutes per picture, memory beyond the Mac, and the picture redrawn, against
+SHARP's 11 s that keeps the picture exactly. Revisit if a smaller panorama model or a LoRA for a
+lighter edit model appears.
+
 ## Could not verify
 
 - SHARP's timing and peak memory on Apple Silicon through MLX or MPS (only the Core ML port's
