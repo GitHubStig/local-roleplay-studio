@@ -144,7 +144,7 @@ async function save() {
         </div>
 
         <div v-if="copies.length" class="flex flex-col gap-1" data-quantized>
-          <span class="text-sm text-muted">Saved copies (in ~/.cache/rpg/quantized)</span>
+          <span class="text-sm text-muted">Saved copies (in models/quantized)</span>
           <ul class="flex flex-col gap-1 text-sm">
             <li v-for="c in copies" :key="c.name" class="flex items-center gap-3" data-quantized-copy>
               <span class="min-w-0 flex-1 truncate">

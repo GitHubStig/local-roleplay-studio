@@ -48,6 +48,9 @@ The vocabulary (Scenario, Session, Image Prompt, Frame, Action, …) is defined 
   use. Fetch its two models once (about 12 GB: Qwen3-TTS VoiceDesign and Higgs TTS 3) with
   `uv run voice/serve.py --download`. Without them, Roleplays work as before and Speak fails with a
   reason; set `VOICES=off` to leave them silent.
+- **Saved quantized copies** of Image Models (with Quantize on in Settings) are made by the app on
+  first use, 13–22 GB each, in `models/quantized/` in this folder (gitignored); Settings lists them
+  to delete.
 
 ## Getting started
 

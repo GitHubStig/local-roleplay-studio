@@ -1,6 +1,6 @@
 import { createHandler } from './app.ts'
 import { placeholderImageGenerator } from './imageGenerator.ts'
-import { join } from '@std/path'
+import { fromFileUrl } from '@std/path'
 import { mfluxImageGenerator, mfluxQuantizedStore } from './mflux.ts'
 import { listOllamaModels } from './ollama.ts'
 import { dirScenarioLibrary } from './scenario.ts'
@@ -11,10 +11,9 @@ import { voiceService } from './voice.ts'
 
 const port = Number(Deno.env.get('PORT') ?? 8787)
 
-// Saved 8-bit (or 4-bit) copies of Image Models, outside the project: they're 13-22 GB each.
-const quantized = mfluxQuantizedStore(
-  join(Deno.env.get('HOME') ?? '.', '.cache', 'rpg', 'quantized'),
-)
+// Saved 8-bit (or 4-bit) copies of Image Models, in the project (gitignored): 13-22 GB each, made
+// by this app, so they go when it does.
+const quantized = mfluxQuantizedStore(fromFileUrl(new URL('../models/quantized/', import.meta.url)))
 
 const handler = createHandler({
   settings: fileSettingsStore(new URL('../settings.json', import.meta.url)),

@@ -401,7 +401,7 @@ Qwen-Image, on top of the originals) and rendered from that copy (`--model <path
 time. Against
 full precision the pictures keep their composition and only fine detail shifts (mean pixel
 difference about 1 of 255 on Qwen-Image, 5–11 on the Kleins). The app saves a copy the first time a
-render needs it (`server/quantized.ts`), in `~/.cache/rpg/quantized/<model>-<bits>bit-mflux<version>`,
+render needs it (`server/quantized.ts`), in `models/quantized/<model>-<bits>bit-mflux<version>` (in the project, gitignored),
 inside the render queue; a copy made by another mflux is replaced on next use, Settings lists the
 copies with their sizes to delete, and if saving fails the render converts as it goes.
 

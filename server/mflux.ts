@@ -134,7 +134,7 @@ async function installedMfluxVersion(): Promise<string> {
   }
 }
 
-/** Saved quantized copies made with `mflux-save`, kept in `root` (`~/.cache/rpg/quantized`). */
+/** Saved quantized copies made with `mflux-save`, kept in `root` (`models/quantized`). */
 export function mfluxQuantizedStore(
   root: string,
   opts: { offline?: boolean } = {},

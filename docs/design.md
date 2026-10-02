@@ -351,7 +351,7 @@ in [open-threads.md](open-threads.md).
 - **Settings** (`/settings`): Text Model (installed Ollama models, minus OCR and dedicated
   vision-language models), Thinking (on or off; only for models that support it), Image Model, steps (reset to the model's default when the Image Model
   changes), quantization (8 or 4 bit: the first render with a model saves a smaller copy of it in
-  `~/.cache/rpg/quantized` and later ones load it, 3.5–8 GB less memory; Settings lists the copies
+  `models/quantized` (gitignored) and later ones load it, 3.5–8 GB less memory; Settings lists the copies
   with their sizes, to delete), size (six presets from 512×512 to 1216×832), seed (random per
   Session, or fixed), Upscaler (SeedVR2 7B or 3B), Art Agent model (the model that pictures
   Roleplay Frames, with Thinking off, or "Same as the Text Model"), Art Agent style (prose,
