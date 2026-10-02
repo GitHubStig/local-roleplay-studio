@@ -534,6 +534,37 @@ Not adopted: tens of minutes per picture, memory beyond the Mac, and the picture
 SHARP's 11 s that keeps the picture exactly. Revisit if a smaller panorama model or a LoRA for a
 lighter edit model appears.
 
+## TripoSplat trial (2026-10-02): a Character as a full 3D figure
+
+[TripoSplat](https://github.com/VAST-AI-Research/TripoSplat) (VAST/Tripo, MIT code and weights,
+4.2 GB from `VAST-AI/TripoSplat`) makes one *object* from one picture, back included: it cuts the
+subject out (BiRefNet), scales it into a 1024×1024 canvas, encodes it (DINOv3 and the FLUX.2
+VAE), samples a latent of 8,192 tokens × 16 by flow matching, and decodes Gaussians from it. It
+ran unchanged on MPS (`device='mps'`), M5 Pro:
+
+- **Cost:** ~3 s to load; 70–100 s to cut out and sample (20 steps); 2–8 s to decode;
+  10.6–13 GB peak. Output `.ply` is 17 MB at 262,144 Gaussians, 34 MB at 524,288, 68 MB at
+  1,048,576. It sits on the origin, ~1 unit tall, in OpenCV axes like SHARP (flip with
+  `quaternion (1,0,0,0)` in Spark), facing +x.
+- **Past the 262,144 cap:** the cap is only `_validate_num_gaussians`; calling `decode_latent`
+  directly decoded 524,288 and 1,048,576 without errors or blur. Up close 256k looked slightly
+  speckled and 512k smoother; at normal distance all three looked the same. 512k is a fair
+  bump; 1M adds little.
+- **Steps and guidance don't add detail:** 50 steps instead of 20 gave a different take at the
+  same detail, for 2.5× the time; guidance 2, 3, 4 and 5 gave the same figure with small face
+  differences, and 5 at 20 steps once broke a figure (her face on the back of the head). The
+  detail is bounded by the fixed-size latent; keep the defaults (20 steps, guidance 3).
+- **The picture is what matters.** From Roleplay scenes: Kael (Frame 4, alone) and Elara cropped
+  from a two-person picture (Frame 19) came out whole but with coarse hair and flecked eyes;
+  Elara from Frame 20 lost her forearms where another person overlapped them (the cut-out
+  removes what overlaps another person). From pictures made for it (Qwen-Image 2.1, her Look,
+  "alone, plain dark grey backdrop, soft even light"): **full length** gave the best figure (dress,
+  collar, cuffs, hands, boots, a convincing back) but a blotchy face, which got ~80 px of the
+  canvas; **waist-up** gave a clear face (eyes, brows, lips, ear) but a pale ghost of the face on
+  the back of her head, the "Janus" failure of single-picture 3D models.
+- **What it is for:** one Character to turn all the way round, without the room. SHARP keeps the
+  whole picture from near its own view in 11 s; the two do different jobs.
+
 ## Could not verify
 
 - SHARP's timing and peak memory on Apple Silicon through MLX or MPS (only the Core ML port's
