@@ -475,8 +475,15 @@ the picture exactly. The app keeps the lossless `.ply`.
   paper). In practice: clean at 15°, still coherent at 30°, with what the picture never showed
   (behind people, past the end of a bar) filled with blurred, plausible content that smears
   further out. Panning or zooming far from the original camera shows the edges of the scene.
-- **A fixed lens.** Without EXIF it assumes 30 mm (35 mm equivalent); generated pictures carry
-  none, so every scene is built for that lens, whether the picture was a close-up or a wide shot.
+- **A fixed lens, and it hardly matters.** Without EXIF it assumes 30 mm (35 mm equivalent);
+  generated pictures carry none. Tried 2026-10-02 with the lens matched to the Image Prompt's camera
+  sentence: a close-up (Frame 18) at 30, 50 and 85 mm and a wide shot (Frame 25) at 30, 24 and
+  18 mm, passing SHARP the focal length. SHARP doesn't rebuild the scene for the lens: it keeps
+  the same shape and scales its depth in proportion to the focal length (the close-up's orbit
+  pivot 0.90, 1.50, 2.55 for 30, 50, 85 mm), and since the viewer orbits at that depth too, a turn
+  looks nearly the same. At 30° the close-up's faces held equally at every lens (85 mm turned the
+  head a touch more), and the wide shot's views were nearly indistinguishable (18 mm stretched the
+  floor slightly). Not worth reading the camera sentence for; the app keeps 30 mm.
 - **Weights:** 2.8 GB (`sharp_2572gikvuh.pt`), the same file on Apple's CDN and on Hugging Face
   (`apple/Sharp`, SHA-256 `94211a75…`), under Apple's research-only model license: fine for
   personal use, not for anything commercial. ~15 GB peak while making a scene.
