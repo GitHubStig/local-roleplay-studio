@@ -693,6 +693,19 @@ the front view baked onto its face) would combine them. Tooling: SAM 3D's script
 its own `outputs/` folder; both write splats turned differently from three.js's axes (both stand up
 with −90° about x; SAM 3D then faces +z, LiTo +x).
 
+**Tried: LiTo with the drawn face (two hybrids), 2026-10-02.** LiTo's front face is soft, the
+turnaround's front view sharp, so: (1) *recolour* LiTo's front-facing head splats from the front
+view (outline fit IoU 0.955 body, 0.905 head; base colour from the drawing, LiTo's 45
+view-dependent SH terms faded by the same weight); (2) *graft* SHARP's splats of the front view
+in place of LiTo's front-facing head splats, placed across by where they land in the picture and
+in depth by SHARP's relief scaled to LiTo's units (SHARP's quaternions turned from OpenCV to
+three.js to LiTo's axes, and its scales by the unit change). Both were worse than LiTo alone: the
+drawn eyes and brows land on her forehead, because LiTo had her head tipped down while the
+drawing looks ahead, so the outlines match but the features inside them don't; the graft added a
+ghost of SHARP's face (a shallow shell made for the front) beside the head at 35° and a smear in
+profile. Lining them up would need facial landmarks in both and a warp of one onto the other.
+**LiTo alone stays the best figure from one picture.**
+
 **Tried: TRELLIS.2 through mlx-spatial** (weights `microsoft/TRELLIS.2-4B`, 15 GB; it also needs
 DINOv3, `facebook/dinov3-vitl16-pretrain-lvd1689m`, gated by Meta with manual approval, and, for
 RGB input only, RMBG-2.0, `briaai/RMBG-2.0`, gated and non-commercial: an RGBA cut-out skips it;
