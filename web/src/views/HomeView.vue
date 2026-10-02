@@ -98,6 +98,7 @@ const ACTIVITY_LABELS = {
   queued: 'Waiting to render…',
   image: 'Rendering…',
   audio: 'Speaking…',
+  download: 'Downloading a model…',
 } as const
 
 const relative = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' })

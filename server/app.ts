@@ -17,6 +17,7 @@ import { RoleplayJobs } from './roleplay/jobs.ts'
 import { RenderQueue } from './renderQueue.ts'
 import {
   type FrameDeps,
+  type Phase,
   runChainFrame,
   UndoError,
   undoLatestFrame,
@@ -75,8 +76,6 @@ function defaultSessionId(): string {
 }
 
 const defaultSeed = () => crypto.getRandomValues(new Uint32Array(1))[0]
-
-type Phase = 'text' | 'queued' | 'image' | 'audio'
 
 /** One server-sent event of a work stream: its `type`, plus whatever that event carries. */
 export type StreamEvent = { type: string; phase?: Phase; [field: string]: unknown }

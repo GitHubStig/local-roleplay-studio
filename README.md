@@ -28,11 +28,12 @@ The vocabulary (Scenario, Session, Image Prompt, Frame, Action, …) is defined 
   once loaded, Thinking off). Small models (4–8B) can't reliably follow the prompt format; see
   [docs/models.md](docs/models.md) for the comparison.
 - **mflux 0.20**: `uv tool install --managed-python --python 3.14 mflux`. (uv's own Python, kept apart from any other Python on the Mac; mflux runs on 3.10 or newer.)
-- **Image model weights, downloaded once.** The game runs mflux with Hugging Face downloads
-  blocked, so each Image Model must be fetched beforehand. Run the command below online once;
-  it saves the weights to `~/.cache/huggingface`.
+- **Models download on first use.** Each model (Image Models, the upscaler, the voice models,
+  SHARP) is downloaded from Hugging Face into `~/.cache/huggingface` the first time it's needed,
+  shown as "Downloading the model (first use only)…" while it is; they're 3–30 GB each, so the
+  first use takes minutes. To fetch an Image Model ahead of time, run its command below once:
 
-  | Image Model | Download once with |
+  | Image Model | Fetch ahead of time with |
   |---|---|
   | FLUX.2 Klein 4B (default, ~13 s per image) | `mflux-generate-flux2 --model flux2-klein-4b --prompt test --steps 4 --output /tmp/x.png` |
   | FLUX.2 Klein 9B (~8 s at 512 px, ~22 s at 832×1216) | `mflux-generate-flux2 --model flux2-klein-9b --prompt test --steps 4 --output /tmp/x.png` |
@@ -45,9 +46,9 @@ The vocabulary (Scenario, Session, Image Prompt, Frame, Action, …) is defined 
 
 - **Voices (optional), for Roleplay Characters:** [uv](https://docs.astral.sh/uv/) runs the voice
   service (`voice/serve.py`), which installs its own Python packages (mlx-audio, torch) on first
-  use. Fetch its two models once (about 12 GB: Qwen3-TTS VoiceDesign and Higgs TTS 3) with
-  `uv run voice/serve.py --download`. Without them, Roleplays work as before and Speak fails with a
-  reason; set `VOICES=off` to leave them silent.
+  use, and its two models (about 12 GB: Qwen3-TTS VoiceDesign and Higgs TTS 3) the first time
+  each is needed; `uv run voice/serve.py --download` fetches both ahead of time. Set `VOICES=off`
+  to leave Characters silent.
 - **Saved quantized copies** of Image Models (with Quantize on in Settings) are made by the app on
   first use, 13–22 GB each, in `models/quantized/` in this folder (gitignored); Settings lists them
   to delete.

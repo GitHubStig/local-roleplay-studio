@@ -26,12 +26,19 @@ export interface UpscaleRequest {
 /** The shortest edge of an upscaled image, in pixels. */
 export const UPSCALED_EDGE = 2048
 
+/**
+ * Reports a render's step progress, and `onDownload` when it first has to download its model
+ * (the first time a model is used); steps after a download mean it's rendering again.
+ */
+export type OnProgress = (step: number, total: number) => void
+
 export interface ImageGenerator {
   /** Renders the image and returns the file name it wrote inside `dir`. */
   generate(
     req: ImageRequest,
     signal: AbortSignal,
-    onProgress?: (step: number, total: number) => void,
+    onProgress?: OnProgress,
+    onDownload?: () => void,
   ): Promise<string>
   /**
    * Upscales a rendered image so its shortest edge is `UPSCALED_EDGE`, and returns the file name
@@ -40,7 +47,8 @@ export interface ImageGenerator {
   upscale(
     req: UpscaleRequest,
     signal: AbortSignal,
-    onProgress?: (step: number, total: number) => void,
+    onProgress?: OnProgress,
+    onDownload?: () => void,
   ): Promise<string>
 }
 

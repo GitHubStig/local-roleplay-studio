@@ -444,7 +444,7 @@ The design Q&A, and what changed later.
 | Premise | Studio photoshoot with a fictional adult professional Subject and guardrails | Now a text-to-image prompt generator; the photoshoot is its first Scenario |
 | Goal | Open sandbox; no scoring | — |
 | Backend | Deno HTTP server; Vite proxies `/api` | — |
-| Images | mflux CLI per image, behind `ImageGenerator` | Downloads blocked (ADR 0004) |
+| Images | mflux CLI per image, behind `ImageGenerator` | Downloads blocked (ADR 0004); since 2026-10-02 allowed on first use, shown as downloading |
 | Frame state | The Scene only, no history (ADR 0001) | The Image Prompt: one paragraph of nine sentences (ADR 0005) |
 | Text Model output | One JSON call | `{ outcome, narration, prompt }`, the prompt as one paragraph |
 | Settings | Server-side `settings.json`; apply from the next Session | Small sizes added |

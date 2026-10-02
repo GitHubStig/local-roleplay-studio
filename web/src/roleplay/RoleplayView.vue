@@ -2,7 +2,7 @@
 import { useEventListener } from '@vueuse/core'
 import { computed, nextTick, onActivated, onBeforeUnmount, onDeactivated, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { ApiError, cancelFrame, getSession, imageUrl } from '../api'
+import { ApiError, cancelFrame, DOWNLOADING, getSession, imageUrl } from '../api'
 import { clearCurrentSession, setCurrentSession } from '../composables/useCurrentSession'
 import { useStoredFlag } from '../composables/useStoredFlag'
 import { useStoredText } from '../composables/useStoredText'
@@ -95,6 +95,7 @@ const JOB_NAMES: Record<JobKind, string> = {
 function jobStatus(job: Job): string {
   if (job.status === 'failed') return `Failed: ${job.error}`
   if (job.status === 'queued') return 'Queued'
+  if (job.phase === 'download') return DOWNLOADING
   if (job.kind === 'voice' || job.kind === 'speak' || job.kind === 'speak-thought') {
     if (job.phase === 'queued') return 'Waiting for another render…'
     if (job.phase === 'text') return 'Describing the voice…'

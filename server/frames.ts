@@ -19,12 +19,36 @@ import type { FrameText, TextModel } from './textModel.ts'
 
 /** Progress any piece of work reports as it happens, in a Chain or a Storyboard. */
 export type ProgressEvent =
-  /** `queued`: waiting for another Session's render to finish. */
-  | { type: 'phase'; phase: 'text' | 'queued' | 'image' | 'audio' }
+  /**
+   * `queued`: waiting for another Session's render to finish; `download`: downloading a model the
+   * first time it's used, before rendering (or speaking) with it.
+   */
+  | { type: 'phase'; phase: Phase }
   /** More of the Text Model's reasoning; `restart` when a retry starts reasoning afresh. */
   | { type: 'thinking'; text: string; restart?: boolean }
   /** Image Model steps completed so far. */
   | { type: 'progress'; step: number; total: number }
+
+export type Phase = 'text' | 'queued' | 'image' | 'audio' | 'download'
+
+/**
+ * Image Model progress as events: `download` while the model downloads, then `image` again with
+ * the steps once it renders.
+ */
+export function imageProgress(emit: (event: ProgressEvent) => void) {
+  let downloading = false
+  return {
+    onProgress: (step: number, total: number) => {
+      if (downloading) emit({ type: 'phase', phase: 'image' })
+      downloading = false
+      emit({ type: 'progress', step, total })
+    },
+    onDownload: () => {
+      if (!downloading) emit({ type: 'phase', phase: 'download' })
+      downloading = true
+    },
+  }
+}
 
 /** Progress of a Chain Frame, streamed to the player as it happens. */
 export type FrameEvent =
@@ -126,10 +150,12 @@ export async function renderImage(
     emit({ type: 'phase', phase: 'image' })
     const dir = deps.store.dir(session.id)
     await Deno.mkdir(dir, { recursive: true })
+    const { onProgress, onDownload } = imageProgress(emit)
     const image = await deps.imageGenerator.generate(
       { prompt: promptText, seed: session.seed, settings: session.settings, dir, name },
       signal,
-      (step, total) => emit({ type: 'progress', step, total }),
+      onProgress,
+      onDownload,
     )
     timings.image = secondsSince(imageStart)
     return image
@@ -325,10 +351,12 @@ export async function upscaleFrame(
   )
   try {
     emit({ type: 'phase', phase: 'image' })
+    const { onProgress, onDownload } = imageProgress(emit)
     const upscaled = await deps.imageGenerator.upscale(
       { model: upscaler, image, seed: session.seed, dir, name },
       signal,
-      (step, total) => emit({ type: 'progress', step, total }),
+      onProgress,
+      onDownload,
     )
     signal.throwIfAborted()
     const updated = await save((latest) =>

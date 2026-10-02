@@ -5,7 +5,7 @@
  * hold the Roleplay's lock: they save through `updateSession`, onto whatever the conversation has
  * become meanwhile. Jobs live in memory: a server restart forgets the queue.
  */
-import { upscaleFrame } from '../frames.ts'
+import { type Phase, upscaleFrame } from '../frames.ts'
 import type { Upscaler } from '../imageModels.ts'
 import type { Scenario } from '../scenario.ts'
 import type { Session, SessionStore } from '../session.ts'
@@ -42,10 +42,10 @@ export interface Job {
   /** Failed jobs stay listed, with their error, until dismissed. */
   status: 'queued' | 'running' | 'failed'
   /**
-   * While running: writing (text), waiting for another render (queued), rendering (image), or
-   * speaking (audio).
+   * While running: writing (text), waiting for another render (queued), rendering (image),
+   * speaking (audio), or downloading a model the first time it's used (download).
    */
-  phase?: 'text' | 'queued' | 'image' | 'audio'
+  phase?: Phase
   progress?: { step: number; total: number }
   error?: string
   createdAt: string

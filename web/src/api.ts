@@ -182,7 +182,11 @@ export interface Look {
 /** A Chain makes each Frame from the previous one; a Storyboard plans all its Frames together. */
 export type SessionKind = 'chain' | 'storyboard' | 'roleplay'
 
-export type Activity = 'text' | 'queued' | 'image'
+/** `download`: a model is downloading, the first time it's used, before it renders or speaks. */
+export type Activity = 'text' | 'queued' | 'image' | 'download'
+
+/** What the screens say while a model downloads. */
+export const DOWNLOADING = 'Downloading the model (first use only)…'
 
 export interface SessionBase {
   id: string
@@ -277,7 +281,7 @@ export interface SessionSummary {
   createdAt: string
   updatedAt: string
   /** What a Frame in progress is doing, or null when idle. */
-  activity: 'text' | 'queued' | 'image' | 'audio' | null
+  activity: Activity | 'audio' | null
 }
 
 export const listSessions = () => request<SessionSummary[]>('/api/sessions')

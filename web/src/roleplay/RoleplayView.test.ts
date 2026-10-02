@@ -556,6 +556,16 @@ describe('RoleplayView', () => {
     expect(wrapper.find('[data-image-viewer] [data-image-frame]').exists()).toBe(true)
   })
 
+  it('says when a job is downloading its model, the first time it is used', async () => {
+    vi.mocked(roleplay.listJobs).mockResolvedValue([
+      job({ kind: 'speak', status: 'running', phase: 'download' }),
+    ])
+    const { wrapper } = await mountIt()
+    expect(wrapper.find('[data-frame-job]').text()).toContain(
+      'Listen · Downloading the model (first use only)…',
+    )
+  })
+
   it('lists jobs in the Queue tab: each goes to its Frame and can be cancelled', async () => {
     const failed = job({ id: 'j3', status: 'failed', error: "Frame 0 isn't pictured yet" })
     vi.mocked(roleplay.listJobs).mockResolvedValue([job({ status: 'running' }), failed])

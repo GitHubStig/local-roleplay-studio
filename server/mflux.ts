@@ -3,6 +3,7 @@ import { track } from './children.ts'
 import {
   type ImageGenerator,
   type ImageRequest,
+  type OnProgress,
   UPSCALED_EDGE,
   type UpscaleRequest,
 } from './imageGenerator.ts'
@@ -78,18 +79,21 @@ function lastMeaningfulLine(stderr: string): string {
     'no output'
 }
 
-/** Runs one mflux command to completion, reporting its progress; throws if it fails. */
+/**
+ * Runs one mflux command to completion, reporting its progress; throws if it fails. A model that
+ * isn't downloaded yet is downloaded from Hugging Face first: mflux shows that as a "Fetching N
+ * files" bar, which is reported as `onDownload`, not as steps.
+ */
 async function runCommand(
   command: string,
   args: string[],
   label: string,
-  offline: boolean,
   signal: AbortSignal,
-  onProgress?: (step: number, total: number) => void,
+  onProgress?: OnProgress,
+  onDownload?: () => void,
 ): Promise<void> {
   const child = new Deno.Command(command, {
     args,
-    env: offline ? { HF_HUB_OFFLINE: '1' } : {},
     stdout: 'null',
     stderr: 'piped',
     signal,
@@ -99,8 +103,13 @@ async function runCommand(
   let stderr = ''
   for await (const chunk of child.stderr.pipeThrough(new TextDecoderStream())) {
     stderr = (stderr + chunk).slice(-8000)
-    const progress = parseProgress(chunk)
-    if (progress) onProgress?.(progress.step, progress.total)
+    for (const line of chunk.split(/[\r\n]+/)) {
+      if (/Fetching \d+ files/.test(line)) onDownload?.()
+      else {
+        const progress = parseProgress(line)
+        if (progress) onProgress?.(progress.step, progress.total)
+      }
+    }
   }
   const status = await child.status
   signal.throwIfAborted()
@@ -117,8 +126,6 @@ async function mustExist(dir: string, file: string, label: string): Promise<void
 
 export interface MfluxOptions {
   models?: readonly ImageModel[]
-  /** Block Hugging Face downloads so a missing model fails fast instead of fetching GBs. */
-  offline?: boolean
   /** Saved quantized copies to render from when Settings ask for Quantize. */
   quantized?: QuantizedStore
 }
@@ -135,20 +142,18 @@ async function installedMfluxVersion(): Promise<string> {
 }
 
 /** Saved quantized copies made with `mflux-save`, kept in `root` (`models/quantized`). */
-export function mfluxQuantizedStore(
-  root: string,
-  opts: { offline?: boolean } = {},
-): QuantizedStore {
+export function mfluxQuantizedStore(root: string): QuantizedStore {
   let version: Promise<string> | null = null
   return quantizedStore(root, {
     mfluxVersion: () => (version ??= installedMfluxVersion()),
-    save: (model, bits, path, signal) =>
+    save: (model, bits, path, signal, onDownload) =>
       runCommand(
         'mflux-save',
         ['--model', model.model, '--quantize', String(bits), '--path', path],
         `Saving ${model.label} at ${bits}-bit`,
-        opts.offline ?? true,
         signal,
+        undefined,
+        onDownload,
       ),
   })
 }
@@ -156,24 +161,16 @@ export function mfluxQuantizedStore(
 /** Renders images by running the `mflux-generate-*` CLI once per image. */
 export function mfluxImageGenerator(opts: MfluxOptions = {}): ImageGenerator {
   const models = opts.models ?? IMAGE_MODELS
-  const offline = opts.offline ?? true
-  const run = (
-    command: string,
-    args: string[],
-    label: string,
-    signal: AbortSignal,
-    onProgress?: (step: number, total: number) => void,
-  ) => runCommand(command, args, label, offline, signal, onProgress)
   return {
-    async upscale(req, signal, onProgress) {
+    async upscale(req, signal, onProgress, onDownload) {
       signal.throwIfAborted()
       const file = `${req.name}.png`
       const args = upscaleArgs(req, join(req.dir, file))
-      await run(UPSCALER.command, args, UPSCALER.label, signal, onProgress)
+      await runCommand(UPSCALER.command, args, UPSCALER.label, signal, onProgress, onDownload)
       await mustExist(req.dir, file, UPSCALER.label)
       return file
     },
-    async generate(req, signal, onProgress) {
+    async generate(req, signal, onProgress, onDownload) {
       signal.throwIfAborted()
       const model = models.find((m) => m.id === req.settings.imageModel) ??
         findImageModel(req.settings.imageModel)
@@ -185,7 +182,7 @@ export function mfluxImageGenerator(opts: MfluxOptions = {}): ImageGenerator {
       const bits = req.settings.quantize
       let saved: string | undefined
       if (bits && !model.preQuantized && opts.quantized) {
-        saved = await opts.quantized.ensure(model, bits, signal).catch((err) => {
+        saved = await opts.quantized.ensure(model, bits, signal, onDownload).catch((err) => {
           signal.throwIfAborted()
           console.warn(
             `No saved ${bits}-bit copy of ${model.label}; converting as it goes:`,
@@ -194,12 +191,13 @@ export function mfluxImageGenerator(opts: MfluxOptions = {}): ImageGenerator {
           return undefined
         })
       }
-      await run(
+      await runCommand(
         model.command,
         mfluxArgs(model, req, join(req.dir, file), saved),
         model.label,
         signal,
         onProgress,
+        onDownload,
       )
       await mustExist(req.dir, file, model.label)
       return file

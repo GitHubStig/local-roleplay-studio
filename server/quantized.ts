@@ -26,8 +26,16 @@ export interface QuantizedCopy {
 }
 
 export interface QuantizedStore {
-  /** The folder of `model`'s copy at `bits`, saving it first if there's none from this mflux. */
-  ensure(model: ImageModel, bits: number, signal: AbortSignal): Promise<string>
+  /**
+   * The folder of `model`'s copy at `bits`, saving it first if there's none from this mflux;
+   * `onDownload` if saving has to download the model first.
+   */
+  ensure(
+    model: ImageModel,
+    bits: number,
+    signal: AbortSignal,
+    onDownload?: () => void,
+  ): Promise<string>
   list(): Promise<QuantizedCopy[]>
   /** Deletes a copy; false if there's no such copy. */
   remove(name: string): Promise<boolean>
@@ -37,7 +45,13 @@ export interface QuantizedStoreOptions {
   /** The mflux version that would make a copy now. */
   mfluxVersion(): Promise<string>
   /** Saves `model` quantized to `bits` into `path` (`mflux-save`). */
-  save(model: ImageModel, bits: number, path: string, signal: AbortSignal): Promise<void>
+  save(
+    model: ImageModel,
+    bits: number,
+    path: string,
+    signal: AbortSignal,
+    onDownload?: () => void,
+  ): Promise<void>
 }
 
 const MARKER = 'copy.json'
@@ -80,7 +94,7 @@ export function quantizedStore(root: string, opts: QuantizedStoreOptions): Quant
   return {
     list,
 
-    async ensure(model, bits, signal) {
+    async ensure(model, bits, signal, onDownload) {
       const mflux = await opts.mfluxVersion()
       const name = `${model.id}-${bits}bit-mflux${mflux}`
       const path = join(root, name)
@@ -95,7 +109,7 @@ export function quantizedStore(root: string, opts: QuantizedStoreOptions): Quant
       await Deno.remove(partial, { recursive: true }).catch(() => {})
       await Deno.mkdir(root, { recursive: true })
       try {
-        await opts.save(model, bits, partial, signal)
+        await opts.save(model, bits, partial, signal, onDownload)
         signal.throwIfAborted()
         await Deno.remove(path, { recursive: true }).catch(() => {})
         await Deno.rename(partial, path)

@@ -32,17 +32,18 @@ export interface SpeakRequest extends Partial<Delivery> {
   out: string
 }
 
+/** Called with true when a model starts downloading (its first use), and false when it's done. */
+export type OnDownload = (downloading: boolean) => void
+
 export interface VoiceEngine {
   /** Speaks `text` in a new voice built from `description`. */
-  design(req: DesignRequest, signal: AbortSignal): Promise<void>
+  design(req: DesignRequest, signal: AbortSignal, onDownload?: OnDownload): Promise<void>
   /** Speaks `text` in the voice of the reference clip. */
-  speak(req: SpeakRequest, signal: AbortSignal): Promise<void>
+  speak(req: SpeakRequest, signal: AbortSignal, onDownload?: OnDownload): Promise<void>
 }
 
 export interface VoiceServiceOptions {
   port?: number
-  /** Block Hugging Face downloads, as for mflux: fetch the models once with `--download`. */
-  offline?: boolean
   /** How long the service may take to start; its first start installs its Python packages. */
   startLimitMs?: number
   /** The command that starts it, given the port; `uv run voice/serve.py` unless a test says. */
@@ -67,7 +68,6 @@ export function voiceService(opts: VoiceServiceOptions = {}): VoiceEngine {
     const child = track(
       new Deno.Command(cmd, {
         args,
-        env: opts.offline ?? true ? { HF_HUB_OFFLINE: '1' } : {},
         stdout: 'null',
         stderr: 'piped',
       }).spawn(),
@@ -97,17 +97,43 @@ export function voiceService(opts: VoiceServiceOptions = {}): VoiceEngine {
   const post = (path: string, body: object, signal: AbortSignal) =>
     fetch(`${base}${path}`, { method: 'POST', body: JSON.stringify(body), signal })
 
-  async function call(path: string, body: object, signal: AbortSignal): Promise<void> {
+  /** Asks the service every second, until `done`, whether it's downloading a model. */
+  async function watchDownloads(done: Promise<unknown>, onDownload: OnDownload) {
+    let finished = false
+    done.finally(() => (finished = true)).catch(() => {})
+    let downloading = false
+    while (!finished) {
+      await Promise.race([done.catch(() => {}), new Promise((r) => setTimeout(r, 1000))])
+      if (finished) break
+      const health = await fetch(`${base}/health`).then((r) => r.json()).catch(() => ({}))
+      if (!!health.downloading !== downloading && !finished) {
+        downloading = !downloading
+        onDownload(downloading)
+      }
+    }
+  }
+
+  async function call(
+    path: string,
+    body: object,
+    signal: AbortSignal,
+    onDownload?: OnDownload,
+  ): Promise<void> {
     await ready()
+    const send = () => {
+      const sent = post(path, body, signal)
+      if (onDownload) watchDownloads(sent, onDownload)
+      return sent
+    }
     let res: Response
     try {
-      res = await post(path, body, signal)
+      res = await send()
     } catch (err) {
       if (signal.aborted) throw err
       // Gone since it started (it crashed, ran out of memory, or was stopped): start it again.
       starting = null
       await ready()
-      res = await post(path, body, signal)
+      res = await send()
     }
     const reply = await res.json().catch(() => ({}))
     if (!res.ok) {
@@ -118,8 +144,8 @@ export function voiceService(opts: VoiceServiceOptions = {}): VoiceEngine {
   }
 
   return {
-    design: (req, signal) => call('/design', req, signal),
-    speak: (req, signal) => call('/speak', req, signal),
+    design: (req, signal, onDownload) => call('/design', req, signal, onDownload),
+    speak: (req, signal, onDownload) => call('/speak', req, signal, onDownload),
   }
 }
 

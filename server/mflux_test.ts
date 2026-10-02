@@ -98,15 +98,17 @@ async function fakeMflux(dir: string, script: string): Promise<ImageModel> {
 /** Shell snippet that finds the value after --output. */
 const OUTPUT = 'out=""; while [ $# -gt 0 ]; do [ "$1" = "--output" ] && out="$2"; shift; done'
 
-Deno.test('mfluxImageGenerator runs the command and reports progress', () =>
+Deno.test('mfluxImageGenerator runs the command and reports progress, after any download', () =>
   withTempDir(async (dir) => {
+    // A model's first use downloads it: mflux shows a "Fetching N files" bar first.
     const model = await fakeMflux(
       dir,
       `${OUTPUT}
+printf '\\rFetching 16 files:   6%%| 1/16 [00:00<00:04]' >&2
+printf '\\rFetching 16 files: 100%%| 16/16 [00:09<00:00]' >&2
 printf '\\r 33%%| 1/3 [00:01]' >&2
 printf '\\r 67%%| 2/3 [00:02]' >&2
 printf '\\r100%%| 3/3 [00:03]' >&2
-[ "$HF_HUB_OFFLINE" = "1" ] || exit 9
 echo png > "$out"`,
     )
     const progress: string[] = []
@@ -114,10 +116,11 @@ echo png > "$out"`,
       request(dir),
       new AbortController().signal,
       (step, total) => progress.push(`${step}/${total}`),
+      () => progress.push('download'),
     )
     assertEquals(file, 'frame-0.png')
     assertEquals(await Deno.readTextFile(join(dir, file)), 'png\n')
-    assertEquals(progress.at(-1), '3/3')
+    assertEquals(progress, ['download', 'download', '1/3', '2/3', '3/3'])
   }))
 
 Deno.test('With Quantize on, mfluxImageGenerator renders from a saved copy, or converts if saving fails', () =>

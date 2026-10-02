@@ -420,7 +420,7 @@ The mflux project also publishes copies already converted, in the same format
 (`mflux-community/flux2-klein-4b-mflux-q3` … `-q8`, `flux2-klein-9b-mflux-q3` … `-q5`). Converting
 locally fits better: 6–10 s against an 8–17 GB download per model and bit width; every Image Model
 and bit width, where the published ones cover some (no 8-bit Klein 9B or Qwen-Image 2.1 there,
-2026-10-01); no extra download for an app that runs mflux offline; and made by the installed mflux.
+2026-10-01); no extra download; and made by the installed mflux.
 A published copy would only save the conversion on a fresh machine, for the models it covers. Qwen-Image 2.1's peak
 here, 20.5 GB, is lower than the ~35 GB measured on 2026-09-25 with an earlier setup.
 

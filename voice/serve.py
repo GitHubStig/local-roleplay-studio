@@ -20,8 +20,9 @@ localhost. Measured 2026-09-30 (docs/models.md):
 One model is loaded at a time, and unloaded after a while unused, so it doesn't sit on 7-10 GB of
 memory next to the Text Model and the Image Model. MLX keeps the working memory of each generation
 for reuse unless told otherwise: left alone, the service grew to 36 GB with only Higgs (~10 GB)
-loaded, so its cache is capped and cleared after every request. `--download` fetches both models
-and exits.
+loaded, so its cache is capped and cleared after every request. A model is downloaded from
+Hugging Face the first time it's needed (/health says which while it is); `--download` fetches
+both ahead of time and exits.
 """
 import argparse
 import gc
@@ -29,10 +30,11 @@ import json
 import re
 import threading
 import time
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import mlx.core as mx
 import numpy as np
+from huggingface_hub import try_to_load_from_cache
 from mlx_audio.audio_io import write as write_audio
 from mlx_audio.tts.utils import load_model
 from mlx_audio.utils import load_audio
@@ -46,16 +48,31 @@ SPEAK_SAMPLING = dict(temperature=0.5, top_k=30)
 mx.set_cache_limit(512 * 1024**2)
 
 lock = threading.Lock()
-loaded = {'repo': None, 'model': None, 'used': 0.0}
+# `downloading`: the model being downloaded, the first time it's used; /health says so.
+loaded = {'repo': None, 'model': None, 'used': 0.0, 'downloading': None}
+
+
+def downloaded(repo):
+    # Not snapshot_download(local_files_only=True): mlx-audio fetches only the files it uses, which
+    # that calls incomplete.
+    return isinstance(try_to_load_from_cache(repo, 'config.json'), str)
 
 
 def model(repo):
-    """The model for `repo`, loading it (and unloading any other) if it isn't loaded."""
+    """
+    The model for `repo`, loading it (and unloading any other) if it isn't loaded; downloading it
+    first if this is its first use.
+    """
     if loaded['repo'] != repo:
         unload()
         # mlx-audio doesn't map the renamed Higgs repo's model type by itself.
         extra = {'model_type': 'higgs_audio_v3'} if repo == SPEAK_MODEL else {}
-        loaded.update(repo=repo, model=load_model(repo, **extra))
+        if not downloaded(repo):
+            loaded['downloading'] = repo
+        try:
+            loaded.update(repo=repo, model=load_model(repo, **extra))
+        finally:
+            loaded['downloading'] = None
     loaded['used'] = time.time()
     return loaded['model']
 
@@ -119,6 +136,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path == '/health':
             return self.reply(200, {'ok': True, 'loaded': loaded['repo'],
+                                    'downloading': loaded['downloading'],
                                     'gb': round(mx.get_active_memory() / 1e9, 1)})
         self.reply(404, {'error': 'Not found'})
 
@@ -162,7 +180,8 @@ def main():
         print('Both voice models are downloaded.')
         return
     threading.Thread(target=unload_when_idle, args=(args.idle,), daemon=True).start()
-    HTTPServer(('127.0.0.1', args.port), Handler).serve_forever()
+    # Threaded so /health answers while a voice is made (the models still take turns, by `lock`).
+    ThreadingHTTPServer(('127.0.0.1', args.port), Handler).serve_forever()
 
 
 if __name__ == '__main__':

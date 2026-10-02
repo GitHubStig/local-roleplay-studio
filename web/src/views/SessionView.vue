@@ -18,8 +18,10 @@ import { useStoredText } from '../composables/useStoredText'
 import { sessionPath } from '../sessionPath'
 import { diffWords } from '../diff'
 import {
+  type Activity,
   ApiError,
   cancelFrame,
+  DOWNLOADING,
   getSession,
   imageUrl,
   type Outcome,
@@ -37,7 +39,7 @@ const router = useRouter()
 
 /** The Frame in progress: provisional until committed. */
 interface Pending {
-  phase: 'text' | 'queued' | 'image'
+  phase: Activity
   /** Started elsewhere (before a reload, in another tab); followed by polling the Session. */
   detached?: boolean
   /** The Text Model's reasoning so far, when thinking is on. */
@@ -310,9 +312,10 @@ const writing = computed(() => pending.value?.phase === 'text' && !pending.value
 /** The frame's border sweeps while an image renders (or waits to), until the new one lands. */
 const renderingPhase = computed(() =>
   // An upscale sweeps only the Frame it is upscaling.
-  (pending.value?.phase === 'image' || pending.value?.phase === 'queued') &&
+  (pending.value?.phase === 'image' || pending.value?.phase === 'queued' ||
+      pending.value?.phase === 'download') &&
     (pending.value.upscaling === undefined || pending.value.upscaling === shown.value?.index)
-    ? pending.value.phase
+    ? (pending.value.phase === 'queued' ? 'queued' : 'image')
     : null
 )
 
@@ -341,6 +344,7 @@ const OUTCOME_LABELS: Partial<Record<Outcome, string>> = {
 const phaseLabel = computed(() => {
   if (pending.value?.cancelling) return 'Cancelling…'
   if (pending.value?.phase === 'queued') return 'Waiting for another render…'
+  if (pending.value?.phase === 'download') return DOWNLOADING
   if (pending.value?.phase !== 'image') return 'Writing the prompt…'
   const p = pending.value.progress
   const doing = pending.value.upscaling === undefined

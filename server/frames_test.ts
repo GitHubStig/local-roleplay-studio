@@ -12,6 +12,8 @@ import {
 } from './testing.ts'
 import {
   type FrameEvent,
+  imageProgress,
+  type ProgressEvent,
   runChainFrame,
   UndoError,
   undoLatestFrame,
@@ -539,3 +541,18 @@ Deno.test('runChainFrame records time spent waiting for another render', () =>
     )
     assertEquals(frame.timings!.queued! >= 0.1, true)
   }))
+
+Deno.test('A render that first downloads its model shows that, then rendering again with its steps', () => {
+  const events: ProgressEvent[] = []
+  const { onProgress, onDownload } = imageProgress((e) => events.push(e))
+  onDownload()
+  onDownload()
+  onProgress(1, 4)
+  onProgress(2, 4)
+  assertEquals(events, [
+    { type: 'phase', phase: 'download' },
+    { type: 'phase', phase: 'image' },
+    { type: 'progress', step: 1, total: 4 },
+    { type: 'progress', step: 2, total: 4 },
+  ])
+})

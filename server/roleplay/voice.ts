@@ -13,7 +13,7 @@ import type { ChatMessage } from '../ollamaChat.ts'
 import { loadPrompt } from '../promptFiles.ts'
 import { RenderQueue } from '../renderQueue.ts'
 import type { SessionStore } from '../session.ts'
-import type { Delivery, VoiceEngine } from '../voice.ts'
+import type { Delivery, OnDownload, VoiceEngine } from '../voice.ts'
 import type { RoleplayModel } from './model.ts'
 import type { RoleplayFrame, RoleplaySession, RoleplayVoice, Speech } from './types.ts'
 import { GoneError, updateSession } from './update.ts'
@@ -71,7 +71,7 @@ export const spokenText = (frame: RoleplayFrame, part: SpokenPart) =>
   speakable(part === 'thought' ? frame.reply.internal : frame.reply.dialogue)
 
 export type VoiceEvent =
-  | { type: 'phase'; phase: 'text' | 'queued' | 'audio' }
+  | { type: 'phase'; phase: 'text' | 'queued' | 'audio' | 'download' }
   | { type: 'voice'; voice: RoleplayVoice; session: RoleplaySession }
   | { type: 'spoken'; index: number; part: SpokenPart; speech: Speech; session: RoleplaySession }
 
@@ -131,12 +131,15 @@ const engine = (deps: VoiceDeps) => {
   return deps.voice
 }
 
-/** Waits its turn behind any render, so a voice and an image never compete for memory. */
+/**
+ * Waits its turn behind any render, so a voice and an image never compete for memory. `work` is
+ * given what to call while a voice model downloads, the first time it's used.
+ */
 async function inTurn<T>(
   deps: VoiceDeps,
   emit: (event: VoiceEvent) => void,
   signal: AbortSignal,
-  work: () => Promise<T>,
+  work: (onDownload: OnDownload) => Promise<T>,
 ): Promise<{ result: T; queued?: number }> {
   const start = performance.now()
   let waited = false
@@ -146,7 +149,9 @@ async function inTurn<T>(
   })
   try {
     emit({ type: 'phase', phase: 'audio' })
-    return { result: await work(), ...(waited ? { queued: secondsSince(start) } : {}) }
+    const onDownload = (downloading: boolean) =>
+      emit({ type: 'phase', phase: downloading ? 'download' : 'audio' })
+    return { result: await work(onDownload), ...(waited ? { queued: secondsSince(start) } : {}) }
   } finally {
     release()
   }
@@ -176,13 +181,17 @@ export async function designVoice(
   await Deno.mkdir(dir, { recursive: true })
   const ref = voiceFile()
   try {
-    await inTurn(deps, emit, signal, () =>
-      voice.design({
-        description: described.description,
-        text: REF_TEXT,
-        seed: crypto.getRandomValues(new Uint32Array(1))[0],
-        out: join(dir, ref),
-      }, signal))
+    await inTurn(deps, emit, signal, (onDownload) =>
+      voice.design(
+        {
+          description: described.description,
+          text: REF_TEXT,
+          seed: crypto.getRandomValues(new Uint32Array(1))[0],
+          out: join(dir, ref),
+        },
+        signal,
+        onDownload,
+      ))
     signal.throwIfAborted()
     let old: string | undefined
     const updated = await updateSession(deps.store, session.id, (latest) => {
@@ -238,7 +247,7 @@ export async function speakFrame(
   const file = speechFile(index, part)
   const key = SPEECH_KEY[part]
   try {
-    const { result: audio, queued } = await inTurn(deps, emit, signal, async () => {
+    const { result: audio, queued } = await inTurn(deps, emit, signal, async (onDownload) => {
       const start = performance.now()
       await voice.speak(
         {
@@ -251,6 +260,7 @@ export async function speakFrame(
           out: join(dir, file),
         },
         signal,
+        onDownload,
       )
       return secondsSince(start)
     })

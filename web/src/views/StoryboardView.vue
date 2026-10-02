@@ -5,6 +5,8 @@ import { useRouter } from 'vue-router'
 import {
   ApiError,
   cancelFrame,
+  type Activity,
+  DOWNLOADING,
   editStoryboardFrame,
   getSession,
   imageUrl,
@@ -38,7 +40,7 @@ const message = ref<{ kind: 'error' | Outcome; text: string } | null>(null)
 /** Work in progress: planning, rendering (one Frame, or all of them in turn), an edit or an upscale. */
 interface Work {
   kind: 'plan' | 'render' | 'edit' | 'upscale'
-  phase: 'text' | 'queued' | 'image'
+  phase: Activity
   frameIndex: number | null
   progress?: { step: number; total: number }
   cancelling?: boolean
@@ -328,6 +330,7 @@ const statusLabel = computed(() => {
   }
   if (w.kind === 'edit') return `Editing Frame ${(w.frameIndex ?? 0) + 1}…`
   if (w.phase === 'queued') return 'Waiting for another render…'
+  if (w.phase === 'download') return DOWNLOADING
   const p = w.progress
   const doing = `${w.kind === 'upscale' ? 'Upscaling' : 'Rendering'} Frame ${(w.frameIndex ?? 0) + 1}…`
   return p ? `${doing} step ${p.step} of ${p.total}` : doing
@@ -337,8 +340,9 @@ const statusLabel = computed(() => {
 const renderingHere = computed(() =>
   (work.value?.kind === 'render' || work.value?.kind === 'upscale') &&
     work.value.frameIndex === selected.value &&
-    (work.value.phase === 'image' || work.value.phase === 'queued')
-    ? work.value.phase
+    (work.value.phase === 'image' || work.value.phase === 'queued' ||
+      work.value.phase === 'download')
+    ? (work.value.phase === 'queued' ? 'queued' : 'image')
     : null
 )
 const editingHere = computed(() => work.value?.kind === 'edit' && work.value.frameIndex === selected.value)
