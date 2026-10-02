@@ -648,6 +648,60 @@ from one picture.
   weights** (Tencent's site and API only). HunyuanWorld 1.0 is scenes and worlds (panorama, then
   layered meshes), not characters.
 
+### Other models to try (surveyed 2026-10-02)
+
+The strong open models now take one picture and invent the rest, and several paint their own
+texture to match their own shape, which avoids the mismatch above (hand-drawn views that disagree
+with the geometry). Among open models, only Hunyuan3D-2mv takes several views.
+
+| Model | Gives | On a Mac | License | Notes |
+|---|---|---|---|---|
+| [TRELLIS.2](https://github.com/microsoft/TRELLIS.2) (Microsoft, Dec 2025, 4B) | one picture → textured mesh (GLB, PBR) | MLX in [mlx-spatial](https://github.com/appautomaton/mlx-spatial) (stable; "texture and mesh quality are actively improving") | MIT | called the best open image-to-3D for 2026, 1–3 min ([comparison](https://www.3daistudio.com/blog/trellis-2-vs-hunyuan-3d-differences-explained), [guide](https://app.cinevva.com/guides/ai-3d-model-generators)) |
+| [Hunyuan3D 2.1](https://github.com/dgrauet/Hunyuan3D-2.1-mlx) | one picture → mesh + PBR texture | full MLX port (dgrauet), ~10 GB fp16 | Tencent (not EU/UK/KR) | its painter generates views from the mesh itself, so they line up with it; ~9 min for 6 views at 512 px on an M2 Pro ([paper](https://arxiv.org/html/2506.15442v1)) |
+| SAM 3D Objects (Meta) | picture + mask → Gaussian splats | MLX in mlx-spatial, "the strongest object-reconstruction path here" | SAM License | splats directly, no baking |
+| LiTo | one picture → Gaussian splats | MLX in mlx-spatial (stable) | not checked | |
+| Step1X-3D, TripoSG | one picture → mesh | TripoSG reported to run on Apple Silicon | Apache-2.0 / MIT | rated below TRELLIS.2 and Hunyuan3D 2.1 |
+
+**Tried: Hunyuan3D 2.1's MLX painter on the 2mv mesh** (dgrauet port at `5fe2194`, weights
+`dgrauet/hunyuan3d-2.1-mlx`, front view as the reference, six views at 512 px, defaults): 105 s to
+load the first time, then **188 s to paint** on the M5 Pro (12.6 GB peak in MLX; it remeshes to
+~40k faces first, which needs `pymeshlab` and `fast_simplification`), a 14 MB textured GLB. It
+solved the alignment problem (its views come from the mesh) but lost what mattered: white and
+grey patches over the dress, collar and back of the head; a younger, generic face with a grey
+patch across one eye, not Elara's; flat colour without the painting's brushwork. It sees one
+picture and invents the rest, so the likeness goes. One run, at defaults, given a cut-out on
+transparency; a centred reference on white might reduce the patches, not restore the likeness.
+Worse than baking the turnaround views as splats. (The 2mv environment needed
+`transformers==4.57.6` pinned: an unpinned `<5` resolved to 4.12, whose tokenizer needs Rust.)
+
+**Tried: SAM 3D and LiTo through mlx-spatial** (`d2cc98e`, its own Python 3.13 env via `uv
+sync`), on the turnaround's front view (512×1024, the cut-out as mask or alpha), 2026-10-02:
+
+| | SAM 3D Objects (Meta) | LiTo (Apple) |
+|---|---|---|
+| Weights | `appautomaton/sam-3d-objects-mlx`, 13.7 GB, public | `appautomaton/lito-research-mlx`, 4.4 GB, public |
+| License | SAM License | Apple research-only, non-commercial (like SHARP) |
+| Time | 170 s | ~1 min |
+| Output | 237k splats, 16 MB `.ply` | 313k splats, 78 MB `.ply` |
+| Body | good from every side; dense lace, saturated blue | clean all round: bodice buttons, collar, cuffs, skirt, boots |
+| Face | poor: pale and mask-like, red-rimmed eyes and lips | best of the single-picture models: clear at 35°, a clean profile at 70° (eye, nose, lips, ear, bun) with no seam; a soft smear across the eyes from the front |
+| Back of the head | dark hair | the bun, with a grey patch |
+
+LiTo gave the first clean side face of all the trials, from one picture in about a minute; the
+turnaround bake's face was sharper from the front to ~30°. A hybrid (LiTo's shape and profile with
+the front view baked onto its face) would combine them. Tooling: SAM 3D's script only writes under
+its own `outputs/` folder; both write splats turned differently from three.js's axes (both stand up
+with −90° about x; SAM 3D then faces +z, LiTo +x).
+
+**Parked: TRELLIS.2.** Its weights (`microsoft/TRELLIS.2-4B`, 15 GB) download and validate, but it
+also needs DINOv3 (`facebook/dinov3-vitl16-pretrain-lvd1689m`), gated by Meta with manual approval,
+and RMBG-2.0 (`briaai/RMBG-2.0`, gated, non-commercial) for RGB input; an RGBA input skips RMBG.
+
+[image-to-3dlab](https://github.com/Bingeljell/image-to-3dlab) is a local app running TRELLIS.2,
+Hunyuan3D, Pixal3D and SF3D on Apple Silicon side by side. Order to try: TRELLIS.2 and SAM 3D (one
+mlx-spatial install) on the turnaround's front view, and Hunyuan3D 2.1's painter on the 2mv mesh,
+which keeps the multi-view shape and lets a painter that sees the mesh texture it.
+
 ## Could not verify
 
 - SHARP's timing and peak memory on Apple Silicon through MLX or MPS (only the Core ML port's
