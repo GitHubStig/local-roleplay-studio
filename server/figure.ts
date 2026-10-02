@@ -23,6 +23,24 @@ export interface FigureMaker {
 
 const SCRIPT = new URL('../figure/make.py', import.meta.url)
 
+const LITO = new URL('../figure/lito.py', import.meta.url)
+
+/** Runs Apple's LiTo once per figure (`figure/lito.py`); `command` replaces it in tests. */
+export function litoFigureMaker(opts: { command?: string[] } = {}): FigureMaker {
+  return {
+    async make(req, signal, onDownload) {
+      const result = await runModelScript(
+        opts.command ?? ['uv', 'run', '--quiet', LITO.pathname],
+        ['--image', req.image, '--out', req.out],
+        'LiTo',
+        signal,
+        onDownload,
+      )
+      return { splats: result.splats as number }
+    },
+  }
+}
+
 /** Runs TripoSplat once per figure; `command` replaces `uv run figure/make.py` in tests. */
 export function tripoFigureMaker(opts: { command?: string[] } = {}): FigureMaker {
   return {

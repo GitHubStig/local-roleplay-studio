@@ -94,8 +94,10 @@ export interface RoleplayFrame {
   thoughtSpeech?: Speech
   /** The picture as a 2.5D scene; a re-render drops it. */
   scene?: Scene
-  /** The person in the picture lifted out as a 3D figure; a re-render drops it. */
+  /** The person in the picture lifted out as a 3D figure (TripoSplat); a re-render drops it. */
   figure?: Figure
+  /** The same, made with Apple's LiTo; a re-render drops it. */
+  lito?: Figure
   createdAt: string
 }
 
@@ -213,6 +215,7 @@ export type JobKind =
   | 'speak-thought'
   | 'scene'
   | 'figure'
+  | 'lito'
 
 /** A queued, running or failed job. Finished jobs drop off the list. */
 export interface Job {

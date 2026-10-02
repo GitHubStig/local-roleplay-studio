@@ -7,7 +7,7 @@ import { dirScenarioLibrary } from './scenario.ts'
 import { dirSessionStore } from './session.ts'
 import { fileSettingsStore } from './settings.ts'
 import { ollamaTextModel } from './textModel.ts'
-import { tripoFigureMaker } from './figure.ts'
+import { litoFigureMaker, tripoFigureMaker } from './figure.ts'
 import { sharpSceneMaker } from './scene.ts'
 import { voiceService } from './voice.ts'
 
@@ -34,6 +34,8 @@ const handler = createHandler({
   scene: Deno.env.get('SCENES') === 'off' ? undefined : sharpSceneMaker(),
   // FIGURES=off runs without TripoSplat.
   figure: Deno.env.get('FIGURES') === 'off' ? undefined : tripoFigureMaker(),
+  // LITO=off runs without Apple's LiTo.
+  lito: Deno.env.get('LITO') === 'off' ? undefined : litoFigureMaker(),
 })
 
 Deno.serve({ port }, handler)

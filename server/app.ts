@@ -50,6 +50,8 @@ export interface AppDeps {
   scene?: SceneMaker
   /** Makes Roleplay people into 3D figures; without it, there are none. */
   figure?: FigureMaker
+  /** The same with Apple's LiTo. */
+  lito?: FigureMaker
   /** Saved quantized copies of Image Models, listed and deleted from Settings. */
   quantized?: QuantizedStore
   newSessionId?: () => string
@@ -66,8 +68,11 @@ const IMAGE_FILE = /^frame-\d+(-[0-9a-f]{8})?(-2048)?\.(png|svg)$/
  * and spoken thoughts (`thought-3-…`): MP3, or WAV from before 2026-10-02.
  */
 const AUDIO_FILE = /^(voice-[0-9a-f]{8}\.wav|(speech|thought)-\d+-[0-9a-f]{8}\.(mp3|wav))$/
-/** A Roleplay Frame's 2.5D scene (`scene-3-1a2b3c4d.ply`, SHARP) or 3D figure (`figure-3-…`, TripoSplat). */
-const SCENE_FILE = /^(scene|figure)-\d+-[0-9a-f]{8}\.ply$/
+/**
+ * A Roleplay Frame's 2.5D scene (`scene-3-1a2b3c4d.ply`, SHARP) or 3D figure (`figure-3-…`,
+ * TripoSplat; `lito-3-…`, LiTo).
+ */
+const SCENE_FILE = /^(scene|figure|lito)-\d+-[0-9a-f]{8}\.ply$/
 const CONTENT_TYPES: Record<string, string> = {
   '.png': 'image/png',
   '.svg': 'image/svg+xml',
@@ -256,6 +261,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     voice: deps.voice,
     scene: deps.scene,
     figure: deps.figure,
+    lito: deps.lito,
   })
   /** Roleplays' queued pictures, renders and upscales. */
   const roleplayJobs = new RoleplayJobs({

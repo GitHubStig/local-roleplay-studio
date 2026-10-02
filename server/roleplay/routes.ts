@@ -155,7 +155,7 @@ export function roleplayRoutes(ctx: RoleplayRouteContext): Route[] {
       if (kind === 'speak-thought' && !spokenText(session.frames[index], 'thought')) {
         return error(`Frame ${index} has no thought to say aloud`, 409)
       }
-      if ((kind === 'scene' || kind === 'figure') && !session.frames[index].image) {
+      if (['scene', 'figure', 'lito'].includes(kind) && !session.frames[index].image) {
         return error(`Frame ${index} has no picture yet`, 409)
       }
       ctx.jobs.enqueue(session, kind, index)

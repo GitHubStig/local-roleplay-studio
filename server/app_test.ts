@@ -49,6 +49,7 @@ interface SetupOptions {
   voice?: VoiceEngine
   scene?: SceneMaker
   figure?: FigureMaker
+  lito?: FigureMaker
   quantized?: QuantizedStore
   settings?: Partial<Settings>
 }
@@ -74,6 +75,7 @@ function setup(opts: SetupOptions = {}) {
     voice: opts.voice,
     scene: opts.scene,
     figure: opts.figure,
+    lito: opts.lito,
     quantized: opts.quantized,
     newSessionId: () => `s${++sessionCount}`,
     randomSeed: () => 1234,
@@ -1132,6 +1134,30 @@ Deno.test('A figure lifted from a Frame is served, and goes with a re-render', (
     await settled(call)
     frame = (await (await call('GET', '/api/sessions/s1')).json()).frames[0]
     assertEquals(frame.figure, undefined)
+    assertEquals((await call('GET', `/api/sessions/s1/images/${file}`)).status, 404)
+  }))
+
+Deno.test('A LiTo figure is kept beside the TripoSplat one, served, and goes with a re-render', () =>
+  withTempDir(async (root) => {
+    const figure = fakeFigureMaker(), lito = fakeFigureMaker()
+    const { call } = await roleplayWithArt(root, [artBody], { figure, lito })
+    const job = (kind: string) =>
+      call('POST', '/api/sessions/s1/roleplay/jobs', { kind, frameIndex: 0 })
+    assertEquals((await job('lito')).status, 409)
+    for (const kind of ['picture', 'render', 'figure', 'lito']) {
+      await job(kind)
+      assertEquals(await settled(call), [])
+    }
+    let frame = (await (await call('GET', '/api/sessions/s1')).json()).frames[0]
+    assertMatch(frame.figure.file, /^figure-0-[0-9a-f]{8}\.ply$/)
+    assertMatch(frame.lito.file, /^lito-0-[0-9a-f]{8}\.ply$/)
+    assertEquals([figure.made.length, lito.made.length], [1, 1])
+    assertEquals((await call('GET', `/api/sessions/s1/images/${frame.lito.file}`)).status, 200)
+    const file = frame.lito.file
+    await job('render')
+    await settled(call)
+    frame = (await (await call('GET', '/api/sessions/s1')).json()).frames[0]
+    assertEquals([frame.figure, frame.lito], [undefined, undefined])
     assertEquals((await call('GET', `/api/sessions/s1/images/${file}`)).status, 404)
   }))
 

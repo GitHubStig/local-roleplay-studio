@@ -63,6 +63,8 @@ export interface RoleplayDeps {
   scene?: SceneMaker
   /** TripoSplat, when 3D figures are available. */
   figure?: FigureMaker
+  /** Apple's LiTo, when its figures are available. */
+  lito?: FigureMaker
   /** For rendering pictures, through the render queue every Session shares. */
   imageGenerator: ImageGenerator
   renderQueue?: RenderQueue
@@ -354,20 +356,22 @@ export async function renderRoleplayFrame(
     let replaced: (string | undefined)[] = []
     let scene: string | undefined
     let figure: string | undefined
+    let lito: string | undefined
     const updated = await updateSession(deps.store, session.id, (latest) => {
       const current = latest.frames[index]
       if (!current) throw new GoneError(`Frame ${index} no longer exists`)
-      const { stale: _, upscaled: __, scene: ___, figure: ____, ...rest } = current
+      const { stale: _, upscaled: __, scene: ___, figure: ____, lito: _____, ...rest } = current
       rendered = { ...rest, image, renderTimings }
       replaced = [current.image ?? undefined, current.upscaled]
       scene = current.scene?.file
       figure = current.figure?.file
+      lito = current.lito?.file
       return { ...latest, frames: latest.frames.map((f) => (f.index === index ? rendered : f)) }
     })
     for (const old of replaced) {
       if (old && old !== image) await removeImage(dir, old.replace(/\.\w+$/, ''))
     }
-    for (const made of [scene, figure]) {
+    for (const made of [scene, figure, lito]) {
       if (made) await Deno.remove(join(dir, made)).catch(() => {})
     }
     emit({ type: 'rendered', frame: rendered, session: updated })
@@ -396,7 +400,9 @@ export async function undoLatestExchange(
   for (const file of [latest.image, latest.upscaled]) {
     if (file) await removeImage(store.dir(session.id), file.replace(/\.\w+$/, ''))
   }
-  for (const made of [latest.speech, latest.thoughtSpeech, latest.scene, latest.figure]) {
+  for (
+    const made of [latest.speech, latest.thoughtSpeech, latest.scene, latest.figure, latest.lito]
+  ) {
     if (made) await Deno.remove(join(store.dir(session.id), made.file)).catch(() => {})
   }
   return updated

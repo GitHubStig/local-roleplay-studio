@@ -27,7 +27,7 @@ import { updateSession } from './update.ts'
 /**
  * `voice` designs a new take of the Character's voice; `speak` voices one Frame's dialogue, and
  * `speak-thought` its thought; `scene` makes its picture into a 2.5D scene (SHARP); `figure` lifts
- * the person in its picture out as a 3D figure (TripoSplat).
+ * the person in its picture out as a 3D figure (TripoSplat), and `lito` does so with Apple's LiTo.
  */
 export type JobKind =
   | 'picture'
@@ -38,6 +38,7 @@ export type JobKind =
   | 'speak-thought'
   | 'scene'
   | 'figure'
+  | 'lito'
 export const JOB_KINDS: readonly JobKind[] = [
   'picture',
   'render',
@@ -47,6 +48,7 @@ export const JOB_KINDS: readonly JobKind[] = [
   'speak-thought',
   'scene',
   'figure',
+  'lito',
 ]
 
 export interface Job {
@@ -219,7 +221,9 @@ export class RoleplayJobs {
         await speakFrame(voiceDeps, session, job.frameIndex, emit, signal, part)
       }
     } else if (job.kind === 'figure') {
-      await liftFigure(withDeps, session, job.frameIndex, emit, signal)
+      await liftFigure(withDeps, session, job.frameIndex, emit, signal, 'triposplat')
+    } else if (job.kind === 'lito') {
+      await liftFigure(withDeps, session, job.frameIndex, emit, signal, 'lito')
     } else if (job.kind === 'scene') {
       await makeScene(withDeps, session, job.frameIndex, emit, signal)
     } else if (job.kind === 'render') {

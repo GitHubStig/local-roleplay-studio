@@ -60,6 +60,11 @@ The vocabulary (Scenario, Session, Image Prompt, Frame, Action, …) is defined 
   its weights (4.2 GB, Hugging Face's [VAST-AI/TripoSplat](https://huggingface.co/VAST-AI/TripoSplat))
   with the first figure; `uv run figure/make.py --download` fetches them ahead of time. Set
   `FIGURES=off` to run without it.
+- **LiTo figures (optional):** uv runs Apple's LiTo through mlx-spatial (`figure/lito.py`, Python
+  3.13, fetched by uv), cutting the person out with TripoSplat's BiRefNet first. Its weights (4.4 GB,
+  [appautomaton/lito-research-mlx](https://huggingface.co/appautomaton/lito-research-mlx), Apple's
+  research-only, non-commercial license) download with the first figure;
+  `uv run figure/lito.py --download` fetches them ahead of time. Set `LITO=off` to run without it.
 - **Saved quantized copies** of Image Models (with Quantize on in Settings) are made by the app on
   first use, 13–22 GB each, in `models/quantized/` in this folder (gitignored); Settings lists them
   to delete.
@@ -95,6 +100,7 @@ or delete it.
 | `IMAGE_GENERATOR` | (mflux) | Set to `placeholder` to render SVG cards instead of running mflux, for working without a GPU |
 | `VOICES` | (on) | Set to `off` to leave Roleplay Characters silent, without starting the voice service |
 | `SCENES` | (on) | Set to `off` to run without SHARP: its button then fails with a reason |
+| `LITO` | (on) | Set to `off` to run without LiTo: its button then fails with a reason |
 | `FIGURES` | (on) | Set to `off` to run without TripoSplat: its button then fails with a reason |
 
 The web app's dev server is pinned to port **5180** and fails, rather than picking another port,

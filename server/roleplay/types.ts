@@ -108,8 +108,10 @@ export interface RoleplayFrame {
   thoughtSpeech?: Speech
   /** The picture made into a 3D scene, once asked for; a re-render drops it. */
   scene?: Scene
-  /** The person in the picture lifted out as a full 3D figure; a re-render drops it. */
+  /** The person in the picture lifted out as a full 3D figure (TripoSplat); a re-render drops it. */
   figure?: Figure
+  /** The same, made with Apple's LiTo instead; a re-render drops it. */
+  lito?: Figure
   createdAt: string
 }
 
@@ -129,7 +131,7 @@ export interface Scene {
   timings: { queued?: number; scene: number }
 }
 
-/** A person as a full 3D figure of Gaussian splats, back included (TripoSplat). */
+/** A person as a full 3D figure of Gaussian splats, back included (TripoSplat or LiTo). */
 export interface Figure {
   /** `.ply` file inside the Session directory. */
   file: string

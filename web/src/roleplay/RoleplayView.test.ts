@@ -605,7 +605,7 @@ describe('RoleplayView', () => {
     expect(wrapper.find('[data-frame-job] [data-retry]').exists()).toBe(false)
   })
 
-  it('offers each picture in 3D by model: SHARP for the scene, TripoSplat for the person', async () => {
+  it('offers each picture in 3D by model: SHARP for the scene, TripoSplat and LiTo for the person', async () => {
     const rendered = { ...frame(0, null, 'Get inside.'), image: 'frame-0-aaaaaaaa.png' }
     vi.mocked(api.getSession).mockResolvedValue(roleplaySession([rendered]))
     vi.mocked(roleplay.queueJob).mockResolvedValue([
@@ -614,6 +614,7 @@ describe('RoleplayView', () => {
     const { wrapper } = await mountIt()
     expect(wrapper.find('[data-scene-button]').text()).toBe('SHARP')
     expect(wrapper.find('[data-figure-button]').text()).toBe('TripoSplat')
+    expect(wrapper.find('[data-lito-button]').text()).toBe('LiTo')
     await wrapper.find('[data-scene-button]').trigger('click')
     await flushPromises()
     expect(roleplay.queueJob).toHaveBeenCalledWith('r1', 'scene', 0)
@@ -621,6 +622,8 @@ describe('RoleplayView', () => {
     expect(wrapper.find('[data-scene-button]').attributes('disabled')).toBeDefined()
     await wrapper.find('[data-figure-button]').trigger('click')
     expect(roleplay.queueJob).toHaveBeenLastCalledWith('r1', 'figure', 0)
+    await wrapper.find('[data-lito-button]').trigger('click')
+    expect(roleplay.queueJob).toHaveBeenLastCalledWith('r1', 'lito', 0)
     wrapper.unmount()
 
     // Once made, each is viewed; a scene made before the upscale can be made again from it.
@@ -640,7 +643,13 @@ describe('RoleplayView', () => {
       timings: { figure: 70 },
     }
     vi.mocked(api.getSession).mockResolvedValue(
-      roleplaySession([{ ...rendered, upscaled: 'frame-0-aaaaaaaa-2048.png', scene, figure }]),
+      roleplaySession([{
+        ...rendered,
+        upscaled: 'frame-0-aaaaaaaa-2048.png',
+        scene,
+        figure,
+        lito: { ...figure, file: 'lito-0-dddddddd.ply' },
+      }]),
     )
     vi.mocked(roleplay.listJobs).mockResolvedValue([])
     const again = (await mountIt()).wrapper
@@ -654,6 +663,10 @@ describe('RoleplayView', () => {
     await again.find('[data-view-figure]').trigger('click')
     await flushPromises()
     expect(viewers()[1].text()).toContain('Frame 0 · TripoSplat, 3D')
+    expect(again.find('[data-lito-button]').exists()).toBe(false)
+    await again.find('[data-view-lito]').trigger('click')
+    await flushPromises()
+    expect(viewers()[1].text()).toContain('Frame 0 · LiTo, 3D')
   })
 
   it('steps through the rendered Frames in the viewer, scrolling the conversation to each', async () => {

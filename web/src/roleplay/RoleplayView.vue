@@ -92,6 +92,7 @@ const JOB_NAMES: Record<JobKind, string> = {
   'speak-thought': 'Listen to thought',
   scene: 'SHARP',
   figure: 'TripoSplat',
+  lito: 'LiTo',
 }
 
 /** What a job is doing, in a few words. */
@@ -110,7 +111,7 @@ function jobStatus(job: Job): string {
   }
   if (job.phase === 'queued') return 'Waiting for another render…'
   if (job.kind === 'scene') return 'Making the 2.5D scene…'
-  if (job.kind === 'figure') return 'Making the 3D figure…'
+  if (job.kind === 'figure' || job.kind === 'lito') return 'Making the 3D figure…'
   const doing = job.kind === 'upscale' ? 'Upscaling to 2048 px…' : 'Rendering…'
   return job.progress ? `${doing} step ${job.progress.step} of ${job.progress.total}` : doing
 }
@@ -223,12 +224,14 @@ const sceneView = computed(() => {
   return { ...frame.scene, src: imageUrl(session.value.id, frame.scene.file), index: frame.index }
 })
 
-/** The Frame whose figure is open, if any. */
-const viewingFigure = ref<number | null>(null)
+/** The figure open, if any: which Frame's, and which model made it. */
+const viewingFigure = ref<{ index: number; model: 'triposplat' | 'lito' } | null>(null)
 const figureView = computed(() => {
-  const frame = session.value?.frames.find((f) => f.index === viewingFigure.value)
-  if (!frame?.figure || !session.value) return null
-  return { src: imageUrl(session.value.id, frame.figure.file), label: `Frame ${frame.index}` }
+  const open = viewingFigure.value
+  const frame = session.value?.frames.find((f) => f.index === open?.index)
+  const figure = open?.model === 'lito' ? frame?.lito : frame?.figure
+  if (!open || !frame || !figure || !session.value) return null
+  return { src: imageUrl(session.value.id, figure.file), label: `Frame ${frame.index}`, model: open.model }
 })
 
 // --- Voices: the Character speaks their lines.
@@ -843,7 +846,7 @@ async function saveCastDraft(): Promise<boolean> {
                         class="action"
                         title="The person in the picture in 3D, made with VAST's TripoSplat: turns all the way round"
                         data-view-figure
-                        @click="viewingFigure = frame.index"
+                        @click="viewingFigure = { index: frame.index, model: 'triposplat' }"
                       >
                         View TripoSplat
                       </button>
@@ -857,6 +860,27 @@ async function saveCastDraft(): Promise<boolean> {
                         @click="queue('figure', frame.index)"
                       >
                         TripoSplat
+                      </button>
+                      <button
+                        v-if="frame.lito"
+                        type="button"
+                        class="action"
+                        title="The person in the picture in 3D, made with Apple's LiTo: turns all the way round"
+                        data-view-lito
+                        @click="viewingFigure = { index: frame.index, model: 'lito' }"
+                      >
+                        View LiTo
+                      </button>
+                      <button
+                        v-else-if="frame.image"
+                        type="button"
+                        class="action"
+                        :disabled="hasJob(frame.index, 'lito')"
+                        title="Experimental: lift the person in the picture out as a 3D figure with Apple's LiTo (research-only), which turns all the way round (a few minutes). Best with one person, not overlapped by anyone."
+                        data-lito-button
+                        @click="queue('lito', frame.index)"
+                      >
+                        LiTo
                       </button>
                     </p>
                     <details v-if="frame.promptText" class="text-muted" data-image-prompt>
@@ -1271,6 +1295,7 @@ async function saveCastDraft(): Promise<boolean> {
     <SceneViewer
       :src="figureView?.src ?? null"
       :label="figureView?.label"
+      :model="figureView?.model"
       figure
       @close="viewingFigure = null"
     />

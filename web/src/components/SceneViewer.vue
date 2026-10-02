@@ -20,6 +20,8 @@ const props = defineProps<{
   label?: string
   /** A person as a figure: orbited round its middle, from the front. */
   figure?: boolean
+  /** Which model made the figure: each writes its own axes. */
+  model?: 'triposplat' | 'lito'
 }>()
 const emit = defineEmits<{ close: [] }>()
 
@@ -59,8 +61,11 @@ async function open(src: string) {
     controls.enableDamping = true
     controls.maxDistance = pivot * 4
     const mesh = new SplatMesh({ url: src })
-    // Both write the OpenCV camera's axes (y down, looking along +z); three.js looks along -z.
-    mesh.quaternion.set(1, 0, 0, 0)
+    // SHARP and TripoSplat write the OpenCV camera's axes (y down, looking along +z); three.js looks
+    // along -z, so they're turned half round x. LiTo writes its own, standing along z: a quarter
+    // turn back about x stands it up, facing +x like TripoSplat's.
+    if (props.model === 'lito') mesh.quaternion.setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI / 2)
+    else mesh.quaternion.set(1, 0, 0, 0)
     scene.add(mesh)
 
     // A scene orbits a point `pivot` ahead of the picture's camera; a figure, its own middle.
@@ -158,7 +163,7 @@ const FIGURE_TURNS = [
     <div v-if="src" class="flex h-full w-full flex-col gap-2 p-4 text-sm text-white/80 sm:p-8">
       <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
         <span v-if="label" class="text-white">
-          {{ label }} · {{ figure ? 'TripoSplat, 3D' : 'SHARP, 2.5D' }}
+          {{ label }} · {{ figure ? `${model === 'lito' ? 'LiTo' : 'TripoSplat'}, 3D` : 'SHARP, 2.5D' }}
         </span>
         <span class="tabular-nums" data-turned>
           Turned {{ turned.across }}° across, {{ turned.up }}° up
@@ -189,7 +194,7 @@ const FIGURE_TURNS = [
       <p class="text-white/60">
         Drag to turn, scroll to zoom, right-drag to move.
         {{ figure
-          ? 'TripoSplat invents their back and sides from one picture.'
+          ? `${model === 'lito' ? 'LiTo' : 'TripoSplat'} invents their back and sides from one picture.`
           : 'SHARP fills in what the picture never showed, so the further you turn, the more it invents.' }}
       </p>
     </div>

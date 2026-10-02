@@ -211,6 +211,14 @@ under `/api/sessions/:id/roleplay/` ([ADR 0007](adr/0007-roleplay-is-a-conversat
      it's best with one person, unobstructed (docs/research/image-to-3d.md, "TripoSplat trial").
      ~75 s and ~11 GB. The viewer orbits a figure round its middle from the front, with turns to
      the sides and the back.
+   - **LiTo** (Apple, `figure/lito.py`, through mlx-spatial at a pinned commit) does the same job:
+     its button sits beside TripoSplat's, and its figure is kept apart (`frame.lito`,
+     `lito-<index>-….ply`, its own job kind `lito`). The script cuts the person out with
+     TripoSplat's BiRefNet (LiTo reads the picture's alpha), runs LiTo, and scales the result to
+     ~1 unit tall; LiTo writes its own axes, so the viewer stands it up with a quarter turn about x
+     instead of TripoSplat's half turn. ~400k splats with full view-dependent colour (~95 MB),
+     ~4½ min on the M5 Pro. LiTo's weights are research-only. It made the cleanest profile of the
+     figure models tried (docs/research/image-to-3d.md).
 
 The prompts are Markdown files in `server/prompts/roleplay/` (`cast.md`, `cast-request.md`,
 `character.md`, `opening-request.md`, `limits.md`, `limits-adults-only.md`, and Suggest's
@@ -433,14 +441,14 @@ All under `/api`; the Vite dev server proxies it to the Deno server.
 | `POST /sessions/:id/cancel` | Cancel the Frame in progress |
 | `POST /sessions/:id/frames/:index/upscale` | Either kind: upscale one rendered Frame's image to 2048 px, streaming progress then `upscaled` (`session`); `409` if it has no image or is already upscaled |
 | `DELETE /sessions/:id/frames/:index` | Undo the latest Frame; `:index` must name it (`409` otherwise, and for the Opening Frame or while a Frame runs) |
-| `GET /sessions/:id/images/:file` | A Frame's image, a Roleplay's audio (`voice-…wav`, `speech-…mp3`, `thought-…mp3`, or `.wav` from before), or a Roleplay Frame's 3D scene (`scene-…ply`), or a 3D figure (`figure-…ply`) |
+| `GET /sessions/:id/images/:file` | A Frame's image, a Roleplay's audio (`voice-…wav`, `speech-…mp3`, `thought-…mp3`, or `.wav` from before), or a Roleplay Frame's 3D scene (`scene-…ply`), or a 3D figure (`figure-…ply`, `lito-…ply`) |
 | `POST /sessions/:id/roleplay/cast` | Roleplay: write (or, before it begins, rewrite) the Cast, streaming `phase`, `thinking`, then `cast` (`cast`, `session`) |
 | `POST /sessions/:id/roleplay/begin` | Roleplay: the opening Reply, streaming `reply-part` per field, then `replied` (`frame`, `session`) |
 | `POST /sessions/:id/roleplay/messages` | Roleplay: send `{ text }`, streaming `reply-part` (`key`, `value`) per field, then `replied`, or `declined` (`message`) |
 | `POST /sessions/:id/roleplay/suggest` | Roleplay: suggest a Message from `{ draft? }`, streaming `suggestion-part` (`text`, all of it so far), then `suggestion` (`text`, tidied); nothing is saved |
 | `DELETE /sessions/:id/roleplay/frames/:index` | Roleplay: undo the latest exchange (`409` for any other, and for the opening) |
-| `GET /sessions/:id/roleplay/jobs` | Roleplay: its background jobs (picture, render, upscale, voice, speak, scene, figure): running, queued, then failed, each with its `phase`, `progress` or `error` |
-| `POST /sessions/:id/roleplay/jobs` | Roleplay: queue `{ kind: "picture" \| "render" \| "upscale" \| "voice" \| "speak" \| "speak-thought" \| "scene" \| "figure", frameIndex }` (`voice` designs a new take of the Character's voice; `speak-thought` speaks the Frame's thought, whispered; `scene` makes the picture into a 2.5D scene (SHARP); `figure` lifts its person out as a 3D figure (TripoSplat); `409` to speak a Frame with nothing to say aloud, or no thought, or to make a scene of one with no picture); returns the queue (asking twice for the same job queues it once) |
+| `GET /sessions/:id/roleplay/jobs` | Roleplay: its background jobs (picture, render, upscale, voice, speak, scene, figure, lito): running, queued, then failed, each with its `phase`, `progress` or `error` |
+| `POST /sessions/:id/roleplay/jobs` | Roleplay: queue `{ kind: "picture" \| "render" \| "upscale" \| "voice" \| "speak" \| "speak-thought" \| "scene" \| "figure" \| "lito", frameIndex }` (`voice` designs a new take of the Character's voice; `speak-thought` speaks the Frame's thought, whispered; `scene` makes the picture into a 2.5D scene (SHARP); `figure` lifts its person out as a 3D figure (TripoSplat), and `lito` does so with LiTo; `409` to speak a Frame with nothing to say aloud, or no thought, or to make a scene of one with no picture); returns the queue (asking twice for the same job queues it once) |
 | `POST /sessions/:id/roleplay/jobs/:job/retry` | Roleplay: put a failed job back at the end of the queue (`404` if there's no such failed job) |
 | `DELETE /sessions/:id/roleplay/jobs/:job` | Roleplay: cancel a queued or running job, or dismiss a failed one |
 | `PUT /sessions/:id/roleplay/look` | Roleplay: replace the Look, `{ subject, style }`, rewriting every pictured Frame (`400` if incomplete, `422` if it crosses a Limit) |
