@@ -2,7 +2,7 @@ import { error, json, readJson, type Route } from '../http.ts'
 import type { StreamEvent } from '../app.ts'
 import type { Scenario } from '../scenario.ts'
 import type { Session, SessionStore } from '../session.ts'
-import { JOB_KINDS, type JobKind, type RoleplayJobs } from './jobs.ts'
+import { JOB_KINDS, type JobKind, type JobOptions, type RoleplayJobs } from './jobs.ts'
 import {
   beginRoleplay,
   type RoleplayDeps,
@@ -142,7 +142,9 @@ export function roleplayRoutes(ctx: RoleplayRouteContext): Route[] {
       const session = await ctx.store.load(p.id!)
       if (!session) return error('Session not found', 404)
       if (session.kind !== 'roleplay') return error('Only a Roleplay has this', 409)
-      const body = await readJson(req) as { kind?: unknown; frameIndex?: unknown } | undefined
+      const body = await readJson(req) as
+        | { kind?: unknown; frameIndex?: unknown; who?: unknown; framing?: unknown }
+        | undefined
       const kind = body?.kind as JobKind
       if (!JOB_KINDS.includes(kind)) {
         return error(`kind must be one of: ${JOB_KINDS.join(', ')}`, 400)
@@ -155,10 +157,21 @@ export function roleplayRoutes(ctx: RoleplayRouteContext): Route[] {
       if (kind === 'speak-thought' && !spokenText(session.frames[index], 'thought')) {
         return error(`Frame ${index} has no thought to say aloud`, 409)
       }
-      if (kind === 'scene' && !session.frames[index].image) {
+      if ((kind === 'scene' || kind === 'figure') && !session.frames[index].image) {
         return error(`Frame ${index} has no picture yet`, 409)
       }
-      ctx.jobs.enqueue(session, kind, index)
+      let options: JobOptions | undefined
+      if (kind === 'portrait') {
+        const { who, framing } = body ?? {}
+        if (who !== 'character' && who !== 'persona') {
+          return error('who must be character or persona', 400)
+        }
+        if (framing !== 'full' && framing !== 'waist') {
+          return error('framing must be full or waist', 400)
+        }
+        options = { who, framing }
+      }
+      ctx.jobs.enqueue(session, kind, index, options)
       return json(ctx.jobs.list(session.id), 201)
     }],
 

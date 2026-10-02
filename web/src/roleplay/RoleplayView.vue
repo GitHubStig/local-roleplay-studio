@@ -23,7 +23,9 @@ import {
   beginRoleplay,
   cancelJob,
   type Job,
+  type Framing,
   type JobKind,
+  type Who,
   listJobs,
   queueJob,
   retryJob,
@@ -77,7 +79,10 @@ const openJobs = computed(() => jobs.value.filter((j) => j.status !== 'failed'))
 const runningJob = computed(() => jobs.value.find((j) => j.status === 'running') ?? null)
 /** A Frame's jobs; designing the voice is the Roleplay's, shown in the Voice panel instead. */
 const jobsFor = (index: number) =>
-  jobs.value.filter((j) => j.frameIndex === index && j.kind !== 'voice')
+  jobs.value.filter((j) => j.frameIndex === index && j.kind !== 'voice' && j.kind !== 'portrait')
+/** The job making a person's figure from a portrait, shown in Look & Cast. */
+const portraitJob = (who: Who) =>
+  jobs.value.find((j) => j.kind === 'portrait' && j.options?.who === who) ?? null
 const voiceJob = computed(() => jobs.value.find((j) => j.kind === 'voice') ?? null)
 /** A job of this kind is already queued or running on this Frame. */
 const hasJob = (index: number, kind: JobKind) =>
@@ -90,7 +95,9 @@ const JOB_NAMES: Record<JobKind, string> = {
   voice: 'Voice',
   speak: 'Listen',
   'speak-thought': 'Listen to thought',
-  scene: '3D',
+  scene: '2.5D',
+  figure: 'Figure',
+  portrait: 'Figure',
 }
 
 /** What a job is doing, in a few words. */
@@ -108,14 +115,20 @@ function jobStatus(job: Job): string {
     return currentLook.value ? 'Picturing this moment…' : 'Writing the Look, then picturing…'
   }
   if (job.phase === 'queued') return 'Waiting for another render…'
-  if (job.kind === 'scene') return 'Making the 3D scene…'
+  if (job.kind === 'scene') return 'Making the 2.5D scene…'
+  if (job.kind === 'figure') return 'Making the 3D figure…'
+  if (job.kind === 'portrait') {
+    return job.progress
+      ? `Rendering the portrait… step ${job.progress.step} of ${job.progress.total}`
+      : 'Rendering the portrait, then the figure…'
+  }
   const doing = job.kind === 'upscale' ? 'Upscaling to 2048 px…' : 'Rendering…'
   return job.progress ? `${doing} step ${job.progress.step} of ${job.progress.total}` : doing
 }
 
-async function queue(kind: JobKind, index: number) {
+async function queue(kind: JobKind, index: number, options?: { who: Who; framing: Framing }) {
   try {
-    jobs.value = await queueJob(props.id, kind, index)
+    jobs.value = await queueJob(props.id, kind, index, ...(options ? [options] : []))
     watchJobs()
   } catch (err) {
     notice.value = { kind: 'error', text: (err as Error).message }
@@ -210,15 +223,35 @@ function stepViewer(step: number) {
   goToFrame(frame.index)
 }
 
-// --- 3D scenes: a picture made into Gaussian splats, to look around.
+// --- 2.5D scenes: a picture made into Gaussian splats, to turn a little.
 
-/** The Frame whose 3D scene is open, if any. */
+/** The Frame whose 2.5D scene is open, if any. */
 const viewingScene = ref<number | null>(null)
 const sceneView = computed(() => {
   const frame = session.value?.frames.find((f) => f.index === viewingScene.value)
   if (!frame?.scene || !session.value) return null
   return { ...frame.scene, src: imageUrl(session.value.id, frame.scene.file), index: frame.index }
 })
+
+// --- 3D figures: a person made whole in 3D, from a Frame's picture or a portrait made for it.
+
+/** The figure open in the viewer: a Frame's, or a person's from their portrait. */
+const viewingFigure = ref<{ frame: number } | { who: Who } | null>(null)
+const figureView = computed(() => {
+  const open = viewingFigure.value
+  if (!open || !session.value) return null
+  const figure = 'frame' in open
+    ? session.value.frames.find((f) => f.index === open.frame)?.figure
+    : session.value.figures?.[open.who]
+  if (!figure) return null
+  const label = 'frame' in open
+    ? `Figure from Frame ${open.frame}`
+    : open.who === 'character'
+    ? characterName.value
+    : personaName.value
+  return { src: imageUrl(session.value.id, figure.file), label }
+})
+const FRAMING_NAMES: Record<Framing, string> = { full: 'full length', waist: 'waist-up' }
 
 // --- Voices: the Character speaks their lines.
 
@@ -807,11 +840,11 @@ async function saveCastDraft(): Promise<boolean> {
                         v-if="frame.scene"
                         type="button"
                         class="action"
-                        title="Look around the picture in 3D"
+                        title="Turn a little around the picture in 2.5D"
                         data-view-scene
                         @click="viewingScene = frame.index"
                       >
-                        View in 3D
+                        View in 2.5D
                       </button>
                       <button
                         v-if="frame.scene && frame.upscaled && frame.scene.from !== frame.upscaled"
@@ -822,18 +855,39 @@ async function saveCastDraft(): Promise<boolean> {
                         data-scene-again
                         @click="queue('scene', frame.index)"
                       >
-                        Make 3D from upscale
+                        Make 2.5D from upscale
                       </button>
                       <button
                         v-else-if="!frame.scene && frame.image"
                         type="button"
                         class="action"
                         :disabled="hasJob(frame.index, 'scene')"
-                        title="Make the picture into a 3D scene with SHARP"
+                        title="Make the picture into a 2.5D scene with SHARP: turns a little, not all the way round"
                         data-scene-button
                         @click="queue('scene', frame.index)"
                       >
-                        Make 3D
+                        Make 2.5D
+                      </button>
+                      <button
+                        v-if="frame.figure"
+                        type="button"
+                        class="action"
+                        title="Look at the person in this picture all the way round"
+                        data-view-figure
+                        @click="viewingFigure = { frame: frame.index }"
+                      >
+                        View figure
+                      </button>
+                      <button
+                        v-else-if="frame.image"
+                        type="button"
+                        class="action"
+                        :disabled="hasJob(frame.index, 'figure')"
+                        title="Lift the person in this picture out as a 3D figure (TripoSplat). Best with one person in it, not overlapped."
+                        data-figure-button
+                        @click="queue('figure', frame.index)"
+                      >
+                        Lift figure
                       </button>
                     </p>
                     <details v-if="frame.promptText" class="text-muted" data-image-prompt>
@@ -1108,6 +1162,68 @@ async function saveCastDraft(): Promise<boolean> {
             Save Look
           </button>
         </form>
+        <section
+          v-if="lookDraft"
+          class="flex flex-col gap-3 border-b border-line p-4 text-sm"
+          data-figures
+        >
+          <h2 class="font-medium">
+            3D figures <span class="font-normal text-muted">· from a portrait made from the Look</span>
+          </h2>
+          <div v-for="who in (['character', 'persona'] as const)" :key="who" class="flex flex-col gap-1.5" :data-figure-who="who">
+            <p class="flex flex-wrap items-center gap-1.5">
+              <span class="mr-1">{{ who === 'character' ? characterName : personaName }}</span>
+              <button
+                v-if="session.figures?.[who]"
+                type="button"
+                class="action"
+                data-view-portrait-figure
+                @click="viewingFigure = { who }"
+              >
+                View figure
+              </button>
+              <span v-if="session.figures?.[who]?.framing" class="text-xs text-muted">
+                {{ FRAMING_NAMES[session.figures[who]!.framing!] }}
+              </span>
+            </p>
+            <p v-if="portraitJob(who)" class="flex items-center gap-2 text-xs" data-portrait-job>
+              <span
+                :class="{
+                  'animate-pulse text-info': portraitJob(who)!.status === 'running',
+                  'text-muted': portraitJob(who)!.status === 'queued',
+                  'text-danger': portraitJob(who)!.status === 'failed',
+                }"
+              >{{ jobStatus(portraitJob(who)!) }}</span>
+              <button
+                type="button"
+                class="text-danger underline-offset-2 hover:underline"
+                @click="dropJob(portraitJob(who)!)"
+              >
+                {{ portraitJob(who)!.status === 'failed' ? 'Dismiss' : 'Cancel' }}
+              </button>
+            </p>
+            <p v-else class="flex flex-wrap items-center gap-1.5">
+              <span class="text-xs text-muted">{{ session.figures?.[who] ? 'Make again:' : 'Make:' }}</span>
+              <button
+                v-for="framing in (['full', 'waist'] as const)"
+                :key="framing"
+                type="button"
+                class="action"
+                :title="framing === 'full'
+                  ? 'Their whole body, clean from every side; the face is small'
+                  : 'A clearer face, no legs; the back of the head may show a ghost of the face'"
+                :data-portrait="framing"
+                @click="queue('portrait', 0, { who, framing })"
+              >
+                {{ framing === 'full' ? 'Full length' : 'Waist-up' }}
+              </button>
+            </p>
+          </div>
+          <p class="text-xs text-muted">
+            Renders them alone, in what they wear in the latest picture, then builds them in 3D with
+            TripoSplat: about three minutes.
+          </p>
+        </section>
         <form
           v-if="cast"
           class="flex flex-col gap-2 border-b border-line p-4 text-sm"
@@ -1244,6 +1360,12 @@ async function saveCastDraft(): Promise<boolean> {
       :aspect="sceneView?.aspect"
       :label="sceneView ? `Frame ${sceneView.index}` : undefined"
       @close="viewingScene = null"
+    />
+    <SceneViewer
+      :src="figureView?.src ?? null"
+      :label="figureView?.label"
+      figure
+      @close="viewingFigure = null"
     />
   </div>
 </template>

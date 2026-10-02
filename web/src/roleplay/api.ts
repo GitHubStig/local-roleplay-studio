@@ -92,12 +92,34 @@ export interface RoleplayFrame {
   speech?: Speech
   /** The Character's thought, spoken (whispered) in the same voice. */
   thoughtSpeech?: Speech
-  /** The picture as a 3D scene; a re-render drops it. */
+  /** The picture as a 2.5D scene; a re-render drops it. */
   scene?: Scene
+  /** The person in the picture lifted out as a 3D figure; a re-render drops it. */
+  figure?: Figure
   createdAt: string
 }
 
-/** A Frame's picture as a 3D scene of Gaussian splats, made with SHARP. */
+/** Who in a Roleplay a figure is of, and how its portrait is framed. */
+export type Who = 'character' | 'persona'
+export type Framing = 'full' | 'waist'
+
+/** A person as a full 3D figure (TripoSplat), from a portrait made for it or a Frame's picture. */
+export interface Figure {
+  /** `.ply` file, served like the pictures. */
+  file: string
+  splats: number
+  /** The picture it was made from. */
+  from: string
+  /** For a portrait: how it was framed, and its Image Prompt. */
+  framing?: Framing
+  prompt?: string
+  timings: { queued?: number; image?: number; figure: number }
+}
+
+/**
+ * A Frame's picture as a 2.5D scene of Gaussian splats, made with SHARP: it turns a little from the
+ * picture's view, not all the way round.
+ */
 export interface Scene {
   /** `.ply` file, served like the pictures. */
   file: string
@@ -139,6 +161,8 @@ export interface RoleplaySession extends Omit<SessionBase, 'activity'> {
   lookTimings?: { text: number }
   lookThinking?: string
   voice?: RoleplayVoice
+  /** Each person as a 3D figure, made from a portrait rendered for it. */
+  figures?: Partial<Record<Who, Figure>>
   /** As for any Session, or speaking a line (audio). */
   activity?: Activity | 'audio' | null
   frames: RoleplayFrame[]
@@ -185,9 +209,10 @@ export const undoExchange = (id: string, index: number) =>
   request<RoleplaySession>(`${base(id)}/frames/${index}`, { method: 'DELETE' })
 
 /**
- * Background work on a Frame: picturing, rendering, upscaling or speaking it, or making its picture
- * into a 3D scene; `voice` designs a new take of the Character's voice (filed under the opening
- * Frame).
+ * Background work on a Frame: picturing, rendering, upscaling or speaking it, making its picture
+ * into a 2.5D scene, or lifting its person out as a 3D figure; `voice` designs a new take of the
+ * Character's voice, and `portrait` makes a person's figure from a portrait (both filed under the
+ * opening Frame).
  */
 export type JobKind =
   | 'picture'
@@ -197,12 +222,16 @@ export type JobKind =
   | 'speak'
   | 'speak-thought'
   | 'scene'
+  | 'figure'
+  | 'portrait'
 
 /** A queued, running or failed job. Finished jobs drop off the list. */
 export interface Job {
   id: string
   kind: JobKind
   frameIndex: number
+  /** A `portrait` job's person and framing. */
+  options?: { who: Who; framing: Framing }
   status: 'queued' | 'running' | 'failed'
   /** Writing (text), waiting for a render (queued), rendering (image), or speaking (audio). */
   phase?: Activity | 'audio'
@@ -215,8 +244,12 @@ export interface Job {
 export const listJobs = (id: string) => request<Job[]>(`${base(id)}/jobs`)
 
 /** Queues a job on a Frame; returns the whole queue. Asking twice for the same job queues it once. */
-export const queueJob = (id: string, kind: JobKind, frameIndex: number) =>
-  post<Job[]>(`${base(id)}/jobs`, { kind, frameIndex })
+export const queueJob = (
+  id: string,
+  kind: JobKind,
+  frameIndex: number,
+  options?: { who: Who; framing: Framing },
+) => post<Job[]>(`${base(id)}/jobs`, { kind, frameIndex, ...options })
 
 /** Puts a failed job back in the queue; returns the queue. */
 export const retryJob = (id: string, jobId: string) =>

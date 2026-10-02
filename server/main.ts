@@ -7,6 +7,7 @@ import { dirScenarioLibrary } from './scenario.ts'
 import { dirSessionStore } from './session.ts'
 import { fileSettingsStore } from './settings.ts'
 import { ollamaTextModel } from './textModel.ts'
+import { tripoFigureMaker } from './figure.ts'
 import { sharpSceneMaker } from './scene.ts'
 import { voiceService } from './voice.ts'
 
@@ -31,6 +32,8 @@ const handler = createHandler({
   voice: Deno.env.get('VOICES') === 'off' ? undefined : voiceService(),
   // SCENES=off leaves pictures flat, for working without SHARP.
   scene: Deno.env.get('SCENES') === 'off' ? undefined : sharpSceneMaker(),
+  // FIGURES=off runs without TripoSplat.
+  figure: Deno.env.get('FIGURES') === 'off' ? undefined : tripoFigureMaker(),
 })
 
 Deno.serve({ port }, handler)

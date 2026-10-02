@@ -113,17 +113,24 @@ export function fakeImageGenerator(
   opts: { fail?: boolean; hang?: boolean } = {},
 ): ImageGenerator & {
   prompts: string[]
+  sizes: string[]
   upscaled: string[]
   upscalers: string[]
 } {
   const gen = {
     prompts: [] as string[],
+    /** The size preset each was rendered at. */
+    sizes: [] as string[],
     /** The images asked to be upscaled. */
     upscaled: [] as string[],
     /** The upscaler model each was upscaled with. */
     upscalers: [] as string[],
-    async generate(req: { prompt: string; dir: string; name: string }, signal: AbortSignal) {
+    async generate(
+      req: { prompt: string; dir: string; name: string; settings: { size: string } },
+      signal: AbortSignal,
+    ) {
       gen.prompts.push(req.prompt)
+      gen.sizes.push(req.settings.size)
       signal.throwIfAborted()
       if (opts.fail) throw new Error('mflux crashed')
       if (opts.hang) {

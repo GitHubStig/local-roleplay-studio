@@ -605,7 +605,7 @@ describe('RoleplayView', () => {
     expect(wrapper.find('[data-frame-job] [data-retry]').exists()).toBe(false)
   })
 
-  it('makes a rendered picture into a 3D scene, then opens it in the 3D viewer', async () => {
+  it('makes a rendered picture into a 2.5D scene, then opens it in the viewer', async () => {
     const rendered = { ...frame(0, null, 'Get inside.'), image: 'frame-0-aaaaaaaa.png' }
     vi.mocked(api.getSession).mockResolvedValue(roleplaySession([rendered]))
     vi.mocked(roleplay.queueJob).mockResolvedValue([
@@ -616,7 +616,7 @@ describe('RoleplayView', () => {
     await wrapper.find('[data-scene-button]').trigger('click')
     await flushPromises()
     expect(roleplay.queueJob).toHaveBeenCalledWith('r1', 'scene', 0)
-    expect(wrapper.find('[data-frame-job]').text()).toContain('3D · Making the 3D scene…')
+    expect(wrapper.find('[data-frame-job]').text()).toContain('2.5D · Making the 2.5D scene…')
     expect(wrapper.find('[data-scene-button]').attributes('disabled')).toBeDefined()
     wrapper.unmount()
 
@@ -631,7 +631,7 @@ describe('RoleplayView', () => {
     await again.find('[data-view-scene]').trigger('click')
     await flushPromises()
     const viewer = again.find('[data-scene-viewer]')
-    expect(viewer.text()).toContain('Frame 0 in 3D')
+    expect(viewer.text()).toContain('Frame 0 in 2.5D')
     expect(viewer.text()).toContain("Couldn't show the scene")
     again.unmount()
 
@@ -647,6 +647,55 @@ describe('RoleplayView', () => {
     await upscaled.find('[data-scene-again]').trigger('click')
     await flushPromises()
     expect(roleplay.queueJob).toHaveBeenLastCalledWith('r1', 'scene', 0)
+  })
+
+  it('lifts a figure from a picture, and makes figures from portraits in Look & Cast', async () => {
+    const rendered = { ...frame(0, null, 'Get inside.'), image: 'frame-0-aaaaaaaa.png' }
+    vi.mocked(api.getSession).mockResolvedValue({ ...roleplaySession([rendered]), look })
+    vi.mocked(roleplay.queueJob).mockResolvedValue([])
+    const { wrapper } = await mountIt()
+    await wrapper.find('[data-figure-button]').trigger('click')
+    expect(roleplay.queueJob).toHaveBeenLastCalledWith('r1', 'figure', 0)
+
+    const persona = wrapper.find('[data-figure-who="persona"]')
+    await persona.find('[data-portrait="waist"]').trigger('click')
+    expect(roleplay.queueJob).toHaveBeenLastCalledWith('r1', 'portrait', 0, {
+      who: 'persona',
+      framing: 'waist',
+    })
+    wrapper.unmount()
+
+    // While it runs, it shows there, not on the opening Frame; once made, it can be viewed.
+    vi.mocked(roleplay.listJobs).mockResolvedValue([
+      job({
+        kind: 'portrait',
+        status: 'running',
+        phase: 'image',
+        options: { who: 'persona', framing: 'waist' },
+      }),
+    ])
+    const figure = {
+      file: 'figure-character-bbbbbbbb.ply',
+      splats: 9,
+      from: 'portrait-character-bbbbbbbb.png',
+      framing: 'full' as const,
+      timings: { figure: 70 },
+    }
+    vi.mocked(api.getSession).mockResolvedValue({
+      ...roleplaySession([rendered]),
+      look,
+      figures: { character: figure },
+    })
+    const again = (await mountIt()).wrapper
+    expect(again.find('[data-figure-who="persona"] [data-portrait-job]').text()).toContain(
+      'Rendering the portrait, then the figure…',
+    )
+    expect(again.find('[data-frame-job]').exists()).toBe(false)
+    expect(again.find('[data-figure-who="character"]').text()).toContain('full length')
+    await again.find('[data-view-portrait-figure]').trigger('click')
+    await flushPromises()
+    const viewers = again.findAll('[data-scene-viewer]')
+    expect(viewers.at(-1)!.text()).toContain('Elena in 3D')
   })
 
   it('steps through the rendered Frames in the viewer, scrolling the conversation to each', async () => {

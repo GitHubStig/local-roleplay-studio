@@ -13,6 +13,7 @@ import { activeProseLimits, crossedLimit } from '../limits.ts'
 import type { Scenario } from '../scenario.ts'
 import type { SessionStore } from '../session.ts'
 import type { TextModel } from '../textModel.ts'
+import type { FigureMaker } from '../figure.ts'
 import type { SceneMaker } from '../scene.ts'
 import type { VoiceEngine } from '../voice.ts'
 import { join } from '@std/path'
@@ -60,6 +61,8 @@ export interface RoleplayDeps {
   voice?: VoiceEngine
   /** SHARP, when 3D scenes are available. */
   scene?: SceneMaker
+  /** TripoSplat, when 3D figures are available. */
+  figure?: FigureMaker
   /** For rendering pictures, through the render queue every Session shares. */
   imageGenerator: ImageGenerator
   renderQueue?: RenderQueue
@@ -350,19 +353,23 @@ export async function renderRoleplayFrame(
     let rendered!: RoleplayFrame
     let replaced: (string | undefined)[] = []
     let scene: string | undefined
+    let figure: string | undefined
     const updated = await updateSession(deps.store, session.id, (latest) => {
       const current = latest.frames[index]
       if (!current) throw new GoneError(`Frame ${index} no longer exists`)
-      const { stale: _, upscaled: __, scene: ___, ...rest } = current
+      const { stale: _, upscaled: __, scene: ___, figure: ____, ...rest } = current
       rendered = { ...rest, image, renderTimings }
       replaced = [current.image ?? undefined, current.upscaled]
       scene = current.scene?.file
+      figure = current.figure?.file
       return { ...latest, frames: latest.frames.map((f) => (f.index === index ? rendered : f)) }
     })
     for (const old of replaced) {
       if (old && old !== image) await removeImage(dir, old.replace(/\.\w+$/, ''))
     }
-    if (scene) await Deno.remove(join(dir, scene)).catch(() => {})
+    for (const made of [scene, figure]) {
+      if (made) await Deno.remove(join(dir, made)).catch(() => {})
+    }
     emit({ type: 'rendered', frame: rendered, session: updated })
     return updated
   } catch (err) {
@@ -389,7 +396,7 @@ export async function undoLatestExchange(
   for (const file of [latest.image, latest.upscaled]) {
     if (file) await removeImage(store.dir(session.id), file.replace(/\.\w+$/, ''))
   }
-  for (const made of [latest.speech, latest.thoughtSpeech, latest.scene]) {
+  for (const made of [latest.speech, latest.thoughtSpeech, latest.scene, latest.figure]) {
     if (made) await Deno.remove(join(store.dir(session.id), made.file)).catch(() => {})
   }
   return updated

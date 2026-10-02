@@ -8,6 +8,7 @@ import { dirSessionStore } from './session.ts'
 import { DEFAULT_SETTINGS, type Settings, type SettingsStore } from './settings.ts'
 import type { TextModel } from './textModel.ts'
 import type { RoleplayModel } from './roleplay/model.ts'
+import { fakeFigureMaker, type FigureMaker } from './figure.ts'
 import { fakeSceneMaker, type SceneMaker } from './scene.ts'
 import { fakeVoiceEngine, type VoiceEngine } from './voice.ts'
 import { type QuantizedStore, quantizedStore } from './quantized.ts'
@@ -47,6 +48,7 @@ interface SetupOptions {
   roleplayModels?: Record<string, RoleplayModel>
   voice?: VoiceEngine
   scene?: SceneMaker
+  figure?: FigureMaker
   quantized?: QuantizedStore
   settings?: Partial<Settings>
 }
@@ -71,6 +73,7 @@ function setup(opts: SetupOptions = {}) {
       opts.roleplayModels?.[model] ?? opts.roleplayModel ?? scriptedRoleplayModel({}),
     voice: opts.voice,
     scene: opts.scene,
+    figure: opts.figure,
     quantized: opts.quantized,
     newSessionId: () => `s${++sessionCount}`,
     randomSeed: () => 1234,
@@ -1106,6 +1109,81 @@ Deno.test('A scene is made from the upscale when there is one', () =>
     assertMatch(frame.upscaled, /-2048\.png$/)
     assertEquals(frame.scene.from, frame.upscaled)
     assertEquals(scene.made[0].image, join(root, 's1', frame.upscaled))
+  }))
+
+Deno.test('A portrait of one person is rendered from the Look and made into their figure', () =>
+  withTempDir(async (root) => {
+    const figure = fakeFigureMaker()
+    const images = fakeImageGenerator()
+    const { call } = await roleplayWithArt(root, [artBody], { figure, imageGenerator: images })
+    const portrait = (who: unknown, framing: unknown) =>
+      call('POST', '/api/sessions/s1/roleplay/jobs', {
+        kind: 'portrait',
+        frameIndex: 0,
+        who,
+        framing,
+      })
+    assertEquals((await portrait('kael', 'full')).status, 400)
+    assertEquals((await portrait('character', 'head')).status, 400)
+
+    // Without a Look there's nothing to draw them from.
+    await portrait('character', 'full')
+    const [failed] = await settled(call)
+    assertMatch(failed.error, /Picture a Frame first/)
+    await call('DELETE', `/api/sessions/s1/roleplay/jobs/${failed.id}`)
+
+    await call('POST', '/api/sessions/s1/roleplay/jobs', { kind: 'picture', frameIndex: 0 })
+    assertEquals(await settled(call), [])
+    await portrait('character', 'full')
+    assertEquals(await settled(call), [])
+    let session = await (await call('GET', '/api/sessions/s1')).json()
+    const first = session.figures.character
+    assertEquals([first.framing, first.splats], ['full', 8])
+    assertMatch(first.from, /^portrait-character-[0-9a-f]{8}\.png$/)
+    assertMatch(first.file, /^figure-character-[0-9a-f]{8}\.ply$/)
+    // Her identity, alone and full length, in her clothes in the latest picture, then the style.
+    assertMatch(
+      first.prompt,
+      /^adult, Mira Vance, 34\. Alone, full length .* Mira wears a navy coat\. A plain, dark grey studio backdrop.* Ink\.$/,
+    )
+    assertEquals(images.sizes.at(-1), 'portrait')
+    for (const f of [first.file, first.from]) {
+      assertEquals((await call('GET', `/api/sessions/s1/images/${f}`)).status, 200)
+    }
+
+    // Another take replaces it, files and all; waist-up renders square.
+    await portrait('character', 'waist')
+    await settled(call)
+    session = await (await call('GET', '/api/sessions/s1')).json()
+    assertEquals(session.figures.character.framing, 'waist')
+    assertEquals(images.sizes.at(-1), 'square')
+    for (const f of [first.file, first.from]) {
+      assertEquals((await call('GET', `/api/sessions/s1/images/${f}`)).status, 404)
+    }
+  }))
+
+Deno.test('A figure lifted from a Frame is served, and goes with a re-render', () =>
+  withTempDir(async (root) => {
+    const figure = fakeFigureMaker()
+    const { call } = await roleplayWithArt(root, [artBody], { figure })
+    const job = (kind: string) =>
+      call('POST', '/api/sessions/s1/roleplay/jobs', { kind, frameIndex: 0 })
+    assertEquals((await job('figure')).status, 409)
+    for (const kind of ['picture', 'render', 'figure']) {
+      await job(kind)
+      assertEquals(await settled(call), [])
+    }
+    let frame = (await (await call('GET', '/api/sessions/s1')).json()).frames[0]
+    assertEquals(frame.figure.from, frame.image)
+    assertMatch(frame.figure.file, /^figure-0-[0-9a-f]{8}\.ply$/)
+    const ply = await call('GET', `/api/sessions/s1/images/${frame.figure.file}`)
+    assertEquals(ply.status, 200)
+    const file = frame.figure.file
+    await job('render')
+    await settled(call)
+    frame = (await (await call('GET', '/api/sessions/s1')).json()).frames[0]
+    assertEquals(frame.figure, undefined)
+    assertEquals((await call('GET', `/api/sessions/s1/images/${file}`)).status, 404)
   }))
 
 Deno.test('Without SHARP, making a scene fails with a reason', () =>

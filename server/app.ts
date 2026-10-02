@@ -9,6 +9,7 @@ import type { ChainSession, Session, SessionStore, StoryboardSession } from './s
 import { type SettingsStore, SIZE_PRESETS, validateSettings } from './settings.ts'
 import type { TextModel } from './textModel.ts'
 import { ollamaRoleplayModel, type RoleplayModel } from './roleplay/model.ts'
+import type { FigureMaker } from './figure.ts'
 import type { SceneMaker } from './scene.ts'
 import type { VoiceEngine } from './voice.ts'
 import type { QuantizedStore } from './quantized.ts'
@@ -47,6 +48,8 @@ export interface AppDeps {
   voice?: VoiceEngine
   /** Makes Roleplay pictures into 3D scenes; without it, they stay flat. */
   scene?: SceneMaker
+  /** Makes Roleplay people into 3D figures; without it, there are none. */
+  figure?: FigureMaker
   /** Saved quantized copies of Image Models, listed and deleted from Settings. */
   quantized?: QuantizedStore
   newSessionId?: () => string
@@ -63,8 +66,12 @@ const IMAGE_FILE = /^frame-\d+(-[0-9a-f]{8})?(-2048)?\.(png|svg)$/
  * and spoken thoughts (`thought-3-…`): MP3, or WAV from before 2026-10-02.
  */
 const AUDIO_FILE = /^(voice-[0-9a-f]{8}\.wav|(speech|thought)-\d+-[0-9a-f]{8}\.(mp3|wav))$/
-/** A Roleplay Frame's 3D scene: `scene-3-1a2b3c4d.ply`. */
-const SCENE_FILE = /^scene-\d+-[0-9a-f]{8}\.ply$/
+/**
+ * A Roleplay's 3D scenes (`scene-3-1a2b3c4d.ply`), figures lifted from a Frame (`figure-3-…`) or
+ * made from a portrait (`figure-character-…`), and those portraits (`portrait-persona-….png`).
+ */
+const SCENE_FILE =
+  /^((scene|figure)-\d+|figure-(character|persona))-[0-9a-f]{8}\.ply$|^portrait-(character|persona)-[0-9a-f]{8}\.(png|svg)$/
 const CONTENT_TYPES: Record<string, string> = {
   '.png': 'image/png',
   '.svg': 'image/svg+xml',
@@ -252,6 +259,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     roleplayModel: roleplayModel(session.settings.textModel, session.settings.thinking ?? false),
     voice: deps.voice,
     scene: deps.scene,
+    figure: deps.figure,
   })
   /** Roleplays' queued pictures, renders and upscales. */
   const roleplayJobs = new RoleplayJobs({

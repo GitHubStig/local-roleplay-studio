@@ -108,6 +108,8 @@ export interface RoleplayFrame {
   thoughtSpeech?: Speech
   /** The picture made into a 3D scene, once asked for; a re-render drops it. */
   scene?: Scene
+  /** The person in the picture lifted out as a full 3D figure; a re-render drops it. */
+  figure?: Figure
   createdAt: string
 }
 
@@ -125,6 +127,25 @@ export interface Scene {
   aspect: number
   /** Seconds it waited for a render and took. */
   timings: { queued?: number; scene: number }
+}
+
+/** Who in a Roleplay a portrait and its figure are of. */
+export type Who = 'character' | 'persona'
+/** How a portrait made for a figure is framed. */
+export type Framing = 'full' | 'waist'
+
+/** A person as a full 3D figure of Gaussian splats, back included (TripoSplat). */
+export interface Figure {
+  /** `.ply` file inside the Session directory. */
+  file: string
+  splats: number
+  /** The picture it was made from: a portrait rendered for it, or a Frame's picture. */
+  from: string
+  /** For a portrait: how it was framed, and the Image Prompt it was rendered from. */
+  framing?: Framing
+  prompt?: string
+  /** Seconds it waited for a render, took to render the portrait (if any), and to make. */
+  timings: { queued?: number; image?: number; figure: number }
 }
 
 /** A Frame's dialogue spoken in the Character's voice. */
@@ -168,5 +189,7 @@ export interface RoleplaySession extends SessionBase {
   lookThinking?: string
   /** The Character's voice; written the first time a line is spoken. */
   voice?: RoleplayVoice
+  /** Each person as a 3D figure, made from a portrait rendered for it from the Look. */
+  figures?: Partial<Record<Who, Figure>>
   frames: RoleplayFrame[]
 }

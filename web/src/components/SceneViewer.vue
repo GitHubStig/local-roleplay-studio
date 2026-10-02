@@ -2,10 +2,12 @@
 import { onBeforeUnmount, ref, watch } from 'vue'
 
 /**
- * A full-window look at a picture made into a 3D scene (Gaussian splats from SHARP), drawn with
- * Spark on three.js, which load only when a scene is first opened. It opens on the picture's own
- * view; drag to turn, scroll to zoom, right-drag to move, and the buttons turn a set angle or go
- * back. SHARP invents what the picture never showed, so the further it turns, the more is made up.
+ * A full-window look at a picture made into a 2.5D scene (Gaussian splats from SHARP: it turns a
+ * little, not all the way round), or at a
+ * person as a 3D figure (TripoSplat), drawn with Spark on three.js, which load only when one is
+ * first opened. A scene opens on the picture's own view; a figure from the front, turning all the
+ * way round. Drag to turn, scroll to zoom, right-drag to move, and the buttons turn a set angle or
+ * go back. Both invent what the picture never showed, so the further it turns, the more is made up.
  */
 const props = defineProps<{
   /** The scene's `.ply`; null keeps the viewer closed. */
@@ -14,8 +16,10 @@ const props = defineProps<{
   pivot?: number
   fov?: number
   aspect?: number
-  /** Which Frame it is, e.g. "Frame 3". */
+  /** Which Frame it is, e.g. "Frame 3", or whose figure, e.g. "Elara". */
   label?: string
+  /** A person as a figure: orbited round its middle, from the front. */
+  figure?: boolean
 }>()
 const emit = defineEmits<{ close: [] }>()
 
@@ -42,25 +46,30 @@ async function open(src: string) {
       import('three/addons/controls/OrbitControls.js'),
     ])
     if (props.src !== src || !canvas.value || !stage.value) return
-    const pivot = props.pivot ?? 2
-    const aspect = props.aspect ?? 1
+    // A figure stands on the origin, about one unit tall, facing +x (figure/make.py).
+    const figure = !!props.figure
+    const pivot = figure ? 2 : props.pivot ?? 2
+    const aspect = figure ? 3 / 4 : props.aspect ?? 1
     const renderer = new THREE.WebGLRenderer({ canvas: canvas.value, antialias: false })
     renderer.setPixelRatio(Math.min(devicePixelRatio, 2))
     const scene = new THREE.Scene()
     scene.add(new SparkRenderer({ renderer }))
-    const camera = new THREE.PerspectiveCamera(props.fov ?? 50, aspect, 0.05, 200)
+    const camera = new THREE.PerspectiveCamera(figure ? 35 : props.fov ?? 50, aspect, 0.05, 200)
     const controls = new OrbitControls(camera, canvas.value)
     controls.enableDamping = true
     controls.maxDistance = pivot * 4
     const mesh = new SplatMesh({ url: src })
-    // SHARP writes the OpenCV camera's axes (y down, looking along +z); three.js looks along -z.
+    // Both write the OpenCV camera's axes (y down, looking along +z); three.js looks along -z.
     mesh.quaternion.set(1, 0, 0, 0)
     scene.add(mesh)
 
+    // A scene orbits a point `pivot` ahead of the picture's camera; a figure, its own middle.
+    const centre = figure ? 0 : -pivot
+    const front = figure ? 90 : 0
     home = (yaw) => {
-      const a = (yaw * Math.PI) / 180
-      camera.position.set(pivot * Math.sin(a), 0, -pivot + pivot * Math.cos(a))
-      controls.target.set(0, 0, -pivot)
+      const a = ((front + yaw) * Math.PI) / 180
+      camera.position.set(pivot * Math.sin(a), 0, centre + pivot * Math.cos(a))
+      controls.target.set(0, 0, centre)
       controls.update()
     }
     home(0)
@@ -80,7 +89,8 @@ async function open(src: string) {
       controls.update()
       renderer.render(scene, camera)
       offset.subVectors(camera.position, controls.target)
-      const across = Math.round((Math.atan2(offset.x, offset.z) * 180) / Math.PI)
+      const angle = (Math.atan2(offset.x, offset.z) * 180) / Math.PI - front
+      const across = Math.round(((angle + 540) % 360) - 180)
       const up = Math.round((Math.asin(offset.y / offset.length()) * 180) / Math.PI)
       if (across !== turned.value.across || up !== turned.value.up) turned.value = { across, up }
     })
@@ -121,12 +131,20 @@ watch(
 )
 onBeforeUnmount(close)
 
-const TURNS = [
+const SCENE_TURNS = [
   { yaw: -30, label: '← 30°' },
   { yaw: -15, label: '← 15°' },
   { yaw: 0, label: 'Picture view' },
   { yaw: 15, label: '15° →' },
   { yaw: 30, label: '30° →' },
+]
+const FIGURE_TURNS = [
+  { yaw: -90, label: '← Side' },
+  { yaw: -45, label: '← 45°' },
+  { yaw: 0, label: 'Front' },
+  { yaw: 45, label: '45° →' },
+  { yaw: 90, label: 'Side →' },
+  { yaw: 180, label: 'Back' },
 ]
 </script>
 
@@ -139,13 +157,13 @@ const TURNS = [
   >
     <div v-if="src" class="flex h-full w-full flex-col gap-2 p-4 text-sm text-white/80 sm:p-8">
       <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <span v-if="label" class="text-white">{{ label }} in 3D</span>
+        <span v-if="label" class="text-white">{{ label }} in {{ figure ? '3D' : '2.5D' }}</span>
         <span class="tabular-nums" data-turned>
           Turned {{ turned.across }}° across, {{ turned.up }}° up
         </span>
         <span class="flex flex-wrap gap-1.5">
           <button
-            v-for="turn in TURNS"
+            v-for="turn in figure ? FIGURE_TURNS : SCENE_TURNS"
             :key="turn.yaw"
             type="button"
             class="rounded-md border border-white/25 px-2 py-0.5 hover:border-white/60 hover:text-white"
@@ -161,12 +179,16 @@ const TURNS = [
       <div ref="stage" class="relative flex min-h-0 flex-1 items-center justify-center">
         <canvas ref="canvas" class="touch-none rounded-md" />
         <p v-if="status !== 'ready'" class="absolute" :class="{ 'text-danger': status === 'failed' }">
-          {{ status === 'failed' ? `Couldn't show the scene: ${failure}` : 'Loading the scene…' }}
+          {{ status === 'failed'
+            ? `Couldn't show the ${figure ? 'figure' : 'scene'}: ${failure}`
+            : `Loading the ${figure ? 'figure' : 'scene'}…` }}
         </p>
       </div>
       <p class="text-white/60">
-        Drag to turn, scroll to zoom, right-drag to move. SHARP fills in what the picture never
-        showed, so the further you turn, the more it invents.
+        Drag to turn, scroll to zoom, right-drag to move.
+        {{ figure
+          ? 'TripoSplat invents their back and sides from one picture.'
+          : 'SHARP fills in what the picture never showed, so the further you turn, the more it invents.' }}
       </p>
     </div>
   </dialog>

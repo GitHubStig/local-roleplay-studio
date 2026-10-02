@@ -31,42 +31,63 @@ export interface SceneMaker {
   ): Promise<SceneResult>
 }
 
+/**
+ * Runs one of the 3D scripts (`uv run <script> --image … --out …`) to completion and returns the
+ * JSON on its last line. `onDownload` hears the script's "Downloading <name>" and "Downloaded"
+ * lines, printed while it fetches its weights the first time.
+ */
+export async function runModelScript(
+  command: string[],
+  args: string[],
+  name: string,
+  signal: AbortSignal,
+  onDownload?: (downloading: boolean) => void,
+): Promise<Record<string, unknown>> {
+  const [cmd, ...rest] = command
+  const child = track(
+    new Deno.Command(cmd, {
+      args: [...rest, ...args],
+      stdout: 'piped',
+      stderr: 'piped',
+      signal,
+    }).spawn(),
+  )
+  const stdout = new Response(child.stdout).text()
+  let stderr = ''
+  for await (const chunk of child.stderr.pipeThrough(new TextDecoderStream())) {
+    stderr = (stderr + chunk).slice(-8000)
+    for (const line of chunk.split(/[\r\n]+/)) {
+      if (line === `Downloading ${name}`) onDownload?.(true)
+      if (line === 'Downloaded') onDownload?.(false)
+    }
+  }
+  const { success } = await child.status
+  signal.throwIfAborted()
+  if (!success) {
+    const why = stderr.trim().split(/[\r\n]+/).at(-1) || 'no output'
+    throw new Error(`${name} failed (needs uv; see README): ${why}`)
+  }
+  return JSON.parse((await stdout).trim().split('\n').at(-1)!)
+}
+
 const SCRIPT = new URL('../scene/make.py', import.meta.url)
 
 /** Runs SHARP once per scene; `command` replaces `uv run scene/make.py` in tests. */
 export function sharpSceneMaker(opts: { command?: string[] } = {}): SceneMaker {
   return {
     async make(req, signal, onDownload) {
-      const [cmd, ...args] = opts.command ?? ['uv', 'run', '--quiet', SCRIPT.pathname]
-      const child = track(
-        new Deno.Command(cmd, {
-          args: [...args, '--image', req.image, '--out', req.out],
-          stdout: 'piped',
-          stderr: 'piped',
-          signal,
-        }).spawn(),
+      const result = await runModelScript(
+        opts.command ?? ['uv', 'run', '--quiet', SCRIPT.pathname],
+        ['--image', req.image, '--out', req.out],
+        'SHARP',
+        signal,
+        onDownload,
       )
-      const stdout = new Response(child.stdout).text()
-      let stderr = ''
-      for await (const chunk of child.stderr.pipeThrough(new TextDecoderStream())) {
-        stderr = (stderr + chunk).slice(-8000)
-        for (const line of chunk.split(/[\r\n]+/)) {
-          if (line === 'Downloading SHARP') onDownload?.(true)
-          if (line === 'Downloaded') onDownload?.(false)
-        }
-      }
-      const { success } = await child.status
-      signal.throwIfAborted()
-      if (!success) {
-        const why = stderr.trim().split(/[\r\n]+/).at(-1) || 'no output'
-        throw new Error(`Making the 3D scene failed (needs uv; see README): ${why}`)
-      }
-      const result = JSON.parse((await stdout).trim().split('\n').at(-1)!)
       return {
-        splats: result.splats,
-        pivot: result.pivot,
-        fov: result.fov,
-        aspect: result.aspect,
+        splats: result.splats as number,
+        pivot: result.pivot as number,
+        fov: result.fov as number,
+        aspect: result.aspect as number,
       }
     },
   }
