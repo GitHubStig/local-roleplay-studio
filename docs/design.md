@@ -184,14 +184,18 @@ under `/api/sessions/:id/roleplay/` ([ADR 0007](adr/0007-roleplay-is-a-conversat
    design**. Designing the voice shows its progress there, not on the opening Frame.
 7. **3D scenes**: **Make 3D** under a rendered picture turns it into a 3D scene of about 1.2
    million Gaussian splats with Apple's SHARP (`server/scene.ts`, `scene/make.py`), and **View in
-   3D** then opens it (`SceneViewer`, drawn with Spark on three.js, which load only then). It's a
-   queued job (`scene`) that waits its turn in the render queue: SHARP peaks near 15 GB. Each scene
-   runs `uv run scene/make.py` once, like mflux once per picture, so the memory is freed when it's
-   done (~11 s: 4 s loading, 6 s making). The scene is saved lossless (`scene-<index>-….ply`,
-   ~63 MB) as `frame.scene`, with what the viewer needs: the depth to orbit around (a quarter of
-   the splats are nearer, so near subjects stay in view) and the camera SHARP assumed (a 30 mm
-   lens, as a vertical field of view and an aspect), so the viewer opens on exactly the picture's
-   view. The viewer turns 15° or 30° either way, or back to the picture's view; dragging turns it
+   3D** then opens it (`SceneViewer`, drawn with Spark on three.js, which load only then). It's
+   made from the upscale when the Frame has one (SHARP works at 1536 px, so the 2048 px upscale
+   has more to give it), else the original; a scene made before its picture was upscaled offers
+   **Make 3D from upscale**. It's a queued job (`scene`) that waits its turn in the render queue:
+   SHARP peaks near 15 GB. Each scene runs `uv run scene/make.py` once, like mflux once per
+   picture, so the memory is freed when it's done (~11 s: 4 s loading, 6 s making). The scene is
+   saved lossless (`scene-<index>-….ply`, ~63 MB) as `frame.scene`, with the picture it was made
+   from (`from`) and what the viewer needs: the depth to orbit around (a quarter of the splats are
+   nearer, so near subjects stay in view) and the camera SHARP assumed (a 30 mm lens, as a
+   vertical field of view and an aspect), so the viewer opens on exactly the picture's view.
+   SHARP's limits (a fixed splat count, what turning shows) are in
+   docs/research/image-to-3d.md. The viewer turns 15° or 30° either way, or back to the picture's view; dragging turns it
    freely. SHARP invents what the picture never showed, so the further it turns, the more is made
    up. Making it again replaces the scene; a re-render or Undo deletes it.
 

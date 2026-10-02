@@ -814,7 +814,18 @@ async function saveCastDraft(): Promise<boolean> {
                         View in 3D
                       </button>
                       <button
-                        v-else-if="frame.image"
+                        v-if="frame.scene && frame.upscaled && frame.scene.from !== frame.upscaled"
+                        type="button"
+                        class="action"
+                        :disabled="hasJob(frame.index, 'scene')"
+                        title="The scene was made before the upscale: make it again from the upscale"
+                        data-scene-again
+                        @click="queue('scene', frame.index)"
+                      >
+                        Make 3D from upscale
+                      </button>
+                      <button
+                        v-else-if="!frame.scene && frame.image"
                         type="button"
                         class="action"
                         :disabled="hasJob(frame.index, 'scene')"

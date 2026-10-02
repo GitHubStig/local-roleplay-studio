@@ -115,6 +115,8 @@ export interface RoleplayFrame {
 export interface Scene {
   /** `.ply` file inside the Session directory. */
   file: string
+  /** The picture it was made from: the Frame's `image`, or its `upscaled`. */
+  from: string
   splats: number
   /** The depth to orbit around, so the people near the front stay in view. */
   pivot: number

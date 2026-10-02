@@ -21,7 +21,8 @@ export class SceneError extends Error {}
 
 /**
  * Makes Frame `index`'s picture into a 3D scene, in its turn behind any render: SHARP and an Image
- * Model each want 15 GB or more. Making it again replaces the old one.
+ * Model each want 15 GB or more. Made from the upscale if the Frame has one, else the original.
+ * Making it again replaces the old one.
  */
 export async function makeScene(
   deps: SceneDeps,
@@ -31,8 +32,11 @@ export async function makeScene(
   signal: AbortSignal,
 ): Promise<RoleplaySession> {
   if (!deps.scene) throw new SceneError('3D scenes are off (SCENES=off)')
-  const image = session.frames[index]?.image
+  const frame = session.frames[index]
+  const image = frame?.image
   if (!image) throw new SceneError(`Frame ${index} has no picture yet`)
+  // SHARP works at 1536 px: the 2048 px upscale has more to give it than a 1024 px original.
+  const from = frame.upscaled ?? image
   const dir = deps.store.dir(session.id)
   const file = `scene-${index}-${crypto.randomUUID().slice(0, 8)}.ply`
   const start = performance.now()
@@ -46,13 +50,14 @@ export async function makeScene(
     emit({ type: 'phase', phase: 'image' })
     const began = performance.now()
     const made = await deps.scene.make(
-      { image: join(dir, image), out: join(dir, file) },
+      { image: join(dir, from), out: join(dir, file) },
       signal,
       (downloading) => emit({ type: 'phase', phase: downloading ? 'download' : 'image' }),
     )
     signal.throwIfAborted()
     const scene: Scene = {
       file,
+      from,
       ...made,
       timings: { ...(queued !== undefined ? { queued } : {}), scene: secondsSince(began) },
     }

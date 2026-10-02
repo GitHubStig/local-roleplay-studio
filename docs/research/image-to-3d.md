@@ -454,6 +454,41 @@ picture's diagonal (`convert_focallength` in `sharp/utils/io.py`), about 0.98 ×
 square picture: a 54° vertical field of view, not 45°. With that, the first view lines up with
 the picture exactly. The app keeps the lossless `.ply`.
 
+### SHARP's limits, as found building it in
+
+- **The splat count is fixed: always 1,179,648.** Every picture is resized to 1536×1536 (a
+  portrait or landscape is stretched to that square, and un-stretched in 3D by the camera), and
+  splats are predicted on a 768×768 grid (stride 2), two layers per grid point: the visible
+  surface, and one behind it that fills in what foreground edges hide. 768 × 768 × 2 = 1,179,648,
+  whatever the input's size or shape (`predict.py`'s `internal_shape`, `InitializerParams` in
+  `sharp/models/params.py`).
+- **Not configurable in practice.** `params.py` has `stride` and `num_layers`, but the published
+  weights were trained at stride 2 with two layers; other values don't give more or fewer good
+  splats, they break the model. To have fewer, thin them afterwards (drop near-transparent ones,
+  or subsample: splat-transform can do both); to have smaller files, compress (SOG, ~5×, above).
+  Spark draws all 1.18M at 60 fps on the M5 Pro, so neither is needed on a Mac.
+- **The file size follows:** each splat is 14 float32 values (position 3, colour 3, opacity 1,
+  scale 3, rotation 4), so 56 bytes, and 66,061,086 bytes per `.ply` with its header and extra
+  elements. Colour is degree-0 only (no view-dependent shading), which is also why compression
+  saves less here than on trained 3DGS scenes.
+- **Nearby views only.** SHARP is made for small head movements, not walking around (the
+  paper). In practice: clean at 15°, still coherent at 30°, with what the picture never showed
+  (behind people, past the end of a bar) filled with blurred, plausible content that smears
+  further out. Panning or zooming far from the original camera shows the edges of the scene.
+- **A fixed lens.** Without EXIF it assumes 30 mm (35 mm equivalent); generated pictures carry
+  none, so every scene is built for that lens, whether the picture was a close-up or a wide shot.
+- **Weights:** 2.8 GB (`sharp_2572gikvuh.pt`), the same file on Apple's CDN and on Hugging Face
+  (`apple/Sharp`, SHA-256 `94211a75…`), under Apple's research-only model license: fine for
+  personal use, not for anything commercial. ~15 GB peak while making a scene.
+
+**The upscale as input** (Frame 0 of the Kael tavern, 1024 px original against its 2048 px
+SeedVR2 upscale, 2026-10-02): the same splat count and nearly the same depth (orbit pivot 1.03
+against 1.01), and turning held up the same, with the same smearing at 30°. What changed was the
+surface: SHARP reproduces whatever the upscale did, and here SeedVR2 had smoothed the oil-paint
+brushwork into something more photographic and slightly hazier. Since SHARP works at 1536 px, a
+2048 px upscale gives it more real pixels than a 1024 px original, so the app uses the upscale
+when there is one; whether the upscale itself looks right is the upscaler's doing.
+
 ## Could not verify
 
 - SHARP's timing and peak memory on Apple Silicon through MLX or MPS (only the Core ML port's

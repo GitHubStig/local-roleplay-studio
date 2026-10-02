@@ -101,6 +101,8 @@ export interface RoleplayFrame {
 export interface Scene {
   /** `.ply` file, served like the pictures. */
   file: string
+  /** The picture it was made from: the upscale if there was one, else the original. */
+  from?: string
   splats: number
   /** The depth to orbit around. */
   pivot: number

@@ -1063,6 +1063,7 @@ Deno.test('A rendered Frame makes a 3D scene, served; a re-render or Undo remove
     assertEquals(scene.made.map((m) => m.image), [join(root, 's1', frame.image)])
     assertMatch(frame.scene.file, /^scene-0-[0-9a-f]{8}\.ply$/)
     assertEquals([frame.scene.splats, frame.scene.pivot, frame.scene.fov], [4, 1.5, 51.3])
+    assertEquals(frame.scene.from, frame.image)
     const ply = await call('GET', `/api/sessions/s1/images/${frame.scene.file}`)
     assertEquals([ply.status, await ply.text()], [200, `ply fake scene of ${scene.made[0].image}`])
 
@@ -1090,6 +1091,20 @@ Deno.test('A rendered Frame makes a 3D scene, served; a re-render or Undo remove
     frame = (await (await call('GET', '/api/sessions/s1')).json()).frames[1]
     await call('DELETE', '/api/sessions/s1/roleplay/frames/1')
     assertEquals((await call('GET', `/api/sessions/s1/images/${frame.scene.file}`)).status, 404)
+  }))
+
+Deno.test('A scene is made from the upscale when there is one', () =>
+  withTempDir(async (root) => {
+    const scene = fakeSceneMaker()
+    const { call } = await roleplayWithArt(root, [artBody], { scene })
+    for (const kind of ['picture', 'render', 'upscale', 'scene']) {
+      await call('POST', '/api/sessions/s1/roleplay/jobs', { kind, frameIndex: 0 })
+      assertEquals(await settled(call), [])
+    }
+    const frame = (await (await call('GET', '/api/sessions/s1')).json()).frames[0]
+    assertMatch(frame.upscaled, /-2048\.png$/)
+    assertEquals(frame.scene.from, frame.upscaled)
+    assertEquals(scene.made[0].image, join(root, 's1', frame.upscaled))
   }))
 
 Deno.test('Without SHARP, making a scene fails with a reason', () =>
