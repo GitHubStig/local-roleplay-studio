@@ -49,6 +49,12 @@ The vocabulary (Scenario, Session, Image Prompt, Frame, Action, …) is defined 
   use, and its two models (about 12 GB: Qwen3-TTS VoiceDesign and Higgs TTS 3) the first time
   each is needed; `uv run voice/serve.py --download` fetches both ahead of time. Set `VOICES=off`
   to leave Characters silent.
+- **3D scenes (optional), for Roleplay pictures:** uv runs Apple's SHARP (`scene/make.py`), which
+  installs its own Python packages (torch) on first use, and its weights (2.8 GB, from Hugging
+  Face's [apple/Sharp](https://huggingface.co/apple/Sharp)) with the first scene;
+  `uv run scene/make.py --download` fetches them ahead of time. They're under Apple's
+  research-only model license: fine for playing at home, not for anything commercial. Set
+  `SCENES=off` to run without SHARP.
 - **Saved quantized copies** of Image Models (with Quantize on in Settings) are made by the app on
   first use, 13–22 GB each, in `models/quantized/` in this folder (gitignored); Settings lists them
   to delete.
@@ -83,6 +89,7 @@ or delete it.
 | `OLLAMA_HOST` | `http://localhost:11434` | Where Ollama listens |
 | `IMAGE_GENERATOR` | (mflux) | Set to `placeholder` to render SVG cards instead of running mflux, for working without a GPU |
 | `VOICES` | (on) | Set to `off` to leave Roleplay Characters silent, without starting the voice service |
+| `SCENES` | (on) | Set to `off` to run without SHARP: Make 3D then fails with a reason |
 
 The web app's dev server is pinned to port **5180** and fails, rather than picking another port,
 if something else is using it.

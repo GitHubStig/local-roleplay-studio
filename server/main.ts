@@ -7,6 +7,7 @@ import { dirScenarioLibrary } from './scenario.ts'
 import { dirSessionStore } from './session.ts'
 import { fileSettingsStore } from './settings.ts'
 import { ollamaTextModel } from './textModel.ts'
+import { sharpSceneMaker } from './scene.ts'
 import { voiceService } from './voice.ts'
 
 const port = Number(Deno.env.get('PORT') ?? 8787)
@@ -28,6 +29,8 @@ const handler = createHandler({
   quantized,
   // VOICES=off leaves Roleplays silent, for working without the voice service.
   voice: Deno.env.get('VOICES') === 'off' ? undefined : voiceService(),
+  // SCENES=off leaves pictures flat, for working without SHARP.
+  scene: Deno.env.get('SCENES') === 'off' ? undefined : sharpSceneMaker(),
 })
 
 Deno.serve({ port }, handler)

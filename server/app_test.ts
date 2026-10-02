@@ -1,4 +1,5 @@
-import { assertEquals, assertMatch } from '@std/assert'
+import { assertEquals, assertMatch, assertNotEquals } from '@std/assert'
+import { join } from '@std/path'
 import { createHandler } from './app.ts'
 import { renderPrompt } from './imagePrompt.ts'
 import type { TextModelInfo } from './ollama.ts'
@@ -7,6 +8,7 @@ import { dirSessionStore } from './session.ts'
 import { DEFAULT_SETTINGS, type Settings, type SettingsStore } from './settings.ts'
 import type { TextModel } from './textModel.ts'
 import type { RoleplayModel } from './roleplay/model.ts'
+import { fakeSceneMaker, type SceneMaker } from './scene.ts'
 import { fakeVoiceEngine, type VoiceEngine } from './voice.ts'
 import { type QuantizedStore, quantizedStore } from './quantized.ts'
 import { findImageModel } from './imageModels.ts'
@@ -44,6 +46,7 @@ interface SetupOptions {
   /** Roleplay models by Ollama model name, e.g. a separate Art Agent's. */
   roleplayModels?: Record<string, RoleplayModel>
   voice?: VoiceEngine
+  scene?: SceneMaker
   quantized?: QuantizedStore
   settings?: Partial<Settings>
 }
@@ -67,6 +70,7 @@ function setup(opts: SetupOptions = {}) {
     roleplayModel: (model) =>
       opts.roleplayModels?.[model] ?? opts.roleplayModel ?? scriptedRoleplayModel({}),
     voice: opts.voice,
+    scene: opts.scene,
     quantized: opts.quantized,
     newSessionId: () => `s${++sessionCount}`,
     randomSeed: () => 1234,
@@ -1040,6 +1044,63 @@ Deno.test('Without a voice service, speaking fails with a reason', () =>
     await call('POST', '/api/sessions/s1/roleplay/jobs', { kind: 'speak', frameIndex: 0 })
     const [failed] = await settled(call)
     assertMatch(failed.error, /aren't available/)
+  }))
+
+Deno.test('A rendered Frame makes a 3D scene, served; a re-render or Undo removes it', () =>
+  withTempDir(async (root) => {
+    const scene = fakeSceneMaker()
+    const { call } = await roleplayWithArt(root, [artBody, artBody], { scene })
+    const job = (kind: string, frameIndex: number) =>
+      call('POST', '/api/sessions/s1/roleplay/jobs', { kind, frameIndex })
+    assertEquals((await job('scene', 0)).status, 409)
+
+    await job('picture', 0)
+    await job('render', 0)
+    assertEquals(await settled(call), [])
+    await job('scene', 0)
+    assertEquals(await settled(call), [])
+    let frame = (await (await call('GET', '/api/sessions/s1')).json()).frames[0]
+    assertEquals(scene.made.map((m) => m.image), [join(root, 's1', frame.image)])
+    assertMatch(frame.scene.file, /^scene-0-[0-9a-f]{8}\.ply$/)
+    assertEquals([frame.scene.splats, frame.scene.pivot, frame.scene.fov], [4, 1.5, 51.3])
+    const ply = await call('GET', `/api/sessions/s1/images/${frame.scene.file}`)
+    assertEquals([ply.status, await ply.text()], [200, `ply fake scene of ${scene.made[0].image}`])
+
+    // Made again, it replaces the old file; a re-render drops it.
+    const first = frame.scene.file
+    await job('scene', 0)
+    await settled(call)
+    frame = (await (await call('GET', '/api/sessions/s1')).json()).frames[0]
+    assertNotEquals(frame.scene.file, first)
+    assertEquals((await call('GET', `/api/sessions/s1/images/${first}`)).status, 404)
+    const second = frame.scene.file
+    await job('render', 0)
+    await settled(call)
+    frame = (await (await call('GET', '/api/sessions/s1')).json()).frames[0]
+    assertEquals(frame.scene, undefined)
+    assertEquals((await call('GET', `/api/sessions/s1/images/${second}`)).status, 404)
+
+    // Undoing an exchange removes its scene.
+    await readEvents(await call('POST', '/api/sessions/s1/roleplay/messages', { text: 'Sorry.' }))
+    await job('picture', 1)
+    await job('render', 1)
+    await settled(call)
+    await job('scene', 1)
+    await settled(call)
+    frame = (await (await call('GET', '/api/sessions/s1')).json()).frames[1]
+    await call('DELETE', '/api/sessions/s1/roleplay/frames/1')
+    assertEquals((await call('GET', `/api/sessions/s1/images/${frame.scene.file}`)).status, 404)
+  }))
+
+Deno.test('Without SHARP, making a scene fails with a reason', () =>
+  withTempDir(async (root) => {
+    const { call } = await roleplayWithArt(root, [artBody])
+    for (const kind of ['picture', 'render', 'scene']) {
+      await call('POST', '/api/sessions/s1/roleplay/jobs', { kind, frameIndex: 0 })
+      await settled(call)
+    }
+    const [failed] = await settled(call)
+    assertMatch(failed.error, /3D scenes are off/)
   }))
 
 Deno.test('Pictures use the Art Agent model set in Settings, recorded on the Frame', () =>

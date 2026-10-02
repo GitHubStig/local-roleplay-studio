@@ -9,6 +9,7 @@ import type { ChainSession, Session, SessionStore, StoryboardSession } from './s
 import { type SettingsStore, SIZE_PRESETS, validateSettings } from './settings.ts'
 import type { TextModel } from './textModel.ts'
 import { ollamaRoleplayModel, type RoleplayModel } from './roleplay/model.ts'
+import type { SceneMaker } from './scene.ts'
 import type { VoiceEngine } from './voice.ts'
 import type { QuantizedStore } from './quantized.ts'
 import { roleplayExcerpt } from './roleplay/prompt.ts'
@@ -44,6 +45,8 @@ export interface AppDeps {
   roleplayModel?: (model: string, thinking: boolean) => RoleplayModel
   /** Speaks Roleplay Characters' lines; without it, voices are unavailable. */
   voice?: VoiceEngine
+  /** Makes Roleplay pictures into 3D scenes; without it, they stay flat. */
+  scene?: SceneMaker
   /** Saved quantized copies of Image Models, listed and deleted from Settings. */
   quantized?: QuantizedStore
   newSessionId?: () => string
@@ -60,10 +63,13 @@ const IMAGE_FILE = /^frame-\d+(-[0-9a-f]{8})?(-2048)?\.(png|svg)$/
  * and spoken thoughts (`thought-3-…`).
  */
 const AUDIO_FILE = /^(voice|(speech|thought)-\d+)-[0-9a-f]{8}\.wav$/
+/** A Roleplay Frame's 3D scene: `scene-3-1a2b3c4d.ply`. */
+const SCENE_FILE = /^scene-\d+-[0-9a-f]{8}\.ply$/
 const CONTENT_TYPES: Record<string, string> = {
   '.png': 'image/png',
   '.svg': 'image/svg+xml',
   '.wav': 'audio/wav',
+  '.ply': 'application/octet-stream',
 }
 
 /** Storyboards plan between 1 and 16 Frames; 8 unless asked otherwise. */
@@ -244,6 +250,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     textModel: deps.textModel(session.settings.textModel, session.settings.thinking ?? false),
     roleplayModel: roleplayModel(session.settings.textModel, session.settings.thinking ?? false),
     voice: deps.voice,
+    scene: deps.scene,
   })
   /** Roleplays' queued pictures, renders and upscales. */
   const roleplayJobs = new RoleplayJobs({
@@ -608,7 +615,9 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     ],
 
     ['GET', new URLPattern({ pathname: '/api/sessions/:id/images/:file' }), async (_req, p) => {
-      if (!IMAGE_FILE.test(p.file!) && !AUDIO_FILE.test(p.file!)) return error('Not found', 404)
+      if (![IMAGE_FILE, AUDIO_FILE, SCENE_FILE].some((f) => f.test(p.file!))) {
+        return error('Not found', 404)
+      }
       try {
         const data = await Deno.readFile(join(deps.sessions.dir(p.id!), p.file!))
         return new Response(data, {

@@ -27,6 +27,11 @@ vi.mock('./api', async (importOriginal) => ({
   saveVoice: vi.fn(),
 }))
 
+// The 3D viewer's drawing needs WebGL, which tests don't have; it reports it couldn't draw.
+vi.mock('three', () => ({}))
+vi.mock('@sparkjsdev/spark', () => ({}))
+vi.mock('three/addons/controls/OrbitControls.js', () => ({}))
+
 const cast: roleplay.Cast = {
   character: {
     name: 'Elena',
@@ -598,6 +603,35 @@ describe('RoleplayView', () => {
     expect(roleplay.retryJob).toHaveBeenCalledWith('r1', 'j3')
     expect(wrapper.find('[data-queue-item]').text()).toContain('Queued')
     expect(wrapper.find('[data-frame-job] [data-retry]').exists()).toBe(false)
+  })
+
+  it('makes a rendered picture into a 3D scene, then opens it in the 3D viewer', async () => {
+    const rendered = { ...frame(0, null, 'Get inside.'), image: 'frame-0-aaaaaaaa.png' }
+    vi.mocked(api.getSession).mockResolvedValue(roleplaySession([rendered]))
+    vi.mocked(roleplay.queueJob).mockResolvedValue([
+      job({ kind: 'scene', status: 'running', phase: 'image' }),
+    ])
+    const { wrapper } = await mountIt()
+    expect(wrapper.find('[data-view-scene]').exists()).toBe(false)
+    await wrapper.find('[data-scene-button]').trigger('click')
+    await flushPromises()
+    expect(roleplay.queueJob).toHaveBeenCalledWith('r1', 'scene', 0)
+    expect(wrapper.find('[data-frame-job]').text()).toContain('3D · Making the 3D scene…')
+    expect(wrapper.find('[data-scene-button]').attributes('disabled')).toBeDefined()
+    wrapper.unmount()
+
+    const scene = { file: 'scene-0-bbbbbbbb.ply', splats: 9, pivot: 1.2, fov: 54, aspect: 1 }
+    vi.mocked(api.getSession).mockResolvedValue(
+      roleplaySession([{ ...rendered, scene: { ...scene, timings: { scene: 6 } } }]),
+    )
+    vi.mocked(roleplay.listJobs).mockResolvedValue([])
+    const again = (await mountIt()).wrapper
+    expect(again.find('[data-scene-button]').exists()).toBe(false)
+    await again.find('[data-view-scene]').trigger('click')
+    await flushPromises()
+    const viewer = again.find('[data-scene-viewer]')
+    expect(viewer.text()).toContain('Frame 0 in 3D')
+    expect(viewer.text()).toContain("Couldn't show the scene")
   })
 
   it('steps through the rendered Frames in the viewer, scrolling the conversation to each', async () => {

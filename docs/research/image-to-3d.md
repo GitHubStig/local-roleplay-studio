@@ -444,6 +444,16 @@ so graphics memory and drawing cost are the same; the JavaScript heap stayed at 
 costs ~120 ms more to decode, once, in Spark's workers. If space matters later, SOG is the pick
 (`.compressed.ply` if opening speed matters more).
 
+## Built into the app (2026-10-01)
+
+Roleplays now have **Make 3D** (docs/design.md). It runs Apple's official code on MPS
+(`scene/make.py`), not the MLX port. Each scene is a fresh process: ~11 s on the M5 Pro (3.8 s
+loading, 6 s making), plus a one-time install of its Python packages. The trial viewer's camera
+was wrong: it assumed a focal length of 1.2 × the width, but SHARP assumes a 30 mm lens on the
+picture's diagonal (`convert_focallength` in `sharp/utils/io.py`), about 0.98 × the width of a
+square picture: a 54° vertical field of view, not 45°. With that, the first view lines up with
+the picture exactly. The app keeps the lossless `.ply`.
+
 ## Could not verify
 
 - SHARP's timing and peak memory on Apple Silicon through MLX or MPS (only the Core ML port's

@@ -13,6 +13,7 @@ import { activeProseLimits, crossedLimit } from '../limits.ts'
 import type { Scenario } from '../scenario.ts'
 import type { SessionStore } from '../session.ts'
 import type { TextModel } from '../textModel.ts'
+import type { SceneMaker } from '../scene.ts'
 import type { VoiceEngine } from '../voice.ts'
 import { join } from '@std/path'
 import type { RoleplayModel } from './model.ts'
@@ -57,6 +58,8 @@ export interface RoleplayDeps {
   artStyle?: ArtStyle
   /** The voice service, when voices are available. */
   voice?: VoiceEngine
+  /** SHARP, when 3D scenes are available. */
+  scene?: SceneMaker
   /** For rendering pictures, through the render queue every Session shares. */
   imageGenerator: ImageGenerator
   renderQueue?: RenderQueue
@@ -346,17 +349,20 @@ export async function renderRoleplayFrame(
     const { text: ___, ...renderTimings } = timings
     let rendered!: RoleplayFrame
     let replaced: (string | undefined)[] = []
+    let scene: string | undefined
     const updated = await updateSession(deps.store, session.id, (latest) => {
       const current = latest.frames[index]
       if (!current) throw new GoneError(`Frame ${index} no longer exists`)
-      const { stale: _, upscaled: __, ...rest } = current
+      const { stale: _, upscaled: __, scene: ___, ...rest } = current
       rendered = { ...rest, image, renderTimings }
       replaced = [current.image ?? undefined, current.upscaled]
+      scene = current.scene?.file
       return { ...latest, frames: latest.frames.map((f) => (f.index === index ? rendered : f)) }
     })
     for (const old of replaced) {
       if (old && old !== image) await removeImage(dir, old.replace(/\.\w+$/, ''))
     }
+    if (scene) await Deno.remove(join(dir, scene)).catch(() => {})
     emit({ type: 'rendered', frame: rendered, session: updated })
     return updated
   } catch (err) {
@@ -383,8 +389,8 @@ export async function undoLatestExchange(
   for (const file of [latest.image, latest.upscaled]) {
     if (file) await removeImage(store.dir(session.id), file.replace(/\.\w+$/, ''))
   }
-  for (const speech of [latest.speech, latest.thoughtSpeech]) {
-    if (speech) await Deno.remove(join(store.dir(session.id), speech.file)).catch(() => {})
+  for (const made of [latest.speech, latest.thoughtSpeech, latest.scene]) {
+    if (made) await Deno.remove(join(store.dir(session.id), made.file)).catch(() => {})
   }
   return updated
 }

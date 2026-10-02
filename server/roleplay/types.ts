@@ -106,7 +106,23 @@ export interface RoleplayFrame {
   speech?: Speech
   /** The Character's thought (`internal`), spoken in the same voice; out of date likewise. */
   thoughtSpeech?: Speech
+  /** The picture made into a 3D scene, once asked for; a re-render drops it. */
+  scene?: Scene
   createdAt: string
+}
+
+/** A Frame's picture as a 3D scene of Gaussian splats (SHARP). */
+export interface Scene {
+  /** `.ply` file inside the Session directory. */
+  file: string
+  splats: number
+  /** The depth to orbit around, so the people near the front stay in view. */
+  pivot: number
+  /** The camera it was made for: vertical field of view in degrees, and width / height. */
+  fov: number
+  aspect: number
+  /** Seconds it waited for a render and took. */
+  timings: { queued?: number; scene: number }
 }
 
 /** A Frame's dialogue spoken in the Character's voice. */

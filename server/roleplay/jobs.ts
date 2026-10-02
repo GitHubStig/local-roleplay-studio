@@ -1,5 +1,6 @@
 /**
- * The Roleplay's background work: picturing, rendering and upscaling Frames, queued so the player
+ * The Roleplay's background work: picturing, rendering, upscaling, speaking and making 3D scenes of
+ * Frames, queued so the player
  * can ask for several and carry on with the conversation. Each Roleplay runs its jobs one at a
  * time, in order (renders and upscales also share the render queue every Session uses). Jobs don't
  * hold the Roleplay's lock: they save through `updateSession`, onto whatever the conversation has
@@ -18,14 +19,22 @@ import {
 import type { RoleplayModel } from './model.ts'
 import type { ArtStyle } from './art.ts'
 import type { RoleplaySession } from './types.ts'
+import { makeScene } from './scene.ts'
 import { designVoice, speakFrame } from './voice.ts'
 import { updateSession } from './update.ts'
 
 /**
  * `voice` designs a new take of the Character's voice; `speak` voices one Frame's dialogue, and
- * `speak-thought` its thought.
+ * `speak-thought` its thought; `scene` makes its picture into a 3D scene.
  */
-export type JobKind = 'picture' | 'render' | 'upscale' | 'voice' | 'speak' | 'speak-thought'
+export type JobKind =
+  | 'picture'
+  | 'render'
+  | 'upscale'
+  | 'voice'
+  | 'speak'
+  | 'speak-thought'
+  | 'scene'
 export const JOB_KINDS: readonly JobKind[] = [
   'picture',
   'render',
@@ -33,6 +42,7 @@ export const JOB_KINDS: readonly JobKind[] = [
   'voice',
   'speak',
   'speak-thought',
+  'scene',
 ]
 
 export interface Job {
@@ -202,6 +212,8 @@ export class RoleplayJobs {
         const part = job.kind === 'speak-thought' ? 'thought' : 'dialogue'
         await speakFrame(voiceDeps, session, job.frameIndex, emit, signal, part)
       }
+    } else if (job.kind === 'scene') {
+      await makeScene(withDeps, session, job.frameIndex, emit, signal)
     } else if (job.kind === 'render') {
       await renderRoleplayFrame(withDeps, session, job.frameIndex, emit, signal)
     } else {

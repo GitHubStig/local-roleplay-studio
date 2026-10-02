@@ -92,7 +92,22 @@ export interface RoleplayFrame {
   speech?: Speech
   /** The Character's thought, spoken (whispered) in the same voice. */
   thoughtSpeech?: Speech
+  /** The picture as a 3D scene; a re-render drops it. */
+  scene?: Scene
   createdAt: string
+}
+
+/** A Frame's picture as a 3D scene of Gaussian splats, made with SHARP. */
+export interface Scene {
+  /** `.ply` file, served like the pictures. */
+  file: string
+  splats: number
+  /** The depth to orbit around. */
+  pivot: number
+  /** The camera it was made for: vertical field of view in degrees, and width / height. */
+  fov: number
+  aspect: number
+  timings: { queued?: number; scene: number }
 }
 
 /** A Frame's dialogue spoken in the Character's voice. */
@@ -168,10 +183,18 @@ export const undoExchange = (id: string, index: number) =>
   request<RoleplaySession>(`${base(id)}/frames/${index}`, { method: 'DELETE' })
 
 /**
- * Background work on a Frame: picturing, rendering, upscaling or speaking it; `voice` designs a new
- * take of the Character's voice (filed under the opening Frame).
+ * Background work on a Frame: picturing, rendering, upscaling or speaking it, or making its picture
+ * into a 3D scene; `voice` designs a new take of the Character's voice (filed under the opening
+ * Frame).
  */
-export type JobKind = 'picture' | 'render' | 'upscale' | 'voice' | 'speak' | 'speak-thought'
+export type JobKind =
+  | 'picture'
+  | 'render'
+  | 'upscale'
+  | 'voice'
+  | 'speak'
+  | 'speak-thought'
+  | 'scene'
 
 /** A queued, running or failed job. Finished jobs drop off the list. */
 export interface Job {

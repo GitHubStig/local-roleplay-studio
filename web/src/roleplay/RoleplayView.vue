@@ -8,6 +8,7 @@ import { useStoredFlag } from '../composables/useStoredFlag'
 import { useStoredText } from '../composables/useStoredText'
 import CollapsibleTextarea from '../components/CollapsibleTextarea.vue'
 import ImageViewer from '../components/ImageViewer.vue'
+import SceneViewer from '../components/SceneViewer.vue'
 import { cleanReply } from './reply'
 import { sessionPath } from '../sessionPath'
 import {
@@ -89,6 +90,7 @@ const JOB_NAMES: Record<JobKind, string> = {
   voice: 'Voice',
   speak: 'Listen',
   'speak-thought': 'Listen to thought',
+  scene: '3D',
 }
 
 /** What a job is doing, in a few words. */
@@ -106,6 +108,7 @@ function jobStatus(job: Job): string {
     return currentLook.value ? 'Picturing this moment…' : 'Writing the Look, then picturing…'
   }
   if (job.phase === 'queued') return 'Waiting for another render…'
+  if (job.kind === 'scene') return 'Making the 3D scene…'
   const doing = job.kind === 'upscale' ? 'Upscaling to 2048 px…' : 'Rendering…'
   return job.progress ? `${doing} step ${job.progress.step} of ${job.progress.total}` : doing
 }
@@ -206,6 +209,16 @@ function stepViewer(step: number) {
   viewing.value = frame.index
   goToFrame(frame.index)
 }
+
+// --- 3D scenes: a picture made into Gaussian splats, to look around.
+
+/** The Frame whose 3D scene is open, if any. */
+const viewingScene = ref<number | null>(null)
+const sceneView = computed(() => {
+  const frame = session.value?.frames.find((f) => f.index === viewingScene.value)
+  if (!frame?.scene || !session.value) return null
+  return { ...frame.scene, src: imageUrl(session.value.id, frame.scene.file), index: frame.index }
+})
 
 // --- Voices: the Character speaks their lines.
 
@@ -790,6 +803,27 @@ async function saveCastDraft(): Promise<boolean> {
                       >
                         {{ frame.upscaled ? 'Upscaled' : 'Upscale' }}
                       </button>
+                      <button
+                        v-if="frame.scene"
+                        type="button"
+                        class="action"
+                        title="Look around the picture in 3D"
+                        data-view-scene
+                        @click="viewingScene = frame.index"
+                      >
+                        View in 3D
+                      </button>
+                      <button
+                        v-else-if="frame.image"
+                        type="button"
+                        class="action"
+                        :disabled="hasJob(frame.index, 'scene')"
+                        title="Make the picture into a 3D scene with SHARP"
+                        data-scene-button
+                        @click="queue('scene', frame.index)"
+                      >
+                        Make 3D
+                      </button>
                     </p>
                     <details v-if="frame.promptText" class="text-muted" data-image-prompt>
                       <summary class="cursor-pointer select-none">
@@ -1191,6 +1225,14 @@ async function saveCastDraft(): Promise<boolean> {
       @previous="stepViewer(-1)"
       @next="stepViewer(1)"
       @close="viewing = null"
+    />
+    <SceneViewer
+      :src="sceneView?.src ?? null"
+      :pivot="sceneView?.pivot"
+      :fov="sceneView?.fov"
+      :aspect="sceneView?.aspect"
+      :label="sceneView ? `Frame ${sceneView.index}` : undefined"
+      @close="viewingScene = null"
     />
   </div>
 </template>

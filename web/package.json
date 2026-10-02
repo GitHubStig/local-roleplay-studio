@@ -11,13 +11,16 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@sparkjsdev/spark": "^2.3.0",
     "@vueuse/core": "^15.0.0",
+    "three": "^0.180.0",
     "vue": "^3.5.42",
     "vue-router": "^5.3.1"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^24.13.3",
+    "@types/three": "^0.180.0",
     "@vitejs/plugin-vue": "^6.0.8",
     "@vue/test-utils": "^2.5.1",
     "@vue/tsconfig": "^0.9.1",
