@@ -693,9 +693,15 @@ the front view baked onto its face) would combine them. Tooling: SAM 3D's script
 its own `outputs/` folder; both write splats turned differently from three.js's axes (both stand up
 with −90° about x; SAM 3D then faces +z, LiTo +x).
 
-**Parked: TRELLIS.2.** Its weights (`microsoft/TRELLIS.2-4B`, 15 GB) download and validate, but it
-also needs DINOv3 (`facebook/dinov3-vitl16-pretrain-lvd1689m`), gated by Meta with manual approval,
-and RMBG-2.0 (`briaai/RMBG-2.0`, gated, non-commercial) for RGB input; an RGBA input skips RMBG.
+**Tried: TRELLIS.2 through mlx-spatial** (weights `microsoft/TRELLIS.2-4B`, 15 GB; it also needs
+DINOv3, `facebook/dinov3-vitl16-pretrain-lvd1689m`, gated by Meta with manual approval, and, for
+RGB input only, RMBG-2.0, `briaai/RMBG-2.0`, gated and non-commercial: an RGBA cut-out skips it;
+and the original TRELLIS's sparse-structure decoder, `ss_dec_conv3d_16l8_fp16`, which isn't in
+the TRELLIS.2 download but is bundled with LiTo's). On the front view: **98 s**, a 13 MB textured
+GLB (512 pipeline, 1024 texture, 200k faces). The body held together all round, but the face was
+the worst of all the models (a flat, doll-like mask with smeared eyes and lips), it gave her a
+long ponytail instead of the bun, and the colours were flat and dark with no brushwork; mlx-spatial
+says its TRELLIS.2 texture quality is still "actively improving".
 
 [image-to-3dlab](https://github.com/Bingeljell/image-to-3dlab) is a local app running TRELLIS.2,
 Hunyuan3D, Pixal3D and SF3D on Apple Silicon side by side. Order to try: TRELLIS.2 and SAM 3D (one
