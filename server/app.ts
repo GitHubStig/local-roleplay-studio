@@ -66,12 +66,8 @@ const IMAGE_FILE = /^frame-\d+(-[0-9a-f]{8})?(-2048)?\.(png|svg)$/
  * and spoken thoughts (`thought-3-…`): MP3, or WAV from before 2026-10-02.
  */
 const AUDIO_FILE = /^(voice-[0-9a-f]{8}\.wav|(speech|thought)-\d+-[0-9a-f]{8}\.(mp3|wav))$/
-/**
- * A Roleplay's 3D scenes (`scene-3-1a2b3c4d.ply`), figures lifted from a Frame (`figure-3-…`) or
- * made from a portrait (`figure-character-…`), and those portraits (`portrait-persona-….png`).
- */
-const SCENE_FILE =
-  /^((scene|figure)-\d+|figure-(character|persona))-[0-9a-f]{8}\.ply$|^portrait-(character|persona)-[0-9a-f]{8}\.(png|svg)$/
+/** A Roleplay Frame's 2.5D scene (`scene-3-1a2b3c4d.ply`, SHARP) or 3D figure (`figure-3-…`, TripoSplat). */
+const SCENE_FILE = /^(scene|figure)-\d+-[0-9a-f]{8}\.ply$/
 const CONTENT_TYPES: Record<string, string> = {
   '.png': 'image/png',
   '.svg': 'image/svg+xml',

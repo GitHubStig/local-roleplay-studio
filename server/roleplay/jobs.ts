@@ -18,17 +18,16 @@ import {
 } from './engine.ts'
 import type { RoleplayModel } from './model.ts'
 import type { ArtStyle } from './art.ts'
-import type { Framing, RoleplaySession, Who } from './types.ts'
-import { liftFigure, makePortraitFigure } from './figure.ts'
+import type { RoleplaySession } from './types.ts'
+import { liftFigure } from './figure.ts'
 import { makeScene } from './scene.ts'
 import { designVoice, speakFrame } from './voice.ts'
 import { updateSession } from './update.ts'
 
 /**
  * `voice` designs a new take of the Character's voice; `speak` voices one Frame's dialogue, and
- * `speak-thought` its thought; `scene` makes its picture into a 3D scene; `figure` lifts the person
- * in its picture out as a 3D figure; `portrait` renders a portrait of one person (`options`) from
- * the Look and makes it into their figure (filed under the opening Frame).
+ * `speak-thought` its thought; `scene` makes its picture into a 2.5D scene (SHARP); `figure` lifts
+ * the person in its picture out as a 3D figure (TripoSplat).
  */
 export type JobKind =
   | 'picture'
@@ -39,7 +38,6 @@ export type JobKind =
   | 'speak-thought'
   | 'scene'
   | 'figure'
-  | 'portrait'
 export const JOB_KINDS: readonly JobKind[] = [
   'picture',
   'render',
@@ -49,20 +47,12 @@ export const JOB_KINDS: readonly JobKind[] = [
   'speak-thought',
   'scene',
   'figure',
-  'portrait',
 ]
-
-/** Who a `portrait` job is of, and how it's framed. */
-export interface JobOptions {
-  who: Who
-  framing: Framing
-}
 
 export interface Job {
   id: string
   kind: JobKind
   frameIndex: number
-  options?: JobOptions
   /** Failed jobs stay listed, with their error, until dismissed. */
   status: 'queued' | 'running' | 'failed'
   /**
@@ -87,10 +77,9 @@ export interface JobContext {
   artStyle(): Promise<ArtStyle>
 }
 
-/** Whether `job` is the same work: the same kind, on the same Frame, of the same person. */
-const sameWork = (job: Job, kind: JobKind, frameIndex: number, options?: JobOptions) =>
-  job.kind === kind && job.frameIndex === frameIndex && job.options?.who === options?.who &&
-  job.options?.framing === options?.framing
+/** Whether `job` is the same work: the same kind, on the same Frame. */
+const sameWork = (job: Job, kind: JobKind, frameIndex: number) =>
+  job.kind === kind && job.frameIndex === frameIndex
 
 export class RoleplayJobs {
   #jobs = new Map<string, Job[]>()
@@ -110,20 +99,14 @@ export class RoleplayJobs {
    * Queues a job. Asking again for work already queued or running on that Frame returns that job
    * instead of queueing it twice.
    */
-  enqueue(
-    session: RoleplaySession,
-    kind: JobKind,
-    frameIndex: number,
-    options?: JobOptions,
-  ): Job {
+  enqueue(session: RoleplaySession, kind: JobKind, frameIndex: number): Job {
     const jobs = this.#jobs.get(session.id) ?? []
-    const same = jobs.find((j) => sameWork(j, kind, frameIndex, options) && j.status !== 'failed')
+    const same = jobs.find((j) => sameWork(j, kind, frameIndex) && j.status !== 'failed')
     if (same) return { ...same }
     const job: Job = {
       id: crypto.randomUUID().slice(0, 8),
       kind,
       frameIndex,
-      ...(options ? { options } : {}),
       status: 'queued',
       createdAt: new Date().toISOString(),
     }
@@ -156,7 +139,7 @@ export class RoleplayJobs {
     if (!failed) return false
     const rest = jobs.filter((j) => j.id !== jobId)
     const again = rest.some((j) =>
-      sameWork(j, failed.kind, failed.frameIndex, failed.options) && j.status !== 'failed'
+      sameWork(j, failed.kind, failed.frameIndex) && j.status !== 'failed'
     )
     const { error: _, ...job } = failed
     this.#jobs.set(sessionId, again ? rest : [...rest, { ...job, status: 'queued' }])
@@ -237,9 +220,6 @@ export class RoleplayJobs {
       }
     } else if (job.kind === 'figure') {
       await liftFigure(withDeps, session, job.frameIndex, emit, signal)
-    } else if (job.kind === 'portrait') {
-      const { who, framing } = job.options!
-      await makePortraitFigure(withDeps, session, who, framing, emit, signal)
     } else if (job.kind === 'scene') {
       await makeScene(withDeps, session, job.frameIndex, emit, signal)
     } else if (job.kind === 'render') {

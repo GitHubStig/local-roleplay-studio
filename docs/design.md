@@ -183,41 +183,34 @@ under `/api/sessions/:id/roleplay/` ([ADR 0007](adr/0007-roleplay-is-a-conversat
    Look & Cast shows the description: **Play voice** plays the reference clip, **New take**
    designs the voice again from the same description, and an edited one is saved with **Save and
    design**. Designing the voice shows its progress there, not on the opening Frame.
-7. **2.5D scenes**: **Make 2.5D** under a rendered picture turns it into a 2.5D scene of about 1.2
-   million Gaussian splats with Apple's SHARP (`server/scene.ts`, `scene/make.py`), and **View in
-   2.5D** then opens it (`SceneViewer`, drawn with Spark on three.js, which load only then). It's
-   made from the upscale when the Frame has one (SHARP works at 1536 px, so the 2048 px upscale
-   has more to give it), else the original; a scene made before its picture was upscaled offers
-   **Make 2.5D from upscale**. It's a queued job (`scene`) that waits its turn in the render queue:
-   SHARP peaks near 15 GB. Each scene runs `uv run scene/make.py` once, like mflux once per
-   picture, so the memory is freed when it's done (~11 s: 4 s loading, 6 s making). The scene is
-   saved lossless (`scene-<index>-….ply`, ~63 MB) as `frame.scene`, with the picture it was made
-   from (`from`) and what the viewer needs: the depth to orbit around (a quarter of the splats are
-   nearer, so near subjects stay in view) and the camera SHARP assumed (a 30 mm lens, as a
-   vertical field of view and an aspect), so the viewer opens on exactly the picture's view.
-   SHARP's limits (a fixed splat count, what turning shows) are in
-   docs/research/image-to-3d.md. The viewer turns 15° or 30° either way, or back to the picture's view; dragging turns it
-   freely. SHARP invents what the picture never showed, so the further it turns, the more is made
-   up. Making it again replaces the scene; a re-render or Undo deletes it.
-8. **3D figures**: a person made whole in 3D, back included, with TripoSplat (`server/figure.ts`,
-   `figure/make.py`; its code is vendored in `figure/triposplat/`, MIT), as 524,288 Gaussians
-   (past TripoSplat's cap of 262,144, which is only an input check). It cuts the person out of a
-   picture and leaves the room behind (docs/research/image-to-3d.md, "TripoSplat trial"). Two ways:
-   **Lift figure** under a rendered picture lifts the person in it out (`frame.figure`, from the
-   upscale if there is one; anyone overlapping them takes parts away, and two people may come out
-   as one; a re-render or Undo deletes it). The **3D figures** section of Look & Cast makes one per
-   person from a portrait rendered for it (`session.figures.character` / `.persona`), **Full
-   length** (whole body, clean all round, small face) or **Waist-up** (clearer face; the back of
-   the head may show a ghost of it): the Image Prompt is their identity from the Look, the
-   framing, the clothing sentence of the latest picture they're in, a plain grey studio and even
-   light, and the Look's style, checked against the Limits like any picture
-   (`roleplay/figure.ts`, `portraitPrompt`); it renders at the Session's Image Model and steps,
-   portrait or square, then TripoSplat makes the figure. Both are queued jobs (`figure`, and
-   `portrait` with `who` and `framing`, filed under the opening Frame and shown in Look & Cast),
-   each run in its turn behind renders (~11 GB; ~70–100 s, plus the portrait's render). Making a
-   portrait figure again replaces the old one, portrait included. The same viewer
-   (`SceneViewer`, `figure`) orbits a figure round its middle from the front, with turns to the
-   sides and the back.
+7. **3D, by model (experimental)**: each rendered picture has two more buttons, named by the
+   model they use, since each is an experiment with its own strengths: **SHARP** (Apple) makes the
+   whole picture a 2.5D scene that turns ~30°, and **TripoSplat** (VAST) lifts the person in it
+   out as a 3D figure that turns all the way round. Once made, they read **View SHARP** and **View
+   TripoSplat**; the viewer (`SceneViewer`, drawn with Spark on three.js, which load only then) is
+   titled by model ("Frame 8 · SHARP, 2.5D"). Both are queued jobs (`scene`, `figure`) that wait
+   their turn in the render queue, and both are made from the upscale when the Frame has one; a
+   re-render or Undo deletes them, and making one again replaces it.
+   - **SHARP** (`server/scene.ts`, `scene/make.py`) turns the picture into about 1.2 million
+     Gaussian splats (SHARP works at 1536 px, so the 2048 px upscale has more to give it; a scene
+     made before its picture was upscaled offers **SHARP again from upscale**). SHARP peaks near
+     15 GB; each scene runs `uv run scene/make.py` once, like mflux once per picture, so the memory
+     is freed when it's done (~11 s: 4 s loading, 6 s making). The scene is saved lossless
+     (`scene-<index>-….ply`, ~63 MB) as `frame.scene`, with the picture it was made from (`from`)
+     and what the viewer needs: the depth to orbit around (a quarter of the splats are nearer, so
+     near subjects stay in view) and the camera SHARP assumed (a 30 mm lens, as a vertical field
+     of view and an aspect), so the viewer opens on exactly the picture's view. It turns 15° or 30°
+     either way, or back to the picture's view; dragging turns it freely. SHARP invents what the
+     picture never showed, so the further it turns, the more is made up. Its limits (a fixed
+     splat count, what turning shows) are in docs/research/image-to-3d.md.
+   - **TripoSplat** (`server/figure.ts`, `figure/make.py`; its code is vendored in
+     `figure/triposplat/`, MIT) cuts the person out of the picture, leaves the room behind, and
+     builds them whole, back included, as 524,288 Gaussians (past TripoSplat's cap of 262,144,
+     which is only an input check): `frame.figure`, `figure-<index>-….ply`, ~34 MB. Anyone
+     overlapping them takes parts of them away, and two people in the picture may come out as one;
+     it's best with one person, unobstructed (docs/research/image-to-3d.md, "TripoSplat trial").
+     ~75 s and ~11 GB. The viewer orbits a figure round its middle from the front, with turns to
+     the sides and the back.
 
 The prompts are Markdown files in `server/prompts/roleplay/` (`cast.md`, `cast-request.md`,
 `character.md`, `opening-request.md`, `limits.md`, `limits-adults-only.md`, and Suggest's
@@ -440,14 +433,14 @@ All under `/api`; the Vite dev server proxies it to the Deno server.
 | `POST /sessions/:id/cancel` | Cancel the Frame in progress |
 | `POST /sessions/:id/frames/:index/upscale` | Either kind: upscale one rendered Frame's image to 2048 px, streaming progress then `upscaled` (`session`); `409` if it has no image or is already upscaled |
 | `DELETE /sessions/:id/frames/:index` | Undo the latest Frame; `:index` must name it (`409` otherwise, and for the Opening Frame or while a Frame runs) |
-| `GET /sessions/:id/images/:file` | A Frame's image, a Roleplay's audio (`voice-…wav`, `speech-…mp3`, `thought-…mp3`, or `.wav` from before), or a Roleplay Frame's 3D scene (`scene-…ply`), a figure (`figure-…ply`) and the portrait it was made from (`portrait-…png`) |
+| `GET /sessions/:id/images/:file` | A Frame's image, a Roleplay's audio (`voice-…wav`, `speech-…mp3`, `thought-…mp3`, or `.wav` from before), or a Roleplay Frame's 3D scene (`scene-…ply`), or a 3D figure (`figure-…ply`) |
 | `POST /sessions/:id/roleplay/cast` | Roleplay: write (or, before it begins, rewrite) the Cast, streaming `phase`, `thinking`, then `cast` (`cast`, `session`) |
 | `POST /sessions/:id/roleplay/begin` | Roleplay: the opening Reply, streaming `reply-part` per field, then `replied` (`frame`, `session`) |
 | `POST /sessions/:id/roleplay/messages` | Roleplay: send `{ text }`, streaming `reply-part` (`key`, `value`) per field, then `replied`, or `declined` (`message`) |
 | `POST /sessions/:id/roleplay/suggest` | Roleplay: suggest a Message from `{ draft? }`, streaming `suggestion-part` (`text`, all of it so far), then `suggestion` (`text`, tidied); nothing is saved |
 | `DELETE /sessions/:id/roleplay/frames/:index` | Roleplay: undo the latest exchange (`409` for any other, and for the opening) |
-| `GET /sessions/:id/roleplay/jobs` | Roleplay: its background jobs (picture, render, upscale, voice, speak, scene, figure, portrait): running, queued, then failed, each with its `phase`, `progress` or `error` |
-| `POST /sessions/:id/roleplay/jobs` | Roleplay: queue `{ kind: "picture" \| "render" \| "upscale" \| "voice" \| "speak" \| "speak-thought" \| "scene" \| "figure" \| "portrait", frameIndex, who?, framing? }` (`voice` designs a new take of the Character's voice; `speak-thought` speaks the Frame's thought, whispered; `scene` makes the picture into a 3D scene; `figure` lifts its person out as a 3D figure; `portrait` (with `who`: `character` or `persona`, and `framing`: `full` or `waist`; `400` otherwise) makes a person's figure from a portrait; `409` to speak a Frame with nothing to say aloud, or no thought, or to make a scene of one with no picture); returns the queue (asking twice for the same job queues it once) |
+| `GET /sessions/:id/roleplay/jobs` | Roleplay: its background jobs (picture, render, upscale, voice, speak, scene, figure): running, queued, then failed, each with its `phase`, `progress` or `error` |
+| `POST /sessions/:id/roleplay/jobs` | Roleplay: queue `{ kind: "picture" \| "render" \| "upscale" \| "voice" \| "speak" \| "speak-thought" \| "scene" \| "figure", frameIndex }` (`voice` designs a new take of the Character's voice; `speak-thought` speaks the Frame's thought, whispered; `scene` makes the picture into a 2.5D scene (SHARP); `figure` lifts its person out as a 3D figure (TripoSplat); `409` to speak a Frame with nothing to say aloud, or no thought, or to make a scene of one with no picture); returns the queue (asking twice for the same job queues it once) |
 | `POST /sessions/:id/roleplay/jobs/:job/retry` | Roleplay: put a failed job back at the end of the queue (`404` if there's no such failed job) |
 | `DELETE /sessions/:id/roleplay/jobs/:job` | Roleplay: cancel a queued or running job, or dismiss a failed one |
 | `PUT /sessions/:id/roleplay/look` | Roleplay: replace the Look, `{ subject, style }`, rewriting every pictured Frame (`400` if incomplete, `422` if it crosses a Limit) |

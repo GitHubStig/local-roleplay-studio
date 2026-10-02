@@ -55,7 +55,7 @@ The vocabulary (Scenario, Session, Image Prompt, Frame, Action, …) is defined 
   `uv run scene/make.py --download` fetches them ahead of time. They're under Apple's
   research-only model license: fine for playing at home, not for anything commercial. Set
   `SCENES=off` to run without SHARP.
-- **3D figures (optional), for Roleplay people:** uv runs TripoSplat (`figure/make.py`; its code is
+- **3D figures (optional), for the person in a Roleplay picture:** uv runs TripoSplat (`figure/make.py`; its code is
   in `figure/triposplat/`, MIT), which installs its own Python packages (torch) on first use, and
   its weights (4.2 GB, Hugging Face's [VAST-AI/TripoSplat](https://huggingface.co/VAST-AI/TripoSplat))
   with the first figure; `uv run figure/make.py --download` fetches them ahead of time. Set
@@ -94,8 +94,8 @@ or delete it.
 | `OLLAMA_HOST` | `http://localhost:11434` | Where Ollama listens |
 | `IMAGE_GENERATOR` | (mflux) | Set to `placeholder` to render SVG cards instead of running mflux, for working without a GPU |
 | `VOICES` | (on) | Set to `off` to leave Roleplay Characters silent, without starting the voice service |
-| `SCENES` | (on) | Set to `off` to run without SHARP: Make 2.5D then fails with a reason |
-| `FIGURES` | (on) | Set to `off` to run without TripoSplat: 3D figures then fail with a reason |
+| `SCENES` | (on) | Set to `off` to run without SHARP: its button then fails with a reason |
+| `FIGURES` | (on) | Set to `off` to run without TripoSplat: its button then fails with a reason |
 
 The web app's dev server is pinned to port **5180** and fails, rather than picking another port,
 if something else is using it.

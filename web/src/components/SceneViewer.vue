@@ -157,7 +157,9 @@ const FIGURE_TURNS = [
   >
     <div v-if="src" class="flex h-full w-full flex-col gap-2 p-4 text-sm text-white/80 sm:p-8">
       <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <span v-if="label" class="text-white">{{ label }} in {{ figure ? '3D' : '2.5D' }}</span>
+        <span v-if="label" class="text-white">
+          {{ label }} · {{ figure ? 'TripoSplat, 3D' : 'SHARP, 2.5D' }}
+        </span>
         <span class="tabular-nums" data-turned>
           Turned {{ turned.across }}° across, {{ turned.up }}° up
         </span>
