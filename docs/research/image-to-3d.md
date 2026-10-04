@@ -720,6 +720,16 @@ alone on black, which is how figures show now, it looks far better, and that's t
 counts for the figure buttons. ~10 s to combine (the cut-out, then numpy), plus the scene and the
 figure.
 
+**Tried and dropped: SHARP's person in front, the figure behind** (2026-10-04, same Frame). Two
+ways to keep the painting's own person from the front: (1) *slice*, SHARP's full scene plus only
+the figure's back half, cut by a plane facing the camera (the figures' fronts already sat within
+~1 cm of SHARP's person, so the halves met); clean at 0–30° and from behind, but at 60–90° SHARP's
+thin front relief went flat and smeared, with a lighter patch at the cut. (2) *Crossfade* in the
+viewer: SHARP's person fading into the figure's own front between 20° and 45° (Spark's per-mesh
+`opacity`, four meshes: room, figure back, SHARP person, figure front); seamless, and the figure's
+profile at 60–90°, but once faded the painting's person becomes a different-looking one. The user
+judged it not good. Not pursued.
+
 **Tried: TRELLIS.2 through mlx-spatial** (weights `microsoft/TRELLIS.2-4B`, 15 GB; it also needs
 DINOv3, `facebook/dinov3-vitl16-pretrain-lvd1689m`, gated by Meta with manual approval, and, for
 RGB input only, RMBG-2.0, `briaai/RMBG-2.0`, gated and non-commercial: an RGBA cut-out skips it;
