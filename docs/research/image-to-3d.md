@@ -706,6 +706,20 @@ ghost of SHARP's face (a shallow shell made for the front) beside the head at 35
 profile. Lining them up would need facial landmarks in both and a warp of one onto the other.
 **LiTo alone stays the best figure from one picture.**
 
+**Tried: a figure inside its 2.5D scene** (2026-10-04, Kael, Frame 4 of the tavern). SHARP's scene
+of the picture with the person's splats removed (those landing inside BiRefNet's mask, grown 4 px,
+and not far behind it: 353k of 1.18M), and a TripoSplat or LiTo figure placed in the gap: turned to
+face the camera, then scaled and moved (and tried at ±20° of turn) to best cover the mask from the
+picture's camera, starting at the person's median depth; written in SHARP's axes so the 2.5D viewer
+shows it unchanged. The fits needed no turn: outline overlap 0.90 (TripoSplat) and 0.95 (LiTo).
+Both sat naturally in the room at 0° and ±15–30°, lit like it, with no hole visible behind him
+(the wall there is dark). At the picture's own view the person is the figure's redrawing, not the
+painting (TripoSplat gave him a different, upturned face; LiTo a softer, darker one), and at ±30°
+SHARP alone already held him nearly as well. Against SHARP alone it's no gain; against the figure
+alone on black, which is how figures show now, it looks far better, and that's the comparison that
+counts for the figure buttons. ~10 s to combine (the cut-out, then numpy), plus the scene and the
+figure.
+
 **Tried: TRELLIS.2 through mlx-spatial** (weights `microsoft/TRELLIS.2-4B`, 15 GB; it also needs
 DINOv3, `facebook/dinov3-vitl16-pretrain-lvd1689m`, gated by Meta with manual approval, and, for
 RGB input only, RMBG-2.0, `briaai/RMBG-2.0`, gated and non-commercial: an RGBA cut-out skips it;
