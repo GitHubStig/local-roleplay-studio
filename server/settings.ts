@@ -21,6 +21,10 @@ export const SIZE_PRESETS: readonly SizePreset[] = [
 export const QUANTIZE_OPTIONS = [null, 4, 8] as const
 export type Quantize = (typeof QUANTIZE_OPTIONS)[number]
 
+/** The fraction of steps the step cache skips; null for off. */
+export const STEP_CACHE_OPTIONS = [null, 0.25, 0.4, 0.5] as const
+export type StepCache = (typeof STEP_CACHE_OPTIONS)[number]
+
 export type SeedMode = 'random' | 'fixed'
 
 /** Player-chosen configuration; read when a Session starts. */
@@ -33,6 +37,10 @@ export interface Settings {
   steps: number
   size: string
   quantize: Quantize
+  /** For Image Models that take it: the step cache's ratio, or null for off. */
+  stepCache: StepCache
+  /** For Image Models with a fast mode: render with it (its own steps), not `steps`. */
+  fast: boolean
   seedMode: SeedMode
   /** Used only when `seedMode` is `fixed`. */
   seed: number
@@ -59,6 +67,8 @@ export const DEFAULT_SETTINGS: Settings = {
   steps: IMAGE_MODELS[0].defaultSteps,
   size: SIZE_PRESETS[0].id,
   quantize: null,
+  stepCache: 0.4,
+  fast: false,
   seedMode: 'random',
   seed: 42,
   upscaler: UPSCALERS[0].id,
@@ -96,6 +106,12 @@ export function validateSettings(input: unknown): ValidationResult {
   if (!QUANTIZE_OPTIONS.includes(s.quantize as Quantize)) {
     issues.push('quantize must be null, 4 or 8')
   }
+  if (s.stepCache !== undefined && !STEP_CACHE_OPTIONS.includes(s.stepCache as StepCache)) {
+    issues.push(`stepCache must be one of: ${STEP_CACHE_OPTIONS.join(', ')}`)
+  }
+  if (s.fast !== undefined && typeof s.fast !== 'boolean') {
+    issues.push('fast must be true or false')
+  }
   if (s.seedMode !== 'random' && s.seedMode !== 'fixed') {
     issues.push('seedMode must be "random" or "fixed"')
   }
@@ -126,6 +142,8 @@ export function validateSettings(input: unknown): ValidationResult {
       steps: s.steps as number,
       size: s.size as string,
       quantize: s.quantize as Quantize,
+      stepCache: s.stepCache === undefined ? DEFAULT_SETTINGS.stepCache : s.stepCache as StepCache,
+      fast: (s.fast as boolean | undefined) ?? false,
       seedMode: s.seedMode as SeedMode,
       seed: s.seed as number,
       upscaler: (s.upscaler as Upscaler | undefined) ?? DEFAULT_SETTINGS.upscaler,

@@ -68,6 +68,9 @@ The vocabulary (Scenario, Session, Image Prompt, Frame, Action, …) is defined 
 - **Saved quantized copies** of Image Models (with Quantize on in Settings) are made by the app on
   first use, 13–22 GB each, in `models/quantized/` in this folder (gitignored); Settings lists them
   to delete.
+- **Fast (Qwen-Image 2.1, optional):** Settings → Fast renders with Viggle's 6-step turbo LoRA
+  ([Viggle/Qwen-Image-2.1-viggle-turbo](https://huggingface.co/Viggle/Qwen-Image-2.1-viggle-turbo),
+  1.3 GB, Qwen's research license), which mflux downloads with the first fast render.
 
 ## Getting started
 

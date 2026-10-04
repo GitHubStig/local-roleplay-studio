@@ -54,6 +54,48 @@ Deno.test('mfluxArgs renders from a saved quantized copy, named by its model, wi
   assertEquals(args.includes('--quantize'), false)
 })
 
+Deno.test('mfluxArgs adds the step cache only for models that take it', () => {
+  const qwen = mfluxArgs(
+    findImageModel('qwen-image-2.1')!,
+    request('/d', { stepCache: 0.4 }),
+    'o.png',
+  )
+  assertEquals(
+    qwen.slice(qwen.indexOf('--step-cache-ratio'), qwen.indexOf('--step-cache-ratio') + 2),
+    [
+      '--step-cache-ratio',
+      '0.4',
+    ],
+  )
+  const off = mfluxArgs(
+    findImageModel('qwen-image-2.1')!,
+    request('/d', { stepCache: null }),
+    'o.png',
+  )
+  assertEquals(off.includes('--step-cache-ratio'), false)
+  const klein = mfluxArgs(
+    findImageModel('flux2-klein-4b')!,
+    request('/d', { stepCache: 0.4 }),
+    'o.png',
+  )
+  assertEquals(klein.includes('--step-cache-ratio'), false)
+})
+
+Deno.test('mfluxArgs renders fast mode at its own steps, scheduler and LoRA, without the cache', () => {
+  const qwen = findImageModel('qwen-image-2.1')!
+  const args = mfluxArgs(qwen, request('/d', { fast: true, steps: 25, stepCache: 0.4 }), 'o.png')
+  assertEquals(args[args.indexOf('--steps') + 1], '6')
+  assertEquals(args[args.indexOf('--scheduler') + 1], 'viggle_turbo')
+  assertEquals(args.slice(args.indexOf('--lora') + 1, args.indexOf('--lora') + 3), [
+    qwen.fast!.lora,
+    '1.0',
+  ])
+  assertEquals(args.includes('--step-cache-ratio'), false)
+  // Models without a fast mode ignore it.
+  const klein = mfluxArgs(findImageModel('flux2-klein-4b')!, request('/d', { fast: true }), 'o.png')
+  assertEquals([klein.includes('--lora'), klein[klein.indexOf('--steps') + 1]], [false, '3'])
+})
+
 Deno.test('mfluxArgs uses the small size presets', () => {
   const args = mfluxArgs(
     findImageModel('flux2-klein-4b')!,

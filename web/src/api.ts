@@ -13,6 +13,10 @@ export interface Settings {
   steps: number
   size: string
   quantize: Quantize
+  /** The fraction of steps the step cache skips, for models that take it; null for off. */
+  stepCache: number | null
+  /** Render with the model's fast mode (its own steps), for models that have one. */
+  fast: boolean
   seedMode: SeedMode
   seed: number
   /** Which SeedVR2 model Upscale uses; applies to the next upscale, even mid-Session. */
@@ -29,6 +33,10 @@ export interface ImageModelOption {
   id: string
   label: string
   defaultSteps: number
+  /** Takes the step cache. */
+  stepCache: boolean
+  /** The steps its fast mode runs at; absent when it has none. */
+  fastSteps?: number
 }
 
 export interface SizePreset {

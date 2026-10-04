@@ -24,6 +24,13 @@ const quantizeChoices = [
   { value: 4, label: '4-bit' },
 ] as const
 
+const stepCacheChoices = [
+  { value: null, label: 'Off' },
+  { value: 0.25, label: '0.25 (about 1.4× faster)' },
+  { value: 0.4, label: '0.4 (about 1.5× faster)' },
+  { value: 0.5, label: '0.5 (fastest, least detail)' },
+] as const
+
 onMounted(async () => {
   try {
     ;[form.value, options.value] = await Promise.all([getSettings(), getSettingsOptions()])
@@ -56,6 +63,12 @@ const textModelChoices = computed(() => {
 const canThink = computed(() =>
   !!form.value && (options.value?.thinkingModels ?? []).includes(form.value.textModel)
 )
+
+/** The chosen Image Model's options, for the controls only some models have. */
+const imageModel = computed(() =>
+  options.value?.imageModels.find((m) => m.id === form.value?.imageModel)
+)
+const fastOn = computed(() => !!form.value?.fast && !!imageModel.value?.fastSteps)
 
 function onImageModelChange() {
   const model = options.value?.imageModels.find((m) => m.id === form.value?.imageModel)
@@ -124,10 +137,29 @@ async function save() {
           </select>
         </label>
 
+        <label v-if="imageModel?.fastSteps" class="flex items-start gap-2" data-fast>
+          <input v-model="form.fast" type="checkbox" class="mt-1" />
+          <span class="flex flex-col gap-0.5">
+            <span>Fast</span>
+            <span class="text-sm text-muted">
+              Renders in {{ imageModel.fastSteps }} steps with a turbo LoRA (downloaded the first
+              time, 1.3 GB): about 3× faster, a little smoother and less painterly.
+            </span>
+          </span>
+        </label>
+
         <div class="grid grid-cols-2 gap-4">
           <label class="flex flex-col gap-1">
             <span class="text-sm text-muted">Steps</span>
-            <input v-model.number="form.steps" type="number" min="1" max="100" class="field" />
+            <input
+              v-if="fastOn"
+              :value="imageModel?.fastSteps"
+              type="number"
+              class="field"
+              disabled
+              title="Fast mode sets the steps"
+            />
+            <input v-else v-model.number="form.steps" type="number" min="1" max="100" class="field" />
           </label>
           <label class="flex flex-col gap-1">
             <span class="text-sm text-muted">Quantize</span>
@@ -142,6 +174,19 @@ async function save() {
             </span>
           </label>
         </div>
+
+        <label v-if="imageModel?.stepCache && !fastOn" class="flex flex-col gap-1" data-step-cache>
+          <span class="text-sm text-muted">Step cache</span>
+          <select v-model="form.stepCache" class="field">
+            <option v-for="c in stepCacheChoices" :key="String(c.value)" :value="c.value">
+              {{ c.label }}
+            </option>
+          </select>
+          <span class="text-sm text-muted">
+            Skips this share of the steps that change the picture least, reusing the one before.
+            At 0.4 it looks near the same.
+          </span>
+        </label>
 
         <div v-if="copies.length" class="flex flex-col gap-1" data-quantized>
           <span class="text-sm text-muted">Saved copies (in models/quantized)</span>

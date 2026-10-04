@@ -12,9 +12,10 @@ import { type QuantizedStore, quantizedStore } from './quantized.ts'
 import { SIZE_PRESETS } from './settings.ts'
 
 /**
- * The mflux command line for one image. With a saved quantized copy (`saved`, its folder), the
- * render loads that, named by the model it's based on; otherwise a Quantize setting converts the
- * full weights as it goes (slower, and no lower peak: see quantized.ts).
+ * The mflux command line for one image, with the model's step cache or fast mode as Settings ask.
+ * With a saved quantized copy (`saved`, its folder), the render loads that, named by the model it's
+ * based on; otherwise a Quantize setting converts the full weights as it goes (slower, and no lower
+ * peak: see quantized.ts).
  */
 export function mfluxArgs(
   model: ImageModel,
@@ -25,6 +26,9 @@ export function mfluxArgs(
   const { settings } = req
   const size = SIZE_PRESETS.find((p) => p.id === settings.size) ?? SIZE_PRESETS[0]
   const quantize = settings.quantize && !model.preQuantized && !saved
+  const fast = settings.fast ? model.fast : undefined
+  // The step cache leaves runs under 10 steps be, so it's never added to a fast one.
+  const stepCache = !fast && model.stepCache ? settings.stepCache : null
   return [
     '--model',
     saved ?? model.model,
@@ -35,7 +39,9 @@ export function mfluxArgs(
     '--seed',
     String(req.seed),
     '--steps',
-    String(settings.steps),
+    String(fast?.steps ?? settings.steps),
+    ...(fast ? ['--scheduler', fast.scheduler, '--lora', fast.lora, '1.0'] : []),
+    ...(stepCache ? ['--step-cache-ratio', String(stepCache)] : []),
     '--width',
     String(size.width),
     '--height',

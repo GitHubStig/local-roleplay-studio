@@ -337,10 +337,12 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
         textModels: models.map((m) => m.name),
         thinkingModels: models.filter((m) => m.thinking).map((m) => m.name),
         textModelsError,
-        imageModels: IMAGE_MODELS.map(({ id, label, defaultSteps }) => ({
+        imageModels: IMAGE_MODELS.map(({ id, label, defaultSteps, stepCache, fast }) => ({
           id,
           label,
           defaultSteps,
+          stepCache: !!stepCache,
+          fastSteps: fast?.steps,
         })),
         sizePresets: SIZE_PRESETS,
         upscalers: UPSCALERS,

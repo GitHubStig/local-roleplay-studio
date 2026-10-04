@@ -18,6 +18,8 @@ const settings: api.Settings = {
   steps: 9,
   size: 'portrait',
   quantize: null,
+  stepCache: 0.4,
+  fast: false,
   seedMode: 'random',
   seed: 42,
   upscaler: 'seedvr2-7b',
@@ -29,7 +31,7 @@ const settings: api.Settings = {
 const options: api.SettingsOptions = {
   textModels: ['llama3:latest'],
   thinkingModels: [],
-  imageModels: [{ id: 'z-image-turbo', label: 'Z-Image Turbo', defaultSteps: 9 }],
+  imageModels: [{ id: 'z-image-turbo', label: 'Z-Image Turbo', defaultSteps: 9, stepCache: false }],
   sizePresets: [],
   upscalers: [
     { id: 'seedvr2-7b', label: 'SeedVR2 7B' },

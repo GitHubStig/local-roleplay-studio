@@ -19,6 +19,8 @@ const settings: api.Settings = {
   steps: 9,
   size: 'portrait',
   quantize: null,
+  stepCache: 0.4,
+  fast: false,
   seedMode: 'random',
   seed: 42,
   upscaler: 'seedvr2-7b',
@@ -31,8 +33,15 @@ const options: api.SettingsOptions = {
   textModels: ['gemma4:31b-mlx', 'llama3:latest'],
   thinkingModels: [],
   imageModels: [
-    { id: 'z-image-turbo', label: 'Z-Image Turbo', defaultSteps: 9 },
-    { id: 'flux2-klein-4b', label: 'FLUX.2 Klein 4B', defaultSteps: 4 },
+    { id: 'z-image-turbo', label: 'Z-Image Turbo', defaultSteps: 9, stepCache: false },
+    { id: 'flux2-klein-4b', label: 'FLUX.2 Klein 4B', defaultSteps: 4, stepCache: false },
+    {
+      id: 'qwen-image-2.1',
+      label: 'Qwen-Image 2.1',
+      defaultSteps: 25,
+      stepCache: true,
+      fastSteps: 6,
+    },
   ],
   sizePresets: [{ id: 'portrait', label: 'Portrait', width: 832, height: 1216 }],
   upscalers: [
@@ -49,6 +58,20 @@ beforeEach(() => {
 })
 
 describe('SettingsView', () => {
+  it('offers the step cache and Fast only for models that have them', async () => {
+    const wrapper = mount(SettingsView)
+    await flushPromises()
+    expect(wrapper.find('[data-step-cache]').exists()).toBe(false)
+    expect(wrapper.find('[data-fast]').exists()).toBe(false)
+    await wrapper.findAll('select')[1].setValue('qwen-image-2.1')
+    expect(wrapper.find('[data-step-cache]').exists()).toBe(true)
+    await wrapper.find('[data-fast] input').setValue(true)
+    // Fast sets its own steps, and the cache has no effect on so few.
+    expect(wrapper.find('[data-step-cache]').exists()).toBe(false)
+    const steps = wrapper.find('input[type=number]').element as HTMLInputElement
+    expect([steps.value, steps.disabled]).toEqual(['6', true])
+  })
+
   it('resets steps to the chosen Image Model default', async () => {
     const wrapper = mount(SettingsView)
     await flushPromises()

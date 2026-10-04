@@ -17,6 +17,8 @@ const settings: Settings = {
   steps: 9,
   size: 'portrait',
   quantize: null,
+  stepCache: 0.4,
+  fast: false,
   seedMode: 'random',
   seed: 42,
   upscaler: 'seedvr2-7b',

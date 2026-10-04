@@ -386,6 +386,36 @@ including model loading), not a comparison of how well they follow the prompt or
 subject consistent. FLUX.2 Klein 9B (added 2026-09-29) is about twice as slow as 4B and needs twice
 the memory, which next to gemma4 on a 48 GB Mac is tight; 4B stays the default.
 
+### Qwen-Image 2.1 on mflux 0.21: the step cache and Viggle's turbo LoRA (2026-10-04)
+
+mflux 0.21 adds a step cache for Qwen-Image 2.1 (`--step-cache-ratio`, TeaCache-style: it skips
+the transformer on that share of the steps whose timestep changes least, and reuses the step
+before) and a scheduler for Viggle's 6-step turbo LoRA (`--scheduler viggle_turbo`). Measured on
+the app's settings at the time: the saved 8-bit copy, 25 steps, no CFG, one prompt (Elara,
+waist-up) and seed, at 1024×1024, everything else closed:
+
+| Run | Time | Peak memory | Looks |
+|---|---|---|---|
+| mflux 0.20, 25 steps | 103 s | | |
+| mflux 0.21, 25 steps | 98–100 s | 39.1–39.3 GB | the same picture as 0.20 |
+| + step cache 0.4 | 66 s (1.5×) | 38.7 GB | near the same: same pose, face and dress; slightly softer brushwork |
+| turbo LoRA, 6 steps | 29–31 s (3.4×) | 38.9–39.2 GB | a different take on the prompt: smoother, more polished, less painterly; the face holds up |
+
+- **The release notes' "~1.8× faster" is mostly the step cache**: 0.21 alone is only 2–5% faster.
+- **Both work on the 8-bit saved copy**, the one the app renders from, and the copy saved by 0.20
+  loads in 0.21 (the app still saves a fresh one, named for 0.21, and deletes the old).
+- **The step cache is on in the app** for Qwen-Image 2.1 (Settings → Step cache, 0.4 by default;
+  0.25, 0.5 or off). The other Image Models' commands don't take it (2026-10-04). It leaves runs
+  under 10 steps alone.
+- **The turbo LoRA is Settings → Fast**, off by default: `Viggle/Qwen-Image-2.1-viggle-turbo`
+  (v0.3, rank 256, 1.3 GB), passed to mflux as `repo:file`, so mflux fetches it into the Hugging
+  Face cache on first use. It must run at exactly 6 steps with its scheduler, so Fast overrides
+  Steps and the step cache. It's under Qwen's research license (non-commercial), like LiTo. At
+  512×512 on the 8-bit copy: 5 s of denoising, 24.5 GB peak. It's v0.3, the file the model card
+  says to use; v0.2.1 (crisper, grainier) is also in the repo. Viggle's 9-step mode (the same
+  LoRA, switched off for the last two steps) isn't possible through mflux 0.21
+  ([open-threads.md](open-threads.md)).
+
 ### Upscaler
 
 Upscale uses **SeedVR2 7B** by default (`seedvr2-7b`, `mflux-upscale-seedvr2 --resolution 2048`);

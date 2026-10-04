@@ -12,6 +12,18 @@ export interface ImageModel {
   preQuantized?: boolean
   /** Steps to use when the model is picked: mflux's own default, unless fewer look as good. */
   defaultSteps: number
+  /** Takes mflux's step cache (`--step-cache-ratio`): it skips the steps that change least. */
+  stepCache?: boolean
+  /** A few-step mode the player can switch on: a distilling LoRA with its own scheduler. */
+  fast?: FastMode
+}
+
+/** A turbo LoRA and how it must run: with this scheduler, at exactly this many steps. */
+export interface FastMode {
+  /** For `--lora`: a local file, or a Hugging Face `repo:file` fetched on first use. */
+  lora: string
+  scheduler: string
+  steps: number
 }
 
 export const IMAGE_MODELS: readonly ImageModel[] = [
@@ -66,6 +78,14 @@ export const IMAGE_MODELS: readonly ImageModel[] = [
     model: 'qwen-image-2.1',
     // mflux defaults to 40; 25 looks just as good at 512 px and is much faster.
     defaultSteps: 25,
+    stepCache: true,
+    // Viggle's turbo LoRA (1.3 GB, Qwen research license): about 3.4x faster, a little smoother.
+    fast: {
+      lora:
+        'Viggle/Qwen-Image-2.1-viggle-turbo:Qwen-Image-2.1-viggle-turbo-v0.3-6step-lora-r256.safetensors',
+      scheduler: 'viggle_turbo',
+      steps: 6,
+    },
   },
 ]
 

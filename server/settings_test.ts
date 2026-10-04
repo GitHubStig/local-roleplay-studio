@@ -94,3 +94,13 @@ Deno.test('validateSettings has the Art Agent write prose unless tags are chosen
   assertEquals(tags.ok && tags.settings.artStyle, 'tags')
   assertEquals(validateSettings({ ...DEFAULT_SETTINGS, artStyle: 'booru' }).ok, false)
 })
+
+Deno.test('validateSettings turns the step cache on at 0.4 and fast mode off unless set', () => {
+  const { stepCache: _, fast: __, ...older } = DEFAULT_SETTINGS
+  const result = validateSettings(older)
+  assertEquals(result.ok && [result.settings.stepCache, result.settings.fast], [0.4, false])
+  const off = validateSettings({ ...DEFAULT_SETTINGS, stepCache: null, fast: true })
+  assertEquals(off.ok && [off.settings.stepCache, off.settings.fast], [null, true])
+  assertEquals(validateSettings({ ...DEFAULT_SETTINGS, stepCache: 0.9 }).ok, false)
+  assertEquals(validateSettings({ ...DEFAULT_SETTINGS, fast: 'yes' }).ok, false)
+})

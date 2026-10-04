@@ -74,6 +74,8 @@ beforeEach(() => {
     steps: 4,
     size: 'portrait',
     quantize: null,
+    stepCache: 0.4,
+    fast: false,
     seedMode: 'random',
     seed: 1,
     upscaler: 'seedvr2-7b',
