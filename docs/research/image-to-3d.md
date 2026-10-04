@@ -730,6 +730,18 @@ viewer: SHARP's person fading into the figure's own front between 20° and 45° 
 profile at 60–90°, but once faded the painting's person becomes a different-looking one. The user
 judged it not good. Not pursued.
 
+**The slice again, on Elara** (2026-10-04, a test picture of her alone in the tavern, Qwen-Image
+2.1; SHARP, TripoSplat and LiTo on it). Fits: LiTo 0.92 at no turn; TripoSplat 0.88 only when
+turned −30° (0.75 held straight: its figure is built ~30° off). From the front to 60° it was the
+painting in its room. Behind her, SHARP's wall (the bar and shelves, ~0.4 m+ behind her) stood
+between the camera and her, and SHARP's front shell showed through from behind as a reversed,
+see-through face. Fixes tried: fading the far wall and SHARP's person out between 70° and 100° by
+viewing angle (separate meshes, Spark `opacity`), and a wider turn search. Behind, TripoSplat then
+gave a good back (bun, collar, dress); LiTo lost most of her head (it leans forward, into the half
+the slice drops). Around 90° the join still showed: two heads with TripoSplat's turned fit, a thin
+half-faded figure with LiTo. The user judged it not great. Stopped; a cut that follows each
+figure's head and shoulders, not one plane, was the next idea.
+
 **Tried: TRELLIS.2 through mlx-spatial** (weights `microsoft/TRELLIS.2-4B`, 15 GB; it also needs
 DINOv3, `facebook/dinov3-vitl16-pretrain-lvd1689m`, gated by Meta with manual approval, and, for
 RGB input only, RMBG-2.0, `briaai/RMBG-2.0`, gated and non-commercial: an RGBA cut-out skips it;
