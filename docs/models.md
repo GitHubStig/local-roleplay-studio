@@ -160,6 +160,57 @@ weights on every token, so it is 2–3× slower than the 26B-A4B (about 4B activ
 gemma4 31B. Its Suggest tidies the player's style more than the others. Qwen3.5-9B Heretic is
 faster than Gemma 12B but not smaller once loaded, and wanders more.
 
+**The same Gemma 4 12B Heretic on Ollama's MLX engine (NVFP4).** No uncensored MLX build of it is
+published, so it was made from igorls's full-precision weights (`igorls/gemma-4-12B-it-heretic-v1`,
+24 GB of safetensors) with a Modelfile of just `FROM <the downloaded folder>` and
+`ollama create gemma-4-12b-heretic:nvfp4 -q nvfp4` (Ollama 0.35.1; 17 s, 8.0 GB). It keeps the
+model's Thinking (on by default; the app turns it off) and its vision and audio encoders. Against
+the GGUF Q4_K_M, the same four tests:
+
+| | GGUF Q4_K_M | MLX NVFP4 |
+|---|---|---|
+| Loaded (`ollama ps`) | 9.5 GB | **8.1 GB** |
+| Chain, per Action | 7.4–9.8 s | **6.0–8.5 s** |
+| Chain prompts | right; left the repeat alone | right; left the repeat alone; but "attack stance" also turned *scared* into *focused* unasked |
+| Art Agent, per picture | 8.5–21 s | 9.5–23 s |
+| Art: who's in the picture | right on all six | **two wrong:** put Elara into 6 (Kael alone); 24 lost the two men |
+| Suggest, per message | 1.6–5.5 s | 2.6–5.3 s |
+| Reply, per message | 6–13 s | 5.4–10.9 s |
+| Replies | in character | in character, as good |
+
+One run each, so the Art Agent difference may be partly chance, but it's the job where this model
+was best. The MLX build is the one for playing the Character (smaller, a little faster); for the
+Art Agent the GGUF was the more careful.
+
+**Converting to MLX saves little memory; bits do.** Memory is the weights times the bits per
+weight, and the 4-bit formats store about the same (Q4_K_M about 4.8 bits a weight, NVFP4 about
+4.5): the 12B went from 9.5 GB to 8.1. What MLX buys is speed. Ollama 0.35.1's `create -q` offers
+only `int4`, `int8`, `nvfp4`, `mxfp4` and `mxfp8`, so nothing under 4 bits can be built this way.
+
+**mlx-community's ready-made MLX models don't run in Ollama when they're mixtures of experts.**
+`mlx-community/gemma-4-26B-A4B-it-heretic-4bit` (and its 2.6-bit sibling) imported with
+`ollama create` from the folder, but every request failed with "mlx runner failed: layer 0: missing
+MoE expert weights". mlx-vlm, which converted them, splits each layer's experts into three
+quantized matrices (`experts.switch_glu.gate_proj`, `up_proj`, `down_proj`); Ollama's runner wants
+the original layout (`experts.gate_up_proj`, `experts.down_proj`), which only an `ollama create -q`
+from the full-precision weights writes (2026-10-05).
+
+**The heretic 26B-A4B as MLX NVFP4**, built that way from `coder3101/gemma-4-26B-A4B-it-heretic`
+(51.6 GB of safetensors; a different Heretic build from pdurlej's GGUF): 17 GB on disk (the GGUF is
+16), **17 GB loaded against 18**. On the same four tests, beside the GGUF's run from the same day:
+
+| | GGUF Q4_K_M (pdurlej) | MLX NVFP4 (coder3101) |
+|---|---|---|
+| Chain, per Action | 3.1–3.7 s | 2.9–4.0 s |
+| Chain prompts | invented mountains for "remove the backdrop"; undid the stance on the repeat | kept Mars for "remove the backdrop" (right); undid the stance on the repeat; reworked Mars's lighting and palette unasked; no garbled words |
+| Art Agent, per picture | 3–6 s | 4.7–8.1 s |
+| Art: who's in the picture | 24: wrote Elara in, marked only Kael | right on all six, 24 included; wrote "Elara is out of sight" into Kael's pictures |
+| Suggest, per message | 0.8–2.7 s | 0.9–2.3 s |
+| Reply, per message | 2.7–5.8 s | 2.8–4.3 s |
+
+Much the same model, about as fast, 1 GB lighter: not a reason to switch on its own, and not a way
+under 12 GB. A 26B-A4B under 12 GB would need about 3 bits, which `ollama create` can't make.
+
 ## Art Agent (picturing Roleplay Frames)
 
 The Art Agent uses the Session's Text Model. Measured 2026-09-28 on six Frames of a 30-Frame
