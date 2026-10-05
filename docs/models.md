@@ -135,6 +135,31 @@ history now begins with the request that asked for the opening Reply (`roleplayM
 model saw it then, so turns alternate from the start for every model; the replies above for all
 three were rerun with it.
 
+### Two smaller Heretic models (2026-10-05)
+
+From the survey in [research/small-uncensored-models.md](research/small-uncensored-models.md), the
+two best candidates under 12 GB, on the same four tests as above, beside the heretic 26B-A4B's run
+from the same day:
+
+| | Gemma 4 12B Heretic (igorls, Q4_K_M) | Qwen3.5-9B Heretic (llmfan46, Q6_K) | heretic 26B-A4B |
+|---|---|---|---|
+| On disk / loaded (`ollama ps`) | 7.4 GB / **9.5 GB** | 8.3 GB / 12 GB (it carries a vision encoder) | 16 GB / 18 GB |
+| Chain, per Action | 7.4–9.8 s | 6.4–7.5 s | **3.1–3.7 s** |
+| Chain prompts | copied word for word; right on 3, 4, 5 and 6; left the repeat alone (right, though marked *done*, not *unclear*); kept "across the terrain" in the lighting once in space | copied word for word; right on 3 and 6; kept her "on the Martian surface" under the space | see above: invented mountains, undid the stance |
+| Art Agent, per picture | 8.5–21 s | 6.6–20.6 s | **3–6 s** |
+| Art: who's in the picture | **right on all six**, 24 included | right on five; 24 muddled (who was awake and who asleep); 9 and 16 blocked | 24: wrote Elara in, marked only Kael as shown |
+| Suggest, per message | 1.6–5.5 s | 2.1–4.1 s | **0.8–2.7 s** |
+| Suggest | tidied three of five ("I take a sip, the bitterness…"), against the player's style | addressed Kael as "you" at 12; otherwise in style | short and in style |
+| Reply, per message | 6–13 s | 4.5–8.7 s | **2.7–5.8 s** |
+| Replies | in character, terse ("I'll keep my distance."), never acting for her | in character, but odder ("Left is better."; counts "One" to himself) | in character |
+
+**Gemma 4 12B Heretic is the one to keep** for when memory is tight: half the heretic 26B-A4B's
+memory (9.5 GB against 18), as careful as Qwen3.8 27B at the Chain's word-for-word copying and at
+who's in the picture while about twice as fast, and good replies. It costs speed: a dense 12B works all its
+weights on every token, so it is 2–3× slower than the 26B-A4B (about 4B active), about as fast as
+gemma4 31B. Its Suggest tidies the player's style more than the others. Qwen3.5-9B Heretic is
+faster than Gemma 12B but not smaller once loaded, and wanders more.
+
 ## Art Agent (picturing Roleplay Frames)
 
 The Art Agent uses the Session's Text Model. Measured 2026-09-28 on six Frames of a 30-Frame
