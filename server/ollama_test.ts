@@ -1,5 +1,5 @@
 import { assertEquals } from '@std/assert'
-import { isTextModel } from './ollama.ts'
+import { isTextModel, unloadOllamaModels } from './ollama.ts'
 
 const chat = ['completion', 'vision', 'tools', 'thinking']
 
@@ -30,4 +30,29 @@ Deno.test('isTextModel drops models that cannot generate text', () => {
 
 Deno.test('isTextModel keeps a model whose details could not be read', () => {
   assertEquals(isTextModel({ name: 'llama3:text' }), true)
+})
+
+Deno.test('unloadOllamaModels unloads every loaded model and waits until none are', async () => {
+  let loaded = ['heretic:latest', 'gemma4:31b']
+  const unloads: unknown[] = []
+  const server = Deno.serve({ port: 0, onListen: () => {} }, async (req) => {
+    if (new URL(req.url).pathname === '/api/ps') {
+      return Response.json({ models: loaded.map((name) => ({ name })) })
+    }
+    const body = await req.json()
+    unloads.push(body)
+    // Ollama drops it a moment after answering.
+    setTimeout(() => (loaded = loaded.filter((m) => m !== body.model)), 50)
+    return Response.json({ done: true, done_reason: 'unload' })
+  })
+  try {
+    await unloadOllamaModels(`http://localhost:${server.addr.port}`)
+    assertEquals(unloads, [
+      { model: 'heretic:latest', keep_alive: 0 },
+      { model: 'gemma4:31b', keep_alive: 0 },
+    ])
+    assertEquals(loaded, [])
+  } finally {
+    await server.shutdown()
+  }
 })

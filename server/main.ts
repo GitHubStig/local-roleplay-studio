@@ -2,7 +2,7 @@ import { createHandler } from './app.ts'
 import { placeholderImageGenerator } from './imageGenerator.ts'
 import { fromFileUrl } from '@std/path'
 import { mfluxImageGenerator, mfluxQuantizedStore } from './mflux.ts'
-import { listOllamaModels } from './ollama.ts'
+import { listOllamaModels, unloadOllamaModels } from './ollama.ts'
 import { dirScenarioLibrary } from './scenario.ts'
 import { dirSessionStore } from './session.ts'
 import { fileSettingsStore } from './settings.ts'
@@ -28,6 +28,9 @@ const handler = createHandler({
     ? placeholderImageGenerator()
     : mfluxImageGenerator({ quantized }),
   quantized,
+  // A big render next to a loaded Text Model pushes a 48 GB Mac into swap (375 s instead of 66 s
+  // for Qwen-Image 2.1 at 1024 px), so each render, upscale, scene and figure unloads it first.
+  freeMemory: () => unloadOllamaModels(),
   // VOICES=off leaves Roleplays silent, for working without the voice service.
   voice: Deno.env.get('VOICES') === 'off' ? undefined : voiceService(),
   // SCENES=off leaves pictures flat, for working without SHARP.

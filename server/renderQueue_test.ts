@@ -41,3 +41,20 @@ Deno.test('RenderQueue drops a waiter that aborts, and frees up when idle', asyn
   ;(await queue.acquire(signal(), () => (waited = true)))()
   assertEquals(waited, false)
 })
+
+Deno.test('RenderQueue frees memory on a heavy job’s go, not a light one’s, and runs if it fails', async () => {
+  const freed: string[] = []
+  let fail = false
+  const queue = new RenderQueue({
+    freeMemory: () => {
+      freed.push('freed')
+      return fail ? Promise.reject(new Error('Ollama down')) : Promise.resolve()
+    },
+  })
+  ;(await queue.acquire(signal()))()
+  ;(await queue.acquire(signal(), undefined, { light: true }))()
+  assertEquals(freed, ['freed'])
+  fail = true
+  ;(await queue.acquire(signal()))()
+  assertEquals(freed, ['freed', 'freed'])
+})

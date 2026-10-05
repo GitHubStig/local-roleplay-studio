@@ -52,6 +52,8 @@ export interface AppDeps {
   figure?: FigureMaker
   /** The same with Apple's LiTo. */
   lito?: FigureMaker
+  /** Frees memory before a render, upscale, scene or figure: unloads Ollama's models. */
+  freeMemory?: () => Promise<void>
   /** Saved quantized copies of Image Models, listed and deleted from Settings. */
   quantized?: QuantizedStore
   newSessionId?: () => string
@@ -117,7 +119,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     { controller: AbortController; phase: Phase; frameIndex: number | null }
   >()
   /** One image render at a time, across all Sessions. */
-  const renderQueue = new RenderQueue()
+  const renderQueue = new RenderQueue({ freeMemory: deps.freeMemory })
 
   /**
    * What each Session is busy with. Every change to a Session takes this lock *before* reading the

@@ -53,3 +53,32 @@ export async function listOllamaModels(baseUrl = OLLAMA_URL): Promise<TextModelI
     .map((m) => ({ name: m.name, thinking: m.capabilities?.includes('thinking') ?? false }))
     .sort((a, b) => a.name.localeCompare(b.name))
 }
+
+/**
+ * Unloads every model Ollama has loaded, and waits (up to `timeoutMs`) until it reports none, so
+ * their memory is free. Chat leaves a model loaded 5 minutes after its last use; the next call
+ * loads it again.
+ */
+export async function unloadOllamaModels(baseUrl = OLLAMA_URL, timeoutMs = 10_000): Promise<void> {
+  const signal = AbortSignal.timeout(timeoutMs)
+  const loaded = async () => {
+    const res = await fetch(new URL('/api/ps', baseUrl), { signal })
+    if (!res.ok) throw new Error(`Ollama /api/ps: HTTP ${res.status}`)
+    const body = (await res.json()) as { models?: { name: string }[] }
+    return (body.models ?? []).map((m) => m.name)
+  }
+  const names = await loaded()
+  if (names.length === 0) return
+  await Promise.all(names.map(async (model) => {
+    const res = await fetch(new URL('/api/generate', baseUrl), {
+      method: 'POST',
+      body: JSON.stringify({ model, keep_alive: 0 }),
+      signal,
+    })
+    await res.body?.cancel()
+  }))
+  const deadline = Date.now() + timeoutMs
+  while ((await loaded()).length > 0 && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 200))
+  }
+}
