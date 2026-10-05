@@ -47,17 +47,23 @@ Deno.test('roleplaySystem names who plays whom, the Setting, the reply fields an
   assertStringIncludes(system, 'Everyone in the story is an adult')
 })
 
-Deno.test('roleplayMessages: the system message, the Character first, then turns, then the new message', async () => {
-  const messages = await roleplayMessages(
-    session([frame(0, null, 'You are late.'), frame(1, 'Sorry, captain.', 'Take the wheel.')]),
-    'I take the wheel.',
+Deno.test('roleplayMessages: the system message, the opening request, then turns, then the new message', async () => {
+  const s = session([
+    frame(0, null, 'You are late.'),
+    frame(1, 'Sorry, captain.', 'Take the wheel.'),
+  ])
+  const messages = await roleplayMessages(s, 'I take the wheel.')
+  // Turns alternate from the start: the Character's opening answers the request that asked for it.
+  assertEquals(
+    messages.map((m) => m.role),
+    ['system', 'user', 'assistant', 'user', 'assistant', 'user'],
   )
-  assertEquals(messages.map((m) => m.role), ['system', 'assistant', 'user', 'assistant', 'user'])
-  assertEquals(messages[2].content, 'Sorry, captain.')
+  assertEquals(messages.slice(0, 2), await openingMessages(s.cast!))
+  assertEquals(messages[3].content, 'Sorry, captain.')
   assertEquals(messages.at(-1)!.content, 'I take the wheel.')
   // Earlier replies go back as the same JSON, fields in writing order.
   assertEquals(
-    messages[1].content,
+    messages[2].content,
     '{"internal":"","actions":"Mira grips the wheel.","dialogue":"You are late."}',
   )
 })

@@ -148,7 +148,7 @@ Deno.test('sendMessage sends the whole conversation and saves the reply as a Fra
       signal(),
     )
     assertEquals(updated!.frames.map((f) => f.message), [null, 'Sorry, captain.'])
-    assertEquals(roleplayModel.asked[0].map((m) => m.role), ['system', 'assistant', 'user'])
+    assertEquals(roleplayModel.asked[0].map((m) => m.role), ['system', 'user', 'assistant', 'user'])
     assertEquals(
       events.filter((e) => e.type === 'reply-part').map((e) => e.type === 'reply-part' && e.key),
       ['internal', 'actions', 'dialogue'],

@@ -104,6 +104,37 @@ word, somewhere different each time, and undid the boxing stance on the repeat. 
 Frame builds on the last, so a garbled word stays in the prompt: for prompting, gemma4 31B stays
 the pick.
 
+### A small uncensored model: `richardyoung/mistral-7b-instruct-v0.3-abliterated:Q4_K_M` (2026-10-05)
+
+Mistral 7B Instruct v0.3, abliterated (refusals removed), GGUF Q4_K_M, 4.4 GB: a quarter of the
+others' size. Compared with the two other uncensored models on everything a Text Model does here,
+Thinking off, one model loaded at a time: the seven Chain Actions above, the Art Agent's six Kael
+Frames, the five Suggest cuts, and the Character's reply to the player's real next message after
+Frames 1, 4, 12 and 26 of the Kael Roleplay.
+
+| | Mistral 7B abliterated | heretic 26B-A4B | Qwen3.8 27B (uncensored) |
+|---|---|---|---|
+| Chain, per Action | 2.5–3.9 s | 3.1–3.7 s | 14.7–17.5 s |
+| Chain prompts | **broken**: dropped the style, Mars and lighting sentences; wrote edit notes in ("Background: showing space.", "…the same as before."); never applied Michelangelo | copied word for word this time; "remove all studio backdrop" replaced Mars with an invented mountain range; undid the stance on the repeat | right on 3 and 6; asked what to remove instead (*unclear*, fair); kept Mars under the space; nudged the stance on the repeat |
+| Art Agent, per picture | 8–16 s | **3–6 s** | 17–58 s |
+| Art: who's in the picture | 24 wrong: Kael alone, doing what Elara did | 24: wrote Elara in, marked only Kael as shown | right on all six (16 blocked by a Limit) |
+| Suggest, per message | 1.6–4.8 s | **0.8–2.7 s** | 4.6–10 s |
+| Suggest | echoed the steer, then a stray second paragraph; tidied ("I slide…"); at 28, "kills both younger men" | short and in the player's style, but wrote the Persona as "she" at 12 | in style; at 26 just "my father" |
+| Reply, per message | 4.5–10 s | **2.7–5.8 s** | 9–18 s |
+| Replies | in character, but acted for the Persona ("As Elara takes a seat…", "watches her pick it up") and once thought in the third person | in character, in Kael's clipped voice, never acting for her | the richest prose, the tersest dialogue ("Clever girl.") |
+
+**Mistral 7B isn't worth it.** The heretic is a mixture of experts with about 4B parameters active
+per token, so it is as fast as a 7B model or faster at every task, and better at all four. Mistral's
+only edge is size (4.4 GB against 16), which matters less now that renders unload the Text Model
+first. Like the other small models it can't hold the Chain's prompt format.
+
+**It needed a fix to play the Character at all.** Mistral's chat template refuses any history in
+which an assistant turn follows the system message, and the Roleplay's did: the Character speaks
+first. Every reply failed with Ollama's "conversation roles must alternate user/assistant" error. The
+history now begins with the request that asked for the opening Reply (`roleplayMessages`), as the
+model saw it then, so turns alternate from the start for every model; the replies above for all
+three were rerun with it.
+
 ## Art Agent (picturing Roleplay Frames)
 
 The Art Agent uses the Session's Text Model. Measured 2026-09-28 on six Frames of a 30-Frame

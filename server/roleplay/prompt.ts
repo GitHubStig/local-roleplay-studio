@@ -38,15 +38,17 @@ export const replyContent = (reply: Reply) =>
   JSON.stringify(Object.fromEntries(REPLY_FIELDS.map((k) => [k, reply[k]])))
 
 /**
- * The whole conversation for the next reply: the system message, then each Frame's message and
- * reply in turn (the Character speaks first), then the player's new message.
+ * The whole conversation for the next reply: the system message and the request to open the scene
+ * (as the opening Reply was asked for), then each Frame's message and reply in turn, then the
+ * player's new message. So turns alternate user, assistant from the start, which some models'
+ * chat templates insist on (Mistral's refuses an assistant turn straight after the system message).
  */
 export async function roleplayMessages(
   session: RoleplaySession,
   message: string,
 ): Promise<ChatMessage[]> {
   if (!session.cast) throw new Error('This Roleplay has not been set up')
-  const messages: ChatMessage[] = [{ role: 'system', content: await roleplaySystem(session.cast) }]
+  const messages = await openingMessages(session.cast)
   for (const frame of session.frames) {
     if (frame.message !== null) messages.push({ role: 'user', content: frame.message })
     messages.push({ role: 'assistant', content: replyContent(cleanReply(frame.reply)) })
