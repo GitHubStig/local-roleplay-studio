@@ -16,7 +16,6 @@ import FrameImage from '../components/FrameImage.vue'
 import Frame3dButtons from '../components/Frame3dButtons.vue'
 import Frame3dViewers from '../components/Frame3dViewers.vue'
 import FrameViewer from '../components/FrameViewer.vue'
-import FrameJobs from '../components/FrameJobs.vue'
 import JobQueue from '../components/JobQueue.vue'
 import { useJobs } from '../composables/useJobs'
 import { useStoredFlag } from '../composables/useStoredFlag'
@@ -548,9 +547,6 @@ const promptDiff = computed(() => {
             >
               Undo
             </button>
-          </div>
-          <div v-if="shown && jobsFor(shown.index).length" class="flex flex-col gap-1 text-xs">
-            <FrameJobs :jobs="jobsFor(shown.index)" @retry="retry" @drop="dropJob" />
           </div>
         </div>
 

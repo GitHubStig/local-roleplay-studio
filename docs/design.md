@@ -239,11 +239,12 @@ an Undo) is saved by reloading it and applying just that change, one at a time
 server forgets it. A job asked for before what it needs exists (a render queued behind its
 picture) waits its turn and fails with a reason if that still isn't there; failed jobs stay
 listed, with **Retry** (back to the end of the queue) and **Dismiss**. Undoing an exchange (or a
-Chain Frame) cancels its jobs; deleting the Session cancels all of them. On the screen, each Frame
-lists its jobs with Cancel (the running one sweeps its Reply, or a Chain's picture), and a
-**Queue** lists them all (a tab beside **Look & Cast**; atop a Chain's Frames, while there are
-any); clicking one goes to its Frame. The screens share this (`useJobs`, `FrameJobs`,
-`JobQueue`).
+Chain Frame) cancels its jobs; deleting the Session cancels all of them. On the screen, a
+Roleplay's Replies each list their jobs with Cancel (the running one sweeps its Reply), and a
+**Queue** lists them all: a tab beside **Look & Cast**, or atop a Chain's Frames while there are
+any (a Chain lists them only there, so the picture keeps its room; the running job sweeps the
+picture it's working on). Clicking one goes to its Frame. The screens share this (`useJobs`,
+`FrameJobs`, `JobQueue`).
 
 **Picturing a Frame** (the Art Agent; by the Session's Text Model, or the Art Agent model set in
 Settings, recorded on each picture as `pictureModel` and on the Look as `lookModel`): **Picture this** under a Reply writes

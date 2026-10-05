@@ -309,7 +309,7 @@ describe('SessionView', () => {
     expect(wrapper.find('[data-outcome]').exists()).toBe(false)
   })
 
-  it('shapes the frame to the Session\'s picture size before the first picture arrives', async () => {
+  it("shapes the frame to the Session's picture size before the first picture arrives", async () => {
     vi.mocked(api.getSession).mockResolvedValue({
       ...session(),
       imageSize: { width: 1024, height: 1024 },
@@ -344,10 +344,11 @@ describe('SessionView', () => {
     await wrapper.find('[data-lito-button]').trigger('click')
     await flushPromises()
     expect(api.queueJob).toHaveBeenCalledWith('s1', 'lito', 0)
-    // It runs beside the Chain: the button waits, the job shows, and the next Action can still go.
+    // It runs beside the Chain: the button waits, the queue shows it, and the next Action can go.
     expect(wrapper.find('[data-lito-button]').attributes('disabled')).toBeDefined()
-    expect(wrapper.find('main [data-frame-job]').text()).toContain('LiTo · Making the 3D figure…')
+    expect(wrapper.find('main [data-frame-job]').exists()).toBe(false)
     expect(wrapper.find('[data-queue]').text()).toContain('LiTo · The Opening')
+    expect(wrapper.find('[data-queue]').text()).toContain('Making the 3D figure…')
     expect(wrapper.find('textarea').attributes('disabled')).toBeUndefined()
 
     // Once done, the Chain is reloaded with the figure on it.
@@ -571,9 +572,7 @@ describe('SessionView', () => {
     await wrapper.find('[data-upscale]').trigger('click')
     await flushPromises()
     expect(api.queueJob).toHaveBeenCalledWith('s1', 'upscale', 0)
-    expect(wrapper.find('main [data-frame-job]').text()).toContain(
-      'Upscale · Upscaling to 2048 px… step 1 of 1',
-    )
+    expect(wrapper.find('[data-queue]').text()).toContain('Upscaling to 2048 px… step 1 of 1')
     expect(wrapper.find('[data-image-frame]').attributes('data-rendering')).toBe('image')
 
     vi.mocked(api.getSession).mockResolvedValue(
