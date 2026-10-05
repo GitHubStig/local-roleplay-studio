@@ -27,7 +27,7 @@ The vocabulary (Scenario, Session, Image Prompt, Frame, Action, …) is defined 
 - **Ollama** with at least one chat model. Recommended: `gemma4:31b-mlx` (about 10 s per Frame
   once loaded, Thinking off). Small models (4–8B) can't reliably follow the prompt format; see
   [docs/models.md](docs/models.md) for the comparison.
-- **mflux 0.20**: `uv tool install --managed-python --python 3.14 mflux`. (uv's own Python, kept apart from any other Python on the Mac; mflux runs on 3.10 or newer.)
+- **mflux 0.21+** (the step cache and Fast need it): `uv tool install --managed-python --python 3.14 mflux`. (uv's own Python, kept apart from any other Python on the Mac; mflux runs on 3.10 or newer.)
 - **Models download on first use.** Each model (Image Models, the upscaler, the voice models,
   SHARP) is downloaded from Hugging Face into `~/.cache/huggingface` the first time it's needed,
   shown as "Downloading the model (first use only)…" while it is; they're 3–30 GB each, so the
