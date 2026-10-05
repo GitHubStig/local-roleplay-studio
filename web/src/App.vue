@@ -11,11 +11,11 @@ const serverOnline = ref<boolean | null>(null)
 const route = useRoute()
 const { currentSessionId, currentSessionKind } = useCurrentSession()
 
-/** Play returns to the Session in progress, if any. */
-const playTo = computed(() =>
-  currentSessionId.value ? sessionPath(currentSessionId.value, currentSessionKind.value) : '/'
+/** Current Session leads back to the Session opened last; there's no link while there's none. */
+const currentTo = computed(() =>
+  currentSessionId.value ? sessionPath(currentSessionId.value, currentSessionKind.value) : null
 )
-const onPlay = computed(() =>
+const onSession = computed(() =>
   route.name === 'session' || route.name === 'storyboard' || route.name === 'roleplay'
 )
 
@@ -39,8 +39,14 @@ useEventListener(window, 'focus', checkServer)
         <h1 class="text-lg font-semibold">
           <RouterLink to="/" title="Home: your Sessions and new ones">Local Roleplay Studio</RouterLink>
         </h1>
-        <RouterLink :to="playTo" class="text-sm text-muted" :class="{ '!text-fg': onPlay }">
-          Play
+        <RouterLink
+          v-if="currentTo"
+          :to="currentTo"
+          class="text-sm text-muted"
+          :class="{ '!text-fg': onSession }"
+          data-current-session
+        >
+          Current Session
         </RouterLink>
         <RouterLink to="/settings" class="text-sm text-muted" active-class="!text-fg">
           Settings

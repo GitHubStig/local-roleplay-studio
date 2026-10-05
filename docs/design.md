@@ -383,8 +383,8 @@ in [open-threads.md](open-threads.md).
   in place of an image. In the Look & Cast panel every text box grows to fit its text (no inner scrolling, so the
   panel scrolls as one) and collapses to a one-line preview by its label, remembered per browser
   (`CollapsibleTextarea`, sized by VueUse's `useTextareaAutosize`).
-- **Navigation:** **Local Roleplay Studio** (the app's name) leads Home; **Play** leads back to the Session opened last
-  (remembered per browser), or Home when there is none. Up to five Session screens stay alive in
+- **Navigation:** **Local Roleplay Studio** (the app's name) leads Home; **Current Session** leads back to the Session opened last
+  (remembered per browser), and isn't shown when there is none. Up to five Session screens stay alive in
   memory while you visit Home, Settings or other Sessions, so each keeps its half-typed Action,
   viewed Frame, tab and any running Frame. The unsent Action is also saved per Session in the
   browser, so it survives a reload. Returning to a Session re-checks it with the server (unless a

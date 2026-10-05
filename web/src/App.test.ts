@@ -58,8 +58,8 @@ async function mountApp(path: string) {
   return { wrapper, router }
 }
 
-const playLink = (w: Awaited<ReturnType<typeof mountApp>>['wrapper']) =>
-  w.findAll('nav a').find((a) => a.text() === 'Play')!
+const currentLink = (w: Awaited<ReturnType<typeof mountApp>>['wrapper']) =>
+  w.find('[data-current-session]')
 
 beforeEach(() => {
   localStorage.clear()
@@ -97,9 +97,9 @@ afterEach(() => {
 })
 
 describe('App navigation', () => {
-  it('Play leads to Start Session when no Session is in progress', async () => {
+  it('shows no Current Session link when no Session is in progress', async () => {
     const { wrapper } = await mountApp('/settings')
-    expect(playLink(wrapper).attributes('href')).toBe('/')
+    expect(currentLink(wrapper).exists()).toBe(false)
   })
 
   it('returns to the Session in progress from Settings, keeping the typed Direction', async () => {
@@ -109,9 +109,9 @@ describe('App navigation', () => {
     await router.push('/settings')
     await flushPromises()
     expect(wrapper.find('textarea').exists()).toBe(false)
-    expect(playLink(wrapper).attributes('href')).toBe('/sessions/s1')
+    expect(currentLink(wrapper).attributes('href')).toBe('/sessions/s1')
 
-    await playLink(wrapper).trigger('click')
+    await currentLink(wrapper).trigger('click')
     await flushPromises()
     expect(router.currentRoute.value.path).toBe('/sessions/s1')
     expect((wrapper.find('textarea').element as HTMLTextAreaElement).value).toBe(
@@ -145,7 +145,7 @@ describe('App navigation', () => {
     const { wrapper, router } = await mountApp('/storyboards/sb')
     await router.push('/settings')
     await flushPromises()
-    expect(playLink(wrapper).attributes('href')).toBe('/storyboards/sb')
+    expect(currentLink(wrapper).attributes('href')).toBe('/storyboards/sb')
   })
 
   it('the app name leads Home', async () => {
@@ -164,7 +164,7 @@ describe('App navigation', () => {
     await router.push('/sessions/s2')
     await flushPromises()
     await wrapper.find('textarea').setValue('Direction for two')
-    expect(playLink(wrapper).attributes('href')).toBe('/sessions/s2')
+    expect(currentLink(wrapper).attributes('href')).toBe('/sessions/s2')
 
     await router.push('/sessions/s1')
     await flushPromises()
@@ -286,6 +286,6 @@ describe('App navigation', () => {
     vi.mocked(api.getSession).mockRejectedValue(new api.ApiError('Session not found', 404))
     const { wrapper, router } = await mountApp('/sessions/s1')
     expect(router.currentRoute.value.path).toBe('/')
-    expect(playLink(wrapper).attributes('href')).toBe('/')
+    expect(currentLink(wrapper).exists()).toBe(false)
   })
 })

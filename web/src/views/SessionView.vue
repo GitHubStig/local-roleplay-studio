@@ -116,7 +116,7 @@ async function load(): Promise<boolean> {
     return false
   }
   loadError.value = ''
-  // Play leads back to the Session opened last.
+  // Current Session leads back to the Session opened last.
   setCurrentSession(props.id, 'chain')
   return true
 }
