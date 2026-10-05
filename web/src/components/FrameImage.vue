@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref, useTemplateRef, watch } from 'vue'
 import { usePinchZoom } from '../composables/usePinchZoom'
 
 const props = defineProps<{
@@ -55,7 +55,7 @@ watch(
 )
 
 /** Pinch to zoom the image, not the page, when `zoom`; each new image starts unzoomed. */
-const frame = ref<HTMLElement | null>(null)
+const frame = useTemplateRef<HTMLElement>('frame')
 const { zoomed, layerStyle, view, reset } = usePinchZoom(props.zoom ? frame : ref(null))
 watch(() => displayed.value?.src, reset)
 

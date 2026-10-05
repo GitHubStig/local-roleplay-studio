@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useTextareaAutosize } from '@vueuse/core'
-import { computed, ref } from 'vue'
+import { computed, useTemplateRef } from 'vue'
 import { useStoredFlag } from '../composables/useStoredFlag'
 
 /**
@@ -18,7 +18,7 @@ const value = defineModel<string>({ required: true })
 
 // As tall as its text (as it's typed, when its value changes, and when its width changes the
 // wrapping), so a panel of these scrolls as one instead of trapping the wheel in each box.
-const textarea = ref<HTMLTextAreaElement>()
+const textarea = useTemplateRef<HTMLTextAreaElement>('textarea')
 useTextareaAutosize({ element: textarea, input: value })
 
 const collapsed = useStoredFlag(`collapsed:${props.id}`)

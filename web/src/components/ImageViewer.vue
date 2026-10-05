@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onClickOutside } from '@vueuse/core'
-import { ref, watch } from 'vue'
+import { useTemplateRef, watch } from 'vue'
 import FrameImage from './FrameImage.vue'
 
 /**
@@ -30,7 +30,7 @@ function onKeydown(e: KeyboardEvent) {
   }
 }
 
-const dialog = ref<HTMLDialogElement | null>(null)
+const dialog = useTemplateRef<HTMLDialogElement>('dialog')
 
 watch(
   () => props.src,
@@ -47,7 +47,7 @@ watch(
  * A click that isn't on the image or its controls (the dimmed backdrop, the space around it)
  * closes; a pan that starts on the image and lets go outside it doesn't.
  */
-const controls = ref<HTMLElement | null>(null)
+const controls = useTemplateRef<HTMLElement>('controls')
 onClickOutside(
   () => dialog.value?.querySelector<HTMLElement>('[data-image-frame]'),
   () => dialog.value?.open && dialog.value.close(),

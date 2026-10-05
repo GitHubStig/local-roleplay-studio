@@ -1,6 +1,16 @@
 <script setup lang="ts">
 import { useEventListener } from '@vueuse/core'
-import { computed, nextTick, onActivated, onBeforeUnmount, onDeactivated, onMounted, ref, watch } from 'vue'
+import {
+  computed,
+  nextTick,
+  onActivated,
+  onBeforeUnmount,
+  onDeactivated,
+  onMounted,
+  ref,
+  useTemplateRef,
+  watch,
+} from 'vue'
 import { useRouter } from 'vue-router'
 import { ApiError, cancelFrame, getSession, imageUrl, type Made3d } from '../api'
 import { clearCurrentSession, setCurrentSession } from '../composables/useCurrentSession'
@@ -46,7 +56,7 @@ const notice = ref<{ kind: 'error' | 'declined'; text: string } | null>(null)
 /** The unsent message, remembered per Session so it survives a reload. */
 const draft = useStoredText(`draft:${props.id}`)
 const thoughtsHidden = useStoredFlag('roleplay-thoughts-hidden')
-const transcript = ref<HTMLElement | null>(null)
+const transcript = useTemplateRef<HTMLElement>('transcript')
 /** The Frame whose picture is open in the viewer, if any. */
 const viewing = ref<number | null>(null)
 

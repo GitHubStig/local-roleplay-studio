@@ -16,7 +16,7 @@ const MAX_SCALE = 8
  * cancelled so the page stays put. While zoomed in, two-finger scrolling or dragging pans, and the
  * image always covers the frame. Returns the transform for the zoomed layer.
  */
-export function usePinchZoom(frame: Ref<HTMLElement | null>) {
+export function usePinchZoom(frame: Readonly<Ref<HTMLElement | null>>) {
   /** Scale, and the layer's offset in px from the frame's top-left corner. */
   const view = ref({ scale: 1, x: 0, y: 0 })
   const zoomed = computed(() => view.value.scale > 1)

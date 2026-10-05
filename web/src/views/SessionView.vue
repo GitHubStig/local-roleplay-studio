@@ -8,6 +8,7 @@ import {
   onDeactivated,
   onMounted,
   ref,
+  useTemplateRef,
   watch,
 } from 'vue'
 import { onBeforeRouteLeave, useRouter } from 'vue-router'
@@ -69,7 +70,7 @@ const notice = ref<{ kind: 'declined' | 'unclear'; text: string } | null>(null)
 const draft = useStoredText(`draft:${props.id}`)
 /** Index of the Frame shown in the main panel; null follows the latest. */
 const viewing = ref<number | null>(null)
-const log = ref<HTMLElement | null>(null)
+const log = useTemplateRef<HTMLElement>('log')
 const panel = ref<'log' | 'prompt'>('log')
 
 /** Viewing preferences, remembered per browser. */
@@ -341,7 +342,7 @@ const captionText = computed(() => pending.value?.narration ?? shown.value?.narr
 const liveThinking = computed(() =>
   pending.value?.thinking && !pending.value.narration ? pending.value.thinking : ''
 )
-const thinkingBox = ref<HTMLElement | null>(null)
+const thinkingBox = useTemplateRef<HTMLElement>('thinkingBox')
 watch(liveThinking, async () => {
   await nextTick()
   thinkingBox.value?.scrollTo({ top: thinkingBox.value.scrollHeight })

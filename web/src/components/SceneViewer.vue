@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onClickOutside } from '@vueuse/core'
-import { onBeforeUnmount, ref, watch } from 'vue'
+import { onBeforeUnmount, ref, useTemplateRef, watch } from 'vue'
 
 /**
  * A full-window look at a picture made into a 2.5D scene (Gaussian splats from SHARP: it turns a
@@ -26,10 +26,10 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ close: [] }>()
 
-const dialog = ref<HTMLDialogElement | null>(null)
-const stage = ref<HTMLDivElement | null>(null)
-const canvas = ref<HTMLCanvasElement | null>(null)
-const controlsBar = ref<HTMLElement | null>(null)
+const dialog = useTemplateRef<HTMLDialogElement>('dialog')
+const stage = useTemplateRef<HTMLDivElement>('stage')
+const canvas = useTemplateRef<HTMLCanvasElement>('canvas')
+const controlsBar = useTemplateRef<HTMLElement>('controlsBar')
 /**
  * A click outside the scene and its buttons closes, as in the picture viewer; a turn that starts on
  * the scene and lets go outside it doesn't.
