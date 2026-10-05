@@ -1,10 +1,8 @@
 import { join } from '@std/path'
-import type { FigureMaker } from '../figure.ts'
-import { secondsSince } from '../frames.ts'
+import type { Figure, FigureMaker } from '../figure.ts'
+import { saveAsGiven, secondsSince } from '../frames.ts'
 import { RenderQueue } from '../renderQueue.ts'
 import type { SessionStore } from '../session.ts'
-import type { Figure, RoleplaySession } from './types.ts'
-import { updateSession } from './update.ts'
 
 export interface FigureDeps {
   store: SessionStore
@@ -15,13 +13,25 @@ export interface FigureDeps {
   renderQueue?: RenderQueue
 }
 
-export type FigureEvent =
+/** What a figure can be made for: a Chain or a Roleplay. */
+interface FiguredSession {
+  id: string
+  frames: {
+    index: number
+    image: string | null
+    upscaled?: string
+    figure?: Figure
+    lito?: Figure
+  }[]
+}
+
+export type FigureEvent<S = FiguredSession> =
   | { type: 'phase'; phase: 'queued' | 'image' | 'download' }
-  | { type: 'figured'; index: number; model: FigureModel; figure: Figure; session: RoleplaySession }
+  | { type: 'figured'; index: number; model: FigureModel; figure: Figure; session: S }
 
 /** Which model makes a figure, and where on the Frame it's kept. */
 export type FigureModel = 'triposplat' | 'lito'
-const MODELS = {
+export const FIGURE_MODELS = {
   triposplat: { key: 'figure', prefix: 'figure', off: '3D figures are off (FIGURES=off)' },
   lito: { key: 'lito', prefix: 'lito', off: 'LiTo figures are off (LITO=off)' },
 } as const
@@ -30,19 +40,21 @@ export class FigureError extends Error {}
 
 /**
  * Lifts the person in Frame `index`'s picture out as a full 3D figure with TripoSplat or Apple's LiTo
- * (from its upscale if it has one), in its turn behind any render, replacing the one it had.
+ * (from its upscale if it has one), in its turn behind any render, replacing the one it had. Every
+ * Frame showing that picture gets it (a Chain Frame reuses the picture before it).
  * Anyone overlapping them takes parts of them away, and two people in the picture may come out as
  * one.
  */
-export async function liftFigure(
+export async function liftFigure<S extends FiguredSession>(
   deps: FigureDeps,
-  session: RoleplaySession,
+  session: S,
   index: number,
-  emit: (event: FigureEvent) => void,
+  emit: (event: FigureEvent<S>) => void,
   signal: AbortSignal,
   model: FigureModel = 'triposplat',
-): Promise<RoleplaySession> {
-  const { key, prefix, off } = MODELS[model]
+  save: (change: (s: S) => S) => Promise<S> = saveAsGiven(deps.store, session),
+): Promise<S> {
+  const { key, prefix, off } = FIGURE_MODELS[model]
   const maker = deps[key]
   if (!maker) throw new FigureError(off)
   const frame = session.frames[index]
@@ -75,13 +87,13 @@ export async function liftFigure(
     }
     let replaced: string | undefined
     // Onto the Frame as it is now, if it still shows the picture the figure was made from.
-    const updated = await updateSession(deps.store, session.id, (latest) => {
+    const updated = await save((latest) => {
       const current = latest.frames[index]
       if (current?.image !== image) throw new FigureError(`Frame ${index}'s picture changed`)
       replaced = current[key]?.file
       return {
         ...latest,
-        frames: latest.frames.map((f) => (f.index === index ? { ...f, [key]: figure } : f)),
+        frames: latest.frames.map((f) => (f.image === image ? { ...f, [key]: figure } : f)),
       }
     })
     if (replaced) await Deno.remove(join(dir, replaced)).catch(() => {})

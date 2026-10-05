@@ -176,6 +176,28 @@ describe('StoryboardView', () => {
     expect(buttonNamed(wrapper, 'Re-render Frame 2').exists()).toBe(true)
   })
 
+  it('opens the shown picture in the viewer when clicked', async () => {
+    // Pictures preload before they show; here they load at once.
+    vi.stubGlobal(
+      'Image',
+      class {
+        onload: (() => void) | null = null
+        set src(_: string) {
+          queueMicrotask(() => this.onload?.())
+        }
+      },
+    )
+    vi.mocked(api.getSession).mockResolvedValue(
+      storyboard([frame(0, { image: 'frame-0-aaaaaaaa.png' }), frame(1)]),
+    )
+    const { wrapper } = await mountIt()
+    await flushPromises()
+    await wrapper.find('main [data-frame-picture]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-image-viewer] [data-viewer-label]').text()).toBe('Frame 1 · 1 of 1')
+    vi.unstubAllGlobals()
+  })
+
   it('renders all Frames that need it, one at a time, skipping blocked ones', async () => {
     vi.mocked(api.getSession).mockResolvedValue(storyboard([
       frame(0, { image: 'frame-0-aaaaaaaa.png' }),

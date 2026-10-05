@@ -102,3 +102,13 @@
   opacity: 0.45;
   animation-duration: 4s;
 }
+
+/* A Frame's own actions (Listen, Upscale, SHARP…): small, quiet buttons beside it. */
+.action {
+  @apply inline-flex items-center gap-1 rounded-md border border-line bg-surface px-2 py-0.5 text-xs
+    text-muted transition-colors hover:border-muted hover:text-fg disabled:opacity-50
+    disabled:hover:border-line disabled:hover:text-muted;
+}
+.action-on {
+  @apply border-info text-info hover:border-info hover:text-info;
+}

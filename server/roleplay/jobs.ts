@@ -209,6 +209,9 @@ export class RoleplayJobs {
       ...(artModel ? { artModel } : {}),
       ...(artStyle ? { artStyle } : {}),
     }
+    /** Saves onto the Roleplay as it is now: the conversation may have moved on meanwhile. */
+    const save = (change: (s: RoleplaySession) => RoleplaySession) =>
+      updateSession(withDeps.store, sessionId, change)
     if (job.kind === 'picture') {
       const scenario = await this.#ctx.scenarioFor(session)
       if (scenario instanceof Response) throw new Error((await scenario.json()).error)
@@ -221,11 +224,11 @@ export class RoleplayJobs {
         await speakFrame(voiceDeps, session, job.frameIndex, emit, signal, part)
       }
     } else if (job.kind === 'figure') {
-      await liftFigure(withDeps, session, job.frameIndex, emit, signal, 'triposplat')
+      await liftFigure(withDeps, session, job.frameIndex, emit, signal, 'triposplat', save)
     } else if (job.kind === 'lito') {
-      await liftFigure(withDeps, session, job.frameIndex, emit, signal, 'lito')
+      await liftFigure(withDeps, session, job.frameIndex, emit, signal, 'lito', save)
     } else if (job.kind === 'scene') {
-      await makeScene(withDeps, session, job.frameIndex, emit, signal)
+      await makeScene(withDeps, session, job.frameIndex, emit, signal, save)
     } else if (job.kind === 'render') {
       await renderRoleplayFrame(withDeps, session, job.frameIndex, emit, signal)
     } else {

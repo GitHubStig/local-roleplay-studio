@@ -14,6 +14,8 @@ vi.mock('../api', async (importOriginal) => ({
   createSession: vi.fn(),
   undoFrame: vi.fn(),
   upscaleFrame: vi.fn(),
+  makeScene: vi.fn(),
+  makeFigure: vi.fn(),
 }))
 
 const frame = (
@@ -293,6 +295,86 @@ describe('SessionView', () => {
     expect(log).toContain("Didn't understand")
     await wrapper.findAll('aside [data-frame]')[0].trigger('click')
     expect(wrapper.find('[data-outcome]').exists()).toBe(false)
+  })
+
+  it('opens the picture in the viewer when clicked, stepping through the Frames', async () => {
+    vi.mocked(api.getSession).mockResolvedValue(
+      session([frame(0, null), frame(1, 'Sit', { upscaled: 'frame-1-2048.png' })]),
+    )
+    const { wrapper } = await mountIt()
+    // The stage doesn't zoom; the viewer does.
+    expect(wrapper.find('main [data-zoom-layer]').attributes('style') ?? '').not.toContain('scale')
+    await wrapper.find('main [data-frame-picture]').trigger('click')
+    await flushPromises()
+    const viewer = () => wrapper.find('[data-image-viewer]')
+    expect(viewer().find('[data-viewer-label]').text()).toBe('Frame 1 · 2 of 2')
+    expect(viewer().find('[data-image-frame] img').attributes('src')).toContain('frame-1-2048.png')
+    await viewer().trigger('keydown', { key: 'ArrowLeft' })
+    await flushPromises()
+    expect(viewer().find('[data-viewer-label]').text()).toBe('The Opening · 1 of 2')
+  })
+
+  it('makes the shown Frame a 2.5D scene with SHARP, then offers to view it', async () => {
+    const scene: api.Scene = {
+      file: 'scene-0-1a2b3c4d.ply',
+      from: 'frame-0.png',
+      splats: 4,
+      pivot: 1.5,
+      fov: 50,
+      aspect: 1,
+      timings: { scene: 11 },
+    }
+    vi.mocked(api.makeScene).mockImplementation(async (_id, _index, onEvent) => {
+      onEvent({ type: 'phase', phase: 'image' })
+      onEvent({ type: 'scened', session: session([frame(0, null, { scene })]) })
+    })
+    const { wrapper } = await mountIt()
+    expect(wrapper.find('[data-view-scene]').exists()).toBe(false)
+    await wrapper.find('[data-scene-button]').trigger('click')
+    await flushPromises()
+    expect(api.makeScene).toHaveBeenCalledWith('s1', 0, expect.any(Function))
+    expect(wrapper.find('[data-view-scene]').exists()).toBe(true)
+    // Made from the original picture, and not upscaled since: nothing to make again.
+    expect(wrapper.find('[data-scene-button]').exists()).toBe(false)
+  })
+
+  it('lifts the person out with TripoSplat or LiTo, each viewed apart', async () => {
+    const figure: api.Figure = {
+      file: 'figure-0-1a2b3c4d.ply',
+      splats: 4,
+      from: 'frame-0.png',
+      timings: { figure: 75 },
+    }
+    vi.mocked(api.makeFigure).mockImplementation(async (_id, _index, model, onEvent) => {
+      onEvent({
+        type: 'figured',
+        session: session([frame(0, null, { [model === 'lito' ? 'lito' : 'figure']: figure })]),
+      })
+    })
+    const { wrapper } = await mountIt()
+    await wrapper.find('[data-lito-button]').trigger('click')
+    await flushPromises()
+    expect(api.makeFigure).toHaveBeenCalledWith('s1', 0, 'lito', expect.any(Function))
+    expect(wrapper.find('[data-view-lito]').exists()).toBe(true)
+    // TripoSplat's is separate, so still to make.
+    expect(wrapper.find('[data-figure-button]').exists()).toBe(true)
+  })
+
+  it('offers SHARP again once the Frame is upscaled after its scene was made', async () => {
+    const scene: api.Scene = {
+      file: 'scene-0-1a2b3c4d.ply',
+      from: 'frame-0.png',
+      splats: 4,
+      pivot: 1.5,
+      fov: 50,
+      aspect: 1,
+      timings: { scene: 11 },
+    }
+    vi.mocked(api.getSession).mockResolvedValue(
+      session([frame(0, null, { scene, upscaled: 'frame-0-2048.png' })]),
+    )
+    const { wrapper } = await mountIt()
+    expect(wrapper.find('[data-scene-button]').text()).toBe('SHARP again from upscale')
   })
 
   it('undoes the latest Frame and puts its Direction back in the text box', async () => {

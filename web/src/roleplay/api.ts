@@ -1,14 +1,18 @@
 import {
   type Activity,
   type EndEvent,
+  type Figure,
   type Look,
   post,
   type ProgressEvent,
   put,
   request,
+  type Scene,
   type SessionBase,
   streamEvents,
 } from '../api'
+
+export type { Figure, Scene }
 
 /** Who the Text Model plays. */
 export interface Character {
@@ -99,34 +103,6 @@ export interface RoleplayFrame {
   /** The same, made with Apple's LiTo; a re-render drops it. */
   lito?: Figure
   createdAt: string
-}
-
-/** The person in a Frame's picture lifted out as a full 3D figure (TripoSplat). */
-export interface Figure {
-  /** `.ply` file, served like the pictures. */
-  file: string
-  splats: number
-  /** The picture it was made from: the upscale if there was one. */
-  from: string
-  timings: { queued?: number; figure: number }
-}
-
-/**
- * A Frame's picture as a 2.5D scene of Gaussian splats, made with SHARP: it turns a little from the
- * picture's view, not all the way round.
- */
-export interface Scene {
-  /** `.ply` file, served like the pictures. */
-  file: string
-  /** The picture it was made from: the upscale if there was one, else the original. */
-  from?: string
-  splats: number
-  /** The depth to orbit around. */
-  pivot: number
-  /** The camera it was made for: vertical field of view in degrees, and width / height. */
-  fov: number
-  aspect: number
-  timings: { queued?: number; scene: number }
 }
 
 /** A Frame's dialogue spoken in the Character's voice. */

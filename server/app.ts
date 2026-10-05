@@ -17,6 +17,8 @@ import { roleplayExcerpt } from './roleplay/prompt.ts'
 import { roleplayRoutes } from './roleplay/routes.ts'
 import { RoleplayJobs } from './roleplay/jobs.ts'
 import { RenderQueue } from './renderQueue.ts'
+import { makeScene, SCENES_OFF } from './roleplay/scene.ts'
+import { FIGURE_MODELS, liftFigure } from './roleplay/figure.ts'
 import {
   type FrameDeps,
   type Phase,
@@ -104,6 +106,7 @@ type LockKind =
   | 'render'
   | 'edit'
   | 'upscale'
+  | 'model3d'
   | 'setup'
   | 'suggest'
 
@@ -134,6 +137,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     render: 'A Frame is rendering',
     edit: 'A Frame is being edited',
     upscale: 'A Frame is being upscaled',
+    model3d: 'A Frame is being made into 3D',
     setup: 'The Roleplay is being set up',
     suggest: 'A message is being suggested',
   }
@@ -518,6 +522,32 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
           const { upscaler } = await deps.settings.load()
           return stream(session, index, false, async (send, signal) => {
             await upscaleFrame(frameDeps(session), session, index, upscaler, send, signal)
+          })
+        }),
+    ],
+
+    [
+      'POST',
+      new URLPattern({ pathname: '/api/sessions/:id/frames/:index/:kind(scene|triposplat|lito)' }),
+      (_req, p) =>
+        // A Chain Frame made into 3D: a 2.5D scene (SHARP) or a figure (TripoSplat, LiTo).
+        locked(p.id!, 'model3d', async (session) => {
+          if (!needsChain(session)) return error('Only a Chain makes these here', 409)
+          const kind = p.kind as 'scene' | 'triposplat' | 'lito'
+          const on = { scene: deps.scene, triposplat: deps.figure, lito: deps.lito }[kind]
+          if (!on) return error(kind === 'scene' ? SCENES_OFF : FIGURE_MODELS[kind].off, 409)
+          const index = frameIndexOf(session, p.index)
+          if (index instanceof Response) return index
+          const madeDeps = {
+            store: deps.sessions,
+            renderQueue,
+            scene: deps.scene,
+            figure: deps.figure,
+            lito: deps.lito,
+          }
+          return stream(session, index, false, async (send, signal) => {
+            if (kind === 'scene') await makeScene(madeDeps, session, index, send, signal)
+            else await liftFigure(madeDeps, session, index, send, signal, kind)
           })
         }),
     ],

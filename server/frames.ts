@@ -70,6 +70,18 @@ export interface FrameDeps {
 
 const TEXT_ATTEMPTS = 2
 
+/**
+ * Saves a change onto `session` as given: right for a Chain, which holds its lock while it works.
+ * A Roleplay saves through its `updateSession` instead, since its conversation moves on meanwhile.
+ */
+export const saveAsGiven =
+  <S extends { id: string }>(store: SessionStore, session: S) =>
+  async (change: (s: S) => S): Promise<S> => {
+    const updated = change(session)
+    await store.save(updated as unknown as Session)
+    return updated
+  }
+
 /** Seconds since `start` (a `performance.now()` reading), to one decimal place. */
 export const secondsSince = (start: number) => Math.round((performance.now() - start) / 100) / 10
 
@@ -250,11 +262,13 @@ export async function runChainFrame(
   // it finished writing just as the Frame was cancelled.
   const name = imageName(index)
   try {
-    let upscaled: string | undefined
+    // What was made from the picture (upscale, scene, figures) goes with it.
+    let made: Pick<ChainFrame, 'upscaled' | 'scene' | 'figure' | 'lito'> = {}
     if (reuseImage) {
       image = previous!.image
       promptText = previous!.promptText
-      upscaled = previous!.upscaled
+      const { upscaled, scene, figure, lito } = previous!
+      made = { upscaled, scene, figure, lito }
     } else {
       promptText = renderPrompt(nextPrompt)
       image = await renderImage(deps, session, promptText, name, timings, emit, signal)
@@ -270,7 +284,7 @@ export async function runChainFrame(
       ...(thinking ? { thinking } : {}),
       promptText,
       image,
-      ...(upscaled ? { upscaled } : {}),
+      ...Object.fromEntries(Object.entries(made).filter(([, v]) => v !== undefined)),
       timings,
       createdAt: new Date().toISOString(),
     }
@@ -307,8 +321,9 @@ export async function undoLatestFrame(
   await store.save(updated)
   if (!frames.some((t) => t.image === latest.image)) {
     await Deno.remove(join(store.dir(session.id), latest.image)).catch(() => {})
-    if (latest.upscaled) {
-      await Deno.remove(join(store.dir(session.id), latest.upscaled)).catch(() => {})
+    const made = [latest.upscaled, latest.scene?.file, latest.figure?.file, latest.lito?.file]
+    for (const file of made) {
+      if (file) await Deno.remove(join(store.dir(session.id), file)).catch(() => {})
     }
   }
   return updated
@@ -328,15 +343,7 @@ export async function upscaleFrame(
   upscaler: Upscaler,
   emit: (event: UpscaleEvent) => void,
   signal: AbortSignal,
-  /**
-   * Saves the change onto the Session. By default onto `session` as given; a Roleplay passes its
-   * `updateSession`, since its conversation may have moved on while the upscale ran.
-   */
-  save: (change: (s: Session) => Session) => Promise<Session> = async (change) => {
-    const updated = change(session)
-    await deps.store.save(updated)
-    return updated
-  },
+  save: (change: (s: Session) => Session) => Promise<Session> = saveAsGiven(deps.store, session),
 ): Promise<Session> {
   const frame = session.frames[index]
   if (!frame?.image) throw new UpscaleError(`Frame ${index + 1} has no image to upscale`)

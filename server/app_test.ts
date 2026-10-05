@@ -653,6 +653,82 @@ Deno.test('Upscaling keeps the original, flags every Frame showing that image, a
     assertEquals((third.at(-1)![1].frame as { upscaled?: string }).upscaled, second.upscaled)
   }))
 
+Deno.test('A Chain Frame becomes a 2.5D scene, shared by every Frame showing that picture', () =>
+  withTempDir(async (root) => {
+    const scene = fakeSceneMaker()
+    const { call } = setup({
+      root,
+      settings: { textModel: 'x' },
+      scene,
+      // The second Action changes nothing, so its Frame reuses the Opening's image.
+      textModel: scriptedTextModel([reply('standing'), reply('standing'), reply('standing')]),
+    })
+    await call('POST', '/api/sessions', { scenarioId: 'test' })
+    await readEvents(await call('POST', '/api/sessions/s1/frames', {}))
+    await readEvents(await call('POST', '/api/sessions/s1/frames', { action: 'Stay' }))
+
+    const events = await readEvents(await call('POST', '/api/sessions/s1/frames/1/scene'))
+    assertEquals(events.map(([e]) => e), ['phase', 'scened'])
+    const [opening, second] = (events.at(-1)![1].session as {
+      frames: { image: string; scene?: { file: string; from: string } }[]
+    }).frames
+    assertMatch(second.scene!.file, /^scene-1-[0-9a-f]{8}\.ply$/)
+    assertEquals([opening.scene, second.scene!.from], [second.scene, opening.image])
+    assertEquals((await call('GET', `/api/sessions/s1/images/${second.scene!.file}`)).status, 200)
+    assertEquals((await call('POST', '/api/sessions/s1/frames/7/scene')).status, 404)
+
+    // A Frame that reuses the picture keeps its scene; undoing the last one keeps the file.
+    const third = await readEvents(
+      await call('POST', '/api/sessions/s1/frames', { action: 'Stay' }),
+    )
+    assertEquals((third.at(-1)![1].frame as { scene?: unknown }).scene, second.scene)
+    await call('DELETE', '/api/sessions/s1/frames/2')
+    assertEquals((await call('GET', `/api/sessions/s1/images/${second.scene!.file}`)).status, 200)
+  }))
+
+Deno.test('A Chain Frame lifts its person out with TripoSplat or LiTo, kept apart', () =>
+  withTempDir(async (root) => {
+    const figure = fakeFigureMaker(), lito = fakeFigureMaker()
+    const { call } = setup({
+      root,
+      settings: { textModel: 'x' },
+      figure,
+      lito,
+      textModel: scriptedTextModel([reply('standing'), reply('standing')]),
+    })
+    await call('POST', '/api/sessions', { scenarioId: 'test' })
+    await readEvents(await call('POST', '/api/sessions/s1/frames', {}))
+    await readEvents(await call('POST', '/api/sessions/s1/frames', { action: 'Stay' }))
+
+    const tripo = await readEvents(await call('POST', '/api/sessions/s1/frames/0/triposplat'))
+    assertEquals(tripo.map(([e]) => e), ['phase', 'figured'])
+    const made = await readEvents(await call('POST', '/api/sessions/s1/frames/0/lito'))
+    type F = { file: string }
+    const frames = (made.at(-1)![1].session as { frames: { figure?: F; lito?: F }[] }).frames
+    assertMatch(frames[0].figure!.file, /^figure-0-[0-9a-f]{8}\.ply$/)
+    assertMatch(frames[0].lito!.file, /^lito-0-[0-9a-f]{8}\.ply$/)
+    // The second Frame reuses the Opening's picture, so it shares both.
+    assertEquals([frames[1].figure, frames[1].lito], [frames[0].figure, frames[0].lito])
+    assertEquals([figure.made.length, lito.made.length], [1, 1])
+    assertEquals((await call('GET', `/api/sessions/s1/images/${frames[0].lito!.file}`)).status, 200)
+    assertEquals((await call('POST', '/api/sessions/s1/frames/0/other')).status, 404)
+  }))
+
+Deno.test('A Chain without SHARP or LiTo says they are off', () =>
+  withTempDir(async (root) => {
+    const { call } = setup({
+      root,
+      settings: { textModel: 'x' },
+      textModel: scriptedTextModel([reply('standing')]),
+    })
+    await call('POST', '/api/sessions', { scenarioId: 'test' })
+    await readEvents(await call('POST', '/api/sessions/s1/frames', {}))
+    const res = await call('POST', '/api/sessions/s1/frames/0/scene')
+    assertEquals([res.status, (await res.json()).error], [409, '3D scenes are off (SCENES=off)'])
+    const lito = await call('POST', '/api/sessions/s1/frames/0/lito')
+    assertEquals([lito.status, (await lito.json()).error], [409, 'LiTo figures are off (LITO=off)'])
+  }))
+
 Deno.test('A failed upscale leaves the Frame as it was', () =>
   withTempDir(async (root) => {
     const images = fakeImageGenerator()

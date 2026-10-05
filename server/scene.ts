@@ -5,6 +5,22 @@
  */
 import { track } from './children.ts'
 
+/** A Frame's picture as a 3D scene of Gaussian splats (SHARP). */
+export interface Scene {
+  /** `.ply` file inside the Session directory. */
+  file: string
+  /** The picture it was made from: the Frame's `image`, or its `upscaled`. */
+  from: string
+  splats: number
+  /** The depth to orbit around, so the people near the front stay in view. */
+  pivot: number
+  /** The camera it was made for: vertical field of view in degrees, and width / height. */
+  fov: number
+  aspect: number
+  /** Seconds it waited for a render and took. */
+  timings: { queued?: number; scene: number }
+}
+
 export interface SceneRequest {
   /** The picture to make the scene from. */
   image: string

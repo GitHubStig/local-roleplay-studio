@@ -2,13 +2,14 @@
 import { useEventListener } from '@vueuse/core'
 import { computed, nextTick, onActivated, onBeforeUnmount, onDeactivated, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { ApiError, cancelFrame, DOWNLOADING, getSession, imageUrl } from '../api'
+import { ApiError, cancelFrame, DOWNLOADING, getSession, imageUrl, type Made3d } from '../api'
 import { clearCurrentSession, setCurrentSession } from '../composables/useCurrentSession'
 import { useStoredFlag } from '../composables/useStoredFlag'
 import { useStoredText } from '../composables/useStoredText'
 import CollapsibleTextarea from '../components/CollapsibleTextarea.vue'
-import ImageViewer from '../components/ImageViewer.vue'
-import SceneViewer from '../components/SceneViewer.vue'
+import Frame3dButtons from '../components/Frame3dButtons.vue'
+import Frame3dViewers from '../components/Frame3dViewers.vue'
+import FrameViewer from '../components/FrameViewer.vue'
 import { cleanReply } from './reply'
 import { sessionPath } from '../sessionPath'
 import {
@@ -191,48 +192,10 @@ function goToFrame(index: number) {
   highlightTimer = setTimeout(() => (highlighted.value = null), 1600)
 }
 
-// --- The picture viewer: ← and → step through the rendered Frames.
+// --- 3D, by model (experimental): SHARP, TripoSplat and LiTo (Frame3dButtons).
 
-/** The Frames with a rendered picture, in order. */
-const rendered = computed(() => (session.value?.frames ?? []).filter((f) => f.image))
-const viewed = computed(() => rendered.value.findIndex((f) => f.index === viewing.value))
-const viewer = computed(() => {
-  const frame = viewed.value >= 0 ? rendered.value[viewed.value] : null
-  if (!frame || !session.value) return null
-  return {
-    src: imageUrl(session.value.id, frame.upscaled ?? frame.image!),
-    alt: `Picture of Frame ${frame.index}`,
-    label: `Frame ${frame.index} · ${viewed.value + 1} of ${rendered.value.length}`,
-  }
-})
-/** Shows the rendered Frame `step` places away, and scrolls the conversation behind to it. */
-function stepViewer(step: number) {
-  const frame = rendered.value[viewed.value + step]
-  if (!frame) return
-  viewing.value = frame.index
-  goToFrame(frame.index)
-}
-
-// --- 3D, by model (experimental): SHARP makes a picture a 2.5D scene that turns a little;
-// TripoSplat lifts the person in it out as a figure that turns all the way round.
-
-/** The Frame whose 2.5D scene is open, if any. */
-const viewingScene = ref<number | null>(null)
-const sceneView = computed(() => {
-  const frame = session.value?.frames.find((f) => f.index === viewingScene.value)
-  if (!frame?.scene || !session.value) return null
-  return { ...frame.scene, src: imageUrl(session.value.id, frame.scene.file), index: frame.index }
-})
-
-/** The figure open, if any: which Frame's, and which model made it. */
-const viewingFigure = ref<{ index: number; model: 'triposplat' | 'lito' } | null>(null)
-const figureView = computed(() => {
-  const open = viewingFigure.value
-  const frame = session.value?.frames.find((f) => f.index === open?.index)
-  const figure = open?.model === 'lito' ? frame?.lito : frame?.figure
-  if (!open || !frame || !figure || !session.value) return null
-  return { src: imageUrl(session.value.id, figure.file), label: `Frame ${frame.index}`, model: open.model }
-})
+/** Which Frame's scene or figure is open, if any. */
+const open3d = ref<{ index: number; kind: Made3d } | null>(null)
 
 // --- Voices: the Character speaks their lines.
 
@@ -817,71 +780,12 @@ async function saveCastDraft(): Promise<boolean> {
                       >
                         {{ frame.upscaled ? 'Upscaled' : 'Upscale' }}
                       </button>
-                      <button
-                        v-if="frame.scene"
-                        type="button"
-                        class="action"
-                        title="The whole picture in 2.5D, made with Apple's SHARP: turns ~30°"
-                        data-view-scene
-                        @click="viewingScene = frame.index"
-                      >
-                        View SHARP
-                      </button>
-                      <button
-                        v-if="frame.image && (!frame.scene || (frame.upscaled && frame.scene.from !== frame.upscaled))"
-                        type="button"
-                        class="action"
-                        :disabled="hasJob(frame.index, 'scene')"
-                        :title="frame.scene
-                          ? 'Made before the upscale: make it again from the upscale'
-                          : 'Experimental: make the whole picture into a 2.5D scene with Apple\'s SHARP, which turns ~30° (~11 s)'"
-                        data-scene-button
-                        @click="queue('scene', frame.index)"
-                      >
-                        {{ frame.scene ? 'SHARP again from upscale' : 'SHARP' }}
-                      </button>
-                      <button
-                        v-if="frame.figure"
-                        type="button"
-                        class="action"
-                        title="The person in the picture in 3D, made with VAST's TripoSplat: turns all the way round"
-                        data-view-figure
-                        @click="viewingFigure = { index: frame.index, model: 'triposplat' }"
-                      >
-                        View TripoSplat
-                      </button>
-                      <button
-                        v-else-if="frame.image"
-                        type="button"
-                        class="action"
-                        :disabled="hasJob(frame.index, 'figure')"
-                        title="Experimental: lift the person in the picture out as a 3D figure with VAST's TripoSplat, which turns all the way round (~75 s). Best with one person, not overlapped by anyone."
-                        data-figure-button
-                        @click="queue('figure', frame.index)"
-                      >
-                        TripoSplat
-                      </button>
-                      <button
-                        v-if="frame.lito"
-                        type="button"
-                        class="action"
-                        title="The person in the picture in 3D, made with Apple's LiTo: turns all the way round"
-                        data-view-lito
-                        @click="viewingFigure = { index: frame.index, model: 'lito' }"
-                      >
-                        View LiTo
-                      </button>
-                      <button
-                        v-else-if="frame.image"
-                        type="button"
-                        class="action"
-                        :disabled="hasJob(frame.index, 'lito')"
-                        title="Experimental: lift the person in the picture out as a 3D figure with Apple's LiTo (research-only), which turns all the way round (a few minutes). Best with one person, not overlapped by anyone."
-                        data-lito-button
-                        @click="queue('lito', frame.index)"
-                      >
-                        LiTo
-                      </button>
+                      <Frame3dButtons
+                        :frame="frame"
+                        :disabled="(kind) => hasJob(frame.index, kind)"
+                        @make="(kind) => queue(kind, frame.index)"
+                        @view="(kind) => (open3d = { index: frame.index, kind })"
+                      />
                     </p>
                     <details v-if="frame.promptText" class="text-muted" data-image-prompt>
                       <summary class="cursor-pointer select-none">
@@ -1274,44 +1178,18 @@ async function saveCastDraft(): Promise<boolean> {
 
     <p v-else class="p-6 text-muted">Loading…</p>
 
-    <ImageViewer
-      :src="viewer?.src ?? null"
-      :alt="viewer?.alt"
-      :label="viewer?.label"
-      :has-previous="viewed > 0"
-      :has-next="viewed >= 0 && viewed < rendered.length - 1"
-      @previous="stepViewer(-1)"
-      @next="stepViewer(1)"
-      @close="viewing = null"
+    <FrameViewer
+      v-if="session"
+      v-model:open="viewing"
+      :session-id="session.id"
+      :frames="session.frames"
+      @step="goToFrame"
     />
-    <SceneViewer
-      :src="sceneView?.src ?? null"
-      :pivot="sceneView?.pivot"
-      :fov="sceneView?.fov"
-      :aspect="sceneView?.aspect"
-      :label="sceneView ? `Frame ${sceneView.index}` : undefined"
-      @close="viewingScene = null"
-    />
-    <SceneViewer
-      :src="figureView?.src ?? null"
-      :label="figureView?.label"
-      :model="figureView?.model"
-      figure
-      @close="viewingFigure = null"
+    <Frame3dViewers
+      v-if="session"
+      v-model:open="open3d"
+      :session-id="session.id"
+      :frames="session.frames"
     />
   </div>
 </template>
-
-<style scoped>
-@reference "../style.css";
-
-/* A Reply's own actions (Listen, Picture this, Render…): small, quiet buttons beside it. */
-.action {
-  @apply inline-flex items-center gap-1 rounded-md border border-line bg-surface px-2 py-0.5 text-xs
-    text-muted transition-colors hover:border-muted hover:text-fg disabled:opacity-50
-    disabled:hover:border-line disabled:hover:text-muted;
-}
-.action-on {
-  @apply border-info text-info hover:border-info hover:text-info;
-}
-</style>

@@ -190,7 +190,11 @@ under `/api/sessions/:id/roleplay/` ([ADR 0007](adr/0007-roleplay-is-a-conversat
    TripoSplat**; the viewer (`SceneViewer`, drawn with Spark on three.js, which load only then) is
    titled by model ("Frame 8 · SHARP, 2.5D"). Both are queued jobs (`scene`, `figure`) that wait
    their turn in the render queue, and both are made from the upscale when the Frame has one; a
-   re-render or Undo deletes them, and making one again replaces it.
+   re-render or Undo deletes them, and making one again replaces it. A **Chain** has all three
+   buttons too, beside Upscale on the shown Frame (`POST /api/sessions/:id/frames/:index/scene`,
+   `…/triposplat`, `…/lito`), run like an upscale, holding the Session while it works; as with the
+   upscale, every Frame showing that picture shares what was made from it, and Undo deletes it only
+   with the picture.
    - **SHARP** (`server/scene.ts`, `scene/make.py`) turns the picture into about 1.2 million
      Gaussian splats (SHARP works at 1536 px, so the 2048 px upscale has more to give it; a scene
      made before its picture was upscaled offers **SHARP again from upscale**). SHARP peaks near
@@ -202,8 +206,7 @@ under `/api/sessions/:id/roleplay/` ([ADR 0007](adr/0007-roleplay-is-a-conversat
      of view and an aspect), so the viewer opens on exactly the picture's view. It turns 15° or 30°
      either way, or back to the picture's view; dragging turns it freely. SHARP invents what the
      picture never showed, so the further it turns, the more is made up. Its limits (a fixed
-     splat count, what turning shows) are in docs/research/image-to-3d.md.
-   - **TripoSplat** (`server/figure.ts`, `figure/make.py`; its code is vendored in
+     splat count, what turning shows) are in docs/research/image-to-3d.md.    - **TripoSplat** (`server/figure.ts`, `figure/make.py`; its code is vendored in
      `figure/triposplat/`, MIT) cuts the person out of the picture, leaves the room behind, and
      builds them whole, back included, as 524,288 Gaussians (past TripoSplat's cap of 262,144,
      which is only an input check): `frame.figure`, `figure-<index>-….ply`, ~34 MB. Anyone
@@ -259,8 +262,9 @@ wears in its clothing sentence, or it's blocked (and written once more): told to
 Limits, the Art Agent sometimes left an undressed person's clothing out instead of dressing them.
 **Render** / **Re-render** under a pictured Reply renders it through the shared render queue with
 the Session's Image Model, seed and size, and shows the picture beside its Reply (below it on
-windows under 1024 px). Clicking a picture opens it in a viewer (`ImageViewer`, a dialog around
-the same `FrameImage` as the Session screen, so it zooms and pans the same way); Esc, Close or a
+windows under 1024 px). Clicking a picture opens it in a viewer (`FrameViewer`, shared with the
+Chain and Storyboard screens: `ImageViewer`, a dialog around `FrameImage`, which zooms and pans
+only there); Esc, Close or a
 click outside the image dismisses it, and "Open full size" opens the file itself. In the viewer,
 ← and → (or ‹ ›) step to the previous or next rendered Frame, scrolling the conversation behind to
 it,
@@ -340,9 +344,12 @@ in [open-threads.md](open-threads.md).
   every Chain Frame that reuses that image shares the upscale (saved as `upscaled` on the Frame,
   in a `-2048` file next to the original). Hovering the image shows its size in pixels in the top-left
   corner ("768×512", then "3072×2048" once upscaled), except while the status pill is there.
-  Pinching the trackpad over the image zooms the image, not the page (up to 8×, toward the
-  pointer, with the zoom level added to the size chip); while zoomed in, two-finger scrolling or
-  dragging pans, and a double-click resets. Each new image starts unzoomed.
+  Clicking the image opens it in the same viewer as a Roleplay's pictures (`FrameViewer`; ← and →
+  step through the Frames), and so does a Storyboard's. Only there does it zoom: pinching the
+  trackpad zooms the image, not the page (up to 8×, toward the pointer, with the zoom level added
+  to the size chip); while zoomed in, two-finger scrolling or dragging pans, and a double-click
+  resets. Each new image starts unzoomed. The 3D buttons (`Frame3dButtons`) and their viewers
+  (`Frame3dViewers`) are shared with Roleplay too.
 - **Storyboard** (`/storyboards/:id`): opening a new Storyboard plans it straight away. The
   Frames list fills in as the plan streams: Beats first (each marked "Writing…"), then each
   Frame's sentences; the status pill counts "Writing Frame 3 of 8…". The main area shows the

@@ -91,7 +91,7 @@ function onClick(e: MouseEvent) {
           Close ✕
         </button>
       </div>
-      <FrameImage :src="src" :alt="alt" bare instant />
+      <FrameImage :src="src" :alt="alt" bare instant zoom />
     </div>
   </dialog>
 </template>

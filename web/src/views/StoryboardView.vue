@@ -23,6 +23,7 @@ import {
   type StoryboardSession,
 } from '../api'
 import FrameImage from '../components/FrameImage.vue'
+import FrameViewer from '../components/FrameViewer.vue'
 import { clearCurrentSession, setCurrentSession } from '../composables/useCurrentSession'
 import { useStoredText } from '../composables/useStoredText'
 import { sessionPath } from '../sessionPath'
@@ -355,6 +356,9 @@ const timingsLabel = (f: StoryboardFrame) => {
   if (t.image !== null) parts.push(`Image ${t.image.toFixed(1)} s`)
   return parts.join(' · ')
 }
+
+/** The Frame whose picture is open in the viewer, if any. */
+const viewingPicture = ref<number | null>(null)
 </script>
 
 <template>
@@ -369,6 +373,7 @@ const timingsLabel = (f: StoryboardFrame) => {
           :rendering="renderingHere"
           :hide-size="busy"
           :empty-text="current ? (current.blocked ? 'Blocked: edit this Frame first' : 'Not rendered yet') : 'Planning…'"
+          @open="viewingPicture = current!.index"
         >
           <div
             v-if="busy"
@@ -612,5 +617,12 @@ const timingsLabel = (f: StoryboardFrame) => {
     </template>
 
     <p v-else class="p-6 text-muted">Loading…</p>
+    <FrameViewer
+      v-if="session"
+      v-model:open="viewingPicture"
+      :session-id="session.id"
+      :frames="session.frames"
+      :name="(index) => `Frame ${index + 1}`"
+    />
   </div>
 </template>

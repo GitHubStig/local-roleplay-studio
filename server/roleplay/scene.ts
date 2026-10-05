@@ -1,10 +1,8 @@
 import { join } from '@std/path'
-import { secondsSince } from '../frames.ts'
+import { saveAsGiven, secondsSince } from '../frames.ts'
 import { RenderQueue } from '../renderQueue.ts'
-import type { SceneMaker } from '../scene.ts'
+import type { Scene, SceneMaker } from '../scene.ts'
 import type { SessionStore } from '../session.ts'
-import type { RoleplaySession, Scene } from './types.ts'
-import { updateSession } from './update.ts'
 
 export interface SceneDeps {
   store: SessionStore
@@ -13,25 +11,36 @@ export interface SceneDeps {
   renderQueue?: RenderQueue
 }
 
-export type SceneEvent =
+/** What a scene can be made for: a Chain or a Roleplay. */
+interface ScenedSession {
+  id: string
+  frames: { index: number; image: string | null; upscaled?: string; scene?: Scene }[]
+}
+
+export type SceneEvent<S = ScenedSession> =
   | { type: 'phase'; phase: 'queued' | 'image' | 'download' }
-  | { type: 'scened'; index: number; scene: Scene; session: RoleplaySession }
+  | { type: 'scened'; index: number; scene: Scene; session: S }
 
 export class SceneError extends Error {}
+
+/** Why no scene can be made: SHARP is switched off. */
+export const SCENES_OFF = '3D scenes are off (SCENES=off)'
 
 /**
  * Makes Frame `index`'s picture into a 3D scene, in its turn behind any render: SHARP and an Image
  * Model each want 15 GB or more. Made from the upscale if the Frame has one, else the original.
- * Making it again replaces the old one.
+ * Every Frame showing that picture gets it (a Chain Frame reuses the picture before it when nothing
+ * changed). Making it again replaces the old one.
  */
-export async function makeScene(
+export async function makeScene<S extends ScenedSession>(
   deps: SceneDeps,
-  session: RoleplaySession,
+  session: S,
   index: number,
-  emit: (event: SceneEvent) => void,
+  emit: (event: SceneEvent<S>) => void,
   signal: AbortSignal,
-): Promise<RoleplaySession> {
-  if (!deps.scene) throw new SceneError('3D scenes are off (SCENES=off)')
+  save: (change: (s: S) => S) => Promise<S> = saveAsGiven(deps.store, session),
+): Promise<S> {
+  if (!deps.scene) throw new SceneError(SCENES_OFF)
   const frame = session.frames[index]
   const image = frame?.image
   if (!image) throw new SceneError(`Frame ${index} has no picture yet`)
@@ -63,13 +72,13 @@ export async function makeScene(
     }
     let replaced: string | undefined
     // Onto the Frame as it is now, if it still shows the picture the scene was made from.
-    const updated = await updateSession(deps.store, session.id, (latest) => {
+    const updated = await save((latest) => {
       const current = latest.frames[index]
       if (current?.image !== image) throw new SceneError(`Frame ${index}'s picture changed`)
       replaced = current.scene?.file
       return {
         ...latest,
-        frames: latest.frames.map((f) => (f.index === index ? { ...f, scene } : f)),
+        frames: latest.frames.map((f) => (f.image === image ? { ...f, scene } : f)),
       }
     })
     if (replaced) await Deno.remove(join(dir, replaced)).catch(() => {})

@@ -19,7 +19,11 @@ const props = defineProps<{
   bare?: boolean
   /** Show a new image at once: no preload wait and no crossfade, e.g. in a viewer. */
   instant?: boolean
+  /** Pinch to zoom and drag to pan, as in the viewer; otherwise a click on the image opens it. */
+  zoom?: boolean
 }>()
+/** The image was clicked, to look closer (only without `zoom`). */
+const emit = defineEmits<{ open: [] }>()
 
 /** The image on screen; it only changes once the next one has loaded, for a clean crossfade. */
 const displayed = ref<{ src: string; alt: string } | null>(null)
@@ -48,9 +52,9 @@ watch(
   { immediate: true },
 )
 
-/** Pinch to zoom the image, not the page; each new image starts unzoomed. */
+/** Pinch to zoom the image, not the page, when `zoom`; each new image starts unzoomed. */
 const frame = ref<HTMLElement | null>(null)
-const { zoomed, layerStyle, view, reset } = usePinchZoom(frame)
+const { zoomed, layerStyle, view, reset } = usePinchZoom(props.zoom ? frame : ref(null))
 watch(() => displayed.value?.src, reset)
 
 /** Width ÷ height of the images shown; portrait until the first one loads. */
@@ -104,8 +108,12 @@ const frameStyle = computed(() => ({
           :src="displayed.src"
           :alt="displayed.alt"
           class="absolute inset-0 h-full w-full object-contain"
+          :class="{ 'cursor-zoom-in': !zoom }"
+          :title="zoom ? undefined : 'Look closer'"
           draggable="false"
+          data-frame-picture
           @load="onImageLoad"
+          @click="!zoom && emit('open')"
         />
       </Transition>
       </div>

@@ -1,6 +1,8 @@
 import { fromFileUrl, join } from '@std/path'
 import type { ImagePrompt } from './imagePrompt.ts'
 import type { RoleplaySession } from './roleplay/types.ts'
+import type { Scene } from './scene.ts'
+import type { Figure } from './figure.ts'
 import type { Settings } from './settings.ts'
 
 /**
@@ -47,6 +49,12 @@ export interface ChainFrame extends FrameBase {
   thinking?: string
   /** Chain Frames always have an image. */
   image: string
+  /** The picture made into a 2.5D scene (SHARP), once asked for; shared like `upscaled`. */
+  scene?: Scene
+  /** The person in the picture as a 3D figure (TripoSplat), once asked for; shared likewise. */
+  figure?: Figure
+  /** The same, made with Apple's LiTo. */
+  lito?: Figure
 }
 
 /** A Storyboard Frame: planned from a Beat, edited and rendered on its own. */

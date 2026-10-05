@@ -142,6 +142,47 @@ export interface FrameTimings {
   image: number | null
 }
 
+/**
+ * A Frame's picture as a 2.5D scene of Gaussian splats, made with SHARP: it turns a little from the
+ * picture's view, not all the way round.
+ */
+export interface Scene {
+  /** `.ply` file, served like the pictures. */
+  file: string
+  /** The picture it was made from: the upscale if there was one, else the original. */
+  from?: string
+  splats: number
+  /** The depth to orbit around. */
+  pivot: number
+  /** The camera it was made for: vertical field of view in degrees, and width / height. */
+  fov: number
+  aspect: number
+  timings: { queued?: number; scene: number }
+}
+
+/** The person in a Frame's picture lifted out as a full 3D figure (TripoSplat or LiTo). */
+export interface Figure {
+  /** `.ply` file, served like the pictures. */
+  file: string
+  splats: number
+  /** The picture it was made from: the upscale if there was one. */
+  from: string
+  timings: { queued?: number; figure: number }
+}
+
+/** What a Frame's picture can be made into in 3D, by the field it's kept in. */
+export type Made3d = 'scene' | 'figure' | 'lito'
+
+/** What the 3D buttons and viewers read from a Frame, in a Chain or a Roleplay. */
+export interface Frame3d {
+  index: number
+  image: string | null
+  upscaled?: string
+  scene?: Scene
+  figure?: Figure
+  lito?: Figure
+}
+
 /** A Chain Frame: made from the previous one by an Action. */
 export interface ChainFrame {
   index: number
@@ -157,6 +198,12 @@ export interface ChainFrame {
   image: string
   /** The image upscaled to 2048 px, once upscaled. */
   upscaled?: string
+  /** The picture made into a 2.5D scene (SHARP), once asked for; shared like `upscaled`. */
+  scene?: Scene
+  /** The person in the picture as a 3D figure (TripoSplat), once asked for; shared likewise. */
+  figure?: Figure
+  /** The same, made with Apple's LiTo. */
+  lito?: Figure
   createdAt: string
 }
 
@@ -247,6 +294,12 @@ export type FrameEvent =
 
 /** An upscale's stream: ends with the Session, every Frame showing that image now upscaled. */
 export type UpscaleEvent = ProgressEvent | EndEvent | { type: 'upscaled'; session: Session }
+
+/** Making a Chain Frame's picture into a 2.5D scene. */
+export type SceneEvent = ProgressEvent | EndEvent | { type: 'scened'; session: ChainSession }
+
+/** Lifting a Chain Frame's person out as a 3D figure. */
+export type FigureEvent = ProgressEvent | EndEvent | { type: 'figured'; session: ChainSession }
 
 /** A Storyboard's streams: planning, rendering a Frame, editing a Frame by Action. */
 export type StoryboardEvent =
@@ -411,6 +464,33 @@ export const editStoryboardFrame = (
     `/api/sessions/${sessionId}/frames/${index}/edit`,
     { action },
     ['edited'],
+    onEvent,
+  )
+
+/** Makes a Chain Frame's picture (its upscale if it has one) into a 2.5D scene with SHARP. */
+export const makeScene = (
+  sessionId: string,
+  index: number,
+  onEvent: (event: SceneEvent) => void,
+) =>
+  streamEvents<SceneEvent>(
+    `/api/sessions/${sessionId}/frames/${index}/scene`,
+    {},
+    ['scened'],
+    onEvent,
+  )
+
+/** Lifts the person in a Chain Frame's picture out as a 3D figure, with TripoSplat or LiTo. */
+export const makeFigure = (
+  sessionId: string,
+  index: number,
+  model: 'triposplat' | 'lito',
+  onEvent: (event: FigureEvent) => void,
+) =>
+  streamEvents<FigureEvent>(
+    `/api/sessions/${sessionId}/frames/${index}/${model}`,
+    {},
+    ['figured'],
     onEvent,
   )
 

@@ -13,6 +13,9 @@ import {
 import { onBeforeRouteLeave, useRouter } from 'vue-router'
 import { clearCurrentSession, setCurrentSession } from '../composables/useCurrentSession'
 import FrameImage from '../components/FrameImage.vue'
+import Frame3dButtons from '../components/Frame3dButtons.vue'
+import Frame3dViewers from '../components/Frame3dViewers.vue'
+import FrameViewer from '../components/FrameViewer.vue'
 import { useStoredFlag } from '../composables/useStoredFlag'
 import { useStoredText } from '../composables/useStoredText'
 import { sessionPath } from '../sessionPath'
@@ -24,12 +27,17 @@ import {
   DOWNLOADING,
   getSession,
   imageUrl,
+  makeFigure,
+  makeScene,
   type Outcome,
   type ImagePrompt,
   type ChainSession,
   streamFrame,
   type ChainFrame,
+  type FigureEvent,
   type FrameEvent,
+  type Made3d,
+  type SceneEvent,
   undoFrame,
   upscaleFrame,
 } from '../api'
@@ -51,6 +59,8 @@ interface Pending {
   cancelling?: boolean
   /** Upscaling this Frame's image rather than making a new Frame. */
   upscaling?: number
+  /** Making this Frame's picture into 3D (a scene or a figure) rather than making a new Frame. */
+  making?: { index: number; label: string }
 }
 
 const session = ref<ChainSession | null>(null)
@@ -79,6 +89,8 @@ const latest = computed(() => session.value?.frames.at(-1))
 /** Looking at an earlier Frame; the next Action still continues from the latest one. */
 const viewingOlder = computed(() => !!shown.value && shown.value.index !== latest.value?.index)
 const frameName = (index: number) => (index === 0 ? 'the Opening' : `Frame ${index}`)
+/** The same, starting a title: the viewers' labels. */
+const frameTitle = (index: number) => (index === 0 ? 'The Opening' : `Frame ${index}`)
 
 // A kept-alive screen keeps running in the background; it must only navigate while on screen.
 let onScreen = true
@@ -277,6 +289,39 @@ async function upscale() {
   }
 }
 
+// --- Looking closer: the picture viewer, and 3D by model (experimental; Frame3dButtons).
+
+/** The Frame whose picture is open in the viewer, if any. */
+const viewingPicture = ref<number | null>(null)
+/** Which Frame's scene or figure is open, if any. */
+const open3d = ref<{ index: number; kind: Made3d } | null>(null)
+
+/** Makes the shown Frame's picture into 3D: a 2.5D scene, or a figure. */
+async function make3d(kind: Made3d) {
+  const frame = shown.value
+  if (!frame || busy.value) return
+  const doing = {
+    scene: 'into a 2.5D scene',
+    figure: 'into a figure with TripoSplat',
+    lito: 'into a figure with LiTo',
+  }[kind]
+  frameError.value = ''
+  pending.value = { phase: 'image', making: { index: frame.index, label: doing } }
+  const onEvent = (event: SceneEvent | FigureEvent) => {
+    if (event.type === 'phase') pending.value = { ...pending.value!, phase: event.phase }
+    else if (event.type === 'scened' || event.type === 'figured') session.value = event.session
+    else if (event.type === 'failed') frameError.value = event.message
+  }
+  try {
+    if (kind === 'scene') await makeScene(props.id, frame.index, onEvent)
+    else await makeFigure(props.id, frame.index, kind === 'lito' ? 'lito' : 'triposplat', onEvent)
+  } catch (err) {
+    frameError.value = (err as Error).message
+  } finally {
+    pending.value = null
+  }
+}
+
 /** Undo is possible for any Frame after the Opening Frame, while nothing is running. */
 const canUndo = computed(() => !busy.value && (session.value?.frames.length ?? 0) > 1)
 const undoing = ref(false)
@@ -311,10 +356,11 @@ const writing = computed(() => pending.value?.phase === 'text' && !pending.value
 
 /** The frame's border sweeps while an image renders (or waits to), until the new one lands. */
 const renderingPhase = computed(() =>
-  // An upscale sweeps only the Frame it is upscaling.
+  // An upscale or a scene sweeps only the Frame it is working on.
   (pending.value?.phase === 'image' || pending.value?.phase === 'queued' ||
       pending.value?.phase === 'download') &&
-    (pending.value.upscaling === undefined || pending.value.upscaling === shown.value?.index)
+    ((pending.value.upscaling ?? pending.value.making?.index) === undefined ||
+      (pending.value.upscaling ?? pending.value.making?.index) === shown.value?.index)
     ? (pending.value.phase === 'queued' ? 'queued' : 'image')
     : null
 )
@@ -346,6 +392,8 @@ const phaseLabel = computed(() => {
   if (pending.value?.phase === 'queued') return 'Waiting for another render…'
   if (pending.value?.phase === 'download') return DOWNLOADING
   if (pending.value?.phase !== 'image') return 'Writing the prompt…'
+  const making = pending.value.making
+  if (making) return `Making ${frameName(making.index)} ${making.label}…`
   const p = pending.value.progress
   const doing = pending.value.upscaling === undefined
     ? 'Rendering the image…'
@@ -374,6 +422,7 @@ const promptDiff = computed(() => {
           :rendering="renderingPhase"
           :hide-size="busy"
           :empty-text="busy ? undefined : 'No image yet'"
+          @open="viewingPicture = shown!.index"
         >
           <div
             v-if="viewingOlder"
@@ -519,6 +568,14 @@ const promptDiff = computed(() => {
             >
               {{ shown.upscaled ? 'Upscaled' : 'Upscale' }}
             </button>
+            <Frame3dButtons
+              v-if="shown"
+              :frame="shown"
+              :disabled="() => busy"
+              button-class="rounded-lg border border-line px-3 py-2 text-sm disabled:opacity-50"
+              @make="make3d"
+              @view="(kind) => (open3d = { index: shown!.index, kind })"
+            />
             <p
               class="min-w-0 flex-1 truncate text-sm text-danger"
               :title="frameError"
@@ -683,5 +740,20 @@ const promptDiff = computed(() => {
     </template>
 
     <p v-else class="p-6 text-muted">Loading…</p>
+
+    <FrameViewer
+      v-if="session"
+      v-model:open="viewingPicture"
+      :session-id="session.id"
+      :frames="session.frames"
+      :name="frameTitle"
+    />
+    <Frame3dViewers
+      v-if="session"
+      v-model:open="open3d"
+      :session-id="session.id"
+      :frames="session.frames"
+      :name="frameTitle"
+    />
   </div>
 </template>
