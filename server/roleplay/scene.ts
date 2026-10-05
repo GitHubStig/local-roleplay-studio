@@ -1,5 +1,5 @@
 import { join } from '@std/path'
-import { saveAsGiven, secondsSince } from '../frames.ts'
+import { secondsSince } from '../frames.ts'
 import { RenderQueue } from '../renderQueue.ts'
 import type { Scene, SceneMaker } from '../scene.ts'
 import type { SessionStore } from '../session.ts'
@@ -38,7 +38,8 @@ export async function makeScene<S extends ScenedSession>(
   index: number,
   emit: (event: SceneEvent<S>) => void,
   signal: AbortSignal,
-  save: (change: (s: S) => S) => Promise<S> = saveAsGiven(deps.store, session),
+  /** Saves the change onto the Session as it is now (`updateSession`). */
+  save: (change: (s: S) => S) => Promise<S>,
 ): Promise<S> {
   if (!deps.scene) throw new SceneError(SCENES_OFF)
   const frame = session.frames[index]

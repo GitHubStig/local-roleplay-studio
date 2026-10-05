@@ -2,7 +2,7 @@
 import { useEventListener } from '@vueuse/core'
 import { computed, nextTick, onActivated, onBeforeUnmount, onDeactivated, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { ApiError, cancelFrame, DOWNLOADING, getSession, imageUrl, type Made3d } from '../api'
+import { ApiError, cancelFrame, getSession, imageUrl, type Made3d } from '../api'
 import { clearCurrentSession, setCurrentSession } from '../composables/useCurrentSession'
 import { useStoredFlag } from '../composables/useStoredFlag'
 import { useStoredText } from '../composables/useStoredText'
@@ -10,6 +10,10 @@ import CollapsibleTextarea from '../components/CollapsibleTextarea.vue'
 import Frame3dButtons from '../components/Frame3dButtons.vue'
 import Frame3dViewers from '../components/Frame3dViewers.vue'
 import FrameViewer from '../components/FrameViewer.vue'
+import FrameJobs from '../components/FrameJobs.vue'
+import JobQueue from '../components/JobQueue.vue'
+import { useJobs } from '../composables/useJobs'
+import { jobStatus } from '../jobs'
 import { cleanReply } from './reply'
 import { sessionPath } from '../sessionPath'
 import {
@@ -22,12 +26,7 @@ import {
   type RoleplayFrame,
   type Speech,
   beginRoleplay,
-  cancelJob,
   type Job,
-  type JobKind,
-  listJobs,
-  queueJob,
-  retryJob,
   saveCast,
   saveLook,
   saveVoice,
@@ -70,37 +69,21 @@ const replying = computed(() => {
 })
 /** A message is being suggested into the text box. */
 const suggesting = computed(() => pending.value?.kind === 'suggest')
-// --- Background work: pictures, renders and upscales, queued on the server.
+// --- Background work: pictures, renders, upscales, voices and 3D, queued on the server.
 
-/** The Roleplay's jobs: running, then queued, then failed (until dismissed). */
-const jobs = ref<Job[]>([])
-const openJobs = computed(() => jobs.value.filter((j) => j.status !== 'failed'))
-const runningJob = computed(() => jobs.value.find((j) => j.status === 'running') ?? null)
+const { jobs, openJobs, runningJob, jobsFor, hasJob, queue, dropJob, retry, refreshJobs } = useJobs(
+  props.id,
+  {
+    onSettled: () => reload(),
+    onError: (text) => (notice.value = { kind: 'error', text }),
+  },
+)
 /** A Frame's jobs; designing the voice is the Roleplay's, shown in the Voice panel instead. */
-const jobsFor = (index: number) =>
-  jobs.value.filter((j) => j.frameIndex === index && j.kind !== 'voice')
+const frameJobs = (index: number) => jobsFor(index).filter((j) => j.kind !== 'voice')
 const voiceJob = computed(() => jobs.value.find((j) => j.kind === 'voice') ?? null)
-/** A job of this kind is already queued or running on this Frame. */
-const hasJob = (index: number, kind: JobKind) =>
-  openJobs.value.some((j) => j.frameIndex === index && j.kind === kind)
 
-const JOB_NAMES: Record<JobKind, string> = {
-  picture: 'Picture',
-  render: 'Render',
-  upscale: 'Upscale',
-  voice: 'Voice',
-  speak: 'Listen',
-  'speak-thought': 'Listen to thought',
-  scene: 'SHARP',
-  figure: 'TripoSplat',
-  lito: 'LiTo',
-}
-
-/** What a job is doing, in a few words. */
-function jobStatus(job: Job): string {
-  if (job.status === 'failed') return `Failed: ${job.error}`
-  if (job.status === 'queued') return 'Queued'
-  if (job.phase === 'download') return DOWNLOADING
+/** What a Roleplay's own work is doing, where it says more than `jobStatus`. */
+function describeJob(job: Job): string | undefined {
   if (job.kind === 'voice' || job.kind === 'speak' || job.kind === 'speak-thought') {
     if (job.phase === 'queued') return 'Waiting for another render…'
     if (job.phase === 'text') return 'Describing the voice…'
@@ -110,66 +93,7 @@ function jobStatus(job: Job): string {
   if (job.kind === 'picture') {
     return currentLook.value ? 'Picturing this moment…' : 'Writing the Look, then picturing…'
   }
-  if (job.phase === 'queued') return 'Waiting for another render…'
-  if (job.kind === 'scene') return 'Making the 2.5D scene…'
-  if (job.kind === 'figure' || job.kind === 'lito') return 'Making the 3D figure…'
-  const doing = job.kind === 'upscale' ? 'Upscaling to 2048 px…' : 'Rendering…'
-  return job.progress ? `${doing} step ${job.progress.step} of ${job.progress.total}` : doing
 }
-
-async function queue(kind: JobKind, index: number) {
-  try {
-    jobs.value = await queueJob(props.id, kind, index)
-    watchJobs()
-  } catch (err) {
-    notice.value = { kind: 'error', text: (err as Error).message }
-  }
-}
-
-/** Cancels a queued or running job, or dismisses a failed one. */
-async function dropJob(job: Job) {
-  try {
-    jobs.value = await cancelJob(props.id, job.id)
-  } catch {
-    await refreshJobs()
-  }
-}
-
-/** Puts a failed job back in the queue. */
-async function retry(job: Job) {
-  try {
-    jobs.value = await retryJob(props.id, job.id)
-    watchJobs()
-  } catch {
-    await refreshJobs()
-  }
-}
-
-/**
- * Follows the queue while anything is queued or running: a job that finishes (or fails) has
- * changed the Roleplay, so it's reloaded.
- */
-let jobTimer: ReturnType<typeof setTimeout> | undefined
-async function refreshJobs() {
-  clearTimeout(jobTimer)
-  let now: Job[]
-  try {
-    now = await listJobs(props.id)
-  } catch {
-    return
-  }
-  const settled = openJobs.value.some((j) =>
-    !now.some((n) => n.id === j.id && n.status !== 'failed')
-  )
-  jobs.value = now
-  if (settled) await reload()
-  watchJobs()
-}
-function watchJobs() {
-  clearTimeout(jobTimer)
-  if (openJobs.value.length) jobTimer = setTimeout(refreshJobs, 1000)
-}
-onBeforeUnmount(() => clearTimeout(jobTimer))
 
 /** Reloads the Roleplay after background work, without disturbing a reply in progress. */
 async function reload() {
@@ -697,39 +621,12 @@ async function saveCastDraft(): Promise<boolean> {
                     “{{ frame.reply.dialogue }}”
                   </p>
                   <div class="flex max-w-prose flex-col gap-1 text-xs" data-picture>
-                    <!-- This Frame's queued, running and failed jobs, each cancellable in place. -->
-                    <p
-                      v-for="job in jobsFor(frame.index)"
-                      :key="job.id"
-                      class="flex items-center gap-2"
-                      data-frame-job
-                    >
-                      <span
-                        :class="{
-                          'animate-pulse text-info': job.status === 'running',
-                          'text-muted': job.status === 'queued',
-                          'text-danger': job.status === 'failed',
-                        }"
-                      >
-                        {{ JOB_NAMES[job.kind] }} · {{ jobStatus(job) }}
-                      </span>
-                      <button
-                        v-if="job.status === 'failed'"
-                        type="button"
-                        class="text-fg underline-offset-2 hover:underline"
-                        data-retry
-                        @click="retry(job)"
-                      >
-                        Retry
-                      </button>
-                      <button
-                        type="button"
-                        class="text-danger underline-offset-2 hover:underline"
-                        @click="dropJob(job)"
-                      >
-                        {{ job.status === 'failed' ? 'Dismiss' : 'Cancel' }}
-                      </button>
-                    </p>
+                    <FrameJobs
+                      :jobs="frameJobs(frame.index)"
+                      :describe="describeJob"
+                      @retry="retry"
+                      @drop="dropJob"
+                    />
                     <p class="flex flex-wrap items-center gap-1.5">
                       <button
                         v-if="canSpeak(frame)"
@@ -979,49 +876,14 @@ async function saveCastDraft(): Promise<boolean> {
             Nothing queued. Picture, Render and Upscale under a Reply add work here, to run while
             you carry on.
           </p>
-          <ol v-else>
-            <li
-              v-for="job in jobs"
-              :key="job.id"
-              class="flex items-start gap-2 border-b border-line p-3 text-sm hover:bg-surface"
-              data-queue-item
-            >
-              <button
-                type="button"
-                class="flex min-w-0 flex-1 flex-col gap-0.5 text-left"
-                :title="`Go to Frame ${job.frameIndex}`"
-                @click="goToFrame(job.frameIndex)"
-              >
-                <span class="font-medium">{{ JOB_NAMES[job.kind] }} · Frame {{ job.frameIndex }}</span>
-                <span
-                  class="text-xs"
-                  :class="{
-                    'animate-pulse text-info': job.status === 'running',
-                    'text-muted': job.status === 'queued',
-                    'text-danger': job.status === 'failed',
-                  }"
-                >
-                  {{ jobStatus(job) }}
-                </span>
-              </button>
-              <button
-                v-if="job.status === 'failed'"
-                type="button"
-                class="shrink-0 text-xs text-fg underline-offset-2 hover:underline"
-                data-retry
-                @click="retry(job)"
-              >
-                Retry
-              </button>
-              <button
-                type="button"
-                class="shrink-0 text-xs text-danger underline-offset-2 hover:underline"
-                @click="dropJob(job)"
-              >
-                {{ job.status === 'failed' ? 'Dismiss' : 'Cancel' }}
-              </button>
-            </li>
-          </ol>
+          <JobQueue
+            v-else
+            :jobs="jobs"
+            :describe="describeJob"
+            @go="goToFrame"
+            @retry="retry"
+            @drop="dropJob"
+          />
         </section>
 
         <div v-else class="min-h-0 flex-1 overflow-y-auto" data-cast-panel>
@@ -1083,7 +945,7 @@ async function saveCastDraft(): Promise<boolean> {
                 'text-muted': voiceJob.status === 'queued',
                 'text-danger': voiceJob.status === 'failed',
               }"
-            >{{ jobStatus(voiceJob) }}</span>
+            >{{ jobStatus(voiceJob, describeJob) }}</span>
             <button
               type="button"
               class="text-danger underline-offset-2 hover:underline"

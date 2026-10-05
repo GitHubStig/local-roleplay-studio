@@ -6,6 +6,7 @@ import { type ImagePrompt, renderPrompt } from './imagePrompt.ts'
 import { crossedLimit, limitsEnabled } from './limits.ts'
 import { mightNameAPerson } from './textModel.ts'
 import { RenderQueue } from './renderQueue.ts'
+import { updateSession } from './update.ts'
 import type { Scenario } from './scenario.ts'
 import {
   type ChainFrame,
@@ -81,6 +82,10 @@ export const saveAsGiven =
     await store.save(updated as unknown as Session)
     return updated
   }
+
+/** `fields` without the ones that are undefined, to spread onto an object. */
+const definedOnly = <T extends object>(fields: T): Partial<T> =>
+  Object.fromEntries(Object.entries(fields).filter(([, v]) => v !== undefined)) as Partial<T>
 
 /** Seconds since `start` (a `performance.now()` reading), to one decimal place. */
 export const secondsSince = (start: number) => Math.round((performance.now() - start) / 100) / 10
@@ -262,20 +267,16 @@ export async function runChainFrame(
   // it finished writing just as the Frame was cancelled.
   const name = imageName(index)
   try {
-    // What was made from the picture (upscale, scene, figures) goes with it.
-    let made: Pick<ChainFrame, 'upscaled' | 'scene' | 'figure' | 'lito'> = {}
     if (reuseImage) {
       image = previous!.image
       promptText = previous!.promptText
-      const { upscaled, scene, figure, lito } = previous!
-      made = { upscaled, scene, figure, lito }
     } else {
       promptText = renderPrompt(nextPrompt)
       image = await renderImage(deps, session, promptText, name, timings, emit, signal)
     }
     signal.throwIfAborted()
 
-    const frame: ChainFrame = {
+    let frame: ChainFrame = {
       index,
       action,
       prompt: nextPrompt,
@@ -284,11 +285,19 @@ export async function runChainFrame(
       ...(thinking ? { thinking } : {}),
       promptText,
       image,
-      ...Object.fromEntries(Object.entries(made).filter(([, v]) => v !== undefined)),
       timings,
       createdAt: new Date().toISOString(),
     }
-    await deps.store.save({ ...session, frames: [...session.frames, frame] })
+    // Onto the Chain as it is now: a job may have upscaled or made 3D of a picture meanwhile.
+    await updateSession(deps.store, session.id, 'chain', (latest) => {
+      // A reused picture brings what was made from it (upscale, scene, figures).
+      const before = latest.frames.at(-1)
+      if (reuseImage && before) {
+        const { upscaled, scene, figure, lito } = before
+        frame = { ...frame, ...definedOnly({ upscaled, scene, figure, lito }) }
+      }
+      return { ...latest, frames: [...latest.frames, frame] }
+    })
     session.frames.push(frame)
     emit({ type: 'committed', frame })
     return frame
@@ -310,16 +319,17 @@ export async function undoLatestFrame(
   session: ChainSession,
   index: number,
 ): Promise<ChainSession> {
-  const latest = session.frames.at(-1)
-  if (!latest || latest.index !== index) {
-    throw new UndoError(`Frame ${index} is not the latest Frame`)
-  }
-  if (session.frames.length === 1) throw new UndoError("The Opening Frame can't be undone")
-
-  const frames = session.frames.slice(0, -1)
-  const updated: ChainSession = { ...session, frames }
-  await store.save(updated)
-  if (!frames.some((t) => t.image === latest.image)) {
+  let latest!: ChainFrame
+  // As it is now: a job may have made something from the latest picture meanwhile.
+  const updated = await updateSession(store, session.id, 'chain', (now) => {
+    latest = now.frames.at(-1)!
+    if (!latest || latest.index !== index) {
+      throw new UndoError(`Frame ${index} is not the latest Frame`)
+    }
+    if (now.frames.length === 1) throw new UndoError("The Opening Frame can't be undone")
+    return { ...now, frames: now.frames.slice(0, -1) }
+  })
+  if (!updated.frames.some((t) => t.image === latest.image)) {
     await Deno.remove(join(store.dir(session.id), latest.image)).catch(() => {})
     const made = [latest.upscaled, latest.scene?.file, latest.figure?.file, latest.lito?.file]
     for (const file of made) {

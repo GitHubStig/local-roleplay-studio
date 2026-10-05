@@ -2,7 +2,7 @@ import { error, json, readJson, type Route } from '../http.ts'
 import type { StreamEvent } from '../app.ts'
 import type { Scenario } from '../scenario.ts'
 import type { Session, SessionStore } from '../session.ts'
-import { JOB_KINDS, type JobKind, type RoleplayJobs } from './jobs.ts'
+import type { SessionJobs } from '../jobs.ts'
 import {
   beginRoleplay,
   type RoleplayDeps,
@@ -17,7 +17,7 @@ import {
 import type { RoleplayModel } from './model.ts'
 import { CastError } from './prompt.ts'
 import { suggestMessage } from './suggest.ts'
-import { setVoiceDescription, spokenText, VoiceError } from './voice.ts'
+import { setVoiceDescription, VoiceError } from './voice.ts'
 import type { RoleplaySession } from './types.ts'
 
 /** A player's message can be at most this long. */
@@ -44,8 +44,8 @@ export interface RoleplayRouteContext {
   deps(session: Session): RoleplayDeps
   /** The model Suggest writes with: the Session's Text Model, Thinking off. */
   suggestModel(session: Session): RoleplayModel
-  /** The Roleplays' background work: pictures, renders, upscales. */
-  jobs: RoleplayJobs
+  /** Background work (pictures, renders, upscales…), to cancel what an Undo leaves behind. */
+  jobs: SessionJobs
   store: SessionStore
 }
 
@@ -130,49 +130,6 @@ export function roleplayRoutes(ctx: RoleplayRouteContext): Route[] {
         ctx.jobs.cancelWhere(session.id, (job) => job.frameIndex === index)
         return json(undone)
       })],
-
-    // Background work, queued; none of it holds the Roleplay's lock.
-    ['GET', path('jobs'), async (_req, p) => {
-      const session = await ctx.store.load(p.id!)
-      if (!session) return error('Session not found', 404)
-      return json(ctx.jobs.list(session.id))
-    }],
-
-    ['POST', path('jobs'), async (req, p) => {
-      const session = await ctx.store.load(p.id!)
-      if (!session) return error('Session not found', 404)
-      if (session.kind !== 'roleplay') return error('Only a Roleplay has this', 409)
-      const body = await readJson(req) as { kind?: unknown; frameIndex?: unknown } | undefined
-      const kind = body?.kind as JobKind
-      if (!JOB_KINDS.includes(kind)) {
-        return error(`kind must be one of: ${JOB_KINDS.join(', ')}`, 400)
-      }
-      const index = Number(body?.frameIndex)
-      if (!Number.isInteger(index) || !session.frames[index]) return error('No such Frame', 404)
-      if (kind === 'speak' && !spokenText(session.frames[index], 'dialogue')) {
-        return error(`Frame ${index} has nothing to say aloud`, 409)
-      }
-      if (kind === 'speak-thought' && !spokenText(session.frames[index], 'thought')) {
-        return error(`Frame ${index} has no thought to say aloud`, 409)
-      }
-      if (['scene', 'figure', 'lito'].includes(kind) && !session.frames[index].image) {
-        return error(`Frame ${index} has no picture yet`, 409)
-      }
-      ctx.jobs.enqueue(session, kind, index)
-      return json(ctx.jobs.list(session.id), 201)
-    }],
-
-    ['POST', path('jobs/:job/retry'), (_req, p) =>
-      Promise.resolve(
-        ctx.jobs.retry(p.id!, p.job!)
-          ? json(ctx.jobs.list(p.id!))
-          : error('No such failed job', 404),
-      )],
-
-    ['DELETE', path('jobs/:job'), (_req, p) =>
-      Promise.resolve(
-        ctx.jobs.cancel(p.id!, p.job!) ? json(ctx.jobs.list(p.id!)) : error('No such job', 404),
-      )],
 
     ['PUT', path('look'), (req, p) =>
       withRoleplay(p.id!, 'edit', async (session) => {

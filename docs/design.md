@@ -191,8 +191,7 @@ under `/api/sessions/:id/roleplay/` ([ADR 0007](adr/0007-roleplay-is-a-conversat
    titled by model ("Frame 8 · SHARP, 2.5D"). Both are queued jobs (`scene`, `figure`) that wait
    their turn in the render queue, and both are made from the upscale when the Frame has one; a
    re-render or Undo deletes them, and making one again replaces it. A **Chain** has all three
-   buttons too, beside Upscale on the shown Frame (`POST /api/sessions/:id/frames/:index/scene`,
-   `…/triposplat`, `…/lito`), run like an upscale, holding the Session while it works; as with the
+   buttons too, beside Upscale on the shown Frame, queued like a Roleplay's (below); as with the
    upscale, every Frame showing that picture shares what was made from it, and Undo deletes it only
    with the picture.
    - **SHARP** (`server/scene.ts`, `scene/make.py`) turns the picture into about 1.2 million
@@ -228,18 +227,23 @@ The prompts are Markdown files in `server/prompts/roleplay/` (`cast.md`, `cast-r
 `suggest.md`, `suggest-request.md`, `suggest-limits*.md`, and the voice's `voice.md`), each with a note at
 the top saying when it's used and what it's filled with; edits apply on the next call.
 
-**Pictures, renders and upscales are queued jobs** (`server/roleplay/jobs.ts`): the player can ask
-for several and carry on with the conversation. Each Roleplay runs its jobs one at a time, in the
-order asked (renders and upscales also wait their turn in the render queue every Session shares).
-Jobs don't hold the Roleplay's lock; every change to a Roleplay (a Reply, a picture, a render, an
-edit) is saved by reloading it and applying just that change, one at a time
-(`roleplay/update.ts`), so none overwrites another. The queue lives in memory: restarting the
+**Pictures, renders and upscales are queued jobs** (`server/jobs.ts`, one queue for every
+Session; what a Roleplay's jobs do is in `server/roleplay/jobs.ts`, a Chain's in
+`server/chainJobs.ts`): the player can ask for several and carry on with the conversation, or a
+Chain's next Action. Each Session runs its jobs one at a time, in the order asked (renders,
+upscales and 3D also wait their turn in the render queue every Session shares). Jobs don't hold the
+Session's lock; every change to a Roleplay or a Chain (a Reply, a picture, a render, a Chain Frame,
+an Undo) is saved by reloading it and applying just that change, one at a time
+(`server/update.ts`), so none overwrites another. A Chain queues `upscale`, `scene`, `figure` and
+`lito`; a Chain Frame that reuses the picture before it takes what has been made from it by then. The queue lives in memory: restarting the
 server forgets it. A job asked for before what it needs exists (a render queued behind its
 picture) waits its turn and fails with a reason if that still isn't there; failed jobs stay
-listed, with **Retry** (back to the end of the queue) and **Dismiss**. Undoing an exchange cancels its jobs; deleting the Roleplay cancels all
-of them. On the screen, each Frame lists its jobs with Cancel (the running one sweeps its Reply),
-and a **Queue** tab beside **Look & Cast** lists them all; clicking one scrolls smoothly to its
-Frame and highlights it.
+listed, with **Retry** (back to the end of the queue) and **Dismiss**. Undoing an exchange (or a
+Chain Frame) cancels its jobs; deleting the Session cancels all of them. On the screen, each Frame
+lists its jobs with Cancel (the running one sweeps its Reply, or a Chain's picture), and a
+**Queue** lists them all (a tab beside **Look & Cast**; atop a Chain's Frames, while there are
+any); clicking one goes to its Frame. The screens share this (`useJobs`, `FrameJobs`,
+`JobQueue`).
 
 **Picturing a Frame** (the Art Agent; by the Session's Text Model, or the Art Agent model set in
 Settings, recorded on each picture as `pictureModel` and on the Look as `lookModel`): **Picture this** under a Reply writes
@@ -339,7 +343,8 @@ in [open-threads.md](open-threads.md).
   **Upscale** (beside Send, and beside Render all on a Storyboard) enlarges the shown Frame's
   image to 2048 px on its shortest edge with the SeedVR2 model chosen in Settings (7B by default, or 3B;
   `mflux-upscale-seedvr2`), through the
-  same render queue, with the same sweep and step count. The original stays as the thumbnail; the
+  same render queue, with the same sweep and step count; a Chain queues it as a job, so the next
+  Action needn't wait. The original stays as the thumbnail; the
   main view shows the upscaled image. The button reads **Upscaled**, disabled, once done, and
   every Chain Frame that reuses that image shares the upscale (saved as `upscaled` on the Frame,
   in a `-2048` file next to the original). Hovering the image shows its size in pixels in the top-left
@@ -446,7 +451,7 @@ All under `/api`; the Vite dev server proxies it to the Deno server.
 | `PUT /sessions/:id/frames/:index` | Storyboard: replace a Frame's sentences, `{ body }` (`422` if it crosses a Limit) |
 | `PUT /sessions/:id/look` | Storyboard: replace the Look, `{ subject, style }` |
 | `POST /sessions/:id/cancel` | Cancel the Frame in progress |
-| `POST /sessions/:id/frames/:index/upscale` | Either kind: upscale one rendered Frame's image to 2048 px, streaming progress then `upscaled` (`session`); `409` if it has no image or is already upscaled |
+| `POST /sessions/:id/frames/:index/upscale` | Storyboard (a Chain queues its upscales): upscale one rendered Frame's image to 2048 px, streaming progress then `upscaled` (`session`); `409` if it has no image or is already upscaled |
 | `DELETE /sessions/:id/frames/:index` | Undo the latest Frame; `:index` must name it (`409` otherwise, and for the Opening Frame or while a Frame runs) |
 | `GET /sessions/:id/images/:file` | A Frame's image, a Roleplay's audio (`voice-…wav`, `speech-…mp3`, `thought-…mp3`, or `.wav` from before), or a Roleplay Frame's 3D scene (`scene-…ply`), or a 3D figure (`figure-…ply`, `lito-…ply`) |
 | `POST /sessions/:id/roleplay/cast` | Roleplay: write (or, before it begins, rewrite) the Cast, streaming `phase`, `thinking`, then `cast` (`cast`, `session`) |
@@ -454,10 +459,10 @@ All under `/api`; the Vite dev server proxies it to the Deno server.
 | `POST /sessions/:id/roleplay/messages` | Roleplay: send `{ text }`, streaming `reply-part` (`key`, `value`) per field, then `replied`, or `declined` (`message`) |
 | `POST /sessions/:id/roleplay/suggest` | Roleplay: suggest a Message from `{ draft? }`, streaming `suggestion-part` (`text`, all of it so far), then `suggestion` (`text`, tidied); nothing is saved |
 | `DELETE /sessions/:id/roleplay/frames/:index` | Roleplay: undo the latest exchange (`409` for any other, and for the opening) |
-| `GET /sessions/:id/roleplay/jobs` | Roleplay: its background jobs (picture, render, upscale, voice, speak, scene, figure, lito): running, queued, then failed, each with its `phase`, `progress` or `error` |
-| `POST /sessions/:id/roleplay/jobs` | Roleplay: queue `{ kind: "picture" \| "render" \| "upscale" \| "voice" \| "speak" \| "speak-thought" \| "scene" \| "figure" \| "lito", frameIndex }` (`voice` designs a new take of the Character's voice; `speak-thought` speaks the Frame's thought, whispered; `scene` makes the picture into a 2.5D scene (SHARP); `figure` lifts its person out as a 3D figure (TripoSplat), and `lito` does so with LiTo; `409` to speak a Frame with nothing to say aloud, or no thought, or to make a scene of one with no picture); returns the queue (asking twice for the same job queues it once) |
-| `POST /sessions/:id/roleplay/jobs/:job/retry` | Roleplay: put a failed job back at the end of the queue (`404` if there's no such failed job) |
-| `DELETE /sessions/:id/roleplay/jobs/:job` | Roleplay: cancel a queued or running job, or dismiss a failed one |
+| `GET /sessions/:id/jobs` | Roleplay or Chain: its background jobs (picture, render, upscale, voice, speak, scene, figure, lito): running, queued, then failed, each with its `phase`, `progress` or `error` |
+| `POST /sessions/:id/jobs` | Roleplay or Chain (`upscale`, `scene`, `figure`, `lito` only): queue `{ kind: "picture" \| "render" \| "upscale" \| "voice" \| "speak" \| "speak-thought" \| "scene" \| "figure" \| "lito", frameIndex }` (`voice` designs a new take of the Character's voice; `speak-thought` speaks the Frame's thought, whispered; `scene` makes the picture into a 2.5D scene (SHARP); `figure` lifts its person out as a 3D figure (TripoSplat), and `lito` does so with LiTo; `409` to speak a Frame with nothing to say aloud, or no thought, or to make a scene of one with no picture); returns the queue (asking twice for the same job queues it once) |
+| `POST /sessions/:id/jobs/:job/retry` | Roleplay or Chain: put a failed job back at the end of the queue (`404` if there's no such failed job) |
+| `DELETE /sessions/:id/jobs/:job` | Roleplay or Chain: cancel a queued or running job, or dismiss a failed one |
 | `PUT /sessions/:id/roleplay/look` | Roleplay: replace the Look, `{ subject, style }`, rewriting every pictured Frame (`400` if incomplete, `422` if it crosses a Limit) |
 | `PUT /sessions/:id/roleplay/voice` | Roleplay: replace the voice description, `{ description }`, dropping the voice's clip until it's designed again (`400` if empty, too long, or it crosses a Limit) |
 | `PUT /sessions/:id/roleplay/cast` | Roleplay: replace the Cast (`400` if incomplete or the Character is under 18, `422` if it crosses a Limit) |

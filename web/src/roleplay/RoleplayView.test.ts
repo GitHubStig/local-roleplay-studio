@@ -10,6 +10,10 @@ vi.mock('../api', async (importOriginal) => ({
   ...(await importOriginal<typeof api>()),
   getSession: vi.fn(),
   cancelFrame: vi.fn(),
+  listJobs: vi.fn(),
+  queueJob: vi.fn(),
+  cancelJob: vi.fn(),
+  retryJob: vi.fn(),
 }))
 vi.mock('./api', async (importOriginal) => ({
   ...(await importOriginal<typeof roleplay>()),
@@ -19,10 +23,6 @@ vi.mock('./api', async (importOriginal) => ({
   suggestMessage: vi.fn(),
   undoExchange: vi.fn(),
   saveCast: vi.fn(),
-  listJobs: vi.fn(),
-  queueJob: vi.fn(),
-  cancelJob: vi.fn(),
-  retryJob: vi.fn(),
   saveLook: vi.fn(),
   saveVoice: vi.fn(),
 }))
@@ -122,7 +122,7 @@ beforeEach(() => {
     vi.mocked(fn).mockReset()
   }
   vi.mocked(api.getSession).mockResolvedValue(roleplaySession([frame(0, null, 'Get inside.')]))
-  vi.mocked(roleplay.listJobs).mockReset().mockResolvedValue([])
+  vi.mocked(api.listJobs).mockReset().mockResolvedValue([])
 })
 
 afterEach(() => vi.unstubAllGlobals())
@@ -360,22 +360,22 @@ describe('RoleplayView', () => {
         },
       )
       vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {})
-      vi.mocked(roleplay.queueJob).mockReset()
+      vi.mocked(api.queueJob).mockReset()
     })
     afterEach(() => vi.restoreAllMocks())
 
     it('speaks a line on Listen, then plays it once it is ready', async () => {
-      vi.mocked(roleplay.queueJob).mockResolvedValue([
+      vi.mocked(api.queueJob).mockResolvedValue([
         job({ kind: 'speak', status: 'running', phase: 'audio' }),
       ])
       const { wrapper } = await mountIt()
       await wrapper.find('[data-listen]').trigger('click')
       await flushPromises()
-      expect(roleplay.queueJob).toHaveBeenCalledWith('r1', 'speak', 0)
+      expect(api.queueJob).toHaveBeenCalledWith('r1', 'speak', 0)
       expect(wrapper.find('[data-frame-job]').text()).toContain('Listen · Designing the voice…')
       expect(wrapper.find('[data-listen]').attributes('disabled')).toBeDefined()
 
-      vi.mocked(roleplay.listJobs).mockResolvedValue([])
+      vi.mocked(api.listJobs).mockResolvedValue([])
       vi.mocked(api.getSession).mockResolvedValue({ ...roleplaySession([spoken()]), cast, voice })
       await new Promise((r) => setTimeout(r, 1100))
       await flushPromises()
@@ -388,7 +388,7 @@ describe('RoleplayView', () => {
       const { wrapper } = await mountIt()
       await wrapper.find('[data-listen]').trigger('click')
       await flushPromises()
-      expect([played, vi.mocked(roleplay.queueJob).mock.calls]).toEqual([
+      expect([played, vi.mocked(api.queueJob).mock.calls]).toEqual([
         ['speech-0-bbbbbbbb.wav'],
         [],
       ])
@@ -400,24 +400,24 @@ describe('RoleplayView', () => {
         voice,
       })
       const { wrapper: other } = await mountIt()
-      vi.mocked(roleplay.queueJob).mockResolvedValue([job({ kind: 'speak' })])
+      vi.mocked(api.queueJob).mockResolvedValue([job({ kind: 'speak' })])
       expect(other.find('[data-listen]').attributes('title')).toContain('earlier voice')
       await other.find('[data-listen]').trigger('click')
       await flushPromises()
-      expect(roleplay.queueJob).toHaveBeenCalledWith('r1', 'speak', 0)
+      expect(api.queueJob).toHaveBeenCalledWith('r1', 'speak', 0)
     })
 
     it('speaks a thought on its own Listen, and hides it with the thoughts', async () => {
-      vi.mocked(roleplay.queueJob).mockResolvedValue([
+      vi.mocked(api.queueJob).mockResolvedValue([
         job({ kind: 'speak-thought', status: 'running', phase: 'audio' }),
       ])
       const { wrapper } = await mountIt()
       await wrapper.find('[data-listen-thought]').trigger('click')
       await flushPromises()
-      expect(roleplay.queueJob).toHaveBeenCalledWith('r1', 'speak-thought', 0)
+      expect(api.queueJob).toHaveBeenCalledWith('r1', 'speak-thought', 0)
       expect(wrapper.find('[data-frame-job]').text()).toContain('Listen to thought')
 
-      vi.mocked(roleplay.listJobs).mockResolvedValue([])
+      vi.mocked(api.listJobs).mockResolvedValue([])
       vi.mocked(api.getSession).mockResolvedValue({
         ...roleplaySession([{
           ...frame(0, null, 'Get inside.'),
@@ -443,7 +443,7 @@ describe('RoleplayView', () => {
     })
 
     it('speaks each new reply while Speak replies is on', async () => {
-      vi.mocked(roleplay.queueJob).mockResolvedValue([job({ kind: 'speak', frameIndex: 1 })])
+      vi.mocked(api.queueJob).mockResolvedValue([job({ kind: 'speak', frameIndex: 1 })])
       const done = roleplaySession([frame(0, null, 'Get inside.'), frame(1, 'Hello.', 'Sit.')])
       vi.mocked(roleplay.sendMessage).mockImplementation(async (_id, _text, onEvent) =>
         onEvent({ type: 'replied', frame: done.frames[1], session: done })
@@ -453,7 +453,7 @@ describe('RoleplayView', () => {
       await wrapper.find('textarea').setValue('Hello.')
       await buttonNamed(wrapper, 'Send').trigger('click')
       await flushPromises()
-      expect(roleplay.queueJob).toHaveBeenCalledWith('r1', 'speak', 1)
+      expect(api.queueJob).toHaveBeenCalledWith('r1', 'speak', 1)
     })
 
     it('edits the voice, designs it again, and plays it', async () => {
@@ -463,7 +463,7 @@ describe('RoleplayView', () => {
         cast,
         voice: { description: 'A deep man.' },
       })
-      vi.mocked(roleplay.queueJob).mockResolvedValue([
+      vi.mocked(api.queueJob).mockResolvedValue([
         job({ kind: 'voice', status: 'running', phase: 'audio' }),
       ])
       const { wrapper } = await mountIt()
@@ -476,7 +476,7 @@ describe('RoleplayView', () => {
       await panel.trigger('submit')
       await flushPromises()
       expect(roleplay.saveVoice).toHaveBeenCalledWith('r1', 'A deep man.')
-      expect(roleplay.queueJob).toHaveBeenCalledWith('r1', 'voice', 0)
+      expect(api.queueJob).toHaveBeenCalledWith('r1', 'voice', 0)
       expect(wrapper.find('[data-voice-job]').text()).toContain('Designing the voice…')
       // Designing the voice is the Roleplay's, not the opening Frame's.
       expect(wrapper.find('[data-frame-job]').exists()).toBe(false)
@@ -485,11 +485,11 @@ describe('RoleplayView', () => {
   })
 
   it('queues picturing, shows it on the Frame, and shows the result once the job is done', async () => {
-    vi.mocked(roleplay.queueJob).mockResolvedValue([job({ status: 'running', phase: 'text' })])
+    vi.mocked(api.queueJob).mockResolvedValue([job({ status: 'running', phase: 'text' })])
     const { wrapper } = await mountIt()
     await wrapper.find('[data-picture-button]').trigger('click')
     await flushPromises()
-    expect(roleplay.queueJob).toHaveBeenCalledWith('r1', 'picture', 0)
+    expect(api.queueJob).toHaveBeenCalledWith('r1', 'picture', 0)
     expect(wrapper.find('[data-reply]').classes()).toContain('render-sweep')
     expect(wrapper.find('[data-frame-job]').text()).toContain(
       'Picture · Writing the Look, then picturing…',
@@ -502,7 +502,7 @@ describe('RoleplayView', () => {
     expect(buttonNamed(wrapper, 'Send').attributes('disabled')).toBeUndefined()
 
     // The job finishes: the queue empties and the Roleplay reloads with the picture.
-    vi.mocked(roleplay.listJobs).mockResolvedValue([])
+    vi.mocked(api.listJobs).mockResolvedValue([])
     vi.mocked(api.getSession).mockResolvedValue({
       ...roleplaySession([{
         ...frame(0, null, 'Get inside.'),
@@ -534,7 +534,7 @@ describe('RoleplayView', () => {
   it('shows rendering progress in place, and the picture beside its Reply once rendered', async () => {
     const pictured = { ...frame(0, null, 'Get inside.'), promptText: 'adult, Elena. Ink.' }
     vi.mocked(api.getSession).mockResolvedValue({ ...roleplaySession([pictured]), look })
-    vi.mocked(roleplay.listJobs).mockResolvedValue([
+    vi.mocked(api.listJobs).mockResolvedValue([
       job({ kind: 'render', status: 'running', phase: 'image', progress: { step: 2, total: 4 } }),
       job({ id: 'j2', kind: 'upscale' }),
     ])
@@ -544,7 +544,7 @@ describe('RoleplayView', () => {
     expect(lines[1]).toContain('Upscale · Queued')
     expect(wrapper.find('[data-render-button]').attributes('disabled')).toBeDefined()
 
-    vi.mocked(roleplay.listJobs).mockResolvedValue([])
+    vi.mocked(api.listJobs).mockResolvedValue([])
     vi.mocked(api.getSession).mockResolvedValue({
       ...roleplaySession([{ ...pictured, image: 'frame-0-aaaaaaaa.png' }]),
       look,
@@ -562,7 +562,7 @@ describe('RoleplayView', () => {
   })
 
   it('says when a job is downloading its model, the first time it is used', async () => {
-    vi.mocked(roleplay.listJobs).mockResolvedValue([
+    vi.mocked(api.listJobs).mockResolvedValue([
       job({ kind: 'speak', status: 'running', phase: 'download' }),
     ])
     const { wrapper } = await mountIt()
@@ -573,8 +573,8 @@ describe('RoleplayView', () => {
 
   it('lists jobs in the Queue tab: each goes to its Frame and can be cancelled', async () => {
     const failed = job({ id: 'j3', status: 'failed', error: "Frame 0 isn't pictured yet" })
-    vi.mocked(roleplay.listJobs).mockResolvedValue([job({ status: 'running' }), failed])
-    vi.mocked(roleplay.cancelJob).mockResolvedValue([failed])
+    vi.mocked(api.listJobs).mockResolvedValue([job({ status: 'running' }), failed])
+    vi.mocked(api.cancelJob).mockResolvedValue([failed])
     const { wrapper } = await mountIt()
     const tab = wrapper.find('[data-tab=queue]')
     expect(tab.text()).toBe('Queue (1)')
@@ -593,14 +593,14 @@ describe('RoleplayView', () => {
 
     await items[0].findAll('button')[1].trigger('click')
     await flushPromises()
-    expect(roleplay.cancelJob).toHaveBeenCalledWith('r1', 'j1')
+    expect(api.cancelJob).toHaveBeenCalledWith('r1', 'j1')
     expect(wrapper.findAll('[data-queue-item]')).toHaveLength(1)
 
     // A failed job can be retried, from the queue or from its Frame.
-    vi.mocked(roleplay.retryJob).mockResolvedValue([job({ id: 'j3' })])
+    vi.mocked(api.retryJob).mockResolvedValue([job({ id: 'j3' })])
     await wrapper.find('[data-queue-item] [data-retry]').trigger('click')
     await flushPromises()
-    expect(roleplay.retryJob).toHaveBeenCalledWith('r1', 'j3')
+    expect(api.retryJob).toHaveBeenCalledWith('r1', 'j3')
     expect(wrapper.find('[data-queue-item]').text()).toContain('Queued')
     expect(wrapper.find('[data-frame-job] [data-retry]').exists()).toBe(false)
   })
@@ -608,7 +608,7 @@ describe('RoleplayView', () => {
   it('offers each picture in 3D by model: SHARP for the scene, TripoSplat and LiTo for the person', async () => {
     const rendered = { ...frame(0, null, 'Get inside.'), image: 'frame-0-aaaaaaaa.png' }
     vi.mocked(api.getSession).mockResolvedValue(roleplaySession([rendered]))
-    vi.mocked(roleplay.queueJob).mockResolvedValue([
+    vi.mocked(api.queueJob).mockResolvedValue([
       job({ kind: 'scene', status: 'running', phase: 'image' }),
     ])
     const { wrapper } = await mountIt()
@@ -617,13 +617,13 @@ describe('RoleplayView', () => {
     expect(wrapper.find('[data-lito-button]').text()).toBe('LiTo')
     await wrapper.find('[data-scene-button]').trigger('click')
     await flushPromises()
-    expect(roleplay.queueJob).toHaveBeenCalledWith('r1', 'scene', 0)
+    expect(api.queueJob).toHaveBeenCalledWith('r1', 'scene', 0)
     expect(wrapper.find('[data-frame-job]').text()).toContain('SHARP · Making the 2.5D scene…')
     expect(wrapper.find('[data-scene-button]').attributes('disabled')).toBeDefined()
     await wrapper.find('[data-figure-button]').trigger('click')
-    expect(roleplay.queueJob).toHaveBeenLastCalledWith('r1', 'figure', 0)
+    expect(api.queueJob).toHaveBeenLastCalledWith('r1', 'figure', 0)
     await wrapper.find('[data-lito-button]').trigger('click')
-    expect(roleplay.queueJob).toHaveBeenLastCalledWith('r1', 'lito', 0)
+    expect(api.queueJob).toHaveBeenLastCalledWith('r1', 'lito', 0)
     wrapper.unmount()
 
     // Once made, each is viewed; a scene made before the upscale can be made again from it.
@@ -651,7 +651,7 @@ describe('RoleplayView', () => {
         lito: { ...figure, file: 'lito-0-dddddddd.ply' },
       }]),
     )
-    vi.mocked(roleplay.listJobs).mockResolvedValue([])
+    vi.mocked(api.listJobs).mockResolvedValue([])
     const again = (await mountIt()).wrapper
     expect(again.find('[data-scene-button]').text()).toBe('SHARP again from upscale')
     expect(again.find('[data-figure-button]').exists()).toBe(false)

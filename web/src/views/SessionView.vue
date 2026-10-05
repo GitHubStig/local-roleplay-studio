@@ -16,6 +16,9 @@ import FrameImage from '../components/FrameImage.vue'
 import Frame3dButtons from '../components/Frame3dButtons.vue'
 import Frame3dViewers from '../components/Frame3dViewers.vue'
 import FrameViewer from '../components/FrameViewer.vue'
+import FrameJobs from '../components/FrameJobs.vue'
+import JobQueue from '../components/JobQueue.vue'
+import { useJobs } from '../composables/useJobs'
 import { useStoredFlag } from '../composables/useStoredFlag'
 import { useStoredText } from '../composables/useStoredText'
 import { sessionPath } from '../sessionPath'
@@ -27,19 +30,14 @@ import {
   DOWNLOADING,
   getSession,
   imageUrl,
-  makeFigure,
-  makeScene,
   type Outcome,
   type ImagePrompt,
   type ChainSession,
   streamFrame,
   type ChainFrame,
-  type FigureEvent,
   type FrameEvent,
   type Made3d,
-  type SceneEvent,
   undoFrame,
-  upscaleFrame,
 } from '../api'
 
 const props = defineProps<{ id: string }>()
@@ -57,10 +55,6 @@ interface Pending {
   outcome?: Outcome
   prompt?: ImagePrompt
   cancelling?: boolean
-  /** Upscaling this Frame's image rather than making a new Frame. */
-  upscaling?: number
-  /** Making this Frame's picture into 3D (a scene or a figure) rather than making a new Frame. */
-  making?: { index: number; label: string }
 }
 
 const session = ref<ChainSession | null>(null)
@@ -140,6 +134,7 @@ async function start() {
   } finally {
     starting = false
   }
+  refreshJobs()
   if (session.value!.activity) follow()
   else if (session.value!.frames.length === 0) await runChainFrame(null)
 }
@@ -155,6 +150,7 @@ onActivated(async () => {
   if (firstActivation) return (firstActivation = false)
   if (leaveOnReturn) return router.replace(leaveOnReturn)
   if (!started) return start()
+  refreshJobs()
   if (busy.value) return
   if ((await load()) && session.value!.activity) follow()
 })
@@ -268,26 +264,18 @@ async function cancel() {
   await cancelFrame(props.id)
 }
 
-/** Upscales the shown Frame's image to 2048 px; every Frame showing that image gets it. */
-async function upscale() {
-  const frame = shown.value
-  if (!frame || frame.upscaled || busy.value) return
-  frameError.value = ''
-  pending.value = { phase: 'image', upscaling: frame.index }
-  try {
-    await upscaleFrame(props.id, frame.index, (event) => {
-      if (event.type === 'phase') pending.value = { ...pending.value!, phase: event.phase }
-      else if (event.type === 'progress') {
-        pending.value = { ...pending.value!, progress: { step: event.step, total: event.total } }
-      } else if (event.type === 'upscaled') session.value = event.session as ChainSession
-      else if (event.type === 'failed') frameError.value = event.message
-    })
-  } catch (err) {
-    frameError.value = (err as Error).message
-  } finally {
-    pending.value = null
-  }
-}
+// --- Background work: upscales and 3D, queued so the next Action needn't wait for them.
+
+const { jobs, jobsFor, hasJob, queue, dropJob, retry, refreshJobs } = useJobs(props.id, {
+  onSettled: async () => {
+    await load()
+  },
+  onError: (message) => (frameError.value = message),
+})
+/** The shown Frame's running job, if it's making a picture: its border sweeps. */
+const shownJob = computed(() =>
+  jobsFor(shown.value?.index ?? -1).find((j) => j.status === 'running') ?? null
+)
 
 // --- Looking closer: the picture viewer, and 3D by model (experimental; Frame3dButtons).
 
@@ -295,32 +283,6 @@ async function upscale() {
 const viewingPicture = ref<number | null>(null)
 /** Which Frame's scene or figure is open, if any. */
 const open3d = ref<{ index: number; kind: Made3d } | null>(null)
-
-/** Makes the shown Frame's picture into 3D: a 2.5D scene, or a figure. */
-async function make3d(kind: Made3d) {
-  const frame = shown.value
-  if (!frame || busy.value) return
-  const doing = {
-    scene: 'into a 2.5D scene',
-    figure: 'into a figure with TripoSplat',
-    lito: 'into a figure with LiTo',
-  }[kind]
-  frameError.value = ''
-  pending.value = { phase: 'image', making: { index: frame.index, label: doing } }
-  const onEvent = (event: SceneEvent | FigureEvent) => {
-    if (event.type === 'phase') pending.value = { ...pending.value!, phase: event.phase }
-    else if (event.type === 'scened' || event.type === 'figured') session.value = event.session
-    else if (event.type === 'failed') frameError.value = event.message
-  }
-  try {
-    if (kind === 'scene') await makeScene(props.id, frame.index, onEvent)
-    else await makeFigure(props.id, frame.index, kind === 'lito' ? 'lito' : 'triposplat', onEvent)
-  } catch (err) {
-    frameError.value = (err as Error).message
-  } finally {
-    pending.value = null
-  }
-}
 
 /** Undo is possible for any Frame after the Opening Frame, while nothing is running. */
 const canUndo = computed(() => !busy.value && (session.value?.frames.length ?? 0) > 1)
@@ -355,15 +317,12 @@ function timingsLabel(t: NonNullable<ChainFrame['timings']>): string {
 const writing = computed(() => pending.value?.phase === 'text' && !pending.value.cancelling)
 
 /** The frame's border sweeps while an image renders (or waits to), until the new one lands. */
-const renderingPhase = computed(() =>
-  // An upscale or a scene sweeps only the Frame it is working on.
-  (pending.value?.phase === 'image' || pending.value?.phase === 'queued' ||
-      pending.value?.phase === 'download') &&
-    ((pending.value.upscaling ?? pending.value.making?.index) === undefined ||
-      (pending.value.upscaling ?? pending.value.making?.index) === shown.value?.index)
-    ? (pending.value.phase === 'queued' ? 'queued' : 'image')
-    : null
-)
+const renderingPhase = computed(() => {
+  // A new Frame sweeps whatever is shown; a job sweeps only the Frame it is working on.
+  const phase = pending.value?.phase ?? shownJob.value?.phase
+  if (phase === 'queued') return 'queued'
+  return phase === 'image' || phase === 'download' ? 'image' : null
+})
 
 /** The caption: the provisional Narration while a Frame runs, else the shown Frame's. */
 const captionText = computed(() => pending.value?.narration ?? shown.value?.narration ?? '')
@@ -392,12 +351,8 @@ const phaseLabel = computed(() => {
   if (pending.value?.phase === 'queued') return 'Waiting for another render…'
   if (pending.value?.phase === 'download') return DOWNLOADING
   if (pending.value?.phase !== 'image') return 'Writing the prompt…'
-  const making = pending.value.making
-  if (making) return `Making ${frameName(making.index)} ${making.label}…`
   const p = pending.value.progress
-  const doing = pending.value.upscaling === undefined
-    ? 'Rendering the image…'
-    : `Upscaling ${frameName(pending.value.upscaling)}…`
+  const doing = 'Rendering the image…'
   return p ? `${doing} step ${p.step} of ${p.total}` : doing
 })
 
@@ -559,21 +514,21 @@ const promptDiff = computed(() => {
               v-if="shown"
               type="button"
               class="rounded-lg border border-line px-3 py-2 text-sm disabled:opacity-50"
-              :disabled="busy || !!shown.upscaled"
+              :disabled="!!shown.upscaled || hasJob(shown.index, 'upscale')"
               :title="shown.upscaled
               ? `${frameName(shown.index)} is upscaled to 2048 px`
               : `Upscale ${frameName(shown.index)} to 2048 px with SeedVR2`"
               data-upscale
-              @click="upscale"
+              @click="queue('upscale', shown.index)"
             >
               {{ shown.upscaled ? 'Upscaled' : 'Upscale' }}
             </button>
             <Frame3dButtons
               v-if="shown"
               :frame="shown"
-              :disabled="() => busy"
+              :disabled="(kind) => hasJob(shown!.index, kind)"
               button-class="rounded-lg border border-line px-3 py-2 text-sm disabled:opacity-50"
-              @make="make3d"
+              @make="(kind) => queue(kind, shown!.index)"
               @view="(kind) => (open3d = { index: shown!.index, kind })"
             />
             <p
@@ -592,6 +547,9 @@ const promptDiff = computed(() => {
             >
               Undo
             </button>
+          </div>
+          <div v-if="shown && jobsFor(shown.index).length" class="flex flex-col gap-1 text-xs">
+            <FrameJobs :jobs="jobsFor(shown.index)" @retry="retry" @drop="dropJob" />
           </div>
         </div>
 
@@ -621,6 +579,17 @@ const promptDiff = computed(() => {
           <h2 class="hidden border-b border-line px-4 py-2 text-sm font-medium xl:block">
             Frames
           </h2>
+          <!-- The queue, while there's any: what's running, queued and failed. -->
+          <JobQueue
+            v-if="jobs.length"
+            class="max-h-48 shrink-0 overflow-y-auto border-b border-line"
+            :jobs="jobs"
+            :name="frameTitle"
+            data-queue
+            @go="(index) => (viewing = index === session!.frames.length - 1 ? null : index)"
+            @retry="retry"
+            @drop="dropJob"
+          />
           <ol ref="log" class="flex-1 overflow-y-auto" role="tabpanel">
           <li v-for="frame in session.frames" :key="frame.index" class="group relative">
             <button

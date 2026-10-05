@@ -1,6 +1,6 @@
 import { join } from '@std/path'
 import type { Figure, FigureMaker } from '../figure.ts'
-import { saveAsGiven, secondsSince } from '../frames.ts'
+import { secondsSince } from '../frames.ts'
 import { RenderQueue } from '../renderQueue.ts'
 import type { SessionStore } from '../session.ts'
 
@@ -51,8 +51,9 @@ export async function liftFigure<S extends FiguredSession>(
   index: number,
   emit: (event: FigureEvent<S>) => void,
   signal: AbortSignal,
-  model: FigureModel = 'triposplat',
-  save: (change: (s: S) => S) => Promise<S> = saveAsGiven(deps.store, session),
+  model: FigureModel,
+  /** Saves the change onto the Session as it is now (`updateSession`). */
+  save: (change: (s: S) => S) => Promise<S>,
 ): Promise<S> {
   const { key, prefix, off } = FIGURE_MODELS[model]
   const maker = deps[key]

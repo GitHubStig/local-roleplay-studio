@@ -13,9 +13,10 @@ vi.mock('../api', async (importOriginal) => ({
   endSession: vi.fn(),
   createSession: vi.fn(),
   undoFrame: vi.fn(),
-  upscaleFrame: vi.fn(),
-  makeScene: vi.fn(),
-  makeFigure: vi.fn(),
+  listJobs: vi.fn(),
+  queueJob: vi.fn(),
+  cancelJob: vi.fn(),
+  retryJob: vi.fn(),
 }))
 
 const frame = (
@@ -31,6 +32,15 @@ const frame = (
   promptText: `prompt ${index}`,
   image: `frame-${index}.png`,
   createdAt: '2026-09-24T00:00:00.000Z',
+  ...extra,
+})
+
+const job = (extra: Partial<api.Job>): api.Job => ({
+  id: 'j1',
+  kind: 'upscale',
+  frameIndex: 0,
+  status: 'queued',
+  createdAt: '2026-10-05T00:00:00.000Z',
   ...extra,
 })
 
@@ -80,6 +90,8 @@ beforeEach(() => {
   vi.stubGlobal('Image', FakeImage)
   vi.mocked(api.streamFrame).mockReset()
   vi.mocked(api.getSession).mockResolvedValue(session([frame(0, null)]))
+  vi.mocked(api.listJobs).mockReset().mockResolvedValue([])
+  vi.mocked(api.queueJob).mockReset()
 })
 
 afterEach(() => vi.unstubAllGlobals())
@@ -314,49 +326,32 @@ describe('SessionView', () => {
     expect(viewer().find('[data-viewer-label]').text()).toBe('The Opening · 1 of 2')
   })
 
-  it('makes the shown Frame a 2.5D scene with SHARP, then offers to view it', async () => {
-    const scene: api.Scene = {
-      file: 'scene-0-1a2b3c4d.ply',
-      from: 'frame-0.png',
-      splats: 4,
-      pivot: 1.5,
-      fov: 50,
-      aspect: 1,
-      timings: { scene: 11 },
-    }
-    vi.mocked(api.makeScene).mockImplementation(async (_id, _index, onEvent) => {
-      onEvent({ type: 'phase', phase: 'image' })
-      onEvent({ type: 'scened', session: session([frame(0, null, { scene })]) })
-    })
-    const { wrapper } = await mountIt()
-    expect(wrapper.find('[data-view-scene]').exists()).toBe(false)
-    await wrapper.find('[data-scene-button]').trigger('click')
-    await flushPromises()
-    expect(api.makeScene).toHaveBeenCalledWith('s1', 0, expect.any(Function))
-    expect(wrapper.find('[data-view-scene]').exists()).toBe(true)
-    // Made from the original picture, and not upscaled since: nothing to make again.
-    expect(wrapper.find('[data-scene-button]').exists()).toBe(false)
-  })
-
-  it('lifts the person out with TripoSplat or LiTo, each viewed apart', async () => {
-    const figure: api.Figure = {
-      file: 'figure-0-1a2b3c4d.ply',
-      splats: 4,
-      from: 'frame-0.png',
-      timings: { figure: 75 },
-    }
-    vi.mocked(api.makeFigure).mockImplementation(async (_id, _index, model, onEvent) => {
-      onEvent({
-        type: 'figured',
-        session: session([frame(0, null, { [model === 'lito' ? 'lito' : 'figure']: figure })]),
-      })
-    })
+  it('queues SHARP, TripoSplat and LiTo on the shown Frame, then offers to view what was made', async () => {
+    vi.mocked(api.queueJob).mockImplementation(async (_id, kind, frameIndex) => [
+      job({ kind, frameIndex, status: 'running', phase: 'image' }),
+    ])
     const { wrapper } = await mountIt()
     await wrapper.find('[data-lito-button]').trigger('click')
     await flushPromises()
-    expect(api.makeFigure).toHaveBeenCalledWith('s1', 0, 'lito', expect.any(Function))
+    expect(api.queueJob).toHaveBeenCalledWith('s1', 'lito', 0)
+    // It runs beside the Chain: the button waits, the job shows, and the next Action can still go.
+    expect(wrapper.find('[data-lito-button]').attributes('disabled')).toBeDefined()
+    expect(wrapper.find('main [data-frame-job]').text()).toContain('LiTo · Making the 3D figure…')
+    expect(wrapper.find('[data-queue]').text()).toContain('LiTo · The Opening')
+    expect(wrapper.find('textarea').attributes('disabled')).toBeUndefined()
+
+    // Once done, the Chain is reloaded with the figure on it.
+    const figure: api.Figure = {
+      file: 'lito-0-1a2b3c4d.ply',
+      splats: 4,
+      from: 'frame-0.png',
+      timings: { figure: 90 },
+    }
+    vi.mocked(api.getSession).mockResolvedValue(session([frame(0, null, { lito: figure })]))
+    // The queue is checked every second; the job is gone, so the Chain is reloaded.
+    await new Promise((r) => setTimeout(r, 1100))
+    await flushPromises()
     expect(wrapper.find('[data-view-lito]').exists()).toBe(true)
-    // TripoSplat's is separate, so still to make.
     expect(wrapper.find('[data-figure-button]').exists()).toBe(true)
   })
 
@@ -558,24 +553,24 @@ describe('SessionView', () => {
     expect(labels).not.toContain('Reset')
   })
 
-  it('upscales the shown Frame and then shows the upscaled image', async () => {
-    let emit!: (e: api.UpscaleEvent) => void
-    let finish!: () => void
-    vi.mocked(api.upscaleFrame).mockImplementation((_id, _index, onEvent) =>
-      new Promise<void>((resolve) => {
-        emit = onEvent
-        finish = resolve
-      })
-    )
+  it('queues an upscale of the shown Frame, then shows the upscaled image', async () => {
+    vi.mocked(api.queueJob).mockResolvedValue([
+      job({ status: 'running', phase: 'image', progress: { step: 1, total: 1 } }),
+    ])
     const { wrapper } = await mountIt()
     await wrapper.find('[data-upscale]').trigger('click')
-    expect(api.upscaleFrame).toHaveBeenCalledWith('s1', 0, expect.any(Function))
-    emit({ type: 'progress', step: 1, total: 1 })
     await flushPromises()
-    expect(wrapper.find('[role=status]').text()).toContain('Upscaling the Opening… step 1 of 1')
+    expect(api.queueJob).toHaveBeenCalledWith('s1', 'upscale', 0)
+    expect(wrapper.find('main [data-frame-job]').text()).toContain(
+      'Upscale · Upscaling to 2048 px… step 1 of 1',
+    )
+    expect(wrapper.find('[data-image-frame]').attributes('data-rendering')).toBe('image')
 
-    emit({ type: 'upscaled', session: session([frame(0, null, { upscaled: 'frame-0-2048.png' })]) })
-    finish()
+    vi.mocked(api.getSession).mockResolvedValue(
+      session([frame(0, null, { upscaled: 'frame-0-2048.png' })]),
+    )
+    // The queue is checked every second; the job is gone, so the Chain is reloaded.
+    await new Promise((r) => setTimeout(r, 1100))
     await flushPromises()
     await loadImages()
     expect(wrapper.find('main img').attributes('src')).toBe(

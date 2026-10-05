@@ -15,10 +15,11 @@ import type { VoiceEngine } from './voice.ts'
 import type { QuantizedStore } from './quantized.ts'
 import { roleplayExcerpt } from './roleplay/prompt.ts'
 import { roleplayRoutes } from './roleplay/routes.ts'
-import { RoleplayJobs } from './roleplay/jobs.ts'
+import { checkRoleplayJob, type RoleplayJobContext, runRoleplayJob } from './roleplay/jobs.ts'
+import { jobRoutes, SessionJobs } from './jobs.ts'
+import { checkChainJob, runChainJob } from './chainJobs.ts'
+import { GoneError } from './update.ts'
 import { RenderQueue } from './renderQueue.ts'
-import { makeScene, SCENES_OFF } from './roleplay/scene.ts'
-import { FIGURE_MODELS, liftFigure } from './roleplay/figure.ts'
 import {
   type FrameDeps,
   type Phase,
@@ -106,7 +107,6 @@ type LockKind =
   | 'render'
   | 'edit'
   | 'upscale'
-  | 'model3d'
   | 'setup'
   | 'suggest'
 
@@ -137,7 +137,6 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     render: 'A Frame is rendering',
     edit: 'A Frame is being edited',
     upscale: 'A Frame is being upscaled',
-    model3d: 'A Frame is being made into 3D',
     setup: 'The Roleplay is being set up',
     suggest: 'A message is being suggested',
   }
@@ -269,12 +268,13 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     figure: deps.figure,
     lito: deps.lito,
   })
-  /** Roleplays' queued pictures, renders and upscales. */
-  const roleplayJobs = new RoleplayJobs({
+  /** The upscaler chosen in Settings now: it doesn't change the Frames, so it applies at once. */
+  const upscaler = async () => (await deps.settings.load()).upscaler
+  const roleplayJobs: RoleplayJobContext = {
     store: deps.sessions,
     deps: roleplayDeps,
     scenarioFor,
-    upscaler: async () => (await deps.settings.load()).upscaler,
+    upscaler,
     // A separate Art Agent model pictures with Thinking off: it made pictures 5–22× slower for no
     // gain in correctness (docs/models.md).
     artStyle: async () => (await deps.settings.load()).artStyle,
@@ -284,6 +284,24 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
         ? roleplayModel(artModel, false)
         : undefined
     },
+  }
+  /** Every Session's background work, run as its kind says: a Roleplay's or a Chain's. */
+  const jobs = new SessionJobs(async (id, job, emit, signal) => {
+    const session = await deps.sessions.load(id)
+    if (session?.kind === 'roleplay') {
+      return runRoleplayJob(roleplayJobs, session, job, emit, signal)
+    }
+    if (session?.kind === 'chain') {
+      const chainDeps = {
+        ...frameDeps(session),
+        scene: deps.scene,
+        figure: deps.figure,
+        lito: deps.lito,
+        upscaler,
+      }
+      return runChainJob(chainDeps, session, job, emit, signal)
+    }
+    throw new GoneError('This Session no longer exists')
   })
 
   const routes: Route[] = [
@@ -294,8 +312,18 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       deps: roleplayDeps,
       // Thinking off, as for pictures: a suggestion is a draft, and it should come quickly.
       suggestModel: (session) => roleplayModel(session.settings.textModel, false),
-      jobs: roleplayJobs,
+      jobs,
       store: deps.sessions,
+    }),
+    ...jobRoutes({
+      jobs,
+      store: deps.sessions,
+      check: (session, kind, index) =>
+        session.kind === 'roleplay'
+          ? checkRoleplayJob(session, kind, index)
+          : session.kind === 'chain'
+          ? checkChainJob(session, kind, index)
+          : error('A Storyboard has no queue', 409),
     }),
 
     ['GET', new URLPattern({ pathname: '/api/health' }), () => Promise.resolve(json({ ok: true }))],
@@ -437,7 +465,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
           ...(s.kind === 'roleplay' ? { excerpt: roleplayExcerpt(s) } : {}),
           createdAt: s.createdAt,
           updatedAt,
-          activity: active.get(s.id)?.phase ?? roleplayJobs.activity(s.id),
+          activity: active.get(s.id)?.phase ?? jobs.activity(s.id),
         }
       })
       summaries.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
@@ -449,7 +477,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       new URLPattern({ pathname: '/api/sessions/:id' }),
       (_req, p) =>
         locked(p.id!, 'delete', async (session) => {
-          roleplayJobs.cancelWhere(session.id, () => true)
+          jobs.cancelWhere(session.id, () => true)
           await deps.sessions.remove(session.id)
           return new Response(null, { status: 204 })
         }),
@@ -504,7 +532,9 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       }
       return locked(p.id!, 'undo', async (session) => {
         if (!needsChain(session)) return error('Only a Chain has Undo', 409)
-        return json(await undoLatestFrame(deps.sessions, session, index))
+        const undone = await undoLatestFrame(deps.sessions, session, index)
+        jobs.cancelWhere(session.id, (job) => job.frameIndex === index)
+        return json(undone)
       })
     }],
 
@@ -513,6 +543,8 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       new URLPattern({ pathname: '/api/sessions/:id/frames/:index/upscale' }),
       (_req, p) =>
         locked(p.id!, 'upscale', async (session) => {
+          // A Chain queues its upscales (the job routes), so its next Frame needn't wait.
+          if (needsChain(session)) return error('A Chain queues its upscales', 409)
           const index = frameIndexOf(session, p.index)
           if (index instanceof Response) return index
           const frame = session.frames[index]
@@ -522,32 +554,6 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
           const { upscaler } = await deps.settings.load()
           return stream(session, index, false, async (send, signal) => {
             await upscaleFrame(frameDeps(session), session, index, upscaler, send, signal)
-          })
-        }),
-    ],
-
-    [
-      'POST',
-      new URLPattern({ pathname: '/api/sessions/:id/frames/:index/:kind(scene|triposplat|lito)' }),
-      (_req, p) =>
-        // A Chain Frame made into 3D: a 2.5D scene (SHARP) or a figure (TripoSplat, LiTo).
-        locked(p.id!, 'model3d', async (session) => {
-          if (!needsChain(session)) return error('Only a Chain makes these here', 409)
-          const kind = p.kind as 'scene' | 'triposplat' | 'lito'
-          const on = { scene: deps.scene, triposplat: deps.figure, lito: deps.lito }[kind]
-          if (!on) return error(kind === 'scene' ? SCENES_OFF : FIGURE_MODELS[kind].off, 409)
-          const index = frameIndexOf(session, p.index)
-          if (index instanceof Response) return index
-          const madeDeps = {
-            store: deps.sessions,
-            renderQueue,
-            scene: deps.scene,
-            figure: deps.figure,
-            lito: deps.lito,
-          }
-          return stream(session, index, false, async (send, signal) => {
-            if (kind === 'scene') await makeScene(madeDeps, session, index, send, signal)
-            else await liftFigure(madeDeps, session, index, send, signal, kind)
           })
         }),
     ],

@@ -295,12 +295,6 @@ export type FrameEvent =
 /** An upscale's stream: ends with the Session, every Frame showing that image now upscaled. */
 export type UpscaleEvent = ProgressEvent | EndEvent | { type: 'upscaled'; session: Session }
 
-/** Making a Chain Frame's picture into a 2.5D scene. */
-export type SceneEvent = ProgressEvent | EndEvent | { type: 'scened'; session: ChainSession }
-
-/** Lifting a Chain Frame's person out as a 3D figure. */
-export type FigureEvent = ProgressEvent | EndEvent | { type: 'figured'; session: ChainSession }
-
 /** A Storyboard's streams: planning, rendering a Frame, editing a Frame by Action. */
 export type StoryboardEvent =
   | ProgressEvent
@@ -467,34 +461,7 @@ export const editStoryboardFrame = (
     onEvent,
   )
 
-/** Makes a Chain Frame's picture (its upscale if it has one) into a 2.5D scene with SHARP. */
-export const makeScene = (
-  sessionId: string,
-  index: number,
-  onEvent: (event: SceneEvent) => void,
-) =>
-  streamEvents<SceneEvent>(
-    `/api/sessions/${sessionId}/frames/${index}/scene`,
-    {},
-    ['scened'],
-    onEvent,
-  )
-
-/** Lifts the person in a Chain Frame's picture out as a 3D figure, with TripoSplat or LiTo. */
-export const makeFigure = (
-  sessionId: string,
-  index: number,
-  model: 'triposplat' | 'lito',
-  onEvent: (event: FigureEvent) => void,
-) =>
-  streamEvents<FigureEvent>(
-    `/api/sessions/${sessionId}/frames/${index}/${model}`,
-    {},
-    ['figured'],
-    onEvent,
-  )
-
-/** Upscales one Frame's image to 2048 px, in a Chain or a Storyboard. */
+/** Upscales a Storyboard Frame's image to 2048 px (a Chain queues its upscales). */
 export const upscaleFrame = (
   sessionId: string,
   index: number,
@@ -506,3 +473,50 @@ export const upscaleFrame = (
     ['upscaled'],
     onEvent,
   )
+
+// --- Background work, queued per Session: a Roleplay's and a Chain's.
+
+/**
+ * Background work on a Frame: picturing, rendering, upscaling or speaking it, making its picture
+ * into a 2.5D scene (SHARP), or lifting its person out as a 3D figure (TripoSplat, LiTo); `voice`
+ * designs a new take of the Character's voice (filed under the opening Frame). A Chain has
+ * `upscale`, `scene`, `figure` and `lito`; a Roleplay has them all.
+ */
+export type JobKind =
+  | 'picture'
+  | 'render'
+  | 'upscale'
+  | 'voice'
+  | 'speak'
+  | 'speak-thought'
+  | 'scene'
+  | 'figure'
+  | 'lito'
+
+/** A queued, running or failed job. Finished jobs drop off the list. */
+export interface Job {
+  id: string
+  kind: JobKind
+  frameIndex: number
+  status: 'queued' | 'running' | 'failed'
+  /** Writing (text), waiting for a render (queued), rendering (image), or speaking (audio). */
+  phase?: Activity | 'audio'
+  progress?: { step: number; total: number }
+  error?: string
+  createdAt: string
+}
+
+/** A Session's jobs (a Roleplay's or a Chain's): running, then queued in order, then failed. */
+export const listJobs = (id: string) => request<Job[]>(`/api/sessions/${id}/jobs`)
+
+/** Queues a job on a Frame; returns the whole queue. Asking twice for the same job queues it once. */
+export const queueJob = (id: string, kind: JobKind, frameIndex: number) =>
+  post<Job[]>(`/api/sessions/${id}/jobs`, { kind, frameIndex })
+
+/** Puts a failed job back in the queue; returns the queue. */
+export const retryJob = (id: string, jobId: string) =>
+  post<Job[]>(`/api/sessions/${id}/jobs/${jobId}/retry`)
+
+/** Cancels a queued or running job, or dismisses a failed one; returns the queue. */
+export const cancelJob = (id: string, jobId: string) =>
+  request<Job[]>(`/api/sessions/${id}/jobs/${jobId}`, { method: 'DELETE' })

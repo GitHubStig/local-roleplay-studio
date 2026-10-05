@@ -618,134 +618,140 @@ Deno.test('Cancelling a plan discards the Storyboard', () =>
     assertEquals((await call('GET', '/api/sessions/s1')).status, 404)
   }))
 
-Deno.test('Upscaling keeps the original, flags every Frame showing that image, and runs once', () =>
+/** A Chain with an Opening Frame and a second Frame that reuses its picture (nothing changed). */
+async function chainOfTwo(root: string, opts: Partial<Parameters<typeof setup>[0]> = {}) {
+  const app = setup({
+    root,
+    settings: { textModel: 'x' },
+    textModel: scriptedTextModel([reply('standing'), reply('standing'), reply('standing')]),
+    ...opts,
+  })
+  await app.call('POST', '/api/sessions', { scenarioId: 'test' })
+  await readEvents(await app.call('POST', '/api/sessions/s1/frames', {}))
+  await readEvents(await app.call('POST', '/api/sessions/s1/frames', { action: 'Stay' }))
+  return app
+}
+
+type MadeFrame = {
+  image: string
+  upscaled?: string
+  scene?: { file: string; from: string }
+  figure?: { file: string }
+  lito?: { file: string }
+}
+const chainFrames = async (call: ReturnType<typeof setup>['call']) =>
+  (await (await call('GET', '/api/sessions/s1')).json()).frames as MadeFrame[]
+
+Deno.test('A Chain queues an upscale, flagging every Frame showing that image, once', () =>
   withTempDir(async (root) => {
     const images = fakeImageGenerator()
-    const { call } = setup({
-      root,
-      settings: { textModel: 'x' },
-      imageGenerator: images,
-      // The second Action changes nothing, so its Frame reuses the Opening's image.
-      textModel: scriptedTextModel([reply('standing'), reply('standing'), reply('standing')]),
-    })
-    await call('POST', '/api/sessions', { scenarioId: 'test' })
-    await readEvents(await call('POST', '/api/sessions/s1/frames', {}))
-    await readEvents(await call('POST', '/api/sessions/s1/frames', { action: 'Stay' }))
-
-    const events = await readEvents(await call('POST', '/api/sessions/s1/frames/1/upscale'))
-    assertEquals(events.map(([e]) => e), ['phase', 'upscaled'])
-    const [opening, second] = (events.at(-1)![1].session as {
-      frames: { image: string; upscaled?: string }[]
-    }).frames
+    const { call } = await chainOfTwo(root, { imageGenerator: images })
+    const queued = await call('POST', '/api/sessions/s1/jobs', { kind: 'upscale', frameIndex: 1 })
+    assertEquals(queued.status, 201)
+    assertEquals(await settled(call), [])
+    const [opening, second] = await chainFrames(call)
     assertMatch(second.upscaled!, /^frame-0-[0-9a-f]{8}-2048\.png$/)
     assertEquals([opening.upscaled, second.image], [second.upscaled, opening.image])
     assertEquals(images.upscaled, [opening.image])
-    assertEquals(images.upscalers, ['seedvr2-7b'])
     assertEquals((await call('GET', `/api/sessions/s1/images/${second.upscaled}`)).status, 200)
-
+    const again = await call('POST', '/api/sessions/s1/jobs', { kind: 'upscale', frameIndex: 0 })
+    assertEquals(again.status, 409)
+    // A Chain's upscales go through its queue, not the Storyboard's route.
     assertEquals((await call('POST', '/api/sessions/s1/frames/0/upscale')).status, 409)
-    assertEquals((await call('POST', '/api/sessions/s1/frames/7/upscale')).status, 404)
 
     // A Frame that reuses an upscaled image is upscaled too.
     const third = await readEvents(
       await call('POST', '/api/sessions/s1/frames', { action: 'Stay' }),
     )
-    assertEquals((third.at(-1)![1].frame as { upscaled?: string }).upscaled, second.upscaled)
+    assertEquals((third.at(-1)![1].frame as MadeFrame).upscaled, second.upscaled)
   }))
 
-Deno.test('A Chain Frame becomes a 2.5D scene, shared by every Frame showing that picture', () =>
+Deno.test('A Chain queues SHARP, TripoSplat and LiTo, shared by every Frame showing that picture', () =>
   withTempDir(async (root) => {
-    const scene = fakeSceneMaker()
-    const { call } = setup({
-      root,
-      settings: { textModel: 'x' },
-      scene,
-      // The second Action changes nothing, so its Frame reuses the Opening's image.
-      textModel: scriptedTextModel([reply('standing'), reply('standing'), reply('standing')]),
-    })
-    await call('POST', '/api/sessions', { scenarioId: 'test' })
-    await readEvents(await call('POST', '/api/sessions/s1/frames', {}))
-    await readEvents(await call('POST', '/api/sessions/s1/frames', { action: 'Stay' }))
-
-    const events = await readEvents(await call('POST', '/api/sessions/s1/frames/1/scene'))
-    assertEquals(events.map(([e]) => e), ['phase', 'scened'])
-    const [opening, second] = (events.at(-1)![1].session as {
-      frames: { image: string; scene?: { file: string; from: string } }[]
-    }).frames
+    const scene = fakeSceneMaker(), figure = fakeFigureMaker(), lito = fakeFigureMaker()
+    const { call } = await chainOfTwo(root, { scene, figure, lito })
+    for (const kind of ['scene', 'figure', 'lito']) {
+      assertEquals(
+        (await call('POST', '/api/sessions/s1/jobs', { kind, frameIndex: 1 })).status,
+        201,
+      )
+    }
+    assertEquals(await settled(call), [])
+    const [opening, second] = await chainFrames(call)
     assertMatch(second.scene!.file, /^scene-1-[0-9a-f]{8}\.ply$/)
-    assertEquals([opening.scene, second.scene!.from], [second.scene, opening.image])
-    assertEquals((await call('GET', `/api/sessions/s1/images/${second.scene!.file}`)).status, 200)
-    assertEquals((await call('POST', '/api/sessions/s1/frames/7/scene')).status, 404)
+    assertMatch(second.figure!.file, /^figure-1-[0-9a-f]{8}\.ply$/)
+    assertMatch(second.lito!.file, /^lito-1-[0-9a-f]{8}\.ply$/)
+    assertEquals([opening.scene, opening.figure, opening.lito], [
+      second.scene,
+      second.figure,
+      second.lito,
+    ])
+    assertEquals(second.scene!.from, opening.image)
+    assertEquals((await call('GET', `/api/sessions/s1/images/${second.lito!.file}`)).status, 200)
+    // A Chain has no Roleplay jobs.
+    const picture = await call('POST', '/api/sessions/s1/jobs', { kind: 'picture', frameIndex: 0 })
+    assertEquals(picture.status, 409)
 
-    // A Frame that reuses the picture keeps its scene; undoing the last one keeps the file.
+    // A Frame that reuses the picture keeps them; undoing it keeps the files the others show.
     const third = await readEvents(
       await call('POST', '/api/sessions/s1/frames', { action: 'Stay' }),
     )
-    assertEquals((third.at(-1)![1].frame as { scene?: unknown }).scene, second.scene)
+    assertEquals((third.at(-1)![1].frame as MadeFrame).scene, second.scene)
     await call('DELETE', '/api/sessions/s1/frames/2')
     assertEquals((await call('GET', `/api/sessions/s1/images/${second.scene!.file}`)).status, 200)
   }))
 
-Deno.test('A Chain Frame lifts its person out with TripoSplat or LiTo, kept apart', () =>
+Deno.test("A Chain carries on while a job runs, and Undo cancels the undone Frame's jobs", () =>
   withTempDir(async (root) => {
-    const figure = fakeFigureMaker(), lito = fakeFigureMaker()
-    const { call } = setup({
-      root,
-      settings: { textModel: 'x' },
-      figure,
-      lito,
-      textModel: scriptedTextModel([reply('standing'), reply('standing')]),
-    })
-    await call('POST', '/api/sessions', { scenarioId: 'test' })
-    await readEvents(await call('POST', '/api/sessions/s1/frames', {}))
-    await readEvents(await call('POST', '/api/sessions/s1/frames', { action: 'Stay' }))
-
-    const tripo = await readEvents(await call('POST', '/api/sessions/s1/frames/0/triposplat'))
-    assertEquals(tripo.map(([e]) => e), ['phase', 'figured'])
-    const made = await readEvents(await call('POST', '/api/sessions/s1/frames/0/lito'))
-    type F = { file: string }
-    const frames = (made.at(-1)![1].session as { frames: { figure?: F; lito?: F }[] }).frames
-    assertMatch(frames[0].figure!.file, /^figure-0-[0-9a-f]{8}\.ply$/)
-    assertMatch(frames[0].lito!.file, /^lito-0-[0-9a-f]{8}\.ply$/)
-    // The second Frame reuses the Opening's picture, so it shares both.
-    assertEquals([frames[1].figure, frames[1].lito], [frames[0].figure, frames[0].lito])
-    assertEquals([figure.made.length, lito.made.length], [1, 1])
-    assertEquals((await call('GET', `/api/sessions/s1/images/${frames[0].lito!.file}`)).status, 200)
-    assertEquals((await call('POST', '/api/sessions/s1/frames/0/other')).status, 404)
+    // LiTo takes until it's let go, or cancelled.
+    let release!: () => void
+    const held = new Promise<void>((r) => (release = r))
+    const lito = fakeFigureMaker()
+    const make = lito.make
+    lito.make = async (req, signal, onDownload) => {
+      await Promise.race([
+        held,
+        new Promise((_, no) => signal.addEventListener('abort', () => no(signal.reason))),
+      ])
+      return make(req, signal, onDownload)
+    }
+    const { call } = await chainOfTwo(root, { lito })
+    await call('POST', '/api/sessions/s1/jobs', { kind: 'lito', frameIndex: 0 })
+    // The next Frame isn't held up by the job.
+    const next = await readEvents(await call('POST', '/api/sessions/s1/frames', { action: 'Stay' }))
+    assertEquals(next.at(-1)![0], 'committed')
+    await call('POST', '/api/sessions/s1/jobs', { kind: 'lito', frameIndex: 2 })
+    assertEquals((await call('DELETE', '/api/sessions/s1/frames/2')).status, 200)
+    release()
+    assertEquals(await settled(call), [])
+    // Frame 0's figure landed on the Chain as it is now; Frame 2's job went with Frame 2.
+    const frames = await chainFrames(call)
+    assertEquals(frames.length, 2)
+    assertMatch(frames[0].lito!.file, /^lito-0-/)
+    assertEquals(lito.made.length, 1)
   }))
 
-Deno.test('A Chain without SHARP or LiTo says they are off', () =>
+Deno.test('A Chain job without its model fails with the reason, to retry or dismiss', () =>
   withTempDir(async (root) => {
-    const { call } = setup({
-      root,
-      settings: { textModel: 'x' },
-      textModel: scriptedTextModel([reply('standing')]),
-    })
-    await call('POST', '/api/sessions', { scenarioId: 'test' })
-    await readEvents(await call('POST', '/api/sessions/s1/frames', {}))
-    const res = await call('POST', '/api/sessions/s1/frames/0/scene')
-    assertEquals([res.status, (await res.json()).error], [409, '3D scenes are off (SCENES=off)'])
-    const lito = await call('POST', '/api/sessions/s1/frames/0/lito')
-    assertEquals([lito.status, (await lito.json()).error], [409, 'LiTo figures are off (LITO=off)'])
+    const { call } = await chainOfTwo(root)
+    await call('POST', '/api/sessions/s1/jobs', { kind: 'scene', frameIndex: 0 })
+    await call('POST', '/api/sessions/s1/jobs', { kind: 'lito', frameIndex: 0 })
+    const failed = await settled(call)
+    assertEquals(failed.map((j: { error: string }) => j.error), [
+      '3D scenes are off (SCENES=off)',
+      'LiTo figures are off (LITO=off)',
+    ])
   }))
 
 Deno.test('A failed upscale leaves the Frame as it was', () =>
   withTempDir(async (root) => {
     const images = fakeImageGenerator()
-    const { call } = setup({
-      root,
-      settings: { textModel: 'x' },
-      imageGenerator: images,
-      textModel: scriptedTextModel([reply('standing')]),
-    })
-    await call('POST', '/api/sessions', { scenarioId: 'test' })
-    await readEvents(await call('POST', '/api/sessions/s1/frames', {}))
+    const { call } = await chainOfTwo(root, { imageGenerator: images })
     images.upscale = () => Promise.reject(new Error('SeedVR2 upscaler failed: out of memory'))
-    const events = await readEvents(await call('POST', '/api/sessions/s1/frames/0/upscale'))
-    assertEquals(events.at(-1)![1].message, 'SeedVR2 upscaler failed: out of memory')
-    const session = await (await call('GET', '/api/sessions/s1')).json()
-    assertEquals(session.frames[0].upscaled, undefined)
-    assertEquals(session.activity, null)
+    await call('POST', '/api/sessions/s1/jobs', { kind: 'upscale', frameIndex: 0 })
+    const [failed] = await settled(call)
+    assertEquals(failed.error, 'SeedVR2 upscaler failed: out of memory')
+    assertEquals((await chainFrames(call))[0].upscaled, undefined)
   }))
 
 Deno.test('A Storyboard Frame upscales once rendered; a re-render replaces the upscale', () =>
@@ -773,16 +779,10 @@ Deno.test('A Storyboard Frame upscales once rendered; a re-render replaces the u
 Deno.test('Upscale uses the upscaler chosen in Settings now, even mid-Session', () =>
   withTempDir(async (root) => {
     const images = fakeImageGenerator()
-    const { call, settings } = setup({
-      root,
-      settings: { textModel: 'x' },
-      imageGenerator: images,
-      textModel: scriptedTextModel([reply('standing')]),
-    })
-    await call('POST', '/api/sessions', { scenarioId: 'test' })
-    await readEvents(await call('POST', '/api/sessions/s1/frames', {}))
+    const { call, settings } = await chainOfTwo(root, { imageGenerator: images })
     settings.current = { ...settings.current, upscaler: 'seedvr2-3b' }
-    await readEvents(await call('POST', '/api/sessions/s1/frames/0/upscale'))
+    await call('POST', '/api/sessions/s1/jobs', { kind: 'upscale', frameIndex: 0 })
+    await settled(call)
     assertEquals(images.upscalers, ['seedvr2-3b'])
   }))
 
@@ -929,10 +929,10 @@ Deno.test('Turning the Limits off in Settings applies at once, except the adult 
     )
   }))
 
-/** Waits until a Roleplay's queue has no queued or running jobs, and returns what's left. */
+/** Waits until a Session's queue has no queued or running jobs, and returns what's left. */
 async function settled(call: ReturnType<typeof setup>['call'], id = 's1') {
   for (let i = 0; i < 200; i++) {
-    const jobs = await (await call('GET', `/api/sessions/${id}/roleplay/jobs`)).json()
+    const jobs = await (await call('GET', `/api/sessions/${id}/jobs`)).json()
     if (!jobs.some((j: { status: string }) => j.status !== 'failed')) return jobs
     await new Promise((r) => setTimeout(r, 5))
   }
@@ -970,7 +970,7 @@ Deno.test('Picturing, rendering and upscaling a Roleplay Frame are queued jobs, 
     const { call } = await roleplayWithArt(root, [artBody])
     assertEquals((await call('PUT', '/api/sessions/s1/roleplay/look', {})).status, 409)
     const enqueue = (kind: string, frameIndex = 0) =>
-      call('POST', '/api/sessions/s1/roleplay/jobs', { kind, frameIndex })
+      call('POST', '/api/sessions/s1/jobs', { kind, frameIndex })
     assertEquals((await enqueue('picture', 5)).status, 404)
     assertEquals((await enqueue('paint')).status, 400)
 
@@ -1001,18 +1001,18 @@ Deno.test('A failed job stays listed to retry or dismiss', () =>
   withTempDir(async (root) => {
     const { call } = await roleplayWithArt(root, [])
     // Rendering a Frame that was never pictured fails.
-    await call('POST', '/api/sessions/s1/roleplay/jobs', { kind: 'render', frameIndex: 0 })
+    await call('POST', '/api/sessions/s1/jobs', { kind: 'render', frameIndex: 0 })
     const [failed] = await settled(call)
     assertEquals([failed.status, failed.error], ['failed', "Frame 0 isn't pictured yet"])
     // Kept, so it can be retried: back in the queue, where it fails again (still no picture).
-    const retried = await call('POST', `/api/sessions/s1/roleplay/jobs/${failed.id}/retry`)
+    const retried = await call('POST', `/api/sessions/s1/jobs/${failed.id}/retry`)
     assertEquals(retried.status, 200)
     const [again] = await settled(call)
     assertEquals([again.id, again.status], [failed.id, 'failed'])
-    assertEquals((await call('POST', '/api/sessions/s1/roleplay/jobs/nope/retry')).status, 404)
-    const dismissed = await call('DELETE', `/api/sessions/s1/roleplay/jobs/${failed.id}`)
+    assertEquals((await call('POST', '/api/sessions/s1/jobs/nope/retry')).status, 404)
+    const dismissed = await call('DELETE', `/api/sessions/s1/jobs/${failed.id}`)
     assertEquals(await dismissed.json(), [])
-    assertEquals((await call('DELETE', '/api/sessions/s1/roleplay/jobs/nope')).status, 404)
+    assertEquals((await call('DELETE', '/api/sessions/s1/jobs/nope')).status, 404)
   }))
 
 Deno.test('The conversation carries on while a job runs, and neither overwrites the other', () =>
@@ -1028,9 +1028,9 @@ Deno.test('The conversation carries on while a job runs, and neither overwrites 
       },
     }
     const { call } = await roleplayWithArt(root, [artBody], { imageGenerator: slow })
-    await call('POST', '/api/sessions/s1/roleplay/jobs', { kind: 'picture', frameIndex: 0 })
+    await call('POST', '/api/sessions/s1/jobs', { kind: 'picture', frameIndex: 0 })
     await settled(call)
-    await call('POST', '/api/sessions/s1/roleplay/jobs', { kind: 'render', frameIndex: 0 })
+    await call('POST', '/api/sessions/s1/jobs', { kind: 'render', frameIndex: 0 })
     await new Promise((r) => setTimeout(r, 20))
 
     // The render is running; a Message still goes through.
@@ -1051,9 +1051,9 @@ Deno.test('Undoing an exchange cancels its jobs; deleting the Roleplay cancels t
     const { call } = await roleplayWithArt(root, [artBody, artBody], { imageGenerator: images })
     await readEvents(await call('POST', '/api/sessions/s1/roleplay/messages', { text: 'Sorry.' }))
     for (const frameIndex of [1, 1]) {
-      await call('POST', '/api/sessions/s1/roleplay/jobs', { kind: 'picture', frameIndex })
+      await call('POST', '/api/sessions/s1/jobs', { kind: 'picture', frameIndex })
     }
-    await call('POST', '/api/sessions/s1/roleplay/jobs', { kind: 'render', frameIndex: 1 })
+    await call('POST', '/api/sessions/s1/jobs', { kind: 'render', frameIndex: 1 })
     await settled(call).catch(() => {})
     assertEquals((await call('DELETE', '/api/sessions/s1/roleplay/frames/1')).status, 200)
     assertEquals(await settled(call), [])
@@ -1068,12 +1068,12 @@ Deno.test('Pictures are written as tags when Settings ask, recorded on the Frame
     })
     const { call, settings } = await roleplayWithArt(root, [], { roleplayModels: { artist } })
     settings.current = { ...settings.current, artModel: 'artist', artStyle: 'tags' }
-    await call('POST', '/api/sessions/s1/roleplay/jobs', { kind: 'picture', frameIndex: 0 })
+    await call('POST', '/api/sessions/s1/jobs', { kind: 'picture', frameIndex: 0 })
     assertEquals(await settled(call), [])
     let session = await (await call('GET', '/api/sessions/s1')).json()
     assertEquals(session.frames[0].pictureStyle, 'tags')
     settings.current = { ...settings.current, artStyle: 'prose' }
-    await call('POST', '/api/sessions/s1/roleplay/jobs', { kind: 'picture', frameIndex: 0 })
+    await call('POST', '/api/sessions/s1/jobs', { kind: 'picture', frameIndex: 0 })
     assertEquals(await settled(call), [])
     session = await (await call('GET', '/api/sessions/s1')).json()
     assertEquals(session.frames[0].pictureStyle, undefined)
@@ -1094,7 +1094,7 @@ Deno.test("Speaking a Frame designs the Character's voice first, and serves the 
     await readEvents(await call('POST', '/api/sessions/s1/roleplay/begin'))
     await readEvents(await call('POST', '/api/sessions/s1/roleplay/messages', { text: 'Sorry.' }))
     const job = (kind: string, frameIndex: number) =>
-      call('POST', '/api/sessions/s1/roleplay/jobs', { kind, frameIndex })
+      call('POST', '/api/sessions/s1/jobs', { kind, frameIndex })
     assertEquals((await job('speak', 1)).status, 409)
 
     assertEquals((await job('speak', 0)).status, 201)
@@ -1123,7 +1123,7 @@ Deno.test("Speaking a Frame designs the Character's voice first, and serves the 
 Deno.test('Without a voice service, speaking fails with a reason', () =>
   withTempDir(async (root) => {
     const { call } = await roleplayWithArt(root, [])
-    await call('POST', '/api/sessions/s1/roleplay/jobs', { kind: 'speak', frameIndex: 0 })
+    await call('POST', '/api/sessions/s1/jobs', { kind: 'speak', frameIndex: 0 })
     const [failed] = await settled(call)
     assertMatch(failed.error, /aren't available/)
   }))
@@ -1133,7 +1133,7 @@ Deno.test('A rendered Frame makes a 3D scene, served; a re-render or Undo remove
     const scene = fakeSceneMaker()
     const { call } = await roleplayWithArt(root, [artBody, artBody], { scene })
     const job = (kind: string, frameIndex: number) =>
-      call('POST', '/api/sessions/s1/roleplay/jobs', { kind, frameIndex })
+      call('POST', '/api/sessions/s1/jobs', { kind, frameIndex })
     assertEquals((await job('scene', 0)).status, 409)
 
     await job('picture', 0)
@@ -1180,7 +1180,7 @@ Deno.test('A scene is made from the upscale when there is one', () =>
     const scene = fakeSceneMaker()
     const { call } = await roleplayWithArt(root, [artBody], { scene })
     for (const kind of ['picture', 'render', 'upscale', 'scene']) {
-      await call('POST', '/api/sessions/s1/roleplay/jobs', { kind, frameIndex: 0 })
+      await call('POST', '/api/sessions/s1/jobs', { kind, frameIndex: 0 })
       assertEquals(await settled(call), [])
     }
     const frame = (await (await call('GET', '/api/sessions/s1')).json()).frames[0]
@@ -1193,8 +1193,7 @@ Deno.test('A figure lifted from a Frame is served, and goes with a re-render', (
   withTempDir(async (root) => {
     const figure = fakeFigureMaker()
     const { call } = await roleplayWithArt(root, [artBody], { figure })
-    const job = (kind: string) =>
-      call('POST', '/api/sessions/s1/roleplay/jobs', { kind, frameIndex: 0 })
+    const job = (kind: string) => call('POST', '/api/sessions/s1/jobs', { kind, frameIndex: 0 })
     assertEquals((await job('figure')).status, 409)
     for (const kind of ['picture', 'render', 'figure']) {
       await job(kind)
@@ -1217,8 +1216,7 @@ Deno.test('A LiTo figure is kept beside the TripoSplat one, served, and goes wit
   withTempDir(async (root) => {
     const figure = fakeFigureMaker(), lito = fakeFigureMaker()
     const { call } = await roleplayWithArt(root, [artBody], { figure, lito })
-    const job = (kind: string) =>
-      call('POST', '/api/sessions/s1/roleplay/jobs', { kind, frameIndex: 0 })
+    const job = (kind: string) => call('POST', '/api/sessions/s1/jobs', { kind, frameIndex: 0 })
     assertEquals((await job('lito')).status, 409)
     for (const kind of ['picture', 'render', 'figure', 'lito']) {
       await job(kind)
@@ -1241,7 +1239,7 @@ Deno.test('Without SHARP, making a scene fails with a reason', () =>
   withTempDir(async (root) => {
     const { call } = await roleplayWithArt(root, [artBody])
     for (const kind of ['picture', 'render', 'scene']) {
-      await call('POST', '/api/sessions/s1/roleplay/jobs', { kind, frameIndex: 0 })
+      await call('POST', '/api/sessions/s1/jobs', { kind, frameIndex: 0 })
       await settled(call)
     }
     const [failed] = await settled(call)
@@ -1257,7 +1255,7 @@ Deno.test('Pictures use the Art Agent model set in Settings, recorded on the Fra
     })
     const { call, settings } = await roleplayWithArt(root, [], { roleplayModels: { artist } })
     settings.current = { ...settings.current, artModel: 'artist' }
-    await call('POST', '/api/sessions/s1/roleplay/jobs', { kind: 'picture', frameIndex: 0 })
+    await call('POST', '/api/sessions/s1/jobs', { kind: 'picture', frameIndex: 0 })
     assertEquals(await settled(call), [])
     const session = await (await call('GET', '/api/sessions/s1')).json()
     assertEquals([session.lookModel, session.frames[0].pictureModel], ['artist', 'artist'])

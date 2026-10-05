@@ -1,7 +1,7 @@
 import { assertEquals, assertMatch, assertNotEquals, assertRejects } from '@std/assert'
 import { join } from '@std/path'
 import { DEFAULT_SETTINGS } from './settings.ts'
-import { type ChainSession, dirSessionStore } from './session.ts'
+import { type ChainSession, dirSessionStore, type SessionStore } from './session.ts'
 import {
   fakeImageGenerator,
   promptWith,
@@ -35,9 +35,18 @@ const newSession = (): ChainSession => ({
 
 const signal = () => new AbortController().signal
 
+/** A store already holding the fresh Chain `s1`, as the app's does before its first Frame. */
+const chainStore = (root: string): SessionStore => {
+  const store = dirSessionStore(root)
+  return {
+    ...store,
+    load: async (id) => (await store.load(id)) ?? (id === 's1' ? newSession() : undefined),
+  }
+}
+
 Deno.test('runChainFrame commits the Opening Frame with prefixed image prompt', () =>
   withTempDir(async (root) => {
-    const store = dirSessionStore(root)
+    const store = chainStore(root)
     const images = fakeImageGenerator()
     const session = newSession()
     const events: FrameEvent[] = []
@@ -60,7 +69,7 @@ Deno.test('runChainFrame retries a failed Text Model reply once', () =>
   withTempDir(async (root) => {
     const textModel = scriptedTextModel([new Error('bad JSON'), reply('standing')])
     const frame = await runChainFrame(
-      { store: dirSessionStore(root), textModel, imageGenerator: fakeImageGenerator() },
+      { store: chainStore(root), textModel, imageGenerator: fakeImageGenerator() },
       newSession(),
       testScenario,
       null,
@@ -73,7 +82,7 @@ Deno.test('runChainFrame retries a failed Text Model reply once', () =>
 
 Deno.test('runChainFrame gives up after the retry and leaves the Session untouched', () =>
   withTempDir(async (root) => {
-    const store = dirSessionStore(root)
+    const store = chainStore(root)
     const session = newSession()
     await store.save(session)
     await assertRejects(
@@ -98,7 +107,7 @@ Deno.test('runChainFrame gives up after the retry and leaves the Session untouch
 
 Deno.test('runChainFrame keeps the previous Scene and image when a Direction is declined', () =>
   withTempDir(async (root) => {
-    const store = dirSessionStore(root)
+    const store = chainStore(root)
     const images = fakeImageGenerator()
     const session = newSession()
     const textModel = scriptedTextModel([
@@ -124,7 +133,7 @@ Deno.test('runChainFrame keeps the previous Scene and image when a Direction is 
 
 Deno.test('runChainFrame rolls back when the image fails', () =>
   withTempDir(async (root) => {
-    const store = dirSessionStore(root)
+    const store = chainStore(root)
     const session = newSession()
     await store.save(session)
     await assertRejects(
@@ -150,7 +159,7 @@ Deno.test('runChainFrame rolls back when the image fails', () =>
 
 Deno.test('runChainFrame aborted mid-image removes nothing committed', () =>
   withTempDir(async (root) => {
-    const store = dirSessionStore(root)
+    const store = chainStore(root)
     const session = newSession()
     await store.save(session)
     const controller = new AbortController()
@@ -182,7 +191,7 @@ Deno.test('runChainFrame keeps the Scene and image when an Action is unclear', (
       reply('standing'),
       reply('invented pose', { outcome: 'unclear', narration: 'Sorry, what do you mean?' }),
     ])
-    const deps = { store: dirSessionStore(root), textModel, imageGenerator: images }
+    const deps = { store: chainStore(root), textModel, imageGenerator: images }
     await runChainFrame(deps, session, testScenario, null, () => {}, signal())
     const events: FrameEvent[] = []
     const frame = await runChainFrame(
@@ -205,7 +214,7 @@ Deno.test('runChainFrame skips rendering when a done Action leaves the Scene unc
     const images = fakeImageGenerator()
     const session = newSession()
     const deps = {
-      store: dirSessionStore(root),
+      store: chainStore(root),
       textModel: scriptedTextModel([reply('standing'), reply('standing')]),
       imageGenerator: images,
     }
@@ -227,7 +236,7 @@ Deno.test('runChainFrame treats the Opening Frame as done whatever the Text Mode
   withTempDir(async (root) => {
     const frame = await runChainFrame(
       {
-        store: dirSessionStore(root),
+        store: chainStore(root),
         textModel: scriptedTextModel([reply('standing', { outcome: 'unclear' })]),
         imageGenerator: fakeImageGenerator(),
       },
@@ -242,7 +251,7 @@ Deno.test('runChainFrame treats the Opening Frame as done whatever the Text Mode
   }))
 
 async function sessionWithFrames(root: string, replies: ReturnType<typeof reply>[]) {
-  const store = dirSessionStore(root)
+  const store = chainStore(root)
   const session = newSession()
   const deps = {
     store,
@@ -327,7 +336,7 @@ Deno.test('a Frame after an Undo gets a fresh image name', () =>
 
 Deno.test('runChainFrame removes an image written just before the Frame was cancelled', () =>
   withTempDir(async (root) => {
-    const store = dirSessionStore(root)
+    const store = chainStore(root)
     const session = newSession()
     await store.save(session)
     const controller = new AbortController()
@@ -365,7 +374,7 @@ async function openedSession(
   const session = newSession()
   const textModel = scriptedTextModel([reply('standing'), ...replies], realPeople)
   const images = fakeImageGenerator()
-  const deps = { store: dirSessionStore(root), textModel, imageGenerator: images }
+  const deps = { store: chainStore(root), textModel, imageGenerator: images }
   await runChainFrame(deps, session, testScenario, null, () => {}, signal())
   return { session, textModel, images, deps }
 }
@@ -413,7 +422,7 @@ Deno.test('runChainFrame fails an Opening Frame whose prompt crosses a limit', (
       () =>
         runChainFrame(
           {
-            store: dirSessionStore(root),
+            store: chainStore(root),
             textModel: scriptedTextModel([
               reply('x', { prompt: `${promptWith('x')} Wearing lingerie.` }),
             ]),
@@ -457,7 +466,7 @@ Deno.test("runChainFrame streams the Text Model's thinking and saves it with the
     const events: FrameEvent[] = []
     const frame = await runChainFrame(
       {
-        store: dirSessionStore(root),
+        store: chainStore(root),
         textModel: scriptedTextModel([reply('standing', { thinking: 'She should stand. Done.' })]),
         imageGenerator: fakeImageGenerator(),
       },
@@ -480,7 +489,7 @@ Deno.test('runChainFrame marks thinking from a retry as a restart, and saves no 
     const events: FrameEvent[] = []
     const session = newSession()
     const deps = {
-      store: dirSessionStore(root),
+      store: chainStore(root),
       textModel: scriptedTextModel([
         new Error('bad JSON'),
         reply('standing', { thinking: 'Second try.' }),
@@ -501,7 +510,7 @@ Deno.test('runChainFrame records how long the text and image steps took', () =>
     const session = newSession()
     const images = fakeImageGenerator()
     const deps = {
-      store: dirSessionStore(root),
+      store: chainStore(root),
       textModel: scriptedTextModel([reply('standing'), reply('standing')]),
       imageGenerator: {
         ...images,
@@ -528,7 +537,7 @@ Deno.test('runChainFrame records time spent waiting for another render', () =>
     setTimeout(release, 150)
     const frame = await runChainFrame(
       {
-        store: dirSessionStore(root),
+        store: chainStore(root),
         textModel: scriptedTextModel([reply('standing')]),
         imageGenerator: fakeImageGenerator(),
         renderQueue: queue,
