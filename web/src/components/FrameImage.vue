@@ -21,6 +21,8 @@ const props = defineProps<{
   instant?: boolean
   /** Pinch to zoom and drag to pan, as in the viewer; otherwise a click on the image opens it. */
   zoom?: boolean
+  /** The size the images render at, to shape the frame before the first one loads. */
+  expectedSize?: { width: number; height: number }
 }>()
 /** The image was clicked, to look closer (only without `zoom`). */
 const emit = defineEmits<{ open: [] }>()
@@ -57,8 +59,17 @@ const frame = ref<HTMLElement | null>(null)
 const { zoomed, layerStyle, view, reset } = usePinchZoom(props.zoom ? frame : ref(null))
 watch(() => displayed.value?.src, reset)
 
-/** Width ÷ height of the images shown; portrait until the first one loads. */
-const aspect = ref(832 / 1216)
+/** Width ÷ height of the images shown; the expected size's until the first one loads. */
+const aspect = ref(
+  props.expectedSize ? props.expectedSize.width / props.expectedSize.height : 832 / 1216,
+)
+// Known only once the Session has loaded: follow it until an image shows the real shape.
+watch(
+  () => props.expectedSize,
+  (size) => {
+    if (size && !displayed.value) aspect.value = size.width / size.height
+  },
+)
 /** Pixel size of the image on screen, once loaded. */
 const size = ref<{ width: number; height: number } | null>(null)
 
@@ -91,6 +102,7 @@ const frameStyle = computed(() => ({
       :class="{ 'render-sweep': rendering, 'cursor-grab active:cursor-grabbing': zoomed }"
       :style="frameStyle"
       :data-rendering="rendering ?? undefined"
+      :data-aspect="aspect.toFixed(3)"
     >
       <!-- The zoomed layer: only the image scales, not what's drawn over it. -->
       <div class="absolute inset-0 origin-top-left" :style="layerStyle" data-zoom-layer>

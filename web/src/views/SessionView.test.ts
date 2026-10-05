@@ -309,6 +309,16 @@ describe('SessionView', () => {
     expect(wrapper.find('[data-outcome]').exists()).toBe(false)
   })
 
+  it('shapes the frame to the Session\'s picture size before the first picture arrives', async () => {
+    vi.mocked(api.getSession).mockResolvedValue({
+      ...session(),
+      imageSize: { width: 1024, height: 1024 },
+    })
+    vi.mocked(api.streamFrame).mockImplementation(() => new Promise(() => {}))
+    const { wrapper } = await mountIt()
+    expect(wrapper.find('[data-image-frame]').attributes('data-aspect')).toBe('1.000')
+  })
+
   it('opens the picture in the viewer when clicked, stepping through the Frames', async () => {
     vi.mocked(api.getSession).mockResolvedValue(
       session([frame(0, null), frame(1, 'Sit', { upscaled: 'frame-1-2048.png' })]),

@@ -488,10 +488,14 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       if (!session) return error('Session not found', 404)
       // `activity` lets a screen that didn't start the running work (another tab) show it.
       const work = active.get(session.id)
+      // The size its pictures render at, so a screen can shape the frame before the first arrives.
+      const { width, height } = SIZE_PRESETS.find((p) => p.id === session.settings.size) ??
+        SIZE_PRESETS[0]
       return json({
         ...session,
         activity: work?.phase ?? null,
         activeFrame: work?.frameIndex ?? null,
+        imageSize: { width, height },
       })
     }],
 

@@ -377,6 +377,7 @@ const promptDiff = computed(() => {
           :rendering="renderingPhase"
           :hide-size="busy"
           :empty-text="busy ? undefined : 'No image yet'"
+          :expected-size="session.imageSize"
           @open="viewingPicture = shown!.index"
         >
           <div

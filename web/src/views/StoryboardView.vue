@@ -373,6 +373,7 @@ const viewingPicture = ref<number | null>(null)
           :rendering="renderingHere"
           :hide-size="busy"
           :empty-text="current ? (current.blocked ? 'Blocked: edit this Frame first' : 'Not rendered yet') : 'Planning…'"
+          :expected-size="session.imageSize"
           @open="viewingPicture = current!.index"
         >
           <div

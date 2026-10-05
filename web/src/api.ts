@@ -256,6 +256,8 @@ export interface SessionBase {
   activity?: Activity | null
   /** Which Frame that work is on, for Storyboards (only from `getSession`). */
   activeFrame?: number | null
+  /** The size its pictures render at, from its Settings (only from `getSession`). */
+  imageSize?: { width: number; height: number }
 }
 
 export interface ChainSession extends SessionBase {
