@@ -41,7 +41,7 @@ current Image Prompt + Action ──► Text Model (Ollama) ──► { outcome,
    Model is asked. An Action that looks like it names someone (a capitalised full name, "look
    like", "resemble"; names inside a style clause such as "in the style of Michelangelo" don't
    count) also gets a narrow yes/no question to the Text Model about real people. A
-   crossed Limit declines the Frame at once: the Narration names the Limit.
+   crossed Limit declines the Action at once, naming the Limit.
 2. **Text step.** The system message is the engine's rules (the nine sentences and what each
    covers; rewrite only the affected sentences and copy the rest word for word; remove whatever
    a change contradicts; the Limits; the reply format), then the Scenario's notes, plus its **Setup** on the Opening Frame
@@ -60,9 +60,12 @@ current Image Prompt + Action ──► Text Model (Ollama) ──► { outcome,
    JSON under a schema occasionally never stop, padding with whitespace; without the caps one
    such reply blocked Ollama, and every later request behind it, for 14 minutes.
 4. **Engine rules** ([ADR 0002](adr/0002-guardrails-enforced-by-the-engine.md)):
-   - The new Image Prompt is checked against the Limits too; crossing one declines the Frame.
-   - A **Declined Frame** or an **Unclear Frame** keeps the previous Image Prompt and image,
-     whatever the model returned, and renders nothing.
+   - The new Image Prompt is checked against the Limits too; crossing one declines the Action.
+   - A **Declined Action** (a crossed Limit, or the Text Model declining it) or an **Unclear
+     Action** (the Text Model can't tell what to change, and asks) saves no Frame, as a declined
+     Roleplay Message saves nothing: the stream ends with `declined` or `unclear` (`message`), the
+     Action stays in the box, and the reason or question shows beside it, amber or blue (since
+     2026-10-05; older Chains may still hold Declined and Unclear Frames).
    - A done Frame whose Image Prompt came back unchanged also reuses the previous image.
    - The Opening Frame always counts as done; if its prompt crosses a Limit, it fails.
    - The text rendered is `adult, ` followed by the paragraph.
@@ -319,7 +322,7 @@ in [open-threads.md](open-threads.md).
   (provisional text shows dimmed and in italics while a Frame runs); the caption can be hidden,
   and that choice is remembered per browser. The Frame's status ("Rendering the image… step 2 of 4") is a
   pill in the image's top corner. Enter sends; Shift+Enter adds a new line. A done Frame clears the text box; a declined or
-  unclear one leaves your Action there to reword. While a Frame runs,
+  unclear Action makes no Frame at all and stays there to reword. While a Frame runs,
   the text box is locked and **Cancel** replaces **Send**; a failed Frame's error shows in the
   button row. Typed text is always treated as an Action; there are no typed commands.
   The right side has two panels: side by side on wide windows (1280 px and up), as tabs on

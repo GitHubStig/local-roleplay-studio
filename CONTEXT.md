@@ -106,12 +106,12 @@ _Avoid_: Rule, filter, guardrail, policy
 How an Action was received: done, declined or unclear. Only a done Action changes an Image Prompt.
 _Avoid_: Result, status, verdict
 
-**Declined Frame**:
-A Chain Frame whose Action crossed a Limit; its Image Prompt and image are the previous Frame's, unchanged.
+**Declined Action**:
+An Action that crossed a Limit, or that the text model declined: no Frame is saved, and the Action stays with the player to reword. (Chains from before 2026-10-05 may still hold a Declined Frame, which kept the previous Image Prompt and image.)
 _Avoid_: Rejected, refused, blocked
 
-**Unclear Frame**:
-A Chain Frame whose Action couldn't be understood (gibberish, or too vague to act on); the text model asks what to change, and the Image Prompt and image are unchanged.
+**Unclear Action**:
+An Action the text model couldn't act on (gibberish, too vague, or about something that isn't there); it asks what to change. As with a Declined Action, no Frame is saved and the Action stays with the player to reword. (Chains from before 2026-10-05 may still hold an Unclear Frame.)
 _Avoid_: Invalid, failed, error
 
 **Cancel**:

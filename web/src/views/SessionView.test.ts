@@ -146,17 +146,47 @@ describe('SessionView', () => {
     expect(wrapper.findAll('aside li')).toHaveLength(2)
   })
 
-  it('keeps the Action in the text box when the Frame is declined or unclear', async () => {
-    for (const outcome of ['declined', 'unclear'] as const) {
-      vi.mocked(api.streamFrame).mockImplementationOnce(async (_id, _action, onEvent) => {
-        onEvent({ type: 'committed', frame: frame(1, 'make it weird', { outcome }) })
-      })
-      const { wrapper } = await mountIt()
-      await wrapper.find('textarea').setValue('make it weird')
-      await buttonNamed(wrapper, 'Send').trigger('click')
-      await flushPromises()
-      expect((wrapper.find('textarea').element as HTMLTextAreaElement).value).toBe('make it weird')
-    }
+  it('makes no Frame for an unclear Action: it stays in the box, with the question in blue', async () => {
+    vi.mocked(api.streamFrame).mockImplementationOnce(async (_id, _action, onEvent) => {
+      onEvent({ type: 'unclear', message: 'Which backdrop do you mean?' })
+    })
+    const { wrapper } = await mountIt()
+    await wrapper.find('textarea').setValue('make it weird')
+    await buttonNamed(wrapper, 'Send').trigger('click')
+    await flushPromises()
+    expect((wrapper.find('textarea').element as HTMLTextAreaElement).value).toBe('make it weird')
+    expect(wrapper.findAll('aside li')).toHaveLength(1)
+    const notice = wrapper.find('[data-frame-notice]')
+    expect([notice.text(), notice.classes()]).toEqual([
+      'Which backdrop do you mean?',
+      expect.arrayContaining(['text-info']),
+    ])
+  })
+
+  it('makes no Frame for a declined Action: it stays in the box, with the reason beside it', async () => {
+    vi.mocked(api.streamFrame).mockImplementationOnce(async (_id, _action, onEvent) => {
+      onEvent({ type: 'phase', phase: 'text' })
+      onEvent({ type: 'declined', message: 'Declined: no sexual or nude imagery.' })
+    })
+    const { wrapper } = await mountIt()
+    await wrapper.find('textarea').setValue('make her topless')
+    await buttonNamed(wrapper, 'Send').trigger('click')
+    await flushPromises()
+    expect((wrapper.find('textarea').element as HTMLTextAreaElement).value).toBe('make her topless')
+    expect(wrapper.findAll('aside li')).toHaveLength(1)
+    const notice = wrapper.find('[data-frame-notice]')
+    expect([notice.text(), notice.classes()]).toEqual([
+      'Declined: no sexual or nude imagery.',
+      expect.arrayContaining(['text-warn']),
+    ])
+    // Sending again clears it.
+    vi.mocked(api.streamFrame).mockImplementationOnce(async (_id, _action, onEvent) => {
+      onEvent({ type: 'committed', frame: frame(1, 'sit down') })
+    })
+    await wrapper.find('textarea').setValue('sit down')
+    await buttonNamed(wrapper, 'Send').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-frame-notice]').text()).toBe('')
   })
 
   it('keeps the Direction and shows the error when a Frame fails', async () => {

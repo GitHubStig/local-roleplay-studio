@@ -57,6 +57,10 @@ export type FrameEvent =
   /** The new Image Prompt before its image exists; provisional until `committed`. */
   | { type: 'text'; outcome: Outcome; narration: string; prompt: ImagePrompt }
   | { type: 'committed'; frame: ChainFrame }
+  /** The Action crossed a Limit, or the Text Model declined it: nothing was saved. */
+  | { type: 'declined'; message: string }
+  /** The Text Model couldn't tell what to change, and asks: nothing was saved. */
+  | { type: 'unclear'; message: string }
 
 /** Progress of an upscale; ends with the Session, every Frame showing that image now upscaled. */
 export type UpscaleEvent = ProgressEvent | { type: 'upscaled'; session: Session }
@@ -191,7 +195,7 @@ export async function removeImage(dir: string, name: string): Promise<void> {
 /**
  * Runs one Chain Frame: Text Model, then Image Model (rendering the Image Prompt), then commit. The
  * Frame commits whole or not at all: on failure or abort the Session on disk is untouched and any
- * image written is removed.
+ * image written is removed. A declined or unclear Action commits nothing either, and returns null.
  */
 export async function runChainFrame(
   deps: FrameDeps,
@@ -200,7 +204,7 @@ export async function runChainFrame(
   action: string | null,
   emit: (event: FrameEvent) => void,
   signal: AbortSignal,
-): Promise<ChainFrame> {
+): Promise<ChainFrame | null> {
   const previous = session.frames.at(-1)
   const index = session.frames.length
 
@@ -253,11 +257,16 @@ export async function runChainFrame(
       nextPrompt = text.prompt
     }
   }
+  // A declined or unclear Action makes no Frame, as a declined Roleplay Message makes none: the
+  // Session stays as it was, and the Action stays with the player to reword.
+  if (outcome !== 'done') {
+    emit({ type: outcome, message: narration })
+    return null
+  }
   emit({ type: 'text', outcome, narration, prompt: nextPrompt })
   const timings: FrameTimings = { text: secondsSince(textStart), image: null }
 
-  // Nothing to render if the Image Prompt didn't change: declined, unclear, or a done Action the
-  // Text Model left without effect. Reuse the previous image.
+  // Nothing to render if a done Action left the Image Prompt as it was: reuse the previous image.
   const reuseImage = previous !== undefined && equal(nextPrompt, previous.prompt)
 
   const dir = deps.store.dir(session.id)

@@ -293,6 +293,10 @@ export type FrameEvent =
   | EndEvent
   | { type: 'text'; outcome: Outcome; narration: string; prompt: ImagePrompt }
   | { type: 'committed'; frame: ChainFrame }
+  /** The Action crossed a Limit, or the Text Model declined it: no Frame was saved. */
+  | { type: 'declined'; message: string }
+  /** The Text Model couldn't tell what to change, and asks: no Frame was saved. */
+  | { type: 'unclear'; message: string }
 
 /** An upscale's stream: ends with the Session, every Frame showing that image now upscaled. */
 export type UpscaleEvent = ProgressEvent | EndEvent | { type: 'upscaled'; session: Session }
@@ -428,7 +432,7 @@ export const streamFrame = (
   streamEvents<FrameEvent>(
     `/api/sessions/${sessionId}/frames`,
     action === null ? {} : { action },
-    ['committed'],
+    ['committed', 'declined', 'unclear'],
     onEvent,
   )
 

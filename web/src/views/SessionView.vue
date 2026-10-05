@@ -60,6 +60,11 @@ const session = ref<ChainSession | null>(null)
 const loadError = ref('')
 const pending = ref<Pending | null>(null)
 const frameError = ref('')
+/**
+ * Why the last Action made no Frame (declined, or unclear and the Text Model asks what to
+ * change): nothing was saved, and the Action stays in the box to reword.
+ */
+const notice = ref<{ kind: 'declined' | 'unclear'; text: string } | null>(null)
 /** The unsent Action, remembered per Session so it survives a reload. */
 const draft = useStoredText(`draft:${props.id}`)
 /** Index of the Frame shown in the main panel; null follows the latest. */
@@ -218,8 +223,13 @@ function onEvent(event: FrameEvent) {
       s.frames.push(event.frame)
       pending.value = null
       viewing.value = null
-      // Only a done Frame used up the Action; a declined or unclear one stays to be reworded.
-      if (event.frame.outcome === 'done') draft.value = ''
+      draft.value = ''
+      break
+    case 'declined':
+    case 'unclear':
+      // As in a Roleplay: no Frame, the Action stays in the box, and the reason shows by it.
+      pending.value = null
+      notice.value = { kind: event.type, text: event.message }
       break
     case 'failed':
     case 'cancelled':
@@ -235,6 +245,7 @@ function onEvent(event: FrameEvent) {
 
 async function runChainFrame(action: string | null) {
   frameError.value = ''
+  notice.value = null
   pending.value = { phase: 'text' }
   try {
     await streamFrame(props.id, action, onEvent)
@@ -532,11 +543,13 @@ const promptDiff = computed(() => {
               @view="(kind) => (open3d = { index: shown!.index, kind })"
             />
             <p
-              class="min-w-0 flex-1 truncate text-sm text-danger"
-              :title="frameError"
+              class="min-w-0 flex-1 truncate text-sm"
+              :class="frameError ? 'text-danger' : notice?.kind === 'unclear' ? 'text-info' : 'text-warn'"
+              :title="frameError || notice?.text"
               role="alert"
+              data-frame-notice
             >
-              {{ frameError }}
+              {{ frameError || notice?.text }}
             </p>
             <button
               type="button"

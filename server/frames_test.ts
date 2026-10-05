@@ -58,8 +58,8 @@ Deno.test('runChainFrame commits the Opening Frame with prefixed image prompt', 
       (e) => events.push(e),
       signal(),
     )
-    assertEquals(frame.index, 0)
-    assertMatch(frame.image, /^frame-0-[0-9a-f]{8}\.png$/)
+    assertEquals(frame!.index, 0)
+    assertMatch(frame!.image, /^frame-0-[0-9a-f]{8}\.png$/)
     assertEquals(images.prompts, [renderPrompt(promptWith('standing'))])
     assertEquals(events.map((e) => e.type), ['phase', 'text', 'phase', 'committed'])
     assertEquals((await store.load('s1'))?.frames.length, 1)
@@ -77,7 +77,7 @@ Deno.test('runChainFrame retries a failed Text Model reply once', () =>
       signal(),
     )
     assertEquals(textModel.calls, 2)
-    assertEquals(frame.prompt, promptWith('standing'))
+    assertEquals(frame!.prompt, promptWith('standing'))
   }))
 
 Deno.test('runChainFrame gives up after the retry and leaves the Session untouched', () =>
@@ -105,7 +105,7 @@ Deno.test('runChainFrame gives up after the retry and leaves the Session untouch
     assertEquals((await store.load('s1'))?.frames, [])
   }))
 
-Deno.test('runChainFrame keeps the previous Scene and image when a Direction is declined', () =>
+Deno.test('runChainFrame saves no Frame when the Text Model declines, and says why', () =>
   withTempDir(async (root) => {
     const store = chainStore(root)
     const images = fakeImageGenerator()
@@ -116,18 +116,20 @@ Deno.test('runChainFrame keeps the previous Scene and image when a Direction is 
     ])
     const deps = { store, textModel, imageGenerator: images }
     await runChainFrame(deps, session, testScenario, null, () => {}, signal())
+    const events: FrameEvent[] = []
     const frame = await runChainFrame(
       deps,
       session,
       testScenario,
       'Take off the jacket',
-      () => {},
+      (e) => events.push(e),
       signal(),
     )
-    assertEquals(frame.outcome, 'declined')
-    assertEquals(frame.prompt, promptWith('standing'))
-    assertEquals(frame.image, session.frames[0].image)
-    assertEquals(frame.narration, 'She declines.')
+    assertEquals(frame, null)
+    assertEquals(events.at(-1), { type: 'declined', message: 'She declines.' })
+    assertEquals(events.some((e) => e.type === 'text'), false)
+    assertEquals(session.frames.length, 1)
+    assertEquals((await store.load('s1'))?.frames.length, 1)
     assertEquals(images.prompts.length, 1)
   }))
 
@@ -183,7 +185,7 @@ Deno.test('runChainFrame aborted mid-image removes nothing committed', () =>
     assertEquals(files.map((f) => f.name), ['session.json'])
   }))
 
-Deno.test('runChainFrame keeps the Scene and image when an Action is unclear', () =>
+Deno.test('runChainFrame saves no Frame when an Action is unclear, and passes on the question', () =>
   withTempDir(async (root) => {
     const images = fakeImageGenerator()
     const session = newSession()
@@ -202,11 +204,11 @@ Deno.test('runChainFrame keeps the Scene and image when an Action is unclear', (
       (e) => events.push(e),
       signal(),
     )
-    assertEquals(frame.outcome, 'unclear')
-    assertEquals(frame.prompt, promptWith('standing'))
-    assertEquals(frame.image, session.frames[0].image)
+    assertEquals(frame, null)
+    assertEquals(events.at(-1), { type: 'unclear', message: 'Sorry, what do you mean?' })
+    assertEquals(events.some((e) => e.type === 'text'), false)
+    assertEquals(session.frames.length, 1)
     assertEquals(images.prompts.length, 1)
-    assertEquals(events.map((e) => e.type), ['phase', 'text', 'committed'])
   }))
 
 Deno.test('runChainFrame skips rendering when a done Action leaves the Scene unchanged', () =>
@@ -227,8 +229,8 @@ Deno.test('runChainFrame skips rendering when a done Action leaves the Scene unc
       () => {},
       signal(),
     )
-    assertEquals(frame.outcome, 'done')
-    assertEquals(frame.image, session.frames[0].image)
+    assertEquals(frame!.outcome, 'done')
+    assertEquals(frame!.image, session.frames[0].image)
     assertEquals(images.prompts.length, 1)
   }))
 
@@ -246,8 +248,8 @@ Deno.test('runChainFrame treats the Opening Frame as done whatever the Text Mode
       () => {},
       signal(),
     )
-    assertEquals(frame.outcome, 'done')
-    assertMatch(frame.image, /^frame-0-[0-9a-f]{8}\.png$/)
+    assertEquals(frame!.outcome, 'done')
+    assertMatch(frame!.image, /^frame-0-[0-9a-f]{8}\.png$/)
   }))
 
 async function sessionWithFrames(root: string, replies: ReturnType<typeof reply>[]) {
@@ -304,8 +306,9 @@ Deno.test('undoLatestFrame keeps an image a remaining Frame still shows', () =>
   withTempDir(async (root) => {
     const { store, session } = await sessionWithFrames(root, [
       reply('standing'),
-      reply('x', { outcome: 'declined' }),
+      reply('standing'),
     ])
+    // A done Action that changed nothing reuses the picture before it.
     assertEquals(session.frames[1].image, session.frames[0].image)
     await undoLatestFrame(store, session, 1)
     assertEquals(await imageExists(root, session.frames[0].image), true)
@@ -330,8 +333,8 @@ Deno.test('a Frame after an Undo gets a fresh image name', () =>
     const updated = await undoLatestFrame(store, session, 1)
     deps.textModel = scriptedTextModel([reply('kneeling')])
     const redo = await runChainFrame(deps, updated, testScenario, 'Kneel', () => {}, signal())
-    assertEquals(redo.index, 1)
-    assertNotEquals(redo.image, undoneImage)
+    assertEquals(redo!.index, 1)
+    assertNotEquals(redo!.image, undoneImage)
   }))
 
 Deno.test('runChainFrame removes an image written just before the Frame was cancelled', () =>
@@ -382,17 +385,21 @@ async function openedSession(
 Deno.test('runChainFrame declines an Action that crosses a limit without asking the Text Model', () =>
   withTempDir(async (root) => {
     const { session, textModel, images, deps } = await openedSession(root, [])
+    const events: FrameEvent[] = []
     const frame = await runChainFrame(
       deps,
       session,
       testScenario,
       'make her topless',
-      () => {},
+      (e) => events.push(e),
       signal(),
     )
-    assertEquals(frame.outcome, 'declined')
-    assertEquals(frame.narration, 'Declined: no sexual or nude imagery.')
-    assertEquals(frame.prompt, promptWith('standing'))
+    assertEquals(frame, null)
+    assertEquals(events.at(-1), {
+      type: 'declined',
+      message: 'Declined: no sexual or nude imagery.',
+    })
+    assertEquals(session.frames.length, 1)
     assertEquals(textModel.calls, 1) // the Opening Frame only
     assertEquals(images.prompts.length, 1)
   }))
@@ -402,18 +409,21 @@ Deno.test('runChainFrame declines a prompt the Text Model wrote across a limit',
     const { session, deps } = await openedSession(root, [
       reply('kneeling', { prompt: `${promptWith('kneeling')} She is a 15 year old girl.` }),
     ])
+    const events: FrameEvent[] = []
     const frame = await runChainFrame(
       deps,
       session,
       testScenario,
       'make her younger',
-      () => {},
+      (e) => events.push(e),
       signal(),
     )
-    assertEquals(frame.outcome, 'declined')
-    assertEquals(frame.narration, 'Declined: everyone depicted must be an adult.')
-    assertEquals(frame.prompt, promptWith('standing'))
-    assertEquals(frame.image, session.frames[0].image)
+    assertEquals(frame, null)
+    assertEquals(events.at(-1), {
+      type: 'declined',
+      message: 'Declined: everyone depicted must be an adult.',
+    })
+    assertEquals(session.frames.length, 1)
   }))
 
 Deno.test('runChainFrame fails an Opening Frame whose prompt crosses a limit', () =>
@@ -446,18 +456,22 @@ Deno.test('runChainFrame asks about real people only when an Action might name o
       [reply('crouching')],
       ['Serena Williams'],
     )
+    const events: FrameEvent[] = []
     const declined = await runChainFrame(
       deps,
       session,
       testScenario,
       'make her look like Serena Williams',
-      () => {},
+      (e) => events.push(e),
       signal(),
     )
-    assertEquals(declined.outcome, 'declined')
-    assertEquals(declined.narration, 'Declined: no real, identifiable people.')
+    assertEquals(declined, null)
+    assertEquals(events.at(-1), {
+      type: 'declined',
+      message: 'Declined: no real, identifiable people.',
+    })
     const done = await runChainFrame(deps, session, testScenario, 'crouch low', () => {}, signal())
-    assertEquals(done.outcome, 'done')
+    assertEquals(done!.outcome, 'done')
     assertEquals(textModel.personChecks, ['make her look like Serena Williams'])
   }))
 
@@ -481,7 +495,7 @@ Deno.test("runChainFrame streams the Text Model's thinking and saves it with the
       thinking.map((e) => e.type === 'thinking' && e.text).join(''),
       'She should stand. Done.',
     )
-    assertEquals(frame.thinking, 'She should stand. Done.')
+    assertEquals(frame!.thinking, 'She should stand. Done.')
   }))
 
 Deno.test('runChainFrame marks thinking from a retry as a restart, and saves no thinking when off', () =>
@@ -502,7 +516,7 @@ Deno.test('runChainFrame marks thinking from a retry as a restart, and saves no 
     const first = events.find((e) => e.type === 'thinking')
     assertEquals(first, { type: 'thinking', text: 'Second ', restart: true })
     const plain = await runChainFrame(deps, session, testScenario, 'Sit', () => {}, signal())
-    assertEquals('thinking' in plain, false)
+    assertEquals('thinking' in plain!, false)
   }))
 
 Deno.test('runChainFrame records how long the text and image steps took', () =>
@@ -521,13 +535,13 @@ Deno.test('runChainFrame records how long the text and image steps took', () =>
       },
     }
     const opening = await runChainFrame(deps, session, testScenario, null, () => {}, signal())
-    assertEquals(typeof opening.timings!.text, 'number')
-    assertEquals(opening.timings!.image! >= 0.1, true)
-    assertEquals('queued' in opening.timings!, false)
+    assertEquals(typeof opening!.timings!.text, 'number')
+    assertEquals(opening!.timings!.image! >= 0.1, true)
+    assertEquals('queued' in opening!.timings!, false)
 
     // Nothing changed, so the image is reused: no image time.
     const reused = await runChainFrame(deps, session, testScenario, 'Stay', () => {}, signal())
-    assertEquals(reused.timings!.image, null)
+    assertEquals(reused!.timings!.image, null)
   }))
 
 Deno.test('runChainFrame records time spent waiting for another render', () =>
@@ -548,7 +562,7 @@ Deno.test('runChainFrame records time spent waiting for another render', () =>
       () => {},
       signal(),
     )
-    assertEquals(frame.timings!.queued! >= 0.1, true)
+    assertEquals(frame!.timings!.queued! >= 0.1, true)
   }))
 
 Deno.test('A render that first downloads its model shows that, then rendering again with its steps', () => {
