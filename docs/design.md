@@ -303,7 +303,7 @@ in [open-threads.md](open-threads.md).
 
 ## Screens
 
-- **Home** (`/`, also reached by clicking **RPG**): **Your Sessions**, one card per saved
+- **Home** (`/`, also reached by clicking **Local Roleplay Studio**): **Your Sessions**, one card per saved
   Session, newest first: the latest rendered image, its title (the Scenario, or the start of the
   Brief), its kind (Chain or Storyboard), the Frame count, when it was last played,
   and what a running Frame is doing ("Writing…", "Waiting to render…", "Rendering…"; the list
@@ -383,7 +383,7 @@ in [open-threads.md](open-threads.md).
   in place of an image. In the Look & Cast panel every text box grows to fit its text (no inner scrolling, so the
   panel scrolls as one) and collapses to a one-line preview by its label, remembered per browser
   (`CollapsibleTextarea`, sized by VueUse's `useTextareaAutosize`).
-- **Navigation:** **RPG** leads Home; **Play** leads back to the Session opened last
+- **Navigation:** **Local Roleplay Studio** (the app's name) leads Home; **Play** leads back to the Session opened last
   (remembered per browser), or Home when there is none. Up to five Session screens stay alive in
   memory while you visit Home, Settings or other Sessions, so each keeps its half-typed Action,
   viewed Frame, tab and any running Frame. The unsent Action is also saved per Session in the

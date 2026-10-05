@@ -148,7 +148,7 @@ describe('App navigation', () => {
     expect(playLink(wrapper).attributes('href')).toBe('/storyboards/sb')
   })
 
-  it('RPG leads Home', async () => {
+  it('the app name leads Home', async () => {
     const { wrapper } = await mountApp('/sessions/s1')
     expect(wrapper.find('h1 a').attributes('href')).toBe('/')
   })

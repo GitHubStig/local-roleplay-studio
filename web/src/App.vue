@@ -37,7 +37,7 @@ useEventListener(window, 'focus', checkServer)
     <header class="flex items-center justify-between border-b border-line px-4 py-3">
       <nav class="flex items-center gap-4">
         <h1 class="text-lg font-semibold">
-          <RouterLink to="/" title="Home: your Sessions and new ones">RPG</RouterLink>
+          <RouterLink to="/" title="Home: your Sessions and new ones">Local Roleplay Studio</RouterLink>
         </h1>
         <RouterLink :to="playTo" class="text-sm text-muted" :class="{ '!text-fg': onPlay }">
           Play

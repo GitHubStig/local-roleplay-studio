@@ -1,6 +1,6 @@
-# RPG
+# Local Roleplay Studio
 
-A local text-to-image prompt generator: the player describes what to make, a text model writes image prompts, and an image model renders them, one image at a time (a Chain) or as a planned sequence (a Storyboard). A Roleplay is a conversation with a Character instead, any moment of which can be pictured.
+A local roleplay studio: in a Roleplay the player talks with a Character played by a text model, and any moment can be pictured by an image model, spoken aloud and made 3D. A Chain changes one picture step by step instead (a text model rewrites the image prompt, an image model renders it), and a Storyboard plans a sequence of pictures at once.
 
 The terms below are the domain's terms. Refer to things by them in code, docs and the UI.
 

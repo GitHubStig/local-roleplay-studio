@@ -32,11 +32,10 @@ The vocabulary (Scenario, Session, Image Prompt, Frame, Action, …) is defined 
 - **macOS on Apple silicon.** mflux runs on MLX.
 - **[Deno](https://deno.com) 2.9+** runs the server, the web app's tooling and the tests.
 - **Node.js 24+**, only for the Vue type check (see [Known quirks](#known-quirks)).
-- **Ollama** with at least one chat model. A mixture-of-experts Gemma 4 26B-A4B is the fastest
-  that does every job well (a few seconds a reply); `gemma4:31b-mlx` is the most literal at a
-  Chain's prompt edits, at about 10 s a Frame; under 12 GB, Gemma 4 12B. Small models (4–8B)
-  can't reliably follow the prompt format. The comparisons, uncensored builds and how to make
-  an MLX one are in [docs/models.md](docs/models.md).
+- **Ollama** with a Text Model: `gemma4:26b-nvfp4` (Gemma 4 26B-A4B on Ollama's MLX engine, 17 GB
+  loaded, a few seconds a reply, Thinking off) for every text job. Small models (4–8B) can't
+  reliably follow the prompt format. The comparisons, uncensored builds and how to make one are in
+  [docs/models.md](docs/models.md).
 - **mflux 0.21+** (the step cache and Fast need it): `uv tool install --managed-python --python 3.14 mflux`. (uv's own Python, kept apart from any other Python on the Mac; mflux runs on 3.10 or newer.)
 - **Models download on first use.** Each model (Image Models, the upscaler, the voice models,
   SHARP) is downloaded from Hugging Face into `~/.cache/huggingface` the first time it's needed,
@@ -91,7 +90,7 @@ deno task dev       # starts the API on :8787 and the web app on :5180
 ```
 
 Open <http://localhost:5180>, go to **Settings**, choose a Text Model, then go **Home** (click
-**RPG**) and press **Start Session**. Your Sessions are listed on Home; open one to carry on,
+**Local Roleplay Studio**) and press **Start Session**. Your Sessions are listed on Home; open one to carry on,
 or delete it.
 
 ## Tasks

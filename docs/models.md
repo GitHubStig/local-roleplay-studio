@@ -5,9 +5,13 @@ are on the development Mac (Apple silicon), 2026-09-24.
 
 ## Text Model
 
-**Use `gemma4:31b-mlx`, with Thinking off.** It was the only model that was both correct on
-every Action and literal about what it changed. Set it in **Settings → Text Model**; it applies
-from the next Session.
+**Use Gemma 4 26B-A4B, with Thinking off, for every text job**: `gemma4:26b-nvfp4` from Ollama, or
+an uncensored Heretic build of it made the same way (`gemma-4-26b-heretic:nvfp4`, see "The heretic
+26B-A4B as MLX NVFP4" below). A mixture of experts with about 4B parameters active per token, it is
+the fastest model here that does every job well, 17 GB loaded. One model for everything, so none
+waits for another to load. Set it in **Settings → Text Model**; it applies from the next Session.
+(The comparisons below started with `gemma4:31b-mlx`, the first pick: the most literal at a
+Chain's prompt edits, but about 3× slower.)
 
 ### What the job asks of the model
 
