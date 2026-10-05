@@ -4,6 +4,9 @@ import ImageViewer from './ImageViewer.vue'
 
 enableAutoUnmount(afterEach)
 
+/** VueUse's onClickOutside takes one click per tick, as a person's clicks always are. */
+const tick = () => new Promise((r) => setTimeout(r))
+
 const mountIt = () =>
   mount(ImageViewer, { props: { src: null as string | null }, attachTo: document.body })
 
@@ -27,9 +30,19 @@ describe('ImageViewer', () => {
     await wrapper.setProps({ src: '/x.png' })
     await flushPromises()
     const dialog = wrapper.find('dialog').element as HTMLDialogElement
-    await wrapper.find('[data-image-frame]').trigger('click')
+    const press = async (on: string) => {
+      await wrapper.find(on).trigger('pointerdown')
+      await wrapper.find(on).trigger('click', { detail: 1 })
+      await tick()
+    }
+    await press('[data-image-frame]')
     expect(dialog.open).toBe(true)
-    await wrapper.find('dialog').trigger('click')
+    // A pan that starts on the image and lets go outside it doesn't close it either.
+    await wrapper.find('[data-image-frame]').trigger('pointerdown')
+    await wrapper.find('dialog').trigger('click', { detail: 1 })
+    await tick()
+    expect(dialog.open).toBe(true)
+    await press('dialog')
     expect(dialog.open).toBe(false)
     expect(wrapper.emitted('close')).toHaveLength(1)
   })

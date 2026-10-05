@@ -206,7 +206,7 @@ under `/api/sessions/:id/roleplay/` ([ADR 0007](adr/0007-roleplay-is-a-conversat
      and what the viewer needs: the depth to orbit around (a quarter of the splats are nearer, so
      near subjects stay in view) and the camera SHARP assumed (a 30 mm lens, as a vertical field
      of view and an aspect), so the viewer opens on exactly the picture's view. It turns 15° or 30°
-     either way, or back to the picture's view; dragging turns it freely. SHARP invents what the
+     either way, or back to the picture's view; dragging turns it freely. Esc, Close or a click outside the scene closes it, as in the picture viewer, but a turn let go past the scene's edge doesn't (VueUse's `onClickOutside`). SHARP invents what the
      picture never showed, so the further it turns, the more is made up. Its limits (a fixed
      splat count, what turning shows) are in docs/research/image-to-3d.md.    - **TripoSplat** (`server/figure.ts`, `figure/make.py`; its code is vendored in
      `figure/triposplat/`, MIT) cuts the person out of the picture, leaves the room behind, and

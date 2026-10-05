@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { onClickOutside } from '@vueuse/core'
 import { ref, watch } from 'vue'
 import FrameImage from './FrameImage.vue'
 
@@ -42,12 +43,16 @@ watch(
   { flush: 'post' },
 )
 
-/** A click that isn't on the image itself (the dimmed backdrop, the space around it) closes. */
-function onClick(e: MouseEvent) {
-  if (!(e.target as Element).closest('[data-image-frame], [data-viewer-controls]')) {
-    dialog.value?.close()
-  }
-}
+/**
+ * A click that isn't on the image or its controls (the dimmed backdrop, the space around it)
+ * closes; a pan that starts on the image and lets go outside it doesn't.
+ */
+const controls = ref<HTMLElement | null>(null)
+onClickOutside(
+  () => dialog.value?.querySelector<HTMLElement>('[data-image-frame]'),
+  () => dialog.value?.open && dialog.value.close(),
+  { ignore: [controls] },
+)
 </script>
 
 <template>
@@ -55,12 +60,15 @@ function onClick(e: MouseEvent) {
     ref="dialog"
     class="m-0 h-full max-h-none w-full max-w-none bg-transparent p-0 backdrop:bg-black/85"
     data-image-viewer
-    @click="onClick"
     @keydown="onKeydown"
     @close="emit('close')"
   >
     <div v-if="src" class="flex h-full w-full flex-col p-4 sm:p-8">
-      <div class="flex items-center justify-end gap-3 pb-2 text-sm text-white/80" data-viewer-controls>
+      <div
+        ref="controls"
+        class="flex items-center justify-end gap-3 pb-2 text-sm text-white/80"
+        data-viewer-controls
+      >
         <template v-if="label || hasPrevious || hasNext">
           <button
             type="button"

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { onClickOutside } from '@vueuse/core'
 import { onBeforeUnmount, ref, watch } from 'vue'
 
 /**
@@ -28,6 +29,12 @@ const emit = defineEmits<{ close: [] }>()
 const dialog = ref<HTMLDialogElement | null>(null)
 const stage = ref<HTMLDivElement | null>(null)
 const canvas = ref<HTMLCanvasElement | null>(null)
+const controlsBar = ref<HTMLElement | null>(null)
+/**
+ * A click outside the scene and its buttons closes, as in the picture viewer; a turn that starts on
+ * the scene and lets go outside it doesn't.
+ */
+onClickOutside(canvas, () => dialog.value?.open && dialog.value.close(), { ignore: [controlsBar] })
 const status = ref<'loading' | 'ready' | 'failed'>('loading')
 const failure = ref('')
 /** How far the camera has turned from the picture's view, in whole degrees. */
@@ -161,7 +168,7 @@ const FIGURE_TURNS = [
     @close="close(), emit('close')"
   >
     <div v-if="src" class="flex h-full w-full flex-col gap-2 p-4 text-sm text-white/80 sm:p-8">
-      <div class="flex flex-wrap items-center gap-x-3 gap-y-2">
+      <div ref="controlsBar" class="flex flex-wrap items-center gap-x-3 gap-y-2" data-viewer-controls>
         <span v-if="label" class="text-white">
           {{ label }} · {{ figure ? `${model === 'lito' ? 'LiTo' : 'TripoSplat'}, 3D` : 'SHARP, 2.5D' }}
         </span>
