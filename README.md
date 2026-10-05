@@ -1,20 +1,28 @@
-# RPG
+# Local Roleplay Studio
 
-A text-to-image prompt generator that runs entirely on your Mac. You say what to
-change; a local language model (via [Ollama](https://ollama.com)) rewrites an image prompt, one
-paragraph with a sentence each for subject → pose → expression → camera → clothing →
-environment → lighting → color → style; a
-local image model (via [mflux](https://github.com/filipstrand/mflux)) renders it. Then you change
-something else. That's a **Chain**. A **Storyboard** instead plans a whole sequence at once
-(a manga page, a video storyboard) from a Brief you type: every Frame's prompt is written up
-front, sharing one Look, and you edit and render each Frame as you like. A **Roleplay** is a
-conversation: set up from your Brief, a Character with a goal of their own talks with the
-character you play, replying with a thought, what they do and what they say; any moment can be
-pictured and rendered as you go.
+A private roleplay studio that runs entirely on your Mac, with no cloud. A local language model
+(via [Ollama](https://ollama.com)) plays a Character you talk to, every scene can be painted by a
+local image model (via [mflux](https://github.com/filipstrand/mflux)), the Character speaks in a
+voice designed for them (via [mlx-audio](https://github.com/Blaizzy/mlx-audio)), and any picture
+can be turned into 3D Gaussian splats you can look around (Apple's SHARP, TripoSplat, LiTo).
 
-The first Scenario is a **studio photoshoot** with Maya, a fictional fitness model. Anything in
-the prompt can be changed, within four limits the engine enforces: everyone depicted is an
-adult, no sexual or nude imagery, no real identifiable people, no restraint or captivity.
+There are three kinds of Session:
+
+- **Roleplay:** a conversation. Set up from a Brief you type, a Character with a goal of their own
+  talks with the character you play, replying with a thought, what they do and what they say.
+  Any moment can be pictured, rendered, upscaled, spoken aloud or made 3D as you go, queued so you
+  can keep talking.
+- **Chain:** a picture you change one step at a time. You say what to change; the language model
+  rewrites the Image Prompt (one paragraph, a sentence each for subject → pose → expression →
+  camera → clothing → environment → lighting → color → style) and the image model renders it.
+  The first Scenario is a studio photoshoot with Maya, a fictional fitness model.
+- **Storyboard:** a whole sequence planned at once (a manga page, a video storyboard) from a
+  Brief: every Frame's prompt is written up front, sharing one Look, and you edit and render each
+  Frame as you like.
+
+The engine enforces four limits on everything the models write: everyone depicted is an adult,
+no sexual or nude imagery, no real identifiable people, no restraint or captivity. Settings can
+turn the last three off; "everyone depicted is an adult" always stays.
 
 The vocabulary (Scenario, Session, Image Prompt, Frame, Action, …) is defined in
 [CONTEXT.md](CONTEXT.md). The design is in [docs/design.md](docs/design.md).
@@ -24,9 +32,11 @@ The vocabulary (Scenario, Session, Image Prompt, Frame, Action, …) is defined 
 - **macOS on Apple silicon.** mflux runs on MLX.
 - **[Deno](https://deno.com) 2.9+** runs the server, the web app's tooling and the tests.
 - **Node.js 24+**, only for the Vue type check (see [Known quirks](#known-quirks)).
-- **Ollama** with at least one chat model. Recommended: `gemma4:31b-mlx` (about 10 s per Frame
-  once loaded, Thinking off). Small models (4–8B) can't reliably follow the prompt format; see
-  [docs/models.md](docs/models.md) for the comparison.
+- **Ollama** with at least one chat model. A mixture-of-experts Gemma 4 26B-A4B is the fastest
+  that does every job well (a few seconds a reply); `gemma4:31b-mlx` is the most literal at a
+  Chain's prompt edits, at about 10 s a Frame; under 12 GB, Gemma 4 12B. Small models (4–8B)
+  can't reliably follow the prompt format. The comparisons, uncensored builds and how to make
+  an MLX one are in [docs/models.md](docs/models.md).
 - **mflux 0.21+** (the step cache and Fast need it): `uv tool install --managed-python --python 3.14 mflux`. (uv's own Python, kept apart from any other Python on the Mac; mflux runs on 3.10 or newer.)
 - **Models download on first use.** Each model (Image Models, the upscaler, the voice models,
   SHARP) is downloaded from Hugging Face into `~/.cache/huggingface` the first time it's needed,
@@ -116,10 +126,15 @@ Everything else is chosen on the Settings page and saved to `settings.json`.
 ```
 scenarios/        Scenario files, one Markdown file each (see docs/scenarios.md)
 settings.json     Your Settings (gitignored; created on first save)
-sessions/<id>/    Each Session: session.json plus one image per Frame (gitignored)
-server/           Deno API: settings, Scenarios, Sessions, the Frame engine, Ollama and mflux
+sessions/<id>/    Each Session: session.json plus its pictures, voices and 3D files (gitignored)
+models/           Saved quantized copies of Image Models (gitignored)
+server/           Deno API: Sessions, the Frame and Roleplay engines, the job queue, Ollama, mflux
+server/prompts/   What the language model is told, one Markdown file each
 web/              Vue 3 + Vite + Tailwind 4 web app
-docs/             Design, Scenario format, ADRs and open threads
+voice/            The voice service (mlx-audio), run by uv
+scene/            SHARP: a picture as a 2.5D scene
+figure/           TripoSplat and LiTo: the person in a picture as a 3D figure
+docs/             Design, models, research, Scenario format, ADRs and open threads
 CONTEXT.md        Glossary of the game's terms
 ```
 
@@ -147,6 +162,7 @@ documented in [docs/scenarios.md](docs/scenarios.md).
 - [docs/design.md](docs/design.md): how the game works (Frame loop, failure handling, UI, storage)
 - [docs/scenarios.md](docs/scenarios.md): the Scenario file format
 - [docs/models.md](docs/models.md): which Text and Image Models to use, and why
+- [docs/research/](docs/research/): surveys and trials (image to 3D, small uncensored models)
 - [docs/adr/](docs/adr/): architecture decisions and why they were made
 - [docs/open-threads.md](docs/open-threads.md): ideas deliberately deferred
 - [CONTEXT.md](CONTEXT.md): glossary
