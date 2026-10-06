@@ -48,6 +48,23 @@ and how to run it is in the [README](README.md); this is how the owner likes the
   place.
   Which extras a machine can run is worked out at startup (`server/features.ts`).
 
+## Where things go
+
+The README's "Where things live" maps the folders. When adding a file:
+
+- **A folder per part of the app, not one flat folder.** On the server: `chain/`, `storyboard/`,
+  `roleplay/` for each kind of Session; `text/`, `images/`, `voice/`, `3d/` for each service. Only
+  what several parts share stays at the top of `server/` (`app.ts`, `session.ts`, `frames.ts`…).
+  Don't put shared code in one part's folder for another to import; move it up instead.
+- **A folder per backend** inside a service's folder (`text/ollama/`, `text/openai/`), with what
+  they share (the interface, helpers) beside them. A new backend is a new folder.
+- **Tests beside the file**, as `name_test.ts`.
+- **Prompts are Markdown files** in `server/prompts/<part>/`, never strings in code, each with a
+  note at the top saying when it's used and what it's filled with. What more than one part uses
+  goes in `server/prompts/shared/`.
+- **Python programs** go in `python/<tool>/`, one folder each (`make.py` for a run-once script,
+  `serve.py` for a service), with code copied from elsewhere in a `vendor/` folder beside them.
+
 ## Local data
 
 `sessions/`, `settings.json` and `models/` are gitignored, so a fresh clone starts without them.
