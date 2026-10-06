@@ -83,7 +83,7 @@ describe('StartSession', () => {
     ])
   })
 
-  it('offers only a Roleplay when pictures are off, and starts one', async () => {
+  it('offers every kind when pictures are off, without naming an Image Model', async () => {
     vi.mocked(api.getSettingsOptions).mockResolvedValue({
       ...options,
       features: {
@@ -95,8 +95,10 @@ describe('StartSession', () => {
     const wrapper = await mountIt()
     expect(wrapper.findAll('input[name=kind]').map((i) => i.attributes('value'))).toEqual([
       'roleplay',
+      'chain',
+      'storyboard',
     ])
-    expect((wrapper.find('input[value=roleplay]').element as HTMLInputElement).checked).toBe(true)
+    expect(wrapper.text()).not.toContain('Image Model')
     // Pictures back on, for the other tests.
     vi.mocked(api.getSettingsOptions).mockResolvedValue(options)
     await useFeatures().refreshFeatures()

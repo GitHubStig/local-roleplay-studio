@@ -39,8 +39,10 @@ import {
   type ChainFrame,
   type FrameEvent,
   type Made3d,
+  setRenderFrames,
   undoFrame,
 } from '../api'
+import { useFeatures } from '../composables/useFeatures'
 
 const props = defineProps<{ id: string }>()
 const router = useRouter()
@@ -272,6 +274,17 @@ async function cancel() {
 
 // --- Background work: upscales and 3D, queued so the next Action needn't wait for them.
 
+/** Pictures on: a Chain can render as it goes; off, it only writes each Frame's prompt. */
+const { on: featureOn } = useFeatures()
+/** Flips whether each new Frame is rendered as it's made (the Chain's own switch). */
+async function switchRenderFrames(on: boolean) {
+  try {
+    session.value = await setRenderFrames(props.id, on)
+  } catch (err) {
+    frameError.value = (err as Error).message
+  }
+}
+
 const { jobs, jobsFor, hasJob, queue, dropJob, retry, refreshJobs } = useJobs(props.id, {
   onSettled: async () => {
     await load()
@@ -376,11 +389,11 @@ const promptDiff = computed(() => {
     <template v-else-if="session">
       <main class="flex min-w-0 flex-1 flex-col gap-3 p-4">
         <FrameImage
-          :src="shown ? imageUrl(session.id, shown.upscaled ?? shown.image) : null"
+          :src="shown?.image ? imageUrl(session.id, shown.upscaled ?? shown.image) : null"
           :alt="shown?.promptText"
           :rendering="renderingPhase"
           :hide-size="busy"
-          :empty-text="busy ? undefined : 'No image yet'"
+          :empty-text="busy ? undefined : shown ? 'Not rendered yet' : 'No image yet'"
           :expected-size="session.imageSize"
           @open="viewingPicture = shown!.index"
         >
@@ -519,10 +532,24 @@ const promptDiff = computed(() => {
               v-if="shown"
               :frame="shown"
               :has-job="(kind) => hasJob(shown!.index, kind)"
+              :can-render="!shown.image"
               button-class="rounded-lg border border-line px-3 py-2 text-sm disabled:opacity-50"
               @queue="(kind) => queue(kind, shown!.index)"
               @view="(kind) => (open3d = { index: shown!.index, kind })"
             />
+            <label
+              v-if="featureOn('images')"
+              class="flex cursor-pointer items-center gap-1.5 text-sm text-muted"
+              title="Off: each Action writes only the new prompt, and you render the Frames you want"
+            >
+              <input
+                type="checkbox"
+                :checked="session.renderFrames !== false"
+                data-render-frames
+                @change="switchRenderFrames(($event.target as HTMLInputElement).checked)"
+              />
+              Render each Frame
+            </label>
             <p
               class="min-w-0 flex-1 truncate text-sm"
               :class="frameError ? 'text-danger' : notice?.kind === 'unclear' ? 'text-info' : 'text-warn'"
@@ -592,10 +619,18 @@ const promptDiff = computed(() => {
               @click="viewing = frame.index === session.frames.length - 1 ? null : frame.index"
             >
               <img
+                v-if="frame.image"
                 :src="imageUrl(session.id, frame.image)"
                 alt=""
                 class="h-20 w-14 shrink-0 rounded object-cover"
               />
+              <span
+                v-else
+                class="flex h-20 w-14 shrink-0 items-center justify-center rounded border border-dashed border-line text-xs text-muted"
+                title="Not rendered yet"
+              >
+                {{ frame.index }}
+              </span>
               <span class="flex min-w-0 flex-col gap-1">
                 <!-- Capped here; the Prompt tab and the text box show it in full. -->
                 <span class="line-clamp-2 font-medium" :title="frame.action ?? undefined" data-action>

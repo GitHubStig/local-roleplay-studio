@@ -54,7 +54,7 @@ Deno.test('runChainFrame commits the Opening Frame with prefixed image prompt', 
       signal(),
     )
     assertEquals(frame!.index, 0)
-    assertMatch(frame!.image, /^frame-0-[0-9a-f]{8}\.png$/)
+    assertMatch(frame!.image!, /^frame-0-[0-9a-f]{8}\.png$/)
     assertEquals(images.prompts, [renderPrompt(promptWith('standing'))])
     assertEquals(events.map((e) => e.type), ['phase', 'text', 'phase', 'committed'])
     assertEquals((await store.load('s1'))?.frames.length, 1)
@@ -269,7 +269,7 @@ Deno.test('runChainFrame treats the Opening Frame as done whatever the Text Mode
       signal(),
     )
     assertEquals(frame!.outcome, 'done')
-    assertMatch(frame!.image, /^frame-0-[0-9a-f]{8}\.png$/)
+    assertMatch(frame!.image!, /^frame-0-[0-9a-f]{8}\.png$/)
   }))
 
 async function sessionWithFrames(root: string, replies: ReturnType<typeof reply>[]) {
@@ -298,8 +298,8 @@ Deno.test('undoLatestFrame restores the previous Scene and deletes the image', (
     const updated = await undoLatestFrame(store, session, 1)
     assertEquals(updated.frames.map((t) => t.prompt), [promptWith('standing')])
     assertEquals((await store.load('s1'))?.frames.length, 1)
-    assertEquals(await imageExists(root, undone.image), false)
-    assertEquals(await imageExists(root, session.frames[0].image), true)
+    assertEquals(await imageExists(root, undone.image!), false)
+    assertEquals(await imageExists(root, session.frames[0].image!), true)
   }))
 
 Deno.test("undoLatestFrame deletes the undone Frame's upscale too", () =>
@@ -332,7 +332,7 @@ Deno.test('undoLatestFrame keeps an image a remaining Frame still shows', () =>
     // A done Action that changed nothing reuses the picture before it.
     assertEquals(session.frames[1].image, session.frames[0].image)
     await undoLatestFrame(store, session, 1)
-    assertEquals(await imageExists(root, session.frames[0].image), true)
+    assertEquals(await imageExists(root, session.frames[0].image!), true)
   }))
 
 Deno.test('undoLatestFrame refuses anything but the latest Frame, and the Opening Frame', () =>

@@ -28,7 +28,7 @@ import { JOB_FEATURE, jobRoutes, SessionJobs } from './jobs.ts'
 import { type Availabilities, type Availability, type Feature, FEATURE_NAMES } from './features.ts'
 import { checkChainJob, runChainJob } from './chain/jobs.ts'
 import { checkStoryboardJob, runStoryboardJob } from './storyboard/jobs.ts'
-import { GoneError } from './update.ts'
+import { GoneError, updateSession } from './update.ts'
 import { RenderQueue } from './renderQueue.ts'
 import { type FrameDeps, type Phase, UpscaleError } from './frames.ts'
 import { runChainFrame, UndoError, undoLatestFrame } from './chain/frames.ts'
@@ -480,11 +480,6 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       if (scenarioId && !(await deps.scenarios.get(scenarioId))) {
         return error('Scenario not found', 404)
       }
-      // A Chain renders every Frame, and a Storyboard is for rendering: both need pictures.
-      if (kind !== 'roleplay') {
-        const off = await featureOff('images')
-        if (off) return off
-      }
       let frameCount = FRAME_COUNT.default
       if (kind === 'storyboard' && body?.frameCount !== undefined) {
         frameCount = Number(body.frameCount)
@@ -505,8 +500,10 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
         seed: settings.seedMode === 'fixed' ? settings.seed : randomSeed(),
         createdAt: new Date().toISOString(),
       }
+      // Every kind starts without pictures: a Chain then only writes each Frame's prompt, to
+      // render later, as a Storyboard and a Roleplay do until a render is asked for.
       const session: Session = kind === 'chain'
-        ? { ...base, kind, frames: [] }
+        ? { ...base, kind, frames: [], renderFrames: !(await featureOff('images')) }
         : kind === 'roleplay'
         ? { ...base, kind, cast: null, frames: [] }
         : { ...base, kind, frameCount, look: null, frames: [] }
@@ -586,8 +583,8 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       (req, p) =>
         locked(p.id!, 'frame', async (session) => {
           if (!needsChain(session)) return error('Only a Chain makes Frames from Actions', 409)
-          const off = await featureOff('images')
-          if (off) return off
+          // Rendered as it's made only while the Chain says so and pictures are on.
+          const render = session.renderFrames !== false && !(await featureOff('images'))
           const body = await readJson(req) as { action?: unknown } | undefined
           const opening = session.frames.length === 0
           let action: string | null = null
@@ -600,10 +597,31 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
           const scenario = await scenarioFor(session)
           if (scenario instanceof Response) return scenario
           return stream(session, null, opening, async (send, signal) => {
-            await runChainFrame(frameDeps(session), session, scenario, action, send, signal)
+            await runChainFrame(frameDeps(session), session, scenario, action, send, signal, render)
           })
         }),
     ],
+
+    // Whether a Chain renders each Frame as it's made: `{ renderFrames }`.
+    ['PUT', new URLPattern({ pathname: '/api/sessions/:id/render-frames' }), async (req, p) => {
+      const body = await readJson(req) as { renderFrames?: unknown } | undefined
+      if (typeof body?.renderFrames !== 'boolean') {
+        return error('renderFrames must be true or false', 400)
+      }
+      const session = await deps.sessions.load(p.id!)
+      if (!session) return error('Session not found', 404)
+      if (!needsChain(session)) return error('Only a Chain renders Frames as they are made', 409)
+      if (body.renderFrames) {
+        const off = await featureOff('images')
+        if (off) return off
+      }
+      return json(
+        await updateSession(deps.sessions, session.id, 'chain', (latest) => ({
+          ...latest,
+          renderFrames: body.renderFrames as boolean,
+        })),
+      )
+    }],
 
     ['DELETE', new URLPattern({ pathname: '/api/sessions/:id/frames/:index' }), (_req, p) => {
       const index = Number(p.index)

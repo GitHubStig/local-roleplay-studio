@@ -250,8 +250,6 @@ export interface ChainFrame extends Frame3d {
   timings?: FrameTimings
   /** The exact text sent to the Image Model. */
   promptText: string
-  /** A Chain Frame always has a picture. */
-  image: string
   createdAt: string
 }
 
@@ -306,6 +304,8 @@ export interface SessionBase {
 export interface ChainSession extends SessionBase {
   kind: 'chain'
   frames: ChainFrame[]
+  /** Render each Frame as it's made (on, or left out); off, only its prompt, to render later. */
+  renderFrames?: boolean
 }
 
 export interface StoryboardSession extends SessionBase {
@@ -369,6 +369,14 @@ export type SessionStart =
 export const createSession = (start: SessionStart) => post<Session>('/api/sessions', start)
 
 export const getSession = (id: string) => request<Session>(`/api/sessions/${id}`)
+
+/** Whether a Chain renders each Frame as it's made. */
+export const setRenderFrames = (id: string, renderFrames: boolean) =>
+  request<ChainSession>(`/api/sessions/${id}/render-frames`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ renderFrames }),
+  })
 
 /** A saved Session as listed on Home. */
 export interface SessionSummary {

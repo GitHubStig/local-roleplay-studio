@@ -1,4 +1,4 @@
-import { assertEquals, assertMatch, assertNotEquals } from '@std/assert'
+import { assertEquals, assertMatch, assertNotEquals, assertStringIncludes } from '@std/assert'
 import { join } from '@std/path'
 import { createHandler } from './app.ts'
 import { renderPrompt } from './imagePrompt.ts'
@@ -704,7 +704,7 @@ async function chainOfTwo(root: string, opts: Partial<Parameters<typeof setup>[0
 }
 
 type MadeFrame = {
-  image: string
+  image: string | null
   upscaled?: string
   scene?: { file: string; from: string }
   figure?: { file: string }
@@ -818,33 +818,66 @@ Deno.test('A Chain job whose Feature is off is refused, saying why', () =>
     assertEquals(await settled(call), [])
   }))
 
-Deno.test("Without pictures, Chains and Storyboards can't start, but a Roleplay can", () =>
+Deno.test('Without pictures every kind starts; a Chain writes its Frames without rendering', () =>
   withTempDir(async (root) => {
+    const images = fakeImageGenerator()
+    const off = { available: false, reason: 'mflux runs only on Apple Silicon Macs' }
     const { call } = setup({
       root,
       settings: { textModel: 'x' },
-      features: {
-        images: { available: false, reason: 'mflux runs only on Apple Silicon Macs' },
-        voices: { available: false, reason: 'x' },
-        scenes: { available: false, reason: 'x' },
-        figures: { available: false, reason: 'x' },
-        lito: { available: false, reason: 'x' },
-      },
+      textModel: scriptedTextModel([reply('standing')]),
+      imageGenerator: images,
+      features: { images: off, voices: off, scenes: off, figures: off, lito: off },
     })
-    for (const kind of ['chain', 'storyboard']) {
+    for (const kind of ['chain', 'storyboard', 'roleplay']) {
       const res = await call('POST', '/api/sessions', { kind, brief: 'A rainy street.' })
-      assertEquals([res.status, (await res.json()).error], [
-        409,
-        "Pictures isn't available here: mflux runs only on Apple Silicon Macs",
-      ])
+      assertEquals(res.status, 201)
     }
-    const roleplay = await call('POST', '/api/sessions', {
-      kind: 'roleplay',
-      brief: 'A rainy street.',
+    const chain = await (await call('GET', '/api/sessions/s1')).json()
+    assertEquals(chain.renderFrames, false)
+    const opening = await readEvents(await call('POST', '/api/sessions/s1/frames', {}))
+    const frame = opening.at(-1)![1].frame as { image: string | null; promptText: string }
+    assertEquals(frame.image, null)
+    assertStringIncludes(frame.promptText, 'standing')
+    assertEquals(images.prompts.length, 0)
+    // Rendering, by the switch or a job, needs pictures.
+    const on = await call('PUT', '/api/sessions/s1/render-frames', { renderFrames: true })
+    assertEquals(on.status, 409)
+    const job = await call('POST', '/api/sessions/s1/jobs', { kind: 'render', frameIndex: 0 })
+    assertEquals(job.status, 409)
+  }))
+
+Deno.test('A Chain with rendering off writes prompts, and a render fills every Frame sharing one', () =>
+  withTempDir(async (root) => {
+    const images = fakeImageGenerator()
+    const { call } = setup({
+      root,
+      settings: { textModel: 'x' },
+      textModel: scriptedTextModel([reply('standing'), reply('standing'), reply('sitting')]),
+      imageGenerator: images,
     })
-    assertEquals(roleplay.status, 201)
-    const options = await (await call('GET', '/api/settings/options')).json()
-    assertEquals(options.features.images.available, false)
+    await call('POST', '/api/sessions', { scenarioId: 'test' })
+    const off = await call('PUT', '/api/sessions/s1/render-frames', { renderFrames: false })
+    assertEquals((await off.json()).renderFrames, false)
+    await readEvents(await call('POST', '/api/sessions/s1/frames', {}))
+    // An Action that changes nothing shares the Frame before it: here, its lack of a picture.
+    await readEvents(await call('POST', '/api/sessions/s1/frames', { action: 'Stay' }))
+    assertEquals((await chainFrames(call)).map((f) => f.image), [null, null])
+    assertEquals(images.prompts.length, 0)
+
+    await call('POST', '/api/sessions/s1/jobs', { kind: 'render', frameIndex: 1 })
+    assertEquals(await settled(call), [])
+    const [opening, second] = await chainFrames(call)
+    assertMatch(second.image!, /^frame-1-[0-9a-f]{8}\.png$/)
+    assertEquals(opening.image, second.image)
+    const again = await call('POST', '/api/sessions/s1/jobs', { kind: 'render', frameIndex: 0 })
+    assertEquals(again.status, 409) // a Chain Frame's picture never changes once made
+
+    // Switched back on, the next Frame renders as it's made.
+    await call('PUT', '/api/sessions/s1/render-frames', { renderFrames: true })
+    await readEvents(await call('POST', '/api/sessions/s1/frames', { action: 'Sit' }))
+    assertMatch((await chainFrames(call))[2].image!, /^frame-2-[0-9a-f]{8}\.png$/)
+    assertEquals(images.prompts.length, 2)
   }))
 
 Deno.test('A failed upscale leaves the Frame as it was', () =>

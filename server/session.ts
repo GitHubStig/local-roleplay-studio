@@ -56,8 +56,6 @@ export interface ChainFrame extends FrameBase {
   outcome: Outcome
   /** The Text Model's reasoning for this Frame, when thinking was on. */
   thinking?: string
-  /** Chain Frames always have an image. */
-  image: string
 }
 
 /** A Storyboard Frame: planned from a Beat, edited and rendered on its own. */
@@ -107,6 +105,11 @@ export interface SessionBase {
 export interface ChainSession extends SessionBase {
   kind: 'chain'
   frames: ChainFrame[]
+  /**
+   * Render each Frame as it's made (on, or left out by an older Chain), or only write its prompt,
+   * to render later on request. Starts on when pictures are available; the player switches it.
+   */
+  renderFrames?: boolean
 }
 
 export interface StoryboardSession extends SessionBase {

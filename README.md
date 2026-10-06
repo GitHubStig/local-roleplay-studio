@@ -139,7 +139,9 @@ machine can run, and says so in its log and on the Settings page: pictures (mflu
 (mlx-audio) need an Apple Silicon Mac; SHARP and TripoSplat need an Apple Silicon Mac or an NVIDIA
 GPU; LiTo needs an Apple Silicon Mac; the Python ones need uv. One that can't run is off and its
 buttons are hidden, with the reason in Settings; one that can is on, and can be switched off there.
-Without pictures, Roleplays are conversations only, and Chains and Storyboards can't start.
+Without pictures, every kind of Session still runs on the Text Model alone: a Roleplay is a
+conversation, a Chain writes each Frame's prompt and a Storyboard plans and edits, ready to render
+on a machine that can.
 
 ## Where things live
 

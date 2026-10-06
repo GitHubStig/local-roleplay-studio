@@ -20,6 +20,7 @@ vi.mock('../api', async (importOriginal) => ({
   queueJob: vi.fn(),
   cancelJob: vi.fn(),
   retryJob: vi.fn(),
+  setRenderFrames: vi.fn(),
 }))
 
 const frame = (
@@ -611,6 +612,32 @@ describe('SessionView', () => {
     const labels = wrapper.findAll('button').map((b) => b.text())
     expect(labels).not.toContain('End')
     expect(labels).not.toContain('Reset')
+  })
+
+  it('renders a Frame made without its picture on request, and switches rendering', async () => {
+    vi.mocked(api.getSession).mockResolvedValue({
+      ...session([frame(0, null, { image: null })]),
+      renderFrames: false,
+    })
+    vi.mocked(api.queueJob).mockResolvedValue([job({ kind: 'render' })])
+    vi.mocked(api.setRenderFrames).mockImplementation(async (_id, on) => ({
+      ...session([frame(0, null, { image: null })]),
+      renderFrames: on,
+    }))
+    const { wrapper } = await mountIt()
+    expect(wrapper.find('main').text()).toContain('Not rendered yet')
+    // Nothing to upscale or make 3D of yet; Render queues the picture.
+    expect(wrapper.find('[data-upscale-button]').exists()).toBe(false)
+    await wrapper.find('[data-render-button]').trigger('click')
+    await flushPromises()
+    expect(api.queueJob).toHaveBeenCalledWith('s1', 'render', 0)
+
+    const box = wrapper.find('[data-render-frames]')
+    expect((box.element as HTMLInputElement).checked).toBe(false)
+    await box.setValue(true)
+    await flushPromises()
+    expect(api.setRenderFrames).toHaveBeenCalledWith('s1', true)
+    expect((wrapper.find('[data-render-frames]').element as HTMLInputElement).checked).toBe(true)
   })
 
   it('queues an upscale of the shown Frame, then shows the upscaled image', async () => {

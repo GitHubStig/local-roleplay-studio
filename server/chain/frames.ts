@@ -44,6 +44,8 @@ export async function runChainFrame(
   action: string | null,
   emit: (event: FrameEvent) => void,
   signal: AbortSignal,
+  /** Render the new picture; off, the Frame gets only its prompt, to render later. */
+  render = true,
 ): Promise<ChainFrame | null> {
   const previous = session.frames.at(-1)
   const index = session.frames.length
@@ -106,11 +108,12 @@ export async function runChainFrame(
   emit({ type: 'text', outcome, narration, prompt: nextPrompt })
   const timings: FrameTimings = { text: secondsSince(textStart), image: null }
 
-  // Nothing to render if a done Action left the Image Prompt as it was: reuse the previous image.
+  // Nothing to render if a done Action left the Image Prompt as it was: reuse the previous image
+  // (or its lack of one).
   const reuseImage = previous !== undefined && equal(nextPrompt, previous.prompt)
 
   const dir = deps.store.dir(session.id)
-  let image: string
+  let image: string | null
   let promptText: string
   // Named up front so a failed or cancelled Frame can remove whatever the generator wrote, even if
   // it finished writing just as the Frame was cancelled.
@@ -121,7 +124,9 @@ export async function runChainFrame(
       promptText = previous!.promptText
     } else {
       promptText = renderPrompt(nextPrompt)
-      image = await renderImage(deps, session, promptText, name, timings, emit, signal)
+      image = render
+        ? await renderImage(deps, session, promptText, name, timings, emit, signal)
+        : null
     }
     signal.throwIfAborted()
 
@@ -156,6 +161,38 @@ export async function runChainFrame(
   }
 }
 
+/**
+ * Renders a Chain Frame made without a picture, in its turn in the render queue. Every Frame with
+ * the same prompt and no picture gets it (a Frame that changed nothing shares the one before it).
+ */
+export async function renderChainFrame(
+  deps: FrameDeps,
+  session: ChainSession,
+  index: number,
+  emit: (event: ProgressEvent) => void,
+  signal: AbortSignal,
+): Promise<ChainSession> {
+  const frame = session.frames[index]
+  if (frame.image) throw new Error(`Frame ${index} already has its picture`)
+  const timings: FrameTimings = { text: frame.timings?.text ?? 0, image: null }
+  const name = imageName(index)
+  try {
+    const image = await renderImage(deps, session, frame.promptText, name, timings, emit, signal)
+    signal.throwIfAborted()
+    return await updateSession(deps.store, session.id, 'chain', (latest) => ({
+      ...latest,
+      frames: latest.frames.map((f) =>
+        f.image === null && f.promptText === frame.promptText
+          ? { ...f, image, ...(f.index === index && { timings }) }
+          : f
+      ),
+    }))
+  } catch (err) {
+    await removeImage(deps.store.dir(session.id), name)
+    throw err
+  }
+}
+
 export class UndoError extends Error {}
 
 /**
@@ -178,7 +215,7 @@ export async function undoLatestFrame(
     if (now.frames.length === 1) throw new UndoError("The Opening Frame can't be undone")
     return { ...now, frames: now.frames.slice(0, -1) }
   })
-  if (!updated.frames.some((t) => t.image === latest.image)) {
+  if (latest.image && !updated.frames.some((t) => t.image === latest.image)) {
     await Deno.remove(join(store.dir(session.id), latest.image)).catch(() => {})
     const made = [latest.upscaled, latest.scene?.file, latest.figure?.file, latest.lito?.file]
     for (const file of made) {

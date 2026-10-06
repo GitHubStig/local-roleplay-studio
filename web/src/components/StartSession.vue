@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import {
   getScenarios,
   getSettings,
@@ -45,15 +45,12 @@ const list = ref<ScenarioList | null>(null)
 const settings = ref<Settings | null>(null)
 const options = ref<SettingsOptions | null>(null)
 const loadError = ref('')
-/** A Chain renders every Frame and a Storyboard is for rendering: both need pictures on. */
+/**
+ * Every kind starts without pictures (they're rendered when they can be, and asked for); the Image
+ * Model is named only where they're on.
+ */
 const { on: featureOn } = useFeatures()
-const kinds = computed(() =>
-  KINDS.filter((k) => k.id === 'roleplay' || featureOn.value('images'))
-)
 const kind = ref<SessionKind>('roleplay')
-watch(kinds, (now) => {
-  if (!now.some((k) => k.id === kind.value)) kind.value = now[0].id
-}, { immediate: true })
 /** A Scenario's id, or `brief` to type one. */
 const selected = ref('')
 const brief = ref('')
@@ -118,7 +115,7 @@ function start() {
       <fieldset class="flex flex-wrap gap-3">
         <legend class="sr-only">Kind</legend>
         <label
-          v-for="k in kinds"
+          v-for="k in KINDS"
           :key="k.id"
           class="flex min-w-60 flex-1 cursor-pointer gap-3 rounded-lg border border-line bg-surface p-4 has-checked:border-fg"
         >
