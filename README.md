@@ -40,14 +40,17 @@ The vocabulary (Scenario, Session, Image Prompt, Frame, Action, …) is defined 
   (LM Studio, llama.cpp's server, vLLM, or a cloud service such as OpenRouter), chosen on the Text
   tab of Settings with its address and API key. See
   [ADR 0008](docs/adr/0008-own-text-client.md) for what it can't do that Ollama can.
-- **Ollama's context length** (the slider in Ollama's settings, or `OLLAMA_CONTEXT_LENGTH`) decides
-  how much of a Roleplay the Text Model sees. The app sends the whole history with every Reply and
-  doesn't set the context itself, and Ollama drops the oldest part of a prompt that's too long,
-  without an error. Ollama also reserves the context's memory when it loads the model, so too much
-  pushes the model off the GPU (on a 12 GB NVIDIA card, `mistral-nemo:12b` fell from 61 to 4.3
-  tokens/s at 128k). Set it as high as still fits (`ollama ps` should say `100% GPU`): 16k for a
-  12B model on a 12 GB card. What a 48 GB Mac should use is being measured
-  ([open threads](docs/open-threads.md)).
+- **Ollama's context length** (the slider in Ollama's settings, or `OLLAMA_CONTEXT_LENGTH`) matters
+  for GGUF models, the ones Ollama runs on Windows and Linux. The app sends a Roleplay's whole
+  history with every Reply (a 30-Frame Roleplay is 8–11k tokens, each exchange adds 220–310, so 200
+  Frames is about 65k) and doesn't set the context itself. When a chat doesn't fit, Ollama keeps the
+  system message, drops the oldest exchanges, and fills the context to the brim, so the Reply has no
+  room and fails ("ran past its length limit"). And Ollama reserves the context's memory when it
+  loads a GGUF model, so too much pushes it off the GPU (on a 12 GB NVIDIA card, `mistral-nemo:12b`
+  fell from 61 to 4.3 tokens/s at 128k). Set it as high as still fits (`ollama ps` should say
+  `100% GPU`): 16k for a 12B model on a 12 GB card. On a Mac, the MLX models (`gemma-4-26b-heretic`
+  and the other `safetensors` ones) ignore the slider: they read the whole prompt whatever it says,
+  and take memory only as a prompt grows (17 GB loaded, 23 GB at 67k tokens), so any setting works.
 - **mflux 0.21+** (the step cache and Fast need it): `uv tool install --managed-python --python 3.14 mflux`. (uv's own Python, kept apart from any other Python on the Mac; mflux runs on 3.10 or newer.)
 - **Models download on first use.** Each model (Image Models, the upscaler, the voice models,
   SHARP) is downloaded from Hugging Face into `~/.cache/huggingface` the first time it's needed,
