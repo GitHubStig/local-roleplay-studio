@@ -22,6 +22,9 @@ const props = withDefaults(
 defineEmits<{ queue: [kind: JobKind]; view: [kind: Made3d] }>()
 const { on: featureOn } = useFeatures()
 
+/** Which 3D can be made here: its Feature is on (what's made can always be viewed). */
+const available = (kind: Made3d) => featureOn.value(MADE3D_FEATURE[kind])
+
 /** A picture is there, or a job already queued will make one. */
 const pictured = () => !!props.frame.image || props.hasJob('render') || props.hasJob('picture')
 </script>
@@ -53,7 +56,7 @@ const pictured = () => !!props.frame.image || props.hasJob('render') || props.ha
   <Frame3dButtons
     :frame="frame"
     :disabled="(kind) => hasJob(kind)"
-    :available="(kind) => featureOn(MADE3D_FEATURE[kind])"
+    :available="available"
     :button-class="buttonClass"
     @make="(kind) => $emit('queue', kind)"
     @view="(kind) => $emit('view', kind)"
