@@ -167,7 +167,7 @@ under `/api/sessions/:id/roleplay/` ([ADR 0007](adr/0007-roleplay-is-a-conversat
    (or a new take) designs one from the new description. Designing and speaking are queued jobs
    (`voice`, `speak`) that wait their turn in the render queue, so a voice and an image never
    compete for memory. Undo removes the undone exchange's audio. The voice service
-   (`voice/serve.py`, mlx-audio) is a Python process the server starts on first use and talks to
+   (`python/voice/serve.py`, mlx-audio) is a Python process the server starts on first use and talks to
    over HTTP on localhost: Qwen3-TTS VoiceDesign designs, Higgs TTS 3 clones, one model loaded at a
    time and unloaded after a minute unused (it reloads in 2–3 s), its MLX cache cleared after
    every request. Lines carry no emotion tags: in testing they pulled
@@ -198,10 +198,10 @@ under `/api/sessions/:id/roleplay/` ([ADR 0007](adr/0007-roleplay-is-a-conversat
    buttons too, beside Upscale on the shown Frame, queued like a Roleplay's (below); as with the
    upscale, every Frame showing that picture shares what was made from it, and Undo deletes it only
    with the picture.
-   - **SHARP** (`server/scene.ts`, `scene/make.py`) turns the picture into about 1.2 million
+   - **SHARP** (`server/scene.ts`, `python/sharp/make.py`) turns the picture into about 1.2 million
      Gaussian splats (SHARP works at 1536 px, so the 2048 px upscale has more to give it; a scene
      made before its picture was upscaled offers **SHARP again from upscale**). SHARP peaks near
-     15 GB; each scene runs `uv run scene/make.py` once, like mflux once per picture, so the memory
+     15 GB; each scene runs `uv run python/sharp/make.py` once, like mflux once per picture, so the memory
      is freed when it's done (~11 s: 4 s loading, 6 s making). The scene is saved lossless
      (`scene-<index>-….ply`, ~63 MB) as `frame.scene`, with the picture it was made from (`from`)
      and what the viewer needs: the depth to orbit around (a quarter of the splats are nearer, so
@@ -209,15 +209,15 @@ under `/api/sessions/:id/roleplay/` ([ADR 0007](adr/0007-roleplay-is-a-conversat
      of view and an aspect), so the viewer opens on exactly the picture's view. It turns 15° or 30°
      either way, or back to the picture's view; dragging turns it freely. Esc, Close or a click outside the scene closes it, as in the picture viewer, but a turn let go past the scene's edge doesn't (VueUse's `onClickOutside`). SHARP invents what the
      picture never showed, so the further it turns, the more is made up. Its limits (a fixed
-     splat count, what turning shows) are in docs/research/image-to-3d.md.    - **TripoSplat** (`server/figure.ts`, `figure/make.py`; its code is vendored in
-     `figure/triposplat/`, MIT) cuts the person out of the picture, leaves the room behind, and
+     splat count, what turning shows) are in docs/research/image-to-3d.md.    - **TripoSplat** (`server/figure.ts`, `python/triposplat/make.py`; its code is vendored in
+     `python/triposplat/vendor/`, MIT) cuts the person out of the picture, leaves the room behind, and
      builds them whole, back included, as 524,288 Gaussians (past TripoSplat's cap of 262,144,
      which is only an input check): `frame.figure`, `figure-<index>-….ply`, ~34 MB. Anyone
      overlapping them takes parts of them away, and two people in the picture may come out as one;
      it's best with one person, unobstructed (docs/research/image-to-3d.md, "TripoSplat trial").
      ~75 s and ~11 GB. The viewer orbits a figure round its middle from the front, with turns to
      the sides and the back.
-   - **LiTo** (Apple, `figure/lito.py`, through mlx-spatial at a pinned commit) does the same job:
+   - **LiTo** (Apple, `python/lito/make.py`, through mlx-spatial at a pinned commit) does the same job:
      its button sits beside TripoSplat's, and its figure is kept apart (`frame.lito`,
      `lito-<index>-….ply`, its own job kind `lito`). The script cuts the person out with
      TripoSplat's BiRefNet (LiTo reads the picture's alpha), runs LiTo, and scales the result to

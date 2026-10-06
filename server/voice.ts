@@ -1,5 +1,5 @@
 /**
- * Voices for Roleplay Characters, from the voice service (`voice/serve.py`): a voice designed once
+ * Voices for Roleplay Characters, from the voice service (`python/voice/serve.py`): a voice designed once
  * from a description, then each line spoken by cloning it. The service is a Python process the
  * server starts the first time a voice is needed and keeps until it stops.
  */
@@ -47,11 +47,11 @@ export interface VoiceServiceOptions {
   port?: number
   /** How long the service may take to start; its first start installs its Python packages. */
   startLimitMs?: number
-  /** The command that starts it, given the port; `uv run voice/serve.py` unless a test says. */
+  /** The command that starts it, given the port; `uv run python/voice/serve.py` unless a test says. */
   command?: (port: number) => string[]
 }
 
-const SCRIPT = fromFileUrl(new URL('../voice/serve.py', import.meta.url))
+const SCRIPT = fromFileUrl(new URL('../python/voice/serve.py', import.meta.url))
 
 /** The voice service, started on first use. */
 export function voiceService(opts: VoiceServiceOptions = {}): VoiceEngine {

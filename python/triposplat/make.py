@@ -13,10 +13,10 @@
 # ///
 """
 Turns a picture of one person into a full 3D figure of Gaussian splats, back included, with
-TripoSplat (VAST, MIT; its code is in figure/triposplat/) on the GPU: the Mac's (MPS), or NVIDIA's
+TripoSplat (VAST, MIT; its code is in vendor/) on the GPU: the Mac's (MPS), or NVIDIA's
 (CUDA; torch then comes from PyTorch's CUDA index, as PyPI's is CPU-only on Windows). It cuts the
 person out first, so the room is left behind. The Deno server runs it once per figure
-(`uv run figure/make.py --image … --out ….ply`), as it runs SHARP once per scene. Measured
+(`uv run python/triposplat/make.py --image … --out ….ply`), as it runs SHARP once per scene. Measured
 2026-10-02 on an M5 Pro (docs/research/image-to-3d.md): ~3 s to load, 70-100 s to make, ~11 GB.
 
 Prints one line of JSON: the splat count, and how long it took. The figure stands on the origin,
@@ -73,7 +73,7 @@ def synchronize(dev):
 
 def make(image_path, out, gaussians):
     import torch
-    sys.path.insert(0, str(Path(__file__).parent / 'triposplat'))
+    sys.path.insert(0, str(Path(__file__).parent / 'vendor'))
     from triposplat import TripoSplatPipeline
 
     w = weights()

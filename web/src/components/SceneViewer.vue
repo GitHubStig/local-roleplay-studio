@@ -55,7 +55,7 @@ async function open(src: string) {
       import('three/addons/controls/OrbitControls.js'),
     ])
     if (props.src !== src || !canvas.value || !stage.value) return
-    // A figure stands on the origin, about one unit tall, facing +x (figure/make.py).
+    // A figure stands on the origin, about one unit tall, facing +x (python/triposplat/make.py).
     const figure = !!props.figure
     const pivot = figure ? 2 : props.pivot ?? 2
     const aspect = figure ? 3 / 4 : props.aspect ?? 1

@@ -16,8 +16,8 @@
 """
 Turns the person in a picture into a full 3D figure of Gaussian splats with Apple's LiTo, through
 mlx-spatial's MLX port (on the Mac's GPU). The person is cut out first with TripoSplat's BiRefNet
-(figure/triposplat/), and LiTo builds them from the cut-out, back included. The Deno server runs it
-once per figure (`uv run figure/lito.py --image … --out ….ply`), as it runs TripoSplat. Measured
+(python/triposplat/vendor/), and LiTo builds them from the cut-out, back included. The Deno server runs it
+once per figure (`uv run python/lito/make.py --image … --out ….ply`), as it runs TripoSplat. Measured
 2026-10-02 on an M5 Pro (docs/research/image-to-3d.md): about a minute, ~313k splats with full
 view-dependent colour (spherical harmonics to degree 3), ~78 MB.
 
@@ -66,7 +66,7 @@ def cut_out(image_path, rmbg_path, out_path):
     """The person on transparency, as LiTo reads them (it crops by the alpha itself)."""
     import torch
     from PIL import Image
-    sys.path.insert(0, str(Path(__file__).parent / 'triposplat'))
+    sys.path.insert(0, str(Path(__file__).parent.parent / 'triposplat' / 'vendor'))
     from triposplat import load_rmbg
     rmbg = load_rmbg(rmbg_path, device=torch.device('mps'), dtype=torch.float16)
     image = Image.open(image_path).convert('RGB')

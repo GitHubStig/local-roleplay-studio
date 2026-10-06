@@ -3,7 +3,7 @@
 # dependencies = ["numpy"]
 # ///
 """
-Builds the 3D demo's meshes from the 2D demo's pictures: runs SHARP (scene/make.py) on Frame 9 and
+Builds the 3D demo's meshes from the 2D demo's pictures: runs SHARP (python/sharp/make.py) on Frame 9 and
 on its edits (the bright lantern, Elara's half-closed and closed eyes), then splits the scene into
 a base and small region meshes that keep the original splats' positions and take only the edits'
 colours (SHARP read the brighter picture as slightly different depth, ~5% everywhere), and writes
@@ -24,7 +24,7 @@ PROPS = ['x', 'y', 'z', 'f_dc_0', 'f_dc_1', 'f_dc_2', 'opacity', 'scale_0', 'sca
 
 
 def sharp(picture, out):
-    subprocess.run(['uv', 'run', '--quiet', str(REPO / 'scene/make.py'), '--image', str(picture),
+    subprocess.run(['uv', 'run', '--quiet', str(REPO / 'python/sharp/make.py'), '--image', str(picture),
                     '--out', str(out)], check=True)
 
 

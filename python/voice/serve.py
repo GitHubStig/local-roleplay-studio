@@ -7,7 +7,7 @@
 # ///
 """
 The voice service: Roleplay Characters' voices, spoken locally with mlx-audio. The Deno server
-starts it (`uv run voice/serve.py`) the first time a voice is needed and talks to it over HTTP on
+starts it (`uv run python/voice/serve.py`) the first time a voice is needed and talks to it over HTTP on
 localhost. Measured 2026-09-30 (docs/models.md):
 
 - design: Qwen3-TTS VoiceDesign speaks a reference sentence in a voice built from a written

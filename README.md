@@ -69,26 +69,26 @@ The vocabulary (Scenario, Session, Image Prompt, Frame, Action, …) is defined 
   | SeedVR2 upscaler, 7B and 3B (Upscale, ~46 s to 2048 px) | `mflux-upscale-seedvr2 --model seedvr2-7b --image-path /tmp/x.png --resolution 2048 --output /tmp/y.png` (one download holds both) |
 
 - **Voices (optional), for Roleplay Characters:** [uv](https://docs.astral.sh/uv/) runs the voice
-  service (`voice/serve.py`), which installs its own Python packages (mlx-audio, torch) on first
+  service (`python/voice/serve.py`), which installs its own Python packages (mlx-audio, torch) on first
   use, and its two models (about 12 GB: Qwen3-TTS VoiceDesign and Higgs TTS 3) the first time
-  each is needed; `uv run voice/serve.py --download` fetches both ahead of time.
+  each is needed; `uv run python/voice/serve.py --download` fetches both ahead of time.
   Apple Silicon Macs only (mlx-audio).
-- **2.5D scenes (optional), for Roleplay and Chain pictures:** uv runs Apple's SHARP (`scene/make.py`), which
+- **2.5D scenes (optional), for Roleplay and Chain pictures:** uv runs Apple's SHARP (`python/sharp/make.py`), which
   installs its own Python packages (torch) on first use, and its weights (2.8 GB, from Hugging
   Face's [apple/Sharp](https://huggingface.co/apple/Sharp)) with the first scene;
-  `uv run scene/make.py --download` fetches them ahead of time. They're under Apple's
+  `uv run python/sharp/make.py --download` fetches them ahead of time. They're under Apple's
   research-only model license: fine for playing at home, not for anything commercial.
   Runs on an Apple Silicon Mac's GPU or an NVIDIA one (CUDA, on Windows or Linux).
-- **3D figures (optional), for the person in a Roleplay or Chain picture:** uv runs TripoSplat (`figure/make.py`; its code is
-  in `figure/triposplat/`, MIT), which installs its own Python packages (torch) on first use, and
+- **3D figures (optional), for the person in a Roleplay or Chain picture:** uv runs TripoSplat (`python/triposplat/make.py`; its code is
+  in `python/triposplat/vendor/`, MIT), which installs its own Python packages (torch) on first use, and
   its weights (4.2 GB, Hugging Face's [VAST-AI/TripoSplat](https://huggingface.co/VAST-AI/TripoSplat))
-  with the first figure; `uv run figure/make.py --download` fetches them ahead of time.
+  with the first figure; `uv run python/triposplat/make.py --download` fetches them ahead of time.
   Runs on an Apple Silicon Mac's GPU or an NVIDIA one.
-- **LiTo figures (optional):** uv runs Apple's LiTo through mlx-spatial (`figure/lito.py`, Python
+- **LiTo figures (optional):** uv runs Apple's LiTo through mlx-spatial (`python/lito/make.py`, Python
   3.13, fetched by uv), cutting the person out with TripoSplat's BiRefNet first. Its weights (4.4 GB,
   [appautomaton/lito-research-mlx](https://huggingface.co/appautomaton/lito-research-mlx), Apple's
   research-only, non-commercial license) download with the first figure;
-  `uv run figure/lito.py --download` fetches them ahead of time.
+  `uv run python/lito/make.py --download` fetches them ahead of time.
   Apple Silicon Macs only (mlx-spatial is MLX).
 - **Saved quantized copies** of Image Models (with Quantize on in Settings) are made by the app on
   first use, 13–22 GB each, in `models/quantized/` in this folder (gitignored); Settings lists them
@@ -152,9 +152,11 @@ server/           Deno API: Sessions, the Frame and Roleplay engines, the job qu
 server/text/      The Text backends (Ollama, OpenAI-compatible) behind one Chat interface
 server/prompts/   What the language model is told, one Markdown file each
 web/              Vue 3 + Vite + Tailwind 4 web app
-voice/            The voice service (mlx-audio), run by uv
-scene/            SHARP: a picture as a 2.5D scene
-figure/           TripoSplat and LiTo: the person in a picture as a 3D figure
+python/           What uv runs, each in its own folder with its packages pinned in the file:
+  voice/          the voice service (mlx-audio)
+  sharp/          Apple's SHARP: a picture as a 2.5D scene
+  triposplat/     TripoSplat: the person in a picture as a 3D figure (VAST's code in vendor/)
+  lito/           Apple's LiTo, through mlx-spatial: the same, another way
 docs/             Design, models, research, Scenario format, ADRs and open threads
 CONTEXT.md        Glossary of the game's terms
 ```

@@ -20,7 +20,7 @@
 Turns one picture into a 3D scene of Gaussian splats with Apple's SHARP, on the GPU: the Mac's
 (MPS), or NVIDIA's (CUDA; torch then comes from PyTorch's CUDA index, as PyPI's is CPU-only on
 Windows).
-The Deno server runs it once per scene (`uv run scene/make.py --image … --out ….ply`), as it
+The Deno server runs it once per scene (`uv run python/sharp/make.py --image … --out ….ply`), as it
 runs mflux once per picture, so the ~15 GB it peaks at is freed as soon as it's done. Measured
 2026-10-01 on an M5 Pro (docs/research/image-to-3d.md): ~15 s to load, ~4 s per picture,
 1,179,648 splats in a 63 MB `.ply`.
