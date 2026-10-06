@@ -1,6 +1,6 @@
 import type { Chat } from './chat.ts'
-import { ollamaBackend } from './ollama.ts'
-import { openAiBackend } from './openAi.ts'
+import { ollamaBackend } from './ollama/ollama.ts'
+import { openAiBackend } from './openai/openai.ts'
 
 /**
  * Where the Text Model runs: Ollama's own API, or any server with the OpenAI chat API (LM Studio,

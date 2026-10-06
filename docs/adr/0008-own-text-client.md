@@ -16,9 +16,9 @@ It returns the reply and any reasoning, as they stream. `TextModel` (`textModel.
 
 Two backends implement it (`backend.ts`):
 
-- **Ollama**, on its own API (`ollama.ts`). It has the thinking switch, model capabilities (which
+- **Ollama**, on its own API (`ollama/`). It has the thinking switch, model capabilities (which
   models can think), and unloading before a render, which its OpenAI API doesn't.
-- **An OpenAI-compatible server** (`openAi.ts`): LM Studio, llama.cpp's server, vLLM, OpenAI,
+- **An OpenAI-compatible server** (`openai/`): LM Studio, llama.cpp's server, vLLM, OpenAI,
   OpenRouter. It uses `/chat/completions` with `response_format: json_schema`, and `/models`.
   - Fields outside the API's core are dropped one at a time when a server names one in a refusal,
     and stay dropped: `reasoning_effort`, `repeat_penalty` and `repeat_last_n`, and `max_tokens`
@@ -52,7 +52,7 @@ The backend, its address and the model are Settings, copied into each Session as
 
 ## Consequences
 
-- To move to a library, write one `Chat` implementation on it (a new file in `server/text/`) and
+- To move to a library, write one `Chat` implementation on it (a new folder in `server/text/`) and
   pick it in `backend.ts`. Nothing outside the folder changes.
 - A cloud service can refuse a dark Roleplay that a local uncensored model plays, and its own
   content rules apply on top of the Limits.

@@ -1,6 +1,6 @@
 import { assertEquals } from '@std/assert'
 import { briefScenario } from '../scenario.ts'
-import { ollamaChat } from '../text/ollama.ts'
+import { ollamaChat } from '../text/ollama/ollama.ts'
 import { chatRoleplayModel } from './model.ts'
 import { testCast } from './testing.ts'
 

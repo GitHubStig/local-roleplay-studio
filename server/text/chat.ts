@@ -1,6 +1,6 @@
 /**
- * The one way the app talks to a Text Model: a streamed chat call. Every Text backend (`ollama.ts`,
- * `openAi.ts`) implements `Chat`, and nothing outside this folder knows which one it has, so a
+ * The one way the app talks to a Text Model: a streamed chat call. Every Text backend (`ollama/`,
+ * `openai/`) implements `Chat`, and nothing outside this folder knows which one it has, so a
  * backend (or this whole folder, for a library) can be swapped without touching the rest.
  */
 

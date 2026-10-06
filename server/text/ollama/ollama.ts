@@ -1,6 +1,6 @@
-import type { TextBackend, TextModelInfo } from './backend.ts'
-import { type Chat, LENGTH_LIMIT_ERROR, THINKING_TOKENS } from './chat.ts'
-import { ndjson } from './streams.ts'
+import type { TextBackend, TextModelInfo } from '../backend.ts'
+import { type Chat, LENGTH_LIMIT_ERROR, THINKING_TOKENS } from '../chat.ts'
+import { ndjson } from '../streams.ts'
 
 /**
  * Ollama, through its own API rather than its OpenAI one: it has the thinking switch, model

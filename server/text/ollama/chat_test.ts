@@ -1,6 +1,6 @@
 import { assertEquals, assertRejects } from '@std/assert'
-import { chatTextModel, type TextModelOptions } from '../textModel.ts'
-import { promptWith, testScenario } from '../testing.ts'
+import { chatTextModel, type TextModelOptions } from '../../textModel.ts'
+import { promptWith, testScenario } from '../../testing.ts'
 import { ollamaChat } from './ollama.ts'
 
 /** A Chain's Text Model on an Ollama at `baseUrl`. */

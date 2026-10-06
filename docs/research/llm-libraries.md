@@ -75,7 +75,7 @@ official [`openai`](https://github.com/openai/openai-node) client were also look
 Our own client, behind one small interface: [ADR 0008](../adr/0008-own-text-client.md). The client is
 about 200 lines for both APIs. It keeps Ollama on its own API (thinking, capabilities and
 unloading), and handles the differences found so far between servers in one place
-(`server/text/openAi.ts`). The interface (`Chat` in `server/text/chat.ts`) is what the rest of the
+(`server/text/openai/`). The interface (`Chat` in `server/text/chat.ts`) is what the rest of the
 app sees, so a library could later replace the client by implementing that interface in one file.
 
 **Switch to the AI SDK** if the backends multiply past what the fallbacks handle: a provider that

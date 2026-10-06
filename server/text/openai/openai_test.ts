@@ -1,8 +1,8 @@
 import { assertEquals, assertRejects } from '@std/assert'
-import { chatRoleplayModel } from '../roleplay/model.ts'
-import { chatTextModel } from '../textModel.ts'
-import { promptWith, testScenario } from '../testing.ts'
-import { openAiBackend } from './openAi.ts'
+import { chatRoleplayModel } from '../../roleplay/model.ts'
+import { chatTextModel } from '../../textModel.ts'
+import { promptWith, testScenario } from '../../testing.ts'
+import { openAiBackend } from './openai.ts'
 
 interface Seen {
   path: string

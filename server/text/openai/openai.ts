@@ -1,6 +1,6 @@
-import type { TextBackend, TextModelInfo } from './backend.ts'
-import { type Chat, LENGTH_LIMIT_ERROR, THINKING_TOKENS } from './chat.ts'
-import { sseData } from './streams.ts'
+import type { TextBackend, TextModelInfo } from '../backend.ts'
+import { type Chat, LENGTH_LIMIT_ERROR, THINKING_TOKENS } from '../chat.ts'
+import { sseData } from '../streams.ts'
 
 /**
  * Any server with the OpenAI chat API: LM Studio, llama.cpp's server, vLLM, Ollama's `/v1`, and
