@@ -13,6 +13,7 @@ import {
 } from 'vue'
 import { onBeforeRouteLeave, useRouter } from 'vue-router'
 import { clearCurrentSession, setCurrentSession } from '../composables/useCurrentSession'
+import ComposeBox from '../components/ComposeBox.vue'
 import FrameImage from '../components/FrameImage.vue'
 import Frame3dButtons from '../components/Frame3dButtons.vue'
 import Frame3dViewers from '../components/Frame3dViewers.vue'
@@ -265,13 +266,6 @@ function submit() {
   if (action && !busy.value && !viewingOlder.value) runChainFrame(action)
 }
 
-function onKeydown(e: KeyboardEvent) {
-  if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
-    e.preventDefault()
-    submit()
-  }
-}
-
 async function cancel() {
   if (pending.value) pending.value = { ...pending.value, cancelling: true }
   await cancelFrame(props.id)
@@ -493,19 +487,19 @@ const promptDiff = computed(() => {
             <textarea
               v-if="viewingOlder"
               :value="shown!.action ?? ''"
-              class="h-24 flex-1 cursor-default resize-none rounded-lg border border-dashed border-line bg-canvas p-3 text-muted"
+              rows="3"
+              class="flex-1 cursor-default resize-none rounded-lg border border-dashed border-line bg-canvas p-3 text-muted"
               placeholder="The Opening Frame has no Action."
               readonly
               :aria-label="`The Action sent on ${frameName(shown!.index)}`"
               data-past-action
             />
-            <textarea
+            <ComposeBox
               v-else
               v-model="draft"
-              class="h-24 flex-1 resize-none rounded-lg border border-line bg-surface p-3 disabled:opacity-60"
               placeholder="What to change… (Enter to send, Shift+Enter for a new line)"
               :disabled="busy"
-              @keydown="onKeydown"
+              @send="submit"
             />
           </div>
           <div class="flex items-center gap-2">

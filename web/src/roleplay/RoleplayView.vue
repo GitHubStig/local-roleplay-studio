@@ -17,6 +17,7 @@ import { clearCurrentSession, setCurrentSession } from '../composables/useCurren
 import { useStoredFlag } from '../composables/useStoredFlag'
 import { useStoredText } from '../composables/useStoredText'
 import CollapsibleTextarea from '../components/CollapsibleTextarea.vue'
+import ComposeBox from '../components/ComposeBox.vue'
 import Frame3dButtons from '../components/Frame3dButtons.vue'
 import Frame3dViewers from '../components/Frame3dViewers.vue'
 import FrameViewer from '../components/FrameViewer.vue'
@@ -388,13 +389,6 @@ async function suggest() {
       onEvent(event)
     }))
   if (!suggested) draft.value = typed
-}
-
-function onKeydown(e: KeyboardEvent) {
-  if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
-    e.preventDefault()
-    send()
-  }
 }
 
 async function cancel() {
@@ -808,13 +802,11 @@ async function saveCastDraft(): Promise<boolean> {
             :data-writing="replying ? '' : undefined"
             :data-suggesting="suggesting ? '' : undefined"
           >
-            <textarea
+            <ComposeBox
               v-model="draft"
-              rows="5"
-              class="flex-1 resize-none rounded-lg border border-line bg-surface p-3 disabled:opacity-60"
               :placeholder="`What ${personaName} says or does… (Enter to send, Shift+Enter for a new line)`"
               :disabled="!begun || busy"
-              @keydown="onKeydown"
+              @send="send"
             />
           </div>
           <div class="flex items-center gap-2">

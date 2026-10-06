@@ -259,7 +259,7 @@ describe('StoryboardView', () => {
     vi.mocked(api.saveLook).mockResolvedValue(storyboard([frame(0), frame(1), frame(2)]))
     const { wrapper } = await mountIt()
 
-    await wrapper.find('[data-body]').setValue('New body.')
+    await wrapper.find('[data-field="storyboard.frame"]').setValue('New body.')
     expect(buttonNamed(wrapper, 'Save Frame 1').exists()).toBe(true)
     await wrapper.find('[data-frame-editor]').trigger('submit')
     await flushPromises()
@@ -279,7 +279,7 @@ describe('StoryboardView', () => {
   it('shows why a hand edit was refused', async () => {
     vi.mocked(api.saveFrameBody).mockRejectedValue(new Error('This crosses a limit: no minors'))
     const { wrapper } = await mountIt()
-    await wrapper.find('[data-body]').setValue('A child.')
+    await wrapper.find('[data-field="storyboard.frame"]').setValue('A child.')
     await wrapper.find('[data-frame-editor]').trigger('submit')
     await flushPromises()
     expect(wrapper.find('[role=alert]').text()).toBe('This crosses a limit: no minors')

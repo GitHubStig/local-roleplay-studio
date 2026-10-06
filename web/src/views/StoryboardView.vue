@@ -22,6 +22,8 @@ import {
   type StoryboardFrame,
   type StoryboardSession,
 } from '../api'
+import CollapsibleTextarea from '../components/CollapsibleTextarea.vue'
+import ComposeBox from '../components/ComposeBox.vue'
 import FrameImage from '../components/FrameImage.vue'
 import FrameViewer from '../components/FrameViewer.vue'
 import { useFeatures } from '../composables/useFeatures'
@@ -263,13 +265,6 @@ async function sendAction() {
     }))
 }
 
-function onKeydown(e: KeyboardEvent) {
-  if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
-    e.preventDefault()
-    sendAction()
-  }
-}
-
 /** Hand edits: the selected Frame's sentences, and the Look. Reset when the source changes. */
 const bodyDraft = ref('')
 const lookDraft = ref<Look>({ subject: '', style: '' })
@@ -410,14 +405,13 @@ const imagesOn = computed(() => featureOn.value('images'))
             :class="{ 'render-sweep': editingHere }"
             :data-writing="editingHere ? '' : undefined"
           >
-            <textarea
+            <ComposeBox
               v-model="draft"
-              class="h-20 flex-1 resize-none rounded-lg border border-line bg-surface p-3 disabled:opacity-60"
               :placeholder="current
               ? `What to change in Frame ${current.index + 1}… (Enter to send, Shift+Enter for a new line)`
               : 'Frames can be edited once the plan is written.'"
               :disabled="busy || !current"
-              @keydown="onKeydown"
+              @send="sendAction"
             />
           </div>
           <div class="flex flex-wrap items-center gap-2">
@@ -561,24 +555,20 @@ const imagesOn = computed(() => featureOn.value('images'))
           <div class="flex flex-1 flex-col gap-4 overflow-y-auto p-4 text-sm" role="tabpanel">
             <p v-if="!look" class="text-muted">The Look and Frames appear as the plan is written.</p>
 
-            <form v-else class="flex flex-col gap-2" data-look @submit.prevent="saveLookDraft">
+            <form v-else class="flex min-w-0 flex-col gap-2" data-look @submit.prevent="saveLookDraft">
               <h3 class="font-medium">Look <span class="font-normal text-muted">· every Frame</span></h3>
-              <label class="flex flex-col gap-1 text-xs text-muted">
-                Subject and identity
-                <textarea
-                  v-model="lookDraft.subject"
-                  class="h-16 resize-y rounded border border-line bg-surface p-2 text-sm text-fg"
-                  :disabled="busy"
-                />
-              </label>
-              <label class="flex flex-col gap-1 text-xs text-muted">
-                Art style and medium
-                <textarea
-                  v-model="lookDraft.style"
-                  class="h-16 resize-y rounded border border-line bg-surface p-2 text-sm text-fg"
-                  :disabled="busy"
-                />
-              </label>
+              <CollapsibleTextarea
+                id="storyboard.look.subject"
+                v-model="lookDraft.subject"
+                label="Subject and identity"
+                :disabled="busy"
+              />
+              <CollapsibleTextarea
+                id="storyboard.look.style"
+                v-model="lookDraft.style"
+                label="Art style and medium"
+                :disabled="busy"
+              />
               <button
                 v-if="lookChanged"
                 type="submit"
@@ -589,7 +579,7 @@ const imagesOn = computed(() => featureOn.value('images'))
               </button>
             </form>
 
-            <form v-if="current" class="flex flex-col gap-2" data-frame-editor @submit.prevent="saveBody">
+            <form v-if="current" class="flex min-w-0 flex-col gap-2" data-frame-editor @submit.prevent="saveBody">
               <h3 class="font-medium">
                 Frame {{ current.index + 1 }}
                 <span class="font-normal text-muted">· {{ current.beat }}</span>
@@ -600,11 +590,11 @@ const imagesOn = computed(() => featureOn.value('images'))
               <p v-if="current.blocked" class="text-xs text-danger">
                 Crosses a limit ({{ current.blocked }}): edit it before rendering.
               </p>
-              <textarea
+              <CollapsibleTextarea
+                id="storyboard.frame"
                 v-model="bodyDraft"
-                class="h-48 resize-y rounded border border-line bg-surface p-2 text-sm"
+                label="The Frame's seven sentences"
                 :disabled="busy"
-                data-body
               />
               <button
                 v-if="bodyChanged"
