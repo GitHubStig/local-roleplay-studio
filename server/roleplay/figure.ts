@@ -32,8 +32,8 @@ export type FigureEvent<S = FiguredSession> =
 /** Which model makes a figure, and where on the Frame it's kept. */
 export type FigureModel = 'triposplat' | 'lito'
 export const FIGURE_MODELS = {
-  triposplat: { key: 'figure', prefix: 'figure', off: '3D figures are off (FIGURES=off)' },
-  lito: { key: 'lito', prefix: 'lito', off: 'LiTo figures are off (LITO=off)' },
+  triposplat: { key: 'figure', prefix: 'figure', off: "TripoSplat isn't set up on this server" },
+  lito: { key: 'lito', prefix: 'lito', off: "LiTo isn't set up on this server" },
 } as const
 
 export class FigureError extends Error {}

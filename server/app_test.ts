@@ -10,6 +10,7 @@ import type { TextModel } from './textModel.ts'
 import type { RoleplayModel } from './roleplay/model.ts'
 import { fakeFigureMaker, type FigureMaker } from './figure.ts'
 import { fakeSceneMaker, type SceneMaker } from './scene.ts'
+import type { Availabilities } from './features.ts'
 import { fakeVoiceEngine, type VoiceEngine } from './voice.ts'
 import { type QuantizedStore, quantizedStore } from './quantized.ts'
 import { findImageModel } from './imageModels.ts'
@@ -52,6 +53,8 @@ interface SetupOptions {
   lito?: FigureMaker
   quantized?: QuantizedStore
   settings?: Partial<Settings>
+  /** What this "machine" can run; left out, whatever backends are given. */
+  features?: Availabilities
 }
 
 function setup(opts: SetupOptions = {}) {
@@ -77,6 +80,7 @@ function setup(opts: SetupOptions = {}) {
     figure: opts.figure,
     lito: opts.lito,
     quantized: opts.quantized,
+    features: opts.features,
     newSessionId: () => `s${++sessionCount}`,
     randomSeed: () => 1234,
   })
@@ -731,16 +735,51 @@ Deno.test("A Chain carries on while a job runs, and Undo cancels the undone Fram
     assertEquals(lito.made.length, 1)
   }))
 
-Deno.test('A Chain job without its model fails with the reason, to retry or dismiss', () =>
+Deno.test('A Chain job whose Feature is off is refused, saying why', () =>
   withTempDir(async (root) => {
-    const { call } = await chainOfTwo(root)
-    await call('POST', '/api/sessions/s1/jobs', { kind: 'scene', frameIndex: 0 })
-    await call('POST', '/api/sessions/s1/jobs', { kind: 'lito', frameIndex: 0 })
-    const failed = await settled(call)
-    assertEquals(failed.map((j: { error: string }) => j.error), [
-      '3D scenes are off (SCENES=off)',
-      'LiTo figures are off (LITO=off)',
-    ])
+    const { call, settings } = await chainOfTwo(root, { figure: fakeFigureMaker() })
+    const queue = async (kind: string) => {
+      const res = await call('POST', '/api/sessions/s1/jobs', { kind, frameIndex: 0 })
+      return [res.status, (await res.json()).error]
+    }
+    // Not set up here (on Windows, say).
+    assertEquals(await queue('lito'), [409, "LiTo isn't available here: No LiTo was set up"])
+    // Set up, but switched off in Settings.
+    settings.current = {
+      ...settings.current,
+      features: { ...settings.current.features, figures: false },
+    }
+    assertEquals(await queue('figure'), [409, 'TripoSplat is switched off in Settings'])
+    assertEquals(await settled(call), [])
+  }))
+
+Deno.test("Without pictures, Chains and Storyboards can't start, but a Roleplay can", () =>
+  withTempDir(async (root) => {
+    const { call } = setup({
+      root,
+      settings: { textModel: 'x' },
+      features: {
+        images: { available: false, reason: 'mflux runs only on Apple Silicon Macs' },
+        voices: { available: false, reason: 'x' },
+        scenes: { available: false, reason: 'x' },
+        figures: { available: false, reason: 'x' },
+        lito: { available: false, reason: 'x' },
+      },
+    })
+    for (const kind of ['chain', 'storyboard']) {
+      const res = await call('POST', '/api/sessions', { kind, brief: 'A rainy street.' })
+      assertEquals([res.status, (await res.json()).error], [
+        409,
+        "Pictures isn't available here: mflux runs only on Apple Silicon Macs",
+      ])
+    }
+    const roleplay = await call('POST', '/api/sessions', {
+      kind: 'roleplay',
+      brief: 'A rainy street.',
+    })
+    assertEquals(roleplay.status, 201)
+    const options = await (await call('GET', '/api/settings/options')).json()
+    assertEquals(options.features.images.available, false)
   }))
 
 Deno.test('A failed upscale leaves the Frame as it was', () =>
@@ -1123,9 +1162,11 @@ Deno.test("Speaking a Frame designs the Character's voice first, and serves the 
 Deno.test('Without a voice service, speaking fails with a reason', () =>
   withTempDir(async (root) => {
     const { call } = await roleplayWithArt(root, [])
-    await call('POST', '/api/sessions/s1/jobs', { kind: 'speak', frameIndex: 0 })
-    const [failed] = await settled(call)
-    assertMatch(failed.error, /aren't available/)
+    const res = await call('POST', '/api/sessions/s1/jobs', { kind: 'speak', frameIndex: 0 })
+    assertEquals([res.status, (await res.json()).error], [
+      409,
+      "Voices isn't available here: No voice service was set up",
+    ])
   }))
 
 Deno.test('A rendered Frame makes a 3D scene, served; a re-render or Undo removes it', () =>
@@ -1238,12 +1279,12 @@ Deno.test('A LiTo figure is kept beside the TripoSplat one, served, and goes wit
 Deno.test('Without SHARP, making a scene fails with a reason', () =>
   withTempDir(async (root) => {
     const { call } = await roleplayWithArt(root, [artBody])
-    for (const kind of ['picture', 'render', 'scene']) {
+    for (const kind of ['picture', 'render']) {
       await call('POST', '/api/sessions/s1/jobs', { kind, frameIndex: 0 })
       await settled(call)
     }
-    const [failed] = await settled(call)
-    assertMatch(failed.error, /3D scenes are off/)
+    const res = await call('POST', '/api/sessions/s1/jobs', { kind: 'scene', frameIndex: 0 })
+    assertEquals((await res.json()).error, "SHARP isn't available here: No SHARP was set up")
   }))
 
 Deno.test('Pictures use the Art Agent model set in Settings, recorded on the Frame', () =>

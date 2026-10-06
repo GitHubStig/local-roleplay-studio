@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import * as api from '../api'
 import { useCurrentSession } from '../composables/useCurrentSession'
+import { useFeatures } from '../composables/useFeatures'
+import { ALL_AVAILABLE, ALL_ON } from '../testing'
 import * as roleplay from './api'
 import RoleplayView from './RoleplayView.vue'
 
@@ -10,6 +12,8 @@ vi.mock('../api', async (importOriginal) => ({
   ...(await importOriginal<typeof api>()),
   getSession: vi.fn(),
   cancelFrame: vi.fn(),
+  getSettings: vi.fn(),
+  getSettingsOptions: vi.fn(),
   listJobs: vi.fn(),
   queueJob: vi.fn(),
   cancelJob: vi.fn(),
@@ -603,6 +607,42 @@ describe('RoleplayView', () => {
     expect(api.retryJob).toHaveBeenCalledWith('r1', 'j3')
     expect(wrapper.find('[data-queue-item]').text()).toContain('Queued')
     expect(wrapper.find('[data-frame-job] [data-retry]').exists()).toBe(false)
+  })
+
+  it("hides what's off: voices, pictures and SHARP here, keeping TripoSplat", async () => {
+    const off = (reason: string) => ({ available: false, reason })
+    vi.mocked(api.getSettingsOptions).mockResolvedValue({
+      features: { ...ALL_AVAILABLE, voices: off('mlx-audio'), images: off('mflux') },
+    } as api.SettingsOptions)
+    vi.mocked(api.getSettings).mockResolvedValue({
+      features: { ...ALL_ON, scenes: false },
+    } as api.Settings)
+    await useFeatures().refreshFeatures()
+    const rendered = { ...frame(0, null, 'Get inside.'), image: 'frame-0-aaaaaaaa.png' }
+    vi.mocked(api.getSession).mockResolvedValue(roleplaySession([rendered]))
+    const { wrapper } = await mountIt()
+    for (
+      const gone of [
+        '[data-autoplay]',
+        '[data-listen]',
+        '[data-picture-button]',
+        '[data-render-button]',
+        '[data-upscale-button]',
+        '[data-scene-button]',
+        'form[data-voice]',
+      ]
+    ) {
+      expect([gone, wrapper.find(gone).exists()]).toEqual([gone, false])
+    }
+    expect(wrapper.find('[data-figure-button]').exists()).toBe(true)
+    // The picture it already has still opens.
+    expect(wrapper.find('[data-picture-image]').exists()).toBe(true)
+    // Everything back on, for the other tests.
+    vi.mocked(api.getSettingsOptions).mockResolvedValue(
+      { features: ALL_AVAILABLE } as api.SettingsOptions,
+    )
+    vi.mocked(api.getSettings).mockResolvedValue({ features: ALL_ON } as api.Settings)
+    await useFeatures().refreshFeatures()
   })
 
   it('offers each picture in 3D by model: SHARP for the scene, TripoSplat and LiTo for the person', async () => {

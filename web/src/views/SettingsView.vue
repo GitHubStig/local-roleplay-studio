@@ -11,12 +11,24 @@ import {
   type Settings,
   type SettingsOptions,
 } from '../api'
+import FeatureSwitch from '../components/FeatureSwitch.vue'
+import { useFeatures } from '../composables/useFeatures'
 
 const form = ref<Settings | null>(null)
 const options = ref<SettingsOptions | null>(null)
 const loadError = ref('')
 const saving = ref(false)
 const status = ref<{ kind: 'saved' | 'error'; message: string; issues?: string[] } | null>(null)
+
+/** The Settings, a tab per part of the app: the Text Model's, and each extra's. */
+const TABS = [
+  { id: 'text', label: 'Text' },
+  { id: 'images', label: 'Images' },
+  { id: 'voice', label: 'Voice' },
+  { id: '3d', label: '3D' },
+] as const
+const tab = ref<(typeof TABS)[number]['id']>('text')
+const { refreshFeatures } = useFeatures()
 
 const quantizeChoices = [
   { value: null, label: 'None (full precision)' },
@@ -81,6 +93,7 @@ async function save() {
   status.value = null
   try {
     form.value = await saveSettings(form.value)
+    await refreshFeatures()
     status.value = { kind: 'saved', message: 'Saved. Applies from the next Session.' }
   } catch (err) {
     status.value = {
@@ -103,179 +116,271 @@ async function save() {
       <p v-else-if="!form || !options" class="text-muted">Loading…</p>
 
       <form v-else class="flex flex-col gap-5" @submit.prevent="save">
-        <label class="flex flex-col gap-1">
-          <span class="text-sm text-muted">Text Model</span>
-          <select v-model="form.textModel" class="field">
-            <option value="" disabled>Choose an Ollama model…</option>
-            <option v-for="m in textModelChoices" :key="m" :value="m">{{ m }}</option>
-          </select>
-          <span v-if="options.textModelsError" class="text-sm text-warn">
-            {{ options.textModelsError }}
-          </span>
-        </label>
+        <div class="flex border-b border-line" role="tablist" data-settings-tabs>
+          <button
+            v-for="t in TABS"
+            :key="t.id"
+            type="button"
+            role="tab"
+            class="px-4 py-2 text-muted aria-selected:border-b-2 aria-selected:border-fg aria-selected:font-medium aria-selected:text-fg"
+            :aria-selected="tab === t.id"
+            :data-tab="t.id"
+            @click="tab = t.id"
+          >
+            {{ t.label }}
+          </button>
+        </div>
 
-        <label class="flex items-start gap-2">
-          <input v-model="form.thinking" type="checkbox" class="mt-1" :disabled="!canThink" />
-          <span class="flex flex-col gap-0.5">
-            <span>Thinking</span>
-            <span class="text-sm text-muted">
-              The Text Model reasons before answering, and you can watch it. Often more
-              accurate, but each Frame takes longer.
-              <template v-if="form.textModel && !canThink">
-                {{ form.textModel }} can't think.
-              </template>
-            </span>
-          </span>
-        </label>
-
-        <label class="flex flex-col gap-1">
-          <span class="text-sm text-muted">Image Model</span>
-          <select v-model="form.imageModel" class="field" @change="onImageModelChange">
-            <option v-for="m in options.imageModels" :key="m.id" :value="m.id">
-              {{ m.label }}
-            </option>
-          </select>
-        </label>
-
-        <label v-if="imageModel?.fastSteps" class="flex items-start gap-2" data-fast>
-          <input v-model="form.fast" type="checkbox" class="mt-1" />
-          <span class="flex flex-col gap-0.5">
-            <span>Fast</span>
-            <span class="text-sm text-muted">
-              Renders in {{ imageModel.fastSteps }} steps with a turbo LoRA (downloaded the first
-              time, 1.3 GB): about 3× faster, a little smoother and less painterly.
-            </span>
-          </span>
-        </label>
-
-        <div class="grid grid-cols-2 gap-4">
+        <section
+          v-show="tab === 'text'"
+          class="flex flex-col gap-5"
+          role="tabpanel"
+          data-tab-panel="text"
+        >
           <label class="flex flex-col gap-1">
-            <span class="text-sm text-muted">Steps</span>
-            <input
-              v-if="fastOn"
-              :value="imageModel?.fastSteps"
-              type="number"
-              class="field"
-              disabled
-              title="Fast mode sets the steps"
-            />
-            <input v-else v-model.number="form.steps" type="number" min="1" max="100" class="field" />
+            <span class="text-sm text-muted">Text Model</span>
+            <select v-model="form.textModel" class="field">
+              <option value="" disabled>Choose an Ollama model…</option>
+              <option v-for="m in textModelChoices" :key="m" :value="m">{{ m }}</option>
+            </select>
+            <span v-if="options.textModelsError" class="text-sm text-warn">
+              {{ options.textModelsError }}
+            </span>
           </label>
+
+          <label class="flex items-start gap-2">
+            <input v-model="form.thinking" type="checkbox" class="mt-1" :disabled="!canThink" />
+            <span class="flex flex-col gap-0.5">
+              <span>Thinking</span>
+              <span class="text-sm text-muted">
+                The Text Model reasons before answering, and you can watch it. Often more
+                accurate, but each Frame takes longer.
+                <template v-if="form.textModel && !canThink">
+                  {{ form.textModel }} can't think.
+                </template>
+              </span>
+            </span>
+          </label>
+
           <label class="flex flex-col gap-1">
-            <span class="text-sm text-muted">Quantize</span>
-            <select v-model="form.quantize" class="field">
-              <option v-for="q in quantizeChoices" :key="String(q.value)" :value="q.value">
-                {{ q.label }}
-              </option>
+            <span class="text-sm text-muted">Art Agent model</span>
+            <select v-model="form.artModel" class="field" data-art-model>
+              <option value="">Same as the Text Model</option>
+              <option v-for="m in textModelChoices" :key="m" :value="m">{{ m }}</option>
             </select>
             <span class="text-sm text-muted">
-              Saved as a smaller copy the first time a model renders with it (about 10 s), then
-              loaded directly: about 8 GB less memory on the larger models.
+              Pictures Roleplay Frames (Thinking off); applies to the next picture, in running
+              Sessions too.
             </span>
           </label>
-        </div>
 
-        <label v-if="imageModel?.stepCache && !fastOn" class="flex flex-col gap-1" data-step-cache>
-          <span class="text-sm text-muted">Step cache</span>
-          <select v-model="form.stepCache" class="field">
-            <option v-for="c in stepCacheChoices" :key="String(c.value)" :value="c.value">
-              {{ c.label }}
-            </option>
-          </select>
-          <span class="text-sm text-muted">
-            Skips this share of the steps that change the picture least, reusing the one before.
-            At 0.4 it looks near the same.
-          </span>
-        </label>
-
-        <div v-if="copies.length" class="flex flex-col gap-1" data-quantized>
-          <span class="text-sm text-muted">Saved copies (in models/quantized)</span>
-          <ul class="flex flex-col gap-1 text-sm">
-            <li v-for="c in copies" :key="c.name" class="flex items-center gap-3" data-quantized-copy>
-              <span class="min-w-0 flex-1 truncate">
-                {{ modelLabel(c.modelId) }}, {{ c.bits }}-bit
-                <span class="text-muted">· {{ gigabytes(c.bytes) }} · mflux {{ c.mflux }}</span>
-              </span>
-              <button
-                type="button"
-                class="text-danger underline-offset-2 hover:underline"
-                :title="`Delete; the next ${c.bits}-bit render with this model saves it again`"
-                @click="removeCopy(c.name)"
-              >
-                Delete
-              </button>
-            </li>
-          </ul>
-        </div>
-
-        <label class="flex flex-col gap-1">
-          <span class="text-sm text-muted">Size</span>
-          <select v-model="form.size" class="field">
-            <option v-for="p in options.sizePresets" :key="p.id" :value="p.id">{{ p.label }}</option>
-          </select>
-        </label>
-
-        <label class="flex flex-col gap-1">
-          <span class="text-sm text-muted">Art Agent model</span>
-          <select v-model="form.artModel" class="field" data-art-model>
-            <option value="">Same as the Text Model</option>
-            <option v-for="m in textModelChoices" :key="m" :value="m">{{ m }}</option>
-          </select>
-          <span class="text-sm text-muted">
-            Pictures Roleplay Frames (Thinking off); applies to the next picture, in running
-            Sessions too.
-          </span>
-        </label>
-
-        <label class="flex flex-col gap-1">
-          <span class="text-sm text-muted">Art Agent style</span>
-          <select v-model="form.artStyle" class="field" data-art-style>
-            <option value="prose">Prose (recommended)</option>
-            <option value="tags">Tags</option>
-          </select>
-          <span class="text-sm text-muted">
-            How pictures are written. Tags are about twice as fast, but mix up who does what.
-          </span>
-        </label>
-
-        <label class="flex flex-col gap-1">
-          <span class="text-sm text-muted">Upscaler</span>
-          <select v-model="form.upscaler" class="field" data-upscaler>
-            <option v-for="u in options.upscalers" :key="u.id" :value="u.id">{{ u.label }}</option>
-          </select>
-          <span class="text-sm text-muted">Used by Upscale; applies to the next upscale.</span>
-        </label>
-
-        <label class="flex items-start gap-2">
-          <input v-model="form.limits" type="checkbox" class="mt-1" data-limits />
-          <span class="flex flex-col gap-0.5">
-            <span>Limits</span>
+          <label class="flex flex-col gap-1">
+            <span class="text-sm text-muted">Art Agent style</span>
+            <select v-model="form.artStyle" class="field" data-art-style>
+              <option value="prose">Prose (recommended)</option>
+              <option value="tags">Tags</option>
+            </select>
             <span class="text-sm text-muted">
-              On: no sexual or nude content, real people, or restraint, and everyone is an adult.
-              Off: only "everyone depicted is an adult" is enforced; it can't be turned off.
-              Applies at once, to running Sessions too.
+              How pictures are written. Tags are about twice as fast, but mix up who does what.
             </span>
-          </span>
-        </label>
+          </label>
 
-        <fieldset class="flex flex-col gap-2">
-          <legend class="mb-1 text-sm text-muted">Seed</legend>
-          <label class="flex items-center gap-2">
-            <input v-model="form.seedMode" type="radio" value="random" />
-            New random seed each Session
+          <label class="flex items-start gap-2">
+            <input v-model="form.limits" type="checkbox" class="mt-1" data-limits />
+            <span class="flex flex-col gap-0.5">
+              <span>Limits</span>
+              <span class="text-sm text-muted">
+                On: no sexual or nude content, real people, or restraint, and everyone is an adult.
+                Off: only "everyone depicted is an adult" is enforced; it can't be turned off.
+                Applies at once, to running Sessions too.
+              </span>
+            </span>
           </label>
-          <label class="flex items-center gap-2">
-            <input v-model="form.seedMode" type="radio" value="fixed" />
-            Fixed seed
-            <input
-              v-model.number="form.seed"
-              type="number"
-              min="0"
-              class="field w-40"
-              :disabled="form.seedMode !== 'fixed'"
-            />
-          </label>
-        </fieldset>
+        </section>
+
+        <section
+          v-show="tab === 'images'"
+          class="flex flex-col gap-5"
+          role="tabpanel"
+          data-tab-panel="images"
+        >
+          <FeatureSwitch
+            v-model="form.features.images"
+            :availability="options.features.images"
+            title="Pictures"
+            data-feature="images"
+          >
+            Render, upscale and picture Frames with mflux. Off, Roleplays are conversations only, and Chains and Storyboards can't start.
+          </FeatureSwitch>
+          <template v-if="options.features.images.available">
+            <label class="flex flex-col gap-1">
+              <span class="text-sm text-muted">Image Model</span>
+              <select
+                v-model="form.imageModel"
+                class="field"
+                data-image-model
+                @change="onImageModelChange"
+              >
+                <option v-for="m in options.imageModels" :key="m.id" :value="m.id">
+                  {{ m.label }}
+                </option>
+              </select>
+            </label>
+
+            <label v-if="imageModel?.fastSteps" class="flex items-start gap-2" data-fast>
+              <input v-model="form.fast" type="checkbox" class="mt-1" />
+              <span class="flex flex-col gap-0.5">
+                <span>Fast</span>
+                <span class="text-sm text-muted">
+                  Renders in {{ imageModel.fastSteps }} steps with a turbo LoRA (downloaded the first
+                  time, 1.3 GB): about 3× faster, a little smoother and less painterly.
+                </span>
+              </span>
+            </label>
+
+            <div class="grid grid-cols-2 gap-4">
+              <label class="flex flex-col gap-1">
+                <span class="text-sm text-muted">Steps</span>
+                <input
+                  v-if="fastOn"
+                  :value="imageModel?.fastSteps"
+                  type="number"
+                  class="field"
+                  disabled
+                  title="Fast mode sets the steps"
+                />
+                <input v-else v-model.number="form.steps" type="number" min="1" max="100" class="field" />
+              </label>
+              <label class="flex flex-col gap-1">
+                <span class="text-sm text-muted">Quantize</span>
+                <select v-model="form.quantize" class="field">
+                  <option v-for="q in quantizeChoices" :key="String(q.value)" :value="q.value">
+                    {{ q.label }}
+                  </option>
+                </select>
+                <span class="text-sm text-muted">
+                  Saved as a smaller copy the first time a model renders with it (about 10 s), then
+                  loaded directly: about 8 GB less memory on the larger models.
+                </span>
+              </label>
+            </div>
+
+            <label v-if="imageModel?.stepCache && !fastOn" class="flex flex-col gap-1" data-step-cache>
+              <span class="text-sm text-muted">Step cache</span>
+              <select v-model="form.stepCache" class="field">
+                <option v-for="c in stepCacheChoices" :key="String(c.value)" :value="c.value">
+                  {{ c.label }}
+                </option>
+              </select>
+              <span class="text-sm text-muted">
+                Skips this share of the steps that change the picture least, reusing the one before.
+                At 0.4 it looks near the same.
+              </span>
+            </label>
+
+            <div v-if="copies.length" class="flex flex-col gap-1" data-quantized>
+              <span class="text-sm text-muted">Saved copies (in models/quantized)</span>
+              <ul class="flex flex-col gap-1 text-sm">
+                <li v-for="c in copies" :key="c.name" class="flex items-center gap-3" data-quantized-copy>
+                  <span class="min-w-0 flex-1 truncate">
+                    {{ modelLabel(c.modelId) }}, {{ c.bits }}-bit
+                    <span class="text-muted">· {{ gigabytes(c.bytes) }} · mflux {{ c.mflux }}</span>
+                  </span>
+                  <button
+                    type="button"
+                    class="text-danger underline-offset-2 hover:underline"
+                    :title="`Delete; the next ${c.bits}-bit render with this model saves it again`"
+                    @click="removeCopy(c.name)"
+                  >
+                    Delete
+                  </button>
+                </li>
+              </ul>
+            </div>
+
+            <label class="flex flex-col gap-1">
+              <span class="text-sm text-muted">Size</span>
+              <select v-model="form.size" class="field">
+                <option v-for="p in options.sizePresets" :key="p.id" :value="p.id">{{ p.label }}</option>
+              </select>
+            </label>
+
+            <label class="flex flex-col gap-1">
+              <span class="text-sm text-muted">Upscaler</span>
+              <select v-model="form.upscaler" class="field" data-upscaler>
+                <option v-for="u in options.upscalers" :key="u.id" :value="u.id">{{ u.label }}</option>
+              </select>
+              <span class="text-sm text-muted">Used by Upscale; applies to the next upscale.</span>
+            </label>
+
+            <fieldset class="flex flex-col gap-2">
+              <legend class="mb-1 text-sm text-muted">Seed</legend>
+              <label class="flex items-center gap-2">
+                <input v-model="form.seedMode" type="radio" value="random" />
+                New random seed each Session
+              </label>
+              <label class="flex items-center gap-2">
+                <input v-model="form.seedMode" type="radio" value="fixed" />
+                Fixed seed
+                <input
+                  v-model.number="form.seed"
+                  type="number"
+                  min="0"
+                  class="field w-40"
+                  :disabled="form.seedMode !== 'fixed'"
+                />
+              </label>
+            </fieldset>
+          </template>
+        </section>
+
+        <section
+          v-show="tab === 'voice'"
+          class="flex flex-col gap-5"
+          role="tabpanel"
+          data-tab-panel="voice"
+        >
+          <FeatureSwitch
+            v-model="form.features.voices"
+            :availability="options.features.voices"
+            title="Voices"
+            data-feature="voices"
+          >
+            Each Roleplay Character gets a voice designed from their description, and speaks their lines (the mlx-audio service).
+          </FeatureSwitch>
+        </section>
+
+        <section
+          v-show="tab === '3d'"
+          class="flex flex-col gap-5"
+          role="tabpanel"
+          data-tab-panel="3d"
+        >
+          <FeatureSwitch
+            v-model="form.features.scenes"
+            :availability="options.features.scenes"
+            title="SHARP"
+            data-feature="scenes"
+          >
+            Apple's SHARP makes a picture into a 2.5D scene that turns about 30°.
+          </FeatureSwitch>
+          <FeatureSwitch
+            v-model="form.features.figures"
+            :availability="options.features.figures"
+            title="TripoSplat"
+            data-feature="figures"
+          >
+            VAST's TripoSplat lifts the person in a picture out as a 3D figure that turns all the way round.
+          </FeatureSwitch>
+          <FeatureSwitch
+            v-model="form.features.lito"
+            :availability="options.features.lito"
+            title="LiTo"
+            data-feature="lito"
+          >
+            Apple's LiTo does the same as TripoSplat, through mlx-spatial (research-only licence).
+          </FeatureSwitch>
+        </section>
 
         <div class="flex items-center gap-4">
           <button

@@ -10,6 +10,7 @@ import { ollamaTextModel } from './textModel.ts'
 import { litoFigureMaker, tripoFigureMaker } from './figure.ts'
 import { sharpSceneMaker } from './scene.ts'
 import { voiceService } from './voice.ts'
+import { detectFeatures, FEATURE_NAMES, FEATURES, thisMachine } from './features.ts'
 
 const port = Number(Deno.env.get('PORT') ?? 8787)
 
@@ -17,28 +18,34 @@ const port = Number(Deno.env.get('PORT') ?? 8787)
 // by this app, so they go when it does.
 const quantized = mfluxQuantizedStore(fromFileUrl(new URL('../models/quantized/', import.meta.url)))
 
+// What this machine can run, worked out once: a backend it can't run isn't set up at all, and
+// Settings says why (`features.ts`). IMAGE_GENERATOR=placeholder renders SVG cards instead of
+// running mflux, for working without it.
+const placeholderImages = Deno.env.get('IMAGE_GENERATOR') === 'placeholder'
+const features = await detectFeatures(thisMachine(), { placeholderImages })
+for (const feature of FEATURES) {
+  const { available, reason } = features[feature]
+  console.log(`${FEATURE_NAMES[feature]}: ${available ? 'available' : `not available (${reason})`}`)
+}
+
 const handler = createHandler({
   settings: fileSettingsStore(new URL('../settings.json', import.meta.url)),
   listTextModels: () => listOllamaModels(),
   scenarios: dirScenarioLibrary(new URL('../scenarios/', import.meta.url)),
   sessions: dirSessionStore(new URL('../sessions/', import.meta.url)),
   textModel: (model, think) => ollamaTextModel(model, { think }),
-  // IMAGE_GENERATOR=placeholder renders SVG cards instead, for working without mflux.
-  imageGenerator: Deno.env.get('IMAGE_GENERATOR') === 'placeholder'
+  imageGenerator: placeholderImages
     ? placeholderImageGenerator()
     : mfluxImageGenerator({ quantized }),
+  features,
   quantized,
   // A big render next to a loaded Text Model pushes a 48 GB Mac into swap (375 s instead of 66 s
   // for Qwen-Image 2.1 at 1024 px), so each render, upscale, scene and figure unloads it first.
   freeMemory: () => unloadOllamaModels(),
-  // VOICES=off leaves Roleplays silent, for working without the voice service.
-  voice: Deno.env.get('VOICES') === 'off' ? undefined : voiceService(),
-  // SCENES=off leaves pictures flat, for working without SHARP.
-  scene: Deno.env.get('SCENES') === 'off' ? undefined : sharpSceneMaker(),
-  // FIGURES=off runs without TripoSplat.
-  figure: Deno.env.get('FIGURES') === 'off' ? undefined : tripoFigureMaker(),
-  // LITO=off runs without Apple's LiTo.
-  lito: Deno.env.get('LITO') === 'off' ? undefined : litoFigureMaker(),
+  voice: features.voices.available ? voiceService() : undefined,
+  scene: features.scenes.available ? sharpSceneMaker() : undefined,
+  figure: features.figures.available ? tripoFigureMaker() : undefined,
+  lito: features.lito.available ? litoFigureMaker() : undefined,
 })
 
 Deno.serve({ port }, handler)

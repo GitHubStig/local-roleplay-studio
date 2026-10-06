@@ -2,7 +2,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import * as api from './api'
-import { promptFor } from './testing'
+import { ALL_AVAILABLE, ALL_ON, promptFor } from './testing'
 import App from './App.vue'
 import { clearCurrentSession } from './composables/useCurrentSession'
 import HomeView from './views/HomeView.vue'
@@ -82,6 +82,7 @@ beforeEach(() => {
     limits: true,
     artModel: '',
     artStyle: 'prose',
+    features: ALL_ON,
   })
   vi.mocked(api.getSettingsOptions).mockResolvedValue({
     textModels: ['llama3:latest'],
@@ -89,6 +90,7 @@ beforeEach(() => {
     imageModels: [],
     sizePresets: [],
     upscalers: [],
+    features: ALL_AVAILABLE,
   })
 })
 

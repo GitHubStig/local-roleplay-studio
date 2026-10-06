@@ -24,7 +24,7 @@ export type SceneEvent<S = ScenedSession> =
 export class SceneError extends Error {}
 
 /** Why no scene can be made: SHARP is switched off. */
-export const SCENES_OFF = '3D scenes are off (SCENES=off)'
+export const SCENES_OFF = "SHARP isn't set up on this server"
 
 /**
  * Makes Frame `index`'s picture into a 3D scene, in its turn behind any render: SHARP and an Image

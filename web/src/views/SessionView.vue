@@ -19,6 +19,7 @@ import Frame3dViewers from '../components/Frame3dViewers.vue'
 import FrameViewer from '../components/FrameViewer.vue'
 import JobQueue from '../components/JobQueue.vue'
 import { useJobs } from '../composables/useJobs'
+import { useFeatures } from '../composables/useFeatures'
 import { useStoredFlag } from '../composables/useStoredFlag'
 import { useStoredText } from '../composables/useStoredText'
 import { sessionPath } from '../sessionPath'
@@ -37,6 +38,7 @@ import {
   type ChainFrame,
   type FrameEvent,
   type Made3d,
+  MADE3D_FEATURE,
   undoFrame,
 } from '../api'
 
@@ -274,6 +276,9 @@ async function cancel() {
   if (pending.value) pending.value = { ...pending.value, cancelling: true }
   await cancelFrame(props.id)
 }
+
+/** Which extras are on: off, their buttons are hidden; what they made still opens. */
+const { on: featureOn } = useFeatures()
 
 // --- Background work: upscales and 3D, queued so the next Action needn't wait for them.
 
@@ -523,7 +528,7 @@ const promptDiff = computed(() => {
               Cancel
             </button>
             <button
-              v-if="shown"
+              v-if="shown && featureOn('images')"
               type="button"
               class="rounded-lg border border-line px-3 py-2 text-sm disabled:opacity-50"
               :disabled="!!shown.upscaled || hasJob(shown.index, 'upscale')"
@@ -539,6 +544,7 @@ const promptDiff = computed(() => {
               v-if="shown"
               :frame="shown"
               :disabled="(kind) => hasJob(shown!.index, kind)"
+              :available="(kind) => featureOn(MADE3D_FEATURE[kind])"
               button-class="rounded-lg border border-line px-3 py-2 text-sm disabled:opacity-50"
               @make="(kind) => queue(kind, shown!.index)"
               @view="(kind) => (open3d = { index: shown!.index, kind })"

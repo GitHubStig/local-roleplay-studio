@@ -2,7 +2,8 @@ import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import * as api from '../api'
-import { promptFor } from '../testing'
+import { ALL_AVAILABLE, ALL_ON, promptFor } from '../testing'
+import { useFeatures } from '../composables/useFeatures'
 import SessionView from './SessionView.vue'
 
 vi.mock('../api', async (importOriginal) => ({
@@ -13,6 +14,8 @@ vi.mock('../api', async (importOriginal) => ({
   endSession: vi.fn(),
   createSession: vi.fn(),
   undoFrame: vi.fn(),
+  getSettings: vi.fn(),
+  getSettingsOptions: vi.fn(),
   listJobs: vi.fn(),
   queueJob: vi.fn(),
   cancelJob: vi.fn(),
@@ -394,6 +397,22 @@ describe('SessionView', () => {
     await flushPromises()
     expect(wrapper.find('[data-view-lito]').exists()).toBe(true)
     expect(wrapper.find('[data-figure-button]').exists()).toBe(true)
+  })
+
+  it('hides Upscale and the 3D buttons whose Features are off', async () => {
+    vi.mocked(api.getSettingsOptions).mockResolvedValue(
+      { features: ALL_AVAILABLE } as api.SettingsOptions,
+    )
+    vi.mocked(api.getSettings).mockResolvedValue({
+      features: { ...ALL_ON, images: false, lito: false },
+    } as api.Settings)
+    await useFeatures().refreshFeatures()
+    const { wrapper } = await mountIt()
+    expect(wrapper.find('[data-upscale]').exists()).toBe(false)
+    expect(wrapper.find('[data-lito-button]').exists()).toBe(false)
+    expect(wrapper.find('[data-scene-button]').exists()).toBe(true)
+    vi.mocked(api.getSettings).mockResolvedValue({ features: ALL_ON } as api.Settings)
+    await useFeatures().refreshFeatures()
   })
 
   it('offers SHARP again once the Frame is upscaled after its scene was made', async () => {

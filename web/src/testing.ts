@@ -1,5 +1,23 @@
-import type { ImagePrompt } from './api'
+import type { Availability, Feature, ImagePrompt } from './api'
 
 /** An Image Prompt for Frame `index` that differs from the others only in its pose. */
 export const promptFor = (index: number): ImagePrompt =>
   `A woman, pose ${index}, calm, eye level, running gear, in a studio, softbox light, photo.`
+
+/** Every Feature switched on in Settings, as by default. */
+export const ALL_ON: Record<Feature, boolean> = {
+  images: true,
+  voices: true,
+  scenes: true,
+  figures: true,
+  lito: true,
+}
+
+/** Every Feature available on this "machine", as on an Apple Silicon Mac with everything set up. */
+export const ALL_AVAILABLE: Record<Feature, Availability> = {
+  images: { available: true },
+  voices: { available: true },
+  scenes: { available: true },
+  figures: { available: true },
+  lito: { available: true },
+}

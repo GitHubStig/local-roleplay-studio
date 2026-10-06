@@ -6,6 +6,19 @@ export interface Health {
 export type Quantize = null | 4 | 8
 export type SeedMode = 'random' | 'fixed'
 
+/**
+ * The extras beyond the Text Model, each with its own backend: pictures, voices, and 3D (SHARP,
+ * TripoSplat, LiTo). One is on when this machine can run it and Settings has it switched on.
+ */
+export const FEATURES = ['images', 'voices', 'scenes', 'figures', 'lito'] as const
+export type Feature = (typeof FEATURES)[number]
+
+/** Whether this machine can run a Feature, and if not, why not. */
+export interface Availability {
+  available: boolean
+  reason?: string
+}
+
 export interface Settings {
   textModel: string
   thinking: boolean
@@ -27,6 +40,8 @@ export interface Settings {
   artModel: string
   /** Whether the Art Agent writes prose (better) or tags. Applies at once. */
   artStyle: 'prose' | 'tags'
+  /** Which Features are switched on (one this machine can't run is off whatever this says). */
+  features: Record<Feature, boolean>
 }
 
 export interface ImageModelOption {
@@ -54,6 +69,8 @@ export interface SettingsOptions {
   imageModels: ImageModelOption[]
   sizePresets: SizePreset[]
   upscalers: { id: string; label: string }[]
+  /** Which Features this machine can run, worked out when the server started. */
+  features: Record<Feature, Availability>
 }
 
 export class ApiError extends Error {
@@ -172,6 +189,13 @@ export interface Figure {
 
 /** What a Frame's picture can be made into in 3D, by the field it's kept in. */
 export type Made3d = 'scene' | 'figure' | 'lito'
+
+/** The Feature each kind of 3D needs. */
+export const MADE3D_FEATURE: Record<Made3d, Feature> = {
+  scene: 'scenes',
+  figure: 'figures',
+  lito: 'lito',
+}
 
 /** What the 3D buttons and viewers read from a Frame, in a Chain or a Roleplay. */
 export interface Frame3d {

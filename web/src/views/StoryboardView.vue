@@ -24,6 +24,7 @@ import {
 } from '../api'
 import FrameImage from '../components/FrameImage.vue'
 import FrameViewer from '../components/FrameViewer.vue'
+import { useFeatures } from '../composables/useFeatures'
 import { clearCurrentSession, setCurrentSession } from '../composables/useCurrentSession'
 import { useStoredText } from '../composables/useStoredText'
 import { sessionPath } from '../sessionPath'
@@ -359,6 +360,9 @@ const timingsLabel = (f: StoryboardFrame) => {
 
 /** The Frame whose picture is open in the viewer, if any. */
 const viewingPicture = ref<number | null>(null)
+/** Rendering needs pictures on; off, a Storyboard's plan can still be read and edited. */
+const { on: featureOn } = useFeatures()
+const imagesOn = computed(() => featureOn.value('images'))
 </script>
 
 <template>
@@ -427,6 +431,7 @@ const viewingPicture = ref<number | null>(null)
                 Send
               </button>
               <button
+                v-if="imagesOn"
                 type="button"
                 class="rounded-lg border border-line px-3 py-2 text-sm disabled:opacity-50"
                 :disabled="!current || !!current.blocked"
@@ -435,6 +440,7 @@ const viewingPicture = ref<number | null>(null)
                 {{ current?.image ? 'Re-render' : 'Render' }} Frame {{ selected + 1 }}
               </button>
               <button
+                v-if="imagesOn"
                 type="button"
                 class="rounded-lg border border-line px-3 py-2 text-sm disabled:opacity-50"
                 :disabled="!toRender.length"
@@ -443,6 +449,7 @@ const viewingPicture = ref<number | null>(null)
                 Render all{{ toRender.length ? ` (${toRender.length})` : '' }}
               </button>
               <button
+                v-if="imagesOn"
                 type="button"
                 class="rounded-lg border border-line px-3 py-2 text-sm disabled:opacity-50"
                 :disabled="!current?.image || !!current.upscaled"

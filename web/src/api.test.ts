@@ -7,6 +7,7 @@ import {
   type Settings,
   streamFrame,
 } from './api'
+import { ALL_ON } from './testing'
 
 afterEach(() => vi.unstubAllGlobals())
 
@@ -25,6 +26,7 @@ const settings: Settings = {
   limits: true,
   artModel: '',
   artStyle: 'prose',
+  features: ALL_ON,
 }
 
 describe('getHealth', () => {

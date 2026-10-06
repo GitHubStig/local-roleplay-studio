@@ -11,9 +11,11 @@ withDefaults(
     frame: Frame3d
     /** Which are off for now, e.g. while one is being made. */
     disabled?: (kind: Made3d) => boolean
+    /** Which can be made at all here (its Feature is on); what's made can always be viewed. */
+    available?: (kind: Made3d) => boolean
     buttonClass?: string
   }>(),
-  { disabled: () => false, buttonClass: 'action' },
+  { disabled: () => false, available: () => true, buttonClass: 'action' },
 )
 defineEmits<{ make: [kind: Made3d]; view: [kind: Made3d] }>()
 </script>
@@ -30,7 +32,8 @@ defineEmits<{ make: [kind: Made3d]; view: [kind: Made3d] }>()
     View SHARP
   </button>
   <button
-    v-if="frame.image && (!frame.scene || (frame.upscaled && frame.scene.from !== frame.upscaled))"
+    v-if="available('scene') && frame.image &&
+      (!frame.scene || (frame.upscaled && frame.scene.from !== frame.upscaled))"
     type="button"
     :class="buttonClass"
     :disabled="disabled('scene')"
@@ -53,7 +56,7 @@ defineEmits<{ make: [kind: Made3d]; view: [kind: Made3d] }>()
     View TripoSplat
   </button>
   <button
-    v-else-if="frame.image"
+    v-else-if="available('figure') && frame.image"
     type="button"
     :class="buttonClass"
     :disabled="disabled('figure')"
@@ -74,7 +77,7 @@ defineEmits<{ make: [kind: Made3d]; view: [kind: Made3d] }>()
     View LiTo
   </button>
   <button
-    v-else-if="frame.image"
+    v-else-if="available('lito') && frame.image"
     type="button"
     :class="buttonClass"
     :disabled="disabled('lito')"

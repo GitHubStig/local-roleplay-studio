@@ -6,6 +6,7 @@
  * onto whatever the Session has become meanwhile. Jobs live in memory: a server restart forgets the
  * queue. What a job does is up to its Session's kind (`JobRunner`).
  */
+import type { Feature } from './features.ts'
 import type { Phase } from './frames.ts'
 import { error, json, readJson, type Route } from './http.ts'
 import type { Session, SessionStore } from './session.ts'
@@ -38,6 +39,19 @@ export const JOB_KINDS: readonly JobKind[] = [
   'figure',
   'lito',
 ]
+
+/** The Feature each job needs: a job whose Feature is off can't be queued. */
+export const JOB_FEATURE: Record<JobKind, Feature> = {
+  picture: 'images',
+  render: 'images',
+  upscale: 'images',
+  voice: 'voices',
+  speak: 'voices',
+  'speak-thought': 'voices',
+  scene: 'scenes',
+  figure: 'figures',
+  lito: 'lito',
+}
 
 export interface Job {
   id: string
@@ -189,7 +203,7 @@ export interface JobRoutesContext {
   jobs: SessionJobs
   store: SessionStore
   /** Why `kind` can't be queued on Frame `index` of `session` (a response), or null if it can. */
-  check(session: Session, kind: JobKind, index: number): Response | null
+  check(session: Session, kind: JobKind, index: number): Promise<Response | null>
 }
 
 /** The job routes every Session kind shares, under `/api/sessions/:id/jobs`. */
@@ -212,7 +226,7 @@ export function jobRoutes(ctx: JobRoutesContext): Route[] {
       }
       const index = Number(body?.frameIndex)
       if (!Number.isInteger(index) || !session.frames[index]) return error('No such Frame', 404)
-      const refused = ctx.check(session, kind, index)
+      const refused = await ctx.check(session, kind, index)
       if (refused) return refused
       ctx.jobs.enqueue(session.id, kind, index)
       return json(ctx.jobs.list(session.id), 201)

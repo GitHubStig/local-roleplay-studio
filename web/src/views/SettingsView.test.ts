@@ -2,6 +2,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import * as api from '../api'
 import SettingsView from './SettingsView.vue'
+import { ALL_AVAILABLE, ALL_ON } from '../testing'
 
 vi.mock('../api', async (importOriginal) => ({
   ...(await importOriginal<typeof api>()),
@@ -27,6 +28,7 @@ const settings: api.Settings = {
   limits: true,
   artModel: '',
   artStyle: 'prose',
+  features: ALL_ON,
 }
 
 const options: api.SettingsOptions = {
@@ -48,6 +50,7 @@ const options: api.SettingsOptions = {
     { id: 'seedvr2-7b', label: 'SeedVR2 7B' },
     { id: 'seedvr2-3b', label: 'SeedVR2 3B' },
   ],
+  features: ALL_AVAILABLE,
 }
 
 beforeEach(() => {
@@ -63,7 +66,7 @@ describe('SettingsView', () => {
     await flushPromises()
     expect(wrapper.find('[data-step-cache]').exists()).toBe(false)
     expect(wrapper.find('[data-fast]').exists()).toBe(false)
-    await wrapper.findAll('select')[1].setValue('qwen-image-2.1')
+    await wrapper.find('[data-image-model]').setValue('qwen-image-2.1')
     expect(wrapper.find('[data-step-cache]').exists()).toBe(true)
     await wrapper.find('[data-fast] input').setValue(true)
     // Fast sets its own steps, and the cache has no effect on so few.
@@ -75,7 +78,7 @@ describe('SettingsView', () => {
   it('resets steps to the chosen Image Model default', async () => {
     const wrapper = mount(SettingsView)
     await flushPromises()
-    await wrapper.findAll('select')[1].setValue('flux2-klein-4b')
+    await wrapper.find('[data-image-model]').setValue('flux2-klein-4b')
     expect((wrapper.find('input[type=number]').element as HTMLInputElement).value).toBe('4')
   })
 
@@ -87,6 +90,44 @@ describe('SettingsView', () => {
     await flushPromises()
     expect(api.saveSettings).toHaveBeenCalledWith({ ...settings, textModel: 'gemma4:31b-mlx' })
     expect(wrapper.text()).toContain('Applies from the next Session')
+  })
+
+  it("shows each extra on its tab, says why one can't run here, and saves a switch", async () => {
+    vi.mocked(api.getSettingsOptions).mockResolvedValue({
+      ...options,
+      features: {
+        ...ALL_AVAILABLE,
+        lito: {
+          available: false,
+          reason: 'LiTo (through mlx-spatial) runs only on Apple Silicon Macs',
+        },
+      },
+    })
+    const wrapper = mount(SettingsView, { attachTo: document.body })
+    await flushPromises()
+    const panel = (id: string) => wrapper.find(`[data-tab-panel="${id}"]`)
+    expect(panel('text').isVisible()).toBe(true)
+    expect(panel('3d').isVisible()).toBe(false)
+    await wrapper.find('[data-tab="3d"]').trigger('click')
+    expect(panel('3d').isVisible()).toBe(true)
+
+    // LiTo can't run here: its switch is off and greyed out, with the reason.
+    const lito = wrapper.find('[data-feature="lito"] input')
+    expect([(lito.element as HTMLInputElement).checked, lito.attributes('disabled')]).toEqual([
+      false,
+      '',
+    ])
+    expect(wrapper.find('[data-feature="lito"] [data-unavailable]').text()).toContain(
+      'runs only on Apple Silicon Macs',
+    )
+    await wrapper.find('[data-feature="scenes"] input').setValue(false)
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+    expect(api.saveSettings).toHaveBeenCalledWith({
+      ...settings,
+      features: { ...settings.features, scenes: false },
+    })
+    wrapper.unmount()
   })
 
   it('sets a separate Art Agent model, from the installed Text Models', async () => {

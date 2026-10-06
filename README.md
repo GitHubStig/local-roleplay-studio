@@ -56,24 +56,25 @@ The vocabulary (Scenario, Session, Image Prompt, Frame, Action, …) is defined 
 - **Voices (optional), for Roleplay Characters:** [uv](https://docs.astral.sh/uv/) runs the voice
   service (`voice/serve.py`), which installs its own Python packages (mlx-audio, torch) on first
   use, and its two models (about 12 GB: Qwen3-TTS VoiceDesign and Higgs TTS 3) the first time
-  each is needed; `uv run voice/serve.py --download` fetches both ahead of time. Set `VOICES=off`
-  to leave Characters silent.
+  each is needed; `uv run voice/serve.py --download` fetches both ahead of time.
+  Apple Silicon Macs only (mlx-audio).
 - **2.5D scenes (optional), for Roleplay and Chain pictures:** uv runs Apple's SHARP (`scene/make.py`), which
   installs its own Python packages (torch) on first use, and its weights (2.8 GB, from Hugging
   Face's [apple/Sharp](https://huggingface.co/apple/Sharp)) with the first scene;
   `uv run scene/make.py --download` fetches them ahead of time. They're under Apple's
-  research-only model license: fine for playing at home, not for anything commercial. Set
-  `SCENES=off` to run without SHARP.
+  research-only model license: fine for playing at home, not for anything commercial.
+  Runs on an Apple Silicon Mac's GPU or an NVIDIA one (CUDA, on Windows or Linux).
 - **3D figures (optional), for the person in a Roleplay or Chain picture:** uv runs TripoSplat (`figure/make.py`; its code is
   in `figure/triposplat/`, MIT), which installs its own Python packages (torch) on first use, and
   its weights (4.2 GB, Hugging Face's [VAST-AI/TripoSplat](https://huggingface.co/VAST-AI/TripoSplat))
-  with the first figure; `uv run figure/make.py --download` fetches them ahead of time. Set
-  `FIGURES=off` to run without it.
+  with the first figure; `uv run figure/make.py --download` fetches them ahead of time.
+  Runs on an Apple Silicon Mac's GPU or an NVIDIA one.
 - **LiTo figures (optional):** uv runs Apple's LiTo through mlx-spatial (`figure/lito.py`, Python
   3.13, fetched by uv), cutting the person out with TripoSplat's BiRefNet first. Its weights (4.4 GB,
   [appautomaton/lito-research-mlx](https://huggingface.co/appautomaton/lito-research-mlx), Apple's
   research-only, non-commercial license) download with the first figure;
-  `uv run figure/lito.py --download` fetches them ahead of time. Set `LITO=off` to run without it.
+  `uv run figure/lito.py --download` fetches them ahead of time.
+  Apple Silicon Macs only (mlx-spatial is MLX).
 - **Saved quantized copies** of Image Models (with Quantize on in Settings) are made by the app on
   first use, 13–22 GB each, in `models/quantized/` in this folder (gitignored); Settings lists them
   to delete.
@@ -110,15 +111,19 @@ or delete it.
 | `PORT` | `8787` | API server port. The Vite proxy expects 8787. |
 | `OLLAMA_HOST` | `http://localhost:11434` | Where Ollama listens |
 | `IMAGE_GENERATOR` | (mflux) | Set to `placeholder` to render SVG cards instead of running mflux, for working without a GPU |
-| `VOICES` | (on) | Set to `off` to leave Roleplay Characters silent, without starting the voice service |
-| `SCENES` | (on) | Set to `off` to run without SHARP: its button then fails with a reason |
-| `LITO` | (on) | Set to `off` to run without LiTo: its button then fails with a reason |
-| `FIGURES` | (on) | Set to `off` to run without TripoSplat: its button then fails with a reason |
 
 The web app's dev server is pinned to port **5180** and fails, rather than picking another port,
 if something else is using it.
 
-Everything else is chosen on the Settings page and saved to `settings.json`.
+Everything else is chosen on the Settings page (in tabs: Text, Images, Voice, 3D) and saved to
+`settings.json`.
+
+**What runs where.** Only Ollama is required. At startup the server works out which extras this
+machine can run, and says so in its log and on the Settings page: pictures (mflux) and voices
+(mlx-audio) need an Apple Silicon Mac; SHARP and TripoSplat need an Apple Silicon Mac or an NVIDIA
+GPU; LiTo needs an Apple Silicon Mac; the Python ones need uv. One that can't run is off and its
+buttons are hidden, with the reason in Settings; one that can is on, and can be switched off there.
+Without pictures, Roleplays are conversations only, and Chains and Storyboards can't start.
 
 ## Where things live
 

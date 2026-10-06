@@ -16,7 +16,8 @@ import type { QuantizedStore } from './quantized.ts'
 import { roleplayExcerpt } from './roleplay/prompt.ts'
 import { roleplayRoutes } from './roleplay/routes.ts'
 import { checkRoleplayJob, type RoleplayJobContext, runRoleplayJob } from './roleplay/jobs.ts'
-import { jobRoutes, SessionJobs } from './jobs.ts'
+import { JOB_FEATURE, jobRoutes, SessionJobs } from './jobs.ts'
+import { type Availabilities, type Availability, type Feature, FEATURE_NAMES } from './features.ts'
 import { checkChainJob, runChainJob } from './chainJobs.ts'
 import { GoneError } from './update.ts'
 import { RenderQueue } from './renderQueue.ts'
@@ -55,6 +56,11 @@ export interface AppDeps {
   figure?: FigureMaker
   /** The same with Apple's LiTo. */
   lito?: FigureMaker
+  /**
+   * Which extras this machine can run (`detectFeatures`, at startup). Left out, those whose
+   * backend is given are available, the rest not: what tests want.
+   */
+  features?: Availabilities
   /** Frees memory before a render, upscale, scene or figure: unloads Ollama's models. */
   freeMemory?: () => Promise<void>
   /** Saved quantized copies of Image Models, listed and deleted from Settings. */
@@ -268,6 +274,28 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     figure: deps.figure,
     lito: deps.lito,
   })
+  const given = (backend: unknown, what: string): Availability =>
+    backend ? { available: true } : { available: false, reason: `No ${what} was set up` }
+  const availability: Availabilities = deps.features ?? {
+    images: { available: true },
+    voices: given(deps.voice, 'voice service'),
+    scenes: given(deps.scene, 'SHARP'),
+    figures: given(deps.figure, 'TripoSplat'),
+    lito: given(deps.lito, 'LiTo'),
+  }
+  /**
+   * Why `feature` can't be used now (a 409 to send back), or null if it can: this machine can't
+   * run it, or it's switched off in Settings.
+   */
+  async function featureOff(feature: Feature): Promise<Response | null> {
+    const { available, reason } = availability[feature]
+    if (!available) return error(`${FEATURE_NAMES[feature]} isn't available here: ${reason}`, 409)
+    if (!(await deps.settings.load()).features[feature]) {
+      return error(`${FEATURE_NAMES[feature]} is switched off in Settings`, 409)
+    }
+    return null
+  }
+
   /** The upscaler chosen in Settings now: it doesn't change the Frames, so it applies at once. */
   const upscaler = async () => (await deps.settings.load()).upscaler
   const roleplayJobs: RoleplayJobContext = {
@@ -318,12 +346,13 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     ...jobRoutes({
       jobs,
       store: deps.sessions,
-      check: (session, kind, index) =>
-        session.kind === 'roleplay'
-          ? checkRoleplayJob(session, kind, index)
-          : session.kind === 'chain'
-          ? checkChainJob(session, kind, index)
-          : error('A Storyboard has no queue', 409),
+      check: async (session, kind, index) =>
+        (await featureOff(JOB_FEATURE[kind])) ??
+          (session.kind === 'roleplay'
+            ? checkRoleplayJob(session, kind, index)
+            : session.kind === 'chain'
+            ? checkChainJob(session, kind, index)
+            : error('A Storyboard has no queue', 409)),
     }),
 
     ['GET', new URLPattern({ pathname: '/api/health' }), () => Promise.resolve(json({ ok: true }))],
@@ -380,6 +409,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
         })),
         sizePresets: SIZE_PRESETS,
         upscalers: UPSCALERS,
+        features: availability,
       })
     }],
 
@@ -410,6 +440,11 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       }
       if (scenarioId && !(await deps.scenarios.get(scenarioId))) {
         return error('Scenario not found', 404)
+      }
+      // A Chain renders every Frame, and a Storyboard is for rendering: both need pictures.
+      if (kind !== 'roleplay') {
+        const off = await featureOff('images')
+        if (off) return off
       }
       let frameCount = FRAME_COUNT.default
       if (kind === 'storyboard' && body?.frameCount !== undefined) {
@@ -512,6 +547,8 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       (req, p) =>
         locked(p.id!, 'frame', async (session) => {
           if (!needsChain(session)) return error('Only a Chain makes Frames from Actions', 409)
+          const off = await featureOff('images')
+          if (off) return off
           const body = await readJson(req) as { action?: unknown } | undefined
           const opening = session.frames.length === 0
           let action: string | null = null
@@ -549,6 +586,8 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
         locked(p.id!, 'upscale', async (session) => {
           // A Chain queues its upscales (the job routes), so its next Frame needn't wait.
           if (needsChain(session)) return error('A Chain queues its upscales', 409)
+          const off = await featureOff('images')
+          if (off) return off
           const index = frameIndexOf(session, p.index)
           if (index instanceof Response) return index
           const frame = session.frames[index]
@@ -588,6 +627,8 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
           if (!needsStoryboard(session)) {
             return error('Only a Storyboard renders Frames on demand', 409)
           }
+          const off = await featureOff('images')
+          if (off) return off
           const index = frameIndexOf(session, p.index)
           if (index instanceof Response) {
             return index

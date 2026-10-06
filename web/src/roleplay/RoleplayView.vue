@@ -12,7 +12,7 @@ import {
   watch,
 } from 'vue'
 import { useRouter } from 'vue-router'
-import { ApiError, cancelFrame, getSession, imageUrl, type Made3d } from '../api'
+import { ApiError, cancelFrame, getSession, imageUrl, type Made3d, MADE3D_FEATURE } from '../api'
 import { clearCurrentSession, setCurrentSession } from '../composables/useCurrentSession'
 import { useStoredFlag } from '../composables/useStoredFlag'
 import { useStoredText } from '../composables/useStoredText'
@@ -23,6 +23,7 @@ import FrameViewer from '../components/FrameViewer.vue'
 import FrameJobs from '../components/FrameJobs.vue'
 import JobQueue from '../components/JobQueue.vue'
 import { useJobs } from '../composables/useJobs'
+import { useFeatures } from '../composables/useFeatures'
 import { jobStatus } from '../jobs'
 import { cleanReply } from './reply'
 import { sessionPath } from '../sessionPath'
@@ -135,6 +136,10 @@ const open3d = ref<{ index: number; kind: Made3d } | null>(null)
 
 /** New Replies are spoken as they arrive; remembered per browser. */
 const autoplay = useStoredFlag('roleplay-voice-autoplay')
+/** Which extras are on: off, their buttons are hidden, but what they made still plays and opens. */
+const { on: featureOn } = useFeatures()
+/** A line can be listened to: voices are on, or it was already spoken. */
+const canListen = (speech: Speech | undefined) => featureOn.value('voices') || spokenNow(speech)
 /** What of a Reply is spoken: its dialogue, or the Character's thought (whispered). */
 type Part = 'dialogue' | 'thought'
 const SPEAK_JOB = { dialogue: 'speak', thought: 'speak-thought' } as const
@@ -320,7 +325,7 @@ function onEvent(event: RoleplayEvent) {
       session.value = event.session
       // The message was used; a declined or failed one stays in the box to reword.
       if (p.kind === 'message') draft.value = ''
-      if (autoplay.value && canSpeak(event.frame)) {
+      if (autoplay.value && featureOn.value('voices') && canSpeak(event.frame)) {
         toPlay.set(partKey(event.frame.index, 'dialogue'), { index: event.frame.index, part: 'dialogue' })
         queue('speak', event.frame.index)
       }
@@ -561,6 +566,7 @@ async function saveCastDraft(): Promise<boolean> {
           </p>
           <div class="flex shrink-0 items-center gap-4">
             <label
+              v-if="featureOn('voices')"
               class="flex cursor-pointer items-center gap-1.5 text-muted"
               :title="`Speak each new reply in ${characterName}'s voice`"
             >
@@ -610,7 +616,7 @@ async function saveCastDraft(): Promise<boolean> {
                   >
                     {{ frame.reply.internal }}
                     <button
-                      v-if="canSpeak(frame, 'thought')"
+                      v-if="canSpeak(frame, 'thought') && canListen(frame.thoughtSpeech)"
                       type="button"
                       class="action ml-1.5 not-italic align-middle"
                       :class="{ 'action-on': playing === partKey(frame.index, 'thought') }"
@@ -639,7 +645,7 @@ async function saveCastDraft(): Promise<boolean> {
                     />
                     <p class="flex flex-wrap items-center gap-1.5">
                       <button
-                        v-if="canSpeak(frame)"
+                        v-if="canSpeak(frame) && canListen(frame.speech)"
                         type="button"
                         class="action"
                         :class="{ 'action-on': playing === partKey(frame.index, 'dialogue') }"
@@ -658,6 +664,7 @@ async function saveCastDraft(): Promise<boolean> {
                         data-delivery
                       >· {{ deliveryWords(frame.speech) }}</span>
                       <button
+                        v-if="featureOn('images')"
                         type="button"
                         class="action"
                         :disabled="hasJob(frame.index, 'picture')"
@@ -667,7 +674,8 @@ async function saveCastDraft(): Promise<boolean> {
                         {{ frame.promptText ? 'Picture again' : 'Picture this' }}
                       </button>
                       <button
-                        v-if="(frame.promptText && !frame.blocked) || hasJob(frame.index, 'picture')"
+                        v-if="featureOn('images') &&
+                          ((frame.promptText && !frame.blocked) || hasJob(frame.index, 'picture'))"
                         type="button"
                         class="action"
                         :disabled="hasJob(frame.index, 'render')"
@@ -677,7 +685,7 @@ async function saveCastDraft(): Promise<boolean> {
                         {{ frame.image ? 'Re-render' : 'Render' }}
                       </button>
                       <button
-                        v-if="frame.image || hasJob(frame.index, 'render')"
+                        v-if="featureOn('images') && (frame.image || hasJob(frame.index, 'render'))"
                         type="button"
                         class="action"
                         :disabled="!!frame.upscaled || hasJob(frame.index, 'upscale')"
@@ -690,6 +698,7 @@ async function saveCastDraft(): Promise<boolean> {
                       <Frame3dButtons
                         :frame="frame"
                         :disabled="(kind) => hasJob(frame.index, kind)"
+                        :available="(kind) => featureOn(MADE3D_FEATURE[kind])"
                         @make="(kind) => queue(kind, frame.index)"
                         @view="(kind) => (open3d = { index: frame.index, kind })"
                       />
@@ -932,7 +941,7 @@ async function saveCastDraft(): Promise<boolean> {
           </button>
         </form>
         <form
-          v-if="cast"
+          v-if="cast && featureOn('voices')"
           class="flex flex-col gap-2 border-b border-line p-4 text-sm"
           data-voice
           @submit.prevent="saveVoiceDraft"

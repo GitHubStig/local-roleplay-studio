@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import * as api from '../api'
 import StartSession from './StartSession.vue'
+import { useFeatures } from '../composables/useFeatures'
+import { ALL_AVAILABLE, ALL_ON } from '../testing'
 
 vi.mock('../api', async (importOriginal) => ({
   ...(await importOriginal<typeof api>()),
@@ -26,6 +28,7 @@ const settings: api.Settings = {
   limits: true,
   artModel: '',
   artStyle: 'prose',
+  features: ALL_ON,
 }
 
 const options: api.SettingsOptions = {
@@ -37,6 +40,7 @@ const options: api.SettingsOptions = {
     { id: 'seedvr2-7b', label: 'SeedVR2 7B' },
     { id: 'seedvr2-3b', label: 'SeedVR2 3B' },
   ],
+  features: ALL_AVAILABLE,
 }
 
 const photoshoot = { id: 'photoshoot', title: 'Studio Photoshoot', description: 'Direct a shoot.' }
@@ -66,6 +70,25 @@ describe('StartSession', () => {
     expect(startButton(wrapper).disabled).toBe(false)
     await wrapper.find('[data-start]').trigger('click')
     expect(wrapper.emitted('start')).toEqual([[{ kind: 'chain', scenarioId: 'photoshoot' }]])
+  })
+
+  it('offers only a Roleplay when pictures are off, and starts one', async () => {
+    vi.mocked(api.getSettingsOptions).mockResolvedValue({
+      ...options,
+      features: {
+        ...ALL_AVAILABLE,
+        images: { available: false, reason: 'mflux runs only on Apple Silicon Macs' },
+      },
+    })
+    await useFeatures().refreshFeatures()
+    const wrapper = await mountIt()
+    expect(wrapper.findAll('input[name=kind]').map((i) => i.attributes('value'))).toEqual([
+      'roleplay',
+    ])
+    expect((wrapper.find('input[value=roleplay]').element as HTMLInputElement).checked).toBe(true)
+    // Pictures back on, for the other tests.
+    vi.mocked(api.getSettingsOptions).mockResolvedValue(options)
+    await useFeatures().refreshFeatures()
   })
 
   it('starts a Storyboard from a typed Brief with a Frame count', async () => {

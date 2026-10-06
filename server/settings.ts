@@ -1,6 +1,7 @@
 import { fromFileUrl } from '@std/path'
 import { findImageModel, IMAGE_MODELS, type Upscaler, UPSCALERS } from './imageModels.ts'
 import { ART_STYLES, type ArtStyle } from './roleplay/art.ts'
+import { type Feature, FEATURES } from './features.ts'
 
 export interface SizePreset {
   id: string
@@ -54,6 +55,11 @@ export interface Settings {
   /** Whether the Art Agent writes prose (the default, and better) or tags. Applies at once. */
   artStyle: ArtStyle
   /**
+   * Which extras are switched on (all, by default): one that this machine can't run is off
+   * whatever this says (`features.ts`). Read on every request, so it applies mid-Session too.
+   */
+  features: Record<Feature, boolean>
+  /**
    * The Limits (ADR 0002); on by default. Off, only "everyone depicted is an adult" is enforced.
    * Read on every request, so it applies mid-Session too.
    */
@@ -74,6 +80,7 @@ export const DEFAULT_SETTINGS: Settings = {
   upscaler: UPSCALERS[0].id,
   artModel: '',
   artStyle: 'prose',
+  features: Object.fromEntries(FEATURES.map((f) => [f, true])) as Record<Feature, boolean>,
   limits: true,
 }
 
@@ -128,6 +135,16 @@ export function validateSettings(input: unknown): ValidationResult {
   if (s.artModel !== undefined && typeof s.artModel !== 'string') {
     issues.push('artModel must be a string')
   }
+  const features = s.features as Record<string, unknown> | undefined
+  if (
+    features !== undefined &&
+    (typeof features !== 'object' || features === null ||
+      Object.entries(features).some(([k, v]) =>
+        !FEATURES.includes(k as Feature) || typeof v !== 'boolean'
+      ))
+  ) {
+    issues.push(`features must map ${FEATURES.join(', ')} to true or false`)
+  }
   if (s.upscaler !== undefined && !UPSCALERS.some((u) => u.id === s.upscaler)) {
     issues.push(`upscaler must be one of: ${UPSCALERS.map((u) => u.id).join(', ')}`)
   }
@@ -149,6 +166,8 @@ export function validateSettings(input: unknown): ValidationResult {
       upscaler: (s.upscaler as Upscaler | undefined) ?? DEFAULT_SETTINGS.upscaler,
       artModel: (s.artModel as string | undefined) ?? '',
       artStyle: (s.artStyle as ArtStyle | undefined) ?? 'prose',
+      // One not mentioned (an older file, or a Feature added since) is on.
+      features: { ...DEFAULT_SETTINGS.features, ...(features as Record<Feature, boolean>) },
       limits: (s.limits as boolean | undefined) ?? true,
     },
   }
