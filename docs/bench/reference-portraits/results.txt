@@ -1,0 +1,11 @@
+portrait-kael: exit 0, 91 s, peak 38.6 GB
+portrait-elara: exit 0, 89 s, peak 38.9 GB
+plain-6: exit 0, 86 s, peak 39.3 GB
+plain-9: exit 0, 85 s, peak 39.3 GB
+plain-12: exit 0, 84 s, peak 39.3 GB
+refs-6: exit 0, 122 s, peak 38.9 GB
+refs-9: exit 0, 139 s, peak 39.2 GB
+refs-12: exit 0, 142 s, peak 39.4 GB
+blink-6: exit 0, 118 s, peak 39.5 GB
+done
+blink-9: exit 0, 117 s, peak 39.5 GB
