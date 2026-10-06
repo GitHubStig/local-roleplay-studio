@@ -10,8 +10,6 @@ an uncensored Heretic build of it made the same way (`gemma-4-26b-heretic:nvfp4`
 26B-A4B as MLX NVFP4" below). A mixture of experts with about 4B parameters active per token, it is
 the fastest model here that does every job well, 17 GB loaded. One model for everything, so none
 waits for another to load. Set it in **Settings → Text Model**; it applies from the next Session.
-(The comparisons below started with `gemma4:31b-mlx`, the first pick: the most literal at a
-Chain's prompt edits, but about 3× slower.)
 
 ### What the job asks of the model
 
@@ -24,48 +22,54 @@ is a real instruction-following task, and it separates small models from large o
 
 ### How we compared them
 
-Each model replayed the same seven Actions from a real Session (photoshoot Scenario), text only,
-Thinking off:
+Each model played a Chain from the tavern Scenario (`scenarios/tavern.md`) on 2026-10-06: its
+Opening, then seven Actions, text only, Thinking off, one model loaded at a time:
 
-1. she is now in mars
-2. remove all studio backdrop
-3. she is now scared and not relaxed
-4. the background is now showing space
-5. art style is now Michelangelo / High Renaissance
-6. she's in an attack stance like boxing
-7. boxing stance (a repeat: the right answer is *unclear*, or no change)
+1. he is now frightened, not wary
+2. move them out onto the rainy street
+3. remove the rain
+4. the sky is now lit by a burning ship in the harbour
+5. art style is now a Japanese woodblock print
+6. he draws a knife and crouches, ready to fight
+7. ready to fight (a repeat: the right answer is *unclear*, or no change)
 
-The telling cases are 3 (the pose sentence also says "relaxed", so it must change too), 4
-(space must replace Mars, not sit next to it) and 6 (the pose must actually change).
+The telling cases are 1 (the Opening has him looking up "warily", which must go too), 2 (the
+street must replace the tavern wherever it shows, and his pose had him behind the bar), 3 (the
+rain runs through the environment, the light and the colour) and 7.
 
 ### Results
 
-| Model | Size | Result | Text per Frame |
-|---|---|---|---|
-| **`gemma4:31b-mlx`** | 31B | **All correct.** Changes only what's asked; answers the repeat with *unclear*. | ~10 s |
-| `orcarouter/Qwen3.8-27B-Uncensored:mlx-4bit` | 27B | All correct, richest prose, but also adjusts things not asked for (Mars lighting and palette; changed "scared" to "aggressive" on the boxing Action). | ~17 s |
-| `qwen3.8:27b-mlx` | 27B | Correct on a compound Action ("scared; art style is Michelangelo"), also adapting lighting and palette unasked. (Tested on that case only.) | ~8 s |
-| `muse-glimmer:30b-mlx` | 30B | Wrongly declined "she is now in mars" as restraint; kept "relaxed" in the pose after "not relaxed"; asked what kind of space. | ~7 s |
-| `llama3:latest` | 8B | Corrupted the prompt: pasted the engine's instructions in as content, dropped the clothing, kept two contradictory styles. Narrations still claimed the right changes. | ~4 s |
-| `maternion/spark-x2.5-heretic:4b` | 4B | Narrated changes it didn't make (the prompt came back identical on "boxing stance"); left "relaxed" in the pose; wrote edit notes into the prompt ("…red dust replaced"). | ~3 s |
+| Model | Size | Per Action | Opening | 2: the street | 7: the repeat |
+|---|---|---|---|---|---|
+| **`gemma-4-26b-heretic:nvfp4`** | 25B (4B active), 17 GB loaded | **3.3–3.9 s** | left the traveller out | replaced the tavern, but kept him "behind the warped wooden bar… toward the doorway" | rewrote the pose and expression again |
+| `gemma-4-12b-heretic:nvfp4` | 12B, 8.1 GB loaded | 8.0–9.6 s | left the traveller out | the same: the street, but still "behind the bar" | changed nothing (right) |
+| `orcarouter/Qwen3.8-27B-Uncensored:mlx-4bit` | 27B, 16 GB | 17.4–19.8 s | the only one with her, in the doorway shaking the rain from her cloak | moved him onto the street too, and the camera, light and colour with him | asked what to change (right, though marked *declined*, not *unclear*) |
+
+All three got the rest right: "frightened" changed only the expression sentence and dropped
+"warily", the rain went from every sentence it was in, the burning ship's light replaced the
+lamp's, the woodblock print replaced the oil painting, and the knife changed the pose (and, fairly,
+the expression). Each copied unchanged sentences word for word throughout.
 
 **Takeaways**
 
-- Small models (4–8B) can't hold this format: they either don't make the change, or damage the
-  prompt, while their Narration claims success. The Prompt tab's word diff is the way to spot it.
-- Among the ~30B models, the choice is style: **gemma4** is literal (good for stepping through
-  changes and checking the diff); **Qwen3.8** acts more like an art director and harmonises
-  related details, at the cost of changes you didn't ask for.
+- The difference is staging: both Gemmas move the scene but not the people in it, so a pose can
+  keep a piece of the old place; Qwen3.8 rewrites everything a change touches, like an art
+  director, at five times the time. The Prompt tab's word diff shows what was left behind.
+- Gemma 4 26B-A4B is about 2.5× as fast as the 12B (4B parameters active per token against 12B)
+  and as careful; the 12B is the one for when memory is short.
+- Small models (4–8B) can't hold this format: in earlier tests they didn't make the change, or
+  damaged the prompt (dropping sentences, writing edit notes into it), while their Narration
+  claimed success.
 - Uncensored models make no difference to what's rendered: the engine's Limits check every
   Action and every prompt whichever model wrote it ([ADR 0002](adr/0002-guardrails-enforced-by-the-engine.md)).
-- The first Frame after switching model is slower while Ollama loads it (gemma4: ~20 s).
-- Earlier, with a structured JSON Scene, spark-x2.5 also marked a wardrobe change it had been
-  told to refuse as done: small models are unreliable at following rules, not just formats.
+- The first Frame after switching model is slower while Ollama loads it.
+- Earlier, with a structured JSON Scene, spark-x2.5 4B also marked a change it had been told to
+  refuse as done: small models are unreliable at following rules, not just formats.
 
 ### Thinking
 
 Thinking makes the model reason before it answers, which is exactly what catches implied edits
-("not relaxed" also affects the pose). It costs time, and with a small model it didn't pay off.
+("not wary" also changes how he looks up). It costs time, and with a small model it didn't pay off.
 Measured on spark-x2.5 4B (an earlier version of the prompt format, four Actions):
 
 | spark-x2.5 4B | Correct | Text per Frame |
@@ -73,8 +77,8 @@ Measured on spark-x2.5 4B (an earlier version of the prompt format, four Actions
 | Thinking off | 2 of 4 | ~3 s |
 | Thinking on | 3 of 4 | 12 s to 102 s (160 s for the opening) |
 
-gemma4 got every Action right without Thinking, so leave it off; turn it on only if the model
-starts missing implied changes.
+Gemma 4 catches the implied changes without it, so leave it off; turn it on only if the model
+starts missing them.
 
 ### Other lessons
 
@@ -82,44 +86,23 @@ starts missing implied changes.
   with whitespace until their context fills. One such reply from spark blocked Ollama, and every
   request queued behind it, for 14 minutes. Every Text Model call now has a token cap and a time
   limit (see [design.md](design.md#the-frame-loop)).
-- **The Setup matters.** Describing Maya's identity as including "an easy smile" put an
-  expression into the identity sentence, which then contradicted "make her scared". Keep each
-  Setup fact in its own aspect ([scenarios.md](scenarios.md)).
-
-### A third model: `pdurlej/gemma-4-26B-A4B-it-heretic` (2026-09-28)
-
-A 25B mixture-of-experts gemma 4 (about 4B parameters active per token), uncensored ("heretic"),
-GGUF Q4_K_M rather than MLX. Replayed on the same seven Actions, Thinking off, beside fresh runs of
-the other two:
-
-| | gemma4 31B | gemma-4 26B-A4B heretic | Qwen3.8 27B (uncensored) |
-|---|---|---|---|
-| Time per Action | 9.0 s | **3.2–3.3 s** (warmed up; 4 s to load) | 18.5 s |
-| 3: scared, not relaxed | right (pose too) | right (pose too) | right, but also changed the camera |
-| 4: space | right: replaced Mars | right: replaced Mars | kept Mars under the stars |
-| 6: boxing stance | right | right | right, and made her "aggressive" unasked |
-| 7: the repeat | **unclear** (right) | **wrong, 3 runs in 3:** undid the stance ("arms resting at her sides") | changed the stance again |
-| Copying unchanged sentences | exact | **garbled one each run, 3 in 3:** "her *simplicity* arms", "*certainly* balanced", "pulled *enough* to her chest" | exact |
-| 2: remove the studio backdrop (already gone) | wrong this time: put the white studio back | changed nothing | changed nothing |
-
-The heretic model is about 3× faster than gemma4 31B (timed again after a first run shared the
-machine with other work), but in every run it garbled a sentence it should have copied word for
-word, somewhere different each time, and undid the boxing stance on the repeat. In a Chain each
-Frame builds on the last, so a garbled word stays in the prompt: for prompting, gemma4 31B stays
-the pick.
+- **The Setup matters.** Describing someone's identity with an expression in it ("a wry smile")
+  puts that expression into the identity sentence, where it then contradicts "make him
+  frightened". Keep each Setup fact in its own aspect ([scenarios.md](scenarios.md)).
 
 ### A small uncensored model: `richardyoung/mistral-7b-instruct-v0.3-abliterated:Q4_K_M` (2026-10-05)
 
 Mistral 7B Instruct v0.3, abliterated (refusals removed), GGUF Q4_K_M, 4.4 GB: a quarter of the
 others' size. Compared with the two other uncensored models on everything a Text Model does here,
-Thinking off, one model loaded at a time: the seven Chain Actions above, the Art Agent's six Kael
+Thinking off, one model loaded at a time: a seven-Action Chain (an earlier set, since redone on the
+tavern above), the Art Agent's six Kael
 Frames, the five Suggest cuts, and the Character's reply to the player's real next message after
 Frames 1, 4, 12 and 26 of the Kael Roleplay.
 
 | | Mistral 7B abliterated | heretic 26B-A4B | Qwen3.8 27B (uncensored) |
 |---|---|---|---|
 | Chain, per Action | 2.5–3.9 s | 3.1–3.7 s | 14.7–17.5 s |
-| Chain prompts | **broken**: dropped the style, Mars and lighting sentences; wrote edit notes in ("Background: showing space.", "…the same as before."); never applied Michelangelo | copied word for word this time; "remove all studio backdrop" replaced Mars with an invented mountain range; undid the stance on the repeat | right on 3 and 6; asked what to remove instead (*unclear*, fair); kept Mars under the space; nudged the stance on the repeat |
+| Chain prompts | **broken**: dropped whole sentences (the style, the place, the lighting); wrote edit notes into the prompt; ignored a change of art style | copied word for word; invented a new place for a removal; undid a pose on the repeat | right on most; asked what to remove instead (*unclear*, fair); kept the old place under a new background |
 | Art Agent, per picture | 8–16 s | **3–6 s** | 17–58 s |
 | Art: who's in the picture | 24 wrong: Kael alone, doing what Elara did | 24: wrote Elara in, marked only Kael as shown | right on all six (16 blocked by a Limit) |
 | Suggest, per message | 1.6–4.8 s | **0.8–2.7 s** | 4.6–10 s |
@@ -149,7 +132,7 @@ from the same day:
 |---|---|---|---|
 | On disk / loaded (`ollama ps`) | 7.4 GB / **9.5 GB** | 8.3 GB / 12 GB (it carries a vision encoder) | 16 GB / 18 GB |
 | Chain, per Action | 7.4–9.8 s | 6.4–7.5 s | **3.1–3.7 s** |
-| Chain prompts | copied word for word; right on 3, 4, 5 and 6; left the repeat alone (right, though marked *done*, not *unclear*); kept "across the terrain" in the lighting once in space | copied word for word; right on 3 and 6; kept her "on the Martian surface" under the space | see above: invented mountains, undid the stance |
+| Chain prompts | copied word for word; right on all but one detail of the old place left in the lighting; left the repeat alone (right, though marked *done*, not *unclear*) | copied word for word; kept the person standing in the old place under a new background | see above: invented a place, undid a pose |
 | Art Agent, per picture | 8.5–21 s | 6.6–20.6 s | **3–6 s** |
 | Art: who's in the picture | **right on all six**, 24 included | right on five; 24 muddled (who was awake and who asleep); 9 and 16 blocked | 24: wrote Elara in, marked only Kael as shown |
 | Suggest, per message | 1.6–5.5 s | 2.1–4.1 s | **0.8–2.7 s** |
@@ -175,7 +158,7 @@ the GGUF Q4_K_M, the same four tests:
 |---|---|---|
 | Loaded (`ollama ps`) | 9.5 GB | **8.1 GB** |
 | Chain, per Action | 7.4–9.8 s | **6.0–8.5 s** |
-| Chain prompts | right; left the repeat alone | right; left the repeat alone; but "attack stance" also turned *scared* into *focused* unasked |
+| Chain prompts | right; left the repeat alone | right; left the repeat alone; but a new pose also changed the expression unasked |
 | Art Agent, per picture | 8.5–21 s | 9.5–23 s |
 | Art: who's in the picture | right on all six | **two wrong:** put Elara into 6 (Kael alone); 24 lost the two men |
 | Suggest, per message | 1.6–5.5 s | 2.6–5.3 s |
@@ -206,7 +189,7 @@ from the full-precision weights writes (2026-10-05).
 | | GGUF Q4_K_M (pdurlej) | MLX NVFP4 (coder3101) |
 |---|---|---|
 | Chain, per Action | 3.1–3.7 s | 2.9–4.0 s |
-| Chain prompts | invented mountains for "remove the backdrop"; undid the stance on the repeat | kept Mars for "remove the backdrop" (right); undid the stance on the repeat; reworked Mars's lighting and palette unasked; no garbled words |
+| Chain prompts | invented a new place for a removal; undid a pose on the repeat | kept the place for the removal (right); undid a pose on the repeat; reworked the lighting and palette unasked; no garbled words |
 | Art Agent, per picture | 3–6 s | 4.7–8.1 s |
 | Art: who's in the picture | 24: wrote Elara in, marked only Kael | right on all six, 24 included; wrote "Elara is out of sight" into Kael's pictures |
 | Suggest, per message | 0.8–2.7 s | 0.9–2.3 s |

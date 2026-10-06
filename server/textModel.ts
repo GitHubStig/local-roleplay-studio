@@ -624,7 +624,7 @@ const STYLE_CLAUSE =
 /**
  * Worth asking `namesRealPerson` about: outside any style clause, the Action has a capitalised
  * full name, or talks about resembling someone. Keeps the extra question off ordinary Actions,
- * and off style references like "art style is Michelangelo / High Renaissance".
+ * and off style references like "art style is Hokusai / Japanese woodblock".
  */
 export function mightNameAPerson(action: string): boolean {
   const rest = action.replace(STYLE_CLAUSE, ' ')

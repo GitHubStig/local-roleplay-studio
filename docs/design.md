@@ -20,7 +20,8 @@ and identity → pose and limbs → expression → camera angle and framing → 
 Anything in it can be changed; the engine's four **Limits** are the only lines an Action can't
 cross ([ADR 0002](adr/0002-guardrails-enforced-by-the-engine.md)).
 
-The first Scenario is a studio photoshoot with Maya, a fictional fitness model.
+The built-in Scenario is the Kael tavern (`scenarios/tavern.md`): an 18th-century tavern on a stormy
+night, Kael the Character and a well-off traveller the player.
 
 ## The Frame loop
 
@@ -300,9 +301,9 @@ written for image prompts, are left out).
   never changes the Image Model, seed or size of a running Session. Changes apply from the next
   Session.
 
-In testing, FLUX.2 Klein 4B keeps Maya's face, hair and outfit consistent across Frames. Z-Image
-Turbo ignores her described appearance. If drift becomes a problem, see *edit-based rendering*
-in [open-threads.md](open-threads.md).
+In testing, FLUX.2 Klein 4B keeps a person's face, hair and outfit consistent across Frames. Z-Image
+Turbo ignores a described appearance. For drift, see *reference images and edits for Subject
+consistency* in [open-threads.md](open-threads.md).
 
 ## Screens
 
@@ -494,7 +495,7 @@ The design Q&A, and what changed later.
 
 | Decision | Chosen | Changed since |
 |---|---|---|
-| Premise | Studio photoshoot with a fictional adult professional Subject and guardrails | Now a text-to-image prompt generator; the photoshoot is its first Scenario |
+| Premise | One picture of a fictional adult Subject, changed step by step, with guardrails | Now a local roleplay studio: Roleplays, Chains and Storyboards |
 | Goal | Open sandbox; no scoring | — |
 | Backend | Deno HTTP server; Vite proxies `/api` | — |
 | Images | mflux CLI per image, behind `ImageGenerator` | Downloads blocked (ADR 0004); since 2026-10-02 allowed on first use, shown as downloading |

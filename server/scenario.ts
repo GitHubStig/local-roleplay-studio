@@ -3,7 +3,7 @@ import { basename, extname, fromFileUrl, join } from '@std/path'
 
 /** A Scenario file, parsed. See `scenarios/*.md`. */
 export interface Scenario {
-  /** File name without extension, e.g. `photoshoot`. */
+  /** File name without extension, e.g. `tavern`. */
   id: string
   title: string
   description: string

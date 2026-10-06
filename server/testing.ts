@@ -33,7 +33,7 @@ export const scenarioLibrary: ScenarioLibrary = {
 
 /** An Image Prompt that differs from others only in its pose. */
 export const promptWith = (pose: string): ImagePrompt =>
-  `A person, ${pose}, calm, eye level, running gear, in a studio, softbox light, neutral tones, photo.`
+  `A person, ${pose}, calm, eye level, a wool coat, in a tavern, lamplight, warm tones, oil painting.`
 
 /** Scripted Storyboard replies for `scriptedTextModel`. */
 export interface Scripts {

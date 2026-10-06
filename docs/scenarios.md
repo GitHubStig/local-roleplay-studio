@@ -2,7 +2,7 @@
 
 A **Scenario** is a saved Brief: one Markdown file in `scenarios/` that a Session can start from
 instead of a typed Brief. The
-file name, minus `.md`, is its id (`photoshoot.md` → `photoshoot`). Files are read fresh on
+file name, minus `.md`, is its id (`tavern.md` → `tavern`). Files are read fresh on
 every request, so a new or edited Scenario shows up on Home, under *Start a new Session*,
 without a restart.
 
@@ -14,17 +14,18 @@ In a Chain, a Scenario only shapes the **opening** Image Prompt. After that, any
 an Action; the only lines no Action can cross are the engine's four Limits
 ([ADR 0002](adr/0002-guardrails-enforced-by-the-engine.md)).
 
-[`scenarios/photoshoot.md`](../scenarios/photoshoot.md) is a complete, working example.
+[`scenarios/tavern.md`](../scenarios/tavern.md) is a complete, working example, written to start either a
+Roleplay (Kael as the Character, the traveller as the player) or a Chain (its opening picture).
 
 ## Layout
 
 ```markdown
 ---
-title: Studio Photoshoot
+title: The Rain-Soaked Tavern
 description: One or two sentences for its card on Home.
 setup:
-  subject: Maya Okafor, a fictional 31-year-old fitness model…
-  location: A bright daylight photo studio…
+  character: Kael, a 42-year-old retired smuggler who runs the tavern…
+  place: A small, creaking 18th-century tavern in a remote harbour town…
 ---
 
 ## System
@@ -53,7 +54,7 @@ Only `##` headings count, matched case-insensitively.
 - **`## Opening`** (required): what the opening image should be. Be concrete: the Text Model
   frames it, plus the Setup, into the nine sentences.
 - **`## System`** (optional): notes the Text Model gets on every Frame, after the engine's own
-  rules. Use it for things like "keep Maya recognisably the same person". Don't restate the
+  rules. Use it for things like "keep Kael recognisably the same person". Don't restate the
   prompt format, the Limits or the reply format; the engine supplies those.
 
 ## The Image Prompt
@@ -74,8 +75,8 @@ order, with details inside a sentence separated by commas or semicolons:
 | 9 | art style and medium | photograph, painting, render… and its style |
 
 The engine renders "adult, " plus the paragraph. Keep each Setup fact in its own aspect: a
-subject described as having "an easy smile" puts an expression into the identity sentence, and
-it will contradict a later "make her scared".
+subject described as having "a wry smile" puts an expression into the identity sentence, and
+it will contradict a later "make him frightened".
 
 ## Checking a Scenario
 

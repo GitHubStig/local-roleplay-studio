@@ -43,7 +43,7 @@ const options: api.SettingsOptions = {
   features: ALL_AVAILABLE,
 }
 
-const photoshoot = { id: 'photoshoot', title: 'Studio Photoshoot', description: 'Direct a shoot.' }
+const tavern = { id: 'tavern', title: 'The Rain-Soaked Tavern', description: 'A stormy night.' }
 
 const router = createRouter({
   history: createMemoryHistory(),
@@ -58,7 +58,7 @@ const startButton = (w: Awaited<ReturnType<typeof mountIt>>) =>
   w.find('[data-start]').element as HTMLButtonElement
 
 beforeEach(() => {
-  vi.mocked(api.getScenarios).mockResolvedValue({ scenarios: [photoshoot], errors: [] })
+  vi.mocked(api.getScenarios).mockResolvedValue({ scenarios: [tavern], errors: [] })
   vi.mocked(api.getSettings).mockResolvedValue({ ...settings })
   vi.mocked(api.getSettingsOptions).mockResolvedValue(options)
 })
@@ -66,10 +66,10 @@ beforeEach(() => {
 describe('StartSession', () => {
   it('preselects a lone Scenario and emits start', async () => {
     const wrapper = await mountIt()
-    expect(wrapper.text()).toContain('Studio Photoshoot')
+    expect(wrapper.text()).toContain('The Rain-Soaked Tavern')
     expect(startButton(wrapper).disabled).toBe(false)
     await wrapper.find('[data-start]').trigger('click')
-    expect(wrapper.emitted('start')).toEqual([[{ kind: 'roleplay', scenarioId: 'photoshoot' }]])
+    expect(wrapper.emitted('start')).toEqual([[{ kind: 'roleplay', scenarioId: 'tavern' }]])
   })
 
   it('lists Roleplay first, then Chain and Storyboard', async () => {
@@ -129,7 +129,7 @@ describe('StartSession', () => {
     expect(wrapper.find('[data-frame-count]').exists()).toBe(false)
     expect(startButton(wrapper).textContent?.trim()).toBe('Start Roleplay')
     await wrapper.find('[data-start]').trigger('click')
-    expect(wrapper.emitted('start')).toEqual([[{ kind: 'roleplay', scenarioId: 'photoshoot' }]])
+    expect(wrapper.emitted('start')).toEqual([[{ kind: 'roleplay', scenarioId: 'tavern' }]])
   })
 
   it('offers no Frame count for a Chain', async () => {
@@ -140,7 +140,7 @@ describe('StartSession', () => {
 
   it('requires a choice when there are several Scenarios', async () => {
     vi.mocked(api.getScenarios).mockResolvedValue({
-      scenarios: [photoshoot, { id: 'other', title: 'Other', description: '' }],
+      scenarios: [tavern, { id: 'other', title: 'Other', description: '' }],
       errors: [],
     })
     const wrapper = await mountIt()
@@ -165,7 +165,7 @@ describe('StartSession', () => {
 
   it('reports Scenario files that failed to load', async () => {
     vi.mocked(api.getScenarios).mockResolvedValue({
-      scenarios: [photoshoot],
+      scenarios: [tavern],
       errors: [{ file: 'broken.md', message: 'title must be a non-empty string' }],
     })
     const wrapper = await mountIt()

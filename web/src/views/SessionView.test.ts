@@ -51,7 +51,7 @@ const session = (frames: api.ChainFrame[] = []): api.ChainSession => ({
   id: 's1',
   kind: 'chain',
   brief: null,
-  scenarioId: 'photoshoot',
+  scenarioId: 'tavern',
   settings: {} as api.Settings,
   seed: 1,
   createdAt: '2026-09-24T00:00:00.000Z',
@@ -117,16 +117,16 @@ describe('SessionView', () => {
     expect(wrapper.find('[data-writing]').exists()).toBe(true)
     expect(wrapper.find('[data-rendering]').exists()).toBe(false)
 
-    emit({ type: 'text', narration: 'Maya arrives.', outcome: 'done', prompt: promptFor(0) })
+    emit({ type: 'text', narration: 'Kael looks up.', outcome: 'done', prompt: promptFor(0) })
     emit({ type: 'phase', phase: 'image' })
     emit({ type: 'progress', step: 2, total: 4 })
     await flushPromises()
-    expect(wrapper.find('[data-provisional]').text()).toBe('Maya arrives.')
+    expect(wrapper.find('[data-provisional]').text()).toBe('Kael looks up.')
     expect(wrapper.find('[role=status]').text()).toContain('Rendering the image… step 2 of 4')
     expect(wrapper.find('[data-rendering]').attributes('data-rendering')).toBe('image')
     expect(wrapper.find('[data-writing]').exists()).toBe(false)
 
-    emit({ type: 'committed', frame: frame(0, null, { narration: 'Maya arrives.' }) })
+    emit({ type: 'committed', frame: frame(0, null, { narration: 'Kael looks up.' }) })
     finish()
     await loadImages()
     expect(wrapper.find('[data-provisional]').exists()).toBe(false)
@@ -488,7 +488,7 @@ describe('SessionView', () => {
     const { wrapper } = await mountIt()
     await wrapper.find('textarea').setValue('Sit')
     await buttonNamed(wrapper, 'Send').trigger('click')
-    emit({ type: 'text', outcome: 'done', narration: 'Maya sits.', prompt: promptFor(0) })
+    emit({ type: 'text', outcome: 'done', narration: 'Kael sits.', prompt: promptFor(0) })
     emit({ type: 'phase', phase: 'queued' })
     await flushPromises()
     expect(wrapper.find('[role=status]').text()).toContain('Waiting for another render')
@@ -566,10 +566,10 @@ describe('SessionView', () => {
     await flushPromises()
     expect(wrapper.find('[data-thinking]').text()).not.toContain('stool')
 
-    emit({ type: 'text', outcome: 'done', narration: 'Maya sits.', prompt: promptFor(0) })
+    emit({ type: 'text', outcome: 'done', narration: 'Kael sits.', prompt: promptFor(0) })
     await flushPromises()
     expect(wrapper.find('[data-thinking]').exists()).toBe(false)
-    expect(wrapper.find('[data-caption]').text()).toBe('Maya sits.')
+    expect(wrapper.find('[data-caption]').text()).toBe('Kael sits.')
   })
 
   it("shows a Frame's saved thinking in the Prompt tab", async () => {

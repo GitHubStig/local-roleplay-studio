@@ -15,7 +15,8 @@ There are three kinds of Session:
 - **Chain:** a picture you change one step at a time. You say what to change; the language model
   rewrites the Image Prompt (one paragraph, a sentence each for subject → pose → expression →
   camera → clothing → environment → lighting → color → style) and the image model renders it.
-  The first Scenario is a studio photoshoot with Maya, a fictional fitness model.
+  The built-in Scenario is a rain-soaked 18th-century tavern: Kael, a retired smuggler, and you, a
+  well-off traveller who might solve his troubles for a price.
 - **Storyboard:** a whole sequence planned at once (a manga page, a video storyboard) from a
   Brief: every Frame's prompt is written up front, sharing one Look, and you edit and render each
   Frame as you like.

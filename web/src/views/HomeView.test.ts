@@ -18,8 +18,8 @@ vi.mock('../api', async (importOriginal) => ({
 const summary = (id: string, extra: Partial<api.SessionSummary> = {}): api.SessionSummary => ({
   id,
   kind: 'chain',
-  scenarioId: 'photoshoot',
-  title: 'Studio Photoshoot',
+  scenarioId: 'tavern',
+  title: 'The Rain-Soaked Tavern',
   frames: 3,
   latestImage: 'frame-2-abcdef12.png',
   createdAt: new Date().toISOString(),
@@ -139,7 +139,7 @@ describe('HomeView', () => {
 
   it('starts a new Chain and opens it', async () => {
     vi.mocked(api.getScenarios).mockResolvedValue({
-      scenarios: [{ id: 'photoshoot', title: 'Studio Photoshoot', description: '' }],
+      scenarios: [{ id: 'tavern', title: 'The Rain-Soaked Tavern', description: '' }],
       errors: [],
     })
     vi.mocked(api.createSession).mockResolvedValue({ id: 'new', kind: 'chain' } as api.Session)
@@ -147,7 +147,7 @@ describe('HomeView', () => {
     await wrapper.find('input[value=chain]').setValue()
     await wrapper.find('[data-start]').trigger('click')
     await flushPromises()
-    expect(api.createSession).toHaveBeenCalledWith({ kind: 'chain', scenarioId: 'photoshoot' })
+    expect(api.createSession).toHaveBeenCalledWith({ kind: 'chain', scenarioId: 'tavern' })
     expect(router.currentRoute.value.path).toBe('/sessions/new')
   })
 

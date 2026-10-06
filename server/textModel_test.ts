@@ -90,7 +90,7 @@ Deno.test('mightNameAPerson flags names and lookalike requests, not ordinary edi
       'crouch low',
       'teal backdrop, film noir',
       'swap to an 85mm lens',
-      "she's scared. art style is Michelangelo / High Renaissance",
+      "he's frightened. art style is Hokusai / Japanese woodblock",
       'paint it in the style of Frida Kahlo',
       'inspired by Annie Leibovitz, moody',
     ]

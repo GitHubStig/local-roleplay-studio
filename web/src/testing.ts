@@ -2,7 +2,7 @@ import type { Availability, Feature, ImagePrompt } from './api'
 
 /** An Image Prompt for Frame `index` that differs from the others only in its pose. */
 export const promptFor = (index: number): ImagePrompt =>
-  `A woman, pose ${index}, calm, eye level, running gear, in a studio, softbox light, photo.`
+  `A man, pose ${index}, calm, eye level, a wool coat, in a tavern, lamplight, oil painting.`
 
 /** Every Feature switched on in Settings, as by default. */
 export const ALL_ON: Record<Feature, boolean> = {
