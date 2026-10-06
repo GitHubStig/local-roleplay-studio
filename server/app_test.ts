@@ -845,6 +845,11 @@ Deno.test('Without pictures every kind starts; a Chain writes its Frames without
     assertEquals(on.status, 409)
     const job = await call('POST', '/api/sessions/s1/jobs', { kind: 'render', frameIndex: 0 })
     assertEquals(job.status, 409)
+
+    // Home shows the Chain's Narration in place of a picture (a Storyboard its first Beat).
+    const cards = await (await call('GET', '/api/sessions')).json()
+    const chainCard = cards.find((c: { id: string }) => c.id === 's1')
+    assertEquals([chainCard.latestImage, chainCard.excerpt], [null, 'Pose: standing.'])
   }))
 
 Deno.test('A Chain with rendering off writes prompts, and a render fills every Frame sharing one', () =>

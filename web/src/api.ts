@@ -387,7 +387,10 @@ export interface SessionSummary {
   title: string
   frames: number
   latestImage: string | null
-  /** A Roleplay's latest line, shown on its card in place of an image. */
+  /**
+   * Shown on its card in place of a picture until there is one: a Roleplay's latest line, a
+   * Chain's latest Narration, a Storyboard's first Beat.
+   */
   excerpt?: string | null
   createdAt: string
   updatedAt: string

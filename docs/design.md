@@ -397,8 +397,9 @@ consistency* in [open-threads.md](open-threads.md).
   quotes. While the Character replies, the Message shows at once and the Reply fills in field by
   field, with the same light sweeping round the text box. Enter sends; Cancel, Undo and the
   unsent Message (remembered per Session) work as on the Session screen. The right panel is the
-  Cast, editable, with **Save Cast**. On Home, a Roleplay's card shows the Character's latest line
-  in place of an image. In the Look & Cast panel every text box grows to fit its text (no inner scrolling, so the
+  Cast, editable, with **Save Cast**. On Home, a card without a picture shows text in its place: a
+  Roleplay's the Character's latest line (in quotation marks), a Chain's its latest Narration, a
+  Storyboard's its first Beat. In the Look & Cast panel every text box grows to fit its text (no inner scrolling, so the
   panel scrolls as one) and collapses to a one-line preview by its label, remembered per browser
   (`CollapsibleTextarea`, sized by VueUse's `useTextareaAutosize`).
 - **Navigation:** **Local Roleplay Studio** (the app's name) leads Home; **Current Session** leads back to the Session opened last

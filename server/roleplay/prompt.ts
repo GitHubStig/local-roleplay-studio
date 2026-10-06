@@ -3,6 +3,7 @@ import type { ChatMessage } from '../text/chat.ts'
 import { limitsEnabled } from '../limits.ts'
 import { loadPrompt, type PromptValues } from '../promptFiles.ts'
 import type { Scenario } from '../scenario.ts'
+import { excerpt } from '../session.ts'
 import type { Cast, Character, Persona, Reply, RoleplaySession, Setting } from './types.ts'
 
 /** The reply's fields, in the order the model writes them: think, then act, then speak. */
@@ -28,9 +29,7 @@ const limitsFor = (values: PromptValues) =>
 export function roleplayExcerpt(session: RoleplaySession): string | null {
   const last = session.frames.at(-1)?.reply
   const reply = last ? cleanReply(last) : undefined
-  const text = reply ? reply.dialogue || reply.actions : ''
-  if (!text) return null
-  return text.length > 160 ? `${text.slice(0, 157).trimEnd()}…` : text
+  return excerpt(reply ? reply.dialogue || reply.actions : '')
 }
 
 /** A reply as it's sent back to the model in the history: the same JSON it wrote. */

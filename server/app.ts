@@ -13,7 +13,13 @@ import {
   type TextModelInfo,
 } from './text/backend.ts'
 import { briefScenario, type Scenario, type ScenarioLibrary, summarise } from './scenario.ts'
-import type { ChainSession, Session, SessionStore, StoryboardSession } from './session.ts'
+import {
+  type ChainSession,
+  excerpt,
+  type Session,
+  type SessionStore,
+  type StoryboardSession,
+} from './session.ts'
 import { type Settings, type SettingsStore, SIZE_PRESETS, validateSettings } from './settings.ts'
 import type { TextModel } from './textModel.ts'
 import type { RoleplayModel } from './roleplay/model.ts'
@@ -532,8 +538,11 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
             : titles.get(s.scenarioId ?? '') ?? s.scenarioId,
           frames: s.frames.length,
           latestImage: rendered.at(-1)?.image ?? null,
-          // A Roleplay has no images yet: its card shows the Character's latest line instead.
-          ...(s.kind === 'roleplay' ? { excerpt: roleplayExcerpt(s) } : {}),
+          // Shown in place of a picture until there is one: a Roleplay's latest line, a Chain's
+          // latest Narration, a Storyboard's first Beat.
+          excerpt: s.kind === 'roleplay'
+            ? roleplayExcerpt(s)
+            : excerpt(s.kind === 'chain' ? s.frames.at(-1)?.narration : s.frames[0]?.beat),
           createdAt: s.createdAt,
           updatedAt,
           activity: active.get(s.id)?.phase ?? jobs.activity(s.id),

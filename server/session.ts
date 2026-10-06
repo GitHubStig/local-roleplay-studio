@@ -123,6 +123,13 @@ export interface StoryboardSession extends SessionBase {
 
 export type Session = ChainSession | StoryboardSession | RoleplaySession
 
+/** Text for a card on Home, cut to 160 characters; null for none. */
+export function excerpt(text: string | undefined): string | null {
+  const plain = text?.replace(/\s+/g, ' ').trim()
+  if (!plain) return null
+  return plain.length > 160 ? `${plain.slice(0, 157).trimEnd()}…` : plain
+}
+
 export const currentPrompt = (s: ChainSession): ImagePrompt | null =>
   s.frames.at(-1)?.prompt ?? null
 

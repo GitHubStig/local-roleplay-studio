@@ -75,6 +75,14 @@ describe('HomeView', () => {
     expect(wrapper.find('[data-excerpt]').text()).toBe('“Sit down.”')
   })
 
+  it("shows a Storyboard's Beat in place of an image, without a line's quotation marks", async () => {
+    vi.mocked(api.listSessions).mockResolvedValue([
+      summary('s', { kind: 'storyboard', latestImage: null, excerpt: 'Kael reads the letter.' }),
+    ])
+    const { wrapper } = await mountIt()
+    expect(wrapper.find('[data-excerpt]').text()).toBe('Kael reads the letter.')
+  })
+
   it('links a Storyboard to its own screen', async () => {
     vi.mocked(api.listSessions).mockResolvedValue([summary('s', { kind: 'storyboard' })])
     const { wrapper } = await mountIt()

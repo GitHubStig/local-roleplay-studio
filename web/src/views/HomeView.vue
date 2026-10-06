@@ -145,7 +145,7 @@ function ago(iso: string): string {
                   class="line-clamp-[9] p-4 font-serif text-sm italic leading-relaxed text-muted"
                   data-excerpt
                 >
-                  “{{ s.excerpt }}”
+                  {{ s.kind === 'roleplay' ? `“${s.excerpt}”` : s.excerpt }}
                 </p>
               </div>
               <div class="flex flex-col gap-1 p-3 text-sm">
