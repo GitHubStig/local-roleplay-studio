@@ -1,5 +1,5 @@
 import type { TextBackend, TextModelInfo } from '../backend.ts'
-import { type Chat, LENGTH_LIMIT_ERROR, THINKING_TOKENS } from '../chat.ts'
+import { type Chat, lengthError, THINKING_TOKENS } from '../chat.ts'
 import { sseData } from '../streams.ts'
 
 /**
@@ -59,6 +59,8 @@ const LABEL = 'Text server'
  * - `repeat_penalty` and `repeat_last_n` (llama.cpp's and LM Studio's names): the Replies' guard
  *   against repeating themselves. Cloud services have no equivalent.
  * - `max_tokens`: OpenAI's reasoning models want `max_completion_tokens` instead.
+ * - `stream_options.include_usage`: the token counts, in a last chunk, which tell a reply cut off
+ *   by a full context from one cut off by its own cap.
  */
 export function openAiChat(
   model: string,
@@ -68,6 +70,7 @@ export function openAiChat(
   let effort = true
   let penalty = true
   let tokensField = 'max_tokens'
+  let usage = true
   const fallbacks = [
     {
       refused: /reasoning/i,
@@ -78,6 +81,7 @@ export function openAiChat(
       },
     },
     { refused: /repeat_/i, applies: () => penalty, drop: () => (penalty = false) },
+    { refused: /stream_options|include_usage/i, applies: () => usage, drop: () => (usage = false) },
     {
       refused: /max_tokens/i,
       applies: () => tokensField === 'max_tokens',
@@ -92,13 +96,16 @@ export function openAiChat(
     },
     async stream(call) {
       const { messages, schema, maxTokens, signal, onThinking, onContent } = call
+      let cap = 0
       const body = () => {
         const thinking = think && !call.noThinking
+        cap = thinking ? maxTokens + THINKING_TOKENS : maxTokens
         return {
           model,
           stream: true,
+          ...(usage && { stream_options: { include_usage: true } }),
           messages,
-          [tokensField]: thinking ? maxTokens + THINKING_TOKENS : maxTokens,
+          [tokensField]: cap,
           ...(effort && { reasoning_effort: thinking ? 'medium' : 'none' }),
           ...(schema && {
             response_format: { type: 'json_schema', json_schema: { name: 'answer', schema } },
@@ -127,8 +134,13 @@ export function openAiChat(
       let content = ''
       let thinking = ''
       let stopped = ''
+      let tokens = { prompt: 0, reply: 0 }
       for await (const part of sseData(res.body)) {
         if (part.error) throw new Error(`${LABEL}: ${messageOf(part.error)}`)
+        const counts = part.usage as { prompt_tokens?: number; completion_tokens?: number } | null
+        if (counts) {
+          tokens = { prompt: counts.prompt_tokens ?? 0, reply: counts.completion_tokens ?? 0 }
+        }
         const choice = (part.choices as Choice[] | undefined)?.[0]
         if (!choice) continue
         // Ollama and OpenRouter call it `reasoning`; llama.cpp, LM Studio and DeepSeek
@@ -145,7 +157,7 @@ export function openAiChat(
         }
         if (choice.finish_reason) stopped = choice.finish_reason
       }
-      if (stopped === 'length') throw new Error(LENGTH_LIMIT_ERROR)
+      if (stopped === 'length') throw lengthError(tokens, cap)
       return { content, thinking: thinking.trim() }
     },
   }

@@ -2,6 +2,7 @@ import { assertEquals, assertRejects } from '@std/assert'
 import { chatRoleplayModel } from '../../roleplay/model.ts'
 import { chatTextModel } from '../../textModel.ts'
 import { promptWith, testScenario } from '../../testing.ts'
+import { ContextFullError } from '../chat.ts'
 import { openAiBackend } from './openai.ts'
 
 interface Seen {
@@ -33,12 +34,16 @@ function fakeServer(respond: (req: Seen) => Response) {
   }
 }
 
-/** A streamed reply: each delta in its own event, then the finish and `[DONE]`. */
-const sse = (deltas: object[], finish = 'stop') =>
+/**
+ * A streamed reply: each delta in its own event, then the finish, the token counts if given (as
+ * `stream_options.include_usage` asks), and `[DONE]`.
+ */
+const sse = (deltas: object[], finish = 'stop', usage?: object) =>
   new Response(
     [
       ...deltas.map((delta) => ({ choices: [{ delta, finish_reason: null }] })),
       { choices: [{ delta: {}, finish_reason: finish }] },
+      ...(usage ? [{ choices: [], usage }] : []),
     ].map((p) => `data: ${JSON.stringify(p)}\n\n`).join('') + 'data: [DONE]\n\n',
   )
 
@@ -135,7 +140,7 @@ Deno.test('Other refusals, mid-stream errors and cut-off replies fail readably',
   const replies = [
     Response.json({ error: { message: 'Invalid API key' } }, { status: 401 }),
     new Response(`data: ${JSON.stringify({ error: { message: 'overloaded' } })}\n\n`),
-    sse([{ content: '{"outcome": "done", "narr' }], 'length'),
+    sse([{ content: '{"outcome": "done", "narr' }], 'length', { completion_tokens: 2048 }),
   ]
   const server = fakeServer(() => replies.shift()!)
   try {
@@ -144,6 +149,28 @@ Deno.test('Other refusals, mid-stream errors and cut-off replies fail readably',
     await assertRejects(() => model.write(request, signal), Error, 'Text server: overloaded')
     await assertRejects(() => model.write(request, signal), Error, 'ran past its length limit')
     assertEquals(server.seen.length, 3) // no retries
+  } finally {
+    await server.close()
+  }
+})
+
+Deno.test('A reply cut off short of its cap, by the counts, outgrew the context', async () => {
+  // As Ollama's /v1 answers an overlong chat at num_ctx 8192 (2026-10-06).
+  const counts = { prompt_tokens: 7966, completion_tokens: 226, total_tokens: 8192 }
+  const replies = [
+    // A server that refuses the counts: dropped, and asked again.
+    Response.json({ error: { message: "Unknown field 'stream_options'" } }, { status: 400 }),
+    sse([{ content: '{"outcome": "done", "narr' }], 'length', counts),
+  ]
+  const server = fakeServer(() => replies.shift()!)
+  try {
+    await assertRejects(
+      () => chatTextModel(server.backend().chat('m', false)).write(request, signal),
+      ContextFullError,
+      '(8192 tokens)',
+    )
+    assertEquals(server.seen[0].body.stream_options, { include_usage: true })
+    assertEquals('stream_options' in server.seen[1].body, false)
   } finally {
     await server.close()
   }

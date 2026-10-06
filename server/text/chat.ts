@@ -45,6 +45,31 @@ export const THINKING_TOKENS = 12288
 export const LENGTH_LIMIT_ERROR = 'The Text Model ran past its length limit'
 
 /**
+ * The prompt filled the model's context, leaving the reply no room: the conversation has outgrown
+ * the backend's context length. The same call would fail again, so it isn't retried.
+ */
+export class ContextFullError extends Error {
+  constructor(tokens: number) {
+    super(
+      `The conversation no longer fits the Text Model's context (${tokens} tokens). Raise the ` +
+        `context length where the model runs (Ollama: its settings, or OLLAMA_CONTEXT_LENGTH; ` +
+        `LM Studio: the model's load settings), as far as it still fits on the GPU.`,
+    )
+    this.name = 'ContextFullError'
+  }
+}
+
+/**
+ * Why a reply stopped at a length limit: short of its own cap (`cap` tokens), the context ran out;
+ * at it, the reply was too long. Without counts (`reply` 0), the length error.
+ */
+export function lengthError(tokens: { prompt: number; reply: number }, cap: number): Error {
+  return tokens.reply > 0 && tokens.reply < cap
+    ? new ContextFullError(tokens.prompt + tokens.reply)
+    : new Error(LENGTH_LIMIT_ERROR)
+}
+
+/**
  * Runs `task` with `signal` plus a time limit. A time-limit abort becomes a readable error; the
  * player's own Cancel (on `signal`) is rethrown unchanged.
  */

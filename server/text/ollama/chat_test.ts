@@ -1,6 +1,7 @@
 import { assertEquals, assertRejects } from '@std/assert'
 import { chatTextModel, type TextModelOptions } from '../../textModel.ts'
 import { promptWith, testScenario } from '../../testing.ts'
+import { ContextFullError } from '../chat.ts'
 import { ollamaChat } from './ollama.ts'
 
 /** A Chain's Text Model on an Ollama at `baseUrl`. */
@@ -116,6 +117,31 @@ Deno.test('a Text Model on Ollama caps output and fails a reply cut off by the l
     )
     const options = ollama.requests[0].options as { num_predict: number }
     assertEquals(options.num_predict, 2048)
+  } finally {
+    await ollama.close()
+  }
+})
+
+Deno.test('a reply cut off short of its cap says the conversation outgrew the context', async () => {
+  // As Ollama's GGUF engine answers an overlong chat at num_ctx 8192: the prompt fills it.
+  const ollama = fakeOllama(() =>
+    ndjson({ message: { content: '{"outcome": "done", "narr' } }, {
+      done: true,
+      done_reason: 'length',
+      prompt_eval_count: 8002,
+      eval_count: 190,
+    })
+  )
+  try {
+    await assertRejects(
+      () =>
+        ollamaTextModel('m', { baseUrl: ollama.baseUrl }).write(
+          { scenario: testScenario, prompt: null, action: null },
+          new AbortController().signal,
+        ),
+      ContextFullError,
+      "no longer fits the Text Model's context (8192 tokens)",
+    )
   } finally {
     await ollama.close()
   }

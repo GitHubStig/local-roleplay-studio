@@ -1,5 +1,5 @@
 import type { TextBackend, TextModelInfo } from '../backend.ts'
-import { type Chat, LENGTH_LIMIT_ERROR, THINKING_TOKENS } from '../chat.ts'
+import { type Chat, lengthError, THINKING_TOKENS } from '../chat.ts'
 import { ndjson } from '../streams.ts'
 
 /**
@@ -39,8 +39,10 @@ export function ollamaChat(
     },
     async stream(call) {
       const { messages, schema, maxTokens, signal, onThinking, onContent } = call
+      let cap = 0
       const body = () => {
         const thinking = think && !call.noThinking
+        cap = thinking ? maxTokens + THINKING_TOKENS : maxTokens
         return {
           think: thinking,
           options: {
@@ -49,7 +51,7 @@ export function ollamaChat(
               repeat_penalty: call.repeatPenalty.penalty,
               repeat_last_n: call.repeatPenalty.lastN,
             }),
-            num_predict: thinking ? maxTokens + THINKING_TOKENS : maxTokens,
+            num_predict: cap,
           },
           format: schema,
           messages,
@@ -74,6 +76,7 @@ export function ollamaChat(
       let content = ''
       let thinking = ''
       let stopped = ''
+      let tokens = { prompt: 0, reply: 0 }
       for await (const part of ndjson(res.body)) {
         if (part.error) throw new Error(`Ollama: ${part.error}`)
         const message = part.message as { content?: string; thinking?: string } | undefined
@@ -85,9 +88,17 @@ export function ollamaChat(
           content += message.content
           onContent?.(message.content)
         }
-        if (part.done) stopped = String(part.done_reason ?? '')
+        if (part.done) {
+          stopped = String(part.done_reason ?? '')
+          tokens = {
+            prompt: Number(part.prompt_eval_count ?? 0),
+            reply: Number(part.eval_count ?? 0),
+          }
+        }
       }
-      if (stopped === 'length') throw new Error(LENGTH_LIMIT_ERROR)
+      // On Ollama's GGUF engine an overlong chat loses its oldest exchanges and fills the context
+      // to the brim, leaving the reply short of its cap (docs/open-threads.md).
+      if (stopped === 'length') throw lengthError(tokens, cap)
       return { content, thinking: thinking.trim() }
     },
   }

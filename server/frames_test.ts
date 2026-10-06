@@ -1,3 +1,4 @@
+import { ContextFullError } from './text/chat.ts'
 import { assertEquals, assertMatch, assertNotEquals, assertRejects } from '@std/assert'
 import { join } from '@std/path'
 import { DEFAULT_SETTINGS } from './settings.ts'
@@ -101,6 +102,31 @@ Deno.test('runChainFrame gives up after the retry and leaves the Session untouch
         ),
       Error,
       'two',
+    )
+    assertEquals((await store.load('s1'))?.frames, [])
+  }))
+
+Deno.test("runChainFrame doesn't retry a conversation that outgrew the context", () =>
+  withTempDir(async (root) => {
+    const store = chainStore(root)
+    const session = newSession()
+    await store.save(session)
+    await assertRejects(
+      () =>
+        runChainFrame(
+          {
+            store,
+            // A retry would succeed here; it mustn't be made.
+            textModel: scriptedTextModel([new ContextFullError(8192), reply('standing')]),
+            imageGenerator: fakeImageGenerator(),
+          },
+          session,
+          testScenario,
+          null,
+          () => {},
+          signal(),
+        ),
+      ContextFullError,
     )
     assertEquals((await store.load('s1'))?.frames, [])
   }))

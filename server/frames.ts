@@ -17,6 +17,7 @@ import {
   type SessionStore,
 } from './session.ts'
 import type { FrameText, TextModel } from './textModel.ts'
+import { ContextFullError } from './text/chat.ts'
 
 /** Progress any piece of work reports as it happens, in a Chain or a Storyboard. */
 export type ProgressEvent =
@@ -118,7 +119,7 @@ export async function withRetry<T>(
         restart = false
       })
     } catch (err) {
-      if (signal.aborted) throw err
+      if (signal.aborted || err instanceof ContextFullError) throw err
       lastError = err
       console.warn(
         `Text Model attempt ${attempt} of ${TEXT_ATTEMPTS} failed:`,
