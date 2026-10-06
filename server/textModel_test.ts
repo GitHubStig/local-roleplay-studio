@@ -12,8 +12,8 @@ import {
 } from './textModel.ts'
 import { promptWith, testScenario } from './testing.ts'
 
-Deno.test('systemMessage has the paragraph rules, the order, the limits and the notes', () => {
-  const msg = systemMessage(testScenario, false)
+Deno.test('systemMessage has the paragraph rules, the order, the limits and the notes', async () => {
+  const msg = await systemMessage(testScenario, false)
   assertStringIncludes(msg, 'one paragraph of exactly nine sentences')
   assertStringIncludes(msg, '1. subject and identity:')
   assertStringIncludes(msg, '9. art style and medium:')
@@ -22,19 +22,23 @@ Deno.test('systemMessage has the paragraph rules, the order, the limits and the 
   assertStringIncludes(msg, 'Rules.')
 })
 
-Deno.test('systemMessage gives the Setup only on the Opening Frame', () => {
-  assertStringIncludes(systemMessage(testScenario, true), 'location: a studio')
-  assertEquals(systemMessage(testScenario, false).includes('location: a studio'), false)
+Deno.test('systemMessage gives the Setup only on the Opening Frame', async () => {
+  assertStringIncludes(await systemMessage(testScenario, true), 'location: a studio')
+  assertEquals((await systemMessage(testScenario, false)).includes('location: a studio'), false)
 })
 
-Deno.test('userMessage uses the opening instructions on the Opening Frame', () => {
-  const msg = userMessage({ scenario: testScenario, prompt: null, action: null })
+Deno.test('userMessage uses the opening instructions on the Opening Frame', async () => {
+  const msg = await userMessage({ scenario: testScenario, prompt: null, action: null })
   assertStringIncludes(msg, 'This is the opening')
   assertStringIncludes(msg, 'Start.')
 })
 
-Deno.test('userMessage sends only the current Image Prompt and the Action', () => {
-  const msg = userMessage({ scenario: testScenario, prompt: promptWith('standing'), action: 'Sit' })
+Deno.test('userMessage sends only the current Image Prompt and the Action', async () => {
+  const msg = await userMessage({
+    scenario: testScenario,
+    prompt: promptWith('standing'),
+    action: 'Sit',
+  })
   assertStringIncludes(msg, 'A person, standing,')
   assertStringIncludes(msg, 'Sit')
 })
@@ -71,8 +75,8 @@ Deno.test('parseFrameText rejects bad replies', () => {
   )
 })
 
-Deno.test('realPersonQuestion says style references are not real people', () => {
-  assertStringIncludes(realPersonQuestion('art style is Michelangelo'), 'style to imitate')
+Deno.test('realPersonQuestion says style references are not real people', async () => {
+  assertStringIncludes(await realPersonQuestion('art style is Michelangelo'), 'style to imitate')
 })
 
 Deno.test('mightNameAPerson flags names and lookalike requests, not ordinary edits', () => {

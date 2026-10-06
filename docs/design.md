@@ -229,7 +229,11 @@ under `/api/sessions/:id/roleplay/` ([ADR 0007](adr/0007-roleplay-is-a-conversat
 The prompts are Markdown files in `server/prompts/roleplay/` (`cast.md`, `cast-request.md`,
 `character.md`, `opening-request.md`, `limits.md`, `limits-adults-only.md`, and Suggest's
 `suggest.md`, `suggest-request.md`, `suggest-limits*.md`, and the voice's `voice.md`), each with a note at
-the top saying when it's used and what it's filled with; edits apply on the next call.
+the top saying when it's used and what it's filled with; edits apply on the next call. A Chain's
+and a Storyboard's are the same way, in `server/prompts/chain/` and `server/prompts/storyboard/`
+(moved out of `server/textModel.ts` on 2026-10-06, word for word), with what both use (the
+nine-sentence format, how a changed sentence replaces the old, their Limits, the Scenario's notes
+and Setup, the real-person question) in `server/prompts/shared/`.
 
 **Pictures, renders and upscales are queued jobs** (`server/jobs.ts`, one queue for every
 Session; what a Roleplay's jobs do is in `server/roleplay/jobs.ts`, a Chain's in

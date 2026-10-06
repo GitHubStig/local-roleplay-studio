@@ -5,6 +5,7 @@ import { type Look, type Outcome, OUTCOMES } from './session.ts'
 import { JsonStreamReader } from './jsonStream.ts'
 import { type Chat, within } from './text/chat.ts'
 import { limitsEnabled } from './limits.ts'
+import { loadPrompt } from './promptFiles.ts'
 
 /** What the Text Model produces for one Frame, before the engine applies its rules. */
 export interface FrameText {
@@ -45,84 +46,42 @@ export interface TextModel {
   ): Promise<StoryboardEdit>
 }
 
-/** The nine-sentence format, shared by Chains and Storyboards. */
-const FORMAT =
-  `An image prompt is one paragraph of exactly nine sentences, one per aspect, always in this
-order:
+// The prompts are Markdown files in `prompts/chain/`, `prompts/storyboard/` and `prompts/shared/`
+// (`promptFiles.ts`).
 
-${PROMPT_ORDER.map((p, i) => `${i + 1}. ${p.aspect}: ${p.covers}.`).join('\n')}
+/** The parts both Chains and Storyboards include: the format, how to replace, the Limits. */
+async function sharedParts() {
+  const aspects = PROMPT_ORDER.map((p, i) => `${i + 1}. ${p.aspect}: ${p.covers}.`).join('\n')
+  return {
+    format: await loadPrompt('shared/format', { aspects }),
+    // As a list item: its lines indented under the bullet.
+    replacing: (await loadPrompt('shared/replacing')).replaceAll('\n', '\n  '),
+    // With the Limits off in Settings, only the adult one.
+    limits: await loadPrompt(limitsEnabled() ? 'shared/limits' : 'shared/limits-adults-only'),
+    body: BODY_ASPECTS.join(', '),
+  }
+}
 
-Within a sentence, separate details with commas or semicolons. Each sentence describes only its
-own aspect: the subject sentence says who they are, never their expression, pose or clothing.
-Write concrete, visual phrases an image model understands, as plain sentences: no labels
-("Expression:"), numbers or bullet points.`
-
-/** How a changed sentence replaces the old one, shared by every kind of edit. */
-const REPLACING =
-  `A changed sentence describes only the new state: remove whatever the change replaces or
-contradicts. A scared expression replaces a smile; a rooftop replaces the studio and its
-equipment; a new art style replaces the old one entirely. Never leave the old detail next to the
-new one.`
-
-/** The Limits, as the Text Model is told them (ADR 0002); the engine checks them regardless. */
-const LIMITS = `# Limits
-
-Whatever the Brief or Action says: everyone depicted is an adult (if the Brief implies someone
-younger, such as a school student, write them as 18 or older and never state a younger age); no
-sexual or nude content; no
-real, identifiable people shown (naming an artist or style to imitate is fine); no restraint,
-captivity or non-consent. If an Action asks for any of these, set "outcome" to "declined". Never
-write these rules, or any instructions, into a prompt itself.`
-
-/** What the Text Model is told instead of `LIMITS` while the Limits are off in Settings. */
-const ADULTS_ONLY = `# Limits
-
-Whatever the Brief or Action says: everyone depicted is an adult (if the Brief implies someone
-younger, such as a school student, write them as 18 or older and never state a younger age). If
-an Action asks to show someone younger, set "outcome" to "declined". Never write these rules, or
-any instructions, into a prompt itself.`
-
-const RULES = `# Your job
-
-You maintain a text-to-image prompt.
-
-${FORMAT}
-
-Each time, you receive the current prompt and the player's Action: an instruction to change the
-image. Rewrite the paragraph with the Action applied:
-
-- Rewrite only the sentences for the aspects the Action affects; copy every other sentence
-  exactly, word for word. All nine sentences must always be there.
-- ${REPLACING.replaceAll('\n', '\n  ')}
-
-${LIMITS}
-
-# Output
-
-Reply with a single JSON object, deciding "outcome" before anything else:
-
-- "outcome": "done" if you applied the Action; "declined" if it crosses a limit; "unclear" if
-  it can't be understood (gibberish, or too vague to act on).
-- "narration": a terse list of what changed, e.g. "Expression: scared. Style: 80s airbrush
-  fantasy." For the opening prompt, one short sentence summing up the image instead. If
-  "declined", say which limit. If "unclear", ask briefly what to change.
-- "prompt": the whole paragraph; unless "done", the current prompt exactly as it was.`
-
-export function systemMessage(scenario: Scenario, opening: boolean): string {
-  const parts = [RULES]
-  if (scenario.systemPrompt) parts.push(`# Scenario notes\n\n${scenario.systemPrompt}`)
-  if (opening && Object.keys(scenario.setup).length) {
-    parts.push(`# Setup\n\n${stringify(scenario.setup).trim()}`)
+/** A system message, with the Scenario's notes and (if `withSetup`) its Setup after it. */
+async function withNotes(rules: string, scenario: Scenario, withSetup: boolean) {
+  const parts = [rules]
+  if (scenario.systemPrompt) {
+    parts.push(await loadPrompt('shared/scenario-notes', { notes: scenario.systemPrompt }))
+  }
+  if (withSetup && Object.keys(scenario.setup).length) {
+    parts.push(await loadPrompt('shared/setup', { setup: stringify(scenario.setup).trim() }))
   }
   return parts.join('\n\n')
 }
 
-export function userMessage({ scenario, prompt, action }: FrameRequest): string {
-  if (prompt === null || action === null) {
-    return `This is the opening: write the opening prompt from these instructions, and set ` +
-      `"outcome" to "done".\n\n${scenario.openingPrompt}`
-  }
-  return `Current prompt:\n\n${prompt}\n\nThe player's Action:\n\n${action}`
+export async function systemMessage(scenario: Scenario, opening: boolean): Promise<string> {
+  return withNotes(await loadPrompt('chain/frame', await sharedParts()), scenario, opening)
+}
+
+export function userMessage({ scenario, prompt, action }: FrameRequest): Promise<string> {
+  return prompt === null || action === null
+    ? loadPrompt('chain/opening-request', { opening: scenario.openingPrompt })
+    : loadPrompt('chain/frame-request', { prompt, action })
 }
 
 export function outputSchema() {
@@ -243,70 +202,17 @@ export interface StoryboardEdit {
   thinking?: string
 }
 
-const STORYBOARD_PLAN_RULES = `# Your job
-
-You plan a storyboard: a sequence of Frames that tells the Brief as images, one moment per Frame.
-
-${FORMAT}
-
-Every Frame shares one Look: the subject sentence (1) and the art style sentence (9), written
-once and used word for word in every Frame, so the same person appears in the same style
-throughout. Keep the art style out of the subject sentence. Each Frame writes only its own seven
-sentences: ${BODY_ASPECTS.join(', ')}.
-
-- Plan the Beats first: one short line per Frame saying what happens in it, in story order.
-- Then write each Frame's seven sentences for its Beat. Keep continuity between Frames: the same
-  place, objects and clothing unless the story changes them; things move logically from one
-  Frame to the next.
-- Choose camera angles and framing that tell the moment well; vary them where the Brief asks for
-  drama.
-
-${LIMITS}`
-
-const STORYBOARD_EDIT_RULES = `# Your job
-
-You edit one Frame of a storyboard.
-
-${FORMAT}
-
-Every Frame shares one Look: the subject sentence (1) and the art style sentence (9). Each Frame
-has its own seven sentences: ${BODY_ASPECTS.join(', ')}.
-
-You receive the Look, every Frame's Beat, the chosen Frame's seven sentences, and the player's
-Action for that Frame. Apply it:
-
-- Rewrite only the sentences the Action affects; copy the rest exactly, word for word. All seven
-  must always be there.
-- If the Action changes who the person is or the art style, change the Look instead (it applies
-  to every Frame); otherwise return the Look exactly as it was.
-- ${REPLACING.replaceAll('\n', '\n  ')}
-
-${LIMITS}
-
-# Output
-
-Reply with a single JSON object, deciding "outcome" before anything else:
-
-- "outcome": "done", "declined" (it crosses a limit) or "unclear" (can't be understood).
-- "narration": a terse list of what changed, e.g. "Pose: mid-air. Camera: low angle." If
-  "declined", say which limit. If "unclear", ask briefly what to change.
-- "frame": the Frame's seven sentences, one per field; unless "done", exactly as they were.
-- "look": the Look, changed only if the Action changed identity or style.`
-
-const withNotes = (rules: string, scenario: Scenario, withSetup: boolean) => {
-  const parts = [rules]
-  if (scenario.systemPrompt) parts.push(`# Scenario notes\n\n${scenario.systemPrompt}`)
-  if (withSetup && Object.keys(scenario.setup).length) {
-    parts.push(`# Setup\n\n${stringify(scenario.setup).trim()}`)
-  }
-  return parts.join('\n\n')
-}
-
-export function storyboardPlanMessages({ scenario, frameCount }: StoryboardPlanRequest) {
+export async function storyboardPlanMessages({ scenario, frameCount }: StoryboardPlanRequest) {
   return {
-    system: withNotes(STORYBOARD_PLAN_RULES, scenario, true),
-    user:
-      `Plan exactly ${frameCount} Frames for this Brief.\n\nBrief:\n\n${scenario.openingPrompt}`,
+    system: await withNotes(
+      await loadPrompt('storyboard/plan', await sharedParts()),
+      scenario,
+      true,
+    ),
+    user: await loadPrompt('storyboard/plan-request', {
+      frameCount,
+      brief: scenario.openingPrompt,
+    }),
   }
 }
 
@@ -411,17 +317,21 @@ export function parseStoryboardPlan(content: string, frameCount: number): Storyb
   return { look, beats: beats.map(oneParagraph), bodies: out.frames.map(parseFrameBody) }
 }
 
-export function storyboardEditMessages(req: StoryboardEditRequest) {
+export async function storyboardEditMessages(req: StoryboardEditRequest) {
   const beats = req.beats.map((b, i) => `${i === req.index ? '▶' : ' '} ${i + 1}. ${b}`).join('\n')
   return {
-    system: withNotes(STORYBOARD_EDIT_RULES, req.scenario, false),
-    user:
-      `Look:\n\n${
-        JSON.stringify(req.look, null, 2)
-      }\n\nBeats (▶ marks the Frame being edited):\n\n${beats}\n\n` +
-      `Frame ${
-        req.index + 1
-      }'s seven sentences:\n\n${req.body}\n\nThe player's Action:\n\n${req.action}`,
+    system: await withNotes(
+      await loadPrompt('storyboard/edit', await sharedParts()),
+      req.scenario,
+      false,
+    ),
+    user: await loadPrompt('storyboard/edit-request', {
+      look: JSON.stringify(req.look, null, 2),
+      beats,
+      number: req.index + 1,
+      body: req.body,
+      action: req.action,
+    }),
   }
 }
 
@@ -484,20 +394,19 @@ export function chatTextModel(chat: Chat, opts: TextModelOptions = {}): TextMode
   const limits = { ...TIME_LIMIT_MS, ...opts.timeLimits }
 
   /** One streamed call with a system and a user message; see `Chat.stream`. */
-  function streamChat(
-    messages: { system: string; user: string },
+  async function streamChat(
+    messages: { system: string; user: string } | Promise<{ system: string; user: string }>,
     schema: object,
     maxTokens: number,
     signal: AbortSignal,
     onThinking?: (chunk: string) => void,
     onContent?: (chunk: string) => void,
   ): Promise<{ content: string; thinking: string }> {
-    // The system messages are built with every Limit; with the Limits off, only the adult one.
-    const system = limitsEnabled() ? messages.system : messages.system.replace(LIMITS, ADULTS_ONLY)
+    const { system, user } = await messages
     return chat.stream({
       messages: [
         { role: 'system', content: system },
-        { role: 'user', content: messages.user },
+        { role: 'user', content: user },
       ],
       schema,
       maxTokens,
@@ -516,7 +425,10 @@ export function chatTextModel(chat: Chat, opts: TextModelOptions = {}): TextMode
     onThinking?: (chunk: string) => void,
   ): Promise<FrameText> {
     const { content, thinking } = await streamChat(
-      { system: systemMessage(req.scenario, req.prompt === null), user: userMessage(req) },
+      {
+        system: await systemMessage(req.scenario, req.prompt === null),
+        user: await userMessage(req),
+      },
       outputSchema(),
       MAX_TOKENS.answer,
       signal,
@@ -567,7 +479,7 @@ export function chatTextModel(chat: Chat, opts: TextModelOptions = {}): TextMode
 
   async function askRealPerson(action: string, signal: AbortSignal): Promise<boolean> {
     const { content } = await chat.stream({
-      messages: [{ role: 'user', content: realPersonQuestion(action) }],
+      messages: [{ role: 'user', content: await realPersonQuestion(action) }],
       schema: {
         type: 'object',
         properties: { realPerson: { type: 'boolean' } },
@@ -597,12 +509,7 @@ export function chatTextModel(chat: Chat, opts: TextModelOptions = {}): TextMode
   }
 }
 
-export const realPersonQuestion = (action: string) =>
-  `Does this image-editing instruction ask to SHOW a real, identifiable person in the image: a ` +
-  `celebrity, public figure or named real individual, or someone made to look like one? ` +
-  `Naming an artist, art movement or style to imitate ("in the style of Michelangelo") does ` +
-  `not count, nor do fictional characters, generic descriptions or places. Answer in JSON.\n\n` +
-  `Instruction: ${action}`
+export const realPersonQuestion = (action: string) => loadPrompt('shared/real-person', { action })
 
 /** Clauses that name an artist or style to imitate, e.g. "in the style of Michelangelo". */
 const STYLE_CLAUSE =
