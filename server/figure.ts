@@ -3,6 +3,7 @@
  * (`figure/make.py`): it cuts the person out and builds them in Gaussian splats. Run once per
  * figure, like SHARP once per scene, so the memory it peaks at (~11 GB) is freed when it's done.
  */
+import { fromFileUrl } from '@std/path'
 import { runModelScript } from './scene.ts'
 
 /** A person as a full 3D figure of Gaussian splats, back included (TripoSplat or LiTo). */
@@ -32,16 +33,16 @@ export interface FigureMaker {
   ): Promise<{ splats: number }>
 }
 
-const SCRIPT = new URL('../figure/make.py', import.meta.url)
+const SCRIPT = fromFileUrl(new URL('../figure/make.py', import.meta.url))
 
-const LITO = new URL('../figure/lito.py', import.meta.url)
+const LITO = fromFileUrl(new URL('../figure/lito.py', import.meta.url))
 
 /** Runs Apple's LiTo once per figure (`figure/lito.py`); `command` replaces it in tests. */
 export function litoFigureMaker(opts: { command?: string[] } = {}): FigureMaker {
   return {
     async make(req, signal, onDownload) {
       const result = await runModelScript(
-        opts.command ?? ['uv', 'run', '--quiet', LITO.pathname],
+        opts.command ?? ['uv', 'run', '--quiet', LITO],
         ['--image', req.image, '--out', req.out],
         'LiTo',
         signal,
@@ -57,7 +58,7 @@ export function tripoFigureMaker(opts: { command?: string[] } = {}): FigureMaker
   return {
     async make(req, signal, onDownload) {
       const result = await runModelScript(
-        opts.command ?? ['uv', 'run', '--quiet', SCRIPT.pathname],
+        opts.command ?? ['uv', 'run', '--quiet', SCRIPT],
         ['--image', req.image, '--out', req.out],
         'TripoSplat',
         signal,

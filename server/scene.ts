@@ -3,6 +3,7 @@
  * million Gaussian splats, written as a `.ply` the web app shows in 3D. Run once per scene, like
  * mflux once per picture, so the memory it peaks at (~15 GB) is freed when it's done.
  */
+import { fromFileUrl } from '@std/path'
 import { track } from './children.ts'
 
 /** A Frame's picture as a 3D scene of Gaussian splats (SHARP). */
@@ -86,14 +87,14 @@ export async function runModelScript(
   return JSON.parse((await stdout).trim().split('\n').at(-1)!)
 }
 
-const SCRIPT = new URL('../scene/make.py', import.meta.url)
+const SCRIPT = fromFileUrl(new URL('../scene/make.py', import.meta.url))
 
 /** Runs SHARP once per scene; `command` replaces `uv run scene/make.py` in tests. */
 export function sharpSceneMaker(opts: { command?: string[] } = {}): SceneMaker {
   return {
     async make(req, signal, onDownload) {
       const result = await runModelScript(
-        opts.command ?? ['uv', 'run', '--quiet', SCRIPT.pathname],
+        opts.command ?? ['uv', 'run', '--quiet', SCRIPT],
         ['--image', req.image, '--out', req.out],
         'SHARP',
         signal,

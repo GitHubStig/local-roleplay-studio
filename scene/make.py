@@ -3,12 +3,23 @@
 # dependencies = [
 #   "sharp @ git+https://github.com/apple/ml-sharp@aed6527499ef91cba3b54c18d49a870f25947190",
 #   "huggingface-hub",
+#   "torch",
+#   "torchvision",
 # ]
 # [tool.uv]
 # python-preference = "only-managed"
+# [tool.uv.sources]
+# torch = { index = "pytorch-cuda", marker = "sys_platform != 'darwin'" }
+# torchvision = { index = "pytorch-cuda", marker = "sys_platform != 'darwin'" }
+# [[tool.uv.index]]
+# name = "pytorch-cuda"
+# url = "https://download.pytorch.org/whl/cu128"
+# explicit = true
 # ///
 """
-Turns one picture into a 3D scene of Gaussian splats with Apple's SHARP, on the Mac's GPU (MPS).
+Turns one picture into a 3D scene of Gaussian splats with Apple's SHARP, on the GPU: the Mac's
+(MPS), or NVIDIA's (CUDA; torch then comes from PyTorch's CUDA index, as PyPI's is CPU-only on
+Windows).
 The Deno server runs it once per scene (`uv run scene/make.py --image … --out ….ply`), as it
 runs mflux once per picture, so the ~15 GB it peaks at is freed as soon as it's done. Measured
 2026-10-01 on an M5 Pro (docs/research/image-to-3d.md): ~15 s to load, ~4 s per picture,
@@ -47,6 +58,25 @@ def checkpoint():
     return path
 
 
+def device():
+    """NVIDIA's GPU (CUDA) on Windows and Linux, the Mac's (MPS) on a Mac, else the CPU (slow)."""
+    import torch
+    if torch.cuda.is_available():
+        return torch.device('cuda')
+    if torch.backends.mps.is_available():
+        return torch.device('mps')
+    return torch.device('cpu')
+
+
+def synchronize(dev):
+    """Waits for the GPU to finish, so the timing is the real one."""
+    import torch
+    if dev.type == 'cuda':
+        torch.cuda.synchronize()
+    elif dev.type == 'mps':
+        torch.mps.synchronize()
+
+
 def make(image_path, out):
     import torch
     from sharp.cli.predict import predict_image
@@ -57,11 +87,12 @@ def make(image_path, out):
     start = time.time()
     predictor = create_predictor(PredictorParams())
     predictor.load_state_dict(torch.load(checkpoint(), weights_only=True))
-    predictor.eval().to('mps')
+    dev = device()
+    predictor.eval().to(dev)
     loaded = time.time()
     # Pictures carry no camera data, so SHARP assumes a 30 mm lens.
     image, _, f_px = io.load_rgb(Path(image_path))
-    gaussians = predict_image(predictor, image, f_px, torch.device('mps'))
+    gaussians = predict_image(predictor, image, f_px, dev)
     save_ply(gaussians, f_px, image.shape[:2], Path(out))
     depth = gaussians.mean_vectors[..., 2].flatten().float().cpu()
     height, width = image.shape[:2]

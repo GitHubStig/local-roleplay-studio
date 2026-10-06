@@ -20,7 +20,11 @@ function installCleanup() {
   cleanupInstalled = true
   // `deno run --watch` fires `unload` when it restarts the server; Ctrl+C and kill don't.
   globalThis.addEventListener('unload', killAll)
-  for (const signal of ['SIGINT', 'SIGTERM'] as const) {
+  // Windows has no SIGTERM to listen for (Deno allows only SIGINT and SIGBREAK there).
+  const signals = Deno.build.os === 'windows'
+    ? ['SIGINT', 'SIGBREAK'] as const
+    : ['SIGINT', 'SIGTERM'] as const
+  for (const signal of signals) {
     Deno.addSignalListener(signal, () => {
       killAll()
       Deno.exit(signal === 'SIGINT' ? 130 : 143)

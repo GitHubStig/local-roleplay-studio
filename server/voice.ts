@@ -3,6 +3,7 @@
  * from a description, then each line spoken by cloning it. The service is a Python process the
  * server starts the first time a voice is needed and keeps until it stops.
  */
+import { fromFileUrl } from '@std/path'
 import { track } from './children.ts'
 
 export interface DesignRequest {
@@ -50,7 +51,7 @@ export interface VoiceServiceOptions {
   command?: (port: number) => string[]
 }
 
-const SCRIPT = new URL('../voice/serve.py', import.meta.url)
+const SCRIPT = fromFileUrl(new URL('../voice/serve.py', import.meta.url))
 
 /** The voice service, started on first use. */
 export function voiceService(opts: VoiceServiceOptions = {}): VoiceEngine {
@@ -64,7 +65,7 @@ export function voiceService(opts: VoiceServiceOptions = {}): VoiceEngine {
   async function start(): Promise<void> {
     if (await healthy()) return
     const [cmd, ...args] = opts.command?.(port) ??
-      ['uv', 'run', '--quiet', SCRIPT.pathname, '--port', String(port)]
+      ['uv', 'run', '--quiet', SCRIPT, '--port', String(port)]
     const child = track(
       new Deno.Command(cmd, {
         args,
