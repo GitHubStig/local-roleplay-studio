@@ -8,12 +8,15 @@ vi.mock('../api', async (importOriginal) => ({
   ...(await importOriginal<typeof api>()),
   getSettings: vi.fn(),
   getSettingsOptions: vi.fn(),
+  listTextModels: vi.fn(),
   saveSettings: vi.fn(),
   listQuantized: vi.fn(),
   deleteQuantized: vi.fn(),
 }))
 
 const settings: api.Settings = {
+  textBackend: 'ollama',
+  textBaseUrl: '',
   textModel: 'llama3:latest',
   thinking: false,
   imageModel: 'z-image-turbo',
@@ -85,7 +88,7 @@ describe('SettingsView', () => {
   it('saves the edited settings', async () => {
     const wrapper = mount(SettingsView)
     await flushPromises()
-    await wrapper.findAll('select')[0].setValue('gemma4:31b-mlx')
+    await wrapper.find('[data-text-model]').setValue('gemma4:31b-mlx')
     await wrapper.find('form').trigger('submit')
     await flushPromises()
     expect(api.saveSettings).toHaveBeenCalledWith({ ...settings, textModel: 'gemma4:31b-mlx' })
@@ -206,7 +209,7 @@ describe('SettingsView', () => {
     expect(toggle().attributes('disabled')).toBeDefined()
     expect(wrapper.text()).toContain("llama3:latest can't think.")
 
-    await wrapper.findAll('select')[0].setValue('gemma4:31b-mlx')
+    await wrapper.find('[data-text-model]').setValue('gemma4:31b-mlx')
     expect(toggle().attributes('disabled')).toBeUndefined()
     await toggle().setValue(true)
     await wrapper.find('form').trigger('submit')
@@ -214,6 +217,55 @@ describe('SettingsView', () => {
     expect(api.saveSettings).toHaveBeenCalledWith(
       expect.objectContaining({ textModel: 'gemma4:31b-mlx', thinking: true }),
     )
+  })
+
+  it('switches to an OpenAI-compatible server, lists its models with a new key, and saves it', async () => {
+    vi.mocked(api.listTextModels).mockResolvedValue({
+      textModels: ['gemma-4-26b'],
+      thinkingModels: ['gemma-4-26b'],
+    })
+    vi.mocked(api.saveSettings).mockImplementation(async ({ textApiKey: _, ...s }) => ({
+      ...s,
+      textApiKeySet: true,
+    }))
+    const wrapper = mount(SettingsView)
+    await flushPromises()
+    expect(wrapper.find('[data-text-api-key]').exists()).toBe(false)
+
+    await wrapper.find('[data-text-backend]').setValue('openai')
+    const address = wrapper.find('[data-text-base-url]').element as HTMLInputElement
+    expect(address.value).toBe('http://localhost:1234/v1')
+    await wrapper.find('[data-text-api-key]').setValue('sk-new')
+    await new Promise((resolve) => setTimeout(resolve, 600)) // the listing waits for typing to stop
+    await flushPromises()
+    expect(api.listTextModels).toHaveBeenLastCalledWith({
+      textBackend: 'openai',
+      textBaseUrl: 'http://localhost:1234/v1',
+      textApiKey: 'sk-new',
+    })
+    expect(wrapper.findAll('[data-text-model] option').map((o) => o.text())).toContain(
+      'gemma-4-26b',
+    )
+
+    await wrapper.find('[data-text-model]').setValue('gemma-4-26b')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+    expect(api.saveSettings).toHaveBeenCalledWith(
+      expect.objectContaining({
+        textBackend: 'openai',
+        textModel: 'gemma-4-26b',
+        textApiKey: 'sk-new',
+      }),
+    )
+    // Saved: the field empties, and says a key is saved.
+    const key = wrapper.find('[data-text-api-key]').element as HTMLInputElement
+    expect(key.value).toBe('')
+    expect(key.placeholder).toContain('Saved')
+
+    await wrapper.find('[data-remove-api-key]').trigger('click')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+    expect(api.saveSettings).toHaveBeenLastCalledWith(expect.objectContaining({ textApiKey: '' }))
   })
 
   it('shows a warning when Ollama is unreachable', async () => {

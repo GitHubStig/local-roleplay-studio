@@ -36,7 +36,10 @@ The vocabulary (Scenario, Session, Image Prompt, Frame, Action, …) is defined 
 - **Ollama** with a Text Model: `gemma4:26b-nvfp4` (Gemma 4 26B-A4B on Ollama's MLX engine, 17 GB
   loaded, a few seconds a reply, Thinking off) for every text job. Small models (4–8B) can't
   reliably follow the prompt format. The comparisons, uncensored builds and how to make one are in
-  [docs/models.md](docs/models.md).
+  [docs/models.md](docs/models.md). Or, instead of Ollama, **any server with the OpenAI chat API**
+  (LM Studio, llama.cpp's server, vLLM, or a cloud service such as OpenRouter), chosen on the Text
+  tab of Settings with its address and API key. See
+  [ADR 0008](docs/adr/0008-own-text-client.md) for what it can't do that Ollama can.
 - **mflux 0.21+** (the step cache and Fast need it): `uv tool install --managed-python --python 3.14 mflux`. (uv's own Python, kept apart from any other Python on the Mac; mflux runs on 3.10 or newer.)
 - **Models download on first use.** Each model (Image Models, the upscaler, the voice models,
   SHARP) is downloaded from Hugging Face into `~/.cache/huggingface` the first time it's needed,
@@ -91,7 +94,8 @@ ollama serve        # if Ollama isn't already running
 deno task dev       # starts the API on :8787 and the web app on :5180
 ```
 
-Open <http://localhost:5180>, go to **Settings**, choose a Text Model, then go **Home** (click
+Open <http://localhost:5180>, go to **Settings**, choose a Text Model (on another backend: pick it
+and give its address first), then go **Home** (click
 **Local Roleplay Studio**) and press **Start Session**. Your Sessions are listed on Home; open one to carry on,
 or delete it.
 
@@ -117,9 +121,9 @@ The web app's dev server is pinned to port **5180** and fails, rather than picki
 if something else is using it.
 
 Everything else is chosen on the Settings page (in tabs: Text, Images, Voice, 3D) and saved to
-`settings.json`.
+`settings.json`, including the Text backend's API key (never sent back to the browser).
 
-**What runs where.** Only Ollama is required. At startup the server works out which extras this
+**What runs where.** Only a Text backend is required: Ollama, or a server with the OpenAI chat API. At startup the server works out which extras this
 machine can run, and says so in its log and on the Settings page: pictures (mflux) and voices
 (mlx-audio) need an Apple Silicon Mac; SHARP and TripoSplat need an Apple Silicon Mac or an NVIDIA
 GPU; LiTo needs an Apple Silicon Mac; the Python ones need uv. One that can't run is off and its
@@ -133,7 +137,8 @@ scenarios/        Scenario files, one Markdown file each (see docs/scenarios.md)
 settings.json     Your Settings (gitignored; created on first save)
 sessions/<id>/    Each Session: session.json plus its pictures, voices and 3D files (gitignored)
 models/           Saved quantized copies of Image Models (gitignored)
-server/           Deno API: Sessions, the Frame and Roleplay engines, the job queue, Ollama, mflux
+server/           Deno API: Sessions, the Frame and Roleplay engines, the job queue, mflux
+server/text/      The Text backends (Ollama, OpenAI-compatible) behind one Chat interface
 server/prompts/   What the language model is told, one Markdown file each
 web/              Vue 3 + Vite + Tailwind 4 web app
 voice/            The voice service (mlx-audio), run by uv

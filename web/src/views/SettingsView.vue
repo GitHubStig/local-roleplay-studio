@@ -1,15 +1,18 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { watchDebounced } from '@vueuse/core'
 import {
   ApiError,
   deleteQuantized,
   getSettings,
   getSettingsOptions,
   listQuantized,
+  listTextModels,
   type QuantizedCopy,
   saveSettings,
   type Settings,
   type SettingsOptions,
+  type TextBackend,
 } from '../api'
 import FeatureSwitch from '../components/FeatureSwitch.vue'
 import { useFeatures } from '../composables/useFeatures'
@@ -64,7 +67,37 @@ async function removeCopy(name: string) {
   }
 }
 
-/** Keep a stored Text Model visible even if Ollama no longer lists it. */
+/** Each backend's usual address, offered when it's chosen ('' is Ollama's default). */
+const DEFAULT_BASE_URL: Record<TextBackend, string> = {
+  ollama: '',
+  openai: 'http://localhost:1234/v1',
+}
+function onTextBackendChange() {
+  if (form.value) form.value.textBaseUrl = DEFAULT_BASE_URL[form.value.textBackend]
+}
+
+/** A new API key to save; '' leaves the saved one as it is. */
+const apiKey = ref('')
+const removeApiKey = ref(false)
+
+/** As the backend, its address or the key change, list what it offers. */
+watchDebounced(
+  () => form.value && [form.value.textBackend, form.value.textBaseUrl, apiKey.value],
+  async () => {
+    if (!form.value || !options.value) return
+    const { textBackend, textBaseUrl } = form.value
+    const textApiKey = removeApiKey.value ? '' : apiKey.value || undefined
+    const listed = await listTextModels({ textBackend, textBaseUrl, textApiKey }).catch((err) => ({
+      textModels: [],
+      thinkingModels: [],
+      textModelsError: (err as Error).message,
+    }))
+    options.value = { ...options.value, textModelsError: undefined, ...listed }
+  },
+  { debounce: 500 },
+)
+
+/** Keep a stored Text Model visible even if its backend no longer lists it. */
 const textModelChoices = computed(() => {
   const models = options.value?.textModels ?? []
   const current = form.value?.textModel
@@ -92,7 +125,10 @@ async function save() {
   saving.value = true
   status.value = null
   try {
-    form.value = await saveSettings(form.value)
+    const textApiKey = removeApiKey.value ? '' : apiKey.value.trim() || undefined
+    form.value = await saveSettings({ ...form.value, textApiKey })
+    apiKey.value = ''
+    removeApiKey.value = false
     await refreshFeatures()
     status.value = { kind: 'saved', message: 'Saved. Applies from the next Session.' }
   } catch (err) {
@@ -138,9 +174,75 @@ async function save() {
           data-tab-panel="text"
         >
           <label class="flex flex-col gap-1">
+            <span class="text-sm text-muted">Text backend</span>
+            <select
+              v-model="form.textBackend"
+              class="field"
+              data-text-backend
+              @change="onTextBackendChange"
+            >
+              <option value="ollama">Ollama</option>
+              <option value="openai">
+                OpenAI-compatible server (LM Studio, llama.cpp, OpenRouter…)
+              </option>
+            </select>
+          </label>
+
+          <label class="flex flex-col gap-1">
+            <span class="text-sm text-muted">Address</span>
+            <input
+              v-model.trim="form.textBaseUrl"
+              class="field"
+              data-text-base-url
+              :placeholder="
+                form.textBackend === 'ollama' ? 'http://localhost:11434' : 'http://localhost:1234/v1'
+              "
+            />
+            <span v-if="form.textBackend === 'ollama'" class="text-sm text-muted">
+              Empty for Ollama on this machine.
+            </span>
+            <span v-else class="text-sm text-muted">
+              With the API's version, as the server documents it: LM Studio
+              http://localhost:1234/v1, llama.cpp http://localhost:8080/v1, OpenRouter
+              https://openrouter.ai/api/v1. Picture rendering can't unload this server's model
+              to free memory, as it does Ollama's.
+            </span>
+          </label>
+
+          <div v-if="form.textBackend === 'openai'" class="flex flex-col gap-1">
+            <label class="flex flex-col gap-1">
+              <span class="text-sm text-muted">API key</span>
+              <input
+                v-model="apiKey"
+                type="password"
+                autocomplete="off"
+                class="field"
+                data-text-api-key
+                :placeholder="
+                  form.textApiKeySet && !removeApiKey
+                    ? 'Saved; type a new one to replace it'
+                    : 'None (a local server needs none)'
+                "
+              />
+            </label>
+            <span class="text-sm text-muted">
+              Kept in settings.json on this machine, never sent back to the browser.
+              <button
+                v-if="form.textApiKeySet && !removeApiKey"
+                type="button"
+                class="underline"
+                data-remove-api-key
+                @click="removeApiKey = true"
+              >
+                Remove the saved key
+              </button>
+            </span>
+          </div>
+
+          <label class="flex flex-col gap-1">
             <span class="text-sm text-muted">Text Model</span>
-            <select v-model="form.textModel" class="field">
-              <option value="" disabled>Choose an Ollama model…</option>
+            <select v-model="form.textModel" class="field" data-text-model>
+              <option value="" disabled>Choose a model…</option>
               <option v-for="m in textModelChoices" :key="m" :value="m">{{ m }}</option>
             </select>
             <span v-if="options.textModelsError" class="text-sm text-warn">

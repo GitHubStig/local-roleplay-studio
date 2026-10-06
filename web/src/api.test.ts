@@ -12,6 +12,8 @@ import { ALL_ON } from './testing'
 afterEach(() => vi.unstubAllGlobals())
 
 const settings: Settings = {
+  textBackend: 'ollama',
+  textBaseUrl: '',
   textModel: 'llama3:latest',
   thinking: false,
   imageModel: 'z-image-turbo',

@@ -1,5 +1,5 @@
 import { stringify } from '@std/yaml'
-import type { ChatMessage } from '../ollamaChat.ts'
+import type { ChatMessage } from '../text/chat.ts'
 import { limitsEnabled } from '../limits.ts'
 import { loadPrompt, type PromptValues } from '../promptFiles.ts'
 import type { Scenario } from '../scenario.ts'

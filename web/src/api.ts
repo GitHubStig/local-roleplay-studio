@@ -19,7 +19,17 @@ export interface Availability {
   reason?: string
 }
 
+/** Where the Text Model runs: Ollama, or any server with the OpenAI chat API. */
+export type TextBackend = 'ollama' | 'openai'
+
 export interface Settings {
+  textBackend: TextBackend
+  /** The backend's address; '' for Ollama's default. */
+  textBaseUrl: string
+  /** From the server: whether an API key is saved (the key itself is never sent back). */
+  textApiKeySet?: boolean
+  /** Sent only to replace the saved API key; '' removes it. */
+  textApiKey?: string
   textModel: string
   thinking: boolean
   imageModel: string
@@ -61,11 +71,15 @@ export interface SizePreset {
   height: number
 }
 
-export interface SettingsOptions {
+/** A Text backend's models, or why it couldn't list them. */
+export interface TextModelOptions {
   textModels: string[]
   /** The Text Models that can reason before answering. */
   thinkingModels: string[]
   textModelsError?: string
+}
+
+export interface SettingsOptions extends TextModelOptions {
   imageModels: ImageModelOption[]
   sizePresets: SizePreset[]
   upscalers: { id: string; label: string }[]
@@ -115,6 +129,16 @@ export const listQuantized = () => request<QuantizedCopy[]>('/api/settings/quant
 export const deleteQuantized = (name: string) =>
   request<QuantizedCopy[]>(`/api/settings/quantized/${encodeURIComponent(name)}`, {
     method: 'DELETE',
+  })
+
+/** The models on a Text backend that isn't saved yet; without a key, with the saved one. */
+export const listTextModels = (
+  connection: Pick<Settings, 'textBackend' | 'textBaseUrl' | 'textApiKey'>,
+) =>
+  request<TextModelOptions>('/api/settings/text-models', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(connection),
   })
 
 export const saveSettings = (settings: Settings) =>

@@ -402,7 +402,8 @@ consistency* in [open-threads.md](open-threads.md).
   **Cancel** and follows it until it finishes. A Session in the background never navigates
   on its own: if its Opening Frame fails there, you're taken Home with the reason when you return
   to it.
-- **Settings** (`/settings`): Text Model (installed Ollama models, minus OCR and dedicated
+- **Settings** (`/settings`): the Text backend (Ollama, or a server with the OpenAI chat API, with its
+  address and API key: ADR 0008), Text Model (the backend's models; on Ollama minus OCR and dedicated
   vision-language models), Thinking (on or off; only for models that support it), Image Model, steps (reset to the model's default when the Image Model
   changes), quantization (8 or 4 bit: the first render with a model saves a smaller copy of it in
   `models/quantized` (gitignored) and later ones load it, 3.5–8 GB less memory; Settings lists the copies
@@ -440,8 +441,9 @@ All under `/api`; the Vite dev server proxies it to the Deno server.
 | Route | Purpose |
 |---|---|
 | `GET /health` | Liveness |
-| `GET`, `PUT /settings` | Read or save Settings (`400` with a list of issues if invalid) |
-| `GET /settings/options` | Text Models from Ollama, Image Models, size presets; still answers if Ollama is down |
+| `GET`, `PUT /settings` | Read or save Settings (`400` with a list of issues if invalid). `textApiKeySet` says whether an API key is saved; a `textApiKey` in a `PUT` replaces it (`''` removes it) |
+| `GET /settings/options` | Text Models from the saved Text backend, Image Models, size presets; still answers if the backend is down |
+| `POST /settings/text-models` | The models on a Text backend not saved yet (`textBackend`, `textBaseUrl`, optional `textApiKey`) |
 | `GET /settings/quantized` | Saved quantized copies of Image Models: `name`, `modelId`, `bits`, `mflux` version, `bytes` |
 | `DELETE /settings/quantized/:name` | Delete a saved copy (the next render that needs it saves it again); returns the rest |
 | `GET /scenarios` | Scenario summaries plus files that failed to load |

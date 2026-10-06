@@ -14,6 +14,8 @@ vi.mock('../api', async (importOriginal) => ({
 }))
 
 const settings: api.Settings = {
+  textBackend: 'ollama',
+  textBaseUrl: '',
   textModel: 'llama3:latest',
   thinking: false,
   imageModel: 'z-image-turbo',

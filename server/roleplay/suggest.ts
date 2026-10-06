@@ -4,7 +4,7 @@
  * prompts are `prompts/roleplay/suggest*.md`.
  */
 import { activeProseLimits, crossedLimit, limitsEnabled } from '../limits.ts'
-import type { ChatMessage } from '../ollamaChat.ts'
+import type { ChatMessage } from '../text/chat.ts'
 import { loadPrompt } from '../promptFiles.ts'
 import { storyText } from './art.ts'
 import type { RoleplayModel } from './model.ts'

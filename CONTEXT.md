@@ -129,7 +129,7 @@ _Avoid_: Enhance, HD, super-resolution
 ### Configuration
 
 **Text Model**:
-The Ollama language model that writes and edits Image Prompts.
+The language model that writes and edits Image Prompts (on Ollama, or a server with the OpenAI chat API).
 _Avoid_: LLM, model, AI
 
 **Image Model**:

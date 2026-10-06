@@ -2,7 +2,7 @@ import { assertEquals, assertMatch, assertNotEquals } from '@std/assert'
 import { join } from '@std/path'
 import { createHandler } from './app.ts'
 import { renderPrompt } from './imagePrompt.ts'
-import type { TextModelInfo } from './ollama.ts'
+import type { TextConnection, TextModelInfo } from './text/backend.ts'
 import type { ImageGenerator } from './imageGenerator.ts'
 import { dirSessionStore } from './session.ts'
 import { DEFAULT_SETTINGS, type Settings, type SettingsStore } from './settings.ts'
@@ -27,12 +27,19 @@ import {
 
 function memoryStore(initial: Settings = { ...DEFAULT_SETTINGS }): SettingsStore & {
   current: Settings
+  apiKey: string
 } {
   const store = {
     current: initial,
+    apiKey: '',
     load: () => Promise.resolve(store.current),
     save: (s: Settings) => {
       store.current = s
+      return Promise.resolve()
+    },
+    loadApiKey: () => Promise.resolve(store.apiKey),
+    saveApiKey: (key: string) => {
+      store.apiKey = key
       return Promise.resolve()
     },
   }
@@ -41,11 +48,11 @@ function memoryStore(initial: Settings = { ...DEFAULT_SETTINGS }): SettingsStore
 
 interface SetupOptions {
   root?: string
-  listTextModels?: () => Promise<TextModelInfo[]>
+  listTextModels?: (connection: TextConnection, apiKey?: string) => Promise<TextModelInfo[]>
   textModel?: TextModel
   imageGenerator?: ImageGenerator
   roleplayModel?: RoleplayModel
-  /** Roleplay models by Ollama model name, e.g. a separate Art Agent's. */
+  /** Roleplay models by model name, e.g. a separate Art Agent's. */
   roleplayModels?: Record<string, RoleplayModel>
   voice?: VoiceEngine
   scene?: SceneMaker
@@ -73,7 +80,7 @@ function setup(opts: SetupOptions = {}) {
     sessions,
     textModel: () => opts.textModel ?? scriptedTextModel([]),
     imageGenerator: opts.imageGenerator ?? fakeImageGenerator(),
-    roleplayModel: (model) =>
+    roleplayModel: ({ model }) =>
       opts.roleplayModels?.[model] ?? opts.roleplayModel ?? scriptedRoleplayModel({}),
     voice: opts.voice,
     scene: opts.scene,
@@ -140,7 +147,64 @@ Deno.test('unknown routes return 404', async () => {
 
 Deno.test('GET /api/settings returns stored settings', async () => {
   const res = await setup().call('GET', '/api/settings')
-  assertEquals(await res.json(), DEFAULT_SETTINGS)
+  assertEquals(await res.json(), { ...DEFAULT_SETTINGS, textApiKeySet: false })
+})
+
+Deno.test('The API key is saved apart from Settings, and never sent back', async () => {
+  const { settings, call } = setup()
+  const next = {
+    ...DEFAULT_SETTINGS,
+    textBackend: 'openai',
+    textBaseUrl: 'https://openrouter.ai/api/v1',
+    textApiKey: ' sk-secret ',
+  }
+  const saved = await (await call('PUT', '/api/settings', next)).json()
+  assertEquals(settings.apiKey, 'sk-secret')
+  assertEquals('textApiKey' in settings.current, false)
+  assertEquals(saved.textApiKeySet, true)
+  assertEquals(JSON.stringify(saved).includes('sk-secret'), false)
+  assertEquals(
+    JSON.stringify(await (await call('GET', '/api/settings')).json()).includes('sk-secret'),
+    false,
+  )
+
+  // Left out, the key is kept; '' removes it.
+  const { textApiKey: _, ...withoutKey } = next
+  await call('PUT', '/api/settings', withoutKey)
+  assertEquals(settings.apiKey, 'sk-secret')
+  await call('PUT', '/api/settings', { ...withoutKey, textApiKey: '' })
+  assertEquals(settings.apiKey, '')
+})
+
+Deno.test('An OpenAI-compatible server needs an address', async () => {
+  const res = await setup().call('PUT', '/api/settings', {
+    ...DEFAULT_SETTINGS,
+    textBackend: 'openai',
+  })
+  assertEquals(res.status, 400)
+})
+
+Deno.test('POST /api/settings/text-models lists a backend not saved yet', async () => {
+  const asked: [TextConnection, string | undefined][] = []
+  const { call } = setup({
+    listTextModels: (connection, apiKey) => {
+      asked.push([connection, apiKey])
+      return Promise.reject(new Error('401 Unauthorized'))
+    },
+  })
+  const body = await (await call('POST', '/api/settings/text-models', {
+    textBackend: 'openai',
+    textBaseUrl: ' http://localhost:1234/v1 ',
+    textApiKey: 'sk-new',
+  })).json()
+  assertEquals(asked, [[{ backend: 'openai', baseUrl: 'http://localhost:1234/v1' }, 'sk-new']])
+  assertEquals(body.textModels, [])
+  assertEquals(
+    body.textModelsError,
+    'Could not reach the OpenAI-compatible server: 401 Unauthorized',
+  )
+  const bad = await call('POST', '/api/settings/text-models', { textBackend: 'nope' })
+  assertEquals(bad.status, 400)
 })
 
 Deno.test('PUT /api/settings saves valid settings', async () => {
@@ -162,7 +226,7 @@ Deno.test('PUT /api/settings rejects a non-JSON body', async () => {
   assertEquals((await setup().call('PUT', '/api/settings', 'not json')).status, 400)
 })
 
-Deno.test('GET /api/settings/options lists Ollama and image models', async () => {
+Deno.test('GET /api/settings/options lists Text and Image Models', async () => {
   const body = await (await setup().call('GET', '/api/settings/options')).json()
   assertEquals(body.textModels, ['llama3:latest', 'qwen3.8:27b-mlx'])
   assertEquals(body.thinkingModels, ['qwen3.8:27b-mlx'])

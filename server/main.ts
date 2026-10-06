@@ -2,11 +2,12 @@ import { createHandler } from './app.ts'
 import { placeholderImageGenerator } from './imageGenerator.ts'
 import { fromFileUrl } from '@std/path'
 import { mfluxImageGenerator, mfluxQuantizedStore } from './mflux.ts'
-import { listOllamaModels, unloadOllamaModels } from './ollama.ts'
 import { dirScenarioLibrary } from './scenario.ts'
 import { dirSessionStore } from './session.ts'
 import { fileSettingsStore } from './settings.ts'
-import { ollamaTextModel } from './textModel.ts'
+import { chatTextModel } from './textModel.ts'
+import { chatRoleplayModel } from './roleplay/model.ts'
+import { connectionOf, textBackend, type TextConnection } from './text/backend.ts'
 import { litoFigureMaker, tripoFigureMaker } from './figure.ts'
 import { sharpSceneMaker } from './scene.ts'
 import { voiceService } from './voice.ts'
@@ -28,20 +29,32 @@ for (const feature of FEATURES) {
   console.log(`${FEATURE_NAMES[feature]}: ${available ? 'available' : `not available (${reason})`}`)
 }
 
+const settings = fileSettingsStore(new URL('../settings.json', import.meta.url))
+// The Text backend a Session or Settings names, with the saved API key unless given another.
+const text = (connection: TextConnection, apiKey?: string) =>
+  textBackend(
+    connection,
+    () => apiKey !== undefined ? Promise.resolve(apiKey) : settings.loadApiKey(),
+  )
+
 const handler = createHandler({
-  settings: fileSettingsStore(new URL('../settings.json', import.meta.url)),
-  listTextModels: () => listOllamaModels(),
+  settings,
+  listTextModels: (connection, apiKey) => text(connection, apiKey).listModels(),
   scenarios: dirScenarioLibrary(new URL('../scenarios/', import.meta.url)),
   sessions: dirSessionStore(new URL('../sessions/', import.meta.url)),
-  textModel: (model, think) => ollamaTextModel(model, { think }),
+  textModel: (c) => chatTextModel(text(c).chat(c.model, c.thinking)),
+  roleplayModel: (c) => chatRoleplayModel(text(c).chat(c.model, c.thinking)),
   imageGenerator: placeholderImages
     ? placeholderImageGenerator()
     : mfluxImageGenerator({ quantized }),
   features,
   quantized,
   // A big render next to a loaded Text Model pushes a 48 GB Mac into swap (375 s instead of 66 s
-  // for Qwen-Image 2.1 at 1024 px), so each render, upscale, scene and figure unloads it first.
-  freeMemory: () => unloadOllamaModels(),
+  // for Qwen-Image 2.1 at 1024 px), so each render, upscale, scene and figure unloads it first,
+  // where the Text backend can (Ollama; not a server on the OpenAI API).
+  freeMemory: async () => {
+    await text(connectionOf(await settings.load())).freeMemory?.()
+  },
   voice: features.voices.available ? voiceService() : undefined,
   scene: features.scenes.available ? sharpSceneMaker() : undefined,
   figure: features.figures.available ? tripoFigureMaker() : undefined,

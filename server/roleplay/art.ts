@@ -7,7 +7,7 @@
 import { stringify } from '@std/yaml'
 import { renderPrompt } from '../imagePrompt.ts'
 import { crossedLimit, limitsEnabled } from '../limits.ts'
-import type { ChatMessage } from '../ollamaChat.ts'
+import type { ChatMessage } from '../text/chat.ts'
 import { loadPrompt } from '../promptFiles.ts'
 import type { Scenario } from '../scenario.ts'
 import { composePrompt } from '../storyboard.ts'

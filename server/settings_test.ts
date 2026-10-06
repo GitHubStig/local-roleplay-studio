@@ -35,6 +35,21 @@ Deno.test('fileSettingsStore fills fields missing from an older file', () =>
     })
   }))
 
+Deno.test('fileSettingsStore keeps the API key in the file but out of Settings', () =>
+  withTempDir(async (dir) => {
+    const path = join(dir, 'settings.json')
+    const store = fileSettingsStore(path)
+    await store.saveApiKey('sk-secret')
+    await store.save({ ...DEFAULT_SETTINGS, textModel: 'llama3:latest' })
+    assertEquals(await store.loadApiKey(), 'sk-secret') // saving Settings keeps it
+    assertEquals('textApiKey' in await store.load(), false)
+    assertEquals(JSON.parse(await Deno.readTextFile(path)).textApiKey, 'sk-secret')
+    assertEquals((await Deno.stat(path)).mode! & 0o777, 0o600)
+    await store.saveApiKey('')
+    assertEquals(await store.loadApiKey(), '')
+    assertEquals((await store.load()).textModel, 'llama3:latest')
+  }))
+
 Deno.test('fileSettingsStore falls back to defaults on a corrupt file', () =>
   withTempDir(async (dir) => {
     const path = join(dir, 'settings.json')

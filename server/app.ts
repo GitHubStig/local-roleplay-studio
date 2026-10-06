@@ -3,12 +3,20 @@ import { error, json, readJson, type Route } from './http.ts'
 import type { ImageGenerator } from './imageGenerator.ts'
 import { IMAGE_MODELS, UPSCALERS } from './imageModels.ts'
 import { crossedLimit, setLimitsEnabled } from './limits.ts'
-import type { TextModelInfo } from './ollama.ts'
+import {
+  connectionOf,
+  TEXT_BACKEND_NAMES,
+  TEXT_BACKENDS,
+  type TextBackendKind,
+  type TextChoice,
+  type TextConnection,
+  type TextModelInfo,
+} from './text/backend.ts'
 import { briefScenario, type Scenario, type ScenarioLibrary, summarise } from './scenario.ts'
 import type { ChainSession, Session, SessionStore, StoryboardSession } from './session.ts'
-import { type SettingsStore, SIZE_PRESETS, validateSettings } from './settings.ts'
+import { type Settings, type SettingsStore, SIZE_PRESETS, validateSettings } from './settings.ts'
 import type { TextModel } from './textModel.ts'
-import { ollamaRoleplayModel, type RoleplayModel } from './roleplay/model.ts'
+import type { RoleplayModel } from './roleplay/model.ts'
 import type { FigureMaker } from './figure.ts'
 import type { SceneMaker } from './scene.ts'
 import type { VoiceEngine } from './voice.ts'
@@ -41,13 +49,15 @@ import {
 
 export interface AppDeps {
   settings: SettingsStore
-  listTextModels: () => Promise<TextModelInfo[]>
+  /** A Text backend's models; `apiKey` stands in for the saved one (trying a new key). */
+  listTextModels: (connection: TextConnection, apiKey?: string) => Promise<TextModelInfo[]>
   scenarios: ScenarioLibrary
   sessions: SessionStore
-  textModel: (model: string, thinking: boolean) => TextModel
+  /** The Text Model as a Chain or Storyboard uses it. */
+  textModel: (choice: TextChoice) => TextModel
   imageGenerator: ImageGenerator
-  /** The Text Model as a Roleplay uses it; Ollama unless a test supplies one. */
-  roleplayModel?: (model: string, thinking: boolean) => RoleplayModel
+  /** The Text Model as a Roleplay uses it. */
+  roleplayModel: (choice: TextChoice) => RoleplayModel
   /** Speaks Roleplay Characters' lines; without it, voices are unavailable. */
   voice?: VoiceEngine
   /** Makes Roleplay pictures into 3D scenes; without it, they stay flat. */
@@ -61,7 +71,7 @@ export interface AppDeps {
    * backend is given are available, the rest not: what tests want.
    */
   features?: Availabilities
-  /** Frees memory before a render, upscale, scene or figure: unloads Ollama's models. */
+  /** Frees memory before a render, upscale, scene or figure: unloads the Text Model. */
   freeMemory?: () => Promise<void>
   /** Saved quantized copies of Image Models, listed and deleted from Settings. */
   quantized?: QuantizedStore
@@ -167,9 +177,16 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     return scenario ?? error(`Scenario "${session.scenarioId}" no longer exists`, 409)
   }
 
+  /** A Session's Text Model (or another model on its backend), with its Thinking unless given. */
+  const textChoice = (
+    settings: Settings,
+    model = settings.textModel,
+    thinking = settings.thinking ?? false,
+  ): TextChoice => ({ ...connectionOf(settings), model, thinking })
+
   const frameDeps = (session: Session): FrameDeps => ({
     store: deps.sessions,
-    textModel: deps.textModel(session.settings.textModel, session.settings.thinking ?? false),
+    textModel: deps.textModel(textChoice(session.settings)),
     imageGenerator: deps.imageGenerator,
     renderQueue,
   })
@@ -261,14 +278,12 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     return index
   }
 
-  const roleplayModel = deps.roleplayModel ??
-    ((model, thinking) => ollamaRoleplayModel(model, { think: thinking }))
   const roleplayDeps = (session: Session) => ({
     store: deps.sessions,
     imageGenerator: deps.imageGenerator,
     renderQueue,
-    textModel: deps.textModel(session.settings.textModel, session.settings.thinking ?? false),
-    roleplayModel: roleplayModel(session.settings.textModel, session.settings.thinking ?? false),
+    textModel: deps.textModel(textChoice(session.settings)),
+    roleplayModel: deps.roleplayModel(textChoice(session.settings)),
     voice: deps.voice,
     scene: deps.scene,
     figure: deps.figure,
@@ -309,7 +324,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     artModel: async (session) => {
       const { artModel } = await deps.settings.load()
       return artModel && artModel !== session.settings.textModel
-        ? roleplayModel(artModel, false)
+        ? deps.roleplayModel(textChoice(session.settings, artModel, false))
         : undefined
     },
   }
@@ -332,6 +347,30 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     throw new GoneError('This Session no longer exists')
   })
 
+  /** Settings as the browser sees them: whether there's an API key, never the key. */
+  const shownSettings = async (settings: Settings) => ({
+    ...settings,
+    textApiKeySet: !!(await deps.settings.loadApiKey()),
+  })
+
+  /** A Text backend's models for Settings to offer, or why it couldn't list them. */
+  async function textModelOptions(connection: TextConnection, apiKey?: string) {
+    let models: TextModelInfo[] = []
+    let textModelsError: string | undefined
+    try {
+      models = await deps.listTextModels(connection, apiKey)
+    } catch (err) {
+      textModelsError = `Could not reach ${TEXT_BACKEND_NAMES[connection.backend]}: ${
+        (err as Error).message
+      }`
+    }
+    return {
+      textModels: models.map((m) => m.name),
+      thinkingModels: models.filter((m) => m.thinking).map((m) => m.name),
+      textModelsError,
+    }
+  }
+
   const routes: Route[] = [
     ...roleplayRoutes({
       locked,
@@ -339,7 +378,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       scenarioFor,
       deps: roleplayDeps,
       // Thinking off, as for pictures: a suggestion is a draft, and it should come quickly.
-      suggestModel: (session) => roleplayModel(session.settings.textModel, false),
+      suggestModel: (session) => deps.roleplayModel(textChoice(session.settings, undefined, false)),
       jobs,
       store: deps.sessions,
     }),
@@ -360,16 +399,30 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     [
       'GET',
       new URLPattern({ pathname: '/api/settings' }),
-      async () => json(await deps.settings.load()),
+      async () => json(await shownSettings(await deps.settings.load())),
     ],
 
+    // A `textApiKey` string replaces the saved key ('' removes it); left out, it's kept.
     ['PUT', new URLPattern({ pathname: '/api/settings' }), async (req) => {
       const body = await readJson(req)
       if (body === undefined) return error('Body must be JSON', 400)
       const result = validateSettings(body)
       if (!result.ok) return error('Invalid settings', 400, { issues: result.issues })
       await deps.settings.save(result.settings)
-      return json(result.settings)
+      const { textApiKey } = body as { textApiKey?: unknown }
+      if (typeof textApiKey === 'string') await deps.settings.saveApiKey(textApiKey.trim())
+      return json(await shownSettings(result.settings))
+    }],
+
+    // The models on a Text backend not saved yet, for Settings to offer as it's changed.
+    ['POST', new URLPattern({ pathname: '/api/settings/text-models' }), async (req) => {
+      const body = await readJson(req) as Record<string, unknown> | undefined
+      const backend = body?.textBackend as TextBackendKind
+      if (!TEXT_BACKENDS.includes(backend) || typeof body?.textBaseUrl !== 'string') {
+        return error('Give a textBackend and a textBaseUrl', 400)
+      }
+      const apiKey = typeof body.textApiKey === 'string' ? body.textApiKey.trim() : undefined
+      return json(await textModelOptions({ backend, baseUrl: body.textBaseUrl.trim() }, apiKey))
     }],
 
     // Saved quantized copies of Image Models: made by the first render that needs one.
@@ -389,17 +442,8 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     ],
 
     ['GET', new URLPattern({ pathname: '/api/settings/options' }), async () => {
-      let models: TextModelInfo[] = []
-      let textModelsError: string | undefined
-      try {
-        models = await deps.listTextModels()
-      } catch (err) {
-        textModelsError = `Could not reach Ollama: ${(err as Error).message}`
-      }
       return json({
-        textModels: models.map((m) => m.name),
-        thinkingModels: models.filter((m) => m.thinking).map((m) => m.name),
-        textModelsError,
+        ...await textModelOptions(connectionOf(await deps.settings.load())),
         imageModels: IMAGE_MODELS.map(({ id, label, defaultSteps, stepCache, fast }) => ({
           id,
           label,

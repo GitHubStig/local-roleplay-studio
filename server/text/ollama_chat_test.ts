@@ -1,6 +1,13 @@
 import { assertEquals, assertRejects } from '@std/assert'
-import { ollamaTextModel } from './textModel.ts'
-import { promptWith, testScenario } from './testing.ts'
+import { chatTextModel, type TextModelOptions } from '../textModel.ts'
+import { promptWith, testScenario } from '../testing.ts'
+import { ollamaChat } from './ollama.ts'
+
+/** A Chain's Text Model on an Ollama at `baseUrl`. */
+const ollamaTextModel = (
+  model: string,
+  opts: { think?: boolean; baseUrl: string } & TextModelOptions,
+) => chatTextModel(ollamaChat(model, opts), opts)
 
 /** A stand-in Ollama /api/chat that streams NDJSON parts, recording each request body. */
 function fakeOllama(
@@ -28,7 +35,7 @@ const answer = JSON.stringify({
   prompt: promptWith('x'),
 })
 
-Deno.test('ollamaTextModel streams thinking, then parses the answer', async () => {
+Deno.test('a Text Model on Ollama streams thinking, then parses the answer', async () => {
   const ollama = fakeOllama(() =>
     ndjson(
       { message: { thinking: 'Hmm, ' } },
@@ -54,7 +61,7 @@ Deno.test('ollamaTextModel streams thinking, then parses the answer', async () =
   }
 })
 
-Deno.test('ollamaTextModel retries without thinking for models that cannot think', async () => {
+Deno.test('a Text Model on Ollama retries without thinking for models that cannot think', async () => {
   const ollama = fakeOllama((body) =>
     body.think
       ? Response.json({ error: '"llama3" does not support thinking' }, { status: 400 })
@@ -73,7 +80,7 @@ Deno.test('ollamaTextModel retries without thinking for models that cannot think
   }
 })
 
-Deno.test('ollamaTextModel reports an error sent mid-stream', async () => {
+Deno.test('a Text Model on Ollama reports an error sent mid-stream', async () => {
   const ollama = fakeOllama(() => ndjson({ error: 'model runner crashed' }))
   try {
     await assertRejects(
@@ -90,7 +97,7 @@ Deno.test('ollamaTextModel reports an error sent mid-stream', async () => {
   }
 })
 
-Deno.test('ollamaTextModel caps output and fails a reply cut off by the length limit', async () => {
+Deno.test('a Text Model on Ollama caps output and fails a reply cut off by the length limit', async () => {
   const ollama = fakeOllama(() =>
     ndjson({ message: { content: '{"outcome": "done", "narr' } }, {
       done: true,
@@ -114,7 +121,7 @@ Deno.test('ollamaTextModel caps output and fails a reply cut off by the length l
   }
 })
 
-Deno.test('ollamaTextModel gives up with a readable error when a reply takes too long', async () => {
+Deno.test('a Text Model on Ollama gives up with a readable error when a reply takes too long', async () => {
   const ollama = fakeOllama(() => new Response(new ReadableStream({ start() {} })))
   try {
     const tm = ollamaTextModel('m', {
@@ -140,7 +147,7 @@ Deno.test('ollamaTextModel gives up with a readable error when a reply takes too
   }
 })
 
-Deno.test("ollamaTextModel passes the player's Cancel through unchanged", async () => {
+Deno.test("a Text Model on Ollama passes the player's Cancel through unchanged", async () => {
   const ollama = fakeOllama(() => new Response(new ReadableStream({ start() {} })))
   try {
     const controller = new AbortController()

@@ -82,7 +82,7 @@ const imageModelLabel = computed(
 const blocker = computed(() => {
   if (!settings.value?.textModel) return 'Choose a Text Model in Settings first.'
   if (!options.value?.textModels.includes(settings.value.textModel)) {
-    return `The Text Model "${settings.value.textModel}" isn't available in Ollama.`
+    return `The Text Model "${settings.value.textModel}" isn't available. Choose one in Settings.`
   }
   if (!selected.value) return 'Choose a Scenario, or write your own Brief.'
   if (selected.value === 'brief' && !brief.value.trim()) return 'Write the Brief.'

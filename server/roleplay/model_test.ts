@@ -1,6 +1,7 @@
 import { assertEquals } from '@std/assert'
 import { briefScenario } from '../scenario.ts'
-import { ollamaRoleplayModel } from './model.ts'
+import { ollamaChat } from '../text/ollama.ts'
+import { chatRoleplayModel } from './model.ts'
 import { testCast } from './testing.ts'
 
 /** A stand-in Ollama that answers every call with `content`, recording each request body. */
@@ -22,7 +23,7 @@ Deno.test('Replies penalise repeating the conversation; Cast calls do not', asyn
   const cast = fakeOllama(JSON.stringify(testCast))
   try {
     const signal = new AbortController().signal
-    const answer = await ollamaRoleplayModel('m', { baseUrl: reply.baseUrl }).reply(
+    const answer = await chatRoleplayModel(ollamaChat('m', { baseUrl: reply.baseUrl })).reply(
       [{ role: 'user', content: 'Hi' }],
       signal,
     )
@@ -33,7 +34,7 @@ Deno.test('Replies penalise repeating the conversation; Cast calls do not', asyn
       num_predict: 1024,
     })
 
-    await ollamaRoleplayModel('m', { baseUrl: cast.baseUrl }).writeCast(
+    await chatRoleplayModel(ollamaChat('m', { baseUrl: cast.baseUrl })).writeCast(
       briefScenario('A tavern.'),
       signal,
     )

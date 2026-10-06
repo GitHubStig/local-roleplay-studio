@@ -68,6 +68,8 @@ beforeEach(() => {
   vi.mocked(api.streamFrame).mockReset()
   vi.mocked(api.cancelFrame).mockReset()
   vi.mocked(api.getSettings).mockResolvedValue({
+    textBackend: 'ollama',
+    textBaseUrl: '',
     textModel: 'llama3:latest',
     thinking: false,
     imageModel: 'flux2-klein-4b',

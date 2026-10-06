@@ -1,5 +1,5 @@
 import { JsonStreamReader } from '../jsonStream.ts'
-import { type ChatMessage, ollamaChat, within } from '../ollamaChat.ts'
+import { type Chat, type ChatMessage, within } from '../text/chat.ts'
 import type { Scenario } from '../scenario.ts'
 import {
   castMessages,
@@ -33,7 +33,7 @@ export interface ReplyHandlers {
 
 /** The Text Model's two jobs in a Roleplay. */
 export interface RoleplayModel {
-  /** The Ollama model's name, recorded with what it writes. */
+  /** The Text Model's name, recorded with what it writes. */
   readonly name: string
   /** Writes the Cast from a Brief (or a Scenario). */
   writeCast(
@@ -79,7 +79,6 @@ const MAX_TOKENS = {
   suggest: 400,
   voice: 300,
   delivery: 60,
-  thinking: 12288,
 }
 
 /**
@@ -89,45 +88,36 @@ const MAX_TOKENS = {
  * read as before. An instruction not to repeat didn't help; presence and frequency penalties broke
  * the output.
  */
-const REPLY_SAMPLING = {
-  repeat_penalty: 1.15,
+const REPLY_REPEAT_PENALTY = {
+  penalty: 1.15,
   /**
    * The whole conversation: as many tokens as a Text Model's context holds (131,072 for gemma4
    * here). Not -1, Ollama's documented "the whole context": the MLX engine accepts it, but models on
    * the GGUF engine refuse it ("Value must be between 0 <= value").
    */
-  repeat_last_n: 131_072,
+  lastN: 131_072,
 }
 const TIME_LIMIT_MS = { answer: 2 * 60_000, thinking: 10 * 60_000 }
 
-export interface OllamaRoleplayOptions {
-  think?: boolean
-  baseUrl?: string
+export interface RoleplayModelOptions {
   /** Overrides the time limits, in ms (for tests). */
   timeLimits?: Partial<typeof TIME_LIMIT_MS>
 }
 
-export function ollamaRoleplayModel(
-  model: string,
-  opts: OllamaRoleplayOptions = {},
-): RoleplayModel {
-  const chat = ollamaChat(model, {
-    think: opts.think,
-    baseUrl: opts.baseUrl,
-    thinkingTokens: MAX_TOKENS.thinking,
-  })
+/** The Text Model's jobs in a Roleplay, on any backend's `chat`. */
+export function chatRoleplayModel(chat: Chat, opts: RoleplayModelOptions = {}): RoleplayModel {
   const limits = { ...TIME_LIMIT_MS, ...opts.timeLimits }
   const limit = () => (chat.thinks ? limits.thinking : limits.answer)
   const withThinking = <T extends object>(value: T, thinking: string) =>
     thinking ? { ...value, thinking } : value
 
   return {
-    name: model,
+    name: chat.model,
     writeCast: (scenario, signal, onThinking) =>
       within(signal, limit(), async (s) => {
         const { content, thinking } = await chat.stream({
           messages: await castMessages(scenario),
-          format: castSchema(),
+          schema: castSchema(),
           maxTokens: MAX_TOKENS.cast,
           signal: s,
           onThinking,
@@ -139,7 +129,7 @@ export function ollamaRoleplayModel(
       within(signal, limit(), async (s) => {
         const { content, thinking } = await chat.stream({
           messages,
-          format: roleplayLookSchema,
+          schema: roleplayLookSchema,
           maxTokens: MAX_TOKENS.art,
           signal: s,
           onThinking,
@@ -151,7 +141,7 @@ export function ollamaRoleplayModel(
       within(signal, limit(), async (s) => {
         const { content, thinking } = await chat.stream({
           messages,
-          format: style === 'tags' ? artTagsSchema : artFrameSchema,
+          schema: style === 'tags' ? artTagsSchema : artFrameSchema,
           maxTokens: MAX_TOKENS.art,
           signal: s,
           onThinking,
@@ -178,9 +168,9 @@ export function ollamaRoleplayModel(
         })
         const { content, thinking } = await chat.stream({
           messages,
-          format: replySchema(),
+          schema: replySchema(),
           maxTokens: MAX_TOKENS.reply,
-          options: REPLY_SAMPLING,
+          repeatPenalty: REPLY_REPEAT_PENALTY,
           signal: s,
           onThinking: on.thinking,
           onContent: (chunk) => reader.feed(chunk),
@@ -192,7 +182,7 @@ export function ollamaRoleplayModel(
       within(signal, limit(), async (s) => {
         const { content } = await chat.stream({
           messages,
-          format: voiceSchema,
+          schema: voiceSchema,
           maxTokens: MAX_TOKENS.voice,
           signal: s,
         })
@@ -208,10 +198,10 @@ export function ollamaRoleplayModel(
       within(signal, limit(), async (s) => {
         const { content } = await chat.stream({
           messages,
-          format: deliverySchema,
+          schema: deliverySchema,
           maxTokens: MAX_TOKENS.delivery,
           // Steady picks: at the default temperature the same line came back slow one time in two.
-          options: { temperature: 0.3 },
+          temperature: 0.3,
           signal: s,
         })
         return parseDelivery(parseJson(content))

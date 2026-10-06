@@ -1,10 +1,9 @@
 import { stringify } from '@std/yaml'
 import { type ImagePrompt, PROMPT_ORDER } from './imagePrompt.ts'
-import { OLLAMA_URL } from './ollama.ts'
 import type { Scenario } from './scenario.ts'
 import { type Look, type Outcome, OUTCOMES } from './session.ts'
 import { JsonStreamReader } from './jsonStream.ts'
-import { ollamaChat, within } from './ollamaChat.ts'
+import { type Chat, within } from './text/chat.ts'
 import { limitsEnabled } from './limits.ts'
 
 /** What the Text Model produces for one Frame, before the engine applies its rules. */
@@ -463,7 +462,7 @@ export function parseStoryboardEdit(content: string): StoryboardEdit {
  * Output caps. A small model writing JSON under a schema sometimes never stops (padding with
  * whitespace until its large context fills), so every call gets a token cap and a time limit.
  */
-const MAX_TOKENS = { answer: 2048, thinking: 12288, yesNo: 32, perFrame: 700 }
+const MAX_TOKENS = { answer: 2048, yesNo: 32, perFrame: 700 }
 const TIME_LIMIT_MS = {
   answer: 2 * 60_000,
   thinking: 10 * 60_000,
@@ -475,24 +474,19 @@ const TIME_LIMIT_MS = {
 /** A Storyboard plan's token cap: room for the Look and Beats, then each Frame. */
 export const planTokens = (frameCount: number) => 800 + frameCount * MAX_TOKENS.perFrame
 
-export interface OllamaOptions {
-  /** Ask the model to reason before answering. Ignored by models that can't. */
-  think?: boolean
-  baseUrl?: string
+export interface TextModelOptions {
   /** Overrides the time limits, in ms (for tests). */
   timeLimits?: Partial<typeof TIME_LIMIT_MS>
 }
 
-export function ollamaTextModel(model: string, opts: OllamaOptions = {}): TextModel {
-  const baseUrl = opts.baseUrl ?? OLLAMA_URL
-  const think = opts.think ?? false
+/** The Text Model's jobs in a Chain or Storyboard, on any backend's `chat`. */
+export function chatTextModel(chat: Chat, opts: TextModelOptions = {}): TextModel {
   const limits = { ...TIME_LIMIT_MS, ...opts.timeLimits }
-  const chat = ollamaChat(model, { think, baseUrl, thinkingTokens: MAX_TOKENS.thinking })
 
-  /** One streamed call with a system and a user message; see `OllamaChat.stream`. */
+  /** One streamed call with a system and a user message; see `Chat.stream`. */
   function streamChat(
     messages: { system: string; user: string },
-    format: object,
+    schema: object,
     maxTokens: number,
     signal: AbortSignal,
     onThinking?: (chunk: string) => void,
@@ -505,7 +499,7 @@ export function ollamaTextModel(model: string, opts: OllamaOptions = {}): TextMo
         { role: 'system', content: system },
         { role: 'user', content: messages.user },
       ],
-      format,
+      schema,
       maxTokens,
       signal,
       onThinking,
@@ -572,26 +566,19 @@ export function ollamaTextModel(model: string, opts: OllamaOptions = {}): TextMo
   }
 
   async function askRealPerson(action: string, signal: AbortSignal): Promise<boolean> {
-    const res = await fetch(new URL('/api/chat', baseUrl), {
-      method: 'POST',
+    const { content } = await chat.stream({
+      messages: [{ role: 'user', content: realPersonQuestion(action) }],
+      schema: {
+        type: 'object',
+        properties: { realPerson: { type: 'boolean' } },
+        required: ['realPerson'],
+      },
+      maxTokens: MAX_TOKENS.yesNo,
+      noThinking: true,
       signal,
-      body: JSON.stringify({
-        model,
-        stream: false,
-        think: false,
-        options: { num_predict: MAX_TOKENS.yesNo },
-        format: {
-          type: 'object',
-          properties: { realPerson: { type: 'boolean' } },
-          required: ['realPerson'],
-        },
-        messages: [{ role: 'user', content: realPersonQuestion(action) }],
-      }),
     })
-    if (!res.ok) throw new Error(`Ollama: ${res.status}`)
-    const body = await res.json() as { message?: { content?: string } }
     try {
-      return JSON.parse(body.message?.content ?? '').realPerson === true
+      return JSON.parse(content).realPerson === true
     } catch {
       return false
     }

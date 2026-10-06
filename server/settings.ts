@@ -2,6 +2,7 @@ import { fromFileUrl } from '@std/path'
 import { findImageModel, IMAGE_MODELS, type Upscaler, UPSCALERS } from './imageModels.ts'
 import { ART_STYLES, type ArtStyle } from './roleplay/art.ts'
 import { type Feature, FEATURES } from './features.ts'
+import { TEXT_BACKENDS, type TextBackendKind } from './text/backend.ts'
 
 export interface SizePreset {
   id: string
@@ -30,7 +31,11 @@ export type SeedMode = 'random' | 'fixed'
 
 /** Player-chosen configuration; read when a Session starts. */
 export interface Settings {
-  /** Ollama model name; empty until the player picks one. */
+  /** Where the Text Model runs (`text/backend.ts`). Its API key is kept apart: `SettingsStore`. */
+  textBackend: TextBackendKind
+  /** The backend's address; '' for Ollama's default. */
+  textBaseUrl: string
+  /** The model's name on the backend; empty until the player picks one. */
   textModel: string
   /** Let the Text Model reason before answering: slower, often more accurate. */
   thinking: boolean
@@ -48,7 +53,7 @@ export interface Settings {
   /** Which SeedVR2 model Upscale uses; read when upscaling, so it applies mid-Session too. */
   upscaler: Upscaler
   /**
-   * The Ollama model that pictures Roleplay Frames (the Art Agent); '' for the Session's Text Model.
+   * The model that pictures Roleplay Frames (the Art Agent); '' for the Session's Text Model.
    * Read when a picture is made, so it applies to running Sessions too.
    */
   artModel: string
@@ -67,6 +72,8 @@ export interface Settings {
 }
 
 export const DEFAULT_SETTINGS: Settings = {
+  textBackend: 'ollama',
+  textBaseUrl: '',
   textModel: '',
   thinking: false,
   imageModel: IMAGE_MODELS[0].id,
@@ -97,6 +104,16 @@ export function validateSettings(input: unknown): ValidationResult {
   const s = input as Record<string, unknown>
   const issues: string[] = []
 
+  if (s.textBackend !== undefined && !TEXT_BACKENDS.includes(s.textBackend as TextBackendKind)) {
+    issues.push(`textBackend must be one of: ${TEXT_BACKENDS.join(', ')}`)
+  }
+  if (s.textBaseUrl !== undefined && typeof s.textBaseUrl !== 'string') {
+    issues.push('textBaseUrl must be a string')
+  } else if (s.textBaseUrl && !URL.canParse(s.textBaseUrl as string)) {
+    issues.push('textBaseUrl must be an address like http://localhost:1234/v1')
+  } else if (s.textBackend === 'openai' && !s.textBaseUrl) {
+    issues.push('An OpenAI-compatible server needs its address')
+  }
   if (typeof s.textModel !== 'string') issues.push('textModel must be a string')
   if (s.thinking !== undefined && typeof s.thinking !== 'boolean') {
     issues.push('thinking must be true or false')
@@ -153,6 +170,8 @@ export function validateSettings(input: unknown): ValidationResult {
   return {
     ok: true,
     settings: {
+      textBackend: (s.textBackend as TextBackendKind | undefined) ?? 'ollama',
+      textBaseUrl: ((s.textBaseUrl as string | undefined) ?? '').trim(),
       textModel: s.textModel as string,
       thinking: (s.thinking as boolean | undefined) ?? false,
       imageModel: s.imageModel as string,
@@ -176,10 +195,33 @@ export function validateSettings(input: unknown): ValidationResult {
 export interface SettingsStore {
   load(): Promise<Settings>
   save(settings: Settings): Promise<void>
+  /**
+   * The Text backend's API key; '' for none. Kept out of `Settings`, which is copied into each
+   * Session and sent to the browser.
+   */
+  loadApiKey(): Promise<string>
+  saveApiKey(key: string): Promise<void>
 }
 
-/** Stores Settings as JSON at `path`, falling back to defaults when missing or invalid. */
+/**
+ * Stores Settings as JSON at `path`, falling back to defaults when missing or invalid. The API key
+ * is in the same file (gitignored), as `textApiKey`.
+ */
 export function fileSettingsStore(path: string | URL): SettingsStore {
+  const file = path instanceof URL ? fromFileUrl(path) : path
+  async function readRaw(): Promise<Record<string, unknown>> {
+    try {
+      const parsed = JSON.parse(await Deno.readTextFile(file))
+      return typeof parsed === 'object' && parsed !== null ? parsed : {}
+    } catch {
+      return {}
+    }
+  }
+  async function write(raw: object) {
+    const tmp = `${file}.tmp`
+    await Deno.writeTextFile(tmp, JSON.stringify(raw, null, 2) + '\n', { mode: 0o600 })
+    await Deno.rename(tmp, file)
+  }
   return {
     async load() {
       let raw: string
@@ -204,9 +246,16 @@ export function fileSettingsStore(path: string | URL): SettingsStore {
       return result.settings
     },
     async save(settings) {
-      const tmp = `${path instanceof URL ? fromFileUrl(path) : path}.tmp`
-      await Deno.writeTextFile(tmp, JSON.stringify(settings, null, 2) + '\n')
-      await Deno.rename(tmp, path)
+      const { textApiKey } = await readRaw()
+      await write(textApiKey ? { ...settings, textApiKey } : settings)
+    },
+    async loadApiKey() {
+      const { textApiKey } = await readRaw()
+      return typeof textApiKey === 'string' ? textApiKey : ''
+    },
+    async saveApiKey(key) {
+      const { textApiKey: _, ...rest } = await readRaw()
+      await write(key ? { ...rest, textApiKey: key } : rest)
     },
   }
 }

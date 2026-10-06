@@ -1,4 +1,4 @@
-import type { ChatMessage } from '../ollamaChat.ts'
+import type { ChatMessage } from '../text/chat.ts'
 import type { RoleplayModel } from './model.ts'
 import type { Delivery } from '../voice.ts'
 import { REPLY_FIELDS } from './prompt.ts'
