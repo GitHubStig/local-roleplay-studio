@@ -20,7 +20,7 @@ and how to run it is in the [README](README.md); this is how the owner likes the
   yes.
 - **Conventional Commits** (`type(scope): subject`, with a body saying why). **No AI attribution**:
   no `Co-Authored-By` or "generated with" lines, whatever a tool suggests.
-- **Push only when asked.** The repo is private on GitHub (`GitHubStig/local-roleplay-studio`).
+- **Push only when asked.** The repo is public on GitHub (`GitHubStig/local-roleplay-studio`).
 - **Ask before heavy model runs**: big downloads, or long or memory-hungry GPU work. Quick checks
   (one render, one SHARP scene) are fine.
 - **Ask before deleting** anything that isn't yours: Sessions, models, downloads. What you made
