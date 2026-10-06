@@ -15,6 +15,7 @@ import { imageProgress, type ProgressEvent, upscaleFrame } from '../frames.ts'
 import { type FrameEvent, runChainFrame, UndoError, undoLatestFrame } from './frames.ts'
 import { RenderQueue } from '../renderQueue.ts'
 import { renderPrompt } from '../imagePrompt.ts'
+import { updateSession } from '../update.ts'
 
 const newSession = (): ChainSession => ({
   id: 's1',
@@ -314,6 +315,7 @@ Deno.test("undoLatestFrame deletes the undone Frame's upscale too", () =>
       'seedvr2-7b',
       () => {},
       signal(),
+      (change) => updateSession(store, session.id, 'chain', (s) => change(s) as typeof s),
     ) as typeof session
     const latest = upscaled.frames[1]
     assertEquals(await imageExists(root, latest.upscaled!), true)

@@ -1,14 +1,13 @@
 import { equal } from '@std/assert'
 import {
   type FrameDeps,
-  imageName,
   limitCrossedBy,
   type ProgressEvent,
-  removeImage,
-  renderImage,
+  replacePicture,
   secondsSince,
   withRetry,
 } from '../frames.ts'
+import { updateSession } from '../update.ts'
 import { renderPrompt } from '../imagePrompt.ts'
 import { crossedLimit } from '../limits.ts'
 import type { Scenario } from '../scenario.ts'
@@ -69,11 +68,17 @@ function makeFrame(
 function recompose(frame: StoryboardFrame, look: Look, body = frame.body): StoryboardFrame {
   const fresh = makeFrame(look, frame.index, frame.beat, body, frame.timings)
   const changed = fresh.promptText !== frame.promptText
+  // The picture, and what was made from it, stay until it's rendered again.
+  const { image, upscaled, scene, figure, lito, createdAt } = frame
   return {
     ...fresh,
-    image: frame.image,
-    createdAt: frame.createdAt,
-    ...(frame.image && (changed || frame.stale) ? { stale: true } : {}),
+    image,
+    ...(upscaled && { upscaled }),
+    ...(scene && { scene }),
+    ...(figure && { figure }),
+    ...(lito && { lito }),
+    createdAt,
+    ...(image && (changed || frame.stale) ? { stale: true } : {}),
   }
 }
 
@@ -151,8 +156,10 @@ export async function planStoryboard(
 }
 
 /**
- * Renders (or re-renders) one Frame, replacing its image. Nothing changes unless the render
- * completes; the old image is deleted only once the new one is saved.
+ * Renders (or re-renders) one Frame, replacing its image and what was made from it (upscale,
+ * scene, figures). Nothing changes unless the render completes. Saved onto the Storyboard as it is
+ * now, as a queued job runs beside edits: a Frame edited meanwhile keeps its new sentences and is
+ * marked stale.
  */
 export async function renderStoryboardFrame(
   deps: FrameDeps,
@@ -166,27 +173,24 @@ export async function renderStoryboardFrame(
   if (frame.blocked) throw new LimitError(`Frame ${index + 1} crosses a limit: ${frame.blocked}`)
 
   const timings: FrameTimings = { text: frame.timings?.text ?? 0, image: null }
-  const name = imageName(index)
-  const dir = deps.store.dir(session.id)
-  try {
-    const image = await renderImage(deps, session, frame.promptText, name, timings, emit, signal)
-    signal.throwIfAborted()
-    // A new image replaces the old one and its upscale.
-    const { stale: _, upscaled: __, ...rest } = frame
-    const rendered: StoryboardFrame = { ...rest, image, timings }
-    const frames = session.frames.map((f) => f.index === index ? rendered : f)
-    await deps.store.save({ ...session, frames })
-    session.frames = frames
-    if (frame.image && frame.image !== image) {
-      await removeImage(dir, frame.image.replace(/\.\w+$/, ''))
-    }
-    if (frame.upscaled) await removeImage(dir, frame.upscaled.replace(/\.\w+$/, ''))
-    emit({ type: 'rendered', frame: rendered })
-    return rendered
-  } catch (err) {
-    await removeImage(dir, name)
-    throw err
-  }
+  const { frame: rendered } = await replacePicture(
+    deps,
+    session,
+    index,
+    frame.promptText,
+    timings,
+    emit,
+    signal,
+    (change) => updateSession(deps.store, session.id, 'storyboard', change),
+    (current, image) => ({
+      ...current,
+      image,
+      timings,
+      ...(current.promptText !== frame.promptText && { stale: true }),
+    }),
+  )
+  emit({ type: 'rendered', frame: rendered })
+  return rendered
 }
 
 /** Replaces one Frame's own sentences, typed by hand. Refused if the result crosses a Limit. */
@@ -200,11 +204,12 @@ export async function setFrameBody(
   if (!frame || !session.look) throw new Error(`There is no Frame ${index + 1}`)
   const text = plainSentences(body)
   if (!text) throw new Error('A Frame needs some text')
-  const edited = recompose(frame, session.look, text)
-  if (edited.blocked) throw new LimitError(`That crosses a limit: ${edited.blocked}`)
-  const updated = { ...session, frames: session.frames.map((f) => f.index === index ? edited : f) }
-  await deps.store.save(updated)
-  return updated
+  // Onto the Storyboard as it is now: a queued render may have finished meanwhile.
+  return await updateSession(deps.store, session.id, 'storyboard', (latest) => {
+    const edited = recompose(latest.frames[index], latest.look!, text)
+    if (edited.blocked) throw new LimitError(`That crosses a limit: ${edited.blocked}`)
+    return { ...latest, frames: latest.frames.map((f) => f.index === index ? edited : f) }
+  })
 }
 
 /** Replaces the Look, typed by hand, and rewrites every Frame's prompt with it. */
@@ -216,13 +221,11 @@ export async function setLook(
   const clean = { subject: plainSentences(look.subject), style: plainSentences(look.style) }
   if (!clean.subject || !clean.style) throw new Error('The Look needs both a subject and a style')
   checkLook(clean)
-  const updated = {
-    ...session,
+  return await updateSession(deps.store, session.id, 'storyboard', (latest) => ({
+    ...latest,
     look: clean,
-    frames: session.frames.map((f) => recompose(f, clean)),
-  }
-  await deps.store.save(updated)
-  return updated
+    frames: latest.frames.map((f) => recompose(f, clean)),
+  }))
 }
 
 export interface StoryboardEditResult {
@@ -279,16 +282,21 @@ export async function editFrameByAction(
   } catch (err) {
     return unchanged('declined', `Declined: ${(err as Error).message}.`)
   }
-  const frames = session.frames.map((f) => {
-    const next = recompose(f, look, f.index === index ? edit.body : f.body)
-    return f.index === index
-      ? { ...next, timings: { text: secondsSince(start), image: f.timings?.image ?? null } }
-      : next
-  })
-  const edited = frames[index]
+  const withEdit = (frames: StoryboardFrame[]) =>
+    frames.map((f) => {
+      const next = recompose(f, look, f.index === index ? edit.body : f.body)
+      return f.index === index
+        ? { ...next, timings: { text: secondsSince(start), image: f.timings?.image ?? null } }
+        : next
+    })
+  const edited = withEdit(session.frames)[index]
   if (edited.blocked) return unchanged('declined', `Declined: ${edited.blocked}.`)
   signal.throwIfAborted()
-  const updated = { ...session, look, frames }
-  await deps.store.save(updated)
+  // Onto the Storyboard as it is now: a queued render may have finished meanwhile.
+  const updated = await updateSession(deps.store, session.id, 'storyboard', (latest) => ({
+    ...latest,
+    look,
+    frames: withEdit(latest.frames),
+  }))
   return { outcome: 'done', narration: edit.narration, session: updated }
 }

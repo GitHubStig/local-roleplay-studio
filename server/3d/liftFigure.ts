@@ -1,5 +1,5 @@
 import { join } from '@std/path'
-import type { Figure, FigureMaker } from '../3d/figure.ts'
+import type { Figure, FigureMaker } from './figure.ts'
 import { secondsSince } from '../frames.ts'
 import { RenderQueue } from '../renderQueue.ts'
 import type { SessionStore } from '../session.ts'
@@ -13,7 +13,7 @@ export interface FigureDeps {
   renderQueue?: RenderQueue
 }
 
-/** What a figure can be made for: a Chain or a Roleplay. */
+/** What a figure can be made for: any kind of Session with pictures. */
 interface FiguredSession {
   id: string
   frames: {

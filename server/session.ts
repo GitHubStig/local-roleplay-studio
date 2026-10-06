@@ -35,6 +35,15 @@ interface FrameBase {
   image: string | null
   /** File name of the image upscaled to 2048 px, once the player has upscaled it. */
   upscaled?: string
+  /**
+   * The picture made into a 2.5D scene (SHARP), once asked for; shared like `upscaled` (a Chain
+   * Frame reuses the picture before it when nothing changed).
+   */
+  scene?: Scene
+  /** The person in the picture as a 3D figure (TripoSplat), once asked for; shared likewise. */
+  figure?: Figure
+  /** The same, made with Apple's LiTo. */
+  lito?: Figure
   timings?: FrameTimings
   createdAt: string
 }
@@ -49,12 +58,6 @@ export interface ChainFrame extends FrameBase {
   thinking?: string
   /** Chain Frames always have an image. */
   image: string
-  /** The picture made into a 2.5D scene (SHARP), once asked for; shared like `upscaled`. */
-  scene?: Scene
-  /** The person in the picture as a 3D figure (TripoSplat), once asked for; shared likewise. */
-  figure?: Figure
-  /** The same, made with Apple's LiTo. */
-  lito?: Figure
 }
 
 /** A Storyboard Frame: planned from a Beat, edited and rendered on its own. */

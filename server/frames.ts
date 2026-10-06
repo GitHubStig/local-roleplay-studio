@@ -5,6 +5,7 @@ import { crossedLimit, limitsEnabled } from './limits.ts'
 import { mightNameAPerson, type TextModel } from './textModel.ts'
 import { RenderQueue } from './renderQueue.ts'
 import type { FrameTimings, Session, SessionStore } from './session.ts'
+import { GoneError } from './update.ts'
 import { ContextFullError } from './text/chat.ts'
 
 /** Progress any piece of work reports as it happens, in a Chain or a Storyboard. */
@@ -52,18 +53,6 @@ export interface FrameDeps {
 }
 
 const TEXT_ATTEMPTS = 2
-
-/**
- * Saves a change onto `session` as given: right for a Chain, which holds its lock while it works.
- * A Roleplay saves through its `updateSession` instead, since its conversation moves on meanwhile.
- */
-export const saveAsGiven =
-  <S extends { id: string }>(store: SessionStore, session: S) =>
-  async (change: (s: S) => S): Promise<S> => {
-    const updated = change(session)
-    await store.save(updated as unknown as Session)
-    return updated
-  }
 
 /** Seconds since `start` (a `performance.now()` reading), to one decimal place. */
 export const secondsSince = (start: number) => Math.round((performance.now() - start) / 100) / 10
@@ -159,6 +148,65 @@ export async function renderImage(
   }
 }
 
+/** A Frame with a picture, and what can be made from it, which a new picture makes out of date. */
+interface PicturedFrame {
+  index: number
+  image: string | null
+  upscaled?: string
+  stale?: boolean
+  scene?: { file: string }
+  figure?: { file: string }
+  lito?: { file: string }
+}
+
+/**
+ * Renders a new picture for Frame `index` (a Roleplay's or a Storyboard's) and puts it on the Frame
+ * as it is now (`save`), replacing the old picture and what was made from it: its upscale, scene
+ * and figures, whose files are then deleted. `place` gives the Frame its new picture, from the
+ * Frame as saved now without any of those. On failure or Cancel nothing changes, and the new file
+ * is removed.
+ */
+export async function replacePicture<
+  S extends Session & { frames: PicturedFrame[] },
+  F extends S['frames'][number] = S['frames'][number],
+>(
+  deps: FrameDeps,
+  session: S,
+  index: number,
+  promptText: string,
+  timings: FrameTimings,
+  emit: (event: ProgressEvent) => void,
+  signal: AbortSignal,
+  save: (change: (s: S) => S) => Promise<S>,
+  place: (current: F, image: string) => F,
+): Promise<{ session: S; frame: F }> {
+  const name = imageName(index)
+  const dir = deps.store.dir(session.id)
+  try {
+    const image = await renderImage(deps, session, promptText, name, timings, emit, signal)
+    signal.throwIfAborted()
+    let frame!: F
+    let old!: F
+    const updated = await save((latest) => {
+      old = latest.frames[index] as F
+      if (!old) throw new GoneError('That Frame no longer exists')
+      const { stale: _, upscaled: __, scene: ___, figure: ____, lito: _____, ...rest } = old
+      frame = place(rest as F, image)
+      return { ...latest, frames: latest.frames.map((f) => (f.index === index ? frame : f)) } as S
+    })
+    for (const file of [old.image, old.upscaled]) {
+      if (file && file !== image) await removeImage(dir, file.replace(/\.\w+$/, ''))
+    }
+    for (const made of [old.scene, old.figure, old.lito]) {
+      if (made) await Deno.remove(join(dir, made.file)).catch(() => {})
+    }
+    return { session: updated, frame }
+  } catch (err) {
+    await removeImage(dir, name)
+    throw err
+  }
+}
+
 /** Deletes whatever image a generator may have written under `name`, e.g. after a Cancel. */
 export async function removeImage(dir: string, name: string): Promise<void> {
   for (const ext of ['png', 'svg']) {
@@ -174,13 +222,14 @@ export class UpscaleError extends Error {}
  * upscaled. Keeps the original image, which thumbnails and re-renders still use.
  */
 export async function upscaleFrame(
-  deps: FrameDeps,
+  deps: Pick<FrameDeps, 'store' | 'imageGenerator' | 'renderQueue'>,
   session: Session,
   index: number,
   upscaler: Upscaler,
   emit: (event: UpscaleEvent) => void,
   signal: AbortSignal,
-  save: (change: (s: Session) => Session) => Promise<Session> = saveAsGiven(deps.store, session),
+  /** Saves the change onto the Session as it is now (`updateSession`): a job runs beside it. */
+  save: (change: (s: Session) => Session) => Promise<Session>,
 ): Promise<Session> {
   const frame = session.frames[index]
   if (!frame?.image) throw new UpscaleError(`Frame ${index + 1} has no image to upscale`)

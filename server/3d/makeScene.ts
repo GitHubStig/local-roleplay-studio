@@ -1,7 +1,7 @@
 import { join } from '@std/path'
 import { secondsSince } from '../frames.ts'
 import { RenderQueue } from '../renderQueue.ts'
-import type { Scene, SceneMaker } from '../3d/scene.ts'
+import type { Scene, SceneMaker } from './scene.ts'
 import type { SessionStore } from '../session.ts'
 
 export interface SceneDeps {
@@ -11,7 +11,7 @@ export interface SceneDeps {
   renderQueue?: RenderQueue
 }
 
-/** What a scene can be made for: a Chain or a Roleplay. */
+/** What a scene can be made for: any kind of Session with pictures. */
 interface ScenedSession {
   id: string
   frames: { index: number; image: string | null; upscaled?: string; scene?: Scene }[]

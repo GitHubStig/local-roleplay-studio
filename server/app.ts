@@ -27,15 +27,15 @@ import { checkRoleplayJob, type RoleplayJobContext, runRoleplayJob } from './rol
 import { JOB_FEATURE, jobRoutes, SessionJobs } from './jobs.ts'
 import { type Availabilities, type Availability, type Feature, FEATURE_NAMES } from './features.ts'
 import { checkChainJob, runChainJob } from './chain/jobs.ts'
+import { checkStoryboardJob, runStoryboardJob } from './storyboard/jobs.ts'
 import { GoneError } from './update.ts'
 import { RenderQueue } from './renderQueue.ts'
-import { type FrameDeps, type Phase, UpscaleError, upscaleFrame } from './frames.ts'
+import { type FrameDeps, type Phase, UpscaleError } from './frames.ts'
 import { runChainFrame, UndoError, undoLatestFrame } from './chain/frames.ts'
 import {
   editFrameByAction,
   LimitError,
   planStoryboard,
-  renderStoryboardFrame,
   setFrameBody,
   setLook,
 } from './storyboard/storyboard.ts'
@@ -327,15 +327,17 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     if (session?.kind === 'roleplay') {
       return runRoleplayJob(roleplayJobs, session, job, emit, signal)
     }
-    if (session?.kind === 'chain') {
-      const chainDeps = {
+    if (session?.kind === 'chain' || session?.kind === 'storyboard') {
+      const pictureDeps = {
         ...frameDeps(session),
         scene: deps.scene,
         figure: deps.figure,
         lito: deps.lito,
         upscaler,
       }
-      return runChainJob(chainDeps, session, job, emit, signal)
+      return session.kind === 'chain'
+        ? runChainJob(pictureDeps, session, job, emit, signal)
+        : runStoryboardJob(pictureDeps, session, job, emit, signal)
     }
     throw new GoneError('This Session no longer exists')
   })
@@ -378,13 +380,13 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     ...jobRoutes({
       jobs,
       store: deps.sessions,
-      check: async (session, kind, index) =>
+      check: async (session, kind, index, pending) =>
         (await featureOff(JOB_FEATURE[kind])) ??
           (session.kind === 'roleplay'
-            ? checkRoleplayJob(session, kind, index)
+            ? checkRoleplayJob(session, kind, index, pending)
             : session.kind === 'chain'
-            ? checkChainJob(session, kind, index)
-            : error('A Storyboard has no queue', 409)),
+            ? checkChainJob(session, kind, index, pending)
+            : checkStoryboardJob(session, kind, index, pending)),
     }),
 
     ['GET', new URLPattern({ pathname: '/api/health' }), () => Promise.resolve(json({ ok: true }))],
@@ -616,28 +618,6 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       })
     }],
 
-    [
-      'POST',
-      new URLPattern({ pathname: '/api/sessions/:id/frames/:index/upscale' }),
-      (_req, p) =>
-        locked(p.id!, 'upscale', async (session) => {
-          // A Chain queues its upscales (the job routes), so its next Frame needn't wait.
-          if (needsChain(session)) return error('A Chain queues its upscales', 409)
-          const off = await featureOff('images')
-          if (off) return off
-          const index = frameIndexOf(session, p.index)
-          if (index instanceof Response) return index
-          const frame = session.frames[index]
-          if (!frame.image) return error(`Frame ${index + 1} has no image to upscale`, 409)
-          if (frame.upscaled) return error(`Frame ${index + 1} is already upscaled`, 409)
-          // The current Settings, not the Session's copy: the upscaler doesn't change the Frames.
-          const { upscaler } = await deps.settings.load()
-          return stream(session, index, false, async (send, signal) => {
-            await upscaleFrame(frameDeps(session), session, index, upscaler, send, signal)
-          })
-        }),
-    ],
-
     // --- Storyboards ---------------------------------------------------------------------------
 
     [
@@ -652,28 +632,6 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
           // A Storyboard that never got planned never started, like a Chain's Opening Frame.
           return stream(session, null, true, async (send, signal) => {
             await planStoryboard(frameDeps(session), session, scenario, send, signal)
-          })
-        }),
-    ],
-
-    [
-      'POST',
-      new URLPattern({ pathname: '/api/sessions/:id/frames/:index/render' }),
-      (_req, p) =>
-        locked(p.id!, 'render', async (session) => {
-          if (!needsStoryboard(session)) {
-            return error('Only a Storyboard renders Frames on demand', 409)
-          }
-          const off = await featureOff('images')
-          if (off) return off
-          const index = frameIndexOf(session, p.index)
-          if (index instanceof Response) {
-            return index
-          }
-          const blocked = session.frames[index].blocked
-          if (blocked) return error(`Frame ${index + 1} crosses a limit: ${blocked}`, 422)
-          return stream(session, index, false, async (send, signal) => {
-            await renderStoryboardFrame(frameDeps(session), session, index, send, signal)
           })
         }),
     ],

@@ -15,12 +15,12 @@ import { onBeforeRouteLeave, useRouter } from 'vue-router'
 import { clearCurrentSession, setCurrentSession } from '../composables/useCurrentSession'
 import ComposeBox from '../components/ComposeBox.vue'
 import FrameImage from '../components/FrameImage.vue'
-import Frame3dButtons from '../components/Frame3dButtons.vue'
+import PictureButtons from '../components/PictureButtons.vue'
 import Frame3dViewers from '../components/Frame3dViewers.vue'
 import FrameViewer from '../components/FrameViewer.vue'
 import JobQueue from '../components/JobQueue.vue'
 import { useJobs } from '../composables/useJobs'
-import { useFeatures } from '../composables/useFeatures'
+import { sweepOf } from '../jobs'
 import { useStoredFlag } from '../composables/useStoredFlag'
 import { useStoredText } from '../composables/useStoredText'
 import { sessionPath } from '../sessionPath'
@@ -39,7 +39,6 @@ import {
   type ChainFrame,
   type FrameEvent,
   type Made3d,
-  MADE3D_FEATURE,
   undoFrame,
 } from '../api'
 
@@ -271,9 +270,6 @@ async function cancel() {
   await cancelFrame(props.id)
 }
 
-/** Which extras are on: off, their buttons are hidden; what they made still opens. */
-const { on: featureOn } = useFeatures()
-
 // --- Background work: upscales and 3D, queued so the next Action needn't wait for them.
 
 const { jobs, jobsFor, hasJob, queue, dropJob, retry, refreshJobs } = useJobs(props.id, {
@@ -287,7 +283,7 @@ const shownJob = computed(() =>
   jobsFor(shown.value?.index ?? -1).find((j) => j.status === 'running') ?? null
 )
 
-// --- Looking closer: the picture viewer, and 3D by model (experimental; Frame3dButtons).
+// --- Looking closer: the picture viewer, and 3D by model (experimental; PictureButtons).
 
 /** The Frame whose picture is open in the viewer, if any. */
 const viewingPicture = ref<number | null>(null)
@@ -329,9 +325,7 @@ const writing = computed(() => pending.value?.phase === 'text' && !pending.value
 /** The frame's border sweeps while an image renders (or waits to), until the new one lands. */
 const renderingPhase = computed(() => {
   // A new Frame sweeps whatever is shown; a job sweeps only the Frame it is working on.
-  const phase = pending.value?.phase ?? shownJob.value?.phase
-  if (phase === 'queued') return 'queued'
-  return phase === 'image' || phase === 'download' ? 'image' : null
+  return sweepOf(pending.value?.phase ?? shownJob.value?.phase)
 })
 
 /** The caption: the provisional Narration while a Frame runs, else the shown Frame's. */
@@ -521,26 +515,12 @@ const promptDiff = computed(() => {
             >
               Cancel
             </button>
-            <button
-              v-if="shown && featureOn('images')"
-              type="button"
-              class="rounded-lg border border-line px-3 py-2 text-sm disabled:opacity-50"
-              :disabled="!!shown.upscaled || hasJob(shown.index, 'upscale')"
-              :title="shown.upscaled
-              ? `${frameName(shown.index)} is upscaled to 2048 px`
-              : `Upscale ${frameName(shown.index)} to 2048 px with SeedVR2`"
-              data-upscale
-              @click="queue('upscale', shown.index)"
-            >
-              {{ shown.upscaled ? 'Upscaled' : 'Upscale' }}
-            </button>
-            <Frame3dButtons
+            <PictureButtons
               v-if="shown"
               :frame="shown"
-              :disabled="(kind) => hasJob(shown!.index, kind)"
-              :available="(kind) => featureOn(MADE3D_FEATURE[kind])"
+              :has-job="(kind) => hasJob(shown!.index, kind)"
               button-class="rounded-lg border border-line px-3 py-2 text-sm disabled:opacity-50"
-              @make="(kind) => queue(kind, shown!.index)"
+              @queue="(kind) => queue(kind, shown!.index)"
               @view="(kind) => (open3d = { index: shown!.index, kind })"
             />
             <p

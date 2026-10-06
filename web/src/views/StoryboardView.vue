@@ -11,22 +11,25 @@ import {
   getSession,
   imageUrl,
   type Look,
+  type Made3d,
   type Outcome,
   planStoryboard,
-  renderStoryboardFrame,
   saveFrameBody,
   saveLook,
-  upscaleFrame,
-  type UpscaleEvent,
   type StoryboardEvent,
   type StoryboardFrame,
   type StoryboardSession,
 } from '../api'
 import CollapsibleTextarea from '../components/CollapsibleTextarea.vue'
 import ComposeBox from '../components/ComposeBox.vue'
+import Frame3dViewers from '../components/Frame3dViewers.vue'
 import FrameImage from '../components/FrameImage.vue'
 import FrameViewer from '../components/FrameViewer.vue'
+import JobQueue from '../components/JobQueue.vue'
+import PictureButtons from '../components/PictureButtons.vue'
 import { useFeatures } from '../composables/useFeatures'
+import { useJobs } from '../composables/useJobs'
+import { JOB_NAMES, jobStatus, sweepOf } from '../jobs'
 import { clearCurrentSession, setCurrentSession } from '../composables/useCurrentSession'
 import { useStoredText } from '../composables/useStoredText'
 import { sessionPath } from '../sessionPath'
@@ -41,9 +44,12 @@ const selected = ref(0)
 const panel = ref<'frames' | 'prompt'>('frames')
 const message = ref<{ kind: 'error' | Outcome; text: string } | null>(null)
 
-/** Work in progress: planning, rendering (one Frame, or all of them in turn), an edit or an upscale. */
+/**
+ * The Storyboard's own work in progress, which holds it until done: the plan, or an edit. Renders,
+ * upscales and 3D are queued jobs instead (`useJobs`), so editing carries on beside them.
+ */
 interface Work {
-  kind: 'plan' | 'render' | 'edit' | 'upscale'
+  kind: 'plan' | 'edit'
   phase: Activity
   frameIndex: number | null
   progress?: { step: number; total: number }
@@ -52,8 +58,6 @@ interface Work {
   detached?: boolean
 }
 const work = ref<Work | null>(null)
-/** Render all: keeps going Frame by Frame until done or cancelled. */
-let renderingAll = false
 
 /** What the plan has produced so far, shown while it streams in. */
 const planning = ref<{ look: Look | null; beats: string[]; frames: StoryboardFrame[] } | null>(null)
@@ -132,7 +136,12 @@ onDeactivated(() => (onScreen = false))
 let followTimer: ReturnType<typeof setTimeout> | undefined
 function follow() {
   const s = session.value!
-  work.value = { kind: 'render', phase: s.activity!, frameIndex: s.activeFrame ?? null, detached: true }
+  work.value = {
+    kind: s.frames.length ? 'edit' : 'plan',
+    phase: s.activity!,
+    frameIndex: s.activeFrame ?? null,
+    detached: true,
+  }
   const poll = async () => {
     if (!(await load())) return (work.value = null)
     const s = session.value!
@@ -148,7 +157,7 @@ onBeforeUnmount(() => clearTimeout(followTimer))
 // --- Streamed work.
 
 /** Updates the progress shown for whatever is running; returns true for a final event. */
-function track(event: StoryboardEvent | UpscaleEvent): boolean {
+function track(event: StoryboardEvent): boolean {
   switch (event.type) {
     case 'phase':
       work.value = { ...work.value!, phase: event.phase }
@@ -196,51 +205,36 @@ async function plan() {
     }))
 }
 
-function replaceFrame(frame: StoryboardFrame) {
-  const s = session.value!
-  session.value = { ...s, frames: s.frames.map((f) => (f.index === frame.index ? frame : f)) }
-}
+// --- Queued work: renders, upscales and 3D, each on its Frame.
 
-/** Renders one Frame; resolves true if it rendered. */
-async function render(index: number): Promise<boolean> {
-  let rendered = false
-  await run({ kind: 'render', phase: 'text', frameIndex: index }, () =>
-    renderStoryboardFrame(props.id, index, (event) => {
-      if (track(event)) return
-      if (event.type === 'rendered') {
-        replaceFrame(event.frame)
-        rendered = true
-      }
-    }))
-  return rendered
+const { jobs, jobsFor, hasJob, queue, dropJob, retry } = useJobs(props.id, {
+  onSettled: async () => {
+    await load()
+  },
+  onError: (text) => (message.value = { kind: 'error', text }),
+})
+/** A Frame's running job, if any, else the next queued one: what its status says it's doing. */
+const frameJob = (index: number) => {
+  const open = jobsFor(index).filter((j) => j.status !== 'failed')
+  return open.find((j) => j.status === 'running') ?? open[0] ?? null
 }
+/** The selected Frame's running job, if any: its picture sweeps while it works. */
+const selectedJob = computed(() =>
+  jobsFor(selected.value).find((j) => j.status === 'running') ?? null
+)
 
 /** Frames that still need an image: never rendered, or changed since. Blocked ones are skipped. */
 const toRender = computed(() =>
-  (session.value?.frames ?? []).filter((f) => !f.blocked && (!f.image || f.stale))
+  (session.value?.frames ?? []).filter((f) =>
+    !f.blocked && (!f.image || f.stale) && !hasJob(f.index, 'render')
+  )
 )
-
-/** Upscales one rendered Frame's image to 2048 px. */
-async function upscale(index: number) {
-  await run({ kind: 'upscale', phase: 'image', frameIndex: index }, () =>
-    upscaleFrame(props.id, index, (event) => {
-      if (track(event)) return
-      if (event.type === 'upscaled') session.value = event.session as StoryboardSession
-    }))
-}
-
+/** Queues a render of every Frame that needs one, in order. */
 async function renderAll() {
-  renderingAll = true
-  for (const frame of toRender.value.slice()) {
-    if (!renderingAll) break
-    selected.value = frame.index
-    if (!(await render(frame.index))) break
-  }
-  renderingAll = false
+  for (const frame of toRender.value.slice()) await queue('render', frame.index)
 }
 
 async function cancel() {
-  renderingAll = false
   if (work.value) work.value = { ...work.value, cancelling: true }
   await cancelFrame(props.id)
 }
@@ -325,23 +319,12 @@ const statusLabel = computed(() => {
     if (!planning.value?.look) return 'Planning the Storyboard…'
     return `Writing Frame ${Math.min(written + 1, total)} of ${total}…`
   }
-  if (w.kind === 'edit') return `Editing Frame ${(w.frameIndex ?? 0) + 1}…`
-  if (w.phase === 'queued') return 'Waiting for another render…'
   if (w.phase === 'download') return DOWNLOADING
-  const p = w.progress
-  const doing = `${w.kind === 'upscale' ? 'Upscaling' : 'Rendering'} Frame ${(w.frameIndex ?? 0) + 1}…`
-  return p ? `${doing} step ${p.step} of ${p.total}` : doing
+  return `Editing Frame ${(w.frameIndex ?? 0) + 1}…`
 })
 
-/** The image frame sweeps while the selected Frame renders; the text box while it's edited. */
-const renderingHere = computed(() =>
-  (work.value?.kind === 'render' || work.value?.kind === 'upscale') &&
-    work.value.frameIndex === selected.value &&
-    (work.value.phase === 'image' || work.value.phase === 'queued' ||
-      work.value.phase === 'download')
-    ? (work.value.phase === 'queued' ? 'queued' : 'image')
-    : null
-)
+/** The image frame sweeps while a job makes the selected Frame's picture; the text box while it's edited. */
+const renderingHere = computed(() => sweepOf(selectedJob.value?.phase))
 const editingHere = computed(() => work.value?.kind === 'edit' && work.value.frameIndex === selected.value)
 
 const timingsLabel = (f: StoryboardFrame) => {
@@ -355,6 +338,9 @@ const timingsLabel = (f: StoryboardFrame) => {
 
 /** The Frame whose picture is open in the viewer, if any. */
 const viewingPicture = ref<number | null>(null)
+/** Which Frame's scene or figure is open, if any. */
+const open3d = ref<{ index: number; kind: Made3d } | null>(null)
+const frameTitle = (index: number) => `Frame ${index + 1}`
 /** Rendering needs pictures on; off, a Storyboard's plan can still be read and edited. */
 const { on: featureOn } = useFeatures()
 const imagesOn = computed(() => featureOn.value('images'))
@@ -376,11 +362,13 @@ const imagesOn = computed(() => featureOn.value('images'))
           @open="viewingPicture = current!.index"
         >
           <div
-            v-if="busy"
+            v-if="busy || selectedJob"
             class="absolute left-3 top-3 rounded-full bg-black/70 px-3 py-1 text-sm text-white"
             role="status"
           >
-            <span class="animate-pulse">{{ statusLabel }}</span>
+            <span class="animate-pulse">{{
+              busy ? statusLabel : `${JOB_NAMES[selectedJob!.kind]} · ${jobStatus(selectedJob!)}`
+            }}</span>
           </div>
           <div
             v-if="frames.length"
@@ -424,46 +412,35 @@ const imagesOn = computed(() => featureOn.value('images'))
               >
                 Send
               </button>
-              <button
-                v-if="imagesOn"
-                type="button"
-                class="rounded-lg border border-line px-3 py-2 text-sm disabled:opacity-50"
-                :disabled="!current || !!current.blocked"
-                @click="current && render(current.index)"
-              >
-                {{ current?.image ? 'Re-render' : 'Render' }} Frame {{ selected + 1 }}
-              </button>
-              <button
-                v-if="imagesOn"
-                type="button"
-                class="rounded-lg border border-line px-3 py-2 text-sm disabled:opacity-50"
-                :disabled="!toRender.length"
-                @click="renderAll"
-              >
-                Render all{{ toRender.length ? ` (${toRender.length})` : '' }}
-              </button>
-              <button
-                v-if="imagesOn"
-                type="button"
-                class="rounded-lg border border-line px-3 py-2 text-sm disabled:opacity-50"
-                :disabled="!current?.image || !!current.upscaled"
-                :title="current?.upscaled
-                ? `Frame ${selected + 1} is upscaled to 2048 px`
-                : `Upscale Frame ${selected + 1} to 2048 px with SeedVR2`"
-                data-upscale
-                @click="current && upscale(current.index)"
-              >
-                {{ current?.upscaled ? 'Upscaled' : 'Upscale' }}
-              </button>
             </template>
             <button
-              v-else-if="!work?.detached"
+              v-if="busy && !work?.detached"
               type="button"
               class="rounded-lg border border-danger px-4 py-2 font-medium text-danger disabled:opacity-50"
               :disabled="work?.cancelling"
               @click="cancel"
             >
               Cancel
+            </button>
+            <PictureButtons
+              v-if="current"
+              :frame="current"
+              :has-job="(kind) => hasJob(current!.index, kind)"
+              :can-render="!current.blocked"
+              button-class="rounded-lg border border-line px-3 py-2 text-sm disabled:opacity-50"
+              @queue="(kind) => queue(kind, current!.index)"
+              @view="(kind) => (open3d = { index: current!.index, kind })"
+            />
+            <button
+              v-if="imagesOn && planned"
+              type="button"
+              class="rounded-lg border border-line px-3 py-2 text-sm disabled:opacity-50"
+              :disabled="!toRender.length"
+              title="Queue a render of every Frame not rendered yet, or changed since"
+              data-render-all
+              @click="renderAll"
+            >
+              Render all{{ toRender.length ? ` (${toRender.length})` : '' }}
             </button>
             <p
               v-if="message"
@@ -505,6 +482,17 @@ const imagesOn = computed(() => featureOn.value('images'))
           data-frames-panel
         >
           <h2 class="hidden border-b border-line px-4 py-2 text-sm font-medium xl:block">Frames</h2>
+          <!-- The queue, while there's any: what's running, queued and failed. -->
+          <JobQueue
+            v-if="jobs.length"
+            class="max-h-48 shrink-0 overflow-y-auto border-b border-line"
+            :jobs="jobs"
+            :name="frameTitle"
+            data-queue
+            @go="(index) => (selected = index)"
+            @retry="retry"
+            @drop="dropJob"
+          />
           <ol class="flex-1 overflow-y-auto" role="tabpanel">
             <li v-for="f in frames" :key="f.index">
               <button
@@ -532,13 +520,7 @@ const imagesOn = computed(() => featureOn.value('images'))
                   <span class="line-clamp-3">{{ f.beat }}</span>
                   <span v-if="'pending' in f" class="animate-pulse text-xs text-muted">Writing…</span>
                   <span v-else class="text-xs font-medium" :class="status(f).tone" data-status>
-                    {{
-                      work?.frameIndex === f.index && work.kind === 'render'
-                      ? 'Rendering…'
-                      : work?.frameIndex === f.index && work.kind === 'upscale'
-                      ? 'Upscaling…'
-                      : status(f).label
-                    }}
+                    {{ frameJob(f.index) ? `${JOB_NAMES[frameJob(f.index)!.kind]}…` : status(f).label }}
                   </span>
                 </span>
               </button>
@@ -620,7 +602,14 @@ const imagesOn = computed(() => featureOn.value('images'))
       v-model:open="viewingPicture"
       :session-id="session.id"
       :frames="session.frames"
-      :name="(index) => `Frame ${index + 1}`"
+      :name="frameTitle"
+    />
+    <Frame3dViewers
+      v-if="session"
+      v-model:open="open3d"
+      :session-id="session.id"
+      :frames="session.frames"
+      :name="frameTitle"
     />
   </div>
 </template>

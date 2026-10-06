@@ -4,7 +4,6 @@
  */
 import { error } from '../http.ts'
 import type { Job, JobEmit, JobKind } from '../jobs.ts'
-import { upscaleFrame } from '../frames.ts'
 import type { Upscaler } from '../images/imageModels.ts'
 import type { Scenario } from '../scenario.ts'
 import type { Session, SessionStore } from '../session.ts'
@@ -12,8 +11,7 @@ import { pictureFrame, renderRoleplayFrame, type RoleplayDeps } from './engine.t
 import type { RoleplayModel } from './model.ts'
 import type { ArtStyle } from './art.ts'
 import type { RoleplaySession } from './types.ts'
-import { liftFigure } from './figure.ts'
-import { makeScene } from './scene.ts'
+import { checkPictureJob, PICTURE_JOB_KINDS, runPictureJob } from '../pictureJobs.ts'
 import { designVoice, speakFrame, spokenText } from './voice.ts'
 import { updateSession } from './update.ts'
 
@@ -34,6 +32,7 @@ export function checkRoleplayJob(
   session: RoleplaySession,
   kind: JobKind,
   index: number,
+  pending: readonly JobKind[],
 ): Response | null {
   if (kind === 'speak' && !spokenText(session.frames[index], 'dialogue')) {
     return error(`Frame ${index} has nothing to say aloud`, 409)
@@ -41,8 +40,8 @@ export function checkRoleplayJob(
   if (kind === 'speak-thought' && !spokenText(session.frames[index], 'thought')) {
     return error(`Frame ${index} has no thought to say aloud`, 409)
   }
-  if (['scene', 'figure', 'lito'].includes(kind) && !session.frames[index].image) {
-    return error(`Frame ${index} has no picture yet`, 409)
+  if (PICTURE_JOB_KINDS.includes(kind)) {
+    return checkPictureJob(session.frames[index], kind, `Frame ${index}`, pending)
   }
   return null
 }
@@ -79,23 +78,9 @@ export async function runRoleplayJob(
       const part = job.kind === 'speak-thought' ? 'thought' : 'dialogue'
       await speakFrame(voiceDeps, session, job.frameIndex, emit, signal, part)
     }
-  } else if (job.kind === 'figure') {
-    await liftFigure(withDeps, session, job.frameIndex, emit, signal, 'triposplat', save)
-  } else if (job.kind === 'lito') {
-    await liftFigure(withDeps, session, job.frameIndex, emit, signal, 'lito', save)
-  } else if (job.kind === 'scene') {
-    await makeScene(withDeps, session, job.frameIndex, emit, signal, save)
   } else if (job.kind === 'render') {
     await renderRoleplayFrame(withDeps, session, job.frameIndex, emit, signal)
   } else {
-    await upscaleFrame(
-      withDeps,
-      session,
-      job.frameIndex,
-      await ctx.upscaler(),
-      emit,
-      signal,
-      (change) => save((s) => change(s) as RoleplaySession),
-    )
+    await runPictureJob({ ...withDeps, upscaler: ctx.upscaler }, session, job, emit, signal, save)
   }
 }

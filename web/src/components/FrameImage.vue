@@ -17,7 +17,7 @@ const props = defineProps<{
   hideSize?: boolean
   /** No panel around the image (border and background), e.g. inside a dialog. */
   bare?: boolean
-  /** Show a new image at once: no preload wait and no crossfade, e.g. in a viewer. */
+  /** Show a new image at once, without waiting for it to load first, e.g. in a viewer. */
   instant?: boolean
   /** Pinch to zoom and drag to pan, as in the viewer; otherwise a click on the image opens it. */
   zoom?: boolean
@@ -27,7 +27,7 @@ const props = defineProps<{
 /** The image was clicked, to look closer (only without `zoom`). */
 const emit = defineEmits<{ open: [] }>()
 
-/** The image on screen; it only changes once the next one has loaded, for a clean crossfade. */
+/** The image on screen; it only changes once the next one has loaded, so it never goes blank. */
 const displayed = ref<{ src: string; alt: string } | null>(null)
 
 watch(
@@ -106,14 +106,7 @@ const frameStyle = computed(() => ({
     >
       <!-- The zoomed layer: only the image scales, not what's drawn over it. -->
       <div class="absolute inset-0 origin-top-left" :style="layerStyle" data-zoom-layer>
-      <!-- Crossfade: the next image is preloaded, then fades in over the last one. -->
-      <Transition
-        :css="!instant"
-        enter-active-class="transition-opacity duration-700 ease-out"
-        enter-from-class="opacity-0"
-        leave-active-class="transition-opacity duration-700 ease-in"
-        leave-to-class="opacity-0"
-      >
+      <!-- The next image is preloaded, then replaces the last one at once: no blank, no fade. -->
         <img
           v-if="displayed"
           :key="displayed.src"
@@ -127,7 +120,6 @@ const frameStyle = computed(() => ({
           @load="onImageLoad"
           @click="!zoom && emit('open')"
         />
-      </Transition>
       </div>
       <span
         v-if="!displayed && emptyText"

@@ -221,19 +221,26 @@ export const MADE3D_FEATURE: Record<Made3d, Feature> = {
   lito: 'lito',
 }
 
-/** What the 3D buttons and viewers read from a Frame, in a Chain or a Roleplay. */
+/**
+ * A Frame's picture and what's made from it, in every kind of Session: what the picture buttons,
+ * the 3D buttons and the viewers read.
+ */
 export interface Frame3d {
   index: number
+  /** Null until rendered (a Storyboard's or a Roleplay's Frame). */
   image: string | null
+  /** The image upscaled to 2048 px, once upscaled; a re-render drops it. */
   upscaled?: string
+  /** The picture made into a 2.5D scene (SHARP), once asked for; shared like `upscaled`. */
   scene?: Scene
+  /** The person in the picture as a 3D figure (TripoSplat), once asked for; shared likewise. */
   figure?: Figure
+  /** The same, made with Apple's LiTo. */
   lito?: Figure
 }
 
 /** A Chain Frame: made from the previous one by an Action. */
-export interface ChainFrame {
-  index: number
+export interface ChainFrame extends Frame3d {
   action: string | null
   prompt: ImagePrompt
   narration: string
@@ -243,31 +250,19 @@ export interface ChainFrame {
   timings?: FrameTimings
   /** The exact text sent to the Image Model. */
   promptText: string
+  /** A Chain Frame always has a picture. */
   image: string
-  /** The image upscaled to 2048 px, once upscaled. */
-  upscaled?: string
-  /** The picture made into a 2.5D scene (SHARP), once asked for; shared like `upscaled`. */
-  scene?: Scene
-  /** The person in the picture as a 3D figure (TripoSplat), once asked for; shared likewise. */
-  figure?: Figure
-  /** The same, made with Apple's LiTo. */
-  lito?: Figure
   createdAt: string
 }
 
 /** A Storyboard Frame: planned from a Beat, then edited and rendered on its own. */
-export interface StoryboardFrame {
-  index: number
+export interface StoryboardFrame extends Frame3d {
   /** What happens in this Frame. */
   beat: string
   /** Its own seven sentences; the prompt adds the Look's subject before and style after. */
   body: string
   prompt: ImagePrompt
   promptText: string
-  /** Null until rendered. */
-  image: string | null
-  /** The image upscaled to 2048 px, once upscaled; a re-render drops it. */
-  upscaled?: string
   /** The prompt changed since the image was rendered. */
   stale?: boolean
   /** It crosses a Limit and can't be rendered until edited. */
@@ -347,7 +342,6 @@ export type FrameEvent =
   | { type: 'unclear'; message: string }
 
 /** An upscale's stream: ends with the Session, every Frame showing that image now upscaled. */
-export type UpscaleEvent = ProgressEvent | EndEvent | { type: 'upscaled'; session: Session }
 
 /** A Storyboard's streams: planning, rendering a Frame, editing a Frame by Action. */
 export type StoryboardEvent =
@@ -488,19 +482,6 @@ export const streamFrame = (
 export const planStoryboard = (sessionId: string, onEvent: (event: StoryboardEvent) => void) =>
   streamEvents<StoryboardEvent>(`/api/sessions/${sessionId}/plan`, {}, ['planned'], onEvent)
 
-/** Renders (or re-renders) one Storyboard Frame. */
-export const renderStoryboardFrame = (
-  sessionId: string,
-  index: number,
-  onEvent: (event: StoryboardEvent) => void,
-) =>
-  streamEvents<StoryboardEvent>(
-    `/api/sessions/${sessionId}/frames/${index}/render`,
-    {},
-    ['rendered'],
-    onEvent,
-  )
-
 /** Edits one Storyboard Frame through the Text Model, following an Action. */
 export const editStoryboardFrame = (
   sessionId: string,
@@ -515,26 +496,13 @@ export const editStoryboardFrame = (
     onEvent,
   )
 
-/** Upscales a Storyboard Frame's image to 2048 px (a Chain queues its upscales). */
-export const upscaleFrame = (
-  sessionId: string,
-  index: number,
-  onEvent: (event: UpscaleEvent) => void,
-) =>
-  streamEvents<UpscaleEvent>(
-    `/api/sessions/${sessionId}/frames/${index}/upscale`,
-    {},
-    ['upscaled'],
-    onEvent,
-  )
-
-// --- Background work, queued per Session: a Roleplay's and a Chain's.
+// --- Background work, queued per Session: every kind's.
 
 /**
  * Background work on a Frame: picturing, rendering, upscaling or speaking it, making its picture
  * into a 2.5D scene (SHARP), or lifting its person out as a 3D figure (TripoSplat, LiTo); `voice`
  * designs a new take of the Character's voice (filed under the opening Frame). A Chain has
- * `upscale`, `scene`, `figure` and `lito`; a Roleplay has them all.
+ * `upscale`, `scene`, `figure` and `lito`; a Storyboard `render` too; a Roleplay has them all.
  */
 export type JobKind =
   | 'picture'

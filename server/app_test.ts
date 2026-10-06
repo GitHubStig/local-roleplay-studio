@@ -620,9 +620,12 @@ Deno.test('A Storyboard plans, renders, and is edited by hand and by Action over
     ])
     assertEquals((await call('POST', '/api/sessions/s1/plan')).status, 409)
 
-    const render = await readEvents(await call('POST', '/api/sessions/s1/frames/2/render'))
-    assertEquals(render.at(-1)![0], 'rendered')
-    assertEquals((await call('POST', '/api/sessions/s1/frames/9/render')).status, 404)
+    const render = await call('POST', '/api/sessions/s1/jobs', { kind: 'render', frameIndex: 2 })
+    assertEquals(render.status, 201)
+    assertEquals(await settled(call), [])
+    assertMatch((await storyboardFrames(call))[2].image!, /^frame-2-[0-9a-f]{8}\.png$/)
+    const past = await call('POST', '/api/sessions/s1/jobs', { kind: 'render', frameIndex: 9 })
+    assertEquals(past.status, 404)
 
     const byHand = await (await call('PUT', '/api/sessions/s1/frames/2', { body: 'He lands.' }))
       .json()
@@ -724,8 +727,6 @@ Deno.test('A Chain queues an upscale, flagging every Frame showing that image, o
     assertEquals((await call('GET', `/api/sessions/s1/images/${second.upscaled}`)).status, 200)
     const again = await call('POST', '/api/sessions/s1/jobs', { kind: 'upscale', frameIndex: 0 })
     assertEquals(again.status, 409)
-    // A Chain's upscales go through its queue, not the Storyboard's route.
-    assertEquals((await call('POST', '/api/sessions/s1/frames/0/upscale')).status, 409)
 
     // A Frame that reuses an upscaled image is upscaled too.
     const third = await readEvents(
@@ -866,17 +867,58 @@ Deno.test('A Storyboard Frame upscales once rendered; a re-render replaces the u
     })
     await call('POST', '/api/sessions', { kind: 'storyboard', brief: 'A dunk.', frameCount: 2 })
     await readEvents(await call('POST', '/api/sessions/s1/plan'))
-    assertEquals((await call('POST', '/api/sessions/s1/frames/0/upscale')).status, 409)
+    const job = (kind: string) => call('POST', '/api/sessions/s1/jobs', { kind, frameIndex: 0 })
+    assertEquals((await job('upscale')).status, 409) // nothing to upscale yet
 
-    await readEvents(await call('POST', '/api/sessions/s1/frames/0/render'))
-    const up = await readEvents(await call('POST', '/api/sessions/s1/frames/0/upscale'))
-    const upscaled = (up.at(-1)![1].session as { frames: { upscaled?: string }[] }).frames[0]
-      .upscaled!
+    await job('render')
+    await settled(call)
+    assertEquals((await job('upscale')).status, 201)
+    await settled(call)
+    const upscaled = (await storyboardFrames(call))[0].upscaled!
     assertMatch(upscaled, /-2048\.png$/)
 
-    const rerender = await readEvents(await call('POST', '/api/sessions/s1/frames/0/render'))
-    assertEquals((rerender.at(-1)![1].frame as { upscaled?: string }).upscaled, undefined)
+    await job('render')
+    await settled(call)
+    assertEquals((await storyboardFrames(call))[0].upscaled, undefined)
     assertEquals((await call('GET', `/api/sessions/s1/images/${upscaled}`)).status, 404)
+  }))
+
+Deno.test('A Storyboard queues SHARP, TripoSplat and LiTo; a re-render drops them', () =>
+  withTempDir(async (root) => {
+    const { call } = setup({
+      root,
+      settings: { textModel: 'x' },
+      textModel: scriptedTextModel([], [], { plans: [planOf(2)] }),
+      scene: fakeSceneMaker(),
+      figure: fakeFigureMaker(),
+      lito: fakeFigureMaker(),
+    })
+    await call('POST', '/api/sessions', { kind: 'storyboard', brief: 'A dunk.', frameCount: 2 })
+    await readEvents(await call('POST', '/api/sessions/s1/plan'))
+    const job = (kind: string) => call('POST', '/api/sessions/s1/jobs', { kind, frameIndex: 1 })
+    assertEquals((await job('scene')).status, 409) // no picture, and none coming
+    // Queued back to back: the 3D waits behind the render that makes its picture.
+    await job('render')
+    for (const kind of ['scene', 'figure', 'lito']) assertEquals((await job(kind)).status, 201)
+    assertEquals(await settled(call), [])
+    const made = (await storyboardFrames(call))[1]
+    assertMatch(made.scene!.file, /^scene-1-[0-9a-f]{8}\.ply$/)
+    assertMatch(made.figure!.file, /^figure-1-[0-9a-f]{8}\.ply$/)
+    assertMatch(made.lito!.file, /^lito-1-[0-9a-f]{8}\.ply$/)
+
+    // Edited by hand, the picture and what was made from it stay (stale) until rendered again.
+    await call('PUT', '/api/sessions/s1/frames/1', { body: 'He lands.' })
+    const edited = (await storyboardFrames(call))[1]
+    assertEquals([edited.stale, edited.scene, edited.lito], [true, made.scene, made.lito])
+    await job('render')
+    await settled(call)
+    const rerendered = (await storyboardFrames(call))[1]
+    assertEquals([rerendered.stale, rerendered.scene, rerendered.figure], [
+      undefined,
+      undefined,
+      undefined,
+    ])
+    assertEquals((await call('GET', `/api/sessions/s1/images/${made.scene!.file}`)).status, 404)
   }))
 
 Deno.test('Upscale uses the upscaler chosen in Settings now, even mid-Session', () =>
@@ -1033,6 +1075,18 @@ Deno.test('Turning the Limits off in Settings applies at once, except the adult 
   }))
 
 /** Waits until a Session's queue has no queued or running jobs, and returns what's left. */
+/** A Storyboard's Frames as saved now. */
+async function storyboardFrames(call: ReturnType<typeof setup>['call'], id = 's1') {
+  return (await (await call('GET', `/api/sessions/${id}`)).json()).frames as {
+    image: string | null
+    upscaled?: string
+    stale?: boolean
+    scene?: { file: string }
+    figure?: { file: string }
+    lito?: { file: string }
+  }[]
+}
+
 async function settled(call: ReturnType<typeof setup>['call'], id = 's1') {
   for (let i = 0; i < 200; i++) {
     const jobs = await (await call('GET', `/api/sessions/${id}/jobs`)).json()

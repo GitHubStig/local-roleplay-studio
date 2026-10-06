@@ -10,13 +10,23 @@ vi.mock('../api', async (importOriginal) => ({
   ...(await importOriginal<typeof api>()),
   getSession: vi.fn(),
   planStoryboard: vi.fn(),
-  renderStoryboardFrame: vi.fn(),
   editStoryboardFrame: vi.fn(),
   saveFrameBody: vi.fn(),
   saveLook: vi.fn(),
   cancelFrame: vi.fn(),
-  upscaleFrame: vi.fn(),
+  listJobs: vi.fn(),
+  queueJob: vi.fn(),
 }))
+
+/** A queued job, as the server lists it. */
+const job = (kind: api.JobKind, frameIndex: number, extra: Partial<api.Job> = {}): api.Job => ({
+  id: `${kind}-${frameIndex}`,
+  kind,
+  frameIndex,
+  status: 'queued',
+  createdAt: '2026-09-25T00:00:00.000Z',
+  ...extra,
+})
 
 const look: api.Look = { subject: 'A tall student.', style: 'Manga ink.' }
 
@@ -83,9 +93,14 @@ beforeEach(() => {
       set src(_: string) {}
     },
   )
-  for (const fn of [api.planStoryboard, api.renderStoryboardFrame, api.editStoryboardFrame]) {
-    vi.mocked(fn).mockReset()
-  }
+  for (const fn of [api.planStoryboard, api.editStoryboardFrame]) vi.mocked(fn).mockReset()
+  vi.mocked(api.listJobs).mockReset().mockResolvedValue([])
+  // Queued jobs accumulate, as the server's queue does.
+  const queued: api.Job[] = []
+  vi.mocked(api.queueJob).mockReset().mockImplementation(async (_id, kind, index) => {
+    queued.push(job(kind, index))
+    return [...queued]
+  })
   vi.mocked(api.getSession).mockResolvedValue(storyboard([frame(0), frame(1), frame(2)]))
 })
 
@@ -159,21 +174,20 @@ describe('StoryboardView', () => {
     expect(router.currentRoute.value.path).toBe('/sessions/sb')
   })
 
-  it('renders the selected Frame', async () => {
-    vi.mocked(api.renderStoryboardFrame).mockImplementation(async (_id, index, onEvent) =>
-      onEvent({ type: 'rendered', frame: frame(index, { image: `frame-${index}-aaaaaaaa.png` }) })
-    )
+  it('queues a render of the selected Frame, and says so on it', async () => {
     const { wrapper } = await mountIt()
     await wrapper.findAll('[data-frame]')[1].trigger('click')
-    await buttonNamed(wrapper, 'Render Frame 2').trigger('click')
+    await wrapper.find('[data-render-button]').trigger('click')
     await flushPromises()
-    expect(api.renderStoryboardFrame).toHaveBeenCalledWith('sb', 1, expect.any(Function))
+    expect(api.queueJob).toHaveBeenCalledWith('sb', 'render', 1)
+    expect(wrapper.find('[data-queue]').text()).toContain('Frame 2')
     expect(wrapper.findAll('[data-status]').map((s) => s.text())).toEqual([
       'Draft',
-      'Rendered',
+      'Render…',
       'Draft',
     ])
-    expect(buttonNamed(wrapper, 'Re-render Frame 2').exists()).toBe(true)
+    // Queued once: the button is off until the job is done.
+    expect(wrapper.find('[data-render-button]').attributes('disabled')).toBeDefined()
   })
 
   it('opens the shown picture in the viewer when clicked', async () => {
@@ -198,35 +212,22 @@ describe('StoryboardView', () => {
     vi.unstubAllGlobals()
   })
 
-  it('renders all Frames that need it, one at a time, skipping blocked ones', async () => {
+  it('queues a render of every Frame that needs one, skipping blocked ones', async () => {
     vi.mocked(api.getSession).mockResolvedValue(storyboard([
       frame(0, { image: 'frame-0-aaaaaaaa.png' }),
       frame(1, { blocked: 'no minors' }),
       frame(2, { image: 'frame-2-aaaaaaaa.png', stale: true }),
+      frame(3),
     ]))
-    vi.mocked(api.renderStoryboardFrame).mockImplementation(async (_id, index, onEvent) =>
-      onEvent({ type: 'rendered', frame: frame(index, { image: `frame-${index}-bbbbbbbb.png` }) })
-    )
     const { wrapper } = await mountIt()
-    await buttonNamed(wrapper, 'Render all (1)').trigger('click')
+    await wrapper.find('[data-render-all]').trigger('click')
     await flushPromises()
-    expect(vi.mocked(api.renderStoryboardFrame).mock.calls.map((c) => c[1])).toEqual([2])
-    expect(buttonNamed(wrapper, 'Render all').attributes('disabled')).toBeDefined()
-  })
-
-  it('stops rendering all when cancelled', async () => {
-    const stream = held()
-    vi.mocked(api.renderStoryboardFrame).mockImplementation((_id, _i, onEvent) =>
-      stream.call(onEvent)
-    )
-    const { wrapper } = await mountIt()
-    await buttonNamed(wrapper, 'Render all').trigger('click')
-    await buttonNamed(wrapper, 'Cancel').trigger('click')
-    expect(api.cancelFrame).toHaveBeenCalledWith('sb')
-    stream.emit({ type: 'cancelled', sessionDiscarded: false })
-    stream.finish()
-    await flushPromises()
-    expect(api.renderStoryboardFrame).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(api.queueJob).mock.calls.map((c) => [c[1], c[2]])).toEqual([
+      ['render', 2],
+      ['render', 3],
+    ])
+    // All queued: nothing left to add.
+    expect(wrapper.find('[data-render-all]').attributes('disabled')).toBeDefined()
   })
 
   it('edits a Frame by Action, keeping a declined Action to reword', async () => {
@@ -285,24 +286,21 @@ describe('StoryboardView', () => {
     expect(wrapper.find('[role=alert]').text()).toBe('This crosses a limit: no minors')
   })
 
-  it('upscales a rendered Frame, marking it Upscaled', async () => {
-    const rendered = frame(0, { image: 'frame-0-aaaaaaaa.png' })
-    vi.mocked(api.getSession).mockResolvedValue(storyboard([rendered, frame(1)]))
-    vi.mocked(api.upscaleFrame).mockImplementation(async (_id, _i, onEvent) =>
-      onEvent({
-        type: 'upscaled',
-        session: storyboard([{ ...rendered, upscaled: 'frame-0-aaaaaaaa-2048.png' }, frame(1)]),
-      })
+  it('queues an upscale and 3D of a rendered Frame, not of a draft', async () => {
+    vi.mocked(api.getSession).mockResolvedValue(
+      storyboard([frame(0, { image: 'frame-0-aaaaaaaa.png' }), frame(1)]),
     )
     const { wrapper } = await mountIt()
-    await wrapper.find('[data-upscale]').trigger('click')
+    await wrapper.find('[data-upscale-button]').trigger('click')
     await flushPromises()
-    expect(api.upscaleFrame).toHaveBeenCalledWith('sb', 0, expect.any(Function))
-    expect(wrapper.findAll('[data-status]')[0].text()).toBe('Upscaled')
-    expect(wrapper.find('[data-upscale]').attributes('disabled')).toBeDefined()
+    expect(api.queueJob).toHaveBeenCalledWith('sb', 'upscale', 0)
+    expect(wrapper.find('[data-upscale-button]').attributes('disabled')).toBeDefined()
 
-    // A Frame with no image yet can't be upscaled.
+    // A draft has no picture to upscale or make into 3D, until a render is queued.
     await wrapper.findAll('[data-frame]')[1].trigger('click')
-    expect(wrapper.find('[data-upscale]').attributes('disabled')).toBeDefined()
+    expect(wrapper.find('[data-upscale-button]').exists()).toBe(false)
+    await wrapper.find('[data-render-button]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-upscale-button]').exists()).toBe(true)
   })
 })

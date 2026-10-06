@@ -408,7 +408,7 @@ describe('SessionView', () => {
     } as api.Settings)
     await useFeatures().refreshFeatures()
     const { wrapper } = await mountIt()
-    expect(wrapper.find('[data-upscale]').exists()).toBe(false)
+    expect(wrapper.find('[data-upscale-button]').exists()).toBe(false)
     expect(wrapper.find('[data-lito-button]').exists()).toBe(false)
     expect(wrapper.find('[data-scene-button]').exists()).toBe(true)
     vi.mocked(api.getSettings).mockResolvedValue({ features: ALL_ON } as api.Settings)
@@ -618,7 +618,7 @@ describe('SessionView', () => {
       job({ status: 'running', phase: 'image', progress: { step: 1, total: 1 } }),
     ])
     const { wrapper } = await mountIt()
-    await wrapper.find('[data-upscale]').trigger('click')
+    await wrapper.find('[data-upscale-button]').trigger('click')
     await flushPromises()
     expect(api.queueJob).toHaveBeenCalledWith('s1', 'upscale', 0)
     expect(wrapper.find('[data-queue]').text()).toContain('Upscaling to 2048 px… step 1 of 1')
@@ -634,7 +634,7 @@ describe('SessionView', () => {
     expect(wrapper.find('main img').attributes('src')).toBe(
       '/api/sessions/s1/images/frame-0-2048.png',
     )
-    const button = wrapper.find('[data-upscale]')
+    const button = wrapper.find('[data-upscale-button]')
     expect([button.text(), button.attributes('disabled')]).toEqual(['Upscaled', ''])
   })
 

@@ -1,9 +1,8 @@
 import {
-  imageName,
   limitCrossedBy,
   type ProgressEvent,
   removeImage,
-  renderImage,
+  replacePicture,
   secondsSince,
   withRetry,
 } from '../frames.ts'
@@ -346,40 +345,22 @@ export async function renderRoleplayFrame(
     text: 0,
     image: null,
   }
-  const name = imageName(index)
-  const dir = deps.store.dir(session.id)
-  try {
-    const image = await renderImage(deps, session, frame.promptText, name, timings, emit, signal)
-    signal.throwIfAborted()
-    const { text: ___, ...renderTimings } = timings
-    let rendered!: RoleplayFrame
-    let replaced: (string | undefined)[] = []
-    let scene: string | undefined
-    let figure: string | undefined
-    let lito: string | undefined
-    const updated = await updateSession(deps.store, session.id, (latest) => {
-      const current = latest.frames[index]
-      if (!current) throw new GoneError(`Frame ${index} no longer exists`)
-      const { stale: _, upscaled: __, scene: ___, figure: ____, lito: _____, ...rest } = current
-      rendered = { ...rest, image, renderTimings }
-      replaced = [current.image ?? undefined, current.upscaled]
-      scene = current.scene?.file
-      figure = current.figure?.file
-      lito = current.lito?.file
-      return { ...latest, frames: latest.frames.map((f) => (f.index === index ? rendered : f)) }
-    })
-    for (const old of replaced) {
-      if (old && old !== image) await removeImage(dir, old.replace(/\.\w+$/, ''))
-    }
-    for (const made of [scene, figure, lito]) {
-      if (made) await Deno.remove(join(dir, made)).catch(() => {})
-    }
-    emit({ type: 'rendered', frame: rendered, session: updated })
-    return updated
-  } catch (err) {
-    await removeImage(dir, name)
-    throw err
-  }
+  const { session: updated, frame: rendered } = await replacePicture(
+    deps,
+    session,
+    index,
+    frame.promptText,
+    timings,
+    emit,
+    signal,
+    (change) => updateSession(deps.store, session.id, change),
+    (current, image) => {
+      const { text: _, ...renderTimings } = timings
+      return { ...current, image, renderTimings }
+    },
+  )
+  emit({ type: 'rendered', frame: rendered, session: updated })
+  return updated
 }
 
 /** Removes the latest exchange, so the player can say something else. The opening stays. */

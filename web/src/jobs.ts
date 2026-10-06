@@ -29,3 +29,12 @@ export function jobStatus(job: Job, special?: (job: Job) => string | undefined):
   const doing = job.kind === 'upscale' ? 'Upscaling to 2048 px…' : 'Rendering…'
   return job.progress ? `${doing} step ${job.progress.step} of ${job.progress.total}` : doing
 }
+
+/**
+ * How a picture's frame shows work on it (`FrameImage`'s `rendering`): waiting for another render,
+ * or rendering (and downloading a model first); nothing for other phases.
+ */
+export function sweepOf(phase: string | null | undefined): 'queued' | 'image' | null {
+  if (phase === 'queued') return 'queued'
+  return phase === 'image' || phase === 'download' ? 'image' : null
+}

@@ -12,13 +12,13 @@ import {
   watch,
 } from 'vue'
 import { useRouter } from 'vue-router'
-import { ApiError, cancelFrame, getSession, imageUrl, type Made3d, MADE3D_FEATURE } from '../api'
+import { ApiError, cancelFrame, getSession, imageUrl, type Made3d } from '../api'
 import { clearCurrentSession, setCurrentSession } from '../composables/useCurrentSession'
 import { useStoredFlag } from '../composables/useStoredFlag'
 import { useStoredText } from '../composables/useStoredText'
 import CollapsibleTextarea from '../components/CollapsibleTextarea.vue'
 import ComposeBox from '../components/ComposeBox.vue'
-import Frame3dButtons from '../components/Frame3dButtons.vue'
+import PictureButtons from '../components/PictureButtons.vue'
 import Frame3dViewers from '../components/Frame3dViewers.vue'
 import FrameViewer from '../components/FrameViewer.vue'
 import FrameJobs from '../components/FrameJobs.vue'
@@ -128,7 +128,7 @@ function goToFrame(index: number) {
   highlightTimer = setTimeout(() => (highlighted.value = null), 1600)
 }
 
-// --- 3D, by model (experimental): SHARP, TripoSplat and LiTo (Frame3dButtons).
+// --- 3D, by model (experimental): SHARP, TripoSplat and LiTo (PictureButtons).
 
 /** Which Frame's scene or figure is open, if any. */
 const open3d = ref<{ index: number; kind: Made3d } | null>(null)
@@ -667,33 +667,11 @@ async function saveCastDraft(): Promise<boolean> {
                       >
                         {{ frame.promptText ? 'Picture again' : 'Picture this' }}
                       </button>
-                      <button
-                        v-if="featureOn('images') &&
-                          ((frame.promptText && !frame.blocked) || hasJob(frame.index, 'picture'))"
-                        type="button"
-                        class="action"
-                        :disabled="hasJob(frame.index, 'render')"
-                        data-render-button
-                        @click="queue('render', frame.index)"
-                      >
-                        {{ frame.image ? 'Re-render' : 'Render' }}
-                      </button>
-                      <button
-                        v-if="featureOn('images') && (frame.image || hasJob(frame.index, 'render'))"
-                        type="button"
-                        class="action"
-                        :disabled="!!frame.upscaled || hasJob(frame.index, 'upscale')"
-                        :title="frame.upscaled ? 'Upscaled to 2048 px' : 'Upscale to 2048 px with SeedVR2'"
-                        data-upscale-button
-                        @click="queue('upscale', frame.index)"
-                      >
-                        {{ frame.upscaled ? 'Upscaled' : 'Upscale' }}
-                      </button>
-                      <Frame3dButtons
+                      <PictureButtons
                         :frame="frame"
-                        :disabled="(kind) => hasJob(frame.index, kind)"
-                        :available="(kind) => featureOn(MADE3D_FEATURE[kind])"
-                        @make="(kind) => queue(kind, frame.index)"
+                        :has-job="(kind) => hasJob(frame.index, kind)"
+                        :can-render="(!!frame.promptText && !frame.blocked) || hasJob(frame.index, 'picture')"
+                        @queue="(kind) => queue(kind, frame.index)"
                         @view="(kind) => (open3d = { index: frame.index, kind })"
                       />
                     </p>

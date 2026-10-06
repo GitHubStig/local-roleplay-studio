@@ -202,8 +202,16 @@ export class SessionJobs {
 export interface JobRoutesContext {
   jobs: SessionJobs
   store: SessionStore
-  /** Why `kind` can't be queued on Frame `index` of `session` (a response), or null if it can. */
-  check(session: Session, kind: JobKind, index: number): Promise<Response | null>
+  /**
+   * Why `kind` can't be queued on Frame `index` of `session` (a response), or null if it can.
+   * `pending`: the jobs already queued or running on that Frame, which may make what it needs.
+   */
+  check(
+    session: Session,
+    kind: JobKind,
+    index: number,
+    pending: readonly JobKind[],
+  ): Promise<Response | null>
 }
 
 /** The job routes every Session kind shares, under `/api/sessions/:id/jobs`. */
@@ -226,7 +234,10 @@ export function jobRoutes(ctx: JobRoutesContext): Route[] {
       }
       const index = Number(body?.frameIndex)
       if (!Number.isInteger(index) || !session.frames[index]) return error('No such Frame', 404)
-      const refused = await ctx.check(session, kind, index)
+      const pending = ctx.jobs.list(session.id)
+        .filter((j) => j.frameIndex === index && j.status !== 'failed')
+        .map((j) => j.kind)
+      const refused = await ctx.check(session, kind, index, pending)
       if (refused) return refused
       ctx.jobs.enqueue(session.id, kind, index)
       return json(ctx.jobs.list(session.id), 201)
