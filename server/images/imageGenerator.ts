@@ -1,5 +1,5 @@
 import { join } from '@std/path'
-import type { Settings } from './settings.ts'
+import type { Settings } from '../settings.ts'
 
 export interface ImageRequest {
   prompt: string

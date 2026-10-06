@@ -4,7 +4,7 @@
  * mflux once per picture, so the memory it peaks at (~15 GB) is freed when it's done.
  */
 import { fromFileUrl } from '@std/path'
-import { track } from './children.ts'
+import { track } from '../children.ts'
 
 /** A Frame's picture as a 3D scene of Gaussian splats (SHARP). */
 export interface Scene {
@@ -87,7 +87,7 @@ export async function runModelScript(
   return JSON.parse((await stdout).trim().split('\n').at(-1)!)
 }
 
-const SCRIPT = fromFileUrl(new URL('../python/sharp/make.py', import.meta.url))
+const SCRIPT = fromFileUrl(new URL('../../python/sharp/make.py', import.meta.url))
 
 /** Runs SHARP once per scene; `command` replaces `uv run python/sharp/make.py` in tests. */
 export function sharpSceneMaker(opts: { command?: string[] } = {}): SceneMaker {

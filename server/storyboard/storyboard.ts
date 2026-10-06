@@ -8,12 +8,12 @@ import {
   renderImage,
   secondsSince,
   withRetry,
-} from './frames.ts'
-import { renderPrompt } from './imagePrompt.ts'
-import { crossedLimit } from './limits.ts'
-import type { Scenario } from './scenario.ts'
-import type { FrameTimings, Look, Outcome, StoryboardFrame, StoryboardSession } from './session.ts'
-import { plainSentences } from './textModel.ts'
+} from '../frames.ts'
+import { renderPrompt } from '../imagePrompt.ts'
+import { crossedLimit } from '../limits.ts'
+import type { Scenario } from '../scenario.ts'
+import type { FrameTimings, Look, Outcome, StoryboardFrame, StoryboardSession } from '../session.ts'
+import { plainSentences } from '../textModel.ts'
 
 /** Progress of Storyboard work, streamed to the player as it happens. */
 export type StoryboardEvent =

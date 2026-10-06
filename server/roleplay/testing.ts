@@ -1,6 +1,6 @@
 import type { ChatMessage } from '../text/chat.ts'
 import type { RoleplayModel } from './model.ts'
-import type { Delivery } from '../voice.ts'
+import type { Delivery } from '../voice/voice.ts'
 import { REPLY_FIELDS } from './prompt.ts'
 import type { Cast, Reply, RoleplayLook } from './types.ts'
 

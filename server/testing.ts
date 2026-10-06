@@ -1,4 +1,4 @@
-import type { ImageGenerator } from './imageGenerator.ts'
+import type { ImageGenerator } from './images/imageGenerator.ts'
 import { parseScenario, type ScenarioLibrary } from './scenario.ts'
 import type { ImagePrompt } from './imagePrompt.ts'
 import type {

@@ -4,7 +4,7 @@
  * server starts the first time a voice is needed and keeps until it stops.
  */
 import { fromFileUrl } from '@std/path'
-import { track } from './children.ts'
+import { track } from '../children.ts'
 
 export interface DesignRequest {
   /** The voice, in words: age, pitch, texture, manner. */
@@ -51,7 +51,7 @@ export interface VoiceServiceOptions {
   command?: (port: number) => string[]
 }
 
-const SCRIPT = fromFileUrl(new URL('../python/voice/serve.py', import.meta.url))
+const SCRIPT = fromFileUrl(new URL('../../python/voice/serve.py', import.meta.url))
 
 /** The voice service, started on first use. */
 export function voiceService(opts: VoiceServiceOptions = {}): VoiceEngine {

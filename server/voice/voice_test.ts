@@ -1,6 +1,6 @@
 import { assertEquals } from '@std/assert'
 import { join } from '@std/path'
-import { withTempDir } from './testing.ts'
+import { withTempDir } from '../testing.ts'
 import { voiceService } from './voice.ts'
 
 /** A stand-in voice service: answers health checks, and goes away when asked (`stop`). */

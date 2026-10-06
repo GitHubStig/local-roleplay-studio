@@ -1,8 +1,8 @@
-import { ContextFullError } from './text/chat.ts'
+import { ContextFullError } from '../text/chat.ts'
 import { assertEquals, assertMatch, assertNotEquals, assertRejects } from '@std/assert'
 import { join } from '@std/path'
-import { DEFAULT_SETTINGS } from './settings.ts'
-import { type ChainSession, dirSessionStore, type SessionStore } from './session.ts'
+import { DEFAULT_SETTINGS } from '../settings.ts'
+import { type ChainSession, dirSessionStore, type SessionStore } from '../session.ts'
 import {
   fakeImageGenerator,
   promptWith,
@@ -10,18 +10,11 @@ import {
   scriptedTextModel,
   testScenario,
   withTempDir,
-} from './testing.ts'
-import {
-  type FrameEvent,
-  imageProgress,
-  type ProgressEvent,
-  runChainFrame,
-  UndoError,
-  undoLatestFrame,
-  upscaleFrame,
-} from './frames.ts'
-import { RenderQueue } from './renderQueue.ts'
-import { renderPrompt } from './imagePrompt.ts'
+} from '../testing.ts'
+import { imageProgress, type ProgressEvent, upscaleFrame } from '../frames.ts'
+import { type FrameEvent, runChainFrame, UndoError, undoLatestFrame } from './frames.ts'
+import { RenderQueue } from '../renderQueue.ts'
+import { renderPrompt } from '../imagePrompt.ts'
 
 const newSession = (): ChainSession => ({
   id: 's1',

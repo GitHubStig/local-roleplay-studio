@@ -3,7 +3,7 @@ import { join } from '@std/path'
 import { dirSessionStore } from '../session.ts'
 import { DEFAULT_SETTINGS } from '../settings.ts'
 import { withTempDir } from '../testing.ts'
-import { fakeVoiceEngine, type SpeakRequest } from '../voice.ts'
+import { fakeVoiceEngine, type SpeakRequest } from '../voice/voice.ts'
 import { replyOf, scriptedRoleplayModel, testCast } from './testing.ts'
 import type { RoleplaySession } from './types.ts'
 import {

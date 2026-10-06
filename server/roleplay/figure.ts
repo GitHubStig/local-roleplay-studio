@@ -1,5 +1,5 @@
 import { join } from '@std/path'
-import type { Figure, FigureMaker } from '../figure.ts'
+import type { Figure, FigureMaker } from '../3d/figure.ts'
 import { secondsSince } from '../frames.ts'
 import { RenderQueue } from '../renderQueue.ts'
 import type { SessionStore } from '../session.ts'

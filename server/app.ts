@@ -1,7 +1,7 @@
 import { extname, join } from '@std/path'
 import { error, json, readJson, type Route } from './http.ts'
-import type { ImageGenerator } from './imageGenerator.ts'
-import { IMAGE_MODELS, UPSCALERS } from './imageModels.ts'
+import type { ImageGenerator } from './images/imageGenerator.ts'
+import { IMAGE_MODELS, UPSCALERS } from './images/imageModels.ts'
 import { crossedLimit, setLimitsEnabled } from './limits.ts'
 import {
   connectionOf,
@@ -17,27 +17,20 @@ import type { ChainSession, Session, SessionStore, StoryboardSession } from './s
 import { type Settings, type SettingsStore, SIZE_PRESETS, validateSettings } from './settings.ts'
 import type { TextModel } from './textModel.ts'
 import type { RoleplayModel } from './roleplay/model.ts'
-import type { FigureMaker } from './figure.ts'
-import type { SceneMaker } from './scene.ts'
-import type { VoiceEngine } from './voice.ts'
-import type { QuantizedStore } from './quantized.ts'
+import type { FigureMaker } from './3d/figure.ts'
+import type { SceneMaker } from './3d/scene.ts'
+import type { VoiceEngine } from './voice/voice.ts'
+import type { QuantizedStore } from './images/quantized.ts'
 import { roleplayExcerpt } from './roleplay/prompt.ts'
 import { roleplayRoutes } from './roleplay/routes.ts'
 import { checkRoleplayJob, type RoleplayJobContext, runRoleplayJob } from './roleplay/jobs.ts'
 import { JOB_FEATURE, jobRoutes, SessionJobs } from './jobs.ts'
 import { type Availabilities, type Availability, type Feature, FEATURE_NAMES } from './features.ts'
-import { checkChainJob, runChainJob } from './chainJobs.ts'
+import { checkChainJob, runChainJob } from './chain/jobs.ts'
 import { GoneError } from './update.ts'
 import { RenderQueue } from './renderQueue.ts'
-import {
-  type FrameDeps,
-  type Phase,
-  runChainFrame,
-  UndoError,
-  undoLatestFrame,
-  UpscaleError,
-  upscaleFrame,
-} from './frames.ts'
+import { type FrameDeps, type Phase, UpscaleError, upscaleFrame } from './frames.ts'
+import { runChainFrame, UndoError, undoLatestFrame } from './chain/frames.ts'
 import {
   editFrameByAction,
   LimitError,
@@ -45,7 +38,7 @@ import {
   renderStoryboardFrame,
   setFrameBody,
   setLook,
-} from './storyboard.ts'
+} from './storyboard/storyboard.ts'
 
 export interface AppDeps {
   settings: SettingsStore

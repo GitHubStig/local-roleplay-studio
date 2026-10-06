@@ -2,16 +2,16 @@
  * What a Chain's background work does (see `SessionJobs` in jobs.ts): upscales its pictures and
  * makes them into 3D, while the player carries on with the next Action.
  */
-import { type FrameDeps, upscaleFrame } from './frames.ts'
-import type { FigureMaker } from './figure.ts'
-import { error } from './http.ts'
-import type { Upscaler } from './imageModels.ts'
-import type { Job, JobEmit, JobKind } from './jobs.ts'
-import { liftFigure } from './roleplay/figure.ts'
-import { makeScene } from './roleplay/scene.ts'
-import type { SceneMaker } from './scene.ts'
-import type { ChainSession, Session } from './session.ts'
-import { updateSession } from './update.ts'
+import { type FrameDeps, upscaleFrame } from '../frames.ts'
+import type { FigureMaker } from '../3d/figure.ts'
+import { error } from '../http.ts'
+import type { Upscaler } from '../images/imageModels.ts'
+import type { Job, JobEmit, JobKind } from '../jobs.ts'
+import { liftFigure } from '../roleplay/figure.ts'
+import { makeScene } from '../roleplay/scene.ts'
+import type { SceneMaker } from '../3d/scene.ts'
+import type { ChainSession, Session } from '../session.ts'
+import { updateSession } from '../update.ts'
 
 /** The jobs a Chain has. */
 export const CHAIN_JOB_KINDS: readonly JobKind[] = ['upscale', 'scene', 'figure', 'lito']

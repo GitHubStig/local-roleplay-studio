@@ -1,5 +1,5 @@
 import { join } from '@std/path'
-import { track } from './children.ts'
+import { track } from '../children.ts'
 import {
   type ImageGenerator,
   type ImageRequest,
@@ -9,7 +9,7 @@ import {
 } from './imageGenerator.ts'
 import { findImageModel, IMAGE_MODELS, type ImageModel } from './imageModels.ts'
 import { type QuantizedStore, quantizedStore } from './quantized.ts'
-import { SIZE_PRESETS } from './settings.ts'
+import { SIZE_PRESETS } from '../settings.ts'
 
 /**
  * The mflux command line for one image, with the model's step cache or fast mode as Settings ask.

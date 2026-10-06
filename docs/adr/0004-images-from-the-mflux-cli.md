@@ -15,4 +15,4 @@ mflux has no HTTP API, only per-model `mflux-generate-*` commands and a Python l
 
 ## Consequences
 
-Each Image Model is an entry in `server/imageModels.ts`: its command, `--model` value, optional `--base-model`, whether its weights are pre-quantized (so `--quantize` is skipped), and its default step count. Adding a model means adding an entry; its weights download on first use. A server-wide render queue lets only one image render at a time across all Sessions, so two Sessions can't compete for GPU memory; later Frames wait their frame, and can be cancelled while waiting.
+Each Image Model is an entry in `server/images/imageModels.ts`: its command, `--model` value, optional `--base-model`, whether its weights are pre-quantized (so `--quantize` is skipped), and its default step count. Adding a model means adding an entry; its weights download on first use. A server-wide render queue lets only one image render at a time across all Sessions, so two Sessions can't compete for GPU memory; later Frames wait their frame, and can be cancelled while waiting.

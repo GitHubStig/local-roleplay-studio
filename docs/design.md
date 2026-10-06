@@ -198,7 +198,7 @@ under `/api/sessions/:id/roleplay/` ([ADR 0007](adr/0007-roleplay-is-a-conversat
    buttons too, beside Upscale on the shown Frame, queued like a Roleplay's (below); as with the
    upscale, every Frame showing that picture shares what was made from it, and Undo deletes it only
    with the picture.
-   - **SHARP** (`server/scene.ts`, `python/sharp/make.py`) turns the picture into about 1.2 million
+   - **SHARP** (`server/3d/scene.ts`, `python/sharp/make.py`) turns the picture into about 1.2 million
      Gaussian splats (SHARP works at 1536 px, so the 2048 px upscale has more to give it; a scene
      made before its picture was upscaled offers **SHARP again from upscale**). SHARP peaks near
      15 GB; each scene runs `uv run python/sharp/make.py` once, like mflux once per picture, so the memory
@@ -209,7 +209,7 @@ under `/api/sessions/:id/roleplay/` ([ADR 0007](adr/0007-roleplay-is-a-conversat
      of view and an aspect), so the viewer opens on exactly the picture's view. It turns 15° or 30°
      either way, or back to the picture's view; dragging turns it freely. Esc, Close or a click outside the scene closes it, as in the picture viewer, but a turn let go past the scene's edge doesn't (VueUse's `onClickOutside`). SHARP invents what the
      picture never showed, so the further it turns, the more is made up. Its limits (a fixed
-     splat count, what turning shows) are in docs/research/image-to-3d.md.    - **TripoSplat** (`server/figure.ts`, `python/triposplat/make.py`; its code is vendored in
+     splat count, what turning shows) are in docs/research/image-to-3d.md.    - **TripoSplat** (`server/3d/figure.ts`, `python/triposplat/make.py`; its code is vendored in
      `python/triposplat/vendor/`, MIT) cuts the person out of the picture, leaves the room behind, and
      builds them whole, back included, as 524,288 Gaussians (past TripoSplat's cap of 262,144,
      which is only an input check): `frame.figure`, `figure-<index>-….ply`, ~34 MB. Anyone
@@ -237,7 +237,7 @@ and Setup, the real-person question) in `server/prompts/shared/`.
 
 **Pictures, renders and upscales are queued jobs** (`server/jobs.ts`, one queue for every
 Session; what a Roleplay's jobs do is in `server/roleplay/jobs.ts`, a Chain's in
-`server/chainJobs.ts`): the player can ask for several and carry on with the conversation, or a
+`server/chain/jobs.ts`): the player can ask for several and carry on with the conversation, or a
 Chain's next Action. Each Session runs its jobs one at a time, in the order asked (renders,
 upscales and 3D also wait their turn in the render queue every Session shares). Jobs don't hold the
 Session's lock; every change to a Roleplay or a Chain (a Reply, a picture, a render, a Chain Frame,

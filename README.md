@@ -148,9 +148,16 @@ scenarios/        Scenario files, one Markdown file each (see docs/scenarios.md)
 settings.json     Your Settings (gitignored; created on first save)
 sessions/<id>/    Each Session: session.json plus its pictures, voices and 3D files (gitignored)
 models/           Saved quantized copies of Image Models (gitignored)
-server/           Deno API: Sessions, the Frame and Roleplay engines, the job queue, mflux
-server/text/      The Text backends (Ollama, OpenAI-compatible) behind one Chat interface
-server/prompts/   What the language model is told, one Markdown file each
+server/           Deno API: the app, Sessions, Settings, the job queue, what all kinds of Session share
+  chain/          a Chain's Frames and jobs
+  storyboard/     a Storyboard's plan and edits
+  roleplay/       a Roleplay: its engine, Art Agent, voices and jobs
+  text/           the Text backends (Ollama, OpenAI-compatible) behind one Chat interface
+  images/         Image Models: mflux, the placeholder, saved quantized copies
+  voice/          the voice service's client
+  3d/             SHARP scenes, TripoSplat and LiTo figures
+  prompts/        what the Text Model is told, one Markdown file each: chain/, storyboard/,
+                  roleplay/, and shared/ for what more than one uses
 web/              Vue 3 + Vite + Tailwind 4 web app
 python/           What uv runs, each in its own folder with its packages pinned in the file:
   voice/          the voice service (mlx-audio)

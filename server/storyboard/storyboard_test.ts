@@ -1,7 +1,7 @@
 import { assertEquals, assertMatch, assertRejects } from '@std/assert'
 import { join } from '@std/path'
-import { dirSessionStore, type StoryboardSession } from './session.ts'
-import { DEFAULT_SETTINGS } from './settings.ts'
+import { dirSessionStore, type StoryboardSession } from '../session.ts'
+import { DEFAULT_SETTINGS } from '../settings.ts'
 import {
   composePrompt,
   editFrameByAction,
@@ -12,8 +12,8 @@ import {
   setLook,
   type StoryboardEvent,
 } from './storyboard.ts'
-import { briefScenario } from './scenario.ts'
-import { fakeImageGenerator, planOf, scriptedTextModel, withTempDir } from './testing.ts'
+import { briefScenario } from '../scenario.ts'
+import { fakeImageGenerator, planOf, scriptedTextModel, withTempDir } from '../testing.ts'
 
 const scenario = briefScenario('A player dribbles and dunks, sketch style.')
 const signal = () => new AbortController().signal

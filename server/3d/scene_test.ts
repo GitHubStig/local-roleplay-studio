@@ -1,7 +1,7 @@
 import { assertEquals, assertRejects } from '@std/assert'
 import { join } from '@std/path'
 import { sharpSceneMaker } from './scene.ts'
-import { withTempDir } from './testing.ts'
+import { withTempDir } from '../testing.ts'
 
 // The command gets `--image <picture> --out <ply>`, as `Deno.args` 0 to 3.
 const stub = (script: string) => ['deno', 'eval', script]

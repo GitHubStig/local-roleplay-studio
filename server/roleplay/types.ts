@@ -1,7 +1,7 @@
 import type { Look, SessionBase } from '../session.ts'
-import type { Delivery } from '../voice.ts'
-import type { Scene } from '../scene.ts'
-import type { Figure } from '../figure.ts'
+import type { Delivery } from '../voice/voice.ts'
+import type { Scene } from '../3d/scene.ts'
+import type { Figure } from '../3d/figure.ts'
 
 export type { Figure, Scene }
 

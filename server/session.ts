@@ -1,8 +1,8 @@
 import { fromFileUrl, join } from '@std/path'
 import type { ImagePrompt } from './imagePrompt.ts'
 import type { RoleplaySession } from './roleplay/types.ts'
-import type { Scene } from './scene.ts'
-import type { Figure } from './figure.ts'
+import type { Scene } from './3d/scene.ts'
+import type { Figure } from './3d/figure.ts'
 import type { Settings } from './settings.ts'
 
 /**

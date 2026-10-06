@@ -10,7 +10,7 @@ import { crossedLimit, limitsEnabled } from '../limits.ts'
 import type { ChatMessage } from '../text/chat.ts'
 import { loadPrompt } from '../promptFiles.ts'
 import type { Scenario } from '../scenario.ts'
-import { composePrompt } from '../storyboard.ts'
+import { composePrompt } from '../storyboard/storyboard.ts'
 import { frameSchema, plainSentences } from '../textModel.ts'
 import type { Cast, RoleplayFrame, RoleplayLook, RoleplaySession, Shown } from './types.ts'
 

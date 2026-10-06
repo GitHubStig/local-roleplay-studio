@@ -1,7 +1,7 @@
 import { join } from '@std/path'
 import { secondsSince } from '../frames.ts'
 import { RenderQueue } from '../renderQueue.ts'
-import type { Scene, SceneMaker } from '../scene.ts'
+import type { Scene, SceneMaker } from '../3d/scene.ts'
 import type { SessionStore } from '../session.ts'
 
 export interface SceneDeps {

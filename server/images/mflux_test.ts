@@ -4,8 +4,8 @@ import type { ImageRequest } from './imageGenerator.ts'
 import { findImageModel, type ImageModel } from './imageModels.ts'
 import { mfluxArgs, mfluxImageGenerator, parseProgress, upscaleArgs } from './mflux.ts'
 import type { QuantizedStore } from './quantized.ts'
-import { DEFAULT_SETTINGS } from './settings.ts'
-import { withTempDir } from './testing.ts'
+import { DEFAULT_SETTINGS } from '../settings.ts'
+import { withTempDir } from '../testing.ts'
 
 const request = (dir: string, extra: Partial<ImageRequest['settings']> = {}): ImageRequest => ({
   prompt: 'a studio',

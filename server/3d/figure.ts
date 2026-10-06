@@ -33,9 +33,9 @@ export interface FigureMaker {
   ): Promise<{ splats: number }>
 }
 
-const SCRIPT = fromFileUrl(new URL('../python/triposplat/make.py', import.meta.url))
+const SCRIPT = fromFileUrl(new URL('../../python/triposplat/make.py', import.meta.url))
 
-const LITO = fromFileUrl(new URL('../python/lito/make.py', import.meta.url))
+const LITO = fromFileUrl(new URL('../../python/lito/make.py', import.meta.url))
 
 /** Runs Apple's LiTo once per figure (`python/lito/make.py`); `command` replaces it in tests. */
 export function litoFigureMaker(opts: { command?: string[] } = {}): FigureMaker {

@@ -1,7 +1,7 @@
 import { assertEquals } from '@std/assert'
 import { join } from '@std/path'
 import { tripoFigureMaker } from './figure.ts'
-import { withTempDir } from './testing.ts'
+import { withTempDir } from '../testing.ts'
 
 Deno.test('TripoSplat writes the figure, saying while it downloads its weights the first time', () =>
   withTempDir(async (dir) => {
