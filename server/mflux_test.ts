@@ -137,96 +137,115 @@ async function fakeMflux(dir: string, script: string): Promise<ImageModel> {
   return { id: 'fake', label: 'Fake', command, model: 'fake', defaultSteps: 3 }
 }
 
+/** The stand-in is a shell script, so these run where mflux does (macOS) and on Linux. */
+const unix = { ignore: Deno.build.os === 'windows' }
+
 /** Shell snippet that finds the value after --output. */
 const OUTPUT = 'out=""; while [ $# -gt 0 ]; do [ "$1" = "--output" ] && out="$2"; shift; done'
 
-Deno.test('mfluxImageGenerator runs the command and reports progress, after any download', () =>
-  withTempDir(async (dir) => {
-    // A model's first use downloads it: mflux shows a "Fetching N files" bar first.
-    const model = await fakeMflux(
-      dir,
-      `${OUTPUT}
+Deno.test(
+  'mfluxImageGenerator runs the command and reports progress, after any download',
+  unix,
+  () =>
+    withTempDir(async (dir) => {
+      // A model's first use downloads it: mflux shows a "Fetching N files" bar first.
+      const model = await fakeMflux(
+        dir,
+        `${OUTPUT}
 printf '\\rFetching 16 files:   6%%| 1/16 [00:00<00:04]' >&2
 printf '\\rFetching 16 files: 100%%| 16/16 [00:09<00:00]' >&2
 printf '\\r 33%%| 1/3 [00:01]' >&2
 printf '\\r 67%%| 2/3 [00:02]' >&2
 printf '\\r100%%| 3/3 [00:03]' >&2
 echo png > "$out"`,
-    )
-    const progress: string[] = []
-    const file = await mfluxImageGenerator({ models: [model] }).generate(
-      request(dir),
-      new AbortController().signal,
-      (step, total) => progress.push(`${step}/${total}`),
-      () => progress.push('download'),
-    )
-    assertEquals(file, 'frame-0.png')
-    assertEquals(await Deno.readTextFile(join(dir, file)), 'png\n')
-    assertEquals(progress, ['download', 'download', '1/3', '2/3', '3/3'])
-  }))
+      )
+      const progress: string[] = []
+      const file = await mfluxImageGenerator({ models: [model] }).generate(
+        request(dir),
+        new AbortController().signal,
+        (step, total) => progress.push(`${step}/${total}`),
+        () => progress.push('download'),
+      )
+      assertEquals(file, 'frame-0.png')
+      assertEquals(await Deno.readTextFile(join(dir, file)), 'png\n')
+      assertEquals(progress, ['download', 'download', '1/3', '2/3', '3/3'])
+    }),
+)
 
-Deno.test('With Quantize on, mfluxImageGenerator renders from a saved copy, or converts if saving fails', () =>
-  withTempDir(async (dir) => {
-    // The fake mflux writes the arguments it was given as the image.
-    const model = await fakeMflux(dir, `args="$*"\n${OUTPUT}\necho "$args" > "$out"`)
-    const saved = (ok: boolean): QuantizedStore => ({
-      ensure: (m, bits) =>
-        ok
-          ? Promise.resolve(`/q/${m.id}-${bits}bit`)
-          : Promise.reject(new Error('mflux-save failed')),
-      list: () => Promise.resolve([]),
-      remove: () => Promise.resolve(false),
-    })
-    const signal = new AbortController().signal
-    const render = async (ok: boolean) => {
-      const file = await mfluxImageGenerator({ models: [model], quantized: saved(ok) })
-        .generate(request(dir, { quantize: 8 }), signal)
-      return await Deno.readTextFile(join(dir, file))
-    }
-    const fromCopy = await render(true)
-    assertEquals([
-      fromCopy.includes('--model /q/fake-8bit --base-model fake'),
-      fromCopy.includes('--quantize'),
-    ], [true, false])
-    const converting = await render(false)
-    assertEquals([converting.includes('--model fake'), converting.includes('--quantize 8')], [
-      true,
-      true,
-    ])
-  }))
+Deno.test(
+  'With Quantize on, mfluxImageGenerator renders from a saved copy, or converts if saving fails',
+  unix,
+  () =>
+    withTempDir(async (dir) => {
+      // The fake mflux writes the arguments it was given as the image.
+      const model = await fakeMflux(dir, `args="$*"\n${OUTPUT}\necho "$args" > "$out"`)
+      const saved = (ok: boolean): QuantizedStore => ({
+        ensure: (m, bits) =>
+          ok
+            ? Promise.resolve(`/q/${m.id}-${bits}bit`)
+            : Promise.reject(new Error('mflux-save failed')),
+        list: () => Promise.resolve([]),
+        remove: () => Promise.resolve(false),
+      })
+      const signal = new AbortController().signal
+      const render = async (ok: boolean) => {
+        const file = await mfluxImageGenerator({ models: [model], quantized: saved(ok) })
+          .generate(request(dir, { quantize: 8 }), signal)
+        return await Deno.readTextFile(join(dir, file))
+      }
+      const fromCopy = await render(true)
+      assertEquals([
+        fromCopy.includes('--model /q/fake-8bit --base-model fake'),
+        fromCopy.includes('--quantize'),
+      ], [true, false])
+      const converting = await render(false)
+      assertEquals([converting.includes('--model fake'), converting.includes('--quantize 8')], [
+        true,
+        true,
+      ])
+    }),
+)
 
-Deno.test('mfluxImageGenerator surfaces the error line when mflux fails', () =>
-  withTempDir(async (dir) => {
-    const model = await fakeMflux(
-      dir,
-      `echo 'Loading...' >&2; echo 'OSError: We have no connection and you are offline' >&2; exit 1`,
-    )
-    await assertRejects(
-      () =>
-        mfluxImageGenerator({ models: [model] }).generate(
-          request(dir),
-          new AbortController().signal,
-        ),
-      Error,
-      'Fake failed: OSError: We have no connection and you are offline',
-    )
-  }))
+Deno.test(
+  'mfluxImageGenerator surfaces the error line when mflux fails',
+  unix,
+  () =>
+    withTempDir(async (dir) => {
+      const model = await fakeMflux(
+        dir,
+        `echo 'Loading...' >&2; echo 'OSError: We have no connection and you are offline' >&2; exit 1`,
+      )
+      await assertRejects(
+        () =>
+          mfluxImageGenerator({ models: [model] }).generate(
+            request(dir),
+            new AbortController().signal,
+          ),
+        Error,
+        'Fake failed: OSError: We have no connection and you are offline',
+      )
+    }),
+)
 
-Deno.test('mfluxImageGenerator fails when no image was written', () =>
-  withTempDir(async (dir) => {
-    const model = await fakeMflux(dir, 'exit 0')
-    await assertRejects(
-      () =>
-        mfluxImageGenerator({ models: [model] }).generate(
-          request(dir),
-          new AbortController().signal,
-        ),
-      Error,
-      'without writing an image',
-    )
-  }))
+Deno.test(
+  'mfluxImageGenerator fails when no image was written',
+  unix,
+  () =>
+    withTempDir(async (dir) => {
+      const model = await fakeMflux(dir, 'exit 0')
+      await assertRejects(
+        () =>
+          mfluxImageGenerator({ models: [model] }).generate(
+            request(dir),
+            new AbortController().signal,
+          ),
+        Error,
+        'without writing an image',
+      )
+    }),
+)
 
-Deno.test('mfluxImageGenerator kills mflux on abort', () =>
+Deno.test('mfluxImageGenerator kills mflux on abort', unix, () =>
   withTempDir(async (dir) => {
     const model = await fakeMflux(dir, `printf '\\r 1/9 [00:01]' >&2; exec sleep 30`)
     const controller = new AbortController()
@@ -262,7 +281,7 @@ Deno.test('upscaleArgs upscales the shortest edge to 2048 with the chosen SeedVR
       '--model',
       'seedvr2-7b',
       '--image-path',
-      '/d/frame-0-1a2b3c4d.png',
+      join('/d', 'frame-0-1a2b3c4d.png'),
       '--resolution',
       '2048',
       '--seed',

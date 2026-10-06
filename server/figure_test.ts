@@ -5,13 +5,12 @@ import { withTempDir } from './testing.ts'
 
 Deno.test('TripoSplat writes the figure, saying while it downloads its weights the first time', () =>
   withTempDir(async (dir) => {
-    // The command gets `--image <picture> --out <ply>`; `sh -c` sees them as $1 to $4.
+    // The command gets `--image <picture> --out <ply>`, as `Deno.args` 0 to 3.
     const maker = tripoFigureMaker({
       command: [
-        'sh',
-        '-c',
-        `echo Downloading TripoSplat >&2; echo Downloaded >&2; printf "ply of $2" > "$4"; echo '{"splats": 32}'`,
-        'sh',
+        'deno',
+        'eval',
+        `console.error('Downloading TripoSplat'); console.error('Downloaded'); await Deno.writeTextFile(Deno.args[3], 'ply of ' + Deno.args[1]); console.log('{"splats": 32}')`,
       ],
     })
     const seen: boolean[] = []

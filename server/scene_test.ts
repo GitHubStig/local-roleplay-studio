@@ -3,15 +3,15 @@ import { join } from '@std/path'
 import { sharpSceneMaker } from './scene.ts'
 import { withTempDir } from './testing.ts'
 
-// The command gets `--image <picture> --out <ply>`; `sh -c` sees them as $1 to $4.
-const sh = (script: string) => ['sh', '-c', script, 'sh']
+// The command gets `--image <picture> --out <ply>`, as `Deno.args` 0 to 3.
+const stub = (script: string) => ['deno', 'eval', script]
 
 Deno.test('SHARP writes the scene and reports its splats and pivot', () =>
   withTempDir(async (dir) => {
     const out = join(dir, 'scene-0-1a2b3c4d.ply')
     const maker = sharpSceneMaker({
-      command: sh(
-        `printf "ply of $2" > "$4"; echo loading; echo '{"splats": 9, "pivot": 1.2, "fov": 40, "aspect": 0.75}'`,
+      command: stub(
+        `await Deno.writeTextFile(Deno.args[3], 'ply of ' + Deno.args[1]); console.log('loading'); console.log('{"splats": 9, "pivot": 1.2, "fov": 40, "aspect": 0.75}')`,
       ),
     })
     const made = await maker.make({ image: 'frame.png', out }, new AbortController().signal)
@@ -21,7 +21,9 @@ Deno.test('SHARP writes the scene and reports its splats and pivot', () =>
 
 Deno.test('A failed scene says why, from the last line SHARP wrote', async () => {
   const maker = sharpSceneMaker({
-    command: sh('echo warming up >&2; echo SHARP is not downloaded >&2; exit 1'),
+    command: stub(
+      `console.error('warming up'); console.error('SHARP is not downloaded'); Deno.exit(1)`,
+    ),
   })
   await assertRejects(
     () => maker.make({ image: 'x.png', out: 'x.ply' }, new AbortController().signal),
@@ -33,8 +35,8 @@ Deno.test('A failed scene says why, from the last line SHARP wrote', async () =>
 Deno.test('SHARP says while it downloads its weights, the first time', () =>
   withTempDir(async (dir) => {
     const maker = sharpSceneMaker({
-      command: sh(
-        `echo Downloading SHARP >&2; echo Downloaded >&2; : > "$4"; echo '{"splats": 1, "pivot": 1, "fov": 50, "aspect": 1}'`,
+      command: stub(
+        `console.error('Downloading SHARP'); console.error('Downloaded'); await Deno.writeTextFile(Deno.args[3], ''); console.log('{"splats": 1, "pivot": 1, "fov": 50, "aspect": 1}')`,
       ),
     })
     const seen: boolean[] = []

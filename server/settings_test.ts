@@ -44,7 +44,8 @@ Deno.test('fileSettingsStore keeps the API key in the file but out of Settings',
     assertEquals(await store.loadApiKey(), 'sk-secret') // saving Settings keeps it
     assertEquals('textApiKey' in await store.load(), false)
     assertEquals(JSON.parse(await Deno.readTextFile(path)).textApiKey, 'sk-secret')
-    assertEquals((await Deno.stat(path)).mode! & 0o777, 0o600)
+    // Windows has no Unix modes: the file takes the folder's permissions there.
+    if (Deno.build.os !== 'windows') assertEquals((await Deno.stat(path)).mode! & 0o777, 0o600)
     await store.saveApiKey('')
     assertEquals(await store.loadApiKey(), '')
     assertEquals((await store.load()).textModel, 'llama3:latest')
