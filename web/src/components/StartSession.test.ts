@@ -69,7 +69,16 @@ describe('StartSession', () => {
     expect(wrapper.text()).toContain('Studio Photoshoot')
     expect(startButton(wrapper).disabled).toBe(false)
     await wrapper.find('[data-start]').trigger('click')
-    expect(wrapper.emitted('start')).toEqual([[{ kind: 'chain', scenarioId: 'photoshoot' }]])
+    expect(wrapper.emitted('start')).toEqual([[{ kind: 'roleplay', scenarioId: 'photoshoot' }]])
+  })
+
+  it('lists Roleplay first, then Chain and Storyboard', async () => {
+    const wrapper = await mountIt()
+    expect(wrapper.findAll('input[name=kind]').map((i) => i.attributes('value'))).toEqual([
+      'roleplay',
+      'chain',
+      'storyboard',
+    ])
   })
 
   it('offers only a Roleplay when pictures are off, and starts one', async () => {
@@ -125,6 +134,7 @@ describe('StartSession', () => {
 
   it('offers no Frame count for a Chain', async () => {
     const wrapper = await mountIt()
+    await wrapper.find('input[value=chain]').setValue()
     expect(wrapper.find('[data-frame-count]').exists()).toBe(false)
   })
 

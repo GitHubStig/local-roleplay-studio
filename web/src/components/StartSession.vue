@@ -26,17 +26,18 @@ const BRIEF_HINTS: Record<SessionKind, string> = {
     'Who you meet, where, and who you are, e.g. a lighthouse keeper in a winter storm; I wash up at her door.',
 }
 
+/** Roleplay first: it's the one that runs without pictures. */
 const KINDS: { id: SessionKind; label: string; hint: string }[] = [
+  {
+    id: 'roleplay',
+    label: 'Roleplay',
+    hint: 'Talk with a Character, who replies in character; picture any moment as you go.',
+  },
   { id: 'chain', label: 'Chain', hint: 'Each Frame is made from the one before by an Action.' },
   {
     id: 'storyboard',
     label: 'Storyboard',
     hint: 'All Frames are planned at once; edit and render each one.',
-  },
-  {
-    id: 'roleplay',
-    label: 'Roleplay',
-    hint: 'Talk with a Character, who replies in character; picture any moment as you go.',
   },
 ]
 
@@ -49,7 +50,7 @@ const { on: featureOn } = useFeatures()
 const kinds = computed(() =>
   KINDS.filter((k) => k.id === 'roleplay' || featureOn.value('images'))
 )
-const kind = ref<SessionKind>('chain')
+const kind = ref<SessionKind>('roleplay')
 watch(kinds, (now) => {
   if (!now.some((k) => k.id === kind.value)) kind.value = now[0].id
 }, { immediate: true })

@@ -137,13 +137,14 @@ describe('HomeView', () => {
     }
   })
 
-  it('starts a new Session and opens it', async () => {
+  it('starts a new Chain and opens it', async () => {
     vi.mocked(api.getScenarios).mockResolvedValue({
       scenarios: [{ id: 'photoshoot', title: 'Studio Photoshoot', description: '' }],
       errors: [],
     })
     vi.mocked(api.createSession).mockResolvedValue({ id: 'new', kind: 'chain' } as api.Session)
     const { wrapper, router } = await mountIt()
+    await wrapper.find('input[value=chain]').setValue()
     await wrapper.find('[data-start]').trigger('click')
     await flushPromises()
     expect(api.createSession).toHaveBeenCalledWith({ kind: 'chain', scenarioId: 'photoshoot' })
