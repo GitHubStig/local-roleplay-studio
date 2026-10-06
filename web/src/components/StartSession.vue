@@ -191,7 +191,9 @@ function start() {
         <span v-if="settings.thinking && options.thinkingModels.includes(settings.textModel)">
           (thinking)
         </span>
-        · Image Model <span class="text-fg">{{ imageModelLabel }}</span>
+        <template v-if="featureOn('images')">
+          · Image Model <span class="text-fg">{{ imageModelLabel }}</span>
+        </template>
         ·
         <RouterLink to="/settings" class="underline">change in Settings</RouterLink>
       </p>
