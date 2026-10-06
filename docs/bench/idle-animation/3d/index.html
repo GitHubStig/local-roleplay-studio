@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Idle animation in 3D</title>
+<style>
+  :root { --bg: #111; --fg: #e8e2d8; --muted: #9a9187; --line: #2c2924; --accent: #e7a54a; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.5 system-ui, sans-serif; }
+  main { max-width: 1100px; margin: 0 auto; padding: 16px; display: grid; gap: 16px;
+    grid-template-columns: minmax(0, 1fr) 300px; }
+  @media (max-width: 860px) { main { grid-template-columns: 1fr; } }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  .stage { position: relative; aspect-ratio: 1; width: 100%; border-radius: 8px; overflow: hidden;
+    background: #000; }
+  canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+  #status { position: absolute; left: 10px; top: 8px; color: #fffa; font-size: 13px; }
+  aside { display: flex; flex-direction: column; gap: 14px; }
+  fieldset { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin: 0; }
+  legend { color: var(--muted); padding: 0 4px; }
+  label { display: flex; gap: 8px; align-items: center; margin: 4px 0; cursor: pointer; }
+  .row { display: flex; gap: 6px; flex-wrap: wrap; }
+  button { background: #2a2620; color: var(--fg); border: 1px solid var(--line); border-radius: 6px;
+    padding: 6px 10px; cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  p.note { color: var(--muted); font-size: 13px; margin: 6px 0 0; }
+  input[type=range] { width: 100%; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/",
+  "@sparkjsdev/spark": "https://cdn.jsdelivr.net/npm/@sparkjsdev/spark@2.3.0/dist/spark.module.js"
+} }
+</script>
+</head>
+<body>
+<main>
+  <section>
+    <h1>Idle animation in 3D (SHARP)</h1>
+    <p class="note" style="margin:0 0 10px">Kael tavern, Frame 9 as SHARP's 2.5D scene (1.2M splats).
+      The lantern and Elara's eyes are their own small meshes on the same splat positions, faded
+      between the picture's colours and the edits'. The glow is a light in the room, so it stays put as
+      the view turns. Drag to turn.</p>
+    <div class="stage"><canvas id="c"></canvas><span id="status">Loading the scene…</span></div>
+  </section>
+  <aside>
+    <fieldset>
+      <legend>View</legend>
+      <div class="row">
+        <button data-turn="-0.26">← 15°</button>
+        <button data-turn="0">Front</button>
+        <button data-turn="0.26">15° →</button>
+      </div>
+      <label><input type="checkbox" id="sway" checked /> Slow sway (±8°)</label>
+    </fieldset>
+    <fieldset>
+      <legend>Lamp light</legend>
+      <label><input type="checkbox" id="glow" checked /> Glow (a light in the room)</label>
+      <label><input type="checkbox" id="painted" checked /> Painted light (the edit)</label>
+      <label style="flex-direction:column;align-items:stretch">Strength
+        <input type="range" id="strength" min="0" max="2" step="0.05" value="1" /></label>
+      <label style="flex-direction:column;align-items:stretch">Glow reach
+        <input type="range" id="reach" min="0.1" max="1.2" step="0.05" value="0.45" /></label>
+      <label><input type="checkbox" id="calm" checked /> Calm</label>
+      <label><input type="checkbox" id="wobble" checked /> Flame wobble</label>
+    </fieldset>
+    <fieldset>
+      <legend>Blink</legend>
+      <label><input type="checkbox" id="blink" checked /> Elara blinks (half, closed, half)</label>
+      <button id="blink-now">Blink now</button>
+    </fieldset>
+  </aside>
+</main>
+<script type="module">
+import * as THREE from 'three'
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
+import {
+  SparkRenderer, SplatEdit, SplatEditRgbaBlendMode, SplatEditSdf, SplatEditSdfType, SplatMesh,
+} from '@sparkjsdev/spark'
+
+const $ = (id) => document.getElementById(id)
+const info = await (await fetch('scene.json')).json()
+// SHARP's splats are in the picture camera's axes (y down, z ahead): turned 180° about x, as the app does.
+const world = ([x, y, z]) => new THREE.Vector3(x, -y, -z)
+
+const canvas = $('c')
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: false })
+const scene = new THREE.Scene()
+scene.add(new SparkRenderer({ renderer }))
+const camera = new THREE.PerspectiveCamera(info.fov, 1, 0.05, 200)
+const controls = new OrbitControls(camera, canvas)
+controls.target.set(0, 0, -info.pivot)
+controls.enableDamping = true
+controls.enablePan = false
+
+let loaded = 0
+const meshes = {}
+for (const name of ['base', 'lantern-a', 'lantern-b', 'eyes-open', 'eyes-half', 'eyes-closed']) {
+  const m = new SplatMesh({ url: `${name}.sog`, onLoad: () => {
+    if (++loaded === 6) $('status').textContent = ''
+  } })
+  m.quaternion.set(1, 0, 0, 0)
+  scene.add(m)
+  meshes[name] = m
+}
+meshes['lantern-b'].opacity = 0
+meshes['eyes-half'].visible = false
+meshes['eyes-closed'].visible = false
+
+// --- The glow: a sphere around each flame that adds warm light to the splats it reaches.
+function glowAt(pos, power) {
+  const sdf = new SplatEditSdf({ type: SplatEditSdfType.SPHERE, radius: 0.45, color: new THREE.Color(0, 0, 0), opacity: 0 })
+  sdf.position.copy(world(pos))
+  const edit = new SplatEdit({ rgbaBlendMode: SplatEditRgbaBlendMode.ADD_RGBA, softEdge: 0.5, sdfs: [sdf] })
+  scene.add(edit)
+  return { sdf, edit, power }
+}
+const glows = [glowAt(info.lantern, 1), glowAt(info.candle, 0.5)]
+
+// --- The flame wobble: a small sphere at the flame that moves the splats in it, swaying.
+const wobbleSdf = new SplatEditSdf({ type: SplatEditSdfType.SPHERE, radius: 0.025, color: new THREE.Color(1, 1, 1), opacity: 1 })
+wobbleSdf.position.copy(world(info.flame)).add(new THREE.Vector3(0, 0.01, 0))
+const wobbleEdit = new SplatEdit({ rgbaBlendMode: SplatEditRgbaBlendMode.MULTIPLY, softEdge: 0.02, sdfs: [wobbleSdf] })
+scene.add(wobbleEdit)
+
+// --- Calm flicker: slow layered noise, rare short dips.
+function noise(t, seed) {
+  return Math.sin(t * 1.7 + seed) * 0.45 + Math.sin(t * 4.3 + seed * 2.1) * 0.3 +
+    Math.sin(t * 11.9 + seed * 3.7) * 0.15 + Math.sin(t * 23.3 + seed * 5.3) * 0.1
+}
+const dips = glows.map(() => ({ until: 0, depth: 0 }))
+function level(t, i) {
+  const calm = $('calm').checked, d = dips[i]
+  if (t > d.until && Math.random() < (calm ? 0.0015 : 0.006)) {
+    d.until = t + 0.08 + Math.random() * 0.15; d.depth = 0.5 + Math.random() * 0.5
+  }
+  const dip = t < d.until ? d.depth : 0
+  return calm ? Math.max(0, 0.7 + 0.14 * noise(t * 0.45, i * 10) - 0.25 * dip)
+    : Math.max(0, 0.55 + 0.35 * noise(t, i * 10) - 0.45 * dip)
+}
+
+// --- Blink: half, closed, half.
+const wait = (ms) => new Promise((r) => setTimeout(r, ms))
+function eyes(state) {
+  for (const s of ['open', 'half', 'closed']) meshes['eyes-' + s].visible = s === state
+}
+let blinking = false
+async function blink() {
+  if (blinking) return
+  blinking = true
+  eyes('half'); await wait(40); eyes('closed'); await wait(70); eyes('half'); await wait(50); eyes('open')
+  blinking = false
+}
+$('blink-now').onclick = blink
+;(async () => {
+  for (;;) {
+    await wait(2000 + Math.random() * 4000)
+    if (!$('blink').checked) continue
+    await blink()
+    if (Math.random() < 0.15) { await wait(160); await blink() }
+  }
+})()
+
+// --- View: turn about the pivot, by button, by dragging, or a slow sway.
+let turn = 0, swayStart = performance.now()
+document.querySelectorAll('[data-turn]').forEach((b) => b.onclick = () => {
+  turn = Number(b.dataset.turn); $('sway').checked = false; place(turn)
+})
+function place(a) {
+  camera.position.set(info.pivot * Math.sin(a), 0, -info.pivot + info.pivot * Math.cos(a))
+  camera.lookAt(controls.target)
+}
+place(0)
+
+function resize() {
+  const w = canvas.clientWidth
+  renderer.setSize(w, w, false)
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2))
+}
+resize(); addEventListener('resize', resize)
+
+renderer.setAnimationLoop((ms) => {
+  const t = ms / 1000, strength = Number($('strength').value), reach = Number($('reach').value)
+  glows.forEach((g, i) => {
+    const on = $('glow').checked ? level(t, i) * strength * g.power : 0
+    g.sdf.color.setRGB(0.45 * on, 0.26 * on, 0.11 * on)
+    g.sdf.radius = reach * (i === 0 ? 1 : 0.6) * (0.95 + 0.08 * on)
+  })
+  const lit = $('painted').checked ? Math.min(1, Math.max(0, (level(t, 0) - 0.35) * 1.6) * strength) : 0
+  meshes['lantern-a'].opacity = 1 - lit
+  meshes['lantern-b'].opacity = lit
+  const sway = $('wobble').checked ? 0.004 * Math.sin(t * 2.1) + 0.002 * Math.sin(t * 5.3) : 0
+  wobbleSdf.displace.set(sway, 0, 0)
+  if ($('sway').checked) place(0.14 * Math.sin((ms - swayStart) / 1000 * 0.35))
+  else controls.update()
+  renderer.render(scene, camera)
+})
+</script>
+</body>
+</html>
