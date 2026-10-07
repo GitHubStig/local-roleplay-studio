@@ -289,3 +289,59 @@ read from disk could add a few seconds. The card was back to ~1.2 GB in use afte
   (`installations.json`, `"launchArgs": "--enable-manager"`), and `--listen 0.0.0.0` goes there.
   Windows Firewall must allow TCP 8188 on the private network. ComfyUI has no login, so anything on
   the network can use it. The Mac's upscale time over the network wasn't measured.
+
+## mflux and ComfyUI side by side (2026-10-07)
+
+**What differs between the backends**, for the same Image Model:
+
+- **A fixed seed reproduces a picture only within one backend.** The seed's noise comes from a
+  different generator (MLX in mflux, PyTorch in ComfyUI), the noise schedules differ (mflux's
+  "linear" for Qwen-Image 2.1, ComfyUI's "simple" with its 0.69 shift), and the weights are
+  quantized differently (mflux's saved 8-bit copy, ComfyUI's int8 build). The guidance is the same:
+  none (mflux's default 1.0, ComfyUI's CFG 1). Measured: Qwen-Image 2.1, seed 7, 832×1216, 25
+  steps, the same prompt, through the app's own image code: ComfyUI and mflux on the Mac drew
+  **different compositions** (Kael standing at the end of the bar with the woman full-length in the
+  doorway, against a close-up of him at the bar with her small behind), mean pixel difference 23.5
+  of 255; mflux with and without the step cache, near the same (2.4).
+  [bench/backends/seed7-mac.webp](../bench/backends/seed7-mac.webp): ComfyUI, mflux, mflux with the
+  step cache.
+- **Within a Session it holds:** a Session keeps the backend and address it started with, so its
+  re-renders don't change engine. Two Sessions on different backends look a little different.
+- **The same seed on two ComfyUIs (the Mac's and the PC's) gives the same scene, not the same
+  picture.** ComfyUI makes the seed's noise on the CPU, so both start alike: the same layout (Kael
+  standing at the end of the bar with the letter, the stool, the doorway on the right). The details
+  part ways (the woman nearer or farther, the lantern moved, a different window): mean pixel
+  difference 12.75, between mflux's 23.5 and the step cache's 2.4. Most likely the int8 arithmetic
+  differs between MPS and CUDA, and 25 steps let it grow.
+  [bench/backends/seed7-comfyui-mac-pc.webp](../bench/backends/seed7-comfyui-mac-pc.webp): the Mac's,
+  then the PC's.
+- **Upscale is all but the same:** both correct colour in LAB space (mflux adds a wavelet step and
+  weights brightness at 0.8), and the weights differ (mflux's fp16, ComfyUI's fp8 on the PC). The
+  same 832×1216 picture upscaled by each: mflux kept its brightness exactly (23.9 of 255), ComfyUI's
+  came out 2% darker (23.4); mean difference between them 3.8; the added detail (hair, skin, the
+  scar) much the same. So one Session can hold upscales from both, as "Upscale with" applies at once.
+  [bench/backends/upscale-mflux-comfyui.webp](../bench/backends/upscale-mflux-comfyui.webp): mflux,
+  then ComfyUI, a close-up of the face.
+- **Alpha is harmless:** ComfyUI's Qwen-Image 2.1 pictures are RGBA; SHARP (`load_rgb`,
+  `remove_alpha`), TripoSplat and LiTo (`convert('RGB')`) drop it, and browsers show them as usual.
+  The files are about a third larger.
+
+**Timings, the same job on each** (Qwen-Image 2.1 at 832×1216, 25 steps, seed 7; SeedVR2 7B to
+2048×2992; through the app's image code, models loaded and freed each time):
+
+| | Mac (M5 Pro, 48 GB): mflux | Mac: ComfyUI | PC (RTX 4070): ComfyUI, from the Mac |
+|---|---|---|---|
+| Picture, 8-bit / int8 | **96.5 s** (3.46 s a step) | **162.4 s** (5.86 s a step) | **20.9 s** (0.54 s a step) |
+| Picture, step cache 0.4 | **55.7 s** (1.97 s a step) | no step cache | no step cache |
+| Upscale, 7B | **66.4 s** | (needs Comfy-Org's files) | **14.0 s** |
+
+The PC's were run from the Mac across the network (Wi-Fi or Ethernet as set up then), so they
+include sending the picture and fetching the result; on the PC itself the same jobs measured
+21–29 s and 12.4 s. So a picture renders ~2.7× faster on the PC than the Mac's quickest (mflux with
+the step cache) and ~4.6× faster than mflux without it, and an upscale ~4.7× faster.
+
+**Why the Mac's upscale takes a minute:** the CLI run directly (`mflux-upscale-seedvr2 --model
+seedvr2-7b --resolution 2048`) took the same: **64 s** for 832×1216 → 2048×2992 and **43 s** for
+512×512 → 2048×2048 (the ~46 s in models.md). mflux's own progress bar puts the upscale itself
+(one SeedVR2 step) at ~15 s; the rest is loading the 7B's 16.5 GB of fp16 weights, which a new
+process does every time, and the tiled VAE. It grows with the output: 6.1 megapixels against 4.2.

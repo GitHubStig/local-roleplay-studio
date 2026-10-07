@@ -523,7 +523,8 @@ waist-up) and seed, at 1024×1024, everything else closed:
 
 Upscale uses **SeedVR2 7B** by default (`seedvr2-7b`, `mflux-upscale-seedvr2 --resolution 2048`);
 3B can be chosen in **Settings → Upscaler**. From a
-512×512 image to 2048×2048: 7B ~46 s, 3B ~41 s, most of it loading the model; both add real
+512×512 image to 2048×2048: 7B ~46 s, 3B ~41 s, most of it loading the model (832×1216 to
+2048×2992 with 7B: 64–66 s, through the app or the CLI alike, 2026-10-07; the upscale itself ~15 s); both add real
 texture (fabric weave, skin) over plain resizing, 7B slightly cleaner. Peak memory ~39 GB for
 either, so, like the larger Image Models, it can push a 48 GB Mac into swap next to gemma4.
 
