@@ -9,7 +9,7 @@ vi.mock('../api', async (importOriginal) => ({
   getSettings: vi.fn(),
   getSettingsOptions: vi.fn(),
   listTextModels: vi.fn(),
-  checkComfyUI: vi.fn(),
+  checkComfyUI: vi.fn(() => Promise.resolve({ up: false as const, error: 'not running' })),
   saveSettings: vi.fn(),
   listQuantized: vi.fn(),
   deleteQuantized: vi.fn(),
@@ -247,6 +247,10 @@ describe('SettingsView', () => {
     expect(wrapper.find('[data-quantized-copy]').text()).toContain(
       'FLUX.2 Klein 4B, 8-bit · 6.2 GB · mflux 0.20.0',
     )
+    // mflux's own copies: not shown while ComfyUI is chosen, which doesn't use them.
+    await wrapper.find('[data-image-backend]').setValue('comfyui')
+    expect(wrapper.find('[data-quantized]').exists()).toBe(false)
+    await wrapper.find('[data-image-backend]').setValue('mflux')
     await wrapper.find('[data-quantized-copy] button').trigger('click')
     await flushPromises()
     expect(api.deleteQuantized).toHaveBeenCalledWith(copy.name)

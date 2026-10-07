@@ -162,3 +162,33 @@ the Mac:
 - **ComfyUI keeps nothing of the app's**: no picture in its output or temp folder (the picture
   comes back over the WebSocket), no prompt in its history (deleted after each render), no prompt
   text in its log; the only copy of a picture is the one in the Session's folder.
+
+## Upscaling on ComfyUI (2026-10-07)
+
+- **SeedVR2 is built into ComfyUI 0.39.1** (`comfy/ldm/seedvr/`, `comfy_extras/nodes_seedvr.py`),
+  with templates for upscaling an image with 3B or 7B (`utility_seedvr2_{3b,7b}_int8_upscale_image`:
+  `LoadImage` → `SeedVR2Preprocess` → `VAEEncodeTiled` → `SeedVR2Conditioning` → `KSampler` (one
+  step, CFG 1) → `VAEDecodeTiled` → `SeedVR2PostProcessing`), built-in nodes only. It's the model
+  mflux uses, so the Upscaler setting (7B or 3B) carries over. Comfy-Org's files
+  (`Comfy-Org/SeedVR2`): 7B int8 8.3 GB or fp8 8.2 GB (for an NVIDIA card), 3B int8 3.5 GB or fp8
+  3.4 GB, a "7B sharp" variant, nvfp4 builds (newer cards than an RTX 4070), and a 0.5 GB VAE.
+- Other choices, not taken: GAN upscalers (built in, ESRGAN models of tens of MB, seconds, but
+  they sharpen rather than restore and look over-crisp on a painting); re-rendering bigger with an
+  image model (adds detail but changes the picture; heaviest); cloud nodes (paid, and the picture
+  leaves the machine).
+- **The wrinkle: the picture has to reach ComfyUI first, and that leaves a copy.** No built-in node
+  takes a picture inline, and ComfyUI has no API to delete an upload; `POST /upload/image` keeps it
+  in its `input/` folder for good. The least bad with built-in nodes: upload with `type=temp` and
+  load it as `"<name> [temp]"`, so the copy sits in the temp folder until ComfyUI next starts (it
+  empties temp on startup). That's the one exception to "ComfyUI keeps nothing of the app's"; the
+  owner doesn't like it, so it stays noted here until something better turns up.
+- **mflux's SeedVR2 files don't load in ComfyUI** (tested 2026-10-07, to avoid a second copy on
+  the Mac). ComfyUI finds them where they are, in the Hugging Face cache, through an extra
+  model-paths file (`numz/SeedVR2_comfyUI`: 7B and 3B fp16, the VAE), with no copy or download;
+  but its `UNETLoader` refuses them: "Could not detect model type". numz's weights are laid out for
+  the SeedVR2 custom node, not ComfyUI's built-in SeedVR2, which wants Comfy-Org's repack. So on the
+  Mac Upscale stays with mflux (nothing downloaded), and Upscale on ComfyUI is for Windows, with
+  Comfy-Org's files (7B fp8 8.2 GB, or 3B fp8 3.4 GB, plus the 0.5 GB VAE).
+- **Gotcha:** a second ComfyUI started on a port already taken (here Comfy Desktop's 8188) logs
+  "Port 8188 is already in use" and exits, and whatever answers on that port is the other one. Test
+  instances go on another port (8189).

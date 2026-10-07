@@ -463,7 +463,12 @@ async function save() {
               </span>
             </label>
 
-            <div v-if="copies.length" class="flex flex-col gap-1" data-quantized>
+            <!-- mflux's own saved copies: ComfyUI doesn't use them. -->
+            <div
+              v-if="copies.length && form.imageBackend === 'mflux'"
+              class="flex flex-col gap-1"
+              data-quantized
+            >
               <span class="text-sm text-muted">Saved copies (in models/quantized)</span>
               <ul class="flex flex-col gap-1 text-sm">
                 <li v-for="c in copies" :key="c.name" class="flex items-center gap-3" data-quantized-copy>
