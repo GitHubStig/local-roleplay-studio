@@ -330,6 +330,15 @@ read from disk could add a few seconds. The card was back to ~1.2 GB in use afte
   for a cut-out already made, so it skipped BiRefNet and made the whole picture, fireplace, chair
   and floor, into the "figure". `python/triposplat/make.py` now hands it the picture as RGB, so
   BiRefNet always cuts the person out; that fixes pictures already in Sessions too.
+  **Since 2026-10-07 ComfyUI sends RGB:** the Qwen-Image workflow splits the alpha off before
+  `SaveImageWebsocket` (`SplitImageWithAlpha`, built in), and the SeedVR2 one drops its template's
+  `JoinImageWithAlpha` and splits at the end too. Checked on Windows: a render and its upscale both
+  came back RGB, 12-16% smaller (2.1 MB against ~2.5; 12.3 against ~14.0, not the third guessed
+  above), the upscale's brightness still within 2%. The fourth channel matters beyond TripoSplat:
+  Qwen-Image 2.1's edit mode reads it as an edit mask and keeps a transparent input transparent
+  ([image-to-3d.md](image-to-3d.md), "Transparency"), so a picture with alpha at 240-255 fed back
+  as a reference or edit input could come back faintly see-through (not tried). Pictures made
+  before the change are still RGBA.
 
 **Timings, the same job on each** (Qwen-Image 2.1 at 832×1216, 25 steps, seed 7; SeedVR2 7B to
 2048×2992; through the app's image code, models loaded and freed each time):

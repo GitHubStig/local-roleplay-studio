@@ -1,19 +1,15 @@
 {
-  "_note": "SeedVR2 upscaling, from ComfyUI's templates utility_seedvr2_{7b,3b}_int8_upscale_image (one step, CFG 1, euler, simple, tiled VAE), in API format, but resized to a shortest edge of $edge (as mflux's --resolution) instead of 4x. The 7B and 3B differ only in $unet. The picture is uploaded to ComfyUI's temp folder first ($image, '<name> [temp]'), and comes back over the WebSocket (SaveImageWebsocket).",
+  "_note": "SeedVR2 upscaling, from ComfyUI's templates utility_seedvr2_{7b,3b}_int8_upscale_image (one step, CFG 1, euler, simple, tiled VAE), in API format, but resized to a shortest edge of $edge (as mflux's --resolution) instead of 4x. The 7B and 3B differ only in $unet. The picture is uploaded to ComfyUI's temp folder first ($image, '<name> [temp]'), and comes back over the WebSocket (SaveImageWebsocket). Unlike the template, it stays RGB: LoadImage keeps the picture's alpha apart (its mask, unused here, as there's no JoinImageWithAlpha), and SplitImageWithAlpha drops any at the end, as the Qwen-Image workflow does.",
   "load": { "class_type": "LoadImage", "inputs": { "image": "$image" } },
   "unet": {
     "class_type": "UNETLoader",
     "inputs": { "unet_name": "$unet", "weight_dtype": "default" }
   },
   "vae": { "class_type": "VAELoader", "inputs": { "vae_name": "$vae" } },
-  "alpha": {
-    "class_type": "JoinImageWithAlpha",
-    "inputs": { "image": ["load", 0], "alpha": ["load", 1] }
-  },
   "resize": {
     "class_type": "ResizeImageMaskNode",
     "inputs": {
-      "input": ["alpha", 0],
+      "input": ["load", 0],
       "resize_type": "scale shorter dimension",
       "resize_type.shorter_size": "$edge",
       "scale_method": "lanczos"
@@ -69,5 +65,6 @@
       "color_correction_method": "lab"
     }
   },
-  "save": { "class_type": "SaveImageWebsocket", "inputs": { "images": ["finish", 0] } }
+  "rgb": { "class_type": "SplitImageWithAlpha", "inputs": { "image": ["finish", 0] } },
+  "save": { "class_type": "SaveImageWebsocket", "inputs": { "images": ["rgb", 0] } }
 }

@@ -1,5 +1,5 @@
 {
-  "_note": "Qwen-Image 2.1, from ComfyUI's template image_qwen_image_2_1_t2i (25 steps, CFG 1, euler, simple), in API format. $names are filled in by server/images/comfyui/workflow.ts. The picture comes back over the WebSocket (SaveImageWebsocket, which ships with ComfyUI), so ComfyUI writes no file: the app keeps the only copy.",
+  "_note": "Qwen-Image 2.1, from ComfyUI's template image_qwen_image_2_1_t2i (25 steps, CFG 1, euler, simple), in API format. $names are filled in by server/images/comfyui/workflow.ts. The picture comes back over the WebSocket (SaveImageWebsocket, which ships with ComfyUI), so ComfyUI writes no file: the app keeps the only copy. It's sent as RGB (SplitImageWithAlpha): Qwen-Image 2.1 decodes a fourth channel, at 240-255 rather than opaque, which TripoSplat took for a cut-out and an edit would read as an edit mask.",
   "unet": {
     "class_type": "UNETLoader",
     "inputs": { "unet_name": "$unet", "weight_dtype": "default" }
@@ -41,5 +41,6 @@
     "class_type": "VAEDecode",
     "inputs": { "samples": ["sampler", 0], "vae": ["vae", 0] }
   },
-  "save": { "class_type": "SaveImageWebsocket", "inputs": { "images": ["decode", 0] } }
+  "rgb": { "class_type": "SplitImageWithAlpha", "inputs": { "image": ["decode", 0] } },
+  "save": { "class_type": "SaveImageWebsocket", "inputs": { "images": ["rgb", 0] } }
 }
