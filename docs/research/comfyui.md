@@ -99,7 +99,7 @@ the Mac:
   enough on the RTX 4070 is to measure there. `POST /free` before a voice or 3D job does what
   unloading Ollama does now.
 - **Nodes:** only ComfyUI's built-in nodes, so a fresh install on either machine runs the workflow.
-  Upscaling with SeedVR2 needs a custom node; until one is chosen, Upscale on ComfyUI is left off.
+  SeedVR2 turned out to be built in too (see "Upscaling on ComfyUI" below).
 
 ## Gotchas found on the way
 
@@ -172,7 +172,7 @@ in use (Windows and apps), and the next Text Model call loaded on a clear GPU.
   against 20 ms via `127.0.0.1` (and 323 ms against 1 ms from Deno, to a test server). The app's
   default is `127.0.0.1`; the client's Cancel test failed on Windows until its stand-in used it too.
 - Not run on Windows: Cancel mid-render against the real ComfyUI, other sizes, and a Roleplay's
-  pictures (the Art Agent's path); Upscale is off without mflux.
+  pictures (the Art Agent's path). Upscale: see "Upscaling on ComfyUI" below.
 
 ## Comfy Desktop, ComfyUI, and who starts it (2026-10-07)
 
@@ -217,15 +217,48 @@ in use (Windows and apps), and the next Text Model call loaded on a clear GPU.
   takes a picture inline, and ComfyUI has no API to delete an upload; `POST /upload/image` keeps it
   in its `input/` folder for good. The least bad with built-in nodes: upload with `type=temp` and
   load it as `"<name> [temp]"`, so the copy sits in the temp folder until ComfyUI next starts (it
-  empties temp on startup). That's the one exception to "ComfyUI keeps nothing of the app's"; the
-  owner doesn't like it, so it stays noted here until something better turns up.
+  empties temp on startup). That's the one exception to "ComfyUI keeps nothing of the app's".
+  **Settled (2026-10-07): temp, then blanked.** After the upscale the app uploads a 1×1 PNG under
+  the same name with `overwrite=true`, so the picture is gone at once and only a 70-byte stub (a
+  random `rpg-<uuid>.png`) waits in temp for ComfyUI's next start. Checked on Windows: Comfy
+  Desktop's temp folder is `ComfyUI-Installs/ComfyUI/ComfyUI/temp/`, and after an upscale it held
+  only that 1×1 stub. A custom base64 loader would leave nothing, but every ComfyUI would need it
+  installed.
 - **mflux's SeedVR2 files don't load in ComfyUI** (tested 2026-10-07, to avoid a second copy on
   the Mac). ComfyUI finds them where they are, in the Hugging Face cache, through an extra
   model-paths file (`numz/SeedVR2_comfyUI`: 7B and 3B fp16, the VAE), with no copy or download;
   but its `UNETLoader` refuses them: "Could not detect model type". numz's weights are laid out for
   the SeedVR2 custom node, not ComfyUI's built-in SeedVR2, which wants Comfy-Org's repack. So on the
-  Mac Upscale stays with mflux (nothing downloaded), and Upscale on ComfyUI is for Windows, with
-  Comfy-Org's files (7B fp8 8.2 GB, or 3B fp8 3.4 GB, plus the 0.5 GB VAE).
+  Mac Upscale stays with mflux (nothing downloaded) unless Settings send it to a ComfyUI machine
+  ("Upscale with"), which needs Comfy-Org's files (7B fp8 7.7 GB, 3B fp8 3.2 GB, the 0.5 GB VAE).
+
+### On the RTX 4070 (2026-10-07)
+
+Comfy-Org's `seedvr2_7b_fp8_e4m3fn`, `seedvr2_3b_fp8_e4m3fn` and `seedvr2_ema_vae_fp16` (fp8 for
+an Ada card; int8 is listed first, so the Mac's build would win where both are), through the app's
+job queue, ComfyUI 0.39.1, models loaded and unloaded every time:
+
+| | RTX 4070, ComfyUI | Mac, mflux ([models.md](../models.md)) |
+|---|---|---|
+| 7B, 512×512 → 2048×2048 | **9.5 s** | ~46 s |
+| 3B, 512×512 → 2048×2048 | **7.9 s** | ~41 s |
+| 7B, 832×1216 → 2048×2992 | **12.4 s** (13.7 s the first time) | not measured |
+| 3B, 832×1216 → 2048×2992 | **11.1 s** | not measured |
+
+About 5× the Mac's speed. The model is a small part of it: most of the time is the tiled VAE (40
+tiles to encode, 40 to decode at 2048×2992, reported as the job's "steps"), so 3B saves little.
+The files had just been downloaded, so they may have been read from Windows' file cache; a cold
+read from disk could add a few seconds. The card was back to ~1.2 GB in use afterwards.
+
+- **Colour: `lab`, not the template's `none`.** With `none`, SeedVR2's output was visibly darker:
+  mean brightness 29.2 → 25.9 (−11%), red −17%. With `lab` ("transfer color in CIELAB space,
+  preserving detail", the node's own default) it was 17.4 → 17.0 (−2%), and the added detail (hair
+  strands, skin, the knit of a scarf) is the same. The workflow uses `lab`.
+- **Size:** "scale shorter dimension" to 2048 on `ResizeImageMaskNode`, as mflux's
+  `--resolution 2048`; 1216 × 2048/832 comes out at 2992 (a multiple of 8), not 2994.
+- **The Upscaler's own address:** Settings' `imageBaseUrl` at upscale time, as the Upscaler choice
+  itself is read then; a render uses its Session's. A Mac can keep mflux for pictures and send
+  only Upscale to the PC; Settings' check then covers only SeedVR2's files there.
 - **Gotcha:** a second ComfyUI started on a port already taken (here Comfy Desktop's 8188) logs
   "Port 8188 is already in use" and exits, and whatever answers on that port is the other one. Test
   instances go on another port (8189).

@@ -360,7 +360,8 @@ consistency* in [open-threads.md](open-threads.md).
   preloaded first, so there is no blank frame.
   **Upscale** (beside Send; with the 3D buttons in `PictureButtons`, shared by every kind) enlarges the shown Frame's
   image to 2048 px on its shortest edge with the SeedVR2 model chosen in Settings (7B by default, or 3B;
-  `mflux-upscale-seedvr2`), through the
+  `mflux-upscale-seedvr2`, or ComfyUI's built-in SeedVR2 when Settings' "Upscale with" says ComfyUI,
+  whichever backend rendered), through the
   same render queue, with the same sweep and step count, queued as a job so the next Action (or
   edit) needn't wait. The original stays as the thumbnail; the
   main view shows the upscaled image. The button reads **Upscaled**, disabled, once done, and
@@ -424,11 +425,12 @@ consistency* in [open-threads.md](open-threads.md).
   changes), quantization (8 or 4 bit: the first render with a model saves a smaller copy of it in
   `models/quantized` (gitignored) and later ones load it, 3.5–8 GB less memory; Settings lists the copies
   with their sizes, to delete), size (six presets from 512×512 to 1216×832), seed (random per
-  Session, or fixed), Upscaler (SeedVR2 7B or 3B), Art Agent model (the model that pictures
-  Roleplay Frames, with Thinking off, or "Same as the Text Model"), Art Agent style (prose,
-  recommended, or tags) and Limits (on by default; off leaves only "everyone depicted is an adult").
-  Settings are copied into a Session when it starts, except the Upscaler, Art Agent model and style,
-  and Limits, which apply at once.
+  Session, or fixed), Upscaler (SeedVR2 7B or 3B) and where it runs ("Upscale with": mflux, or
+  ComfyUI at the address on the same tab, which may be another machine), Art Agent model (the model
+  that pictures Roleplay Frames, with Thinking off, or "Same as the Text Model"), Art Agent style
+  (prose, recommended, or tags) and Limits (on by default; off leaves only "everyone depicted is an
+  adult"). Settings are copied into a Session when it starts, except the Upscaler and where it runs,
+  Art Agent model and style, and Limits, which apply at once.
 - **Theme:** Light (a parchment tint), Dark or System, remembered per browser. It's a display
   preference, not a Setting.
 

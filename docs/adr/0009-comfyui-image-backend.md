@@ -30,7 +30,12 @@ Windows:
   ends: kept loaded they'd crowd out the Text Model, and on a 12 GB card push it off the GPU.
 
 Pictures count as available when mflux is installed or Settings choose ComfyUI. **Upscale** became
-its own Feature: it's SeedVR2 through mflux, whichever backend rendered, so it needs mflux.
+its own Feature, SeedVR2 whichever backend rendered, with its own backend in Settings
+(`upscaleBackend`, added 2026-10-07; an older file follows `imageBackend`): mflux, or ComfyUI's
+built-in SeedVR2 (`comfyui/workflows/seedvr2.json`) at the same address. So a Mac can render with
+mflux and upscale on a ComfyUI machine, which on an RTX 4070 is ~5× faster. ComfyUI can't take a
+picture inline with its built-in nodes, so the one to upscale is uploaded to its temp folder, and a
+1×1 blank is written over it once used (`overwrite`); ComfyUI clears the stub when it next starts.
 
 ## Considered Options
 
@@ -41,11 +46,13 @@ its own Feature: it's SeedVR2 through mflux, whichever backend rendered, so it n
   but the memory stays taken while the Text Model works. Revisit if renders come in bursts.
 - **Workflows in the UI format** (what ComfyUI saves by default). The API format is what `/prompt`
   takes; the UI format would need converting, subgraphs and all.
-- **Custom nodes** (GGUF loaders, SeedVR2). Left out so a fresh install runs the workflows; Upscale
-  on ComfyUI waits for a choice of node.
+- **Custom nodes** (GGUF loaders, SeedVR2, a base64 image loader that would send the picture to
+  upscale inline). Left out so a fresh install runs the workflows; SeedVR2 turned out to be built
+  in, and the upload is blanked after use instead.
 
 ## Consequences
 
 - A new ComfyUI model is a workflow file and an entry in `comfyui/models.ts`.
 - ComfyUI must be running when a Session renders; if it isn't, the render fails saying so.
-- On Windows, Upscale is off until a ComfyUI upscaler is added.
+- Upscale on ComfyUI needs Comfy-Org's SeedVR2 files there (mflux's don't load in ComfyUI).
+- ComfyUI's temp folder holds a 1×1 stub per upscale until it restarts.

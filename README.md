@@ -64,7 +64,15 @@ The vocabulary (Scenario, Session, Image Prompt, Frame, Action, …) is defined 
   Settings names any that are missing. The app talks to it only through its API, so it can run on
   another machine, and ComfyUI keeps nothing: no copy of a picture (it comes back over the API into
   the Session's folder) and no prompt in its history. The app doesn't start ComfyUI: open Comfy
-  Desktop, or run ComfyUI itself (the command is in the findings). Upscale still needs mflux. Findings: [docs/research/comfyui.md](docs/research/comfyui.md).
+  Desktop, or run ComfyUI itself (the command is in the findings). **Upscale** can run on ComfyUI
+  too ("Upscale with" on the Images tab), even when mflux renders: a Mac can upscale on a PC with
+  an NVIDIA card (SeedVR2 7B, 512 px to 2048: 9.5 s on an RTX 4070, ~46 s with mflux on the Mac).
+  It needs Comfy-Org's SeedVR2 files there (`diffusion_models/seedvr2_7b_fp8_e4m3fn` and/or
+  `seedvr2_3b_fp8_e4m3fn`, and `vae/seedvr2_ema_vae_fp16`, as ComfyUI's "SeedVR2 upscale image"
+  templates download them; mflux's own SeedVR2 files don't load in ComfyUI). The picture to upscale
+  is the one exception to ComfyUI keeping nothing: it's sent to ComfyUI's temp folder and blanked
+  to a 1×1 picture once used, and ComfyUI clears the stub when it next starts. Findings:
+  [docs/research/comfyui.md](docs/research/comfyui.md).
 - **Models download on first use.** Each model (Image Models, the upscaler, the voice models,
   SHARP) is downloaded from Hugging Face into `~/.cache/huggingface` the first time it's needed,
   shown as "Downloading the model (first use only)…" while it is; they're 3–30 GB each, so the
