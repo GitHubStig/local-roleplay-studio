@@ -586,6 +586,24 @@ ran unchanged on MPS (`device='mps'`), M5 Pro:
 - **What it is for:** one Character to turn all the way round, without the room. SHARP keeps the
   whole picture from near its own view in 11 s; the two do different jobs.
 
+### TripoSplat on Windows with an RTX 4070 (2026-10-07)
+
+The same `python/triposplat/make.py` on CUDA, with the environment SHARP's install left (uv
+reused the cached PyTorch). `--download` fetched the 4.16 GB of weights in 91 s (the DINOv3
+encoder 1.57 GB, the model 0.69, its encoder 0.64 and decoder 0.54, BiRefNet 0.41, the FLUX.2 VAE
+0.31). From a picture of one person (the lighthouse keeper alone by the fire, 2048×2992 upscale):
+
+- **Faster than the Mac:** 50 s run directly (~5 s starting Python, 13.4 s loading, **31.2 s
+  making**), 52 s through the app, 64 s the very first time. The Mac's: ~3 s loading, 70-100 s
+  making. 524,288 splats in a 34 MB `.ply`.
+- **Light on the card:** it peaked at **6.5 GB** of 12.3 (SHARP: 11.9).
+- **The first figure kept the whole room** (fireplace, chair, floor): no cut-out had been made.
+  The picture came from ComfyUI as RGBA with alpha at 240-255, and TripoSplat skips BiRefNet for
+  any alpha below 255, taking the picture as cut out already
+  ([research/comfyui.md](comfyui.md), "Alpha"). Handed the picture as RGB, BiRefNet cut out just
+  the woman, and the figure turns all the way round: from behind, an invented back of the raincoat
+  and hood. mflux's pictures are RGB, so this never showed on the Mac.
+
 ## Turnaround trial (2026-10-02): text → four views → mesh
 
 A Character drawn from several sides, then built from all of them, instead of guessing their back

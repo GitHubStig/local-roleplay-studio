@@ -91,7 +91,11 @@ def make(image_path, out, gaussians):
     # TripoSplat's own defaults: more steps or guidance didn't add detail (they're bounded by its
     # fixed-size latent), and its run() would refuse more than 262,144 Gaussians.
     gen = torch.Generator(device=dev.type).manual_seed(42)
-    prepared = pipe.preprocess_image(image_path, erode_radius=1)
+    # As RGB, so BiRefNet always cuts the person out: TripoSplat skips it for a picture with any
+    # alpha below 255, taking that as a cut-out already, and ComfyUI's Qwen-Image 2.1 pictures are
+    # RGBA with alpha at 240-255 all over (the whole picture became the figure, 2026-10-07).
+    from PIL import Image
+    prepared = pipe.preprocess_image(Image.open(image_path).convert('RGB'), erode_radius=1)
     cond = pipe.encode_image(prepared, generator=gen)
     latent = pipe.sample_latent(cond, steps=20, guidance_scale=3.0, shift=3.0, generator=gen)
     figure = pipe.decode_latent(latent['latent'], num_gaussians=gaussians)

@@ -322,9 +322,14 @@ read from disk could add a few seconds. The card was back to ~1.2 GB in use afte
   scar) much the same. So one Session can hold upscales from both, as "Upscale with" applies at once.
   [bench/backends/upscale-mflux-comfyui.webp](../bench/backends/upscale-mflux-comfyui.webp): mflux,
   then ComfyUI, a close-up of the face.
-- **Alpha is harmless:** ComfyUI's Qwen-Image 2.1 pictures are RGBA; SHARP (`load_rgb`,
-  `remove_alpha`), TripoSplat and LiTo (`convert('RGB')`) drop it, and browsers show them as usual.
-  The files are about a third larger.
+- **Alpha, nearly harmless:** ComfyUI's Qwen-Image 2.1 pictures are RGBA; SHARP (`load_rgb`,
+  `remove_alpha`) and LiTo (`convert('RGB')` before its cut-out) drop it, and browsers show them
+  as usual. The files are about a third larger. **But the alpha isn't a solid 255**: it wavers
+  between 240 and 255 (54,035 pixels of an 832×1216 render, hundreds of thousands in its upscales,
+  checked on Windows 2026-10-07), and TripoSplat's `preprocess_image` takes any alpha below 255
+  for a cut-out already made, so it skipped BiRefNet and made the whole picture, fireplace, chair
+  and floor, into the "figure". `python/triposplat/make.py` now hands it the picture as RGB, so
+  BiRefNet always cuts the person out; that fixes pictures already in Sessions too.
 
 **Timings, the same job on each** (Qwen-Image 2.1 at 832×1216, 25 steps, seed 7; SeedVR2 7B to
 2048×2992; through the app's image code, models loaded and freed each time):
