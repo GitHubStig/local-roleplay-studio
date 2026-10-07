@@ -2,7 +2,7 @@ import { assertEquals, assertRejects } from '@std/assert'
 import { join } from '@std/path'
 import { DEFAULT_SETTINGS, type Settings } from '../../settings.ts'
 import { withTempDir } from '../../testing.ts'
-import { comfyuiImageGenerator } from './comfyui.ts'
+import { comfyuiImageGenerator, comfyuiStatus } from './comfyui.ts'
 import { COMFYUI_MODELS } from './models.ts'
 import { fillWorkflow, loadWorkflow, pickFiles } from './workflow.ts'
 
@@ -32,6 +32,9 @@ function fakeComfyUI(
       const { socket, response } = Deno.upgradeWebSocket(req)
       sockets.set(url.searchParams.get('clientId')!, socket)
       return response
+    }
+    if (path === '/system_stats') {
+      return Response.json({ system: { comfyui_version: '0.39.1' }, devices: [{ name: 'mps' }] })
     }
     if (path.startsWith('/models/')) {
       return Response.json((opts.files ?? MAC_FILES)[path.slice('/models/'.length)] ?? [])
@@ -237,4 +240,25 @@ Deno.test('Files are picked by the first pattern installed, so each machine can 
     pickFiles(qwen, (f) => both[f as keyof typeof both] ?? []).unet,
     'qwen_image_2.1_int8_convrot.safetensors',
   )
+})
+
+Deno.test("Settings' check: ComfyUI's version and device, and whether the model's files are there", async () => {
+  const ready = fakeComfyUI()
+  const missing = fakeComfyUI({ files: { ...MAC_FILES, vae: [] } })
+  try {
+    assertEquals(await comfyuiStatus(ready.url, 'qwen-image-2.1'), {
+      up: true,
+      version: '0.39.1',
+      device: 'mps',
+      ready: true,
+    })
+    const status = await comfyuiStatus(missing.url, 'qwen-image-2.1')
+    assertEquals([status.up, status.up && status.ready], [true, false])
+    assertEquals(status.up && status.missing?.includes('vae/'), true)
+  } finally {
+    await ready.close()
+    await missing.close()
+  }
+  const down = await comfyuiStatus('http://localhost:9', 'qwen-image-2.1')
+  assertEquals(down.up, false)
 })

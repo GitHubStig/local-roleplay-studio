@@ -140,6 +140,19 @@ export const deleteQuantized = (name: string) =>
     method: 'DELETE',
   })
 
+/** Whether ComfyUI answers at an address, and has an Image Model's files. */
+export type ComfyStatus =
+  | { up: true; version: string; device: string; ready: boolean; missing?: string }
+  | { up: false; error: string }
+
+/** Checks ComfyUI at an address not saved yet ('' for its default), for an Image Model. */
+export const checkComfyUI = (imageBaseUrl: string, imageModel: string) =>
+  request<ComfyStatus>('/api/settings/comfyui', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ imageBaseUrl, imageModel }),
+  })
+
 /** The models on a Text backend that isn't saved yet; without a key, with the saved one. */
 export const listTextModels = (
   connection: Pick<Settings, 'textBackend' | 'textBaseUrl' | 'textApiKey'>,

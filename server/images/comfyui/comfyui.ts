@@ -2,7 +2,7 @@ import { join } from '@std/path'
 import type { ImageGenerator } from '../imageGenerator.ts'
 import { COMFYUI_URL } from '../imageModels.ts'
 import { SIZE_PRESETS } from '../../settings.ts'
-import { findComfyModel } from './models.ts'
+import { type ComfyModel, findComfyModel } from './models.ts'
 import { fillWorkflow, loadWorkflow, pickFiles } from './workflow.ts'
 
 /**
@@ -26,12 +26,8 @@ export function comfyuiImageGenerator(): ImageGenerator {
       if (!model) throw new Error(`ComfyUI has no Image Model "${req.settings.imageModel}" here`)
       const size = SIZE_PRESETS.find((p) => p.id === req.settings.size) ?? SIZE_PRESETS[0]
 
-      const installed = new Map<string, string[]>()
-      for (const folder of new Set(Object.values(model.files).map((f) => f.folder))) {
-        installed.set(folder, await getJson(base, `/models/${folder}`, signal))
-      }
       const workflow = fillWorkflow(await loadWorkflow(model.id), {
-        ...pickFiles(model, (folder) => installed.get(folder) ?? []),
+        ...await modelFiles(base, model, signal),
         prompt: req.prompt,
         seed: req.seed,
         steps: req.settings.steps,
@@ -76,6 +72,50 @@ export function comfyuiImageGenerator(): ImageGenerator {
     upscale() {
       return Promise.reject(new Error("Upscaling isn't available through ComfyUI yet"))
     },
+  }
+}
+
+/** The files a model's loaders use on this ComfyUI (`pickFiles`); throws naming any missing. */
+async function modelFiles(base: string, model: ComfyModel, signal: AbortSignal) {
+  const installed = new Map<string, string[]>()
+  for (const folder of new Set(Object.values(model.files).map((f) => f.folder))) {
+    installed.set(folder, await getJson(base, `/models/${folder}`, signal))
+  }
+  return pickFiles(model, (folder) => installed.get(folder) ?? [])
+}
+
+/** Whether ComfyUI answers at an address, and can run an Image Model there: for Settings. */
+export type ComfyStatus =
+  | { up: true; version: string; device: string; ready: boolean; missing?: string }
+  | { up: false; error: string }
+
+/**
+ * Asks the ComfyUI at `baseUrl` ('' for its default) what it is (`GET /system_stats`), and whether it
+ * has `modelId`'s files. Never throws: what's wrong is in the answer.
+ */
+export async function comfyuiStatus(baseUrl: string, modelId: string): Promise<ComfyStatus> {
+  const base = (baseUrl || COMFYUI_URL).replace(/\/+$/, '')
+  const signal = AbortSignal.timeout(5000)
+  let stats: { system?: { comfyui_version?: string }; devices?: { name?: string }[] }
+  try {
+    stats = await getJson(base, '/system_stats', signal)
+  } catch (err) {
+    return { up: false, error: (err as Error).message }
+  }
+  const up = {
+    up: true as const,
+    version: stats.system?.comfyui_version ?? '?',
+    device: stats.devices?.[0]?.name ?? '?',
+  }
+  const model = findComfyModel(modelId)
+  if (!model) {
+    return { ...up, ready: false, missing: `ComfyUI has no Image Model "${modelId}" here` }
+  }
+  try {
+    await modelFiles(base, model, signal)
+    return { ...up, ready: true }
+  } catch (err) {
+    return { ...up, ready: false, missing: (err as Error).message }
   }
 }
 

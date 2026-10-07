@@ -2,7 +2,7 @@ import { createHandler } from './app.ts'
 import { placeholderImageGenerator } from './images/imageGenerator.ts'
 import { fromFileUrl } from '@std/path'
 import { mfluxImageGenerator, mfluxQuantizedStore } from './images/mflux/mflux.ts'
-import { comfyuiImageGenerator } from './images/comfyui/comfyui.ts'
+import { comfyuiImageGenerator, comfyuiStatus } from './images/comfyui/comfyui.ts'
 import { imageBackends } from './images/backend.ts'
 import { dirScenarioLibrary } from './scenario.ts'
 import { dirSessionStore } from './session.ts'
@@ -42,6 +42,7 @@ const text = (connection: TextConnection, apiKey?: string) =>
 const handler = createHandler({
   settings,
   listTextModels: (connection, apiKey) => text(connection, apiKey).listModels(),
+  comfyuiStatus,
   scenarios: dirScenarioLibrary(new URL('../scenarios/', import.meta.url)),
   sessions: dirSessionStore(new URL('../sessions/', import.meta.url)),
   textModel: (c) => chatTextModel(text(c).chat(c.model, c.thinking)),

@@ -9,6 +9,7 @@ vi.mock('../api', async (importOriginal) => ({
   getSettings: vi.fn(),
   getSettingsOptions: vi.fn(),
   listTextModels: vi.fn(),
+  checkComfyUI: vi.fn(),
   saveSettings: vi.fn(),
   listQuantized: vi.fn(),
   deleteQuantized: vi.fn(),
@@ -100,8 +101,26 @@ describe('SettingsView', () => {
     await flushPromises()
     // Nothing to set up with mflux, but the backend can still be chosen.
     expect(wrapper.find('[data-image-model]').exists()).toBe(false)
+    vi.mocked(api.checkComfyUI).mockResolvedValue({
+      up: false,
+      error: "Couldn't reach ComfyUI at http://127.0.0.1:8188: is it running?",
+    })
     await wrapper.find('[data-image-backend]').setValue('comfyui')
     expect(wrapper.find('[data-image-base-url]').exists()).toBe(true)
+    // Checked as soon as it's chosen: down, until ComfyUI is started and checked again.
+    await new Promise((r) => setTimeout(r, 600))
+    await flushPromises()
+    expect(wrapper.find('[data-comfy-status]').text()).toContain('Down: Couldn')
+    vi.mocked(api.checkComfyUI).mockResolvedValue({
+      up: true,
+      version: '0.39.1',
+      device: 'mps',
+      ready: true,
+    })
+    await wrapper.find('[data-check-comfy]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-comfy-status]').text()).toContain('Up: ComfyUI 0.39.1 on mps')
+    expect(api.checkComfyUI).toHaveBeenLastCalledWith('', 'qwen-image-2.1')
     const models = wrapper.findAll('[data-image-model] option').map((o) => o.text())
     expect(models).toEqual(['Qwen-Image 2.1'])
     // ComfyUI's models have no Quantize, step cache or Fast; Upscale needs mflux.

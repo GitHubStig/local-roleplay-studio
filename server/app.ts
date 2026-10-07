@@ -2,6 +2,7 @@ import { extname, join } from '@std/path'
 import { error, json, readJson, type Route } from './http.ts'
 import type { ImageGenerator } from './images/imageGenerator.ts'
 import { IMAGE_BACKENDS, imageModelsOf } from './images/imageModels.ts'
+import type { ComfyStatus } from './images/comfyui/comfyui.ts'
 import { UPSCALERS } from './images/mflux/models.ts'
 import { crossedLimit, setLimitsEnabled } from './limits.ts'
 import {
@@ -51,6 +52,8 @@ export interface AppDeps {
   settings: SettingsStore
   /** A Text backend's models; `apiKey` stands in for the saved one (trying a new key). */
   listTextModels: (connection: TextConnection, apiKey?: string) => Promise<TextModelInfo[]>
+  /** Whether ComfyUI answers at an address, and has an Image Model's files (for Settings). */
+  comfyuiStatus?: (baseUrl: string, imageModel: string) => Promise<ComfyStatus>
   scenarios: ScenarioLibrary
   sessions: SessionStore
   /** The Text Model as a Chain or Storyboard uses it. */
@@ -427,6 +430,18 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       const { textApiKey } = body as { textApiKey?: unknown }
       if (typeof textApiKey === 'string') await deps.settings.saveApiKey(textApiKey.trim())
       return json(await shownSettings(result.settings))
+    }],
+
+    // Whether ComfyUI is up at an address not saved yet, and has the Image Model's files.
+    ['POST', new URLPattern({ pathname: '/api/settings/comfyui' }), async (req) => {
+      const body = await readJson(req) as
+        | { imageBaseUrl?: unknown; imageModel?: unknown }
+        | undefined
+      if (typeof body?.imageBaseUrl !== 'string' || typeof body.imageModel !== 'string') {
+        return error('Give an imageBaseUrl and an imageModel', 400)
+      }
+      if (!deps.comfyuiStatus) return error("ComfyUI isn't set up on this server", 409)
+      return json(await deps.comfyuiStatus(body.imageBaseUrl.trim(), body.imageModel))
     }],
 
     // The models on a Text backend not saved yet, for Settings to offer as it's changed.

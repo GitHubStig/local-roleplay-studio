@@ -3,6 +3,8 @@ import { computed, onMounted, ref } from 'vue'
 import { watchDebounced } from '@vueuse/core'
 import {
   ApiError,
+  checkComfyUI,
+  type ComfyStatus,
   deleteQuantized,
   getSettings,
   getSettingsOptions,
@@ -128,6 +130,24 @@ function onImageBackendChange() {
   form.value.imageModel = imageModels.value[0]?.id ?? ''
   onImageModelChange()
 }
+/** ComfyUI at the address shown: up or down, and whether the Image Model's files are there. */
+const comfy = ref<ComfyStatus | 'checking' | null>(null)
+async function checkComfy() {
+  if (form.value?.imageBackend !== 'comfyui') return (comfy.value = null)
+  comfy.value = 'checking'
+  const { imageBaseUrl, imageModel } = form.value
+  comfy.value = await checkComfyUI(imageBaseUrl, imageModel).catch((err) => ({
+    up: false as const,
+    error: (err as Error).message,
+  }))
+}
+// Checked when ComfyUI is chosen, and again as its address or the model changes.
+watchDebounced(
+  () => form.value && [form.value.imageBackend, form.value.imageBaseUrl, form.value.imageModel],
+  checkComfy,
+  { debounce: 500, immediate: true },
+)
+
 /** Pictures can be made: mflux is here, or ComfyUI is chosen (a server makes them, not this machine). */
 const picturesHere = computed(() =>
   !!options.value?.features.images.available || form.value?.imageBackend === 'comfyui'
@@ -349,6 +369,27 @@ async function save() {
               placeholder="http://127.0.0.1:8188"
               data-image-base-url
             />
+            <span class="flex items-center gap-2 text-sm" data-comfy-status>
+              <span v-if="comfy === 'checking'" class="animate-pulse text-muted">Checking…</span>
+              <template v-else-if="comfy?.up">
+                <span v-if="comfy.ready" class="text-ok">
+                  Up: ComfyUI {{ comfy.version }} on {{ comfy.device }}, with the model's files.
+                </span>
+                <span v-else class="text-warn">
+                  Up (ComfyUI {{ comfy.version }}), but {{ comfy.missing }}
+                </span>
+              </template>
+              <span v-else-if="comfy" class="text-danger">Down: {{ comfy.error }}</span>
+              <button
+                type="button"
+                class="ml-auto shrink-0 rounded border border-line px-2 py-0.5 text-xs disabled:opacity-50"
+                :disabled="comfy === 'checking'"
+                data-check-comfy
+                @click="checkComfy"
+              >
+                Check
+              </button>
+            </span>
             <span class="text-sm text-muted">
               Empty for ComfyUI on this machine at its usual port. ComfyUI must be running, with the
               model's files installed (Settings says which when one is missing). Its pictures come

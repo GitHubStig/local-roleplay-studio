@@ -1,6 +1,6 @@
 import { assertEquals, assertMatch, assertNotEquals, assertStringIncludes } from '@std/assert'
 import { join } from '@std/path'
-import { createHandler } from './app.ts'
+import { type AppDeps, createHandler } from './app.ts'
 import { renderPrompt } from './imagePrompt.ts'
 import type { TextConnection, TextModelInfo } from './text/backend.ts'
 import type { ImageGenerator } from './images/imageGenerator.ts'
@@ -49,6 +49,7 @@ function memoryStore(initial: Settings = { ...DEFAULT_SETTINGS }): SettingsStore
 interface SetupOptions {
   root?: string
   listTextModels?: (connection: TextConnection, apiKey?: string) => Promise<TextModelInfo[]>
+  comfyuiStatus?: AppDeps['comfyuiStatus']
   textModel?: TextModel
   imageGenerator?: ImageGenerator
   roleplayModel?: RoleplayModel
@@ -70,6 +71,7 @@ function setup(opts: SetupOptions = {}) {
   const sessions = dirSessionStore(opts.root ?? '/nonexistent')
   const handler = createHandler({
     settings,
+    comfyuiStatus: opts.comfyuiStatus,
     listTextModels: opts.listTextModels ??
       (() =>
         Promise.resolve([
@@ -232,6 +234,27 @@ Deno.test('GET /api/settings/options lists Text and Image Models', async () => {
   assertEquals(body.thinkingModels, ['qwen3.8:27b-mlx'])
   assertEquals(body.imageModels.mflux[0].id, 'flux2-klein-4b')
   assertEquals(body.imageModels.comfyui.map((m: { id: string }) => m.id), ['qwen-image-2.1'])
+})
+
+Deno.test('POST /api/settings/comfyui checks an address not saved yet', async () => {
+  const asked: [string, string][] = []
+  const { call } = setup({
+    comfyuiStatus: (url, model) => {
+      asked.push([url, model])
+      return Promise.resolve({
+        up: true,
+        version: '0.39.1',
+        device: 'cuda:0 NVIDIA GeForce RTX 4070',
+        ready: true,
+      })
+    },
+  })
+  const res = await call('POST', '/api/settings/comfyui', {
+    imageBaseUrl: ' http://192.168.1.20:8188 ',
+    imageModel: 'qwen-image-2.1',
+  })
+  assertEquals((await res.json()).device, 'cuda:0 NVIDIA GeForce RTX 4070')
+  assertEquals(asked, [['http://192.168.1.20:8188', 'qwen-image-2.1']])
 })
 
 Deno.test('Choosing ComfyUI makes pictures available where mflux is not', async () => {
