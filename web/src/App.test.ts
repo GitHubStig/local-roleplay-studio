@@ -70,6 +70,8 @@ beforeEach(() => {
   vi.mocked(api.getSettings).mockResolvedValue({
     textBackend: 'ollama',
     textBaseUrl: '',
+    imageBackend: 'mflux',
+    imageBaseUrl: '',
     textModel: 'llama3:latest',
     thinking: false,
     imageModel: 'flux2-klein-4b',
@@ -89,7 +91,7 @@ beforeEach(() => {
   vi.mocked(api.getSettingsOptions).mockResolvedValue({
     textModels: ['llama3:latest'],
     thinkingModels: [],
-    imageModels: [],
+    imageModels: { mflux: [], comfyui: [] },
     sizePresets: [],
     upscalers: [],
     features: ALL_AVAILABLE,

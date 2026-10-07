@@ -44,7 +44,7 @@ export const JOB_KINDS: readonly JobKind[] = [
 export const JOB_FEATURE: Record<JobKind, Feature> = {
   picture: 'images',
   render: 'images',
-  upscale: 'images',
+  upscale: 'upscale',
   voice: 'voices',
   speak: 'voices',
   'speak-thought': 'voices',

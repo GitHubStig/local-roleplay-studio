@@ -1,15 +1,15 @@
 import { join } from '@std/path'
-import { track } from '../children.ts'
+import { track } from '../../children.ts'
 import {
   type ImageGenerator,
   type ImageRequest,
   type OnProgress,
   UPSCALED_EDGE,
   type UpscaleRequest,
-} from './imageGenerator.ts'
-import { findImageModel, IMAGE_MODELS, type ImageModel } from './imageModels.ts'
+} from '../imageGenerator.ts'
+import { findMfluxModel, MFLUX_MODELS, type MfluxModel } from './models.ts'
 import { type QuantizedStore, quantizedStore } from './quantized.ts'
-import { SIZE_PRESETS } from '../settings.ts'
+import { SIZE_PRESETS } from '../../settings.ts'
 
 /**
  * The mflux command line for one image, with the model's step cache or fast mode as Settings ask.
@@ -18,7 +18,7 @@ import { SIZE_PRESETS } from '../settings.ts'
  * peak: see quantized.ts).
  */
 export function mfluxArgs(
-  model: ImageModel,
+  model: MfluxModel,
   req: ImageRequest,
   output: string,
   saved?: string,
@@ -131,7 +131,7 @@ async function mustExist(dir: string, file: string, label: string): Promise<void
 }
 
 export interface MfluxOptions {
-  models?: readonly ImageModel[]
+  models?: readonly MfluxModel[]
   /** Saved quantized copies to render from when Settings ask for Quantize. */
   quantized?: QuantizedStore
 }
@@ -166,7 +166,7 @@ export function mfluxQuantizedStore(root: string): QuantizedStore {
 
 /** Renders images by running the `mflux-generate-*` CLI once per image. */
 export function mfluxImageGenerator(opts: MfluxOptions = {}): ImageGenerator {
-  const models = opts.models ?? IMAGE_MODELS
+  const models = opts.models ?? MFLUX_MODELS
   return {
     async upscale(req, signal, onProgress, onDownload) {
       signal.throwIfAborted()
@@ -179,7 +179,7 @@ export function mfluxImageGenerator(opts: MfluxOptions = {}): ImageGenerator {
     async generate(req, signal, onProgress, onDownload) {
       signal.throwIfAborted()
       const model = models.find((m) => m.id === req.settings.imageModel) ??
-        findImageModel(req.settings.imageModel)
+        findMfluxModel(req.settings.imageModel)
       if (!model) throw new Error(`Unknown Image Model "${req.settings.imageModel}"`)
 
       const file = `${req.name}.png`

@@ -9,7 +9,7 @@ import { makeScene } from './3d/makeScene.ts'
 import type { SceneMaker } from './3d/scene.ts'
 import { type FrameDeps, upscaleFrame } from './frames.ts'
 import { error } from './http.ts'
-import type { Upscaler } from './images/imageModels.ts'
+import type { Upscaler } from './images/mflux/models.ts'
 import type { Job, JobEmit, JobKind } from './jobs.ts'
 import type { Session } from './session.ts'
 

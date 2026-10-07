@@ -1,0 +1,45 @@
+{
+  "_note": "Qwen-Image 2.1, from ComfyUI's template image_qwen_image_2_1_t2i (25 steps, CFG 1, euler, simple), in API format. $names are filled in by server/images/comfyui/workflow.ts. The picture comes back over the WebSocket (SaveImageWebsocket, which ships with ComfyUI), so ComfyUI writes no file: the app keeps the only copy.",
+  "unet": {
+    "class_type": "UNETLoader",
+    "inputs": { "unet_name": "$unet", "weight_dtype": "default" }
+  },
+  "clip": {
+    "class_type": "CLIPLoader",
+    "inputs": { "clip_name": "$clip", "type": "qwen_image", "device": "default" }
+  },
+  "vae": { "class_type": "VAELoader", "inputs": { "vae_name": "$vae" } },
+  "text": {
+    "class_type": "TextEncodeQwenImage21",
+    "inputs": {
+      "clip": ["clip", 0],
+      "prompt": "$prompt",
+      "negative_prompt": "",
+      "resolution": 1024
+    }
+  },
+  "latent": {
+    "class_type": "EmptyLatentImage",
+    "inputs": { "width": "$width", "height": "$height", "batch_size": 1 }
+  },
+  "sampler": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": ["unet", 0],
+      "seed": "$seed",
+      "steps": "$steps",
+      "cfg": 1,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "positive": ["text", 0],
+      "negative": ["text", 1],
+      "latent_image": ["latent", 0],
+      "denoise": 1
+    }
+  },
+  "decode": {
+    "class_type": "VAEDecode",
+    "inputs": { "samples": ["sampler", 0], "vae": ["vae", 0] }
+  },
+  "save": { "class_type": "SaveImageWebsocket", "inputs": { "images": ["decode", 0] } }
+}

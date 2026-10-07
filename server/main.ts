@@ -1,7 +1,9 @@
 import { createHandler } from './app.ts'
 import { placeholderImageGenerator } from './images/imageGenerator.ts'
 import { fromFileUrl } from '@std/path'
-import { mfluxImageGenerator, mfluxQuantizedStore } from './images/mflux.ts'
+import { mfluxImageGenerator, mfluxQuantizedStore } from './images/mflux/mflux.ts'
+import { comfyuiImageGenerator } from './images/comfyui/comfyui.ts'
+import { imageBackends } from './images/backend.ts'
 import { dirScenarioLibrary } from './scenario.ts'
 import { dirSessionStore } from './session.ts'
 import { fileSettingsStore } from './settings.ts'
@@ -44,9 +46,12 @@ const handler = createHandler({
   sessions: dirSessionStore(new URL('../sessions/', import.meta.url)),
   textModel: (c) => chatTextModel(text(c).chat(c.model, c.thinking)),
   roleplayModel: (c) => chatRoleplayModel(text(c).chat(c.model, c.thinking)),
-  imageGenerator: placeholderImages
-    ? placeholderImageGenerator()
-    : mfluxImageGenerator({ quantized }),
+  // Each Session renders with the backend its Settings name: mflux where it's installed (a Mac),
+  // or ComfyUI (any machine).
+  imageGenerator: placeholderImages ? placeholderImageGenerator() : imageBackends({
+    mflux: features.images.available ? mfluxImageGenerator({ quantized }) : undefined,
+    comfyui: comfyuiImageGenerator(),
+  }),
   features,
   quantized,
   // A big render next to a loaded Text Model pushes a 48 GB Mac into swap (375 s instead of 66 s

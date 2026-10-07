@@ -33,7 +33,7 @@ current Image Prompt + Action ──► Text Model (Ollama) ──► { outcome,
                                                               │
      engine: declined / unclear / Limit crossed / unchanged? keep the previous prompt and image
                                                               │
-                  "adult, " + the paragraph ──► Image Model (mflux) ──► frame-N-xxxx.png
+                  "adult, " + the paragraph ──► Image Model (mflux or ComfyUI) ──► frame-N-xxxx.png
                                                               │
                                         commit: append the Frame to session.json
 ```
@@ -419,7 +419,8 @@ consistency* in [open-threads.md](open-threads.md).
   to it.
 - **Settings** (`/settings`): the Text backend (Ollama, or a server with the OpenAI chat API, with its
   address and API key: ADR 0008), Text Model (the backend's models; on Ollama minus OCR and dedicated
-  vision-language models), Thinking (on or off; only for models that support it), Image Model, steps (reset to the model's default when the Image Model
+  vision-language models), Thinking (on or off; only for models that support it), the Image backend (mflux, or ComfyUI with
+  its address: ADR 0009), Image Model (the backend's own), steps (reset to the model's default when the Image Model
   changes), quantization (8 or 4 bit: the first render with a model saves a smaller copy of it in
   `models/quantized` (gitignored) and later ones load it, 3.5–8 GB less memory; Settings lists the copies
   with their sizes, to delete), size (six presets from 512×512 to 1216×832), seed (random per
@@ -503,7 +504,8 @@ theme, Play's last Session) goes through one helper, `useStoredString` in
 `web/src/composables/storage.ts`: saved at once, never synced from other tabs (each tab keeps its
 own draft), and held in memory for the visit when the browser blocks storage. Polling stays
 hand-written: each poll has its own rules for when to stop. Tests: `deno test` for the server, Vitest with happy-dom for the
-web app. The mflux CLI is also exercised in tests through a fake executable.
+web app. The mflux CLI is also exercised in tests through a fake executable, and ComfyUI's API
+through a fake server (HTTP and WebSocket).
 
 ## Decisions log
 

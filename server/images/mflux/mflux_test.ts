@@ -1,11 +1,11 @@
 import { assertEquals, assertRejects } from '@std/assert'
 import { join } from '@std/path'
-import type { ImageRequest } from './imageGenerator.ts'
-import { findImageModel, type ImageModel } from './imageModels.ts'
+import type { ImageRequest } from '../imageGenerator.ts'
+import { findMfluxModel, type MfluxModel } from './models.ts'
 import { mfluxArgs, mfluxImageGenerator, parseProgress, upscaleArgs } from './mflux.ts'
 import type { QuantizedStore } from './quantized.ts'
-import { DEFAULT_SETTINGS } from '../settings.ts'
-import { withTempDir } from '../testing.ts'
+import { DEFAULT_SETTINGS } from '../../settings.ts'
+import { withTempDir } from '../../testing.ts'
 
 const request = (dir: string, extra: Partial<ImageRequest['settings']> = {}): ImageRequest => ({
   prompt: 'a studio',
@@ -16,7 +16,7 @@ const request = (dir: string, extra: Partial<ImageRequest['settings']> = {}): Im
 })
 
 Deno.test('mfluxArgs builds the command line from settings', () => {
-  const klein = findImageModel('flux2-klein-4b')!
+  const klein = findMfluxModel('flux2-klein-4b')!
   assertEquals(mfluxArgs(klein, request('/d', { size: 'square', quantize: 8 }), '/d/x.png'), [
     '--model',
     'flux2-klein-4b',
@@ -38,7 +38,7 @@ Deno.test('mfluxArgs builds the command line from settings', () => {
 })
 
 Deno.test('mfluxArgs renders from a saved quantized copy, named by its model, without --quantize', () => {
-  const klein = findImageModel('flux2-klein-9b')!
+  const klein = findMfluxModel('flux2-klein-9b')!
   const args = mfluxArgs(
     klein,
     request('/d', { quantize: 8 }),
@@ -56,7 +56,7 @@ Deno.test('mfluxArgs renders from a saved quantized copy, named by its model, wi
 
 Deno.test('mfluxArgs adds the step cache only for models that take it', () => {
   const qwen = mfluxArgs(
-    findImageModel('qwen-image-2.1')!,
+    findMfluxModel('qwen-image-2.1')!,
     request('/d', { stepCache: 0.4 }),
     'o.png',
   )
@@ -68,13 +68,13 @@ Deno.test('mfluxArgs adds the step cache only for models that take it', () => {
     ],
   )
   const off = mfluxArgs(
-    findImageModel('qwen-image-2.1')!,
+    findMfluxModel('qwen-image-2.1')!,
     request('/d', { stepCache: null }),
     'o.png',
   )
   assertEquals(off.includes('--step-cache-ratio'), false)
   const klein = mfluxArgs(
-    findImageModel('flux2-klein-4b')!,
+    findMfluxModel('flux2-klein-4b')!,
     request('/d', { stepCache: 0.4 }),
     'o.png',
   )
@@ -82,7 +82,7 @@ Deno.test('mfluxArgs adds the step cache only for models that take it', () => {
 })
 
 Deno.test('mfluxArgs renders fast mode at its own steps, scheduler and LoRA, without the cache', () => {
-  const qwen = findImageModel('qwen-image-2.1')!
+  const qwen = findMfluxModel('qwen-image-2.1')!
   const args = mfluxArgs(qwen, request('/d', { fast: true, steps: 25, stepCache: 0.4 }), 'o.png')
   assertEquals(args[args.indexOf('--steps') + 1], '6')
   assertEquals(args[args.indexOf('--scheduler') + 1], 'viggle_turbo')
@@ -92,13 +92,13 @@ Deno.test('mfluxArgs renders fast mode at its own steps, scheduler and LoRA, wit
   ])
   assertEquals(args.includes('--step-cache-ratio'), false)
   // Models without a fast mode ignore it.
-  const klein = mfluxArgs(findImageModel('flux2-klein-4b')!, request('/d', { fast: true }), 'o.png')
+  const klein = mfluxArgs(findMfluxModel('flux2-klein-4b')!, request('/d', { fast: true }), 'o.png')
   assertEquals([klein.includes('--lora'), klein[klein.indexOf('--steps') + 1]], [false, '3'])
 })
 
 Deno.test('mfluxArgs uses the small size presets', () => {
   const args = mfluxArgs(
-    findImageModel('flux2-klein-4b')!,
+    findMfluxModel('flux2-klein-4b')!,
     request('/d', { size: 'square-small' }),
     'o.png',
   )
@@ -111,7 +111,7 @@ Deno.test('mfluxArgs uses the small size presets', () => {
 })
 
 Deno.test('mfluxArgs passes the base model and skips quantize for pre-quantized weights', () => {
-  const args = mfluxArgs(findImageModel('z-image-turbo')!, request('/d', { quantize: 4 }), 'o.png')
+  const args = mfluxArgs(findMfluxModel('z-image-turbo')!, request('/d', { quantize: 4 }), 'o.png')
   assertEquals(args.slice(0, 4), [
     '--model',
     'filipstrand/Z-Image-Turbo-mflux-4bit',
@@ -130,7 +130,7 @@ Deno.test('parseProgress reads the latest step from a tqdm bar', () => {
 })
 
 /** Writes an executable stand-in for an mflux command and returns a model using it. */
-async function fakeMflux(dir: string, script: string): Promise<ImageModel> {
+async function fakeMflux(dir: string, script: string): Promise<MfluxModel> {
   const command = join(dir, 'fake-mflux')
   await Deno.writeTextFile(command, `#!/bin/sh\n${script}\n`)
   await Deno.chmod(command, 0o755)

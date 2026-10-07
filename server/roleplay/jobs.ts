@@ -4,7 +4,7 @@
  */
 import { error } from '../http.ts'
 import type { Job, JobEmit, JobKind } from '../jobs.ts'
-import type { Upscaler } from '../images/imageModels.ts'
+import type { Upscaler } from '../images/mflux/models.ts'
 import type { Scenario } from '../scenario.ts'
 import type { Session, SessionStore } from '../session.ts'
 import { pictureFrame, renderRoleplayFrame, type RoleplayDeps } from './engine.ts'

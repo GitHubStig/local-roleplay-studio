@@ -52,6 +52,13 @@ The vocabulary (Scenario, Session, Image Prompt, Frame, Action, …) is defined 
   and the other `safetensors` ones) ignore the slider: they read the whole prompt whatever it says,
   and take memory only as a prompt grows (17 GB loaded, 23 GB at 67k tokens), so any setting works.
 - **mflux 0.21+** (the step cache and Fast need it): `uv tool install --managed-python --python 3.14 mflux`. (uv's own Python, kept apart from any other Python on the Mac; mflux runs on 3.10 or newer.)
+- **Or ComfyUI, for pictures on Windows (or any machine):** choose it as the Image backend on the
+  Images tab of Settings, with its address (empty for this machine's `http://127.0.0.1:8188`).
+  ComfyUI must be running (Comfy Desktop, the portable build or a manual install) with the Image
+  Model's files installed; for Qwen-Image 2.1, its `diffusion_models`, `text_encoders` (Qwen3-VL
+  8B) and `vae` files, as ComfyUI's own "Qwen Image 2.1 text to image" template downloads them.
+  Settings names any that are missing. The app talks to it only through its API, so it can run on
+  another machine. Upscale still needs mflux. Findings: [docs/research/comfyui.md](docs/research/comfyui.md).
 - **Models download on first use.** Each model (Image Models, the upscaler, the voice models,
   SHARP) is downloaded from Hugging Face into `~/.cache/huggingface` the first time it's needed,
   shown as "Downloading the model (first use only)…" while it is; they're 3–30 GB each, so the
@@ -135,8 +142,8 @@ Everything else is chosen on the Settings page (in tabs: Text, Images, Voice, 3D
 `settings.json`, including the Text backend's API key (never sent back to the browser).
 
 **What runs where.** Only a Text backend is required: Ollama, or a server with the OpenAI chat API. At startup the server works out which extras this
-machine can run, and says so in its log and on the Settings page: pictures (mflux) and voices
-(mlx-audio) need an Apple Silicon Mac; SHARP and TripoSplat need an Apple Silicon Mac or an NVIDIA
+machine can run, and says so in its log and on the Settings page: pictures need mflux (an Apple
+Silicon Mac) or ComfyUI chosen in Settings; Upscale and voices (mlx-audio) need an Apple Silicon Mac; SHARP and TripoSplat need an Apple Silicon Mac or an NVIDIA
 GPU; LiTo needs an Apple Silicon Mac; the Python ones need uv. One that can't run is off and its
 buttons are hidden, with the reason in Settings; one that can is on, and can be switched off there.
 Without pictures, every kind of Session still runs on the Text Model alone: a Roleplay is a
@@ -155,7 +162,8 @@ server/           Deno API: the app, Sessions, Settings, the job queue, what all
   storyboard/     a Storyboard's plan and edits
   roleplay/       a Roleplay: its engine, Art Agent, voices and jobs
   text/           the Text backends (Ollama, OpenAI-compatible) behind one Chat interface
-  images/         Image Models: mflux, the placeholder, saved quantized copies
+  images/         the Image backends: mflux/ (and its saved quantized copies), comfyui/ (its
+                  workflows in comfyui/workflows/), and the placeholder
   voice/          the voice service's client
   3d/             SHARP scenes, TripoSplat and LiTo figures
   prompts/        what the Text Model is told, one Markdown file each: chain/, storyboard/,

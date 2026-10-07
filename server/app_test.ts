@@ -12,8 +12,8 @@ import { fakeFigureMaker, type FigureMaker } from './3d/figure.ts'
 import { fakeSceneMaker, type SceneMaker } from './3d/scene.ts'
 import type { Availabilities } from './features.ts'
 import { fakeVoiceEngine, type VoiceEngine } from './voice/voice.ts'
-import { type QuantizedStore, quantizedStore } from './images/quantized.ts'
-import { findImageModel } from './images/imageModels.ts'
+import { type QuantizedStore, quantizedStore } from './images/mflux/quantized.ts'
+import { findMfluxModel } from './images/mflux/models.ts'
 import { replyOf, scriptedRoleplayModel, testCast } from './roleplay/testing.ts'
 import {
   fakeImageGenerator,
@@ -121,7 +121,7 @@ Deno.test('Settings list saved quantized copies, and delete them', () =>
       mfluxVersion: () => Promise.resolve('0.20.0'),
       save: (_m, _b, path) => Deno.mkdir(path, { recursive: true }),
     })
-    await quantized.ensure(findImageModel('qwen-image-2.1')!, 8, new AbortController().signal)
+    await quantized.ensure(findMfluxModel('qwen-image-2.1')!, 8, new AbortController().signal)
     const { call } = setup({ quantized })
     const listed = await (await call('GET', '/api/settings/quantized')).json()
     assertEquals(listed.map((c: { name: string; modelId: string }) => [c.name, c.modelId]), [
@@ -230,7 +230,31 @@ Deno.test('GET /api/settings/options lists Text and Image Models', async () => {
   const body = await (await setup().call('GET', '/api/settings/options')).json()
   assertEquals(body.textModels, ['llama3:latest', 'qwen3.8:27b-mlx'])
   assertEquals(body.thinkingModels, ['qwen3.8:27b-mlx'])
-  assertEquals(body.imageModels[0].id, 'flux2-klein-4b')
+  assertEquals(body.imageModels.mflux[0].id, 'flux2-klein-4b')
+  assertEquals(body.imageModels.comfyui.map((m: { id: string }) => m.id), ['qwen-image-2.1'])
+})
+
+Deno.test('Choosing ComfyUI makes pictures available where mflux is not', async () => {
+  const off = { available: false, reason: 'mflux runs only on Apple Silicon Macs' }
+  const on = { available: true }
+  const { call } = setup({
+    features: { images: off, upscale: off, voices: off, scenes: on, figures: on, lito: off },
+  })
+  const before = (await (await call('GET', '/api/settings/options')).json()).features
+  assertEquals(before.images.available, false)
+  assertStringIncludes(before.images.reason, 'or choose ComfyUI')
+  const settings = await (await call('GET', '/api/settings')).json()
+  const saved = await call('PUT', '/api/settings', {
+    ...settings,
+    imageBackend: 'comfyui',
+    imageModel: 'qwen-image-2.1',
+  })
+  assertEquals(saved.status, 200)
+  const after = (await (await call('GET', '/api/settings/options')).json()).features
+  assertEquals([after.images.available, after.upscale.available], [true, false])
+  // An Image Model must be the backend's own.
+  const wrong = await call('PUT', '/api/settings', { ...settings, imageBackend: 'comfyui' })
+  assertEquals(wrong.status, 400)
 })
 
 Deno.test('GET /api/settings/options still answers when Ollama is down', async () => {
@@ -827,7 +851,7 @@ Deno.test('Without pictures every kind starts; a Chain writes its Frames without
       settings: { textModel: 'x' },
       textModel: scriptedTextModel([reply('standing')]),
       imageGenerator: images,
-      features: { images: off, voices: off, scenes: off, figures: off, lito: off },
+      features: { images: off, upscale: off, voices: off, scenes: off, figures: off, lito: off },
     })
     for (const kind of ['chain', 'storyboard', 'roleplay']) {
       const res = await call('POST', '/api/sessions', { kind, brief: 'A rainy street.' })

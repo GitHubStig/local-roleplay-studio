@@ -1,7 +1,8 @@
 import { extname, join } from '@std/path'
 import { error, json, readJson, type Route } from './http.ts'
 import type { ImageGenerator } from './images/imageGenerator.ts'
-import { IMAGE_MODELS, UPSCALERS } from './images/imageModels.ts'
+import { IMAGE_BACKENDS, imageModelsOf } from './images/imageModels.ts'
+import { UPSCALERS } from './images/mflux/models.ts'
 import { crossedLimit, setLimitsEnabled } from './limits.ts'
 import {
   connectionOf,
@@ -26,7 +27,7 @@ import type { RoleplayModel } from './roleplay/model.ts'
 import type { FigureMaker } from './3d/figure.ts'
 import type { SceneMaker } from './3d/scene.ts'
 import type { VoiceEngine } from './voice/voice.ts'
-import type { QuantizedStore } from './images/quantized.ts'
+import type { QuantizedStore } from './images/mflux/quantized.ts'
 import { roleplayExcerpt } from './roleplay/prompt.ts'
 import { roleplayRoutes } from './roleplay/routes.ts'
 import { checkRoleplayJob, type RoleplayJobContext, runRoleplayJob } from './roleplay/jobs.ts'
@@ -290,19 +291,32 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
   })
   const given = (backend: unknown, what: string): Availability =>
     backend ? { available: true } : { available: false, reason: `No ${what} was set up` }
-  const availability: Availabilities = deps.features ?? {
+  const detected: Availabilities = deps.features ?? {
     images: { available: true },
+    upscale: { available: true },
     voices: given(deps.voice, 'voice service'),
     scenes: given(deps.scene, 'SHARP'),
     figures: given(deps.figure, 'TripoSplat'),
     lito: given(deps.lito, 'LiTo'),
   }
   /**
+   * What this machine can run now: as detected at startup, but with pictures available wherever
+   * Settings choose ComfyUI, which a running server provides rather than this machine.
+   */
+  async function availability(): Promise<Availabilities> {
+    const { imageBackend } = await deps.settings.load()
+    if (imageBackend === 'comfyui') return { ...detected, images: { available: true } }
+    if (detected.images.available) return detected
+    const reason = `${detected.images.reason}; or choose ComfyUI as the Image backend in Settings`
+    return { ...detected, images: { available: false, reason } }
+  }
+
+  /**
    * Why `feature` can't be used now (a 409 to send back), or null if it can: this machine can't
    * run it, or it's switched off in Settings.
    */
   async function featureOff(feature: Feature): Promise<Response | null> {
-    const { available, reason } = availability[feature]
+    const { available, reason } = (await availability())[feature]
     if (!available) return error(`${FEATURE_NAMES[feature]} isn't available here: ${reason}`, 409)
     if (!(await deps.settings.load()).features[feature]) {
       return error(`${FEATURE_NAMES[feature]} is switched off in Settings`, 409)
@@ -445,16 +459,11 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     ['GET', new URLPattern({ pathname: '/api/settings/options' }), async () => {
       return json({
         ...await textModelOptions(connectionOf(await deps.settings.load())),
-        imageModels: IMAGE_MODELS.map(({ id, label, defaultSteps, stepCache, fast }) => ({
-          id,
-          label,
-          defaultSteps,
-          stepCache: !!stepCache,
-          fastSteps: fast?.steps,
-        })),
+        // Every backend's, so Settings can switch between them.
+        imageModels: Object.fromEntries(IMAGE_BACKENDS.map((b) => [b, imageModelsOf(b)])),
         sizePresets: SIZE_PRESETS,
         upscalers: UPSCALERS,
-        features: availability,
+        features: await availability(),
       })
     }],
 

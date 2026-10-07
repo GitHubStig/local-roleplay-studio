@@ -1,6 +1,6 @@
 import { join } from '@std/path'
 import type { ImageGenerator } from './images/imageGenerator.ts'
-import type { Upscaler } from './images/imageModels.ts'
+import type { Upscaler } from './images/mflux/models.ts'
 import { crossedLimit, limitsEnabled } from './limits.ts'
 import { mightNameAPerson, type TextModel } from './textModel.ts'
 import { RenderQueue } from './renderQueue.ts'

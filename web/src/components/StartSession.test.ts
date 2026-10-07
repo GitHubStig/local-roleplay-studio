@@ -16,6 +16,8 @@ vi.mock('../api', async (importOriginal) => ({
 const settings: api.Settings = {
   textBackend: 'ollama',
   textBaseUrl: '',
+  imageBackend: 'mflux',
+  imageBaseUrl: '',
   textModel: 'llama3:latest',
   thinking: false,
   imageModel: 'z-image-turbo',
@@ -36,7 +38,16 @@ const settings: api.Settings = {
 const options: api.SettingsOptions = {
   textModels: ['llama3:latest'],
   thinkingModels: [],
-  imageModels: [{ id: 'z-image-turbo', label: 'Z-Image Turbo', defaultSteps: 9, stepCache: false }],
+  imageModels: {
+    mflux: [{
+      id: 'z-image-turbo',
+      label: 'Z-Image Turbo',
+      defaultSteps: 9,
+      stepCache: false,
+      quantize: true,
+    }],
+    comfyui: [],
+  },
   sizePresets: [],
   upscalers: [
     { id: 'seedvr2-7b', label: 'SeedVR2 7B' },

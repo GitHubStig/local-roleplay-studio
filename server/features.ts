@@ -1,16 +1,19 @@
 import { join } from '@std/path'
 
 /**
- * The extras beyond the Text Model, each needing its own backend: pictures (mflux), voices (the
- * mlx-audio service), and 3D (SHARP, TripoSplat, LiTo). Which of them this machine can run is worked
- * out once at startup (`detectFeatures`); Settings can switch off any that can.
+ * The extras beyond the Text Model, each needing its own backend: pictures (mflux, or a ComfyUI
+ * server), upscaling (SeedVR2 through mflux), voices (the mlx-audio service), and 3D (SHARP,
+ * TripoSplat, LiTo). Which of them this machine can run is worked out once at startup
+ * (`detectFeatures`); Settings can switch off any that can. Pictures are also available wherever
+ * Settings choose ComfyUI (`app.ts`), which this can't know at startup.
  */
-export const FEATURES = ['images', 'voices', 'scenes', 'figures', 'lito'] as const
+export const FEATURES = ['images', 'upscale', 'voices', 'scenes', 'figures', 'lito'] as const
 export type Feature = (typeof FEATURES)[number]
 
 /** What each Feature is called when saying it's off. */
 export const FEATURE_NAMES: Record<Feature, string> = {
   images: 'Pictures',
+  upscale: 'Upscale',
   voices: 'Voices',
   scenes: 'SHARP',
   figures: 'TripoSplat',
@@ -58,14 +61,18 @@ export async function detectFeatures(
       : appleSilicon || nvidia
       ? yes
       : no(`${what} needs an Apple Silicon Mac or an NVIDIA GPU`)
+  const withMflux = opts.placeholderImages
+    ? yes
+    : !appleSilicon
+    ? mlxOnly('mflux')
+    : mflux
+    ? yes
+    : no("mflux isn't installed (uv tool install mflux; see the README)")
   return {
-    images: opts.placeholderImages
-      ? yes
-      : !appleSilicon
-      ? mlxOnly('mflux, the image backend,')
-      : mflux
-      ? yes
-      : no("mflux isn't installed (uv tool install mflux; see the README)"),
+    // With mflux; Settings can choose ComfyUI instead.
+    images: withMflux,
+    // SeedVR2, through mflux.
+    upscale: withMflux,
     voices: !appleSilicon ? mlxOnly('The voice service (mlx-audio)') : uv ? yes : noUv,
     scenes: gpu('SHARP'),
     figures: gpu('TripoSplat'),

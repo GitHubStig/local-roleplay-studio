@@ -1,101 +1,52 @@
-/** An mflux Image Model the player can choose, and how to invoke it. */
-export interface ImageModel {
+import { COMFYUI_MODELS } from './comfyui/models.ts'
+import { MFLUX_MODELS } from './mflux/models.ts'
+
+/**
+ * Where pictures are made: mflux (Apple Silicon Macs) or a ComfyUI server (any machine; Windows
+ * with an NVIDIA card). Each has its own Image Models (`mflux/models.ts`, `comfyui/models.ts`).
+ */
+export const IMAGE_BACKENDS = ['mflux', 'comfyui'] as const
+export type ImageBackendKind = (typeof IMAGE_BACKENDS)[number]
+
+export const IMAGE_BACKEND_NAMES: Record<ImageBackendKind, string> = {
+  mflux: 'mflux',
+  comfyui: 'ComfyUI',
+}
+
+/** ComfyUI's own default address. */
+export const COMFYUI_URL = 'http://127.0.0.1:8188'
+
+/** An Image Model as Settings and the screens see it, whichever backend runs it. */
+export interface ImageModelOption {
   id: string
   label: string
-  /** The `mflux-generate-*` executable. */
-  command: string
-  /** Value passed to `--model`: a built-in name or a Hugging Face repo. */
-  model: string
-  /** Value passed to `--base-model` when `model` is a repo mflux can't classify by name. */
-  baseModel?: string
-  /** Weights already quantized, so `--quantize` must not be passed. */
-  preQuantized?: boolean
-  /** Steps to use when the model is picked: mflux's own default, unless fewer look as good. */
   defaultSteps: number
-  /** Takes mflux's step cache (`--step-cache-ratio`): it skips the steps that change least. */
-  stepCache?: boolean
-  /** A few-step mode the player can switch on: a distilling LoRA with its own scheduler. */
-  fast?: FastMode
+  /** Takes the step cache (mflux). */
+  stepCache: boolean
+  /** The steps its fast mode runs at; absent when it has none (mflux). */
+  fastSteps?: number
+  /** Can use a saved 8- or 4-bit copy (mflux). */
+  quantize: boolean
 }
 
-/** A turbo LoRA and how it must run: with this scheduler, at exactly this many steps. */
-export interface FastMode {
-  /** For `--lora`: a local file, or a Hugging Face `repo:file` fetched on first use. */
-  lora: string
-  scheduler: string
-  steps: number
+export function imageModelsOf(backend: ImageBackendKind): ImageModelOption[] {
+  return backend === 'comfyui'
+    ? COMFYUI_MODELS.map(({ id, label, defaultSteps }) => ({
+      id,
+      label,
+      defaultSteps,
+      stepCache: false,
+      quantize: false,
+    }))
+    : MFLUX_MODELS.map(({ id, label, defaultSteps, stepCache, fast, preQuantized }) => ({
+      id,
+      label,
+      defaultSteps,
+      stepCache: !!stepCache,
+      ...(fast && { fastSteps: fast.steps }),
+      quantize: !preQuantized,
+    }))
 }
 
-export const IMAGE_MODELS: readonly ImageModel[] = [
-  {
-    id: 'flux2-klein-4b',
-    label: 'FLUX.2 Klein 4B',
-    command: 'mflux-generate-flux2',
-    model: 'flux2-klein-4b',
-    defaultSteps: 4,
-  },
-  {
-    id: 'flux2-klein-9b',
-    label: 'FLUX.2 Klein 9B',
-    command: 'mflux-generate-flux2',
-    model: 'flux2-klein-9b',
-    defaultSteps: 4,
-  },
-  {
-    id: 'z-image-turbo',
-    label: 'Z-Image Turbo (4-bit)',
-    command: 'mflux-generate-z-image-turbo',
-    model: 'filipstrand/Z-Image-Turbo-mflux-4bit',
-    baseModel: 'z-image-turbo',
-    preQuantized: true,
-    defaultSteps: 9,
-  },
-  {
-    id: 'krea-2',
-    label: 'Krea 2',
-    command: 'mflux-generate-krea2',
-    model: 'krea-2',
-    defaultSteps: 8,
-  },
-  {
-    id: 'ernie-image-turbo',
-    label: 'ERNIE-Image Turbo',
-    command: 'mflux-generate-ernie-image-turbo',
-    model: 'ernie-image-turbo',
-    defaultSteps: 8,
-  },
-  {
-    id: 'boogu-image-turbo',
-    label: 'Boogu Image Turbo',
-    command: 'mflux-generate-boogu',
-    model: 'boogu-image-turbo',
-    defaultSteps: 4,
-  },
-  {
-    id: 'qwen-image-2.1',
-    label: 'Qwen-Image 2.1',
-    command: 'mflux-generate-qwen-2.1',
-    model: 'qwen-image-2.1',
-    // mflux defaults to 40; 25 looks just as good at 512 px and is much faster.
-    defaultSteps: 25,
-    stepCache: true,
-    // Viggle's turbo LoRA (1.3 GB, Qwen research license): about 3.4x faster, a little smoother.
-    fast: {
-      lora:
-        'Viggle/Qwen-Image-2.1-viggle-turbo:Qwen-Image-2.1-viggle-turbo-v0.3-6step-lora-r256.safetensors',
-      scheduler: 'viggle_turbo',
-      steps: 6,
-    },
-  },
-]
-
-/** The SeedVR2 upscalers mflux offers; the model name is also the id. */
-export const UPSCALERS = [
-  { id: 'seedvr2-7b', label: 'SeedVR2 7B (sharper)' },
-  { id: 'seedvr2-3b', label: 'SeedVR2 3B (a little faster)' },
-] as const
-export type Upscaler = (typeof UPSCALERS)[number]['id']
-
-export function findImageModel(id: string): ImageModel | undefined {
-  return IMAGE_MODELS.find((m) => m.id === id)
-}
+export const findImageModel = (backend: ImageBackendKind, id: string) =>
+  imageModelsOf(backend).find((m) => m.id === id)

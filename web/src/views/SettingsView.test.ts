@@ -17,6 +17,8 @@ vi.mock('../api', async (importOriginal) => ({
 const settings: api.Settings = {
   textBackend: 'ollama',
   textBaseUrl: '',
+  imageBackend: 'mflux',
+  imageBaseUrl: '',
   textModel: 'llama3:latest',
   thinking: false,
   imageModel: 'z-image-turbo',
@@ -37,17 +39,41 @@ const settings: api.Settings = {
 const options: api.SettingsOptions = {
   textModels: ['gemma4:31b-mlx', 'llama3:latest'],
   thinkingModels: [],
-  imageModels: [
-    { id: 'z-image-turbo', label: 'Z-Image Turbo', defaultSteps: 9, stepCache: false },
-    { id: 'flux2-klein-4b', label: 'FLUX.2 Klein 4B', defaultSteps: 4, stepCache: false },
-    {
-      id: 'qwen-image-2.1',
-      label: 'Qwen-Image 2.1',
-      defaultSteps: 25,
-      stepCache: true,
-      fastSteps: 6,
-    },
-  ],
+  imageModels: {
+    mflux: [
+      {
+        id: 'z-image-turbo',
+        label: 'Z-Image Turbo',
+        defaultSteps: 9,
+        stepCache: false,
+        quantize: true,
+      },
+      {
+        id: 'flux2-klein-4b',
+        label: 'FLUX.2 Klein 4B',
+        defaultSteps: 4,
+        stepCache: false,
+        quantize: true,
+      },
+      {
+        id: 'qwen-image-2.1',
+        label: 'Qwen-Image 2.1',
+        defaultSteps: 25,
+        stepCache: true,
+        fastSteps: 6,
+        quantize: true,
+      },
+    ],
+    comfyui: [
+      {
+        id: 'qwen-image-2.1',
+        label: 'Qwen-Image 2.1',
+        defaultSteps: 25,
+        stepCache: false,
+        quantize: false,
+      },
+    ],
+  },
   sizePresets: [{ id: 'portrait', label: 'Portrait', width: 832, height: 1216 }],
   upscalers: [
     { id: 'seedvr2-7b', label: 'SeedVR2 7B' },
@@ -64,6 +90,35 @@ beforeEach(() => {
 })
 
 describe('SettingsView', () => {
+  it('without mflux, offers ComfyUI, and its own Image Models once chosen', async () => {
+    const noMflux = { available: false, reason: 'mflux runs only on Apple Silicon Macs' }
+    vi.mocked(api.getSettingsOptions).mockResolvedValue({
+      ...options,
+      features: { ...options.features, images: noMflux, upscale: noMflux },
+    })
+    const wrapper = mount(SettingsView)
+    await flushPromises()
+    // Nothing to set up with mflux, but the backend can still be chosen.
+    expect(wrapper.find('[data-image-model]').exists()).toBe(false)
+    await wrapper.find('[data-image-backend]').setValue('comfyui')
+    expect(wrapper.find('[data-image-base-url]').exists()).toBe(true)
+    const models = wrapper.findAll('[data-image-model] option').map((o) => o.text())
+    expect(models).toEqual(['Qwen-Image 2.1'])
+    // ComfyUI's models have no Quantize, step cache or Fast; Upscale needs mflux.
+    expect(wrapper.text()).not.toContain('Quantize')
+    expect(wrapper.find('[data-step-cache]').exists()).toBe(false)
+    expect(wrapper.find('[data-upscaler]').exists()).toBe(false)
+    await wrapper.find('[data-image-base-url]').setValue('http://192.168.1.20:8188')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+    expect(api.saveSettings).toHaveBeenCalledWith(expect.objectContaining({
+      imageBackend: 'comfyui',
+      imageBaseUrl: 'http://192.168.1.20:8188',
+      imageModel: 'qwen-image-2.1',
+      steps: 25,
+    }))
+  })
+
   it('offers the step cache and Fast only for models that have them', async () => {
     const wrapper = mount(SettingsView)
     await flushPromises()

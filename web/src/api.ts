@@ -10,7 +10,7 @@ export type SeedMode = 'random' | 'fixed'
  * The extras beyond the Text Model, each with its own backend: pictures, voices, and 3D (SHARP,
  * TripoSplat, LiTo). One is on when this machine can run it and Settings has it switched on.
  */
-export const FEATURES = ['images', 'voices', 'scenes', 'figures', 'lito'] as const
+export const FEATURES = ['images', 'upscale', 'voices', 'scenes', 'figures', 'lito'] as const
 export type Feature = (typeof FEATURES)[number]
 
 /** Whether this machine can run a Feature, and if not, why not. */
@@ -32,6 +32,9 @@ export interface Settings {
   textApiKey?: string
   textModel: string
   thinking: boolean
+  imageBackend: ImageBackend
+  /** ComfyUI's address; '' for its default. */
+  imageBaseUrl: string
   imageModel: string
   steps: number
   size: string
@@ -54,14 +57,19 @@ export interface Settings {
   features: Record<Feature, boolean>
 }
 
+/** Where pictures are made: mflux (Apple Silicon Macs) or a ComfyUI server (any machine). */
+export type ImageBackend = 'mflux' | 'comfyui'
+
 export interface ImageModelOption {
   id: string
   label: string
   defaultSteps: number
-  /** Takes the step cache. */
+  /** Takes the step cache (mflux). */
   stepCache: boolean
-  /** The steps its fast mode runs at; absent when it has none. */
+  /** The steps its fast mode runs at; absent when it has none (mflux). */
   fastSteps?: number
+  /** Can use a saved 8- or 4-bit copy (mflux). */
+  quantize: boolean
 }
 
 export interface SizePreset {
@@ -80,7 +88,8 @@ export interface TextModelOptions {
 }
 
 export interface SettingsOptions extends TextModelOptions {
-  imageModels: ImageModelOption[]
+  /** Each backend's Image Models. */
+  imageModels: Record<ImageBackend, ImageModelOption[]>
   sizePresets: SizePreset[]
   upscalers: { id: string; label: string }[]
   /** Which Features this machine can run, worked out when the server started. */

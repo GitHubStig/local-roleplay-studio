@@ -12,7 +12,7 @@
  * rather than downloaded.
  */
 import { join } from '@std/path'
-import type { ImageModel } from './imageModels.ts'
+import type { MfluxModel } from './models.ts'
 
 export interface QuantizedCopy {
   /** The folder's name, which identifies the copy. */
@@ -31,7 +31,7 @@ export interface QuantizedStore {
    * `onDownload` if saving has to download the model first.
    */
   ensure(
-    model: ImageModel,
+    model: MfluxModel,
     bits: number,
     signal: AbortSignal,
     onDownload?: () => void,
@@ -46,7 +46,7 @@ export interface QuantizedStoreOptions {
   mfluxVersion(): Promise<string>
   /** Saves `model` quantized to `bits` into `path` (`mflux-save`). */
   save(
-    model: ImageModel,
+    model: MfluxModel,
     bits: number,
     path: string,
     signal: AbortSignal,

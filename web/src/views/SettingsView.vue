@@ -57,7 +57,9 @@ onMounted(async () => {
 
 /** Saved quantized copies of Image Models, with their sizes on disk. */
 const copies = ref<QuantizedCopy[]>([])
-const modelLabel = (id: string) => options.value?.imageModels.find((m) => m.id === id)?.label ?? id
+/** A saved copy's model, by name: saved copies are mflux's. */
+const modelLabel = (id: string) =>
+  options.value?.imageModels.mflux.find((m) => m.id === id)?.label ?? id
 const gigabytes = (bytes: number) => `${(bytes / 1e9).toFixed(1)} GB`
 async function removeCopy(name: string) {
   try {
@@ -109,16 +111,27 @@ const canThink = computed(() =>
   !!form.value && (options.value?.thinkingModels ?? []).includes(form.value.textModel)
 )
 
-/** The chosen Image Model's options, for the controls only some models have. */
-const imageModel = computed(() =>
-  options.value?.imageModels.find((m) => m.id === form.value?.imageModel)
+/** The chosen backend's Image Models. */
+const imageModels = computed(() =>
+  form.value && options.value ? options.value.imageModels[form.value.imageBackend] : []
 )
+/** The chosen Image Model's options, for the controls only some models have. */
+const imageModel = computed(() => imageModels.value.find((m) => m.id === form.value?.imageModel))
 const fastOn = computed(() => !!form.value?.fast && !!imageModel.value?.fastSteps)
 
 function onImageModelChange() {
-  const model = options.value?.imageModels.find((m) => m.id === form.value?.imageModel)
-  if (form.value && model) form.value.steps = model.defaultSteps
+  if (form.value && imageModel.value) form.value.steps = imageModel.value.defaultSteps
 }
+/** A backend has its own models: start on its first. */
+function onImageBackendChange() {
+  if (!form.value) return
+  form.value.imageModel = imageModels.value[0]?.id ?? ''
+  onImageModelChange()
+}
+/** Pictures can be made: mflux is here, or ComfyUI is chosen (a server makes them, not this machine). */
+const picturesHere = computed(() =>
+  !!options.value?.features.images.available || form.value?.imageBackend === 'comfyui'
+)
 
 async function save() {
   if (!form.value) return
@@ -312,9 +325,38 @@ async function save() {
             title="Pictures"
             data-feature="images"
           >
-            Render, upscale and picture Frames with mflux. Off, Roleplays are conversations only, and Chains and Storyboards can't start.
+            Render and picture Frames. Off, every Session runs on the Text Model alone: a Roleplay is a
+            conversation, a Chain writes prompts and a Storyboard plans, to render later.
           </FeatureSwitch>
-          <template v-if="options.features.images.available">
+
+          <label class="flex flex-col gap-1">
+            <span class="text-sm text-muted">Image backend</span>
+            <select
+              v-model="form.imageBackend"
+              class="field"
+              data-image-backend
+              @change="onImageBackendChange"
+            >
+              <option value="mflux">mflux (Apple Silicon Macs)</option>
+              <option value="comfyui">ComfyUI (any machine; Windows with an NVIDIA card)</option>
+            </select>
+          </label>
+          <label v-if="form.imageBackend === 'comfyui'" class="flex flex-col gap-1">
+            <span class="text-sm text-muted">ComfyUI address</span>
+            <input
+              v-model.trim="form.imageBaseUrl"
+              class="field"
+              placeholder="http://127.0.0.1:8188"
+              data-image-base-url
+            />
+            <span class="text-sm text-muted">
+              Empty for ComfyUI on this machine at its usual port. ComfyUI must be running, with the
+              model's files installed (Settings says which when one is missing). Its pictures come
+              back through its API, so it can be on another machine.
+            </span>
+          </label>
+
+          <template v-if="picturesHere">
             <label class="flex flex-col gap-1">
               <span class="text-sm text-muted">Image Model</span>
               <select
@@ -323,7 +365,7 @@ async function save() {
                 data-image-model
                 @change="onImageModelChange"
               >
-                <option v-for="m in options.imageModels" :key="m.id" :value="m.id">
+                <option v-for="m in imageModels" :key="m.id" :value="m.id">
                   {{ m.label }}
                 </option>
               </select>
@@ -353,7 +395,7 @@ async function save() {
                 />
                 <input v-else v-model.number="form.steps" type="number" min="1" max="100" class="field" />
               </label>
-              <label class="flex flex-col gap-1">
+              <label v-if="imageModel?.quantize" class="flex flex-col gap-1">
                 <span class="text-sm text-muted">Quantize</span>
                 <select v-model="form.quantize" class="field">
                   <option v-for="q in quantizeChoices" :key="String(q.value)" :value="q.value">
@@ -407,7 +449,15 @@ async function save() {
               </select>
             </label>
 
-            <label class="flex flex-col gap-1">
+            <FeatureSwitch
+              v-model="form.features.upscale"
+              :availability="options.features.upscale"
+              title="Upscale"
+              data-feature="upscale"
+            >
+              Enlarges a picture to 2048 px with SeedVR2, through mflux, whichever backend rendered it.
+            </FeatureSwitch>
+            <label v-if="options.features.upscale.available" class="flex flex-col gap-1">
               <span class="text-sm text-muted">Upscaler</span>
               <select v-model="form.upscaler" class="field" data-upscaler>
                 <option v-for="u in options.upscalers" :key="u.id" :value="u.id">{{ u.label }}</option>

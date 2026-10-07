@@ -42,7 +42,7 @@ const pictured = () => !!props.frame.image || props.hasJob('render') || props.ha
       {{ frame.image ? 'Re-render' : 'Render' }}
     </button>
     <button
-      v-if="pictured()"
+      v-if="featureOn('upscale') && pictured()"
       type="button"
       :class="buttonClass"
       :disabled="!!frame.upscaled || hasJob('upscale')"

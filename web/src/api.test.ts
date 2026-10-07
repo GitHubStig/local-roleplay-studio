@@ -14,6 +14,8 @@ afterEach(() => vi.unstubAllGlobals())
 const settings: Settings = {
   textBackend: 'ollama',
   textBaseUrl: '',
+  imageBackend: 'mflux',
+  imageBaseUrl: '',
   textModel: 'llama3:latest',
   thinking: false,
   imageModel: 'z-image-turbo',

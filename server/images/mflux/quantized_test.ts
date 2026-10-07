@@ -1,10 +1,10 @@
 import { assertEquals, assertRejects } from '@std/assert'
 import { join } from '@std/path'
-import { findImageModel } from './imageModels.ts'
+import { findMfluxModel } from './models.ts'
 import { quantizedStore } from './quantized.ts'
-import { withTempDir } from '../testing.ts'
+import { withTempDir } from '../../testing.ts'
 
-const klein = findImageModel('flux2-klein-9b')!
+const klein = findMfluxModel('flux2-klein-9b')!
 const signal = new AbortController().signal
 
 /** A store whose `save` writes a small file, recording each save; the mflux version is settable. */

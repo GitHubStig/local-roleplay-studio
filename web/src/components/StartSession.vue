@@ -71,7 +71,8 @@ onMounted(async () => {
 
 const imageModelLabel = computed(
   () =>
-    options.value?.imageModels.find((m) => m.id === settings.value?.imageModel)?.label ??
+    options.value?.imageModels[settings.value?.imageBackend ?? 'mflux']
+      ?.find((m) => m.id === settings.value?.imageModel)?.label ??
       settings.value?.imageModel,
 )
 

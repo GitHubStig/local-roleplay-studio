@@ -1,5 +1,11 @@
 import { fromFileUrl } from '@std/path'
-import { findImageModel, IMAGE_MODELS, type Upscaler, UPSCALERS } from './images/imageModels.ts'
+import {
+  findImageModel,
+  IMAGE_BACKENDS,
+  type ImageBackendKind,
+  imageModelsOf,
+} from './images/imageModels.ts'
+import { type Upscaler, UPSCALERS } from './images/mflux/models.ts'
 import { ART_STYLES, type ArtStyle } from './roleplay/art.ts'
 import { type Feature, FEATURES } from './features.ts'
 import { TEXT_BACKENDS, type TextBackendKind } from './text/backend.ts'
@@ -39,6 +45,11 @@ export interface Settings {
   textModel: string
   /** Let the Text Model reason before answering: slower, often more accurate. */
   thinking: boolean
+  /** Where pictures are made (`images/imageModels.ts`). */
+  imageBackend: ImageBackendKind
+  /** ComfyUI's address; '' for its default (`COMFYUI_URL`). Unused by mflux. */
+  imageBaseUrl: string
+  /** One of the backend's Image Models. */
   imageModel: string
   steps: number
   size: string
@@ -76,8 +87,10 @@ export const DEFAULT_SETTINGS: Settings = {
   textBaseUrl: '',
   textModel: '',
   thinking: false,
-  imageModel: IMAGE_MODELS[0].id,
-  steps: IMAGE_MODELS[0].defaultSteps,
+  imageBackend: 'mflux',
+  imageBaseUrl: '',
+  imageModel: imageModelsOf('mflux')[0].id,
+  steps: imageModelsOf('mflux')[0].defaultSteps,
   size: SIZE_PRESETS[0].id,
   quantize: null,
   stepCache: 0.4,
@@ -118,8 +131,17 @@ export function validateSettings(input: unknown): ValidationResult {
   if (s.thinking !== undefined && typeof s.thinking !== 'boolean') {
     issues.push('thinking must be true or false')
   }
-  if (typeof s.imageModel !== 'string' || !findImageModel(s.imageModel)) {
-    issues.push(`imageModel must be one of: ${IMAGE_MODELS.map((m) => m.id).join(', ')}`)
+  const imageBackend = (s.imageBackend ?? 'mflux') as ImageBackendKind
+  if (!IMAGE_BACKENDS.includes(imageBackend)) {
+    issues.push(`imageBackend must be one of: ${IMAGE_BACKENDS.join(', ')}`)
+  } else if (typeof s.imageModel !== 'string' || !findImageModel(imageBackend, s.imageModel)) {
+    const ids = imageModelsOf(imageBackend).map((m) => m.id)
+    issues.push(`imageModel must be one of ${imageBackend}'s: ${ids.join(', ')}`)
+  }
+  if (s.imageBaseUrl !== undefined && typeof s.imageBaseUrl !== 'string') {
+    issues.push('imageBaseUrl must be a string')
+  } else if (s.imageBaseUrl && !URL.canParse(s.imageBaseUrl as string)) {
+    issues.push('imageBaseUrl must be an address like http://127.0.0.1:8188')
   }
   if (!Number.isInteger(s.steps) || (s.steps as number) < 1 || (s.steps as number) > 100) {
     issues.push('steps must be an integer from 1 to 100')
@@ -174,6 +196,8 @@ export function validateSettings(input: unknown): ValidationResult {
       textBaseUrl: ((s.textBaseUrl as string | undefined) ?? '').trim(),
       textModel: s.textModel as string,
       thinking: (s.thinking as boolean | undefined) ?? false,
+      imageBackend,
+      imageBaseUrl: ((s.imageBaseUrl as string | undefined) ?? '').trim(),
       imageModel: s.imageModel as string,
       steps: s.steps as number,
       size: s.size as string,
