@@ -20,12 +20,20 @@ const MAC_FILES: Record<string, string[]> = {
  * `finish` ('success', or an error message, or 'hang' until interrupted), and serves the picture.
  */
 function fakeComfyUI(
-  opts: { files?: Record<string, string[]>; steps?: number; finish?: string } = {},
+  opts: {
+    files?: Record<string, string[]>
+    steps?: number
+    finish?: string
+    /** Once a workflow is queued, stop answering, keeping the port and WebSocket open (a crash). */
+    dies?: boolean
+  } = {},
 ) {
   const queued: Record<string, unknown>[] = []
   const posted: { path: string; body: unknown }[] = []
   const uploads: { name: string; type: string; overwrite: string; bytes: number }[] = []
   const sockets = new Map<string, WebSocket>()
+  /** Requests left hanging by a dead ComfyUI, answered when the server closes. */
+  const hung: (() => void)[] = []
   const server = Deno.serve({ port: 0, onListen: () => {} }, async (req) => {
     const url = new URL(req.url)
     const path = url.pathname
@@ -33,6 +41,10 @@ function fakeComfyUI(
       const { socket, response } = Deno.upgradeWebSocket(req)
       sockets.set(url.searchParams.get('clientId')!, socket)
       return response
+    }
+    if (opts.dies && queued.length) {
+      await new Promise<void>((r) => hung.push(r))
+      return new Response(null, { status: 503 })
     }
     if (path === '/system_stats') {
       return Response.json({ system: { comfyui_version: '0.39.1' }, devices: [{ name: 'mps' }] })
@@ -80,9 +92,16 @@ function fakeComfyUI(
       const body = await req.json()
       posted.push({ path, body })
       if (path === '/interrupt') {
-        for (const socket of sockets.values()) {
-          socket.send(JSON.stringify({ type: 'execution_interrupted', data: { prompt_id: 'p1' } }))
+        // As ComfyUI: the prompt stops a moment later ("execution_interrupted"), then it's written
+        // to the history, then "executing" with no node says it's done.
+        const send = (type: string, data: object) => {
+          for (const socket of sockets.values()) socket.send(JSON.stringify({ type, data }))
         }
+        setTimeout(() => send('execution_interrupted', { prompt_id: 'p1' }), 50)
+        setTimeout(() => {
+          posted.push({ path: '(in history)', body: null })
+          send('executing', { node: null, prompt_id: 'p1' })
+        }, 80)
       }
       return new Response(null, { status: 200 })
     }
@@ -94,7 +113,11 @@ function fakeComfyUI(
     queued,
     posted,
     uploads,
-    close: () => server.shutdown(),
+    close: () => {
+      for (const release of hung) release()
+      for (const socket of sockets.values()) socket.close()
+      return server.shutdown()
+    },
   }
 }
 
@@ -210,11 +233,13 @@ Deno.test("Cancel interrupts only this render, and takes it out of ComfyUI's que
         Error,
         'Cancelled by player',
       )
-      await new Promise((r) => setTimeout(r, 50))
+      await new Promise((r) => setTimeout(r, 150))
       assertEquals(comfy.posted.slice(0, 2), [
         { path: '/interrupt', body: { prompt_id: 'p1' } },
         { path: '/queue', body: { delete: ['p1'] } },
       ])
+      // The prompt leaves the history only once ComfyUI has stopped it, or it would stay there.
+      assertEquals(comfy.posted.slice(2).map((p) => p.path), ['(in history)', '/history', '/free'])
     } finally {
       await comfy.close()
     }
@@ -280,6 +305,27 @@ Deno.test("A ComfyUI upscale without SeedVR2's files says which are missing, sen
         "ComfyUI doesn't have SeedVR2 3B's files: vae/",
       )
       assertEquals([comfy.uploads.length, comfy.queued.length], [0, 0])
+    } finally {
+      await comfy.close()
+    }
+  }))
+
+Deno.test('A ComfyUI that stops answering mid-render fails the render instead of hanging it', () =>
+  withTempDir(async (dir) => {
+    const comfy = fakeComfyUI({ finish: 'hang', dies: true })
+    try {
+      const started = performance.now()
+      await assertRejects(
+        () =>
+          comfyuiImageGenerator({ checkEveryMs: 100 }).generate(
+            { prompt: 'x', seed: 1, settings: settings(comfy.url), dir, name: 'f' },
+            new AbortController().signal,
+          ),
+        Error,
+        'ComfyUI stopped answering',
+      )
+      // Two missed checks, about 0.2 s, not the whole wait.
+      assertEquals(performance.now() - started < 2000, true)
     } finally {
       await comfy.close()
     }

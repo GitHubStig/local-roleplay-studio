@@ -24,7 +24,10 @@ export function comfyuiImageGenerator(opts: {
    * when upscaling. A render uses its Session's.
    */
   upscaleUrl?: () => Promise<string>
+  /** How often a running job checks that ComfyUI still answers (`watchAlive`); shorter in tests. */
+  checkEveryMs?: number
 } = {}): ImageGenerator {
+  const checkEveryMs = opts.checkEveryMs ?? 15_000
   return {
     async generate(req, signal, onProgress) {
       const base = baseUrl(req.settings.imageBaseUrl)
@@ -43,7 +46,7 @@ export function comfyuiImageGenerator(opts: {
       const file = `${req.name}.png`
       await Deno.writeFile(
         join(req.dir, file),
-        await runWorkflow(base, workflow, signal, onProgress),
+        await runWorkflow(base, workflow, signal, checkEveryMs, onProgress),
       )
       return file
     },
@@ -70,7 +73,7 @@ export function comfyuiImageGenerator(opts: {
         const file = `${req.name}.png`
         await Deno.writeFile(
           join(req.dir, file),
-          await runWorkflow(base, workflow, signal, onProgress),
+          await runWorkflow(base, workflow, signal, checkEveryMs, onProgress),
         )
         return file
       } finally {
@@ -85,16 +88,19 @@ const baseUrl = (address: string) => (address || COMFYUI_URL).replace(/\/+$/, ''
 /**
  * Queues a filled workflow and follows it over the WebSocket to the picture it sends back. Cancel
  * interrupts just this prompt; afterwards its prompt leaves ComfyUI's history, and ComfyUI unloads
- * its models.
+ * its models. If ComfyUI stops answering meanwhile (`watchAlive`), the job fails rather than
+ * waiting for good.
  */
 async function runWorkflow(
   base: string,
   workflow: Workflow,
   signal: AbortSignal,
+  checkEveryMs: number,
   onProgress?: (step: number, total: number) => void,
 ): Promise<Uint8Array> {
   const clientId = crypto.randomUUID()
   const socket = await openSocket(base, clientId, signal)
+  let promptId: string | undefined
   try {
     const queued = await fetch(`${base}/prompt`, {
       method: 'POST',
@@ -104,23 +110,91 @@ async function runWorkflow(
     })
     const body = await queued.json().catch(() => ({}))
     if (!queued.ok) throw new Error(`ComfyUI refused the workflow: ${refusal(body)}`)
-    const promptId: string = body.prompt_id
+    promptId = body.prompt_id as string
     const cancel = () => {
       // Running: interrupt just this prompt. Still queued: take it out of the queue.
       post(base, '/interrupt', { prompt_id: promptId })
       post(base, '/queue', { delete: [promptId] })
     }
     signal.addEventListener('abort', cancel, { once: true })
+    const stalled = new AbortController()
+    const watchdog = watchAlive(base, checkEveryMs, () =>
+      stalled.abort(
+        new Error('ComfyUI stopped answering (it may have crashed): restart it, then try again'),
+      ))
     try {
-      return await finished(socket, promptId, signal, onProgress)
+      return await finished(socket, promptId, AbortSignal.any([signal, stalled.signal]), onProgress)
     } finally {
+      clearInterval(watchdog)
       signal.removeEventListener('abort', cancel)
-      post(base, '/history', { delete: [promptId] })
     }
   } finally {
-    socket.close()
-    post(base, '/free', { unload_models: true, free_memory: true })
+    // Not awaited, so Cancel returns at once.
+    cleanUp(base, socket, promptId, signal.aborted)
   }
+}
+
+/**
+ * After a prompt: takes it out of ComfyUI's history, closes the WebSocket and unloads ComfyUI's
+ * models. An interrupted prompt is written to the history only once ComfyUI has stopped it, so
+ * after a Cancel this waits for that first (up to 10 s); deleted any sooner, it stayed there
+ * (checked on Windows, 2026-10-07).
+ */
+async function cleanUp(
+  base: string,
+  socket: WebSocket,
+  promptId: string | undefined,
+  cancelled: boolean,
+) {
+  if (promptId && cancelled) await stopped(socket, promptId, 10_000)
+  socket.close()
+  if (promptId) post(base, '/history', { delete: [promptId] })
+  post(base, '/free', { unload_models: true, free_memory: true })
+}
+
+/**
+ * Resolves when ComfyUI has finished with the prompt, the socket closes, or `ms` pass. Finished
+ * means `executing` with no node: ComfyUI sends it after writing the prompt's history
+ * (`main.py`'s `prompt_worker`), whereas `execution_interrupted` comes before.
+ */
+function stopped(socket: WebSocket, promptId: string, ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(resolve, ms)
+    const done = () => (clearTimeout(timer), resolve())
+    socket.onclose = done
+    socket.onmessage = (e) => {
+      if (typeof e.data !== 'string') return
+      const { type, data } = JSON.parse(e.data) as {
+        type: string
+        data?: { prompt_id?: string; node?: string | null }
+      }
+      if (type === 'executing' && data?.prompt_id === promptId && data.node === null) done()
+    }
+  })
+}
+
+/**
+ * Asks ComfyUI every `everyMs` whether it still answers (`GET /system_stats`, which it does while
+ * it renders), and calls `onDead` after two checks in a row get no answer: a ComfyUI that crashed
+ * can keep its port open and the WebSocket with it, so nothing else would end the wait (seen on
+ * Windows, 2026-10-07: a "Fatal Python error: Aborted" while loading a model). Returns the timer.
+ */
+function watchAlive(
+  base: string,
+  everyMs: number,
+  onDead: () => void,
+): ReturnType<typeof setInterval> {
+  let misses = 0
+  let checking = false
+  return setInterval(async () => {
+    if (checking) return
+    checking = true
+    const answered = await fetch(`${base}/system_stats`, { signal: AbortSignal.timeout(everyMs) })
+      .then((r) => (r.body?.cancel(), r.ok), () => false)
+    checking = false
+    misses = answered ? 0 : misses + 1
+    if (misses >= 2) onDead()
+  }, everyMs)
 }
 
 /**
@@ -132,7 +206,11 @@ async function upload(base: string, name: string, png: Uint8Array<ArrayBuffer>):
   form.append('image', new Blob([png], { type: 'image/png' }), name)
   form.append('type', 'temp')
   form.append('overwrite', 'true')
-  const res = await fetch(`${base}/upload/image`, { method: 'POST', body: form })
+  const res = await fetch(`${base}/upload/image`, {
+    method: 'POST',
+    body: form,
+    signal: AbortSignal.timeout(60_000),
+  })
   if (!res.ok) throw new Error(`ComfyUI didn't take the picture to upscale: HTTP ${res.status}`)
   return (await res.json()).name
 }
@@ -215,11 +293,13 @@ async function getJson(base: string, path: string, signal: AbortSignal) {
   return res.json()
 }
 
+/** Sends a request without waiting for its answer beyond 10 s (a crashed ComfyUI may never give one). */
 const post = (base: string, path: string, body: object) =>
   fetch(`${base}${path}`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(body),
+    signal: AbortSignal.timeout(10_000),
   }).then((r) => r.body?.cancel()).catch(() => {})
 
 /** ComfyUI's reason for refusing a workflow: its error, or the first node's. */
@@ -240,15 +320,19 @@ function openSocket(base: string, clientId: string, signal: AbortSignal): Promis
   return new Promise((resolve, reject) => {
     const socket = new WebSocket(url)
     const fail = () => reject(new Error(`Couldn't reach ComfyUI at ${base}: is it running?`))
+    // Cancelled while connecting. Once open, the socket stays until `cleanUp`, which after a
+    // Cancel still needs it to hear the prompt stop.
+    const abort = () => {
+      socket.close()
+      reject(signal.reason)
+    }
     socket.onopen = () => {
       socket.onerror = null
+      signal.removeEventListener('abort', abort)
       resolve(socket)
     }
     socket.onerror = fail
-    signal.addEventListener('abort', () => {
-      socket.close()
-      reject(signal.reason)
-    }, { once: true })
+    signal.addEventListener('abort', abort, { once: true })
   })
 }
 

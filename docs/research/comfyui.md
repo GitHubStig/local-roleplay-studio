@@ -171,8 +171,28 @@ in use (Windows and apps), and the next Text Model call loaded on a clear GPU.
   takes time before IPv4: a first request to ComfyUI took 2.1 s via `localhost` from PowerShell
   against 20 ms via `127.0.0.1` (and 323 ms against 1 ms from Deno, to a test server). The app's
   default is `127.0.0.1`; the client's Cancel test failed on Windows until its stand-in used it too.
-- Not run on Windows: Cancel mid-render against the real ComfyUI, other sizes, and a Roleplay's
-  pictures (the Art Agent's path). Upscale: see "Upscaling on ComfyUI" below.
+- **ComfyUI can crash and stay half-alive** (2026-10-07, ComfyUI 0.39.1, Comfy Desktop, started
+  with `--listen 0.0.0.0`). Loading Qwen-Image's text encoder for a render, ComfyUI logged
+  `aimdo: … comfy-aimdo WDDM VRAM query failed. Using physical capacity as fallback`, then `Fatal
+  Python error: Aborted` (in `model_patcher.load`). The render before it, minutes earlier, had
+  finished in 21 s. The process stayed, with port 8188 open and the app's WebSocket connected, but
+  answered nothing, so the render waited for good: nothing closed the socket. Cancel still freed it
+  at once. Since then a running job asks `GET /system_stats` every 15 s and fails ("ComfyUI stopped
+  answering (it may have crashed): restart it") after two checks with no answer; the calls sent
+  without waiting (`/interrupt`, `/history`, `/free`) give up after 10 s, the upload after 60 s.
+  Why the memory query failed wasn't found; `comfy-aimdo` is ComfyUI's dynamic VRAM loader.
+- **Cancel, on Windows** (2026-10-07): a Chain's render cancelled at step 8 of 25 and an upscale
+  at tile 7 of 40 both stopped at once; the Chain kept its Frame as it was, no file was left, and
+  ComfyUI's queue was empty. But both prompts **stayed in ComfyUI's history**, as `error` with an
+  `execution_interrupted` message: the app had asked to delete them the moment Cancel was pressed,
+  and ComfyUI writes an interrupted prompt to the history only once it has stopped it
+  (`prompt_worker` in `main.py`: `execution_interrupted`, then `task_done`, which writes the
+  history, then `executing` with no node). Now, after a Cancel, the app waits in the background
+  (up to 10 s) for that last message before deleting it; run again, the history was empty (`{}`).
+  Also found: the WebSocket closed itself on Cancel (a listener meant only for while it connects),
+  so nothing could have been heard from ComfyUI after a Cancel anyway.
+- Not run on Windows: other sizes, and a Roleplay's pictures (the Art Agent's path). Upscale: see
+  "Upscaling on ComfyUI" below.
 
 ## Comfy Desktop, ComfyUI, and who starts it (2026-10-07)
 
