@@ -237,10 +237,10 @@ Deno.test('GET /api/settings/options lists Text and Image Models', async () => {
 })
 
 Deno.test('POST /api/settings/comfyui checks an address not saved yet', async () => {
-  const asked: [string, string][] = []
+  const asked: [string, { imageModel?: string; upscaler?: string }][] = []
   const { call } = setup({
-    comfyuiStatus: (url, model) => {
-      asked.push([url, model])
+    comfyuiStatus: (url, uses) => {
+      asked.push([url, uses])
       return Promise.resolve({
         up: true,
         version: '0.39.1',
@@ -254,10 +254,18 @@ Deno.test('POST /api/settings/comfyui checks an address not saved yet', async ()
     imageModel: 'qwen-image-2.1',
   })
   assertEquals((await res.json()).device, 'cuda:0 NVIDIA GeForce RTX 4070')
-  assertEquals(asked, [['http://192.168.1.20:8188', 'qwen-image-2.1']])
+  // A Mac rendering with mflux checks only the upscaler it sends there.
+  await call('POST', '/api/settings/comfyui', {
+    imageBaseUrl: 'http://192.168.1.20:8188',
+    upscaler: 'seedvr2-7b',
+  })
+  assertEquals(asked, [
+    ['http://192.168.1.20:8188', { imageModel: 'qwen-image-2.1', upscaler: undefined }],
+    ['http://192.168.1.20:8188', { imageModel: undefined, upscaler: 'seedvr2-7b' }],
+  ])
 })
 
-Deno.test('Choosing ComfyUI makes pictures available where mflux is not', async () => {
+Deno.test('Choosing ComfyUI makes pictures, and then Upscale, available where mflux is not', async () => {
   const off = { available: false, reason: 'mflux runs only on Apple Silicon Macs' }
   const on = { available: true }
   const { call } = setup({
@@ -274,7 +282,17 @@ Deno.test('Choosing ComfyUI makes pictures available where mflux is not', async 
   })
   assertEquals(saved.status, 200)
   const after = (await (await call('GET', '/api/settings/options')).json()).features
+  // Upscale has its own choice: still mflux, so still off.
   assertEquals([after.images.available, after.upscale.available], [true, false])
+  assertStringIncludes(after.upscale.reason, 'or choose ComfyUI for Upscale')
+  await call('PUT', '/api/settings', {
+    ...settings,
+    imageBackend: 'comfyui',
+    imageModel: 'qwen-image-2.1',
+    upscaleBackend: 'comfyui',
+  })
+  const both = (await (await call('GET', '/api/settings/options')).json()).features
+  assertEquals(both.upscale.available, true)
   // An Image Model must be the backend's own.
   const wrong = await call('PUT', '/api/settings', { ...settings, imageBackend: 'comfyui' })
   assertEquals(wrong.status, 400)

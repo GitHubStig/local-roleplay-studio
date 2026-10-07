@@ -3,7 +3,7 @@ import { join } from '@std/path'
 import { DEFAULT_SETTINGS, type Settings } from '../../settings.ts'
 import { withTempDir } from '../../testing.ts'
 import { comfyuiImageGenerator, comfyuiStatus } from './comfyui.ts'
-import { COMFYUI_MODELS } from './models.ts'
+import { COMFYUI_MODELS, COMFYUI_UPSCALERS } from './models.ts'
 import { fillWorkflow, loadWorkflow, pickFiles } from './workflow.ts'
 
 const MAC_FILES: Record<string, string[]> = {
@@ -24,6 +24,7 @@ function fakeComfyUI(
 ) {
   const queued: Record<string, unknown>[] = []
   const posted: { path: string; body: unknown }[] = []
+  const uploads: { name: string; type: string; overwrite: string; bytes: number }[] = []
   const sockets = new Map<string, WebSocket>()
   const server = Deno.serve({ port: 0, onListen: () => {} }, async (req) => {
     const url = new URL(req.url)
@@ -64,6 +65,17 @@ function fakeComfyUI(
       }, 10)
       return Response.json({ prompt_id: promptId, number: 1, node_errors: {} })
     }
+    if (path === '/upload/image') {
+      const form = await req.formData()
+      const image = form.get('image') as File
+      uploads.push({
+        name: image.name,
+        type: String(form.get('type')),
+        overwrite: String(form.get('overwrite')),
+        bytes: image.size,
+      })
+      return Response.json({ name: image.name, subfolder: '', type: form.get('type') })
+    }
     if (['/interrupt', '/queue', '/free', '/history'].includes(path)) {
       const body = await req.json()
       posted.push({ path, body })
@@ -81,6 +93,7 @@ function fakeComfyUI(
     url: `http://127.0.0.1:${server.addr.port}`,
     queued,
     posted,
+    uploads,
     close: () => server.shutdown(),
   }
 }
@@ -207,17 +220,96 @@ Deno.test("Cancel interrupts only this render, and takes it out of ComfyUI's que
     }
   }))
 
+/** SeedVR2's files as Comfy-Org packs them for an NVIDIA card, beside the "sharp" 7B. */
+const SEEDVR2_FILES: Record<string, string[]> = {
+  diffusion_models: [
+    'seedvr2_7b_sharp_fp8_e4m3fn.safetensors',
+    'seedvr2_7b_fp8_e4m3fn.safetensors',
+    'seedvr2_3b_fp8_e4m3fn.safetensors',
+  ],
+  vae: ['seedvr2_ema_vae_fp16.safetensors'],
+}
+
+Deno.test('A ComfyUI upscale sends the picture to temp, runs SeedVR2, and blanks the upload after', () =>
+  withTempDir(async (dir) => {
+    const comfy = fakeComfyUI({ files: SEEDVR2_FILES })
+    try {
+      await Deno.writeFile(join(dir, 'frame-0-abc.png'), new Uint8Array(500))
+      const generator = comfyuiImageGenerator({ upscaleUrl: () => Promise.resolve(comfy.url) })
+      const file = await generator.upscale(
+        { model: 'seedvr2-7b', image: 'frame-0-abc.png', seed: 3, dir, name: 'frame-0-abc-2048' },
+        new AbortController().signal,
+      )
+      assertEquals(file, 'frame-0-abc-2048.png')
+      assertEquals(await Deno.readFile(join(dir, file)), new Uint8Array([137, 80, 78, 71]))
+      const [workflow] = comfy.queued as Record<string, { inputs: Record<string, unknown> }>[]
+      const [picture, blank] = comfy.uploads
+      assertEquals([picture.type, picture.overwrite, picture.bytes], ['temp', 'true', 500])
+      assertEquals(workflow.load.inputs.image, `${picture.name} [temp]`)
+      // The plain 7B, not the "sharp" one listed first.
+      assertEquals(workflow.unet.inputs.unet_name, 'seedvr2_7b_fp8_e4m3fn.safetensors')
+      assertEquals(workflow.vae.inputs.vae_name, 'seedvr2_ema_vae_fp16.safetensors')
+      assertEquals(workflow.resize.inputs['resize_type.shorter_size'], 2048)
+      assertEquals(workflow.sampler.inputs.seed, 3)
+      // Afterwards a 1×1 picture replaces the upload, under the same name.
+      assertEquals([blank.name, blank.type, blank.overwrite, blank.bytes < 100], [
+        picture.name,
+        'temp',
+        'true',
+        true,
+      ])
+      await new Promise((r) => setTimeout(r, 20))
+      assertEquals(comfy.posted.map((p) => p.path), ['/history', '/free'])
+    } finally {
+      await comfy.close()
+    }
+  }))
+
+Deno.test("A ComfyUI upscale without SeedVR2's files says which are missing, sending nothing", () =>
+  withTempDir(async (dir) => {
+    const comfy = fakeComfyUI({ files: { ...SEEDVR2_FILES, vae: [] } })
+    try {
+      await Deno.writeFile(join(dir, 'f.png'), new Uint8Array(10))
+      await assertRejects(
+        () =>
+          comfyuiImageGenerator({ upscaleUrl: () => Promise.resolve(comfy.url) }).upscale(
+            { model: 'seedvr2-3b', image: 'f.png', seed: 1, dir, name: 'f-2048' },
+            new AbortController().signal,
+          ),
+        Error,
+        "ComfyUI doesn't have SeedVR2 3B's files: vae/",
+      )
+      assertEquals([comfy.uploads.length, comfy.queued.length], [0, 0])
+    } finally {
+      await comfy.close()
+    }
+  }))
+
 Deno.test('Every ComfyUI workflow loads, and fills with nothing left over', async () => {
-  for (const model of COMFYUI_MODELS) {
-    const files = pickFiles(model, (folder) => MAC_FILES[folder] ?? [])
-    const filled = fillWorkflow(await loadWorkflow(model.id), {
-      ...files,
-      prompt: 'p',
-      seed: 1,
-      steps: 2,
-      width: 512,
-      height: 512,
-    })
+  const fills = [
+    ...COMFYUI_MODELS.map((model) => ({
+      id: model.id,
+      values: {
+        ...pickFiles(model, (folder) => MAC_FILES[folder] ?? []),
+        prompt: 'p',
+        seed: 1,
+        steps: 2,
+        width: 512,
+        height: 512,
+      },
+    })),
+    ...COMFYUI_UPSCALERS.map((upscaler) => ({
+      id: 'seedvr2',
+      values: {
+        ...pickFiles(upscaler, (folder) => SEEDVR2_FILES[folder] ?? []),
+        image: 'x.png [temp]',
+        edge: 2048,
+        seed: 1,
+      },
+    })),
+  ]
+  for (const { id, values } of fills) {
+    const filled = fillWorkflow(await loadWorkflow(id), values)
     assertEquals(JSON.stringify(filled).includes('"$'), false)
   }
 })
@@ -246,20 +338,29 @@ Deno.test('Files are picked by the first pattern installed, so each machine can 
 Deno.test("Settings' check: ComfyUI's version and device, and whether the model's files are there", async () => {
   const ready = fakeComfyUI()
   const missing = fakeComfyUI({ files: { ...MAC_FILES, vae: [] } })
+  const qwen = { imageModel: 'qwen-image-2.1' }
   try {
-    assertEquals(await comfyuiStatus(ready.url, 'qwen-image-2.1'), {
+    assertEquals(await comfyuiStatus(ready.url, qwen), {
       up: true,
       version: '0.39.1',
       device: 'mps',
       ready: true,
     })
-    const status = await comfyuiStatus(missing.url, 'qwen-image-2.1')
+    const status = await comfyuiStatus(missing.url, qwen)
     assertEquals([status.up, status.up && status.ready], [true, false])
     assertEquals(status.up && status.missing?.includes('vae/'), true)
+    // Upscaling there too: the Mac's files have Qwen-Image's but not SeedVR2's.
+    const both = await comfyuiStatus(ready.url, { ...qwen, upscaler: 'seedvr2-7b' })
+    assertEquals(both.up && [both.ready, both.missing], [
+      false,
+      "ComfyUI doesn't have SeedVR2 7B's files: diffusion_models/ " +
+      '(^seedvr2_7b_int8 or ^seedvr2_7b_fp8 or ^seedvr2_7b_(?!sharp).*\\.safetensors$); ' +
+      'vae/ (^seedvr2_ema_vae.*\\.safetensors$ or ^ema_vae)',
+    ])
   } finally {
     await ready.close()
     await missing.close()
   }
-  const down = await comfyuiStatus('http://localhost:9', 'qwen-image-2.1')
+  const down = await comfyuiStatus('http://localhost:9', qwen)
   assertEquals(down.up, false)
 })

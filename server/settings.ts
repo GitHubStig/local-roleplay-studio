@@ -64,6 +64,12 @@ export interface Settings {
   /** Which SeedVR2 model Upscale uses; read when upscaling, so it applies mid-Session too. */
   upscaler: Upscaler
   /**
+   * Where Upscale runs: mflux, or the ComfyUI at `imageBaseUrl` (which may be another machine),
+   * whichever backend rendered. Read when upscaling. An older file without it follows
+   * `imageBackend`.
+   */
+  upscaleBackend: ImageBackendKind
+  /**
    * The model that pictures Roleplay Frames (the Art Agent); '' for the Session's Text Model.
    * Read when a picture is made, so it applies to running Sessions too.
    */
@@ -98,6 +104,7 @@ export const DEFAULT_SETTINGS: Settings = {
   seedMode: 'random',
   seed: 42,
   upscaler: UPSCALERS[0].id,
+  upscaleBackend: 'mflux',
   artModel: '',
   artStyle: 'prose',
   features: Object.fromEntries(FEATURES.map((f) => [f, true])) as Record<Feature, boolean>,
@@ -187,6 +194,11 @@ export function validateSettings(input: unknown): ValidationResult {
   if (s.upscaler !== undefined && !UPSCALERS.some((u) => u.id === s.upscaler)) {
     issues.push(`upscaler must be one of: ${UPSCALERS.map((u) => u.id).join(', ')}`)
   }
+  if (
+    s.upscaleBackend !== undefined && !IMAGE_BACKENDS.includes(s.upscaleBackend as ImageBackendKind)
+  ) {
+    issues.push(`upscaleBackend must be one of: ${IMAGE_BACKENDS.join(', ')}`)
+  }
 
   if (issues.length > 0) return { ok: false, issues }
   return {
@@ -207,6 +219,7 @@ export function validateSettings(input: unknown): ValidationResult {
       seedMode: s.seedMode as SeedMode,
       seed: s.seed as number,
       upscaler: (s.upscaler as Upscaler | undefined) ?? DEFAULT_SETTINGS.upscaler,
+      upscaleBackend: (s.upscaleBackend as ImageBackendKind | undefined) ?? imageBackend,
       artModel: (s.artModel as string | undefined) ?? '',
       artStyle: (s.artStyle as ArtStyle | undefined) ?? 'prose',
       // One not mentioned (an older file, or a Feature added since) is on.

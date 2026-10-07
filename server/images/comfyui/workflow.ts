@@ -40,7 +40,7 @@ export function fillWorkflow(workflow: Workflow, values: Record<string, unknown>
  * to download.
  */
 export function pickFiles(
-  model: ComfyModel,
+  model: Pick<ComfyModel, 'label' | 'files'>,
   installed: (folder: string) => readonly string[],
 ): Record<string, string> {
   const picked: Record<string, string> = {}

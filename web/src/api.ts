@@ -47,6 +47,8 @@ export interface Settings {
   seed: number
   /** Which SeedVR2 model Upscale uses; applies to the next upscale, even mid-Session. */
   upscaler: string
+  /** Where Upscale runs (the ComfyUI at `imageBaseUrl`, or mflux), whichever rendered. */
+  upscaleBackend: ImageBackend
   /** The Limits; off, only "everyone depicted is an adult" is enforced. Applies at once. */
   limits: boolean
   /** The model that pictures Roleplay Frames; '' for the Session's Text Model. Applies at once. */
@@ -140,17 +142,23 @@ export const deleteQuantized = (name: string) =>
     method: 'DELETE',
   })
 
-/** Whether ComfyUI answers at an address, and has an Image Model's files. */
+/** Whether ComfyUI answers at an address, and has the files of what will run there. */
 export type ComfyStatus =
   | { up: true; version: string; device: string; ready: boolean; missing?: string }
   | { up: false; error: string }
 
-/** Checks ComfyUI at an address not saved yet ('' for its default), for an Image Model. */
-export const checkComfyUI = (imageBaseUrl: string, imageModel: string) =>
+/**
+ * Checks ComfyUI at an address not saved yet ('' for its default), for the Image Model and the
+ * upscaler that would run there.
+ */
+export const checkComfyUI = (
+  imageBaseUrl: string,
+  uses: { imageModel?: string; upscaler?: string },
+) =>
   request<ComfyStatus>('/api/settings/comfyui', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ imageBaseUrl, imageModel }),
+    body: JSON.stringify({ imageBaseUrl, ...uses }),
   })
 
 /** The models on a Text backend that isn't saved yet; without a key, with the saved one. */

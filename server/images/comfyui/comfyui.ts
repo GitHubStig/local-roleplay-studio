@@ -1,9 +1,9 @@
 import { join } from '@std/path'
-import type { ImageGenerator } from '../imageGenerator.ts'
+import { type ImageGenerator, UPSCALED_EDGE } from '../imageGenerator.ts'
 import { COMFYUI_URL } from '../imageModels.ts'
 import { SIZE_PRESETS } from '../../settings.ts'
-import { type ComfyModel, findComfyModel } from './models.ts'
-import { fillWorkflow, loadWorkflow, pickFiles } from './workflow.ts'
+import { type ComfyModel, findComfyModel, findComfyUpscaler } from './models.ts'
+import { fillWorkflow, loadWorkflow, pickFiles, type Workflow } from './workflow.ts'
 
 /**
  * Pictures from a ComfyUI server, through its HTTP and WebSocket API only (never its folders, so it
@@ -18,10 +18,16 @@ import { fillWorkflow, loadWorkflow, pickFiles } from './workflow.ts'
  * memory when it ends: kept loaded (about 16 GB for Qwen-Image 2.1), they'd crowd out the Text
  * Model, and on a 12 GB card push it off the GPU.
  */
-export function comfyuiImageGenerator(): ImageGenerator {
+export function comfyuiImageGenerator(opts: {
+  /**
+   * ComfyUI's address for upscaling ('' for its default): Settings' now, as the Upscaler is read
+   * when upscaling. A render uses its Session's.
+   */
+  upscaleUrl?: () => Promise<string>
+} = {}): ImageGenerator {
   return {
     async generate(req, signal, onProgress) {
-      const base = (req.settings.imageBaseUrl || COMFYUI_URL).replace(/\/+$/, '')
+      const base = baseUrl(req.settings.imageBaseUrl)
       const model = findComfyModel(req.settings.imageModel)
       if (!model) throw new Error(`ComfyUI has no Image Model "${req.settings.imageModel}" here`)
       const size = SIZE_PRESETS.find((p) => p.id === req.settings.size) ?? SIZE_PRESETS[0]
@@ -34,49 +40,117 @@ export function comfyuiImageGenerator(): ImageGenerator {
         width: size.width,
         height: size.height,
       })
-
-      const clientId = crypto.randomUUID()
-      const socket = await openSocket(base, clientId, signal)
-      try {
-        const queued = await fetch(`${base}/prompt`, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ prompt: workflow, client_id: clientId }),
-          signal,
-        })
-        const body = await queued.json().catch(() => ({}))
-        if (!queued.ok) throw new Error(`ComfyUI refused the workflow: ${refusal(body)}`)
-        const promptId: string = body.prompt_id
-        const cancel = () => {
-          // Running: interrupt just this prompt. Still queued: take it out of the queue.
-          post(base, '/interrupt', { prompt_id: promptId })
-          post(base, '/queue', { delete: [promptId] })
-        }
-        signal.addEventListener('abort', cancel, { once: true })
-        let png: Uint8Array
-        try {
-          png = await finished(socket, promptId, signal, onProgress)
-        } finally {
-          signal.removeEventListener('abort', cancel)
-          post(base, '/history', { delete: [promptId] })
-        }
-        const file = `${req.name}.png`
-        await Deno.writeFile(join(req.dir, file), png)
-        return file
-      } finally {
-        socket.close()
-        post(base, '/free', { unload_models: true, free_memory: true })
-      }
+      const file = `${req.name}.png`
+      await Deno.writeFile(
+        join(req.dir, file),
+        await runWorkflow(base, workflow, signal, onProgress),
+      )
+      return file
     },
 
-    upscale() {
-      return Promise.reject(new Error("Upscaling isn't available through ComfyUI yet"))
+    /**
+     * SeedVR2, built into ComfyUI. The picture has to reach ComfyUI as a file: it goes to its temp
+     * folder, and afterwards a blank 1×1 picture is written over it, so ComfyUI keeps an empty
+     * stub, which it clears from temp when it next starts (it has no API to delete an upload).
+     */
+    async upscale(req, signal, onProgress) {
+      const base = baseUrl(await opts.upscaleUrl?.() ?? '')
+      const upscaler = findComfyUpscaler(req.model)
+      if (!upscaler) throw new Error(`ComfyUI has no upscaler "${req.model}" here`)
+      const files = await modelFiles(base, upscaler, signal)
+      const name = `rpg-${crypto.randomUUID()}.png`
+      const uploaded = await upload(base, name, await Deno.readFile(join(req.dir, req.image)))
+      try {
+        const workflow = fillWorkflow(await loadWorkflow('seedvr2'), {
+          ...files,
+          image: `${uploaded} [temp]`,
+          edge: UPSCALED_EDGE,
+          seed: req.seed,
+        })
+        const file = `${req.name}.png`
+        await Deno.writeFile(
+          join(req.dir, file),
+          await runWorkflow(base, workflow, signal, onProgress),
+        )
+        return file
+      } finally {
+        await upload(base, uploaded, BLANK_PNG).catch(() => {})
+      }
     },
   }
 }
 
+const baseUrl = (address: string) => (address || COMFYUI_URL).replace(/\/+$/, '')
+
+/**
+ * Queues a filled workflow and follows it over the WebSocket to the picture it sends back. Cancel
+ * interrupts just this prompt; afterwards its prompt leaves ComfyUI's history, and ComfyUI unloads
+ * its models.
+ */
+async function runWorkflow(
+  base: string,
+  workflow: Workflow,
+  signal: AbortSignal,
+  onProgress?: (step: number, total: number) => void,
+): Promise<Uint8Array> {
+  const clientId = crypto.randomUUID()
+  const socket = await openSocket(base, clientId, signal)
+  try {
+    const queued = await fetch(`${base}/prompt`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ prompt: workflow, client_id: clientId }),
+      signal,
+    })
+    const body = await queued.json().catch(() => ({}))
+    if (!queued.ok) throw new Error(`ComfyUI refused the workflow: ${refusal(body)}`)
+    const promptId: string = body.prompt_id
+    const cancel = () => {
+      // Running: interrupt just this prompt. Still queued: take it out of the queue.
+      post(base, '/interrupt', { prompt_id: promptId })
+      post(base, '/queue', { delete: [promptId] })
+    }
+    signal.addEventListener('abort', cancel, { once: true })
+    try {
+      return await finished(socket, promptId, signal, onProgress)
+    } finally {
+      signal.removeEventListener('abort', cancel)
+      post(base, '/history', { delete: [promptId] })
+    }
+  } finally {
+    socket.close()
+    post(base, '/free', { unload_models: true, free_memory: true })
+  }
+}
+
+/**
+ * Sends a picture to ComfyUI's temp folder under `name`, replacing any there, and returns the
+ * name ComfyUI gave it.
+ */
+async function upload(base: string, name: string, png: Uint8Array<ArrayBuffer>): Promise<string> {
+  const form = new FormData()
+  form.append('image', new Blob([png], { type: 'image/png' }), name)
+  form.append('type', 'temp')
+  form.append('overwrite', 'true')
+  const res = await fetch(`${base}/upload/image`, { method: 'POST', body: form })
+  if (!res.ok) throw new Error(`ComfyUI didn't take the picture to upscale: HTTP ${res.status}`)
+  return (await res.json()).name
+}
+
+/** A 1×1 transparent PNG, written over an uploaded picture once it's been used. */
+const BLANK_PNG = Uint8Array.from(
+  atob(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+  ),
+  (c) => c.charCodeAt(0),
+)
+
 /** The files a model's loaders use on this ComfyUI (`pickFiles`); throws naming any missing. */
-async function modelFiles(base: string, model: ComfyModel, signal: AbortSignal) {
+async function modelFiles(
+  base: string,
+  model: Pick<ComfyModel, 'label' | 'files'>,
+  signal: AbortSignal,
+) {
   const installed = new Map<string, string[]>()
   for (const folder of new Set(Object.values(model.files).map((f) => f.folder))) {
     installed.set(folder, await getJson(base, `/models/${folder}`, signal))
@@ -91,9 +165,13 @@ export type ComfyStatus =
 
 /**
  * Asks the ComfyUI at `baseUrl` ('' for its default) what it is (`GET /system_stats`), and whether it
- * has `modelId`'s files. Never throws: what's wrong is in the answer.
+ * has the files of the Image Model and the upscaler that will run there (either may be left out).
+ * Never throws: what's wrong is in the answer.
  */
-export async function comfyuiStatus(baseUrl: string, modelId: string): Promise<ComfyStatus> {
+export async function comfyuiStatus(
+  baseUrl: string,
+  uses: { imageModel?: string; upscaler?: string },
+): Promise<ComfyStatus> {
   const base = (baseUrl || COMFYUI_URL).replace(/\/+$/, '')
   const signal = AbortSignal.timeout(5000)
   let stats: { system?: { comfyui_version?: string }; devices?: { name?: string }[] }
@@ -107,16 +185,22 @@ export async function comfyuiStatus(baseUrl: string, modelId: string): Promise<C
     version: stats.system?.comfyui_version ?? '?',
     device: stats.devices?.[0]?.name ?? '?',
   }
-  const model = findComfyModel(modelId)
-  if (!model) {
-    return { ...up, ready: false, missing: `ComfyUI has no Image Model "${modelId}" here` }
+  const missing: string[] = []
+  const check = async (
+    id: string | undefined,
+    find: (id: string) => Pick<ComfyModel, 'label' | 'files'> | undefined,
+    what: string,
+  ) => {
+    if (id === undefined) return
+    const model = find(id)
+    if (!model) return missing.push(`ComfyUI has no ${what} "${id}" here`)
+    await modelFiles(base, model, signal).catch((err) => missing.push((err as Error).message))
   }
-  try {
-    await modelFiles(base, model, signal)
-    return { ...up, ready: true }
-  } catch (err) {
-    return { ...up, ready: false, missing: (err as Error).message }
-  }
+  await check(uses.imageModel, findComfyModel, 'Image Model')
+  await check(uses.upscaler, findComfyUpscaler, 'upscaler')
+  return missing.length
+    ? { ...up, ready: false, missing: missing.join('; ') }
+    : { ...up, ready: true }
 }
 
 async function getJson(base: string, path: string, signal: AbortSignal) {

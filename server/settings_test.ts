@@ -84,6 +84,20 @@ Deno.test('validateSettings defaults the upscaler to SeedVR2 7B and accepts only
   assertEquals(validateSettings({ ...DEFAULT_SETTINGS, upscaler: 'esrgan' }).ok, false)
 })
 
+Deno.test('validateSettings upscales where pictures are made, unless Upscale has its own backend', () => {
+  const { upscaleBackend: _, ...older } = DEFAULT_SETTINGS
+  const comfyui = { ...older, imageBackend: 'comfyui', imageModel: 'qwen-image-2.1' }
+  const follows = validateSettings(comfyui)
+  assertEquals(follows.ok && follows.settings.upscaleBackend, 'comfyui')
+  // A Mac rendering with mflux and upscaling on a ComfyUI machine.
+  const split = validateSettings({ ...DEFAULT_SETTINGS, upscaleBackend: 'comfyui' })
+  assertEquals(split.ok && [split.settings.imageBackend, split.settings.upscaleBackend], [
+    'mflux',
+    'comfyui',
+  ])
+  assertEquals(validateSettings({ ...DEFAULT_SETTINGS, upscaleBackend: 'esrgan' }).ok, false)
+})
+
 Deno.test('validateSettings keeps the Limits on unless turned off', () => {
   const { limits: _, ...withoutLimits } = DEFAULT_SETTINGS
   const result = validateSettings(withoutLimits)

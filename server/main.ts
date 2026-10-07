@@ -48,10 +48,13 @@ const handler = createHandler({
   textModel: (c) => chatTextModel(text(c).chat(c.model, c.thinking)),
   roleplayModel: (c) => chatRoleplayModel(text(c).chat(c.model, c.thinking)),
   // Each Session renders with the backend its Settings name: mflux where it's installed (a Mac),
-  // or ComfyUI (any machine).
+  // or ComfyUI (any machine). Upscale runs where Settings say now, with ComfyUI's address there.
   imageGenerator: placeholderImages ? placeholderImageGenerator() : imageBackends({
     mflux: features.images.available ? mfluxImageGenerator({ quantized }) : undefined,
-    comfyui: comfyuiImageGenerator(),
+    comfyui: comfyuiImageGenerator({
+      upscaleUrl: async () => (await settings.load()).imageBaseUrl,
+    }),
+    upscaleBackend: async () => (await settings.load()).upscaleBackend,
   }),
   features,
   quantized,

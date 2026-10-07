@@ -53,7 +53,10 @@ export interface AppDeps {
   /** A Text backend's models; `apiKey` stands in for the saved one (trying a new key). */
   listTextModels: (connection: TextConnection, apiKey?: string) => Promise<TextModelInfo[]>
   /** Whether ComfyUI answers at an address, and has an Image Model's files (for Settings). */
-  comfyuiStatus?: (baseUrl: string, imageModel: string) => Promise<ComfyStatus>
+  comfyuiStatus?: (
+    baseUrl: string,
+    uses: { imageModel?: string; upscaler?: string },
+  ) => Promise<ComfyStatus>
   scenarios: ScenarioLibrary
   sessions: SessionStore
   /** The Text Model as a Chain or Storyboard uses it. */
@@ -303,15 +306,22 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     lito: given(deps.lito, 'LiTo'),
   }
   /**
-   * What this machine can run now: as detected at startup, but with pictures available wherever
-   * Settings choose ComfyUI, which a running server provides rather than this machine.
+   * What this machine can run now: as detected at startup, but with pictures and Upscale available
+   * wherever Settings send them to ComfyUI, which a running server provides rather than this
+   * machine.
    */
   async function availability(): Promise<Availabilities> {
-    const { imageBackend } = await deps.settings.load()
-    if (imageBackend === 'comfyui') return { ...detected, images: { available: true } }
-    if (detected.images.available) return detected
-    const reason = `${detected.images.reason}; or choose ComfyUI as the Image backend in Settings`
-    return { ...detected, images: { available: false, reason } }
+    const { imageBackend, upscaleBackend } = await deps.settings.load()
+    const viaComfyUI = (feature: 'images' | 'upscale', comfyui: boolean, choose: string) =>
+      comfyui ? { available: true } : detected[feature].available ? detected[feature] : {
+        available: false,
+        reason: `${detected[feature].reason}; or choose ComfyUI ${choose} in Settings`,
+      }
+    return {
+      ...detected,
+      images: viaComfyUI('images', imageBackend === 'comfyui', 'as the Image backend'),
+      upscale: viaComfyUI('upscale', upscaleBackend === 'comfyui', 'for Upscale'),
+    }
   }
 
   /**
@@ -435,13 +445,18 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     // Whether ComfyUI is up at an address not saved yet, and has the Image Model's files.
     ['POST', new URLPattern({ pathname: '/api/settings/comfyui' }), async (req) => {
       const body = await readJson(req) as
-        | { imageBaseUrl?: unknown; imageModel?: unknown }
+        | { imageBaseUrl?: unknown; imageModel?: unknown; upscaler?: unknown }
         | undefined
-      if (typeof body?.imageBaseUrl !== 'string' || typeof body.imageModel !== 'string') {
-        return error('Give an imageBaseUrl and an imageModel', 400)
+      const optional = (v: unknown) => v === undefined || typeof v === 'string'
+      if (
+        typeof body?.imageBaseUrl !== 'string' || !optional(body.imageModel) ||
+        !optional(body.upscaler)
+      ) {
+        return error('Give an imageBaseUrl, and an imageModel or an upscaler to check', 400)
       }
       if (!deps.comfyuiStatus) return error("ComfyUI isn't set up on this server", 409)
-      return json(await deps.comfyuiStatus(body.imageBaseUrl.trim(), body.imageModel))
+      const { imageModel, upscaler } = body as { imageModel?: string; upscaler?: string }
+      return json(await deps.comfyuiStatus(body.imageBaseUrl.trim(), { imageModel, upscaler }))
     }],
 
     // The models on a Text backend not saved yet, for Settings to offer as it's changed.

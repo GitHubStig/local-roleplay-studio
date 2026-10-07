@@ -29,6 +29,7 @@ const settings: api.Settings = {
   seedMode: 'random',
   seed: 42,
   upscaler: 'seedvr2-7b',
+  upscaleBackend: 'mflux',
   limits: true,
   artModel: '',
   artStyle: 'prose',

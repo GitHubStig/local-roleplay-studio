@@ -1,0 +1,73 @@
+{
+  "_note": "SeedVR2 upscaling, from ComfyUI's templates utility_seedvr2_{7b,3b}_int8_upscale_image (one step, CFG 1, euler, simple, tiled VAE), in API format, but resized to a shortest edge of $edge (as mflux's --resolution) instead of 4x. The 7B and 3B differ only in $unet. The picture is uploaded to ComfyUI's temp folder first ($image, '<name> [temp]'), and comes back over the WebSocket (SaveImageWebsocket).",
+  "load": { "class_type": "LoadImage", "inputs": { "image": "$image" } },
+  "unet": {
+    "class_type": "UNETLoader",
+    "inputs": { "unet_name": "$unet", "weight_dtype": "default" }
+  },
+  "vae": { "class_type": "VAELoader", "inputs": { "vae_name": "$vae" } },
+  "alpha": {
+    "class_type": "JoinImageWithAlpha",
+    "inputs": { "image": ["load", 0], "alpha": ["load", 1] }
+  },
+  "resize": {
+    "class_type": "ResizeImageMaskNode",
+    "inputs": {
+      "input": ["alpha", 0],
+      "resize_type": "scale shorter dimension",
+      "resize_type.shorter_size": "$edge",
+      "scale_method": "lanczos"
+    }
+  },
+  "prepare": { "class_type": "SeedVR2Preprocess", "inputs": { "resized_images": ["resize", 0] } },
+  "encode": {
+    "class_type": "VAEEncodeTiled",
+    "inputs": {
+      "pixels": ["prepare", 0],
+      "vae": ["vae", 0],
+      "tile_size": 512,
+      "overlap": 128,
+      "temporal_size": 4096,
+      "temporal_overlap": 8
+    }
+  },
+  "condition": {
+    "class_type": "SeedVR2Conditioning",
+    "inputs": { "model": ["unet", 0], "vae_conditioning": ["encode", 0] }
+  },
+  "sampler": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": ["unet", 0],
+      "seed": "$seed",
+      "steps": 1,
+      "cfg": 1,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "positive": ["condition", 0],
+      "negative": ["condition", 1],
+      "latent_image": ["encode", 0],
+      "denoise": 1
+    }
+  },
+  "decode": {
+    "class_type": "VAEDecodeTiled",
+    "inputs": {
+      "samples": ["sampler", 0],
+      "vae": ["vae", 0],
+      "tile_size": 512,
+      "overlap": 128,
+      "temporal_size": 4096,
+      "temporal_overlap": 8
+    }
+  },
+  "finish": {
+    "class_type": "SeedVR2PostProcessing",
+    "inputs": {
+      "images": ["decode", 0],
+      "original_resized_images": ["resize", 0],
+      "color_correction_method": "lab"
+    }
+  },
+  "save": { "class_type": "SaveImageWebsocket", "inputs": { "images": ["finish", 0] } }
+}

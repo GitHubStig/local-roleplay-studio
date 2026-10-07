@@ -130,28 +130,51 @@ function onImageBackendChange() {
   form.value.imageModel = imageModels.value[0]?.id ?? ''
   onImageModelChange()
 }
-/** ComfyUI at the address shown: up or down, and whether the Image Model's files are there. */
+/** Pictures or Upscale run on ComfyUI, so its address matters. */
+const usesComfyUI = computed(() =>
+  form.value?.imageBackend === 'comfyui' || form.value?.upscaleBackend === 'comfyui'
+)
+/**
+ * ComfyUI at the address shown: up or down, and whether the files of what runs there (the Image
+ * Model, the upscaler, or both) are there.
+ */
 const comfy = ref<ComfyStatus | 'checking' | null>(null)
 async function checkComfy() {
-  if (form.value?.imageBackend !== 'comfyui') return (comfy.value = null)
+  if (!form.value || !usesComfyUI.value) return (comfy.value = null)
   comfy.value = 'checking'
-  const { imageBaseUrl, imageModel } = form.value
-  comfy.value = await checkComfyUI(imageBaseUrl, imageModel).catch((err) => ({
-    up: false as const,
-    error: (err as Error).message,
-  }))
+  const { imageBackend, upscaleBackend, imageBaseUrl, imageModel, upscaler } = form.value
+  comfy.value = await checkComfyUI(imageBaseUrl, {
+    imageModel: imageBackend === 'comfyui' ? imageModel : undefined,
+    upscaler: upscaleBackend === 'comfyui' ? upscaler : undefined,
+  }).catch((err) => ({ up: false as const, error: (err as Error).message }))
 }
-// Checked when ComfyUI is chosen, and again as its address or the model changes.
+// Checked when ComfyUI is chosen, and again as its address or what runs there changes.
 watchDebounced(
-  () => form.value && [form.value.imageBackend, form.value.imageBaseUrl, form.value.imageModel],
+  () =>
+    form.value && [
+      form.value.imageBackend,
+      form.value.upscaleBackend,
+      form.value.imageBaseUrl,
+      form.value.imageModel,
+      form.value.upscaler,
+    ],
   checkComfy,
   { debounce: 500, immediate: true },
 )
 
-/** Pictures can be made: mflux is here, or ComfyUI is chosen (a server makes them, not this machine). */
-const picturesHere = computed(() =>
-  !!options.value?.features.images.available || form.value?.imageBackend === 'comfyui'
+/**
+ * Whether pictures or Upscale can run, as the form stands: choosing ComfyUI makes either available
+ * before it's saved (a server runs it, not this machine).
+ */
+const availableWith = (feature: 'images' | 'upscale', comfyui: boolean) =>
+  comfyui ? { available: true } : options.value?.features[feature] ?? { available: false }
+const imagesAvailability = computed(() =>
+  availableWith('images', form.value?.imageBackend === 'comfyui')
 )
+const upscaleAvailability = computed(() =>
+  availableWith('upscale', form.value?.upscaleBackend === 'comfyui')
+)
+const picturesHere = computed(() => imagesAvailability.value.available)
 
 async function save() {
   if (!form.value) return
@@ -341,7 +364,7 @@ async function save() {
         >
           <FeatureSwitch
             v-model="form.features.images"
-            :availability="options.features.images"
+            :availability="imagesAvailability"
             title="Pictures"
             data-feature="images"
           >
@@ -361,7 +384,7 @@ async function save() {
               <option value="comfyui">ComfyUI (any machine; Windows with an NVIDIA card)</option>
             </select>
           </label>
-          <label v-if="form.imageBackend === 'comfyui'" class="flex flex-col gap-1">
+          <label v-if="usesComfyUI" class="flex flex-col gap-1">
             <span class="text-sm text-muted">ComfyUI address</span>
             <input
               v-model.trim="form.imageBaseUrl"
@@ -373,7 +396,7 @@ async function save() {
               <span v-if="comfy === 'checking'" class="animate-pulse text-muted">Checking…</span>
               <template v-else-if="comfy?.up">
                 <span v-if="comfy.ready" class="text-ok">
-                  Up: ComfyUI {{ comfy.version }} on {{ comfy.device }}, with the model's files.
+                  Up: ComfyUI {{ comfy.version }} on {{ comfy.device }}, with the files it needs.
                 </span>
                 <span v-else class="text-warn">
                   Up (ComfyUI {{ comfy.version }}), but {{ comfy.missing }}
@@ -497,13 +520,25 @@ async function save() {
 
             <FeatureSwitch
               v-model="form.features.upscale"
-              :availability="options.features.upscale"
+              :availability="upscaleAvailability"
               title="Upscale"
               data-feature="upscale"
             >
-              Enlarges a picture to 2048 px with SeedVR2, through mflux, whichever backend rendered it.
+              Enlarges a picture to 2048 px with SeedVR2, whichever backend rendered it.
             </FeatureSwitch>
-            <label v-if="options.features.upscale.available" class="flex flex-col gap-1">
+            <label class="flex flex-col gap-1">
+              <span class="text-sm text-muted">Upscale with</span>
+              <select v-model="form.upscaleBackend" class="field" data-upscale-backend>
+                <option value="mflux">mflux (Apple Silicon Macs)</option>
+                <option value="comfyui">ComfyUI, at the address above</option>
+              </select>
+              <span class="text-sm text-muted">
+                ComfyUI can be another machine: a Mac can render with mflux and upscale on a faster
+                PC (SeedVR2 7B: 9.5 s on an RTX 4070 against ~46 s on the Mac). It needs Comfy-Org's
+                SeedVR2 files there.
+              </span>
+            </label>
+            <label v-if="upscaleAvailability.available" class="flex flex-col gap-1">
               <span class="text-sm text-muted">Upscaler</span>
               <select v-model="form.upscaler" class="field" data-upscaler>
                 <option v-for="u in options.upscalers" :key="u.id" :value="u.id">{{ u.label }}</option>

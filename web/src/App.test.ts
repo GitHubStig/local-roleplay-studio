@@ -83,6 +83,7 @@ beforeEach(() => {
     seedMode: 'random',
     seed: 1,
     upscaler: 'seedvr2-7b',
+    upscaleBackend: 'mflux',
     limits: true,
     artModel: '',
     artStyle: 'prose',

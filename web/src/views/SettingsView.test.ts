@@ -33,6 +33,7 @@ const settings: api.Settings = {
   seedMode: 'random',
   seed: 42,
   upscaler: 'seedvr2-7b',
+  upscaleBackend: 'mflux',
   limits: true,
   artModel: '',
   artStyle: 'prose',
@@ -122,13 +123,25 @@ describe('SettingsView', () => {
     await wrapper.find('[data-check-comfy]').trigger('click')
     await flushPromises()
     expect(wrapper.find('[data-comfy-status]').text()).toContain('Up: ComfyUI 0.39.1 on mps')
-    expect(api.checkComfyUI).toHaveBeenLastCalledWith('', 'qwen-image-2.1')
+    expect(api.checkComfyUI).toHaveBeenLastCalledWith('', {
+      imageModel: 'qwen-image-2.1',
+      upscaler: undefined,
+    })
     const models = wrapper.findAll('[data-image-model] option').map((o) => o.text())
     expect(models).toEqual(['Qwen-Image 2.1'])
-    // ComfyUI's models have no Quantize, step cache or Fast; Upscale needs mflux.
+    // ComfyUI's models have no Quantize, step cache or Fast; Upscale is still mflux's, so off.
     expect(wrapper.text()).not.toContain('Quantize')
     expect(wrapper.find('[data-step-cache]').exists()).toBe(false)
     expect(wrapper.find('[data-upscaler]').exists()).toBe(false)
+    // Upscaling there too: the Upscaler can be chosen, and the check covers its files.
+    await wrapper.find('[data-upscale-backend]').setValue('comfyui')
+    expect(wrapper.find('[data-upscaler]').exists()).toBe(true)
+    await new Promise((r) => setTimeout(r, 600))
+    await flushPromises()
+    expect(api.checkComfyUI).toHaveBeenLastCalledWith('', {
+      imageModel: 'qwen-image-2.1',
+      upscaler: 'seedvr2-7b',
+    })
     await wrapper.find('[data-image-base-url]').setValue('http://192.168.1.20:8188')
     await wrapper.find('form').trigger('submit')
     await flushPromises()
@@ -137,6 +150,39 @@ describe('SettingsView', () => {
       imageBaseUrl: 'http://192.168.1.20:8188',
       imageModel: 'qwen-image-2.1',
       steps: 25,
+      upscaleBackend: 'comfyui',
+    }))
+  })
+
+  it('on a Mac, can render with mflux and upscale with ComfyUI on another machine', async () => {
+    vi.mocked(api.checkComfyUI).mockResolvedValue({
+      up: true,
+      version: '0.39.1',
+      device: 'cuda:0 NVIDIA GeForce RTX 4070',
+      ready: true,
+    })
+    const wrapper = mount(SettingsView)
+    await flushPromises()
+    // Both on mflux: no ComfyUI address to give.
+    expect(wrapper.find('[data-image-base-url]').exists()).toBe(false)
+    await wrapper.find('[data-upscale-backend]').setValue('comfyui')
+    await wrapper.find('[data-image-base-url]').setValue('http://192.168.1.20:8188')
+    await new Promise((r) => setTimeout(r, 600))
+    await flushPromises()
+    // Only the upscaler runs there, so only its files are checked.
+    expect(api.checkComfyUI).toHaveBeenLastCalledWith('http://192.168.1.20:8188', {
+      imageModel: undefined,
+      upscaler: 'seedvr2-7b',
+    })
+    expect(wrapper.find('[data-comfy-status]').text()).toContain(
+      'on cuda:0 NVIDIA GeForce RTX 4070',
+    )
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+    expect(api.saveSettings).toHaveBeenCalledWith(expect.objectContaining({
+      imageBackend: 'mflux',
+      upscaleBackend: 'comfyui',
+      imageBaseUrl: 'http://192.168.1.20:8188',
     }))
   })
 
