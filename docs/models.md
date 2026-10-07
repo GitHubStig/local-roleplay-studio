@@ -169,6 +169,15 @@ One run each, so the Art Agent difference may be partly chance, but it's the job
 was best. The MLX build is the one for playing the Character (smaller, a little faster); for the
 Art Agent the GGUF was the more careful.
 
+**The GGUF on an NVIDIA card** (2026-10-07; Windows 11, RTX 4070 12 GB, Ollama 0.40.0): the Text
+Model for Windows, where the MLX build can't run. 8.3 GB loaded, 100% GPU, ~53 tokens/s; its
+context is cheap (7.5–8.3 GB at `num_ctx` 16k to 128k alike, and a 56.5k-token chat read in 30 s
+with 11.2 GB of the card in use; see the README on the context length). Through the app at 16k:
+Cast 7.5–18.4 s, Replies 4.8–5.9 s, Suggest 2.2–3.8 s, a Chain's text 5.5–15.3 s (each after
+ComfyUI's render, so with a reload). Only these runs, not the four tests above. A QAT Q4_0 build
+([igorls](https://huggingface.co/igorls/gemma-4-12B-it-qat-q4_0-unquantized-heretic-GGUF), 7.0 GB)
+may lose less to quantization; not tried.
+
 **Converting to MLX saves little memory; bits do.** Memory is the weights times the bits per
 weight, and the 4-bit formats store about the same (Q4_K_M about 4.8 bits a weight, NVFP4 about
 4.5): the 12B went from 9.5 GB to 8.1. What MLX buys is speed. Ollama 0.35.1's `create -q` offers

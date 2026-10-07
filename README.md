@@ -34,7 +34,9 @@ The vocabulary (Scenario, Session, Image Prompt, Frame, Action, …) is defined 
 - **[Deno](https://deno.com) 2.9+** runs the server, the web app's tooling and the tests.
 - **Node.js 24+**, only for the Vue type check (see [Known quirks](#known-quirks)).
 - **Ollama** with a Text Model: `gemma4:26b-nvfp4` (Gemma 4 26B-A4B on Ollama's MLX engine, 17 GB
-  loaded, a few seconds a reply, Thinking off) for every text job. Small models (4–8B) can't
+  loaded, a few seconds a reply, Thinking off) for every text job. On Windows with a 12 GB NVIDIA
+  card: `hf.co/igorls/gemma-4-12B-it-heretic-GGUF:Q4_K_M` (Gemma 4 12B Heretic, 8.3 GB loaded,
+  ~5 s a Reply on an RTX 4070). Small models (4–8B) can't
   reliably follow the prompt format. The comparisons, uncensored builds and how to make one are in
   [docs/models.md](docs/models.md). Or, instead of Ollama, **any server with the OpenAI chat API**
   (LM Studio, llama.cpp's server, vLLM, or a cloud service such as OpenRouter), chosen on the Text
@@ -45,10 +47,12 @@ The vocabulary (Scenario, Session, Image Prompt, Frame, Action, …) is defined 
   history with every Reply (a 30-Frame Roleplay is 8–11k tokens, each exchange adds 220–310, so 200
   Frames is about 65k) and doesn't set the context itself. When a chat doesn't fit, Ollama keeps the
   system message, drops the oldest exchanges, and fills the context to the brim, so the Reply has no
-  room and fails ("ran past its length limit"). And Ollama reserves the context's memory when it
-  loads a GGUF model, so too much pushes it off the GPU (on a 12 GB NVIDIA card, `mistral-nemo:12b`
-  fell from 61 to 4.3 tokens/s at 128k). Set it as high as still fits (`ollama ps` should say
-  `100% GPU`): 16k for a 12B model on a 12 GB card. On a Mac, the MLX models (`gemma-4-26b-heretic`
+  room and fails ("ran past its length limit"). And Ollama reserves a GGUF model's context memory
+  when it loads it, so too much can push the model off the GPU. Set it as high as still fits
+  (`ollama ps` should say `100% GPU`). Gemma 4 keeps most layers' cache to a short window, so its
+  context is cheap: on a 12 GB NVIDIA card, Gemma 4 12B Heretic (Q4_K_M) loads at 8.1 GB, 100% GPU,
+  at 128k, and read a 56.5k-token chat with 11.2 GB of the card in use; 64k covers a 200-Frame
+  Roleplay. On a Mac, the MLX models (`gemma-4-26b-heretic`
   and the other `safetensors` ones) ignore the slider: they read the whole prompt whatever it says,
   and take memory only as a prompt grows (17 GB loaded, 23 GB at 67k tokens), so any setting works.
 - **mflux 0.21+** (the step cache and Fast need it): `uv tool install --managed-python --python 3.14 mflux`. (uv's own Python, kept apart from any other Python on the Mac; mflux runs on 3.10 or newer.)

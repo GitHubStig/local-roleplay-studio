@@ -64,8 +64,8 @@ the Qwen-Image 2.1 VAE decodes RGBA.
 A second render through the app's own client (`server/images/comfyui/`), 512×768, 25 steps: **89 s**,
 3.1 s a step, with **no loading**: ComfyUI had kept both models (~16 GB) loaded since the first.
 That's faster for the next picture, but the memory stays taken: the Text Model would have to load
-beside it, and on a 12 GB card the two can't both fit (the Text Model spills to the CPU; on the
-Windows run, `mistral-nemo` went from 61 to 4.3 tokens/s that way). So the client asks ComfyUI to
+beside it, and on a 12 GB card the two can't both fit (the Text Model spills to the CPU, and its
+replies slow many times over). So the client asks ComfyUI to
 unload after each render (`POST /free`), as an mflux process frees its memory when it ends; the next
 picture pays the ~20 s load again, as mflux does.
 
@@ -133,9 +133,46 @@ the Mac:
   render, the output folder holds only its placeholder, the temp folder is empty, `GET /history`
   is `{}`, and ComfyUI's log has no prompt text (it logs "got prompt" and timings only). Comfy
   Desktop's `user/comfyui.db` wasn't touched (last changed 2026-09-21).
-- Not yet run: anything on Windows (the RTX 4070's speed and memory with the 9.4 GB text encoder
-  and the 7.3 GB DiT; whether the fp8 or another build is what's installed there, and what its
-  files are called).
+
+## On Windows with an RTX 4070 (2026-10-07)
+
+Windows 11, RTX 4070 (12 GB), 16 GB of RAM; Comfy Desktop with ComfyUI 0.39.1, PyTorch
+2.12.1+cu130, on `127.0.0.1:8188`. The same int8 files as the Mac's were installed
+(`qwen_image_2.1_int8_convrot` 6.8 GB, `qwen3vl_8b_int8_convrot` 8.7 GB, the bf16 VAE 0.6 GB), and
+they run on CUDA as they are, so no fp8 build was needed. Settings' check said "Up: ComfyUI 0.39.1
+on cuda:0 NVIDIA GeForce RTX 4070, with the model's files".
+
+Two Frames of a Chain through the app, Qwen-Image 2.1 at 832×1216 (Portrait), 25 steps, Text Model
+Gemma 4 12B Heretic (`hf.co/igorls/gemma-4-12B-it-heretic-GGUF:Q4_K_M`) at Ollama's 16k context:
+
+| | Frame 0 | Frame 1 |
+|---|---|---|
+| Text (with the Text Model's reload) | 5.5 s | 15.3 s |
+| Image phase to step 1 (load, prompt encode) | 10.2 s | 7.9 s |
+| 25 steps | 11.3 s, **0.47 s a step** | 11.3 s, **0.47 s a step** |
+| Decode and send | 2.5 s | 1.6 s |
+| **Picture** (the Frame's `timings.image`) | **24.0 s** | **20.8 s** |
+
+An earlier pair of renders the same day measured the same: 28.5 s and 21.1 s, 0.45–0.46 s a step.
+So the 4070 renders the same model at 832×1216 about **12× faster per step than ComfyUI on the
+Mac** (5.7 s at 1024²) and ~7× faster than mflux (3.2 s), loading and unloading both models every
+picture. Both pictures were right (the keeper at the lighthouse door with the soaked stranger, the
+storm behind; then inside, by the fire). After each, `POST /free` brought the card back to ~1.2 GB
+in use (Windows and apps), and the next Text Model call loaded on a clear GPU.
+
+- **ComfyUI's own renders hold the GPU.** In that earlier run ComfyUI reported only 2.5 GB of VRAM
+  free before the app started, with nothing loaded in Ollama: most likely models from a render done
+  in ComfyUI's own interface just before, which ComfyUI keeps loaded. The Text Model then loaded
+  partly on the CPU, and the Opening Frame's text took 80 s. The app frees ComfyUI's models only
+  after its own renders, not before its text.
+- **Kept nothing, on Windows too:** neither render left a file in ComfyUI's output or temp folder or
+  an entry in `GET /history` (what was there came from that manual run), and the queue was empty.
+- **`localhost` is slow on Windows:** it tries IPv6 (`::1`) first, and a refused connection there
+  takes time before IPv4: a first request to ComfyUI took 2.1 s via `localhost` from PowerShell
+  against 20 ms via `127.0.0.1` (and 323 ms against 1 ms from Deno, to a test server). The app's
+  default is `127.0.0.1`; the client's Cancel test failed on Windows until its stand-in used it too.
+- Not run on Windows: Cancel mid-render against the real ComfyUI, other sizes, and a Roleplay's
+  pictures (the Art Agent's path); Upscale is off without mflux.
 
 ## Comfy Desktop, ComfyUI, and who starts it (2026-10-07)
 
