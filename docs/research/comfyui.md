@@ -191,8 +191,16 @@ in use (Windows and apps), and the next Text Model call loaded on a clear GPU.
   (up to 10 s) for that last message before deleting it; run again, the history was empty (`{}`).
   Also found: the WebSocket closed itself on Cancel (a listener meant only for while it connects),
   so nothing could have been heard from ComfyUI after a Cancel anyway.
-- Not run on Windows: other sizes, and a Roleplay's pictures (the Art Agent's path). Upscale: see
-  "Upscaling on ComfyUI" below.
+- **A Roleplay's pictures, on Windows** (2026-10-07; Gemma 4 12B Heretic as the Text Model and so
+  the Art Agent, prose style, Qwen-Image 2.1 on ComfyUI at 832×1216): a short Roleplay at the inn,
+  then `picture` and `render` jobs on two Frames. The Art Agent wrote the Look (both identities and
+  the style) and each Image Prompt in its shape (the identities, the seven sentences, the style),
+  carrying the clothes and the room from one Frame to the next and taking the pose from the Reply
+  ("her palms flat on the counter"). Picture 9.0 s (the Look included) and 16.4 s; render 30.5 s
+  and 22.0 s. Both pictures matched their prompts and each other (the same two people, clothes and
+  room), and show beside their Replies on the Roleplay screen with no errors.
+- Not run on Windows: sizes other than Portrait and Small square. Upscale: see "Upscaling on
+  ComfyUI" below.
 
 ## Comfy Desktop, ComfyUI, and who starts it (2026-10-07)
 
