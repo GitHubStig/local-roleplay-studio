@@ -130,23 +130,24 @@ async function runWorkflow(
     }
   } finally {
     // Not awaited, so Cancel returns at once.
-    cleanUp(base, socket, promptId, signal.aborted)
+    cleanUp(base, socket, promptId)
   }
 }
 
 /**
  * After a prompt: takes it out of ComfyUI's history, closes the WebSocket and unloads ComfyUI's
- * models. An interrupted prompt is written to the history only once ComfyUI has stopped it, so
- * after a Cancel this waits for that first (up to 10 s); deleted any sooner, it stayed there
- * (checked on Windows, 2026-10-07).
+ * models. ComfyUI writes a prompt to its history only after it's done with it, after it has said
+ * so (`execution_success`, `execution_error` or `execution_interrupted`), so this waits for that
+ * first (up to 10 s), finished, failed or cancelled alike. Deleted any sooner it stayed there,
+ * prompt text and all: after a Cancel (seen on Windows) and after a render that succeeded (seen on
+ * the Mac, 2026-10-07), whenever the delete beat the write.
  */
 async function cleanUp(
   base: string,
   socket: WebSocket,
   promptId: string | undefined,
-  cancelled: boolean,
 ) {
-  if (promptId && cancelled) await stopped(socket, promptId, 10_000)
+  if (promptId) await stopped(socket, promptId, 10_000)
   socket.close()
   if (promptId) post(base, '/history', { delete: [promptId] })
   post(base, '/free', { unload_models: true, free_memory: true })

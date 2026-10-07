@@ -71,6 +71,11 @@ function fakeComfyUI(
         if (finish === 'success') {
           image(2, [137, 80, 78, 71])
           send('execution_success', {})
+          // As ComfyUI: written to the history after it says so, then "executing" with no node.
+          setTimeout(() => {
+            posted.push({ path: '(in history)', body: null })
+            send('executing', { node: null })
+          }, 30)
         } else if (finish !== 'hang') {
           send('execution_error', { node_type: 'KSampler', exception_message: finish })
         }
@@ -160,10 +165,12 @@ Deno.test('A ComfyUI render fills the workflow with the installed files, follows
         [7, 25],
       )
       assertEquals([workflow.latent.inputs.width, workflow.latent.inputs.height], [1024, 1024])
-      // ComfyUI keeps nothing: the prompt leaves its history, and its models are unloaded, as an
-      // mflux process frees its memory when it ends.
-      await new Promise((r) => setTimeout(r, 20))
+      // ComfyUI keeps nothing: the prompt leaves its history once ComfyUI has written it there
+      // (deleted any sooner, it stays), and its models are unloaded, as an mflux process frees its
+      // memory when it ends.
+      await new Promise((r) => setTimeout(r, 80))
       assertEquals(comfy.posted, [
+        { path: '(in history)', body: null },
         { path: '/history', body: { delete: ['p1'] } },
         { path: '/free', body: { unload_models: true, free_memory: true } },
       ])
@@ -283,8 +290,9 @@ Deno.test('A ComfyUI upscale sends the picture to temp, runs SeedVR2, and blanks
         'true',
         true,
       ])
-      await new Promise((r) => setTimeout(r, 20))
-      assertEquals(comfy.posted.map((p) => p.path), ['/history', '/free'])
+      // Out of the history once ComfyUI has written it there, then its models unloaded.
+      await new Promise((r) => setTimeout(r, 80))
+      assertEquals(comfy.posted.map((p) => p.path), ['(in history)', '/history', '/free'])
     } finally {
       await comfy.close()
     }

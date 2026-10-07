@@ -109,6 +109,14 @@ the Mac:
 - **Cancel only our prompt.** `POST /interrupt` with `{"prompt_id": …}` interrupts only if that
   prompt is the one running (without it, whatever is running stops, even another app's);
   `POST /queue` with `{"delete": [id]}` removes it if still queued.
+- **History is written after the prompt says it's done.** ComfyUI sends `execution_success`
+  (or `_error`, `_interrupted`) from inside the run, and only then writes the prompt to its history
+  (`main.py`'s `prompt_worker`: `execute()`, then `task_done()`), ending with `executing` and no
+  node. A `POST /history` delete sent on the first message can arrive before the write and delete
+  nothing, leaving the prompt, its text and all, in ComfyUI's memory. Seen after a Cancel on Windows
+  and after a successful render on the Mac (2026-10-07); the client now waits for the closing
+  `executing` (up to 10 s) every time before deleting. Checked: two renders on the Mac, history
+  unchanged.
 - **The WebSocket carries everything**, for every client: messages are filtered by `prompt_id`.
   `progress` (`value`, `max`) also comes from non-sampler nodes, so only `max > 1` counts as steps;
   binary messages are preview images.
