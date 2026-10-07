@@ -55,6 +55,14 @@ Ideas deliberately deferred. Promote an item to an ADR in `docs/adr/` when we ac
   *So:* on the Mac, a slider at 128k costs this app nothing. On Windows, 16k fits a ~45–60-Frame Roleplay before Replies start failing. Two follow-ups. *Done 2026-10-06:* a reply Ollama cuts off short of its own token cap means the context ran out, so it fails with `ContextFullError` ("The conversation no longer fits the Text Model's context (8192 tokens). Raise the context length where the model runs…") instead of the length error, and isn't retried (`server/text/ollama/ollama.ts`, `withRetry`); checked against `qwen3-vl:4b` at `num_ctx` 8192 with an overlong chat. The OpenAI-compatible backend does the same from the counts `stream_options.include_usage` adds in a last chunk (dropped, like the other extras, if a server refuses it), shared in `lengthError` (`server/text/chat.ts`); checked against the same model on Ollama's `/v1`, which reports 226 of 400 reply tokens for the overlong chat and 20 of 20 for a reply cut at its cap. Not checked on LM Studio or llama.cpp. *Not done:* a long Roleplay on a small context would need its oldest exchanges summarised or dropped by the app itself, keeping the opening.
 
   On Windows (RTX 4070, 12 GB) the slider is at 16k: `mistral-nemo` stays on the GPU (9.5 GB), but by the measured 220–314 tokens an exchange a Roleplay past ~45–60 Frames no longer fits, and its Replies then fail (point 3 above); 32k would need ~12.5 GiB and spill to the CPU.
+- **Starting ComfyUI from the app** (noted 2026-10-07). The app expects ComfyUI already running at
+  the address in Settings (Comfy Desktop, or ComfyUI run by hand: [research/comfyui.md](research/comfyui.md)).
+  It could start one itself, as it starts the voice service on first use: a **Start command** on
+  Settings' Images tab (on the Mac, ComfyUI's own `.venv/bin/python main.py` with Comfy Desktop's
+  model-paths file; on Windows, the portable build's `run_nvidia_gpu.bat` or the like), run when a
+  render finds nothing answering, waiting until ComfyUI does (~10 s here), and stopped after a few
+  idle minutes; a ComfyUI it didn't start is left alone. A command the player sets rather than one
+  the app finds: installs differ by machine and kind, and ComfyUI may be on another machine.
 - **ComfyUI as a backend, for Windows with an NVIDIA card.** mflux is Apple Silicon only, so the app as built renders only on a Mac. ComfyUI runs on both, and has a local HTTP and WebSocket API (checked 2026-10-02 against the installed ComfyUI 0.37.4, Comfy Desktop, on `127.0.0.1:8188`):
   - `POST /prompt` queues a workflow (its "Export (API)" JSON) and returns a `prompt_id`;
   - `GET /history/{prompt_id}` or `/api/jobs/{id}` lists its outputs, and `GET /view?filename=…&type=output` fetches one;

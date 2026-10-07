@@ -58,7 +58,9 @@ The vocabulary (Scenario, Session, Image Prompt, Frame, Action, …) is defined 
   Model's files installed; for Qwen-Image 2.1, its `diffusion_models`, `text_encoders` (Qwen3-VL
   8B) and `vae` files, as ComfyUI's own "Qwen Image 2.1 text to image" template downloads them.
   Settings names any that are missing. The app talks to it only through its API, so it can run on
-  another machine. Upscale still needs mflux. Findings: [docs/research/comfyui.md](docs/research/comfyui.md).
+  another machine, and ComfyUI keeps nothing: no copy of a picture (it comes back over the API into
+  the Session's folder) and no prompt in its history. The app doesn't start ComfyUI: open Comfy
+  Desktop, or run ComfyUI itself (the command is in the findings). Upscale still needs mflux. Findings: [docs/research/comfyui.md](docs/research/comfyui.md).
 - **Models download on first use.** Each model (Image Models, the upscaler, the voice models,
   SHARP) is downloaded from Hugging Face into `~/.cache/huggingface` the first time it's needed,
   shown as "Downloading the model (first use only)…" while it is; they're 3–30 GB each, so the

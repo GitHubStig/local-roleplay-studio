@@ -136,3 +136,29 @@ the Mac:
 - Not yet run: anything on Windows (the RTX 4070's speed and memory with the 9.4 GB text encoder
   and the 7.3 GB DiT; whether the fp8 or another build is what's installed there, and what its
   files are called).
+
+## Comfy Desktop, ComfyUI, and who starts it (2026-10-07)
+
+- **ComfyUI** is the engine: a Python program (`main.py`) that loads the models, runs workflows on
+  the GPU, and serves its web interface and the API on a port (8188). It's what the app talks to.
+- **Comfy Desktop** is an app that installs, updates and runs ComfyUI: it keeps ComfyUI and its own
+  Python in `~/ComfyUI-Installs/ComfyUI`, writes the model-paths file pointing at
+  `~/ComfyUI-Shared/models`, starts ComfyUI when opened and stops it when quit, and shows ComfyUI's
+  web interface in its own window. The **portable build** (Windows: unzip and run a `.bat`) and a
+  **manual install** (clone and `python main.py`) run the same ComfyUI.
+- **ComfyUI runs without Comfy Desktop**, from the install Desktop manages:
+
+  ```sh
+  cd ~/ComfyUI-Installs/ComfyUI/ComfyUI
+  .venv/bin/python main.py --listen 127.0.0.1 --port 8188 \
+    --extra-model-paths-config "$HOME/Library/Application Support/Comfy Desktop/instance-model-paths/inst-1789974989101.yaml"
+  ```
+
+  Without the model-paths file it looks only in its own, empty `models/`. Desktop still updates
+  this install; don't run both on one port. It answered about 10 s after starting.
+- **The app neither starts nor stops ComfyUI**: it expects one answering at the address in
+  Settings, and says "Couldn't reach ComfyUI … is it running?" when none does. It could start one
+  with a command set in Settings (open-threads, "Starting ComfyUI from the app").
+- **ComfyUI keeps nothing of the app's**: no picture in its output or temp folder (the picture
+  comes back over the WebSocket), no prompt in its history (deleted after each render), no prompt
+  text in its log; the only copy of a picture is the one in the Session's folder.
