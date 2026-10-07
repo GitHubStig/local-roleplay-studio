@@ -77,7 +77,8 @@ function fakeComfyUI(
     return new Response('not found', { status: 404 })
   })
   return {
-    url: `http://localhost:${server.addr.port}`,
+    // Not `localhost`: on Windows it tries IPv6 first, and a new connection can take 300 ms or more.
+    url: `http://127.0.0.1:${server.addr.port}`,
     queued,
     posted,
     close: () => server.shutdown(),

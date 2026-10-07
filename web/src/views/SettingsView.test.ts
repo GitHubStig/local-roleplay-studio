@@ -8,7 +8,9 @@ vi.mock('../api', async (importOriginal) => ({
   ...(await importOriginal<typeof api>()),
   getSettings: vi.fn(),
   getSettingsOptions: vi.fn(),
-  listTextModels: vi.fn(),
+  // Settings lists the backend's models again 500 ms after it loads: a test that waits that long
+  // gets this answer.
+  listTextModels: vi.fn(() => Promise.resolve({ textModels: [], thinkingModels: [] })),
   checkComfyUI: vi.fn(() => Promise.resolve({ up: false as const, error: 'not running' })),
   saveSettings: vi.fn(),
   listQuantized: vi.fn(),
