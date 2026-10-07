@@ -454,6 +454,27 @@ picture's diagonal (`convert_focallength` in `sharp/utils/io.py`), about 0.98 ×
 square picture: a 54° vertical field of view, not 45°. With that, the first view lines up with
 the picture exactly. The app keeps the lossless `.ply`.
 
+### SHARP on Windows with an RTX 4070 (2026-10-07)
+
+Windows 11, RTX 4070 (12 GB), 16 GB of RAM; `python/sharp/make.py` through uv 0.12.23 (Python
+3.14.8), PyTorch from PyTorch's CUDA 12.8 index. The first `uv run … --download` fetched PyTorch,
+SHARP's code and its 2.8 GB of weights in 3.6 minutes; uv's cache then held 9.8 GB, mostly PyTorch's
+CUDA libraries. Hugging Face warned that Windows allows it no symlinks without Developer Mode, so
+its cache keeps plain copies (harmless; more disk only when files are shared).
+
+- **It works, picking `cuda` by itself.** From a 2048×2992 upscale: 1,179,648 splats in a 63 MB
+  `.ply`, as on the Mac. In the app's viewer the picture view lines up with the picture, and turned
+  (even to −62°, twice what SHARP is meant for) the door frame stands in front of the two people,
+  breaking up at the edges as expected.
+- **Time:** 30.6 s run directly (~8.7 s starting uv and Python and importing PyTorch, 11.6 s
+  loading SHARP onto the GPU, 10.3 s making the scene); 31 s through the app; 49 s for the very
+  first scene, the new PyTorch's first start. The Mac's is ~11 s (3.8 s loading, 6 s making).
+- **Memory is tight: the card peaked at 11.9 GB of 12.3** (0.7 GB in use before). It fits only
+  because the app frees Ollama before a scene and ComfyUI frees its models after each job; anything
+  else holding the card could push it over (Windows' driver then spills into system RAM, much
+  slower, or it fails). Not tried: a smaller picture than 2048 px (SHARP resizes to 1536² anyway,
+  so the peak is likely the model's, not the picture's).
+
 ### SHARP's limits, as found building it in
 
 - **The splat count is fixed: always 1,179,648.** Every picture is resized to 1536×1536 (a
