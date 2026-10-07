@@ -25,11 +25,19 @@ async function mountFrame() {
 /** A wheel event; happy-dom drops `ctrlKey` and the pointer position, so they're set by hand. */
 function wheel(
   el: HTMLElement,
-  init: { deltaX?: number; deltaY?: number; ctrlKey?: boolean; x?: number; y?: number },
+  init: {
+    deltaX?: number
+    deltaY?: number
+    deltaMode?: number
+    ctrlKey?: boolean
+    x?: number
+    y?: number
+  },
 ) {
   const e = new WheelEvent('wheel', {
     deltaX: init.deltaX ?? 0,
     deltaY: init.deltaY ?? 0,
+    deltaMode: init.deltaMode ?? 0,
     cancelable: true,
   })
   for (
@@ -73,6 +81,27 @@ describe('usePinchZoom', () => {
     pinch(el, -100 * Math.log(2), 0, 0) // 2× anchored at the top-left
     wheel(el, { deltaX: 50, deltaY: 1000 })
     expect(zoom().view.value).toMatchObject({ x: -50, y: -300 })
+  })
+
+  it('zooms a step a notch on a mouse wheel, around the pointer, which Windows needs (no pinch)', async () => {
+    const { el, zoom } = await mountFrame()
+    // Edge and Chrome: 100 px a notch; up zooms in.
+    const e = wheel(el, { deltaY: -100, x: 200, y: 150 })
+    expect(e.defaultPrevented).toBe(true)
+    expect(zoom().view.value.scale).toBeCloseTo(1.25)
+    // Firefox: 3 lines a notch; two notches back down.
+    wheel(el, { deltaY: 6, deltaMode: WheelEvent.DOM_DELTA_LINE, x: 200, y: 150 })
+    expect(zoom().view.value.scale).toBe(1)
+    // Ctrl with a mouse wheel: the same step, not the pinch's.
+    wheel(el, { deltaY: -100, ctrlKey: true, x: 200, y: 150 })
+    expect(zoom().view.value.scale).toBeCloseTo(1.25)
+  })
+
+  it("keeps a trackpad's scrolling for panning: small, fractional or sideways deltas", async () => {
+    const { el, zoom } = await mountFrame()
+    expect(wheel(el, { deltaY: 3.5 }).defaultPrevented).toBe(false)
+    expect(wheel(el, { deltaX: 2, deltaY: 120 }).defaultPrevented).toBe(false)
+    expect(zoom().view.value.scale).toBe(1)
   })
 
   it('resets on double-click', async () => {

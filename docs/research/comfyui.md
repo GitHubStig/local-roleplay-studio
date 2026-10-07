@@ -262,3 +262,10 @@ read from disk could add a few seconds. The card was back to ~1.2 GB in use afte
 - **Gotcha:** a second ComfyUI started on a port already taken (here Comfy Desktop's 8188) logs
   "Port 8188 is already in use" and exits, and whatever answers on that port is the other one. Test
   instances go on another port (8189).
+- **Upscaling from the Mac on the Windows PC works** (owner, 2026-10-07): the Mac's Settings point
+  "Upscale with" at the PC's ComfyUI across the local network. For that, ComfyUI must listen beyond
+  `127.0.0.1`. The newer Comfy Desktop (instance-based, `%APPDATA%\Comfy Desktop`) has no listen
+  option in its settings; each installation has **launch arguments** instead
+  (`installations.json`, `"launchArgs": "--enable-manager"`), and `--listen 0.0.0.0` goes there.
+  Windows Firewall must allow TCP 8188 on the private network. ComfyUI has no login, so anything on
+  the network can use it. The Mac's upscale time over the network wasn't measured.

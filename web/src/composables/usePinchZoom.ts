@@ -9,12 +9,28 @@ interface GestureEvent extends UIEvent {
 }
 
 const MAX_SCALE = 8
+/** How much one notch of a mouse wheel zooms. */
+const WHEEL_STEP = 1.25
 
 /**
- * Pinch-to-zoom on `frame` instead of zooming the whole page. A trackpad pinch arrives as a
- * `wheel` event with `ctrlKey` set (Chrome, Firefox) or as `gesture*` events (Safari); both are
- * cancelled so the page stays put. While zoomed in, two-finger scrolling or dragging pans, and the
- * image always covers the frame. Returns the transform for the zoomed layer.
+ * A mouse wheel's notch rather than a trackpad's scroll, which pans: Firefox counts a wheel in
+ * lines; Chrome and Edge in whole pixels, 100 a notch at 100% display scaling, straight up or
+ * down. A trackpad sends small, fractional, often diagonal pixel deltas. Returns the notches, or 0
+ * for a trackpad.
+ */
+function wheelNotches(e: WheelEvent): number {
+  if (e.deltaMode === WheelEvent.DOM_DELTA_LINE) return e.deltaY / 3
+  if (e.deltaMode === WheelEvent.DOM_DELTA_PAGE) return e.deltaY
+  const notch = e.deltaX === 0 && Number.isInteger(e.deltaY) && Math.abs(e.deltaY) >= 50
+  return notch ? e.deltaY / 100 : 0
+}
+
+/**
+ * Zoom on `frame` instead of zooming the whole page: a trackpad pinch, which arrives as a `wheel`
+ * event with `ctrlKey` set (Chrome, Firefox) or as `gesture*` events (Safari), or a mouse wheel
+ * (Windows has no pinch on a mouse); all are cancelled so the page stays put. While zoomed in,
+ * two-finger scrolling or dragging pans, and the image always covers the frame. Returns the
+ * transform for the zoomed layer.
  */
 export function usePinchZoom(frame: Readonly<Ref<HTMLElement | null>>) {
   /** Scale, and the layer's offset in px from the frame's top-left corner. */
@@ -47,7 +63,12 @@ export function usePinchZoom(frame: Readonly<Ref<HTMLElement | null>>) {
   const reset = () => (view.value = { scale: 1, x: 0, y: 0 })
 
   function onWheel(e: WheelEvent) {
-    if (e.ctrlKey) {
+    // A mouse wheel zooms a step a notch, with Ctrl or without; a pinch zooms as the fingers move.
+    const notches = wheelNotches(e)
+    if (notches) {
+      e.preventDefault()
+      zoomAt(view.value.scale * WHEEL_STEP ** -notches, e.clientX, e.clientY)
+    } else if (e.ctrlKey) {
       e.preventDefault()
       zoomAt(view.value.scale * Math.exp(-e.deltaY * 0.01), e.clientX, e.clientY)
     } else if (zoomed.value) {

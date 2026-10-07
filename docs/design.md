@@ -370,9 +370,11 @@ consistency* in [open-threads.md](open-threads.md).
   corner ("768×512", then "3072×2048" once upscaled), except while the status pill is there.
   Clicking the image opens it in the same viewer as a Roleplay's pictures (`FrameViewer`; ← and →
   step through the Frames), and so does a Storyboard's. Only there does it zoom: pinching the
-  trackpad zooms the image, not the page (up to 8×, toward the pointer, with the zoom level added
-  to the size chip); while zoomed in, two-finger scrolling or dragging pans, and a double-click
-  resets. Each new image starts unzoomed. The 3D buttons (`Frame3dButtons`) and their viewers
+  trackpad, or a mouse wheel (25% a notch; Windows has no pinch on a mouse), zooms the image, not
+  the page (up to 8×, toward the pointer, with the zoom level added to the size chip); while
+  zoomed in, two-finger scrolling or dragging pans, and a double-click resets. A wheel's notch is
+  told from a trackpad's scroll by its deltas: lines, or whole pixels of 50 or more straight up or
+  down, against a trackpad's small, fractional, often diagonal ones (`usePinchZoom`). Each new image starts unzoomed. The 3D buttons (`Frame3dButtons`) and their viewers
   (`Frame3dViewers`) are shared with Roleplay too.
 - **Storyboard** (`/storyboards/:id`): opening a new Storyboard plans it straight away. The
   Frames list fills in as the plan streams: Beats first (each marked "Writing…"), then each
