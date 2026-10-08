@@ -116,6 +116,16 @@ Deno.test('plainSentences strips aspect labels and list markers a model writes i
   )
 })
 
+Deno.test('plainSentences turns a line break written out as \\n into a space', () => {
+  // As it arrives after JSON.parse when the model escaped it twice: a backslash, then "n".
+  assertEquals(
+    plainSentences('She waits.\\nRain falls.\\n\\nDusk.\\t'),
+    'She waits. Rain falls. Dusk.',
+  )
+  // A real one, as before.
+  assertEquals(plainSentences('She waits.\nRain falls.'), 'She waits. Rain falls.')
+})
+
 Deno.test('parseFrameBody joins the seven fields into one paragraph, in order', () => {
   assertEquals(
     parseFrameBody({

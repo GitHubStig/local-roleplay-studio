@@ -244,7 +244,12 @@ export function storyboardPlanSchema(frameCount: number) {
   }
 }
 
-const oneParagraph = (text: string) => text.trim().replace(/\s+/g, ' ')
+/**
+ * One line of text. A line break the model wrote out as `\n` (escaped twice in its JSON, so it
+ * arrives as a backslash and an "n") counts as one: Gemma 4 12B did so in three Frames of a
+ * Storyboard on 2026-10-08, picking it up from the Frames before.
+ */
+const oneParagraph = (text: string) => text.replace(/\\[nrt]/g, ' ').trim().replace(/\s+/g, ' ')
 
 /** Aspect labels a model sometimes writes into the text despite being told not to. */
 const LABEL = new RegExp(
