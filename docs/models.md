@@ -1,13 +1,16 @@
 # Choosing models
 
-What we've measured about the local models this project runs, and which to pick. All timings
-are on the development Mac (Apple silicon), 2026-09-24.
+What we've measured about the local models this project runs, and which to pick. Timings are on
+the development Mac (Apple silicon, 48 GB) unless they say the Windows PC (RTX 4070, 12 GB), each
+with its date.
 
 ## Text Model
 
-**Use Gemma 4 26B-A4B, with Thinking off, for every text job**: `gemma4:26b-nvfp4` from Ollama, or
-an uncensored Heretic build of it made the same way (`gemma-4-26b-heretic:nvfp4`, see "The heretic
-26B-A4B as MLX NVFP4" below). A mixture of experts with about 4B parameters active per token, it is
+**On the Mac, use Gemma 4 26B-A4B Heretic, with Thinking off, for every text job**
+(`gemma-4-26b-heretic:nvfp4`, an uncensored build made locally: see "The heretic 26B-A4B as MLX
+NVFP4" below), or the stock `gemma4:26b-nvfp4` from Ollama (one pull, not uncensored). **On a 12 GB
+NVIDIA card, Gemma 4 12B Heretic** (`hf.co/igorls/gemma-4-12B-it-heretic-GGUF:Q4_K_M`; "The GGUF on
+an NVIDIA card" below). A mixture of experts with about 4B parameters active per token, it is
 the fastest model here that does every job well, 17 GB loaded. One model for everything, so none
 waits for another to load. Set it in **Settings → Text Model**; it applies from the next Session.
 
@@ -472,7 +475,12 @@ was picked as the margin over 64 for whispers (mostly breath, which MP3 handles 
 
 ## Image Model
 
-**Use FLUX.2 Klein 4B** (`flux2-klein-4b`, the default), 4 steps.
+**Use Qwen-Image 2.1** (`qwen-image-2.1`, the default since 2026-10-08), 25 steps: the model both
+backends run (mflux on the Mac, ComfyUI on either; "mflux and ComfyUI side by side" in
+[research/comfyui.md](research/comfyui.md)), and the one measured most here (the steps trial, the
+step cache and Fast, below). On the Mac at 832×1216: 96.5 s with mflux, 55.7 s with the step cache;
+on the RTX 4070 through ComfyUI, ~21 s. For speed on a Mac alone, FLUX.2 Klein 4B (`flux2-klein-4b`,
+4 steps, ~10–13 s) was the default until then; it runs on mflux only.
 
 | Model | Time per image | Notes |
 |---|---|---|
@@ -487,7 +495,7 @@ was picked as the margin over 64 for whispers (mostly breath, which MP3 handles 
 Timings for the last four are one test image each (2026-09-25, 48 GB Mac, no quantization,
 including model loading), not a comparison of how well they follow the prompt or keep a
 subject consistent. FLUX.2 Klein 9B (added 2026-09-29) is about twice as slow as 4B and needs twice
-the memory, which next to gemma4 on a 48 GB Mac is tight; 4B stays the default.
+the memory, which next to gemma4 on a 48 GB Mac is tight.
 
 ### Qwen-Image 2.1 on mflux 0.21: the step cache and Viggle's turbo LoRA (2026-10-04)
 

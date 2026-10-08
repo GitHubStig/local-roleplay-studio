@@ -8,8 +8,8 @@ and how to run it is in the [README](README.md); this is how the owner likes the
 - [CONTEXT.md](CONTEXT.md): the domain's terms (Session, Frame, Action, Roleplay, Look, Limit…).
   Use them in code, docs and the UI.
 - [docs/design.md](docs/design.md): how the app works. [docs/adr/](docs/adr/): decisions and why.
-- [docs/open-threads.md](docs/open-threads.md): plans and parked ideas, with their status. The
-  current plan is "Windows, and backends other than Ollama and mflux".
+- [docs/open-threads.md](docs/open-threads.md): plans and parked ideas, with their status. Finished
+  work moves out of it, into the design doc, an ADR or `docs/research/`.
 - [docs/models.md](docs/models.md) and [docs/research/](docs/research/): what's been measured, and
   why each model was picked.
 
@@ -34,6 +34,18 @@ and how to run it is in the [README](README.md); this is how the owner likes the
 - **Record findings in the docs**, dated: measurements in `docs/models.md` or `docs/research/`,
   deferred ideas in `docs/open-threads.md`.
 - **Agent instructions go in this file**, not in an agent-specific one, so any agent can use them.
+
+## Two machines
+
+The app is developed on two machines at once, each with its own agent: the owner's Mac (Apple
+silicon, 48 GB) and a Windows PC (RTX 4070, 12 GB, 16 GB of RAM), sharing this repo through GitHub.
+
+- **Pull before each piece of work, and push soon after** (once the owner says to push), so the two
+  don't drift apart. `docs/open-threads.md` and `docs/research/` are the likeliest to conflict.
+- **Say which machine a measurement was made on**, with the date, in the docs. Timings differ by
+  several times between them.
+- **Some things can only be checked on one**: mflux, voices and LiTo on the Mac; CUDA on the PC.
+  Say so when a change can't be run where it's made, so the other machine can check it.
 
 ## Conventions
 

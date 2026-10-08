@@ -13,4 +13,4 @@ A Frame is saved only once both its Image Prompt and its image exist. If the Tex
 
 ## Consequences
 
-Cancel has a single meaning: abandon the Frame in progress; nothing changes. It aborts the Ollama request and kills the mflux process. Only one Frame can run per Session at a time. Because the provisional text can vanish on failure, the UI must show it as provisional (dimmed, with "Rendering the image…") and never treat it as committed.
+Cancel has a single meaning: abandon the Frame in progress; nothing changes. It aborts the Text Model's request (Ollama's, or a server on the OpenAI API since 2026-10-06) and kills the mflux process (or interrupts the ComfyUI prompt, since 2026-10-07). Only one Frame can run per Session at a time. Because the provisional text can vanish on failure, the UI must show it as provisional (dimmed, with "Rendering the image…") and never treat it as committed.

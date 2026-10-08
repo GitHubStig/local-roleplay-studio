@@ -1,8 +1,8 @@
 # ComfyUI as an image backend: findings (2026-10-07)
 
-Notes kept while adding ComfyUI beside mflux (branch `feat/comfyui`; the plan is in
-[open-threads.md](../open-threads.md), "ComfyUI as a backend"). Dated, and added to as the work
-goes on.
+Notes kept while adding ComfyUI beside mflux (branch `feat/comfyui`, merged 2026-10-07; the idea
+as first planned is in [windows.md](windows.md), the decision in
+[ADR 0009](../adr/0009-comfyui-image-backend.md)). Dated, and added to as the work goes on.
 
 ## What's installed on the owner's Mac
 
@@ -19,7 +19,7 @@ goes on.
   **Krea 2 Turbo** (`krea2_turbo_fp8_scaled`, 13.1 GB, with `qwen3vl_4b_fp8_scaled` and
   `qwen_image_vae`), plus a MiniMax video model. No upscale models, no SeedVR2 node.
 - Custom nodes: none besides the examples (the Manager is on, `--enable-manager`).
-- It isn't running unless the Desktop app is open; the app starts it on port 8188.
+- It isn't running unless Comfy Desktop is open; Comfy Desktop starts it on port 8188.
 
 ## Qwen-Image 2.1 in ComfyUI
 
@@ -84,8 +84,9 @@ the Mac:
 
 - **Through the API only, never the file system.** ComfyUI may run as Comfy Desktop, the portable
   build or a manual install, on this machine or another; its folders differ on each. Pictures come
-  back through `GET /view` and are saved into the Session's folder by the app; a picture to upscale
-  or edit goes up through `POST /upload/image`. No paths from ComfyUI's side are used.
+  back over the WebSocket (first planned as `GET /view`; see "Through the app" below) and are saved
+  into the Session's folder by the app; a picture to upscale goes up through `POST /upload/image`.
+  No paths from ComfyUI's side are used.
 - **The address is a Setting**, defaulting to `http://127.0.0.1:8188` (ComfyUI's own default, and
   what Comfy Desktop used here). Some Comfy Desktop builds have used port 8000, so Settings should
   say where to look.
@@ -95,9 +96,9 @@ the Mac:
   `GET /models/{folder}` says is installed (and says which is missing if none is). The workflow
   JSON never hard-codes one file.
 - **Memory:** on a 12 GB card the Qwen-Image 2.1 DiT (7.3 GB int8) and its text encoder (9.4 GB)
-  don't fit together; ComfyUI loads, uses and offloads them in turn by itself. Whether that's fast
-  enough on the RTX 4070 is to measure there. `POST /free` before a voice or 3D job does what
-  unloading Ollama does now.
+  don't fit together; ComfyUI loads, uses and offloads them in turn by itself, fast enough on the
+  RTX 4070 (~21 s a picture: "On Windows with an RTX 4070" below). `POST /free` after each job
+  gives the card back to the Text Model, as unloading Ollama gives it to a render.
 - **Nodes:** only ComfyUI's built-in nodes, so a fresh install on either machine runs the workflow.
   SeedVR2 turned out to be built in too (see "Upscaling on ComfyUI" below).
 

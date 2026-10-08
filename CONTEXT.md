@@ -129,9 +129,17 @@ _Avoid_: Enhance, HD, super-resolution
 ### Configuration
 
 **Text Model**:
-The language model that writes and edits Image Prompts (on Ollama, or a server with the OpenAI chat API).
+The language model that does every text job: it writes and edits Image Prompts, plays the Character, pictures Roleplay Frames and suggests the player's Messages. It runs on a **Text backend**.
 _Avoid_: LLM, model, AI
 
+**Text backend**:
+Where the Text Model runs: Ollama, or a server with the OpenAI chat API (LM Studio, llama.cpp's server, a cloud service). Chosen in Settings; each Session keeps the one it started with.
+_Avoid_: provider, engine
+
 **Image Model**:
-The mflux model that renders an Image Prompt into an image.
+The model that renders an Image Prompt into an image (Qwen-Image 2.1 by default). It runs on an **Image backend**.
 _Avoid_: Model, diffusion model, generator
+
+**Image backend**:
+What runs the Image Model: mflux (on a Mac) or a ComfyUI server (on any machine, this one or another). Chosen in Settings; each Session keeps the one it started with. Upscale has its own choice, "Upscale with", which applies at once.
+_Avoid_: renderer, provider, engine

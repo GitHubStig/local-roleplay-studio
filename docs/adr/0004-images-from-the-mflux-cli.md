@@ -6,6 +6,8 @@ status: accepted
 
 mflux has no HTTP API, only per-model `mflux-generate-*` commands and a Python library. The server runs the CLI once per image (`Deno.Command`), reads its progress bar from stderr to report step progress, and kills the process on Cancel. A model whose weights aren't downloaded yet is downloaded from Hugging Face by that first render; mflux shows it as a "Fetching N files" bar, which the server reports as a `download` phase ("Downloading the model (first use only)…") rather than as steps. The voice service and SHARP do the same for their models. The generator sits behind an `ImageGenerator` interface, alongside an SVG placeholder for working without a GPU.
 
+**Changed 2026-10-07.** mflux is now one of two image backends: a ComfyUI server is the other, for Windows and for a Mac rendering on a faster machine ([ADR 0009](0009-comfyui-image-backend.md)). Each Session keeps the backend it started with; this ADR still describes mflux's side.
+
 **Changed 2026-10-02.** Until then the server ran mflux (and later the voice service and SHARP) with `HF_HUB_OFFLINE=1`: a missing model failed at once, and weights were downloaded by hand beforehand. That was dropped because a first use that shows it's downloading no longer looks like a hang, and fetching by hand was a setup step for every model.
 
 ## Considered Options

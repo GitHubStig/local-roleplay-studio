@@ -6,7 +6,11 @@ in [CONTEXT.md](../CONTEXT.md). The reasoning behind the bigger choices is in [a
 
 ## What it is
 
-A text-to-image prompt generator. Every Session starts from a **Brief** (typed, or a saved
+A local roleplay studio that turns stories into pictures. It runs on a Mac with Apple silicon, a
+Windows PC with an NVIDIA card, or both together: every AI service sits behind an interface with a
+backend per machine (the Text Model on Ollama or a server with the OpenAI chat API, ADR 0008; the
+Image Model on mflux or ComfyUI, ADR 0009), and each extra (pictures, Upscale, voices, 3D) is on
+where its backend can run (`server/features.ts`). Every Session starts from a **Brief** (typed, or a saved
 **Scenario**) and is one of three kinds: a **Chain**, where each Frame is made from the
 previous one by an Action; a **Storyboard**, whose Frames are planned together and then edited
 and rendered one by one; or a **Roleplay**, a conversation with a Character whose moments can be
@@ -29,11 +33,11 @@ night, Kael the Character and a well-off traveller the player.
 Action ──► Limits check (term list; a real-person question if it names someone)
    │           └─ crossed ──► Declined: prompt and image unchanged
    ▼
-current Image Prompt + Action ──► Text Model (Ollama) ──► { outcome, narration, prompt }
+current Image Prompt + Action ──► Text Model (Text backend) ──► { outcome, narration, prompt }
                                                               │
      engine: declined / unclear / Limit crossed / unchanged? keep the previous prompt and image
                                                               │
-                  "adult, " + the paragraph ──► Image Model (mflux or ComfyUI) ──► frame-N-xxxx.png
+                  "adult, " + the paragraph ──► Image Model (Image backend) ──► frame-N-xxxx.png
                                                               │
                                         commit: append the Frame to session.json
 ```
@@ -47,10 +51,10 @@ current Image Prompt + Action ──► Text Model (Ollama) ──► { outcome,
    covers; rewrite only the affected sentences and copy the rest word for word; remove whatever
    a change contradicts; the Limits; the reply format), then the Scenario's notes, plus its **Setup** on the Opening Frame
    only. The user message is **only** the current Image Prompt and the Action; the Text Model
-   never sees earlier Frames ([ADR 0001](adr/0001-scene-is-sole-frame-state.md)). The reply is
-   constrained by a JSON schema (Ollama's `format`), with `outcome` (`done`, `declined` or
+   never sees earlier Frames ([ADR 0001](adr/0001-scene-is-sole-turn-state.md)). The reply is
+   constrained by a JSON schema (Ollama's `format`, or the OpenAI API's `response_format`), with `outcome` (`done`, `declined` or
    `unclear`) first, so the model decides before it writes. The Narration is a terse list of what
-   changed ("Pose: crouching low. Environment: teal backdrop."). Ollama's reply is streamed. With
+   changed ("Pose: crouching low. Environment: teal backdrop."). The reply is streamed. With
    **Thinking** on (a Setting, for models that support it) the model reasons first; its
    reasoning streams to the player and is saved with the Frame. Models that can't think are asked
    again without it.
@@ -59,7 +63,8 @@ current Image Prompt + Action ──► Text Model (Ollama) ──► { outcome,
    a token cap (2,048 tokens; 12,288 with thinking; 32 for the real-person question) and a time
    limit (2 minutes; 10 with thinking; 30 s for the real-person question). Small models writing
    JSON under a schema occasionally never stop, padding with whitespace; without the caps one
-   such reply blocked Ollama, and every later request behind it, for 14 minutes.
+   such reply blocked Ollama, and every later request behind it, for 14 minutes. A reply cut off
+   because the conversation outgrew the backend's context isn't retried: it fails saying so.
 4. **Engine rules** ([ADR 0002](adr/0002-guardrails-enforced-by-the-engine.md)):
    - The new Image Prompt is checked against the Limits too; crossing one declines the Action.
    - A **Declined Action** (a crossed Limit, or the Text Model declining it) or an **Unclear
@@ -72,20 +77,23 @@ current Image Prompt + Action ──► Text Model (Ollama) ──► { outcome,
    - The text rendered is `adult, ` followed by the paragraph.
 5. **Image step.** Images render one at a time across all Sessions: if another Session is
    rendering, this Frame waits in a queue (shown as "Waiting for another render…", and
-   cancellable). Then the mflux CLI renders the image with the Session's seed and settings. Its
-   step counter is streamed to the player as progress
-   ([ADR 0004](adr/0004-images-from-the-mflux-cli.md)).
+   cancellable). Then the Session's Image backend renders it with the Session's seed and settings:
+   the mflux CLI, one process per image ([ADR 0004](adr/0004-images-from-the-mflux-cli.md)), or a
+   workflow queued on ComfyUI, followed over its WebSocket
+   ([ADR 0009](adr/0009-comfyui-image-backend.md)). Its step counter is streamed to the player as
+   progress. With "Render each Frame" off (a Chain's switch, and always without pictures), this
+   step is skipped and the Frame waits for its **Render** button.
 6. **Commit.** The Frame is appended to `session.json`.
 
 ### All or nothing
 
-A Frame commits whole or not at all ([ADR 0003](adr/0003-frames-are-all-or-nothing.md)):
+A Frame commits whole or not at all ([ADR 0003](adr/0003-turns-are-all-or-nothing.md)):
 
 | What happens | Result |
 |---|---|
 | Text Model fails twice | Frame fails; Image Prompt unchanged; the Action stays in the text box |
 | Image Model fails | Frame fails; Image Prompt unchanged; any partial image is deleted |
-| Player presses **Cancel** | Ollama request aborted, mflux process killed; Image Prompt unchanged |
+| Player presses **Cancel** | Text request aborted; the mflux process killed, or the ComfyUI prompt interrupted; Image Prompt unchanged |
 | Opening Frame fails or is cancelled | The Session is discarded; back Home with the error |
 
 While a Frame runs, the new Narration is shown **provisionally** (dimmed) as soon as the Text
@@ -202,20 +210,24 @@ under `/api/sessions/:id/roleplay/` ([ADR 0007](adr/0007-roleplay-is-a-conversat
      Gaussian splats (SHARP works at 1536 px, so the 2048 px upscale has more to give it; a scene
      made before its picture was upscaled offers **SHARP again from upscale**). SHARP peaks near
      15 GB; each scene runs `uv run python/sharp/make.py` once, like mflux once per picture, so the memory
-     is freed when it's done (~11 s: 4 s loading, 6 s making). The scene is saved lossless
+     is freed when it's done (~11 s on the Mac: 4 s loading, 6 s making; ~31 s on an RTX 4070,
+     peaking at 11.9 GB of its 12). The scene is saved lossless
      (`scene-<index>-….ply`, ~63 MB) as `frame.scene`, with the picture it was made from (`from`)
      and what the viewer needs: the depth to orbit around (a quarter of the splats are nearer, so
      near subjects stay in view) and the camera SHARP assumed (a 30 mm lens, as a vertical field
      of view and an aspect), so the viewer opens on exactly the picture's view. It turns 15° or 30°
      either way, or back to the picture's view; dragging turns it freely. Esc, Close or a click outside the scene closes it, as in the picture viewer, but a turn let go past the scene's edge doesn't (VueUse's `onClickOutside`). SHARP invents what the
      picture never showed, so the further it turns, the more is made up. Its limits (a fixed
-     splat count, what turning shows) are in docs/research/image-to-3d.md.    - **TripoSplat** (`server/3d/figure.ts`, `python/triposplat/make.py`; its code is vendored in
+     splat count, what turning shows) are in docs/research/image-to-3d.md.
+   - **TripoSplat** (`server/3d/figure.ts`, `python/triposplat/make.py`; its code is vendored in
      `python/triposplat/vendor/`, MIT) cuts the person out of the picture, leaves the room behind, and
      builds them whole, back included, as 524,288 Gaussians (past TripoSplat's cap of 262,144,
      which is only an input check): `frame.figure`, `figure-<index>-….ply`, ~34 MB. Anyone
      overlapping them takes parts of them away, and two people in the picture may come out as one;
      it's best with one person, unobstructed (docs/research/image-to-3d.md, "TripoSplat trial").
-     ~75 s and ~11 GB. The viewer orbits a figure round its middle from the front, with turns to
+     ~75 s and ~11 GB on the Mac; ~52 s and 6.5 GB on an RTX 4070. It's given the picture as RGB,
+     so it always cuts the person out (it takes any alpha below 255 for a cut-out already made).
+     The viewer orbits a figure round its middle from the front, with turns to
      the sides and the back.
    - **LiTo** (Apple, `python/lito/make.py`, through mlx-spatial at a pinned commit) does the same job:
      its button sits beside TripoSplat's, and its figure is kept apart (`frame.lito`,
@@ -223,7 +235,8 @@ under `/api/sessions/:id/roleplay/` ([ADR 0007](adr/0007-roleplay-is-a-conversat
      TripoSplat's BiRefNet (LiTo reads the picture's alpha), runs LiTo, and scales the result to
      ~1 unit tall; LiTo writes its own axes, so the viewer stands it up with a quarter turn about x
      instead of TripoSplat's half turn. ~400k splats with full view-dependent colour (~95 MB),
-     ~4½ min on the M5 Pro. LiTo's weights are research-only. It made the cleanest profile of the
+     ~4½ min on the M5 Pro. Apple Silicon only (mlx-spatial is MLX; Apple's own code is Linux and
+     Mac only). LiTo's weights are research-only. It made the cleanest profile of the
      figure models tried (docs/research/image-to-3d.md).
 
 The prompts are Markdown files in `server/prompts/roleplay/` (`cast.md`, `cast-request.md`,
@@ -520,7 +533,9 @@ The design Q&A, and what changed later.
 | Premise | One picture of a fictional adult Subject, changed step by step, with guardrails | Now a local roleplay studio: Roleplays, Chains and Storyboards |
 | Goal | Open sandbox; no scoring | — |
 | Backend | Deno HTTP server; Vite proxies `/api` | — |
-| Images | mflux CLI per image, behind `ImageGenerator` | Downloads blocked (ADR 0004); since 2026-10-02 allowed on first use, shown as downloading |
+| Images | mflux CLI per image, behind `ImageGenerator` | Downloads blocked (ADR 0004); since 2026-10-02 allowed on first use, shown as downloading; since 2026-10-07 also a ComfyUI server, chosen per Session (ADR 0009) |
+| Text | Ollama, behind `TextModel` | Since 2026-10-06 also any server with the OpenAI chat API, through one `Chat` interface (ADR 0008) |
+| Where it runs | A Mac with Apple silicon | Since 2026-10-07 also Windows with an NVIDIA card (ComfyUI, SHARP, TripoSplat), or both together |
 | Frame state | The Scene only, no history (ADR 0001) | The Image Prompt: one paragraph of nine sentences (ADR 0005) |
 | Text Model output | One JSON call | `{ outcome, narration, prompt }`, the prompt as one paragraph |
 | Settings | Server-side `settings.json`; apply from the next Session | Small sizes added |
@@ -529,7 +544,7 @@ The design Q&A, and what changed later.
 | What an Action can change | Pose, camera, lighting, set, per Scenario | Anything in the prompt, within the four Limits |
 | Limits | Per-Scenario brief, character refusals | Four engine Limits: term list + real-person check (ADR 0002) |
 | Narration | Character prose | A terse list of what changed |
-| Every Frame renders | Yes; no separate "take the shot" | — |
+| Every Frame renders | Yes; no separate "take the shot" | A Chain's "Render each Frame" can be switched off (2026-10-06) |
 | Subject consistency | Fixed description + fixed seed; edit-based rendering deferred | — |
 | Failures | All or nothing (ADR 0003) | — |
 | Waiting | Show text first, then the image, over SSE | Step progress added |
