@@ -74,6 +74,24 @@ describe('ImageViewer', () => {
     expect(wrapper.emitted('previous')).toHaveLength(2)
   })
 
+  it('opens with the focus on itself, and steps with the keys wherever the focus went', async () => {
+    const wrapper = mountIt()
+    await wrapper.setProps({ src: '/x.png', hasPrevious: false, hasNext: true })
+    await flushPromises()
+    // Not on ›, which would be disabled under it at the last image.
+    expect(document.activeElement).toBe(wrapper.find('dialog').element) // The browser dropped the focus out of the dialog (a ‹ › disabled while focused): keys still step.
+    ;(document.activeElement as HTMLElement).blur()
+    document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }))
+    await wrapper.setProps({ hasPrevious: true, hasNext: false })
+    document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }))
+    expect([wrapper.emitted('next')?.length, wrapper.emitted('previous')?.length]).toEqual([1, 1])
+    // Closed, the keys are the page's again.
+    await wrapper.setProps({ src: null })
+    await flushPromises()
+    document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }))
+    expect(wrapper.emitted('previous')).toHaveLength(1)
+  })
+
   it('shows no ‹ › when there is nothing to step through', async () => {
     const wrapper = mountIt()
     await wrapper.setProps({ src: '/x.png' })

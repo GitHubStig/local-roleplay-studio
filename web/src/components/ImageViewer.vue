@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onClickOutside } from '@vueuse/core'
+import { onClickOutside, useEventListener } from '@vueuse/core'
 import { useTemplateRef, watch } from 'vue'
 import FrameImage from './FrameImage.vue'
 
@@ -19,8 +19,15 @@ const props = defineProps<{
   hasNext?: boolean
 }>()
 const emit = defineEmits<{ close: []; previous: []; next: [] }>()
+const dialog = useTemplateRef<HTMLDialogElement>('dialog')
 
-function onKeydown(e: KeyboardEvent) {
+/**
+ * The arrow keys step through while the viewer is open, wherever the focus is: a ‹ › button that
+ * had it is disabled at the first or last image, and the browser then drops the focus out of the
+ * dialog, which would leave the keys going nowhere (and listened for on the dialog, they did).
+ */
+useEventListener(document, 'keydown', (e: KeyboardEvent) => {
+  if (!dialog.value?.open) return
   if (e.key === 'ArrowLeft' && props.hasPrevious) {
     e.preventDefault()
     emit('previous')
@@ -28,16 +35,19 @@ function onKeydown(e: KeyboardEvent) {
     e.preventDefault()
     emit('next')
   }
-}
-
-const dialog = useTemplateRef<HTMLDialogElement>('dialog')
+})
 
 watch(
   () => props.src,
   (src) => {
     const el = dialog.value
     if (!el) return
-    if (src && !el.open) el.showModal()
+    if (src && !el.open) {
+      el.showModal()
+      // The dialog itself, not its first button: a ‹ › focused shows a ring, and one disabled under
+      // the focus (the last image) drops it out of the dialog.
+      el.focus()
+    }
     else if (!src && el.open) el.close()
   },
   { flush: 'post' },
@@ -58,9 +68,9 @@ onClickOutside(
 <template>
   <dialog
     ref="dialog"
-    class="m-0 h-full max-h-none w-full max-w-none bg-transparent p-0 backdrop:bg-black/85"
+    class="m-0 h-full max-h-none w-full max-w-none bg-transparent p-0 outline-none backdrop:bg-black/85"
+    tabindex="-1"
     data-image-viewer
-    @keydown="onKeydown"
     @close="emit('close')"
   >
     <div v-if="src" class="flex h-full w-full flex-col p-4 sm:p-8">

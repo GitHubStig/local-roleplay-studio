@@ -751,7 +751,8 @@ describe('RoleplayView', () => {
     expect(viewer().find('[data-next]').attributes('disabled')).toBeDefined()
 
     // ← skips Frame 1, which has no picture.
-    await viewer().trigger('keydown', { key: 'ArrowLeft' })
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft' }))
+    await flushPromises()
     await flushPromises()
     expect(viewer().find('[data-viewer-label]').text()).toBe('Frame 0 · 1 of 2')
     expect(viewer().find('[data-image-frame] img').attributes('src')).toBe(
