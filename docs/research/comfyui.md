@@ -376,3 +376,53 @@ seedvr2-7b --resolution 2048`) took the same: **64 s** for 832×1216 → 2048×2
 512×512 → 2048×2048 (the ~46 s in models.md). mflux's own progress bar puts the upscale itself
 (one SeedVR2 step) at ~15 s; the rest is loading the 7B's 16.5 GB of fp16 weights, which a new
 process does every time, and the tiled VAE. It grows with the output: 6.1 megapixels against 4.2.
+
+## Voices through ComfyUI? (researched 2026-10-08, on the Windows PC; nothing installed yet)
+
+The voice service is mlx-audio, Mac only. Whether ComfyUI could speak the lines on Windows
+instead, as it already makes the pictures there, so the PC needs no second Python service:
+
+- **Nothing local is built in.** ComfyUI 0.39.1 on the PC has TTS only as paid API nodes
+  (ElevenLabs, Fish Audio, HeyGen) and no local TTS template. Its core *does* have the audio
+  plumbing: `LoadAudio` (from `input/`), `SaveAudio`, `SaveAudioMP3` (V0, 128k, 320k) and
+  `SaveAudioOpus`. So only the speaking needs a custom node pack, which breaks ADR 0009's "built-in
+  nodes only" (as SeedVR2's custom node already does for Upscale on the PC).
+- **The PC's install has no custom nodes yet**, and its Python has transformers **5.16.1**
+  (standalone build, Python 3.13, torch 2.12.1+cu130).
+- **The packs, as of today:**
+
+  | Pack | Models | Last push | Fit |
+  |---|---|---|---|
+  | [TTS-Audio-Suite](https://github.com/diodiogod/TTS-Audio-Suite) (v5.9.x, 1.2k stars) | ~15 engines, among them **Higgs Audio v3** and **Qwen3-TTS** (VoiceDesign, Base, CustomVoice) | 2026-10-04 | both our models in one pack |
+  | [flybirdxx/ComfyUI-Qwen-TTS](https://github.com/flybirdxx/ComfyUI-Qwen-TTS) (1.9k stars) | Qwen3-TTS only | 2026-09-22 | design, but Qwen3 Base clones were "generic" (models.md) |
+  | [1038lab/ComfyUI-QwenTTS](https://github.com/1038lab/ComfyUI-QwenTTS), [DarioFT/ComfyUI-Qwen3-TTS](https://github.com/DarioFT/ComfyUI-Qwen3-TTS) | Qwen3-TTS only | Jan–Feb 2026 | 1038lab pins transformers 4.57.3: would downgrade ComfyUI's |
+  | Higgs v3 TTS (Saganaki22) | Higgs v3 only | gone (404); a 2-star fork remains | no |
+
+- **TTS-Audio-Suite maps onto `VoiceEngine` as it is.** `design`: its *Voice Designer* node with
+  the Qwen3-TTS VoiceDesign engine takes `voice_instruction` (our description), `reference_text`
+  and `seed`, and outputs AUDIO for `SaveAudio` (WAV, the lossless reference clip). `speak`: the
+  reference clip uploaded to `input/` (`POST /upload/image` takes any file), `LoadAudio` →
+  *Character Voices* (`opt_audio_input` plus `reference_text`, the clip's transcript, which "strongly
+  improves cloning") → the *Higgs Audio v3 Engine* node (`temperature`, `top_k`, so our steadier
+  0.5 / 30 carry over; `dtype` bf16 or fp32) → *TTS Text* → `SaveAudioMP3`. Higgs v3's native tags
+  are passed through as typed, the same `<|prosody:…|>`, `<|sfx:…|>Uh`, `<|style:whispering|>`
+  the voice service writes in `directed()`, so pace, sound and whisper need nothing new.
+- **Transformers 5 vs Qwen3-TTS:** the pack's own report says Qwen3-TTS doesn't work on
+  Transformers 5 (garbled tokens on 5.0, a tensor-shape error in generation on 5.10), so it runs
+  Qwen3-TTS in an *isolated runtime* (a separate Transformers 4 environment) and Higgs v3 in the main
+  one (transformers ≥5.3). Neither should downgrade ComfyUI's own.
+- **Against it:**
+  - *Memory.* Higgs v3 4B is 9.3 GB of bf16 weights and ~11 GB of VRAM on CUDA, against the
+    4070's 12 GB, with no quantized option in the pack. The Text Model must be out of the GPU
+    first (as for a render: `keep_alive: 0`), and ComfyUI `/free`d after; the 16 GB of RAM is
+    tight while it loads. Qwen3-TTS VoiceDesign 1.7B is small (~4 GB).
+  - *Install weight.* The pack's requirements pull in much more than two engines need (keras,
+    modelscope, gradio, wandb, onnxruntime, RVC…) into ComfyUI's Python, with an `install.py`
+    that installs some `--no-deps`. A bad install could break the image backend; Comfy Desktop's
+    snapshots allow a rollback.
+  - *Licence.* Higgs v3 is Boson's research and non-commercial licence: the same as on the Mac.
+- **To try** (needs the owner's OK: the pack plus ~13 GB of models): install TTS-Audio-Suite
+  through the Manager; clone `kael-ref.wav` for the 29 lines of round 3 in
+  [bench/voices/](../bench/voices/), untagged at 0.5 / 30, so the pitch compares with the Mac's
+  (`pitch.py`); time a line, note peak VRAM and RAM, and check the Text Model still loads fully on
+  the GPU after. Then design one voice with VoiceDesign, to check the isolated runtime works.

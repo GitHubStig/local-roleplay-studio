@@ -37,8 +37,10 @@ Ideas deliberately deferred. Promote an item to an ADR in `docs/adr/` when we ac
     whether Higgs TTS 3 has a ready inference package is to check; Higgs is ~10 GB against the
     card's 12 GB and the PC's 16 GB of RAM); a TTS custom node pack in ComfyUI (Qwen3-TTS,
     VibeVoice, IndexTTS2: breaks "built-in nodes only", and must both design a voice from a
-    description and clone it per line, the way Higgs held a voice in 24 lines of 24; being tried
-    on Windows); or **voices in the browser**, an option on the Voice tab: the Web Speech API (no
+    description and clone it per line, the way Higgs held a voice in 24 lines of 24;
+    researched 2026-10-08: TTS-Audio-Suite runs both Qwen3-TTS VoiceDesign and Higgs v3, and fits
+    `VoiceEngine` as it is, but Higgs needs ~11 GB of the 12 GB card; not yet installed, see
+    [research/comfyui.md](research/comfyui.md)); or **voices in the browser**, an option on the Voice tab: the Web Speech API (no
     install, the system's voices, only pitch and rate) or a small model through transformers.js on
     WebGPU (Kokoro, 82M, preset voices; size and quality to check), the web app speaking the line
     itself with nothing on the server. *Voices assume a cloning TTS:* `VoiceEngine` is `design` (a
