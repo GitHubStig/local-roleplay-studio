@@ -88,6 +88,10 @@ or rewriting them.
 - `20261001-024055-e211`: the same story with the roles swapped; Elara is the Character.
 - `20261001-024443-b215`: a third Roleplay in a 1700s harbour town; Elara the Character.
 
+**What's in a Session stays out of the repo** unless the owner OKs it: no Roleplay text, Image
+Prompts, voice clips or pictures from real Sessions copied into `docs/`, tests or commits.
+Describe what was measured instead, or use the public tavern scenario (`scenarios/tavern.md`).
+
 ## 3D trial pages
 
 Scratch pages that show several splat scenes or meshes side by side must stay light: one renderer
