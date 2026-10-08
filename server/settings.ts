@@ -88,6 +88,8 @@ export interface Settings {
   limits: boolean
 }
 
+const DEFAULT_IMAGE_MODEL = findImageModel('mflux', 'qwen-image-2.1')!
+
 export const DEFAULT_SETTINGS: Settings = {
   textBackend: 'ollama',
   textBaseUrl: '',
@@ -95,8 +97,9 @@ export const DEFAULT_SETTINGS: Settings = {
   thinking: false,
   imageBackend: 'mflux',
   imageBaseUrl: '',
-  imageModel: imageModelsOf('mflux')[0].id,
-  steps: imageModelsOf('mflux')[0].defaultSteps,
+  // The model both backends run (mflux and ComfyUI), and the one measured most (docs/models.md).
+  imageModel: DEFAULT_IMAGE_MODEL.id,
+  steps: DEFAULT_IMAGE_MODEL.defaultSteps,
   size: SIZE_PRESETS[0].id,
   quantize: null,
   stepCache: 0.4,

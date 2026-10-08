@@ -293,8 +293,12 @@ Deno.test('Choosing ComfyUI makes pictures, and then Upscale, available where mf
   })
   const both = (await (await call('GET', '/api/settings/options')).json()).features
   assertEquals(both.upscale.available, true)
-  // An Image Model must be the backend's own.
-  const wrong = await call('PUT', '/api/settings', { ...settings, imageBackend: 'comfyui' })
+  // An Image Model must be the backend's own: FLUX.2 Klein is mflux's only.
+  const wrong = await call('PUT', '/api/settings', {
+    ...settings,
+    imageBackend: 'comfyui',
+    imageModel: 'flux2-klein-4b',
+  })
   assertEquals(wrong.status, 400)
 })
 
