@@ -534,6 +534,12 @@ waist-up) and seed, at 1024×1024, everything else closed:
   says to use; v0.2.1 (crisper, grainier) is also in the repo. Viggle's 9-step mode (the same
   LoRA, switched off for the last two steps) isn't possible through mflux 0.21
   ([open-threads.md](open-threads.md)).
+- **Most of a Fast render is starting up** (Mac, 2026-10-05): of a 32.7 s run, 5 s was denoising
+  and ~27 s loading ~22 GB, encoding the prompt and decoding the picture (loading surely the most);
+  Upscale (SeedVR2) is ~46 s, mostly loading. In 2026-09-24's measure, loading was ~5 s of a 42 s
+  Z-Image Turbo render. A service keeping the model loaded could bring Fast under 10 s, but on
+  48 GB it would have to unload before every Reply, so it would help only back-to-back renders
+  (Render all); dropped 2026-10-08.
 
 ### Upscaler
 
