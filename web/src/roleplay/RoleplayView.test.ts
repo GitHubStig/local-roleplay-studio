@@ -411,6 +411,30 @@ describe('RoleplayView', () => {
       expect(api.queueJob).toHaveBeenCalledWith('r1', 'speak', 0)
     })
 
+    it('says a line was spoken as written when directing it failed, and speaks it again', async () => {
+      const { delivery: _, ...plain } = spoken().speech
+      vi.mocked(api.getSession).mockResolvedValue({
+        ...roleplaySession([{
+          ...spoken(),
+          speech: { ...plain, undirected: 'Ollama: llama-server process has terminated' },
+        }]),
+        cast,
+        voice,
+      })
+      const { wrapper } = await mountIt()
+      const note = wrapper.find('[data-undirected]')
+      expect(note.text()).toContain('spoken as written')
+      expect(note.attributes('title')).toContain('llama-server process has terminated')
+      vi.mocked(api.queueJob).mockResolvedValue([job({ kind: 'speak' })])
+      await note.find('[data-speak-again]').trigger('click')
+      await flushPromises()
+      expect(api.queueJob).toHaveBeenCalledWith('r1', 'speak', 0)
+      // A directed line has no such note.
+      vi.mocked(api.getSession).mockResolvedValue({ ...roleplaySession([spoken()]), cast, voice })
+      const { wrapper: directed } = await mountIt()
+      expect(directed.find('[data-undirected]').exists()).toBe(false)
+    })
+
     it('speaks a thought on its own Listen, and hides it with the thoughts', async () => {
       vi.mocked(api.queueJob).mockResolvedValue([
         job({ kind: 'speak-thought', status: 'running', phase: 'audio' }),

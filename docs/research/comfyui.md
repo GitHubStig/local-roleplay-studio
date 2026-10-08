@@ -518,3 +518,27 @@ the #366 fix):
   reference, blanked); nothing in output or input; its history empty; VRAM back to 1.2 GB.
 - **Not done:** listening to the lines in the browser; a Mac's Session opened here or the reverse
   (a FLAC reference clip given to the voice service: mlx-audio's loader should read it, untested).
+
+### In use: a thought, and Ollama crashing (2026-10-08, the Windows PC)
+
+- **A whispered thought came out in a woman's voice.** A Roleplay's voice (94 Hz) and its line
+  (92 Hz) were right; its thought, whispered as on the Mac (`<|style:whispering|>`), measured
+  209 Hz. Spoken again on three seeds: 198–213 Hz whispered, 81–102 Hz without the tag. So through
+  TTS Audio Suite (PyTorch) the whispering style alone pulls this voice up, unlike mlx-audio's Higgs
+  on the Mac (12 thoughts held). With `<|prosody:pitch_low|>` after it: 72–73 Hz (two seeds); also
+  held: `pitch_low` with slow pace (75–77 Hz), and `expressive_low` alone (80 Hz). The ComfyUI
+  backend now whispers with `pitch_low`; a new thought in a new voice came out at 70 Hz, the voice's
+  own. Whether it still sounds whispered is to listen to.
+- **Ollama crashed loading the Text Model** to direct a thought: "llama-server process has
+  terminated: exit status 0xc0000409 … CUDA error: shared object initialization failed", and the
+  thought was spoken undirected. Both times (the player's, and once reproduced) it was right after
+  a voice was *designed*, as ComfyUI stopped TTS Audio Suite's VoiceDesign worker process. Not GPU
+  memory: the card was back to 1.5 GB in use. RAM was tight (0.8–1.4 GB free of 16: TTS Audio Suite
+  "unloads" Higgs by moving it to the CPU, ~8 GB of ComfyUI's RAM, until ComfyUI restarts), but the
+  same load went through with that RAM taken (12 s, all on the GPU), and a minute after the crash.
+  So most likely the two processes' CUDA start and stop colliding. Ollama's chat now retries a
+  model that died while loading once, after 3 s; a third run (design, then a thought) didn't crash,
+  so the retry is tested only by a stand-in. A line spoken undirected now says so beside Listen,
+  with why on hover and Speak again.
+- ComfyUI jobs now end once ComfyUI's GPU is about as free as before the job (`/system_stats`, up
+  to 30 s), so the next job (the Text Model) finds it free.

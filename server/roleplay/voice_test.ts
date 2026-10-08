@@ -158,9 +158,11 @@ Deno.test('Each line is directed from its moment, and spoken with that pace and 
     assertStringIncludes(request.content, 'What Mira Vance does: Mira grips the wheel.')
     assertStringIncludes(request.content, 'The line: Hold the wheel.')
 
-    // A failed direction isn't a failed line: it's spoken as written.
+    // A failed direction isn't a failed line: it's spoken as written, and says why, for the player.
     const plain = await speakFrame(deps, directed, 0, () => {}, signal)
     assertEquals(plain.frames[0].speech!.delivery, undefined)
+    assertEquals(plain.frames[0].speech!.undirected, 'Ollama: down')
+    assertEquals(directed.frames[0].speech!.undirected, undefined)
     assertEquals([said(1).pace, said(1).sound], [undefined, undefined])
   }))
 

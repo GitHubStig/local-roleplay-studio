@@ -8,6 +8,14 @@ import { ndjson } from '../streams.ts'
  */
 export const OLLAMA_URL = Deno.env.get('OLLAMA_HOST') ?? 'http://localhost:11434'
 
+/**
+ * Ollama's answer when the process running a model died while loading it. Seen on a 12 GB card
+ * (2026-10-08) when the Text Model loaded just as ComfyUI stopped TTS Audio Suite's VoiceDesign
+ * worker ("llama-server process has terminated: exit status 0xc0000409 … CUDA error: shared object
+ * initialization failed"); the same load a few seconds later went through.
+ */
+const LOAD_FAILED = /llama-server process has terminated|model runner has unexpectedly stopped/i
+
 export function ollamaBackend(baseUrl = OLLAMA_URL): TextBackend {
   return {
     chat: (model, think) => ollamaChat(model, { think, baseUrl }),
@@ -19,9 +27,10 @@ export function ollamaBackend(baseUrl = OLLAMA_URL): TextBackend {
 /** Streamed `/api/chat` calls to one Ollama model. */
 export function ollamaChat(
   model: string,
-  opts: { think?: boolean; baseUrl?: string } = {},
+  opts: { think?: boolean; baseUrl?: string; retryAfterMs?: number } = {},
 ): Chat {
   const baseUrl = opts.baseUrl ?? OLLAMA_URL
+  const retryAfterMs = opts.retryAfterMs ?? 3000
   let think = opts.think ?? false
 
   function post(body: Record<string, unknown>, signal: AbortSignal) {
@@ -63,6 +72,12 @@ export function ollamaChat(
         // Models without thinking reject `think: true`; carry on without it.
         if (think && /think/i.test(String(err.error))) {
           think = false
+          res = await post(body(), signal)
+        } else if (LOAD_FAILED.test(String(err.error))) {
+          // Its model process died while loading: once more, after a moment.
+          console.warn(`Ollama failed to load ${model}; trying again:`, err.error)
+          await new Promise((r) => setTimeout(r, retryAfterMs))
+          signal?.throwIfAborted()
           res = await post(body(), signal)
         } else {
           throw new Error(`Ollama: ${err.error ?? res.status}`)

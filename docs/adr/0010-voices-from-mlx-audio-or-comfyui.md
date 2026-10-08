@@ -53,5 +53,8 @@ ComfyUI. Settings' ComfyUI check also looks for the pack's nodes (`/object_info`
   three-line fix in the pack for designing a voice (README).
 - The pack is large (~15 engines and their packages in ComfyUI's Python); the app uses five of its
   nodes (`VOICE_NODES`).
+- Its "unload" moves Higgs to the CPU: ~8 GB of ComfyUI's RAM until it restarts, which a 16 GB PC
+  feels. Its whispering style pulls a man's voice up to a woman's pitch, so the ComfyUI backend
+  whispers with `pitch_low` (docs/research/comfyui.md).
 - Higgs's tags are written in two places, `directed()` in the voice service and `higgsText` in
   `voice/comfyui/`; a change to one belongs in the other.

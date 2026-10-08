@@ -189,7 +189,8 @@ under `/api/sessions/:id/roleplay/` ([ADR 0007](adr/0007-roleplay-is-a-conversat
    sound before it (none, a sigh, a laugh, a cough) (`voice-delivery.md`); the voice service turns
    them into Higgs's pace, pause and sound tags, which held the voice. The pick is saved with the
    line (`speech.delivery`) and shown beside Listen ("slowly, with a sigh"). If directing fails,
-   the line is spoken as written. A Reply's thought (`internal`) has its own Listen, hidden with
+   the line is spoken as written, and says so beside Listen (why on hover, `speech.undirected`)
+   with **Speak again**. A Reply's thought (`internal`) has its own Listen, hidden with
    the thoughts: it's spoken whispered (Higgs's whispering style, which kept the voice), with a
    pace but never a sound (a cough in the mind sounded wrong), and saved apart from the dialogue's
    (`thoughtSpeech`, `thought-<index>-…mp3`). Speak replies speaks the dialogue only.

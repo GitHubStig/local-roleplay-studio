@@ -105,7 +105,7 @@ Deno.test("Higgs's tags, as the voice service writes them: pace, sound, whisper"
   assertEquals(higgsText({ text: 'Fine.', pace: 'fast' }), '<|prosody:speed_fast|>Fine.')
   assertEquals(
     higgsText({ text: 'Stay away from her.', whisper: true, pace: 'normal', sound: 'none' }),
-    '<|style:whispering|>Stay away from her.',
+    '<|style:whispering|><|prosody:pitch_low|>Stay away from her.',
   )
   assertEquals(higgsText({ text: 'Heavy.', sound: 'laughter' }), '<|sfx:laughter|>Heh Heavy.')
   // TTS Audio Suite reads [Name] as a change of speaker.

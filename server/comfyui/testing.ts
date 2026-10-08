@@ -14,6 +14,8 @@ export function fakeComfyUI(
     audio?: { filename: string; bytes: Uint8Array<ArrayBuffer> }
     /** The custom nodes it has (`/object_info/<node>`). */
     nodes?: string[]
+    /** What `/system_stats` says is free on the GPU, one per ask; the last one stays. */
+    vramFree?: number[]
   } = {},
 ) {
   const queued: Record<string, unknown>[] = []
@@ -26,6 +28,8 @@ export function fakeComfyUI(
     bytes: number
   }[] = []
   const sockets = new Map<string, WebSocket>()
+  /** What each `/system_stats` answered as free VRAM. */
+  const stats: (number | undefined)[] = []
   /** Requests left hanging by a dead ComfyUI, answered when the server closes. */
   const hung: (() => void)[] = []
   const server = Deno.serve({ port: 0, onListen: () => {} }, async (req) => {
@@ -41,7 +45,13 @@ export function fakeComfyUI(
       return new Response(null, { status: 503 })
     }
     if (path === '/system_stats') {
-      return Response.json({ system: { comfyui_version: '0.39.1' }, devices: [{ name: 'mps' }] })
+      const vram_free = opts.vramFree &&
+        (opts.vramFree.length > 1 ? opts.vramFree.shift() : opts.vramFree[0])
+      stats.push(vram_free)
+      return Response.json({
+        system: { comfyui_version: '0.39.1' },
+        devices: [{ name: 'mps', ...(vram_free === undefined ? {} : { vram_free }) }],
+      })
     }
     if (path.startsWith('/models/')) {
       return Response.json(opts.files?.[path.slice('/models/'.length)] ?? [])
@@ -88,6 +98,8 @@ export function fakeComfyUI(
           }, 30)
         } else if (finish !== 'hang') {
           send('execution_error', { node_type: 'KSampler', exception_message: finish })
+          // As ComfyUI: the failed prompt is written to the history too, then "executing" with no node.
+          setTimeout(() => send('executing', { node: null }), 30)
         }
       }, 10)
       return Response.json({ prompt_id: promptId, number: 1, node_errors: {} })
@@ -129,6 +141,7 @@ export function fakeComfyUI(
     queued,
     posted,
     uploads,
+    stats,
     close: () => {
       for (const release of hung) release()
       for (const socket of sockets.values()) socket.close()

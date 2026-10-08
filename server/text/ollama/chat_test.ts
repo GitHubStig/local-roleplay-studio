@@ -191,3 +191,42 @@ Deno.test("a Text Model on Ollama passes the player's Cancel through unchanged",
     await ollama.close()
   }
 })
+
+Deno.test('A model whose process died while loading is loaded once more, after a moment', async () => {
+  const died = 'llama-server process has terminated: exit status 0xc0000409: CUDA error'
+  let calls = 0
+  const ollama = fakeOllama(() =>
+    ++calls === 1
+      ? Response.json({ error: died }, { status: 500 })
+      : ndjson({ message: { content: 'Fine.' }, done: true, done_reason: 'stop' })
+  )
+  try {
+    let content = ''
+    await ollamaChat('m', { baseUrl: ollama.baseUrl, retryAfterMs: 10 }).stream({
+      messages: [{ role: 'user', content: 'Hi.' }],
+      maxTokens: 50,
+      signal: new AbortController().signal,
+      onContent: (c) => (content += c),
+    })
+    assertEquals([calls, content], [2, 'Fine.'])
+  } finally {
+    await ollama.close()
+  }
+  // Twice in a row, it fails, saying why.
+  const dead = fakeOllama(() => Response.json({ error: died }, { status: 500 }))
+  try {
+    await assertRejects(
+      () =>
+        ollamaChat('m', { baseUrl: dead.baseUrl, retryAfterMs: 10 }).stream({
+          messages: [{ role: 'user', content: 'Hi.' }],
+          maxTokens: 50,
+          signal: new AbortController().signal,
+        }),
+      Error,
+      'llama-server process has terminated',
+    )
+    assertEquals(dead.requests.length, 2)
+  } finally {
+    await dead.close()
+  }
+})

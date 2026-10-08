@@ -113,6 +113,8 @@ export interface Speech {
   timings: { queued?: number; audio: number }
   /** How it was directed; absent if it was spoken as written. */
   delivery?: { pace: 'normal' | 'slow' | 'fast'; sound: 'none' | 'sigh' | 'laughter' | 'cough' }
+  /** Why directing failed, when it was spoken as written instead. */
+  undirected?: string
 }
 
 /** The Character's voice: a description, and the reference clip designed from it (once designed). */

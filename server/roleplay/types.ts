@@ -129,6 +129,11 @@ export interface Speech {
   timings: { queued?: number; audio: number }
   /** How it was directed: absent if directing failed and it was spoken as written. */
   delivery?: Delivery
+  /**
+   * Why directing failed, when it did and the line was spoken as written: shown beside Listen, so
+   * the player can speak it again (a Text Model that crashed, say, may load the next time).
+   */
+  undirected?: string
 }
 
 /**

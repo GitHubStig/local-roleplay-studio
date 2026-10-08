@@ -236,12 +236,15 @@ export async function speakFrame(
   let current = session
   if (!current.voice?.ref) current = await designVoice(deps, current, emit, signal)
   const ref = current.voice!.ref!
-  // How it's said: a pace and a sound. A failed direction isn't a failed line: it's said as written.
+  // How it's said: a pace and a sound. A failed direction isn't a failed line: it's said as written,
+  // and why is kept with it, for the player to see.
   emit({ type: 'phase', phase: 'text' })
+  let undirected: string | undefined
   const directed = await deps.model.directLine(await deliveryMessages(current, index, part), signal)
     .catch((err) => {
       signal.throwIfAborted()
       console.warn(`Directing Frame ${index}'s line failed; speaking it as written:`, err.message)
+      undirected = String(err.message)
       return undefined
     })
   // A thought is whispered, and has no sound: a sigh or a cough is the body's, not the mind's.
@@ -281,6 +284,7 @@ export async function speakFrame(
       ref,
       timings: { ...(queued ? { queued } : {}), audio },
       ...(delivery ? { delivery } : {}),
+      ...(undirected ? { undirected } : {}),
     }
     let old: string | undefined
     const updated = await updateSession(deps.store, session.id, (latest) => {

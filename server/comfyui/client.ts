@@ -75,7 +75,9 @@ export async function runWorkflow(
 ): Promise<WorkflowResult> {
   const clientId = crypto.randomUUID()
   const socket = await openSocket(base, clientId, signal)
+  const before = await freeVram(base)
   let promptId: string | undefined
+  let answering = true
   try {
     const queued = await fetch(`${base}/prompt`, {
       method: 'POST',
@@ -94,7 +96,7 @@ export async function runWorkflow(
     signal.addEventListener('abort', cancel, { once: true })
     const stalled = new AbortController()
     const watchdog = watchAlive(base, checkEveryMs, () =>
-      stalled.abort(
+      (answering = false) || stalled.abort(
         new Error('ComfyUI stopped answering (it may have crashed): restart it, then try again'),
       ))
     try {
@@ -104,8 +106,34 @@ export async function runWorkflow(
       signal.removeEventListener('abort', cancel)
     }
   } finally {
-    // Not awaited, so Cancel returns at once.
-    cleanUp(base, socket, promptId)
+    // Awaited, so the next job (the Text Model, say) starts once ComfyUI has let go of the GPU;
+    // but not after a Cancel, which returns at once, or once ComfyUI stopped answering.
+    const cleaned = cleanUp(base, socket, promptId, before)
+    if (!signal.aborted && answering) await cleaned
+  }
+}
+
+/** What ComfyUI says is free on its GPU, in bytes; undefined if it doesn't say. */
+async function freeVram(base: string): Promise<number | undefined> {
+  const stats = await fetch(`${base}/system_stats`, { signal: AbortSignal.timeout(5000) })
+    .then((r) => r.json(), () => undefined)
+  const free = stats?.devices?.[0]?.vram_free
+  return typeof free === 'number' ? free : undefined
+}
+
+/**
+ * Waits (up to `ms`) until ComfyUI's GPU is about as free as it was before the job (`before`):
+ * `/free` takes a few seconds to act, longer for a model in a process of its own (TTS Audio Suite's
+ * Qwen3-TTS). A Text Model loaded meanwhile on a 12 GB card would find too little free and run
+ * partly on the CPU (seen once with a render, 2026-10-07: 80 s for an Opening Frame's text).
+ */
+async function released(base: string, before: number, ms: number) {
+  const until = Date.now() + ms
+  const slack = 512 * 1024 ** 2
+  while (Date.now() < until) {
+    const free = await freeVram(base)
+    if (free === undefined || free >= before - slack) return
+    await new Promise((r) => setTimeout(r, 500))
   }
 }
 
@@ -121,11 +149,13 @@ async function cleanUp(
   base: string,
   socket: WebSocket,
   promptId: string | undefined,
+  before: number | undefined,
 ) {
   if (promptId) await stopped(socket, promptId, 10_000)
   socket.close()
   if (promptId) post(base, '/history', { delete: [promptId] })
-  post(base, '/free', { unload_models: true, free_memory: true })
+  await post(base, '/free', { unload_models: true, free_memory: true })
+  if (before !== undefined) await released(base, before, 30_000)
 }
 
 /**

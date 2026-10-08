@@ -19,6 +19,7 @@ import { useStoredText } from '../composables/useStoredText'
 import CollapsibleTextarea from '../components/CollapsibleTextarea.vue'
 import ComposeBox from '../components/ComposeBox.vue'
 import PictureButtons from '../components/PictureButtons.vue'
+import UndirectedNote from './UndirectedNote.vue'
 import Frame3dViewers from '../components/Frame3dViewers.vue'
 import FrameViewer from '../components/FrameViewer.vue'
 import FrameJobs from '../components/FrameJobs.vue'
@@ -623,6 +624,13 @@ async function saveCastDraft(): Promise<boolean> {
                     >
                       {{ playing === partKey(frame.index, 'thought') ? '■ Stop' : '▶ Listen' }}
                     </button>
+                    <UndirectedNote
+                      v-if="spokenNow(frame.thoughtSpeech) && frame.thoughtSpeech?.undirected"
+                      class="ml-1.5"
+                      :reason="frame.thoughtSpeech.undirected"
+                      :busy="hasJob(frame.index, 'speak-thought')"
+                      @again="queue('speak-thought', frame.index)"
+                    />
                   </p>
                   <p v-if="frame.reply.actions" class="max-w-prose italic" data-actions>
                     {{ frame.reply.actions }}
@@ -657,6 +665,13 @@ async function saveCastDraft(): Promise<boolean> {
                         class="mr-1.5 text-muted"
                         data-delivery
                       >· {{ deliveryWords(frame.speech) }}</span>
+                      <UndirectedNote
+                        v-if="spokenNow(frame.speech) && frame.speech?.undirected"
+                        class="mr-1.5"
+                        :reason="frame.speech.undirected"
+                        :busy="hasJob(frame.index, 'speak')"
+                        @again="queue('speak', frame.index)"
+                      />
                       <button
                         v-if="featureOn('images')"
                         type="button"
