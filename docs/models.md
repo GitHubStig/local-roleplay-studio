@@ -6,13 +6,15 @@ with its date.
 
 ## Text Model
 
-**On the Mac, use Gemma 4 26B-A4B Heretic, with Thinking off, for every text job**
-(`gemma-4-26b-heretic:nvfp4`, an uncensored build made locally: see "The heretic 26B-A4B as MLX
-NVFP4" below), or the stock `gemma4:26b-nvfp4` from Ollama (one pull, not uncensored). **On a 12 GB
-NVIDIA card, Gemma 4 12B Heretic** (`hf.co/igorls/gemma-4-12B-it-heretic-GGUF:Q4_K_M`; "The GGUF on
-an NVIDIA card" below). A mixture of experts with about 4B parameters active per token, it is
-the fastest model here that does every job well, 17 GB loaded. One model for everything, so none
-waits for another to load. Set it in **Settings → Text Model**; it applies from the next Session.
+**Use Gemma 4 12B Heretic (the GGUF Q4_K_M), with Thinking off, for every text job, on a Mac or
+Windows** (`hf.co/igorls/gemma-4-12B-it-heretic-GGUF:Q4_K_M`; recommended since 2026-10-08, as the
+project may run on smaller machines): uncensored, 9.5 GB loaded, right on all six pictures in the
+Art Agent test below (the NVFP4 build of the same model got two wrong), and the same build on both
+machines ("Two smaller Heretic models", "The GGUF on an NVIDIA card" below). On a Mac with memory
+to spare, **Gemma 4 26B-A4B Heretic** (`gemma-4-26b-heretic:nvfp4`, an uncensored build made
+locally: "The heretic 26B-A4B as MLX NVFP4" below) is 2–3× faster, 18 GB loaded, Mac only: a mixture of experts with about 4B parameters active per
+token, the fastest model here that does every job well. Whichever, one model for everything, so
+none waits for another to load. Set it in **Settings → Text Model**; it applies from the next Session.
 
 ### What the job asks of the model
 

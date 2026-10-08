@@ -56,11 +56,17 @@ Settings page ([What runs where](#configuration)).
 One model does every text job ([docs/models.md](docs/models.md) has the comparisons, uncensored
 builds and how to make one). Small models (4–8B) can't reliably follow the prompt format.
 
-- **On a Mac:** Gemma 4 26B-A4B Heretic on Ollama's MLX engine (`gemma-4-26b-heretic:nvfp4`, made
-  locally as models.md describes; 17 GB loaded, a few seconds a reply, Thinking off), or the stock
-  `gemma4:26b-nvfp4` (one `ollama pull`, not uncensored).
-- **On Windows with a 12 GB NVIDIA card:** Gemma 4 12B Heretic,
-  `hf.co/igorls/gemma-4-12B-it-heretic-GGUF:Q4_K_M` (8.3 GB loaded, ~5 s a Reply on an RTX 4070).
+- **Gemma 4 12B Heretic, on a Mac or Windows:**
+  `ollama pull hf.co/igorls/gemma-4-12B-it-heretic-GGUF:Q4_K_M`, Thinking off. Uncensored, and
+  the most accurate of the small models tried here. **Q4_K_M** is a 4-bit quantization: the weights
+  are stored in about 4.8 bits each on average (most in 4, some sensitive ones in 6) instead of 16,
+  so the model is 7.4 GB on disk and ~8–9.5 GB loaded, enough for a 12 GB card or a 16 GB Mac, at
+  little cost in quality. The same build runs on both machines, so a Session behaves the same on
+  either. ~5 s a Reply on an RTX 4070; on a Mac, ~8 s per Chain Action.
+- **Faster on a Mac with memory to spare (32 GB+):** Gemma 4 26B-A4B Heretic on Ollama's MLX engine
+  (`gemma-4-26b-heretic:nvfp4`, made locally as models.md describes; 18 GB loaded), 2–3× faster
+  than the 12B (~3.5 s per Chain Action) because only about 4B of its weights work per token. MLX
+  builds run only on Apple silicon.
 - **Ollama's context length** (the slider in Ollama's settings, or `OLLAMA_CONTEXT_LENGTH`) matters
   for GGUF models, the ones Ollama runs on Windows and Linux. The app sends a Roleplay's whole
   history with every Reply (a 30-Frame Roleplay is 8–11k tokens, each exchange adds 220–310, so 200
@@ -145,12 +151,18 @@ Each runs once per scene or figure through uv, downloading its weights with the 
 
 ### Two machines
 
-A Mac can render and upscale on a Windows PC's ComfyUI across the local network: give the PC's
-address (`http://<its IP>:8188`) as the ComfyUI address, and set "Upscale with" to ComfyUI. On the
-tested pair, a picture took ~21 s instead of 56–97 s with mflux, and an upscale 14 s instead of
-~66 s. The PC's ComfyUI must listen beyond its own machine: in Comfy Desktop, add
-`--listen 0.0.0.0` to the installation's launch arguments, and let Windows Firewall allow TCP 8188
-on the private network. ComfyUI has no login, so anything on that network can use it.
+The app finds ComfyUI and Ollama by address, so any machine can use another's on the local
+network, either way round. The useful case: a Mac rendering and upscaling on a Windows PC's
+ComfyUI. Give the PC's address (`http://<its IP>:8188`) as the ComfyUI address, and set "Upscale
+with" to ComfyUI. On the tested pair, a picture took ~21 s instead of 56–97 s with mflux, and an
+upscale 14 s instead of ~66 s. The Text Model can live on the other machine the same way (the
+Text backend's address in Settings), e.g. to keep the Mac's memory for mflux. What runs as a
+local program can't be shared: mflux, voices, SHARP, TripoSplat and LiTo run where the app runs.
+
+For another machine to reach ComfyUI, it must listen beyond its own machine: in Comfy Desktop, add
+`--listen 0.0.0.0` to the installation's launch arguments, and let the firewall allow TCP 8188 on
+the private network (Windows Firewall on a PC). ComfyUI has no login, so anything on that network
+can use it. Ollama likewise needs `OLLAMA_HOST=0.0.0.0` set where it runs.
 
 ## Getting started
 
