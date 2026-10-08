@@ -14,15 +14,18 @@ const WHEEL_STEP = 1.25
 
 /**
  * A mouse wheel's notch rather than a trackpad's scroll, which pans: Firefox counts a wheel in
- * lines; Chrome and Edge in whole pixels, 100 a notch at 100% display scaling, straight up or
- * down. A trackpad sends small, fractional, often diagonal pixel deltas. Returns the notches, or 0
- * for a trackpad.
+ * lines; Chrome and Edge in pixels, 100 a notch, straight up or down. A trackpad sends small,
+ * fractional, often diagonal pixel deltas. Chrome and Edge divide the pixels by the page's zoom
+ * (90.909… a notch at 110%, 66.67 at 150%), so they're taken back to screen pixels first, or a
+ * zoomed page's wheel would pan like a trackpad. Returns the notches, or 0 for a trackpad.
  */
 function wheelNotches(e: WheelEvent): number {
   if (e.deltaMode === WheelEvent.DOM_DELTA_LINE) return e.deltaY / 3
   if (e.deltaMode === WheelEvent.DOM_DELTA_PAGE) return e.deltaY
-  const notch = e.deltaX === 0 && Number.isInteger(e.deltaY) && Math.abs(e.deltaY) >= 50
-  return notch ? e.deltaY / 100 : 0
+  const px = e.deltaY * (globalThis.devicePixelRatio || 1)
+  const whole = Math.abs(px - Math.round(px)) < 0.01
+  const notch = e.deltaX === 0 && whole && Math.abs(px) >= 50
+  return notch ? Math.round(px) / 100 : 0
 }
 
 /**
@@ -62,9 +65,20 @@ export function usePinchZoom(frame: Readonly<Ref<HTMLElement | null>>) {
 
   const reset = () => (view.value = { scale: 1, x: 0, y: 0 })
 
+  /**
+   * When a wheel event last looked like a touchpad's. Its scroll's later events follow it for a
+   * moment: a fast flick can end in large whole deltas that look like a mouse's notches, and would
+   * jump from panning to zooming.
+   */
+  let touchpadAt = -Infinity
+  const TOUCHPAD_MS = 300
+
   function onWheel(e: WheelEvent) {
-    // A mouse wheel zooms a step a notch, with Ctrl or without; a pinch zooms as the fingers move.
-    const notches = wheelNotches(e)
+    // A mouse wheel zooms a step a notch, with Ctrl or without; a touchpad pinch zooms as the
+    // fingers move, and its two-finger scrolling pans.
+    let notches = wheelNotches(e)
+    if (!notches) touchpadAt = e.timeStamp
+    else if (e.timeStamp - touchpadAt < TOUCHPAD_MS) notches = 0
     if (notches) {
       e.preventDefault()
       zoomAt(view.value.scale * WHEEL_STEP ** -notches, e.clientX, e.clientY)

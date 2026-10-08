@@ -97,11 +97,43 @@ describe('usePinchZoom', () => {
     expect(zoom().view.value.scale).toBeCloseTo(1.25)
   })
 
+  it('zooms with a mouse wheel on a page zoomed in or out, not only at 100%', async () => {
+    const { el, zoom } = await mountFrame()
+    const ratio = globalThis.devicePixelRatio
+    try {
+      // Edge at 110% (as measured): 90.909… px a notch, the page's pixels, not the screen's.
+      globalThis.devicePixelRatio = 1.1
+      const e = wheel(el, { deltaY: -90.90908893868948, x: 200, y: 150 })
+      expect(e.defaultPrevented).toBe(true)
+      expect(zoom().view.value.scale).toBeCloseTo(1.25)
+      // At 150%: 66.67 px a notch.
+      globalThis.devicePixelRatio = 1.5
+      wheel(el, { deltaY: 66.66666666666667, x: 200, y: 150 })
+      expect(zoom().view.value.scale).toBe(1)
+      // A trackpad's scroll on that page still pans, not zooms.
+      expect(wheel(el, { deltaY: 3.7 }).defaultPrevented).toBe(false)
+    } finally {
+      globalThis.devicePixelRatio = ratio
+    }
+  })
+
   it("keeps a trackpad's scrolling for panning: small, fractional or sideways deltas", async () => {
     const { el, zoom } = await mountFrame()
     expect(wheel(el, { deltaY: 3.5 }).defaultPrevented).toBe(false)
     expect(wheel(el, { deltaX: 2, deltaY: 120 }).defaultPrevented).toBe(false)
     expect(zoom().view.value.scale).toBe(1)
+  })
+
+  it("doesn't take the end of a trackpad flick for a mouse wheel's notch", async () => {
+    const { el, zoom } = await mountFrame()
+    // A fast flick: small deltas, then a large whole one, all in one scroll.
+    wheel(el, { deltaY: 4.5 })
+    expect(wheel(el, { deltaY: 100 }).defaultPrevented).toBe(false)
+    expect(zoom().view.value.scale).toBe(1)
+    // A mouse wheel, a moment later, zooms as ever.
+    await new Promise((r) => setTimeout(r, 350))
+    wheel(el, { deltaY: -100 })
+    expect(zoom().view.value.scale).toBeCloseTo(1.25)
   })
 
   it('resets on double-click', async () => {
