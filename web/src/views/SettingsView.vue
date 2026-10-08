@@ -245,10 +245,10 @@ function removeSavedApiKey() {
 </script>
 
 <template>
-  <div class="overflow-y-auto p-6">
-    <div class="mx-auto max-w-xl">
+  <div class="overflow-y-auto">
+    <div class="mx-auto max-w-xl px-6 pb-6 pt-6">
       <div
-        class="sticky -top-6 z-10 -mx-6 mb-4 flex flex-col gap-1 bg-canvas px-6 pb-2 pt-6"
+        class="sticky top-0 z-10 -mx-6 mb-4 flex flex-col bg-canvas px-6 pb-4"
         data-settings-status
       >
         <div class="flex items-baseline gap-3">
@@ -264,13 +264,12 @@ function removeSavedApiKey() {
             <li v-for="issue in status.issues" :key="issue">{{ issue }}</li>
           </ul>
         </div>
-      </div>
-
-      <p v-if="loadError" class="text-danger">Could not load settings: {{ loadError }}</p>
-      <p v-else-if="!form || !options" class="text-muted">Loading…</p>
-
-      <form v-else class="flex flex-col gap-5" @submit.prevent="saveNow">
-        <div class="flex border-b border-line" role="tablist" data-settings-tabs>
+        <div
+          v-if="form && options"
+          class="-mx-6 mt-2 flex border-b border-line px-6"
+          role="tablist"
+          data-settings-tabs
+        >
           <button
             v-for="t in TABS"
             :key="t.id"
@@ -284,7 +283,12 @@ function removeSavedApiKey() {
             {{ t.label }}
           </button>
         </div>
+      </div>
 
+      <p v-if="loadError" class="text-danger">Could not load settings: {{ loadError }}</p>
+      <p v-else-if="!form || !options" class="text-muted">Loading…</p>
+
+      <form v-else class="flex flex-col gap-5" @submit.prevent="saveNow">
         <section
           v-show="tab === 'text'"
           class="flex flex-col gap-5"
