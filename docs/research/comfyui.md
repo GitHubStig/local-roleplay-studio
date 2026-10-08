@@ -421,8 +421,42 @@ instead, as it already makes the pictures there, so the PC needs no second Pytho
     that installs some `--no-deps`. A bad install could break the image backend; Comfy Desktop's
     snapshots allow a rollback.
   - *Licence.* Higgs v3 is Boson's research and non-commercial licence: the same as on the Mac.
-- **To try** (needs the owner's OK: the pack plus ~13 GB of models): install TTS-Audio-Suite
-  through the Manager; clone `kael-ref.wav` for the 29 lines of round 3 in
-  [bench/voices/](../bench/voices/), untagged at 0.5 / 30, so the pitch compares with the Mac's
-  (`pitch.py`); time a line, note peak VRAM and RAM, and check the Text Model still loads fully on
-  the GPU after. Then design one voice with VoiceDesign, to check the isolated runtime works.
+### Tried on the RTX 4070 (2026-10-08)
+
+TTS-Audio-Suite 5.9.2 on ComfyUI 0.39.2 (torch 2.12.1+cu130), installed through the Manager.
+
+- **Installing.** Two traps, both on the PC:
+  - *Comfy Desktop runs ComfyUI from `ComfyUI\.venv`*, not from `standalone-env` (only the base
+    interpreter, with no torch). A node's `install.py` run by hand with the base Python saw no torch
+    and pip-installed torch 2.14.1+cpu there (harmless to ComfyUI, and undone). Install through the
+    Manager, or with `ComfyUI\.venv\Scripts\python.exe`; `comfyui.log` names the executable.
+  - *The Manager won't install while ComfyUI listens on the network* (`--listen 0.0.0.0`, set for
+    the Mac's Upscale): "security_level must be `normal or below`, and network_mode must be set to
+    `personal_cloud`". Take `--listen` out of the install's launch arguments in Comfy Desktop,
+    install, then put it back (or set `network_mode = personal_cloud` in
+    `user\__manager\config.ini`, which lets anyone on the LAN install nodes).
+  - The install left torch, transformers (5.16.1) and the image backend as they were; 59 new nodes.
+    Higgs v3 downloads on first use (8.9 GB, ~4.5 min here) to the shared
+    `models\TTS\higgs_audio_v3\`.
+- **The run:** `kael-ref.wav` cloned for the 29 lines of round 3 in
+  [bench/voices/](../bench/voices/), untagged, temperature 0.5, top-k 30 (top-p 0.95, the node's
+  default), seed 1, through the API: `LoadAudio` → *Character Voices* (with the clip's transcript)
+  → *Higgs Audio v3 Engine* (cuda, bf16, SDPA) → *TTS Text* → `SaveAudio`.
+- **The voice held**, as on the Mac. Median pitch **102.5 Hz** (83–155) against the Mac's 106
+  (83–139) on the same lines, and the reference's 97; one line over 130 Hz ("Who?", 155; 139 on the
+  Mac too). Three one-word lines ("Debt?", "Good.", "Quiet.") had no voiced frames for `pitch.py`,
+  though they're spoken at normal loudness: gravelly or breathy, to be listened to. Whisper (base)
+  heard every line's words, bar slips on short ones it makes anyway ("Dead" for "Debt?").
+- **Slow:** **9 tokens a second**, steady (the model's 25 Hz audio tokens, so ~2.8× slower than
+  real time), ~0.5 s of overhead a call: **3.7 s per second of speech**, a median **5.5 s a line**
+  (3.6–12.1 s), against the Mac's 0.8 s per second of speech on mlx-audio. The model was wholly on
+  the GPU (bf16, SDPA, nothing offloaded), so it's the pack's decode loop. Not tried: `eager` or
+  `sageattention`, fp32.
+- **Memory:** VRAM peaked at **9.9 GB** (of 12.3), ComfyUI's working set ~1 GB. **`/free` releases
+  Higgs**, but it takes a few seconds (9.6 → 1.5 GB within ~8 s, not at once). Loading it again from
+  the file cache: the longest line took 20.5 s after a `/free`, against 12.1 s loaded, so ~8 s.
+- **Not done yet:** a voice designed with VoiceDesign (Qwen3-TTS in its isolated runtime); pace,
+  sound and whisper tags; the Text Model loading after a voice (Ollama wasn't running); listening to
+  the clips (they're in the session scratchpad, not the repo).
+- **So far:** it works and holds the voice, but a Roleplay's line of 2–3 s would take ~10 s, or
+  ~18 s after a Reply (Higgs reloaded), against 2–3 s on the Mac.
