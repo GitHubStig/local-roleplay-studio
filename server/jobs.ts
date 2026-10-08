@@ -214,6 +214,12 @@ export interface JobRoutesContext {
   ): Promise<Response | null>
 }
 
+/**
+ * Jobs about the Session rather than one Frame (a Roleplay's voice): queued as Frame 0's, which
+ * needn't exist yet, as a voice can be designed while the Cast is reviewed, before the scene begins.
+ */
+const SESSION_JOBS: readonly JobKind[] = ['voice']
+
 /** The job routes every Session kind shares, under `/api/sessions/:id/jobs`. */
 export function jobRoutes(ctx: JobRoutesContext): Route[] {
   const path = (rest = '') => new URLPattern({ pathname: `/api/sessions/:id/jobs${rest}` })
@@ -233,7 +239,10 @@ export function jobRoutes(ctx: JobRoutesContext): Route[] {
         return error(`kind must be one of: ${JOB_KINDS.join(', ')}`, 400)
       }
       const index = Number(body?.frameIndex)
-      if (!Number.isInteger(index) || !session.frames[index]) return error('No such Frame', 404)
+      const ofSession = SESSION_JOBS.includes(kind) && index === 0
+      if (!Number.isInteger(index) || (!session.frames[index] && !ofSession)) {
+        return error('No such Frame', 404)
+      }
       const pending = ctx.jobs.list(session.id)
         .filter((j) => j.frameIndex === index && j.status !== 'failed')
         .map((j) => j.kind)

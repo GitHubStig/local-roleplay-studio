@@ -95,6 +95,10 @@ const { jobs, openJobs, runningJob, jobsFor, hasJob, queue, dropJob, retry, refr
 /** A Frame's jobs; designing the voice is the Roleplay's, shown in the Voice panel instead. */
 const frameJobs = (index: number) => jobsFor(index).filter((j) => j.kind !== 'voice')
 const voiceJob = computed(() => jobs.value.find((j) => j.kind === 'voice') ?? null)
+/** The voice is being designed, or waits its turn to be. */
+const designingVoice = computed(() =>
+  voiceJob.value?.status === 'running' || voiceJob.value?.status === 'queued'
+)
 
 /** What a Roleplay's own work is doing, where it says more than `jobStatus`. */
 function describeJob(job: Job): string | undefined {
@@ -924,9 +928,12 @@ async function saveCastDraft(): Promise<boolean> {
             Save Look
           </button>
         </form>
+        <!-- Its border sweeps while the voice is designed, slower while that waits its turn. -->
         <form
           v-if="cast && featureOn('voices')"
           class="flex flex-col gap-2 border-b border-line p-4 text-sm"
+          :class="{ 'render-sweep': designingVoice }"
+          :data-rendering="voiceJob?.status === 'queued' ? 'queued' : undefined"
           data-voice
           @submit.prevent="saveVoiceDraft"
         >

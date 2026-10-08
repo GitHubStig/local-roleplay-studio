@@ -1547,3 +1547,22 @@ Deno.test('Pictures use the Art Agent model set in Settings, recorded on the Fra
     assertEquals([session.lookModel, session.frames[0].pictureModel], ['artist', 'artist'])
     assertEquals(artist.art.length, 2)
   }))
+
+Deno.test('A voice is designed while the Cast is reviewed, before the scene begins', () =>
+  withTempDir(async (root) => {
+    const voice = fakeVoiceEngine()
+    const model = scriptedRoleplayModel({ casts: [testCast], voices: ['A low, husky woman.'] })
+    const { call } = setup({ root, settings: { textModel: 'x' }, roleplayModel: model, voice })
+    await call('POST', '/api/sessions', { kind: 'roleplay', brief: 'A storm at sea.' })
+    await readEvents(await call('POST', '/api/sessions/s1/roleplay/cast'))
+    const job = (kind: string, frameIndex: number) =>
+      call('POST', '/api/sessions/s1/jobs', { kind, frameIndex })
+    // No Frame yet: a voice is the Session's, so it's queued all the same; a line isn't.
+    assertEquals((await job('voice', 0)).status, 201)
+    assertEquals((await job('speak', 0)).status, 404)
+    assertEquals((await job('voice', 1)).status, 404)
+    assertEquals(await settled(call), [])
+    const session = await (await call('GET', '/api/sessions/s1')).json()
+    assertEquals([session.frames.length, session.voice.description], [0, 'A low, husky woman.'])
+    assertEquals(voice.calls.map((c) => c.kind), ['design'])
+  }))

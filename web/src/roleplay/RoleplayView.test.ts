@@ -506,6 +506,7 @@ describe('RoleplayView', () => {
       ])
       const { wrapper } = await mountIt()
       const panel = wrapper.find('[data-voice]')
+      expect(panel.classes()).not.toContain('render-sweep')
       await panel.find('[data-play-voice]').trigger('click')
       await flushPromises()
       expect(played).toEqual(['voice-aaaaaaaa.wav'])
@@ -516,6 +517,8 @@ describe('RoleplayView', () => {
       expect(roleplay.saveVoice).toHaveBeenCalledWith('r1', 'A deep man.')
       expect(api.queueJob).toHaveBeenCalledWith('r1', 'voice', 0)
       expect(wrapper.find('[data-voice-job]').text()).toContain('Designing the voice…')
+      // Its panel's border sweeps meanwhile; not before.
+      expect(wrapper.find('[data-voice]').classes()).toContain('render-sweep')
       // Designing the voice is the Roleplay's, not the opening Frame's.
       expect(wrapper.find('[data-frame-job]').exists()).toBe(false)
       expect(wrapper.find('[data-reply]').classes()).not.toContain('render-sweep')
