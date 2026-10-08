@@ -216,7 +216,8 @@ under 12 GB. A 26B-A4B under 12 GB would need about 3 bits, which `ollama create
 
 The Art Agent uses the Session's Text Model. Measured 2026-09-28 on six Frames of a 30-Frame
 Roleplay (the Kael tavern scene), all on the same fixed Look, picked for what had tripped it
-before: someone alone (6, 29), an empty room (7), and three with both people and detail the Limits block (9, 16, 24).
+before: someone alone (6, 29), an empty room (7), and three with both people and detail the Limits
+block (9, 16, 24).
 
 **Thinking: not worth it.** Qwen3.8 27B (uncensored), Thinking off against on:
 
@@ -226,7 +227,8 @@ before: someone alone (6, 29), an empty room (7), and three with both people and
 | Reasoning | none | 6,000–18,000 characters |
 | Who's in the picture | right on all five | same, except Frame 29: it invented Elara as a distant figure, and the picture was blocked |
 
-With Thinking the sentences were more cinematic and one per aspect, and once more accurate (Frame 16), but it also dropped a detail in Frame 24. No gain in correctness,
+With Thinking the sentences were more cinematic and one per aspect, and once more accurate (Frame
+16), but it also dropped a detail in Frame 24. No gain in correctness,
 at 2–9 minutes a picture, so there's no Art Agent Thinking setting.
 
 **gemma4 is better at it than Qwen3.8, and faster** (both Thinking off):
@@ -245,7 +247,8 @@ The heretic gemma-4 26B-A4B (2026-09-28, the same six Frames, Thinking off) is *
 far: 3–9 s a picture**, against 12–35 s for gemma4 31B and 20–68 s for Qwen3.8 in the same run. It
 wrote one clean sentence per aspect and got who's in each picture right (Kael alone in 6, 7 and
 29; both in 9, 16 and 24; Qwen put only Elara in 16). It carries a little less detail than gemma4
-31B, which kept more of the story's props in 9 and 24 (pictures blocked while the Limits are on). Qwen3.8 again wrote about absences ("Elara Vance is absent from the frame"). Settings → Art
+31B, which kept more of the story's props in 9 and 24 (pictures blocked while the Limits
+are on). Qwen3.8 again wrote about absences ("Elara Vance is absent from the frame"). Settings → Art
 Agent model sets a separate model for pictures (Thinking off), so the Character can be played by
 one model and pictured by another.
 
@@ -260,7 +263,8 @@ Settings → Art Agent style can have the Art Agent write each aspect as short c
 instead of a sentence (`prompts/roleplay/art-frame-tags.md`). The identities stay the Look's
 sentences; only the seven aspects become tags, and clothing tags still name each person, so the
 Limits' clothing check works the same. **Prose stays the default: it won on all seven installed
-Image Models.** Measured on three Frames of the Kael tavern Roleplay (6: Kael alone; 9 and 12: both), each Art Agent writing prose, Danbooru-style tags
+Image Models.** Measured on three Frames of the Kael tavern Roleplay (6: Kael alone; 9 and 12:
+both), each Art Agent writing prose, Danbooru-style tags
 (`1boy, 1girl, from below, …`) and plain descriptive tags
 (`Kael pointing at the floor, Elara wool robe, …`), Thinking off.
 
@@ -274,7 +278,9 @@ Who's in the picture, right of three:
 
 - **Tags are about twice as fast to write**, and half as long: 450–950 characters a prompt against
   1,000–1,950 for prose. Prose per picture: gemma4 14–30 s, heretic 4–8 s, Qwen3.8 19–25 s.
-- **Tags follow the story more literally, and ignore "dress them" far more.** gemma4's tags, in both styles, kept clothing the Limits would block, and so did the heretic's booru tags. (Its prose also did once, which the Limits now catch.)
+- **Tags follow the story more literally, and ignore "dress them" far more.** gemma4's tags, in both
+  styles, kept clothing the Limits would block, and so did the heretic's booru tags. (Its prose
+  also did once, which the Limits now catch.)
 - **Qwen3.8 as a tag writer:** the least reliable. Booru tags got who's shown right once in three,
   and its plain tags were the shortest (about 200 characters), dropping names so the aspects no
   longer said who was who. Its prose was right on all three.
