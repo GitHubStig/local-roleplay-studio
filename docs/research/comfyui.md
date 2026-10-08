@@ -456,17 +456,48 @@ TTS-Audio-Suite 5.9.2 on ComfyUI 0.39.2 (torch 2.12.1+cu130), installed through 
 - **Pace, sound and whisper tags work** (six lines, written as the voice service's `directed()`
   writes them): no tag was spoken as words, the sounds came out ("Uh", "Heh", "Ahem"), and the
   pitch held at 85–114 Hz, the whisper lowest (85), as on the Mac.
-- **VoiceDesign failed to start**, on Windows' 260-character path limit: the pack builds Qwen3-TTS's
-  isolated runtime (a venv that inherits ComfyUI's torch) inside its own folder,
-  `custom_nodes\tts_audio_suite\runtimes\shared_legacy_t4\`, and pip's install there hit a
-  setuptools test file 270 characters deep ("Could not install packages due to an OSError…
-  Windows Long Path support"). The folder can't be moved (no setting); long paths are off on the PC
-  (`LongPathsEnabled = 0`). Needs `LongPathsEnabled` set to 1 (admin), then ComfyUI restarted.
+- **VoiceDesign works, after two fixes.** The pack runs Qwen3-TTS in an isolated runtime (a venv
+  that inherits ComfyUI's torch, with its own transformers 4.57.3), in its own folder,
+  `custom_nodes\tts_audio_suite\runtimes\shared_legacy_t4\`, as a worker process ComfyUI talks to.
+  1. *Windows' 260-character path limit:* pip's install into that folder hit a setuptools test file
+     270 characters deep ("Could not install packages due to an OSError… Windows Long Path
+     support"). The folder can't be moved (no setting). Fixed by setting
+     `HKLM\SYSTEM\CurrentControlSet\Control\FileSystem\LongPathsEnabled` to 1 (admin), then
+     restarting ComfyUI.
+  2. *A bug in the pack (5.9.2):* the worker then died at once ("Worker closed the response stream
+     unexpectedly"); its own error is only in Comfy Desktop's log
+     (`ComfyUI-Installs\ComfyUI\logs\comfyui.log`, which has the child processes' output, unlike
+     `ComfyUI\user\comfyui.log`): "No module named 'utils.runtimes'; 'utils' is not a package". The
+     worker inherits ComfyUI's `sys.path` as `PYTHONPATH`, where some engines have put their own
+     folders (holding a `utils.py`) ahead of the pack's root, and the worker adds its root first only
+     if it isn't on the path already. Fixed locally by making `utils/runtimes/workers/
+     qwen3_tts_worker.py` always put its root first (three lines); a reinstall or update of the pack
+     undoes it. Already reported: [#366](https://github.com/diodiogod/TTS-Audio-Suite/issues/366)
+     (open, no reply as of 2026-10-08), the same cause and fix, seen there only after Step Audio
+     EditX had run; here it failed on the first use.
+  - Running Qwen3-TTS in ComfyUI's main environment instead (`runtime_mode: Main Environment`) fails
+    on transformers 5.16.1 too ("Failed to load Qwen3-TTS model: 'default'", the RoPE error of the
+    pack's report), so VoiceDesign needs the isolated runtime, and the fix, until #366 is fixed.
+- **Designing Kael's voice** from the bench's description (`render.py`'s `VOICE`) and reference
+  sentence, Qwen3-TTS 1.7B VoiceDesign, the node's defaults (temperature 0.9, top-k 50), bf16, SDPA
+  (no flash-attn): the clip says the sentence (Whisper), 6.6 s long. Seed 1 came out at **130 Hz**,
+  seed 2 at **93 Hz** (the Mac's design: 97), so a design varies with its seed here as there.
+  **30 s a design** with the model loaded (81 tokens, 2.7 a second, ~4.5× slower than real time);
+  the first took 187 s, with the model's download (into the install's own `models\TTS\qwen3_tts\`,
+  not the shared folder) and loading. `/free` stops the worker and frees its VRAM.
 - **Memory:** VRAM peaked at **9.9 GB** (of 12.3), ComfyUI's working set ~1 GB. **`/free` releases
   Higgs**, but it takes a few seconds (9.6 → 1.5 GB within ~8 s, not at once). Loading it again from
   the file cache: the longest line took 20.5 s after a `/free`, against 12.1 s loaded, so ~8 s.
-- **Not done yet:** a voice designed with VoiceDesign (blocked, above); the Text Model loading
-  after a voice (Ollama wasn't running); listening to the clips (they're in the session scratchpad,
-  not the repo).
+- **Leaving nothing behind.** ComfyUI has no audio node that sends over the WebSocket, as
+  `SaveImageWebsocket` does for pictures: `SaveAudio`, `SaveAudioMP3`, `SaveAudioOpus` and
+  `SaveAudioAdvanced` write to `output`, and `PreviewAudio` to `temp`. So a voice would end in
+  `PreviewAudio`, fetched through `/view` and left in `temp` until ComfyUI's next start clears it,
+  with the reference clip uploaded to `temp` too, as Upscale's picture is; and its prompt deleted
+  from `/history`, which holds the line's text. The trial's `SaveAudio` left 49 clips in `output`
+  and the clip in `input` (deleted). The pack keeps only small settings caches of its own
+  (`.cache\install_state.json`, `voice_discovery.json`), no audio or text.
+- **Not done yet:** cloning lines from a voice designed on the PC; the Text Model loading after a
+  voice (Ollama wasn't running); listening to the clips (they're in the session scratchpad, not the
+  repo).
 - **So far:** it works and holds the voice, but a Roleplay's line of 2–3 s would take ~10 s, or
   ~18 s after a Reply (Higgs reloaded), against 2–3 s on the Mac.
