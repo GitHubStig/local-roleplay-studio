@@ -319,8 +319,15 @@ written for image prompts, are left out).
 
 ## Consistency
 
-- **Seed:** fixed for the whole Session: the fixed seed from Settings, or a random one picked
-  when the Session starts.
+- **Seed:** fixed for the whole Session: the fixed seed from Settings (on its own Seed tab), or a
+  random one picked when the Session starts. Everything the Session makes is seeded from it
+  (2026-10-08; ADR 0011): pictures and upscales with the seed itself; each spoken line with the seed
+  plus its Frame's index; each take of the voice with the seed plus how many takes came before; and
+  each Text Model call with the seed plus a hash of what's asked plus how many times the Session
+  asked it before (`server/text/seeded.ts`). So a fixed-seed Session played the same way asks with
+  the same seeds, while a retry, a second Suggest or a new take gets a new one. On the Mac's Ollama
+  (2026-10-08) the same seed and prompt gave the same reply word for word, and the next seed a
+  different one. 3D figures (TripoSplat, LiTo) always use seed 42 for now; SHARP samples nothing.
 - **Subject description:** carried in the first sentence (subject and identity), which the Text
   Model copies word for word unless an Action changes it.
 - **Settings are copied into each Session when it starts,** so changing Settings mid-Session
@@ -444,12 +451,12 @@ consistency* in [open-threads.md](open-threads.md).
   its address: ADR 0009), Image Model (the backend's own), steps (reset to the model's default when the Image Model
   changes), quantization (8 or 4 bit: the first render with a model saves a smaller copy of it in
   `models/quantized` (gitignored) and later ones load it, 3.5–8 GB less memory; Settings lists the copies
-  with their sizes, to delete), size (six presets from 512×512 to 1216×832), seed (random per
-  Session, or fixed), Upscaler (SeedVR2 7B or 3B) and where it runs ("Upscale with": mflux, or
+  with their sizes, to delete), size (six presets from 512×512 to 1216×832), Upscaler (SeedVR2 7B or 3B) and where it runs ("Upscale with": mflux, or
   ComfyUI at the address on the same tab, which may be another machine), Art Agent model (the model
   that pictures Roleplay Frames, with Thinking off, or "Same as the Text Model"), Art Agent style
-  (prose, recommended, or tags) and Limits (on by default; off leaves only "everyone depicted is an
-  adult"). Settings are copied into a Session when it starts, except the Upscaler and where it runs,
+  (prose, recommended, or tags), Limits (on by default; off leaves only "everyone depicted is an
+  adult") and, on its own Seed tab as it seeds every model, the seed (random per Session, or
+  fixed). Settings are copied into a Session when it starts, except the Upscaler and where it runs,
   Art Agent model and style, and Limits, which apply at once.
 - **Theme:** Light (a parchment tint), Dark or System, remembered per browser. It's a display
   preference, not a Setting.

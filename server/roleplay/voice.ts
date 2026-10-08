@@ -190,7 +190,7 @@ export async function designVoice(
         {
           description: described.description,
           text: REF_TEXT,
-          seed: crypto.getRandomValues(new Uint32Array(1))[0],
+          seed: (session.seed + (session.voice?.takes ?? 0)) >>> 0,
           out: join(dir, ref),
         },
         signal,
@@ -201,7 +201,7 @@ export async function designVoice(
     const updated = await updateSession(deps.store, session.id, (latest) => {
       old = latest.voice?.ref
       // A description edited meanwhile wins; this take is of the one it was asked for.
-      return { ...latest, voice: { ...described, ref } }
+      return { ...latest, voice: { ...described, ref, takes: (latest.voice?.takes ?? 0) + 1 } }
     })
     if (old && old !== ref) await Deno.remove(join(dir, old)).catch(() => {})
     emit({ type: 'voice', voice: updated.voice!, session: updated })

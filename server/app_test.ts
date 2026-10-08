@@ -1385,7 +1385,12 @@ Deno.test("Speaking a Frame designs the Character's voice first, and serves the 
     assertEquals(await settled(call), [])
     let session = await (await call('GET', '/api/sessions/s1')).json()
     const { ref } = session.voice
-    assertEquals(session.voice, { description: 'A low, husky woman.', model: 'scripted', ref })
+    assertEquals(session.voice, {
+      description: 'A low, husky woman.',
+      model: 'scripted',
+      ref,
+      takes: 1,
+    })
     assertEquals(session.frames[0].speech.ref, ref)
     const audio = await call('GET', `/api/sessions/s1/images/${session.frames[0].speech.file}`)
     assertEquals([audio.status, audio.headers.get('Content-Type')], [200, 'audio/mpeg'])

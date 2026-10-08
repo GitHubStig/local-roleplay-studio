@@ -26,12 +26,13 @@ const loadError = ref('')
 const saving = ref(false)
 const status = ref<{ kind: 'saved' | 'error'; message: string; issues?: string[] } | null>(null)
 
-/** The Settings, a tab per part of the app: the Text Model's, and each extra's. */
+/** The Settings, a tab per part of the app (the Text Model's, each extra's), and the seed. */
 const TABS = [
   { id: 'text', label: 'Text' },
   { id: 'images', label: 'Images' },
   { id: 'voice', label: 'Voice' },
   { id: '3d', label: '3D' },
+  { id: 'seed', label: 'Seed' },
 ] as const
 const tab = ref<(typeof TABS)[number]['id']>('text')
 const { refreshFeatures } = useFeatures()
@@ -592,25 +593,6 @@ function removeSavedApiKey() {
               </select>
               <span class="text-sm text-muted">Used by Upscale; applies to the next upscale.</span>
             </label>
-
-            <fieldset class="flex flex-col gap-2">
-              <legend class="mb-1 text-sm text-muted">Seed</legend>
-              <label class="flex items-center gap-2">
-                <input v-model="form.seedMode" type="radio" value="random" />
-                New random seed each Session
-              </label>
-              <label class="flex items-center gap-2">
-                <input v-model="form.seedMode" type="radio" value="fixed" />
-                Fixed seed
-                <input
-                  v-model.number="form.seed"
-                  type="number"
-                  min="0"
-                  class="field w-40"
-                  :disabled="form.seedMode !== 'fixed'"
-                />
-              </label>
-            </fieldset>
           </template>
         </section>
 
@@ -678,6 +660,37 @@ function removeSavedApiKey() {
           >
             Apple's LiTo does the same as TripoSplat, through mlx-spatial (research-only licence).
           </FeatureSwitch>
+        </section>
+
+        <section
+          v-show="tab === 'seed'"
+          class="flex flex-col gap-5"
+          role="tabpanel"
+          data-tab-panel="seed"
+        >
+          <fieldset class="flex flex-col gap-2">
+            <legend class="mb-1 text-sm text-muted">Seed</legend>
+            <label class="flex items-center gap-2">
+              <input v-model="form.seedMode" type="radio" value="random" />
+              New random seed each Session
+            </label>
+            <label class="flex items-center gap-2">
+              <input v-model="form.seedMode" type="radio" value="fixed" />
+              Fixed seed
+              <input
+                v-model.number="form.seed"
+                type="number"
+                min="0"
+                class="field w-40"
+                :disabled="form.seedMode !== 'fixed'"
+              />
+            </label>
+            <span class="text-sm text-muted">
+              A Session keeps its seed for everything it makes: the Text Model's answers, pictures
+              and upscales, and its voice. Asking again (a retry, a new take) moves to another seed,
+              so it can come out different. 3D figures always use 42 for now.
+            </span>
+          </fieldset>
         </section>
 
       </form>

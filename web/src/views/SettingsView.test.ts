@@ -292,6 +292,26 @@ describe('SettingsView', () => {
     wrapper.unmount()
   })
 
+  it('keeps the seed on its own tab, there even where pictures cannot be made', async () => {
+    vi.mocked(api.getSettingsOptions).mockResolvedValue({
+      ...options,
+      features: { ...ALL_AVAILABLE, images: { available: false, reason: 'No mflux here' } },
+    })
+    const wrapper = mount(SettingsView, { attachTo: document.body })
+    await flushPromises()
+    const seed = wrapper.find('[data-tab-panel="seed"]')
+    expect(wrapper.find('[data-tab-panel="images"] input[value="fixed"]').exists()).toBe(false)
+    expect(seed.isVisible()).toBe(false)
+    await wrapper.find('[data-tab="seed"]').trigger('click')
+    expect(seed.isVisible()).toBe(true)
+    await seed.find('input[value="fixed"]').setValue(true)
+    await seed.find('input[type="number"]').setValue(7)
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+    expect(api.saveSettings).toHaveBeenCalledWith({ ...settings, seedMode: 'fixed', seed: 7 })
+    wrapper.unmount()
+  })
+
   it('saves each control into its own field', async () => {
     const wrapper = mount(SettingsView)
     await flushPromises()

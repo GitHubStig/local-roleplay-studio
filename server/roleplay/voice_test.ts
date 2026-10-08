@@ -87,6 +87,7 @@ Deno.test('Speaking a line first describes and designs the voice, then clones it
       description: 'A low, husky woman of thirty-four.',
       model: 'artist',
       ref,
+      takes: 1,
     })
     const speech = spoken.frames[0].speech!
     assertEquals([speech.ref, Object.keys(speech.timings)], [ref, ['audio']])
@@ -214,9 +215,13 @@ Deno.test('parseDelivery plays anything it does not recognise as written', () =>
 
 Deno.test('A new take of the voice replaces its clip; lines spoken in the old one keep theirs', () =>
   withTempDir(async (root) => {
-    const { session, deps, files } = await setup(root)
+    const { session, voice, deps, files } = await setup(root)
     const spoken = await speakFrame(deps, session, 0, () => {}, signal)
     const retaken = await designVoice(deps, spoken, () => {}, signal)
+    // The first take is seeded with the Session's seed, each after it with the next.
+    const designs = voice.calls.filter((c) => c.kind === 'design')
+    assertEquals(designs.map((c) => c.req.seed), [100, 101])
+    assertEquals(retaken.voice!.takes, 2)
     const [oldRef, newRef] = [spoken.voice!.ref!, retaken.voice!.ref!]
     assertEquals(oldRef !== newRef, true)
     assertEquals(retaken.voice!.description, spoken.voice!.description)

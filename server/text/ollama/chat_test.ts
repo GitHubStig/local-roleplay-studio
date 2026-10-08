@@ -2,6 +2,7 @@ import { assertEquals, assertRejects } from '@std/assert'
 import { chatTextModel, type TextModelOptions } from '../../textModel.ts'
 import { promptWith, testScenario } from '../../testing.ts'
 import { ContextFullError } from '../chat.ts'
+import { seededChat } from '../seeded.ts'
 import { ollamaChat } from './ollama.ts'
 
 /** A Chain's Text Model on an Ollama at `baseUrl`. */
@@ -57,6 +58,28 @@ Deno.test('a Text Model on Ollama streams thinking, then parses the answer', asy
     assertEquals(text.narration, 'She stands.')
     assertEquals(ollama.requests[0].think, true)
     assertEquals(ollama.requests[0].stream, true)
+  } finally {
+    await ollama.close()
+  }
+})
+
+Deno.test("a seeded chat sends Ollama each call's seed", async () => {
+  const ollama = fakeOllama(() => ndjson({ message: { content: 'ok' }, done: true }))
+  try {
+    const chat = seededChat(ollamaChat('m', { baseUrl: ollama.baseUrl }), {
+      session: 'ollama',
+      seed: 42,
+    })
+    const call = {
+      messages: [{ role: 'user' as const, content: 'Hi' }],
+      maxTokens: 10,
+      signal: new AbortController().signal,
+    }
+    await chat.stream(call)
+    await chat.stream(call)
+    const seeds = ollama.requests.map((r) => (r.options as { seed?: number }).seed)
+    assertEquals(seeds.every((s) => typeof s === 'number'), true)
+    assertEquals(seeds[0] !== seeds[1], true)
   } finally {
     await ollama.close()
   }

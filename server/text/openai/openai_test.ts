@@ -3,6 +3,7 @@ import { chatRoleplayModel } from '../../roleplay/model.ts'
 import { chatTextModel } from '../../textModel.ts'
 import { promptWith, testScenario } from '../../testing.ts'
 import { ContextFullError } from '../chat.ts'
+import { seededChat } from '../seeded.ts'
 import { openAiBackend } from './openai.ts'
 
 interface Seen {
@@ -100,20 +101,23 @@ Deno.test('Fields a server refuses are dropped one at a time, and stay dropped',
   const server = fakeServer(({ body }) => {
     const refuse = (message: string) => Response.json({ error: { message } }, { status: 400 })
     if ('repeat_penalty' in body) return refuse('Unrecognized request argument: repeat_penalty')
+    if ('seed' in body) return refuse('Unrecognized request argument: seed')
     if ('max_tokens' in body) return refuse("Unsupported parameter: 'max_tokens'")
     return sse([{ content: '{"internal":"","actions":"Kael waits.","dialogue":"Evening."}' }])
   })
   try {
-    const model = chatRoleplayModel(server.backend().chat('m', false))
+    const chat = seededChat(server.backend().chat('m', false), { session: 'refused', seed: 42 })
+    const model = chatRoleplayModel(chat)
     const reply = await model.reply([{ role: 'user', content: 'Hi' }], signal)
     assertEquals(reply.dialogue, 'Evening.')
-    assertEquals(server.seen.length, 3)
+    assertEquals(server.seen.length, 4)
     assertEquals(server.seen[0].body.repeat_penalty, 1.15)
     assertEquals(server.seen[0].body.repeat_last_n, 131_072)
-    assertEquals(server.seen[2].body.max_completion_tokens, 1024)
+    assertEquals(typeof server.seen[1].body.seed, 'number')
+    assertEquals(server.seen[3].body.max_completion_tokens, 1024)
 
     await model.reply([{ role: 'user', content: 'Hi' }], signal)
-    assertEquals(server.seen.length, 4) // remembered: straight through
+    assertEquals(server.seen.length, 5) // remembered: straight through
   } finally {
     await server.close()
   }

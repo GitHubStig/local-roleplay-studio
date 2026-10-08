@@ -58,6 +58,7 @@ const LABEL = 'Text server'
  *   as thinking models reason by default (gemma4 on Ollama's `/v1` does).
  * - `repeat_penalty` and `repeat_last_n` (llama.cpp's and LM Studio's names): the Replies' guard
  *   against repeating themselves. Cloud services have no equivalent.
+ * - `seed`: the Session's seed for this call (`seeded.ts`); OpenAI itself only takes it as a hint.
  * - `max_tokens`: OpenAI's reasoning models want `max_completion_tokens` instead.
  * - `stream_options.include_usage`: the token counts, in a last chunk, which tell a reply cut off
  *   by a full context from one cut off by its own cap.
@@ -69,6 +70,7 @@ export function openAiChat(
 ): Chat {
   let effort = true
   let penalty = true
+  let seeds = true
   let tokensField = 'max_tokens'
   let usage = true
   const fallbacks = [
@@ -81,6 +83,7 @@ export function openAiChat(
       },
     },
     { refused: /repeat_/i, applies: () => penalty, drop: () => (penalty = false) },
+    { refused: /seed/i, applies: () => seeds, drop: () => (seeds = false) },
     { refused: /stream_options|include_usage/i, applies: () => usage, drop: () => (usage = false) },
     {
       refused: /max_tokens/i,
@@ -111,6 +114,7 @@ export function openAiChat(
             response_format: { type: 'json_schema', json_schema: { name: 'answer', schema } },
           }),
           ...(call.temperature !== undefined && { temperature: call.temperature }),
+          ...(seeds && call.seed !== undefined && { seed: call.seed }),
           ...(penalty && call.repeatPenalty && {
             repeat_penalty: call.repeatPenalty.penalty,
             repeat_last_n: call.repeatPenalty.lastN,

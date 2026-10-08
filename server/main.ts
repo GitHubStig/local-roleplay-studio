@@ -10,7 +10,8 @@ import { dirSessionStore } from './session.ts'
 import { fileSettingsStore, machineDefaults, type Settings } from './settings.ts'
 import { chatTextModel } from './textModel.ts'
 import { chatRoleplayModel } from './roleplay/model.ts'
-import { connectionOf, textBackend, type TextConnection } from './text/backend.ts'
+import { connectionOf, textBackend, type TextChoice, type TextConnection } from './text/backend.ts'
+import { seededChat } from './text/seeded.ts'
 import { litoFigureMaker, tripoFigureMaker } from './3d/figure.ts'
 import { sharpSceneMaker } from './3d/scene.ts'
 import { voiceBackends, voiceService } from './voice/voice.ts'
@@ -49,6 +50,11 @@ const text = (connection: TextConnection, apiKey?: string) =>
     connection,
     () => apiKey !== undefined ? Promise.resolve(apiKey) : settings.loadApiKey(),
   )
+/** A chat with the model a choice names, seeded from its Session's seed when it has one. */
+const chat = (c: TextChoice) => {
+  const plain = text(c).chat(c.model, c.thinking)
+  return c.seeding ? seededChat(plain, c.seeding) : plain
+}
 
 const handler = createHandler({
   settings,
@@ -56,8 +62,8 @@ const handler = createHandler({
   comfyuiStatus,
   scenarios: dirScenarioLibrary(new URL('../scenarios/', import.meta.url)),
   sessions: dirSessionStore(new URL('../sessions/', import.meta.url)),
-  textModel: (c) => chatTextModel(text(c).chat(c.model, c.thinking)),
-  roleplayModel: (c) => chatRoleplayModel(text(c).chat(c.model, c.thinking)),
+  textModel: (c) => chatTextModel(chat(c)),
+  roleplayModel: (c) => chatRoleplayModel(chat(c)),
   // Each Session renders with the backend its Settings name: mflux where it's installed (a Mac),
   // or ComfyUI (any machine). Upscale runs where Settings say now, with ComfyUI's address there.
   imageGenerator: placeholderImages ? placeholderImageGenerator() : imageBackends({

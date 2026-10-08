@@ -1,4 +1,5 @@
 import type { Chat } from './chat.ts'
+import type { Seeding } from './seeded.ts'
 import { ollamaBackend } from './ollama/ollama.ts'
 import { openAiBackend } from './openai/openai.ts'
 
@@ -20,10 +21,11 @@ export interface TextConnection {
   baseUrl: string
 }
 
-/** A Text Model on a backend, with thinking on or off. */
+/** A Text Model on a backend, with thinking on or off, seeded from a Session's seed if given. */
 export interface TextChoice extends TextConnection {
   model: string
   thinking: boolean
+  seeding?: Seeding
 }
 
 export interface TextModelInfo {

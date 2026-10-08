@@ -146,6 +146,11 @@ export interface RoleplayVoice {
   ref?: string
   /** The model that wrote the description, until it's edited by hand. */
   model?: string
+  /**
+   * How many takes have been designed: the next is seeded with the Session's seed plus this, so a
+   * fixed seed gives the same first voice for a description, and each new take a different one.
+   */
+  takes?: number
 }
 
 /** A conversation with a Character, one Frame per exchange. */

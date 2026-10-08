@@ -56,6 +56,7 @@ export function ollamaChat(
           think: thinking,
           options: {
             ...(call.temperature !== undefined && { temperature: call.temperature }),
+            ...(call.seed !== undefined && { seed: call.seed }),
             ...(call.repeatPenalty && {
               repeat_penalty: call.repeatPenalty.penalty,
               repeat_last_n: call.repeatPenalty.lastN,

@@ -192,16 +192,24 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     return scenario ?? error(`Scenario "${session.scenarioId}" no longer exists`, 409)
   }
 
-  /** A Session's Text Model (or another model on its backend), with its Thinking unless given. */
+  /**
+   * A Session's Text Model (or another model on its backend), with its Thinking unless given, and
+   * seeded from its seed.
+   */
   const textChoice = (
-    settings: Settings,
-    model = settings.textModel,
-    thinking = settings.thinking ?? false,
-  ): TextChoice => ({ ...connectionOf(settings), model, thinking })
+    session: Session,
+    model = session.settings.textModel,
+    thinking = session.settings.thinking ?? false,
+  ): TextChoice => ({
+    ...connectionOf(session.settings),
+    model,
+    thinking,
+    seeding: { session: session.id, seed: session.seed },
+  })
 
   const frameDeps = (session: Session): FrameDeps => ({
     store: deps.sessions,
-    textModel: deps.textModel(textChoice(session.settings)),
+    textModel: deps.textModel(textChoice(session)),
     imageGenerator: deps.imageGenerator,
     renderQueue,
   })
@@ -297,8 +305,8 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     store: deps.sessions,
     imageGenerator: deps.imageGenerator,
     renderQueue,
-    textModel: deps.textModel(textChoice(session.settings)),
-    roleplayModel: deps.roleplayModel(textChoice(session.settings)),
+    textModel: deps.textModel(textChoice(session)),
+    roleplayModel: deps.roleplayModel(textChoice(session)),
     voice: deps.voice,
     scene: deps.scene,
     figure: deps.figure,
@@ -344,7 +352,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     artModel: async (session) => {
       const { artModel } = await deps.settings.load()
       return artModel && artModel !== session.settings.textModel
-        ? deps.roleplayModel(textChoice(session.settings, artModel, false))
+        ? deps.roleplayModel(textChoice(session, artModel, false))
         : undefined
     },
   }
@@ -400,7 +408,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       scenarioFor,
       deps: roleplayDeps,
       // Thinking off, as for pictures: a suggestion is a draft, and it should come quickly.
-      suggestModel: (session) => deps.roleplayModel(textChoice(session.settings, undefined, false)),
+      suggestModel: (session) => deps.roleplayModel(textChoice(session, undefined, false)),
       jobs,
       store: deps.sessions,
     }),

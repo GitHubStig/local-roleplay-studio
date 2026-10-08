@@ -19,6 +19,8 @@ export interface ChatCall {
   /** Answer straight away even when thinking is on (a quick yes/no question). */
   noThinking?: boolean
   temperature?: number
+  /** Seeds the sampling (`seeded.ts`); none leaves it to the backend. */
+  seed?: number
   /** Penalise repeating any of the last `lastN` tokens (a backend that can't, ignores it). */
   repeatPenalty?: { penalty: number; lastN: number }
   signal: AbortSignal
