@@ -36,6 +36,7 @@ import Frame3dViewers from '../components/Frame3dViewers.vue'
 import FrameImage from '../components/FrameImage.vue'
 import FrameViewer from '../components/FrameViewer.vue'
 import JobQueue from '../components/JobQueue.vue'
+import LookPerson from '../components/LookPerson.vue'
 import PictureButtons from '../components/PictureButtons.vue'
 import { useFeatures } from '../composables/useFeatures'
 import { useJobs } from '../composables/useJobs'
@@ -566,39 +567,15 @@ const imagesOn = computed(() => featureOn.value('images'))
 
             <form v-else class="flex min-w-0 flex-col gap-2" data-look @submit.prevent="saveLookDraft">
               <h3 class="font-medium">Look <span class="font-normal text-muted">· every Frame</span></h3>
-              <fieldset
+              <LookPerson
                 v-for="(person, i) in lookDraft.people"
+                :id="`storyboard.look.person.${i}`"
                 :key="i"
-                class="flex min-w-0 flex-col gap-1"
-                data-person
-              >
-                <div class="flex items-center gap-2">
-                  <input
-                    v-model="person.name"
-                    class="min-w-0 flex-1 rounded border border-line bg-surface px-2 py-1 text-sm text-fg"
-                    aria-label="Name"
-                    placeholder="Name"
-                    :disabled="busy"
-                    data-person-name
-                  />
-                  <button
-                    type="button"
-                    class="rounded px-2 py-1 text-xs text-muted hover:text-fg disabled:opacity-50"
-                    :aria-label="`Remove ${person.name || 'this person'}`"
-                    :disabled="busy"
-                    @click="lookDraft.people.splice(i, 1)"
-                  >
-                    Remove
-                  </button>
-                </div>
-                <CollapsibleTextarea
-                  :id="`storyboard.look.person.${i}`"
-                  v-model="person.identity"
-                  label="Identity"
-                  placeholder="Their name, age, build, skin, hair and face"
-                  :disabled="busy"
-                />
-              </fieldset>
+                v-model:name="person.name"
+                v-model:identity="person.identity"
+                :disabled="busy"
+                @remove="lookDraft.people.splice(i, 1)"
+              />
               <button
                 type="button"
                 class="w-fit text-xs text-muted hover:text-fg disabled:opacity-50"

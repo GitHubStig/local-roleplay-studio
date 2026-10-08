@@ -413,8 +413,8 @@ consistency* in [open-threads.md](open-threads.md).
   (**Render**/**Re-render**, **Upscale**, SHARP, TripoSplat, LiTo), each queued as a job, and
   **Render all (N)**, which queues a render of every draft or stale Frame not already queued,
   skipping blocked ones. Editing carries on while they run. The Frames list shows the queue above
-  each Frame's thumbnail (dimmed when stale), Beat and status (or the job working on it). The Prompt panel has the **Look** (each person's name and identity, which can be added
-  to or removed, and the art style, saved for every Frame) and the selected Frame's **Shows**
+  each Frame's thumbnail (dimmed when stale), Beat and status (or the job working on it). The Prompt panel has the **Look** (each person's name and identity in a card of their
+  own, which collapses to the name and a preview; people can be added or removed; and the art style, saved for every Frame) and the selected Frame's **Shows**
   toggles (a person each) and seven sentences, each editable by hand with its own Save, then the full
   prompt and the Frame's timings. The panels, the render sweep and the unsent Action (remembered
   per Session) work as on the Session screen. A Chain opened at a Storyboard's address, or the
