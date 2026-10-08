@@ -450,13 +450,23 @@ TTS-Audio-Suite 5.9.2 on ComfyUI 0.39.2 (torch 2.12.1+cu130), installed through 
 - **Slow:** **9 tokens a second**, steady (the model's 25 Hz audio tokens, so ~2.8× slower than
   real time), ~0.5 s of overhead a call: **3.7 s per second of speech**, a median **5.5 s a line**
   (3.6–12.1 s), against the Mac's 0.8 s per second of speech on mlx-audio. The model was wholly on
-  the GPU (bf16, SDPA, nothing offloaded), so it's the pack's decode loop. Not tried: `eager` or
-  `sageattention`, fp32.
+  the GPU (bf16, SDPA, nothing offloaded), so it's the pack's decode loop. `eager` attention was no
+  faster (four lines, ~11 s each either way); `sageattention` and fp32 not tried. Changing the
+  engine node's settings reloads Higgs (~23 s).
+- **Pace, sound and whisper tags work** (six lines, written as the voice service's `directed()`
+  writes them): no tag was spoken as words, the sounds came out ("Uh", "Heh", "Ahem"), and the
+  pitch held at 85–114 Hz, the whisper lowest (85), as on the Mac.
+- **VoiceDesign failed to start**, on Windows' 260-character path limit: the pack builds Qwen3-TTS's
+  isolated runtime (a venv that inherits ComfyUI's torch) inside its own folder,
+  `custom_nodes\tts_audio_suite\runtimes\shared_legacy_t4\`, and pip's install there hit a
+  setuptools test file 270 characters deep ("Could not install packages due to an OSError…
+  Windows Long Path support"). The folder can't be moved (no setting); long paths are off on the PC
+  (`LongPathsEnabled = 0`). Needs `LongPathsEnabled` set to 1 (admin), then ComfyUI restarted.
 - **Memory:** VRAM peaked at **9.9 GB** (of 12.3), ComfyUI's working set ~1 GB. **`/free` releases
   Higgs**, but it takes a few seconds (9.6 → 1.5 GB within ~8 s, not at once). Loading it again from
   the file cache: the longest line took 20.5 s after a `/free`, against 12.1 s loaded, so ~8 s.
-- **Not done yet:** a voice designed with VoiceDesign (Qwen3-TTS in its isolated runtime); pace,
-  sound and whisper tags; the Text Model loading after a voice (Ollama wasn't running); listening to
-  the clips (they're in the session scratchpad, not the repo).
+- **Not done yet:** a voice designed with VoiceDesign (blocked, above); the Text Model loading
+  after a voice (Ollama wasn't running); listening to the clips (they're in the session scratchpad,
+  not the repo).
 - **So far:** it works and holds the voice, but a Roleplay's line of 2–3 s would take ~10 s, or
   ~18 s after a Reply (Higgs reloaded), against 2–3 s on the Mac.
