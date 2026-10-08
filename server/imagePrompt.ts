@@ -21,14 +21,6 @@ export const PROMPT_ORDER = [
 export type ImagePrompt = string
 
 /**
- * The text sent to the Image Model. It always starts with "adult": every person depicted is an
- * adult, whatever the paragraph says.
- */
-export function renderPrompt(prompt: ImagePrompt): string {
-  return `adult, ${prompt}`
-}
-
-/**
  * An Image Prompt from its parts written apart (Storyboard and Roleplay pictures): the identities
  * of who it shows, the picture's own sentences, then the art style. Each part ends as a sentence,
  * so they never run together; an empty one (a picture of no one) is left out.

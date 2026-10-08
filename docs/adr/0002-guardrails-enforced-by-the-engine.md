@@ -8,7 +8,11 @@ The Text Models this runs locally include uncensored ones, and any Section of th
 
 - **A term list** (`server/limits.ts`) is checked against the Action, *before* the Text Model is asked, and against the new Image Prompt it writes. A hit declines the Action: no Frame is saved (the Image Prompt and image stay as they were), and the player is told which Limit. Until 2026-10-05 a declined Action was saved as a Frame that kept the previous prompt and image; it now saves nothing, as a declined Roleplay Message does (ADR 0007), so it's simply reworded and sent again.
 - **Real people** can't be caught by a list, so an Action that looks like it names someone (a capitalised full name, "look like", "resemble", "celebrity") gets a narrow yes/no question to the Text Model: "does this ask to depict a real, identifiable person?" Small models answer that far more reliably than they follow a rule buried in long instructions.
-- **Every rendered prompt starts with "adult"**, whatever the Sections say.
+- **Every rendered prompt started with "adult"**, whatever the Sections said, until 2026-10-08.
+  The owner removed it: it read as part of the picture (Storyboard Frames of the scenery alone
+  began with "adult,") and could lead the Image Model to add a person. The adult Limit
+  is now held by the term list and the Text Model's instructions alone, and an Image Prompt that
+  doesn't state an age leaves it to the Image Model.
 - An Opening Frame whose prompt crosses a Limit fails rather than being declined, since there's no earlier prompt to keep.
 
 Anything inside the Limits is the player's to direct, and the Text Model's to carry out.

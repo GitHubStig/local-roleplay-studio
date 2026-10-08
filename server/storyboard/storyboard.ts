@@ -8,7 +8,7 @@ import {
   withRetry,
 } from '../frames.ts'
 import { updateSession } from '../update.ts'
-import { asSentences, joinPrompt, renderPrompt } from '../imagePrompt.ts'
+import { asSentences, joinPrompt } from '../imagePrompt.ts'
 import { crossedLimit } from '../limits.ts'
 import type { Scenario } from '../scenario.ts'
 import type {
@@ -107,15 +107,13 @@ function makeFrame(
 ): StoryboardFrame {
   const names = matchShown(look.people, shown)
   const prompt = composePrompt(look, body, names)
-  const promptText = renderPrompt(prompt)
-  const blocked = crossedLimit(promptText)?.message
+  const blocked = crossedLimit(prompt)?.message
   return {
     index,
     beat,
     body,
     shown: names,
     prompt,
-    promptText,
     image: null,
     ...(timings ? { timings } : {}),
     ...(blocked ? { blocked } : {}),
@@ -134,7 +132,7 @@ function recompose(
   shown = frame.shown,
 ): StoryboardFrame {
   const fresh = makeFrame(look, frame.index, frame.beat, body, shown, frame.timings)
-  const changed = fresh.promptText !== frame.promptText
+  const changed = fresh.prompt !== frame.prompt
   // The picture, and what was made from it, stay until it's rendered again.
   const { image, upscaled, scene, figure, lito, createdAt } = frame
   return {
@@ -151,7 +149,7 @@ function recompose(
 
 function checkLook(look: Look): void {
   const identities = look.people.map((p) => p.identity).join(' ')
-  const limit = crossedLimit(renderPrompt(`${identities} ${look.style}`))?.message
+  const limit = crossedLimit(`${identities} ${look.style}`)?.message
   if (limit) throw new LimitError(`The Look crosses a limit: ${limit}`)
 }
 
@@ -245,7 +243,7 @@ export async function renderStoryboardFrame(
     deps,
     session,
     index,
-    frame.promptText,
+    frame.prompt,
     timings,
     emit,
     signal,
@@ -254,7 +252,7 @@ export async function renderStoryboardFrame(
       ...current,
       image,
       timings,
-      ...(current.promptText !== frame.promptText && { stale: true }),
+      ...(current.prompt !== frame.prompt && { stale: true }),
     }),
   )
   emit({ type: 'rendered', frame: rendered })

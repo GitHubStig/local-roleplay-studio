@@ -1,7 +1,6 @@
 import { assertEquals, assertMatch, assertNotEquals, assertStringIncludes } from '@std/assert'
 import { join } from '@std/path'
 import { type AppDeps, createHandler } from './app.ts'
-import { renderPrompt } from './imagePrompt.ts'
 import type { TextConnection, TextModelInfo } from './text/backend.ts'
 import type { ImageGenerator } from './images/imageGenerator.ts'
 import { dirSessionStore } from './session.ts'
@@ -396,7 +395,7 @@ Deno.test('Frames stream progress and commit, then serve their image', () =>
 
     const image = await call('GET', `/api/sessions/s1/images/${secondImage}`)
     assertEquals(image.headers.get('Content-Type'), 'image/png')
-    assertEquals(await image.text(), renderPrompt(promptWith('sitting')))
+    assertEquals(await image.text(), promptWith('sitting'))
     assertEquals((await call('GET', '/api/sessions/s1/images/session.json')).status, 404)
   }))
 
@@ -938,9 +937,9 @@ Deno.test('Without pictures every kind starts; a Chain writes its Frames without
     const chain = await (await call('GET', '/api/sessions/s1')).json()
     assertEquals(chain.renderFrames, false)
     const opening = await readEvents(await call('POST', '/api/sessions/s1/frames', {}))
-    const frame = opening.at(-1)![1].frame as { image: string | null; promptText: string }
+    const frame = opening.at(-1)![1].frame as { image: string | null; prompt: string }
     assertEquals(frame.image, null)
-    assertStringIncludes(frame.promptText, 'standing')
+    assertStringIncludes(frame.prompt, 'standing')
     assertEquals(images.prompts.length, 0)
     // Rendering, by the switch or a job, needs pictures.
     const on = await call('PUT', '/api/sessions/s1/render-frames', { renderFrames: true })
@@ -1280,7 +1279,7 @@ Deno.test('Picturing, rendering and upscaling a Roleplay Frame are queued jobs, 
 
     const session = await (await call('GET', '/api/sessions/s1')).json()
     const frame = session.frames[0]
-    assertEquals(frame.promptText, `adult, Mira Vance, 34. Sam Reyes, 25. ${artBody} Ink.`)
+    assertEquals(frame.prompt, `Mira Vance, 34. Sam Reyes, 25. ${artBody} Ink.`)
     assertEquals((await call('GET', `/api/sessions/s1/images/${frame.image}`)).status, 200)
     assertMatch(frame.upscaled, /-2048\.png$/)
 

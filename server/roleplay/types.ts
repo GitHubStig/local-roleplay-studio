@@ -81,11 +81,10 @@ export interface RoleplayFrame {
   timings?: { text: number }
   /**
    * Once pictured by the Art Agent: the Frame's seven sentences, and its Image Prompt (the Look's
-   * subject, these, then the Look's style) as written and as sent to the Image Model.
+   * subject, these, then the Look's style), exactly what the Image Model renders.
    */
   body?: string
   prompt?: string
-  promptText?: string
   /** Why the picture can't be rendered: its Image Prompt crosses a Limit. */
   blocked?: string
   /** Who the picture shows; pictures from before this was recorded show both. */

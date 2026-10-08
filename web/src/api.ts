@@ -280,8 +280,6 @@ export interface ChainFrame extends Frame3d {
   /** The Text Model's reasoning, when thinking was on. */
   thinking?: string
   timings?: FrameTimings
-  /** The exact text sent to the Image Model. */
-  promptText: string
   createdAt: string
 }
 
@@ -293,8 +291,8 @@ export interface StoryboardFrame extends Frame3d {
   body: string
   /** Names of the Look's people it shows, most prominent first; none for the place alone. */
   shown: string[]
+  /** Exactly what the Image Model renders. */
   prompt: ImagePrompt
-  promptText: string
   /** The prompt changed since the image was rendered. */
   stale?: boolean
   /** It crosses a Limit and can't be rendered until edited. */

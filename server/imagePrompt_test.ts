@@ -1,6 +1,10 @@
 import { assertEquals } from '@std/assert'
-import { renderPrompt } from './imagePrompt.ts'
+import { joinPrompt } from './imagePrompt.ts'
 
-Deno.test('renderPrompt always starts with "adult"', () => {
-  assertEquals(renderPrompt('A woman on a rooftop.'), 'adult, A woman on a rooftop.')
+Deno.test('joinPrompt ends each part as a sentence, leaving out an empty one', () => {
+  assertEquals(joinPrompt('A tall man', 'He jumps.', 'Ink'), 'A tall man. He jumps. Ink.')
+  assertEquals(
+    joinPrompt('', 'A door stands closed.', 'Oil paint!'),
+    'A door stands closed. Oil paint!',
+  )
 })

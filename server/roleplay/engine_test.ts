@@ -227,7 +227,7 @@ Deno.test('pictureFrame writes the Look once, then each Frame from the story up 
     const first = await pictureFrame(art, two, scenario, 1, (e) => events.push(e), signal())
     assertEquals(events.map((e) => e.type), ['phase', 'look', 'pictured'])
     assertEquals(first.look, look)
-    assertStringIncludes(first.frames[1].promptText!, 'adult, Mira Vance, a tall woman of 34.')
+    assertStringIncludes(first.frames[1].prompt!, 'Mira Vance, a tall woman of 34.')
     assertStringIncludes(scripted.art[1][1].content, 'Picture Frame 1.')
     // Kept for debugging: how long each call took, and any reasoning.
     assertEquals(typeof first.lookTimings?.text, 'number')
@@ -236,7 +236,7 @@ Deno.test('pictureFrame writes the Look once, then each Frame from the story up 
 
     const second = await pictureFrame(art, first, scenario, 0, () => {}, signal())
     assertEquals(scripted.art.length, 3) // the Look is written only once
-    assertStringIncludes(second.frames[0].promptText!, 'Mira points ahead.')
+    assertStringIncludes(second.frames[0].prompt!, 'Mira points ahead.')
     assertEquals(((await store.load('r1')) as RoleplaySession).frames[1].body, first.frames[1].body)
   }))
 
@@ -260,7 +260,7 @@ Deno.test('setLook rewrites every pictured Frame, and refuses an incomplete Look
       persona: 'Sam.',
       style: 'Watercolour.',
     })
-    assertStringIncludes(restyled.frames[0].promptText!, 'Watercolour.')
+    assertStringIncludes(restyled.frames[0].prompt!, 'Watercolour.')
     await assertRejects(() => setLook(store, pictured, { subject: 'Mira.' }), CastError)
 
     // A Look from before pictures chose who is shown is replaced by the next picture.
@@ -318,7 +318,7 @@ Deno.test('renderRoleplayFrame renders a pictured Frame, replacing any earlier i
     const events: RoleplayEvent[] = []
     const first = await renderRoleplayFrame(art, pictured, 0, (e) => events.push(e), signal())
     assertEquals(events.at(-1)!.type, 'rendered')
-    assertEquals(images.prompts, [pictured.frames[0].promptText])
+    assertEquals(images.prompts, [pictured.frames[0].prompt])
     const firstImage = first.frames[0].image!
     assertEquals(await Deno.stat(`${store.dir('r1')}/${firstImage}`).then(() => true), true)
 

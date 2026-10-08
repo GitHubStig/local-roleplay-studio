@@ -5,7 +5,7 @@
  * Its prompts are `prompts/roleplay/art-*.md`. Rendering the prompt comes later.
  */
 import { stringify } from '@std/yaml'
-import { joinPrompt, renderPrompt } from '../imagePrompt.ts'
+import { joinPrompt } from '../imagePrompt.ts'
 import { crossedLimit, limitsEnabled } from '../limits.ts'
 import type { ChatMessage } from '../text/chat.ts'
 import { loadPrompt } from '../promptFiles.ts'
@@ -238,16 +238,14 @@ export function pictured(
 ): RoleplayFrame {
   const { blocked: _, stale: __, ...rest } = frame
   const prompt = joinPrompt(identityFor(look, shown), body, look.style)
-  const promptText = renderPrompt(prompt)
-  const blocked = crossedLimit(promptText)?.message ?? undressed(cast, shown, clothing)
-  const stale = !!frame.image && (frame.stale || promptText !== frame.promptText)
+  const blocked = crossedLimit(prompt)?.message ?? undressed(cast, shown, clothing)
+  const stale = !!frame.image && (frame.stale || prompt !== frame.prompt)
   return {
     ...rest,
     body,
     shown,
     ...(clothing !== undefined ? { clothing } : {}),
     prompt,
-    promptText,
     ...(blocked ? { blocked } : {}),
     ...(stale ? { stale } : {}),
   }

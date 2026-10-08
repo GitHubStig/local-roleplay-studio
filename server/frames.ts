@@ -110,13 +110,13 @@ export async function limitCrossedBy(
 }
 
 /**
- * Renders `promptText` into `<dir>/<name>.png` through the shared render queue, recording how long
+ * Renders `prompt` into `<dir>/<name>.png` through the shared render queue, recording how long
  * it waited and how long it rendered into `timings`. Returns the image's file name.
  */
 export async function renderImage(
   deps: FrameDeps,
   session: Session,
-  promptText: string,
+  prompt: string,
   name: string,
   timings: FrameTimings,
   emit: (event: ProgressEvent) => void,
@@ -136,7 +136,7 @@ export async function renderImage(
     await Deno.mkdir(dir, { recursive: true })
     const { onProgress, onDownload } = imageProgress(emit)
     const image = await deps.imageGenerator.generate(
-      { prompt: promptText, seed: session.seed, settings: session.settings, dir, name },
+      { prompt, seed: session.seed, settings: session.settings, dir, name },
       signal,
       onProgress,
       onDownload,
@@ -173,7 +173,7 @@ export async function replacePicture<
   deps: FrameDeps,
   session: S,
   index: number,
-  promptText: string,
+  prompt: string,
   timings: FrameTimings,
   emit: (event: ProgressEvent) => void,
   signal: AbortSignal,
@@ -183,7 +183,7 @@ export async function replacePicture<
   const name = imageName(index)
   const dir = deps.store.dir(session.id)
   try {
-    const image = await renderImage(deps, session, promptText, name, timings, emit, signal)
+    const image = await renderImage(deps, session, prompt, name, timings, emit, signal)
     signal.throwIfAborted()
     let frame!: F
     let old!: F

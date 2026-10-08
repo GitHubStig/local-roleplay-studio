@@ -42,7 +42,6 @@ const frame = (index: number, extra: Partial<api.StoryboardFrame> = {}): api.Sto
   body: `Body ${index + 1}.`,
   shown: ['Rin'],
   prompt: promptFor(index),
-  promptText: `Rin, a tall student. Body ${index + 1}. Manga ink.`,
   image: null,
   createdAt: '2026-09-25T00:00:00.000Z',
   ...extra,

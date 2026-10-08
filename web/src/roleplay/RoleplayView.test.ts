@@ -547,7 +547,7 @@ describe('RoleplayView', () => {
     vi.mocked(api.getSession).mockResolvedValue({
       ...roleplaySession([{
         ...frame(0, null, 'Get inside.'),
-        promptText: 'adult, Elena, 38. She waits. Oil painting.',
+        prompt: 'Elena, 38. She waits. Oil painting.',
         shown: 'character',
         pictureTimings: { text: 24.6 },
         pictureModel: 'gemma4',
@@ -558,7 +558,7 @@ describe('RoleplayView', () => {
     await new Promise((r) => setTimeout(r, 1100))
     await flushPromises()
     expect(wrapper.find('[data-reply]').classes()).not.toContain('render-sweep')
-    expect(wrapper.find('[data-image-prompt]').text()).toContain('adult, Elena, 38. She waits.')
+    expect(wrapper.find('[data-image-prompt]').text()).toContain('Elena, 38. She waits.')
     expect(wrapper.find('[data-shown]').text()).toBe('Shows Elena')
     expect(wrapper.find('[data-picture-timings]').text()).toBe(
       'Pictured in 24.6 s by gemma4, as tags',
@@ -573,7 +573,7 @@ describe('RoleplayView', () => {
   })
 
   it('shows rendering progress in place, and the picture beside its Reply once rendered', async () => {
-    const pictured = { ...frame(0, null, 'Get inside.'), promptText: 'adult, Elena. Ink.' }
+    const pictured = { ...frame(0, null, 'Get inside.'), prompt: 'Elena. Ink.' }
     vi.mocked(api.getSession).mockResolvedValue({ ...roleplaySession([pictured]), look })
     vi.mocked(api.listJobs).mockResolvedValue([
       job({ kind: 'render', status: 'running', phase: 'image', progress: { step: 2, total: 4 } }),

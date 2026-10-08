@@ -1,6 +1,6 @@
 import { join } from '@std/path'
 import { equal } from '@std/assert'
-import { type ImagePrompt, renderPrompt } from '../imagePrompt.ts'
+import type { ImagePrompt } from '../imagePrompt.ts'
 import { crossedLimit } from '../limits.ts'
 import type { Scenario } from '../scenario.ts'
 import type { ChainFrame, ChainSession, FrameTimings, Outcome, SessionStore } from '../session.ts'
@@ -78,7 +78,7 @@ export async function runChainFrame(
       emit,
     )
     thinking = text.thinking
-    const promptLimit = crossedLimit(renderPrompt(text.prompt))
+    const promptLimit = crossedLimit(text.prompt)
     if (!previous) {
       // The Opening Frame always counts as done, so it can't be declined: it fails instead.
       if (promptLimit) throw new Error(`The opening prompt crossed a limit: ${promptLimit.message}`)
@@ -114,18 +114,15 @@ export async function runChainFrame(
 
   const dir = deps.store.dir(session.id)
   let image: string | null
-  let promptText: string
   // Named up front so a failed or cancelled Frame can remove whatever the generator wrote, even if
   // it finished writing just as the Frame was cancelled.
   const name = imageName(index)
   try {
     if (reuseImage) {
       image = previous!.image
-      promptText = previous!.promptText
     } else {
-      promptText = renderPrompt(nextPrompt)
       image = render
-        ? await renderImage(deps, session, promptText, name, timings, emit, signal)
+        ? await renderImage(deps, session, nextPrompt, name, timings, emit, signal)
         : null
     }
     signal.throwIfAborted()
@@ -137,7 +134,6 @@ export async function runChainFrame(
       narration,
       outcome,
       ...(thinking ? { thinking } : {}),
-      promptText,
       image,
       timings,
       createdAt: new Date().toISOString(),
@@ -177,12 +173,12 @@ export async function renderChainFrame(
   const timings: FrameTimings = { text: frame.timings?.text ?? 0, image: null }
   const name = imageName(index)
   try {
-    const image = await renderImage(deps, session, frame.promptText, name, timings, emit, signal)
+    const image = await renderImage(deps, session, frame.prompt, name, timings, emit, signal)
     signal.throwIfAborted()
     return await updateSession(deps.store, session.id, 'chain', (latest) => ({
       ...latest,
       frames: latest.frames.map((f) =>
-        f.image === null && f.promptText === frame.promptText
+        f.image === null && f.prompt === frame.prompt
           ? { ...f, image, ...(f.index === index && { timings }) }
           : f
       ),

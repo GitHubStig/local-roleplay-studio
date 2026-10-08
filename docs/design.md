@@ -37,7 +37,7 @@ current Image Prompt + Action ──► Text Model (Text backend) ──► { ou
                                                               │
      engine: declined / unclear / Limit crossed / unchanged? keep the previous prompt and image
                                                               │
-                  "adult, " + the paragraph ──► Image Model (Image backend) ──► frame-N-xxxx.png
+                            the paragraph ──► Image Model (Image backend) ──► frame-N-xxxx.png
                                                               │
                                         commit: append the Frame to session.json
 ```
@@ -74,7 +74,7 @@ current Image Prompt + Action ──► Text Model (Text backend) ──► { ou
      2026-10-05; older Chains may still hold Declined and Unclear Frames).
    - A done Frame whose Image Prompt came back unchanged also reuses the previous image.
    - The Opening Frame always counts as done; if its prompt crosses a Limit, it fails.
-   - The text rendered is `adult, ` followed by the paragraph.
+   - The paragraph is rendered as it is (no "adult, " in front since 2026-10-08; ADR 0002).
 5. **Image step.** Images render one at a time across all Sessions: if another Session is
    rendering, this Frame waits in a queue (shown as "Waiting for another render…", and
    cancellable). Then the Session's Image backend renders it with the Session's seed and settings:
@@ -118,7 +118,7 @@ Text Model call ([ADR 0006](adr/0006-storyboards-plan-in-one-call.md)):
    each shown the moment it's complete.
 3. **Frames are assembled:** the identities of the people the Frame shows (at most three, the most
    prominent first; none for a picture of the place alone) + the Frame's sentences + the Look's
-   style, rendered with "adult, " in front ([ADR 0012](adr/0012-storyboard-look-lists-each-person.md)). A Frame whose prompt crosses a Limit is saved **blocked** and can't be
+   style, rendered as it is ([ADR 0012](adr/0012-storyboard-look-lists-each-person.md)). A Frame whose prompt crosses a Limit is saved **blocked** and can't be
    rendered until edited.
 4. **All or nothing:** a failed or cancelled plan discards the Storyboard.
 

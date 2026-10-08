@@ -77,7 +77,6 @@ Deno.test('planStoryboard streams the Look, Beats and Frames, then saves them', 
     const [first] = session.frames
     assertEquals(first.beat, 'Beat 1')
     assertEquals(first.prompt, composePrompt(planOf(3).look, planOf(3).frames[0].body, ['Ace']))
-    assertEquals(first.promptText, `adult, ${first.prompt}`)
     assertEquals(first.image, null)
     assertEquals(typeof first.timings!.text, 'number')
     assertEquals((await deps.store.load('s1'))!.frames.length, 3)
@@ -129,7 +128,7 @@ Deno.test('renderStoryboardFrame renders one Frame, and a re-render replaces its
     const { deps, images, session } = await planned(root)
     const first = await renderStoryboardFrame(deps, session, 1, () => {}, signal())
     assertMatch(first.image!, /^frame-1-[0-9a-f]{8}\.png$/)
-    assertEquals(images.prompts, [session.frames[1].promptText])
+    assertEquals(images.prompts, [session.frames[1].prompt])
     assertEquals(typeof first.timings!.image, 'number')
 
     const second = await renderStoryboardFrame(deps, session, 1, () => {}, signal())

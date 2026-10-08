@@ -72,7 +72,6 @@ export interface RoleplayFrame {
   /** Once pictured: the picture's seven sentences and its Image Prompt, not yet rendered. */
   body?: string
   prompt?: string
-  promptText?: string
   /** The Image Prompt crosses a Limit. */
   blocked?: string
   /** Who the picture shows. */

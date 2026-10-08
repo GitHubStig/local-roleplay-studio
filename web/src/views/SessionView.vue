@@ -390,7 +390,7 @@ const promptDiff = computed(() => {
       <main class="flex min-w-0 flex-1 flex-col gap-3 p-4">
         <FrameImage
           :src="shown?.image ? imageUrl(session.id, shown.upscaled ?? shown.image) : null"
-          :alt="shown?.promptText"
+          :alt="shown?.prompt"
           :rendering="renderingPhase"
           :hide-size="busy"
           :empty-text="busy ? undefined : shown ? 'Not rendered yet' : 'No image yet'"

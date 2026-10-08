@@ -382,7 +382,7 @@ const imagesOn = computed(() => featureOn.value('images'))
       <main class="flex min-w-0 flex-1 flex-col gap-3 p-4">
         <FrameImage
           :src="current?.image ? imageUrl(session.id, current.upscaled ?? current.image) : null"
-          :alt="current?.promptText"
+          :alt="current?.prompt"
           :rendering="renderingHere"
           :hide-size="busy"
           :empty-text="current ? (current.blocked ? 'Blocked: edit this Frame first' : 'Not rendered yet') : 'Planning…'"
@@ -646,7 +646,7 @@ const imagesOn = computed(() => featureOn.value('images'))
               </button>
               <details class="text-muted" open>
                 <summary class="cursor-pointer select-none text-xs">Full prompt</summary>
-                <p class="mt-1 text-xs leading-relaxed" data-prompt-text>{{ current.promptText }}</p>
+                <p class="mt-1 text-xs leading-relaxed" data-prompt-text>{{ current.prompt }}</p>
               </details>
             </form>
           </div>

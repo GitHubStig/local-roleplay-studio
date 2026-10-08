@@ -72,8 +72,8 @@ Deno.test('Undressed people are covered in pictures only while the Limits are on
 Deno.test('pictured composes the Image Prompt and blocks one that crosses a Limit in force', () => {
   const frame = pictured(session.frames[1], look, testCast, 'She stands at the rail.', 'character')
   assertEquals(
-    frame.promptText,
-    'adult, Mira Vance, a tall woman of 34. She stands at the rail. An oil painting.',
+    frame.prompt,
+    'Mira Vance, a tall woman of 34. She stands at the rail. An oil painting.',
   )
   assertEquals(frame.shown, 'character')
   assertEquals(
@@ -155,7 +155,7 @@ Deno.test('A rendered picture whose Image Prompt changes is marked stale', () =>
 Deno.test('A picture of no one has no identity sentences', () => {
   const empty = pictured(session.frames[1], look, testCast, 'The door stands closed.', 'none')
   assertEquals(empty.prompt, 'The door stands closed. An oil painting.')
-  assertEquals(empty.promptText, 'adult, The door stands closed. An oil painting.')
+  assertEquals(empty.prompt, 'The door stands closed. An oil painting.')
   assertEquals(empty.blocked, undefined)
 })
 

@@ -33,7 +33,6 @@ const frame = (
   prompt: promptFor(index),
   narration: `Narration ${index}.`,
   outcome: 'done',
-  promptText: `prompt ${index}`,
   image: `frame-${index}.png`,
   createdAt: '2026-09-24T00:00:00.000Z',
   ...extra,

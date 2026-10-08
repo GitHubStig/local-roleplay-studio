@@ -27,7 +27,6 @@ import {
   parseRoleplayLook,
   pictured,
 } from './art.ts'
-import { renderPrompt } from '../imagePrompt.ts'
 import type { Cast, Reply, RoleplayFrame, RoleplayLook, RoleplaySession } from './types.ts'
 
 /** Progress of a Roleplay's setup or reply, streamed to the player as it happens. */
@@ -314,7 +313,7 @@ export async function setLook(
   } catch (err) {
     throw new CastError((err as Error).message)
   }
-  const limit = crossedLimit(renderPrompt(`${look.character} ${look.persona} ${look.style}`))
+  const limit = crossedLimit(`${look.character} ${look.persona} ${look.style}`)
   if (limit) throw new RoleplayLimitError(`That crosses a limit: ${limit.message}`)
   return await updateSession(store, session.id, (latest) => ({
     ...latest,
@@ -337,7 +336,7 @@ export async function renderRoleplayFrame(
   signal: AbortSignal,
 ): Promise<RoleplaySession> {
   const frame = session.frames[index]
-  if (!frame?.promptText) throw new RoleplayError(`Frame ${index} isn't pictured yet`)
+  if (!frame?.prompt) throw new RoleplayError(`Frame ${index} isn't pictured yet`)
   if (frame.blocked) {
     throw new RoleplayLimitError(`Frame ${index} crosses a limit: ${frame.blocked}`)
   }
@@ -349,7 +348,7 @@ export async function renderRoleplayFrame(
     deps,
     session,
     index,
-    frame.promptText,
+    frame.prompt,
     timings,
     emit,
     signal,

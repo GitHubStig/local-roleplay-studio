@@ -14,7 +14,6 @@ import {
 import { imageProgress, type ProgressEvent, upscaleFrame } from '../frames.ts'
 import { type FrameEvent, runChainFrame, UndoError, undoLatestFrame } from './frames.ts'
 import { RenderQueue } from '../renderQueue.ts'
-import { renderPrompt } from '../imagePrompt.ts'
 import { updateSession } from '../update.ts'
 
 const newSession = (): ChainSession => ({
@@ -55,7 +54,7 @@ Deno.test('runChainFrame commits the Opening Frame with prefixed image prompt', 
     )
     assertEquals(frame!.index, 0)
     assertMatch(frame!.image!, /^frame-0-[0-9a-f]{8}\.png$/)
-    assertEquals(images.prompts, [renderPrompt(promptWith('standing'))])
+    assertEquals(images.prompts, [promptWith('standing')])
     assertEquals(events.map((e) => e.type), ['phase', 'text', 'phase', 'committed'])
     assertEquals((await store.load('s1'))?.frames.length, 1)
   }))

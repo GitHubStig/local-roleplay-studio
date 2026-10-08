@@ -27,10 +27,8 @@ export interface FrameTimings {
 /** What every Frame has, in a Chain or a Storyboard. */
 interface FrameBase {
   index: number
-  /** One paragraph describing the image. */
+  /** One paragraph describing the image: exactly what the Image Model renders. */
   prompt: ImagePrompt
-  /** The exact text sent to the Image Model. */
-  promptText: string
   /** File name of this Frame's image inside the Session directory; null until rendered. */
   image: string | null
   /** File name of the image upscaled to 2048 px, once the player has upscaled it. */

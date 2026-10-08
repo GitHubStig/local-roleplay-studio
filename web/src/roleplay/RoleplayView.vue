@@ -683,23 +683,23 @@ async function saveCastDraft(): Promise<boolean> {
                         data-picture-button
                         @click="queue('picture', frame.index)"
                       >
-                        {{ frame.promptText ? 'Picture again' : 'Picture this' }}
+                        {{ frame.prompt ? 'Picture again' : 'Picture this' }}
                       </button>
                       <PictureButtons
                         :frame="frame"
                         :has-job="(kind) => hasJob(frame.index, kind)"
-                        :can-render="(!!frame.promptText && !frame.blocked) || hasJob(frame.index, 'picture')"
+                        :can-render="(!!frame.prompt && !frame.blocked) || hasJob(frame.index, 'picture')"
                         @queue="(kind) => queue(kind, frame.index)"
                         @view="(kind) => (open3d = { index: frame.index, kind })"
                       />
                     </p>
-                    <details v-if="frame.promptText" class="text-muted" data-image-prompt>
+                    <details v-if="frame.prompt" class="text-muted" data-image-prompt>
                       <summary class="cursor-pointer select-none">
                         Image Prompt
                         <span v-if="frame.blocked" class="text-warn">· crosses a limit ({{ frame.blocked }})</span>
                       </summary>
                       <p class="mt-1" data-shown>Shows {{ shownNames(frame.shown) }}</p>
-                      <p class="mt-1 leading-relaxed">{{ frame.promptText }}</p>
+                      <p class="mt-1 leading-relaxed">{{ frame.prompt }}</p>
                       <p v-if="frame.pictureTimings" class="mt-1" data-picture-timings>
                         Pictured in {{ frame.pictureTimings.text.toFixed(1) }} s<template
                           v-if="frame.pictureModel"
