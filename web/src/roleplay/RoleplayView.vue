@@ -81,6 +81,8 @@ const replying = computed(() => {
 })
 /** A message is being suggested into the text box. */
 const suggesting = computed(() => pending.value?.kind === 'suggest')
+/** The Text Model is writing the Cast: the first time, or again on Rewrite Cast. */
+const writingCast = computed(() => pending.value?.kind === 'cast')
 // --- Background work: pictures, renders, upscales, voices and 3D, queued on the server.
 
 const { jobs, openJobs, runningJob, jobsFor, hasJob, queue, dropJob, retry, refreshJobs } = useJobs(
@@ -989,6 +991,8 @@ async function saveCastDraft(): Promise<boolean> {
             </button>
           </div>
         </form>
+        <!-- Its border sweeps while the Cast is written, or written again. -->
+        <section class="rounded-md" :class="{ 'render-sweep': writingCast }" data-cast>
         <h2 class="border-b border-line px-4 py-2 text-sm font-medium">Cast</h2>
         <p v-if="!castDraft" class="p-4 text-sm text-muted">
           <span v-if="busy" class="animate-pulse">Writing the Cast from your Brief…</span>
@@ -1035,6 +1039,7 @@ async function saveCastDraft(): Promise<boolean> {
             </span>
           </div>
         </form>
+        </section>
         </div>
       </aside>
     </template>

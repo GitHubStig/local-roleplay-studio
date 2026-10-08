@@ -139,6 +139,8 @@ describe('RoleplayView', () => {
     vi.mocked(roleplay.writeCast).mockImplementation((_id, onEvent) => stream.call(onEvent))
     const { wrapper } = await mountIt()
     expect(wrapper.find('[role=status]').text()).toBe('Writing the Cast…')
+    // The Cast's border sweeps while it's written.
+    expect(wrapper.find('[data-cast]').classes()).toContain('render-sweep')
 
     stream.emit({ type: 'cast', cast, session: { ...roleplaySession(), cast } })
     stream.finish()
@@ -147,6 +149,7 @@ describe('RoleplayView', () => {
       .toBe('Elena')
     expect(wrapper.find('[data-review]').exists()).toBe(true)
     expect(wrapper.find('textarea:not([data-field])').attributes('disabled')).toBeDefined()
+    expect(wrapper.find('[data-cast]').classes()).not.toContain('render-sweep')
 
     const opened = roleplaySession([frame(0, null, 'Get inside.')])
     vi.mocked(roleplay.beginRoleplay).mockImplementation(async (_id, onEvent) =>
@@ -180,12 +183,19 @@ describe('RoleplayView', () => {
     )
   })
 
-  it('rewrites the Cast on request', async () => {
+  it('rewrites the Cast on request, its border sweeping meanwhile', async () => {
     vi.mocked(api.getSession).mockResolvedValue({ ...roleplaySession(), cast })
-    vi.mocked(roleplay.writeCast).mockResolvedValue()
+    const stream = held()
+    vi.mocked(roleplay.writeCast).mockImplementation((_id, onEvent) => stream.call(onEvent))
     const { wrapper } = await mountIt()
+    expect(wrapper.find('[data-cast]').classes()).not.toContain('render-sweep')
     await wrapper.find('[data-rewrite]').trigger('click')
     expect(roleplay.writeCast).toHaveBeenCalledWith('r1', expect.any(Function))
+    expect(wrapper.find('[data-cast]').classes()).toContain('render-sweep')
+    stream.emit({ type: 'cast', cast, session: { ...roleplaySession(), cast } })
+    stream.finish()
+    await flushPromises()
+    expect(wrapper.find('[data-cast]').classes()).not.toContain('render-sweep')
   })
 
   it("doesn't write a Cast again once the scene has begun", async () => {
