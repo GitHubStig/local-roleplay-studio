@@ -405,13 +405,23 @@ describe('SettingsView', () => {
     await wrapper.find('[data-text-backend]').setValue('openai')
     const address = wrapper.find('[data-text-base-url]').element as HTMLInputElement
     expect(address.value).toBe('http://localhost:1234/v1')
+    // The key is saved once the field is left (`change`), not while it's typed.
     await wrapper.find('[data-text-api-key]').setValue('sk-new')
+    await flushPromises()
+    expect(api.saveSettings).toHaveBeenCalledWith(
+      expect.objectContaining({ textBackend: 'openai', textApiKey: 'sk-new' }),
+    )
+    // Saved: the field empties, and says a key is saved.
+    const key = wrapper.find('[data-text-api-key]').element as HTMLInputElement
+    expect(key.value).toBe('')
+    expect(key.placeholder).toContain('Saved')
+    // The listing then asks with the saved key.
     await new Promise((resolve) => setTimeout(resolve, 600)) // the listing waits for typing to stop
     await flushPromises()
     expect(api.listTextModels).toHaveBeenLastCalledWith({
       textBackend: 'openai',
       textBaseUrl: 'http://localhost:1234/v1',
-      textApiKey: 'sk-new',
+      textApiKey: undefined,
     })
     expect(wrapper.findAll('[data-text-model] option').map((o) => o.text())).toContain(
       'gemma-4-26b',
@@ -420,22 +430,49 @@ describe('SettingsView', () => {
     await wrapper.find('[data-text-model]').setValue('gemma-4-26b')
     await wrapper.find('form').trigger('submit')
     await flushPromises()
-    expect(api.saveSettings).toHaveBeenCalledWith(
-      expect.objectContaining({
-        textBackend: 'openai',
-        textModel: 'gemma-4-26b',
-        textApiKey: 'sk-new',
-      }),
+    expect(api.saveSettings).toHaveBeenLastCalledWith(
+      expect.objectContaining({ textModel: 'gemma-4-26b', textApiKey: undefined }),
     )
-    // Saved: the field empties, and says a key is saved.
-    const key = wrapper.find('[data-text-api-key]').element as HTMLInputElement
-    expect(key.value).toBe('')
-    expect(key.placeholder).toContain('Saved')
 
+    // Removing the key saves at once.
     await wrapper.find('[data-remove-api-key]').trigger('click')
-    await wrapper.find('form').trigger('submit')
     await flushPromises()
     expect(api.saveSettings).toHaveBeenLastCalledWith(expect.objectContaining({ textApiKey: '' }))
+  })
+
+  it('saves each change by itself once typing pauses, and says so at the top', async () => {
+    const wrapper = mount(SettingsView)
+    await flushPromises()
+    expect(wrapper.find('button[type=submit]').exists()).toBe(false)
+    await wrapper.find('[data-text-base-url]').setValue('http://192.168.1.20:11434')
+    // Nothing yet while typing; once it pauses, one save.
+    expect(api.saveSettings).not.toHaveBeenCalled()
+    await new Promise((resolve) => setTimeout(resolve, 700))
+    await flushPromises()
+    expect(api.saveSettings).toHaveBeenCalledTimes(1)
+    expect(api.saveSettings).toHaveBeenCalledWith(
+      expect.objectContaining({ textBaseUrl: 'http://192.168.1.20:11434' }),
+    )
+    expect(wrapper.find('[data-settings-status] [data-saved]').text()).toContain(
+      'Applies from the next Session',
+    )
+    // Turned down: not saved, and why, at the top; nothing is saved again until it changes.
+    vi.mocked(api.saveSettings).mockRejectedValueOnce(
+      new api.ApiError('Invalid settings', 400, ['textBaseUrl must be an address']),
+    )
+    await wrapper.find('[data-text-base-url]').setValue('http//oops')
+    await new Promise((resolve) => setTimeout(resolve, 700))
+    await flushPromises()
+    expect(wrapper.find('[data-settings-status] [data-save-error]').text()).toContain(
+      'textBaseUrl must be an address',
+    )
+    expect(api.saveSettings).toHaveBeenCalledTimes(2)
+    // Put back as it was saved: nothing to save, and the error goes.
+    await wrapper.find('[data-text-base-url]').setValue('http://192.168.1.20:11434')
+    await new Promise((resolve) => setTimeout(resolve, 700))
+    await flushPromises()
+    expect(wrapper.find('[data-save-error]').exists()).toBe(false)
+    expect(api.saveSettings).toHaveBeenCalledTimes(2)
   })
 
   it('shows a warning when Ollama is unreachable', async () => {

@@ -52,6 +52,7 @@ const stepCacheChoices = [
 onMounted(async () => {
   try {
     ;[form.value, options.value] = await Promise.all([getSettings(), getSettingsOptions()])
+    savedJson = formJson()
   } catch (err) {
     loadError.value = (err as Error).message
   }
@@ -184,38 +185,91 @@ const voicesAvailability = computed(() =>
 )
 const picturesHere = computed(() => imagesAvailability.value.available)
 
-async function save() {
+/** The form as last saved (or loaded), so an unchanged one isn't saved again. */
+let savedJson = ''
+const formJson = () => JSON.stringify(form.value)
+
+/**
+ * Saves the form, and with it `textApiKey` when given ('' removes the saved one). What the server
+ * turns down (an address half typed, say) isn't saved, and says why at the top; the next change
+ * tries again. The form isn't replaced by what comes back, so typing meanwhile isn't lost.
+ */
+async function save(textApiKey?: string) {
   if (!form.value) return
+  const json = formJson()
+  if (json === savedJson && textApiKey === undefined) {
+    // Back to what's saved (an address put right, say): what was turned down no longer stands.
+    if (status.value?.kind === 'error') status.value = null
+    return
+  }
+  const before = savedJson
+  savedJson = json
   saving.value = true
-  status.value = null
   try {
-    const textApiKey = removeApiKey.value ? '' : apiKey.value.trim() || undefined
-    form.value = await saveSettings({ ...form.value, textApiKey })
-    apiKey.value = ''
-    removeApiKey.value = false
+    const saved = await saveSettings({ ...form.value, textApiKey })
+    if (form.value.textApiKeySet !== saved.textApiKeySet) {
+      form.value.textApiKeySet = saved.textApiKeySet
+      if (savedJson === json) savedJson = formJson()
+    }
+    if (textApiKey !== undefined) {
+      apiKey.value = ''
+      removeApiKey.value = false
+    }
     await refreshFeatures()
     status.value = { kind: 'saved', message: 'Saved. Applies from the next Session.' }
   } catch (err) {
+    savedJson = before
     status.value = {
       kind: 'error',
-      message: (err as Error).message,
+      message: `Not saved: ${(err as Error).message}`,
       issues: err instanceof ApiError ? err.issues : undefined,
     }
   } finally {
     saving.value = false
   }
 }
+// Every change saves itself once typing pauses.
+watchDebounced(formJson, () => save(), { debounce: 600 })
+
+/** A new API key, or its removal: saved when the field is left (not while it's typed). */
+function saveApiKey() {
+  if (removeApiKey.value) return save('')
+  if (apiKey.value.trim()) return save(apiKey.value.trim())
+}
+/** Enter in a field saves at once. */
+const saveNow = () => saveApiKey() ?? save()
+function removeSavedApiKey() {
+  removeApiKey.value = true
+  saveApiKey()
+}
 </script>
 
 <template>
   <div class="overflow-y-auto p-6">
     <div class="mx-auto max-w-xl">
-      <h2 class="mb-6 text-xl font-semibold">Settings</h2>
+      <div
+        class="sticky -top-6 z-10 -mx-6 mb-4 flex flex-col gap-1 bg-canvas px-6 pb-2 pt-6"
+        data-settings-status
+      >
+        <div class="flex items-baseline gap-3">
+          <h2 class="text-xl font-semibold">Settings</h2>
+          <span v-if="saving" class="text-sm text-muted" data-saving>Saving…</span>
+          <span v-else-if="status?.kind === 'saved'" class="text-sm text-ok" data-saved>
+            {{ status.message }}
+          </span>
+        </div>
+        <div v-if="status?.kind === 'error'" class="text-sm text-danger" data-save-error>
+          <p>{{ status.message }}</p>
+          <ul v-if="status.issues?.length" class="list-inside list-disc">
+            <li v-for="issue in status.issues" :key="issue">{{ issue }}</li>
+          </ul>
+        </div>
+      </div>
 
       <p v-if="loadError" class="text-danger">Could not load settings: {{ loadError }}</p>
       <p v-else-if="!form || !options" class="text-muted">Loading…</p>
 
-      <form v-else class="flex flex-col gap-5" @submit.prevent="save">
+      <form v-else class="flex flex-col gap-5" @submit.prevent="saveNow">
         <div class="flex border-b border-line" role="tablist" data-settings-tabs>
           <button
             v-for="t in TABS"
@@ -282,6 +336,7 @@ async function save() {
                 autocomplete="off"
                 class="field"
                 data-text-api-key
+                @change="saveApiKey"
                 :placeholder="
                   form.textApiKeySet && !removeApiKey
                     ? 'Saved; type a new one to replace it'
@@ -296,7 +351,7 @@ async function save() {
                 type="button"
                 class="underline"
                 data-remove-api-key
-                @click="removeApiKey = true"
+                @click="removeSavedApiKey"
               >
                 Remove the saved key
               </button>
@@ -621,25 +676,6 @@ async function save() {
           </FeatureSwitch>
         </section>
 
-        <div class="flex items-center gap-4">
-          <button
-            type="submit"
-            class="rounded-lg bg-fg px-4 py-2 font-medium text-canvas disabled:opacity-50"
-            :disabled="saving"
-          >
-            {{ saving ? 'Saving…' : 'Save' }}
-          </button>
-          <span v-if="status?.kind === 'saved'" class="text-sm text-ok">
-            {{ status.message }}
-          </span>
-        </div>
-
-        <div v-if="status?.kind === 'error'" class="text-sm text-danger">
-          <p>{{ status.message }}</p>
-          <ul v-if="status.issues?.length" class="list-inside list-disc">
-            <li v-for="issue in status.issues" :key="issue">{{ issue }}</li>
-          </ul>
-        </div>
       </form>
     </div>
   </div>
