@@ -251,16 +251,6 @@ describe('SettingsView', () => {
     expect((wrapper.find('input[type=number]').element as HTMLInputElement).value).toBe('4')
   })
 
-  it('saves the edited settings', async () => {
-    const wrapper = mount(SettingsView)
-    await flushPromises()
-    await wrapper.find('[data-text-model]').setValue('gemma4:31b-mlx')
-    await wrapper.find('form').trigger('submit')
-    await flushPromises()
-    expect(api.saveSettings).toHaveBeenCalledWith({ ...settings, textModel: 'gemma4:31b-mlx' })
-    expect(wrapper.text()).toContain('Applies from the next Session')
-  })
-
   it("shows each extra on its tab, says why one can't run here, and saves a switch", async () => {
     vi.mocked(api.getSettingsOptions).mockResolvedValue({
       ...options,
@@ -299,6 +289,26 @@ describe('SettingsView', () => {
     wrapper.unmount()
   })
 
+  it('saves each control into its own field', async () => {
+    const wrapper = mount(SettingsView)
+    await flushPromises()
+    expect((wrapper.find('[data-limits]').element as HTMLInputElement).checked).toBe(true)
+    await wrapper.find('[data-text-model]').setValue('gemma4:31b-mlx')
+    await wrapper.find('[data-art-style]').setValue('tags')
+    await wrapper.find('[data-limits]').setValue(false)
+    await wrapper.find('[data-upscaler]').setValue('seedvr2-3b')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+    expect(api.saveSettings).toHaveBeenLastCalledWith({
+      ...settings,
+      textModel: 'gemma4:31b-mlx',
+      artStyle: 'tags',
+      limits: false,
+      upscaler: 'seedvr2-3b',
+    })
+    expect(wrapper.text()).toContain('Applies from the next Session')
+  })
+
   it('sets a separate Art Agent model, from the installed Text Models', async () => {
     const wrapper = mount(SettingsView)
     await flushPromises()
@@ -312,15 +322,6 @@ describe('SettingsView', () => {
     await wrapper.find('form').trigger('submit')
     await flushPromises()
     expect(api.saveSettings).toHaveBeenCalledWith({ ...settings, artModel: 'gemma4:31b-mlx' })
-  })
-
-  it('has the Art Agent write tags instead of prose', async () => {
-    const wrapper = mount(SettingsView)
-    await flushPromises()
-    await wrapper.find('[data-art-style]').setValue('tags')
-    await wrapper.find('form').trigger('submit')
-    await flushPromises()
-    expect(api.saveSettings).toHaveBeenCalledWith({ ...settings, artStyle: 'tags' })
   })
 
   it('lists saved quantized copies with their size, and deletes them', async () => {
@@ -347,25 +348,6 @@ describe('SettingsView', () => {
     await flushPromises()
     expect(api.deleteQuantized).toHaveBeenCalledWith(copy.name)
     expect(wrapper.find('[data-quantized]').exists()).toBe(false)
-  })
-
-  it('turns the Limits off', async () => {
-    const wrapper = mount(SettingsView)
-    await flushPromises()
-    expect((wrapper.find('[data-limits]').element as HTMLInputElement).checked).toBe(true)
-    await wrapper.find('[data-limits]').setValue(false)
-    await wrapper.find('form').trigger('submit')
-    await flushPromises()
-    expect(api.saveSettings).toHaveBeenCalledWith({ ...settings, limits: false })
-  })
-
-  it('saves the chosen upscaler', async () => {
-    const wrapper = mount(SettingsView)
-    await flushPromises()
-    await wrapper.find('[data-upscaler]').setValue('seedvr2-3b')
-    await wrapper.find('form').trigger('submit')
-    await flushPromises()
-    expect(api.saveSettings).toHaveBeenCalledWith({ ...settings, upscaler: 'seedvr2-3b' })
   })
 
   it('offers Thinking only for Text Models that can think', async () => {

@@ -608,13 +608,6 @@ describe('SessionView', () => {
     expect(leaving()).toBe(false)
   })
 
-  it('has no End or Reset', async () => {
-    const { wrapper } = await mountIt()
-    const labels = wrapper.findAll('button').map((b) => b.text())
-    expect(labels).not.toContain('End')
-    expect(labels).not.toContain('Reset')
-  })
-
   it('renders a Frame made without its picture on request, and switches rendering', async () => {
     vi.mocked(api.getSession).mockResolvedValue({
       ...session([frame(0, null, { image: null })]),

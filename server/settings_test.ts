@@ -71,22 +71,29 @@ Deno.test('fileSettingsStore saves to a file URL whose path has spaces', () =>
     assertEquals((await store.load()).textModel, 'llama3:latest')
   }))
 
-Deno.test('validateSettings defaults thinking to off and rejects non-booleans', () => {
-  const { thinking: _, ...withoutThinking } = DEFAULT_SETTINGS
-  const result = validateSettings(withoutThinking)
-  assertEquals(result.ok && result.settings.thinking, false)
-  assertEquals(validateSettings({ ...DEFAULT_SETTINGS, thinking: 'yes' }).ok, false)
-  const on = validateSettings({ ...DEFAULT_SETTINGS, thinking: true })
-  assertEquals(on.ok && on.settings.thinking, true)
-})
-
-Deno.test('validateSettings defaults the upscaler to SeedVR2 7B and accepts only known ones', () => {
-  const { upscaler: _, ...withoutUpscaler } = DEFAULT_SETTINGS
-  const result = validateSettings(withoutUpscaler)
-  assertEquals(result.ok && result.settings.upscaler, 'seedvr2-7b')
-  const small = validateSettings({ ...DEFAULT_SETTINGS, upscaler: 'seedvr2-3b' })
-  assertEquals(small.ok && small.settings.upscaler, 'seedvr2-3b')
-  assertEquals(validateSettings({ ...DEFAULT_SETTINGS, upscaler: 'esrgan' }).ok, false)
+Deno.test('validateSettings fills in what an older file lacks, keeps what it may be, refuses the rest', () => {
+  // Each field: what it comes to when missing, a value it may take, and one it may not.
+  const fields: [keyof typeof DEFAULT_SETTINGS, unknown, unknown, unknown][] = [
+    ['thinking', false, true, 'yes'],
+    ['upscaler', 'seedvr2-7b', 'seedvr2-3b', 'esrgan'],
+    ['limits', true, false, 'no'],
+    ['artModel', '', 'gemma4:31b-mlx', 3],
+    ['artStyle', 'prose', 'tags', 'booru'],
+    ['stepCache', 0.4, null, 0.9],
+    ['fast', false, true, 'yes'],
+  ]
+  for (const [field, missing, valid, invalid] of fields) {
+    const { [field]: _, ...older } = DEFAULT_SETTINGS
+    const filled = validateSettings(older)
+    assertEquals(filled.ok && filled.settings[field], missing, `${field} when missing`)
+    const kept = validateSettings({ ...DEFAULT_SETTINGS, [field]: valid })
+    assertEquals(kept.ok && kept.settings[field], valid, `${field} = ${valid}`)
+    assertEquals(
+      validateSettings({ ...DEFAULT_SETTINGS, [field]: invalid }).ok,
+      false,
+      `${field} = ${invalid}`,
+    )
+  }
 })
 
 Deno.test('validateSettings upscales where pictures are made, unless Upscale has its own backend', () => {
@@ -101,43 +108,6 @@ Deno.test('validateSettings upscales where pictures are made, unless Upscale has
     'comfyui',
   ])
   assertEquals(validateSettings({ ...DEFAULT_SETTINGS, upscaleBackend: 'esrgan' }).ok, false)
-})
-
-Deno.test('validateSettings keeps the Limits on unless turned off', () => {
-  const { limits: _, ...withoutLimits } = DEFAULT_SETTINGS
-  const result = validateSettings(withoutLimits)
-  assertEquals(result.ok && result.settings.limits, true)
-  const off = validateSettings({ ...DEFAULT_SETTINGS, limits: false })
-  assertEquals(off.ok && off.settings.limits, false)
-  assertEquals(validateSettings({ ...DEFAULT_SETTINGS, limits: 'no' }).ok, false)
-})
-
-Deno.test('validateSettings leaves the Art Agent on the Text Model unless one is set', () => {
-  const { artModel: _, ...without } = DEFAULT_SETTINGS
-  const result = validateSettings(without)
-  assertEquals(result.ok && result.settings.artModel, '')
-  const set = validateSettings({ ...DEFAULT_SETTINGS, artModel: 'gemma4:31b-mlx' })
-  assertEquals(set.ok && set.settings.artModel, 'gemma4:31b-mlx')
-  assertEquals(validateSettings({ ...DEFAULT_SETTINGS, artModel: 3 }).ok, false)
-})
-
-Deno.test('validateSettings has the Art Agent write prose unless tags are chosen', () => {
-  const { artStyle: _, ...without } = DEFAULT_SETTINGS
-  const result = validateSettings(without)
-  assertEquals(result.ok && result.settings.artStyle, 'prose')
-  const tags = validateSettings({ ...DEFAULT_SETTINGS, artStyle: 'tags' })
-  assertEquals(tags.ok && tags.settings.artStyle, 'tags')
-  assertEquals(validateSettings({ ...DEFAULT_SETTINGS, artStyle: 'booru' }).ok, false)
-})
-
-Deno.test('validateSettings turns the step cache on at 0.4 and fast mode off unless set', () => {
-  const { stepCache: _, fast: __, ...older } = DEFAULT_SETTINGS
-  const result = validateSettings(older)
-  assertEquals(result.ok && [result.settings.stepCache, result.settings.fast], [0.4, false])
-  const off = validateSettings({ ...DEFAULT_SETTINGS, stepCache: null, fast: true })
-  assertEquals(off.ok && [off.settings.stepCache, off.settings.fast], [null, true])
-  assertEquals(validateSettings({ ...DEFAULT_SETTINGS, stepCache: 0.9 }).ok, false)
-  assertEquals(validateSettings({ ...DEFAULT_SETTINGS, fast: 'yes' }).ok, false)
 })
 
 Deno.test('Where mflux and the voice service cannot run, Settings default to ComfyUI', () => {

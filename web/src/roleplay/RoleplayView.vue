@@ -27,7 +27,6 @@ import JobQueue from '../components/JobQueue.vue'
 import { useJobs } from '../composables/useJobs'
 import { useFeatures } from '../composables/useFeatures'
 import { jobStatus } from '../jobs'
-import { cleanReply } from './reply'
 import { sessionPath } from '../sessionPath'
 import {
   type Cast,
@@ -230,10 +229,8 @@ async function saveVoiceDraft() {
 const sideTab = ref<'cast' | 'queue'>('cast')
 
 const cast = computed(() => session.value?.cast ?? null)
-/** The Frames as shown: Replies tidied of stray quote marks and JSON fragments. */
-const shownFrames = computed(() =>
-  (session.value?.frames ?? []).map((f) => ({ ...f, reply: cleanReply(f.reply) }))
-)
+/** The Frames as shown (the server tidies each Reply as it saves it). */
+const shownFrames = computed(() => session.value?.frames ?? [])
 /** The Cast is written but the scene hasn't begun: the player reviews it first. */
 const reviewing = computed(() => !!cast.value && session.value!.frames.length === 0)
 const begun = computed(() => (session.value?.frames.length ?? 0) > 0)

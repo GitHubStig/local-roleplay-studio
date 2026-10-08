@@ -15,7 +15,7 @@ describe('useCurrentSession', () => {
     expect((await load()).useCurrentSession().currentSessionId.value).toBe('s1')
   })
 
-  it('remembers whether it is a Chain or a Storyboard', async () => {
+  it("remembers the current Session's kind", async () => {
     const m = await load()
     m.setCurrentSession('s1')
     expect(m.useCurrentSession().currentSessionKind.value).toBe('chain')

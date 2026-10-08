@@ -109,20 +109,3 @@ export function sharpSceneMaker(opts: { command?: string[] } = {}): SceneMaker {
     },
   }
 }
-
-/** Stands in for SHARP in tests: writes a tiny file naming the picture. */
-export function fakeSceneMaker(opts: { fail?: string } = {}): SceneMaker & {
-  made: SceneRequest[]
-} {
-  const made: SceneRequest[] = []
-  return {
-    made,
-    async make(req, signal) {
-      signal.throwIfAborted()
-      made.push(req)
-      if (opts.fail) throw new Error(opts.fail)
-      await Deno.writeTextFile(req.out, `ply fake scene of ${req.image}`)
-      return { splats: 4, pivot: 1.5, fov: 51.3, aspect: 1 }
-    },
-  }
-}

@@ -68,20 +68,3 @@ export function tripoFigureMaker(opts: { command?: string[] } = {}): FigureMaker
     },
   }
 }
-
-/** Stands in for TripoSplat in tests: writes a tiny file naming the picture. */
-export function fakeFigureMaker(opts: { fail?: string } = {}): FigureMaker & {
-  made: FigureRequest[]
-} {
-  const made: FigureRequest[] = []
-  return {
-    made,
-    async make(req, signal) {
-      signal.throwIfAborted()
-      made.push(req)
-      if (opts.fail) throw new Error(opts.fail)
-      await Deno.writeTextFile(req.out, `ply fake figure of ${req.image}`)
-      return { splats: 8 }
-    },
-  }
-}
