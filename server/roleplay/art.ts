@@ -5,12 +5,11 @@
  * Its prompts are `prompts/roleplay/art-*.md`. Rendering the prompt comes later.
  */
 import { stringify } from '@std/yaml'
-import { renderPrompt } from '../imagePrompt.ts'
+import { joinPrompt, renderPrompt } from '../imagePrompt.ts'
 import { crossedLimit, limitsEnabled } from '../limits.ts'
 import type { ChatMessage } from '../text/chat.ts'
 import { loadPrompt } from '../promptFiles.ts'
 import type { Scenario } from '../scenario.ts'
-import { composePrompt } from '../storyboard/storyboard.ts'
 import { frameSchema, plainSentences } from '../textModel.ts'
 import type { Cast, RoleplayFrame, RoleplayLook, RoleplaySession, Shown } from './types.ts'
 
@@ -192,6 +191,7 @@ export async function artFrameMessages(
         style === 'tags' ? 'roleplay/art-frame-tags' : 'roleplay/art-frame',
         {
           ...session.cast!,
+          placeAlone: await loadPrompt('shared/place-alone'),
           limits: await artLimits(),
         },
       ),
@@ -237,7 +237,7 @@ export function pictured(
   clothing = frame.clothing,
 ): RoleplayFrame {
   const { blocked: _, stale: __, ...rest } = frame
-  const prompt = composePrompt({ subject: identityFor(look, shown), style: look.style }, body)
+  const prompt = joinPrompt(identityFor(look, shown), body, look.style)
   const promptText = renderPrompt(prompt)
   const blocked = crossedLimit(promptText)?.message ?? undressed(cast, shown, clothing)
   const stale = !!frame.image && (frame.stale || promptText !== frame.promptText)

@@ -1,6 +1,15 @@
 <script setup lang="ts">
 import { useEventListener } from '@vueuse/core'
-import { computed, onActivated, onBeforeUnmount, onDeactivated, onMounted, ref, watch } from 'vue'
+import {
+  computed,
+  onActivated,
+  onBeforeUnmount,
+  onDeactivated,
+  onMounted,
+  ref,
+  toRaw,
+  watch,
+} from 'vue'
 import { useRouter } from 'vue-router'
 import {
   ApiError,
@@ -12,6 +21,7 @@ import {
   imageUrl,
   type Look,
   type Made3d,
+  MAX_SHOWN,
   type Outcome,
   planStoryboard,
   saveFrameBody,
@@ -259,19 +269,36 @@ async function sendAction() {
     }))
 }
 
-/** Hand edits: the selected Frame's sentences, and the Look. Reset when the source changes. */
+/**
+ * Hand edits: the selected Frame's sentences and who it shows, and the Look. Reset when the source
+ * changes.
+ */
 const bodyDraft = ref('')
-const lookDraft = ref<Look>({ subject: '', style: '' })
+const shownDraft = ref<string[]>([])
+const lookDraft = ref<Look>({ people: [], style: '' })
+const shownNow = computed(() => current.value?.shown ?? [])
 watch(() => current.value?.body, (body) => (bodyDraft.value = body ?? ''), { immediate: true })
-watch(look, (l) => (lookDraft.value = { subject: l?.subject ?? '', style: l?.style ?? '' }), {
+watch(shownNow, (shown) => (shownDraft.value = [...shown]), { immediate: true })
+watch(look, (l) => (lookDraft.value = structuredClone(toRaw(l) ?? { people: [], style: '' })), {
   immediate: true,
 })
-const bodyChanged = computed(() => !!current.value && bodyDraft.value.trim() !== current.value.body)
-const lookChanged = computed(() =>
-  !!look.value &&
-  (lookDraft.value.subject.trim() !== look.value.subject ||
-    lookDraft.value.style.trim() !== look.value.style)
+const bodyChanged = computed(() =>
+  !!current.value &&
+  (bodyDraft.value.trim() !== current.value.body ||
+    shownDraft.value.join('\n') !== shownNow.value.join('\n'))
 )
+const trimmed = (l: Look): Look => ({
+  people: l.people.map((p) => ({ name: p.name.trim(), identity: p.identity.trim() })),
+  style: l.style.trim(),
+})
+const lookChanged = computed(() =>
+  !!look.value && JSON.stringify(trimmed(lookDraft.value)) !== JSON.stringify(look.value)
+)
+/** Shows or hides a person in the selected Frame; one added is the least prominent. */
+function toggleShown(name: string) {
+  const shown = shownDraft.value
+  shownDraft.value = shown.includes(name) ? shown.filter((n) => n !== name) : [...shown, name]
+}
 
 async function save(call: () => Promise<StoryboardSession>, done: string) {
   message.value = null
@@ -284,7 +311,7 @@ async function save(call: () => Promise<StoryboardSession>, done: string) {
 }
 const saveBody = () =>
   save(
-    () => saveFrameBody(props.id, current.value!.index, bodyDraft.value),
+    () => saveFrameBody(props.id, current.value!.index, bodyDraft.value, shownDraft.value),
     `Frame ${current.value!.index + 1} saved.`,
   )
 const saveLookDraft = () => save(() => saveLook(props.id, lookDraft.value), 'Look saved for every Frame.')
@@ -539,12 +566,48 @@ const imagesOn = computed(() => featureOn.value('images'))
 
             <form v-else class="flex min-w-0 flex-col gap-2" data-look @submit.prevent="saveLookDraft">
               <h3 class="font-medium">Look <span class="font-normal text-muted">· every Frame</span></h3>
-              <CollapsibleTextarea
-                id="storyboard.look.subject"
-                v-model="lookDraft.subject"
-                label="Subject and identity"
+              <fieldset
+                v-for="(person, i) in lookDraft.people"
+                :key="i"
+                class="flex min-w-0 flex-col gap-1"
+                data-person
+              >
+                <div class="flex items-center gap-2">
+                  <input
+                    v-model="person.name"
+                    class="min-w-0 flex-1 rounded border border-line bg-surface px-2 py-1 text-sm text-fg"
+                    aria-label="Name"
+                    placeholder="Name"
+                    :disabled="busy"
+                    data-person-name
+                  />
+                  <button
+                    type="button"
+                    class="rounded px-2 py-1 text-xs text-muted hover:text-fg disabled:opacity-50"
+                    :aria-label="`Remove ${person.name || 'this person'}`"
+                    :disabled="busy"
+                    @click="lookDraft.people.splice(i, 1)"
+                  >
+                    Remove
+                  </button>
+                </div>
+                <CollapsibleTextarea
+                  :id="`storyboard.look.person.${i}`"
+                  v-model="person.identity"
+                  label="Identity"
+                  placeholder="Their name, age, build, skin, hair and face"
+                  :disabled="busy"
+                />
+              </fieldset>
+              <button
+                type="button"
+                class="w-fit text-xs text-muted hover:text-fg disabled:opacity-50"
                 :disabled="busy"
-              />
+                data-add-person
+                @click="lookDraft.people.push({ name: '', identity: '' })"
+              >
+                + Add a person
+              </button>
               <CollapsibleTextarea
                 id="storyboard.look.style"
                 v-model="lookDraft.style"
@@ -572,6 +635,24 @@ const imagesOn = computed(() => featureOn.value('images'))
               <p v-if="current.blocked" class="text-xs text-danger">
                 Crosses a limit ({{ current.blocked }}): edit it before rendering.
               </p>
+              <div v-if="look?.people.length" class="flex flex-wrap items-center gap-1.5 text-xs" data-shown>
+                <span class="text-muted">Shows</span>
+                <button
+                  v-for="person in look.people"
+                  :key="person.name"
+                  type="button"
+                  class="rounded-full border border-line px-2 py-0.5 text-muted aria-pressed:bg-surface aria-pressed:text-fg disabled:opacity-50"
+                  :aria-pressed="shownDraft.includes(person.name)"
+                  :disabled="busy"
+                  @click="toggleShown(person.name)"
+                >
+                  {{ person.name }}
+                </button>
+                <span v-if="!shownDraft.length" class="text-muted">· the place alone</span>
+                <span v-else-if="shownDraft.length > MAX_SHOWN" class="text-muted">
+                  · only the first {{ MAX_SHOWN }} are described
+                </span>
+              </div>
               <CollapsibleTextarea
                 id="storyboard.frame"
                 v-model="bodyDraft"

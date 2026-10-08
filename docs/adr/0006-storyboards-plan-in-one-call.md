@@ -4,6 +4,9 @@ status: accepted
 
 # A Storyboard is planned in one Text Model call, with a shared Look
 
+*Since 2026-10-08 the Look has an identity per person, and each Frame names who it shows:
+[ADR 0012](0012-storyboard-look-lists-each-person.md).*
+
 A Storyboard's Frames are written together, in a single Text Model call whose reply has three parts, in order: the **Look** (the subject-and-identity and art-style sentences every Frame shares), the **Beats** (one line per Frame), then each Frame's own seven sentences. The server reads the reply as it streams (`server/jsonStream.ts`) and shows the Look, the Beats and each Frame the moment its JSON is complete. Each Frame's Image Prompt is the Look's subject sentence, the Frame's seven sentences, then the Look's style sentence, so every Frame shows the same person in the same style, and editing the Look rewrites them all.
 
 ## Considered Options

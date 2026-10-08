@@ -139,11 +139,12 @@ describe('App navigation', () => {
       seed: 1,
       createdAt: '2026-09-25T00:00:00.000Z',
       frameCount: 1,
-      look: { subject: 'A student.', style: 'Manga.' },
+      look: { people: [{ name: 'Rin', identity: 'Rin, a student.' }], style: 'Manga.' },
       frames: [{
         index: 0,
         beat: 'The dunk.',
         body: 'Body.',
+        shown: ['Rin'],
         prompt: promptFor(0),
         promptText: 'p',
         image: null,

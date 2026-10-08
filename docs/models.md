@@ -212,6 +212,44 @@ from the full-precision weights writes (2026-10-05).
 Much the same model, about as fast, 1 GB lighter: not a reason to switch on its own, and not a way
 under 12 GB. A 26B-A4B under 12 GB would need about 3 bits, which `ollama create` can't make.
 
+## Storyboard plans: who each Frame shows (2026-10-08, Mac)
+
+ADR 0012 gave the Look an identity per person and each Frame a `shown` list. Checked by planning a
+16-Frame Storyboard from a Brief with five named people twice on `gemma-4-26b-heretic:nvfp4`
+(Ollama, Thinking off, the Session's seed), plus one Action on the result; nothing was rendered.
+
+- Each plan took 44–47 s, the same as before the change, and listed all five people.
+- Every name in `shown` matched the Look exactly (none needed `matchShown`'s word matching).
+- Frames about one person showed only them; the four Frames of the scenery showed no one. Group
+  Frames named four people, cut to the first three. The two runs disagreed on whether a Frame
+  where one person signals the others shows just him or the whole group.
+- An Action bringing a second person into a Frame ("X stands beside Y") put them in `shown` and
+  left the Look alone.
+- Faults the engine now handles: identity sentences without a full stop (they ran into each
+  other), and "No people." written as an empty Frame's clothing sentence, despite the prompt saying
+  not to (before the change, the same model wrote "N/A (Environmental focus)" there).
+
+**32 Frames** (the most since 2026-10-08, from 16), from the `contact` Scenario, four plans, not
+seeded:
+
+- 60–83 s each (16 Frames took 44–47 s); about 2.5 s per Frame once the Look and Beats are written.
+  No escaped line breaks, "N/A" or broken JSON, all five people in every Look.
+- In three plans every Frame's sentences and `shown` matched its Beat. In the first, `shown` sat one
+  Frame late in two runs of four Frames (the Frame about Dillon naming Dutch, and so on); its
+  sentences weren't printed, so whether they lagged too is unknown. Not seen again.
+- Close-ups of guns and brass named the men until the prompt said a close-up of an object shows no
+  one; then they came back empty. Frames of no one sometimes name something else instead ("The
+  jungle", "style"), which the engine drops as it isn't a person in the Look.
+- Every Beat started with its number ("Frame 12: …", as the 16-Frame plans' "01: …"); the engine
+  strips it.
+- The owner's first 16-Frame plan of the `contact` Scenario in the app (seed 42) ran away inside
+  Frame 1 on both attempts, each running to the 12,400-token cap (3 min 53 s and 4 min 1 s by
+  Ollama's log) before failing. Replayed with the same seed outside the app it finished in 45 s,
+  twice: Ollama doesn't repeat a reply exactly here. What it wrote wasn't kept. Since then a plan is
+  stopped once 8,000 characters pass without the next part (the Look, the Beats, a Frame)
+  complete (`RUNAWAY_CHARS`), logging its last words, and retried; stopping the stream ends
+  Ollama's request at once ("Request terminated", checked).
+
 ## Art Agent (picturing Roleplay Frames)
 
 The Art Agent uses the Session's Text Model. Measured 2026-09-28 on six Frames of a 30-Frame

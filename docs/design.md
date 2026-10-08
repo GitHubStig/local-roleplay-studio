@@ -107,16 +107,18 @@ racing a Frame).
 
 ## Storyboards
 
-A Storyboard is started from a Brief and a Frame count (1–16, default 8), then **planned** in one
+A Storyboard is started from a Brief and a Frame count (1–32, default 8), then **planned** in one
 Text Model call ([ADR 0006](adr/0006-storyboards-plan-in-one-call.md)):
 
 1. **Limits on the Brief:** the term list and, if it names someone, the real-person question.
    The Brief is also checked with the term list when the Storyboard is created.
-2. **The plan streams in:** the **Look** (identity and art style, shared by every Frame), the
-   **Beats** (one line per Frame), then each Frame's seven sentences (pose, expression, camera,
-   clothing, environment, lighting, color), each shown the moment it's complete.
-3. **Frames are assembled:** Look subject + the Frame's sentences + Look style, rendered with
-   "adult, " in front. A Frame whose prompt crosses a Limit is saved **blocked** and can't be
+2. **The plan streams in:** the **Look** (an identity for each person the Brief depicts, and the
+   art style, shared by every Frame), the **Beats** (one line per Frame), then each Frame's seven
+   sentences (pose, expression, camera, clothing, environment, lighting, color) and who it shows,
+   each shown the moment it's complete.
+3. **Frames are assembled:** the identities of the people the Frame shows (at most three, the most
+   prominent first; none for a picture of the place alone) + the Frame's sentences + the Look's
+   style, rendered with "adult, " in front ([ADR 0012](adr/0012-storyboard-look-lists-each-person.md)). A Frame whose prompt crosses a Limit is saved **blocked** and can't be
    rendered until edited.
 4. **All or nothing:** a failed or cancelled plan discards the Storyboard.
 
@@ -125,10 +127,10 @@ After planning, each Frame is independent:
 | Operation | What it does |
 |---|---|
 | **Render** | Renders one Frame through the shared queue; a re-render replaces its image (the old file is deleted once the new one is saved). |
-| **Edit by hand** | Replaces a Frame's seven sentences; stray labels are stripped. A rendered Frame is marked **stale** until re-rendered. Refused if it crosses a Limit. |
-| **Edit the Look** | Rewrites every Frame's prompt; rendered Frames become stale. |
+| **Edit by hand** | Replaces a Frame's seven sentences and who it shows; stray labels are stripped. A rendered Frame is marked **stale** until re-rendered. Refused if it crosses a Limit. |
+| **Edit the Look** | Edits, adds or removes people, or the style, and rewrites every Frame's prompt; rendered Frames whose prompt changed become stale. Someone renamed stays shown where they were. |
 | **Upscale** | As for a Chain Frame (below); a re-render or Undo deletes the upscale with the image. |
-| **Edit by Action** | The Text Model rewrites that Frame (and the Look, if the Action changes identity or style), after the same Action Limits check as a Chain. Declined or unclear Actions change nothing. |
+| **Edit by Action** | The Text Model rewrites that Frame and who it shows (and the Look, if the Action changes or adds a person, or the style), after the same Action Limits check as a Chain. Declined or unclear Actions change nothing. |
 
 Each Frame records how long its text took (the wait for its part of the plan, or its latest
 edit) and its latest render.
@@ -348,7 +350,7 @@ consistency* in [open-threads.md](open-threads.md).
   confirmation and is disabled while that Session has a Frame running. Below, **Start a new
   Session**: the kind (Chain or Storyboard), then Scenario cards (a lone Scenario is preselected)
   or **Your own Brief** (a text box, up to 4000 characters), the Frame count for a Storyboard
-  (1–16, default 8), a report of any Scenario files that failed to load, and the current Text and
+  (1–32, default 8), a report of any Scenario files that failed to load, and the current Text and
   Image Models. Start is blocked, with the reason shown,
   if no Text Model is set or the chosen one is no longer installed.
 - **Session** (`/sessions/:id`): the image fills everything above a fixed-height text box, so
@@ -411,8 +413,9 @@ consistency* in [open-threads.md](open-threads.md).
   (**Render**/**Re-render**, **Upscale**, SHARP, TripoSplat, LiTo), each queued as a job, and
   **Render all (N)**, which queues a render of every draft or stale Frame not already queued,
   skipping blocked ones. Editing carries on while they run. The Frames list shows the queue above
-  each Frame's thumbnail (dimmed when stale), Beat and status (or the job working on it). The Prompt panel has the **Look** (subject and art style, saved for every Frame) and
-  the selected Frame's seven sentences, each editable by hand with its own Save, then the full
+  each Frame's thumbnail (dimmed when stale), Beat and status (or the job working on it). The Prompt panel has the **Look** (each person's name and identity, which can be added
+  to or removed, and the art style, saved for every Frame) and the selected Frame's **Shows**
+  toggles (a person each) and seven sentences, each editable by hand with its own Save, then the full
   prompt and the Frame's timings. The panels, the render sweep and the unsent Action (remembered
   per Session) work as on the Session screen. A Chain opened at a Storyboard's address, or the
   other way round, is sent to its own screen.
@@ -500,8 +503,8 @@ All under `/api`; the Vite dev server proxies it to the Deno server.
 | `POST /sessions/:id/frames` | Chain: run a Frame (`{ action }`, or `{}` for the Opening Frame) as a server-sent event stream |
 | `POST /sessions/:id/plan` | Storyboard: plan it, streaming `look`, `beats`, `planned-frame` × N, then `planned` |
 | `POST /sessions/:id/frames/:index/edit` | Storyboard: edit one Frame by `{ action }`, streaming then `edited` (`outcome`, `narration`, `session`) |
-| `PUT /sessions/:id/frames/:index` | Storyboard: replace a Frame's sentences, `{ body }` (`422` if it crosses a Limit) |
-| `PUT /sessions/:id/look` | Storyboard: replace the Look, `{ subject, style }` |
+| `PUT /sessions/:id/frames/:index` | Storyboard: replace a Frame's sentences and, if given, who it shows, `{ body, shown? }` (`422` if it crosses a Limit) |
+| `PUT /sessions/:id/look` | Storyboard: replace the Look, `{ people: [{ name, identity }], style }` |
 | `POST /sessions/:id/cancel` | Cancel the Frame in progress |
 | `DELETE /sessions/:id/frames/:index` | Undo the latest Frame; `:index` must name it (`409` otherwise, and for the Opening Frame or while a Frame runs) |
 | `GET /sessions/:id/images/:file` | A Frame's image, a Roleplay's audio (`voice-…wav`, `speech-…mp3`, `thought-…mp3`, or `.wav` from before), or a Roleplay Frame's 3D scene (`scene-…ply`), or a 3D figure (`figure-…ply`, `lito-…ply`) |

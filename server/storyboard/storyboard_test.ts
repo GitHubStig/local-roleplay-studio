@@ -1,11 +1,13 @@
 import { assertEquals, assertMatch, assertRejects } from '@std/assert'
 import { join } from '@std/path'
-import { dirSessionStore, type StoryboardSession } from '../session.ts'
+import { dirSessionStore, type Look, type StoryboardSession } from '../session.ts'
 import { DEFAULT_SETTINGS } from '../settings.ts'
 import {
   composePrompt,
   editFrameByAction,
   LimitError,
+  matchShown,
+  MAX_SHOWN,
   planStoryboard,
   renderStoryboardFrame,
   setFrameBody,
@@ -74,7 +76,7 @@ Deno.test('planStoryboard streams the Look, Beats and Frames, then saves them', 
     assertEquals(session.frames.length, 3)
     const [first] = session.frames
     assertEquals(first.beat, 'Beat 1')
-    assertEquals(first.prompt, composePrompt(planOf(3).look, planOf(3).bodies[0]))
+    assertEquals(first.prompt, composePrompt(planOf(3).look, planOf(3).frames[0].body, ['Ace']))
     assertEquals(first.promptText, `adult, ${first.prompt}`)
     assertEquals(first.image, null)
     assertEquals(typeof first.timings!.text, 'number')
@@ -101,14 +103,16 @@ Deno.test('planStoryboard refuses a Brief that crosses a Limit, saving nothing',
 
 Deno.test('planStoryboard fails on a Look across a Limit, and blocks a Frame that crosses one', () =>
   withTempDir(async (root) => {
-    const bad = planOf(2, { look: { subject: 'A tall adult.', style: 'Lingerie catalogue shot.' } })
+    const bad = planOf(2, { look: { people: [], style: 'Lingerie catalogue shot.' } })
     const { deps } = depsFor(root, { plans: [bad] })
     await assertRejects(
       () => planStoryboard(deps, newStoryboard(2), scenario, () => {}, signal()),
       LimitError,
     )
 
-    const oneBad = planOf(2, { bodies: ['Stands.', 'Stands, wrists bound.'] })
+    const oneBad = planOf(2, {
+      frames: [{ body: 'Stands.', shown: [] }, { body: 'Stands, wrists bound.', shown: [] }],
+    })
     const { deps: deps2 } = depsFor(root, { plans: [oneBad] })
     const session = await planStoryboard(deps2, newStoryboard(2), scenario, () => {}, signal())
     assertEquals(session.frames[0].blocked, undefined)
@@ -141,33 +145,129 @@ Deno.test('setFrameBody rewrites one Frame, marks it stale if rendered, and refu
     await renderStoryboardFrame(deps, session, 0, () => {}, signal())
     const edited = await setFrameBody(deps, session, 0, 'He leaps.\n- Lighting: dusk.')
     assertEquals(edited.frames[0].body, 'He leaps. dusk.')
-    assertEquals(edited.frames[0].prompt, composePrompt(edited.look!, 'He leaps. dusk.'))
+    assertEquals(edited.frames[0].prompt, composePrompt(edited.look!, 'He leaps. dusk.', ['Ace']))
     assertEquals(edited.frames[0].stale, true)
     assertEquals(edited.frames[1].stale, undefined)
     await assertRejects(() => setFrameBody(deps, edited, 1, 'Fully nude.'), LimitError)
+
+    // Who it shows can change with it: no one, here.
+    const empty = await setFrameBody(deps, edited, 2, 'An empty court.', [])
+    assertEquals(empty.frames[2].shown, [])
+    assertEquals(empty.frames[2].prompt, 'An empty court. A pencil sketch.')
   }))
 
 Deno.test('setLook rewrites every Frame and marks the rendered ones stale', () =>
   withTempDir(async (root) => {
     const { deps, session } = await planned(root)
     await renderStoryboardFrame(deps, session, 2, () => {}, signal())
-    const look = { subject: 'A short adult athlete.', style: 'A watercolour.' }
+    const look = {
+      people: [{ name: 'Ace', identity: 'Ace, a short adult athlete.' }],
+      style: 'A watercolour.',
+    }
     const updated = await setLook(deps, session, look)
-    for (const f of updated.frames) assertEquals(f.prompt, composePrompt(look, f.body))
+    for (const f of updated.frames) assertEquals(f.prompt, composePrompt(look, f.body, ['Ace']))
     assertEquals(updated.frames.map((f) => f.stale ?? false), [false, false, true])
     await assertRejects(
-      () => setLook(deps, updated, { subject: 'A child.', style: 'Ink.' }),
+      () =>
+        setLook(deps, updated, { people: [{ name: 'Kid', identity: 'A child.' }], style: 'Ink.' }),
       LimitError,
+    )
+    await assertRejects(
+      () => setLook(deps, updated, { people: [{ name: 'Ace', identity: '' }], style: 'Ink.' }),
+      Error,
+      'needs a name and an identity',
     )
   }))
 
+Deno.test('setLook keeps a person renamed in place shown, and drops one removed', () =>
+  withTempDir(async (root) => {
+    const two = planOf(2, {
+      look: {
+        people: [
+          { name: 'Ace', identity: 'Ace, a tall adult athlete.' },
+          { name: 'Bo', identity: 'Bo, a stocky adult coach.' },
+        ],
+        style: 'Ink.',
+      },
+      frames: [{ body: 'Ace shoots.', shown: ['Ace'] }, {
+        body: 'Bo shouts.',
+        shown: ['Bo', 'Ace'],
+      }],
+    })
+    const { deps } = depsFor(root, { plans: [two] })
+    const session = await planStoryboard(deps, newStoryboard(2), scenario, () => {}, signal())
+    const renamed = await setLook(deps, session, {
+      people: [
+        { name: 'Ace Ray', identity: 'Ace Ray, a tall adult athlete.' },
+        { name: 'Bo', identity: 'Bo, a stocky adult coach.' },
+      ],
+      style: 'Ink.',
+    })
+    assertEquals(renamed.frames.map((f) => f.shown), [['Ace Ray'], ['Bo', 'Ace Ray']])
+    const removed = await setLook(deps, renamed, {
+      people: [{ name: 'Bo', identity: 'Bo, a stocky adult coach.' }],
+      style: 'Ink.',
+    })
+    assertEquals(removed.frames.map((f) => f.shown), [[], ['Bo']])
+    assertEquals(removed.frames[0].prompt, 'Ace shoots. Ink.')
+  }))
+
+Deno.test('a Frame shows only the people it names, at most three, and no one for a place', () =>
+  withTempDir(async (root) => {
+    // Without a full stop, an identity still ends as a sentence.
+    const people = ['Ana', 'Ben', 'Cal', 'Dee'].map((name) => ({
+      name,
+      identity: `${name}, an adult sailor`,
+    }))
+    const plan = planOf(3, {
+      look: { people, style: 'Film still.' },
+      frames: [
+        { body: 'Ben raises a lantern.', shown: ['ben', 'Zoe'] },
+        { body: 'The crew hauls a rope.', shown: ['Ana', 'Ben', 'Cal', 'Dee'] },
+        { body: 'Rain on an empty street.', shown: [] },
+      ],
+    })
+    const { deps } = depsFor(root, { plans: [plan] })
+    const session = await planStoryboard(deps, newStoryboard(), scenario, () => {}, signal())
+    // Matched to the Look's names; someone not in it is dropped.
+    assertEquals(session.frames[0].shown, ['Ben'])
+    assertEquals(
+      session.frames[0].prompt,
+      'Ben, an adult sailor. Ben raises a lantern. Film still.',
+    )
+    assertEquals(MAX_SHOWN, 3)
+    assertEquals(
+      session.frames[1].prompt,
+      'Ana, an adult sailor. Ben, an adult sailor. Cal, an adult sailor. ' +
+        'The crew hauls a rope. Film still.',
+    )
+    assertEquals(session.frames[2].prompt, 'Rain on an empty street. Film still.')
+  }))
+
+Deno.test('matchShown matches names by their words, in the order given, once each', () => {
+  const people = [
+    { name: 'Ben', identity: 'Ben.' },
+    { name: 'Captain Cal Reyes', identity: 'Cal.' },
+  ]
+  assertEquals(matchShown(people, ['Cal Reyes', 'ben ash', 'BEN', 'Zoe']), [
+    'Captain Cal Reyes',
+    'Ben',
+  ])
+})
+
 Deno.test('editFrameByAction rewrites the Frame, and a Look change reaches every Frame', () =>
   withTempDir(async (root) => {
-    const look = { subject: 'A tall adult athlete.', style: 'Charcoal.' }
+    const look: Look = { ...planOf(3).look, style: 'Charcoal.' }
     const { deps, session } = await planned(root, {
       edits: [
-        { outcome: 'done', narration: 'Pose: mid-air.', body: 'He soars.', look: planOf(3).look },
-        { outcome: 'done', narration: 'Style: charcoal.', body: 'He soars.', look },
+        {
+          outcome: 'done',
+          narration: 'Pose: mid-air.',
+          body: 'He soars.',
+          shown: ['Ace'],
+          look: planOf(3).look,
+        },
+        { outcome: 'done', narration: 'Ace leaves.', body: 'An empty hoop.', shown: [], look },
       ],
     })
     const first = await editFrameByAction(
@@ -193,7 +293,10 @@ Deno.test('editFrameByAction rewrites the Frame, and a Look change reaches every
       signal(),
     )
     assertEquals(second.session.look, look)
-    for (const f of second.session.frames) assertEquals(f.prompt, composePrompt(look, f.body))
+    assertEquals(second.session.frames[1].prompt, 'An empty hoop. Charcoal.')
+    for (const f of second.session.frames) {
+      assertEquals(f.prompt, composePrompt(look, f.body, f.shown))
+    }
   }))
 
 Deno.test('editFrameByAction leaves everything as it was when declined or unclear', () =>
@@ -203,6 +306,7 @@ Deno.test('editFrameByAction leaves everything as it was when declined or unclea
         outcome: 'unclear',
         narration: 'What should change?',
         body: 'x',
+        shown: [],
         look: planOf(3).look,
       }],
     })
@@ -226,12 +330,13 @@ Deno.test('editFrameByAction leaves everything as it was when declined or unclea
   }))
 
 Deno.test('composePrompt ends each part as a sentence so they never run together', () => {
+  const look = (identity: string, style: string) => ({ people: [{ name: 'X', identity }], style })
   assertEquals(
-    composePrompt({ subject: 'A tall man ', style: 'Manga ink' }, 'He jumps.'),
+    composePrompt(look('A tall man ', 'Manga ink'), 'He jumps.', ['X']),
     'A tall man. He jumps. Manga ink.',
   )
   assertEquals(
-    composePrompt({ subject: 'She asks "why?"', style: 'Oil paint!' }, ''),
+    composePrompt(look('She asks "why?"', 'Oil paint!'), '', ['X']),
     'She asks "why?" Oil paint!',
   )
 })

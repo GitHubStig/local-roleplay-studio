@@ -118,13 +118,16 @@ const CONTENT_TYPES: Record<string, string> = {
 }
 
 /** Storyboards plan between 1 and 16 Frames; 8 unless asked otherwise. */
-const FRAME_COUNT = { min: 1, max: 16, default: 8 }
+const FRAME_COUNT = { min: 1, max: 32, default: 8 }
 const MAX_BRIEF_LENGTH = 4000
 
 function defaultSessionId(): string {
   const stamp = new Date().toISOString().replace(/\D/g, '').slice(0, 14)
   return `${stamp.slice(0, 8)}-${stamp.slice(8)}-${crypto.randomUUID().slice(0, 4)}`
 }
+
+const isStringList = (value: unknown): value is string[] =>
+  Array.isArray(value) && value.every((v) => typeof v === 'string')
 
 const defaultSeed = () => crypto.getRandomValues(new Uint32Array(1))[0]
 
@@ -753,9 +756,14 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
           if (!needsStoryboard(session)) return error('Only a Storyboard edits Frames by hand', 409)
           const index = frameIndexOf(session, p.index)
           if (index instanceof Response) return index
-          const body = await readJson(req) as { body?: unknown } | undefined
+          const body = await readJson(req) as { body?: unknown; shown?: unknown } | undefined
           if (typeof body?.body !== 'string') return error('body is required', 400)
-          return json(await setFrameBody({ store: deps.sessions }, session, index, body.body))
+          if (body.shown !== undefined && !isStringList(body.shown)) {
+            return error('shown must be a list of names', 400)
+          }
+          return json(
+            await setFrameBody({ store: deps.sessions }, session, index, body.body, body.shown),
+          )
         }),
     ],
 
@@ -767,15 +775,16 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
           if (!needsStoryboard(session) || !session.look) {
             return error('Only a planned Storyboard has a Look', 409)
           }
-          const body = await readJson(req) as { subject?: unknown; style?: unknown } | undefined
-          if (typeof body?.subject !== 'string' || typeof body?.style !== 'string') {
-            return error('subject and style are required', 400)
+          const body = await readJson(req) as { people?: unknown; style?: unknown } | undefined
+          const people = body?.people
+          if (
+            !Array.isArray(people) || typeof body?.style !== 'string' ||
+            people.some((p) => typeof p?.name !== 'string' || typeof p?.identity !== 'string')
+          ) {
+            return error('people (each with a name and identity) and style are required', 400)
           }
           return json(
-            await setLook({ store: deps.sessions }, session, {
-              subject: body.subject,
-              style: body.style,
-            }),
+            await setLook({ store: deps.sessions }, session, { people, style: body.style }),
           )
         }),
     ],

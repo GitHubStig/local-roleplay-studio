@@ -28,14 +28,21 @@ const job = (kind: api.JobKind, frameIndex: number, extra: Partial<api.Job> = {}
   ...extra,
 })
 
-const look: api.Look = { subject: 'A tall student.', style: 'Manga ink.' }
+const look: api.Look = {
+  people: [
+    { name: 'Rin', identity: 'Rin, a tall student.' },
+    { name: 'Kai', identity: 'Kai, a short student.' },
+  ],
+  style: 'Manga ink.',
+}
 
 const frame = (index: number, extra: Partial<api.StoryboardFrame> = {}): api.StoryboardFrame => ({
   index,
   beat: `Beat ${index + 1}.`,
   body: `Body ${index + 1}.`,
+  shown: ['Rin'],
   prompt: promptFor(index),
-  promptText: `A tall student. Body ${index + 1}. Manga ink.`,
+  promptText: `Rin, a tall student. Body ${index + 1}. Manga ink.`,
   image: null,
   createdAt: '2026-09-25T00:00:00.000Z',
   ...extra,
@@ -264,17 +271,48 @@ describe('StoryboardView', () => {
     expect(buttonNamed(wrapper, 'Save Frame 1').exists()).toBe(true)
     await wrapper.find('[data-frame-editor]').trigger('submit')
     await flushPromises()
-    expect(api.saveFrameBody).toHaveBeenCalledWith('sb', 0, 'New body.')
+    expect(api.saveFrameBody).toHaveBeenCalledWith('sb', 0, 'New body.', ['Rin'])
     expect(buttonNamed(wrapper, 'Save Frame 1')).toBeUndefined()
 
-    await wrapper.find('[data-look] textarea').setValue('A short student.')
+    await wrapper.find('[data-look] textarea').setValue('Rin, a short student.')
     expect(buttonNamed(wrapper, 'Save Look').exists()).toBe(true)
     await wrapper.find('[data-look]').trigger('submit')
     await flushPromises()
     expect(api.saveLook).toHaveBeenCalledWith('sb', {
-      subject: 'A short student.',
+      people: [
+        { name: 'Rin', identity: 'Rin, a short student.' },
+        { name: 'Kai', identity: 'Kai, a short student.' },
+      ],
       style: 'Manga ink.',
     })
+  })
+
+  it('chooses who a Frame shows, and adds and removes people from the Look', async () => {
+    vi.mocked(api.saveFrameBody).mockResolvedValue(storyboard([frame(0), frame(1), frame(2)]))
+    const { wrapper } = await mountIt()
+    const chips = () => wrapper.findAll('[data-shown] button')
+    expect(chips().map((c) => [c.text(), c.attributes('aria-pressed')])).toEqual([
+      ['Rin', 'true'],
+      ['Kai', 'false'],
+    ])
+    await chips()[1].trigger('click')
+    await chips()[0].trigger('click')
+    expect(buttonNamed(wrapper, 'Save Frame 1').exists()).toBe(true)
+    await wrapper.find('[data-frame-editor]').trigger('submit')
+    expect(api.saveFrameBody).toHaveBeenCalledWith('sb', 0, 'Body 1.', ['Kai'])
+
+    expect(wrapper.findAll('[data-person]')).toHaveLength(2)
+    await wrapper.find('[data-add-person]').trigger('click')
+    expect(wrapper.findAll('[data-person]')).toHaveLength(3)
+    await wrapper.find('[aria-label="Remove Rin"]').trigger('click')
+    expect(wrapper.findAll('[data-person-name]').map((i) => (i.element as HTMLInputElement).value))
+      .toEqual(['Kai', ''])
+  })
+
+  it('says when a Frame shows no one', async () => {
+    vi.mocked(api.getSession).mockResolvedValue(storyboard([frame(0, { shown: [] })]))
+    const { wrapper } = await mountIt()
+    expect(wrapper.find('[data-shown]').text()).toContain('the place alone')
   })
 
   it('shows why a hand edit was refused', async () => {

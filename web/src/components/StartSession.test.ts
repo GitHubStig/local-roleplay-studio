@@ -132,12 +132,12 @@ describe('StartSession', () => {
     ]])
   })
 
-  it('limits a Storyboard to 16 Frames', async () => {
+  it('limits a Storyboard to 32 Frames', async () => {
     const wrapper = await mountIt()
     await wrapper.find('input[value=storyboard]').setValue()
-    await wrapper.find('[data-frame-count]').setValue(17)
+    await wrapper.find('[data-frame-count]').setValue(33)
     expect(startButton(wrapper).disabled).toBe(true)
-    expect(wrapper.text()).toContain('1 to 16 Frames')
+    expect(wrapper.text()).toContain('1 to 32 Frames')
   })
 
   it('starts a Roleplay from a Scenario, with no Frame count', async () => {

@@ -8,10 +8,17 @@ import {
   withRetry,
 } from '../frames.ts'
 import { updateSession } from '../update.ts'
-import { renderPrompt } from '../imagePrompt.ts'
+import { asSentences, joinPrompt, renderPrompt } from '../imagePrompt.ts'
 import { crossedLimit } from '../limits.ts'
 import type { Scenario } from '../scenario.ts'
-import type { FrameTimings, Look, Outcome, StoryboardFrame, StoryboardSession } from '../session.ts'
+import type {
+  FrameTimings,
+  Look,
+  Outcome,
+  Person,
+  StoryboardFrame,
+  StoryboardSession,
+} from '../session.ts'
 import { plainSentences } from '../textModel.ts'
 
 /** Progress of Storyboard work, streamed to the player as it happens. */
@@ -27,14 +34,63 @@ export type StoryboardEvent =
 /** A Brief, Action or edit that crosses a Limit (ADR 0002). */
 export class LimitError extends Error {}
 
-/** A Storyboard Frame's Image Prompt: the Look's subject, the Frame's own sentences, the style. */
-export const composePrompt = (look: Look, body: string) =>
-  [look.subject, body, look.style].map(asSentences).filter(Boolean).join(' ')
+/**
+ * The most people whose identities one Frame's prompt carries: an Image Model keeps two or three
+ * people apart at best, and reads only the start of a long prompt. Others in the picture are
+ * described by its own sentences, as a group.
+ */
+export const MAX_SHOWN = 3
 
-/** Trimmed text that ends a sentence, so parts written apart don't run together. */
-const asSentences = (text: string) => {
-  const t = text.trim()
-  return !t || /[.!?]["')\]]?$/.test(t) ? t : `${t}.`
+const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase()
+
+/**
+ * The Look's names for the people `names` mentions, in the order given, without repeats. A name
+ * not in the Look is dropped; one written longer or shorter ("Cal Reyes" for "Cal") matches by
+ * its words.
+ */
+export function matchShown(people: Person[], names: string[]): string[] {
+  const words = (n: string) => n.toLowerCase().split(/\s+/).filter(Boolean)
+  const matched = names.map((name) =>
+    people.find((p) => sameName(p.name, name)) ??
+      people.find((p) => {
+        const [a, b] = [words(p.name), words(name)]
+        return a.length > 0 && b.length > 0 &&
+          (a.every((w) => b.includes(w)) || b.every((w) => a.includes(w)))
+      })
+  )
+  return [...new Set(matched.filter((p) => p !== undefined).map((p) => p.name))]
+}
+
+/** Who a Frame's prompt describes: the people it shows, up to `MAX_SHOWN`. */
+export function shownPeople(look: Look, shown: string[]): Person[] {
+  return matchShown(look.people, shown)
+    .slice(0, MAX_SHOWN)
+    .map((name) => look.people.find((p) => p.name === name)!)
+}
+
+/**
+ * A Storyboard Frame's Image Prompt: the identities of the people it shows (none for a picture of
+ * the place alone), the Frame's own sentences, then the Look's style.
+ */
+export const composePrompt = (look: Look, body: string, shown: string[]) =>
+  joinPrompt(
+    shownPeople(look, shown).map((p) => asSentences(p.identity)).join(' '),
+    body,
+    look.style,
+  )
+
+/**
+ * The names a Frame shows after the Look's people changed: each kept if still in the Look, or
+ * else, while the Look has as many people as before, taken to be the person in the same place,
+ * renamed; dropped otherwise.
+ */
+export function renameShown(before: Person[], after: Person[], shown: string[]): string[] {
+  const names = shown.map((name) => {
+    if (after.some((p) => p.name === name)) return name
+    const i = before.findIndex((p) => p.name === name)
+    return before.length === after.length && i >= 0 ? after[i].name : undefined
+  })
+  return names.filter((n) => n !== undefined)
 }
 
 /**
@@ -46,15 +102,18 @@ function makeFrame(
   index: number,
   beat: string,
   body: string,
+  shown: string[],
   timings?: FrameTimings,
 ): StoryboardFrame {
-  const prompt = composePrompt(look, body)
+  const names = matchShown(look.people, shown)
+  const prompt = composePrompt(look, body, names)
   const promptText = renderPrompt(prompt)
   const blocked = crossedLimit(promptText)?.message
   return {
     index,
     beat,
     body,
+    shown: names,
     prompt,
     promptText,
     image: null,
@@ -64,9 +123,17 @@ function makeFrame(
   }
 }
 
-/** A Frame after its Look or sentences changed: same image, marked stale if it had one. */
-function recompose(frame: StoryboardFrame, look: Look, body = frame.body): StoryboardFrame {
-  const fresh = makeFrame(look, frame.index, frame.beat, body, frame.timings)
+/**
+ * A Frame after its Look, sentences or who it shows changed: same image, marked stale if it had
+ * one.
+ */
+function recompose(
+  frame: StoryboardFrame,
+  look: Look,
+  body = frame.body,
+  shown = frame.shown,
+): StoryboardFrame {
+  const fresh = makeFrame(look, frame.index, frame.beat, body, shown, frame.timings)
   const changed = fresh.promptText !== frame.promptText
   // The picture, and what was made from it, stay until it's rendered again.
   const { image, upscaled, scene, figure, lito, createdAt } = frame
@@ -83,7 +150,8 @@ function recompose(frame: StoryboardFrame, look: Look, body = frame.body): Story
 }
 
 function checkLook(look: Look): void {
-  const limit = crossedLimit(renderPrompt(`${look.subject} ${look.style}`))?.message
+  const identities = look.people.map((p) => p.identity).join(' ')
+  const limit = crossedLimit(renderPrompt(`${identities} ${look.style}`))?.message
   if (limit) throw new LimitError(`The Look crosses a limit: ${limit}`)
 }
 
@@ -124,13 +192,13 @@ export async function planStoryboard(
             beats = b
             emit({ type: 'beats', beats: b })
           },
-          frame: (index, body) => {
+          frame: (index, { body, shown }) => {
             writtenIn[index] = secondsSince(mark)
             mark = performance.now()
             if (look) {
               emit({
                 type: 'planned-frame',
-                frame: makeFrame(look, index, beats[index] ?? '', body),
+                frame: makeFrame(look, index, beats[index] ?? '', body, shown),
               })
             }
           },
@@ -146,8 +214,8 @@ export async function planStoryboard(
   const planned: StoryboardSession = {
     ...session,
     look: plan.look,
-    frames: plan.bodies.map((body, i) =>
-      makeFrame(plan.look, i, plan.beats[i], body, { text: writtenIn[i] ?? 0, image: null })
+    frames: plan.frames.map(({ body, shown }, i) =>
+      makeFrame(plan.look, i, plan.beats[i], body, shown, { text: writtenIn[i] ?? 0, image: null })
     ),
   }
   await deps.store.save(planned)
@@ -193,12 +261,16 @@ export async function renderStoryboardFrame(
   return rendered
 }
 
-/** Replaces one Frame's own sentences, typed by hand. Refused if the result crosses a Limit. */
+/**
+ * Replaces one Frame's own sentences, typed by hand, and who it shows if given. Refused if the
+ * result crosses a Limit.
+ */
 export async function setFrameBody(
   deps: Pick<FrameDeps, 'store'>,
   session: StoryboardSession,
   index: number,
   body: string,
+  shown?: string[],
 ): Promise<StoryboardSession> {
   const frame = session.frames[index]
   if (!frame || !session.look) throw new Error(`There is no Frame ${index + 1}`)
@@ -206,27 +278,47 @@ export async function setFrameBody(
   if (!text) throw new Error('A Frame needs some text')
   // Onto the Storyboard as it is now: a queued render may have finished meanwhile.
   return await updateSession(deps.store, session.id, 'storyboard', (latest) => {
-    const edited = recompose(latest.frames[index], latest.look!, text)
+    const frame = latest.frames[index]
+    const edited = recompose(frame, latest.look!, text, shown ?? frame.shown)
     if (edited.blocked) throw new LimitError(`That crosses a limit: ${edited.blocked}`)
     return { ...latest, frames: latest.frames.map((f) => f.index === index ? edited : f) }
   })
 }
 
-/** Replaces the Look, typed by hand, and rewrites every Frame's prompt with it. */
+/**
+ * Replaces the Look, typed by hand, and rewrites every Frame's prompt with it. A person renamed
+ * in place stays shown where they were.
+ */
 export async function setLook(
   deps: Pick<FrameDeps, 'store'>,
   session: StoryboardSession,
   look: Look,
 ): Promise<StoryboardSession> {
-  const clean = { subject: plainSentences(look.subject), style: plainSentences(look.style) }
-  if (!clean.subject || !clean.style) throw new Error('The Look needs both a subject and a style')
+  const clean: Look = {
+    people: look.people.map((p) => ({
+      name: oneLine(p.name),
+      identity: plainSentences(p.identity),
+    })),
+    style: plainSentences(look.style),
+  }
+  if (clean.people.some((p) => !p.name || !p.identity)) {
+    throw new Error('Each person in the Look needs a name and an identity')
+  }
+  if (new Set(clean.people.map((p) => p.name.toLowerCase())).size < clean.people.length) {
+    throw new Error('Two people in the Look have the same name')
+  }
+  if (!clean.style) throw new Error('The Look needs a style')
   checkLook(clean)
   return await updateSession(deps.store, session.id, 'storyboard', (latest) => ({
     ...latest,
     look: clean,
-    frames: latest.frames.map((f) => recompose(f, clean)),
+    frames: latest.frames.map((f) =>
+      recompose(f, clean, f.body, renameShown(latest.look!.people, clean.people, f.shown))
+    ),
   }))
 }
+
+const oneLine = (text: string) => text.trim().replace(/\s+/g, ' ')
 
 export interface StoryboardEditResult {
   outcome: Outcome
@@ -265,6 +357,7 @@ export async function editFrameByAction(
           beats: session.frames.map((f) => f.beat),
           index,
           body: frame.body,
+          shown: shownPeople(session.look!, frame.shown).map((p) => p.name),
           action,
         },
         signal,
@@ -284,7 +377,9 @@ export async function editFrameByAction(
   }
   const withEdit = (frames: StoryboardFrame[]) =>
     frames.map((f) => {
-      const next = recompose(f, look, f.index === index ? edit.body : f.body)
+      const next = f.index === index
+        ? recompose(f, look, edit.body, edit.shown)
+        : recompose(f, look, f.body, renameShown(session.look!.people, look.people, f.shown))
       return f.index === index
         ? { ...next, timings: { text: secondsSince(start), image: f.timings?.image ?? null } }
         : next

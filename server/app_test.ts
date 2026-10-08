@@ -670,7 +670,7 @@ Deno.test('POST /api/sessions makes a Storyboard with a Frame count', () =>
     const byDefault =
       await (await call('POST', '/api/sessions', { kind: 'storyboard', brief: 'x' })).json()
     assertEquals(byDefault.frameCount, 8)
-    for (const frameCount of [0, 17, 2.5]) {
+    for (const frameCount of [0, 33, 2.5]) {
       assertEquals(
         (await call('POST', '/api/sessions', { kind: 'storyboard', brief: 'x', frameCount }))
           .status,
@@ -681,7 +681,10 @@ Deno.test('POST /api/sessions makes a Storyboard with a Frame count', () =>
 
 Deno.test('A Storyboard plans, renders, and is edited by hand and by Action over the API', () =>
   withTempDir(async (root) => {
-    const newLook = { subject: 'A tall adult athlete.', style: 'Watercolour.' }
+    const newLook = {
+      people: [{ name: 'Ace', identity: 'Ace, a tall adult athlete.' }],
+      style: 'Watercolour.',
+    }
     const { call } = setup({
       root,
       settings: { textModel: 'x' },
@@ -691,6 +694,7 @@ Deno.test('A Storyboard plans, renders, and is edited by hand and by Action over
           outcome: 'done',
           narration: 'Pose: soaring.',
           body: 'He soars.',
+          shown: ['Ace'],
           look: planOf(3).look,
         }],
       }),
@@ -720,9 +724,18 @@ Deno.test('A Storyboard plans, renders, and is edited by hand and by Action over
       .json()
     assertEquals([byHand.frames[2].body, byHand.frames[2].stale], ['He lands.', true])
     assertEquals((await call('PUT', '/api/sessions/s1/frames/0', { body: 'Nude.' })).status, 422)
+    const nobody = await call('PUT', '/api/sessions/s1/frames/1', { body: 'A hoop.', shown: [] })
+    assertEquals((await nobody.json()).frames[1].shown, [])
+    const badShown = await call('PUT', '/api/sessions/s1/frames/1', {
+      body: 'A hoop.',
+      shown: 'Ace',
+    })
+    assertEquals(badShown.status, 400)
 
     const look = await (await call('PUT', '/api/sessions/s1/look', newLook)).json()
     assertEquals(look.look, newLook)
+    const oldShape = { subject: 'A man.', style: 'Ink.' }
+    assertEquals((await call('PUT', '/api/sessions/s1/look', oldShape)).status, 400)
 
     const edit = await readEvents(
       await call('POST', '/api/sessions/s1/frames/0/edit', { action: 'soar' }),
@@ -746,13 +759,13 @@ Deno.test("Chains and Storyboards refuse each other's routes", () =>
     await call('POST', '/api/sessions', { kind: 'storyboard', brief: 'A dunk.' }) // s2
     assertEquals((await call('POST', '/api/sessions/s1/plan')).status, 409)
     assertEquals(
-      (await call('PUT', '/api/sessions/s1/look', { subject: 'a', style: 'b' })).status,
+      (await call('PUT', '/api/sessions/s1/look', { people: [], style: 'b' })).status,
       409,
     )
     assertEquals((await call('POST', '/api/sessions/s2/frames', { action: 'x' })).status, 409)
     assertEquals((await call('DELETE', '/api/sessions/s2/frames/0')).status, 409)
     assertEquals(
-      (await call('PUT', '/api/sessions/s2/look', { subject: 'a', style: 'b' })).status,
+      (await call('PUT', '/api/sessions/s2/look', { people: [], style: 'b' })).status,
       409,
     )
   }))

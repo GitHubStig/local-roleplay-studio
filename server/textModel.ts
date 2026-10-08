@@ -59,6 +59,7 @@ async function sharedParts() {
     // With the Limits off in Settings, only the adult one.
     limits: await loadPrompt(limitsEnabled() ? 'shared/limits' : 'shared/limits-adults-only'),
     body: BODY_ASPECTS.join(', '),
+    placeAlone: await loadPrompt('shared/place-alone'),
   }
 }
 
@@ -167,11 +168,17 @@ export interface StoryboardPlanRequest {
   frameCount: number
 }
 
+/** One Frame as the Text Model writes it: its seven own sentences, and who it shows. */
+export interface PlannedFrame {
+  body: string
+  /** Names of the Look's people, as written: the engine matches them to the Look. */
+  shown: string[]
+}
+
 export interface StoryboardPlan {
   look: Look
   beats: string[]
-  /** Each Frame's seven own sentences, in order. */
-  bodies: string[]
+  frames: PlannedFrame[]
   thinking?: string
 }
 
@@ -180,7 +187,7 @@ export interface PlanHandlers {
   thinking?: (chunk: string) => void
   look?: (look: Look) => void
   beats?: (beats: string[]) => void
-  frame?: (index: number, body: string) => void
+  frame?: (index: number, frame: PlannedFrame) => void
 }
 
 export interface StoryboardEditRequest {
@@ -190,13 +197,14 @@ export interface StoryboardEditRequest {
   /** The Frame being edited. */
   index: number
   body: string
+  /** Who it shows. */
+  shown: string[]
   action: string
 }
 
-export interface StoryboardEdit {
+export interface StoryboardEdit extends PlannedFrame {
   outcome: Outcome
   narration: string
-  body: string
   /** The Look after the Action: unchanged unless the Action changed the identity or art style. */
   look: Look
   thinking?: string
@@ -216,14 +224,41 @@ export async function storyboardPlanMessages({ scenario, frameCount }: Storyboar
   }
 }
 
-/** A Look: the subject-and-identity and art-style sentences Frames share. */
+/** A Look: each person's identity (sentence 1, for them) and the art style Frames share. */
 export const lookSchema = {
   type: 'object',
   properties: {
-    subject: { type: 'string', description: 'sentence 1, subject and identity' },
+    people: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+          identity: { type: 'string', description: 'subject and identity, starting with the name' },
+        },
+        required: ['name', 'identity'],
+      },
+    },
     style: { type: 'string', description: 'sentence 9, art style and medium' },
   },
-  required: ['subject', 'style'],
+  required: ['people', 'style'],
+}
+
+/**
+ * A Storyboard Frame: its seven sentences, then who it shows. The names come last, as in a
+ * Roleplay picture (`artFrameSchema`): gemma4 stalls on such answers put first.
+ */
+export const storyboardFrameSchema = {
+  type: 'object',
+  properties: {
+    ...frameSchema.properties,
+    shown: {
+      type: 'array',
+      items: { type: 'string' },
+      description: 'names of the people in the picture, most prominent first; empty for none',
+    },
+  },
+  required: [...frameSchema.required, 'shown'],
 }
 
 export function storyboardPlanSchema(frameCount: number) {
@@ -238,7 +273,12 @@ export function storyboardPlanSchema(frameCount: number) {
         minItems: frameCount,
         maxItems: frameCount,
       },
-      frames: { type: 'array', items: frameSchema, minItems: frameCount, maxItems: frameCount },
+      frames: {
+        type: 'array',
+        items: storyboardFrameSchema,
+        minItems: frameCount,
+        maxItems: frameCount,
+      },
     },
     required: ['look', 'beats', 'frames'],
   }
@@ -274,16 +314,28 @@ const LABEL = new RegExp(
 export const plainSentences = (text: string) =>
   oneParagraph(text.replace(/([.!?])-\s/g, '$1 ').replace(LABEL, ' '))
 
+/** A Look from the reply. A person without a name or identity, or named twice, is left out. */
 export function parseLook(value: unknown): Look {
-  const v = value as Partial<Look> | null
-  if (
-    typeof v?.subject !== 'string' || !v.subject.trim() || typeof v.style !== 'string' ||
-    !v.style.trim()
-  ) {
+  const v = value as { people?: unknown; style?: unknown } | null
+  if (typeof v?.style !== 'string' || !v.style.trim() || !Array.isArray(v.people)) {
     throw new Error('Text Model reply has no complete Look')
   }
-  return { subject: oneParagraph(v.subject), style: oneParagraph(v.style) }
+  const people = v.people.flatMap((p) => {
+    const name = typeof p?.name === 'string' ? oneParagraph(p.name) : ''
+    const identity = typeof p?.identity === 'string' ? oneParagraph(p.identity) : ''
+    return name && identity ? [{ name, identity }] : []
+  }).filter((p, i, all) =>
+    all.findIndex((q) => q.name.toLowerCase() === p.name.toLowerCase()) === i
+  )
+  return { people, style: oneParagraph(v.style) }
 }
+
+/**
+ * A field a model filled with "N/A", or only with "No people.", for want of anything to say about
+ * a picture with no one in it: Gemma 4 26B did both in a 16-Frame Storyboard on 2026-10-08.
+ */
+const NOT_APPLICABLE =
+  /^\W*(?:(?:n\/a|none|not applicable)\b|no (?:people|one|person|humans?|figures?)(?: (?:are |is )?(?:visible|present|shown|in (?:the )?(?:frame|picture|shot)))?\W*$)/i
 
 /**
  * A Frame's seven sentences from the reply, joined into one paragraph. Accepts the seven fields,
@@ -298,7 +350,20 @@ export function parseFrameBody(value: unknown): string {
   if (missing.length > 0) {
     throw new Error(`A Frame in the reply is missing: ${missing.map(([key]) => key).join(', ')}`)
   }
-  return BODY_FIELDS.map(([key]) => asSentence(String(v[key]))).join(' ')
+  return BODY_FIELDS
+    .map(([key]) => String(v[key]))
+    .filter((text) => !NOT_APPLICABLE.test(text))
+    .map(asSentence)
+    .join(' ')
+}
+
+/** A Storyboard Frame from the reply: its sentences, and who it shows (no one if it didn't say). */
+export function parsePlannedFrame(value: unknown): PlannedFrame {
+  const shown = (value as { shown?: unknown } | null)?.shown
+  return {
+    body: parseFrameBody(value),
+    shown: Array.isArray(shown) ? shown.filter((n) => typeof n === 'string' && n.trim()) : [],
+  }
 }
 
 /** Checks a Storyboard plan; throws with a reason if it can't be used. */
@@ -319,8 +384,14 @@ export function parseStoryboardPlan(content: string, frameCount: number): Storyb
   if (!Array.isArray(out.frames) || out.frames.length !== frameCount) {
     throw new Error(`Text Model reply doesn't have ${frameCount} Frames`)
   }
-  return { look, beats: beats.map(oneParagraph), bodies: out.frames.map(parseFrameBody) }
+  return { look, beats: beats.map(asBeat), frames: out.frames.map(parsePlannedFrame) }
 }
+
+/**
+ * A Beat without the number a model puts in front ("01: …", "Frame 12: …"), as Gemma 4 26B did in
+ * every Beat of two plans on 2026-10-08: the Frames list numbers them already.
+ */
+const asBeat = (text: string) => oneParagraph(text).replace(/^(?:frame\s*)?\d+\s*[:.)-]\s*/i, '')
 
 export async function storyboardEditMessages(req: StoryboardEditRequest) {
   const beats = req.beats.map((b, i) => `${i === req.index ? '▶' : ' '} ${i + 1}. ${b}`).join('\n')
@@ -335,6 +406,7 @@ export async function storyboardEditMessages(req: StoryboardEditRequest) {
       beats,
       number: req.index + 1,
       body: req.body,
+      shown: req.shown.join(', ') || 'no one',
       action: req.action,
     }),
   }
@@ -346,7 +418,7 @@ export function storyboardEditSchema() {
     properties: {
       outcome: { type: 'string', enum: OUTCOMES },
       narration: { type: 'string' },
-      frame: frameSchema,
+      frame: storyboardFrameSchema,
       look: lookSchema,
     },
     required: ['outcome', 'narration', 'frame', 'look'],
@@ -368,7 +440,7 @@ export function parseStoryboardEdit(content: string): StoryboardEdit {
   return {
     outcome: out.outcome as Outcome,
     narration: out.narration.trim(),
-    body: parseFrameBody(out.frame),
+    ...parsePlannedFrame(out.frame),
     look: parseLook(out.look),
   }
 }
@@ -386,8 +458,17 @@ const TIME_LIMIT_MS = {
   perFrame: 45_000,
 }
 
-/** A Storyboard plan's token cap: room for the Look and Beats, then each Frame. */
-export const planTokens = (frameCount: number) => 800 + frameCount * MAX_TOKENS.perFrame
+/**
+ * How much of a Storyboard plan may be written before its next part (the Look, the Beats, a Frame)
+ * is complete, in characters. A Frame takes about 900, and the Beats of 32 Frames about 2,500; a
+ * model that goes past this has run away (repeating itself, or padding with whitespace), as Gemma
+ * 4 26B did once in Frame 1 of a 16-Frame plan on 2026-10-08. Stopped here, the plan is retried in
+ * well under a minute, where waiting for its token cap took minutes.
+ */
+export const RUNAWAY_CHARS = 8000
+
+/** A plan's token cap: room for the Look (a sentence per person) and Beats, then each Frame. */
+export const planTokens = (frameCount: number) => 1200 + frameCount * MAX_TOKENS.perFrame
 
 export interface TextModelOptions {
   /** Overrides the time limits, in ms (for tests). */
@@ -447,13 +528,29 @@ export function chatTextModel(chat: Chat, opts: TextModelOptions = {}): TextMode
     signal: AbortSignal,
     on: PlanHandlers = {},
   ): Promise<StoryboardPlan> {
+    // What's been written since the last part of the plan was complete, and which part is next.
+    let since = 0
+    let tail = ''
+    let writing = 'the Look'
+    const done = (next: string) => {
+      since = 0
+      writing = next
+    }
     const reader = new JsonStreamReader({
       value: (key, value) => {
-        if (key === 'look') on.look?.(parseLook(value))
-        if (key === 'beats' && Array.isArray(value)) on.beats?.(value.map(String))
+        if (key === 'look') {
+          on.look?.(parseLook(value))
+          done('the Beats')
+        }
+        if (key === 'beats' && Array.isArray(value)) {
+          on.beats?.(value.map((b) => asBeat(String(b))))
+          done('Frame 1')
+        }
       },
       element: (key, index, value) => {
-        if (key === 'frames') on.frame?.(index, parseFrameBody(value))
+        if (key !== 'frames') return
+        on.frame?.(index, parsePlannedFrame(value))
+        done(`Frame ${index + 2}`)
       },
     })
     const { content, thinking } = await streamChat(
@@ -462,7 +559,15 @@ export function chatTextModel(chat: Chat, opts: TextModelOptions = {}): TextMode
       planTokens(req.frameCount),
       signal,
       on.thinking,
-      (chunk) => reader.feed(chunk),
+      (chunk) => {
+        reader.feed(chunk)
+        since += chunk.length
+        tail = (tail + chunk).slice(-200)
+        if (since > RUNAWAY_CHARS) {
+          console.warn(`A Storyboard plan ran on; its last words: ${JSON.stringify(tail)}`)
+          throw new Error(`The Text Model ran on while writing ${writing}, and was stopped`)
+        }
+      },
     )
     return withThinking(parseStoryboardPlan(content, req.frameCount), thinking)
   }

@@ -289,8 +289,10 @@ export interface ChainFrame extends Frame3d {
 export interface StoryboardFrame extends Frame3d {
   /** What happens in this Frame. */
   beat: string
-  /** Its own seven sentences; the prompt adds the Look's subject before and style after. */
+  /** Its own seven sentences; the prompt adds who it shows before and the Look's style after. */
   body: string
+  /** Names of the Look's people it shows, most prominent first; none for the place alone. */
+  shown: string[]
   prompt: ImagePrompt
   promptText: string
   /** The prompt changed since the image was rendered. */
@@ -301,9 +303,18 @@ export interface StoryboardFrame extends Frame3d {
   createdAt: string
 }
 
-/** The identity and art style every Storyboard Frame shares. */
+/** One person in a Storyboard's Look: Frames that show them use their identity. */
+export interface Person {
+  name: string
+  identity: string
+}
+
+/** The most people one Storyboard Frame's prompt describes (`MAX_SHOWN` on the server). */
+export const MAX_SHOWN = 3
+
+/** The identities and art style Storyboard Frames share: each takes who it shows. */
 export interface Look {
-  subject: string
+  people: Person[]
   style: string
 }
 
@@ -446,9 +457,9 @@ export const put = <T>(path: string, body: unknown) =>
     body: JSON.stringify(body),
   })
 
-/** Replaces a Storyboard Frame's own sentences, typed by hand. */
-export const saveFrameBody = (id: string, index: number, body: string) =>
-  put<StoryboardSession>(`/api/sessions/${id}/frames/${index}`, { body })
+/** Replaces a Storyboard Frame's own sentences, typed by hand, and who it shows. */
+export const saveFrameBody = (id: string, index: number, body: string, shown: string[]) =>
+  put<StoryboardSession>(`/api/sessions/${id}/frames/${index}`, { body, shown })
 
 /** Replaces a Storyboard's Look; every Frame's prompt follows. */
 export const saveLook = (id: string, look: Look) =>

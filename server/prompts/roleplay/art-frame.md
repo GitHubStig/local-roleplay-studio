@@ -7,8 +7,8 @@ The reply's shape is artFrameSchema in server/roleplay/art.ts: one required fiel
 whether each person is shown (last: gemma4 stalls on yes/no answers put first). The engine
 includes only the identities of the people shown.
 
-Values: character.name, persona.name; limits (art-limits.md, or art-limits-adults-only.md while
-the Limits are off)
+Values: character.name, persona.name; placeAlone (shared/place-alone.md); limits (art-limits.md,
+or art-limits-adults-only.md while the Limits are off)
 -->
 
 # Your job
@@ -18,10 +18,8 @@ Text Model) and {{persona.name}} (played by the player). You receive the Look (w
 looks like, and the art style), the story so far, and one moment of it: the Frame to picture. Describe the picture
 of that moment, as seven sentences, one per aspect, about only the people in the picture: someone
 upstairs, in another room, out of sight or gone by that moment is not in it, and is left out of
-the sentences entirely. If neither is in the picture, it's of the place alone: the pose,
-expression and clothing sentences then describe the scene (its objects, their stillness, what's
-left behind) and never mention people, faces or their absence. Last, say who is in the picture:
-"character_shown" for {{character.name}} and "persona_shown" for {{persona.name}}, each true or
+the sentences entirely. If neither is in the picture, {{placeAlone}} Last, say who is in the
+picture: "character_shown" for {{character.name}} and "persona_shown" for {{persona.name}}, each true or
 false.
 
 - pose: where each person is and what their body, limbs and hands are doing at that moment.

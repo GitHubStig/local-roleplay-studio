@@ -1,4 +1,4 @@
-import type { Look, SessionBase } from '../session.ts'
+import type { SessionBase } from '../session.ts'
 import type { Delivery } from '../voice/voice.ts'
 import type { Scene } from '../3d/scene.ts'
 import type { Figure } from '../3d/figure.ts'
@@ -163,7 +163,7 @@ export interface RoleplaySession extends SessionBase {
    * A Look with a single `subject` sentence is from before pictures chose who is shown: the next
    * picture replaces it.
    */
-  look?: RoleplayLook | Look | null
+  look?: RoleplayLook | { subject: string; style: string } | null
   /** For debugging: seconds the Look took to write, the model that wrote it, and its reasoning. */
   lookTimings?: { text: number }
   lookModel?: string

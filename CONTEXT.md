@@ -49,7 +49,7 @@ One line of a Storyboard's plan: what happens in one Frame, before it is written
 _Avoid_: Scene, step, moment
 
 **Look**:
-The identity and art style a Storyboard's Frames share, written once and used word for word in every Frame's Image Prompt.
+The identities and art style a Storyboard's Frames share, written once and used word for word: an identity for each person the Brief depicts, and one art style. Each Frame's Image Prompt has the identities of the people it shows (none for a picture of the place alone), then the style.
 _Avoid_: Style guide, theme, bible
 
 **Cast**:

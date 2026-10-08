@@ -27,3 +27,17 @@ export type ImagePrompt = string
 export function renderPrompt(prompt: ImagePrompt): string {
   return `adult, ${prompt}`
 }
+
+/**
+ * An Image Prompt from its parts written apart (Storyboard and Roleplay pictures): the identities
+ * of who it shows, the picture's own sentences, then the art style. Each part ends as a sentence,
+ * so they never run together; an empty one (a picture of no one) is left out.
+ */
+export const joinPrompt = (subject: string, body: string, style: string): ImagePrompt =>
+  [subject, body, style].map(asSentences).filter(Boolean).join(' ')
+
+/** Trimmed text that ends a sentence. */
+export const asSentences = (text: string) => {
+  const t = text.trim()
+  return !t || /[.!?]["')\]]?$/.test(t) ? t : `${t}.`
+}

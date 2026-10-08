@@ -1,9 +1,14 @@
-import { assertEquals, assertStringIncludes, assertThrows } from '@std/assert'
+import { assertEquals, assertRejects, assertStringIncludes, assertThrows } from '@std/assert'
+import type { Chat } from './text/chat.ts'
 import {
+  chatTextModel,
   mightNameAPerson,
   outputSchema,
   parseFrameBody,
   parseFrameText,
+  parseLook,
+  parsePlannedFrame,
+  parseStoryboardPlan,
   plainSentences,
   realPersonQuestion,
   storyboardPlanSchema,
@@ -143,7 +148,57 @@ Deno.test('parseFrameBody joins the seven fields into one paragraph, in order', 
   assertThrows(() => parseFrameBody({ pose: 'x' }), Error, 'missing: expression, camera')
 })
 
-Deno.test('storyboardPlanSchema requires all seven fields for every Frame', () => {
+Deno.test('parsePlannedFrame leaves out "N/A" sentences, and reads who the Frame shows', () => {
+  const frame = {
+    pose: 'Leaves blow across the square',
+    expression: 'N/A (Environmental focus).',
+    camera: 'Wide shot',
+    clothing: 'No people.',
+    environment: 'A town square',
+    lighting: 'Street lamps',
+    color: 'Green and orange',
+    shown: ['Ana', 3, ' '],
+  }
+  assertEquals(
+    parsePlannedFrame({ ...frame, expression: 'n/a', clothing: 'No one is visible' }).body,
+    'Leaves blow across the square. Wide shot. A town square. Street lamps. Green and orange.',
+  )
+  assertEquals(
+    parsePlannedFrame({ ...frame, clothing: 'No people, only torn fabric' }).body.includes('torn'),
+    true,
+  )
+  assertEquals(parsePlannedFrame(frame), {
+    body:
+      'Leaves blow across the square. Wide shot. A town square. Street lamps. Green and orange.',
+    shown: ['Ana'],
+  })
+  assertEquals(parsePlannedFrame({ ...frame, shown: undefined }).shown, [])
+})
+
+Deno.test('parseLook keeps each named person once, and needs a style', () => {
+  assertEquals(
+    parseLook({
+      people: [
+        { name: 'Ana', identity: 'Ana, a tall woman.' },
+        { name: 'ana', identity: 'Ana again.' },
+        { name: 'Ben', identity: '' },
+        { name: 'Cal', identity: 'Cal, a\nbig man.' },
+      ],
+      style: 'Film still.',
+    }),
+    {
+      people: [
+        { name: 'Ana', identity: 'Ana, a tall woman.' },
+        { name: 'Cal', identity: 'Cal, a big man.' },
+      ],
+      style: 'Film still.',
+    },
+  )
+  assertEquals(parseLook({ people: [], style: 'Ink.' }), { people: [], style: 'Ink.' })
+  assertThrows(() => parseLook({ subject: 'A man.', style: 'Ink.' }), Error, 'no complete Look')
+})
+
+Deno.test('storyboardPlanSchema requires all seven fields, then who is shown, for every Frame', () => {
   const schema = storyboardPlanSchema(4)
   assertEquals(schema.properties.frames.minItems, 4)
   assertEquals(schema.properties.frames.items.required, [
@@ -154,5 +209,64 @@ Deno.test('storyboardPlanSchema requires all seven fields for every Frame', () =
     'environment',
     'lighting',
     'color',
+    'shown',
   ])
+})
+
+Deno.test('parseStoryboardPlan drops the numbers a model puts before its Beats', () => {
+  const frame = {
+    pose: 'a',
+    expression: 'b',
+    camera: 'c',
+    clothing: 'd',
+    environment: 'e',
+    lighting: 'f',
+    color: 'g',
+    shown: [],
+  }
+  const plan = parseStoryboardPlan(
+    JSON.stringify({
+      look: { people: [], style: 'Ink.' },
+      beats: ['01: Rain falls.', 'Frame 12: A door opens.', '3 cats sleep.'],
+      frames: [frame, frame, frame],
+    }),
+    3,
+  )
+  assertEquals(plan.beats, ['Rain falls.', 'A door opens.', '3 cats sleep.'])
+})
+
+/** A Chat that streams `content` in small pieces, as a backend does. */
+const streamingChat = (content: string): Chat => ({
+  model: 'm',
+  thinks: false,
+  stream: (call) => {
+    for (let i = 0; i < content.length; i += 50) call.onContent?.(content.slice(i, i + 50))
+    return Promise.resolve({ content, thinking: '' })
+  },
+})
+
+Deno.test('a Storyboard plan that runs on inside one part is stopped there', async () => {
+  const frame = JSON.stringify({
+    pose: 'a',
+    expression: 'b',
+    camera: 'c',
+    clothing: 'd',
+    environment: 'e',
+    lighting: 'f',
+    color: 'g',
+    shown: [],
+  })
+  const start = '{"look": {"people": [], "style": "Ink."}, "beats": ["One", "Two"], "frames": ['
+  const req = { scenario: testScenario, frameCount: 2 }
+  const signal = new AbortController().signal
+  const plan = await chatTextModel(streamingChat(`${start}${frame}, ${frame}]}`))
+    .planStoryboard(req, signal)
+  assertEquals(plan.beats, ['One', 'Two'])
+
+  const runaway = `${start}${frame}, {"pose": "a${' '.repeat(10_000)}`
+  await assertRejects(
+    () => chatTextModel(streamingChat(runaway)).planStoryboard(req, signal),
+    Error,
+    'ran on while writing Frame 2',
+  )
 })

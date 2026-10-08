@@ -78,7 +78,7 @@ export function scriptedTextModel(
       const plan = await next(scripts.plans, 'plan')
       on.look?.(plan.look)
       on.beats?.(plan.beats)
-      plan.bodies.forEach((body, i) => on.frame?.(i, body))
+      plan.frames.forEach((frame, i) => on.frame?.(i, frame))
       return plan
     },
     editStoryboardFrame(_req: unknown, signal: AbortSignal) {
@@ -92,12 +92,15 @@ export function scriptedTextModel(
 
 /** A scripted Storyboard plan with `n` Frames. */
 export const planOf = (n: number, extra: Partial<StoryboardPlan> = {}): StoryboardPlan => ({
-  look: { subject: 'A tall adult athlete.', style: 'A pencil sketch.' },
+  look: {
+    people: [{ name: 'Ace', identity: 'Ace, a tall adult athlete.' }],
+    style: 'A pencil sketch.',
+  },
   beats: Array.from({ length: n }, (_, i) => `Beat ${i + 1}`),
-  bodies: Array.from(
-    { length: n },
-    (_, i) => `Pose ${i + 1}. Calm. Wide shot. Kit. Court. Light. Grey.`,
-  ),
+  frames: Array.from({ length: n }, (_, i) => ({
+    body: `Pose ${i + 1}. Calm. Wide shot. Kit. Court. Light. Grey.`,
+    shown: ['Ace'],
+  })),
   ...extra,
 })
 
