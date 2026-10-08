@@ -1,6 +1,11 @@
 import { assertEquals } from '@std/assert'
 import { join, toFileUrl } from '@std/path'
-import { DEFAULT_SETTINGS, fileSettingsStore, validateSettings } from './settings.ts'
+import {
+  DEFAULT_SETTINGS,
+  fileSettingsStore,
+  machineDefaults,
+  validateSettings,
+} from './settings.ts'
 
 async function withTempDir(fn: (dir: string) => Promise<void>) {
   const dir = await Deno.makeTempDir()
@@ -134,3 +139,26 @@ Deno.test('validateSettings turns the step cache on at 0.4 and fast mode off unl
   assertEquals(validateSettings({ ...DEFAULT_SETTINGS, stepCache: 0.9 }).ok, false)
   assertEquals(validateSettings({ ...DEFAULT_SETTINGS, fast: 'yes' }).ok, false)
 })
+
+Deno.test('Where mflux and the voice service cannot run, Settings default to ComfyUI', () => {
+  const pc = machineDefaults({ mflux: false, voiceService: false })
+  assertEquals(
+    [pc.imageBackend, pc.upscaleBackend, pc.voiceBackend, pc.imageModel],
+    ['comfyui', 'comfyui', 'comfyui', 'qwen-image-2.1'],
+  )
+  assertEquals(validateSettings(pc).ok, true)
+  assertEquals(machineDefaults({ mflux: true, voiceService: true }), DEFAULT_SETTINGS)
+})
+
+Deno.test("An older file's missing backends: Upscale follows its pictures, voices this machine", () =>
+  withTempDir(async (dir) => {
+    const path = join(dir, 'settings.json')
+    // Pictures on ComfyUI, from before Upscale and voices had backends of their own.
+    const { upscaleBackend: _u, voiceBackend: _v, ...older } = DEFAULT_SETTINGS
+    await Deno.writeTextFile(path, JSON.stringify({ ...older, imageBackend: 'comfyui' }))
+    const pc = fileSettingsStore(path, machineDefaults({ mflux: false, voiceService: false }))
+    const onPc = await pc.load()
+    assertEquals([onPc.upscaleBackend, onPc.voiceBackend], ['comfyui', 'comfyui'])
+    const mac = await fileSettingsStore(path).load()
+    assertEquals([mac.upscaleBackend, mac.voiceBackend], ['comfyui', 'mlx-audio'])
+  }))

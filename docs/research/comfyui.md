@@ -377,7 +377,7 @@ seedvr2-7b --resolution 2048`) took the same: **64 s** for 832×1216 → 2048×2
 (one SeedVR2 step) at ~15 s; the rest is loading the 7B's 16.5 GB of fp16 weights, which a new
 process does every time, and the tiled VAE. It grows with the output: 6.1 megapixels against 4.2.
 
-## Voices through ComfyUI? (researched 2026-10-08, on the Windows PC; nothing installed yet)
+## Voices through ComfyUI (2026-10-08, on the Windows PC)
 
 The voice service is mlx-audio, Mac only. Whether ComfyUI could speak the lines on Windows
 instead, as it already makes the pictures there, so the PC needs no second Python service:
@@ -496,8 +496,25 @@ TTS-Audio-Suite 5.9.2 on ComfyUI 0.39.2 (torch 2.12.1+cu130), installed through 
   from `/history`, which holds the line's text. The trial's `SaveAudio` left 49 clips in `output`
   and the clip in `input` (deleted). The pack keeps only small settings caches of its own
   (`.cache\install_state.json`, `voice_discovery.json`), no audio or text.
-- **Not done yet:** cloning lines from a voice designed on the PC; the Text Model loading after a
-  voice (Ollama wasn't running); listening to the clips (they're in the session scratchpad, not the
-  repo).
 - **So far:** it works and holds the voice, but a Roleplay's line of 2–3 s would take ~10 s, or
-  ~18 s after a Reply (Higgs reloaded), against 2–3 s on the Mac.
+  ~18 s after a Reply (Higgs reloaded), against 2–3 s on the Mac. Built as a Voice backend: ADR 0010.
+
+### Through the app (2026-10-08, the Windows PC)
+
+The ComfyUI Voice backend (`server/voice/comfyui/`), with "Speak with" set to ComfyUI, Ollama 0.40.0
+with Gemma 4 12B Heretic (Q4_K_M) as the Text Model, ComfyUI 0.39.2 with TTS Audio Suite 5.9.2 (and
+the #366 fix):
+
+- **The engine alone** (a script calling `design` then `speak`): a voice designed from a gravelly
+  description in 72.7 s (69 Hz) and a line cloned from it, slow with a sigh, in 30.8 s (76 Hz), each
+  with its model's load, as ComfyUI unloads after every job.
+- **A tavern Roleplay** (`scenarios/tavern.md`; Cast 20 s, opening Frame 5 s), then Listen on Frame
+  0: the voice described by the Text Model (with it loaded, 9.3 GB of VRAM in use), then **Ollama
+  unloaded** (1.4 GB) and the voice designed (VRAM to ~5.8 GB), the line directed (Ollama back,
+  9.3 GB), **Ollama unloaded again** and the line spoken by Higgs alone (9.9 GB at its peak):
+  131 s from the click to the line for a Character's first line, 32.4 s of it the line itself
+  (with Higgs's load). The app served `speech-0-….flac` as `audio/flac` (138 KB).
+- **Left behind in ComfyUI:** nothing but empty files in its temp folder (the clips and the uploaded
+  reference, blanked); nothing in output or input; its history empty; VRAM back to 1.2 GB.
+- **Not done:** listening to the lines in the browser; a Mac's Session opened here or the reverse
+  (a FLAC reference clip given to the voice service: mlx-audio's loader should read it, untested).

@@ -9,6 +9,7 @@ import { type Upscaler, UPSCALERS } from './images/mflux/models.ts'
 import { ART_STYLES, type ArtStyle } from './roleplay/art.ts'
 import { type Feature, FEATURES } from './features.ts'
 import { TEXT_BACKENDS, type TextBackendKind } from './text/backend.ts'
+import { VOICE_BACKENDS, type VoiceBackendKind } from './voice/voice.ts'
 
 export interface SizePreset {
   id: string
@@ -70,6 +71,11 @@ export interface Settings {
    */
   upscaleBackend: ImageBackendKind
   /**
+   * Where voices are made: the voice service (mlx-audio, a Mac), or the ComfyUI at `imageBaseUrl`
+   * with TTS Audio Suite's nodes. Read when a voice is made, so it applies mid-Session too.
+   */
+  voiceBackend: VoiceBackendKind
+  /**
    * The model that pictures Roleplay Frames (the Art Agent); '' for the Session's Text Model.
    * Read when a picture is made, so it applies to running Sessions too.
    */
@@ -108,10 +114,29 @@ export const DEFAULT_SETTINGS: Settings = {
   seed: 42,
   upscaler: UPSCALERS[0].id,
   upscaleBackend: 'mflux',
+  voiceBackend: 'mlx-audio',
   artModel: '',
   artStyle: 'prose',
   features: Object.fromEntries(FEATURES.map((f) => [f, true])) as Record<Feature, boolean>,
   limits: true,
+}
+
+/**
+ * The defaults on this machine: ComfyUI for pictures, Upscale and voices where mflux or the voice
+ * service can't run (a PC), so a fresh install there starts on what it has.
+ */
+export function machineDefaults(here: { mflux: boolean; voiceService: boolean }): Settings {
+  const imageBackend: ImageBackendKind = here.mflux ? 'mflux' : 'comfyui'
+  const models = imageModelsOf(imageBackend)
+  const model = models.find((m) => m.id === DEFAULT_SETTINGS.imageModel) ?? models[0]
+  return {
+    ...DEFAULT_SETTINGS,
+    imageBackend,
+    imageModel: model.id,
+    steps: model.defaultSteps,
+    upscaleBackend: imageBackend,
+    voiceBackend: here.voiceService ? 'mlx-audio' : 'comfyui',
+  }
 }
 
 const MAX_SEED = 2 ** 32 - 1
@@ -120,7 +145,14 @@ export type ValidationResult =
   | { ok: true; settings: Settings }
   | { ok: false; issues: string[] }
 
-export function validateSettings(input: unknown): ValidationResult {
+/**
+ * Checks a Settings object, filling in what an older file lacks: `imageBackend` and `voiceBackend`
+ * from `defaults` (this machine's), `upscaleBackend` from `imageBackend`.
+ */
+export function validateSettings(
+  input: unknown,
+  defaults: Settings = DEFAULT_SETTINGS,
+): ValidationResult {
   if (typeof input !== 'object' || input === null || Array.isArray(input)) {
     return { ok: false, issues: ['settings must be an object'] }
   }
@@ -141,7 +173,7 @@ export function validateSettings(input: unknown): ValidationResult {
   if (s.thinking !== undefined && typeof s.thinking !== 'boolean') {
     issues.push('thinking must be true or false')
   }
-  const imageBackend = (s.imageBackend ?? 'mflux') as ImageBackendKind
+  const imageBackend = (s.imageBackend ?? defaults.imageBackend) as ImageBackendKind
   if (!IMAGE_BACKENDS.includes(imageBackend)) {
     issues.push(`imageBackend must be one of: ${IMAGE_BACKENDS.join(', ')}`)
   } else if (typeof s.imageModel !== 'string' || !findImageModel(imageBackend, s.imageModel)) {
@@ -202,6 +234,11 @@ export function validateSettings(input: unknown): ValidationResult {
   ) {
     issues.push(`upscaleBackend must be one of: ${IMAGE_BACKENDS.join(', ')}`)
   }
+  if (
+    s.voiceBackend !== undefined && !VOICE_BACKENDS.includes(s.voiceBackend as VoiceBackendKind)
+  ) {
+    issues.push(`voiceBackend must be one of: ${VOICE_BACKENDS.join(', ')}`)
+  }
 
   if (issues.length > 0) return { ok: false, issues }
   return {
@@ -223,6 +260,7 @@ export function validateSettings(input: unknown): ValidationResult {
       seed: s.seed as number,
       upscaler: (s.upscaler as Upscaler | undefined) ?? DEFAULT_SETTINGS.upscaler,
       upscaleBackend: (s.upscaleBackend as ImageBackendKind | undefined) ?? imageBackend,
+      voiceBackend: (s.voiceBackend as VoiceBackendKind | undefined) ?? defaults.voiceBackend,
       artModel: (s.artModel as string | undefined) ?? '',
       artStyle: (s.artStyle as ArtStyle | undefined) ?? 'prose',
       // One not mentioned (an older file, or a Feature added since) is on.
@@ -244,10 +282,14 @@ export interface SettingsStore {
 }
 
 /**
- * Stores Settings as JSON at `path`, falling back to defaults when missing or invalid. The API key
- * is in the same file (gitignored), as `textApiKey`.
+ * Stores Settings as JSON at `path`, falling back to `defaults` (this machine's: `machineDefaults`)
+ * when missing or invalid, and filling in from them what an older file lacks. The API key is in the
+ * same file (gitignored), as `textApiKey`.
  */
-export function fileSettingsStore(path: string | URL): SettingsStore {
+export function fileSettingsStore(
+  path: string | URL,
+  defaults: Settings = DEFAULT_SETTINGS,
+): SettingsStore {
   const file = path instanceof URL ? fromFileUrl(path) : path
   async function readRaw(): Promise<Record<string, unknown>> {
     try {
@@ -268,7 +310,7 @@ export function fileSettingsStore(path: string | URL): SettingsStore {
       try {
         raw = await Deno.readTextFile(path)
       } catch (err) {
-        if (err instanceof Deno.errors.NotFound) return { ...DEFAULT_SETTINGS }
+        if (err instanceof Deno.errors.NotFound) return { ...defaults }
         throw err
       }
       let parsed: unknown
@@ -276,12 +318,15 @@ export function fileSettingsStore(path: string | URL): SettingsStore {
         parsed = JSON.parse(raw)
       } catch {
         console.warn(`Ignoring unreadable settings file ${path}; using defaults`)
-        return { ...DEFAULT_SETTINGS }
+        return { ...defaults }
       }
-      const result = validateSettings({ ...DEFAULT_SETTINGS, ...(parsed as object) })
+      // The backends an older file lacks aren't filled in here: Upscale follows the file's Image
+      // backend, and voices this machine's default (`validateSettings`).
+      const { imageBackend: _i, upscaleBackend: _u, voiceBackend: _v, ...filled } = defaults
+      const result = validateSettings({ ...filled, ...(parsed as object) }, defaults)
       if (!result.ok) {
         console.warn(`Ignoring invalid settings file ${path}: ${result.issues.join('; ')}`)
-        return { ...DEFAULT_SETTINGS }
+        return { ...defaults }
       }
       return result.settings
     },

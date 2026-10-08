@@ -1,0 +1,32 @@
+{
+  "_note": "A voice designed from a description: Qwen3-TTS VoiceDesign (TTS Audio Suite), speaking $text in the voice $description describes. It runs in the suite's isolated runtime (Qwen3-TTS doesn't run on ComfyUI's Transformers 5). PreviewAudio leaves the clip in ComfyUI's temp folder, not its output. Sampling: the node's defaults.",
+  "engine": {
+    "class_type": "Qwen3TTSEngineNode",
+    "inputs": {
+      "model_variant": "Voice Design - 1.7B VoiceDesign",
+      "device": "auto",
+      "voice_preset": "None (Zero-shot / Custom)",
+      "language": "English",
+      "instruct": "",
+      "top_k": 50,
+      "top_p": 1.0,
+      "temperature": 0.9,
+      "repetition_penalty": 1.05,
+      "max_new_tokens": 2048,
+      "runtime_mode": "⚠️ Shared Runtime"
+    }
+  },
+  "design": {
+    "class_type": "UnifiedVoiceDesignerNode",
+    "inputs": {
+      "TTS_engine": ["engine", 0],
+      "voice_instruction": "$description",
+      "reference_text": "$text",
+      "seed": "$seed"
+    }
+  },
+  "out": {
+    "class_type": "PreviewAudio",
+    "inputs": { "audio": ["design", 1] }
+  }
+}

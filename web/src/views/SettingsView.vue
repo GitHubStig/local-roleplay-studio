@@ -16,6 +16,7 @@ import {
   type SettingsOptions,
   type TextBackend,
 } from '../api'
+import ComfyStatusLine from '../components/ComfyStatusLine.vue'
 import FeatureSwitch from '../components/FeatureSwitch.vue'
 import { useFeatures } from '../composables/useFeatures'
 
@@ -130,22 +131,25 @@ function onImageBackendChange() {
   form.value.imageModel = imageModels.value[0]?.id ?? ''
   onImageModelChange()
 }
-/** Pictures or Upscale run on ComfyUI, so its address matters. */
+/** Pictures, Upscale or voices run on ComfyUI, so its address matters. */
 const usesComfyUI = computed(() =>
-  form.value?.imageBackend === 'comfyui' || form.value?.upscaleBackend === 'comfyui'
+  form.value?.imageBackend === 'comfyui' || form.value?.upscaleBackend === 'comfyui' ||
+  form.value?.voiceBackend === 'comfyui'
 )
 /**
- * ComfyUI at the address shown: up or down, and whether the files of what runs there (the Image
- * Model, the upscaler, or both) are there.
+ * ComfyUI at the address shown: up or down, and whether what runs there has what it needs (the
+ * Image Model's files, the upscaler's, voices' custom nodes).
  */
 const comfy = ref<ComfyStatus | 'checking' | null>(null)
 async function checkComfy() {
   if (!form.value || !usesComfyUI.value) return (comfy.value = null)
   comfy.value = 'checking'
-  const { imageBackend, upscaleBackend, imageBaseUrl, imageModel, upscaler } = form.value
+  const { imageBackend, upscaleBackend, voiceBackend, imageBaseUrl, imageModel, upscaler } =
+    form.value
   comfy.value = await checkComfyUI(imageBaseUrl, {
     imageModel: imageBackend === 'comfyui' ? imageModel : undefined,
     upscaler: upscaleBackend === 'comfyui' ? upscaler : undefined,
+    voices: voiceBackend === 'comfyui' || undefined,
   }).catch((err) => ({ up: false as const, error: (err as Error).message }))
 }
 // Checked when ComfyUI is chosen, and again as its address or what runs there changes.
@@ -154,6 +158,7 @@ watchDebounced(
     form.value && [
       form.value.imageBackend,
       form.value.upscaleBackend,
+      form.value.voiceBackend,
       form.value.imageBaseUrl,
       form.value.imageModel,
       form.value.upscaler,
@@ -163,16 +168,19 @@ watchDebounced(
 )
 
 /**
- * Whether pictures or Upscale can run, as the form stands: choosing ComfyUI makes either available
- * before it's saved (a server runs it, not this machine).
+ * Whether pictures, Upscale or voices can run, as the form stands: choosing ComfyUI makes one
+ * available before it's saved (a server runs it, not this machine).
  */
-const availableWith = (feature: 'images' | 'upscale', comfyui: boolean) =>
+const availableWith = (feature: 'images' | 'upscale' | 'voices', comfyui: boolean) =>
   comfyui ? { available: true } : options.value?.features[feature] ?? { available: false }
 const imagesAvailability = computed(() =>
   availableWith('images', form.value?.imageBackend === 'comfyui')
 )
 const upscaleAvailability = computed(() =>
   availableWith('upscale', form.value?.upscaleBackend === 'comfyui')
+)
+const voicesAvailability = computed(() =>
+  availableWith('voices', form.value?.voiceBackend === 'comfyui')
 )
 const picturesHere = computed(() => imagesAvailability.value.available)
 
@@ -392,27 +400,7 @@ async function save() {
               placeholder="http://127.0.0.1:8188"
               data-image-base-url
             />
-            <span class="flex items-center gap-2 text-sm" data-comfy-status>
-              <span v-if="comfy === 'checking'" class="animate-pulse text-muted">Checking…</span>
-              <template v-else-if="comfy?.up">
-                <span v-if="comfy.ready" class="text-ok">
-                  Up: ComfyUI {{ comfy.version }} on {{ comfy.device }}, with the files it needs.
-                </span>
-                <span v-else class="text-warn">
-                  Up (ComfyUI {{ comfy.version }}), but {{ comfy.missing }}
-                </span>
-              </template>
-              <span v-else-if="comfy" class="text-danger">Down: {{ comfy.error }}</span>
-              <button
-                type="button"
-                class="ml-auto shrink-0 rounded border border-line px-2 py-0.5 text-xs disabled:opacity-50"
-                :disabled="comfy === 'checking'"
-                data-check-comfy
-                @click="checkComfy"
-              >
-                Check
-              </button>
-            </span>
+            <ComfyStatusLine :status="comfy" @check="checkComfy" />
             <span class="text-sm text-muted">
               Empty for ComfyUI on this machine at its usual port. ComfyUI must be running, with the
               model's files installed (Settings says which when one is missing). Its pictures come
@@ -575,12 +563,30 @@ async function save() {
         >
           <FeatureSwitch
             v-model="form.features.voices"
-            :availability="options.features.voices"
+            :availability="voicesAvailability"
             title="Voices"
             data-feature="voices"
           >
-            Each Roleplay Character gets a voice designed from their description, and speaks their lines (the mlx-audio service).
+            Each Roleplay Character gets a voice designed from their description, and speaks their
+            lines.
           </FeatureSwitch>
+          <label class="flex flex-col gap-1">
+            <span class="text-sm text-muted">Speak with</span>
+            <select v-model="form.voiceBackend" class="field" data-voice-backend>
+              <option value="mlx-audio">The voice service (mlx-audio; Apple Silicon Macs)</option>
+              <option value="comfyui">ComfyUI, at the address on the Images tab</option>
+            </select>
+            <span class="text-sm text-muted">
+              Both design a voice with Qwen3-TTS VoiceDesign and clone it with Higgs TTS 3. ComfyUI
+              needs TTS Audio Suite's custom nodes (install them through its Manager) and an NVIDIA
+              card with 12 GB; there a line takes a few seconds more than on a Mac.
+            </span>
+          </label>
+          <ComfyStatusLine
+            v-if="form.voiceBackend === 'comfyui'"
+            :status="comfy"
+            @check="checkComfy"
+          />
         </section>
 
         <section

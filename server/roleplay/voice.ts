@@ -121,10 +121,10 @@ export function speakable(dialogue: string): string {
   return /[A-Za-z]/.test(text) ? text : ''
 }
 
-const voiceFile = () => `voice-${crypto.randomUUID().slice(0, 8)}.wav`
-/** Spoken lines are MP3 (96 kbps, a quarter of the WAV); the voice's reference clip stays WAV. */
-const speechFile = (index: number, part: SpokenPart) =>
-  `${part === 'thought' ? 'thought' : 'speech'}-${index}-${crypto.randomUUID().slice(0, 8)}.mp3`
+/** File types are the engine's (`VoiceProfile`): a lossless reference clip, and lines as it keeps them. */
+const voiceFile = (ext: string) => `voice-${crypto.randomUUID().slice(0, 8)}.${ext}`
+const speechFile = (index: number, part: SpokenPart, ext: string) =>
+  `${part === 'thought' ? 'thought' : 'speech'}-${index}-${crypto.randomUUID().slice(0, 8)}.${ext}`
 const SPEECH_KEY = { dialogue: 'speech', thought: 'thoughtSpeech' } as const
 
 const engine = (deps: VoiceDeps) => {
@@ -133,13 +133,15 @@ const engine = (deps: VoiceDeps) => {
 }
 
 /**
- * Waits its turn behind any render, so a voice and an image never compete for memory. `work` is
- * given what to call while a voice model downloads, the first time it's used.
+ * Waits its turn behind any render, so a voice and an image never compete for memory; a heavy
+ * engine (`VoiceProfile`) also has the Text Model unloaded first, as a render does. `work` is given
+ * what to call while a voice model downloads, the first time it's used.
  */
 async function inTurn<T>(
   deps: VoiceDeps,
   emit: (event: VoiceEvent) => void,
   signal: AbortSignal,
+  heavy: boolean,
   work: (onDownload: OnDownload) => Promise<T>,
 ): Promise<{ result: T; queued?: number }> {
   const start = performance.now()
@@ -147,7 +149,7 @@ async function inTurn<T>(
   const release = await (deps.renderQueue ?? new RenderQueue()).acquire(signal, () => {
     waited = true
     emit({ type: 'phase', phase: 'queued' })
-  }, { light: true })
+  }, { light: !heavy })
   try {
     emit({ type: 'phase', phase: 'audio' })
     const onDownload = (downloading: boolean) =>
@@ -180,9 +182,10 @@ export async function designVoice(
   }
   const dir = deps.store.dir(session.id)
   await Deno.mkdir(dir, { recursive: true })
-  const ref = voiceFile()
+  const profile = await voice.profile()
+  const ref = voiceFile(profile.ref)
   try {
-    await inTurn(deps, emit, signal, (onDownload) =>
+    await inTurn(deps, emit, signal, profile.heavy, (onDownload) =>
       voice.design(
         {
           description: described.description,
@@ -245,26 +248,33 @@ export async function speakFrame(
   const thought = part === 'thought'
   const delivery = directed && thought ? { ...directed, sound: 'none' as const } : directed
   const dir = deps.store.dir(session.id)
-  const file = speechFile(index, part)
+  const profile = await voice.profile()
+  const file = speechFile(index, part, profile.speech)
   const key = SPEECH_KEY[part]
   try {
-    const { result: audio, queued } = await inTurn(deps, emit, signal, async (onDownload) => {
-      const start = performance.now()
-      await voice.speak(
-        {
-          text,
-          ...delivery,
-          ...(thought ? { whisper: true } : {}),
-          ref: join(dir, ref),
-          refText: REF_TEXT,
-          seed: session.seed + index,
-          out: join(dir, file),
-        },
-        signal,
-        onDownload,
-      )
-      return secondsSince(start)
-    })
+    const { result: audio, queued } = await inTurn(
+      deps,
+      emit,
+      signal,
+      profile.heavy,
+      async (onDownload) => {
+        const start = performance.now()
+        await voice.speak(
+          {
+            text,
+            ...delivery,
+            ...(thought ? { whisper: true } : {}),
+            ref: join(dir, ref),
+            refText: REF_TEXT,
+            seed: session.seed + index,
+            out: join(dir, file),
+          },
+          signal,
+          onDownload,
+        )
+        return secondsSince(start)
+      },
+    )
     signal.throwIfAborted()
     const speech: Speech = {
       file,

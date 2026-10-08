@@ -36,7 +36,26 @@ export interface SpeakRequest extends Partial<Delivery> {
 /** Called with true when a model starts downloading (its first use), and false when it's done. */
 export type OnDownload = (downloading: boolean) => void
 
+/**
+ * Where voices are made: the voice service (mlx-audio, Apple Silicon Macs), or a ComfyUI server
+ * with TTS Audio Suite's nodes (any machine; Windows with an NVIDIA card).
+ */
+export const VOICE_BACKENDS = ['mlx-audio', 'comfyui'] as const
+export type VoiceBackendKind = (typeof VOICE_BACKENDS)[number]
+
+/** How an engine's audio is kept, and what it needs. */
+export interface VoiceProfile {
+  /** The reference clip's file type: lossless, as every line is cloned from it. */
+  ref: 'wav' | 'flac'
+  /** A spoken line's. */
+  speech: 'mp3' | 'flac'
+  /** It needs the Text Model out of memory first, as a render does (a 12 GB card). */
+  heavy: boolean
+}
+
 export interface VoiceEngine {
+  /** The engine Settings choose now: its file types, and whether it's heavy. */
+  profile(): Promise<VoiceProfile>
   /** Speaks `text` in a new voice built from `description`. */
   design(req: DesignRequest, signal: AbortSignal, onDownload?: OnDownload): Promise<void>
   /** Speaks `text` in the voice of the reference clip. */
@@ -145,13 +164,38 @@ export function voiceService(opts: VoiceServiceOptions = {}): VoiceEngine {
   }
 
   return {
+    // Lines as MP3 (96 kbps, a quarter of the WAV); light enough to run beside the Text Model.
+    profile: () => Promise.resolve({ ref: 'wav', speech: 'mp3', heavy: false }),
     design: (req, signal, onDownload) => call('/design', req, signal, onDownload),
     speak: (req, signal, onDownload) => call('/speak', req, signal, onDownload),
   }
 }
 
+/**
+ * Makes voices with the backend Settings choose now (`voiceBackend`): the voice service where it's
+ * installed (a Mac), or ComfyUI.
+ */
+export function voiceBackends(backends: {
+  mlx?: VoiceEngine
+  comfyui: VoiceEngine
+  voiceBackend: () => Promise<VoiceBackendKind>
+}): VoiceEngine {
+  const pick = async () => {
+    if ((await backends.voiceBackend()) === 'comfyui') return backends.comfyui
+    if (backends.mlx) return backends.mlx
+    throw new Error("The voice service isn't available here: choose ComfyUI for Voices in Settings")
+  }
+  return {
+    profile: async () => (await pick()).profile(),
+    design: async (req, signal, onDownload) => (await pick()).design(req, signal, onDownload),
+    speak: async (req, signal, onDownload) => (await pick()).speak(req, signal, onDownload),
+  }
+}
+
 /** Stands in for the voice service in tests: writes a tiny WAV naming what it would say. */
-export function fakeVoiceEngine(opts: { fail?: string } = {}): VoiceEngine & {
+export function fakeVoiceEngine(
+  opts: { fail?: string; profile?: VoiceProfile } = {},
+): VoiceEngine & {
   calls: { kind: 'design' | 'speak'; req: DesignRequest | SpeakRequest }[]
 } {
   const calls: { kind: 'design' | 'speak'; req: DesignRequest | SpeakRequest }[] = []
@@ -167,6 +211,7 @@ export function fakeVoiceEngine(opts: { fail?: string } = {}): VoiceEngine & {
   }
   return {
     calls,
+    profile: () => Promise.resolve(opts.profile ?? { ref: 'wav', speech: 'mp3', heavy: false }),
     design: (req, signal) => write('design', req, signal),
     speak: (req, signal) => write('speak', req, signal),
   }

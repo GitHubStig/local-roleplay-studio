@@ -34,6 +34,7 @@ const settings: api.Settings = {
   seed: 42,
   upscaler: 'seedvr2-7b',
   upscaleBackend: 'mflux',
+  voiceBackend: 'mlx-audio',
   limits: true,
   artModel: '',
   artStyle: 'prose',
@@ -183,6 +184,49 @@ describe('SettingsView', () => {
       imageBackend: 'mflux',
       upscaleBackend: 'comfyui',
       imageBaseUrl: 'http://192.168.1.20:8188',
+    }))
+  })
+
+  it('without the voice service, speaks with ComfyUI, checking it has the voice nodes', async () => {
+    vi.mocked(api.getSettingsOptions).mockResolvedValue({
+      ...options,
+      features: {
+        ...options.features,
+        voices: {
+          available: false,
+          reason: 'The voice service (mlx-audio) runs only on Apple Silicon Macs',
+        },
+      },
+    })
+    vi.mocked(api.checkComfyUI).mockResolvedValue({
+      up: true,
+      version: '0.39.2',
+      device: 'cuda:0 NVIDIA GeForce RTX 4070',
+      ready: false,
+      missing: "ComfyUI doesn't have the TTS Audio Suite nodes voices need",
+    })
+    const wrapper = mount(SettingsView)
+    await flushPromises()
+    await wrapper.find('[data-tab="voice"]').trigger('click')
+    const voices = () => wrapper.find('[data-feature="voices"]')
+    expect(voices().find('[data-unavailable]').exists()).toBe(true)
+    await wrapper.find('[data-voice-backend]').setValue('comfyui')
+    await new Promise((r) => setTimeout(r, 600))
+    await flushPromises()
+    // Available once sent to ComfyUI; its check looks for the nodes, and says what's missing.
+    expect(voices().find('[data-unavailable]').exists()).toBe(false)
+    expect(api.checkComfyUI).toHaveBeenLastCalledWith('', {
+      imageModel: undefined,
+      upscaler: undefined,
+      voices: true,
+    })
+    expect(wrapper.find('[data-tab-panel="voice"] [data-comfy-status]').text()).toContain(
+      'TTS Audio Suite nodes',
+    )
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+    expect(api.saveSettings).toHaveBeenCalledWith(expect.objectContaining({
+      voiceBackend: 'comfyui',
     }))
   })
 

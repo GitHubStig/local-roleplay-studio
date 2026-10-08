@@ -1,5 +1,6 @@
-import { assertEquals, assertRejects, assertStringIncludes } from '@std/assert'
+import { assertEquals, assertMatch, assertRejects, assertStringIncludes } from '@std/assert'
 import { join } from '@std/path'
+import { RenderQueue } from '../renderQueue.ts'
 import { dirSessionStore } from '../session.ts'
 import { DEFAULT_SETTINGS } from '../settings.ts'
 import { withTempDir } from '../testing.ts'
@@ -116,6 +117,23 @@ Deno.test('Speaking a line first describes and designs the voice, then clones it
     const again = await speakFrame(deps, spoken, 0, () => {}, signal)
     assertEquals(again.voice!.ref, ref)
     assertEquals(await files(), [again.frames[0].speech!.file, ref].sort())
+  }))
+
+Deno.test("A heavy engine's voice (ComfyUI) unloads the Text Model first, and keeps its own file types", () =>
+  withTempDir(async (root) => {
+    const { session, deps } = await setup(root)
+    let freed = 0
+    const voice = fakeVoiceEngine({ profile: { ref: 'flac', speech: 'flac', heavy: true } })
+    const renderQueue = new RenderQueue({ freeMemory: () => Promise.resolve(void freed++) })
+    const spoken = await speakFrame({ ...deps, voice, renderQueue }, session, 0, () => {}, signal)
+    assertMatch(spoken.voice!.ref!, /^voice-[0-9a-f]{8}\.flac$/)
+    assertMatch(spoken.frames[0].speech!.file, /^speech-0-[0-9a-f]{8}\.flac$/)
+    // Once for the design, once for the line.
+    assertEquals(freed, 2)
+    // The voice service is light: it runs beside the Text Model.
+    freed = 0
+    await speakFrame({ ...deps, renderQueue }, spoken, 0, () => {}, signal)
+    assertEquals(freed, 0)
   }))
 
 Deno.test('Each line is directed from its moment, and spoken with that pace and sound', () =>

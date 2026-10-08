@@ -31,22 +31,21 @@ Ideas deliberately deferred. Promote an item to an ADR in `docs/adr/` when we ac
 - **Windows: what's left** (2026-10-07). The plan that took the app to Windows is done and recorded
   in [research/windows.md](research/windows.md): the app runs there with Ollama (or a server with
   the OpenAI chat API), pictures and Upscale through ComfyUI (ADR 0009), SHARP and TripoSplat on
-  CUDA. Still open:
-  - **Voices on Windows.** The voice service is mlx-audio, so Mac only. Three ways, not yet chosen:
-    the same service on PyTorch and CUDA (Qwen3-TTS VoiceDesign has an official PyTorch package;
-    whether Higgs TTS 3 has a ready inference package is to check; Higgs is ~10 GB against the
-    card's 12 GB and the PC's 16 GB of RAM); a TTS custom node pack in ComfyUI (Qwen3-TTS,
-    VibeVoice, IndexTTS2: breaks "built-in nodes only", and must both design a voice from a
-    description and clone it per line, the way Higgs held a voice in 24 lines of 24;
-    tried 2026-10-08: TTS-Audio-Suite runs Higgs v3 on the PC and held the voice on the 29 bench
-    lines (9.9 GB of VRAM), but at 3.7 s per second of speech, ~5x the Mac; VoiceDesign not yet
-    tried; see [research/comfyui.md](research/comfyui.md)); or **voices in the browser**, an option on the Voice tab: the Web Speech API (no
-    install, the system's voices, only pitch and rate) or a small model through transformers.js on
-    WebGPU (Kokoro, 82M, preset voices; size and quality to check), the web app speaking the line
-    itself with nothing on the server. *Voices assume a cloning TTS:* `VoiceEngine` is `design` (a
-    voice from a description) plus `speak` (cloning the designed reference clip), with pace, sound
-    and whisper; a provider without cloning (preset voices only) would need another way to keep a
-    Character's voice consistent, e.g. picking a preset once per Character.
+  CUDA, and voices through ComfyUI with TTS Audio Suite (ADR 0010, 2026-10-08). Still open:
+  - **Voices in the browser**, an option on the Voice tab for a machine with neither the voice
+    service nor ComfyUI: the Web Speech API (no install, the system's voices, only pitch and rate)
+    or a small model through transformers.js on WebGPU (Kokoro, 82M, preset voices; size and
+    quality to check), the web app speaking the line itself with nothing on the server. *Voices
+    assume a cloning TTS:* `VoiceEngine` is `design` (a voice from a description) plus `speak`
+    (cloning the designed reference clip), with pace, sound and whisper; a provider without cloning
+    (preset voices only) would need another way to keep a Character's voice consistent, e.g.
+    picking a preset once per Character.
+  - **Voices are ~4× slower on the PC than on the Mac**, parked (2026-10-08). Through ComfyUI, Higgs
+    runs at ~9 tokens a second on the RTX 4070: 3.7 s per second of speech, against 0.8 s on the
+    Mac's mlx-audio, though it's wholly on the GPU; eager attention was no faster. Untried:
+    SageAttention, and whether CUDA graphs or `torch.compile` (which TTS Audio Suite offers for
+    Qwen3-TTS, not Higgs) would help. Trigger: lines that keep the player waiting.
+  - **Undo the local fix to TTS Audio Suite** once its #366 is fixed (README, Voices).
   - **LiTo on Windows**, parked: Apple's code is Linux and Mac only, so it would mean WSL2
     (research/windows.md); TripoSplat already makes figures there.
   - **Linux**: nothing has been run on it, though everything that works on Windows should.

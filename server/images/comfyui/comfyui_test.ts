@@ -2,9 +2,11 @@ import { assertEquals, assertRejects } from '@std/assert'
 import { join } from '@std/path'
 import { DEFAULT_SETTINGS, type Settings } from '../../settings.ts'
 import { withTempDir } from '../../testing.ts'
-import { comfyuiImageGenerator, comfyuiStatus } from './comfyui.ts'
+import { fillWorkflow } from '../../comfyui/client.ts'
+import { fakeComfyUI as fakeServer } from '../../comfyui/testing.ts'
+import { comfyuiImageGenerator } from './comfyui.ts'
 import { COMFYUI_MODELS, COMFYUI_UPSCALERS } from './models.ts'
-import { fillWorkflow, loadWorkflow, pickFiles } from './workflow.ts'
+import { loadModelWorkflow, pickFiles } from './workflow.ts'
 
 const MAC_FILES: Record<string, string[]> = {
   diffusion_models: [
@@ -15,116 +17,9 @@ const MAC_FILES: Record<string, string[]> = {
   vae: ['qwen_image_vae.safetensors', 'qwen_image_2.1_vae_bf16.safetensors'],
 }
 
-/**
- * A stand-in ComfyUI: lists `files`, takes a workflow, reports `steps` over the WebSocket, then
- * `finish` ('success', or an error message, or 'hang' until interrupted), and serves the picture.
- */
-function fakeComfyUI(
-  opts: {
-    files?: Record<string, string[]>
-    steps?: number
-    finish?: string
-    /** Once a workflow is queued, stop answering, keeping the port and WebSocket open (a crash). */
-    dies?: boolean
-  } = {},
-) {
-  const queued: Record<string, unknown>[] = []
-  const posted: { path: string; body: unknown }[] = []
-  const uploads: { name: string; type: string; overwrite: string; bytes: number }[] = []
-  const sockets = new Map<string, WebSocket>()
-  /** Requests left hanging by a dead ComfyUI, answered when the server closes. */
-  const hung: (() => void)[] = []
-  const server = Deno.serve({ port: 0, onListen: () => {} }, async (req) => {
-    const url = new URL(req.url)
-    const path = url.pathname
-    if (path === '/ws') {
-      const { socket, response } = Deno.upgradeWebSocket(req)
-      sockets.set(url.searchParams.get('clientId')!, socket)
-      return response
-    }
-    if (opts.dies && queued.length) {
-      await new Promise<void>((r) => hung.push(r))
-      return new Response(null, { status: 503 })
-    }
-    if (path === '/system_stats') {
-      return Response.json({ system: { comfyui_version: '0.39.1' }, devices: [{ name: 'mps' }] })
-    }
-    if (path.startsWith('/models/')) {
-      return Response.json((opts.files ?? MAC_FILES)[path.slice('/models/'.length)] ?? [])
-    }
-    if (path === '/prompt') {
-      const body = await req.json()
-      queued.push(body.prompt)
-      const promptId = 'p1'
-      const socket = sockets.get(body.client_id)!
-      const send = (type: string, data: object) =>
-        socket.send(JSON.stringify({ type, data: { prompt_id: promptId, ...data } }))
-      setTimeout(() => {
-        for (let i = 1; i <= (opts.steps ?? 2); i++) {
-          send('progress', { value: i, max: opts.steps ?? 2 })
-        }
-        const finish = opts.finish ?? 'success'
-        // A sampler preview (a JPEG) and then the picture (a PNG), as binary image messages.
-        const image = (format: number, bytes: number[]) =>
-          socket.send(new Uint8Array([0, 0, 0, 1, 0, 0, 0, format, ...bytes]))
-        image(1, [255, 216, 255])
-        if (finish === 'success') {
-          image(2, [137, 80, 78, 71])
-          send('execution_success', {})
-          // As ComfyUI: written to the history after it says so, then "executing" with no node.
-          setTimeout(() => {
-            posted.push({ path: '(in history)', body: null })
-            send('executing', { node: null })
-          }, 30)
-        } else if (finish !== 'hang') {
-          send('execution_error', { node_type: 'KSampler', exception_message: finish })
-        }
-      }, 10)
-      return Response.json({ prompt_id: promptId, number: 1, node_errors: {} })
-    }
-    if (path === '/upload/image') {
-      const form = await req.formData()
-      const image = form.get('image') as File
-      uploads.push({
-        name: image.name,
-        type: String(form.get('type')),
-        overwrite: String(form.get('overwrite')),
-        bytes: image.size,
-      })
-      return Response.json({ name: image.name, subfolder: '', type: form.get('type') })
-    }
-    if (['/interrupt', '/queue', '/free', '/history'].includes(path)) {
-      const body = await req.json()
-      posted.push({ path, body })
-      if (path === '/interrupt') {
-        // As ComfyUI: the prompt stops a moment later ("execution_interrupted"), then it's written
-        // to the history, then "executing" with no node says it's done.
-        const send = (type: string, data: object) => {
-          for (const socket of sockets.values()) socket.send(JSON.stringify({ type, data }))
-        }
-        setTimeout(() => send('execution_interrupted', { prompt_id: 'p1' }), 50)
-        setTimeout(() => {
-          posted.push({ path: '(in history)', body: null })
-          send('executing', { node: null, prompt_id: 'p1' })
-        }, 80)
-      }
-      return new Response(null, { status: 200 })
-    }
-    return new Response('not found', { status: 404 })
-  })
-  return {
-    // Not `localhost`: on Windows it tries IPv6 first, and a new connection can take 300 ms or more.
-    url: `http://127.0.0.1:${server.addr.port}`,
-    queued,
-    posted,
-    uploads,
-    close: () => {
-      for (const release of hung) release()
-      for (const socket of sockets.values()) socket.close()
-      return server.shutdown()
-    },
-  }
-}
+/** A stand-in ComfyUI with the Mac's model files, unless told others. */
+const fakeComfyUI = (opts: Parameters<typeof fakeServer>[0] = {}) =>
+  fakeServer({ files: MAC_FILES, ...opts })
 
 const settings = (url: string, extra: Partial<Settings> = {}): Settings => ({
   ...DEFAULT_SETTINGS,
@@ -363,7 +258,7 @@ Deno.test('Every ComfyUI workflow loads, and fills with nothing left over', asyn
     })),
   ]
   for (const { id, values } of fills) {
-    const filled = fillWorkflow(await loadWorkflow(id), values)
+    const filled = fillWorkflow(await loadModelWorkflow(id), values)
     assertEquals(JSON.stringify(filled).includes('"$'), false)
   }
 })
@@ -387,34 +282,4 @@ Deno.test('Files are picked by the first pattern installed, so each machine can 
     pickFiles(qwen, (f) => both[f as keyof typeof both] ?? []).unet,
     'qwen_image_2.1_int8_convrot.safetensors',
   )
-})
-
-Deno.test("Settings' check: ComfyUI's version and device, and whether the model's files are there", async () => {
-  const ready = fakeComfyUI()
-  const missing = fakeComfyUI({ files: { ...MAC_FILES, vae: [] } })
-  const qwen = { imageModel: 'qwen-image-2.1' }
-  try {
-    assertEquals(await comfyuiStatus(ready.url, qwen), {
-      up: true,
-      version: '0.39.1',
-      device: 'mps',
-      ready: true,
-    })
-    const status = await comfyuiStatus(missing.url, qwen)
-    assertEquals([status.up, status.up && status.ready], [true, false])
-    assertEquals(status.up && status.missing?.includes('vae/'), true)
-    // Upscaling there too: the Mac's files have Qwen-Image's but not SeedVR2's.
-    const both = await comfyuiStatus(ready.url, { ...qwen, upscaler: 'seedvr2-7b' })
-    assertEquals(both.up && [both.ready, both.missing], [
-      false,
-      "ComfyUI doesn't have SeedVR2 7B's files: diffusion_models/ " +
-      '(^seedvr2_7b_int8 or ^seedvr2_7b_fp8 or ^seedvr2_7b_(?!sharp).*\\.safetensors$); ' +
-      'vae/ (^seedvr2_ema_vae.*\\.safetensors$ or ^ema_vae)',
-    ])
-  } finally {
-    await ready.close()
-    await missing.close()
-  }
-  const down = await comfyuiStatus('http://localhost:9', qwen)
-  assertEquals(down.up, false)
 })

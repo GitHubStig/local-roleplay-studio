@@ -2,18 +2,28 @@ import { createHandler } from './app.ts'
 import { placeholderImageGenerator } from './images/imageGenerator.ts'
 import { fromFileUrl } from '@std/path'
 import { mfluxImageGenerator, mfluxQuantizedStore } from './images/mflux/mflux.ts'
-import { comfyuiImageGenerator, comfyuiStatus } from './images/comfyui/comfyui.ts'
+import { comfyuiImageGenerator } from './images/comfyui/comfyui.ts'
+import { comfyuiStatus } from './comfyui/status.ts'
 import { imageBackends } from './images/backend.ts'
 import { dirScenarioLibrary } from './scenario.ts'
 import { dirSessionStore } from './session.ts'
-import { fileSettingsStore } from './settings.ts'
+import { fileSettingsStore, machineDefaults, type Settings } from './settings.ts'
 import { chatTextModel } from './textModel.ts'
 import { chatRoleplayModel } from './roleplay/model.ts'
 import { connectionOf, textBackend, type TextConnection } from './text/backend.ts'
 import { litoFigureMaker, tripoFigureMaker } from './3d/figure.ts'
 import { sharpSceneMaker } from './3d/scene.ts'
-import { voiceService } from './voice/voice.ts'
-import { detectFeatures, FEATURE_NAMES, FEATURES, thisMachine } from './features.ts'
+import { voiceBackends, voiceService } from './voice/voice.ts'
+import { comfyuiVoiceEngine } from './voice/comfyui/comfyui.ts'
+import {
+  detectFeatures,
+  type Feature,
+  FEATURE_NAMES,
+  FEATURES,
+  thisMachine,
+  withBackends,
+} from './features.ts'
+import { comfyBase } from './comfyui/client.ts'
 
 const port = Number(Deno.env.get('PORT') ?? 8787)
 
@@ -26,12 +36,13 @@ const quantized = mfluxQuantizedStore(fromFileUrl(new URL('../models/quantized/'
 // running mflux, for working without it.
 const placeholderImages = Deno.env.get('IMAGE_GENERATOR') === 'placeholder'
 const features = await detectFeatures(thisMachine(), { placeholderImages })
-for (const feature of FEATURES) {
-  const { available, reason } = features[feature]
-  console.log(`${FEATURE_NAMES[feature]}: ${available ? 'available' : `not available (${reason})`}`)
-}
 
-const settings = fileSettingsStore(new URL('../settings.json', import.meta.url))
+// Where mflux or the voice service can't run (a PC), Settings default to ComfyUI.
+const settings = fileSettingsStore(
+  new URL('../settings.json', import.meta.url),
+  machineDefaults({ mflux: features.images.available, voiceService: features.voices.available }),
+)
+await logFeatures(await settings.load())
 // The Text backend a Session or Settings names, with the saved API key unless given another.
 const text = (connection: TextConnection, apiKey?: string) =>
   textBackend(
@@ -64,10 +75,53 @@ const handler = createHandler({
   freeMemory: async () => {
     await text(connectionOf(await settings.load())).freeMemory?.()
   },
-  voice: features.voices.available ? voiceService() : undefined,
+  // Voices with the backend Settings choose now: the voice service where it runs (a Mac), or the
+  // ComfyUI at Settings' address with TTS Audio Suite's nodes.
+  voice: voiceBackends({
+    mlx: features.voices.available ? voiceService() : undefined,
+    comfyui: comfyuiVoiceEngine({ baseUrl: async () => (await settings.load()).imageBaseUrl }),
+    voiceBackend: async () => (await settings.load()).voiceBackend,
+  }),
   scene: features.scenes.available ? sharpSceneMaker() : undefined,
   figure: features.figures.available ? tripoFigureMaker() : undefined,
   lito: features.lito.available ? litoFigureMaker() : undefined,
 })
 
 Deno.serve({ port }, handler)
+
+/**
+ * Says at startup what can run with the saved Settings, and on what (Settings shows the same, as it
+ * changes); and when anything is sent to ComfyUI, whether it answers and has what it needs.
+ */
+async function logFeatures(saved: Settings) {
+  const comfy = `ComfyUI at ${comfyBase(saved.imageBaseUrl)}`
+  const on: Partial<Record<Feature, string>> = {
+    images: placeholderImages ? 'placeholders' : saved.imageBackend === 'comfyui' ? comfy : 'mflux',
+    upscale: saved.upscaleBackend === 'comfyui' ? comfy : 'mflux',
+    voices: saved.voiceBackend === 'comfyui' ? comfy : 'the voice service',
+  }
+  const now = withBackends(features, saved)
+  for (const feature of FEATURES) {
+    const { available, reason } = now[feature]
+    const where = on[feature] ? ` (${on[feature]})` : ''
+    console.log(
+      `${FEATURE_NAMES[feature]}: ${available ? `available${where}` : `not available (${reason})`}`,
+    )
+  }
+  const voices = saved.voiceBackend === 'comfyui'
+  if (saved.imageBackend !== 'comfyui' && saved.upscaleBackend !== 'comfyui' && !voices) return
+  const status = await comfyuiStatus(saved.imageBaseUrl, {
+    imageModel: saved.imageBackend === 'comfyui' ? saved.imageModel : undefined,
+    upscaler: saved.upscaleBackend === 'comfyui' ? saved.upscaler : undefined,
+    voices,
+  })
+  console.log(
+    !status.up
+      ? `ComfyUI: not answering at ${
+        comfyBase(saved.imageBaseUrl)
+      }; start it before rendering or speaking`
+      : status.ready
+      ? `ComfyUI: up, ${status.version} on ${status.device}, with what Settings send it`
+      : `ComfyUI: up (${status.version}), but ${status.missing}`,
+  )
+}

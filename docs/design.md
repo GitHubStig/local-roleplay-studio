@@ -174,11 +174,15 @@ under `/api/sessions/:id/roleplay/` ([ADR 0007](adr/0007-roleplay-is-a-conversat
    nothing to say. The description is editable: changing it removes the clip, and the next line
    (or a new take) designs one from the new description. Designing and speaking are queued jobs
    (`voice`, `speak`) that wait their turn in the render queue, so a voice and an image never
-   compete for memory. Undo removes the undone exchange's audio. The voice service
+   compete for memory. Undo removes the undone exchange's audio. Voices come from the backend
+   Settings choose (`voiceBackend`, ADR 0010). The voice service
    (`python/voice/serve.py`, mlx-audio) is a Python process the server starts on first use and talks to
    over HTTP on localhost: Qwen3-TTS VoiceDesign designs, Higgs TTS 3 clones, one model loaded at a
    time and unloaded after a minute unused (it reloads in 2–3 s), its MLX cache cleared after
-   every request. Lines carry no emotion tags: in testing they pulled
+   every request. ComfyUI (`server/voice/comfyui/`, with TTS Audio Suite's nodes) runs the same two
+   models as workflows, keeping no audio (its clips are read from its temp folder and blanked);
+   its files are FLAC (`voice-…flac`, `speech-…flac`), and as Higgs takes most of a 12 GB card, the
+   Text Model is unloaded before each voice, as before a render. Lines carry no emotion tags: in testing they pulled
    the cloned voice off the Character, up to a woman's pitch (docs/models.md). Each line is
    directed instead: before it's spoken, the Art Agent's model reads the moment (the Message
    before it, what the Character does and thinks) and picks a pace (normal, slow or fast) and a

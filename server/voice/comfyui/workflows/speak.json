@@ -1,0 +1,46 @@
+{
+  "_note": "A line spoken by cloning a reference clip: Higgs TTS 3 (TTS Audio Suite), $text in the voice of $ref (uploaded to temp), whose words are $refText. Sampling as the voice service's (temperature 0.5, top-k 30), which held the voice. PreviewAudio leaves the line in ComfyUI's temp folder, not its output.",
+  "ref": {
+    "class_type": "LoadAudio",
+    "inputs": { "audio": "$ref" }
+  },
+  "voice": {
+    "class_type": "CharacterVoicesNode",
+    "inputs": {
+      "voice_name": "none",
+      "reference_text": "$refText",
+      "trim_start": 0,
+      "trim_end": 0,
+      "customized": false,
+      "opt_audio_input": ["ref", 0]
+    }
+  },
+  "engine": {
+    "class_type": "HiggsAudioV3EngineNode",
+    "inputs": {
+      "model": "higgs-audio-v3-tts-4b",
+      "device": "auto",
+      "dtype": "auto",
+      "attention": "auto",
+      "temperature": 0.5,
+      "top_p": 0.95,
+      "top_k": 30,
+      "max_new_tokens": 2048
+    }
+  },
+  "speak": {
+    "class_type": "UnifiedTTSTextNode",
+    "inputs": {
+      "TTS_engine": ["engine", 0],
+      "text": "$text",
+      "narrator_voice": "none",
+      "seed": "$seed",
+      "opt_narrator": ["voice", 0],
+      "enable_audio_cache": false
+    }
+  },
+  "out": {
+    "class_type": "PreviewAudio",
+    "inputs": { "audio": ["speak", 0] }
+  }
+}

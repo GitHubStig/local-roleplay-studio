@@ -13,8 +13,7 @@ export const IMAGE_BACKEND_NAMES: Record<ImageBackendKind, string> = {
   comfyui: 'ComfyUI',
 }
 
-/** ComfyUI's own default address. */
-export const COMFYUI_URL = 'http://127.0.0.1:8188'
+export { COMFYUI_URL } from '../comfyui/client.ts'
 
 /** An Image Model as Settings and the screens see it, whichever backend runs it. */
 export interface ImageModelOption {

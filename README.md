@@ -5,8 +5,9 @@ with an NVIDIA card, or both together. A local language model (via [Ollama](http
 plays a Character you talk to; every scene can be painted by a local image model (via
 [mflux](https://github.com/filipstrand/mflux) on a Mac, or [ComfyUI](https://www.comfy.org) on
 either); the Character speaks in a voice designed for them (via
-[mlx-audio](https://github.com/Blaizzy/mlx-audio), on a Mac); and any picture can be turned into 3D
-Gaussian splats you can look around (Apple's SHARP and TripoSplat on either, LiTo on a Mac). No
+[mlx-audio](https://github.com/Blaizzy/mlx-audio) on a Mac, or ComfyUI on either); and any picture
+can be turned into 3D Gaussian splats you can look around (Apple's SHARP and TripoSplat on either,
+LiTo on a Mac). No
 cloud is needed; a cloud Text Model is an option.
 
 There are three kinds of Session:
@@ -125,12 +126,31 @@ the Images tab of Settings:
   ComfyUI keeping nothing: it's sent to ComfyUI's temp folder and blanked to a 1×1 picture once
   used, and ComfyUI clears the stub when it next starts.
 
-### Voices (optional, Mac only for now)
+### Voices (optional)
 
-For Roleplay Characters: uv runs the voice service (`python/voice/serve.py`, mlx-audio), and its two
-models (about 12 GB: Qwen3-TTS VoiceDesign and Higgs TTS 3) download the first time each is
-needed; `uv run python/voice/serve.py --download` fetches both ahead of time. mlx-audio is MLX, so
-Apple Silicon only; voices on Windows are an open thread.
+For Roleplay Characters, two models: Qwen3-TTS VoiceDesign designs a voice from its description, and
+Higgs TTS 3 clones it for every line. "Speak with" on the Voice tab of Settings says what runs
+them:
+
+- **The voice service** (a Mac): uv runs `python/voice/serve.py` (mlx-audio), and the two models
+  (about 12 GB) download the first time each is needed; `uv run python/voice/serve.py --download`
+  fetches both ahead of time. mlx-audio is MLX, so Apple Silicon only.
+- **ComfyUI** (a PC with an NVIDIA card of 12 GB, or any machine), at the same address as for
+  pictures, with [TTS Audio Suite](https://github.com/diodiogod/TTS-Audio-Suite)'s custom nodes.
+  Install them through ComfyUI's Manager (in Comfy Desktop, the Extensions button). On Windows:
+  - the Manager won't install while ComfyUI listens on the network: take `--listen 0.0.0.0` out of
+    the launch arguments to install, then put it back;
+  - turn on long paths (in PowerShell as admin: `New-ItemProperty -Path
+    'HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem' -Name LongPathsEnabled -Value 1
+    -PropertyType DWORD -Force`), then restart ComfyUI, or designing a voice fails to set up;
+  - until [#366](https://github.com/diodiogod/TTS-Audio-Suite/issues/366) is fixed, designing a
+    voice needs a three-line fix in the suite (docs/research/comfyui.md).
+
+  The models download into ComfyUI the first time each is used (8.9 GB for Higgs). Each voice
+  unloads the Text Model first, as a render does, since Higgs takes ~10 GB of the card. On an RTX
+  4070 a line takes about 3.7 s per second of speech (a Mac: 0.8 s), plus ~8 s to load Higgs after
+  a Reply. Clips come back as FLAC, and ComfyUI keeps none: they're read from its temp folder and
+  blanked there.
 
 ### 3D (optional)
 
@@ -157,7 +177,8 @@ ComfyUI. Give the PC's address (`http://<its IP>:8188`) as the ComfyUI address, 
 with" to ComfyUI. On the tested pair, a picture took ~21 s instead of 56–97 s with mflux, and an
 upscale 14 s instead of ~66 s. The Text Model can live on the other machine the same way (the
 Text backend's address in Settings), e.g. to keep the Mac's memory for mflux. What runs as a
-local program can't be shared: mflux, voices, SHARP, TripoSplat and LiTo run where the app runs.
+local program can't be shared: mflux, the voice service, SHARP, TripoSplat and LiTo run where the
+app runs.
 
 For another machine to reach ComfyUI, it must listen beyond its own machine: in Comfy Desktop, add
 `--listen 0.0.0.0` to the installation's launch arguments, and let the firewall allow TCP 8188 on
@@ -209,10 +230,12 @@ and on the Settings page:
 |---|---|---|
 | Pictures | mflux, or ComfyUI | ComfyUI |
 | Upscale | mflux, or ComfyUI | ComfyUI |
-| Voices | yes (mlx-audio, uv) | not yet |
+| Voices | mlx-audio (uv), or ComfyUI | ComfyUI (TTS Audio Suite) |
 | SHARP, TripoSplat | yes (uv) | yes (uv) |
 | LiTo | yes (uv) | no |
 
+Where mflux or the voice service can't run (a PC), Settings start on ComfyUI for pictures, Upscale
+and voices, and the log says whether ComfyUI answers at its address and has what they need.
 ComfyUI can be on another machine, so a Mac can use a PC's ([Two machines](#two-machines)). One that can't run is off and its
 buttons are hidden, with the reason in Settings; one that can is on, and can be switched off there.
 Without pictures, every kind of Session still runs on the Text Model alone: a Roleplay is a
@@ -233,7 +256,9 @@ server/           Deno API: the app, Sessions, Settings, the job queue, what all
   text/           the Text backends (Ollama, OpenAI-compatible) behind one Chat interface
   images/         the Image backends: mflux/ (and its saved quantized copies), comfyui/ (its
                   workflows in comfyui/workflows/), and the placeholder
-  voice/          the voice service's client
+  voice/          the Voice backends: the voice service's client, and comfyui/ (its workflows in
+                  comfyui/workflows/)
+  comfyui/        what talking to ComfyUI takes, for pictures and voices alike
   3d/             SHARP scenes, TripoSplat and LiTo figures
   prompts/        what the Text Model is told, one Markdown file each: chain/, storyboard/,
                   roleplay/, and shared/ for what more than one uses

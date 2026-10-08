@@ -80,6 +80,28 @@ export async function detectFeatures(
   }
 }
 
+/**
+ * What can run now: as detected at startup, but with pictures, Upscale and voices available wherever
+ * Settings send them to ComfyUI, which a running server provides rather than this machine. One that
+ * isn't says it could be sent there.
+ */
+export function withBackends(
+  detected: Availabilities,
+  backends: { imageBackend: string; upscaleBackend: string; voiceBackend: string },
+): Availabilities {
+  const viaComfyUI = (feature: 'images' | 'upscale' | 'voices', comfyui: boolean, choose: string) =>
+    comfyui ? yes : detected[feature].available ? detected[feature] : {
+      available: false,
+      reason: `${detected[feature].reason}; or choose ComfyUI ${choose} in Settings`,
+    }
+  return {
+    ...detected,
+    images: viaComfyUI('images', backends.imageBackend === 'comfyui', 'as the Image backend'),
+    upscale: viaComfyUI('upscale', backends.upscaleBackend === 'comfyui', 'for Upscale'),
+    voices: viaComfyUI('voices', backends.voiceBackend === 'comfyui', 'for Voices'),
+  }
+}
+
 /** This machine: its platform, and the commands on its PATH (with Windows' `.exe` and the like). */
 export function thisMachine(): Machine {
   const windows = Deno.build.os === 'windows'

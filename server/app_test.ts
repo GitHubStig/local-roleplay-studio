@@ -237,7 +237,7 @@ Deno.test('GET /api/settings/options lists Text and Image Models', async () => {
 })
 
 Deno.test('POST /api/settings/comfyui checks an address not saved yet', async () => {
-  const asked: [string, { imageModel?: string; upscaler?: string }][] = []
+  const asked: [string, { imageModel?: string; upscaler?: string; voices?: boolean }][] = []
   const { call } = setup({
     comfyuiStatus: (url, uses) => {
       asked.push([url, uses])
@@ -260,8 +260,16 @@ Deno.test('POST /api/settings/comfyui checks an address not saved yet', async ()
     upscaler: 'seedvr2-7b',
   })
   assertEquals(asked, [
-    ['http://192.168.1.20:8188', { imageModel: 'qwen-image-2.1', upscaler: undefined }],
-    ['http://192.168.1.20:8188', { imageModel: undefined, upscaler: 'seedvr2-7b' }],
+    ['http://192.168.1.20:8188', {
+      imageModel: 'qwen-image-2.1',
+      upscaler: undefined,
+      voices: undefined,
+    }],
+    ['http://192.168.1.20:8188', {
+      imageModel: undefined,
+      upscaler: 'seedvr2-7b',
+      voices: undefined,
+    }],
   ])
 })
 
@@ -293,6 +301,16 @@ Deno.test('Choosing ComfyUI makes pictures, and then Upscale, available where mf
   })
   const both = (await (await call('GET', '/api/settings/options')).json()).features
   assertEquals(both.upscale.available, true)
+  // Voices too: off with no voice service here, on once sent to ComfyUI.
+  assertStringIncludes(both.voices.reason, 'or choose ComfyUI for Voices')
+  await call('PUT', '/api/settings', {
+    ...settings,
+    imageBackend: 'comfyui',
+    imageModel: 'qwen-image-2.1',
+    voiceBackend: 'comfyui',
+  })
+  const voices = (await (await call('GET', '/api/settings/options')).json()).features
+  assertEquals(voices.voices.available, true)
   // An Image Model must be the backend's own: FLUX.2 Klein is mflux's only.
   const wrong = await call('PUT', '/api/settings', {
     ...settings,
@@ -1390,7 +1408,7 @@ Deno.test('Without a voice service, speaking fails with a reason', () =>
     const res = await call('POST', '/api/sessions/s1/jobs', { kind: 'speak', frameIndex: 0 })
     assertEquals([res.status, (await res.json()).error], [
       409,
-      "Voices isn't available here: No voice service was set up",
+      "Voices isn't available here: No voice service was set up; or choose ComfyUI for Voices in Settings",
     ])
   }))
 

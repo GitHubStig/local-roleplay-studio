@@ -49,6 +49,8 @@ export interface Settings {
   upscaler: string
   /** Where Upscale runs (the ComfyUI at `imageBaseUrl`, or mflux), whichever rendered. */
   upscaleBackend: ImageBackend
+  /** Where voices are made: the voice service (a Mac), or the ComfyUI at `imageBaseUrl`. */
+  voiceBackend: 'mlx-audio' | 'comfyui'
   /** The Limits; off, only "everyone depicted is an adult" is enforced. Applies at once. */
   limits: boolean
   /** The model that pictures Roleplay Frames; '' for the Session's Text Model. Applies at once. */
@@ -153,7 +155,7 @@ export type ComfyStatus =
  */
 export const checkComfyUI = (
   imageBaseUrl: string,
-  uses: { imageModel?: string; upscaler?: string },
+  uses: { imageModel?: string; upscaler?: string; voices?: boolean },
 ) =>
   request<ComfyStatus>('/api/settings/comfyui', {
     method: 'POST',

@@ -56,3 +56,5 @@ picture inline with its built-in nodes, so the one to upscale is uploaded to its
 - ComfyUI must be running when a Session renders; if it isn't, the render fails saying so.
 - Upscale on ComfyUI needs Comfy-Org's SeedVR2 files there (mflux's don't load in ComfyUI).
 - ComfyUI's temp folder holds a 1×1 stub per upscale until it restarts.
+
+2026-10-08: the client moved to `server/comfyui/` when voices began to use it too (ADR 0010).

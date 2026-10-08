@@ -2,7 +2,7 @@ import { extname, join } from '@std/path'
 import { error, json, readJson, type Route } from './http.ts'
 import type { ImageGenerator } from './images/imageGenerator.ts'
 import { IMAGE_BACKENDS, imageModelsOf } from './images/imageModels.ts'
-import type { ComfyStatus } from './images/comfyui/comfyui.ts'
+import type { ComfyStatus } from './comfyui/status.ts'
 import { UPSCALERS } from './images/mflux/models.ts'
 import { crossedLimit, setLimitsEnabled } from './limits.ts'
 import {
@@ -33,7 +33,13 @@ import { roleplayExcerpt } from './roleplay/prompt.ts'
 import { roleplayRoutes } from './roleplay/routes.ts'
 import { checkRoleplayJob, type RoleplayJobContext, runRoleplayJob } from './roleplay/jobs.ts'
 import { JOB_FEATURE, jobRoutes, SessionJobs } from './jobs.ts'
-import { type Availabilities, type Availability, type Feature, FEATURE_NAMES } from './features.ts'
+import {
+  type Availabilities,
+  type Availability,
+  type Feature,
+  FEATURE_NAMES,
+  withBackends,
+} from './features.ts'
 import { checkChainJob, runChainJob } from './chain/jobs.ts'
 import { checkStoryboardJob, runStoryboardJob } from './storyboard/jobs.ts'
 import { GoneError, updateSession } from './update.ts'
@@ -52,10 +58,10 @@ export interface AppDeps {
   settings: SettingsStore
   /** A Text backend's models; `apiKey` stands in for the saved one (trying a new key). */
   listTextModels: (connection: TextConnection, apiKey?: string) => Promise<TextModelInfo[]>
-  /** Whether ComfyUI answers at an address, and has an Image Model's files (for Settings). */
+  /** Whether ComfyUI answers at an address, and can run what Settings send it (for Settings). */
   comfyuiStatus?: (
     baseUrl: string,
-    uses: { imageModel?: string; upscaler?: string },
+    uses: { imageModel?: string; upscaler?: string; voices?: boolean },
   ) => Promise<ComfyStatus>
   scenarios: ScenarioLibrary
   sessions: SessionStore
@@ -91,10 +97,12 @@ export interface AppDeps {
  */
 const IMAGE_FILE = /^frame-\d+(-[0-9a-f]{8})?(-2048)?\.(png|svg)$/
 /**
- * A Roleplay's audio: its Character's voice (`voice-1a2b3c4d.wav`, lossless), spoken lines (`speech-3-…`)
- * and spoken thoughts (`thought-3-…`): MP3, or WAV from before 2026-10-02.
+ * A Roleplay's audio: its Character's voice (`voice-1a2b3c4d.wav`, lossless; FLAC from ComfyUI),
+ * spoken lines (`speech-3-…`) and spoken thoughts (`thought-3-…`): MP3 (FLAC from ComfyUI), or WAV
+ * from before 2026-10-02.
  */
-const AUDIO_FILE = /^(voice-[0-9a-f]{8}\.wav|(speech|thought)-\d+-[0-9a-f]{8}\.(mp3|wav))$/
+const AUDIO_FILE =
+  /^(voice-[0-9a-f]{8}\.(wav|flac)|(speech|thought)-\d+-[0-9a-f]{8}\.(mp3|wav|flac))$/
 /**
  * A Roleplay Frame's 2.5D scene (`scene-3-1a2b3c4d.ply`, SHARP) or 3D figure (`figure-3-…`,
  * TripoSplat; `lito-3-…`, LiTo).
@@ -105,6 +113,7 @@ const CONTENT_TYPES: Record<string, string> = {
   '.svg': 'image/svg+xml',
   '.wav': 'audio/wav',
   '.mp3': 'audio/mpeg',
+  '.flac': 'audio/flac',
   '.ply': 'application/octet-stream',
 }
 
@@ -305,24 +314,9 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     figures: given(deps.figure, 'TripoSplat'),
     lito: given(deps.lito, 'LiTo'),
   }
-  /**
-   * What this machine can run now: as detected at startup, but with pictures and Upscale available
-   * wherever Settings send them to ComfyUI, which a running server provides rather than this
-   * machine.
-   */
-  async function availability(): Promise<Availabilities> {
-    const { imageBackend, upscaleBackend } = await deps.settings.load()
-    const viaComfyUI = (feature: 'images' | 'upscale', comfyui: boolean, choose: string) =>
-      comfyui ? { available: true } : detected[feature].available ? detected[feature] : {
-        available: false,
-        reason: `${detected[feature].reason}; or choose ComfyUI ${choose} in Settings`,
-      }
-    return {
-      ...detected,
-      images: viaComfyUI('images', imageBackend === 'comfyui', 'as the Image backend'),
-      upscale: viaComfyUI('upscale', upscaleBackend === 'comfyui', 'for Upscale'),
-    }
-  }
+  /** What can run now, with Settings' backends (`withBackends`). */
+  const availability = async (): Promise<Availabilities> =>
+    withBackends(detected, await deps.settings.load())
 
   /**
    * Why `feature` can't be used now (a 409 to send back), or null if it can: this machine can't
@@ -442,21 +436,28 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       return json(await shownSettings(result.settings))
     }],
 
-    // Whether ComfyUI is up at an address not saved yet, and has the Image Model's files.
+    // Whether ComfyUI is up at an address not saved yet, and can run what Settings would send it:
+    // the Image Model's files, the upscaler's, and voices' nodes.
     ['POST', new URLPattern({ pathname: '/api/settings/comfyui' }), async (req) => {
       const body = await readJson(req) as
-        | { imageBaseUrl?: unknown; imageModel?: unknown; upscaler?: unknown }
+        | { imageBaseUrl?: unknown; imageModel?: unknown; upscaler?: unknown; voices?: unknown }
         | undefined
       const optional = (v: unknown) => v === undefined || typeof v === 'string'
       if (
         typeof body?.imageBaseUrl !== 'string' || !optional(body.imageModel) ||
-        !optional(body.upscaler)
+        !optional(body.upscaler) || (body.voices !== undefined && typeof body.voices !== 'boolean')
       ) {
-        return error('Give an imageBaseUrl, and an imageModel or an upscaler to check', 400)
+        return error('Give an imageBaseUrl, and an imageModel, an upscaler or voices to check', 400)
       }
       if (!deps.comfyuiStatus) return error("ComfyUI isn't set up on this server", 409)
-      const { imageModel, upscaler } = body as { imageModel?: string; upscaler?: string }
-      return json(await deps.comfyuiStatus(body.imageBaseUrl.trim(), { imageModel, upscaler }))
+      const { imageModel, upscaler, voices } = body as {
+        imageModel?: string
+        upscaler?: string
+        voices?: boolean
+      }
+      return json(
+        await deps.comfyuiStatus(body.imageBaseUrl.trim(), { imageModel, upscaler, voices }),
+      )
     }],
 
     // The models on a Text backend not saved yet, for Settings to offer as it's changed.

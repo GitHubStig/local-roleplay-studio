@@ -84,6 +84,7 @@ beforeEach(() => {
     seed: 1,
     upscaler: 'seedvr2-7b',
     upscaleBackend: 'mflux',
+    voiceBackend: 'mlx-audio',
     limits: true,
     artModel: '',
     artStyle: 'prose',
