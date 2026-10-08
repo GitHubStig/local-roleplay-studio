@@ -940,13 +940,12 @@ async function saveCastDraft(): Promise<boolean> {
           <h2 class="font-medium">
             Voice <span class="font-normal text-muted">· how {{ characterName }} sounds</span>
           </h2>
-          <textarea
+          <CollapsibleTextarea
+            id="voice.description"
             v-model="voiceDraft"
-            rows="3"
-            class="resize-y rounded border border-line bg-surface p-2 text-sm text-fg"
+            label="Description"
             :placeholder="`Described from the Cast the first time ${characterName} speaks, or describe it yourself: age, pitch, texture, manner.`"
             :disabled="!!voiceJob && voiceJob.status !== 'failed'"
-            data-voice-description
           />
           <p v-if="voiceJob" class="flex items-center gap-2 text-xs" data-voice-job>
             <span

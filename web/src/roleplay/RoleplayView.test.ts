@@ -511,7 +511,7 @@ describe('RoleplayView', () => {
       await flushPromises()
       expect(played).toEqual(['voice-aaaaaaaa.wav'])
 
-      await panel.find('[data-voice-description]').setValue('A deep man.')
+      await panel.find('[data-field="voice.description"]').setValue('A deep man.')
       await panel.trigger('submit')
       await flushPromises()
       expect(roleplay.saveVoice).toHaveBeenCalledWith('r1', 'A deep man.')

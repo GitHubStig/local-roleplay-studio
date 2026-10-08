@@ -13,6 +13,8 @@ const props = defineProps<{
   id: string
   label: string
   disabled?: boolean
+  /** Shown while it's empty. */
+  placeholder?: string
 }>()
 const value = defineModel<string>({ required: true })
 
@@ -43,6 +45,7 @@ const preview = computed(() => value.value.replace(/\s+/g, ' ').trim())
       rows="1"
       class="mt-1 w-full resize-none overflow-hidden rounded border border-line bg-surface p-2 text-sm text-fg"
       :disabled="disabled"
+      :placeholder="placeholder"
       :data-field="id"
     />
   </details>
