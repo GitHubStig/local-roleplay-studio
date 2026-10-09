@@ -1,25 +1,9 @@
-import type { SessionBase } from '../session.ts'
+import type { Look, SessionBase } from '../session.ts'
 import type { Delivery } from '../voice/voice.ts'
 import type { Scene } from '../3d/scene.ts'
 import type { Figure } from '../3d/figure.ts'
 
 export type { Figure, Scene }
-
-/**
- * A Roleplay's Look: each person's identity sentence, and the art style, used word for word in
- * every picture. A picture includes only the identities of the people it shows.
- */
-export interface RoleplayLook {
-  /** The Character's identity: name, age, build, skin, hair, face. */
-  character: string
-  /** The Persona's identity, the same way. */
-  persona: string
-  /** The art style and medium. */
-  style: string
-}
-
-/** Who a picture shows: both, one of them, or no one (an empty room, a closed door). */
-export type Shown = 'both' | 'character' | 'persona' | 'none'
 
 /** Who the Text Model plays. */
 export interface Character {
@@ -87,8 +71,11 @@ export interface RoleplayFrame {
   prompt?: string
   /** Why the picture can't be rendered: its Image Prompt crosses a Limit. */
   blocked?: string
-  /** Who the picture shows; pictures from before this was recorded show both. */
-  shown?: Shown
+  /**
+   * Who the picture shows, by their names in the Look, the most prominent first; none for a
+   * picture of the place alone.
+   */
+  shown?: string[]
   /** The picture's clothing sentence, checked to dress everyone shown while the Limits are on. */
   clothing?: string
   /** For debugging: seconds the latest picture took, the model that wrote it, and its reasoning. */
@@ -158,11 +145,10 @@ export interface RoleplaySession extends SessionBase {
   /** Null until the Roleplay is set up. */
   cast: Cast | null
   /**
-   * Who is shown and in what style, shared by every picture; written when one is first pictured.
-   * A Look with a single `subject` sentence is from before pictures chose who is shown: the next
-   * picture replaces it.
+   * Each person's identity and the art style, shared by every picture (ADR 0012): written from the
+   * Cast when a Frame is first pictured, and joined by anyone the story brings into a picture.
    */
-  look?: RoleplayLook | { subject: string; style: string } | null
+  look?: Look | null
   /** For debugging: seconds the Look took to write, the model that wrote it, and its reasoning. */
   lookTimings?: { text: number }
   lookModel?: string

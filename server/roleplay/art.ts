@@ -1,34 +1,42 @@
 /**
  * The Art Agent: turns a Roleplay Frame into an Image Prompt, the same shape as a Storyboard
- * Frame's: identity, the Frame's seven sentences, then style. The identity is the Look's sentence
- * for each person the picture shows, so someone who has left the scene isn't drawn into it.
- * Its prompts are `prompts/roleplay/art-*.md`. Rendering the prompt comes later.
+ * Frame's: identities, the Frame's seven sentences, then style (ADR 0012). The identities are the
+ * Look's sentences for the people the picture shows, so someone who has left the scene isn't
+ * drawn into it, and someone the story brings in joins the Look, to look the same next time.
+ * Its prompts are `prompts/roleplay/art-*.md`.
  */
 import { stringify } from '@std/yaml'
-import { joinPrompt } from '../imagePrompt.ts'
 import { crossedLimit, limitsEnabled } from '../limits.ts'
+import { composePrompt, matchShown, shownPeople } from '../look.ts'
 import type { ChatMessage } from '../text/chat.ts'
 import { loadPrompt } from '../promptFiles.ts'
 import type { Scenario } from '../scenario.ts'
-import { frameSchema, plainSentences } from '../textModel.ts'
-import type { Cast, RoleplayFrame, RoleplayLook, RoleplaySession, Shown } from './types.ts'
+import { frameSchema, lookSchema, parseLook } from '../textModel.ts'
+import type { Look, Person } from '../session.ts'
+import type { RoleplayFrame, RoleplaySession } from './types.ts'
 
 /**
- * A Frame's seven sentences, then whether each person is in the picture: a yes or no per person
- * (offered a choice of "both", "character" or "persona", the model always took the first).
+ * Who a picture adds and shows, after its sentences: anyone in it the Look doesn't have yet (a
+ * name and an identity), then the names of everyone in it, the most prominent first.
  *
- * The yes/no answers come last: put first, gemma4 wrote them and then only blank lines until its
- * token cap, 6 times in 6 (as words "yes"/"no" first, 3 in 6); last, 0 in 6. Nor is there a
- * `maxLength` per field, which did the same; `trimFields` keeps the sentences short instead.
+ * These come last: put first, gemma4 wrote the yes/no answers that came before them and then only
+ * blank lines until its token cap, 6 times in 6; last, 0 in 6. Nor is there a `maxLength` per
+ * field, which did the same; `trimFields` keeps the sentences short instead.
  */
+const whoSchema = {
+  newcomers: lookSchema.properties.people,
+  shown: {
+    type: 'array',
+    items: { type: 'string' },
+    description: 'the names of everyone in the picture, most prominent first',
+  },
+}
+
+/** A Frame's seven sentences, then who the picture adds and shows. */
 export const artFrameSchema = {
   type: 'object',
-  properties: {
-    ...frameSchema.properties,
-    character_shown: { type: 'boolean', description: 'is the character in the picture?' },
-    persona_shown: { type: 'boolean', description: 'is the persona in the picture?' },
-  },
-  required: [...frameSchema.required, 'character_shown', 'persona_shown'],
+  properties: { ...frameSchema.properties, ...whoSchema },
+  required: [...frameSchema.required, 'newcomers', 'shown'],
 }
 
 /**
@@ -48,10 +56,9 @@ export const artTagsSchema = {
     ...Object.fromEntries(
       ASPECTS.map((a) => [a, { type: 'string', description: `${a} tags, comma-separated` }]),
     ),
-    character_shown: { type: 'boolean', description: 'is the character in the picture?' },
-    persona_shown: { type: 'boolean', description: 'is the persona in the picture?' },
+    ...whoSchema,
   },
-  required: [...ASPECTS, 'character_shown', 'persona_shown'],
+  required: [...ASPECTS, 'newcomers', 'shown'],
 }
 
 /** A tags reply's aspects as one comma-separated list, in aspect order. */
@@ -63,55 +70,53 @@ export function joinTags(fields: Record<string, unknown>): string {
   return tags.join(', ')
 }
 
-/**
- * Who a picture shows, from the Art Agent's reply; a person it didn't answer for counts as shown.
- * Neither means no one: the picture is of the place alone.
- */
-export function parseShown(fields: Record<string, unknown>): Shown {
-  const character = fields.character_shown !== false
-  const persona = fields.persona_shown !== false
-  if (character && persona) return 'both'
-  if (character) return 'character'
-  if (persona) return 'persona'
-  return 'none'
+/** Who a picture shows and adds, from the Art Agent's reply: names, and new people. */
+export function parseWho(
+  fields: Record<string, unknown>,
+): { shown: string[]; newcomers: Person[] } {
+  const shown = Array.isArray(fields.shown)
+    ? fields.shown.filter((n): n is string => typeof n === 'string' && n.trim() !== '')
+    : []
+  // Read as a Look's people are: tidied, each with a name and an identity, no name twice.
+  const newcomers = Array.isArray(fields.newcomers)
+    ? parseLook({ people: fields.newcomers, style: '-' }).people
+    : []
+  return { shown, newcomers }
 }
 
-const sentence = (description: string) => ({ type: 'string', description })
-
+/** A Roleplay's Look: everyone the Cast and Brief name, then the art style. */
 export const roleplayLookSchema = {
   type: 'object',
   properties: {
-    character: sentence("the character's identity: name, age, build, skin, hair, face"),
-    persona: sentence("the persona's identity: name, age, build, skin, hair, face"),
-    style: sentence('the art style and medium'),
+    people: lookSchema.properties.people,
+    style: { type: 'string', description: 'the art style and medium' },
   },
-  required: ['character', 'persona', 'style'],
+  required: ['people', 'style'],
 }
 
-/** A Look from before pictures chose who is shown: one `subject` sentence for both people. */
-export const isRoleplayLook = (look: unknown): look is RoleplayLook =>
-  typeof (look as RoleplayLook | null)?.character === 'string'
+/** Whether a Roleplay has a Look of people (one from before this has none: it's written again). */
+export const isLook = (look: unknown): look is Look =>
+  Array.isArray((look as Look | null)?.people) && typeof (look as Look).style === 'string'
 
-/** Reads a Look; throws if any of its three sentences is missing. */
-export function parseRoleplayLook(value: unknown): RoleplayLook {
-  const v = (value ?? {}) as Record<string, unknown>
-  const look = {
-    character: plainSentences(String(v.character ?? '')),
-    persona: plainSentences(String(v.persona ?? '')),
-    style: plainSentences(String(v.style ?? '')),
-  }
-  if (!look.character || !look.persona || !look.style) {
-    throw new Error('The Look needs both identities and a style')
-  }
+/** Reads a written Look; throws if it has no one or no style. */
+export function parseRoleplayLook(value: unknown): Look {
+  const look = parseLook(value)
+  if (!look.people.length || !look.style) throw new Error('The Look needs its people and a style')
   return look
 }
 
-/** The identity sentences for who a picture shows; none for a picture of no one. */
-export function identityFor(look: RoleplayLook, shown: Shown): string {
-  if (shown === 'none') return ''
-  if (shown === 'character') return look.character
-  if (shown === 'persona') return look.persona
-  return `${look.character} ${look.persona}`
+/**
+ * The Look with a picture's newcomers added: each whose name isn't in it yet and whose identity
+ * crosses no Limit (someone who does is described by the picture's own sentences instead).
+ */
+export function withNewcomers(look: Look, newcomers: Person[]): Look {
+  const people = [...look.people]
+  for (const person of newcomers) {
+    if (matchShown(people, [person.name]).length) continue
+    if (crossedLimit(person.identity)) continue
+    people.push(person)
+  }
+  return people.length === look.people.length ? look : { ...look, people }
 }
 
 /** How long each of a picture's sentences may run, in characters. */
@@ -166,7 +171,11 @@ export async function artLookMessages(
   return [
     {
       role: 'system',
-      content: await loadPrompt('roleplay/art-look', { limits: await artLimits() }),
+      content: await loadPrompt('roleplay/art-look', {
+        ...session.cast!,
+        identity: await loadPrompt('shared/identity'),
+        limits: await artLimits(),
+      }),
     },
     {
       role: 'user',
@@ -192,6 +201,10 @@ export async function artFrameMessages(
         {
           ...session.cast!,
           placeAlone: await loadPrompt('shared/place-alone'),
+          who: await loadPrompt('roleplay/art-who', {
+            identity: await loadPrompt('shared/identity'),
+            shown: await loadPrompt('shared/shown'),
+          }),
           limits: await artLimits(),
         },
       ),
@@ -208,19 +221,21 @@ export async function artFrameMessages(
 }
 
 /**
- * While the Limits are on, a picture showing both people must say what each wears. Told to keep
- * within the Limits, the Art Agent sometimes leaves an undressed person's clothing out instead of
- * dressing them, and an image model left to guess may not dress them either.
+ * While the Limits are on, a picture showing two or more people must say what each wears. Told to
+ * keep within the Limits, the Art Agent sometimes leaves an undressed person's clothing out
+ * instead of dressing them, and an image model left to guess may not dress them either. A person
+ * counts as named by any word of their name ("the barkeep" by "barkeep").
  */
 export function undressed(
-  cast: Cast,
-  shown: Shown,
+  people: Person[],
   clothing: string | undefined,
 ): string | undefined {
-  if (!limitsEnabled() || shown !== 'both' || clothing === undefined) return undefined
-  const firstName = (name: string) => name.split(/\s+/)[0].toLowerCase()
+  if (!limitsEnabled() || people.length < 2 || clothing === undefined) return undefined
   const text = clothing.toLowerCase()
-  const missing = [cast.character.name, cast.persona.name].some((n) => !text.includes(firstName(n)))
+  const named = (name: string) =>
+    name.toLowerCase().split(/\s+/).filter((w) => w.length > 2 && w !== 'the')
+      .some((w) => text.includes(w))
+  const missing = people.some((p) => !named(p.name))
   return missing ? "everyone shown must be dressed (name each person's clothes)" : undefined
 }
 
@@ -230,15 +245,15 @@ export function undressed(
  */
 export function pictured(
   frame: RoleplayFrame,
-  look: RoleplayLook,
-  cast: Cast,
+  look: Look,
   body: string,
-  shown: Shown = 'both',
+  shown: string[] = frame.shown ?? [],
   clothing = frame.clothing,
 ): RoleplayFrame {
   const { blocked: _, stale: __, ...rest } = frame
-  const prompt = joinPrompt(identityFor(look, shown), body, look.style)
-  const blocked = crossedLimit(prompt)?.message ?? undressed(cast, shown, clothing)
+  shown = matchShown(look.people, shown)
+  const prompt = composePrompt(look, body, shown)
+  const blocked = crossedLimit(prompt)?.message ?? undressed(shownPeople(look, shown), clothing)
   const stale = !!frame.image && (frame.stale || prompt !== frame.prompt)
   return {
     ...rest,

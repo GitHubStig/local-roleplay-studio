@@ -2,7 +2,8 @@ import type { ChatMessage } from '../text/chat.ts'
 import type { RoleplayModel } from './model.ts'
 import type { Delivery } from '../voice/voice.ts'
 import { REPLY_FIELDS } from './prompt.ts'
-import type { Cast, Reply, RoleplayLook } from './types.ts'
+import type { Cast, Reply } from './types.ts'
+import type { Look, Person } from '../session.ts'
 
 export const testCast: Cast = {
   character: {
@@ -33,6 +34,12 @@ export const replyOf = (dialogue: string, extra: Partial<Reply> = {}): Reply => 
   ...extra,
 })
 
+/** A Look for the test Cast: Mira and Sam, with these identities, in this style. */
+export const testLook = (style = 'Ink.', mira = 'Mira.', sam = 'Sam.'): Look => ({
+  people: [{ name: 'Mira Vance', identity: mira }, { name: 'Sam Reyes', identity: sam }],
+  style,
+})
+
 /**
  * A Roleplay model that plays back scripted Casts and replies, recording the messages each reply
  * was asked for. Streams each reply's fields as the real one does.
@@ -41,8 +48,16 @@ export function scriptedRoleplayModel(
   script: {
     casts?: (Cast | Error)[]
     replies?: (Reply | Error)[]
-    looks?: (RoleplayLook | Error)[]
-    bodies?: (string | Error)[]
+    looks?: (Look | Error)[]
+    /**
+     * Each picture: its sentences, or those with who it shows (both of the test Cast unless given)
+     * and anyone it brings in.
+     */
+    bodies?: (
+      | string
+      | { body: string; shown?: string[]; newcomers?: Person[]; clothing?: string }
+      | Error
+    )[]
     suggestions?: (string | Error)[]
     voices?: (string | Error)[]
     /** How each line is directed; plain unless scripted. */
@@ -86,10 +101,18 @@ export function scriptedRoleplayModel(
       model.styles.push(style ?? 'prose')
       model.art.push(messages)
       signal.throwIfAborted()
+      const drawn = await next(script.bodies, 'picture')
+      const {
+        body,
+        shown = ['Mira Vance', 'Sam Reyes'],
+        newcomers = [],
+        clothing = 'Mira wears a navy coat; Sam wears oilskins.',
+      } = typeof drawn === 'string' ? { body: drawn } : drawn
       return {
-        body: await next(script.bodies, 'picture'),
-        shown: 'both' as const,
-        clothing: 'Mira wears a navy coat; Sam wears oilskins.',
+        body,
+        shown,
+        newcomers,
+        clothing,
         thinking: 'Kael first, then the bar.',
       }
     },

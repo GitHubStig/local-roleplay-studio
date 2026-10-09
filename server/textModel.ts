@@ -60,6 +60,8 @@ async function sharedParts() {
     limits: await loadPrompt(limitsEnabled() ? 'shared/limits' : 'shared/limits-adults-only'),
     body: BODY_ASPECTS.join(', '),
     placeAlone: await loadPrompt('shared/place-alone'),
+    identity: await loadPrompt('shared/identity'),
+    shown: await loadPrompt('shared/shown'),
   }
 }
 

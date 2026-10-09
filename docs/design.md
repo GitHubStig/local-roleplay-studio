@@ -294,21 +294,25 @@ picture it's working on). Clicking one goes to its Frame. The screens share this
 **Picturing a Frame** (the Art Agent; by the Session's Text Model, or the Art Agent model set in
 Settings, recorded on each picture as `pictureModel` and on the Look as `lookModel`): **Picture this** under a Reply writes
 that Frame's Image Prompt, in the same shape as a Storyboard Frame's. The first time, a call
-writes the Roleplay's **Look** from the Cast and Brief: an identity sentence for the Character,
-one for the Persona, and the art style, fitted to the story's period. Then a call reads the story
-up to the Frame (each Message and what the Character did and said; thoughts left out, as a
-picture can't show them), says whether each person is in the picture (someone upstairs or gone
-isn't; if neither is, the picture is of the place alone, with no identity sentences and nothing
-said about people or their absence), and writes the Frame's seven sentences, each capped at 280 characters, as a third-person
-view of that moment (or, with Settings → Art Agent style set to tags, a few short tags per aspect,
+writes the Roleplay's **Look** from the Cast and Brief, the same shape as a Storyboard's (ADR
+0012): an identity sentence for the Character, the Persona and anyone else the Brief names, and
+the art style, fitted to the story's period. Then a call reads the story up to the Frame (each
+Message and what the Character did and said; thoughts left out, as a picture can't show them),
+writes the Frame's seven sentences, then names anyone in the picture the Look doesn't have yet
+(a guard who comes in, the barkeep who speaks) with their identity, and lists the names of
+everyone in it, the most prominent first (someone upstairs or gone isn't; if no one is, the
+picture is of the place alone, with no identity sentences and nothing said about people or their
+absence). Newcomers join the Look, unless already in it under another name or crossing a Limit,
+so they look the same in every later picture. The seven sentences are each capped at 280 characters, written as a
+third-person view of that moment (or, with Settings → Art Agent style set to tags, a few short tags per aspect,
 recorded as `pictureStyle` and shown as "as tags"; prose is the default, as it did better, see
 [models.md](models.md)). The Image Prompt is the identity sentences of the people shown, those
 sentences, then the style; a picture that crosses a Limit is written once more, told which; it's checked against the Limits in
 force and shown under the Reply (marked if it crosses one). While a Frame is pictured, the light
 sweeps round that Reply, which says "Picturing this moment…" (or "Writing the Look, then
 picturing…") with its own Cancel; the conversation doesn't scroll, and the text box stays still
-and usable, with Send waiting until the picture is done. With the Limits on, a picture of both people must name what each
-wears in its clothing sentence, or it's blocked (and written once more): told to keep within the
+and usable, with Send waiting until the picture is done. With the Limits on, a picture of two or
+more people must name what each wears in its clothing sentence, or it's blocked (and written once more): told to keep within the
 Limits, the Art Agent sometimes left an undressed person's clothing out instead of dressing them.
 **Picture replies** (beside "Speak replies" above the conversation; on by default wherever
 pictures are available) queues Picture this for each new Reply as it arrives, writing its Image

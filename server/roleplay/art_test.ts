@@ -5,17 +5,22 @@ import {
   artFrameMessages,
   joinTags,
   parseRoleplayLook,
-  parseShown,
+  parseWho,
   pictured,
   storyText,
   trimFields,
+  withNewcomers,
 } from './art.ts'
 import { replyOf, testCast } from './testing.ts'
 import type { RoleplaySession } from './types.ts'
 
+const MIRA = 'Mira Vance'
+const SAM = 'Sam Reyes'
 const look = {
-  character: 'Mira Vance, a tall woman of 34.',
-  persona: 'Sam Reyes, a slight man of 25.',
+  people: [
+    { name: MIRA, identity: 'Mira Vance, a tall woman of 34.' },
+    { name: SAM, identity: 'Sam Reyes, a slight man of 25.' },
+  ],
   style: 'An oil painting.',
 }
 
@@ -70,27 +75,27 @@ Deno.test('Undressed people are covered in pictures only while the Limits are on
 })
 
 Deno.test('pictured composes the Image Prompt and blocks one that crosses a Limit in force', () => {
-  const frame = pictured(session.frames[1], look, testCast, 'She stands at the rail.', 'character')
+  const frame = pictured(session.frames[1], look, 'She stands at the rail.', [MIRA])
   assertEquals(
     frame.prompt,
     'Mira Vance, a tall woman of 34. She stands at the rail. An oil painting.',
   )
-  assertEquals(frame.shown, 'character')
+  assertEquals(frame.shown, [MIRA])
   assertEquals(
-    pictured(session.frames[1], look, testCast, 'They talk.').prompt,
+    pictured(session.frames[1], look, 'They talk.', ['mira', 'Sam']).prompt,
     'Mira Vance, a tall woman of 34. Sam Reyes, a slight man of 25. They talk. An oil painting.',
   )
   assertEquals(frame.blocked, undefined)
-  const bare = pictured(session.frames[1], look, testCast, 'She wears only a towel.')
+  const bare = pictured(session.frames[1], look, 'She wears only a towel.', [MIRA])
   assertEquals(bare.blocked, 'no sexual or nude imagery')
   setLimitsEnabled(false)
   try {
     assertEquals(
-      pictured(session.frames[1], look, testCast, 'She wears only a towel.').blocked,
+      pictured(session.frames[1], look, 'She wears only a towel.', [MIRA]).blocked,
       undefined,
     )
     assertEquals(
-      pictured(session.frames[1], look, testCast, 'A child at the rail.').blocked,
+      pictured(session.frames[1], look, 'A child at the rail.', [MIRA]).blocked,
       'everyone depicted must be an adult',
     )
   } finally {
@@ -108,31 +113,63 @@ Deno.test('trimFields keeps whole sentences within the length, and always the fi
   assertEquals(trimFields({ pose: 'Short.' }), { pose: 'Short.' })
 })
 
-Deno.test('parseShown and parseRoleplayLook', () => {
-  const shown = (character: unknown, persona: unknown) =>
-    parseShown({ character_shown: character, persona_shown: persona })
-  assertEquals([shown(true, false), shown(false, true), shown(true, true), shown(false, false)], [
-    'character',
-    'persona',
-    'both',
-    'none',
-  ])
-  assertEquals(parseShown({}), 'both')
+Deno.test('parseWho reads who a picture shows and adds; parseRoleplayLook needs people and a style', () => {
+  assertEquals(
+    parseWho({
+      shown: ['Mira', '', 3, 'the barkeep'],
+      newcomers: [{ name: 'the barkeep', identity: 'The barkeep, a stout man of 60.' }, {
+        name: 'nobody',
+      }],
+    }),
+    {
+      shown: ['Mira', 'the barkeep'],
+      newcomers: [{ name: 'the barkeep', identity: 'The barkeep, a stout man of 60.' }],
+    },
+  )
+  assertEquals(parseWho({}), { shown: [], newcomers: [] })
   assertEquals(parseRoleplayLook(look), look)
-  assertThrows(() => parseRoleplayLook({ character: 'Mira.', style: 'Ink.' }), Error, 'identities')
+  assertThrows(() => parseRoleplayLook({ people: [], style: 'Ink.' }), Error, 'people')
 })
 
-Deno.test('While the Limits are on, a picture of both people must name what each wears', () => {
+Deno.test('Newcomers join the Look, unless already in it or crossing a Limit', () => {
+  const barkeep = { name: 'the barkeep', identity: 'The barkeep, a stout man of 60.' }
+  const grown = withNewcomers(look, [
+    barkeep,
+    { name: 'Mira', identity: 'Mira again, differently.' },
+    { name: 'a boy', identity: 'A 12-year-old boy.' },
+  ])
+  assertEquals(grown.people.map((p) => p.name), [MIRA, SAM, 'the barkeep'])
+  assertEquals(withNewcomers(look, []), look)
+  // Shown with the others, with their own identity.
+  assertEquals(
+    pictured(session.frames[1], grown, 'They talk.', ['Barkeep', MIRA]).prompt,
+    'The barkeep, a stout man of 60. Mira Vance, a tall woman of 34. They talk. An oil painting.',
+  )
+})
+
+Deno.test('While the Limits are on, a picture of two or more people must name what each wears', () => {
   const frame = session.frames[1]
-  const both = (clothing: string) => pictured(frame, look, testCast, 'They talk.', 'both', clothing)
+  const both = (clothing: string) => pictured(frame, look, 'They talk.', [MIRA, SAM], clothing)
   assertEquals(both('Mira wears a coat; Sam wears oilskins.').blocked, undefined)
   assertEquals(
     both('Mira wears a heavy coat.').blocked,
     "everyone shown must be dressed (name each person's clothes)",
   )
-  // One person shown: "She wears…" is fine.
+  // One person shown: "She wears…" is fine. Someone named by a role is named by its word.
+  const withBarkeep = withNewcomers(look, [{ name: 'the barkeep', identity: 'A stout man.' }])
   assertEquals(
-    pictured(frame, look, testCast, 'She waits.', 'character', 'She wears a coat.').blocked,
+    pictured(
+      frame,
+      withBarkeep,
+      'They talk.',
+      [MIRA, 'the barkeep'],
+      'Mira wears a coat; the barkeep an apron.',
+    )
+      .blocked,
+    undefined,
+  )
+  assertEquals(
+    pictured(frame, look, 'She waits.', [MIRA], 'She wears a coat.').blocked,
     undefined,
   )
   setLimitsEnabled(false)
@@ -145,16 +182,15 @@ Deno.test('While the Limits are on, a picture of both people must name what each
 
 Deno.test('A rendered picture whose Image Prompt changes is marked stale', () => {
   const rendered = {
-    ...pictured(session.frames[1], look, testCast, 'She waits.', 'character'),
+    ...pictured(session.frames[1], look, 'She waits.', [MIRA]),
     image: 'frame-1-aaaaaaaa.png',
   }
-  assertEquals(pictured(rendered, look, testCast, 'She waits.', 'character').stale, undefined)
-  assertEquals(pictured(rendered, look, testCast, 'She runs.', 'character').stale, true)
+  assertEquals(pictured(rendered, look, 'She waits.', [MIRA]).stale, undefined)
+  assertEquals(pictured(rendered, look, 'She runs.', [MIRA]).stale, true)
 })
 
 Deno.test('A picture of no one has no identity sentences', () => {
-  const empty = pictured(session.frames[1], look, testCast, 'The door stands closed.', 'none')
-  assertEquals(empty.prompt, 'The door stands closed. An oil painting.')
+  const empty = pictured(session.frames[1], look, 'The door stands closed.', [])
   assertEquals(empty.prompt, 'The door stands closed. An oil painting.')
   assertEquals(empty.blocked, undefined)
 })
@@ -168,9 +204,10 @@ Deno.test('The tags style asks for tags, and joins them in aspect order', async 
       pose: 'Mira steadying Sam,',
       camera: ' ',
       clothing: 'Mira oilskin coat, Sam wool jumper.',
-      persona_shown: true,
+      shown: ['Mira'],
     }),
     'Mira steadying Sam, Mira oilskin coat, Sam wool jumper, grey, silver',
   )
-  assertThrows(() => joinTags({ pose: '', character_shown: true }), Error, 'no tags')
+  assertThrows(() => joinTags({ pose: '', shown: [] }), Error, 'no tags')
 })
+

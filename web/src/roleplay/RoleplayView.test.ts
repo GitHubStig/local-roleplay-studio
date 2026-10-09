@@ -345,7 +345,10 @@ describe('RoleplayView', () => {
     expect(router.currentRoute.value.path).toBe('/sessions/r1')
   })
 
-  const look = { character: 'Elena, 38.', persona: 'Cal, 25.', style: 'Oil painting.' }
+  const look = {
+    people: [{ name: 'Elena', identity: 'Elena, 38.' }, { name: 'Cal', identity: 'Cal, 25.' }],
+    style: 'Oil painting.',
+  }
   const job = (extra: Partial<roleplay.Job>): roleplay.Job => ({
     id: 'j1',
     kind: 'picture',
@@ -595,7 +598,7 @@ describe('RoleplayView', () => {
       ...roleplaySession([{
         ...frame(0, null, 'Get inside.'),
         prompt: 'Elena, 38. She waits. Oil painting.',
-        shown: 'character',
+        shown: ['Elena', 'the barkeep'],
         pictureTimings: { text: 24.6 },
         pictureModel: 'gemma4',
         pictureStyle: 'tags',
@@ -606,14 +609,20 @@ describe('RoleplayView', () => {
     await flushPromises()
     expect(wrapper.find('[data-reply]').classes()).not.toContain('render-sweep')
     expect(wrapper.find('[data-image-prompt]').text()).toContain('Elena, 38. She waits.')
-    expect(wrapper.find('[data-shown]').text()).toBe('Shows Elena')
+    expect(wrapper.find('[data-shown]').text()).toBe('Shows Elena and the barkeep')
     expect(wrapper.find('[data-picture-timings]').text()).toBe(
       'Pictured in 24.6 s by gemma4, as tags',
     )
     expect(wrapper.find('[data-picture-button]').text()).toBe('Picture again')
 
     vi.mocked(roleplay.saveLook).mockResolvedValue({ ...roleplaySession(), look })
-    await wrapper.findAll('[data-look] textarea')[2].setValue('Ink.')
+    // The Look lists its people; their names come from the Cast, so they aren't edited, no one is
+    // added by hand, and the Character and Persona can't be removed.
+    expect(wrapper.findAll('[data-look] [data-person]')).toHaveLength(2)
+    expect(wrapper.find('[data-look] [data-person-name]').exists()).toBe(false)
+    expect(wrapper.find('[data-look] [data-add-person]').exists()).toBe(false)
+    expect(wrapper.findAll('[data-look] button').map((b) => b.text())).not.toContain('Remove')
+    await wrapper.findAll('[data-look] textarea').at(-1)!.setValue('Ink.')
     await wrapper.find('[data-look]').trigger('submit')
     await flushPromises()
     expect(roleplay.saveLook).toHaveBeenCalledWith('r1', { ...look, style: 'Ink.' })

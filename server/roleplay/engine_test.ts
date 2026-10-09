@@ -17,7 +17,8 @@ import {
   writeCast,
 } from './engine.ts'
 import { CastError } from './prompt.ts'
-import { replyOf, scriptedRoleplayModel, testCast } from './testing.ts'
+import { replyOf, scriptedRoleplayModel, testCast, testLook } from './testing.ts'
+import type { Look } from '../session.ts'
 import type { RoleplaySession } from './types.ts'
 
 const signal = () => new AbortController().signal
@@ -216,7 +217,7 @@ const body = (pose: string) =>
 Deno.test('pictureFrame writes the Look once, then each Frame from the story up to it', () =>
   withTempDir(async (root) => {
     const { deps, session, store } = await setUp(root, [replyOf('Take the wheel.')])
-    const look = { character: 'Mira Vance, a tall woman of 34.', persona: 'Sam.', style: 'Oil.' }
+    const look = testLook('Oil.', 'Mira Vance, a tall woman of 34.', 'Sam.')
     const scripted = scriptedRoleplayModel({
       looks: [look],
       bodies: [body('Mira grips the wheel.'), body('Mira points ahead.')],
@@ -244,7 +245,7 @@ Deno.test('setLook rewrites every pictured Frame, and refuses an incomplete Look
   withTempDir(async (root) => {
     const { deps, session, store } = await setUp(root)
     const scripted = scriptedRoleplayModel({
-      looks: [{ character: 'Mira.', persona: 'Sam.', style: 'Ink.' }],
+      looks: [testLook('Ink.', 'Mira.', 'Sam.')],
       bodies: [body('Mira waits.')],
     })
     const pictured = await pictureFrame(
@@ -255,18 +256,26 @@ Deno.test('setLook rewrites every pictured Frame, and refuses an incomplete Look
       () => {},
       signal(),
     )
-    const restyled = await setLook(store, pictured, {
-      character: 'Mira.',
-      persona: 'Sam.',
+    const restyled = await setLook(store, pictured, testLook('Watercolour.', 'Mira.', 'Sam.'))
+    assertStringIncludes(restyled.frames[0].prompt!, 'Watercolour.')
+    await assertRejects(
+      () => setLook(store, pictured, { people: [{ name: 'Mira', identity: '' }], style: 'Ink.' }),
+      CastError,
+    )
+    // A renamed person stays shown.
+    const renamed = await setLook(store, restyled, {
+      people: [{ name: 'Mira V', identity: 'Mira.' }, { name: 'Sam Reyes', identity: 'Sam.' }],
       style: 'Watercolour.',
     })
-    assertStringIncludes(restyled.frames[0].prompt!, 'Watercolour.')
-    await assertRejects(() => setLook(store, pictured, { subject: 'Mira.' }), CastError)
+    assertEquals(renamed.frames[0].shown, ['Mira V', 'Sam Reyes'])
 
-    // A Look from before pictures chose who is shown is replaced by the next picture.
-    const old = { ...restyled, look: { subject: 'Mira and Sam.', style: 'Ink.' } }
+    // A Look from before it listed people is replaced by the next picture.
+    const old = {
+      ...restyled,
+      look: { character: 'Mira.', persona: 'Sam.', style: 'Ink.' } as unknown as Look,
+    }
     const again = scriptedRoleplayModel({
-      looks: [{ character: 'Mira.', persona: 'Sam.', style: 'Pastel.' }],
+      looks: [testLook('Pastel.', 'Mira.', 'Sam.')],
       bodies: [body('Mira waits.')],
     })
     const renewed = await pictureFrame(
@@ -277,14 +286,48 @@ Deno.test('setLook rewrites every pictured Frame, and refuses an incomplete Look
       () => {},
       signal(),
     )
-    assertEquals(renewed.look, { character: 'Mira.', persona: 'Sam.', style: 'Pastel.' })
+    assertEquals(renewed.look, testLook('Pastel.', 'Mira.', 'Sam.'))
+  }))
+
+Deno.test('Someone the story brings into a picture joins the Look, and looks the same later', () =>
+  withTempDir(async (root) => {
+    const { deps, session } = await setUp(root)
+    const barkeep = { name: 'the barkeep', identity: 'The barkeep, a stout man of 60.' }
+    const scripted = scriptedRoleplayModel({
+      looks: [testLook()],
+      bodies: [
+        {
+          body: body('Mira pays the barkeep.'),
+          shown: ['Mira', 'Barkeep'],
+          newcomers: [barkeep],
+          clothing: 'Mira wears a coat; the barkeep an apron.',
+        },
+        // Pictured again: he's in the Look now, so his identity is reused, not added twice.
+        {
+          body: body('The barkeep pours.'),
+          shown: ['the barkeep'],
+          newcomers: [{ ...barkeep, identity: 'A different barkeep.' }],
+        },
+      ],
+    })
+    const art = { ...deps, roleplayModel: scripted }
+    const first = await pictureFrame(art, session, scenario, 0, () => {}, signal())
+    assertEquals(first.look!.people.map((p) => p.name), ['Mira Vance', 'Sam Reyes', 'the barkeep'])
+    assertEquals(first.frames[0].shown, ['Mira Vance', 'the barkeep'])
+    assertStringIncludes(first.frames[0].prompt!, 'Mira. The barkeep, a stout man of 60.')
+
+    const again = await pictureFrame(art, first, scenario, 0, () => {}, signal())
+    // The next picture reads him in the Look.
+    assertStringIncludes(scripted.art[2][1].content, 'name: the barkeep')
+    assertEquals(again.look!.people.length, 3)
+    assertStringIncludes(again.frames[0].prompt!, 'The barkeep, a stout man of 60.')
   }))
 
 Deno.test('A picture that crosses a Limit is tried once more, told which', () =>
   withTempDir(async (root) => {
     const { deps, session } = await setUp(root)
     const scripted = scriptedRoleplayModel({
-      looks: [{ character: 'Mira.', persona: 'Sam.', style: 'Ink.' }],
+      looks: [testLook('Ink.', 'Mira.', 'Sam.')],
       bodies: [body('Mira wears only a towel.'), body('Mira wears a robe.')],
     })
     const done = await pictureFrame(
@@ -305,7 +348,7 @@ Deno.test('renderRoleplayFrame renders a pictured Frame, replacing any earlier i
     const { deps, session, store } = await setUp(root)
     const images = fakeImageGenerator()
     const scripted = scriptedRoleplayModel({
-      looks: [{ character: 'Mira.', persona: 'Sam.', style: 'Ink.' }],
+      looks: [testLook('Ink.', 'Mira.', 'Sam.')],
       bodies: [body('Mira waits.'), body('Mira runs.')],
     })
     const art = { ...deps, roleplayModel: scripted, imageGenerator: images }
@@ -337,7 +380,7 @@ Deno.test('Undoing an exchange deletes its picture', () =>
   withTempDir(async (root) => {
     const { deps, session, store } = await setUp(root, [replyOf('Take the wheel.')])
     const scripted = scriptedRoleplayModel({
-      looks: [{ character: 'Mira.', persona: 'Sam.', style: 'Ink.' }],
+      looks: [testLook('Ink.', 'Mira.', 'Sam.')],
       bodies: [body('Mira points.')],
     })
     const art = { ...deps, roleplayModel: scripted }

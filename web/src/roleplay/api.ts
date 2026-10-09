@@ -45,16 +45,6 @@ export interface Cast {
   setting: Setting
 }
 
-/** Each person's identity sentence and the art style, shared by every picture. */
-export interface RoleplayLook {
-  character: string
-  persona: string
-  style: string
-}
-
-/** Who a picture shows. */
-export type Shown = 'both' | 'character' | 'persona' | 'none'
-
 /** The Character's reply: a thought, what they do, what they say. */
 export interface Reply {
   internal: string
@@ -75,7 +65,8 @@ export interface RoleplayFrame {
   /** The Image Prompt crosses a Limit. */
   blocked?: string
   /** Who the picture shows. */
-  shown?: Shown
+  /** Who the picture shows, by their names in the Look; none for the place alone. */
+  shown?: string[]
   clothing?: string
   /** The rendered picture's upscale. */
   upscaled?: string
@@ -127,9 +118,11 @@ export interface RoleplaySession extends Omit<SessionBase, 'activity'> {
   kind: 'roleplay'
   /** Null until set up. */
   cast: Cast | null
-  /** Who is shown and in what style in every picture; written when one is first pictured. */
-  /** A single-sentence `subject` Look is from before pictures chose who is shown. */
-  look?: RoleplayLook | Look | null
+  /**
+   * Each person's identity and the art style, shared by every picture: written from the Cast when
+   * one is first pictured, joined by anyone the story brings into a picture.
+   */
+  look?: Look | null
   lookTimings?: { text: number }
   lookThinking?: string
   voice?: RoleplayVoice
@@ -145,7 +138,7 @@ export type RoleplayEvent =
   | { type: 'reply-part'; key: keyof Reply; value: string }
   | { type: 'replied'; frame: RoleplayFrame; session: RoleplaySession }
   | { type: 'declined'; message: string }
-  | { type: 'look'; look: RoleplayLook }
+  | { type: 'look'; look: Look }
   /** Suggest: the message as written so far, then the whole of it, tidied. */
   | { type: 'suggestion-part'; text: string }
   | { type: 'suggestion'; text: string }
@@ -179,8 +172,7 @@ export const undoExchange = (id: string, index: number) =>
   request<RoleplaySession>(`${base(id)}/frames/${index}`, { method: 'DELETE' })
 
 /** Replaces the Look, rewriting every pictured Frame's Image Prompt. */
-export const saveLook = (id: string, look: RoleplayLook) =>
-  put<RoleplaySession>(`${base(id)}/look`, look)
+export const saveLook = (id: string, look: Look) => put<RoleplaySession>(`${base(id)}/look`, look)
 
 /** Replaces the voice description; the voice is designed again from it. */
 export const saveVoice = (id: string, description: string) =>

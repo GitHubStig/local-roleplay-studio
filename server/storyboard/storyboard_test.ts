@@ -2,12 +2,10 @@ import { assertEquals, assertMatch, assertRejects } from '@std/assert'
 import { join } from '@std/path'
 import { dirSessionStore, type Look, type StoryboardSession } from '../session.ts'
 import { DEFAULT_SETTINGS } from '../settings.ts'
+import { composePrompt, MAX_SHOWN } from '../look.ts'
 import {
-  composePrompt,
   editFrameByAction,
   LimitError,
-  matchShown,
-  MAX_SHOWN,
   planStoryboard,
   renderStoryboardFrame,
   setFrameBody,
@@ -242,17 +240,6 @@ Deno.test('a Frame shows only the people it names, at most three, and no one for
     )
     assertEquals(session.frames[2].prompt, 'Rain on an empty street. Film still.')
   }))
-
-Deno.test('matchShown matches names by their words, in the order given, once each', () => {
-  const people = [
-    { name: 'Ben', identity: 'Ben.' },
-    { name: 'Captain Cal Reyes', identity: 'Cal.' },
-  ]
-  assertEquals(matchShown(people, ['Cal Reyes', 'ben ash', 'BEN', 'Zoe']), [
-    'Captain Cal Reyes',
-    'Ben',
-  ])
-})
 
 Deno.test('editFrameByAction rewrites the Frame, and a Look change reaches every Frame', () =>
   withTempDir(async (root) => {

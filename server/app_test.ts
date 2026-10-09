@@ -13,7 +13,7 @@ import { fakeFigureMaker, fakeSceneMaker } from './3d/testing.ts'
 import type { Availabilities } from './features.ts'
 import type { VoiceEngine } from './voice/voice.ts'
 import { fakeVoiceEngine } from './voice/testing.ts'
-import { replyOf, scriptedRoleplayModel, testCast } from './roleplay/testing.ts'
+import { replyOf, scriptedRoleplayModel, testCast, testLook } from './roleplay/testing.ts'
 import {
   fakeImageGenerator,
   planOf,
@@ -1256,7 +1256,7 @@ async function roleplayWithArt(
     roleplayModel: scriptedRoleplayModel({
       casts: [testCast],
       replies: [replyOf('You are late.'), replyOf('Take the wheel.')],
-      looks: [{ character: 'Mira Vance, 34.', persona: 'Sam Reyes, 25.', style: 'Ink.' }],
+      looks: [testLook('Ink.', 'Mira Vance, 34.', 'Sam Reyes, 25.')],
       bodies,
     }),
     ...extra,
@@ -1292,11 +1292,11 @@ Deno.test('Picturing, rendering and upscaling a Roleplay Frame are queued jobs, 
     assertEquals((await call('GET', `/api/sessions/s1/images/${frame.image}`)).status, 200)
     assertMatch(frame.upscaled, /-2048\.png$/)
 
-    const look = await call('PUT', '/api/sessions/s1/roleplay/look', {
-      character: 'Mira Vance, 34.',
-      persona: 'Sam Reyes, 25.',
-      style: 'Watercolour.',
-    })
+    const look = await call(
+      'PUT',
+      '/api/sessions/s1/roleplay/look',
+      testLook('Watercolour.', 'Mira Vance, 34.', 'Sam Reyes, 25.'),
+    )
     assertEquals((await look.json()).frames[0].stale, true)
     const [card] = await (await call('GET', '/api/sessions')).json()
     assertEquals(card.latestImage, frame.image)
@@ -1368,7 +1368,7 @@ Deno.test('Pictures are written as tags when Settings ask, recorded on the Frame
   withTempDir(async (root) => {
     const artist = scriptedRoleplayModel({
       name: 'artist',
-      looks: [{ character: 'Mira Vance, 34.', persona: 'Sam Reyes, 25.', style: 'Ink.' }],
+      looks: [testLook('Ink.', 'Mira Vance, 34.', 'Sam Reyes, 25.')],
       bodies: [artBody, artBody],
     })
     const { call, settings } = await roleplayWithArt(root, [], { roleplayModels: { artist } })
@@ -1562,7 +1562,7 @@ Deno.test('Pictures use the Art Agent model set in Settings, recorded on the Fra
   withTempDir(async (root) => {
     const artist = scriptedRoleplayModel({
       name: 'artist',
-      looks: [{ character: 'Mira Vance, 34.', persona: 'Sam Reyes, 25.', style: 'Ink.' }],
+      looks: [testLook('Ink.', 'Mira Vance, 34.', 'Sam Reyes, 25.')],
       bodies: [artBody],
     })
     const { call, settings } = await roleplayWithArt(root, [], { roleplayModels: { artist } })

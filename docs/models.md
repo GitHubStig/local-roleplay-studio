@@ -359,6 +359,27 @@ one seed and one Art Agent is enough to rank them roughly, not to split close ne
 The prompts, grids and render script are kept in [bench/art-tags/](bench/art-tags/), to compare a
 new Image Model on the same prompts (and when to write a fresh set instead).
 
+### Side characters joining the Look (2026-10-09, Mac)
+
+gemma-4 26B heretic (`gemma-4-26b-heretic:nvfp4`), prose, on a copy of the Kael tavern Roleplay
+(its Look ported to people) with two made-up exchanges added, in which a named city guard comes in,
+is served, and keeps looking at the Persona (ADR 0012, "Roleplays too"):
+
+| Frame | Times pictured | Newcomers | Shown | Art Agent time |
+|---|---|---|---|---|
+| An ordinary Frame (only the two of them) | 1 | none | both | 7.8 s |
+| The guard's first | 4 | him, once; then none | the Character and him | 5.6–8.1 s (37 s once, with a retry) |
+| The guard's second | 4 | none | the Character and him, plus the Persona 2 times in 4 | 4.7–8.9 s |
+
+- **It adds the right person once**: an identity sentence in the Look's own style (name, age,
+  build, beard, skin), and reuses it afterwards; the Look stayed at three people. A passing
+  mention of "a man" in the story added no one.
+- **One reply in nine ran past the length limit** (1,600 tokens, about four times a picture) and
+  was retried; the other eight didn't. Worth watching: it's the kind of stall gemma4 showed when
+  yes/no answers came first.
+- Whether the Persona, watching from a corner, is in the picture varied run to run: a judgement
+  call, which Picture again settles.
+
 ## Suggest (writing the player's next Message)
 
 Suggest uses the Session's Text Model, Thinking off. Measured 2026-09-30 on the Kael tavern

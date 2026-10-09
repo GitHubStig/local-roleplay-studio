@@ -8,17 +8,17 @@ import {
   withRetry,
 } from '../frames.ts'
 import { updateSession } from '../update.ts'
-import { asSentences, joinPrompt } from '../imagePrompt.ts'
+import {
+  cleanLook,
+  composePrompt,
+  lookLimit,
+  matchShown,
+  renameShown,
+  shownPeople,
+} from '../look.ts'
 import { crossedLimit } from '../limits.ts'
 import type { Scenario } from '../scenario.ts'
-import type {
-  FrameTimings,
-  Look,
-  Outcome,
-  Person,
-  StoryboardFrame,
-  StoryboardSession,
-} from '../session.ts'
+import type { FrameTimings, Look, Outcome, StoryboardFrame, StoryboardSession } from '../session.ts'
 import { plainSentences } from '../textModel.ts'
 
 /** Progress of Storyboard work, streamed to the player as it happens. */
@@ -33,65 +33,6 @@ export type StoryboardEvent =
 
 /** A Brief, Action or edit that crosses a Limit (ADR 0002). */
 export class LimitError extends Error {}
-
-/**
- * The most people whose identities one Frame's prompt carries: an Image Model keeps two or three
- * people apart at best, and reads only the start of a long prompt. Others in the picture are
- * described by its own sentences, as a group.
- */
-export const MAX_SHOWN = 3
-
-const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase()
-
-/**
- * The Look's names for the people `names` mentions, in the order given, without repeats. A name
- * not in the Look is dropped; one written longer or shorter ("Cal Reyes" for "Cal") matches by
- * its words.
- */
-export function matchShown(people: Person[], names: string[]): string[] {
-  const words = (n: string) => n.toLowerCase().split(/\s+/).filter(Boolean)
-  const matched = names.map((name) =>
-    people.find((p) => sameName(p.name, name)) ??
-      people.find((p) => {
-        const [a, b] = [words(p.name), words(name)]
-        return a.length > 0 && b.length > 0 &&
-          (a.every((w) => b.includes(w)) || b.every((w) => a.includes(w)))
-      })
-  )
-  return [...new Set(matched.filter((p) => p !== undefined).map((p) => p.name))]
-}
-
-/** Who a Frame's prompt describes: the people it shows, up to `MAX_SHOWN`. */
-export function shownPeople(look: Look, shown: string[]): Person[] {
-  return matchShown(look.people, shown)
-    .slice(0, MAX_SHOWN)
-    .map((name) => look.people.find((p) => p.name === name)!)
-}
-
-/**
- * A Storyboard Frame's Image Prompt: the identities of the people it shows (none for a picture of
- * the place alone), the Frame's own sentences, then the Look's style.
- */
-export const composePrompt = (look: Look, body: string, shown: string[]) =>
-  joinPrompt(
-    shownPeople(look, shown).map((p) => asSentences(p.identity)).join(' '),
-    body,
-    look.style,
-  )
-
-/**
- * The names a Frame shows after the Look's people changed: each kept if still in the Look, or
- * else, while the Look has as many people as before, taken to be the person in the same place,
- * renamed; dropped otherwise.
- */
-export function renameShown(before: Person[], after: Person[], shown: string[]): string[] {
-  const names = shown.map((name) => {
-    if (after.some((p) => p.name === name)) return name
-    const i = before.findIndex((p) => p.name === name)
-    return before.length === after.length && i >= 0 ? after[i].name : undefined
-  })
-  return names.filter((n) => n !== undefined)
-}
 
 /**
  * Builds a Frame from its Beat and sentences, marking it blocked (unrenderable until edited) if its
@@ -148,8 +89,7 @@ function recompose(
 }
 
 function checkLook(look: Look): void {
-  const identities = look.people.map((p) => p.identity).join(' ')
-  const limit = crossedLimit(`${identities} ${look.style}`)?.message
+  const limit = lookLimit(look)
   if (limit) throw new LimitError(`The Look crosses a limit: ${limit}`)
 }
 
@@ -292,20 +232,7 @@ export async function setLook(
   session: StoryboardSession,
   look: Look,
 ): Promise<StoryboardSession> {
-  const clean: Look = {
-    people: look.people.map((p) => ({
-      name: oneLine(p.name),
-      identity: plainSentences(p.identity),
-    })),
-    style: plainSentences(look.style),
-  }
-  if (clean.people.some((p) => !p.name || !p.identity)) {
-    throw new Error('Each person in the Look needs a name and an identity')
-  }
-  if (new Set(clean.people.map((p) => p.name.toLowerCase())).size < clean.people.length) {
-    throw new Error('Two people in the Look have the same name')
-  }
-  if (!clean.style) throw new Error('The Look needs a style')
+  const clean = cleanLook(look)
   checkLook(clean)
   return await updateSession(deps.store, session.id, 'storyboard', (latest) => ({
     ...latest,
@@ -315,8 +242,6 @@ export async function setLook(
     ),
   }))
 }
-
-const oneLine = (text: string) => text.trim().replace(/\s+/g, ' ')
 
 export interface StoryboardEditResult {
   outcome: Outcome

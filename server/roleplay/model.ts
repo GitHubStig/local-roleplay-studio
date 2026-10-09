@@ -10,7 +10,8 @@ import {
   REPLY_FIELDS,
   replySchema,
 } from './prompt.ts'
-import type { Cast, Reply, RoleplayLook, Shown } from './types.ts'
+import type { Cast, Reply } from './types.ts'
+import type { Look, Person } from '../session.ts'
 import { parseFrameBody } from '../textModel.ts'
 import {
   artFrameSchema,
@@ -18,7 +19,7 @@ import {
   artTagsSchema,
   joinTags,
   parseRoleplayLook,
-  parseShown,
+  parseWho,
   roleplayLookSchema,
   trimFields,
 } from './art.ts'
@@ -46,14 +47,20 @@ export interface RoleplayModel {
     messages: ChatMessage[],
     signal: AbortSignal,
     onThinking?: (chunk: string) => void,
-  ): Promise<{ look: RoleplayLook; thinking?: string }>
+  ): Promise<{ look: Look; thinking?: string }>
   /** The Art Agent: who one Frame's picture shows, and its seven sentences as a paragraph. */
   pictureFrame(
     messages: ChatMessage[],
     signal: AbortSignal,
     onThinking?: (chunk: string) => void,
     style?: ArtStyle,
-  ): Promise<{ body: string; shown: Shown; clothing: string; thinking?: string }>
+  ): Promise<{
+    body: string
+    shown: string[]
+    newcomers: Person[]
+    clothing: string
+    thinking?: string
+  }>
   /** The Character's next reply to the conversation so far (or the opening, to none). */
   reply(
     messages: ChatMessage[],
@@ -150,7 +157,7 @@ export function chatRoleplayModel(chat: Chat, opts: RoleplayModelOptions = {}): 
         return withThinking(
           {
             body: style === 'tags' ? joinTags(fields) : parseFrameBody(fields),
-            shown: parseShown(fields),
+            ...parseWho(fields),
             clothing: String(fields.clothing ?? ''),
           },
           thinking,

@@ -4,7 +4,7 @@ import { computed, useTemplateRef } from 'vue'
 import { useStoredFlag } from '../composables/useStoredFlag'
 
 /**
- * One person in a Storyboard's Look, in a card of their own: their name and identity. The card
+ * One person in a Look, in a card of their own: their name and identity. The card
  * collapses to the name and a one-line preview by clicking its header; whether it's collapsed is
  * remembered per browser, by `id`.
  */
@@ -12,6 +12,10 @@ const props = defineProps<{
   /** Remembers this card's collapsed state, e.g. `storyboard.look.person.0`. */
   id: string
   disabled?: boolean
+  /** The name comes from elsewhere (a Roleplay's Cast or story): shown, not edited. */
+  nameFixed?: boolean
+  /** Hides Remove, for someone the Look must keep (a Roleplay's Character and Persona). */
+  kept?: boolean
 }>()
 const name = defineModel<string>('name', { required: true })
 const identity = defineModel<string>('identity', { required: true })
@@ -39,6 +43,7 @@ const preview = computed(() => identity.value.replace(/\s+/g, ' ').trim())
         · {{ preview }}
       </span>
       <button
+        v-if="!kept"
         type="button"
         class="ml-auto shrink-0 rounded px-1.5 text-muted hover:text-fg disabled:opacity-50"
         :aria-label="`Remove ${name.trim() || 'this person'}`"
@@ -49,7 +54,7 @@ const preview = computed(() => identity.value.replace(/\s+/g, ' ').trim())
       </button>
     </summary>
     <div class="flex flex-col gap-2 border-t border-line p-2">
-      <label class="flex flex-col gap-1">
+      <label v-if="!nameFixed" class="flex flex-col gap-1">
         Name
         <input
           v-model="name"

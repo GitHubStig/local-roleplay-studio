@@ -7,7 +7,6 @@ import {
   onDeactivated,
   onMounted,
   ref,
-  toRaw,
   watch,
 } from 'vue'
 import { useRouter } from 'vue-router'
@@ -36,7 +35,7 @@ import Frame3dViewers from '../components/Frame3dViewers.vue'
 import FrameImage from '../components/FrameImage.vue'
 import FrameViewer from '../components/FrameViewer.vue'
 import JobQueue from '../components/JobQueue.vue'
-import LookPerson from '../components/LookPerson.vue'
+import LookForm from '../components/LookForm.vue'
 import PictureButtons from '../components/PictureButtons.vue'
 import { useFeatures } from '../composables/useFeatures'
 import { useJobs } from '../composables/useJobs'
@@ -276,24 +275,13 @@ async function sendAction() {
  */
 const bodyDraft = ref('')
 const shownDraft = ref<string[]>([])
-const lookDraft = ref<Look>({ people: [], style: '' })
 const shownNow = computed(() => current.value?.shown ?? [])
 watch(() => current.value?.body, (body) => (bodyDraft.value = body ?? ''), { immediate: true })
 watch(shownNow, (shown) => (shownDraft.value = [...shown]), { immediate: true })
-watch(look, (l) => (lookDraft.value = structuredClone(toRaw(l) ?? { people: [], style: '' })), {
-  immediate: true,
-})
 const bodyChanged = computed(() =>
   !!current.value &&
   (bodyDraft.value.trim() !== current.value.body ||
     shownDraft.value.join('\n') !== shownNow.value.join('\n'))
-)
-const trimmed = (l: Look): Look => ({
-  people: l.people.map((p) => ({ name: p.name.trim(), identity: p.identity.trim() })),
-  style: l.style.trim(),
-})
-const lookChanged = computed(() =>
-  !!look.value && JSON.stringify(trimmed(lookDraft.value)) !== JSON.stringify(look.value)
 )
 /** Shows or hides a person in the selected Frame; one added is the least prominent. */
 function toggleShown(name: string) {
@@ -315,7 +303,7 @@ const saveBody = () =>
     () => saveFrameBody(props.id, current.value!.index, bodyDraft.value, shownDraft.value),
     `Frame ${current.value!.index + 1} saved.`,
   )
-const saveLookDraft = () => save(() => saveLook(props.id, lookDraft.value), 'Look saved for every Frame.')
+const saveLookDraft = (draft: Look) => save(() => saveLook(props.id, draft), 'Look saved for every Frame.')
 
 // Leaving the site or reloading drops the connection to running work, which cancels it.
 function warnBeforeUnload(e: BeforeUnloadEvent) {
@@ -568,41 +556,14 @@ const imagesOn = computed(() => featureOn.value('images'))
           <div class="flex flex-1 flex-col gap-4 overflow-y-auto p-4 text-sm" role="tabpanel">
             <p v-if="!look" class="text-muted">The Look and Frames appear as the plan is written.</p>
 
-            <form v-else class="flex min-w-0 flex-col gap-2" data-look @submit.prevent="saveLookDraft">
-              <h3 class="font-medium">Look <span class="font-normal text-muted">· every Frame</span></h3>
-              <LookPerson
-                v-for="(person, i) in lookDraft.people"
-                :id="`storyboard.look.person.${i}`"
-                :key="i"
-                v-model:name="person.name"
-                v-model:identity="person.identity"
-                :disabled="busy"
-                @remove="lookDraft.people.splice(i, 1)"
-              />
-              <button
-                type="button"
-                class="w-fit text-xs text-muted hover:text-fg disabled:opacity-50"
-                :disabled="busy"
-                data-add-person
-                @click="lookDraft.people.push({ name: '', identity: '' })"
-              >
-                + Add a person
-              </button>
-              <CollapsibleTextarea
-                id="storyboard.look.style"
-                v-model="lookDraft.style"
-                label="Art style and medium"
-                :disabled="busy"
-              />
-              <button
-                v-if="lookChanged"
-                type="submit"
-                class="w-fit rounded border border-line px-3 py-1 text-xs disabled:opacity-50"
-                :disabled="busy"
-              >
-                Save Look
-              </button>
-            </form>
+            <LookForm
+              v-else
+              :look="look"
+              id-prefix="storyboard.look"
+              every="every Frame"
+              :disabled="busy"
+              @save="saveLookDraft"
+            />
 
             <form v-if="current" class="flex min-w-0 flex-col gap-2" data-frame-editor @submit.prevent="saveBody">
               <h3 class="font-medium">

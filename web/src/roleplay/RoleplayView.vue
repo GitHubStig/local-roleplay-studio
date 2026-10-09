@@ -12,11 +12,12 @@ import {
   watch,
 } from 'vue'
 import { useRouter } from 'vue-router'
-import { ApiError, cancelFrame, getSession, imageUrl, type Made3d } from '../api'
+import { ApiError, cancelFrame, getSession, imageUrl, type Look, type Made3d } from '../api'
 import { clearCurrentSession, setCurrentSession } from '../composables/useCurrentSession'
 import { useStoredFlag } from '../composables/useStoredFlag'
 import { useStoredText } from '../composables/useStoredText'
 import CollapsibleTextarea from '../components/CollapsibleTextarea.vue'
+import LookForm from '../components/LookForm.vue'
 import ComposeBox from '../components/ComposeBox.vue'
 import PictureButtons from '../components/PictureButtons.vue'
 import UndirectedNote from './UndirectedNote.vue'
@@ -33,9 +34,7 @@ import {
   type Cast,
   type Reply,
   type RoleplayEvent,
-  type RoleplayLook,
   type RoleplaySession,
-  type Shown,
   type RoleplayFrame,
   type Speech,
   beginRoleplay,
@@ -548,32 +547,21 @@ function setField(f: CastField, value: string) {
 
 // --- The Look, editable by hand once written.
 
-/** The Look to edit; an older single-sentence Look isn't shown, since the next picture replaces it. */
+/** The Look to edit; one from before it listed people isn't shown, since the next picture replaces it. */
 const currentLook = computed(() => {
   const look = session.value?.look
-  return look && 'character' in look ? look : null
+  return look && Array.isArray(look.people) ? look : null
 })
-const lookDraft = ref<RoleplayLook | null>(null)
-watch(currentLook, (l) => (lookDraft.value = l ? { ...l } : null), { immediate: true })
-const lookChanged = computed(() =>
-  !!lookDraft.value && !!currentLook.value &&
-  (['character', 'persona', 'style'] as const).some((k) =>
-    lookDraft.value![k].trim() !== currentLook.value![k]
-  )
-)
 
-/** "Kael and Elara Vance", "Kael", …: who a picture shows. */
-function shownNames(shown: Shown | undefined): string {
-  if (shown === 'none') return 'no one'
-  if (shown === 'character') return characterName.value
-  if (shown === 'persona') return personaName.value
-  return `${characterName.value} and ${personaName.value}`
+/** "Kael, Elara Vance and the barkeep", "no one": who a picture shows. */
+function shownNames(shown: string[] | undefined): string {
+  if (!shown?.length) return 'no one'
+  return shown.length === 1 ? shown[0] : `${shown.slice(0, -1).join(', ')} and ${shown.at(-1)}`
 }
-async function saveLookDraft() {
-  if (!lookDraft.value) return
+async function saveLookDraft(draft: Look) {
   notice.value = null
   try {
-    session.value = await saveLook(props.id, lookDraft.value)
+    session.value = await saveLook(props.id, draft)
   } catch (err) {
     notice.value = { kind: 'error', text: (err as Error).message }
   }
@@ -974,40 +962,16 @@ async function saveCastDraft(): Promise<boolean> {
         </section>
 
         <div v-else class="min-h-0 flex-1 overflow-y-auto" data-cast-panel>
-        <form
-          v-if="lookDraft"
-          class="flex flex-col gap-2 border-b border-line p-4 text-sm"
-          data-look
-          @submit.prevent="saveLookDraft"
-        >
-          <h2 class="font-medium">Look <span class="font-normal text-muted">· every picture</span></h2>
-          <CollapsibleTextarea
-            id="look.character"
-            v-model="lookDraft.character"
-            :label="characterName"
-            :disabled="busy"
-          />
-          <CollapsibleTextarea
-            id="look.persona"
-            v-model="lookDraft.persona"
-            :label="personaName"
-            :disabled="busy"
-          />
-          <CollapsibleTextarea
-            id="look.style"
-            v-model="lookDraft.style"
-            label="Art style and medium"
-            :disabled="busy"
-          />
-          <button
-            v-if="lookChanged"
-            type="submit"
-            class="w-fit rounded border border-line px-3 py-1 text-xs disabled:opacity-50"
-            :disabled="busy"
-          >
-            Save Look
-          </button>
-        </form>
+        <LookForm
+          v-if="currentLook"
+          class="border-b border-line p-4 text-sm"
+          :look="currentLook"
+          id-prefix="roleplay.look"
+          every="every picture"
+          :kept="[characterName, personaName]"
+          :disabled="busy"
+          @save="saveLookDraft"
+        />
         <!-- Its border sweeps while the voice is designed, slower while that waits its turn. -->
         <form
           v-if="cast && featureOn('voices')"

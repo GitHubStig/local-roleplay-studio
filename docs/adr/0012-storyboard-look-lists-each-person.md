@@ -43,5 +43,26 @@ number of people.
 - Storyboards planned before this aren't read any more: there was one, and it was deleted.
 - A sentence a model writes as "N/A", or only "No people.", for a picture with no one in it is
   dropped: the prompt says not to, and Gemma 4 26B did both anyway.
-- Chains are unchanged (one Subject, rewritten Frame by Frame). Roleplays already choose between
-  their two people; side characters there would need the Cast to grow (docs/open-threads.md).
+- Chains are unchanged (one Subject, rewritten Frame by Frame).
+
+## Roleplays too (2026-10-09)
+
+A Roleplay's Look had two identities, the Character's and the Persona's, and each picture a yes
+or no for each; anyone else the story brought in (a guard, the barkeep) was described afresh in
+every picture, so looked different each time. Its Look now has the same shape (`server/look.ts`,
+shared): written from the Cast with the Character, the Persona and anyone the Brief names, then
+**grown by the pictures**. The Art Agent's reply ends with `newcomers` (anyone in this picture who
+isn't in the Look yet and whom the story names or singles out, with a name and an identity), then
+`shown` (names). Newcomers join the Look unless they match someone already in it (`matchShown`)
+or their identity crosses a Limit, so the next picture reuses their identity word for word.
+
+- **No toggle per picture**, unlike a Storyboard Frame: in a Roleplay the story decides who is
+  present, and Picture again is the way to correct it.
+- **The clothing check** (with the Limits on, everyone shown must be dressed by name) covers two
+  or more people, matching any word of a name ("the barkeep" by "barkeep").
+- **Tried with gemma-4 26B heretic (NVFP4) on the Mac**, on a copy of the Kael tavern Roleplay
+  with two made-up exchanges bringing in a guard: an ordinary Frame added no one; the guard's first
+  Frame added him with a good identity sentence; his second, pictured four times, reused it and
+  never added him twice (docs/models.md).
+- Roleplays from before weren't converted in code (the app isn't released): the three in
+  `sessions/` were ported by hand, every prompt unchanged.
