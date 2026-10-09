@@ -8,32 +8,29 @@ import {
   type UpscaleRequest,
 } from '../imageGenerator.ts'
 import { findMfluxModel, MFLUX_MODELS, type MfluxModel } from './models.ts'
-import { type QuantizedStore, quantizedStore } from './quantized.ts'
 import { SIZE_PRESETS } from '../../settings.ts'
 
 /**
- * The mflux command line for one image, with the model's step cache or fast mode as Settings ask.
- * With a saved quantized copy (`saved`, its folder), the render loads that, named by the model it's
- * based on; otherwise a Quantize setting converts the full weights as it goes (slower, and no lower
- * peak: see quantized.ts).
+ * The mflux command line for one image, with the model's step cache, fast mode and float16 as
+ * Settings ask. Always `--low-ram`: it holds a part of the model only while it's used, so the peak
+ * is a quarter of what it is without it, in the same time (docs/models.md). A Quantize setting
+ * converts the weights as they load.
  */
 export function mfluxArgs(
   model: MfluxModel,
   req: ImageRequest,
   output: string,
-  saved?: string,
 ): string[] {
   const { settings } = req
   const size = SIZE_PRESETS.find((p) => p.id === settings.size) ?? SIZE_PRESETS[0]
-  const quantize = settings.quantize && !model.preQuantized && !saved
+  const quantize = settings.quantize && !model.preQuantized
   const fast = settings.fast ? model.fast : undefined
   // The step cache leaves runs under 10 steps be, so it's never added to a fast one.
   const stepCache = !fast && model.stepCache ? settings.stepCache : null
   return [
     '--model',
-    saved ?? model.model,
-    ...(saved ? ['--base-model', model.baseModel ?? model.model] : []),
-    ...(!saved && model.baseModel ? ['--base-model', model.baseModel] : []),
+    model.model,
+    ...(model.baseModel ? ['--base-model', model.baseModel] : []),
     '--prompt',
     req.prompt,
     '--seed',
@@ -47,6 +44,8 @@ export function mfluxArgs(
     '--height',
     String(size.height),
     ...(quantize ? ['--quantize', String(settings.quantize)] : []),
+    ...(settings.float16 && model.float16 ? ['--compute-precision', 'float16'] : []),
+    '--low-ram',
     '--output',
     output,
   ]
@@ -132,36 +131,6 @@ async function mustExist(dir: string, file: string, label: string): Promise<void
 
 export interface MfluxOptions {
   models?: readonly MfluxModel[]
-  /** Saved quantized copies to render from when Settings ask for Quantize. */
-  quantized?: QuantizedStore
-}
-
-/** The mflux version `uv` has installed, e.g. `0.20.0`; `unknown` if it can't tell. */
-async function installedMfluxVersion(): Promise<string> {
-  try {
-    const { stdout } = await new Deno.Command('uv', { args: ['tool', 'list'], stderr: 'null' })
-      .output()
-    return new TextDecoder().decode(stdout).match(/^mflux v(\S+)/m)?.[1] ?? 'unknown'
-  } catch {
-    return 'unknown'
-  }
-}
-
-/** Saved quantized copies made with `mflux-save`, kept in `root` (`models/quantized`). */
-export function mfluxQuantizedStore(root: string): QuantizedStore {
-  let version: Promise<string> | null = null
-  return quantizedStore(root, {
-    mfluxVersion: () => (version ??= installedMfluxVersion()),
-    save: (model, bits, path, signal, onDownload) =>
-      runCommand(
-        'mflux-save',
-        ['--model', model.model, '--quantize', String(bits), '--path', path],
-        `Saving ${model.label} at ${bits}-bit`,
-        signal,
-        undefined,
-        onDownload,
-      ),
-  })
 }
 
 /** Renders images by running the `mflux-generate-*` CLI once per image. */
@@ -183,23 +152,9 @@ export function mfluxImageGenerator(opts: MfluxOptions = {}): ImageGenerator {
       if (!model) throw new Error(`Unknown Image Model "${req.settings.imageModel}"`)
 
       const file = `${req.name}.png`
-      // Render from a saved quantized copy (made now if there's none yet); if saving one fails
-      // for this model, convert as it goes instead, as mflux's --quantize does.
-      const bits = req.settings.quantize
-      let saved: string | undefined
-      if (bits && !model.preQuantized && opts.quantized) {
-        saved = await opts.quantized.ensure(model, bits, signal, onDownload).catch((err) => {
-          signal.throwIfAborted()
-          console.warn(
-            `No saved ${bits}-bit copy of ${model.label}; converting as it goes:`,
-            err.message,
-          )
-          return undefined
-        })
-      }
       await runCommand(
         model.command,
-        mfluxArgs(model, req, join(req.dir, file), saved),
+        mfluxArgs(model, req, join(req.dir, file)),
         model.label,
         signal,
         onProgress,

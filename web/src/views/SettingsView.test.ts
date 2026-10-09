@@ -13,8 +13,6 @@ vi.mock('../api', async (importOriginal) => ({
   listTextModels: vi.fn(() => Promise.resolve({ textModels: [], thinkingModels: [] })),
   checkComfyUI: vi.fn(() => Promise.resolve({ up: false as const, error: 'not running' })),
   saveSettings: vi.fn(),
-  listQuantized: vi.fn(),
-  deleteQuantized: vi.fn(),
 }))
 
 const settings: api.Settings = {
@@ -30,6 +28,7 @@ const settings: api.Settings = {
   quantize: null,
   stepCache: 0.4,
   fast: false,
+  float16: true,
   seedMode: 'random',
   seed: 42,
   upscaler: 'seedvr2-7b',
@@ -52,6 +51,7 @@ const options: api.SettingsOptions = {
         defaultSteps: 9,
         stepCache: false,
         quantize: true,
+        float16: true,
       },
       {
         id: 'flux2-klein-4b',
@@ -59,6 +59,7 @@ const options: api.SettingsOptions = {
         defaultSteps: 4,
         stepCache: false,
         quantize: true,
+        float16: true,
       },
       {
         id: 'qwen-image-2.1',
@@ -67,6 +68,7 @@ const options: api.SettingsOptions = {
         stepCache: true,
         fastSteps: 6,
         quantize: true,
+        float16: true,
       },
     ],
     comfyui: [
@@ -76,6 +78,7 @@ const options: api.SettingsOptions = {
         defaultSteps: 25,
         stepCache: false,
         quantize: false,
+        float16: false,
       },
     ],
   },
@@ -88,7 +91,6 @@ const options: api.SettingsOptions = {
 }
 
 beforeEach(() => {
-  vi.mocked(api.listQuantized).mockReset().mockResolvedValue([])
   vi.mocked(api.getSettings).mockResolvedValue({ ...settings })
   vi.mocked(api.getSettingsOptions).mockResolvedValue(options)
   vi.mocked(api.saveSettings).mockImplementation(async (s) => s)
@@ -244,6 +246,20 @@ describe('SettingsView', () => {
     expect([steps.value, steps.disabled]).toEqual(['6', true])
   })
 
+  it('offers float16 for models that take it, on by default, and saves it off', async () => {
+    const wrapper = mount(SettingsView)
+    await flushPromises()
+    const box = wrapper.find('[data-float16] input').element as HTMLInputElement
+    expect(box.checked).toBe(true)
+    await wrapper.find('[data-float16] input').setValue(false)
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+    expect(api.saveSettings).toHaveBeenCalledWith(expect.objectContaining({ float16: false }))
+    // ComfyUI's models don't take it.
+    await wrapper.find('[data-image-backend]').setValue('comfyui')
+    expect(wrapper.find('[data-float16]').exists()).toBe(false)
+  })
+
   it('resets steps to the chosen Image Model default', async () => {
     const wrapper = mount(SettingsView)
     await flushPromises()
@@ -345,32 +361,6 @@ describe('SettingsView', () => {
     await wrapper.find('form').trigger('submit')
     await flushPromises()
     expect(api.saveSettings).toHaveBeenCalledWith({ ...settings, artModel: 'gemma4:31b-mlx' })
-  })
-
-  it('lists saved quantized copies with their size, and deletes them', async () => {
-    const copy = {
-      name: 'flux2-klein-4b-8bit-mflux0.20.0',
-      modelId: 'flux2-klein-4b',
-      bits: 8,
-      mflux: '0.20.0',
-      bytes: 6_200_000_000,
-      createdAt: '2026-10-01T00:00:00.000Z',
-    }
-    vi.mocked(api.listQuantized).mockResolvedValue([copy])
-    vi.mocked(api.deleteQuantized).mockResolvedValue([])
-    const wrapper = mount(SettingsView)
-    await flushPromises()
-    expect(wrapper.find('[data-quantized-copy]').text()).toContain(
-      'FLUX.2 Klein 4B, 8-bit · 6.2 GB · mflux 0.20.0',
-    )
-    // mflux's own copies: not shown while ComfyUI is chosen, which doesn't use them.
-    await wrapper.find('[data-image-backend]').setValue('comfyui')
-    expect(wrapper.find('[data-quantized]').exists()).toBe(false)
-    await wrapper.find('[data-image-backend]').setValue('mflux')
-    await wrapper.find('[data-quantized-copy] button').trigger('click')
-    await flushPromises()
-    expect(api.deleteQuantized).toHaveBeenCalledWith(copy.name)
-    expect(wrapper.find('[data-quantized]').exists()).toBe(false)
   })
 
   it('offers Thinking only for Text Models that can think', async () => {

@@ -103,8 +103,7 @@ the Images tab of Settings:
   | Boogu Image Turbo (~16 s at 512 px) | `mflux-generate-boogu --model boogu-image-turbo --prompt test --output /tmp/x.png` |
   | SeedVR2 upscaler, 7B and 3B (Upscale, ~46 s to 2048 px) | `mflux-upscale-seedvr2 --model seedvr2-7b --image-path /tmp/x.png --resolution 2048 --output /tmp/y.png` (one download holds both) |
 
-  **Saved quantized copies** (Quantize in Settings) are made by the app on first use, 13–22 GB
-  each, in `models/quantized/` in this folder (gitignored); Settings lists them to delete. **Fast**
+  **Fast**
   (Qwen-Image 2.1) renders with Viggle's 6-step turbo LoRA
   ([Viggle/Qwen-Image-2.1-viggle-turbo](https://huggingface.co/Viggle/Qwen-Image-2.1-viggle-turbo),
   1.3 GB, Qwen's research license), which mflux downloads with the first fast render.
@@ -248,14 +247,13 @@ on a machine that can.
 scenarios/        Scenario files, one Markdown file each (see docs/scenarios.md)
 settings.json     Your Settings (gitignored; created on first save)
 sessions/<id>/    Each Session: session.json plus its pictures, voices and 3D files (gitignored)
-models/           Saved quantized copies of Image Models (gitignored)
 server/           Deno API: the app, Sessions, Settings, the job queue, what all kinds of Session share
   chain/          a Chain's Frames and jobs
   storyboard/     a Storyboard's plan and edits
   roleplay/       a Roleplay: its engine, Art Agent, voices and jobs
   text/           the Text backends (Ollama, OpenAI-compatible) behind one Chat interface
-  images/         the Image backends: mflux/ (and its saved quantized copies), comfyui/ (its
-                  workflows in comfyui/workflows/), and the placeholder
+  images/         the Image backends: mflux/, comfyui/ (its workflows in comfyui/workflows/),
+                  and the placeholder
   voice/          the Voice backends: the voice service's client, and comfyui/ (its workflows in
                   comfyui/workflows/)
   comfyui/        what talking to ComfyUI takes, for pictures and voices alike

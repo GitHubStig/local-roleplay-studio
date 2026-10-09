@@ -81,6 +81,7 @@ Deno.test('validateSettings fills in what an older file lacks, keeps what it may
     ['artStyle', 'prose', 'tags', 'booru'],
     ['stepCache', 0.4, null, 0.9],
     ['fast', false, true, 'yes'],
+    ['float16', true, false, 'yes'],
   ]
   for (const [field, missing, valid, invalid] of fields) {
     const { [field]: _, ...older } = DEFAULT_SETTINGS

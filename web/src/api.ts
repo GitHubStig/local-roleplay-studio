@@ -43,6 +43,8 @@ export interface Settings {
   stepCache: number | null
   /** Render with the model's fast mode (its own steps), for models that have one. */
   fast: boolean
+  /** Compute in float16, for models that take it: faster on M1 and M2 Macs. */
+  float16: boolean
   seedMode: SeedMode
   seed: number
   /** Which SeedVR2 model Upscale uses; applies to the next upscale, even mid-Session. */
@@ -72,8 +74,10 @@ export interface ImageModelOption {
   stepCache: boolean
   /** The steps its fast mode runs at; absent when it has none (mflux). */
   fastSteps?: number
-  /** Can use a saved 8- or 4-bit copy (mflux). */
+  /** Can be quantized to 8 or 4 bits as it loads (mflux). */
   quantize: boolean
+  /** Takes float16 compute (mflux). */
+  float16: boolean
 }
 
 export interface SizePreset {
@@ -125,24 +129,6 @@ export const getHealth = () => request<Health>('/api/health')
 export const getSettings = () => request<Settings>('/api/settings')
 
 export const getSettingsOptions = () => request<SettingsOptions>('/api/settings/options')
-
-/** A saved quantized copy of an Image Model, made by the first render that needed it. */
-export interface QuantizedCopy {
-  name: string
-  modelId: string
-  bits: number
-  mflux: string
-  bytes: number
-  createdAt: string
-}
-
-export const listQuantized = () => request<QuantizedCopy[]>('/api/settings/quantized')
-
-/** Deletes a saved copy (the next render that needs it saves it again); returns the rest. */
-export const deleteQuantized = (name: string) =>
-  request<QuantizedCopy[]>(`/api/settings/quantized/${encodeURIComponent(name)}`, {
-    method: 'DELETE',
-  })
 
 /** Whether ComfyUI answers at an address, and has the files of what will run there. */
 export type ComfyStatus =

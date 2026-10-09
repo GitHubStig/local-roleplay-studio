@@ -1,7 +1,6 @@
 import { createHandler } from './app.ts'
 import { placeholderImageGenerator } from './images/imageGenerator.ts'
-import { fromFileUrl } from '@std/path'
-import { mfluxImageGenerator, mfluxQuantizedStore } from './images/mflux/mflux.ts'
+import { mfluxImageGenerator } from './images/mflux/mflux.ts'
 import { comfyuiImageGenerator } from './images/comfyui/comfyui.ts'
 import { comfyuiStatus } from './comfyui/status.ts'
 import { imageBackends } from './images/backend.ts'
@@ -27,10 +26,6 @@ import {
 import { comfyBase } from './comfyui/client.ts'
 
 const port = Number(Deno.env.get('PORT') ?? 8787)
-
-// Saved 8-bit (or 4-bit) copies of Image Models, in the project (gitignored): 13-22 GB each, made
-// by this app, so they go when it does.
-const quantized = mfluxQuantizedStore(fromFileUrl(new URL('../models/quantized/', import.meta.url)))
 
 // What this machine can run, worked out once: a backend it can't run isn't set up at all, and
 // Settings says why (`features.ts`). IMAGE_GENERATOR=placeholder renders SVG cards instead of
@@ -67,14 +62,13 @@ const handler = createHandler({
   // Each Session renders with the backend its Settings name: mflux where it's installed (a Mac),
   // or ComfyUI (any machine). Upscale runs where Settings say now, with ComfyUI's address there.
   imageGenerator: placeholderImages ? placeholderImageGenerator() : imageBackends({
-    mflux: features.images.available ? mfluxImageGenerator({ quantized }) : undefined,
+    mflux: features.images.available ? mfluxImageGenerator() : undefined,
     comfyui: comfyuiImageGenerator({
       upscaleUrl: async () => (await settings.load()).imageBaseUrl,
     }),
     upscaleBackend: async () => (await settings.load()).upscaleBackend,
   }),
   features,
-  quantized,
   // A big render next to a loaded Text Model pushes a 48 GB Mac into swap (375 s instead of 66 s
   // for Qwen-Image 2.1 at 1024 px), so each render, upscale, scene and figure unloads it first,
   // where the Text backend can (Ollama; not a server on the OpenAI API).

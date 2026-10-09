@@ -5,12 +5,9 @@ import {
   ApiError,
   checkComfyUI,
   type ComfyStatus,
-  deleteQuantized,
   getSettings,
   getSettingsOptions,
-  listQuantized,
   listTextModels,
-  type QuantizedCopy,
   saveSettings,
   type Settings,
   type SettingsOptions,
@@ -57,22 +54,7 @@ onMounted(async () => {
   } catch (err) {
     loadError.value = (err as Error).message
   }
-  copies.value = await listQuantized().catch(() => [])
 })
-
-/** Saved quantized copies of Image Models, with their sizes on disk. */
-const copies = ref<QuantizedCopy[]>([])
-/** A saved copy's model, by name: saved copies are mflux's. */
-const modelLabel = (id: string) =>
-  options.value?.imageModels.mflux.find((m) => m.id === id)?.label ?? id
-const gigabytes = (bytes: number) => `${(bytes / 1e9).toFixed(1)} GB`
-async function removeCopy(name: string) {
-  try {
-    copies.value = await deleteQuantized(name)
-  } catch (err) {
-    status.value = { kind: 'error', message: (err as Error).message }
-  }
-}
 
 /** Each backend's usual address, offered when it's chosen ('' is Ollama's default). */
 const DEFAULT_BASE_URL: Record<TextBackend, string> = {
@@ -515,11 +497,21 @@ function removeSavedApiKey() {
                   </option>
                 </select>
                 <span class="text-sm text-muted">
-                  Saved as a smaller copy the first time a model renders with it (about 10 s), then
-                  loaded directly: about 8 GB less memory on the larger models.
+                  Converted as the model loads: less memory on the larger models.
                 </span>
               </label>
             </div>
+
+            <label v-if="imageModel?.float16" class="flex items-start gap-2" data-float16>
+              <input v-model="form.float16" type="checkbox" class="mt-1" />
+              <span class="flex flex-col gap-0.5">
+                <span>float16</span>
+                <span class="text-sm text-muted">
+                  Computes in float16: faster on older Macs (M1, M2), no faster on M4 and M5. The
+                  picture changes slightly for the same seed.
+                </span>
+              </span>
+            </label>
 
             <label v-if="imageModel?.stepCache && !fastOn" class="flex flex-col gap-1" data-step-cache>
               <span class="text-sm text-muted">Step cache</span>
@@ -533,31 +525,6 @@ function removeSavedApiKey() {
                 At 0.4 it looks near the same.
               </span>
             </label>
-
-            <!-- mflux's own saved copies: ComfyUI doesn't use them. -->
-            <div
-              v-if="copies.length && form.imageBackend === 'mflux'"
-              class="flex flex-col gap-1"
-              data-quantized
-            >
-              <span class="text-sm text-muted">Saved copies (in models/quantized)</span>
-              <ul class="flex flex-col gap-1 text-sm">
-                <li v-for="c in copies" :key="c.name" class="flex items-center gap-3" data-quantized-copy>
-                  <span class="min-w-0 flex-1 truncate">
-                    {{ modelLabel(c.modelId) }}, {{ c.bits }}-bit
-                    <span class="text-muted">· {{ gigabytes(c.bytes) }} · mflux {{ c.mflux }}</span>
-                  </span>
-                  <button
-                    type="button"
-                    class="text-danger underline-offset-2 hover:underline"
-                    :title="`Delete; the next ${c.bits}-bit render with this model saves it again`"
-                    @click="removeCopy(c.name)"
-                  >
-                    Delete
-                  </button>
-                </li>
-              </ul>
-            </div>
 
             <label class="flex flex-col gap-1">
               <span class="text-sm text-muted">Size</span>

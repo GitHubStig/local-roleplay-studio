@@ -28,7 +28,6 @@ import type { RoleplayModel } from './roleplay/model.ts'
 import type { FigureMaker } from './3d/figure.ts'
 import type { SceneMaker } from './3d/scene.ts'
 import type { VoiceEngine } from './voice/voice.ts'
-import type { QuantizedStore } from './images/mflux/quantized.ts'
 import { roleplayExcerpt } from './roleplay/prompt.ts'
 import { roleplayRoutes } from './roleplay/routes.ts'
 import { checkRoleplayJob, type RoleplayJobContext, runRoleplayJob } from './roleplay/jobs.ts'
@@ -85,8 +84,6 @@ export interface AppDeps {
   features?: Availabilities
   /** Frees memory before a render, upscale, scene or figure: unloads the Text Model. */
   freeMemory?: () => Promise<void>
-  /** Saved quantized copies of Image Models, listed and deleted from Settings. */
-  quantized?: QuantizedStore
   newSessionId?: () => string
   randomSeed?: () => number
 }
@@ -481,22 +478,6 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       const apiKey = typeof body.textApiKey === 'string' ? body.textApiKey.trim() : undefined
       return json(await textModelOptions({ backend, baseUrl: body.textBaseUrl.trim() }, apiKey))
     }],
-
-    // Saved quantized copies of Image Models: made by the first render that needs one.
-    [
-      'GET',
-      new URLPattern({ pathname: '/api/settings/quantized' }),
-      async () => json(await deps.quantized?.list() ?? []),
-    ],
-
-    [
-      'DELETE',
-      new URLPattern({ pathname: '/api/settings/quantized/:name' }),
-      async (_req, p) =>
-        (await deps.quantized?.remove(p.name!))
-          ? json(await deps.quantized!.list())
-          : error('No such saved copy', 404),
-    ],
 
     ['GET', new URLPattern({ pathname: '/api/settings/options' }), async () => {
       return json({

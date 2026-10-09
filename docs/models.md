@@ -579,6 +579,57 @@ waist-up) and seed, at 1024×1024, everything else closed:
   48 GB it would have to unload before every Reply, so it would help only back-to-back renders
   (Render all); dropped 2026-10-08.
 
+### Qwen-Image 2.1 on mflux 0.22: float16, `--low-ram` and the saved copy (2026-10-09)
+
+mflux 0.22 adds `--compute-precision float16` (FLUX.2 Klein, Z-Image, Qwen-Image 2.1) and loads
+Qwen-Image 2.1 lazily, each part read (and quantized) only when a step first needs it. Measured on
+the Mac (M5 Pro, 48 GB), the same prompt, seed and 1024×1024 as on 0.21, everything else closed
+([bench/precision](bench/precision/README.md)):
+
+| Run | Default | float16 | `--low-ram` |
+|---|---|---|---|
+| saved 8-bit copy, 25 steps | 93 s, 36.0 GB | 94 s, 36.1 GB | **90 s, 9.4 GB** |
+| + step cache 0.4 | 60 s, 36.1 GB | 57 s, 36.6 GB | **56 s, 9.4 GB** |
+| Fast (turbo LoRA, 6 steps) | 30 s, 36.6 GB | 30 s, 36.6 GB | **31 s, 11.6 GB** |
+| original weights, `-q 8`, 25 steps | 91 s, 36.2 GB | 91 s, 36.1 GB | 91 s, 9.3 GB |
+| FLUX.2 Klein 4B, 832×1216, 4 steps | 10 s, 19.8 GB | 10 s, 19.9 GB | |
+
+Peak is macOS's peak memory footprint (`/usr/bin/time -l`), which counts the GPU's share of
+unified memory.
+
+- **float16 gains nothing on an M5 Pro** (within a second or two, run to run), as mflux's help
+  says ("helps most on GPUs with slow bfloat16 (Apple M1 and M2); the gain is small or zero on M4
+  and M5"). It changes the picture slightly (mean 0.5–0.8 per pixel of 255 on Qwen-Image 2.1, 2.1
+  on Klein).
+- **`--low-ram` cuts the peak by three-quarters at no cost in time**: 36 GB to 9.4 GB, the
+  picture all but the same (mean 0.4 per pixel). It works with the step cache and the turbo LoRA.
+- **0.22 alone is a little faster than 0.21** (93 s against 98–100 s; the step cache 60 s against
+  66 s) and peaks 3 GB lower (36 GB against 39 GB). The release notes' ~24 GB to ~13 GB was at
+  512² from 8-bit weights.
+- **The saved 8-bit copy no longer helps Qwen-Image 2.1**: rendering from the original weights with
+  `-q 8` gives the very same picture (mean difference 0.0) in the same time and peak. One caveat:
+  the original weights were likely still in the disk cache (the copy had been saved from them
+  minutes before), so a cold first read may take some seconds longer. Saving the copy took 18 s
+  and peaked at 24.3 GB.
+
+**`--low-ram` on the other Image Models** (the same day, Mac, 1024×1024, each model's steps in the
+app, full precision unless noted):
+
+| Image Model | Default | `--low-ram` | Picture |
+|---|---|---|---|
+| FLUX.2 Klein 4B (4 steps) | 10 s, 20.1 GB | 10 s, **9.9 GB** | identical |
+| FLUX.2 Klein 9B (4 steps) | 18 s, 22.7 GB | 19 s, 20.3 GB | identical |
+| FLUX.2 Klein 9B, `-q 8` | 22 s, 23.2 GB | 22 s, 19.9 GB | identical |
+| Z-Image Turbo, 4-bit (9 steps) | 34 s, 17.2 GB | 32 s, **5.6 GB** | near the same (1.1 of 255) |
+| Krea 2 Turbo (8 steps) | 102 s, 35.7 GB | 92 s, 33.6 GB | near the same (0.1) |
+| ERNIE-Image Turbo (8 steps) | 58 s, 35.9 GB | 56 s, 22.7 GB | identical |
+| Boogu Image Turbo (4 steps) | 38 s, 36.3 GB | 38 s, 24.9 GB | near the same (1.2) |
+
+**`--low-ram` is on for every Image Model in the app** since 2026-10-09: none is slower, and every
+peak is lower, by 2–14 GB (Krea 2 and Klein 9B gain least). It does less for Klein 9B with `-q 8`
+than its saved copy did (12.6 GB against 20.9 GB at 512 px on 2026-10-01), but the copies were
+dropped all the same to free disk (22 GB each).
+
 ### Upscaler
 
 Upscale uses **SeedVR2 7B** by default (`seedvr2-7b`, `mflux-upscale-seedvr2 --resolution 2048`);
@@ -603,6 +654,11 @@ The Text Model and the Image Model share the Mac's memory. gemma4 31B (~19 GB) p
 (~10.5 GB at 512 px, ~17.6 GB at 832×1216) fits comfortably on a large-memory Mac; on a smaller
 one, use the 512 px sizes. The larger Image Models (Krea 2, Qwen-Image 2.1, Boogu, ERNIE) peak
 at 25–39 GB even at 512 px: next to gemma4 on a 48 GB Mac they can push the system into swap.
+
+*Saved copies dropped 2026-10-09 (mflux 0.22):* `--low-ram`, now on every render, lowers the peak
+further than a saved copy did, and 0.22 converts Qwen-Image 2.1 as it loads, so its copy made the
+same picture in the same time ("Qwen-Image 2.1 on mflux 0.22", above). Quantize now converts at
+every render. The measurements below are kept for the record.
 
 **Quantizing as mflux does it doesn't lower the peak** (2026-10-01, 512 px, the art-tags test
 set's nine prompts): `--quantize` loads the full weights and converts them as it goes, so the peak

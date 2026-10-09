@@ -3,7 +3,6 @@ import { join } from '@std/path'
 import type { ImageRequest } from '../imageGenerator.ts'
 import { findMfluxModel, type MfluxModel } from './models.ts'
 import { mfluxArgs, mfluxImageGenerator, parseProgress, upscaleArgs } from './mflux.ts'
-import type { QuantizedStore } from './quantized.ts'
 import { DEFAULT_SETTINGS } from '../../settings.ts'
 import { withTempDir } from '../../testing.ts'
 
@@ -32,26 +31,21 @@ Deno.test('mfluxArgs builds the command line from settings', () => {
     '1024',
     '--quantize',
     '8',
+    '--compute-precision',
+    'float16',
+    '--low-ram',
     '--output',
     '/d/x.png',
   ])
 })
 
-Deno.test('mfluxArgs renders from a saved quantized copy, named by its model, without --quantize', () => {
-  const klein = findMfluxModel('flux2-klein-9b')!
-  const args = mfluxArgs(
-    klein,
-    request('/d', { quantize: 8 }),
-    '/d/x.png',
-    '/q/flux2-klein-9b-8bit',
-  )
-  assertEquals(args.slice(0, 4), [
-    '--model',
-    '/q/flux2-klein-9b-8bit',
-    '--base-model',
-    'flux2-klein-9b',
-  ])
-  assertEquals(args.includes('--quantize'), false)
+Deno.test('mfluxArgs computes in float16 only when Settings ask and the model takes it', () => {
+  const float16 = (id: string, on: boolean) =>
+    mfluxArgs(findMfluxModel(id)!, request('/d', { float16: on }), 'o.png')
+      .includes('--compute-precision')
+  assertEquals(float16('qwen-image-2.1', true), true)
+  assertEquals(float16('qwen-image-2.1', false), false)
+  assertEquals(float16('krea-2', true), false)
 })
 
 Deno.test('mfluxArgs adds the step cache only for models that take it', () => {
@@ -169,40 +163,6 @@ echo png > "$out"`,
       assertEquals(file, 'frame-0.png')
       assertEquals(await Deno.readTextFile(join(dir, file)), 'png\n')
       assertEquals(progress, ['download', 'download', '1/3', '2/3', '3/3'])
-    }),
-)
-
-Deno.test(
-  'With Quantize on, mfluxImageGenerator renders from a saved copy, or converts if saving fails',
-  unix,
-  () =>
-    withTempDir(async (dir) => {
-      // The fake mflux writes the arguments it was given as the image.
-      const model = await fakeMflux(dir, `args="$*"\n${OUTPUT}\necho "$args" > "$out"`)
-      const saved = (ok: boolean): QuantizedStore => ({
-        ensure: (m, bits) =>
-          ok
-            ? Promise.resolve(`/q/${m.id}-${bits}bit`)
-            : Promise.reject(new Error('mflux-save failed')),
-        list: () => Promise.resolve([]),
-        remove: () => Promise.resolve(false),
-      })
-      const signal = new AbortController().signal
-      const render = async (ok: boolean) => {
-        const file = await mfluxImageGenerator({ models: [model], quantized: saved(ok) })
-          .generate(request(dir, { quantize: 8 }), signal)
-        return await Deno.readTextFile(join(dir, file))
-      }
-      const fromCopy = await render(true)
-      assertEquals([
-        fromCopy.includes('--model /q/fake-8bit --base-model fake'),
-        fromCopy.includes('--quantize'),
-      ], [true, false])
-      const converting = await render(false)
-      assertEquals([converting.includes('--model fake'), converting.includes('--quantize 8')], [
-        true,
-        true,
-      ])
     }),
 )
 

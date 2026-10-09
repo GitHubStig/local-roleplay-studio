@@ -15,6 +15,8 @@ export interface MfluxModel {
   defaultSteps: number
   /** Takes mflux's step cache (`--step-cache-ratio`): it skips the steps that change least. */
   stepCache?: boolean
+  /** Takes `--compute-precision float16`: faster on M1 and M2 Macs, the same on M4 and M5. */
+  float16?: boolean
   /** A few-step mode the player can switch on: a distilling LoRA with its own scheduler. */
   fast?: FastMode
 }
@@ -34,6 +36,7 @@ export const MFLUX_MODELS: readonly MfluxModel[] = [
     command: 'mflux-generate-flux2',
     model: 'flux2-klein-4b',
     defaultSteps: 4,
+    float16: true,
   },
   {
     id: 'flux2-klein-9b',
@@ -41,6 +44,7 @@ export const MFLUX_MODELS: readonly MfluxModel[] = [
     command: 'mflux-generate-flux2',
     model: 'flux2-klein-9b',
     defaultSteps: 4,
+    float16: true,
   },
   {
     id: 'z-image-turbo',
@@ -50,6 +54,7 @@ export const MFLUX_MODELS: readonly MfluxModel[] = [
     baseModel: 'z-image-turbo',
     preQuantized: true,
     defaultSteps: 9,
+    float16: true,
   },
   {
     id: 'krea-2',
@@ -80,6 +85,7 @@ export const MFLUX_MODELS: readonly MfluxModel[] = [
     // mflux defaults to 40; 25 looks just as good at 512 px and is much faster.
     defaultSteps: 25,
     stepCache: true,
+    float16: true,
     // Viggle's turbo LoRA (1.3 GB, Qwen research license): about 3.4x faster, a little smoother.
     fast: {
       lora:

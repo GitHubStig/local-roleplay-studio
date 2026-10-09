@@ -452,9 +452,8 @@ consistency* in [open-threads.md](open-threads.md).
   address and API key: ADR 0008), Text Model (the backend's models; on Ollama minus OCR and dedicated
   vision-language models), Thinking (on or off; only for models that support it), the Image backend (mflux, or ComfyUI with
   its address: ADR 0009), Image Model (the backend's own), steps (reset to the model's default when the Image Model
-  changes), quantization (8 or 4 bit: the first render with a model saves a smaller copy of it in
-  `models/quantized` (gitignored) and later ones load it, 3.5–8 GB less memory; Settings lists the copies
-  with their sizes, to delete), size (six presets from 512×512 to 1216×832), Upscaler (SeedVR2 7B or 3B) and where it runs ("Upscale with": mflux, or
+  changes), quantization (8 or 4 bit, converted as the model loads), float16 (on by default, for the
+  models that take it: faster on M1 and M2 Macs, the picture slightly different), size (six presets from 512×512 to 1216×832), Upscaler (SeedVR2 7B or 3B) and where it runs ("Upscale with": mflux, or
   ComfyUI at the address on the same tab, which may be another machine), Art Agent model (the model
   that pictures Roleplay Frames, with Thinking off, or "Same as the Text Model"), Art Agent style
   (prose, recommended, or tags), Limits (on by default; off leaves only "everyone depicted is an
@@ -492,8 +491,6 @@ All under `/api`; the Vite dev server proxies it to the Deno server.
 | `GET`, `PUT /settings` | Read or save Settings (`400` with a list of issues if invalid). `textApiKeySet` says whether an API key is saved; a `textApiKey` in a `PUT` replaces it (`''` removes it) |
 | `GET /settings/options` | Text Models from the saved Text backend, Image Models, size presets; still answers if the backend is down |
 | `POST /settings/text-models` | The models on a Text backend not saved yet (`textBackend`, `textBaseUrl`, optional `textApiKey`) |
-| `GET /settings/quantized` | Saved quantized copies of Image Models: `name`, `modelId`, `bits`, `mflux` version, `bytes` |
-| `DELETE /settings/quantized/:name` | Delete a saved copy (the next render that needs it saves it again); returns the rest |
 | `GET /scenarios` | Scenario summaries plus files that failed to load |
 | `GET /sessions` | Session summaries, newest first, with each one's current activity |
 | `POST /sessions` | Start a Session: `{ kind?: "chain" \| "storyboard" \| "roleplay", scenarioId \| brief, frameCount? }`; every kind starts without pictures (a Chain then with `renderFrames` off) |

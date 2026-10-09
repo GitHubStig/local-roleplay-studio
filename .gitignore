@@ -4,6 +4,6 @@ node_modules
 # Runtime data
 settings.json
 sessions/
-# Saved quantized copies of Image Models, made on first use (13-22 GB each)
+# Saved quantized copies of Image Models, which the app made until 2026-10-09
 models/
 __pycache__/
