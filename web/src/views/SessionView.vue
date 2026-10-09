@@ -435,6 +435,21 @@ const promptDiff = computed(() => {
 
     <template v-else-if="session">
       <main class="flex min-w-0 flex-1 flex-col gap-3 p-4">
+        <!-- The Chain's switches, above the picture, as a Roleplay's are above its conversation. -->
+        <div v-if="featureOn('images')" class="flex items-center justify-end gap-4 text-sm">
+          <label
+            class="flex cursor-pointer items-center gap-1.5 text-muted"
+            title="Off: each Action writes only the new prompt, and you render the Frames you want"
+          >
+            <input
+              type="checkbox"
+              :checked="session.renderFrames !== false"
+              data-render-frames
+              @change="switchRenderFrames(($event.target as HTMLInputElement).checked)"
+            />
+            Render each Frame
+          </label>
+        </div>
         <FrameImage
           :src="shown?.image ? imageUrl(session.id, shown.upscaled ?? shown.image) : null"
           :alt="shown?.prompt"
@@ -585,19 +600,6 @@ const promptDiff = computed(() => {
               @queue="(kind) => queue(kind, shown!.index)"
               @view="(kind) => (open3d = { index: shown!.index, kind })"
             />
-            <label
-              v-if="featureOn('images')"
-              class="flex cursor-pointer items-center gap-1.5 text-sm text-muted"
-              title="Off: each Action writes only the new prompt, and you render the Frames you want"
-            >
-              <input
-                type="checkbox"
-                :checked="session.renderFrames !== false"
-                data-render-frames
-                @change="switchRenderFrames(($event.target as HTMLInputElement).checked)"
-              />
-              Render each Frame
-            </label>
             <p
               class="min-w-0 flex-1 truncate text-sm"
               :class="frameError ? 'text-danger' : notice?.kind === 'unclear' ? 'text-info' : 'text-warn'"

@@ -496,25 +496,37 @@ describe('RoleplayView', () => {
       expect(api.queueJob).toHaveBeenCalledWith('r1', 'speak', 1)
     })
 
-    it('pictures and renders each new reply unless Picture replies is switched off', async () => {
-      vi.mocked(api.queueJob).mockReset().mockResolvedValue([job({ kind: 'picture', frameIndex: 1 })])
+    it('pictures each new reply by default, renders it too only with Render replies on', async () => {
+      vi.mocked(api.queueJob).mockReset().mockResolvedValue([
+        job({ kind: 'picture', frameIndex: 1 }),
+      ])
       const done = roleplaySession([frame(0, null, 'Get inside.'), frame(1, 'Hello.', 'Sit.')])
       vi.mocked(roleplay.sendMessage).mockImplementation(async (_id, _text, onEvent) =>
         onEvent({ type: 'replied', frame: done.frames[1], session: done })
       )
       const { wrapper } = await mountIt()
-      expect((wrapper.find('[data-picture-replies]').element as HTMLInputElement).checked).toBe(true)
-      await wrapper.find('textarea').setValue('Hello.')
-      await buttonNamed(wrapper, 'Send').trigger('click')
-      await flushPromises()
-      expect(vi.mocked(api.queueJob).mock.calls).toEqual([['r1', 'picture', 1], ['r1', 'render', 1]])
+      const send = async (text: string) => {
+        vi.mocked(api.queueJob).mockClear()
+        await wrapper.find('textarea').setValue(text)
+        await buttonNamed(wrapper, 'Send').trigger('click')
+        await flushPromises()
+        return vi.mocked(api.queueJob).mock.calls
+      }
+      expect((wrapper.find('[data-picture-replies]').element as HTMLInputElement).checked).toBe(
+        true,
+      )
+      expect((wrapper.find('[data-render-replies]').element as HTMLInputElement).checked).toBe(
+        false,
+      )
+      expect(await send('Hello.')).toEqual([['r1', 'picture', 1]])
 
-      vi.mocked(api.queueJob).mockClear()
+      await wrapper.find('[data-render-replies]').setValue(true)
+      expect(await send('Hello.')).toEqual([['r1', 'picture', 1], ['r1', 'render', 1]])
+
+      // Rendering needs the picture: off with it.
       await wrapper.find('[data-picture-replies]').setValue(false)
-      await wrapper.find('textarea').setValue('Hello again.')
-      await buttonNamed(wrapper, 'Send').trigger('click')
-      await flushPromises()
-      expect(api.queueJob).not.toHaveBeenCalled()
+      expect(wrapper.find('[data-render-replies]').attributes('disabled')).toBeDefined()
+      expect(await send('Hello.')).toEqual([])
     })
 
     it('cancels the render queued behind a picture with it', async () => {
@@ -697,6 +709,7 @@ describe('RoleplayView', () => {
       const gone of [
         '[data-autoplay]',
         '[data-picture-replies]',
+        '[data-render-replies]',
         '[data-listen]',
         '[data-picture-button]',
         '[data-render-button]',

@@ -109,10 +109,13 @@ const shownPreview = useShownPreview(
 const previewOn = (index: number) => shownPreview.value && formingIndex.value === index
 
 /**
- * New Replies are pictured and rendered as they arrive, wherever pictures can be made: on unless
- * switched off, remembered per browser. Picture this stays for Replies made with it off.
+ * New Replies are pictured as they arrive (their Image Prompt written), wherever pictures can be
+ * made: on unless switched off. Rendering them too is slower, so it's a switch of its own, off
+ * unless switched on, and only with picturing. Both remembered per browser; Picture this and
+ * Render stay for Replies made with them off.
  */
 const pictureReplies = useStoredFlag('roleplay-picture-replies', true)
+const renderReplies = useStoredFlag('roleplay-render-replies')
 /**
  * Cancels a job, and with a picture the render queued behind it, which would only fail without
  * the picture.
@@ -354,7 +357,7 @@ async function afterReply(frame: RoleplayFrame) {
   }
   if (pictureReplies.value && featureOn.value('images')) {
     await queue('picture', frame.index)
-    await queue('render', frame.index)
+    if (renderReplies.value) await queue('render', frame.index)
   }
 }
 
@@ -613,14 +616,30 @@ async function saveCastDraft(): Promise<boolean> {
               <input v-model="autoplay" type="checkbox" data-autoplay />
               Speak replies
             </label>
-            <label
-              v-if="featureOn('images')"
-              class="flex cursor-pointer items-center gap-1.5 text-muted"
-              title="Picture and render each new reply as it arrives"
-            >
-              <input v-model="pictureReplies" type="checkbox" data-picture-replies />
-              Picture replies
-            </label>
+            <template v-if="featureOn('images')">
+              <label
+                class="flex cursor-pointer items-center gap-1.5 text-muted"
+                title="Write each new reply's Image Prompt as it arrives (Picture this)"
+              >
+                <input v-model="pictureReplies" type="checkbox" data-picture-replies />
+                Picture replies
+              </label>
+              <label
+                class="flex items-center gap-1.5 text-muted"
+                :class="pictureReplies ? 'cursor-pointer' : 'opacity-50'"
+                :title="pictureReplies
+                ? 'Render each new reply\'s picture too (slower)'
+                : 'Needs Picture replies'"
+              >
+                <input
+                  v-model="renderReplies"
+                  type="checkbox"
+                  :disabled="!pictureReplies"
+                  data-render-replies
+                />
+                Render replies
+              </label>
+            </template>
             <label class="flex cursor-pointer items-center gap-1.5 text-muted">
               <input v-model="thoughtsHidden" type="checkbox" data-hide-thoughts />
               Hide thoughts

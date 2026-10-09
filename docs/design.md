@@ -311,10 +311,11 @@ and usable, with Send waiting until the picture is done. With the Limits on, a p
 wears in its clothing sentence, or it's blocked (and written once more): told to keep within the
 Limits, the Art Agent sometimes left an undressed person's clothing out instead of dressing them.
 **Picture replies** (beside "Speak replies" above the conversation; on by default wherever
-pictures are available, remembered per browser) queues Picture this and then Render for each new
-Reply as it arrives, so the buttons are only needed for older Replies or another try. A picture
-already queued isn't cancelled by the next Message: each Reply gets its picture, in order.
-Cancelling a picture also cancels the render queued behind it. **Render** / **Re-render** under a pictured Reply renders it through the shared render queue with
+pictures are available) queues Picture this for each new Reply as it arrives, writing its Image
+Prompt. **Render replies** (beside it, off by default, as rendering is slow; only with Picture
+replies) queues Render after it too. Both are remembered per browser; the buttons stay for older
+Replies or another try. A job already queued isn't cancelled by the next Message: each Reply gets
+its picture, in order. Cancelling a picture also cancels the render queued behind it. **Render** / **Re-render** under a pictured Reply renders it through the shared render queue with
 the Session's Image Model, seed and size, and shows the picture beside its Reply (below it on
 windows under 1024 px). Clicking a picture opens it in a viewer (`FrameViewer`, shared with the
 Chain and Storyboard screens: `ImageViewer`, a dialog around `FrameImage`, which zooms and pans
@@ -371,7 +372,7 @@ consistency* in [open-threads.md](open-threads.md).
   Image Models. Start is blocked, with the reason shown,
   if no Text Model is set or the chosen one is no longer installed.
 - **Session** (`/sessions/:id`): the image fills everything above a fixed-height text box, so
-  it never resizes as the text changes. **Render each Frame** (beside the picture buttons; the
+  it never resizes as the text changes. **Render each Frame** (above the picture, as a Roleplay's switches are above its conversation; the
   Chain's own switch, saved with it as `renderFrames`) is on when pictures are available: each
   Action writes the new prompt and renders it. Off (and always, without pictures) each Action
   writes only the prompt; the Frame reads "Not rendered yet", with a dashed thumbnail, and its
