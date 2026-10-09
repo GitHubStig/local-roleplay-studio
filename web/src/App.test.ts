@@ -225,7 +225,7 @@ describe('App navigation', () => {
       emit = onEvent
       return new Promise(() => {})
     })
-    const { router } = await mountApp('/sessions/s1')
+    const { router, wrapper } = await mountApp('/sessions/s1')
     await router.push('/settings')
     await flushPromises()
 
@@ -237,7 +237,7 @@ describe('App navigation', () => {
     await router.push('/sessions/s1')
     await flushPromises()
     expect(router.currentRoute.value.path).toBe('/')
-    expect(router.currentRoute.value.query.error).toBe('Ollama: model not found')
+    expect(wrapper.text()).toContain("Couldn't start the Session: Ollama: model not found")
   })
 
   it('recovers a Session screen once the server answers again', async () => {

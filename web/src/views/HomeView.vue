@@ -49,11 +49,13 @@ onBeforeUnmount(() => {
 })
 
 // A failed Opening Frame sends the player here with `?error=`, possibly while already on Home.
+// It's shown once, then dropped from the address so a refresh doesn't bring it back.
 watch(
   () => route.query.error,
   (error) => {
     if (typeof error !== 'string') return
     startError.value = error
+    router.replace({ query: { ...route.query, error: undefined } })
     load()
   },
   { immediate: true },

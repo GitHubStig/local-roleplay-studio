@@ -130,6 +130,14 @@ describe('HomeView', () => {
     expect(wrapper.text()).toContain("Couldn't start the Session: Ollama: model not found")
   })
 
+  it('drops the failure from the address once shown, so a refresh clears it', async () => {
+    const { wrapper, router } = await mountIt()
+    await router.replace({ path: '/', query: { error: 'Ollama: model not found' } })
+    await flushPromises()
+    expect(router.currentRoute.value.query.error).toBeUndefined()
+    expect(wrapper.text()).toContain("Couldn't start the Session: Ollama: model not found")
+  })
+
   it('stops polling once Home is left, even mid-request', async () => {
     vi.useFakeTimers()
     try {
