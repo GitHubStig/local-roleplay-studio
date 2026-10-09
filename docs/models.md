@@ -579,6 +579,49 @@ waist-up) and seed, at 1024×1024, everything else closed:
   48 GB it would have to unload before every Reply, so it would help only back-to-back renders
   (Render all); dropped 2026-10-08.
 
+### How much of the Image Prompt each model reads (2026-10-09)
+
+mflux tokenizes the prompt, inside each model's own template or chat template, and silently cuts it
+at a fixed length (mflux 0.22, from each model's weight definition). Counted with mflux's own
+tokenizers on the Mac, over the 37 Image Prompts in the local Sessions (35 from Roleplays' Art
+Agent, 2 from a Chain; 120–380 words, median 253 for the Roleplays):
+
+| Image Model | Cut at (tokens) | Template | Median prompt | Longest | Cut |
+|---|---|---|---|---|---|
+| FLUX.2 Klein 4B and 9B | 512 | 12 | 352 | 523 | 1 of 37 |
+| Z-Image Turbo | 512 | 8 | 348 | 519 | 1 of 37 |
+| Krea 2 | 1024 | 39 | 379 | 550 | 0 |
+| Boogu | 1024 | 0 | 340 | 511 | 0 |
+| ERNIE-Image | 2048 | 1 | 347 | 525 | 0 |
+| Qwen-Image 2.1 | 2048 | 22 | 362 | 533 | 0 |
+
+- **Qwen-Image 2.1, the default, reads all of every prompt**, with room for four times as much.
+- **Klein and Z-Image already lose the end of the longest** (a 380-word Roleplay picture, by 7–11
+  tokens). The end is the **art style**, as every Image Prompt ends with it (ADR 0005), so those
+  are the words a 512-token model drops first.
+- **The caps allow more than was seen**: seven sentences of up to 280 characters each come to about
+  450 tokens on their own, before the identities and the style, so a busy Frame with both people
+  could reach ~600. A Storyboard Frame adds an identity for each person it shows (up to three); no
+  Storyboard was saved here to measure.
+- Not checked: ComfyUI's Qwen-Image 2.1, which tokenizes with its own code.
+
+"About 250 words" (2026-09-27) was a measure of what the Art Agent wrote, not a target; the limit
+in force is the 280-character cap per sentence (`FIELD_LENGTH`, `server/roleplay/art.ts`).
+
+**How long each Text Model pictures** (the same Roleplay Pictures above, by the model that wrote
+them, as recorded on each; same instructions and caps, all prose):
+
+| Model | Pictures | Words, median (range) |
+|---|---|---|
+| Qwen3.8 27B (`orcarouter/Qwen3.8-27B-Uncensored:mlx-4bit`) | 19 | 312 (201–380) |
+| gemma-4 26B heretic (`pdurlej/gemma-4-26B-A4B-it-heretic`) | 4 | 186 (172–223) |
+| the same, NVFP4 (`gemma-4-26b-heretic:nvfp4`) | 1 | 143 |
+| not recorded (older pictures) | 11 | 244 (187–297) |
+
+One model writes about 1.7× as much as another from the same instructions, so a length a model is
+told to keep isn't a length it keeps: a budget per Image Model has to be enforced by the app, and a
+test of what length renders best holds only for the Text Model it was run with.
+
 ### Qwen-Image 2.1 on mflux 0.22: float16, `--low-ram` and the saved copy (2026-10-09)
 
 mflux 0.22 adds `--compute-precision float16` (FLUX.2 Klein, Z-Image, Qwen-Image 2.1) and loads
