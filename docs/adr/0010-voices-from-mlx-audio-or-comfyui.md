@@ -49,8 +49,8 @@ ComfyUI. Settings' ComfyUI check also looks for the pack's nodes (`/object_info`
 - Slower than a Mac: on the RTX 4070 a line takes ~3.7 s per second of speech (0.8 s on the Mac),
   plus ~8 s to load Higgs after a Reply, and a design ~30 s plus loading.
 - Setting it up is the player's, in ComfyUI: the pack through the Manager (which refuses while
-  ComfyUI listens on the network), Windows' long paths on, and until its issue #366 is fixed, a
-  three-line fix in the pack for designing a voice (README).
+  ComfyUI listens on the network), Windows' long paths on, and version 5.9.3 or later (it fixes #366), which the Manager offers
+  only as "nightly" while Comfy's registry has every release since 5.8.4 flagged (README).
 - The pack is large (~15 engines and their packages in ComfyUI's Python); the app uses five of its
   nodes (`VOICE_NODES`).
 - Its "unload" moves Higgs to the CPU: ~8 GB of ComfyUI's RAM until it restarts, which a 16 GB PC

@@ -442,7 +442,7 @@ instead, as it already makes the pictures there, so the PC needs no second Pytho
   - *Licence.* Higgs v3 is Boson's research and non-commercial licence: the same as on the Mac.
 ### Tried on the RTX 4070 (2026-10-08)
 
-TTS-Audio-Suite 5.9.2 on ComfyUI 0.39.2 (torch 2.12.1+cu130), installed through the Manager.
+TTS-Audio-Suite 5.8.4 on ComfyUI 0.39.2 (torch 2.12.1+cu130), installed through the Manager.
 
 - **Installing.** Two traps, both on the PC:
   - *Comfy Desktop runs ComfyUI from `ComfyUI\.venv`*, not from `standalone-env` (only the base
@@ -483,7 +483,7 @@ TTS-Audio-Suite 5.9.2 on ComfyUI 0.39.2 (torch 2.12.1+cu130), installed through 
      support"). The folder can't be moved (no setting). Fixed by setting
      `HKLM\SYSTEM\CurrentControlSet\Control\FileSystem\LongPathsEnabled` to 1 (admin), then
      restarting ComfyUI.
-  2. *A bug in the pack (5.9.2):* the worker then died at once ("Worker closed the response stream
+  2. *A bug in the pack (5.8.4):* the worker then died at once ("Worker closed the response stream
      unexpectedly"); its own error is only in Comfy Desktop's log
      (`ComfyUI-Installs\ComfyUI\logs\comfyui.log`, which has the child processes' output, unlike
      `ComfyUI\user\comfyui.log`): "No module named 'utils.runtimes'; 'utils' is not a package". The
@@ -521,7 +521,7 @@ TTS-Audio-Suite 5.9.2 on ComfyUI 0.39.2 (torch 2.12.1+cu130), installed through 
 ### Through the app (2026-10-08, the Windows PC)
 
 The ComfyUI Voice backend (`server/voice/comfyui/`), with "Speak with" set to ComfyUI, Ollama 0.40.0
-with Gemma 4 12B Heretic (Q4_K_M) as the Text Model, ComfyUI 0.39.2 with TTS Audio Suite 5.9.2 (and
+with Gemma 4 12B Heretic (Q4_K_M) as the Text Model, ComfyUI 0.39.2 with TTS Audio Suite 5.8.4 (and
 the #366 fix):
 
 - **The engine alone** (a script calling `design` then `speak`): a voice designed from a gravelly
@@ -561,3 +561,18 @@ the #366 fix):
   with why on hover and Speak again.
 - ComfyUI jobs now end once ComfyUI's GPU is about as free as before the job (`/system_stats`, up
   to 30 s), so the next job (the Text Model) finds it free.
+
+### TTS Audio Suite 5.9.3: #366 fixed (2026-10-09, the Windows PC)
+
+- **The version was 5.8.4, not 5.9.2**, all along: what the Manager installs. Comfy's registry
+  lists every release from 5.8.8 to 5.9.2 as *flagged* (no reason given) and 5.9.3 as *pending*,
+  so the Manager's newest is 5.8.4 (2026-08-21). The earlier sections, and the comment on #366,
+  said 5.9.2 (corrected here).
+- **The maintainer fixed #366 in 5.9.3** (2026-10-08): the shared launcher and every isolated worker
+  put the suite's own packages first. Installed through the Manager as "nightly" (the repository's
+  `main`), replacing the local fix.
+- **It works**: through the app's ComfyUI backend, a voice designed (160 s: the update had replaced
+  the suite's folder, so its Qwen3-TTS runtime was built again, which long paths let through), a
+  line spoken from it, and a second design with the worker started afresh (77.9 s); no "'utils' is
+  not a package" in the log. Not tried: the maintainer's other sequence (Qwen, Step Audio EditX,
+  unload, Qwen), as Step's model is a large download the app doesn't use.

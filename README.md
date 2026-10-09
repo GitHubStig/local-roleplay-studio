@@ -142,8 +142,10 @@ them:
   - turn on long paths (in PowerShell as admin: `New-ItemProperty -Path
     'HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem' -Name LongPathsEnabled -Value 1
     -PropertyType DWORD -Force`), then restart ComfyUI, or designing a voice fails to set up;
-  - until [#366](https://github.com/diodiogod/TTS-Audio-Suite/issues/366) is fixed, designing a
-    voice needs a three-line fix in the suite (docs/research/comfyui.md).
+  - install version 5.9.3 or later, which fixes designing a voice on Windows
+    ([#366](https://github.com/diodiogod/TTS-Audio-Suite/issues/366)). Comfy's registry has flagged
+    every release since 5.8.4, so the Manager offers 5.8.4: choose **nightly** in its version list
+    (it installs the repository's latest) until the registry approves a later one.
 
   The models download into ComfyUI the first time each is used (8.9 GB for Higgs). Each voice
   unloads the Text Model first when it's on that machine, as a render does, since Higgs takes

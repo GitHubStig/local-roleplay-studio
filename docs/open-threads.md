@@ -43,7 +43,9 @@ Ideas deliberately deferred. Promote an item to an ADR in `docs/adr/` when we ac
     Mac's mlx-audio, though it's wholly on the GPU; eager attention was no faster. Untried:
     SageAttention, and whether CUDA graphs or `torch.compile` (which TTS Audio Suite offers for
     Qwen3-TTS, not Higgs) would help. Trigger: lines that keep the player waiting.
-  - **Undo the local fix to TTS Audio Suite** once its #366 is fixed (README, Voices).
+  - **TTS Audio Suite from the registry again** (2026-10-09): the PC runs its "nightly" (5.9.3, which
+    fixed #366), as the registry has flagged every release since 5.8.4 and 5.9.3 is pending. Once a
+    release from 5.9.3 on is approved, switch back in the Manager.
   - **LiTo on Windows**, parked: Apple's code is Linux and Mac only, so it would mean WSL2
     (research/windows.md); TripoSplat already makes figures there.
   - **Linux**: nothing has been run on it, though everything that works on Windows should.
