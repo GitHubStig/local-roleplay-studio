@@ -80,13 +80,8 @@ The README's "Where things live" maps the folders. When adding a file:
 ## Local data
 
 `sessions/`, `settings.json` and `models/` are gitignored, so a fresh clone starts without them.
-On the owner's Mac, three Roleplays in `sessions/` are kept as test fixtures: ask before deleting
-or rewriting them.
-
-- `20260927-100327-07ac`: the Kael tavern Roleplay (30 Frames), the source of the image, Art
-  Agent, Suggest and voice tests.
-- `20261001-024055-e211`: the same story with the roles swapped; Elara is the Character.
-- `20261001-024443-b215`: a third Roleplay in a 1700s harbour town; Elara the Character.
+No Sessions are kept as test fixtures: to test against a story, make one through the app (a
+replay of the same Messages with a fixed seed gives the same Replies), and delete it after.
 
 **What's in a Session stays out of the repo** unless the owner OKs it: no Roleplay text, Image
 Prompts, voice clips or pictures from real Sessions copied into `docs/`, tests or commits.
