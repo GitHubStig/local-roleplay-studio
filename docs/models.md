@@ -249,6 +249,14 @@ seeded:
   stopped once 8,000 characters pass without the next part (the Look, the Beats, a Frame)
   complete (`RUNAWAY_CHARS`), logging its last words, and retried; stopping the stream ends
   Ollama's request at once ("Request terminated", checked).
+- **Whitespace between the parts (2026-10-09, Mac).** A 15-Frame plan in the app ran away on both
+  attempts, padding with spaces and blank lines. Replayed outside the app on
+  `gemma-4-26b-heretic:nvfp4`, short one-line Briefs failed 6 of 12 times; the `tavern` and
+  `contact` Scenarios, 0 of 5. The whitespace always began right after a part closed: after the
+  Look's `}`, or after the Beats' `]` with all 15 written. The model took its answer as done there,
+  and with `}` barred by the schema (the next part still required) it padded instead. The plan's
+  user message now says the reply holds all three parts, in order, and is done only after the last
+  Frame: the same Briefs then failed 0 of 10.
 
 ## Art Agent (picturing Roleplay Frames)
 
