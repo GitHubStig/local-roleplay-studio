@@ -28,7 +28,10 @@ moment is not in it, and is left out. If no one is in the picture, it's of the p
   balcony rail").
 - expression: each person's face, by name ("Kael hard stare", "Elara calculating smirk").
 - camera: the angle and framing ("low-angle shot", "wide shot").
-- clothing: what each person wears, by name ("Kael leather coat", "Elara wool robe").
+- clothing: what each person wears, and anything on them or their skin (blood, bruises, dirt,
+  wet), by name ("Kael leather coat", "Elara wool robe", "Kael bloodied knuckles"). Start from what
+  each wore when last pictured (given with the story) and change only what the story has changed
+  since: clothes taken off stay off, and a wound stays, until the story says otherwise.
 - environment: the place and props ("dim tavern", "wooden staircase", "lamp on the bar").
 - lighting: the light ("single oil lamp", "deep shadows").
 - color: the palette ("muted browns", "amber highlights").

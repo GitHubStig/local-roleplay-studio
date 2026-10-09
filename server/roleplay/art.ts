@@ -163,6 +163,25 @@ export function storyText(session: RoleplaySession, upTo: number): string {
   }).join('\n\n')
 }
 
+/**
+ * What each person wore when last pictured before Frame `index`: the clothing sentence of the
+ * latest earlier picture showing them, one line per picture ("Frame 12, Kael and Elara Vance:
+ * …"); '' if no one has been pictured yet. The Art Agent copies it forward and changes only what
+ * the story changed since, so clothes (and marks such as blood) don't come and go between pictures.
+ */
+export function lastWorn(session: RoleplaySession, index: number): string {
+  const lastFrame = new Map<string, RoleplayFrame>()
+  for (const f of session.frames.slice(0, index)) {
+    if (!f.clothing) continue
+    for (const name of f.shown ?? []) lastFrame.set(name, f)
+  }
+  const byFrame = new Map<RoleplayFrame, string[]>()
+  for (const [name, f] of lastFrame) byFrame.set(f, [...(byFrame.get(f) ?? []), name])
+  return [...byFrame].sort(([a], [b]) => a.index - b.index)
+    .map(([f, names]) => `- Frame ${f.index}, ${names.join(' and ')}: ${f.clothing}`)
+    .join('\n')
+}
+
 /** The call that writes a Roleplay's Look, from its Cast and Brief. */
 export async function artLookMessages(
   session: RoleplaySession,
@@ -214,6 +233,7 @@ export async function artFrameMessages(
       content: await loadPrompt('roleplay/art-frame-request', {
         look: block(session.look!),
         story: storyText(session, index),
+        worn: lastWorn(session, index) || '(no one has been pictured yet)',
         frame: index,
       }),
     },

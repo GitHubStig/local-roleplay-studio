@@ -4,6 +4,7 @@ import { DEFAULT_SETTINGS } from '../settings.ts'
 import {
   artFrameMessages,
   joinTags,
+  lastWorn,
   parseRoleplayLook,
   parseWho,
   pictured,
@@ -211,3 +212,30 @@ Deno.test('The tags style asks for tags, and joins them in aspect order', async 
   assertThrows(() => joinTags({ pose: '', shown: [] }), Error, 'no tags')
 })
 
+Deno.test('lastWorn gives each person the clothing of the latest earlier picture showing them', () => {
+  const at = (index: number, shown: string[], clothing?: string) => ({
+    ...session.frames[0],
+    index,
+    shown,
+    ...(clothing ? { clothing } : {}),
+  })
+  const story = {
+    ...session,
+    frames: [
+      at(0, [MIRA, SAM], 'Mira wears a coat; Sam wears oilskins.'),
+      at(1, [MIRA], 'Mira has taken off her coat.'),
+      at(2, [SAM]), // not pictured
+      at(3, [MIRA, SAM], 'Mira wears a robe; Sam is soaked.'),
+    ],
+  }
+  assertEquals(lastWorn(story, 0), '')
+  assertEquals(
+    lastWorn(story, 3),
+    '- Frame 0, Sam Reyes: Mira wears a coat; Sam wears oilskins.\n' +
+      '- Frame 1, Mira Vance: Mira has taken off her coat.',
+  )
+  assertEquals(
+    lastWorn(story, 4),
+    '- Frame 3, Mira Vance and Sam Reyes: Mira wears a robe; Sam is soaked.',
+  )
+})
