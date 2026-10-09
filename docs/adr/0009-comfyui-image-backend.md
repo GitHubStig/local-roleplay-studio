@@ -46,6 +46,11 @@ picture inline with its built-in nodes, so the one to upscale is uploaded to its
   but the memory stays taken while the Text Model works. Revisit if renders come in bursts.
 - **Workflows in the UI format** (what ComfyUI saves by default). The API format is what `/prompt`
   takes; the UI format would need converting, subgraphs and all.
+- **Starting ComfyUI from the app** (a Start command set in Settings, run when a render finds
+  nothing answering, stopped after a few idle minutes). Dropped 2026-10-09: the app shouldn't run
+  other programs' lifecycles. Installs differ by machine and kind (Comfy Desktop, the portable
+  build, a manual one), ComfyUI may be on another machine, and the player already starts it the
+  way their install expects. The app only says when none answers.
 - **Custom nodes** (GGUF loaders, SeedVR2, a base64 image loader that would send the picture to
   upscale inline). Left out so a fresh install runs the workflows; SeedVR2 turned out to be built
   in, and the upload is blanked after use instead.

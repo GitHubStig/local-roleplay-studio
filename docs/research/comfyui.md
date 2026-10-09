@@ -231,8 +231,8 @@ in use (Windows and apps), and the next Text Model call loaded on a clear GPU.
   Without the model-paths file it looks only in its own, empty `models/`. Desktop still updates
   this install; don't run both on one port. It answered about 10 s after starting.
 - **The app neither starts nor stops ComfyUI**: it expects one answering at the address in
-  Settings, and says "Couldn't reach ComfyUI … is it running?" when none does. It could start one
-  with a command set in Settings (open-threads, "Starting ComfyUI from the app").
+  Settings, and says "Couldn't reach ComfyUI … is it running?" when none does. Starting one with a
+  command set in Settings was considered and dropped (ADR 0009, 2026-10-09).
 - **ComfyUI keeps nothing of the app's**: no picture in its output or temp folder (the picture
   comes back over the WebSocket), no prompt in its history (deleted after each render), no prompt
   text in its log; the only copy of a picture is the one in the Session's folder.
