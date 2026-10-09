@@ -42,6 +42,7 @@ import {
 import { checkChainJob, runChainJob } from './chain/jobs.ts'
 import { checkStoryboardJob, runStoryboardJob } from './storyboard/jobs.ts'
 import { GoneError, updateSession } from './update.ts'
+import type { HeavyJob } from './machine.ts'
 import { RenderQueue } from './renderQueue.ts'
 import { type FrameDeps, type Phase, UpscaleError } from './frames.ts'
 import { runChainFrame, UndoError, undoLatestFrame } from './chain/frames.ts'
@@ -83,7 +84,7 @@ export interface AppDeps {
    */
   features?: Availabilities
   /** Frees memory before a render, upscale, scene or figure: unloads the Text Model. */
-  freeMemory?: () => Promise<void>
+  freeMemory?: (job: HeavyJob | undefined) => Promise<void>
   newSessionId?: () => string
   randomSeed?: () => number
 }

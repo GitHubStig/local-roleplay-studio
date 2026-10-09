@@ -1,6 +1,7 @@
 import { createHandler } from './app.ts'
 import { placeholderImageGenerator } from './images/imageGenerator.ts'
 import { mfluxImageGenerator } from './images/mflux/mflux.ts'
+import { jobServer, sameMachine, textServer } from './machine.ts'
 import { comfyuiImageGenerator } from './images/comfyui/comfyui.ts'
 import { comfyuiStatus } from './comfyui/status.ts'
 import { imageBackends } from './images/backend.ts'
@@ -69,11 +70,14 @@ const handler = createHandler({
     upscaleBackend: async () => (await settings.load()).upscaleBackend,
   }),
   features,
-  // A big render next to a loaded Text Model pushes a 48 GB Mac into swap (375 s instead of 66 s
+  // A big render next to a loaded Text Model pushed a 48 GB Mac into swap (375 s instead of 66 s
   // for Qwen-Image 2.1 at 1024 px), so each render, upscale, scene and figure unloads it first,
-  // where the Text backend can (Ollama; not a server on the OpenAI API).
-  freeMemory: async () => {
-    await text(connectionOf(await settings.load())).freeMemory?.()
+  // where the Text backend can (Ollama; not a server on the OpenAI API), but only when both run on
+  // the same machine: a render on a ComfyUI across the network leaves it loaded (ADR 0013).
+  freeMemory: async (job) => {
+    const now = await settings.load()
+    if (!sameMachine(textServer(now), jobServer(job, now))) return
+    await text(connectionOf(now)).freeMemory?.()
   },
   // Voices with the backend Settings choose now: the voice service where it runs (a Mac), or the
   // ComfyUI at Settings' address with TTS Audio Suite's nodes.

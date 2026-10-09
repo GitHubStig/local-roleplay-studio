@@ -1,10 +1,13 @@
+import type { HeavyJob } from './machine.ts'
+
 export interface RenderQueueOptions {
   /**
    * Frees memory for a heavy job once it's that job's go: unloads the Text Model, which Ollama
-   * would otherwise keep loaded for 5 minutes and push a big render into swap. A failure is logged,
-   * and the job runs anyway.
+   * would otherwise keep loaded for 5 minutes and push a big render into swap, if the job runs on
+   * its machine (`job`, undefined for one that runs here: machine.ts). A failure is logged, and
+   * the job runs anyway.
    */
-  freeMemory?: () => Promise<void>
+  freeMemory?: (job: HeavyJob | undefined) => Promise<void>
 }
 
 /**
@@ -14,7 +17,7 @@ export interface RenderQueueOptions {
 export class RenderQueue {
   #busy = false
   #waiting: (() => void)[] = []
-  #freeMemory?: () => Promise<void>
+  #freeMemory?: (job: HeavyJob | undefined) => Promise<void>
 
   constructor(opts: RenderQueueOptions = {}) {
     this.#freeMemory = opts.freeMemory
@@ -22,13 +25,14 @@ export class RenderQueue {
 
   /**
    * Resolves with a release function once it's this caller's go to render, after freeing memory
-   * for it unless it's `light` (a spoken line, small and frequent). Calls `onWait` first if another
-   * render is in progress. Rejects if `signal` aborts while waiting.
+   * for it unless it's `light` (a spoken line, small and frequent). `job` says where it runs, if
+   * it may be another machine. Calls `onWait` first if another render is in progress. Rejects if
+   * `signal` aborts while waiting.
    */
   async acquire(
     signal: AbortSignal,
     onWait?: () => void,
-    { light = false }: { light?: boolean } = {},
+    { light = false, job }: { light?: boolean; job?: HeavyJob } = {},
   ): Promise<() => void> {
     signal.throwIfAborted()
     if (this.#busy) {
@@ -48,7 +52,9 @@ export class RenderQueue {
     }
     this.#busy = true
     if (!light && this.#freeMemory) {
-      await this.#freeMemory().catch((err) => console.warn('Could not free memory:', err.message))
+      await this.#freeMemory(job).catch((err) =>
+        console.warn('Could not free memory:', err.message)
+      )
     }
     let released = false
     return () => {

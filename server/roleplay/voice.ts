@@ -149,7 +149,7 @@ async function inTurn<T>(
   const release = await (deps.renderQueue ?? new RenderQueue()).acquire(signal, () => {
     waited = true
     emit({ type: 'phase', phase: 'queued' })
-  }, { light: !heavy })
+  }, { light: !heavy, job: { kind: 'voice' } })
   try {
     emit({ type: 'phase', phase: 'audio' })
     const onDownload = (downloading: boolean) =>

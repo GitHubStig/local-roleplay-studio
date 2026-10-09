@@ -80,7 +80,9 @@ current Image Prompt + Action ──► Text Model (Text backend) ──► { ou
    cancellable). Then the Session's Image backend renders it with the Session's seed and settings:
    the mflux CLI, one process per image ([ADR 0004](adr/0004-images-from-the-mflux-cli.md)), or a
    workflow queued on ComfyUI, followed over its WebSocket
-   ([ADR 0009](adr/0009-comfyui-image-backend.md)). Its step counter is streamed to the player as
+   ([ADR 0009](adr/0009-comfyui-image-backend.md)). When its turn comes, the Text Model is unloaded
+   first if it runs on the same machine as the render
+   ([ADR 0013](adr/0013-unload-the-text-model-on-the-job-machine.md)). Its step counter is streamed to the player as
    progress. With "Render each Frame" off (a Chain's switch, and always without pictures), this
    step is skipped and the Frame waits for its **Render** button.
 6. **Commit.** The Frame is appended to `session.json`.
@@ -184,7 +186,7 @@ under `/api/sessions/:id/roleplay/` ([ADR 0007](adr/0007-roleplay-is-a-conversat
    every request. ComfyUI (`server/voice/comfyui/`, with TTS Audio Suite's nodes) runs the same two
    models as workflows, keeping no audio (its clips are read from its temp folder and blanked);
    its files are FLAC (`voice-…flac`, `speech-…flac`), and as Higgs takes most of a 12 GB card, the
-   Text Model is unloaded before each voice, as before a render. Lines carry no emotion tags: in testing they pulled
+   Text Model is unloaded before each voice, as before a render, when both are on that machine. Lines carry no emotion tags: in testing they pulled
    the cloned voice off the Character, up to a woman's pitch (docs/models.md). Each line is
    directed instead: before it's spoken, the Art Agent's model reads the moment (the Message
    before it, what the Character does and thinks) and picks a pace (normal, slow or fast) and a

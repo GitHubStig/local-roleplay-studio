@@ -46,15 +46,15 @@ Deno.test('RenderQueue frees memory on a heavy job’s go, not a light one’s, 
   const freed: string[] = []
   let fail = false
   const queue = new RenderQueue({
-    freeMemory: () => {
-      freed.push('freed')
+    freeMemory: (job) => {
+      freed.push(job?.kind ?? 'here')
       return fail ? Promise.reject(new Error('Ollama down')) : Promise.resolve()
     },
   })
   ;(await queue.acquire(signal()))()
   ;(await queue.acquire(signal(), undefined, { light: true }))()
-  assertEquals(freed, ['freed'])
+  assertEquals(freed, ['here'])
   fail = true
-  ;(await queue.acquire(signal()))()
-  assertEquals(freed, ['freed', 'freed'])
+  ;(await queue.acquire(signal(), undefined, { job: { kind: 'upscale' } }))()
+  assertEquals(freed, ['here', 'upscale'])
 })

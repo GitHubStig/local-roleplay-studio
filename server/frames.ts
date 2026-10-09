@@ -127,7 +127,7 @@ export async function renderImage(
   const release = await (deps.renderQueue ?? new RenderQueue()).acquire(signal, () => {
     waited = true
     emit({ type: 'phase', phase: 'queued' })
-  })
+  }, { job: { kind: 'render', settings: session.settings } })
   if (waited) timings.queued = secondsSince(queueStart)
   const imageStart = performance.now()
   try {
@@ -241,6 +241,7 @@ export async function upscaleFrame(
   const release = await (deps.renderQueue ?? new RenderQueue()).acquire(
     signal,
     () => emit({ type: 'phase', phase: 'queued' }),
+    { job: { kind: 'upscale' } },
   )
   try {
     emit({ type: 'phase', phase: 'image' })

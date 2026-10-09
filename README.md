@@ -146,7 +146,8 @@ them:
     voice needs a three-line fix in the suite (docs/research/comfyui.md).
 
   The models download into ComfyUI the first time each is used (8.9 GB for Higgs). Each voice
-  unloads the Text Model first, as a render does, since Higgs takes ~10 GB of the card. On an RTX
+  unloads the Text Model first when it's on that machine, as a render does, since Higgs takes
+  ~10 GB of the card. On an RTX
   4070 a line takes about 3.7 s per second of speech (a Mac: 0.8 s), plus ~8 s to load Higgs after
   a Reply. Clips come back as FLAC, and ComfyUI keeps none: they're read from its temp folder and
   blanked there.
