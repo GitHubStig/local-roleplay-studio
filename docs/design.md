@@ -86,9 +86,10 @@ current Image Prompt + Action ──► Text Model (Text backend) ──► { ou
    progress. On ComfyUI the player also **watches the picture form**: the render asks for a
    preview at each step (a half-size JPEG, at no cost: research/comfyui.md), the server keeps the
    latest per Session in memory only (`server/previews.ts`, never in the Session's folder) and
-   serves it at `GET /sessions/:id/preview`, and the browser asks for it again at each step and
-   lays it over the old picture, more opaque as the steps go (the first ones are dark smudges), until
-   the new picture replaces both. Settings → "Show the picture forming" turns it off; mflux sends
+   serves it at `GET /sessions/:id/preview`, and the browser asks for it again at each step. A
+   new Chain Frame shows it alone, in the new Frame's empty frame; a re-render (a Storyboard
+   Frame, a Roleplay picture) lays it over the old picture, more opaque as the steps go (the first
+   ones are dark smudges). The new picture then replaces it. Settings → "Show the picture forming" turns it off; mflux sends
    none, so its renders keep only the border sweep. With "Render each Frame" off (a Chain's switch, and always without pictures), this
    step is skipped and the Frame waits for its **Render** button.
 6. **Commit.** The Frame is appended to `session.json`.
@@ -104,9 +105,13 @@ A Frame commits whole or not at all ([ADR 0003](adr/0003-turns-are-all-or-nothin
 | Player presses **Cancel** | Text request aborted; the mflux process killed, or the ComfyUI prompt interrupted; Image Prompt unchanged |
 | Opening Frame fails or is cancelled | The Session is discarded; back Home with the error |
 
-While a Frame runs, the new Narration is shown **provisionally** (dimmed) as soon as the Text
-Model returns, with "Rendering the image… step 2 of 4" beneath it. It becomes real only when the image
-arrives.
+While a Frame runs, it has its place at the end of the Frames list from the moment the Action is
+sent (its number, the Action, what it's doing, then its Narration), and it's what the screen shows:
+an empty frame, until its picture forms (on ComfyUI) or arrives. The new Narration is shown
+**provisionally** (dimmed) as soon as the Text Model returns, with "Rendering the image… step 2 of
+4" beneath it, and the Prompt tab shows the new prompt. It becomes real only when the image
+arrives; a declined, failed or cancelled Frame leaves the list. Earlier Frames can be looked at
+meanwhile, and picking the new one goes back to it.
 
 Only one Frame runs per Session at a time; the server refuses a second with `409`. Frames, Undo and
 deleting a Session all take a per-Session lock *before* reading the Session, so two requests can
@@ -305,7 +310,11 @@ picturing…") with its own Cancel; the conversation doesn't scroll, and the tex
 and usable, with Send waiting until the picture is done. With the Limits on, a picture of both people must name what each
 wears in its clothing sentence, or it's blocked (and written once more): told to keep within the
 Limits, the Art Agent sometimes left an undressed person's clothing out instead of dressing them.
-**Render** / **Re-render** under a pictured Reply renders it through the shared render queue with
+**Picture replies** (beside "Speak replies" above the conversation; on by default wherever
+pictures are available, remembered per browser) queues Picture this and then Render for each new
+Reply as it arrives, so the buttons are only needed for older Replies or another try. A picture
+already queued isn't cancelled by the next Message: each Reply gets its picture, in order.
+Cancelling a picture also cancels the render queued behind it. **Render** / **Re-render** under a pictured Reply renders it through the shared render queue with
 the Session's Image Model, seed and size, and shows the picture beside its Reply (below it on
 windows under 1024 px). Clicking a picture opens it in a viewer (`FrameViewer`, shared with the
 Chain and Storyboard screens: `ImageViewer`, a dialog around `FrameImage`, which zooms and pans

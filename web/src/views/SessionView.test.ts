@@ -225,6 +225,44 @@ describe('SessionView', () => {
     expect(router.currentRoute.value.query.error).toBe('Ollama: model not found')
   })
 
+  it('puts a new Frame in the Frames at once, shown blank until its picture forms', async () => {
+    let send!: (event: api.FrameEvent) => void
+    vi.mocked(api.getSession).mockResolvedValue({
+      ...session([frame(0, null)]),
+      settings: { imageBackend: 'comfyui' } as api.Settings,
+    })
+    vi.mocked(api.streamFrame).mockImplementation((_id, _action, onEvent) => {
+      send = onEvent
+      return new Promise(() => {})
+    })
+    const { wrapper } = await mountIt()
+    await wrapper.find('textarea').setValue('Sit down')
+    await buttonNamed(wrapper, 'Send').trigger('click')
+    await flushPromises()
+    const entry = wrapper.find('[data-pending-frame]')
+    expect(entry.text()).toContain('Sit down')
+    expect(entry.attributes('aria-current')).toBe('true')
+    // The Opening's picture is gone from the main panel: the new Frame has none yet.
+    expect(wrapper.find('main [data-frame-picture]').exists()).toBe(false)
+
+    send({ type: 'phase', phase: 'image' })
+    send({ type: 'progress', step: 3, total: 25 })
+    await flushPromises()
+    await loadImages()
+    const preview = wrapper.find('main [data-preview]')
+    expect(preview.attributes('src')).toBe('/api/sessions/s1/preview?step=3')
+    // Alone in its frame, it shows at full strength.
+    expect(preview.attributes('style')).toContain('opacity: 1')
+
+    // An earlier Frame can be looked at meanwhile, without the preview, and the new one picked again.
+    await wrapper.findAll('aside [data-frame]')[0].trigger('click')
+    await loadImages()
+    expect(wrapper.find('main [data-frame-picture]').attributes('src')).toContain('frame-0.png')
+    expect(wrapper.find('[data-pending-frame]').attributes('aria-current')).toBe('false')
+    await wrapper.find('[data-pending-frame]').trigger('click')
+    expect(wrapper.find('[data-pending-frame]').attributes('aria-current')).toBe('true')
+  })
+
   it('shows an earlier Frame when picked from the Frames', async () => {
     vi.mocked(api.getSession).mockResolvedValue(session([frame(0, null), frame(1, 'Sit')]))
     const { wrapper } = await mountIt()

@@ -21,6 +21,7 @@ import FrameViewer from '../components/FrameViewer.vue'
 import JobQueue from '../components/JobQueue.vue'
 import { useJobs } from '../composables/useJobs'
 import { formingOf, jobForming, sweepOf } from '../jobs'
+import { useShownPreview } from '../composables/useShownPreview'
 import { useStoredFlag } from '../composables/useStoredFlag'
 import { useStoredText } from '../composables/useStoredText'
 import { sessionPath } from '../sessionPath'
@@ -84,13 +85,29 @@ const removedHidden = useStoredFlag('diff-removed-hidden')
 const busy = computed(() => pending.value !== null)
 /** This Session's Frame is waiting for another Session's render to finish. */
 const queued = computed(() => pending.value?.phase === 'queued')
+/**
+ * The Frame in progress is shown, in its own place at the end of the Frames: while one runs and no
+ * earlier Frame was picked. It has no picture until its preview (ComfyUI's) or its image comes.
+ */
+const onPending = computed(() => busy.value && viewing.value === null)
+/** The committed Frame shown in the main panel; none while the one in progress is. */
 const shown = computed(() => {
+  if (onPending.value) return undefined
   const frames = session.value?.frames ?? []
   return viewing.value === null ? frames.at(-1) : frames[viewing.value]
 })
 const latest = computed(() => session.value?.frames.at(-1))
-/** Looking at an earlier Frame; the next Action still continues from the latest one. */
-const viewingOlder = computed(() => !!shown.value && shown.value.index !== latest.value?.index)
+/**
+ * Looking at an earlier Frame; the next Action still continues from the latest one. While a Frame
+ * runs, any committed Frame is earlier than it.
+ */
+const viewingOlder = computed(() =>
+  !!shown.value && (busy.value || shown.value.index !== latest.value?.index)
+)
+/** Picks a Frame to show; the latest is followed (null), unless one is in progress after it. */
+const pick = (index: number) => {
+  viewing.value = index === (session.value?.frames.length ?? 0) - 1 && !busy.value ? null : index
+}
 const frameName = (index: number) => (index === 0 ? 'the Opening' : `Frame ${index}`)
 /** The same, starting a title: the viewers' labels. */
 const frameTitle = (index: number) => (index === 0 ? 'The Opening' : `Frame ${index}`)
@@ -337,23 +354,35 @@ const writing = computed(() => pending.value?.phase === 'text' && !pending.value
 
 /** The frame's border sweeps while an image renders (or waits to), until the new one lands. */
 const renderingPhase = computed(() => {
-  // A new Frame sweeps whatever is shown; a job sweeps only the Frame it is working on.
-  return sweepOf(pending.value?.phase ?? shownJob.value?.phase)
+  // A new Frame sweeps its own empty frame; a job sweeps only the Frame it is working on.
+  return sweepOf(onPending.value ? pending.value?.phase : shownJob.value?.phase)
 })
 
-/** The picture forming, over the frame: a new Frame's render, or a job's on the shown Frame. */
+/**
+ * The picture forming: a new Frame's, alone in its empty frame while it's shown, or a job's over
+ * the shown Frame's old picture.
+ */
 const forming = computed(() =>
   pending.value
-    ? formingOf(session.value, pending.value.phase, pending.value.progress)
+    ? onPending.value ? formingOf(session.value, pending.value.phase, pending.value.progress) : null
     : jobForming(session.value, shownJob.value)
 )
+/** The same, for the Frame in progress's thumbnail in the Frames list. */
+const pendingThumb = useShownPreview(
+  () => pending.value && formingOf(session.value, pending.value.phase, pending.value.progress),
+  () => null,
+)
 
-/** The caption: the provisional Narration while a Frame runs, else the shown Frame's. */
-const captionText = computed(() => pending.value?.narration ?? shown.value?.narration ?? '')
+/** The caption: the provisional Narration of the Frame in progress, else the shown Frame's. */
+const captionText = computed(() =>
+  onPending.value ? pending.value?.narration ?? '' : shown.value?.narration ?? ''
+)
 
 /** The reasoning streaming in, shown in the caption's place until the Narration arrives. */
 const liveThinking = computed(() =>
-  pending.value?.thinking && !pending.value.narration ? pending.value.thinking : ''
+  onPending.value && pending.value?.thinking && !pending.value.narration
+    ? pending.value.thinking
+    : ''
 )
 const thinkingBox = useTemplateRef<HTMLElement>('thinkingBox')
 watch(liveThinking, async () => {
@@ -361,7 +390,7 @@ watch(liveThinking, async () => {
   thinkingBox.value?.scrollTo({ top: thinkingBox.value.scrollHeight })
 })
 const captionOutcome = computed(() =>
-  pending.value?.narration ? pending.value.outcome : shown.value?.outcome
+  onPending.value ? pending.value?.outcome : shown.value?.outcome
 )
 
 /** Labels for the Outcomes that leave the Image Prompt unchanged. */
@@ -380,12 +409,23 @@ const phaseLabel = computed(() => {
   return p ? `${doing} step ${p.step} of ${p.total}` : doing
 })
 
-/** The shown Frame's Image Prompt, word-diffed against the Frame before it (none for the Opening). */
+/** The Frame in progress's index and Action, for its place in the Frames and the Prompt tab. */
+const pendingIndex = computed(() => session.value?.frames.length ?? 0)
+const pendingAction = computed(() =>
+  pending.value?.detached ? 'A Frame in progress' : draft.value.trim() || 'Opening'
+)
+/** The Frame whose prompt the Prompt tab shows: the shown one, or the one in progress. */
+const promptIndex = computed(() => (onPending.value ? pendingIndex.value : shown.value?.index))
+
+/**
+ * The shown Frame's Image Prompt (or the new one, once written), word-diffed against the Frame
+ * before it (none for the Opening).
+ */
 const promptDiff = computed(() => {
-  const frame = shown.value
-  if (!frame) return []
-  const before = session.value?.frames[frame.index - 1]
-  return before ? diffWords(before.prompt, frame.prompt) : [{ kind: 'same' as const, text: frame.prompt }]
+  const prompt = onPending.value ? pending.value?.prompt : shown.value?.prompt
+  if (!prompt || promptIndex.value === undefined) return []
+  const before = session.value?.frames[promptIndex.value - 1]
+  return before ? diffWords(before.prompt, prompt) : [{ kind: 'same' as const, text: prompt }]
 })
 </script>
 
@@ -410,7 +450,7 @@ const promptDiff = computed(() => {
             class="absolute right-3 top-3 flex items-center gap-2 rounded-full bg-black/70 py-1 pl-3 pr-1 text-sm text-white"
             data-viewing
           >
-            <span>Viewing {{ frameName(shown!.index) }} of {{ latest!.index }}</span>
+            <span>Viewing {{ frameName(shown!.index) }} of {{ busy ? pendingIndex : latest!.index }}</span>
             <button
               type="button"
               class="rounded-full bg-white/15 px-2.5 py-0.5 hover:bg-white/25"
@@ -612,7 +652,7 @@ const promptDiff = computed(() => {
             :jobs="jobs"
             :name="frameTitle"
             data-queue
-            @go="(index) => (viewing = index === session!.frames.length - 1 ? null : index)"
+            @go="pick"
             @retry="retry"
             @drop="dropJob"
           />
@@ -624,7 +664,7 @@ const promptDiff = computed(() => {
               :class="{ 'bg-surface': shown?.index === frame.index }"
               :aria-current="shown?.index === frame.index"
               data-frame
-              @click="viewing = frame.index === session.frames.length - 1 ? null : frame.index"
+              @click="pick(frame.index)"
             >
               <img
                 v-if="frame.image"
@@ -674,9 +714,36 @@ const promptDiff = computed(() => {
               Undo
             </button>
           </li>
-          <li v-if="busy" class="line-clamp-3 p-3 text-sm italic text-muted">
-            {{ pending?.detached ? 'A Frame in progress' : draft.trim() || 'Opening' }} —
-            {{ phaseLabel }}
+          <!-- The Frame in progress, in its place from the start: picked to show it again. -->
+          <li v-if="busy">
+            <button
+              type="button"
+              class="flex w-full gap-3 border-b border-line p-3 text-left text-sm hover:bg-surface"
+              :class="{ 'bg-surface': onPending }"
+              :aria-current="onPending"
+              data-pending-frame
+              @click="viewing = null"
+            >
+              <img
+                v-if="pendingThumb"
+                :src="pendingThumb.src"
+                alt=""
+                class="h-20 w-14 shrink-0 rounded object-cover"
+              />
+              <span
+                v-else
+                class="flex h-20 w-14 shrink-0 animate-pulse items-center justify-center rounded border border-dashed border-line text-xs text-muted"
+              >
+                {{ pendingIndex }}
+              </span>
+              <span class="flex min-w-0 flex-col gap-1">
+                <span class="line-clamp-2 font-medium">{{ pendingAction }}</span>
+                <span class="animate-pulse text-xs text-info">{{ phaseLabel }}</span>
+                <span v-if="pending?.narration" class="line-clamp-3 italic text-muted">
+                  {{ pending.narration }}
+                </span>
+              </span>
+            </button>
           </li>
           </ol>
         </section>
@@ -690,14 +757,14 @@ const promptDiff = computed(() => {
             Prompt
           </h2>
           <div class="flex-1 overflow-y-auto p-4 text-sm" role="tabpanel">
-          <template v-if="shown">
-            <p class="text-muted" :class="shown.timings ? 'mb-1' : 'mb-3'">
-              Frame {{ shown.index }} · {{ shown.action ?? 'Opening' }}
+          <template v-if="shown || (onPending && pending?.prompt)">
+            <p class="text-muted" :class="shown?.timings ? 'mb-1' : 'mb-3'">
+              Frame {{ promptIndex }} · {{ shown ? shown.action ?? 'Opening' : pendingAction }}
             </p>
-            <p v-if="shown.timings" class="mb-3 text-xs text-muted" data-timings>
+            <p v-if="shown?.timings" class="mb-3 text-xs text-muted" data-timings>
               {{ timingsLabel(shown.timings) }}
             </p>
-            <div v-if="shown.index > 0" class="mb-2 flex flex-col gap-1 text-xs text-muted">
+            <div v-if="promptIndex! > 0" class="mb-2 flex flex-col gap-1 text-xs text-muted">
               <label class="flex w-fit cursor-pointer items-center gap-1.5">
                 <input
                   type="checkbox"
@@ -712,7 +779,7 @@ const promptDiff = computed(() => {
                 <template v-if="!removedHidden">
                   and <span class="text-danger line-through">removed</span>
                 </template>
-                since Frame {{ shown.index - 1 }}. Rendered with "adult," in front.
+                since Frame {{ promptIndex! - 1 }}.
               </p>
             </div>
             <p class="leading-relaxed" data-prompt>
@@ -729,13 +796,14 @@ const promptDiff = computed(() => {
                 >{{ ' ' }}</template>
               </template>
             </p>
-            <details v-if="shown.thinking" :key="`thinking-${shown.index}`" class="mt-4 text-muted">
+            <details v-if="shown?.thinking" :key="`thinking-${shown.index}`" class="mt-4 text-muted">
               <summary class="cursor-pointer select-none">Thinking</summary>
               <p class="mt-1 whitespace-pre-line text-xs leading-relaxed" data-frame-thinking>
                 {{ shown.thinking }}
               </p>
             </details>
           </template>
+          <p v-else-if="onPending" class="animate-pulse text-muted">Writing the prompt…</p>
           <p v-else class="text-muted">No prompt yet.</p>
           </div>
         </section>
