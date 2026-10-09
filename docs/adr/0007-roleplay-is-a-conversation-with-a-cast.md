@@ -20,7 +20,7 @@ The Reply is JSON with three required fields in writing order: `internal` (a bri
 
 - **Prose replies.** Rejected: nothing separates speech from action or thought, and a model drifts into narrating the player.
 - **Optional fields.** Rejected: under a schema some models always fill optional fields and some never do; required fields that may be "" behave the same everywhere.
-- **Tracking scene state (pose, mood, time, weather) each Frame**, in the reply or in a second call. Deferred: the history already carries it for the Character, and the Art Agent will read the history when it renders. Revisit if the Character loses track.
+- **Tracking scene state (pose, mood, time, weather) each Frame**, in the reply or in a second call. Deferred: the history already carries it for the Character, and the Art Agent will read the history when it renders. Revisit if the Character loses track. *2026-10-09:* the history alone wasn't enough for pictures' clothing (a dress taken off came back); each picture now copies forward each person's clothing from the last picture of them, the story after it overriding (design.md, "Picturing a Frame"). Other state still comes from the history.
 - **Several made-up exchanges before the first Message**, to show the format. Rejected: the model treats them as things that happened. The opening Reply alone shows the format.
 - **One call writing the Cast and the opening together.** Tried first: faster to start, but the opening was written before the player could see or edit the Cast, so edits applied only from the second Reply.
 - **Prompts as strings in code.** Moved to Markdown files: the prompt is most of the text, and in code it was mixed in with parsing. JSON would need every line escaped.

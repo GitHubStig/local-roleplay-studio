@@ -35,10 +35,12 @@ The moment is what {{persona.name}} does in the Frame's Message and what {{chara
 in reply; the story before it tells you what has changed by then: where everyone is, what they
 wear, injuries, and where things are. Show nothing from later in the story, and no thoughts, only
 what a camera would see: describe what is there, never what isn't ("no visible …", "unseen").
-For clothing, start from what each person wore when last pictured (given with the story), word
-for word, and change only what the story has changed since: taken off, put on, torn, soaked,
-bloodied. Clothes taken off stay off, and a wound stays, until the story says otherwise. Each sentence covers its own aspect only, in at most 40 words: an image
-model reads only the start of a long prompt. Write concrete, visual phrases as plain sentences: no
+For clothing, start from what each person wore when last pictured (given with the story, with the
+Frame it was), word for word, then read the story after that Frame and change whatever it has
+changed since: taken off, put on, torn, soaked, bloodied. The story wins: clothes someone took off
+while out of the picture are still off when they're back in it. Clothes taken off stay off, and a
+wound stays, until the story says otherwise. Each sentence covers its own aspect only, in at most
+40 words: an image model reads only the start of a long prompt. Write concrete, visual phrases as plain sentences: no
 labels, names of aspects, lists or dialogue. Name the people in the sentences, so it's clear who
 does what.
 

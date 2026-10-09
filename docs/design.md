@@ -302,8 +302,13 @@ writes the Frame's seven sentences, then names anyone in the picture the Look do
 (a guard who comes in, the barkeep who speaks) with their identity, and lists the names of
 everyone in it, the most prominent first (someone upstairs or gone isn't; if no one is, the
 picture is of the place alone, with no identity sentences and nothing said about people or their
-absence). Newcomers join the Look, unless already in it under another name or crossing a Limit,
-so they look the same in every later picture. The seven sentences are each capped at 280 characters, written as a
+absence). Newcomers join the Look, one person each (a group isn't added), unless already in it
+under another name or crossing a Limit,
+so they look the same in every later picture. Clothing carries forward too: the request gives
+each person's clothing sentence from the latest earlier picture showing them, and the Art Agent
+copies it, changing only what the story after that Frame changed (taken off, put on, torn,
+bloodied); marks such as blood, bruises, dirt and wet are part of it, so a garment taken off or a
+wound doesn't come and go between pictures. The seven sentences are each capped at 280 characters, written as a
 third-person view of that moment (or, with Settings → Art Agent style set to tags, a few short tags per aspect,
 recorded as `pictureStyle` and shown as "as tags"; prose is the default, as it did better, see
 [models.md](models.md)). The Image Prompt is the identity sentences of the people shown, those
@@ -312,7 +317,8 @@ force and shown under the Reply (marked if it crosses one). While a Frame is pic
 sweeps round that Reply, which says "Picturing this moment…" (or "Writing the Look, then
 picturing…") with its own Cancel; the conversation doesn't scroll, and the text box stays still
 and usable, with Send waiting until the picture is done. With the Limits on, a picture of two or
-more people must name what each wears in its clothing sentence, or it's blocked (and written once more): told to keep within the
+more people must name what each wears in its clothing sentence (by any word of their name, or its
+plural: "the two men" covers both), or it's blocked (and written once more): told to keep within the
 Limits, the Art Agent sometimes left an undressed person's clothing out instead of dressing them.
 **Picture replies** (beside "Speak replies" above the conversation; on by default wherever
 pictures are available) queues Picture this for each new Reply as it arrives, writing its Image

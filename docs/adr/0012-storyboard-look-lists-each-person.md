@@ -56,6 +56,12 @@ isn't in the Look yet and whom the story names or singles out, with a name and a
 `shown` (names). Newcomers join the Look unless they match someone already in it (`matchShown`)
 or their identity crosses a Limit, so the next picture reuses their identity word for word.
 
+- **One person per entry, never a group.** Replaying the Kael tavern, gemma-4 added two men who
+  came in together as one entry, "the goons" ("two men, mid-20s…"), shown in 11 pictures. A pair
+  kept together can't show one of them alone, or hurt, when the Character or Persona deals with
+  him. The prompt asks for each separately, told apart by what the story calls them ("the taller
+  man"), and a newcomer whose identity starts like a group ("two men…", "a pair of…") isn't
+  added: the picture's own sentences describe them, as before.
 - **No toggle per picture**, unlike a Storyboard Frame: in a Roleplay the story decides who is
   present, and Picture again is the way to correct it.
 - **The clothing check** (with the Limits on, everyone shown must be dressed by name) covers two

@@ -138,6 +138,7 @@ Deno.test('Newcomers join the Look, unless already in it or crossing a Limit', (
     barkeep,
     { name: 'Mira', identity: 'Mira again, differently.' },
     { name: 'a boy', identity: 'A 12-year-old boy.' },
+    { name: 'the goons', identity: 'Two men, mid-20s, sturdy builds.' },
   ])
   assertEquals(grown.people.map((p) => p.name), [MIRA, SAM, 'the barkeep'])
   assertEquals(withNewcomers(look, []), look)
@@ -155,6 +156,21 @@ Deno.test('While the Limits are on, a picture of two or more people must name wh
   assertEquals(
     both('Mira wears a heavy coat.').blocked,
     "everyone shown must be dressed (name each person's clothes)",
+  )
+  // People dressed together are named by the plural ("the two men" for "the first man").
+  const withMen = withNewcomers(look, [
+    { name: 'the first man', identity: 'A tall man.' },
+    { name: 'the second man', identity: 'A short man.' },
+  ])
+  assertEquals(
+    pictured(
+      frame,
+      withMen,
+      'They talk.',
+      [MIRA, 'the first man', 'the second man'],
+      'Mira wears a coat. The two men wear tunics.',
+    ).blocked,
+    undefined,
   )
   // One person shown: "She wears…" is fine. Someone named by a role is named by its word.
   const withBarkeep = withNewcomers(look, [{ name: 'the barkeep', identity: 'A stout man.' }])

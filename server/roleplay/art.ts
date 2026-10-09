@@ -106,14 +106,23 @@ export function parseRoleplayLook(value: unknown): Look {
 }
 
 /**
- * The Look with a picture's newcomers added: each whose name isn't in it yet and whose identity
- * crosses no Limit (someone who does is described by the picture's own sentences instead).
+ * An identity for several people at once ("two men, mid-20s…"): a Look holds one person per entry,
+ * as each may be pictured alone. Told so, the Art Agent still once added a pair as one (2026-10-09).
+ */
+const isGroup = (identity: string) =>
+  /^(two|three|four|five|several|some|a few|a group|a pair|a crowd|a gang|a band)\b/i
+    .test(identity.trim())
+
+/**
+ * The Look with a picture's newcomers added: each whose name isn't in it yet, who is one person,
+ * and whose identity crosses no Limit (anyone left out is described by the picture's own
+ * sentences instead).
  */
 export function withNewcomers(look: Look, newcomers: Person[]): Look {
   const people = [...look.people]
   for (const person of newcomers) {
     if (matchShown(people, [person.name]).length) continue
-    if (crossedLimit(person.identity)) continue
+    if (isGroup(person.identity) || crossedLimit(person.identity)) continue
     people.push(person)
   }
   return people.length === look.people.length ? look : { ...look, people }
@@ -244,7 +253,8 @@ export async function artFrameMessages(
  * While the Limits are on, a picture showing two or more people must say what each wears. Told to
  * keep within the Limits, the Art Agent sometimes leaves an undressed person's clothing out
  * instead of dressing them, and an image model left to guess may not dress them either. A person
- * counts as named by any word of their name ("the barkeep" by "barkeep").
+ * counts as named by any word of their name ("the barkeep" by "barkeep"), or its plural, as
+ * people dressed together are ("the first man" by "the two men wear…").
  */
 export function undressed(
   people: Person[],
@@ -252,9 +262,10 @@ export function undressed(
 ): string | undefined {
   if (!limitsEnabled() || people.length < 2 || clothing === undefined) return undefined
   const text = clothing.toLowerCase()
+  const plural = (w: string) => w.endsWith('man') ? `${w.slice(0, -3)}men` : `${w}s`
   const named = (name: string) =>
     name.toLowerCase().split(/\s+/).filter((w) => w.length > 2 && w !== 'the')
-      .some((w) => text.includes(w))
+      .some((w) => text.includes(w) || text.includes(plural(w)))
   const missing = people.some((p) => !named(p.name))
   return missing ? "everyone shown must be dressed (name each person's clothes)" : undefined
 }

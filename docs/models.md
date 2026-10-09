@@ -380,6 +380,35 @@ is served, and keeps looking at the Persona (ADR 0012, "Roleplays too"):
 - Whether the Persona, watching from a corner, is in the picture varied run to run: a judgement
   call, which Picture again settles.
 
+### Clothing carried from picture to picture (2026-10-09, Mac)
+
+gemma-4 26B heretic (`gemma-4-26b-heretic:nvfp4`), prose, Limits off, on a 30-Frame Roleplay
+replayed from the Kael tavern's Messages (in which the Persona undresses in stages, a towel comes
+and goes, the Character is stabbed, and two men join). Every Frame pictured in order, without and
+then with each person's last clothing sentence given to the Art Agent to copy forward (design.md):
+
+- **Without it, clothing was re-imagined every picture**: the Character's clothes were described
+  differently from one Frame to the next (a linen shirt, a tunic, "practical garments"), and the
+  Persona's dress came back in 6 of the 16 Frames after she had taken it off.
+- **With it**, the Character's clothing sentence was the same in all 30 Frames, his wound's blood
+  stayed from the stabbing to the end, and the Persona's state followed the story (the dress
+  unfastened, a towel, then without it) and never came back.
+- **One miss, fixed by the prompt**: she undressed in a Frame whose picture didn't show her, so the
+  next picture copied her last-known dress. Told that the story after that Frame wins over the
+  copied clothing, the next picture had her undressed, 2 times in 2.
+- Passing states stick too: the steam dampened the Character's clothes in one Frame, and "damp"
+  carries forward until the story changes it.
+- 2 of 30 replies ran past the length limit and were retried (1 in 9 before, with newcomers).
+- **Replayed with seed 42** (the same 30 Replies, word for word) after one person per Look
+  entry: the two men who come in together joined the Look as two people, each kept in his 11
+  pictures, and no reply ran past the length limit. With all four people in a picture, only three
+  identities are carried (`MAX_SHOWN`); in the one picture that went wrong, the image model put the
+  Persona's top back on though her prompt said she was bare from the waist up.
+- **Replayed with the Limits on** (seed 42, same Messages): one Message declined (the towel), no
+  nudity in any picture, and her clothing consistent from Frame to Frame (her cloak off, then her
+  undergarments, then a wrap). One picture was blocked wrongly by the clothing check: "the two men
+  wear…" dressed both men, but the check looked for "man"; a name's plural now counts.
+
 ## Suggest (writing the player's next Message)
 
 Suggest uses the Session's Text Model, Thinking off. Measured 2026-09-30 on the Kael tavern
