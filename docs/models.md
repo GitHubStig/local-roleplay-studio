@@ -639,6 +639,11 @@ Upscale uses **SeedVR2 7B** by default (`seedvr2-7b`, `mflux-upscale-seedvr2 --r
 texture (fabric weave, skin) over plain resizing, 7B slightly cleaner. Peak memory ~39 GB for
 either, so, like the larger Image Models, it can push a 48 GB Mac into swap next to gemma4.
 
+**`--low-ram` on SeedVR2** (2026-10-09, Mac, mflux 0.22, 7B, a 1024×1024 picture to 2048×2048,
+twice each): **57 s and 20.1 GB with it, against 45–47 s and 36.4–36.5 GB without**, the same
+picture to the pixel. Unlike the Image Models it costs time, about 25%, but it nearly halves the
+peak, so the app passes it to every upscale too.
+
 **On ComfyUI with an RTX 4070** (2026-10-07; Comfy-Org's fp8 builds, ComfyUI's built-in SeedVR2):
 512×512 to 2048×2048 in **9.5 s with 7B, 7.9 s with 3B**, about 5× the Mac; 832×1216 to 2048×2992
 in 11–14 s. Settings → "Upscale with" can send Upscale there from a Mac rendering with mflux. Its

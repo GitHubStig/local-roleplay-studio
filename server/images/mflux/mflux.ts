@@ -54,7 +54,10 @@ export function mfluxArgs(
 /** The SeedVR2 upscaler command; the model (7B or 3B) comes from Settings. */
 const UPSCALER = { label: 'SeedVR2 upscaler', command: 'mflux-upscale-seedvr2' }
 
-/** The mflux command line for upscaling one image. */
+/**
+ * The mflux command line for upscaling one image. `--low-ram` here costs time (SeedVR2 7B, 1024 px
+ * to 2048: 57 s against 45–47 s) for a peak near half (20 GB against 36 GB; docs/models.md).
+ */
 export function upscaleArgs(req: UpscaleRequest, output: string): string[] {
   return [
     '--model',
@@ -65,6 +68,7 @@ export function upscaleArgs(req: UpscaleRequest, output: string): string[] {
     String(UPSCALED_EDGE),
     '--seed',
     String(req.seed),
+    '--low-ram',
     '--output',
     output,
   ]

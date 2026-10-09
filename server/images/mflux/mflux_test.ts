@@ -246,6 +246,7 @@ Deno.test('upscaleArgs upscales the shortest edge to 2048 with the chosen SeedVR
       '2048',
       '--seed',
       '7',
+      '--low-ram',
       '--output',
       '/d/x.png',
     ],
