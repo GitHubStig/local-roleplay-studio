@@ -19,9 +19,8 @@ Ideas deliberately deferred. Promote an item to an ADR in `docs/adr/` when we ac
   1. *Continue from this Frame* (medium): a button on an older Frame starts a new Session with Frames 0 to N copied (same Scenario, seed and settings) and carries on there. The original Session is untouched, and each Session stays a simple line, so the Frame engine and ADRs 0001/0003 don't change. Copies need fresh image file names.
   2. *Branches inside one Session* (large): the Frames list becomes a tree. Changes the data model, the Frames list UI and storage; only worth it if branching becomes central to play.
 - **Editing the Image Prompt by hand.** Let the player edit the paragraph directly in the Prompt tab and re-render, as a Frame with no Action (or with "edited by hand" as its Action). The engine's Limits check applies as usual.
-- **The Art Agent: rendering a Roleplay.** Picturing and rendering are built: **Picture this** writes a Frame's Image Prompt (a Look written once from the Cast, plus seven sentences from the story up to the Frame; see design.md) and shows it, unrendered. Next:
-  1. *Automatic.* Optionally picture and render each new Reply in the background, cancelled when the player sends a Message.
-  2. *Prompt length.* Pictures run to about 250 words; check what each Image Model actually reads before trimming further.
+- **The Art Agent: rendering a Roleplay.** Picturing and rendering are built: **Picture this** writes a Frame's Image Prompt (a Look written once from the Cast, plus seven sentences from the story up to the Frame; see design.md) and shows it; Picture replies does it and renders for each new Reply (2026-10-09, design.md). Next:
+  1. *Prompt length.* Pictures run to about 250 words; check what each Image Model actually reads before trimming further.
 - **Side characters in a Roleplay's pictures.** A Roleplay's Look has two identities, the
   Character's and the Persona's, and each picture shows either, both or neither. Someone else the
   story brings in (a barkeep, a guard) is described afresh in each picture, so they don't stay the

@@ -108,6 +108,23 @@ const shownPreview = useShownPreview(
 )
 const previewOn = (index: number) => shownPreview.value && formingIndex.value === index
 
+/**
+ * New Replies are pictured and rendered as they arrive, wherever pictures can be made: on unless
+ * switched off, remembered per browser. Picture this stays for Replies made with it off.
+ */
+const pictureReplies = useStoredFlag('roleplay-picture-replies', true)
+/**
+ * Cancels a job, and with a picture the render queued behind it, which would only fail without
+ * the picture.
+ */
+async function drop(job: Job) {
+  const render = job.kind === 'picture' &&
+    jobs.value.find((j) => j.kind === 'render' && j.frameIndex === job.frameIndex &&
+      j.status === 'queued')
+  await dropJob(job)
+  if (render) await dropJob(render)
+}
+
 /** A Frame's jobs; designing the voice is the Roleplay's, shown in the Voice panel instead. */
 const frameJobs = (index: number) => jobsFor(index).filter((j) => j.kind !== 'voice')
 const voiceJob = computed(() => jobs.value.find((j) => j.kind === 'voice') ?? null)
@@ -329,6 +346,18 @@ onBeforeUnmount(() => clearTimeout(followTimer))
 
 // --- Streamed work.
 
+/** What a new Reply sets going: its line spoken, its picture made, as the switches say. */
+async function afterReply(frame: RoleplayFrame) {
+  if (autoplay.value && featureOn.value('voices') && canSpeak(frame)) {
+    toPlay.set(partKey(frame.index, 'dialogue'), { index: frame.index, part: 'dialogue' })
+    await queue('speak', frame.index)
+  }
+  if (pictureReplies.value && featureOn.value('images')) {
+    await queue('picture', frame.index)
+    await queue('render', frame.index)
+  }
+}
+
 function onEvent(event: RoleplayEvent) {
   const p = pending.value
   if (!p) return
@@ -346,10 +375,7 @@ function onEvent(event: RoleplayEvent) {
       session.value = event.session
       // The message was used; a declined or failed one stays in the box to reword.
       if (p.kind === 'message') draft.value = ''
-      if (autoplay.value && featureOn.value('voices') && canSpeak(event.frame)) {
-        toPlay.set(partKey(event.frame.index, 'dialogue'), { index: event.frame.index, part: 'dialogue' })
-        queue('speak', event.frame.index)
-      }
+      afterReply(event.frame)
       break
     case 'suggestion-part':
     case 'suggestion':
@@ -587,6 +613,14 @@ async function saveCastDraft(): Promise<boolean> {
               <input v-model="autoplay" type="checkbox" data-autoplay />
               Speak replies
             </label>
+            <label
+              v-if="featureOn('images')"
+              class="flex cursor-pointer items-center gap-1.5 text-muted"
+              title="Picture and render each new reply as it arrives"
+            >
+              <input v-model="pictureReplies" type="checkbox" data-picture-replies />
+              Picture replies
+            </label>
             <label class="flex cursor-pointer items-center gap-1.5 text-muted">
               <input v-model="thoughtsHidden" type="checkbox" data-hide-thoughts />
               Hide thoughts
@@ -662,7 +696,7 @@ async function saveCastDraft(): Promise<boolean> {
                       :jobs="frameJobs(frame.index)"
                       :describe="describeJob"
                       @retry="retry"
-                      @drop="dropJob"
+                      @drop="drop"
                     />
                     <p class="flex flex-wrap items-center gap-1.5">
                       <button
@@ -916,7 +950,7 @@ async function saveCastDraft(): Promise<boolean> {
             :describe="describeJob"
             @go="goToFrame"
             @retry="retry"
-            @drop="dropJob"
+            @drop="drop"
           />
         </section>
 
@@ -985,7 +1019,7 @@ async function saveCastDraft(): Promise<boolean> {
             <button
               type="button"
               class="text-danger underline-offset-2 hover:underline"
-              @click="dropJob(voiceJob)"
+              @click="drop(voiceJob)"
             >
               {{ voiceJob.status === 'failed' ? 'Dismiss' : 'Cancel' }}
             </button>

@@ -126,6 +126,8 @@ beforeEach(() => {
     vi.mocked(fn).mockReset()
   }
   vi.mocked(api.getSession).mockResolvedValue(roleplaySession([frame(0, null, 'Get inside.')]))
+  // A new Reply queues its picture and render (Picture replies is on by default).
+  vi.mocked(api.queueJob).mockReset().mockResolvedValue([])
   vi.mocked(api.listJobs).mockReset().mockResolvedValue([])
 })
 
@@ -374,7 +376,7 @@ describe('RoleplayView', () => {
         },
       )
       vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {})
-      vi.mocked(api.queueJob).mockReset()
+      vi.mocked(api.queueJob).mockReset().mockResolvedValue([])
     })
     afterEach(() => vi.restoreAllMocks())
 
@@ -492,6 +494,39 @@ describe('RoleplayView', () => {
       await buttonNamed(wrapper, 'Send').trigger('click')
       await flushPromises()
       expect(api.queueJob).toHaveBeenCalledWith('r1', 'speak', 1)
+    })
+
+    it('pictures and renders each new reply unless Picture replies is switched off', async () => {
+      vi.mocked(api.queueJob).mockReset().mockResolvedValue([job({ kind: 'picture', frameIndex: 1 })])
+      const done = roleplaySession([frame(0, null, 'Get inside.'), frame(1, 'Hello.', 'Sit.')])
+      vi.mocked(roleplay.sendMessage).mockImplementation(async (_id, _text, onEvent) =>
+        onEvent({ type: 'replied', frame: done.frames[1], session: done })
+      )
+      const { wrapper } = await mountIt()
+      expect((wrapper.find('[data-picture-replies]').element as HTMLInputElement).checked).toBe(true)
+      await wrapper.find('textarea').setValue('Hello.')
+      await buttonNamed(wrapper, 'Send').trigger('click')
+      await flushPromises()
+      expect(vi.mocked(api.queueJob).mock.calls).toEqual([['r1', 'picture', 1], ['r1', 'render', 1]])
+
+      vi.mocked(api.queueJob).mockClear()
+      await wrapper.find('[data-picture-replies]').setValue(false)
+      await wrapper.find('textarea').setValue('Hello again.')
+      await buttonNamed(wrapper, 'Send').trigger('click')
+      await flushPromises()
+      expect(api.queueJob).not.toHaveBeenCalled()
+    })
+
+    it('cancels the render queued behind a picture with it', async () => {
+      const picture = job({ id: 'p', kind: 'picture', frameIndex: 0, status: 'running' })
+      const render = job({ id: 'r', kind: 'render', frameIndex: 0, status: 'queued' })
+      vi.mocked(api.listJobs).mockResolvedValue([picture, render])
+      vi.mocked(api.cancelJob).mockResolvedValue([render])
+      const { wrapper } = await mountIt()
+      const cancel = wrapper.findAll('[data-frame-job] button').find((b) => b.text() === 'Cancel')!
+      await cancel.trigger('click')
+      await flushPromises()
+      expect(vi.mocked(api.cancelJob).mock.calls).toEqual([['r1', 'p'], ['r1', 'r']])
     })
 
     it('edits the voice, designs it again, and plays it', async () => {
@@ -661,6 +696,7 @@ describe('RoleplayView', () => {
     for (
       const gone of [
         '[data-autoplay]',
+        '[data-picture-replies]',
         '[data-listen]',
         '[data-picture-button]',
         '[data-render-button]',
