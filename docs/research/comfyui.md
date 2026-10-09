@@ -567,7 +567,10 @@ the #366 fix):
 - **The version was 5.8.4, not 5.9.2**, all along: what the Manager installs. Comfy's registry
   lists every release from 5.8.8 to 5.9.2 as *flagged* (no reason given) and 5.9.3 as *pending*,
   so the Manager's newest is 5.8.4 (2026-08-21). The earlier sections, and the comment on #366,
-  said 5.9.2 (corrected here).
+  said 5.9.2 (corrected here). The evidence: the suite prints its version as ComfyUI loads it, and
+  Comfy Desktop's logs (`ComfyUI-InstallsComfyUIogs`) show v5.8.4 from the first install on
+  2026-10-08 (12:28) until the switch to nightly on 2026-10-09 (14:28), then v5.9.3. The 5.9.2 was
+  the copy cloned by hand and deleted before the Manager's install, written down unchecked.
 - **The maintainer fixed #366 in 5.9.3** (2026-10-08): the shared launcher and every isolated worker
   put the suite's own packages first. Installed through the Manager as "nightly" (the repository's
   `main`), replacing the local fix.
