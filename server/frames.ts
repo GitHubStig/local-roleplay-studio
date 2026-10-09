@@ -3,6 +3,7 @@ import type { ImageGenerator } from './images/imageGenerator.ts'
 import type { Upscaler } from './images/mflux/models.ts'
 import { crossedLimit, limitsEnabled } from './limits.ts'
 import { mightNameAPerson, type TextModel } from './textModel.ts'
+import type { Previews } from './previews.ts'
 import { RenderQueue } from './renderQueue.ts'
 import type { FrameTimings, Session, SessionStore } from './session.ts'
 import { GoneError } from './update.ts'
@@ -50,6 +51,8 @@ export interface FrameDeps {
   imageGenerator: ImageGenerator
   /** Shared across Sessions so only one image renders at a time. */
   renderQueue?: RenderQueue
+  /** Where a render's previews go, as the picture forms (ComfyUI's). */
+  previews?: Previews
 }
 
 const TEXT_ATTEMPTS = 2
@@ -140,10 +143,12 @@ export async function renderImage(
       signal,
       onProgress,
       onDownload,
+      deps.previews && ((jpeg) => deps.previews!.set(session.id, jpeg)),
     )
     timings.image = secondsSince(imageStart)
     return image
   } finally {
+    deps.previews?.clear(session.id)
     release()
   }
 }

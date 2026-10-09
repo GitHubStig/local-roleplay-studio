@@ -13,14 +13,14 @@ export function imageBackends(backends: {
   upscaleBackend: () => Promise<ImageBackendKind>
 }): ImageGenerator {
   return {
-    generate(req, signal, onProgress, onDownload) {
+    generate(req, signal, onProgress, onDownload, onPreview) {
       const backend = req.settings.imageBackend === 'comfyui' ? backends.comfyui : backends.mflux
       if (!backend) {
         return Promise.reject(
           new Error("mflux isn't installed here: choose ComfyUI as the Image backend in Settings"),
         )
       }
-      return backend.generate(req, signal, onProgress, onDownload)
+      return backend.generate(req, signal, onProgress, onDownload, onPreview)
     },
     async upscale(req, signal, onProgress, onDownload) {
       const backend = (await backends.upscaleBackend()) === 'comfyui'

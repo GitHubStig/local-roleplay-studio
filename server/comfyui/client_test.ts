@@ -28,3 +28,25 @@ Deno.test("A ComfyUI that doesn't say what's free isn't waited on", async () => 
     await comfy.close()
   }
 })
+
+Deno.test('Previews are asked for only by a caller that takes them, and passed on', async () => {
+  const comfy = fakeComfyUI()
+  try {
+    await runWorkflow(comfy.url, {}, new AbortController().signal, 15_000)
+    const previews: number[][] = []
+    const { png } = await runWorkflow(
+      comfy.url,
+      {},
+      new AbortController().signal,
+      15_000,
+      undefined,
+      (jpeg) => previews.push([...jpeg]),
+    )
+    assertEquals(comfy.extras, [undefined, { preview_method: 'latent2rgb' }])
+    // The JPEG preview, then the PNG as the picture.
+    assertEquals(previews, [[255, 216, 255]])
+    assertEquals(png?.length, 4)
+  } finally {
+    await comfy.close()
+  }
+})

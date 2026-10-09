@@ -40,7 +40,7 @@ import LookPerson from '../components/LookPerson.vue'
 import PictureButtons from '../components/PictureButtons.vue'
 import { useFeatures } from '../composables/useFeatures'
 import { useJobs } from '../composables/useJobs'
-import { JOB_NAMES, jobStatus, sweepOf } from '../jobs'
+import { JOB_NAMES, jobForming, jobStatus, sweepOf } from '../jobs'
 import { clearCurrentSession, setCurrentSession } from '../composables/useCurrentSession'
 import { useStoredText } from '../composables/useStoredText'
 import { sessionPath } from '../sessionPath'
@@ -353,6 +353,8 @@ const statusLabel = computed(() => {
 
 /** The image frame sweeps while a job makes the selected Frame's picture; the text box while it's edited. */
 const renderingHere = computed(() => sweepOf(selectedJob.value?.phase))
+/** The picture forming, over the frame, while a job renders the selected Frame. */
+const forming = computed(() => jobForming(session.value, selectedJob.value))
 const editingHere = computed(() => work.value?.kind === 'edit' && work.value.frameIndex === selected.value)
 
 const timingsLabel = (f: StoryboardFrame) => {
@@ -384,6 +386,7 @@ const imagesOn = computed(() => featureOn.value('images'))
           :src="current?.image ? imageUrl(session.id, current.upscaled ?? current.image) : null"
           :alt="current?.prompt"
           :rendering="renderingHere"
+          :preview="forming"
           :hide-size="busy"
           :empty-text="current ? (current.blocked ? 'Blocked: edit this Frame first' : 'Not rendered yet') : 'Planning…'"
           :expected-size="session.imageSize"

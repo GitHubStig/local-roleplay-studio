@@ -43,6 +43,7 @@ import { checkChainJob, runChainJob } from './chain/jobs.ts'
 import { checkStoryboardJob, runStoryboardJob } from './storyboard/jobs.ts'
 import { GoneError, updateSession } from './update.ts'
 import type { HeavyJob } from './machine.ts'
+import { Previews } from './previews.ts'
 import { RenderQueue } from './renderQueue.ts'
 import { type FrameDeps, type Phase, UpscaleError } from './frames.ts'
 import { runChainFrame, UndoError, undoLatestFrame } from './chain/frames.ts'
@@ -155,6 +156,8 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
   >()
   /** One image render at a time, across all Sessions. */
   const renderQueue = new RenderQueue({ freeMemory: deps.freeMemory })
+  /** The picture forming: each render's latest preview, while it renders. */
+  const previews = new Previews()
 
   /**
    * What each Session is busy with. Every change to a Session takes this lock *before* reading the
@@ -213,6 +216,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     textModel: deps.textModel(textChoice(session)),
     imageGenerator: deps.imageGenerator,
     renderQueue,
+    previews,
   })
 
   /**
@@ -306,6 +310,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     store: deps.sessions,
     imageGenerator: deps.imageGenerator,
     renderQueue,
+    previews,
     textModel: deps.textModel(textChoice(session)),
     roleplayModel: deps.roleplayModel(textChoice(session)),
     voice: deps.voice,
@@ -770,6 +775,16 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
           )
         }),
     ],
+
+    // The picture forming: the latest preview of the Session's render, while there is one and
+    // Settings show it. The browser asks again as the step count moves (`?step=`), so never cached.
+    ['GET', new URLPattern({ pathname: '/api/sessions/:id/preview' }), async (_req, p) => {
+      const jpeg = previews.get(p.id!)
+      if (!jpeg || !(await deps.settings.load()).previews) return error('No preview', 404)
+      return new Response(jpeg, {
+        headers: { 'Content-Type': 'image/jpeg', 'Cache-Control': 'no-store' },
+      })
+    }],
 
     ['GET', new URLPattern({ pathname: '/api/sessions/:id/images/:file' }), async (_req, p) => {
       if (![IMAGE_FILE, AUDIO_FILE, SCENE_FILE].some((f) => f.test(p.file!))) {

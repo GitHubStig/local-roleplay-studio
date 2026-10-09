@@ -1,4 +1,4 @@
-import type { ImageGenerator } from './images/imageGenerator.ts'
+import type { ImageGenerator, OnPreview, OnProgress } from './images/imageGenerator.ts'
 import { parseScenario, type ScenarioLibrary } from './scenario.ts'
 import type { ImagePrompt } from './imagePrompt.ts'
 import type {
@@ -125,11 +125,19 @@ export function fakeImageGenerator(
     upscaled: [] as string[],
     /** The upscaler model each was upscaled with. */
     upscalers: [] as string[],
-    async generate(req: { prompt: string; dir: string; name: string }, signal: AbortSignal) {
+    async generate(
+      req: { prompt: string; dir: string; name: string },
+      signal: AbortSignal,
+      _onProgress?: OnProgress,
+      _onDownload?: () => void,
+      onPreview?: OnPreview,
+    ) {
       gen.prompts.push(req.prompt)
       signal.throwIfAborted()
       if (opts.fail) throw new Error('mflux crashed')
       if (opts.hang) {
+        // A render in progress shows the picture forming, as ComfyUI's does.
+        onPreview?.(new Uint8Array([255, 216, 255]))
         await new Promise((_, reject) =>
           signal.addEventListener('abort', () => reject(signal.reason), { once: true })
         )

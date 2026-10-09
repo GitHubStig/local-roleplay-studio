@@ -26,7 +26,8 @@ import FrameJobs from '../components/FrameJobs.vue'
 import JobQueue from '../components/JobQueue.vue'
 import { useJobs } from '../composables/useJobs'
 import { useFeatures } from '../composables/useFeatures'
-import { jobStatus } from '../jobs'
+import { jobForming, jobStatus } from '../jobs'
+import { useShownPreview } from '../composables/useShownPreview'
 import { sessionPath } from '../sessionPath'
 import {
   type Cast,
@@ -92,6 +93,21 @@ const { jobs, openJobs, runningJob, jobsFor, hasJob, queue, dropJob, retry, refr
     onError: (text) => (notice.value = { kind: 'error', text }),
   },
 )
+/**
+ * The picture forming, over the picture of the Frame a job renders (one at a time). The Frame is
+ * kept once the job ends, while the last preview stays over it until the new picture is in.
+ */
+const formingIndex = ref<number | null>(null)
+const forming = computed(() => jobForming(session.value, runningJob.value))
+watch(forming, (now) => {
+  if (now) formingIndex.value = runningJob.value!.frameIndex
+})
+const shownPreview = useShownPreview(
+  () => forming.value,
+  () => session.value?.frames.find((f) => f.index === formingIndex.value)?.image,
+)
+const previewOn = (index: number) => shownPreview.value && formingIndex.value === index
+
 /** A Frame's jobs; designing the voice is the Roleplay's, shown in the Voice panel instead. */
 const frameJobs = (index: number) => jobsFor(index).filter((j) => j.kind !== 'voice')
 const voiceJob = computed(() => jobs.value.find((j) => j.kind === 'voice') ?? null)
@@ -715,19 +731,30 @@ async function saveCastDraft(): Promise<boolean> {
                   </div>
                 </div>
                 <button
-                  v-if="frame.image"
+                  v-if="frame.image || previewOn(frame.index)"
                   type="button"
                   class="relative block w-full max-w-sm shrink-0 lg:w-72 lg:max-w-none xl:w-80"
                   title="Look closer"
                   data-picture-image
-                  @click="viewing = frame.index"
+                  @click="frame.image && (viewing = frame.index)"
                 >
                   <img
+                    v-if="frame.image"
                     :src="imageUrl(session.id, frame.image)"
                     :alt="`Picture of Frame ${frame.index}`"
                     class="w-full rounded-md"
                     :class="{ 'opacity-50': frame.stale }"
                     @load="onPictureLoad"
+                  />
+                  <!-- The picture forming: over the old one, or alone for a first render. -->
+                  <img
+                    v-if="previewOn(frame.index)"
+                    :src="shownPreview!.src"
+                    alt=""
+                    class="w-full rounded-md transition-opacity duration-500"
+                    :class="{ 'absolute inset-0 h-full object-cover': frame.image }"
+                    :style="{ opacity: frame.image ? shownPreview!.opacity : 1 }"
+                    data-preview
                   />
                   <span
                     v-if="frame.stale"

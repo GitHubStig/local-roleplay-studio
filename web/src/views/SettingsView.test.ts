@@ -29,6 +29,7 @@ const settings: api.Settings = {
   stepCache: 0.4,
   fast: false,
   float16: true,
+  previews: true,
   seedMode: 'random',
   seed: 42,
   upscaler: 'seedvr2-7b',
@@ -244,6 +245,17 @@ describe('SettingsView', () => {
     expect(wrapper.find('[data-step-cache]').exists()).toBe(false)
     const steps = wrapper.find('input[type=number]').element as HTMLInputElement
     expect([steps.value, steps.disabled]).toEqual(['6', true])
+  })
+
+  it('offers the picture forming only on ComfyUI, and saves it off', async () => {
+    const wrapper = mount(SettingsView)
+    await flushPromises()
+    expect(wrapper.find('[data-previews]').exists()).toBe(false)
+    await wrapper.find('[data-image-backend]').setValue('comfyui')
+    await wrapper.find('[data-previews] input').setValue(false)
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+    expect(api.saveSettings).toHaveBeenCalledWith(expect.objectContaining({ previews: false }))
   })
 
   it('offers float16 for models that take it, on by default, and saves it off', async () => {

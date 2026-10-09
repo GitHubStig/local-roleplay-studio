@@ -83,7 +83,13 @@ current Image Prompt + Action ──► Text Model (Text backend) ──► { ou
    ([ADR 0009](adr/0009-comfyui-image-backend.md)). When its turn comes, the Text Model is unloaded
    first if it runs on the same machine as the render
    ([ADR 0013](adr/0013-unload-the-text-model-on-the-job-machine.md)). Its step counter is streamed to the player as
-   progress. With "Render each Frame" off (a Chain's switch, and always without pictures), this
+   progress. On ComfyUI the player also **watches the picture form**: the render asks for a
+   preview at each step (a half-size JPEG, at no cost: research/comfyui.md), the server keeps the
+   latest per Session in memory only (`server/previews.ts`, never in the Session's folder) and
+   serves it at `GET /sessions/:id/preview`, and the browser asks for it again at each step and
+   lays it over the old picture, more opaque as the steps go (the first ones are dark smudges), until
+   the new picture replaces both. Settings → "Show the picture forming" turns it off; mflux sends
+   none, so its renders keep only the border sweep. With "Render each Frame" off (a Chain's switch, and always without pictures), this
    step is skipped and the Frame waits for its **Render** button.
 6. **Commit.** The Frame is appended to `session.json`.
 
@@ -507,6 +513,7 @@ All under `/api`; the Vite dev server proxies it to the Deno server.
 | `POST /sessions/:id/cancel` | Cancel the Frame in progress |
 | `DELETE /sessions/:id/frames/:index` | Undo the latest Frame; `:index` must name it (`409` otherwise, and for the Opening Frame or while a Frame runs) |
 | `GET /sessions/:id/images/:file` | A Frame's image, a Roleplay's audio (`voice-…wav`, `speech-…mp3`, `thought-…mp3`, or `.wav` from before), or a Roleplay Frame's 3D scene (`scene-…ply`), or a 3D figure (`figure-…ply`, `lito-…ply`) |
+| `GET /sessions/:id/preview` | The latest preview of the Session's render in progress (a JPEG, ComfyUI's), while there is one and Settings show the picture forming; `404` otherwise. Never cached: asked for again at each step (`?step=`) |
 | `POST /sessions/:id/roleplay/cast` | Roleplay: write (or, before it begins, rewrite) the Cast, streaming `phase`, `thinking`, then `cast` (`cast`, `session`) |
 | `POST /sessions/:id/roleplay/begin` | Roleplay: the opening Reply, streaming `reply-part` per field, then `replied` (`frame`, `session`) |
 | `POST /sessions/:id/roleplay/messages` | Roleplay: send `{ text }`, streaming `reply-part` (`key`, `value`) per field, then `replied`, or `declined` (`message`) |

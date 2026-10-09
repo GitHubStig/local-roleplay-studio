@@ -32,6 +32,9 @@ export const UPSCALED_EDGE = 2048
  */
 export type OnProgress = (step: number, total: number) => void
 
+/** A preview of the picture as it forms, a JPEG, from a backend that sends them (ComfyUI). */
+export type OnPreview = (jpeg: Uint8Array<ArrayBuffer>) => void
+
 export interface ImageGenerator {
   /** Renders the image and returns the file name it wrote inside `dir`. */
   generate(
@@ -39,6 +42,7 @@ export interface ImageGenerator {
     signal: AbortSignal,
     onProgress?: OnProgress,
     onDownload?: () => void,
+    onPreview?: OnPreview,
   ): Promise<string>
   /**
    * Upscales a rendered image so its shortest edge is `UPSCALED_EDGE`, and returns the file name

@@ -1,4 +1,4 @@
-import { DOWNLOADING, type Job, type JobKind } from './api'
+import { DOWNLOADING, type ImageBackend, type Job, type JobKind, previewUrl } from './api'
 
 /** What each job is called, on its Frame and in the queue. */
 export const JOB_NAMES: Record<JobKind, string> = {
@@ -38,3 +38,26 @@ export function sweepOf(phase: string | null | undefined): 'queued' | 'image' | 
   if (phase === 'queued') return 'queued'
   return phase === 'image' || phase === 'download' ? 'image' : null
 }
+
+/**
+ * The picture forming, for `FrameImage`'s `preview`: the latest preview of a render on ComfyUI
+ * (mflux sends none), more opaque as the steps go, since the first ones are dark smudges. Null
+ * while it isn't rendering, or before the first step.
+ */
+export function formingOf(
+  session: { id: string; settings: { imageBackend: ImageBackend } } | null | undefined,
+  phase: string | null | undefined,
+  progress: { step: number; total: number } | null | undefined,
+): { src: string; opacity: number } | null {
+  if (session?.settings.imageBackend !== 'comfyui' || phase !== 'image' || !progress) return null
+  return { src: previewUrl(session.id, progress.step), opacity: progress.step / progress.total }
+}
+
+/** The picture forming for a job (`formingOf`), if it renders one: not an upscale or 3D. */
+export const jobForming = (
+  session: Parameters<typeof formingOf>[0],
+  job: Job | null | undefined,
+) =>
+  job && (job.kind === 'render' || job.kind === 'picture')
+    ? formingOf(session, job.phase, job.progress)
+    : null

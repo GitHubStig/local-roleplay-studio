@@ -45,6 +45,8 @@ export interface Settings {
   fast: boolean
   /** Compute in float16, for models that take it: faster on M1 and M2 Macs. */
   float16: boolean
+  /** Show the picture forming while it renders (ComfyUI's previews). Applies at once. */
+  previews: boolean
   seedMode: SeedMode
   seed: number
   /** Which SeedVR2 model Upscale uses; applies to the next upscale, even mid-Session. */
@@ -455,6 +457,10 @@ export async function cancelFrame(id: string): Promise<void> {
 
 export const imageUrl = (sessionId: string, file: string) =>
   `/api/sessions/${sessionId}/images/${file}`
+
+/** The latest preview of a render in progress (ComfyUI's), asked for again at each step. */
+export const previewUrl = (sessionId: string, step: number) =>
+  `/api/sessions/${sessionId}/preview?step=${step}`
 
 /** Splits a server-sent event stream into parsed events, across arbitrary chunk boundaries. */
 export function createSseParser<E>(onEvent: (event: E) => void) {

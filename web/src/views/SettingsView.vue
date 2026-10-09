@@ -465,6 +465,21 @@ function removeSavedApiKey() {
               </select>
             </label>
 
+            <label
+              v-if="form.imageBackend === 'comfyui'"
+              class="flex items-start gap-2"
+              data-previews
+            >
+              <input v-model="form.previews" type="checkbox" class="mt-1" />
+              <span class="flex flex-col gap-0.5">
+                <span>Show the picture forming</span>
+                <span class="text-sm text-muted">
+                  While a picture renders, it forms over the last one from ComfyUI's preview at each
+                  step: soft at first, sharper as it goes. Costs no time. mflux sends none.
+                </span>
+              </span>
+            </label>
+
             <label v-if="imageModel?.fastSteps" class="flex items-start gap-2" data-fast>
               <input v-model="form.fast" type="checkbox" class="mt-1" />
               <span class="flex flex-col gap-0.5">

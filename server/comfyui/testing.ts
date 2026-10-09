@@ -19,6 +19,8 @@ export function fakeComfyUI(
   } = {},
 ) {
   const queued: Record<string, unknown>[] = []
+  /** Each queued prompt's `extra_data` (how it asks for previews), if any. */
+  const extras: unknown[] = []
   const posted: { path: string; body: unknown }[] = []
   const uploads: {
     name: string
@@ -69,6 +71,7 @@ export function fakeComfyUI(
     if (path === '/prompt') {
       const body = await req.json()
       queued.push(body.prompt)
+      extras.push(body.extra_data)
       const promptId = 'p1'
       const socket = sockets.get(body.client_id)!
       const send = (type: string, data: object) =>
@@ -139,6 +142,7 @@ export function fakeComfyUI(
     // Not `localhost`: on Windows it tries IPv6 first, and a new connection can take 300 ms or more.
     url: `http://127.0.0.1:${server.addr.port}`,
     queued,
+    extras,
     posted,
     uploads,
     stats,

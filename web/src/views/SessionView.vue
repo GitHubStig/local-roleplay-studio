@@ -20,7 +20,7 @@ import Frame3dViewers from '../components/Frame3dViewers.vue'
 import FrameViewer from '../components/FrameViewer.vue'
 import JobQueue from '../components/JobQueue.vue'
 import { useJobs } from '../composables/useJobs'
-import { sweepOf } from '../jobs'
+import { formingOf, jobForming, sweepOf } from '../jobs'
 import { useStoredFlag } from '../composables/useStoredFlag'
 import { useStoredText } from '../composables/useStoredText'
 import { sessionPath } from '../sessionPath'
@@ -341,6 +341,13 @@ const renderingPhase = computed(() => {
   return sweepOf(pending.value?.phase ?? shownJob.value?.phase)
 })
 
+/** The picture forming, over the frame: a new Frame's render, or a job's on the shown Frame. */
+const forming = computed(() =>
+  pending.value
+    ? formingOf(session.value, pending.value.phase, pending.value.progress)
+    : jobForming(session.value, shownJob.value)
+)
+
 /** The caption: the provisional Narration while a Frame runs, else the shown Frame's. */
 const captionText = computed(() => pending.value?.narration ?? shown.value?.narration ?? '')
 
@@ -392,6 +399,7 @@ const promptDiff = computed(() => {
           :src="shown?.image ? imageUrl(session.id, shown.upscaled ?? shown.image) : null"
           :alt="shown?.prompt"
           :rendering="renderingPhase"
+          :preview="forming"
           :hide-size="busy"
           :empty-text="busy ? undefined : shown ? 'Not rendered yet' : 'No image yet'"
           :expected-size="session.imageSize"

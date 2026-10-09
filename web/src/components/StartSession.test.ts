@@ -27,6 +27,7 @@ const settings: api.Settings = {
   stepCache: 0.4,
   fast: false,
   float16: true,
+  previews: true,
   seedMode: 'random',
   seed: 42,
   upscaler: 'seedvr2-7b',

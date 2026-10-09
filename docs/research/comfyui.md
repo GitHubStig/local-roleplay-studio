@@ -377,6 +377,25 @@ seedvr2-7b --resolution 2048`) took the same: **64 s** for 832×1216 → 2048×2
 (one SeedVR2 step) at ~15 s; the rest is loading the 7B's 16.5 GB of fp16 weights, which a new
 process does every time, and the tiled VAE. It grows with the output: 6.1 megapixels against 4.2.
 
+## Previews: the picture forming (2026-10-09, on the Windows PC)
+
+ComfyUI 0.39.2 on the RTX 4070, Qwen-Image 2.1, 25 steps at 1024×1024, through the API:
+
+- **By default it sends no previews**, only the final PNG (`SaveImageWebsocket`).
+- **Asked for per prompt** (`extra_data: { preview_method: "latent2rgb" }` on `POST /prompt`, as
+  ComfyUI's own frontend does), the sampler sends a binary image message at every step: format 1, a
+  JPEG at half size (512×512 here), before the PNG (format 2). 25 previews, 4.7–44 KB each.
+- **They cost no time**: 21.7 s with them, against 21.2–21.6 s without (two runs each).
+- **`auto` and `taesd` gave the same images as `latent2rgb`**: there's no TAESD decoder for
+  Qwen-Image 2.1's latent, so ComfyUI falls back to the cheap per-channel decode.
+- **What they show**: dark smudges for the first two steps, then the composition, readable by
+  step 5, soft as through frosted glass, sharpening to the end; never the purple and green static
+  of mflux's `--stepwise-image-output-dir` (bench/steps), which decodes the noisy image instead.
+
+The app shows them (Settings → "Show the picture forming", on by default): design.md, "Image
+step". Through the app on the Mac, rendering on the PC, the server held a preview at each step from
+14.5 s (after the Text Model's 14 s) until the picture landed, and none after.
+
 ## Voices through ComfyUI (2026-10-08, on the Windows PC)
 
 The voice service is mlx-audio, Mac only. Whether ComfyUI could speak the lines on Windows

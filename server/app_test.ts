@@ -415,6 +415,39 @@ Deno.test('Cancel aborts the Frame in progress and rejects overlapping Frames', 
     assertEquals(rest.includes('"sessionDiscarded":true'), true)
   }))
 
+Deno.test('A render in progress serves its latest preview while Settings show it, then none', () =>
+  withTempDir(async (root) => {
+    const { call, settings } = setup({
+      root,
+      settings: { textModel: 'x' },
+      textModel: scriptedTextModel([reply('standing')]),
+      imageGenerator: fakeImageGenerator({ hang: true }),
+    })
+    await call('POST', '/api/sessions', { scenarioId: 'test' })
+    assertEquals((await call('GET', '/api/sessions/s1/preview')).status, 404)
+    const res = await call('POST', '/api/sessions/s1/frames', {})
+    const reader = res.body!.pipeThrough(new TextDecoderStream()).getReader()
+    let seen = ''
+    while (!seen.includes('"phase":"image"')) seen += (await reader.read()).value
+
+    // The phase comes just before the render starts and sends its first preview.
+    let preview = await call('GET', '/api/sessions/s1/preview?step=1')
+    while (preview.status === 404) {
+      await preview.body?.cancel()
+      await new Promise((r) => setTimeout(r, 5))
+      preview = await call('GET', '/api/sessions/s1/preview?step=1')
+    }
+    assertEquals(preview.headers.get('content-type'), 'image/jpeg')
+    assertEquals([...new Uint8Array(await preview.arrayBuffer())], [255, 216, 255])
+    await settings.save({ ...await settings.load(), previews: false })
+    assertEquals((await call('GET', '/api/sessions/s1/preview')).status, 404)
+    await settings.save({ ...await settings.load(), previews: true })
+
+    await call('POST', '/api/sessions/s1/cancel')
+    for (let r = await reader.read(); !r.done; r = await reader.read());
+    assertEquals((await call('GET', '/api/sessions/s1/preview')).status, 404)
+  }))
+
 Deno.test('DELETE /api/sessions/:id/frames/:index undoes only the latest Frame', () =>
   withTempDir(async (root) => {
     const { call } = setup({

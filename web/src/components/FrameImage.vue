@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, useTemplateRef, watch } from 'vue'
 import { usePinchZoom } from '../composables/usePinchZoom'
+import { type Preview, useShownPreview } from '../composables/useShownPreview'
 
 const props = defineProps<{
   /** The image to show; null for none. */
@@ -23,6 +24,11 @@ const props = defineProps<{
   zoom?: boolean
   /** The size the images render at, to shape the frame before the first one loads. */
   expectedSize?: { width: number; height: number }
+  /**
+   * The picture forming while it renders (`formingOf`): its latest preview, laid over the image
+   * at this opacity, so the old picture dissolves into the new one as the steps go.
+   */
+  preview?: Preview | null
 }>()
 /** The image was clicked, to look closer (only without `zoom`). */
 const emit = defineEmits<{ open: [] }>()
@@ -53,6 +59,9 @@ watch(
   },
   { immediate: true },
 )
+
+/** The picture forming, over the image on screen. */
+const shownPreview = useShownPreview(() => props.preview, () => displayed.value?.src)
 
 /** Pinch to zoom the image, not the page, when `zoom`; each new image starts unzoomed. */
 const frame = useTemplateRef<HTMLElement>('frame')
@@ -119,6 +128,15 @@ const frameStyle = computed(() => ({
           data-frame-picture
           @load="onImageLoad"
           @click="!zoom && emit('open')"
+        />
+        <img
+          v-if="shownPreview"
+          :src="shownPreview.src"
+          alt=""
+          class="pointer-events-none absolute inset-0 h-full w-full object-contain transition-opacity duration-500"
+          :style="{ opacity: displayed ? shownPreview.opacity : 1 }"
+          draggable="false"
+          data-preview
         />
       </div>
       <span

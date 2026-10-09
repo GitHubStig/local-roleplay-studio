@@ -1,5 +1,5 @@
 import { join } from '@std/path'
-import { type ImageGenerator, UPSCALED_EDGE } from '../imageGenerator.ts'
+import { type ImageGenerator, type OnPreview, UPSCALED_EDGE } from '../imageGenerator.ts'
 import { SIZE_PRESETS } from '../../settings.ts'
 import {
   comfyBase,
@@ -33,13 +33,14 @@ export function comfyuiImageGenerator(opts: {
     workflow: Workflow,
     signal: AbortSignal,
     onProgress?: (step: number, total: number) => void,
+    onPreview?: OnPreview,
   ) => {
-    const { png } = await runWorkflow(base, workflow, signal, checkEveryMs, onProgress)
+    const { png } = await runWorkflow(base, workflow, signal, checkEveryMs, onProgress, onPreview)
     if (!png) throw new Error('ComfyUI finished without sending the picture')
     return png
   }
   return {
-    async generate(req, signal, onProgress) {
+    async generate(req, signal, onProgress, _onDownload, onPreview) {
       const base = comfyBase(req.settings.imageBaseUrl)
       const model = findComfyModel(req.settings.imageModel)
       if (!model) throw new Error(`ComfyUI has no Image Model "${req.settings.imageModel}" here`)
@@ -54,7 +55,10 @@ export function comfyuiImageGenerator(opts: {
         height: size.height,
       })
       const file = `${req.name}.png`
-      await Deno.writeFile(join(req.dir, file), await picture(base, workflow, signal, onProgress))
+      await Deno.writeFile(
+        join(req.dir, file),
+        await picture(base, workflow, signal, onProgress, onPreview),
+      )
       return file
     },
 

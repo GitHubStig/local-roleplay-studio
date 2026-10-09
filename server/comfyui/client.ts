@@ -65,6 +65,8 @@ export function fillWorkflow(workflow: Workflow, values: Record<string, unknown>
  * Queues a filled workflow and follows it over the WebSocket to its end. Cancel interrupts just
  * this prompt; afterwards its prompt leaves ComfyUI's history, and ComfyUI unloads its models. If
  * ComfyUI stops answering meanwhile (`watchAlive`), the job fails rather than waiting for good.
+ * With `onPreview`, the sampler sends a preview of the picture at every step (a JPEG at half size,
+ * decoded cheaply from the latent: no slower, measured 2026-10-09), which it passes on.
  */
 export async function runWorkflow(
   base: string,
@@ -72,6 +74,7 @@ export async function runWorkflow(
   signal: AbortSignal,
   checkEveryMs: number,
   onProgress?: (step: number, total: number) => void,
+  onPreview?: (jpeg: Uint8Array<ArrayBuffer>) => void,
 ): Promise<WorkflowResult> {
   const clientId = crypto.randomUUID()
   const socket = await openSocket(base, clientId, signal)
@@ -82,7 +85,12 @@ export async function runWorkflow(
     const queued = await fetch(`${base}/prompt`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ prompt: workflow, client_id: clientId }),
+      body: JSON.stringify({
+        prompt: workflow,
+        client_id: clientId,
+        // Asked for per prompt, as ComfyUI's own frontend does: off by default on the server.
+        ...(onPreview && { extra_data: { preview_method: 'latent2rgb' } }),
+      }),
       signal,
     })
     const body = await queued.json().catch(() => ({}))
@@ -100,7 +108,13 @@ export async function runWorkflow(
         new Error('ComfyUI stopped answering (it may have crashed): restart it, then try again'),
       ))
     try {
-      return await finished(socket, promptId, AbortSignal.any([signal, stalled.signal]), onProgress)
+      return await finished(
+        socket,
+        promptId,
+        AbortSignal.any([signal, stalled.signal]),
+        onProgress,
+        onPreview,
+      )
     } finally {
       clearInterval(watchdog)
       signal.removeEventListener('abort', cancel)
@@ -291,21 +305,22 @@ function openSocket(base: string, clientId: string, signal: AbortSignal): Promis
   })
 }
 
-/** A binary WebSocket message: an image (type 1), as a PNG (format 2), then its bytes. */
+/** A binary WebSocket message: an image (type 1), as a JPEG (format 1) or a PNG (2), then its bytes. */
 const IMAGE_MESSAGE = 1
+const JPEG = 1
 const PNG = 2
 
 /**
  * Resolves with what the workflow gave back when ComfyUI reports the prompt done; rejects with its
  * error, or the player's Cancel. Passes on the sampler's steps (`progress` events with a `max` above
- * 1). The picture is the last PNG image message: sampler previews, when ComfyUI sends them, come
- * before it and as JPEGs.
+ * 1), and its previews, JPEGs. The picture is the last PNG image message.
  */
 function finished(
   socket: WebSocket,
   promptId: string,
   signal: AbortSignal,
   onProgress?: (step: number, total: number) => void,
+  onPreview?: (jpeg: Uint8Array<ArrayBuffer>) => void,
 ): Promise<WorkflowResult> {
   const result: WorkflowResult = { outputs: {} }
   socket.binaryType = 'arraybuffer'
@@ -315,9 +330,10 @@ function finished(
     socket.onmessage = (e) => {
       if (e.data instanceof ArrayBuffer) {
         const header = new DataView(e.data)
-        if (header.getUint32(0) === IMAGE_MESSAGE && header.getUint32(4) === PNG) {
-          result.png = new Uint8Array(e.data, 8)
-        }
+        if (header.getUint32(0) !== IMAGE_MESSAGE) return
+        const format = header.getUint32(4)
+        if (format === PNG) result.png = new Uint8Array(e.data, 8)
+        else if (format === JPEG) onPreview?.(new Uint8Array(e.data, 8))
         return
       }
       const { type, data } = JSON.parse(e.data) as { type: string; data?: Record<string, unknown> }

@@ -64,6 +64,11 @@ export interface Settings {
    * and M5), the picture slightly different for a seed. On by default.
    */
   float16: boolean
+  /**
+   * Show the picture forming while it renders, from the previews a backend sends at each step
+   * (ComfyUI; mflux sends none). On by default. Read on every request, so it applies at once.
+   */
+  previews: boolean
   seedMode: SeedMode
   /** Used only when `seedMode` is `fixed`. */
   seed: number
@@ -116,6 +121,7 @@ export const DEFAULT_SETTINGS: Settings = {
   stepCache: 0.4,
   fast: false,
   float16: true,
+  previews: true,
   seedMode: 'random',
   seed: 42,
   upscaler: UPSCALERS[0].id,
@@ -209,6 +215,9 @@ export function validateSettings(
   if (s.float16 !== undefined && typeof s.float16 !== 'boolean') {
     issues.push('float16 must be true or false')
   }
+  if (s.previews !== undefined && typeof s.previews !== 'boolean') {
+    issues.push('previews must be true or false')
+  }
   if (s.seedMode !== 'random' && s.seedMode !== 'fixed') {
     issues.push('seedMode must be "random" or "fixed"')
   }
@@ -266,6 +275,7 @@ export function validateSettings(
       stepCache: s.stepCache === undefined ? DEFAULT_SETTINGS.stepCache : s.stepCache as StepCache,
       fast: (s.fast as boolean | undefined) ?? false,
       float16: (s.float16 as boolean | undefined) ?? DEFAULT_SETTINGS.float16,
+      previews: (s.previews as boolean | undefined) ?? DEFAULT_SETTINGS.previews,
       seedMode: s.seedMode as SeedMode,
       seed: s.seed as number,
       upscaler: (s.upscaler as Upscaler | undefined) ?? DEFAULT_SETTINGS.upscaler,
