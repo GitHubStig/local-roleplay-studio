@@ -27,6 +27,7 @@ const session: api.Session = {
   kind: 'chain',
   brief: null,
   scenarioId: 'tavern',
+  title: 'The Tavern',
   settings: {} as api.Settings,
   seed: 1,
   createdAt: '2026-09-24T00:00:00.000Z',
@@ -120,6 +121,10 @@ describe('App navigation', () => {
     await flushPromises()
     expect(wrapper.find('textarea').exists()).toBe(false)
     expect(currentLink(wrapper).attributes('href')).toBe('/sessions/s1')
+    expect(wrapper.find('[data-current-kind]').text()).toBe('Chain')
+    expect(wrapper.find('[data-current-title]').text()).toBe('The Tavern')
+    // The screen on show is the filled tab.
+    expect(wrapper.find('nav .tab-active').text()).toBe('Settings')
 
     await currentLink(wrapper).trigger('click')
     await flushPromises()
@@ -156,11 +161,16 @@ describe('App navigation', () => {
     await router.push('/settings')
     await flushPromises()
     expect(currentLink(wrapper).attributes('href')).toBe('/storyboards/sb')
+    expect(wrapper.find('[data-current-kind]').text()).toBe('Storyboard')
   })
 
-  it('the app name leads Home', async () => {
-    const { wrapper } = await mountApp('/sessions/s1')
-    expect(wrapper.find('h1 a').attributes('href')).toBe('/')
+  it('has a Home tab, and fills the tab of the screen on show', async () => {
+    const { wrapper, router } = await mountApp('/sessions/s1')
+    expect(wrapper.find('[data-nav-home]').attributes('href')).toBe('/')
+    expect(wrapper.find('nav .tab-active').attributes('data-current-session')).toBeDefined()
+    await router.push('/')
+    await flushPromises()
+    expect(wrapper.find('nav .tab-active').text()).toBe('Home')
   })
 
   it('keeps each Session as it was when switching between two', async () => {
@@ -264,15 +274,15 @@ describe('App navigation', () => {
       vi.mocked(api.getSession).mockResolvedValueOnce(running).mockResolvedValueOnce(running)
         .mockResolvedValue(done)
       const { wrapper } = await mountApp('/sessions/s1')
-      expect(wrapper.find('[role=status]').text()).toContain('Rendering the image')
+      expect(wrapper.find('main [role=status]').text()).toContain('Rendering the image')
       expect(wrapper.find('textarea').attributes('disabled')).toBeDefined()
       await wrapper.findAll('button').find((b) => b.text() === 'Cancel')!.trigger('click')
       expect(api.cancelFrame).toHaveBeenCalledWith('s1')
 
       await vi.advanceTimersByTimeAsync(1500)
-      expect(wrapper.find('[role=status]').exists()).toBe(true)
+      expect(wrapper.find('main [role=status]').exists()).toBe(true)
       await vi.advanceTimersByTimeAsync(1500)
-      expect(wrapper.find('[role=status]').exists()).toBe(false)
+      expect(wrapper.find('main [role=status]').exists()).toBe(false)
       expect(wrapper.findAll('aside [data-frame]')).toHaveLength(2)
     } finally {
       vi.useRealTimers()
@@ -283,10 +293,16 @@ describe('App navigation', () => {
     vi.useFakeTimers()
     try {
       vi.mocked(api.getHealth).mockClear()
-      await mountApp('/settings')
+      vi.mocked(api.getHealth).mockResolvedValueOnce({ ok: true }).mockRejectedValueOnce(
+        new Error('down'),
+      )
+      const { wrapper } = await mountApp('/settings')
       expect(api.getHealth).toHaveBeenCalledTimes(1)
+      // A dot while it's up; said in words once it's down.
+      expect(wrapper.find('[data-server]').text()).toBe('')
       await vi.advanceTimersByTimeAsync(15000)
       expect(api.getHealth).toHaveBeenCalledTimes(2)
+      expect(wrapper.find('[data-server]').text()).toBe('Server offline')
     } finally {
       vi.useRealTimers()
     }

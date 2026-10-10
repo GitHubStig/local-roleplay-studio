@@ -504,8 +504,11 @@ consistency* in [open-threads.md](open-threads.md).
   Storyboard's its first Beat. In the Look & Cast panel every text box grows to fit its text (no inner scrolling, so the
   panel scrolls as one) and collapses to a one-line preview by its label, remembered per browser
   (`CollapsibleTextarea`, sized by VueUse's `useTextareaAutosize`).
-- **Navigation:** **Local Roleplay Studio** (the app's name) leads Home; **Current Session** leads back to the Session opened last
-  (remembered per browser), and isn't shown when there is none. Up to five Session screens stay alive in
+- **Navigation** (redone 2026-10-10): the app's name, then the screens as tabs, the one on show
+  filled: **Home**, **Settings**, then the **Session** opened last, named by its kind and title
+  ("ROLEPLAY The Rain-Soaked Tavern", as on its Home card; remembered per browser, not shown when
+  there's none). On the right, a dot says the server is up (green), or "Server offline" (red),
+  then the theme. Up to five Session screens stay alive in
   memory while you visit Home, Settings or other Sessions, so each keeps its half-typed Action,
   viewed Frame, tab and any running Frame. The unsent Action is also saved per Session in the
   browser, so it survives a reload. Returning to a Session re-checks it with the server (unless a

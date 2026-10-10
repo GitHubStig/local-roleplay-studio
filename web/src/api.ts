@@ -327,6 +327,13 @@ export interface Look {
 /** A Chain makes each Frame from the previous one; a Storyboard plans all its Frames together. */
 export type SessionKind = 'chain' | 'storyboard' | 'roleplay'
 
+/** What each kind of Session is called on screen. */
+export const KIND_LABELS: Record<SessionKind, string> = {
+  chain: 'Chain',
+  storyboard: 'Storyboard',
+  roleplay: 'Roleplay',
+}
+
 /** `download`: a model is downloading, the first time it's used, before it renders or speaks. */
 export type Activity = 'text' | 'queued' | 'image' | 'download'
 
@@ -342,6 +349,8 @@ export interface SessionBase {
   settings: Settings
   seed: number
   createdAt: string
+  /** Its Scenario's title, or the start of its typed Brief (only from `getSession`). */
+  title?: string
   /** What work in progress is doing, or null when idle (only from `getSession`). */
   activity?: Activity | null
   /** Which Frame that work is on, for Storyboards (only from `getSession`). */

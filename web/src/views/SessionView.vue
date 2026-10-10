@@ -169,7 +169,7 @@ async function load(): Promise<boolean> {
   }
   loadError.value = ''
   // Current Session leads back to the Session opened last.
-  setCurrentSession(props.id, 'chain')
+  setCurrentSession(props.id, 'chain', session.value?.title)
   return true
 }
 

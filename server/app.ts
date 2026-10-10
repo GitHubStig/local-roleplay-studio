@@ -191,6 +191,10 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     return (await deps.sessions.load(id)) ?? error('Session not found', 404)
   }
 
+  /** A Session's title: its Scenario's (`scenarioTitle`), or the start of its typed Brief. */
+  const titleOf = (session: Session, scenarioTitle: string | undefined) =>
+    session.brief ? briefScenario(session.brief).title : scenarioTitle ?? session.scenarioId ?? ''
+
   /** The Scenario a Session starts from: its saved Scenario, or its typed Brief. */
   async function scenarioFor(session: Session): Promise<Scenario | Response> {
     if (session.brief) return briefScenario(session.brief)
@@ -592,9 +596,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
           id: s.id,
           kind: s.kind,
           scenarioId: s.scenarioId,
-          title: s.brief
-            ? briefScenario(s.brief).title
-            : titles.get(s.scenarioId ?? '') ?? s.scenarioId,
+          title: titleOf(s, titles.get(s.scenarioId ?? '')),
           frames: s.frames.length,
           latestImage: s.frames.map((f) => shownPicture(f, s.settings.imageModel)?.image)
             .findLast((image) => image) ?? null,
@@ -632,8 +634,10 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       // before the first arrives.
       const { size } = await deps.settings.load()
       const { width, height } = SIZE_PRESETS.find((p) => p.id === size) ?? SIZE_PRESETS[0]
+      const scenario = session.scenarioId ? await deps.scenarios.get(session.scenarioId) : undefined
       return json({
         ...session,
+        title: titleOf(session, scenario?.title),
         activity: work?.phase ?? null,
         activeFrame: work?.frameIndex ?? null,
         imageSize: { width, height },

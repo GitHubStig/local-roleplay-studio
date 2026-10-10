@@ -358,7 +358,7 @@ async function load(): Promise<boolean> {
     return false
   }
   loadError.value = ''
-  setCurrentSession(props.id, 'roleplay')
+  setCurrentSession(props.id, 'roleplay', session.value?.title)
   return true
 }
 

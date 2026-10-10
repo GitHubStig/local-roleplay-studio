@@ -6,7 +6,7 @@ import {
   deleteSession,
   imageUrl,
   listSessions,
-  type SessionKind,
+  KIND_LABELS,
   type SessionStart,
   type SessionSummary,
 } from '../api'
@@ -87,12 +87,6 @@ async function remove(s: SessionSummary) {
     deleteError.value = (err as Error).message
   }
   await load()
-}
-
-const KIND_LABELS: Record<SessionKind, string> = {
-  chain: 'Chain',
-  storyboard: 'Storyboard',
-  roleplay: 'Roleplay',
 }
 
 const ACTIVITY_LABELS = {

@@ -137,7 +137,7 @@ async function load(): Promise<boolean> {
     return false
   }
   loadError.value = ''
-  setCurrentSession(props.id, 'storyboard')
+  setCurrentSession(props.id, 'storyboard', session.value?.title)
   return true
 }
 

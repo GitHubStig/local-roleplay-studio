@@ -506,6 +506,8 @@ Deno.test('GET /api/sessions lists Sessions newest first with their activity', (
     const list = await (await call('GET', '/api/sessions')).json()
     assertEquals(list.map((s: { id: string }) => s.id), ['s1', 's2'])
     assertEquals(list[0].title, 'Test Shoot')
+    // A Session on its own carries its title too, for the screen's tab.
+    assertEquals((await (await call('GET', '/api/sessions/s1')).json()).title, 'Test Shoot')
     assertEquals(list[0].frames, 2)
     assertMatch(list[0].latestImage, /^frame-1-/)
     assertEquals(list[0].activity, null)
