@@ -615,3 +615,7 @@ export const retryJob = (id: string, jobId: string) =>
 /** Cancels a queued or running job, or dismisses a failed one; returns the queue. */
 export const cancelJob = (id: string, jobId: string) =>
   request<Job[]>(`/api/sessions/${id}/jobs/${jobId}`, { method: 'DELETE' })
+
+/** Clears a Session's queue: cancels what's running and queued, and dismisses what failed. */
+export const clearJobs = (id: string) =>
+  request<Job[]>(`/api/sessions/${id}/jobs`, { method: 'DELETE' })

@@ -1,5 +1,5 @@
 import { computed, onBeforeUnmount, ref } from 'vue'
-import { cancelJob, type Job, type JobKind, listJobs, queueJob, retryJob } from '../api'
+import { cancelJob, clearJobs, type Job, type JobKind, listJobs, queueJob, retryJob } from '../api'
 
 /**
  * A Session's queued background work (a Roleplay's or a Chain's), followed while anything is
@@ -62,6 +62,15 @@ export function useJobs(
       await refreshJobs()
     }
   }
+  /** Cancels everything running and queued, and dismisses what failed. */
+  async function clear() {
+    try {
+      jobs.value = await clearJobs(sessionId)
+      watchJobs()
+    } catch {
+      await refreshJobs()
+    }
+  }
   /** Puts a failed job back in the queue. */
   async function retry(job: Job) {
     try {
@@ -81,6 +90,7 @@ export function useJobs(
     queue,
     queueAll,
     dropJob,
+    clear,
     retry,
     refreshJobs,
   }

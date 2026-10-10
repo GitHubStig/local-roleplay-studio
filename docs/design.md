@@ -281,7 +281,9 @@ for a Storyboard (`server/storyboard/jobs.ts`), and pictures, renders and voices
 (`server/roleplay/jobs.ts`). A Roleplay's and a Storyboard's re-render share `replacePicture`
 (`server/frames.ts`), which drops the old picture's upscale and 3D. The player can ask for several
 and carry on with the conversation, a Chain's next Action or a Storyboard's edits; a job waiting
-on a picture can be queued behind the render or picture job that will make it. Each Session runs its jobs one at a time, in the order asked (renders,
+on a picture can be queued behind the render or picture job that will make it. Each Session runs its jobs one at a time, in the order asked, except that a picture
+(a Roleplay Frame's Image Prompt) goes ahead of queued image jobs, so a new Reply's is written while
+the Text Model is loaded for it, not after a batch of renders that each unload it (renders,
 upscales and 3D also wait their turn in the render queue every Session shares). Jobs don't hold the
 Session's lock; every change to a Roleplay or a Chain (a Reply, a picture, a render, a Chain Frame,
 an Undo) is saved by reloading it and applying just that change, one at a time
@@ -292,10 +294,11 @@ picture) waits its turn and fails with a reason if that still isn't there; faile
 listed, with **Retry** (back to the end of the queue) and **Dismiss**. Undoing an exchange (or a
 Chain Frame) cancels its jobs; deleting the Session cancels all of them. On the screen, a
 Roleplay's Replies each list their jobs with Cancel (the running one sweeps its Reply), and a
-**Queue** lists them all: a tab beside **Look & Cast**, or atop a Chain's Frames while there are
-any (a Chain lists them only there, so the picture keeps its room; the running job sweeps the
-picture it's working on). Clicking one goes to its Frame. The screens share this (`useJobs`,
-`FrameJobs`, `JobQueue`).
+**Queue (N)** tab lists them all: beside **Look & Cast** in a Roleplay, and beside **Frames** in a
+Chain or a Storyboard (since 2026-10-10; it was a short list atop the Frames, too small for a Render
+all), in its place. In a Chain the running job sweeps the picture it's working on. Clicking one goes
+to its Frame. **Clear queue** cancels what's running and queued and dismisses what failed, at once.
+The screens share this (`useJobs`, `FrameJobs`, `JobQueue`, `PanelTabs`).
 
 **Picturing a Frame** (the Art Agent; by the Session's Text Model, or the Art Agent model set in
 Settings, recorded on each picture as `pictureModel` and on the Look as `lookModel`): **Picture this** under a Reply writes
@@ -322,7 +325,7 @@ sentences, then the style; a picture that crosses a Limit is written once more, 
 force and shown under the Reply (marked if it crosses one). While a Frame is pictured, the light
 sweeps round that Reply, which says "Picturing this moment…" (or "Writing the Look, then
 picturing…") with its own Cancel; the conversation doesn't scroll, and the text box stays still
-and usable, with Send waiting until the picture is done. With the Limits on, a picture of two or
+and usable: Send doesn't wait for the picture, which is a job beside the conversation. With the Limits on, a picture of two or
 more people must name what each wears in its clothing sentence (by any word of their name, or its
 plural: "the two men" covers both), or it's blocked (and written once more): told to keep within the
 Limits, the Art Agent sometimes left an undressed person's clothing out instead of dressing them.
@@ -331,9 +334,12 @@ replies** switch was dropped): its Image Prompt is written at once, while the Te
 loaded, so rendering later (Render all) needs no reload between renders. It's written with
 Pictures off too, as it needs only the Text Model (a `picture` job needs no Feature), so a Roleplay
 played without pictures can be rendered later. It costs the Art Agent's time after each Reply (3–6
-s with gemma4, models.md), which Send waits for. **Render replies** (beside "Speak replies" above
+s with gemma4, models.md), beside the conversation. **Render replies** (beside "Speak replies" above
 the conversation, off by default, as rendering is slow; only with Pictures on) queues Render after
-it too, and is remembered per browser. Picture this stays for older Replies or another try. A job already queued isn't cancelled by the next Message: each Reply gets
+it too, and is remembered per browser. Picture this stays for another try. **Render all (N)**
+(in the button row under the text box, as on the other screens) queues a render of every Frame with no picture by the Roleplay's Image Model, or one
+changed since, skipping blocked ones; a Frame without its Image Prompt (its picture failed or was
+cancelled) is pictured first, all pictures queued before the renders. A job already queued isn't cancelled by the next Message: each Reply gets
 its picture, in order. Cancelling a picture also cancels the render queued behind it. **Render** / **Re-render** under a pictured Reply renders it through the shared render queue with
 the Session's Image Model, seed and size, and shows the picture beside its Reply (below it on
 windows under 1024 px). Clicking a picture opens it in a viewer (`FrameViewer`, shared with the
@@ -476,7 +482,7 @@ consistency* in [open-threads.md](open-threads.md).
   to reword; the Narration shows in the button row), the picture buttons every kind shares
   (**Render**/**Re-render**, **Upscale**, SHARP, TripoSplat, LiTo), each queued as a job, and
   **Render all (N)**, which queues a render of every draft or changed Frame not already queued,
-  skipping blocked ones. Editing carries on while they run. The Frames list shows the queue above
+  skipping blocked ones. Editing carries on while they run. The Frames list shows
   each Frame's thumbnail (dimmed when stale), Beat and status (or the job working on it). The Prompt panel has the **Look** (each person's name and identity in a card of their
   own, which collapses to the name and a preview; people can be added or removed; and the art style, saved for every Frame) and the selected Frame's **Shows**
   toggles (a person each) and seven sentences, each editable by hand with its own Save, then the full
@@ -595,6 +601,7 @@ All under `/api`; the Vite dev server proxies it to the Deno server.
 | `POST /sessions/:id/jobs` | Every kind: a Chain `upscale`, `scene`, `figure`, `lito`, and `render` of a Frame with no picture by the Chain's Image Model; a Storyboard `render` too; a Roleplay all. Queue `{ kind: "picture" \| "render" \| "upscale" \| "voice" \| "speak" \| "speak-thought" \| "scene" \| "figure" \| "lito", frameIndex }` (`voice` designs a new take of the Character's voice; `speak-thought` speaks the Frame's thought, whispered; `scene` makes the picture into a 2.5D scene (SHARP); `figure` lifts its person out as a 3D figure (TripoSplat), and `lito` does so with LiTo; `409` to speak a Frame with nothing to say aloud, or no thought, or to make a picture job on a Frame with no picture and no render or picture queued to make one, or to render a blocked Storyboard Frame (`422`)); returns the queue (asking twice for the same job queues it once) |
 | `POST /sessions/:id/jobs/:job/retry` | Roleplay or Chain: put a failed job back at the end of the queue (`404` if there's no such failed job) |
 | `DELETE /sessions/:id/jobs/:job` | Roleplay or Chain: cancel a queued or running job, or dismiss a failed one |
+| `DELETE /sessions/:id/jobs` | Every kind: Clear queue: cancel every running and queued job, and dismiss the failed ones; returns what's left (a cancelled running job until it stops) |
 | `PUT /sessions/:id/roleplay/look` | Roleplay: replace the Look, `{ subject, style }`, rewriting every pictured Frame (`400` if incomplete, `422` if it crosses a Limit) |
 | `PUT /sessions/:id/roleplay/voice` | Roleplay: replace the voice description, `{ description }`, dropping the voice's clip until it's designed again (`400` if empty, too long, or it crosses a Limit) |
 | `PUT /sessions/:id/roleplay/cast` | Roleplay: replace the Cast (`400` if incomplete or the Character is under 18, `422` if it crosses a Limit) |

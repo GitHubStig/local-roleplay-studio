@@ -17,6 +17,7 @@ vi.mock('../api', async (importOriginal) => ({
   listJobs: vi.fn(),
   queueJob: vi.fn(),
   cancelJob: vi.fn(),
+  clearJobs: vi.fn(),
   retryJob: vi.fn(),
 }))
 vi.mock('./api', async (importOriginal) => ({
@@ -540,6 +541,48 @@ describe('RoleplayView', () => {
         { features: ALL_AVAILABLE } as api.SettingsOptions,
       )
       await useFeatures().refreshFeatures()
+    })
+
+    it('renders all that need it, picturing first the Frames without an Image Prompt', async () => {
+      const pictured = (index: number, extra: Partial<roleplay.RoleplayFrame> = {}) => ({
+        ...frame(index, index ? 'Hello.' : null, 'Sit.'),
+        prompt: `Prompt ${index}.`,
+        ...extra,
+      })
+      vi.mocked(api.getSession).mockResolvedValue(roleplaySession([
+        pictured(0, { pictures: [picture('frame-0-aaaaaaaa.png')] }),
+        pictured(1),
+        frame(2, 'Hello.', 'Sit.'),
+        pictured(3, { blocked: 'real people' }),
+        // By another Image Model than the Roleplay's.
+        pictured(4, {
+          pictures: [picture('frame-4-aaaaaaaa.png', { imageModel: 'flux2-klein-4b' })],
+        }),
+      ]))
+      const queued: api.Job[] = []
+      vi.mocked(api.queueJob).mockReset().mockImplementation(async (_id, kind, frameIndex) => {
+        queued.push(job({ id: `${kind}${frameIndex}`, kind, frameIndex }))
+        return [...queued]
+      })
+      const { wrapper } = await mountIt()
+      expect(wrapper.find('[data-render-all]').text()).toBe('Render all (3)')
+      await wrapper.find('[data-render-all]').trigger('click')
+      await flushPromises()
+      expect(vi.mocked(api.queueJob).mock.calls.map((c) => `${c[1]} ${c[2]}`)).toEqual([
+        'picture 2',
+        'render 1',
+        'render 2',
+        'render 4',
+      ])
+      expect(wrapper.find('[data-render-all]').attributes('disabled')).toBeDefined()
+
+      // Clear queue cancels it all at once.
+      vi.mocked(api.clearJobs).mockResolvedValue([])
+      await wrapper.find('[data-tab=queue]').trigger('click')
+      await wrapper.find('[data-clear-queue]').trigger('click')
+      await flushPromises()
+      expect(api.clearJobs).toHaveBeenCalledWith('r1')
+      expect(wrapper.find('[data-queue]').text()).toContain('Nothing queued')
     })
 
     it('cancels the render queued behind a picture with it', async () => {

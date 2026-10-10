@@ -19,12 +19,13 @@ import PictureButtons from '../components/PictureButtons.vue'
 import ImageModelPicker from '../components/ImageModelPicker.vue'
 import ModelComparison from '../components/ModelComparison.vue'
 import RenderAllButton from '../components/RenderAllButton.vue'
+import PanelTabs from '../components/PanelTabs.vue'
 import { useImageModels } from '../composables/useSettingsOptions'
 import Frame3dViewers from '../components/Frame3dViewers.vue'
 import FrameViewer from '../components/FrameViewer.vue'
 import JobQueue from '../components/JobQueue.vue'
 import { useJobs } from '../composables/useJobs'
-import { formingOf, jobForming, sweepOf } from '../jobs'
+import { formingOf, jobForming, queueTabLabel, sweepOf } from '../jobs'
 import { useShownPreview } from '../composables/useShownPreview'
 import { useStoredFlag } from '../composables/useStoredFlag'
 import { useStoredText } from '../composables/useStoredText'
@@ -84,7 +85,7 @@ const draft = useStoredText(`draft:${props.id}`)
 /** Index of the Frame shown in the main panel; null follows the latest. */
 const viewing = ref<number | null>(null)
 const log = useTemplateRef<HTMLElement>('log')
-const panel = ref<'log' | 'prompt'>('log')
+const panel = ref<'log' | 'queue' | 'prompt'>('log')
 
 /** Viewing preferences, remembered per browser. */
 const captionHidden = useStoredFlag('caption-hidden')
@@ -325,7 +326,7 @@ async function switchRenderFrames(on: boolean) {
   }
 }
 
-const { jobs, jobsFor, hasJob, queue, queueAll, dropJob, retry, refreshJobs } = useJobs(props.id, {
+const { jobs, jobsFor, hasJob, queue, queueAll, dropJob, clear, retry, refreshJobs } = useJobs(props.id, {
   onSettled: async () => {
     await load()
   },
@@ -682,42 +683,43 @@ const promptDiff = computed(() => {
 
       </main>
 
-      <!-- Narrow windows: Frames and Prompt as tabs. From xl up: side by side, tabs hidden. -->
       <aside class="flex w-80 flex-col border-l border-line xl:w-auto xl:flex-row">
-        <div role="tablist" class="flex border-b border-line text-sm xl:hidden">
-          <button
-            v-for="tab in [{ id: 'log', label: 'Frames' }, { id: 'prompt', label: 'Prompt' }] as const"
-            :key="tab.id"
-            type="button"
-            role="tab"
-            class="flex-1 px-4 py-2 text-muted aria-selected:border-b-2 aria-selected:border-fg aria-selected:font-medium aria-selected:text-fg"
-            :aria-selected="panel === tab.id"
-            @click="panel = tab.id"
-          >
-            {{ tab.label }}
-          </button>
+        <!-- Narrow windows: one panel at a time. From xl up: the Prompt beside the others. -->
+        <div class="xl:hidden">
+          <PanelTabs
+            v-model="panel"
+            :tabs="[
+              { id: 'log', label: 'Frames' },
+              { id: 'queue', label: queueTabLabel(jobs) },
+              { id: 'prompt', label: 'Prompt' },
+            ]"
+          />
         </div>
 
         <section
           class="min-h-0 flex-1 flex-col xl:w-72 xl:flex-none xl:border-r xl:border-line"
-          :class="panel === 'log' ? 'flex' : 'hidden xl:flex'"
+          :class="panel === 'prompt' ? 'hidden xl:flex' : 'flex'"
           data-log-panel
         >
-          <h2 class="hidden border-b border-line px-4 py-2 text-sm font-medium xl:block">
-            Frames
-          </h2>
-          <!-- The queue, while there's any: what's running, queued and failed. -->
-          <JobQueue
-            v-if="jobs.length"
-            class="max-h-48 shrink-0 overflow-y-auto border-b border-line"
-            :jobs="jobs"
-            :name="frameTitle"
-            data-queue
-            @go="pick"
-            @retry="retry"
-            @drop="dropJob"
-          />
-          <ol ref="log" class="flex-1 overflow-y-auto" role="tabpanel">
+          <div class="hidden xl:block">
+            <PanelTabs
+              v-model="panel"
+              :tabs="[{ id: 'log', label: 'Frames' }, { id: 'queue', label: queueTabLabel(jobs) }]"
+            />
+          </div>
+          <!-- The queue: what's running, queued and failed; click one to go to its Frame. -->
+          <div v-if="panel === 'queue'" class="min-h-0 flex-1 overflow-y-auto" data-queue>
+            <JobQueue
+              :jobs="jobs"
+              empty="Nothing queued. Render, Render all and Upscale add work here, to run while you carry on."
+              :name="frameTitle"
+              @go="(index) => { pick(index); panel = 'log' }"
+              @retry="retry"
+              @drop="dropJob"
+              @clear="clear"
+            />
+          </div>
+          <ol v-show="panel !== 'queue'" ref="log" class="flex-1 overflow-y-auto" role="tabpanel">
           <li v-for="frame in session.frames" :key="frame.index" class="group relative">
             <button
               type="button"

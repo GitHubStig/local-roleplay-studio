@@ -386,10 +386,15 @@ describe('SessionView', () => {
     // Both are always in the page; below xl only the selected tab's panel is displayed.
     expect(log()).toContain('flex')
     expect(prompt()).toEqual(expect.arrayContaining(['hidden', 'xl:flex']))
-    await wrapper.findAll('[role=tab]')[1].trigger('click')
+    await wrapper.find('[data-tab=prompt]').trigger('click')
     expect(log()).toEqual(expect.arrayContaining(['hidden', 'xl:flex']))
     expect(prompt()).toContain('flex')
-    expect(wrapper.find('[role=tablist]').classes()).toContain('xl:hidden')
+    expect(wrapper.find('[role=tablist]').element.parentElement!.classList).toContain('xl:hidden')
+    // The queue takes the Frames' place, on any window.
+    await wrapper.find('[data-tab=queue]').trigger('click')
+    expect(log()).toContain('flex')
+    expect(wrapper.find('[data-queue]').text()).toContain('Nothing queued')
+    expect(wrapper.find('[data-log-panel] > ol').attributes('style')).toContain('display: none')
   })
 
   it('shows the Opening prompt without any diff', async () => {
@@ -458,6 +463,7 @@ describe('SessionView', () => {
     // It runs beside the Chain: the button waits, the queue shows it, and the next Action can go.
     expect(wrapper.find('[data-lito-button]').attributes('disabled')).toBeDefined()
     expect(wrapper.find('main [data-frame-job]').exists()).toBe(false)
+    await wrapper.find('[data-tab=queue]').trigger('click')
     expect(wrapper.find('[data-queue]').text()).toContain('LiTo · The Opening')
     expect(wrapper.find('[data-queue]').text()).toContain('Making the 3D figure…')
     expect(wrapper.find('textarea').attributes('disabled')).toBeUndefined()
@@ -791,6 +797,7 @@ describe('SessionView', () => {
     await wrapper.find('[data-upscale-button]').trigger('click')
     await flushPromises()
     expect(api.queueJob).toHaveBeenCalledWith('s1', 'upscale', 0)
+    await wrapper.find('[data-tab=queue]').trigger('click')
     expect(wrapper.find('[data-queue]').text()).toContain('Upscaling to 2048 px… step 1 of 1')
     expect(wrapper.find('[data-image-frame]').attributes('data-rendering')).toBe('image')
 

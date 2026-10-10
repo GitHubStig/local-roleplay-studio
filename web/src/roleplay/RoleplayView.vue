@@ -38,9 +38,11 @@ import Frame3dViewers from '../components/Frame3dViewers.vue'
 import FrameViewer from '../components/FrameViewer.vue'
 import FrameJobs from '../components/FrameJobs.vue'
 import JobQueue from '../components/JobQueue.vue'
+import PanelTabs from '../components/PanelTabs.vue'
+import RenderAllButton from '../components/RenderAllButton.vue'
 import { useJobs } from '../composables/useJobs'
 import { useFeatures } from '../composables/useFeatures'
-import { jobForming, jobStatus } from '../jobs'
+import { jobForming, jobStatus, queueTabLabel } from '../jobs'
 import { useShownPreview } from '../composables/useShownPreview'
 import { sessionPath } from '../sessionPath'
 import {
@@ -98,7 +100,7 @@ const suggesting = computed(() => pending.value?.kind === 'suggest')
 const writingCast = computed(() => pending.value?.kind === 'cast')
 // --- Background work: pictures, renders, upscales, voices and 3D, queued on the server.
 
-const { jobs, openJobs, runningJob, jobsFor, hasJob, queue, dropJob, retry, refreshJobs } = useJobs(
+const { jobs, runningJob, jobsFor, hasJob, queue, queueAll, dropJob, clear, retry, refreshJobs } = useJobs(
   props.id,
   {
     onSettled: () => reload(),
@@ -125,6 +127,28 @@ const pictureOf = (frame: PicturedFrame) => shownPicture(frame, session.value!.s
 const changed = (frame: PicturedFrame) => {
   const picture = pictureOf(frame)
   return !!picture && changedSinceRender(picture, session.value!.settings.imageModel)
+}
+/**
+ * The Frames Render all would render: those with no picture by the Roleplay's Image Model, or one
+ * changed since, unless their Image Prompt crosses a Limit or a render is queued.
+ */
+const toRender = computed(() =>
+  (session.value?.frames ?? []).filter((f) =>
+    !f.blocked && (!pictureOf(f) || changed(f)) && !hasJob(f.index, 'render')
+  )
+)
+/**
+ * Renders them all. A Frame without its Image Prompt yet (its picture failed, or was cancelled)
+ * is pictured first; all the pictures are queued before the renders, so the Text Model is done
+ * before the first render unloads it.
+ */
+async function renderAll() {
+  const frames = toRender.value.slice()
+  await queueAll(
+    'picture',
+    frames.filter((f) => !f.prompt && !hasJob(f.index, 'picture')).map((f) => f.index),
+  )
+  await queueAll('render', frames.map((f) => f.index))
 }
 const shownPreview = useShownPreview(
   () => forming.value,
@@ -931,6 +955,12 @@ async function saveCastDraft(): Promise<boolean> {
             >
               Cancel
             </button>
+            <RenderAllButton
+              v-if="featureOn('images') && begun"
+              :count="toRender.length"
+              title="Queue a render of every Frame not rendered yet by this Image Model, or changed since"
+              @render="renderAll"
+            />
             <p
               class="min-w-0 flex-1 truncate text-sm"
               :class="notice?.kind === 'declined' ? 'text-warn' : 'text-danger'"
@@ -953,37 +983,21 @@ async function saveCastDraft(): Promise<boolean> {
       </main>
 
       <aside class="flex w-80 flex-col border-l border-line xl:w-96" data-side-panel>
-        <div role="tablist" class="flex shrink-0 border-b border-line text-sm">
-          <button
-            v-for="tab in [
-              { id: 'cast', label: 'Look & Cast' },
-              { id: 'queue', label: openJobs.length ? `Queue (${openJobs.length})` : 'Queue' },
-            ] as const"
-            :key="tab.id"
-            type="button"
-            role="tab"
-            class="flex-1 px-4 py-2 text-muted aria-selected:border-b-2 aria-selected:border-fg aria-selected:font-medium aria-selected:text-fg"
-            :aria-selected="sideTab === tab.id"
-            :data-tab="tab.id"
-            @click="sideTab = tab.id"
-          >
-            {{ tab.label }}
-          </button>
-        </div>
+        <PanelTabs
+          v-model="sideTab"
+          :tabs="[{ id: 'cast', label: 'Look & Cast' }, { id: 'queue', label: queueTabLabel(jobs) }]"
+        />
 
         <!-- The queue: what's running, queued and failed; click one to go to its Frame. -->
         <section v-if="sideTab === 'queue'" class="min-h-0 flex-1 overflow-y-auto" data-queue>
-          <p v-if="!jobs.length" class="p-4 text-sm text-muted">
-            Nothing queued. Picture, Render and Upscale under a Reply add work here, to run while
-            you carry on.
-          </p>
           <JobQueue
-            v-else
             :jobs="jobs"
+            empty="Nothing queued. Picture, Render and Upscale under a Reply add work here, to run while you carry on."
             :describe="describeJob"
             @go="goToFrame"
             @retry="retry"
             @drop="drop"
+            @clear="clear"
           />
         </section>
 

@@ -193,6 +193,7 @@ describe('StoryboardView', () => {
     await wrapper.find('[data-render-button]').trigger('click')
     await flushPromises()
     expect(api.queueJob).toHaveBeenCalledWith('sb', 'render', 1)
+    await wrapper.find('[data-tab=queue]').trigger('click')
     expect(wrapper.find('[data-queue]').text()).toContain('Frame 2')
     expect(wrapper.findAll('[data-status]').map((s) => s.text())).toEqual([
       'Draft',
