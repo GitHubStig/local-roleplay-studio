@@ -125,6 +125,7 @@ export function chatRoleplayModel(chat: Chat, opts: RoleplayModelOptions = {}): 
         const { content, thinking } = await chat.stream({
           messages: await castMessages(scenario),
           schema: castSchema(),
+          job: 'cast',
           maxTokens: MAX_TOKENS.cast,
           signal: s,
           onThinking,
@@ -137,6 +138,7 @@ export function chatRoleplayModel(chat: Chat, opts: RoleplayModelOptions = {}): 
         const { content, thinking } = await chat.stream({
           messages,
           schema: roleplayLookSchema,
+          job: 'look',
           maxTokens: MAX_TOKENS.art,
           signal: s,
           onThinking,
@@ -149,6 +151,7 @@ export function chatRoleplayModel(chat: Chat, opts: RoleplayModelOptions = {}): 
         const { content, thinking } = await chat.stream({
           messages,
           schema: style === 'tags' ? artTagsSchema : artFrameSchema,
+          job: 'picture',
           maxTokens: MAX_TOKENS.art,
           signal: s,
           onThinking,
@@ -176,6 +179,7 @@ export function chatRoleplayModel(chat: Chat, opts: RoleplayModelOptions = {}): 
         const { content, thinking } = await chat.stream({
           messages,
           schema: replySchema(),
+          job: 'reply',
           maxTokens: MAX_TOKENS.reply,
           repeatPenalty: REPLY_REPEAT_PENALTY,
           signal: s,
@@ -190,6 +194,7 @@ export function chatRoleplayModel(chat: Chat, opts: RoleplayModelOptions = {}): 
         const { content } = await chat.stream({
           messages,
           schema: voiceSchema,
+          job: 'voice',
           maxTokens: MAX_TOKENS.voice,
           signal: s,
         })
@@ -206,6 +211,7 @@ export function chatRoleplayModel(chat: Chat, opts: RoleplayModelOptions = {}): 
         const { content } = await chat.stream({
           messages,
           schema: deliverySchema,
+          job: 'delivery',
           maxTokens: MAX_TOKENS.delivery,
           // Steady picks: at the default temperature the same line came back slow one time in two.
           temperature: 0.3,
@@ -219,6 +225,7 @@ export function chatRoleplayModel(chat: Chat, opts: RoleplayModelOptions = {}): 
         const { content } = await chat.stream({
           messages,
           maxTokens: MAX_TOKENS.suggest,
+          job: 'suggest',
           signal: s,
           onContent: onText,
         })

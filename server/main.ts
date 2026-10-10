@@ -12,6 +12,7 @@ import { chatTextModel } from './textModel.ts'
 import { chatRoleplayModel } from './roleplay/model.ts'
 import { connectionOf, textBackend, type TextChoice, type TextConnection } from './text/backend.ts'
 import { seededChat } from './text/seeded.ts'
+import { loggedChat, loggedImages } from './calls.ts'
 import { litoFigureMaker, tripoFigureMaker } from './3d/figure.ts'
 import { sharpSceneMaker } from './3d/scene.ts'
 import { voiceBackends, voiceService } from './voice/voice.ts'
@@ -48,7 +49,8 @@ const text = (connection: TextConnection, apiKey?: string) =>
   )
 /** A chat with the model a choice names, seeded from its Session's seed when it has one. */
 const chat = (c: TextChoice) => {
-  const plain = text(c).chat(c.model, c.thinking)
+  // Logged inside the seeding, so the log has each call's seed.
+  const plain = loggedChat(text(c).chat(c.model, c.thinking))
   return c.seeding ? seededChat(plain, c.seeding) : plain
 }
 
@@ -62,13 +64,15 @@ const handler = createHandler({
   roleplayModel: (c) => chatRoleplayModel(chat(c)),
   // Each Session renders with the backend its Settings name: mflux where it's installed (a Mac),
   // or ComfyUI (any machine). Upscale runs where Settings say now, with ComfyUI's address there.
-  imageGenerator: placeholderImages ? placeholderImageGenerator() : imageBackends({
-    mflux: features.images.available ? mfluxImageGenerator() : undefined,
-    comfyui: comfyuiImageGenerator({
-      upscaleUrl: async () => (await settings.load()).imageBaseUrl,
+  imageGenerator: loggedImages(
+    placeholderImages ? placeholderImageGenerator() : imageBackends({
+      mflux: features.images.available ? mfluxImageGenerator() : undefined,
+      comfyui: comfyuiImageGenerator({
+        upscaleUrl: async () => (await settings.load()).imageBaseUrl,
+      }),
+      upscaleBackend: async () => (await settings.load()).upscaleBackend,
     }),
-    upscaleBackend: async () => (await settings.load()).upscaleBackend,
-  }),
+  ),
   features,
   // A big render next to a loaded Text Model pushed a 48 GB Mac into swap (375 s instead of 66 s
   // for Qwen-Image 2.1 at 1024 px), so each render, upscale, scene and figure unloads it first,

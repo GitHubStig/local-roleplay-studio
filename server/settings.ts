@@ -102,6 +102,11 @@ export interface Settings {
    * Read on every request, so it applies mid-Session too.
    */
   limits: boolean
+  /**
+   * Log every call to the Text Model and the Image Model in its Session's folder (`calls.ts`);
+   * off by default. Read when each piece of work starts.
+   */
+  callLog: boolean
 }
 
 /**
@@ -151,6 +156,7 @@ export const DEFAULT_SETTINGS: Settings = {
   artStyle: 'prose',
   features: Object.fromEntries(FEATURES.map((f) => [f, true])) as Record<Feature, boolean>,
   limits: true,
+  callLog: false,
 }
 
 /**
@@ -248,6 +254,9 @@ export function validateSettings(
   if (s.limits !== undefined && typeof s.limits !== 'boolean') {
     issues.push('limits must be true or false')
   }
+  if (s.callLog !== undefined && typeof s.callLog !== 'boolean') {
+    issues.push('callLog must be true or false')
+  }
   if (s.artStyle !== undefined && !ART_STYLES.includes(s.artStyle as ArtStyle)) {
     issues.push(`artStyle must be one of: ${ART_STYLES.join(', ')}`)
   }
@@ -306,6 +315,7 @@ export function validateSettings(
       // One not mentioned (an older file, or a Feature added since) is on.
       features: { ...DEFAULT_SETTINGS.features, ...(features as Record<Feature, boolean>) },
       limits: (s.limits as boolean | undefined) ?? true,
+      callLog: (s.callLog as boolean | undefined) ?? false,
     },
   }
 }

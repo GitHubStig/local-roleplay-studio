@@ -511,8 +511,8 @@ consistency* in [open-threads.md](open-threads.md).
   ComfyUI at the address on the same tab, which may be another machine), Art Agent model (the model
   that pictures Roleplay Frames, with Thinking off, or "Same as the Text Model"), Art Agent style
   (prose, recommended, or tags), Limits (on by default; off leaves only "everyone depicted is an
-  adult") and, on its own Seed tab as it seeds every model, the seed (random per Session, or
-  fixed). A Session copies the Text backend and model, Thinking, the Image backend and model, steps
+  adult"), on its own Seed tab as it seeds every model, the seed (random per Session, or
+  fixed), and on its own Log tab, the call log (off by default; see Storage). A Session copies the Text backend and model, Thinking, the Image backend and model, steps
   and seed when it starts; the rest applies at once, to running Sessions too (see Consistency).
 - **Theme:** Light (a parchment tint), Dark or System, remembered per browser. It's a display
   preference, not a Setting.
@@ -534,6 +534,21 @@ Session from Home, and delete old ones there.
 | Settings | `settings.json` | Missing, corrupt or invalid → defaults; missing fields filled from defaults |
 | Scenarios | `scenarios/*.md` | Read fresh on every request, so edits need no restart |
 | Sessions | `sessions/<id>/session.json` + `frame-N-xxxxxxxx.png` | Id is `YYYYMMDD-HHMMSS-xxxx`; files are written to a temp file, then renamed |
+| Call log | `sessions/<id>/calls/frame-N.json`, `calls/setup.json` | Only with Settings' Call log on; see below |
+
+**The call log** (`server/calls.ts`) is for studying what the models are sent. With it on, every
+call to the Text Model (with its job: `cast`, `reply`, `look`, `picture`, `suggest`…, its messages,
+schema, seed and caps, and the reply and reasoning) and to the Image Model (each render's prompt,
+seed and settings, each upscale) is added to a JSON array in the Session's `calls/` folder as it's
+made: one file per Frame, numbered as the app shows them, and `setup.json` for what isn't one
+Frame's (a Cast, a Storyboard's plan). Suggest and a Chain's next Frame log under the Frame they'd
+make. A call is added over the file's closing `]`, so the file is never rewritten and stays valid
+JSON; one file per Frame keeps each small enough for an editor to fold (VS Code stops folding
+past about 20 MB, which a whole long Roleplay, resending its conversation every Reply, would
+pass). The calls are logged as they're made rather than rebuilt later: each is built from what
+earlier calls returned, and the prompts change. An undone or redone Frame's calls stay in its
+file. The voice engine's runs and 3D aren't logged (the Text Model's voice and delivery calls
+are).
 
 ## API
 

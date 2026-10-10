@@ -23,6 +23,8 @@ export interface ChatCall {
   seed?: number
   /** Penalise repeating any of the last `lastN` tokens (a backend that can't, ignores it). */
   repeatPenalty?: { penalty: number; lastN: number }
+  /** Which job the call is for (`reply`, `cast`…), as the call log names it (`calls.ts`). */
+  job?: string
   signal: AbortSignal
   onThinking?: (chunk: string) => void
   onContent?: (chunk: string) => void

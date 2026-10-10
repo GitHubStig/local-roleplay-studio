@@ -483,6 +483,7 @@ export function chatTextModel(chat: Chat, opts: TextModelOptions = {}): TextMode
 
   /** One streamed call with a system and a user message; see `Chat.stream`. */
   async function streamChat(
+    job: string,
     messages: { system: string; user: string } | Promise<{ system: string; user: string }>,
     schema: object,
     maxTokens: number,
@@ -498,6 +499,7 @@ export function chatTextModel(chat: Chat, opts: TextModelOptions = {}): TextMode
       ],
       schema,
       maxTokens,
+      job,
       signal,
       onThinking,
       onContent,
@@ -513,6 +515,7 @@ export function chatTextModel(chat: Chat, opts: TextModelOptions = {}): TextMode
     onThinking?: (chunk: string) => void,
   ): Promise<FrameText> {
     const { content, thinking } = await streamChat(
+      'write',
       {
         system: await systemMessage(req.scenario, req.prompt === null),
         user: await userMessage(req),
@@ -556,6 +559,7 @@ export function chatTextModel(chat: Chat, opts: TextModelOptions = {}): TextMode
       },
     })
     const { content, thinking } = await streamChat(
+      'plan',
       storyboardPlanMessages(req),
       storyboardPlanSchema(req.frameCount),
       planTokens(req.frameCount),
@@ -580,6 +584,7 @@ export function chatTextModel(chat: Chat, opts: TextModelOptions = {}): TextMode
     onThinking?: (chunk: string) => void,
   ): Promise<StoryboardEdit> {
     const { content, thinking } = await streamChat(
+      'edit',
       storyboardEditMessages(req),
       storyboardEditSchema(),
       MAX_TOKENS.answer,
@@ -599,6 +604,7 @@ export function chatTextModel(chat: Chat, opts: TextModelOptions = {}): TextMode
       },
       maxTokens: MAX_TOKENS.yesNo,
       noThinking: true,
+      job: 'real person',
       signal,
     })
     try {

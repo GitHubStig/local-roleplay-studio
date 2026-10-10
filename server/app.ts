@@ -31,7 +31,8 @@ import type { VoiceEngine } from './voice/voice.ts'
 import { roleplayExcerpt } from './roleplay/prompt.ts'
 import { roleplayRoutes } from './roleplay/routes.ts'
 import { checkRoleplayJob, type RoleplayJobContext, runRoleplayJob } from './roleplay/jobs.ts'
-import { JOB_FEATURE, jobRoutes, SessionJobs } from './jobs.ts'
+import { type Job, JOB_FEATURE, type JobEmit, jobRoutes, SessionJobs } from './jobs.ts'
+import { logCalls, logCallsUnder } from './calls.ts'
 import {
   type Availabilities,
   type Availability,
@@ -248,7 +249,13 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
           }
         }
         try {
-          await run(send, controller.signal)
+          const { callLog } = await deps.settings.load()
+          await logCalls(
+            callLog,
+            deps.sessions.dir(session.id),
+            frameIndex,
+            () => run(send, controller.signal),
+          )
         } catch (err) {
           if (discardOnFailure) await deps.sessions.remove(session.id)
           const sessionDiscarded = discardOnFailure
@@ -367,6 +374,16 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
   }
   /** Every Session's background work, run as its kind says: a Roleplay's or a Chain's. */
   const jobs = new SessionJobs(async (id, job, emit, signal) => {
+    const { callLog } = await deps.settings.load()
+    return logCalls(
+      callLog,
+      deps.sessions.dir(id),
+      job.frameIndex,
+      () => runJob(id, job, emit, signal),
+    )
+  })
+
+  async function runJob(id: string, job: Job, emit: JobEmit, signal: AbortSignal) {
     const session = await deps.sessions.load(id)
     if (session?.kind === 'roleplay') {
       return runRoleplayJob(roleplayJobs, session, job, emit, signal)
@@ -384,7 +401,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
         : runStoryboardJob(pictureDeps, session, job, emit, signal)
     }
     throw new GoneError('This Session no longer exists')
-  })
+  }
 
   /** Settings as the browser sees them: whether there's an API key, never the key. */
   const shownSettings = async (settings: Settings) => ({
@@ -662,7 +679,12 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
           const scenario = await scenarioFor(session)
           if (scenario instanceof Response) return scenario
           return stream(session, null, opening, async (send, signal) => {
-            await runChainFrame(frameDeps(session), session, scenario, action, send, signal, render)
+            // The Frame being made, though the stream isn't one Frame's until it's saved.
+            await logCallsUnder(
+              session.frames.length,
+              () =>
+                runChainFrame(frameDeps(session), session, scenario, action, send, signal, render),
+            )
           })
         }),
     ],

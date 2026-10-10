@@ -17,6 +17,7 @@ import {
 import type { RoleplayModel } from './model.ts'
 import { CastError } from './prompt.ts'
 import { suggestMessage } from './suggest.ts'
+import { logCallsUnder } from '../calls.ts'
 import { setVoiceDescription, VoiceError } from './voice.ts'
 import type { RoleplaySession } from './types.ts'
 
@@ -118,7 +119,11 @@ export function roleplayRoutes(ctx: RoleplayRouteContext): Route[] {
           return error(`A message can be at most ${MAX_MESSAGE_LENGTH} characters`, 400)
         }
         return ctx.stream(session, null, false, async (send, signal) => {
-          await suggestMessage(ctx.suggestModel(session), session, draft, send, signal)
+          // Logged with the Frame the suggested Message would start.
+          await logCallsUnder(
+            session.frames.length,
+            () => suggestMessage(ctx.suggestModel(session), session, draft, send, signal),
+          )
         })
       })],
 
