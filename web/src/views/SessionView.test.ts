@@ -2,8 +2,9 @@ import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import * as api from '../api'
-import { ALL_AVAILABLE, ALL_ON, promptFor } from '../testing'
+import { ALL_AVAILABLE, ALL_ON, IMAGE_MODELS, promptFor } from '../testing'
 import { useFeatures } from '../composables/useFeatures'
+import { loadSettingsOptions } from '../composables/useSettingsOptions'
 import SessionView from './SessionView.vue'
 
 vi.mock('../api', async (importOriginal) => ({
@@ -16,6 +17,7 @@ vi.mock('../api', async (importOriginal) => ({
   undoFrame: vi.fn(),
   getSettings: vi.fn(),
   getSettingsOptions: vi.fn(),
+  setImageModel: vi.fn(),
   listJobs: vi.fn(),
   queueJob: vi.fn(),
   cancelJob: vi.fn(),
@@ -59,7 +61,7 @@ const session = (frames: api.ChainFrame[] = []): api.ChainSession => ({
   kind: 'chain',
   brief: null,
   scenarioId: 'tavern',
-  settings: { imageModel: 'qwen-image-2.1' } as api.Settings,
+  settings: { imageBackend: 'mflux', imageModel: 'qwen-image-2.1' } as api.Settings,
   seed: 1,
   createdAt: '2026-09-24T00:00:00.000Z',
   frames,
@@ -94,7 +96,11 @@ const loadImages = async () => {
 const buttonNamed = (wrapper: Awaited<ReturnType<typeof mountIt>>['wrapper'], name: string) =>
   wrapper.findAll('button').find((b) => b.text() === name)!
 
-beforeEach(() => {
+beforeEach(async () => {
+  vi.mocked(api.getSettingsOptions).mockResolvedValue(
+    { features: ALL_AVAILABLE, imageModels: IMAGE_MODELS } as api.SettingsOptions,
+  )
+  await loadSettingsOptions()
   localStorage.clear()
   preloads.length = 0
   vi.stubGlobal('Image', FakeImage)
@@ -362,7 +368,9 @@ describe('SessionView', () => {
     await wrapper.findAll('[role=tab]')[0].trigger('click')
     await wrapper.findAll('aside [data-frame]')[0].trigger('click')
     await wrapper.findAll('[role=tab]')[1].trigger('click')
-    expect(wrapper.find('[data-timings]').text()).toBe('Text 9.8 s · Waited 12.3 s · Image 5.1 s')
+    expect(wrapper.find('[data-timings]').text()).toBe(
+      'Text 9.8 s · Waited 12.3 s · Image 5.1 s · by Qwen-Image 2.1',
+    )
   })
 
   it('shows no timings for Frames saved before they were recorded', async () => {
@@ -471,9 +479,52 @@ describe('SessionView', () => {
     expect(wrapper.find('[data-figure-button]').exists()).toBe(true)
   })
 
+  it("switches the Chain's Image Model, showing the steps it renders at", async () => {
+    const chain = session([frame(0, null), frame(1, 'Sit')])
+    // Fast is off in the Chain's own copy, but on in Settings now, which say how a render runs.
+    chain.settings = { ...chain.settings, steps: 25, fast: false }
+    vi.mocked(api.getSession).mockResolvedValue(chain)
+    vi.mocked(api.getSettings).mockResolvedValue({ features: ALL_ON, fast: true } as api.Settings)
+    await useFeatures().refreshFeatures()
+    const { wrapper } = await mountIt()
+    const select = wrapper.find('[data-image-model]')
+    expect((select.element as HTMLSelectElement).value).toBe('qwen-image-2.1')
+    expect(select.findAll('option').map((o) => o.text())).toEqual([
+      'Qwen-Image 2.1',
+      'FLUX.2 Klein 4B',
+    ])
+    // Qwen-Image has a fast mode: its own steps.
+    expect(wrapper.find('[data-image-steps]').text()).toBe('· 6 steps')
+    // Fast switched off in Settings: the Chain's steps.
+    vi.mocked(api.getSettings).mockResolvedValue({ features: ALL_ON, fast: false } as api.Settings)
+    await useFeatures().refreshFeatures()
+    await flushPromises()
+    expect(wrapper.find('[data-image-steps]').text()).toBe('· 25 steps')
+
+    // The picture then shows as changed since render, and can render again.
+    vi.mocked(api.setImageModel).mockResolvedValue({
+      ...chain,
+      settings: { ...chain.settings, imageModel: 'flux2-klein-4b', steps: 4 },
+    })
+    await select.setValue('flux2-klein-4b')
+    await flushPromises()
+    expect(api.setImageModel).toHaveBeenCalledWith('s1', 'flux2-klein-4b')
+    expect((select.element as HTMLSelectElement).value).toBe('flux2-klein-4b')
+    expect(wrapper.find('[data-image-steps]').text()).toBe('· 4 steps')
+    expect(wrapper.find('[data-changed]').text()).toBe('Changed since render · by Qwen-Image 2.1')
+    expect(wrapper.find('[data-render-button]').text()).toBe('Re-render')
+
+    // A failed switch puts the select back, and says why.
+    vi.mocked(api.setImageModel).mockRejectedValue(new Error('mflux has no Image Model "x"'))
+    await select.setValue('qwen-image-2.1')
+    await flushPromises()
+    expect((select.element as HTMLSelectElement).value).toBe('flux2-klein-4b')
+    expect(wrapper.find('[data-frame-notice]').text()).toBe('mflux has no Image Model "x"')
+  })
+
   it('hides Upscale and the 3D buttons whose Features are off', async () => {
     vi.mocked(api.getSettingsOptions).mockResolvedValue(
-      { features: ALL_AVAILABLE } as api.SettingsOptions,
+      { features: ALL_AVAILABLE, imageModels: IMAGE_MODELS } as api.SettingsOptions,
     )
     vi.mocked(api.getSettings).mockResolvedValue({
       features: { ...ALL_ON, images: false, lito: false },

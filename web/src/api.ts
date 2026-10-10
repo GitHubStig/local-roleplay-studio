@@ -420,6 +420,13 @@ export const createSession = (start: SessionStart) => post<Session>('/api/sessio
 export const getSession = (id: string) => request<Session>(`/api/sessions/${id}`)
 
 /** Whether a Chain renders each Frame as it's made. */
+/**
+ * Switches a Session's Image Model, one of its Image backend's; it comes back with its steps reset
+ * to that model's default.
+ */
+export const setImageModel = <S>(id: string, imageModel: string) =>
+  put<S>(`/api/sessions/${id}/image-model`, { imageModel })
+
 export const setRenderFrames = (id: string, renderFrames: boolean) =>
   request<ChainSession>(`/api/sessions/${id}/render-frames`, {
     method: 'PUT',

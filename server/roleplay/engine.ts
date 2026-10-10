@@ -7,6 +7,7 @@ import {
 } from '../frames.ts'
 import type { ImageGenerator } from '../images/imageGenerator.ts'
 import type { RenderQueue } from '../renderQueue.ts'
+import type { Settings } from '../settings.ts'
 import { activeProseLimits, crossedLimit } from '../limits.ts'
 import type { Scenario } from '../scenario.ts'
 import type { Look, SessionStore } from '../session.ts'
@@ -66,6 +67,8 @@ export interface RoleplayDeps {
   /** For rendering pictures, through the render queue every Session shares. */
   imageGenerator: ImageGenerator
   renderQueue?: RenderQueue
+  /** Settings as they are now, for how a render runs (`renderSettings`). */
+  settings?: () => Promise<Settings>
 }
 
 /** The text of a Cast and a reply that the Limits check. */

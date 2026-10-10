@@ -94,8 +94,9 @@ export interface SessionBase {
   /** The Scenario it started from (a saved Brief); null when started from a typed Brief. */
   scenarioId: string | null
   /**
-   * Settings as they were when the Session started; later edits don't apply. Only its Image Model
-   * can change, switched in the Session (`switchImageModel`).
+   * Settings as they were when the Session started. Later edits apply only to how a render runs
+   * (`RENDER_SETTINGS`, read at each render); its Image Model and steps change only when switched
+   * in the Session (`switchImageModel`).
    */
   settings: Settings
   /** The seed every image in this Session is rendered with. */

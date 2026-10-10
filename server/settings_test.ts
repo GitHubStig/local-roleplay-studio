@@ -4,6 +4,7 @@ import {
   DEFAULT_SETTINGS,
   fileSettingsStore,
   machineDefaults,
+  renderSettings,
   validateSettings,
 } from './settings.ts'
 
@@ -70,6 +71,31 @@ Deno.test('fileSettingsStore saves to a file URL whose path has spaces', () =>
     await store.save({ ...DEFAULT_SETTINGS, textModel: 'llama3:latest' })
     assertEquals((await store.load()).textModel, 'llama3:latest')
   }))
+
+Deno.test("A Session renders with its own model, steps and seed's settings, and the rest as now", () => {
+  const session = { ...DEFAULT_SETTINGS, imageModel: 'flux2-klein-4b', steps: 4, size: 'square' }
+  const now = {
+    ...DEFAULT_SETTINGS,
+    imageModel: 'krea-2',
+    steps: 8,
+    size: 'landscape',
+    fast: true,
+    stepCache: null,
+    quantize: 8 as const,
+    float16: false,
+    imageBaseUrl: 'http://pc:8188',
+    seed: 1,
+  }
+  assertEquals(renderSettings(session, now), {
+    ...session,
+    size: 'landscape',
+    fast: true,
+    stepCache: null,
+    quantize: 8,
+    float16: false,
+    imageBaseUrl: 'http://pc:8188',
+  })
+})
 
 Deno.test('validateSettings fills in what an older file lacks, keeps what it may be, refuses the rest', () => {
   // Each field: what it comes to when missing, a value it may take, and one it may not.

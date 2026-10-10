@@ -142,3 +142,25 @@ Deno.test('A render that finishes after the Session switched model keeps its own
     assertEquals(frame.pictures.map((p) => p.imageModel), [QWEN, KLEIN])
     assertEquals(shownPicture(frame, rendered.settings.imageModel), qwen.frames[1].pictures[0])
   }))
+
+Deno.test("A render runs as Settings are now, keeping the Session's model, steps and seed", () =>
+  withTempDir(async (root) => {
+    const { store, deps, images } = await chainOfTwo(root)
+    const qwen = (await store.load('s1')) as ChainSession
+    const klein = await switchImageModel(store, qwen, KLEIN) as ChainSession
+    const now = { ...DEFAULT_SETTINGS, imageModel: KREA, steps: 8, fast: false, size: 'landscape' }
+    await renderChainFrame(
+      { ...deps, settings: () => Promise.resolve(now) },
+      klein,
+      1,
+      () => {},
+      signal(),
+    )
+    const used = images.settings.at(-1)!
+    assertEquals([used.imageModel, used.steps, used.fast, used.size], [
+      KLEIN,
+      4,
+      false,
+      'landscape',
+    ])
+  }))

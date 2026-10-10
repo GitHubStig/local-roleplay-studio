@@ -218,6 +218,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     imageGenerator: deps.imageGenerator,
     renderQueue,
     previews,
+    settings: () => deps.settings.load(),
   })
 
   /**
@@ -312,6 +313,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     imageGenerator: deps.imageGenerator,
     renderQueue,
     previews,
+    settings: () => deps.settings.load(),
     textModel: deps.textModel(textChoice(session)),
     roleplayModel: deps.roleplayModel(textChoice(session)),
     voice: deps.voice,
@@ -607,9 +609,10 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       if (!session) return error('Session not found', 404)
       // `activity` lets a screen that didn't start the running work (another tab) show it.
       const work = active.get(session.id)
-      // The size its pictures render at, so a screen can shape the frame before the first arrives.
-      const { width, height } = SIZE_PRESETS.find((p) => p.id === session.settings.size) ??
-        SIZE_PRESETS[0]
+      // The size its pictures render at (as Settings are now), so a screen can shape the frame
+      // before the first arrives.
+      const { size } = await deps.settings.load()
+      const { width, height } = SIZE_PRESETS.find((p) => p.id === size) ?? SIZE_PRESETS[0]
       return json({
         ...session,
         activity: work?.phase ?? null,

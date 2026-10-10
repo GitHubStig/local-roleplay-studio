@@ -1,6 +1,7 @@
 import type { ImageGenerator, OnPreview, OnProgress } from './images/imageGenerator.ts'
 import { parseScenario, type ScenarioLibrary } from './scenario.ts'
 import type { ImagePrompt } from './imagePrompt.ts'
+import type { Settings } from './settings.ts'
 import type {
   FrameText,
   PlanHandlers,
@@ -116,23 +117,27 @@ export function fakeImageGenerator(
   opts: { fail?: boolean; hang?: boolean } = {},
 ): ImageGenerator & {
   prompts: string[]
+  settings: Settings[]
   upscaled: string[]
   upscalers: string[]
 } {
   const gen = {
     prompts: [] as string[],
+    /** The Settings each image was rendered with. */
+    settings: [] as Settings[],
     /** The images asked to be upscaled. */
     upscaled: [] as string[],
     /** The upscaler model each was upscaled with. */
     upscalers: [] as string[],
     async generate(
-      req: { prompt: string; dir: string; name: string },
+      req: { prompt: string; settings: Settings; dir: string; name: string },
       signal: AbortSignal,
       _onProgress?: OnProgress,
       _onDownload?: () => void,
       onPreview?: OnPreview,
     ) {
       gen.prompts.push(req.prompt)
+      gen.settings.push(req.settings)
       signal.throwIfAborted()
       if (opts.fail) throw new Error('mflux crashed')
       if (opts.hang) {

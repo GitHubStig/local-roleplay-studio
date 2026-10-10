@@ -40,6 +40,8 @@ import FrameViewer from '../components/FrameViewer.vue'
 import JobQueue from '../components/JobQueue.vue'
 import LookForm from '../components/LookForm.vue'
 import PictureButtons from '../components/PictureButtons.vue'
+import ImageModelPicker from '../components/ImageModelPicker.vue'
+import { useImageModels } from '../composables/useSettingsOptions'
 import { useFeatures } from '../composables/useFeatures'
 import { useJobs } from '../composables/useJobs'
 import { JOB_NAMES, jobForming, jobStatus, sweepOf } from '../jobs'
@@ -357,14 +359,18 @@ const renderingHere = computed(() => sweepOf(selectedJob.value?.phase))
 const forming = computed(() => jobForming(session.value, selectedJob.value))
 const editingHere = computed(() => work.value?.kind === 'edit' && work.value.frameIndex === selected.value)
 
-/** Writing the Frame, then rendering the picture it shows, once it has one. */
+const { renderedParts } = useImageModels()
+/** Writing the Frame, then rendering the picture it shows, once it has one, and by which model. */
 const timingsLabel = (f: StoryboardFrame) => {
   if (!f.timings) return ''
-  const parts = [`Text ${f.timings.text.toFixed(1)} s`]
-  const t = pictureOf(f)?.timings
-  if (t?.queued !== undefined) parts.push(`Waited ${t.queued.toFixed(1)} s`)
-  if (t) parts.push(`Image ${t.image.toFixed(1)} s`)
-  return parts.join(' · ')
+  const picture = pictureOf(f)
+  return [`Text ${f.timings.text.toFixed(1)} s`, ...(picture ? renderedParts(picture) : [])]
+    .join(' · ')
+}
+
+/** The Storyboard switched Image Model: it comes back without what only a load adds. */
+function onImageModel(switched: StoryboardSession) {
+  session.value = { ...session.value!, ...switched }
 }
 
 /** The Frame whose picture is open in the viewer, if any. */
@@ -383,6 +389,13 @@ const imagesOn = computed(() => featureOn.value('images'))
 
     <template v-else-if="session">
       <main class="flex min-w-0 flex-1 flex-col gap-3 p-4">
+        <div v-if="featureOn('images')" class="flex items-center justify-end gap-4 text-sm">
+          <ImageModelPicker
+            :session="session"
+            @switched="onImageModel"
+            @failed="(text) => (message = { kind: 'error', text })"
+          />
+        </div>
         <FrameImage
           :src="picture ? imageUrl(session.id, picture.upscaled ?? picture.image) : null"
           :alt="current?.prompt"

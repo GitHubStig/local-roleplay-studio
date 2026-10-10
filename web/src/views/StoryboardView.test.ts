@@ -231,13 +231,23 @@ describe('StoryboardView', () => {
       frame(1, { blocked: 'no minors' }),
       frame(2, { pictures: [picture('frame-2-aaaaaaaa.png', { stale: true })] }),
       frame(3),
+      // By another Image Model than the Storyboard's.
+      frame(4, { pictures: [picture('frame-4-aaaaaaaa.png', { imageModel: 'flux2-klein-4b' })] }),
     ]))
     const { wrapper } = await mountIt()
+    expect(wrapper.findAll('[data-status]').map((s) => s.text())).toEqual([
+      'Rendered',
+      'Blocked',
+      'Changed since render',
+      'Draft',
+      'Changed since render',
+    ])
     await wrapper.find('[data-render-all]').trigger('click')
     await flushPromises()
     expect(vi.mocked(api.queueJob).mock.calls.map((c) => [c[1], c[2]])).toEqual([
       ['render', 2],
       ['render', 3],
+      ['render', 4],
     ])
     // All queued: nothing left to add.
     expect(wrapper.find('[data-render-all]').attributes('disabled')).toBeDefined()

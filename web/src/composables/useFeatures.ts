@@ -1,17 +1,16 @@
 import { computed, ref } from 'vue'
-import { type Availability, type Feature, getSettings, getSettingsOptions } from '../api'
+import { type Feature, getSettings, type Settings } from '../api'
+import { loadSettingsOptions, useSettingsOptions } from './useSettingsOptions'
 
-/** Which Features this machine can run, and which Settings has switched on; loaded once, shared. */
-const available = ref<Record<Feature, Availability> | null>(null)
-const switchedOn = ref<Record<Feature, boolean> | null>(null)
+/** Settings as they are now, with the Features switched on; loaded once, shared. */
+const settings = ref<Settings | null>(null)
 let loading: Promise<void> | null = null
 
-/** Loads them again, e.g. once Settings are saved. */
+/** Loads them again, e.g. once Settings are saved: what's switched on, and what can run. */
 async function refreshFeatures() {
   try {
-    const [options, settings] = await Promise.all([getSettingsOptions(), getSettings()])
-    available.value = options.features
-    switchedOn.value = settings.features
+    const [, loaded] = await Promise.all([loadSettingsOptions(), getSettings()])
+    settings.value = loaded
   } catch {
     // Until they load, everything shows, and the server says if something's off.
   }
@@ -24,8 +23,11 @@ async function refreshFeatures() {
  */
 export function useFeatures() {
   loading ??= refreshFeatures()
+  // Which this machine can run, from the Settings options.
+  const options = useSettingsOptions()
   const on = computed(() => (feature: Feature) =>
-    (available.value?.[feature]?.available ?? true) && (switchedOn.value?.[feature] ?? true)
+    (options.value?.features?.[feature]?.available ?? true) &&
+    (settings.value?.features?.[feature] ?? true)
   )
-  return { on, refreshFeatures }
+  return { on, refreshFeatures, settings }
 }

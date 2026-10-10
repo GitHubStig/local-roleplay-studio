@@ -14,6 +14,7 @@ import { mightNameAPerson, type TextModel } from './textModel.ts'
 import type { Previews } from './previews.ts'
 import { RenderQueue } from './renderQueue.ts'
 import type { Session, SessionStore } from './session.ts'
+import { renderSettings, type Settings } from './settings.ts'
 import { GoneError } from './update.ts'
 import { ContextFullError } from './text/chat.ts'
 
@@ -61,6 +62,8 @@ export interface FrameDeps {
   renderQueue?: RenderQueue
   /** Where a render's previews go, as the picture forms (ComfyUI's). */
   previews?: Previews
+  /** Settings as they are now, for how a render runs (`renderSettings`); else the Session's own. */
+  settings?: () => Promise<Settings>
 }
 
 const TEXT_ATTEMPTS = 2
@@ -122,7 +125,8 @@ export async function limitCrossedBy(
 
 /**
  * Renders `prompt` into `<dir>/<name>.png` with the Session's Image Model, through the shared
- * render queue. Returns the picture, with how long it waited and how long it rendered.
+ * render queue, run as Settings are now (`renderSettings`). Returns the picture, with how long it
+ * waited and how long it rendered.
  */
 export async function renderImage(
   deps: FrameDeps,
@@ -132,12 +136,15 @@ export async function renderImage(
   emit: (event: ProgressEvent) => void,
   signal: AbortSignal,
 ): Promise<Picture> {
+  const settings = deps.settings
+    ? renderSettings(session.settings, await deps.settings())
+    : session.settings
   const queueStart = performance.now()
   let waited = false
   const release = await (deps.renderQueue ?? new RenderQueue()).acquire(signal, () => {
     waited = true
     emit({ type: 'phase', phase: 'queued' })
-  }, { job: { kind: 'render', settings: session.settings } })
+  }, { job: { kind: 'render', settings } })
   const queued = waited ? secondsSince(queueStart) : undefined
   const imageStart = performance.now()
   try {
@@ -146,7 +153,7 @@ export async function renderImage(
     await Deno.mkdir(dir, { recursive: true })
     const { onProgress, onDownload } = imageProgress(emit)
     const image = await deps.imageGenerator.generate(
-      { prompt, seed: session.seed, settings: session.settings, dir, name },
+      { prompt, seed: session.seed, settings, dir, name },
       signal,
       onProgress,
       onDownload,
@@ -154,7 +161,7 @@ export async function renderImage(
     )
     return {
       image,
-      imageModel: session.settings.imageModel,
+      imageModel: settings.imageModel,
       timings: { ...(queued !== undefined && { queued }), image: secondsSince(imageStart) },
     }
   } finally {

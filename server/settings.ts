@@ -104,6 +104,26 @@ export interface Settings {
   limits: boolean
 }
 
+/**
+ * How a render runs on this machine, read from Settings at each render so a change reaches running
+ * Sessions too. A Session keeps the rest of its image settings, which define its pictures: its
+ * Image backend, Image Model and steps (switched together, `switchImageModel`), and its seed.
+ */
+export const RENDER_SETTINGS = [
+  'size',
+  'fast',
+  'stepCache',
+  'quantize',
+  'float16',
+  'imageBaseUrl',
+] as const satisfies readonly (keyof Settings)[]
+
+/** The Settings a Session renders with: its own, with `RENDER_SETTINGS` as Settings are `now`. */
+export const renderSettings = (session: Settings, now: Settings): Settings => ({
+  ...session,
+  ...Object.fromEntries(RENDER_SETTINGS.map((key) => [key, now[key]])),
+})
+
 const DEFAULT_IMAGE_MODEL = findImageModel('mflux', 'qwen-image-2.1')!
 
 export const DEFAULT_SETTINGS: Settings = {

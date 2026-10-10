@@ -30,6 +30,8 @@ import CollapsibleTextarea from '../components/CollapsibleTextarea.vue'
 import LookForm from '../components/LookForm.vue'
 import ComposeBox from '../components/ComposeBox.vue'
 import PictureButtons from '../components/PictureButtons.vue'
+import ImageModelPicker from '../components/ImageModelPicker.vue'
+import { useImageModels } from '../composables/useSettingsOptions'
 import UndirectedNote from './UndirectedNote.vue'
 import Frame3dViewers from '../components/Frame3dViewers.vue'
 import FrameViewer from '../components/FrameViewer.vue'
@@ -111,6 +113,11 @@ const forming = computed(() => jobForming(session.value, runningJob.value))
 watch(forming, (now) => {
   if (now) formingIndex.value = runningJob.value!.frameIndex
 })
+const { labelOf, renderedParts } = useImageModels()
+/** The Roleplay switched Image Model: it comes back without what only a load adds. */
+function onImageModel(switched: RoleplaySession) {
+  session.value = { ...session.value!, ...switched }
+}
 /** The picture a Frame shows, by the Roleplay's Image Model if it has one. */
 const pictureOf = (frame: PicturedFrame) => shownPicture(frame, session.value!.settings.imageModel)
 /** A Frame's picture is changed since render: its prompt changed, or it's by another model. */
@@ -625,6 +632,11 @@ async function saveCastDraft(): Promise<boolean> {
               Speak replies
             </label>
             <template v-if="featureOn('images')">
+              <ImageModelPicker
+                :session="session"
+                @switched="onImageModel"
+                @failed="(text) => (notice = { kind: 'error', text })"
+              />
               <label
                 class="flex cursor-pointer items-center gap-1.5 text-muted"
                 title="Write each new reply's Image Prompt as it arrives (Picture this)"
@@ -784,6 +796,9 @@ async function saveCastDraft(): Promise<boolean> {
                           v-if="frame.pictureStyle"
                         >, as tags</template>
                       </p>
+                      <p v-if="pictureOf(frame)" class="mt-1" data-render-timings>
+                        Rendered: {{ renderedParts(pictureOf(frame)!).join(' · ') }}
+                      </p>
                       <details v-if="frame.pictureThinking" class="mt-1">
                         <summary class="cursor-pointer select-none">Reasoning</summary>
                         <p class="mt-1 whitespace-pre-wrap leading-relaxed">{{ frame.pictureThinking }}</p>
@@ -820,7 +835,7 @@ async function saveCastDraft(): Promise<boolean> {
                   <span
                     v-if="changed(frame)"
                     class="absolute left-2 top-2 rounded-full bg-black/70 px-2 py-0.5 text-white"
-                  >Changed since render</span>
+                  >Changed since render · by {{ labelOf(pictureOf(frame)!.imageModel) }}</span>
                 </button>
               </div>
             </li>

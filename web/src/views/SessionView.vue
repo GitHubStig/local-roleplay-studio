@@ -16,6 +16,8 @@ import { clearCurrentSession, setCurrentSession } from '../composables/useCurren
 import ComposeBox from '../components/ComposeBox.vue'
 import FrameImage from '../components/FrameImage.vue'
 import PictureButtons from '../components/PictureButtons.vue'
+import ImageModelPicker from '../components/ImageModelPicker.vue'
+import { useImageModels } from '../composables/useSettingsOptions'
 import Frame3dViewers from '../components/Frame3dViewers.vue'
 import FrameViewer from '../components/FrameViewer.vue'
 import JobQueue from '../components/JobQueue.vue'
@@ -30,6 +32,7 @@ import {
   type Activity,
   ApiError,
   cancelFrame,
+  changedSinceRender,
   DOWNLOADING,
   getSession,
   imageUrl,
@@ -104,6 +107,11 @@ const latest = computed(() => session.value?.frames.at(-1))
 const pictureOf = (frame: PicturedFrame) => shownPicture(frame, session.value!.settings.imageModel)
 /** The picture of the Frame in the main panel. */
 const picture = computed(() => shown.value && pictureOf(shown.value))
+/** It's by another Image Model than the Chain's now (a Chain's prompts never change otherwise). */
+const pictureChanged = computed(() =>
+  !!picture.value && changedSinceRender(picture.value, session.value!.settings.imageModel)
+)
+const { labelOf, renderedParts } = useImageModels()
 /**
  * Looking at an earlier Frame; the next Action still continues from the latest one. While a Frame
  * runs, any committed Frame is earlier than it.
@@ -302,6 +310,11 @@ async function cancel() {
 /** Pictures on: a Chain can render as it goes; off, it only writes each Frame's prompt. */
 const { on: featureOn } = useFeatures()
 /** Flips whether each new Frame is rendered as it's made (the Chain's own switch). */
+/** The Chain switched Image Model: it comes back without what only a load adds. */
+function onImageModel(switched: ChainSession) {
+  session.value = { ...session.value!, ...switched }
+}
+
 async function switchRenderFrames(on: boolean) {
   try {
     session.value = await setRenderFrames(props.id, on)
@@ -350,15 +363,13 @@ async function undo() {
 }
 
 /**
- * "Text 9.8 s · Waited 12.3 s · Image 5.1 s": writing the Frame, then rendering the picture it
- * shows, once it has one.
+ * "Text 9.8 s · Waited 12.3 s · Image 5.1 s · by Qwen-Image 2.1": writing the Frame, then rendering
+ * the picture it shows, once it has one.
  */
 function timingsLabel(frame: ChainFrame): string {
-  const parts = [`Text ${frame.timings!.text.toFixed(1)} s`]
-  const t = pictureOf(frame)?.timings
-  if (t?.queued !== undefined) parts.push(`Waited ${t.queued.toFixed(1)} s`)
-  if (t) parts.push(`Image ${t.image.toFixed(1)} s`)
-  return parts.join(' · ')
+  const picture = pictureOf(frame)
+  return [`Text ${frame.timings!.text.toFixed(1)} s`, ...(picture ? renderedParts(picture) : [])]
+    .join(' · ')
 }
 
 /** The text box's border sweeps while the Text Model writes the new prompt. */
@@ -449,6 +460,11 @@ const promptDiff = computed(() => {
       <main class="flex min-w-0 flex-1 flex-col gap-3 p-4">
         <!-- The Chain's switches, above the picture, as a Roleplay's are above its conversation. -->
         <div v-if="featureOn('images')" class="flex items-center justify-end gap-4 text-sm">
+          <ImageModelPicker
+            :session="session"
+            @switched="onImageModel"
+            @failed="(message) => (frameError = message)"
+          />
           <label
             class="flex cursor-pointer items-center gap-1.5 text-muted"
             title="Off: each Action writes only the new prompt, and you render the Frames you want"
@@ -467,7 +483,7 @@ const promptDiff = computed(() => {
           :alt="shown?.prompt"
           :rendering="renderingPhase"
           :preview="forming"
-          :hide-size="busy"
+          :hide-size="busy || pictureChanged"
           :empty-text="busy ? undefined : shown ? 'Not rendered yet' : 'No image yet'"
           :expected-size="session.imageSize"
           @open="viewingPicture = shown!.index"
@@ -493,6 +509,13 @@ const promptDiff = computed(() => {
             role="status"
           >
             <span class="animate-pulse">{{ phaseLabel }}</span>
+          </div>
+          <div
+            v-else-if="pictureChanged"
+            class="absolute left-3 top-3 rounded-full bg-black/70 px-3 py-1 text-sm text-white"
+            data-changed
+          >
+            Changed since render · by {{ labelOf(picture!.imageModel) }}
           </div>
 
           <div
