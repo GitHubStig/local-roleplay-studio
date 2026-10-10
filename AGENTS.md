@@ -54,6 +54,10 @@ silicon, 48 GB) and a Windows PC (RTX 4070, 12 GB, 16 GB of RAM), sharing this r
 - Running the tasks sometimes prunes `deno.lock`. If it shows up changed and you didn't change
   dependencies, restore it (`git checkout deno.lock`).
 - Vue: `<script setup>`, template refs through `useTemplateRef`, Tailwind for styles.
+- Icons: a plain SVG file per icon in `web/src/assets/icons/` (24×24, drawn in `currentColor`
+  with a 2-wide stroke, no width or height, no comments), shown with `<Icon name="…" />`. Never inline an `<svg>`
+  in a component. Draw them for the app, rather than copying from an icon set, so none needs a
+  licence.
 - Every AI service sits behind an interface on the server (`TextModel`, `RoleplayModel`,
   `ImageGenerator`, `VoiceEngine`, `SceneMaker`, `FigureMaker`), chosen in `server/main.ts`. The
   Text Model is reached only through `Chat` (`server/text/`), so its client can be replaced in one

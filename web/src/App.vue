@@ -6,6 +6,7 @@ import { getHealth, KIND_LABELS } from './api'
 import { useCurrentSession } from './composables/useCurrentSession'
 import { sessionPath } from './sessionPath'
 import ThemeToggle from './components/ThemeToggle.vue'
+import Icon from './components/Icon.vue'
 
 const serverOnline = ref<boolean | null>(null)
 const route = useRoute()
@@ -49,9 +50,13 @@ useEventListener(window, 'focus', checkServer)
             title="Your Sessions, and new ones"
             data-nav-home
           >
+            <Icon name="house" />
             Home
           </RouterLink>
-          <RouterLink to="/settings" class="tab" active-class="tab-active">Settings</RouterLink>
+          <RouterLink to="/settings" class="tab" active-class="tab-active">
+            <Icon name="settings" />
+            Settings
+          </RouterLink>
           <RouterLink
             v-if="currentTo"
             :to="currentTo"
@@ -60,11 +65,15 @@ useEventListener(window, 'focus', checkServer)
             :title="`The Session opened last${currentSessionTitle ? `: ${currentSessionTitle}` : ''}`"
             data-current-session
           >
-            <span class="shrink-0 text-xs uppercase tracking-wide text-muted" data-current-kind>
-              {{ KIND_LABELS[currentSessionKind] }}
-            </span>
-            <span v-if="currentSessionTitle" class="truncate" data-current-title>
-              {{ currentSessionTitle }}
+            <!-- On the title's baseline: the smaller capitals sat off it, centred as boxes. -->
+            <span class="flex min-w-0 items-baseline gap-1.5">
+              <span class="shrink-0 text-xs uppercase tracking-wide text-muted" data-current-kind>
+                {{ KIND_LABELS[currentSessionKind] }}
+              </span>
+              <template v-if="currentSessionTitle">
+                <span class="text-muted" aria-hidden="true">·</span>
+                <span class="truncate" data-current-title>{{ currentSessionTitle }}</span>
+              </template>
             </span>
           </RouterLink>
         </nav>
