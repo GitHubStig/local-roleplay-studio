@@ -83,7 +83,8 @@ current Image Prompt + Action ──► Text Model (Text backend) ──► { ou
    - The paragraph is rendered as it is (no "adult, " in front since 2026-10-08; ADR 0002).
 5. **Image step.** Images render one at a time across all Sessions: if another Session is
    rendering, this Frame waits in a queue (shown as "Waiting for another render…", and
-   cancellable). Then the Session's Image backend renders it with the Session's seed and settings:
+   cancellable). Then the Session's Image backend renders it with the Session's Image Model, steps
+   and seed, and the rest as Settings are now (size, Fast…; see Consistency):
    the mflux CLI, one process per image ([ADR 0004](adr/0004-images-from-the-mflux-cli.md)), or a
    workflow queued on ComfyUI, followed over its WebSocket
    ([ADR 0009](adr/0009-comfyui-image-backend.md)). When its turn comes, the Text Model is unloaded
@@ -339,8 +340,10 @@ click outside the image dismisses it, and "Open full size" opens the file itself
 ← and → (or ‹ ›) step to the previous or next rendered Frame, scrolling the conversation behind to
 it,
 with progress, the sweep and Cancel in place; **Upscale** works as on any Frame. Picturing a
-rendered Frame again, or editing the Look, marks its picture "Changed since render" until it's
-re-rendered; Undo deletes the undone exchange's picture. For debugging, each picture's time and the Art
+rendered Frame again, or editing the Look, marks its pictures "Changed since render" until it's
+re-rendered, as does a picture by another Image Model than the Roleplay's; the Image Prompt block
+adds how the shown picture was rendered ("Rendered: Image 34.1 s · by Qwen-Image 2.1"). Undo
+deletes the undone exchange's pictures. For debugging, each picture's time and the Art
 Agent's reasoning (when Thinking is on) are saved on the Frame (`pictureTimings`,
 `pictureThinking`) and the Look's on the Session (`lookTimings`, `lookThinking`); the Image
 Prompt block shows the time, with the reasoning collapsed under it. While the Limits are on, the Art
@@ -365,9 +368,25 @@ written for image prompts, are left out).
   different one. 3D figures (TripoSplat, LiTo) always use seed 42 for now; SHARP samples nothing.
 - **Subject description:** carried in the first sentence (subject and identity), which the Text
   Model copies word for word unless an Action changes it.
-- **Settings are copied into each Session when it starts,** so changing Settings mid-Session
-  never changes the Image Model, seed or size of a running Session. Changes apply from the next
-  Session.
+- **A Session keeps what defines its pictures** ([ADR 0015](adr/0015-a-picture-per-image-model.md)):
+  its Image backend, Image Model, steps and seed, copied from Settings when it starts. How a render
+  runs is read from Settings at each render (`RENDER_SETTINGS`: size, Fast, step cache, quantize,
+  float16, ComfyUI's address), so a change there reaches running Sessions too, as the Upscaler, Art
+  Agent and Limits already did. The Text backend, Text Model and Thinking also stay as the Session
+  started.
+- **The Image Model is switched in the Session** (2026-10-10), from the picker beside its switches
+  (`ImageModelPicker`), which shows the steps a render takes next to it (the model's fast steps when
+  Fast is on). Switching resets the steps to the new model's default and changes nothing else.
+  Settings' Image Model is the one new Sessions start with. Renders under way finish on the old
+  model; queued ones read the Session when their turn comes, so they use the new one.
+- **A Frame keeps a picture per Image Model** (`pictures`, `server/pictures.ts`), each with its
+  upscale, scene, figures, stale flag and render timings. It shows its picture by the Session's
+  model, or else its latest, which then reads **Changed since render · by <model>**; a picture whose
+  Image Prompt changed since is stale, whichever model made it. A render replaces only its own
+  model's picture (deleting its files), so switching back shows the old ones without rendering.
+  Upscales and 3D are made from the picture shown when the job starts, and saved onto that one.
+  Render timings end "by <model>". Older `session.json` files, with the picture on the Frame
+  itself, aren't migrated: their pictures don't show.
 
 In testing, FLUX.2 Klein 4B keeps a person's face, hair and outfit consistent across Frames. Z-Image
 Turbo ignores a described appearance. For drift, see *reference images and edits for Subject
@@ -391,8 +410,9 @@ consistency* in [open-threads.md](open-threads.md).
   Chain's own switch, saved with it as `renderFrames`) is on when pictures are available: each
   Action writes the new prompt and renders it. Off (and always, without pictures) each Action
   writes only the prompt; the Frame reads "Not rendered yet", with a dashed thumbnail, and its
-  **Render** button queues its picture. A Chain
-  Frame's picture never changes once made, so there's no Re-render. The Narration is a caption over the bottom of the photo
+  **Render** button queues its picture. A Chain Frame's prompt never changes, so a picture by the
+  Chain's Image Model is never out of date: **Re-render** is offered only for a Frame with none by
+  that model, after a switch, whose picture shows **Changed since render · by <model>**. The Narration is a caption over the bottom of the photo
   (provisional text shows dimmed and in italics while a Frame runs); the caption can be hidden,
   and that choice is remembered per browser. The Frame's status ("Rendering the image… step 2 of 4") is a
   pill in the image's top corner. Enter sends; Shift+Enter adds a new line. A done Frame clears the text box; a declined or
@@ -425,7 +445,8 @@ consistency* in [open-threads.md](open-threads.md).
   same render queue, with the same sweep and step count, queued as a job so the next Action (or
   edit) needn't wait. The original stays as the thumbnail; the
   main view shows the upscaled image. The button reads **Upscaled**, disabled, once done (saved
-  as `upscaled` on the Frame, in a `-2048` file next to the original). Hovering the image shows its size in pixels in the top-left
+  as `upscaled` on the picture, in a `-2048` file next to the original; a picture by another model
+  has its own). Hovering the image shows its size in pixels in the top-left
   corner ("768×512", then "3072×2048" once upscaled), except while the status pill is there.
   Clicking the image opens it in the same viewer as a Roleplay's pictures (`FrameViewer`; ← and →
   step through the Frames), and so does a Storyboard's. Only there does it zoom: pinching the
@@ -439,11 +460,12 @@ consistency* in [open-threads.md](open-threads.md).
   Frames list fills in as the plan streams: Beats first (each marked "Writing…"), then each
   Frame's sentences; the status pill counts "Writing Frame 3 of 8…". The main area shows the
   selected Frame's image (or "Not rendered yet"), its Beat as a caption and a pill with its status:
-  **Draft** (never rendered), **Rendered**, **Changed since render** (stale) or **Blocked**. Below
+  **Draft** (never rendered), **Rendered**, **Changed since render** (stale, or by another Image
+  Model than the Storyboard's) or **Blocked**. Below
   it: an Action box that edits the selected Frame (Enter sends; a declined or unclear Action stays
   to reword; the Narration shows in the button row), the picture buttons every kind shares
   (**Render**/**Re-render**, **Upscale**, SHARP, TripoSplat, LiTo), each queued as a job, and
-  **Render all (N)**, which queues a render of every draft or stale Frame not already queued,
+  **Render all (N)**, which queues a render of every draft or changed Frame not already queued,
   skipping blocked ones. Editing carries on while they run. The Frames list shows the queue above
   each Frame's thumbnail (dimmed when stale), Beat and status (or the job working on it). The Prompt panel has the **Look** (each person's name and identity in a card of their
   own, which collapses to the name and a preview; people can be added or removed; and the art style, saved for every Frame) and the selected Frame's **Shows**
@@ -490,13 +512,13 @@ consistency* in [open-threads.md](open-threads.md).
   that pictures Roleplay Frames, with Thinking off, or "Same as the Text Model"), Art Agent style
   (prose, recommended, or tags), Limits (on by default; off leaves only "everyone depicted is an
   adult") and, on its own Seed tab as it seeds every model, the seed (random per Session, or
-  fixed). Settings are copied into a Session when it starts, except the Upscaler and where it runs,
-  Art Agent model and style, and Limits, which apply at once.
+  fixed). A Session copies the Text backend and model, Thinking, the Image backend and model, steps
+  and seed when it starts; the rest applies at once, to running Sessions too (see Consistency).
 - **Theme:** Light (a parchment tint), Dark or System, remembered per browser. It's a display
   preference, not a Setting.
 
-**Undo** removes the latest Frame: the previous Frame's Image Prompt is current again, its image is
-deleted unless an earlier Frame still shows it, and the undone Action goes back into the text
+**Undo** removes the latest Frame: the previous Frame's Image Prompt is current again, its pictures
+(by every Image Model) and what was made from them are deleted, and the undone Action goes back into the text
 box (unless you've started typing a new one). It's offered in the button row and on the latest
 Frame in the Frames list, never for the Opening Frame, and never while a Frame runs. Image files carry
 a random suffix, so a Frame made after an Undo never reuses the undone Frame's file name, and the
@@ -526,6 +548,7 @@ All under `/api`; the Vite dev server proxies it to the Deno server.
 | `GET /scenarios` | Scenario summaries plus files that failed to load |
 | `GET /sessions` | Session summaries, newest first, with each one's current activity |
 | `POST /sessions` | Start a Session: `{ kind?: "chain" \| "storyboard" \| "roleplay", scenarioId \| brief, frameCount? }`; every kind starts without pictures (a Chain then with `renderFrames` off) |
+| `PUT /sessions/:id/image-model` | Switch the Session's Image Model, `{ imageModel }` (one of its Image backend's; `400` otherwise), resetting its steps to that model's default; returns the Session |
 | `PUT /sessions/:id/render-frames` | Chain: whether each new Frame is rendered as it's made, `{ renderFrames }` (`409` to turn it on without pictures) |
 | `DELETE /sessions/:id` | Delete a Session and its images (`409` while a Frame runs) |
 | `GET /sessions/:id` | A Session with its Frames, plus `activity`: what a running Frame is doing, or `null` |
@@ -544,7 +567,7 @@ All under `/api`; the Vite dev server proxies it to the Deno server.
 | `POST /sessions/:id/roleplay/suggest` | Roleplay: suggest a Message from `{ draft? }`, streaming `suggestion-part` (`text`, all of it so far), then `suggestion` (`text`, tidied); nothing is saved |
 | `DELETE /sessions/:id/roleplay/frames/:index` | Roleplay: undo the latest exchange (`409` for any other, and for the opening) |
 | `GET /sessions/:id/jobs` | Roleplay or Chain: its background jobs (picture, render, upscale, voice, speak, scene, figure, lito): running, queued, then failed, each with its `phase`, `progress` or `error` |
-| `POST /sessions/:id/jobs` | Every kind: a Chain `upscale`, `scene`, `figure`, `lito`, and `render` of a Frame made without its picture; a Storyboard `render` too; a Roleplay all. Queue `{ kind: "picture" \| "render" \| "upscale" \| "voice" \| "speak" \| "speak-thought" \| "scene" \| "figure" \| "lito", frameIndex }` (`voice` designs a new take of the Character's voice; `speak-thought` speaks the Frame's thought, whispered; `scene` makes the picture into a 2.5D scene (SHARP); `figure` lifts its person out as a 3D figure (TripoSplat), and `lito` does so with LiTo; `409` to speak a Frame with nothing to say aloud, or no thought, or to make a picture job on a Frame with no picture and no render or picture queued to make one, or to render a blocked Storyboard Frame (`422`)); returns the queue (asking twice for the same job queues it once) |
+| `POST /sessions/:id/jobs` | Every kind: a Chain `upscale`, `scene`, `figure`, `lito`, and `render` of a Frame with no picture by the Chain's Image Model; a Storyboard `render` too; a Roleplay all. Queue `{ kind: "picture" \| "render" \| "upscale" \| "voice" \| "speak" \| "speak-thought" \| "scene" \| "figure" \| "lito", frameIndex }` (`voice` designs a new take of the Character's voice; `speak-thought` speaks the Frame's thought, whispered; `scene` makes the picture into a 2.5D scene (SHARP); `figure` lifts its person out as a 3D figure (TripoSplat), and `lito` does so with LiTo; `409` to speak a Frame with nothing to say aloud, or no thought, or to make a picture job on a Frame with no picture and no render or picture queued to make one, or to render a blocked Storyboard Frame (`422`)); returns the queue (asking twice for the same job queues it once) |
 | `POST /sessions/:id/jobs/:job/retry` | Roleplay or Chain: put a failed job back at the end of the queue (`404` if there's no such failed job) |
 | `DELETE /sessions/:id/jobs/:job` | Roleplay or Chain: cancel a queued or running job, or dismiss a failed one |
 | `PUT /sessions/:id/roleplay/look` | Roleplay: replace the Look, `{ subject, style }`, rewriting every pictured Frame (`400` if incomplete, `422` if it crosses a Limit) |
@@ -583,7 +606,7 @@ The design Q&A, and what changed later.
 | Where it runs | A Mac with Apple silicon | Since 2026-10-07 also Windows with an NVIDIA card (ComfyUI, SHARP, TripoSplat), or both together |
 | Frame state | The Scene only, no history (ADR 0001) | The Image Prompt: one paragraph of nine sentences (ADR 0005) |
 | Text Model output | One JSON call | `{ outcome, narration, prompt }`, the prompt as one paragraph |
-| Settings | Server-side `settings.json`; apply from the next Session | Small sizes added |
+| Settings | Server-side `settings.json`; apply from the next Session | Small sizes added; since 2026-10-10 how a render runs applies at once, and the Image Model is switched in the Session, keeping a picture per model (ADR 0015) |
 | Side panel | Frames list with thumbnails; End/Reset as buttons only | End and Reset removed; Sessions are listed, opened and deleted on Home |
 | Several Sessions rendering | Queue images one at a time across Sessions | A queued Frame keeps you in its Session |
 | What an Action can change | Pose, camera, lighting, set, per Scenario | Anything in the prompt, within the four Limits |

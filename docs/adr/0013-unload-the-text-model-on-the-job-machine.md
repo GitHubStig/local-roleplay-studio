@@ -16,7 +16,8 @@ Since 2026-10-09 the job unloads it **only when both run on the same machine**
 (ADR 0009, ADR 0010), and unloading the Mac's Text Model for a render on a PC freed nothing: it only
 made the next Reply reload it. Where each job runs:
 
-- a render: on its Session's Image backend (ComfyUI at the Session's address, or mflux here);
+- a render: on its Session's Image backend (ComfyUI at Settings' address, read at each render
+  since 2026-10-10 as ADR 0015 says, or mflux here);
 - an upscale and a voice: on the backend Settings choose now (ComfyUI at Settings' address, or
   mflux and the voice service here);
 - a scene or a figure: here (SHARP, TripoSplat, LiTo).

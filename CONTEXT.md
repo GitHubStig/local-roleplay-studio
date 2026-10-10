@@ -123,7 +123,7 @@ Removing the latest Frame of a Chain (so the previous Frame is current again) or
 _Avoid_: Delete frame, revert, rollback
 
 **Upscale**:
-Enlarging a rendered Frame's image so its shortest edge is 2048 px, with the SeedVR2 upscaler; the original image is kept, and an upscaled Frame is flagged so it isn't upscaled twice. A re-render drops the upscale.
+Enlarging a Frame's picture so its shortest edge is 2048 px, with the SeedVR2 upscaler; the original image is kept, and an upscaled picture is flagged so it isn't upscaled twice. A re-render by the same Image Model drops it; a picture by another model has its own.
 _Avoid_: Enhance, HD, super-resolution
 
 ### Configuration
@@ -137,7 +137,7 @@ Where the Text Model runs: Ollama, or a server with the OpenAI chat API (LM Stud
 _Avoid_: provider, engine
 
 **Image Model**:
-The model that renders an Image Prompt into an image (Qwen-Image 2.1 by default). It runs on an **Image backend**.
+The model that renders an Image Prompt into an image (Qwen-Image 2.1 by default). It runs on an **Image backend**. A Session starts on the one Settings name and can be switched to another; each Frame keeps its picture by every model it was rendered with, and shows the one by the Session's model.
 _Avoid_: Model, diffusion model, generator
 
 **Image backend**:
