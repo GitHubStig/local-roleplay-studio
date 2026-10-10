@@ -293,6 +293,24 @@ describe('SessionView', () => {
     expect(wrapper.find('[data-pending-frame]').attributes('aria-current')).toBe('true')
   })
 
+  it('moves through the Frames with ↑ and ↓ in their list', async () => {
+    vi.mocked(api.getSession).mockResolvedValue(session([frame(0, null), frame(1, 'Sit')]))
+    const { wrapper } = await mountIt()
+    const current = () =>
+      wrapper.findAll('[data-frame]').findIndex((f) => f.attributes('aria-current') === 'true')
+    const press = async (key: string) => {
+      await wrapper.findAll('[data-frame]')[current()].trigger('keydown', { key })
+      await flushPromises()
+    }
+    expect(current()).toBe(1)
+    await press('ArrowUp')
+    expect(current()).toBe(0)
+    await press('ArrowUp')
+    expect(current()).toBe(0)
+    await press('ArrowDown')
+    expect(current()).toBe(1)
+  })
+
   it('shows an earlier Frame when picked from the Frames', async () => {
     vi.mocked(api.getSession).mockResolvedValue(session([frame(0, null), frame(1, 'Sit')]))
     const { wrapper } = await mountIt()

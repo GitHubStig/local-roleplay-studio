@@ -437,7 +437,8 @@ consistency* in [open-threads.md](open-threads.md).
   button row. Typed text is always treated as an Action; there are no typed commands.
   The right side has two panels: side by side on wide windows (1280 px and up), as tabs on
   narrower ones. **Frames list** shows a thumbnail, the Action and the Narration per
-  Frame; clicking one shows that Frame. While an earlier Frame is shown, a pill on the image reads
+  Frame; clicking one shows that Frame, and ↑ and ↓ in the list step to the one before or after
+  (a Storyboard's too; `useFrameKeys`). While an earlier Frame is shown, a pill on the image reads
   "Viewing Frame 1 of 4 · Back to latest", and the text box shows the Action that made that
   Frame, read-only (still selectable, to copy), with Send disabled; "Back to latest" brings your
   draft back. Actions always build on the latest Frame, never on the one being viewed. Declined Frames are labelled and tinted amber, Unclear

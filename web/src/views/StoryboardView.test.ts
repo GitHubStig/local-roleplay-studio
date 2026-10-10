@@ -187,6 +187,22 @@ describe('StoryboardView', () => {
     expect(router.currentRoute.value.path).toBe('/sessions/sb')
   })
 
+  it('moves through the Frames with ↑ and ↓ in their list', async () => {
+    const { wrapper } = await mountIt()
+    const current = () =>
+      wrapper.findAll('[data-frame]').findIndex((f) => f.attributes('aria-current') === 'true')
+    const press = async (key: string) => {
+      await wrapper.findAll('[data-frame]')[current()].trigger('keydown', { key })
+      await flushPromises()
+    }
+    expect(current()).toBe(0)
+    await press('ArrowDown')
+    expect(current()).toBe(1)
+    await press('ArrowUp')
+    await press('ArrowUp')
+    expect(current()).toBe(0)
+  })
+
   it('queues a render of the selected Frame, and says so on it', async () => {
     const { wrapper } = await mountIt()
     await wrapper.findAll('[data-frame]')[1].trigger('click')

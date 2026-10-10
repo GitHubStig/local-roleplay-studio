@@ -25,6 +25,7 @@ import Frame3dViewers from '../components/Frame3dViewers.vue'
 import FrameViewer from '../components/FrameViewer.vue'
 import JobQueue from '../components/JobQueue.vue'
 import { useJobs } from '../composables/useJobs'
+import { useFrameKeys } from '../composables/useFrameKeys'
 import { formingOf, jobForming, queueTabLabel, sweepOf } from '../jobs'
 import { useShownPreview } from '../composables/useShownPreview'
 import { useStoredFlag } from '../composables/useStoredFlag'
@@ -126,6 +127,12 @@ const viewingOlder = computed(() =>
 const pick = (index: number) => {
   viewing.value = index === (session.value?.frames.length ?? 0) - 1 && !busy.value ? null : index
 }
+/** ↑ and ↓ in the Frames list; from the Frame in progress, ↑ goes to the latest. */
+const onFrameKey = useFrameKeys(log, {
+  count: () => session.value?.frames.length ?? 0,
+  current: () => shown.value?.index ?? session.value?.frames.length ?? 0,
+  pick,
+})
 const frameName = (index: number) => (index === 0 ? 'the Opening' : `Frame ${index}`)
 /** The same, starting a title: the viewers' labels. */
 const frameTitle = (index: number) => (index === 0 ? 'The Opening' : `Frame ${index}`)
@@ -719,7 +726,13 @@ const promptDiff = computed(() => {
               @clear="clear"
             />
           </div>
-          <ol v-show="panel !== 'queue'" ref="log" class="flex-1 overflow-y-auto" role="tabpanel">
+          <ol
+            v-show="panel !== 'queue'"
+            ref="log"
+            class="flex-1 overflow-y-auto"
+            role="tabpanel"
+            @keydown="onFrameKey"
+          >
           <li v-for="frame in session.frames" :key="frame.index" class="group relative">
             <button
               type="button"

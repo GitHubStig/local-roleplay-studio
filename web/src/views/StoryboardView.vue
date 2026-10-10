@@ -7,6 +7,7 @@ import {
   onDeactivated,
   onMounted,
   ref,
+  useTemplateRef,
   watch,
 } from 'vue'
 import { useRouter } from 'vue-router'
@@ -47,6 +48,7 @@ import PanelTabs from '../components/PanelTabs.vue'
 import { useImageModels } from '../composables/useSettingsOptions'
 import { useFeatures } from '../composables/useFeatures'
 import { useJobs } from '../composables/useJobs'
+import { useFrameKeys } from '../composables/useFrameKeys'
 import { JOB_NAMES, jobForming, jobStatus, queueTabLabel, sweepOf } from '../jobs'
 import { clearCurrentSession, setCurrentSession } from '../composables/useCurrentSession'
 import { useStoredText } from '../composables/useStoredText'
@@ -377,6 +379,12 @@ const viewingPicture = ref<number | null>(null)
 /** Which Frame's scene or figure is open, if any. */
 const open3d = ref<{ index: number; kind: Made3d } | null>(null)
 const frameTitle = (index: number) => `Frame ${index + 1}`
+/** ↑ and ↓ in the Frames list. */
+const onFrameKey = useFrameKeys(useTemplateRef<HTMLElement>('frameList'), {
+  count: () => frames.value.length,
+  current: () => selected.value,
+  pick: (index) => (selected.value = index),
+})
 /** Rendering needs pictures on; off, a Storyboard's plan can still be read and edited. */
 const { on: featureOn } = useFeatures()
 const imagesOn = computed(() => featureOn.value('images'))
@@ -541,7 +549,13 @@ const imagesOn = computed(() => featureOn.value('images'))
               @clear="clear"
             />
           </div>
-          <ol v-show="panel !== 'queue'" class="flex-1 overflow-y-auto" role="tabpanel">
+          <ol
+            v-show="panel !== 'queue'"
+            ref="frameList"
+            class="flex-1 overflow-y-auto"
+            role="tabpanel"
+            @keydown="onFrameKey"
+          >
             <li v-for="f in frames" :key="f.index">
               <button
                 type="button"
