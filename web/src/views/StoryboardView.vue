@@ -41,6 +41,7 @@ import JobQueue from '../components/JobQueue.vue'
 import LookForm from '../components/LookForm.vue'
 import PictureButtons from '../components/PictureButtons.vue'
 import ImageModelPicker from '../components/ImageModelPicker.vue'
+import ModelComparison from '../components/ModelComparison.vue'
 import { useImageModels } from '../composables/useSettingsOptions'
 import { useFeatures } from '../composables/useFeatures'
 import { useJobs } from '../composables/useJobs'
@@ -394,6 +395,12 @@ const imagesOn = computed(() => featureOn.value('images'))
             :session="session"
             @switched="onImageModel"
             @failed="(text) => (message = { kind: 'error', text })"
+          />
+          <ModelComparison
+            :session-id="session.id"
+            :frames="session.frames"
+            :image-model="session.settings.imageModel"
+            :name="frameTitle"
           />
         </div>
         <FrameImage

@@ -387,6 +387,11 @@ written for image prompts, are left out).
   Upscales and 3D are made from the picture shown when the job starts, and saved onto that one.
   Render timings end "by <model>". Older `session.json` files, with the picture on the Frame
   itself, aren't migrated: their pictures don't show.
+- **Compare** (2026-10-10), beside the picker once two Image Models have rendered in a Session
+  (`ModelComparison`): a full-window table with a row per pictured Frame and a column per model, in
+  the order they first rendered, the Session's own marked "current", a stale picture dimmed and a
+  gap marked "Not rendered". A picture opens in the viewer, where ← and → step through that Frame's
+  pictures by the other models, and ↑ and ↓ through the Frames that model rendered.
 
 In testing, FLUX.2 Klein 4B keeps a person's face, hair and outfit consistent across Frames. Z-Image
 Turbo ignores a described appearance. For drift, see *reference images and edits for Subject

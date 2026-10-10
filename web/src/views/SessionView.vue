@@ -17,6 +17,7 @@ import ComposeBox from '../components/ComposeBox.vue'
 import FrameImage from '../components/FrameImage.vue'
 import PictureButtons from '../components/PictureButtons.vue'
 import ImageModelPicker from '../components/ImageModelPicker.vue'
+import ModelComparison from '../components/ModelComparison.vue'
 import { useImageModels } from '../composables/useSettingsOptions'
 import Frame3dViewers from '../components/Frame3dViewers.vue'
 import FrameViewer from '../components/FrameViewer.vue'
@@ -464,6 +465,12 @@ const promptDiff = computed(() => {
             :session="session"
             @switched="onImageModel"
             @failed="(message) => (frameError = message)"
+          />
+          <ModelComparison
+            :session-id="session.id"
+            :frames="session.frames"
+            :image-model="session.settings.imageModel"
+            :name="frameTitle"
           />
           <label
             class="flex cursor-pointer items-center gap-1.5 text-muted"
