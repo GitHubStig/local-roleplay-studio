@@ -29,8 +29,7 @@ export const SCENES_OFF = "SHARP isn't set up on this server"
 /**
  * Makes Frame `index`'s picture into a 3D scene, in its turn behind any render: SHARP and an Image
  * Model each want 15 GB or more. Made from the upscale if the Frame has one, else the original.
- * Every Frame showing that picture gets it (a Chain Frame reuses the picture before it when nothing
- * changed). Making it again replaces the old one.
+ * Making it again replaces the old one.
  */
 export async function makeScene<S extends ScenedSession>(
   deps: SceneDeps,
@@ -79,7 +78,7 @@ export async function makeScene<S extends ScenedSession>(
       replaced = current.scene?.file
       return {
         ...latest,
-        frames: latest.frames.map((f) => (f.image === image ? { ...f, scene } : f)),
+        frames: latest.frames.map((f) => (f.index === index ? { ...f, scene } : f)),
       }
     })
     if (replaced) await Deno.remove(join(dir, replaced)).catch(() => {})

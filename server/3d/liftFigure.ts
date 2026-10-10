@@ -40,8 +40,7 @@ export class FigureError extends Error {}
 
 /**
  * Lifts the person in Frame `index`'s picture out as a full 3D figure with TripoSplat or Apple's LiTo
- * (from its upscale if it has one), in its turn behind any render, replacing the one it had. Every
- * Frame showing that picture gets it (a Chain Frame reuses the picture before it).
+ * (from its upscale if it has one), in its turn behind any render, replacing the one it had.
  * Anyone overlapping them takes parts of them away, and two people in the picture may come out as
  * one.
  */
@@ -94,7 +93,7 @@ export async function liftFigure<S extends FiguredSession>(
       replaced = current[key]?.file
       return {
         ...latest,
-        frames: latest.frames.map((f) => (f.image === image ? { ...f, [key]: figure } : f)),
+        frames: latest.frames.map((f) => (f.index === index ? { ...f, [key]: figure } : f)),
       }
     })
     if (replaced) await Deno.remove(join(dir, replaced)).catch(() => {})

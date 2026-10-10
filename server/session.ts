@@ -20,7 +20,7 @@ export interface FrameTimings {
   text: number
   /** Waiting for another Session's render to finish; only present if it had to wait. */
   queued?: number
-  /** Rendering the image; null when the previous image was reused. */
+  /** Rendering the image; null until it's rendered. */
   image: number | null
 }
 
@@ -33,12 +33,9 @@ interface FrameBase {
   image: string | null
   /** File name of the image upscaled to 2048 px, once the player has upscaled it. */
   upscaled?: string
-  /**
-   * The picture made into a 2.5D scene (SHARP), once asked for; shared like `upscaled` (a Chain
-   * Frame reuses the picture before it when nothing changed).
-   */
+  /** The picture made into a 2.5D scene (SHARP), once asked for. */
   scene?: Scene
-  /** The person in the picture as a 3D figure (TripoSplat), once asked for; shared likewise. */
+  /** The person in the picture as a 3D figure (TripoSplat), once asked for. */
   figure?: Figure
   /** The same, made with Apple's LiTo. */
   lito?: Figure

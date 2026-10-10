@@ -42,7 +42,7 @@ export function imageProgress(emit: (event: ProgressEvent) => void) {
   }
 }
 
-/** Progress of an upscale; ends with the Session, every Frame showing that image now upscaled. */
+/** Progress of an upscale; ends with the Session, the Frame now upscaled. */
 export type UpscaleEvent = ProgressEvent | { type: 'upscaled'; session: Session }
 
 export interface FrameDeps {
@@ -222,9 +222,9 @@ export async function removeImage(dir: string, name: string): Promise<void> {
 export class UpscaleError extends Error {}
 
 /**
- * Upscales Frame `index`'s image to 2048 px through the shared render queue, then marks every
- * Frame showing that image (a Chain Frame reuses the image before it when nothing changed) as
- * upscaled. Keeps the original image, which thumbnails and re-renders still use.
+ * Upscales Frame `index`'s image to 2048 px through the shared render queue, then marks the Frame,
+ * if it still shows that image, as upscaled. Keeps the original image, which thumbnails and
+ * re-renders still use.
  */
 export async function upscaleFrame(
   deps: Pick<FrameDeps, 'store' | 'imageGenerator' | 'renderQueue'>,
@@ -261,7 +261,9 @@ export async function upscaleFrame(
     const updated = await save((latest) =>
       ({
         ...latest,
-        frames: latest.frames.map((f) => (f.image === image ? { ...f, upscaled } : f)),
+        frames: latest.frames.map((f) =>
+          f.index === index && f.image === image ? { ...f, upscaled } : f
+        ),
       }) as Session
     )
     emit({ type: 'upscaled', session: updated })

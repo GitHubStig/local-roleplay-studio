@@ -35,7 +35,7 @@ Action ──► Limits check (term list; a real-person question if it names som
    ▼
 current Image Prompt + Action ──► Text Model (Text backend) ──► { outcome, narration, prompt }
                                                               │
-     engine: declined / unclear / Limit crossed / unchanged? keep the previous prompt and image
+     engine: declined / unclear / Limit crossed / unchanged? save no Frame
                                                               │
                             the paragraph ──► Image Model (Image backend) ──► frame-N-xxxx.png
                                                               │
@@ -54,7 +54,9 @@ current Image Prompt + Action ──► Text Model (Text backend) ──► { ou
    never sees earlier Frames ([ADR 0001](adr/0001-scene-is-sole-turn-state.md)). The reply is
    constrained by a JSON schema (Ollama's `format`, or the OpenAI API's `response_format`), with `outcome` (`done`, `declined` or
    `unclear`) first, so the model decides before it writes. The Narration is a terse list of what
-   changed ("Pose: crouching low. Environment: teal backdrop."). The reply is streamed. With
+   changed ("Pose: crouching low. Environment: teal backdrop."): the model's own account, not
+   checked against the prompt, so it can miss or overstate a change; the Prompt tab's word diff is
+   always right. The reply is streamed. With
    **Thinking** on (a Setting, for models that support it) the model reasons first; its
    reasoning streams to the player and is saved with the Frame. Models that can't think are asked
    again without it.
@@ -72,7 +74,11 @@ current Image Prompt + Action ──► Text Model (Text backend) ──► { ou
      Roleplay Message saves nothing: the stream ends with `declined` or `unclear` (`message`), the
      Action stays in the box, and the reason or question shows beside it, amber or blue (since
      2026-10-05; older Chains may still hold Declined and Unclear Frames).
-   - A done Frame whose Image Prompt came back unchanged also reuses the previous image.
+   - A done Action whose Image Prompt came back unchanged saves no Frame either (since
+     2026-10-10; it used to reuse the previous picture): there'd be nothing new to see, and it's
+     often a Narration claiming a change the prompt doesn't have. The stream ends with
+     `unchanged`, and "Nothing in the picture changed. Try rewording the Action." shows in blue.
+     So every Chain Frame has a picture of its own.
    - The Opening Frame always counts as done; if its prompt crosses a Limit, it fails.
    - The paragraph is rendered as it is (no "adult, " in front since 2026-10-08; ADR 0002).
 5. **Image step.** Images render one at a time across all Sessions: if another Session is
@@ -223,9 +229,8 @@ under `/api/sessions/:id/roleplay/` ([ADR 0007](adr/0007-roleplay-is-a-conversat
    titled by model ("Frame 8 · SHARP, 2.5D"). Both are queued jobs (`scene`, `figure`) that wait
    their turn in the render queue, and both are made from the upscale when the Frame has one; a
    re-render or Undo deletes them, and making one again replaces it. A **Chain** has all three
-   buttons too, beside Upscale on the shown Frame, queued like a Roleplay's (below); as with the
-   upscale, every Frame showing that picture shares what was made from it, and Undo deletes it only
-   with the picture.
+   buttons too, beside Upscale on the shown Frame, queued like a Roleplay's (below), and Undo
+   deletes them with the picture.
    - **SHARP** (`server/3d/scene.ts`, `python/sharp/make.py`) turns the picture into about 1.2 million
      Gaussian splats (SHARP works at 1536 px, so the 2048 px upscale has more to give it; a scene
      made before its picture was upscaled offers **SHARP again from upscale**). SHARP peaks near
@@ -280,7 +285,7 @@ upscales and 3D also wait their turn in the render queue every Session shares). 
 Session's lock; every change to a Roleplay or a Chain (a Reply, a picture, a render, a Chain Frame,
 an Undo) is saved by reloading it and applying just that change, one at a time
 (`server/update.ts`), so none overwrites another. A Chain queues `upscale`, `scene`, `figure` and
-`lito`; a Chain Frame that reuses the picture before it takes what has been made from it by then. The queue lives in memory: restarting the
+`lito`. The queue lives in memory: restarting the
 server forgets it. A job asked for before what it needs exists (a render queued behind its
 picture) waits its turn and fails with a reason if that still isn't there; failed jobs stay
 listed, with **Retry** (back to the end of the queue) and **Dismiss**. Undoing an exchange (or a
@@ -386,7 +391,7 @@ consistency* in [open-threads.md](open-threads.md).
   Chain's own switch, saved with it as `renderFrames`) is on when pictures are available: each
   Action writes the new prompt and renders it. Off (and always, without pictures) each Action
   writes only the prompt; the Frame reads "Not rendered yet", with a dashed thumbnail, and its
-  **Render** button queues the picture, which every Frame sharing that prompt then shows. A Chain
+  **Render** button queues its picture. A Chain
   Frame's picture never changes once made, so there's no Re-render. The Narration is a caption over the bottom of the photo
   (provisional text shows dimmed and in italics while a Frame runs); the caption can be hidden,
   and that choice is remembered per browser. The Frame's status ("Rendering the image… step 2 of 4") is a
@@ -401,7 +406,7 @@ consistency* in [open-threads.md](open-threads.md).
   Frame, read-only (still selectable, to copy), with Send disabled; "Back to latest" brings your
   draft back. Actions always build on the latest Frame, never on the one being viewed. Declined Frames are labelled and tinted amber, Unclear
   Frames ("Didn't understand") blue, both in the log and on the caption. **Prompt** shows the
-  viewed Frame's timings ("Text 9.8 s · Waited 12.3 s · Image 5.1 s", or "Image reused"; also
+  viewed Frame's timings ("Text 9.8 s · Waited 12.3 s · Image 5.1 s", without the image until it's rendered; also
   saved per Frame in `session.json`), its Image Prompt as a word-level diff against the Frame before it (added words
   highlighted, removed words struck through; a "Show removed words" switch hides the struck-out
   words, remembered per browser), then its thinking (collapsed, when there was any).
@@ -419,9 +424,8 @@ consistency* in [open-threads.md](open-threads.md).
   whichever backend rendered), through the
   same render queue, with the same sweep and step count, queued as a job so the next Action (or
   edit) needn't wait. The original stays as the thumbnail; the
-  main view shows the upscaled image. The button reads **Upscaled**, disabled, once done, and
-  every Chain Frame that reuses that image shares the upscale (saved as `upscaled` on the Frame,
-  in a `-2048` file next to the original). Hovering the image shows its size in pixels in the top-left
+  main view shows the upscaled image. The button reads **Upscaled**, disabled, once done (saved
+  as `upscaled` on the Frame, in a `-2048` file next to the original). Hovering the image shows its size in pixels in the top-left
   corner ("768×512", then "3072×2048" once upscaled), except while the status pill is there.
   Clicking the image opens it in the same viewer as a Roleplay's pictures (`FrameViewer`; ← and →
   step through the Frames), and so does a Storyboard's. Only there does it zoom: pinching the

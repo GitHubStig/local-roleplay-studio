@@ -799,17 +799,17 @@ Deno.test('Cancelling a plan discards the Storyboard', () =>
     assertEquals((await call('GET', '/api/sessions/s1')).status, 404)
   }))
 
-/** A Chain with an Opening Frame and a second Frame that reuses its picture (nothing changed). */
+/** A Chain with an Opening Frame and a second Frame, and a reply left for a third. */
 async function chainOfTwo(root: string, opts: Partial<Parameters<typeof setup>[0]> = {}) {
   const app = setup({
     root,
     settings: { textModel: 'x' },
-    textModel: scriptedTextModel([reply('standing'), reply('standing'), reply('standing')]),
+    textModel: scriptedTextModel([reply('standing'), reply('sitting'), reply('kneeling')]),
     ...opts,
   })
   await app.call('POST', '/api/sessions', { scenarioId: 'test' })
   await readEvents(await app.call('POST', '/api/sessions/s1/frames', {}))
-  await readEvents(await app.call('POST', '/api/sessions/s1/frames', { action: 'Stay' }))
+  await readEvents(await app.call('POST', '/api/sessions/s1/frames', { action: 'Sit' }))
   return app
 }
 
@@ -823,7 +823,7 @@ type MadeFrame = {
 const chainFrames = async (call: ReturnType<typeof setup>['call']) =>
   (await (await call('GET', '/api/sessions/s1')).json()).frames as MadeFrame[]
 
-Deno.test('A Chain queues an upscale, flagging every Frame showing that image, once', () =>
+Deno.test('A Chain queues an upscale of one Frame, once', () =>
   withTempDir(async (root) => {
     const images = fakeImageGenerator()
     const { call } = await chainOfTwo(root, { imageGenerator: images })
@@ -831,21 +831,15 @@ Deno.test('A Chain queues an upscale, flagging every Frame showing that image, o
     assertEquals(queued.status, 201)
     assertEquals(await settled(call), [])
     const [opening, second] = await chainFrames(call)
-    assertMatch(second.upscaled!, /^frame-0-[0-9a-f]{8}-2048\.png$/)
-    assertEquals([opening.upscaled, second.image], [second.upscaled, opening.image])
-    assertEquals(images.upscaled, [opening.image])
+    assertMatch(second.upscaled!, /^frame-1-[0-9a-f]{8}-2048\.png$/)
+    assertEquals(opening.upscaled, undefined)
+    assertEquals(images.upscaled, [second.image])
     assertEquals((await call('GET', `/api/sessions/s1/images/${second.upscaled}`)).status, 200)
-    const again = await call('POST', '/api/sessions/s1/jobs', { kind: 'upscale', frameIndex: 0 })
+    const again = await call('POST', '/api/sessions/s1/jobs', { kind: 'upscale', frameIndex: 1 })
     assertEquals(again.status, 409)
-
-    // A Frame that reuses an upscaled image is upscaled too.
-    const third = await readEvents(
-      await call('POST', '/api/sessions/s1/frames', { action: 'Stay' }),
-    )
-    assertEquals((third.at(-1)![1].frame as MadeFrame).upscaled, second.upscaled)
   }))
 
-Deno.test('A Chain queues SHARP, TripoSplat and LiTo, shared by every Frame showing that picture', () =>
+Deno.test('A Chain queues SHARP, TripoSplat and LiTo for one Frame', () =>
   withTempDir(async (root) => {
     const scene = fakeSceneMaker(), figure = fakeFigureMaker(), lito = fakeFigureMaker()
     const { call } = await chainOfTwo(root, { scene, figure, lito })
@@ -860,24 +854,20 @@ Deno.test('A Chain queues SHARP, TripoSplat and LiTo, shared by every Frame show
     assertMatch(second.scene!.file, /^scene-1-[0-9a-f]{8}\.ply$/)
     assertMatch(second.figure!.file, /^figure-1-[0-9a-f]{8}\.ply$/)
     assertMatch(second.lito!.file, /^lito-1-[0-9a-f]{8}\.ply$/)
-    assertEquals([opening.scene, opening.figure, opening.lito], [
-      second.scene,
-      second.figure,
-      second.lito,
-    ])
-    assertEquals(second.scene!.from, opening.image)
+    assertEquals([opening.scene, opening.figure, opening.lito], [undefined, undefined, undefined])
+    assertEquals(second.scene!.from, second.image)
     assertEquals((await call('GET', `/api/sessions/s1/images/${second.lito!.file}`)).status, 200)
     // A Chain has no Roleplay jobs.
     const picture = await call('POST', '/api/sessions/s1/jobs', { kind: 'picture', frameIndex: 0 })
     assertEquals(picture.status, 409)
 
-    // A Frame that reuses the picture keeps them; undoing it keeps the files the others show.
-    const third = await readEvents(
-      await call('POST', '/api/sessions/s1/frames', { action: 'Stay' }),
-    )
-    assertEquals((third.at(-1)![1].frame as MadeFrame).scene, second.scene)
-    await call('DELETE', '/api/sessions/s1/frames/2')
-    assertEquals((await call('GET', `/api/sessions/s1/images/${second.scene!.file}`)).status, 200)
+    // Undoing the Frame deletes them with its picture.
+    await call('DELETE', '/api/sessions/s1/frames/1')
+    for (
+      const file of [second.image!, second.scene!.file, second.figure!.file, second.lito!.file]
+    ) {
+      assertEquals((await call('GET', `/api/sessions/s1/images/${file}`)).status, 404)
+    }
   }))
 
 Deno.test("A Chain carries on while a job runs, and Undo cancels the undone Frame's jobs", () =>
@@ -896,8 +886,11 @@ Deno.test("A Chain carries on while a job runs, and Undo cancels the undone Fram
     }
     const { call } = await chainOfTwo(root, { lito })
     await call('POST', '/api/sessions/s1/jobs', { kind: 'lito', frameIndex: 0 })
-    // The next Frame isn't held up by the job.
-    const next = await readEvents(await call('POST', '/api/sessions/s1/frames', { action: 'Stay' }))
+    // The next Frame isn't held up by the job (its render would wait its turn, so it has none).
+    await call('PUT', '/api/sessions/s1/render-frames', { renderFrames: false })
+    const next = await readEvents(
+      await call('POST', '/api/sessions/s1/frames', { action: 'Kneel' }),
+    )
     assertEquals(next.at(-1)![0], 'committed')
     await call('POST', '/api/sessions/s1/jobs', { kind: 'lito', frameIndex: 2 })
     assertEquals((await call('DELETE', '/api/sessions/s1/frames/2')).status, 200)
@@ -962,21 +955,20 @@ Deno.test('Without pictures every kind starts; a Chain writes its Frames without
     assertEquals([chainCard.latestImage, chainCard.excerpt], [null, 'Pose: standing.'])
   }))
 
-Deno.test('A Chain with rendering off writes prompts, and a render fills every Frame sharing one', () =>
+Deno.test('A Chain with rendering off writes prompts, and renders a Frame when asked', () =>
   withTempDir(async (root) => {
     const images = fakeImageGenerator()
     const { call } = setup({
       root,
       settings: { textModel: 'x' },
-      textModel: scriptedTextModel([reply('standing'), reply('standing'), reply('sitting')]),
+      textModel: scriptedTextModel([reply('standing'), reply('sitting'), reply('kneeling')]),
       imageGenerator: images,
     })
     await call('POST', '/api/sessions', { scenarioId: 'test' })
     const off = await call('PUT', '/api/sessions/s1/render-frames', { renderFrames: false })
     assertEquals((await off.json()).renderFrames, false)
     await readEvents(await call('POST', '/api/sessions/s1/frames', {}))
-    // An Action that changes nothing shares the Frame before it: here, its lack of a picture.
-    await readEvents(await call('POST', '/api/sessions/s1/frames', { action: 'Stay' }))
+    await readEvents(await call('POST', '/api/sessions/s1/frames', { action: 'Sit' }))
     assertEquals((await chainFrames(call)).map((f) => f.image), [null, null])
     assertEquals(images.prompts.length, 0)
 
@@ -984,13 +976,13 @@ Deno.test('A Chain with rendering off writes prompts, and a render fills every F
     assertEquals(await settled(call), [])
     const [opening, second] = await chainFrames(call)
     assertMatch(second.image!, /^frame-1-[0-9a-f]{8}\.png$/)
-    assertEquals(opening.image, second.image)
-    const again = await call('POST', '/api/sessions/s1/jobs', { kind: 'render', frameIndex: 0 })
+    assertEquals(opening.image, null)
+    const again = await call('POST', '/api/sessions/s1/jobs', { kind: 'render', frameIndex: 1 })
     assertEquals(again.status, 409) // a Chain Frame's picture never changes once made
 
     // Switched back on, the next Frame renders as it's made.
     await call('PUT', '/api/sessions/s1/render-frames', { renderFrames: true })
-    await readEvents(await call('POST', '/api/sessions/s1/frames', { action: 'Sit' }))
+    await readEvents(await call('POST', '/api/sessions/s1/frames', { action: 'Kneel' }))
     assertMatch((await chainFrames(call))[2].image!, /^frame-2-[0-9a-f]{8}\.png$/)
     assertEquals(images.prompts.length, 2)
   }))

@@ -12,7 +12,7 @@ import {
   withTempDir,
 } from '../testing.ts'
 import { imageProgress, type ProgressEvent, upscaleFrame } from '../frames.ts'
-import { type FrameEvent, runChainFrame, UndoError, undoLatestFrame } from './frames.ts'
+import { type FrameEvent, runChainFrame, UNCHANGED, UndoError, undoLatestFrame } from './frames.ts'
 import { RenderQueue } from '../renderQueue.ts'
 import { updateSession } from '../update.ts'
 
@@ -230,26 +230,33 @@ Deno.test('runChainFrame saves no Frame when an Action is unclear, and passes on
     assertEquals(images.prompts.length, 1)
   }))
 
-Deno.test('runChainFrame skips rendering when a done Action leaves the Scene unchanged', () =>
+Deno.test('runChainFrame saves no Frame when a done Action leaves the Image Prompt unchanged', () =>
   withTempDir(async (root) => {
     const images = fakeImageGenerator()
     const session = newSession()
+    const store = chainStore(root)
     const deps = {
-      store: chainStore(root),
-      textModel: scriptedTextModel([reply('standing'), reply('standing')]),
+      store,
+      textModel: scriptedTextModel([
+        reply('standing'),
+        reply('standing', { narration: 'Leaning.' }),
+      ]),
       imageGenerator: images,
     }
     await runChainFrame(deps, session, testScenario, null, () => {}, signal())
+    const events: FrameEvent[] = []
     const frame = await runChainFrame(
       deps,
       session,
       testScenario,
       'Lean on the wall',
-      () => {},
+      (e) => events.push(e),
       signal(),
     )
-    assertEquals(frame!.outcome, 'done')
-    assertEquals(frame!.image, session.frames[0].image)
+    assertEquals(frame, null)
+    assertEquals(events.at(-1), { type: 'unchanged', message: UNCHANGED })
+    assertEquals(events.some((e) => e.type === 'text'), false)
+    assertEquals((await store.load(session.id))!.frames.length, 1)
     assertEquals(images.prompts.length, 1)
   }))
 
@@ -320,18 +327,6 @@ Deno.test("undoLatestFrame deletes the undone Frame's upscale too", () =>
     assertEquals(await imageExists(root, latest.upscaled!), true)
     await undoLatestFrame(store, upscaled, 1)
     assertEquals(await imageExists(root, latest.upscaled!), false)
-  }))
-
-Deno.test('undoLatestFrame keeps an image a remaining Frame still shows', () =>
-  withTempDir(async (root) => {
-    const { store, session } = await sessionWithFrames(root, [
-      reply('standing'),
-      reply('standing'),
-    ])
-    // A done Action that changed nothing reuses the picture before it.
-    assertEquals(session.frames[1].image, session.frames[0].image)
-    await undoLatestFrame(store, session, 1)
-    assertEquals(await imageExists(root, session.frames[0].image!), true)
   }))
 
 Deno.test('undoLatestFrame refuses anything but the latest Frame, and the Opening Frame', () =>
@@ -545,7 +540,7 @@ Deno.test('runChainFrame records how long the text and image steps took', () =>
     const images = fakeImageGenerator()
     const deps = {
       store: chainStore(root),
-      textModel: scriptedTextModel([reply('standing'), reply('standing')]),
+      textModel: scriptedTextModel([reply('standing')]),
       imageGenerator: {
         ...images,
         async generate(...args: Parameters<typeof images.generate>) {
@@ -558,10 +553,6 @@ Deno.test('runChainFrame records how long the text and image steps took', () =>
     assertEquals(typeof opening!.timings!.text, 'number')
     assertEquals(opening!.timings!.image! >= 0.1, true)
     assertEquals('queued' in opening!.timings!, false)
-
-    // Nothing changed, so the image is reused: no image time.
-    const reused = await runChainFrame(deps, session, testScenario, 'Stay', () => {}, signal())
-    assertEquals(reused!.timings!.image, null)
   }))
 
 Deno.test('runChainFrame records time spent waiting for another render', () =>

@@ -166,6 +166,23 @@ describe('SessionView', () => {
     ])
   })
 
+  it('makes no Frame for an Action that changed nothing in the picture, saying so in blue', async () => {
+    vi.mocked(api.streamFrame).mockImplementationOnce(async (_id, _action, onEvent) => {
+      onEvent({ type: 'unchanged', message: 'Nothing in the picture changed.' })
+    })
+    const { wrapper } = await mountIt()
+    await wrapper.find('textarea').setValue('wait a moment')
+    await buttonNamed(wrapper, 'Send').trigger('click')
+    await flushPromises()
+    expect((wrapper.find('textarea').element as HTMLTextAreaElement).value).toBe('wait a moment')
+    expect(wrapper.findAll('aside li')).toHaveLength(1)
+    const notice = wrapper.find('[data-frame-notice]')
+    expect([notice.text(), notice.classes()]).toEqual([
+      'Nothing in the picture changed.',
+      expect.arrayContaining(['text-info']),
+    ])
+  })
+
   it('makes no Frame for a declined Action: it stays in the box, with the reason beside it', async () => {
     vi.mocked(api.streamFrame).mockImplementationOnce(async (_id, _action, onEvent) => {
       onEvent({ type: 'phase', phase: 'text' })
@@ -325,12 +342,13 @@ describe('SessionView', () => {
     vi.mocked(api.getSession).mockResolvedValue(
       session([
         frame(0, null, { timings: { text: 9.8, queued: 12.3, image: 5.1 } }),
-        frame(1, 'Stay', { timings: { text: 3, image: null } }),
+        frame(1, 'Stay', { image: null, timings: { text: 3, image: null } }),
       ]),
     )
     const { wrapper } = await mountIt()
     await wrapper.findAll('[role=tab]')[1].trigger('click')
-    expect(wrapper.find('[data-timings]').text()).toBe('Text 3.0 s · Image reused')
+    // Not rendered yet.
+    expect(wrapper.find('[data-timings]').text()).toBe('Text 3.0 s')
     await wrapper.findAll('[role=tab]')[0].trigger('click')
     await wrapper.findAll('aside [data-frame]')[0].trigger('click')
     await wrapper.findAll('[role=tab]')[1].trigger('click')

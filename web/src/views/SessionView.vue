@@ -67,10 +67,11 @@ const loadError = ref('')
 const pending = ref<Pending | null>(null)
 const frameError = ref('')
 /**
- * Why the last Action made no Frame (declined, or unclear and the Text Model asks what to
- * change): nothing was saved, and the Action stays in the box to reword.
+ * Why the last Action made no Frame (declined; unclear, and the Text Model asks what to change;
+ * or it changed nothing in the picture): nothing was saved, and the Action stays in the box to
+ * reword.
  */
-const notice = ref<{ kind: 'declined' | 'unclear'; text: string } | null>(null)
+const notice = ref<{ kind: 'declined' | 'unclear' | 'unchanged'; text: string } | null>(null)
 /** The unsent Action, remembered per Session so it survives a reload. */
 const draft = useStoredText(`draft:${props.id}`)
 /** Index of the Frame shown in the main panel; null follows the latest. */
@@ -249,6 +250,7 @@ function onEvent(event: FrameEvent) {
       break
     case 'declined':
     case 'unclear':
+    case 'unchanged':
       // As in a Roleplay: no Frame, the Action stays in the box, and the reason shows by it.
       pending.value = null
       notice.value = { kind: event.type, text: event.message }
@@ -341,11 +343,11 @@ async function undo() {
   }
 }
 
-/** "Text 9.8 s · Waited 12.3 s · Image 5.1 s", or "Image reused" when nothing was rendered. */
+/** "Text 9.8 s · Waited 12.3 s · Image 5.1 s", without the image before it's rendered. */
 function timingsLabel(t: NonNullable<ChainFrame['timings']>): string {
   const parts = [`Text ${t.text.toFixed(1)} s`]
   if (t.queued !== undefined) parts.push(`Waited ${t.queued.toFixed(1)} s`)
-  parts.push(t.image === null ? 'Image reused' : `Image ${t.image.toFixed(1)} s`)
+  if (t.image !== null) parts.push(`Image ${t.image.toFixed(1)} s`)
   return parts.join(' · ')
 }
 
@@ -602,7 +604,7 @@ const promptDiff = computed(() => {
             />
             <p
               class="min-w-0 flex-1 truncate text-sm"
-              :class="frameError ? 'text-danger' : notice?.kind === 'unclear' ? 'text-info' : 'text-warn'"
+              :class="frameError ? 'text-danger' : notice?.kind === 'declined' ? 'text-warn' : 'text-info'"
               :title="frameError || notice?.text"
               role="alert"
               data-frame-notice

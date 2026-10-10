@@ -17,9 +17,8 @@ import {
   withRetry,
 } from '../frames.ts'
 
-/** `fields` without the ones that are undefined, to spread onto an object. */
-const definedOnly = <T extends object>(fields: T): Partial<T> =>
-  Object.fromEntries(Object.entries(fields).filter(([, v]) => v !== undefined)) as Partial<T>
+/** Why a done Action that left the Image Prompt as it was makes no Frame. */
+export const UNCHANGED = 'Nothing in the picture changed. Try rewording the Action.'
 
 /** Progress of a Chain Frame, streamed to the player as it happens. */
 export type FrameEvent =
@@ -31,11 +30,14 @@ export type FrameEvent =
   | { type: 'declined'; message: string }
   /** The Text Model couldn't tell what to change, and asks: nothing was saved. */
   | { type: 'unclear'; message: string }
+  /** The Text Model took the Action but left the Image Prompt as it was: nothing was saved. */
+  | { type: 'unchanged'; message: string }
 
 /**
  * Runs one Chain Frame: Text Model, then Image Model (rendering the Image Prompt), then commit. The
  * Frame commits whole or not at all: on failure or abort the Session on disk is untouched and any
- * image written is removed. A declined or unclear Action commits nothing either, and returns null.
+ * image written is removed. A declined or unclear Action commits nothing either, nor one that left
+ * the Image Prompt as it was, and returns null.
  */
 export async function runChainFrame(
   deps: FrameDeps,
@@ -105,29 +107,26 @@ export async function runChainFrame(
     emit({ type: outcome, message: narration })
     return null
   }
+  // Nor does a done Action that left the Image Prompt as it was (often a Narration claiming a
+  // change the prompt doesn't have): there'd be nothing new to see.
+  if (previous && equal(nextPrompt, previous.prompt)) {
+    emit({ type: 'unchanged', message: UNCHANGED })
+    return null
+  }
   emit({ type: 'text', outcome, narration, prompt: nextPrompt })
   const timings: FrameTimings = { text: secondsSince(textStart), image: null }
 
-  // Nothing to render if a done Action left the Image Prompt as it was: reuse the previous image
-  // (or its lack of one).
-  const reuseImage = previous !== undefined && equal(nextPrompt, previous.prompt)
-
   const dir = deps.store.dir(session.id)
-  let image: string | null
   // Named up front so a failed or cancelled Frame can remove whatever the generator wrote, even if
   // it finished writing just as the Frame was cancelled.
   const name = imageName(index)
   try {
-    if (reuseImage) {
-      image = previous!.image
-    } else {
-      image = render
-        ? await renderImage(deps, session, nextPrompt, name, timings, emit, signal)
-        : null
-    }
+    const image = render
+      ? await renderImage(deps, session, nextPrompt, name, timings, emit, signal)
+      : null
     signal.throwIfAborted()
 
-    let frame: ChainFrame = {
+    const frame: ChainFrame = {
       index,
       action,
       prompt: nextPrompt,
@@ -139,15 +138,10 @@ export async function runChainFrame(
       createdAt: new Date().toISOString(),
     }
     // Onto the Chain as it is now: a job may have upscaled or made 3D of a picture meanwhile.
-    await updateSession(deps.store, session.id, 'chain', (latest) => {
-      // A reused picture brings what was made from it (upscale, scene, figures).
-      const before = latest.frames.at(-1)
-      if (reuseImage && before) {
-        const { upscaled, scene, figure, lito } = before
-        frame = { ...frame, ...definedOnly({ upscaled, scene, figure, lito }) }
-      }
-      return { ...latest, frames: [...latest.frames, frame] }
-    })
+    await updateSession(deps.store, session.id, 'chain', (latest) => ({
+      ...latest,
+      frames: [...latest.frames, frame],
+    }))
     session.frames.push(frame)
     emit({ type: 'committed', frame })
     return frame
@@ -157,10 +151,7 @@ export async function runChainFrame(
   }
 }
 
-/**
- * Renders a Chain Frame made without a picture, in its turn in the render queue. Every Frame with
- * the same prompt and no picture gets it (a Frame that changed nothing shares the one before it).
- */
+/** Renders a Chain Frame made without a picture, in its turn in the render queue. */
 export async function renderChainFrame(
   deps: FrameDeps,
   session: ChainSession,
@@ -177,11 +168,7 @@ export async function renderChainFrame(
     signal.throwIfAborted()
     return await updateSession(deps.store, session.id, 'chain', (latest) => ({
       ...latest,
-      frames: latest.frames.map((f) =>
-        f.image === null && f.prompt === frame.prompt
-          ? { ...f, image, ...(f.index === index && { timings }) }
-          : f
-      ),
+      frames: latest.frames.map((f) => (f.index === index ? { ...f, image, timings } : f)),
     }))
   } catch (err) {
     await removeImage(deps.store.dir(session.id), name)
@@ -193,8 +180,8 @@ export class UndoError extends Error {}
 
 /**
  * Removes a Chain's latest Frame, so the previous Frame's Image Prompt is current again. `index` must name the
- * latest Frame, so a repeated request can't undo two. The Opening Frame can't be undone. The
- * image file is deleted only when no remaining Frame still shows it.
+ * latest Frame, so a repeated request can't undo two. The Opening Frame can't be undone. Its
+ * picture, and what was made from it, are deleted.
  */
 export async function undoLatestFrame(
   store: SessionStore,
@@ -211,12 +198,15 @@ export async function undoLatestFrame(
     if (now.frames.length === 1) throw new UndoError("The Opening Frame can't be undone")
     return { ...now, frames: now.frames.slice(0, -1) }
   })
-  if (latest.image && !updated.frames.some((t) => t.image === latest.image)) {
-    await Deno.remove(join(store.dir(session.id), latest.image)).catch(() => {})
-    const made = [latest.upscaled, latest.scene?.file, latest.figure?.file, latest.lito?.file]
-    for (const file of made) {
-      if (file) await Deno.remove(join(store.dir(session.id), file)).catch(() => {})
-    }
+  const made = [
+    latest.image,
+    latest.upscaled,
+    latest.scene?.file,
+    latest.figure?.file,
+    latest.lito?.file,
+  ]
+  for (const file of made) {
+    if (file) await Deno.remove(join(store.dir(session.id), file)).catch(() => {})
   }
   return updated
 }

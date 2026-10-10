@@ -251,9 +251,9 @@ export interface Frame3d {
   image: string | null
   /** The image upscaled to 2048 px, once upscaled; a re-render drops it. */
   upscaled?: string
-  /** The picture made into a 2.5D scene (SHARP), once asked for; shared like `upscaled`. */
+  /** The picture made into a 2.5D scene (SHARP), once asked for. */
   scene?: Scene
-  /** The person in the picture as a 3D figure (TripoSplat), once asked for; shared likewise. */
+  /** The person in the picture as a 3D figure (TripoSplat), once asked for. */
   figure?: Figure
   /** The same, made with Apple's LiTo. */
   lito?: Figure
@@ -369,8 +369,10 @@ export type FrameEvent =
   | { type: 'declined'; message: string }
   /** The Text Model couldn't tell what to change, and asks: no Frame was saved. */
   | { type: 'unclear'; message: string }
+  /** The Text Model took the Action but left the Image Prompt as it was: no Frame was saved. */
+  | { type: 'unchanged'; message: string }
 
-/** An upscale's stream: ends with the Session, every Frame showing that image now upscaled. */
+/** An upscale's stream: ends with the Session, the Frame now upscaled. */
 
 /** A Storyboard's streams: planning, rendering a Frame, editing a Frame by Action. */
 export type StoryboardEvent =
@@ -518,7 +520,7 @@ export const streamFrame = (
   streamEvents<FrameEvent>(
     `/api/sessions/${sessionId}/frames`,
     action === null ? {} : { action },
-    ['committed', 'declined', 'unclear'],
+    ['committed', 'declined', 'unclear', 'unchanged'],
     onEvent,
   )
 
