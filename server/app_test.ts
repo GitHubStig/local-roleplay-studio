@@ -4,6 +4,7 @@ import { type AppDeps, createHandler } from './app.ts'
 import type { TextConnection, TextModelInfo } from './text/backend.ts'
 import type { ImageGenerator } from './images/imageGenerator.ts'
 import { dirSessionStore } from './session.ts'
+import type { Picture } from './pictures.ts'
 import { DEFAULT_SETTINGS, type Settings, type SettingsStore } from './settings.ts'
 import type { TextModel } from './textModel.ts'
 import type { RoleplayModel } from './roleplay/model.ts'
@@ -366,7 +367,7 @@ Deno.test('Frames stream progress and commit, then serve their image', () =>
     })
 
     const session = await (await call('GET', '/api/sessions/s1')).json()
-    const [firstImage, secondImage] = session.frames.map((t: { image: string }) => t.image)
+    const [firstImage, secondImage] = session.frames.map((t: JsonFrame) => shown(t).image)
     assertMatch(firstImage, /^frame-0-[0-9a-f]{8}\.png$/)
 
     const image = await call('GET', `/api/sessions/s1/images/${secondImage}`)
@@ -614,8 +615,8 @@ Deno.test('Undo and a Frame sent at once never bring back the undone Frame', () 
     // Whatever won, every Frame is numbered in order and its image exists.
     const session = await (await call('GET', '/api/sessions/s1')).json()
     session.frames.forEach((t: { index: number }, i: number) => assertEquals(t.index, i))
-    for (const t of session.frames as { image: string }[]) {
-      assertEquals((await call('GET', `/api/sessions/s1/images/${t.image}`)).status, 200)
+    for (const t of session.frames as JsonFrame[]) {
+      assertEquals((await call('GET', `/api/sessions/s1/images/${shown(t).image}`)).status, 200)
     }
   }))
 
@@ -730,7 +731,7 @@ Deno.test('A Storyboard plans, renders, and is edited by hand and by Action over
 
     const byHand = await (await call('PUT', '/api/sessions/s1/frames/2', { body: 'He lands.' }))
       .json()
-    assertEquals([byHand.frames[2].body, byHand.frames[2].stale], ['He lands.', true])
+    assertEquals([byHand.frames[2].body, shown(byHand.frames[2]).stale], ['He lands.', true])
     assertEquals((await call('PUT', '/api/sessions/s1/frames/0', { body: 'Nude.' })).status, 422)
     const nobody = await call('PUT', '/api/sessions/s1/frames/1', { body: 'A hoop.', shown: [] })
     assertEquals((await nobody.json()).frames[1].shown, [])
@@ -800,6 +801,16 @@ Deno.test('Cancelling a plan discards the Storyboard', () =>
   }))
 
 /** A Chain with an Opening Frame and a second Frame, and a reply left for a third. */
+/** A Frame as the API sends it. */
+type JsonFrame = { pictures: Picture[] } & Record<string, unknown>
+
+/**
+ * A Frame with the picture it shows spread onto it (`image` null for none): its latest, as these
+ * tests keep to one Image Model unless they switch. Loose, as the API's JSON is.
+ */
+// deno-lint-ignore no-explicit-any
+const shown = (frame: JsonFrame): any => ({ ...frame, image: null, ...frame.pictures.at(-1) })
+
 async function chainOfTwo(root: string, opts: Partial<Parameters<typeof setup>[0]> = {}) {
   const app = setup({
     root,
@@ -813,15 +824,8 @@ async function chainOfTwo(root: string, opts: Partial<Parameters<typeof setup>[0
   return app
 }
 
-type MadeFrame = {
-  image: string | null
-  upscaled?: string
-  scene?: { file: string; from: string }
-  figure?: { file: string }
-  lito?: { file: string }
-}
 const chainFrames = async (call: ReturnType<typeof setup>['call']) =>
-  (await (await call('GET', '/api/sessions/s1')).json()).frames as MadeFrame[]
+  ((await (await call('GET', '/api/sessions/s1')).json()).frames as JsonFrame[]).map(shown)
 
 Deno.test('A Chain queues an upscale of one Frame, once', () =>
   withTempDir(async (root) => {
@@ -868,6 +872,36 @@ Deno.test('A Chain queues SHARP, TripoSplat and LiTo for one Frame', () =>
     ) {
       assertEquals((await call('GET', `/api/sessions/s1/images/${file}`)).status, 404)
     }
+  }))
+
+Deno.test('A Session switches Image Model, and a Chain Frame by the old one renders again', () =>
+  withTempDir(async (root) => {
+    const images = fakeImageGenerator()
+    const { call } = await chainOfTwo(root, { imageGenerator: images })
+    const switchTo = (imageModel: unknown) =>
+      call('PUT', '/api/sessions/s1/image-model', { imageModel })
+    const render = () => call('POST', '/api/sessions/s1/jobs', { kind: 'render', frameIndex: 1 })
+    assertEquals((await render()).status, 409)
+
+    assertEquals((await switchTo(42)).status, 400)
+    const unknown = await switchTo('dall-e')
+    assertEquals([unknown.status, (await unknown.json()).error], [
+      400,
+      'mflux has no Image Model "dall-e"',
+    ])
+    assertEquals(
+      (await call('PUT', '/api/sessions/nope/image-model', { imageModel: 'x' })).status,
+      404,
+    )
+
+    const switched = await (await switchTo('flux2-klein-4b')).json()
+    assertEquals([switched.settings.imageModel, switched.settings.steps], ['flux2-klein-4b', 4])
+    const [, before] = await chainFrames(call)
+    assertEquals((await render()).status, 201)
+    assertEquals(await settled(call), [])
+    const [, after] = await chainFrames(call)
+    assertEquals(after.pictures.map((p: Picture) => p.image), [before.image, after.image])
+    assertEquals(images.prompts.length, 3)
   }))
 
 Deno.test("A Chain carries on while a job runs, and Undo cancels the undone Frame's jobs", () =>
@@ -939,8 +973,8 @@ Deno.test('Without pictures every kind starts; a Chain writes its Frames without
     const chain = await (await call('GET', '/api/sessions/s1')).json()
     assertEquals(chain.renderFrames, false)
     const opening = await readEvents(await call('POST', '/api/sessions/s1/frames', {}))
-    const frame = opening.at(-1)![1].frame as { image: string | null; prompt: string }
-    assertEquals(frame.image, null)
+    const frame = opening.at(-1)![1].frame as JsonFrame & { prompt: string }
+    assertEquals(frame.pictures, [])
     assertStringIncludes(frame.prompt, 'standing')
     assertEquals(images.prompts.length, 0)
     // Rendering, by the switch or a job, needs pictures.
@@ -1217,14 +1251,9 @@ Deno.test('Turning the Limits off in Settings applies at once, except the adult 
 /** Waits until a Session's queue has no queued or running jobs, and returns what's left. */
 /** A Storyboard's Frames as saved now. */
 async function storyboardFrames(call: ReturnType<typeof setup>['call'], id = 's1') {
-  return (await (await call('GET', `/api/sessions/${id}`)).json()).frames as {
-    image: string | null
-    upscaled?: string
-    stale?: boolean
-    scene?: { file: string }
-    figure?: { file: string }
-    lito?: { file: string }
-  }[]
+  return ((await (await call('GET', `/api/sessions/${id}`)).json()).frames as JsonFrame[]).map(
+    shown,
+  )
 }
 
 async function settled(call: ReturnType<typeof setup>['call'], id = 's1') {
@@ -1279,7 +1308,7 @@ Deno.test('Picturing, rendering and upscaling a Roleplay Frame are queued jobs, 
     assertEquals(await settled(call), [])
 
     const session = await (await call('GET', '/api/sessions/s1')).json()
-    const frame = session.frames[0]
+    const frame = shown(session.frames[0])
     assertEquals(frame.prompt, `Mira Vance, 34. Sam Reyes, 25. ${artBody} Ink.`)
     assertEquals((await call('GET', `/api/sessions/s1/images/${frame.image}`)).status, 200)
     assertMatch(frame.upscaled, /-2048\.png$/)
@@ -1289,7 +1318,7 @@ Deno.test('Picturing, rendering and upscaling a Roleplay Frame are queued jobs, 
       '/api/sessions/s1/roleplay/look',
       testLook('Watercolour.', 'Mira Vance, 34.', 'Sam Reyes, 25.'),
     )
-    assertEquals((await look.json()).frames[0].stale, true)
+    assertEquals(shown((await look.json()).frames[0]).stale, true)
     const [card] = await (await call('GET', '/api/sessions')).json()
     assertEquals(card.latestImage, frame.image)
   }))
@@ -1339,7 +1368,7 @@ Deno.test('The conversation carries on while a job runs, and neither overwrites 
     await settled(call)
     const session = await (await call('GET', '/api/sessions/s1')).json()
     assertEquals(session.frames.length, 2)
-    assertMatch(session.frames[0].image, /^frame-0-/)
+    assertMatch(shown(session.frames[0]).image, /^frame-0-/)
   }))
 
 Deno.test('Undoing an exchange cancels its jobs; deleting the Roleplay cancels them all', () =>
@@ -1445,7 +1474,7 @@ Deno.test('A rendered Frame makes a 3D scene, served; a re-render or Undo remove
     assertEquals(await settled(call), [])
     await job('scene', 0)
     assertEquals(await settled(call), [])
-    let frame = (await (await call('GET', '/api/sessions/s1')).json()).frames[0]
+    let frame = shown((await (await call('GET', '/api/sessions/s1')).json()).frames[0])
     assertEquals(scene.made.map((m) => m.image), [join(root, 's1', frame.image)])
     assertMatch(frame.scene.file, /^scene-0-[0-9a-f]{8}\.ply$/)
     assertEquals([frame.scene.splats, frame.scene.pivot, frame.scene.fov], [4, 1.5, 51.3])
@@ -1457,13 +1486,13 @@ Deno.test('A rendered Frame makes a 3D scene, served; a re-render or Undo remove
     const first = frame.scene.file
     await job('scene', 0)
     await settled(call)
-    frame = (await (await call('GET', '/api/sessions/s1')).json()).frames[0]
+    frame = shown((await (await call('GET', '/api/sessions/s1')).json()).frames[0])
     assertNotEquals(frame.scene.file, first)
     assertEquals((await call('GET', `/api/sessions/s1/images/${first}`)).status, 404)
     const second = frame.scene.file
     await job('render', 0)
     await settled(call)
-    frame = (await (await call('GET', '/api/sessions/s1')).json()).frames[0]
+    frame = shown((await (await call('GET', '/api/sessions/s1')).json()).frames[0])
     assertEquals(frame.scene, undefined)
     assertEquals((await call('GET', `/api/sessions/s1/images/${second}`)).status, 404)
 
@@ -1474,7 +1503,7 @@ Deno.test('A rendered Frame makes a 3D scene, served; a re-render or Undo remove
     await settled(call)
     await job('scene', 1)
     await settled(call)
-    frame = (await (await call('GET', '/api/sessions/s1')).json()).frames[1]
+    frame = shown((await (await call('GET', '/api/sessions/s1')).json()).frames[1])
     await call('DELETE', '/api/sessions/s1/roleplay/frames/1')
     assertEquals((await call('GET', `/api/sessions/s1/images/${frame.scene.file}`)).status, 404)
   }))
@@ -1487,7 +1516,7 @@ Deno.test('A scene is made from the upscale when there is one', () =>
       await call('POST', '/api/sessions/s1/jobs', { kind, frameIndex: 0 })
       assertEquals(await settled(call), [])
     }
-    const frame = (await (await call('GET', '/api/sessions/s1')).json()).frames[0]
+    const frame = shown((await (await call('GET', '/api/sessions/s1')).json()).frames[0])
     assertMatch(frame.upscaled, /-2048\.png$/)
     assertEquals(frame.scene.from, frame.upscaled)
     assertEquals(scene.made[0].image, join(root, 's1', frame.upscaled))
@@ -1503,7 +1532,7 @@ Deno.test('A figure lifted from a Frame is served, and goes with a re-render', (
       await job(kind)
       assertEquals(await settled(call), [])
     }
-    let frame = (await (await call('GET', '/api/sessions/s1')).json()).frames[0]
+    let frame = shown((await (await call('GET', '/api/sessions/s1')).json()).frames[0])
     assertEquals(frame.figure.from, frame.image)
     assertMatch(frame.figure.file, /^figure-0-[0-9a-f]{8}\.ply$/)
     const ply = await call('GET', `/api/sessions/s1/images/${frame.figure.file}`)
@@ -1511,7 +1540,7 @@ Deno.test('A figure lifted from a Frame is served, and goes with a re-render', (
     const file = frame.figure.file
     await job('render')
     await settled(call)
-    frame = (await (await call('GET', '/api/sessions/s1')).json()).frames[0]
+    frame = shown((await (await call('GET', '/api/sessions/s1')).json()).frames[0])
     assertEquals(frame.figure, undefined)
     assertEquals((await call('GET', `/api/sessions/s1/images/${file}`)).status, 404)
   }))
@@ -1526,7 +1555,7 @@ Deno.test('A LiTo figure is kept beside the TripoSplat one, served, and goes wit
       await job(kind)
       assertEquals(await settled(call), [])
     }
-    let frame = (await (await call('GET', '/api/sessions/s1')).json()).frames[0]
+    let frame = shown((await (await call('GET', '/api/sessions/s1')).json()).frames[0])
     assertMatch(frame.figure.file, /^figure-0-[0-9a-f]{8}\.ply$/)
     assertMatch(frame.lito.file, /^lito-0-[0-9a-f]{8}\.ply$/)
     assertEquals([figure.made.length, lito.made.length], [1, 1])
@@ -1534,7 +1563,7 @@ Deno.test('A LiTo figure is kept beside the TripoSplat one, served, and goes wit
     const file = frame.lito.file
     await job('render')
     await settled(call)
-    frame = (await (await call('GET', '/api/sessions/s1')).json()).frames[0]
+    frame = shown((await (await call('GET', '/api/sessions/s1')).json()).frames[0])
     assertEquals([frame.figure, frame.lito], [undefined, undefined])
     assertEquals((await call('GET', `/api/sessions/s1/images/${file}`)).status, 404)
   }))

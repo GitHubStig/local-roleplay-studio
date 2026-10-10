@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { type Frame3d, type JobKind, type Made3d, MADE3D_FEATURE } from '../api'
+import { type JobKind, type Made3d, MADE3D_FEATURE, type Picture } from '../api'
 import { useFeatures } from '../composables/useFeatures'
 import Frame3dButtons from './Frame3dButtons.vue'
 
@@ -10,7 +10,8 @@ import Frame3dButtons from './Frame3dButtons.vue'
  */
 const props = withDefaults(
   defineProps<{
-    frame: Frame3d
+    /** The picture the Frame shows, if it has one. */
+    picture?: Picture
     /** A job of this kind is already queued or running on the Frame (`useJobs().hasJob`). */
     hasJob: (kind: JobKind) => boolean
     /** Offer Render: the Frame can be rendered now (never in a Chain, whose Frames render once). */
@@ -26,7 +27,7 @@ const { on: featureOn } = useFeatures()
 const available = (kind: Made3d) => featureOn.value(MADE3D_FEATURE[kind])
 
 /** A picture is there, or a job already queued will make one. */
-const pictured = () => !!props.frame.image || props.hasJob('render') || props.hasJob('picture')
+const pictured = () => !!props.picture || props.hasJob('render') || props.hasJob('picture')
 </script>
 
 <template>
@@ -39,22 +40,22 @@ const pictured = () => !!props.frame.image || props.hasJob('render') || props.ha
       data-render-button
       @click="$emit('queue', 'render')"
     >
-      {{ frame.image ? 'Re-render' : 'Render' }}
+      {{ picture ? 'Re-render' : 'Render' }}
     </button>
     <button
       v-if="featureOn('upscale') && pictured()"
       type="button"
       :class="buttonClass"
-      :disabled="!!frame.upscaled || hasJob('upscale')"
-      :title="frame.upscaled ? 'Upscaled to 2048 px' : 'Upscale to 2048 px with SeedVR2'"
+      :disabled="!!picture?.upscaled || hasJob('upscale')"
+      :title="picture?.upscaled ? 'Upscaled to 2048 px' : 'Upscale to 2048 px with SeedVR2'"
       data-upscale-button
       @click="$emit('queue', 'upscale')"
     >
-      {{ frame.upscaled ? 'Upscaled' : 'Upscale' }}
+      {{ picture?.upscaled ? 'Upscaled' : 'Upscale' }}
     </button>
   </template>
   <Frame3dButtons
-    :frame="frame"
+    :picture="picture"
     :disabled="(kind) => hasJob(kind)"
     :available="available"
     :button-class="buttonClass"

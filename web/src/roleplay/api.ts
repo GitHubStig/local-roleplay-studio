@@ -3,6 +3,7 @@ import {
   type EndEvent,
   type Figure,
   type Look,
+  type Picture,
   type ProgressEvent,
   put,
   request,
@@ -68,11 +69,6 @@ export interface RoleplayFrame {
   /** Who the picture shows, by their names in the Look; none for the place alone. */
   shown?: string[]
   clothing?: string
-  /** The rendered picture's upscale. */
-  upscaled?: string
-  /** The Image Prompt changed since the picture was rendered. */
-  stale?: boolean
-  renderTimings?: { queued?: number; image: number | null }
   /** For debugging: how long the latest picture took, and the Art Agent's reasoning. */
   pictureTimings?: { text: number }
   /** The model that wrote the latest picture. */
@@ -80,18 +76,12 @@ export interface RoleplayFrame {
   /** Written as tags (Settings → Art Agent style); absent for prose. */
   pictureStyle?: 'tags'
   pictureThinking?: string
-  /** The rendered picture; null until rendered. */
-  image: string | null
+  /** One per Image Model it was rendered with, oldest first; none until rendered. */
+  pictures: Picture[]
   /** The Character's line, spoken; in an earlier voice when `speech.ref` isn't the voice's now. */
   speech?: Speech
   /** The Character's thought, spoken (whispered) in the same voice. */
   thoughtSpeech?: Speech
-  /** The picture as a 2.5D scene; a re-render drops it. */
-  scene?: Scene
-  /** The person in the picture lifted out as a 3D figure (TripoSplat); a re-render drops it. */
-  figure?: Figure
-  /** The same, made with Apple's LiTo; a re-render drops it. */
-  lito?: Figure
   createdAt: string
 }
 

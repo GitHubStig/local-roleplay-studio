@@ -2,7 +2,8 @@ import { join } from '@std/path'
 import type { Figure, FigureMaker } from './figure.ts'
 import { secondsSince } from '../frames.ts'
 import { RenderQueue } from '../renderQueue.ts'
-import type { SessionStore } from '../session.ts'
+import type { Session, SessionStore } from '../session.ts'
+import { changeFramePicture, shownPictureOf } from '../pictures.ts'
 
 export interface FigureDeps {
   store: SessionStore
@@ -13,19 +14,7 @@ export interface FigureDeps {
   renderQueue?: RenderQueue
 }
 
-/** What a figure can be made for: any kind of Session with pictures. */
-interface FiguredSession {
-  id: string
-  frames: {
-    index: number
-    image: string | null
-    upscaled?: string
-    figure?: Figure
-    lito?: Figure
-  }[]
-}
-
-export type FigureEvent<S = FiguredSession> =
+export type FigureEvent<S = Session> =
   | { type: 'phase'; phase: 'queued' | 'image' | 'download' }
   | { type: 'figured'; index: number; model: FigureModel; figure: Figure; session: S }
 
@@ -44,7 +33,7 @@ export class FigureError extends Error {}
  * Anyone overlapping them takes parts of them away, and two people in the picture may come out as
  * one.
  */
-export async function liftFigure<S extends FiguredSession>(
+export async function liftFigure<S extends Session>(
   deps: FigureDeps,
   session: S,
   index: number,
@@ -57,10 +46,10 @@ export async function liftFigure<S extends FiguredSession>(
   const { key, prefix, off } = FIGURE_MODELS[model]
   const maker = deps[key]
   if (!maker) throw new FigureError(off)
-  const frame = session.frames[index]
-  const image = frame?.image
-  if (!image) throw new FigureError(`Frame ${index} has no picture yet`)
-  const from = frame.upscaled ?? image
+  const picture = shownPictureOf(session, index)
+  if (!picture) throw new FigureError(`Frame ${index} has no picture yet`)
+  const { image } = picture
+  const from = picture.upscaled ?? image
   const dir = deps.store.dir(session.id)
   const file = `${prefix}-${index}-${crypto.randomUUID().slice(0, 8)}.ply`
   const start = performance.now()
@@ -86,16 +75,13 @@ export async function liftFigure<S extends FiguredSession>(
       timings: { ...(queued !== undefined ? { queued } : {}), figure: secondsSince(began) },
     }
     let replaced: string | undefined
-    // Onto the Frame as it is now, if it still shows the picture the figure was made from.
-    const updated = await save((latest) => {
-      const current = latest.frames[index]
-      if (current?.image !== image) throw new FigureError(`Frame ${index}'s picture changed`)
-      replaced = current[key]?.file
-      return {
-        ...latest,
-        frames: latest.frames.map((f) => (f.index === index ? { ...f, [key]: figure } : f)),
-      }
-    })
+    // Onto the picture it was made from, if the Frame still has it.
+    const updated = await save((latest) =>
+      changeFramePicture(latest, index, image, (p) => {
+        replaced = p[key]?.file
+        return { ...p, [key]: figure }
+      })
+    )
     if (replaced) await Deno.remove(join(dir, replaced)).catch(() => {})
     emit({ type: 'figured', index, model, figure, session: updated })
     return updated

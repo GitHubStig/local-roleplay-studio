@@ -8,6 +8,7 @@ import {
   withRetry,
 } from '../frames.ts'
 import { updateSession } from '../update.ts'
+import { allStale } from '../pictures.ts'
 import {
   cleanLook,
   composePrompt,
@@ -55,7 +56,7 @@ function makeFrame(
     body,
     shown: names,
     prompt,
-    image: null,
+    pictures: [],
     ...(timings ? { timings } : {}),
     ...(blocked ? { blocked } : {}),
     createdAt: new Date().toISOString(),
@@ -63,8 +64,8 @@ function makeFrame(
 }
 
 /**
- * A Frame after its Look, sentences or who it shows changed: same image, marked stale if it had
- * one.
+ * A Frame after its Look, sentences or who it shows changed: the same pictures, marked stale if its
+ * Image Prompt changed.
  */
 function recompose(
   frame: StoryboardFrame,
@@ -73,18 +74,11 @@ function recompose(
   shown = frame.shown,
 ): StoryboardFrame {
   const fresh = makeFrame(look, frame.index, frame.beat, body, shown, frame.timings)
-  const changed = fresh.prompt !== frame.prompt
-  // The picture, and what was made from it, stay until it's rendered again.
-  const { image, upscaled, scene, figure, lito, createdAt } = frame
+  // The pictures, and what was made from them, stay until rendered again.
   return {
     ...fresh,
-    image,
-    ...(upscaled && { upscaled }),
-    ...(scene && { scene }),
-    ...(figure && { figure }),
-    ...(lito && { lito }),
-    createdAt,
-    ...(image && (changed || frame.stale) ? { stale: true } : {}),
+    pictures: fresh.prompt === frame.prompt ? frame.pictures : allStale(frame.pictures),
+    createdAt: frame.createdAt,
   }
 }
 
@@ -153,7 +147,7 @@ export async function planStoryboard(
     ...session,
     look: plan.look,
     frames: plan.frames.map(({ body, shown }, i) =>
-      makeFrame(plan.look, i, plan.beats[i], body, shown, { text: writtenIn[i] ?? 0, image: null })
+      makeFrame(plan.look, i, plan.beats[i], body, shown, { text: writtenIn[i] ?? 0 })
     ),
   }
   await deps.store.save(planned)
@@ -162,10 +156,10 @@ export async function planStoryboard(
 }
 
 /**
- * Renders (or re-renders) one Frame, replacing its image and what was made from it (upscale,
- * scene, figures). Nothing changes unless the render completes. Saved onto the Storyboard as it is
- * now, as a queued job runs beside edits: a Frame edited meanwhile keeps its new sentences and is
- * marked stale.
+ * Renders (or re-renders) one Frame, in place of its picture by the same Image Model
+ * (`replacePicture`). Nothing changes unless the render completes. Saved onto the Storyboard as it
+ * is now, as a queued job runs beside edits: a Frame edited meanwhile keeps its new sentences, and
+ * the new picture is marked stale.
  */
 export async function renderStoryboardFrame(
   deps: FrameDeps,
@@ -178,22 +172,14 @@ export async function renderStoryboardFrame(
   if (!frame) throw new Error(`There is no Frame ${index + 1}`)
   if (frame.blocked) throw new LimitError(`Frame ${index + 1} crosses a limit: ${frame.blocked}`)
 
-  const timings: FrameTimings = { text: frame.timings?.text ?? 0, image: null }
   const { frame: rendered } = await replacePicture(
     deps,
     session,
     index,
     frame.prompt,
-    timings,
     emit,
     signal,
     (change) => updateSession(deps.store, session.id, 'storyboard', change),
-    (current, image) => ({
-      ...current,
-      image,
-      timings,
-      ...(current.prompt !== frame.prompt && { stale: true }),
-    }),
   )
   emit({ type: 'rendered', frame: rendered })
   return rendered
@@ -303,9 +289,7 @@ export async function editFrameByAction(
       const next = f.index === index
         ? recompose(f, look, edit.body, edit.shown)
         : recompose(f, look, f.body, renameShown(session.look!.people, look.people, f.shown))
-      return f.index === index
-        ? { ...next, timings: { text: secondsSince(start), image: f.timings?.image ?? null } }
-        : next
+      return f.index === index ? { ...next, timings: { text: secondsSince(start) } } : next
     })
   const edited = withEdit(session.frames)[index]
   if (edited.blocked) return unchanged('declined', `Declined: ${edited.blocked}.`)

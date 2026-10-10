@@ -36,7 +36,7 @@ const session: api.Session = {
     prompt: promptFor(0),
     narration: 'Kael looks up.',
     outcome: 'done',
-    image: 'frame-0.png',
+    pictures: [{ image: 'frame-0.png', imageModel: 'qwen-image-2.1' }],
     createdAt: '2026-09-24T00:00:00.000Z',
   }],
 }
@@ -147,7 +147,7 @@ describe('App navigation', () => {
         body: 'Body.',
         shown: ['Rin'],
         prompt: promptFor(0),
-        image: null,
+        pictures: [],
         createdAt: '2026-09-25T00:00:00.000Z',
       }],
     })

@@ -12,7 +12,17 @@ import {
   watch,
 } from 'vue'
 import { useRouter } from 'vue-router'
-import { ApiError, cancelFrame, getSession, imageUrl, type Look, type Made3d } from '../api'
+import {
+  ApiError,
+  cancelFrame,
+  changedSinceRender,
+  getSession,
+  imageUrl,
+  type Look,
+  type Made3d,
+  type PicturedFrame,
+  shownPicture,
+} from '../api'
 import { clearCurrentSession, setCurrentSession } from '../composables/useCurrentSession'
 import { useStoredFlag } from '../composables/useStoredFlag'
 import { useStoredText } from '../composables/useStoredText'
@@ -101,9 +111,19 @@ const forming = computed(() => jobForming(session.value, runningJob.value))
 watch(forming, (now) => {
   if (now) formingIndex.value = runningJob.value!.frameIndex
 })
+/** The picture a Frame shows, by the Roleplay's Image Model if it has one. */
+const pictureOf = (frame: PicturedFrame) => shownPicture(frame, session.value!.settings.imageModel)
+/** A Frame's picture is changed since render: its prompt changed, or it's by another model. */
+const changed = (frame: PicturedFrame) => {
+  const picture = pictureOf(frame)
+  return !!picture && changedSinceRender(picture, session.value!.settings.imageModel)
+}
 const shownPreview = useShownPreview(
   () => forming.value,
-  () => session.value?.frames.find((f) => f.index === formingIndex.value)?.image,
+  () => {
+    const frame = session.value?.frames.find((f) => f.index === formingIndex.value)
+    return frame && pictureOf(frame)?.image
+  },
 )
 const previewOn = (index: number) => shownPreview.value && formingIndex.value === index
 
@@ -743,7 +763,7 @@ async function saveCastDraft(): Promise<boolean> {
                         {{ frame.prompt ? 'Picture again' : 'Picture this' }}
                       </button>
                       <PictureButtons
-                        :frame="frame"
+                        :picture="pictureOf(frame)"
                         :has-job="(kind) => hasJob(frame.index, kind)"
                         :can-render="(!!frame.prompt && !frame.blocked) || hasJob(frame.index, 'picture')"
                         @queue="(kind) => queue(kind, frame.index)"
@@ -772,19 +792,19 @@ async function saveCastDraft(): Promise<boolean> {
                   </div>
                 </div>
                 <button
-                  v-if="frame.image || previewOn(frame.index)"
+                  v-if="pictureOf(frame) || previewOn(frame.index)"
                   type="button"
                   class="relative block w-full max-w-sm shrink-0 lg:w-72 lg:max-w-none xl:w-80"
                   title="Look closer"
                   data-picture-image
-                  @click="frame.image && (viewing = frame.index)"
+                  @click="pictureOf(frame) && (viewing = frame.index)"
                 >
                   <img
-                    v-if="frame.image"
-                    :src="imageUrl(session.id, frame.image)"
+                    v-if="pictureOf(frame)"
+                    :src="imageUrl(session.id, pictureOf(frame)!.image)"
                     :alt="`Picture of Frame ${frame.index}`"
                     class="w-full rounded-md"
-                    :class="{ 'opacity-50': frame.stale }"
+                    :class="{ 'opacity-50': changed(frame) }"
                     @load="onPictureLoad"
                   />
                   <!-- The picture forming: over the old one, or alone for a first render. -->
@@ -793,12 +813,12 @@ async function saveCastDraft(): Promise<boolean> {
                     :src="shownPreview!.src"
                     alt=""
                     class="w-full rounded-md transition-opacity duration-500"
-                    :class="{ 'absolute inset-0 h-full object-cover': frame.image }"
-                    :style="{ opacity: frame.image ? shownPreview!.opacity : 1 }"
+                    :class="{ 'absolute inset-0 h-full object-cover': pictureOf(frame) }"
+                    :style="{ opacity: pictureOf(frame) ? shownPreview!.opacity : 1 }"
                     data-preview
                   />
                   <span
-                    v-if="frame.stale"
+                    v-if="changed(frame)"
                     class="absolute left-2 top-2 rounded-full bg-black/70 px-2 py-0.5 text-white"
                   >Changed since render</span>
                 </button>
@@ -1101,6 +1121,7 @@ async function saveCastDraft(): Promise<boolean> {
       v-model:open="viewing"
       :session-id="session.id"
       :frames="session.frames"
+      :image-model="session.settings.imageModel"
       @step="goToFrame"
     />
     <Frame3dViewers
@@ -1108,6 +1129,7 @@ async function saveCastDraft(): Promise<boolean> {
       v-model:open="open3d"
       :session-id="session.id"
       :frames="session.frames"
+      :image-model="session.settings.imageModel"
     />
   </div>
 </template>

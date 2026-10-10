@@ -57,6 +57,13 @@ const reply = (dialogue: string, extra: Partial<roleplay.Reply> = {}): roleplay.
   ...extra,
 })
 
+/** A picture by the Roleplay's Image Model. */
+const picture = (image: string, extra: Partial<api.Picture> = {}): api.Picture => ({
+  image,
+  imageModel: 'qwen-image-2.1',
+  ...extra,
+})
+
 const frame = (
   index: number,
   message: string | null,
@@ -65,7 +72,7 @@ const frame = (
   index,
   message,
   reply: reply(dialogue),
-  image: null,
+  pictures: [],
   createdAt: '2026-09-27T00:00:00.000Z',
 })
 
@@ -74,7 +81,7 @@ const roleplaySession = (frames: roleplay.RoleplayFrame[] = []): roleplay.Rolepl
   kind: 'roleplay',
   brief: 'A lighthouse in a storm.',
   scenarioId: null,
-  settings: {} as api.Settings,
+  settings: { imageModel: 'qwen-image-2.1' } as api.Settings,
   seed: 1,
   createdAt: '2026-09-27T00:00:00.000Z',
   cast: frames.length ? cast : null,
@@ -643,7 +650,7 @@ describe('RoleplayView', () => {
 
     vi.mocked(api.listJobs).mockResolvedValue([])
     vi.mocked(api.getSession).mockResolvedValue({
-      ...roleplaySession([{ ...pictured, image: 'frame-0-aaaaaaaa.png' }]),
+      ...roleplaySession([{ ...pictured, pictures: [picture('frame-0-aaaaaaaa.png')] }]),
       look,
     })
     await new Promise((r) => setTimeout(r, 1100))
@@ -711,7 +718,10 @@ describe('RoleplayView', () => {
       features: { ...ALL_ON, scenes: false },
     } as api.Settings)
     await useFeatures().refreshFeatures()
-    const rendered = { ...frame(0, null, 'Get inside.'), image: 'frame-0-aaaaaaaa.png' }
+    const rendered = {
+      ...frame(0, null, 'Get inside.'),
+      pictures: [picture('frame-0-aaaaaaaa.png')],
+    }
     vi.mocked(api.getSession).mockResolvedValue(roleplaySession([rendered]))
     const { wrapper } = await mountIt()
     for (
@@ -741,7 +751,8 @@ describe('RoleplayView', () => {
   })
 
   it('offers each picture in 3D by model: SHARP for the scene, TripoSplat and LiTo for the person', async () => {
-    const rendered = { ...frame(0, null, 'Get inside.'), image: 'frame-0-aaaaaaaa.png' }
+    const image = 'frame-0-aaaaaaaa.png'
+    const rendered = { ...frame(0, null, 'Get inside.'), pictures: [picture(image)] }
     vi.mocked(api.getSession).mockResolvedValue(roleplaySession([rendered]))
     vi.mocked(api.queueJob).mockResolvedValue([
       job({ kind: 'scene', status: 'running', phase: 'image' }),
@@ -764,7 +775,7 @@ describe('RoleplayView', () => {
     // Once made, each is viewed; a scene made before the upscale can be made again from it.
     const scene = {
       file: 'scene-0-bbbbbbbb.ply',
-      from: rendered.image,
+      from: image,
       splats: 9,
       pivot: 1.2,
       fov: 54,
@@ -773,17 +784,19 @@ describe('RoleplayView', () => {
     }
     const figure = {
       file: 'figure-0-cccccccc.ply',
-      from: rendered.image,
+      from: image,
       splats: 8,
       timings: { figure: 70 },
     }
     vi.mocked(api.getSession).mockResolvedValue(
       roleplaySession([{
         ...rendered,
-        upscaled: 'frame-0-aaaaaaaa-2048.png',
-        scene,
-        figure,
-        lito: { ...figure, file: 'lito-0-dddddddd.ply' },
+        pictures: [picture(image, {
+          upscaled: 'frame-0-aaaaaaaa-2048.png',
+          scene,
+          figure,
+          lito: { ...figure, file: 'lito-0-dddddddd.ply' },
+        })],
       }]),
     )
     vi.mocked(api.listJobs).mockResolvedValue([])
@@ -807,7 +820,7 @@ describe('RoleplayView', () => {
   it('steps through the rendered Frames in the viewer, scrolling the conversation to each', async () => {
     const withImage = (index: number, message: string | null) => ({
       ...frame(index, message, `Line ${index}.`),
-      image: `frame-${index}-aaaaaaaa.png`,
+      pictures: [picture(`frame-${index}-aaaaaaaa.png`)],
     })
     vi.mocked(api.getSession).mockResolvedValue(
       roleplaySession([withImage(0, null), frame(1, 'Hi.', 'No picture.'), withImage(2, 'Go.')]),

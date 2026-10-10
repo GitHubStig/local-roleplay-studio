@@ -23,6 +23,13 @@ vi.mock('../api', async (importOriginal) => ({
   setRenderFrames: vi.fn(),
 }))
 
+/** A picture by the Chain's Image Model. */
+const picture = (image: string, extra: Partial<api.Picture> = {}): api.Picture => ({
+  image,
+  imageModel: 'qwen-image-2.1',
+  ...extra,
+})
+
 const frame = (
   index: number,
   action: string | null,
@@ -33,7 +40,7 @@ const frame = (
   prompt: promptFor(index),
   narration: `Narration ${index}.`,
   outcome: 'done',
-  image: `frame-${index}.png`,
+  pictures: [picture(`frame-${index}.png`)],
   createdAt: '2026-09-24T00:00:00.000Z',
   ...extra,
 })
@@ -52,7 +59,7 @@ const session = (frames: api.ChainFrame[] = []): api.ChainSession => ({
   kind: 'chain',
   brief: null,
   scenarioId: 'tavern',
-  settings: {} as api.Settings,
+  settings: { imageModel: 'qwen-image-2.1' } as api.Settings,
   seed: 1,
   createdAt: '2026-09-24T00:00:00.000Z',
   frames,
@@ -341,8 +348,11 @@ describe('SessionView', () => {
   it("shows how long the viewed Frame's steps took", async () => {
     vi.mocked(api.getSession).mockResolvedValue(
       session([
-        frame(0, null, { timings: { text: 9.8, queued: 12.3, image: 5.1 } }),
-        frame(1, 'Stay', { image: null, timings: { text: 3, image: null } }),
+        frame(0, null, {
+          timings: { text: 9.8 },
+          pictures: [picture('frame-0.png', { timings: { queued: 12.3, image: 5.1 } })],
+        }),
+        frame(1, 'Stay', { pictures: [], timings: { text: 3 } }),
       ]),
     )
     const { wrapper } = await mountIt()
@@ -410,7 +420,10 @@ describe('SessionView', () => {
 
   it('opens the picture in the viewer when clicked, stepping through the Frames', async () => {
     vi.mocked(api.getSession).mockResolvedValue(
-      session([frame(0, null), frame(1, 'Sit', { upscaled: 'frame-1-2048.png' })]),
+      session([
+        frame(0, null),
+        frame(1, 'Sit', { pictures: [picture('frame-1.png', { upscaled: 'frame-1-2048.png' })] }),
+      ]),
     )
     const { wrapper } = await mountIt()
     // The stage doesn't zoom; the viewer does.
@@ -448,7 +461,9 @@ describe('SessionView', () => {
       from: 'frame-0.png',
       timings: { figure: 90 },
     }
-    vi.mocked(api.getSession).mockResolvedValue(session([frame(0, null, { lito: figure })]))
+    vi.mocked(api.getSession).mockResolvedValue(
+      session([frame(0, null, { pictures: [picture('frame-0.png', { lito: figure })] })]),
+    )
     // The queue is checked every second; the job is gone, so the Chain is reloaded.
     await new Promise((r) => setTimeout(r, 1100))
     await flushPromises()
@@ -483,7 +498,11 @@ describe('SessionView', () => {
       timings: { scene: 11 },
     }
     vi.mocked(api.getSession).mockResolvedValue(
-      session([frame(0, null, { scene, upscaled: 'frame-0-2048.png' })]),
+      session([
+        frame(0, null, {
+          pictures: [picture('frame-0.png', { scene, upscaled: 'frame-0-2048.png' })],
+        }),
+      ]),
     )
     const { wrapper } = await mountIt()
     expect(wrapper.find('[data-scene-button]').text()).toBe('SHARP again from upscale')
@@ -665,12 +684,12 @@ describe('SessionView', () => {
 
   it('renders a Frame made without its picture on request, and switches rendering', async () => {
     vi.mocked(api.getSession).mockResolvedValue({
-      ...session([frame(0, null, { image: null })]),
+      ...session([frame(0, null, { pictures: [] })]),
       renderFrames: false,
     })
     vi.mocked(api.queueJob).mockResolvedValue([job({ kind: 'render' })])
     vi.mocked(api.setRenderFrames).mockImplementation(async (_id, on) => ({
-      ...session([frame(0, null, { image: null })]),
+      ...session([frame(0, null, { pictures: [] })]),
       renderFrames: on,
     }))
     const { wrapper } = await mountIt()
@@ -701,7 +720,9 @@ describe('SessionView', () => {
     expect(wrapper.find('[data-image-frame]').attributes('data-rendering')).toBe('image')
 
     vi.mocked(api.getSession).mockResolvedValue(
-      session([frame(0, null, { upscaled: 'frame-0-2048.png' })]),
+      session([
+        frame(0, null, { pictures: [picture('frame-0.png', { upscaled: 'frame-0-2048.png' })] }),
+      ]),
     )
     // The queue is checked every second; the job is gone, so the Chain is reloaded.
     await new Promise((r) => setTimeout(r, 1100))

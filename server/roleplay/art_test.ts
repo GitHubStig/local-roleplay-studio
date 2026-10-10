@@ -40,14 +40,14 @@ const session: RoleplaySession = {
       index: 0,
       message: null,
       reply: replyOf('You are late.', { internal: 'He looks lost.' }),
-      image: null,
+      pictures: [],
       createdAt: '2026-09-27T00:00:00.000Z',
     },
     {
       index: 1,
       message: 'I grab the rail.',
       reply: replyOf('', { actions: 'Mira steadies him.' }),
-      image: null,
+      pictures: [],
       createdAt: '2026-09-27T00:00:00.000Z',
     },
   ],
@@ -197,13 +197,18 @@ Deno.test('While the Limits are on, a picture of two or more people must name wh
   }
 })
 
-Deno.test('A rendered picture whose Image Prompt changes is marked stale', () => {
+Deno.test('A rendered picture whose Image Prompt changes is marked stale, by any model', () => {
   const rendered = {
     ...pictured(session.frames[1], look, 'She waits.', [MIRA]),
-    image: 'frame-1-aaaaaaaa.png',
+    pictures: [
+      { image: 'frame-1-aaaaaaaa.png', imageModel: 'qwen-image-2.1' },
+      { image: 'frame-1-bbbbbbbb.png', imageModel: 'flux2-klein-4b' },
+    ],
   }
-  assertEquals(pictured(rendered, look, 'She waits.', [MIRA]).stale, undefined)
-  assertEquals(pictured(rendered, look, 'She runs.', [MIRA]).stale, true)
+  const same = pictured(rendered, look, 'She waits.', [MIRA])
+  assertEquals(same.pictures.map((p) => p.stale), [undefined, undefined])
+  const changed = pictured(rendered, look, 'She runs.', [MIRA])
+  assertEquals(changed.pictures.map((p) => p.stale), [true, true])
 })
 
 Deno.test('A picture of no one has no identity sentences', () => {

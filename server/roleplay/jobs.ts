@@ -41,7 +41,7 @@ export function checkRoleplayJob(
     return error(`Frame ${index} has no thought to say aloud`, 409)
   }
   if (PICTURE_JOB_KINDS.includes(kind)) {
-    return checkPictureJob(session.frames[index], kind, `Frame ${index}`, pending)
+    return checkPictureJob(session, index, kind, `Frame ${index}`, pending)
   }
   return null
 }

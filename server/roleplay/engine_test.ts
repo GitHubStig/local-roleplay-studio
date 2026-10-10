@@ -362,14 +362,14 @@ Deno.test('renderRoleplayFrame renders a pictured Frame, replacing any earlier i
     const first = await renderRoleplayFrame(art, pictured, 0, (e) => events.push(e), signal())
     assertEquals(events.at(-1)!.type, 'rendered')
     assertEquals(images.prompts, [pictured.frames[0].prompt])
-    const firstImage = first.frames[0].image!
+    const firstImage = first.frames[0].pictures[0].image
     assertEquals(await Deno.stat(`${store.dir('r1')}/${firstImage}`).then(() => true), true)
 
     // Pictured again: the image is kept but stale, until rendered again.
     const repictured = await pictureFrame(art, first, scenario, 0, () => {}, signal())
-    assertEquals([repictured.frames[0].image, repictured.frames[0].stale], [firstImage, true])
+    assertEquals(repictured.frames[0].pictures.map((p) => [p.image, p.stale]), [[firstImage, true]])
     const second = await renderRoleplayFrame(art, repictured, 0, () => {}, signal())
-    assertEquals(second.frames[0].stale, undefined)
+    assertEquals(second.frames[0].pictures.map((p) => p.stale), [undefined])
     assertEquals(
       await Deno.stat(`${store.dir('r1')}/${firstImage}`).then(() => true, () => false),
       false,
@@ -392,7 +392,7 @@ Deno.test('Undoing an exchange deletes its picture', () =>
       () => {},
       signal(),
     )
-    const image = rendered.frames[1].image!
+    const { image } = rendered.frames[1].pictures[0]
     await undoLatestExchange(store, rendered, 1)
     assertEquals(
       await Deno.stat(`${store.dir('r1')}/${image}`).then(() => true, () => false),

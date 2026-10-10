@@ -53,7 +53,7 @@ Deno.test('runChainFrame commits the Opening Frame with prefixed image prompt', 
       signal(),
     )
     assertEquals(frame!.index, 0)
-    assertMatch(frame!.image!, /^frame-0-[0-9a-f]{8}\.png$/)
+    assertMatch(frame!.pictures[0].image, /^frame-0-[0-9a-f]{8}\.png$/)
     assertEquals(images.prompts, [promptWith('standing')])
     assertEquals(events.map((e) => e.type), ['phase', 'text', 'phase', 'committed'])
     assertEquals((await store.load('s1'))?.frames.length, 1)
@@ -275,7 +275,7 @@ Deno.test('runChainFrame treats the Opening Frame as done whatever the Text Mode
       signal(),
     )
     assertEquals(frame!.outcome, 'done')
-    assertMatch(frame!.image!, /^frame-0-[0-9a-f]{8}\.png$/)
+    assertMatch(frame!.pictures[0].image, /^frame-0-[0-9a-f]{8}\.png$/)
   }))
 
 async function sessionWithFrames(root: string, replies: ReturnType<typeof reply>[]) {
@@ -304,8 +304,8 @@ Deno.test('undoLatestFrame restores the previous Scene and deletes the image', (
     const updated = await undoLatestFrame(store, session, 1)
     assertEquals(updated.frames.map((t) => t.prompt), [promptWith('standing')])
     assertEquals((await store.load('s1'))?.frames.length, 1)
-    assertEquals(await imageExists(root, undone.image!), false)
-    assertEquals(await imageExists(root, session.frames[0].image!), true)
+    assertEquals(await imageExists(root, undone.pictures[0].image), false)
+    assertEquals(await imageExists(root, session.frames[0].pictures[0].image), true)
   }))
 
 Deno.test("undoLatestFrame deletes the undone Frame's upscale too", () =>
@@ -324,9 +324,9 @@ Deno.test("undoLatestFrame deletes the undone Frame's upscale too", () =>
       (change) => updateSession(store, session.id, 'chain', (s) => change(s) as typeof s),
     ) as typeof session
     const latest = upscaled.frames[1]
-    assertEquals(await imageExists(root, latest.upscaled!), true)
+    assertEquals(await imageExists(root, latest.pictures[0].upscaled!), true)
     await undoLatestFrame(store, upscaled, 1)
-    assertEquals(await imageExists(root, latest.upscaled!), false)
+    assertEquals(await imageExists(root, latest.pictures[0].upscaled!), false)
   }))
 
 Deno.test('undoLatestFrame refuses anything but the latest Frame, and the Opening Frame', () =>
@@ -344,12 +344,12 @@ Deno.test('a Frame after an Undo gets a fresh image name', () =>
       reply('standing'),
       reply('sitting'),
     ])
-    const undoneImage = session.frames[1].image
+    const undoneImage = session.frames[1].pictures[0].image
     const updated = await undoLatestFrame(store, session, 1)
     deps.textModel = scriptedTextModel([reply('kneeling')])
     const redo = await runChainFrame(deps, updated, testScenario, 'Kneel', () => {}, signal())
     assertEquals(redo!.index, 1)
-    assertNotEquals(redo!.image, undoneImage)
+    assertNotEquals(redo!.pictures[0].image, undoneImage)
   }))
 
 Deno.test('runChainFrame removes an image written just before the Frame was cancelled', () =>
@@ -551,8 +551,8 @@ Deno.test('runChainFrame records how long the text and image steps took', () =>
     }
     const opening = await runChainFrame(deps, session, testScenario, null, () => {}, signal())
     assertEquals(typeof opening!.timings!.text, 'number')
-    assertEquals(opening!.timings!.image! >= 0.1, true)
-    assertEquals('queued' in opening!.timings!, false)
+    assertEquals(opening!.pictures[0].timings!.image >= 0.1, true)
+    assertEquals('queued' in opening!.pictures[0].timings!, false)
   }))
 
 Deno.test('runChainFrame records time spent waiting for another render', () =>
@@ -573,7 +573,7 @@ Deno.test('runChainFrame records time spent waiting for another render', () =>
       () => {},
       signal(),
     )
-    assertEquals(frame!.timings!.queued! >= 0.1, true)
+    assertEquals(frame!.pictures[0].timings!.queued! >= 0.1, true)
   }))
 
 Deno.test('A render that first downloads its model shows that, then rendering again with its steps', () => {

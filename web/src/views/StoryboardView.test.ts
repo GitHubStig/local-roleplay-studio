@@ -36,13 +36,20 @@ const look: api.Look = {
   style: 'Manga ink.',
 }
 
+/** A picture by the Storyboard's Image Model. */
+const picture = (image: string, extra: Partial<api.Picture> = {}): api.Picture => ({
+  image,
+  imageModel: 'qwen-image-2.1',
+  ...extra,
+})
+
 const frame = (index: number, extra: Partial<api.StoryboardFrame> = {}): api.StoryboardFrame => ({
   index,
   beat: `Beat ${index + 1}.`,
   body: `Body ${index + 1}.`,
   shown: ['Rin'],
   prompt: promptFor(index),
-  image: null,
+  pictures: [],
   createdAt: '2026-09-25T00:00:00.000Z',
   ...extra,
 })
@@ -52,7 +59,7 @@ const storyboard = (frames: api.StoryboardFrame[] = []): api.StoryboardSession =
   kind: 'storyboard',
   brief: 'A first dunk.',
   scenarioId: null,
-  settings: {} as api.Settings,
+  settings: { imageModel: 'qwen-image-2.1' } as api.Settings,
   seed: 1,
   createdAt: '2026-09-25T00:00:00.000Z',
   frameCount: 3,
@@ -208,7 +215,7 @@ describe('StoryboardView', () => {
       },
     )
     vi.mocked(api.getSession).mockResolvedValue(
-      storyboard([frame(0, { image: 'frame-0-aaaaaaaa.png' }), frame(1)]),
+      storyboard([frame(0, { pictures: [picture('frame-0-aaaaaaaa.png')] }), frame(1)]),
     )
     const { wrapper } = await mountIt()
     await flushPromises()
@@ -220,9 +227,9 @@ describe('StoryboardView', () => {
 
   it('queues a render of every Frame that needs one, skipping blocked ones', async () => {
     vi.mocked(api.getSession).mockResolvedValue(storyboard([
-      frame(0, { image: 'frame-0-aaaaaaaa.png' }),
+      frame(0, { pictures: [picture('frame-0-aaaaaaaa.png')] }),
       frame(1, { blocked: 'no minors' }),
-      frame(2, { image: 'frame-2-aaaaaaaa.png', stale: true }),
+      frame(2, { pictures: [picture('frame-2-aaaaaaaa.png', { stale: true })] }),
       frame(3),
     ]))
     const { wrapper } = await mountIt()
@@ -325,7 +332,7 @@ describe('StoryboardView', () => {
 
   it('queues an upscale and 3D of a rendered Frame, not of a draft', async () => {
     vi.mocked(api.getSession).mockResolvedValue(
-      storyboard([frame(0, { image: 'frame-0-aaaaaaaa.png' }), frame(1)]),
+      storyboard([frame(0, { pictures: [picture('frame-0-aaaaaaaa.png')] }), frame(1)]),
     )
     const { wrapper } = await mountIt()
     await wrapper.find('[data-upscale-button]').trigger('click')

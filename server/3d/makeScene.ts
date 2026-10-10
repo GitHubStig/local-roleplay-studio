@@ -2,7 +2,8 @@ import { join } from '@std/path'
 import { secondsSince } from '../frames.ts'
 import { RenderQueue } from '../renderQueue.ts'
 import type { Scene, SceneMaker } from './scene.ts'
-import type { SessionStore } from '../session.ts'
+import type { Session, SessionStore } from '../session.ts'
+import { changeFramePicture, shownPictureOf } from '../pictures.ts'
 
 export interface SceneDeps {
   store: SessionStore
@@ -11,13 +12,7 @@ export interface SceneDeps {
   renderQueue?: RenderQueue
 }
 
-/** What a scene can be made for: any kind of Session with pictures. */
-interface ScenedSession {
-  id: string
-  frames: { index: number; image: string | null; upscaled?: string; scene?: Scene }[]
-}
-
-export type SceneEvent<S = ScenedSession> =
+export type SceneEvent<S = Session> =
   | { type: 'phase'; phase: 'queued' | 'image' | 'download' }
   | { type: 'scened'; index: number; scene: Scene; session: S }
 
@@ -31,7 +26,7 @@ export const SCENES_OFF = "SHARP isn't set up on this server"
  * Model each want 15 GB or more. Made from the upscale if the Frame has one, else the original.
  * Making it again replaces the old one.
  */
-export async function makeScene<S extends ScenedSession>(
+export async function makeScene<S extends Session>(
   deps: SceneDeps,
   session: S,
   index: number,
@@ -41,11 +36,11 @@ export async function makeScene<S extends ScenedSession>(
   save: (change: (s: S) => S) => Promise<S>,
 ): Promise<S> {
   if (!deps.scene) throw new SceneError(SCENES_OFF)
-  const frame = session.frames[index]
-  const image = frame?.image
-  if (!image) throw new SceneError(`Frame ${index} has no picture yet`)
+  const picture = shownPictureOf(session, index)
+  if (!picture) throw new SceneError(`Frame ${index} has no picture yet`)
+  const { image } = picture
   // SHARP works at 1536 px: the 2048 px upscale has more to give it than a 1024 px original.
-  const from = frame.upscaled ?? image
+  const from = picture.upscaled ?? image
   const dir = deps.store.dir(session.id)
   const file = `scene-${index}-${crypto.randomUUID().slice(0, 8)}.ply`
   const start = performance.now()
@@ -71,16 +66,13 @@ export async function makeScene<S extends ScenedSession>(
       timings: { ...(queued !== undefined ? { queued } : {}), scene: secondsSince(began) },
     }
     let replaced: string | undefined
-    // Onto the Frame as it is now, if it still shows the picture the scene was made from.
-    const updated = await save((latest) => {
-      const current = latest.frames[index]
-      if (current?.image !== image) throw new SceneError(`Frame ${index}'s picture changed`)
-      replaced = current.scene?.file
-      return {
-        ...latest,
-        frames: latest.frames.map((f) => (f.index === index ? { ...f, scene } : f)),
-      }
-    })
+    // Onto the picture it was made from, if the Frame still has it.
+    const updated = await save((latest) =>
+      changeFramePicture(latest, index, image, (p) => {
+        replaced = p.scene?.file
+        return { ...p, scene }
+      })
+    )
     if (replaced) await Deno.remove(join(dir, replaced)).catch(() => {})
     emit({ type: 'scened', index, scene, session: updated })
     return updated

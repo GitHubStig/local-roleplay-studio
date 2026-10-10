@@ -28,7 +28,7 @@ export function checkStoryboardJob(
     return frame.blocked ? error(`Frame ${index + 1} crosses a limit: ${frame.blocked}`, 422) : null
   }
   if (!PICTURE_JOB_KINDS.includes(kind)) return error(`A Storyboard has no ${kind} jobs`, 409)
-  return checkPictureJob(frame, kind, `Frame ${index + 1}`, pending)
+  return checkPictureJob(session, index, kind, `Frame ${index + 1}`, pending)
 }
 
 /** Does one of a Storyboard's jobs, saving onto it as it is now (it may have been edited). */

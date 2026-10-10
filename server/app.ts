@@ -42,6 +42,7 @@ import {
 import { checkChainJob, runChainJob } from './chain/jobs.ts'
 import { checkStoryboardJob, runStoryboardJob } from './storyboard/jobs.ts'
 import { GoneError, updateSession } from './update.ts'
+import { ImageModelError, shownPicture, switchImageModel } from './pictures.ts'
 import type { HeavyJob } from './machine.ts'
 import { Previews } from './previews.ts'
 import { RenderQueue } from './renderQueue.ts'
@@ -562,7 +563,6 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       ])
       const titles = new Map(scenarios.map((s) => [s.id, s.title]))
       const summaries = sessions.map((s) => {
-        const rendered = s.frames.filter((f) => f.image)
         const updatedAt = s.frames.reduce(
           (latest, f) => f.createdAt > latest ? f.createdAt : latest,
           s.createdAt,
@@ -575,7 +575,8 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
             ? briefScenario(s.brief).title
             : titles.get(s.scenarioId ?? '') ?? s.scenarioId,
           frames: s.frames.length,
-          latestImage: rendered.at(-1)?.image ?? null,
+          latestImage: s.frames.map((f) => shownPicture(f, s.settings.imageModel)?.image)
+            .findLast((image) => image) ?? null,
           // Shown in place of a picture until there is one: a Roleplay's latest line, a Chain's
           // latest Narration, a Storyboard's first Beat.
           excerpt: s.kind === 'roleplay'
@@ -615,6 +616,20 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
         activeFrame: work?.frameIndex ?? null,
         imageSize: { width, height },
       })
+    }],
+
+    // Switches the Session's Image Model: `{ imageModel }`, one of its Image backend's.
+    ['PUT', new URLPattern({ pathname: '/api/sessions/:id/image-model' }), async (req, p) => {
+      const body = await readJson(req) as { imageModel?: unknown } | undefined
+      if (typeof body?.imageModel !== 'string') return error('imageModel must be a string', 400)
+      const session = await deps.sessions.load(p.id!)
+      if (!session) return error('Session not found', 404)
+      try {
+        return json(await switchImageModel(deps.sessions, session, body.imageModel))
+      } catch (err) {
+        if (err instanceof ImageModelError) return error(err.message, 400)
+        throw err
+      }
     }],
 
     ['POST', new URLPattern({ pathname: '/api/sessions/:id/cancel' }), (_req, p) => {

@@ -1,4 +1,3 @@
-import { join } from '@std/path'
 import { equal } from '@std/assert'
 import type { ImagePrompt } from '../imagePrompt.ts'
 import { crossedLimit } from '../limits.ts'
@@ -6,6 +5,7 @@ import type { Scenario } from '../scenario.ts'
 import type { ChainFrame, ChainSession, FrameTimings, Outcome, SessionStore } from '../session.ts'
 import type { FrameText } from '../textModel.ts'
 import { updateSession } from '../update.ts'
+import { allPictureFiles, removeFiles } from '../pictures.ts'
 import {
   type FrameDeps,
   imageName,
@@ -13,6 +13,7 @@ import {
   type ProgressEvent,
   removeImage,
   renderImage,
+  replacePicture,
   secondsSince,
   withRetry,
 } from '../frames.ts'
@@ -114,16 +115,16 @@ export async function runChainFrame(
     return null
   }
   emit({ type: 'text', outcome, narration, prompt: nextPrompt })
-  const timings: FrameTimings = { text: secondsSince(textStart), image: null }
+  const timings: FrameTimings = { text: secondsSince(textStart) }
 
   const dir = deps.store.dir(session.id)
   // Named up front so a failed or cancelled Frame can remove whatever the generator wrote, even if
   // it finished writing just as the Frame was cancelled.
   const name = imageName(index)
   try {
-    const image = render
-      ? await renderImage(deps, session, nextPrompt, name, timings, emit, signal)
-      : null
+    const picture = render
+      ? await renderImage(deps, session, nextPrompt, name, emit, signal)
+      : undefined
     signal.throwIfAborted()
 
     const frame: ChainFrame = {
@@ -133,7 +134,7 @@ export async function runChainFrame(
       narration,
       outcome,
       ...(thinking ? { thinking } : {}),
-      image,
+      pictures: picture ? [picture] : [],
       timings,
       createdAt: new Date().toISOString(),
     }
@@ -151,7 +152,17 @@ export async function runChainFrame(
   }
 }
 
-/** Renders a Chain Frame made without a picture, in its turn in the render queue. */
+/**
+ * Whether a Chain Frame can be rendered: it has no picture by the Chain's Image Model now. Its
+ * prompt never changes, so a picture by that model is never out of date.
+ */
+export const canRenderChainFrame = (session: ChainSession, frame: ChainFrame): boolean =>
+  !frame.pictures.some((p) => p.imageModel === session.settings.imageModel)
+
+/**
+ * Renders a Chain Frame by the Chain's Image Model, in its turn in the render queue: one made
+ * without a picture, or one with pictures by other models only.
+ */
 export async function renderChainFrame(
   deps: FrameDeps,
   session: ChainSession,
@@ -160,20 +171,19 @@ export async function renderChainFrame(
   signal: AbortSignal,
 ): Promise<ChainSession> {
   const frame = session.frames[index]
-  if (frame.image) throw new Error(`Frame ${index} already has its picture`)
-  const timings: FrameTimings = { text: frame.timings?.text ?? 0, image: null }
-  const name = imageName(index)
-  try {
-    const image = await renderImage(deps, session, frame.prompt, name, timings, emit, signal)
-    signal.throwIfAborted()
-    return await updateSession(deps.store, session.id, 'chain', (latest) => ({
-      ...latest,
-      frames: latest.frames.map((f) => (f.index === index ? { ...f, image, timings } : f)),
-    }))
-  } catch (err) {
-    await removeImage(deps.store.dir(session.id), name)
-    throw err
+  if (!canRenderChainFrame(session, frame)) {
+    throw new Error(`Frame ${index} already has its picture`)
   }
+  const { session: updated } = await replacePicture(
+    deps,
+    session,
+    index,
+    frame.prompt,
+    emit,
+    signal,
+    (change) => updateSession(deps.store, session.id, 'chain', change),
+  )
+  return updated
 }
 
 export class UndoError extends Error {}
@@ -181,7 +191,7 @@ export class UndoError extends Error {}
 /**
  * Removes a Chain's latest Frame, so the previous Frame's Image Prompt is current again. `index` must name the
  * latest Frame, so a repeated request can't undo two. The Opening Frame can't be undone. Its
- * picture, and what was made from it, are deleted.
+ * pictures, and what was made from them, are deleted.
  */
 export async function undoLatestFrame(
   store: SessionStore,
@@ -198,15 +208,6 @@ export async function undoLatestFrame(
     if (now.frames.length === 1) throw new UndoError("The Opening Frame can't be undone")
     return { ...now, frames: now.frames.slice(0, -1) }
   })
-  const made = [
-    latest.image,
-    latest.upscaled,
-    latest.scene?.file,
-    latest.figure?.file,
-    latest.lito?.file,
-  ]
-  for (const file of made) {
-    if (file) await Deno.remove(join(store.dir(session.id), file)).catch(() => {})
-  }
+  await removeFiles(store.dir(session.id), allPictureFiles(latest))
   return updated
 }

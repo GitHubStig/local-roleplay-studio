@@ -15,7 +15,7 @@ const frame = (index: number, message: string | null, dialogue: string): Rolepla
   index,
   message,
   reply: replyOf(dialogue, { internal: `Secret thought ${index}.` }),
-  image: null,
+  pictures: [],
   createdAt: '2026-09-30T00:00:00.000Z',
 })
 

@@ -1,7 +1,6 @@
 import {
   limitCrossedBy,
   type ProgressEvent,
-  removeImage,
   replacePicture,
   secondsSince,
   withRetry,
@@ -15,9 +14,9 @@ import type { TextModel } from '../textModel.ts'
 import type { FigureMaker } from '../3d/figure.ts'
 import type { SceneMaker } from '../3d/scene.ts'
 import type { VoiceEngine } from '../voice/voice.ts'
-import { join } from '@std/path'
 import type { RoleplayModel } from './model.ts'
 import { GoneError, updateSession } from './update.ts'
+import { allPictureFiles, removeFiles } from '../pictures.ts'
 import { CastError, openingMessages, parseCast, roleplayMessages } from './prompt.ts'
 import {
   artFrameMessages,
@@ -153,7 +152,7 @@ async function commit(
       reply: fields,
       ...(thinking ? { thinking } : {}),
       timings: { text: secondsSince(start) },
-      image: null,
+      pictures: [],
       createdAt: new Date().toISOString(),
     }
     return { ...latest, frames: [...latest.frames, frame] }
@@ -335,8 +334,9 @@ export async function setLook(
 }
 
 /**
- * Renders Frame `index`'s picture through the shared render queue. A new render replaces the old
- * image and its upscale. Refused for a Frame that isn't pictured or whose picture crosses a Limit.
+ * Renders Frame `index`'s picture through the shared render queue, in place of its picture by the
+ * same Image Model (`replacePicture`). Refused for a Frame that isn't pictured or whose picture
+ * crosses a Limit.
  */
 export async function renderRoleplayFrame(
   deps: RoleplayDeps,
@@ -350,23 +350,14 @@ export async function renderRoleplayFrame(
   if (frame.blocked) {
     throw new RoleplayLimitError(`Frame ${index} crosses a limit: ${frame.blocked}`)
   }
-  const timings: { queued?: number; image: number | null; text: number } = {
-    text: 0,
-    image: null,
-  }
   const { session: updated, frame: rendered } = await replacePicture(
     deps,
     session,
     index,
     frame.prompt,
-    timings,
     emit,
     signal,
     (change) => updateSession(deps.store, session.id, change),
-    (current, image) => {
-      const { text: _, ...renderTimings } = timings
-      return { ...current, image, renderTimings }
-    },
   )
   emit({ type: 'rendered', frame: rendered, session: updated })
   return updated
@@ -387,14 +378,8 @@ export async function undoLatestExchange(
     ...latest,
     frames: latest.frames.slice(0, -1),
   }))
-  for (const file of [latest.image, latest.upscaled]) {
-    if (file) await removeImage(store.dir(session.id), file.replace(/\.\w+$/, ''))
-  }
-  for (
-    const made of [latest.speech, latest.thoughtSpeech, latest.scene, latest.figure, latest.lito]
-  ) {
-    if (made) await Deno.remove(join(store.dir(session.id), made.file)).catch(() => {})
-  }
+  const spoken = [latest.speech?.file, latest.thoughtSpeech?.file].filter((f): f is string => !!f)
+  await removeFiles(store.dir(session.id), [...allPictureFiles(latest), ...spoken])
   return updated
 }
 

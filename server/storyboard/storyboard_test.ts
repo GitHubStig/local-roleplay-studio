@@ -13,6 +13,7 @@ import {
   type StoryboardEvent,
 } from './storyboard.ts'
 import { briefScenario } from '../scenario.ts'
+import { switchImageModel } from '../pictures.ts'
 import { fakeImageGenerator, planOf, scriptedTextModel, withTempDir } from '../testing.ts'
 
 const scenario = briefScenario('A player dribbles and dunks, sketch style.')
@@ -75,7 +76,7 @@ Deno.test('planStoryboard streams the Look, Beats and Frames, then saves them', 
     const [first] = session.frames
     assertEquals(first.beat, 'Beat 1')
     assertEquals(first.prompt, composePrompt(planOf(3).look, planOf(3).frames[0].body, ['Ace']))
-    assertEquals(first.image, null)
+    assertEquals(first.pictures, [])
     assertEquals(typeof first.timings!.text, 'number')
     assertEquals((await deps.store.load('s1'))!.frames.length, 3)
   }))
@@ -124,16 +125,39 @@ Deno.test('planStoryboard fails on a Look across a Limit, and blocks a Frame tha
 Deno.test('renderStoryboardFrame renders one Frame, and a re-render replaces its image', () =>
   withTempDir(async (root) => {
     const { deps, images, session } = await planned(root)
-    const first = await renderStoryboardFrame(deps, session, 1, () => {}, signal())
-    assertMatch(first.image!, /^frame-1-[0-9a-f]{8}\.png$/)
+    const [first] = (await renderStoryboardFrame(deps, session, 1, () => {}, signal())).pictures
+    assertMatch(first.image, /^frame-1-[0-9a-f]{8}\.png$/)
+    assertEquals(first.imageModel, 'qwen-image-2.1')
     assertEquals(images.prompts, [session.frames[1].prompt])
     assertEquals(typeof first.timings!.image, 'number')
 
-    const second = await renderStoryboardFrame(deps, session, 1, () => {}, signal())
+    const [second] = (await renderStoryboardFrame(deps, session, 1, () => {}, signal())).pictures
     const files = (await Array.fromAsync(Deno.readDir(join(root, 's1')))).map((f) => f.name)
-    assertEquals(files.includes(first.image!), false)
-    assertEquals(files.includes(second.image!), true)
-    assertEquals((await deps.store.load('s1'))!.frames[1].image, second.image)
+    assertEquals(files.includes(first.image), false)
+    assertEquals(files.includes(second.image), true)
+    assertEquals((await deps.store.load('s1'))!.frames[1].pictures, [second])
+  }))
+
+Deno.test("A re-render keeps another Image Model's picture, and an edit marks it stale too", () =>
+  withTempDir(async (root) => {
+    const { deps, session } = await planned(root)
+    const [qwen] = (await renderStoryboardFrame(deps, session, 0, () => {}, signal())).pictures
+    const klein = await switchImageModel(deps.store, session, 'flux2-klein-4b') as StoryboardSession
+    const [, first] = (await renderStoryboardFrame(deps, klein, 0, () => {}, signal())).pictures
+    assertEquals(first.imageModel, 'flux2-klein-4b')
+    // Rendered again by the same model: that model's picture is replaced, the other kept.
+    const second = (await renderStoryboardFrame(deps, klein, 0, () => {}, signal())).pictures
+    assertEquals(second.map((p) => p.imageModel), ['qwen-image-2.1', 'flux2-klein-4b'])
+    assertEquals(second[0], qwen)
+    const files = (await Array.fromAsync(Deno.readDir(join(root, 's1')))).map((f) => f.name)
+    assertEquals([first.image, qwen.image, second[1].image].map((f) => files.includes(f)), [
+      false,
+      true,
+      true,
+    ])
+
+    const edited = await setFrameBody(deps, klein, 0, 'He leaps.')
+    assertEquals(edited.frames[0].pictures.map((p) => p.stale), [true, true])
   }))
 
 Deno.test('setFrameBody rewrites one Frame, marks it stale if rendered, and refuses Limits', () =>
@@ -143,8 +167,8 @@ Deno.test('setFrameBody rewrites one Frame, marks it stale if rendered, and refu
     const edited = await setFrameBody(deps, session, 0, 'He leaps.\n- Lighting: dusk.')
     assertEquals(edited.frames[0].body, 'He leaps. dusk.')
     assertEquals(edited.frames[0].prompt, composePrompt(edited.look!, 'He leaps. dusk.', ['Ace']))
-    assertEquals(edited.frames[0].stale, true)
-    assertEquals(edited.frames[1].stale, undefined)
+    assertEquals(edited.frames[0].pictures.map((p) => p.stale), [true])
+    assertEquals(edited.frames[1].pictures, [])
     await assertRejects(() => setFrameBody(deps, edited, 1, 'Fully nude.'), LimitError)
 
     // Who it shows can change with it: no one, here.
@@ -163,7 +187,7 @@ Deno.test('setLook rewrites every Frame and marks the rendered ones stale', () =
     }
     const updated = await setLook(deps, session, look)
     for (const f of updated.frames) assertEquals(f.prompt, composePrompt(look, f.body, ['Ace']))
-    assertEquals(updated.frames.map((f) => f.stale ?? false), [false, false, true])
+    assertEquals(updated.frames.map((f) => f.pictures.map((p) => p.stale)), [[], [], [true]])
     await assertRejects(
       () =>
         setLook(deps, updated, { people: [{ name: 'Kid', identity: 'A child.' }], style: 'Ink.' }),

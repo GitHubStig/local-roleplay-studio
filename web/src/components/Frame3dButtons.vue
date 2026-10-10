@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Frame3d, Made3d } from '../api'
+import type { Made3d, Picture } from '../api'
 
 /**
  * A Frame's 3D buttons, named by the model they use (experimental): SHARP makes the whole picture a
@@ -8,7 +8,8 @@ import type { Frame3d, Made3d } from '../api'
  */
 withDefaults(
   defineProps<{
-    frame: Frame3d
+    /** The picture the Frame shows, if it has one. */
+    picture?: Picture
     /** Which are off for now, e.g. while one is being made. */
     disabled?: (kind: Made3d) => boolean
     /** Which can be made at all here (its Feature is on); what's made can always be viewed. */
@@ -22,7 +23,7 @@ defineEmits<{ make: [kind: Made3d]; view: [kind: Made3d] }>()
 
 <template>
   <button
-    v-if="frame.scene"
+    v-if="picture?.scene"
     type="button"
     :class="buttonClass"
     title="The whole picture in 2.5D, made with Apple's SHARP: turns ~30°"
@@ -32,21 +33,21 @@ defineEmits<{ make: [kind: Made3d]; view: [kind: Made3d] }>()
     View SHARP
   </button>
   <button
-    v-if="available('scene') && frame.image &&
-      (!frame.scene || (frame.upscaled && frame.scene.from !== frame.upscaled))"
+    v-if="available('scene') && picture &&
+      (!picture.scene || (picture.upscaled && picture.scene.from !== picture.upscaled))"
     type="button"
     :class="buttonClass"
     :disabled="disabled('scene')"
-    :title="frame.scene
+    :title="picture?.scene
       ? 'Made before the upscale: make it again from the upscale'
       : 'Experimental: make the whole picture into a 2.5D scene with Apple\'s SHARP, which turns ~30° (~11 s)'"
     data-scene-button
     @click="$emit('make', 'scene')"
   >
-    {{ frame.scene ? 'SHARP again from upscale' : 'SHARP' }}
+    {{ picture?.scene ? 'SHARP again from upscale' : 'SHARP' }}
   </button>
   <button
-    v-if="frame.figure"
+    v-if="picture?.figure"
     type="button"
     :class="buttonClass"
     title="The person in the picture in 3D, made with VAST's TripoSplat: turns all the way round"
@@ -56,7 +57,7 @@ defineEmits<{ make: [kind: Made3d]; view: [kind: Made3d] }>()
     View TripoSplat
   </button>
   <button
-    v-else-if="available('figure') && frame.image"
+    v-else-if="available('figure') && picture"
     type="button"
     :class="buttonClass"
     :disabled="disabled('figure')"
@@ -67,7 +68,7 @@ defineEmits<{ make: [kind: Made3d]; view: [kind: Made3d] }>()
     TripoSplat
   </button>
   <button
-    v-if="frame.lito"
+    v-if="picture?.lito"
     type="button"
     :class="buttonClass"
     title="The person in the picture in 3D, made with Apple's LiTo: turns all the way round"
@@ -77,7 +78,7 @@ defineEmits<{ make: [kind: Made3d]; view: [kind: Made3d] }>()
     View LiTo
   </button>
   <button
-    v-else-if="available('lito') && frame.image"
+    v-else-if="available('lito') && picture"
     type="button"
     :class="buttonClass"
     :disabled="disabled('lito')"

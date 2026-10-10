@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { imageUrl } from '../api'
+import { imageUrl, type PicturedFrame, shownPicture } from '../api'
 import ImageViewer from './ImageViewer.vue'
 
 /**
@@ -10,7 +10,9 @@ import ImageViewer from './ImageViewer.vue'
 const props = withDefaults(
   defineProps<{
     sessionId: string
-    frames: readonly { index: number; image: string | null; upscaled?: string }[]
+    frames: readonly PicturedFrame[]
+    /** The Session's Image Model, which picks the picture each Frame shows. */
+    imageModel: string
     /** What a Frame is called in the viewer's label. */
     name?: (index: number) => string
   }>(),
@@ -21,14 +23,19 @@ const open = defineModel<number | null>('open', { required: true })
 /** The viewer stepped to Frame `index`, e.g. to scroll what's behind it there. */
 const emit = defineEmits<{ step: [index: number] }>()
 
-const pictured = computed(() => props.frames.filter((f) => f.image))
+const pictured = computed(() =>
+  props.frames.flatMap((f) => {
+    const picture = shownPicture(f, props.imageModel)
+    return picture ? [{ index: f.index, picture }] : []
+  })
+)
 const at = computed(() => pictured.value.findIndex((f) => f.index === open.value))
 const shown = computed(() => {
   const frame = at.value >= 0 ? pictured.value[at.value] : null
   if (!frame) return null
   const name = props.name(frame.index)
   return {
-    src: imageUrl(props.sessionId, frame.upscaled ?? frame.image!),
+    src: imageUrl(props.sessionId, frame.picture.upscaled ?? frame.picture.image),
     alt: `Picture of ${name}`,
     label: `${name} · ${at.value + 1} of ${pictured.value.length}`,
   }

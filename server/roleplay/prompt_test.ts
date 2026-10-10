@@ -32,7 +32,7 @@ const frame = (index: number, message: string | null, dialogue: string) => ({
   index,
   message,
   reply: replyOf(dialogue),
-  image: null,
+  pictures: [],
   createdAt: '2026-09-27T00:00:00.000Z',
 })
 

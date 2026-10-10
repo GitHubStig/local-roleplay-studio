@@ -1,8 +1,7 @@
 import { fromFileUrl, join } from '@std/path'
 import type { ImagePrompt } from './imagePrompt.ts'
 import type { RoleplaySession } from './roleplay/types.ts'
-import type { Scene } from './3d/scene.ts'
-import type { Figure } from './3d/figure.ts'
+import type { Picture } from './pictures.ts'
 import type { Settings } from './settings.ts'
 
 /**
@@ -14,14 +13,12 @@ export type Outcome = 'done' | 'declined' | 'unclear'
 
 export const OUTCOMES: readonly Outcome[] = ['done', 'declined', 'unclear']
 
-/** How long a Frame's steps took, in seconds (one decimal place). */
+/**
+ * How long writing a Frame took, in seconds (one decimal place): the new Image Prompt, including
+ * the Limits check. Each picture keeps its own render's timings.
+ */
 export interface FrameTimings {
-  /** Writing the new Image Prompt, including the Limits check. */
   text: number
-  /** Waiting for another Session's render to finish; only present if it had to wait. */
-  queued?: number
-  /** Rendering the image; null until it's rendered. */
-  image: number | null
 }
 
 /** What every Frame has, in a Chain or a Storyboard. */
@@ -29,16 +26,8 @@ interface FrameBase {
   index: number
   /** One paragraph describing the image: exactly what the Image Model renders. */
   prompt: ImagePrompt
-  /** File name of this Frame's image inside the Session directory; null until rendered. */
-  image: string | null
-  /** File name of the image upscaled to 2048 px, once the player has upscaled it. */
-  upscaled?: string
-  /** The picture made into a 2.5D scene (SHARP), once asked for. */
-  scene?: Scene
-  /** The person in the picture as a 3D figure (TripoSplat), once asked for. */
-  figure?: Figure
-  /** The same, made with Apple's LiTo. */
-  lito?: Figure
+  /** One per Image Model it was rendered with (`pictures.ts`); none until rendered. */
+  pictures: Picture[]
   timings?: FrameTimings
   createdAt: string
 }
@@ -68,8 +57,6 @@ export interface StoryboardFrame extends FrameBase {
    * picture of the place alone.
    */
   shown: string[]
-  /** The prompt changed after the image was rendered, so the image is out of date. */
-  stale?: boolean
   /** Why the Frame can't be rendered: it crossed a Limit and must be edited first. */
   blocked?: string
 }
@@ -106,7 +93,10 @@ export interface SessionBase {
   brief: string | null
   /** The Scenario it started from (a saved Brief); null when started from a typed Brief. */
   scenarioId: string | null
-  /** Settings as they were when the Session started; later edits don't apply. */
+  /**
+   * Settings as they were when the Session started; later edits don't apply. Only its Image Model
+   * can change, switched in the Session (`switchImageModel`).
+   */
   settings: Settings
   /** The seed every image in this Session is rendered with. */
   seed: number

@@ -196,11 +196,9 @@ export type ImagePrompt = string
 /** How an Action was received; only `done` changes an Image Prompt. */
 export type Outcome = 'done' | 'declined' | 'unclear'
 
-/** Seconds each step took; missing on Frames saved before timings were recorded. */
+/** Seconds writing the Frame took; each picture keeps its own render's. */
 export interface FrameTimings {
   text: number
-  queued?: number
-  image: number | null
 }
 
 /**
@@ -242,25 +240,47 @@ export const MADE3D_FEATURE: Record<Made3d, Feature> = {
 }
 
 /**
- * A Frame's picture and what's made from it, in every kind of Session: what the picture buttons,
- * the 3D buttons and the viewers read.
+ * A Frame's picture by one Image Model, and what's made from it, in every kind of Session: what the
+ * picture buttons, the 3D buttons and the viewers read.
  */
-export interface Frame3d {
-  index: number
-  /** Null until rendered (a Storyboard's or a Roleplay's Frame). */
-  image: string | null
-  /** The image upscaled to 2048 px, once upscaled; a re-render drops it. */
+export interface Picture {
+  image: string
+  /** The Image Model that rendered it. */
+  imageModel: string
+  /** The image upscaled to 2048 px, once upscaled. */
   upscaled?: string
+  /** The Image Prompt changed since it was rendered. */
+  stale?: boolean
   /** The picture made into a 2.5D scene (SHARP), once asked for. */
   scene?: Scene
   /** The person in the picture as a 3D figure (TripoSplat), once asked for. */
   figure?: Figure
   /** The same, made with Apple's LiTo. */
   lito?: Figure
+  /** Seconds the render waited for another (only if it had to) and took. */
+  timings?: { queued?: number; image: number }
 }
 
+/** A Frame of any kind, as far as its pictures go. */
+export interface PicturedFrame {
+  index: number
+  /** One per Image Model it was rendered with, oldest first; none until rendered. */
+  pictures: Picture[]
+}
+
+/**
+ * The picture a Frame shows: its picture by `model` (the Session's), or else its latest, which is
+ * then changed since render (as `shownPicture` on the server).
+ */
+export const shownPicture = (frame: PicturedFrame, model: string): Picture | undefined =>
+  frame.pictures.find((p) => p.imageModel === model) ?? frame.pictures.at(-1)
+
+/** A picture's Image Prompt changed since it was rendered, or it's by another Image Model. */
+export const changedSinceRender = (picture: Picture, model: string): boolean =>
+  !!picture.stale || picture.imageModel !== model
+
 /** A Chain Frame: made from the previous one by an Action. */
-export interface ChainFrame extends Frame3d {
+export interface ChainFrame extends PicturedFrame {
   action: string | null
   prompt: ImagePrompt
   narration: string
@@ -272,7 +292,7 @@ export interface ChainFrame extends Frame3d {
 }
 
 /** A Storyboard Frame: planned from a Beat, then edited and rendered on its own. */
-export interface StoryboardFrame extends Frame3d {
+export interface StoryboardFrame extends PicturedFrame {
   /** What happens in this Frame. */
   beat: string
   /** Its own seven sentences; the prompt adds who it shows before and the Look's style after. */
@@ -281,8 +301,6 @@ export interface StoryboardFrame extends Frame3d {
   shown: string[]
   /** Exactly what the Image Model renders. */
   prompt: ImagePrompt
-  /** The prompt changed since the image was rendered. */
-  stale?: boolean
   /** It crosses a Limit and can't be rendered until edited. */
   blocked?: string
   timings?: FrameTimings

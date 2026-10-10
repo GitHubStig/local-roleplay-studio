@@ -14,6 +14,7 @@ import type { Scenario } from '../scenario.ts'
 import { frameSchema, lookSchema, parseLook } from '../textModel.ts'
 import type { Look, Person } from '../session.ts'
 import type { RoleplayFrame, RoleplaySession } from './types.ts'
+import { allStale } from '../pictures.ts'
 
 /**
  * Who a picture adds and shows, after its sentences: anyone in it the Look doesn't have yet (a
@@ -272,7 +273,8 @@ export function undressed(
 
 /**
  * A Frame with its picture's sentences, its Image Prompt, and whether it crosses a Limit. A
- * rendered picture whose Image Prompt changes is marked stale until rendered again.
+ * Frame's pictures, by every Image Model, are marked stale when its Image Prompt changes, until
+ * rendered again.
  */
 export function pictured(
   frame: RoleplayFrame,
@@ -281,18 +283,17 @@ export function pictured(
   shown: string[] = frame.shown ?? [],
   clothing = frame.clothing,
 ): RoleplayFrame {
-  const { blocked: _, stale: __, ...rest } = frame
+  const { blocked: _, ...rest } = frame
   shown = matchShown(look.people, shown)
   const prompt = composePrompt(look, body, shown)
   const blocked = crossedLimit(prompt)?.message ?? undressed(shownPeople(look, shown), clothing)
-  const stale = !!frame.image && (frame.stale || prompt !== frame.prompt)
   return {
     ...rest,
+    pictures: prompt === frame.prompt ? frame.pictures : allStale(frame.pictures),
     body,
     shown,
     ...(clothing !== undefined ? { clothing } : {}),
     prompt,
     ...(blocked ? { blocked } : {}),
-    ...(stale ? { stale } : {}),
   }
 }

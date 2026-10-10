@@ -40,7 +40,9 @@ import {
   type ChainFrame,
   type FrameEvent,
   type Made3d,
+  type PicturedFrame,
   setRenderFrames,
+  shownPicture,
   undoFrame,
 } from '../api'
 import { useFeatures } from '../composables/useFeatures'
@@ -98,6 +100,10 @@ const shown = computed(() => {
   return viewing.value === null ? frames.at(-1) : frames[viewing.value]
 })
 const latest = computed(() => session.value?.frames.at(-1))
+/** The picture a Frame shows, by the Chain's Image Model if it has one. */
+const pictureOf = (frame: PicturedFrame) => shownPicture(frame, session.value!.settings.imageModel)
+/** The picture of the Frame in the main panel. */
+const picture = computed(() => shown.value && pictureOf(shown.value))
 /**
  * Looking at an earlier Frame; the next Action still continues from the latest one. While a Frame
  * runs, any committed Frame is earlier than it.
@@ -343,11 +349,15 @@ async function undo() {
   }
 }
 
-/** "Text 9.8 s · Waited 12.3 s · Image 5.1 s", without the image before it's rendered. */
-function timingsLabel(t: NonNullable<ChainFrame['timings']>): string {
-  const parts = [`Text ${t.text.toFixed(1)} s`]
-  if (t.queued !== undefined) parts.push(`Waited ${t.queued.toFixed(1)} s`)
-  if (t.image !== null) parts.push(`Image ${t.image.toFixed(1)} s`)
+/**
+ * "Text 9.8 s · Waited 12.3 s · Image 5.1 s": writing the Frame, then rendering the picture it
+ * shows, once it has one.
+ */
+function timingsLabel(frame: ChainFrame): string {
+  const parts = [`Text ${frame.timings!.text.toFixed(1)} s`]
+  const t = pictureOf(frame)?.timings
+  if (t?.queued !== undefined) parts.push(`Waited ${t.queued.toFixed(1)} s`)
+  if (t) parts.push(`Image ${t.image.toFixed(1)} s`)
   return parts.join(' · ')
 }
 
@@ -453,7 +463,7 @@ const promptDiff = computed(() => {
           </label>
         </div>
         <FrameImage
-          :src="shown?.image ? imageUrl(session.id, shown.upscaled ?? shown.image) : null"
+          :src="picture ? imageUrl(session.id, picture.upscaled ?? picture.image) : null"
           :alt="shown?.prompt"
           :rendering="renderingPhase"
           :preview="forming"
@@ -595,9 +605,9 @@ const promptDiff = computed(() => {
             </button>
             <PictureButtons
               v-if="shown"
-              :frame="shown"
+              :picture="picture"
               :has-job="(kind) => hasJob(shown!.index, kind)"
-              :can-render="!shown.image"
+              :can-render="!picture || picture.imageModel !== session.settings.imageModel"
               button-class="rounded-lg border border-line px-3 py-2 text-sm disabled:opacity-50"
               @queue="(kind) => queue(kind, shown!.index)"
               @view="(kind) => (open3d = { index: shown!.index, kind })"
@@ -671,8 +681,8 @@ const promptDiff = computed(() => {
               @click="pick(frame.index)"
             >
               <img
-                v-if="frame.image"
-                :src="imageUrl(session.id, frame.image)"
+                v-if="pictureOf(frame)"
+                :src="imageUrl(session.id, pictureOf(frame)!.image)"
                 alt=""
                 class="h-20 w-14 shrink-0 rounded object-cover"
               />
@@ -766,7 +776,7 @@ const promptDiff = computed(() => {
               Frame {{ promptIndex }} · {{ shown ? shown.action ?? 'Opening' : pendingAction }}
             </p>
             <p v-if="shown?.timings" class="mb-3 text-xs text-muted" data-timings>
-              {{ timingsLabel(shown.timings) }}
+              {{ timingsLabel(shown) }}
             </p>
             <div v-if="promptIndex! > 0" class="mb-2 flex flex-col gap-1 text-xs text-muted">
               <label class="flex w-fit cursor-pointer items-center gap-1.5">
@@ -821,6 +831,7 @@ const promptDiff = computed(() => {
       v-model:open="viewingPicture"
       :session-id="session.id"
       :frames="session.frames"
+      :image-model="session.settings.imageModel"
       :name="frameTitle"
     />
     <Frame3dViewers
@@ -828,6 +839,7 @@ const promptDiff = computed(() => {
       v-model:open="open3d"
       :session-id="session.id"
       :frames="session.frames"
+      :image-model="session.settings.imageModel"
       :name="frameTitle"
     />
   </div>

@@ -13,6 +13,7 @@ import { useRouter } from 'vue-router'
 import {
   ApiError,
   cancelFrame,
+  changedSinceRender,
   type Activity,
   DOWNLOADING,
   editStoryboardFrame,
@@ -22,12 +23,14 @@ import {
   type Made3d,
   MAX_SHOWN,
   type Outcome,
+  type PicturedFrame,
   planStoryboard,
   saveFrameBody,
   saveLook,
   type StoryboardEvent,
   type StoryboardFrame,
   type StoryboardSession,
+  shownPicture,
 } from '../api'
 import CollapsibleTextarea from '../components/CollapsibleTextarea.vue'
 import ComposeBox from '../components/ComposeBox.vue'
@@ -87,6 +90,15 @@ const current = computed(() => {
   return f && !('pending' in f) ? f : null
 })
 const look = computed(() => session.value?.look ?? planning.value?.look ?? null)
+/** The picture a Frame shows, by the Storyboard's Image Model if it has one. */
+const pictureOf = (frame: PicturedFrame) => shownPicture(frame, session.value!.settings.imageModel)
+/** A Frame's picture is changed since render: its prompt changed, or it's by another model. */
+const changed = (frame: PicturedFrame) => {
+  const picture = pictureOf(frame)
+  return !!picture && changedSinceRender(picture, session.value!.settings.imageModel)
+}
+/** The picture of the selected Frame. */
+const picture = computed(() => (current.value ? pictureOf(current.value) : undefined))
 
 // --- Loading, and planning on first open.
 
@@ -236,7 +248,7 @@ const selectedJob = computed(() =>
 /** Frames that still need an image: never rendered, or changed since. Blocked ones are skipped. */
 const toRender = computed(() =>
   (session.value?.frames ?? []).filter((f) =>
-    !f.blocked && (!f.image || f.stale) && !hasJob(f.index, 'render')
+    !f.blocked && (!pictureOf(f) || changed(f)) && !hasJob(f.index, 'render')
   )
 )
 /** Queues a render of every Frame that needs one, in order. */
@@ -319,9 +331,9 @@ useEventListener(window, 'beforeunload', warnBeforeUnload)
 /** Draft, Stale, Blocked or Rendered, for a Frame in the list and on the image. */
 function status(f: StoryboardFrame): { label: string; tone: string } {
   if (f.blocked) return { label: 'Blocked', tone: 'text-danger' }
-  if (!f.image) return { label: 'Draft', tone: 'text-muted' }
-  if (f.stale) return { label: 'Changed since render', tone: 'text-warn' }
-  if (f.upscaled) return { label: 'Upscaled', tone: 'text-ok' }
+  if (!pictureOf(f)) return { label: 'Draft', tone: 'text-muted' }
+  if (changed(f)) return { label: 'Changed since render', tone: 'text-warn' }
+  if (pictureOf(f)!.upscaled) return { label: 'Upscaled', tone: 'text-ok' }
   return { label: 'Rendered', tone: 'text-ok' }
 }
 
@@ -345,12 +357,13 @@ const renderingHere = computed(() => sweepOf(selectedJob.value?.phase))
 const forming = computed(() => jobForming(session.value, selectedJob.value))
 const editingHere = computed(() => work.value?.kind === 'edit' && work.value.frameIndex === selected.value)
 
+/** Writing the Frame, then rendering the picture it shows, once it has one. */
 const timingsLabel = (f: StoryboardFrame) => {
-  const t = f.timings
-  if (!t) return ''
-  const parts = [`Text ${t.text.toFixed(1)} s`]
-  if (t.queued !== undefined) parts.push(`Waited ${t.queued.toFixed(1)} s`)
-  if (t.image !== null) parts.push(`Image ${t.image.toFixed(1)} s`)
+  if (!f.timings) return ''
+  const parts = [`Text ${f.timings.text.toFixed(1)} s`]
+  const t = pictureOf(f)?.timings
+  if (t?.queued !== undefined) parts.push(`Waited ${t.queued.toFixed(1)} s`)
+  if (t) parts.push(`Image ${t.image.toFixed(1)} s`)
   return parts.join(' · ')
 }
 
@@ -371,7 +384,7 @@ const imagesOn = computed(() => featureOn.value('images'))
     <template v-else-if="session">
       <main class="flex min-w-0 flex-1 flex-col gap-3 p-4">
         <FrameImage
-          :src="current?.image ? imageUrl(session.id, current.upscaled ?? current.image) : null"
+          :src="picture ? imageUrl(session.id, picture.upscaled ?? picture.image) : null"
           :alt="current?.prompt"
           :rendering="renderingHere"
           :preview="forming"
@@ -443,7 +456,7 @@ const imagesOn = computed(() => featureOn.value('images'))
             </button>
             <PictureButtons
               v-if="current"
-              :frame="current"
+              :picture="picture"
               :has-job="(kind) => hasJob(current!.index, kind)"
               :can-render="!current.blocked"
               button-class="rounded-lg border border-line px-3 py-2 text-sm disabled:opacity-50"
@@ -523,11 +536,11 @@ const imagesOn = computed(() => featureOn.value('images'))
                 @click="selected = f.index"
               >
                 <img
-                  v-if="'image' in f && f.image"
-                  :src="imageUrl(session.id, f.image)"
+                  v-if="'pictures' in f && pictureOf(f)"
+                  :src="imageUrl(session.id, pictureOf(f)!.image)"
                   alt=""
                   class="h-20 w-14 shrink-0 rounded object-cover"
-                  :class="{ 'opacity-50': f.stale }"
+                  :class="{ 'opacity-50': changed(f) }"
                 />
                 <span
                   v-else
@@ -624,6 +637,7 @@ const imagesOn = computed(() => featureOn.value('images'))
       v-model:open="viewingPicture"
       :session-id="session.id"
       :frames="session.frames"
+      :image-model="session.settings.imageModel"
       :name="frameTitle"
     />
     <Frame3dViewers
@@ -631,6 +645,7 @@ const imagesOn = computed(() => featureOn.value('images'))
       v-model:open="open3d"
       :session-id="session.id"
       :frames="session.frames"
+      :image-model="session.settings.imageModel"
       :name="frameTitle"
     />
   </div>

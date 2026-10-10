@@ -12,6 +12,7 @@ import { error } from './http.ts'
 import type { Upscaler } from './images/mflux/models.ts'
 import type { Job, JobEmit, JobKind } from './jobs.ts'
 import type { Session } from './session.ts'
+import { shownPictureOf } from './pictures.ts'
 
 export const PICTURE_JOB_KINDS: readonly JobKind[] = ['upscale', 'scene', 'figure', 'lito']
 
@@ -25,19 +26,22 @@ export interface PictureJobDeps
 }
 
 /**
- * Why picture job `kind` can't be queued on `frame` (called `name`), or null if it can. Without a
- * picture it can still wait behind a job already queued (`pending`) that will make one, so a
- * render and what's made from it can be asked for back to back.
+ * Why picture job `kind` can't be queued on the picture Frame `index` shows (the Frame called
+ * `name`), or null if it can. Without a picture it can still wait behind a job already queued
+ * (`pending`) that will make one, so a render and what's made from it can be asked for back to
+ * back.
  */
 export function checkPictureJob(
-  frame: { image: string | null; upscaled?: string },
+  session: Session,
+  index: number,
   kind: JobKind,
   name: string,
   pending: readonly JobKind[],
 ): Response | null {
+  const picture = shownPictureOf(session, index)
   const coming = pending.some((k) => k === 'render' || k === 'picture')
-  if (!frame.image && !coming) return error(`${name} has no picture yet`, 409)
-  if (kind === 'upscale' && frame.upscaled) return error(`${name} is already upscaled`, 409)
+  if (!picture && !coming) return error(`${name} has no picture yet`, 409)
+  if (kind === 'upscale' && picture?.upscaled) return error(`${name} is already upscaled`, 409)
   return null
 }
 

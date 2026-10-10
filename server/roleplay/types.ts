@@ -2,6 +2,7 @@ import type { Look, SessionBase } from '../session.ts'
 import type { Delivery } from '../voice/voice.ts'
 import type { Scene } from '../3d/scene.ts'
 import type { Figure } from '../3d/figure.ts'
+import type { Picture } from '../pictures.ts'
 
 export type { Figure, Scene }
 
@@ -84,24 +85,12 @@ export interface RoleplayFrame {
   /** Written as tags rather than prose (Settings → Art Agent style); absent for prose. */
   pictureStyle?: 'tags'
   pictureThinking?: string
-  /** File name of the rendered picture inside the Session directory; null until rendered. */
-  image: string | null
-  /** The picture upscaled to 2048 px, once upscaled; a re-render drops it. */
-  upscaled?: string
-  /** The Image Prompt changed since the picture was rendered. */
-  stale?: boolean
-  /** Seconds the latest render waited for another and took, as for any Frame. */
-  renderTimings?: { queued?: number; image: number | null }
+  /** One per Image Model it was rendered with (`pictures.ts`); none until rendered. */
+  pictures: Picture[]
   /** The Character's line, spoken; out of date when its voice isn't the Roleplay's voice now. */
   speech?: Speech
   /** The Character's thought (`internal`), spoken in the same voice; out of date likewise. */
   thoughtSpeech?: Speech
-  /** The picture made into a 3D scene, once asked for; a re-render drops it. */
-  scene?: Scene
-  /** The person in the picture lifted out as a full 3D figure (TripoSplat); a re-render drops it. */
-  figure?: Figure
-  /** The same, made with Apple's LiTo instead; a re-render drops it. */
-  lito?: Figure
   createdAt: string
 }
 

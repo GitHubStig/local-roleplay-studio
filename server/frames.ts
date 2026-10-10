@@ -1,11 +1,19 @@
 import { join } from '@std/path'
+import {
+  changeFramePicture,
+  type Picture,
+  pictureFiles,
+  removeFiles,
+  shownPictureOf,
+  withPicture,
+} from './pictures.ts'
 import type { ImageGenerator } from './images/imageGenerator.ts'
 import type { Upscaler } from './images/mflux/models.ts'
 import { crossedLimit, limitsEnabled } from './limits.ts'
 import { mightNameAPerson, type TextModel } from './textModel.ts'
 import type { Previews } from './previews.ts'
 import { RenderQueue } from './renderQueue.ts'
-import type { FrameTimings, Session, SessionStore } from './session.ts'
+import type { Session, SessionStore } from './session.ts'
 import { GoneError } from './update.ts'
 import { ContextFullError } from './text/chat.ts'
 
@@ -113,25 +121,24 @@ export async function limitCrossedBy(
 }
 
 /**
- * Renders `prompt` into `<dir>/<name>.png` through the shared render queue, recording how long
- * it waited and how long it rendered into `timings`. Returns the image's file name.
+ * Renders `prompt` into `<dir>/<name>.png` with the Session's Image Model, through the shared
+ * render queue. Returns the picture, with how long it waited and how long it rendered.
  */
 export async function renderImage(
   deps: FrameDeps,
   session: Session,
   prompt: string,
   name: string,
-  timings: FrameTimings,
   emit: (event: ProgressEvent) => void,
   signal: AbortSignal,
-): Promise<string> {
+): Promise<Picture> {
   const queueStart = performance.now()
   let waited = false
   const release = await (deps.renderQueue ?? new RenderQueue()).acquire(signal, () => {
     waited = true
     emit({ type: 'phase', phase: 'queued' })
   }, { job: { kind: 'render', settings: session.settings } })
-  if (waited) timings.queued = secondsSince(queueStart)
+  const queued = waited ? secondsSince(queueStart) : undefined
   const imageStart = performance.now()
   try {
     emit({ type: 'phase', phase: 'image' })
@@ -145,66 +152,50 @@ export async function renderImage(
       onDownload,
       deps.previews && ((jpeg) => deps.previews!.set(session.id, jpeg)),
     )
-    timings.image = secondsSince(imageStart)
-    return image
+    return {
+      image,
+      imageModel: session.settings.imageModel,
+      timings: { ...(queued !== undefined && { queued }), image: secondsSince(imageStart) },
+    }
   } finally {
     deps.previews?.clear(session.id)
     release()
   }
 }
 
-/** A Frame with a picture, and what can be made from it, which a new picture makes out of date. */
-interface PicturedFrame {
-  index: number
-  image: string | null
-  upscaled?: string
-  stale?: boolean
-  scene?: { file: string }
-  figure?: { file: string }
-  lito?: { file: string }
-}
-
 /**
- * Renders a new picture for Frame `index` (a Roleplay's or a Storyboard's) and puts it on the Frame
- * as it is now (`save`), replacing the old picture and what was made from it: its upscale, scene
- * and figures, whose files are then deleted. `place` gives the Frame its new picture, from the
- * Frame as saved now without any of those. On failure or Cancel nothing changes, and the new file
- * is removed.
+ * Renders a new picture for Frame `index` with the Session's Image Model and puts it on the Frame
+ * as it is now (`save`), in place of its picture by the same model, whose files (and what was made
+ * from it: upscale, scene, figures) are then deleted. Its pictures by other models stay, for
+ * switching back. Stale if the Frame's Image Prompt changed while it rendered. On failure or Cancel
+ * nothing changes, and the new file is removed.
  */
-export async function replacePicture<
-  S extends Session & { frames: PicturedFrame[] },
-  F extends S['frames'][number] = S['frames'][number],
->(
+export async function replacePicture<S extends Session>(
   deps: FrameDeps,
   session: S,
   index: number,
   prompt: string,
-  timings: FrameTimings,
   emit: (event: ProgressEvent) => void,
   signal: AbortSignal,
   save: (change: (s: S) => S) => Promise<S>,
-  place: (current: F, image: string) => F,
-): Promise<{ session: S; frame: F }> {
+): Promise<{ session: S; frame: S['frames'][number] }> {
   const name = imageName(index)
   const dir = deps.store.dir(session.id)
   try {
-    const image = await renderImage(deps, session, prompt, name, timings, emit, signal)
+    const rendered = await renderImage(deps, session, prompt, name, emit, signal)
     signal.throwIfAborted()
-    let frame!: F
-    let old!: F
+    let frame!: S['frames'][number]
+    let replaced: Picture | undefined
     const updated = await save((latest) => {
-      old = latest.frames[index] as F
+      const old = latest.frames[index]
       if (!old) throw new GoneError('That Frame no longer exists')
-      const { stale: _, upscaled: __, scene: ___, figure: ____, lito: _____, ...rest } = old
-      frame = place(rest as F, image)
+      const picture = old.prompt === prompt ? rendered : { ...rendered, stale: true }
+      const next = withPicture(old.pictures, picture)
+      replaced = next.replaced
+      frame = { ...old, pictures: next.pictures }
       return { ...latest, frames: latest.frames.map((f) => (f.index === index ? frame : f)) } as S
     })
-    for (const file of [old.image, old.upscaled]) {
-      if (file && file !== image) await removeImage(dir, file.replace(/\.\w+$/, ''))
-    }
-    for (const made of [old.scene, old.figure, old.lito]) {
-      if (made) await Deno.remove(join(dir, made.file)).catch(() => {})
-    }
+    if (replaced) await removeFiles(dir, pictureFiles(replaced))
     return { session: updated, frame }
   } catch (err) {
     await removeImage(dir, name)
@@ -222,9 +213,9 @@ export async function removeImage(dir: string, name: string): Promise<void> {
 export class UpscaleError extends Error {}
 
 /**
- * Upscales Frame `index`'s image to 2048 px through the shared render queue, then marks the Frame,
- * if it still shows that image, as upscaled. Keeps the original image, which thumbnails and
- * re-renders still use.
+ * Upscales the picture Frame `index` shows to 2048 px through the shared render queue, then marks
+ * that picture, if the Frame still has it, as upscaled. Keeps the original image, which thumbnails
+ * and re-renders still use.
  */
 export async function upscaleFrame(
   deps: Pick<FrameDeps, 'store' | 'imageGenerator' | 'renderQueue'>,
@@ -236,10 +227,10 @@ export async function upscaleFrame(
   /** Saves the change onto the Session as it is now (`updateSession`): a job runs beside it. */
   save: (change: (s: Session) => Session) => Promise<Session>,
 ): Promise<Session> {
-  const frame = session.frames[index]
-  if (!frame?.image) throw new UpscaleError(`Frame ${index + 1} has no image to upscale`)
-  if (frame.upscaled) throw new UpscaleError(`Frame ${index + 1} is already upscaled`)
-  const image = frame.image
+  const picture = shownPictureOf(session, index)
+  if (!picture) throw new UpscaleError(`Frame ${index + 1} has no image to upscale`)
+  if (picture.upscaled) throw new UpscaleError(`Frame ${index + 1} is already upscaled`)
+  const { image } = picture
 
   const name = `${image.replace(/\.\w+$/, '')}-2048`
   const dir = deps.store.dir(session.id)
@@ -259,12 +250,7 @@ export async function upscaleFrame(
     )
     signal.throwIfAborted()
     const updated = await save((latest) =>
-      ({
-        ...latest,
-        frames: latest.frames.map((f) =>
-          f.index === index && f.image === image ? { ...f, upscaled } : f
-        ),
-      }) as Session
+      changeFramePicture(latest, index, image, (p) => ({ ...p, upscaled }))
     )
     emit({ type: 'upscaled', session: updated })
     return updated
