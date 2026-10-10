@@ -85,6 +85,9 @@ export type JobRunner = (
   signal: AbortSignal,
 ) => Promise<void>
 
+/** Jobs that make or use a picture with an image model, which unload the Text Model first. */
+const IMAGE_JOBS: readonly JobKind[] = ['render', 'upscale', 'scene', 'figure', 'lito']
+
 /** Whether `job` is the same work: the same kind, on the same Frame. */
 const sameWork = (job: Job, kind: JobKind, frameIndex: number) =>
   job.kind === kind && job.frameIndex === frameIndex
@@ -105,7 +108,9 @@ export class SessionJobs {
 
   /**
    * Queues a job. Asking again for work already queued or running on that Frame returns that job
-   * instead of queueing it twice.
+   * instead of queueing it twice. A picture (a Roleplay Frame's Image Prompt) goes ahead of queued
+   * image jobs: a new Reply's is written while its Text Model is still loaded, not after a batch
+   * of renders that each unload it.
    */
   enqueue(sessionId: string, kind: JobKind, frameIndex: number): Job {
     const jobs = this.#jobs.get(sessionId) ?? []
@@ -118,7 +123,13 @@ export class SessionJobs {
       status: 'queued',
       createdAt: new Date().toISOString(),
     }
-    this.#jobs.set(sessionId, [...jobs, job])
+    const ahead = kind === 'picture'
+      ? jobs.findIndex((j) => j.status === 'queued' && IMAGE_JOBS.includes(j.kind))
+      : -1
+    this.#jobs.set(
+      sessionId,
+      ahead < 0 ? [...jobs, job] : [...jobs.slice(0, ahead), job, ...jobs.slice(ahead)],
+    )
     this.#next(sessionId)
     return { ...job }
   }
@@ -261,6 +272,12 @@ export function jobRoutes(ctx: JobRoutesContext): Route[] {
           ? json(ctx.jobs.list(p.id!))
           : error('No such failed job', 404),
       )],
+
+    // Clears the queue: cancels what's running and queued, and dismisses what failed.
+    ['DELETE', path(), (_req, p) => {
+      ctx.jobs.cancelWhere(p.id!, () => true)
+      return Promise.resolve(json(ctx.jobs.list(p.id!)))
+    }],
 
     ['DELETE', path('/:job'), (_req, p) =>
       Promise.resolve(

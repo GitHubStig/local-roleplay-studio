@@ -1323,6 +1323,46 @@ Deno.test('Picturing, rendering and upscaling a Roleplay Frame are queued jobs, 
     assertEquals(card.latestImage, frame.image)
   }))
 
+Deno.test('A picture goes ahead of queued renders, and Clear empties the queue', () =>
+  withTempDir(async (root) => {
+    const images = fakeImageGenerator()
+    let release!: () => void
+    const held = new Promise<void>((r) => (release = r))
+    const holding = {
+      ...images,
+      async generate(...args: Parameters<typeof images.generate>) {
+        const signal = args[1]
+        await Promise.race([
+          held,
+          new Promise((_, no) => signal.addEventListener('abort', () => no(signal.reason))),
+        ])
+        return images.generate(...args)
+      },
+    }
+    const { call } = await roleplayWithArt(root, [artBody, artBody], { imageGenerator: holding })
+    const enqueue = (kind: string, frameIndex: number) =>
+      call('POST', '/api/sessions/s1/jobs', { kind, frameIndex })
+    await enqueue('picture', 0)
+    await settled(call)
+    await readEvents(await call('POST', '/api/sessions/s1/roleplay/messages', { text: 'Sorry.' }))
+    // Frame 0's render holds the queue; Frame 1's is queued behind it, then its picture.
+    await enqueue('render', 0)
+    await enqueue('render', 1)
+    const jobs = await (await enqueue('picture', 1)).json()
+    assertEquals(
+      jobs.map((j: { kind: string; frameIndex: number }) => `${j.kind} ${j.frameIndex}`),
+      ['render 0', 'picture 1', 'render 1'],
+    )
+
+    const cleared = await call('DELETE', '/api/sessions/s1/jobs')
+    assertEquals(cleared.status, 200)
+    release()
+    assertEquals(await settled(call), [])
+    const session = await (await call('GET', '/api/sessions/s1')).json()
+    assertEquals(session.frames.map((f: { pictures: unknown[] }) => f.pictures.length), [0, 0])
+    assertEquals(session.frames[1].prompt, undefined)
+  }))
+
 Deno.test('A failed job stays listed to retry or dismiss', () =>
   withTempDir(async (root) => {
     const { call } = await roleplayWithArt(root, [])
