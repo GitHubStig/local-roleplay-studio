@@ -417,7 +417,9 @@ consistency* in [open-threads.md](open-threads.md).
   writes only the prompt; the Frame reads "Not rendered yet", with a dashed thumbnail, and its
   **Render** button queues its picture. A Chain Frame's prompt never changes, so a picture by the
   Chain's Image Model is never out of date: **Re-render** is offered only for a Frame with none by
-  that model, after a switch, whose picture shows **Changed since render · by <model>**. The Narration is a caption over the bottom of the photo
+  that model, after a switch, whose picture shows **Changed since render · by <model>**. **Render all**
+  (2026-10-10, as a Storyboard's) queues a render of every Frame with no picture by the Chain's
+  Image Model, in order, and says how many. The Narration is a caption over the bottom of the photo
   (provisional text shows dimmed and in italics while a Frame runs); the caption can be hidden,
   and that choice is remembered per browser. The Frame's status ("Rendering the image… step 2 of 4") is a
   pill in the image's top corner. Enter sends; Shift+Enter adds a new line. A done Frame clears the text box; a declined or

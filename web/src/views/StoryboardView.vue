@@ -42,6 +42,7 @@ import LookForm from '../components/LookForm.vue'
 import PictureButtons from '../components/PictureButtons.vue'
 import ImageModelPicker from '../components/ImageModelPicker.vue'
 import ModelComparison from '../components/ModelComparison.vue'
+import RenderAllButton from '../components/RenderAllButton.vue'
 import { useImageModels } from '../composables/useSettingsOptions'
 import { useFeatures } from '../composables/useFeatures'
 import { useJobs } from '../composables/useJobs'
@@ -232,7 +233,7 @@ async function plan() {
 
 // --- Queued work: renders, upscales and 3D, each on its Frame.
 
-const { jobs, jobsFor, hasJob, queue, dropJob, retry } = useJobs(props.id, {
+const { jobs, jobsFor, hasJob, queue, queueAll, dropJob, retry } = useJobs(props.id, {
   onSettled: async () => {
     await load()
   },
@@ -254,10 +255,6 @@ const toRender = computed(() =>
     !f.blocked && (!pictureOf(f) || changed(f)) && !hasJob(f.index, 'render')
   )
 )
-/** Queues a render of every Frame that needs one, in order. */
-async function renderAll() {
-  for (const frame of toRender.value.slice()) await queue('render', frame.index)
-}
 
 async function cancel() {
   if (work.value) work.value = { ...work.value, cancelling: true }
@@ -483,17 +480,12 @@ const imagesOn = computed(() => featureOn.value('images'))
               @queue="(kind) => queue(kind, current!.index)"
               @view="(kind) => (open3d = { index: current!.index, kind })"
             />
-            <button
+            <RenderAllButton
               v-if="imagesOn && planned"
-              type="button"
-              class="rounded-lg border border-line px-3 py-2 text-sm disabled:opacity-50"
-              :disabled="!toRender.length"
+              :count="toRender.length"
               title="Queue a render of every Frame not rendered yet, or changed since"
-              data-render-all
-              @click="renderAll"
-            >
-              Render all{{ toRender.length ? ` (${toRender.length})` : '' }}
-            </button>
+              @render="queueAll('render', toRender.map((f) => f.index))"
+            />
             <p
               v-if="message"
               class="min-w-0 flex-1 truncate text-sm"

@@ -18,6 +18,7 @@ import FrameImage from '../components/FrameImage.vue'
 import PictureButtons from '../components/PictureButtons.vue'
 import ImageModelPicker from '../components/ImageModelPicker.vue'
 import ModelComparison from '../components/ModelComparison.vue'
+import RenderAllButton from '../components/RenderAllButton.vue'
 import { useImageModels } from '../composables/useSettingsOptions'
 import Frame3dViewers from '../components/Frame3dViewers.vue'
 import FrameViewer from '../components/FrameViewer.vue'
@@ -324,12 +325,22 @@ async function switchRenderFrames(on: boolean) {
   }
 }
 
-const { jobs, jobsFor, hasJob, queue, dropJob, retry, refreshJobs } = useJobs(props.id, {
+const { jobs, jobsFor, hasJob, queue, queueAll, dropJob, retry, refreshJobs } = useJobs(props.id, {
   onSettled: async () => {
     await load()
   },
   onError: (message) => (frameError.value = message),
 })
+/**
+ * The Frames Render all would queue: those with no picture by the Chain's Image Model (a Chain
+ * Frame's prompt never changes, so one by it is never out of date), and no render queued.
+ */
+const toRender = computed(() =>
+  (session.value?.frames ?? []).filter((f) =>
+    !f.pictures.some((p) => p.imageModel === session.value!.settings.imageModel) &&
+    !hasJob(f.index, 'render')
+  )
+)
 /** The shown Frame's running job, if it's making a picture: its border sweeps. */
 const shownJob = computed(() =>
   jobsFor(shown.value?.index ?? -1).find((j) => j.status === 'running') ?? null
@@ -641,6 +652,12 @@ const promptDiff = computed(() => {
               button-class="rounded-lg border border-line px-3 py-2 text-sm disabled:opacity-50"
               @queue="(kind) => queue(kind, shown!.index)"
               @view="(kind) => (open3d = { index: shown!.index, kind })"
+            />
+            <RenderAllButton
+              v-if="featureOn('images') && session.frames.length"
+              :count="toRender.length"
+              title="Queue a render of every Frame not rendered yet by this Image Model"
+              @render="queueAll('render', toRender.map((f) => f.index))"
             />
             <p
               class="min-w-0 flex-1 truncate text-sm"

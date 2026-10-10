@@ -759,6 +759,30 @@ describe('SessionView', () => {
     expect((wrapper.find('[data-render-frames]').element as HTMLInputElement).checked).toBe(true)
   })
 
+  it('queues a render of every Frame with no picture by its Image Model', async () => {
+    vi.mocked(api.getSession).mockResolvedValue(session([
+      frame(0, null),
+      frame(1, 'Sit', { pictures: [] }),
+      // By another Image Model than the Chain's.
+      frame(2, 'Stand', { pictures: [picture('frame-2.png', { imageModel: 'flux2-klein-4b' })] }),
+    ]))
+    const queued: api.Job[] = []
+    vi.mocked(api.queueJob).mockImplementation(async (_id, kind, frameIndex) => {
+      queued.push(job({ id: `j${frameIndex}`, kind, frameIndex }))
+      return [...queued]
+    })
+    const { wrapper } = await mountIt()
+    expect(wrapper.find('[data-render-all]').text()).toBe('Render all (2)')
+    await wrapper.find('[data-render-all]').trigger('click')
+    await flushPromises()
+    expect(vi.mocked(api.queueJob).mock.calls.map((c) => [c[1], c[2]])).toEqual([
+      ['render', 1],
+      ['render', 2],
+    ])
+    // All queued: nothing left to add.
+    expect(wrapper.find('[data-render-all]').attributes('disabled')).toBeDefined()
+  })
+
   it('queues an upscale of the shown Frame, then shows the upscaled image', async () => {
     vi.mocked(api.queueJob).mockResolvedValue([
       job({ status: 'running', phase: 'image', progress: { step: 1, total: 1 } }),

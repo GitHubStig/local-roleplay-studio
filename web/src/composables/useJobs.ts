@@ -50,6 +50,10 @@ export function useJobs(
       opts.onError((err as Error).message)
     }
   }
+  /** Queues a `kind` job on each of these Frames, in order. */
+  async function queueAll(kind: JobKind, indexes: readonly number[]) {
+    for (const index of indexes) await queue(kind, index)
+  }
   /** Cancels a queued or running job, or dismisses a failed one. */
   async function dropJob(job: Job) {
     try {
@@ -68,5 +72,16 @@ export function useJobs(
     }
   }
 
-  return { jobs, openJobs, runningJob, jobsFor, hasJob, queue, dropJob, retry, refreshJobs }
+  return {
+    jobs,
+    openJobs,
+    runningJob,
+    jobsFor,
+    hasJob,
+    queue,
+    queueAll,
+    dropJob,
+    retry,
+    refreshJobs,
+  }
 }
