@@ -87,6 +87,7 @@ beforeEach(() => {
     upscaleBackend: 'mflux',
     voiceBackend: 'mlx-audio',
     limits: true,
+    callLog: false,
     artModel: '',
     artStyle: 'prose',
     features: ALL_ON,

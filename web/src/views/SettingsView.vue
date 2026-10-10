@@ -23,13 +23,17 @@ const loadError = ref('')
 const saving = ref(false)
 const status = ref<{ kind: 'saved' | 'error'; message: string; issues?: string[] } | null>(null)
 
-/** The Settings, a tab per part of the app (the Text Model's, each extra's), and the seed. */
+/**
+ * The Settings, a tab per part of the app (the Text Model's, each extra's), then what applies to
+ * every model: the seed, and the call log.
+ */
 const TABS = [
   { id: 'text', label: 'Text' },
   { id: 'images', label: 'Images' },
   { id: 'voice', label: 'Voice' },
   { id: '3d', label: '3D' },
   { id: 'seed', label: 'Seed' },
+  { id: 'log', label: 'Log' },
 ] as const
 const tab = ref<(typeof TABS)[number]['id']>('text')
 const { refreshFeatures } = useFeatures()
@@ -673,6 +677,26 @@ function removeSavedApiKey() {
               so it can come out different. 3D figures always use 42 for now.
             </span>
           </fieldset>
+        </section>
+
+        <section
+          v-show="tab === 'log'"
+          class="flex flex-col gap-5"
+          role="tabpanel"
+          data-tab-panel="log"
+        >
+          <label class="flex items-start gap-2">
+            <input v-model="form.callLog" type="checkbox" class="mt-1" data-call-log />
+            <span class="flex flex-col gap-0.5">
+              <span>Call log</span>
+              <span class="text-sm text-muted">
+                Writes every call to the Text Model and the Image Model (renders and upscales) into
+                the Session's folder, under <code>calls/</code>: what was sent, and what came back.
+                One file per Frame, and <code>setup.json</code> for the rest. Applies from the next
+                thing a Session does.
+              </span>
+            </span>
+          </label>
         </section>
 
       </form>

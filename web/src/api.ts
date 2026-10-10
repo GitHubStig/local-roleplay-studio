@@ -57,6 +57,8 @@ export interface Settings {
   voiceBackend: 'mlx-audio' | 'comfyui'
   /** The Limits; off, only "everyone depicted is an adult" is enforced. Applies at once. */
   limits: boolean
+  /** Log every call to the Text and Image Models in its Session's folder, under `calls/`. */
+  callLog: boolean
   /** The model that pictures Roleplay Frames; '' for the Session's Text Model. Applies at once. */
   artModel: string
   /** Whether the Art Agent writes prose (better) or tags. Applies at once. */
