@@ -141,7 +141,6 @@ const previewOn = (index: number) => shownPreview.value && formingIndex.value ==
  * unless switched on, and only with picturing. Both remembered per browser; Picture this and
  * Render stay for Replies made with them off.
  */
-const pictureReplies = useStoredFlag('roleplay-picture-replies', true)
 const renderReplies = useStoredFlag('roleplay-render-replies')
 /**
  * Cancels a job, and with a picture the render queued behind it, which would only fail without
@@ -376,16 +375,18 @@ onBeforeUnmount(() => clearTimeout(followTimer))
 
 // --- Streamed work.
 
-/** What a new Reply sets going: its line spoken, its picture made, as the switches say. */
+/**
+ * What a new Reply sets going: its line spoken and its picture rendered, as the switches say, and
+ * always its Image Prompt, written while the Text Model is still loaded (so it can be rendered
+ * later, with no reload between renders).
+ */
 async function afterReply(frame: RoleplayFrame) {
   if (autoplay.value && featureOn.value('voices') && canSpeak(frame)) {
     toPlay.set(partKey(frame.index, 'dialogue'), { index: frame.index, part: 'dialogue' })
     await queue('speak', frame.index)
   }
-  if (pictureReplies.value && featureOn.value('images')) {
-    await queue('picture', frame.index)
-    if (renderReplies.value) await queue('render', frame.index)
-  }
+  await queue('picture', frame.index)
+  if (renderReplies.value && featureOn.value('images')) await queue('render', frame.index)
 }
 
 function onEvent(event: RoleplayEvent) {
@@ -645,24 +646,9 @@ async function saveCastDraft(): Promise<boolean> {
               />
               <label
                 class="flex cursor-pointer items-center gap-1.5 text-muted"
-                title="Write each new reply's Image Prompt as it arrives (Picture this)"
+                title="Render each new reply's picture as its Image Prompt is written (slower)"
               >
-                <input v-model="pictureReplies" type="checkbox" data-picture-replies />
-                Picture replies
-              </label>
-              <label
-                class="flex items-center gap-1.5 text-muted"
-                :class="pictureReplies ? 'cursor-pointer' : 'opacity-50'"
-                :title="pictureReplies
-                ? 'Render each new reply\'s picture too (slower)'
-                : 'Needs Picture replies'"
-              >
-                <input
-                  v-model="renderReplies"
-                  type="checkbox"
-                  :disabled="!pictureReplies"
-                  data-render-replies
-                />
+                <input v-model="renderReplies" type="checkbox" data-render-replies />
                 Render replies
               </label>
             </template>
@@ -771,7 +757,6 @@ async function saveCastDraft(): Promise<boolean> {
                         @again="queue('speak', frame.index)"
                       />
                       <button
-                        v-if="featureOn('images')"
                         type="button"
                         class="action"
                         :disabled="hasJob(frame.index, 'picture')"

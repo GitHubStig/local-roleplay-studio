@@ -506,7 +506,7 @@ describe('RoleplayView', () => {
       expect(api.queueJob).toHaveBeenCalledWith('r1', 'speak', 1)
     })
 
-    it('pictures each new reply by default, renders it too only with Render replies on', async () => {
+    it('pictures each new reply, rendering it too with Render replies and Pictures on', async () => {
       vi.mocked(api.queueJob).mockReset().mockResolvedValue([
         job({ kind: 'picture', frameIndex: 1 }),
       ])
@@ -522,9 +522,6 @@ describe('RoleplayView', () => {
         await flushPromises()
         return vi.mocked(api.queueJob).mock.calls
       }
-      expect((wrapper.find('[data-picture-replies]').element as HTMLInputElement).checked).toBe(
-        true,
-      )
       expect((wrapper.find('[data-render-replies]').element as HTMLInputElement).checked).toBe(
         false,
       )
@@ -533,10 +530,16 @@ describe('RoleplayView', () => {
       await wrapper.find('[data-render-replies]').setValue(true)
       expect(await send('Hello.')).toEqual([['r1', 'picture', 1], ['r1', 'render', 1]])
 
-      // Rendering needs the picture: off with it.
-      await wrapper.find('[data-picture-replies]').setValue(false)
-      expect(wrapper.find('[data-render-replies]').attributes('disabled')).toBeDefined()
-      expect(await send('Hello.')).toEqual([])
+      // Pictures off: still pictured (it needs only the Text Model), but not rendered.
+      vi.mocked(api.getSettingsOptions).mockResolvedValue({
+        features: { ...ALL_AVAILABLE, images: { available: false, reason: 'mflux' } },
+      } as api.SettingsOptions)
+      await useFeatures().refreshFeatures()
+      expect(await send('Hello.')).toEqual([['r1', 'picture', 1]])
+      vi.mocked(api.getSettingsOptions).mockResolvedValue(
+        { features: ALL_AVAILABLE } as api.SettingsOptions,
+      )
+      await useFeatures().refreshFeatures()
     })
 
     it('cancels the render queued behind a picture with it', async () => {
@@ -727,10 +730,8 @@ describe('RoleplayView', () => {
     for (
       const gone of [
         '[data-autoplay]',
-        '[data-picture-replies]',
         '[data-render-replies]',
         '[data-listen]',
-        '[data-picture-button]',
         '[data-render-button]',
         '[data-upscale-button]',
         '[data-scene-button]',
@@ -740,6 +741,8 @@ describe('RoleplayView', () => {
       expect([gone, wrapper.find(gone).exists()]).toEqual([gone, false])
     }
     expect(wrapper.find('[data-figure-button]').exists()).toBe(true)
+    // Picturing needs only the Text Model.
+    expect(wrapper.find('[data-picture-button]').exists()).toBe(true)
     // The picture it already has still opens.
     expect(wrapper.find('[data-picture-image]').exists()).toBe(true)
     // Everything back on, for the other tests.

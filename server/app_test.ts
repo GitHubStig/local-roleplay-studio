@@ -1341,6 +1341,25 @@ Deno.test('A failed job stays listed to retry or dismiss', () =>
     assertEquals((await call('DELETE', '/api/sessions/s1/jobs/nope')).status, 404)
   }))
 
+Deno.test('A Roleplay Frame is pictured with Pictures off, but not rendered', () =>
+  withTempDir(async (root) => {
+    const { call, settings } = await roleplayWithArt(root, [artBody])
+    settings.current = {
+      ...settings.current,
+      features: { ...settings.current.features, images: false },
+    }
+    const queue = (kind: string) => call('POST', '/api/sessions/s1/jobs', { kind, frameIndex: 0 })
+    assertEquals((await queue('picture')).status, 201)
+    assertEquals(await settled(call), [])
+    const render = await queue('render')
+    assertEquals([render.status, (await render.json()).error], [
+      409,
+      'Pictures is switched off in Settings',
+    ])
+    const session = await (await call('GET', '/api/sessions/s1')).json()
+    assertMatch(session.frames[0].prompt, /Mira waits\./)
+  }))
+
 Deno.test('The conversation carries on while a job runs, and neither overwrites the other', () =>
   withTempDir(async (root) => {
     let release!: () => void

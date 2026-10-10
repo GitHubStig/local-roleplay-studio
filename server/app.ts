@@ -441,13 +441,15 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     ...jobRoutes({
       jobs,
       store: deps.sessions,
-      check: async (session, kind, index, pending) =>
-        (await featureOff(JOB_FEATURE[kind])) ??
+      check: async (session, kind, index, pending) => {
+        const feature = JOB_FEATURE[kind]
+        return (feature && (await featureOff(feature))) ??
           (session.kind === 'roleplay'
             ? checkRoleplayJob(session, kind, index, pending)
             : session.kind === 'chain'
             ? checkChainJob(session, kind, index, pending)
-            : checkStoryboardJob(session, kind, index, pending)),
+            : checkStoryboardJob(session, kind, index, pending))
+      },
     }),
 
     ['GET', new URLPattern({ pathname: '/api/health' }), () => Promise.resolve(json({ ok: true }))],

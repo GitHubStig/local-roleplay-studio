@@ -326,11 +326,14 @@ and usable, with Send waiting until the picture is done. With the Limits on, a p
 more people must name what each wears in its clothing sentence (by any word of their name, or its
 plural: "the two men" covers both), or it's blocked (and written once more): told to keep within the
 Limits, the Art Agent sometimes left an undressed person's clothing out instead of dressing them.
-**Picture replies** (beside "Speak replies" above the conversation; on by default wherever
-pictures are available) queues Picture this for each new Reply as it arrives, writing its Image
-Prompt. **Render replies** (beside it, off by default, as rendering is slow; only with Picture
-replies) queues Render after it too. Both are remembered per browser; the buttons stay for older
-Replies or another try. A job already queued isn't cancelled by the next Message: each Reply gets
+Each new Reply (the opening too) is pictured as it arrives (since 2026-10-10, when a **Picture
+replies** switch was dropped): its Image Prompt is written at once, while the Text Model is still
+loaded, so rendering later (Render all) needs no reload between renders. It's written with
+Pictures off too, as it needs only the Text Model (a `picture` job needs no Feature), so a Roleplay
+played without pictures can be rendered later. It costs the Art Agent's time after each Reply (3–6
+s with gemma4, models.md), which Send waits for. **Render replies** (beside "Speak replies" above
+the conversation, off by default, as rendering is slow; only with Pictures on) queues Render after
+it too, and is remembered per browser. Picture this stays for older Replies or another try. A job already queued isn't cancelled by the next Message: each Reply gets
 its picture, in order. Cancelling a picture also cancels the render queued behind it. **Render** / **Re-render** under a pictured Reply renders it through the shared render queue with
 the Session's Image Model, seed and size, and shows the picture beside its Reply (below it on
 windows under 1024 px). Clicking a picture opens it in a viewer (`FrameViewer`, shared with the

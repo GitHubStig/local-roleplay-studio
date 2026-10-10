@@ -40,9 +40,12 @@ export const JOB_KINDS: readonly JobKind[] = [
   'lito',
 ]
 
-/** The Feature each job needs: a job whose Feature is off can't be queued. */
-export const JOB_FEATURE: Record<JobKind, Feature> = {
-  picture: 'images',
+/**
+ * The Feature each job needs: a job whose Feature is off can't be queued. Picturing a Frame (its
+ * Image Prompt, by the Text Model) needs none, so a Roleplay can be rendered later.
+ */
+export const JOB_FEATURE: Record<JobKind, Feature | null> = {
+  picture: null,
   render: 'images',
   upscale: 'upscale',
   voice: 'voices',
