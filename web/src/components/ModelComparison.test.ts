@@ -145,4 +145,26 @@ describe('ModelComparison', () => {
     await toggle.trigger('click')
     expect(wrapper.find('[data-compare-prompt]').text()).toBe('A tavern at dusk.')
   })
+
+  it('moves a column from its grip, and the viewer steps in the new order', async () => {
+    const wrapper = mountIt()
+    await wrapper.find('[data-compare-models]').trigger('click')
+    await flushPromises()
+    await wrapper.findAll('[data-move-column]')[1].trigger('keydown', { key: 'ArrowLeft' })
+    expect(wrapper.findAll('[data-model-column]').map((c) => c.text())).toEqual([
+      'b · current',
+      'a',
+    ])
+    const row = wrapper.find('[data-compare-row]')
+    expect(row.findAll('img').map((i) => i.attributes('src'))).toEqual([
+      '/api/sessions/s1/images/f0-b.png',
+      '/api/sessions/s1/images/f0-a.png',
+    ])
+    await row.find('button').trigger('click')
+    await flushPromises()
+    const label = () => wrapper.find('[data-viewer-label]').text()
+    expect(label()).toBe('Frame 0 · b · ↑↓ Frames')
+    await wrapper.find('[data-next]').trigger('click')
+    expect(label()).toBe('Frame 0 · a · ↑↓ Frames')
+  })
 })

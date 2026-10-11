@@ -88,8 +88,19 @@ Deno.test('An export is a page with the comparison in it, the pictures as WebP b
           name: 'Frame 0',
           prompt: 'A tavern at dusk.',
           pictures: [
-            { thumb: 'thumbs/frame-0-a.webp', full: 'images/frame-0-a-2048.webp' },
-            { thumb: 'thumbs/frame-0-b.webp', full: 'images/frame-0-b.webp', stale: true },
+            {
+              thumb: 'thumbs/frame-0-a.webp',
+              full: 'images/frame-0-a-2048.webp',
+              width: 200,
+              height: 512,
+            },
+            {
+              thumb: 'thumbs/frame-0-b.webp',
+              full: 'images/frame-0-b.webp',
+              width: 64,
+              height: 64,
+              stale: true,
+            },
           ],
         },
         {

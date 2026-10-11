@@ -14,11 +14,11 @@ export interface WebpOptions {
   maxHeight?: number
 }
 
-/** A PNG (as `Deno.readFile` gives it) as WebP. */
+/** A PNG (as `Deno.readFile` gives it) as WebP, with the size it came out. */
 export async function pngToWebp(
   png: Uint8Array<ArrayBuffer>,
   opts: WebpOptions,
-): Promise<Uint8Array> {
+): Promise<{ data: Uint8Array; width: number; height: number }> {
   let image: ImageData = await decodePng(
     png.buffer.slice(png.byteOffset, png.byteOffset + png.byteLength),
   )
@@ -26,5 +26,6 @@ export async function pngToWebp(
     const height = opts.maxHeight
     image = await resize(image, { height, width: Math.round(image.width * height / image.height) })
   }
-  return new Uint8Array(await encodeWebp(image, { quality: opts.quality }))
+  const data = new Uint8Array(await encodeWebp(image, { quality: opts.quality }))
+  return { data, width: image.width, height: image.height }
 }

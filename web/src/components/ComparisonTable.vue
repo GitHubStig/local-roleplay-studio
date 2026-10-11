@@ -1,16 +1,79 @@
 <script setup lang="ts">
-import { useEventListener, useMediaQuery } from '@vueuse/core'
-import { computed, ref, watch } from 'vue'
+import { useEventListener, useMediaQuery, useRafFn } from '@vueuse/core'
+import { computed, ref, useTemplateRef, watch } from 'vue'
 import type { Comparison } from '../comparison'
+import Icon from './Icon.vue'
 import ImageViewer from './ImageViewer.vue'
 
 /**
  * Pictures side by side, a row per Frame headed by its Image Prompt and a column per Image Model:
  * the Compare dialog's (under a header, given a `title`), and the whole of its exported page. A
  * picture opens in the viewer, where ← and → step through that Frame's pictures by the other
- * models, and ↑ and ↓ through the Frames that model rendered.
+ * models, and ↑ and ↓ through the Frames that model rendered. A column moves by dragging its
+ * header's grip (or with ← and → on it), until the table is next opened.
  */
 const props = defineProps<Comparison & { title?: string }>()
+
+/** The models' columns as arranged: indexes into `models`, a model rendering since added last. */
+const order = ref(props.models.map((_, i) => i))
+watch(() => props.models.length, (n) => {
+  const kept = order.value.filter((i) => i < n)
+  order.value = [...kept, ...[...Array(n).keys()].filter((i) => !kept.includes(i))]
+})
+const models = computed(() => order.value.map((i) => props.models[i]))
+const rows = computed(() =>
+  props.rows.map((row) => ({ ...row, pictures: order.value.map((i) => row.pictures[i]) }))
+)
+
+/** Moves the column at `from` to `to`, both positions as shown. */
+function moveColumn(from: number, to: number) {
+  if (to < 0 || to >= order.value.length || to === from) return
+  const next = [...order.value]
+  next.splice(to, 0, next.splice(from, 1)[0])
+  order.value = next
+  if (dragging.value === from) dragging.value = to
+}
+
+/**
+ * Dragging a column by its grip: it follows the pointer across the other headers, and the table
+ * scrolls while the pointer is near its left or right edge. Pointer events rather than HTML drag
+ * and drop, which phones don't all do; only the grip takes the touch, so a swipe still scrolls.
+ */
+const scroller = useTemplateRef<HTMLElement>('scroller')
+const dragging = ref<number | null>(null)
+let pointerX = 0
+/** Where the drag started: the table only scrolls once it's moved, not for a grip by an edge. */
+let startX = 0
+function dragTo(x: number) {
+  pointerX = x
+  if (dragging.value === null || !scroller.value) return
+  const headers = [...scroller.value.querySelectorAll<HTMLElement>('[data-model-column]')]
+  const over = headers.findIndex((h) => {
+    const { left, right } = h.getBoundingClientRect()
+    return x >= left && x < right
+  })
+  if (over >= 0) moveColumn(dragging.value, over)
+}
+const edgeScroll = useRafFn(() => {
+  const el = scroller.value
+  if (!el || Math.abs(pointerX - startX) < 8) return
+  const { left, right } = el.getBoundingClientRect()
+  const edge = 48
+  const by = pointerX < left + edge ? -12 : pointerX > right - edge ? 12 : 0
+  if (!by) return
+  el.scrollLeft += by
+  dragTo(pointerX)
+}, { immediate: false })
+function startDrag(e: PointerEvent, column: number) {
+  ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+  dragging.value = column
+  pointerX = startX = e.clientX
+  edgeScroll.resume()
+}
+function endDrag() {
+  dragging.value = null
+  edgeScroll.pause()
+}
 
 /**
  * Whether the first column shows the prompts or only the Frames' names: shown on a wide screen,
@@ -25,10 +88,10 @@ const anyPrompt = computed(() => props.rows.some((r) => r.prompt))
 const viewing = ref<{ row: number; column: number } | null>(null)
 const viewed = computed(() => {
   const v = viewing.value
-  const row = v && props.rows[v.row]
+  const row = v && rows.value[v.row]
   const picture = v && row?.pictures[v.column]
   if (!v || !row || !picture) return null
-  const model = props.models[v.column].label
+  const model = models.value[v.column].label
   return {
     src: picture.full,
     alt: `${row.name} by ${model}`,
@@ -39,7 +102,7 @@ const viewed = computed(() => {
 function along(by: number): number | null {
   const v = viewing.value
   if (!v) return null
-  const pictures = props.rows[v.row].pictures
+  const pictures = rows.value[v.row].pictures
   for (let c = v.column + by; c >= 0 && c < pictures.length; c += by) {
     if (pictures[c]) return c
   }
@@ -53,8 +116,8 @@ function step(by: number) {
 function across(by: number): number | null {
   const v = viewing.value
   if (!v) return null
-  for (let r = v.row + by; r >= 0 && r < props.rows.length; r += by) {
-    if (props.rows[r].pictures[v.column]) return r
+  for (let r = v.row + by; r >= 0 && r < rows.value.length; r += by) {
+    if (rows.value[r].pictures[v.column]) return r
   }
   return null
 }
@@ -78,7 +141,7 @@ useEventListener(document, 'keydown', (e: KeyboardEvent) => {
         <slot name="actions" />
       </div>
     </div>
-    <div class="min-h-0 flex-1 overflow-auto">
+    <div ref="scroller" class="min-h-0 flex-1 overflow-auto">
       <table class="border-separate border-spacing-2 text-sm">
         <thead>
           <tr>
@@ -95,13 +158,31 @@ useEventListener(document, 'keydown', (e: KeyboardEvent) => {
               </button>
             </th>
             <th
-              v-for="m in models"
+              v-for="(m, c) in models"
               :key="m.label"
               class="sticky top-0 z-10 bg-canvas px-1 py-1 text-left font-medium"
+              :class="{ 'opacity-60': dragging === c }"
               data-model-column
             >
-              {{ m.label }}
-              <span v-if="m.current" class="font-normal text-muted">· current</span>
+              <span class="flex items-center gap-1">
+                <button
+                  type="button"
+                  class="-ml-1 cursor-grab touch-none p-1 text-muted hover:text-fg active:cursor-grabbing"
+                  :aria-label="`Move ${m.label}'s column (drag, or ← and →)`"
+                  :title="`Drag to move ${m.label}'s column`"
+                  data-move-column
+                  @pointerdown="startDrag($event, c)"
+                  @pointermove="dragTo($event.clientX)"
+                  @pointerup="endDrag"
+                  @pointercancel="endDrag"
+                  @keydown.left.prevent="moveColumn(c, c - 1)"
+                  @keydown.right.prevent="moveColumn(c, c + 1)"
+                >
+                  <Icon name="grip" />
+                </button>
+                {{ m.label }}
+                <span v-if="m.current" class="font-normal text-muted">· current</span>
+              </span>
             </th>
           </tr>
         </thead>
@@ -131,6 +212,8 @@ useEventListener(document, 'keydown', (e: KeyboardEvent) => {
                 <img
                   :src="picture.thumb"
                   :alt="`${row.name} by ${models[c].label}`"
+                  :width="picture.width"
+                  :height="picture.height"
                   loading="lazy"
                   class="h-64 w-auto max-w-none rounded"
                   :class="{ 'opacity-50': picture.stale }"
@@ -138,7 +221,7 @@ useEventListener(document, 'keydown', (e: KeyboardEvent) => {
               </button>
               <div
                 v-else
-                class="flex h-64 w-48 items-center justify-center rounded border border-dashed border-line text-muted"
+                class="flex h-64 w-full min-w-48 items-center justify-center rounded border border-dashed border-line text-muted"
               >
                 Not rendered
               </div>

@@ -402,7 +402,9 @@ written for image prompts, are left out).
   gap marked "Not rendered". A picture opens in the viewer, where ← and → step through that Frame's
   pictures by the other models, and ↑ and ↓ through the Frames that model rendered. Each row is
   headed by its Frame's Image Prompt (2026-10-11), folded away to the Frames' names on a phone
-  (under 640 px) and toggled from the table's corner.
+  (under 640 px) and toggled from the table's corner. A column moves by dragging the grip in its
+  header (pointer events, so a phone can too; the table scrolls along near its edges), or with ←
+  and → on the grip; the viewer's ← and → follow the new order, until the table is next opened.
 - **Export** (2026-10-11), in Compare's header: the same table as a page of its own (the table
   alone, without the header or the "current" mark), written by
   the server to `exports/<Session id>/` (gitignored, replaced by the next export): `index.html`
@@ -414,7 +416,8 @@ written for image prompts, are left out).
   install. Mac, 2026-10-11: a Storyboard's 41 pictures by 6 models, 70 MB of PNG, exported in
   7.5 s to 13 MB (10 MB of viewer pictures, 2.7 MB of thumbnails, a 116 KB page); a Chain's 85
   pictures by 4 models in 20.6 s to 32 MB. Viewer pictures load only when opened, and thumbnails
-  as they near the screen (`loading="lazy"`): 28 of the Chain's 85 on opening it.
+  as they near the screen (`loading="lazy"`): 28 of the Chain's 85 on opening it. Each thumbnail's
+  size is written into the page, so its cell is as wide as it will be before it loads.
 
 In testing, FLUX.2 Klein 4B keeps a person's face, hair and outfit consistent across Frames. Z-Image
 Turbo ignores a described appearance. For drift, see *reference images and edits for Subject

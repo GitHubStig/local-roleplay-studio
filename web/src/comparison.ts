@@ -27,6 +27,9 @@ export interface ComparisonPicture {
   thumb: string
   /** Shown in the viewer: the upscaled picture, when there is one. */
   full: string
+  /** The thumbnail's size, so its cell has its width before it loads (an export's). */
+  width?: number
+  height?: number
   /** Its Image Prompt changed since it was rendered. */
   stale?: boolean
 }

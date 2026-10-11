@@ -71,24 +71,36 @@ export async function writeComparison(
   await Deno.mkdir(join(outDir, 'images'), { recursive: true })
   await Deno.mkdir(join(outDir, 'thumbs'), { recursive: true })
 
-  /** Each file written, by where it came from and how, so a picture is encoded once. */
-  const written = new Map<string, string>()
-  async function write(file: string, folder: 'images' | 'thumbs'): Promise<string> {
+  /**
+   * Each file written, by where it came from and how, so a picture is encoded once: its path in
+   * the export, and its size (but an SVG's).
+   */
+  const written = new Map<string, Written>()
+  type Written = { path: string; width?: number; height?: number }
+  async function write(file: string, folder: 'images' | 'thumbs'): Promise<Written> {
     const key = `${folder}/${file}`
     const done = written.get(key)
     if (done) return done
     const data = await Deno.readFile(join(sessionDir, file))
-    // An SVG (the placeholder backend's) goes as it is.
-    const out = extname(file) === '.svg' ? key : `${folder}/${basename(file, '.png')}.webp`
-    await Deno.writeFile(
-      join(outDir, out),
-      extname(file) === '.svg' ? data : await pngToWebp(
+    let out: Written
+    if (extname(file) === '.svg') {
+      // The placeholder backend's, as it is.
+      out = { path: key }
+      await Deno.writeFile(join(outDir, key), data)
+    } else {
+      const webp = await pngToWebp(
         data,
         folder === 'images'
           ? { quality: EXPORT_QUALITY.full }
           : { quality: EXPORT_QUALITY.thumb, maxHeight: EXPORT_QUALITY.thumbHeight },
-      ),
-    )
+      )
+      out = {
+        path: `${folder}/${basename(file, '.png')}.webp`,
+        width: webp.width,
+        height: webp.height,
+      }
+      await Deno.writeFile(join(outDir, out.path), webp.data)
+    }
     written.set(key, out)
     return out
   }
@@ -97,13 +109,17 @@ export async function writeComparison(
   for (const row of comparison.rows) {
     const pictures = []
     for (const p of row.pictures) {
-      pictures.push(
-        p && {
-          thumb: await write(p.image, 'thumbs'),
-          full: await write(p.upscaled ?? p.image, 'images'),
-          ...(p.stale ? { stale: true } : {}),
-        },
-      )
+      if (!p) {
+        pictures.push(null)
+        continue
+      }
+      const thumb = await write(p.image, 'thumbs')
+      pictures.push({
+        thumb: thumb.path,
+        full: (await write(p.upscaled ?? p.image, 'images')).path,
+        ...(thumb.width ? { width: thumb.width, height: thumb.height } : {}),
+        ...(p.stale ? { stale: true } : {}),
+      })
     }
     rows.push({ name: row.name, ...(row.prompt ? { prompt: row.prompt } : {}), pictures })
   }
