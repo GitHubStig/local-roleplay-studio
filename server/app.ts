@@ -4,7 +4,7 @@ import type { ImageGenerator } from './images/imageGenerator.ts'
 import { IMAGE_BACKENDS, imageModelsOf } from './images/imageModels.ts'
 import type { ComfyStatus } from './comfyui/status.ts'
 import { UPSCALERS } from './images/mflux/models.ts'
-import { crossedLimit, setLimitsEnabled } from './limits.ts'
+import { crossedLimit, LimitError, setLimitsEnabled } from './limits.ts'
 import {
   connectionOf,
   TEXT_BACKEND_NAMES,
@@ -52,13 +52,14 @@ import { type FrameDeps, type Phase, UpscaleError } from './frames.ts'
 import {
   DeleteError,
   deleteFrame,
+  EditError,
   runChainFrame,
+  setFramePrompt,
   UndoError,
   undoLatestFrame,
 } from './chain/frames.ts'
 import {
   editFrameByAction,
-  LimitError,
   planStoryboard,
   setFrameBody,
   setLook,
@@ -833,14 +834,29 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
         }),
     ],
 
+    // A Frame edited by hand: a Storyboard's `{ body, shown }`, or a Chain's `{ prompt }`, its
+    // Image Prompt, which marks its pictures out of date.
     [
       'PUT',
       new URLPattern({ pathname: '/api/sessions/:id/frames/:index' }),
       (req, p) =>
         locked(p.id!, 'edit', async (session) => {
-          if (!needsStoryboard(session)) return error('Only a Storyboard edits Frames by hand', 409)
+          if (!needsChain(session) && !needsStoryboard(session)) {
+            return error('A Roleplay edits its Frames its own way', 409)
+          }
           const index = frameIndexOf(session, p.index)
           if (index instanceof Response) return index
+          if (needsChain(session)) {
+            const body = await readJson(req) as { prompt?: unknown } | undefined
+            if (typeof body?.prompt !== 'string') return error('prompt is required', 400)
+            try {
+              return json(await setFramePrompt(deps.sessions, session, index, body.prompt))
+            } catch (err) {
+              if (err instanceof EditError) return error(err.message, 400)
+              if (err instanceof GoneError) return error(err.message, 409)
+              throw err
+            }
+          }
           const body = await readJson(req) as { body?: unknown; shown?: unknown } | undefined
           if (typeof body?.body !== 'string') return error('body is required', 400)
           if (body.shown !== undefined && !isStringList(body.shown)) {

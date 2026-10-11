@@ -16,6 +16,7 @@ vi.mock('../api', async (importOriginal) => ({
   createSession: vi.fn(),
   undoFrame: vi.fn(),
   deleteChainFrame: vi.fn(),
+  saveChainPrompt: vi.fn(),
   getSettings: vi.fn(),
   getSettingsOptions: vi.fn(),
   setImageModel: vi.fn(),
@@ -653,6 +654,46 @@ describe('SessionView', () => {
     expect(wrapper.findAll('aside [data-frame]')).toHaveLength(2)
     expect(wrapper.find('main img').attributes('src')).toContain('frame-2.png')
     vi.unstubAllGlobals()
+  })
+
+  it('edits a Frame’s Image Prompt by hand, its picture then changed since render', async () => {
+    vi.mocked(api.getSession).mockResolvedValue(session([frame(0, null), frame(1, 'Sit')]))
+    vi.mocked(api.saveChainPrompt).mockResolvedValue(
+      session([
+        frame(0, null),
+        frame(1, 'Sit', {
+          prompt: 'A garden at dawn.',
+          pictures: [picture('frame-1.png', { stale: true })],
+        }),
+      ]),
+    )
+    const { wrapper } = await mountIt()
+    await wrapper.find('[data-edit-prompt]').trigger('click')
+    const box = wrapper.find('[data-prompt-editor] textarea')
+    expect((box.element as HTMLTextAreaElement).value).toBe(promptFor(1))
+    expect(wrapper.find('[data-show-removed]').exists()).toBe(false)
+    await box.setValue('A garden at dawn.')
+    await wrapper.find('[data-prompt-editor]').trigger('submit')
+    await flushPromises()
+    expect(api.saveChainPrompt).toHaveBeenCalledWith('s1', 1, 'A garden at dawn.')
+    expect(wrapper.find('[data-prompt-editor]').exists()).toBe(false)
+    // Shown as a diff against Frame 0 again, the new words marked.
+    const added = wrapper.findAll('[data-prompt] [data-diff=added]').map((w) => w.text()).join(' ')
+    expect(added).toBe('garden at dawn.')
+    expect(wrapper.find('[data-changed]').text()).toContain('Changed since render')
+    expect(buttonNamed(wrapper, 'Re-render').exists()).toBe(true)
+  })
+
+  it('drops an edit of the prompt on Cancel, or on showing another Frame', async () => {
+    vi.mocked(api.getSession).mockResolvedValue(session([frame(0, null), frame(1, 'Sit')]))
+    const { wrapper } = await mountIt()
+    await wrapper.find('[data-edit-prompt]').trigger('click')
+    await buttonNamed(wrapper, 'Cancel').trigger('click')
+    expect(wrapper.find('[data-prompt-editor]').exists()).toBe(false)
+    await wrapper.find('[data-edit-prompt]').trigger('click')
+    await wrapper.findAll('aside [data-frame]')[0].trigger('click')
+    expect(wrapper.find('[data-prompt-editor]').exists()).toBe(false)
+    expect(api.saveChainPrompt).not.toHaveBeenCalled()
   })
 
   it('shows why an Undo was refused', async () => {

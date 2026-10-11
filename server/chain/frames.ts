@@ -1,11 +1,11 @@
 import { equal } from '@std/assert'
 import type { ImagePrompt } from '../imagePrompt.ts'
-import { crossedLimit } from '../limits.ts'
+import { crossedLimit, LimitError } from '../limits.ts'
 import type { Scenario } from '../scenario.ts'
 import type { ChainFrame, ChainSession, FrameTimings, Outcome, SessionStore } from '../session.ts'
 import type { FrameText } from '../textModel.ts'
 import { GoneError, updateSession } from '../update.ts'
-import { allPictureFiles, removeFiles } from '../pictures.ts'
+import { allPictureFiles, allStale, removeFiles } from '../pictures.ts'
 import { renumberCallLogs } from '../calls.ts'
 import {
   type FrameDeps,
@@ -154,15 +154,15 @@ export async function runChainFrame(
 }
 
 /**
- * Whether a Chain Frame can be rendered: it has no picture by the Chain's Image Model now. Its
- * prompt never changes, so a picture by that model is never out of date.
+ * Whether a Chain Frame can be rendered: it has no up-to-date picture by the Chain's Image Model
+ * now. Its prompt changes only by hand (`setFramePrompt`), which marks its pictures out of date.
  */
 export const canRenderChainFrame = (session: ChainSession, frame: ChainFrame): boolean =>
-  !frame.pictures.some((p) => p.imageModel === session.settings.imageModel)
+  !frame.pictures.some((p) => p.imageModel === session.settings.imageModel && !p.stale)
 
 /**
  * Renders a Chain Frame by the Chain's Image Model, in its turn in the render queue: one made
- * without a picture, or one with pictures by other models only.
+ * without a picture, one with pictures by other models only, or one whose prompt was edited.
  */
 export async function renderChainFrame(
   deps: FrameDeps,
@@ -246,3 +246,30 @@ export async function deleteFrame(
   await renumberCallLogs(store.dir(session.id), index)
   return updated
 }
+
+/**
+ * Replaces a Chain Frame's Image Prompt, typed by hand: its pictures (by every Image Model) are
+ * marked out of date until rendered again, and the Frames after it keep theirs. The latest
+ * Frame's is what the next Action changes. Refused if it crosses a Limit.
+ */
+export async function setFramePrompt(
+  store: SessionStore,
+  session: ChainSession,
+  index: number,
+  prompt: string,
+): Promise<ChainSession> {
+  const text = prompt.replace(/\s+/g, ' ').trim()
+  if (!text) throw new EditError('An Image Prompt needs some text')
+  const limit = crossedLimit(text)
+  if (limit) throw new LimitError(`That crosses a limit: ${limit.message}`)
+  // Onto the Chain as it is now: a queued render may have finished meanwhile.
+  return await updateSession(store, session.id, 'chain', (now) => {
+    const frame = now.frames[index]
+    if (!frame) throw new GoneError('That Frame is no longer there')
+    if (frame.prompt === text) return now
+    const edited = { ...frame, prompt: text, pictures: allStale(frame.pictures) }
+    return { ...now, frames: now.frames.map((f) => (f.index === index ? edited : f)) }
+  })
+}
+
+export class EditError extends Error {}

@@ -190,6 +190,9 @@ export const activeLimits = (): readonly Limit[] => (enabled ? LIMITS : ALWAYS)
 /** The same for a Roleplay Character's prose. */
 export const activeProseLimits = (): readonly Limit[] => (enabled ? PROSE_LIMITS : ALWAYS)
 
+/** A Brief, Action or edit by hand that crosses a Limit (ADR 0002); a `422` to the player. */
+export class LimitError extends Error {}
+
 /** The first of `limits` (the Limits in force, unless given) that `text` crosses, if any. */
 export function crossedLimit(
   text: string,

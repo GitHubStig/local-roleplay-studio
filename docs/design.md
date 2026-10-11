@@ -443,11 +443,11 @@ consistency* in [open-threads.md](open-threads.md).
   Chain's own switch, saved with it as `renderFrames`) is on when pictures are available: each
   Action writes the new prompt and renders it. Off (and always, without pictures) each Action
   writes only the prompt; the Frame reads "Not rendered yet", with a dashed thumbnail, and its
-  **Render** button queues its picture. A Chain Frame's prompt never changes, so a picture by the
-  Chain's Image Model is never out of date: **Re-render** is offered only for a Frame with none by
-  that model, after a switch, whose picture shows **Changed since render · by <model>**. **Render all**
-  (2026-10-10, as a Storyboard's) queues a render of every Frame with no picture by the Chain's
-  Image Model, in order, and says how many. The Narration is a caption over the bottom of the photo
+  **Render** button queues its picture. A Chain Frame's prompt changes only when edited by hand
+  (below), so **Re-render** is offered for a Frame with no up-to-date picture by the Chain's Image
+  Model: none by that model (after a switch), or one from before an edit; its picture shows
+  **Changed since render · by <model>**. **Render all** (2026-10-10, as a Storyboard's) queues a
+  render of every such Frame, in order, and says how many. The Narration is a caption over the bottom of the photo
   (provisional text shows dimmed and in italics while a Frame runs); the caption can be hidden,
   and that choice is remembered per browser. The Frame's status ("Rendering the image… step 2 of 4") is a
   pill in the image's top corner. Enter sends; Shift+Enter adds a new line. A done Frame clears the text box; a declined or
@@ -561,6 +561,12 @@ consistency* in [open-threads.md](open-threads.md).
 box (unless you've started typing a new one). It's offered in the button row and on the latest
 Frame in the Frames list, never for the Opening Frame, and never while a Frame runs.
 
+**Edit** (2026-10-11), in the Prompt tab, replaces the shown Frame's Image Prompt by hand, any Frame's,
+the Opening's too: its pictures (by every Image Model) are marked out of date (**Changed since
+render**) until rendered again, and Render all counts it. The Frames after it keep their own
+prompts; the latest Frame's is what the next Action changes. Refused (`422`) if it crosses a Limit;
+whitespace is folded to single spaces. Showing another Frame drops an unsaved edit.
+
 **Delete** (2026-10-11) removes a Frame between the Opening and the latest, from its Delete
 button in the Frames list, once confirmed: its pictures (by every Image Model) and what was made
 from them go, and the Frames after it are numbered down, keeping their Image Prompts (written
@@ -620,7 +626,7 @@ All under `/api`; the Vite dev server proxies it to the Deno server.
 | `POST /sessions/:id/frames` | Chain: run a Frame (`{ action }`, or `{}` for the Opening Frame) as a server-sent event stream |
 | `POST /sessions/:id/plan` | Storyboard: plan it, streaming `look`, `beats`, `planned-frame` × N, then `planned` |
 | `POST /sessions/:id/frames/:index/edit` | Storyboard: edit one Frame by `{ action }`, streaming then `edited` (`outcome`, `narration`, `session`) |
-| `PUT /sessions/:id/frames/:index` | Storyboard: replace a Frame's sentences and, if given, who it shows, `{ body, shown? }` (`422` if it crosses a Limit) |
+| `PUT /sessions/:id/frames/:index` | Storyboard: replace a Frame's sentences and, if given, who it shows, `{ body, shown? }`. Chain: replace a Frame's Image Prompt, `{ prompt }`, its pictures then out of date. `422` if it crosses a Limit |
 | `PUT /sessions/:id/look` | Storyboard: replace the Look, `{ people: [{ name, identity }], style }` |
 | `POST /sessions/:id/cancel` | Cancel the Frame in progress |
 | `DELETE /sessions/:id/frames/:index` | Undo the latest Frame; `:index` must name it (`409` otherwise, and for the Opening Frame or while a Frame runs) |

@@ -936,6 +936,42 @@ Deno.test('Deleting a Chain Frame waits for no job on it or after it, and the qu
     hang = false
   }))
 
+Deno.test('A Chain Frame’s Image Prompt is edited by hand, its pictures out of date until rendered', () =>
+  withTempDir(async (root) => {
+    const images = fakeImageGenerator()
+    const { call } = await chainOfTwo(root, { imageGenerator: images })
+    const before = await chainFrames(call)
+    const render = () => call('POST', '/api/sessions/s1/jobs', { kind: 'render', frameIndex: 0 })
+    assertEquals((await render()).status, 409)
+
+    const edited = await call('PUT', '/api/sessions/s1/frames/0', {
+      prompt: '  A person,\n standing, in a garden.  ',
+    })
+    assertEquals(edited.status, 200)
+    const frames = (await edited.json()).frames as JsonFrame[]
+    assertEquals(frames[0].prompt, 'A person, standing, in a garden.')
+    assertEquals(shown(frames[0]).stale, true)
+    // The Frames after it keep their own prompts and pictures.
+    assertEquals([frames[1].prompt, shown(frames[1]).stale], [promptWith('sitting'), undefined])
+
+    // Rendered again from the new prompt, it's up to date.
+    assertEquals((await render()).status, 201)
+    await settled(call)
+    const [opening] = await chainFrames(call)
+    assertEquals([opening.stale, images.prompts.at(-1)], [
+      undefined,
+      'A person, standing, in a garden.',
+    ])
+    assertEquals(opening.image === before[0].image, false)
+
+    const put = (index: number, body: unknown) =>
+      call('PUT', `/api/sessions/s1/frames/${index}`, body)
+    assertEquals((await put(0, { prompt: 'A nude figure.' })).status, 422)
+    assertEquals((await put(0, { prompt: '  ' })).status, 400)
+    assertEquals((await put(0, {})).status, 400)
+    assertEquals((await put(9, { prompt: 'A garden.' })).status, 404)
+  }))
+
 Deno.test('A Chain queues an upscale of one Frame, once', () =>
   withTempDir(async (root) => {
     const images = fakeImageGenerator()

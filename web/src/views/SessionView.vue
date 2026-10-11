@@ -15,6 +15,7 @@ import { onBeforeRouteLeave, useRouter } from 'vue-router'
 import { clearCurrentSession, setCurrentSession } from '../composables/useCurrentSession'
 import ComposeBox from '../components/ComposeBox.vue'
 import FrameImage from '../components/FrameImage.vue'
+import CollapsibleTextarea from '../components/CollapsibleTextarea.vue'
 import PictureButtons from '../components/PictureButtons.vue'
 import ImageModelPicker from '../components/ImageModelPicker.vue'
 import ModelComparison from '../components/ModelComparison.vue'
@@ -38,6 +39,7 @@ import {
   cancelFrame,
   changedSinceRender,
   deleteChainFrame,
+  saveChainPrompt,
   DOWNLOADING,
   getSession,
   imageUrl,
@@ -112,7 +114,7 @@ const latest = computed(() => session.value?.frames.at(-1))
 const pictureOf = (frame: PicturedFrame) => shownPicture(frame, session.value!.settings.imageModel)
 /** The picture of the Frame in the main panel. */
 const picture = computed(() => shown.value && pictureOf(shown.value))
-/** It's by another Image Model than the Chain's now (a Chain's prompts never change otherwise). */
+/** It's by another Image Model than the Chain's now, or from before its prompt was edited. */
 const pictureChanged = computed(() =>
   !!picture.value && changedSinceRender(picture.value, session.value!.settings.imageModel)
 )
@@ -341,12 +343,12 @@ const { jobs, jobsFor, hasJob, queue, queueAll, dropJob, clear, retry, refreshJo
   onError: (message) => (frameError.value = message),
 })
 /**
- * The Frames Render all would queue: those with no picture by the Chain's Image Model (a Chain
- * Frame's prompt never changes, so one by it is never out of date), and no render queued.
+ * The Frames Render all would queue: those with no up-to-date picture by the Chain's Image Model
+ * (none by it, or one from before the prompt was edited), and no render queued.
  */
 const toRender = computed(() =>
   (session.value?.frames ?? []).filter((f) =>
-    !f.pictures.some((p) => p.imageModel === session.value!.settings.imageModel) &&
+    !f.pictures.some((p) => p.imageModel === session.value!.settings.imageModel && !p.stale) &&
     !hasJob(f.index, 'render')
   )
 )
@@ -491,6 +493,33 @@ const pendingAction = computed(() =>
 )
 /** The Frame whose prompt the Prompt tab shows: the shown one, or the one in progress. */
 const promptIndex = computed(() => (onPending.value ? pendingIndex.value : shown.value?.index))
+
+/**
+ * The shown Frame's Image Prompt as edited by hand, while it is; null otherwise. Showing another
+ * Frame drops the edit.
+ */
+const promptDraft = ref<string | null>(null)
+const promptError = ref('')
+const savingPrompt = ref(false)
+watch(() => shown.value?.index, () => {
+  promptDraft.value = null
+  promptError.value = ''
+})
+/** Saves the edited prompt: the Frame's pictures are out of date until rendered again. */
+async function savePrompt() {
+  const frame = shown.value
+  if (!frame || promptDraft.value === null || savingPrompt.value) return
+  savingPrompt.value = true
+  promptError.value = ''
+  try {
+    session.value = await saveChainPrompt(props.id, frame.index, promptDraft.value)
+    promptDraft.value = null
+  } catch (err) {
+    promptError.value = (err as Error).message
+  } finally {
+    savingPrompt.value = false
+  }
+}
 
 /**
  * The shown Frame's Image Prompt (or the new one, once written), word-diffed against the Frame
@@ -688,7 +717,7 @@ const promptDiff = computed(() => {
               v-if="shown"
               :picture="picture"
               :has-job="(kind) => hasJob(shown!.index, kind)"
-              :can-render="!picture || picture.imageModel !== session.settings.imageModel"
+              :can-render="!picture || pictureChanged"
               button-class="rounded-lg border border-line px-3 py-2 text-sm disabled:opacity-50"
               @queue="(kind) => queue(kind, shown!.index)"
               @view="(kind) => (open3d = { index: shown!.index, kind })"
@@ -877,13 +906,28 @@ const promptDiff = computed(() => {
           </h2>
           <div class="flex-1 overflow-y-auto p-4 text-sm" role="tabpanel">
           <template v-if="shown || (onPending && pending?.prompt)">
-            <p class="text-muted" :class="shown?.timings ? 'mb-1' : 'mb-3'">
-              Frame {{ promptIndex }} · {{ shown ? shown.action ?? 'Opening' : pendingAction }}
-            </p>
+            <div class="flex items-start gap-2" :class="shown?.timings ? 'mb-1' : 'mb-3'">
+              <p class="flex-1 text-muted">
+                Frame {{ promptIndex }} · {{ shown ? shown.action ?? 'Opening' : pendingAction }}
+              </p>
+              <button
+                v-if="shown && !onPending && promptDraft === null"
+                type="button"
+                class="shrink-0 rounded border border-line px-2 py-0.5 text-xs text-muted hover:text-fg"
+                title="Edit this Frame's Image Prompt by hand; its pictures are then out of date"
+                data-edit-prompt
+                @click="promptDraft = shown.prompt"
+              >
+                Edit
+              </button>
+            </div>
             <p v-if="shown?.timings" class="mb-3 text-xs text-muted" data-timings>
               {{ timingsLabel(shown) }}
             </p>
-            <div v-if="promptIndex! > 0" class="mb-2 flex flex-col gap-1 text-xs text-muted">
+            <div
+              v-if="promptIndex! > 0 && promptDraft === null"
+              class="mb-2 flex flex-col gap-1 text-xs text-muted"
+            >
               <label class="flex w-fit cursor-pointer items-center gap-1.5">
                 <input
                   type="checkbox"
@@ -901,7 +945,37 @@ const promptDiff = computed(() => {
                 since Frame {{ promptIndex! - 1 }}.
               </p>
             </div>
-            <p class="leading-relaxed" data-prompt>
+            <form
+              v-if="promptDraft !== null"
+              class="flex flex-col gap-2"
+              data-prompt-editor
+              @submit.prevent="savePrompt"
+            >
+              <CollapsibleTextarea id="chain.prompt" v-model="promptDraft" label="Image Prompt" />
+              <p class="text-xs text-muted">
+                Saving marks this Frame's pictures out of date until rendered again. The Frames
+                after it keep their own prompts.
+              </p>
+              <p v-if="promptError" class="text-xs text-danger" role="alert">{{ promptError }}</p>
+              <div class="flex gap-2">
+                <button
+                  type="submit"
+                  class="rounded border border-line px-3 py-1 text-xs disabled:opacity-50"
+                  :disabled="busy || savingPrompt || promptDraft.trim() === shown?.prompt"
+                  :title="busy ? 'Wait for the Frame in progress' : undefined"
+                >
+                  Save
+                </button>
+                <button
+                  type="button"
+                  class="rounded px-3 py-1 text-xs text-muted hover:text-fg"
+                  @click="promptDraft = null"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+            <p v-else class="leading-relaxed" data-prompt>
               <template v-for="(part, i) in promptDiff" :key="i">
                 <span
                   v-if="part.kind !== 'removed' || !removedHidden"

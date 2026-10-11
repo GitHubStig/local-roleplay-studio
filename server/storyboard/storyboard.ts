@@ -17,7 +17,7 @@ import {
   renameShown,
   shownPeople,
 } from '../look.ts'
-import { crossedLimit } from '../limits.ts'
+import { crossedLimit, LimitError } from '../limits.ts'
 import type { Scenario } from '../scenario.ts'
 import type { FrameTimings, Look, Outcome, StoryboardFrame, StoryboardSession } from '../session.ts'
 import { plainSentences } from '../textModel.ts'
@@ -31,9 +31,6 @@ export type StoryboardEvent =
   | { type: 'planned-frame'; frame: StoryboardFrame }
   | { type: 'planned'; session: StoryboardSession }
   | { type: 'rendered'; frame: StoryboardFrame }
-
-/** A Brief, Action or edit that crosses a Limit (ADR 0002). */
-export class LimitError extends Error {}
 
 /**
  * Builds a Frame from its Beat and sentences, marking it blocked (unrenderable until edited) if its

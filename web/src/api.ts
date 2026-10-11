@@ -499,6 +499,10 @@ export const put = <T>(path: string, body: unknown) =>
 export const saveFrameBody = (id: string, index: number, body: string, shown: string[]) =>
   put<StoryboardSession>(`/api/sessions/${id}/frames/${index}`, { body, shown })
 
+/** Replaces a Chain Frame's Image Prompt, typed by hand; its pictures are then out of date. */
+export const saveChainPrompt = (id: string, index: number, prompt: string) =>
+  put<ChainSession>(`/api/sessions/${id}/frames/${index}`, { prompt })
+
 /** Replaces a Storyboard's Look; every Frame's prompt follows. */
 export const saveLook = (id: string, look: Look) =>
   put<StoryboardSession>(`/api/sessions/${id}/look`, look)

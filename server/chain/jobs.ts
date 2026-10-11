@@ -24,8 +24,8 @@ export function checkChainJob(
   pending: readonly JobKind[],
 ): Response | null {
   const frame = session.frames[index]
-  // A Chain Frame's prompt never changes: only one without a picture, or with one by another Image
-  // Model, renders.
+  // Only one without an up-to-date picture by the Chain's Image Model renders: none yet, one by
+  // another model, or one from before its prompt was edited.
   if (kind === 'render') {
     return canRenderChainFrame(session, frame)
       ? null

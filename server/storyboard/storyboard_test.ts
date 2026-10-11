@@ -3,9 +3,9 @@ import { join } from '@std/path'
 import { dirSessionStore, type Look, type StoryboardSession } from '../session.ts'
 import { DEFAULT_SETTINGS } from '../settings.ts'
 import { composePrompt, MAX_SHOWN } from '../look.ts'
+import { LimitError } from '../limits.ts'
 import {
   editFrameByAction,
-  LimitError,
   planStoryboard,
   renderStoryboardFrame,
   setFrameBody,
