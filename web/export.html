@@ -5,11 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Compare Image Models</title>
     <script>
-      // The theme follows the system's, set before first paint.
-      document.documentElement.classList.toggle(
-        'dark',
-        matchMedia('(prefers-color-scheme: dark)').matches,
-      )
+      // As index.html's: the theme chosen in this browser (ThemeToggle), or the system's, applied
+      // before first paint so the page never flashes the wrong one.
+      try {
+        const saved = localStorage.getItem('theme')
+        const dark =
+          saved === 'dark' ||
+          (saved !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches)
+        document.documentElement.classList.toggle('dark', dark)
+      } catch {
+        document.documentElement.classList.toggle(
+          'dark',
+          matchMedia('(prefers-color-scheme: dark)').matches,
+        )
+      }
     </script>
   </head>
   <body class="h-full bg-canvas text-fg">

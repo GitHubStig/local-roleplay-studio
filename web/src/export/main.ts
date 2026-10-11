@@ -1,7 +1,7 @@
 import { createApp, h } from 'vue'
 import '../style.css'
 import type { Comparison } from '../comparison'
-import ComparisonTable from '../components/ComparisonTable.vue'
+import ExportPage from './ExportPage.vue'
 
 /**
  * The exported comparison page (`web/export.html`, built by `deno task build:export`): the
@@ -12,4 +12,4 @@ const data: Comparison & { title: string } = JSON.parse(
 )
 // The title names the tab only: the page is the table alone, without the dialog's header.
 document.title = data.title
-createApp(() => h(ComparisonTable, { models: data.models, rows: data.rows })).mount('#app')
+createApp(() => h(ExportPage, { models: data.models, rows: data.rows })).mount('#app')
