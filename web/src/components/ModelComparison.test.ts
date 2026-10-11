@@ -12,9 +12,13 @@ enableAutoUnmount(afterEach)
 
 const picture = (image: string, imageModel: string) => ({ image, imageModel })
 
-/** Frame 0 by both models, Frame 1 by the first only, Frame 2 not rendered. */
+/** Frame 0 (with its Image Prompt) by both models, Frame 1 by the first only, Frame 2 not rendered. */
 const frames: PicturedFrame[] = [
-  { index: 0, pictures: [picture('f0-a.png', 'a'), picture('f0-b.png', 'b')] },
+  {
+    index: 0,
+    prompt: 'A tavern at dusk.',
+    pictures: [picture('f0-a.png', 'a'), picture('f0-b.png', 'b')],
+  },
   { index: 1, pictures: [picture('f1-a.png', 'a')] },
   { index: 2, pictures: [] },
 ]
@@ -46,6 +50,8 @@ describe('ModelComparison', () => {
       '/api/sessions/s1/images/f0-a.png',
       '/api/sessions/s1/images/f0-b.png',
     ])
+    expect(rows[0].find('[data-compare-prompt]').text()).toBe('A tavern at dusk.')
+    expect(rows[1].find('[data-compare-prompt]').exists()).toBe(false)
     expect(rows[1].findAll('img')).toHaveLength(1)
     expect(rows[1].text()).toContain('Not rendered')
   })

@@ -7,9 +7,9 @@ import ImageViewer from './ImageViewer.vue'
 
 /**
  * A Session's pictures side by side, a row per Frame and a column per Image Model that rendered
- * any, opened by its Compare button (shown once two models have). A picture opens in the viewer,
- * where ← and → step through that Frame's pictures by the other models, and ↑ and ↓ through the
- * Frames that model rendered.
+ * any, each row headed by its Frame's Image Prompt, opened by its Compare button (shown once two
+ * models have). A picture opens in the viewer, where ← and → step through that Frame's pictures by
+ * the other models, and ↑ and ↓ through the Frames that model rendered.
  */
 const props = withDefaults(
   defineProps<{
@@ -34,6 +34,7 @@ const rows = computed(() =>
     .filter((f) => f.pictures.length)
     .map((f) => ({
       index: f.index,
+      prompt: f.prompt,
       pictures: models.value.map((m) => f.pictures.find((p) => p.imageModel === m)),
     }))
 )
@@ -138,10 +139,15 @@ useEventListener(document, 'keydown', (e: KeyboardEvent) => {
           </thead>
           <tbody>
             <tr v-for="(row, r) in rows" :key="row.index" data-compare-row>
-              <th
-                class="sticky left-0 z-10 bg-canvas pr-2 text-left align-top font-normal whitespace-nowrap text-muted"
-              >
-                {{ name(row.index) }}
+              <th class="sticky left-0 z-10 w-72 bg-canvas pr-2 text-left align-top font-normal">
+                <div class="text-muted">{{ name(row.index) }}</div>
+                <p
+                  v-if="row.prompt"
+                  class="mt-1 max-h-56 overflow-y-auto text-xs leading-relaxed whitespace-pre-wrap"
+                  data-compare-prompt
+                >
+                  {{ row.prompt }}
+                </p>
               </th>
               <td v-for="(picture, c) in row.pictures" :key="models[c]" class="align-top">
                 <button

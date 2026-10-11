@@ -266,6 +266,8 @@ export interface Picture {
 /** A Frame of any kind, as far as its pictures go. */
 export interface PicturedFrame {
   index: number
+  /** Its Image Prompt, once written. */
+  prompt?: ImagePrompt
   /** One per Image Model it was rendered with, oldest first; none until rendered. */
   pictures: Picture[]
 }
