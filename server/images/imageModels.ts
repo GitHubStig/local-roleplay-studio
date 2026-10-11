@@ -24,6 +24,10 @@ export interface ImageModelOption {
   stepCache: boolean
   /** The steps its fast mode runs at; absent when it has none (mflux). */
   fastSteps?: number
+  /** What its fast mode does, following "Renders in N steps" (mflux). */
+  fastNote?: string
+  /** Its steps are set for it (by a preset), always `defaultSteps` or `fastSteps` (mflux). */
+  fixedSteps?: boolean
   /** Can be quantized to 8 or 4 bits as it loads (mflux). */
   quantize: boolean
   /** Takes float16 compute (mflux). */
@@ -40,12 +44,15 @@ export function imageModelsOf(backend: ImageBackendKind): ImageModelOption[] {
       quantize: false,
       float16: false,
     }))
-    : MFLUX_MODELS.map(({ id, label, defaultSteps, stepCache, fast, preQuantized, float16 }) => ({
+    : MFLUX_MODELS.map((
+      { id, label, defaultSteps, fixedSteps, stepCache, fast, preQuantized, float16 },
+    ) => ({
       id,
       label,
       defaultSteps,
+      ...(fixedSteps && { fixedSteps }),
       stepCache: !!stepCache,
-      ...(fast && { fastSteps: fast.steps }),
+      ...(fast && { fastSteps: fast.steps, fastNote: fast.note }),
       quantize: !preQuantized,
       float16: !!float16,
     }))

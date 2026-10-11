@@ -596,7 +596,12 @@ on the RTX 4070 through ComfyUI, ~21 s. For speed on a Mac alone, FLUX.2 Klein 4
 | Boogu Image Turbo | 512×512: ~16 s (4 steps) | Peak memory ~29 GB. |
 | Qwen-Image 2.1 | 512×512: ~23 s (25 steps) · ~38 s (40, mflux's default) | 25 steps looks as good as 40 at 512 px, so it's our default; it holds at 1024² too, where 20 hasn't settled yet ([bench/steps](bench/steps/README.md)). Peak memory ~35 GB. |
 
-Timings for the last four are one test image each (2026-09-25, 48 GB Mac, no quantization,
+| Ming-Image 0.1 Design | 512×512: ~14 s (12 steps) | Added 2026-10-11 (mflux 0.22). A design model (posters, cards, lettering) rendering RGBA, flattened onto white (`--flatten-alpha`; the file comes out RGB). Runs the saved copy mflux's README recommends: DiT at 8 bits, its ~16B MoE text encoder at 5 (18 GB on disk; the original is 53 GB). Peak memory ~13.2 GB. From the Art Agent's kind of prose, one test scene: everything described, the sign's lettering right, painterly. |
+| Ideogram 4 (8-bit) | 512×512: ~57 s (20 steps) · ~36 s (Fast, 12) | Added 2026-10-11 (mflux 0.22). A typography model. Runs mflux-community's saved 8-bit copy (26 GB): the same size as the FP8 original, without dequantizing at each step. Gated: accept its terms on Hugging Face and `hf auth login` once. Peak memory ~30.4 GB. A preset sets the steps, so Settings → Steps doesn't apply. **Needs JSON captions**: from prose it stamped a line of garbled lettering across the middle of the picture (both presets); the same scene as a JSON caption came out clean, sign spelled right (open-threads.md). |
+
+Ming-Image and Ideogram 4 were timed on the 48 GB Mac (2026-10-11, mflux 0.22, seed 42, with the
+app's own arguments, `--low-ram` included): one image each, wall time including loading, with no
+Text Model loaded; peak is macOS's peak memory footprint. Timings for the four before those are one test image each (2026-09-25, 48 GB Mac, no quantization,
 including model loading), not a comparison of how well they follow the prompt or keep a
 subject consistent. FLUX.2 Klein 9B (added 2026-09-29) is about twice as slow as 4B and needs twice
 the memory, which next to gemma4 on a 48 GB Mac is tight.

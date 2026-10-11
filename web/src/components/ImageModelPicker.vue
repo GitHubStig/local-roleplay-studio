@@ -19,12 +19,13 @@ const { settings: current } = useFeatures()
 
 /**
  * The steps a render takes: the model's fast mode's when Fast is on in Settings now and it has
- * one, else the Session's.
+ * one, else the Session's, or the model's own where it sets them.
  */
 const steps = computed(() => {
   const { imageModel, steps } = props.session.settings
-  const fastSteps = find(imageModel)?.fastSteps
-  return current.value?.fast && fastSteps ? fastSteps : steps
+  const model = find(imageModel)
+  if (current.value?.fast && model?.fastSteps) return model.fastSteps
+  return model?.fixedSteps ? model.defaultSteps : steps
 })
 
 async function pick(select: HTMLSelectElement) {

@@ -2,7 +2,13 @@ import { assertEquals, assertRejects } from '@std/assert'
 import { join } from '@std/path'
 import type { ImageRequest } from '../imageGenerator.ts'
 import { findMfluxModel, type MfluxModel } from './models.ts'
-import { mfluxArgs, mfluxImageGenerator, parseProgress, upscaleArgs } from './mflux.ts'
+import {
+  failureReason,
+  mfluxArgs,
+  mfluxImageGenerator,
+  parseProgress,
+  upscaleArgs,
+} from './mflux.ts'
 import { DEFAULT_SETTINGS } from '../../settings.ts'
 import { withTempDir } from '../../testing.ts'
 
@@ -81,13 +87,40 @@ Deno.test('mfluxArgs renders fast mode at its own steps, scheduler and LoRA, wit
   assertEquals(args[args.indexOf('--steps') + 1], '6')
   assertEquals(args[args.indexOf('--scheduler') + 1], 'viggle_turbo')
   assertEquals(args.slice(args.indexOf('--lora') + 1, args.indexOf('--lora') + 3), [
-    qwen.fast!.lora,
+    qwen.fast!.args[3],
     '1.0',
   ])
   assertEquals(args.includes('--step-cache-ratio'), false)
   // Models without a fast mode ignore it.
   const klein = mfluxArgs(findMfluxModel('flux2-klein-4b')!, request('/d', { fast: true }), 'o.png')
   assertEquals([klein.includes('--lora'), klein[klein.indexOf('--steps') + 1]], [false, '3'])
+})
+
+Deno.test('mfluxArgs leaves the steps to a model that sets them, and switches its preset for Fast', () => {
+  const ideogram = findMfluxModel('ideogram-4')!
+  const args = mfluxArgs(ideogram, request('/d', { steps: 30 }), 'o.png')
+  assertEquals([args.includes('--steps'), args.includes('--preset')], [false, false])
+  const fast = mfluxArgs(ideogram, request('/d', { fast: true }), 'o.png')
+  assertEquals(fast.slice(fast.indexOf('--preset'), fast.indexOf('--preset') + 2), [
+    '--preset',
+    'V4_TURBO_12',
+  ])
+  assertEquals(fast.includes('--steps'), false)
+})
+
+Deno.test("mfluxArgs passes a model's own arguments", () => {
+  const args = mfluxArgs(findMfluxModel('ming-image')!, request('/d', { quantize: 8 }), 'o.png')
+  assertEquals(args.includes('--flatten-alpha'), true)
+  assertEquals(args.includes('--quantize'), false)
+})
+
+Deno.test('failureReason says what to do when a gated download is refused', () => {
+  const gated = failureReason(
+    'Fetching 12 files\nHTTPError: 401 Client Error: Unauthorized for url',
+  )
+  assertEquals(gated.startsWith('HTTPError: 401 Client Error'), true)
+  assertEquals(gated.includes('hf auth login'), true)
+  assertEquals(failureReason('ValueError: bad size'), 'ValueError: bad size')
 })
 
 Deno.test('mfluxArgs uses the small size presets', () => {

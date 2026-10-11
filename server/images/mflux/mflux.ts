@@ -35,9 +35,8 @@ export function mfluxArgs(
     req.prompt,
     '--seed',
     String(req.seed),
-    '--steps',
-    String(fast?.steps ?? settings.steps),
-    ...(fast ? ['--scheduler', fast.scheduler, '--lora', fast.lora, '1.0'] : []),
+    ...(model.fixedSteps ? [] : ['--steps', String(fast?.steps ?? settings.steps)]),
+    ...(fast?.args ?? []),
     ...(stepCache ? ['--step-cache-ratio', String(stepCache)] : []),
     '--width',
     String(size.width),
@@ -45,6 +44,7 @@ export function mfluxArgs(
     String(size.height),
     ...(quantize ? ['--quantize', String(settings.quantize)] : []),
     ...(settings.float16 && model.float16 ? ['--compute-precision', 'float16'] : []),
+    ...(model.args ?? []),
     '--low-ram',
     '--output',
     output,
@@ -89,6 +89,17 @@ function lastMeaningfulLine(stderr: string): string {
 }
 
 /**
+ * Why mflux failed, for the player. A gated model (Ideogram 4) the account hasn't accepted, or with
+ * no Hugging Face sign-in here, fails with a bare 401 or 403, so that's spelled out.
+ */
+export function failureReason(stderr: string): string {
+  const line = lastMeaningfulLine(stderr)
+  return /\b40[13]\b|GatedRepo/.test(stderr)
+    ? `${line}. If the model is gated, accept its terms on its Hugging Face page, then sign in here with \`hf auth login\``
+    : line
+}
+
+/**
  * Runs one mflux command to completion, reporting its progress; throws if it fails. A model that
  * isn't downloaded yet is downloaded from Hugging Face first: mflux shows that as a "Fetching N
  * files" bar, which is reported as `onDownload`, not as steps.
@@ -122,7 +133,7 @@ async function runCommand(
   }
   const status = await child.status
   signal.throwIfAborted()
-  if (!status.success) throw new Error(`${label} failed: ${lastMeaningfulLine(stderr)}`)
+  if (!status.success) throw new Error(`${label} failed: ${failureReason(stderr)}`)
 }
 
 async function mustExist(dir: string, file: string, label: string): Promise<void> {

@@ -109,6 +109,14 @@ const imageModels = computed(() =>
 /** The chosen Image Model's options, for the controls only some models have. */
 const imageModel = computed(() => imageModels.value.find((m) => m.id === form.value?.imageModel))
 const fastOn = computed(() => !!form.value?.fast && !!imageModel.value?.fastSteps)
+/** The steps a render takes when they aren't the player's to choose: Fast's, or the model's own. */
+const setSteps = computed(() =>
+  fastOn.value
+    ? imageModel.value?.fastSteps
+    : imageModel.value?.fixedSteps
+    ? imageModel.value.defaultSteps
+    : undefined
+)
 
 function onImageModelChange() {
   if (form.value && imageModel.value) form.value.steps = imageModel.value.defaultSteps
@@ -489,8 +497,7 @@ function removeSavedApiKey() {
               <span class="flex flex-col gap-0.5">
                 <span>Fast</span>
                 <span class="text-sm text-muted">
-                  Renders in {{ imageModel.fastSteps }} steps with a turbo LoRA (downloaded the first
-                  time, 1.3 GB): about 3× faster, a little smoother and less painterly.
+                  Renders in {{ imageModel.fastSteps }} steps {{ imageModel.fastNote }}
                 </span>
               </span>
             </label>
@@ -499,12 +506,12 @@ function removeSavedApiKey() {
               <label class="flex flex-col gap-1">
                 <span class="text-sm text-muted">Steps</span>
                 <input
-                  v-if="fastOn"
-                  :value="imageModel?.fastSteps"
+                  v-if="setSteps"
+                  :value="setSteps"
                   type="number"
                   class="field"
                   disabled
-                  title="Fast mode sets the steps"
+                  :title="fastOn ? 'Fast mode sets the steps' : 'This model sets its own steps'"
                 />
                 <input v-else v-model.number="form.steps" type="number" min="1" max="100" class="field" />
               </label>

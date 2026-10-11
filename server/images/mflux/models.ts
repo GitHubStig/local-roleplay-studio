@@ -13,6 +13,10 @@ export interface MfluxModel {
   preQuantized?: boolean
   /** Steps to use when the model is picked: mflux's own default, unless fewer look as good. */
   defaultSteps: number
+  /** mflux sets the steps itself (from a preset) and ignores `--steps`, so none are passed. */
+  fixedSteps?: boolean
+  /** Arguments passed on every render, after the rest. */
+  args?: readonly string[]
   /** Takes mflux's step cache (`--step-cache-ratio`): it skips the steps that change least. */
   stepCache?: boolean
   /** Takes `--compute-precision float16`: faster on M1 and M2 Macs, the same on M4 and M5. */
@@ -21,12 +25,13 @@ export interface MfluxModel {
   fast?: FastMode
 }
 
-/** A turbo LoRA and how it must run: with this scheduler, at exactly this many steps. */
+/** A faster way to render (a turbo LoRA with its scheduler, a turbo preset), at exactly these steps. */
 export interface FastMode {
-  /** For `--lora`: a local file, or a Hugging Face `repo:file` fetched on first use. */
-  lora: string
-  scheduler: string
+  /** The arguments that switch it on. A `--lora` takes a local file or a Hugging Face `repo:file`. */
+  args: readonly string[]
   steps: number
+  /** What it does, for Settings: follows "Renders in N steps". */
+  note: string
 }
 
 export const MFLUX_MODELS: readonly MfluxModel[] = [
@@ -88,10 +93,48 @@ export const MFLUX_MODELS: readonly MfluxModel[] = [
     float16: true,
     // Viggle's turbo LoRA (1.3 GB, Qwen research license): about 3.4x faster, a little smoother.
     fast: {
-      lora:
+      args: [
+        '--scheduler',
+        'viggle_turbo',
+        '--lora',
         'Viggle/Qwen-Image-2.1-viggle-turbo:Qwen-Image-2.1-viggle-turbo-v0.3-6step-lora-r256.safetensors',
-      scheduler: 'viggle_turbo',
+        '1.0',
+      ],
       steps: 6,
+      note:
+        'with a turbo LoRA (downloaded the first time, 1.3 GB): about 3× faster, a little smoother and less painterly.',
+    },
+  },
+  {
+    id: 'ming-image',
+    label: 'Ming-Image 0.1 Design',
+    command: 'mflux-generate-ming',
+    // mflux's saved copy as its README recommends: the DiT at 8 bits (4 breaks the lettering), the
+    // ~16B MoE text encoder at 5, which still matches the original (19 GB, against 53 GB unsaved).
+    model: 'joeynyc/Ming-Image-0.1-Design-mflux-q8-te5',
+    baseModel: 'ming-image-design',
+    preQuantized: true,
+    defaultSteps: 12,
+    // It renders RGBA; pictures are RGB everywhere else (Qwen-Image 2.1 edits read alpha as a mask).
+    args: ['--flatten-alpha'],
+  },
+  {
+    id: 'ideogram-4',
+    label: 'Ideogram 4 (8-bit)',
+    command: 'mflux-generate-ideogram4',
+    // mflux's saved 8-bit copy of the FP8 checkpoint: the same size, without dequantizing FP8 at
+    // every step. Gated: accept its terms on Hugging Face and sign in (`hf auth login`) first.
+    model: 'mflux-community/ideogram-4-mflux-q8',
+    baseModel: 'ideogram-4-fp8',
+    preQuantized: true,
+    // A preset sets the steps and guidance schedule; mflux's default is V4_DEFAULT_20.
+    defaultSteps: 20,
+    fixedSteps: true,
+    fast: {
+      args: ['--preset', 'V4_TURBO_12'],
+      steps: 12,
+      note:
+        "with Ideogram's turbo preset instead of its default 20: its own schedule, a little different.",
     },
   },
 ]

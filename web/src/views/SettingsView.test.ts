@@ -72,6 +72,17 @@ const options: api.SettingsOptions = {
         quantize: true,
         float16: true,
       },
+      {
+        id: 'ideogram-4',
+        label: 'Ideogram 4',
+        defaultSteps: 20,
+        fixedSteps: true,
+        stepCache: false,
+        fastSteps: 12,
+        fastNote: 'with a turbo preset.',
+        quantize: false,
+        float16: false,
+      },
     ],
     comfyui: [
       {
@@ -246,6 +257,17 @@ describe('SettingsView', () => {
     expect(wrapper.find('[data-step-cache]').exists()).toBe(false)
     const steps = wrapper.find('input[type=number]').element as HTMLInputElement
     expect([steps.value, steps.disabled]).toEqual(['6', true])
+  })
+
+  it("shows the steps a model sets for itself, and its Fast mode's", async () => {
+    const wrapper = mount(SettingsView)
+    await flushPromises()
+    await wrapper.find('[data-image-model]').setValue('ideogram-4')
+    const steps = () => wrapper.find('input[type=number]').element as HTMLInputElement
+    expect([steps().value, steps().disabled]).toEqual(['20', true])
+    expect(wrapper.find('[data-fast]').text()).toContain('Renders in 12 steps with a turbo preset.')
+    await wrapper.find('[data-fast] input').setValue(true)
+    expect([steps().value, steps().disabled]).toEqual(['12', true])
   })
 
   it('offers the picture forming only on ComfyUI, and saves it off', async () => {

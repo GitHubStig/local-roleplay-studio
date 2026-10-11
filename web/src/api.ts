@@ -79,6 +79,10 @@ export interface ImageModelOption {
   stepCache: boolean
   /** The steps its fast mode runs at; absent when it has none (mflux). */
   fastSteps?: number
+  /** What its fast mode does, following "Renders in N steps" (mflux). */
+  fastNote?: string
+  /** Its steps are set for it (by a preset), always `defaultSteps` or `fastSteps` (mflux). */
+  fixedSteps?: boolean
   /** Can be quantized to 8 or 4 bits as it loads (mflux). */
   quantize: boolean
   /** Takes float16 compute (mflux). */
