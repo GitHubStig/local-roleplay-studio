@@ -415,7 +415,7 @@ written for image prompts, are left out).
   Light / Dark / System toggle in its bottom-right corner (remembered by the browser; the top right
   would cover the model names in the sticky header row). The pictures
   are encoded in WebAssembly (jSquash), so it runs the same on both machines with nothing to
-  install. Mac, 2026-10-11: a Storyboard's 41 pictures by 6 models, 70 MB of PNG, exported in
+  install ([research/export-images.md](research/export-images.md) compares AVIF). Mac, 2026-10-11: a Storyboard's 41 pictures by 6 models, 70 MB of PNG, exported in
   7.5 s to 13 MB (10 MB of viewer pictures, 2.7 MB of thumbnails, a 116 KB page); a Chain's 85
   pictures by 4 models in 20.6 s to 32 MB. Viewer pictures load only when opened, and thumbnails
   as they near the screen (`loading="lazy"`): 28 of the Chain's 85 on opening it. Each thumbnail's
