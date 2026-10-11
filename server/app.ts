@@ -43,6 +43,7 @@ import {
 import { checkChainJob, runChainJob } from './chain/jobs.ts'
 import { checkStoryboardJob, runStoryboardJob } from './storyboard/jobs.ts'
 import { GoneError, updateSession } from './update.ts'
+import { parseComparisonExport, writeComparison } from './export/comparison.ts'
 import { ImageModelError, shownPicture, switchImageModel } from './pictures.ts'
 import type { HeavyJob } from './machine.ts'
 import { Previews } from './previews.ts'
@@ -86,6 +87,11 @@ export interface AppDeps {
    * backend is given are available, the rest not: what tests want.
    */
   features?: Availabilities
+  /**
+   * Where the Compare dialog's exports go (a folder per Session), and the page they're written
+   * into (`buildComparisonPage`); without it, there's no export.
+   */
+  exports?: { dir: string; page: () => Promise<string> }
   /** Frees memory before a render, upscale, scene or figure: unloads the Text Model. */
   freeMemory?: (job: HeavyJob | undefined) => Promise<void>
   newSessionId?: () => string
@@ -830,6 +836,23 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       return new Response(jpeg, {
         headers: { 'Content-Type': 'image/jpeg', 'Cache-Control': 'no-store' },
       })
+    }],
+
+    // The Compare dialog as a page of its own, with its pictures as WebP, in a folder under
+    // `exports/` named for the Session: `ComparisonExport`. It says where the folder went.
+    ['POST', new URLPattern({ pathname: '/api/sessions/:id/export' }), async (req, p) => {
+      if (!deps.exports) return error("Exporting isn't set up", 404)
+      const comparison = parseComparisonExport(await readJson(req))
+      if (typeof comparison === 'string') return error(comparison, 400)
+      if (!(await deps.sessions.load(p.id!))) return error('Session not found', 404)
+      const folder = join(deps.exports.dir, p.id!)
+      const { pictures } = await writeComparison(
+        deps.sessions.dir(p.id!),
+        folder,
+        await deps.exports.page(),
+        comparison,
+      )
+      return json({ folder, pictures })
     }],
 
     ['GET', new URLPattern({ pathname: '/api/sessions/:id/images/:file' }), async (_req, p) => {

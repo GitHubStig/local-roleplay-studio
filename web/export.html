@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en" class="h-full">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Compare Image Models</title>
+    <script>
+      // The theme follows the system's, set before first paint.
+      document.documentElement.classList.toggle(
+        'dark',
+        matchMedia('(prefers-color-scheme: dark)').matches,
+      )
+    </script>
+  </head>
+  <body class="h-full bg-canvas text-fg">
+    <div id="app" class="h-full"></div>
+    <!-- The server puts the Comparison here as JSON when it exports (server/export/). -->
+    <script id="comparison" type="application/json">{}</script>
+    <script type="module" src="/src/export/main.ts"></script>
+  </body>
+</html>

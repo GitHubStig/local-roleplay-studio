@@ -1,3 +1,4 @@
+import { fromFileUrl } from '@std/path'
 import { createHandler } from './app.ts'
 import { placeholderImageGenerator } from './images/imageGenerator.ts'
 import { mfluxImageGenerator } from './images/mflux/mflux.ts'
@@ -15,6 +16,7 @@ import { seededChat } from './text/seeded.ts'
 import { loggedChat, loggedImages } from './calls.ts'
 import { litoFigureMaker, tripoFigureMaker } from './3d/figure.ts'
 import { sharpSceneMaker } from './3d/scene.ts'
+import { buildComparisonPage } from './export/page.ts'
 import { voiceBackends, voiceService } from './voice/voice.ts'
 import { comfyuiVoiceEngine } from './voice/comfyui/comfyui.ts'
 import {
@@ -60,6 +62,7 @@ const handler = createHandler({
   comfyuiStatus,
   scenarios: dirScenarioLibrary(new URL('../scenarios/', import.meta.url)),
   sessions: dirSessionStore(new URL('../sessions/', import.meta.url)),
+  exports: { dir: fromFileUrl(new URL('../exports/', import.meta.url)), page: buildComparisonPage },
   textModel: (c) => chatTextModel(chat(c)),
   roleplayModel: (c) => chatRoleplayModel(chat(c)),
   // Each Session renders with the backend its Settings name: mflux where it's installed (a Mac),

@@ -8,7 +8,8 @@
     "build": "vite build",
     "typecheck": "node node_modules/vue-tsc/bin/vue-tsc.js -b",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "build:export": "vite build --config vite.export.config.ts"
   },
   "dependencies": {
     "@sparkjsdev/spark": "^2.3.0",
@@ -28,6 +29,7 @@
     "tailwindcss": "^4.3.3",
     "typescript": "~6.0.2",
     "vite": "^8.3.0",
+    "vite-plugin-singlefile": "^2.3.3",
     "vitest": "^5.0.1",
     "vue-tsc": "^3.3.11"
   }

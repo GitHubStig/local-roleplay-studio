@@ -1,11 +1,12 @@
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { PicturedFrame } from '../api'
+import { exportComparison, type PicturedFrame } from '../api'
 import ModelComparison from './ModelComparison.vue'
 
 vi.mock('../api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../api')>()),
   getSettingsOptions: vi.fn(() => new Promise(() => {})),
+  exportComparison: vi.fn(() => Promise.resolve({ folder: '/exports/s1', pictures: 3 })),
 }))
 
 enableAutoUnmount(afterEach)
@@ -91,5 +92,57 @@ describe('ModelComparison', () => {
     expect(label()).toBe('Frame 2 · b · ↑↓ Frames')
     await press('ArrowUp')
     expect(label()).toBe('Frame 0 · b · ↑↓ Frames')
+  })
+
+  it('exports what it shows, by the pictures’ files, and says where it went', async () => {
+    const shown: PicturedFrame[] = [
+      {
+        ...frames[0],
+        pictures: [
+          { ...picture('f0-a.png', 'a'), upscaled: 'f0-a-2048.png' },
+          frames[0].pictures[1],
+        ],
+      },
+      frames[1],
+    ]
+    const wrapper = mountIt(shown)
+    await wrapper.find('[data-compare-models]').trigger('click')
+    await flushPromises()
+    await wrapper.find('[data-export]').trigger('click')
+    await flushPromises()
+    expect(exportComparison).toHaveBeenCalledWith('s1', {
+      title: 'Compare Image Models',
+      models: [{ label: 'a' }, { label: 'b' }],
+      rows: [
+        {
+          name: 'Frame 0',
+          prompt: 'A tavern at dusk.',
+          pictures: [
+            { image: 'f0-a.png', upscaled: 'f0-a-2048.png', stale: undefined },
+            { image: 'f0-b.png', upscaled: undefined, stale: undefined },
+          ],
+        },
+        {
+          name: 'Frame 1',
+          prompt: undefined,
+          pictures: [{ image: 'f1-a.png', upscaled: undefined, stale: undefined }, null],
+        },
+      ],
+    })
+    expect(wrapper.find('[data-export-done]').text()).toBe('Exported to /exports/s1')
+  })
+
+  it('folds the prompts away and back, from the table’s corner', async () => {
+    const wrapper = mountIt()
+    await wrapper.find('[data-compare-models]').trigger('click')
+    await flushPromises()
+    const toggle = wrapper.find('[data-toggle-prompts]')
+    expect(toggle.text()).toBe('‹ Hide prompts')
+    await toggle.trigger('click')
+    expect(wrapper.find('[data-compare-prompt]').exists()).toBe(false)
+    expect(wrapper.find('[data-compare-row]').text()).toContain('Frame 0')
+    expect(toggle.text()).toBe('Prompts ›')
+    await toggle.trigger('click')
+    expect(wrapper.find('[data-compare-prompt]').text()).toBe('A tavern at dusk.')
   })
 })

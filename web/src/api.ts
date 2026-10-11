@@ -1,4 +1,5 @@
 import type { RoleplaySession } from './roleplay/api'
+import type { ComparisonModel, ComparisonRow } from './comparison'
 export interface Health {
   ok: boolean
 }
@@ -497,6 +498,23 @@ export async function cancelFrame(id: string): Promise<void> {
 
 export const imageUrl = (sessionId: string, file: string) =>
   `/api/sessions/${sessionId}/images/${file}`
+
+/**
+ * What the Compare dialog exports: its rows and columns, each picture by its files in the Session
+ * (`Picture`'s), and the models by name only (no "current"). The server writes them as a page with
+ * its pictures as WebP.
+ */
+export interface ComparisonExport {
+  title: string
+  models: Pick<ComparisonModel, 'label'>[]
+  rows: (Omit<ComparisonRow, 'pictures'> & {
+    pictures: (Pick<Picture, 'image' | 'upscaled' | 'stale'> | null)[]
+  })[]
+}
+
+/** Exports a Session's comparison as a page; it says where on the server the folder went. */
+export const exportComparison = (id: string, comparison: ComparisonExport) =>
+  post<{ folder: string; pictures: number }>(`/api/sessions/${id}/export`, comparison)
 
 /** The latest preview of a render in progress (ComfyUI's), asked for again at each step. */
 export const previewUrl = (sessionId: string, step: number) =>

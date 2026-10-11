@@ -62,6 +62,7 @@ interface SetupOptions {
   settings?: Partial<Settings>
   /** What this "machine" can run; left out, whatever backends are given. */
   features?: Availabilities
+  exports?: AppDeps['exports']
 }
 
 function setup(opts: SetupOptions = {}) {
@@ -88,6 +89,7 @@ function setup(opts: SetupOptions = {}) {
     figure: opts.figure,
     lito: opts.lito,
     features: opts.features,
+    exports: opts.exports,
     newSessionId: () => `s${++sessionCount}`,
     randomSeed: () => 1234,
   })
@@ -874,6 +876,38 @@ Deno.test('A Chain queues SHARP, TripoSplat and LiTo for one Frame', () =>
     ) {
       assertEquals((await call('GET', `/api/sessions/s1/images/${file}`)).status, 404)
     }
+  }))
+
+Deno.test('The Compare dialog exports to a folder per Session', () =>
+  withTempDir(async (root) => {
+    const page = '<script id="comparison" type="application/json">{}</script>'
+    const exports = { dir: join(root, 'exports'), page: () => Promise.resolve(page) }
+    const { call } = await chainOfTwo(root, { exports })
+    const comparison = {
+      title: 'Test Shoot',
+      models: [],
+      rows: [{ name: 'Frame 0', pictures: [] }],
+    }
+    const exported = await call('POST', '/api/sessions/s1/export', comparison)
+    assertEquals(await exported.json(), { folder: join(root, 'exports', 's1'), pictures: 0 })
+    assertMatch(
+      await Deno.readTextFile(join(root, 'exports', 's1', 'index.html')),
+      /"title":"Test Shoot"/,
+    )
+
+    const picture = { name: 'Frame 0', pictures: [{ image: '../s2/frame-0.png' }] }
+    const outside = await call('POST', '/api/sessions/s1/export', {
+      ...comparison,
+      models: [{ label: 'A' }],
+      rows: [picture],
+    })
+    assertEquals([outside.status, (await outside.json()).error], [
+      400,
+      'Pictures must be files in the Session',
+    ])
+    assertEquals((await call('POST', '/api/sessions/nope/export', comparison)).status, 404)
+    const off = (await chainOfTwo(join(root, 'off'))).call
+    assertEquals((await off('POST', '/api/sessions/s1/export', comparison)).status, 404)
   }))
 
 Deno.test('A Session switches Image Model, and a Chain Frame by the old one renders again', () =>

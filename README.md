@@ -250,6 +250,7 @@ on a machine that can.
 scenarios/        Scenario files, one Markdown file each (see docs/scenarios.md)
 settings.json     Your Settings (gitignored; created on first save)
 sessions/<id>/    Each Session: session.json plus its pictures, voices and 3D files (gitignored)
+exports/<id>/     A Session's Compare table exported as a page, with its pictures (gitignored)
 server/           Deno API: the app, Sessions, Settings, the job queue, what all kinds of Session share
   chain/          a Chain's Frames and jobs
   storyboard/     a Storyboard's plan and edits
@@ -261,9 +262,10 @@ server/           Deno API: the app, Sessions, Settings, the job queue, what all
                   comfyui/workflows/)
   comfyui/        what talking to ComfyUI takes, for pictures and voices alike
   3d/             SHARP scenes, TripoSplat and LiTo figures
+  export/         the Compare table as a page of its own, its pictures as WebP
   prompts/        what the Text Model is told, one Markdown file each: chain/, storyboard/,
                   roleplay/, and shared/ for what more than one uses
-web/              Vue 3 + Vite + Tailwind 4 web app
+web/              Vue 3 + Vite + Tailwind 4 web app; export.html is the exported Compare page
 python/           What uv runs, each in its own folder with its packages pinned in the file:
   voice/          the voice service (mlx-audio, so Mac only)
   sharp/          Apple's SHARP: a picture as a 2.5D scene
