@@ -696,6 +696,31 @@ describe('SessionView', () => {
     expect(api.saveChainPrompt).not.toHaveBeenCalled()
   })
 
+  it('goes from the Queue tab to its Frame, scrolled into view rather than to the latest', async () => {
+    vi.mocked(api.getSession).mockResolvedValue(
+      session([frame(0, null), frame(1, 'Sit'), frame(2, 'Stand')]),
+    )
+    vi.mocked(api.listJobs).mockResolvedValue([
+      job({ kind: 'render', frameIndex: 1, status: 'running' }),
+    ])
+    const scrolled: Element[] = []
+    const scrollIntoView = Element.prototype.scrollIntoView
+    Element.prototype.scrollIntoView = function (this: Element) {
+      scrolled.push(this)
+    }
+    const { wrapper } = await mountIt()
+    const tab = (name: string) =>
+      wrapper.findAll('[role=tab]').find((t) => t.text().startsWith(name))!
+    await tab('Queue').trigger('click')
+    await wrapper.find('[data-queue-item] button').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('aside [aria-current=true] [data-action]').text()).toBe('Sit')
+    expect(scrolled.map((el) => el.querySelector('[data-action]')?.textContent?.trim())).toEqual([
+      'Sit',
+    ])
+    Element.prototype.scrollIntoView = scrollIntoView
+  })
+
   it('shows why an Undo was refused', async () => {
     vi.mocked(api.getSession).mockResolvedValue(session([frame(0, null), frame(1, 'Sit')]))
     vi.mocked(api.undoFrame).mockRejectedValue(

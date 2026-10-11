@@ -19,3 +19,13 @@ export function useFrameKeys(
     list.value?.querySelector<HTMLElement>('[aria-current="true"]')?.focus()
   }
 }
+
+/**
+ * Brings a list's picked Frame (`aria-current="true"`) into view, centred, once the page has
+ * updated: after going to a Frame from the Queue tab, say.
+ */
+export async function showPickedFrame(list: Readonly<ShallowRef<HTMLElement | null>>) {
+  await nextTick()
+  list.value?.querySelector('[aria-current="true"]')
+    ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+}

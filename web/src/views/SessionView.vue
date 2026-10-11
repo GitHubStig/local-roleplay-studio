@@ -26,7 +26,7 @@ import Frame3dViewers from '../components/Frame3dViewers.vue'
 import FrameViewer from '../components/FrameViewer.vue'
 import JobQueue from '../components/JobQueue.vue'
 import { useJobs } from '../composables/useJobs'
-import { useFrameKeys } from '../composables/useFrameKeys'
+import { showPickedFrame, useFrameKeys } from '../composables/useFrameKeys'
 import { formingOf, jobForming, queueTabLabel, sweepOf } from '../jobs'
 import { useShownPreview } from '../composables/useShownPreview'
 import { useStoredFlag } from '../composables/useStoredFlag'
@@ -246,7 +246,10 @@ function warnBeforeUnload(e: BeforeUnloadEvent) {
 }
 useEventListener(window, 'beforeunload', warnBeforeUnload)
 
+// Back on the Frames, or with a new one: down to the latest while following it, or else to the
+// Frame picked (from the Queue tab, say).
 watch([() => session.value?.frames.length, panel], async () => {
+  if (viewing.value !== null) return showPickedFrame(log)
   await nextTick()
   log.value?.scrollTo({ top: log.value.scrollHeight, behavior: 'smooth' })
 })

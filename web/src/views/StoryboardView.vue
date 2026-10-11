@@ -48,7 +48,7 @@ import PanelTabs from '../components/PanelTabs.vue'
 import { useImageModels } from '../composables/useSettingsOptions'
 import { useFeatures } from '../composables/useFeatures'
 import { useJobs } from '../composables/useJobs'
-import { useFrameKeys } from '../composables/useFrameKeys'
+import { showPickedFrame, useFrameKeys } from '../composables/useFrameKeys'
 import { JOB_NAMES, jobForming, jobStatus, queueTabLabel, sweepOf } from '../jobs'
 import { clearCurrentSession, setCurrentSession } from '../composables/useCurrentSession'
 import { useStoredText } from '../composables/useStoredText'
@@ -379,8 +379,15 @@ const viewingPicture = ref<number | null>(null)
 /** Which Frame's scene or figure is open, if any. */
 const open3d = ref<{ index: number; kind: Made3d } | null>(null)
 const frameTitle = (index: number) => `Frame ${index + 1}`
+const frameList = useTemplateRef<HTMLElement>('frameList')
+/** From the Queue tab: picks the Frame and shows it in the Frames list. */
+function goToFrame(index: number) {
+  selected.value = index
+  panel.value = 'frames'
+  showPickedFrame(frameList)
+}
 /** ↑ and ↓ in the Frames list. */
-const onFrameKey = useFrameKeys(useTemplateRef<HTMLElement>('frameList'), {
+const onFrameKey = useFrameKeys(frameList, {
   count: () => frames.value.length,
   current: () => selected.value,
   pick: (index) => (selected.value = index),
@@ -543,7 +550,7 @@ const imagesOn = computed(() => featureOn.value('images'))
               :jobs="jobs"
               empty="Nothing queued. Render, Render all and Upscale add work here, to run while you carry on."
               :name="frameTitle"
-              @go="(index) => { selected = index; panel = 'frames' }"
+              @go="goToFrame"
               @retry="retry"
               @drop="dropJob"
               @clear="clear"
