@@ -1,6 +1,13 @@
 import { assertEquals, assertRejects } from '@std/assert'
 import { join } from '@std/path'
-import { callFile, type CallRecord, logCalls, logCallsUnder, loggedChat } from './calls.ts'
+import {
+  callFile,
+  type CallRecord,
+  logCalls,
+  logCallsUnder,
+  loggedChat,
+  renumberCallLogs,
+} from './calls.ts'
 import type { Chat, ChatCall } from './text/chat.ts'
 import { withTempDir } from './testing.ts'
 
@@ -95,3 +102,25 @@ Deno.test('A Session removed meanwhile gets no folder back', async () => {
     assertEquals(await exists(gone), false)
   })
 })
+
+Deno.test('A deleted Frame’s calls are kept aside, and later Frames’ numbered down', () =>
+  withTempDir(async (dir) => {
+    await renumberCallLogs(dir, 1) // No log: nothing to do.
+    await Deno.mkdir(join(dir, 'calls'))
+    for (const index of [0, 1, 2, 3]) await Deno.writeTextFile(callFile(dir, index), `${index}`)
+    await Deno.writeTextFile(join(dir, 'calls', 'setup.json'), 'setup')
+    await renumberCallLogs(dir, 1)
+    const files = (await Array.fromAsync(Deno.readDir(join(dir, 'calls')))).map((e) => e.name)
+    const aside = files.find((f) => f.startsWith('frame-2-deleted-'))!
+    assertEquals(files.filter((f) => f !== aside).sort(), [
+      'frame-1.json',
+      'frame-2.json',
+      'frame-3.json',
+      'setup.json',
+    ])
+    const read = (file: string) => Deno.readTextFile(join(dir, 'calls', file))
+    assertEquals(
+      await Promise.all(['frame-1.json', 'frame-2.json', 'frame-3.json', aside].map(read)),
+      ['0', '2', '3', '1'],
+    )
+  }))

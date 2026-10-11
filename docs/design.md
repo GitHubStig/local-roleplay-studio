@@ -559,7 +559,18 @@ consistency* in [open-threads.md](open-threads.md).
 **Undo** removes the latest Frame: the previous Frame's Image Prompt is current again, its pictures
 (by every Image Model) and what was made from them are deleted, and the undone Action goes back into the text
 box (unless you've started typing a new one). It's offered in the button row and on the latest
-Frame in the Frames list, never for the Opening Frame, and never while a Frame runs. Image files carry
+Frame in the Frames list, never for the Opening Frame, and never while a Frame runs.
+
+**Delete** (2026-10-11) removes a Frame between the Opening and the latest, from its Delete
+button in the Frames list, once confirmed: its pictures (by every Image Model) and what was made
+from them go, and the Frames after it are numbered down, keeping their Image Prompts (written
+from the deleted Frame's, which is fine: each Frame holds its whole prompt). The queue follows:
+the deleted Frame's queued jobs go, later Frames' are renumbered with them, and while a job runs
+on that Frame or a later one the delete is refused, as its result would land on the wrong Frame
+(the queue is held meanwhile, so none starts). The request says how many Frames the Chain had and
+when the Frame was made, so a repeat can't delete the Frame that took its place. With the call log
+on, the deleted Frame's file is kept as `frame-N-deleted-xxxxxxxx.json` and later ones are
+renumbered. Image files carry
 a random suffix, so a Frame made after an Undo never reuses the undone Frame's file name, and the
 browser can't show a stale cached image.
 
@@ -613,6 +624,7 @@ All under `/api`; the Vite dev server proxies it to the Deno server.
 | `PUT /sessions/:id/look` | Storyboard: replace the Look, `{ people: [{ name, identity }], style }` |
 | `POST /sessions/:id/cancel` | Cancel the Frame in progress |
 | `DELETE /sessions/:id/frames/:index` | Undo the latest Frame; `:index` must name it (`409` otherwise, and for the Opening Frame or while a Frame runs) |
+| `POST /sessions/:id/frames/:index/delete` | Chain: delete Frame `:index`, any but the Opening: `{ frames, createdAt }` as seen (`409` if the Chain changed, for the Opening, or while a job runs on it or a later Frame) |
 | `GET /sessions/:id/images/:file` | A Frame's image, a Roleplay's audio (`voice-…wav`, `speech-…mp3`, `thought-…mp3`, or `.wav` from before), or a Roleplay Frame's 3D scene (`scene-…ply`), or a 3D figure (`figure-…ply`, `lito-…ply`) |
 | `GET /sessions/:id/preview` | The latest preview of the Session's render in progress (a JPEG, ComfyUI's), while there is one and Settings show the picture forming; `404` otherwise. Never cached: asked for again at each step (`?step=`) |
 | `POST /sessions/:id/roleplay/cast` | Roleplay: write (or, before it begins, rewrite) the Cast, streaming `phase`, `thinking`, then `cast` (`cast`, `session`) |

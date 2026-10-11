@@ -70,6 +70,33 @@ export const callFile = (dir: string, frame: number | null) =>
   join(dir, 'calls', frame === null ? 'setup.json' : `frame-${frame + 1}.json`)
 
 /**
+ * Keeps the call log numbered as the app shows the Frames once Frame `index` is deleted: its file
+ * is kept aside as `frame-N-deleted-xxxxxxxx.json`, and each later Frame's moves down one. Nothing
+ * to do without a log.
+ */
+export async function renumberCallLogs(dir: string, index: number): Promise<void> {
+  const calls = join(dir, 'calls')
+  const numbers: number[] = []
+  try {
+    for await (const entry of Deno.readDir(calls)) {
+      const n = entry.name.match(/^frame-(\d+)\.json$/)?.[1]
+      if (n) numbers.push(Number(n))
+    }
+  } catch (err) {
+    if (err instanceof Deno.errors.NotFound) return
+    throw err
+  }
+  const deleted = callFile(dir, index)
+  if (numbers.includes(index + 1)) {
+    const aside = `frame-${index + 1}-deleted-${crypto.randomUUID().slice(0, 8)}.json`
+    await Deno.rename(deleted, join(calls, aside))
+  }
+  for (const n of numbers.filter((n) => n > index + 1).sort((a, b) => a - b)) {
+    await Deno.rename(callFile(dir, n - 1), callFile(dir, n - 2))
+  }
+}
+
+/**
  * Adds `record` to the end of `path`'s array without rewriting it: over its closing `]`. A file
  * that doesn't end as this writes it (edited by hand) is read and written whole.
  */

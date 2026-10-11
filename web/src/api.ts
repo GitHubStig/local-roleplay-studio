@@ -477,6 +477,17 @@ export const deleteSession = (id: string) =>
 export const undoFrame = (id: string, index: number) =>
   request<ChainSession>(`/api/sessions/${id}/frames/${index}`, { method: 'DELETE' })
 
+/**
+ * Deletes a Chain's Frame `index`, any but the Opening Frame, as the player saw the Chain: its
+ * Frame count and the Frame's `createdAt`, so a repeat can't delete the next. Returns the updated
+ * Session, the Frames after it numbered down.
+ */
+export const deleteChainFrame = (
+  id: string,
+  index: number,
+  seen: { frames: number; createdAt: string },
+) => post<ChainSession>(`/api/sessions/${id}/frames/${index}/delete`, seen)
+
 export const put = <T>(path: string, body: unknown) =>
   request<T>(path, {
     method: 'PUT',

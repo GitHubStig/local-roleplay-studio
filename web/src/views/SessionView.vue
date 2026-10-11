@@ -37,6 +37,7 @@ import {
   ApiError,
   cancelFrame,
   changedSinceRender,
+  deleteChainFrame,
   DOWNLOADING,
   getSession,
   imageUrl,
@@ -379,6 +380,37 @@ async function undo() {
     frameError.value = (err as Error).message
   } finally {
     undoing.value = false
+  }
+}
+
+const deleting = ref(false)
+
+/**
+ * Deletes a Frame between the Opening and the latest (which has Undo), once confirmed: its
+ * pictures go, and the Frames after it are numbered down. The shown Frame stays shown; the deleted
+ * one's place goes to the Frame after it.
+ */
+async function deleteFrame(frame: ChainFrame) {
+  if (busy.value || deleting.value) return
+  const what = `Delete Frame ${frame.index} and its pictures? The Frames after it are numbered down.`
+  if (!confirm(`${what} This can't be undone.`)) return
+  deleting.value = true
+  frameError.value = ''
+  try {
+    const frames = session.value!.frames.length
+    session.value = await deleteChainFrame(props.id, frame.index, {
+      frames,
+      createdAt: frame.createdAt,
+    })
+    const v = viewing.value
+    if (v !== null) pick(v > frame.index ? v - 1 : v)
+    viewingPicture.value = null
+    open3d.value = null
+    refreshJobs()
+  } catch (err) {
+    frameError.value = (err as Error).message
+  } finally {
+    deleting.value = false
   }
 }
 
@@ -788,6 +820,17 @@ const promptDiff = computed(() => {
               @click="undo"
             >
               Undo
+            </button>
+            <button
+              v-else-if="!busy && frame.index > 0"
+              type="button"
+              class="absolute right-2 top-2 rounded border border-line bg-canvas px-2 py-0.5 text-xs text-muted opacity-0 hover:text-danger focus:opacity-100 group-hover:opacity-100 disabled:opacity-50"
+              :disabled="deleting"
+              title="Delete this Frame and its pictures"
+              data-delete-frame
+              @click="deleteFrame(frame)"
+            >
+              Delete
             </button>
           </li>
           <!-- The Frame in progress, in its place from the start: picked to show it again. -->

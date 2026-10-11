@@ -49,7 +49,13 @@ import type { HeavyJob } from './machine.ts'
 import { Previews } from './previews.ts'
 import { RenderQueue } from './renderQueue.ts'
 import { type FrameDeps, type Phase, UpscaleError } from './frames.ts'
-import { runChainFrame, UndoError, undoLatestFrame } from './chain/frames.ts'
+import {
+  DeleteError,
+  deleteFrame,
+  runChainFrame,
+  UndoError,
+  undoLatestFrame,
+} from './chain/frames.ts'
 import {
   editFrameByAction,
   LimitError,
@@ -144,6 +150,7 @@ type LockKind =
   | 'frame'
   | 'undo'
   | 'delete'
+  | 'delete-frame'
   | 'plan'
   | 'render'
   | 'edit'
@@ -176,6 +183,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     frame: 'A Frame is already in progress',
     undo: 'An Undo is in progress',
     delete: 'This Session is being deleted',
+    'delete-frame': 'A Frame is being deleted',
     plan: 'The Storyboard is being planned',
     render: 'A Frame is rendering',
     edit: 'A Frame is being edited',
@@ -732,6 +740,44 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
         const undone = await undoLatestFrame(deps.sessions, session, index)
         jobs.cancelWhere(session.id, (job) => job.frameIndex === index)
         return json(undone)
+      })
+    }],
+
+    // Deletes a Chain's Frame, any but the Opening Frame: `{ frames, createdAt }`, how many Frames
+    // the Chain had and when this one was made, so a repeated request can't delete the one after it. Refused while a job runs on it or a later Frame, whose
+    // result would land on the wrong Frame once they're numbered down; queued ones follow them.
+    ['POST', new URLPattern({ pathname: '/api/sessions/:id/frames/:index/delete' }), (req, p) => {
+      const index = Number(p.index)
+      if (!Number.isInteger(index)) {
+        return Promise.resolve(error('Frame index must be a number', 400))
+      }
+      return locked(p.id!, 'delete-frame', async (session) => {
+        if (!needsChain(session)) return error('Only a Chain deletes Frames this way', 409)
+        const body = await readJson(req) as { frames?: unknown; createdAt?: unknown } | undefined
+        if (typeof body?.createdAt !== 'string' || !Number.isInteger(body.frames)) {
+          return error('frames (a count) and createdAt are required', 400)
+        }
+        const seen = { frames: body.frames as number, createdAt: body.createdAt }
+        const running = jobs.list(session.id)
+          .find((j) => j.status === 'running' && j.frameIndex >= index)
+        if (running) {
+          return error(
+            `Frame ${running.frameIndex} has a job running: wait for it, or cancel it, then delete`,
+            409,
+          )
+        }
+        try {
+          return json(
+            await jobs.holding(session.id, async () => {
+              const updated = await deleteFrame(deps.sessions, session, index, seen)
+              jobs.frameDeleted(session.id, index)
+              return updated
+            }),
+          )
+        } catch (err) {
+          if (err instanceof DeleteError || err instanceof GoneError) return error(err.message, 409)
+          throw err
+        }
       })
     }],
 

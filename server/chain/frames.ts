@@ -4,8 +4,9 @@ import { crossedLimit } from '../limits.ts'
 import type { Scenario } from '../scenario.ts'
 import type { ChainFrame, ChainSession, FrameTimings, Outcome, SessionStore } from '../session.ts'
 import type { FrameText } from '../textModel.ts'
-import { updateSession } from '../update.ts'
+import { GoneError, updateSession } from '../update.ts'
 import { allPictureFiles, removeFiles } from '../pictures.ts'
+import { renumberCallLogs } from '../calls.ts'
 import {
   type FrameDeps,
   imageName,
@@ -209,5 +210,39 @@ export async function undoLatestFrame(
     return { ...now, frames: now.frames.slice(0, -1) }
   })
   await removeFiles(store.dir(session.id), allPictureFiles(latest))
+  return updated
+}
+
+export class DeleteError extends Error {}
+
+/**
+ * Deletes a Chain's Frame `index`, any but the Opening Frame, and numbers the Frames after it down
+ * one; the call log follows. `seen` is the Chain as the player saw it: how many Frames it had and
+ * when this one was made, so a repeated request can't delete the Frame that took its place (two
+ * Frames can share a millisecond). Its pictures, and what was made from them, are deleted. The
+ * Frames after it keep their Image Prompts as written, made from the deleted one's.
+ */
+export async function deleteFrame(
+  store: SessionStore,
+  session: ChainSession,
+  index: number,
+  seen: { frames: number; createdAt: string },
+): Promise<ChainSession> {
+  let deleted!: ChainFrame
+  const updated = await updateSession(store, session.id, 'chain', (now) => {
+    deleted = now.frames[index]
+    if (!deleted || deleted.createdAt !== seen.createdAt || now.frames.length !== seen.frames) {
+      throw new GoneError('That Frame is no longer there')
+    }
+    if (index === 0) throw new DeleteError("The Opening Frame can't be deleted")
+    return {
+      ...now,
+      frames: now.frames
+        .filter((f) => f.index !== index)
+        .map((f, i) => (f.index === i ? f : { ...f, index: i })),
+    }
+  })
+  await removeFiles(store.dir(session.id), allPictureFiles(deleted))
+  await renumberCallLogs(store.dir(session.id), index)
   return updated
 }

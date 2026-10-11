@@ -1,6 +1,7 @@
 import { assertEquals, assertMatch, assertNotEquals, assertStringIncludes } from '@std/assert'
 import { join } from '@std/path'
 import { type AppDeps, createHandler } from './app.ts'
+import type { Job } from './jobs.ts'
 import type { TextConnection, TextModelInfo } from './text/backend.ts'
 import type { ImageGenerator } from './images/imageGenerator.ts'
 import { dirSessionStore } from './session.ts'
@@ -830,6 +831,110 @@ async function chainOfTwo(root: string, opts: Partial<Parameters<typeof setup>[0
 
 const chainFrames = async (call: ReturnType<typeof setup>['call']) =>
   ((await (await call('GET', '/api/sessions/s1')).json()).frames as JsonFrame[]).map(shown)
+
+Deno.test('A Chain Frame other than the Opening is deleted, and those after it numbered down', () =>
+  withTempDir(async (root) => {
+    const { call } = await chainOfTwo(root, {
+      textModel: scriptedTextModel([
+        reply('standing'),
+        reply('sitting'),
+        reply('kneeling'),
+        reply('rising'),
+      ]),
+    })
+    await readEvents(await call('POST', '/api/sessions/s1/frames', { action: 'Kneel' }))
+    const before = (await (await call('GET', '/api/sessions/s1')).json()).frames as JsonFrame[]
+    const remove = (index: number, frames = before.length) =>
+      call('POST', `/api/sessions/s1/frames/${index}/delete`, {
+        frames,
+        createdAt: before[index]?.createdAt,
+      })
+
+    const deleted = await remove(1)
+    assertEquals(deleted.status, 200)
+    const after = (await deleted.json()).frames as JsonFrame[]
+    assertEquals(after.map((f) => [f.index, f.action]), [[0, null], [1, 'Kneel']])
+    // The Frame after it keeps its Image Prompt and pictures, as written from the deleted one's.
+    assertEquals(after[1].prompt, before[2].prompt)
+    assertEquals(shown(after[1]).image, shown(before[2]).image)
+    assertEquals(
+      (await call('GET', `/api/sessions/s1/images/${shown(before[1]).image}`)).status,
+      404,
+    )
+    assertEquals(
+      (await call('GET', `/api/sessions/s1/images/${shown(after[1]).image}`)).status,
+      200,
+    )
+
+    // Asked again, it names a Frame no longer there, not the one that took its place (made the same
+    // millisecond here, so its count tells them apart).
+    const again = await remove(1)
+    assertEquals([again.status, (await again.json()).error], [409, 'That Frame is no longer there'])
+    const opening = await remove(0, after.length)
+    assertEquals([opening.status, (await opening.json()).error], [
+      409,
+      "The Opening Frame can't be deleted",
+    ])
+    assertEquals((await call('POST', '/api/sessions/s1/frames/1/delete', {})).status, 400)
+    // The next Frame is made from the latest, as ever.
+    const next = await readEvents(await call('POST', '/api/sessions/s1/frames', { action: 'Rise' }))
+    assertEquals((next.at(-1)![1].frame as JsonFrame).index, 2)
+  }))
+
+Deno.test('Deleting a Chain Frame waits for no job on it or after it, and the queue follows', () =>
+  withTempDir(async (root) => {
+    // Pictures made with the Frames go through; the upscales queued later hang until cancelled.
+    const quick = fakeImageGenerator()
+    const slow = fakeImageGenerator({ hang: true })
+    let hang = false
+    const images = {
+      ...quick,
+      generate: (...a: Parameters<typeof quick.generate>) => (hang ? slow : quick).generate(...a),
+      upscale: (...a: Parameters<typeof quick.upscale>) => (hang ? slow : quick).upscale(...a),
+    }
+    const four = [reply('standing'), reply('sitting'), reply('kneeling'), reply('rising')]
+    const { call } = await chainOfTwo(root, {
+      imageGenerator: images,
+      textModel: scriptedTextModel(four),
+    })
+    await readEvents(await call('POST', '/api/sessions/s1/frames', { action: 'Kneel' }))
+    await readEvents(await call('POST', '/api/sessions/s1/frames', { action: 'Rise' }))
+    const frames = (await (await call('GET', '/api/sessions/s1')).json()).frames as JsonFrame[]
+    const remove = (index: number) =>
+      call('POST', `/api/sessions/s1/frames/${index}/delete`, {
+        frames: frames.length,
+        createdAt: frames[index].createdAt,
+      })
+    const listed = async () => (await (await call('GET', '/api/sessions/s1/jobs')).json()) as Job[]
+    const jobs = async () => (await listed()).map((j) => [j.frameIndex, j.status])
+    const upscale = (frameIndex: number) =>
+      call('POST', '/api/sessions/s1/jobs', { kind: 'upscale', frameIndex })
+    const cancelAll = async () => {
+      hang = false
+      for (const job of await listed()) await call('DELETE', `/api/sessions/s1/jobs/${job.id}`)
+      await settled(call)
+      hang = true
+    }
+
+    hang = true
+    for (const index of [2, 3, 1]) await upscale(index)
+    assertEquals(await jobs(), [[2, 'running'], [3, 'queued'], [1, 'queued']])
+    const refused = await remove(1)
+    assertEquals([refused.status, (await refused.json()).error], [
+      409,
+      'Frame 2 has a job running: wait for it, or cancel it, then delete',
+    ])
+    assertEquals(await jobs(), [[2, 'running'], [3, 'queued'], [1, 'queued']])
+
+    // With a job running on an earlier Frame, Frame 1 goes: its upscale with it, Frame 3's now
+    // Frame 2's.
+    await cancelAll()
+    for (const index of [0, 3, 1]) await upscale(index)
+    assertEquals((await remove(1)).status, 200)
+    assertEquals(await jobs(), [[0, 'running'], [2, 'queued']])
+    await cancelAll()
+    hang = false
+  }))
 
 Deno.test('A Chain queues an upscale of one Frame, once', () =>
   withTempDir(async (root) => {

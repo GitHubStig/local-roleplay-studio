@@ -96,6 +96,8 @@ export class SessionJobs {
   #jobs = new Map<string, Job[]>()
   #running = new Map<string, { job: Job; controller: AbortController }>()
   #run: JobRunner
+  /** Sessions whose queue is held: no job starts until `holding` ends. */
+  #held = new Set<string>()
 
   constructor(run: JobRunner) {
     this.#run = run
@@ -171,6 +173,31 @@ export class SessionJobs {
     for (const job of this.list(sessionId).filter(which)) this.cancel(sessionId, job.id)
   }
 
+  /**
+   * Does `work` with the Session's queue held, so no queued job starts meanwhile (a running one
+   * carries on), then lets the next one start.
+   */
+  async holding<T>(sessionId: string, work: () => Promise<T>): Promise<T> {
+    this.#held.add(sessionId)
+    try {
+      return await work()
+    } finally {
+      this.#held.delete(sessionId)
+      this.#next(sessionId)
+    }
+  }
+
+  /**
+   * Frame `index` was deleted and the Frames after it numbered down one: its own queued and failed
+   * jobs go, and the later Frames' follow them. None may be running on it or after it.
+   */
+  frameDeleted(sessionId: string, index: number) {
+    const jobs = (this.#jobs.get(sessionId) ?? []).filter((j) => j.frameIndex !== index)
+    for (const job of jobs) if (job.frameIndex > index) job.frameIndex--
+    if (jobs.length) this.#jobs.set(sessionId, jobs)
+    else this.#jobs.delete(sessionId)
+  }
+
   /** What the running job is doing, for the Session's card on Home; null when idle. */
   activity(sessionId: string): Job['phase'] | null {
     return this.#running.get(sessionId)?.job.phase ?? null
@@ -182,9 +209,9 @@ export class SessionJobs {
     else this.#jobs.delete(sessionId)
   }
 
-  /** Starts the next queued job, unless one is running. */
+  /** Starts the next queued job, unless one is running or the queue is held. */
   #next(sessionId: string) {
-    if (this.#running.has(sessionId)) return
+    if (this.#running.has(sessionId) || this.#held.has(sessionId)) return
     const job = this.#jobs.get(sessionId)?.find((j) => j.status === 'queued')
     if (!job) return
     const controller = new AbortController()

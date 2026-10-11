@@ -15,6 +15,7 @@ vi.mock('../api', async (importOriginal) => ({
   endSession: vi.fn(),
   createSession: vi.fn(),
   undoFrame: vi.fn(),
+  deleteChainFrame: vi.fn(),
   getSettings: vi.fn(),
   getSettingsOptions: vi.fn(),
   setImageModel: vi.fn(),
@@ -617,6 +618,41 @@ describe('SessionView', () => {
     expect(buttonNamed(longer, 'Undo').attributes('disabled')).toBeUndefined()
     expect(longer.findAll('[data-undo]')).toHaveLength(1)
     expect(longer.findAll('aside li')[2].find('[data-undo]').exists()).toBe(true)
+  })
+
+  it('offers Delete on the Frames between the Opening and the latest', async () => {
+    vi.mocked(api.getSession).mockResolvedValue(
+      session([frame(0, null), frame(1, 'Sit'), frame(2, 'Stand')]),
+    )
+    const { wrapper } = await mountIt()
+    const items = wrapper.findAll('aside li')
+    expect(items.map((li) => li.find('[data-delete-frame]').exists())).toEqual([false, true, false])
+    expect(items[2].find('[data-undo]').exists()).toBe(true)
+  })
+
+  it('deletes a Frame once confirmed, as it saw the Chain, and shows the one in its place', async () => {
+    const made = '2026-09-24T00:00:01.000Z'
+    vi.mocked(api.getSession).mockResolvedValue(
+      session([frame(0, null), frame(1, 'Sit', { createdAt: made }), frame(2, 'Stand')]),
+    )
+    vi.mocked(api.deleteChainFrame).mockResolvedValue(
+      session([frame(0, null), frame(1, 'Stand', { pictures: [picture('frame-2.png')] })]),
+    )
+    const confirm = vi.fn().mockReturnValueOnce(false).mockReturnValueOnce(true)
+    vi.stubGlobal('confirm', confirm)
+    const { wrapper } = await mountIt()
+    // Looking at the Frame to delete.
+    await wrapper.findAll('aside [data-frame]')[1].trigger('click')
+
+    await wrapper.find('[data-delete-frame]').trigger('click')
+    expect(api.deleteChainFrame).not.toHaveBeenCalled()
+    await wrapper.find('[data-delete-frame]').trigger('click')
+    await flushPromises()
+    expect(confirm).toHaveBeenCalledTimes(2)
+    expect(api.deleteChainFrame).toHaveBeenCalledWith('s1', 1, { frames: 3, createdAt: made })
+    expect(wrapper.findAll('aside [data-frame]')).toHaveLength(2)
+    expect(wrapper.find('main img').attributes('src')).toContain('frame-2.png')
+    vi.unstubAllGlobals()
   })
 
   it('shows why an Undo was refused', async () => {

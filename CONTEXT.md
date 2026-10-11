@@ -119,8 +119,12 @@ Abandoning the work in progress so nothing changes; cancelling a Chain's Opening
 _Avoid_: Abort, stop
 
 **Undo**:
-Removing the latest Frame of a Chain (so the previous Frame is current again) or of a Roleplay (its last exchange); the opening can't be undone.
-_Avoid_: Delete frame, revert, rollback
+Removing the latest Frame of a Chain (so the previous Frame is current again) or of a Roleplay (its last exchange); the opening can't be undone. Its Action or Message goes back into the text box.
+_Avoid_: revert, rollback
+
+**Delete** (a Chain Frame):
+Removing a Chain Frame between the Opening and the latest, with its pictures; the Frames after it are numbered down and keep their Image Prompts. Unlike Undo, nothing goes back into the text box.
+_Avoid_: Remove, drop
 
 **Upscale**:
 Enlarging a Frame's picture so its shortest edge is 2048 px, with the SeedVR2 upscaler; the original image is kept, and an upscaled picture is flagged so it isn't upscaled twice. A re-render by the same Image Model drops it; a picture by another model has its own.
