@@ -524,6 +524,8 @@ export const imageUrl = (sessionId: string, file: string) =>
  * its pictures as WebP.
  */
 export interface ComparisonExport {
+  /** Asks the page's visitors to confirm they're 18 or older, under this text. */
+  notice?: string
   models: Pick<ComparisonModel, 'label'>[]
   rows: (Omit<ComparisonRow, 'pictures'> & {
     pictures: (Pick<Picture, 'image' | 'upscaled' | 'stale'> | null)[]

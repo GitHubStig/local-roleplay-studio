@@ -16,6 +16,11 @@ export interface ExportPicture {
 
 /** What the Compare dialog sends (`ComparisonExport` in the web app). */
 export interface ComparisonExport {
+  /**
+   * Shown before the page, which then asks the visitor to confirm they're 18 or older, on every
+   * visit; absent, the page opens straight away.
+   */
+  notice?: string
   models: { label: string }[]
   rows: { name: string; prompt?: string; pictures: (ExportPicture | null)[] }[]
 }
@@ -23,12 +28,21 @@ export interface ComparisonExport {
 /** How pictures are encoded: the viewer's at full size, the table's shrunk. */
 export const EXPORT_QUALITY = { full: 90, thumb: 85, thumbHeight: 512 }
 
+/** The longest notice: a sentence or two. */
+export const NOTICE_LENGTH = 500
+
 /** A picture file in a Session's folder: a name only (no path), PNG or SVG. */
 const PICTURE_FILE = /^[\w-]+\.(png|svg)$/
 
 /** The export, if `body` is one, or what's wrong with it. */
 export function parseComparisonExport(body: unknown): ComparisonExport | string {
   const b = body as Partial<ComparisonExport> | undefined
+  if (b?.notice !== undefined && (typeof b.notice !== 'string' || !b.notice.trim())) {
+    return 'notice must be some text'
+  }
+  if ((b?.notice?.length ?? 0) > NOTICE_LENGTH) {
+    return `notice must be at most ${NOTICE_LENGTH} characters`
+  }
   if (!Array.isArray(b?.models) || b.models.some((m) => typeof m?.label !== 'string')) {
     return 'models must each have a label'
   }
@@ -130,15 +144,16 @@ export async function writeComparison(
     rows.push({ name: row.name, ...(row.prompt ? { prompt: row.prompt } : {}), pictures })
   }
   const models = comparison.models.map(({ label }) => ({ label }))
-  const data = JSON.stringify({ title, models, rows })
+  const notice = comparison.notice?.trim()
+  const data = JSON.stringify({ title, ...(notice ? { notice } : {}), models, rows })
     // Inside a <script>, so nothing in it may close the tag.
     .replaceAll('<', '\\u003c')
-  await Deno.writeTextFile(
-    join(outDir, 'index.html'),
-    page.replace(
-      DATA_SLOT,
-      () => `<script id="comparison" type="application/json">${data}</script>`,
-    ),
+  let html = page.replace(
+    DATA_SLOT,
+    () => `<script id="comparison" type="application/json">${data}</script>`,
   )
+  // Behind an 18+ notice, the page says so to search engines' safe search and content filters too.
+  if (notice) html = html.replace('</head>', '<meta name="rating" content="adult" />\n</head>')
+  await Deno.writeTextFile(join(outDir, 'index.html'), html)
   return { pictures: rows.flatMap((r) => r.pictures).filter(Boolean).length }
 }

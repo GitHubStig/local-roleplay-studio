@@ -2,6 +2,8 @@
 import { computed, ref, useTemplateRef, watch } from 'vue'
 import { exportComparison, imageUrl, type PicturedFrame } from '../api'
 import type { ComparisonModel } from '../comparison'
+import { useStoredString } from '../composables/storage'
+import { useStoredFlag } from '../composables/useStoredFlag'
 import { useImageModels } from '../composables/useSettingsOptions'
 import ComparisonTable from './ComparisonTable.vue'
 
@@ -60,12 +62,28 @@ watch(open, (now) => {
   else if (dialog.value?.open) dialog.value.close()
 }, { flush: 'post' })
 
+/** The notice an exported page shows first, unless the player writes their own. */
+const NOTICE = 'Some of these pictures show nude figures, as in classical painting.'
+/**
+ * Export first asks whether the page should ask its visitors to confirm they're 18 or older, and
+ * under what text; both remembered per Session in this browser, for its next export.
+ */
+const asking = useTemplateRef<HTMLDialogElement>('asking')
+const adultsOnly = useStoredFlag(`export-adults-only:${props.sessionId}`)
+const storedNotice = useStoredString(`export-notice:${props.sessionId}`)
+const notice = computed({
+  get: () => storedNotice.value ?? NOTICE,
+  set: (text) => (storedNotice.value = text === NOTICE ? null : text),
+})
+
 /** Where the last export went, or why it failed; null while exporting. */
 const exported = ref<{ folder?: string; error?: string } | null | undefined>()
 async function exportPage() {
+  asking.value?.close()
   exported.value = null
   try {
     const { folder } = await exportComparison(props.sessionId, {
+      ...(adultsOnly.value ? { notice: notice.value.trim() || NOTICE } : {}),
       models: models.value.map(({ label }) => ({ label })),
       rows: pictured.value.map((row) => ({
         ...row,
@@ -112,7 +130,7 @@ async function exportPage() {
           title="Write this as a page of its own, its pictures as WebP, to open or host anywhere"
           :disabled="exported === null"
           data-export
-          @click="exportPage"
+          @click="asking?.showModal()"
         >
           {{ exported === null ? 'Exporting…' : 'Export' }}
         </button>
@@ -121,5 +139,51 @@ async function exportPage() {
         </button>
       </template>
     </ComparisonTable>
+    <dialog
+      ref="asking"
+      class="m-auto w-full max-w-md rounded-lg border border-line bg-surface p-6 text-fg backdrop:bg-black/60"
+      data-export-options
+    >
+      <form method="dialog" class="flex flex-col gap-4" @submit.prevent="exportPage">
+        <h3 class="text-lg font-medium">Export as a page</h3>
+        <label class="flex items-start gap-2">
+          <input v-model="adultsOnly" type="checkbox" class="mt-1" data-adults-only />
+          <span class="flex flex-col gap-0.5">
+            <span>Ask visitors to confirm they're 18 or older</span>
+            <span class="text-sm text-muted">
+              The page opens blurred behind this notice, on every visit, until they confirm.
+            </span>
+          </span>
+        </label>
+        <label v-if="adultsOnly" class="flex flex-col gap-1">
+          <span class="text-sm text-muted">Notice</span>
+          <textarea
+            v-model="notice"
+            rows="3"
+            maxlength="500"
+            class="rounded-lg border border-line bg-canvas px-3 py-2"
+            :placeholder="NOTICE"
+            data-notice
+          />
+          <span class="text-sm text-muted">Followed by "Continue only if you're 18 or older."</span>
+        </label>
+        <div class="flex justify-end gap-3">
+          <button
+            type="button"
+            class="rounded-lg border border-line px-4 py-2"
+            @click="asking?.close()"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            class="rounded-lg bg-fg px-4 py-2 font-medium text-canvas"
+            data-export-now
+          >
+            Export
+          </button>
+        </div>
+      </form>
+    </dialog>
   </dialog>
 </template>

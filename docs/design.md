@@ -416,7 +416,13 @@ written for image prompts, are left out).
   picture where there is one, WebP quality 90) and `thumbs/` for the table (512 px high, quality
   85). It opens from disk or any static host, with the viewer's zoom, arrow keys and swipes, and the app's
   Light / Dark / System toggle in its bottom-right corner (remembered by the browser; the top right
-  would cover the model names in the sticky header row). The pictures
+  would cover the model names in the sticky header row). Export first asks (2026-10-12) whether the
+  page should **ask its visitors to confirm they're 18 or older**, under a notice the player can
+  reword ("Some of these pictures show nude figures, as in classical painting." by default); both
+  are remembered per Session in the browser. Such a page opens with the table blurred and inert
+  behind the notice, on every visit (nothing is remembered), until the visitor confirms or leaves,
+  and carries `<meta name="rating" content="adult">` for safe search and content filters. It's a
+  courtesy, not a lock: the picture files can still be opened by their own addresses. The pictures
   are encoded in WebAssembly (jSquash), so it runs the same on both machines with nothing to
   install ([research/export-images.md](research/export-images.md) compares AVIF). Mac, 2026-10-11: a Storyboard's 41 pictures by 6 models, 70 MB of PNG, exported in
   7.5 s to 13 MB (10 MB of viewer pictures, 2.7 MB of thumbnails, a 116 KB page); a Chain's 85

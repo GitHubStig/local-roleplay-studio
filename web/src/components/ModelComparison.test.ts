@@ -109,6 +109,9 @@ describe('ModelComparison', () => {
     await wrapper.find('[data-compare-models]').trigger('click')
     await flushPromises()
     await wrapper.find('[data-export]').trigger('click')
+    // It asks first: no 18+ notice unless ticked.
+    expect(wrapper.find('[data-notice]').exists()).toBe(false)
+    await wrapper.find('[data-export-options] form').trigger('submit')
     await flushPromises()
     expect(exportComparison).toHaveBeenCalledWith('s1', {
       models: [{ label: 'a' }, { label: 'b' }],
@@ -129,6 +132,39 @@ describe('ModelComparison', () => {
       ],
     })
     expect(wrapper.find('[data-export-done]').text()).toBe('Exported to /exports/s1')
+  })
+
+  it('exports behind an 18+ notice when asked, remembering it for the Session', async () => {
+    const shown: PicturedFrame[] = [
+      { index: 0, pictures: [picture('f0-a.png', 'a'), picture('f0-b.png', 'b')] },
+    ]
+    const exportOnce = async () => {
+      const wrapper = mountIt(shown)
+      await wrapper.find('[data-compare-models]').trigger('click')
+      await flushPromises()
+      await wrapper.find('[data-export]').trigger('click')
+      return wrapper
+    }
+    const sent = () => vi.mocked(exportComparison).mock.lastCall![1].notice
+
+    let wrapper = await exportOnce()
+    await wrapper.find('[data-adults-only]').setValue(true)
+    const box = wrapper.find('[data-notice]').element as HTMLTextAreaElement
+    expect(box.value).toBe('Some of these pictures show nude figures, as in classical painting.')
+    await wrapper.find('[data-notice]').setValue('  Nude figures throughout.  ')
+    await wrapper.find('[data-export-options] form').trigger('submit')
+    await flushPromises()
+    expect(sent()).toBe('Nude figures throughout.')
+    wrapper.unmount()
+
+    // Next time it's still ticked, with the same text; emptied, the default goes.
+    wrapper = await exportOnce()
+    expect((wrapper.find('[data-adults-only]').element as HTMLInputElement).checked).toBe(true)
+    await wrapper.find('[data-notice]').setValue('')
+    await wrapper.find('[data-export-options] form').trigger('submit')
+    await flushPromises()
+    expect(sent()).toBe('Some of these pictures show nude figures, as in classical painting.')
+    localStorage.clear()
   })
 
   it('folds the prompts away and back, from the table’s corner', async () => {

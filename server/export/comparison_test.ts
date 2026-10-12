@@ -136,6 +136,32 @@ Deno.test('An export is a page with the comparison in it, the pictures as WebP b
     )
   }))
 
+Deno.test('An export behind an 18+ notice carries it, and says so to filters', () =>
+  withTempDir(async (dir) => {
+    const page = `<html><head></head><body>${PAGE}</body></html>`
+    const plain = { ...comparison, rows: [] }
+    await writeComparison(dir, join(dir, 'plain'), page, plain, 'x')
+    const notice = '  Some of these pictures show nude figures.  '
+    await writeComparison(dir, join(dir, 'adult'), page, { ...plain, notice }, 'x')
+
+    const html = (name: string) => Deno.readTextFile(join(dir, name, 'index.html'))
+    assertEquals((await html('plain')).includes('name="rating"'), false)
+    assertEquals((await pageData(join(dir, 'plain'))).notice, undefined)
+    assertMatch(await html('adult'), /<meta name="rating" content="adult" \/>\n<\/head>/)
+    assertEquals(
+      (await pageData(join(dir, 'adult'))).notice,
+      'Some of these pictures show nude figures.',
+    )
+  }))
+
+Deno.test('A notice must be some text, and not too long', () => {
+  const with_ = (notice: unknown) => parseComparisonExport({ ...comparison, notice })
+  assertEquals(with_('  '), 'notice must be some text')
+  assertEquals(with_(18), 'notice must be some text')
+  assertEquals(with_('x'.repeat(501)), 'notice must be at most 500 characters')
+  assertEquals(typeof with_('Nude figures, as in classical painting.'), 'object')
+})
+
 Deno.test('A page without a slot for the comparison is not written into', () =>
   withTempDir(async (dir) => {
     await assertRejects(
