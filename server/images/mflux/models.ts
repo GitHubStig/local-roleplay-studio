@@ -17,6 +17,11 @@ export interface MfluxModel {
   fixedSteps?: boolean
   /** Arguments passed on every render, after the rest. */
   args?: readonly string[]
+  /**
+   * Straight double quotes in the prompt become curly ones. FIBO's VLM copies a quoted line ("Yo!")
+   * into its JSON caption unescaped, which breaks the JSON whatever the seed.
+   */
+  curlyQuotes?: boolean
   /** Takes mflux's step cache (`--step-cache-ratio`): it skips the steps that change least. */
   stepCache?: boolean
   /** Takes `--compute-precision float16`: faster on M1 and M2 Macs, the same on M4 and M5. */
@@ -131,6 +136,7 @@ export const MFLUX_MODELS: readonly MfluxModel[] = [
     preQuantized: true,
     defaultSteps: 6,
     args: ['--guidance', '1.0'],
+    curlyQuotes: true,
   },
   {
     id: 'ideogram-4',

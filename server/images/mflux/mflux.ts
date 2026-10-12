@@ -10,6 +10,11 @@ import {
 import { findMfluxModel, MFLUX_MODELS, type MfluxModel } from './models.ts'
 import { SIZE_PRESETS } from '../../settings.ts'
 
+/** Straight double quotes as curly ones: opening after a space or bracket, or at the start. */
+export function curlQuotes(text: string): string {
+  return text.replace(/(^|[\s([{])"/g, '$1\u201c').replaceAll('"', '\u201d')
+}
+
 /**
  * The mflux command line for one image, with the model's step cache, fast mode and float16 as
  * Settings ask. Always `--low-ram`: it holds a part of the model only while it's used, so the peak
@@ -32,7 +37,7 @@ export function mfluxArgs(
     model.model,
     ...(model.baseModel ? ['--base-model', model.baseModel] : []),
     '--prompt',
-    req.prompt,
+    model.curlyQuotes ? curlQuotes(req.prompt) : req.prompt,
     '--seed',
     String(req.seed),
     ...(model.fixedSteps ? [] : ['--steps', String(fast?.steps ?? settings.steps)]),

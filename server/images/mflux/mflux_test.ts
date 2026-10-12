@@ -3,6 +3,7 @@ import { join } from '@std/path'
 import type { ImageRequest } from '../imageGenerator.ts'
 import { findMfluxModel, type MfluxModel } from './models.ts'
 import {
+  curlQuotes,
   failureReason,
   mfluxArgs,
   mfluxImageGenerator,
@@ -126,6 +127,23 @@ Deno.test('mfluxArgs runs FIBO 1.5 as FIBO, at its own guidance', () => {
     '--guidance',
     '1.0',
   ])
+})
+
+Deno.test('curlQuotes turns straight double quotes curly', () => {
+  assertEquals(
+    curlQuotes('a sign reads "OPEN" and she says ("Yo!") "Hi"'),
+    'a sign reads \u201cOPEN\u201d and she says (\u201cYo!\u201d) \u201cHi\u201d',
+  )
+  assertEquals(curlQuotes('"Start" of it'), '\u201cStart\u201d of it')
+})
+
+Deno.test('mfluxArgs curls the quotes only for a model that needs it', () => {
+  const prompt = (id: string) => {
+    const args = mfluxArgs(findMfluxModel(id)!, { ...request('/d'), prompt: 'says "Yo!"' }, 'o.png')
+    return args[args.indexOf('--prompt') + 1]
+  }
+  assertEquals(prompt('fibo-1.5'), 'says \u201cYo!\u201d')
+  assertEquals(prompt('qwen-image-2.1'), 'says "Yo!"')
 })
 
 Deno.test('failureReason says what to do when a gated download is refused', () => {
