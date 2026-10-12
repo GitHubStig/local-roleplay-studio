@@ -111,7 +111,6 @@ describe('ModelComparison', () => {
     await wrapper.find('[data-export]').trigger('click')
     await flushPromises()
     expect(exportComparison).toHaveBeenCalledWith('s1', {
-      title: 'Compare Image Models',
       models: [{ label: 'a' }, { label: 'b' }],
       rows: [
         {

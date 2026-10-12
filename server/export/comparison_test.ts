@@ -2,7 +2,12 @@ import { assertEquals, assertMatch, assertRejects } from '@std/assert'
 import encodePng from '@jsquash/png/encode.js'
 import { join } from '@std/path'
 import { withTempDir } from '../testing.ts'
-import { type ComparisonExport, parseComparisonExport, writeComparison } from './comparison.ts'
+import {
+  type ComparisonExport,
+  comparisonTitle,
+  parseComparisonExport,
+  writeComparison,
+} from './comparison.ts'
 
 const PAGE = '<title>x</title><script id="comparison" type="application/json">{}</script><p>'
 
@@ -26,7 +31,6 @@ async function pageData(outDir: string) {
 }
 
 const comparison: ComparisonExport = {
-  title: 'The <Tavern>',
   models: [{ label: 'A' }, { label: 'B' }],
   rows: [
     {
@@ -59,7 +63,16 @@ Deno.test('Only pictures named in the Session, a picture or null per model, are 
     parseComparisonExport({ ...comparison, rows: [{ name: 'Frame 0', pictures: [null] }] }),
     'Each row needs a picture (or null) per model',
   )
-  assertEquals(parseComparisonExport({ models: [], rows: [] }), 'title must be a string')
+  assertEquals(parseComparisonExport({ rows: [] }), 'models must each have a label')
+})
+
+Deno.test('The exported page is titled by its day and the seed', () => {
+  assertEquals(
+    comparisonTitle(new Date(2026, 9, 12, 23, 59), 1282725757),
+    '12 Oct 2026 · Seed 1282725757',
+  )
+  assertEquals(comparisonTitle(new Date(2027, 0, 3), 42), '3 Jan 2027 · Seed 42')
+  assertEquals(comparisonTitle(new Date(2026, 8, 1), 42), '1 Sept 2026 · Seed 42')
 })
 
 Deno.test('An export is a page with the comparison in it, the pictures as WebP beside it', () =>
@@ -75,7 +88,9 @@ Deno.test('An export is a page with the comparison in it, the pictures as WebP b
     await Deno.mkdir(join(out, 'images'), { recursive: true })
     await Deno.writeTextFile(join(out, 'images', 'old.webp'), '')
 
-    assertEquals(await writeComparison(session, out, PAGE, comparison), { pictures: 3 })
+    assertEquals(await writeComparison(session, out, PAGE, comparison, 'The <Tavern>'), {
+      pictures: 3,
+    })
 
     const html = await Deno.readTextFile(join(out, 'index.html'))
     assertMatch(html, /^<title>x<\/title><script id="comparison" type="application\/json">\{/)
@@ -124,7 +139,7 @@ Deno.test('An export is a page with the comparison in it, the pictures as WebP b
 Deno.test('A page without a slot for the comparison is not written into', () =>
   withTempDir(async (dir) => {
     await assertRejects(
-      () => writeComparison(dir, join(dir, 'out'), '<p>no slot</p>', comparison),
+      () => writeComparison(dir, join(dir, 'out'), '<p>no slot</p>', comparison, 'x'),
       Error,
       'no slot',
     )

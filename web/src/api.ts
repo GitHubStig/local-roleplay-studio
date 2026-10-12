@@ -524,7 +524,6 @@ export const imageUrl = (sessionId: string, file: string) =>
  * its pictures as WebP.
  */
 export interface ComparisonExport {
-  title: string
   models: Pick<ComparisonModel, 'label'>[]
   rows: (Omit<ComparisonRow, 'pictures'> & {
     pictures: (Pick<Picture, 'image' | 'upscaled' | 'stale'> | null)[]

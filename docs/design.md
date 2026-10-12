@@ -409,7 +409,8 @@ written for image prompts, are left out).
   alone, without the header or the "current" mark), written by
   the server to `exports/<Session id>/` (gitignored, replaced by the next export): `index.html`
   (`web/export.html`, built on each export by `deno task build:export` into one file with its
-  script and styles inlined, the comparison as JSON in it), `images/` for the viewer (the upscaled
+  script and styles inlined, the comparison as JSON in it; titled by the day it was exported and
+  the Session's seed, "12 Oct 2026 · Seed 1282725757", since 2026-10-12), `images/` for the viewer (the upscaled
   picture where there is one, WebP quality 90) and `thumbs/` for the table (512 px high, quality
   85). It opens from disk or any static host, with the viewer's zoom and arrow keys, and the app's
   Light / Dark / System toggle in its bottom-right corner (remembered by the browser; the top right

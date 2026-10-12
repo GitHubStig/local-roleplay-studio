@@ -43,7 +43,7 @@ import {
 import { checkChainJob, runChainJob } from './chain/jobs.ts'
 import { checkStoryboardJob, runStoryboardJob } from './storyboard/jobs.ts'
 import { GoneError, updateSession } from './update.ts'
-import { parseComparisonExport, writeComparison } from './export/comparison.ts'
+import { comparisonTitle, parseComparisonExport, writeComparison } from './export/comparison.ts'
 import { ImageModelError, shownPicture, switchImageModel } from './pictures.ts'
 import type { HeavyJob } from './machine.ts'
 import { Previews } from './previews.ts'
@@ -906,13 +906,15 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       if (!deps.exports) return error("Exporting isn't set up", 404)
       const comparison = parseComparisonExport(await readJson(req))
       if (typeof comparison === 'string') return error(comparison, 400)
-      if (!(await deps.sessions.load(p.id!))) return error('Session not found', 404)
+      const session = await deps.sessions.load(p.id!)
+      if (!session) return error('Session not found', 404)
       const folder = join(deps.exports.dir, p.id!)
       const { pictures } = await writeComparison(
         deps.sessions.dir(p.id!),
         folder,
         await deps.exports.page(),
         comparison,
+        comparisonTitle(new Date(), session.seed),
       )
       return json({ folder, pictures })
     }],

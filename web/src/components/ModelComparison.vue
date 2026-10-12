@@ -2,7 +2,6 @@
 import { computed, ref, useTemplateRef, watch } from 'vue'
 import { exportComparison, imageUrl, type PicturedFrame } from '../api'
 import type { ComparisonModel } from '../comparison'
-import { useCurrentSession } from '../composables/useCurrentSession'
 import { useImageModels } from '../composables/useSettingsOptions'
 import ComparisonTable from './ComparisonTable.vue'
 
@@ -23,7 +22,6 @@ const props = withDefaults(
   { name: (index: number) => `Frame ${index}` },
 )
 const { labelOf } = useImageModels()
-const { currentSessionTitle } = useCurrentSession()
 
 /** Every Image Model with a picture here, in the order they first rendered. */
 const modelIds = computed(() => [
@@ -68,7 +66,6 @@ async function exportPage() {
   exported.value = null
   try {
     const { folder } = await exportComparison(props.sessionId, {
-      title: currentSessionTitle.value || 'Compare Image Models',
       models: models.value.map(({ label }) => ({ label })),
       rows: pictured.value.map((row) => ({
         ...row,

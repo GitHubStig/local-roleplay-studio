@@ -16,7 +16,6 @@ export interface ExportPicture {
 
 /** What the Compare dialog sends (`ComparisonExport` in the web app). */
 export interface ComparisonExport {
-  title: string
   models: { label: string }[]
   rows: { name: string; prompt?: string; pictures: (ExportPicture | null)[] }[]
 }
@@ -30,8 +29,7 @@ const PICTURE_FILE = /^[\w-]+\.(png|svg)$/
 /** The export, if `body` is one, or what's wrong with it. */
 export function parseComparisonExport(body: unknown): ComparisonExport | string {
   const b = body as Partial<ComparisonExport> | undefined
-  if (typeof b?.title !== 'string') return 'title must be a string'
-  if (!Array.isArray(b.models) || b.models.some((m) => typeof m?.label !== 'string')) {
+  if (!Array.isArray(b?.models) || b.models.some((m) => typeof m?.label !== 'string')) {
     return 'models must each have a label'
   }
   if (!Array.isArray(b.rows)) return 'rows must be a list'
@@ -51,6 +49,13 @@ export function parseComparisonExport(body: unknown): ComparisonExport | string 
   return b as ComparisonExport
 }
 
+/** "12 Oct 2026" (September is "Sept", as British English has it). */
+const DAY = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+
+/** The exported page's title: the day it was exported and the Session's seed. */
+export const comparisonTitle = (date: Date, seed: number): string =>
+  `${DAY.format(date)} · Seed ${seed}`
+
 /** The page's slot for the comparison, as `web/export.html` has it. */
 const DATA_SLOT = /<script id="comparison" type="application\/json">[\s\S]*?<\/script>/
 
@@ -63,6 +68,7 @@ export async function writeComparison(
   outDir: string,
   page: string,
   comparison: ComparisonExport,
+  title: string,
 ): Promise<{ pictures: number }> {
   if (!DATA_SLOT.test(page)) throw new Error('The export page has no slot for its comparison')
   await Deno.remove(outDir, { recursive: true }).catch((err) => {
@@ -124,7 +130,7 @@ export async function writeComparison(
     rows.push({ name: row.name, ...(row.prompt ? { prompt: row.prompt } : {}), pictures })
   }
   const models = comparison.models.map(({ label }) => ({ label }))
-  const data = JSON.stringify({ title: comparison.title, models, rows })
+  const data = JSON.stringify({ title, models, rows })
     // Inside a <script>, so nothing in it may close the tag.
     .replaceAll('<', '\\u003c')
   await Deno.writeTextFile(

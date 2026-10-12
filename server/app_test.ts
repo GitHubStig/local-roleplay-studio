@@ -1044,7 +1044,6 @@ Deno.test('The Compare dialog exports to a folder per Session', () =>
     const exports = { dir: join(root, 'exports'), page: () => Promise.resolve(page) }
     const { call } = await chainOfTwo(root, { exports })
     const comparison = {
-      title: 'Test Shoot',
       models: [],
       rows: [{ name: 'Frame 0', pictures: [] }],
     }
@@ -1052,7 +1051,7 @@ Deno.test('The Compare dialog exports to a folder per Session', () =>
     assertEquals(await exported.json(), { folder: join(root, 'exports', 's1'), pictures: 0 })
     assertMatch(
       await Deno.readTextFile(join(root, 'exports', 's1', 'index.html')),
-      /"title":"Test Shoot"/,
+      /"title":"\d{1,2} [A-Z][a-z]{2,3} \d{4} · Seed \d+"/,
     )
 
     const picture = { name: 'Frame 0', pictures: [{ image: '../s2/frame-0.png' }] }
