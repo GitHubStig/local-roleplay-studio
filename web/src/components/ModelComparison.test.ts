@@ -64,9 +64,9 @@ describe('ModelComparison', () => {
     await wrapper.find('[data-compare-row] button').trigger('click')
     await flushPromises()
     const label = () => wrapper.find('[data-viewer-label]').text()
-    expect(label()).toBe('Frame 0 · a · ↑↓ Frames')
+    expect(label()).toBe('Frame 0 · a')
     await wrapper.find('[data-next]').trigger('click')
-    expect(label()).toBe('Frame 0 · b · ↑↓ Frames')
+    expect(label()).toBe('Frame 0 · b')
     expect(wrapper.find('[data-next]').attributes('disabled')).toBeDefined()
   })
 
@@ -87,11 +87,11 @@ describe('ModelComparison', () => {
       await flushPromises()
     }
     await press('ArrowDown')
-    expect(label()).toBe('Frame 2 · b · ↑↓ Frames')
+    expect(label()).toBe('Frame 2 · b')
     await press('ArrowDown')
-    expect(label()).toBe('Frame 2 · b · ↑↓ Frames')
+    expect(label()).toBe('Frame 2 · b')
     await press('ArrowUp')
-    expect(label()).toBe('Frame 0 · b · ↑↓ Frames')
+    expect(label()).toBe('Frame 0 · b')
   })
 
   it('exports what it shows, by the pictures’ files, and says where it went', async () => {
@@ -162,8 +162,8 @@ describe('ModelComparison', () => {
     await row.find('button').trigger('click')
     await flushPromises()
     const label = () => wrapper.find('[data-viewer-label]').text()
-    expect(label()).toBe('Frame 0 · b · ↑↓ Frames')
+    expect(label()).toBe('Frame 0 · b')
     await wrapper.find('[data-next]').trigger('click')
-    expect(label()).toBe('Frame 0 · a · ↑↓ Frames')
+    expect(label()).toBe('Frame 0 · a')
   })
 })

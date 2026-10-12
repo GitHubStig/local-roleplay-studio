@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useEventListener, useMediaQuery, useRafFn } from '@vueuse/core'
+import { useMediaQuery, useRafFn } from '@vueuse/core'
 import { computed, ref, useTemplateRef, watch } from 'vue'
 import type { Comparison } from '../comparison'
 import Icon from './Icon.vue'
@@ -8,8 +8,9 @@ import ImageViewer from './ImageViewer.vue'
 /**
  * Pictures side by side, a row per Frame headed by its Image Prompt and a column per Image Model:
  * the Compare dialog's (under a header, given a `title`), and the whole of its exported page. A
- * picture opens in the viewer, where ← and → step through that Frame's pictures by the other
- * models, and ↑ and ↓ through the Frames that model rendered. A column moves by dragging its
+ * picture opens in the viewer, where ← and → (or a swipe sideways) step through that Frame's
+ * pictures by the other models, and ↑ and ↓ (or a swipe up or down) through the Frames that model
+ * rendered. A column moves by dragging its
  * header's grip (or with ← and → on it), until the table is next opened.
  */
 const props = defineProps<Comparison & { title?: string }>()
@@ -95,7 +96,7 @@ const viewed = computed(() => {
   return {
     src: picture.full,
     alt: `${row.name} by ${model}`,
-    label: `${row.name} · ${model} · ↑↓ Frames`,
+    label: `${row.name} · ${model}`,
   }
 })
 /** The column of the nearest picture `by` columns along in the open row, if any. */
@@ -121,13 +122,10 @@ function across(by: number): number | null {
   }
   return null
 }
-// ↑ and ↓ while a picture is open (← and → are the viewer's own).
-useEventListener(document, 'keydown', (e: KeyboardEvent) => {
-  if (!viewing.value || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return
-  e.preventDefault()
-  const row = across(e.key === 'ArrowUp' ? -1 : 1)
-  if (row !== null) viewing.value = { ...viewing.value, row }
-})
+function climb(by: number) {
+  const row = across(by)
+  if (row !== null) viewing.value = { ...viewing.value!, row }
+}
 </script>
 
 <template>
@@ -238,6 +236,12 @@ useEventListener(document, 'keydown', (e: KeyboardEvent) => {
       :has-next="along(1) !== null"
       @previous="step(-1)"
       @next="step(1)"
+      vertical
+      vertical-name="Frame"
+      :has-up="across(-1) !== null"
+      :has-down="across(1) !== null"
+      @up="climb(-1)"
+      @down="climb(1)"
       @close="viewing = null"
     />
   </div>

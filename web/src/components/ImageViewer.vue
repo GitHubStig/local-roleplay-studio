@@ -1,13 +1,16 @@
 <script setup lang="ts">
-import { onClickOutside, useEventListener } from '@vueuse/core'
+import { onClickOutside, useEventListener, useSwipe } from '@vueuse/core'
 import { useTemplateRef, watch } from 'vue'
 import FrameImage from './FrameImage.vue'
+import Icon from './Icon.vue'
 
 /**
  * A full-window look at one image: pinch to zoom, drag or two-finger scroll to pan, double-click
  * to reset (all from FrameImage). Esc, the close button or a click anywhere outside the image
- * closes it. Given a `label` or `hasPrevious` / `hasNext`, the ‹ › buttons and the arrow keys ask
- * for the image before or after; the parent decides which that is.
+ * closes it. Given a `label` or `hasPrevious` / `hasNext`, the ‹ › buttons, the ← → keys and a
+ * swipe sideways ask for the image before or after; with `vertical`, the up and down buttons, the
+ * ↑ ↓ keys and a swipe up or down ask for the one above or below too. The parent decides which
+ * those are.
  */
 const props = defineProps<{
   /** The image to show; null keeps the viewer closed. */
@@ -17,24 +20,59 @@ const props = defineProps<{
   label?: string
   hasPrevious?: boolean
   hasNext?: boolean
+  /** It steps up and down too, through `hasUp` and `hasDown`. */
+  vertical?: boolean
+  /** What up and down step through, for their buttons' names, e.g. "Frame". */
+  verticalName?: string
+  hasUp?: boolean
+  hasDown?: boolean
 }>()
-const emit = defineEmits<{ close: []; previous: []; next: [] }>()
+const emit = defineEmits<{ close: []; previous: []; next: []; up: []; down: [] }>()
 const dialog = useTemplateRef<HTMLDialogElement>('dialog')
+
+/** Asks for the image that way, if there is one. */
+type Way = 'previous' | 'next' | 'up' | 'down'
+function go(way: Way) {
+  const there = { previous: props.hasPrevious, next: props.hasNext, up: props.hasUp, down: props.hasDown }
+  if (!there[way] || (!props.vertical && (way === 'up' || way === 'down'))) return false
+  // An explicit switch: emit can't take a union of event names.
+  if (way === 'previous') emit('previous')
+  else if (way === 'next') emit('next')
+  else if (way === 'up') emit('up')
+  else emit('down')
+  return true
+}
 
 /**
  * The arrow keys step through while the viewer is open, wherever the focus is: a ‹ › button that
  * had it is disabled at the first or last image, and the browser then drops the focus out of the
  * dialog, which would leave the keys going nowhere (and listened for on the dialog, they did).
  */
+const KEYS = { ArrowLeft: 'previous', ArrowRight: 'next', ArrowUp: 'up', ArrowDown: 'down' } as const
 useEventListener(document, 'keydown', (e: KeyboardEvent) => {
-  if (!dialog.value?.open) return
-  if (e.key === 'ArrowLeft' && props.hasPrevious) {
-    e.preventDefault()
-    emit('previous')
-  } else if (e.key === 'ArrowRight' && props.hasNext) {
-    e.preventDefault()
-    emit('next')
-  }
+  if (!dialog.value?.open || !(e.key in KEYS)) return
+  if (go(KEYS[e.key as keyof typeof KEYS])) e.preventDefault()
+})
+
+/**
+ * A swipe on a touch screen steps as the arrow keys do, the finger pulling the next image in: left
+ * for the next, down for the one above. Not while zoomed in, where a drag pans, nor for a pinch.
+ */
+const SWIPES = { left: 'next', right: 'previous', up: 'down', down: 'up', none: null } as const
+const image = useTemplateRef<{ zoomed: boolean }>('image')
+/** A second finger came down during this touch: a pinch, not a swipe. */
+let pinched = false
+useEventListener(dialog, 'touchstart', (e: TouchEvent) => {
+  if (e.touches.length > 1) pinched = true
+}, { passive: true })
+useSwipe(dialog, {
+  threshold: 50,
+  onSwipeStart: () => (pinched = false),
+  onSwipeEnd: (_e, direction) => {
+    if (pinched || image.value?.zoomed) return
+    const way = SWIPES[direction]
+    if (way) go(way)
+  },
 })
 
 watch(
@@ -68,7 +106,7 @@ onClickOutside(
 <template>
   <dialog
     ref="dialog"
-    class="m-0 h-full max-h-none w-full max-w-none bg-transparent p-0 outline-none backdrop:bg-black/85"
+    class="m-0 h-full max-h-none w-full max-w-none touch-pinch-zoom overscroll-contain bg-transparent p-0 outline-none backdrop:bg-black/85"
     tabindex="-1"
     data-image-viewer
     @close="emit('close')"
@@ -76,40 +114,80 @@ onClickOutside(
     <div v-if="src" class="flex h-full w-full flex-col p-4 sm:p-8">
       <div
         ref="controls"
-        class="flex items-center justify-end gap-3 pb-2 text-sm text-white/80"
+        class="flex flex-wrap items-center justify-end gap-x-3 gap-y-1 pb-2 text-sm text-white/80"
         data-viewer-controls
       >
-        <template v-if="label || hasPrevious || hasNext">
+        <template v-if="label || hasPrevious || hasNext || vertical">
           <button
             type="button"
-            class="px-1 text-lg leading-none hover:text-white disabled:opacity-30"
+            class="shrink-0 p-1 hover:text-white disabled:opacity-30"
             :disabled="!hasPrevious"
             aria-label="Previous (←)"
             title="Previous (←)"
             data-previous
-            @click="emit('previous')"
+            @click="go('previous')"
           >
-            ‹
+            <Icon name="chevron-left" />
           </button>
-          <span v-if="label" class="tabular-nums" data-viewer-label>{{ label }}</span>
           <button
             type="button"
-            class="mr-auto px-1 text-lg leading-none hover:text-white disabled:opacity-30"
+            class="shrink-0 p-1 hover:text-white disabled:opacity-30"
             :disabled="!hasNext"
             aria-label="Next (→)"
             title="Next (→)"
             data-next
-            @click="emit('next')"
+            @click="go('next')"
           >
-            ›
+            <Icon name="chevron-right" />
           </button>
+          <template v-if="vertical">
+            <button
+              type="button"
+              class="shrink-0 p-1 hover:text-white disabled:opacity-30"
+              :disabled="!hasUp"
+              :aria-label="`Previous ${verticalName ?? 'row'} (↑)`"
+              :title="`Previous ${verticalName ?? 'row'} (↑)`"
+              data-up
+              @click="go('up')"
+            >
+              <Icon name="chevron-up" />
+            </button>
+            <button
+              type="button"
+              class="shrink-0 p-1 hover:text-white disabled:opacity-30"
+              :disabled="!hasDown"
+              :aria-label="`Next ${verticalName ?? 'row'} (↓)`"
+              :title="`Next ${verticalName ?? 'row'} (↓)`"
+              data-down
+              @click="go('down')"
+            >
+              <Icon name="chevron-down" />
+            </button>
+          </template>
+          <!-- On a phone, a line of its own under the buttons; beside them on a wider screen. -->
+          <span
+            v-if="label"
+            class="order-last min-w-0 basis-full truncate tabular-nums sm:order-none sm:mr-auto sm:basis-auto"
+            :title="label"
+            data-viewer-label
+          >
+            {{ label }}
+          </span>
+          <span class="mr-auto" :class="{ 'sm:hidden': label }" />
         </template>
-        <a :href="src" target="_blank" class="hover:text-white hover:underline">Open full size</a>
-        <button type="button" class="hover:text-white" aria-label="Close" @click="dialog?.close()">
-          Close ✕
+        <a :href="src" target="_blank" class="shrink-0 whitespace-nowrap hover:text-white hover:underline">
+          Open full size
+        </a>
+        <button
+          type="button"
+          class="shrink-0 whitespace-nowrap hover:text-white"
+          aria-label="Close"
+          @click="dialog?.close()"
+        >
+          <span class="hidden sm:inline">Close </span>✕
         </button>
       </div>
-      <FrameImage :src="src" :alt="alt" bare instant zoom />
+      <FrameImage ref="image" :src="src" :alt="alt" bare instant zoom />
     </div>
   </dialog>
 </template>

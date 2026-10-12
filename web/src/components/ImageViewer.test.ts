@@ -92,6 +92,67 @@ describe('ImageViewer', () => {
     expect(wrapper.emitted('previous')).toHaveLength(1)
   })
 
+  it('steps up and down too, by key and button, only when it goes that way', async () => {
+    const wrapper = mountIt()
+    await wrapper.setProps({ src: '/x.png', hasNext: true, hasUp: true, hasDown: true })
+    await flushPromises()
+    expect(wrapper.find('[data-up]').exists()).toBe(false)
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp' }))
+    expect(wrapper.emitted('up')).toBeUndefined()
+
+    await wrapper.setProps({ vertical: true, verticalName: 'Frame', hasDown: false })
+    expect(wrapper.find('[data-up]').attributes('title')).toBe('Previous Frame (↑)')
+    expect(wrapper.find('[data-down]').attributes('disabled')).toBeDefined()
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp' }))
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }))
+    await wrapper.find('[data-up]').trigger('click')
+    expect([wrapper.emitted('up')?.length, wrapper.emitted('down')]).toEqual([2, undefined])
+  })
+
+  it('steps with a swipe, the finger pulling the next image in, but not with a pinch', async () => {
+    const wrapper = mountIt()
+    await wrapper.setProps({
+      src: '/x.png',
+      hasPrevious: true,
+      hasNext: true,
+      vertical: true,
+      hasUp: true,
+      hasDown: true,
+    })
+    await flushPromises()
+    const dialog = wrapper.find('dialog').element
+    const touch = (type: string, ...points: [number, number][]) => {
+      const e = new Event(type, { bubbles: true })
+      Object.defineProperty(e, 'touches', {
+        value: points.map(([clientX, clientY]) => ({ clientX, clientY })),
+      })
+      dialog.dispatchEvent(e)
+    }
+    const swipe = (from: [number, number], to: [number, number]) => {
+      touch('touchstart', from)
+      touch('touchmove', to)
+      touch('touchend')
+    }
+    swipe([300, 300], [100, 310]) // left
+    swipe([100, 300], [300, 290]) // right
+    swipe([200, 400], [210, 200]) // up: the Frame below
+    swipe([200, 200], [190, 400]) // down: the Frame above
+    swipe([200, 200], [220, 210]) // too short
+    expect(['next', 'previous', 'down', 'up'].map((e) => wrapper.emitted(e)?.length)).toEqual([
+      1,
+      1,
+      1,
+      1,
+    ])
+
+    // A second finger makes it a pinch, which zooms instead.
+    touch('touchstart', [300, 300])
+    touch('touchmove', [100, 300])
+    touch('touchstart', [100, 300], [200, 200])
+    touch('touchend')
+    expect(wrapper.emitted('next')).toHaveLength(1)
+  })
+
   it('shows no ‹ › when there is nothing to step through', async () => {
     const wrapper = mountIt()
     await wrapper.setProps({ src: '/x.png' })

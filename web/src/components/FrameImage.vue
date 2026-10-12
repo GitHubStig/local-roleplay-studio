@@ -67,6 +67,8 @@ const shownPreview = useShownPreview(() => props.preview, () => displayed.value?
 const frame = useTemplateRef<HTMLElement>('frame')
 const { zoomed, layerStyle, view, reset } = usePinchZoom(props.zoom ? frame : ref(null))
 watch(() => displayed.value?.src, reset)
+/** Whether it's zoomed in: a drag then pans it (the viewer's swipes wait till it's back). */
+defineExpose({ zoomed })
 
 /** Width ÷ height of the images shown; the expected size's until the first one loads. */
 const aspect = ref(

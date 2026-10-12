@@ -400,7 +400,9 @@ written for image prompts, are left out).
   (`ModelComparison`): a full-window table with a row per pictured Frame and a column per model, in
   the order they first rendered, the Session's own marked "current", a stale picture dimmed and a
   gap marked "Not rendered". A picture opens in the viewer, where ← and → step through that Frame's
-  pictures by the other models, and ↑ and ↓ through the Frames that model rendered. Each row is
+  pictures by the other models, and ↑ and ↓ through the Frames that model rendered; on a touch
+  screen (2026-10-12), a swipe does the same (left for the next model, up for the next Frame,
+  not while zoomed in or pinching), as do the viewer's arrow buttons. Each row is
   headed by its Frame's Image Prompt (2026-10-11), folded away to the Frames' names on a phone
   (under 640 px) and toggled from the table's corner. A column moves by dragging the grip in its
   header (pointer events, so a phone can too; the table scrolls along near its edges), or with ←
@@ -412,7 +414,7 @@ written for image prompts, are left out).
   script and styles inlined, the comparison as JSON in it; titled by the day it was exported and
   the Session's seed, "12 Oct 2026 · Seed 1282725757", since 2026-10-12), `images/` for the viewer (the upscaled
   picture where there is one, WebP quality 90) and `thumbs/` for the table (512 px high, quality
-  85). It opens from disk or any static host, with the viewer's zoom and arrow keys, and the app's
+  85). It opens from disk or any static host, with the viewer's zoom, arrow keys and swipes, and the app's
   Light / Dark / System toggle in its bottom-right corner (remembered by the browser; the top right
   would cover the model names in the sticky header row). The pictures
   are encoded in WebAssembly (jSquash), so it runs the same on both machines with nothing to
