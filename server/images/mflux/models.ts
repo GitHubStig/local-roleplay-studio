@@ -119,6 +119,20 @@ export const MFLUX_MODELS: readonly MfluxModel[] = [
     args: ['--flatten-alpha'],
   },
   {
+    id: 'fibo-1.5',
+    label: 'FIBO 1.5 (8-bit)',
+    command: 'mflux-generate-fibo',
+    // mflux-community's saved 8-bit copy (15 GB). Bria's distilled FIBO, so it's read as FIBO and
+    // given its own settings: mflux would run FIBO's 50 steps at guidance 5, it wants 4–6 at 1.
+    // A plain prompt is first written out as FIBO's JSON caption by its own VLM (`briaai/FIBO-vlm`,
+    // 9 GB, fetched on first use), which is then freed before rendering.
+    model: 'mflux-community/fibo-1-5-mflux-q8',
+    baseModel: 'fibo',
+    preQuantized: true,
+    defaultSteps: 6,
+    args: ['--guidance', '1.0'],
+  },
+  {
     id: 'ideogram-4',
     label: 'Ideogram 4 (8-bit)',
     command: 'mflux-generate-ideogram4',

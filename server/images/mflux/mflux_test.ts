@@ -114,6 +114,20 @@ Deno.test("mfluxArgs passes a model's own arguments", () => {
   assertEquals(args.includes('--quantize'), false)
 })
 
+Deno.test('mfluxArgs runs FIBO 1.5 as FIBO, at its own guidance', () => {
+  const args = mfluxArgs(findMfluxModel('fibo-1.5')!, request('/d'), 'o.png')
+  assertEquals(args.slice(0, 4), [
+    '--model',
+    'mflux-community/fibo-1-5-mflux-q8',
+    '--base-model',
+    'fibo',
+  ])
+  assertEquals(args.slice(args.indexOf('--guidance'), args.indexOf('--guidance') + 2), [
+    '--guidance',
+    '1.0',
+  ])
+})
+
 Deno.test('failureReason says what to do when a gated download is refused', () => {
   const gated = failureReason(
     'Fetching 12 files\nHTTPError: 401 Client Error: Unauthorized for url',
