@@ -115,15 +115,18 @@ Deno.test("A render on the new model keeps the old one's picture, shown again on
     assertEquals(shownPicture(rendered.frames[1], KLEIN), made)
     assertEquals(images.prompts.length, 3)
     assertEquals(await exists(old.image), true)
-    // Rendered by the Chain's model now: nothing to render again.
-    await assertRejects(() => renderChainFrame(deps, rendered, 1, () => {}, signal()))
+    // Rendered again by the Chain's model, it replaces only that model's picture.
+    const again = await renderChainFrame(deps, rendered, 1, () => {}, signal())
+    const [stillKept, remade] = again.frames[1].pictures
+    assertEquals([stillKept, remade.imageModel], [old, KLEIN])
+    assertEquals(await exists(made.image), false)
 
-    const back = await switchImageModel(store, rendered, QWEN)
+    const back = await switchImageModel(store, again, QWEN)
     assertEquals(shownPicture(back.frames[1], QWEN), old)
 
     // Undo deletes every model's picture.
     await undoLatestFrame(store, back as ChainSession, 1)
-    assertEquals([await exists(old.image), await exists(made.image)], [false, false])
+    assertEquals([await exists(old.image), await exists(remade.image)], [false, false])
   }))
 
 Deno.test('A render that finishes after the Session switched model keeps its own model', () =>

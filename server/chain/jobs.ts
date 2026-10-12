@@ -13,7 +13,7 @@ import {
 } from '../pictureJobs.ts'
 import type { FrameDeps } from '../frames.ts'
 import type { ChainSession } from '../session.ts'
-import { canRenderChainFrame, renderChainFrame } from './frames.ts'
+import { renderChainFrame } from './frames.ts'
 import { updateSession } from '../update.ts'
 
 /** Why `kind` can't be queued on a Chain's Frame `index`, or null if it can. */
@@ -23,14 +23,8 @@ export function checkChainJob(
   index: number,
   pending: readonly JobKind[],
 ): Response | null {
-  const frame = session.frames[index]
-  // Only one without an up-to-date picture by the Chain's Image Model renders: none yet, one by
-  // another model, or one from before its prompt was edited.
-  if (kind === 'render') {
-    return canRenderChainFrame(session, frame)
-      ? null
-      : error(`Frame ${index} already has its picture`, 409)
-  }
+  // Any Frame renders again: Settings' size, Fast, quantize and float16 apply at each render.
+  if (kind === 'render') return null
   if (!PICTURE_JOB_KINDS.includes(kind)) return error(`A Chain has no ${kind} jobs`, 409)
   return checkPictureJob(session, index, kind, `Frame ${index}`, pending)
 }

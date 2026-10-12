@@ -14,7 +14,7 @@ const props = withDefaults(
     picture?: Picture
     /** A job of this kind is already queued or running on the Frame (`useJobs().hasJob`). */
     hasJob: (kind: JobKind) => boolean
-    /** Offer Render: the Frame can be rendered now (never in a Chain, whose Frames render once). */
+    /** Offer Render (Re-render once it has a picture): the Frame can be rendered now. */
     canRender?: boolean
     buttonClass?: string
   }>(),

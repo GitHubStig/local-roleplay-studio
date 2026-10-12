@@ -942,7 +942,6 @@ Deno.test('A Chain Frame’s Image Prompt is edited by hand, its pictures out of
     const { call } = await chainOfTwo(root, { imageGenerator: images })
     const before = await chainFrames(call)
     const render = () => call('POST', '/api/sessions/s1/jobs', { kind: 'render', frameIndex: 0 })
-    assertEquals((await render()).status, 409)
 
     const edited = await call('PUT', '/api/sessions/s1/frames/0', {
       prompt: '  A person,\n standing, in a garden.  ',
@@ -970,6 +969,26 @@ Deno.test('A Chain Frame’s Image Prompt is edited by hand, its pictures out of
     assertEquals((await put(0, { prompt: '  ' })).status, 400)
     assertEquals((await put(0, {})).status, 400)
     assertEquals((await put(9, { prompt: 'A garden.' })).status, 404)
+  }))
+
+Deno.test('A Chain Frame with an up-to-date picture renders again, replacing it', () =>
+  withTempDir(async (root) => {
+    const images = fakeImageGenerator()
+    const { call } = await chainOfTwo(root, { imageGenerator: images })
+    const [, before] = await chainFrames(call)
+    const rendered = images.prompts.length
+    const job = await call('POST', '/api/sessions/s1/jobs', { kind: 'render', frameIndex: 1 })
+    assertEquals(job.status, 201)
+    assertEquals(await settled(call), [])
+    const [, after] = await chainFrames(call)
+    // One picture by the Chain's Image Model, the new one; the old file is gone.
+    assertEquals([images.prompts.length, after.pictures.length], [rendered + 1, 1])
+    assertEquals(after.image === before.image, false)
+    const image = (name: string) => call('GET', `/api/sessions/s1/images/${name}`)
+    assertEquals([(await image(before.image)).status, (await image(after.image)).status], [
+      404,
+      200,
+    ])
   }))
 
 Deno.test('A Chain queues an upscale of one Frame, once', () =>
@@ -1058,7 +1077,6 @@ Deno.test('A Session switches Image Model, and a Chain Frame by the old one rend
     const switchTo = (imageModel: unknown) =>
       call('PUT', '/api/sessions/s1/image-model', { imageModel })
     const render = () => call('POST', '/api/sessions/s1/jobs', { kind: 'render', frameIndex: 1 })
-    assertEquals((await render()).status, 409)
 
     assertEquals((await switchTo(42)).status, 400)
     const unknown = await switchTo('dall-e')
@@ -1188,8 +1206,6 @@ Deno.test('A Chain with rendering off writes prompts, and renders a Frame when a
     const [opening, second] = await chainFrames(call)
     assertMatch(second.image!, /^frame-1-[0-9a-f]{8}\.png$/)
     assertEquals(opening.image, null)
-    const again = await call('POST', '/api/sessions/s1/jobs', { kind: 'render', frameIndex: 1 })
-    assertEquals(again.status, 409) // a Chain Frame's picture never changes once made
 
     // Switched back on, the next Frame renders as it's made.
     await call('PUT', '/api/sessions/s1/render-frames', { renderFrames: true })

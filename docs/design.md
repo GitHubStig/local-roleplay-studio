@@ -443,10 +443,12 @@ consistency* in [open-threads.md](open-threads.md).
   Chain's own switch, saved with it as `renderFrames`) is on when pictures are available: each
   Action writes the new prompt and renders it. Off (and always, without pictures) each Action
   writes only the prompt; the Frame reads "Not rendered yet", with a dashed thumbnail, and its
-  **Render** button queues its picture. A Chain Frame's prompt changes only when edited by hand
-  (below), so **Re-render** is offered for a Frame with no up-to-date picture by the Chain's Image
-  Model: none by that model (after a switch), or one from before an edit; its picture shows
-  **Changed since render · by <model>**. **Render all** (2026-10-10, as a Storyboard's) queues a
+  **Render** button queues its picture. **Re-render** is offered on every rendered Frame
+  (2026-10-12; until then only on one out of date): the seed and steps stay the Chain's, but
+  Settings' size, Fast, quantize, float16 and step cache apply at each render, and changing them
+  marks nothing out of date. A Frame is out of date only after its prompt is edited by hand
+  (below) or the Chain's Image Model is switched; its picture then shows **Changed since render ·
+  by <model>**. **Render all** (2026-10-10, as a Storyboard's) queues a
   render of every such Frame, in order, and says how many. The Narration is a caption over the bottom of the photo
   (provisional text shows dimmed and in italics while a Frame runs); the caption can be hidden,
   and that choice is remembered per browser. The Frame's status ("Rendering the image… step 2 of 4") is a

@@ -154,15 +154,9 @@ export async function runChainFrame(
 }
 
 /**
- * Whether a Chain Frame can be rendered: it has no up-to-date picture by the Chain's Image Model
- * now. Its prompt changes only by hand (`setFramePrompt`), which marks its pictures out of date.
- */
-export const canRenderChainFrame = (session: ChainSession, frame: ChainFrame): boolean =>
-  !frame.pictures.some((p) => p.imageModel === session.settings.imageModel && !p.stale)
-
-/**
  * Renders a Chain Frame by the Chain's Image Model, in its turn in the render queue: one made
- * without a picture, one with pictures by other models only, or one whose prompt was edited.
+ * without a picture, or again, replacing its picture by that model (after a prompt edit, or with
+ * Settings' size, Fast and the rest changed since).
  */
 export async function renderChainFrame(
   deps: FrameDeps,
@@ -172,9 +166,6 @@ export async function renderChainFrame(
   signal: AbortSignal,
 ): Promise<ChainSession> {
   const frame = session.frames[index]
-  if (!canRenderChainFrame(session, frame)) {
-    throw new Error(`Frame ${index} already has its picture`)
-  }
   const { session: updated } = await replacePicture(
     deps,
     session,

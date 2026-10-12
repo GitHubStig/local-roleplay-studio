@@ -720,7 +720,7 @@ const promptDiff = computed(() => {
               v-if="shown"
               :picture="picture"
               :has-job="(kind) => hasJob(shown!.index, kind)"
-              :can-render="!picture || pictureChanged"
+              can-render
               button-class="rounded-lg border border-line px-3 py-2 text-sm disabled:opacity-50"
               @queue="(kind) => queue(kind, shown!.index)"
               @view="(kind) => (open3d = { index: shown!.index, kind })"

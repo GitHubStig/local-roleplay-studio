@@ -515,6 +515,9 @@ describe('SessionView', () => {
     const { wrapper } = await mountIt()
     const select = wrapper.find('[data-image-model]')
     expect((select.element as HTMLSelectElement).value).toBe('qwen-image-2.1')
+    // Up to date, it can still render again: with Settings' size, Fast and the rest as they are now.
+    expect(wrapper.find('[data-changed]').exists()).toBe(false)
+    expect(wrapper.find('[data-render-button]').text()).toBe('Re-render')
     expect(select.findAll('option').map((o) => o.text())).toEqual([
       'Qwen-Image 2.1',
       'FLUX.2 Klein 4B',
