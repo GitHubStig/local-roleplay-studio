@@ -27,7 +27,7 @@ import FrameViewer from '../components/FrameViewer.vue'
 import JobQueue from '../components/JobQueue.vue'
 import { useJobs } from '../composables/useJobs'
 import { showPickedFrame, useFrameKeys } from '../composables/useFrameKeys'
-import { formingOf, jobForming, queueTabLabel, sweepOf } from '../jobs'
+import { formingOf, jobForming, jobStatus, queueTabLabel, sweepOf } from '../jobs'
 import { useShownPreview } from '../composables/useShownPreview'
 import { useStoredFlag } from '../composables/useStoredFlag'
 import { useStoredText } from '../composables/useStoredText'
@@ -45,6 +45,7 @@ import {
   imageUrl,
   type Outcome,
   type ImagePrompt,
+  type Job,
   type ChainSession,
   streamFrame,
   type ChainFrame,
@@ -360,6 +361,15 @@ const shownJob = computed(() =>
   jobsFor(shown.value?.index ?? -1).find((j) => j.status === 'running') ?? null
 )
 
+/**
+ * A render of the shown Frame, queued or running: its picture's badge follows it, as a new Frame's
+ * does, in place of "Changed since render".
+ */
+const shownRender = computed(() =>
+  jobsFor(shown.value?.index ?? -1).find((j) => j.kind === 'render' && j.status !== 'failed') ??
+    null
+)
+
 // --- Looking closer: the picture viewer, and 3D by model (experimental; PictureButtons).
 
 /** The Frame whose picture is open in the viewer, if any. */
@@ -484,10 +494,17 @@ const phaseLabel = computed(() => {
   if (pending.value?.phase === 'queued') return 'Waiting for another render…'
   if (pending.value?.phase === 'download') return DOWNLOADING
   if (pending.value?.phase !== 'image') return 'Writing the prompt…'
-  const p = pending.value.progress
+  return renderingLabel(pending.value.progress)
+})
+
+/** A picture rendering, a new Frame's or a re-render's, with its step once it has one. */
+function renderingLabel(p: { step: number; total: number } | undefined) {
   const doing = 'Rendering the image…'
   return p ? `${doing} step ${p.step} of ${p.total}` : doing
-})
+}
+/** A re-render's status, worded as a new Frame's. */
+const rerenderLabel = (job: Job) =>
+  jobStatus(job, (j) => (j.phase === 'image' ? renderingLabel(j.progress) : undefined))
 
 /** The Frame in progress's index and Action, for its place in the Frames and the Prompt tab. */
 const pendingIndex = computed(() => session.value?.frames.length ?? 0)
@@ -599,6 +616,14 @@ const promptDiff = computed(() => {
             role="status"
           >
             <span class="animate-pulse">{{ phaseLabel }}</span>
+          </div>
+          <div
+            v-else-if="shownRender"
+            class="absolute left-3 top-3 rounded-full bg-black/70 px-3 py-1 text-sm text-white"
+            role="status"
+            data-rerendering
+          >
+            <span class="animate-pulse">{{ rerenderLabel(shownRender) }}</span>
           </div>
           <div
             v-else-if="pictureChanged"

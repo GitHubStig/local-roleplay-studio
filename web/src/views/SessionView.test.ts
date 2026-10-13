@@ -543,6 +543,21 @@ describe('SessionView', () => {
     expect(wrapper.find('[data-changed]').text()).toBe('Changed since render · by Qwen-Image 2.1')
     expect(wrapper.find('[data-render-button]').text()).toBe('Re-render')
 
+    // Re-rendering it shows the render's progress instead, as a new Frame does.
+    vi.mocked(api.queueJob).mockResolvedValue([
+      job({
+        kind: 'render',
+        frameIndex: 1,
+        status: 'running',
+        phase: 'image',
+        progress: { step: 2, total: 4 },
+      }),
+    ])
+    await wrapper.find('[data-render-button]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-changed]').exists()).toBe(false)
+    expect(wrapper.find('[data-rerendering]').text()).toBe('Rendering the image… step 2 of 4')
+
     // A failed switch puts the select back, and says why.
     vi.mocked(api.setImageModel).mockRejectedValue(new Error('mflux has no Image Model "x"'))
     await select.setValue('qwen-image-2.1')
