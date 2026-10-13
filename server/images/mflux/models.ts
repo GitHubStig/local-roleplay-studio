@@ -67,6 +67,21 @@ export const MFLUX_MODELS: readonly MfluxModel[] = [
     float16: true,
   },
   {
+    id: 'z-image',
+    label: 'Z-Image (8-bit)',
+    command: 'mflux-generate-z-image',
+    // Z-Image Turbo's undistilled base: real guidance, so a slower, CFG-doubled step.
+    // mflux-community's saved 8-bit copy (11 GB, against ~31 GB unsaved).
+    model: 'mflux-community/z-image-base-mflux-q8',
+    baseModel: 'z-image',
+    preQuantized: true,
+    // mflux defaults to 50; 30 looks as good (docs/models.md) and takes ~190 s, not ~300.
+    defaultSteps: 30,
+    float16: true,
+    // mflux's guidance is 0 (no CFG) unless given; its README runs the base at 4.
+    args: ['--guidance', '4'],
+  },
+  {
     id: 'krea-2',
     label: 'Krea 2',
     command: 'mflux-generate-krea2',

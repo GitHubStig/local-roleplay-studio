@@ -180,6 +180,20 @@ Deno.test('mfluxArgs passes the base model and skips quantize for pre-quantized 
   assertEquals(args.includes('--quantize'), false)
 })
 
+Deno.test('mfluxArgs runs Z-Image base with guidance, unlike Turbo', () => {
+  const args = mfluxArgs(findMfluxModel('z-image')!, request('/d'), 'o.png')
+  assertEquals(args.slice(0, 4), [
+    '--model',
+    'mflux-community/z-image-base-mflux-q8',
+    '--base-model',
+    'z-image',
+  ])
+  assertEquals(args.slice(args.indexOf('--guidance'), args.indexOf('--guidance') + 2), [
+    '--guidance',
+    '4',
+  ])
+})
+
 Deno.test('parseProgress reads the latest step from a tqdm bar', () => {
   assertEquals(
     parseProgress('\r 33%|███| 1/3 [00:04<00:08, 4.0s/it]\r 67%|███| 2/3 [00:08<00:04, 4.0s/it]'),
