@@ -55,6 +55,16 @@ const rows = computed(() =>
   }))
 )
 
+/**
+ * The columns as arranged in the table (indexes into `models`), and those hidden: kept while the
+ * Session is open, and what Export writes, in that order and without the hidden ones.
+ */
+const order = ref<number[]>()
+const hidden = ref<number[]>([])
+const exportedColumns = computed(() =>
+  (order.value ?? models.value.map((_, i) => i)).filter((i) => !hidden.value.includes(i))
+)
+
 const open = ref(false)
 const dialog = useTemplateRef<HTMLDialogElement>('dialog')
 watch(open, (now) => {
@@ -84,10 +94,10 @@ async function exportPage() {
   try {
     const { folder } = await exportComparison(props.sessionId, {
       ...(adultsOnly.value ? { notice: notice.value.trim() || NOTICE } : {}),
-      models: models.value.map(({ label }) => ({ label })),
+      models: exportedColumns.value.map((i) => ({ label: models.value[i].label })),
       rows: pictured.value.map((row) => ({
         ...row,
-        pictures: row.pictures.map((p) =>
+        pictures: exportedColumns.value.map((i) => row.pictures[i]).map((p) =>
           p && { image: p.image, upscaled: p.upscaled, stale: p.stale }
         ),
       })),
@@ -118,7 +128,15 @@ async function exportPage() {
     data-model-comparison
     @close="open = false"
   >
-    <ComparisonTable v-if="open" title="Compare Image Models" :models :rows>
+    <ComparisonTable
+      v-if="open"
+      v-model:order="order"
+      v-model:hidden="hidden"
+      title="Compare Image Models"
+      :models
+      :rows
+      hideable
+    >
       <template #actions>
         <span v-if="exported?.folder" class="text-ok" data-export-done>
           Exported to {{ exported.folder }}
@@ -128,7 +146,7 @@ async function exportPage() {
           type="button"
           class="rounded border border-line px-2 py-0.5 text-muted hover:text-fg disabled:opacity-50"
           title="Write this as a page of its own, its pictures as WebP, to open or host anywhere"
-          :disabled="exported === null"
+          :disabled="exported === null || !exportedColumns.length"
           data-export
           @click="asking?.showModal()"
         >

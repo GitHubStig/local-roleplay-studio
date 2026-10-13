@@ -202,4 +202,45 @@ describe('ModelComparison', () => {
     await wrapper.find('[data-next]').trigger('click')
     expect(label()).toBe('Frame 0 · a')
   })
+
+  it('exports the columns as arranged, without the hidden ones, and keeps them on reopening', async () => {
+    const wrapper = mountIt()
+    const open = async () => {
+      await wrapper.find('[data-compare-models]').trigger('click')
+      await flushPromises()
+    }
+    const columns = () => wrapper.findAll('[data-model-column]').map((c) => c.text())
+    await open()
+    await wrapper.findAll('[data-move-column]')[1].trigger('keydown', { key: 'ArrowLeft' })
+    expect(columns()).toEqual(['b · current', 'a'])
+
+    // Hiding b moves it to the right end, folded to its header.
+    await wrapper.findAll('[data-show-model]')[0].setValue(false)
+    expect(columns()).toEqual(['a'])
+    expect(wrapper.find('[data-hidden-column]').text()).toBe('b')
+    expect(wrapper.find('[data-compare-row]').findAll('img')).toHaveLength(1)
+
+    await wrapper.find('[data-export]').trigger('click')
+    await wrapper.find('[data-export-options] form').trigger('submit')
+    await flushPromises()
+    expect(vi.mocked(exportComparison).mock.lastCall![1]).toMatchObject({
+      models: [{ label: 'a' }],
+      rows: [{ pictures: [{ image: 'f0-a.png' }] }, { pictures: [{ image: 'f1-a.png' }] }],
+    })
+
+    // Shown again, it comes back after the shown ones; the arrangement outlasts closing.
+    await wrapper.find('[data-hidden-column] input').setValue(true)
+    expect(columns()).toEqual(['a', 'b · current'])
+    wrapper.find('dialog').element.dispatchEvent(new Event('close'))
+    await flushPromises()
+    await open()
+    expect(columns()).toEqual(['a', 'b · current'])
+    await wrapper.find('[data-export]').trigger('click')
+    await wrapper.find('[data-export-options] form').trigger('submit')
+    await flushPromises()
+    expect(vi.mocked(exportComparison).mock.lastCall![1].models).toEqual([
+      { label: 'a' },
+      { label: 'b' },
+    ])
+  })
 })

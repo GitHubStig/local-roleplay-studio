@@ -11,27 +11,60 @@ import ImageViewer from './ImageViewer.vue'
  * picture opens in the viewer, where ← and → (or a swipe sideways) step through that Frame's
  * pictures by the other models, and ↑ and ↓ (or a swipe up or down) through the Frames that model
  * rendered. A column moves by dragging its
- * header's grip (or with ← and → on it), until the table is next opened.
+ * header's grip (or with ← and → on it). With `hideable`, each column has a checkbox: unticked, it
+ * moves to the right end, folded to its header. The arrangement is `order` and `hidden`, which the
+ * Compare dialog keeps (and exports by); otherwise it lasts until the table is next opened.
  */
-const props = defineProps<Comparison & { title?: string }>()
+const props = defineProps<Comparison & { title?: string; hideable?: boolean }>()
 
-/** The models' columns as arranged: indexes into `models`, a model rendering since added last. */
-const order = ref(props.models.map((_, i) => i))
+/**
+ * The models' columns as arranged: indexes into `models`, the hidden ones last; a model rendering
+ * since is added after the shown ones.
+ */
+const order = defineModel<number[]>('order')
+/** The hidden columns, as indexes into `models`. */
+const hidden = defineModel<number[]>('hidden', { default: () => [] })
 watch(() => props.models.length, (n) => {
-  const kept = order.value.filter((i) => i < n)
-  order.value = [...kept, ...[...Array(n).keys()].filter((i) => !kept.includes(i))]
-})
-const models = computed(() => order.value.map((i) => props.models[i]))
+  const kept = (order.value ?? []).filter((i) => i < n)
+  const added = [...Array(n).keys()].filter((i) => !kept.includes(i))
+  const shown = kept.filter((i) => !hidden.value.includes(i))
+  order.value = [...shown, ...added, ...kept.filter((i) => hidden.value.includes(i))]
+  if (hidden.value.some((i) => i >= n)) hidden.value = hidden.value.filter((i) => i < n)
+}, { immediate: true })
+/** The shown columns, in order; everything below works on these alone. */
+const shownOrder = computed(() => (order.value ?? []).filter((i) => !hidden.value.includes(i)))
+const models = computed(() => shownOrder.value.map((i) => props.models[i]))
 const rows = computed(() =>
-  props.rows.map((row) => ({ ...row, pictures: order.value.map((i) => row.pictures[i]) }))
+  props.rows.map((row) => ({ ...row, pictures: shownOrder.value.map((i) => row.pictures[i]) }))
 )
+/** The hidden columns, folded at the right end, each with the index to show it again by. */
+const hiddenModels = computed(() =>
+  (order.value ?? []).filter((i) => hidden.value.includes(i)).map((i) => ({
+    index: i,
+    ...props.models[i],
+  }))
+)
+
+/** Hides a shown column (at `column`, as shown): it moves to the right end. */
+function hide(column: number) {
+  const i = shownOrder.value[column]
+  order.value = [...order.value!.filter((o) => o !== i), i]
+  hidden.value = [...hidden.value, i]
+}
+/** Shows a hidden column again, after the shown ones. */
+function show(i: number) {
+  const shown = shownOrder.value
+  order.value = [...shown, i, ...order.value!.filter((o) => o !== i && !shown.includes(o))]
+  hidden.value = hidden.value.filter((h) => h !== i)
+}
 
 /** Moves the column at `from` to `to`, both positions as shown. */
 function moveColumn(from: number, to: number) {
-  if (to < 0 || to >= order.value.length || to === from) return
-  const next = [...order.value]
+  const shown = shownOrder.value
+  if (to < 0 || to >= shown.length || to === from) return
+  const next = [...shown]
   next.splice(to, 0, next.splice(from, 1)[0])
-  order.value = next
+  order.value = [...next, ...order.value!.filter((i) => hidden.value.includes(i))]
   if (dragging.value === from) dragging.value = to
 }
 
@@ -134,6 +167,7 @@ function climb(by: number) {
       <h2 class="font-medium">{{ title }}</h2>
       <span class="text-muted">
         {{ rows.length }} {{ rows.length === 1 ? 'Frame' : 'Frames' }} · {{ models.length }} models
+        <template v-if="hiddenModels.length">({{ hiddenModels.length }} hidden)</template>
       </span>
       <div class="ml-auto flex items-center gap-3">
         <slot name="actions" />
@@ -178,9 +212,35 @@ function climb(by: number) {
                 >
                   <Icon name="grip" />
                 </button>
+                <input
+                  v-if="hideable"
+                  type="checkbox"
+                  checked
+                  :aria-label="`Show ${m.label}`"
+                  :title="`Untick to hide ${m.label}, and leave it out of Export`"
+                  data-show-model
+                  @change="hide(c)"
+                />
                 {{ m.label }}
                 <span v-if="m.current" class="font-normal text-muted">· current</span>
               </span>
+            </th>
+            <th
+              v-for="m in hiddenModels"
+              :key="m.label"
+              class="sticky top-0 z-10 bg-canvas px-1 py-1 text-left font-normal whitespace-nowrap text-muted"
+              data-hidden-column
+            >
+              <label class="flex cursor-pointer items-center gap-1">
+                <input
+                  type="checkbox"
+                  :aria-label="`Show ${m.label}`"
+                  :title="`Tick to show ${m.label}`"
+                  data-show-model
+                  @change="show(m.index)"
+                />
+                {{ m.label }}
+              </label>
             </th>
           </tr>
         </thead>
@@ -224,6 +284,7 @@ function climb(by: number) {
                 Not rendered
               </div>
             </td>
+            <td v-if="hiddenModels.length" :colspan="hiddenModels.length" />
           </tr>
         </tbody>
       </table>
