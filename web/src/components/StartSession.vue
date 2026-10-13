@@ -11,6 +11,7 @@ import {
   type SettingsOptions,
 } from '../api'
 import { useFeatures } from '../composables/useFeatures'
+import { useStoredString } from '../composables/storage'
 
 defineProps<{ error?: string }>()
 const emit = defineEmits<{ start: [start: SessionStart] }>()
@@ -52,7 +53,12 @@ const loadError = ref('')
  * Model is named only where they're on.
  */
 const { on: featureOn } = useFeatures()
-const kind = ref<SessionKind>('roleplay')
+/** The kind picked last, remembered per browser; a Roleplay until one is. */
+const storedKind = useStoredString('start-kind')
+const kind = computed<SessionKind>({
+  get: () => KINDS.find((k) => k.id === storedKind.value)?.id ?? 'roleplay',
+  set: (k) => (storedKind.value = k),
+})
 /** A Scenario's id, or `brief` to type one. */
 const selected = ref('')
 const brief = ref('')

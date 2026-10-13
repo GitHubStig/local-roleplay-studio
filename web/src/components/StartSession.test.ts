@@ -77,6 +77,7 @@ const startButton = (w: Awaited<ReturnType<typeof mountIt>>) =>
   w.find('[data-start]').element as HTMLButtonElement
 
 beforeEach(() => {
+  localStorage.clear()
   vi.mocked(api.getScenarios).mockResolvedValue({ scenarios: [tavern], errors: [] })
   vi.mocked(api.getSettings).mockResolvedValue({ ...settings })
   vi.mocked(api.getSettingsOptions).mockResolvedValue(options)
@@ -151,6 +152,15 @@ describe('StartSession', () => {
     expect(startButton(wrapper).textContent?.trim()).toBe('Start Roleplay')
     await wrapper.find('[data-start]').trigger('click')
     expect(wrapper.emitted('start')).toEqual([[{ kind: 'roleplay', scenarioId: 'tavern' }]])
+  })
+
+  it('remembers the kind picked last', async () => {
+    const first = await mountIt()
+    await first.find('input[value=chain]').setValue()
+    first.unmount()
+    const again = await mountIt()
+    expect((again.find('input[value=chain]').element as HTMLInputElement).checked).toBe(true)
+    expect(startButton(again).textContent?.trim()).toBe('Start Chain')
   })
 
   it('offers no Frame count for a Chain', async () => {
