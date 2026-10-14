@@ -17,10 +17,12 @@ export const JOB_NAMES: Record<JobKind, string> = {
  * What a job is doing, in a few words. A Roleplay says more about its own work (voices, pictures)
  * through `special`, which answers first when it has something to say.
  */
-/** The Queue tab's label, with how many jobs are running or queued. */
+/** The Queue tab's label, with how many jobs are running or queued, and how many failed. */
 export const queueTabLabel = (jobs: readonly Job[]) => {
-  const open = jobs.filter((j) => j.status !== 'failed').length
-  return open ? `Queue (${open})` : 'Queue'
+  const failed = jobs.filter((j) => j.status === 'failed').length
+  const open = jobs.length - failed
+  const counts = [open && `${open}`, failed && `${failed} failed`].filter(Boolean)
+  return counts.length ? `Queue (${counts.join(', ')})` : 'Queue'
 }
 
 export function jobStatus(job: Job, special?: (job: Job) => string | undefined): string {

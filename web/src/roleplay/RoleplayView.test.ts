@@ -727,7 +727,7 @@ describe('RoleplayView', () => {
     vi.mocked(api.cancelJob).mockResolvedValue([failed])
     const { wrapper } = await mountIt()
     const tab = wrapper.find('[data-tab=queue]')
-    expect(tab.text()).toBe('Queue (1)')
+    expect(tab.text()).toBe('Queue (1, 1 failed)')
     await tab.trigger('click')
     const items = wrapper.findAll('[data-queue-item]')
     expect(items.map((i) => i.text())).toEqual([

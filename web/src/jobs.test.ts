@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Job } from './api'
-import { formingOf, jobForming } from './jobs'
+import { formingOf, jobForming, queueTabLabel } from './jobs'
 
 const comfy = { id: 's1', settings: { imageBackend: 'comfyui' as const } }
 const mflux = { id: 's1', settings: { imageBackend: 'mflux' as const } }
@@ -27,5 +27,16 @@ describe('formingOf', () => {
     expect(jobForming(comfy, job('picture'))?.opacity).toBe(0.5)
     expect(jobForming(comfy, job('upscale'))).toBeNull()
     expect(jobForming(comfy, null)).toBeNull()
+  })
+})
+
+describe('queueTabLabel', () => {
+  const job = (status: Job['status']) => ({ status }) as Job
+
+  it('counts the open jobs, and the failed ones apart', () => {
+    expect(queueTabLabel([])).toBe('Queue')
+    expect(queueTabLabel([job('running'), job('queued')])).toBe('Queue (2)')
+    expect(queueTabLabel([job('failed'), job('failed')])).toBe('Queue (2 failed)')
+    expect(queueTabLabel([job('running'), job('failed')])).toBe('Queue (1, 1 failed)')
   })
 })

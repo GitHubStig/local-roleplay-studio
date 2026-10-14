@@ -1,14 +1,20 @@
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { cancelJob, clearJobs, type Job, type JobKind, listJobs, queueJob, retryJob } from '../api'
+import { JOB_NAMES } from '../jobs'
 
 /**
  * A Session's queued background work (a Roleplay's or a Chain's), followed while anything is
  * queued or running. A job that finishes or fails has changed the Session, so `onSettled` reloads
- * it; `onError` hears why a job couldn't be queued.
+ * it; `onError` hears why a job couldn't be queued, and, with `reportFailures`, why one failed
+ * (for a view that shows failures only in its Queue tab).
  */
 export function useJobs(
   sessionId: string,
-  opts: { onSettled: () => Promise<void> | void; onError: (message: string) => void },
+  opts: {
+    onSettled: () => Promise<void> | void
+    onError: (message: string) => void
+    reportFailures?: boolean
+  },
 ) {
   /** Running, then queued, then failed (until dismissed). */
   const jobs = ref<Job[]>([])
@@ -36,7 +42,13 @@ export function useJobs(
     const settled = openJobs.value.some((j) =>
       !now.some((n) => n.id === j.id && n.status !== 'failed')
     )
+    const failed = now.filter((n) =>
+      n.status === 'failed' && openJobs.value.some((j) => j.id === n.id)
+    )
     jobs.value = now
+    if (opts.reportFailures) {
+      for (const job of failed) opts.onError(`${JOB_NAMES[job.kind]} failed: ${job.error}`)
+    }
     if (settled) await opts.onSettled()
     watchJobs()
   }

@@ -250,13 +250,22 @@ export async function download(base: string, file: ComfyFile): Promise<Uint8Arra
   return new Uint8Array(await res.arrayBuffer())
 }
 
+/**
+ * Fetches one of ComfyUI's small JSON answers. One that takes over 15 s has failed: a machine that
+ * can't be reached otherwise takes the system's connect timeout (~50 s on macOS) to say so.
+ */
 export async function getJson(base: string, path: string, signal: AbortSignal) {
   let res: Response
   try {
-    res = await fetch(`${base}${path}`, { signal })
+    res = await fetch(`${base}${path}`, {
+      signal: AbortSignal.any([signal, AbortSignal.timeout(15_000)]),
+    })
   } catch (err) {
     if (signal.aborted) throw err
-    throw new Error(`Couldn't reach ComfyUI at ${base}: is it running? (${(err as Error).message})`)
+    const why = (err as Error).name === 'TimeoutError'
+      ? 'no answer in 15 s'
+      : (err as Error).message
+    throw new Error(`Couldn't reach ComfyUI at ${base}: is it running? (${why})`)
   }
   if (!res.ok) throw new Error(`ComfyUI ${path}: HTTP ${res.status}`)
   return res.json()

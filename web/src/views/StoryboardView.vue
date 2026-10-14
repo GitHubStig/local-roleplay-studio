@@ -241,6 +241,7 @@ const { jobs, jobsFor, hasJob, queue, queueAll, dropJob, clear, retry } = useJob
     await load()
   },
   onError: (text) => (message.value = { kind: 'error', text }),
+  reportFailures: true,
 })
 /** A Frame's running job, if any, else the next queued one: what its status says it's doing. */
 const frameJob = (index: number) => {
