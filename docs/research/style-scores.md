@@ -82,8 +82,7 @@ for the same picture), which shifts the numbers slightly but not the ranking. CS
 cleanly (its fp16 conversion broke on a Cast node; fp32 ran, 1.2 GB), but there's nowhere to
 fetch it from: no one publishes CSD as ONNX, and a 609 MB file can't go in the repo (GitHub refuses
 files over 100 MB; LFS's free quota is 1 GB a month). The other extras already run Python through
-uv, so the style scores do too, ~3 times faster on the GPU, with no file to host. Running it in the
-browser stays possible (open threads).
+uv, so the style scores do too, ~3 times faster on the GPU, with no file to host.
 
 ## Charts
 

@@ -96,11 +96,15 @@ const scoring = computed(() => !!job.value && job.value.status !== 'failed')
 </script>
 
 <template>
-  <div class="mx-auto flex w-full max-w-4xl flex-col gap-6 p-4" data-style-scores>
+  <div class="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4" data-style-scores>
     <div class="flex flex-wrap items-end gap-4">
-      <label class="flex flex-col gap-1">
+      <label class="flex min-w-0 max-w-full flex-col gap-1">
         <span class="text-sm text-muted">Base Frame</span>
-        <select v-model="base" class="rounded border border-line bg-surface px-2 py-1" data-style-base>
+        <select
+          v-model="base"
+          class="max-w-full rounded border border-line bg-surface px-2 py-1"
+          data-style-base
+        >
           <option v-for="f in frames" :key="f.index" :value="f.index">{{ optionText(f) }}</option>
         </select>
       </label>
