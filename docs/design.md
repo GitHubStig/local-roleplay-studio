@@ -425,7 +425,7 @@ written for image prompts, are left out).
   out for phones yet.
 - **Export** (2026-10-11), in Compare's header: the same table as a page of its own (the table
   alone, without the header or the "current" mark), written by
-  the server to `exports/<Session id>/` (gitignored, replaced by the next export): `index.html`
+  the server to `exports/<Session id>/` (gitignored; the next export replaces what this one wrote, and since 2026-10-14 leaves anything else there, such as here.now's `.herenow/` deploy state): `index.html`
   (`web/export.html`, built on each export by `deno task build:export` into one file with its
   script and styles inlined, the comparison as JSON in it; titled by the day it was exported and
   the Session's seed, "12 Oct 2026 · Seed 1282725757", since 2026-10-12), `images/` for the viewer (the upscaled

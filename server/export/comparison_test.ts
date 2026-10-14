@@ -89,9 +89,11 @@ Deno.test('An export is a page with the comparison in it, the pictures as WebP b
     await Deno.writeFile(join(session, 'frame-0-a-2048.png'), await png(800, 2048))
     await Deno.writeFile(join(session, 'frame-0-b.png'), await png(64, 64))
     await Deno.writeTextFile(join(session, 'frame-1-a.svg'), '<svg/>')
-    // What an earlier export left goes.
+    // What an earlier export left goes; what else is in the folder (a host's deploy state) stays.
     await Deno.mkdir(join(out, 'images'), { recursive: true })
     await Deno.writeTextFile(join(out, 'images', 'old.webp'), '')
+    await Deno.mkdir(join(out, '.herenow'))
+    await Deno.writeTextFile(join(out, '.herenow', 'state.json'), '{}')
 
     assertEquals(await writeComparison(session, out, PAGE, comparison, 'The <Tavern>'), {
       pictures: 3,
@@ -136,6 +138,7 @@ Deno.test('An export is a page with the comparison in it, the pictures as WebP b
     assertEquals(webpSize(await read('thumbs/frame-0-a.webp')), { width: 200, height: 512 })
     assertEquals(webpSize(await read('thumbs/frame-0-b.webp')), { width: 64, height: 64 })
     assertEquals(await Deno.readTextFile(join(out, 'images/frame-1-a.svg')), '<svg/>')
+    assertEquals(await Deno.readTextFile(join(out, '.herenow', 'state.json')), '{}')
     assertEquals(
       (await Array.fromAsync(Deno.readDir(join(out, 'images')))).map((e) => e.name).sort(),
       ['frame-0-a-2048.webp', 'frame-0-b.webp', 'frame-1-a.svg'],

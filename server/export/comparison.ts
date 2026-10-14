@@ -83,6 +83,7 @@ const DATA_SLOT = /<script id="comparison" type="application\/json">[\s\S]*?<\/s
 /**
  * Writes the export to `outDir`, replacing what an earlier export left there: `index.html` (from
  * `page`, the built `web/export.html`), `images/` for the viewer and `thumbs/` for the table.
+ * Anything else in the folder stays, such as a host's deploy state (here.now's `.herenow/`).
  */
 export async function writeComparison(
   sessionDir: string,
@@ -92,9 +93,11 @@ export async function writeComparison(
   title: string,
 ): Promise<{ pictures: number }> {
   if (!DATA_SLOT.test(page)) throw new Error('The export page has no slot for its comparison')
-  await Deno.remove(outDir, { recursive: true }).catch((err) => {
-    if (!(err instanceof Deno.errors.NotFound)) throw err
-  })
+  for (const written of ['index.html', 'images', 'thumbs']) {
+    await Deno.remove(join(outDir, written), { recursive: true }).catch((err) => {
+      if (!(err instanceof Deno.errors.NotFound)) throw err
+    })
+  }
   await Deno.mkdir(join(outDir, 'images'), { recursive: true })
   await Deno.mkdir(join(outDir, 'thumbs'), { recursive: true })
 
