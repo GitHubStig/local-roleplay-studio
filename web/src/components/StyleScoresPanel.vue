@@ -46,7 +46,6 @@ const optionText = (f: { name: string; caption?: string }) => {
   if (!caption) return f.name
   return `${f.name} · ${caption.length > 60 ? `${caption.slice(0, 59).trimEnd()}…` : caption}`
 }
-const frameName = (index: number) => props.frames.find((f) => f.index === index)?.name ?? `Frame ${index}`
 
 /** The scores; null before the first scoring; undefined while loading. */
 const scores = ref<StyleScores | null | undefined>()
@@ -138,7 +137,7 @@ const scoring = computed(() => !!job.value && job.value.status !== 'failed')
     </p>
 
     <template v-if="scores">
-      <StyleCharts :scores :label-of="labelOf" :frame-name="frameName" />
+      <StyleCharts :scores :label-of="labelOf" :frames />
       <details class="text-sm">
         <summary class="text-muted">The numbers</summary>
         <table class="mt-2 border-separate border-spacing-x-3 border-spacing-y-1" data-style-table>

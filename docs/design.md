@@ -452,7 +452,10 @@ written for image prompts, are left out).
   Distinct styles (the Vendi score) and Matches its Frame (how often a picture is among the three
   nearest to its own Frame's caption); then each model's distance from the base Frame by Frame, a
   small chart per model, and a heatmap of every picture's caption rank; the numbers in a table
-  under them. Drawn with Observable Plot in the app's `--info` colour (one hue, so the models are
+  under them. Hovering a bar, a point or a cell (2026-10-15) brings that model forward in every
+  chart and fades the rest (in the line charts and the heatmap, the same Frame's less), marks the
+  Frame across the line charts, and shows the model, its value, and for a point or a cell the
+  Frame and its caption. Drawn with Observable Plot in the app's `--info` colour (one hue, so the models are
   told apart by name, not colour), loaded only when shown. **Score** queues a `style` job (filed
   under Frame 0, like a voice): `python/style/make.py`, through uv, embeds each picture not yet
   embedded with CSD and CLIP, and each caption with CLIP, in its turn behind renders but leaving

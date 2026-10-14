@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import * as Plot from '@observablehq/plot'
 import { useElementSize, useMutationObserver } from '@vueuse/core'
-import { computed, ref, useTemplateRef, watchEffect } from 'vue'
+import { computed, ref, useTemplateRef, watch, watchEffect } from 'vue'
 import { STYLE_MEASURES, type StyleScores } from '../styleScores'
 
 /**
@@ -15,9 +15,12 @@ const props = defineProps<{
   scores: StyleScores
   /** An Image Model's name, by its id. */
   labelOf: (model: string) => string
-  /** What a Frame is called, by its index. */
-  frameName: (index: number) => string
+  /** The Frames: what each is called, and what happens in it (its caption), for the tooltips. */
+  frames: readonly { index: number; name: string; caption?: string }[]
 }>()
+
+const frameOf = (index: number) => props.frames.find((f) => f.index === index)
+const frameName = (index: number) => frameOf(index)?.name ?? `Frame ${index}`
 
 const root = useTemplateRef<HTMLElement>('root')
 const { width } = useElementSize(root)
@@ -97,12 +100,13 @@ const style = computed(() => ({
 function bars(id: (typeof STYLE_MEASURES)[number]['id']) {
   const measure = STYLE_MEASURES.find((m) => m.id === id)!
   const data = props.scores.models
-    .map((m) => ({ model: nameOf(m.model), full: props.labelOf(m.model), value: measure.value(m) }))
-    .filter((d): d is { model: string; full: string; value: number } => d.value !== undefined)
-    .sort((a, b) => b.value - a.value)
-  const max = Math.max(...data.map((d) => d.value))
+    .map((m) => ({ id: m.model, model: nameOf(m.model), score: measure.value(m) }))
+    .filter((d): d is { id: string; model: string; score: number } => d.score !== undefined)
+    .map((d) => ({ ...d, value: `${measure.name}: ${measure.format(d.score)}` }))
+    .sort((a, b) => b.score - a.score)
+  const max = Math.max(...data.map((d) => d.score))
   const above = narrow.value
-  return Plot.plot({
+  return hoverable(Plot.plot({
     width: width.value,
     height: data.length * (above ? 40 : 28) + 30,
     marginLeft: above ? 8 : nameWidth.value,
@@ -118,14 +122,27 @@ function bars(id: (typeof STYLE_MEASURES)[number]['id']) {
     marks: [
       Plot.gridX({ stroke: colors.value.line, strokeOpacity: 1, ticks: Math.max(2, Math.floor(width.value / 80)) }),
       Plot.barX(data, {
-        x: 'value',
+        x: 'score',
         y: 'model',
         fill: colors.value.data,
         insetTop: above ? 20 : 5,
         insetBottom: above ? 4 : 5,
         rx2: 4,
-        title: (d) => `${d.full}: ${measure.format(d.value)}`,
+        ariaLabel: (d) => `model:${d.id}`,
       }),
+      Plot.barX(
+        data,
+        Plot.pointerY({
+          x: 'score',
+          y: 'model',
+          fill: 'none',
+          stroke: colors.value.fg,
+          strokeWidth: 1.5,
+          insetTop: above ? 19 : 4,
+          insetBottom: above ? 3 : 4,
+          rx2: 4,
+        }),
+      ),
       above
         ? Plot.text(data, {
           y: 'model',
@@ -137,9 +154,9 @@ function bars(id: (typeof STYLE_MEASURES)[number]['id']) {
         })
         : null,
       Plot.text(data, {
-        x: 'value',
+        x: 'score',
         y: 'model',
-        text: (d) => measure.format(d.value),
+        text: (d) => measure.format(d.score),
         dx: 6,
         dy: above ? 8 : 0,
         textAnchor: 'start',
@@ -147,7 +164,7 @@ function bars(id: (typeof STYLE_MEASURES)[number]['id']) {
       }),
       Plot.ruleX([0], { stroke: colors.value.muted }),
     ],
-  })
+  }))
 }
 
 /**
@@ -157,10 +174,16 @@ function bars(id: (typeof STYLE_MEASURES)[number]['id']) {
 function byFrame() {
   const { frames, base } = props.scores
   const data = props.scores.models.flatMap((m) =>
-    m.fromBaseByFrame.map((d, i) => ({ model: nameOf(m.model), full: props.labelOf(m.model), frame: frames[i], d }))
+    m.fromBaseByFrame.map((d, i) => ({
+      id: m.model,
+      model: nameOf(m.model),
+      frame: frames[i],
+      value: `${d.toFixed(2)} from the base`,
+      d,
+    }))
   )
   const models = props.scores.models.map((m) => nameOf(m.model))
-  return Plot.plot({
+  return hoverable(Plot.plot({
     width: width.value,
     height: models.length * 80 + 40,
     marginLeft: 4,
@@ -185,7 +208,20 @@ function byFrame() {
         fill: colors.value.fg,
         fontWeight: 500,
       }),
-      Plot.lineY(data, { x: 'frame', y: 'd', stroke: colors.value.data, strokeWidth: 2 }),
+      // The hovered Frame's line, in every model's chart (shown by `highlight`).
+      Plot.ruleX(frames, {
+        x: (f) => f,
+        stroke: colors.value.fg,
+        strokeOpacity: 0,
+        ariaLabel: (f) => `frame:${f}`,
+      }),
+      Plot.lineY(data, {
+        x: 'frame',
+        y: 'd',
+        stroke: colors.value.data,
+        strokeWidth: 2,
+        ariaLabel: (p) => keyOf(p),
+      }),
       Plot.dot(data, {
         x: 'frame',
         y: 'd',
@@ -193,10 +229,11 @@ function byFrame() {
         fill: colors.value.data,
         stroke: colors.value.surface,
         strokeWidth: 1,
-        title: (p) => `${p.full}, ${props.frameName(p.frame)}: ${p.d.toFixed(2)} from the base`,
+        ariaLabel: (p) => keyOf(p),
       }),
+      Plot.dot(data, Plot.pointer({ x: 'frame', y: 'd', r: 6, fill: 'none', stroke: colors.value.fg })),
     ],
-  })
+  }))
 }
 
 /**
@@ -208,8 +245,9 @@ function ranks() {
   const data = props.scores.models.flatMap((m) =>
     (m.captionRank ?? []).map((rank, i) => ({
       model: nameOf(m.model),
-      full: props.labelOf(m.model),
+      id: m.model,
       frame: frames[i],
+      value: `its caption ranks ${rank} of ${frames.length}`,
       rank,
     }))
   )
@@ -222,9 +260,20 @@ function ranks() {
     fill: 'rank',
     inset: 1,
     rx: 2,
-    title: (c) =>
-      `${c.full}, ${props.frameName(c.frame)}: its caption ranks ${c.rank} of ${frames.length}`,
+    ariaLabel: (c) => keyOf(c),
   })
+  const pointed = Plot.cell(
+    data,
+    Plot.pointer({
+      x: narrow.value ? 'model' : 'frame',
+      y: narrow.value ? 'frame' : 'model',
+      fill: 'none',
+      stroke: colors.value.fg,
+      strokeWidth: 2,
+      inset: 0.5,
+      rx: 2,
+    }),
+  )
   const color = {
     type: 'linear' as const,
     domain: [1, 4],
@@ -236,7 +285,7 @@ function ranks() {
     tickFormat: (r: number) => (r === 4 ? '4+' : `${r}`),
   }
   if (narrow.value) {
-    return Plot.plot({
+    return hoverable(Plot.plot({
       width: width.value,
       height: frames.length * 18 + nameWidth.value + 30,
       marginTop: nameWidth.value,
@@ -245,11 +294,11 @@ function ranks() {
       x: { label: null, domain: models, axis: 'top', tickRotate: -90, tickSize: 0 },
       y: { label: 'Frame', type: 'band', ticks: ticks(20) },
       color,
-      marks: [cell],
-    })
+      marks: [cell, pointed],
+    }))
   }
   const side = Math.min(28, Math.max(14, (width.value - nameWidth.value) / frames.length))
-  return Plot.plot({
+  return hoverable(Plot.plot({
     width: width.value,
     height: models.length * side + 50,
     marginLeft: nameWidth.value,
@@ -257,9 +306,74 @@ function ranks() {
     x: { label: 'Frame', type: 'band', ticks: ticks(40) },
     y: { label: null, domain: models, tickSize: 0 },
     color,
-    marks: [cell],
-  })
+    marks: [cell, pointed],
+  }))
 }
+
+/** A bar, a point in the line charts or a cell in the heatmap, as hovered: a bar has no Frame. */
+interface Point {
+  id: string
+  model: string
+  frame?: number
+  value: string
+}
+const keyOf = (p: Pick<Point, 'id' | 'frame'>) => `pic:${p.id}|${p.frame}`
+
+/**
+ * What's hovered, in either chart: that model's points come forward in both, the rest fade (the
+ * same Frame's less), the Frame gets a line across the line charts, and a tooltip says what it is.
+ */
+const hovered = ref<Point | null>(null)
+const pointerAt = ref({ x: 0, y: 0 })
+function hoverable(plot: HTMLElement | SVGSVGElement) {
+  plot.addEventListener('input', () => {
+    hovered.value = ((plot as unknown as { value: Point | null }).value) ?? null
+  })
+  return plot
+}
+function trackPointer(event: PointerEvent) {
+  const box = root.value?.getBoundingClientRect()
+  if (box) pointerAt.value = { x: event.clientX - box.left, y: event.clientY - box.top }
+}
+
+/** Fades and shows the marks by what's hovered (their `aria-label`s say whose they are). */
+function highlight() {
+  const h = hovered.value
+  for (const slot of Object.values(slots.value)) {
+    slot?.querySelectorAll<SVGElement>('[aria-label^="model:"]').forEach((el) => {
+      el.style.opacity = !h || el.getAttribute('aria-label') === `model:${h.id}` ? '1' : '0.3'
+    })
+    slot?.querySelectorAll<SVGElement>('[aria-label^="pic:"]').forEach((el) => {
+      const [id, frame] = el.getAttribute('aria-label')!.slice(4).split('|')
+      const opacity = !h || id === h.id ? 1 : Number(frame) === h.frame ? 0.55 : 0.2
+      el.style.opacity = String(opacity)
+    })
+    slot?.querySelectorAll<SVGElement>('[aria-label^="frame:"]').forEach((el) => {
+      const frame = Number(el.getAttribute('aria-label')!.slice(6))
+      el.style.strokeOpacity = h?.frame !== undefined && frame === h.frame ? '0.5' : '0'
+    })
+  }
+}
+watch(hovered, highlight)
+
+/** The tooltip: which model and Frame, the value, and the Frame's caption. */
+const tip = computed(() => {
+  const h = hovered.value
+  if (!h) return null
+  const left = pointerAt.value.x > width.value / 2
+  return {
+    model: props.labelOf(h.id),
+    frame: h.frame === undefined ? undefined : frameName(h.frame),
+    value: h.value,
+    caption: h.frame === undefined ? undefined : frameOf(h.frame)?.caption,
+    style: {
+      top: `${pointerAt.value.y + 16}px`,
+      ...(left
+        ? { right: `${width.value - pointerAt.value.x + 12}px` }
+        : { left: `${pointerAt.value.x + 12}px` }),
+    },
+  }
+})
 
 /** Each chart's element, drawn again when the scores, width or theme change. */
 const charts = computed(() =>
@@ -279,11 +393,12 @@ watchEffect(() => {
   drawn.bars.forEach((b) => put(b.measure.id, b.svg))
   put('byFrame', drawn.byFrame)
   if (drawn.ranks) put('ranks', drawn.ranks)
+  highlight()
 }, { flush: 'post' })
 </script>
 
 <template>
-  <div ref="root" class="flex flex-col gap-8" data-style-charts>
+  <div ref="root" class="relative flex flex-col gap-8" data-style-charts @pointermove="trackPointer">
     <section v-for="m in measures" :key="m.id" class="flex flex-col gap-1" :data-chart="m.id">
       <h3 class="font-medium">{{ m.name }}</h3>
       <p class="max-w-prose text-sm text-muted">{{ m.description }}</p>
@@ -306,5 +421,15 @@ watchEffect(() => {
       </p>
       <div :ref="(el) => (slots.ranks = el as HTMLElement | null)" />
     </section>
+    <div
+      v-if="tip"
+      class="pointer-events-none absolute z-10 flex w-72 max-w-[80%] flex-col gap-0.5 rounded-lg border border-line bg-surface px-3 py-2 text-sm shadow-lg"
+      :style="tip.style"
+      data-style-tip
+    >
+      <span class="font-medium">{{ tip.model }}</span>
+      <span>{{ tip.frame ? `${tip.frame}: ${tip.value}` : tip.value }}</span>
+      <span v-if="tip.caption" class="line-clamp-4 text-muted">{{ tip.caption }}</span>
+    </div>
   </div>
 </template>
