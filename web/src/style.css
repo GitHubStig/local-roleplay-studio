@@ -3,6 +3,9 @@
 /* `dark:` follows the .dark class on <html>, set by useTheme() and the pre-paint script in index.html. */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* `short:` is a phone on its side, where height is what runs out: side columns, not rows. */
+@custom-variant short (@media (orientation: landscape) and (max-height: 500px));
+
 /* Tailwind 4 leaves buttons with the default cursor; every enabled button here is clickable. */
 @layer base {
   button:not(:disabled),

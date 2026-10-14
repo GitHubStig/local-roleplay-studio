@@ -10,7 +10,7 @@ import ImageViewer from './ImageViewer.vue'
  * the Compare dialog's (under a header, given a `title`), and the whole of its exported page. A
  * picture opens in the viewer, where ← and → (or a swipe sideways) step through that Frame's
  * pictures by the other models, and ↑ and ↓ (or a swipe up or down) through the Frames that model
- * rendered. A column moves by dragging its
+ * rendered, each Frame's caption under its picture. A column moves by dragging its
  * header's grip (or with ← and → on it). With `hideable`, each column has a checkbox: unticked, it
  * moves to the right end, folded to its header. The arrangement is `order` and `hidden`, which the
  * Compare dialog keeps (and exports by); otherwise it lasts until the table is next opened.
@@ -111,12 +111,15 @@ function endDrag() {
 
 /**
  * Whether the first column shows the prompts or only the Frames' names: shown on a wide screen,
- * folded away on a phone's (where they'd crowd out the pictures), either way until toggled.
+ * folded away on a phone's, upright or on its side (where they'd crowd out the pictures), either
+ * way until toggled.
  */
-const narrow = useMediaQuery('(max-width: 639px)')
+const narrow = useMediaQuery('(max-width: 1023px)')
 const promptsShown = ref(!narrow.value)
 watch(narrow, (now) => (promptsShown.value = !now))
 const anyPrompt = computed(() => props.rows.some((r) => r.prompt))
+/** With any caption, every picture keeps room for one in the viewer, so none jumps in size. */
+const anyCaption = computed(() => props.rows.some((r) => r.caption))
 
 /** The picture open in the viewer: its Frame's row, and its model's column. */
 const viewing = ref<{ row: number; column: number } | null>(null)
@@ -130,6 +133,7 @@ const viewed = computed(() => {
     src: picture.full,
     alt: `${row.name} by ${model}`,
     label: `${row.name} · ${model}`,
+    caption: anyCaption.value ? row.caption ?? '' : undefined,
   }
 })
 /** The column of the nearest picture `by` columns along in the open row, if any. */
@@ -273,13 +277,13 @@ function climb(by: number) {
                   :width="picture.width"
                   :height="picture.height"
                   loading="lazy"
-                  class="h-64 w-auto max-w-none rounded"
+                  class="h-[min(16rem,calc(100dvh-8rem))] w-auto max-w-none rounded"
                   :class="{ 'opacity-50': picture.stale }"
                 />
               </button>
               <div
                 v-else
-                class="flex h-64 w-full min-w-48 items-center justify-center rounded border border-dashed border-line text-muted"
+                class="flex h-[min(16rem,calc(100dvh-8rem))] w-full min-w-48 items-center justify-center rounded border border-dashed border-line text-muted"
               >
                 Not rendered
               </div>
@@ -293,6 +297,7 @@ function climb(by: number) {
       :src="viewed?.src ?? null"
       :alt="viewed?.alt"
       :label="viewed?.label"
+      :caption="viewed?.caption"
       :has-previous="along(-1) !== null"
       :has-next="along(1) !== null"
       @previous="step(-1)"

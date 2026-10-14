@@ -415,6 +415,7 @@ const imagesOn = computed(() => featureOn.value('images'))
             :frames="session.frames"
             :image-model="session.settings.imageModel"
             :name="frameTitle"
+            :caption="(f) => f.beat"
           />
         </div>
         <FrameImage

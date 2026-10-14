@@ -70,6 +70,42 @@ describe('ModelComparison', () => {
     expect(wrapper.find('[data-next]').attributes('disabled')).toBeDefined()
   })
 
+  it('shows each Frame’s caption under its pictures in the viewer, room kept where there’s none', async () => {
+    const wrapper = mount(ModelComparison, {
+      props: {
+        sessionId: 's1',
+        frames,
+        imageModel: 'b',
+        caption: (f: PicturedFrame) => (f.index === 0 ? 'The tavern, at dusk.' : undefined),
+      },
+      attachTo: document.body,
+    })
+    await wrapper.find('[data-compare-models]').trigger('click')
+    await flushPromises()
+    await wrapper.find('[data-compare-row] button').trigger('click')
+    await flushPromises()
+    const caption = () => wrapper.find('[data-viewer-caption]')
+    expect(caption().text()).toBe('The tavern, at dusk.')
+    // The same Frame by the other model: the same caption.
+    await wrapper.find('[data-next]').trigger('click')
+    expect(caption().text()).toBe('The tavern, at dusk.')
+    await wrapper.find('[data-previous]').trigger('click')
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }))
+    await flushPromises()
+    expect(wrapper.find('[data-viewer-label]').text()).toBe('Frame 1 · a')
+    expect(caption().exists()).toBe(true)
+    expect(caption().text()).toBe('')
+  })
+
+  it('shows no caption in the viewer when no Frame has one', async () => {
+    const wrapper = mountIt()
+    await wrapper.find('[data-compare-models]').trigger('click')
+    await flushPromises()
+    await wrapper.find('[data-compare-row] button').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-viewer-caption]').exists()).toBe(false)
+  })
+
   it('moves between Frames by the same model with ↑ and ↓, past Frames it didn’t render', async () => {
     const shown: PicturedFrame[] = [
       ...frames.slice(0, 2),

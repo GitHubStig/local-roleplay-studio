@@ -1,4 +1,4 @@
-<script setup lang="ts">
+<script setup lang="ts" generic="F extends PicturedFrame">
 import { computed, ref, useTemplateRef, watch } from 'vue'
 import { exportComparison, imageUrl, type PicturedFrame } from '../api'
 import type { ComparisonModel } from '../comparison'
@@ -15,11 +15,13 @@ import ComparisonTable from './ComparisonTable.vue'
 const props = withDefaults(
   defineProps<{
     sessionId: string
-    frames: readonly PicturedFrame[]
+    frames: readonly F[]
     /** The Session's Image Model, marked in its column. */
     imageModel: string
     /** What a Frame is called in its row. */
     name?: (index: number) => string
+    /** What happens in a Frame, under its picture in the viewer (`ComparisonRow.caption`). */
+    caption?: (frame: F) => string | undefined
   }>(),
   { name: (index: number) => `Frame ${index}` },
 )
@@ -39,6 +41,7 @@ const pictured = computed(() =>
     .map((f) => ({
       name: props.name(f.index),
       prompt: f.prompt,
+      caption: props.caption?.(f) || undefined,
       pictures: modelIds.value.map((m) => f.pictures.find((p) => p.imageModel === m) ?? null),
     }))
 )

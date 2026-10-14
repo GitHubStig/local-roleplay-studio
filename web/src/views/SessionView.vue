@@ -572,6 +572,7 @@ const promptDiff = computed(() => {
             :frames="session.frames"
             :image-model="session.settings.imageModel"
             :name="frameTitle"
+            :caption="(f) => f.narration"
           />
           <label
             class="flex cursor-pointer items-center gap-1.5 text-muted"

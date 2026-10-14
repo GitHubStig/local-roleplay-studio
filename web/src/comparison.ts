@@ -18,6 +18,11 @@ export interface ComparisonRow {
   name: string
   /** Its Image Prompt, once written. */
   prompt?: string
+  /**
+   * What happens in it, under its picture in the viewer: a Chain Frame's Narration, a Storyboard
+   * Frame's Beat, a Roleplay Reply's actions.
+   */
+  caption?: string
   /** Its picture by each model, in the models' order; null where that model rendered none. */
   pictures: (ComparisonPicture | null)[]
 }

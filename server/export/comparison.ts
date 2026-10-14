@@ -22,7 +22,13 @@ export interface ComparisonExport {
    */
   notice?: string
   models: { label: string }[]
-  rows: { name: string; prompt?: string; pictures: (ExportPicture | null)[] }[]
+  rows: {
+    name: string
+    prompt?: string
+    /** What happens in the Frame, under its picture in the viewer. */
+    caption?: string
+    pictures: (ExportPicture | null)[]
+  }[]
 }
 
 /** How pictures are encoded: the viewer's at full size, the table's shrunk. */
@@ -50,6 +56,7 @@ export function parseComparisonExport(body: unknown): ComparisonExport | string 
   for (const row of b.rows) {
     if (typeof row?.name !== 'string') return 'Each row needs a name'
     if (row.prompt !== undefined && typeof row.prompt !== 'string') return 'prompt must be text'
+    if (row.caption !== undefined && typeof row.caption !== 'string') return 'caption must be text'
     if (!Array.isArray(row.pictures) || row.pictures.length !== b.models.length) {
       return 'Each row needs a picture (or null) per model'
     }
@@ -141,7 +148,12 @@ export async function writeComparison(
         ...(p.stale ? { stale: true } : {}),
       })
     }
-    rows.push({ name: row.name, ...(row.prompt ? { prompt: row.prompt } : {}), pictures })
+    rows.push({
+      name: row.name,
+      ...(row.prompt ? { prompt: row.prompt } : {}),
+      ...(row.caption ? { caption: row.caption } : {}),
+      pictures,
+    })
   }
   const models = comparison.models.map(({ label }) => ({ label }))
   const notice = comparison.notice?.trim()

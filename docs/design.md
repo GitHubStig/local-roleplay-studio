@@ -406,10 +406,23 @@ written for image prompts, are left out).
   pictures by the other models, and ↑ and ↓ through the Frames that model rendered; on a touch
   screen (2026-10-12), a swipe does the same (left for the next model, up for the next Frame,
   not while zoomed in or pinching), as do the viewer's arrow buttons. Each row is
-  headed by its Frame's Image Prompt (2026-10-11), folded away to the Frames' names on a phone
-  (under 640 px) and toggled from the table's corner. A column moves by dragging the grip in its
+  headed by its Frame's Image Prompt (2026-10-11), folded away to the Frames' names under 1024 px
+  (a phone either way up, since 2026-10-14; 640 px before) and toggled from the table's corner.
+  Under the picture in the viewer (2026-10-14), what happens in its Frame: a Chain Frame's
+  Narration, a Storyboard Frame's Beat, a Roleplay Reply's actions; always shown, in a box three
+  lines high whatever its length (scrolling, not swiping, when longer), so the picture keeps its
+  size stepping through, and the same for every model's picture of a Frame. Pictures in the table
+  are 256 px high, or the window's height less 8rem when that's less (a short phone on its side,
+  so a row and the headers fit). On a phone on its side (landscape, at most 500 px high: the
+  `short:` variant), the viewer puts its controls, label and caption in a column beside the
+  picture, which then has the whole height. A column moves by dragging the grip in its
   header (pointer events, so a phone can too; the table scrolls along near its edges), or with ←
   and → on the grip; the viewer's ← and → follow the new order, until the table is next opened.
+  Both pages' viewports say `minimum-scale=1` (2026-10-14): without it, a phone browser widened the
+  page to fit whatever overflowed (the app's header and toolbars, at 390 px), and the full-window
+  dialogs sized to that, so Compare and the viewer were cut off and turning the phone didn't
+  set them right. What overflows now scrolls sideways instead; the screens themselves aren't laid
+  out for phones yet.
 - **Export** (2026-10-11), in Compare's header: the same table as a page of its own (the table
   alone, without the header or the "current" mark), written by
   the server to `exports/<Session id>/` (gitignored, replaced by the next export): `index.html`
@@ -417,7 +430,7 @@ written for image prompts, are left out).
   script and styles inlined, the comparison as JSON in it; titled by the day it was exported and
   the Session's seed, "12 Oct 2026 · Seed 1282725757", since 2026-10-12), `images/` for the viewer (the upscaled
   picture where there is one, WebP quality 90) and `thumbs/` for the table (512 px high, quality
-  85). It opens from disk or any static host, with the viewer's zoom, arrow keys and swipes, and the app's
+  85), each row with its caption. It opens from disk or any static host, with the viewer's zoom, arrow keys and swipes, and the app's
   Light / Dark / System toggle in its bottom-right corner (remembered by the browser; the top right
   would cover the model names in the sticky header row). Export first asks (2026-10-12) whether the
   page should **ask its visitors to confirm they're 18 or older**, under a notice the player can

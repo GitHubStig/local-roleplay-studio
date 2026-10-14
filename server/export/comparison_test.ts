@@ -36,6 +36,7 @@ const comparison: ComparisonExport = {
     {
       name: 'Frame 0',
       prompt: 'A tavern at dusk.',
+      caption: 'The tavern, at dusk.',
       pictures: [
         { image: 'frame-0-a.png', upscaled: 'frame-0-a-2048.png' },
         { image: 'frame-0-b.png', stale: true },
@@ -62,6 +63,10 @@ Deno.test('Only pictures named in the Session, a picture or null per model, are 
   assertEquals(
     parseComparisonExport({ ...comparison, rows: [{ name: 'Frame 0', pictures: [null] }] }),
     'Each row needs a picture (or null) per model',
+  )
+  assertEquals(
+    parseComparisonExport({ ...comparison, rows: [{ ...comparison.rows[0], caption: 3 }] }),
+    'caption must be text',
   )
   assertEquals(parseComparisonExport({ rows: [] }), 'models must each have a label')
 })
@@ -102,6 +107,7 @@ Deno.test('An export is a page with the comparison in it, the pictures as WebP b
         {
           name: 'Frame 0',
           prompt: 'A tavern at dusk.',
+          caption: 'The tavern, at dusk.',
           pictures: [
             {
               thumb: 'thumbs/frame-0-a.webp',

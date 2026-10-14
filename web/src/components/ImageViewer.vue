@@ -10,7 +10,8 @@ import Icon from './Icon.vue'
  * closes it. Given a `label` or `hasPrevious` / `hasNext`, the ‹ › buttons, the ← → keys and a
  * swipe sideways ask for the image before or after; with `vertical`, the up and down buttons, the
  * ↑ ↓ keys and a swipe up or down ask for the one above or below too. The parent decides which
- * those are.
+ * those are. A `caption` shows under the image, in a box of the same height whatever its length,
+ * so the image keeps its size while stepping through.
  */
 const props = defineProps<{
   /** The image to show; null keeps the viewer closed. */
@@ -26,6 +27,8 @@ const props = defineProps<{
   verticalName?: string
   hasUp?: boolean
   hasDown?: boolean
+  /** Shown under the image; given as '' where one image has none, to keep its space. */
+  caption?: string
 }>()
 const emit = defineEmits<{ close: []; previous: []; next: []; up: []; down: [] }>()
 const dialog = useTemplateRef<HTMLDialogElement>('dialog')
@@ -62,14 +65,20 @@ const SWIPES = { left: 'next', right: 'previous', up: 'down', down: 'up', none: 
 const image = useTemplateRef<{ zoomed: boolean }>('image')
 /** A second finger came down during this touch: a pinch, not a swipe. */
 let pinched = false
+/** The touch began on the caption, which scrolls when it's long: not a swipe either. */
+const captionBox = useTemplateRef<HTMLElement>('captionBox')
+let onCaption = false
 useEventListener(dialog, 'touchstart', (e: TouchEvent) => {
   if (e.touches.length > 1) pinched = true
 }, { passive: true })
 useSwipe(dialog, {
   threshold: 50,
-  onSwipeStart: () => (pinched = false),
+  onSwipeStart: (e) => {
+    pinched = false
+    onCaption = !!captionBox.value?.contains(e.target as Node)
+  },
   onSwipeEnd: (_e, direction) => {
-    if (pinched || image.value?.zoomed) return
+    if (pinched || onCaption || image.value?.zoomed) return
     const way = SWIPES[direction]
     if (way) go(way)
   },
@@ -111,10 +120,15 @@ onClickOutside(
     data-image-viewer
     @close="emit('close')"
   >
-    <div v-if="src" class="flex h-full w-full flex-col p-4 sm:p-8">
+    <!-- The controls above the image and the caption below it; on a phone on its side, both in a
+         column beside it, so the image has the whole height. -->
+    <div
+      v-if="src"
+      class="grid h-full w-full grid-rows-[auto_minmax(0,1fr)_auto] p-4 sm:p-8 short:grid-cols-[minmax(0,1fr)_13rem] short:grid-rows-[auto_minmax(0,1fr)] short:gap-x-4 short:p-3"
+    >
       <div
         ref="controls"
-        class="flex flex-wrap items-center justify-end gap-x-3 gap-y-1 pb-2 text-sm text-white/80"
+        class="flex flex-wrap items-center justify-end gap-x-3 gap-y-1 pb-2 text-sm text-white/80 short:col-start-2 short:row-start-1 short:justify-start"
         data-viewer-controls
       >
         <template v-if="label || hasPrevious || hasNext || vertical">
@@ -167,7 +181,7 @@ onClickOutside(
           <!-- On a phone, a line of its own under the buttons; beside them on a wider screen. -->
           <span
             v-if="label"
-            class="order-last min-w-0 basis-full truncate tabular-nums sm:order-none sm:mr-auto sm:basis-auto"
+            class="order-last min-w-0 basis-full truncate tabular-nums sm:order-none sm:mr-auto sm:basis-auto short:order-last short:basis-full short:whitespace-normal"
             :title="label"
             data-viewer-label
           >
@@ -187,7 +201,23 @@ onClickOutside(
           <span class="hidden sm:inline">Close </span>✕
         </button>
       </div>
-      <FrameImage ref="image" :src="src" :alt="alt" bare instant zoom />
+      <FrameImage
+        ref="image"
+        :src="src"
+        :alt="alt"
+        bare
+        instant
+        zoom
+        class="short:col-start-1 short:row-span-2 short:row-start-1"
+      />
+      <p
+        v-if="caption !== undefined"
+        ref="captionBox"
+        class="mx-auto mt-2 h-[3lh] w-full max-w-prose shrink-0 overflow-y-auto text-sm whitespace-pre-line text-white/80 short:col-start-2 short:row-start-2 short:h-auto short:min-h-0"
+        data-viewer-caption
+      >
+        {{ caption }}
+      </p>
     </div>
   </dialog>
 </template>

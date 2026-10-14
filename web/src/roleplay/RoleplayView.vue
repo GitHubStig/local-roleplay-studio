@@ -667,6 +667,7 @@ async function saveCastDraft(): Promise<boolean> {
                 :session-id="session.id"
                 :frames="session.frames"
                 :image-model="session.settings.imageModel"
+                :caption="(f) => f.reply.actions"
               />
               <label
                 class="flex cursor-pointer items-center gap-1.5 text-muted"
