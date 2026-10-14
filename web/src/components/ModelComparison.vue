@@ -6,11 +6,13 @@ import { useStoredString } from '../composables/storage'
 import { useStoredFlag } from '../composables/useStoredFlag'
 import { useImageModels } from '../composables/useSettingsOptions'
 import ComparisonTable from './ComparisonTable.vue'
+import StyleScoresPanel from './StyleScoresPanel.vue'
 
 /**
  * A Session's pictures side by side (ComparisonTable), a row per Frame and a column per Image
  * Model that rendered any, opened by its Compare button (shown once two models have). Export
- * writes the same as a page of its own, on the server.
+ * writes the same as a page of its own, on the server. Style scores shows, in place of the table,
+ * how varied each shown model's art style is (StyleScoresPanel).
  */
 const props = withDefaults(
   defineProps<{
@@ -67,6 +69,18 @@ const hidden = ref<number[]>([])
 const exportedColumns = computed(() =>
   (order.value ?? models.value.map((_, i) => i)).filter((i) => !hidden.value.includes(i))
 )
+
+/** The shown columns' Image Models (ids), in order, for the style scores. */
+const shownModels = computed(() => exportedColumns.value.map((i) => modelIds.value[i]))
+const pictureFrames = computed(() =>
+  props.frames.filter((f) => f.pictures.length).map((f) => ({
+    index: f.index,
+    name: props.name(f.index),
+    caption: props.caption?.(f) || undefined,
+  }))
+)
+/** The style scores in place of the table. */
+const showScores = ref(false)
 
 const open = ref(false)
 const dialog = useTemplateRef<HTMLDialogElement>('dialog')
@@ -140,7 +154,25 @@ async function exportPage() {
       :rows
       hideable
     >
+      <template v-if="showScores" #instead>
+        <StyleScoresPanel
+          :session-id="sessionId"
+          :models="shownModels"
+          :frames="pictureFrames"
+          :label-of="labelOf"
+        />
+      </template>
       <template #actions>
+        <button
+          type="button"
+          class="rounded border border-line px-2 py-0.5 text-muted hover:text-fg"
+          :aria-pressed="showScores"
+          title="How much each shown model's art style varies across the Frames"
+          data-show-style-scores
+          @click="showScores = !showScores"
+        >
+          {{ showScores ? 'Pictures' : 'Style scores' }}
+        </button>
         <span v-if="exported?.folder" class="text-ok" data-export-done>
           Exported to {{ exported.folder }}
         </span>

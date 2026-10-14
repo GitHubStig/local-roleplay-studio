@@ -11,6 +11,7 @@ export const JOB_NAMES: Record<JobKind, string> = {
   scene: 'SHARP',
   figure: 'TripoSplat',
   lito: 'LiTo',
+  style: 'Style scores',
 }
 
 /**
@@ -34,6 +35,10 @@ export function jobStatus(job: Job, special?: (job: Job) => string | undefined):
   if (job.phase === 'queued') return 'Waiting for another render…'
   if (job.kind === 'scene') return 'Making the 2.5D scene…'
   if (job.kind === 'figure' || job.kind === 'lito') return 'Making the 3D figure…'
+  if (job.kind === 'style') {
+    const doing = 'Embedding the pictures…'
+    return job.progress ? `${doing} ${job.progress.step} of ${job.progress.total}` : doing
+  }
   const doing = job.kind === 'upscale' ? 'Upscaling to 2048 px…' : 'Rendering…'
   return job.progress ? `${doing} step ${job.progress.step} of ${job.progress.total}` : doing
 }

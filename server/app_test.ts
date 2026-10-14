@@ -258,7 +258,15 @@ Deno.test('Choosing ComfyUI makes pictures, and then Upscale, available where mf
   const off = { available: false, reason: 'mflux runs only on Apple Silicon Macs' }
   const on = { available: true }
   const { call } = setup({
-    features: { images: off, upscale: off, voices: off, scenes: on, figures: on, lito: off },
+    features: {
+      images: off,
+      upscale: off,
+      voices: off,
+      scenes: on,
+      figures: on,
+      lito: off,
+      style: off,
+    },
   })
   const before = (await (await call('GET', '/api/settings/options')).json()).features
   assertEquals(before.images.available, false)
@@ -1158,7 +1166,15 @@ Deno.test('Without pictures every kind starts; a Chain writes its Frames without
       settings: { textModel: 'x' },
       textModel: scriptedTextModel([reply('standing')]),
       imageGenerator: images,
-      features: { images: off, upscale: off, voices: off, scenes: off, figures: off, lito: off },
+      features: {
+        images: off,
+        upscale: off,
+        voices: off,
+        scenes: off,
+        figures: off,
+        lito: off,
+        style: off,
+      },
     })
     for (const kind of ['chain', 'storyboard', 'roleplay']) {
       const res = await call('POST', '/api/sessions', { kind, brief: 'A rainy street.' })

@@ -570,6 +570,15 @@ function removeSavedApiKey() {
               <span class="text-sm text-muted">Used by Upscale; applies to the next upscale.</span>
             </label>
           </template>
+          <FeatureSwitch
+            v-model="form.features.style"
+            :availability="options.features.style"
+            title="Style scores"
+            data-feature="style"
+          >
+            Compare measures how much each Image Model's art style varies across the Frames, with
+            CSD and CLIP (4 GB, downloaded the first time).
+          </FeatureSwitch>
         </section>
 
         <section

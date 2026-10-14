@@ -16,6 +16,7 @@ import { seededChat } from './text/seeded.ts'
 import { loggedChat, loggedImages } from './calls.ts'
 import { litoFigureMaker, tripoFigureMaker } from './3d/figure.ts'
 import { sharpSceneMaker } from './3d/scene.ts'
+import { uvStyleEmbedder } from './style/embedder.ts'
 import { buildComparisonPage } from './export/page.ts'
 import { voiceBackends, voiceService } from './voice/voice.ts'
 import { comfyuiVoiceEngine } from './voice/comfyui/comfyui.ts'
@@ -96,6 +97,7 @@ const handler = createHandler({
   scene: features.scenes.available ? sharpSceneMaker() : undefined,
   figure: features.figures.available ? tripoFigureMaker() : undefined,
   lito: features.lito.available ? litoFigureMaker() : undefined,
+  style: features.style.available ? uvStyleEmbedder() : undefined,
 })
 
 Deno.serve({ port }, handler)

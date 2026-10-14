@@ -12,6 +12,7 @@
     "build:export": "vite build --config vite.export.config.ts"
   },
   "dependencies": {
+    "@observablehq/plot": "^0.6.17",
     "@sparkjsdev/spark": "^2.3.0",
     "@vueuse/core": "^15.0.0",
     "three": "^0.180.0",

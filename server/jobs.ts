@@ -16,7 +16,7 @@ import type { Session, SessionStore } from './session.ts'
  * picture to 2048 px; `voice` designs a new take of the Character's voice, `speak` voices one
  * Frame's dialogue, and `speak-thought` its thought; `scene` makes a picture into a 2.5D scene
  * (SHARP); `figure` lifts the person in it out as a 3D figure (TripoSplat), and `lito` does so with
- * Apple's LiTo.
+ * Apple's LiTo; `style` embeds the Session's pictures for the Compare dialog's style scores.
  */
 export type JobKind =
   | 'picture'
@@ -28,6 +28,7 @@ export type JobKind =
   | 'scene'
   | 'figure'
   | 'lito'
+  | 'style'
 export const JOB_KINDS: readonly JobKind[] = [
   'picture',
   'render',
@@ -38,6 +39,7 @@ export const JOB_KINDS: readonly JobKind[] = [
   'scene',
   'figure',
   'lito',
+  'style',
 ]
 
 /**
@@ -54,6 +56,7 @@ export const JOB_FEATURE: Record<JobKind, Feature | null> = {
   scene: 'scenes',
   figure: 'figures',
   lito: 'lito',
+  style: 'style',
 }
 
 export interface Job {
@@ -256,10 +259,11 @@ export interface JobRoutesContext {
 }
 
 /**
- * Jobs about the Session rather than one Frame (a Roleplay's voice): queued as Frame 0's, which
- * needn't exist yet, as a voice can be designed while the Cast is reviewed, before the scene begins.
+ * Jobs about the Session rather than one Frame (a Roleplay's voice, the style scores' embeddings):
+ * queued as Frame 0's, which needn't exist yet, as a voice can be designed while the Cast is
+ * reviewed, before the scene begins.
  */
-const SESSION_JOBS: readonly JobKind[] = ['voice']
+const SESSION_JOBS: readonly JobKind[] = ['voice', 'style']
 
 /** The job routes every Session kind shares, under `/api/sessions/:id/jobs`. */
 export function jobRoutes(ctx: JobRoutesContext): Route[] {

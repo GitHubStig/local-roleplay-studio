@@ -4,7 +4,7 @@
  * mflux once per picture, so the memory it peaks at (~15 GB) is freed when it's done.
  */
 import { fromFileUrl } from '@std/path'
-import { track } from '../children.ts'
+import { runModelScript } from '../modelScript.ts'
 
 /** A Frame's picture as a 3D scene of Gaussian splats (SHARP). */
 export interface Scene {
@@ -46,45 +46,6 @@ export interface SceneMaker {
     signal: AbortSignal,
     onDownload?: (downloading: boolean) => void,
   ): Promise<SceneResult>
-}
-
-/**
- * Runs one of the 3D scripts (`uv run <script> --image … --out …`) to completion and returns the
- * JSON on its last line. `onDownload` hears the script's "Downloading <name>" and "Downloaded"
- * lines, printed while it fetches its weights the first time.
- */
-export async function runModelScript(
-  command: string[],
-  args: string[],
-  name: string,
-  signal: AbortSignal,
-  onDownload?: (downloading: boolean) => void,
-): Promise<Record<string, unknown>> {
-  const [cmd, ...rest] = command
-  const child = track(
-    new Deno.Command(cmd, {
-      args: [...rest, ...args],
-      stdout: 'piped',
-      stderr: 'piped',
-      signal,
-    }).spawn(),
-  )
-  const stdout = new Response(child.stdout).text()
-  let stderr = ''
-  for await (const chunk of child.stderr.pipeThrough(new TextDecoderStream())) {
-    stderr = (stderr + chunk).slice(-8000)
-    for (const line of chunk.split(/[\r\n]+/)) {
-      if (line === `Downloading ${name}`) onDownload?.(true)
-      if (line === 'Downloaded') onDownload?.(false)
-    }
-  }
-  const { success } = await child.status
-  signal.throwIfAborted()
-  if (!success) {
-    const why = stderr.trim().split(/[\r\n]+/).at(-1) || 'no output'
-    throw new Error(`${name} failed (needs uv; see README): ${why}`)
-  }
-  return JSON.parse((await stdout).trim().split('\n').at(-1)!)
 }
 
 const SCRIPT = fromFileUrl(new URL('../../python/sharp/make.py', import.meta.url))

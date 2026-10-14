@@ -1,5 +1,6 @@
 import type { RoleplaySession } from './roleplay/api'
 import type { ComparisonModel, ComparisonRow } from './comparison'
+import type { StyleScores } from './styleScores'
 export interface Health {
   ok: boolean
 }
@@ -8,10 +9,19 @@ export type Quantize = null | 4 | 8
 export type SeedMode = 'random' | 'fixed'
 
 /**
- * The extras beyond the Text Model, each with its own backend: pictures, voices, and 3D (SHARP,
- * TripoSplat, LiTo). One is on when this machine can run it and Settings has it switched on.
+ * The extras beyond the Text Model, each with its own backend: pictures, voices, 3D (SHARP,
+ * TripoSplat, LiTo), and the Compare dialog's style scores. One is on when this machine can run it
+ * and Settings has it switched on.
  */
-export const FEATURES = ['images', 'upscale', 'voices', 'scenes', 'figures', 'lito'] as const
+export const FEATURES = [
+  'images',
+  'upscale',
+  'voices',
+  'scenes',
+  'figures',
+  'lito',
+  'style',
+] as const
 export type Feature = (typeof FEATURES)[number]
 
 /** Whether this machine can run a Feature, and if not, why not. */
@@ -530,6 +540,15 @@ export interface ComparisonExport {
 export const exportComparison = (id: string, comparison: ComparisonExport) =>
   post<{ folder: string; pictures: number }>(`/api/sessions/${id}/export`, comparison)
 
+/**
+ * The Compare dialog's style scores against Frame `base`, for these Image Models (ids), from the
+ * pictures the last `style` job embedded; a 404 until there's been one.
+ */
+export const getStyleScores = (id: string, base: number, models: readonly string[]) =>
+  request<StyleScores>(
+    `/api/sessions/${id}/style-scores?base=${base}&models=${encodeURIComponent(models.join(','))}`,
+  )
+
 /** The latest preview of a render in progress (ComfyUI's), asked for again at each step. */
 export const previewUrl = (sessionId: string, step: number) =>
   `/api/sessions/${sessionId}/preview?step=${step}`
@@ -617,7 +636,8 @@ export const editStoryboardFrame = (
 /**
  * Background work on a Frame: picturing, rendering, upscaling or speaking it, making its picture
  * into a 2.5D scene (SHARP), or lifting its person out as a 3D figure (TripoSplat, LiTo); `voice`
- * designs a new take of the Character's voice (filed under the opening Frame). A Chain has
+ * designs a new take of the Character's voice, and `style` embeds the pictures for the style
+ * scores (both filed under the opening Frame). A Chain has
  * `upscale`, `scene`, `figure` and `lito`; a Storyboard `render` too; a Roleplay has them all.
  */
 export type JobKind =
@@ -630,6 +650,7 @@ export type JobKind =
   | 'scene'
   | 'figure'
   | 'lito'
+  | 'style'
 
 /** A queued, running or failed job. Finished jobs drop off the list. */
 export interface Job {

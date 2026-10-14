@@ -2,12 +2,20 @@ import { join } from '@std/path'
 
 /**
  * The extras beyond the Text Model, each needing its own backend: pictures (mflux, or a ComfyUI
- * server), upscaling (SeedVR2 through mflux), voices (the mlx-audio service), and 3D (SHARP,
- * TripoSplat, LiTo). Which of them this machine can run is worked out once at startup
+ * server), upscaling (SeedVR2 through mflux), voices (the mlx-audio service), 3D (SHARP,
+ * TripoSplat, LiTo), and the Compare dialog's style scores (CSD and CLIP). Which of them this machine can run is worked out once at startup
  * (`detectFeatures`); Settings can switch off any that can. Pictures are also available wherever
  * Settings choose ComfyUI (`app.ts`), which this can't know at startup.
  */
-export const FEATURES = ['images', 'upscale', 'voices', 'scenes', 'figures', 'lito'] as const
+export const FEATURES = [
+  'images',
+  'upscale',
+  'voices',
+  'scenes',
+  'figures',
+  'lito',
+  'style',
+] as const
 export type Feature = (typeof FEATURES)[number]
 
 /** What each Feature is called when saying it's off. */
@@ -18,6 +26,7 @@ export const FEATURE_NAMES: Record<Feature, string> = {
   scenes: 'SHARP',
   figures: 'TripoSplat',
   lito: 'LiTo',
+  style: 'Style scores',
 }
 
 /** Whether a Feature can run here, and if not, why not (for Settings to say). */
@@ -77,6 +86,8 @@ export async function detectFeatures(
     scenes: gpu('SHARP'),
     figures: gpu('TripoSplat'),
     lito: !appleSilicon ? mlxOnly('LiTo (through mlx-spatial)') : uv ? yes : noUv,
+    // PyTorch, on the GPU where there is one; small enough to run on the CPU, only slower.
+    style: uv ? yes : noUv,
   }
 }
 

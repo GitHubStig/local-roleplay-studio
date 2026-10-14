@@ -13,7 +13,8 @@ import ImageViewer from './ImageViewer.vue'
  * rendered, each Frame's caption under its picture. A column moves by dragging its
  * header's grip (or with ← and → on it). With `hideable`, each column has a checkbox: unticked, it
  * moves to the right end, folded to its header. The arrangement is `order` and `hidden`, which the
- * Compare dialog keeps (and exports by); otherwise it lasts until the table is next opened.
+ * Compare dialog keeps (and exports by); otherwise it lasts until the table is next opened. An
+ * `instead` slot shows in place of the table, under the same header (the dialog's style scores).
  */
 const props = defineProps<Comparison & { title?: string; hideable?: boolean }>()
 
@@ -177,7 +178,10 @@ function climb(by: number) {
         <slot name="actions" />
       </div>
     </div>
-    <div ref="scroller" class="min-h-0 flex-1 overflow-auto">
+    <div v-if="$slots.instead" class="min-h-0 flex-1 overflow-auto">
+      <slot name="instead" />
+    </div>
+    <div v-else ref="scroller" class="min-h-0 flex-1 overflow-auto">
       <table class="border-separate border-spacing-2 text-sm">
         <thead>
           <tr>

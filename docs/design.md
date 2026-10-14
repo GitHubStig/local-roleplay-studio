@@ -445,6 +445,22 @@ written for image prompts, are left out).
   pictures by 4 models in 20.6 s to 32 MB. Viewer pictures load only when opened, and thumbnails
   as they near the screen (`loading="lazy"`): 28 of the Chain's 85 on opening it. Each thumbnail's
   size is written into the page, so its cell is as wide as it will be before it loads.
+- **Style scores** (2026-10-14), in Compare's header: in place of the table, how varied each shown
+  model's art style is across the Frames every shown model pictured, against a **base Frame** the
+  player picks (the one without a style of its own; remembered per Session in the browser). Four
+  measures, each a ranked bar chart under what it means: Spread, Away from the base Frame,
+  Distinct styles (the Vendi score) and Matches its Frame (how often a picture is among the three
+  nearest to its own Frame's caption); then each model's distance from the base Frame by Frame, a
+  small chart per model, and a heatmap of every picture's caption rank; the numbers in a table
+  under them. Drawn with Observable Plot in the app's `--info` colour (one hue, so the models are
+  told apart by name, not colour), loaded only when shown. **Score** queues a `style` job (filed
+  under Frame 0, like a voice): `python/style/make.py`, through uv, embeds each picture not yet
+  embedded with CSD and CLIP, and each caption with CLIP, in its turn behind renders but leaving
+  the Text Model loaded (~3 GB). The vectors are kept in the Session's `style.json`, by picture
+  file and caption, so the scores come back at once (`GET /api/sessions/:id/style-scores`) for any
+  base Frame or set of shown models, and Score again takes in only what's new. A Feature
+  (`style`), available wherever uv is, on the GPU (MPS or CUDA) or slowly on the CPU. How the
+  measures and models were chosen: [research/style-scores.md](research/style-scores.md).
 
 In testing, FLUX.2 Klein 4B keeps a person's face, hair and outfit consistent across Frames. Z-Image
 Turbo ignores a described appearance. For drift, see *reference images and edits for Subject

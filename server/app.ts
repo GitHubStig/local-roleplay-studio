@@ -27,6 +27,9 @@ import type { TextModel } from './textModel.ts'
 import type { RoleplayModel } from './roleplay/model.ts'
 import type { FigureMaker } from './3d/figure.ts'
 import type { SceneMaker } from './3d/scene.ts'
+import type { StyleEmbedder } from './style/embedder.ts'
+import { embedStyles } from './style/job.ts'
+import { loadStyleCache, StyleScoreError, styleScores, unembedded } from './style/scores.ts'
 import type { VoiceEngine } from './voice/voice.ts'
 import { roleplayExcerpt } from './roleplay/prompt.ts'
 import { roleplayRoutes } from './roleplay/routes.ts'
@@ -89,6 +92,8 @@ export interface AppDeps {
   figure?: FigureMaker
   /** The same with Apple's LiTo. */
   lito?: FigureMaker
+  /** Embeds pictures for the Compare dialog's style scores; without it, there are none. */
+  style?: StyleEmbedder
   /**
    * Which extras this machine can run (`detectFeatures`, at startup). Left out, those whose
    * backend is given are available, the rest not: what tests want.
@@ -356,6 +361,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     scenes: given(deps.scene, 'SHARP'),
     figures: given(deps.figure, 'TripoSplat'),
     lito: given(deps.lito, 'LiTo'),
+    style: given(deps.style, 'style embedder'),
   }
   /** What can run now, with Settings' backends (`withBackends`). */
   const availability = async (): Promise<Availabilities> =>
@@ -404,6 +410,14 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
 
   async function runJob(id: string, job: Job, emit: JobEmit, signal: AbortSignal) {
     const session = await deps.sessions.load(id)
+    if (session && job.kind === 'style') {
+      return embedStyles(
+        { store: deps.sessions, style: deps.style, renderQueue },
+        session,
+        emit,
+        signal,
+      )
+    }
     if (session?.kind === 'roleplay') {
       return runRoleplayJob(roleplayJobs, session, job, emit, signal)
     }
@@ -462,6 +476,12 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       store: deps.sessions,
       check: async (session, kind, index, pending) => {
         const feature = JOB_FEATURE[kind]
+        if (kind === 'style') {
+          return (feature && (await featureOff(feature))) ??
+            (session.frames.some((f) => f.pictures.length)
+              ? null
+              : error('No Frame has a picture to score yet', 409))
+        }
         return (feature && (await featureOff(feature))) ??
           (session.kind === 'roleplay'
             ? checkRoleplayJob(session, kind, index, pending)
@@ -898,6 +918,29 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       return new Response(jpeg, {
         headers: { 'Content-Type': 'image/jpeg', 'Cache-Control': 'no-store' },
       })
+    }],
+
+    // The Compare dialog's style scores, against Frame `base`, for the Image Models in `models`
+    // (comma-separated; all of them if left out), from the pictures the `style` job embedded.
+    ['GET', new URLPattern({ pathname: '/api/sessions/:id/style-scores' }), async (req, p) => {
+      const session = await loadSession(p.id!)
+      if (session instanceof Response) return session
+      const query = new URL(req.url).searchParams
+      const base = Number(query.get('base') ?? 0)
+      if (!Number.isInteger(base) || !session.frames[base]) return error('No such Frame', 404)
+      const models = query.get('models')?.split(',').filter(Boolean)
+      const cache = await loadStyleCache(deps.sessions.dir(session.id))
+      if (!cache) return error('Not scored yet', 404)
+      try {
+        const todo = unembedded(session, cache)
+        return json({
+          ...styleScores(session, cache, base, models),
+          unembedded: todo.images.length + todo.texts.length,
+        })
+      } catch (err) {
+        if (err instanceof StyleScoreError) return error(err.message, 409)
+        throw err
+      }
     }],
 
     // The Compare dialog as a page of its own, with its pictures as WebP, in a folder under

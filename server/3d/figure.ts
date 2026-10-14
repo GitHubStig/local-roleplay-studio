@@ -4,7 +4,7 @@
  * figure, like SHARP once per scene, so the memory it peaks at (~11 GB) is freed when it's done.
  */
 import { fromFileUrl } from '@std/path'
-import { runModelScript } from './scene.ts'
+import { runModelScript } from '../modelScript.ts'
 
 /** A person as a full 3D figure of Gaussian splats, back included (TripoSplat or LiTo). */
 export interface Figure {

@@ -12,6 +12,7 @@ export const ALL_ON: Record<Feature, boolean> = {
   scenes: true,
   figures: true,
   lito: true,
+  style: true,
 }
 
 /** Every Feature available on this "machine", as on an Apple Silicon Mac with everything set up. */
@@ -22,6 +23,7 @@ export const ALL_AVAILABLE: Record<Feature, Availability> = {
   scenes: { available: true },
   figures: { available: true },
   lito: { available: true },
+  style: { available: true },
 }
 
 /** Two mflux Image Models, as the Settings options list them. */

@@ -171,6 +171,13 @@ Each runs once per scene or figure through uv, downloading its weights with the 
   research-only, non-commercial license) does the same another way, cutting the person out with
   TripoSplat's BiRefNet first. Apple Silicon Macs only.
 
+### Style scores (optional)
+
+Compare's **Style scores** measure how much each Image Model's art style varies across a Session's
+Frames. `python/style/make.py` runs once per scoring through uv, on the GPU (a Mac's or an NVIDIA
+one) or slowly on the CPU, and downloads its two models the first time (CSD, 2.4 GB of which 1.2
+GB is used, CC-BY-4.0; CLIP ViT-L/14, 1.7 GB). On a Mac, 279 pictures took about 50 s.
+
 ### Two machines
 
 The app finds ComfyUI and Ollama by address, so any machine can use another's on the local
@@ -262,6 +269,7 @@ server/           Deno API: the app, Sessions, Settings, the job queue, what all
                   comfyui/workflows/)
   comfyui/        what talking to ComfyUI takes, for pictures and voices alike
   3d/             SHARP scenes, TripoSplat and LiTo figures
+  style/          Compare's style scores: the embedder, the measures and the job
   export/         the Compare table as a page of its own, its pictures as WebP
   prompts/        what the Text Model is told, one Markdown file each: chain/, storyboard/,
                   roleplay/, and shared/ for what more than one uses
@@ -271,6 +279,7 @@ python/           What uv runs, each in its own folder with its packages pinned 
   sharp/          Apple's SHARP: a picture as a 2.5D scene
   triposplat/     TripoSplat: the person in a picture as a 3D figure (VAST's code in vendor/)
   lito/           Apple's LiTo, through mlx-spatial: the same, another way
+  style/          CSD and CLIP: the pictures as vectors, for Compare's style scores
 docs/             Design, models, research, Scenario format, ADRs and open threads
 CONTEXT.md        Glossary of the game's terms
 ```

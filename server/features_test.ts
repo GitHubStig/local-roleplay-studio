@@ -18,12 +18,13 @@ Deno.test('detectFeatures: an Apple Silicon Mac with mflux and uv runs everythin
     'scenes',
     'figures',
     'lito',
+    'style',
   ])
 })
 
 Deno.test('detectFeatures: Windows with an NVIDIA card runs SHARP and TripoSplat, not the MLX ones', async () => {
   const features = await detectFeatures(machine('windows', 'x86_64', ['uv', 'nvidia-smi']))
-  assertEquals(available(features), ['scenes', 'figures'])
+  assertEquals(available(features), ['scenes', 'figures', 'style'])
   assertEquals(features.images.reason, 'mflux runs only on Apple Silicon Macs')
   assertEquals(features.upscale.reason, 'mflux runs only on Apple Silicon Macs')
   assertEquals(
@@ -39,6 +40,7 @@ Deno.test('detectFeatures: Windows with only Ollama runs none of them, and says 
   assertEquals(features.scenes.reason?.startsWith("uv isn't installed"), true)
   const noGpu = await detectFeatures(machine('linux', 'x86_64', ['uv']))
   assertEquals(noGpu.figures.reason, 'TripoSplat needs an Apple Silicon Mac or an NVIDIA GPU')
+  assertEquals(noGpu.style.available, true)
 })
 
 Deno.test('detectFeatures: a Mac without mflux has no pictures, unless placeholders stand in', async () => {
