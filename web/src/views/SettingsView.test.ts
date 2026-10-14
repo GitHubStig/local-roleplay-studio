@@ -27,7 +27,6 @@ const settings: api.Settings = {
   size: 'portrait',
   quantize: null,
   stepCache: 0.4,
-  fast: false,
   float16: true,
   previews: true,
   seedMode: 'random',
@@ -68,7 +67,15 @@ const options: api.SettingsOptions = {
         label: 'Qwen-Image 2.1',
         defaultSteps: 25,
         stepCache: true,
-        fastSteps: 6,
+        quantize: true,
+        float16: true,
+      },
+      {
+        id: 'qwen-image-2.1-viggle',
+        label: 'Qwen-Image 2.1 Turbo (Viggle LoRA)',
+        defaultSteps: 6,
+        stepChoices: [6],
+        stepCache: false,
         quantize: true,
         float16: true,
       },
@@ -76,10 +83,8 @@ const options: api.SettingsOptions = {
         id: 'ideogram-4',
         label: 'Ideogram 4',
         defaultSteps: 20,
-        fixedSteps: true,
+        stepChoices: [12, 20, 48],
         stepCache: false,
-        fastSteps: 12,
-        fastNote: 'with a turbo preset.',
         quantize: false,
         float16: false,
       },
@@ -245,29 +250,33 @@ describe('SettingsView', () => {
     }))
   })
 
-  it('offers the step cache and Fast only for models that have them', async () => {
+  it('offers the step cache only for models that take it', async () => {
     const wrapper = mount(SettingsView)
     await flushPromises()
     expect(wrapper.find('[data-step-cache]').exists()).toBe(false)
-    expect(wrapper.find('[data-fast]').exists()).toBe(false)
     await wrapper.find('[data-image-model]').setValue('qwen-image-2.1')
     expect(wrapper.find('[data-step-cache]').exists()).toBe(true)
-    await wrapper.find('[data-fast] input').setValue(true)
-    // Fast sets its own steps, and the cache has no effect on so few.
+    await wrapper.find('[data-image-model]').setValue('qwen-image-2.1-viggle')
     expect(wrapper.find('[data-step-cache]').exists()).toBe(false)
-    const steps = wrapper.find('input[type=number]').element as HTMLInputElement
-    expect([steps.value, steps.disabled]).toEqual(['6', true])
   })
 
-  it("shows the steps a model sets for itself, and its Fast mode's", async () => {
+  it('offers only the steps a model has presets for, picked from a list', async () => {
     const wrapper = mount(SettingsView)
     await flushPromises()
     await wrapper.find('[data-image-model]').setValue('ideogram-4')
-    const steps = () => wrapper.find('input[type=number]').element as HTMLInputElement
-    expect([steps().value, steps().disabled]).toEqual(['20', true])
-    expect(wrapper.find('[data-fast]').text()).toContain('Renders in 12 steps with a turbo preset.')
-    await wrapper.find('[data-fast] input').setValue(true)
-    expect([steps().value, steps().disabled]).toEqual(['12', true])
+    const choices = () => wrapper.find('[data-step-choices]')
+    const select = () => choices().element as HTMLSelectElement
+    expect(choices().findAll('option').map((o) => o.text())).toEqual(['12', '20', '48'])
+    expect([select().value, select().disabled]).toEqual(['20', false])
+    await choices().setValue('12')
+    expect(select().value).toBe('12')
+    // One preset only: shown, not chosen.
+    await wrapper.find('[data-image-model]').setValue('qwen-image-2.1-viggle')
+    expect([select().value, select().disabled]).toEqual(['6', true])
+    // Any count for the others.
+    await wrapper.find('[data-image-model]').setValue('qwen-image-2.1')
+    expect(choices().exists()).toBe(false)
+    expect((wrapper.find('input[type=number]').element as HTMLInputElement).value).toBe('25')
   })
 
   it('offers the picture forming only on ComfyUI, and saves it off', async () => {

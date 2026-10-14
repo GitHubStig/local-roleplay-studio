@@ -42,8 +42,6 @@ export interface Settings {
   quantize: Quantize
   /** The fraction of steps the step cache skips, for models that take it; null for off. */
   stepCache: number | null
-  /** Render with the model's fast mode (its own steps), for models that have one. */
-  fast: boolean
   /** Compute in float16, for models that take it: faster on M1 and M2 Macs. */
   float16: boolean
   /** Show the picture forming while it renders (ComfyUI's previews). Applies at once. */
@@ -77,12 +75,8 @@ export interface ImageModelOption {
   defaultSteps: number
   /** Takes the step cache (mflux). */
   stepCache: boolean
-  /** The steps its fast mode runs at; absent when it has none (mflux). */
-  fastSteps?: number
-  /** What its fast mode does, following "Renders in N steps" (mflux). */
-  fastNote?: string
-  /** Its steps are set for it (by a preset), always `defaultSteps` or `fastSteps` (mflux). */
-  fixedSteps?: boolean
+  /** The only steps it renders at, when it has presets for them (mflux); any count otherwise. */
+  stepChoices?: number[]
   /** Can be quantized to 8 or 4 bits as it loads (mflux). */
   quantize: boolean
   /** Takes float16 compute (mflux). */

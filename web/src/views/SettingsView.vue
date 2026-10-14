@@ -108,15 +108,6 @@ const imageModels = computed(() =>
 )
 /** The chosen Image Model's options, for the controls only some models have. */
 const imageModel = computed(() => imageModels.value.find((m) => m.id === form.value?.imageModel))
-const fastOn = computed(() => !!form.value?.fast && !!imageModel.value?.fastSteps)
-/** The steps a render takes when they aren't the player's to choose: Fast's, or the model's own. */
-const setSteps = computed(() =>
-  fastOn.value
-    ? imageModel.value?.fastSteps
-    : imageModel.value?.fixedSteps
-    ? imageModel.value.defaultSteps
-    : undefined
-)
 
 function onImageModelChange() {
   if (form.value && imageModel.value) form.value.steps = imageModel.value.defaultSteps
@@ -492,27 +483,19 @@ function removeSavedApiKey() {
               </span>
             </label>
 
-            <label v-if="imageModel?.fastSteps" class="flex items-start gap-2" data-fast>
-              <input v-model="form.fast" type="checkbox" class="mt-1" />
-              <span class="flex flex-col gap-0.5">
-                <span>Fast</span>
-                <span class="text-sm text-muted">
-                  Renders in {{ imageModel.fastSteps }} steps {{ imageModel.fastNote }}
-                </span>
-              </span>
-            </label>
-
             <div class="grid grid-cols-2 gap-4">
               <label class="flex flex-col gap-1">
                 <span class="text-sm text-muted">Steps</span>
-                <input
-                  v-if="setSteps"
-                  :value="setSteps"
-                  type="number"
+                <select
+                  v-if="imageModel?.stepChoices"
+                  v-model.number="form.steps"
                   class="field"
-                  disabled
-                  :title="fastOn ? 'Fast mode sets the steps' : 'This model sets its own steps'"
-                />
+                  :disabled="imageModel.stepChoices.length < 2"
+                  title="This model renders only at these steps"
+                  data-step-choices
+                >
+                  <option v-for="n in imageModel.stepChoices" :key="n" :value="n">{{ n }}</option>
+                </select>
                 <input v-else v-model.number="form.steps" type="number" min="1" max="100" class="field" />
               </label>
               <label v-if="imageModel?.quantize" class="flex flex-col gap-1">
@@ -539,7 +522,7 @@ function removeSavedApiKey() {
               </span>
             </label>
 
-            <label v-if="imageModel?.stepCache && !fastOn" class="flex flex-col gap-1" data-step-cache>
+            <label v-if="imageModel?.stepCache" class="flex flex-col gap-1" data-step-cache>
               <span class="text-sm text-muted">Step cache</span>
               <select v-model="form.stepCache" class="field">
                 <option v-for="c in stepCacheChoices" :key="String(c.value)" :value="c.value">

@@ -507,27 +507,18 @@ describe('SessionView', () => {
 
   it("switches the Chain's Image Model, showing the steps it renders at", async () => {
     const chain = session([frame(0, null), frame(1, 'Sit')])
-    // Fast is off in the Chain's own copy, but on in Settings now, which say how a render runs.
-    chain.settings = { ...chain.settings, steps: 25, fast: false }
+    chain.settings = { ...chain.settings, steps: 25 }
     vi.mocked(api.getSession).mockResolvedValue(chain)
-    vi.mocked(api.getSettings).mockResolvedValue({ features: ALL_ON, fast: true } as api.Settings)
-    await useFeatures().refreshFeatures()
     const { wrapper } = await mountIt()
     const select = wrapper.find('[data-image-model]')
     expect((select.element as HTMLSelectElement).value).toBe('qwen-image-2.1')
-    // Up to date, it can still render again: with Settings' size, Fast and the rest as they are now.
+    // Up to date, it can still render again: with Settings' size and the rest as they are now.
     expect(wrapper.find('[data-changed]').exists()).toBe(false)
     expect(wrapper.find('[data-render-button]').text()).toBe('Re-render')
     expect(select.findAll('option').map((o) => o.text())).toEqual([
       'Qwen-Image 2.1',
       'FLUX.2 Klein 4B',
     ])
-    // Qwen-Image has a fast mode: its own steps.
-    expect(wrapper.find('[data-image-steps]').text()).toBe('· 6 steps')
-    // Fast switched off in Settings: the Chain's steps.
-    vi.mocked(api.getSettings).mockResolvedValue({ features: ALL_ON, fast: false } as api.Settings)
-    await useFeatures().refreshFeatures()
-    await flushPromises()
     expect(wrapper.find('[data-image-steps]').text()).toBe('· 25 steps')
 
     // The picture then shows as changed since render, and can render again.

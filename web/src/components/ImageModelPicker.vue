@@ -2,7 +2,6 @@
 import { computed, ref } from 'vue'
 import { type PicturedFrame, setImageModel, type Settings } from '../api'
 import { useImageModels } from '../composables/useSettingsOptions'
-import { useFeatures } from '../composables/useFeatures'
 
 /**
  * The Session's Image Model, switched here (Settings has the one new Sessions start with), and the
@@ -14,18 +13,14 @@ const props = defineProps<{ session: S }>()
 const emit = defineEmits<{ switched: [session: S]; failed: [message: string] }>()
 const { modelsOf, find } = useImageModels()
 const switching = ref(false)
-/** Settings as they are now, which say how a render runs (Fast, among others). */
-const { settings: current } = useFeatures()
-
 /**
- * The steps a render takes: the model's fast mode's when Fast is on in Settings now and it has
- * one, else the Session's, or the model's own where it sets them.
+ * The steps a render takes: the Session's, or, for a model with only some (presets), its default
+ * where the Session's aren't one of them (as `mfluxArgs` renders it).
  */
 const steps = computed(() => {
   const { imageModel, steps } = props.session.settings
   const model = find(imageModel)
-  if (current.value?.fast && model?.fastSteps) return model.fastSteps
-  return model?.fixedSteps ? model.defaultSteps : steps
+  return !model?.stepChoices || model.stepChoices.includes(steps) ? steps : model.defaultSteps
 })
 
 async function pick(select: HTMLSelectElement) {

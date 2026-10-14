@@ -23,7 +23,6 @@ const settings: Settings = {
   size: 'portrait',
   quantize: null,
   stepCache: 0.4,
-  fast: false,
   float16: true,
   previews: true,
   seedMode: 'random',

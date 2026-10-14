@@ -13,8 +13,11 @@ export interface MfluxModel {
   preQuantized?: boolean
   /** Steps to use when the model is picked: mflux's own default, unless fewer look as good. */
   defaultSteps: number
-  /** mflux sets the steps itself (from a preset) and ignores `--steps`, so none are passed. */
-  fixedSteps?: boolean
+  /**
+   * The only steps it renders at, each picked by its own arguments (a preset, or `--steps` itself);
+   * Settings' steps choose one, and any other count renders at `defaultSteps`.
+   */
+  stepPresets?: readonly StepPreset[]
   /** Arguments passed on every render, after the rest. */
   args?: readonly string[]
   /**
@@ -26,17 +29,12 @@ export interface MfluxModel {
   stepCache?: boolean
   /** Takes `--compute-precision float16`: faster on M1 and M2 Macs, the same on M4 and M5. */
   float16?: boolean
-  /** A few-step mode the player can switch on: a distilling LoRA with its own scheduler. */
-  fast?: FastMode
 }
 
-/** A faster way to render (a turbo LoRA with its scheduler, a turbo preset), at exactly these steps. */
-export interface FastMode {
-  /** The arguments that switch it on. A `--lora` takes a local file or a Hugging Face `repo:file`. */
-  args: readonly string[]
+/** A step count a model renders at, and the arguments that choose it. */
+export interface StepPreset {
   steps: number
-  /** What it does, for Settings: follows "Renders in N steps". */
-  note: string
+  args: readonly string[]
 }
 
 export const MFLUX_MODELS: readonly MfluxModel[] = [
@@ -111,19 +109,25 @@ export const MFLUX_MODELS: readonly MfluxModel[] = [
     defaultSteps: 25,
     stepCache: true,
     float16: true,
-    // Viggle's turbo LoRA (1.3 GB, Qwen research license): about 3.4x faster, a little smoother.
-    fast: {
-      args: [
-        '--scheduler',
-        'viggle_turbo',
-        '--lora',
-        'Viggle/Qwen-Image-2.1-viggle-turbo:Qwen-Image-2.1-viggle-turbo-v0.3-6step-lora-r256.safetensors',
-        '1.0',
-      ],
-      steps: 6,
-      note:
-        'with a turbo LoRA (downloaded the first time, 1.3 GB): about 3× faster, a little smoother and less painterly.',
-    },
+  },
+  {
+    id: 'qwen-image-2.1-viggle',
+    label: 'Qwen-Image 2.1 Turbo (Viggle LoRA)',
+    command: 'mflux-generate-qwen-2.1',
+    model: 'qwen-image-2.1',
+    // Viggle's turbo LoRA (v0.3, 1.3 GB, fetched on first use; Qwen research license) on Qwen-Image
+    // 2.1: about 3.4x faster, smoother and less painterly. It must run at exactly 6 steps with its
+    // own scheduler, so it takes no step cache (which leaves runs under 10 steps be anyway).
+    defaultSteps: 6,
+    stepPresets: [{ steps: 6, args: ['--steps', '6'] }],
+    args: [
+      '--scheduler',
+      'viggle_turbo',
+      '--lora',
+      'Viggle/Qwen-Image-2.1-viggle-turbo:Qwen-Image-2.1-viggle-turbo-v0.3-6step-lora-r256.safetensors',
+      '1.0',
+    ],
+    float16: true,
   },
   {
     id: 'ming-image',
@@ -162,15 +166,14 @@ export const MFLUX_MODELS: readonly MfluxModel[] = [
     model: 'mflux-community/ideogram-4-mflux-q8',
     baseModel: 'ideogram-4-fp8',
     preQuantized: true,
-    // A preset sets the steps and guidance schedule; mflux's default is V4_DEFAULT_20.
+    // A preset sets the steps, the guidance schedule and when the steps fall (mflux's
+    // `Ideogram4Scheduler.PRESETS`); mflux ignores `--steps`. The turbo one also shifts the steps.
     defaultSteps: 20,
-    fixedSteps: true,
-    fast: {
-      args: ['--preset', 'V4_TURBO_12'],
-      steps: 12,
-      note:
-        "with Ideogram's turbo preset instead of its default 20: its own schedule, a little different.",
-    },
+    stepPresets: [
+      { steps: 12, args: ['--preset', 'V4_TURBO_12'] },
+      { steps: 20, args: ['--preset', 'V4_DEFAULT_20'] },
+      { steps: 48, args: ['--preset', 'V4_QUALITY_48'] },
+    ],
   },
 ]
 

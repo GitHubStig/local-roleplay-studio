@@ -86,7 +86,7 @@ builds and how to make one). Small models (4–8B) can't reliably follow the pro
 The default Image Model is **Qwen-Image 2.1**, which both image backends run. Choose the backend on
 the Images tab of Settings:
 
-- **mflux, on a Mac:** mflux 0.21+ (the step cache and Fast need it):
+- **mflux, on a Mac:** mflux 0.21+ (the step cache and Viggle's turbo need it):
   `uv tool install --managed-python --python 3.14 mflux`. (uv's own Python, kept apart from any
   other Python on the Mac; mflux runs on 3.10 or newer.) Each model downloads from Hugging Face
   into `~/.cache/huggingface` the first time it's used, 3–30 GB each, shown as "Downloading the
@@ -104,10 +104,9 @@ the Images tab of Settings:
   | Boogu Image Turbo (~16 s at 512 px) | `mflux-generate-boogu --model boogu-image-turbo --prompt test --output /tmp/x.png` |
   | SeedVR2 upscaler, 7B and 3B (Upscale, ~46 s to 2048 px) | `mflux-upscale-seedvr2 --model seedvr2-7b --image-path /tmp/x.png --resolution 2048 --output /tmp/y.png` (one download holds both) |
 
-  **Fast**
-  (Qwen-Image 2.1) renders with Viggle's 6-step turbo LoRA
+  **Qwen-Image 2.1 Turbo (Viggle LoRA)** is Qwen-Image 2.1 with Viggle's 6-step turbo LoRA
   ([Viggle/Qwen-Image-2.1-viggle-turbo](https://huggingface.co/Viggle/Qwen-Image-2.1-viggle-turbo),
-  1.3 GB, Qwen's research license), which mflux downloads with the first fast render.
+  1.3 GB, Qwen's research license), which mflux downloads with its first render.
 - **ComfyUI, on any machine** (the one for Windows): ComfyUI must be running (Comfy Desktop, the
   portable build or a manual install; the app doesn't start it) with the Image Model's files: for
   Qwen-Image 2.1, the `diffusion_models`, `text_encoders` (Qwen3-VL 8B) and `vae` files that

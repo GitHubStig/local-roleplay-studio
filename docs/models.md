@@ -582,7 +582,7 @@ was picked as the margin over 64 for whispers (mostly breath, which MP3 handles 
 **Use Qwen-Image 2.1** (`qwen-image-2.1`, the default since 2026-10-08), 25 steps: the model both
 backends run (mflux on the Mac, ComfyUI on either; "mflux and ComfyUI side by side" in
 [research/comfyui.md](research/comfyui.md)), and the one measured most here (the steps trial, the
-step cache and Fast, below). On the Mac at 832×1216: 96.5 s with mflux, 55.7 s with the step cache;
+step cache and Viggle's turbo, below). On the Mac at 832×1216: 96.5 s with mflux, 55.7 s with the step cache;
 on the RTX 4070 through ComfyUI, ~21 s. For speed on a Mac alone, FLUX.2 Klein 4B (`flux2-klein-4b`,
 4 steps, ~10–13 s) was the default until then; it runs on mflux only.
 
@@ -596,10 +596,11 @@ on the RTX 4070 through ComfyUI, ~21 s. For speed on a Mac alone, FLUX.2 Klein 4
 | ERNIE-Image Turbo | 512×512: ~18 s (8 steps) | Peak memory ~25 GB. |
 | Boogu Image Turbo | 512×512: ~16 s (4 steps) | Peak memory ~29 GB. |
 | Qwen-Image 2.1 | 512×512: ~23 s (25 steps) · ~38 s (40, mflux's default) | 25 steps looks as good as 40 at 512 px, so it's our default; it holds at 1024² too, where 20 hasn't settled yet ([bench/steps](bench/steps/README.md)). Peak memory ~35 GB. |
+| Qwen-Image 2.1 Turbo (Viggle LoRA) | 512×512: ~13.5 s (6 steps; Mac, 2026-10-14) · 1024²: ~30 s | Qwen-Image 2.1 with Viggle's turbo LoRA, an Image Model of its own since 2026-10-14 (Settings → Fast before; ADR 0016). Smoother and less painterly than 25 steps; measured below. |
 
 | Ming-Image 0.1 Design | 512×512: ~14 s (12 steps) | Added 2026-10-11 (mflux 0.22). A design model (posters, cards, lettering) rendering RGBA, flattened onto white (`--flatten-alpha`; the file comes out RGB). Runs the saved copy mflux's README recommends: DiT at 8 bits, its ~16B MoE text encoder at 5 (18 GB on disk; the original is 53 GB). Peak memory ~13.2 GB. From the Art Agent's kind of prose, one test scene: everything described, the sign's lettering right, painterly. |
 | FIBO 1.5 (8-bit) | 512×512: ~82 s (6 steps) | Added 2026-10-12 (mflux 0.22). Bria's distilled FIBO (DMD, then DMD-R for realism): 4–6 steps at guidance 1, against FIBO's 50 at 5, so the app passes both (mflux reads it as FIBO); the test render bore them out. mflux-community's saved 8-bit copy (14 GB; CC BY-NC like FIBO). Trained on long JSON captions: a prose Image Prompt is first written out as one by FIBO's own VLM (`briaai/FIBO-vlm`, 8.3 GB, always seed 42), freed before rendering. The 6 steps took ~14 s of the 82; the rest is loading both models and the VLM writing, not timed apart. Peak memory footprint 28.7 GB. Reads up to 2048 tokens. One test scene from prose: everything described, the sign's lettering right but partly hidden behind a carved stag. **Quoted lines break it** (2026-10-12): the VLM copies a prompt's straight double quotes (a speech bubble's line) into its JSON unescaped, and mflux fails on the JSON (`JSONDecodeError`), whatever the seed (the VLM's is fixed at 42 in mflux anyway; the Frame's seed reaches only the render). The app sends FIBO curly quotes instead; the Frame that failed then rendered (832×1216: 131 s, 37.3 GB peak), its bubbles' lines legible. |
-| Ideogram 4 (8-bit) | 512×512: ~57 s (20 steps) · ~36 s (Fast, 12) | Added 2026-10-11 (mflux 0.22). A typography model. Runs mflux-community's saved 8-bit copy (26 GB): the same size as the FP8 original, without dequantizing at each step. Gated: accept its terms on Hugging Face and `hf auth login` once. Peak memory ~30.4 GB. A preset sets the steps, so Settings → Steps doesn't apply. **Needs JSON captions**: from prose it stamped a line of garbled lettering across the middle of the picture (both presets); the same scene as a JSON caption came out clean, sign spelled right (open-threads.md). |
+| Ideogram 4 (8-bit) | 512×512: ~57 s (20 steps) · ~36 s (12) | Added 2026-10-11 (mflux 0.22). A typography model. Runs mflux-community's saved 8-bit copy (26 GB): the same size as the FP8 original, without dequantizing at each step. Gated: accept its terms on Hugging Face and `hf auth login` once. Peak memory ~30.4 GB. A preset sets the steps (and its guidance schedule): Steps offers its three, 12 (turbo), 20 (the default) and 48 (quality). **Needs JSON captions**: from prose it stamped a line of garbled lettering across the middle of the picture (both presets); the same scene as a JSON caption came out clean, sign spelled right (open-threads.md). |
 
 Ming-Image and Ideogram 4 were timed on the 48 GB Mac (2026-10-11; FIBO 1.5 2026-10-12; mflux 0.22, seed 42, with the
 app's own arguments, `--low-ram` included): one image each, wall time including loading, with no
@@ -629,18 +630,19 @@ waist-up) and seed, at 1024×1024, everything else closed:
 - **The step cache is on in the app** for Qwen-Image 2.1 (Settings → Step cache, 0.4 by default;
   0.25, 0.5 or off). The other Image Models' commands don't take it (2026-10-04). It leaves runs
   under 10 steps alone.
-- **The turbo LoRA is Settings → Fast**, off by default: `Viggle/Qwen-Image-2.1-viggle-turbo`
+- **The turbo LoRA was Settings → Fast** (an Image Model of its own since 2026-10-14, ADR 0016):
+  `Viggle/Qwen-Image-2.1-viggle-turbo`
   (v0.3, rank 256, 1.3 GB), passed to mflux as `repo:file`, so mflux fetches it into the Hugging
-  Face cache on first use. It must run at exactly 6 steps with its scheduler, so Fast overrides
-  Steps and the step cache. It's under Qwen's research license (non-commercial), like LiTo. At
+  Face cache on first use. It must run at exactly 6 steps with its scheduler, so it takes no
+  other steps and no step cache. It's under Qwen's research license (non-commercial), like LiTo. At
   512×512 on the 8-bit copy: 5 s of denoising, 24.5 GB peak. It's v0.3, the file the model card
   says to use; v0.2.1 (crisper, grainier) is also in the repo. Viggle's 9-step mode (the same
   LoRA, switched off for the last two steps) isn't possible through mflux 0.21
   ([open-threads.md](open-threads.md)).
-- **Most of a Fast render is starting up** (Mac, 2026-10-05): of a 32.7 s run, 5 s was denoising
+- **Most of a turbo render is starting up** (Mac, 2026-10-05): of a 32.7 s run, 5 s was denoising
   and ~27 s loading ~22 GB, encoding the prompt and decoding the picture (loading surely the most);
   Upscale (SeedVR2) is ~46 s, mostly loading. In 2026-09-24's measure, loading was ~5 s of a 42 s
-  Z-Image Turbo render. A service keeping the model loaded could bring Fast under 10 s, but on
+  Z-Image Turbo render. A service keeping the model loaded could bring it under 10 s, but on
   48 GB it would have to unload before every Reply, so it would help only back-to-back renders
   (Render all); dropped 2026-10-08.
 

@@ -82,31 +82,31 @@ Deno.test('mfluxArgs adds the step cache only for models that take it', () => {
   assertEquals(klein.includes('--step-cache-ratio'), false)
 })
 
-Deno.test('mfluxArgs renders fast mode at its own steps, scheduler and LoRA, without the cache', () => {
-  const qwen = findMfluxModel('qwen-image-2.1')!
-  const args = mfluxArgs(qwen, request('/d', { fast: true, steps: 25, stepCache: 0.4 }), 'o.png')
+Deno.test("mfluxArgs renders Viggle's turbo at its 6 steps, with its scheduler and LoRA", () => {
+  const turbo = findMfluxModel('qwen-image-2.1-viggle')!
+  const args = mfluxArgs(turbo, request('/d', { steps: 25, stepCache: 0.4 }), 'o.png')
+  assertEquals(args[args.indexOf('--model') + 1], 'qwen-image-2.1')
+  assertEquals(args.filter((a) => a === '--steps').length, 1)
   assertEquals(args[args.indexOf('--steps') + 1], '6')
   assertEquals(args[args.indexOf('--scheduler') + 1], 'viggle_turbo')
   assertEquals(args.slice(args.indexOf('--lora') + 1, args.indexOf('--lora') + 3), [
-    qwen.fast!.args[3],
+    turbo.args![3],
     '1.0',
   ])
   assertEquals(args.includes('--step-cache-ratio'), false)
-  // Models without a fast mode ignore it.
-  const klein = mfluxArgs(findMfluxModel('flux2-klein-4b')!, request('/d', { fast: true }), 'o.png')
-  assertEquals([klein.includes('--lora'), klein[klein.indexOf('--steps') + 1]], [false, '3'])
 })
 
-Deno.test('mfluxArgs leaves the steps to a model that sets them, and switches its preset for Fast', () => {
+Deno.test("mfluxArgs picks a preset model's preset by the steps, else its default", () => {
   const ideogram = findMfluxModel('ideogram-4')!
-  const args = mfluxArgs(ideogram, request('/d', { steps: 30 }), 'o.png')
-  assertEquals([args.includes('--steps'), args.includes('--preset')], [false, false])
-  const fast = mfluxArgs(ideogram, request('/d', { fast: true }), 'o.png')
-  assertEquals(fast.slice(fast.indexOf('--preset'), fast.indexOf('--preset') + 2), [
-    '--preset',
-    'V4_TURBO_12',
-  ])
-  assertEquals(fast.includes('--steps'), false)
+  const preset = (steps: number) => {
+    const args = mfluxArgs(ideogram, request('/d', { steps }), 'o.png')
+    assertEquals(args.includes('--steps'), false)
+    return args[args.indexOf('--preset') + 1]
+  }
+  assertEquals(preset(12), 'V4_TURBO_12')
+  assertEquals(preset(20), 'V4_DEFAULT_20')
+  assertEquals(preset(48), 'V4_QUALITY_48')
+  assertEquals(preset(30), 'V4_DEFAULT_20')
 })
 
 Deno.test("mfluxArgs passes a model's own arguments", () => {

@@ -151,7 +151,7 @@ Deno.test("A render runs as Settings are now, keeping the Session's model, steps
     const { store, deps, images } = await chainOfTwo(root)
     const qwen = (await store.load('s1')) as ChainSession
     const klein = await switchImageModel(store, qwen, KLEIN) as ChainSession
-    const now = { ...DEFAULT_SETTINGS, imageModel: KREA, steps: 8, fast: false, size: 'landscape' }
+    const now = { ...DEFAULT_SETTINGS, imageModel: KREA, steps: 8, size: 'landscape' }
     await renderChainFrame(
       { ...deps, settings: () => Promise.resolve(now) },
       klein,
@@ -160,10 +160,5 @@ Deno.test("A render runs as Settings are now, keeping the Session's model, steps
       signal(),
     )
     const used = images.settings.at(-1)!
-    assertEquals([used.imageModel, used.steps, used.fast, used.size], [
-      KLEIN,
-      4,
-      false,
-      'landscape',
-    ])
+    assertEquals([used.imageModel, used.steps, used.size], [KLEIN, 4, 'landscape'])
   }))

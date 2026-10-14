@@ -79,7 +79,6 @@ Deno.test("A Session renders with its own model, steps and seed's settings, and 
     imageModel: 'krea-2',
     steps: 8,
     size: 'landscape',
-    fast: true,
     stepCache: null,
     quantize: 8 as const,
     float16: false,
@@ -89,7 +88,6 @@ Deno.test("A Session renders with its own model, steps and seed's settings, and 
   assertEquals(renderSettings(session, now), {
     ...session,
     size: 'landscape',
-    fast: true,
     stepCache: null,
     quantize: 8,
     float16: false,
@@ -106,7 +104,6 @@ Deno.test('validateSettings fills in what an older file lacks, keeps what it may
     ['artModel', '', 'gemma4:31b-mlx', 3],
     ['artStyle', 'prose', 'tags', 'booru'],
     ['stepCache', 0.4, null, 0.9],
-    ['fast', false, true, 'yes'],
     ['float16', true, false, 'yes'],
     ['previews', true, false, 'yes'],
   ]
@@ -122,6 +119,11 @@ Deno.test('validateSettings fills in what an older file lacks, keeps what it may
       `${field} = ${invalid}`,
     )
   }
+})
+
+Deno.test('validateSettings drops Fast from a file made before turbos were Image Models', () => {
+  const older = validateSettings({ ...DEFAULT_SETTINGS, fast: true })
+  assertEquals(older.ok && 'fast' in older.settings, false)
 })
 
 Deno.test('validateSettings upscales where pictures are made, unless Upscale has its own backend', () => {

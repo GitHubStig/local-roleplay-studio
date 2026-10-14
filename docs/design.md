@@ -84,7 +84,7 @@ current Image Prompt + Action ──► Text Model (Text backend) ──► { ou
 5. **Image step.** Images render one at a time across all Sessions: if another Session is
    rendering, this Frame waits in a queue (shown as "Waiting for another render…", and
    cancellable). Then the Session's Image backend renders it with the Session's Image Model, steps
-   and seed, and the rest as Settings are now (size, Fast…; see Consistency):
+   and seed, and the rest as Settings are now (size, step cache…; see Consistency):
    the mflux CLI, one process per image ([ADR 0004](adr/0004-images-from-the-mflux-cli.md)), or a
    workflow queued on ComfyUI, followed over its WebSocket
    ([ADR 0009](adr/0009-comfyui-image-backend.md)). When its turn comes, the Text Model is unloaded
@@ -379,13 +379,16 @@ written for image prompts, are left out).
   Model copies word for word unless an Action changes it.
 - **A Session keeps what defines its pictures** ([ADR 0015](adr/0015-a-picture-per-image-model.md)):
   its Image backend, Image Model, steps and seed, copied from Settings when it starts. How a render
-  runs is read from Settings at each render (`RENDER_SETTINGS`: size, Fast, step cache, quantize,
-  float16, ComfyUI's address), so a change there reaches running Sessions too, as the Upscaler, Art
+  runs is read from Settings at each render (`RENDER_SETTINGS`: size, step cache, quantize, float16,
+  ComfyUI's address), so a change there reaches running Sessions too, as the Upscaler, Art
   Agent and Limits already did. The Text backend, Text Model and Thinking also stay as the Session
   started.
 - **The Image Model is switched in the Session** (2026-10-10), from the picker beside its switches
-  (`ImageModelPicker`), which shows the steps a render takes next to it (the model's fast steps when
-  Fast is on). Switching resets the steps to the new model's default and changes nothing else.
+  (`ImageModelPicker`), which shows the steps a render takes next to it. Switching resets the steps
+  to the new model's default and changes nothing else. A turbo with its own weights is an Image
+  Model of its own (Qwen-Image 2.1 Turbo, Viggle's LoRA), so it's switched here too; a model's
+  presets for the same weights are its steps (Ideogram 4: 12, 20 or 48;
+  [ADR 0016](adr/0016-turbos-are-image-models.md)).
   Settings' Image Model is the one new Sessions start with. Renders under way finish on the old
   model; queued ones read the Session when their turn comes, so they use the new one.
 - **A Frame keeps a picture per Image Model** (`pictures`, `server/pictures.ts`), each with its
@@ -454,7 +457,7 @@ consistency* in [open-threads.md](open-threads.md).
   writes only the prompt; the Frame reads "Not rendered yet", with a dashed thumbnail, and its
   **Render** button queues its picture. **Re-render** is offered on every rendered Frame
   (2026-10-12; until then only on one out of date): the seed and steps stay the Chain's, but
-  Settings' size, Fast, quantize, float16 and step cache apply at each render, and changing them
+  Settings' size, quantize, float16 and step cache apply at each render, and changing them
   marks nothing out of date. A Frame is out of date only after its prompt is edited by hand
   (below) or the Chain's Image Model is switched; its picture then shows **Changed since render ·
   by <model>**. **Render all** (2026-10-10, as a Storyboard's) queues a

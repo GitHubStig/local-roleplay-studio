@@ -32,7 +32,6 @@ export const IMAGE_MODELS: SettingsOptions['imageModels'] = {
       label: 'Qwen-Image 2.1',
       defaultSteps: 25,
       stepCache: true,
-      fastSteps: 6,
       quantize: true,
       float16: true,
     },

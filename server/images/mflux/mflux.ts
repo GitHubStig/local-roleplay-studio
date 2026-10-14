@@ -16,8 +16,8 @@ export function curlQuotes(text: string): string {
 }
 
 /**
- * The mflux command line for one image, with the model's step cache, fast mode and float16 as
- * Settings ask. Always `--low-ram`: it holds a part of the model only while it's used, so the peak
+ * The mflux command line for one image, at its steps (or its preset for them), with the model's
+ * step cache and float16 as Settings ask. Always `--low-ram`: it holds a part of the model only while it's used, so the peak
  * is a quarter of what it is without it, in the same time (docs/models.md). A Quantize setting
  * converts the weights as they load.
  */
@@ -29,9 +29,11 @@ export function mfluxArgs(
   const { settings } = req
   const size = SIZE_PRESETS.find((p) => p.id === settings.size) ?? SIZE_PRESETS[0]
   const quantize = settings.quantize && !model.preQuantized
-  const fast = settings.fast ? model.fast : undefined
-  // The step cache leaves runs under 10 steps be, so it's never added to a fast one.
-  const stepCache = !fast && model.stepCache ? settings.stepCache : null
+  const presets = model.stepPresets
+  const preset = presets &&
+    (presets.find((p) => p.steps === settings.steps) ??
+      presets.find((p) => p.steps === model.defaultSteps)!)
+  const stepCache = model.stepCache ? settings.stepCache : null
   return [
     '--model',
     model.model,
@@ -40,8 +42,7 @@ export function mfluxArgs(
     model.curlyQuotes ? curlQuotes(req.prompt) : req.prompt,
     '--seed',
     String(req.seed),
-    ...(model.fixedSteps ? [] : ['--steps', String(fast?.steps ?? settings.steps)]),
-    ...(fast?.args ?? []),
+    ...(preset ? preset.args : ['--steps', String(settings.steps)]),
     ...(stepCache ? ['--step-cache-ratio', String(stepCache)] : []),
     '--width',
     String(size.width),
