@@ -579,3 +579,50 @@ the #366 fix):
   line spoken from it, and a second design with the worker started afresh (77.9 s); no "'utils' is
   not a package" in the log. Not tried: the maintainer's other sequence (Qwen, Step Audio EditX,
   unload, Qwen), as Step's model is a large download the app doesn't use.
+
+## ComfyUI 0.40.0 (2026-10-14, the Windows PC)
+
+Read against what the app uses, from 0.39.2 ([release](https://github.com/Comfy-Org/ComfyUI/releases/tag/v0.40.0),
+[the changes](https://github.com/Comfy-Org/ComfyUI/compare/v0.39.2...v0.40.0)): **nothing in the app
+needed changing.**
+
+- **Unchanged for us:** `/upload/image` was rewritten inside (`store_image_upload`) but answers the
+  same `{ name, subfolder, type }`; `/prompt`, `/view`, `/models`, `/object_info` and
+  `/system_stats` didn't change; nor did the inputs of any node the workflows use (SeedVR2's model
+  moved to the shared `ComfyAttention`, its nodes as they were).
+- **Websocket metadata** ([#16763](https://github.com/Comfy-Org/ComfyUI/pull/16763),
+  [#16809](https://github.com/Comfy-Org/ComfyUI/pull/16809)): a prompt can carry a
+  `workflow_metadata` dict (≤256 bytes) that's echoed on its JSON messages and on its
+  metadata previews. Only when a client sends it. The app's previews stay binary type 1 (a 4-byte
+  format, then the JPEG); type 4, `PREVIEW_IMAGE_WITH_METADATA` (a 4-byte length, a JSON header with
+  `prompt_id` and `node_id`, then the image), goes only to a client that declares
+  `supports_preview_metadata`. The app runs one prompt at a time, so it needn't.
+- **Custom node governance** ([#16167](https://github.com/Comfy-Org/ComfyUI/pull/16167)): off in
+  every ordinary install (`GOVERNANCE_REQUIRED = False`); only builds shipped with a signed policy
+  refuse packs. TTS Audio Suite loaded as before.
+- **Assets** are off unless `--enable-assets` (on in the Windows portable build); Comfy Desktop
+  passes `--enable-assets`, so it's on there. It indexes files; it doesn't change the calls the app
+  makes.
+- **Possibly relevant fixes:** comfy-aimdo 0.5.5 → 0.5.6 (a NULL pointer fix) and fewer "rogues"
+  for Qwen-Image 2.1 offloading its KV cache with little VRAM
+  ([#16870](https://github.com/Comfy-Org/ComfyUI/pull/16870), after crash reports on 0.39,
+  [#16838](https://github.com/Comfy-Org/ComfyUI/issues/16838)). The crash above ("ComfyUI can crash
+  and stay half-alive") came from comfy-aimdo too, but with a different error; whether 0.5.6 cures
+  it is unknown until it happens again or doesn't.
+
+Run on the RTX 4070 through the app's ComfyUI client (a script calling `comfyuiImageGenerator` and
+`comfyuiVoiceEngine` from the Mac, no Session; one run each unless said; 3.9 GB of the PC's 16 GB
+RAM free at the start), against the 0.39 numbers above:
+
+| | 0.40.0 | 0.39.x |
+|---|---|---|
+| Qwen-Image 2.1, 25 steps, 1024² | 24.0 s (loading), 22.7 s | 21.2–21.7 s |
+| Qwen-Image 2.1, 25 steps, 832×1216 | 21.8 s | not measured |
+| SeedVR2 7B, 832×1216 → 2048×2992 | 15.2 s, 13.9 s | 12.4 s |
+| SeedVR2 3B, 832×1216 → 2048×2992 | 12.3 s, 11.5 s | 11.1 s |
+| A voice designed (Qwen3-TTS), then a line (Higgs), cold | 74.7 s, 36.6 s | 72.7 s, 30.8 s |
+
+All in line, or within a second or two, so no gain to see from #16870 here. Peak VRAM in use
+(`/system_stats`, sampled every 0.5 s): 11.8–12.1 GB of 12.9 for a render, 9.6–9.8 for 7B, 5.3–5.5
+for 3B. The portrait and its 7B upscale looked right, the upscale's colours matching (`lab`); the clips came
+back as FLAC (the line 3.9 s long), not listened to.
