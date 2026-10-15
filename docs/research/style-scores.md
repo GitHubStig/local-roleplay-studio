@@ -83,6 +83,14 @@ runs it (batches of 8, both models): 279 pictures and 31 captions embedded in 24
 pictures and 34 captions, in 29.5 s (35 s in all): **~0.09 s per picture** for CSD and CLIP
 together, against ~0.26 s while a render shared the GPU.
 
+**On the Windows PC, with CUDA** (2026-10-15; RTX 4070 12 GB, torch from PyTorch's cu128 index):
+`python/style/make.py` as the app runs it, on a Chain of 43 Frames by 4 Image Models (172
+pictures at 832×1216, 43 captions), with nothing cached and the GPU otherwise idle (ComfyUI's
+queue empty, no Text Model loaded). Twice: a 9.0–11.4 s load, then 11.1–11.3 s to embed, 27–33 s
+in all with uv starting it: **~0.065 s per picture** for CSD and CLIP together, a little faster
+than the Mac's M5 Pro, with a slower load. Peak VRAM ~4.3 GB (1.1 GB before). The owner's own
+Score in the app had run there earlier, so the app's path works on CUDA as well; it wasn't timed.
+
 Transformers.js resizes pictures a little differently from PyTorch's preprocessing (cosine 0.96
 for the same picture), which shifts the numbers slightly but not the ranking. CSD exports to ONNX
 cleanly (its fp16 conversion broke on a Cast node; fp32 ran, 1.2 GB), but there's nowhere to
