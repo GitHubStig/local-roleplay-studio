@@ -725,7 +725,7 @@ All under `/api`; the Vite dev server proxies it to the Deno server.
 | `POST /sessions/:id/jobs/:job/retry` | Roleplay or Chain: put a failed job back at the end of the queue (`404` if there's no such failed job) |
 | `DELETE /sessions/:id/jobs/:job` | Roleplay or Chain: cancel a queued or running job, or dismiss a failed one |
 | `DELETE /sessions/:id/jobs` | Every kind: Clear queue: cancel every running and queued job, and dismiss the failed ones; returns what's left (a cancelled running job until it stops) |
-| `PUT /sessions/:id/roleplay/look` | Roleplay: replace the Look, `{ subject, style }`, rewriting every pictured Frame (`400` if incomplete, `422` if it crosses a Limit); waits for a render running to end, holding the queue meanwhile |
+| `PUT /sessions/:id/roleplay/look` | Roleplay: replace the Look, `{ people: [{ name, identity }], style }`, rewriting every pictured Frame (`400` if incomplete, `422` if it crosses a Limit); waits for a render running to end, holding the queue meanwhile |
 | `PUT /sessions/:id/roleplay/voice` | Roleplay: replace the voice description, `{ description }`, dropping the voice's clip until it's designed again (`400` if empty, too long, or it crosses a Limit) |
 | `PUT /sessions/:id/roleplay/cast` | Roleplay: replace the Cast (`400` if incomplete or the Character is under 18, `422` if it crosses a Limit) |
 
