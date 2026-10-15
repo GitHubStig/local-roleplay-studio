@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { useUrlSearchParams } from '@vueuse/core'
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, useTemplateRef } from 'vue'
 import type { Comparison } from '../comparison'
 import ComparisonTable from '../components/ComparisonTable.vue'
+import { usePageKeys } from '../composables/usePageKeys'
 import StyleScoresView from '../components/StyleScoresView.vue'
 import ThemeToggle from '../components/ThemeToggle.vue'
 import type { ExportedStyles } from '../styleScores'
@@ -47,6 +48,9 @@ onMounted(() => {
   if (props.styles && params.view === 'scores') show(true)
 })
 const labelOf = (model: string) => props.styles?.labels[model] ?? model
+/** Page Up and Down scroll the style scores (the table sees to its own). */
+const scoresBox = useTemplateRef<HTMLElement>('scoresBox')
+usePageKeys(scoresBox, () => !confirmed.value)
 
 /** Back where the visitor came from, or to an empty page if this was the first. */
 function leave() {
@@ -62,7 +66,12 @@ function leave() {
     :inert="!confirmed"
     data-export-table
   >
-    <div v-if="showScores && styles" class="h-full overflow-auto" data-export-scores>
+    <div
+      v-if="showScores && styles"
+      ref="scoresBox"
+      class="h-full overflow-auto"
+      data-export-scores
+    >
       <div class="mx-auto w-full max-w-6xl p-4 pb-20">
         <StyleScoresView :scores="styles.scores" :label-of="labelOf" :frames="styles.frames" />
       </div>

@@ -2,6 +2,7 @@
 import { useMediaQuery, useRafFn } from '@vueuse/core'
 import { computed, ref, useTemplateRef, watch } from 'vue'
 import type { Comparison } from '../comparison'
+import { usePageKeys } from '../composables/usePageKeys'
 import Icon from './Icon.vue'
 import ImageViewer from './ImageViewer.vue'
 
@@ -165,6 +166,10 @@ function climb(by: number) {
   const row = across(by)
   if (row !== null) viewing.value = { ...viewing.value!, row }
 }
+
+/** Page Up and Down scroll the table, or what shows instead, though the focus is in the header. */
+const instead = useTemplateRef<HTMLElement>('instead')
+usePageKeys(() => instead.value ?? scroller.value, () => viewing.value !== null)
 </script>
 
 <template>
@@ -179,7 +184,7 @@ function climb(by: number) {
         <slot name="actions" />
       </div>
     </div>
-    <div v-if="$slots.instead" class="min-h-0 flex-1 overflow-auto">
+    <div v-if="$slots.instead" ref="instead" class="min-h-0 flex-1 overflow-auto">
       <slot name="instead" />
     </div>
     <div v-else ref="scroller" class="min-h-0 flex-1 overflow-auto">
