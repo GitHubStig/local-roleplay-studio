@@ -19,6 +19,11 @@ image. Rewrite the paragraph with the Action applied:
 - Rewrite only the sentences for the aspects the Action affects; copy every other sentence
   exactly, word for word. All nine sentences must always be there.
 - {{replacing}}
+- An Action that changes the art style or medium always changes the lighting and color
+  sentences too, even when it doesn't mention them: rewrite both to describe the light and the
+  palette as the new style renders them (a woodcut's flat inks, an anime's cel shading), never
+  copy them. Drop every word that belongs to a photograph or to the old style, such as
+  "realistic", "film" or "carved lines": no sentence may still name or describe the old style.
 
 {{limits}}
 

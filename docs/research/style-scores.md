@@ -105,3 +105,66 @@ gzipped: uPlot 22 KB (made for time series), Chart.js 56 KB (canvas; heatmaps ne
 Observable Plot 88 KB (SVG, bars, lines, heatmaps and tooltips built in), ECharts 197 KB,
 ApexCharts 270 KB. In the app's build, the charts' chunk is 94 KB gzipped, loaded only when Style
 scores open.
+
+## A Chain's style changes left the old style behind (2026-10-15, Mac)
+
+A 34-Frame Chain of one landscape, each Action a new art style, showed two problems in its Image
+Prompts. In 3 of 33 changes the Text Model kept a sentence of the style before (once in the color
+sentence's slot), so those Frames were rendered as a mix of two styles; one changed style less than
+any other Frame (CSD 0.11 from the Frame before, against ~0.35). And every Frame kept the Opening's
+photographic lighting sentence (realistic soft shadows) word for word: the Chain's rule is to copy
+every sentence the Action doesn't affect, and the model didn't count light as affected by a style.
+
+**The realistic-light sentence holds back Krea 2 most.** Krea 2, last on spread in that Chain
+(0.31; third in the first Chain above, 0.45), was rendered on five Frames without the sentence, everything
+else as the app renders (a control without the change matched the Session's picture pixel for
+pixel). Its distance from its Frame 0 picture rose for the painterly styles where light and colour
+are the point (Munch 0.41 → 0.50, Fauvism 0.32 → 0.46, Caravaggio 0.26 → 0.33) and not for pixel art
+or a Byzantine mosaic (texture and structure); in all five it stayed below the other models'
+average. So the sentence costs Krea 2 more than the others, and Krea 2 is also more conservative
+with a landscape.
+
+**The fix** (`server/prompts/chain/frame.md`): an Action that changes the art style or medium
+always rewrites the lighting and color sentences too, to the light and palette as the new style
+renders them, dropping every word of a photograph or the old style. Replayed on 7 of that Chain's
+style changes (the previous Frame's prompt and the Frame's Action, gemma-4-26b-heretic, Thinking
+off, seeds 1 and 2, 14 outputs):
+
+| | Before | A softer first wording | The rule as kept |
+| --- | --- | --- | --- |
+| A style sentence left behind | 2 | 0 | 0 |
+| "realistic" gone | 0 | 6 | 12 |
+| All nine sentences | 10 | 12 | 14 |
+
+The lighting sentences follow the style now: a single hard light from one side for Caravaggio, flat
+printmaking contrast for a linocut. One change (to a lacquer miniature) still copied the old light
+sentence with both seeds.
+
+## clef-flash as a judge (2026-10-15, Mac)
+
+Ollama's decision models answer fixed questions with probabilities (`/v1/systemone`); clef-flash
+(9.5B, Ollama 0.40.4) also takes a picture. It judged all 340 pictures of that Chain (10 models ×
+34 Frames), each against its Frame's caption: yes/no ("is this picture drawn in this art style"),
+which of 5 styles (its own and the 4 most alike by CLIP text, shuffled), and how strongly (5 levels).
+~1.4 s a picture once loaded; 27.6 GB in memory, more than its 19 GB of weights. Frame 0, asking for
+no style, left out:
+
+| Image Model | Hit (yes/no) | Right of 5 | Strength 1–5 |
+| --- | --- | --- | --- |
+| ming-image | 49% | 61% | 3.05 |
+| ernie-image-turbo | 41% | 58% | 2.76 |
+| boogu-image-turbo | 39% | 61% | 2.68 |
+| flux2-klein-9b | 39% | 36% | 2.57 |
+| z-image | 37% | 27% | 2.48 |
+| z-image-turbo | 34% | 33% | 2.43 |
+| krea-2 | 29% | 24% | 2.18 |
+| qwen-image-2.1 | 24% | 27% | 2.17 |
+| fibo-1.5 | 21% | 15% | 1.92 |
+| ideogram-4 | 15% | 24% | 1.75 |
+
+Its order agrees with CSD's at the bottom (fibo-1.5, qwen-image-2.1, krea-2) but not at the top:
+z-image-turbo, first on CSD's spread, is mid-table here, as spread rewards change whether or not it
+is the style asked for. The hardest styles for every model were those defined by how people are
+drawn (2–9% hit, in a picture with no people in it); the easiest, landscape traditions and pixel art
+(65–75%). Unchecked against anyone's eye: the
+owner chose to take clef-flash's word.
