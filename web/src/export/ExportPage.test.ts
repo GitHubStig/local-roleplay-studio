@@ -72,4 +72,23 @@ describe('ExportPage', () => {
     expect(wrapper.text()).toContain("The charts couldn't load")
     expect(wrapper.find('[data-export-scores]').exists()).toBe(false)
   })
+
+  it('says in the address when the scores show, and opens onto them from such a link', async () => {
+    const wrapper = mount(ExportPage, { props: { ...comparison, styles } })
+    await wrapper.findAll('[data-export-view] button')[1].trigger('click')
+    await flushPromises()
+    expect(location.search).toBe('?view=scores')
+    await wrapper.findAll('[data-export-view] button')[0].trigger('click')
+    await flushPromises()
+    expect(location.search).toBe('')
+
+    history.replaceState(null, '', '?view=scores')
+    const linked = mount(ExportPage, { props: { ...comparison, styles } })
+    await flushPromises()
+    expect(linked.find('[data-export-scores]').exists()).toBe(true)
+    // Without scores, the link opens on the pictures.
+    expect(mount(ExportPage, { props: comparison }).find('[data-export-table] table').exists())
+      .toBe(true)
+    history.replaceState(null, '', location.pathname)
+  })
 })

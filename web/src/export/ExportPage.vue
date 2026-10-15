@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { useUrlSearchParams } from '@vueuse/core'
+import { onMounted, ref } from 'vue'
 import type { Comparison } from '../comparison'
 import ComparisonTable from '../components/ComparisonTable.vue'
 import StyleScoresView from '../components/StyleScoresView.vue'
@@ -12,7 +13,8 @@ import { loadPlot } from './plotGlobal'
  * app's theme toggle in a corner, remembered by the browser it's opened in. Exported with a
  * `notice`, the table stays blurred and out of reach behind it until the visitor confirms they're
  * 18 or older, on every visit: nothing is remembered. Exported with its style scores, a switch
- * beside the theme toggle shows them instead of the table.
+ * beside the theme toggle shows them instead of the table, and says so in the address
+ * (`?view=scores`), so a link can open straight onto them.
  */
 const props = defineProps<Comparison & { notice?: string; styles?: ExportedStyles }>()
 const confirmed = ref(!props.notice)
@@ -23,17 +25,27 @@ const confirmed = ref(!props.notice)
 const showScores = ref(false)
 /** While the charts' script loads, or why it couldn't. */
 const charts = ref<{ loading: true } | { error: string } | null>(null)
+/** The address's query, kept in step with the view (replacing the entry, not adding one). */
+const params = useUrlSearchParams('history')
 async function show(scores: boolean) {
-  if (!scores) return (showScores.value = false)
+  if (!scores) {
+    showScores.value = false
+    delete params.view
+    return
+  }
   charts.value = { loading: true }
   try {
     await loadPlot()
     charts.value = null
     showScores.value = true
+    params.view = 'scores'
   } catch (err) {
     charts.value = { error: (err as Error).message }
   }
 }
+onMounted(() => {
+  if (props.styles && params.view === 'scores') show(true)
+})
 const labelOf = (model: string) => props.styles?.labels[model] ?? model
 
 /** Back where the visitor came from, or to an empty page if this was the first. */

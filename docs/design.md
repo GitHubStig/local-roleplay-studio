@@ -467,7 +467,9 @@ written for image prompts, are left out).
   **Exported** (2026-10-15) when the Session has been scored: Export offers to include them (on
   unless unticked, remembered per Session), for the exported columns against the base Frame last
   picked, and the page gets a Pictures / Style scores switch beside its theme toggle, showing the
-  same charts and numbers (`StyleScoresView`, shared with the dialog). To keep the page light,
+  same charts and numbers (`StyleScoresView`, shared with the dialog). Showing them adds
+  `?view=scores` to the address (replacing the history entry, not adding one), so a link with it
+  opens straight onto them. To keep the page light,
   Observable Plot isn't in it: the page's build stands `src/export/plotGlobal.ts` in for it, and
   Plot is built on its own as `plot.js` (a classic script, as a module won't load from disk),
   written beside `index.html` only when the export carries scores and loaded only when they're
