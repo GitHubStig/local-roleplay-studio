@@ -176,7 +176,7 @@ Each runs once per scene or figure through uv, downloading its weights with the 
 Compare's **Style scores** measure how much each Image Model's art style varies across a Session's
 Frames. `python/style/make.py` runs once per scoring through uv, on the GPU (a Mac's or an NVIDIA
 one) or slowly on the CPU, and downloads its two models the first time (CSD, 2.4 GB of which 1.2
-GB is used, CC-BY-4.0; CLIP ViT-L/14, 1.7 GB). On a Mac, 279 pictures took about 50 s.
+GB is used, CC-BY-4.0; CLIP ViT-L/14, 1.7 GB). On a Mac, 340 pictures take about 35 s.
 
 ### Two machines
 

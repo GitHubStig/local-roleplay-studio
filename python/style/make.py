@@ -34,8 +34,8 @@ the pictures and captions it hasn't embedded before. `--in` is a JSON file of
 float32 vector in base64. It prints "Embedded <n> of <total>" on stderr as it goes, and a line of
 JSON on stdout when done: how many it embedded, and how long it took.
 
-Measured 2026-10-14 on an M5 Pro (docs/research/style-scores.md): ~5 s to load, ~0.13 s per
-picture for both models, while an Image Model rendered beside it.
+Measured 2026-10-15 on an M5 Pro with the GPU otherwise idle (docs/research/style-scores.md):
+~4–5 s to load, ~0.09 s per picture for both models (279 pictures in 24 s, 340 in 30 s).
 
 The weights come from Hugging Face into its cache the first time they're needed (CLIP 1.7 GB, CSD
 2.4 GB, of which only its 1.2 GB of weights are used): it says "Downloading CSD and CLIP" on

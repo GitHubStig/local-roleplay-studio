@@ -77,6 +77,12 @@ Both work. Transformers.js 3.8 runs in Deno (onnxruntime-node, on the CPU):
 \* While an Image Model rendered on the same GPU; unbatched. Through the app (batches of 8), 279
 pictures and 31 captions took about 50 s, loading included.
 
+Timed again 2026-10-15 on the Mac with the GPU otherwise idle, `python/style/make.py` as the app
+runs it (batches of 8, both models): 279 pictures and 31 captions embedded in 24.0–24.3 s after a
+4–5 s load (29–31 s in all, uv starting it included), and a 34-Frame Chain by 10 models, 340
+pictures and 34 captions, in 29.5 s (35 s in all): **~0.09 s per picture** for CSD and CLIP
+together, against ~0.26 s while a render shared the GPU.
+
 Transformers.js resizes pictures a little differently from PyTorch's preprocessing (cosine 0.96
 for the same picture), which shifts the numbers slightly but not the ranking. CSD exports to ONNX
 cleanly (its fp16 conversion broke on a Cast node; fp32 ran, 1.2 GB), but there's nowhere to
