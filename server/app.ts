@@ -912,23 +912,25 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     [
       'PUT',
       new URLPattern({ pathname: '/api/sessions/:id/look' }),
+      // Saved between renders, so the next one queued renders it.
       (req, p) =>
-        locked(p.id!, 'edit', async (session) => {
-          if (!needsStoryboard(session) || !session.look) {
-            return error('Only a planned Storyboard has a Look', 409)
-          }
-          const body = await readJson(req) as { people?: unknown; style?: unknown } | undefined
-          const people = body?.people
-          if (
-            !Array.isArray(people) || typeof body?.style !== 'string' ||
-            people.some((p) => typeof p?.name !== 'string' || typeof p?.identity !== 'string')
-          ) {
-            return error('people (each with a name and identity) and style are required', 400)
-          }
-          return json(
-            await setLook({ store: deps.sessions }, session, { people, style: body.style }),
-          )
-        }),
+        jobs.betweenRenders(p.id!, () =>
+          locked(p.id!, 'edit', async (session) => {
+            if (!needsStoryboard(session) || !session.look) {
+              return error('Only a planned Storyboard has a Look', 409)
+            }
+            const body = await readJson(req) as { people?: unknown; style?: unknown } | undefined
+            const people = body?.people
+            if (
+              !Array.isArray(people) || typeof body?.style !== 'string' ||
+              people.some((p) => typeof p?.name !== 'string' || typeof p?.identity !== 'string')
+            ) {
+              return error('people (each with a name and identity) and style are required', 400)
+            }
+            return json(
+              await setLook({ store: deps.sessions }, session, { people, style: body.style }),
+            )
+          })),
     ],
 
     // The picture forming: the latest preview of the Session's render, while there is one and

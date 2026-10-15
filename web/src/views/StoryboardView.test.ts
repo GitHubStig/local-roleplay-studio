@@ -299,17 +299,18 @@ describe('StoryboardView', () => {
     )
     vi.mocked(api.saveLook).mockResolvedValue(storyboard([frame(0), frame(1), frame(2)]))
     const { wrapper } = await mountIt()
+    const frameStatus = () => wrapper.find('[data-frame-editor] [data-save-status]').text()
 
     await wrapper.find('[data-field="storyboard.frame"]').setValue('New body.')
-    expect(buttonNamed(wrapper, 'Save Frame 1').exists()).toBe(true)
-    await wrapper.find('[data-frame-editor]').trigger('submit')
+    expect(frameStatus()).toContain('Saves when you click away')
+    expect(api.saveFrameBody).not.toHaveBeenCalled()
+    await wrapper.find('[data-frame-editor]').trigger('focusout')
     await flushPromises()
     expect(api.saveFrameBody).toHaveBeenCalledWith('sb', 0, 'New body.', ['Rin'])
-    expect(buttonNamed(wrapper, 'Save Frame 1')).toBeUndefined()
+    expect(frameStatus()).toContain('Saved')
 
     await wrapper.find('[data-look] textarea').setValue('Rin, a short student.')
-    expect(buttonNamed(wrapper, 'Save Look').exists()).toBe(true)
-    await wrapper.find('[data-look]').trigger('submit')
+    await wrapper.find('[data-look]').trigger('focusout')
     await flushPromises()
     expect(api.saveLook).toHaveBeenCalledWith('sb', {
       people: [
@@ -321,25 +322,87 @@ describe('StoryboardView', () => {
   })
 
   it('chooses who a Frame shows, and adds and removes people from the Look', async () => {
-    vi.mocked(api.saveFrameBody).mockResolvedValue(storyboard([frame(0), frame(1), frame(2)]))
+    vi.mocked(api.saveFrameBody).mockImplementation(async (_id, _index, body, shown) =>
+      storyboard([frame(0, { body, shown }), frame(1), frame(2)])
+    )
     const { wrapper } = await mountIt()
     const chips = () => wrapper.findAll('[data-shown] button')
     expect(chips().map((c) => [c.text(), c.attributes('aria-pressed')])).toEqual([
       ['Rin', 'true'],
       ['Kai', 'false'],
     ])
+    // Each click saves, one after the other.
     await chips()[1].trigger('click')
     await chips()[0].trigger('click')
-    expect(buttonNamed(wrapper, 'Save Frame 1').exists()).toBe(true)
-    await wrapper.find('[data-frame-editor]').trigger('submit')
-    expect(api.saveFrameBody).toHaveBeenCalledWith('sb', 0, 'Body 1.', ['Kai'])
+    await flushPromises()
+    expect(vi.mocked(api.saveFrameBody).mock.calls).toEqual([
+      ['sb', 0, 'Body 1.', ['Rin', 'Kai']],
+      ['sb', 0, 'Body 1.', ['Kai']],
+    ])
 
     expect(wrapper.findAll('[data-person]')).toHaveLength(2)
     await wrapper.find('[data-add-person]').trigger('click')
     expect(wrapper.findAll('[data-person]')).toHaveLength(3)
+    // Removing saves at once, except while someone's left without a name.
     await wrapper.find('[aria-label="Remove Rin"]').trigger('click')
+    await flushPromises()
     expect(wrapper.findAll('[data-person-name]').map((i) => (i.element as HTMLInputElement).value))
       .toEqual(['Kai', ''])
+    expect(api.saveLook).not.toHaveBeenCalled()
+    expect(wrapper.find('[data-look] [data-save-status]').text())
+      .toContain('Not saved: each person needs a name and an identity')
+  })
+
+  it('keeps someone renamed in the Look shown when a Shows pill is clicked straight after', async () => {
+    // As the server does: a rename carries over to who each Frame shows, and an unknown name is
+    // dropped.
+    let saved = storyboard([frame(0), frame(1), frame(2)])
+    vi.mocked(api.saveLook).mockImplementation(async (_id, l) => {
+      await new Promise((r) => setTimeout(r, 20))
+      const renamed = (n: string) =>
+        l.people[saved.look!.people.findIndex((p) => p.name === n)]?.name
+      saved = {
+        ...saved,
+        look: l,
+        frames: saved.frames.map((f) => ({
+          ...f,
+          shown: f.shown.map(renamed).filter(Boolean) as string[],
+        })),
+      }
+      return saved
+    })
+    vi.mocked(api.saveFrameBody).mockImplementation(async (_id, index, body, shown) => {
+      const known = shown.filter((n) => saved.look!.people.some((p) => p.name === n))
+      saved = {
+        ...saved,
+        frames: saved.frames.map((f) => (f.index === index ? { ...f, body, shown: known } : f)),
+      }
+      return saved
+    })
+    const { wrapper } = await mountIt()
+    await wrapper.find('[data-person-name]').setValue('Mira')
+    const kai = wrapper.findAll('[data-shown] button')[1]
+    await wrapper.find('[data-look]').trigger('focusout', { relatedTarget: kai.element })
+    await kai.trigger('click')
+    await new Promise((r) => setTimeout(r, 50))
+    await flushPromises()
+    expect(saved.frames[0].shown).toEqual(['Mira', 'Kai'])
+    expect(wrapper.findAll('[data-shown] button').map((b) => b.text())).toEqual(['Mira', 'Kai'])
+  })
+
+  it('saves a hand edit before queueing a render', async () => {
+    vi.mocked(api.saveFrameBody).mockResolvedValue(
+      storyboard([frame(0, { body: 'New body.' }), frame(1), frame(2)]),
+    )
+    vi.mocked(api.queueJob).mockResolvedValue([])
+    const { wrapper } = await mountIt()
+    await wrapper.find('[data-field="storyboard.frame"]').setValue('New body.')
+    await wrapper.find('[data-render-button]').trigger('click')
+    await flushPromises()
+    expect(api.queueJob).toHaveBeenCalledWith('sb', 'render', 0)
+    expect(vi.mocked(api.saveFrameBody).mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(api.queueJob).mock.invocationCallOrder[0],
+    )
   })
 
   it('says when a Frame shows no one', async () => {
@@ -352,9 +415,10 @@ describe('StoryboardView', () => {
     vi.mocked(api.saveFrameBody).mockRejectedValue(new Error('This crosses a limit: no minors'))
     const { wrapper } = await mountIt()
     await wrapper.find('[data-field="storyboard.frame"]').setValue('A child.')
-    await wrapper.find('[data-frame-editor]').trigger('submit')
+    await wrapper.find('[data-frame-editor]').trigger('focusout')
     await flushPromises()
-    expect(wrapper.find('[role=alert]').text()).toBe('This crosses a limit: no minors')
+    expect(wrapper.find('[data-frame-editor] [role=alert]').text())
+      .toBe('Not saved: This crosses a limit: no minors')
   })
 
   it('queues an upscale and 3D of a rendered Frame, not of a draft', async () => {

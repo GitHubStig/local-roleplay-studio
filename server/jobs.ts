@@ -97,7 +97,8 @@ const sameWork = (job: Job, kind: JobKind, frameIndex: number) =>
 
 export class SessionJobs {
   #jobs = new Map<string, Job[]>()
-  #running = new Map<string, { job: Job; controller: AbortController }>()
+  /** Each Session's running job, and when it's ended (never rejected). */
+  #running = new Map<string, { job: Job; controller: AbortController; done: Promise<void> }>()
   #run: JobRunner
   /** Sessions whose queue is held: no job starts until `holding` ends. */
   #held = new Set<string>()
@@ -191,6 +192,19 @@ export class SessionJobs {
   }
 
   /**
+   * Does `work` between two renders: once the render running on the Session, if any, has ended,
+   * with the queue held so the next doesn't start first. A change to the Image Prompts (the Look)
+   * then reaches every render still queued; the one that was running is stale by it.
+   */
+  betweenRenders<T>(sessionId: string, work: () => Promise<T>): Promise<T> {
+    return this.holding(sessionId, async () => {
+      const running = this.#running.get(sessionId)
+      if (running?.job.kind === 'render') await running.done
+      return await work()
+    })
+  }
+
+  /**
    * Frame `index` was deleted and the Frames after it numbered down one: its own queued and failed
    * jobs go, and the later Frames' follow them. None may be running on it or after it.
    */
@@ -218,7 +232,8 @@ export class SessionJobs {
     const job = this.#jobs.get(sessionId)?.find((j) => j.status === 'queued')
     if (!job) return
     const controller = new AbortController()
-    this.#running.set(sessionId, { job, controller })
+    const { promise: done, resolve: ended } = Promise.withResolvers<void>()
+    this.#running.set(sessionId, { job, controller, done })
     job.status = 'running'
     job.phase = 'text'
     const emit: JobEmit = (event) => {
@@ -238,6 +253,7 @@ export class SessionJobs {
       )
       .finally(() => {
         this.#running.delete(sessionId)
+        ended()
         this.#next(sessionId)
       })
   }

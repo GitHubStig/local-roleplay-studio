@@ -200,6 +200,7 @@ describe('RoleplayView', () => {
     const { wrapper } = await mountIt()
     expect(wrapper.find('[data-cast]').classes()).not.toContain('render-sweep')
     await wrapper.find('[data-rewrite]').trigger('click')
+    await flushPromises()
     expect(roleplay.writeCast).toHaveBeenCalledWith('r1', expect.any(Function))
     expect(wrapper.find('[data-cast]').classes()).toContain('render-sweep')
     stream.emit({ type: 'cast', cast, session: { ...roleplaySession(), cast } })
@@ -222,6 +223,7 @@ describe('RoleplayView', () => {
     const { wrapper } = await mountIt()
     await wrapper.find('textarea').setValue('Did anyone else make it?')
     await buttonNamed(wrapper, 'Send').trigger('click')
+    await flushPromises()
     expect(roleplay.sendMessage).toHaveBeenCalledWith(
       'r1',
       'Did anyone else make it?',
@@ -256,6 +258,7 @@ describe('RoleplayView', () => {
     const box = () => wrapper.find('textarea').element as HTMLTextAreaElement
     await wrapper.find('textarea').setValue('ask about the others')
     await wrapper.find('[data-suggest]').trigger('click')
+    await flushPromises()
     expect(roleplay.suggestMessage).toHaveBeenCalledWith(
       'r1',
       'ask about the others',
@@ -331,20 +334,24 @@ describe('RoleplayView', () => {
     expect(localStorage.getItem('roleplay-thoughts-hidden')).toBe('1')
   })
 
-  it('saves an edited Cast', async () => {
+  it('saves an edited Cast once the focus leaves it', async () => {
     vi.mocked(roleplay.saveCast).mockImplementation(async (_id, c) => ({
       ...roleplaySession([frame(0, null, 'Get inside.')]),
       cast: c,
     }))
     const { wrapper } = await mountIt()
     await wrapper.find('[data-field="persona.name"]').setValue('Callum')
-    await wrapper.find('[data-cast-form]').trigger('submit')
+    expect(wrapper.find('[data-cast-form] [data-save-status]').text()).toContain(
+      'Saves when you click away',
+    )
+    await wrapper.find('[data-cast-form]').trigger('focusout')
     await flushPromises()
     expect(roleplay.saveCast).toHaveBeenCalledWith('r1', {
       ...cast,
       persona: { ...cast.persona, name: 'Callum' },
     })
-    expect(wrapper.text()).toContain('Applies from the next reply.')
+    expect(wrapper.find('[data-cast-form] [data-save-status]').text())
+      .toContain('Saved · applies from the next reply')
   })
 
   it('sends a Chain to its own screen', async () => {
@@ -813,8 +820,10 @@ describe('RoleplayView', () => {
     expect(wrapper.find('[data-frame-job]').text()).toContain('SHARP · Making the 2.5D scene…')
     expect(wrapper.find('[data-scene-button]').attributes('disabled')).toBeDefined()
     await wrapper.find('[data-figure-button]').trigger('click')
+    await flushPromises()
     expect(api.queueJob).toHaveBeenLastCalledWith('r1', 'figure', 0)
     await wrapper.find('[data-lito-button]').trigger('click')
+    await flushPromises()
     expect(api.queueJob).toHaveBeenLastCalledWith('r1', 'lito', 0)
     wrapper.unmount()
 

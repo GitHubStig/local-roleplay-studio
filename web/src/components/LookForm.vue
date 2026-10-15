@@ -1,16 +1,20 @@
 <script setup lang="ts">
-import { computed, ref, toRaw, watch } from 'vue'
 import type { Look } from '../api'
+import { type SaveLine, useAutosave } from '../composables/useAutosave'
 import CollapsibleTextarea from './CollapsibleTextarea.vue'
 import LookPerson from './LookPerson.vue'
+import SaveStatus from './SaveStatus.vue'
 
 /**
  * A Look edited by hand: a card per person (name and identity), people added or removed, and the
- * art style; Save appears once something changed. Shared by Storyboards and Roleplays (ADR 0012).
+ * art style. Saved once the focus leaves the form, or a person is removed (`useAutosave`); the
+ * screen calls `flush` before work that reads it. Shared by Storyboards and Roleplays (ADR 0012).
  */
 const props = defineProps<{
-  /** The Look as saved; the draft starts again from it whenever it changes. */
+  /** The Look as saved; the draft starts again from it whenever it changes elsewhere. */
   look: Look
+  /** Saves a Look, returning it as saved. Throws if refused. */
+  save: (look: Look) => Promise<Look>
   /** Remembers each card's collapsed state under this, e.g. `storyboard.look`. */
   idPrefix: string
   /** What the Look applies to, after its heading: "every Frame", "every picture". */
@@ -21,20 +25,49 @@ const props = defineProps<{
    * hand, and these people (the Character and Persona) can't be removed.
    */
   kept?: string[]
+  /** Said while saving, e.g. that it waits for the render running. */
+  savingText?: string
+  /** The Session's line of saves, shared with its other drafts. */
+  line?: SaveLine
 }>()
-const emit = defineEmits<{ save: [look: Look] }>()
 
-const draft = ref<Look>({ people: [], style: '' })
-watch(() => props.look, (l) => (draft.value = structuredClone(toRaw(l))), { immediate: true })
 const trimmed = (l: Look): Look => ({
   people: l.people.map((p) => ({ name: p.name.trim(), identity: p.identity.trim() })),
   style: l.style.trim(),
 })
-const changed = computed(() => JSON.stringify(trimmed(draft.value)) !== JSON.stringify(props.look))
+/** Why the Look can't be saved yet: what the server would refuse it for. */
+function hold(look: Look): string | null {
+  const l = trimmed(look)
+  if (l.people.some((p) => !p.name || !p.identity)) return 'each person needs a name and an identity'
+  if (new Set(l.people.map((p) => p.name.toLowerCase())).size < l.people.length) {
+    return 'two people have the same name'
+  }
+  return l.style ? null : 'the Look needs a style'
+}
+const { draft, status, canRevert, flush, revert, onFocusout } = useAutosave<Look>({
+  source: () => props.look,
+  save: (look) => props.save(trimmed(look)),
+  hold,
+  normal: trimmed,
+  line: props.line,
+})
+
+function remove(i: number) {
+  draft.value!.people.splice(i, 1)
+  flush()
+}
+
+defineExpose({ flush })
 </script>
 
 <template>
-  <form class="flex min-w-0 flex-col gap-2" data-look @submit.prevent="emit('save', draft)">
+  <form
+    v-if="draft"
+    class="flex min-w-0 flex-col gap-2"
+    data-look
+    @submit.prevent="flush"
+    @focusout="onFocusout"
+  >
     <h3 class="font-medium">Look <span class="font-normal text-muted">· {{ every }}</span></h3>
     <LookPerson
       v-for="(person, i) in draft.people"
@@ -45,7 +78,7 @@ const changed = computed(() => JSON.stringify(trimmed(draft.value)) !== JSON.str
       :disabled="disabled"
       :name-fixed="!!kept"
       :kept="kept?.includes(person.name)"
-      @remove="draft.people.splice(i, 1)"
+      @remove="remove(i)"
     />
     <button
       v-if="!kept"
@@ -63,13 +96,12 @@ const changed = computed(() => JSON.stringify(trimmed(draft.value)) !== JSON.str
       label="Art style and medium"
       :disabled="disabled"
     />
-    <button
-      v-if="changed"
-      type="submit"
-      class="w-fit rounded border border-line px-3 py-1 text-xs disabled:opacity-50"
+    <SaveStatus
+      :status="status"
+      :can-revert="canRevert"
       :disabled="disabled"
-    >
-      Save Look
-    </button>
+      :saving-text="savingText"
+      @revert="revert"
+    />
   </form>
 </template>

@@ -26,6 +26,8 @@ import {
 import { clearCurrentSession, setCurrentSession } from '../composables/useCurrentSession'
 import { useStoredFlag } from '../composables/useStoredFlag'
 import { useStoredText } from '../composables/useStoredText'
+import { saveLine, useAutosave } from '../composables/useAutosave'
+import SaveStatus from '../components/SaveStatus.vue'
 import CollapsibleTextarea from '../components/CollapsibleTextarea.vue'
 import LookForm from '../components/LookForm.vue'
 import ComposeBox from '../components/ComposeBox.vue'
@@ -54,6 +56,7 @@ import {
   type Speech,
   beginRoleplay,
   type Job,
+  type JobKind,
   saveCast,
   saveLook,
   saveVoice,
@@ -143,6 +146,7 @@ const toRender = computed(() =>
  * before the first render unloads it.
  */
 async function renderAll() {
+  if (!(await flushEdits('rendered'))) return
   const frames = toRender.value.slice()
   await queueAll(
     'picture',
@@ -461,18 +465,21 @@ async function run(next: Pending, call: () => Promise<void>) {
   }
 }
 
-const rewriteCast = () => run({ kind: 'cast', reply: {} }, () => writeCast(props.id, onEvent))
+/** Writes the Cast again, after saving edits (so they don't come back over the new one). */
+async function rewriteCast() {
+  if (!(await flushEdits('rewritten'))) return
+  await run({ kind: 'cast', reply: {} }, () => writeCast(props.id, onEvent))
+}
 
 /** Begins the scene, saving any unsaved edits to the Cast first. */
 async function begin() {
-  if (busy.value) return
-  if (castChanged.value && !(await saveCastDraft())) return
+  if (busy.value || !(await flushEdits('begun'))) return
   await run({ kind: 'begin', reply: {} }, () => beginRoleplay(props.id, onEvent))
 }
 
-function send() {
+async function send() {
   const text = draft.value.trim()
-  if (!text || busy.value || !begun.value) return
+  if (!text || busy.value || !begun.value || !(await flushEdits('sent'))) return
   run({ kind: 'message', message: text, reply: {} }, () => sendMessage(props.id, text, onEvent))
 }
 
@@ -481,7 +488,7 @@ function send() {
  * cancelled, the box gets back what was typed.
  */
 async function suggest() {
-  if (busy.value || !begun.value) return
+  if (busy.value || !begun.value || !(await flushEdits('suggested'))) return
   const typed = draft.value
   let suggested = false
   await run({ kind: 'suggest', reply: {} }, () =>
@@ -582,20 +589,43 @@ const GROUPS: { id: keyof Cast; title: () => string }[] = [
   { id: 'setting', title: () => 'Where it starts' },
 ]
 
-const castDraft = ref<Cast | null>(null)
-// A plain copy to edit (structuredClone can't copy Vue's reactive proxies).
-watch(cast, (c) => (castDraft.value = c ? JSON.parse(JSON.stringify(c)) : null), {
-  immediate: true,
+/**
+ * Hand edits, saved as the focus leaves their panel (`useAutosave`), in one line: the Look and
+ * the Cast.
+ */
+const line = saveLine()
+const lookForm = useTemplateRef<InstanceType<typeof LookForm>>('lookForm')
+const {
+  draft: castDraft,
+  status: castStatus,
+  canRevert: castCanRevert,
+  flush: flushCast,
+  revert: revertCast,
+  onFocusout: onCastFocusout,
+} = useAutosave<Cast>({
+  source: () => cast.value,
+  async save(draft) {
+    session.value = await saveCast(props.id, draft)
+    return session.value.cast!
+  },
+  line,
 })
-const castChanged = computed(() => JSON.stringify(castDraft.value) !== JSON.stringify(cast.value))
-const castSaved = ref(false)
+
+/** Saves what's edited by hand, before work that reads it; false, saying why, if it can't. */
+async function flushEdits(what: string): Promise<boolean> {
+  if ((await (lookForm.value?.flush() ?? true)) && (await flushCast())) return true
+  notice.value = { kind: 'error', text: `Not ${what}: an edit isn't saved (see Look & Cast)` }
+  return false
+}
+async function queueSaved(kind: JobKind, index: number) {
+  if (await flushEdits('queued')) queue(kind, index)
+}
 
 const fieldValue = (f: CastField) =>
   String((castDraft.value![f.group] as unknown as Record<string, unknown>)[f.key] ?? '')
 function setField(f: CastField, value: string) {
   const group = castDraft.value![f.group] as unknown as Record<string, unknown>
   group[f.key] = f.key === 'age' ? Number(value) : value
-  castSaved.value = false
 }
 
 // --- The Look, editable by hand once written.
@@ -611,28 +641,14 @@ function shownNames(shown: string[] | undefined): string {
   if (!shown?.length) return 'no one'
   return shown.length === 1 ? shown[0] : `${shown.slice(0, -1).join(', ')} and ${shown.at(-1)}`
 }
-async function saveLookDraft(draft: Look) {
-  notice.value = null
-  try {
-    session.value = await saveLook(props.id, draft)
-  } catch (err) {
-    notice.value = { kind: 'error', text: (err as Error).message }
-  }
+async function saveLookDraft(draft: Look): Promise<Look> {
+  session.value = await saveLook(props.id, draft)
+  return session.value.look!
 }
-
-/** Saves the edited Cast; false if it was refused. */
-async function saveCastDraft(): Promise<boolean> {
-  if (!castDraft.value) return false
-  notice.value = null
-  try {
-    session.value = await saveCast(props.id, castDraft.value)
-    castSaved.value = true
-    return true
-  } catch (err) {
-    notice.value = { kind: 'error', text: (err as Error).message }
-    return false
-  }
-}
+/** A Look saved while a picture renders waits for it, so the renders queued behind it have it. */
+const lookSavingText = computed(() =>
+  runningJob.value?.kind === 'render' ? 'Saving once the picture rendering is done…' : undefined
+)
 </script>
 
 <template>
@@ -788,7 +804,7 @@ async function saveCastDraft(): Promise<boolean> {
                         class="action"
                         :disabled="hasJob(frame.index, 'picture')"
                         data-picture-button
-                        @click="queue('picture', frame.index)"
+                        @click="queueSaved('picture', frame.index)"
                       >
                         {{ frame.prompt ? 'Picture again' : 'Picture this' }}
                       </button>
@@ -796,7 +812,7 @@ async function saveCastDraft(): Promise<boolean> {
                         :picture="pictureOf(frame)"
                         :has-job="(kind) => hasJob(frame.index, kind)"
                         :can-render="(!!frame.prompt && !frame.blocked) || hasJob(frame.index, 'picture')"
-                        @queue="(kind) => queue(kind, frame.index)"
+                        @queue="(kind) => queueSaved(kind, frame.index)"
                         @view="(kind) => (open3d = { index: frame.index, kind })"
                       />
                     </p>
@@ -1007,13 +1023,16 @@ async function saveCastDraft(): Promise<boolean> {
         <div v-else class="min-h-0 flex-1 overflow-y-auto" data-cast-panel>
         <LookForm
           v-if="currentLook"
+          ref="lookForm"
           class="border-b border-line p-4 text-sm"
           :look="currentLook"
+          :save="saveLookDraft"
+          :line="line"
           id-prefix="roleplay.look"
           every="every picture"
           :kept="[characterName, personaName]"
           :disabled="busy"
-          @save="saveLookDraft"
+          :saving-text="lookSavingText"
         />
         <!-- Its border sweeps while the voice is designed, slower while that waits its turn. -->
         <form
@@ -1091,7 +1110,13 @@ async function saveCastDraft(): Promise<boolean> {
           <span v-if="busy" class="animate-pulse">Writing the Cast from your Brief…</span>
           <template v-else>No Cast yet.</template>
         </p>
-        <form v-else class="flex flex-col gap-5 p-4 text-sm" data-cast-form @submit.prevent="saveCastDraft">
+        <form
+          v-else
+          class="flex flex-col gap-5 p-4 text-sm"
+          data-cast-form
+          @submit.prevent="flushCast"
+          @focusout="onCastFocusout"
+        >
           <!-- min-w-0: a fieldset is otherwise as wide as its widest unwrappable line, which a
                collapsed field's one-line preview is -->
           <fieldset v-for="g in GROUPS" :key="g.id" class="flex min-w-0 flex-col gap-2">
@@ -1119,18 +1144,13 @@ async function saveCastDraft(): Promise<boolean> {
             </label>
             </template>
           </fieldset>
-          <div class="flex items-center gap-3">
-            <button
-              type="submit"
-              class="w-fit rounded border border-line px-3 py-1 text-xs disabled:opacity-50"
-              :disabled="busy || !castChanged"
-            >
-              Save Cast
-            </button>
-            <span v-if="castSaved && !castChanged && begun" class="text-xs text-muted">
-              Applies from the next reply.
-            </span>
-          </div>
+          <SaveStatus
+            :status="castStatus"
+            :can-revert="castCanRevert"
+            :disabled="busy"
+            :saved-text="begun ? 'applies from the next reply' : undefined"
+            @revert="revertCast"
+          />
         </form>
         </section>
         </div>

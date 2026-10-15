@@ -148,7 +148,7 @@ After planning, each Frame is independent:
 |---|---|
 | **Render** | Renders one Frame through the shared queue; a re-render replaces its image (the old file is deleted once the new one is saved). |
 | **Edit by hand** | Replaces a Frame's seven sentences and who it shows; stray labels are stripped. A rendered Frame is marked **stale** until re-rendered. Refused if it crosses a Limit. |
-| **Edit the Look** | Edits, adds or removes people, or the style, and rewrites every Frame's prompt; rendered Frames whose prompt changed become stale. Someone renamed stays shown where they were. |
+| **Edit the Look** | Edits, adds or removes people, or the style, and rewrites every Frame's prompt; rendered Frames whose prompt changed become stale. Someone renamed stays shown where they were. Saved between renders: one running is finished first, with the queue held, so every render still queued has the new Look and only the one that was running goes stale. |
 | **Upscale** | As for a Chain Frame (below); a re-render or Undo deletes the upscale with the image. |
 | **Edit by Action** | The Text Model rewrites that Frame and who it shows (and the Look, if the Action changes or adds a person, or the style), after the same Action Limits check as a Chain. Declined or unclear Actions change nothing. |
 
@@ -574,24 +574,37 @@ consistency* in [open-threads.md](open-threads.md).
   skipping blocked ones. Editing carries on while they run. The Frames list shows
   each Frame's thumbnail (dimmed when stale), Beat and status (or the job working on it). The Prompt panel has the **Look** (each person's name and identity in a card of their
   own, which collapses to the name and a preview; people can be added or removed; and the art style, saved for every Frame) and the selected Frame's **Shows**
-  toggles (a person each) and seven sentences, each editable by hand with its own Save, then the full
-  prompt and the Frame's timings. The panels, the render sweep and the unsent Action (remembered
+  toggles (a person each) and seven sentences, editable by hand, then the full prompt and the
+  Frame's timings. Hand edits save themselves (see **Hand edits** below); a Frame's sentences are
+  read-only while it renders, so its picture is of what they say. The panels, the render sweep and the unsent Action (remembered
   per Session) work as on the Session screen. A Chain opened at a Storyboard's address, or the
   other way round, is sent to its own screen.
 - **Roleplay** (`/roleplay/:id`): a new Roleplay opens on its Cast, written from the Brief, with
-  **Begin** and **Rewrite Cast** in the conversation area; Begin saves any unsaved Cast edits
-  first, and the text box stays locked until the scene begins. Then the conversation fills the
+  **Begin** and **Rewrite Cast** in the conversation area, and the text box stays locked until the
+  scene begins. Then the conversation fills the
   main area: the player's Messages
   on the right, the Character's Replies on the left, each as the thought (small, muted; hidden
   with **Hide thoughts**, remembered per browser), the actions in italics and the dialogue in
   quotes. While the Character replies, the Message shows at once and the Reply fills in field by
   field, with the same light sweeping round the text box. Enter sends; Cancel, Undo and the
   unsent Message (remembered per Session) work as on the Session screen. The right panel is the
-  Cast, editable, with **Save Cast**. On Home, a card without a picture shows text in its place: a
+  Look and the Cast, editable, saving themselves (see **Hand edits** below). On Home, a card without a picture shows text in its place: a
   Roleplay's the Character's latest line (in quotation marks), a Chain's its latest Narration, a
   Storyboard's its first Beat. In the Look & Cast panel every text box grows to fit its text (no inner scrolling, so the
   panel scrolls as one) and collapses to a one-line preview by its label, remembered per browser
   (`CollapsibleTextarea`, sized by VueUse's `useTextareaAutosize`).
+- **Hand edits** (2026-10-15; they had Save buttons before): a Look, a Storyboard Frame's
+  sentences and who it shows, and a Roleplay's Cast save themselves when the focus leaves their
+  panel, so a person added (name, then identity) goes in one save; a Frame's Shows toggle and a
+  person's Remove save at once (`useAutosave`). Work that reads them saves them first: Render,
+  Render all, Upscale and 3D, an Action, Send, Suggest, Begin, Rewrite Cast. So do showing another
+  Frame (the edit goes to the Frame it was typed for) and leaving the screen; reloading or closing
+  it with an edit unsaved asks first. A Session's saves go one at a time, in order, since the server
+  takes one edit to a Session at a time. One the server would refuse (someone without a name, two
+  with one name) isn't sent, and one it refused (a Limit) stays as typed; either says why under the
+  panel, which also says when it's saved. **Revert** saves back what was there when the panel was
+  opened, or last changed by an Action. A change from elsewhere (an Action, another tab) replaces
+  the draft unless it has unsaved edits, which win.
 - **Navigation** (redone 2026-10-10): the app's name, then the screens as tabs, the one on show
   filled: **Home** (a house), **Settings** (a gear), then the **Session** opened last, named by its kind and title
   ("ROLEPLAY · The Rain-Soaked Tavern", as on its Home card; remembered per browser, not shown when
@@ -696,7 +709,7 @@ All under `/api`; the Vite dev server proxies it to the Deno server.
 | `POST /sessions/:id/plan` | Storyboard: plan it, streaming `look`, `beats`, `planned-frame` × N, then `planned` |
 | `POST /sessions/:id/frames/:index/edit` | Storyboard: edit one Frame by `{ action }`, streaming then `edited` (`outcome`, `narration`, `session`) |
 | `PUT /sessions/:id/frames/:index` | Storyboard: replace a Frame's sentences and, if given, who it shows, `{ body, shown? }`. Chain: replace a Frame's Image Prompt, `{ prompt }`, its pictures then out of date. `422` if it crosses a Limit |
-| `PUT /sessions/:id/look` | Storyboard: replace the Look, `{ people: [{ name, identity }], style }` |
+| `PUT /sessions/:id/look` | Storyboard: replace the Look, `{ people: [{ name, identity }], style }`; waits for a render running to end, holding the queue meanwhile |
 | `POST /sessions/:id/cancel` | Cancel the Frame in progress |
 | `DELETE /sessions/:id/frames/:index` | Undo the latest Frame; `:index` must name it (`409` otherwise, and for the Opening Frame or while a Frame runs) |
 | `POST /sessions/:id/frames/:index/delete` | Chain: delete Frame `:index`, any but the Opening: `{ frames, createdAt }` as seen (`409` if the Chain changed, for the Opening, or while a job runs on it or a later Frame) |
@@ -712,7 +725,7 @@ All under `/api`; the Vite dev server proxies it to the Deno server.
 | `POST /sessions/:id/jobs/:job/retry` | Roleplay or Chain: put a failed job back at the end of the queue (`404` if there's no such failed job) |
 | `DELETE /sessions/:id/jobs/:job` | Roleplay or Chain: cancel a queued or running job, or dismiss a failed one |
 | `DELETE /sessions/:id/jobs` | Every kind: Clear queue: cancel every running and queued job, and dismiss the failed ones; returns what's left (a cancelled running job until it stops) |
-| `PUT /sessions/:id/roleplay/look` | Roleplay: replace the Look, `{ subject, style }`, rewriting every pictured Frame (`400` if incomplete, `422` if it crosses a Limit) |
+| `PUT /sessions/:id/roleplay/look` | Roleplay: replace the Look, `{ subject, style }`, rewriting every pictured Frame (`400` if incomplete, `422` if it crosses a Limit); waits for a render running to end, holding the queue meanwhile |
 | `PUT /sessions/:id/roleplay/voice` | Roleplay: replace the voice description, `{ description }`, dropping the voice's clip until it's designed again (`400` if empty, too long, or it crosses a Limit) |
 | `PUT /sessions/:id/roleplay/cast` | Roleplay: replace the Cast (`400` if incomplete or the Character is under 18, `422` if it crosses a Limit) |
 

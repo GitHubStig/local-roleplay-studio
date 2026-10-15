@@ -136,11 +136,17 @@ export function roleplayRoutes(ctx: RoleplayRouteContext): Route[] {
         return json(undone)
       })],
 
-    ['PUT', path('look'), (req, p) =>
-      withRoleplay(p.id!, 'edit', async (session) => {
-        if (!session.look) return error('This Roleplay has no Look yet', 409)
-        return json(await setLook(ctx.deps(session).store, session, await readJson(req)))
-      })],
+    // Saved between renders, so the next one queued renders it.
+    [
+      'PUT',
+      path('look'),
+      (req, p) =>
+        ctx.jobs.betweenRenders(p.id!, () =>
+          withRoleplay(p.id!, 'edit', async (session) => {
+            if (!session.look) return error('This Roleplay has no Look yet', 409)
+            return json(await setLook(ctx.deps(session).store, session, await readJson(req)))
+          })),
+    ],
 
     // The Character's voice in words; a new description needs a new voice (the `voice` job).
     ['PUT', path('voice'), (req, p) =>

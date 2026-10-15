@@ -1297,6 +1297,47 @@ Deno.test('A Storyboard Frame upscales once rendered; a re-render replaces the u
     assertEquals((await call('GET', `/api/sessions/s1/images/${upscaled}`)).status, 404)
   }))
 
+Deno.test('A Look saved while a Frame renders waits for it, and the next render has it', () =>
+  withTempDir(async (root) => {
+    const images = fakeImageGenerator()
+    const prompts: string[] = []
+    let release!: () => void
+    const held = new Promise<void>((r) => (release = r))
+    const holding = {
+      ...images,
+      async generate(...args: Parameters<typeof images.generate>) {
+        prompts.push(args[0].prompt)
+        if (prompts.length === 1) await held
+        return images.generate(...args)
+      },
+    }
+    const { call } = setup({
+      root,
+      settings: { textModel: 'x' },
+      textModel: scriptedTextModel([], [], { plans: [planOf(2)] }),
+      imageGenerator: holding,
+    })
+    await call('POST', '/api/sessions', { kind: 'storyboard', brief: 'A dunk.', frameCount: 2 })
+    await readEvents(await call('POST', '/api/sessions/s1/plan'))
+    await call('POST', '/api/sessions/s1/jobs', { kind: 'render', frameIndex: 0 })
+    await call('POST', '/api/sessions/s1/jobs', { kind: 'render', frameIndex: 1 })
+    // Frame 0's render is running, Frame 1's queued behind it.
+    while (!prompts.length) await new Promise((r) => setTimeout(r, 5))
+
+    let saved = false
+    const look = call('PUT', '/api/sessions/s1/look', { ...planOf(2).look, style: 'Watercolour.' })
+      .then((res) => (saved = true, res))
+    await new Promise((r) => setTimeout(r, 50))
+    assertEquals(saved, false)
+    release()
+    assertEquals((await look).status, 200)
+    await settled(call)
+
+    assertEquals(prompts.map((p) => p.endsWith('Watercolour.')), [false, true])
+    const frames = await storyboardFrames(call)
+    assertEquals(frames.map((f) => !!f.stale), [true, false])
+  }))
+
 Deno.test('A Storyboard queues SHARP, TripoSplat and LiTo; a re-render drops them', () =>
   withTempDir(async (root) => {
     const { call } = setup({

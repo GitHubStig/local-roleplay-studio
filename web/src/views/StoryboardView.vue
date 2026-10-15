@@ -20,6 +20,7 @@ import {
   editStoryboardFrame,
   getSession,
   imageUrl,
+  type JobKind,
   type Look,
   type Made3d,
   MAX_SHOWN,
@@ -52,6 +53,8 @@ import { showPickedFrame, useFrameKeys } from '../composables/useFrameKeys'
 import { JOB_NAMES, jobForming, jobStatus, queueTabLabel, sweepOf } from '../jobs'
 import { clearCurrentSession, setCurrentSession } from '../composables/useCurrentSession'
 import { useStoredText } from '../composables/useStoredText'
+import { saveLine, useAutosave } from '../composables/useAutosave'
+import SaveStatus from '../components/SaveStatus.vue'
 import { sessionPath } from '../sessionPath'
 
 const props = defineProps<{ id: string }>()
@@ -236,7 +239,7 @@ async function plan() {
 
 // --- Queued work: renders, upscales and 3D, each on its Frame.
 
-const { jobs, jobsFor, hasJob, queue, queueAll, dropJob, clear, retry } = useJobs(props.id, {
+const { jobs, runningJob, jobsFor, hasJob, queue, queueAll, dropJob, clear, retry } = useJobs(props.id, {
   onSettled: async () => {
     await load()
   },
@@ -273,6 +276,8 @@ async function sendAction() {
   const action = draft.value.trim()
   if (!action || busy.value || !current.value) return
   const index = current.value.index
+  // The Action is made to what's saved.
+  if (!(await flushEdits('sent'))) return
   await run({ kind: 'edit', phase: 'text', frameIndex: index }, () =>
     editStoryboardFrame(props.id, index, action, (event) => {
       if (track(event)) return
@@ -286,40 +291,98 @@ async function sendAction() {
 }
 
 /**
- * Hand edits: the selected Frame's sentences and who it shows, and the Look. Reset when the source
- * changes.
+ * Hand edits, saved as the focus leaves their panel (`useAutosave`), in one line: the Look, and the
+ * selected Frame's sentences and who it shows.
  */
-const bodyDraft = ref('')
-const shownDraft = ref<string[]>([])
-const shownNow = computed(() => current.value?.shown ?? [])
-watch(() => current.value?.body, (body) => (bodyDraft.value = body ?? ''), { immediate: true })
-watch(shownNow, (shown) => (shownDraft.value = [...shown]), { immediate: true })
-const bodyChanged = computed(() =>
-  !!current.value &&
-  (bodyDraft.value.trim() !== current.value.body ||
-    shownDraft.value.join('\n') !== shownNow.value.join('\n'))
+const line = saveLine()
+const lookForm = useTemplateRef<InstanceType<typeof LookForm>>('lookForm')
+async function saveLookDraft(draft: Look): Promise<Look> {
+  session.value = await saveLook(props.id, draft)
+  return session.value.look!
+}
+/** A Look saved while a Frame renders waits for it, so the renders queued behind it have it. */
+const lookSavingText = computed(() =>
+  runningJob.value?.kind === 'render'
+    ? `Saving once Frame ${runningJob.value.frameIndex + 1} has rendered…`
+    : undefined
 )
+
+interface FrameDraft {
+  body: string
+  shown: string[]
+}
+const {
+  draft: frameDraft,
+  status: frameStatus,
+  canRevert: frameCanRevert,
+  flush: flushFrame,
+  revert: revertFrame,
+  onFocusout: onFrameFocusout,
+} = useAutosave<FrameDraft>({
+  source: () => (current.value ? { body: current.value.body, shown: current.value.shown } : null),
+  key: () => current.value?.index,
+  async save(draft, key) {
+    const index = key as number
+    session.value = await saveFrameBody(props.id, index, draft.body.trim(), draft.shown)
+    const saved = session.value.frames[index]
+    return { body: saved.body, shown: saved.shown }
+  },
+  hold: (draft) => (draft.body.trim() ? null : 'the Frame needs its sentences'),
+  normal: (draft) => ({ body: draft.body.trim(), shown: draft.shown }),
+  name: (key) => frameTitle(key as number),
+  line,
+})
+/** The selected Frame is rendering: its sentences wait, so its picture is of what they say. */
+const renderingSelected = computed(() =>
+  runningJob.value?.kind === 'render' && runningJob.value.frameIndex === selected.value
+)
+/**
+ * Who's renamed when the Look's names change from `before` to `after`, as the server has it
+ * (`renameShown`): a name kept stays; while the count is the same, one gone is the person in its
+ * place; otherwise it's dropped (null).
+ */
+const renamedTo = (before: string[], after: string[], name: string): string | null =>
+  after.includes(name)
+    ? name
+    : after.length === before.length && before.includes(name)
+    ? after[before.indexOf(name)]
+    : null
+const lookNames = () => look.value?.people.map((p) => p.name) ?? []
+// A rename in the Look carries over to the Frame's draft, as the server does to every Frame.
+watch(lookNames, (after, before) => {
+  const draft = frameDraft.value
+  if (!draft || !before) return
+  const shown = draft.shown.map((n) => renamedTo(before, after, n)).filter((n) => n !== null)
+  if (shown.join('\n') !== draft.shown.join('\n')) draft.shown = shown
+})
+
 /** Shows or hides a person in the selected Frame; one added is the least prominent. */
-function toggleShown(name: string) {
-  const shown = shownDraft.value
-  shownDraft.value = shown.includes(name) ? shown.filter((n) => n !== name) : [...shown, name]
+async function toggleShown(name: string) {
+  // A Look edit goes first, so the name is one the Look has.
+  const before = lookNames()
+  if (!(await (lookForm.value?.flush() ?? true))) return
+  const now = renamedTo(before, lookNames(), name)
+  const draft = frameDraft.value
+  if (!now || !draft) return
+  draft.shown = draft.shown.includes(now)
+    ? draft.shown.filter((n) => n !== now)
+    : [...draft.shown, now]
+  flushFrame()
 }
 
-async function save(call: () => Promise<StoryboardSession>, done: string) {
-  message.value = null
-  try {
-    session.value = await call()
-    message.value = { kind: 'done', text: done }
-  } catch (err) {
-    message.value = { kind: 'error', text: (err as Error).message }
-  }
+/** Saves what's edited by hand, before work that reads it; false, saying why, if it can't. */
+async function flushEdits(what: string): Promise<boolean> {
+  if ((await (lookForm.value?.flush() ?? true)) && (await flushFrame())) return true
+  message.value = { kind: 'error', text: `Not ${what}: an edit isn't saved (see the Prompt panel)` }
+  return false
 }
-const saveBody = () =>
-  save(
-    () => saveFrameBody(props.id, current.value!.index, bodyDraft.value, shownDraft.value),
-    `Frame ${current.value!.index + 1} saved.`,
-  )
-const saveLookDraft = (draft: Look) => save(() => saveLook(props.id, draft), 'Look saved for every Frame.')
+async function queueSaved(kind: JobKind, index: number) {
+  if (await flushEdits('queued')) queue(kind, index)
+}
+async function renderAll() {
+  // After saving, as an edit may have changed more Frames since.
+  if (await flushEdits('rendered')) queueAll('render', toRender.value.map((f) => f.index))
+}
 
 // Leaving the site or reloading drops the connection to running work, which cancels it.
 function warnBeforeUnload(e: BeforeUnloadEvent) {
@@ -497,14 +560,14 @@ const imagesOn = computed(() => featureOn.value('images'))
               :has-job="(kind) => hasJob(current!.index, kind)"
               :can-render="!current.blocked"
               button-class="rounded-lg border border-line px-3 py-2 text-sm disabled:opacity-50"
-              @queue="(kind) => queue(kind, current!.index)"
+              @queue="(kind) => queueSaved(kind, current!.index)"
               @view="(kind) => (open3d = { index: current!.index, kind })"
             />
             <RenderAllButton
               v-if="imagesOn && planned"
               :count="toRender.length"
               title="Queue a render of every Frame not rendered yet, or changed since"
-              @render="queueAll('render', toRender.map((f) => f.index))"
+              @render="renderAll"
             />
             <p
               v-if="message"
@@ -612,14 +675,23 @@ const imagesOn = computed(() => featureOn.value('images'))
 
             <LookForm
               v-else
+              ref="lookForm"
               :look="look"
+              :save="saveLookDraft"
+              :line="line"
               id-prefix="storyboard.look"
               every="every Frame"
-              :disabled="busy"
-              @save="saveLookDraft"
+              :disabled="busy || !planned"
+              :saving-text="lookSavingText"
             />
 
-            <form v-if="current" class="flex min-w-0 flex-col gap-2" data-frame-editor @submit.prevent="saveBody">
+            <form
+              v-if="current && frameDraft"
+              class="flex min-w-0 flex-col gap-2"
+              data-frame-editor
+              @submit.prevent="flushFrame"
+              @focusout="onFrameFocusout"
+            >
               <h3 class="font-medium">
                 Frame {{ current.index + 1 }}
                 <span class="font-normal text-muted">· {{ current.beat }}</span>
@@ -637,31 +709,33 @@ const imagesOn = computed(() => featureOn.value('images'))
                   :key="person.name"
                   type="button"
                   class="rounded-full border border-line px-2 py-0.5 text-muted aria-pressed:bg-surface aria-pressed:text-fg disabled:opacity-50"
-                  :aria-pressed="shownDraft.includes(person.name)"
-                  :disabled="busy"
+                  :aria-pressed="frameDraft.shown.includes(person.name)"
+                  :disabled="busy || renderingSelected"
                   @click="toggleShown(person.name)"
                 >
                   {{ person.name }}
                 </button>
-                <span v-if="!shownDraft.length" class="text-muted">· the place alone</span>
-                <span v-else-if="shownDraft.length > MAX_SHOWN" class="text-muted">
+                <span v-if="!frameDraft.shown.length" class="text-muted">· the place alone</span>
+                <span v-else-if="frameDraft.shown.length > MAX_SHOWN" class="text-muted">
                   · only the first {{ MAX_SHOWN }} are described
                 </span>
               </div>
               <CollapsibleTextarea
                 id="storyboard.frame"
-                v-model="bodyDraft"
+                v-model="frameDraft.body"
                 label="The Frame's seven sentences"
-                :disabled="busy"
+                :disabled="busy || renderingSelected"
               />
-              <button
-                v-if="bodyChanged"
-                type="submit"
-                class="w-fit rounded border border-line px-3 py-1 text-xs disabled:opacity-50"
+              <p v-if="renderingSelected" class="text-xs text-muted">
+                Read-only while it renders, so its picture is of what it says.
+              </p>
+              <SaveStatus
+                v-else
+                :status="frameStatus"
+                :can-revert="frameCanRevert"
                 :disabled="busy"
-              >
-                Save Frame {{ current.index + 1 }}
-              </button>
+                @revert="revertFrame"
+              />
               <details class="text-muted" open>
                 <summary class="cursor-pointer select-none text-xs">Full prompt</summary>
                 <p class="mt-1 text-xs leading-relaxed" data-prompt-text>{{ current.prompt }}</p>
