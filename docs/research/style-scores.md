@@ -167,4 +167,5 @@ z-image-turbo, first on CSD's spread, is mid-table here, as spread rewards chang
 is the style asked for. The hardest styles for every model were those defined by how people are
 drawn (2–9% hit, in a picture with no people in it); the easiest, landscape traditions and pixel art
 (65–75%). Unchecked against anyone's eye: the
-owner chose to take clef-flash's word.
+owner chose to take clef-flash's word. Not built into the app, for its weight:
+[ADR 0017](../adr/0017-no-vision-judge-for-style-scores.md).

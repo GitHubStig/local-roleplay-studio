@@ -474,7 +474,8 @@ written for image prompts, are left out).
   descriptions (`StyleMeasure.oneStyle`, exported too) read lower as steadier, where a Chain's,
   whose Frames can each ask for a new style, read higher as more varied. A Feature
   (`style`), available wherever uv is, on the GPU (MPS or CUDA) or slowly on the CPU. How the
-  measures and models were chosen: [research/style-scores.md](research/style-scores.md).
+  measures and models were chosen: [research/style-scores.md](research/style-scores.md); why no
+  vision model judges them: [ADR 0017](adr/0017-no-vision-judge-for-style-scores.md).
   **Exported** (2026-10-15) when the Session has been scored: Export offers to include them (on
   unless unticked, remembered per Session), for the exported columns against the base Frame last
   picked, and the page gets a Pictures / Style scores switch beside its theme toggle, showing the
