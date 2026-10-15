@@ -464,6 +464,16 @@ written for image prompts, are left out).
   base Frame or set of shown models, and Score again takes in only what's new. A Feature
   (`style`), available wherever uv is, on the GPU (MPS or CUDA) or slowly on the CPU. How the
   measures and models were chosen: [research/style-scores.md](research/style-scores.md).
+  **Exported** (2026-10-15) when the Session has been scored: Export offers to include them (on
+  unless unticked, remembered per Session), for the exported columns against the base Frame last
+  picked, and the page gets a Pictures / Style scores switch beside its theme toggle, showing the
+  same charts and numbers (`StyleScoresView`, shared with the dialog). To keep the page light,
+  Observable Plot isn't in it: the page's build stands `src/export/plotGlobal.ts` in for it, and
+  Plot is built on its own as `plot.js` (a classic script, as a module won't load from disk),
+  written beside `index.html` only when the export carries scores and loaded only when they're
+  opened. Mac, 2026-10-15: the page 152 KB (52 KB gzipped; 133 KB before), `plot.js` 273 KB (92
+  KB gzipped); with Plot inlined, the page would have been 437 KB. A Chain's 279 pictures by 9 models, with scores,
+  exported in 52 s.
 
 In testing, FLUX.2 Klein 4B keeps a person's face, hair and outfit consistent across Frames. Z-Image
 Turbo ignores a described appearance. For drift, see *reference images and edits for Subject

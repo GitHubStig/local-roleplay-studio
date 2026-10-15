@@ -360,17 +360,19 @@ watch(hovered, highlight)
 const tip = computed(() => {
   const h = hovered.value
   if (!h) return null
-  const left = pointerAt.value.x > width.value / 2
+  // 288 px, or 80% of a narrow screen, kept inside the charts' width.
+  const tipWidth = Math.min(288, width.value * 0.8)
+  const { x, y } = pointerAt.value
+  const left = x > width.value / 2 ? x - 12 - tipWidth : x + 12
   return {
     model: props.labelOf(h.id),
     frame: h.frame === undefined ? undefined : frameName(h.frame),
     value: h.value,
     caption: h.frame === undefined ? undefined : frameOf(h.frame)?.caption,
     style: {
-      top: `${pointerAt.value.y + 16}px`,
-      ...(left
-        ? { right: `${width.value - pointerAt.value.x + 12}px` }
-        : { left: `${pointerAt.value.x + 12}px` }),
+      top: `${y + 16}px`,
+      left: `${Math.max(0, Math.min(left, width.value - tipWidth))}px`,
+      width: `${tipWidth}px`,
     },
   }
 })
@@ -423,7 +425,7 @@ watchEffect(() => {
     </section>
     <div
       v-if="tip"
-      class="pointer-events-none absolute z-10 flex w-72 max-w-[80%] flex-col gap-0.5 rounded-lg border border-line bg-surface px-3 py-2 text-sm shadow-lg"
+      class="pointer-events-none absolute z-10 flex flex-col gap-0.5 rounded-lg border border-line bg-surface px-3 py-2 text-sm shadow-lg"
       :style="tip.style"
       data-style-tip
     >

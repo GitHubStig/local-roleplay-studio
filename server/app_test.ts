@@ -1049,7 +1049,10 @@ Deno.test('A Chain queues SHARP, TripoSplat and LiTo for one Frame', () =>
 Deno.test('The Compare dialog exports to a folder per Session', () =>
   withTempDir(async (root) => {
     const page = '<script id="comparison" type="application/json">{}</script>'
-    const exports = { dir: join(root, 'exports'), page: () => Promise.resolve(page) }
+    const exports = {
+      dir: join(root, 'exports'),
+      page: () => Promise.resolve({ html: page, plot: '' }),
+    }
     const { call } = await chainOfTwo(root, { exports })
     const comparison = {
       models: [],

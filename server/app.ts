@@ -46,7 +46,12 @@ import {
 import { checkChainJob, runChainJob } from './chain/jobs.ts'
 import { checkStoryboardJob, runStoryboardJob } from './storyboard/jobs.ts'
 import { GoneError, updateSession } from './update.ts'
-import { comparisonTitle, parseComparisonExport, writeComparison } from './export/comparison.ts'
+import {
+  comparisonTitle,
+  type ExportPage,
+  parseComparisonExport,
+  writeComparison,
+} from './export/comparison.ts'
 import { ImageModelError, shownPicture, switchImageModel } from './pictures.ts'
 import type { HeavyJob } from './machine.ts'
 import { Previews } from './previews.ts'
@@ -103,7 +108,7 @@ export interface AppDeps {
    * Where the Compare dialog's exports go (a folder per Session), and the page they're written
    * into (`buildComparisonPage`); without it, there's no export.
    */
-  exports?: { dir: string; page: () => Promise<string> }
+  exports?: { dir: string; page: () => Promise<ExportPage> }
   /** Frees memory before a render, upscale, scene or figure: unloads the Text Model. */
   freeMemory?: (job: HeavyJob | undefined) => Promise<void>
   newSessionId?: () => string

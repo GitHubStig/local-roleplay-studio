@@ -1,4 +1,5 @@
 import { basename, extname, join } from '@std/path'
+import type { StyleScores } from '../style/scores.ts'
 import { pngToWebp } from './webp.ts'
 
 /**
@@ -29,6 +30,25 @@ export interface ComparisonExport {
     caption?: string
     pictures: (ExportPicture | null)[]
   }[]
+  /**
+   * The style scores for the exported models (`StyleScores`, from `style/scores.ts`), with the
+   * models' names by id and the Frames compared: the page shows them as a tab of their own.
+   */
+  styles?: {
+    scores: StyleScores
+    labels: Record<string, string>
+    frames: { index: number; name: string; caption?: string }[]
+  }
+}
+
+/**
+ * The built page (`web/export.html`, its script and styles inlined), and Observable Plot as a
+ * script of its own (`plot.js`), written beside it for the style scores' charts only when the
+ * export carries them, and loaded by the page only when they're opened.
+ */
+export interface ExportPage {
+  html: string
+  plot: string
 }
 
 /** How pictures are encoded: the viewer's at full size, the table's shrunk. */
@@ -67,7 +87,47 @@ export function parseComparisonExport(body: unknown): ComparisonExport | string 
       }
     }
   }
+  if (b.styles !== undefined) {
+    const why = stylesProblem(b.styles)
+    if (why) return `styles: ${why}`
+  }
   return b as ComparisonExport
+}
+
+/** What's wrong with an export's style scores, if anything: they go into the page as they are. */
+function stylesProblem(styles: unknown): string | null {
+  const s = styles as Partial<NonNullable<ComparisonExport['styles']>> | null
+  const numbers = (xs: unknown) => Array.isArray(xs) && xs.every((x) => typeof x === 'number')
+  const scores = s?.scores
+  if (!scores || typeof scores.base !== 'number' || !numbers(scores.frames)) {
+    return 'scores need a base Frame and the Frames compared'
+  }
+  if (!Array.isArray(scores.models)) return 'scores need their models'
+  for (const m of scores.models) {
+    const measures = [m?.spread, m?.fromBase, m?.styles]
+    if (typeof m?.model !== 'string' || measures.some((x) => typeof x !== 'number')) {
+      return 'each model needs its id and measures'
+    }
+    if (!numbers(m.fromBaseByFrame) || (m.captionRank && !numbers(m.captionRank))) {
+      return 'each model needs a number per Frame'
+    }
+  }
+  if (
+    typeof s.labels !== 'object' || s.labels === null ||
+    Object.values(s.labels).some((l) => typeof l !== 'string')
+  ) {
+    return 'labels must name the models'
+  }
+  if (
+    !Array.isArray(s.frames) ||
+    s.frames.some((f) =>
+      typeof f?.index !== 'number' || typeof f.name !== 'string' ||
+      (f.caption !== undefined && typeof f.caption !== 'string')
+    )
+  ) {
+    return 'frames must each have an index and a name'
+  }
+  return null
 }
 
 /** "12 Oct 2026" (September is "Sept", as British English has it). */
@@ -82,18 +142,19 @@ const DATA_SLOT = /<script id="comparison" type="application\/json">[\s\S]*?<\/s
 
 /**
  * Writes the export to `outDir`, replacing what an earlier export left there: `index.html` (from
- * `page`, the built `web/export.html`), `images/` for the viewer and `thumbs/` for the table.
- * Anything else in the folder stays, such as a host's deploy state (here.now's `.herenow/`).
+ * `page`, the built `web/export.html`), `images/` for the viewer and `thumbs/` for the table, and
+ * with style scores, `plot.js` for their charts. Anything else in the folder stays, such as a
+ * host's deploy state (here.now's `.herenow/`).
  */
 export async function writeComparison(
   sessionDir: string,
   outDir: string,
-  page: string,
+  page: ExportPage,
   comparison: ComparisonExport,
   title: string,
 ): Promise<{ pictures: number }> {
-  if (!DATA_SLOT.test(page)) throw new Error('The export page has no slot for its comparison')
-  for (const written of ['index.html', 'images', 'thumbs']) {
+  if (!DATA_SLOT.test(page.html)) throw new Error('The export page has no slot for its comparison')
+  for (const written of ['index.html', 'plot.js', 'images', 'thumbs']) {
     await Deno.remove(join(outDir, written), { recursive: true }).catch((err) => {
       if (!(err instanceof Deno.errors.NotFound)) throw err
     })
@@ -160,15 +221,23 @@ export async function writeComparison(
   }
   const models = comparison.models.map(({ label }) => ({ label }))
   const notice = comparison.notice?.trim()
-  const data = JSON.stringify({ title, ...(notice ? { notice } : {}), models, rows })
+  const { styles } = comparison
+  const data = JSON.stringify({
+    title,
+    ...(notice ? { notice } : {}),
+    models,
+    rows,
+    ...(styles ? { styles } : {}),
+  })
     // Inside a <script>, so nothing in it may close the tag.
     .replaceAll('<', '\\u003c')
-  let html = page.replace(
+  let html = page.html.replace(
     DATA_SLOT,
     () => `<script id="comparison" type="application/json">${data}</script>`,
   )
   // Behind an 18+ notice, the page says so to search engines' safe search and content filters too.
   if (notice) html = html.replace('</head>', '<meta name="rating" content="adult" />\n</head>')
   await Deno.writeTextFile(join(outDir, 'index.html'), html)
+  if (styles) await Deno.writeTextFile(join(outDir, 'plot.js'), page.plot)
   return { pictures: rows.flatMap((r) => r.pictures).filter(Boolean).length }
 }

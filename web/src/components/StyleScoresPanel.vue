@@ -1,14 +1,12 @@
 <script setup lang="ts">
 import { useIntervalFn } from '@vueuse/core'
-import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { ApiError, getStyleScores, type Job, listJobs, queueJob } from '../api'
-import { useStoredString } from '../composables/storage'
+import { useStyleBase } from '../composables/useStyleBase'
 import { useFeatures } from '../composables/useFeatures'
 import { jobStatus } from '../jobs'
-import { STYLE_MEASURES, type StyleScores } from '../styleScores'
-
-/** The charts, with Observable Plot: loaded only when there are scores to show. */
-const StyleCharts = defineAsyncComponent(() => import('./StyleCharts.vue'))
+import type { StyleScores } from '../styleScores'
+import StyleScoresView from './StyleScoresView.vue'
 
 /**
  * The Compare dialog's style scores: how varied each shown Image Model's art style is across the
@@ -30,16 +28,7 @@ const props = defineProps<{
 
 const { on } = useFeatures()
 
-const storedBase = useStoredString(`style-base:${props.sessionId}`)
-const base = computed({
-  get: () => {
-    const stored = Number(storedBase.value)
-    return props.frames.some((f) => f.index === stored) && storedBase.value !== null
-      ? stored
-      : props.frames[0]?.index ?? 0
-  },
-  set: (index: number) => (storedBase.value = String(index)),
-})
+const base = useStyleBase(props.sessionId, () => props.frames.map((f) => f.index))
 /** A Frame in the base Frame's list: its name, then the start of its caption. */
 const optionText = (f: { name: string; caption?: string }) => {
   const caption = f.caption?.replace(/\s+/g, ' ').trim()
@@ -126,9 +115,7 @@ const scoring = computed(() => !!job.value && job.value.status !== 'failed')
       </span>
     </div>
     <p class="max-w-prose text-sm text-muted">
-      The base Frame is the one without a style of its own, often the first or the last. Style is
-      measured with CSD, a model trained to tell art styles apart whatever a picture shows, on the
-      {{ scores ? `${scores.frames.length} Frames` : 'Frames' }} every shown model pictured.
+      The base Frame is the one without a style of its own, often the first or the last.
     </p>
     <p v-if="problem" class="text-danger" data-style-problem>{{ problem }}</p>
     <p v-else-if="scores === null && !scoring" class="text-muted">
@@ -136,27 +123,6 @@ const scoring = computed(() => !!job.value && job.value.status !== 'failed')
       <template v-else>Style scores are off: switch them on in Settings (Images).</template>
     </p>
 
-    <template v-if="scores">
-      <StyleCharts :scores :label-of="labelOf" :frames />
-      <details class="text-sm">
-        <summary class="text-muted">The numbers</summary>
-        <table class="mt-2 border-separate border-spacing-x-3 border-spacing-y-1" data-style-table>
-          <thead>
-            <tr>
-              <th class="text-left font-medium">Image Model</th>
-              <th v-for="m in STYLE_MEASURES" :key="m.id" class="text-right font-medium">{{ m.name }}</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="s in scores.models" :key="s.model">
-              <td>{{ labelOf(s.model) }}</td>
-              <td v-for="m in STYLE_MEASURES" :key="m.id" class="text-right tabular-nums">
-                {{ m.value(s) === undefined ? '–' : m.format(m.value(s)!) }}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </details>
-    </template>
+    <StyleScoresView v-if="scores" :scores :label-of="labelOf" :frames />
   </div>
 </template>

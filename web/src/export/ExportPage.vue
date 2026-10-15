@@ -2,16 +2,39 @@
 import { ref } from 'vue'
 import type { Comparison } from '../comparison'
 import ComparisonTable from '../components/ComparisonTable.vue'
+import StyleScoresView from '../components/StyleScoresView.vue'
 import ThemeToggle from '../components/ThemeToggle.vue'
+import type { ExportedStyles } from '../styleScores'
+import { loadPlot } from './plotGlobal'
 
 /**
  * The exported comparison page: the Compare dialog's table alone, without its header, and the
  * app's theme toggle in a corner, remembered by the browser it's opened in. Exported with a
  * `notice`, the table stays blurred and out of reach behind it until the visitor confirms they're
- * 18 or older, on every visit: nothing is remembered.
+ * 18 or older, on every visit: nothing is remembered. Exported with its style scores, a switch
+ * beside the theme toggle shows them instead of the table.
  */
-const props = defineProps<Comparison & { notice?: string }>()
+const props = defineProps<Comparison & { notice?: string; styles?: ExportedStyles }>()
 const confirmed = ref(!props.notice)
+/**
+ * The style scores in place of the table, once their charts' script (`plot.js`, beside the page)
+ * has loaded: only then, so a visitor who never opens them never downloads it.
+ */
+const showScores = ref(false)
+/** While the charts' script loads, or why it couldn't. */
+const charts = ref<{ loading: true } | { error: string } | null>(null)
+async function show(scores: boolean) {
+  if (!scores) return (showScores.value = false)
+  charts.value = { loading: true }
+  try {
+    await loadPlot()
+    charts.value = null
+    showScores.value = true
+  } catch (err) {
+    charts.value = { error: (err as Error).message }
+  }
+}
+const labelOf = (model: string) => props.styles?.labels[model] ?? model
 
 /** Back where the visitor came from, or to an empty page if this was the first. */
 function leave() {
@@ -27,7 +50,12 @@ function leave() {
     :inert="!confirmed"
     data-export-table
   >
-    <ComparisonTable :models :rows />
+    <div v-if="showScores && styles" class="h-full overflow-auto" data-export-scores>
+      <div class="mx-auto w-full max-w-6xl p-4 pb-20">
+        <StyleScoresView :scores="styles.scores" :label-of="labelOf" :frames="styles.frames" />
+      </div>
+    </div>
+    <ComparisonTable v-else :models :rows />
   </div>
   <div
     v-if="!confirmed"
@@ -61,7 +89,31 @@ function leave() {
       </div>
     </div>
   </div>
-  <div class="fixed right-3 bottom-3 z-50 rounded-lg bg-canvas/90 shadow-md" data-export-theme>
-    <ThemeToggle />
+  <div class="fixed right-3 bottom-3 z-50 flex items-center gap-2">
+    <div
+      v-if="styles"
+      class="flex rounded-lg bg-canvas/90 p-0.5 text-sm shadow-md"
+      role="group"
+      aria-label="Show"
+      data-export-view
+    >
+      <button
+        v-for="(label, i) in ['Pictures', 'Style scores']"
+        :key="label"
+        type="button"
+        class="rounded-md px-2.5 py-1"
+        :class="showScores === (i === 1) ? 'bg-fg text-canvas' : 'text-muted hover:text-fg'"
+        :aria-pressed="showScores === (i === 1)"
+        @click="show(i === 1)"
+      >
+        {{ label }}
+      </button>
+    </div>
+    <span v-if="charts" class="rounded-lg bg-canvas/90 px-2 py-1 text-sm shadow-md" :class="'error' in charts ? 'text-danger' : 'text-muted'">
+      {{ 'error' in charts ? charts.error : 'Loading the charts…' }}
+    </span>
+    <div class="rounded-lg bg-canvas/90 shadow-md" data-export-theme>
+      <ThemeToggle />
+    </div>
   </div>
 </template>

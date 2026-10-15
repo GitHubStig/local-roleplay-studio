@@ -9,7 +9,7 @@
     "typecheck": "node node_modules/vue-tsc/bin/vue-tsc.js -b",
     "preview": "vite preview",
     "test": "vitest run",
-    "build:export": "vite build --config vite.export.config.ts"
+    "build:export": "vite build --config vite.export.config.ts && vite build --config vite.export-plot.config.ts"
   },
   "dependencies": {
     "@observablehq/plot": "^0.6.17",

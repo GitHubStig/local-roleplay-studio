@@ -9,7 +9,8 @@ import {
   writeComparison,
 } from './comparison.ts'
 
-const PAGE = '<title>x</title><script id="comparison" type="application/json">{}</script><p>'
+const HTML = '<title>x</title><script id="comparison" type="application/json">{}</script><p>'
+const PAGE = { html: HTML, plot: 'window.Plot = {}' }
 
 /** An opaque one-colour PNG of this size, as a render is. */
 async function png(width: number, height: number): Promise<Uint8Array> {
@@ -147,7 +148,7 @@ Deno.test('An export is a page with the comparison in it, the pictures as WebP b
 
 Deno.test('An export behind an 18+ notice carries it, and says so to filters', () =>
   withTempDir(async (dir) => {
-    const page = `<html><head></head><body>${PAGE}</body></html>`
+    const page = { html: `<html><head></head><body>${HTML}</body></html>`, plot: '' }
     const plain = { ...comparison, rows: [] }
     await writeComparison(dir, join(dir, 'plain'), page, plain, 'x')
     const notice = '  Some of these pictures show nude figures.  '
@@ -174,8 +175,67 @@ Deno.test('A notice must be some text, and not too long', () => {
 Deno.test('A page without a slot for the comparison is not written into', () =>
   withTempDir(async (dir) => {
     await assertRejects(
-      () => writeComparison(dir, join(dir, 'out'), '<p>no slot</p>', comparison, 'x'),
+      () =>
+        writeComparison(
+          dir,
+          join(dir, 'out'),
+          { html: '<p>no slot</p>', plot: '' },
+          comparison,
+          'x',
+        ),
       Error,
       'no slot',
     )
+  }))
+
+const styles: NonNullable<ComparisonExport['styles']> = {
+  scores: {
+    base: 1,
+    frames: [0, 1],
+    unembedded: 0,
+    models: [
+      { model: 'a', spread: 0.4, fromBase: 0.4, styles: 2, fromBaseByFrame: [0.4, 0] },
+      {
+        model: 'b',
+        spread: 0.1,
+        fromBase: 0.1,
+        styles: 1.2,
+        matches: { first: 0.5, topThree: 1 },
+        fromBaseByFrame: [0.1, 0],
+        captionRank: [2, 1],
+      },
+    ],
+  },
+  labels: { a: 'A', b: 'B' },
+  frames: [{ index: 0, name: 'Frame 0', caption: 'The tavern, at dusk.' }, {
+    index: 1,
+    name: 'Frame 1',
+  }],
+}
+
+Deno.test('An export can carry the style scores, into the page as they are', () =>
+  withTempDir(async (dir) => {
+    const withStyles = { models: comparison.models, rows: [], styles }
+    assertEquals(parseComparisonExport(withStyles), withStyles)
+    assertEquals(
+      parseComparisonExport({ ...withStyles, styles: { ...styles, labels: { a: 3 } } }),
+      'styles: labels must name the models',
+    )
+    const broken = { ...styles.scores.models[0], fromBaseByFrame: ['x'] }
+    assertEquals(
+      parseComparisonExport({
+        ...withStyles,
+        styles: { ...styles, scores: { ...styles.scores, models: [broken] } },
+      }),
+      'styles: each model needs a number per Frame',
+    )
+    await writeComparison(join(dir, 'session'), join(dir, 'out'), PAGE, withStyles, 'T')
+    assertEquals((await pageData(join(dir, 'out'))).styles, styles)
+    // Their charts' script beside the page; not without them.
+    assertEquals(await Deno.readTextFile(join(dir, 'out', 'plot.js')), PAGE.plot)
+    await writeComparison(join(dir, 'session'), join(dir, 'out'), PAGE, {
+      ...withStyles,
+      styles: undefined,
+    }, 'T')
+    assertEquals(await Deno.stat(join(dir, 'out', 'plot.js')).catch(() => null), null)
   }))

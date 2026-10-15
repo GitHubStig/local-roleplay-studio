@@ -1,6 +1,6 @@
 import type { RoleplaySession } from './roleplay/api'
 import type { ComparisonModel, ComparisonRow } from './comparison'
-import type { StyleScores } from './styleScores'
+import type { ExportedStyles, StyleScores } from './styleScores'
 export interface Health {
   ok: boolean
 }
@@ -534,6 +534,8 @@ export interface ComparisonExport {
   rows: (Omit<ComparisonRow, 'pictures'> & {
     pictures: (Pick<Picture, 'image' | 'upscaled' | 'stale'> | null)[]
   })[]
+  /** The style scores for the exported columns, shown on the page as a tab of their own. */
+  styles?: ExportedStyles
 }
 
 /** Exports a Session's comparison as a page; it says where on the server the folder went. */

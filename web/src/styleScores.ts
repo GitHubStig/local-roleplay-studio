@@ -75,3 +75,13 @@ export const STYLE_MEASURES: readonly StyleMeasure[] = [
     format: percent,
   },
 ]
+
+/**
+ * The style scores as an export carries them, to show without the app: the scores, the models'
+ * names by id, and the Frames compared, with what each is called and its caption.
+ */
+export interface ExportedStyles {
+  scores: StyleScores
+  labels: Record<string, string>
+  frames: { index: number; name: string; caption?: string }[]
+}

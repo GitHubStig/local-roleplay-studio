@@ -1,9 +1,11 @@
 <script setup lang="ts" generic="F extends PicturedFrame">
 import { computed, ref, useTemplateRef, watch } from 'vue'
-import { exportComparison, imageUrl, type PicturedFrame } from '../api'
+import { exportComparison, getStyleScores, imageUrl, type PicturedFrame } from '../api'
 import type { ComparisonModel } from '../comparison'
 import { useStoredString } from '../composables/storage'
 import { useStoredFlag } from '../composables/useStoredFlag'
+import { useStyleBase } from '../composables/useStyleBase'
+import type { ExportedStyles } from '../styleScores'
 import { useImageModels } from '../composables/useSettingsOptions'
 import ComparisonTable from './ComparisonTable.vue'
 import StyleScoresPanel from './StyleScoresPanel.vue'
@@ -103,6 +105,31 @@ const notice = computed({
   set: (text) => (storedNotice.value = text === NOTICE ? null : text),
 })
 
+/**
+ * The style scores an export can carry, for the exported columns against the base Frame picked
+ * for them: looked up when the export is asked for; null when the Session hasn't been scored (or
+ * fewer than two columns are exported). Included unless the player unticks it (remembered).
+ */
+const styleBase = useStyleBase(props.sessionId, () => pictureFrames.value.map((f) => f.index))
+const exportStyles = useStoredFlag(`export-style-scores:${props.sessionId}`, true)
+const styles = ref<ExportedStyles | null>(null)
+async function askToExport() {
+  styles.value = null
+  asking.value?.showModal()
+  const ids = exportedColumns.value.map((i) => modelIds.value[i])
+  if (ids.length < 2) return
+  const scores = await getStyleScores(props.sessionId, styleBase.value, ids).catch(() => null)
+  if (!scores) return
+  styles.value = {
+    scores,
+    labels: Object.fromEntries(ids.map((id) => [id, labelOf(id)])),
+    frames: pictureFrames.value.filter((f) => scores.frames.includes(f.index)),
+  }
+}
+const styleBaseName = computed(() =>
+  pictureFrames.value.find((f) => f.index === styles.value?.scores.base)?.name
+)
+
 /** Where the last export went, or why it failed; null while exporting. */
 const exported = ref<{ folder?: string; error?: string } | null | undefined>()
 async function exportPage() {
@@ -118,6 +145,7 @@ async function exportPage() {
           p && { image: p.image, upscaled: p.upscaled, stale: p.stale }
         ),
       })),
+      ...(styles.value && exportStyles.value ? { styles: styles.value } : {}),
     })
     exported.value = { folder }
   } catch (e) {
@@ -183,7 +211,7 @@ async function exportPage() {
           title="Write this as a page of its own, its pictures as WebP, to open or host anywhere"
           :disabled="exported === null || !exportedColumns.length"
           data-export
-          @click="asking?.showModal()"
+          @click="askToExport"
         >
           {{ exported === null ? 'Exporting…' : 'Export' }}
         </button>
@@ -219,6 +247,15 @@ async function exportPage() {
             data-notice
           />
           <span class="text-sm text-muted">Followed by "Continue only if you're 18 or older."</span>
+        </label>
+        <label v-if="styles" class="flex items-start gap-2">
+          <input v-model="exportStyles" type="checkbox" class="mt-1" data-export-styles />
+          <span class="flex flex-col gap-0.5">
+            <span>Include the style scores</span>
+            <span class="text-sm text-muted">
+              Their charts, as a tab of the page, against {{ styleBaseName }}.
+            </span>
+          </span>
         </label>
         <div class="flex justify-end gap-3">
           <button
