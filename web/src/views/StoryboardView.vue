@@ -416,6 +416,7 @@ const imagesOn = computed(() => featureOn.value('images'))
             :image-model="session.settings.imageModel"
             :name="frameTitle"
             :caption="(f) => f.beat"
+            @changed="load"
           />
         </div>
         <FrameImage

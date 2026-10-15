@@ -14,7 +14,8 @@ import ImageViewer from './ImageViewer.vue'
  * header's grip (or with ← and → on it). With `hideable`, each column has a checkbox: unticked, it
  * moves to the right end, folded to its header. The arrangement is `order` and `hidden`, which the
  * Compare dialog keeps (and exports by); otherwise it lasts until the table is next opened. An
- * `instead` slot shows in place of the table, under the same header (the dialog's style scores).
+ * `instead` slot shows in place of the table, under the same header (the dialog's style scores),
+ * and a `hidden` slot follows each hidden column's name (given its index into `models`).
  */
 const props = defineProps<Comparison & { title?: string; hideable?: boolean }>()
 
@@ -249,6 +250,7 @@ function climb(by: number) {
                 />
                 {{ m.label }}
               </label>
+              <slot name="hidden" :index="m.index" />
             </th>
           </tr>
         </thead>

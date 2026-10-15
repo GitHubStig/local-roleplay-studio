@@ -1109,6 +1109,30 @@ Deno.test('A Session switches Image Model, and a Chain Frame by the old one rend
     assertEquals(images.prompts.length, 3)
   }))
 
+Deno.test("Every picture by one Image Model is deleted, with its files, but not the Session's own model's", () =>
+  withTempDir(async (root) => {
+    const { call } = await chainOfTwo(root)
+    await call('PUT', '/api/sessions/s1/image-model', { imageModel: 'flux2-klein-4b' })
+    await call('POST', '/api/sessions/s1/jobs', { kind: 'render', frameIndex: 1 })
+    await settled(call)
+    const frames = async () =>
+      ((await (await call('GET', '/api/sessions/s1')).json()).frames as JsonFrame[]).map((f) =>
+        f.pictures.map((p: Picture) => p.imageModel)
+      )
+    assertEquals(await frames(), [['qwen-image-2.1'], ['qwen-image-2.1', 'flux2-klein-4b']])
+    const old = (await (await call('GET', '/api/sessions/s1')).json()).frames[0].pictures[0].image
+    const file = join(root, 's1', old)
+    assertEquals((await Deno.stat(file)).isFile, true)
+
+    assertEquals((await call('DELETE', '/api/sessions/s1/pictures')).status, 400)
+    const own = await call('DELETE', '/api/sessions/s1/pictures?imageModel=flux2-klein-4b')
+    assertEquals(own.status, 409)
+    const deleted = await call('DELETE', '/api/sessions/s1/pictures?imageModel=qwen-image-2.1')
+    assertEquals((await deleted.json()).deleted, 2)
+    assertEquals(await frames(), [[], ['flux2-klein-4b']])
+    assertEquals(await Deno.stat(file).catch(() => null), null)
+  }))
+
 Deno.test("A Chain carries on while a job runs, and Undo cancels the undone Frame's jobs", () =>
   withTempDir(async (root) => {
     // LiTo takes until it's let go, or cancelled.

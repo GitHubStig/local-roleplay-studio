@@ -1,12 +1,15 @@
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { exportComparison, type PicturedFrame } from '../api'
+import { deleteModelPictures, exportComparison, type PicturedFrame } from '../api'
 import ModelComparison from './ModelComparison.vue'
 
 vi.mock('../api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../api')>()),
   getSettingsOptions: vi.fn(() => new Promise(() => {})),
   exportComparison: vi.fn(() => Promise.resolve({ folder: '/exports/s1', pictures: 3 })),
+  // Not scored: an export carries no style scores.
+  getStyleScores: vi.fn(() => Promise.reject(new Error('Not scored yet'))),
+  deleteModelPictures: vi.fn(() => Promise.resolve({ session: {}, deleted: 2 })),
 }))
 
 enableAutoUnmount(afterEach)
@@ -278,5 +281,37 @@ describe('ModelComparison', () => {
       { label: 'a' },
       { label: 'b' },
     ])
+  })
+
+  it('remembers hidden columns for the Session, and deletes a hidden model’s pictures when asked', async () => {
+    localStorage.clear()
+    const open = async (wrapper: ReturnType<typeof mountIt>) => {
+      await wrapper.find('[data-compare-models]').trigger('click')
+      await flushPromises()
+    }
+    let wrapper = mountIt()
+    await open(wrapper)
+    await wrapper.findAll('[data-show-model]')[0].setValue(false)
+    expect(localStorage.getItem('compare-hidden:s1')).toBe('["a"]')
+
+    // Still hidden on the Session's next visit, and only a model other than the Session's own
+    // offers to delete its pictures.
+    wrapper.unmount()
+    wrapper = mountIt()
+    await open(wrapper)
+    expect(wrapper.find('[data-hidden-column]').text()).toContain('a')
+    await wrapper.find('[data-delete-model-pictures]').trigger('click')
+    expect(wrapper.find('[data-delete-model-dialog]').text()).toContain('All 2 pictures a made')
+    await wrapper.find('[data-delete-model-dialog] form').trigger('submit')
+    await flushPromises()
+    expect(deleteModelPictures).toHaveBeenCalledWith('s1', 'a')
+    expect(wrapper.emitted('changed')).toHaveLength(1)
+
+    await wrapper.find('[data-hidden-column] input').setValue(true)
+    const columnB = wrapper.findAll('[data-model-column]').find((c) => c.text().startsWith('b'))!
+    await columnB.find('[data-show-model]').setValue(false)
+    expect(wrapper.find('[data-hidden-column]').text()).toBe('b')
+    expect(wrapper.find('[data-delete-model-pictures]').exists()).toBe(false)
+    localStorage.clear()
   })
 })

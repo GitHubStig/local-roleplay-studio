@@ -1,6 +1,12 @@
 <script setup lang="ts" generic="F extends PicturedFrame">
 import { computed, ref, useTemplateRef, watch } from 'vue'
-import { exportComparison, getStyleScores, imageUrl, type PicturedFrame } from '../api'
+import {
+  deleteModelPictures,
+  exportComparison,
+  getStyleScores,
+  imageUrl,
+  type PicturedFrame,
+} from '../api'
 import type { ComparisonModel } from '../comparison'
 import { useStoredString } from '../composables/storage'
 import { useStoredFlag } from '../composables/useStoredFlag'
@@ -14,7 +20,8 @@ import StyleScoresPanel from './StyleScoresPanel.vue'
  * A Session's pictures side by side (ComparisonTable), a row per Frame and a column per Image
  * Model that rendered any, opened by its Compare button (shown once two models have). Export
  * writes the same as a page of its own, on the server. Style scores shows, in place of the table,
- * how varied each shown model's art style is (StyleScoresPanel).
+ * how varied each shown model's art style is (StyleScoresPanel). A hidden column can have all its
+ * model's pictures deleted, but the Session's own model's; `changed` says so.
  */
 const props = withDefaults(
   defineProps<{
@@ -29,6 +36,8 @@ const props = withDefaults(
   }>(),
   { name: (index: number) => `Frame ${index}` },
 )
+/** The Session changed here (a model's pictures were deleted): its screen loads it again. */
+const emit = defineEmits<{ changed: [] }>()
 const { labelOf } = useImageModels()
 
 /** Every Image Model with a picture here, in the order they first rendered. */
@@ -63,11 +72,29 @@ const rows = computed(() =>
 )
 
 /**
- * The columns as arranged in the table (indexes into `models`), and those hidden: kept while the
- * Session is open, and what Export writes, in that order and without the hidden ones.
+ * The columns as arranged in the table (indexes into `models`), kept while the Session is open,
+ * and those hidden, remembered per Session in this browser by their models: what Export and the
+ * style scores take, in that order and without the hidden ones.
  */
 const order = ref<number[]>()
-const hidden = ref<number[]>([])
+const hiddenIds = useStoredString(`compare-hidden:${props.sessionId}`)
+const hidden = computed<number[]>({
+  get: () => {
+    let ids: unknown
+    try {
+      ids = JSON.parse(hiddenIds.value ?? '[]')
+    } catch {
+      ids = []
+    }
+    return (Array.isArray(ids) ? ids : []).map((id) => modelIds.value.indexOf(id)).filter((i) =>
+      i >= 0
+    )
+  },
+  set: (indexes) => {
+    const ids = indexes.map((i) => modelIds.value[i]).filter(Boolean)
+    hiddenIds.value = ids.length ? JSON.stringify(ids) : null
+  },
+})
 const exportedColumns = computed(() =>
   (order.value ?? models.value.map((_, i) => i)).filter((i) => !hidden.value.includes(i))
 )
@@ -130,6 +157,40 @@ const styleBaseName = computed(() =>
   pictureFrames.value.find((f) => f.index === styles.value?.scores.base)?.name
 )
 
+/**
+ * A hidden model whose pictures are about to be deleted, asked first: how many pictures go, and
+ * how many of them have an upscale or 3D made from them, which go too.
+ */
+const deleting = useTemplateRef<HTMLDialogElement>('deleting')
+const doomed = ref<
+  { model: string; label: string; pictures: number; extras: number; problem?: string; busy?: true }
+  | null
+>(null)
+function askToDelete(index: number) {
+  const model = modelIds.value[index]
+  const pictures = props.frames.flatMap((f) => f.pictures.filter((p) => p.imageModel === model))
+  doomed.value = {
+    model,
+    label: models.value[index].label,
+    pictures: pictures.length,
+    extras: pictures.filter((p) => p.upscaled || p.scene || p.figure || p.lito).length,
+  }
+  deleting.value?.showModal()
+}
+async function deleteNow() {
+  const asked = doomed.value
+  if (!asked) return
+  doomed.value = { ...asked, busy: true, problem: undefined }
+  try {
+    await deleteModelPictures(props.sessionId, asked.model)
+    deleting.value?.close()
+    doomed.value = null
+    emit('changed')
+  } catch (err) {
+    doomed.value = { ...asked, problem: (err as Error).message }
+  }
+}
+
 /** Where the last export went, or why it failed; null while exporting. */
 const exported = ref<{ folder?: string; error?: string } | null | undefined>()
 async function exportPage() {
@@ -182,6 +243,18 @@ async function exportPage() {
       :rows
       hideable
     >
+      <template #hidden="{ index }">
+        <button
+          v-if="!models[index].current"
+          type="button"
+          class="mt-1 text-xs text-danger hover:underline"
+          :title="`Delete every picture ${models[index].label} made in this Session`"
+          data-delete-model-pictures
+          @click="askToDelete(index)"
+        >
+          Delete pictures…
+        </button>
+      </template>
       <template v-if="showScores" #instead>
         <StyleScoresPanel
           :session-id="sessionId"
@@ -271,6 +344,40 @@ async function exportPage() {
             data-export-now
           >
             Export
+          </button>
+        </div>
+      </form>
+    </dialog>
+    <dialog
+      ref="deleting"
+      class="m-auto w-full max-w-md rounded-lg border border-line bg-surface p-6 text-fg backdrop:bg-black/60"
+      data-delete-model-dialog
+      @close="doomed = null"
+    >
+      <form v-if="doomed" method="dialog" class="flex flex-col gap-4" @submit.prevent="deleteNow">
+        <h3 class="text-lg font-medium">Delete {{ doomed.label }}'s pictures?</h3>
+        <p>
+          All {{ doomed.pictures }} {{ doomed.pictures === 1 ? 'picture' : 'pictures' }}
+          {{ doomed.label }} made in this Session<template v-if="doomed.extras">, with the upscales
+          and 3D made from {{ doomed.extras }} of them</template>, from every Frame. This can't be
+          undone.
+        </p>
+        <p v-if="doomed.problem" class="text-danger" data-delete-problem>{{ doomed.problem }}</p>
+        <div class="flex justify-end gap-3">
+          <button
+            type="button"
+            class="rounded-lg border border-line px-4 py-2"
+            @click="deleting?.close()"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            class="rounded-lg bg-danger px-4 py-2 font-medium text-canvas disabled:opacity-50"
+            :disabled="doomed.busy"
+            data-delete-now
+          >
+            {{ doomed.busy ? 'Deleting…' : 'Delete' }}
           </button>
         </div>
       </form>

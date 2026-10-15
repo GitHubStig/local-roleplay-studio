@@ -668,6 +668,7 @@ async function saveCastDraft(): Promise<boolean> {
                 :frames="session.frames"
                 :image-model="session.settings.imageModel"
                 :caption="(f) => f.reply.actions"
+                @changed="reload"
               />
               <label
                 class="flex cursor-pointer items-center gap-1.5 text-muted"

@@ -418,6 +418,12 @@ written for image prompts, are left out).
   picture, which then has the whole height. A column moves by dragging the grip in its
   header (pointer events, so a phone can too; the table scrolls along near its edges), or with ←
   and → on the grip; the viewer's ← and → follow the new order, until the table is next opened.
+  A column's checkbox hides it (folded to its header at the right end), leaving its model out of
+  Export and the style scores; since 2026-10-15 the hidden ones are remembered per Session in the
+  browser. A hidden column other than the Session's own Image Model offers **Delete pictures…**
+  (2026-10-15): after a confirmation counting them, every picture that model made in the Session
+  goes, with its upscales and 3D (`DELETE /api/sessions/:id/pictures?imageModel=`), for a model
+  whose pictures aren't worth keeping (ideogram-4's, many blocked by its safety filter).
   Both pages' viewports say `minimum-scale=1` (2026-10-14): without it, a phone browser widened the
   page to fit whatever overflowed (the app's header and toolbars, at 390 px), and the full-window
   dialogs sized to that, so Compare and the viewer were cut off and turning the phone didn't

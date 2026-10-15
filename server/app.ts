@@ -52,7 +52,7 @@ import {
   parseComparisonExport,
   writeComparison,
 } from './export/comparison.ts'
-import { ImageModelError, shownPicture, switchImageModel } from './pictures.ts'
+import { deleteModelPictures, ImageModelError, shownPicture, switchImageModel } from './pictures.ts'
 import type { HeavyJob } from './machine.ts'
 import { Previews } from './previews.ts'
 import { RenderQueue } from './renderQueue.ts'
@@ -694,6 +694,22 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
         return json(await switchImageModel(deps.sessions, session, body.imageModel))
       } catch (err) {
         if (err instanceof ImageModelError) return error(err.message, 400)
+        throw err
+      }
+    }],
+
+    // Deletes every picture by one Image Model (`?imageModel=`), with its upscales and 3D, from
+    // Compare's hidden columns; not the Session's own model. Sends back the Session, and how many
+    // pictures went.
+    ['DELETE', new URLPattern({ pathname: '/api/sessions/:id/pictures' }), async (req, p) => {
+      const model = new URL(req.url).searchParams.get('imageModel')
+      if (!model) return error('imageModel is required', 400)
+      const session = await deps.sessions.load(p.id!)
+      if (!session) return error('Session not found', 404)
+      try {
+        return json(await deleteModelPictures(deps.sessions, session, model))
+      } catch (err) {
+        if (err instanceof ImageModelError) return error(err.message, 409)
         throw err
       }
     }],

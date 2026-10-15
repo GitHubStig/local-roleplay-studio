@@ -449,6 +449,16 @@ export const getSession = (id: string) => request<Session>(`/api/sessions/${id}`
 export const setImageModel = <S>(id: string, imageModel: string) =>
   put<S>(`/api/sessions/${id}/image-model`, { imageModel })
 
+/**
+ * Deletes every picture by one Image Model in a Session, with its upscales and 3D (Compare's
+ * hidden columns); not the Session's own model. It comes back with how many pictures went.
+ */
+export const deleteModelPictures = (id: string, imageModel: string) =>
+  request<{ session: Session; deleted: number }>(
+    `/api/sessions/${id}/pictures?imageModel=${encodeURIComponent(imageModel)}`,
+    { method: 'DELETE' },
+  )
+
 export const setRenderFrames = (id: string, renderFrames: boolean) =>
   request<ChainSession>(`/api/sessions/${id}/render-frames`, {
     method: 'PUT',

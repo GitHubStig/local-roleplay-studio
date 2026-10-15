@@ -145,3 +145,38 @@ export async function switchImageModel(
       },
   )
 }
+
+/**
+ * Deletes every picture Image Model `model` made in the Session, with what was made from them
+ * (upscales, scenes, figures), from Compare's hidden columns: for a model whose pictures aren't
+ * worth keeping. Not the Session's own Image Model, which every Frame shows: switch first. Says how
+ * many pictures went. A render by that model still under way (started before a switch) would add
+ * its picture back when it finishes.
+ */
+export async function deleteModelPictures(
+  store: SessionStore,
+  session: Session,
+  model: string,
+): Promise<{ session: Session; deleted: number }> {
+  let files: string[] = []
+  let deleted = 0
+  const updated = await updateSession(store, session.id, session.kind, (latest: Session) => {
+    if (latest.settings.imageModel === model) {
+      throw new ImageModelError(
+        `${model} is this Session's Image Model: switch to another before deleting its pictures`,
+      )
+    }
+    const gone = latest.frames.flatMap((f) => f.pictures.filter((p) => p.imageModel === model))
+    files = gone.flatMap(pictureFiles)
+    deleted = gone.length
+    return {
+      ...latest,
+      frames: latest.frames.map((f) => ({
+        ...f,
+        pictures: f.pictures.filter((p) => p.imageModel !== model),
+      })),
+    } as Session
+  })
+  await removeFiles(store.dir(session.id), files)
+  return { session: updated, deleted }
+}
