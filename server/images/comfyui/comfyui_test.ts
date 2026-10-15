@@ -1,4 +1,4 @@
-import { assertEquals, assertRejects } from '@std/assert'
+import { assertEquals, assertRejects, assertThrows } from '@std/assert'
 import { join } from '@std/path'
 import { DEFAULT_SETTINGS, type Settings } from '../../settings.ts'
 import { withTempDir } from '../../testing.ts'
@@ -15,6 +15,18 @@ const MAC_FILES: Record<string, string[]> = {
   ],
   text_encoders: ['qwen3vl_4b_fp8_scaled.safetensors', 'qwen3vl_8b_int8_convrot.safetensors'],
   vae: ['qwen_image_vae.safetensors', 'qwen_image_2.1_vae_bf16.safetensors'],
+}
+
+/** The Windows PC's: Qwen-Image 2.1 and its Turbo, FLUX.2 Klein 4B and Z-Image Turbo. */
+const PC_FILES: Record<string, string[]> = {
+  diffusion_models: [
+    'flux-2-klein-4b.safetensors',
+    'qwen_image_2.1_int8_convrot.safetensors',
+    'qwen_image_2.1_turbo_int8_convrot.safetensors',
+    'z_image_turbo_int8_convrot.safetensors',
+  ],
+  text_encoders: ['qwen3vl_8b_int8_convrot.safetensors', 'qwen_3_4b.safetensors'],
+  vae: ['ae.safetensors', 'flux2-vae.safetensors', 'qwen_image_2.1_vae_bf16.safetensors'],
 }
 
 /** A stand-in ComfyUI with the Mac's model files, unless told others. */
@@ -239,7 +251,7 @@ Deno.test('Every ComfyUI workflow loads, and fills with nothing left over', asyn
     ...COMFYUI_MODELS.map((model) => ({
       id: model.id,
       values: {
-        ...pickFiles(model, (folder) => MAC_FILES[folder] ?? []),
+        ...pickFiles(model, (folder) => PC_FILES[folder] ?? []),
         prompt: 'p',
         seed: 1,
         steps: 2,
@@ -281,5 +293,20 @@ Deno.test('Files are picked by the first pattern installed, so each machine can 
   assertEquals(
     pickFiles(qwen, (f) => both[f as keyof typeof both] ?? []).unet,
     'qwen_image_2.1_int8_convrot.safetensors',
+  )
+})
+
+Deno.test("Qwen-Image 2.1 never picks its Turbo's DiT, nor Klein its undistilled base", () => {
+  const withDiTs = (dits: string[]) => (f: string) =>
+    f === 'diffusion_models' ? dits : PC_FILES[f] ?? []
+  const model = (id: string) => COMFYUI_MODELS.find((m) => m.id === id)!
+  assertThrows(() =>
+    pickFiles(
+      model('qwen-image-2.1'),
+      withDiTs(['qwen_image_2.1_turbo_int8_convrot.safetensors']),
+    )
+  )
+  assertThrows(() =>
+    pickFiles(model('flux2-klein-4b'), withDiTs(['flux-2-klein-base-4b.safetensors']))
   )
 })

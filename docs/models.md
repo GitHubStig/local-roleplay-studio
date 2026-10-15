@@ -584,7 +584,7 @@ backends run (mflux on the Mac, ComfyUI on either; "mflux and ComfyUI side by si
 [research/comfyui.md](research/comfyui.md)), and the one measured most here (the steps trial, the
 step cache and Viggle's turbo, below). On the Mac at 832×1216: 96.5 s with mflux, 55.7 s with the step cache;
 on the RTX 4070 through ComfyUI, ~21 s. For speed on a Mac alone, FLUX.2 Klein 4B (`flux2-klein-4b`,
-4 steps, ~10–13 s) was the default until then; it runs on mflux only.
+4 steps, ~10–13 s) was the default until then; ComfyUI runs it too since 2026-10-15 (below).
 
 | Model | Time per image | Notes |
 |---|---|---|
@@ -608,6 +608,40 @@ Text Model loaded; peak is macOS's peak memory footprint. Timings for the four b
 including model loading), not a comparison of how well they follow the prompt or keep a
 subject consistent. FLUX.2 Klein 9B (added 2026-09-29) is about twice as slow as 4B and needs twice
 the memory, which next to gemma4 on a 48 GB Mac is tight.
+
+### On ComfyUI with an RTX 4070: four Image Models (2026-10-15)
+
+Three Image Models joined Qwen-Image 2.1 on ComfyUI, each from ComfyUI's own template
+(`workflows/` in `server/images/comfyui/`), with Comfy-Org's files:
+
+- **Qwen-Image 2.1 Turbo** (`qwen-image-2.1-turbo`): Qwen's own distilled DiT
+  (`qwen_image_2.1_turbo_int8_convrot`, 7.3 GB), not mflux's Viggle LoRA (a separate Image Model,
+  `qwen-image-2.1-viggle`). It shares Qwen-Image 2.1's text encoder and VAE. The template fixes 8
+  steps (`ManualSigmas`), so Steps offers only 8, and adds `QwenImage21Cache` (the prompt's part of
+  each step kept rather than recomputed). The template's optional prompt rewriter is left out.
+- **FLUX.2 Klein 4B** (`flux-2-klein-4b`, 7.8 GB, bf16: Comfy-Org has no smaller build): the
+  template's distilled half, 4 steps.
+- **Z-Image Turbo** (`z_image_turbo_int8_convrot`, 6.2 GB): 8 steps. Its template names the fp8
+  Qwen3 4B, but the bf16 one Klein uses (`qwen_3_4b`, 8.0 GB) is the same file in both of Comfy-Org's
+  repos, so one download serves both.
+
+Measured on the Windows PC (RTX 4070 12 GB, 16 GB of RAM, ComfyUI 0.40.0), through the app's own
+ComfyUI generator: one picture each at 832×1216, seed 42, one prose prompt (the tavern scenario's
+opening: two people, rain, firelight), ComfyUI's models freed before each, Ollama unloaded. The
+second of two passes (the first ran while a download was still writing to the disk, and was up to
+twice as slow):
+
+| Model | Steps | From cold | Sampling and decoding | What it drew |
+|---|---|---|---|---|
+| Qwen-Image 2.1 | 25 | 32.5 s | 12.4 s | (not looked at: the reference) |
+| Qwen-Image 2.1 Turbo | 8 | 12.2 s | 4.3 s | everything asked for, painterly |
+| FLUX.2 Klein 4B | 4 | 9.8 s | 3.0 s | everything, but an old grey innkeeper, resting rather than polishing; the most cartoon-like |
+| Z-Image Turbo | 8 | 11.4 s | 4.8 s | everything, illustrated; rain falling inside the tavern too |
+
+"From cold" includes loading the models from disk; the rest of it is loading and the text encoder.
+ComfyUI filled the card for every model (~11.6 GB peak VRAM in each), so VRAM doesn't tell them
+apart. Not checked: keeping a subject consistent across Frames, prompts from tags, or more than one
+picture each.
 
 ### Qwen-Image 2.1 on mflux 0.21: the step cache and Viggle's turbo LoRA (2026-10-04)
 

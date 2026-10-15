@@ -214,7 +214,12 @@ Deno.test('GET /api/settings/options lists Text and Image Models', async () => {
   assertEquals(body.textModels, ['llama3:latest', 'qwen3.8:27b-mlx'])
   assertEquals(body.thinkingModels, ['qwen3.8:27b-mlx'])
   assertEquals(body.imageModels.mflux[0].id, 'flux2-klein-4b')
-  assertEquals(body.imageModels.comfyui.map((m: { id: string }) => m.id), ['qwen-image-2.1'])
+  assertEquals(body.imageModels.comfyui.map((m: { id: string }) => m.id), [
+    'qwen-image-2.1',
+    'qwen-image-2.1-turbo',
+    'flux2-klein-4b',
+    'z-image-turbo',
+  ])
 })
 
 Deno.test('POST /api/settings/comfyui checks an address not saved yet', async () => {
@@ -300,11 +305,11 @@ Deno.test('Choosing ComfyUI makes pictures, and then Upscale, available where mf
   })
   const voices = (await (await call('GET', '/api/settings/options')).json()).features
   assertEquals(voices.voices.available, true)
-  // An Image Model must be the backend's own: FLUX.2 Klein is mflux's only.
+  // An Image Model must be the backend's own: Ming-Image is mflux's only.
   const wrong = await call('PUT', '/api/settings', {
     ...settings,
     imageBackend: 'comfyui',
-    imageModel: 'flux2-klein-4b',
+    imageModel: 'ming-image',
   })
   assertEquals(wrong.status, 400)
 })

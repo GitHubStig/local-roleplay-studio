@@ -190,6 +190,9 @@ in use (Windows and apps), and the next Text Model call loaded on a clear GPU.
   answering (it may have crashed): restart it") after two checks with no answer; the calls sent
   without waiting (`/interrupt`, `/history`, `/free`) give up after 10 s, the upload after 60 s.
   Why the memory query failed wasn't found; `comfy-aimdo` is ComfyUI's dynamic VRAM loader.
+  ComfyUI 0.40.0 (2026-10-13) ships aimdo 0.5.6 with a fix for "qwen 2.1 rogues in low VRAM
+  conditions" (PR 16870), possibly this; eight renders of four Image Models on 0.40.0
+  (2026-10-15, Windows PC) didn't crash, too few to say it's gone.
 - **Cancel, on Windows** (2026-10-07): a Chain's render cancelled at step 8 of 25 and an upscale
   at tile 7 of 40 both stopped at once; the Chain kept its Frame as it was, no file was left, and
   ComfyUI's queue was empty. But both prompts **stayed in ComfyUI's history**, as `error` with an

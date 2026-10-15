@@ -1,0 +1,57 @@
+{
+  "_note": "Qwen-Image 2.1 Turbo (Qwen's own distilled DiT, not Viggle's LoRA), from ComfyUI's template image_qwen_image_2_1_turbo_t2i (8 steps on the template's fixed sigmas, so $steps isn't used; CFG 1, euler; QwenImage21Cache, which keeps the prompt's part of each step instead of recomputing it), in API format, without its optional prompt rewriter. $names are filled in by server/images/comfyui/workflow.ts. Sent as RGB (SplitImageWithAlpha), as qwen-image-2.1.json is.",
+  "unet": {
+    "class_type": "UNETLoader",
+    "inputs": { "unet_name": "$unet", "weight_dtype": "default" }
+  },
+  "cache": {
+    "class_type": "QwenImage21Cache",
+    "inputs": { "model": ["unet", 0], "device": "auto", "dtype": "default" }
+  },
+  "clip": {
+    "class_type": "CLIPLoader",
+    "inputs": { "clip_name": "$clip", "type": "qwen_image", "device": "default" }
+  },
+  "vae": { "class_type": "VAELoader", "inputs": { "vae_name": "$vae" } },
+  "text": {
+    "class_type": "TextEncodeQwenImage21",
+    "inputs": {
+      "clip": ["clip", 0],
+      "prompt": "$prompt",
+      "negative_prompt": "",
+      "resolution": 1024
+    }
+  },
+  "guider": {
+    "class_type": "CFGGuider",
+    "inputs": { "model": ["cache", 0], "positive": ["text", 0], "negative": ["text", 1], "cfg": 1 }
+  },
+  "sampler": { "class_type": "KSamplerSelect", "inputs": { "sampler_name": "euler" } },
+  "sigmas": {
+    "class_type": "ManualSigmas",
+    "inputs": {
+      "sigmas": "1.0, 0.978453, 0.95418, 0.926626, 0.89508, 0.845148, 0.704534, 0.414568, 0"
+    }
+  },
+  "noise": { "class_type": "RandomNoise", "inputs": { "noise_seed": "$seed" } },
+  "latent": {
+    "class_type": "EmptyLatentImage",
+    "inputs": { "width": "$width", "height": "$height", "batch_size": 1 }
+  },
+  "sample": {
+    "class_type": "SamplerCustomAdvanced",
+    "inputs": {
+      "noise": ["noise", 0],
+      "guider": ["guider", 0],
+      "sampler": ["sampler", 0],
+      "sigmas": ["sigmas", 0],
+      "latent_image": ["latent", 0]
+    }
+  },
+  "decode": {
+    "class_type": "VAEDecode",
+    "inputs": { "samples": ["sample", 0], "vae": ["vae", 0] }
+  },
+  "rgb": { "class_type": "SplitImageWithAlpha", "inputs": { "image": ["decode", 0] } },
+  "save": { "class_type": "SaveImageWebsocket", "inputs": { "images": ["rgb", 0] } }
+}

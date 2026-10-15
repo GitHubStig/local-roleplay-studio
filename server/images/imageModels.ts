@@ -22,7 +22,7 @@ export interface ImageModelOption {
   defaultSteps: number
   /** Takes the step cache (mflux). */
   stepCache: boolean
-  /** The only steps it renders at, when it has presets for them (mflux); any count otherwise. */
+  /** The only steps it renders at, when it has presets (mflux) or a fixed schedule; any otherwise. */
   stepChoices?: number[]
   /** Can be quantized to 8 or 4 bits as it loads (mflux). */
   quantize: boolean
@@ -32,10 +32,11 @@ export interface ImageModelOption {
 
 export function imageModelsOf(backend: ImageBackendKind): ImageModelOption[] {
   return backend === 'comfyui'
-    ? COMFYUI_MODELS.map(({ id, label, defaultSteps }) => ({
+    ? COMFYUI_MODELS.map(({ id, label, defaultSteps, stepChoices }) => ({
       id,
       label,
       defaultSteps,
+      ...(stepChoices && { stepChoices }),
       stepCache: false,
       quantize: false,
       float16: false,

@@ -1,0 +1,45 @@
+{
+  "_note": "Z-Image Turbo, from ComfyUI's template image_z_image_turbo_int8 (8 steps, CFG 1 with a zeroed negative, res_multistep, simple, AuraFlow shift 3), in API format. $names are filled in by server/images/comfyui/workflow.ts. The picture comes back over the WebSocket (SaveImageWebsocket), so ComfyUI writes no file.",
+  "unet": {
+    "class_type": "UNETLoader",
+    "inputs": { "unet_name": "$unet", "weight_dtype": "default" }
+  },
+  "clip": {
+    "class_type": "CLIPLoader",
+    "inputs": { "clip_name": "$clip", "type": "lumina2", "device": "default" }
+  },
+  "vae": { "class_type": "VAELoader", "inputs": { "vae_name": "$vae" } },
+  "shift": {
+    "class_type": "ModelSamplingAuraFlow",
+    "inputs": { "model": ["unet", 0], "shift": 3 }
+  },
+  "text": {
+    "class_type": "CLIPTextEncode",
+    "inputs": { "clip": ["clip", 0], "text": "$prompt" }
+  },
+  "negative": { "class_type": "ConditioningZeroOut", "inputs": { "conditioning": ["text", 0] } },
+  "latent": {
+    "class_type": "EmptySD3LatentImage",
+    "inputs": { "width": "$width", "height": "$height", "batch_size": 1 }
+  },
+  "sampler": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": ["shift", 0],
+      "seed": "$seed",
+      "steps": "$steps",
+      "cfg": 1,
+      "sampler_name": "res_multistep",
+      "scheduler": "simple",
+      "positive": ["text", 0],
+      "negative": ["negative", 0],
+      "latent_image": ["latent", 0],
+      "denoise": 1
+    }
+  },
+  "decode": {
+    "class_type": "VAEDecode",
+    "inputs": { "samples": ["sampler", 0], "vae": ["vae", 0] }
+  },
+  "save": { "class_type": "SaveImageWebsocket", "inputs": { "images": ["decode", 0] } }
+}
