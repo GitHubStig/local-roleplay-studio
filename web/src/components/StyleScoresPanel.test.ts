@@ -41,11 +41,13 @@ const job: Job = {
   progress: { step: 8, total: 30 },
 }
 
-const mountIt = () =>
+const mountIt = (more: { shared?: number[]; pictured?: Record<string, number> } = {}) =>
   mount(StyleScoresPanel, {
     props: {
       sessionId: 's1',
       models: ['a', 'b'],
+      shared: more.shared ?? [0, 1, 2],
+      pictured: more.pictured ?? { a: 3, b: 3 },
       frames: [0, 1, 2].map((index) => ({
         index,
         name: `Frame ${index}`,
@@ -110,5 +112,20 @@ describe('StyleScoresPanel', () => {
     await flushPromises()
     expect(getStyleScores).toHaveBeenLastCalledWith('s1', 2, ['a', 'b'])
     expect(localStorage.getItem('style-base:s1')).toBe('2')
+  })
+
+  it('names the models that leave fewer than two Frames in common, without asking the server', async () => {
+    vi.mocked(getStyleScores).mockClear()
+    vi.mocked(listJobs).mockResolvedValue([])
+    const wrapper = mountIt({ shared: [1], pictured: { a: 3, b: 1 } })
+    await flushPromises()
+    expect(wrapper.find('[data-style-problem]').text()).toBe(
+      'B pictured only 1 Frame: hide its column to compare the rest.',
+    )
+    expect(getStyleScores).not.toHaveBeenCalled()
+    // The base Frame can only be one they share.
+    expect(wrapper.findAll('[data-style-base] option').map((o) => o.text())).toEqual([
+      'Frame 1 · Art style: a very long description of a pixel art look, in…',
+    ])
   })
 })

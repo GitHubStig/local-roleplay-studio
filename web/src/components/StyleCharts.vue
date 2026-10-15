@@ -17,6 +17,8 @@ const props = defineProps<{
   labelOf: (model: string) => string
   /** The Frames: what each is called, and what happens in it (its caption), for the tooltips. */
   frames: readonly { index: number; name: string; caption?: string }[]
+  /** Every Frame shares one style (a Storyboard's, a Roleplay's): steadiness is the aim. */
+  oneStyle?: boolean
 }>()
 
 const frameOf = (index: number) => props.frames.find((f) => f.index === index)
@@ -403,15 +405,16 @@ watchEffect(() => {
   <div ref="root" class="relative flex flex-col gap-8" data-style-charts @pointermove="trackPointer">
     <section v-for="m in measures" :key="m.id" class="flex flex-col gap-1" :data-chart="m.id">
       <h3 class="font-medium">{{ m.name }}</h3>
-      <p class="max-w-prose text-sm text-muted">{{ m.description }}</p>
+      <p class="max-w-prose text-sm text-muted">{{ oneStyle ? m.oneStyle : m.description }}</p>
       <div :ref="(el) => (slots[m.id] = el as HTMLElement | null)" />
     </section>
     <section class="flex flex-col gap-1" data-chart="from-base-by-frame">
       <h3 class="font-medium">Away from the base Frame, Frame by Frame</h3>
       <p class="max-w-prose text-sm text-muted">
         Each model's picture of every Frame, by how far its style moved from its picture of
-        {{ frameName(scores.base) }} (the dashed line). A flat line near 0: the model kept one look
-        whatever the Frame asked for.
+        {{ frameName(scores.base) }} (the dashed line).
+        <template v-if="oneStyle">A flat line near 0: the model kept the one style asked for.</template>
+        <template v-else>A flat line near 0: the model kept one look whatever the Frame asked for.</template>
       </p>
       <div :ref="(el) => (slots.byFrame = el as HTMLElement | null)" />
     </section>
@@ -419,7 +422,8 @@ watchEffect(() => {
       <h3 class="font-medium">Which pictures match their Frame</h3>
       <p class="max-w-prose text-sm text-muted">
         Each picture, by where its own Frame's caption ranks among all the Frames' captions (CLIP).
-        A faded column: a style no model drew; a faded row: a model that seldom drew what was asked.
+        A faded column: {{ oneStyle ? 'a Frame' : 'a style' }} no model drew recognisably; a faded
+        row: a model that seldom drew what was asked.
       </p>
       <div :ref="(el) => (slots.ranks = el as HTMLElement | null)" />
     </section>

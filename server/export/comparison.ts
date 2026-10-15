@@ -38,6 +38,8 @@ export interface ComparisonExport {
     scores: StyleScores
     labels: Record<string, string>
     frames: { index: number; name: string; caption?: string }[]
+    /** The Session's Frames all share one style (a Storyboard's, a Roleplay's). */
+    oneStyle?: boolean
   }
 }
 
@@ -126,6 +128,9 @@ function stylesProblem(styles: unknown): string | null {
     )
   ) {
     return 'frames must each have an index and a name'
+  }
+  if (s.oneStyle !== undefined && typeof s.oneStyle !== 'boolean') {
+    return 'oneStyle must be true or false'
   }
   return null
 }

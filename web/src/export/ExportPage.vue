@@ -73,7 +73,12 @@ function leave() {
       data-export-scores
     >
       <div class="mx-auto w-full max-w-6xl p-4 pb-20">
-        <StyleScoresView :scores="styles.scores" :label-of="labelOf" :frames="styles.frames" />
+        <StyleScoresView
+          :scores="styles.scores"
+          :label-of="labelOf"
+          :frames="styles.frames"
+          :one-style="styles.oneStyle"
+        />
       </div>
     </div>
     <ComparisonTable v-else :models :rows />

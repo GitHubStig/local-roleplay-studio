@@ -28,11 +28,17 @@ export interface StyleScores {
   unembedded: number
 }
 
-/** A measure as the charts show it: its name, what it means, and its value for a model. */
+/**
+ * A measure as the charts show it: its name, what it means, and its value for a model. What it
+ * means depends on the Session: a Chain's Frames can each ask for a new style (variety is the
+ * aim), while a Storyboard's and a Roleplay's all share their Look's (steadiness is).
+ */
 export interface StyleMeasure {
   id: 'spread' | 'fromBase' | 'styles' | 'matches'
   name: string
   description: string
+  /** What it means where every Frame shares one style. */
+  oneStyle: string
   value: (m: ModelStyleScores) => number | undefined
   /** How a value is written. */
   format: (v: number) => string
@@ -47,6 +53,8 @@ export const STYLE_MEASURES: readonly StyleMeasure[] = [
     name: 'Spread',
     description:
       "The average difference in style between any two of a model's pictures, from 0 (all alike). Higher: its styles vary more from Frame to Frame.",
+    oneStyle:
+      "The average difference in style between any two of a model's pictures, from 0 (all alike). Every Frame here asks for the same style, so lower is steadier.",
     value: (m) => m.spread,
     format: decimal,
   },
@@ -55,6 +63,8 @@ export const STYLE_MEASURES: readonly StyleMeasure[] = [
     name: 'Away from the base Frame',
     description:
       "How far, on average, a model's pictures moved in style from its picture of the base Frame. Low: it keeps drifting back to the base's look.",
+    oneStyle:
+      "How far, on average, a model's pictures moved in style from its picture of the base Frame. Lower: it held the base's look.",
     value: (m) => m.fromBase,
     format: decimal,
   },
@@ -63,6 +73,8 @@ export const STYLE_MEASURES: readonly StyleMeasure[] = [
     name: 'Distinct styles',
     description:
       "How many really different styles a model's pictures amount to (the Vendi score): 1 if they all look alike, up to one per Frame.",
+    oneStyle:
+      "How many really different styles a model's pictures amount to (the Vendi score): 1 if they all look alike. Every Frame here asks for one style, so nearer 1 is steadier.",
     value: (m) => m.styles,
     format: (v) => v.toFixed(1),
   },
@@ -71,6 +83,8 @@ export const STYLE_MEASURES: readonly StyleMeasure[] = [
     name: 'Matches its Frame',
     description:
       "How often a picture is among the three nearest to its own Frame's caption, of all the Frames' captions (CLIP). Checks that the variety is the style asked for, not noise.",
+    oneStyle:
+      "How often a picture is among the three nearest to its own Frame's caption, of all the Frames' captions (CLIP): whether it shows what its Frame describes.",
     value: (m) => m.matches?.topThree,
     format: percent,
   },
@@ -84,4 +98,6 @@ export interface ExportedStyles {
   scores: StyleScores
   labels: Record<string, string>
   frames: { index: number; name: string; caption?: string }[]
+  /** The Session's Frames all share one style (a Storyboard's, a Roleplay's): `StyleMeasure`. */
+  oneStyle?: boolean
 }

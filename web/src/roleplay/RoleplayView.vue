@@ -669,6 +669,7 @@ async function saveCastDraft(): Promise<boolean> {
                 :image-model="session.settings.imageModel"
                 :caption="(f) => f.reply.actions"
                 @changed="reload"
+                one-style
               />
               <label
                 class="flex cursor-pointer items-center gap-1.5 text-muted"

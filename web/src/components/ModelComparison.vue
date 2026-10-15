@@ -33,6 +33,11 @@ const props = withDefaults(
     name?: (index: number) => string
     /** What happens in a Frame, under its picture in the viewer (`ComparisonRow.caption`). */
     caption?: (frame: F) => string | undefined
+    /**
+     * Every Frame shares one style (a Storyboard's Look, a Roleplay's): the style scores then
+     * read lower as steadier.
+     */
+    oneStyle?: boolean
   }>(),
   { name: (index: number) => `Frame ${index}` },
 )
@@ -108,6 +113,21 @@ const pictureFrames = computed(() =>
     caption: props.caption?.(f) || undefined,
   }))
 )
+/** The Frames every shown model pictured (indexes): the only ones the style scores compare. */
+const sharedFrames = computed(() =>
+  props.frames
+    .filter((f) => shownModels.value.every((m) => f.pictures.some((p) => p.imageModel === m)))
+    .map((f) => f.index)
+)
+/** How many Frames each model pictured, to name those that leave too few shared. */
+const picturedCounts = computed(() =>
+  Object.fromEntries(
+    modelIds.value.map((m) => [
+      m,
+      props.frames.filter((f) => f.pictures.some((p) => p.imageModel === m)).length,
+    ]),
+  )
+)
 /** The style scores in place of the table. */
 const showScores = ref(false)
 
@@ -137,7 +157,7 @@ const notice = computed({
  * for them: looked up when the export is asked for; null when the Session hasn't been scored (or
  * fewer than two columns are exported). Included unless the player unticks it (remembered).
  */
-const styleBase = useStyleBase(props.sessionId, () => pictureFrames.value.map((f) => f.index))
+const styleBase = useStyleBase(props.sessionId, () => sharedFrames.value)
 const exportStyles = useStoredFlag(`export-style-scores:${props.sessionId}`, true)
 const styles = ref<ExportedStyles | null>(null)
 async function askToExport() {
@@ -151,6 +171,7 @@ async function askToExport() {
     scores,
     labels: Object.fromEntries(ids.map((id) => [id, labelOf(id)])),
     frames: pictureFrames.value.filter((f) => scores.frames.includes(f.index)),
+    ...(props.oneStyle ? { oneStyle: true } : {}),
   }
 }
 const styleBaseName = computed(() =>
@@ -260,7 +281,10 @@ async function exportPage() {
           :session-id="sessionId"
           :models="shownModels"
           :frames="pictureFrames"
+          :shared="sharedFrames"
+          :pictured="picturedCounts"
           :label-of="labelOf"
+          :one-style
         />
       </template>
       <template #actions>

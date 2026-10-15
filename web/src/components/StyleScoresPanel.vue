@@ -23,12 +23,20 @@ const props = defineProps<{
    * picture's caption: a Chain Frame's Narration), to tell them apart in the base Frame's list.
    */
   frames: readonly { index: number; name: string; caption?: string }[]
+  /** The Frames every shown model pictured (indexes): the only ones the scores can compare. */
+  shared: readonly number[]
+  /** How many Frames each shown model pictured, to say which keep the shared ones too few. */
+  pictured: Record<string, number>
   labelOf: (model: string) => string
+  /** Every Frame shares one style (a Storyboard's, a Roleplay's): see `StyleMeasure`. */
+  oneStyle?: boolean
 }>()
 
 const { on } = useFeatures()
 
-const base = useStyleBase(props.sessionId, () => props.frames.map((f) => f.index))
+const base = useStyleBase(props.sessionId, () => props.shared)
+/** The base Frame's choices: the shared Frames. */
+const baseFrames = computed(() => props.frames.filter((f) => props.shared.includes(f.index)))
 /** A Frame in the base Frame's list: its name, then the start of its caption. */
 const optionText = (f: { name: string; caption?: string }) => {
   const caption = f.caption?.replace(/\s+/g, ' ').trim()
@@ -45,6 +53,12 @@ async function load() {
     problem.value = 'Show at least two models in the table to compare their styles.'
     return
   }
+  if (props.shared.length < 2) {
+    // Said by `shownProblem`, which names the models as their names load.
+    scores.value = null
+    problem.value = null
+    return
+  }
   try {
     scores.value = await getStyleScores(props.sessionId, base.value, props.models)
     problem.value = null
@@ -53,7 +67,26 @@ async function load() {
     problem.value = err instanceof ApiError && err.status === 404 ? null : (err as Error).message
   }
 }
-watch([base, () => props.models.join()], load)
+watch([base, () => props.models.join(), () => props.shared.join()], load)
+
+/**
+ * Why fewer than two Frames can be compared: the shown models that pictured fewest, by name, to
+ * hide. "FLUX.2 Klein 4B pictured only 1 Frame: hide its column to compare the rest."
+ */
+const tooFew = computed(() => {
+  const counts = props.models.map((m) => props.pictured[m] ?? 0)
+  const fewest = props.models.filter((m) => (props.pictured[m] ?? 0) < Math.max(...counts))
+  if (!fewest.length) return 'Fewer than two Frames have a picture by every shown model.'
+  const named = fewest.map((m) => {
+    const n = props.pictured[m] ?? 0
+    return `${props.labelOf(m)} pictured only ${n} ${n === 1 ? 'Frame' : 'Frames'}`
+  })
+  const columns = fewest.length === 1 ? 'its column' : 'their columns'
+  return `${named.join(', and ')}: hide ${columns} to compare the rest.`
+})
+const shownProblem = computed(() =>
+  props.models.length >= 2 && props.shared.length < 2 ? tooFew.value : problem.value
+)
 
 /** The scoring job, while it's queued, running, or failed. */
 const job = ref<Job | null>(null)
@@ -93,7 +126,9 @@ const scoring = computed(() => !!job.value && job.value.status !== 'failed')
           class="max-w-full rounded border border-line bg-surface px-2 py-1"
           data-style-base
         >
-          <option v-for="f in frames" :key="f.index" :value="f.index">{{ optionText(f) }}</option>
+          <option v-for="f in baseFrames" :key="f.index" :value="f.index">
+            {{ optionText(f) }}
+          </option>
         </select>
       </label>
       <button
@@ -115,14 +150,20 @@ const scoring = computed(() => !!job.value && job.value.status !== 'failed')
       </span>
     </div>
     <p class="max-w-prose text-sm text-muted">
-      The base Frame is the one without a style of its own, often the first or the last.
+      <template v-if="oneStyle">
+        Every Frame here shares the Look's style, so any Frame will do as the base, and lower
+        numbers mean a steadier style.
+      </template>
+      <template v-else>
+        The base Frame is the one without a style of its own, often the first or the last.
+      </template>
     </p>
-    <p v-if="problem" class="text-danger" data-style-problem>{{ problem }}</p>
+    <p v-if="shownProblem" class="text-danger" data-style-problem>{{ shownProblem }}</p>
     <p v-else-if="scores === null && !scoring" class="text-muted">
       <template v-if="on('style')">Not scored yet: Score embeds the pictures, about a second each.</template>
       <template v-else>Style scores are off: switch them on in Settings (Images).</template>
     </p>
 
-    <StyleScoresView v-if="scores" :scores :label-of="labelOf" :frames />
+    <StyleScoresView v-if="scores" :scores :label-of="labelOf" :frames :one-style />
   </div>
 </template>

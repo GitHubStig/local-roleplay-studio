@@ -467,7 +467,12 @@ written for image prompts, are left out).
   embedded with CSD and CLIP, and each caption with CLIP, in its turn behind renders but leaving
   the Text Model loaded (~3 GB). The vectors are kept in the Session's `style.json`, by picture
   file and caption, so the scores come back at once (`GET /api/sessions/:id/style-scores`) for any
-  base Frame or set of shown models, and Score again takes in only what's new. A Feature
+  base Frame or set of shown models, and Score again takes in only what's new. The base Frame can be
+  any Frame every shown model pictured (2026-10-15): when fewer than two are, the dialog names the
+  models that pictured too few ("FLUX.2 Klein 4B pictured only 1 Frame: hide its column to compare
+  the rest"). A Storyboard's or a Roleplay's Frames all share their Look's style, so there the
+  descriptions (`StyleMeasure.oneStyle`, exported too) read lower as steadier, where a Chain's,
+  whose Frames can each ask for a new style, read higher as more varied. A Feature
   (`style`), available wherever uv is, on the GPU (MPS or CUDA) or slowly on the CPU. How the
   measures and models were chosen: [research/style-scores.md](research/style-scores.md).
   **Exported** (2026-10-15) when the Session has been scored: Export offers to include them (on

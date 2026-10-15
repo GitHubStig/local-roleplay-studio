@@ -13,6 +13,8 @@ const props = defineProps<{
   scores: StyleScores
   labelOf: (model: string) => string
   frames: readonly { index: number; name: string; caption?: string }[]
+  /** Every Frame shares one style (a Storyboard's, a Roleplay's): see `StyleMeasure`. */
+  oneStyle?: boolean
 }>()
 
 const baseName = computed(() =>
@@ -27,7 +29,7 @@ const baseName = computed(() =>
       Style is measured with CSD, a model trained to tell art styles apart whatever a picture
       shows.
     </p>
-    <StyleCharts :scores :label-of="labelOf" :frames />
+    <StyleCharts :scores :label-of="labelOf" :frames :one-style />
     <details class="text-sm">
       <summary class="text-muted">The numbers</summary>
       <table class="mt-2 border-separate border-spacing-x-3 border-spacing-y-1" data-style-table>

@@ -417,6 +417,7 @@ const imagesOn = computed(() => featureOn.value('images'))
             :name="frameTitle"
             :caption="(f) => f.beat"
             @changed="load"
+            one-style
           />
         </div>
         <FrameImage
