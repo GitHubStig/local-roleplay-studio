@@ -258,6 +258,21 @@ seeded:
   user message now says the reply holds all three parts, in order, and is done only after the last
   Frame: the same Briefs then failed 0 of 10.
 
+### Two people in a Frame: the Art Agent's wording (2026-10-16, Windows PC)
+
+A Storyboard Frame's seven sentences were described to the plan as for one subject, so with two
+people each sentence covered both at once, and an Image Model could swap who did what. The plan now
+describes them as the Roleplay Art Agent's picture call does, each about every person shown
+(`shared/each-person.md`), with anyone not in the picture left out, clothing carried from Frame to
+Frame and at most 40 words a sentence. Tried against the old prompt and a new shape with a block per
+person, on Gemma 4 12B Heretic (GGUF), two plans each from the tavern scenario, the two-person
+Frames rendered on Qwen-Image 2.1 and FLUX.3 Klein ([bench/two-people](bench/two-people/README.md)):
+the old prompt's Frames came out wrong twice of four on Qwen-Image 2.1 (who's where swapped, an
+extra person), the new wording's and the per-person shape's never (3 and 4 Frames); FLUX.3 Klein got
+every one right. Plans took the same time (30 s); the per-person shape took 38–40 s, and the 12B cut
+corners with it (names written with their handle, a name the Brief didn't give), so it stays
+parked. Not checked: the Mac's 26B, more seeds, three people.
+
 ## Art Agent (picturing Roleplay Frames)
 
 The Art Agent uses the Session's Text Model. Measured 2026-09-28 on six Frames of a 30-Frame

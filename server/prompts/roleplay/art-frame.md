@@ -8,7 +8,8 @@ The reply's shape is artFrameSchema in server/roleplay/art.ts: one required fiel
 anyone new in the picture, then who is shown (last: gemma4 stalls on such answers put first). The
 engine includes only the identities of the people shown, and adds the newcomers to the Look.
 
-Values: character.name, persona.name; placeAlone (shared/place-alone.md); who (art-who.md);
+Values: character.name, persona.name; placeAlone (shared/place-alone.md); eachPerson
+(shared/each-person.md); who (art-who.md);
 limits (art-limits.md, or art-limits-adults-only.md while the Limits are off)
 -->
 
@@ -22,14 +23,7 @@ the people in the picture: someone upstairs, in another room, out of sight or go
 is not in it, and is left out of the sentences entirely. If no one is in the picture,
 {{placeAlone}}
 
-- pose: where each person is and what their body, limbs and hands are doing at that moment.
-- expression: each person's facial expression and where they look.
-- camera: the angle, lens and framing: a third-person view of the scene.
-- clothing: every garment and accessory each person has on at that moment, and anything on them
-  or their skin: blood, bruises, dirt, wet.
-- environment: the place, backdrop and props, as they are at that moment.
-- lighting: the light sources, their direction and quality.
-- color: the palette and grading.
+{{eachPerson}}
 
 The moment is what {{persona.name}} does in the Frame's Message and what {{character.name}} does
 in reply; the story before it tells you what has changed by then: where everyone is, what they

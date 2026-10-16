@@ -1,0 +1,181 @@
+{
+  "variant": "people",
+  "seed": 2,
+  "model": "hf.co/igorls/gemma-4-12B-it-heretic-GGUF:Q4_K_M",
+  "seconds": 37.7,
+  "look": {
+    "people": [
+      {
+        "handle": "the scarred man",
+        "identity": "Kael, the scarred man, is a 42-year-old man with a lean build, tanned skin, and short unkempt brown hair.",
+        "name": "Kael",
+        "outfit": "A rough linen shirt and a heavy leather apron over his clothes."
+      },
+      {
+        "handle": "the young woman",
+        "identity": "The young woman, the young woman, is a slender woman with pale skin, dark hair pulled back, and sharp features.",
+        "name": "The young woman",
+        "outfit": "A heavy travel cloak over a fine silk dress and leather boots."
+      }
+    ],
+    "style": "A moody, cinematic oil painting with heavy, visible brushstrokes, chiaroscuro lighting with deep shadows and warm, flickering amber highlights, gritty 18th-century atmospheric realism."
+  },
+  "beats": [
+    "Kael stands behind the bar, nervously clutching a mysterious letter as the storm howls outside.",
+    "The tavern door swings open, and the young woman enters, drenched from the rain.",
+    "The woman shakes the water from her heavy cloak, her silhouette framed by the storm.",
+    "Kael watches her from behind the bar, his hand instinctively hiding the letter.",
+    "The woman approaches the bar, her calculating eyes meeting his weary gaze.",
+    "The two stand close at the bar, the flickering oil lamps casting long shadows across the room."
+  ],
+  "frames": [
+    {
+      "shown": [
+        "Kael"
+      ],
+      "prompt": "Kael, the scarred man, is a 42-year-old man with a lean build, tanned skin, and short unkempt brown hair. He is behind the bar in the center of the frame, his face illuminated by a nearby lamp. He stands behind the bar, his hands gripping a piece of paper partially hidden in his palm. He looks toward the doorway with a wary, suspicious expression. A rough linen shirt and a heavy leather apron over his clothes. A medium shot from beside the bar, focusing on Kael's upper body and the counter. A weathered 18th-century tavern with a warped wooden bar and a grimy window lashed by rain. Low light from flickering oil lamps on the bar, casting a warm glow from below. A palette of deep browns and charcoal with warm amber highlights from the oil lamps. A moody, cinematic oil painting with heavy, visible brushstrokes, chiaroscuro lighting with deep shadows and warm, flickering amber highlights, gritty 18th-century atmospheric realism.",
+      "parts": {
+        "camera": "A medium shot from beside the bar, focusing on Kael's upper body and the counter.",
+        "color": "A palette of deep browns and charcoal with warm amber highlights from the oil lamps.",
+        "environment": "A weathered 18th-century tavern with a warped wooden bar and a grimy window lashed by rain.",
+        "interaction": "",
+        "lighting": "Low light from flickering oil lamps on the bar, casting a warm glow from below.",
+        "people": [
+          {
+            "clothing": "A rough linen shirt and a heavy leather apron over his clothes.",
+            "expression": "He looks toward the doorway with a wary, suspicious expression.",
+            "name": "Kael",
+            "pose": "He stands behind the bar, his hands gripping a piece of paper partially hidden in his palm.",
+            "where": "He is behind the bar in the center of the frame, his face illuminated by a nearby lamp."
+          }
+        ]
+      }
+    },
+    {
+      "shown": [
+        "The young woman"
+      ],
+      "prompt": "The young woman, the young woman, is a slender woman with pale skin, dark hair pulled back, and sharp features. She is in the doorway at the far end of the room. She stands in the doorway, her body turned slightly inward. She looks ahead with focused, calculating eyes. A heavy travel cloak over a fine silk dress and leather boots. A wide shot from the back of the tavern looking toward the front door. A creaking tavern with a narrow staircase and a wooden bar. Dim, flickering oil lamps on the wall and bar; a burst of grey light from the doorway. Deep browns, charcoal, and amber highlights against the dark grey of the storm outside. A moody, cinematic oil painting with heavy, visible brushstrokes, chiaroscuro lighting with deep shadows and warm, flickering amber highlights, gritty 18th-century atmospheric realism.",
+      "parts": {
+        "camera": "A wide shot from the back of the tavern looking toward the front door.",
+        "color": "Deep browns, charcoal, and amber highlights against the dark grey of the storm outside.",
+        "environment": "A creaking tavern with a narrow staircase and a wooden bar.",
+        "interaction": "",
+        "lighting": "Dim, flickering oil lamps on the wall and bar; a burst of grey light from the doorway.",
+        "people": [
+          {
+            "clothing": "A heavy travel cloak over a fine silk dress and leather boots.",
+            "expression": "She looks ahead with focused, calculating eyes.",
+            "name": "The young woman",
+            "pose": "She stands in the doorway, her body turned slightly inward.",
+            "where": "She is in the doorway at the far end of the room."
+          }
+        ]
+      }
+    },
+    {
+      "shown": [
+        "The young woman"
+      ],
+      "prompt": "The young woman, the young woman, is a slender woman with pale skin, dark hair pulled back, and sharp features. She is in the center of the room, just past the doorway. She stands with her arms slightly raised as she shakes water from her shoulders. She looks toward the bar, her face set in a determined mask. A heavy travel cloak over a fine silk dress and leather boots. A medium shot of the woman as she enters the main room. The interior of the tavern, showing the texture of the wooden beams and the wet floor. Dim amber light from the bar, contrasting with the dull grey light from the open door. Deep earthy tones with high contrast between the dark interior and the wet surfaces. A moody, cinematic oil painting with heavy, visible brushstrokes, chiaroscuro lighting with deep shadows and warm, flickering amber highlights, gritty 18th-century atmospheric realism.",
+      "parts": {
+        "camera": "A medium shot of the woman as she enters the main room.",
+        "color": "Deep earthy tones with high contrast between the dark interior and the wet surfaces.",
+        "environment": "The interior of the tavern, showing the texture of the wooden beams and the wet floor.",
+        "interaction": "",
+        "lighting": "Dim amber light from the bar, contrasting with the dull grey light from the open door.",
+        "people": [
+          {
+            "clothing": "A heavy travel cloak over a fine silk dress and leather boots.",
+            "expression": "She looks toward the bar, her face set in a determined mask.",
+            "name": "The young woman",
+            "pose": "She stands with her arms slightly raised as she shakes water from her shoulders.",
+            "where": "She is in the center of the room, just past the doorway."
+          }
+        ]
+      }
+    },
+    {
+      "shown": [
+        "Kael"
+      ],
+      "prompt": "Kael, the scarred man, is a 42-year-old man with a lean build, tanned skin, and short unkempt brown hair. He is behind the bar in the center of the frame. He stands behind the bar, his hand gripping the paper tightly. He looks toward the woman with a tense, suspicious look. A rough linen shirt and a heavy leather apron over his clothes. A medium shot over the shoulder of the woman, focusing on Kael. The wooden bar surface is wet in spots, and the grimy window is visible behind Kael. A flickering oil lamp on the bar illuminates Kael's face from below. Dark, moody tones with sharp amber highlights on Kael's face. A moody, cinematic oil painting with heavy, visible brushstrokes, chiaroscuro lighting with deep shadows and warm, flickering amber highlights, gritty 18th-century atmospheric realism.",
+      "parts": {
+        "camera": "A medium shot over the shoulder of the woman, focusing on Kael.",
+        "color": "Dark, moody tones with sharp amber highlights on Kael's face.",
+        "environment": "The wooden bar surface is wet in spots, and the grimy window is visible behind Kael.",
+        "interaction": "",
+        "lighting": "A flickering oil lamp on the bar illuminates Kael's face from below.",
+        "people": [
+          {
+            "clothing": "A rough linen shirt and a heavy leather apron over his clothes.",
+            "expression": "He looks toward the woman with a tense, suspicious look.",
+            "name": "Kael",
+            "pose": "He stands behind the bar, his hand gripping the paper tightly.",
+            "where": "He is behind the bar in the center of the frame."
+          }
+        ]
+      }
+    },
+    {
+      "shown": [
+        "The young woman",
+        "Kael"
+      ],
+      "prompt": "The young woman, the young woman, is a slender woman with pale skin, dark hair pulled back, and sharp features. She is on the right side of the frame, facing the man. She stands on the other side of the bar, leaning slightly forward. She watches the man with calculating eyes. A heavy travel cloak over a fine silk dress and leather boots. Kael, the scarred man, is a 42-year-old man with a lean build, tanned skin, and short unkempt brown hair. He is on the left side of the frame, behind the bar. He stands behind the bar, his body rigid. He watches the woman with wary, tired eyes. A rough linen shirt and a heavy leather apron over his clothes. The young woman looks intently at the man behind the bar. A medium shot of both figures across the bar. The worn bar top is cluttered with a few cracked ceramic mugs. Two oil lamps provide a warm, flickering glow from the side. Dark charcoal and brown shadows with amber highlights on their faces. A moody, cinematic oil painting with heavy, visible brushstrokes, chiaroscuro lighting with deep shadows and warm, flickering amber highlights, gritty 18th-century atmospheric realism.",
+      "parts": {
+        "camera": "A medium shot of both figures across the bar.",
+        "color": "Dark charcoal and brown shadows with amber highlights on their faces.",
+        "environment": "The worn bar top is cluttered with a few cracked ceramic mugs.",
+        "interaction": "The young woman looks intently at the man behind the bar.",
+        "lighting": "Two oil lamps provide a warm, flickering glow from the side.",
+        "people": [
+          {
+            "clothing": "A heavy travel cloak over a fine silk dress and leather boots.",
+            "expression": "She watches the man with calculating eyes.",
+            "name": "The young woman",
+            "pose": "She stands on the other side of the bar, leaning slightly forward.",
+            "where": "She is on the right side of the frame, facing the man."
+          },
+          {
+            "clothing": "A rough linen shirt and a heavy leather apron over his clothes.",
+            "expression": "He watches the woman with wary, tired eyes.",
+            "name": "Kael",
+            "pose": "He stands behind the bar, his body rigid.",
+            "where": "He is on the left side of the frame, behind the bar."
+          }
+        ]
+      }
+    },
+    {
+      "shown": [
+        "The young woman",
+        "Kael"
+      ],
+      "prompt": "The young woman, the young woman, is a slender woman with pale skin, dark hair pulled back, and sharp features. She is on the right, facing left. She stands close to the bar, her hands resting on the wood. She watches the man with a sharp, calculating look. A heavy travel cloak over a fine silk dress and leather boots. Kael, the scarred man, is a 42-year-old man with a lean build, tanned skin, and short unkempt brown hair. He is on the left, facing right. He stands behind the bar, clutching the letter in his hand. He watches the woman with a weary, guarded expression. A rough linen shirt and a heavy leather apron over his clothes. The young woman stands near the man, who remains tense behind the counter. A close-up shot of the two characters in profile. The interior of the tavern is dark, with only the bar area illuminated. Dramatic chiaroscuro lighting from the oil lamps creates deep shadows. Deep, moody palette with heavy shadows and warm highlights. A moody, cinematic oil painting with heavy, visible brushstrokes, chiaroscuro lighting with deep shadows and warm, flickering amber highlights, gritty 18th-century atmospheric realism.",
+      "parts": {
+        "camera": "A close-up shot of the two characters in profile.",
+        "color": "Deep, moody palette with heavy shadows and warm highlights.",
+        "environment": "The interior of the tavern is dark, with only the bar area illuminated.",
+        "interaction": "The young woman stands near the man, who remains tense behind the counter.",
+        "lighting": "Dramatic chiaroscuro lighting from the oil lamps creates deep shadows.",
+        "people": [
+          {
+            "clothing": "A heavy travel cloak over a fine silk dress and leather boots.",
+            "expression": "She watches the man with a sharp, calculating look.",
+            "name": "The young woman",
+            "pose": "She stands close to the bar, her hands resting on the wood.",
+            "where": "She is on the right, facing left."
+          },
+          {
+            "clothing": "A rough linen shirt and a heavy leather apron over his clothes.",
+            "expression": "He watches the woman with a weary, guarded expression.",
+            "name": "Kael",
+            "pose": "He stands behind the bar, clutching the letter in his hand.",
+            "where": "He is on the left, facing right."
+          }
+        ]
+      }
+    }
+  ]
+}

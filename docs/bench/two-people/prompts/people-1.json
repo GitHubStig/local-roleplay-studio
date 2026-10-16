@@ -1,0 +1,181 @@
+{
+  "variant": "people",
+  "seed": 1,
+  "model": "hf.co/igorls/gemma-4-12B-it-heretic-GGUF:Q4_K_M",
+  "seconds": 40.2,
+  "look": {
+    "people": [
+      {
+        "handle": "the scarred man",
+        "identity": "Kael, the scarred man, is a 42-year-old man with a lean, rigid build, weathered tanned skin marked by old scars, short unkempt brown hair, and a scarred, angular face with tired, piercing eyes.",
+        "name": "Kael",
+        "outfit": "A rough leather vest over a linen shirt, heavy trousers, and a stained apron."
+      },
+      {
+        "handle": "the young woman in grey",
+        "identity": "Elara, the young woman in grey, is a slender woman with pale skin flushed by cold, dark hair pulled back neatly, and sharp, intelligent features with calculating eyes.",
+        "name": "Elara",
+        "outfit": "A heavy fur-lined wool cloak, a silk gown, and leather boots."
+      }
+    ],
+    "style": "A moody, cinematic oil painting with heavy, visible brushstrokes, chiaroscuro lighting with deep shadows and warm, flickering amber highlights, gritty 18th-century atmospheric realism."
+  },
+  "beats": [
+    "Kael stands behind the bar, nervously clutching the hidden letter as the door creaks open.",
+    "The young woman enters, dripping with rain, and shakes out her heavy cloak.",
+    "Kael watches her from behind the bar, his hand gripping the paper hidden from her sight.",
+    "The woman approaches the bar, her face illuminated by the amber oil lamps.",
+    "They stand close at the bar, the letter still hidden in Kael's fist.",
+    "The woman leans in, her calculating eyes locking onto Kael's wary gaze."
+  ],
+  "frames": [
+    {
+      "shown": [
+        "Kael, the scarred man"
+      ],
+      "prompt": "The scarred man stands behind the wooden bar in the center of the frame. The scarred man stands behind the bar, his fingers curled around a folded paper hidden in his palm. The scarred man looks toward the door with a wary, tense expression. A rough leather vest over a linen shirt, heavy trousers, and a stained apron. A medium shot from beside the bar, capturing the counter and the doorway. A creaking 18th-century tavern with a warped wooden bar and a grimy window lashing with rain. Low-level flickering light from oil lamps on the bar and wall, casting deep shadows. A palette of deep browns, charcoal grays, and warm amber highlights. A moody, cinematic oil painting with heavy, visible brushstrokes, chiaroscuro lighting with deep shadows and warm, flickering amber highlights, gritty 18th-century atmospheric realism.",
+      "parts": {
+        "camera": "A medium shot from beside the bar, capturing the counter and the doorway.",
+        "color": "A palette of deep browns, charcoal grays, and warm amber highlights.",
+        "environment": "A creaking 18th-century tavern with a warped wooden bar and a grimy window lashing with rain.",
+        "interaction": "",
+        "lighting": "Low-level flickering light from oil lamps on the bar and wall, casting deep shadows.",
+        "people": [
+          {
+            "clothing": "A rough leather vest over a linen shirt, heavy trousers, and a stained apron.",
+            "expression": "The scarred man looks toward the door with a wary, tense expression.",
+            "name": "Kael, the scarred man",
+            "pose": "The scarred man stands behind the bar, his fingers curled around a folded paper hidden in his palm.",
+            "where": "The scarred man stands behind the wooden bar in the center of the frame."
+          }
+        ]
+      }
+    },
+    {
+      "shown": [
+        "Elara, the young woman in grey"
+      ],
+      "prompt": "The young woman in grey stands in the doorway on the right. The young woman in grey stands in the doorway, hands gripping the edges of her cloak. The young woman in grey has a determined, slightly weary expression. A heavy fur-lined wool cloak, a silk gown, and leather boots. A wide shot from the back of the room, framing the entrance. A creaking 18th-century tavern with a warped wooden bar and a grimy window lashing with rain. Low-level flickering light from oil lamps on the bar and wall, casting deep shadows. A palette of deep browns, charcoal grays, and warm amber highlights. A moody, cinematic oil painting with heavy, visible brushstrokes, chiaroscuro lighting with deep shadows and warm, flickering amber highlights, gritty 18th-century atmospheric realism.",
+      "parts": {
+        "camera": "A wide shot from the back of the room, framing the entrance.",
+        "color": "A palette of deep browns, charcoal grays, and warm amber highlights.",
+        "environment": "A creaking 18th-century tavern with a warped wooden bar and a grimy window lashing with rain.",
+        "interaction": "",
+        "lighting": "Low-level flickering light from oil lamps on the bar and wall, casting deep shadows.",
+        "people": [
+          {
+            "clothing": "A heavy fur-lined wool cloak, a silk gown, and leather boots.",
+            "expression": "The young woman in grey has a determined, slightly weary expression.",
+            "name": "Elara, the young woman in grey",
+            "pose": "The young woman in grey stands in the doorway, hands gripping the edges of her cloak.",
+            "where": "The young woman in grey stands in the doorway on the right."
+          }
+        ]
+      }
+    },
+    {
+      "shown": [
+        "Kael, the scarred man"
+      ],
+      "prompt": "The scarred man is at the center behind the bar. The scarred man stands behind the bar, his hand clenching the letter. The scarred man looks toward the door with a wary, tense expression. A rough leather vest over a linen shirt, heavy trousers, and a stained apron. A medium shot from the side of the bar, focusing on Kael's face. A creaking 18th-century tavern with a warped wooden bar and a grimy window lashing with rain. A warm oil lamp on the bar illuminates the scarred man's face from below. A palette of deep browns, charcoal grays, and warm amber highlights. A moody, cinematic oil painting with heavy, visible brushstrokes, chiaroscuro lighting with deep shadows and warm, flickering amber highlights, gritty 18th-century atmospheric realism.",
+      "parts": {
+        "camera": "A medium shot from the side of the bar, focusing on Kael's face.",
+        "color": "A palette of deep browns, charcoal grays, and warm amber highlights.",
+        "environment": "A creaking 18th-century tavern with a warped wooden bar and a grimy window lashing with rain.",
+        "interaction": "",
+        "lighting": "A warm oil lamp on the bar illuminates the scarred man's face from below.",
+        "people": [
+          {
+            "clothing": "A rough leather vest over a linen shirt, heavy trousers, and a stained apron.",
+            "expression": "The scarred man looks toward the door with a wary, tense expression.",
+            "name": "Kael, the scarred man",
+            "pose": "The scarred man stands behind the bar, his hand clenching the letter.",
+            "where": "The scarred man is at the center behind the bar."
+          }
+        ]
+      }
+    },
+    {
+      "shown": [
+        "Elara, the young woman in grey"
+      ],
+      "prompt": "The young woman in grey is at the center, moving toward the bar. The young woman in grey walks toward the counter, shaking water from her hair. The young woman in grey watches the interior of the tavern with calculating eyes. A heavy fur-lined wool cloak, a silk gown, and leather boots. A medium shot of the woman walking toward the bar. A creaking 18th-century tavern with a warped wooden bar and a grimy window lashing with rain. Low-level flickering light from oil lamps on the bar and wall, casting deep shadows. A palette of deep browns, charcoal grays, and warm amber highlights. A moody, cinematic oil painting with heavy, visible brushstrokes, chiaroscuro lighting with deep shadows and warm, flickering amber highlights, gritty 18th-century atmospheric realism.",
+      "parts": {
+        "camera": "A medium shot of the woman walking toward the bar.",
+        "color": "A palette of deep browns, charcoal grays, and warm amber highlights.",
+        "environment": "A creaking 18th-century tavern with a warped wooden bar and a grimy window lashing with rain.",
+        "interaction": "",
+        "lighting": "Low-level flickering light from oil lamps on the bar and wall, casting deep shadows.",
+        "people": [
+          {
+            "clothing": "A heavy fur-lined wool cloak, a silk gown, and leather boots.",
+            "expression": "The young woman in grey watches the interior of the tavern with calculating eyes.",
+            "name": "Elara, the young woman in grey",
+            "pose": "The young woman in grey walks toward the counter, shaking water from her hair.",
+            "where": "The young woman in grey is at the center, moving toward the bar."
+          }
+        ]
+      }
+    },
+    {
+      "shown": [
+        "Kael, the scarred man",
+        "Elara, the young woman in grey"
+      ],
+      "prompt": "The scarred man is behind the bar on the left. The scarred man leans his weight on the bar, hiding the letter in his fist. The scarred man watches the young woman with narrowed eyes. A rough leather vest over a linen shirt, heavy trousers, and a stained apron. The young woman in grey is at the bar on the right. The young woman in grey leans her hands on the wooden bar. The young woman in grey looks at the scarred man with calculation. A heavy fur-lined wool cloak, a silk gown, and leather boots. The young woman in grey faces the scarred man across the bar. A medium shot of both figures at the bar. A creaking 18th-century tavern with a warped wooden bar and a grimy window lashing with rain. Warm amber light from the bar lamp highlights the figures' faces. A palette of deep browns, charcoal grays, and warm amber highlights. A moody, cinematic oil painting with heavy, visible brushstrokes, chiaroscuro lighting with deep shadows and warm, flickering amber highlights, gritty 18th-century atmospheric realism.",
+      "parts": {
+        "camera": "A medium shot of both figures at the bar.",
+        "color": "A palette of deep browns, charcoal grays, and warm amber highlights.",
+        "environment": "A creaking 18th-century tavern with a warped wooden bar and a grimy window lashing with rain.",
+        "interaction": "The young woman in grey faces the scarred man across the bar.",
+        "lighting": "Warm amber light from the bar lamp highlights the figures' faces.",
+        "people": [
+          {
+            "clothing": "A rough leather vest over a linen shirt, heavy trousers, and a stained apron.",
+            "expression": "The scarred man watches the young woman with narrowed eyes.",
+            "name": "Kael, the scarred man",
+            "pose": "The scarred man leans his weight on the bar, hiding the letter in his fist.",
+            "where": "The scarred man is behind the bar on the left."
+          },
+          {
+            "clothing": "A heavy fur-lined wool cloak, a silk gown, and leather boots.",
+            "expression": "The young woman in grey looks at the scarred man with calculation.",
+            "name": "Elara, the young woman in grey",
+            "pose": "The young woman in grey leans her hands on the wooden bar.",
+            "where": "The young woman in grey is at the bar on the right."
+          }
+        ]
+      }
+    },
+    {
+      "shown": [
+        "Kael, the scarred man",
+        "Elara, the young woman in grey"
+      ],
+      "prompt": "The scarred man is at the center. The scarred man stands behind the bar. The scarred man shows a tense, weary face. A rough leather vest over a linen shirt, heavy trousers, and a stained apron. The young woman in grey is at the center. The young woman in grey leans forward slightly. The young woman in grey looks directly at the scarred man's eyes. A heavy fur-lined wool cloak, a silk gown, and leather boots. The young woman in grey stares intensely at the scarred man. A close-up of the two faces, framed by the heavy atmosphere of the bar. A creaking 18th-century tavern with a warped wooden bar and a grimy window lashing with rain. Harsh chiaroscuro lighting creates heavy shadows on both faces. A palette of deep browns, charcoal grays, and warm amber highlights. A moody, cinematic oil painting with heavy, visible brushstrokes, chiaroscuro lighting with deep shadows and warm, flickering amber highlights, gritty 18th-century atmospheric realism.",
+      "parts": {
+        "camera": "A close-up of the two faces, framed by the heavy atmosphere of the bar.",
+        "color": "A palette of deep browns, charcoal grays, and warm amber highlights.",
+        "environment": "A creaking 18th-century tavern with a warped wooden bar and a grimy window lashing with rain.",
+        "interaction": "The young woman in grey stares intensely at the scarred man.",
+        "lighting": "Harsh chiaroscuro lighting creates heavy shadows on both faces.",
+        "people": [
+          {
+            "clothing": "A rough leather vest over a linen shirt, heavy trousers, and a stained apron.",
+            "expression": "The scarred man shows a tense, weary face.",
+            "name": "Kael, the scarred man",
+            "pose": "The scarred man stands behind the bar.",
+            "where": "The scarred man is at the center."
+          },
+          {
+            "clothing": "A heavy fur-lined wool cloak, a silk gown, and leather boots.",
+            "expression": "The young woman in grey looks directly at the scarred man's eyes.",
+            "name": "Elara, the young woman in grey",
+            "pose": "The young woman in grey leans forward slightly.",
+            "where": "The young woman in grey is at the center."
+          }
+        ]
+      }
+    }
+  ]
+}

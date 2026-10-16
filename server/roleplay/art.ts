@@ -230,6 +230,7 @@ export async function artFrameMessages(
         {
           ...session.cast!,
           placeAlone: await loadPrompt('shared/place-alone'),
+          eachPerson: await loadPrompt('shared/each-person'),
           who: await loadPrompt('roleplay/art-who', {
             identity: await loadPrompt('shared/identity'),
             shown: await loadPrompt('shared/shown'),

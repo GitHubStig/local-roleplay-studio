@@ -3,7 +3,7 @@ The system message of an Action on one Storyboard Frame. Followed by the Scenari
 (shared/scenario-notes.md).
 
 Values: format, body (the seven aspects each Frame has), placeAlone (shared/place-alone.md),
-replacing (indented to sit in the list), limits
+eachPerson (shared/each-person.md), replacing (indented to sit in the list), limits
 -->
 
 # Your job
@@ -15,6 +15,11 @@ You edit one Frame of a storyboard.
 Every Frame shares one Look: an identity for each person (their subject sentence, 1) and the art
 style sentence (9). Each Frame has its own seven sentences: {{body}}; and "shown", the names of
 the people in its picture, the most prominent first: only their identities are drawn.
+
+The seven sentences are about only the people in the picture, naming them so it's clear who does
+what, each in at most 40 words:
+
+{{eachPerson}}
 
 You receive the Look, every Frame's Beat, the chosen Frame's seven sentences and who it shows,
 and the player's Action for that Frame. Apply it:

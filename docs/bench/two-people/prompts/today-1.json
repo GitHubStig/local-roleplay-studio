@@ -1,0 +1,68 @@
+{
+  "variant": "today",
+  "seed": 1,
+  "model": "hf.co/igorls/gemma-4-12B-it-heretic-GGUF:Q4_K_M",
+  "seconds": 117.9,
+  "look": {
+    "people": [
+      {
+        "name": "Kael",
+        "identity": "Kael, a 42-year-old retired smuggler, lean and rigid build, tanned skin with old scars, short unkempt brown hair, a scarred, angular face with tired, piercing eyes."
+      },
+      {
+        "name": "the traveller",
+        "identity": "the traveller, a well-off young woman, slender build, pale skin flushed by cold, dark hair pulled back neatly, sharp, intelligent features and calculating eyes."
+      }
+    ],
+    "style": "A moody, cinematic oil painting with heavy, visible brushstrokes, chiaroscuro lighting with deep shadows and warm, flickering amber highlights, gritty 18th-century atmospheric realism."
+  },
+  "beats": [
+    "Kael stands behind the counter, clutching the mysterious letter.",
+    "The heavy front door creaks open as the traveller enters from the storm.",
+    "The traveller shakes the rain from her heavy cloak in the doorway.",
+    "Kael looks up from the letter, his face illuminated by a nearby oil lamp.",
+    "The traveller approaches the bar, her eyes calculating and sharp.",
+    "The two stand facing each other across the worn wooden counter."
+  ],
+  "frames": [
+    {
+      "shown": [
+        "Kael"
+      ],
+      "prompt": "Kael, a 42-year-old retired smuggler, lean and rigid build, tanned skin with old scars, short unkempt brown hair, a scarred, angular face with tired, piercing eyes. Kael stands behind the bar, his hand clutching a piece of parchment partially hidden in his fist. Kael has a wary, suspicious expression as he looks toward the door. Medium shot from a side angle, focusing on Kael behind the bar. Kael wears a heavy linen shirt and a worn leather vest. A creaking 18th-century tavern with a warped wooden bar and a grimy window with rain lashing against the glass. A single oil lamp on the bar casts a harsh, flickering amber light from below. A palette of deep browns and charcoal with warm amber highlights. A moody, cinematic oil painting with heavy, visible brushstrokes, chiaroscuro lighting with deep shadows and warm, flickering amber highlights, gritty 18th-century atmospheric realism."
+    },
+    {
+      "shown": [
+        "Kael",
+        "the traveller"
+      ],
+      "prompt": "Kael, a 42-year-old retired smuggler, lean and rigid build, tanned skin with old scars, short unkempt brown hair, a scarred, angular face with tired, piercing eyes. the traveller, a well-off young woman, slender build, pale skin flushed by cold, dark hair pulled back neatly, sharp, intelligent features and calculating eyes. The traveller stands in the doorway, stepping over the threshold while Kael remains behind the bar. The traveller has a focused, determined expression as she looks into the room. Wide shot from the back of the tavern looking toward the entrance. The traveller wears a heavy wool traveling cloak and a velvet hood; Kael wears a linen shirt and leather vest. The interior of the tavern is dim, with a heavy wooden door and a stone floor. Muted light from the tavern lamps contrasts with the grey, blue light from the doorway. A palette of deep browns and charcoal with warm amber highlights. A moody, cinematic oil painting with heavy, visible brushstrokes, chiaroscuro lighting with deep shadows and warm, flickering amber highlights, gritty 18th-century atmospheric realism."
+    },
+    {
+      "shown": [
+        "the traveller"
+      ],
+      "prompt": "the traveller, a well-off young woman, slender build, pale skin flushed by cold, dark hair pulled back neatly, sharp, intelligent features and calculating eyes. The traveller shakes her head and shoulders to shed the rain from her heavy cloak. The traveller has a calm but calculating expression, squinting slightly against the dim light. Medium shot of the traveller in the doorway. The traveller wears a heavy wool traveling cloak and a thick scarf. The rain-slicked doorway of the tavern, framed by a heavy timber frame. Soft light from inside the tavern hits her face; the background is dark. A palette of deep browns and charcoal with warm amber highlights. A moody, cinematic oil painting with heavy, visible brushstrokes, chiaroscuro lighting with deep shadows and warm, flickering amber highlights, gritty 18th-century atmospheric realism."
+    },
+    {
+      "shown": [
+        "Kael"
+      ],
+      "prompt": "Kael, a 42-year-old retired smuggler, lean and rigid build, tanned skin with old scars, short unkempt brown hair, a scarred, angular face with tired, piercing eyes. Kael turns his head toward the source of the sound at the door. Kael has a tense, wary look, his eyes narrowing as he focuses on the intruder. Close-up on Kael's face. Kael wears a linen shirt and leather vest. The blurred wooden textures of the bar are visible in the background. Warm, flickering amber light from an oil lamp casts deep shadows across his scarred face. A palette of deep browns and charcoal with warm amber highlights. A moody, cinematic oil painting with heavy, visible brushstrokes, chiaroscuro lighting with deep shadows and warm, flickering amber highlights, gritty 18th-century atmospheric realism."
+    },
+    {
+      "shown": [
+        "Kael",
+        "the traveller"
+      ],
+      "prompt": "Kael, a 42-year-old retired smuggler, lean and rigid build, tanned skin with old scars, short unkempt brown hair, a scarred, angular face with tired, piercing eyes. the traveller, a well-off young woman, slender build, pale skin flushed by cold, dark hair pulled back neatly, sharp, intelligent features and calculating eyes. The traveller walks toward the counter; Kael stands his ground behind the wood. The traveller looks at Kael with intelligence; Kael looks back with suspicion. Medium shot from the side of the bar. The traveller wears a heavy wool cloak; Kael wears a linen shirt and leather vest. The tavern interior features cracked mugs on the counter and a grimy, rain-streaked window. Oil lamps on the wall and bar provide warm, localized pools of light. A palette of deep browns and charcoal with warm amber highlights. A moody, cinematic oil painting with heavy, visible brushstrokes, chiaroscuro lighting with deep shadows and warm, flickering amber highlights, gritty 18th-century atmospheric realism."
+    },
+    {
+      "shown": [
+        "Kael",
+        "the traveller"
+      ],
+      "prompt": "Kael, a 42-year-old retired smuggler, lean and rigid build, tanned skin with old scars, short unkempt brown hair, a scarred, angular face with tired, piercing eyes. the traveller, a well-off young woman, slender build, pale skin flushed by cold, dark hair pulled back neatly, sharp, intelligent features and calculating eyes. The traveller leans slightly forward toward the bar; Kael holds the letter hidden in his hand. The traveller's eyes are calculating; Kael's face is stern and wary. Two-shot, medium framing of both characters at the bar. The traveller wears a heavy wool traveling cloak; Kael wears a linen shirt and leather vest. The tavern's interior, featuring a heavy wooden bar and the glow of several oil lamps. Chiaroscuro lighting creates sharp highlights on their faces and deep shadows behind them. A palette of deep browns and charcoal with warm amber highlights. A moody, cinematic oil painting with heavy, visible brushstrokes, chiaroscuro lighting with deep shadows and warm, flickering amber highlights, gritty 18th-century atmospheric realism."
+    }
+  ]
+}
