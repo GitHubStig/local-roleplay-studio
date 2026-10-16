@@ -28,6 +28,29 @@ export type ImagePrompt = string
 export const joinPrompt = (subject: string, body: string, style: string): ImagePrompt =>
   [subject, body, style].map(asSentences).filter(Boolean).join(' ')
 
+/** An Image Prompt's first sentence, the subject: who is in the picture. */
+export const subjectSentence = (prompt: ImagePrompt): string =>
+  prompt.trim().split(/(?<=[.!?])\s+(?=[A-Z"'])/)[0] ?? ''
+
+/**
+ * The subject sentences of earlier Image Prompts that aren't `current`'s, the latest first, each
+ * once, at most `max`: who has been in the picture before, as described then. A Chain's paragraph
+ * is all it remembers, so someone who left it would otherwise come back described afresh.
+ */
+export function earlierSubjects(earlier: ImagePrompt[], current: ImagePrompt, max = 3): string[] {
+  const now = subjectSentence(current)
+  const seen = new Set([now])
+  const out: string[] = []
+  for (const prompt of earlier.toReversed()) {
+    const subject = subjectSentence(prompt)
+    if (!subject || seen.has(subject)) continue
+    seen.add(subject)
+    out.push(subject)
+    if (out.length === max) break
+  }
+  return out
+}
+
 /** Trimmed text that ends a sentence. */
 export const asSentences = (text: string) => {
   const t = text.trim()

@@ -23,10 +23,10 @@ def main() -> None:
     for f in sorted(out.iterdir()):
         m = re.match(r"(.+)-(f\d+)-(" + "|".join(map(re.escape, MODELS)) + r")\.\w+$", f.name)
         if m:
-            rows.setdefault(m[1].split("-")[0], [])
+            rows.setdefault(m[1].rsplit("-", 1)[0], [])
             key = f"{m[1]}-{m[2]}"
-            if key not in rows[m[1].split("-")[0]]:
-                rows[m[1].split("-")[0]].append(key)
+            if key not in rows[m[1].rsplit("-", 1)[0]]:
+                rows[m[1].rsplit("-", 1)[0]].append(key)
     font = ImageFont.load_default(size=20)
     for variant, keys in rows.items():
         height = round(WIDTH * 832 / 1216)

@@ -1,0 +1,100 @@
+{
+  "variant": "chain-today",
+  "seed": 2,
+  "model": "hf.co/igorls/gemma-4-12B-it-heretic-GGUF:Q4_K_M",
+  "seconds": 45.7,
+  "look": null,
+  "beats": [],
+  "frames": [
+    {
+      "shown": [
+        "",
+        ""
+      ],
+      "prompt": "Kael is a 42-year-old man with a lean, rigid build, weathered tanned skin marked by old scars, short unkempt brown hair, and a scarred, angular face with tired, piercing eyes. He stands behind a wooden bar, his hand gripping a letter that is partially hidden. He looks up warily toward the door. A medium shot from beside the bar, capturing his upper body and the nearby counter. He wears a coarse, durable taverner's vest over a linen shirt. The setting is a creaking 18th-century tavern with a warped bar, cracked mugs, a narrow staircase, and a grimy window lashed by rain. Oil lamps on the bar and walls provide flickering illumination from below. The palette consists of deep browns and charcoal with warm amber highlights. A moody, cinematic oil painting with heavy, visible brushstrokes and chiaroscuro lighting.",
+      "parts": {
+        "action": null,
+        "outcome": "done",
+        "narration": "Initial prompt creation based on the provided scenario and scene description."
+      }
+    },
+    {
+      "shown": [
+        "",
+        ""
+      ],
+      "prompt": "Kael is a 42-year-old man with a lean, rigid build, weathered tanned skin marked by old scars, short unkempt brown hair, and a scarred, angular face with tired, piercing eyes. He slides the letter across the wooden bar with his hand. He looks up warily toward the door. A medium shot from beside the bar, capturing his upper body and the nearby counter. He wears a coarse, durable taverner's vest over a linen shirt. The setting is a creaking 18th-century tavern with a warped bar, cracked mugs, a narrow staircase, and a grimy window lashed by rain. Oil lamps on the bar and walls provide flickering illumination from below. The palette consists of deep browns and charcoal with warm amber highlights. A moody, cinematic oil painting with heavy, visible brushstrokes and chiaroscuro lighting.",
+      "parts": {
+        "action": "Kael slides the letter across the bar to her.",
+        "outcome": "done",
+        "narration": "Pose and limbs: sliding the letter across the bar."
+      }
+    },
+    {
+      "shown": [
+        "",
+        ""
+      ],
+      "prompt": "Kael is a 42-year-old man with a lean, rigid build, weathered tanned skin marked by old scars, short unkempt brown hair, and a scarred, angular face with tired, piercing eyes; beside him sits a woman with soft features and dark hair. Kael leans in close toward the woman, while she holds the letter with both hands. She has a furrowed brow and a frown, looking down at the paper; he watches her face with intense focus. A medium shot from beside the bar, capturing their upper bodies and the nearby counter. Kael wears a coarse, durable taverner's vest over a linen shirt; the woman wears a simple, dark woolen gown. The setting is a creaking 18th-century tavern with a warped bar, cracked mugs, a narrow staircase, and a grimy window lashed by rain. Oil lamps on the bar and walls provide flickering illumination from below. The palette consists of deep browns and charcoal with warm amber highlights. A moody, cinematic oil painting with heavy, visible brushstrokes and chiaroscuro lighting.",
+      "parts": {
+        "action": "She reads it, frowning, while he leans in close to watch her face.",
+        "outcome": "done",
+        "narration": "Added a female companion; updated Kael's pose and expression; updated the scene interaction."
+      }
+    },
+    {
+      "shown": [],
+      "prompt": "Kael is a 42-year-old man with a lean, rigid build, weathered tanned skin marked by old scars, short unkempt brown hair, and a scarred, angular face with tired, piercing eyes. Kael sits alone at the tavern bar, his hands resting on the wooden surface. He has a furrowed brow and a frown, looking toward the distant door. A medium shot from beside the bar, capturing his upper body and the nearby counter. Kael wears a coarse, durable taverner's vest over a linen shirt. The setting is a creaking 18th-century tavern with a warped bar, cracked mugs, a narrow staircase, and a grimy window lashed by rain. Oil lamps on the bar and walls provide flickering illumination from below. The palette consists of deep browns and charcoal with warm amber highlights. A moody, cinematic oil painting with heavy, visible brushstrokes and chiaroscuro lighting.",
+      "parts": {
+        "action": "The traveller steps back out into the rain to think, leaving Kael alone.",
+        "outcome": "done",
+        "narration": "The traveller is removed from the scene. The subject is now just Kael."
+      }
+    },
+    {
+      "shown": [],
+      "prompt": "Kael is a 42-year-old man with a lean, rigid build, weathered tanned skin marked by old scars, short unkempt brown hair, and a scarred, angular face with tired, piercing eyes. Kael holds a heavy mug in one hand while his other hand grips a bottle, his hands visibly trembling as he pours. He has a furrowed brow and a frown, looking toward the distant door. A close-up shot focusing on his face and his hands gripping the bottle and mug. Kael wears a coarse, durable taverner's vest over a linen shirt. The setting is a creaking 18th-century tavern with a warped bar, cracked mugs, a narrow staircase, and a grimy window lashed by rain. Oil lamps on the bar and walls provide flickering illumination from below. The palette consists of deep browns and charcoal with warm amber highlights. A moody, cinematic oil painting with heavy, visible brushstrokes and chiaroscuro lighting.",
+      "parts": {
+        "action": "Close-up of Kael pouring himself a drink with shaking hands.",
+        "outcome": "done",
+        "narration": "Action: Close-up shot. Interaction: Pouring a drink with shaking hands."
+      }
+    },
+    {
+      "shown": [
+        "",
+        ""
+      ],
+      "prompt": "Kael is a 42-year-old man with a lean, rigid build, weathered tanned skin marked by old scars, short unkempt brown hair, and a scarred, angular face with tired, piercing eyes. A woman with damp hair and a sturdy build sits on a stool across the bar from Kael. Kael holds a heavy mug in one hand while his other hand grips a bottle, his hands visibly trembling as he pours. He has a furrowed brow and a frown, looking toward the distant door. A medium shot showing both Kael and the woman at the bar. Kael wears a coarse, durable taverner's vest over a linen shirt; the woman wears a soaked, heavy traveling cloak and a thick wool tunic. The setting is a creaking 18th-century tavern with a warped bar, cracked mugs, a narrow staircase, and a grimy window lashed by rain. Oil lamps on the bar and walls provide flickering illumination from below. The palette consists of deep browns and charcoal with warm amber highlights. A moody, cinematic oil painting with heavy, visible brushstrokes and chiaroscuro lighting.",
+      "parts": {
+        "action": "She comes back in, soaked through, and sits down at the bar across from him.",
+        "outcome": "done",
+        "narration": "Added a female traveler to the scene; updated the composition and distance."
+      }
+    },
+    {
+      "shown": [
+        "",
+        ""
+      ],
+      "prompt": "Kael is a 42-year-old man with a lean, rigid build, weathered tanned skin marked by old scars, short unkempt brown hair, and a scarred, angular face with tired, piercing eyes. A woman with damp hair and a sturdy build sits on a stool across the bar from Kael. Kael holds a heavy mug in one hand while his other hand grips a bottle, his hands visibly trembling as he pours. He has a furrowed brow and a frown, looking toward the distant door. A medium shot showing both Kael and the woman at the bar. Kael wears a coarse, durable taverner's vest over a linen shirt; the woman wears a soaked, heavy traveling cloak and a thick wool tunic. The setting is a creaking 18th-century tavern with a warped bar, cracked mugs, a narrow staircase, a grimy window lashed by rain, and a hooded stranger standing on the balcony above. Oil lamps on the bar and walls provide flickering illumination from below. The palette consists of deep browns and charcoal with warm amber highlights. A moody, cinematic oil painting with heavy, visible brushstrokes and chiaroscuro lighting.",
+      "parts": {
+        "action": "A hooded stranger appears on the balcony above them, watching.",
+        "outcome": "done",
+        "narration": "Added a hooded stranger on the balcony."
+      }
+    },
+    {
+      "shown": [
+        "",
+        ""
+      ],
+      "prompt": "Kael is a 42-year-old man with a lean, rigid build, weathered tanned skin marked by old scars, short unkempt brown hair, and a scarred, angular face with tired, piercing eyes. Kael holds a heavy mug in one hand while his other hand grips a knife, pointing it upward; the woman crouches behind the bar. He has a furrowed brow and a frown, looking toward the distant door. A medium shot showing both Kael and the woman at the bar. Kael wears a coarse, durable taverner's vest over a linen shirt; the woman wears a soaked, heavy traveling cloak and a thick wool tunic. The setting is a creaking 18th-century tavern with a warped bar, cracked mugs, a narrow staircase, a grimy window lashed by rain, and a hooded stranger standing on the balcony above. Oil lamps on the bar and walls provide flickering illumination from below. The palette consists of deep browns and charcoal with warm amber highlights. A moody, cinematic oil painting with heavy, visible brushstrokes and chiaroscuro lighting.",
+      "parts": {
+        "action": "Kael draws a knife and points it up at the stranger while she ducks behind the bar.",
+        "outcome": "done",
+        "narration": "Action: Kael draws and points a knife; woman ducks behind the bar. Still same characters and style."
+      }
+    }
+  ]
+}

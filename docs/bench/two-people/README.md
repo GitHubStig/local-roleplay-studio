@@ -52,7 +52,37 @@ committed.
 - FLUX.3 Klein got all eleven right, and puts Kael's scars on his arms and shirt as well as his
   face in every shape (seen before, models.md).
 
+## The Chain (the same day)
+
+A Chain's whole state is one paragraph, rewritten each Action (ADR 0005), and its subject sentence
+was described for one person. The tavern Opening, then seven Actions: Kael slides her the letter;
+she reads it while he leans in; she steps out into the rain; a close-up of him pouring a drink; she
+comes back soaked and sits across from him; a hooded stranger appears on the balcony; Kael points a
+knife up at him while she ducks (`ACTIONS` in run.ts). Three versions of the Chain's prompt, seeds
+1 and 2, and seed 1's Frames with two or three people (the Opening, 2, 3, 6, 7, 8) rendered as
+above:
+
+    deno run -A docs/bench/two-people/run.ts chain <today|each|remember> <seed>
+    deno run -A docs/bench/two-people/run.ts render chain-today-1
+
+- **today**: `server/prompts/chain/frame.md` as it was.
+- **each**: the subject sentence describes each person in the picture, one after another; the
+  other sentences use the shared each-person wording; an Action that brings someone in or takes
+  them out adds or removes them in every sentence.
+- **remember**: as `each`, plus the subject sentences of earlier Frames unlike the current one,
+  sent after the Action (`earlierSubjects`, `chain/earlier.md`), and someone brought back is
+  described as the latest of them that has them, word for word.
+
+| Version | Who's missing | The traveller's look | Otherwise |
+|---|---|---|---|
+| today | her, from the Opening and Frame 2 (both seeds' subject sentence is Kael's alone, every Frame) | a generic woman when she's drawn, never described | Frame 4 moved Kael outside when she left; in 6 and 7 he's still pouring |
+| each | no one | back from the rain blonde (seed 1) or "Elara, 30, athletic, long damp hair" (seed 2): her description left with her | the stranger on the balcony, Kael's knife up |
+| remember | no one | the Opening's, word for word, back in Frame 6 (both seeds) | FLUX.3 Klein put the stranger on the floor beside her, not up on the balcony (7, 8) |
+
+Each version took 46–60 s for its eight calls. The Chain now uses `remember`.
+
 ## Not checked
 
-The Mac's 26B on the same plans; more seeds or three people; the Chain (one Subject, so not
-affected by the wording); a Storyboard Action with the new edit prompt.
+The Mac's 26B on the same plans and Chains; more seeds or three people in a Storyboard; a
+Storyboard Action with the new edit prompt; a Chain longer than eight Frames, or someone gone for
+more than three different subject sentences (only the latest three are sent).

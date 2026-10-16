@@ -16,3 +16,13 @@ Each Frame sends the Text Model only the current Scene and the player's Action â
 Anything not written into the state is forgotten. If something needs remembering, it has to be in the state itself rather than fed back in as history. Revisit if Sessions feel like they lack memory in practice.
 
 Since ADR 0005 the state is the nine-Section Image Prompt rather than a Scenario-shaped Scene; everything above still holds, with "Image Prompt" for "Scene".
+
+## Who was in the picture before (2026-10-16)
+
+The case this ADR said to revisit came up with two people: someone who left the picture left the
+Image Prompt, so when an Action brought them back the Text Model described them afresh (dark hair
+came back blonde; docs/bench/two-people). Each Action now also gets the subject sentences of
+earlier Frames unlike the current one, the latest first, at most three (`earlierSubjects`), and
+someone brought back is described as the latest of them that has them. It's a bounded exception:
+only who people are, a few sentences whatever the Session's length, and the Image Prompt is still
+the state: nothing else of earlier Frames is sent.

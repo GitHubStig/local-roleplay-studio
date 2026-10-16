@@ -46,6 +46,18 @@ Deno.test('userMessage sends only the current Image Prompt and the Action', asyn
   })
   assertStringIncludes(msg, 'A person, standing,')
   assertStringIncludes(msg, 'Sit')
+  assertEquals(msg.includes('Earlier subject sentences'), false)
+})
+
+Deno.test('userMessage adds earlier subject sentences, for someone brought back', async () => {
+  const msg = await userMessage({
+    scenario: testScenario,
+    prompt: promptWith('standing'),
+    action: 'She comes back',
+    earlier: ['Kael is lean; the traveller is slender.'],
+  })
+  assertStringIncludes(msg, 'Earlier subject sentences')
+  assertStringIncludes(msg, '- Kael is lean; the traveller is slender.')
 })
 
 Deno.test('outputSchema asks for the outcome first, then one prompt string', () => {

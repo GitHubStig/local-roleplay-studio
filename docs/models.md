@@ -273,6 +273,17 @@ every one right. Plans took the same time (30 s); the per-person shape took 38â€
 corners with it (names written with their handle, a name the Brief didn't give), so it stays
 parked. Not checked: the Mac's 26B, more seeds, three people.
 
+**The Chain, the same day.** Its subject sentence was for one person: from the tavern Opening
+(Kael, and the traveller in the doorway) the 12B described Kael alone, in every Frame, and she was
+missing from the pictures until an Action named her, then drawn as anyone. Told that the subject
+sentence describes each person in the picture and given the same each-person wording, it kept
+everyone, took the traveller out when she left and put a hooded stranger in sentence 1 when he
+came; but she came back described afresh (blonde; or "Elara, 30, athletic"), as the paragraph is
+all a Chain remembers. With the earlier Frames' subject sentences sent with each Action
+(`earlierSubjects`), she came back as the Opening described her, word for word, in both seeds.
+Rendered on both Image Models; FLUX.3 Klein once put the stranger on the floor, not the balcony
+([bench/two-people](bench/two-people/README.md)).
+
 ## Art Agent (picturing Roleplay Frames)
 
 The Art Agent uses the Session's Text Model. Measured 2026-09-28 on six Frames of a 30-Frame

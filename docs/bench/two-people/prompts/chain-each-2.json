@@ -1,0 +1,100 @@
+{
+  "variant": "chain-each",
+  "seed": 2,
+  "model": "hf.co/igorls/gemma-4-12B-it-heretic-GGUF:Q4_K_M",
+  "seconds": 56.5,
+  "look": null,
+  "beats": [],
+  "frames": [
+    {
+      "shown": [
+        "",
+        ""
+      ],
+      "prompt": "Kael is a 42-year-old retired smuggler, lean and rigid, with weathered tanned skin, short unkempt brown hair, and a scarred, angular face with piercing eyes; the traveller is a well-off woman, slender, with pale skin flushed by the cold, dark hair pulled back, and sharp, intelligent features with calculating eyes. Kael stands behind the bar, gripping a letter that is half-hidden in his hand, while the traveller stands in the doorway, shaking water from her cloak. Kael looks up warily at the traveller, while the traveller looks toward Kael with a calculating gaze. A medium shot from the side of the bar captures both figures in a wide enough frame to see the door and the bar. Kael wears a coarse tunic and leather vest; the traveller wears a heavy, wet traveling cloak and a silk scarf. The setting is a creaking 18th-century tavern with a warped wooden bar, a cracked mug, and a grimy window where rain lashes against the glass. Oil lamps on the bar and wall cast a warm, flickering glow from below, creating sharp highlights against deep shadows. The palette consists of deep browns and charcoal tones with vibrant amber highlights. A moody, cinematic oil painting with heavy, visible brushstrokes and gritty 18th-century atmospheric realism.",
+      "parts": {
+        "action": null,
+        "outcome": "done",
+        "narration": "Initial prompt creation based on the provided scenario."
+      }
+    },
+    {
+      "shown": [
+        "",
+        ""
+      ],
+      "prompt": "Kael is a 42-year-old retired smuggler, lean and rigid, with weathered tanned skin, short unkempt brown hair, and a scarred, angular face with piercing eyes; the traveller is a well-off woman, slender, with pale skin flushed by the cold, dark hair pulled back, and sharp, intelligent features with calculating eyes. Kael reaches forward to slide the letter across the wooden bar toward the traveller, while the traveller stands in the doorway, shaking water from her cloak. Kael looks up warily at the traveller, while the traveller looks toward Kael with a calculating gaze. A medium shot from the side of the bar captures both figures in a wide enough frame to see the door and the bar. Kael wears a coarse tunic and leather vest; the traveller wears a heavy, wet traveling cloak and a silk scarf. The setting is a creaking 18th-century tavern with a warped wooden bar, a cracked mug, and a grimy window where rain lashes against the glass. Oil lamps on the bar and wall cast a warm, flickering glow from below, creating sharp highlights against deep shadows. The palette consists of deep browns and charcoal tones with vibrant amber highlights. A moody, cinematic oil painting with heavy, visible brushstrokes and gritty 18th-century atmospheric realism.",
+      "parts": {
+        "action": "Kael slides the letter across the bar to her.",
+        "outcome": "done",
+        "narration": "Action: Kael's pose changed to sliding the letter across the bar."
+      }
+    },
+    {
+      "shown": [
+        "",
+        ""
+      ],
+      "prompt": "Kael is a 42-year-old retired smuggler, lean and rigid, with weathered tanned skin, short unkempt brown hair, and a scarred, angular face with piercing eyes; the traveller is a well-off woman, slender, with pale skin flushed by the cold, dark hair pulled back, and sharp, intelligent features with calculating eyes. Kael leans forward across the bar to watch the traveller, while the traveller holds the letter in her hands. The traveller has a frowning expression as she reads the paper, while Kael watches her face with a wary, focused expression. A medium shot from the side of the bar captures both figures in a wide enough frame to see the door and the bar. Kael wears a coarse tunic and leather vest; the traveller wears a heavy, wet traveling cloak and a silk scarf. The setting is a creaking 18th-century tavern with a warped wooden bar, a cracked mug, and a grimy window where rain lashes against the glass. Oil lamps on the bar and wall cast a warm, flickering glow from below, creating sharp highlights against deep shadows. The palette consists of deep browns and charcoal tones with vibrant amber highlights. A moody, cinematic oil painting with heavy, visible brushstrokes and gritty 18th-century atmospheric realism.",
+      "parts": {
+        "action": "She reads it, frowning, while he leans in close to watch her face.",
+        "outcome": "done",
+        "narration": "Actions: The traveller reads the letter with a frown; Kael leans in close to watch her face. Pose and expressions updated."
+      }
+    },
+    {
+      "shown": [],
+      "prompt": "Kael is a 42-year-old retired smuggler, lean and rigid, with weathered tanned skin, short unkempt brown hair, and a scarred, angular face with piercing eyes. Kael sits alone at the bar, leaning his arms on the warped wood. Kael has a weary, watchful expression as he looks toward the door. A medium shot from the side of the bar captures Kael in a frame that shows the door and the tavern's interior. Kael wears a coarse tunic and leather vest. The setting is a creaking 18th-century tavern with a warped wooden bar, a cracked mug, and a grimy window where rain lashes against the glass. Oil lamps on the bar and wall cast a warm, flickering glow from below, creating sharp highlights against deep shadows. The palette consists of deep browns and charcoal tones with vibrant amber highlights. A moody, cinematic oil painting with heavy, visible brushstrokes and gritty 18th-century atmospheric realism.",
+      "parts": {
+        "action": "The traveller steps back out into the rain to think, leaving Kael alone.",
+        "outcome": "done",
+        "narration": "The traveller is removed from the scene. Kael's action, expression, and the environment are adjusted to reflect her departure."
+      }
+    },
+    {
+      "shown": [],
+      "prompt": "Kael is a 42-year-old retired smuggler, lean and rigid, with weathered tanned skin, short unkempt brown hair, and a scarred, angular face with piercing eyes. Kael sits at the bar, his hands shaking as he pours a drink into a mug. Kael has a weary, watchful expression as he looks toward the door. A close-up shot focuses on Kael's hands and the mug as he pours. Kael wears a coarse tunic and leather vest. The setting is a creaking 18th-century tavern with a warped wooden bar, a cracked mug, and a grimy window where rain lashes against the glass. Oil lamps on the bar and wall cast a warm, flickering glow from below, creating sharp highlights against deep shadows. The palette consists of deep browns and charcoal tones with vibrant amber highlights. A moody, cinematic oil painting with heavy, visible brushstrokes and gritty 18th-century atmospheric realism.",
+      "parts": {
+        "action": "Close-up of Kael pouring himself a drink with shaking hands.",
+        "outcome": "done",
+        "narration": "Pose: pouring drink with shaking hands. Camera: close-up."
+      }
+    },
+    {
+      "shown": [
+        "",
+        ""
+      ],
+      "prompt": "Kael is a 42-year-old retired smuggler, lean and rigid, with weathered tanned skin, short unkempt brown hair, and a scarred, angular face with piercing eyes; Elara is a 30-year-old traveler, athletic build, pale skin, long damp hair, and a striking, resolute face. Kael sits at the bar, his hands shaking as he pours a drink into a mug; Elara sits on a stool directly across from Kael, her hands gripping the edge of the wood. Kael has a weary, watchful expression as he looks toward the door; Elara has a focused, exhausted expression as she looks at Kael. A medium shot captures both Kael and Elara at the bar. Kael wears a coarse tunic and leather vest; Elara wears a heavy wool cloak over a linen dress, her clothes soaked with water. The setting is a creaking 18th-century tavern with a warped wooden bar, a cracked mug, and a grimy window where rain lashes against the glass. Oil lamps on the bar and wall cast a warm, flickering glow from below, creating sharp highlights against deep shadows. The palette consists of deep browns and charcoal tones with vibrant amber highlights. A moody, cinematic oil painting with heavy, visible brushstrokes and gritty 18th-century atmospheric realism.",
+      "parts": {
+        "action": "She comes back in, soaked through, and sits down at the bar across from him.",
+        "outcome": "done",
+        "narration": "Added a second character, Elara, and updated the scene to include her interaction."
+      }
+    },
+    {
+      "shown": [
+        "",
+        ""
+      ],
+      "prompt": "Kael is a 42-year-old retired smuggler, lean and rigid, with weathered tanned skin, short unkempt brown hair, and a scarred, angular face with piercing eyes; Elara is a 30-year-old traveler, athletic build, pale skin, long damp hair, and a striking, resolute face; the Stranger is an adult, hidden figure in a dark tattered hood with obscured features. Kael sits at the bar, his hands shaking as he pours a drink into a mug; Elara sits on a stool directly across from Kael, her hands gripping the edge of the wood; the Stranger stands motionless on the balcony above them. Kael has a weary, watchful expression as he looks toward the door; Elara has a focused, exhausted expression as she looks at Kael; the Stranger's face is hidden by shadows. A medium shot captures both Kael and Elara at the bar, with the Stranger visible on the balcony above. Kael wears a coarse tunic and leather vest; Elara wears a heavy wool cloak over a linen dress, her clothes soaked with water; the Stranger wears a heavy, dark tattered cloak and a deep hood. The setting is a creaking 18th-century tavern with a warped wooden bar, a cracked mug, and a grimy window where rain lashes against the glass, and a wooden balcony overlooking the bar area. Oil lamps on the bar and wall cast a warm, flickering glow from below, creating sharp highlights against deep shadows. The palette consists of deep browns and charcoal tones with vibrant amber highlights. A moody, cinematic oil painting with heavy, visible brushstrokes and gritty 18th-century atmospheric realism.",
+      "parts": {
+        "action": "A hooded stranger appears on the balcony above them, watching.",
+        "outcome": "done",
+        "narration": "Added a third person (the Stranger) to the scene."
+      }
+    },
+    {
+      "shown": [
+        "",
+        ""
+      ],
+      "prompt": "Kael is a 42-year-old retired smuggler, lean and rigid, with weathered tanned skin, short unkempt brown hair, and a scarred, angular face with piercing eyes; Elara is a 30-year-old traveler, athletic build, pale skin, long damp hair, and a striking, resolute face; the Stranger is an adult, hidden figure in a dark tattered hood with obscured features. Kael stands at the bar, his right hand holding a knife and pointing it upward toward the balcony; Elara is crouched and ducking behind the wooden bar; the Stranger stands motionless on the balcony above them. Kael has a weary, watchful expression as he looks toward the balcony; Elara has a focused, exhausted expression while looking down; the Stranger's face is hidden by shadows. A medium shot captures both Kael and Elara at the bar, with the Stranger visible on the balcony above. Kael wears a coarse tunic and leather vest; Elara wears a heavy wool cloak over a linen dress, her clothes soaked with water; the Stranger wears a heavy, dark tattered cloak and a deep hood. The setting is a creaking 18th-century tavern with a warped wooden bar, a cracked mug, and a grimy window where rain lashes against the glass, and a wooden balcony overlooking the bar area. Oil lamps on the bar and wall cast a warm, flickering glow from below, creating sharp highlights against deep shadows. The palette consists of deep browns and charcoal tones with vibrant amber highlights. A moody, cinematic oil painting with heavy, visible brushstrokes and gritty 18th-century atmospheric realism.",
+      "parts": {
+        "action": "Kael draws a knife and points it up at the stranger while she ducks behind the bar.",
+        "outcome": "done",
+        "narration": "Action: Kael draws a knife and points it at the Stranger; Elara ducks behind the bar. Relationship: Elara is identified as female."
+      }
+    }
+  ]
+}

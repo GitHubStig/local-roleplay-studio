@@ -3,6 +3,7 @@ import { parseScenario, type ScenarioLibrary } from './scenario.ts'
 import type { ImagePrompt } from './imagePrompt.ts'
 import type { Settings } from './settings.ts'
 import type {
+  FrameRequest,
   FrameText,
   PlanHandlers,
   StoryboardEdit,
@@ -50,7 +51,7 @@ export function scriptedTextModel(
   replies: (FrameText | Error)[],
   realPeople: string[] = [],
   scripts: Scripts = {},
-): TextModel & { calls: number; personChecks: string[] } {
+): TextModel & { calls: number; personChecks: string[]; requests: FrameRequest[] } {
   const next = <T>(queue: (T | Error)[] | undefined, what: string): Promise<T> => {
     const item = queue?.shift()
     if (!item) return Promise.reject(new Error(`no scripted ${what} left`))
@@ -59,8 +60,11 @@ export function scriptedTextModel(
   const model = {
     calls: 0,
     personChecks: [] as string[],
-    write(_req: unknown, signal: AbortSignal, onThinking?: (chunk: string) => void) {
+    /** Each Chain Frame asked for, in order. */
+    requests: [] as FrameRequest[],
+    write(req: FrameRequest, signal: AbortSignal, onThinking?: (chunk: string) => void) {
       model.calls++
+      model.requests.push(req)
       signal.throwIfAborted()
       const item = replies[0]
       // Streams any scripted reasoning word by word, as Ollama does.

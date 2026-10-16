@@ -59,6 +59,28 @@ Deno.test('runChainFrame commits the Opening Frame with prefixed image prompt', 
     assertEquals((await store.load('s1'))?.frames.length, 1)
   }))
 
+Deno.test('runChainFrame sends earlier subject sentences, for someone brought back', () =>
+  withTempDir(async (root) => {
+    const store = chainStore(root)
+    const said = (subject: string) => reply('standing', { prompt: `${subject} ${promptWith('x')}` })
+    const textModel = scriptedTextModel([
+      said('Kael is lean; the traveller is slender.'),
+      said('Kael is lean.'),
+      said('Kael is lean; the traveller is slender.'),
+    ])
+    const deps = { store, textModel, imageGenerator: fakeImageGenerator() }
+    let session: ChainSession = newSession()
+    for (const action of [null, 'She leaves', 'She comes back']) {
+      await runChainFrame(deps, session, testScenario, action, () => {}, signal())
+      session = (await store.load('s1')) as ChainSession
+    }
+    assertEquals(textModel.requests.map((r) => r.earlier), [
+      [],
+      [],
+      ['Kael is lean; the traveller is slender.'],
+    ])
+  }))
+
 Deno.test('runChainFrame retries a failed Text Model reply once', () =>
   withTempDir(async (root) => {
     const textModel = scriptedTextModel([new Error('bad JSON'), reply('standing')])

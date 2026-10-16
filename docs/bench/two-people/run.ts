@@ -18,7 +18,7 @@ import { seededChat } from '../../../server/text/seeded.ts'
 import { composePrompt, matchShown } from '../../../server/look.ts'
 import { comfyuiImageGenerator } from '../../../server/images/comfyui/comfyui.ts'
 import { COMFYUI_MODELS } from '../../../server/images/comfyui/models.ts'
-import { asSentences } from '../../../server/imagePrompt.ts'
+import { asSentences, earlierSubjects } from '../../../server/imagePrompt.ts'
 
 const here = (path: string) => fromFileUrl(new URL(path, import.meta.url))
 const FRAMES = 6
@@ -219,11 +219,60 @@ async function planPeople(seed: number): Promise<Planned> {
   }
 }
 
+// --- A Chain: the Opening, then Actions that take the traveller out and back and bring a third
+// person in. Each Frame's whole prompt is the paragraph the Text Model rewrote.
+
+const ACTIONS = [
+  'Kael slides the letter across the bar to her.',
+  'She reads it, frowning, while he leans in close to watch her face.',
+  'The traveller steps back out into the rain to think, leaving Kael alone.',
+  'Close-up of Kael pouring himself a drink with shaking hands.',
+  'She comes back in, soaked through, and sits down at the bar across from him.',
+  'A hooded stranger appears on the balcony above them, watching.',
+  'Kael draws a knife and points it up at the stranger while she ducks behind the bar.',
+]
+/** Frames with two or three people, rendered: the Opening, 2, 3, 6, 7 and 8. */
+const CHAIN_RENDERED = [0, 1, 2, 5, 6, 7]
+
+async function chain(variant: string, seed: number): Promise<Planned> {
+  const model = chatTextModel(chatFor(seed))
+  const frames: Planned['frames'] = []
+  let prompt: string | null = null
+  const start = performance.now()
+  for (const action of [null, ...ACTIONS]) {
+    // As the app does: earlier subject sentences, when the variant is `remember`.
+    const earlier = variant === 'remember' && prompt
+      ? earlierSubjects(frames.map((f) => f.prompt), prompt)
+      : []
+    const text = await model.write(
+      { scenario, prompt, action, earlier },
+      AbortSignal.timeout(300_000),
+    )
+    if (text.outcome === 'done') prompt = text.prompt
+    const i = frames.length
+    frames.push({
+      shown: CHAIN_RENDERED.includes(i) ? ['', ''] : [],
+      prompt: prompt!,
+      parts: { action, outcome: text.outcome, narration: text.narration },
+    })
+  }
+  return {
+    variant: `chain-${variant}`,
+    seed,
+    model: settings.textModel,
+    seconds: Math.round((performance.now() - start) / 100) / 10,
+    look: null,
+    beats: [],
+    frames,
+  }
+}
+
 // --- Rendering.
 
-async function render() {
+/** Renders the plans and Chains whose file name starts with `only`, or all of them. */
+async function render(only = '') {
   const files = [...Deno.readDirSync(here('./prompts/'))].map((e) => e.name).filter((n) =>
-    n.endsWith('.json')
+    n.endsWith('.json') && n.startsWith(only)
   ).sort()
   const images = comfyuiImageGenerator()
   const dir = here('./out/')
@@ -238,8 +287,9 @@ async function render() {
         const look = plan.look as { people: PersonLook[]; style: string }
         for (const f of plan.frames) f.prompt = peoplePrompt(look, f.parts as PeopleFrame)
       }
+      // A Chain's chosen Frames all; a plan's first few with two or more people.
       const pairs = plan.frames.map((f, i) => ({ ...f, i })).filter((f) => f.shown.length >= 2)
-        .slice(0, PER_PLAN)
+        .slice(0, plan.variant.startsWith('chain') ? undefined : PER_PLAN)
       for (const f of pairs) {
         const name = `${file.replace('.json', '')}-f${f.i + 1}-${model}`
         if ([...Deno.readDirSync(dir)].some((e) => e.name.startsWith(name + '.'))) continue
@@ -255,19 +305,25 @@ async function render() {
 }
 
 const [command, variant, seedArg] = Deno.args
-if (command === 'plan') {
+if (command === 'plan' || command === 'chain') {
   const seed = Number(seedArg)
-  const planned = variant === 'people' ? await planPeople(seed) : await planToday(variant, seed)
+  const planned = command === 'chain'
+    ? await chain(variant, seed)
+    : variant === 'people'
+    ? await planPeople(seed)
+    : await planToday(variant, seed)
   await Deno.mkdir(here('./prompts/'), { recursive: true })
   await Deno.writeTextFile(
-    here(`./prompts/${variant}-${seed}.json`),
+    here(`./prompts/${planned.variant}-${seed}.json`),
     JSON.stringify(planned, null, 2) + '\n',
   )
   const pairs = planned.frames.filter((f) => f.shown.length >= 2).length
-  console.log(`${variant} ${seed}: ${planned.seconds} s, ${pairs} two-person Frames`)
+  console.log(`${planned.variant} ${seed}: ${planned.seconds} s, ${pairs} Frames to render`)
 } else if (command === 'render') {
-  await render()
+  await render(variant)
 } else {
-  console.error('Usage: run.ts plan <today|wording|people> <seed> | render')
+  console.error(
+    'Usage: run.ts plan <today|wording|people> <seed> | chain <today|each|remember> <seed> | render',
+  )
   Deno.exit(1)
 }
