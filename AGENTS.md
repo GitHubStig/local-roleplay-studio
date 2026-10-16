@@ -27,12 +27,12 @@ and how to run it is in the [README](README.md); this is how the owner likes the
   yourself and no longer need, say so and clean it up.
 - **Share code** rather than copy it, across screens and across the server. Look for an existing
   library function first (VueUse in the web app) before writing a helper.
+- **Workarounds for a weak model are measured, cheap and removable.** Add one (a list of who's away, state carried forward, a retry) only for a failure seen in a bench or in play, keep it cheap, and check it again when the Text Model changes, so a better model isn't held back by it. Prefer wording that's right for any model to scaffolding for one; and drop what a model no longer needs, as instructions that helped a weaker one can get in a stronger one's way.
 - **One Text Model for every text job** (the Character, the Art Agent, Suggest, a Chain's prompt
   edits). Don't suggest splitting jobs across models: switching models means reloading them.
 - **Say what you checked, and what you didn't.** Real runs over assumptions; when something
   couldn't be tested (on Windows, say), say so.
-- **Record findings in the docs**, dated: measurements in `docs/models.md` or `docs/research/`,
-  deferred ideas in `docs/open-threads.md`.
+- **Record findings in the docs**, dated, and deferred ideas in `docs/open-threads.md`. `docs/models.md` is for the models themselves: speed, memory, quality, comparisons, and why each was picked. Findings about the app's own prompts and behaviour (how a prompt shape works with two people, what a Roleplay keeps track of) go in the bench's README or `docs/research/`, with what was decided in an ADR.
 - **Agent instructions go in this file**, not in an agent-specific one, so any agent can use them.
 
 ## Two machines
