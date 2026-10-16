@@ -293,6 +293,22 @@ describe('StoryboardView', () => {
     expect((wrapper.find('textarea').element as HTMLTextAreaElement).value).toBe('make him twelve')
   })
 
+  it("sweeps the Frame's sentences while an Action rewrites them", async () => {
+    const stream = held()
+    vi.mocked(api.editStoryboardFrame).mockImplementation((_id, _i, _a, onEvent) =>
+      stream.call(onEvent)
+    )
+    const { wrapper } = await mountIt()
+    expect(wrapper.find('[data-rewriting]').exists()).toBe(false)
+    await wrapper.find('textarea').setValue('he jumps')
+    await buttonNamed(wrapper, 'Send').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-rewriting]').classes()).toContain('render-sweep')
+    stream.finish()
+    await flushPromises()
+    expect(wrapper.find('[data-rewriting]').exists()).toBe(false)
+  })
+
   it('saves a hand-edited Frame and the Look', async () => {
     vi.mocked(api.saveFrameBody).mockResolvedValue(
       storyboard([frame(0, { body: 'New body.' }), frame(1), frame(2)]),

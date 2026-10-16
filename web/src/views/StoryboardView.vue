@@ -720,12 +720,19 @@ const imagesOn = computed(() => featureOn.value('images'))
                   · only the first {{ MAX_SHOWN }} are described
                 </span>
               </div>
-              <CollapsibleTextarea
-                id="storyboard.frame"
-                v-model="frameDraft.body"
-                label="The Frame's seven sentences"
-                :disabled="busy || renderingSelected"
-              />
+              <!-- Its border sweeps while an Action rewrites them, as the Action box's does. -->
+              <div
+                class="rounded-md"
+                :class="{ 'render-sweep': editingHere }"
+                :data-rewriting="editingHere ? '' : undefined"
+              >
+                <CollapsibleTextarea
+                  id="storyboard.frame"
+                  v-model="frameDraft.body"
+                  label="The Frame's seven sentences"
+                  :disabled="busy || renderingSelected"
+                />
+              </div>
               <p v-if="renderingSelected" class="text-xs text-muted">
                 Read-only while it renders, so its picture is of what it says.
               </p>
