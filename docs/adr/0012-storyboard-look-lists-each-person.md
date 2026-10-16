@@ -69,6 +69,6 @@ or their identity crosses a Limit, so the next picture reuses their identity wor
 - **Tried with gemma-4 26B heretic (NVFP4) on the Mac**, on a copy of the Kael tavern Roleplay
   with two made-up exchanges bringing in a guard: an ordinary Frame added no one; the guard's first
   Frame added him with a good identity sentence; his second, pictured four times, reused it and
-  never added him twice (docs/models.md).
+  never added him twice (docs/research/people-in-pictures.md).
 - Roleplays from before weren't converted in code (the app isn't released): the three in
   `sessions/` were ported by hand, every prompt unchanged.

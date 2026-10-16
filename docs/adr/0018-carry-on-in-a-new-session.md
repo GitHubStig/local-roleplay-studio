@@ -19,3 +19,4 @@ A Storyboard's Frames are planned and then edited, but can't be carried on past 
 
 - The Look goes no further than the copied prompts: someone in it but in none of them is unknown to the Chain.
 - A copied Frame's Beat becomes its Action, and isn't updated by a Storyboard Action edit, so it may be out of date.
+- Tried on the Mac (2026-10-16), with gemma-4 26B heretic (NVFP4): one Action ("They both turn to face the viewer.") on a converted two-person Frame gave nine sentences back, the joined subject copied word for word, only the pose and expression rewritten, in 9.2 s (one seed, text only, not rendered). On the PC the same day, with Gemma 4 12B: a converted Frame's traveller, sent out and back in, was listed as away only while out and came back word for word (three Actions, one seed).
