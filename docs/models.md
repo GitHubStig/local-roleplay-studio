@@ -212,6 +212,22 @@ from the full-precision weights writes (2026-10-05).
 Much the same model, about as fast, 1 GB lighter: not a reason to switch on its own, and not a way
 under 12 GB. A 26B-A4B under 12 GB would need about 3 bits, which `ollama create` can't make.
 
+### Loading and speed, Mac against PC (2026-10-16)
+
+A raw timing of Ollama, outside the app, to choose which machine to test text-only features on. Both used Ollama 0.40.5 and the same script, which unloads every model, then sends one cold request and warm ones through `/api/chat` (`num_ctx` 16384, temperature 0, seed 42, at most 300 tokens out, Thinking off). The short prompt is the tavern Scenario with a request for the innkeeper's opening line (672 tokens). The long one repeats the Scenario to 8,218 tokens, about a 30-Frame Roleplay's history. One run each. The machines ran different models (the Mac's 12B wasn't run), so this compares each machine's best Text Model, not one model on two machines.
+
+| | PC: 12B Heretic GGUF Q4_K_M | Mac: 26B-A4B Heretic NVFP4 |
+|---|---|---|
+| Loaded (`ollama ps`) | 8.3 GB, 100% GPU | 19 GB, MLX |
+| Cold request (load) | 13.6 s (9.4 s) | **7.1 s (2.9 s)** |
+| Warm, short prompt | 4.1–4.2 s | **3.6 s** |
+| Long prompt, first read | **7.6 s** | 8.5 s |
+| Long prompt, read again from Ollama's cache | 4.2 s | 4.1 s |
+| Writing | ~52 tok/s, 49 after the long prompt | **70 tok/s**, 54 after the long prompt |
+| Reading a new prompt | **~2,600–2,950 tok/s** (1,500 cold) | 1,200–1,800 tok/s |
+
+The PC's load may have come from Windows' file cache, as the app had the model loaded just before. The two come out about even: the Mac's 26B loads three times as fast and writes faster, and the PC reads a new prompt about 1.5× as fast. In a running Roleplay most of the history comes from Ollama's cache, so writing speed counts most there. The Mac's 12B wasn't measured here: from the per-Action timings above, it would be slower than the PC's.
+
 ## Art Agent (picturing Roleplay Frames)
 
 The Art Agent uses the Session's Text Model. Measured 2026-09-28 on six Frames of a 30-Frame
