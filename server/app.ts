@@ -44,6 +44,7 @@ import {
   withBackends,
 } from './features.ts'
 import { checkChainJob, runChainJob } from './chain/jobs.ts'
+import { chainFromStoryboard, CopyError } from './chain/fromStoryboard.ts'
 import { checkStoryboardJob, runStoryboardJob } from './storyboard/jobs.ts'
 import { GoneError, updateSession } from './update.ts'
 import {
@@ -168,6 +169,7 @@ type LockKind =
   | 'upscale'
   | 'setup'
   | 'suggest'
+  | 'copy'
 
 export function createHandler(deps: AppDeps): (req: Request) => Promise<Response> {
   const newSessionId = deps.newSessionId ?? defaultSessionId
@@ -201,6 +203,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     upscale: 'A Frame is being upscaled',
     setup: 'The Roleplay is being set up',
     suggest: 'A message is being suggested',
+    copy: 'This Storyboard is being made into a Chain',
   }
 
   /** Takes the Session's lock, or returns a 409 saying what holds it. */
@@ -907,6 +910,33 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
             await setFrameBody({ store: deps.sessions }, session, index, body.body, body.shown),
           )
         }),
+    ],
+
+    // A new Chain from a Storyboard's Frames up to `index`, to carry on from that Frame by
+    // Actions; the Storyboard stays as it is. Made between renders, as it copies their pictures.
+    [
+      'POST',
+      new URLPattern({ pathname: '/api/sessions/:id/frames/:index/chain' }),
+      (_req, p) =>
+        jobs.betweenRenders(p.id!, () =>
+          locked(p.id!, 'copy', async (session) => {
+            if (!needsStoryboard(session)) {
+              return error('Only a Storyboard is made into a Chain', 409)
+            }
+            const index = frameIndexOf(session, p.index)
+            if (index instanceof Response) return index
+            try {
+              const chain = await chainFromStoryboard(deps.sessions, session, index, {
+                id: newSessionId(),
+                createdAt: new Date().toISOString(),
+                renderFrames: !(await featureOff('images')),
+              })
+              return json(chain, 201)
+            } catch (err) {
+              if (err instanceof CopyError) return error(err.message, 409)
+              throw err
+            }
+          })),
     ],
 
     [

@@ -14,6 +14,7 @@ import { useRouter } from 'vue-router'
 import {
   ApiError,
   cancelFrame,
+  chainFromStoryboard,
   changedSinceRender,
   type Activity,
   DOWNLOADING,
@@ -379,6 +380,21 @@ async function flushEdits(what: string): Promise<boolean> {
 async function queueSaved(kind: JobKind, index: number) {
   if (await flushEdits('queued')) queue(kind, index)
 }
+/** A new Chain from the Frames up to `index`, opened to carry on from it by Actions. */
+const copying = ref(false)
+async function continueAsChain(index: number) {
+  if (copying.value || !(await flushEdits('copied'))) return
+  copying.value = true
+  message.value = null
+  try {
+    const chain = await chainFromStoryboard(props.id, index)
+    router.push(sessionPath(chain.id, 'chain'))
+  } catch (err) {
+    message.value = { kind: 'error', text: (err as Error).message }
+  } finally {
+    copying.value = false
+  }
+}
 async function renderAll() {
   // After saving, as an edit may have changed more Frames since.
   if (await flushEdits('rendered')) queueAll('render', toRender.value.map((f) => f.index))
@@ -630,7 +646,7 @@ const imagesOn = computed(() => featureOn.value('images'))
             role="tabpanel"
             @keydown="onFrameKey"
           >
-            <li v-for="f in frames" :key="f.index">
+            <li v-for="f in frames" :key="f.index" class="group relative">
               <button
                 type="button"
                 class="flex w-full gap-3 border-b border-line p-3 text-left text-sm hover:bg-surface"
@@ -659,6 +675,19 @@ const imagesOn = computed(() => featureOn.value('images'))
                     {{ frameJob(f.index) ? `${JOB_NAMES[frameJob(f.index)!.kind]}…` : status(f).label }}
                   </span>
                 </span>
+              </button>
+              <button
+                v-if="planned && !busy && !('pending' in f)"
+                type="button"
+                class="absolute right-2 top-2 rounded border border-line bg-canvas px-2 py-0.5 text-xs text-muted opacity-0 hover:text-fg focus:opacity-100 group-hover:opacity-100 disabled:opacity-50"
+                :disabled="!!f.blocked || copying"
+                :title="f.blocked
+                ? 'Edit this Frame first: it crosses a limit'
+                : `A new Chain of Frames 1 to ${f.index + 1}, with their pictures, to carry on from this Frame by Actions. This Storyboard stays as it is.`"
+                data-continue-chain
+                @click="continueAsChain(f.index)"
+              >
+                {{ copying ? 'Making…' : 'Chain from here' }}
               </button>
             </li>
           </ol>

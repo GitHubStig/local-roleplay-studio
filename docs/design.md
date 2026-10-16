@@ -153,6 +153,7 @@ After planning, each Frame is independent:
 | **Edit the Look** | Edits, adds or removes people, or the style, and rewrites every Frame's prompt; rendered Frames whose prompt changed become stale. Someone renamed stays shown where they were. Saved between renders: one running is finished first, with the queue held, so every render still queued has the new Look and only the one that was running goes stale. |
 | **Upscale** | As for a Chain Frame (below); a re-render or Undo deletes the upscale with the image. |
 | **Edit by Action** | The Text Model rewrites that Frame and who it shows (and the Look, if the Action changes or adds a person, or the style), after the same Action Limits check as a Chain. Declined or unclear Actions change nothing. |
+| **Chain from here** | On a Frame in the Frames list (on hover, as a Chain's Delete): makes a new Chain of the Frames up to that one, to carry on from it by Actions; the Storyboard stays as it is. Done in code, with no Text Model call (2026-10-16): each Image Prompt becomes a Chain's nine sentences by joining the identities of the people shown into one subject sentence with semicolons, every word kept; a Frame of no one gets "No one is in the picture.". The first Frame is the Opening, each later one has its Beat as the Action (a Beat isn't updated by an Action edit, so it may be out of date), and blocked Frames are left out (the one it's made from can't be blocked). The Brief, Settings and seed are the Storyboard's, so its pictures are copied under new names, with their upscales and 3D; only those of a Frame of no one are marked stale. The Look goes no further than the copied prompts: someone in it but in none of them is unknown to the Chain. |
 
 Each Frame records how long its text took (the wait for its part of the plan, or its latest
 edit) and its latest render.
@@ -712,6 +713,7 @@ All under `/api`; the Vite dev server proxies it to the Deno server.
 | `POST /sessions/:id/plan` | Storyboard: plan it, streaming `look`, `beats`, `planned-frame` × N, then `planned` |
 | `POST /sessions/:id/frames/:index/edit` | Storyboard: edit one Frame by `{ action }`, streaming then `edited` (`outcome`, `narration`, `session`) |
 | `PUT /sessions/:id/frames/:index` | Storyboard: replace a Frame's sentences and, if given, who it shows, `{ body, shown? }`. Chain: replace a Frame's Image Prompt, `{ prompt }`, its pictures then out of date. `422` if it crosses a Limit |
+| `POST /sessions/:id/frames/:index/chain` | Storyboard: make a new Chain of its Frames up to `:index`, with their pictures (`201`, the Chain); waits for a render running to end. `409` if Frame `:index` is blocked |
 | `PUT /sessions/:id/look` | Storyboard: replace the Look, `{ people: [{ name, identity }], style }`; waits for a render running to end, holding the queue meanwhile |
 | `POST /sessions/:id/cancel` | Cancel the Frame in progress |
 | `DELETE /sessions/:id/frames/:index` | Undo the latest Frame; `:index` must name it (`409` otherwise, and for the Opening Frame or while a Frame runs) |

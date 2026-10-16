@@ -517,6 +517,13 @@ export const put = <T>(path: string, body: unknown) =>
 export const saveFrameBody = (id: string, index: number, body: string, shown: string[]) =>
   put<StoryboardSession>(`/api/sessions/${id}/frames/${index}`, { body, shown })
 
+/**
+ * Makes a new Chain from a Storyboard's Frames up to `index`, with their pictures, to carry on
+ * from that Frame by Actions; the Storyboard stays as it is.
+ */
+export const chainFromStoryboard = (id: string, index: number) =>
+  post<ChainSession>(`/api/sessions/${id}/frames/${index}/chain`)
+
 /** Replaces a Chain Frame's Image Prompt, typed by hand; its pictures are then out of date. */
 export const saveChainPrompt = (id: string, index: number, prompt: string) =>
   put<ChainSession>(`/api/sessions/${id}/frames/${index}`, { prompt })

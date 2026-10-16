@@ -284,6 +284,13 @@ all a Chain remembers. With the earlier Frames' subject sentences sent with each
 Rendered on both Image Models; FLUX.3 Klein once put the stranger on the floor, not the balcony
 ([bench/two-people](bench/two-people/README.md)).
 
+**A Storyboard continued as a Chain (2026-10-16, Mac).** Converted in code, a two-person
+Storyboard Frame's identities become one subject sentence joined by semicolons (design.md,
+Storyboards). One Action on it ("They both turn to face the viewer."), with gemma-4 26B heretic
+(NVFP4): nine sentences back, the merged subject copied word for word, only the pose and
+expression rewritten, in 9.2 s. One Action, one seed, text only (not rendered); a longer Chain from
+a converted Frame is untried.
+
 ## Art Agent (picturing Roleplay Frames)
 
 The Art Agent uses the Session's Text Model. Measured 2026-09-28 on six Frames of a 30-Frame

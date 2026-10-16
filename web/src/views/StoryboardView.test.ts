@@ -16,6 +16,7 @@ vi.mock('../api', async (importOriginal) => ({
   cancelFrame: vi.fn(),
   listJobs: vi.fn(),
   queueJob: vi.fn(),
+  chainFromStoryboard: vi.fn(),
 }))
 
 /** A queued job, as the server lists it. */
@@ -307,6 +308,23 @@ describe('StoryboardView', () => {
     stream.finish()
     await flushPromises()
     expect(wrapper.find('[data-rewriting]').exists()).toBe(false)
+  })
+
+  it('continues as a Chain from a Frame in the list, and opens it', async () => {
+    vi.mocked(api.chainFromStoryboard).mockResolvedValue({ id: 'ch', kind: 'chain' } as never)
+    const { wrapper, router } = await mountIt()
+    await wrapper.findAll('[data-continue-chain]')[1].trigger('click')
+    await flushPromises()
+    expect(api.chainFromStoryboard).toHaveBeenCalledWith('sb', 1)
+    expect(router.currentRoute.value.path).toBe('/sessions/ch')
+  })
+
+  it("can't continue as a Chain from a blocked Frame", async () => {
+    vi.mocked(api.getSession).mockResolvedValue(
+      storyboard([frame(0, { blocked: 'no nudity' }), frame(1)]),
+    )
+    const { wrapper } = await mountIt()
+    expect(wrapper.find('[data-continue-chain]').attributes('disabled')).toBeDefined()
   })
 
   it('saves a hand-edited Frame and the Look', async () => {

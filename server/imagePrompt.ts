@@ -28,9 +28,12 @@ export type ImagePrompt = string
 export const joinPrompt = (subject: string, body: string, style: string): ImagePrompt =>
   [subject, body, style].map(asSentences).filter(Boolean).join(' ')
 
+/** The sentences of a paragraph, in order. */
+export const sentences = (text: string): string[] =>
+  text.trim().split(/(?<=[.!?])\s+(?=[A-Z"'])/).filter(Boolean)
+
 /** An Image Prompt's first sentence, the subject: who is in the picture. */
-export const subjectSentence = (prompt: ImagePrompt): string =>
-  prompt.trim().split(/(?<=[.!?])\s+(?=[A-Z"'])/)[0] ?? ''
+export const subjectSentence = (prompt: ImagePrompt): string => sentences(prompt)[0] ?? ''
 
 /**
  * The subject sentences of earlier Image Prompts that aren't `current`'s, the latest first, each
