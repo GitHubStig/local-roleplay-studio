@@ -6,8 +6,12 @@ import {
   logCalls,
   logCallsUnder,
   loggedChat,
+  loggedEmbedder,
+  loggedMaker,
+  loggedVoice,
   renumberCallLogs,
 } from './calls.ts'
+import type { SceneMaker } from './3d/scene.ts'
 import type { Chat, ChatCall } from './text/chat.ts'
 import { withTempDir } from './testing.ts'
 
@@ -123,4 +127,47 @@ Deno.test('A deleted Frame’s calls are kept aside, and later Frames’ numbere
       await Promise.all(['frame-1.json', 'frame-2.json', 'frame-3.json', aside].map(read)),
       ['0', '2', '3', '1'],
     )
+  }))
+
+Deno.test('Voices, 3D and style scores are logged: files by name, embeddings counted', () =>
+  withTempDir(async (dir) => {
+    const voice = loggedVoice({
+      profile: () => Promise.resolve({ ref: 'wav', speech: 'mp3', heavy: false }),
+      design: () => Promise.resolve(),
+      speak: () => Promise.resolve(),
+    }, 'comfyui')
+    const scene = loggedMaker<SceneMaker>(
+      {
+        make: () => Promise.resolve({ splats: 9, pivot: 2, fov: 40, aspect: 1 }),
+      },
+      'scene',
+      'SHARP',
+    )
+    const style = loggedEmbedder({
+      embed: () => Promise.resolve({ images: { '/a/x.png': { csd: 'c', clip: 'v' } }, texts: {} }),
+    })
+    await logCalls(true, dir, 1, async () => {
+      await voice.speak(
+        { text: 'Hello.', ref: '/s/voice.wav', refText: 'Hi.', seed: 1, out: '/s/frame-1.mp3' },
+        signal,
+      )
+      await scene.make({ image: '/s/frame-1-aaaa.png', out: '/s/scene-1.ply' }, signal)
+      await style.embed({ images: ['/a/x.png'], texts: [] }, signal)
+    })
+    const calls = await read(callFile(dir, 1))
+    assertEquals(calls.map((c) => [c.job, c.model]), [
+      ['speak', 'comfyui'],
+      ['scene', 'SHARP'],
+      ['style', 'style embedder'],
+    ])
+    assertEquals(calls[0].request, { text: 'Hello.', refText: 'Hi.', seed: 1, ref: 'voice.wav' })
+    assertEquals(calls[0].response, { file: 'frame-1.mp3' })
+    assertEquals(calls[1].response, {
+      file: 'scene-1.ply',
+      splats: 9,
+      pivot: 2,
+      fov: 40,
+      aspect: 1,
+    })
+    assertEquals(calls[2].response, { images: 1, texts: 0 })
   }))

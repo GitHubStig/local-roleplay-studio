@@ -1,5 +1,6 @@
 import { assertEquals, assertMatch, assertNotEquals, assertStringIncludes } from '@std/assert'
 import { join } from '@std/path'
+import { callFile, type CallRecord, loggedVoice } from './calls.ts'
 import { type AppDeps, createHandler } from './app.ts'
 import type { Job } from './jobs.ts'
 import type { TextConnection, TextModelInfo } from './text/backend.ts'
@@ -1790,6 +1791,34 @@ Deno.test("Speaking a Frame designs the Character's voice first, and serves the 
     assertEquals(session.voice.description, 'A deep man.')
     assertEquals(voice.calls.map((c) => c.kind), ['design', 'speak', 'design'])
     assertEquals((voice.calls[2].req as { description: string }).description, 'A deep man.')
+  }))
+
+Deno.test("The call log puts a voice's design with the setup, and a spoken line with its Frame", () =>
+  withTempDir(async (root) => {
+    const voice = loggedVoice(fakeVoiceEngine(), 'fake')
+    const model = scriptedRoleplayModel({
+      casts: [testCast],
+      replies: [replyOf('You are late.')],
+      voices: ['A low, husky woman.'],
+    })
+    const { call } = setup({
+      root,
+      settings: { textModel: 'x', callLog: true },
+      roleplayModel: model,
+      voice,
+    })
+    await call('POST', '/api/sessions', { kind: 'roleplay', brief: 'A storm at sea.' })
+    await readEvents(await call('POST', '/api/sessions/s1/roleplay/cast'))
+    await readEvents(await call('POST', '/api/sessions/s1/roleplay/begin'))
+    await call('POST', '/api/sessions/s1/jobs', { kind: 'voice', frameIndex: 0 })
+    await settled(call)
+    await call('POST', '/api/sessions/s1/jobs', { kind: 'speak', frameIndex: 0 })
+    await settled(call)
+    const jobs = async (frame: number | null) =>
+      (JSON.parse(await Deno.readTextFile(callFile(join(root, 's1'), frame))) as CallRecord[])
+        .map((c) => c.job)
+    assertEquals(await jobs(null), ['voice-design'])
+    assertEquals(await jobs(0), ['speak'])
   }))
 
 Deno.test('Without a voice service, speaking fails with a reason', () =>

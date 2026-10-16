@@ -1,17 +1,22 @@
 /**
- * The call log: with Settings' `callLog` on, every call to the Text Model and the Image Model
- * (renders and upscales) is written to the Session's folder as it's made, for studying what the
- * models were sent and what came back. One file per Frame (`calls/frame-3.json`, numbered as the
- * app shows them), and `calls/setup.json` for what isn't one Frame's (a Cast, a Storyboard's
- * plan); each a JSON array, oldest call first, that an editor can fold.
+ * The call log: with Settings' `callLog` on, every call to the Text Model, the Image Model
+ * (renders and upscales), the voice engine, SHARP, TripoSplat, LiTo and the style embedder is
+ * written to the Session's folder as it's made, for studying what the models were sent and what
+ * came back. One file per Frame (`calls/frame-3.json`, numbered as the app shows them), and
+ * `calls/setup.json` for what isn't one Frame's (a Cast, a Storyboard's plan); each a JSON array,
+ * oldest call first, that an editor can fold.
  *
  * Which Session and Frame a call is for comes from where it's made: a piece of work runs inside
  * `logCalls`, and every call under it, however deep, is logged there.
  */
 import { AsyncLocalStorage } from 'node:async_hooks'
-import { join } from '@std/path'
+import { basename, join } from '@std/path'
 import type { Chat, ChatCall } from './text/chat.ts'
 import type { ImageGenerator } from './images/imageGenerator.ts'
+import type { FigureMaker } from './3d/figure.ts'
+import type { SceneMaker, SceneRequest } from './3d/scene.ts'
+import type { StyleEmbedder } from './style/embedder.ts'
+import type { VoiceEngine } from './voice/voice.ts'
 import { RENDER_SETTINGS } from './settings.ts'
 
 /** Where the calls of a piece of work are logged. */
@@ -245,6 +250,67 @@ export function loggedImages(images: ImageGenerator): ImageGenerator {
         { image: req.image, seed: req.seed },
         () => images.upscale(req, signal, onProgress, onDownload),
         (image) => ({ image }),
+      )
+    },
+  }
+}
+
+/** `engine`, with each voice designed and line spoken logged (`logCalls`), as `name`'s. */
+export function loggedVoice(engine: VoiceEngine, name: string): VoiceEngine {
+  return {
+    profile: () => engine.profile(),
+    design(req, signal, onDownload) {
+      const { out, ...sent } = req
+      return logged(
+        'voice-design',
+        name,
+        sent,
+        () => engine.design(req, signal, onDownload),
+        () => ({ file: basename(out) }),
+      )
+    },
+    speak(req, signal, onDownload) {
+      const { out, ref, ...sent } = req
+      return logged(
+        'speak',
+        name,
+        { ...sent, ref: basename(ref) },
+        () => engine.speak(req, signal, onDownload),
+        () => ({ file: basename(out) }),
+      )
+    },
+  }
+}
+
+/** A SHARP, TripoSplat or LiTo maker (`name`), with each run logged as `job` (`logCalls`). */
+export function loggedMaker<M extends SceneMaker | FigureMaker>(
+  maker: M,
+  job: string,
+  name: string,
+): M {
+  return {
+    make(req: SceneRequest, signal: AbortSignal, onDownload?: (downloading: boolean) => void) {
+      return logged(
+        job,
+        name,
+        { image: basename(req.image) },
+        () => maker.make(req, signal, onDownload),
+        (result) => ({ file: basename(req.out), ...result }),
+      )
+    },
+  } as M
+}
+
+/** `embedder`, with each run logged (`logCalls`): what was embedded, not the vectors. */
+export function loggedEmbedder(embedder: StyleEmbedder): StyleEmbedder {
+  return {
+    embed(req, signal, onProgress, onDownload) {
+      return logged(
+        'style',
+        'style embedder',
+        { images: req.images.map((p) => basename(p)), texts: req.texts },
+        () => embedder.embed(req, signal, onProgress, onDownload),
+        (e) => ({ images: Object.keys(e.images).length, texts: Object.keys(e.texts).length }),
       )
     },
   }

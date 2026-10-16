@@ -679,19 +679,7 @@ Session from Home, and delete old ones there.
 | Sessions | `sessions/<id>/session.json` + `frame-N-xxxxxxxx.png` | Id is `YYYYMMDD-HHMMSS-xxxx`; files are written to a temp file, then renamed |
 | Call log | `sessions/<id>/calls/frame-N.json`, `calls/setup.json` | Only with Settings' Call log on; see below |
 
-**The call log** (`server/calls.ts`) is for studying what the models are sent. With it on, every
-call to the Text Model (with its job: `cast`, `reply`, `look`, `picture`, `suggest`…, its messages,
-schema, seed and caps, and the reply and reasoning) and to the Image Model (each render's prompt,
-seed and settings, each upscale) is added to a JSON array in the Session's `calls/` folder as it's
-made: one file per Frame, numbered as the app shows them, and `setup.json` for what isn't one
-Frame's (a Cast, a Storyboard's plan). Suggest and a Chain's next Frame log under the Frame they'd
-make. A call is added over the file's closing `]`, so the file is never rewritten and stays valid
-JSON; one file per Frame keeps each small enough for an editor to fold (VS Code stops folding
-past about 20 MB, which a whole long Roleplay, resending its conversation every Reply, would
-pass). The calls are logged as they're made rather than rebuilt later: each is built from what
-earlier calls returned, and the prompts change. An undone or redone Frame's calls stay in its
-file. The voice engine's runs and 3D aren't logged (the Text Model's voice and delivery calls
-are).
+**The call log** (`server/calls.ts`) is for studying what the models are sent. With it on, every call to the Text Model (with its job: `cast`, `reply`, `look`, `picture`, `suggest`…, its messages, schema, seed and caps, and the reply and reasoning) and to the Image Model (each render's prompt, seed and settings, each upscale) is added to a JSON array in the Session's `calls/` folder as it's made: one file per Frame, numbered as the app shows them, and `setup.json` for what isn't one Frame's (a Cast, a Storyboard's plan). Suggest and a Chain's next Frame log under the Frame they'd make. A call is added over the file's closing `]`, so the file is never rewritten and stays valid JSON; one file per Frame keeps each small enough for an editor to fold (VS Code stops folding past about 20 MB, which a whole long Roleplay, resending its conversation every Reply, would pass). The calls are logged as they're made rather than rebuilt later: each is built from what earlier calls returned, and the prompts change. An undone or redone Frame's calls stay in its file. Since 2026-10-16 the voice engine (each voice designed and line spoken: its text, delivery, seed and reference clip, by file name), SHARP, TripoSplat and LiTo (the picture and what came out) and the style embedder (which pictures and captions, counted, not the vectors) are logged too, under their jobs (`voice-design`, `speak`, `scene`, `figure`, `lito`, `style`). A spoken line or a 3D model goes with its Frame's calls; a voice's design and the style scores, which belong to the Session, go in `setup.json`.
 
 ## API
 

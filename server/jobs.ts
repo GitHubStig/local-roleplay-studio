@@ -277,9 +277,9 @@ export interface JobRoutesContext {
 /**
  * Jobs about the Session rather than one Frame (a Roleplay's voice, the style scores' embeddings):
  * queued as Frame 0's, which needn't exist yet, as a voice can be designed while the Cast is
- * reviewed, before the scene begins.
+ * reviewed, before the scene begins. Their calls are logged with the setup's, not Frame 0's.
  */
-const SESSION_JOBS: readonly JobKind[] = ['voice', 'style']
+export const SESSION_JOBS: readonly JobKind[] = ['voice', 'style']
 
 /** The job routes every Session kind shares, under `/api/sessions/:id/jobs`. */
 export function jobRoutes(ctx: JobRoutesContext): Route[] {

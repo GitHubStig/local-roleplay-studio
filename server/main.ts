@@ -13,7 +13,7 @@ import { chatTextModel } from './textModel.ts'
 import { chatRoleplayModel } from './roleplay/model.ts'
 import { connectionOf, textBackend, type TextChoice, type TextConnection } from './text/backend.ts'
 import { seededChat } from './text/seeded.ts'
-import { loggedChat, loggedImages } from './calls.ts'
+import { loggedChat, loggedEmbedder, loggedImages, loggedMaker, loggedVoice } from './calls.ts'
 import { litoFigureMaker, tripoFigureMaker } from './3d/figure.ts'
 import { sharpSceneMaker } from './3d/scene.ts'
 import { uvStyleEmbedder } from './style/embedder.ts'
@@ -90,14 +90,20 @@ const handler = createHandler({
   // Voices with the backend Settings choose now: the voice service where it runs (a Mac), or the
   // ComfyUI at Settings' address with TTS Audio Suite's nodes.
   voice: voiceBackends({
-    mlx: features.voices.available ? voiceService() : undefined,
-    comfyui: comfyuiVoiceEngine({ baseUrl: async () => (await settings.load()).imageBaseUrl }),
+    mlx: features.voices.available ? loggedVoice(voiceService(), 'mlx-audio') : undefined,
+    comfyui: loggedVoice(
+      comfyuiVoiceEngine({ baseUrl: async () => (await settings.load()).imageBaseUrl }),
+      'comfyui',
+    ),
     voiceBackend: async () => (await settings.load()).voiceBackend,
   }),
-  scene: features.scenes.available ? sharpSceneMaker() : undefined,
-  figure: features.figures.available ? tripoFigureMaker() : undefined,
-  lito: features.lito.available ? litoFigureMaker() : undefined,
-  style: features.style.available ? uvStyleEmbedder() : undefined,
+  // Logged like the Text and Image Models' calls (`calls.ts`).
+  scene: features.scenes.available ? loggedMaker(sharpSceneMaker(), 'scene', 'SHARP') : undefined,
+  figure: features.figures.available
+    ? loggedMaker(tripoFigureMaker(), 'figure', 'TripoSplat')
+    : undefined,
+  lito: features.lito.available ? loggedMaker(litoFigureMaker(), 'lito', 'LiTo') : undefined,
+  style: features.style.available ? loggedEmbedder(uvStyleEmbedder()) : undefined,
 })
 
 Deno.serve({ port }, handler)

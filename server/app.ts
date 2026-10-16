@@ -34,7 +34,14 @@ import type { VoiceEngine } from './voice/voice.ts'
 import { roleplayExcerpt } from './roleplay/prompt.ts'
 import { roleplayRoutes } from './roleplay/routes.ts'
 import { checkRoleplayJob, type RoleplayJobContext, runRoleplayJob } from './roleplay/jobs.ts'
-import { type Job, JOB_FEATURE, type JobEmit, jobRoutes, SessionJobs } from './jobs.ts'
+import {
+  type Job,
+  JOB_FEATURE,
+  type JobEmit,
+  jobRoutes,
+  SESSION_JOBS,
+  SessionJobs,
+} from './jobs.ts'
 import { logCalls, logCallsUnder } from './calls.ts'
 import {
   type Availabilities,
@@ -411,7 +418,8 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     return logCalls(
       callLog,
       deps.sessions.dir(id),
-      job.frameIndex,
+      // A voice or the style scores belong to the Session, not the Frame 0 they're queued as.
+      SESSION_JOBS.includes(job.kind) ? null : job.frameIndex,
       () => runJob(id, job, emit, signal),
     )
   })
