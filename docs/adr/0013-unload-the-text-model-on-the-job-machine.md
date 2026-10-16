@@ -35,7 +35,7 @@ when both are this one (loopback, or one of its own names and addresses, which D
   the job's measured peak. With mflux 0.22's `--low-ram`, Qwen-Image 2.1 (9.4 GB at 1024 px) and
   gemma4 (~20 GB) fit in 48 GB. Not done: the app can't know what else is running or will start, the
   peaks are measured on one Mac only, and a wrong guess costs minutes of swap, where unloading
-  costs seconds. Kept in [open-threads.md](../open-threads.md) ("Memory headroom").
+  costs seconds. Dropped from open-threads on 2026-10-16: reloading costs seconds against a render's tens, not worth the risk.
 - **A Setting to switch unloading off.** A choice the player would have to understand, where the
   machine can be worked out.
 

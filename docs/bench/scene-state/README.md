@@ -1,6 +1,6 @@
 # Scene state in a Roleplay (2026-10-16, Windows PC)
 
-The test behind "Scene state in a Roleplay" in [open-threads.md](../../open-threads.md). A Roleplay keeps no state of the scene: where things are, the light, the weather, the time and the Character's mood live only in the conversation, sent whole with every Reply (ADR 0007). Does the Character keep track of what was set many exchanges back?
+The test behind "Scene state stays in the conversation" in [ADR 0007](../../adr/0007-roleplay-is-a-conversation-with-a-cast.md), first an open thread, "Scene state in a Roleplay". A Roleplay keeps no state of the scene: where things are, the light, the weather, the time and the Character's mood live only in the conversation, sent whole with every Reply (ADR 0007). Does the Character keep track of what was set many exchanges back?
 
 ## What was run
 

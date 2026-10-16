@@ -72,3 +72,9 @@ or their identity crosses a Limit, so the next picture reuses their identity wor
   never added him twice (docs/research/people-in-pictures.md).
 - Roleplays from before weren't converted in code (the app isn't released): the three in
   `sessions/` were ported by hand, every prompt unchanged.
+
+## Each sentence about every person shown (2026-10-16)
+
+A Storyboard Frame's seven sentences were described to its plan as for one subject, so with two people each sentence covered both at once ("Kael looks at her with suspicion; the traveller looks at him…"), and an Image Model could swap who stood where or add a person. The plan and edit prompts now describe them as the Roleplay Art Agent's picture call already did, each about every person shown (`server/prompts/shared/each-person.md`, one file for both), with anyone not in the picture left out, clothing carried from Frame to Frame, and at most 40 words a sentence. A Chain's prompt took the same wording the same day, its subject sentence describing each person in the picture (ADR 0001's amendment).
+
+Considered: **a block per person shown** (their identity, where they are, pose, expression and clothing, by a visual handle rather than a name), then a sentence for what they do to each other, then the scene, the same shape for every kind of Session. Benched against the old wording and the new on Gemma 4 12B, two plans each, two-person Frames rendered on Qwen-Image 2.1 and FLUX.3 Klein ([docs/bench/two-people](../bench/two-people/README.md)): the old wording went wrong on 2 of 4 Frames on Qwen-Image 2.1; the new wording and the per-person shape on none. The shape did no better, gave left and right exactly but at a cost (the 12B wrote names it wasn't given, and clothing without whose it was), and would have changed every part that writes or edits a picture. Not built; reopen it if a Brief or a model shows the wording isn't enough, for three people say.

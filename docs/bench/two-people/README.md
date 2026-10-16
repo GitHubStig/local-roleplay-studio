@@ -1,7 +1,6 @@
 # Two people in a Storyboard Frame (2026-10-16, Windows PC)
 
-The test behind "One Image Prompt shape for one to three people" in
-[open-threads.md](../../open-threads.md). With two people in a Storyboard Frame, its sentences were
+The test behind the each-person wording in [ADR 0012](../../adr/0012-storyboard-look-lists-each-person.md) ("Each sentence about every person shown"), first an open thread, "One Image Prompt shape for one to three people". With two people in a Storyboard Frame, its sentences were
 written as if for one subject ("Kael looks at her with suspicion; the traveller looks at him…"),
 and an Image Model could swap who did what. Three ways of writing a plan, each planned twice from
 the public tavern scenario and its two-person Frames rendered on two Image Models:
