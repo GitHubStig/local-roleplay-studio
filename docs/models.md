@@ -623,6 +623,13 @@ Agent, 2 from a Chain; 120–380 words, median 253 for the Roleplays):
 | Boogu | 1024 | 0 | 340 | 511 | 0 |
 | ERNIE-Image | 2048 | 1 | 347 | 525 | 0 |
 | Qwen-Image 2.1 | 2048 | 22 | 362 | 533 | 0 |
+| Z-Image (full) | 512 | 8 | 259* | 414* | 0 of 198* |
+| Qwen-Image 2.1 Turbo (Viggle LoRA) | 2048 | 22 | 273* | 428* | 0 of 198* |
+| Ming-Image 0.1 Design | none | 26 | 280* | 435* | 0 of 198* |
+| FIBO 1.5 | 2048, on the JSON caption; the prose: none | 0; the VLM's: 11 | 262* (prose) | 417* (prose) | prose: 0 of 198*; caption: not measured |
+| Ideogram 4 | none: fails past 2048 | 8 | 259* | 414* | 0 of 198* |
+
+\* Counted 2026-10-16 on the Mac (mflux 0.22, the same method) over a different, shorter set: the 198 Image Prompts in `docs/bench/two-people/prompts/`, from the public tavern scenario (99–307 words, median 185). Every count includes the template.
 
 - **Qwen-Image 2.1, the default, reads all of every prompt**, with room for four times as much.
 - **Klein and Z-Image already lose the end of the longest** (a 380-word Roleplay picture, by 7–11
@@ -633,7 +640,12 @@ Agent, 2 from a Chain; 120–380 words, median 253 for the Roleplays):
   could reach ~600. A Storyboard Frame adds an identity for each person it shows (up to three); no
   Storyboard was saved here to measure.
 - **ComfyUI cuts nothing** (checked 2026-10-16 in ComfyUI 0.41.1's code, `comfy/text_encoders/`, on the PC): every text encoder the app uses on it sets `max_length=99999999`, unpadded: Qwen3-VL 8B for Qwen-Image 2.1 and its Turbo, Qwen3-VL 4B for FLUX.3 Klein, Qwen3 4B for FLUX.2 Klein 4B and Z-Image Turbo; and past a tokenizer's length ComfyUI starts another chunk rather than cutting (`sd1_clip.py`). So on ComfyUI the whole prompt is always read; the cuts above are mflux's.
-- Not measured: the mflux models added since (Z-Image, Qwen-Image 2.1 Turbo with Viggle's LoRA, Ming-Image, FIBO 1.5, Ideogram 4); mflux's code is on the Mac.
+- **None of the bench's prompts is cut by the five models added since** (2026-10-16). Their longest, 297 words from a long Chain, is 414–435 tokens. But that set is shorter than the Sessions'.
+- **Z-Image (full) reads like Z-Image Turbo**: the same token ids over all the bench's prompts, the same 8-token template, the same cut at 512 (`z_image_weight_definition.py`). So it would also lose the end, the art style, of the longest Session prompt.
+- **Viggle's LoRA leaves the text side alone**: it changes only the transformer's blocks (`qwen21_lora_mapping.py`), so the Turbo reads as Qwen-Image 2.1 does.
+- **Ming-Image cuts nothing**: its weight definition gives 1024, but `MingImage.encode_prompt` calls the tokenizer itself, without a length. Its template is the checkpoint's chat template, written out in `ming_condition_encoder.py`.
+- **Ideogram 4 fails rather than cuts**: `Ideogram4Tokenizer.tokenize_one` raises an error past 2048 tokens, so an over-long prompt fails the render instead of losing its end. The app sends it prose, which mflux passes on as it is, with a warning that it isn't a JSON caption. A JSON caption would go through the same path, as compact JSON text.
+- **FIBO 1.5 cuts the caption, not the prose**: FIBO's VLM (`FiboVLM.generate`) reads the whole prose prompt in an 11-token template, uncut (the 1024 in its weight definition isn't used on that path). It writes a JSON caption of up to 4096 tokens, and FIBO's text encoder reads that caption, without a template, cut at 2048 (`fibo_weight_definition.py`, `fibo_text_encoder/prompt_encoder.py`). How long the captions run wasn't measured: the app doesn't keep them, and counting them needs the VLM run on each prompt.
 - A limit is set by the model's text encoder and by mflux's or ComfyUI's code, so it changes only with a new model or an upgrade of either: check again then, as above (mflux 0.22, ComfyUI 0.41.1).
 
 "About 250 words" (2026-09-27) was a measure of what the Art Agent wrote, not a target; the limit
