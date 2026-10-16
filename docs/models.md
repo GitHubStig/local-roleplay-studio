@@ -632,7 +632,9 @@ Agent, 2 from a Chain; 120–380 words, median 253 for the Roleplays):
   450 tokens on their own, before the identities and the style, so a busy Frame with both people
   could reach ~600. A Storyboard Frame adds an identity for each person it shows (up to three); no
   Storyboard was saved here to measure.
-- Not checked: ComfyUI's Qwen-Image 2.1, which tokenizes with its own code.
+- **ComfyUI cuts nothing** (checked 2026-10-16 in ComfyUI 0.41.1's code, `comfy/text_encoders/`, on the PC): every text encoder the app uses on it sets `max_length=99999999`, unpadded: Qwen3-VL 8B for Qwen-Image 2.1 and its Turbo, Qwen3-VL 4B for FLUX.3 Klein, Qwen3 4B for FLUX.2 Klein 4B and Z-Image Turbo; and past a tokenizer's length ComfyUI starts another chunk rather than cutting (`sd1_clip.py`). So on ComfyUI the whole prompt is always read; the cuts above are mflux's.
+- Not measured: the mflux models added since (Z-Image, Qwen-Image 2.1 Turbo with Viggle's LoRA, Ming-Image, FIBO 1.5, Ideogram 4); mflux's code is on the Mac.
+- A limit is set by the model's text encoder and by mflux's or ComfyUI's code, so it changes only with a new model or an upgrade of either: check again then, as above (mflux 0.22, ComfyUI 0.41.1).
 
 "About 250 words" (2026-09-27) was a measure of what the Art Agent wrote, not a target; the limit
 in force is the 280-character cap per sentence (`FIELD_LENGTH`, `server/roleplay/art.ts`).
