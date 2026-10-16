@@ -21,8 +21,9 @@ Since ADR 0005 the state is the nine-Section Image Prompt rather than a Scenario
 
 The case this ADR said to revisit came up with two people: someone who left the picture left the
 Image Prompt, so when an Action brought them back the Text Model described them afresh (dark hair
-came back blonde; docs/bench/two-people). Each Action now also gets the subject sentences of
-earlier Frames unlike the current one, the latest first, at most three (`earlierSubjects`), and
-someone brought back is described as the latest of them that has them. It's a bounded exception:
-only who people are, a few sentences whatever the Session's length, and the Image Prompt is still
-the state: nothing else of earlier Frames is sent.
+came back blonde; docs/bench/two-people). Each Action now also gets everyone pictured before but
+not now, each as their part of the last subject sentence that had them (`peopleAway`), and someone
+brought back is copied from it. The latest three subject sentences were tried first, and lost the
+traveller once five others had come and gone. It's a bounded exception: only who people are, a
+line per person whatever the Session's length, and the Image Prompt is still the state: nothing
+else of earlier Frames is sent.

@@ -18,7 +18,7 @@ import { seededChat } from '../../../server/text/seeded.ts'
 import { composePrompt, matchShown } from '../../../server/look.ts'
 import { comfyuiImageGenerator } from '../../../server/images/comfyui/comfyui.ts'
 import { COMFYUI_MODELS } from '../../../server/images/comfyui/models.ts'
-import { asSentences, earlierSubjects } from '../../../server/imagePrompt.ts'
+import { asSentences, peopleAway, subjectSentence } from '../../../server/imagePrompt.ts'
 
 const here = (path: string) => fromFileUrl(new URL(path, import.meta.url))
 const FRAMES = 6
@@ -240,12 +240,12 @@ async function chain(variant: string, seed: number): Promise<Planned> {
   let prompt: string | null = null
   const start = performance.now()
   for (const action of [null, ...ACTIONS]) {
-    // As the app does: earlier subject sentences, when the variant is `remember`.
-    const earlier = variant === 'remember' && prompt
-      ? earlierSubjects(frames.map((f) => f.prompt), prompt)
+    // As the app does: everyone pictured before but not now, when the variant is `remember`.
+    const away = variant === 'remember' && prompt
+      ? peopleAway(frames.map((f) => f.prompt), prompt)
       : []
     const text = await model.write(
-      { scenario, prompt, action, earlier },
+      { scenario, prompt, action, away },
       AbortSignal.timeout(300_000),
     )
     if (text.outcome === 'done') prompt = text.prompt
@@ -265,6 +265,129 @@ async function chain(variant: string, seed: number): Promise<Planned> {
     beats: [],
     frames,
   }
+}
+
+// --- A long Chain: four people coming and going over 25 Actions, the traveller and the barmaid
+// gone through several changes of who's in the picture before they come back (`peopleAway`). Text
+// only: each person's part of the subject sentence, Frame by Frame, against their last appearance.
+
+const LONG_ACTIONS = [
+  'Kael slides the letter across the bar to her.',
+  'She reads it, frowning.',
+  'The traveller leaves, back out into the rain, and Kael is alone.',
+  'Mira, a barmaid in her fifties, comes down the stairs with a tray of mugs.',
+  'Mira wipes the bar while Kael reads the letter again.',
+  'A hooded stranger walks in and sits at the corner table.',
+  'Mira goes back upstairs, leaving the two men.',
+  'The stranger lowers his hood: a grey beard and a missing left eye.',
+  'Kael pours the stranger a drink.',
+  'The traveller comes back in, soaked through.',
+  'She sits down beside the stranger, eyeing him.',
+  'Kael and the stranger argue across the bar while she watches.',
+  'The stranger storms out into the storm.',
+  'She holds the letter up to the lamp to read it again.',
+  'Mira comes back down the stairs with a lamp.',
+  'Mira sets the lamp on the bar and goes out through the kitchen door.',
+  'Kael and the traveller lean over the letter together.',
+  'She takes off her wet cloak and hangs it by the fire.',
+  'Kael goes to bolt the back door, leaving her alone at the bar.',
+  'Kael comes back with a lantern.',
+  'The stranger bursts back in, dripping.',
+  'The stranger draws a pistol on Kael.',
+  'She throws a mug at the stranger.',
+  'The stranger flees into the night, leaving the two of them.',
+  'A wide shot: they sit at the bar in silence as the storm eases.',
+]
+
+/** Who a part of a subject sentence is about, by the words it starts with. */
+const PEOPLE: [string, RegExp][] = [
+  ['Kael', /^(?:and )?kael\b/i],
+  ['traveller', /^(?:and )?(?:the )?(?:young )?travell?er\b/i],
+  ['Mira', /^(?:and )?mira\b/i],
+  ['stranger', /^(?:and )?(?:the )?(?:hooded )?stranger\b/i],
+]
+
+async function longChain(seed: number) {
+  const model = chatTextModel(chatFor(seed))
+  const prompts: string[] = []
+  const steps: { action: string | null; outcome: string; away: number; subject: string }[] = []
+  for (const action of [null, ...LONG_ACTIONS]) {
+    const prompt = prompts.at(-1) ?? null
+    const away = prompt ? peopleAway(prompts, prompt) : []
+    const text = await model.write(
+      { scenario, prompt, action, away },
+      AbortSignal.timeout(300_000),
+    )
+    prompts.push(text.outcome === 'done' ? text.prompt : prompt!)
+    steps.push({
+      action,
+      outcome: text.outcome,
+      away: away.length,
+      subject: subjectSentence(prompts.at(-1)!),
+    })
+    console.log(`${steps.length}: ${text.outcome}`)
+  }
+  await Deno.writeTextFile(
+    here(`./prompts/long-chain-${seed}.json`),
+    JSON.stringify({ seed, model: settings.textModel, steps, prompts }, null, 2) + '\n',
+  )
+  // Each person's part of the subject sentence, against their last appearance.
+  const last = new Map<string, string>()
+  for (const [i, step] of steps.entries()) {
+    const parts = step.subject.replace(/\.$/, '').split(/;\s*/)
+    const found = parts.map((p) => [PEOPLE.find(([, re]) => re.test(p.trim()))?.[0], p] as const)
+    const line = found.map(([who, part]) => {
+      if (!who) return `?(${part.slice(0, 40)})`
+      const before = last.get(who)
+      last.set(who, part)
+      return `${who}${before === undefined ? ' new' : before === part ? '' : ' CHANGED'}`
+    })
+    console.log(`${String(i + 1).padStart(2)} ${line.join(', ')}`)
+  }
+}
+
+// --- One person: the Chain's ordinary edits, to check the wording for several people didn't break
+// them. Its subject is unnamed, as a Brief's often is, against the "Kael is …" form.
+
+const SOLO: typeof scenario = {
+  id: 'solo',
+  title: 'Solo',
+  description: '',
+  setup: {},
+  systemPrompt: '',
+  openingPrompt:
+    'A woman with long red hair reads a book at a table in a sunlit café, a cup of coffee beside her.',
+}
+const SOLO_ACTIONS = [
+  'She looks up from the book and smiles.',
+  'Make it night, the café lit by candles.',
+  'Change the art style to a loose watercolour.',
+  'She stands and puts on a long green coat.',
+  'A close-up of her face.',
+  'Her hair is now short and black.',
+  'Move the scene to a rainy street outside.',
+  'Change the art style to 1980s anime.',
+]
+
+async function solo(variant: string, seed: number) {
+  const model = chatTextModel(chatFor(seed))
+  const prompts: string[] = []
+  for (const action of [null, ...SOLO_ACTIONS]) {
+    const prompt = prompts.at(-1) ?? null
+    const away = prompt ? peopleAway(prompts, prompt) : []
+    const text = await model.write(
+      { scenario: SOLO, prompt, action, away },
+      AbortSignal.timeout(300_000),
+    )
+    prompts.push(text.outcome === 'done' ? text.prompt : prompt!)
+    console.log(`--- ${action ?? 'Opening'} [${text.outcome}${away.length ? `, ${away.length} away` : ''}]`)
+    console.log(prompts.at(-1))
+  }
+  await Deno.writeTextFile(
+    here(`./prompts/solo-${variant}-${seed}.json`),
+    JSON.stringify({ variant, seed, model: settings.textModel, actions: SOLO_ACTIONS, prompts }, null, 2) +
+      '\n',
+  )
 }
 
 // --- Rendering.
@@ -319,11 +442,15 @@ if (command === 'plan' || command === 'chain') {
   )
   const pairs = planned.frames.filter((f) => f.shown.length >= 2).length
   console.log(`${planned.variant} ${seed}: ${planned.seconds} s, ${pairs} Frames to render`)
+} else if (command === 'solo') {
+  await solo(variant, Number(seedArg))
+} else if (command === 'long') {
+  await longChain(Number(variant))
 } else if (command === 'render') {
   await render(variant)
 } else {
   console.error(
-    'Usage: run.ts plan <today|wording|people> <seed> | chain <today|each|remember> <seed> | render',
+    'Usage: run.ts plan <today|wording|people> <seed> | chain <today|each|remember> <seed> | long <seed> | solo <label> <seed> | render',
   )
   Deno.exit(1)
 }

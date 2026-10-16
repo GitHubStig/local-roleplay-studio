@@ -59,7 +59,7 @@ Deno.test('runChainFrame commits the Opening Frame with prefixed image prompt', 
     assertEquals((await store.load('s1'))?.frames.length, 1)
   }))
 
-Deno.test('runChainFrame sends earlier subject sentences, for someone brought back', () =>
+Deno.test('runChainFrame sends everyone away, for someone brought back', () =>
   withTempDir(async (root) => {
     const store = chainStore(root)
     const said = (subject: string) => reply('standing', { prompt: `${subject} ${promptWith('x')}` })
@@ -74,10 +74,10 @@ Deno.test('runChainFrame sends earlier subject sentences, for someone brought ba
       await runChainFrame(deps, session, testScenario, action, () => {}, signal())
       session = (await store.load('s1')) as ChainSession
     }
-    assertEquals(textModel.requests.map((r) => r.earlier), [
+    assertEquals(textModel.requests.map((r) => r.away), [
       [],
       [],
-      ['Kael is lean; the traveller is slender.'],
+      ['the traveller is slender'],
     ])
   }))
 

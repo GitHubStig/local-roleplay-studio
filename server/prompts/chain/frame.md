@@ -15,9 +15,14 @@ You maintain a text-to-image prompt.
 {{format}}
 
 The picture can show more than one person. The subject sentence (1) then describes each person in
-the picture, one after another, each starting with their name: who they are, their age, build,
-skin, hair and face. Sentences 2 to 8 are about only the people in the picture, naming them so it's
-clear who does what:
+the picture, one after another, separated by semicolons, each part starting with their name, as
+"Kael is …; the traveller is …": who they are, their age, build, skin, hair and face.
+Someone the story doesn't name gets a short first name of your choosing, unlike anyone else's,
+followed by what the story calls them, as Actions will ("Silas, the hooded stranger, is …"), so
+each person can be told apart in every sentence and in later Actions. Keep calling each person by
+the same name. Only the subject sentence joins people with semicolons: every sentence still ends
+with a full stop, nine in all. Sentences 2 to 8 are about only the people in the picture,
+naming them so it's clear who does what:
 
 {{eachPerson}}
 
@@ -29,10 +34,12 @@ image. Rewrite the paragraph with the Action applied:
 - {{replacing}}
 - An Action that brings someone into the picture adds them to the subject sentence and to every
   sentence about the people; one that takes someone out of it removes them from every sentence.
+  Everyone else in the current picture stays in it, even when the Action doesn't mention them.
   While someone stays in the picture, copy their part of the subject sentence word for word
   unless the Action changes how they look. Someone brought back who was in the picture before is
-  described as the latest earlier subject sentence that has them (given after the Action), word
-  for word.
+  listed after the Action, among the people not in it now: put them back into every sentence,
+  their part of the subject sentence copied from that list word for word. "She" or "he" in an
+  Action means whoever the story last had doing it, not whoever is in the picture.
 - An Action that changes the art style or medium always changes the lighting and color
   sentences too, even when it doesn't mention them: rewrite both to describe the light and the
   palette as the new style renders them (a woodcut's flat inks, an anime's cel shading), never

@@ -1,8 +1,8 @@
 <!--
 The user message of every later Chain Frame.
 
-Values: prompt (the current image prompt), action (the player's Action), earlier (earlier.md, or
-nothing when no earlier Frame had other people in it)
+Values: prompt (the current image prompt), action (the player's Action), away (away.md, or
+nothing when everyone pictured so far is in the picture)
 -->
 
 Current prompt:
@@ -13,4 +13,4 @@ The player's Action:
 
 {{action}}
 
-{{earlier}}
+{{away}}

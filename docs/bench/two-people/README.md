@@ -70,8 +70,8 @@ above:
   other sentences use the shared each-person wording; an Action that brings someone in or takes
   them out adds or removes them in every sentence.
 - **remember**: as `each`, plus the subject sentences of earlier Frames unlike the current one,
-  sent after the Action (`earlierSubjects`, `chain/earlier.md`), and someone brought back is
-  described as the latest of them that has them, word for word.
+  the latest three, sent after the Action, and someone brought back is described as the latest of
+  them that has them, word for word. (Since replaced: see the long Chain below.)
 
 | Version | Who's missing | The traveller's look | Otherwise |
 |---|---|---|---|
@@ -79,10 +79,60 @@ above:
 | each | no one | back from the rain blonde (seed 1) or "Elara, 30, athletic, long damp hair" (seed 2): her description left with her | the stranger on the balcony, Kael's knife up |
 | remember | no one | the Opening's, word for word, back in Frame 6 (both seeds) | FLUX.3 Klein put the stranger on the floor beside her, not up on the balcony (7, 8) |
 
-Each version took 46–60 s for its eight calls. The Chain now uses `remember`.
+Each version took 46–60 s for its eight calls.
+
+## A long Chain (the same day)
+
+Twenty-five Actions with four people coming and going (`LONG_ACTIONS` in run.ts): the traveller
+leaves; Mira the barmaid comes down and a hooded stranger comes in; Mira goes; the stranger lowers
+his hood (a grey beard, a missing eye); the traveller comes back, five changes of who's in the
+picture after she left; the stranger storms out; Mira comes and goes again; Kael leaves her alone
+and comes back; the stranger bursts back in and flees. Text only, three seeds, each person's part
+of the subject sentence compared with their last appearance (about 3 minutes a run):
+
+    deno run -A docs/bench/two-people/run.ts long <seed>
+
+- **The latest three subject sentences** (`remember` above) weren't enough: the traveller came
+  back after five, wasn't among them, and the 12B left her out for the rest of the Chain, giving
+  "she" to Mira (Mira alone at the bar when Kael left "her" there) and bringing the stranger back
+  when told "Kael and the traveller lean over the letter".
+- **Everyone away instead** (`peopleAway`, `chain/away.md`): each person pictured before but not
+  now, as their part of the last subject sentence that had them, one line each. The subject
+  sentence is now "Kael is …; the traveller is …", so the engine can tell its people apart. With
+  it, once the subject sentence was read to its first full stop (the 12B started later sentences
+  in lower case, which ran the whole paragraph together) and the list said to bring back only whom
+  the Action brings in (one seed had swapped the stranger for the listed traveller), every return
+  in all three seeds was word for word: the traveller, Mira, and the unhooded stranger.
+- **Then:** when the traveller came back while the stranger was there, the 12B dropped him for one
+  to three Frames in all three seeds (in one, Kael then argued with her, not him), though the
+  prompt says everyone else stays; and once it ran the whole paragraph into one sentence of
+  semicolons from Frame 22 on.
+- **Names.** Told to call an unnamed person what the story calls them ("the woman is …"), a
+  one-person Chain (below) stopped making up names, but "the woman" can't tell two women apart,
+  in the sentences or in the list of who's away. So someone unnamed gets a short first name,
+  followed by what the story calls them, as Actions will ("Silas, the hooded stranger, is …"):
+  given only a name, the 12B lost the link to "the stranger" in Actions and brought back Mira, or
+  a new "Elara", when he burst back in. With the name and what he's called, and a line that only
+  the subject sentence joins people with semicolons, two seeds kept the stranger when the
+  traveller came back, kept nine sentences throughout, and brought Silas back word for word.
+- **Left** (that last version, seeds 2 and 3): Mira stayed three Frames after going out to the
+  kitchen (one seed); Kael left in the picture when he goes to bolt the back door (one seed,
+  arguable in a wide shot); "unkempt" misspelt once in Kael's description, then copied. A Chain's
+  next Action, or an edit of its Image Prompt, fixes any of these, so they were left there.
+
+## One person (the same day)
+
+To check the wording for several people didn't break a Chain of one: an unnamed subject ("a woman
+with long red hair reads a book in a sunlit café") and eight ordinary edits (`SOLO_ACTIONS`: a
+smile, night, a watercolour, a coat, a close-up, short black hair, a rainy street, 1980s anime),
+two seeds each, against the Chain's prompt before the day's work:
+
+    deno run -A docs/bench/two-people/run.ts solo <label> <seed>
+
+Both kept nine sentences, her description word for word until the hair changed (then only the
+hair), and both changes of style rewrote the light and color sentences. The one difference: the
+new prompt names her ("Elena is …", "Elara is …"), as above.
 
 ## Not checked
 
-The Mac's 26B on the same plans and Chains; more seeds or three people in a Storyboard; a
-Storyboard Action with the new edit prompt; a Chain longer than eight Frames, or someone gone for
-more than three different subject sentences (only the latest three are sent).
+The Mac's 26B on the same plans and Chains; more seeds or three people in a Storyboard.

@@ -1,5 +1,5 @@
 import { equal } from '@std/assert'
-import { earlierSubjects, type ImagePrompt } from '../imagePrompt.ts'
+import { type ImagePrompt, peopleAway } from '../imagePrompt.ts'
 import { crossedLimit, LimitError } from '../limits.ts'
 import type { Scenario } from '../scenario.ts'
 import type { ChainFrame, ChainSession, FrameTimings, Outcome, SessionStore } from '../session.ts'
@@ -78,9 +78,7 @@ export async function runChainFrame(
             scenario,
             prompt: previous?.prompt ?? null,
             action,
-            earlier: previous
-              ? earlierSubjects(session.frames.map((f) => f.prompt), previous.prompt)
-              : [],
+            away: previous ? peopleAway(session.frames.map((f) => f.prompt), previous.prompt) : [],
           },
           signal,
           onThinking,

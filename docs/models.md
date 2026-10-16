@@ -279,10 +279,28 @@ missing from the pictures until an Action named her, then drawn as anyone. Told 
 sentence describes each person in the picture and given the same each-person wording, it kept
 everyone, took the traveller out when she left and put a hooded stranger in sentence 1 when he
 came; but she came back described afresh (blonde; or "Elara, 30, athletic"), as the paragraph is
-all a Chain remembers. With the earlier Frames' subject sentences sent with each Action
-(`earlierSubjects`), she came back as the Opening described her, word for word, in both seeds.
+all a Chain remembers. With the earlier Frames' subject sentences sent with each Action, she came
+back as the Opening described her, word for word, in both seeds.
 Rendered on both Image Models; FLUX.3 Klein once put the stranger on the floor, not the balcony
 ([bench/two-people](bench/two-people/README.md)).
+
+**A 25-Action Chain, the same day** (text only, three seeds): four people coming and going, the
+traveller back after five others had come and gone. Sent only the latest three earlier subject
+sentences, the 12B lost her for good and gave "she" to the barmaid. Sent instead everyone pictured
+before but not now, each as last described (`peopleAway`), every return in every seed was word
+for word, with no one confused for anyone else, once the subject sentence was read to its first
+full stop (the 12B began later sentences in lower case) and the prompt said to bring back only
+whom the Action brings in. When the traveller came back while the stranger was there, the 12B
+then dropped him for one to three Frames in all three seeds, until someone unnamed was given a
+first name followed by what the story calls them ("Silas, the hooded stranger, is …", so Actions
+saying "the stranger" still find him; a bare made-up name lost that link): then two seeds kept
+him, kept nine sentences throughout, and brought him back word for word. Slips left to the next
+Action or a hand edit: the barmaid staying after leaving (one seed), "unkempt" misspelt and copied
+on. A one-person Chain with an unnamed subject behaved as before the change (nine sentences, her
+description kept, style changes rewriting the light and color), apart from now being named. A
+Chain made from a Storyboard (below) keeps its joined identities as written ("Kael, a …; the
+traveller, a …"): the engine reads both forms, so with the 12B the traveller, sent out and back,
+was listed as away only while out and came back word for word (three Actions, one seed).
 
 **A Storyboard continued as a Chain (2026-10-16, Mac).** Converted in code, a two-person
 Storyboard Frame's identities become one subject sentence joined by semicolons (design.md,

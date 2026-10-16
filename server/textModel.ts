@@ -22,10 +22,10 @@ export interface FrameRequest {
   prompt: ImagePrompt | null
   action: string | null
   /**
-   * Earlier Frames' subject sentences unlike the current one (`earlierSubjects`), so someone
-   * brought back is described as before.
+   * Everyone pictured before but not now, as last described (`peopleAway`), so someone brought
+   * back is described as before.
    */
-  earlier?: string[]
+  away?: string[]
 }
 
 export interface TextModel {
@@ -88,15 +88,15 @@ export async function systemMessage(scenario: Scenario, opening: boolean): Promi
 }
 
 export async function userMessage(
-  { scenario, prompt, action, earlier = [] }: FrameRequest,
+  { scenario, prompt, action, away = [] }: FrameRequest,
 ): Promise<string> {
   if (prompt === null || action === null) {
     return loadPrompt('chain/opening-request', { opening: scenario.openingPrompt })
   }
-  const before = earlier.length
-    ? await loadPrompt('chain/earlier', { subjects: earlier.map((s) => `- ${s}`).join('\n') })
+  const gone = away.length
+    ? await loadPrompt('chain/away', { people: away.map((p) => `- ${p}`).join('\n') })
     : ''
-  return loadPrompt('chain/frame-request', { prompt, action, earlier: before })
+  return loadPrompt('chain/frame-request', { prompt, action, away: gone })
 }
 
 export function outputSchema() {

@@ -51,9 +51,10 @@ current Image Prompt + Action ──► Text Model (Text backend) ──► { ou
    covers; rewrite only the affected sentences and copy the rest word for word; remove whatever
    a change contradicts; the Limits; the reply format), then the Scenario's notes, plus its **Setup** on the Opening Frame
    only. The user message is the current Image Prompt and the Action, and nothing else of earlier Frames
-   ([ADR 0001](adr/0001-scene-is-sole-turn-state.md)) but their subject sentences unlike the current one
-   (the latest three), so someone who left the picture comes back described as before (since 2026-10-16).
-   The subject sentence describes each person in the picture, and the others are about every person shown. The reply is
+   ([ADR 0001](adr/0001-scene-is-sole-turn-state.md)) but who has been in the picture and isn't now, each
+   as last described (`peopleAway`), so someone who left comes back described as before (since 2026-10-16).
+   The subject sentence describes each person in the picture ("Kael is …; the traveller is …"), and the
+   others are about every person shown. The reply is
    constrained by a JSON schema (Ollama's `format`, or the OpenAI API's `response_format`), with `outcome` (`done`, `declined` or
    `unclear`) first, so the model decides before it writes. The Narration is a terse list of what
    changed ("Pose: crouching low. Environment: teal backdrop."): the model's own account, not
