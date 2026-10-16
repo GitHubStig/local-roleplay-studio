@@ -19,6 +19,7 @@ export interface ComfyModel {
 
 const QWEN_IMAGE_2_1_CLIP = { folder: 'text_encoders', patterns: [/^qwen3vl_8b.*\.safetensors$/] }
 const QWEN_IMAGE_2_1_VAE = { folder: 'vae', patterns: [/^qwen_image_2\.1_vae.*\.safetensors$/] }
+const FLUX2_VAE = { folder: 'vae', patterns: [/^flux2-vae.*\.safetensors$/] }
 
 export const COMFYUI_MODELS: readonly ComfyModel[] = [
   {
@@ -69,7 +70,27 @@ export const COMFYUI_MODELS: readonly ComfyModel[] = [
         folder: 'text_encoders',
         patterns: [/^qwen_3_4b\.safetensors$/, /^qwen_3_4b_fp4_flux2/],
       },
-      vae: { folder: 'vae', patterns: [/^flux2-vae.*\.safetensors$/] },
+      vae: FLUX2_VAE,
+    },
+  },
+  {
+    id: 'flux3-klein',
+    label: 'FLUX.3 Klein',
+    // BFL's default for the distilled checkpoint (ComfyUI's template runs 15), with no guidance.
+    defaultSteps: 16,
+    files: {
+      // Only the distilled `_sd_` files: the others are Klein Base, which wants 50 steps at CFG
+      // 3.5. No nvfp4 build either: it needs a Blackwell card.
+      unet: {
+        folder: 'diffusion_models',
+        patterns: [/^flux3_image_klein_sd_int8/, /^flux3_image_klein_sd_bf16/],
+      },
+      // BFL's own Qwen3-VL-4B builds; Krea 2's `qwen3vl_4b_fp8_scaled` isn't known to be the same.
+      clip: {
+        folder: 'text_encoders',
+        patterns: [/^qwen3vl_4b_int8_convrot/, /^qwen3vl_4b_bf16/],
+      },
+      vae: FLUX2_VAE,
     },
   },
   {

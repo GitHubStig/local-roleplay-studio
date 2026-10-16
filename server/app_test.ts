@@ -218,6 +218,7 @@ Deno.test('GET /api/settings/options lists Text and Image Models', async () => {
     'qwen-image-2.1',
     'qwen-image-2.1-turbo',
     'flux2-klein-4b',
+    'flux3-klein',
     'z-image-turbo',
   ])
 })

@@ -17,15 +17,22 @@ const MAC_FILES: Record<string, string[]> = {
   vae: ['qwen_image_vae.safetensors', 'qwen_image_2.1_vae_bf16.safetensors'],
 }
 
-/** The Windows PC's: Qwen-Image 2.1 and its Turbo, FLUX.2 Klein 4B and Z-Image Turbo. */
+/**
+ * The Windows PC's: Qwen-Image 2.1 and its Turbo, FLUX.2 Klein 4B, FLUX.3 Klein and Z-Image Turbo.
+ */
 const PC_FILES: Record<string, string[]> = {
   diffusion_models: [
     'flux-2-klein-4b.safetensors',
+    'flux3_image_klein_sd_int8_convrot.safetensors',
     'qwen_image_2.1_int8_convrot.safetensors',
     'qwen_image_2.1_turbo_int8_convrot.safetensors',
     'z_image_turbo_int8_convrot.safetensors',
   ],
-  text_encoders: ['qwen3vl_8b_int8_convrot.safetensors', 'qwen_3_4b.safetensors'],
+  text_encoders: [
+    'qwen3vl_4b_int8_convrot.safetensors',
+    'qwen3vl_8b_int8_convrot.safetensors',
+    'qwen_3_4b.safetensors',
+  ],
   vae: ['ae.safetensors', 'flux2-vae.safetensors', 'qwen_image_2.1_vae_bf16.safetensors'],
 }
 
@@ -296,7 +303,7 @@ Deno.test('Files are picked by the first pattern installed, so each machine can 
   )
 })
 
-Deno.test("Qwen-Image 2.1 never picks its Turbo's DiT, nor Klein its undistilled base", () => {
+Deno.test("Qwen-Image 2.1 never picks its Turbo's DiT, nor a Klein its undistilled base", () => {
   const withDiTs = (dits: string[]) => (f: string) =>
     f === 'diffusion_models' ? dits : PC_FILES[f] ?? []
   const model = (id: string) => COMFYUI_MODELS.find((m) => m.id === id)!
@@ -308,5 +315,15 @@ Deno.test("Qwen-Image 2.1 never picks its Turbo's DiT, nor Klein its undistilled
   )
   assertThrows(() =>
     pickFiles(model('flux2-klein-4b'), withDiTs(['flux-2-klein-base-4b.safetensors']))
+  )
+  // BFL names Klein Base both ways in one repo: with `_base_`, and with nothing.
+  assertThrows(() =>
+    pickFiles(
+      model('flux3-klein'),
+      withDiTs([
+        'flux3_image_klein_int8_convrot.safetensors',
+        'flux3_image_klein_base_int8_convrot.safetensors',
+      ]),
+    )
   )
 })

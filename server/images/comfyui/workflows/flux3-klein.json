@@ -1,0 +1,41 @@
+{
+  "_note": "FLUX.3 Image Klein (the distilled 'sd' checkpoint), from ComfyUI's template image_flux3_klein_distilled_t2i (KSampler, CFG 1, euler, simple), in API format, without its prompt upsampler: the Text Model already writes the full scene. With CFG 1 the negative is never used, so it's zeroed rather than encoded. $names are filled in by server/images/comfyui/workflow.ts. The picture comes back over the WebSocket (SaveImageWebsocket), so ComfyUI writes no file.",
+  "unet": {
+    "class_type": "UNETLoader",
+    "inputs": { "unet_name": "$unet", "weight_dtype": "default" }
+  },
+  "clip": {
+    "class_type": "CLIPLoader",
+    "inputs": { "clip_name": "$clip", "type": "flux3", "device": "default" }
+  },
+  "vae": { "class_type": "VAELoader", "inputs": { "vae_name": "$vae" } },
+  "text": {
+    "class_type": "CLIPTextEncode",
+    "inputs": { "clip": ["clip", 0], "text": "$prompt" }
+  },
+  "negative": { "class_type": "ConditioningZeroOut", "inputs": { "conditioning": ["text", 0] } },
+  "latent": {
+    "class_type": "EmptyFlux2LatentImage",
+    "inputs": { "width": "$width", "height": "$height", "batch_size": 1 }
+  },
+  "sampler": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": ["unet", 0],
+      "positive": ["text", 0],
+      "negative": ["negative", 0],
+      "latent_image": ["latent", 0],
+      "seed": "$seed",
+      "steps": "$steps",
+      "cfg": 1,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "denoise": 1
+    }
+  },
+  "decode": {
+    "class_type": "VAEDecode",
+    "inputs": { "samples": ["sampler", 0], "vae": ["vae", 0] }
+  },
+  "save": { "class_type": "SaveImageWebsocket", "inputs": { "images": ["decode", 0] } }
+}
