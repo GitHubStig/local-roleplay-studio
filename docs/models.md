@@ -643,6 +643,30 @@ ComfyUI filled the card for every model (~11.6 GB peak VRAM in each), so VRAM do
 apart. Not checked: keeping a subject consistent across Frames, prompts from tags, or more than one
 picture each.
 
+### FLUX.3 Klein on ComfyUI with an RTX 4070 (2026-10-16)
+
+**FLUX.3 Image Klein** (`flux3-klein`), added with ComfyUI 0.41 ([research/comfyui.md](research/comfyui.md),
+"ComfyUI 0.41"): BFL's distilled checkpoint (`flux3_image_klein_sd_int8_convrot`, 5.4 GB) with its
+Qwen3-VL-4B encoder (`qwen3vl_4b_int8_convrot`, 4.5 GB) and FLUX.2's VAE, 16 steps, no guidance, no
+prompt upsampler. Gated on Hugging Face (`black-forest-labs/flux-3-image-klein-comfy`: accept the
+FLUX Kommunity License).
+
+Measured on the Windows PC (ComfyUI 0.41.1), through the app's own ComfyUI generator: one prose
+prompt written from the tavern scenario (Kael behind the bar with the letter, the traveller in the
+doorway, the lamp, the rainy window, the scenario's style), seed 42, 832×1216, each from cold (the
+generator frees ComfyUI's models after a render), Ollama unloaded, one after another:
+
+| Model | Steps | From cold | From step 1 | What it drew |
+|---|---|---|---|---|
+| FLUX.3 Klein | 16 | 12.7 s, then 10.9 s | 6.3 s, 5.9 s | everything, the most detailed and painterly; Kael older than 42, his scars as red smears on his coat as well as his face; the staircase seen through the doorway, outside |
+| FLUX.2 Klein 4B | 4 | 10.5 s | 3.3 s | everything; the scars as cuts on his face; her in a long coat and trousers, more modern than 18th-century |
+| Qwen-Image 2.1 Turbo | 8 | 13.7 s | 4.9 s | everything, the darkest and most chiaroscuro; the letter held up in his hands |
+
+So FLUX.3 Klein costs about as much as the other quick models on the 4070, and needs no step
+setting changed. Not checked: the Mac (ComfyUI or mflux), keeping a subject consistent across
+Frames, tags, more than one seed, and whether the Text Model's Image Prompts are full enough
+captions without BFL's upsampler (this prompt was, by hand).
+
 ### Qwen-Image 2.1 on mflux 0.21: the step cache and Viggle's turbo LoRA (2026-10-04)
 
 mflux 0.21 adds a step cache for Qwen-Image 2.1 (`--step-cache-ratio`, TeaCache-style: it skips

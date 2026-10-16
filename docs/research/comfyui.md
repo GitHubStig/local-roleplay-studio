@@ -629,3 +629,35 @@ All in line, or within a second or two, so no gain to see from #16870 here. Peak
 (`/system_stats`, sampled every 0.5 s): 11.8–12.1 GB of 12.9 for a render, 9.6–9.8 for 7B, 5.3–5.5
 for 3B. The portrait and its 7B upscale looked right, the upscale's colours matching (`lab`); the clips came
 back as FLAC (the line 3.9 s long), not listened to.
+
+## ComfyUI 0.41 (2026-10-16, the Windows PC)
+
+Comfy Desktop updated the PC to **0.41.1** (stable channel). Read against what the app uses, from
+0.40.0 ([0.41.0](https://github.com/Comfy-Org/ComfyUI/releases/tag/v0.41.0); 0.41.1 has no notes,
+only a Krea 3 partner node and templates 0.11.85): **nothing in the app needed changing.**
+
+- **The API:** `server.py` only gained `GET /default_workflow` (the frontend's starting graph).
+- **The workflows' nodes:** none of their inputs changed. `CLIPLoader` gained a `flux3` type, and
+  nothing else the app uses was touched.
+- **New, not used:** `ReferenceMultiLatent` (several reference latents into one edit model, a
+  possible route for reference portraits), `ImageSDRToHDR`, latent-geometry nodes, MiniMax-H3's
+  LightVAE.
+- **FLUX.3 Image Klein** ([#17064](https://github.com/Comfy-Org/ComfyUI/pull/17064)): native,
+  built-in nodes only. The full FLUX.3 is in the templates only as BFL's paid API nodes
+  (`api_bfl_flux3_*`), so the picture would leave the machine: not for the app. Klein runs locally:
+  - A 5.6B DiT (the Flux.2 VAE, `flux2-vae`, as FLUX.2 Klein's), with **Qwen3-VL-4B-Instruct** as
+    its text encoder (`CLIPLoader` type `flux3`: eight of its layers, concatenated).
+  - BFL's own repo, `black-forest-labs/flux-3-image-klein-comfy`, **gated** (log in and accept the
+    FLUX Kommunity License v1.0: non-commercial, and commercial output under US$5M revenue). Files
+    with `_sd_` are the **distilled** checkpoint (16 steps, no guidance; "the checkpoint behind the
+    BFL API"); the rest are **Klein Base** (50 steps, CFG 3.5), named both with `_base_` and
+    without. Builds: bf16 (10.3 GB), int8 convrot (5.4 GB; "runs on 8 GB GPUs"), nvfp4 (Blackwell
+    only). The encoder: int8 convrot 4.5 GB or bf16 8.3 GB.
+  - ComfyUI's distilled template (`image_flux3_klein_distilled_t2i`): `KSampler` 15 steps, CFG 1,
+    euler, simple, on `EmptyFlux2LatentImage`, 1024². It runs a **prompt upsampler** first (a
+    Qwen3.5 9B fine-tune, 9.1 GB, through `TextGenerate`), on by default; BFL's card says "do not
+    use the model without a prompt upsampler… the model takes full scene captions". The app leaves
+    it out: the Text Model already writes the full scene, and one Text Model does every text job.
+  - Added as the ComfyUI Image Model `flux3-klein` (`workflows/flux3-klein.json`), 16 steps. On
+    the RTX 4070: 11–13 s a picture at 832×1216 from cold, ~6 s of it sampling and decoding
+    ([models.md](../models.md), "FLUX.3 Klein on ComfyUI").
