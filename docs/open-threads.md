@@ -32,14 +32,6 @@ Ideas deliberately deferred. Promote an item to an ADR in `docs/adr/` when we ac
   in [research/windows.md](research/windows.md): the app runs there with Ollama (or a server with
   the OpenAI chat API), pictures and Upscale through ComfyUI (ADR 0009), SHARP and TripoSplat on
   CUDA, and voices through ComfyUI with TTS Audio Suite (ADR 0010, 2026-10-08). Still open:
-  - **Voices in the browser**, an option on the Voice tab for a machine with neither the voice
-    service nor ComfyUI: the Web Speech API (no install, the system's voices, only pitch and rate)
-    or a small model through transformers.js on WebGPU (Kokoro, 82M, preset voices; size and
-    quality to check), the web app speaking the line itself with nothing on the server. *Voices
-    assume a cloning TTS:* `VoiceEngine` is `design` (a voice from a description) plus `speak`
-    (cloning the designed reference clip), with pace, sound and whisper; a provider without cloning
-    (preset voices only) would need another way to keep a Character's voice consistent, e.g.
-    picking a preset once per Character.
   - **Voices are ~4× slower on the PC than on the Mac**, parked (2026-10-08). Through ComfyUI, Higgs
     runs at ~9 tokens a second on the RTX 4070: 3.7 s per second of speech, against 0.8 s on the
     Mac's mlx-audio, though it's wholly on the GPU; eager attention was no faster. Untried:
