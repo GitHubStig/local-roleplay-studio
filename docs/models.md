@@ -516,7 +516,7 @@ on the RTX 4070 through ComfyUI, ~21 s. For speed on a Mac alone, FLUX.2 Klein 4
 | ERNIE-Image Turbo | 512×512: ~18 s (8 steps) | Peak memory ~25 GB. |
 | Boogu Image Turbo | 512×512: ~16 s (4 steps) | Peak memory ~29 GB. |
 | Qwen-Image 2.1 | 512×512: ~23 s (25 steps) · ~38 s (40, mflux's default) | 25 steps looks as good as 40 at 512 px, so it's our default; it holds at 1024² too, where 20 hasn't settled yet ([bench/steps](bench/steps/README.md)). Peak memory ~35 GB. |
-| Qwen-Image 2.1 Turbo (Viggle LoRA) | 512×512: ~13.5 s (6 steps; Mac, 2026-10-14) · 1024²: ~30 s | Qwen-Image 2.1 with Viggle's turbo LoRA, an Image Model of its own since 2026-10-14 (Settings → Fast before; ADR 0016). Smoother and less painterly than 25 steps; measured below. |
+| Qwen-Image 2.1 Viggle Turbo | 512×512: ~13.5 s (6 steps; Mac, 2026-10-14) · 1024²: ~30 s | Qwen-Image 2.1 with Viggle's turbo LoRA, an Image Model of its own since 2026-10-14 (Settings → Fast before; ADR 0016). The nearest of any model to Qwen-Image 2.1 at 25 steps: a quick preview of it ("Viggle or Qwen's Turbo", below). |
 
 | Ming-Image 0.1 Design | 512×512: ~14 s (12 steps) | Added 2026-10-11 (mflux 0.22). A design model (posters, cards, lettering) rendering RGBA, flattened onto white (`--flatten-alpha`; the file comes out RGB). Runs the saved copy mflux's README recommends: DiT at 8 bits, its ~16B MoE text encoder at 5 (18 GB on disk; the original is 53 GB). Peak memory ~13.2 GB. From the Art Agent's kind of prose, one test scene: everything described, the sign's lettering right, painterly. |
 | FIBO 1.5 (8-bit) | 512×512: ~82 s (6 steps) | Added 2026-10-12 (mflux 0.22). Bria's distilled FIBO (DMD, then DMD-R for realism): 4–6 steps at guidance 1, against FIBO's 50 at 5, so the app passes both (mflux reads it as FIBO); the test render bore them out. mflux-community's saved 8-bit copy (14 GB; CC BY-NC like FIBO). Trained on long JSON captions: a prose Image Prompt is first written out as one by FIBO's own VLM (`briaai/FIBO-vlm`, 8.3 GB, always seed 42), freed before rendering. The 6 steps took ~14 s of the 82; the rest is loading both models and the VLM writing, not timed apart. Peak memory footprint 28.7 GB. Reads up to 2048 tokens. One test scene from prose: everything described, the sign's lettering right but partly hidden behind a carved stag. **Quoted lines break it** (2026-10-12): the VLM copies a prompt's straight double quotes (a speech bubble's line) into its JSON unescaped, and mflux fails on the JSON (`JSONDecodeError`), whatever the seed (the VLM's is fixed at 42 in mflux anyway; the Frame's seed reaches only the render). The app sends FIBO curly quotes instead; the Frame that failed then rendered (832×1216: 131 s, 37.3 GB peak), its bubbles' lines legible. |
@@ -596,7 +596,7 @@ Measured on the Mac (M5 Pro, 48 GB, 2026-10-17, mflux 0.23, float16, `--low-ram`
 | Image Model | 832×1216 | 512² | Peak memory | The picture at 832×1216 |
 |---|---|---|---|---|
 | Qwen-Image 2.1, 25 steps, step cache 0.4 | 55.9 s | | 16.7 GB | everything asked for, painterly |
-| Qwen-Image 2.1 Turbo (Viggle LoRA), 6 steps | 30.2 s | | 18.0 GB | nearly the same picture as 25 steps |
+| Qwen-Image 2.1 Viggle Turbo, 6 steps | 30.2 s | | 18.0 GB | nearly the same picture as 25 steps |
 | **Qwen-Image 2.1 Turbo**, 8 steps | 33.2 s, 33.4 s | 11.7 s | 16.9 GB | everything; a little cleaner, less brushy than 25 steps; reruns pixel-identical |
 | **FLUX.3 Klein**, 16 steps | 40.9 s, 39.2 s | 11.6 s | 13.3 GB | everything, the most detailed (bottles, more lamps, the rain lit), the only one showing the scars; but the man made old and grey, as on the PC |
 
@@ -605,6 +605,20 @@ Measured on the Mac (M5 Pro, 48 GB, 2026-10-17, mflux 0.23, float16, `--low-ram`
 Upgrading (Mac, 2026-10-17): `uv tool upgrade mflux` brought in Pillow 13.0.0, which fails to import on uv's Python 3.14.4 (`cannot import name '_IntegralLike' from 'numbers'`), so every mflux command failed. Reinstalled with `--with 'pillow<13'` (12.3.0), FLUX.2 Klein 4B rendered again: 512², 4 steps, float16, 10.1 s with the load, 10.2 GB peak. 0.23 pins each built-in model to a Hugging Face commit; Klein 4B's cache needed nothing fetched.
 
 Also in 0.23, not used yet: `mflux-generate-flux3-edit` (up to ten reference images, a lighter candidate for Subject consistency than Qwen-Image 2.1's edit; open-threads.md), FLUX.3 LoRAs, and `mflux-generate-krea2-controlnet` (Krea 2 Turbo from a depth map).
+
+### Viggle or Qwen's Turbo: a quick Qwen-Image 2.1 (2026-10-17)
+
+Two Image Models render Qwen-Image 2.1 in about half its time: **Viggle's turbo LoRA** on it (`qwen-image-2.1-viggle`, 6 steps) and **Qwen's own distilled Turbo** (`qwen-image-2.1-turbo`, 8 steps). Compared on the Mac (mflux 0.23) on the Chain of 31 Frames that the style scores were chosen on, each Frame asking for an art style of its own, all three rendered from the same Image Prompts and seed, then embedded for the Compare dialog's style scores ([research/style-scores.md](research/style-scores.md)):
+
+| Image Model | Render, mean of 31 | Distance from Qwen-Image 2.1's picture of the same Frame, CSD (style) · CLIP | Distinct styles (CSD Vendi) | Matches its Frame (top 3) |
+|---|---|---|---|---|
+| Qwen-Image 2.1, 25 steps, step cache 0.4 | 55.1 s | | 4.38 | 29% |
+| Viggle LoRA, 6 steps | 30.9 s | 0.052 · 0.038 | 4.18 | 23% |
+| Qwen's Turbo, 8 steps | 33.2 s | 0.130 · 0.080 | 3.58 | 16% |
+
+- **Viggle is a preview of Qwen-Image 2.1**: its picture was the nearer to Qwen-Image 2.1's in 31 of 31 Frames by CSD (30 of 31 by CLIP), and the nearest of the eleven other models by both; the next, FLUX.3 Klein, was at 0.294 · 0.139. The owner's eye agreed: Viggle's look like the 25-step pictures, Turbo's are pictures of their own.
+- **Qwen's Turbo is a model of its own**, and the least varied in style of the twelve: last on distinct styles and on matching its Frame, so in a Chain that changes style each Frame it follows the change least.
+- So both stay: Viggle to see quickly what Qwen-Image 2.1 will draw, Turbo as a fast model in its own right. Not checked: fine detail and small text side by side, more than one seed, the PC.
 
 ### Qwen-Image 2.1 on mflux 0.21: the step cache and Viggle's turbo LoRA (2026-10-04)
 
@@ -634,8 +648,9 @@ waist-up) and seed, at 1024×1024, everything else closed:
   other steps and no step cache. It's under Qwen's research license (non-commercial), like LiTo. At
   512×512 on the 8-bit copy: 5 s of denoising, 24.5 GB peak. It's v0.3, the file the model card
   says to use; v0.2.1 (crisper, grainier) is also in the repo. Viggle's 9-step mode (the same
-  LoRA, switched off for the last two steps) isn't possible through mflux 0.21
-  ([open-threads.md](open-threads.md)).
+  LoRA, switched off for the last two steps, for finer detail at ~1.4–1.5× the time) isn't
+  possible through mflux, and was dropped on 2026-10-17: as a preview of 25 steps, 6 are close
+  enough ("Viggle or Qwen's Turbo", below).
 - **Most of a turbo render is starting up** (Mac, 2026-10-05): of a 32.7 s run, 5 s was denoising
   and ~27 s loading ~22 GB, encoding the prompt and decoding the picture (loading surely the most);
   Upscale (SeedVR2) is ~46 s, mostly loading. In 2026-09-24's measure, loading was ~5 s of a 42 s
@@ -659,7 +674,7 @@ Agent, 2 from a Chain; 120–380 words, median 253 for the Roleplays):
 | ERNIE-Image | 2048 | 1 | 347 | 525 | 0 |
 | Qwen-Image 2.1 | 2048 | 22 | 362 | 533 | 0 |
 | Z-Image (full) | 512 | 8 | 259* | 414* | 0 of 198* |
-| Qwen-Image 2.1 Turbo (Viggle LoRA) | 2048 | 22 | 273* | 428* | 0 of 198* |
+| Qwen-Image 2.1 Viggle Turbo | 2048 | 22 | 273* | 428* | 0 of 198* |
 | Ming-Image 0.1 Design | none | 26 | 280* | 435* | 0 of 198* |
 | FIBO 1.5 | 2048, on the JSON caption; the prose: none | 0; the VLM's: 11 | 262* (prose) | 417* (prose) | prose: 0 of 198*; caption: not measured |
 | Ideogram 4 | none: fails past 2048 | 8 | 259* | 414* | 0 of 198* |

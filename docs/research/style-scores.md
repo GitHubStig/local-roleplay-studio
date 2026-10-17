@@ -55,6 +55,16 @@ use CSD, and CLIP is kept for matching pictures to captions, which CSD can't (it
 Matches its Frame (top three) ran from 61% (ming-image) to 29% (qwen-image-2.1, fibo-1.5); top
 one is low for every model (6–26%), as several captions ask for neighbouring styles.
 
+*Three more Image Models on the same Chain* (2026-10-17, mflux 0.23), the style measures only (CSD), the base Frame the last:
+
+| Image Model | CSD spread | CSD from base | CSD Vendi | Matches its Frame (top three) |
+| --- | --- | --- | --- | --- |
+| flux3-klein | 0.357 | 0.291 | 4.75 | 42% |
+| qwen-image-2.1-viggle | 0.339 | 0.284 | 4.18 | 23% |
+| qwen-image-2.1-turbo | 0.296 | 0.240 | 3.58 | 16% |
+
+Qwen's Turbo is the least varied of the twelve by every measure; Viggle's turbo LoRA scores just under Qwen-Image 2.1 itself, whose pictures it nearly repeats ([models.md](../models.md), "Viggle or Qwen's Turbo").
+
 Not checked: whether these rankings agree with the owner's eye; a Session of another kind.
 
 **A trap:** OpenAI's CLIP was trained with QuickGELU. open_clip's plain `ViT-L-14` config uses
