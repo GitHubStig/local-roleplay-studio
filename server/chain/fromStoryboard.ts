@@ -88,6 +88,9 @@ export async function chainFromStoryboard(
 ): Promise<ChainSession> {
   const last = storyboard.frames[upTo]
   if (!storyboard.look || !last) throw new CopyError('No such Frame')
+  if (storyboard.frames.slice(0, upTo + 1).some((f) => !f.body)) {
+    throw new CopyError(`Write the Frames up to Frame ${upTo + 1} first`)
+  }
   if (last.blocked) {
     throw new CopyError(`Frame ${upTo + 1} crosses a limit (${last.blocked}): edit it first`)
   }

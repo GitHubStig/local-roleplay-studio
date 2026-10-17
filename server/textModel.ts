@@ -37,13 +37,19 @@ export interface TextModel {
   ): Promise<FrameText>
   /** Whether an Action asks to depict a real, identifiable person. */
   namesRealPerson(action: string, signal: AbortSignal): Promise<boolean>
-  /** Plans a Storyboard: its Look, Beats and every Frame's sentences, reported as they arrive. */
+  /** Plans a Storyboard: its Look and Beats, reported as they arrive. */
   planStoryboard(
     req: StoryboardPlanRequest,
     signal: AbortSignal,
     on?: PlanHandlers,
   ): Promise<StoryboardPlan>
-  /** Rewrites one Storyboard Frame (and, if the Action asks, the Look). */
+  /** Writes one Storyboard Frame's seven sentences from the reviewed plan. */
+  writeStoryboardFrame(
+    req: StoryboardWriteRequest,
+    signal: AbortSignal,
+    onThinking?: (chunk: string) => void,
+  ): Promise<StoryboardWrite>
+  /** Rewrites one Storyboard Frame, following an Action. */
   editStoryboardFrame(
     req: StoryboardEditRequest,
     signal: AbortSignal,
@@ -182,17 +188,24 @@ export interface StoryboardPlanRequest {
   frameCount: number
 }
 
-/** One Frame as the Text Model writes it: its seven own sentences, and who it shows. */
+/** One Beat of a Storyboard's plan: what happens in its Frame, and who it shows. */
+export interface PlannedBeat {
+  beat: string
+  /** Names of the Look's people, as written: the engine matches them to the Look. */
+  shown: string[]
+}
+
+/** One Frame as the Text Model edits it: its seven own sentences, and who it shows. */
 export interface PlannedFrame {
   body: string
   /** Names of the Look's people, as written: the engine matches them to the Look. */
   shown: string[]
 }
 
+/** A Storyboard's plan: the Look and the Beats, reviewed before the Frames are written. */
 export interface StoryboardPlan {
   look: Look
-  beats: string[]
-  frames: PlannedFrame[]
+  beats: PlannedBeat[]
   thinking?: string
 }
 
@@ -200,14 +213,31 @@ export interface StoryboardPlan {
 export interface PlanHandlers {
   thinking?: (chunk: string) => void
   look?: (look: Look) => void
-  beats?: (beats: string[]) => void
-  frame?: (index: number, frame: PlannedFrame) => void
+  beat?: (index: number, beat: PlannedBeat) => void
+}
+
+/**
+ * One Frame to write from the reviewed plan: every Beat (who each shows by the Look's names), and
+ * the sentences of the Frames before it, so it carries on from them.
+ */
+export interface StoryboardWriteRequest {
+  scenario: Scenario
+  look: Look
+  beats: PlannedBeat[]
+  /** The Frame to write. */
+  index: number
+  /** The seven sentences of each Frame before it, in order. */
+  before: string[]
+}
+
+export interface StoryboardWrite {
+  body: string
+  thinking?: string
 }
 
 export interface StoryboardEditRequest {
   scenario: Scenario
   look: Look
-  beats: string[]
   /** The Frame being edited. */
   index: number
   body: string
@@ -219,8 +249,6 @@ export interface StoryboardEditRequest {
 export interface StoryboardEdit extends PlannedFrame {
   outcome: Outcome
   narration: string
-  /** The Look after the Action: unchanged unless the Action changed the identity or art style. */
-  look: Look
   thinking?: string
 }
 
@@ -278,23 +306,50 @@ export const storyboardFrameSchema = {
 export function storyboardPlanSchema(frameCount: number) {
   return {
     type: 'object',
-    // Order matters: the Look and the plan come before the Frames they shape.
+    // Order matters: the Look comes before the Beats that name its people.
     properties: {
       look: lookSchema,
       beats: {
         type: 'array',
-        items: { type: 'string' },
-        minItems: frameCount,
-        maxItems: frameCount,
-      },
-      frames: {
-        type: 'array',
-        items: storyboardFrameSchema,
+        items: {
+          type: 'object',
+          // The names last, as in a Frame (`storyboardFrameSchema`).
+          properties: {
+            beat: { type: 'string', description: 'one short line: what happens in this Frame' },
+            shown: storyboardFrameSchema.properties.shown,
+          },
+          required: ['beat', 'shown'],
+        },
         minItems: frameCount,
         maxItems: frameCount,
       },
     },
-    required: ['look', 'beats', 'frames'],
+    required: ['look', 'beats'],
+  }
+}
+
+/** The user message of one Frame's Write: the plan, the Frames before it, and which to write. */
+export async function storyboardWriteMessages(req: StoryboardWriteRequest) {
+  const line = (b: PlannedBeat, i: number) =>
+    `${i + 1}. ${b.beat} (shows: ${b.shown.join(', ') || 'no one'})`
+  const beat = req.beats[req.index]
+  return {
+    system: await withNotes(
+      await loadPrompt('storyboard/write', await sharedParts()),
+      req.scenario,
+      true,
+    ),
+    user: await loadPrompt('storyboard/write-request', {
+      look: JSON.stringify(req.look, null, 2),
+      beats: req.beats.map(line).join('\n'),
+      brief: req.scenario.openingPrompt,
+      before: req.before.length
+        ? req.before.map((body, i) => `${i + 1}. ${body}`).join('\n')
+        : '(none: this is the first)',
+      number: req.index + 1,
+      beat: beat.beat,
+      shown: beat.shown.join(', ') || 'no one',
+    }),
   }
 }
 
@@ -380,25 +435,40 @@ export function parsePlannedFrame(value: unknown): PlannedFrame {
   }
 }
 
+/** A Beat from the reply: its line, and who it shows (no one if it didn't say). */
+export function parsePlannedBeat(value: unknown): PlannedBeat {
+  const v = value as { beat?: unknown; shown?: unknown } | null
+  const beat = typeof v?.beat === 'string' ? asBeat(v.beat) : ''
+  if (!beat) throw new Error('A Beat in the reply has no line')
+  const shown = v?.shown
+  return {
+    beat,
+    shown: Array.isArray(shown) ? shown.filter((n) => typeof n === 'string' && n.trim()) : [],
+  }
+}
+
 /** Checks a Storyboard plan; throws with a reason if it can't be used. */
 export function parseStoryboardPlan(content: string, frameCount: number): StoryboardPlan {
-  let out: { look?: unknown; beats?: unknown; frames?: unknown }
+  let out: { look?: unknown; beats?: unknown }
   try {
     out = JSON.parse(content)
   } catch {
     throw new Error('Text Model reply was not valid JSON')
   }
   const look = parseLook(out.look)
-  const beats = out.beats
-  if (
-    !Array.isArray(beats) || beats.length !== frameCount || beats.some((b) => typeof b !== 'string')
-  ) {
+  if (!Array.isArray(out.beats) || out.beats.length !== frameCount) {
     throw new Error(`Text Model reply doesn't have ${frameCount} Beats`)
   }
-  if (!Array.isArray(out.frames) || out.frames.length !== frameCount) {
-    throw new Error(`Text Model reply doesn't have ${frameCount} Frames`)
+  return { look, beats: out.beats.map(parsePlannedBeat) }
+}
+
+/** Checks one Frame's Write; throws with a reason if it can't be used. */
+export function parseStoryboardWrite(content: string): StoryboardWrite {
+  try {
+    return { body: parseFrameBody(JSON.parse(content)) }
+  } catch (err) {
+    throw err instanceof SyntaxError ? new Error('Text Model reply was not valid JSON') : err
   }
-  return { look, beats: beats.map(asBeat), frames: out.frames.map(parsePlannedFrame) }
 }
 
 /**
@@ -408,7 +478,6 @@ export function parseStoryboardPlan(content: string, frameCount: number): Storyb
 const asBeat = (text: string) => oneParagraph(text).replace(/^(?:frame\s*)?\d+\s*[:.)-]\s*/i, '')
 
 export async function storyboardEditMessages(req: StoryboardEditRequest) {
-  const beats = req.beats.map((b, i) => `${i === req.index ? '▶' : ' '} ${i + 1}. ${b}`).join('\n')
   return {
     system: await withNotes(
       await loadPrompt('storyboard/edit', await sharedParts()),
@@ -417,7 +486,6 @@ export async function storyboardEditMessages(req: StoryboardEditRequest) {
     ),
     user: await loadPrompt('storyboard/edit-request', {
       look: JSON.stringify(req.look, null, 2),
-      beats,
       number: req.index + 1,
       body: req.body,
       shown: req.shown.join(', ') || 'no one',
@@ -433,9 +501,8 @@ export function storyboardEditSchema() {
       outcome: { type: 'string', enum: OUTCOMES },
       narration: { type: 'string' },
       frame: storyboardFrameSchema,
-      look: lookSchema,
     },
-    required: ['outcome', 'narration', 'frame', 'look'],
+    required: ['outcome', 'narration', 'frame'],
   }
 }
 
@@ -455,7 +522,6 @@ export function parseStoryboardEdit(content: string): StoryboardEdit {
     outcome: out.outcome as Outcome,
     narration: out.narration.trim(),
     ...parsePlannedFrame(out.frame),
-    look: parseLook(out.look),
   }
 }
 
@@ -463,26 +529,26 @@ export function parseStoryboardEdit(content: string): StoryboardEdit {
  * Output caps. A small model writing JSON under a schema sometimes never stops (padding with
  * whitespace until its large context fills), so every call gets a token cap and a time limit.
  */
-const MAX_TOKENS = { answer: 2048, yesNo: 32, perFrame: 700 }
+const MAX_TOKENS = { answer: 2048, yesNo: 32, perBeat: 120 }
 const TIME_LIMIT_MS = {
   answer: 2 * 60_000,
   thinking: 10 * 60_000,
   yesNo: 30_000,
-  /** Added to a Storyboard plan's limit for each Frame it has to write. */
-  perFrame: 45_000,
+  /** Added to a Storyboard plan's limit for each Beat it has to write. */
+  perBeat: 10_000,
 }
 
 /**
- * How much of a Storyboard plan may be written before its next part (the Look, the Beats, a Frame)
- * is complete, in characters. A Frame takes about 900, and the Beats of 32 Frames about 2,500; a
- * model that goes past this has run away (repeating itself, or padding with whitespace), as Gemma
- * 4 26B did once in Frame 1 of a 16-Frame plan on 2026-10-08. Stopped here, the plan is retried in
- * well under a minute, where waiting for its token cap took minutes.
+ * How much of a Storyboard plan may be written before its next part (the Look, a Beat) is complete,
+ * in characters. The Look of five people takes about 1,500, a Beat about 150; a model that goes
+ * past this has run away (repeating itself, or padding with whitespace), as Gemma 4 26B did once
+ * in a 16-Frame plan on 2026-10-08. Stopped here, the plan is retried in well under a minute, where
+ * waiting for its token cap took minutes.
  */
 export const RUNAWAY_CHARS = 8000
 
-/** A plan's token cap: room for the Look (a sentence per person) and Beats, then each Frame. */
-export const planTokens = (frameCount: number) => 1200 + frameCount * MAX_TOKENS.perFrame
+/** A plan's token cap: room for the Look (a sentence per person), then each Beat. */
+export const planTokens = (frameCount: number) => 1200 + frameCount * MAX_TOKENS.perBeat
 
 export interface TextModelOptions {
   /** Overrides the time limits, in ms (for tests). */
@@ -557,17 +623,13 @@ export function chatTextModel(chat: Chat, opts: TextModelOptions = {}): TextMode
       value: (key, value) => {
         if (key === 'look') {
           on.look?.(parseLook(value))
-          done('the Beats')
-        }
-        if (key === 'beats' && Array.isArray(value)) {
-          on.beats?.(value.map((b) => asBeat(String(b))))
-          done('Frame 1')
+          done('Beat 1')
         }
       },
       element: (key, index, value) => {
-        if (key !== 'frames') return
-        on.frame?.(index, parsePlannedFrame(value))
-        done(`Frame ${index + 2}`)
+        if (key !== 'beats') return
+        on.beat?.(index, parsePlannedBeat(value))
+        done(`Beat ${index + 2}`)
       },
     })
     const { content, thinking } = await streamChat(
@@ -588,6 +650,22 @@ export function chatTextModel(chat: Chat, opts: TextModelOptions = {}): TextMode
       },
     )
     return withThinking(parseStoryboardPlan(content, req.frameCount), thinking)
+  }
+
+  async function writeFrame(
+    req: StoryboardWriteRequest,
+    signal: AbortSignal,
+    onThinking?: (chunk: string) => void,
+  ): Promise<StoryboardWrite> {
+    const { content, thinking } = await streamChat(
+      'write-frame',
+      storyboardWriteMessages(req),
+      frameSchema,
+      MAX_TOKENS.answer,
+      signal,
+      onThinking,
+    )
+    return withThinking(parseStoryboardWrite(content), thinking)
   }
 
   async function edit(
@@ -633,7 +711,9 @@ export function chatTextModel(chat: Chat, opts: TextModelOptions = {}): TextMode
     namesRealPerson: (action, signal) =>
       within(signal, limits.yesNo, (s) => askRealPerson(action, s)),
     planStoryboard: (req, signal, on) =>
-      within(signal, answerLimit() + req.frameCount * limits.perFrame, (s) => plan(req, s, on)),
+      within(signal, answerLimit() + req.frameCount * limits.perBeat, (s) => plan(req, s, on)),
+    writeStoryboardFrame: (req, signal, onThinking) =>
+      within(signal, answerLimit(), (s) => writeFrame(req, s, onThinking)),
     editStoryboardFrame: (req, signal, onThinking) =>
       within(signal, answerLimit(), (s) => edit(req, s, onThinking)),
   }

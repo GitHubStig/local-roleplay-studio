@@ -77,8 +77,12 @@ import {
 import {
   editFrameByAction,
   planStoryboard,
+  restartStoryboard,
+  setBeat,
   setFrameBody,
   setLook,
+  StageError,
+  writeStoryboard,
 } from './storyboard/storyboard.ts'
 
 export interface AppDeps {
@@ -149,7 +153,7 @@ const CONTENT_TYPES: Record<string, string> = {
   '.ply': 'application/octet-stream',
 }
 
-/** Storyboards plan between 1 and 16 Frames; 8 unless asked otherwise. */
+/** Storyboards plan between 1 and 32 Frames; 8 unless asked otherwise. */
 const FRAME_COUNT = { min: 1, max: 32, default: 8 }
 const MAX_BRIEF_LENGTH = 4000
 
@@ -171,6 +175,7 @@ type LockKind =
   | 'delete'
   | 'delete-frame'
   | 'plan'
+  | 'write'
   | 'render'
   | 'edit'
   | 'upscale'
@@ -205,6 +210,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     delete: 'This Session is being deleted',
     'delete-frame': 'A Frame is being deleted',
     plan: 'The Storyboard is being planned',
+    write: "The Storyboard's Frames are being written",
     render: 'A Frame is rendering',
     edit: 'A Frame is being edited',
     upscale: 'A Frame is being upscaled',
@@ -339,7 +345,9 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       return res
     } catch (err) {
       if (err instanceof LimitError) return error(err.message, 422)
-      if (err instanceof UndoError || err instanceof UpscaleError) return error(err.message, 409)
+      if (err instanceof UndoError || err instanceof UpscaleError || err instanceof StageError) {
+        return error(err.message, 409)
+      }
       throw err
     } finally {
       if (!streaming) unlock(id)
@@ -852,6 +860,55 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
         }),
     ],
 
+    // Writes the Frames of a reviewed plan, a call per Frame, each saved as it comes: a failure or
+    // Cancel keeps those written, and writing again carries on from the next.
+    [
+      'POST',
+      new URLPattern({ pathname: '/api/sessions/:id/write' }),
+      (_req, p) =>
+        locked(p.id!, 'write', async (session) => {
+          if (!needsStoryboard(session)) return error('Only a Storyboard writes its Frames', 409)
+          const scenario = await scenarioFor(session)
+          if (scenario instanceof Response) return scenario
+          // Refused up front, before the stream: nothing to write, or not planned yet.
+          if (!session.look || session.frames.every((f) => f.body)) {
+            return error(
+              session.look ? 'Every Frame is written already' : 'Plan the Storyboard first',
+              409,
+            )
+          }
+          return stream(session, null, false, async (send, signal) => {
+            await writeStoryboard(frameDeps(session), session, scenario, send, signal)
+          })
+        }),
+    ],
+
+    // Back to the plan: every Frame's sentences and pictures go, so the Look and Beats can be
+    // edited again. Its jobs are cancelled, and it waits for a render running to end.
+    [
+      'POST',
+      new URLPattern({ pathname: '/api/sessions/:id/restart' }),
+      async (_req, p) => {
+        // Only a Storyboard's jobs are cancelled, so it's checked before taking the lock.
+        const found = await deps.sessions.load(p.id!)
+        if (found?.kind !== 'storyboard') {
+          return error(
+            found ? 'Only a planned Storyboard restarts' : 'Session not found',
+            found ? 409 : 404,
+          )
+        }
+        jobs.cancelWhere(p.id!, () => true)
+        return jobs.betweenRenders(p.id!, () =>
+          locked(p.id!, 'edit', async (session) => {
+            if (!needsStoryboard(session) || !session.look) {
+              return error('Only a planned Storyboard restarts', 409)
+            }
+            jobs.cancelWhere(session.id, () => true)
+            return json(await restartStoryboard({ store: deps.sessions }, session))
+          }))
+      },
+    ],
+
     [
       'POST',
       new URLPattern({ pathname: '/api/sessions/:id/frames/:index/edit' }),
@@ -886,7 +943,8 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
         }),
     ],
 
-    // A Frame edited by hand: a Storyboard's `{ body, shown }`, or a Chain's `{ prompt }`, its
+    // A Frame edited by hand: a Storyboard's `{ body, shown }` (`{ beat, shown }`, its Beat, before
+    // its Frames are written), or a Chain's `{ prompt }`, its
     // Image Prompt, which marks its pictures out of date.
     [
       'PUT',
@@ -909,11 +967,19 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
               throw err
             }
           }
-          const body = await readJson(req) as { body?: unknown; shown?: unknown } | undefined
-          if (typeof body?.body !== 'string') return error('body is required', 400)
-          if (body.shown !== undefined && !isStringList(body.shown)) {
+          const body = await readJson(req) as
+            | { body?: unknown; beat?: unknown; shown?: unknown }
+            | undefined
+          if (body?.shown !== undefined && !isStringList(body.shown)) {
             return error('shown must be a list of names', 400)
           }
+          // Before the Frames are written, its Beat; after, its sentences.
+          if (typeof body?.beat === 'string') {
+            return json(
+              await setBeat({ store: deps.sessions }, session, index, body.beat, body.shown),
+            )
+          }
+          if (typeof body?.body !== 'string') return error('body or beat is required', 400)
           return json(
             await setFrameBody({ store: deps.sessions }, session, index, body.body, body.shown),
           )
@@ -950,25 +1016,24 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     [
       'PUT',
       new URLPattern({ pathname: '/api/sessions/:id/look' }),
-      // Saved between renders, so the next one queued renders it.
+      // Only before the Frames are written (`setLook`), so no render can be using it.
       (req, p) =>
-        jobs.betweenRenders(p.id!, () =>
-          locked(p.id!, 'edit', async (session) => {
-            if (!needsStoryboard(session) || !session.look) {
-              return error('Only a planned Storyboard has a Look', 409)
-            }
-            const body = await readJson(req) as { people?: unknown; style?: unknown } | undefined
-            const people = body?.people
-            if (
-              !Array.isArray(people) || typeof body?.style !== 'string' ||
-              people.some((p) => typeof p?.name !== 'string' || typeof p?.identity !== 'string')
-            ) {
-              return error('people (each with a name and identity) and style are required', 400)
-            }
-            return json(
-              await setLook({ store: deps.sessions }, session, { people, style: body.style }),
-            )
-          })),
+        locked(p.id!, 'edit', async (session) => {
+          if (!needsStoryboard(session) || !session.look) {
+            return error('Only a planned Storyboard has a Look', 409)
+          }
+          const body = await readJson(req) as { people?: unknown; style?: unknown } | undefined
+          const people = body?.people
+          if (
+            !Array.isArray(people) || typeof body?.style !== 'string' ||
+            people.some((p) => typeof p?.name !== 'string' || typeof p?.identity !== 'string')
+          ) {
+            return error('people (each with a name and identity) and style are required', 400)
+          }
+          return json(
+            await setLook({ store: deps.sessions }, session, { people, style: body.style }),
+          )
+        }),
     ],
 
     // The picture forming: the latest preview of the Session's render, while there is one and

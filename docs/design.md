@@ -12,8 +12,8 @@ backend per machine (the Text Model on Ollama or a server with the OpenAI chat A
 Image Model on mflux or ComfyUI, ADR 0009), and each extra (pictures, Upscale, voices, 3D) is on
 where its backend can run (`server/features.ts`). Every Session starts from a **Brief** (typed, or a saved
 **Scenario**) and is one of three kinds: a **Chain**, where each Frame is made from the
-previous one by an Action; a **Storyboard**, whose Frames are planned together and then edited
-and rendered one by one; or a **Roleplay**, a conversation with a Character whose moments can be
+previous one by an Action; a **Storyboard**, whose Frames are planned together, reviewed and written
+out from the plan, then edited and rendered one by one; or a **Roleplay**, a conversation with a Character whose moments can be
 pictured and rendered as it goes (see [Roleplays](#roleplays)). In a Chain, each Frame the player writes an **Action** (what to
 change), the **Text Model** edits the **Image Prompt**, and the **Image Model** renders it.
 There is no score and no end; a Session lasts until it's deleted.
@@ -130,34 +130,27 @@ racing a Frame).
 
 ## Storyboards
 
-A Storyboard is started from a Brief and a Frame count (1–32, default 8), then **planned** in one
-Text Model call ([ADR 0006](adr/0006-storyboards-plan-in-one-call.md)):
+A Storyboard is started from a Brief and a Frame count (1–32, default 8), then made in three steps ([ADR 0019](adr/0019-storyboards-plan-review-write.md)): **planned**, reviewed by the player, then **written** a Frame at a time.
 
-1. **Limits on the Brief:** the term list and, if it names someone, the real-person question.
-   The Brief is also checked with the term list when the Storyboard is created.
-2. **The plan streams in:** the **Look** (an identity for each person the Brief depicts, and the
-   art style, shared by every Frame), the **Beats** (one line per Frame), then each Frame's seven
-   sentences (pose, expression, camera, clothing, environment, lighting, color) and who it shows,
-   each shown the moment it's complete.
-3. **Frames are assembled:** the identities of the people the Frame shows (at most three, the most
-   prominent first; none for a picture of the place alone) + the Frame's sentences + the Look's
-   style, rendered as it is ([ADR 0012](adr/0012-storyboard-look-lists-each-person.md)). A Frame whose prompt crosses a Limit is saved **blocked** and can't be
-   rendered until edited.
-4. **All or nothing:** a failed or cancelled plan discards the Storyboard.
+1. **Limits on the Brief:** the term list and, if it names someone, the real-person question. The Brief is also checked with the term list when the Storyboard is created.
+2. **Plan**, one Text Model call, streaming in: the **Look** (an identity for everyone and everything the story follows, people, creatures, animals and objects with a part of their own, each named, a group that looks alike as one; and the art style, shared by every Frame), then the **Beats**, one line per Frame with who it shows, each shown the moment it's complete. All or nothing: a failed or cancelled plan discards the Storyboard.
+3. **Review:** the plan waits for the player. The Look (names, identities, the style) and each Beat's line and who it shows can be edited by hand; nothing is written out or rendered yet.
+4. **Write Frames:** a Text Model call per Frame, in order, each given the Look, every Beat with who it shows, the Brief and the seven sentences of the Frames before it; it answers with the Frame's own seven sentences (pose, expression, camera, clothing, environment, lighting, color). The Beats are checked with the Limits first, as an Action is. Each Frame is saved as it comes, so a failure or Cancel keeps those written, and writing again carries on from the next.
+5. **Frames are assembled:** the identities of the people the Frame shows (at most three, the most prominent first; none for a picture of the place alone) + the Frame's sentences + the Look's style, rendered as it is ([ADR 0012](adr/0012-storyboard-look-lists-each-person.md)). A Frame whose prompt crosses a Limit is saved **blocked** and can't be rendered until edited.
 
-After planning, each Frame is independent:
+Once a Frame is written, the Look and Beats are fixed: **Restart** (once confirmed) is the way back to them, deleting every Frame's sentences and pictures. Each written Frame is then independent:
 
 | Operation | What it does |
 |---|---|
-| **Render** | Renders one Frame through the shared queue; a re-render replaces its image (the old file is deleted once the new one is saved). |
-| **Edit by hand** | Replaces a Frame's seven sentences and who it shows; stray labels are stripped. A rendered Frame is marked **stale** until re-rendered. Refused if it crosses a Limit. |
-| **Edit the Look** | Edits, adds or removes people, or the style, and rewrites every Frame's prompt; rendered Frames whose prompt changed become stale. Someone renamed stays shown where they were. Saved between renders: one running is finished first, with the queue held, so every render still queued has the new Look and only the one that was running goes stale. |
+| **Render** | Renders one written Frame through the shared queue; a re-render replaces its image (the old file is deleted once the new one is saved). |
+| **Edit by hand** | Replaces a Frame's seven sentences and who it shows, from the Look's people; stray labels are stripped. A rendered Frame is marked **stale** until re-rendered. Refused if it crosses a Limit. Before the Frames are written, its Beat and who it shows instead. |
+| **Edit the Look** | Only before the Frames are written: edits, adds or removes people, or the style. Someone renamed stays shown where they were. |
 | **Upscale** | As for a Chain Frame (below); a re-render or Undo deletes the upscale with the image. |
-| **Edit by Action** | The Text Model rewrites that Frame and who it shows (and the Look, if the Action changes or adds a person, or the style), after the same Action Limits check as a Chain. Declined or unclear Actions change nothing. |
-| **Chain from here** | On a Frame in the Frames list (on hover, as a Chain's Delete): makes a new Chain of the Frames up to that one, to carry on from it by Actions; the Storyboard stays as it is ([ADR 0018](adr/0018-carry-on-in-a-new-session.md)). Done in code, with no Text Model call (2026-10-16): each Image Prompt becomes a Chain's nine sentences by joining the identities of the people shown into one subject sentence with semicolons, every word kept; a Frame of no one gets "No one is in the picture.". The first Frame is the Opening, each later one has its Beat as the Action (a Beat isn't updated by an Action edit, so it may be out of date), and blocked Frames are left out (the one it's made from can't be blocked). The Brief, Settings and seed are the Storyboard's, so its pictures are copied under new names, with their upscales and 3D; only those of a Frame of no one are marked stale. The Look goes no further than the copied prompts: someone in it but in none of them is unknown to the Chain. |
+| **Edit by Action** | The Text Model rewrites that Frame's sentences and who it shows, from the Look as it is, after the same Action Limits check as a Chain; it gets the Look and the Frame, no Beats. An Action that would change the Look (who someone is, someone new, the style) comes back unclear, pointing to Restart. Declined or unclear Actions change nothing. |
+| **Restart** | Back to the plan: every Frame's sentences, pictures and timings go (the files deleted), its Beat and who it shows stay. Its jobs are cancelled, and a render running is waited for. |
+| **Chain from here** | On a written Frame in the Frames list (on hover, as a Chain's Delete): makes a new Chain of the Frames up to that one, to carry on from it by Actions; the Storyboard stays as it is ([ADR 0018](adr/0018-carry-on-in-a-new-session.md)). Done in code, with no Text Model call (2026-10-16): each Image Prompt becomes a Chain's nine sentences by joining the identities of the people shown into one subject sentence with semicolons, every word kept; a Frame of no one gets "No one is in the picture.". The first Frame is the Opening, each later one has its Beat as the Action (a Beat isn't updated by an Action edit, so it may be out of date), and blocked Frames are left out (the one it's made from can't be blocked). The Brief, Settings and seed are the Storyboard's, so its pictures are copied under new names, with their upscales and 3D; only those of a Frame of no one are marked stale. The Look goes no further than the copied prompts: someone in it but in none of them is unknown to the Chain. |
 
-Each Frame records how long its text took (the wait for its part of the plan, or its latest
-edit) and its latest render.
+Each Frame records how long its text took (its Write, or its latest edit) and its latest render.
 
 ## Roleplays
 
@@ -566,24 +559,7 @@ consistency* in [open-threads.md](open-threads.md).
   told from a trackpad's scroll by its deltas: lines, or whole pixels of 50 or more straight up or
   down, against a trackpad's small, fractional, often diagonal ones (`usePinchZoom`). Each new image starts unzoomed. The 3D buttons (`Frame3dButtons`) and their viewers
   (`Frame3dViewers`) are shared with Roleplay too.
-- **Storyboard** (`/storyboards/:id`): opening a new Storyboard plans it straight away. The
-  Frames list fills in as the plan streams: Beats first (each marked "Writing…"), then each
-  Frame's sentences; the status pill counts "Writing Frame 3 of 8…". The main area shows the
-  selected Frame's image (or "Not rendered yet"), its Beat as a caption and a pill with its status:
-  **Draft** (never rendered), **Rendered**, **Changed since render** (stale, or by another Image
-  Model than the Storyboard's) or **Blocked**. Below
-  it: an Action box that edits the selected Frame (Enter sends; a declined or unclear Action stays
-  to reword; the Narration shows in the button row), the picture buttons every kind shares
-  (**Render**/**Re-render**, **Upscale**, SHARP, TripoSplat, LiTo), each queued as a job, and
-  **Render all (N)**, which queues a render of every draft or changed Frame not already queued,
-  skipping blocked ones. Editing carries on while they run. The Frames list shows
-  each Frame's thumbnail (dimmed when stale), Beat and status (or the job working on it). The Prompt panel has the **Look** (each person's name and identity in a card of their
-  own, which collapses to the name and a preview; people can be added or removed; and the art style, saved for every Frame) and the selected Frame's **Shows**
-  toggles (a person each) and seven sentences, editable by hand, then the full prompt and the
-  Frame's timings. Hand edits save themselves (see **Hand edits** below); a Frame's sentences are
-  read-only while it renders, so its picture is of what they say. The panels, the render sweep and the unsent Action (remembered
-  per Session) work as on the Session screen. A Chain opened at a Storyboard's address, or the
-  other way round, is sent to its own screen.
+- **Storyboard** (`/storyboards/:id`): opening a new Storyboard plans it straight away. The Frames list fills in with the Beats as the plan streams (each marked "Planning…"); the status pill counts "Planning Beat 3 of 8…". The plan then waits for review: each Frame is **Not written**, the Prompt panel has the **Look** (each person's name and identity in a card of their own, which collapses to the name and a preview; people can be added or removed; and the art style) and the selected Frame's **Shows** toggles (a person each) and its Beat, all editable by hand, and **Write N Frames** writes them, each listed as it's saved ("Writing Frame 3 of 8…"). After a write that stopped part-way it reads **Write the rest (N)**. Once a Frame is written, the Look, the Beats and their Shows are read-only, with **Restart…** under the Look. The main area shows the selected Frame's image (or "Not written yet", "Not rendered yet"), its Beat as a caption and a pill with its status: **Not written**, **Draft** (never rendered), **Rendered**, **Changed since render** (stale, or by another Image Model than the Storyboard's) or **Blocked**. Below it: an Action box that edits the selected written Frame (Enter sends; a declined or unclear Action stays to reword; the Narration shows in the button row), the picture buttons every kind shares (**Render**/**Re-render**, **Upscale**, SHARP, TripoSplat, LiTo), each queued as a job, and **Render all (N)**, which queues a render of every written draft or changed Frame not already queued, skipping blocked ones. Editing carries on while they run. The Frames list shows each Frame's thumbnail (dimmed when stale), Beat and status (or the job working on it). For a written Frame, the Prompt panel has its Shows toggles and seven sentences, editable by hand, then the full prompt and the Frame's timings. Hand edits save themselves (see **Hand edits** below); a Frame's sentences are read-only while it renders, so its picture is of what they say. The panels, the render sweep and the unsent Action (remembered per Session) work as on the Session screen. A Chain opened at a Storyboard's address, or the other way round, is sent to its own screen.
 - **Roleplay** (`/roleplay/:id`): a new Roleplay opens on its Cast, written from the Brief, with
   **Begin** and **Rewrite Cast** in the conversation area, and the text box stays locked until the
   scene begins. Then the conversation fills the
@@ -599,10 +575,10 @@ consistency* in [open-threads.md](open-threads.md).
   panel scrolls as one) and collapses to a one-line preview by its label, remembered per browser
   (`CollapsibleTextarea`, sized by VueUse's `useTextareaAutosize`).
 - **Hand edits** (2026-10-15; they had Save buttons before): a Look, a Storyboard Frame's
-  sentences and who it shows, and a Roleplay's Cast save themselves when the focus leaves their
+  Beat (before it's written) or sentences and who it shows, and a Roleplay's Cast save themselves when the focus leaves their
   panel, so a person added (name, then identity) goes in one save; a Frame's Shows toggle and a
-  person's Remove save at once (`useAutosave`). Work that reads them saves them first: Render,
-  Render all, Upscale and 3D, an Action, Send, Suggest, Begin, Rewrite Cast. So do showing another
+  person's Remove save at once (`useAutosave`). Work that reads them saves them first: Write
+  Frames, Render, Render all, Upscale and 3D, an Action, Send, Suggest, Begin, Rewrite Cast. So do showing another
   Frame (the edit goes to the Frame it was typed for) and leaving the screen; reloading or closing
   it with an edit unsaved asks first. A Session's saves go one at a time, in order, since the server
   takes one edit to a Session at a time. One the server would refuse (someone without a name, two
@@ -679,7 +655,7 @@ Session from Home, and delete old ones there.
 | Sessions | `sessions/<id>/session.json` + `frame-N-xxxxxxxx.png` | Id is `YYYYMMDD-HHMMSS-xxxx`; files are written to a temp file, then renamed |
 | Call log | `sessions/<id>/calls/frame-N.json`, `calls/setup.json` | Only with Settings' Call log on; see below |
 
-**The call log** (`server/calls.ts`) is for studying what the models are sent. With it on, every call to the Text Model (with its job: `cast`, `reply`, `look`, `picture`, `suggest`…, its messages, schema, seed and caps, and the reply and reasoning) and to the Image Model (each render's prompt, seed and settings, each upscale) is added to a JSON array in the Session's `calls/` folder as it's made: one file per Frame, numbered as the app shows them, and `setup.json` for what isn't one Frame's (a Cast, a Storyboard's plan). Suggest and a Chain's next Frame log under the Frame they'd make. A call is added over the file's closing `]`, so the file is never rewritten and stays valid JSON; one file per Frame keeps each small enough for an editor to fold (VS Code stops folding past about 20 MB, which a whole long Roleplay, resending its conversation every Reply, would pass). The calls are logged as they're made rather than rebuilt later: each is built from what earlier calls returned, and the prompts change. An undone or redone Frame's calls stay in its file. Since 2026-10-16 the voice engine (each voice designed and line spoken: its text, delivery, seed and reference clip, by file name), SHARP, TripoSplat and LiTo (the picture and what came out) and the style embedder (which pictures and captions, counted, not the vectors) are logged too, under their jobs (`voice-design`, `speak`, `scene`, `figure`, `lito`, `style`). A spoken line or a 3D model goes with its Frame's calls; a voice's design and the style scores, which belong to the Session, go in `setup.json`.
+**The call log** (`server/calls.ts`) is for studying what the models are sent. With it on, every call to the Text Model (with its job: `cast`, `reply`, `look`, `picture`, `suggest`…, its messages, schema, seed and caps, and the reply and reasoning) and to the Image Model (each render's prompt, seed and settings, each upscale) is added to a JSON array in the Session's `calls/` folder as it's made: one file per Frame, numbered as the app shows them, and `setup.json` for what isn't one Frame's (a Cast, a Storyboard's plan). Suggest and a Chain's next Frame log under the Frame they'd make, and each of a Storyboard's Writes (`write-frame`) under its Frame. A call is added over the file's closing `]`, so the file is never rewritten and stays valid JSON; one file per Frame keeps each small enough for an editor to fold (VS Code stops folding past about 20 MB, which a whole long Roleplay, resending its conversation every Reply, would pass). The calls are logged as they're made rather than rebuilt later: each is built from what earlier calls returned, and the prompts change. An undone or redone Frame's calls stay in its file. Since 2026-10-16 the voice engine (each voice designed and line spoken: its text, delivery, seed and reference clip, by file name), SHARP, TripoSplat and LiTo (the picture and what came out) and the style embedder (which pictures and captions, counted, not the vectors) are logged too, under their jobs (`voice-design`, `speak`, `scene`, `figure`, `lito`, `style`). A spoken line or a 3D model goes with its Frame's calls; a voice's design and the style scores, which belong to the Session, go in `setup.json`.
 
 ## API
 
@@ -699,11 +675,13 @@ All under `/api`; the Vite dev server proxies it to the Deno server.
 | `DELETE /sessions/:id` | Delete a Session and its images (`409` while a Frame runs) |
 | `GET /sessions/:id` | A Session with its Frames, plus `activity`: what a running Frame is doing, or `null` |
 | `POST /sessions/:id/frames` | Chain: run a Frame (`{ action }`, or `{}` for the Opening Frame) as a server-sent event stream |
-| `POST /sessions/:id/plan` | Storyboard: plan it, streaming `look`, `beats`, `planned-frame` × N, then `planned` |
+| `POST /sessions/:id/plan` | Storyboard: plan it, streaming `look`, `planned-beat` × N, then `planned` |
+| `POST /sessions/:id/write` | Storyboard: write its Frames not written yet from the plan, a call per Frame, streaming `written-frame` as each is saved, then `written`. `409` if not planned, or all written. `422` if a Beat crosses a Limit |
+| `POST /sessions/:id/restart` | Storyboard: back to the plan, every Frame's sentences and pictures deleted; cancels its jobs and waits for a render running to end |
 | `POST /sessions/:id/frames/:index/edit` | Storyboard: edit one Frame by `{ action }`, streaming then `edited` (`outcome`, `narration`, `session`) |
-| `PUT /sessions/:id/frames/:index` | Storyboard: replace a Frame's sentences and, if given, who it shows, `{ body, shown? }`. Chain: replace a Frame's Image Prompt, `{ prompt }`, its pictures then out of date. `422` if it crosses a Limit |
+| `PUT /sessions/:id/frames/:index` | Storyboard: replace a written Frame's sentences and, if given, who it shows, `{ body, shown? }`, or before the Frames are written its Beat, `{ beat, shown? }` (`409` otherwise). Chain: replace a Frame's Image Prompt, `{ prompt }`, its pictures then out of date. `422` if it crosses a Limit |
 | `POST /sessions/:id/frames/:index/chain` | Storyboard: make a new Chain of its Frames up to `:index`, with their pictures (`201`, the Chain); waits for a render running to end. `409` if Frame `:index` is blocked |
-| `PUT /sessions/:id/look` | Storyboard: replace the Look, `{ people: [{ name, identity }], style }`; waits for a render running to end, holding the queue meanwhile |
+| `PUT /sessions/:id/look` | Storyboard: replace the Look, `{ people: [{ name, identity }], style }`, only before its Frames are written (`409` after) |
 | `POST /sessions/:id/cancel` | Cancel the Frame in progress |
 | `DELETE /sessions/:id/frames/:index` | Undo the latest Frame; `:index` must name it (`409` otherwise, and for the Opening Frame or while a Frame runs) |
 | `POST /sessions/:id/frames/:index/delete` | Chain: delete Frame `:index`, any but the Opening: `{ frames, createdAt }` as seen (`409` if the Chain changed, for the Opening, or while a job runs on it or a later Frame) |

@@ -29,7 +29,7 @@ A kind of Session in which each new Frame is made from the previous Frame's Imag
 _Avoid_: Game, iterative mode, turn-based
 
 **Storyboard**:
-A kind of Session whose Frames are all planned and written together from the Brief, then edited and rendered one by one.
+A kind of Session whose Frames are planned together from the Brief, reviewed, then written out from the plan, and edited and rendered one by one.
 _Avoid_: Comic, manga, shot list, sequence
 
 **Roleplay**:
@@ -45,11 +45,11 @@ The first Frame of a Chain, written from the Brief instead of from an Action.
 _Avoid_: Frame 0, intro
 
 **Beat**:
-One line of a Storyboard's plan: what happens in one Frame, before it is written out as an Image Prompt.
+One line of a Storyboard's plan: what happens in one Frame, and who it shows, reviewed before it is written out as an Image Prompt.
 _Avoid_: Scene, step, moment
 
 **Look**:
-The identities and art style a Storyboard's Frames share, written once and used word for word: an identity for each person the Brief depicts, and one art style. Each Frame's Image Prompt has the identities of the people it shows (none for a picture of the place alone), then the style.
+The identities and art style a Storyboard's Frames share, written once and used word for word: an identity for everyone and everything the story follows (people, creatures, animals, objects), and one art style. Fixed once the Frames are written. Each Frame's Image Prompt has the identities of the people it shows (none for a picture of the place alone), then the style.
 _Avoid_: Style guide, theme, bible
 
 **Cast**:

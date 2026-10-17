@@ -9,6 +9,7 @@ import {
   parseLook,
   parsePlannedFrame,
   parseStoryboardPlan,
+  parseStoryboardWrite,
   plainSentences,
   realPersonQuestion,
   storyboardPlanSchema,
@@ -210,41 +211,58 @@ Deno.test('parseLook keeps each named person once, and needs a style', () => {
   assertThrows(() => parseLook({ subject: 'A man.', style: 'Ink.' }), Error, 'no complete Look')
 })
 
-Deno.test('storyboardPlanSchema requires all seven fields, then who is shown, for every Frame', () => {
+Deno.test('storyboardPlanSchema asks for the Look, then each Beat with who it shows', () => {
   const schema = storyboardPlanSchema(4)
-  assertEquals(schema.properties.frames.minItems, 4)
-  assertEquals(schema.properties.frames.items.required, [
-    'pose',
-    'expression',
-    'camera',
-    'clothing',
-    'environment',
-    'lighting',
-    'color',
-    'shown',
-  ])
+  assertEquals(Object.keys(schema.properties), ['look', 'beats'])
+  assertEquals(schema.properties.beats.minItems, 4)
+  assertEquals(schema.properties.beats.items.required, ['beat', 'shown'])
 })
 
 Deno.test('parseStoryboardPlan drops the numbers a model puts before its Beats', () => {
-  const frame = {
-    pose: 'a',
-    expression: 'b',
-    camera: 'c',
-    clothing: 'd',
-    environment: 'e',
-    lighting: 'f',
-    color: 'g',
-    shown: [],
-  }
   const plan = parseStoryboardPlan(
     JSON.stringify({
       look: { people: [], style: 'Ink.' },
-      beats: ['01: Rain falls.', 'Frame 12: A door opens.', '3 cats sleep.'],
-      frames: [frame, frame, frame],
+      beats: [
+        { beat: '01: Rain falls.', shown: [] },
+        { beat: 'Frame 12: A door opens.', shown: ['Ana', 3] },
+        { beat: '3 cats sleep.' },
+      ],
     }),
     3,
   )
-  assertEquals(plan.beats, ['Rain falls.', 'A door opens.', '3 cats sleep.'])
+  assertEquals(plan.beats, [
+    { beat: 'Rain falls.', shown: [] },
+    { beat: 'A door opens.', shown: ['Ana'] },
+    { beat: '3 cats sleep.', shown: [] },
+  ])
+  assertThrows(
+    () =>
+      parseStoryboardPlan(JSON.stringify({ look: { people: [], style: 'Ink.' }, beats: [] }), 3),
+    Error,
+    "doesn't have 3 Beats",
+  )
+})
+
+Deno.test('parseStoryboardWrite joins the seven sentences, and needs them all', () => {
+  const frame = {
+    pose: 'He runs',
+    expression: 'Grim.',
+    camera: 'Wide shot',
+    clothing: 'A coat',
+    environment: 'A street',
+    lighting: 'Dusk',
+    color: 'Grey',
+  }
+  assertEquals(
+    parseStoryboardWrite(JSON.stringify(frame)).body,
+    'He runs. Grim. Wide shot. A coat. A street. Dusk. Grey.',
+  )
+  assertThrows(
+    () => parseStoryboardWrite(JSON.stringify({ ...frame, color: '' })),
+    Error,
+    'missing: color',
+  )
+  assertThrows(() => parseStoryboardWrite('{'), Error, 'not valid JSON')
 })
 
 /** A Chat that streams `content` in small pieces, as a backend does. */
@@ -258,27 +276,20 @@ const streamingChat = (content: string): Chat => ({
 })
 
 Deno.test('a Storyboard plan that runs on inside one part is stopped there', async () => {
-  const frame = JSON.stringify({
-    pose: 'a',
-    expression: 'b',
-    camera: 'c',
-    clothing: 'd',
-    environment: 'e',
-    lighting: 'f',
-    color: 'g',
-    shown: [],
-  })
-  const start = '{"look": {"people": [], "style": "Ink."}, "beats": ["One", "Two"], "frames": ['
+  const beat = (line: string) => JSON.stringify({ beat: line, shown: [] })
+  const start = `{"look": {"people": [], "style": "Ink."}, "beats": [${beat('One')}, `
   const req = { scenario: testScenario, frameCount: 2 }
   const signal = new AbortController().signal
-  const plan = await chatTextModel(streamingChat(`${start}${frame}, ${frame}]}`))
-    .planStoryboard(req, signal)
-  assertEquals(plan.beats, ['One', 'Two'])
+  const beats: string[] = []
+  const plan = await chatTextModel(streamingChat(`${start}${beat('Two')}]}`))
+    .planStoryboard(req, signal, { beat: (i, b) => beats.push(`${i}: ${b.beat}`) })
+  assertEquals(plan.beats.map((b) => b.beat), ['One', 'Two'])
+  assertEquals(beats, ['0: One', '1: Two'])
 
-  const runaway = `${start}${frame}, {"pose": "a${' '.repeat(10_000)}`
+  const runaway = `${start}{"beat": "a${' '.repeat(10_000)}`
   await assertRejects(
     () => chatTextModel(streamingChat(runaway)).planStoryboard(req, signal),
     Error,
-    'ran on while writing Frame 2',
+    'ran on while writing Beat 2',
   )
 })

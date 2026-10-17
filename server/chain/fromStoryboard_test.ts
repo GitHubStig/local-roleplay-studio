@@ -125,6 +125,21 @@ Deno.test('chainFromStoryboard leaves out blocked Frames, and refuses to end on 
     assertEquals(await store.load('chain-2'), undefined)
   }))
 
+Deno.test('chainFromStoryboard refuses Frames not written yet', () =>
+  withTempDir(async (root) => {
+    const board = storyboard([
+      frame(0, ['Mara']),
+      frame(1, ['Mara'], { body: '', prompt: '', pictures: [] }),
+    ])
+    const store = await saved(root, board)
+    assertEquals((await chainFromStoryboard(store, board, 0, chain)).frames.length, 1)
+    await assertRejects(
+      () => chainFromStoryboard(store, board, 1, { ...chain, id: 'chain-2' }),
+      CopyError,
+      'Write the Frames up to Frame 2 first',
+    )
+  }))
+
 Deno.test('chainFromStoryboard saves nothing when a picture file is missing', () =>
   withTempDir(async (root) => {
     const board = storyboard([frame(0, ['Mara'])])

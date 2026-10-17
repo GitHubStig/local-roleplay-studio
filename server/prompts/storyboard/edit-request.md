@@ -1,17 +1,14 @@
 <!--
-The user message of an Action on one Storyboard Frame.
+The user message of an Action on one Storyboard Frame. No Beats: they didn't change what an edit
+does (ADR 0019).
 
-Values: look (JSON), beats (one per line, ▶ on the Frame being edited), number (the Frame's, from
-1), body (its seven sentences), shown (the names it shows, or "no one"), action
+Values: look (JSON), number (the Frame's, from 1), body (its seven sentences), shown (the names
+it shows, or "no one"), action
 -->
 
 Look:
 
 {{look}}
-
-Beats (▶ marks the Frame being edited):
-
-{{beats}}
 
 Frame {{number}}'s seven sentences:
 

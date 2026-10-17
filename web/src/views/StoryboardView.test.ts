@@ -10,8 +10,11 @@ vi.mock('../api', async (importOriginal) => ({
   ...(await importOriginal<typeof api>()),
   getSession: vi.fn(),
   planStoryboard: vi.fn(),
+  writeStoryboard: vi.fn(),
+  restartStoryboard: vi.fn(),
   editStoryboardFrame: vi.fn(),
   saveFrameBody: vi.fn(),
+  saveBeat: vi.fn(),
   saveLook: vi.fn(),
   cancelFrame: vi.fn(),
   listJobs: vi.fn(),
@@ -54,6 +57,10 @@ const frame = (index: number, extra: Partial<api.StoryboardFrame> = {}): api.Sto
   createdAt: '2026-09-25T00:00:00.000Z',
   ...extra,
 })
+
+/** A Frame of the plan, its sentences not written yet. */
+const planned = (index: number, extra: Partial<api.StoryboardFrame> = {}) =>
+  frame(index, { body: '', prompt: '', ...extra })
 
 const storyboard = (frames: api.StoryboardFrame[] = []): api.StoryboardSession => ({
   id: 'sb',
@@ -107,7 +114,9 @@ beforeEach(() => {
       set src(_: string) {}
     },
   )
-  for (const fn of [api.planStoryboard, api.editStoryboardFrame]) vi.mocked(fn).mockReset()
+  for (const fn of [api.planStoryboard, api.writeStoryboard, api.editStoryboardFrame]) {
+    vi.mocked(fn).mockReset()
+  }
   vi.mocked(api.listJobs).mockReset().mockResolvedValue([])
   // Queued jobs accumulate, as the server's queue does.
   const queued: api.Job[] = []
@@ -122,7 +131,7 @@ afterEach(() => vi.unstubAllGlobals())
 enableAutoUnmount(afterEach)
 
 describe('StoryboardView', () => {
-  it('plans a new Storyboard, listing Beats and Frames as they arrive', async () => {
+  it('plans a new Storyboard, listing its Beats as they arrive, for review', async () => {
     vi.mocked(api.getSession).mockResolvedValue(storyboard())
     const stream = held()
     vi.mocked(api.planStoryboard).mockImplementation((_id, onEvent) => stream.call(onEvent))
@@ -130,22 +139,23 @@ describe('StoryboardView', () => {
 
     expect(wrapper.find('[role=status]').text()).toBe('Planning the Storyboard…')
     stream.emit({ type: 'look', look })
-    stream.emit({ type: 'beats', beats: ['Beat 1.', 'Beat 2.', 'Beat 3.'] })
-    stream.emit({ type: 'planned-frame', frame: frame(0) })
+    stream.emit({ type: 'planned-beat', index: 0, beat: 'Beat 1.', shown: ['Rin'] })
     await flushPromises()
-    expect(wrapper.findAll('[data-frame]')).toHaveLength(3)
-    expect(wrapper.findAll('[data-frame]')[1].text()).toContain('Writing…')
-    expect(wrapper.find('[role=status]').text()).toBe('Writing Frame 2 of 3…')
+    expect(wrapper.findAll('[data-frame]')).toHaveLength(1)
+    expect(wrapper.findAll('[data-frame]')[0].text()).toContain('Planning…')
+    expect(wrapper.find('[role=status]').text()).toBe('Planning Beat 2 of 3…')
 
-    stream.emit({ type: 'planned', session: storyboard([frame(0), frame(1), frame(2)]) })
+    stream.emit({ type: 'planned', session: storyboard([planned(0), planned(1), planned(2)]) })
     stream.finish()
     await flushPromises()
     expect(wrapper.find('[role=status]').exists()).toBe(false)
     expect(wrapper.findAll('[data-status]').map((s) => s.text())).toEqual([
-      'Draft',
-      'Draft',
-      'Draft',
+      'Not written',
+      'Not written',
+      'Not written',
     ])
+    expect(wrapper.find('[data-write]').text()).toBe('Write 3 Frames')
+    expect(wrapper.find('[data-review]').exists()).toBe(true)
     expect(useCurrentSession().currentSessionKind.value).toBe('storyboard')
   })
 
@@ -155,17 +165,77 @@ describe('StoryboardView', () => {
     vi.mocked(api.planStoryboard).mockImplementation((_id, onEvent) => stream.call(onEvent))
     const { wrapper } = await mountIt()
     stream.emit({ type: 'look', look })
-    stream.emit({ type: 'beats', beats: ['Old 1.', 'Old 2.'] })
+    stream.emit({ type: 'planned-beat', index: 0, beat: 'Old 1.', shown: [] })
     stream.emit({ type: 'look', look })
     await flushPromises()
     expect(wrapper.findAll('[data-frame]')).toHaveLength(0)
-    stream.emit({ type: 'beats', beats: ['New 1.', 'New 2.', 'New 3.'] })
+    stream.emit({ type: 'planned-beat', index: 0, beat: 'New 1.', shown: [] })
+    stream.emit({ type: 'planned-beat', index: 1, beat: 'New 2.', shown: [] })
     await flushPromises()
     expect(wrapper.findAll('[data-frame]').map((f) => f.text())).toEqual([
-      '1New 1.Writing…',
-      '2New 2.Writing…',
-      '3New 3.Writing…',
+      '1New 1.Planning…',
+      '2New 2.Planning…',
     ])
+  })
+
+  it('writes the Frames from the reviewed plan, showing each as it comes, then fixes the plan', async () => {
+    vi.mocked(api.getSession).mockResolvedValue(storyboard([planned(0), planned(1), planned(2)]))
+    const stream = held()
+    vi.mocked(api.writeStoryboard).mockImplementation((_id, onEvent) => stream.call(onEvent))
+    const { wrapper } = await mountIt()
+    expect(wrapper.find('[data-field="storyboard.frame"]').element).toHaveProperty(
+      'value',
+      'Beat 1.',
+    )
+    expect(wrapper.find('[data-look] textarea').attributes('disabled')).toBeUndefined()
+
+    await wrapper.find('[data-write]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[role=status]').text()).toBe('Writing Frame 1 of 3…')
+    stream.emit({ type: 'written-frame', frame: frame(0) })
+    await flushPromises()
+    expect(wrapper.find('[role=status]').text()).toBe('Writing Frame 2 of 3…')
+    expect(wrapper.findAll('[data-status]').map((s) => s.text())).toEqual([
+      'Draft',
+      'Writing…',
+      'Not written',
+    ])
+
+    stream.emit({ type: 'written', session: storyboard([frame(0), frame(1), frame(2)]) })
+    stream.finish()
+    await flushPromises()
+    expect(wrapper.find('[data-write]').exists()).toBe(false)
+    expect(wrapper.find('[data-field="storyboard.frame"]').element).toHaveProperty(
+      'value',
+      'Body 1.',
+    )
+    expect(wrapper.find('[data-look] textarea').attributes('disabled')).toBeDefined()
+    expect(wrapper.find('[data-plan-fixed]').exists()).toBe(true)
+  })
+
+  it('offers to write the rest after a write that stopped part-way', async () => {
+    vi.mocked(api.getSession).mockResolvedValue(storyboard([frame(0), planned(1), planned(2)]))
+    const { wrapper } = await mountIt()
+    expect(wrapper.find('[data-write]').text()).toBe('Write the rest (2)')
+    // The plan is fixed once a Frame is written, Beats not yet written included.
+    await wrapper.findAll('[data-frame]')[1].trigger('click')
+    expect(wrapper.find('[data-field="storyboard.frame"]').attributes('disabled')).toBeDefined()
+  })
+
+  it('restarts back to the plan once confirmed', async () => {
+    vi.mocked(api.restartStoryboard).mockResolvedValue(
+      storyboard([planned(0), planned(1), planned(2)]),
+    )
+    const confirm = vi.fn().mockReturnValueOnce(false).mockReturnValueOnce(true)
+    vi.stubGlobal('confirm', confirm)
+    const { wrapper } = await mountIt()
+    await wrapper.find('[data-restart]').trigger('click')
+    expect(api.restartStoryboard).not.toHaveBeenCalled()
+    vi.mocked(api.getSession).mockResolvedValue(storyboard([planned(0), planned(1), planned(2)]))
+    await wrapper.find('[data-restart]').trigger('click')
+    await flushPromises()
+    expect(api.restartStoryboard).toHaveBeenCalledWith('sb')
+    expect(wrapper.find('[data-write]').text()).toBe('Write 3 Frames')
   })
 
   it("doesn't plan again once planned", async () => {
@@ -327,11 +397,10 @@ describe('StoryboardView', () => {
     expect(wrapper.find('[data-continue-chain]').attributes('disabled')).toBeDefined()
   })
 
-  it('saves a hand-edited Frame and the Look', async () => {
+  it('saves a hand-edited Frame', async () => {
     vi.mocked(api.saveFrameBody).mockResolvedValue(
       storyboard([frame(0, { body: 'New body.' }), frame(1), frame(2)]),
     )
-    vi.mocked(api.saveLook).mockResolvedValue(storyboard([frame(0), frame(1), frame(2)]))
     const { wrapper } = await mountIt()
     const frameStatus = () => wrapper.find('[data-frame-editor] [data-save-status]').text()
 
@@ -342,6 +411,22 @@ describe('StoryboardView', () => {
     await flushPromises()
     expect(api.saveFrameBody).toHaveBeenCalledWith('sb', 0, 'New body.', ['Rin'])
     expect(frameStatus()).toContain('Saved')
+  })
+
+  it('saves a hand-edited Beat and the Look while reviewing the plan', async () => {
+    const plan = storyboard([planned(0), planned(1), planned(2)])
+    vi.mocked(api.getSession).mockResolvedValue(plan)
+    vi.mocked(api.saveBeat).mockResolvedValue(
+      storyboard([planned(0, { beat: 'Rin dunks.' }), planned(1), planned(2)]),
+    )
+    vi.mocked(api.saveLook).mockResolvedValue(plan)
+    const { wrapper } = await mountIt()
+
+    await wrapper.find('[data-field="storyboard.frame"]').setValue('Rin dunks.')
+    await wrapper.find('[data-frame-editor]').trigger('focusout')
+    await flushPromises()
+    expect(api.saveBeat).toHaveBeenCalledWith('sb', 0, 'Rin dunks.', ['Rin'])
+    expect(api.saveFrameBody).not.toHaveBeenCalled()
 
     await wrapper.find('[data-look] textarea').setValue('Rin, a short student.')
     await wrapper.find('[data-look]').trigger('focusout')
@@ -355,7 +440,7 @@ describe('StoryboardView', () => {
     })
   })
 
-  it('chooses who a Frame shows, and adds and removes people from the Look', async () => {
+  it('chooses who a Frame shows', async () => {
     vi.mocked(api.saveFrameBody).mockImplementation(async (_id, _index, body, shown) =>
       storyboard([frame(0, { body, shown }), frame(1), frame(2)])
     )
@@ -373,7 +458,11 @@ describe('StoryboardView', () => {
       ['sb', 0, 'Body 1.', ['Rin', 'Kai']],
       ['sb', 0, 'Body 1.', ['Kai']],
     ])
+  })
 
+  it('adds and removes people from the Look while reviewing the plan', async () => {
+    vi.mocked(api.getSession).mockResolvedValue(storyboard([planned(0), planned(1), planned(2)]))
+    const { wrapper } = await mountIt()
     expect(wrapper.findAll('[data-person]')).toHaveLength(2)
     await wrapper.find('[data-add-person]').trigger('click')
     expect(wrapper.findAll('[data-person]')).toHaveLength(3)
@@ -390,7 +479,8 @@ describe('StoryboardView', () => {
   it('keeps someone renamed in the Look shown when a Shows pill is clicked straight after', async () => {
     // As the server does: a rename carries over to who each Frame shows, and an unknown name is
     // dropped.
-    let saved = storyboard([frame(0), frame(1), frame(2)])
+    let saved = storyboard([planned(0), planned(1), planned(2)])
+    vi.mocked(api.getSession).mockResolvedValue(saved)
     vi.mocked(api.saveLook).mockImplementation(async (_id, l) => {
       await new Promise((r) => setTimeout(r, 20))
       const renamed = (n: string) =>
@@ -405,11 +495,11 @@ describe('StoryboardView', () => {
       }
       return saved
     })
-    vi.mocked(api.saveFrameBody).mockImplementation(async (_id, index, body, shown) => {
+    vi.mocked(api.saveBeat).mockImplementation(async (_id, index, beat, shown) => {
       const known = shown.filter((n) => saved.look!.people.some((p) => p.name === n))
       saved = {
         ...saved,
-        frames: saved.frames.map((f) => (f.index === index ? { ...f, body, shown: known } : f)),
+        frames: saved.frames.map((f) => (f.index === index ? { ...f, beat, shown: known } : f)),
       }
       return saved
     })

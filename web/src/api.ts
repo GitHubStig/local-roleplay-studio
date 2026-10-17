@@ -304,11 +304,17 @@ export interface ChainFrame extends PicturedFrame {
   createdAt: string
 }
 
-/** A Storyboard Frame: planned from a Beat, then edited and rendered on its own. */
+/**
+ * A Storyboard Frame: planned as a Beat and who it shows, reviewed, then written out from the
+ * plan, and edited and rendered on its own.
+ */
 export interface StoryboardFrame extends PicturedFrame {
   /** What happens in this Frame. */
   beat: string
-  /** Its own seven sentences; the prompt adds who it shows before and the Look's style after. */
+  /**
+   * Its own seven sentences; the prompt adds who it shows before and the Look's style after.
+   * Empty, with an empty prompt, until the Frame is written.
+   */
   body: string
   /** Names of the Look's people it shows, most prominent first; none for the place alone. */
   shown: string[]
@@ -380,10 +386,13 @@ export interface ChainSession extends SessionBase {
 export interface StoryboardSession extends SessionBase {
   kind: 'storyboard'
   frameCount: number
-  /** Null until planned. */
+  /** Null until planned; edited, with the Beats, only until the first Frame is written. */
   look: Look | null
   frames: StoryboardFrame[]
 }
+
+/** A Storyboard Frame's sentences are written: it has a prompt, and can be edited and rendered. */
+export const isWritten = (frame: StoryboardFrame) => frame.body !== ''
 
 export type Session = ChainSession | StoryboardSession | RoleplaySession
 
@@ -414,14 +423,15 @@ export type FrameEvent =
 
 /** An upscale's stream: ends with the Session, the Frame now upscaled. */
 
-/** A Storyboard's streams: planning, rendering a Frame, editing a Frame by Action. */
+/** A Storyboard's streams: planning, writing the Frames, rendering one, editing one by Action. */
 export type StoryboardEvent =
   | ProgressEvent
   | EndEvent
   | { type: 'look'; look: Look }
-  | { type: 'beats'; beats: string[] }
-  | { type: 'planned-frame'; frame: StoryboardFrame }
+  | { type: 'planned-beat'; index: number; beat: string; shown: string[] }
   | { type: 'planned'; session: StoryboardSession }
+  | { type: 'written-frame'; frame: StoryboardFrame }
+  | { type: 'written'; session: StoryboardSession }
   | { type: 'rendered'; frame: StoryboardFrame }
   | { type: 'edited'; outcome: Outcome; narration: string; session: StoryboardSession }
 
@@ -517,6 +527,14 @@ export const put = <T>(path: string, body: unknown) =>
 export const saveFrameBody = (id: string, index: number, body: string, shown: string[]) =>
   put<StoryboardSession>(`/api/sessions/${id}/frames/${index}`, { body, shown })
 
+/** Replaces one Beat of a Storyboard's plan, and who it shows; only before its Frames are written. */
+export const saveBeat = (id: string, index: number, beat: string, shown: string[]) =>
+  put<StoryboardSession>(`/api/sessions/${id}/frames/${index}`, { beat, shown })
+
+/** Takes a Storyboard back to its plan: every Frame's sentences and pictures go. */
+export const restartStoryboard = (id: string) =>
+  post<StoryboardSession>(`/api/sessions/${id}/restart`)
+
 /**
  * Makes a new Chain from a Storyboard's Frames up to `index`, with their pictures, to carry on
  * from that Frame by Actions; the Storyboard stays as it is.
@@ -528,7 +546,7 @@ export const chainFromStoryboard = (id: string, index: number) =>
 export const saveChainPrompt = (id: string, index: number, prompt: string) =>
   put<ChainSession>(`/api/sessions/${id}/frames/${index}`, { prompt })
 
-/** Replaces a Storyboard's Look; every Frame's prompt follows. */
+/** Replaces a Storyboard's Look; only before its Frames are written. */
 export const saveLook = (id: string, look: Look) =>
   put<StoryboardSession>(`/api/sessions/${id}/look`, look)
 
@@ -632,9 +650,13 @@ export const streamFrame = (
     onEvent,
   )
 
-/** Plans a Storyboard, reporting its Look, Beats and Frames as they arrive. */
+/** Plans a Storyboard, reporting its Look and Beats as they arrive. */
 export const planStoryboard = (sessionId: string, onEvent: (event: StoryboardEvent) => void) =>
   streamEvents<StoryboardEvent>(`/api/sessions/${sessionId}/plan`, {}, ['planned'], onEvent)
+
+/** Writes a Storyboard's Frames from its reviewed plan, reporting each as it's saved. */
+export const writeStoryboard = (sessionId: string, onEvent: (event: StoryboardEvent) => void) =>
+  streamEvents<StoryboardEvent>(`/api/sessions/${sessionId}/write`, {}, ['written'], onEvent)
 
 /** Edits one Storyboard Frame through the Text Model, following an Action. */
 export const editStoryboardFrame = (

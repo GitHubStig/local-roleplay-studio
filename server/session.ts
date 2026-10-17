@@ -42,14 +42,17 @@ export interface ChainFrame extends FrameBase {
   thinking?: string
 }
 
-/** A Storyboard Frame: planned from a Beat, edited and rendered on its own. */
+/**
+ * A Storyboard Frame: planned as a Beat and who it shows, reviewed, then written out from the plan,
+ * and edited and rendered on its own.
+ */
 export interface StoryboardFrame extends FrameBase {
   /** What happens in this Frame, from the Storyboard's plan. */
   beat: string
   /**
    * The seven sentences only this Frame has (pose, expression, camera, clothing, environment,
    * lighting, color); the prompt is the identities of the people it shows, these, then the Look's
-   * style sentence.
+   * style sentence. Empty, with an empty prompt, until the Frame is written.
    */
   body: string
   /**
@@ -118,7 +121,10 @@ export interface StoryboardSession extends SessionBase {
   kind: 'storyboard'
   /** How many Frames to plan. */
   frameCount: number
-  /** Null until the Storyboard has been planned. */
+  /**
+   * Null until the Storyboard has been planned; edited, with the Beats, only until its first Frame
+   * is written.
+   */
   look: Look | null
   frames: StoryboardFrame[]
 }

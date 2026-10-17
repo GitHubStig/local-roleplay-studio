@@ -23,7 +23,8 @@ const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().t
  * its words.
  */
 export function matchShown(people: Person[], names: string[]): string[] {
-  const words = (n: string) => n.toLowerCase().split(/\s+/).filter(Boolean)
+  // Words without punctuation: "Kael, the smuggler" still has Kael's name.
+  const words = (n: string) => n.toLowerCase().split(/[^\p{L}\p{N}'’-]+/u).filter(Boolean)
   const matched = names.map((name) =>
     people.find((p) => sameName(p.name, name)) ??
       people.find((p) => {

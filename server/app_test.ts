@@ -708,7 +708,7 @@ Deno.test('POST /api/sessions makes a Storyboard with a Frame count', () =>
     }
   }))
 
-Deno.test('A Storyboard plans, renders, and is edited by hand and by Action over the API', () =>
+Deno.test('A Storyboard is planned, reviewed, written, rendered and edited over the API', () =>
   withTempDir(async (root) => {
     const newLook = {
       people: [{ name: 'Ace', identity: 'Ace, a tall adult athlete.' }],
@@ -724,7 +724,6 @@ Deno.test('A Storyboard plans, renders, and is edited by hand and by Action over
           narration: 'Pose: soaring.',
           body: 'He soars.',
           shown: ['Ace'],
-          look: planOf(3).look,
         }],
       }),
     })
@@ -734,18 +733,53 @@ Deno.test('A Storyboard plans, renders, and is edited by hand and by Action over
     assertEquals(plan.map(([e]) => e), [
       'phase',
       'look',
-      'beats',
-      'planned-frame',
-      'planned-frame',
-      'planned-frame',
+      'planned-beat',
+      'planned-beat',
+      'planned-beat',
       'planned',
     ])
     assertEquals((await call('POST', '/api/sessions/s1/plan')).status, 409)
 
+    // Reviewed: the Look and a Beat edited by hand; nothing renders until written.
+    const look = await (await call('PUT', '/api/sessions/s1/look', newLook)).json()
+    assertEquals(look.look, newLook)
+    const oldShape = { subject: 'A man.', style: 'Ink.' }
+    assertEquals((await call('PUT', '/api/sessions/s1/look', oldShape)).status, 400)
+    const beat = await call('PUT', '/api/sessions/s1/frames/1', { beat: 'Ace jumps.', shown: [] })
+    assertEquals((await beat.json()).frames[1], {
+      ...look.frames[1],
+      beat: 'Ace jumps.',
+      shown: [],
+    })
+    assertEquals((await call('PUT', '/api/sessions/s1/frames/1', { beat: 'Nude.' })).status, 422)
+    assertEquals(
+      (await call('PUT', '/api/sessions/s1/frames/1', { body: 'He lands.' })).status,
+      409,
+    )
+    const early = await call('POST', '/api/sessions/s1/jobs', { kind: 'render', frameIndex: 2 })
+    assertEquals(early.status, 409)
+
+    const write = await readEvents(await call('POST', '/api/sessions/s1/write'))
+    assertEquals(write.map(([e]) => e), [
+      'phase',
+      'written-frame',
+      'written-frame',
+      'written-frame',
+      'written',
+    ])
+    assertEquals((await call('POST', '/api/sessions/s1/write')).status, 409)
+    // The plan is fixed now.
+    assertEquals((await call('PUT', '/api/sessions/s1/look', newLook)).status, 409)
+    assertEquals(
+      (await call('PUT', '/api/sessions/s1/frames/1', { beat: 'Ace sits.' })).status,
+      409,
+    )
+
     const render = await call('POST', '/api/sessions/s1/jobs', { kind: 'render', frameIndex: 2 })
     assertEquals(render.status, 201)
     assertEquals(await settled(call), [])
-    assertMatch((await storyboardFrames(call))[2].image!, /^frame-2-[0-9a-f]{8}\.png$/)
+    const image = (await storyboardFrames(call))[2].image!
+    assertMatch(image, /^frame-2-[0-9a-f]{8}\.png$/)
     const past = await call('POST', '/api/sessions/s1/jobs', { kind: 'render', frameIndex: 9 })
     assertEquals(past.status, 404)
 
@@ -761,11 +795,6 @@ Deno.test('A Storyboard plans, renders, and is edited by hand and by Action over
     })
     assertEquals(badShown.status, 400)
 
-    const look = await (await call('PUT', '/api/sessions/s1/look', newLook)).json()
-    assertEquals(look.look, newLook)
-    const oldShape = { subject: 'A man.', style: 'Ink.' }
-    assertEquals((await call('PUT', '/api/sessions/s1/look', oldShape)).status, 400)
-
     const edit = await readEvents(
       await call('POST', '/api/sessions/s1/frames/0/edit', { action: 'soar' }),
     )
@@ -779,6 +808,13 @@ Deno.test('A Storyboard plans, renders, and is edited by hand and by Action over
       'done',
       'He soars.',
     ])
+
+    // Restarted: back to the reviewed plan, the pictures gone.
+    const restarted = await (await call('POST', '/api/sessions/s1/restart')).json()
+    assertEquals(restarted.frames.map((f: { body: string }) => f.body), ['', '', ''])
+    assertEquals(restarted.frames[1].beat, 'Ace jumps.')
+    assertEquals((await call('GET', `/api/sessions/s1/images/${image}`)).status, 404)
+    assertEquals((await call('PUT', '/api/sessions/s1/look', newLook)).status, 200)
   }))
 
 Deno.test("Chains and Storyboards refuse each other's routes", () =>
@@ -787,6 +823,8 @@ Deno.test("Chains and Storyboards refuse each other's routes", () =>
     await call('POST', '/api/sessions', { brief: 'A knight.' }) // s1, a Chain
     await call('POST', '/api/sessions', { kind: 'storyboard', brief: 'A dunk.' }) // s2
     assertEquals((await call('POST', '/api/sessions/s1/plan')).status, 409)
+    assertEquals((await call('POST', '/api/sessions/s1/write')).status, 409)
+    assertEquals((await call('POST', '/api/sessions/s1/restart')).status, 409)
     assertEquals(
       (await call('PUT', '/api/sessions/s1/look', { people: [], style: 'b' })).status,
       409,
@@ -797,6 +835,9 @@ Deno.test("Chains and Storyboards refuse each other's routes", () =>
       (await call('PUT', '/api/sessions/s2/look', { people: [], style: 'b' })).status,
       409,
     )
+    // Not planned yet: nothing to write or restart.
+    assertEquals((await call('POST', '/api/sessions/s2/write')).status, 409)
+    assertEquals((await call('POST', '/api/sessions/s2/restart')).status, 409)
   }))
 
 Deno.test('Cancelling a plan discards the Storyboard', () =>
@@ -1283,6 +1324,7 @@ Deno.test('A Storyboard Frame upscales once rendered; a re-render replaces the u
     })
     await call('POST', '/api/sessions', { kind: 'storyboard', brief: 'A dunk.', frameCount: 2 })
     await readEvents(await call('POST', '/api/sessions/s1/plan'))
+    await readEvents(await call('POST', '/api/sessions/s1/write'))
     const job = (kind: string) => call('POST', '/api/sessions/s1/jobs', { kind, frameIndex: 0 })
     assertEquals((await job('upscale')).status, 409) // nothing to upscale yet
 
@@ -1299,7 +1341,7 @@ Deno.test('A Storyboard Frame upscales once rendered; a re-render replaces the u
     assertEquals((await call('GET', `/api/sessions/s1/images/${upscaled}`)).status, 404)
   }))
 
-Deno.test('A Look saved while a Frame renders waits for it, and the next render has it', () =>
+Deno.test('A Restart cancels the renders, waits for the one running, and clears the Frames', () =>
   withTempDir(async (root) => {
     const images = fakeImageGenerator()
     const prompts: string[] = []
@@ -1321,23 +1363,22 @@ Deno.test('A Look saved while a Frame renders waits for it, and the next render 
     })
     await call('POST', '/api/sessions', { kind: 'storyboard', brief: 'A dunk.', frameCount: 2 })
     await readEvents(await call('POST', '/api/sessions/s1/plan'))
+    await readEvents(await call('POST', '/api/sessions/s1/write'))
     await call('POST', '/api/sessions/s1/jobs', { kind: 'render', frameIndex: 0 })
     await call('POST', '/api/sessions/s1/jobs', { kind: 'render', frameIndex: 1 })
     // Frame 0's render is running, Frame 1's queued behind it.
     while (!prompts.length) await new Promise((r) => setTimeout(r, 5))
 
-    let saved = false
-    const look = call('PUT', '/api/sessions/s1/look', { ...planOf(2).look, style: 'Watercolour.' })
-      .then((res) => (saved = true, res))
+    let done = false
+    const restart = call('POST', '/api/sessions/s1/restart').then((res) => (done = true, res))
     await new Promise((r) => setTimeout(r, 50))
-    assertEquals(saved, false)
+    assertEquals(done, false)
     release()
-    assertEquals((await look).status, 200)
-    await settled(call)
-
-    assertEquals(prompts.map((p) => p.endsWith('Watercolour.')), [false, true])
+    assertEquals((await restart).status, 200)
+    assertEquals(await settled(call), [])
+    assertEquals(prompts.length, 1)
     const frames = await storyboardFrames(call)
-    assertEquals(frames.map((f) => !!f.stale), [true, false])
+    assertEquals(frames.map((f) => [f.body, f.image]), [['', null], ['', null]])
   }))
 
 Deno.test('A Storyboard queues SHARP, TripoSplat and LiTo; a re-render drops them', () =>
@@ -1352,6 +1393,7 @@ Deno.test('A Storyboard queues SHARP, TripoSplat and LiTo; a re-render drops the
     })
     await call('POST', '/api/sessions', { kind: 'storyboard', brief: 'A dunk.', frameCount: 2 })
     await readEvents(await call('POST', '/api/sessions/s1/plan'))
+    await readEvents(await call('POST', '/api/sessions/s1/write'))
     const job = (kind: string) => call('POST', '/api/sessions/s1/jobs', { kind, frameIndex: 1 })
     assertEquals((await job('scene')).status, 409) // no picture, and none coming
     // Queued back to back: the 3D waits behind the render that makes its picture.

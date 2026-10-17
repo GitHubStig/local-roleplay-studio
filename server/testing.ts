@@ -8,6 +8,8 @@ import type {
   PlanHandlers,
   StoryboardEdit,
   StoryboardPlan,
+  StoryboardWrite,
+  StoryboardWriteRequest,
   TextModel,
 } from './textModel.ts'
 
@@ -40,8 +42,14 @@ export const promptWith = (pose: string): ImagePrompt =>
 /** Scripted Storyboard replies for `scriptedTextModel`. */
 export interface Scripts {
   plans?: (StoryboardPlan | Error)[]
+  /** Each Frame's Write; with none scripted, a Frame is written as `writtenBody` says. */
+  writes?: (StoryboardWrite | Error)[]
   edits?: (StoryboardEdit | Error)[]
 }
+
+/** The sentences the scripted Text Model writes for Frame `index` when none are scripted. */
+export const writtenBody = (index: number) =>
+  `Pose ${index + 1}. Calm. Wide shot. Kit. Court. Light. Grey.`
 
 /**
  * A Text Model that replies from queues; an Error in a queue is thrown instead. It says an Action
@@ -51,7 +59,12 @@ export function scriptedTextModel(
   replies: (FrameText | Error)[],
   realPeople: string[] = [],
   scripts: Scripts = {},
-): TextModel & { calls: number; personChecks: string[]; requests: FrameRequest[] } {
+): TextModel & {
+  calls: number
+  personChecks: string[]
+  requests: FrameRequest[]
+  writeRequests: StoryboardWriteRequest[]
+} {
   const next = <T>(queue: (T | Error)[] | undefined, what: string): Promise<T> => {
     const item = queue?.shift()
     if (!item) return Promise.reject(new Error(`no scripted ${what} left`))
@@ -62,6 +75,8 @@ export function scriptedTextModel(
     personChecks: [] as string[],
     /** Each Chain Frame asked for, in order. */
     requests: [] as FrameRequest[],
+    /** Each Storyboard Frame written, in order. */
+    writeRequests: [] as StoryboardWriteRequest[],
     write(req: FrameRequest, signal: AbortSignal, onThinking?: (chunk: string) => void) {
       model.calls++
       model.requests.push(req)
@@ -82,9 +97,15 @@ export function scriptedTextModel(
       signal.throwIfAborted()
       const plan = await next(scripts.plans, 'plan')
       on.look?.(plan.look)
-      on.beats?.(plan.beats)
-      plan.frames.forEach((frame, i) => on.frame?.(i, frame))
+      plan.beats.forEach((beat, i) => on.beat?.(i, beat))
       return plan
+    },
+    writeStoryboardFrame(req: StoryboardWriteRequest, signal: AbortSignal) {
+      model.calls++
+      model.writeRequests.push(req)
+      signal.throwIfAborted()
+      if (scripts.writes === undefined) return Promise.resolve({ body: writtenBody(req.index) })
+      return next(scripts.writes, 'write')
     },
     editStoryboardFrame(_req: unknown, signal: AbortSignal) {
       model.calls++
@@ -101,11 +122,7 @@ export const planOf = (n: number, extra: Partial<StoryboardPlan> = {}): Storyboa
     people: [{ name: 'Ace', identity: 'Ace, a tall adult athlete.' }],
     style: 'A pencil sketch.',
   },
-  beats: Array.from({ length: n }, (_, i) => `Beat ${i + 1}`),
-  frames: Array.from({ length: n }, (_, i) => ({
-    body: `Pose ${i + 1}. Calm. Wide shot. Kit. Court. Light. Grey.`,
-    shown: ['Ace'],
-  })),
+  beats: Array.from({ length: n }, (_, i) => ({ beat: `Beat ${i + 1}`, shown: ['Ace'] })),
   ...extra,
 })
 

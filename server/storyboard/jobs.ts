@@ -14,7 +14,7 @@ import {
 } from '../pictureJobs.ts'
 import type { StoryboardSession } from '../session.ts'
 import { updateSession } from '../update.ts'
-import { renderStoryboardFrame } from './storyboard.ts'
+import { isWritten, renderStoryboardFrame } from './storyboard.ts'
 
 /** Why `kind` can't be queued on a Storyboard's Frame `index`, or null if it can. */
 export function checkStoryboardJob(
@@ -24,6 +24,7 @@ export function checkStoryboardJob(
   pending: readonly JobKind[],
 ): Response | null {
   const frame = session.frames[index]
+  if (!isWritten(frame)) return error(`Frame ${index + 1} isn't written yet`, 409)
   if (kind === 'render') {
     return frame.blocked ? error(`Frame ${index + 1} crosses a limit: ${frame.blocked}`, 422) : null
   }

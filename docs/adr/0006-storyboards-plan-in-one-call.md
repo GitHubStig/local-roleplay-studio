@@ -1,6 +1,8 @@
 ---
-status: accepted
+status: superseded by ADR 0019
 ---
+
+*Since 2026-10-17 a Storyboard is planned (the Look and Beats), reviewed, then written a call per Frame: [ADR 0019](0019-storyboards-plan-review-write.md).*
 
 # A Storyboard is planned in one Text Model call, with a shared Look
 

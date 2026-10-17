@@ -10,6 +10,8 @@ Deno.test('matchShown matches names by their words, in the order given, once eac
     'Captain Cal Reyes',
     'Ben',
   ])
+  // A name written with its identity after it, as Gemma 4 26B did in a plan's Beats (2026-10-17).
+  assertEquals(matchShown(people, ['Ben, a tall sailor, by the mast.']), ['Ben'])
 })
 
 Deno.test('renameShown follows a renamed person by their place while the Look keeps its size', () => {

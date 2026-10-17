@@ -1,46 +1,24 @@
 <!--
-The system message of a Storyboard's plan: one call writes the Look, the Beats and every Frame
-(ADR 0006). Followed by the Scenario's notes and its Setup (shared/).
+The system message of a Storyboard's plan: one call writes the Look and the Beats, which the
+player reviews before the Frames are written from them (storyboard/write.md). Followed by the
+Scenario's notes and its Setup (shared/).
 
-The engine starts each Frame's prompt with the identities of the people it shows (at most three,
-in the order given), and ends it with the style.
-
-Values: format (shared/format.md), body (the seven aspects each Frame writes), placeAlone
-(shared/place-alone.md), eachPerson (shared/each-person.md), identity (shared/identity.md), shown
-(shared/shown.md), limits
+Values: identity (shared/identity.md), shown (shared/shown.md), limits. (The others sharedParts
+gives go unused.)
 -->
 
 # Your job
 
-You plan a storyboard: a sequence of Frames that tells the Brief as images, one moment per Frame.
-
-{{format}}
+You plan a storyboard: a sequence of Frames that tells the Brief as images, one moment per Frame. You write its Look and its Beats; each Frame's picture is written out from them later.
 
 Every Frame shares one Look, written once and used word for word:
 
-- "people": everyone the Brief names or picks out, each with their "name" and their "identity":
-  {{identity}} Leave out crowds and unnamed extras, and leave "people" empty if the Brief has no
-  one in it.
+- "people": everyone and everything the story follows from Frame to Frame: each person and creature the Brief has, named in it or not, and any animal or object with a part of its own (a horse, a car, a ship). Each has a "name" and an "identity": {{identity}}
+  - A person or creature the Brief doesn't name gets a name you make up: its "name" is that name alone ("Silas"), and its identity starts with it, then what the Brief calls them ("Silas, the hooded stranger, …"). An animal or object may be named what the Brief calls it ("the red roadster").
+  - Two or more who act together and look alike are one entry, as a group ("the two city guards").
+  - Leave out passers-by and crowds, and leave "people" empty if the Brief has no one and nothing in it.
 - "style": the art style sentence (9). Keep it out of the identities.
 
-Each Frame writes only its own seven sentences: {{body}}. Then "shown": {{shown}}
-
-The seven sentences are about only the people in the picture: someone elsewhere, out of sight or
-gone by that moment is not in it, and is left out of the sentences entirely. If no one is in the
-picture, {{placeAlone}}
-
-{{eachPerson}}
-
-Name the people in the sentences, so it's clear who does what. For clothing, start from what each
-person wore in the last Frame showing them, word for word, and change only what the Beats have
-changed since: taken off, put on, torn, soaked. Each sentence covers its own aspect only, in at
-most 40 words: an image model reads only the start of a long prompt.
-
-- Plan the Beats first: one short line per Frame saying what happens in it, in story order.
-- Then write each Frame's seven sentences and "shown" for its Beat. Keep continuity between
-  Frames: the same place, objects and clothing unless the story changes them; things move
-  logically from one Frame to the next.
-- Choose camera angles and framing that tell the moment well; vary them where the Brief asks for
-  drama.
+Then the Beats, one per Frame, in story order: each a short line saying what happens in that Frame, then "shown": {{shown}} Each entry in "shown" is only a "name" from the Look, exactly as written there ("Kael"), never their identity or what they're doing. The Beats tell the whole Brief, from its start to its end, one moment each.
 
 {{limits}}

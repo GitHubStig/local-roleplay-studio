@@ -21,6 +21,7 @@ import {
   editStoryboardFrame,
   getSession,
   imageUrl,
+  isWritten,
   type JobKind,
   type Look,
   type Made3d,
@@ -28,12 +29,15 @@ import {
   type Outcome,
   type PicturedFrame,
   planStoryboard,
+  restartStoryboard,
+  saveBeat,
   saveFrameBody,
   saveLook,
   type StoryboardEvent,
   type StoryboardFrame,
   type StoryboardSession,
   shownPicture,
+  writeStoryboard,
 } from '../api'
 import CollapsibleTextarea from '../components/CollapsibleTextarea.vue'
 import ComposeBox from '../components/ComposeBox.vue'
@@ -69,11 +73,12 @@ const panel = ref<'frames' | 'queue' | 'prompt'>('frames')
 const message = ref<{ kind: 'error' | Outcome; text: string } | null>(null)
 
 /**
- * The Storyboard's own work in progress, which holds it until done: the plan, or an edit. Renders,
- * upscales and 3D are queued jobs instead (`useJobs`), so editing carries on beside them.
+ * The Storyboard's own work in progress, which holds it until done: the plan, writing its Frames,
+ * or an edit. Renders, upscales and 3D are queued jobs instead (`useJobs`), so editing carries on
+ * beside them.
  */
 interface Work {
-  kind: 'plan' | 'edit'
+  kind: 'plan' | 'write' | 'edit'
   phase: Activity
   frameIndex: number | null
   progress?: { step: number; total: number }
@@ -84,22 +89,26 @@ interface Work {
 const work = ref<Work | null>(null)
 
 /** What the plan has produced so far, shown while it streams in. */
-const planning = ref<{ look: Look | null; beats: string[]; frames: StoryboardFrame[] } | null>(null)
+const planning = ref<{ look: Look | null; beats: { beat: string; shown: string[] }[] } | null>(null)
 
 const busy = computed(() => work.value !== null)
 const planned = computed(() => (session.value?.frames.length ?? 0) > 0)
+/** How many Frames are written; once one is, the Look and Beats are fixed until a Restart. */
+const writtenCount = computed(() => session.value?.frames.filter(isWritten).length ?? 0)
+const writingStarted = computed(() => writtenCount.value > 0)
+const allWritten = computed(() => planned.value && writtenCount.value === session.value!.frames.length)
 
-/** The Frames to list: the saved ones, or the plan as it arrives. */
+/** The Frames to list: the saved ones, or the plan's Beats as they arrive. */
 const frames = computed<(StoryboardFrame | { index: number; beat: string; pending: true })[]>(() => {
   if (planned.value || !planning.value) return session.value?.frames ?? []
-  return planning.value.beats.map((beat, index) =>
-    planning.value!.frames[index] ?? { index, beat, pending: true as const }
-  )
+  return planning.value.beats.map(({ beat }, index) => ({ index, beat, pending: true as const }))
 })
 const current = computed(() => {
   const f = frames.value[selected.value]
   return f && !('pending' in f) ? f : null
 })
+/** The selected Frame is written: it has sentences to edit, and a prompt to render. */
+const currentWritten = computed(() => !!current.value && isWritten(current.value))
 const look = computed(() => session.value?.look ?? planning.value?.look ?? null)
 /** The picture a Frame shows, by the Storyboard's Image Model if it has one. */
 const pictureOf = (frame: PicturedFrame) => shownPicture(frame, session.value!.settings.imageModel)
@@ -170,7 +179,8 @@ let followTimer: ReturnType<typeof setTimeout> | undefined
 function follow() {
   const s = session.value!
   work.value = {
-    kind: s.frames.length ? 'edit' : 'plan',
+    // Writing the Frames is on no one Frame; an edit is.
+    kind: !s.frames.length ? 'plan' : s.activeFrame == null ? 'write' : 'edit',
     phase: s.activity!,
     frameIndex: s.activeFrame ?? null,
     detached: true,
@@ -222,20 +232,56 @@ async function run(next: Work, call: () => Promise<void>) {
 }
 
 async function plan() {
-  planning.value = { look: null, beats: [], frames: [] }
+  planning.value = { look: null, beats: [] }
   await run({ kind: 'plan', phase: 'text', frameIndex: null }, () =>
     planStoryboard(props.id, (event) => {
       if (track(event)) return
       const p = planning.value!
       // The Look comes first, so a new one means a retry started the plan over.
-      if (event.type === 'look') planning.value = { look: event.look, beats: [], frames: [] }
-      else if (event.type === 'beats') p.beats = event.beats
-      else if (event.type === 'planned-frame') p.frames[event.frame.index] = event.frame
-      else if (event.type === 'planned') {
+      if (event.type === 'look') planning.value = { look: event.look, beats: [] }
+      else if (event.type === 'planned-beat') {
+        p.beats[event.index] = { beat: event.beat, shown: event.shown }
+      } else if (event.type === 'planned') {
         session.value = event.session
         planning.value = null
       }
     }))
+}
+
+/**
+ * Writes the Frames from the reviewed plan, a call per Frame, each shown as it's saved; after a
+ * failure or Cancel, writing again carries on from the first not written.
+ */
+async function writeFrames() {
+  if (busy.value || !planned.value || allWritten.value) return
+  // Written from the plan as saved.
+  if (!(await flushEdits('written'))) return
+  const first = session.value!.frames.findIndex((f) => !isWritten(f))
+  await run({ kind: 'write', phase: 'text', frameIndex: first }, () =>
+    writeStoryboard(props.id, (event) => {
+      if (track(event)) return
+      if (event.type === 'written-frame') {
+        const s = session.value!
+        s.frames = s.frames.map((f) => (f.index === event.frame.index ? event.frame : f))
+        work.value = { ...work.value!, frameIndex: event.frame.index + 1 }
+      } else if (event.type === 'written') session.value = event.session
+    }))
+}
+
+/** Back to the plan, once confirmed: every Frame's sentences and pictures go. */
+async function restart() {
+  if (busy.value) return
+  const what =
+    'Restart this Storyboard? Every Frame\'s sentences and pictures are deleted, and the Look and ' +
+    "Beats can be edited again. This can't be undone."
+  if (!confirm(what)) return
+  message.value = null
+  try {
+    session.value = await restartStoryboard(props.id)
+    await load()
+  } catch (err) {
+    message.value = { kind: 'error', text: (err as Error).message }
+  }
 }
 
 // --- Queued work: renders, upscales and 3D, each on its Frame.
@@ -260,7 +306,7 @@ const selectedJob = computed(() =>
 /** Frames that still need an image: never rendered, or changed since. Blocked ones are skipped. */
 const toRender = computed(() =>
   (session.value?.frames ?? []).filter((f) =>
-    !f.blocked && (!pictureOf(f) || changed(f)) && !hasJob(f.index, 'render')
+    isWritten(f) && !f.blocked && (!pictureOf(f) || changed(f)) && !hasJob(f.index, 'render')
   )
 )
 
@@ -275,7 +321,7 @@ async function cancel() {
 const draft = useStoredText(`draft:${props.id}`)
 async function sendAction() {
   const action = draft.value.trim()
-  if (!action || busy.value || !current.value) return
+  if (!action || busy.value || !current.value || !currentWritten.value) return
   const index = current.value.index
   // The Action is made to what's saved.
   if (!(await flushEdits('sent'))) return
@@ -301,17 +347,15 @@ async function saveLookDraft(draft: Look): Promise<Look> {
   session.value = await saveLook(props.id, draft)
   return session.value.look!
 }
-/** A Look saved while a Frame renders waits for it, so the renders queued behind it have it. */
-const lookSavingText = computed(() =>
-  runningJob.value?.kind === 'render'
-    ? `Saving once Frame ${runningJob.value.frameIndex + 1} has rendered…`
-    : undefined
-)
 
+/** The selected Frame's text and who it shows: its Beat until it's written, then its sentences. */
 interface FrameDraft {
-  body: string
+  text: string
   shown: string[]
 }
+/** Which Frame, and which of its texts: `3:beat`, `3:body`. */
+const draftKey = (index: number, written: boolean) => `${index}:${written ? 'body' : 'beat'}`
+const keyIndex = (key: unknown) => Number(String(key).split(':')[0])
 const {
   draft: frameDraft,
   status: frameStatus,
@@ -320,19 +364,28 @@ const {
   revert: revertFrame,
   onFocusout: onFrameFocusout,
 } = useAutosave<FrameDraft>({
-  source: () => (current.value ? { body: current.value.body, shown: current.value.shown } : null),
-  key: () => current.value?.index,
-  async save(draft, key) {
-    const index = key as number
-    session.value = await saveFrameBody(props.id, index, draft.body.trim(), draft.shown)
-    const saved = session.value.frames[index]
-    return { body: saved.body, shown: saved.shown }
+  source: () => {
+    const f = current.value
+    return f ? { text: isWritten(f) ? f.body : f.beat, shown: f.shown } : null
   },
-  hold: (draft) => (draft.body.trim() ? null : 'the Frame needs its sentences'),
-  normal: (draft) => ({ body: draft.body.trim(), shown: draft.shown }),
-  name: (key) => frameTitle(key as number),
+  key: () => current.value && draftKey(current.value.index, isWritten(current.value)),
+  async save(draft, key) {
+    const index = keyIndex(key)
+    const text = draft.text.trim()
+    session.value = String(key).endsWith(':body')
+      ? await saveFrameBody(props.id, index, text, draft.shown)
+      : await saveBeat(props.id, index, text, draft.shown)
+    const saved = session.value.frames[index]
+    return { text: isWritten(saved) ? saved.body : saved.beat, shown: saved.shown }
+  },
+  hold: (draft) =>
+    draft.text.trim() ? null : currentWritten.value ? 'the Frame needs its sentences' : 'the Beat needs a line',
+  normal: (draft) => ({ text: draft.text.trim(), shown: draft.shown }),
+  name: (key) => frameTitle(keyIndex(key)),
   line,
 })
+/** The selected Frame's text and Shows can be edited: its sentences once written, else its Beat until writing starts. */
+const frameEditable = computed(() => currentWritten.value || !writingStarted.value)
 /** The selected Frame is rendering: its sentences wait, so its picture is of what they say. */
 const renderingSelected = computed(() =>
   runningJob.value?.kind === 'render' && runningJob.value.frameIndex === selected.value
@@ -413,6 +466,7 @@ useEventListener(window, 'beforeunload', warnBeforeUnload)
 
 /** Draft, Stale, Blocked or Rendered, for a Frame in the list and on the image. */
 function status(f: StoryboardFrame): { label: string; tone: string } {
+  if (!isWritten(f)) return { label: 'Not written', tone: 'text-muted' }
   if (f.blocked) return { label: 'Blocked', tone: 'text-danger' }
   if (!pictureOf(f)) return { label: 'Draft', tone: 'text-muted' }
   if (changed(f)) return { label: 'Changed since render', tone: 'text-warn' }
@@ -424,12 +478,13 @@ const statusLabel = computed(() => {
   const w = work.value
   if (!w) return ''
   if (w.cancelling) return 'Cancelling…'
+  const total = session.value?.frames.length || session.value?.frameCount || 0
   if (w.kind === 'plan') {
-    const written = planning.value?.frames.filter(Boolean).length ?? 0
-    const total = planning.value?.beats.length || session.value?.frameCount || 0
     if (!planning.value?.look) return 'Planning the Storyboard…'
-    return `Writing Frame ${Math.min(written + 1, total)} of ${total}…`
+    const planned = planning.value.beats.filter(Boolean).length
+    return `Planning Beat ${Math.min(planned + 1, total)} of ${total}…`
   }
+  if (w.kind === 'write') return `Writing Frame ${Math.min((w.frameIndex ?? 0) + 1, total)} of ${total}…`
   if (w.phase === 'download') return DOWNLOADING
   return `Editing Frame ${(w.frameIndex ?? 0) + 1}…`
 })
@@ -505,7 +560,7 @@ const imagesOn = computed(() => featureOn.value('images'))
           :rendering="renderingHere"
           :preview="forming"
           :hide-size="busy"
-          :empty-text="current ? (current.blocked ? 'Blocked: edit this Frame first' : 'Not rendered yet') : 'Planning…'"
+          :empty-text="!current ? 'Planning…' : !currentWritten ? 'Not written yet' : current.blocked ? 'Blocked: edit this Frame first' : 'Not rendered yet'"
           :expected-size="session.imageSize"
           @open="viewingPicture = current!.index"
         >
@@ -543,19 +598,34 @@ const imagesOn = computed(() => featureOn.value('images'))
           >
             <ComposeBox
               v-model="draft"
-              :placeholder="current
-              ? `What to change in Frame ${current.index + 1}… (Enter to send, Shift+Enter for a new line)`
-              : 'Frames can be edited once the plan is written.'"
-              :disabled="busy || !current"
+              :placeholder="currentWritten
+              ? `What to change in Frame ${current!.index + 1}… (Enter to send, Shift+Enter for a new line)`
+              : 'Frames can be edited by Action once they\'re written.'"
+              :disabled="busy || !currentWritten"
               @send="sendAction"
             />
           </div>
           <div class="flex flex-wrap items-center gap-2">
             <template v-if="!busy">
               <button
+                v-if="planned && !allWritten"
+                type="button"
+                class="rounded-lg bg-fg px-4 py-2 font-medium text-canvas"
+                :title="writingStarted
+                ? 'Write the Frames not written yet, carrying on from those that are'
+                : 'Write each Frame\'s sentences from the Look and Beats as they are now. They are fixed after.'"
+                data-write
+                @click="writeFrames"
+              >
+                {{ writingStarted
+                  ? `Write the rest (${session.frames.length - writtenCount})`
+                  : `Write ${session.frames.length} Frames` }}
+              </button>
+              <button
+                v-if="currentWritten"
                 type="button"
                 class="rounded-lg bg-fg px-4 py-2 font-medium text-canvas disabled:opacity-50"
-                :disabled="!draft.trim() || !current"
+                :disabled="!draft.trim()"
                 @click="sendAction"
               >
                 Send
@@ -571,7 +641,7 @@ const imagesOn = computed(() => featureOn.value('images'))
               Cancel
             </button>
             <PictureButtons
-              v-if="current"
+              v-if="current && currentWritten"
               :picture="picture"
               :has-job="(kind) => hasJob(current!.index, kind)"
               :can-render="!current.blocked"
@@ -580,7 +650,7 @@ const imagesOn = computed(() => featureOn.value('images'))
               @view="(kind) => (open3d = { index: current!.index, kind })"
             />
             <RenderAllButton
-              v-if="imagesOn && planned"
+              v-if="imagesOn && writingStarted"
               :count="toRender.length"
               title="Queue a render of every Frame not rendered yet, or changed since"
               @render="renderAll"
@@ -670,14 +740,21 @@ const imagesOn = computed(() => featureOn.value('images'))
                 </span>
                 <span class="flex min-w-0 flex-col gap-1">
                   <span class="line-clamp-3">{{ f.beat }}</span>
-                  <span v-if="'pending' in f" class="animate-pulse text-xs text-muted">Writing…</span>
+                  <span v-if="'pending' in f" class="animate-pulse text-xs text-muted">Planning…</span>
+                  <span
+                    v-else-if="work?.kind === 'write' && work.frameIndex === f.index"
+                    class="animate-pulse text-xs text-muted"
+                    data-status
+                  >
+                    Writing…
+                  </span>
                   <span v-else class="text-xs font-medium" :class="status(f).tone" data-status>
                     {{ frameJob(f.index) ? `${JOB_NAMES[frameJob(f.index)!.kind]}…` : status(f).label }}
                   </span>
                 </span>
               </button>
               <button
-                v-if="planned && !busy && !('pending' in f)"
+                v-if="planned && !busy && !('pending' in f) && isWritten(f)"
                 type="button"
                 class="absolute right-2 top-2 rounded border border-line bg-canvas px-2 py-0.5 text-xs text-muted opacity-0 hover:text-fg focus:opacity-100 group-hover:opacity-100 disabled:opacity-50"
                 :disabled="!!f.blocked || copying"
@@ -710,9 +787,24 @@ const imagesOn = computed(() => featureOn.value('images'))
               :line="line"
               id-prefix="storyboard.look"
               every="every Frame"
-              :disabled="busy || !planned"
-              :saving-text="lookSavingText"
+              :disabled="busy || !planned || writingStarted"
             />
+            <div v-if="writingStarted" class="flex items-center gap-2 text-xs text-muted" data-plan-fixed>
+              <span class="flex-1">The Look and Beats are fixed now that Frames are written.</span>
+              <button
+                type="button"
+                class="rounded border border-line px-2 py-1 hover:text-fg disabled:opacity-50"
+                :disabled="busy"
+                title="Back to the plan: every Frame's sentences and pictures are deleted, and the Look and Beats can be edited again"
+                data-restart
+                @click="restart"
+              >
+                Restart…
+              </button>
+            </div>
+            <p v-else-if="planned" class="text-xs text-muted" data-review>
+              Review the Look, and each Frame's Beat and who it shows, then write the Frames.
+            </p>
 
             <form
               v-if="current && frameDraft"
@@ -723,7 +815,7 @@ const imagesOn = computed(() => featureOn.value('images'))
             >
               <h3 class="font-medium">
                 Frame {{ current.index + 1 }}
-                <span class="font-normal text-muted">· {{ current.beat }}</span>
+                <span v-if="currentWritten" class="font-normal text-muted">· {{ current.beat }}</span>
               </h3>
               <p v-if="current.timings" class="text-xs text-muted" data-timings>
                 {{ timingsLabel(current) }}
@@ -739,7 +831,7 @@ const imagesOn = computed(() => featureOn.value('images'))
                   type="button"
                   class="rounded-full border border-line px-2 py-0.5 text-muted aria-pressed:bg-surface aria-pressed:text-fg disabled:opacity-50"
                   :aria-pressed="frameDraft.shown.includes(person.name)"
-                  :disabled="busy || renderingSelected"
+                  :disabled="busy || renderingSelected || !frameEditable"
                   @click="toggleShown(person.name)"
                 >
                   {{ person.name }}
@@ -757,9 +849,9 @@ const imagesOn = computed(() => featureOn.value('images'))
               >
                 <CollapsibleTextarea
                   id="storyboard.frame"
-                  v-model="frameDraft.body"
-                  label="The Frame's seven sentences"
-                  :disabled="busy || renderingSelected"
+                  v-model="frameDraft.text"
+                  :label="currentWritten ? 'The Frame\'s seven sentences' : 'Its Beat'"
+                  :disabled="busy || renderingSelected || !frameEditable"
                 />
               </div>
               <p v-if="renderingSelected" class="text-xs text-muted">
@@ -772,7 +864,7 @@ const imagesOn = computed(() => featureOn.value('images'))
                 :disabled="busy"
                 @revert="revertFrame"
               />
-              <details class="text-muted" open>
+              <details v-if="currentWritten" class="text-muted" open>
                 <summary class="cursor-pointer select-none text-xs">Full prompt</summary>
                 <p class="mt-1 text-xs leading-relaxed" data-prompt-text>{{ current.prompt }}</p>
               </details>

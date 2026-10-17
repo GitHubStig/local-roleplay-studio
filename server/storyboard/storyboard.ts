@@ -1,4 +1,3 @@
-import { equal } from '@std/assert'
 import {
   type FrameDeps,
   limitCrossedBy,
@@ -7,8 +6,9 @@ import {
   secondsSince,
   withRetry,
 } from '../frames.ts'
+import { logCallsUnder } from '../calls.ts'
 import { updateSession } from '../update.ts'
-import { allStale } from '../pictures.ts'
+import { allPictureFiles, allStale, removeFiles } from '../pictures.ts'
 import {
   cleanLook,
   composePrompt,
@@ -20,49 +20,75 @@ import {
 import { crossedLimit, LimitError } from '../limits.ts'
 import type { Scenario } from '../scenario.ts'
 import type { FrameTimings, Look, Outcome, StoryboardFrame, StoryboardSession } from '../session.ts'
-import { plainSentences } from '../textModel.ts'
+import { plainSentences, type PlannedBeat } from '../textModel.ts'
 
 /** Progress of Storyboard work, streamed to the player as it happens. */
 export type StoryboardEvent =
   | ProgressEvent
   /** Parts of the plan, as the Text Model writes them; provisional until `planned`. */
   | { type: 'look'; look: Look }
-  | { type: 'beats'; beats: string[] }
-  | { type: 'planned-frame'; frame: StoryboardFrame }
+  | { type: 'planned-beat'; index: number; beat: string; shown: string[] }
   | { type: 'planned'; session: StoryboardSession }
+  /** A Frame written from the plan, saved as it comes; `written` once the last one is. */
+  | { type: 'written-frame'; frame: StoryboardFrame }
+  | { type: 'written'; session: StoryboardSession }
   | { type: 'rendered'; frame: StoryboardFrame }
 
 /**
- * Builds a Frame from its Beat and sentences, marking it blocked (unrenderable until edited) if its
- * prompt crosses a Limit.
+ * Work that the Storyboard's stage doesn't allow: the plan's Look and Beats are edited only until
+ * the first Frame is written, and a Frame is edited or rendered only once written.
  */
-function makeFrame(
-  look: Look,
-  index: number,
-  beat: string,
-  body: string,
-  shown: string[],
-  timings?: FrameTimings,
-): StoryboardFrame {
-  const names = matchShown(look.people, shown)
-  const prompt = composePrompt(look, body, names)
-  const blocked = crossedLimit(prompt)?.message
+export class StageError extends Error {}
+
+/** A Frame's sentences are written: it has a prompt, and can be edited and rendered. */
+export const isWritten = (frame: StoryboardFrame) => frame.body !== ''
+
+/** Some Frame is written: the Look and Beats are fixed until a Restart. */
+export const writingStarted = (session: StoryboardSession) => session.frames.some(isWritten)
+
+/** A Frame of the plan, before its sentences are written: a Beat, who it shows, no prompt yet. */
+function plannedFrame(look: Look, index: number, beat: string, shown: string[]): StoryboardFrame {
   return {
     index,
     beat,
-    body,
-    shown: names,
-    prompt,
+    body: '',
+    shown: matchShown(look.people, shown),
+    prompt: '',
     pictures: [],
-    ...(timings ? { timings } : {}),
-    ...(blocked ? { blocked } : {}),
     createdAt: new Date().toISOString(),
   }
 }
 
 /**
- * A Frame after its Look, sentences or who it shows changed: the same pictures, marked stale if its
- * Image Prompt changed.
+ * A Frame with its sentences written, marking it blocked (unrenderable until edited) if its prompt
+ * crosses a Limit.
+ */
+function makeFrame(
+  look: Look,
+  frame: StoryboardFrame,
+  body: string,
+  shown: string[],
+  timings: FrameTimings | undefined = frame.timings,
+): StoryboardFrame {
+  const names = matchShown(look.people, shown)
+  const prompt = composePrompt(look, body, names)
+  const blocked = crossedLimit(prompt)?.message
+  return {
+    index: frame.index,
+    beat: frame.beat,
+    body,
+    shown: names,
+    prompt,
+    pictures: frame.pictures,
+    ...(timings ? { timings } : {}),
+    ...(blocked ? { blocked } : {}),
+    createdAt: frame.createdAt,
+  }
+}
+
+/**
+ * A written Frame after its sentences or who it shows changed: the same pictures, marked stale if
+ * its Image Prompt changed.
  */
 function recompose(
   frame: StoryboardFrame,
@@ -70,12 +96,11 @@ function recompose(
   body = frame.body,
   shown = frame.shown,
 ): StoryboardFrame {
-  const fresh = makeFrame(look, frame.index, frame.beat, body, shown, frame.timings)
+  const fresh = makeFrame(look, frame, body, shown)
   // The pictures, and what was made from them, stay until rendered again.
   return {
     ...fresh,
     pictures: fresh.prompt === frame.prompt ? frame.pictures : allStale(frame.pictures),
-    createdAt: frame.createdAt,
   }
 }
 
@@ -84,9 +109,27 @@ function checkLook(look: Look): void {
   if (limit) throw new LimitError(`The Look crosses a limit: ${limit}`)
 }
 
+/** Refuses a change to the plan once a Frame is written. */
+function checkPlanOpen(session: StoryboardSession): void {
+  if (writingStarted(session)) {
+    throw new StageError(
+      'The Look and Beats are fixed once Frames are written: restart the Storyboard to change them',
+    )
+  }
+}
+
+/** Refuses work on a Frame whose sentences aren't written yet. */
+function checkWritten(session: StoryboardSession, index: number): StoryboardFrame {
+  const frame = session.frames[index]
+  if (!frame || !session.look) throw new Error(`There is no Frame ${index + 1}`)
+  if (!isWritten(frame)) throw new StageError(`Frame ${index + 1} isn't written yet`)
+  return frame
+}
+
 /**
- * Plans an empty Storyboard in one Text Model call: the Look, then the Beats, then each Frame,
- * reported as they arrive. Commits all or nothing: on failure or Cancel nothing is saved.
+ * Plans an empty Storyboard in one Text Model call: the Look, then the Beats (who each shows),
+ * reported as they arrive, for the player to review before the Frames are written
+ * (`writeStoryboard`). Commits all or nothing: on failure or Cancel nothing is saved.
  */
 export async function planStoryboard(
   deps: FrameDeps,
@@ -100,15 +143,10 @@ export async function planStoryboard(
   const briefLimit = await limitCrossedBy(scenario.openingPrompt, deps.textModel, signal)
   if (briefLimit) throw new LimitError(`The Brief crosses a limit: ${briefLimit}`)
 
-  // When each Frame's sentences arrived: its "text" time is the wait since the one before.
-  let mark = performance.now()
-  const writtenIn: number[] = []
-  let beats: string[] = []
   let look: Look | null = null
   const plan = await withRetry(
-    (onThinking) => {
-      mark = performance.now()
-      return deps.textModel.planStoryboard(
+    (onThinking) =>
+      deps.textModel.planStoryboard(
         { scenario, frameCount: session.frameCount },
         signal,
         {
@@ -117,23 +155,13 @@ export async function planStoryboard(
             look = l
             emit({ type: 'look', look: l })
           },
-          beats: (b) => {
-            beats = b
-            emit({ type: 'beats', beats: b })
-          },
-          frame: (index, { body, shown }) => {
-            writtenIn[index] = secondsSince(mark)
-            mark = performance.now()
+          beat: (index, { beat, shown }) => {
             if (look) {
-              emit({
-                type: 'planned-frame',
-                frame: makeFrame(look, index, beats[index] ?? '', body, shown),
-              })
+              emit({ type: 'planned-beat', index, beat, shown: matchShown(look.people, shown) })
             }
           },
         },
-      )
-    },
+      ),
     signal,
     emit,
   )
@@ -143,13 +171,96 @@ export async function planStoryboard(
   const planned: StoryboardSession = {
     ...session,
     look: plan.look,
-    frames: plan.frames.map(({ body, shown }, i) =>
-      makeFrame(plan.look, i, plan.beats[i], body, shown, { text: writtenIn[i] ?? 0 })
-    ),
+    frames: plan.beats.map(({ beat, shown }, i) => plannedFrame(plan.look, i, beat, shown)),
   }
   await deps.store.save(planned)
   emit({ type: 'planned', session: planned })
   return planned
+}
+
+/**
+ * Writes the Frames of a reviewed plan, a call per Frame: each is given every Beat and the Frames
+ * before it, and saved as it comes, so a failure or Cancel keeps those written; writing again
+ * carries on from the first not written. The Beats are checked with the Limits first, as an Action
+ * is. Once a Frame is written, the Look and Beats are fixed until a Restart.
+ */
+export async function writeStoryboard(
+  deps: FrameDeps,
+  session: StoryboardSession,
+  scenario: Scenario,
+  emit: (event: StoryboardEvent) => void,
+  signal: AbortSignal,
+): Promise<StoryboardSession> {
+  const look = session.look
+  if (!look || session.frames.length === 0) throw new StageError('Plan the Storyboard first')
+  const from = session.frames.findIndex((f) => !isWritten(f))
+  if (from < 0) throw new StageError('Every Frame is written already')
+  emit({ type: 'phase', phase: 'text' })
+  checkLook(look)
+  const beatLimit = await limitCrossedBy(
+    session.frames.map((f) => f.beat).join('\n'),
+    deps.textModel,
+    signal,
+  )
+  if (beatLimit) throw new LimitError(`A Beat crosses a limit: ${beatLimit}`)
+
+  const beats: PlannedBeat[] = session.frames.map(({ beat, shown }) => ({ beat, shown }))
+  let latest = session
+  for (let index = from; index < session.frames.length; index++) {
+    signal.throwIfAborted()
+    const start = performance.now()
+    const before = latest.frames.slice(0, index).map((f) => f.body)
+    const { body } = await logCallsUnder(index, () =>
+      withRetry(
+        (onThinking) =>
+          deps.textModel.writeStoryboardFrame(
+            { scenario, look, beats, index, before },
+            signal,
+            onThinking,
+          ),
+        signal,
+        emit,
+      ))
+    signal.throwIfAborted()
+    const frame = makeFrame(look, latest.frames[index], body, latest.frames[index].shown, {
+      text: secondsSince(start),
+    })
+    latest = await updateSession(deps.store, session.id, 'storyboard', (s) => ({
+      ...s,
+      frames: s.frames.map((f) => f.index === index ? frame : f),
+    }))
+    emit({ type: 'written-frame', frame })
+  }
+  emit({ type: 'written', session: latest })
+  return latest
+}
+
+/**
+ * Takes a Storyboard back to its plan: every Frame's sentences and pictures go (their files
+ * deleted), its Beat and who it shows stay, and the Look and Beats can be edited again.
+ */
+export async function restartStoryboard(
+  deps: Pick<FrameDeps, 'store'>,
+  session: StoryboardSession,
+): Promise<StoryboardSession> {
+  let files: string[] = []
+  const updated = await updateSession(deps.store, session.id, 'storyboard', (latest) => {
+    files = latest.frames.flatMap(allPictureFiles)
+    return {
+      ...latest,
+      frames: latest.frames.map((f) => ({
+        index: f.index,
+        beat: f.beat,
+        body: '',
+        shown: f.shown,
+        prompt: '',
+        pictures: [],
+        createdAt: f.createdAt,
+      })),
+    }
+  })
+  await removeFiles(deps.store.dir(session.id), files)
+  return updated
 }
 
 /**
@@ -165,8 +276,7 @@ export async function renderStoryboardFrame(
   emit: (event: StoryboardEvent) => void,
   signal: AbortSignal,
 ): Promise<StoryboardFrame> {
-  const frame = session.frames[index]
-  if (!frame) throw new Error(`There is no Frame ${index + 1}`)
+  const frame = checkWritten(session, index)
   if (frame.blocked) throw new LimitError(`Frame ${index + 1} crosses a limit: ${frame.blocked}`)
 
   const { frame: rendered } = await replacePicture(
@@ -183,8 +293,8 @@ export async function renderStoryboardFrame(
 }
 
 /**
- * Replaces one Frame's own sentences, typed by hand, and who it shows if given. Refused if the
- * result crosses a Limit.
+ * Replaces one written Frame's own sentences, typed by hand, and who it shows if given. Refused if
+ * the result crosses a Limit.
  */
 export async function setFrameBody(
   deps: Pick<FrameDeps, 'store'>,
@@ -193,8 +303,7 @@ export async function setFrameBody(
   body: string,
   shown?: string[],
 ): Promise<StoryboardSession> {
-  const frame = session.frames[index]
-  if (!frame || !session.look) throw new Error(`There is no Frame ${index + 1}`)
+  checkWritten(session, index)
   const text = plainSentences(body)
   if (!text) throw new Error('A Frame needs some text')
   // Onto the Storyboard as it is now: a queued render may have finished meanwhile.
@@ -207,23 +316,56 @@ export async function setFrameBody(
 }
 
 /**
- * Replaces the Look, typed by hand, and rewrites every Frame's prompt with it. A person renamed
- * in place stays shown where they were.
+ * Replaces one Beat of the plan, typed by hand, and who it shows if given; only before the Frames
+ * are written. Refused if it crosses a Limit.
+ */
+export async function setBeat(
+  deps: Pick<FrameDeps, 'store'>,
+  session: StoryboardSession,
+  index: number,
+  beat: string,
+  shown?: string[],
+): Promise<StoryboardSession> {
+  const frame = session.frames[index]
+  if (!frame || !session.look) throw new Error(`There is no Frame ${index + 1}`)
+  checkPlanOpen(session)
+  const line = beat.trim().replace(/\s+/g, ' ')
+  if (!line) throw new Error('A Beat needs a line')
+  const limit = crossedLimit(line)?.message
+  if (limit) throw new LimitError(`That crosses a limit: ${limit}`)
+  return await updateSession(deps.store, session.id, 'storyboard', (latest) => {
+    checkPlanOpen(latest)
+    const names = matchShown(latest.look!.people, shown ?? latest.frames[index].shown)
+    return {
+      ...latest,
+      frames: latest.frames.map((f) => f.index === index ? { ...f, beat: line, shown: names } : f),
+    }
+  })
+}
+
+/**
+ * Replaces the Look, typed by hand; only before the Frames are written. A person renamed in place
+ * stays shown where they were.
  */
 export async function setLook(
   deps: Pick<FrameDeps, 'store'>,
   session: StoryboardSession,
   look: Look,
 ): Promise<StoryboardSession> {
+  checkPlanOpen(session)
   const clean = cleanLook(look)
   checkLook(clean)
-  return await updateSession(deps.store, session.id, 'storyboard', (latest) => ({
-    ...latest,
-    look: clean,
-    frames: latest.frames.map((f) =>
-      recompose(f, clean, f.body, renameShown(latest.look!.people, clean.people, f.shown))
-    ),
-  }))
+  return await updateSession(deps.store, session.id, 'storyboard', (latest) => {
+    checkPlanOpen(latest)
+    return {
+      ...latest,
+      look: clean,
+      frames: latest.frames.map((f) => ({
+        ...f,
+        shown: renameShown(latest.look!.people, clean.people, f.shown),
+      })),
+    }
+  })
 }
 
 export interface StoryboardEditResult {
@@ -233,8 +375,9 @@ export interface StoryboardEditResult {
 }
 
 /**
- * Edits one Frame through the Text Model, following an Action; may change the Look too, which
- * rewrites every Frame. Declined or unclear Actions change nothing.
+ * Edits one written Frame through the Text Model, following an Action: its sentences and who it
+ * shows, from the Look's people. The Look is fixed, so an Action that would change it comes back
+ * unclear. Declined or unclear Actions change nothing.
  */
 export async function editFrameByAction(
   deps: FrameDeps,
@@ -245,8 +388,8 @@ export async function editFrameByAction(
   emit: (event: StoryboardEvent) => void,
   signal: AbortSignal,
 ): Promise<StoryboardEditResult> {
-  const frame = session.frames[index]
-  if (!frame || !session.look) throw new Error(`There is no Frame ${index + 1}`)
+  const frame = checkWritten(session, index)
+  const look = session.look!
   emit({ type: 'phase', phase: 'text' })
   const start = performance.now()
   const unchanged = (outcome: Outcome, narration: string) => ({ outcome, narration, session })
@@ -259,11 +402,10 @@ export async function editFrameByAction(
       deps.textModel.editStoryboardFrame(
         {
           scenario,
-          look: session.look!,
-          beats: session.frames.map((f) => f.beat),
+          look,
           index,
           body: frame.body,
-          shown: shownPeople(session.look!, frame.shown).map((p) => p.name),
+          shown: shownPeople(look, frame.shown).map((p) => p.name),
           action,
         },
         signal,
@@ -274,28 +416,17 @@ export async function editFrameByAction(
   )
   if (edit.outcome !== 'done') return unchanged(edit.outcome, edit.narration)
 
-  const lookChanged = !equal(edit.look, session.look)
-  const look = lookChanged ? edit.look : session.look
-  try {
-    if (lookChanged) checkLook(look)
-  } catch (err) {
-    return unchanged('declined', `Declined: ${(err as Error).message}.`)
-  }
-  const withEdit = (frames: StoryboardFrame[]) =>
-    frames.map((f) => {
-      const next = f.index === index
-        ? recompose(f, look, edit.body, edit.shown)
-        : recompose(f, look, f.body, renameShown(session.look!.people, look.people, f.shown))
-      return f.index === index ? { ...next, timings: { text: secondsSince(start) } } : next
-    })
-  const edited = withEdit(session.frames)[index]
+  const edited = recompose(frame, look, edit.body, edit.shown)
   if (edited.blocked) return unchanged('declined', `Declined: ${edited.blocked}.`)
   signal.throwIfAborted()
   // Onto the Storyboard as it is now: a queued render may have finished meanwhile.
   const updated = await updateSession(deps.store, session.id, 'storyboard', (latest) => ({
     ...latest,
-    look,
-    frames: withEdit(latest.frames),
+    frames: latest.frames.map((f) =>
+      f.index === index
+        ? { ...recompose(f, look, edit.body, edit.shown), timings: { text: secondsSince(start) } }
+        : f
+    ),
   }))
   return { outcome: 'done', narration: edit.narration, session: updated }
 }
