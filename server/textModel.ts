@@ -484,9 +484,14 @@ export function parseStoryboardWrite(content: string): StoryboardWrite {
 
 /**
  * A Beat without the number a model puts in front ("01: …", "Frame 12: …"), as Gemma 4 26B did in
- * every Beat of two plans on 2026-10-08: the Frames list numbers them already.
+ * every Beat of two plans on 2026-10-08: the Frames list numbers them already. Nor with who it
+ * shows written on the end (", shown: the red roadster, Elara"), as it did in every Beat of one
+ * plan on 2026-10-17: that's in "shown" already.
  */
-const asBeat = (text: string) => oneParagraph(text).replace(/^(?:frame\s*)?\d+\s*[:.)-]\s*/i, '')
+const asBeat = (text: string) =>
+  oneParagraph(text)
+    .replace(/^(?:frame\s*)?\d+\s*[:.)-]\s*/i, '')
+    .replace(/[\s,;.]*\(?\s*\b(?:shown|shows)\s*:[^)]*\)?\W*$/i, '')
 
 export async function storyboardEditMessages(req: StoryboardEditRequest) {
   return {

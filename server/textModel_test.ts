@@ -226,14 +226,18 @@ Deno.test('parseStoryboardPlan drops the numbers a model puts before its Beats',
         { beat: '01: Rain falls.', shown: [] },
         { beat: 'Frame 12: A door opens.', shown: ['Ana', 3] },
         { beat: '3 cats sleep.' },
+        { beat: 'The roadster speeds on, shown: the red roadster, Elara', shown: ['Elara'] },
+        { beat: 'The dog barks (shows: the stray dog).', shown: [] },
       ],
     }),
-    3,
+    5,
   )
   assertEquals(plan.beats, [
     { beat: 'Rain falls.', shown: [] },
     { beat: 'A door opens.', shown: ['Ana'] },
     { beat: '3 cats sleep.', shown: [] },
+    { beat: 'The roadster speeds on', shown: ['Elara'] },
+    { beat: 'The dog barks', shown: [] },
   ])
   assertThrows(
     () =>
