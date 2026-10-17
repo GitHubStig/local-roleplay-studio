@@ -608,20 +608,6 @@ const imagesOn = computed(() => featureOn.value('images'))
           <div class="flex flex-wrap items-center gap-2">
             <template v-if="!busy">
               <button
-                v-if="planned && !allWritten"
-                type="button"
-                class="rounded-lg bg-fg px-4 py-2 font-medium text-canvas"
-                :title="writingStarted
-                ? 'Write the Frames not written yet, carrying on from those that are'
-                : 'Write each Frame\'s sentences from the Look and Beats as they are now. They are fixed after.'"
-                data-write
-                @click="writeFrames"
-              >
-                {{ writingStarted
-                  ? `Write the rest (${session.frames.length - writtenCount})`
-                  : `Write ${session.frames.length} Frames` }}
-              </button>
-              <button
                 v-if="currentWritten"
                 type="button"
                 class="rounded-lg bg-fg px-4 py-2 font-medium text-canvas disabled:opacity-50"
@@ -802,9 +788,6 @@ const imagesOn = computed(() => featureOn.value('images'))
                 Restart…
               </button>
             </div>
-            <p v-else-if="planned" class="text-xs text-muted" data-review>
-              Review the Look, and each Frame's Beat and who it shows, then write the Frames.
-            </p>
 
             <form
               v-if="current && frameDraft"
@@ -869,6 +852,40 @@ const imagesOn = computed(() => featureOn.value('images'))
                 <p class="mt-1 text-xs leading-relaxed" data-prompt-text>{{ current.prompt }}</p>
               </details>
             </form>
+          </div>
+          <!-- Below the Look and Beats, where the review ends: write the Frames, or stop the plan or writing. -->
+          <div
+            v-if="(planned && !allWritten && !busy) || (busy && work?.kind !== 'edit' && !work?.detached)"
+            class="flex shrink-0 flex-wrap items-center gap-2 border-t border-line p-4 text-sm"
+            data-prompt-footer
+          >
+            <p v-if="!busy && !writingStarted" class="w-full text-xs text-muted" data-review>
+              Review the Look, and each Frame's Beat and who it shows, then write the Frames.
+            </p>
+            <button
+              v-if="!busy"
+              type="button"
+              class="rounded-lg bg-fg px-4 py-2 font-medium text-canvas"
+              :title="writingStarted
+              ? 'Write the Frames not written yet, carrying on from those that are'
+              : 'Write each Frame\'s sentences from the Look and Beats as they are now. They are fixed after.'"
+              data-write
+              @click="writeFrames"
+            >
+              {{ writingStarted
+                ? `Write the rest (${session.frames.length - writtenCount})`
+                : `Write ${session.frames.length} Frames` }}
+            </button>
+            <button
+              v-else
+              type="button"
+              class="rounded-lg border border-danger px-4 py-2 font-medium text-danger disabled:opacity-50"
+              :disabled="work?.cancelling"
+              data-prompt-cancel
+              @click="cancel"
+            >
+              Cancel
+            </button>
           </div>
         </section>
       </aside>
