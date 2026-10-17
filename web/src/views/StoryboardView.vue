@@ -392,7 +392,7 @@ const renderingSelected = computed(() =>
 )
 /**
  * Who's renamed when the Look's names change from `before` to `after`, as the server has it
- * (`renameShown`): a name kept stays; while the count is the same, one gone is the person in its
+ * (`renameShown`): a name kept stays; while the count is the same, one gone is the Subject in its
  * place; otherwise it's dropped (null).
  */
 const renamedTo = (before: string[], after: string[], name: string): string | null =>
@@ -401,7 +401,7 @@ const renamedTo = (before: string[], after: string[], name: string): string | nu
     : after.length === before.length && before.includes(name)
     ? after[before.indexOf(name)]
     : null
-const lookNames = () => look.value?.people.map((p) => p.name) ?? []
+const lookNames = () => look.value?.subjects.map((p) => p.name) ?? []
 // A rename in the Look carries over to the Frame's draft, as the server does to every Frame.
 watch(lookNames, (after, before) => {
   const draft = frameDraft.value
@@ -410,7 +410,7 @@ watch(lookNames, (after, before) => {
   if (shown.join('\n') !== draft.shown.join('\n')) draft.shown = shown
 })
 
-/** Shows or hides a person in the selected Frame; one added is the least prominent. */
+/** Shows or hides a Subject in the selected Frame; one added is the least prominent. */
 async function toggleShown(name: string) {
   // A Look edit goes first, so the name is one the Look has.
   const before = lookNames()
@@ -823,18 +823,18 @@ const imagesOn = computed(() => featureOn.value('images'))
               <p v-if="current.blocked" class="text-xs text-danger">
                 Crosses a limit ({{ current.blocked }}): edit it before rendering.
               </p>
-              <div v-if="look?.people.length" class="flex flex-wrap items-center gap-1.5 text-xs" data-shown>
+              <div v-if="look?.subjects.length" class="flex flex-wrap items-center gap-1.5 text-xs" data-shown>
                 <span class="text-muted">Shows</span>
                 <button
-                  v-for="person in look.people"
-                  :key="person.name"
+                  v-for="subject in look.subjects"
+                  :key="subject.name"
                   type="button"
                   class="rounded-full border border-line px-2 py-0.5 text-muted aria-pressed:bg-surface aria-pressed:text-fg disabled:opacity-50"
-                  :aria-pressed="frameDraft.shown.includes(person.name)"
+                  :aria-pressed="frameDraft.shown.includes(subject.name)"
                   :disabled="busy || renderingSelected || !frameEditable"
-                  @click="toggleShown(person.name)"
+                  @click="toggleShown(subject.name)"
                 >
-                  {{ person.name }}
+                  {{ subject.name }}
                 </button>
                 <span v-if="!frameDraft.shown.length" class="text-muted">· the place alone</span>
                 <span v-else-if="frameDraft.shown.length > MAX_SHOWN" class="text-muted">

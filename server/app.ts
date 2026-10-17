@@ -1022,16 +1022,16 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
           if (!needsStoryboard(session) || !session.look) {
             return error('Only a planned Storyboard has a Look', 409)
           }
-          const body = await readJson(req) as { people?: unknown; style?: unknown } | undefined
-          const people = body?.people
+          const body = await readJson(req) as { subjects?: unknown; style?: unknown } | undefined
+          const subjects = body?.subjects
           if (
-            !Array.isArray(people) || typeof body?.style !== 'string' ||
-            people.some((p) => typeof p?.name !== 'string' || typeof p?.identity !== 'string')
+            !Array.isArray(subjects) || typeof body?.style !== 'string' ||
+            subjects.some((p) => typeof p?.name !== 'string' || typeof p?.identity !== 'string')
           ) {
-            return error('people (each with a name and identity) and style are required', 400)
+            return error('subjects (each with a name and identity) and style are required', 400)
           }
           return json(
-            await setLook({ store: deps.sessions }, session, { people, style: body.style }),
+            await setLook({ store: deps.sessions }, session, { subjects, style: body.style }),
           )
         }),
     ],

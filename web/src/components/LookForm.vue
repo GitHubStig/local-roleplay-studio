@@ -2,12 +2,12 @@
 import type { Look } from '../api'
 import { type SaveLine, useAutosave } from '../composables/useAutosave'
 import CollapsibleTextarea from './CollapsibleTextarea.vue'
-import LookPerson from './LookPerson.vue'
+import LookSubject from './LookSubject.vue'
 import SaveStatus from './SaveStatus.vue'
 
 /**
- * A Look edited by hand: a card per person (name and identity), people added or removed, and the
- * art style. Saved once the focus leaves the form, or a person is removed (`useAutosave`); the
+ * A Look edited by hand: a card per Subject (name and identity), Subjects added or removed, and
+ * the art style. Saved once the focus leaves the form, or a Subject is removed (`useAutosave`); the
  * screen calls `flush` before work that reads it. Shared by Storyboards and Roleplays (ADR 0012).
  */
 const props = defineProps<{
@@ -22,7 +22,7 @@ const props = defineProps<{
   disabled?: boolean
   /**
    * A Roleplay's: names come from its Cast and story, so they aren't edited, no one is added by
-   * hand, and these people (the Character and Persona) can't be removed.
+   * hand, and these Subjects (the Character and Persona) can't be removed.
    */
   kept?: string[]
   /** Said while saving, e.g. that it waits for the render running. */
@@ -32,15 +32,15 @@ const props = defineProps<{
 }>()
 
 const trimmed = (l: Look): Look => ({
-  people: l.people.map((p) => ({ name: p.name.trim(), identity: p.identity.trim() })),
+  subjects: l.subjects.map((p) => ({ name: p.name.trim(), identity: p.identity.trim() })),
   style: l.style.trim(),
 })
 /** Why the Look can't be saved yet: what the server would refuse it for. */
 function hold(look: Look): string | null {
   const l = trimmed(look)
-  if (l.people.some((p) => !p.name || !p.identity)) return 'each person needs a name and an identity'
-  if (new Set(l.people.map((p) => p.name.toLowerCase())).size < l.people.length) {
-    return 'two people have the same name'
+  if (l.subjects.some((p) => !p.name || !p.identity)) return 'each subject needs a name and an identity'
+  if (new Set(l.subjects.map((p) => p.name.toLowerCase())).size < l.subjects.length) {
+    return 'two subjects have the same name'
   }
   return l.style ? null : 'the Look needs a style'
 }
@@ -53,7 +53,7 @@ const { draft, status, canRevert, flush, revert, onFocusout } = useAutosave<Look
 })
 
 function remove(i: number) {
-  draft.value!.people.splice(i, 1)
+  draft.value!.subjects.splice(i, 1)
   flush()
 }
 
@@ -69,15 +69,15 @@ defineExpose({ flush })
     @focusout="onFocusout"
   >
     <h3 class="font-medium">Look <span class="font-normal text-muted">· {{ every }}</span></h3>
-    <LookPerson
-      v-for="(person, i) in draft.people"
-      :id="`${idPrefix}.person.${i}`"
+    <LookSubject
+      v-for="(subject, i) in draft.subjects"
+      :id="`${idPrefix}.subject.${i}`"
       :key="i"
-      v-model:name="person.name"
-      v-model:identity="person.identity"
+      v-model:name="subject.name"
+      v-model:identity="subject.identity"
       :disabled="disabled"
       :name-fixed="!!kept"
-      :kept="kept?.includes(person.name)"
+      :kept="kept?.includes(subject.name)"
       @remove="remove(i)"
     />
     <button
@@ -85,10 +85,10 @@ defineExpose({ flush })
       type="button"
       class="w-fit text-xs text-muted hover:text-fg disabled:opacity-50"
       :disabled="disabled"
-      data-add-person
-      @click="draft.people.push({ name: '', identity: '' })"
+      data-add-subject
+      @click="draft.subjects.push({ name: '', identity: '' })"
     >
-      + Add a person
+      + Add a subject
     </button>
     <CollapsibleTextarea
       :id="`${idPrefix}.style`"

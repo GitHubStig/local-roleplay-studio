@@ -51,12 +51,12 @@ export interface StoryboardFrame extends FrameBase {
   beat: string
   /**
    * The seven sentences only this Frame has (pose, expression, camera, clothing, environment,
-   * lighting, color); the prompt is the identities of the people it shows, these, then the Look's
+   * lighting, color); the prompt is the identities of the Subjects it shows, these, then the Look's
    * style sentence. Empty, with an empty prompt, until the Frame is written.
    */
   body: string
   /**
-   * The names of the Look's people this Frame shows, the most prominent first; empty for a
+   * The names of the Look's Subjects this Frame shows, the most prominent first; empty for a
    * picture of the place alone.
    */
   shown: string[]
@@ -66,20 +66,26 @@ export interface StoryboardFrame extends FrameBase {
 
 export type Frame = ChainFrame | StoryboardFrame
 
-/** One person a Storyboard shows: every Frame that shows them uses their identity word for word. */
-export interface Person {
+/**
+ * One Subject of a Look: a person, creature, animal or object the story follows. Every Frame that
+ * shows it uses its identity word for word.
+ */
+export interface Subject {
   name: string
-  /** Who they are (name, age, build, skin, hair, face): the subject sentence, for this person. */
+  /**
+   * What it is, by the features of its kind (a person's age, build, skin, hair and face): the
+   * subject sentence, for this Subject.
+   */
   identity: string
 }
 
 /**
  * The identities and art style a Storyboard's Frames share, word for word: each Frame takes the
- * identities of the people it shows.
+ * identities of the Subjects it shows.
  */
 export interface Look {
-  /** Everyone the Brief depicts by name; none for a Storyboard of places alone. */
-  people: Person[]
+  /** Everyone and everything the story follows; none for a Storyboard of places alone. */
+  subjects: Subject[]
   /** The art-style-and-medium sentence. */
   style: string
 }

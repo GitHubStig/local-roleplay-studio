@@ -1,7 +1,7 @@
 import { mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { defineComponent, h, ref } from 'vue'
-import LookPerson from './LookPerson.vue'
+import LookSubject from './LookSubject.vue'
 
 beforeEach(() => localStorage.clear())
 
@@ -11,8 +11,8 @@ const host = () =>
     const removed = ref(0)
     return () =>
       h('div', [
-        h(LookPerson, {
-          id: 'storyboard.look.person.0',
+        h(LookSubject, {
+          id: 'storyboard.look.subject.0',
           name: person.value.name,
           identity: person.value.identity,
           'onUpdate:name': (v: string) => (person.value.name = v),
@@ -23,10 +23,10 @@ const host = () =>
       ])
   })
 
-describe('LookPerson', () => {
+describe('LookSubject', () => {
   it('edits the name and identity, headed by the name', async () => {
     const wrapper = mount(host())
-    await wrapper.find('[data-person-name]').setValue('Kai')
+    await wrapper.find('[data-subject-name]').setValue('Kai')
     await wrapper.find('textarea').setValue('Kai, a short student.')
     expect(wrapper.find('summary').text()).toContain('Kai')
     expect(wrapper.find('output').text()).toBe('Kai|Kai, a short student.|0')
@@ -41,7 +41,7 @@ describe('LookPerson', () => {
     ;(details.element as HTMLDetailsElement).open = false
     await details.trigger('toggle')
     expect(wrapper.find('[data-preview]').text()).toBe('· Rin, a tall student.')
-    expect(localStorage.getItem('collapsed:storyboard.look.person.0')).toBe('1')
+    expect(localStorage.getItem('collapsed:storyboard.look.subject.0')).toBe('1')
 
     const again = mount(host())
     expect((again.find('details').element as HTMLDetailsElement).open).toBe(false)

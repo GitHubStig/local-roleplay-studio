@@ -134,7 +134,7 @@ export interface RoleplaySession extends SessionBase {
   /** Null until the Roleplay is set up. */
   cast: Cast | null
   /**
-   * Each person's identity and the art style, shared by every picture (ADR 0012): written from the
+   * Each Subject's identity and the art style, shared by every picture (ADR 0012): written from the
    * Cast when a Frame is first pictured, and joined by anyone the story brings into a picture.
    */
   look?: Look | null

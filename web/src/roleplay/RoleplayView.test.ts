@@ -361,7 +361,7 @@ describe('RoleplayView', () => {
   })
 
   const look = {
-    people: [{ name: 'Elena', identity: 'Elena, 38.' }, { name: 'Cal', identity: 'Cal, 25.' }],
+    subjects: [{ name: 'Elena', identity: 'Elena, 38.' }, { name: 'Cal', identity: 'Cal, 25.' }],
     style: 'Oil painting.',
   }
   const job = (extra: Partial<roleplay.Job>): roleplay.Job => ({
@@ -678,9 +678,9 @@ describe('RoleplayView', () => {
     vi.mocked(roleplay.saveLook).mockResolvedValue({ ...roleplaySession(), look })
     // The Look lists its people; their names come from the Cast, so they aren't edited, no one is
     // added by hand, and the Character and Persona can't be removed.
-    expect(wrapper.findAll('[data-look] [data-person]')).toHaveLength(2)
-    expect(wrapper.find('[data-look] [data-person-name]').exists()).toBe(false)
-    expect(wrapper.find('[data-look] [data-add-person]').exists()).toBe(false)
+    expect(wrapper.findAll('[data-look] [data-subject]')).toHaveLength(2)
+    expect(wrapper.find('[data-look] [data-subject-name]').exists()).toBe(false)
+    expect(wrapper.find('[data-look] [data-add-subject]').exists()).toBe(false)
     expect(wrapper.findAll('[data-look] button').map((b) => b.text())).not.toContain('Remove')
     await wrapper.findAll('[data-look] textarea').at(-1)!.setValue('Ink.')
     await wrapper.find('[data-look]').trigger('submit')

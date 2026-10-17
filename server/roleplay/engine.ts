@@ -227,7 +227,7 @@ export async function pictureFrame(
   const art = deps.artModel ?? deps.roleplayModel
   emit({ type: 'phase', phase: 'text' })
   let current = session
-  // No Look yet (or one from before it listed people): write one.
+  // No Look yet (or one from before it listed its Subjects): write one.
   if (!isLook(current.look)) {
     const start = performance.now()
     const messages = await artLookMessages(current, scenario)
@@ -315,7 +315,7 @@ export async function setLook(
   session: RoleplaySession,
   value: unknown,
 ): Promise<RoleplaySession> {
-  if (!isLook(value)) throw new CastError('The Look needs its people and a style')
+  if (!isLook(value)) throw new CastError('The Look needs its Subjects and a style')
   let look: Look
   try {
     look = cleanLook(value)
@@ -325,12 +325,12 @@ export async function setLook(
   const limit = lookLimit(look)
   if (limit) throw new RoleplayLimitError(`That crosses a limit: ${limit}`)
   return await updateSession(store, session.id, (latest) => {
-    const before = isLook(latest.look) ? latest.look.people : []
+    const before = isLook(latest.look) ? latest.look.subjects : []
     return {
       ...latest,
       look,
       frames: latest.frames.map((f) =>
-        f.body ? pictured(f, look, f.body, renameShown(before, look.people, f.shown ?? [])) : f
+        f.body ? pictured(f, look, f.body, renameShown(before, look.subjects, f.shown ?? [])) : f
       ),
     }
   })

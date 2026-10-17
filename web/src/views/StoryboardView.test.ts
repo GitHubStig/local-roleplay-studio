@@ -33,7 +33,7 @@ const job = (kind: api.JobKind, frameIndex: number, extra: Partial<api.Job> = {}
 })
 
 const look: api.Look = {
-  people: [
+  subjects: [
     { name: 'Rin', identity: 'Rin, a tall student.' },
     { name: 'Kai', identity: 'Kai, a short student.' },
   ],
@@ -432,7 +432,7 @@ describe('StoryboardView', () => {
     await wrapper.find('[data-look]').trigger('focusout')
     await flushPromises()
     expect(api.saveLook).toHaveBeenCalledWith('sb', {
-      people: [
+      subjects: [
         { name: 'Rin', identity: 'Rin, a short student.' },
         { name: 'Kai', identity: 'Kai, a short student.' },
       ],
@@ -463,17 +463,17 @@ describe('StoryboardView', () => {
   it('adds and removes people from the Look while reviewing the plan', async () => {
     vi.mocked(api.getSession).mockResolvedValue(storyboard([planned(0), planned(1), planned(2)]))
     const { wrapper } = await mountIt()
-    expect(wrapper.findAll('[data-person]')).toHaveLength(2)
-    await wrapper.find('[data-add-person]').trigger('click')
-    expect(wrapper.findAll('[data-person]')).toHaveLength(3)
+    expect(wrapper.findAll('[data-subject]')).toHaveLength(2)
+    await wrapper.find('[data-add-subject]').trigger('click')
+    expect(wrapper.findAll('[data-subject]')).toHaveLength(3)
     // Removing saves at once, except while someone's left without a name.
     await wrapper.find('[aria-label="Remove Rin"]').trigger('click')
     await flushPromises()
-    expect(wrapper.findAll('[data-person-name]').map((i) => (i.element as HTMLInputElement).value))
+    expect(wrapper.findAll('[data-subject-name]').map((i) => (i.element as HTMLInputElement).value))
       .toEqual(['Kai', ''])
     expect(api.saveLook).not.toHaveBeenCalled()
     expect(wrapper.find('[data-look] [data-save-status]').text())
-      .toContain('Not saved: each person needs a name and an identity')
+      .toContain('Not saved: each subject needs a name and an identity')
   })
 
   it('keeps someone renamed in the Look shown when a Shows pill is clicked straight after', async () => {
@@ -484,7 +484,7 @@ describe('StoryboardView', () => {
     vi.mocked(api.saveLook).mockImplementation(async (_id, l) => {
       await new Promise((r) => setTimeout(r, 20))
       const renamed = (n: string) =>
-        l.people[saved.look!.people.findIndex((p) => p.name === n)]?.name
+        l.subjects[saved.look!.subjects.findIndex((p) => p.name === n)]?.name
       saved = {
         ...saved,
         look: l,
@@ -496,7 +496,7 @@ describe('StoryboardView', () => {
       return saved
     })
     vi.mocked(api.saveBeat).mockImplementation(async (_id, index, beat, shown) => {
-      const known = shown.filter((n) => saved.look!.people.some((p) => p.name === n))
+      const known = shown.filter((n) => saved.look!.subjects.some((p) => p.name === n))
       saved = {
         ...saved,
         frames: saved.frames.map((f) => (f.index === index ? { ...f, beat, shown: known } : f)),
@@ -504,7 +504,7 @@ describe('StoryboardView', () => {
       return saved
     })
     const { wrapper } = await mountIt()
-    await wrapper.find('[data-person-name]').setValue('Mira')
+    await wrapper.find('[data-subject-name]').setValue('Mira')
     const kai = wrapper.findAll('[data-shown] button')[1]
     await wrapper.find('[data-look]').trigger('focusout', { relatedTarget: kai.element })
     await kai.trigger('click')

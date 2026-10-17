@@ -13,7 +13,7 @@ import { withTempDir } from '../testing.ts'
 import { chainFromStoryboard, CopyError, NO_ONE, oneSubject } from './fromStoryboard.ts'
 
 const look: Look = {
-  people: [
+  subjects: [
     { name: 'Mara', identity: 'Mara, a woman in her 30s, lean, with short red hair.' },
     { name: 'Cal', identity: 'Cal, a man in his 40s. He has a grey beard.' },
   ],
@@ -61,7 +61,7 @@ async function saved(root: string, board: StoryboardSession) {
 
 Deno.test('oneSubject joins identities into one sentence, every word kept', () => {
   assertEquals(
-    oneSubject(look.people.map((p) => p.identity)),
+    oneSubject(look.subjects.map((p) => p.identity)),
     'Mara, a woman in her 30s, lean, with short red hair; Cal, a man in his 40s; He has a grey beard.',
   )
   assertEquals(oneSubject([]), NO_ONE)
@@ -84,7 +84,7 @@ Deno.test('chainFromStoryboard copies the Frames up to one, as nine-sentence pro
     // Two: one subject sentence for both, then the seven, then the style.
     const two = made.frames[1].prompt
     assertEquals(sentences(two).length, 9)
-    assertEquals(subjectSentence(two), oneSubject(look.people.map((p) => p.identity)))
+    assertEquals(subjectSentence(two), oneSubject(look.subjects.map((p) => p.identity)))
     // Only where sentences end changed, so the pictures still show the prompts.
     assertEquals(made.frames.flatMap((f) => f.pictures.map((p) => p.stale)), [undefined, undefined])
 

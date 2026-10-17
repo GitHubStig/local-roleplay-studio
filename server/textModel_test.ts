@@ -188,7 +188,7 @@ Deno.test('parsePlannedFrame leaves out "N/A" sentences, and reads who the Frame
   assertEquals(parsePlannedFrame({ ...frame, shown: undefined }).shown, [])
 })
 
-Deno.test('parseLook keeps each named person once, and needs a style', () => {
+Deno.test("parseLook reads the model's people as Subjects, each named once, and needs a style", () => {
   assertEquals(
     parseLook({
       people: [
@@ -200,14 +200,14 @@ Deno.test('parseLook keeps each named person once, and needs a style', () => {
       style: 'Film still.',
     }),
     {
-      people: [
+      subjects: [
         { name: 'Ana', identity: 'Ana, a tall woman.' },
         { name: 'Cal', identity: 'Cal, a big man.' },
       ],
       style: 'Film still.',
     },
   )
-  assertEquals(parseLook({ people: [], style: 'Ink.' }), { people: [], style: 'Ink.' })
+  assertEquals(parseLook({ people: [], style: 'Ink.' }), { subjects: [], style: 'Ink.' })
   assertThrows(() => parseLook({ subject: 'A man.', style: 'Ink.' }), Error, 'no complete Look')
 })
 

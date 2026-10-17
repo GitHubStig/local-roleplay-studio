@@ -1,5 +1,5 @@
 <!--
-What a person's identity in a Look is, completing `their "identity": `. Included by a
+What a Subject's identity in a Look is, completing `their "identity": `. Included by a
 Storyboard's plan and by the Roleplay Art Agent's Look and picture calls (ADR 0012). A
 Storyboard's Look also has creatures, animals and objects (2026-10-16): each gets the features
 of its kind.

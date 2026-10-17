@@ -5,7 +5,7 @@
  */
 import { join } from '@std/path'
 import { joinPrompt, sentences } from '../imagePrompt.ts'
-import { shownPeople } from '../look.ts'
+import { shownSubjects } from '../look.ts'
 import type { Picture } from '../pictures.ts'
 import type {
   ChainFrame,
@@ -34,7 +34,7 @@ export function oneSubject(identities: string[]): string {
 export const chainPrompt = (storyboard: StoryboardSession, frame: StoryboardFrame): string => {
   const look = storyboard.look!
   return joinPrompt(
-    oneSubject(shownPeople(look, frame.shown).map((p) => p.identity)),
+    oneSubject(shownSubjects(look, frame.shown).map((p) => p.identity)),
     frame.body,
     look.style,
   )

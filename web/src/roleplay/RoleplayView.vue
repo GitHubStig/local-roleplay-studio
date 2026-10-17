@@ -630,10 +630,10 @@ function setField(f: CastField, value: string) {
 
 // --- The Look, editable by hand once written.
 
-/** The Look to edit; one from before it listed people isn't shown, since the next picture replaces it. */
+/** The Look to edit; one from before it listed Subjects isn't shown, since the next picture replaces it. */
 const currentLook = computed(() => {
   const look = session.value?.look
-  return look && Array.isArray(look.people) ? look : null
+  return look && Array.isArray(look.subjects) ? look : null
 })
 
 /** "Kael, Elara Vance and the barkeep", "no one": who a picture shows. */

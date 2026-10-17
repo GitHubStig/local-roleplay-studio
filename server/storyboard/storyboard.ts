@@ -15,7 +15,7 @@ import {
   lookLimit,
   matchShown,
   renameShown,
-  shownPeople,
+  shownSubjects,
 } from '../look.ts'
 import { crossedLimit, LimitError } from '../limits.ts'
 import type { Scenario } from '../scenario.ts'
@@ -52,7 +52,7 @@ function plannedFrame(look: Look, index: number, beat: string, shown: string[]):
     index,
     beat,
     body: '',
-    shown: matchShown(look.people, shown),
+    shown: matchShown(look.subjects, shown),
     prompt: '',
     pictures: [],
     createdAt: new Date().toISOString(),
@@ -70,7 +70,7 @@ function makeFrame(
   shown: string[],
   timings: FrameTimings | undefined = frame.timings,
 ): StoryboardFrame {
-  const names = matchShown(look.people, shown)
+  const names = matchShown(look.subjects, shown)
   const prompt = composePrompt(look, body, names)
   const blocked = crossedLimit(prompt)?.message
   return {
@@ -157,7 +157,7 @@ export async function planStoryboard(
           },
           beat: (index, { beat, shown }) => {
             if (look) {
-              emit({ type: 'planned-beat', index, beat, shown: matchShown(look.people, shown) })
+              emit({ type: 'planned-beat', index, beat, shown: matchShown(look.subjects, shown) })
             }
           },
         },
@@ -335,7 +335,7 @@ export async function setBeat(
   if (limit) throw new LimitError(`That crosses a limit: ${limit}`)
   return await updateSession(deps.store, session.id, 'storyboard', (latest) => {
     checkPlanOpen(latest)
-    const names = matchShown(latest.look!.people, shown ?? latest.frames[index].shown)
+    const names = matchShown(latest.look!.subjects, shown ?? latest.frames[index].shown)
     return {
       ...latest,
       frames: latest.frames.map((f) => f.index === index ? { ...f, beat: line, shown: names } : f),
@@ -362,7 +362,7 @@ export async function setLook(
       look: clean,
       frames: latest.frames.map((f) => ({
         ...f,
-        shown: renameShown(latest.look!.people, clean.people, f.shown),
+        shown: renameShown(latest.look!.subjects, clean.subjects, f.shown),
       })),
     }
   })
@@ -376,7 +376,7 @@ export interface StoryboardEditResult {
 
 /**
  * Edits one written Frame through the Text Model, following an Action: its sentences and who it
- * shows, from the Look's people. The Look is fixed, so an Action that would change it comes back
+ * shows, from the Look's Subjects. The Look is fixed, so an Action that would change it comes back
  * unclear. Declined or unclear Actions change nothing.
  */
 export async function editFrameByAction(
@@ -405,7 +405,7 @@ export async function editFrameByAction(
           look,
           index,
           body: frame.body,
-          shown: shownPeople(look, frame.shown).map((p) => p.name),
+          shown: shownSubjects(look, frame.shown).map((p) => p.name),
           action,
         },
         signal,

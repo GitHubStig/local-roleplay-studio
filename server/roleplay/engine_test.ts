@@ -259,12 +259,12 @@ Deno.test('setLook rewrites every pictured Frame, and refuses an incomplete Look
     const restyled = await setLook(store, pictured, testLook('Watercolour.', 'Mira.', 'Sam.'))
     assertStringIncludes(restyled.frames[0].prompt!, 'Watercolour.')
     await assertRejects(
-      () => setLook(store, pictured, { people: [{ name: 'Mira', identity: '' }], style: 'Ink.' }),
+      () => setLook(store, pictured, { subjects: [{ name: 'Mira', identity: '' }], style: 'Ink.' }),
       CastError,
     )
     // A renamed person stays shown.
     const renamed = await setLook(store, restyled, {
-      people: [{ name: 'Mira V', identity: 'Mira.' }, { name: 'Sam Reyes', identity: 'Sam.' }],
+      subjects: [{ name: 'Mira V', identity: 'Mira.' }, { name: 'Sam Reyes', identity: 'Sam.' }],
       style: 'Watercolour.',
     })
     assertEquals(renamed.frames[0].shown, ['Mira V', 'Sam Reyes'])
@@ -312,14 +312,18 @@ Deno.test('Someone the story brings into a picture joins the Look, and looks the
     })
     const art = { ...deps, roleplayModel: scripted }
     const first = await pictureFrame(art, session, scenario, 0, () => {}, signal())
-    assertEquals(first.look!.people.map((p) => p.name), ['Mira Vance', 'Sam Reyes', 'the barkeep'])
+    assertEquals(first.look!.subjects.map((p) => p.name), [
+      'Mira Vance',
+      'Sam Reyes',
+      'the barkeep',
+    ])
     assertEquals(first.frames[0].shown, ['Mira Vance', 'the barkeep'])
     assertStringIncludes(first.frames[0].prompt!, 'Mira. The barkeep, a stout man of 60.')
 
     const again = await pictureFrame(art, first, scenario, 0, () => {}, signal())
     // The next picture reads him in the Look.
     assertStringIncludes(scripted.art[2][1].content, 'name: the barkeep')
-    assertEquals(again.look!.people.length, 3)
+    assertEquals(again.look!.subjects.length, 3)
     assertStringIncludes(again.frames[0].prompt!, 'The barkeep, a stout man of 60.')
   }))
 

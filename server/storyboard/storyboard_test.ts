@@ -112,7 +112,7 @@ Deno.test('planStoryboard refuses a Brief or a Look that crosses a Limit, saving
       LimitError,
       'everyone depicted must be an adult',
     )
-    const bad = planOf(2, { look: { people: [], style: 'Lingerie catalogue shot.' } })
+    const bad = planOf(2, { look: { subjects: [], style: 'Lingerie catalogue shot.' } })
     const { deps: deps2 } = depsFor(root, { plans: [bad] })
     await assertRejects(
       () => planStoryboard(deps2, newStoryboard(2), scenario, () => {}, signal()),
@@ -278,7 +278,7 @@ Deno.test('setBeat and setLook edit the plan until a Frame is written, then refu
   withTempDir(async (root) => {
     const two = planOf(2, {
       look: {
-        people: [
+        subjects: [
           { name: 'Ace', identity: 'Ace, a tall adult athlete.' },
           { name: 'Bo', identity: 'Bo, a stocky adult coach.' },
         ],
@@ -299,7 +299,7 @@ Deno.test('setBeat and setLook edit the plan until a Frame is written, then refu
 
     // A person renamed in place stays shown where they were; one removed is dropped.
     const renamed = await setLook(deps, beat, {
-      people: [
+      subjects: [
         { name: 'Ace', identity: 'Ace, a tall adult athlete.' },
         { name: 'Bo Dee', identity: 'Bo Dee, a stocky adult coach.' },
       ],
@@ -307,17 +307,20 @@ Deno.test('setBeat and setLook edit the plan until a Frame is written, then refu
     })
     assertEquals(renamed.frames.map((f) => f.shown), [['Bo Dee'], ['Bo Dee', 'Ace']])
     const removed = await setLook(deps, renamed, {
-      people: [{ name: 'Ace', identity: 'Ace, a tall adult athlete.' }],
+      subjects: [{ name: 'Ace', identity: 'Ace, a tall adult athlete.' }],
       style: 'Ink.',
     })
     assertEquals(removed.frames.map((f) => f.shown), [[], ['Ace']])
     await assertRejects(
       () =>
-        setLook(deps, removed, { people: [{ name: 'Kid', identity: 'A child.' }], style: 'Ink.' }),
+        setLook(deps, removed, {
+          subjects: [{ name: 'Kid', identity: 'A child.' }],
+          style: 'Ink.',
+        }),
       LimitError,
     )
     await assertRejects(
-      () => setLook(deps, removed, { people: [{ name: 'Ace', identity: '' }], style: 'Ink.' }),
+      () => setLook(deps, removed, { subjects: [{ name: 'Ace', identity: '' }], style: 'Ink.' }),
       Error,
       'needs a name and an identity',
     )
@@ -359,15 +362,15 @@ Deno.test('restartStoryboard takes it back to its plan, deleting the pictures', 
     assertEquals(edited.frames[0].beat, 'Ace warms up.')
   }))
 
-Deno.test('a Frame shows only the people its Beat names, at most three, and no one for a place', () =>
+Deno.test('a Frame shows only the Subjects its Beat names, at most three, and no one for a place', () =>
   withTempDir(async (root) => {
     // Without a full stop, an identity still ends as a sentence.
-    const people = ['Ana', 'Ben', 'Cal', 'Dee'].map((name) => ({
+    const subjects = ['Ana', 'Ben', 'Cal', 'Dee'].map((name) => ({
       name,
       identity: `${name}, an adult sailor`,
     }))
     const plan = planOf(3, {
-      look: { people, style: 'Film still.' },
+      look: { subjects, style: 'Film still.' },
       beats: [
         { beat: 'Ben raises a lantern.', shown: ['ben', 'Zoe'] },
         { beat: 'The crew hauls a rope.', shown: ['Ana', 'Ben', 'Cal', 'Dee'] },
@@ -473,7 +476,7 @@ Deno.test('editFrameByAction leaves everything as it was when declined or unclea
   }))
 
 Deno.test('composePrompt ends each part as a sentence so they never run together', () => {
-  const look = (identity: string, style: string) => ({ people: [{ name: 'X', identity }], style })
+  const look = (identity: string, style: string) => ({ subjects: [{ name: 'X', identity }], style })
   assertEquals(
     composePrompt(look('A tall man ', 'Manga ink'), 'He jumps.', ['X']),
     'A tall man. He jumps. Manga ink.',

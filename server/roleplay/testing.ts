@@ -3,7 +3,7 @@ import type { RoleplayModel } from './model.ts'
 import type { Delivery } from '../voice/voice.ts'
 import { REPLY_FIELDS } from './prompt.ts'
 import type { Cast, Reply } from './types.ts'
-import type { Look, Person } from '../session.ts'
+import type { Look, Subject } from '../session.ts'
 
 export const testCast: Cast = {
   character: {
@@ -36,7 +36,7 @@ export const replyOf = (dialogue: string, extra: Partial<Reply> = {}): Reply => 
 
 /** A Look for the test Cast: Mira and Sam, with these identities, in this style. */
 export const testLook = (style = 'Ink.', mira = 'Mira.', sam = 'Sam.'): Look => ({
-  people: [{ name: 'Mira Vance', identity: mira }, { name: 'Sam Reyes', identity: sam }],
+  subjects: [{ name: 'Mira Vance', identity: mira }, { name: 'Sam Reyes', identity: sam }],
   style,
 })
 
@@ -55,7 +55,7 @@ export function scriptedRoleplayModel(
      */
     bodies?: (
       | string
-      | { body: string; shown?: string[]; newcomers?: Person[]; clothing?: string }
+      | { body: string; shown?: string[]; newcomers?: Subject[]; clothing?: string }
       | Error
     )[]
     suggestions?: (string | Error)[]

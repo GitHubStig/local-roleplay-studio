@@ -711,7 +711,7 @@ Deno.test('POST /api/sessions makes a Storyboard with a Frame count', () =>
 Deno.test('A Storyboard is planned, reviewed, written, rendered and edited over the API', () =>
   withTempDir(async (root) => {
     const newLook = {
-      people: [{ name: 'Ace', identity: 'Ace, a tall adult athlete.' }],
+      subjects: [{ name: 'Ace', identity: 'Ace, a tall adult athlete.' }],
       style: 'Watercolour.',
     }
     const { call } = setup({
@@ -826,13 +826,13 @@ Deno.test("Chains and Storyboards refuse each other's routes", () =>
     assertEquals((await call('POST', '/api/sessions/s1/write')).status, 409)
     assertEquals((await call('POST', '/api/sessions/s1/restart')).status, 409)
     assertEquals(
-      (await call('PUT', '/api/sessions/s1/look', { people: [], style: 'b' })).status,
+      (await call('PUT', '/api/sessions/s1/look', { subjects: [], style: 'b' })).status,
       409,
     )
     assertEquals((await call('POST', '/api/sessions/s2/frames', { action: 'x' })).status, 409)
     assertEquals((await call('DELETE', '/api/sessions/s2/frames/0')).status, 409)
     assertEquals(
-      (await call('PUT', '/api/sessions/s2/look', { people: [], style: 'b' })).status,
+      (await call('PUT', '/api/sessions/s2/look', { subjects: [], style: 'b' })).status,
       409,
     )
     // Not planned yet: nothing to write or restart.

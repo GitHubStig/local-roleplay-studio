@@ -1,6 +1,7 @@
 import { assertEquals, assertStringIncludes, assertThrows } from '@std/assert'
 import { setLimitsEnabled } from '../limits.ts'
 import { DEFAULT_SETTINGS } from '../settings.ts'
+import { lookForModel } from '../textModel.ts'
 import {
   artFrameMessages,
   joinTags,
@@ -18,7 +19,7 @@ import type { RoleplaySession } from './types.ts'
 const MIRA = 'Mira Vance'
 const SAM = 'Sam Reyes'
 const look = {
-  people: [
+  subjects: [
     { name: MIRA, identity: 'Mira Vance, a tall woman of 34.' },
     { name: SAM, identity: 'Sam Reyes, a slight man of 25.' },
   ],
@@ -114,7 +115,7 @@ Deno.test('trimFields keeps whole sentences within the length, and always the fi
   assertEquals(trimFields({ pose: 'Short.' }), { pose: 'Short.' })
 })
 
-Deno.test('parseWho reads who a picture shows and adds; parseRoleplayLook needs people and a style', () => {
+Deno.test('parseWho reads who a picture shows and adds; parseRoleplayLook needs Subjects and a style', () => {
   assertEquals(
     parseWho({
       shown: ['Mira', '', 3, 'the barkeep'],
@@ -128,8 +129,12 @@ Deno.test('parseWho reads who a picture shows and adds; parseRoleplayLook needs 
     },
   )
   assertEquals(parseWho({}), { shown: [], newcomers: [] })
-  assertEquals(parseRoleplayLook(look), look)
-  assertThrows(() => parseRoleplayLook({ people: [], style: 'Ink.' }), Error, 'people')
+  assertEquals(parseRoleplayLook(lookForModel(look)), look)
+  assertThrows(
+    () => parseRoleplayLook({ people: [], style: 'Ink.' }),
+    Error,
+    'needs its Subjects',
+  )
 })
 
 Deno.test('Newcomers join the Look, unless already in it or crossing a Limit', () => {
@@ -140,7 +145,7 @@ Deno.test('Newcomers join the Look, unless already in it or crossing a Limit', (
     { name: 'a boy', identity: 'A 12-year-old boy.' },
     { name: 'the goons', identity: 'Two men, mid-20s, sturdy builds.' },
   ])
-  assertEquals(grown.people.map((p) => p.name), [MIRA, SAM, 'the barkeep'])
+  assertEquals(grown.subjects.map((p) => p.name), [MIRA, SAM, 'the barkeep'])
   assertEquals(withNewcomers(look, []), look)
   // Shown with the others, with their own identity.
   assertEquals(

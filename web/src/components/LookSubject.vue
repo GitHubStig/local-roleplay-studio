@@ -4,12 +4,12 @@ import { computed, useTemplateRef } from 'vue'
 import { useStoredFlag } from '../composables/useStoredFlag'
 
 /**
- * One person in a Look, in a card of their own: their name and identity. The card
- * collapses to the name and a one-line preview by clicking its header; whether it's collapsed is
- * remembered per browser, by `id`.
+ * One Subject of a Look (a person, creature, animal or object), in a card of its own: its name and
+ * identity. The card collapses to the name and a one-line preview by clicking its header; whether
+ * it's collapsed is remembered per browser, by `id`.
  */
 const props = defineProps<{
-  /** Remembers this card's collapsed state, e.g. `storyboard.look.person.0`. */
+  /** Remembers this card's collapsed state, e.g. `storyboard.look.subject.0`. */
   id: string
   disabled?: boolean
   /** The name comes from elsewhere (a Roleplay's Cast or story): shown, not edited. */
@@ -30,15 +30,15 @@ const preview = computed(() => identity.value.replace(/\s+/g, ' ').trim())
 
 <template>
   <details
-    class="group/person min-w-0 rounded border border-line text-xs text-muted"
+    class="group/subject min-w-0 rounded border border-line text-xs text-muted"
     :open="!collapsed"
     :data-collapsible="id"
-    data-person
+    data-subject
     @toggle="collapsed = !($event.target as HTMLDetailsElement).open"
   >
     <summary class="flex cursor-pointer select-none items-baseline gap-1.5 px-2 py-1.5 hover:text-fg">
-      <span class="shrink-0 transition-transform group-open/person:rotate-90">›</span>
-      <span class="shrink-0 text-sm font-medium text-fg">{{ name.trim() || 'New person' }}</span>
+      <span class="shrink-0 transition-transform group-open/subject:rotate-90">›</span>
+      <span class="shrink-0 text-sm font-medium text-fg">{{ name.trim() || 'New subject' }}</span>
       <span v-if="collapsed" class="min-w-0 flex-1 truncate text-muted/80" data-preview>
         · {{ preview }}
       </span>
@@ -46,7 +46,7 @@ const preview = computed(() => identity.value.replace(/\s+/g, ' ').trim())
         v-if="!kept"
         type="button"
         class="ml-auto shrink-0 rounded px-1.5 text-muted hover:text-fg disabled:opacity-50"
-        :aria-label="`Remove ${name.trim() || 'this person'}`"
+        :aria-label="`Remove ${name.trim() || 'this subject'}`"
         :disabled="disabled"
         @click.prevent="emit('remove')"
       >
@@ -60,7 +60,7 @@ const preview = computed(() => identity.value.replace(/\s+/g, ' ').trim())
           v-model="name"
           class="rounded border border-line bg-surface px-2 py-1 text-sm text-fg"
           :disabled="disabled"
-          data-person-name
+          data-subject-name
         />
       </label>
       <label class="flex flex-col gap-1">
@@ -70,7 +70,7 @@ const preview = computed(() => identity.value.replace(/\s+/g, ' ').trim())
           v-model="identity"
           rows="1"
           class="w-full resize-none overflow-hidden rounded border border-line bg-surface p-2 text-sm text-fg"
-          placeholder="Their name, age, build, skin, hair and face"
+          placeholder="Its name, then what it looks like"
           :disabled="disabled"
         />
       </label>

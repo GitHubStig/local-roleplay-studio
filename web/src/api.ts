@@ -316,7 +316,7 @@ export interface StoryboardFrame extends PicturedFrame {
    * Empty, with an empty prompt, until the Frame is written.
    */
   body: string
-  /** Names of the Look's people it shows, most prominent first; none for the place alone. */
+  /** Names of the Look's Subjects it shows, most prominent first; none for the place alone. */
   shown: string[]
   /** Exactly what the Image Model renders. */
   prompt: ImagePrompt
@@ -326,18 +326,18 @@ export interface StoryboardFrame extends PicturedFrame {
   createdAt: string
 }
 
-/** One person in a Storyboard's Look: Frames that show them use their identity. */
-export interface Person {
+/** One Subject of a Look (a person, creature, animal or object): Frames that show it use its identity. */
+export interface Subject {
   name: string
   identity: string
 }
 
-/** The most people one Storyboard Frame's prompt describes (`MAX_SHOWN` on the server). */
+/** The most Subjects one Storyboard Frame's prompt describes (`MAX_SHOWN` on the server). */
 export const MAX_SHOWN = 3
 
 /** The identities and art style Storyboard Frames share: each takes who it shows. */
 export interface Look {
-  people: Person[]
+  subjects: Subject[]
   style: string
 }
 

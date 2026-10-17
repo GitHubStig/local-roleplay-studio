@@ -49,8 +49,12 @@ One line of a Storyboard's plan: what happens in one Frame, and who it shows, re
 _Avoid_: Scene, step, moment
 
 **Look**:
-The identities and art style a Storyboard's Frames share, written once and used word for word: an identity for everyone and everything the story follows (people, creatures, animals, objects), and one art style. Fixed once the Frames are written. Each Frame's Image Prompt has the identities of the people it shows (none for a picture of the place alone), then the style.
+The identities and art style a Storyboard's Frames share, written once and used word for word: an identity for each Subject, and one art style. Fixed once the Frames are written. Each Frame's Image Prompt has the identities of the Subjects it shows (none for a picture of the place alone), then the style. A Roleplay has one too, its Subjects the people pictured.
 _Avoid_: Style guide, theme, bible
+
+**Subject**:
+One of a Look's: a person, creature, animal or object the story follows from picture to picture, with a name and an identity (the subject sentence for it alone, by the features of its kind). A group that acts together and looks alike can be one, in a Storyboard.
+_Avoid_: Person (for one of a Look's), character, entity
 
 **Cast**:
 Who a Roleplay is with and where it starts: the Character, the Persona and the Setting. Written once when the Roleplay is set up, from its Brief; editable later.

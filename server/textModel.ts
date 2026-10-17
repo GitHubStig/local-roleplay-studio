@@ -191,14 +191,14 @@ export interface StoryboardPlanRequest {
 /** One Beat of a Storyboard's plan: what happens in its Frame, and who it shows. */
 export interface PlannedBeat {
   beat: string
-  /** Names of the Look's people, as written: the engine matches them to the Look. */
+  /** Names of the Look's Subjects, as written: the engine matches them to the Look. */
   shown: string[]
 }
 
 /** One Frame as the Text Model edits it: its seven own sentences, and who it shows. */
 export interface PlannedFrame {
   body: string
-  /** Names of the Look's people, as written: the engine matches them to the Look. */
+  /** Names of the Look's Subjects, as written: the engine matches them to the Look. */
   shown: string[]
 }
 
@@ -266,7 +266,11 @@ export async function storyboardPlanMessages({ scenario, frameCount }: Storyboar
   }
 }
 
-/** A Look: each person's identity (sentence 1, for them) and the art style Frames share. */
+/**
+ * A Look as the model writes it: each Subject's identity (sentence 1, for it) and the art style
+ * Frames share. The model writes its Subjects as "people": asked for "subjects", Gemma 4 26B cast
+ * places and props too ("the tavern", "the letter") and named fewer (2026-10-17).
+ */
 export const lookSchema = {
   type: 'object',
   properties: {
@@ -297,7 +301,8 @@ export const storyboardFrameSchema = {
     shown: {
       type: 'array',
       items: { type: 'string' },
-      description: 'names of the people in the picture, most prominent first; empty for none',
+      description:
+        "names of the Look's subjects in the picture, most prominent first; empty for none",
     },
   },
   required: [...frameSchema.required, 'shown'],
@@ -306,7 +311,7 @@ export const storyboardFrameSchema = {
 export function storyboardPlanSchema(frameCount: number) {
   return {
     type: 'object',
-    // Order matters: the Look comes before the Beats that name its people.
+    // Order matters: the Look comes before the Beats that name its Subjects.
     properties: {
       look: lookSchema,
       beats: {
@@ -340,7 +345,7 @@ export async function storyboardWriteMessages(req: StoryboardWriteRequest) {
       true,
     ),
     user: await loadPrompt('storyboard/write-request', {
-      look: JSON.stringify(req.look, null, 2),
+      look: JSON.stringify(lookForModel(req.look), null, 2),
       beats: req.beats.map(line).join('\n'),
       brief: req.scenario.openingPrompt,
       before: req.before.length
@@ -383,20 +388,26 @@ const LABEL = new RegExp(
 export const plainSentences = (text: string) =>
   oneParagraph(text.replace(/([.!?])-\s/g, '$1 ').replace(LABEL, ' '))
 
-/** A Look from the reply. A person without a name or identity, or named twice, is left out. */
+/** A Look as the model reads it: its Subjects as "people", as it writes them (`lookSchema`). */
+export const lookForModel = (look: Look) => ({ people: look.subjects, style: look.style })
+
+/**
+ * A Look from the reply, its "people" the Look's Subjects. One without a name or identity, or
+ * named twice, is left out.
+ */
 export function parseLook(value: unknown): Look {
   const v = value as { people?: unknown; style?: unknown } | null
   if (typeof v?.style !== 'string' || !v.style.trim() || !Array.isArray(v.people)) {
     throw new Error('Text Model reply has no complete Look')
   }
-  const people = v.people.flatMap((p) => {
+  const subjects = v.people.flatMap((p) => {
     const name = typeof p?.name === 'string' ? oneParagraph(p.name) : ''
     const identity = typeof p?.identity === 'string' ? oneParagraph(p.identity) : ''
     return name && identity ? [{ name, identity }] : []
   }).filter((p, i, all) =>
     all.findIndex((q) => q.name.toLowerCase() === p.name.toLowerCase()) === i
   )
-  return { people, style: oneParagraph(v.style) }
+  return { subjects, style: oneParagraph(v.style) }
 }
 
 /**
@@ -485,7 +496,7 @@ export async function storyboardEditMessages(req: StoryboardEditRequest) {
       false,
     ),
     user: await loadPrompt('storyboard/edit-request', {
-      look: JSON.stringify(req.look, null, 2),
+      look: JSON.stringify(lookForModel(req.look), null, 2),
       number: req.index + 1,
       body: req.body,
       shown: req.shown.join(', ') || 'no one',
@@ -540,14 +551,14 @@ const TIME_LIMIT_MS = {
 
 /**
  * How much of a Storyboard plan may be written before its next part (the Look, a Beat) is complete,
- * in characters. The Look of five people takes about 1,500, a Beat about 150; a model that goes
+ * in characters. The Look of five Subjects takes about 1,500, a Beat about 150; a model that goes
  * past this has run away (repeating itself, or padding with whitespace), as Gemma 4 26B did once
  * in a 16-Frame plan on 2026-10-08. Stopped here, the plan is retried in well under a minute, where
  * waiting for its token cap took minutes.
  */
 export const RUNAWAY_CHARS = 8000
 
-/** A plan's token cap: room for the Look (a sentence per person), then each Beat. */
+/** A plan's token cap: room for the Look (a sentence per Subject), then each Beat. */
 export const planTokens = (frameCount: number) => 1200 + frameCount * MAX_TOKENS.perBeat
 
 export interface TextModelOptions {

@@ -23,15 +23,15 @@ Deno.test('renameShown follows a renamed person by their place while the Look ke
 
 Deno.test('cleanLook tidies a hand-edited Look and refuses one missing what it needs', () => {
   assertEquals(
-    cleanLook({ people: [{ name: ' Ben \n Ash ', identity: 'Ben, an adult.' }], style: 'Ink.' }),
-    { people: [{ name: 'Ben Ash', identity: 'Ben, an adult.' }], style: 'Ink.' },
+    cleanLook({ subjects: [{ name: ' Ben \n Ash ', identity: 'Ben, an adult.' }], style: 'Ink.' }),
+    { subjects: [{ name: 'Ben Ash', identity: 'Ben, an adult.' }], style: 'Ink.' },
   )
-  assertThrows(() => cleanLook({ people: [{ name: 'Ben', identity: '' }], style: 'Ink.' }))
+  assertThrows(() => cleanLook({ subjects: [{ name: 'Ben', identity: '' }], style: 'Ink.' }))
   assertThrows(() =>
     cleanLook({
-      people: [{ name: 'Ben', identity: 'Ben.' }, { name: 'ben', identity: 'Ben.' }],
+      subjects: [{ name: 'Ben', identity: 'Ben.' }, { name: 'ben', identity: 'Ben.' }],
       style: 'Ink.',
     })
   )
-  assertThrows(() => cleanLook({ people: [], style: '' }))
+  assertThrows(() => cleanLook({ subjects: [], style: '' }))
 })

@@ -11,7 +11,7 @@ import {
   replySchema,
 } from './prompt.ts'
 import type { Cast, Reply } from './types.ts'
-import type { Look, Person } from '../session.ts'
+import type { Look, Subject } from '../session.ts'
 import { parseFrameBody } from '../textModel.ts'
 import {
   artFrameSchema,
@@ -57,7 +57,7 @@ export interface RoleplayModel {
   ): Promise<{
     body: string
     shown: string[]
-    newcomers: Person[]
+    newcomers: Subject[]
     clothing: string
     thinking?: string
   }>
