@@ -589,7 +589,18 @@ captions without BFL's upsampler (this prompt was, by hand).
 
 ### mflux 0.23: FLUX.3 Klein and Qwen-Image 2.1 Turbo on the Mac (2026-10-17)
 
-mflux 0.23 (2026-10-16) runs two Image Models the app had only on ComfyUI, so both are now mflux Image Models too, under the same ids: **FLUX.3 Klein** (`flux3-klein`, `mflux-generate-flux3`, the distilled checkpoint: 16 steps, no guidance; gated, ~20 GB; mflux's README: ~105 s at 1024² in bf16 on an M4 Pro, 30.7 GB peak, and `-q 8` 22.8 GB) and **Qwen-Image 2.1 Turbo** (`qwen-image-2.1-turbo`, Qwen's own 8-step checkpoint through `mflux-generate-qwen-2.1`, no CFG, no step cache; a ~32 GB download of its own, since its repo holds its own text encoder; mflux says it turns fine detail into a pixel grid below ~1024 px; its README: ~45 s at 1024² with `-q 8` on an M5 Max, 27 GB peak). Neither is downloaded or measured here yet.
+mflux 0.23 (2026-10-16) runs two Image Models the app had only on ComfyUI, so both are now mflux Image Models too, under the same ids: **FLUX.3 Klein** (`flux3-klein`, `mflux-generate-flux3`, the distilled checkpoint: 16 steps, no guidance; gated, 20.3 GB) and **Qwen-Image 2.1 Turbo** (`qwen-image-2.1-turbo`, Qwen's own 8-step checkpoint through `mflux-generate-qwen-2.1`, no CFG, no step cache; 32.5 GB).
+
+Measured on the Mac (M5 Pro, 48 GB, 2026-10-17, mflux 0.23, float16, `--low-ram`, as the app runs them), one tavern prompt (two people, a letter, lamps, rain), seed 42, times including the model load:
+
+| Image Model | 832×1216 | 512² | Peak memory | The picture at 832×1216 |
+|---|---|---|---|---|
+| Qwen-Image 2.1, 25 steps, step cache 0.4 | 55.9 s | | 16.7 GB | everything asked for, painterly |
+| Qwen-Image 2.1 Turbo (Viggle LoRA), 6 steps | 30.2 s | | 18.0 GB | nearly the same picture as 25 steps |
+| **Qwen-Image 2.1 Turbo**, 8 steps | 33.2 s, 33.4 s | 11.7 s | 16.9 GB | everything; a little cleaner, less brushy than 25 steps; reruns pixel-identical |
+| **FLUX.3 Klein**, 16 steps | 40.9 s, 39.2 s | 11.6 s | 13.3 GB | everything, the most detailed (bottles, more lamps, the rain lit), the only one showing the scars; but the man made old and grey, as on the PC |
+
+**Qwen Turbo below 1024 px**, as mflux warns: at 512² the picture has a fine crosshatched grid over it, seen when zoomed. Not at 832×1216. **Qwen Turbo's text encoder is Qwen-Image 2.1's**: all 750 tensors byte-identical, only split into one file instead of four, so 17.5 GB of its 32.5 GB repeats what's on disk (the cache shares only identical files). Its VAE is a separate, smaller file (0.7 GB against 1.4). Its transformer is distilled: different weights, nothing to share. Not checked: either model over many Frames, or keeping a Subject consistent.
 
 Upgrading (Mac, 2026-10-17): `uv tool upgrade mflux` brought in Pillow 13.0.0, which fails to import on uv's Python 3.14.4 (`cannot import name '_IntegralLike' from 'numbers'`), so every mflux command failed. Reinstalled with `--with 'pillow<13'` (12.3.0), FLUX.2 Klein 4B rendered again: 512², 4 steps, float16, 10.1 s with the load, 10.2 GB peak. 0.23 pins each built-in model to a Hugging Face commit; Klein 4B's cache needed nothing fetched.
 
