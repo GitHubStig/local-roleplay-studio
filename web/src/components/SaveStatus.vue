@@ -18,7 +18,8 @@ const emit = defineEmits<{ revert: [] }>()
 </script>
 
 <template>
-  <div class="flex min-h-5 items-center gap-2 text-xs" data-save-status>
+  <!-- Nothing to say, no room taken: the line appearing is what shows there's something unsaved. -->
+  <div v-if="status.kind !== 'idle' || canRevert" class="flex items-center gap-2 text-xs" data-save-status>
     <span v-if="status.kind === 'unsaved'" class="text-muted">Saves when you click away</span>
     <span v-else-if="status.kind === 'saving'" class="animate-pulse text-muted">
       {{ savingText ?? 'Saving…' }}

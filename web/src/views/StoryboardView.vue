@@ -774,6 +774,7 @@ const imagesOn = computed(() => featureOn.value('images'))
               id-prefix="storyboard.look"
               every="every Frame"
               :disabled="busy || !planned || writingStarted"
+              :fixed="writingStarted"
             />
             <div v-if="writingStarted" class="flex items-center gap-2 text-xs text-muted" data-plan-fixed>
               <span class="flex-1">The Look and Beats are fixed now that Frames are written.</span>
