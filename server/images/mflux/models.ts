@@ -55,6 +55,16 @@ export const MFLUX_MODELS: readonly MfluxModel[] = [
     float16: true,
   },
   {
+    id: 'flux3-klein',
+    label: 'FLUX.3 Klein',
+    command: 'mflux-generate-flux3',
+    // The distilled checkpoint (mflux 0.23): 16 steps, no guidance. ~20 GB, fetched on first use.
+    // Gated (FLUX Kommunity License): accept its terms on Hugging Face and `hf auth login` first.
+    model: 'flux3-image-klein',
+    defaultSteps: 16,
+    float16: true,
+  },
+  {
     id: 'z-image-turbo',
     label: 'Z-Image Turbo (4-bit)',
     command: 'mflux-generate-z-image-turbo',
@@ -108,6 +118,17 @@ export const MFLUX_MODELS: readonly MfluxModel[] = [
     // mflux defaults to 40; 25 looks just as good at 512 px and is much faster.
     defaultSteps: 25,
     stepCache: true,
+    float16: true,
+  },
+  {
+    id: 'qwen-image-2.1-turbo',
+    label: 'Qwen-Image 2.1 Turbo',
+    command: 'mflux-generate-qwen-2.1',
+    // Qwen's own distilled checkpoint (mflux 0.23), not Viggle's LoRA: 8 steps on its fixed
+    // sigmas, no CFG. A download of its own (~32 GB). mflux warns it turns fine detail into a
+    // pixel grid below ~1024 px, so the small sizes suit it least.
+    model: 'qwen-image-2.1-turbo',
+    defaultSteps: 8,
     float16: true,
   },
   {

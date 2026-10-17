@@ -587,6 +587,14 @@ setting changed. Not checked: the Mac (ComfyUI or mflux), keeping a subject cons
 Frames, tags, more than one seed, and whether the Text Model's Image Prompts are full enough
 captions without BFL's upsampler (this prompt was, by hand).
 
+### mflux 0.23: FLUX.3 Klein and Qwen-Image 2.1 Turbo on the Mac (2026-10-17)
+
+mflux 0.23 (2026-10-16) runs two Image Models the app had only on ComfyUI, so both are now mflux Image Models too, under the same ids: **FLUX.3 Klein** (`flux3-klein`, `mflux-generate-flux3`, the distilled checkpoint: 16 steps, no guidance; gated, ~20 GB; mflux's README: ~105 s at 1024² in bf16 on an M4 Pro, 30.7 GB peak, and `-q 8` 22.8 GB) and **Qwen-Image 2.1 Turbo** (`qwen-image-2.1-turbo`, Qwen's own 8-step checkpoint through `mflux-generate-qwen-2.1`, no CFG, no step cache; a ~32 GB download of its own, since its repo holds its own text encoder; mflux says it turns fine detail into a pixel grid below ~1024 px; its README: ~45 s at 1024² with `-q 8` on an M5 Max, 27 GB peak). Neither is downloaded or measured here yet.
+
+Upgrading (Mac, 2026-10-17): `uv tool upgrade mflux` brought in Pillow 13.0.0, which fails to import on uv's Python 3.14.4 (`cannot import name '_IntegralLike' from 'numbers'`), so every mflux command failed. Reinstalled with `--with 'pillow<13'` (12.3.0), FLUX.2 Klein 4B rendered again: 512², 4 steps, float16, 10.1 s with the load, 10.2 GB peak. 0.23 pins each built-in model to a Hugging Face commit; Klein 4B's cache needed nothing fetched.
+
+Also in 0.23, not used yet: `mflux-generate-flux3-edit` (up to ten reference images, a lighter candidate for Subject consistency than Qwen-Image 2.1's edit; open-threads.md), FLUX.3 LoRAs, and `mflux-generate-krea2-controlnet` (Krea 2 Turbo from a depth map).
+
 ### Qwen-Image 2.1 on mflux 0.21: the step cache and Viggle's turbo LoRA (2026-10-04)
 
 mflux 0.21 adds a step cache for Qwen-Image 2.1 (`--step-cache-ratio`, TeaCache-style: it skips

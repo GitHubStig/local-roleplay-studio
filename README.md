@@ -86,9 +86,7 @@ builds and how to make one). Small models (4–8B) can't reliably follow the pro
 The default Image Model is **Qwen-Image 2.1**, which both image backends run. Choose the backend on
 the Images tab of Settings:
 
-- **mflux, on a Mac:** mflux 0.21+ (the step cache and Viggle's turbo need it):
-  `uv tool install --managed-python --python 3.14 mflux`. (uv's own Python, kept apart from any
-  other Python on the Mac; mflux runs on 3.10 or newer.) Each model downloads from Hugging Face
+- **mflux, on a Mac:** mflux 0.23+ (FLUX.3 Klein and Qwen-Image 2.1 Turbo need it): `uv tool install --managed-python --python 3.14 mflux --with 'pillow<13'`. (uv's own Python, kept apart from any other Python on the Mac; mflux runs on 3.10 or newer. Pillow 13.0 fails to import on Python 3.14.4, so every mflux command fails with it; drop the pin once Pillow fixes that.) Each model downloads from Hugging Face
   into `~/.cache/huggingface` the first time it's used, 3–30 GB each, shown as "Downloading the
   model (first use only)…"; to fetch one ahead of time, run its command once:
 
@@ -97,6 +95,8 @@ the Images tab of Settings:
   | **Qwen-Image 2.1** (the default; ~56 s at 832×1216 with the step cache, ~23 s at 512 px) | `mflux-generate-qwen-2.1 --model qwen-image-2.1 --prompt test --output /tmp/x.png` |
   | FLUX.2 Klein 4B (~13 s per image) | `mflux-generate-flux2 --model flux2-klein-4b --prompt test --steps 4 --output /tmp/x.png` |
   | FLUX.2 Klein 9B (~8 s at 512 px, ~22 s at 832×1216) | `mflux-generate-flux2 --model flux2-klein-9b --prompt test --steps 4 --output /tmp/x.png` |
+  | FLUX.3 Klein (~20 GB; gated: accept its terms on Hugging Face, then `hf auth login`) | `mflux-generate-flux3 --prompt test --steps 1 --output /tmp/x.png` |
+  | Qwen-Image 2.1 Turbo (Qwen's own 8-step checkpoint, ~32 GB) | `mflux-generate-qwen-2.1 --model qwen-image-2.1-turbo --prompt test --steps 1 --output /tmp/x.png` |
   | Z-Image Turbo, 4-bit (~42 s per image) | `mflux-generate-z-image-turbo --model filipstrand/Z-Image-Turbo-mflux-4bit --base-model z-image-turbo --prompt test --output /tmp/x.png` |
   | Z-Image, 8-bit (Turbo's undistilled base, 11 GB; ~3 min at 832×1216, 30 steps) | `mflux-generate-z-image --model mflux-community/z-image-base-mflux-q8 --base-model z-image --prompt test --steps 1 --output /tmp/x.png` |
   | Krea 2 Turbo (~32 s at 512 px) | `mflux-generate-krea2 --model krea-2 --prompt test --output /tmp/x.png` |

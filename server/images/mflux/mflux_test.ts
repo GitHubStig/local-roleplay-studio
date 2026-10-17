@@ -331,3 +331,13 @@ Deno.test('upscaleArgs upscales the shortest edge to 2048 with the chosen SeedVR
     ],
   )
 })
+
+Deno.test('mfluxArgs runs FLUX.3 Klein and Qwen-Image 2.1 Turbo by their mflux names', () => {
+  const flux3 = mfluxArgs(findMfluxModel('flux3-klein')!, request('/d', { steps: 16 }), 'o.png')
+  assertEquals(flux3.slice(0, 2), ['--model', 'flux3-image-klein'])
+  const turbo = findMfluxModel('qwen-image-2.1-turbo')!
+  assertEquals(turbo.command, 'mflux-generate-qwen-2.1')
+  const args = mfluxArgs(turbo, request('/d', { steps: 8, stepCache: 0.4 }), 'o.png')
+  assertEquals(args.slice(0, 2), ['--model', 'qwen-image-2.1-turbo'])
+  assertEquals(args.includes('--step-cache-ratio'), false)
+})
