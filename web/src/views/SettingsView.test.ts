@@ -72,7 +72,7 @@ const options: api.SettingsOptions = {
       },
       {
         id: 'qwen-image-2.1-viggle',
-        label: 'Qwen-Image 2.1 Turbo (Viggle LoRA)',
+        label: 'Qwen-Image 2.1 Viggle Turbo',
         defaultSteps: 6,
         stepChoices: [6],
         stepCache: false,

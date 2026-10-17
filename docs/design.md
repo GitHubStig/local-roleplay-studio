@@ -383,7 +383,7 @@ written for image prompts, are left out).
 - **The Image Model is switched in the Session** (2026-10-10), from the picker beside its switches
   (`ImageModelPicker`), which shows the steps a render takes next to it. Switching resets the steps
   to the new model's default and changes nothing else. A turbo with its own weights is an Image
-  Model of its own (Qwen-Image 2.1 Turbo, Viggle's LoRA), so it's switched here too; a model's
+  Model of its own (Qwen-Image 2.1 Viggle Turbo), so it's switched here too; a model's
   presets for the same weights are its steps (Ideogram 4: 12, 20 or 48;
   [ADR 0016](adr/0016-turbos-are-image-models.md)).
   Settings' Image Model is the one new Sessions start with. Renders under way finish on the old

@@ -14,7 +14,7 @@ a separate checkpoint with its own sampler, which a toggle would have had to hid
 Since 2026-10-14, one rule:
 
 - **Different weights make a different Image Model.** Viggle's LoRA changes the weights, so it's
-  **Qwen-Image 2.1 Turbo (Viggle LoRA)** (`qwen-image-2.1-viggle`), as Z-Image and Z-Image Turbo are
+  **Qwen-Image 2.1 Viggle Turbo** (`qwen-image-2.1-viggle`; "Qwen-Image 2.1 Turbo (Viggle LoRA)" until 2026-10-17, renamed beside Qwen's own Turbo), as Z-Image and Z-Image Turbo are
   two. It's switched in the Session like any model, keeps its own picture beside the full model's,
   and has its own column in Compare.
 - **The same weights sampled differently is the Steps setting.** A model whose steps are presets

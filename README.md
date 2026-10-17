@@ -104,7 +104,7 @@ the Images tab of Settings:
   | Boogu Image Turbo (~16 s at 512 px) | `mflux-generate-boogu --model boogu-image-turbo --prompt test --output /tmp/x.png` |
   | SeedVR2 upscaler, 7B and 3B (Upscale, ~46 s to 2048 px) | `mflux-upscale-seedvr2 --model seedvr2-7b --image-path /tmp/x.png --resolution 2048 --output /tmp/y.png` (one download holds both) |
 
-  **Qwen-Image 2.1 Turbo (Viggle LoRA)** is Qwen-Image 2.1 with Viggle's 6-step turbo LoRA
+  **Qwen-Image 2.1 Viggle Turbo** is Qwen-Image 2.1 with Viggle's 6-step turbo LoRA
   ([Viggle/Qwen-Image-2.1-viggle-turbo](https://huggingface.co/Viggle/Qwen-Image-2.1-viggle-turbo),
   1.3 GB, Qwen's research license), which mflux downloads with its first render.
 - **ComfyUI, on any machine** (the one for Windows): ComfyUI must be running (Comfy Desktop, the

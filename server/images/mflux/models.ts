@@ -133,7 +133,7 @@ export const MFLUX_MODELS: readonly MfluxModel[] = [
   },
   {
     id: 'qwen-image-2.1-viggle',
-    label: 'Qwen-Image 2.1 Turbo (Viggle LoRA)',
+    label: 'Qwen-Image 2.1 Viggle Turbo',
     command: 'mflux-generate-qwen-2.1',
     model: 'qwen-image-2.1',
     // Viggle's turbo LoRA (v0.3, 1.3 GB, fetched on first use; Qwen research license) on Qwen-Image
