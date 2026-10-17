@@ -655,6 +655,20 @@ const imagesOn = computed(() => featureOn.value('images'))
             >
               {{ message.text }}
             </p>
+            <!-- At the far end, away from Send and Render: it opens a new Session. -->
+            <button
+              v-if="current && currentWritten && !busy"
+              type="button"
+              class="ml-auto rounded-lg border border-line px-3 py-2 text-sm disabled:opacity-50"
+              :disabled="!!current.blocked || copying"
+              :title="current.blocked
+              ? 'Edit this Frame first: it crosses a limit'
+              : `A new Chain of Frames 1 to ${current.index + 1}, with their pictures, to carry on from this Frame by Actions. This Storyboard stays as it is.`"
+              data-continue-chain
+              @click="continueAsChain(current.index)"
+            >
+              {{ copying ? 'Making…' : 'Chain from here' }}
+            </button>
           </div>
         </div>
       </main>
@@ -702,7 +716,7 @@ const imagesOn = computed(() => featureOn.value('images'))
             role="tabpanel"
             @keydown="onFrameKey"
           >
-            <li v-for="f in frames" :key="f.index" class="group relative">
+            <li v-for="f in frames" :key="f.index">
               <button
                 type="button"
                 class="flex w-full gap-3 border-b border-line p-3 text-left text-sm hover:bg-surface"
@@ -738,19 +752,6 @@ const imagesOn = computed(() => featureOn.value('images'))
                     {{ frameJob(f.index) ? `${JOB_NAMES[frameJob(f.index)!.kind]}…` : status(f).label }}
                   </span>
                 </span>
-              </button>
-              <button
-                v-if="planned && !busy && !('pending' in f) && isWritten(f)"
-                type="button"
-                class="absolute right-2 top-2 rounded border border-line bg-canvas px-2 py-0.5 text-xs text-muted opacity-0 hover:text-fg focus:opacity-100 group-hover:opacity-100 disabled:opacity-50"
-                :disabled="!!f.blocked || copying"
-                :title="f.blocked
-                ? 'Edit this Frame first: it crosses a limit'
-                : `A new Chain of Frames 1 to ${f.index + 1}, with their pictures, to carry on from this Frame by Actions. This Storyboard stays as it is.`"
-                data-continue-chain
-                @click="continueAsChain(f.index)"
-              >
-                {{ copying ? 'Making…' : 'Chain from here' }}
               </button>
             </li>
           </ol>

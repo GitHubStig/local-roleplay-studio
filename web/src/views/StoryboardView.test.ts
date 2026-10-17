@@ -380,10 +380,11 @@ describe('StoryboardView', () => {
     expect(wrapper.find('[data-rewriting]').exists()).toBe(false)
   })
 
-  it('continues as a Chain from a Frame in the list, and opens it', async () => {
+  it('continues as a Chain from the Frame shown, and opens it', async () => {
     vi.mocked(api.chainFromStoryboard).mockResolvedValue({ id: 'ch', kind: 'chain' } as never)
     const { wrapper, router } = await mountIt()
-    await wrapper.findAll('[data-continue-chain]')[1].trigger('click')
+    await wrapper.findAll('[data-frame]')[1].trigger('click')
+    await wrapper.find('[data-continue-chain]').trigger('click')
     await flushPromises()
     expect(api.chainFromStoryboard).toHaveBeenCalledWith('sb', 1)
     expect(router.currentRoute.value.path).toBe('/sessions/ch')
