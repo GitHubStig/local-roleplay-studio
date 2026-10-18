@@ -92,6 +92,8 @@ const work = ref<Work | null>(null)
 const planning = ref<{ look: Look | null; beats: { beat: string; shown: string[] }[] } | null>(null)
 
 const busy = computed(() => work.value !== null)
+/** Why nothing can be queued while busy: a render, upscale or 3D would unload the Text Model. */
+const waitForText = computed(() => (busy.value ? 'Wait for the writing to finish' : undefined))
 const planned = computed(() => (session.value?.frames.length ?? 0) > 0)
 /** How many Frames are written; once one is, the Look and Beats are fixed until a Restart. */
 const writtenCount = computed(() => session.value?.frames.filter(isWritten).length ?? 0)
@@ -631,6 +633,7 @@ const imagesOn = computed(() => featureOn.value('images'))
               :picture="picture"
               :has-job="(kind) => hasJob(current!.index, kind)"
               :can-render="!current.blocked"
+              :busy="waitForText"
               button-class="rounded-lg border border-line px-3 py-2 text-sm disabled:opacity-50"
               @queue="(kind) => queueSaved(kind, current!.index)"
               @view="(kind) => (open3d = { index: current!.index, kind })"
@@ -638,6 +641,7 @@ const imagesOn = computed(() => featureOn.value('images'))
             <RenderAllButton
               v-if="imagesOn && writingStarted"
               :count="toRender.length"
+              :busy="waitForText"
               title="Queue a render of every Frame not rendered yet, or changed since"
               @render="renderAll"
             />

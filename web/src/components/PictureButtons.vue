@@ -6,7 +6,7 @@ import Frame3dButtons from './Frame3dButtons.vue'
 /**
  * What can be done with a Frame's picture, in every kind of Session: render it (where a Frame
  * renders on demand), upscale it, and make it into 3D. Each queues a job; a button is off while
- * that job is queued or running on the Frame.
+ * that job is queued or running on the Frame, and all are while `busy`.
  */
 const props = withDefaults(
   defineProps<{
@@ -16,6 +16,8 @@ const props = withDefaults(
     hasJob: (kind: JobKind) => boolean
     /** Offer Render (Re-render once it has a picture): the Frame can be rendered now. */
     canRender?: boolean
+    /** Why nothing can be queued for now, shown on hover: the Text Model is at work, and a job would unload it. */
+    busy?: string
     buttonClass?: string
   }>(),
   { canRender: false, buttonClass: 'action' },
@@ -36,7 +38,8 @@ const pictured = () => !!props.picture || props.hasJob('render') || props.hasJob
       v-if="canRender"
       type="button"
       :class="buttonClass"
-      :disabled="hasJob('render')"
+      :disabled="!!busy || hasJob('render')"
+      :title="busy"
       data-render-button
       @click="$emit('queue', 'render')"
     >
@@ -46,8 +49,8 @@ const pictured = () => !!props.picture || props.hasJob('render') || props.hasJob
       v-if="featureOn('upscale') && pictured()"
       type="button"
       :class="buttonClass"
-      :disabled="!!picture?.upscaled || hasJob('upscale')"
-      :title="picture?.upscaled ? 'Upscaled to 2048 px' : 'Upscale to 2048 px with SeedVR2'"
+      :disabled="!!busy || !!picture?.upscaled || hasJob('upscale')"
+      :title="busy || (picture?.upscaled ? 'Upscaled to 2048 px' : 'Upscale to 2048 px with SeedVR2')"
       data-upscale-button
       @click="$emit('queue', 'upscale')"
     >
@@ -56,7 +59,8 @@ const pictured = () => !!props.picture || props.hasJob('render') || props.hasJob
   </template>
   <Frame3dButtons
     :picture="picture"
-    :disabled="(kind) => hasJob(kind)"
+    :disabled="(kind) => !!busy || hasJob(kind)"
+    :busy="busy"
     :available="available"
     :button-class="buttonClass"
     @make="(kind) => $emit('queue', kind)"

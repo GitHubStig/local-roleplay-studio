@@ -12,6 +12,8 @@ withDefaults(
     picture?: Picture
     /** Which are off for now, e.g. while one is being made. */
     disabled?: (kind: Made3d) => boolean
+    /** Why none can be made for now, shown on hover in place of what each does. */
+    busy?: string
     /** Which can be made at all here (its Feature is on); what's made can always be viewed. */
     available?: (kind: Made3d) => boolean
     buttonClass?: string
@@ -38,9 +40,9 @@ defineEmits<{ make: [kind: Made3d]; view: [kind: Made3d] }>()
     type="button"
     :class="buttonClass"
     :disabled="disabled('scene')"
-    :title="picture?.scene
+    :title="busy || (picture?.scene
       ? 'Made before the upscale: make it again from the upscale'
-      : 'Experimental: make the whole picture into a 2.5D scene with Apple\'s SHARP, which turns ~30° (~11 s)'"
+      : 'Experimental: make the whole picture into a 2.5D scene with Apple\'s SHARP, which turns ~30° (~11 s)')"
     data-scene-button
     @click="$emit('make', 'scene')"
   >
@@ -61,7 +63,7 @@ defineEmits<{ make: [kind: Made3d]; view: [kind: Made3d] }>()
     type="button"
     :class="buttonClass"
     :disabled="disabled('figure')"
-    title="Experimental: lift the person in the picture out as a 3D figure with VAST's TripoSplat, which turns all the way round (~75 s). Best with one person, not overlapped by anyone."
+    :title="busy || 'Experimental: lift the person in the picture out as a 3D figure with VAST\'s TripoSplat, which turns all the way round (~75 s). Best with one person, not overlapped by anyone.'"
     data-figure-button
     @click="$emit('make', 'figure')"
   >
@@ -82,7 +84,7 @@ defineEmits<{ make: [kind: Made3d]; view: [kind: Made3d] }>()
     type="button"
     :class="buttonClass"
     :disabled="disabled('lito')"
-    title="Experimental: lift the person in the picture out as a 3D figure with Apple's LiTo (research-only), which turns all the way round (a few minutes). Best with one person, not overlapped by anyone."
+    :title="busy || 'Experimental: lift the person in the picture out as a 3D figure with Apple\'s LiTo (research-only), which turns all the way round (a few minutes). Best with one person, not overlapped by anyone.'"
     data-lito-button
     @click="$emit('make', 'lito')"
   >

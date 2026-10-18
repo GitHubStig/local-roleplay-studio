@@ -200,10 +200,18 @@ describe('StoryboardView', () => {
       'Writing…',
       'Not written',
     ])
+    // A render now would unload the Text Model while it writes.
+    expect(wrapper.find('[data-render-button]').attributes('disabled')).toBeDefined()
+    expect(wrapper.find('[data-render-all]').attributes('disabled')).toBeDefined()
+    expect(wrapper.find('[data-render-button]').attributes('title')).toBe(
+      'Wait for the writing to finish',
+    )
 
     stream.emit({ type: 'written', session: storyboard([frame(0), frame(1), frame(2)]) })
     stream.finish()
     await flushPromises()
+    expect(wrapper.find('[data-render-button]').attributes('disabled')).toBeUndefined()
+    expect(wrapper.find('[data-render-all]').attributes('disabled')).toBeUndefined()
     expect(wrapper.find('[data-write]').exists()).toBe(false)
     expect(wrapper.find('[data-field="storyboard.frame"]').element).toHaveProperty(
       'value',
