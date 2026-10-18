@@ -18,6 +18,8 @@ export interface MfluxModel {
    * Settings' steps choose one, and any other count renders at `defaultSteps`.
    */
   stepPresets?: readonly StepPreset[]
+  /** A LoRA passed as `--lora` on every render. */
+  lora?: Lora
   /** Arguments passed on every render, after the rest. */
   args?: readonly string[]
   /**
@@ -29,6 +31,16 @@ export interface MfluxModel {
   stepCache?: boolean
   /** Takes `--compute-precision float16`: faster on M1 and M2 Macs, the same on M4 and M5. */
   float16?: boolean
+}
+
+/**
+ * A LoRA for mflux: a Hugging Face repo, a `repo:file.safetensors` in one, or a local file. A local
+ * path starting `./` or `../` is from the repo's root, wherever the server was started.
+ */
+export interface Lora {
+  path: string
+  /** How strongly it applies; mflux's default is 1.0. */
+  scale?: number
 }
 
 /** A step count a model renders at, and the arguments that choose it. */
@@ -141,13 +153,11 @@ export const MFLUX_MODELS: readonly MfluxModel[] = [
     // own scheduler, so it takes no step cache (which leaves runs under 10 steps be anyway).
     defaultSteps: 6,
     stepPresets: [{ steps: 6, args: ['--steps', '6'] }],
-    args: [
-      '--scheduler',
-      'viggle_turbo',
-      '--lora',
-      'Viggle/Qwen-Image-2.1-viggle-turbo:Qwen-Image-2.1-viggle-turbo-v0.3-6step-lora-r256.safetensors',
-      '1.0',
-    ],
+    lora: {
+      path:
+        'Viggle/Qwen-Image-2.1-viggle-turbo:Qwen-Image-2.1-viggle-turbo-v0.3-6step-lora-r256.safetensors',
+    },
+    args: ['--scheduler', 'viggle_turbo'],
     float16: true,
   },
   {

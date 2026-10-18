@@ -1,4 +1,4 @@
-import { join } from '@std/path'
+import { fromFileUrl, join } from '@std/path'
 import { track } from '../../children.ts'
 import {
   type ImageGenerator,
@@ -7,12 +7,20 @@ import {
   UPSCALED_EDGE,
   type UpscaleRequest,
 } from '../imageGenerator.ts'
-import { findMfluxModel, MFLUX_MODELS, type MfluxModel } from './models.ts'
+import { findMfluxModel, type Lora, MFLUX_MODELS, type MfluxModel } from './models.ts'
 import { SIZE_PRESETS } from '../../settings.ts'
 
 /** Straight double quotes as curly ones: opening after a space or bracket, or at the start. */
 export function curlQuotes(text: string): string {
   return text.replace(/(^|[\s([{])"/g, '$1\u201c').replaceAll('"', '\u201d')
+}
+
+/** `--lora` for a LoRA, its `./` or `../` path resolved from the repo's root. */
+export function loraArgs(lora: Lora): string[] {
+  const path = /^\.\.?\//.test(lora.path)
+    ? fromFileUrl(new URL(lora.path, new URL('../../../', import.meta.url)))
+    : lora.path
+  return ['--lora', path, ...(lora.scale === undefined ? [] : [String(lora.scale)])]
 }
 
 /**
@@ -50,6 +58,7 @@ export function mfluxArgs(
     String(size.height),
     ...(quantize ? ['--quantize', String(settings.quantize)] : []),
     ...(settings.float16 && model.float16 ? ['--compute-precision', 'float16'] : []),
+    ...(model.lora ? loraArgs(model.lora) : []),
     ...(model.args ?? []),
     '--low-ram',
     '--output',

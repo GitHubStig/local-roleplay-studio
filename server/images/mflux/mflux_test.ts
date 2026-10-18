@@ -1,10 +1,11 @@
 import { assertEquals, assertRejects } from '@std/assert'
-import { join } from '@std/path'
+import { fromFileUrl, join } from '@std/path'
 import type { ImageRequest } from '../imageGenerator.ts'
 import { findMfluxModel, type MfluxModel } from './models.ts'
 import {
   curlQuotes,
   failureReason,
+  loraArgs,
   mfluxArgs,
   mfluxImageGenerator,
   parseProgress,
@@ -89,10 +90,7 @@ Deno.test("mfluxArgs renders Viggle's turbo at its 6 steps, with its scheduler a
   assertEquals(args.filter((a) => a === '--steps').length, 1)
   assertEquals(args[args.indexOf('--steps') + 1], '6')
   assertEquals(args[args.indexOf('--scheduler') + 1], 'viggle_turbo')
-  assertEquals(args.slice(args.indexOf('--lora') + 1, args.indexOf('--lora') + 3), [
-    turbo.args![3],
-    '1.0',
-  ])
+  assertEquals(args[args.indexOf('--lora') + 1], turbo.lora!.path)
   assertEquals(args.includes('--step-cache-ratio'), false)
 })
 
@@ -340,4 +338,15 @@ Deno.test('mfluxArgs runs FLUX.3 Klein and Qwen-Image 2.1 Turbo by their mflux n
   const args = mfluxArgs(turbo, request('/d', { steps: 8, stepCache: 0.4 }), 'o.png')
   assertEquals(args.slice(0, 2), ['--model', 'qwen-image-2.1-turbo'])
   assertEquals(args.includes('--step-cache-ratio'), false)
+})
+
+Deno.test('loraArgs resolves a ./ path from the repo root, and passes the rest as they are', () => {
+  const root = fromFileUrl(new URL('../../../', import.meta.url))
+  assertEquals(loraArgs({ path: './models/test.safetensors', scale: 0.7 }), [
+    '--lora',
+    join(root, 'models/test.safetensors'),
+    '0.7',
+  ])
+  assertEquals(loraArgs({ path: '/abs/x.safetensors' }), ['--lora', '/abs/x.safetensors'])
+  assertEquals(loraArgs({ path: 'org/repo:x.safetensors' }), ['--lora', 'org/repo:x.safetensors'])
 })
