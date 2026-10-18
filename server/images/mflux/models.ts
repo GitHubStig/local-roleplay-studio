@@ -109,6 +109,18 @@ export const MFLUX_MODELS: readonly MfluxModel[] = [
     defaultSteps: 8,
   },
   {
+    id: 'krea-2-lora',
+    label: 'Krea 2 + LoRA',
+    command: 'mflux-generate-krea2',
+    model: 'krea-2',
+    defaultSteps: 8,
+    lora: {
+      path:
+        'Quiho/Krea2_TextFusion_Refusal-Reduction_LoRA_v1.0_lora:Krea2_TextFusion_Refusal_Reduction.safetensors',
+      scale: 0.8,
+    },
+  },
+  {
     id: 'ernie-image-turbo',
     label: 'ERNIE-Image Turbo',
     command: 'mflux-generate-ernie-image-turbo',
