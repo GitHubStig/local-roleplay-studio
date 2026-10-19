@@ -661,3 +661,25 @@ only a Krea 3 partner node and templates 0.11.85): **nothing in the app needed c
   - Added as the ComfyUI Image Model `flux3-klein` (`workflows/flux3-klein.json`), 16 steps. On
     the RTX 4070: 11–13 s a picture at 832×1216 from cold, ~6 s of it sampling and decoding
     ([models.md](../models.md), "FLUX.3 Klein on ComfyUI").
+
+## ComfyUI 0.42 (2026-10-19, the Windows PC)
+
+Comfy Desktop updated the PC to **0.42.1** (stable channel; comfy-kitchen 0.2.39, comfy-aimdo 0.5.6 unchanged, torch 2.12.1+cu130). Read against what the app uses, from 0.41.1 ([0.42.0](https://github.com/Comfy-Org/ComfyUI/releases/tag/v0.42.0), [the changes](https://github.com/Comfy-Org/ComfyUI/compare/v0.41.1...v0.42.1)): **nothing in the app needed changing.**
+
+- **The API:** `server.py` and `execution.py` untouched.
+- **The workflows' nodes:** none of their inputs changed. `CLIPLoader` gained a `moss_image` type; `Flux3LayoutPrompt` was only relabelled.
+- **Prompt templates:** the empty think block (`<think>\n\n</think>`) moved out of the shared `Qwen3VLTokenizer` into each model's own tokenizer. Checked in the code for every encoder the app uses: Qwen-Image 2.1 and its Turbo (Qwen3-VL 8B) and FLUX.3 Klein (Qwen3-VL 4B) still get no think block, FLUX.2 Klein 4B still gets the empty one, Z-Image Turbo still gets none. So each model reads the same tokens as on 0.41.
+- **Possibly relevant fixes:** 0.42.1's only change syncs the GPU before a CUDA graph is dropped when it's cleaned up ([#17178](https://github.com/Comfy-Org/ComfyUI/pull/17178)). That's the code behind the "rogues" from 0.40 and maybe the half-alive crash; whether it helps is unknown until that crash comes back or doesn't. "Qwen 3.x performance, part 2" ([#17007](https://github.com/Comfy-Org/ComfyUI/pull/17007)) speeds up `TextGenerate`'s LLMs (Qwen3.5), which the app doesn't run on ComfyUI.
+- **New, not used:** the Krea 3 Image node is a paid partner (API) node, so the picture would leave the machine: not for the app. **MOSS-Image** runs locally, so it's a candidate (open-threads.md).
+
+Run on the RTX 4070 through the app's ComfyUI generator (a scratch script calling `comfyuiImageGenerator`, no Session): one picture per Image Model, 832×1216, seed 42, each at its default steps, ComfyUI's models freed before each, Ollama unloaded, 2.7 GB of the 16 GB RAM free at the start:
+
+| Model | 0.42.1, from cold | Before |
+|---|---|---|
+| Qwen-Image 2.1 (25 steps) | 23.1 s | 21.8 s (0.40.0) |
+| Qwen-Image 2.1 Turbo (8) | 12.2 s | 12.2 s (0.40.0), 13.7 s (0.41.1) |
+| FLUX.2 Klein 4B (4) | 10.1 s | 9.8 s (0.40.0), 10.5 s (0.41.1) |
+| FLUX.3 Klein (16) | 10.4 s | 10.9–12.7 s (0.41.1) |
+| Z-Image Turbo (8) | 11.4 s | 11.4 s (0.40.0) |
+
+All in line. Peak VRAM 11.2–12.1 GB, filling the card as before. FLUX.3 Klein's and Z-Image Turbo's pictures were looked at and drew the prompt (two people, the fire, rain on the window). Not checked: SeedVR2, voices (TTS Audio Suite), the Mac.
