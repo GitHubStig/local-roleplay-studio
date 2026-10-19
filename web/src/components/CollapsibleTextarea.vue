@@ -6,7 +6,7 @@ import { useStoredFlag } from '../composables/useStoredFlag'
 /**
  * A labelled textarea that shows all its text (it grows to fit) and can be collapsed to a
  * one-line preview by clicking its label. Whether it's collapsed is remembered per browser, by
- * `id`.
+ * `id`. With `alwaysOpen` it doesn't collapse, for a box inside a part that collapses itself.
  */
 const props = defineProps<{
   /** Remembers this field's collapsed state, e.g. `look.character`. */
@@ -15,6 +15,9 @@ const props = defineProps<{
   disabled?: boolean
   /** Shown while it's empty. */
   placeholder?: string
+  alwaysOpen?: boolean
+  /** Its label in the heading font, for a box that stands as a part of its own (a Look's art style). */
+  heading?: boolean
 }>()
 const value = defineModel<string>({ required: true })
 
@@ -28,7 +31,20 @@ const preview = computed(() => value.value.replace(/\s+/g, ' ').trim())
 </script>
 
 <template>
+  <label v-if="alwaysOpen" class="flex flex-col gap-1 text-xs text-muted">
+    {{ label }}
+    <textarea
+      ref="textarea"
+      v-model="value"
+      rows="1"
+      class="w-full resize-none overflow-hidden rounded border border-line bg-surface p-2 text-sm text-fg disabled:opacity-60"
+      :disabled="disabled"
+      :placeholder="placeholder"
+      :data-field="id"
+    />
+  </label>
   <details
+    v-else
     class="group/field text-xs text-muted"
     :open="!collapsed"
     :data-collapsible="id"
@@ -36,14 +52,14 @@ const preview = computed(() => value.value.replace(/\s+/g, ' ').trim())
   >
     <summary class="flex cursor-pointer select-none items-baseline gap-1.5 py-0.5 hover:text-fg">
       <span class="shrink-0 transition-transform group-open/field:rotate-90">›</span>
-      <span class="shrink-0">{{ label }}</span>
+      <span class="shrink-0" :class="{ 'text-sm font-medium text-fg': heading }">{{ label }}</span>
       <span v-if="collapsed" class="min-w-0 truncate text-muted/80" data-preview>· {{ preview }}</span>
     </summary>
     <textarea
       ref="textarea"
       v-model="value"
       rows="1"
-      class="mt-1 w-full resize-none overflow-hidden rounded border border-line bg-surface p-2 text-sm text-fg"
+      class="mt-1 w-full resize-none overflow-hidden rounded border border-line bg-surface p-2 text-sm text-fg disabled:opacity-60"
       :disabled="disabled"
       :placeholder="placeholder"
       :data-field="id"

@@ -238,7 +238,9 @@ describe('StoryboardView', () => {
       'Body 1.',
     )
     expect(wrapper.find('[data-look] textarea').attributes('disabled')).toBeDefined()
-    expect(wrapper.find('[data-plan-fixed]').exists()).toBe(true)
+    expect(wrapper.find('[data-restart]').attributes('title')).toContain(
+      'fixed now that Frames are written',
+    )
   })
 
   it('offers to write the rest after a write that stopped part-way', async () => {

@@ -30,8 +30,10 @@ Treat what the player writes as {{persona.name}}'s words and actions.
 
 {{setting}}
 
-The conversation carries the scene on from here: keep track of where everyone is, the time,
-the weather and how {{character.name}} feels.
+All of this is how things stood when the scene began. The conversation carries the scene on from
+here: keep track of where everyone is, the time, the weather and how {{character.name}} feels, and
+where the story has moved on (time has passed, someone's age or looks have changed), go by the
+story.
 
 # How to reply
 

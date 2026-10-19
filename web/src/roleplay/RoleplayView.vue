@@ -29,7 +29,6 @@ import { useStoredFlag } from '../composables/useStoredFlag'
 import { useStoredText } from '../composables/useStoredText'
 import { saveLine, useAutosave } from '../composables/useAutosave'
 import SaveStatus from '../components/SaveStatus.vue'
-import CollapsibleTextarea from '../components/CollapsibleTextarea.vue'
 import LookForm from '../components/LookForm.vue'
 import RestartButton from '../components/RestartButton.vue'
 import ComposeBox from '../components/ComposeBox.vue'
@@ -38,6 +37,7 @@ import ImageModelPicker from '../components/ImageModelPicker.vue'
 import ModelComparison from '../components/ModelComparison.vue'
 import { useImageModels } from '../composables/useSettingsOptions'
 import UndirectedNote from './UndirectedNote.vue'
+import CastFieldBox from './CastFieldBox.vue'
 import Frame3dViewers from '../components/Frame3dViewers.vue'
 import FrameViewer from '../components/FrameViewer.vue'
 import FrameJobs from '../components/FrameJobs.vue'
@@ -589,31 +589,79 @@ const statusLabel = computed(() => {
 
 // --- The Cast, editable by hand.
 
-type CastField = { group: keyof Cast; key: string; label: string; long?: boolean }
+/**
+ * `start`: how things were when the scene began (who's who, their age and looks, where it starts);
+ * fixed once it has begun, as the story moves on from it (the server refuses a change too).
+ */
+type CastField = { group: keyof Cast; key: string; label: string; long?: boolean; start?: boolean }
 const CAST_FIELDS: CastField[] = [
-  { group: 'character', key: 'name', label: 'Name' },
-  { group: 'character', key: 'age', label: 'Age' },
-  { group: 'character', key: 'appearance', label: 'Appearance', long: true },
+  { group: 'character', key: 'name', label: 'Name', start: true },
+  { group: 'character', key: 'age', label: 'Age', start: true },
+  { group: 'character', key: 'appearance', label: 'Appearance', long: true, start: true },
   { group: 'character', key: 'personality', label: 'Personality', long: true },
   { group: 'character', key: 'voice', label: 'Way of speaking', long: true },
   { group: 'character', key: 'background', label: 'Background', long: true },
   { group: 'character', key: 'goal', label: 'Goal', long: true },
-  { group: 'persona', key: 'name', label: 'Name' },
-  { group: 'persona', key: 'role', label: 'Who they are to the Character', long: true },
-  { group: 'persona', key: 'appearance', label: 'Appearance', long: true },
-  { group: 'setting', key: 'place', label: 'Place', long: true },
-  { group: 'setting', key: 'time', label: 'Time', long: true },
-  { group: 'setting', key: 'weather', label: 'Weather', long: true },
+  { group: 'persona', key: 'name', label: 'Name', start: true },
+  { group: 'persona', key: 'role', label: 'Who they are to the Character', long: true, start: true },
+  { group: 'persona', key: 'appearance', label: 'Appearance', long: true, start: true },
+  { group: 'setting', key: 'place', label: 'Place', long: true, start: true },
+  { group: 'setting', key: 'time', label: 'Time', long: true, start: true },
+  { group: 'setting', key: 'weather', label: 'Weather', long: true, start: true },
 ]
 const GROUPS: { id: keyof Cast; title: () => string; preview: () => string }[] = [
   { id: 'character', title: () => 'Character', preview: () => characterName.value },
   { id: 'persona', title: () => 'You play', preview: () => personaName.value },
   { id: 'setting', title: () => 'Where it starts', preview: () => castDraft.value?.setting.place ?? '' },
 ]
-/** Each group collapses to its title and a preview, remembered per browser. */
-const groupCollapsed = Object.fromEntries(
-  GROUPS.map((g) => [g.id, useStoredFlag(`collapsed:roleplay.cast.${g.id}`)]),
-) as Record<keyof Cast, ReturnType<typeof useStoredFlag>>
+
+/**
+ * The Cast's sections: in review, a group each, all editable. Once begun, how it started first,
+ * read-only (a part per group), then what still steers the Character.
+ */
+type CastSection = {
+  id: string
+  title: string
+  preview: string
+  locked?: boolean
+  /** A part with an `id` collapses on its own, its boxes inside it not. */
+  parts: { id?: string; title?: string; preview?: string; fields: CastField[] }[]
+}
+const castSections = computed((): CastSection[] => {
+  const fields = (g: keyof Cast, start?: boolean) =>
+    CAST_FIELDS.filter((f) => f.group === g && (start === undefined || !!f.start === start))
+  if (!begun.value) {
+    return GROUPS.map((g) => ({ id: g.id, title: g.title(), preview: g.preview(), parts: [{ fields: fields(g.id) }] }))
+  }
+  const c = castDraft.value
+  return [
+    {
+      id: 'start',
+      title: 'At the start',
+      preview: c ? `${c.character.name}, ${c.character.age} · ${c.persona.name} · ${c.setting.place}` : '',
+      locked: true,
+      parts: GROUPS.map((g) => ({
+        id: `start.${g.id}`,
+        title: g.title(),
+        preview: g.preview(),
+        fields: fields(g.id, true),
+      })),
+    },
+    { id: 'character', title: 'Character', preview: characterName.value, parts: [{ fields: fields('character', false) }] },
+  ]
+})
+/** The whole Cast collapses to its heading, as the Look and Voice do. */
+const castCollapsed = useStoredFlag('collapsed:roleplay.cast')
+/**
+ * Each section collapses to its title and a preview (shown only while collapsed: open, its boxes say
+ * it), remembered per browser; At the start begins collapsed.
+ */
+const sectionCollapsed = Object.fromEntries(
+  ['character', 'persona', 'setting', 'start', 'start.character', 'start.persona', 'start.setting'].map((id) => [
+    id,
+    useStoredFlag(`collapsed:roleplay.cast.${id}`, id === 'start'),
+  ]),
+)
 
 /**
  * Hand edits, saved as the focus leaves their panel (`useAutosave`), in one line: the Look and
@@ -1050,23 +1098,35 @@ const lookSavingText = computed(() =>
 
         <div v-else class="min-h-0 flex-1 overflow-y-auto" data-cast-panel>
         <!-- Its border sweeps while the Cast is written, or written again. -->
-        <section class="rounded-md border-b border-line" :class="{ 'render-sweep': writingCast }" data-cast>
-        <h2 class="flex items-baseline gap-1.5 border-b border-line px-4 py-2 text-sm font-medium">
-          Cast <span class="min-w-0 truncate font-normal text-muted">· for {{ characterName }}'s replies</span>
+        <section
+          class="rounded-md border-b border-line p-4 text-sm"
+          :class="{ 'render-sweep': writingCast }"
+          data-cast
+        >
+        <details
+          class="group/castsection"
+          :open="!castCollapsed"
+          data-collapsible="roleplay.cast"
+          @toggle="castCollapsed = !($event.target as HTMLDetailsElement).open"
+        >
+        <summary class="flex cursor-pointer select-none items-baseline gap-1.5 hover:text-fg">
+          <span class="shrink-0 text-muted transition-transform group-open/castsection:rotate-90">›</span>
+          <h2 class="shrink-0 text-base font-semibold">Cast</h2>
+          <span class="min-w-0 truncate text-muted">· for {{ characterName }}'s replies</span>
           <RestartButton
             v-if="begun && castDraft"
             :disabled="busy"
             title="Begin the scene again: every exchange is deleted, the opening too, and the Cast, Look and voice stay"
             @restart="restart"
           />
-        </h2>
-        <p v-if="!castDraft" class="p-4 text-sm text-muted">
+        </summary>
+        <p v-if="!castDraft" class="mt-3 text-muted">
           <span v-if="busy" class="animate-pulse">Writing the Cast from your Brief…</span>
           <template v-else>No Cast yet.</template>
         </p>
         <form
           v-else
-          class="flex flex-col gap-5 p-4 text-sm"
+          class="mt-3 flex flex-col gap-3"
           data-cast-form
           @submit.prevent="flushCast"
           @focusout="onCastFocusout"
@@ -1074,42 +1134,59 @@ const lookSavingText = computed(() =>
           <!-- min-w-0: a fieldset is otherwise as wide as its widest unwrappable line, which a
                collapsed field's one-line preview is -->
           <details
-            v-for="g in GROUPS"
-            :key="g.id"
+            v-for="sec in castSections"
+            :key="sec.id"
             class="group/cast min-w-0"
-            :open="!groupCollapsed[g.id].value"
-            :data-collapsible="`roleplay.cast.${g.id}`"
-            @toggle="groupCollapsed[g.id].value = !($event.target as HTMLDetailsElement).open"
+            :open="!sectionCollapsed[sec.id].value"
+            :data-collapsible="`roleplay.cast.${sec.id}`"
+            :data-cast-start="sec.locked || undefined"
+            @toggle="sectionCollapsed[sec.id].value = !($event.target as HTMLDetailsElement).open"
           >
             <summary class="mb-1 flex cursor-pointer select-none items-baseline gap-1.5 hover:text-fg">
               <span class="shrink-0 text-muted transition-transform group-open/cast:rotate-90">›</span>
-              <h3 class="shrink-0 font-medium">{{ g.title() }}</h3>
-              <span class="min-w-0 truncate text-muted">· {{ g.preview() }}</span>
+              <h3 class="shrink-0 font-medium">{{ sec.title }}</h3>
+              <span v-if="sectionCollapsed[sec.id].value" class="min-w-0 truncate text-muted">· {{ sec.preview }}</span>
             </summary>
-            <fieldset class="flex min-w-0 flex-col gap-2">
-            <template v-for="f in CAST_FIELDS.filter((f) => f.group === g.id)" :key="f.key">
-            <CollapsibleTextarea
-              v-if="f.long"
-              :id="`${g.id}.${f.key}`"
-              :model-value="fieldValue(f)"
-              :label="f.label"
-              :disabled="busy"
-              @update:model-value="setField(f, $event)"
-            />
-            <label v-else class="flex flex-col gap-1 text-xs text-muted">
-              {{ f.label }}
-              <input
-                :value="fieldValue(f)"
-                :type="f.key === 'age' ? 'number' : 'text'"
-                :min="f.key === 'age' ? 18 : undefined"
-                class="rounded border border-line bg-surface px-2 py-1 text-sm text-fg"
-                :disabled="busy"
-                :data-field="`${g.id}.${f.key}`"
-                @input="setField(f, ($event.target as HTMLInputElement).value)"
-              />
-            </label>
+            <template v-for="(part, i) in sec.parts" :key="i">
+              <details
+                v-if="part.id"
+                class="group/part mb-2 min-w-0"
+                :open="!sectionCollapsed[part.id].value"
+                :data-collapsible="`roleplay.cast.${part.id}`"
+                @toggle="sectionCollapsed[part.id!].value = !($event.target as HTMLDetailsElement).open"
+              >
+                <summary class="mb-1 flex cursor-pointer select-none items-baseline gap-1.5 text-xs hover:text-fg">
+                  <span class="shrink-0 text-muted transition-transform group-open/part:rotate-90">›</span>
+                  <h4 class="shrink-0 font-medium">{{ part.title }}</h4>
+                  <span v-if="sectionCollapsed[part.id].value" class="min-w-0 truncate text-muted">· {{ part.preview }}</span>
+                </summary>
+                <fieldset class="flex min-w-0 flex-col gap-2">
+                  <CastFieldBox
+                    v-for="f in part.fields"
+                    :id="`${f.group}.${f.key}`"
+                    :key="f.key"
+                    :label="f.label"
+                    :long="f.long"
+                    :value="fieldValue(f)"
+                    :disabled="busy || sec.locked"
+                    always-open
+                    @input="setField(f, $event)"
+                  />
+                </fieldset>
+              </details>
+              <fieldset v-else class="mb-3 flex min-w-0 flex-col gap-2">
+                <CastFieldBox
+                  v-for="f in part.fields"
+                  :id="`${f.group}.${f.key}`"
+                  :key="f.key"
+                  :label="f.label"
+                  :long="f.long"
+                  :value="fieldValue(f)"
+                  :disabled="busy || sec.locked"
+                  @input="setField(f, $event)"
+                />
+              </fieldset>
             </template>
-            </fieldset>
           </details>
           <SaveStatus
             :status="castStatus"
@@ -1119,6 +1196,7 @@ const lookSavingText = computed(() =>
             @revert="revertCast"
           />
         </form>
+        </details>
         </section>
         <LookForm
           v-if="currentLook"
@@ -1150,12 +1228,12 @@ const lookSavingText = computed(() =>
           >
           <summary class="flex cursor-pointer select-none items-baseline gap-1.5 hover:text-fg">
             <span class="shrink-0 text-muted transition-transform group-open/voice:rotate-90">›</span>
-            <h2 class="shrink-0 font-medium">Voice</h2>
+            <h2 class="shrink-0 text-base font-semibold">Voice</h2>
             <span class="min-w-0 truncate text-muted">
               · {{ voiceCollapsed && voiceDraft.trim() ? voiceDraft : `how ${characterName} sounds aloud` }}
             </span>
           </summary>
-          <div class="mt-2 flex flex-col gap-2">
+          <div class="mt-3 flex flex-col gap-2">
           <!-- The section's only field, so it doesn't collapse on its own as the Cast's do. -->
           <textarea
             ref="voiceTextarea"

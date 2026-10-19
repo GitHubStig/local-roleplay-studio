@@ -88,12 +88,12 @@ defineExpose({ flush })
     >
       <summary class="flex cursor-pointer select-none items-baseline gap-1.5 hover:text-fg">
         <span class="shrink-0 text-muted transition-transform group-open/look:rotate-90">›</span>
-        <h3 class="shrink-0 font-medium">Look</h3>
+        <h3 class="shrink-0 text-base font-semibold">Look</h3>
         <span class="min-w-0 truncate text-muted">· {{ collapsed && preview ? preview : every }}</span>
         <!-- At the right of the heading, e.g. a Storyboard's Restart… -->
         <slot name="actions" />
       </summary>
-      <div class="mt-2 flex flex-col gap-2">
+      <div class="mt-3 flex flex-col gap-3">
         <LookSubject
           v-for="(subject, i) in draft.subjects"
           :id="`${idPrefix}.subject.${i}`"
@@ -119,6 +119,7 @@ defineExpose({ flush })
           :id="`${idPrefix}.style`"
           v-model="draft.style"
           label="Art style and medium"
+          heading
           :disabled="disabled"
         />
       </div>

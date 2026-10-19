@@ -203,11 +203,19 @@ Deno.test('undoLatestExchange removes only the latest exchange, never the openin
     await assertRejects(() => undoLatestExchange(store, one, 0), RoleplayError, "can't be undone")
   }))
 
-Deno.test('setCast saves an edited Cast and refuses one that crosses a Limit', () =>
+Deno.test('setCast saves an edited Cast, keeping the start once begun, and refuses one that crosses a Limit', () =>
   withTempDir(async (root) => {
     const { session, store } = await setUp(root)
-    const renamed = { ...testCast, persona: { ...testCast.persona, name: 'Alex' } }
-    assertEquals((await setCast(store, session, renamed)).cast?.persona.name, 'Alex')
+    const steered = { ...testCast, character: { ...testCast.character, goal: 'Leave town.' } }
+    assertEquals((await setCast(store, session, steered)).cast?.character.goal, 'Leave town.')
+    for (
+      const moved of [
+        { ...testCast, character: { ...testCast.character, name: 'Alex' } },
+        { ...testCast, character: { ...testCast.character, age: 50 } },
+        { ...testCast, persona: { ...testCast.persona, name: 'Alex' } },
+        { ...testCast, setting: { ...testCast.setting, time: 'Noon.' } },
+      ]
+    ) await assertRejects(() => setCast(store, session, moved), CastError, 'restart')
     const bad = { ...testCast, setting: { ...testCast.setting, place: 'A nude beach.' } }
     await assertRejects(() => setCast(store, session, bad), RoleplayLimitError)
   }))

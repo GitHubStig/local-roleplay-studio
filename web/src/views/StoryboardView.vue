@@ -951,14 +951,11 @@ const imagesOn = computed(() => featureOn.value('images'))
                 <RestartButton
                   v-if="writingStarted"
                   :disabled="busy"
-                  title="Back to the plan: every Frame's sentences and pictures are deleted, and the Look and Beats can be edited again"
+                  title="The Look and Beats are fixed now that Frames are written. Restart to go back to the plan: every Frame's sentences and pictures are deleted, and the Look and Beats can be edited again"
                   @restart="restart"
                 />
               </template>
             </LookForm>
-            <p v-if="writingStarted" class="text-xs text-muted" data-plan-fixed>
-              The Look and Beats are fixed now that Frames are written: Restart… to edit them.
-            </p>
 
             <form
               v-if="current && frameDraft"
@@ -967,9 +964,9 @@ const imagesOn = computed(() => featureOn.value('images'))
               @submit.prevent="flushFrame"
               @focusout="onFrameFocusout"
             >
-              <h3 class="font-medium">
+              <h3 class="text-base font-semibold">
                 Frame {{ current.index + 1 }}
-                <span v-if="currentWritten" class="font-normal text-muted">· {{ current.beat }}</span>
+                <span v-if="currentWritten" class="text-sm font-normal text-muted">· {{ current.beat }}</span>
               </h3>
               <p v-if="current.timings" class="text-xs text-muted" data-timings>
                 {{ timingsLabel(current) }}
@@ -1018,8 +1015,11 @@ const imagesOn = computed(() => featureOn.value('images'))
                 :disabled="busy"
                 @revert="revertFrame"
               />
-              <details v-if="currentWritten" class="text-muted" open>
-                <summary class="cursor-pointer select-none text-xs">Full prompt</summary>
+              <details v-if="currentWritten" class="group/prompt text-muted" open>
+                <summary class="flex cursor-pointer select-none items-baseline gap-1.5 text-xs hover:text-fg">
+                  <span class="shrink-0 transition-transform group-open/prompt:rotate-90">›</span>
+                  Full prompt
+                </summary>
                 <p class="mt-1 text-xs leading-relaxed" data-prompt-text>{{ current.prompt }}</p>
               </details>
             </form>

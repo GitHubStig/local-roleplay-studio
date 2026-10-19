@@ -418,5 +418,18 @@ export async function setCast(
   const cast = parseCast(value)
   const limit = crossedLimit(castText(cast))
   if (limit) throw new RoleplayLimitError(`That crosses a limit: ${limit.message}`)
-  return await updateSession(store, session.id, (latest) => ({ ...latest, cast }))
+  return await updateSession(store, session.id, (latest) => {
+    if (latest.frames.length && latest.cast && castStart(cast) !== castStart(latest.cast)) {
+      throw new CastError("How the scene started can't change once it has begun: restart it first")
+    }
+    return { ...latest, cast }
+  })
 }
+
+/**
+ * How things were when the scene began: who's who, the Character's age and looks, the Persona, the
+ * Setting. Fixed once it has begun, as the story moves on from it (time passes, looks change) and
+ * the Look's Subjects go by the names; the rest of the Character still steers it.
+ */
+const castStart = ({ character: { name, age, appearance }, persona, setting }: Cast) =>
+  JSON.stringify({ name, age, appearance, persona, setting })

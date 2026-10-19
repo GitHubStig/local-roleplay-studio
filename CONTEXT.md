@@ -57,7 +57,7 @@ One of a Look's: a person, creature, animal or object the story follows from pic
 _Avoid_: Person (for one of a Look's), character, entity
 
 **Cast**:
-Who a Roleplay is with and where it starts: the Character, the Persona and the Setting. Written once when the Roleplay is set up, from its Brief; editable later.
+Who a Roleplay is with and where it starts: the Character, the Persona and the Setting. Written once when the Roleplay is set up, from its Brief, and editable while it's reviewed; once the scene has begun, how it started (the names, the Character's age and appearance, the Persona, the Setting) is fixed, and only what steers the Character (personality, way of speaking, background, goal) stays editable.
 _Avoid_: Character card, world, config
 
 **Character**:

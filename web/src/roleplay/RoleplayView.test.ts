@@ -334,7 +334,7 @@ describe('RoleplayView', () => {
     const { wrapper } = await mountIt()
     expect(wrapper.find('[data-review]').exists()).toBe(false)
     // At the right of the Cast's heading, not under its fields.
-    expect(wrapper.find('[data-cast] h2 [data-restart]').exists()).toBe(true)
+    expect(wrapper.find('[data-cast] summary [data-restart]').exists()).toBe(true)
     await wrapper.find('[data-restart]').trigger('click')
     expect(api.restartSession).not.toHaveBeenCalled()
     await wrapper.find('[data-restart]').trigger('click')
@@ -354,13 +354,56 @@ describe('RoleplayView', () => {
 
   it('collapses each part of the Cast to its title and a preview, remembering the choice', async () => {
     const { wrapper } = await mountIt()
-    const group = wrapper.find('[data-collapsible="roleplay.cast.persona"]')
+    const group = wrapper.find('[data-collapsible="roleplay.cast.character"]')
     expect(group.attributes('open')).toBeDefined()
     ;(group.element as HTMLDetailsElement).open = false
     await group.trigger('toggle')
     expect(group.attributes('open')).toBeUndefined()
-    expect(group.find('summary').text()).toContain(cast.persona.name)
-    expect(localStorage.getItem('collapsed:roleplay.cast.persona')).toBe('1')
+    expect(group.find('summary').text()).toContain(cast.character.name)
+    expect(localStorage.getItem('collapsed:roleplay.cast.character')).toBe('1')
+  })
+
+  it('keeps how the scene started read-only once begun, under At the start before the Character', async () => {
+    const { wrapper } = await mountIt()
+    const sections = wrapper.findAll('[data-cast-form] > details')
+    expect(sections.map((d) => d.attributes('data-collapsible'))).toEqual([
+      'roleplay.cast.start',
+      'roleplay.cast.character',
+    ])
+    const start = wrapper.find('[data-cast-start]')
+    expect(start.attributes('open')).toBeUndefined()
+    expect(start.find('summary').text()).toContain(`${cast.character.name}, ${cast.character.age}`)
+    for (
+      const field of [
+        'character.name',
+        'character.age',
+        'character.appearance',
+        'persona.name',
+        'setting.place',
+      ]
+    ) {
+      const box = start.find(`[data-field="${field}"]`)
+      expect(box.attributes('disabled'), field).toBeDefined()
+    }
+    // Each part of it collapses, the boxes inside it don't; the Character's below still do.
+    for (const part of ['character', 'persona', 'setting']) {
+      expect(start.find(`[data-collapsible="roleplay.cast.start.${part}"]`).exists(), part).toBe(
+        true,
+      )
+    }
+    expect(start.find('[data-collapsible="character.appearance"]').exists()).toBe(false)
+    expect(start.find('[data-collapsible="persona.role"]').exists()).toBe(false)
+    expect(wrapper.find('[data-collapsible="character.personality"]').exists()).toBe(true)
+    expect(wrapper.find('[data-field="character.personality"]').attributes('disabled'))
+      .toBeUndefined()
+  })
+
+  it('edits all of the Cast while it is reviewed, before the scene begins', async () => {
+    vi.mocked(api.getSession).mockResolvedValue({ ...roleplaySession([]), cast })
+    const { wrapper } = await mountIt()
+    expect(wrapper.find('[data-field="persona.name"]').exists()).toBe(true)
+    expect(wrapper.find('[data-field="setting.place"]').exists()).toBe(true)
+    expect(wrapper.find('[data-cast-start]').exists()).toBe(false)
   })
 
   it('saves an edited Cast once the focus leaves it', async () => {
@@ -369,7 +412,7 @@ describe('RoleplayView', () => {
       cast: c,
     }))
     const { wrapper } = await mountIt()
-    await wrapper.find('[data-field="persona.name"]').setValue('Callum')
+    await wrapper.find('[data-field="character.goal"]').setValue('Leave town.')
     expect(wrapper.find('[data-cast-form] [data-save-status]').text()).toContain(
       'Saves when you click away',
     )
@@ -377,7 +420,7 @@ describe('RoleplayView', () => {
     await flushPromises()
     expect(roleplay.saveCast).toHaveBeenCalledWith('r1', {
       ...cast,
-      persona: { ...cast.persona, name: 'Callum' },
+      character: { ...cast.character, goal: 'Leave town.' },
     })
     expect(wrapper.find('[data-cast-form] [data-save-status]').text())
       .toContain('Saved · applies from the next reply')

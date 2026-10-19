@@ -1612,8 +1612,10 @@ Deno.test("A Roleplay's Cast is written and reviewed, then it begins, is talked 
     const young = { ...testCast, character: { ...testCast.character, age: 16 } }
     assertEquals((await call('PUT', '/api/sessions/s1/roleplay/cast', young)).status, 400)
     const renamed = { ...testCast, persona: { ...testCast.persona, name: 'Alex' } }
-    const edited = await (await call('PUT', '/api/sessions/s1/roleplay/cast', renamed)).json()
-    assertEquals(edited.cast.persona.name, 'Alex')
+    assertEquals((await call('PUT', '/api/sessions/s1/roleplay/cast', renamed)).status, 400)
+    const steered = { ...testCast, character: { ...testCast.character, goal: 'Leave town.' } }
+    const edited = await (await call('PUT', '/api/sessions/s1/roleplay/cast', steered)).json()
+    assertEquals(edited.cast.character.goal, 'Leave town.')
 
     const [summary] = await (await call('GET', '/api/sessions')).json()
     assertEquals([summary.kind, summary.frames, summary.latestImage], ['roleplay', 1, null])

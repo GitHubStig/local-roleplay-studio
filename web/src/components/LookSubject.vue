@@ -4,8 +4,8 @@ import { computed, useTemplateRef } from 'vue'
 import { useStoredFlag } from '../composables/useStoredFlag'
 
 /**
- * One Subject of a Look (a person, creature, animal or object), in a card of its own: its name and
- * identity. The card collapses to the name and a one-line preview by clicking its header; whether
+ * One Subject of a Look (a person, creature, animal or object): its name as a heading, and its
+ * identity. It collapses to the name and a one-line preview by clicking its header; whether
  * it's collapsed is remembered per browser, by `id`.
  */
 const props = defineProps<{
@@ -30,13 +30,13 @@ const preview = computed(() => identity.value.replace(/\s+/g, ' ').trim())
 
 <template>
   <details
-    class="group/subject min-w-0 rounded border border-line text-xs text-muted"
+    class="group/subject min-w-0 text-xs text-muted"
     :open="!collapsed"
     :data-collapsible="id"
     data-subject
     @toggle="collapsed = !($event.target as HTMLDetailsElement).open"
   >
-    <summary class="flex cursor-pointer select-none items-baseline gap-1.5 px-2 py-1.5 hover:text-fg">
+    <summary class="flex cursor-pointer select-none items-baseline gap-1.5 hover:text-fg">
       <span class="shrink-0 transition-transform group-open/subject:rotate-90">›</span>
       <span class="shrink-0 text-sm font-medium text-fg">{{ name.trim() || 'New subject' }}</span>
       <span v-if="collapsed" class="min-w-0 flex-1 truncate text-muted/80" data-preview>
@@ -45,7 +45,7 @@ const preview = computed(() => identity.value.replace(/\s+/g, ' ').trim())
       <button
         v-if="!kept"
         type="button"
-        class="ml-auto shrink-0 rounded px-1.5 text-muted hover:text-fg disabled:opacity-50"
+        class="ml-auto shrink-0 rounded px-1.5 text-muted hover:text-danger disabled:opacity-50"
         :aria-label="`Remove ${name.trim() || 'this subject'}`"
         :disabled="disabled"
         @click.prevent="emit('remove')"
@@ -53,7 +53,7 @@ const preview = computed(() => identity.value.replace(/\s+/g, ' ').trim())
         Remove
       </button>
     </summary>
-    <div class="flex flex-col gap-2 border-t border-line p-2">
+    <div class="mt-1 flex flex-col gap-2">
       <label v-if="!nameFixed" class="flex flex-col gap-1">
         Name
         <input
@@ -63,13 +63,15 @@ const preview = computed(() => identity.value.replace(/\s+/g, ' ').trim())
           data-subject-name
         />
       </label>
+      <!-- Labelled only beside the Name: alone, the heading says whose it is. -->
       <label class="flex flex-col gap-1">
-        Identity
+        <span v-if="!nameFixed">Identity</span>
         <textarea
           ref="textarea"
           v-model="identity"
           rows="1"
-          class="w-full resize-none overflow-hidden rounded border border-line bg-surface p-2 text-sm text-fg"
+          class="w-full resize-none overflow-hidden rounded border border-line bg-surface p-2 text-sm text-fg disabled:opacity-60"
+          :aria-label="nameFixed ? `${name}'s identity` : undefined"
           placeholder="Its name, then what it looks like"
           :disabled="disabled"
         />
