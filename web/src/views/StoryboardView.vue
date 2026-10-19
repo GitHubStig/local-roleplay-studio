@@ -57,6 +57,7 @@ import ImageModelPicker from '../components/ImageModelPicker.vue'
 import ModelComparison from '../components/ModelComparison.vue'
 import RenderAllButton from '../components/RenderAllButton.vue'
 import PanelTabs from '../components/PanelTabs.vue'
+import RestartButton from '../components/RestartButton.vue'
 import { useImageModels } from '../composables/useSettingsOptions'
 import { useFeatures } from '../composables/useFeatures'
 import { useJobs } from '../composables/useJobs'
@@ -945,20 +946,19 @@ const imagesOn = computed(() => featureOn.value('images'))
               every="every Frame"
               :disabled="busy || !planned || writingStarted"
               :fixed="writingStarted"
-            />
-            <div v-if="writingStarted" class="flex items-center gap-2 text-xs text-muted" data-plan-fixed>
-              <span class="flex-1">The Look and Beats are fixed now that Frames are written.</span>
-              <button
-                type="button"
-                class="rounded border border-line px-2 py-1 hover:text-fg disabled:opacity-50"
-                :disabled="busy"
-                title="Back to the plan: every Frame's sentences and pictures are deleted, and the Look and Beats can be edited again"
-                data-restart
-                @click="restart"
-              >
-                Restart…
-              </button>
-            </div>
+            >
+              <template #actions>
+                <RestartButton
+                  v-if="writingStarted"
+                  :disabled="busy"
+                  title="Back to the plan: every Frame's sentences and pictures are deleted, and the Look and Beats can be edited again"
+                  @restart="restart"
+                />
+              </template>
+            </LookForm>
+            <p v-if="writingStarted" class="text-xs text-muted" data-plan-fixed>
+              The Look and Beats are fixed now that Frames are written: Restart… to edit them.
+            </p>
 
             <form
               v-if="current && frameDraft"

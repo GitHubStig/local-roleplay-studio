@@ -257,6 +257,8 @@ describe('StoryboardView', () => {
     const confirm = vi.fn().mockReturnValueOnce(false).mockReturnValueOnce(true)
     vi.stubGlobal('confirm', confirm)
     const { wrapper } = await mountIt()
+    // At the right of the Look's heading.
+    expect(wrapper.find('[data-look] summary [data-restart]').exists()).toBe(true)
     await wrapper.find('[data-restart]').trigger('click')
     expect(api.restartSession).not.toHaveBeenCalled()
     vi.mocked(api.getSession).mockResolvedValue(storyboard([planned(0), planned(1), planned(2)]))

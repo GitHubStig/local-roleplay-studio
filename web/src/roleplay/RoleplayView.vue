@@ -31,6 +31,7 @@ import { saveLine, useAutosave } from '../composables/useAutosave'
 import SaveStatus from '../components/SaveStatus.vue'
 import CollapsibleTextarea from '../components/CollapsibleTextarea.vue'
 import LookForm from '../components/LookForm.vue'
+import RestartButton from '../components/RestartButton.vue'
 import ComposeBox from '../components/ComposeBox.vue'
 import PictureButtons from '../components/PictureButtons.vue'
 import ImageModelPicker from '../components/ImageModelPicker.vue'
@@ -1050,8 +1051,14 @@ const lookSavingText = computed(() =>
         <div v-else class="min-h-0 flex-1 overflow-y-auto" data-cast-panel>
         <!-- Its border sweeps while the Cast is written, or written again. -->
         <section class="rounded-md border-b border-line" :class="{ 'render-sweep': writingCast }" data-cast>
-        <h2 class="border-b border-line px-4 py-2 text-sm font-medium">
-          Cast <span class="font-normal text-muted">· for {{ characterName }}'s replies</span>
+        <h2 class="flex items-baseline gap-1.5 border-b border-line px-4 py-2 text-sm font-medium">
+          Cast <span class="min-w-0 truncate font-normal text-muted">· for {{ characterName }}'s replies</span>
+          <RestartButton
+            v-if="begun && castDraft"
+            :disabled="busy"
+            title="Begin the scene again: every exchange is deleted, the opening too, and the Cast, Look and voice stay"
+            @restart="restart"
+          />
         </h2>
         <p v-if="!castDraft" class="p-4 text-sm text-muted">
           <span v-if="busy" class="animate-pulse">Writing the Cast from your Brief…</span>
@@ -1111,19 +1118,6 @@ const lookSavingText = computed(() =>
             :saved-text="begun ? 'applies from the next reply' : undefined"
             @revert="revertCast"
           />
-          <div v-if="begun" class="flex items-center gap-2 text-xs text-muted" data-begun>
-            <span class="flex-1">To begin the scene again, restart it.</span>
-            <button
-              type="button"
-              class="rounded border border-line px-2 py-1 hover:text-fg disabled:opacity-50"
-              :disabled="busy"
-              title="Back to the Cast: every exchange is deleted, the opening too, and the Cast, Look and voice stay"
-              data-restart
-              @click="restart"
-            >
-              Restart…
-            </button>
-          </div>
         </form>
         </section>
         <LookForm

@@ -333,6 +333,8 @@ describe('RoleplayView', () => {
     vi.stubGlobal('confirm', confirm)
     const { wrapper } = await mountIt()
     expect(wrapper.find('[data-review]').exists()).toBe(false)
+    // At the right of the Cast's heading, not under its fields.
+    expect(wrapper.find('[data-cast] h2 [data-restart]').exists()).toBe(true)
     await wrapper.find('[data-restart]').trigger('click')
     expect(api.restartSession).not.toHaveBeenCalled()
     await wrapper.find('[data-restart]').trigger('click')

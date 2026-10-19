@@ -90,6 +90,8 @@ defineExpose({ flush })
         <span class="shrink-0 text-muted transition-transform group-open/look:rotate-90">›</span>
         <h3 class="shrink-0 font-medium">Look</h3>
         <span class="min-w-0 truncate text-muted">· {{ collapsed && preview ? preview : every }}</span>
+        <!-- At the right of the heading, e.g. a Storyboard's Restart… -->
+        <slot name="actions" />
       </summary>
       <div class="mt-2 flex flex-col gap-2">
         <LookSubject
