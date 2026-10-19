@@ -2,6 +2,7 @@
 import { useEventListener } from '@vueuse/core'
 import {
   computed,
+  nextTick,
   onActivated,
   onBeforeUnmount,
   onDeactivated,
@@ -21,10 +22,12 @@ import {
   editStoryboardFrame,
   getSession,
   imageUrl,
+  insertBeat,
   isWritten,
   type JobKind,
   type Look,
   type Made3d,
+  MAX_FRAMES,
   MAX_SHOWN,
   type Outcome,
   type PicturedFrame,
@@ -44,6 +47,7 @@ import ComposeBox from '../components/ComposeBox.vue'
 import Frame3dViewers from '../components/Frame3dViewers.vue'
 import FrameImage from '../components/FrameImage.vue'
 import FrameViewer from '../components/FrameViewer.vue'
+import Icon from '../components/Icon.vue'
 import JobQueue from '../components/JobQueue.vue'
 import LookForm from '../components/LookForm.vue'
 import PictureButtons from '../components/PictureButtons.vue'
@@ -426,6 +430,34 @@ async function toggleShown(name: string) {
   flushFrame()
 }
 
+/** A Beat being added by hand, before the Frame at `at` (at the end, after the last). */
+const adding = ref<{ at: number; text: string; saving: boolean } | null>(null)
+/** Beats can be added while the plan is reviewed, up to the most Frames a Storyboard has. */
+const canAddBeat = computed(() =>
+  planned.value && !writingStarted.value && !busy.value && session.value!.frames.length < MAX_FRAMES
+)
+async function startAdding(at: number) {
+  adding.value = { at, text: '', saving: false }
+  await nextTick()
+  frameList.value?.querySelector<HTMLElement>('[data-adding-beat] textarea')?.focus()
+}
+async function addBeat() {
+  const a = adding.value
+  if (!a || a.saving || !a.text.trim()) return
+  // The Frames after it move up one, so an edit to one is saved first, to the Frame it's for.
+  if (!(await flushEdits('added'))) return
+  a.saving = true
+  message.value = null
+  try {
+    session.value = await insertBeat(props.id, a.at, a.text.trim())
+    adding.value = null
+    selected.value = a.at
+  } catch (err) {
+    a.saving = false
+    message.value = { kind: 'error', text: (err as Error).message }
+  }
+}
+
 /** Saves what's edited by hand, before work that reads it; false, saying why, if it can't. */
 async function flushEdits(what: string): Promise<boolean> {
   if ((await (lookForm.value?.flush() ?? true)) && (await flushFrame())) return true
@@ -720,44 +752,92 @@ const imagesOn = computed(() => featureOn.value('images'))
             role="tabpanel"
             @keydown="onFrameKey"
           >
-            <li v-for="f in frames" :key="f.index">
-              <button
-                type="button"
-                class="flex w-full gap-3 border-b border-line p-3 text-left text-sm hover:bg-surface"
-                :class="{ 'bg-surface': selected === f.index }"
-                :aria-current="selected === f.index"
-                data-frame
-                @click="selected = f.index"
-              >
-                <img
-                  v-if="'pictures' in f && pictureOf(f)"
-                  :src="imageUrl(session.id, pictureOf(f)!.image)"
-                  alt=""
-                  class="h-20 w-14 shrink-0 rounded object-cover"
-                  :class="{ 'opacity-50': changed(f) }"
-                />
-                <span
-                  v-else
-                  class="flex h-20 w-14 shrink-0 items-center justify-center rounded border border-dashed border-line text-muted"
+            <template v-for="f in frames" :key="f.index">
+              <li>
+                <button
+                  type="button"
+                  class="flex w-full gap-3 border-b border-line p-3 text-left text-sm hover:bg-surface"
+                  :class="{ 'bg-surface': selected === f.index }"
+                  :aria-current="selected === f.index"
+                  data-frame
+                  @click="selected = f.index"
                 >
-                  {{ f.index + 1 }}
-                </span>
-                <span class="flex min-w-0 flex-col gap-1">
-                  <span class="line-clamp-3">{{ f.beat }}</span>
-                  <span v-if="'pending' in f" class="animate-pulse text-xs text-muted">Planning…</span>
+                  <img
+                    v-if="'pictures' in f && pictureOf(f)"
+                    :src="imageUrl(session.id, pictureOf(f)!.image)"
+                    alt=""
+                    class="h-20 w-14 shrink-0 rounded object-cover"
+                    :class="{ 'opacity-50': changed(f) }"
+                  />
                   <span
-                    v-else-if="work?.kind === 'write' && work.frameIndex === f.index"
-                    class="animate-pulse text-xs text-muted"
-                    data-status
+                    v-else
+                    class="flex h-20 w-14 shrink-0 items-center justify-center rounded border border-dashed border-line text-muted"
                   >
-                    Writing…
+                    {{ f.index + 1 }}
                   </span>
-                  <span v-else class="text-xs font-medium" :class="status(f).tone" data-status>
-                    {{ frameJob(f.index) ? `${JOB_NAMES[frameJob(f.index)!.kind]}…` : status(f).label }}
+                  <span class="flex min-w-0 flex-col gap-1">
+                    <span class="line-clamp-3">{{ f.beat }}</span>
+                    <span v-if="'pending' in f" class="animate-pulse text-xs text-muted">Planning…</span>
+                    <span
+                      v-else-if="work?.kind === 'write' && work.frameIndex === f.index"
+                      class="animate-pulse text-xs text-muted"
+                      data-status
+                    >
+                      Writing…
+                    </span>
+                    <span v-else class="text-xs font-medium" :class="status(f).tone" data-status>
+                      {{ frameJob(f.index) ? `${JOB_NAMES[frameJob(f.index)!.kind]}…` : status(f).label }}
+                    </span>
                   </span>
-                </span>
-              </button>
-            </li>
+                </button>
+              </li>
+              <!-- While the plan is reviewed: a Beat added after this Frame, before the next. -->
+              <li v-if="adding?.at === f.index + 1" class="border-b border-line p-3" data-adding-beat>
+                <form class="flex flex-col gap-2" @submit.prevent="addBeat" @keydown.stop>
+                  <label :for="`storyboard.beat.${adding.at}`" class="text-xs text-muted">
+                    New Beat, as Frame {{ adding.at + 1 }}
+                  </label>
+                  <textarea
+                    :id="`storyboard.beat.${adding.at}`"
+                    v-model="adding.text"
+                    rows="3"
+                    class="w-full resize-none rounded border border-line bg-surface px-2 py-1 text-sm"
+                    placeholder="What happens in it, and who it shows… (Enter to add, Esc to cancel)"
+                    :disabled="adding.saving"
+                    @keydown.enter.exact.prevent="addBeat"
+                    @keydown.esc="adding = null"
+                  />
+                  <div class="flex gap-2 text-xs">
+                    <button
+                      type="submit"
+                      class="rounded bg-fg px-2 py-1 font-medium text-canvas disabled:opacity-50"
+                      :disabled="adding.saving || !adding.text.trim()"
+                    >
+                      {{ adding.saving ? 'Adding…' : 'Add' }}
+                    </button>
+                    <button
+                      type="button"
+                      class="rounded border border-line px-2 py-1"
+                      :disabled="adding.saving"
+                      @click="adding = null"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              </li>
+              <li v-else-if="canAddBeat && !adding">
+                <button
+                  type="button"
+                  class="flex w-full items-center justify-center gap-1 border-b border-line py-1 text-xs text-muted opacity-60 hover:bg-surface hover:text-fg hover:opacity-100 focus-visible:opacity-100"
+                  :title="`Add a Beat after Frame ${f.index + 1}`"
+                  data-add-beat
+                  @click="startAdding(f.index + 1)"
+                >
+                  <Icon name="plus" /> Beat
+                </button>
+              </li>
+            </template>
           </ol>
         </section>
 

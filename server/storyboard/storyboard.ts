@@ -343,6 +343,44 @@ export async function setBeat(
   })
 }
 
+/** Storyboards plan between 1 and 32 Frames; 8 unless asked otherwise. */
+export const FRAME_COUNT = { min: 1, max: 32, default: 8 }
+
+/**
+ * Adds a Beat to the plan, typed by hand, at `at` (0 to the number of Frames): the Frames from
+ * there on move up one. It shows who it's given, else who the Frame before it shows (the one after,
+ * at the start). Only before the Frames are written; refused if it crosses a Limit.
+ */
+export async function insertBeat(
+  deps: Pick<FrameDeps, 'store'>,
+  session: StoryboardSession,
+  at: number,
+  beat: string,
+  shown?: string[],
+): Promise<StoryboardSession> {
+  if (!session.look || session.frames.length === 0) {
+    throw new StageError('Plan the Storyboard first')
+  }
+  checkPlanOpen(session)
+  const line = beat.trim().replace(/\s+/g, ' ')
+  if (!line) throw new Error('A Beat needs a line')
+  const limit = crossedLimit(line)?.message
+  if (limit) throw new LimitError(`That crosses a limit: ${limit}`)
+  return await updateSession(deps.store, session.id, 'storyboard', (latest) => {
+    checkPlanOpen(latest)
+    if (!Number.isInteger(at) || at < 0 || at > latest.frames.length) {
+      throw new Error(`A Beat goes at 1 to ${latest.frames.length + 1}`)
+    }
+    if (latest.frames.length >= FRAME_COUNT.max) {
+      throw new StageError(`A Storyboard has at most ${FRAME_COUNT.max} Frames`)
+    }
+    const beside = latest.frames[at - 1] ?? latest.frames[at]
+    const added = plannedFrame(latest.look!, at, line, shown ?? beside.shown)
+    const frames = [...latest.frames.slice(0, at), added, ...latest.frames.slice(at)]
+    return { ...latest, frames: frames.map((f, index) => ({ ...f, index })) }
+  })
+}
+
 /**
  * Replaces the Look, typed by hand; only before the Frames are written. A person renamed in place
  * stays shown where they were.

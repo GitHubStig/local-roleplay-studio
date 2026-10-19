@@ -818,6 +818,41 @@ Deno.test('A Storyboard is planned, reviewed, written, rendered and edited over 
     assertEquals((await call('PUT', '/api/sessions/s1/look', newLook)).status, 200)
   }))
 
+Deno.test("A Beat is added to a Storyboard's plan over the API, until its Frames are written", () =>
+  withTempDir(async (root) => {
+    const { call } = setup({
+      root,
+      settings: { textModel: 'x' },
+      textModel: scriptedTextModel([], [], { plans: [planOf(2)] }),
+    })
+    await call('POST', '/api/sessions', { kind: 'storyboard', brief: 'A dunk.', frameCount: 2 })
+    // Not planned yet: nowhere to add it.
+    assertEquals((await call('POST', '/api/sessions/s1/beats', { at: 0, beat: 'x' })).status, 409)
+    await readEvents(await call('POST', '/api/sessions/s1/plan'))
+
+    const added = await call('POST', '/api/sessions/s1/beats', { at: 1, beat: 'Ace pivots.' })
+    assertEquals(added.status, 201)
+    const frames = (await added.json()).frames as { index: number; beat: string; shown: string[] }[]
+    assertEquals(frames.map((f) => [f.index, f.beat, f.shown]), [
+      [0, 'Beat 1', ['Ace']],
+      [1, 'Ace pivots.', ['Ace']],
+      [2, 'Beat 2', ['Ace']],
+    ])
+    const end = await call('POST', '/api/sessions/s1/beats', { at: 3, beat: 'A hoop.', shown: [] })
+    assertEquals((await end.json()).frames[3].shown, [])
+    for (const bad of [{ at: 5, beat: 'x' }, { at: 0, beat: ' ' }, { at: '1', beat: 'x' }]) {
+      assertEquals((await call('POST', '/api/sessions/s1/beats', bad)).status, 400)
+    }
+    assertEquals(
+      (await call('POST', '/api/sessions/s1/beats', { at: 0, beat: 'Nude.' })).status,
+      422,
+    )
+
+    const write = await readEvents(await call('POST', '/api/sessions/s1/write'))
+    assertEquals(write.filter(([e]) => e === 'written-frame').length, 4)
+    assertEquals((await call('POST', '/api/sessions/s1/beats', { at: 0, beat: 'x' })).status, 409)
+  }))
+
 Deno.test("Chains and Storyboards refuse each other's routes", () =>
   withTempDir(async (root) => {
     const { call } = setup({ root, settings: { textModel: 'x' } })
@@ -826,6 +861,7 @@ Deno.test("Chains and Storyboards refuse each other's routes", () =>
     assertEquals((await call('POST', '/api/sessions/s1/plan')).status, 409)
     assertEquals((await call('POST', '/api/sessions/s1/write')).status, 409)
     assertEquals((await call('POST', '/api/sessions/s1/restart')).status, 409)
+    assertEquals((await call('POST', '/api/sessions/s1/beats', { at: 0, beat: 'x' })).status, 409)
     assertEquals(
       (await call('PUT', '/api/sessions/s1/look', { subjects: [], style: 'b' })).status,
       409,

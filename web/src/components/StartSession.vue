@@ -4,6 +4,7 @@ import {
   getScenarios,
   getSettings,
   getSettingsOptions,
+  MAX_FRAMES,
   type ScenarioList,
   type SessionKind,
   type SessionStart,
@@ -18,8 +19,6 @@ const emit = defineEmits<{ start: [start: SessionStart] }>()
 
 /** The Brief's length limit, as the server enforces it. */
 const BRIEF_MAX = 4000
-/** The most Frames a Storyboard plans (`FRAME_COUNT.max` on the server). */
-const FRAMES_MAX = 32
 
 const BRIEF_HINTS: Record<SessionKind, string> = {
   chain: 'Who is in the picture, where, and in what style.',
@@ -94,8 +93,8 @@ const blocker = computed(() => {
   if (selected.value === 'brief' && !brief.value.trim()) return 'Write the Brief.'
   if (brief.value.length > BRIEF_MAX) return `Keep the Brief under ${BRIEF_MAX} characters.`
   const n = frameCount.value
-  if (kind.value === 'storyboard' && !(Number.isInteger(n) && n >= 1 && n <= FRAMES_MAX)) {
-    return `A Storyboard has 1 to ${FRAMES_MAX} Frames.`
+  if (kind.value === 'storyboard' && !(Number.isInteger(n) && n >= 1 && n <= MAX_FRAMES)) {
+    return `A Storyboard has 1 to ${MAX_FRAMES} Frames.`
   }
   return null
 })
@@ -173,7 +172,7 @@ function start() {
           v-model.number="frameCount"
           type="number"
           min="1"
-          :max="FRAMES_MAX"
+          :max="MAX_FRAMES"
           class="w-20 rounded border border-line bg-surface px-2 py-1"
           data-frame-count
         />

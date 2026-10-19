@@ -15,6 +15,7 @@ vi.mock('../api', async (importOriginal) => ({
   editStoryboardFrame: vi.fn(),
   saveFrameBody: vi.fn(),
   saveBeat: vi.fn(),
+  insertBeat: vi.fn(),
   saveLook: vi.fn(),
   cancelFrame: vi.fn(),
   listJobs: vi.fn(),
@@ -447,6 +448,49 @@ describe('StoryboardView', () => {
       ],
       style: 'Manga ink.',
     })
+  })
+
+  it('adds a Beat after any Frame while reviewing the plan, saving an edit first', async () => {
+    vi.mocked(api.getSession).mockResolvedValue(storyboard([planned(0), planned(1), planned(2)]))
+    vi.mocked(api.saveBeat).mockResolvedValue(
+      storyboard([planned(0, { beat: 'Rin dunks.' }), planned(1), planned(2)]),
+    )
+    const added = planned(1, { beat: 'Kai blocks.' })
+    vi.mocked(api.insertBeat).mockResolvedValue(
+      storyboard([planned(0), added, { ...planned(1), index: 2 }, { ...planned(2), index: 3 }]),
+    )
+    const { wrapper } = await mountIt()
+    // One after each Frame: between them, and after the last.
+    expect(wrapper.findAll('[data-add-beat]')).toHaveLength(3)
+
+    await wrapper.find('[data-field="storyboard.frame"]').setValue('Rin dunks.')
+    await wrapper.findAll('[data-add-beat]')[0].trigger('click')
+    expect(wrapper.findAll('[data-add-beat]')).toHaveLength(0)
+    const box = wrapper.find('[data-adding-beat] textarea')
+    await box.setValue('  Kai blocks. ')
+    await box.trigger('keydown', { key: 'Enter' })
+    await flushPromises()
+
+    expect(api.saveBeat).toHaveBeenCalledWith('sb', 0, 'Rin dunks.', ['Rin'])
+    expect(api.insertBeat).toHaveBeenCalledWith('sb', 1, 'Kai blocks.')
+    expect(wrapper.find('[data-adding-beat]').exists()).toBe(false)
+    expect(wrapper.findAll('[data-frame]')).toHaveLength(4)
+    expect(wrapper.find('[data-frame][aria-current="true"]').text()).toContain('Kai blocks.')
+  })
+
+  it('cancels a Beat being added with Esc, and offers none once Frames are written', async () => {
+    vi.mocked(api.getSession).mockResolvedValue(storyboard([planned(0), planned(1)]))
+    const { wrapper } = await mountIt()
+    await wrapper.findAll('[data-add-beat]')[1].trigger('click')
+    expect(wrapper.find('[data-adding-beat]').text()).toContain('Frame 3')
+    await wrapper.find('[data-adding-beat] textarea').trigger('keydown', { key: 'Escape' })
+    expect(wrapper.find('[data-adding-beat]').exists()).toBe(false)
+    expect(api.insertBeat).not.toHaveBeenCalled()
+    wrapper.unmount()
+
+    vi.mocked(api.getSession).mockResolvedValue(storyboard([frame(0), planned(1)]))
+    const written = (await mountIt()).wrapper
+    expect(written.findAll('[data-add-beat]')).toHaveLength(0)
   })
 
   it('chooses who a Frame shows', async () => {

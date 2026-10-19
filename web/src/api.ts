@@ -334,6 +334,8 @@ export interface Subject {
 
 /** The most Subjects one Storyboard Frame's prompt describes (`MAX_SHOWN` on the server). */
 export const MAX_SHOWN = 3
+/** The most Frames a Storyboard has (`FRAME_COUNT.max` on the server). */
+export const MAX_FRAMES = 32
 
 /** The identities and art style Storyboard Frames share: each takes who it shows. */
 export interface Look {
@@ -530,6 +532,14 @@ export const saveFrameBody = (id: string, index: number, body: string, shown: st
 /** Replaces one Beat of a Storyboard's plan, and who it shows; only before its Frames are written. */
 export const saveBeat = (id: string, index: number, beat: string, shown: string[]) =>
   put<StoryboardSession>(`/api/sessions/${id}/frames/${index}`, { beat, shown })
+
+/**
+ * Adds a Beat to a Storyboard's plan at `at` (0 to its number of Frames), the Frames from there on
+ * moving up one; only before its Frames are written. Without `shown`, it shows who the Frame
+ * before it does.
+ */
+export const insertBeat = (id: string, at: number, beat: string, shown?: string[]) =>
+  post<StoryboardSession>(`/api/sessions/${id}/beats`, { at, beat, shown })
 
 /** Takes a Storyboard back to its plan: every Frame's sentences and pictures go. */
 export const restartStoryboard = (id: string) =>

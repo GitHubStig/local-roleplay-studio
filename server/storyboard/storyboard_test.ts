@@ -6,6 +6,8 @@ import { composePrompt, MAX_SHOWN } from '../look.ts'
 import { LimitError } from '../limits.ts'
 import {
   editFrameByAction,
+  FRAME_COUNT,
+  insertBeat,
   planStoryboard,
   renderStoryboardFrame,
   restartStoryboard,
@@ -328,6 +330,47 @@ Deno.test('setBeat and setLook edit the plan until a Frame is written, then refu
     const written = await writeStoryboard(deps, removed, scenario, () => {}, signal())
     await assertRejects(() => setBeat(deps, written, 0, 'Ace dunks.'), StageError, 'restart')
     await assertRejects(() => setLook(deps, written, removed.look!), StageError, 'restart')
+  }))
+
+Deno.test('insertBeat adds a Beat anywhere in the plan until a Frame is written', () =>
+  withTempDir(async (root) => {
+    const { deps, session } = await planned(root, {}, false)
+    const between = await insertBeat(deps, session, 1, '  Ace  pivots. ', [])
+    assertEquals(between.frames.map((f) => [f.index, f.beat]), [
+      [0, 'Beat 1'],
+      [1, 'Ace pivots.'],
+      [2, 'Beat 2'],
+      [3, 'Beat 3'],
+    ])
+    assertEquals([between.frames[1].body, between.frames[1].shown], ['', []])
+    // Without who it shows, it shows whoever the Frame before it does; at the start, the one after.
+    const last = await insertBeat(deps, between, 4, 'Ace bows.')
+    assertEquals([last.frames[4].beat, last.frames[4].shown], ['Ace bows.', ['Ace']])
+    const first = await insertBeat(deps, last, 0, 'The empty court.')
+    assertEquals(first.frames[0].shown, ['Ace'])
+    assertEquals(first.frames.map((f) => f.index), [0, 1, 2, 3, 4, 5])
+
+    await assertRejects(() => insertBeat(deps, first, 1, 'Ace is fully nude.'), LimitError)
+    await assertRejects(() => insertBeat(deps, first, 1, ' '), Error, 'needs a line')
+    await assertRejects(() => insertBeat(deps, first, 7, 'Ace waves.'), Error, '1 to 7')
+
+    // Written out like any other Beat, then fixed.
+    const written = await writeStoryboard(deps, first, scenario, () => {}, signal())
+    assertEquals(written.frames.every((f) => f.body !== ''), true)
+    await assertRejects(() => insertBeat(deps, written, 0, 'Ace waves.'), StageError, 'restart')
+  }))
+
+Deno.test('insertBeat stops at the most Frames a Storyboard has', () =>
+  withTempDir(async (root) => {
+    const { deps } = depsFor(root, { plans: [planOf(FRAME_COUNT.max)] })
+    const full = await planStoryboard(
+      deps,
+      newStoryboard(FRAME_COUNT.max),
+      scenario,
+      () => {},
+      signal(),
+    )
+    await assertRejects(() => insertBeat(deps, full, 0, 'Ace waves.'), StageError, 'at most')
   }))
 
 Deno.test('restartStoryboard takes it back to its plan, deleting the pictures', () =>

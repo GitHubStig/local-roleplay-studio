@@ -76,6 +76,8 @@ import {
 } from './chain/frames.ts'
 import {
   editFrameByAction,
+  FRAME_COUNT,
+  insertBeat,
   planStoryboard,
   restartStoryboard,
   setBeat,
@@ -153,8 +155,6 @@ const CONTENT_TYPES: Record<string, string> = {
   '.ply': 'application/octet-stream',
 }
 
-/** Storyboards plan between 1 and 32 Frames; 8 unless asked otherwise. */
-const FRAME_COUNT = { min: 1, max: 32, default: 8 }
 const MAX_BRIEF_LENGTH = 4000
 
 function defaultSessionId(): string {
@@ -983,6 +983,40 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
           return json(
             await setFrameBody({ store: deps.sessions }, session, index, body.body, body.shown),
           )
+        }),
+    ],
+
+    // A Beat added to a Storyboard's plan by hand, `{ at, beat, shown }`, before its Frames are
+    // written: the Frames from `at` on move up one.
+    [
+      'POST',
+      new URLPattern({ pathname: '/api/sessions/:id/beats' }),
+      (req, p) =>
+        locked(p.id!, 'edit', async (session) => {
+          if (!needsStoryboard(session)) return error('Only a Storyboard has Beats', 409)
+          const body = await readJson(req) as
+            | { at?: unknown; beat?: unknown; shown?: unknown }
+            | undefined
+          if (typeof body?.beat !== 'string' || !body.beat.trim()) {
+            return error('beat is required', 400)
+          }
+          const at = body.at
+          if (
+            typeof at !== 'number' || !Number.isInteger(at) || at < 0 || at > session.frames.length
+          ) {
+            return error(`at must be 0 to ${session.frames.length}`, 400)
+          }
+          if (body.shown !== undefined && !isStringList(body.shown)) {
+            return error('shown must be a list of names', 400)
+          }
+          const added = await insertBeat(
+            { store: deps.sessions },
+            session,
+            at,
+            body.beat,
+            body.shown,
+          )
+          return json(added, 201)
         }),
     ],
 
