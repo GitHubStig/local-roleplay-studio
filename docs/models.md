@@ -587,6 +587,19 @@ setting changed. Not checked: the Mac (ComfyUI or mflux), keeping a subject cons
 Frames, tags, more than one seed, and whether the Text Model's Image Prompts are full enough
 captions without BFL's upsampler (this prompt was, by hand).
 
+### MOSS-Image on ComfyUI with an RTX 4070 (2026-10-19)
+
+**MOSS-Image** (`moss-image`), added with ComfyUI 0.42 ([research/comfyui.md](research/comfyui.md), "ComfyUI 0.42"): OpenMOSS's instruction-tuned checkpoint, **Apache-2.0** and not gated, from Comfy-Org's repack (`Comfy-Org/MOSS-Image`): `moss_image_sft_int8_convrot` (5.4 GB), **Qwen3.5-9B** as its text encoder (`qwen3.5_9b_w4a8_gptq`, 7.3 GB) and a smaller FLUX.2 VAE (`flux2-vae_small`, 0.25 GB). ComfyUI's template settings: 25 steps, real CFG 2.5 with a short negative (the template's, less its "nsfw"), `er_sde`. No prompt upsampler, as for FLUX.3 Klein. `_base_` files are the checkpoint for fine-tuning, so they're never picked.
+
+Measured on the Windows PC (ComfyUI 0.42.1), through the app's own ComfyUI generator: the same prose prompt as the 0.42 check (a traveller in a wet cloak at a corner table, a broad innkeeper with rolled sleeves setting down a mug, firelight, rain on the window), seed 42, 832×1216, ComfyUI's models freed before each, Ollama unloaded:
+
+| Model | Steps | From cold | Peak VRAM | Least RAM free | What it drew |
+|---|---|---|---|---|---|
+| MOSS-Image | 25 | 24.8 s, then 25.8 s | 12.0 GB | 1.8 GB of 16 | everything asked for, and closest to the words: the innkeeper broad, sleeves rolled, setting the mug down; warm, photographic |
+| Qwen-Image 2.1 | 25 | 22.6 s | 12.0 GB | 2.7 GB | everything, but the innkeeper seated across from him rather than serving; much darker |
+
+So on the 4070 MOSS-Image costs about what Qwen-Image 2.1 does, despite its 12.7 GB of weights and two passes a step. The 16 GB of RAM held, with the least free 0.9 GB lower than Qwen's. Not checked: more than one seed or prompt, several Frames in a Session (and Ollama loaded beside it, which the RAM may not allow), tags, its layout captions (`MOSSImageLayoutPrompt`), and the Mac.
+
 ### mflux 0.23: FLUX.3 Klein and Qwen-Image 2.1 Turbo on the Mac (2026-10-17)
 
 mflux 0.23 (2026-10-16) runs two Image Models the app had only on ComfyUI, so both are now mflux Image Models too, under the same ids: **FLUX.3 Klein** (`flux3-klein`, `mflux-generate-flux3`, the distilled checkpoint: 16 steps, no guidance; gated, 20.3 GB) and **Qwen-Image 2.1 Turbo** (`qwen-image-2.1-turbo`, Qwen's own 8-step checkpoint through `mflux-generate-qwen-2.1`, no CFG, no step cache; 32.5 GB).

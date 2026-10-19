@@ -94,6 +94,24 @@ export const COMFYUI_MODELS: readonly ComfyModel[] = [
     },
   },
   {
+    id: 'moss-image',
+    label: 'MOSS-Image',
+    // As ComfyUI's template, at real CFG (two passes a step).
+    defaultSteps: 25,
+    files: {
+      // Only the instruction-tuned `_sft_` files: `_base_` is the checkpoint for fine-tuning.
+      unet: {
+        folder: 'diffusion_models',
+        patterns: [/^moss_image_sft_int8/, /^moss_image_sft_bf16/],
+      },
+      clip: {
+        folder: 'text_encoders',
+        patterns: [/^qwen3\.5_9b_w4a8/, /^qwen3\.5_9b_int8/, /^qwen3\.5_9b_bf16/],
+      },
+      vae: { folder: 'vae', patterns: [/^flux2-vae_small/, /^flux2-vae\.safetensors$/] },
+    },
+  },
+  {
     id: 'z-image-turbo',
     label: 'Z-Image Turbo',
     defaultSteps: 8,

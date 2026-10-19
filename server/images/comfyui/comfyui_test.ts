@@ -18,22 +18,30 @@ const MAC_FILES: Record<string, string[]> = {
 }
 
 /**
- * The Windows PC's: Qwen-Image 2.1 and its Turbo, FLUX.2 Klein 4B, FLUX.3 Klein and Z-Image Turbo.
+ * The Windows PC's: Qwen-Image 2.1 and its Turbo, FLUX.2 Klein 4B, FLUX.3 Klein, MOSS-Image and
+ * Z-Image Turbo.
  */
 const PC_FILES: Record<string, string[]> = {
   diffusion_models: [
     'flux-2-klein-4b.safetensors',
     'flux3_image_klein_sd_int8_convrot.safetensors',
+    'moss_image_sft_int8_convrot.safetensors',
     'qwen_image_2.1_int8_convrot.safetensors',
     'qwen_image_2.1_turbo_int8_convrot.safetensors',
     'z_image_turbo_int8_convrot.safetensors',
   ],
   text_encoders: [
+    'qwen3.5_9b_w4a8_gptq.safetensors',
     'qwen3vl_4b_int8_convrot.safetensors',
     'qwen3vl_8b_int8_convrot.safetensors',
     'qwen_3_4b.safetensors',
   ],
-  vae: ['ae.safetensors', 'flux2-vae.safetensors', 'qwen_image_2.1_vae_bf16.safetensors'],
+  vae: [
+    'ae.safetensors',
+    'flux2-vae.safetensors',
+    'flux2-vae_small.safetensors',
+    'qwen_image_2.1_vae_bf16.safetensors',
+  ],
 }
 
 /** A stand-in ComfyUI with the Mac's model files, unless told others. */
