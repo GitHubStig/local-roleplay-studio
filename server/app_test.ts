@@ -1888,6 +1888,31 @@ Deno.test('Undoing an exchange cancels its jobs; deleting the Roleplay cancels t
     assertEquals(await settled(call), [])
   }))
 
+Deno.test('Restarting a Roleplay takes it back to its Cast, deleting every exchange and picture', () =>
+  withTempDir(async (root) => {
+    const { call } = await roleplayWithArt(root, [artBody])
+    await call('POST', '/api/sessions/s1/jobs', { kind: 'picture', frameIndex: 0 })
+    await call('POST', '/api/sessions/s1/jobs', { kind: 'render', frameIndex: 0 })
+    await settled(call)
+    const before = await (await call('GET', '/api/sessions/s1')).json()
+    const { image } = shown(before.frames[0])
+    assertEquals(await Deno.stat(`${root}/s1/${image}`).then(() => true, () => false), true)
+
+    const restarted = await (await call('POST', '/api/sessions/s1/restart')).json()
+    assertEquals(restarted.frames, [])
+    assertEquals(restarted.cast, before.cast)
+    assertEquals(restarted.look, before.look)
+    assertEquals(await Deno.stat(`${root}/s1/${image}`).then(() => true, () => false), false)
+    // Back to reviewing the Cast: nothing to restart, nothing to reply to, but it can begin.
+    assertEquals((await call('POST', '/api/sessions/s1/restart')).status, 409)
+    assertEquals(
+      (await call('POST', '/api/sessions/s1/roleplay/messages', { text: 'Hi' })).status,
+      409,
+    )
+    const begun = await readEvents(await call('POST', '/api/sessions/s1/roleplay/begin'))
+    assertEquals(begun.at(-1)![0], 'replied')
+  }))
+
 Deno.test('Pictures are written as tags when Settings ask, recorded on the Frame', () =>
   withTempDir(async (root) => {
     const artist = scriptedRoleplayModel({

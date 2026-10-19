@@ -19,6 +19,7 @@ vi.mock('../api', async (importOriginal) => ({
   cancelJob: vi.fn(),
   clearJobs: vi.fn(),
   retryJob: vi.fn(),
+  restartSession: vi.fn(),
 }))
 vi.mock('./api', async (importOriginal) => ({
   ...(await importOriginal<typeof roleplay>()),
@@ -324,6 +325,21 @@ describe('RoleplayView', () => {
     expect(roleplay.undoExchange).toHaveBeenCalledWith('r1', 1)
     expect((wrapper.find('textarea').element as HTMLTextAreaElement).value).toBe('Thanks.')
     expect(buttonNamed(wrapper, 'Undo').attributes('disabled')).toBeDefined()
+  })
+
+  it('restarts back to the Cast once confirmed, to begin again', async () => {
+    vi.mocked(api.restartSession).mockResolvedValue({ ...roleplaySession([]), cast })
+    const confirm = vi.fn().mockReturnValueOnce(false).mockReturnValueOnce(true)
+    vi.stubGlobal('confirm', confirm)
+    const { wrapper } = await mountIt()
+    expect(wrapper.find('[data-review]').exists()).toBe(false)
+    await wrapper.find('[data-restart]').trigger('click')
+    expect(api.restartSession).not.toHaveBeenCalled()
+    await wrapper.find('[data-restart]').trigger('click')
+    await flushPromises()
+    expect(api.restartSession).toHaveBeenCalledWith('r1')
+    expect(wrapper.find('[data-review]').exists()).toBe(true)
+    expect(wrapper.find('[data-restart]').exists()).toBe(false)
   })
 
   it('hides the Character’s thoughts when asked, remembering the choice', async () => {

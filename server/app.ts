@@ -34,6 +34,7 @@ import type { VoiceEngine } from './voice/voice.ts'
 import { roleplayExcerpt } from './roleplay/prompt.ts'
 import { roleplayRoutes } from './roleplay/routes.ts'
 import { checkRoleplayJob, type RoleplayJobContext, runRoleplayJob } from './roleplay/jobs.ts'
+import { restartRoleplay } from './roleplay/engine.ts'
 import {
   type Job,
   JOB_FEATURE,
@@ -925,27 +926,35 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
         }),
     ],
 
-    // Back to the plan: every Frame's sentences and pictures go, so the Look and Beats can be
-    // edited again. Its jobs are cancelled, and it waits for a render running to end.
+    // A Storyboard back to the plan: every Frame's sentences and pictures go, so the Look and
+    // Beats can be edited again. A Roleplay back to its Cast: every exchange goes, the opening too.
+    // Their jobs are cancelled (all but a Roleplay's voice, which stays), and it waits for a render
+    // running to end.
     [
       'POST',
       new URLPattern({ pathname: '/api/sessions/:id/restart' }),
       async (_req, p) => {
-        // Only a Storyboard's jobs are cancelled, so it's checked before taking the lock.
+        // Only these kinds' jobs are cancelled, so it's checked before taking the lock.
         const found = await deps.sessions.load(p.id!)
-        if (found?.kind !== 'storyboard') {
+        if (found?.kind !== 'storyboard' && found?.kind !== 'roleplay') {
           return error(
-            found ? 'Only a planned Storyboard restarts' : 'Session not found',
+            found ? 'Only a Storyboard or a Roleplay restarts' : 'Session not found',
             found ? 409 : 404,
           )
         }
-        jobs.cancelWhere(p.id!, () => true)
+        const cancelled = (job: Job) => found.kind === 'storyboard' || job.kind !== 'voice'
+        jobs.cancelWhere(p.id!, cancelled)
         return jobs.betweenRenders(p.id!, () =>
           locked(p.id!, 'edit', async (session) => {
+            if (session.kind === 'roleplay') {
+              if (!session.frames.length) return error('The scene has not begun yet', 409)
+              jobs.cancelWhere(session.id, cancelled)
+              return json(await restartRoleplay(deps.sessions, session))
+            }
             if (!needsStoryboard(session) || !session.look) {
               return error('Only a planned Storyboard restarts', 409)
             }
-            jobs.cancelWhere(session.id, () => true)
+            jobs.cancelWhere(session.id, cancelled)
             return json(await restartStoryboard({ store: deps.sessions }, session))
           }))
       },

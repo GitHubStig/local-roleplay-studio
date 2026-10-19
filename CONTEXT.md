@@ -126,6 +126,10 @@ _Avoid_: Abort, stop
 Removing the latest Frame of a Chain (so the previous Frame is current again) or of a Roleplay (its last exchange); the opening can't be undone. Its Action or Message goes back into the text box.
 _Avoid_: revert, rollback
 
+**Restart**:
+Going back to the setup of a Session once it's under way, after a confirm: a Storyboard back to its plan (every Frame's sentences and pictures go, its Beats stay), a Roleplay back to reviewing its Cast (every exchange goes, the opening too; the Cast, Look and voice stay). Unlike Undo, it can't be taken back.
+_Avoid_: Reset, start over
+
 **Delete** (a Chain Frame):
 Removing a Chain Frame between the Opening and the latest, with its pictures; the Frames after it are numbered down and keep their Image Prompts. Unlike Undo, nothing goes back into the text box.
 _Avoid_: Remove, drop

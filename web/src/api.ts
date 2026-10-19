@@ -568,9 +568,12 @@ export const removeBeat = (
 export const reorderBeats = (id: string, order: number[], seen: string[]) =>
   put<StoryboardSession>(`/api/sessions/${id}/beats/order`, { order, seen })
 
-/** Takes a Storyboard back to its plan: every Frame's sentences and pictures go. */
-export const restartStoryboard = (id: string) =>
-  post<StoryboardSession>(`/api/sessions/${id}/restart`)
+/**
+ * Takes a Storyboard back to its plan (every Frame's sentences and pictures go), or a Roleplay back
+ * to its Cast (every exchange goes, the opening too).
+ */
+export const restartSession = <S extends StoryboardSession | RoleplaySession>(id: string) =>
+  post<S>(`/api/sessions/${id}/restart`)
 
 /**
  * Makes a new Chain from a Storyboard's Frames up to `index`, with their pictures, to carry on

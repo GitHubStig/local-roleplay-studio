@@ -21,6 +21,7 @@ import {
   type Look,
   type Made3d,
   type PicturedFrame,
+  restartSession,
   shownPicture,
 } from '../api'
 import { clearCurrentSession, setCurrentSession } from '../composables/useCurrentSession'
@@ -512,6 +513,22 @@ async function undo() {
   try {
     session.value = await undoExchange(props.id, latest.index)
     if (!draft.value.trim()) draft.value = latest.message ?? ''
+  } catch (err) {
+    notice.value = { kind: 'error', text: (err as Error).message }
+  }
+}
+
+/** Back to the Cast, once confirmed: every exchange goes, the opening too; the Cast, Look and voice stay. */
+async function restart() {
+  if (busy.value) return
+  const what =
+    'Restart this Roleplay? Every exchange is deleted, the opening too, with its pictures and ' +
+    "spoken lines; the Cast, Look and voice stay, to edit before beginning again. This can't be undone."
+  if (!confirm(what)) return
+  notice.value = null
+  try {
+    session.value = await restartSession<RoleplaySession>(props.id)
+    refreshJobs()
   } catch (err) {
     notice.value = { kind: 'error', text: (err as Error).message }
   }
@@ -1151,6 +1168,19 @@ const lookSavingText = computed(() =>
             :saved-text="begun ? 'applies from the next reply' : undefined"
             @revert="revertCast"
           />
+          <div v-if="begun" class="flex items-center gap-2 text-xs text-muted" data-begun>
+            <span class="flex-1">To begin the scene again, restart it.</span>
+            <button
+              type="button"
+              class="rounded border border-line px-2 py-1 hover:text-fg disabled:opacity-50"
+              :disabled="busy"
+              title="Back to the Cast: every exchange is deleted, the opening too, and the Cast, Look and voice stay"
+              data-restart
+              @click="restart"
+            >
+              Restart…
+            </button>
+          </div>
         </form>
         </section>
         </div>

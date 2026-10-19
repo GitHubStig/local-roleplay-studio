@@ -7,6 +7,7 @@ import {
   beginRoleplay,
   pictureFrame,
   renderRoleplayFrame,
+  restartRoleplay,
   RoleplayError,
   type RoleplayEvent,
   RoleplayLimitError,
@@ -402,4 +403,33 @@ Deno.test('Undoing an exchange deletes its picture', () =>
       await Deno.stat(`${store.dir('r1')}/${image}`).then(() => true, () => false),
       false,
     )
+  }))
+
+Deno.test('restartRoleplay deletes every exchange and its pictures, keeping the Cast and Look', () =>
+  withTempDir(async (root) => {
+    const { deps, session, store } = await setUp(root, [replyOf('Take the wheel.')])
+    const scripted = scriptedRoleplayModel({
+      looks: [testLook('Ink.', 'Mira.', 'Sam.')],
+      bodies: [body('Mira points.')],
+    })
+    const art = { ...deps, roleplayModel: scripted }
+    const two = (await sendMessage(deps, session, 'Sorry.', () => {}, signal()))!
+    const rendered = await renderRoleplayFrame(
+      art,
+      await pictureFrame(art, two, scenario, 1, () => {}, signal()),
+      1,
+      () => {},
+      signal(),
+    )
+    const { image } = rendered.frames[1].pictures[0]
+    assertEquals(await Deno.stat(`${store.dir('r1')}/${image}`).then(() => true, () => false), true)
+    const restarted = await restartRoleplay(store, rendered)
+    assertEquals(restarted.frames, [])
+    assertEquals(restarted.cast, rendered.cast)
+    assertEquals(restarted.look, rendered.look)
+    assertEquals(
+      await Deno.stat(`${store.dir('r1')}/${image}`).then(() => true, () => false),
+      false,
+    )
+    await assertRejects(() => restartRoleplay(store, restarted), RoleplayError, 'not begun')
   }))

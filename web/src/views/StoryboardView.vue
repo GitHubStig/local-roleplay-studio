@@ -34,7 +34,7 @@ import {
   planStoryboard,
   removeBeat,
   reorderBeats,
-  restartStoryboard,
+  restartSession,
   saveBeat,
   saveFrameBody,
   saveLook,
@@ -298,7 +298,7 @@ async function restart() {
   if (!confirm(what)) return
   message.value = null
   try {
-    session.value = await restartStoryboard(props.id)
+    session.value = await restartSession<StoryboardSession>(props.id)
     await load()
   } catch (err) {
     message.value = { kind: 'error', text: (err as Error).message }

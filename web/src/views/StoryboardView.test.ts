@@ -11,7 +11,7 @@ vi.mock('../api', async (importOriginal) => ({
   getSession: vi.fn(),
   planStoryboard: vi.fn(),
   writeStoryboard: vi.fn(),
-  restartStoryboard: vi.fn(),
+  restartSession: vi.fn(),
   editStoryboardFrame: vi.fn(),
   saveFrameBody: vi.fn(),
   saveBeat: vi.fn(),
@@ -251,18 +251,18 @@ describe('StoryboardView', () => {
   })
 
   it('restarts back to the plan once confirmed', async () => {
-    vi.mocked(api.restartStoryboard).mockResolvedValue(
+    vi.mocked(api.restartSession).mockResolvedValue(
       storyboard([planned(0), planned(1), planned(2)]),
     )
     const confirm = vi.fn().mockReturnValueOnce(false).mockReturnValueOnce(true)
     vi.stubGlobal('confirm', confirm)
     const { wrapper } = await mountIt()
     await wrapper.find('[data-restart]').trigger('click')
-    expect(api.restartStoryboard).not.toHaveBeenCalled()
+    expect(api.restartSession).not.toHaveBeenCalled()
     vi.mocked(api.getSession).mockResolvedValue(storyboard([planned(0), planned(1), planned(2)]))
     await wrapper.find('[data-restart]').trigger('click')
     await flushPromises()
-    expect(api.restartStoryboard).toHaveBeenCalledWith('sb')
+    expect(api.restartSession).toHaveBeenCalledWith('sb')
     expect(wrapper.find('[data-write]').text()).toBe('Write 3 Frames')
   })
 

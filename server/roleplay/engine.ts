@@ -381,10 +381,33 @@ export async function undoLatestExchange(
     ...latest,
     frames: latest.frames.slice(0, -1),
   }))
-  const spoken = [latest.speech?.file, latest.thoughtSpeech?.file].filter((f): f is string => !!f)
-  await removeFiles(store.dir(session.id), [...allPictureFiles(latest), ...spoken])
+  await removeFiles(store.dir(session.id), exchangeFiles(latest))
   return updated
 }
+
+/**
+ * Takes a Roleplay back to its Cast, to edit and begin again: every exchange goes, the opening too,
+ * with its pictures and spoken lines (the files deleted). The Cast, the Look and the voice stay.
+ */
+export async function restartRoleplay(
+  store: SessionStore,
+  session: RoleplaySession,
+): Promise<RoleplaySession> {
+  if (!session.frames.length) throw new RoleplayError('The scene has not begun yet')
+  let files: string[] = []
+  const updated = await updateSession(store, session.id, (latest) => {
+    files = latest.frames.flatMap(exchangeFiles)
+    return { ...latest, frames: [] }
+  })
+  await removeFiles(store.dir(session.id), files)
+  return updated
+}
+
+/** The files an exchange is made of: its pictures and its spoken lines. */
+const exchangeFiles = (frame: RoleplayFrame): string[] => [
+  ...allPictureFiles(frame),
+  ...[frame.speech?.file, frame.thoughtSpeech?.file].filter((f): f is string => !!f),
+]
 
 /** Replaces the Cast, edited by hand; applies from the next reply. */
 export async function setCast(
