@@ -318,8 +318,7 @@ windows under 1024 px). Clicking a picture opens it in a viewer (`FrameViewer`, 
 Chain and Storyboard screens: `ImageViewer`, a dialog around `FrameImage`, which zooms and pans
 only there); Esc, Close or a
 click outside the image dismisses it, and "Open full size" opens the file itself. In the viewer,
-← and → (or ‹ ›) step to the previous or next rendered Frame, scrolling the conversation behind to
-it,
+← and → (or ↑ and ↓, or ‹ ›) step to the previous or next rendered Frame, scrolling the conversation behind to it,
 with progress, the sweep and Cancel in place; **Upscale** works as on any Frame. Picturing a
 rendered Frame again, or editing the Look, marks its pictures "Changed since render" until it's
 re-rendered, as does a picture by another Image Model than the Roleplay's; the Image Prompt block
@@ -522,7 +521,7 @@ consistency* in [open-threads.md](open-threads.md).
   as `upscaled` on the picture, in a `-2048` file next to the original; a picture by another model
   has its own). Hovering the image shows its size in pixels in the top-left
   corner ("768×512", then "3072×2048" once upscaled), except while the status pill is there.
-  Clicking the image opens it in the same viewer as a Roleplay's pictures (`FrameViewer`; ← and →
+  Clicking the image opens it in the same viewer as a Roleplay's pictures (`FrameViewer`; ← and →, or ↑ and ↓,
   step through the Frames), and so does a Storyboard's. Only there does it zoom: pinching the
   trackpad, or a mouse wheel (25% a notch; Windows has no pinch on a mouse), zooms the image, not
   the page (up to 8×, toward the pointer, with the zoom level added to the size chip); while

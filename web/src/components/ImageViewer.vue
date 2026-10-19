@@ -8,9 +8,9 @@ import Icon from './Icon.vue'
  * A full-window look at one image: pinch to zoom, drag or two-finger scroll to pan, double-click
  * to reset (all from FrameImage). Esc, the close button or a click anywhere outside the image
  * closes it. Given a `label` or `hasPrevious` / `hasNext`, the ‹ › buttons, the ← → keys and a
- * swipe sideways ask for the image before or after; with `vertical`, the up and down buttons, the
- * ↑ ↓ keys and a swipe up or down ask for the one above or below too. The parent decides which
- * those are. A `caption` shows under the image, in a box of the same height whatever its length,
+ * swipe sideways ask for the image before or after, and so do ↑ and ↓; with `vertical`, the up and
+ * down buttons, the ↑ ↓ keys and a swipe up or down ask for the one above or below instead. The
+ * parent decides which those are. A `caption` shows under the image, in a box of the same height whatever its length,
  * so the image keeps its size while stepping through.
  */
 const props = defineProps<{
@@ -50,11 +50,15 @@ function go(way: Way) {
  * The arrow keys step through while the viewer is open, wherever the focus is: a ‹ › button that
  * had it is disabled at the first or last image, and the browser then drops the focus out of the
  * dialog, which would leave the keys going nowhere (and listened for on the dialog, they did).
+ * Without `vertical`, ↑ and ↓ step as ← and → do. They're the viewer's even at the first or last
+ * image, so one too many doesn't scroll the page behind.
  */
 const KEYS = { ArrowLeft: 'previous', ArrowRight: 'next', ArrowUp: 'up', ArrowDown: 'down' } as const
+const FLAT = { ...KEYS, ArrowUp: 'previous', ArrowDown: 'next' } as const
 useEventListener(document, 'keydown', (e: KeyboardEvent) => {
-  if (!dialog.value?.open || !(e.key in KEYS)) return
-  if (go(KEYS[e.key as keyof typeof KEYS])) e.preventDefault()
+  if (!dialog.value?.open || !(e.key in KEYS) || e.altKey || e.ctrlKey || e.metaKey) return
+  e.preventDefault()
+  go((props.vertical ? KEYS : FLAT)[e.key as keyof typeof KEYS])
 })
 
 /**

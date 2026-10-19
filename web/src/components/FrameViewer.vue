@@ -4,8 +4,8 @@ import { imageUrl, type PicturedFrame, shownPicture } from '../api'
 import ImageViewer from './ImageViewer.vue'
 
 /**
- * A Session's pictures in the full-window viewer: it opens on one Frame, and ← and → step through
- * the Frames that have a picture, showing each one's upscale if it has one.
+ * A Session's pictures in the full-window viewer: it opens on one Frame, and ← and → (or ↑ and ↓)
+ * step through the Frames that have a picture, showing each one's upscale if it has one.
  */
 const props = withDefaults(
   defineProps<{

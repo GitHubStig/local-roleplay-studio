@@ -92,6 +92,29 @@ describe('ImageViewer', () => {
     expect(wrapper.emitted('previous')).toHaveLength(1)
   })
 
+  it('steps with ↑ and ↓ as with ← and → when it only goes one way', async () => {
+    const wrapper = mountIt()
+    await wrapper.setProps({ src: '/x.png', hasPrevious: true, hasNext: true })
+    await flushPromises()
+    const press = (key: string, init: KeyboardEventInit = {}) => {
+      const e = new KeyboardEvent('keydown', { key, cancelable: true, ...init })
+      document.dispatchEvent(e)
+      return e.defaultPrevented
+    }
+    press('ArrowUp')
+    press('ArrowDown')
+    press('ArrowDown')
+    expect([wrapper.emitted('previous')?.length, wrapper.emitted('next')?.length]).toEqual([1, 2])
+    expect([wrapper.emitted('up'), wrapper.emitted('down')]).toEqual([undefined, undefined])
+    // At the last image, ↓ goes nowhere but is still the viewer's, not the page's behind.
+    await wrapper.setProps({ hasNext: false })
+    expect(press('ArrowDown')).toBe(true)
+    expect(wrapper.emitted('next')).toHaveLength(2)
+    // With a modifier, it's the browser's.
+    expect(press('ArrowUp', { metaKey: true })).toBe(false)
+    expect(wrapper.emitted('previous')).toHaveLength(1)
+  })
+
   it('steps up and down too, by key and button, only when it goes that way', async () => {
     const wrapper = mountIt()
     await wrapper.setProps({ src: '/x.png', hasNext: true, hasUp: true, hasDown: true })
