@@ -350,6 +350,17 @@ describe('RoleplayView', () => {
     expect(localStorage.getItem('roleplay-thoughts-hidden')).toBe('1')
   })
 
+  it('collapses each part of the Cast to its title and a preview, remembering the choice', async () => {
+    const { wrapper } = await mountIt()
+    const group = wrapper.find('[data-collapsible="roleplay.cast.persona"]')
+    expect(group.attributes('open')).toBeDefined()
+    ;(group.element as HTMLDetailsElement).open = false
+    await group.trigger('toggle')
+    expect(group.attributes('open')).toBeUndefined()
+    expect(group.find('summary').text()).toContain(cast.persona.name)
+    expect(localStorage.getItem('collapsed:roleplay.cast.persona')).toBe('1')
+  })
+
   it('saves an edited Cast once the focus leaves it', async () => {
     vi.mocked(roleplay.saveCast).mockImplementation(async (_id, c) => ({
       ...roleplaySession([frame(0, null, 'Get inside.')]),
@@ -661,6 +672,17 @@ describe('RoleplayView', () => {
       // Designing the voice is the Roleplay's, not the opening Frame's.
       expect(wrapper.find('[data-frame-job]').exists()).toBe(false)
       expect(wrapper.find('[data-reply]').classes()).not.toContain('render-sweep')
+    })
+
+    it('collapses the voice to its heading and description, remembering the choice', async () => {
+      vi.mocked(api.getSession).mockResolvedValue({ ...roleplaySession([spoken()]), cast, voice })
+      const { wrapper } = await mountIt()
+      const section = wrapper.find('[data-collapsible="roleplay.voice"]')
+      ;(section.element as HTMLDetailsElement).open = false
+      await section.trigger('toggle')
+      expect(section.attributes('open')).toBeUndefined()
+      expect(section.find('summary').text()).toContain(voice.description)
+      expect(localStorage.getItem('collapsed:roleplay.voice')).toBe('1')
     })
   })
 
