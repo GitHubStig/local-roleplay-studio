@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useEventListener } from '@vueuse/core'
+import { useEventListener, useTextareaAutosize } from '@vueuse/core'
 import {
   computed,
   nextTick,
@@ -309,6 +309,8 @@ watch([() => session.value?.frames, jobs], () => {
 const voiceDraft = ref('')
 /** The Voice section collapses to its heading and the description, remembered per browser. */
 const voiceCollapsed = useStoredFlag('collapsed:roleplay.voice')
+// As tall as its text, as the Cast's fields are, so the panel scrolls as one.
+useTextareaAutosize({ element: useTemplateRef<HTMLTextAreaElement>('voiceTextarea'), input: voiceDraft })
 watch(() => session.value?.voice?.description, (d) => (voiceDraft.value = d ?? ''), { immediate: true })
 const voiceChanged = computed(() =>
   !!voiceDraft.value.trim() && voiceDraft.value.trim() !== (session.value?.voice?.description ?? '')
@@ -1160,12 +1162,16 @@ const lookSavingText = computed(() =>
             </span>
           </summary>
           <div class="mt-2 flex flex-col gap-2">
-          <CollapsibleTextarea
-            id="voice.description"
+          <!-- The section's only field, so it doesn't collapse on its own as the Cast's do. -->
+          <textarea
+            ref="voiceTextarea"
             v-model="voiceDraft"
-            label="Description"
+            rows="1"
+            aria-label="Voice description"
+            class="w-full resize-none overflow-hidden rounded border border-line bg-surface p-2 text-sm text-fg"
             :placeholder="`Described from the Cast the first time ${characterName} speaks, or describe it yourself: age, pitch, texture, manner.`"
             :disabled="!!voiceJob && voiceJob.status !== 'failed'"
+            data-field="voice.description"
           />
           <p v-if="voiceJob" class="flex items-center gap-2 text-xs" data-voice-job>
             <span
