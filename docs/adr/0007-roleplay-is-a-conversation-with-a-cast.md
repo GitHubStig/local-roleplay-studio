@@ -48,4 +48,4 @@ The Cast stayed editable after Begin, but much of it stops being true as the sto
 
 So once the scene has begun, the Cast's start (the names, the Character's age and appearance, the Persona and the Setting) is fixed and shown read-only under "At the start"; the server refuses a change to it, and Restart is the way to change it. What steers the Character (personality, way of speaking, background, goal) stays editable, applying from the next Reply. The Character's prompt says the Cast is how things stood when the scene began, and to go by the story where it has moved on: wording that's right for any model, against the stated age pulling a Reply back.
 
-How a person looks now belongs in the Look, which pictures are drawn from; bringing it up to date with the story is a separate change (open threads).
+How a person looks now belongs in the Look, which pictures are drawn from; it's brought up to date with the story by hand for now (open threads: an automatic way was parked as too much work).
