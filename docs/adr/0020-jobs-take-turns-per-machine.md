@@ -23,4 +23,4 @@ So a line spoken here plays while the PC renders, and a Reply's picture is writt
 - Two names for one machine that aren't its own (a DNS alias for the PC) count as two machines, and now the jobs on them run at once. ComfyUI queues its own work, so they would most likely only wait there; use one address for each machine in Settings.
 - A job keeps the machine it was queued with: a Settings change applies to jobs queued after it, and a retried job keeps its own.
 - The order of calls in the call log follows when each job ran, which may differ from the order asked.
-- Tested with fake machines only (2026-10-19, Mac). A real run, a render on the PC's ComfyUI with a Listen on the Mac during it, is still to be done.
+- Checked on the Mac with the PC's ComfyUI (2026-10-19): during a Moss-Image render on the PC (24.1 s), a Listen on the Mac started at once and spoke its line (15.0 s, designing the voice first) beside it.
