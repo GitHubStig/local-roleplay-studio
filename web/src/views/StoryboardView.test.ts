@@ -451,7 +451,7 @@ describe('StoryboardView', () => {
     })
   })
 
-  it('adds a Beat after any Frame while reviewing the plan, saving an edit first', async () => {
+  it('adds a Beat after the selected Frame while reviewing the plan, saving an edit first', async () => {
     vi.mocked(api.getSession).mockResolvedValue(storyboard([planned(0), planned(1), planned(2)]))
     vi.mocked(api.saveBeat).mockResolvedValue(
       storyboard([planned(0, { beat: 'Rin dunks.' }), planned(1), planned(2)]),
@@ -461,13 +461,15 @@ describe('StoryboardView', () => {
       storyboard([planned(0), added, { ...planned(1), index: 2 }, { ...planned(2), index: 3 }]),
     )
     const { wrapper } = await mountIt()
-    // One after each Frame: between them, and after the last.
-    expect(wrapper.findAll('[data-add-beat]')).toHaveLength(3)
+    // Only in the Prompt panel, for the selected Frame: none in the list.
+    expect(wrapper.findAll('[data-add-beat]')).toHaveLength(1)
+    expect(wrapper.find('[data-frames-panel] [data-add-beat]').exists()).toBe(false)
 
     await wrapper.find('[data-field="storyboard.frame"]').setValue('Rin dunks.')
-    await wrapper.findAll('[data-add-beat]')[0].trigger('click')
-    expect(wrapper.findAll('[data-add-beat]')).toHaveLength(0)
+    await wrapper.find('[data-add-beat]').trigger('click')
+    expect(wrapper.find('[data-add-beat]').exists()).toBe(false)
     const box = wrapper.find('[data-adding-beat] textarea')
+    expect(wrapper.find('[data-adding-beat]').text()).toContain('Frame 2')
     await box.setValue('  Kai blocks. ')
     await box.trigger('keydown', { key: 'Enter' })
     await flushPromises()
@@ -479,19 +481,23 @@ describe('StoryboardView', () => {
     expect(wrapper.find('[data-frame][aria-current="true"]').text()).toContain('Kai blocks.')
   })
 
-  it('cancels a Beat being added with Esc, and offers none once Frames are written', async () => {
+  it('lets a Beat being added go with Esc, or on picking another Frame; none once written', async () => {
     vi.mocked(api.getSession).mockResolvedValue(storyboard([planned(0), planned(1)]))
     const { wrapper } = await mountIt()
-    await wrapper.findAll('[data-add-beat]')[1].trigger('click')
+    await wrapper.findAll('[data-frame]')[1].trigger('click')
+    await wrapper.find('[data-add-beat]').trigger('click')
     expect(wrapper.find('[data-adding-beat]').text()).toContain('Frame 3')
     await wrapper.find('[data-adding-beat] textarea').trigger('keydown', { key: 'Escape' })
+    expect(wrapper.find('[data-adding-beat]').exists()).toBe(false)
+    await wrapper.find('[data-add-beat]').trigger('click')
+    await wrapper.findAll('[data-frame]')[0].trigger('click')
     expect(wrapper.find('[data-adding-beat]').exists()).toBe(false)
     expect(api.insertBeat).not.toHaveBeenCalled()
     wrapper.unmount()
 
     vi.mocked(api.getSession).mockResolvedValue(storyboard([frame(0), planned(1)]))
     const written = (await mountIt()).wrapper
-    expect(written.findAll('[data-add-beat]')).toHaveLength(0)
+    expect(written.find('[data-beat-actions]').exists()).toBe(false)
   })
 
   it('removes a Beat once confirmed, dropping an edit to it', async () => {
@@ -505,10 +511,10 @@ describe('StoryboardView', () => {
     await wrapper.findAll('[data-frame]')[1].trigger('click')
     await wrapper.find('[data-field="storyboard.frame"]').setValue('Half typed')
 
-    await wrapper.findAll('[data-remove-beat]')[1].trigger('click')
+    await wrapper.find('[data-remove-beat]').trigger('click')
     expect(api.removeBeat).not.toHaveBeenCalled()
     confirm.mockReturnValue(true)
-    await wrapper.findAll('[data-remove-beat]')[1].trigger('click')
+    await wrapper.find('[data-remove-beat]').trigger('click')
     await flushPromises()
 
     expect(api.saveBeat).not.toHaveBeenCalled()

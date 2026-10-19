@@ -431,17 +431,22 @@ async function toggleShown(name: string) {
   flushFrame()
 }
 
-/** A Beat being added by hand, before the Frame at `at` (at the end, after the last). */
+/** A Beat being added by hand, after the selected Frame: before the Frame at `at`. */
 const adding = ref<{ at: number; text: string; saving: boolean } | null>(null)
 /** The plan is being reviewed: its Beats can be added and removed. */
 const reviewing = computed(() => planned.value && !writingStarted.value && !busy.value)
 /** Beats can be added up to the most Frames a Storyboard has. */
 const canAddBeat = computed(() => reviewing.value && session.value!.frames.length < MAX_FRAMES)
+const newBeat = useTemplateRef<HTMLTextAreaElement>('newBeat')
 async function startAdding(at: number) {
   adding.value = { at, text: '', saving: false }
   await nextTick()
-  frameList.value?.querySelector<HTMLElement>('[data-adding-beat] textarea')?.focus()
+  newBeat.value?.focus()
 }
+// It's added after the selected Frame: picking another lets it go.
+watch(selected, () => {
+  if (!adding.value?.saving) adding.value = null
+})
 async function addBeat() {
   const a = adding.value
   if (!a || a.saving || !a.text.trim()) return
@@ -779,103 +784,44 @@ const imagesOn = computed(() => featureOn.value('images'))
             role="tabpanel"
             @keydown="onFrameKey"
           >
-            <template v-for="f in frames" :key="f.index">
-              <li class="group relative">
-                <button
-                  type="button"
-                  class="flex w-full gap-3 border-b border-line p-3 text-left text-sm hover:bg-surface"
-                  :class="{ 'bg-surface': selected === f.index }"
-                  :aria-current="selected === f.index"
-                  data-frame
-                  @click="selected = f.index"
+            <li v-for="f in frames" :key="f.index">
+              <button
+                type="button"
+                class="flex w-full gap-3 border-b border-line p-3 text-left text-sm hover:bg-surface"
+                :class="{ 'bg-surface': selected === f.index }"
+                :aria-current="selected === f.index"
+                data-frame
+                @click="selected = f.index"
+              >
+                <img
+                  v-if="'pictures' in f && pictureOf(f)"
+                  :src="imageUrl(session.id, pictureOf(f)!.image)"
+                  alt=""
+                  class="h-20 w-14 shrink-0 rounded object-cover"
+                  :class="{ 'opacity-50': changed(f) }"
+                />
+                <span
+                  v-else
+                  class="flex h-20 w-14 shrink-0 items-center justify-center rounded border border-dashed border-line text-muted"
                 >
-                  <img
-                    v-if="'pictures' in f && pictureOf(f)"
-                    :src="imageUrl(session.id, pictureOf(f)!.image)"
-                    alt=""
-                    class="h-20 w-14 shrink-0 rounded object-cover"
-                    :class="{ 'opacity-50': changed(f) }"
-                  />
+                  {{ f.index + 1 }}
+                </span>
+                <span class="flex min-w-0 flex-col gap-1">
+                  <span class="line-clamp-3">{{ f.beat }}</span>
+                  <span v-if="'pending' in f" class="animate-pulse text-xs text-muted">Planning…</span>
                   <span
-                    v-else
-                    class="flex h-20 w-14 shrink-0 items-center justify-center rounded border border-dashed border-line text-muted"
+                    v-else-if="work?.kind === 'write' && work.frameIndex === f.index"
+                    class="animate-pulse text-xs text-muted"
+                    data-status
                   >
-                    {{ f.index + 1 }}
+                    Writing…
                   </span>
-                  <span class="flex min-w-0 flex-col gap-1">
-                    <span class="line-clamp-3">{{ f.beat }}</span>
-                    <span v-if="'pending' in f" class="animate-pulse text-xs text-muted">Planning…</span>
-                    <span
-                      v-else-if="work?.kind === 'write' && work.frameIndex === f.index"
-                      class="animate-pulse text-xs text-muted"
-                      data-status
-                    >
-                      Writing…
-                    </span>
-                    <span v-else class="text-xs font-medium" :class="status(f).tone" data-status>
-                      {{ frameJob(f.index) ? `${JOB_NAMES[frameJob(f.index)!.kind]}…` : status(f).label }}
-                    </span>
+                  <span v-else class="text-xs font-medium" :class="status(f).tone" data-status>
+                    {{ frameJob(f.index) ? `${JOB_NAMES[frameJob(f.index)!.kind]}…` : status(f).label }}
                   </span>
-                </button>
-                <button
-                  v-if="reviewing && session.frames.length > 1 && 'pictures' in f"
-                  type="button"
-                  class="absolute right-2 top-2 rounded border border-line bg-canvas px-2 py-0.5 text-xs text-muted opacity-0 hover:text-danger focus:opacity-100 group-hover:opacity-100 disabled:opacity-50"
-                  :disabled="removing"
-                  title="Remove this Beat from the plan"
-                  data-remove-beat
-                  @click="removeFrameBeat(f)"
-                >
-                  Remove
-                </button>
-              </li>
-              <!-- While the plan is reviewed: a Beat added after this Frame, before the next. -->
-              <li v-if="adding?.at === f.index + 1" class="border-b border-line p-3" data-adding-beat>
-                <form class="flex flex-col gap-2" @submit.prevent="addBeat" @keydown.stop>
-                  <label :for="`storyboard.beat.${adding.at}`" class="text-xs text-muted">
-                    New Beat, as Frame {{ adding.at + 1 }}
-                  </label>
-                  <textarea
-                    :id="`storyboard.beat.${adding.at}`"
-                    v-model="adding.text"
-                    rows="3"
-                    class="w-full resize-none rounded border border-line bg-surface px-2 py-1 text-sm"
-                    placeholder="What happens in it, and who it shows… (Enter to add, Esc to cancel)"
-                    :disabled="adding.saving"
-                    @keydown.enter.exact.prevent="addBeat"
-                    @keydown.esc="adding = null"
-                  />
-                  <div class="flex gap-2 text-xs">
-                    <button
-                      type="submit"
-                      class="rounded bg-fg px-2 py-1 font-medium text-canvas disabled:opacity-50"
-                      :disabled="adding.saving || !adding.text.trim()"
-                    >
-                      {{ adding.saving ? 'Adding…' : 'Add' }}
-                    </button>
-                    <button
-                      type="button"
-                      class="rounded border border-line px-2 py-1"
-                      :disabled="adding.saving"
-                      @click="adding = null"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </form>
-              </li>
-              <li v-else-if="canAddBeat && !adding">
-                <button
-                  type="button"
-                  class="flex w-full items-center justify-center gap-1 border-b border-line py-1 text-xs text-muted opacity-60 hover:bg-surface hover:text-fg hover:opacity-100 focus-visible:opacity-100"
-                  :title="`Add a Beat after Frame ${f.index + 1}`"
-                  data-add-beat
-                  @click="startAdding(f.index + 1)"
-                >
-                  <Icon name="plus" /> Beat
-                </button>
-              </li>
-            </template>
+                </span>
+              </button>
+            </li>
           </ol>
         </section>
 
@@ -976,6 +922,65 @@ const imagesOn = computed(() => featureOn.value('images'))
                 <p class="mt-1 text-xs leading-relaxed" data-prompt-text>{{ current.prompt }}</p>
               </details>
             </form>
+            <!-- While the plan is reviewed: a Beat added after the selected Frame, or it removed. -->
+            <div v-if="reviewing && current" class="flex flex-col gap-2 text-xs" data-beat-actions>
+              <form v-if="adding" class="flex flex-col gap-2" data-adding-beat @submit.prevent="addBeat">
+                <label for="storyboard.new-beat" class="text-muted">
+                  New Beat, as Frame {{ adding.at + 1 }}
+                </label>
+                <textarea
+                  id="storyboard.new-beat"
+                  ref="newBeat"
+                  v-model="adding.text"
+                  rows="3"
+                  class="w-full resize-none rounded border border-line bg-surface px-2 py-1 text-sm"
+                  placeholder="What happens in it, and who it shows… (Enter to add, Esc to cancel)"
+                  :disabled="adding.saving"
+                  @keydown.enter.exact.prevent="addBeat"
+                  @keydown.esc="adding = null"
+                />
+                <div class="flex gap-2">
+                  <button
+                    type="submit"
+                    class="rounded bg-fg px-2 py-1 font-medium text-canvas disabled:opacity-50"
+                    :disabled="adding.saving || !adding.text.trim()"
+                  >
+                    {{ adding.saving ? 'Adding…' : 'Add' }}
+                  </button>
+                  <button
+                    type="button"
+                    class="rounded border border-line px-2 py-1"
+                    :disabled="adding.saving"
+                    @click="adding = null"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+              <div v-else class="flex gap-2">
+                <button
+                  v-if="canAddBeat"
+                  type="button"
+                  class="flex items-center gap-1 rounded border border-line px-2 py-1 text-muted hover:text-fg"
+                  :title="`Add a Beat after Frame ${current.index + 1}`"
+                  data-add-beat
+                  @click="startAdding(current.index + 1)"
+                >
+                  <Icon name="plus" /> Beat after
+                </button>
+                <button
+                  v-if="session.frames.length > 1"
+                  type="button"
+                  class="rounded border border-line px-2 py-1 text-muted hover:text-danger disabled:opacity-50"
+                  :disabled="removing"
+                  title="Remove this Beat from the plan"
+                  data-remove-beat
+                  @click="removeFrameBeat(current)"
+                >
+                  Remove Beat
+                </button>
+              </div>
+            </div>
           </div>
           <!-- Below the Look and Beats, where the review ends: write the Frames, or stop the plan or writing. -->
           <div
