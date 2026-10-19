@@ -119,7 +119,7 @@ const picture = computed(() => shown.value && pictureOf(shown.value))
 const pictureChanged = computed(() =>
   !!picture.value && changedSinceRender(picture.value, session.value!.settings.imageModel)
 )
-const { labelOf, renderedParts } = useImageModels()
+const { byOf, renderedParts } = useImageModels()
 /**
  * Looking at an earlier Frame; the next Action still continues from the latest one. While a Frame
  * runs, any committed Frame is earlier than it.
@@ -633,7 +633,7 @@ const promptDiff = computed(() => {
             class="absolute left-3 top-3 rounded-full bg-black/70 px-3 py-1 text-sm text-white"
             data-changed
           >
-            Changed since render · by {{ labelOf(picture!.imageModel) }}
+            Changed since render · {{ byOf(picture!) }}
           </div>
 
           <div

@@ -1,7 +1,7 @@
 import { extname, join } from '@std/path'
 import { error, json, readJson, type Route } from './http.ts'
 import type { ImageGenerator } from './images/imageGenerator.ts'
-import { IMAGE_BACKENDS, imageModelsOf } from './images/imageModels.ts'
+import { IMAGE_BACKENDS, type ImageBackendKind, imageModelsOf } from './images/imageModels.ts'
 import type { ComfyStatus } from './comfyui/status.ts'
 import { UPSCALERS } from './images/mflux/models.ts'
 import { crossedLimit, LimitError, setLimitsEnabled } from './limits.ts'
@@ -387,6 +387,12 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     lito: given(deps.lito, 'LiTo'),
     style: given(deps.style, 'style embedder'),
   }
+  /**
+   * The Image backends a Session can switch to: ComfyUI always (whether its server answers is
+   * found at the render), mflux where it's installed.
+   */
+  const imageBackends = (): ImageBackendKind[] =>
+    IMAGE_BACKENDS.filter((b) => b === 'comfyui' || detected.images.available)
   /** What can run now, with Settings' backends (`withBackends`). */
   const availability = async (): Promise<Availabilities> =>
     withBackends(detected, await deps.settings.load())
@@ -576,6 +582,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
         ...await textModelOptions(connectionOf(await deps.settings.load())),
         // Every backend's, so Settings can switch between them.
         imageModels: Object.fromEntries(IMAGE_BACKENDS.map((b) => [b, imageModelsOf(b)])),
+        imageBackends: imageBackends(),
         sizePresets: SIZE_PRESETS,
         upscalers: UPSCALERS,
         features: await availability(),
@@ -704,14 +711,34 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       })
     }],
 
-    // Switches the Session's Image Model: `{ imageModel }`, one of its Image backend's.
+    // Switches the Session's Image Model: `{ imageModel, imageBackend? }`, one of that backend's
+    // (the Session's own if left out), on one this machine can render with (`imageBackends`).
     ['PUT', new URLPattern({ pathname: '/api/sessions/:id/image-model' }), async (req, p) => {
-      const body = await readJson(req) as { imageModel?: unknown } | undefined
+      const body = await readJson(req) as
+        | { imageModel?: unknown; imageBackend?: unknown }
+        | undefined
       if (typeof body?.imageModel !== 'string') return error('imageModel must be a string', 400)
       const session = await deps.sessions.load(p.id!)
       if (!session) return error('Session not found', 404)
+      const backend = body.imageBackend ?? session.settings.imageBackend
+      if (!IMAGE_BACKENDS.includes(backend as ImageBackendKind)) {
+        return error(`imageBackend must be one of: ${IMAGE_BACKENDS.join(', ')}`, 400)
+      }
+      if (
+        backend !== session.settings.imageBackend &&
+        !imageBackends().includes(backend as ImageBackendKind)
+      ) {
+        return error(`mflux isn't available here: ${detected.images.reason}`, 409)
+      }
       try {
-        return json(await switchImageModel(deps.sessions, session, body.imageModel))
+        return json(
+          await switchImageModel(
+            deps.sessions,
+            session,
+            body.imageModel,
+            backend as ImageBackendKind,
+          ),
+        )
       } catch (err) {
         if (err instanceof ImageModelError) return error(err.message, 400)
         throw err

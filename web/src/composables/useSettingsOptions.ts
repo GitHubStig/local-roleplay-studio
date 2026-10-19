@@ -1,5 +1,11 @@
 import { ref } from 'vue'
-import { getSettingsOptions, type ImageBackend, type Picture, type SettingsOptions } from '../api'
+import {
+  getSettingsOptions,
+  IMAGE_BACKEND_NAMES,
+  type ImageBackend,
+  type Picture,
+  type SettingsOptions,
+} from '../api'
 
 /** What Settings can be set to (Image Models, Features…), loaded once and shared. */
 const options = ref<SettingsOptions | null>(null)
@@ -31,14 +37,18 @@ export function useImageModels() {
     Object.values(options.value?.imageModels ?? {}).flat().find((m) => m.id === id)
   /** An Image Model's name, or its id until the names load. */
   const labelOf = (id: string) => find(id)?.label ?? id
-  /** "Waited 12.3 s · Image 5.1 s · by Qwen-Image 2.1": how a picture was rendered. */
+  /** "by Qwen-Image 2.1 · ComfyUI": what rendered a picture, its backend if it says. */
+  const byOf = (picture: Picture) =>
+    `by ${labelOf(picture.imageModel)}` +
+    (picture.imageBackend ? ` · ${IMAGE_BACKEND_NAMES[picture.imageBackend]}` : '')
+  /** "Waited 12.3 s · Image 5.1 s · by Qwen-Image 2.1 · mflux": how a picture was rendered. */
   const renderedParts = (picture: Picture) => {
     const t = picture.timings
     return [
       ...(t?.queued !== undefined ? [`Waited ${t.queued.toFixed(1)} s`] : []),
       ...(t ? [`Image ${t.image.toFixed(1)} s`] : []),
-      `by ${labelOf(picture.imageModel)}`,
+      byOf(picture),
     ]
   }
-  return { modelsOf, find, labelOf, renderedParts }
+  return { modelsOf, find, labelOf, byOf, renderedParts }
 }

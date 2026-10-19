@@ -1212,6 +1212,54 @@ Deno.test('A Session switches Image Model, and a Chain Frame by the old one rend
     assertEquals(images.prompts.length, 3)
   }))
 
+Deno.test('A Session switches Image backend, to mflux only where it can run', () =>
+  withTempDir(async (root) => {
+    const switchTo = (call: ReturnType<typeof setup>['call'], body: unknown) =>
+      call('PUT', '/api/sessions/s1/image-model', body)
+    const { call } = await chainOfTwo(join(root, 'mac'))
+    const options = await (await call('GET', '/api/settings/options')).json()
+    assertEquals(options.imageBackends, ['mflux', 'comfyui'])
+    assertEquals(
+      (await switchTo(call, { imageModel: 'qwen-image-2.1', imageBackend: 'dall-e' })).status,
+      400,
+    )
+    const comfy = await (await switchTo(call, {
+      imageModel: 'qwen-image-2.1',
+      imageBackend: 'comfyui',
+    })).json()
+    assertEquals([comfy.settings.imageBackend, comfy.settings.imageModel, comfy.settings.steps], [
+      'comfyui',
+      'qwen-image-2.1',
+      25,
+    ])
+    // Left out, the backend stays the Session's.
+    const klein = await (await switchTo(call, { imageModel: 'flux2-klein-4b' })).json()
+    assertEquals(klein.settings.imageBackend, 'comfyui')
+
+    const off = { available: false, reason: 'mflux runs only on Apple Silicon Macs' }
+    const on = { available: true }
+    const pc = (await chainOfTwo(join(root, 'pc'), {
+      settings: { textModel: 'x', imageBackend: 'comfyui' },
+      features: {
+        images: off,
+        upscale: off,
+        voices: off,
+        scenes: on,
+        figures: on,
+        lito: off,
+        style: off,
+      },
+    })).call
+    assertEquals((await (await pc('GET', '/api/settings/options')).json()).imageBackends, [
+      'comfyui',
+    ])
+    const refused = await switchTo(pc, { imageModel: 'qwen-image-2.1', imageBackend: 'mflux' })
+    assertEquals([refused.status, (await refused.json()).error], [
+      409,
+      "mflux isn't available here: mflux runs only on Apple Silicon Macs",
+    ])
+  }))
+
 Deno.test("Every picture by one Image Model is deleted, with its files, but not the Session's own model's", () =>
   withTempDir(async (root) => {
     const { call } = await chainOfTwo(root)

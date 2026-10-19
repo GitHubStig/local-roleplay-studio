@@ -25,6 +25,14 @@ one (a Roleplay kept rendering slowly after Fast was switched on, 2026-10-05). S
 Older `session.json` files, with the picture fields on the Frame, aren't migrated: their pictures
 no longer show.
 
+**Changed 2026-10-19: the Image backend is switched with the model.** The picker lists every backend's models that can render on this machine (ComfyUI always, mflux where it's installed: `imageBackends` in `/api/settings/options`), and `PUT /sessions/:id/image-model` takes `{ imageModel, imageBackend }`. Nothing stopped it but the choice above; the one question was what to make of a model both backends have (Qwen-Image 2.1, its Turbo, FLUX.2 Klein 4B, FLUX.3 Klein, Z-Image Turbo):
+
+- **A picture still belongs to a model by its name**, whichever backend made it. Moving to the same model on the other backend (to render on the PC's ComfyUI while it's on, and back to mflux when it isn't) costs no render, and no Frame reads as changed since render. A render on the new backend replaces the same model's picture from the other.
+- **Each picture says which backend made it** (`imageBackend`), shown as "by Qwen-Image 2.1 · ComfyUI". Pictures from before lack it; a switch writes the Session's old backend onto them first, so none is left unknown.
+- Renders under way finish on the backend they started with, as with a model. A ComfyUI render's preview stops showing if the Session switches to mflux while it runs (the screen asks for previews by the Session's backend); left as it is, as it only hides a preview.
+
+Considered and not chosen: **a picture per backend and model**, honest about the two making different pixels, and able to compare them side by side, but every switch of backend would leave every Frame changed since render, a render each to put back for a picture that may barely differ. How much the two backends' pictures of one model differ hasn't been measured. If that comparison is wanted, matching on both is a change to `shownPicture` and `withPicture` only, since each picture now says its backend.
+
 ## Considered Options
 
 - **The model follows Settings, like Fast.** One place to choose it, but changing it would switch

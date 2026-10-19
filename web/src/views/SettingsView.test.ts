@@ -44,6 +44,7 @@ const settings: api.Settings = {
 const options: api.SettingsOptions = {
   textModels: ['gemma4:31b-mlx', 'llama3:latest'],
   thinkingModels: [],
+  imageBackends: ['mflux', 'comfyui'],
   imageModels: {
     mflux: [
       {

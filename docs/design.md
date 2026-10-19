@@ -374,12 +374,7 @@ written for image prompts, are left out).
   different one. 3D figures (TripoSplat, LiTo) always use seed 42 for now; SHARP samples nothing.
 - **Subject description:** carried in the first sentence (subject and identity), which the Text
   Model copies word for word unless an Action changes it.
-- **A Session keeps what defines its pictures** ([ADR 0015](adr/0015-a-picture-per-image-model.md)):
-  its Image backend, Image Model, steps and seed, copied from Settings when it starts. How a render
-  runs is read from Settings at each render (`RENDER_SETTINGS`: size, step cache, quantize, float16,
-  ComfyUI's address), so a change there reaches running Sessions too, as the Upscaler, Art
-  Agent and Limits already did. The Text backend, Text Model and Thinking also stay as the Session
-  started.
+- **A Session keeps what defines its pictures** ([ADR 0015](adr/0015-a-picture-per-image-model.md)): its Image backend, Image Model, steps and seed, copied from Settings when it starts, the first three changed only by switching in the Session. How a render runs is read from Settings at each render (`RENDER_SETTINGS`: size, step cache, quantize, float16, ComfyUI's address), so a change there reaches running Sessions too, as the Upscaler, Art Agent and Limits already did. The Text backend, Text Model and Thinking stay as the Session started.
 - **The Image Model is switched in the Session** (2026-10-10), from the picker beside its switches
   (`ImageModelPicker`), which shows the steps a render takes next to it. Switching resets the steps
   to the new model's default and changes nothing else. A turbo with its own weights is an Image
@@ -388,13 +383,14 @@ written for image prompts, are left out).
   [ADR 0016](adr/0016-turbos-are-image-models.md)).
   Settings' Image Model is the one new Sessions start with. Renders under way finish on the old
   model; queued ones read the Session when their turn comes, so they use the new one.
+  Where both Image backends can render (2026-10-19), the picker groups their models, and picking one on the other backend switches the backend too. A model of the same name counts as the same on either, so its pictures stay up to date; each picture says which backend made it.
 - **A Frame keeps a picture per Image Model** (`pictures`, `server/pictures.ts`), each with its
   upscale, scene, figures, stale flag and render timings. It shows its picture by the Session's
   model, or else its latest, which then reads **Changed since render · by <model>**; a picture whose
   Image Prompt changed since is stale, whichever model made it. A render replaces only its own
   model's picture (deleting its files), so switching back shows the old ones without rendering.
   Upscales and 3D are made from the picture shown when the job starts, and saved onto that one.
-  Render timings end "by <model>". Older `session.json` files, with the picture on the Frame
+  Render timings end "by <model> · <backend>" (older pictures may not say the backend). Older `session.json` files, with the picture on the Frame
   itself, aren't migrated: their pictures don't show.
 - **Compare** (2026-10-10), beside the picker once two Image Models have rendered in a Session
   (`ModelComparison`): a full-window table with a row per pictured Frame and a column per model, in
@@ -559,7 +555,7 @@ consistency* in [open-threads.md](open-threads.md).
   told from a trackpad's scroll by its deltas: lines, or whole pixels of 50 or more straight up or
   down, against a trackpad's small, fractional, often diagonal ones (`usePinchZoom`). Each new image starts unzoomed. The 3D buttons (`Frame3dButtons`) and their viewers
   (`Frame3dViewers`) are shared with Roleplay too.
-- **Storyboard** (`/storyboards/:id`): opening a new Storyboard plans it straight away. The Frames list fills in with the Beats as the plan streams (each marked "Planning…"); the status pill counts "Planning Beat 3 of 8…". The plan then waits for review: each Frame is **Not written**, the Prompt panel has the **Look** (each Subject's name and identity in a card of its own, which collapses to the name and a preview; Subjects can be added or removed; and the art style) and the selected Frame's **Shows** toggles (a Subject each) and its Beat, all editable by hand. Under the selected Frame's Beat, **+ Beat after** opens a box there to type a new Beat into, added after that Frame (Enter adds it and selects it; Esc, or picking another Frame, lets it go), and **Remove Beat** takes its Beat out once confirmed (an unsaved edit to it goes with it). **Write N Frames** writes them, each listed as it's saved ("Writing Frame 3 of 8…"). After a write that stopped part-way it reads **Write the rest (N)**. Once a Frame is written, the Look, the Beats and their Shows are read-only, with **Restart…** under the Look. The main area shows the selected Frame's image (or "Not written yet", "Not rendered yet"), its Beat as a caption and a pill with its status: **Not written**, **Draft** (never rendered), **Rendered**, **Changed since render** (stale, or by another Image Model than the Storyboard's) or **Blocked**. Below it: an Action box that edits the selected written Frame (Enter sends; a declined or unclear Action stays to reword; the Narration shows in the button row), the picture buttons every kind shares (**Render**/**Re-render**, **Upscale**, SHARP, TripoSplat, LiTo), each queued as a job, and **Render all (N)**, which queues a render of every written draft or changed Frame not already queued, skipping blocked ones. Editing carries on while they run. The Frames list shows each Frame's thumbnail (dimmed when stale), Beat and status (or the job working on it). For a written Frame, the Prompt panel has its Shows toggles and seven sentences, editable by hand, then the full prompt and the Frame's timings. Hand edits save themselves (see **Hand edits** below); a Frame's sentences are read-only while it renders, so its picture is of what they say. The panels, the render sweep and the unsent Action (remembered per Session) work as on the Session screen. A Chain opened at a Storyboard's address, or the other way round, is sent to its own screen.
+- **Storyboard** (`/storyboards/:id`): opening a new Storyboard plans it straight away. The Frames list fills in with the Beats as the plan streams (each marked "Planning…"); the status pill counts "Planning Beat 3 of 8…". The plan then waits for review: each Frame is **Not written**, the Prompt panel has the **Look** (each Subject's name and identity in a card of its own, which collapses to the name and a preview; Subjects can be added or removed; and the art style) and the selected Frame's **Shows** toggles (a Subject each) and its Beat, all editable by hand. Under the selected Frame's Beat, **+ Beat after** opens a box there to type a new Beat into, added after that Frame (Enter adds it and selects it; Esc, or picking another Frame, lets it go), and **Remove Beat** takes its Beat out once confirmed (an unsaved edit to it goes with it). **Write N Frames** writes them, each listed as it's saved ("Writing Frame 3 of 8…"). While it writes, the Frame shown follows the one being written (until the player picks another), which sweeps in the list, in the main area ("Writing its sentences…") and in the Prompt panel, as a render or an Action edit does; the Frames after it read **Waiting**, and a bar beside Cancel counts those written (2026-10-19). After a write that stopped part-way it reads **Write the rest (N)**. Once a Frame is written, the Look, the Beats and their Shows are read-only, with **Restart…** under the Look. The main area shows the selected Frame's image (or "Not written yet", "Not rendered yet"), its Beat as a caption and a pill with its status: **Not written**, **Draft** (never rendered), **Rendered**, **Changed since render** (stale, or by another Image Model than the Storyboard's) or **Blocked**. Below it: an Action box that edits the selected written Frame (Enter sends; a declined or unclear Action stays to reword; the Narration shows in the button row), the picture buttons every kind shares (**Render**/**Re-render**, **Upscale**, SHARP, TripoSplat, LiTo), each queued as a job, and **Render all (N)**, which queues a render of every written draft or changed Frame not already queued, skipping blocked ones. Editing carries on while they run. The Frames list shows each Frame's thumbnail (dimmed when stale), Beat and status (or the job working on it). For a written Frame, the Prompt panel has its Shows toggles and seven sentences, editable by hand, then the full prompt and the Frame's timings. Hand edits save themselves (see **Hand edits** below); a Frame's sentences are read-only while it renders, so its picture is of what they say. The panels, the render sweep and the unsent Action (remembered per Session) work as on the Session screen. A Chain opened at a Storyboard's address, or the other way round, is sent to its own screen.
 - **Roleplay** (`/roleplay/:id`): a new Roleplay opens on its Cast, written from the Brief, with
   **Begin** and **Rewrite Cast** in the conversation area, and the text box stays locked until the
   scene begins. Then the conversation fills the
@@ -615,7 +611,7 @@ consistency* in [open-threads.md](open-threads.md).
   (prose, recommended, or tags), Limits (on by default; off leaves only "everyone depicted is an
   adult"), on its own Seed tab as it seeds every model, the seed (random per Session, or
   fixed), and on its own Log tab, the call log (off by default; see Storage). A Session copies the Text backend and model, Thinking, the Image backend and model, steps
-  and seed when it starts; the rest applies at once, to running Sessions too (see Consistency).
+  and seed when it starts (the Image backend, model and steps can be switched in it); the rest applies at once, to running Sessions too (see Consistency).
 - **Theme:** Light (a parchment tint), Dark or System, remembered per browser. It's a display
   preference, not a Setting.
 
@@ -665,12 +661,12 @@ All under `/api`; the Vite dev server proxies it to the Deno server.
 |---|---|
 | `GET /health` | Liveness |
 | `GET`, `PUT /settings` | Read or save Settings (`400` with a list of issues if invalid). `textApiKeySet` says whether an API key is saved; a `textApiKey` in a `PUT` replaces it (`''` removes it) |
-| `GET /settings/options` | Text Models from the saved Text backend, Image Models, size presets; still answers if the backend is down |
+| `GET /settings/options` | Text Models from the saved Text backend, every Image backend's models and the ones a Session can switch to here (`imageBackends`), size presets; still answers if the backend is down |
 | `POST /settings/text-models` | The models on a Text backend not saved yet (`textBackend`, `textBaseUrl`, optional `textApiKey`) |
 | `GET /scenarios` | Scenario summaries plus files that failed to load |
 | `GET /sessions` | Session summaries, newest first, with each one's current activity |
 | `POST /sessions` | Start a Session: `{ kind?: "chain" \| "storyboard" \| "roleplay", scenarioId \| brief, frameCount? }`; every kind starts without pictures (a Chain then with `renderFrames` off) |
-| `PUT /sessions/:id/image-model` | Switch the Session's Image Model, `{ imageModel }` (one of its Image backend's; `400` otherwise), resetting its steps to that model's default; returns the Session |
+| `PUT /sessions/:id/image-model` | Switch the Session's Image Model, `{ imageModel, imageBackend? }` (one of that backend's, its own if left out; `400` otherwise; `409` for mflux where it can't run), resetting its steps to that model's default; returns the Session |
 | `PUT /sessions/:id/render-frames` | Chain: whether each new Frame is rendered as it's made, `{ renderFrames }` (`409` to turn it on without pictures) |
 | `DELETE /sessions/:id` | Delete a Session and its images (`409` while a Frame runs) |
 | `GET /sessions/:id` | A Session with its Frames, plus `activity`: what a running Frame is doing, or `null` |

@@ -119,7 +119,7 @@ const forming = computed(() => jobForming(session.value, runningJob.value))
 watch(forming, (now) => {
   if (now) formingIndex.value = runningJob.value!.frameIndex
 })
-const { labelOf, renderedParts } = useImageModels()
+const { byOf, renderedParts } = useImageModels()
 /** The Roleplay switched Image Model: it comes back without what only a load adds. */
 function onImageModel(switched: RoleplaySession) {
   session.value = { ...session.value!, ...switched }
@@ -869,7 +869,7 @@ const lookSavingText = computed(() =>
                   <span
                     v-if="changed(frame)"
                     class="absolute left-2 top-2 rounded-full bg-black/70 px-2 py-0.5 text-white"
-                  >Changed since render · by {{ labelOf(pictureOf(frame)!.imageModel) }}</span>
+                  >Changed since render · {{ byOf(pictureOf(frame)!) }}</span>
                 </button>
               </div>
             </li>

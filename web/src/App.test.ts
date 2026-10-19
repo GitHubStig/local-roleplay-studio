@@ -95,6 +95,7 @@ beforeEach(() => {
   vi.mocked(api.getSettingsOptions).mockResolvedValue({
     textModels: ['llama3:latest'],
     thinkingModels: [],
+    imageBackends: ['mflux', 'comfyui'],
     imageModels: { mflux: [], comfyui: [] },
     sizePresets: [],
     upscalers: [],

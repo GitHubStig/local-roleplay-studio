@@ -259,11 +259,20 @@ async function plan() {
  * Writes the Frames from the reviewed plan, a call per Frame, each shown as it's saved; after a
  * failure or Cancel, writing again carries on from the first not written.
  */
+/** While the Frames are written, the one shown follows the writing, until another is picked. */
+let following = false
+function followWriting(index: number) {
+  if (!following || index >= frames.value.length) return
+  selected.value = index
+  showPickedFrame(frameList)
+}
 async function writeFrames() {
   if (busy.value || !planned.value || allWritten.value) return
   // Written from the plan as saved.
   if (!(await flushEdits('written'))) return
   const first = session.value!.frames.findIndex((f) => !isWritten(f))
+  following = true
+  followWriting(first)
   await run({ kind: 'write', phase: 'text', frameIndex: first }, () =>
     writeStoryboard(props.id, (event) => {
       if (track(event)) return
@@ -271,8 +280,10 @@ async function writeFrames() {
         const s = session.value!
         s.frames = s.frames.map((f) => (f.index === event.frame.index ? event.frame : f))
         work.value = { ...work.value!, frameIndex: event.frame.index + 1 }
+        followWriting(event.frame.index + 1)
       } else if (event.type === 'written') session.value = event.session
     }))
+  following = false
 }
 
 /** Back to the plan, once confirmed: every Frame's sentences and pictures go. */
@@ -560,6 +571,12 @@ const renderingHere = computed(() => sweepOf(selectedJob.value?.phase))
 /** The picture forming, over the frame, while a job renders the selected Frame. */
 const forming = computed(() => jobForming(session.value, selectedJob.value))
 const editingHere = computed(() => work.value?.kind === 'edit' && work.value.frameIndex === selected.value)
+/** The Frame whose sentences are being written from the plan, if any. */
+const writingIndex = computed(() => (work.value?.kind === 'write' ? work.value.frameIndex : null))
+const writingHere = computed(() => writingIndex.value !== null && writingIndex.value === selected.value)
+/** A Frame not written yet, which this write gets to after the one it's on. */
+const waitingToWrite = (f: { index: number }) =>
+  writingIndex.value !== null && f.index > writingIndex.value
 
 const { renderedParts } = useImageModels()
 /** Writing the Frame, then rendering the picture it shows, once it has one, and by which model. */
@@ -580,10 +597,15 @@ const viewingPicture = ref<number | null>(null)
 /** Which Frame's scene or figure is open, if any. */
 const open3d = ref<{ index: number; kind: Made3d } | null>(null)
 const frameTitle = (index: number) => `Frame ${index + 1}`
+/** A Frame picked by the player: the one shown stops following the writing. */
+function pick(index: number) {
+  following = false
+  selected.value = index
+}
 const frameList = useTemplateRef<HTMLElement>('frameList')
 /** From the Queue tab: picks the Frame and shows it in the Frames list. */
 function goToFrame(index: number) {
-  selected.value = index
+  pick(index)
   panel.value = 'frames'
   showPickedFrame(frameList)
 }
@@ -591,7 +613,7 @@ function goToFrame(index: number) {
 const onFrameKey = useFrameKeys(frameList, {
   count: () => frames.value.length,
   current: () => selected.value,
-  pick: (index) => (selected.value = index),
+  pick,
 })
 /** Rendering needs pictures on; off, a Storyboard's plan can still be read and edited. */
 const { on: featureOn } = useFeatures()
@@ -623,10 +645,10 @@ const imagesOn = computed(() => featureOn.value('images'))
         <FrameImage
           :src="picture ? imageUrl(session.id, picture.upscaled ?? picture.image) : null"
           :alt="current?.prompt"
-          :rendering="renderingHere"
+          :rendering="writingHere ? 'image' : renderingHere"
           :preview="forming"
           :hide-size="busy"
-          :empty-text="!current ? 'Planning…' : !currentWritten ? 'Not written yet' : current.blocked ? 'Blocked: edit this Frame first' : 'Not rendered yet'"
+          :empty-text="!current ? 'Planning…' : writingHere ? 'Writing its sentences…' : !currentWritten ? 'Not written yet' : current.blocked ? 'Blocked: edit this Frame first' : 'Not rendered yet'"
           :expected-size="session.imageSize"
           @open="viewingPicture = current!.index"
         >
@@ -791,7 +813,7 @@ const imagesOn = computed(() => featureOn.value('images'))
                 :class="{ 'bg-surface': selected === f.index }"
                 :aria-current="selected === f.index"
                 data-frame
-                @click="selected = f.index"
+                @click="pick(f.index)"
               >
                 <img
                   v-if="'pictures' in f && pictureOf(f)"
@@ -803,6 +825,8 @@ const imagesOn = computed(() => featureOn.value('images'))
                 <span
                   v-else
                   class="flex h-20 w-14 shrink-0 items-center justify-center rounded border border-dashed border-line text-muted"
+                  :class="{ 'render-sweep': writingIndex === f.index }"
+                  :data-writing-frame="writingIndex === f.index ? '' : undefined"
                 >
                   {{ f.index + 1 }}
                 </span>
@@ -810,11 +834,14 @@ const imagesOn = computed(() => featureOn.value('images'))
                   <span class="line-clamp-3">{{ f.beat }}</span>
                   <span v-if="'pending' in f" class="animate-pulse text-xs text-muted">Planning…</span>
                   <span
-                    v-else-if="work?.kind === 'write' && work.frameIndex === f.index"
-                    class="animate-pulse text-xs text-muted"
+                    v-else-if="writingIndex === f.index"
+                    class="animate-pulse text-xs text-info"
                     data-status
                   >
                     Writing…
+                  </span>
+                  <span v-else-if="waitingToWrite(f) && !isWritten(f)" class="text-xs text-muted" data-status>
+                    Waiting
                   </span>
                   <span v-else class="text-xs font-medium" :class="status(f).tone" data-status>
                     {{ frameJob(f.index) ? `${JOB_NAMES[frameJob(f.index)!.kind]}…` : status(f).label }}
@@ -897,8 +924,8 @@ const imagesOn = computed(() => featureOn.value('images'))
               <!-- Its border sweeps while an Action rewrites them, as the Action box's does. -->
               <div
                 class="rounded-md"
-                :class="{ 'render-sweep': editingHere }"
-                :data-rewriting="editingHere ? '' : undefined"
+                :class="{ 'render-sweep': editingHere || writingHere }"
+                :data-rewriting="editingHere || writingHere ? '' : undefined"
               >
                 <CollapsibleTextarea
                   id="storyboard.frame"
@@ -1015,6 +1042,22 @@ const imagesOn = computed(() => featureOn.value('images'))
             >
               Cancel
             </button>
+            <div
+              v-if="work?.kind === 'write'"
+              class="flex min-w-0 flex-1 items-center gap-2 text-xs text-muted"
+              role="progressbar"
+              :aria-valuenow="writtenCount"
+              :aria-valuemax="session.frames.length"
+              data-write-progress
+            >
+              <div class="h-1.5 flex-1 overflow-hidden rounded-full bg-line">
+                <div
+                  class="h-full rounded-full bg-info transition-[width] duration-500"
+                  :style="{ width: `${(100 * writtenCount) / session.frames.length}%` }"
+                />
+              </div>
+              <span class="shrink-0">{{ writtenCount }} of {{ session.frames.length }} written</span>
+            </div>
           </div>
         </section>
       </aside>

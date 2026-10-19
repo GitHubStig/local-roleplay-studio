@@ -129,6 +129,44 @@ Deno.test("A render on the new model keeps the old one's picture, shown again on
     assertEquals([await exists(old.image), await exists(remade.image)], [false, false])
   }))
 
+Deno.test("Switching backend keeps the same model's pictures, each saying the backend that made it", () =>
+  withTempDir(async (root) => {
+    const { store, deps, images } = await chainOfTwo(root)
+    const loaded = (await store.load('s1')) as ChainSession
+    assertEquals(loaded.frames[1].pictures[0].imageBackend, 'mflux')
+    // Frame 0's picture is from before pictures said their backend.
+    const { imageBackend: _, ...older } = loaded.frames[0].pictures[0]
+    await store.save({
+      ...loaded,
+      frames: [{ ...loaded.frames[0], pictures: [older] }, loaded.frames[1]],
+    })
+
+    await assertRejects(
+      () => switchImageModel(store, loaded, KREA, 'comfyui'),
+      ImageModelError,
+      'comfyui has no Image Model "krea-2"',
+    )
+    const comfy = await switchImageModel(store, loaded, QWEN, 'comfyui') as ChainSession
+    assertEquals([comfy.settings.imageBackend, comfy.settings.imageModel, comfy.settings.steps], [
+      'comfyui',
+      QWEN,
+      findImageModel('comfyui', QWEN)!.defaultSteps,
+    ])
+    assertEquals(comfy.frames.map((f) => f.pictures.map((p) => p.imageBackend)), [['mflux'], [
+      'mflux',
+    ]])
+    const [shown] = comfy.frames[1].pictures
+    assertEquals(shownPicture(comfy.frames[1], QWEN), shown)
+    assertEquals(changedSinceRender(shown, QWEN), false)
+
+    // Rendered again on ComfyUI, it takes the mflux picture's place, as the same model.
+    const rendered = await renderChainFrame(deps, comfy, 1, () => {}, signal())
+    assertEquals(images.settings.at(-1)!.imageBackend, 'comfyui')
+    assertEquals(rendered.frames[1].pictures.map((p) => [p.imageModel, p.imageBackend]), [
+      [QWEN, 'comfyui'],
+    ])
+  }))
+
 Deno.test('A render that finishes after the Session switched model keeps its own model', () =>
   withTempDir(async (root) => {
     const { store, deps } = await chainOfTwo(root)

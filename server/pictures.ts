@@ -1,7 +1,7 @@
 import { join } from '@std/path'
 import type { Figure } from './3d/figure.ts'
 import type { Scene } from './3d/scene.ts'
-import { findImageModel } from './images/imageModels.ts'
+import { findImageModel, type ImageBackendKind } from './images/imageModels.ts'
 import type { Session, SessionStore } from './session.ts'
 import { updateSession } from './update.ts'
 
@@ -15,6 +15,11 @@ export interface Picture {
   image: string
   /** The Image Model that rendered it. */
   imageModel: string
+  /**
+   * The Image backend it ran on. Pictures from before a Session could switch backend lack it: they
+   * were by the Session's backend, which `switchImageModel` writes onto them before it changes.
+   */
+  imageBackend?: ImageBackendKind
   /** The image upscaled to 2048 px, once upscaled. */
   upscaled?: string
   /** The Image Prompt changed since it was rendered. */
@@ -120,30 +125,37 @@ export async function removeFiles(dir: string, files: string[]): Promise<void> {
 export class ImageModelError extends Error {}
 
 /**
- * Switches a Session to Image Model `model` of its Image backend, resetting the steps to that
- * model's default (the seed, size and everything else stay). Each Frame then shows its picture by
- * that model if it has one (`shownPicture`). Renders already under way finish on the model they
- * started with; later ones use the new one.
+ * Switches a Session to Image Model `model` of Image backend `backend` (its own by default),
+ * resetting the steps to that model's default (the seed, size and everything else stay). Each Frame
+ * then shows its picture by that model if it has one (`shownPicture`): by its name, whichever
+ * backend made it, so the same model on another backend needs no render. Renders already under way
+ * finish on the model and backend they started with; later ones use the new ones.
  */
 export async function switchImageModel(
   store: SessionStore,
   session: Session,
   model: string,
+  backend: ImageBackendKind = session.settings.imageBackend,
 ): Promise<Session> {
-  const option = findImageModel(session.settings.imageBackend, model)
-  if (!option) {
-    throw new ImageModelError(`${session.settings.imageBackend} has no Image Model "${model}"`)
-  }
-  return await updateSession(
-    store,
-    session.id,
-    session.kind,
-    (latest: Session) =>
-      latest.settings.imageModel === model ? latest : {
-        ...latest,
-        settings: { ...latest.settings, imageModel: model, steps: option.defaultSteps },
+  const option = findImageModel(backend, model)
+  if (!option) throw new ImageModelError(`${backend} has no Image Model "${model}"`)
+  return await updateSession(store, session.id, session.kind, (latest: Session) => {
+    const { imageBackend, imageModel } = latest.settings
+    if (imageModel === model && imageBackend === backend) return latest
+    return {
+      ...latest,
+      settings: {
+        ...latest.settings,
+        imageBackend: backend,
+        imageModel: model,
+        steps: option.defaultSteps,
       },
-  )
+      frames: imageBackend === backend ? latest.frames : latest.frames.map((f) => ({
+        ...f,
+        pictures: f.pictures.map((p) => (p.imageBackend ? p : { ...p, imageBackend })),
+      })),
+    } as Session
+  })
 }
 
 /**

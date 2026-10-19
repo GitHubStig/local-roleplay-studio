@@ -162,6 +162,7 @@ export async function renderImage(
     return {
       image,
       imageModel: settings.imageModel,
+      imageBackend: settings.imageBackend,
       timings: { ...(queued !== undefined && { queued }), image: secondsSince(imageStart) },
     }
   } finally {

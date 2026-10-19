@@ -42,6 +42,7 @@ const settings: api.Settings = {
 const options: api.SettingsOptions = {
   textModels: ['llama3:latest'],
   thinkingModels: [],
+  imageBackends: ['mflux', 'comfyui'],
   imageModels: {
     mflux: [{
       id: 'z-image-turbo',

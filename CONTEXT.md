@@ -149,5 +149,5 @@ The model that renders an Image Prompt into an image (Qwen-Image 2.1 by default)
 _Avoid_: Model, diffusion model, generator
 
 **Image backend**:
-What runs the Image Model: mflux (on a Mac) or a ComfyUI server (on any machine, this one or another). Chosen in Settings; each Session keeps the one it started with. Upscale has its own choice, "Upscale with", which applies at once.
+What runs the Image Model: mflux (on a Mac) or a ComfyUI server (on any machine, this one or another). A Session starts on the one Settings name and can be switched to another with its Image Model; a model of the same name on either backend counts as the same, so its pictures stay. Upscale has its own choice, "Upscale with", which applies at once.
 _Avoid_: renderer, provider, engine

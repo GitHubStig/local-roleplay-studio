@@ -79,6 +79,11 @@ export interface Settings {
 /** Where pictures are made: mflux (Apple Silicon Macs) or a ComfyUI server (any machine). */
 export type ImageBackend = 'mflux' | 'comfyui'
 
+export const IMAGE_BACKEND_NAMES: Record<ImageBackend, string> = {
+  mflux: 'mflux',
+  comfyui: 'ComfyUI',
+}
+
 export interface ImageModelOption {
   id: string
   label: string
@@ -111,6 +116,8 @@ export interface TextModelOptions {
 export interface SettingsOptions extends TextModelOptions {
   /** Each backend's Image Models. */
   imageModels: Record<ImageBackend, ImageModelOption[]>
+  /** The backends a Session can switch to here: ComfyUI, and mflux where it's installed. */
+  imageBackends: ImageBackend[]
   sizePresets: SizePreset[]
   upscalers: { id: string; label: string }[]
   /** Which Features this machine can run, worked out when the server started. */
@@ -258,6 +265,8 @@ export interface Picture {
   image: string
   /** The Image Model that rendered it. */
   imageModel: string
+  /** The Image backend it ran on; older pictures may not say. */
+  imageBackend?: ImageBackend
   /** The image upscaled to 2048 px, once upscaled. */
   upscaled?: string
   /** The Image Prompt changed since it was rendered. */
@@ -455,11 +464,11 @@ export const getSession = (id: string) => request<Session>(`/api/sessions/${id}`
 
 /** Whether a Chain renders each Frame as it's made. */
 /**
- * Switches a Session's Image Model, one of its Image backend's; it comes back with its steps reset
- * to that model's default.
+ * Switches a Session's Image Model, one of `imageBackend`'s (its own if left out); it comes back
+ * with its steps reset to that model's default.
  */
-export const setImageModel = <S>(id: string, imageModel: string) =>
-  put<S>(`/api/sessions/${id}/image-model`, { imageModel })
+export const setImageModel = <S>(id: string, imageModel: string, imageBackend?: ImageBackend) =>
+  put<S>(`/api/sessions/${id}/image-model`, { imageModel, imageBackend })
 
 /**
  * Deletes every picture by one Image Model in a Session, with its upscales and 3D (Compare's

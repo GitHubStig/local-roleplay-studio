@@ -191,17 +191,33 @@ describe('StoryboardView', () => {
     )
     expect(wrapper.find('[data-look] textarea').attributes('disabled')).toBeUndefined()
 
+    const shownFrame = () => wrapper.find('[data-frame][aria-current="true"]').text()
+    const sweeping = () =>
+      wrapper.findAll('[data-frame]').map((f) => f.find('[data-writing-frame]').exists())
     await wrapper.find('[data-write]').trigger('click')
     await flushPromises()
     expect(wrapper.find('[role=status]').text()).toBe('Writing Frame 1 of 3…')
+    expect(sweeping()).toEqual([true, false, false])
+    expect(wrapper.find('[data-write-progress]').text()).toBe('0 of 3 written')
     stream.emit({ type: 'written-frame', frame: frame(0) })
     await flushPromises()
     expect(wrapper.find('[role=status]').text()).toBe('Writing Frame 2 of 3…')
     expect(wrapper.findAll('[data-status]').map((s) => s.text())).toEqual([
       'Draft',
       'Writing…',
-      'Not written',
+      'Waiting',
     ])
+    // The Frame shown follows the writing, its picture and sentences sweeping, as the list's does.
+    expect(sweeping()).toEqual([false, true, false])
+    expect(shownFrame()).toContain('Beat 2.')
+    expect(wrapper.find('main [data-rendering="image"]').exists()).toBe(true)
+    expect(wrapper.find('[data-prompt-panel] [data-rewriting]').exists()).toBe(true)
+    expect(wrapper.find('[data-write-progress]').text()).toBe('1 of 3 written')
+    // Until another is picked: then it stays put.
+    await wrapper.findAll('[data-frame]')[0].trigger('click')
+    stream.emit({ type: 'written-frame', frame: frame(1) })
+    await flushPromises()
+    expect(shownFrame()).toContain('Beat 1.')
     // A render now would unload the Text Model while it writes.
     expect(wrapper.find('[data-render-button]').attributes('disabled')).toBeDefined()
     expect(wrapper.find('[data-render-all]').attributes('disabled')).toBeDefined()
@@ -212,6 +228,7 @@ describe('StoryboardView', () => {
     stream.emit({ type: 'written', session: storyboard([frame(0), frame(1), frame(2)]) })
     stream.finish()
     await flushPromises()
+    expect(sweeping()).toEqual([false, false, false])
     expect(wrapper.find('[data-render-button]').attributes('disabled')).toBeUndefined()
     expect(wrapper.find('[data-render-all]').attributes('disabled')).toBeUndefined()
     expect(wrapper.find('[data-write]').exists()).toBe(false)

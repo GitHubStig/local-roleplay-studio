@@ -104,8 +104,8 @@ export interface SessionBase {
   scenarioId: string | null
   /**
    * Settings as they were when the Session started. Later edits apply only to how a render runs
-   * (`RENDER_SETTINGS`, read at each render); its Image Model and steps change only when switched
-   * in the Session (`switchImageModel`).
+   * (`RENDER_SETTINGS`, read at each render); its Image backend, Image Model and steps change only
+   * when switched in the Session (`switchImageModel`).
    */
   settings: Settings
   /** The seed every image in this Session is rendered with. */
