@@ -1,5 +1,12 @@
 import { assertEquals } from '@std/assert'
-import { isThisMachine, jobServer, sameMachine, textServer } from './machine.ts'
+import {
+  isThisMachine,
+  jobMachine,
+  jobServer,
+  machineKey,
+  sameMachine,
+  textServer,
+} from './machine.ts'
 import { DEFAULT_SETTINGS } from './settings.ts'
 
 const own = new Set(['studio.local', '192.168.50.10'])
@@ -46,4 +53,28 @@ Deno.test('textServer: the address in Settings, or Ollama default', () => {
     textServer({ textBackend: 'openai', textBaseUrl: 'http://pc:1234/v1' }),
     'http://pc:1234/v1',
   )
+})
+
+Deno.test('machineKey: here for this machine, the host for another', () => {
+  assertEquals(machineKey(undefined, own), 'here')
+  assertEquals(machineKey('http://127.0.0.1:8188', own), 'here')
+  assertEquals(machineKey('http://192.168.50.10:8188', own), 'here')
+  assertEquals(machineKey('http://192.168.50.85:8188', own), '192.168.50.85')
+  assertEquals(machineKey('http://192.168.50.85:11434', own), '192.168.50.85')
+})
+
+Deno.test('jobMachine: a picture on the Text Model, a render on its Image backend, a line on its voice', () => {
+  const pc = 'http://192.168.50.85:8188'
+  const session = { ...DEFAULT_SETTINGS, imageBackend: 'comfyui' as const }
+  const now = { ...DEFAULT_SETTINGS, imageBaseUrl: pc, textBaseUrl: 'http://192.168.50.85:11434' }
+  assertEquals(jobMachine('render', session, now), pc)
+  assertEquals(jobMachine('render', DEFAULT_SETTINGS, now), undefined)
+  assertEquals(jobMachine('picture', session, now), 'http://192.168.50.85:11434')
+  assertEquals(jobMachine('speak', session, { ...now, voiceBackend: 'comfyui' }), pc)
+  assertEquals(
+    jobMachine('speak-thought', session, { ...now, voiceBackend: 'mlx-audio' }),
+    undefined,
+  )
+  assertEquals(jobMachine('upscale', session, { ...now, upscaleBackend: 'comfyui' }), pc)
+  assertEquals(jobMachine('scene', session, now), undefined)
 })

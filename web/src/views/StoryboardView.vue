@@ -307,7 +307,7 @@ async function restart() {
 
 // --- Queued work: renders, upscales and 3D, each on its Frame.
 
-const { jobs, runningJob, jobsFor, hasJob, queue, queueAll, dropJob, clear, retry } = useJobs(props.id, {
+const { jobs, runningJobs, jobsFor, hasJob, queue, queueAll, dropJob, clear, retry } = useJobs(props.id, {
   onSettled: async () => {
     await load()
   },
@@ -409,7 +409,7 @@ const {
 const frameEditable = computed(() => currentWritten.value || !writingStarted.value)
 /** The selected Frame is rendering: its sentences wait, so its picture is of what they say. */
 const renderingSelected = computed(() =>
-  runningJob.value?.kind === 'render' && runningJob.value.frameIndex === selected.value
+  runningJobs.value.some((j) => j.kind === 'render' && j.frameIndex === selected.value)
 )
 /**
  * Who's renamed when the Look's names change from `before` to `after`, as the server has it

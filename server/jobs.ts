@@ -1,8 +1,10 @@
 /**
  * A Session's background work (pictures, renders, upscales, voices, 3D), queued so the player can ask
  * for several and carry on: a Roleplay with its conversation, a Chain with its next Frame. Each
- * Session runs its jobs one at a time, in order (renders, upscales and 3D also share the render
- * queue every Session uses). Jobs don't hold the Session's lock: they save through `updateSession`,
+ * Session runs one job at a time on each machine, in order, so a render on a ComfyUI across the
+ * network doesn't hold up a line spoken here; a job also waits for the earlier ones it needs (a
+ * render for its picture). Renders, upscales, voices and 3D also share the render queue every
+ * Session uses, one per machine. Jobs don't hold the Session's lock: they save through `updateSession`,
  * onto whatever the Session has become meanwhile. Jobs live in memory: a server restart forgets the
  * queue. What a job does is up to its Session's kind (`JobRunner`).
  */
@@ -73,6 +75,8 @@ export interface Job {
   progress?: { step: number; total: number }
   error?: string
   createdAt: string
+  /** The machine it runs on (`machineKey`): jobs on different machines run side by side. */
+  machine: string
 }
 
 /** What a running job reports: its phase, or its progress through the steps. */
@@ -91,14 +95,39 @@ export type JobRunner = (
 /** Jobs that make or use a picture with an image model, which unload the Text Model first. */
 const IMAGE_JOBS: readonly JobKind[] = ['render', 'upscale', 'scene', 'figure', 'lito']
 
+/**
+ * What each job waits for, when queued earlier on its Frame (or, for the Session's own jobs, on any
+ * Frame): a render for its Image Prompt, an upscale for its render, 3D for its upscale, a spoken
+ * line for its voice, the style scores for every picture. Jobs on one machine also keep their order.
+ */
+const NEEDS: Record<JobKind, readonly JobKind[]> = {
+  picture: [],
+  render: ['picture'],
+  upscale: ['picture', 'render'],
+  voice: [],
+  speak: ['voice'],
+  'speak-thought': ['voice'],
+  scene: ['picture', 'render', 'upscale'],
+  figure: ['picture', 'render', 'upscale'],
+  lito: ['picture', 'render', 'upscale'],
+  style: ['picture', 'render'],
+}
+
 /** Whether `job` is the same work: the same kind, on the same Frame. */
 const sameWork = (job: Job, kind: JobKind, frameIndex: number) =>
   job.kind === kind && job.frameIndex === frameIndex
 
+interface Running {
+  job: Job
+  controller: AbortController
+  /** When it's ended (never rejected). */
+  done: Promise<void>
+}
+
 export class SessionJobs {
   #jobs = new Map<string, Job[]>()
-  /** Each Session's running job, and when it's ended (never rejected). */
-  #running = new Map<string, { job: Job; controller: AbortController; done: Promise<void> }>()
+  /** Each Session's running jobs, at most one per machine, by id. */
+  #running = new Map<string, Map<string, Running>>()
   #run: JobRunner
   /** Sessions whose queue is held: no job starts until `holding` ends. */
   #held = new Set<string>()
@@ -107,7 +136,7 @@ export class SessionJobs {
     this.#run = run
   }
 
-  /** A Session's jobs: running first, then queued in order, then failed. */
+  /** A Session's jobs, in the order they were queued. */
   list(sessionId: string): Job[] {
     return (this.#jobs.get(sessionId) ?? []).map((job) => ({ ...job }))
   }
@@ -116,9 +145,9 @@ export class SessionJobs {
    * Queues a job. Asking again for work already queued or running on that Frame returns that job
    * instead of queueing it twice. A picture (a Roleplay Frame's Image Prompt) goes ahead of queued
    * image jobs: a new Reply's is written while its Text Model is still loaded, not after a batch
-   * of renders that each unload it.
+   * of renders that each unload it. `machine` is where it runs (`machineKey`).
    */
-  enqueue(sessionId: string, kind: JobKind, frameIndex: number): Job {
+  enqueue(sessionId: string, kind: JobKind, frameIndex: number, machine = 'here'): Job {
     const jobs = this.#jobs.get(sessionId) ?? []
     const same = jobs.find((j) => sameWork(j, kind, frameIndex) && j.status !== 'failed')
     if (same) return { ...same }
@@ -128,6 +157,7 @@ export class SessionJobs {
       frameIndex,
       status: 'queued',
       createdAt: new Date().toISOString(),
+      machine,
     }
     const ahead = kind === 'picture'
       ? jobs.findIndex((j) => j.status === 'queued' && IMAGE_JOBS.includes(j.kind))
@@ -147,8 +177,8 @@ export class SessionJobs {
   cancel(sessionId: string, jobId: string): boolean {
     const job = this.#jobs.get(sessionId)?.find((j) => j.id === jobId)
     if (!job) return false
-    const running = this.#running.get(sessionId)
-    if (running?.job.id === jobId) running.controller.abort(new Error('Cancelled by player'))
+    const running = this.#running.get(sessionId)?.get(jobId)
+    if (running) running.controller.abort(new Error('Cancelled by player'))
     else this.#remove(sessionId, jobId)
     return true
   }
@@ -192,14 +222,14 @@ export class SessionJobs {
   }
 
   /**
-   * Does `work` between two renders: once the render running on the Session, if any, has ended,
+   * Does `work` between two renders: once the renders running on the Session, if any, have ended,
    * with the queue held so the next doesn't start first. A change to the Image Prompts (the Look)
-   * then reaches every render still queued; the one that was running is stale by it.
+   * then reaches every render still queued; one that was running is stale by it.
    */
   betweenRenders<T>(sessionId: string, work: () => Promise<T>): Promise<T> {
     return this.holding(sessionId, async () => {
-      const running = this.#running.get(sessionId)
-      if (running?.job.kind === 'render') await running.done
+      const running = [...this.#running.get(sessionId)?.values() ?? []]
+      await Promise.all(running.filter((r) => r.job.kind === 'render').map((r) => r.done))
       return await work()
     })
   }
@@ -215,9 +245,12 @@ export class SessionJobs {
     else this.#jobs.delete(sessionId)
   }
 
-  /** What the running job is doing, for the Session's card on Home; null when idle. */
+  /**
+   * What a running job is doing, for the Session's card on Home (the first queued, of several);
+   * null when idle.
+   */
   activity(sessionId: string): Job['phase'] | null {
-    return this.#running.get(sessionId)?.job.phase ?? null
+    return this.#jobs.get(sessionId)?.find((j) => j.status === 'running')?.phase ?? null
   }
 
   #remove(sessionId: string, jobId: string) {
@@ -226,14 +259,33 @@ export class SessionJobs {
     else this.#jobs.delete(sessionId)
   }
 
-  /** Starts the next queued job, unless one is running or the queue is held. */
+  /**
+   * Starts every queued job that can: unless the queue is held, each with no job running on its
+   * machine or queued ahead of it there, and none queued ahead that it needs (`NEEDS`). (A picture
+   * goes ahead of queued jobs, so a job running on its machine may be behind it.)
+   */
   #next(sessionId: string) {
-    if (this.#running.has(sessionId) || this.#held.has(sessionId)) return
-    const job = this.#jobs.get(sessionId)?.find((j) => j.status === 'queued')
-    if (!job) return
+    if (this.#held.has(sessionId)) return
+    const jobs = this.#jobs.get(sessionId) ?? []
+    for (const [i, job] of jobs.entries()) {
+      if (job.status !== 'queued') continue
+      if (jobs.some((j) => j.status === 'running' && j.machine === job.machine)) continue
+      const ahead = jobs.slice(0, i).filter((j) => j.status !== 'failed')
+      const waits = ahead.some((j) =>
+        j.machine === job.machine ||
+        (NEEDS[job.kind].includes(j.kind) &&
+          (j.frameIndex === job.frameIndex || SESSION_JOBS.includes(j.kind) ||
+            SESSION_JOBS.includes(job.kind)))
+      )
+      if (!waits) this.#start(sessionId, job)
+    }
+  }
+
+  #start(sessionId: string, job: Job) {
     const controller = new AbortController()
     const { promise: done, resolve: ended } = Promise.withResolvers<void>()
-    this.#running.set(sessionId, { job, controller, done })
+    const running = this.#running.get(sessionId) ?? new Map<string, Running>()
+    this.#running.set(sessionId, running.set(job.id, { job, controller, done }))
     job.status = 'running'
     job.phase = 'text'
     const emit: JobEmit = (event) => {
@@ -252,7 +304,8 @@ export class SessionJobs {
         },
       )
       .finally(() => {
-        this.#running.delete(sessionId)
+        running.delete(job.id)
+        if (!running.size) this.#running.delete(sessionId)
         ended()
         this.#next(sessionId)
       })
@@ -272,6 +325,8 @@ export interface JobRoutesContext {
     index: number,
     pending: readonly JobKind[],
   ): Promise<Response | null>
+  /** Which machine `kind` would run on for `session` (`machineKey`); left out, all run here. */
+  machineOf?(session: Session, kind: JobKind): Promise<string>
 }
 
 /**
@@ -309,7 +364,7 @@ export function jobRoutes(ctx: JobRoutesContext): Route[] {
         .map((j) => j.kind)
       const refused = await ctx.check(session, kind, index, pending)
       if (refused) return refused
-      ctx.jobs.enqueue(session.id, kind, index)
+      ctx.jobs.enqueue(session.id, kind, index, await ctx.machineOf?.(session, kind))
       return json(ctx.jobs.list(session.id), 201)
     }],
 

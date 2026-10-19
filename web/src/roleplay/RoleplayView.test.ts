@@ -608,6 +608,19 @@ describe('RoleplayView', () => {
       expect(wrapper.find('[data-queue]').text()).toContain('Nothing queued')
     })
 
+    it('sweeps every Frame with a job running, as jobs on different machines run at once', async () => {
+      vi.mocked(api.getSession).mockResolvedValue(
+        roleplaySession([frame(0, null, 'Get inside.'), frame(1, 'Thanks.', 'Sit.')]),
+      )
+      vi.mocked(api.listJobs).mockResolvedValue([
+        job({ id: 's', kind: 'speak', frameIndex: 0, status: 'running', phase: 'audio' }),
+        job({ id: 'r', kind: 'render', frameIndex: 1, status: 'running', phase: 'image' }),
+      ])
+      const { wrapper } = await mountIt()
+      const replies = wrapper.findAll('[data-reply]')
+      expect(replies.map((r) => r.classes().includes('render-sweep'))).toEqual([true, true])
+    })
+
     it('cancels the render queued behind a picture with it', async () => {
       const picture = job({ id: 'p', kind: 'picture', frameIndex: 0, status: 'running' })
       const render = job({ id: 'r', kind: 'render', frameIndex: 0, status: 'queued' })

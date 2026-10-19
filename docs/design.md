@@ -84,8 +84,8 @@ current Image Prompt + Action ──► Text Model (Text backend) ──► { ou
      So every Chain Frame has a picture of its own.
    - The Opening Frame always counts as done; if its prompt crosses a Limit, it fails.
    - The paragraph is rendered as it is (no "adult, " in front since 2026-10-08; ADR 0002).
-5. **Image step.** Images render one at a time across all Sessions: if another Session is
-   rendering, this Frame waits in a queue (shown as "Waiting for another render…", and
+5. **Image step.** Images render one at a time on each machine, across all Sessions (ADR 0020): if another Session is
+   rendering there, this Frame waits in a queue (shown as "Waiting for another render…", and
    cancellable). Then the Session's Image backend renders it with the Session's Image Model, steps
    and seed, and the rest as Settings are now (size, step cache…; see Consistency):
    the mflux CLI, one process per image ([ADR 0004](adr/0004-images-from-the-mflux-cli.md)), or a
@@ -270,31 +270,7 @@ and a Storyboard's are the same way, in `server/prompts/chain/` and `server/prom
 nine-sentence format, how a changed sentence replaces the old, their Limits, the Scenario's notes
 and Setup, the real-person question) in `server/prompts/shared/`.
 
-**Pictures, renders and upscales are queued jobs** (`server/jobs.ts`, one queue for every
-Session). What every kind does to a Frame's picture (upscale, SHARP, TripoSplat, LiTo) is one
-module, `server/pictureJobs.ts`; each kind's `jobs.ts` adds its own: `render` of a Frame made without its picture for a Chain, `render`
-for a Storyboard (`server/storyboard/jobs.ts`), and pictures, renders and voices for a Roleplay
-(`server/roleplay/jobs.ts`). A Roleplay's and a Storyboard's re-render share `replacePicture`
-(`server/frames.ts`), which drops the old picture's upscale and 3D. The player can ask for several
-and carry on with the conversation, a Chain's next Action or a Storyboard's edits; a job waiting
-on a picture can be queued behind the render or picture job that will make it. Each Session runs its jobs one at a time, in the order asked, except that a picture
-(a Roleplay Frame's Image Prompt) goes ahead of queued image jobs, so a new Reply's is written while
-the Text Model is loaded for it, not after a batch of renders that each unload it (renders,
-upscales and 3D also wait their turn in the render queue every Session shares). Jobs don't hold the
-Session's lock; every change to a Roleplay or a Chain (a Reply, a picture, a render, a Chain Frame,
-an Undo) is saved by reloading it and applying just that change, one at a time
-(`server/update.ts`), so none overwrites another. A Chain queues `upscale`, `scene`, `figure` and
-`lito`. The queue lives in memory: restarting the
-server forgets it. A job asked for before what it needs exists (a render queued behind its
-picture) waits its turn and fails with a reason if that still isn't there; failed jobs stay
-listed, with **Retry** (back to the end of the queue) and **Dismiss**. Undoing an exchange (or a
-Chain Frame) cancels its jobs; deleting the Session cancels all of them. On the screen, a
-Roleplay's Replies each list their jobs with Cancel (the running one sweeps its Reply), and a
-**Queue (N)** tab lists them all: beside **Look & Cast** in a Roleplay, and beside **Frames** in a
-Chain or a Storyboard (since 2026-10-10; it was a short list atop the Frames, too small for a Render
-all), in its place. In a Chain the running job sweeps the picture it's working on. Clicking one goes
-to its Frame. **Clear queue** cancels what's running and queued and dismisses what failed, at once.
-The screens share this (`useJobs`, `FrameJobs`, `JobQueue`, `PanelTabs`).
+**Pictures, renders and upscales are queued jobs** (`server/jobs.ts`, one queue for every Session). What every kind does to a Frame's picture (upscale, SHARP, TripoSplat, LiTo) is one module, `server/pictureJobs.ts`; each kind's `jobs.ts` adds its own: `render` of a Frame made without its picture for a Chain, `render` for a Storyboard (`server/storyboard/jobs.ts`), and pictures, renders and voices for a Roleplay (`server/roleplay/jobs.ts`). A Roleplay's and a Storyboard's re-render share `replacePicture` (`server/frames.ts`), which drops the old picture's upscale and 3D. The player can ask for several and carry on with the conversation, a Chain's next Action or a Storyboard's edits; a job waiting on a picture can be queued behind the render or picture job that will make it. Each Session runs one job at a time on each machine, in the order asked (since 2026-10-19, [ADR 0020](adr/0020-jobs-take-turns-per-machine.md)): a picture on the Text Model's server, a render on the Session's Image backend, an upscale and a voice on Settings' backends, 3D and the style scores here, so a line spoken here plays while a ComfyUI on another PC renders. A job also waits for the earlier ones it needs, wherever they run: on its Frame, a render for its picture, an upscale for its render, 3D for its upscale; a spoken line for a voice being designed. A picture (a Roleplay Frame's Image Prompt) goes ahead of queued image jobs, so a new Reply's is written while the Text Model is loaded for it, not after a batch of renders that each unload it. Renders, upscales, voices and 3D also wait their turn in the render queue every Session shares, one per machine. Jobs don't hold the Session's lock; every change to a Roleplay or a Chain (a Reply, a picture, a render, a Chain Frame, an Undo) is saved by reloading it and applying just that change, one at a time (`server/update.ts`), so none overwrites another. A Chain queues `upscale`, `scene`, `figure` and `lito`. The queue lives in memory: restarting the server forgets it. A job asked for before what it needs exists (a render queued behind its picture) waits its turn and fails with a reason if that still isn't there; failed jobs stay listed, with **Retry** (back to the end of the queue) and **Dismiss**. Undoing an exchange (or a Chain Frame) cancels its jobs; deleting the Session cancels all of them. On the screen, a Roleplay's Replies each list their jobs with Cancel (the running one sweeps its Reply), and a **Queue (N)** tab lists them all: beside **Look & Cast** in a Roleplay, and beside **Frames** in a Chain or a Storyboard (since 2026-10-10; it was a short list atop the Frames, too small for a Render all), in its place. In a Chain the running job sweeps the picture it's working on. Clicking one goes to its Frame. **Clear queue** cancels what's running and queued and dismisses what failed, at once. The screens share this (`useJobs`, `FrameJobs`, `JobQueue`, `PanelTabs`).
 
 **Picturing a Frame** (the Art Agent; by the Session's Text Model, or the Art Agent model set in
 Settings, recorded on each picture as `pictureModel` and on the Look as `lookModel`): **Picture this** under a Reply writes
@@ -719,7 +695,7 @@ The design Q&A, and what changed later.
 | Text Model output | One JSON call | `{ outcome, narration, prompt }`, the prompt as one paragraph |
 | Settings | Server-side `settings.json`; apply from the next Session | Small sizes added; since 2026-10-10 how a render runs applies at once, and the Image Model is switched in the Session, keeping a picture per model (ADR 0015) |
 | Side panel | Frames list with thumbnails; End/Reset as buttons only | End and Reset removed; Sessions are listed, opened and deleted on Home |
-| Several Sessions rendering | Queue images one at a time across Sessions | A queued Frame keeps you in its Session |
+| Several Sessions rendering | Queue images one at a time across Sessions | A queued Frame keeps you in its Session; one at a time on each machine since 2026-10-19 (ADR 0020) |
 | What an Action can change | Pose, camera, lighting, set, per Scenario | Anything in the prompt, within the four Limits |
 | Limits | Per-Scenario brief, character refusals | Four engine Limits: term list + real-person check (ADR 0002) |
 | Narration | Character prose | A terse list of what changed |

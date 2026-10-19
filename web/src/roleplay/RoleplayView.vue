@@ -104,7 +104,7 @@ const suggesting = computed(() => pending.value?.kind === 'suggest')
 const writingCast = computed(() => pending.value?.kind === 'cast')
 // --- Background work: pictures, renders, upscales, voices and 3D, queued on the server.
 
-const { jobs, runningJob, jobsFor, hasJob, queue, queueAll, dropJob, clear, retry, refreshJobs } = useJobs(
+const { jobs, runningJobs, runningJob, runningOn, jobsFor, hasJob, queue, queueAll, dropJob, clear, retry, refreshJobs } = useJobs(
   props.id,
   {
     onSettled: () => reload(),
@@ -664,7 +664,9 @@ async function saveLookDraft(draft: Look): Promise<Look> {
 }
 /** A Look saved while a picture renders waits for it, so the renders queued behind it have it. */
 const lookSavingText = computed(() =>
-  runningJob.value?.kind === 'render' ? 'Saving once the picture rendering is done…' : undefined
+  runningJobs.value.some((j) => j.kind === 'render')
+    ? 'Saving once the picture rendering is done…'
+    : undefined
 )
 </script>
 
@@ -735,10 +737,10 @@ const lookSavingText = computed(() =>
             <li
               class="-mx-2 rounded-lg p-2 transition-shadow duration-500"
               :class="{
-                'render-sweep': runningJob?.frameIndex === frame.index && runningJob.kind !== 'voice',
+                'render-sweep': runningOn(frame.index) && runningOn(frame.index)!.kind !== 'voice',
                 'ring-2 ring-info': highlighted === frame.index,
               }"
-              :data-rendering="runningJob?.frameIndex === frame.index && runningJob.phase === 'queued'
+              :data-rendering="runningOn(frame.index)?.phase === 'queued'
               ? 'queued'
               : undefined"
               :data-frame-index="frame.index"

@@ -746,7 +746,7 @@ export interface Job {
   createdAt: string
 }
 
-/** A Session's jobs (a Roleplay's or a Chain's): running, then queued in order, then failed. */
+/** A Session's jobs (a Roleplay's or a Chain's), in the order queued; several may run, one per machine. */
 export const listJobs = (id: string) => request<Job[]>(`/api/sessions/${id}/jobs`)
 
 /** Queues a job on a Frame; returns the whole queue. Asking twice for the same job queues it once. */

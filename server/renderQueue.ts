@@ -8,19 +8,32 @@ export interface RenderQueueOptions {
    * the job runs anyway.
    */
   freeMemory?: (job: HeavyJob | undefined) => Promise<void>
+  /**
+   * Which machine `job` runs on (`machineKey`), undefined for one that runs here. Left out, every
+   * job runs here.
+   */
+  machineOf?: (job: HeavyJob | undefined) => Promise<string>
+}
+
+/** One machine's turn-taking: whether a job has it, and who waits. */
+interface Turns {
+  busy: boolean
+  waiting: (() => void)[]
 }
 
 /**
- * Lets one image render at a time across every Session. Two renders at once would compete for
- * GPU memory (FLUX.2 Klein alone peaks near 18 GB), so later Frames wait their frame, in order.
+ * Lets one image render at a time on each machine, across every Session. Two renders at once would
+ * compete for GPU memory (FLUX.2 Klein alone peaks near 18 GB), so later Frames wait their turn, in
+ * order; a render on a ComfyUI across the network doesn't hold up one here.
  */
 export class RenderQueue {
-  #busy = false
-  #waiting: (() => void)[] = []
+  #machines = new Map<string, Turns>()
   #freeMemory?: (job: HeavyJob | undefined) => Promise<void>
+  #machineOf?: (job: HeavyJob | undefined) => Promise<string>
 
   constructor(opts: RenderQueueOptions = {}) {
     this.#freeMemory = opts.freeMemory
+    this.#machineOf = opts.machineOf
   }
 
   /**
@@ -35,7 +48,12 @@ export class RenderQueue {
     { light = false, job }: { light?: boolean; job?: HeavyJob } = {},
   ): Promise<() => void> {
     signal.throwIfAborted()
-    if (this.#busy) {
+    // Only awaited when asked, so callers on one machine queue in the order they came.
+    const machine = this.#machineOf ? await this.#machineOf(job) : 'here'
+    signal.throwIfAborted()
+    const turns = this.#machines.get(machine) ?? { busy: false, waiting: [] }
+    this.#machines.set(machine, turns)
+    if (turns.busy) {
       onWait?.()
       await new Promise<void>((resolve, reject) => {
         const go = () => {
@@ -43,14 +61,14 @@ export class RenderQueue {
           resolve()
         }
         const leave = () => {
-          this.#waiting = this.#waiting.filter((w) => w !== go)
+          turns.waiting = turns.waiting.filter((w) => w !== go)
           reject(signal.reason)
         }
-        this.#waiting.push(go)
+        turns.waiting.push(go)
         signal.addEventListener('abort', leave, { once: true })
       })
     }
-    this.#busy = true
+    turns.busy = true
     if (!light && this.#freeMemory) {
       await this.#freeMemory(job).catch((err) =>
         console.warn('Could not free memory:', err.message)
@@ -60,9 +78,9 @@ export class RenderQueue {
     return () => {
       if (released) return
       released = true
-      const next = this.#waiting.shift()
+      const next = turns.waiting.shift()
       if (next) next()
-      else this.#busy = false
+      else turns.busy = false
     }
   }
 }

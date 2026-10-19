@@ -2,6 +2,11 @@ import { computed, onBeforeUnmount, ref } from 'vue'
 import { cancelJob, clearJobs, type Job, type JobKind, listJobs, queueJob, retryJob } from '../api'
 import { JOB_NAMES } from '../jobs'
 
+/** Of several running jobs, the one to show: a render, else a picture, else the first. */
+const mainJob = (running: Job[]): Job | null =>
+  running.find((j) => j.kind === 'render') ?? running.find((j) => j.kind === 'picture') ??
+    running[0] ?? null
+
 /**
  * A Session's queued background work (a Roleplay's or a Chain's), followed while anything is
  * queued or running. A job that finishes or fails has changed the Session, so `onSettled` reloads
@@ -16,10 +21,16 @@ export function useJobs(
     reportFailures?: boolean
   },
 ) {
-  /** Running, then queued, then failed (until dismissed). */
+  /** In the order queued, failed ones until dismissed. */
   const jobs = ref<Job[]>([])
   const openJobs = computed(() => jobs.value.filter((j) => j.status !== 'failed'))
-  const runningJob = computed(() => jobs.value.find((j) => j.status === 'running') ?? null)
+  /** The jobs running: at most one per machine, so a render on another PC runs beside a line here. */
+  const runningJobs = computed(() => jobs.value.filter((j) => j.status === 'running'))
+  /** The running job to show, of several: a render (its picture forms), else a picture, else the first. */
+  const runningJob = computed(() => mainJob(runningJobs.value))
+  /** A Frame's running job to show, as `runningJob` picks it. */
+  const runningOn = (index: number) =>
+    mainJob(runningJobs.value.filter((j) => j.frameIndex === index))
   /** A Frame's jobs, in queue order. */
   const jobsFor = (index: number) => jobs.value.filter((j) => j.frameIndex === index)
   /** A job of this kind is already queued or running on this Frame. */
@@ -96,7 +107,9 @@ export function useJobs(
   return {
     jobs,
     openJobs,
+    runningJobs,
     runningJob,
+    runningOn,
     jobsFor,
     hasJob,
     queue,

@@ -62,7 +62,7 @@ import {
   writeComparison,
 } from './export/comparison.ts'
 import { deleteModelPictures, ImageModelError, shownPicture, switchImageModel } from './pictures.ts'
-import type { HeavyJob } from './machine.ts'
+import { type HeavyJob, jobMachine, jobServer, machineKey } from './machine.ts'
 import { Previews } from './previews.ts'
 import { RenderQueue } from './renderQueue.ts'
 import { type FrameDeps, type Phase, UpscaleError } from './frames.ts'
@@ -198,7 +198,10 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     { controller: AbortController; phase: Phase; frameIndex: number | null }
   >()
   /** One image render at a time, across all Sessions. */
-  const renderQueue = new RenderQueue({ freeMemory: deps.freeMemory })
+  const renderQueue = new RenderQueue({
+    freeMemory: deps.freeMemory,
+    machineOf: async (job) => machineKey(jobServer(job, await deps.settings.load())),
+  })
   /** The picture forming: each render's latest preview, while it renders. */
   const previews = new Previews()
 
@@ -507,6 +510,8 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     ...jobRoutes({
       jobs,
       store: deps.sessions,
+      machineOf: async (session, kind) =>
+        machineKey(jobMachine(kind, session.settings, await deps.settings.load())),
       check: async (session, kind, index, pending) => {
         const feature = JOB_FEATURE[kind]
         if (kind === 'style') {

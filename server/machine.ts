@@ -5,7 +5,8 @@
  * service, SHARP, LiTo).
  */
 import { comfyBase } from './comfyui/client.ts'
-import type { Settings } from './settings.ts'
+import type { JobKind } from './jobs.ts'
+import { renderSettings, type Settings } from './settings.ts'
 import { OLLAMA_URL } from './text/ollama/ollama.ts'
 
 /**
@@ -80,3 +81,32 @@ export function jobServer(
 export const textServer = (
   s: Pick<Settings, 'textBackend' | 'textBaseUrl'>,
 ): string | undefined => s.textBaseUrl || (s.textBackend === 'ollama' ? OLLAMA_URL : undefined)
+
+/**
+ * The machine a job takes turns on, as a key: `here` for this one, its host for another. Jobs on
+ * different machines run side by side; on one, they take turns.
+ */
+export const machineKey = (address: string | undefined, own: Set<string> = ownNames()): string =>
+  isThisMachine(address, own) ? 'here' : hostOf(address!)
+
+/**
+ * Where a Session's queued job runs: a picture on the Text Model's server (it writes an Image
+ * Prompt), a render on the Session's Image backend, an upscale on Settings' upscaler, a voice
+ * designed or a line spoken on Settings' voice backend; 3D and the style scores here.
+ */
+export function jobMachine(kind: JobKind, session: Settings, now: Settings): string | undefined {
+  switch (kind) {
+    case 'picture':
+      return textServer(now)
+    case 'render':
+      return jobServer({ kind: 'render', settings: renderSettings(session, now) }, now)
+    case 'upscale':
+      return jobServer({ kind: 'upscale' }, now)
+    case 'voice':
+    case 'speak':
+    case 'speak-thought':
+      return jobServer({ kind: 'voice' }, now)
+    default:
+      return undefined
+  }
+}
