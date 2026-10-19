@@ -344,14 +344,6 @@ describe('RoleplayView', () => {
     expect(wrapper.find('[data-restart]').exists()).toBe(false)
   })
 
-  it('hides the Character’s thoughts when asked, remembering the choice', async () => {
-    const { wrapper } = await mountIt()
-    expect(wrapper.find('[data-internal]').exists()).toBe(true)
-    await wrapper.find('[data-hide-thoughts]').setValue(true)
-    expect(wrapper.find('[data-internal]').exists()).toBe(false)
-    expect(localStorage.getItem('roleplay-thoughts-hidden')).toBe('1')
-  })
-
   it('collapses each part of the Cast to its title and a preview, remembering the choice', async () => {
     const { wrapper } = await mountIt()
     const group = wrapper.find('[data-collapsible="roleplay.cast.character"]')
@@ -537,7 +529,7 @@ describe('RoleplayView', () => {
       expect(directed.find('[data-undirected]').exists()).toBe(false)
     })
 
-    it('speaks a thought on its own Listen, and hides it with the thoughts', async () => {
+    it('speaks a thought on its own Listen', async () => {
       vi.mocked(api.queueJob).mockResolvedValue([
         job({ kind: 'speak-thought', status: 'running', phase: 'audio' }),
       ])
@@ -561,9 +553,6 @@ describe('RoleplayView', () => {
       expect(played).toEqual(['thought-0-cccccccc.wav'])
       expect(wrapper.find('[data-listen-thought]').text()).toBe('■ Stop')
       expect(wrapper.find('[data-listen]').text()).toBe('▶ Listen')
-
-      await wrapper.find('[data-hide-thoughts]').setValue(true)
-      expect(wrapper.find('[data-listen-thought]').exists()).toBe(false)
     })
 
     it('has nothing to Listen to in a line of only "…"', async () => {

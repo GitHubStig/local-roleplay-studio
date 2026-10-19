@@ -77,7 +77,6 @@ const loadError = ref('')
 const notice = ref<{ kind: 'error' | 'declined'; text: string } | null>(null)
 /** The unsent message, remembered per Session so it survives a reload. */
 const draft = useStoredText(`draft:${props.id}`)
-const thoughtsHidden = useStoredFlag('roleplay-thoughts-hidden')
 const transcript = useTemplateRef<HTMLElement>('transcript')
 /** The Frame whose picture is open in the viewer, if any. */
 const viewing = ref<number | null>(null)
@@ -771,10 +770,6 @@ const lookSavingText = computed(() =>
                 Render replies
               </label>
             </template>
-            <label class="flex cursor-pointer items-center gap-1.5 text-muted">
-              <input v-model="thoughtsHidden" type="checkbox" data-hide-thoughts />
-              Hide thoughts
-            </label>
           </div>
         </div>
 
@@ -808,7 +803,7 @@ const lookSavingText = computed(() =>
                 <div class="flex min-w-0 flex-1 flex-col gap-1.5">
                   <span class="text-xs text-muted">{{ characterName }}</span>
                   <p
-                    v-if="frame.reply.internal && !thoughtsHidden"
+                    v-if="frame.reply.internal"
                     class="max-w-prose text-sm italic text-muted"
                     data-internal
                   >
@@ -988,7 +983,7 @@ const lookSavingText = computed(() =>
             </li>
             <li class="flex flex-col gap-1.5 opacity-80" data-pending-reply>
               <span class="text-xs text-muted">{{ characterName }}</span>
-              <p v-if="pending.reply.internal && !thoughtsHidden" class="max-w-prose text-sm italic text-muted">
+              <p v-if="pending.reply.internal" class="max-w-prose text-sm italic text-muted">
                 {{ pending.reply.internal }}
               </p>
               <p v-if="pending.reply.actions" class="max-w-prose italic">{{ pending.reply.actions }}</p>
