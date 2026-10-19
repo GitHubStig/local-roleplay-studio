@@ -541,6 +541,16 @@ export const saveBeat = (id: string, index: number, beat: string, shown: string[
 export const insertBeat = (id: string, at: number, beat: string, shown?: string[]) =>
   post<StoryboardSession>(`/api/sessions/${id}/beats`, { at, beat, shown })
 
+/**
+ * Removes Beat `index` from a Storyboard's plan, the Frames after it moving down one; only before
+ * its Frames are written. `seen` is the plan as shown, so a repeat can't remove the next Beat.
+ */
+export const removeBeat = (
+  id: string,
+  index: number,
+  seen: { frames: number; createdAt: string },
+) => post<StoryboardSession>(`/api/sessions/${id}/frames/${index}/delete`, seen)
+
 /** Takes a Storyboard back to its plan: every Frame's sentences and pictures go. */
 export const restartStoryboard = (id: string) =>
   post<StoryboardSession>(`/api/sessions/${id}/restart`)

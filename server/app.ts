@@ -79,6 +79,7 @@ import {
   FRAME_COUNT,
   insertBeat,
   planStoryboard,
+  removeBeat,
   restartStoryboard,
   setBeat,
   setFrameBody,
@@ -804,21 +805,34 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       })
     }],
 
-    // Deletes a Chain's Frame, any but the Opening Frame: `{ frames, createdAt }`, how many Frames
-    // the Chain had and when this one was made, so a repeated request can't delete the one after it. Refused while a job runs on it or a later Frame, whose
-    // result would land on the wrong Frame once they're numbered down; queued ones follow them.
+    // Deletes a Chain's Frame, any but the Opening Frame, or a Storyboard's Beat while it's planned:
+    // `{ frames, createdAt }`, how many Frames it had and when this one was made, so a repeated
+    // request can't delete the one after it. A Chain's is refused while a job runs on it or a later
+    // Frame, whose result would land on the wrong Frame once they're numbered down; queued ones
+    // follow them.
     ['POST', new URLPattern({ pathname: '/api/sessions/:id/frames/:index/delete' }), (req, p) => {
       const index = Number(p.index)
       if (!Number.isInteger(index)) {
         return Promise.resolve(error('Frame index must be a number', 400))
       }
       return locked(p.id!, 'delete-frame', async (session) => {
-        if (!needsChain(session)) return error('Only a Chain deletes Frames this way', 409)
+        if (!needsChain(session) && !needsStoryboard(session)) {
+          return error('Only a Chain or a Storyboard deletes Frames this way', 409)
+        }
         const body = await readJson(req) as { frames?: unknown; createdAt?: unknown } | undefined
         if (typeof body?.createdAt !== 'string' || !Number.isInteger(body.frames)) {
           return error('frames (a count) and createdAt are required', 400)
         }
         const seen = { frames: body.frames as number, createdAt: body.createdAt }
+        // A Storyboard's Beat, before its Frames are written: nothing is rendered or queued yet.
+        if (needsStoryboard(session)) {
+          try {
+            return json(await removeBeat({ store: deps.sessions }, session, index, seen))
+          } catch (err) {
+            if (err instanceof GoneError) return error(err.message, 409)
+            throw err
+          }
+        }
         const running = jobs.list(session.id)
           .find((j) => j.status === 'running' && j.frameIndex >= index)
         if (running) {

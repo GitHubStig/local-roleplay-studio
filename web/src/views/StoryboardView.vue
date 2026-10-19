@@ -32,6 +32,7 @@ import {
   type Outcome,
   type PicturedFrame,
   planStoryboard,
+  removeBeat,
   restartStoryboard,
   saveBeat,
   saveFrameBody,
@@ -432,10 +433,10 @@ async function toggleShown(name: string) {
 
 /** A Beat being added by hand, before the Frame at `at` (at the end, after the last). */
 const adding = ref<{ at: number; text: string; saving: boolean } | null>(null)
-/** Beats can be added while the plan is reviewed, up to the most Frames a Storyboard has. */
-const canAddBeat = computed(() =>
-  planned.value && !writingStarted.value && !busy.value && session.value!.frames.length < MAX_FRAMES
-)
+/** The plan is being reviewed: its Beats can be added and removed. */
+const reviewing = computed(() => planned.value && !writingStarted.value && !busy.value)
+/** Beats can be added up to the most Frames a Storyboard has. */
+const canAddBeat = computed(() => reviewing.value && session.value!.frames.length < MAX_FRAMES)
 async function startAdding(at: number) {
   adding.value = { at, text: '', saving: false }
   await nextTick()
@@ -455,6 +456,32 @@ async function addBeat() {
   } catch (err) {
     a.saving = false
     message.value = { kind: 'error', text: (err as Error).message }
+  }
+}
+
+/**
+ * Removes a Beat from the plan, once confirmed, the Frames after it moving down one. An edit to
+ * it goes with it; an edit to another is saved first, to the Frame it's for.
+ */
+const removing = ref(false)
+async function removeFrameBeat(frame: StoryboardFrame) {
+  const what = `Remove Frame ${frame.index + 1}'s Beat? The Frames after it move up one.`
+  if (removing.value || !confirm(what)) return
+  if (selected.value === frame.index && frameDraft.value) {
+    frameDraft.value = { text: frame.beat, shown: frame.shown }
+  }
+  if (!(await flushEdits('removed'))) return
+  removing.value = true
+  message.value = null
+  try {
+    const frames = session.value!.frames.length
+    session.value = await removeBeat(props.id, frame.index, { frames, createdAt: frame.createdAt })
+    if (selected.value > frame.index) selected.value--
+    selected.value = Math.min(selected.value, session.value.frames.length - 1)
+  } catch (err) {
+    message.value = { kind: 'error', text: (err as Error).message }
+  } finally {
+    removing.value = false
   }
 }
 
@@ -753,7 +780,7 @@ const imagesOn = computed(() => featureOn.value('images'))
             @keydown="onFrameKey"
           >
             <template v-for="f in frames" :key="f.index">
-              <li>
+              <li class="group relative">
                 <button
                   type="button"
                   class="flex w-full gap-3 border-b border-line p-3 text-left text-sm hover:bg-surface"
@@ -789,6 +816,17 @@ const imagesOn = computed(() => featureOn.value('images'))
                       {{ frameJob(f.index) ? `${JOB_NAMES[frameJob(f.index)!.kind]}…` : status(f).label }}
                     </span>
                   </span>
+                </button>
+                <button
+                  v-if="reviewing && session.frames.length > 1 && 'pictures' in f"
+                  type="button"
+                  class="absolute right-2 top-2 rounded border border-line bg-canvas px-2 py-0.5 text-xs text-muted opacity-0 hover:text-danger focus:opacity-100 group-hover:opacity-100 disabled:opacity-50"
+                  :disabled="removing"
+                  title="Remove this Beat from the plan"
+                  data-remove-beat
+                  @click="removeFrameBeat(f)"
+                >
+                  Remove
                 </button>
               </li>
               <!-- While the plan is reviewed: a Beat added after this Frame, before the next. -->

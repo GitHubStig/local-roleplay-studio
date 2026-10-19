@@ -9,6 +9,7 @@ import {
   FRAME_COUNT,
   insertBeat,
   planStoryboard,
+  removeBeat,
   renderStoryboardFrame,
   restartStoryboard,
   setBeat,
@@ -20,6 +21,8 @@ import {
 } from './storyboard.ts'
 import { briefScenario } from '../scenario.ts'
 import { switchImageModel } from '../pictures.ts'
+import { callFile } from '../calls.ts'
+import { GoneError } from '../update.ts'
 import {
   fakeImageGenerator,
   planOf,
@@ -371,6 +374,40 @@ Deno.test('insertBeat stops at the most Frames a Storyboard has', () =>
       signal(),
     )
     await assertRejects(() => insertBeat(deps, full, 0, 'Ace waves.'), StageError, 'at most')
+  }))
+
+Deno.test('removeBeat takes a Beat out of the plan until a Frame is written', () =>
+  withTempDir(async (root) => {
+    const { deps, session } = await planned(root, {}, false)
+    const seen = (s: StoryboardSession, i: number) => ({
+      frames: s.frames.length,
+      createdAt: s.frames[i].createdAt,
+    })
+    const removed = await removeBeat(deps, session, 1, seen(session, 1))
+    assertEquals(removed.frames.map((f) => [f.index, f.beat]), [[0, 'Beat 1'], [1, 'Beat 3']])
+    // Sent again, as the plan was seen then: the Beat that took its place stays.
+    await assertRejects(() => removeBeat(deps, removed, 1, seen(session, 1)), GoneError)
+
+    const one = await removeBeat(deps, removed, 0, seen(removed, 0))
+    await assertRejects(() => removeBeat(deps, one, 0, seen(one, 0)), StageError, 'at least one')
+
+    const written = await writeStoryboard(deps, one, scenario, () => {}, signal())
+    await assertRejects(() => removeBeat(deps, written, 0, seen(written, 0)), StageError, 'restart')
+  }))
+
+Deno.test('A restarted plan keeps its call log with each Frame as Beats are added and removed', () =>
+  withTempDir(async (root) => {
+    const { deps, session } = await planned(root)
+    const dir = deps.store.dir('s1')
+    await Deno.mkdir(join(dir, 'calls'), { recursive: true })
+    for (const i of [0, 1, 2]) await Deno.writeTextFile(callFile(dir, i), `Beat ${i + 1}`)
+    const restarted = await restartStoryboard(deps, session)
+    const log = (i: number) => Deno.readTextFile(callFile(dir, i)).catch(() => null)
+
+    const added = await insertBeat(deps, restarted, 1, 'Ace pivots.')
+    assertEquals(await Promise.all([0, 1, 2, 3].map(log)), ['Beat 1', null, 'Beat 2', 'Beat 3'])
+    await removeBeat(deps, added, 0, { frames: 4, createdAt: added.frames[0].createdAt })
+    assertEquals(await Promise.all([0, 1, 2].map(log)), [null, 'Beat 2', 'Beat 3'])
   }))
 
 Deno.test('restartStoryboard takes it back to its plan, deleting the pictures', () =>

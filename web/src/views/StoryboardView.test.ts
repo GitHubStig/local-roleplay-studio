@@ -16,6 +16,7 @@ vi.mock('../api', async (importOriginal) => ({
   saveFrameBody: vi.fn(),
   saveBeat: vi.fn(),
   insertBeat: vi.fn(),
+  removeBeat: vi.fn(),
   saveLook: vi.fn(),
   cancelFrame: vi.fn(),
   listJobs: vi.fn(),
@@ -491,6 +492,42 @@ describe('StoryboardView', () => {
     vi.mocked(api.getSession).mockResolvedValue(storyboard([frame(0), planned(1)]))
     const written = (await mountIt()).wrapper
     expect(written.findAll('[data-add-beat]')).toHaveLength(0)
+  })
+
+  it('removes a Beat once confirmed, dropping an edit to it', async () => {
+    vi.mocked(api.getSession).mockResolvedValue(storyboard([planned(0), planned(1), planned(2)]))
+    vi.mocked(api.removeBeat).mockResolvedValue(
+      storyboard([planned(0), { ...planned(2), index: 1 }]),
+    )
+    const confirm = vi.fn(() => false)
+    vi.stubGlobal('confirm', confirm)
+    const { wrapper } = await mountIt()
+    await wrapper.findAll('[data-frame]')[1].trigger('click')
+    await wrapper.find('[data-field="storyboard.frame"]').setValue('Half typed')
+
+    await wrapper.findAll('[data-remove-beat]')[1].trigger('click')
+    expect(api.removeBeat).not.toHaveBeenCalled()
+    confirm.mockReturnValue(true)
+    await wrapper.findAll('[data-remove-beat]')[1].trigger('click')
+    await flushPromises()
+
+    expect(api.saveBeat).not.toHaveBeenCalled()
+    expect(api.removeBeat).toHaveBeenCalledWith('sb', 1, {
+      frames: 3,
+      createdAt: '2026-09-25T00:00:00.000Z',
+    })
+    expect(wrapper.findAll('[data-frame]').map((f) => f.text())).toEqual([
+      expect.stringContaining('Beat 1.'),
+      expect.stringContaining('Beat 3.'),
+    ])
+    expect(wrapper.find('[data-frame][aria-current="true"]').text()).toContain('Beat 3.')
+  })
+
+  it('offers no Remove for the last Beat left, or once Frames are written', async () => {
+    vi.mocked(api.getSession).mockResolvedValue(storyboard([planned(0)]))
+    expect((await mountIt()).wrapper.findAll('[data-remove-beat]')).toHaveLength(0)
+    vi.mocked(api.getSession).mockResolvedValue(storyboard([frame(0), planned(1)]))
+    expect((await mountIt()).wrapper.findAll('[data-remove-beat]')).toHaveLength(0)
   })
 
   it('chooses who a Frame shows', async () => {

@@ -6,8 +6,8 @@ import {
   secondsSince,
   withRetry,
 } from '../frames.ts'
-import { logCallsUnder } from '../calls.ts'
-import { updateSession } from '../update.ts'
+import { logCallsUnder, makeRoomInCallLogs, renumberCallLogs } from '../calls.ts'
+import { GoneError, updateSession } from '../update.ts'
 import { allPictureFiles, allStale, removeFiles } from '../pictures.ts'
 import {
   cleanLook,
@@ -366,7 +366,7 @@ export async function insertBeat(
   if (!line) throw new Error('A Beat needs a line')
   const limit = crossedLimit(line)?.message
   if (limit) throw new LimitError(`That crosses a limit: ${limit}`)
-  return await updateSession(deps.store, session.id, 'storyboard', (latest) => {
+  const updated = await updateSession(deps.store, session.id, 'storyboard', (latest) => {
     checkPlanOpen(latest)
     if (!Number.isInteger(at) || at < 0 || at > latest.frames.length) {
       throw new Error(`A Beat goes at 1 to ${latest.frames.length + 1}`)
@@ -379,6 +379,38 @@ export async function insertBeat(
     const frames = [...latest.frames.slice(0, at), added, ...latest.frames.slice(at)]
     return { ...latest, frames: frames.map((f, index) => ({ ...f, index })) }
   })
+  // A Storyboard restarted keeps the call log of its writing, which follows its Frame.
+  await makeRoomInCallLogs(deps.store.dir(session.id), at)
+  return updated
+}
+
+/**
+ * Removes Beat `index` from the plan, the Frames after it moving down one; only before the Frames
+ * are written, and not the last one left. `seen` is the plan as the player saw it: how many Frames
+ * it had and when this one was made, so a repeated request can't remove the Beat that took its
+ * place.
+ */
+export async function removeBeat(
+  deps: Pick<FrameDeps, 'store'>,
+  session: StoryboardSession,
+  index: number,
+  seen: { frames: number; createdAt: string },
+): Promise<StoryboardSession> {
+  checkPlanOpen(session)
+  const updated = await updateSession(deps.store, session.id, 'storyboard', (latest) => {
+    checkPlanOpen(latest)
+    const gone = latest.frames[index]
+    if (!gone || gone.createdAt !== seen.createdAt || latest.frames.length !== seen.frames) {
+      throw new GoneError('That Beat is no longer there')
+    }
+    if (latest.frames.length === 1) throw new StageError('A Storyboard needs at least one Beat')
+    return {
+      ...latest,
+      frames: latest.frames.filter((f) => f !== gone).map((f, i) => ({ ...f, index: i })),
+    }
+  })
+  await renumberCallLogs(deps.store.dir(session.id), index)
+  return updated
 }
 
 /**

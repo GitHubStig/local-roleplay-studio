@@ -9,6 +9,7 @@ import {
   loggedEmbedder,
   loggedMaker,
   loggedVoice,
+  makeRoomInCallLogs,
   renumberCallLogs,
 } from './calls.ts'
 import type { SceneMaker } from './3d/scene.ts'
@@ -170,4 +171,14 @@ Deno.test('Voices, 3D and style scores are logged: files by name, embeddings cou
       aspect: 1,
     })
     assertEquals(calls[2].response, { images: 1, texts: 0 })
+  }))
+
+Deno.test('A Frame added makes room in the call log: later Frames’ numbered up', () =>
+  withTempDir(async (dir) => {
+    await makeRoomInCallLogs(dir, 1) // No log: nothing to do.
+    await Deno.mkdir(join(dir, 'calls'))
+    for (const index of [0, 1, 2]) await Deno.writeTextFile(callFile(dir, index), `${index}`)
+    await makeRoomInCallLogs(dir, 1)
+    const read = (index: number) => Deno.readTextFile(callFile(dir, index)).catch(() => null)
+    assertEquals(await Promise.all([0, 1, 2, 3].map(read)), ['0', null, '1', '2'])
   }))

@@ -818,7 +818,7 @@ Deno.test('A Storyboard is planned, reviewed, written, rendered and edited over 
     assertEquals((await call('PUT', '/api/sessions/s1/look', newLook)).status, 200)
   }))
 
-Deno.test("A Beat is added to a Storyboard's plan over the API, until its Frames are written", () =>
+Deno.test("Beats are added to and removed from a Storyboard's plan over the API, until written", () =>
   withTempDir(async (root) => {
     const { call } = setup({
       root,
@@ -832,7 +832,12 @@ Deno.test("A Beat is added to a Storyboard's plan over the API, until its Frames
 
     const added = await call('POST', '/api/sessions/s1/beats', { at: 1, beat: 'Ace pivots.' })
     assertEquals(added.status, 201)
-    const frames = (await added.json()).frames as { index: number; beat: string; shown: string[] }[]
+    const frames = (await added.json()).frames as {
+      index: number
+      beat: string
+      shown: string[]
+      createdAt: string
+    }[]
     assertEquals(frames.map((f) => [f.index, f.beat, f.shown]), [
       [0, 'Beat 1', ['Ace']],
       [1, 'Ace pivots.', ['Ace']],
@@ -848,8 +853,21 @@ Deno.test("A Beat is added to a Storyboard's plan over the API, until its Frames
       422,
     )
 
+    // And one removed, as the plan was seen; sent again, it's gone already.
+    const seen = { frames: 4, createdAt: frames[1].createdAt }
+    const removed = await call('POST', '/api/sessions/s1/frames/1/delete', seen)
+    assertEquals((await removed.json()).frames.map((f: { beat: string }) => f.beat), [
+      'Beat 1',
+      'Beat 2',
+      'A hoop.',
+    ])
+    assertEquals((await call('POST', '/api/sessions/s1/frames/1/delete', seen)).status, 409)
+    assertEquals((await call('POST', '/api/sessions/s1/frames/1/delete', {})).status, 400)
+
     const write = await readEvents(await call('POST', '/api/sessions/s1/write'))
-    assertEquals(write.filter(([e]) => e === 'written-frame').length, 4)
+    assertEquals(write.filter(([e]) => e === 'written-frame').length, 3)
+    const now = { frames: 3, createdAt: frames[0].createdAt }
+    assertEquals((await call('POST', '/api/sessions/s1/frames/0/delete', now)).status, 409)
     assertEquals((await call('POST', '/api/sessions/s1/beats', { at: 0, beat: 'x' })).status, 409)
   }))
 
