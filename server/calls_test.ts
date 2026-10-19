@@ -11,6 +11,7 @@ import {
   loggedVoice,
   makeRoomInCallLogs,
   renumberCallLogs,
+  reorderCallLogs,
 } from './calls.ts'
 import type { SceneMaker } from './3d/scene.ts'
 import type { Chat, ChatCall } from './text/chat.ts'
@@ -181,4 +182,15 @@ Deno.test('A Frame added makes room in the call log: later Frames’ numbered up
     await makeRoomInCallLogs(dir, 1)
     const read = (index: number) => Deno.readTextFile(callFile(dir, index)).catch(() => null)
     assertEquals(await Promise.all([0, 1, 2, 3].map(read)), ['0', null, '1', '2'])
+  }))
+
+Deno.test('Frames put in a new order take their call logs with them', () =>
+  withTempDir(async (dir) => {
+    await reorderCallLogs(dir, [1, 0]) // No log: nothing to do.
+    await Deno.mkdir(join(dir, 'calls'))
+    // Frame 3 has no log: Frame 2's takes its place, and there's none where Frame 2 goes.
+    for (const index of [0, 1, 3]) await Deno.writeTextFile(callFile(dir, index), `${index}`)
+    await reorderCallLogs(dir, [3, 0, 1, 2])
+    const read = (index: number) => Deno.readTextFile(callFile(dir, index)).catch(() => null)
+    assertEquals(await Promise.all([0, 1, 2, 3].map(read)), ['3', '0', '1', null])
   }))

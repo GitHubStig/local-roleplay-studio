@@ -17,6 +17,7 @@ vi.mock('../api', async (importOriginal) => ({
   saveBeat: vi.fn(),
   insertBeat: vi.fn(),
   removeBeat: vi.fn(),
+  reorderBeats: vi.fn(),
   saveLook: vi.fn(),
   cancelFrame: vi.fn(),
   listJobs: vi.fn(),
@@ -551,6 +552,40 @@ describe('StoryboardView', () => {
     expect((await mountIt()).wrapper.findAll('[data-remove-beat]')).toHaveLength(0)
     vi.mocked(api.getSession).mockResolvedValue(storyboard([frame(0), planned(1)]))
     expect((await mountIt()).wrapper.findAll('[data-remove-beat]')).toHaveLength(0)
+  })
+
+  it('moves a Beat with ↑ and ↓ on its grip, the Frame shown going with it', async () => {
+    vi.mocked(api.getSession).mockResolvedValue(storyboard([planned(0), planned(1), planned(2)]))
+    const beats = (order: number[]) =>
+      storyboard(order.map((from, index) => ({ ...planned(from), index })))
+    vi.mocked(api.reorderBeats).mockResolvedValueOnce(beats([1, 0, 2]))
+    const { wrapper } = await mountIt()
+    await wrapper.findAll('[data-frame]')[0].trigger('click')
+
+    await wrapper.findAll('[data-move-beat]')[0].trigger('keydown', { key: 'ArrowDown' })
+    await flushPromises()
+    expect(api.reorderBeats).toHaveBeenCalledWith('sb', [1, 0, 2], [
+      'Beat 1.',
+      'Beat 2.',
+      'Beat 3.',
+    ])
+    expect(wrapper.findAll('[data-frame]').map((f) => f.text().slice(0, 9))).toEqual([
+      '1Beat 2.N',
+      '2Beat 1.N',
+      '3Beat 3.N',
+    ])
+    expect(wrapper.find('[data-frame][aria-current="true"]').text()).toContain('Beat 1.')
+    // Not past either end.
+    await wrapper.findAll('[data-move-beat]')[2].trigger('keydown', { key: 'ArrowDown' })
+    await flushPromises()
+    expect(api.reorderBeats).toHaveBeenCalledTimes(1)
+  })
+
+  it('offers no grips for one Beat, or once Frames are written', async () => {
+    vi.mocked(api.getSession).mockResolvedValue(storyboard([planned(0)]))
+    expect((await mountIt()).wrapper.findAll('[data-move-beat]')).toHaveLength(0)
+    vi.mocked(api.getSession).mockResolvedValue(storyboard([frame(0), planned(1)]))
+    expect((await mountIt()).wrapper.findAll('[data-move-beat]')).toHaveLength(0)
   })
 
   it('chooses who a Frame shows', async () => {

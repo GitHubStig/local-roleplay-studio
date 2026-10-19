@@ -560,6 +560,14 @@ export const removeBeat = (
   seen: { frames: number; createdAt: string },
 ) => post<StoryboardSession>(`/api/sessions/${id}/frames/${index}/delete`, seen)
 
+/**
+ * Puts a Storyboard's Beats in a new `order` (the index each had, in its new place); only before
+ * its Frames are written. `seen` is their lines as shown, in the old order: a plan changed since
+ * is refused.
+ */
+export const reorderBeats = (id: string, order: number[], seen: string[]) =>
+  put<StoryboardSession>(`/api/sessions/${id}/beats/order`, { order, seen })
+
 /** Takes a Storyboard back to its plan: every Frame's sentences and pictures go. */
 export const restartStoryboard = (id: string) =>
   post<StoryboardSession>(`/api/sessions/${id}/restart`)

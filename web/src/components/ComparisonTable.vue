@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { useMediaQuery, useRafFn } from '@vueuse/core'
+import { useMediaQuery } from '@vueuse/core'
 import { computed, ref, useTemplateRef, watch } from 'vue'
 import type { Comparison } from '../comparison'
+import { useDragReorder } from '../composables/useDragReorder'
 import { usePageKeys } from '../composables/usePageKeys'
 import Icon from './Icon.vue'
 import ImageViewer from './ImageViewer.vue'
@@ -68,49 +69,16 @@ function moveColumn(from: number, to: number) {
   const next = [...shown]
   next.splice(to, 0, next.splice(from, 1)[0])
   order.value = [...next, ...order.value!.filter((i) => hidden.value.includes(i))]
-  if (dragging.value === from) dragging.value = to
 }
 
-/**
- * Dragging a column by its grip: it follows the pointer across the other headers, and the table
- * scrolls while the pointer is near its left or right edge. Pointer events rather than HTML drag
- * and drop, which phones don't all do; only the grip takes the touch, so a swipe still scrolls.
- */
+/** Dragging a column by its grip: it follows the pointer across the other headers. */
 const scroller = useTemplateRef<HTMLElement>('scroller')
-const dragging = ref<number | null>(null)
-let pointerX = 0
-/** Where the drag started: the table only scrolls once it's moved, not for a grip by an edge. */
-let startX = 0
-function dragTo(x: number) {
-  pointerX = x
-  if (dragging.value === null || !scroller.value) return
-  const headers = [...scroller.value.querySelectorAll<HTMLElement>('[data-model-column]')]
-  const over = headers.findIndex((h) => {
-    const { left, right } = h.getBoundingClientRect()
-    return x >= left && x < right
-  })
-  if (over >= 0) moveColumn(dragging.value, over)
-}
-const edgeScroll = useRafFn(() => {
-  const el = scroller.value
-  if (!el || Math.abs(pointerX - startX) < 8) return
-  const { left, right } = el.getBoundingClientRect()
-  const edge = 48
-  const by = pointerX < left + edge ? -12 : pointerX > right - edge ? 12 : 0
-  if (!by) return
-  el.scrollLeft += by
-  dragTo(pointerX)
-}, { immediate: false })
-function startDrag(e: PointerEvent, column: number) {
-  ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
-  dragging.value = column
-  pointerX = startX = e.clientX
-  edgeScroll.resume()
-}
-function endDrag() {
-  dragging.value = null
-  edgeScroll.pause()
-}
+const { dragging, grip } = useDragReorder({
+  scroller,
+  items: '[data-model-column]',
+  axis: 'x',
+  move: moveColumn,
+})
 
 /**
  * Whether the first column shows the prompts or only the Frames' names: shown on a wide screen,
@@ -217,10 +185,7 @@ usePageKeys(() => instead.value ?? scroller.value, () => viewing.value !== null)
                   :aria-label="`Move ${m.label}'s column (drag, or ← and →)`"
                   :title="`Drag to move ${m.label}'s column`"
                   data-move-column
-                  @pointerdown="startDrag($event, c)"
-                  @pointermove="dragTo($event.clientX)"
-                  @pointerup="endDrag"
-                  @pointercancel="endDrag"
+                  v-on="grip(c)"
                   @keydown.left.prevent="moveColumn(c, c - 1)"
                   @keydown.right.prevent="moveColumn(c, c + 1)"
                 >

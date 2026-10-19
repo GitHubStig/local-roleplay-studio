@@ -818,7 +818,7 @@ Deno.test('A Storyboard is planned, reviewed, written, rendered and edited over 
     assertEquals((await call('PUT', '/api/sessions/s1/look', newLook)).status, 200)
   }))
 
-Deno.test("Beats are added to and removed from a Storyboard's plan over the API, until written", () =>
+Deno.test("Beats are added, removed and moved in a Storyboard's plan over the API, until written", () =>
   withTempDir(async (root) => {
     const { call } = setup({
       root,
@@ -864,10 +864,26 @@ Deno.test("Beats are added to and removed from a Storyboard's plan over the API,
     assertEquals((await call('POST', '/api/sessions/s1/frames/1/delete', seen)).status, 409)
     assertEquals((await call('POST', '/api/sessions/s1/frames/1/delete', {})).status, 400)
 
+    // And moved: the last first.
+    const order = (body: unknown) => call('PUT', '/api/sessions/s1/beats/order', body)
+    const beatsSeen = ['Beat 1', 'Beat 2', 'A hoop.']
+    const moved = await order({ order: [2, 0, 1], seen: beatsSeen })
+    assertEquals((await moved.json()).frames.map((f: { beat: string }) => f.beat), [
+      'A hoop.',
+      'Beat 1',
+      'Beat 2',
+    ])
+    assertEquals((await order({ order: [2, 0, 1], seen: beatsSeen })).status, 409)
+    for (const bad of [{ order: [0, 1], seen: beatsSeen }, { order: [0, 0, 1], seen: beatsSeen }]) {
+      assertEquals((await order(bad)).status, 400)
+    }
+
     const write = await readEvents(await call('POST', '/api/sessions/s1/write'))
     assertEquals(write.filter(([e]) => e === 'written-frame').length, 3)
     const now = { frames: 3, createdAt: frames[0].createdAt }
     assertEquals((await call('POST', '/api/sessions/s1/frames/0/delete', now)).status, 409)
+    const writtenSeen = ['A hoop.', 'Beat 1', 'Beat 2']
+    assertEquals((await order({ order: [1, 0, 2], seen: writtenSeen })).status, 409)
     assertEquals((await call('POST', '/api/sessions/s1/beats', { at: 0, beat: 'x' })).status, 409)
   }))
 

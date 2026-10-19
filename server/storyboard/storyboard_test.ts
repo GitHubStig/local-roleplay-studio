@@ -11,6 +11,7 @@ import {
   planStoryboard,
   removeBeat,
   renderStoryboardFrame,
+  reorderBeats,
   restartStoryboard,
   setBeat,
   setFrameBody,
@@ -395,7 +396,32 @@ Deno.test('removeBeat takes a Beat out of the plan until a Frame is written', ()
     await assertRejects(() => removeBeat(deps, written, 0, seen(written, 0)), StageError, 'restart')
   }))
 
-Deno.test('A restarted plan keeps its call log with each Frame as Beats are added and removed', () =>
+Deno.test('reorderBeats puts the Beats in a new order, if they are as seen', () =>
+  withTempDir(async (root) => {
+    const { deps, session } = await planned(root, {}, false)
+    const seen = ['Beat 1', 'Beat 2', 'Beat 3']
+    const moved = await reorderBeats(deps, session, [2, 0, 1], seen)
+    assertEquals(moved.frames.map((f) => [f.index, f.beat]), [
+      [0, 'Beat 3'],
+      [1, 'Beat 1'],
+      [2, 'Beat 2'],
+    ])
+    // Sent again, as the Beats were: they've moved since.
+    await assertRejects(() => reorderBeats(deps, moved, [2, 0, 1], seen), GoneError)
+    await assertRejects(
+      () => reorderBeats(deps, moved, [0, 0, 1], ['Beat 3', 'Beat 1', 'Beat 2']),
+      Error,
+      'once',
+    )
+    const written = await writeStoryboard(deps, moved, scenario, () => {}, signal())
+    await assertRejects(
+      () => reorderBeats(deps, written, [1, 0, 2], ['Beat 3', 'Beat 1', 'Beat 2']),
+      StageError,
+      'restart',
+    )
+  }))
+
+Deno.test('A restarted plan keeps its call log with each Frame as Beats are added, removed and moved', () =>
   withTempDir(async (root) => {
     const { deps, session } = await planned(root)
     const dir = deps.store.dir('s1')
@@ -406,8 +432,13 @@ Deno.test('A restarted plan keeps its call log with each Frame as Beats are adde
 
     const added = await insertBeat(deps, restarted, 1, 'Ace pivots.')
     assertEquals(await Promise.all([0, 1, 2, 3].map(log)), ['Beat 1', null, 'Beat 2', 'Beat 3'])
-    await removeBeat(deps, added, 0, { frames: 4, createdAt: added.frames[0].createdAt })
+    const removed = await removeBeat(deps, added, 0, {
+      frames: 4,
+      createdAt: added.frames[0].createdAt,
+    })
     assertEquals(await Promise.all([0, 1, 2].map(log)), [null, 'Beat 2', 'Beat 3'])
+    await reorderBeats(deps, removed, [2, 0, 1], removed.frames.map((f) => f.beat))
+    assertEquals(await Promise.all([0, 1, 2].map(log)), ['Beat 3', null, 'Beat 2'])
   }))
 
 Deno.test('restartStoryboard takes it back to its plan, deleting the pictures', () =>

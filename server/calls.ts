@@ -109,6 +109,22 @@ export async function renumberCallLogs(dir: string, index: number): Promise<void
 }
 
 /**
+ * Keeps the call log numbered as the app shows the Frames once they're put in a new `order` (the
+ * old index of each Frame, in its new place): each Frame's log moves with it. Nothing to do
+ * without a log.
+ */
+export async function reorderCallLogs(dir: string, order: number[]): Promise<void> {
+  const numbers = new Set(await loggedFrames(dir) ?? [])
+  const moves = order.flatMap((from, to) =>
+    from !== to && numbers.has(from + 1) ? [{ from, to }] : []
+  )
+  // Aside first, so none overwrites another still to move.
+  const aside = (index: number) => join(dir, 'calls', `frame-${index + 1}.moving.json`)
+  for (const { from } of moves) await Deno.rename(callFile(dir, from), aside(from))
+  for (const { from, to } of moves) await Deno.rename(aside(from), callFile(dir, to))
+}
+
+/**
  * Keeps the call log numbered as the app shows the Frames once one is added at `index`: the log of
  * each Frame from there on moves up one. Nothing to do without a log.
  */

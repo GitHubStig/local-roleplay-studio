@@ -6,7 +6,7 @@ import {
   secondsSince,
   withRetry,
 } from '../frames.ts'
-import { logCallsUnder, makeRoomInCallLogs, renumberCallLogs } from '../calls.ts'
+import { logCallsUnder, makeRoomInCallLogs, renumberCallLogs, reorderCallLogs } from '../calls.ts'
 import { GoneError, updateSession } from '../update.ts'
 import { allPictureFiles, allStale, removeFiles } from '../pictures.ts'
 import {
@@ -410,6 +410,34 @@ export async function removeBeat(
     }
   })
   await renumberCallLogs(deps.store.dir(session.id), index)
+  return updated
+}
+
+/**
+ * Puts the plan's Beats in a new `order`: the index each had, in its new place. `seen` is each
+ * Beat's line as the player saw them, in their old order, so an order made from a plan changed
+ * meanwhile (in another tab) is refused rather than shuffling the wrong Beats. Only before the
+ * Frames are written.
+ */
+export async function reorderBeats(
+  deps: Pick<FrameDeps, 'store'>,
+  session: StoryboardSession,
+  order: number[],
+  seen: string[],
+): Promise<StoryboardSession> {
+  checkPlanOpen(session)
+  const updated = await updateSession(deps.store, session.id, 'storyboard', (latest) => {
+    checkPlanOpen(latest)
+    const n = latest.frames.length
+    if (order.length !== n || [...order].sort((a, b) => a - b).some((i, k) => i !== k)) {
+      throw new Error(`An order of the Beats has each of 0 to ${n - 1} once`)
+    }
+    if (seen.length !== n || latest.frames.some((f, i) => f.beat !== seen[i])) {
+      throw new GoneError('The Beats have changed since: look again, then move them')
+    }
+    return { ...latest, frames: order.map((from, index) => ({ ...latest.frames[from], index })) }
+  })
+  await reorderCallLogs(deps.store.dir(session.id), order)
   return updated
 }
 

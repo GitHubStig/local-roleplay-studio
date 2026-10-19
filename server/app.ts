@@ -80,6 +80,7 @@ import {
   insertBeat,
   planStoryboard,
   removeBeat,
+  reorderBeats,
   restartStoryboard,
   setBeat,
   setFrameBody,
@@ -1058,6 +1059,35 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
             body.shown,
           )
           return json(added, 201)
+        }),
+    ],
+
+    // A Storyboard's Beats in a new order, before its Frames are written: `{ order, seen }`, the
+    // index each had in its new place, and their lines as seen, in the old order (`409` if they've
+    // changed since).
+    [
+      'PUT',
+      new URLPattern({ pathname: '/api/sessions/:id/beats/order' }),
+      (req, p) =>
+        locked(p.id!, 'edit', async (session) => {
+          if (!needsStoryboard(session)) return error('Only a Storyboard has Beats', 409)
+          const body = await readJson(req) as { order?: unknown; seen?: unknown } | undefined
+          const order = body?.order
+          const n = session.frames.length
+          const permutation = Array.isArray(order) && order.length === n &&
+            [...order].sort((a, b) => a - b).every((i, k) => i === k)
+          if (!permutation || !isStringList(body?.seen)) {
+            return error(
+              `order (each of 0 to ${n - 1} once) and seen (the Beats) are required`,
+              400,
+            )
+          }
+          try {
+            return json(await reorderBeats({ store: deps.sessions }, session, order, body.seen))
+          } catch (err) {
+            if (err instanceof GoneError) return error(err.message, 409)
+            throw err
+          }
         }),
     ],
 

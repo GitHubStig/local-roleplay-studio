@@ -33,6 +33,7 @@ import {
   type PicturedFrame,
   planStoryboard,
   removeBeat,
+  reorderBeats,
   restartStoryboard,
   saveBeat,
   saveFrameBody,
@@ -59,6 +60,7 @@ import PanelTabs from '../components/PanelTabs.vue'
 import { useImageModels } from '../composables/useSettingsOptions'
 import { useFeatures } from '../composables/useFeatures'
 import { useJobs } from '../composables/useJobs'
+import { useDragReorder } from '../composables/useDragReorder'
 import { showPickedFrame, useFrameKeys } from '../composables/useFrameKeys'
 import { JOB_NAMES, jobForming, jobStatus, queueTabLabel, sweepOf } from '../jobs'
 import { clearCurrentSession, setCurrentSession } from '../composables/useCurrentSession'
@@ -74,6 +76,7 @@ const session = ref<StoryboardSession | null>(null)
 const loadError = ref('')
 /** The Frame shown in the main panel and edited in the Prompt panel. */
 const selected = ref(0)
+const frameList = useTemplateRef<HTMLElement>('frameList')
 const panel = ref<'frames' | 'queue' | 'prompt'>('frames')
 const message = ref<{ kind: 'error' | Outcome; text: string } | null>(null)
 
@@ -501,6 +504,58 @@ async function removeFrameBeat(frame: StoryboardFrame) {
   }
 }
 
+/** The Beats can be moved: while the plan is reviewed, and there's more than one. */
+const canMoveBeats = computed(() => reviewing.value && session.value!.frames.length > 1)
+/** While a Beat is dragged or its move saved, the Frames in their new order (old indexes). */
+const dragOrder = ref<number[] | null>(null)
+/** The Frames as listed: as they're being moved, or as they are. */
+const listed = computed(() => dragOrder.value?.map((i) => frames.value[i]) ?? frames.value)
+const inPlan = () => frames.value.map((f) => f.index)
+function moved(order: number[], from: number, to: number): number[] {
+  const next = [...order]
+  next.splice(to, 0, next.splice(from, 1)[0])
+  return next
+}
+const { dragging: draggingBeat, grip: beatGrip } = useDragReorder({
+  scroller: frameList,
+  items: '[data-frame-row]',
+  axis: 'y',
+  move: (from, to) => (dragOrder.value = moved(dragOrder.value ?? inPlan(), from, to)),
+  end: () => dragOrder.value && saveOrder(dragOrder.value),
+})
+/** Moves the Beat at `from` one place by ↑ or ↓, the focus staying on its grip. */
+async function moveBeat(from: number, to: number) {
+  if (movingBeats.value || to < 0 || to >= frames.value.length) return
+  await saveOrder(moved(inPlan(), from, to))
+  await nextTick()
+  frameList.value?.querySelectorAll<HTMLElement>('[data-move-beat]')[to]?.focus()
+}
+/**
+ * Saves the Beats in a new `order`, shown so meanwhile. An edit is saved first, to the Frame it's
+ * for; the Frame shown stays shown, in its new place.
+ */
+const movingBeats = ref(false)
+async function saveOrder(order: number[]) {
+  if (movingBeats.value || order.every((from, to) => from === to)) {
+    dragOrder.value = null
+    return
+  }
+  movingBeats.value = true
+  dragOrder.value = order
+  message.value = null
+  try {
+    if (!(await flushEdits('moved'))) return
+    const seen = () => session.value!.frames.map((f) => f.beat)
+    session.value = await line(() => reorderBeats(props.id, order, seen()))
+    selected.value = order.indexOf(selected.value)
+  } catch (err) {
+    message.value = { kind: 'error', text: (err as Error).message }
+  } finally {
+    dragOrder.value = null
+    movingBeats.value = false
+  }
+}
+
 /** Saves what's edited by hand, before work that reads it; false, saying why, if it can't. */
 async function flushEdits(what: string): Promise<boolean> {
   if ((await (lookForm.value?.flush() ?? true)) && (await flushFrame())) return true
@@ -602,7 +657,6 @@ function pick(index: number) {
   following = false
   selected.value = index
 }
-const frameList = useTemplateRef<HTMLElement>('frameList')
 /** From the Queue tab: picks the Frame and shows it in the Frames list. */
 function goToFrame(index: number) {
   pick(index)
@@ -806,10 +860,30 @@ const imagesOn = computed(() => featureOn.value('images'))
             role="tabpanel"
             @keydown="onFrameKey"
           >
-            <li v-for="f in frames" :key="f.index">
+            <li
+              v-for="(f, position) in listed"
+              :key="f.index"
+              class="flex"
+              :class="{ 'opacity-60': draggingBeat === position }"
+              data-frame-row
+            >
+              <!-- While the plan is reviewed: its grip, to drag the Beat up or down the list. -->
+              <button
+                v-if="canMoveBeats"
+                type="button"
+                class="flex shrink-0 cursor-grab touch-none items-center border-b border-line pl-1.5 text-muted hover:text-fg active:cursor-grabbing"
+                :aria-label="`Move Frame ${f.index + 1}'s Beat (drag, or ↑ and ↓)`"
+                :title="`Drag to move Frame ${f.index + 1}'s Beat`"
+                data-move-beat
+                v-on="beatGrip(position)"
+                @keydown.up.prevent.stop="moveBeat(position, position - 1)"
+                @keydown.down.prevent.stop="moveBeat(position, position + 1)"
+              >
+                <Icon name="grip" />
+              </button>
               <button
                 type="button"
-                class="flex w-full gap-3 border-b border-line p-3 text-left text-sm hover:bg-surface"
+                class="flex min-w-0 flex-1 gap-3 border-b border-line p-3 text-left text-sm hover:bg-surface"
                 :class="{ 'bg-surface': selected === f.index }"
                 :aria-current="selected === f.index"
                 data-frame
