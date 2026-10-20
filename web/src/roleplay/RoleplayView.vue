@@ -489,17 +489,25 @@ async function send() {
   run({ kind: 'message', message: text, reply: {} }, () => sendMessage(props.id, text, onEvent))
 }
 
+/** The last suggestion written into the box, to tell whether it's still there untouched. */
+let lastSuggestion: string | null = null
+
 /**
- * Writes a message into the box, from the story and whatever's typed there. If it fails or is
- * cancelled, the box gets back what was typed.
+ * Writes a message into the box, from the story and whatever's typed there. A suggestion left as
+ * it was isn't taken as notes: pressing Suggest again writes a new one from the story alone. If it
+ * fails or is cancelled, the box gets back what was there.
  */
 async function suggest() {
   if (busy.value || !begun.value || !(await flushEdits('suggested'))) return
   const typed = draft.value
+  const notes = typed.trim() === lastSuggestion ? '' : typed
   let suggested = false
   await run({ kind: 'suggest', reply: {} }, () =>
-    suggestMessage(props.id, typed, (event) => {
-      if (event.type === 'suggestion') suggested = true
+    suggestMessage(props.id, notes, (event) => {
+      if (event.type === 'suggestion') {
+        suggested = true
+        lastSuggestion = event.text.trim()
+      }
       onEvent(event)
     }))
   if (!suggested) draft.value = typed

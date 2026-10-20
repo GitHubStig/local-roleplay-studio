@@ -281,6 +281,25 @@ describe('RoleplayView', () => {
     expect(roleplay.sendMessage).not.toHaveBeenCalled()
   })
 
+  it('suggests a new message, not from the last one, when that is left untouched', async () => {
+    let n = 0
+    vi.mocked(roleplay.suggestMessage).mockImplementation(async (_id, _draft, onEvent) => {
+      onEvent({ type: 'suggestion', text: `suggestion ${++n}` })
+    })
+    const { wrapper } = await mountIt()
+    const suggestNow = async () => {
+      await wrapper.find('[data-suggest]').trigger('click')
+      await flushPromises()
+    }
+    await wrapper.find('textarea').setValue('ask about the others')
+    await suggestNow()
+    await suggestNow()
+    expect(vi.mocked(roleplay.suggestMessage).mock.calls[1][1]).toBe('')
+    await wrapper.find('textarea').setValue('suggestion 2, louder')
+    await suggestNow()
+    expect(vi.mocked(roleplay.suggestMessage).mock.calls[2][1]).toBe('suggestion 2, louder')
+  })
+
   it('puts back what was typed when a suggestion fails', async () => {
     vi.mocked(roleplay.suggestMessage).mockImplementation(async (_id, _draft, onEvent) => {
       onEvent({ type: 'suggestion-part', text: 'I pull' })
