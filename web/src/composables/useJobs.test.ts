@@ -31,4 +31,18 @@ describe('useJobs', () => {
       )
     }
   })
+
+  it("counts a render as the Frame's only if it's by the Session's Image Model", async () => {
+    const { useJobs } = await import('./useJobs')
+    let model = 'krea-2'
+    const jobs = useJobs('s1', { onSettled: () => {}, onError: () => {}, imageModel: () => model })
+    const image = { imageBackend: 'mflux' as const, imageModel: 'krea-2', steps: 20 }
+    queueJob.mockResolvedValueOnce([
+      { id: 'j1', kind: 'render', frameIndex: 0, status: 'queued', createdAt: '', image },
+    ])
+    await jobs.queue('render', 0)
+    expect(jobs.hasJob(0, 'render')).toBe(true)
+    model = 'flux2-klein'
+    expect(jobs.hasJob(0, 'render')).toBe(false)
+  })
 })

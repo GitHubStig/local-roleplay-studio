@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Job } from '../api'
-import { JOB_NAMES, jobStatus } from '../jobs'
+import { useImageModels } from '../composables/useSettingsOptions'
+import { jobStatus } from '../jobs'
 
 /** A Frame's queued, running and failed jobs, each cancellable (or retried) in place. */
 defineProps<{
@@ -9,6 +10,7 @@ defineProps<{
   describe?: (job: Job) => string | undefined
 }>()
 defineEmits<{ retry: [job: Job]; drop: [job: Job] }>()
+const { jobName } = useImageModels()
 </script>
 
 <template>
@@ -20,7 +22,7 @@ defineEmits<{ retry: [job: Job]; drop: [job: Job] }>()
         'text-danger': job.status === 'failed',
       }"
     >
-      {{ JOB_NAMES[job.kind] }} · {{ jobStatus(job, describe) }}
+      {{ jobName(job) }} · {{ jobStatus(job, describe) }}
     </span>
     <button
       v-if="job.status === 'failed'"

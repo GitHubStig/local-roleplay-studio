@@ -744,6 +744,8 @@ export interface Job {
   progress?: { step: number; total: number }
   error?: string
   createdAt: string
+  /** A render's Image Model, as the Session had it when queued: it renders by that one. */
+  image?: { imageBackend: ImageBackend; imageModel: string; steps: number }
 }
 
 /** A Session's jobs (a Roleplay's or a Chain's), in the order queued; several may run, one per machine. */

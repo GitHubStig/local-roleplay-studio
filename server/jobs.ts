@@ -12,6 +12,7 @@ import type { Feature } from './features.ts'
 import type { Phase } from './frames.ts'
 import { error, json, readJson, type Route } from './http.ts'
 import type { Session, SessionStore } from './session.ts'
+import type { Settings } from './settings.ts'
 
 /**
  * `picture` writes a Roleplay Frame's Image Prompt and `render` renders it; `upscale` takes a
@@ -77,7 +78,26 @@ export interface Job {
   createdAt: string
   /** The machine it runs on (`machineKey`): jobs on different machines run side by side. */
   machine: string
+  /**
+   * A render's Image Model, as its Session had it when queued: the render uses it whatever the
+   * Session switches to meanwhile, so it runs where it was queued to (`machine`).
+   */
+  image?: ImageChoice
 }
+
+/** The Session settings that say which Image Model renders, and on which backend. */
+export type ImageChoice = Pick<Settings, 'imageBackend' | 'imageModel' | 'steps'>
+
+/** The Image Model a render of `session` queued now keeps (`Job.image`). */
+export const imageChoiceOf = ({ settings }: Session): ImageChoice => ({
+  imageBackend: settings.imageBackend,
+  imageModel: settings.imageModel,
+  steps: settings.steps,
+})
+
+/** `session` as `job` renders it: with the Image Model it was queued with, if it's a render. */
+export const asQueued = <S extends Session>(session: S, job: Job): S =>
+  job.image ? { ...session, settings: { ...session.settings, ...job.image } } : session
 
 /** What a running job reports: its phase, or its progress through the steps. */
 export type JobEmit = (
@@ -113,9 +133,12 @@ const NEEDS: Record<JobKind, readonly JobKind[]> = {
   style: ['picture', 'render'],
 }
 
-/** Whether `job` is the same work: the same kind, on the same Frame. */
-const sameWork = (job: Job, kind: JobKind, frameIndex: number) =>
-  job.kind === kind && job.frameIndex === frameIndex
+/**
+ * Whether `job` is the same work: the same kind, on the same Frame, by the same Image Model (by
+ * name, whichever backend: a Frame keeps one picture per model, `shownPicture`).
+ */
+const sameWork = (job: Job, kind: JobKind, frameIndex: number, image?: ImageChoice) =>
+  job.kind === kind && job.frameIndex === frameIndex && job.image?.imageModel === image?.imageModel
 
 interface Running {
   job: Job
@@ -143,13 +166,20 @@ export class SessionJobs {
 
   /**
    * Queues a job. Asking again for work already queued or running on that Frame returns that job
-   * instead of queueing it twice. A picture (a Roleplay Frame's Image Prompt) goes ahead of queued
-   * image jobs: a new Reply's is written while its Text Model is still loaded, not after a batch
-   * of renders that each unload it. `machine` is where it runs (`machineKey`).
+   * instead of queueing it twice; a render by another Image Model is other work. A picture (a
+   * Roleplay Frame's Image Prompt) goes ahead of queued image jobs: a new Reply's is written while
+   * its Text Model is still loaded, not after a batch of renders that each unload it. `machine` is
+   * where it runs (`machineKey`), and `image` a render's Image Model (`Job.image`).
    */
-  enqueue(sessionId: string, kind: JobKind, frameIndex: number, machine = 'here'): Job {
+  enqueue(
+    sessionId: string,
+    kind: JobKind,
+    frameIndex: number,
+    machine = 'here',
+    image?: ImageChoice,
+  ): Job {
     const jobs = this.#jobs.get(sessionId) ?? []
-    const same = jobs.find((j) => sameWork(j, kind, frameIndex) && j.status !== 'failed')
+    const same = jobs.find((j) => sameWork(j, kind, frameIndex, image) && j.status !== 'failed')
     if (same) return { ...same }
     const job: Job = {
       id: crypto.randomUUID().slice(0, 8),
@@ -158,6 +188,7 @@ export class SessionJobs {
       status: 'queued',
       createdAt: new Date().toISOString(),
       machine,
+      ...(image && { image }),
     }
     const ahead = kind === 'picture'
       ? jobs.findIndex((j) => j.status === 'queued' && IMAGE_JOBS.includes(j.kind))
@@ -194,7 +225,7 @@ export class SessionJobs {
     if (!failed) return false
     const rest = jobs.filter((j) => j.id !== jobId)
     const again = rest.some((j) =>
-      sameWork(j, failed.kind, failed.frameIndex) && j.status !== 'failed'
+      sameWork(j, failed.kind, failed.frameIndex, failed.image) && j.status !== 'failed'
     )
     const { error: _, ...job } = failed
     this.#jobs.set(sessionId, again ? rest : [...rest, { ...job, status: 'queued' }])
@@ -364,7 +395,13 @@ export function jobRoutes(ctx: JobRoutesContext): Route[] {
         .map((j) => j.kind)
       const refused = await ctx.check(session, kind, index, pending)
       if (refused) return refused
-      ctx.jobs.enqueue(session.id, kind, index, await ctx.machineOf?.(session, kind))
+      ctx.jobs.enqueue(
+        session.id,
+        kind,
+        index,
+        await ctx.machineOf?.(session, kind),
+        kind === 'render' ? imageChoiceOf(session) : undefined,
+      )
       return json(ctx.jobs.list(session.id), 201)
     }],
 

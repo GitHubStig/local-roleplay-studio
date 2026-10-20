@@ -109,6 +109,7 @@ const { jobs, runningJobs, runningJob, runningOn, jobsFor, hasJob, queue, queueA
   {
     onSettled: () => reload(),
     onError: (text) => (notice.value = { kind: 'error', text }),
+    imageModel: () => session.value?.settings.imageModel,
   },
 )
 /**

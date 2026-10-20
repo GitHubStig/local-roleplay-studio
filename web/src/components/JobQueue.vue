@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Job } from '../api'
-import { JOB_NAMES, jobStatus } from '../jobs'
+import { useImageModels } from '../composables/useSettingsOptions'
+import { jobStatus } from '../jobs'
 
 /**
  * A Session's whole queue: running, queued and failed; clicking one goes to its Frame. Clear queue
@@ -18,6 +19,7 @@ withDefaults(
   { name: (index: number) => `Frame ${index}` },
 )
 defineEmits<{ go: [index: number]; retry: [job: Job]; drop: [job: Job]; clear: [] }>()
+const { jobName } = useImageModels()
 </script>
 
 <template>
@@ -47,7 +49,7 @@ defineEmits<{ go: [index: number]; retry: [job: Job]; drop: [job: Job]; clear: [
           :title="`Go to ${name(job.frameIndex)}`"
           @click="$emit('go', job.frameIndex)"
         >
-          <span class="font-medium">{{ JOB_NAMES[job.kind] }} · {{ name(job.frameIndex) }}</span>
+          <span class="font-medium">{{ jobName(job) }} · {{ name(job.frameIndex) }}</span>
           <span
             class="text-xs"
             :class="{

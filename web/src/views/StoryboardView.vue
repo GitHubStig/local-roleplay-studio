@@ -314,6 +314,7 @@ const { jobs, runningJobs, jobsFor, hasJob, queue, queueAll, dropJob, clear, ret
   },
   onError: (text) => (message.value = { kind: 'error', text }),
   reportFailures: true,
+  imageModel: () => session.value?.settings.imageModel,
 })
 /** A Frame's running job, if any, else the next queued one: what its status says it's doing. */
 const frameJob = (index: number) => {
@@ -634,7 +635,7 @@ const writingHere = computed(() => writingIndex.value !== null && writingIndex.v
 const waitingToWrite = (f: { index: number }) =>
   writingIndex.value !== null && f.index > writingIndex.value
 
-const { renderedParts } = useImageModels()
+const { renderedParts, jobName } = useImageModels()
 /** Writing the Frame, then rendering the picture it shows, once it has one, and by which model. */
 const timingsLabel = (f: StoryboardFrame) => {
   if (!f.timings) return ''
@@ -713,7 +714,7 @@ const imagesOn = computed(() => featureOn.value('images'))
             role="status"
           >
             <span class="animate-pulse">{{
-              busy ? statusLabel : `${JOB_NAMES[selectedJob!.kind]} · ${jobStatus(selectedJob!)}`
+              busy ? statusLabel : `${jobName(selectedJob!)} · ${jobStatus(selectedJob!)}`
             }}</span>
           </div>
           <div

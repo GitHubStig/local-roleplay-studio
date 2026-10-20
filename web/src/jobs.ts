@@ -66,11 +66,18 @@ export function formingOf(
   return { src: previewUrl(session.id, progress.step), opacity: progress.step / progress.total }
 }
 
-/** The picture forming for a job (`formingOf`), if it renders one: not an upscale or 3D. */
+/**
+ * The picture forming for a job (`formingOf`), if it renders one: not an upscale or 3D. A render
+ * goes by the backend it was queued with.
+ */
 export const jobForming = (
   session: Parameters<typeof formingOf>[0],
   job: Job | null | undefined,
 ) =>
   job && (job.kind === 'render' || job.kind === 'picture')
-    ? formingOf(session, job.phase, job.progress)
+    ? formingOf(
+      session && job.image ? { id: session.id, settings: job.image } : session,
+      job.phase,
+      job.progress,
+    )
     : null

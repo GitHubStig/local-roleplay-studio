@@ -36,6 +36,7 @@ import { roleplayRoutes } from './roleplay/routes.ts'
 import { checkRoleplayJob, type RoleplayJobContext, runRoleplayJob } from './roleplay/jobs.ts'
 import { restartRoleplay } from './roleplay/engine.ts'
 import {
+  asQueued,
   type Job,
   JOB_FEATURE,
   type JobEmit,
@@ -445,7 +446,8 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
   })
 
   async function runJob(id: string, job: Job, emit: JobEmit, signal: AbortSignal) {
-    const session = await deps.sessions.load(id)
+    const loaded = await deps.sessions.load(id)
+    const session = loaded && asQueued(loaded, job)
     if (session && job.kind === 'style') {
       return embedStyles(
         { store: deps.sessions, style: deps.style, renderQueue },

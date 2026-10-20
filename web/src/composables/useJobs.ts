@@ -11,7 +11,8 @@ const mainJob = (running: Job[]): Job | null =>
  * A Session's queued background work (a Roleplay's or a Chain's), followed while anything is
  * queued or running. A job that finishes or fails has changed the Session, so `onSettled` reloads
  * it; `onError` hears why a job couldn't be queued, and, with `reportFailures`, why one failed
- * (for a view that shows failures only in its Queue tab).
+ * (for a view that shows failures only in its Queue tab). `imageModel` is the Session's Image
+ * Model: a render queued by another one doesn't count as its render (`hasJob`).
  */
 export function useJobs(
   sessionId: string,
@@ -19,6 +20,7 @@ export function useJobs(
     onSettled: () => Promise<void> | void
     onError: (message: string) => void
     reportFailures?: boolean
+    imageModel?: () => string | undefined
   },
 ) {
   /** In the order queued, failed ones until dismissed. */
@@ -33,9 +35,15 @@ export function useJobs(
     mainJob(runningJobs.value.filter((j) => j.frameIndex === index))
   /** A Frame's jobs, in queue order. */
   const jobsFor = (index: number) => jobs.value.filter((j) => j.frameIndex === index)
-  /** A job of this kind is already queued or running on this Frame. */
+  /**
+   * A job of this kind is already queued or running on this Frame; for a render, by the Session's
+   * Image Model.
+   */
   const hasJob = (index: number, kind: JobKind) =>
-    openJobs.value.some((j) => j.frameIndex === index && j.kind === kind)
+    openJobs.value.some((j) =>
+      j.frameIndex === index && j.kind === kind &&
+      (!j.image || !opts.imageModel || j.image.imageModel === opts.imageModel())
+    )
 
   let timer: ReturnType<typeof setTimeout> | undefined
   function watchJobs() {

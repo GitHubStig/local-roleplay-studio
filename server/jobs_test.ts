@@ -1,5 +1,6 @@
 import { assertEquals } from '@std/assert'
-import { type Job, SessionJobs } from './jobs.ts'
+import { asQueued, type ImageChoice, type Job, SessionJobs } from './jobs.ts'
+import type { Session } from './session.ts'
 
 /** A queue whose jobs run until the test ends them: `started` lists them as `kind frame`. */
 function heldJobs() {
@@ -100,4 +101,24 @@ Deno.test('Between renders waits for every render running, on any machine', asyn
   await end('render 1')
   await between
   assertEquals(done, true)
+})
+
+const KREA: ImageChoice = { imageBackend: 'mflux', imageModel: 'krea-2', steps: 20 }
+const KLEIN: ImageChoice = { imageBackend: 'comfyui', imageModel: 'flux2-klein', steps: 4 }
+
+Deno.test('A Frame can be queued to render by two Image Models, each on its machine', () => {
+  const { jobs, running } = heldJobs()
+  jobs.enqueue('s', 'render', 0, 'here', KREA)
+  jobs.enqueue('s', 'render', 0, 'pc', KLEIN)
+  // Asking again for one already queued doesn't queue it twice.
+  jobs.enqueue('s', 'render', 0, 'pc', KLEIN)
+  assertEquals(jobs.list('s').map((j) => j.image?.imageModel), ['krea-2', 'flux2-klein'])
+  assertEquals(running(), ['render 0', 'render 0'])
+})
+
+Deno.test('A render runs with the Image Model it was queued with', () => {
+  const session = { settings: { ...KLEIN, seed: 7 } } as unknown as Session
+  const job = { kind: 'render', image: KREA } as Job
+  assertEquals(asQueued(session, job).settings, { ...KREA, seed: 7 } as Session['settings'])
+  assertEquals(asQueued(session, { kind: 'upscale' } as Job), session)
 })

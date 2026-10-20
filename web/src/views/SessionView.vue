@@ -346,6 +346,7 @@ const { jobs, jobsFor, hasJob, queue, queueAll, dropJob, clear, retry, refreshJo
   },
   onError: (message) => (frameError.value = message),
   reportFailures: true,
+  imageModel: () => session.value?.settings.imageModel,
 })
 /**
  * The Frames Render all would queue: those with no up-to-date picture by the Chain's Image Model
