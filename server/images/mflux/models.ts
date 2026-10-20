@@ -18,6 +18,8 @@ export interface MfluxModel {
    * Settings' steps choose one, and any other count renders at `defaultSteps`.
    */
   stepPresets?: readonly StepPreset[]
+  /** Guidance (`--guidance`): real CFG at above 1 on a model that has it. mflux's own default if not given. */
+  cfg?: number
   /** A LoRA passed as `--lora` on every render. */
   lora?: Lora
   /** Arguments passed on every render, after the rest. */
@@ -99,7 +101,7 @@ export const MFLUX_MODELS: readonly MfluxModel[] = [
     defaultSteps: 30,
     float16: true,
     // mflux's guidance is 0 (no CFG) unless given; its README runs the base at 4.
-    args: ['--guidance', '4'],
+    cfg: 4,
   },
   {
     id: 'krea-2',
@@ -197,7 +199,7 @@ export const MFLUX_MODELS: readonly MfluxModel[] = [
     baseModel: 'fibo',
     preQuantized: true,
     defaultSteps: 6,
-    args: ['--guidance', '1.0'],
+    cfg: 1,
     curlyQuotes: true,
   },
   {

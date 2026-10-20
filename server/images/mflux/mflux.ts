@@ -58,6 +58,7 @@ export function mfluxArgs(
     String(size.height),
     ...(quantize ? ['--quantize', String(settings.quantize)] : []),
     ...(settings.float16 && model.float16 ? ['--compute-precision', 'float16'] : []),
+    ...(model.cfg === undefined ? [] : ['--guidance', String(model.cfg)]),
     ...(model.lora ? loraArgs(model.lora) : []),
     ...(model.args ?? []),
     '--low-ram',

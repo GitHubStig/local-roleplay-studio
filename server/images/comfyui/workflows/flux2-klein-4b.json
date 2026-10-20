@@ -20,7 +20,7 @@
       "model": ["unet", 0],
       "positive": ["text", 0],
       "negative": ["negative", 0],
-      "cfg": 1
+      "cfg": "$cfg"
     }
   },
   "sampler": { "class_type": "KSamplerSelect", "inputs": { "sampler_name": "euler" } },

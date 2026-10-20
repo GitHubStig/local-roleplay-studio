@@ -27,7 +27,7 @@
       "latent_image": ["latent", 0],
       "seed": "$seed",
       "steps": "$steps",
-      "cfg": 1,
+      "cfg": "$cfg",
       "sampler_name": "euler",
       "scheduler": "simple",
       "denoise": 1

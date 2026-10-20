@@ -13,6 +13,8 @@ export interface ComfyModel {
   defaultSteps: number
   /** The only steps it renders at, when its workflow fixes them; any count otherwise. */
   stepChoices?: number[]
+  /** Fills its workflow's `$cfg`: real CFG (two passes a step) above 1. Only for a workflow that has one. */
+  cfg?: number
   /** For each loader placeholder (`$unet`, `$clip`, `$vae`): its model folder and file patterns. */
   files: Record<string, { folder: string; patterns: RegExp[] }>
 }
@@ -27,6 +29,7 @@ export const COMFYUI_MODELS: readonly ComfyModel[] = [
     label: 'Qwen-Image 2.1',
     // As ComfyUI's template, and mflux's default here (docs/bench/steps).
     defaultSteps: 25,
+    cfg: 1,
     files: {
       unet: {
         folder: 'diffusion_models',
@@ -46,6 +49,7 @@ export const COMFYUI_MODELS: readonly ComfyModel[] = [
     // Qwen's distilled DiT on the template's fixed 8 sigmas (not mflux's Viggle LoRA, which runs 6).
     defaultSteps: 8,
     stepChoices: [8],
+    cfg: 1,
     files: {
       unet: {
         folder: 'diffusion_models',
@@ -63,6 +67,7 @@ export const COMFYUI_MODELS: readonly ComfyModel[] = [
     id: 'flux2-klein-4b',
     label: 'FLUX.2 Klein 4B',
     defaultSteps: 4,
+    cfg: 1,
     files: {
       // Not flux-2-klein-base-4b, the undistilled model, which wants 20 steps at real CFG.
       unet: { folder: 'diffusion_models', patterns: [/^flux-2-klein-4b.*\.safetensors$/] },
@@ -78,6 +83,7 @@ export const COMFYUI_MODELS: readonly ComfyModel[] = [
     label: 'FLUX.3 Klein',
     // BFL's default for the distilled checkpoint (ComfyUI's template runs 15), with no guidance.
     defaultSteps: 16,
+    cfg: 1,
     files: {
       // Only the distilled `_sd_` files: the others are Klein Base, which wants 50 steps at CFG
       // 3.5. No nvfp4 build either: it needs a Blackwell card.
@@ -121,6 +127,7 @@ export const COMFYUI_MODELS: readonly ComfyModel[] = [
     label: 'MOSS-Image',
     // As ComfyUI's template, at real CFG (two passes a step).
     defaultSteps: 25,
+    cfg: 2.5,
     files: {
       // Only the instruction-tuned `_sft_` files: `_base_` is the checkpoint for fine-tuning.
       unet: {
@@ -138,6 +145,7 @@ export const COMFYUI_MODELS: readonly ComfyModel[] = [
     id: 'z-image-turbo',
     label: 'Z-Image Turbo',
     defaultSteps: 8,
+    cfg: 1,
     files: {
       unet: {
         folder: 'diffusion_models',

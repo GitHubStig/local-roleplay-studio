@@ -86,8 +86,8 @@ Deno.test('A ComfyUI render fills the workflow with the installed files, follows
       assertEquals(workflow.vae.inputs.vae_name, 'qwen_image_2.1_vae_bf16.safetensors')
       assertEquals(workflow.text.inputs.prompt, 'Kael at the bar.')
       assertEquals(
-        [workflow.sampler.inputs.seed, workflow.sampler.inputs.steps],
-        [7, 25],
+        [workflow.sampler.inputs.seed, workflow.sampler.inputs.steps, workflow.sampler.inputs.cfg],
+        [7, 25, 1],
       )
       assertEquals([workflow.latent.inputs.width, workflow.latent.inputs.height], [1024, 1024])
       // ComfyUI keeps nothing: the prompt leaves its history once ComfyUI has written it there
@@ -273,6 +273,7 @@ Deno.test('Every ComfyUI workflow loads, and fills with nothing left over', asyn
         prompt: 'p',
         seed: 1,
         steps: 2,
+        ...(model.cfg === undefined ? {} : { cfg: model.cfg }),
         width: 512,
         height: 512,
       },
@@ -290,6 +291,13 @@ Deno.test('Every ComfyUI workflow loads, and fills with nothing left over', asyn
   for (const { id, values } of fills) {
     const filled = fillWorkflow(await loadModelWorkflow(id), values)
     assertEquals(JSON.stringify(filled).includes('"$'), false)
+  }
+})
+
+Deno.test("A model has a CFG exactly when its workflow takes one, so it's never dropped", async () => {
+  for (const model of COMFYUI_MODELS) {
+    const takesCfg = JSON.stringify(await loadModelWorkflow(model.id)).includes('"$cfg"')
+    assertEquals(model.cfg !== undefined, takesCfg, model.id)
   }
 })
 

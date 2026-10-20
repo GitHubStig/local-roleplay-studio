@@ -33,7 +33,7 @@
       "latent_image": ["latent", 0],
       "seed": "$seed",
       "steps": "$steps",
-      "cfg": 2.5,
+      "cfg": "$cfg",
       "sampler_name": "er_sde",
       "scheduler": "simple",
       "denoise": 1

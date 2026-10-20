@@ -24,7 +24,12 @@
   },
   "guider": {
     "class_type": "CFGGuider",
-    "inputs": { "model": ["cache", 0], "positive": ["text", 0], "negative": ["text", 1], "cfg": 1 }
+    "inputs": {
+      "model": ["cache", 0],
+      "positive": ["text", 0],
+      "negative": ["text", 1],
+      "cfg": "$cfg"
+    }
   },
   "sampler": { "class_type": "KSamplerSelect", "inputs": { "sampler_name": "euler" } },
   "sigmas": {

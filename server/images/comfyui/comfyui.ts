@@ -51,6 +51,7 @@ export function comfyuiImageGenerator(opts: {
         prompt: req.prompt,
         seed: req.seed,
         steps: req.settings.steps,
+        ...(model.cfg === undefined ? {} : { cfg: model.cfg }),
         width: size.width,
         height: size.height,
       })

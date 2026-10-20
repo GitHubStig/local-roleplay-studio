@@ -123,7 +123,7 @@ Deno.test('mfluxArgs runs FIBO 1.5 as FIBO, at its own guidance', () => {
   ])
   assertEquals(args.slice(args.indexOf('--guidance'), args.indexOf('--guidance') + 2), [
     '--guidance',
-    '1.0',
+    '1',
   ])
 })
 

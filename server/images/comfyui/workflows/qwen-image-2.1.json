@@ -28,7 +28,7 @@
       "model": ["unet", 0],
       "seed": "$seed",
       "steps": "$steps",
-      "cfg": 1,
+      "cfg": "$cfg",
       "sampler_name": "euler",
       "scheduler": "simple",
       "positive": ["text", 0],
