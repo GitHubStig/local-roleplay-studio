@@ -600,6 +600,22 @@ Measured on the Windows PC (ComfyUI 0.42.1), through the app's own ComfyUI gener
 
 So on the 4070 MOSS-Image costs about what Qwen-Image 2.1 does, despite its 12.7 GB of weights and two passes a step. The 16 GB of RAM held, with the least free 0.9 GB lower than Qwen's. Not checked: more than one seed or prompt, several Frames in a Session (and Ollama loaded beside it, which the RAM may not allow), tags, its layout captions (`MOSSImageLayoutPrompt`), and the Mac.
 
+### Ming-Image on ComfyUI with an RTX 4070 (2026-10-20)
+
+**Ming-Image 0.1 Design** (`ming-image`, the same id as mflux's) runs on ComfyUI too: it's built into 0.42.1 (`comfy_extras/nodes_ming.py`), no custom nodes. Comfy-Org's repack (`Comfy-Org/Ming-Image`, MIT): the DiT `ming_image_0.1_design_int8_convrot` (5.75 GB), its ~16B MoE text encoder Ling-mini 2.0 as **w4a8** (`ming_image_0.1_ling_mini_2.0_w4a8`, 11.9 GB) and its VAE (0.24 GB). ComfyUI's template names the int8 encoder instead, but at 18.2 GB it's more than the PC's 16 GB of RAM; the app takes w4a8 first and falls back to int8, then bf16. The `_layer_` files are Ming-Image-Layer (a picture split into layers), never picked. The workflow is the template's (12 steps, no CFG, euler, simple, `ModelSamplingFlux` at the picture's size) without its prompt enhancer (Qwen3.8-27B), and sent as RGB (`SplitImageWithAlpha`), as Qwen-Image 2.1's is; mflux flattens onto white instead, which a scene with no transparency doesn't tell apart.
+
+It keeps the template's **Comfy Kitchen int8 attention** (`ModelAttentionBackend`): attention's queries and keys rounded to 8 bits and multiplied on the card's int8 tensor cores. Where it can't run (no NVIDIA or AMD card, as on a Mac) the node logs a warning and falls back to PyTorch's attention, so the workflow still runs there (read in ComfyUI's code; not run on the Mac).
+
+Measured on the Windows PC (ComfyUI 0.42.1), through the app's own ComfyUI generator: one prose prompt from the tavern scenario (a traveller in a rain-soaked cloak at a corner table by the window, a broad innkeeper with rolled sleeves setting a mug down, firelight, lanterns, beams), seed 42, 832×1216, ComfyUI's models freed before each, Ollama unloaded. Ming-Image twice with each attention, alternating:
+
+| Model | Steps | From cold | From step 1 | Peak VRAM | Least RAM free | What it drew |
+|---|---|---|---|---|---|---|
+| Ming-Image, Kitchen attention | 12 | 15.8–16.0 s (18.3 s the first time, its files read from disk) | 5.7–6.1 s | 10.0–10.9 GB | 1.9 GB of 16 | everything asked for, and closest to the words: the cloak beaded with rain, the innkeeper setting the mug down; painterly. A scrawled signature at the bottom right |
+| Ming-Image, PyTorch attention | 12 | 16.8–17.6 s | 6.6–6.9 s | 9.7–10.4 GB | 1.9 GB | the same composition, small things moved (the window's panes, a chair); the signature too |
+| Qwen-Image 2.1 | 25 | 20.8 s | 12.9 s | 11.4 GB | 4.6 GB | everything, the innkeeper standing at the table rather than setting the mug down; the traveller seen from behind |
+
+So on the 4070 Ming-Image is a little faster than Qwen-Image 2.1, and Kitchen attention takes ~15% off its sampling (about a second at this size, more at larger ones). The 16 GB of RAM held, about as close as MOSS-Image's. Each run gave the same file each time for a seed. Not checked: more seeds or prompts, the signature's frequency (a design model's habit; a negative can't be given with no CFG), several Frames in a Session (and Ollama loaded beside it), tags, and Kitchen attention for the other ComfyUI Image Models.
+
 ### mflux 0.23: FLUX.3 Klein and Qwen-Image 2.1 Turbo on the Mac (2026-10-17)
 
 mflux 0.23 (2026-10-16) runs two Image Models the app had only on ComfyUI, so both are now mflux Image Models too, under the same ids: **FLUX.3 Klein** (`flux3-klein`, `mflux-generate-flux3`, the distilled checkpoint: 16 steps, no guidance; gated, 20.3 GB) and **Qwen-Image 2.1 Turbo** (`qwen-image-2.1-turbo`, Qwen's own 8-step checkpoint through `mflux-generate-qwen-2.1`, no CFG, no step cache; 32.5 GB).

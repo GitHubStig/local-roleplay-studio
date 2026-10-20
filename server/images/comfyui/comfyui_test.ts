@@ -18,19 +18,21 @@ const MAC_FILES: Record<string, string[]> = {
 }
 
 /**
- * The Windows PC's: Qwen-Image 2.1 and its Turbo, FLUX.2 Klein 4B, FLUX.3 Klein, MOSS-Image and
- * Z-Image Turbo.
+ * The Windows PC's: Qwen-Image 2.1 and its Turbo, FLUX.2 Klein 4B, FLUX.3 Klein, Ming-Image,
+ * MOSS-Image and Z-Image Turbo.
  */
 const PC_FILES: Record<string, string[]> = {
   diffusion_models: [
     'flux-2-klein-4b.safetensors',
     'flux3_image_klein_sd_int8_convrot.safetensors',
+    'ming_image_0.1_design_int8_convrot.safetensors',
     'moss_image_sft_int8_convrot.safetensors',
     'qwen_image_2.1_int8_convrot.safetensors',
     'qwen_image_2.1_turbo_int8_convrot.safetensors',
     'z_image_turbo_int8_convrot.safetensors',
   ],
   text_encoders: [
+    'ming_image_0.1_ling_mini_2.0_w4a8.safetensors',
     'qwen3.5_9b_w4a8_gptq.safetensors',
     'qwen3vl_4b_int8_convrot.safetensors',
     'qwen3vl_8b_int8_convrot.safetensors',
@@ -40,6 +42,7 @@ const PC_FILES: Record<string, string[]> = {
     'ae.safetensors',
     'flux2-vae.safetensors',
     'flux2-vae_small.safetensors',
+    'ming_image_vae_bf16.safetensors',
     'qwen_image_2.1_vae_bf16.safetensors',
   ],
 }
@@ -311,7 +314,7 @@ Deno.test('Files are picked by the first pattern installed, so each machine can 
   )
 })
 
-Deno.test("Qwen-Image 2.1 never picks its Turbo's DiT, nor a Klein its undistilled base", () => {
+Deno.test("Qwen-Image 2.1 never picks its Turbo's DiT, a Klein its undistilled base, nor Ming-Image its Layer", () => {
   const withDiTs = (dits: string[]) => (f: string) =>
     f === 'diffusion_models' ? dits : PC_FILES[f] ?? []
   const model = (id: string) => COMFYUI_MODELS.find((m) => m.id === id)!
@@ -332,6 +335,12 @@ Deno.test("Qwen-Image 2.1 never picks its Turbo's DiT, nor a Klein its undistill
         'flux3_image_klein_int8_convrot.safetensors',
         'flux3_image_klein_base_int8_convrot.safetensors',
       ]),
+    )
+  )
+  assertThrows(() =>
+    pickFiles(
+      model('ming-image'),
+      withDiTs(['ming_image_0.1_design_layer_int8_convrot.safetensors']),
     )
   )
 })

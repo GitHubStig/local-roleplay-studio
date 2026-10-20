@@ -94,6 +94,29 @@ export const COMFYUI_MODELS: readonly ComfyModel[] = [
     },
   },
   {
+    id: 'ming-image',
+    label: 'Ming-Image 0.1 Design',
+    // As ComfyUI's template, and mflux's default.
+    defaultSteps: 12,
+    files: {
+      // Only Design: the `_layer_` files are Ming-Image-Layer, which splits a picture into layers.
+      unet: {
+        folder: 'diffusion_models',
+        patterns: [/^ming_image_0\.1_design_int8/, /^ming_image_0\.1_design_bf16/],
+      },
+      // Its ~16B MoE encoder (Ling-mini 2.0): w4a8 first (12 GB): int8 is 18 GB, more than the PC's RAM.
+      clip: {
+        folder: 'text_encoders',
+        patterns: [
+          /^ming_image_0\.1_ling_mini_2\.0_w4a8/,
+          /^ming_image_0\.1_ling_mini_2\.0_int8/,
+          /^ming_image_0\.1_ling_mini_2\.0_bf16/,
+        ],
+      },
+      vae: { folder: 'vae', patterns: [/^ming_image_vae/] },
+    },
+  },
+  {
     id: 'moss-image',
     label: 'MOSS-Image',
     // As ComfyUI's template, at real CFG (two passes a step).
