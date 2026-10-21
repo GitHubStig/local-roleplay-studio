@@ -3,7 +3,7 @@ import { error, json, readJson, type Route } from './http.ts'
 import type { ImageGenerator } from './images/imageGenerator.ts'
 import { IMAGE_BACKENDS, type ImageBackendKind, imageModelsOf } from './images/imageModels.ts'
 import type { ComfyStatus } from './comfyui/status.ts'
-import { UPSCALERS } from './images/mflux/models.ts'
+import { UPSCALERS } from './images/upscalers.ts'
 import { crossedLimit, LimitError, setLimitsEnabled } from './limits.ts'
 import {
   connectionOf,

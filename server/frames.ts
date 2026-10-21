@@ -8,7 +8,7 @@ import {
   withPicture,
 } from './pictures.ts'
 import type { ImageGenerator } from './images/imageGenerator.ts'
-import type { Upscaler } from './images/mflux/models.ts'
+import type { Upscaler } from './images/upscalers.ts'
 import { crossedLimit, limitsEnabled } from './limits.ts'
 import { mightNameAPerson, type TextModel } from './textModel.ts'
 import type { Previews } from './previews.ts'

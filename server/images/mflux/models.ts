@@ -222,13 +222,6 @@ export const MFLUX_MODELS: readonly MfluxModel[] = [
   },
 ]
 
-/** The SeedVR2 upscalers mflux offers; the model name is also the id. */
-export const UPSCALERS = [
-  { id: 'seedvr2-7b', label: 'SeedVR2 7B (sharper)' },
-  { id: 'seedvr2-3b', label: 'SeedVR2 3B (a little faster)' },
-] as const
-export type Upscaler = (typeof UPSCALERS)[number]['id']
-
 export function findMfluxModel(id: string): MfluxModel | undefined {
   return MFLUX_MODELS.find((m) => m.id === id)
 }

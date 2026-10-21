@@ -1,4 +1,4 @@
-import type { Upscaler } from '../mflux/models.ts'
+import type { Upscaler } from '../upscalers.ts'
 
 /**
  * An Image Model as ComfyUI runs it: a workflow in API format (`workflows/<id>.json`, with

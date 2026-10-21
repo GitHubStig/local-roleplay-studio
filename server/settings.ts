@@ -5,7 +5,7 @@ import {
   type ImageBackendKind,
   imageModelsOf,
 } from './images/imageModels.ts'
-import { type Upscaler, UPSCALERS } from './images/mflux/models.ts'
+import { type Upscaler, UPSCALERS } from './images/upscalers.ts'
 import { ART_STYLES, type ArtStyle } from './roleplay/art.ts'
 import { type Feature, FEATURES } from './features.ts'
 import { TEXT_BACKENDS, type TextBackendKind } from './text/backend.ts'
