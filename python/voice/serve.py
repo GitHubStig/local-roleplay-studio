@@ -23,10 +23,15 @@ for reuse unless told otherwise: left alone, the service grew to 36 GB with only
 loaded, so its cache is capped and cleared after every request. A model is downloaded from
 Hugging Face the first time it's needed (/health says which while it is); `--download` fetches
 both ahead of time and exits.
+
+It reads and writes only under `--root` (the server's `sessions/`), and takes only JSON: a web page
+can't send that across sites without asking first, which this service never answers, so a page open
+in the browser can't have it write audio over files elsewhere.
 """
 import argparse
 import gc
 import json
+import os
 import re
 import threading
 import time
@@ -104,8 +109,20 @@ def generate(m, out, seed, **kwargs):
     return {'seconds': round(time.time() - start, 2), 'duration': round(len(audio) / m.sample_rate, 2)}
 
 
+ROOT = None
+
+
+def under_root(path):
+    """The path, if it's inside `--root` (links resolved); otherwise a ValueError."""
+    real = os.path.realpath(path)
+    if os.path.commonpath([ROOT, real]) != ROOT:
+        raise ValueError(f'{path} is outside {ROOT}')
+    return real
+
+
 def design(req):
-    return generate(model(DESIGN_MODEL), req['out'], req.get('seed', 0),
+    out = under_root(req['out'])
+    return generate(model(DESIGN_MODEL), out, req.get('seed', 0),
                     text=req['text'], instruct=req['description'])
 
 
@@ -127,10 +144,11 @@ def directed(text, pace=None, sound=None, whisper=False):
 
 
 def speak(req):
+    ref_path, out = under_root(req['ref']), under_root(req['out'])
     m = model(SPEAK_MODEL)
-    ref = load_audio(req['ref'], sample_rate=m.sample_rate)
+    ref = load_audio(ref_path, sample_rate=m.sample_rate)
     text = directed(req['text'], req.get('pace'), req.get('sound'), req.get('whisper', False))
-    return generate(m, req['out'], req.get('seed', 0), text=text, ref_audio=ref,
+    return generate(m, out, req.get('seed', 0), text=text, ref_audio=ref,
                     ref_text=req['refText'], **SPEAK_SAMPLING)
 
 
@@ -154,6 +172,8 @@ class Handler(BaseHTTPRequestHandler):
         work = {'/design': design, '/speak': speak}.get(self.path)
         if not work:
             return self.reply(404, {'error': 'Not found'})
+        if self.headers.get_content_type() != 'application/json':
+            return self.reply(415, {'error': 'Send JSON'})
         try:
             req = json.loads(self.rfile.read(int(self.headers.get('Content-Length', 0))) or b'{}')
             with lock:
@@ -180,6 +200,7 @@ def unload_when_idle(idle):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--port', type=int, default=8791)
+    parser.add_argument('--root', help='the only folder voices are read from and written to')
     # Reloading Higgs takes 2-3 s (even straight after a 20 GB Image Model), so it needn't linger.
     parser.add_argument('--idle', type=int, default=60, help='seconds unused before unloading')
     parser.add_argument('--download', action='store_true', help='fetch both models and exit')
@@ -189,6 +210,10 @@ def main():
             model(repo)
         print('Both voice models are downloaded.')
         return
+    if not args.root:
+        parser.error('--root is required')
+    global ROOT
+    ROOT = os.path.realpath(args.root)
     threading.Thread(target=unload_when_idle, args=(args.idle,), daemon=True).start()
     # Threaded so /health answers while a voice is made (the models still take turns, by `lock`).
     ThreadingHTTPServer(('127.0.0.1', args.port), Handler).serve_forever()

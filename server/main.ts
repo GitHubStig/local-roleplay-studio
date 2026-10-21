@@ -31,6 +31,7 @@ import {
 import { comfyBase } from './comfyui/client.ts'
 
 const port = Number(Deno.env.get('PORT') ?? 8787)
+const sessionsDir = fromFileUrl(new URL('../sessions/', import.meta.url))
 
 // What this machine can run, worked out once: a backend it can't run isn't set up at all, and
 // Settings says why (`features.ts`). IMAGE_GENERATOR=placeholder renders SVG cards instead of
@@ -62,7 +63,7 @@ const handler = createHandler({
   listTextModels: (connection, apiKey) => text(connection, apiKey).listModels(),
   comfyuiStatus,
   scenarios: dirScenarioLibrary(new URL('../scenarios/', import.meta.url)),
-  sessions: dirSessionStore(new URL('../sessions/', import.meta.url)),
+  sessions: dirSessionStore(sessionsDir),
   exports: { dir: fromFileUrl(new URL('../exports/', import.meta.url)), page: buildComparisonPage },
   textModel: (c) => chatTextModel(chat(c)),
   roleplayModel: (c) => chatRoleplayModel(chat(c)),
@@ -90,7 +91,9 @@ const handler = createHandler({
   // Voices with the backend Settings choose now: the voice service where it runs (a Mac), or the
   // ComfyUI at Settings' address with TTS Audio Suite's nodes.
   voice: voiceBackends({
-    mlx: features.voices.available ? loggedVoice(voiceService(), 'mlx-audio') : undefined,
+    mlx: features.voices.available
+      ? loggedVoice(voiceService({ root: sessionsDir }), 'mlx-audio')
+      : undefined,
     comfyui: loggedVoice(
       comfyuiVoiceEngine({ baseUrl: async () => (await settings.load()).imageBaseUrl }),
       'comfyui',

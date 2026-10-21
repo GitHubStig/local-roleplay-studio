@@ -3,13 +3,19 @@ import { join } from '@std/path'
 import { withTempDir } from '../testing.ts'
 import { voiceService } from './voice.ts'
 
-/** A stand-in voice service: answers health checks, and goes away when asked (`stop`). */
+/**
+ * A stand-in voice service: answers health checks, takes only JSON as the real one does, and goes
+ * away when asked (`stop`).
+ */
 const STUB = `
 const port = Number(Deno.args[0])
 Deno.serve({ port, hostname: '127.0.0.1', onListen() {} }, (req) => {
   const path = new URL(req.url).pathname
   if (path === '/quit') setTimeout(() => Deno.exit(0), 50)
-  return path === '/health' ? Response.json({ ok: true }) : Response.json({ seconds: 0 })
+  if (path === '/health') return Response.json({ ok: true })
+  return req.headers.get('content-type') === 'application/json'
+    ? Response.json({ seconds: 0 })
+    : Response.json({ error: 'Send JSON' }, { status: 415 })
 })
 `
 
@@ -26,6 +32,7 @@ Deno.test('The voice service is started on first use, and again if it has gone a
     const port = 18800 + Math.floor(Math.random() * 500)
     const started: number[] = []
     const voice = voiceService({
+      root: dir,
       port,
       startLimitMs: 20_000,
       command: (p) => (started.push(p), ['deno', 'run', '--allow-net', stub, String(p)]),
@@ -67,6 +74,7 @@ Deno.test('While the voice service downloads a model, the caller hears of it, th
     await Deno.writeTextFile(stub, DOWNLOADING_STUB)
     const port = 18800 + Math.floor(Math.random() * 500)
     const voice = voiceService({
+      root: dir,
       port,
       startLimitMs: 20_000,
       command: (p) => ['deno', 'run', '--allow-net', stub, String(p)],

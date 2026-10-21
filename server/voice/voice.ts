@@ -63,6 +63,8 @@ export interface VoiceEngine {
 }
 
 export interface VoiceServiceOptions {
+  /** The only folder it reads voices from and writes them to: the Sessions'. */
+  root: string
   port?: number
   /** How long the service may take to start; its first start installs its Python packages. */
   startLimitMs?: number
@@ -73,7 +75,7 @@ export interface VoiceServiceOptions {
 const SCRIPT = fromFileUrl(new URL('../../python/voice/serve.py', import.meta.url))
 
 /** The voice service, started on first use. */
-export function voiceService(opts: VoiceServiceOptions = {}): VoiceEngine {
+export function voiceService(opts: VoiceServiceOptions): VoiceEngine {
   const port = opts.port ?? 8791
   const base = `http://127.0.0.1:${port}`
   let starting: Promise<void> | null = null
@@ -84,7 +86,7 @@ export function voiceService(opts: VoiceServiceOptions = {}): VoiceEngine {
   async function start(): Promise<void> {
     if (await healthy()) return
     const [cmd, ...args] = opts.command?.(port) ??
-      ['uv', 'run', '--quiet', SCRIPT, '--port', String(port)]
+      ['uv', 'run', '--quiet', SCRIPT, '--port', String(port), '--root', opts.root]
     const child = track(
       new Deno.Command(cmd, {
         args,
@@ -115,7 +117,13 @@ export function voiceService(opts: VoiceServiceOptions = {}): VoiceEngine {
       throw err
     })
   const post = (path: string, body: object, signal: AbortSignal) =>
-    fetch(`${base}${path}`, { method: 'POST', body: JSON.stringify(body), signal })
+    fetch(`${base}${path}`, {
+      method: 'POST',
+      // The service takes only JSON (`serve.py`).
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+      signal,
+    })
 
   /** Asks the service every second, until `done`, whether it's downloading a model. */
   async function watchDownloads(done: Promise<unknown>, onDownload: OnDownload) {
