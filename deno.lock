@@ -16,7 +16,7 @@
     "npm:@jsquash/resize@^2.1.1": "2.1.1",
     "npm:@jsquash/webp@^1.5.0": "1.5.0",
     "npm:@observablehq/plot@~0.6.17": "0.6.17",
-    "npm:@sparkjsdev/spark@^2.3.0": "2.3.0_three@0.180.0",
+    "npm:@sparkjsdev/spark@^2.3.0": "2.3.1_three@0.180.0",
     "npm:@tailwindcss/vite@^4.3.3": "4.3.3_vite@8.3.0_@types+node@24.13.6",
     "npm:@types/node@^24.13.3": "24.13.6",
     "npm:@types/three@0.180": "0.180.0",
@@ -226,8 +226,8 @@
     "@rolldown/pluginutils@1.0.1": {
       "integrity": "sha512-2j9bGt5Jh8hj+vPtgzPtl72j0yRxHAyumoo6TNfAjsLB04UtpSvPbPcDcBMxz7n+9CYB0c1GxQFxYRg2jimqGw=="
     },
-    "@sparkjsdev/spark@2.3.0_three@0.180.0": {
-      "integrity": "sha512-jixvnea2E9dpjwLG8einXkfhyEKo99QPvaMWsk/9c+homKV/qmywY/1g5YJHfH2/XNIyYyebfiAYW8vwPLtZgQ==",
+    "@sparkjsdev/spark@2.3.1_three@0.180.0": {
+      "integrity": "sha512-K+SyIbkO/dx1TLLudK8Jp3/noS13z/kdNPo6OK2waxQaGy81HBmKGnNBT/t/K9Ew3dsIXmWqsJXxGfmAu1T5Jg==",
       "dependencies": [
         "fflate",
         "three"
