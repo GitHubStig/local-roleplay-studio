@@ -16,17 +16,17 @@
     "npm:@jsquash/resize@^2.1.1": "2.1.1",
     "npm:@jsquash/webp@^1.5.0": "1.5.0",
     "npm:@observablehq/plot@~0.6.17": "0.6.17",
-    "npm:@sparkjsdev/spark@^2.4.0": "2.4.0_three@0.180.0",
+    "npm:@sparkjsdev/spark@^2.4.0": "2.4.0_three@0.186.1",
     "npm:@tailwindcss/vite@^4.3.3": "4.3.3_vite@8.3.4_@types+node@24.19.2",
     "npm:@types/node@^24.19.2": "24.19.2",
-    "npm:@types/three@0.180": "0.180.0",
+    "npm:@types/three@0.186": "0.186.0",
     "npm:@vitejs/plugin-vue@^6.0.10": "6.0.10_vite@8.3.4_vue@3.5.44_@types+node@24.19.2_typescript@6.0.3",
     "npm:@vue/test-utils@^2.5.1": "2.5.1_vue@3.5.44_typescript@6.0.3",
     "npm:@vue/tsconfig@~0.9.1": "0.9.1_typescript@6.0.3_vue@3.5.44",
     "npm:@vueuse/core@15": "15.0.0_vue@3.5.44_typescript@6.0.3",
     "npm:happy-dom@^20.14.6": "20.14.6",
     "npm:tailwindcss@^4.3.3": "4.3.3",
-    "npm:three@0.180": "0.180.0",
+    "npm:three@~0.186.1": "0.186.1",
     "npm:typescript@~6.0.3": "6.0.3",
     "npm:vite-plugin-singlefile@^2.3.4": "2.3.4_vite@8.3.4_@types+node@24.19.2",
     "npm:vite@^8.3.4": "8.3.4_@types+node@24.19.2",
@@ -246,7 +246,7 @@
     "@rolldown/pluginutils@1.0.1": {
       "integrity": "sha512-2j9bGt5Jh8hj+vPtgzPtl72j0yRxHAyumoo6TNfAjsLB04UtpSvPbPcDcBMxz7n+9CYB0c1GxQFxYRg2jimqGw=="
     },
-    "@sparkjsdev/spark@2.4.0_three@0.180.0": {
+    "@sparkjsdev/spark@2.4.0_three@0.186.1": {
       "integrity": "sha512-aUjgBfhwDRcF3nUwiAD6Nh7IwvxEmW9liz2qrAXIm2BlPYBmn81QbXIpGFLBSr/o0TKGvEXbNIsKujgPGV/7QQ==",
       "dependencies": [
         "three"
@@ -374,14 +374,13 @@
     "@types/stats.js@0.17.4": {
       "integrity": "sha512-jIBvWWShCvlBqBNIZt0KAshWpvSjhkwkEu4ZUcASoAvhmrgAUI2t1dXrjSL4xXVLB4FznPrIsX3nKXFl/Dt4vA=="
     },
-    "@types/three@0.180.0": {
-      "integrity": "sha512-ykFtgCqNnY0IPvDro7h+9ZeLY+qjgUWv+qEvUt84grhenO60Hqd4hScHE7VTB9nOQ/3QM8lkbNE+4vKjEpUxKg==",
+    "@types/three@0.186.0": {
+      "integrity": "sha512-mxYSBpDC+D0pLfSP6sW4WZTcT+nrtmZcimMqnVmy36Hte3XpeYSrvgg4TRdaM1GemGog1AWzI5qL2VoIfMXbJQ==",
       "dependencies": [
         "@dimforge/rapier3d-compat",
         "@tweenjs/tween.js",
         "@types/stats.js",
         "@types/webxr",
-        "@webgpu/types",
         "fflate",
         "meshoptimizer"
       ]
@@ -593,9 +592,6 @@
       "dependencies": [
         "vue"
       ]
-    },
-    "@webgpu/types@0.1.74": {
-      "integrity": "sha512-lgiI4hbuLcI9unnm2cL/tvCaQU45dp0xcLWJh5uB/9MBGvIA4F8XIk7nSiBeg+K4xWGYwgZKn80LmERI5CxoTA=="
     },
     "abbrev@5.0.0": {
       "integrity": "sha512-/XrFJgzQQQHpti1raDJC6m4ws6aNktmjBlhk8Fdlk7LwCEuDoieEJJY9OFHjfiFJFFRM2tK+Ky/IsfbbmlMu1w=="
@@ -1194,8 +1190,8 @@
         "@jridgewell/sourcemap-codec"
       ]
     },
-    "meshoptimizer@0.22.0": {
-      "integrity": "sha512-IebiK79sqIy+E4EgOr+CAw+Ke8hAspXKzBd0JdgEmPHiAwmvEj2S4h1rfvo+o/BnfEYd/jAOg5IeeIjzlzSnDg=="
+    "meshoptimizer@1.1.1": {
+      "integrity": "sha512-oRFNWJRDA/WTrVj7NWvqa5HqE1t9MYDj2VaWirQCzCCrAd2GHrqR/sQezCxiWATPNlKTcRaPRHPJwIRoPBAp5g=="
     },
     "minimatch@10.2.6": {
       "integrity": "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A==",
@@ -1343,8 +1339,8 @@
     "tapable@2.3.3": {
       "integrity": "sha512-uxc/zpqFg6x7C8vOE7lh6Lbda8eEL9zmVm/PLeTPBRhh1xCgdWaQ+J1CUieGpIfm2HdtsUpRv+HshiasBMcc6A=="
     },
-    "three@0.180.0": {
-      "integrity": "sha512-o+qycAMZrh+TsE01GqWUxUIKR1AL0S8pq7zDkYOQw8GqfX8b8VoCKYUoHbhiX5j+7hr8XsuHDVU6+gkQJQKg9w=="
+    "three@0.186.1": {
+      "integrity": "sha512-blFeqb49wRCSGUGj7gtpfnSGHy2lwDk94RhUmS1c/hTby70kvChbWpkJ4Pm1390LqzzvTmzgXKHPEafJwCb8jA=="
     },
     "tinybench@6.2.2": {
       "integrity": "sha512-nIZ2N2dFpjBsg2hgitKu7mA+FvsIJuGJOwysRngmVRRmWgR/UyPjwJj8c/fT/dhm8EkHnF5EOogRf+0Z2qrimA=="
@@ -1531,14 +1527,14 @@
             "npm:@sparkjsdev/spark@^2.4.0",
             "npm:@tailwindcss/vite@^4.3.3",
             "npm:@types/node@^24.19.2",
-            "npm:@types/three@0.180",
+            "npm:@types/three@0.186",
             "npm:@vitejs/plugin-vue@^6.0.10",
             "npm:@vue/test-utils@^2.5.1",
             "npm:@vue/tsconfig@~0.9.1",
             "npm:@vueuse/core@15",
             "npm:happy-dom@^20.14.6",
             "npm:tailwindcss@^4.3.3",
-            "npm:three@0.180",
+            "npm:three@~0.186.1",
             "npm:typescript@~6.0.3",
             "npm:vite-plugin-singlefile@^2.3.4",
             "npm:vite@^8.3.4",
