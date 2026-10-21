@@ -144,9 +144,6 @@ export function excerpt(text: string | undefined): string | null {
   return plain.length > 160 ? `${plain.slice(0, 157).trimEnd()}…` : plain
 }
 
-export const currentPrompt = (s: ChainSession): ImagePrompt | null =>
-  s.frames.at(-1)?.prompt ?? null
-
 export interface SessionStore {
   /** Absolute directory holding a Session's JSON and images. */
   dir(id: string): string

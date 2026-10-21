@@ -64,7 +64,6 @@ export interface VoiceDeps {
 
 /** What of a Reply is spoken: its dialogue, or the Character's private thought. */
 export type SpokenPart = 'dialogue' | 'thought'
-export const SPOKEN_PARTS: readonly SpokenPart[] = ['dialogue', 'thought']
 
 /** The words of a Reply's part to speak; '' if it has none. */
 export const spokenText = (frame: RoleplayFrame, part: SpokenPart) =>
