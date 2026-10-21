@@ -1,26 +1,11 @@
 <script setup lang="ts">
-import { useEventListener } from '@vueuse/core'
-import {
-  computed,
-  nextTick,
-  onActivated,
-  onBeforeUnmount,
-  onDeactivated,
-  onMounted,
-  ref,
-  useTemplateRef,
-  watch,
-} from 'vue'
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
-  ApiError,
-  cancelFrame,
   chainFromStoryboard,
-  changedSinceRender,
   type Activity,
   DOWNLOADING,
   editStoryboardFrame,
-  getSession,
   imageUrl,
   insertBeat,
   isWritten,
@@ -30,7 +15,6 @@ import {
   MAX_FRAMES,
   MAX_SHOWN,
   type Outcome,
-  type PicturedFrame,
   planStoryboard,
   removeBeat,
   reorderBeats,
@@ -41,7 +25,6 @@ import {
   type StoryboardEvent,
   type StoryboardFrame,
   type StoryboardSession,
-  shownPicture,
   writeStoryboard,
 } from '../api'
 import CollapsibleTextarea from '../components/CollapsibleTextarea.vue'
@@ -64,8 +47,7 @@ import { useJobs } from '../composables/useJobs'
 import { useDragReorder } from '../composables/useDragReorder'
 import { showPickedFrame, useFrameKeys } from '../composables/useFrameKeys'
 import { JOB_NAMES, jobForming, jobStatus, queueTabLabel, sweepOf } from '../jobs'
-import { clearCurrentSession, setCurrentSession } from '../composables/useCurrentSession'
-import { useStoredText } from '../composables/useStoredText'
+import { useSessionScreen } from '../composables/useSessionScreen'
 import { saveLine, useAutosave } from '../composables/useAutosave'
 import SaveStatus from '../components/SaveStatus.vue'
 import { sessionPath } from '../sessionPath'
@@ -73,8 +55,6 @@ import { sessionPath } from '../sessionPath'
 const props = defineProps<{ id: string }>()
 const router = useRouter()
 
-const session = ref<StoryboardSession | null>(null)
-const loadError = ref('')
 /** The Frame shown in the main panel and edited in the Prompt panel. */
 const selected = ref(0)
 const frameList = useTemplateRef<HTMLElement>('frameList')
@@ -96,11 +76,26 @@ interface Work {
   detached?: boolean
 }
 const work = ref<Work | null>(null)
+const { session, loadError, draft, busy, load, leave, cancel, onImageModel, pictureOf, changed } =
+  useSessionScreen(props.id, 'storyboard', {
+    work,
+    // A new Storyboard is planned.
+    begin: (s) => (s.frames.length ? undefined : plan()),
+    following: (s, followed): Work =>
+      followed
+        ? { ...followed, phase: s.activity!, frameIndex: s.activeFrame ?? null }
+        : {
+          // Writing the Frames is on no one Frame; an edit is.
+          kind: !s.frames.length ? 'plan' : s.activeFrame == null ? 'write' : 'edit',
+          phase: s.activity!,
+          frameIndex: s.activeFrame ?? null,
+          detached: true,
+        },
+  })
 
 /** What the plan has produced so far, shown while it streams in. */
 const planning = ref<{ look: Look | null; beats: { beat: string; shown: string[] }[] } | null>(null)
 
-const busy = computed(() => work.value !== null)
 /** Why nothing can be queued while busy: a render, upscale or 3D would unload the Text Model. */
 const waitForText = computed(() => (busy.value ? 'Wait for the writing to finish' : undefined))
 const planned = computed(() => (session.value?.frames.length ?? 0) > 0)
@@ -121,92 +116,8 @@ const current = computed(() => {
 /** The selected Frame is written: it has sentences to edit, and a prompt to render. */
 const currentWritten = computed(() => !!current.value && isWritten(current.value))
 const look = computed(() => session.value?.look ?? planning.value?.look ?? null)
-/** The picture a Frame shows, by the Storyboard's Image Model if it has one. */
-const pictureOf = (frame: PicturedFrame) => shownPicture(frame, session.value!.settings.imageModel)
-/** A Frame's picture is changed since render: its prompt changed, or it's by another model. */
-const changed = (frame: PicturedFrame) => {
-  const picture = pictureOf(frame)
-  return !!picture && changedSinceRender(picture, session.value!.settings.imageModel)
-}
 /** The picture of the selected Frame. */
 const picture = computed(() => (current.value ? pictureOf(current.value) : undefined))
-
-// --- Loading, and planning on first open.
-
-// A kept-alive screen keeps running in the background; it only navigates while on screen.
-let onScreen = true
-let leaveOnReturn: { path: string; query: Record<string, string> } | null = null
-function leave(query: Record<string, string> = {}) {
-  clearCurrentSession(props.id)
-  draft.value = ''
-  if (onScreen) router.replace({ path: '/', query })
-  else leaveOnReturn = { path: '/', query }
-}
-
-async function load(): Promise<boolean> {
-  try {
-    const loaded = await getSession(props.id)
-    // This screen is for Storyboards; a Chain has its own.
-    if (loaded.kind !== 'storyboard') {
-      router.replace(sessionPath(props.id, loaded.kind))
-      return false
-    }
-    session.value = loaded
-  } catch (err) {
-    if (err instanceof ApiError && err.status === 404) {
-      leave()
-      return false
-    }
-    loadError.value = (err as Error).message
-    return false
-  }
-  loadError.value = ''
-  setCurrentSession(props.id, 'storyboard', session.value?.title)
-  return true
-}
-
-let started = false
-async function start() {
-  if (started) return
-  if (!(await load())) return
-  started = true
-  if (session.value!.activity) follow()
-  else if (!planned.value) await plan()
-}
-onMounted(start)
-
-let firstActivation = true
-onActivated(async () => {
-  onScreen = true
-  if (firstActivation) return (firstActivation = false)
-  if (leaveOnReturn) return router.replace(leaveOnReturn)
-  if (!started) return start()
-  if (!busy.value && (await load()) && session.value!.activity) follow()
-})
-onDeactivated(() => (onScreen = false))
-
-// Work started in another tab: show it, and poll until it's done.
-let followTimer: ReturnType<typeof setTimeout> | undefined
-function follow() {
-  const s = session.value!
-  work.value = {
-    // Writing the Frames is on no one Frame; an edit is.
-    kind: !s.frames.length ? 'plan' : s.activeFrame == null ? 'write' : 'edit',
-    phase: s.activity!,
-    frameIndex: s.activeFrame ?? null,
-    detached: true,
-  }
-  const poll = async () => {
-    if (!(await load())) return (work.value = null)
-    const s = session.value!
-    if (s.activity) {
-      work.value = { ...work.value!, phase: s.activity, frameIndex: s.activeFrame ?? null }
-      followTimer = setTimeout(poll, 1500)
-    } else work.value = null
-  }
-  followTimer = setTimeout(poll, 1500)
-}
-onBeforeUnmount(() => clearTimeout(followTimer))
 
 // --- Streamed work.
 
@@ -333,15 +244,8 @@ const toRender = computed(() =>
   )
 )
 
-async function cancel() {
-  if (work.value) work.value = { ...work.value, cancelling: true }
-  await cancelFrame(props.id)
-}
-
 // --- Editing.
 
-/** The unsent Action, remembered per Session so it survives a reload. */
-const draft = useStoredText(`draft:${props.id}`)
 async function sendAction() {
   const action = draft.value.trim()
   if (!action || busy.value || !current.value || !currentWritten.value) return
@@ -587,15 +491,6 @@ async function renderAll() {
   if (await flushEdits('rendered')) queueAll('render', toRender.value.map((f) => f.index))
 }
 
-// Leaving the site or reloading drops the connection to running work, which cancels it.
-function warnBeforeUnload(e: BeforeUnloadEvent) {
-  if (busy.value && !work.value?.detached) {
-    e.preventDefault()
-    e.returnValue = ''
-  }
-}
-useEventListener(window, 'beforeunload', warnBeforeUnload)
-
 // --- Labels.
 
 /** Draft, Stale, Blocked or Rendered, for a Frame in the list and on the image. */
@@ -642,11 +537,6 @@ const timingsLabel = (f: StoryboardFrame) => {
   const picture = pictureOf(f)
   return [`Text ${f.timings.text.toFixed(1)} s`, ...(picture ? renderedParts(picture) : [])]
     .join(' · ')
-}
-
-/** The Storyboard switched Image Model: it comes back without what only a load adds. */
-function onImageModel(switched: StoryboardSession) {
-  session.value = { ...session.value!, ...switched }
 }
 
 /** The Frame whose picture is open in the viewer, if any. */

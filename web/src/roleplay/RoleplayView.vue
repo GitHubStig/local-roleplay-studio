@@ -1,32 +1,9 @@
 <script setup lang="ts">
 import { useEventListener, useTextareaAutosize } from '@vueuse/core'
-import {
-  computed,
-  nextTick,
-  onActivated,
-  onBeforeUnmount,
-  onDeactivated,
-  onMounted,
-  ref,
-  useTemplateRef,
-  watch,
-} from 'vue'
-import { useRouter } from 'vue-router'
-import {
-  ApiError,
-  cancelFrame,
-  changedSinceRender,
-  getSession,
-  imageUrl,
-  type Look,
-  type Made3d,
-  type PicturedFrame,
-  restartSession,
-  shownPicture,
-} from '../api'
-import { clearCurrentSession, setCurrentSession } from '../composables/useCurrentSession'
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
+import { getSession, imageUrl, type Look, type Made3d, restartSession } from '../api'
+import { useSessionScreen } from '../composables/useSessionScreen'
 import { useStoredFlag } from '../composables/useStoredFlag'
-import { useStoredText } from '../composables/useStoredText'
 import { saveLine, useAutosave } from '../composables/useAutosave'
 import SaveStatus from '../components/SaveStatus.vue'
 import LookForm from '../components/LookForm.vue'
@@ -48,7 +25,6 @@ import { useJobs } from '../composables/useJobs'
 import { useFeatures } from '../composables/useFeatures'
 import { jobForming, jobStatus, queueTabLabel } from '../jobs'
 import { useShownPreview } from '../composables/useShownPreview'
-import { sessionPath } from '../sessionPath'
 import {
   type Cast,
   type Reply,
@@ -69,14 +45,9 @@ import {
 } from './api'
 
 const props = defineProps<{ id: string }>()
-const router = useRouter()
 
-const session = ref<RoleplaySession | null>(null)
-const loadError = ref('')
 /** Why the last message didn't go through: an error, or a Limit it crossed. */
 const notice = ref<{ kind: 'error' | 'declined'; text: string } | null>(null)
-/** The unsent message, remembered per Session so it survives a reload. */
-const draft = useStoredText(`draft:${props.id}`)
 const transcript = useTemplateRef<HTMLElement>('transcript')
 /** The Frame whose picture is open in the viewer, if any. */
 const viewing = ref<number | null>(null)
@@ -92,7 +63,14 @@ interface Pending {
   detached?: boolean
 }
 const pending = ref<Pending | null>(null)
-const busy = computed(() => pending.value !== null)
+const { session, loadError, draft, busy, leave, cancel, onImageModel, pictureOf, changed } =
+  useSessionScreen(props.id, 'roleplay', {
+    work: pending,
+    // A new Roleplay has its Cast written.
+    begin: (s) => (s.cast ? undefined : rewriteCast()),
+    following: (_s, followed): Pending => followed ?? { kind: 'message', reply: {}, detached: true },
+    refreshJobs: () => refreshJobs(),
+  })
 /** The Character is writing into the conversation (not picturing a Frame beside it). */
 const replying = computed(() => {
   const kind = pending.value?.kind
@@ -122,17 +100,6 @@ watch(forming, (now) => {
   if (now) formingIndex.value = runningJob.value!.frameIndex
 })
 const { byOf, renderedParts } = useImageModels()
-/** The Roleplay switched Image Model: it comes back without what only a load adds. */
-function onImageModel(switched: RoleplaySession) {
-  session.value = { ...session.value!, ...switched }
-}
-/** The picture a Frame shows, by the Roleplay's Image Model if it has one. */
-const pictureOf = (frame: PicturedFrame) => shownPicture(frame, session.value!.settings.imageModel)
-/** A Frame's picture is changed since render: its prompt changed, or it's by another model. */
-const changed = (frame: PicturedFrame) => {
-  const picture = pictureOf(frame)
-  return !!picture && changedSinceRender(picture, session.value!.settings.imageModel)
-}
 /**
  * The Frames Render all would render: those with no picture by the Roleplay's Image Model, or one
  * changed since, unless their Image Prompt crosses a Limit or a render is queued.
@@ -339,74 +306,6 @@ const begun = computed(() => (session.value?.frames.length ?? 0) > 0)
 const characterName = computed(() => cast.value?.character.name ?? 'The Character')
 const personaName = computed(() => cast.value?.persona.name ?? 'You')
 
-// --- Loading, and setting up on first open.
-
-// A kept-alive screen keeps running in the background; it only navigates while on screen.
-let onScreen = true
-let leaveOnReturn: { path: string; query: Record<string, string> } | null = null
-function leave(query: Record<string, string> = {}) {
-  clearCurrentSession(props.id)
-  draft.value = ''
-  if (onScreen) router.replace({ path: '/', query })
-  else leaveOnReturn = { path: '/', query }
-}
-
-async function load(): Promise<boolean> {
-  try {
-    const loaded = await getSession(props.id)
-    if (loaded.kind !== 'roleplay') {
-      router.replace(sessionPath(props.id, loaded.kind))
-      return false
-    }
-    session.value = loaded
-  } catch (err) {
-    if (err instanceof ApiError && err.status === 404) {
-      leave()
-      return false
-    }
-    loadError.value = (err as Error).message
-    return false
-  }
-  loadError.value = ''
-  setCurrentSession(props.id, 'roleplay', session.value?.title)
-  return true
-}
-
-let started = false
-async function start() {
-  if (started) return
-  if (!(await load())) return
-  started = true
-  refreshJobs()
-  if (session.value!.activity) follow()
-  else if (!session.value!.cast) await rewriteCast()
-}
-onMounted(start)
-
-let firstActivation = true
-onActivated(async () => {
-  onScreen = true
-  if (firstActivation) return (firstActivation = false)
-  if (leaveOnReturn) return router.replace(leaveOnReturn)
-  if (!started) return start()
-  refreshJobs()
-  if (!busy.value && (await load()) && session.value!.activity) follow()
-})
-onDeactivated(() => (onScreen = false))
-
-// Work started in another tab: show it, and poll until it's done.
-let followTimer: ReturnType<typeof setTimeout> | undefined
-function follow() {
-  pending.value = { kind: 'message', reply: {}, detached: true }
-  const poll = async () => {
-    if (!(await load())) return (pending.value = null)
-    if (session.value!.activity) followTimer = setTimeout(poll, 1500)
-    else pending.value = null
-  }
-  followTimer = setTimeout(poll, 1500)
-}
-onBeforeUnmount(() => clearTimeout(followTimer))
-
 // --- Streamed work.
 
 /**
@@ -513,11 +412,6 @@ async function suggest() {
   if (!suggested) draft.value = typed
 }
 
-async function cancel() {
-  if (pending.value) pending.value = { ...pending.value, cancelling: true }
-  await cancelFrame(props.id)
-}
-
 /** The latest exchange can be undone (never the opening): its message goes back in the box. */
 const canUndo = computed(() => !busy.value && (session.value?.frames.at(-1)?.message ?? null) !== null)
 async function undo() {
@@ -574,15 +468,6 @@ function onPictureLoad() {
   const list = transcript.value
   if (list && atEnd) list.scrollTo({ top: list.scrollHeight, behavior: 'auto' })
 }
-
-// Leaving the site or reloading drops the connection to running work, which cancels it.
-function warnBeforeUnload(e: BeforeUnloadEvent) {
-  if (busy.value && !pending.value?.detached) {
-    e.preventDefault()
-    e.returnValue = ''
-  }
-}
-useEventListener(window, 'beforeunload', warnBeforeUnload)
 
 const statusLabel = computed(() => {
   const p = pending.value

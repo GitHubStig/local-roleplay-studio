@@ -1,18 +1,6 @@
 <script setup lang="ts">
-import { useEventListener } from '@vueuse/core'
-import {
-  computed,
-  nextTick,
-  onActivated,
-  onBeforeUnmount,
-  onDeactivated,
-  onMounted,
-  ref,
-  useTemplateRef,
-  watch,
-} from 'vue'
-import { onBeforeRouteLeave, useRouter } from 'vue-router'
-import { clearCurrentSession, setCurrentSession } from '../composables/useCurrentSession'
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
+import { onBeforeRouteLeave } from 'vue-router'
 import ComposeBox from '../components/ComposeBox.vue'
 import FrameImage from '../components/FrameImage.vue'
 import CollapsibleTextarea from '../components/CollapsibleTextarea.vue'
@@ -30,36 +18,28 @@ import { showPickedFrame, useFrameKeys } from '../composables/useFrameKeys'
 import { formingOf, jobForming, jobStatus, queueTabLabel, sweepOf } from '../jobs'
 import { useShownPreview } from '../composables/useShownPreview'
 import { useStoredFlag } from '../composables/useStoredFlag'
-import { useStoredText } from '../composables/useStoredText'
-import { sessionPath } from '../sessionPath'
+import { useSessionScreen } from '../composables/useSessionScreen'
 import { diffWords } from '../diff'
 import {
   type Activity,
-  ApiError,
-  cancelFrame,
   changedSinceRender,
   deleteChainFrame,
   saveChainPrompt,
   DOWNLOADING,
-  getSession,
   imageUrl,
   type Outcome,
   type ImagePrompt,
   type Job,
-  type ChainSession,
   streamFrame,
   type ChainFrame,
   type FrameEvent,
   type Made3d,
-  type PicturedFrame,
   setRenderFrames,
-  shownPicture,
   undoFrame,
 } from '../api'
 import { useFeatures } from '../composables/useFeatures'
 
 const props = defineProps<{ id: string }>()
-const router = useRouter()
 
 /** The Frame in progress: provisional until committed. */
 interface Pending {
@@ -75,9 +55,17 @@ interface Pending {
   cancelling?: boolean
 }
 
-const session = ref<ChainSession | null>(null)
-const loadError = ref('')
 const pending = ref<Pending | null>(null)
+const { session, loadError, draft, busy, load, leave, cancel, onImageModel, pictureOf } =
+  useSessionScreen(props.id, 'chain', {
+    work: pending,
+    // A new Chain writes its Opening Frame.
+    begin: (s) => (s.frames.length ? undefined : runChainFrame(null)),
+    following: (s, followed) => ({ ...followed, phase: s.activity!, detached: true }),
+    // The Frame it made is shown.
+    onFollowed: () => (viewing.value = null),
+    refreshJobs: () => refreshJobs(),
+  })
 const frameError = ref('')
 /**
  * Why the last Action made no Frame (declined; unclear, and the Text Model asks what to change;
@@ -85,8 +73,6 @@ const frameError = ref('')
  * reword.
  */
 const notice = ref<{ kind: 'declined' | 'unclear' | 'unchanged'; text: string } | null>(null)
-/** The unsent Action, remembered per Session so it survives a reload. */
-const draft = useStoredText(`draft:${props.id}`)
 /** Index of the Frame shown in the main panel; null follows the latest. */
 const viewing = ref<number | null>(null)
 const log = useTemplateRef<HTMLElement>('log')
@@ -96,7 +82,6 @@ const panel = ref<'log' | 'queue' | 'prompt'>('log')
 const captionHidden = useStoredFlag('caption-hidden')
 const removedHidden = useStoredFlag('diff-removed-hidden')
 
-const busy = computed(() => pending.value !== null)
 /** This Session's Frame is waiting for another Session's render to finish. */
 const queued = computed(() => pending.value?.phase === 'queued')
 /**
@@ -111,8 +96,6 @@ const shown = computed(() => {
   return viewing.value === null ? frames.at(-1) : frames[viewing.value]
 })
 const latest = computed(() => session.value?.frames.at(-1))
-/** The picture a Frame shows, by the Chain's Image Model if it has one. */
-const pictureOf = (frame: PicturedFrame) => shownPicture(frame, session.value!.settings.imageModel)
 /** The picture of the Frame in the main panel. */
 const picture = computed(() => shown.value && pictureOf(shown.value))
 /** It's by another Image Model than the Chain's now, or from before its prompt was edited. */
@@ -141,111 +124,12 @@ const frameName = (index: number) => (index === 0 ? 'the Opening' : `Frame ${ind
 /** The same, starting a title: the viewers' labels. */
 const frameTitle = (index: number) => (index === 0 ? 'The Opening' : `Frame ${index}`)
 
-// A kept-alive screen keeps running in the background; it must only navigate while on screen.
-let onScreen = true
-/** Where to go once back on screen, if the Session went away while in the background. */
-let leaveOnReturn: { path: string; query: Record<string, string> } | null = null
-
-function leave(query: Record<string, string> = {}) {
-  clearCurrentSession(props.id)
-  draft.value = ''
-  if (onScreen) router.replace({ path: '/', query })
-  else leaveOnReturn = { path: '/', query }
-}
-
-/** Loads the Session; false if it couldn't be (gone: the player is sent Home). */
-async function load(): Promise<boolean> {
-  try {
-    const loaded = await getSession(props.id)
-    // This screen is for Chains; the other kinds have their own.
-    if (loaded.kind !== 'chain') {
-      router.replace(sessionPath(props.id, loaded.kind))
-      return false
-    }
-    session.value = loaded
-  } catch (err) {
-    if (err instanceof ApiError && err.status === 404) {
-      leave()
-      return false
-    }
-    loadError.value = (err as Error).message
-    return false
-  }
-  loadError.value = ''
-  // Current Session leads back to the Session opened last.
-  setCurrentSession(props.id, 'chain', session.value?.title)
-  return true
-}
-
-let started = false
-let starting = false
-/** First successful load: follow a Frame already running, or write the opening prompt. */
-async function start() {
-  if (started || starting) return
-  starting = true
-  try {
-    if (!(await load())) return
-    started = true
-  } finally {
-    starting = false
-  }
-  refreshJobs()
-  if (session.value!.activity) follow()
-  else if (session.value!.frames.length === 0) await runChainFrame(null)
-}
-
-onMounted(start)
-
-// Coming back to a kept-alive Session: pick up changes made elsewhere (another tab, a delete
-// from Home), unless a Frame is running here. Retries if the first load failed. Vue also calls
-// this right after the first mount, which `start` already covers.
-let firstActivation = true
-onActivated(async () => {
-  onScreen = true
-  if (firstActivation) return (firstActivation = false)
-  if (leaveOnReturn) return router.replace(leaveOnReturn)
-  if (!started) return start()
-  refreshJobs()
-  if (busy.value) return
-  if ((await load()) && session.value!.activity) follow()
-})
-onDeactivated(() => (onScreen = false))
-
-// --- A Frame this screen didn't start (page reloaded, another tab): show it and allow Cancel.
-let followTimer: ReturnType<typeof setTimeout> | undefined
-function follow() {
-  pending.value = { phase: session.value!.activity!, detached: true }
-  const poll = async () => {
-    if (!(await load())) return (pending.value = null)
-    const activity = session.value!.activity
-    if (activity) {
-      pending.value = { ...pending.value!, phase: activity }
-      followTimer = setTimeout(poll, 1500)
-    } else {
-      pending.value = null
-      viewing.value = null
-    }
-  }
-  followTimer = setTimeout(poll, 1500)
-}
-onBeforeUnmount(() => clearTimeout(followTimer))
-
 // --- While this Frame waits in the render queue, stay here: no leaving, no reloading.
 onBeforeRouteLeave(() => {
   if (!queued.value) return true
   frameError.value = 'Waiting for another render. Cancel this Frame to leave.'
   return false
 })
-// Reloading, closing the tab or leaving the site drops this page's connection to a running Frame,
-// which cancels it; the browser asks first ("Leave site?"). It can't show our own wording. A Frame
-// this page is only following (started elsewhere) isn't affected, so no warning for that.
-function warnBeforeUnload(e: BeforeUnloadEvent) {
-  if (busy.value && !pending.value?.detached) {
-    e.preventDefault()
-    e.returnValue = '' // older browsers need this as well
-  }
-}
-useEventListener(window, 'beforeunload', warnBeforeUnload)
 
 // Back on the Frames, or with a new one: down to the latest while following it, or else to the
 // Frame picked (from the Queue tab, say).
@@ -317,21 +201,12 @@ function submit() {
   if (action && !busy.value && !viewingOlder.value) runChainFrame(action)
 }
 
-async function cancel() {
-  if (pending.value) pending.value = { ...pending.value, cancelling: true }
-  await cancelFrame(props.id)
-}
 
 // --- Background work: upscales and 3D, queued so the next Action needn't wait for them.
 
 /** Pictures on: a Chain can render as it goes; off, it only writes each Frame's prompt. */
 const { on: featureOn } = useFeatures()
 /** Flips whether each new Frame is rendered as it's made (the Chain's own switch). */
-/** The Chain switched Image Model: it comes back without what only a load adds. */
-function onImageModel(switched: ChainSession) {
-  session.value = { ...session.value!, ...switched }
-}
-
 async function switchRenderFrames(on: boolean) {
   try {
     session.value = await setRenderFrames(props.id, on)
