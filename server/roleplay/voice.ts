@@ -81,7 +81,7 @@ export async function voiceMessages(session: RoleplaySession): Promise<ChatMessa
   const character = stringify(session.cast.character, { lineWidth: 100 }).trim()
   return [
     { role: 'system', content: await loadPrompt('roleplay/voice', { character }) },
-    { role: 'user', content: 'Describe the voice.' },
+    { role: 'user', content: await loadPrompt('roleplay/voice-request') },
   ]
 }
 
