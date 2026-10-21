@@ -19,7 +19,8 @@ import {
 } from './engine.ts'
 import { CastError } from './prompt.ts'
 import { replyOf, scriptedRoleplayModel, testCast, testLook } from './testing.ts'
-import type { Look } from '../session.ts'
+import type { Look, SessionStore } from '../session.ts'
+import { updateSession } from './update.ts'
 import type { RoleplaySession } from './types.ts'
 
 const signal = () => new AbortController().signal
@@ -36,6 +37,13 @@ const newSession = (): RoleplaySession => ({
   cast: null,
   frames: [],
 })
+
+/** A new Roleplay, saved as the app saves it when it's started. */
+async function savedSession(store: SessionStore): Promise<RoleplaySession> {
+  const session = newSession()
+  await store.save(session)
+  return session
+}
 
 async function setUp(
   root: string,
@@ -54,7 +62,7 @@ async function setUp(
   }
   const events: RoleplayEvent[] = []
   const emit = (e: RoleplayEvent) => events.push(e)
-  const cast = await writeCast(deps, newSession(), scenario, emit, signal())
+  const cast = await writeCast(deps, await savedSession(store), scenario, emit, signal())
   const session = await beginRoleplay(deps, cast, emit, signal())
   roleplayModel.asked.length = 0
   return { store, deps, session, events, roleplayModel }
@@ -90,7 +98,7 @@ Deno.test('beginRoleplay writes the opening from the Cast as edited, and only on
       textModel: scriptedTextModel([]),
       imageGenerator: fakeImageGenerator(),
     }
-    const written = await writeCast(deps, newSession(), scenario, () => {}, signal())
+    const written = await writeCast(deps, await savedSession(store), scenario, () => {}, signal())
     const edited = await setCast(store, written, {
       ...testCast,
       character: { ...testCast.character, name: 'Mara Vance' },
@@ -107,6 +115,31 @@ Deno.test('beginRoleplay writes the opening from the Cast as edited, and only on
       RoleplayError,
       'already begun',
     )
+  }))
+
+Deno.test('writeCast keeps a voice designed while the Cast was written', () =>
+  withTempDir(async (root) => {
+    const store = dirSessionStore(root)
+    const session = await savedSession(store)
+    const voice = { description: 'Low and calm.', model: 'scripted', ref: 'voice-1a2b3c4d.wav' }
+    const roleplayModel = scriptedRoleplayModel({ casts: [testCast] })
+    const deps = {
+      store,
+      roleplayModel: {
+        ...roleplayModel,
+        // The voice job saves while the Cast is being written.
+        async writeCast(...args: Parameters<typeof roleplayModel.writeCast>) {
+          await updateSession(store, session.id, (latest) => ({ ...latest, voice }))
+          return await roleplayModel.writeCast(...args)
+        },
+      },
+      textModel: scriptedTextModel([]),
+      imageGenerator: fakeImageGenerator(),
+    }
+    const written = await writeCast(deps, session, scenario, () => {}, signal())
+    assertEquals(written.cast, testCast)
+    assertEquals(written.voice, voice)
+    assertEquals((await store.load('r1')) as RoleplaySession, written)
   }))
 
 Deno.test('writeCast fails, saving nothing, when the Cast crosses a Limit', () =>

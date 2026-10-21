@@ -101,8 +101,8 @@ export async function writeCast(
   signal.throwIfAborted()
   const limit = crossedLimit(castText(cast))
   if (limit) throw new Error(`The Cast crossed a limit: ${limit.message}`)
-  const updated: RoleplaySession = { ...session, cast }
-  await deps.store.save(updated)
+  // Onto the Roleplay as it is now: a voice may have been designed while the Cast was written.
+  const updated = await updateSession(deps.store, session.id, (latest) => ({ ...latest, cast }))
   emit({ type: 'cast', cast, session: updated })
   return updated
 }
