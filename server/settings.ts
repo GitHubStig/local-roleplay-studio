@@ -346,6 +346,16 @@ export function fileSettingsStore(
     await Deno.writeTextFile(tmp, JSON.stringify(raw, null, 2) + '\n', { mode: 0o600 })
     await Deno.rename(tmp, file)
   }
+  let changing: Promise<unknown> = Promise.resolve()
+  /**
+   * Changes the file one change at a time: Settings and the API key share it, so two at once could
+   * each drop the other's, or clash on the temporary file.
+   */
+  function inTurn(change: () => Promise<void>): Promise<void> {
+    const result = changing.then(change, change)
+    changing = result.catch(() => {})
+    return result
+  }
   return {
     async load() {
       let raw: string
@@ -372,17 +382,19 @@ export function fileSettingsStore(
       }
       return result.settings
     },
-    async save(settings) {
-      const { textApiKey } = await readRaw()
-      await write(textApiKey ? { ...settings, textApiKey } : settings)
-    },
+    save: (settings) =>
+      inTurn(async () => {
+        const { textApiKey } = await readRaw()
+        await write(textApiKey ? { ...settings, textApiKey } : settings)
+      }),
     async loadApiKey() {
       const { textApiKey } = await readRaw()
       return typeof textApiKey === 'string' ? textApiKey : ''
     },
-    async saveApiKey(key) {
-      const { textApiKey: _, ...rest } = await readRaw()
-      await write(key ? { ...rest, textApiKey: key } : rest)
-    },
+    saveApiKey: (key) =>
+      inTurn(async () => {
+        const { textApiKey: _, ...rest } = await readRaw()
+        await write(key ? { ...rest, textApiKey: key } : rest)
+      }),
   }
 }

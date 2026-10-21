@@ -3,6 +3,8 @@ node_modules
 
 # Runtime data
 settings.json
+# Left by a save cut short; holds the API key like settings.json
+settings.json.tmp
 sessions/
 # Pages exported from the Compare dialog
 exports/

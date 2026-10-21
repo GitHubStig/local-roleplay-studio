@@ -57,6 +57,15 @@ Deno.test('fileSettingsStore keeps the API key in the file but out of Settings',
     assertEquals((await store.load()).textModel, 'llama3:latest')
   }))
 
+Deno.test('fileSettingsStore keeps both Settings and the API key saved at the same time', () =>
+  withTempDir(async (dir) => {
+    const store = fileSettingsStore(join(dir, 'settings.json'))
+    const settings = { ...DEFAULT_SETTINGS, textModel: 'llama3:latest' }
+    await Promise.all([store.save(settings), store.saveApiKey('sk-secret')])
+    assertEquals(await store.load(), settings)
+    assertEquals(await store.loadApiKey(), 'sk-secret')
+  }))
+
 Deno.test('fileSettingsStore falls back to defaults on a corrupt file', () =>
   withTempDir(async (dir) => {
     const path = join(dir, 'settings.json')
