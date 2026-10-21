@@ -274,7 +274,8 @@ server/           Deno API: the app, Sessions, Settings, the job queue, what all
   prompts/        what the Text Model is told, one Markdown file each: chain/, storyboard/,
                   roleplay/, and shared/ for what more than one uses
 web/              Vue 3 + Vite + Tailwind 4 web app; export.html is the exported Compare page
-python/           What uv runs, each in its own folder with its packages pinned in the file:
+python/           What uv runs, each in its own folder, its packages in the file and locked beside it
+                  (`make.py.lock`), so both machines run the same versions:
   voice/          the voice service (mlx-audio, so Mac only)
   sharp/          Apple's SHARP: a picture as a 2.5D scene
   triposplat/     TripoSplat: the person in a picture as a 3D figure (VAST's code in vendor/)

@@ -81,6 +81,7 @@ The README's "Where things live" maps the folders. When adding a file:
   goes in `server/prompts/shared/`.
 - **Python programs** go in `python/<tool>/`, one folder each (`make.py` for a run-once script,
   `serve.py` for a service), with code copied from elsewhere in a `vendor/` folder beside them.
+  Each has a lock beside it (`uv lock --script python/<tool>/make.py`, committed), which `uv run` follows, so both machines run the same versions. Upgrading is a change of its own: `uv lock --script … --upgrade-package <name>` (or `--upgrade`), checked on both machines where it runs there.
 
 ## Local data
 
