@@ -1009,7 +1009,7 @@ Deno.test('A Chain Frame other than the Opening is deleted, and those after it n
     assertEquals((next.at(-1)![1].frame as JsonFrame).index, 2)
   }))
 
-Deno.test('Deleting a Chain Frame waits for no job on it or after it, and the queue follows', () =>
+Deno.test('Deleting a Chain Frame waits for no job on it, and the queue follows', () =>
   withTempDir(async (root) => {
     // Pictures made with the Frames go through; the upscales queued later hang until cancelled.
     const quick = fakeImageGenerator()
@@ -1047,21 +1047,56 @@ Deno.test('Deleting a Chain Frame waits for no job on it or after it, and the qu
     hang = true
     for (const index of [2, 3, 1]) await upscale(index)
     assertEquals(await jobs(), [[2, 'running'], [3, 'queued'], [1, 'queued']])
-    const refused = await remove(1)
+    const refused = await remove(2)
     assertEquals([refused.status, (await refused.json()).error], [
       409,
       'Frame 2 has a job running: wait for it, or cancel it, then delete',
     ])
     assertEquals(await jobs(), [[2, 'running'], [3, 'queued'], [1, 'queued']])
 
-    // With a job running on an earlier Frame, Frame 1 goes: its upscale with it, Frame 3's now
-    // Frame 2's.
-    await cancelAll()
-    for (const index of [0, 3, 1]) await upscale(index)
+    // Frame 1 goes, its upscale with it; the jobs on later Frames follow them down, running or not.
     assertEquals((await remove(1)).status, 200)
-    assertEquals(await jobs(), [[0, 'running'], [2, 'queued']])
+    assertEquals(await jobs(), [[1, 'running'], [2, 'queued']])
     await cancelAll()
     hang = false
+  }))
+
+Deno.test('A render running on a later Chain Frame lands on it after an earlier one is deleted', () =>
+  withTempDir(async (root) => {
+    const quick = fakeImageGenerator()
+    let gate: PromiseWithResolvers<void> | undefined
+    const images = {
+      ...quick,
+      generate: async (...a: Parameters<typeof quick.generate>) => {
+        await gate?.promise
+        return quick.generate(...a)
+      },
+    }
+    const four = [reply('standing'), reply('sitting'), reply('kneeling'), reply('rising')]
+    const { call } = await chainOfTwo(root, {
+      imageGenerator: images,
+      textModel: scriptedTextModel(four),
+    })
+    await readEvents(await call('POST', '/api/sessions/s1/frames', { action: 'Kneel' }))
+    await readEvents(await call('POST', '/api/sessions/s1/frames', { action: 'Rise' }))
+    const before = await chainFrames(call)
+
+    gate = Promise.withResolvers()
+    await call('POST', '/api/sessions/s1/jobs', { kind: 'render', frameIndex: 3 })
+    const deleted = await call('POST', '/api/sessions/s1/frames/1/delete', {
+      frames: before.length,
+      createdAt: before[1].createdAt,
+    })
+    assertEquals(deleted.status, 200)
+    gate.resolve()
+    await settled(call)
+
+    const after = await chainFrames(call)
+    assertEquals(after.map((f) => f.prompt), [0, 2, 3].map((i) => before[i].prompt))
+    // The new picture is on the Frame it was rendered for, now Frame 2, and nowhere else.
+    assertEquals(after[2].pictures.length, 1)
+    assertNotEquals(after[2].pictures[0].image, before[3].pictures[0].image)
+    assertEquals([after[0], after[1]].map((f) => f.pictures), [0, 2].map((i) => before[i].pictures))
   }))
 
 Deno.test('A Chain Frame’s Image Prompt is edited by hand, its pictures out of date until rendered', () =>

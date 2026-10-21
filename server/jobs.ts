@@ -267,7 +267,8 @@ export class SessionJobs {
 
   /**
    * Frame `index` was deleted and the Frames after it numbered down one: its own queued and failed
-   * jobs go, and the later Frames' follow them. None may be running on it or after it.
+   * jobs go, and the later Frames' follow them, running ones too (they save onto their Frame where
+   * it is then). None may be running on it.
    */
   frameDeleted(sessionId: string, index: number) {
     const jobs = (this.#jobs.get(sessionId) ?? []).filter((j) => j.frameIndex !== index)

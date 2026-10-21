@@ -86,22 +86,22 @@ export function changePicture(
 export class PictureGoneError extends Error {}
 
 /**
- * `session` with the picture of Frame `index` whose image is `image` changed by `change`, for work
- * made from a picture (an upscale, 3D) saving onto the Session as it is now. Throws
- * `PictureGoneError` if that Frame or picture is gone.
+ * `session` with its picture whose image is `image` changed by `change`, for work made from a
+ * picture (an upscale, 3D) saving onto the Session as it is now. Found by its image, whose name is
+ * never reused, so it's found even after Frames before it were deleted. Throws `PictureGoneError`
+ * if that picture is gone.
  */
 export function changeFramePicture<S extends Session>(
   session: S,
-  index: number,
   image: string,
   change: (p: Picture) => Picture,
 ): S {
-  const frame = session.frames[index]
-  if (!frame) throw new PictureGoneError('That Frame no longer exists')
+  const frame = session.frames.find((f) => f.pictures.some((p) => p.image === image))
+  if (!frame) throw new PictureGoneError('That picture no longer exists')
   const pictures = changePicture(frame.pictures, image, change)
   return {
     ...session,
-    frames: session.frames.map((f) => (f.index === index ? { ...f, pictures } : f)),
+    frames: session.frames.map((f) => (f === frame ? { ...f, pictures } : f)),
   } as S
 }
 

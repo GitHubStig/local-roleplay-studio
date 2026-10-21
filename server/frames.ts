@@ -78,6 +78,19 @@ export const secondsSince = (start: number) => Math.round((performance.now() - s
 export const imageName = (index: number) => `frame-${index}-${crypto.randomUUID().slice(0, 8)}`
 
 /**
+ * The Frame that was at `index`, made at `createdAt`, when work on it began: there still, or moved
+ * down after Frames before it were deleted. Two Frames can share a millisecond, so of those made
+ * then, the last at or before `index`. Undefined if it's gone.
+ */
+export function followFrame<F extends { index: number; createdAt: string }>(
+  frames: readonly F[],
+  index: number,
+  createdAt: string,
+): F | undefined {
+  return frames.findLast((f) => f.createdAt === createdAt && f.index <= index)
+}
+
+/**
  * Runs a Text Model call, retrying once if its reply is unusable. Streams the model's reasoning as
  * `thinking` events, marking a retry's first chunk as a restart.
  */
@@ -189,19 +202,20 @@ export async function replacePicture<S extends Session>(
 ): Promise<{ session: S; frame: S['frames'][number] }> {
   const name = imageName(index)
   const dir = deps.store.dir(session.id)
+  const { createdAt } = session.frames[index]
   try {
     const rendered = await renderImage(deps, session, prompt, name, emit, signal)
     signal.throwIfAborted()
     let frame!: S['frames'][number]
     let replaced: Picture | undefined
     const updated = await save((latest) => {
-      const old = latest.frames[index]
+      const old = followFrame<S['frames'][number]>(latest.frames, index, createdAt)
       if (!old) throw new GoneError('That Frame no longer exists')
       const picture = old.prompt === prompt ? rendered : { ...rendered, stale: true }
       const next = withPicture(old.pictures, picture)
       replaced = next.replaced
       frame = { ...old, pictures: next.pictures }
-      return { ...latest, frames: latest.frames.map((f) => (f.index === index ? frame : f)) } as S
+      return { ...latest, frames: latest.frames.map((f) => (f === old ? frame : f)) } as S
     })
     if (replaced) await removeFiles(dir, pictureFiles(replaced))
     return { session: updated, frame }
@@ -258,7 +272,7 @@ export async function upscaleFrame(
     )
     signal.throwIfAborted()
     const updated = await save((latest) =>
-      changeFramePicture(latest, index, image, (p) => ({ ...p, upscaled }))
+      changeFramePicture(latest, image, (p) => ({ ...p, upscaled }))
     )
     emit({ type: 'upscaled', session: updated })
     return updated

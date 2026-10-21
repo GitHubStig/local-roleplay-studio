@@ -77,7 +77,7 @@ export async function liftFigure<S extends Session>(
     let replaced: string | undefined
     // Onto the picture it was made from, if the Frame still has it.
     const updated = await save((latest) =>
-      changeFramePicture(latest, index, image, (p) => {
+      changeFramePicture(latest, image, (p) => {
         replaced = p[key]?.file
         return { ...p, [key]: figure }
       })

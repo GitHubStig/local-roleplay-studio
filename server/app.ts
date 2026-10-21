@@ -843,9 +843,8 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
 
     // Deletes a Chain's Frame, any but the Opening Frame, or a Storyboard's Beat while it's planned:
     // `{ frames, createdAt }`, how many Frames it had and when this one was made, so a repeated
-    // request can't delete the one after it. A Chain's is refused while a job runs on it or a later
-    // Frame, whose result would land on the wrong Frame once they're numbered down; queued ones
-    // follow them.
+    // request can't delete the one after it. A Chain's is refused while a job runs on it; jobs on
+    // later Frames, queued or running, follow them as they're numbered down.
     ['POST', new URLPattern({ pathname: '/api/sessions/:id/frames/:index/delete' }), (req, p) => {
       const index = Number(p.index)
       if (!Number.isInteger(index)) {
@@ -870,10 +869,10 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
           }
         }
         const running = jobs.list(session.id)
-          .find((j) => j.status === 'running' && j.frameIndex >= index)
+          .find((j) => j.status === 'running' && j.frameIndex === index)
         if (running) {
           return error(
-            `Frame ${running.frameIndex} has a job running: wait for it, or cancel it, then delete`,
+            `Frame ${index} has a job running: wait for it, or cancel it, then delete`,
             409,
           )
         }
