@@ -91,6 +91,7 @@ const { session, loadError, draft, busy, load, leave, cancel, onImageModel, pict
           frameIndex: s.activeFrame ?? null,
           detached: true,
         },
+    refreshJobs: () => refreshJobs(),
   })
 
 /** What the plan has produced so far, shown while it streams in. */
@@ -219,7 +220,7 @@ async function restart() {
 
 // --- Queued work: renders, upscales and 3D, each on its Frame.
 
-const { jobs, runningJobs, jobsFor, hasJob, queue, queueAll, dropJob, clear, retry } = useJobs(props.id, {
+const { jobs, runningJobs, jobsFor, hasJob, queue, queueAll, dropJob, clear, retry, refreshJobs } = useJobs(props.id, {
   onSettled: async () => {
     await load()
   },

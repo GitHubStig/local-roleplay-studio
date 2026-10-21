@@ -134,6 +134,16 @@ afterEach(() => vi.unstubAllGlobals())
 enableAutoUnmount(afterEach)
 
 describe('StoryboardView', () => {
+  it('shows the jobs already queued when opened, as after a reload', async () => {
+    vi.mocked(api.listJobs).mockResolvedValue([
+      job('render', 1, { status: 'running' }),
+      job('upscale', 1),
+    ])
+    const { wrapper } = await mountIt()
+    expect(api.listJobs).toHaveBeenCalledWith('sb')
+    expect(wrapper.text()).toContain('Queue (2)')
+  })
+
   it('plans a new Storyboard, listing its Beats as they arrive, for review', async () => {
     vi.mocked(api.getSession).mockResolvedValue(storyboard())
     const stream = held()
