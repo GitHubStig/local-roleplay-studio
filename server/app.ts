@@ -55,7 +55,7 @@ import {
 import { checkChainJob, runChainJob } from './chain/jobs.ts'
 import { chainFromStoryboard, CopyError } from './chain/fromStoryboard.ts'
 import { checkStoryboardJob, runStoryboardJob } from './storyboard/jobs.ts'
-import { GoneError, updateSession } from './update.ts'
+import { GoneError, removeSession, updateSession } from './update.ts'
 import {
   comparisonTitle,
   type ExportPage,
@@ -309,7 +309,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
             () => run(send, controller.signal),
           )
         } catch (err) {
-          if (discardOnFailure) await deps.sessions.remove(session.id)
+          if (discardOnFailure) await removeSession(deps.sessions, session.id)
           const sessionDiscarded = discardOnFailure
           if (controller.signal.aborted) send({ type: 'cancelled', sessionDiscarded })
           else send({ type: 'failed', message: (err as Error).message, sessionDiscarded })
@@ -696,7 +696,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       (_req, p) =>
         locked(p.id!, 'delete', async (session) => {
           jobs.cancelWhere(session.id, () => true)
-          await deps.sessions.remove(session.id)
+          await removeSession(deps.sessions, session.id)
           return new Response(null, { status: 204 })
         }),
     ],

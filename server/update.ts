@@ -38,3 +38,14 @@ export function updateSession<K extends Session['kind']>(
   saving.set(id, result.catch(() => {}))
   return result
 }
+
+/**
+ * Removes a Session once the changes already being saved to it are done, so none of them writes it
+ * back after it's gone (a job that was cancelled as it saved); a change after finds it gone.
+ */
+export function removeSession(store: SessionStore, id: string): Promise<void> {
+  const remove = () => store.remove(id)
+  const result = (saving.get(id) ?? Promise.resolve()).then(remove, remove)
+  saving.set(id, result.catch(() => {}))
+  return result
+}
