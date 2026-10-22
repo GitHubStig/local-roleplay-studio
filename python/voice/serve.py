@@ -2,7 +2,6 @@
 # requires-python = ">=3.14,<3.15"
 # dependencies = ["mlx-audio", "torch", "soundfile"]
 # [tool.uv]
-# prerelease = "allow"
 # python-preference = "only-managed"
 # ///
 """

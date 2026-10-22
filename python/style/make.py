@@ -15,6 +15,7 @@
 # torchvision = { index = "pytorch-cuda", marker = "sys_platform != 'darwin'" }
 # [[tool.uv.index]]
 # name = "pytorch-cuda"
+# # CUDA 13.2: PyTorch's CUDA 12.8 index stops at torch 2.11.0. Needs a driver for CUDA 13.2 or newer.
 # url = "https://download.pytorch.org/whl/cu132"
 # explicit = true
 # ///
