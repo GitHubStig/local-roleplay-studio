@@ -573,11 +573,7 @@ picture each.
 
 ### FLUX.3 Klein on ComfyUI with an RTX 4070 (2026-10-16)
 
-**FLUX.3 Image Klein** (`flux3-klein`), added with ComfyUI 0.41 ([research/comfyui.md](research/comfyui.md),
-"ComfyUI 0.41"): BFL's distilled checkpoint (`flux3_image_klein_sd_int8_convrot`, 5.4 GB) with its
-Qwen3-VL-4B encoder (`qwen3vl_4b_int8_convrot`, 4.5 GB) and FLUX.2's VAE, 16 steps, no guidance, no
-prompt upsampler. Gated on Hugging Face (`black-forest-labs/flux-3-image-klein-comfy`: accept the
-FLUX Kommunity License).
+**FLUX.3 Image Klein** (`flux3-klein`), added with ComfyUI 0.41 ([research/comfyui.md](research/comfyui.md), "Image Models built into ComfyUI"): BFL's distilled checkpoint (`flux3_image_klein_sd_int8_convrot`, 5.4 GB) with its Qwen3-VL-4B encoder (`qwen3vl_4b_int8_convrot`, 4.5 GB) and FLUX.2's VAE, 16 steps, no guidance, no prompt upsampler. Gated on Hugging Face (`black-forest-labs/flux-3-image-klein-comfy`: accept the FLUX Kommunity License).
 
 Measured on the Windows PC (ComfyUI 0.41.1), through the app's own ComfyUI generator: one prose
 prompt written from the tavern scenario (Kael behind the bar with the letter, the traveller in the
@@ -597,7 +593,7 @@ captions without BFL's upsampler (this prompt was, by hand).
 
 ### MOSS-Image on ComfyUI with an RTX 4070 (2026-10-19)
 
-**MOSS-Image** (`moss-image`), added with ComfyUI 0.42 ([research/comfyui.md](research/comfyui.md), "ComfyUI 0.42"): OpenMOSS's instruction-tuned checkpoint, **Apache-2.0** and not gated, from Comfy-Org's repack (`Comfy-Org/MOSS-Image`): `moss_image_sft_int8_convrot` (5.4 GB), **Qwen3.5-9B** as its text encoder (`qwen3.5_9b_w4a8_gptq`, 7.3 GB) and a smaller FLUX.2 VAE (`flux2-vae_small`, 0.25 GB). ComfyUI's template settings: 25 steps, real CFG 2.5 with a short negative (the template's, less its "nsfw"), `er_sde`. No prompt upsampler, as for FLUX.3 Klein. `_base_` files are the checkpoint for fine-tuning, so they're never picked.
+**MOSS-Image** (`moss-image`), added with ComfyUI 0.42 ([research/comfyui.md](research/comfyui.md), "Image Models built into ComfyUI"): OpenMOSS's instruction-tuned checkpoint, **Apache-2.0** and not gated, from Comfy-Org's repack (`Comfy-Org/MOSS-Image`): `moss_image_sft_int8_convrot` (5.4 GB), **Qwen3.5-9B** as its text encoder (`qwen3.5_9b_w4a8_gptq`, 7.3 GB) and a smaller FLUX.2 VAE (`flux2-vae_small`, 0.25 GB). ComfyUI's template settings: 25 steps, real CFG 2.5 with a short negative (the template's, less its "nsfw"), `er_sde`. No prompt upsampler, as for FLUX.3 Klein. `_base_` files are the checkpoint for fine-tuning, so they're never picked.
 
 Measured on the Windows PC (ComfyUI 0.42.1), through the app's own ComfyUI generator: the same prose prompt as the 0.42 check (a traveller in a wet cloak at a corner table, a broad innkeeper with rolled sleeves setting down a mug, firelight, rain on the window), seed 42, 832×1216, ComfyUI's models freed before each, Ollama unloaded:
 
