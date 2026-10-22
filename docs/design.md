@@ -616,7 +616,7 @@ Session from Home, and delete old ones there.
 
 ## API
 
-All under `/api`; the Vite dev server proxies it to the Deno server.
+All under `/api`; the Vite dev server proxies it to the Deno server. A `POST` must say its body is JSON (`Content-Type: application/json`), or it's refused with `415` (2026-10-22): any web page can send a form or plain text to another site without asking first, but not JSON, which needs a preflight the server never answers (it sends no CORS headers). So a page on another site can't make Sessions, queue jobs, or have the saved API key sent to an address of its choosing through `/settings/text-models` (which, with no key given, uses the saved one, so Settings can list a new address's models before it's saved). `PUT` and `DELETE` always need a preflight.
 
 | Route | Purpose |
 |---|---|

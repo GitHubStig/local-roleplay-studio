@@ -1,5 +1,5 @@
 import { extname, join } from '@std/path'
-import { error, json, readJson, type Route } from './http.ts'
+import { error, isJson, json, readJson, type Route } from './http.ts'
 import type { ImageGenerator } from './images/imageGenerator.ts'
 import { IMAGE_BACKENDS, type ImageBackendKind, imageModelsOf } from './images/imageModels.ts'
 import type { ComfyStatus } from './comfyui/status.ts'
@@ -1227,6 +1227,10 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
   ]
 
   return async (req) => {
+    // Any web page can POST here without asking first, but only as a form or plain text: JSON
+    // needs a preflight, which gets no CORS headers. So another site can't use the saved API key
+    // (text-models), make Sessions or queue jobs.
+    if (req.method === 'POST' && !isJson(req)) return error('Send JSON', 415)
     // The Limits switch follows Settings, so turning it off applies at once, mid-Session too.
     if (new URL(req.url).pathname.startsWith('/api/sessions')) {
       setLimitsEnabled((await deps.settings.load()).limits)

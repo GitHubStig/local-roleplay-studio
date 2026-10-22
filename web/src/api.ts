@@ -591,7 +591,10 @@ export const saveLook = (id: string, look: Look) =>
   put<StoryboardSession>(`/api/sessions/${id}/look`, look)
 
 export async function cancelFrame(id: string): Promise<void> {
-  await fetch(`/api/sessions/${id}/cancel`, { method: 'POST' })
+  await fetch(`/api/sessions/${id}/cancel`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  })
 }
 
 export const imageUrl = (sessionId: string, file: string) =>

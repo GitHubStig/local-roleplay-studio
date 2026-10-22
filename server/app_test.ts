@@ -99,6 +99,8 @@ function setup(opts: SetupOptions = {}) {
     handler(
       new Request(`http://localhost${path}`, {
         method,
+        // As the web app sends them; a POST without it is refused.
+        headers: { 'Content-Type': 'application/json' },
         body: body === undefined
           ? undefined
           : typeof body === 'string'
@@ -189,6 +191,24 @@ Deno.test('POST /api/settings/text-models lists a backend not saved yet', async 
   )
   const bad = await call('POST', '/api/settings/text-models', { textBackend: 'nope' })
   assertEquals(bad.status, 400)
+})
+
+Deno.test("A POST that isn't JSON is refused, as another site could send it", async () => {
+  let listed = false
+  const { handler } = setup({
+    listTextModels: () => {
+      listed = true
+      return Promise.resolve([])
+    },
+  })
+  const res = await handler(
+    new Request('http://localhost/api/settings/text-models', {
+      method: 'POST',
+      // What a page on another site can send without a preflight.
+      body: JSON.stringify({ textBackend: 'openai', textBaseUrl: 'http://elsewhere/v1' }),
+    }),
+  )
+  assertEquals([res.status, (await res.json()).error, listed], [415, 'Send JSON', false])
 })
 
 Deno.test('PUT /api/settings saves valid settings', async () => {

@@ -11,6 +11,10 @@ export const json = (body: unknown, status = 200) => Response.json(body, { statu
 export const error = (message: string, status: number, extra: object = {}) =>
   json({ error: message, ...extra }, status)
 
+/** Whether the request says its body is JSON. */
+export const isJson = (req: Request) =>
+  req.headers.get('content-type')?.split(';')[0].trim().toLowerCase() === 'application/json'
+
 /** The request's JSON body, or undefined if it has none or it isn't JSON. */
 export async function readJson(req: Request): Promise<unknown> {
   try {
