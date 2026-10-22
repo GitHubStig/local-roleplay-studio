@@ -13,7 +13,7 @@
 # torchvision = { index = "pytorch-cuda", marker = "sys_platform != 'darwin'" }
 # [[tool.uv.index]]
 # name = "pytorch-cuda"
-# url = "https://download.pytorch.org/whl/cu128"
+# url = "https://download.pytorch.org/whl/cu132"
 # explicit = true
 # ///
 """
