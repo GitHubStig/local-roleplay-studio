@@ -18,7 +18,14 @@ withDefaults(
   }>(),
   { name: (index: number) => `Frame ${index}` },
 )
-defineEmits<{ go: [index: number]; retry: [job: Job]; drop: [job: Job]; clear: [] }>()
+defineEmits<{
+  go: [index: number]
+  /** An edit: show it being made, in the viewer. */
+  edit: [index: number]
+  retry: [job: Job]
+  drop: [job: Job]
+  clear: []
+}>()
 const { jobName } = useImageModels()
 </script>
 
@@ -46,8 +53,8 @@ const { jobName } = useImageModels()
         <button
           type="button"
           class="flex min-w-0 flex-1 flex-col gap-0.5 text-left"
-          :title="`Go to ${name(job.frameIndex)}`"
-          @click="$emit('go', job.frameIndex)"
+          :title="job.kind === 'edit' ? 'See the edit' : `Go to ${name(job.frameIndex)}`"
+          @click="job.kind === 'edit' ? $emit('edit', job.frameIndex) : $emit('go', job.frameIndex)"
         >
           <span class="font-medium">{{ jobName(job) }} · {{ name(job.frameIndex) }}</span>
           <span

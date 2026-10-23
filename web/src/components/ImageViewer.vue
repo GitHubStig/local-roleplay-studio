@@ -30,12 +30,29 @@ const props = defineProps<{
   /** Shown under the image; given as '' where one image has none, to keep its space. */
   caption?: string
   /**
-   * Painting on the image (an edit's area, ADR 0021): the arrow keys and swipes don't step, and a
-   * click outside the image doesn't close, so a stroke or an instruction isn't lost.
+   * Painting on the image (an edit's area, ADR 0021): the arrow keys and swipes don't step, a click
+   * outside the image doesn't close, and Esc asks to stop painting (`stopPainting`) instead of
+   * closing, so a stroke or an instruction isn't lost.
    */
   painting?: boolean
+  /** The image is being made into another (an edit): the border sweeps, as on the screens. */
+  rendering?: 'image' | 'queued' | null
 }>()
-const emit = defineEmits<{ close: []; previous: []; next: []; up: []; down: [] }>()
+const emit = defineEmits<{
+  close: []
+  previous: []
+  next: []
+  up: []
+  down: []
+  stopPainting: []
+}>()
+
+/** Esc while painting stops painting; a second one closes. */
+function onCancel(e: Event) {
+  if (!props.painting) return
+  e.preventDefault()
+  emit('stopPainting')
+}
 const dialog = useTemplateRef<HTMLDialogElement>('dialog')
 
 /** Asks for the image that way, if there is one. */
@@ -112,14 +129,25 @@ watch(
 
 /**
  * A click that isn't on the image or its controls (the dimmed backdrop, the space around it)
- * closes; a pan that starts on the image and lets go outside it doesn't.
+ * closes; a pan that starts on the image and lets go outside it doesn't, nor does a click just
+ * beside the image or what's beside it (`DEAD_ZONE`), so a near miss on a button isn't a close.
  */
 const controls = useTemplateRef<HTMLElement>('controls')
 const below = useTemplateRef<HTMLElement>('below')
+const DEAD_ZONE = 48
+const near = (e: PointerEvent, selector: string) => {
+  const r = dialog.value?.querySelector(selector)?.getBoundingClientRect()
+  return !!r && r.width > 0 && e.clientX > r.left - DEAD_ZONE && e.clientX < r.right + DEAD_ZONE &&
+    e.clientY > r.top - DEAD_ZONE && e.clientY < r.bottom + DEAD_ZONE
+}
 onClickOutside(
   () => dialog.value?.querySelector<HTMLElement>('[data-image-frame]'),
-  () => dialog.value?.open && !props.painting && dialog.value.close(),
-  { ignore: [controls, below] },
+  (e) => {
+    if (!dialog.value?.open || props.painting) return
+    if (near(e, '[data-image-frame]') || near(e, '[data-image-side]')) return
+    dialog.value.close()
+  },
+  { ignore: [controls, below, '[data-image-side]', '[data-viewer-side-row]'] },
 )
 </script>
 
@@ -130,6 +158,7 @@ onClickOutside(
     tabindex="-1"
     data-image-viewer
     @close="emit('close')"
+    @cancel="onCancel"
   >
     <!-- The controls above the image and the caption below it; on a phone on its side, both in a
          column beside it, so the image has the whole height. -->
@@ -221,29 +250,39 @@ onClickOutside(
         bare
         instant
         zoom
+        :rendering="rendering"
         class="short:col-start-1 short:row-span-2 short:row-start-1"
       >
         <template #layer="{ size }">
           <slot name="layer" :size="size" />
         </template>
+        <!-- Beside the image where there's room (a column of buttons); in a row under it if not. -->
+        <template v-if="$slots.side" #side>
+          <slot name="side" :vertical="true" />
+        </template>
       </FrameImage>
-      <!-- In place of the caption: tools for what's being done to the image (painting an edit). -->
-      <div
-        v-if="$slots.below"
-        ref="below"
-        class="mx-auto mt-2 w-full max-w-3xl short:col-start-2 short:row-start-2"
-        data-viewer-below
-      >
-        <slot name="below" />
+      <div class="flex min-h-0 flex-col short:col-start-2 short:row-start-2">
+        <div v-if="$slots.side" class="mt-2 flex justify-center sm:hidden" data-viewer-side-row>
+          <slot name="side" :vertical="false" />
+        </div>
+        <!-- In place of the caption: tools for what's being done to the image (painting an edit). -->
+        <div
+          v-if="$slots.below"
+          ref="below"
+          class="mx-auto mt-2 w-full max-w-3xl"
+          data-viewer-below
+        >
+          <slot name="below" />
+        </div>
+        <p
+          v-else-if="caption !== undefined"
+          ref="captionBox"
+          class="mx-auto mt-2 h-[3lh] w-full max-w-prose shrink-0 overflow-y-auto text-sm whitespace-pre-line text-white/80 short:h-auto short:min-h-0"
+          data-viewer-caption
+        >
+          {{ caption }}
+        </p>
       </div>
-      <p
-        v-else-if="caption !== undefined"
-        ref="captionBox"
-        class="mx-auto mt-2 h-[3lh] w-full max-w-prose shrink-0 overflow-y-auto text-sm whitespace-pre-line text-white/80 short:col-start-2 short:row-start-2 short:h-auto short:min-h-0"
-        data-viewer-caption
-      >
-        {{ caption }}
-      </p>
     </div>
   </dialog>
 </template>

@@ -803,8 +803,11 @@ export interface Job {
   createdAt: string
   /** A render's Image Model, as the Session had it when queued: it renders by that one. */
   image?: { imageBackend: ImageBackend; imageModel: string; steps: number }
-  /** An edit's instruction, or that it makes the newest edit again. */
-  edit?: { instruction?: string; retry?: true }
+  /**
+   * An edit's order: what to paint, the area painted for it (a mask file, saved when it was
+   * queued), and whether it makes the newest edit again, in its place.
+   */
+  edit?: { instruction: string; mask?: string; retry?: boolean }
 }
 
 /** A Session's jobs (a Roleplay's or a Chain's), in the order queued; several may run, one per machine. */
@@ -814,15 +817,19 @@ export const listJobs = (id: string) => request<Job[]>(`/api/sessions/${id}/jobs
 export const queueJob = (id: string, kind: JobKind, frameIndex: number) =>
   post<Job[]>(`/api/sessions/${id}/jobs`, { kind, frameIndex })
 
-/**
- * Queues an edit of a Frame's picture: an instruction, and the area painted over it (a PNG, in
- * base64) or none for all of it; or `retry` to make the newest edit again. Returns the queue.
- */
+/** Queues an edit of a Frame's picture (`EditOrder`); returns the queue. */
 export const queueEdit = (id: string, frameIndex: number, edit: EditOrder) =>
   post<Job[]>(`/api/sessions/${id}/jobs`, { kind: 'edit', frameIndex, edit })
 
-/** What an edit is told: what to paint, and where (a PNG, base64); or to make the newest again. */
-export type EditOrder = { instruction: string; mask?: string } | { retry: true }
+/**
+ * What an edit is told: what to paint, and where (a PNG, base64; none for all of it); `retry` makes
+ * the newest edit again, as told now, in its place.
+ */
+export interface EditOrder {
+  instruction: string
+  mask?: string
+  retry?: boolean
+}
 
 /** Picks which version of a Frame's picture is the picture (0 for its render); returns the Session. */
 export const pickVersion = <S>(id: string, index: number, picked: number) =>

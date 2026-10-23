@@ -4,7 +4,6 @@
  * versions stay in a straight line: only the newest can be retried (in its place, with a new seed)
  * or deleted, and the one picked is the picture everywhere (`pickedVersion`).
  */
-import { join } from '@std/path'
 import { type FrameDeps, imageProgress, removeImage } from './frames.ts'
 import { error } from './http.ts'
 import type { EditModel } from './images/editModels.ts'
@@ -28,8 +27,9 @@ const secondsSince = (start: number) => Math.round(performance.now() - start) / 
 
 /**
  * Why an edit can't be queued on the picture Frame `index` shows (the Frame called `name`), or null
- * if it can. Without a picture it can still wait behind a render already queued (`pending`). A
- * retry needs an edit of its own to make again, and nothing else editing the picture meanwhile.
+ * if it can. Without a picture it can still wait behind a render already queued (`pending`). Not
+ * while another edit is queued or running on it, which it would be made from; a retry needs an
+ * edit of its own to make again.
  */
 export function checkEdit(
   session: Session,
@@ -41,6 +41,7 @@ export function checkEdit(
   const picture = shownPictureOf(session, index)
   const coming = pending.some((k) => k === 'render' || k === 'picture')
   if (!picture && !coming) return error(`${name} has no picture to edit yet`, 409)
+  if (pending.includes('edit')) return error(`${name} is being edited: wait for it first`, 409)
   if (order.retry) {
     const newest = picture?.edits?.at(-1)
     if (!newest) return error(`${name} has no edit to retry`, 409)
@@ -50,8 +51,6 @@ export function checkEdit(
         409,
       )
     }
-    if (pending.includes('edit')) return error(`${name} is being edited: wait for it first`, 409)
-    return null
   }
   const limit = crossedLimit(order.instruction)
   return limit ? error(`That crosses a limit: ${limit.message}`, 422) : null
@@ -59,9 +58,9 @@ export function checkEdit(
 
 /**
  * Edits the picture Frame `index` shows, in its turn behind any render, as `order` says: a new
- * version made from the newest, or the newest made again with the next seed, in its place. Saves it
- * onto the picture, if it's still there and its newest version is still the one it was made from,
- * and picks it. The painted area is kept beside it, so a retry can paint the same.
+ * version made from the newest, or the newest made again, as told now, with the next seed, in its
+ * place. Saves it onto the picture, if it's still there and its newest version is still the one it
+ * was made from, and picks it. Its painted area, saved when it was queued, is kept beside it.
  */
 export async function editFrame<S extends Session>(
   deps: Pick<FrameDeps, 'store' | 'imageGenerator' | 'renderQueue'>,
@@ -84,11 +83,8 @@ export async function editFrame<S extends Session>(
   // Made from the newest version; a retry, from the one before the edit it replaces.
   const from = (redo ? edits.at(-2) : edits.at(-1)) ?? picture
   const dir = deps.store.dir(session.id)
-  const id = crypto.randomUUID().slice(0, 8)
-  const name = `edit-${index}-${id}`
-  const written = order.mask ? `mask-${index}-${id}.png` : undefined
-  const mask = written ?? redo?.mask
-  const instruction = redo ? redo.instructions[0] : order.instruction!
+  const name = `edit-${index}-${crypto.randomUUID().slice(0, 8)}`
+  const { instruction, mask } = order
   const seed = redo ? redo.seed + 1 : session.seed
   const start = performance.now()
   let waited = false
@@ -97,12 +93,6 @@ export async function editFrame<S extends Session>(
     emit({ type: 'phase', phase: 'queued' })
   })
   try {
-    if (written) {
-      await Deno.writeFile(
-        join(dir, written),
-        Uint8Array.from(atob(order.mask!), (c) => c.charCodeAt(0)),
-      )
-    }
     const queued = waited ? secondsSince(start) : undefined
     emit({ type: 'phase', phase: 'image' })
     const began = performance.now()
@@ -135,13 +125,17 @@ export async function editFrame<S extends Session>(
         return { ...p, edits: [...kept, edit], picked: kept.length + 1 }
       })
     )
-    // The edit it replaced, with what was made from it; its painted area is the new one's too.
-    if (replaced) await removeFiles(dir, versionFiles(replaced))
+    // The edit it replaced, with what was made from it and its painted area.
+    if (replaced) {
+      const files = versionFiles(replaced)
+      if (replaced.mask && replaced.mask !== mask) files.push(replaced.mask)
+      await removeFiles(dir, files)
+    }
     emit({ type: 'edited' })
     return updated
   } catch (err) {
+    // The painted area stays with the job, to retry; it goes when the job is dismissed.
     await removeImage(dir, name)
-    if (written) await removeFiles(dir, [written])
     throw err
   } finally {
     release()

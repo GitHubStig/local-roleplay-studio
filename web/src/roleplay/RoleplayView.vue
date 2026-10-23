@@ -16,13 +16,14 @@ import { useImageModels } from '../composables/useSettingsOptions'
 import UndirectedNote from './UndirectedNote.vue'
 import CastFieldBox from './CastFieldBox.vue'
 import Frame3dViewers from '../components/Frame3dViewers.vue'
+import EditedChip from '../components/EditedChip.vue'
 import FrameViewer from '../components/FrameViewer.vue'
 import FrameJobs from '../components/FrameJobs.vue'
 import JobQueue from '../components/JobQueue.vue'
 import PanelTabs from '../components/PanelTabs.vue'
 import RenderAllButton from '../components/RenderAllButton.vue'
 import { useJobs } from '../composables/useJobs'
-import { usePictureVersions } from '../composables/usePictureVersions'
+import { usePictureEditing } from '../composables/usePictureEditing'
 import { useFeatures } from '../composables/useFeatures'
 import { jobForming, jobStatus, queueTabLabel } from '../jobs'
 import { useShownPreview } from '../composables/useShownPreview'
@@ -52,8 +53,6 @@ const notice = ref<{ kind: 'error' | 'declined'; text: string } | null>(null)
 const transcript = useTemplateRef<HTMLElement>('transcript')
 /** The Frame whose picture is open in the viewer, if any. */
 const viewing = ref<number | null>(null)
-/** Painting an edit of its picture in the viewer (ADR 0021). */
-const paintingPicture = ref(false)
 
 /** The exchange in progress: the message sent, and the reply as it arrives. */
 interface Pending {
@@ -93,11 +92,9 @@ const { jobs, runningJobs, runningJob, runningOn, jobsFor, hasJob, queue, queueE
     imageModel: () => session.value?.settings.imageModel,
   },
 )
-const { pick: pickVersion, deleteEdit } = usePictureVersions(
-  props.id,
-  session,
-  (text) => (notice.value = { kind: 'error', text }),
-)
+/** Editing a picture in the viewer (ADR 0021): painting an edit, or watching one being made. */
+const { painting: paintingPicture, startEdit, showEdit, pick: pickVersion, deleteEdit } =
+  usePictureEditing(props.id, session, viewing, (text) => (notice.value = { kind: 'error', text }))
 /**
  * The picture forming, over the picture of the Frame a job renders (one at a time). The Frame is
  * kept once the job ends, while the last preview stays over it until the new picture is in.
@@ -787,8 +784,7 @@ const lookSavingText = computed(() =>
                         :can-render="(!!frame.prompt && !frame.blocked) || hasJob(frame.index, 'picture')"
                         @queue="(kind) => queueSaved(kind, frame.index)"
                         @view="(kind) => (open3d = { index: frame.index, kind })"
-                        @edit="viewing = frame.index; paintingPicture = true"
-                        @pick="(version) => pickVersion(frame.index, version)"
+                        @edit="startEdit(frame.index)"
                       />
                     </p>
                     <details v-if="frame.prompt" class="text-muted" data-image-prompt>
@@ -845,6 +841,7 @@ const lookSavingText = computed(() =>
                     v-if="changed(frame)"
                     class="absolute left-2 top-2 rounded-full bg-black/70 px-2 py-0.5 text-white"
                   >Changed since render · {{ byOf(pictureOf(frame)!) }}</span>
+                  <EditedChip :picture="pictureOf(frame)" class="absolute right-2 top-2" />
                 </button>
               </div>
             </li>
@@ -989,6 +986,7 @@ const lookSavingText = computed(() =>
             empty="Nothing queued. Picture, Render and Upscale under a Reply add work here, to run while you carry on."
             :describe="describeJob"
             @go="goToFrame"
+            @edit="showEdit"
             @retry="retry"
             @drop="drop"
             @clear="clear"
@@ -1209,11 +1207,12 @@ const lookSavingText = computed(() =>
       :session-id="session.id"
       :frames="session.frames"
       :image-model="session.settings.imageModel"
-      :editing="(index) => hasJob(index, 'edit')"
+      :jobs="jobs"
       @step="goToFrame"
       @edit="queueEdit"
       @pick="pickVersion"
       @delete-edit="deleteEdit"
+      @drop-job="dropJob"
     />
     <Frame3dViewers
       v-if="session"

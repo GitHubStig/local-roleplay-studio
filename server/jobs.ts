@@ -8,6 +8,7 @@
  * onto whatever the Session has become meanwhile. Jobs live in memory: a server restart forgets the
  * queue. What a job does is up to its Session's kind (`JobRunner`).
  */
+import { join } from '@std/path'
 import type { Feature } from './features.ts'
 import type { Phase } from './frames.ts'
 import { error, json, readJson, type Route } from './http.ts'
@@ -67,13 +68,15 @@ export const JOB_FEATURE: Record<JobKind, Feature | null> = {
 }
 
 /**
- * What an `edit` is told: an instruction, and the area painted over the picture to repaint (a PNG,
- * base64; white repainted), or none for the whole picture. A retry makes the newest edit again with
- * a new seed, in its place, and is told nothing new.
+ * What an `edit` is told: what to paint, and the area painted over the picture to repaint (a mask
+ * file in the Session's folder, saved when the edit is queued; white repainted), or none for the
+ * whole picture. A retry makes the newest edit again, as told now, with a new seed, in its place.
  */
-export type EditOrder =
-  | { instruction: string; mask?: string; retry?: never }
-  | { retry: true; instruction?: never; mask?: never }
+export interface EditOrder {
+  instruction: string
+  mask?: string
+  retry?: boolean
+}
 
 export interface Job {
   id: string
@@ -159,13 +162,6 @@ const sameWork = (job: Job, kind: JobKind, frameIndex: number, image?: ImageChoi
   kind !== 'edit' && job.kind === kind && job.frameIndex === frameIndex &&
   job.image?.imageModel === image?.imageModel
 
-/** A job as the page is sent it: an edit without its painted area, which only the run needs. */
-const shown = (job: Job): Job => {
-  if (!job.edit?.mask) return { ...job }
-  const { mask: _, ...edit } = job.edit
-  return { ...job, edit }
-}
-
 interface Running {
   job: Job
   controller: AbortController
@@ -178,16 +174,22 @@ export class SessionJobs {
   /** Each Session's running jobs, at most one per machine, by id. */
   #running = new Map<string, Map<string, Running>>()
   #run: JobRunner
+  #dropped?: (sessionId: string, job: Job) => void
   /** Sessions whose queue is held: no job starts until `holding` ends. */
   #held = new Set<string>()
 
-  constructor(run: JobRunner) {
+  /**
+   * `dropped` hears of each job that ends without being done: cancelled, or dismissed after it
+   * failed (e.g. to delete an edit's painted area, which only it used).
+   */
+  constructor(run: JobRunner, dropped?: (sessionId: string, job: Job) => void) {
     this.#run = run
+    this.#dropped = dropped
   }
 
   /** A Session's jobs, in the order they were queued. */
   list(sessionId: string): Job[] {
-    return (this.#jobs.get(sessionId) ?? []).map(shown)
+    return (this.#jobs.get(sessionId) ?? []).map((job) => ({ ...job }))
   }
 
   /**
@@ -208,7 +210,7 @@ export class SessionJobs {
   ): Job {
     const jobs = this.#jobs.get(sessionId) ?? []
     const same = jobs.find((j) => sameWork(j, kind, frameIndex, image) && j.status !== 'failed')
-    if (same) return shown(same)
+    if (same) return { ...same }
     const job: Job = {
       id: crypto.randomUUID().slice(0, 8),
       kind,
@@ -227,7 +229,7 @@ export class SessionJobs {
       ahead < 0 ? [...jobs, job] : [...jobs.slice(0, ahead), job, ...jobs.slice(ahead)],
     )
     this.#next(sessionId)
-    return shown(job)
+    return { ...job }
   }
 
   /**
@@ -239,7 +241,10 @@ export class SessionJobs {
     if (!job) return false
     const running = this.#running.get(sessionId)?.get(jobId)
     if (running) running.controller.abort(new Error('Cancelled by player'))
-    else this.#remove(sessionId, jobId)
+    else {
+      this.#remove(sessionId, jobId)
+      this.#dropped?.(sessionId, job)
+    }
     return true
   }
 
@@ -357,7 +362,10 @@ export class SessionJobs {
       .then(
         () => this.#remove(sessionId, job.id),
         (err) => {
-          if (controller.signal.aborted) return this.#remove(sessionId, job.id)
+          if (controller.signal.aborted) {
+            this.#remove(sessionId, job.id)
+            return this.#dropped?.(sessionId, job)
+          }
           job.status = 'failed'
           job.error = (err as Error).message
           delete job.phase
@@ -403,22 +411,25 @@ export const SESSION_JOBS: readonly JobKind[] = ['voice', 'style']
 const MAX_INSTRUCTION = 1000
 const MAX_MASK = 8_000_000
 
-/** An edit's order from a request (`EditOrder`), or why it isn't one. */
+/**
+ * An edit's order from a request, its painted area still the PNG it was sent as (base64), or why
+ * it isn't one.
+ */
 export function editOrder(body: unknown): EditOrder | string {
   const b = body as { instruction?: unknown; mask?: unknown; retry?: unknown } | undefined
-  if (b?.retry === true) return { retry: true }
+  const retry = b?.retry === true ? { retry: true } : {}
   const instruction = typeof b?.instruction === 'string' ? b.instruction.trim() : ''
   if (!instruction) return 'Say what to paint'
   if (instruction.length > MAX_INSTRUCTION) {
     return `An instruction can be at most ${MAX_INSTRUCTION} characters`
   }
-  if (b?.mask === undefined) return { instruction }
+  if (b?.mask === undefined) return { instruction, ...retry }
   if (
     typeof b.mask !== 'string' || b.mask.length > MAX_MASK || !/^[A-Za-z0-9+/]+=*$/.test(b.mask)
   ) {
     return 'mask must be a PNG, in base64'
   }
-  return { instruction, mask: b.mask }
+  return { instruction, mask: b.mask, ...retry }
 }
 
 /** The job routes every Session kind shares, under `/api/sessions/:id/jobs`. */
@@ -453,6 +464,13 @@ export function jobRoutes(ctx: JobRoutesContext): Route[] {
         .map((j) => j.kind)
       const refused = await ctx.check(session, kind, index, pending, edit)
       if (refused) return refused
+      // The painted area is saved as it's queued, so the page can show it while the edit waits.
+      if (edit?.mask) {
+        const file = `mask-${index}-${crypto.randomUUID().slice(0, 8)}.png`
+        const png = Uint8Array.from(atob(edit.mask), (c) => c.charCodeAt(0))
+        await Deno.writeFile(join(ctx.store.dir(session.id), file), png)
+        edit.mask = file
+      }
       ctx.jobs.enqueue(
         session.id,
         kind,

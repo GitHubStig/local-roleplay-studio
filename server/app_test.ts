@@ -1,4 +1,10 @@
-import { assertEquals, assertMatch, assertNotEquals, assertStringIncludes } from '@std/assert'
+import {
+  assertEquals,
+  assertMatch,
+  assertNotEquals,
+  assertRejects,
+  assertStringIncludes,
+} from '@std/assert'
 import { join } from '@std/path'
 import { callFile, type CallRecord, loggedVoice } from './calls.ts'
 import { type AppDeps, createHandler } from './app.ts'
@@ -1202,13 +1208,14 @@ Deno.test('An edit repaints a picture as a new version, made from the newest and
       call('POST', '/api/sessions/s1/jobs', { kind: 'edit', frameIndex: 1, edit: body })
     const queued = await edit({ instruction: 'A hand with five fingers', mask: MASK })
     assertEquals(queued.status, 201)
-    // The painted area isn't sent back with the job.
-    assertEquals((await queued.json())[0].edit, { instruction: 'A hand with five fingers' })
+    // The painted area is saved as it's queued, and the job names it, for the page to show.
+    const { mask } = (await queued.json())[0].edit
+    assertMatch(mask, /^mask-1-[0-9a-f]{8}\.png$/)
     assertEquals(await settled(call), [])
     const [, first] = await chainFrames(call)
     const [one] = first.edits
     assertMatch(one.image, /^edit-1-[0-9a-f]{8}\.png$/)
-    assertMatch(one.mask, /^mask-1-[0-9a-f]{8}\.png$/)
+    assertEquals(one.mask, mask)
     assertEquals([one.instructions, one.editModel, first.picked], [
       ['A hand with five fingers'],
       'qwen-image-2.1-edit',
@@ -1236,19 +1243,44 @@ Deno.test('An edit repaints a picture as a new version, made from the newest and
     assertEquals(upscaled.upscaled, undefined)
     // Edits and their upscales are served, as the render is.
     const served = (name: string) => call('GET', `/api/sessions/s1/images/${name}`)
-    for (const name of [one.image, upscaled.edits[1].image, upscaled.edits[1].upscaled]) {
+    for (const name of [one.image, one.mask, upscaled.edits[1].image, upscaled.edits[1].upscaled]) {
       assertEquals((await served(name)).status, 200)
     }
   }))
 
-Deno.test('An edit can be retried in its place, picked, and the newest deleted', () =>
+Deno.test("An edit waits for the one before, and its painted area goes if it's cancelled", () =>
+  withTempDir(async (root) => {
+    // Renders as usual; an edit runs till it's cancelled.
+    const images: ImageGenerator = {
+      ...fakeImageGenerator(),
+      edit: (_req, signal) =>
+        new Promise((_, reject) =>
+          signal.addEventListener('abort', () => reject(signal.reason), { once: true })
+        ),
+    }
+    const { call } = await chainOfTwo(root, { imageGenerator: images })
+    const edit = (body: object) =>
+      call('POST', '/api/sessions/s1/jobs', { kind: 'edit', frameIndex: 1, edit: body })
+    const [job] = await (await edit({ instruction: 'A hand', mask: MASK })).json()
+    // Another, or a retry, would be made from what this one is making.
+    assertEquals((await edit({ instruction: 'A cup' })).status, 409)
+    assertEquals((await edit({ instruction: 'A cup', retry: true })).status, 409)
+    const masked = join(root, 's1', job.edit.mask)
+    assertEquals((await Deno.stat(masked)).isFile, true)
+    await call('DELETE', `/api/sessions/s1/jobs/${job.id}`)
+    assertEquals(await settled(call), [])
+    await assertRejects(() => Deno.stat(masked), Deno.errors.NotFound)
+  }))
+
+Deno.test('An edit can be made again in its place, as told now, picked, and the newest deleted', () =>
   withTempDir(async (root) => {
     const images = fakeImageGenerator()
     const { call } = await chainOfTwo(root, { imageGenerator: images })
     const edit = (body: object) =>
       call('POST', '/api/sessions/s1/jobs', { kind: 'edit', frameIndex: 1, edit: body })
-    // Nothing to retry yet; an instruction is needed, and one crossing a Limit is refused.
-    assertEquals((await edit({ retry: true })).status, 409)
+    // Nothing to make again yet; an instruction is needed, and one crossing a Limit is refused.
+    assertEquals((await edit({ retry: true, instruction: 'A hand' })).status, 409)
+    assertEquals((await edit({ retry: true })).status, 400)
     assertEquals((await edit({ instruction: ' ' })).status, 400)
     assertEquals((await edit({ instruction: 'A hand', mask: 'not base64!' })).status, 400)
     assertEquals((await edit({ instruction: 'A naked child' })).status, 422)
@@ -1256,19 +1288,22 @@ Deno.test('An edit can be retried in its place, picked, and the newest deleted',
     await edit({ instruction: 'A hand', mask: MASK })
     assertEquals(await settled(call), [])
     const [, made] = await chainFrames(call)
-    await edit({ retry: true })
+    await edit({ retry: true, instruction: 'An open hand', mask: btoa('\x89PNG wider') })
     assertEquals(await settled(call), [])
     const [, again] = await chainFrames(call)
-    // In its place, from the render, with the next seed and the same painted area.
+    // In its place, from the render, with the next seed, as told now.
     assertEquals(again.edits.length, 1)
     assertNotEquals(again.edits[0].image, made.edits[0].image)
-    assertEquals([again.edits[0].seed, again.edits[0].mask], [
+    assertEquals([again.edits[0].seed, again.edits[0].instructions], [
       made.edits[0].seed + 1,
-      made.edits[0].mask,
+      ['An open hand'],
     ])
-    assertEquals(images.edits[1].image, made.image)
+    assertEquals([images.edits[1].image, images.edits[1].instruction], [made.image, 'An open hand'])
     const file = (name: string) => call('GET', `/api/sessions/s1/images/${name}`)
-    assertEquals((await file(made.edits[0].image)).status, 404)
+    // The edit it replaced goes, its painted area too.
+    for (const name of [made.edits[0].image, made.edits[0].mask]) {
+      assertEquals((await file(name)).status, 404)
+    }
     assertEquals((await file(again.edits[0].image)).status, 200)
 
     // The render picked again, then the edit deleted: its files go, the render stays picked.

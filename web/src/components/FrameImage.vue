@@ -104,14 +104,16 @@ const frameStyle = computed(() => ({
        frame inside is sized to the image's proportions, so overlays sit on the image itself. -->
   <section
     class="flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-lg [container-type:size]"
-    :class="{ 'border border-line bg-surface': !bare }"
+    :class="{ 'border border-line bg-surface': !bare, 'sm:px-36': $slots.side }"
   >
+    <!-- What sits beside the image (a column of buttons), on as wide a screen as has room: the same
+         room is kept on the other side, so the image stays centred. -->
+    <div class="relative" :style="frameStyle">
     <div
       ref="frame"
       data-image-frame
-      class="group relative overflow-hidden rounded-md"
+      class="group relative h-full w-full overflow-hidden rounded-md"
       :class="{ 'render-sweep': rendering, 'cursor-grab active:cursor-grabbing': zoomed }"
-      :style="frameStyle"
       :data-rendering="rendering ?? undefined"
       :data-aspect="aspect.toFixed(3)"
     >
@@ -159,6 +161,14 @@ const frameStyle = computed(() => ({
       </span>
       <!-- Pills, captions and anything else drawn over the image. -->
       <slot />
+    </div>
+      <div
+        v-if="$slots.side"
+        class="absolute top-0 left-full ml-3 hidden w-32 sm:block"
+        data-image-side
+      >
+        <slot name="side" />
+      </div>
     </div>
   </section>
 </template>

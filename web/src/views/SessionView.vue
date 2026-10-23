@@ -11,10 +11,11 @@ import RenderAllButton from '../components/RenderAllButton.vue'
 import PanelTabs from '../components/PanelTabs.vue'
 import { useImageModels } from '../composables/useSettingsOptions'
 import Frame3dViewers from '../components/Frame3dViewers.vue'
+import EditedChip from '../components/EditedChip.vue'
 import FrameViewer from '../components/FrameViewer.vue'
 import JobQueue from '../components/JobQueue.vue'
 import { useJobs } from '../composables/useJobs'
-import { usePictureVersions } from '../composables/usePictureVersions'
+import { usePictureEditing } from '../composables/usePictureEditing'
 import { showPickedFrame, useFrameKeys } from '../composables/useFrameKeys'
 import { formingOf, jobForming, jobStatus, queueTabLabel, sweepOf } from '../jobs'
 import { useShownPreview } from '../composables/useShownPreview'
@@ -252,9 +253,9 @@ const shownRender = computed(() =>
 
 /** The Frame whose picture is open in the viewer, if any. */
 const viewingPicture = ref<number | null>(null)
-/** Painting an edit of it in the viewer (ADR 0021). */
-const paintingPicture = ref(false)
-const { pick: pickVersion, deleteEdit } = usePictureVersions(props.id, session, (m) => (frameError.value = m))
+/** Editing its picture there (ADR 0021): painting an edit, or watching one being made. */
+const { painting: paintingPicture, startEdit, showEdit, pick: pickVersion, deleteEdit } =
+  usePictureEditing(props.id, session, viewingPicture, (m) => (frameError.value = m))
 /** Which Frame's scene or figure is open, if any. */
 const open3d = ref<{ index: number; kind: Made3d } | null>(null)
 
@@ -478,6 +479,11 @@ const promptDiff = computed(() => {
           :expected-size="session.imageSize"
           @open="viewingPicture = shown!.index"
         >
+          <EditedChip
+            :picture="picture"
+            class="absolute right-3"
+            :class="viewingOlder ? 'top-14' : 'top-3'"
+          />
           <div
             v-if="viewingOlder"
             class="absolute right-3 top-3 flex items-center gap-2 rounded-full bg-black/70 py-1 pl-3 pr-1 text-sm text-white"
@@ -632,8 +638,7 @@ const promptDiff = computed(() => {
               button-class="rounded-lg border border-line px-3 py-2 text-sm disabled:opacity-50"
               @queue="(kind) => queue(kind, shown!.index)"
               @view="(kind) => (open3d = { index: shown!.index, kind })"
-              @edit="viewingPicture = shown!.index; paintingPicture = true"
-              @pick="(version) => pickVersion(shown!.index, version)"
+              @edit="startEdit(shown!.index)"
             />
             <RenderAllButton
               v-if="featureOn('images') && session.frames.length"
@@ -695,6 +700,7 @@ const promptDiff = computed(() => {
               empty="Nothing queued. Render, Render all and Upscale add work here, to run while you carry on."
               :name="frameTitle"
               @go="(index) => { pick(index); panel = 'log' }"
+              @edit="showEdit"
               @retry="retry"
               @drop="dropJob"
               @clear="clear"
@@ -926,10 +932,11 @@ const promptDiff = computed(() => {
       :frames="session.frames"
       :image-model="session.settings.imageModel"
       :name="frameTitle"
-      :editing="(index) => hasJob(index, 'edit')"
+      :jobs="jobs"
       @edit="queueEdit"
       @pick="pickVersion"
       @delete-edit="deleteEdit"
+      @drop-job="dropJob"
     />
     <Frame3dViewers
       v-if="session"

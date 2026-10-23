@@ -2,13 +2,12 @@
 import { type JobKind, type Made3d, MADE3D_FEATURE, type Picture } from '../api'
 import { useFeatures } from '../composables/useFeatures'
 import Frame3dButtons from './Frame3dButtons.vue'
-import VersionStepper from './VersionStepper.vue'
 
 /**
  * What can be done with a Frame's picture, in every kind of Session: render it (where a Frame
- * renders on demand), upscale it, make it into 3D, and edit it (in the viewer, ADR 0021), its
- * versions picked here once it has edits. Each queues a job; a button is off while that job is
- * queued or running on the Frame, and all are while `busy`.
+ * renders on demand), upscale it, make it into 3D, and edit it (in the viewer, ADR 0021, where its
+ * versions are). Each queues a job; a button is off while that job is queued or running on the
+ * Frame, and all are while `busy`, except Edit, which opens the viewer on an edit being made.
  */
 const props = withDefaults(
   defineProps<{
@@ -27,10 +26,8 @@ const props = withDefaults(
 defineEmits<{
   queue: [kind: JobKind]
   view: [kind: Made3d]
-  /** Open the picture to paint an edit. */
+  /** Open the picture to paint an edit, or to watch one being made. */
   edit: []
-  /** Pick version `version` of the picture: 0 its render, n its edit n. */
-  pick: [version: number]
 }>()
 const { on: featureOn } = useFeatures()
 
@@ -69,19 +66,12 @@ const pictured = () => !!props.picture || props.hasJob('render') || props.hasJob
       v-if="featureOn('edits') && picture"
       type="button"
       :class="buttonClass"
-      :disabled="!!busy || hasJob('edit')"
-      :title="busy || (hasJob('edit') ? 'Being edited' : 'Repaint part of the picture')"
+      :title="hasJob('edit') ? 'Being edited: see how it goes' : 'Repaint part of the picture'"
       data-edit-button
       @click="$emit('edit')"
     >
-      Edit
+      {{ hasJob('edit') ? 'Editing…' : 'Edit' }}
     </button>
-    <VersionStepper
-      v-if="picture"
-      :picture="picture"
-      :disabled="hasJob('edit')"
-      @pick="(version) => $emit('pick', version)"
-    />
   </template>
   <Frame3dButtons
     :picture="picture"

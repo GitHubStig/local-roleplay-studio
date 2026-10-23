@@ -31,6 +31,7 @@ import CollapsibleTextarea from '../components/CollapsibleTextarea.vue'
 import ComposeBox from '../components/ComposeBox.vue'
 import Frame3dViewers from '../components/Frame3dViewers.vue'
 import FrameImage from '../components/FrameImage.vue'
+import EditedChip from '../components/EditedChip.vue'
 import FrameViewer from '../components/FrameViewer.vue'
 import Icon from '../components/Icon.vue'
 import JobQueue from '../components/JobQueue.vue'
@@ -44,7 +45,7 @@ import RestartButton from '../components/RestartButton.vue'
 import { useImageModels } from '../composables/useSettingsOptions'
 import { useFeatures } from '../composables/useFeatures'
 import { useJobs } from '../composables/useJobs'
-import { usePictureVersions } from '../composables/usePictureVersions'
+import { usePictureEditing } from '../composables/usePictureEditing'
 import { useDragReorder } from '../composables/useDragReorder'
 import { showPickedFrame, useFrameKeys } from '../composables/useFrameKeys'
 import { JOB_NAMES, jobForming, jobStatus, queueTabLabel, sweepOf } from '../jobs'
@@ -543,13 +544,9 @@ const timingsLabel = (f: StoryboardFrame) => {
 
 /** The Frame whose picture is open in the viewer, if any. */
 const viewingPicture = ref<number | null>(null)
-/** Painting an edit of it in the viewer (ADR 0021). */
-const paintingPicture = ref(false)
-const { pick: pickVersion, deleteEdit } = usePictureVersions(
-  props.id,
-  session,
-  (text) => (message.value = { kind: 'error', text }),
-)
+/** Editing its picture there (ADR 0021): painting an edit, or watching one being made. */
+const { painting: paintingPicture, startEdit, showEdit, pick: pickVersion, deleteEdit } =
+  usePictureEditing(props.id, session, viewingPicture, (text) => (message.value = { kind: 'error', text }))
 /** Which Frame's scene or figure is open, if any. */
 const open3d = ref<{ index: number; kind: Made3d } | null>(null)
 const frameTitle = (index: number) => `Frame ${index + 1}`
@@ -607,6 +604,7 @@ const imagesOn = computed(() => featureOn.value('images'))
           :expected-size="session.imageSize"
           @open="viewingPicture = current!.index"
         >
+          <EditedChip :picture="picture" class="absolute right-3 top-12" />
           <div
             v-if="busy || selectedJob"
             class="absolute left-3 top-3 rounded-full bg-black/70 px-3 py-1 text-sm text-white"
@@ -678,8 +676,7 @@ const imagesOn = computed(() => featureOn.value('images'))
               button-class="rounded-lg border border-line px-3 py-2 text-sm disabled:opacity-50"
               @queue="(kind) => queueSaved(kind, current!.index)"
               @view="(kind) => (open3d = { index: current!.index, kind })"
-              @edit="viewingPicture = current!.index; paintingPicture = true"
-              @pick="(version) => pickVersion(current!.index, version)"
+              @edit="startEdit(current!.index)"
             />
             <RenderAllButton
               v-if="imagesOn && writingStarted"
@@ -751,6 +748,7 @@ const imagesOn = computed(() => featureOn.value('images'))
               empty="Nothing queued. Render, Render all and Upscale add work here, to run while you carry on."
               :name="frameTitle"
               @go="goToFrame"
+              @edit="showEdit"
               @retry="retry"
               @drop="dropJob"
               @clear="clear"
@@ -1048,10 +1046,11 @@ const imagesOn = computed(() => featureOn.value('images'))
       :frames="session.frames"
       :image-model="session.settings.imageModel"
       :name="frameTitle"
-      :editing="(index) => hasJob(index, 'edit')"
+      :jobs="jobs"
       @edit="queueEdit"
       @pick="pickVersion"
       @delete-edit="deleteEdit"
+      @drop-job="dropJob"
     />
     <Frame3dViewers
       v-if="session"

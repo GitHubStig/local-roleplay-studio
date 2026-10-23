@@ -74,6 +74,7 @@ import {
   deleteModelPictures,
   ImageModelError,
   pickedVersion,
+  removeFiles,
   shownPicture,
   switchImageModel,
 } from './pictures.ts'
@@ -148,10 +149,11 @@ export interface AppDeps {
 }
 
 /**
- * Frame images: `frame-3-1a2b3c4d.png`, or `frame-3.png` without the unique suffix, and edits of
- * them (`edit-3-1a2b3c4d.png`, ADR 0021); `-2048` marks an upscaled one.
+ * Frame images: `frame-3-1a2b3c4d.png`, or `frame-3.png` without the unique suffix, edits of them
+ * (`edit-3-1a2b3c4d.png`, ADR 0021) and the areas painted for them (`mask-3-1a2b3c4d.png`);
+ * `-2048` marks an upscaled one.
  */
-const IMAGE_FILE = /^(frame|edit)-\d+(-[0-9a-f]{8})?(-2048)?\.(png|svg)$/
+const IMAGE_FILE = /^(frame|edit|mask)-\d+(-[0-9a-f]{8})?(-2048)?\.(png|svg)$/
 /**
  * A Roleplay's audio: its Character's voice (`voice-1a2b3c4d.wav`, lossless; FLAC from ComfyUI),
  * spoken lines (`speech-3-…`) and spoken thoughts (`thought-3-…`): MP3 (FLAC from ComfyUI), or WAV
@@ -449,16 +451,22 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     },
   }
   /** Every Session's background work, run as its kind says: a Roleplay's or a Chain's. */
-  const jobs = new SessionJobs(async (id, job, emit, signal) => {
-    const { callLog } = await deps.settings.load()
-    return logCalls(
-      callLog,
-      deps.sessions.dir(id),
-      // A voice or the style scores belong to the Session, not the Frame 0 they're queued as.
-      SESSION_JOBS.includes(job.kind) ? null : job.frameIndex,
-      () => runJob(id, job, emit, signal),
-    )
-  })
+  const jobs = new SessionJobs(
+    async (id, job, emit, signal) => {
+      const { callLog } = await deps.settings.load()
+      return logCalls(
+        callLog,
+        deps.sessions.dir(id),
+        // A voice or the style scores belong to the Session, not the Frame 0 they're queued as.
+        SESSION_JOBS.includes(job.kind) ? null : job.frameIndex,
+        () => runJob(id, job, emit, signal),
+      )
+    },
+    // An edit cancelled or dismissed: the area painted for it, saved as it was queued, goes too.
+    (id, job) => {
+      if (job.edit?.mask) removeFiles(deps.sessions.dir(id), [job.edit.mask])
+    },
+  )
 
   async function runJob(id: string, job: Job, emit: JobEmit, signal: AbortSignal) {
     const loaded = await deps.sessions.load(id)
