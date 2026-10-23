@@ -52,7 +52,7 @@ Deno.test('The voice service is started on first use, and again if it has gone a
     await stop(port)
   }))
 
-/** A stand-in that downloads for 2.5 s on its first request, saying so on /health meanwhile. */
+/** A stand-in that downloads for 250 ms on its first request, saying so on /health meanwhile. */
 const DOWNLOADING_STUB = `
 const port = Number(Deno.args[0])
 let downloading = null
@@ -61,9 +61,9 @@ Deno.serve({ port, hostname: '127.0.0.1', onListen() {} }, async (req) => {
   if (path === '/quit') return (setTimeout(() => Deno.exit(0), 50), new Response())
   if (path === '/health') return Response.json({ ok: true, downloading })
   downloading = 'bosonai/higgs-tts-3-4b'
-  await new Promise((r) => setTimeout(r, 2500))
+  await new Promise((r) => setTimeout(r, 250))
   downloading = null
-  await new Promise((r) => setTimeout(r, 1500))
+  await new Promise((r) => setTimeout(r, 150))
   return Response.json({ seconds: 0 })
 })
 `
@@ -77,6 +77,7 @@ Deno.test('While the voice service downloads a model, the caller hears of it, th
       root: dir,
       port,
       startLimitMs: 20_000,
+      checkEveryMs: 50,
       command: (p) => ['deno', 'run', '--allow-net', stub, String(p)],
     })
     const seen: boolean[] = []

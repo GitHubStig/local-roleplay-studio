@@ -140,7 +140,10 @@ beforeEach(() => {
   vi.mocked(api.listJobs).mockReset().mockResolvedValue([])
 })
 
-afterEach(() => vi.unstubAllGlobals())
+afterEach(() => {
+  vi.unstubAllGlobals()
+  vi.useRealTimers()
+})
 enableAutoUnmount(afterEach)
 
 describe('RoleplayView', () => {
@@ -482,6 +485,7 @@ describe('RoleplayView', () => {
     afterEach(() => vi.restoreAllMocks())
 
     it('speaks a line on Listen, then plays it once it is ready', async () => {
+      vi.useFakeTimers()
       vi.mocked(api.queueJob).mockResolvedValue([
         job({ kind: 'speak', status: 'running', phase: 'audio' }),
       ])
@@ -494,7 +498,7 @@ describe('RoleplayView', () => {
 
       vi.mocked(api.listJobs).mockResolvedValue([])
       vi.mocked(api.getSession).mockResolvedValue({ ...roleplaySession([spoken()]), cast, voice })
-      await new Promise((r) => setTimeout(r, 1100))
+      await vi.advanceTimersByTimeAsync(1100)
       await flushPromises()
       expect(played).toEqual(['speech-0-bbbbbbbb.wav'])
       expect(wrapper.find('[data-listen]').text()).toBe('■ Stop')
@@ -549,6 +553,7 @@ describe('RoleplayView', () => {
     })
 
     it('speaks a thought on its own Listen', async () => {
+      vi.useFakeTimers()
       vi.mocked(api.queueJob).mockResolvedValue([
         job({ kind: 'speak-thought', status: 'running', phase: 'audio' }),
       ])
@@ -567,7 +572,7 @@ describe('RoleplayView', () => {
         cast,
         voice,
       })
-      await new Promise((r) => setTimeout(r, 1100))
+      await vi.advanceTimersByTimeAsync(1100)
       await flushPromises()
       expect(played).toEqual(['thought-0-cccccccc.wav'])
       expect(wrapper.find('[data-listen-thought]').text()).toBe('■ Stop')
@@ -740,6 +745,7 @@ describe('RoleplayView', () => {
   })
 
   it('queues picturing, shows it on the Frame, and shows the result once the job is done', async () => {
+    vi.useFakeTimers()
     vi.mocked(api.queueJob).mockResolvedValue([job({ status: 'running', phase: 'text' })])
     const { wrapper } = await mountIt()
     await wrapper.find('[data-picture-button]').trigger('click')
@@ -769,7 +775,7 @@ describe('RoleplayView', () => {
       }]),
       look,
     })
-    await new Promise((r) => setTimeout(r, 1100))
+    await vi.advanceTimersByTimeAsync(1100)
     await flushPromises()
     expect(wrapper.find('[data-reply]').classes()).not.toContain('render-sweep')
     expect(wrapper.find('[data-image-prompt]').text()).toContain('Elena, 38. She waits.')
@@ -793,6 +799,7 @@ describe('RoleplayView', () => {
   })
 
   it('shows rendering progress in place, and the picture beside its Reply once rendered', async () => {
+    vi.useFakeTimers()
     const pictured = { ...frame(0, null, 'Get inside.'), prompt: 'Elena. Ink.' }
     vi.mocked(api.getSession).mockResolvedValue({ ...roleplaySession([pictured]), look })
     vi.mocked(api.listJobs).mockResolvedValue([
@@ -810,7 +817,7 @@ describe('RoleplayView', () => {
       ...roleplaySession([{ ...pictured, pictures: [picture('frame-0-aaaaaaaa.png')] }]),
       look,
     })
-    await new Promise((r) => setTimeout(r, 1100))
+    await vi.advanceTimersByTimeAsync(1100)
     await flushPromises()
     expect(wrapper.find('[data-picture-image] img').attributes('src')).toBe(
       '/api/sessions/r1/images/frame-0-aaaaaaaa.png',

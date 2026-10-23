@@ -155,17 +155,21 @@ Deno.test("Cancel interrupts only this render, and takes it out of ComfyUI's que
     const comfy = fakeComfyUI({ finish: 'hang' })
     try {
       const controller = new AbortController()
-      setTimeout(() => controller.abort(new Error('Cancelled by player')), 100)
       await assertRejects(
         () =>
           comfyuiImageGenerator().generate(
             { prompt: 'x', seed: 1, settings: settings(comfy.url), dir, name: 'f' },
             controller.signal,
+            // Cancelled once it's rendering.
+            () => controller.abort(new Error('Cancelled by player')),
           ),
         Error,
         'Cancelled by player',
       )
-      await new Promise((r) => setTimeout(r, 150))
+      // A Cancel returns at once, before the clean-up: wait for it.
+      for (let i = 0; i < 200 && comfy.posted.length < 5; i++) {
+        await new Promise((r) => setTimeout(r, 5))
+      }
       assertEquals(comfy.posted.slice(0, 2), [
         { path: '/interrupt', body: { prompt_id: 'p1' } },
         { path: '/queue', body: { delete: ['p1'] } },

@@ -46,7 +46,7 @@ Deno.test('unloadOllamaModels unloads every loaded model and waits until none ar
     return Response.json({ done: true, done_reason: 'unload' })
   })
   try {
-    await unloadOllamaModels(`http://localhost:${server.addr.port}`)
+    await unloadOllamaModels(`http://127.0.0.1:${server.addr.port}`)
     assertEquals(unloads, [
       { model: 'heretic:latest', keep_alive: 0 },
       { model: 'gemma4:31b', keep_alive: 0 },

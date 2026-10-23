@@ -68,6 +68,8 @@ export interface VoiceServiceOptions {
   port?: number
   /** How long the service may take to start; its first start installs its Python packages. */
   startLimitMs?: number
+  /** How often it asks the service, while a call runs, whether it's downloading a model. */
+  checkEveryMs?: number
   /** The command that starts it, given the port; `uv run python/voice/serve.py` unless a test says. */
   command?: (port: number) => string[]
 }
@@ -77,6 +79,7 @@ const SCRIPT = fromFileUrl(new URL('../../python/voice/serve.py', import.meta.ur
 /** The voice service, started on first use. */
 export function voiceService(opts: VoiceServiceOptions): VoiceEngine {
   const port = opts.port ?? 8791
+  const checkEveryMs = opts.checkEveryMs ?? 1000
   const base = `http://127.0.0.1:${port}`
   let starting: Promise<void> | null = null
 
@@ -125,13 +128,13 @@ export function voiceService(opts: VoiceServiceOptions): VoiceEngine {
       signal,
     })
 
-  /** Asks the service every second, until `done`, whether it's downloading a model. */
+  /** Asks the service every `checkEveryMs`, until `done`, whether it's downloading a model. */
   async function watchDownloads(done: Promise<unknown>, onDownload: OnDownload) {
     let finished = false
     done.finally(() => (finished = true)).catch(() => {})
     let downloading = false
     while (!finished) {
-      await Promise.race([done.catch(() => {}), new Promise((r) => setTimeout(r, 1000))])
+      await Promise.race([done.catch(() => {}), new Promise((r) => setTimeout(r, checkEveryMs))])
       if (finished) break
       const health = await fetch(`${base}/health`).then((r) => r.json()).catch(() => ({}))
       if (!!health.downloading !== downloading && !finished) {

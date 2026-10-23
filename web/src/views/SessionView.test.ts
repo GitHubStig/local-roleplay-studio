@@ -112,7 +112,10 @@ beforeEach(async () => {
   vi.mocked(api.queueJob).mockReset()
 })
 
-afterEach(() => vi.unstubAllGlobals())
+afterEach(() => {
+  vi.unstubAllGlobals()
+  vi.useRealTimers()
+})
 // Unmounted screens would leave window listeners (e.g. "Leave site?") behind for later tests.
 enableAutoUnmount(afterEach)
 
@@ -473,6 +476,7 @@ describe('SessionView', () => {
   })
 
   it('queues SHARP, TripoSplat and LiTo on the shown Frame, then offers to view what was made', async () => {
+    vi.useFakeTimers()
     vi.mocked(api.queueJob).mockImplementation(async (_id, kind, frameIndex) => [
       job({ kind, frameIndex, status: 'running', phase: 'image' }),
     ])
@@ -499,7 +503,7 @@ describe('SessionView', () => {
       session([frame(0, null, { pictures: [picture('frame-0.png', { lito: figure })] })]),
     )
     // The queue is checked every second; the job is gone, so the Chain is reloaded.
-    await new Promise((r) => setTimeout(r, 1100))
+    await vi.advanceTimersByTimeAsync(1100)
     await flushPromises()
     expect(wrapper.find('[data-view-lito]').exists()).toBe(true)
     expect(wrapper.find('[data-figure-button]').exists()).toBe(true)
@@ -963,6 +967,7 @@ describe('SessionView', () => {
   })
 
   it('queues an upscale of the shown Frame, then shows the upscaled image', async () => {
+    vi.useFakeTimers()
     vi.mocked(api.queueJob).mockResolvedValue([
       job({ status: 'running', phase: 'image', progress: { step: 1, total: 1 } }),
     ])
@@ -980,7 +985,7 @@ describe('SessionView', () => {
       ]),
     )
     // The queue is checked every second; the job is gone, so the Chain is reloaded.
-    await new Promise((r) => setTimeout(r, 1100))
+    await vi.advanceTimersByTimeAsync(1100)
     await flushPromises()
     await loadImages()
     expect(wrapper.find('main img').attributes('src')).toBe(

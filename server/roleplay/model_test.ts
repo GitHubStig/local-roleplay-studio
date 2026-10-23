@@ -12,7 +12,8 @@ function fakeOllama(content: string) {
     return new Response(JSON.stringify({ message: { content }, done: true }) + '\n')
   })
   return {
-    baseUrl: `http://localhost:${server.addr.port}`,
+    // Not `localhost`: on Windows it tries IPv6 first, which adds 300 ms to each connection.
+    baseUrl: `http://127.0.0.1:${server.addr.port}`,
     requests,
     close: () => server.shutdown(),
   }

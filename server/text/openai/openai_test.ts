@@ -27,7 +27,8 @@ function fakeServer(respond: (req: Seen) => Response) {
   return {
     backend: (apiKey = '') =>
       openAiBackend({
-        baseUrl: `http://localhost:${server.addr.port}/v1/`,
+        // Not `localhost`: on Windows it tries IPv6 first, which adds 300 ms to each connection.
+        baseUrl: `http://127.0.0.1:${server.addr.port}/v1/`,
         apiKey: () => Promise.resolve(apiKey),
       }),
     seen,

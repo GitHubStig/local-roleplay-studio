@@ -1,5 +1,5 @@
 import { flushPromises, mount } from '@vue/test-utils'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as api from '../api'
 import SettingsView from './SettingsView.vue'
 import { ALL_AVAILABLE, ALL_ON } from '../testing'
@@ -112,10 +112,14 @@ const options: api.SettingsOptions = {
 }
 
 beforeEach(() => {
+  // Fake, so a debounce left pending by one test never fires in the next.
+  vi.useFakeTimers()
   vi.mocked(api.getSettings).mockResolvedValue({ ...settings })
   vi.mocked(api.getSettingsOptions).mockResolvedValue(options)
   vi.mocked(api.saveSettings).mockImplementation(async (s) => s)
 })
+
+afterEach(() => vi.useRealTimers())
 
 describe('SettingsView', () => {
   it('without mflux, offers ComfyUI, and its own Image Models once chosen', async () => {
@@ -135,7 +139,7 @@ describe('SettingsView', () => {
     await wrapper.find('[data-image-backend]').setValue('comfyui')
     expect(wrapper.find('[data-image-base-url]').exists()).toBe(true)
     // Checked as soon as it's chosen: down, until ComfyUI is started and checked again.
-    await new Promise((r) => setTimeout(r, 600))
+    await vi.advanceTimersByTimeAsync(600)
     await flushPromises()
     expect(wrapper.find('[data-comfy-status]').text()).toContain('Down: Couldn')
     vi.mocked(api.checkComfyUI).mockResolvedValue({
@@ -160,7 +164,7 @@ describe('SettingsView', () => {
     // Upscaling there too: the Upscaler can be chosen, and the check covers its files.
     await wrapper.find('[data-upscale-backend]').setValue('comfyui')
     expect(wrapper.find('[data-upscaler]').exists()).toBe(true)
-    await new Promise((r) => setTimeout(r, 600))
+    await vi.advanceTimersByTimeAsync(600)
     await flushPromises()
     expect(api.checkComfyUI).toHaveBeenLastCalledWith('', {
       imageModel: 'qwen-image-2.1',
@@ -191,7 +195,7 @@ describe('SettingsView', () => {
     expect(wrapper.find('[data-image-base-url]').exists()).toBe(false)
     await wrapper.find('[data-upscale-backend]').setValue('comfyui')
     await wrapper.find('[data-image-base-url]').setValue('http://192.168.1.20:8188')
-    await new Promise((r) => setTimeout(r, 600))
+    await vi.advanceTimersByTimeAsync(600)
     await flushPromises()
     // Only the upscaler runs there, so only its files are checked.
     expect(api.checkComfyUI).toHaveBeenLastCalledWith('http://192.168.1.20:8188', {
@@ -234,7 +238,7 @@ describe('SettingsView', () => {
     const voices = () => wrapper.find('[data-feature="voices"]')
     expect(voices().find('[data-unavailable]').exists()).toBe(true)
     await wrapper.find('[data-voice-backend]').setValue('comfyui')
-    await new Promise((r) => setTimeout(r, 600))
+    await vi.advanceTimersByTimeAsync(600)
     await flushPromises()
     // Available once sent to ComfyUI; its check looks for the nodes, and says what's missing.
     expect(voices().find('[data-unavailable]').exists()).toBe(false)
@@ -458,7 +462,7 @@ describe('SettingsView', () => {
     expect(key.value).toBe('')
     expect(key.placeholder).toContain('Saved')
     // The listing then asks with the saved key.
-    await new Promise((resolve) => setTimeout(resolve, 600)) // the listing waits for typing to stop
+    await vi.advanceTimersByTimeAsync(600) // the listing waits for typing to stop
     await flushPromises()
     expect(api.listTextModels).toHaveBeenLastCalledWith({
       textBackend: 'openai',
@@ -489,7 +493,7 @@ describe('SettingsView', () => {
     await wrapper.find('[data-text-base-url]').setValue('http://192.168.1.20:11434')
     // Nothing yet while typing; once it pauses, one save.
     expect(api.saveSettings).not.toHaveBeenCalled()
-    await new Promise((resolve) => setTimeout(resolve, 700))
+    await vi.advanceTimersByTimeAsync(700)
     await flushPromises()
     expect(api.saveSettings).toHaveBeenCalledTimes(1)
     expect(api.saveSettings).toHaveBeenCalledWith(
@@ -503,7 +507,7 @@ describe('SettingsView', () => {
       new api.ApiError('Invalid settings', 400, ['textBaseUrl must be an address']),
     )
     await wrapper.find('[data-text-base-url]').setValue('http//oops')
-    await new Promise((resolve) => setTimeout(resolve, 700))
+    await vi.advanceTimersByTimeAsync(700)
     await flushPromises()
     expect(wrapper.find('[data-settings-status] [data-save-error]').text()).toContain(
       'textBaseUrl must be an address',
@@ -511,7 +515,7 @@ describe('SettingsView', () => {
     expect(api.saveSettings).toHaveBeenCalledTimes(2)
     // Put back as it was saved: nothing to save, and the error goes.
     await wrapper.find('[data-text-base-url]').setValue('http://192.168.1.20:11434')
-    await new Promise((resolve) => setTimeout(resolve, 700))
+    await vi.advanceTimersByTimeAsync(700)
     await flushPromises()
     expect(wrapper.find('[data-save-error]').exists()).toBe(false)
     expect(api.saveSettings).toHaveBeenCalledTimes(2)
