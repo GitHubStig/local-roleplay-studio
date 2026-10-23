@@ -25,32 +25,42 @@ async function stop(port: number) {
   await new Promise((r) => setTimeout(r, 300))
 }
 
-Deno.test('The voice service is started on first use, and again if it has gone away', () =>
-  withTempDir(async (dir) => {
-    const stub = join(dir, 'stub.ts')
-    await Deno.writeTextFile(stub, STUB)
-    const port = 18800 + Math.floor(Math.random() * 500)
-    const started: number[] = []
-    const voice = voiceService({
-      root: dir,
-      port,
-      startLimitMs: 20_000,
-      command: (p) => (started.push(p), ['deno', 'run', '--allow-net', stub, String(p)]),
-    })
-    const signal = new AbortController().signal
-    const req = { text: 'Hi.', ref: '/r.wav', refText: 'Ref.', seed: 1, out: '/o.wav' }
+/**
+ * Not on Windows, where the voice service doesn't run (it needs Apple silicon; voices there come
+ * through ComfyUI), and where each check on a port nothing listens on takes 2 s, not an instant.
+ */
+const unix = { ignore: Deno.build.os === 'windows' }
 
-    await voice.speak(req, signal)
-    assertEquals(started.length, 1)
-    await voice.speak(req, signal)
-    assertEquals(started.length, 1)
+Deno.test(
+  'The voice service is started on first use, and again if it has gone away',
+  unix,
+  () =>
+    withTempDir(async (dir) => {
+      const stub = join(dir, 'stub.ts')
+      await Deno.writeTextFile(stub, STUB)
+      const port = 18800 + Math.floor(Math.random() * 500)
+      const started: number[] = []
+      const voice = voiceService({
+        root: dir,
+        port,
+        startLimitMs: 20_000,
+        command: (p) => (started.push(p), ['deno', 'run', '--allow-net', stub, String(p)]),
+      })
+      const signal = new AbortController().signal
+      const req = { text: 'Hi.', ref: '/r.wav', refText: 'Ref.', seed: 1, out: '/o.wav' }
 
-    // It goes away (here: stopped); the next call starts it again and succeeds.
-    await stop(port)
-    await voice.speak(req, signal)
-    assertEquals(started.length, 2)
-    await stop(port)
-  }))
+      await voice.speak(req, signal)
+      assertEquals(started.length, 1)
+      await voice.speak(req, signal)
+      assertEquals(started.length, 1)
+
+      // It goes away (here: stopped); the next call starts it again and succeeds.
+      await stop(port)
+      await voice.speak(req, signal)
+      assertEquals(started.length, 2)
+      await stop(port)
+    }),
+)
 
 /** A stand-in that downloads for 250 ms on its first request, saying so on /health meanwhile. */
 const DOWNLOADING_STUB = `
@@ -68,21 +78,25 @@ Deno.serve({ port, hostname: '127.0.0.1', onListen() {} }, async (req) => {
 })
 `
 
-Deno.test('While the voice service downloads a model, the caller hears of it, then that it is done', () =>
-  withTempDir(async (dir) => {
-    const stub = join(dir, 'stub.ts')
-    await Deno.writeTextFile(stub, DOWNLOADING_STUB)
-    const port = 18800 + Math.floor(Math.random() * 500)
-    const voice = voiceService({
-      root: dir,
-      port,
-      startLimitMs: 20_000,
-      checkEveryMs: 50,
-      command: (p) => ['deno', 'run', '--allow-net', stub, String(p)],
-    })
-    const seen: boolean[] = []
-    const req = { text: 'Hi.', ref: '/r.wav', refText: 'Ref.', seed: 1, out: '/o.wav' }
-    await voice.speak(req, new AbortController().signal, (d) => seen.push(d))
-    assertEquals(seen, [true, false])
-    await stop(port)
-  }))
+Deno.test(
+  'While the voice service downloads a model, the caller hears of it, then that it is done',
+  unix,
+  () =>
+    withTempDir(async (dir) => {
+      const stub = join(dir, 'stub.ts')
+      await Deno.writeTextFile(stub, DOWNLOADING_STUB)
+      const port = 18800 + Math.floor(Math.random() * 500)
+      const voice = voiceService({
+        root: dir,
+        port,
+        startLimitMs: 20_000,
+        checkEveryMs: 50,
+        command: (p) => ['deno', 'run', '--allow-net', stub, String(p)],
+      })
+      const seen: boolean[] = []
+      const req = { text: 'Hi.', ref: '/r.wav', refText: 'Ref.', seed: 1, out: '/o.wav' }
+      await voice.speak(req, new AbortController().signal, (d) => seen.push(d))
+      assertEquals(seen, [true, false])
+      await stop(port)
+    }),
+)
