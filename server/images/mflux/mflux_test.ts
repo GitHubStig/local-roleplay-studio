@@ -36,9 +36,9 @@ Deno.test("editArgs edits at the picture's size in 8 bits and low RAM, with its 
   }
   assertEquals(editArgs(req, { width: 1216, height: 832 }, '/s/edit-1.png'), [
     '--image-paths',
-    '/s/frame-1.png',
+    join('/s', 'frame-1.png'),
     '--mask-image',
-    '/s/mask-1.png',
+    join('/s', 'mask-1.png'),
     '--prompt',
     'A hand reaching forward',
     '--seed',
