@@ -14,7 +14,15 @@
         "dev:web"
       ]
     },
-    "test": "cd server && deno task test && cd ../web && deno task test",
+    "test:server": "cd server && deno task test",
+    "test:web": "cd web && deno task test",
+    "test": {
+      "description": "Run the server's tests and the web app's together",
+      "dependencies": [
+        "test:server",
+        "test:web"
+      ]
+    },
     "build": "cd web && deno task build",
     "check": "cd server && deno check . && cd ../web && deno task typecheck"
   },

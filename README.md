@@ -212,7 +212,7 @@ press **Start Session**. Your Sessions are listed on Home; open one to carry on,
 | Command | What it does |
 |---|---|
 | `deno task dev` | API server (auto-restarts on change) plus the Vite dev server |
-| `deno task test` | Server tests (`deno test`), then web tests (Vitest) |
+| `deno task test` | Server tests (`deno test --parallel`, a file per worker) and web tests (Vitest), side by side |
 | `deno task check` | Type-checks the server with Deno and the web app with `vue-tsc` |
 | `deno task build` | Production build of the web app into `web/dist` |
 | `deno fmt` | Formats the TypeScript files |

@@ -3,7 +3,7 @@
   "exports": "./main.ts",
   "tasks": {
     "dev": "deno run --watch --allow-net --allow-read --allow-write --allow-run --allow-env --allow-sys=hostname,networkInterfaces main.ts",
-    "test": "deno test --allow-net --allow-read --allow-write --allow-run --allow-env --allow-sys=hostname,networkInterfaces"
+    "test": "deno test --parallel --allow-net --allow-read --allow-write --allow-run --allow-env --allow-sys=hostname,networkInterfaces"
   },
   "imports": {
     "@jsquash/png": "npm:@jsquash/png@^3.1.1",

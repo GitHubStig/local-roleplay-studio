@@ -51,6 +51,7 @@ silicon, 48 GB) and a Windows PC (RTX 4070, 12 GB, 16 GB of RAM), sharing this r
 
 - `deno task test` runs the server's tests (Deno) and the web's (Vitest); `deno task check`
   type-checks both; `deno fmt` formats. Run tests and the check before asking to commit.
+- Keep tests quick, as they run file by file in parallel and a slow file holds up the whole run (since 2026-10-23). Don't sleep past a poll or a debounce: use fake timers (`vi.useFakeTimers()`) in the web app, and on the server an option for the interval (`checkEveryMs`, `retryAfterMs`). Wait for what a test is waiting for, rather than for a helper to time out. Reach a stand-in server at `127.0.0.1`, not `localhost`: on Windows, `localhost` tries IPv6 first, which adds 300 ms to each connection, and connecting to a port nothing listens on takes 2 s there, not an instant. Keep a test file to one part of the app, sharing its harness (`server/appTesting.ts`), so no one file grows long enough to be the slowest.
 - Running the tasks sometimes prunes `deno.lock`. If it shows up changed and you didn't change
   dependencies, restore it (`git checkout deno.lock`).
 - Vue: `<script setup>`, template refs through `useTemplateRef`, Tailwind for styles.
