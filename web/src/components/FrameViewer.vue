@@ -445,7 +445,8 @@ const action =
           </button>
         </div>
         <p class="text-xs text-white/60">
-          Say what to paint, not what's wrong. With nothing painted, the whole picture is repainted.
+          Say what to paint, not what's wrong. Painted more than one area? Say what goes in each:
+          “on his face: …; on the gun: …”. With nothing painted, the whole picture is repainted.
           <template v-if="draft.retry">It replaces Edit {{ edits.length }}.</template>
         </p>
       </div>
