@@ -798,6 +798,22 @@ peak is lower, by 2–14 GB (Krea 2 and Klein 9B gain least). It does less for K
 than its saved copy did (12.6 GB against 20.9 GB at 512 px on 2026-10-01), but the copies were
 dropped all the same to free disk (22 GB each).
 
+### Qwen-Image 2.1 Edit: fixing a hand with a painted mask (2026-10-23, Mac)
+
+The first step of "Editing a Frame's picture" (open-threads.md): `mflux-generate-qwen-2.1-edit` (mflux 0.23) on a malformed hand in a painted 1216×832 Frame, with a soft ellipse painted over the hand (`--mask-image`, white repainted), the output at the picture's own size, seed 1, the tool's other defaults (strength 1.0). M5 Pro, 48 GB, with Edge and VS Code open (~8 GB) and ~4 GB in swap throughout.
+
+| Run | Time | Peak |
+|---|---|---|
+| full weights | 169–174 s | 38.9–39.3 GB |
+| `-q 8` | 177 s | 39.4 GB |
+| `--low-ram` | 168 s | 25.9 GB |
+| **`-q 8 --low-ram`** | **179 s** | **15.1 GB** |
+
+- **What isn't painted stays as it was**: in every run, no pixel outside the mask moved by more than 9 of 255, and their mean change rounds to 0.
+- **The instruction has to describe the result, not ask for a fix.** "Fix the hand…: an open, well-formed right hand…, in the same style" gave back the same malformed hand, only sharper (a mean change of 4.5 of 255 inside the mask). Saying what to paint instead ("Replace the hand… with a new, anatomically correct right hand reaching forward: palm facing down, index finger extended, the other fingers relaxed…, five distinct fingers") repainted it cleanly (a mean change of 19), in the picture's brushwork, with no visible seam at the mask's edge.
+- **`-q 8` and `--low-ram` change nothing visible**: within 1.3 of 255 of the full run inside the mask. `-q 8` alone saves nothing (it quantizes after loading the full weights); with `--low-ram` the peak falls to 15.1 GB, so that's the pair to run, as for renders. Nothing to download: it runs on Qwen-Image 2.1's own weights.
+- About 3 minutes an edit at this size, every way, against ~90 s for a 1024² render with the saved 8-bit copy (above); likely the picture passed as a reference and the edit tool's guidance, as in the reference-portrait trial, not separated.
+
 ### Upscaler
 
 Upscale uses **SeedVR2 7B** by default (`seedvr2-7b`, `mflux-upscale-seedvr2 --resolution 2048`);
