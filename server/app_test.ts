@@ -1234,6 +1234,11 @@ Deno.test('An edit repaints a picture as a new version, made from the newest and
     const [, upscaled] = await chainFrames(call)
     assertMatch(upscaled.edits[1].upscaled, /-2048\.png$/)
     assertEquals(upscaled.upscaled, undefined)
+    // Edits and their upscales are served, as the render is.
+    const served = (name: string) => call('GET', `/api/sessions/s1/images/${name}`)
+    for (const name of [one.image, upscaled.edits[1].image, upscaled.edits[1].upscaled]) {
+      assertEquals((await served(name)).status, 200)
+    }
   }))
 
 Deno.test('An edit can be retried in its place, picked, and the newest deleted', () =>
@@ -1264,6 +1269,7 @@ Deno.test('An edit can be retried in its place, picked, and the newest deleted',
     assertEquals(images.edits[1].image, made.image)
     const file = (name: string) => call('GET', `/api/sessions/s1/images/${name}`)
     assertEquals((await file(made.edits[0].image)).status, 404)
+    assertEquals((await file(again.edits[0].image)).status, 200)
 
     // The render picked again, then the edit deleted: its files go, the render stays picked.
     const pick = (picked: unknown) => call('PUT', '/api/sessions/s1/pictures/1/picked', { picked })

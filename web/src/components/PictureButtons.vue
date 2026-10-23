@@ -2,11 +2,13 @@
 import { type JobKind, type Made3d, MADE3D_FEATURE, type Picture } from '../api'
 import { useFeatures } from '../composables/useFeatures'
 import Frame3dButtons from './Frame3dButtons.vue'
+import VersionStepper from './VersionStepper.vue'
 
 /**
  * What can be done with a Frame's picture, in every kind of Session: render it (where a Frame
- * renders on demand), upscale it, and make it into 3D. Each queues a job; a button is off while
- * that job is queued or running on the Frame, and all are while `busy`.
+ * renders on demand), upscale it, make it into 3D, and edit it (in the viewer, ADR 0021), its
+ * versions picked here once it has edits. Each queues a job; a button is off while that job is
+ * queued or running on the Frame, and all are while `busy`.
  */
 const props = withDefaults(
   defineProps<{
@@ -22,7 +24,14 @@ const props = withDefaults(
   }>(),
   { canRender: false, buttonClass: 'action' },
 )
-defineEmits<{ queue: [kind: JobKind]; view: [kind: Made3d] }>()
+defineEmits<{
+  queue: [kind: JobKind]
+  view: [kind: Made3d]
+  /** Open the picture to paint an edit. */
+  edit: []
+  /** Pick version `version` of the picture: 0 its render, n its edit n. */
+  pick: [version: number]
+}>()
 const { on: featureOn } = useFeatures()
 
 /** Which 3D can be made here: its Feature is on (what's made can always be viewed). */
@@ -56,6 +65,23 @@ const pictured = () => !!props.picture || props.hasJob('render') || props.hasJob
     >
       {{ picture?.upscaled ? 'Upscaled' : 'Upscale' }}
     </button>
+    <button
+      v-if="featureOn('edits') && picture"
+      type="button"
+      :class="buttonClass"
+      :disabled="!!busy || hasJob('edit')"
+      :title="busy || (hasJob('edit') ? 'Being edited' : 'Repaint part of the picture')"
+      data-edit-button
+      @click="$emit('edit')"
+    >
+      Edit
+    </button>
+    <VersionStepper
+      v-if="picture"
+      :picture="picture"
+      :disabled="hasJob('edit')"
+      @pick="(version) => $emit('pick', version)"
+    />
   </template>
   <Frame3dButtons
     :picture="picture"

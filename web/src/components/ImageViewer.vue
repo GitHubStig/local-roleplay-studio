@@ -29,6 +29,11 @@ const props = defineProps<{
   hasDown?: boolean
   /** Shown under the image; given as '' where one image has none, to keep its space. */
   caption?: string
+  /**
+   * Painting on the image (an edit's area, ADR 0021): the arrow keys and swipes don't step, and a
+   * click outside the image doesn't close, so a stroke or an instruction isn't lost.
+   */
+  painting?: boolean
 }>()
 const emit = defineEmits<{ close: []; previous: []; next: []; up: []; down: [] }>()
 const dialog = useTemplateRef<HTMLDialogElement>('dialog')
@@ -57,6 +62,7 @@ const KEYS = { ArrowLeft: 'previous', ArrowRight: 'next', ArrowUp: 'up', ArrowDo
 const FLAT = { ...KEYS, ArrowUp: 'previous', ArrowDown: 'next' } as const
 useEventListener(document, 'keydown', (e: KeyboardEvent) => {
   if (!dialog.value?.open || !(e.key in KEYS) || e.altKey || e.ctrlKey || e.metaKey) return
+  if (props.painting) return
   e.preventDefault()
   go((props.vertical ? KEYS : FLAT)[e.key as keyof typeof KEYS])
 })
@@ -82,7 +88,7 @@ useSwipe(dialog, {
     onCaption = !!captionBox.value?.contains(e.target as Node)
   },
   onSwipeEnd: (_e, direction) => {
-    if (pinched || onCaption || image.value?.zoomed) return
+    if (pinched || onCaption || image.value?.zoomed || props.painting) return
     const way = SWIPES[direction]
     if (way) go(way)
   },
@@ -109,10 +115,11 @@ watch(
  * closes; a pan that starts on the image and lets go outside it doesn't.
  */
 const controls = useTemplateRef<HTMLElement>('controls')
+const below = useTemplateRef<HTMLElement>('below')
 onClickOutside(
   () => dialog.value?.querySelector<HTMLElement>('[data-image-frame]'),
-  () => dialog.value?.open && dialog.value.close(),
-  { ignore: [controls] },
+  () => dialog.value?.open && !props.painting && dialog.value.close(),
+  { ignore: [controls, below] },
 )
 </script>
 
@@ -193,6 +200,8 @@ onClickOutside(
           </span>
           <span class="mr-auto" :class="{ 'sm:hidden': label }" />
         </template>
+        <!-- More controls, for what's being viewed (a picture's versions, Edit). -->
+        <slot name="controls" />
         <a :href="src" target="_blank" class="shrink-0 whitespace-nowrap hover:text-white hover:underline">
           Open full size
         </a>
@@ -213,9 +222,22 @@ onClickOutside(
         instant
         zoom
         class="short:col-start-1 short:row-span-2 short:row-start-1"
-      />
+      >
+        <template #layer="{ size }">
+          <slot name="layer" :size="size" />
+        </template>
+      </FrameImage>
+      <!-- In place of the caption: tools for what's being done to the image (painting an edit). -->
+      <div
+        v-if="$slots.below"
+        ref="below"
+        class="mx-auto mt-2 w-full max-w-3xl short:col-start-2 short:row-start-2"
+        data-viewer-below
+      >
+        <slot name="below" />
+      </div>
       <p
-        v-if="caption !== undefined"
+        v-else-if="caption !== undefined"
         ref="captionBox"
         class="mx-auto mt-2 h-[3lh] w-full max-w-prose shrink-0 overflow-y-auto text-sm whitespace-pre-line text-white/80 short:col-start-2 short:row-start-2 short:h-auto short:min-h-0"
         data-viewer-caption

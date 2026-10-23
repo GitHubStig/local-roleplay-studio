@@ -12,6 +12,7 @@ export const JOB_NAMES: Record<JobKind, string> = {
   figure: 'TripoSplat',
   lito: 'LiTo',
   style: 'Style scores',
+  edit: 'Edit',
 }
 
 /**

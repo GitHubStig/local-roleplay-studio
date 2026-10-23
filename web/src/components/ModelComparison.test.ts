@@ -60,6 +60,22 @@ describe('ModelComparison', () => {
     expect(rows[1].text()).toContain('Not rendered')
   })
 
+  it('compares an edited picture as its picked edit, marked with what it was told', async () => {
+    const edited = {
+      ...picture('f0-b.png', 'b'),
+      edits: [{ image: 'edit-0-b.png', instructions: ['A hand'], editModel: 'e', seed: 1 }],
+      picked: 1,
+    }
+    const wrapper = mountIt([{ ...frames[0], pictures: [frames[0].pictures[0], edited] }])
+    await wrapper.find('[data-compare-models]').trigger('click')
+    await flushPromises()
+    const cells = wrapper.find('[data-compare-row]').findAll('td')
+    expect(cells[1].find('img').attributes('src')).toBe('/api/sessions/s1/images/edit-0-b.png')
+    expect(cells[1].find('[data-edited]').exists()).toBe(true)
+    expect(cells[1].find('button').attributes('title')).toBe('Edited: A hand')
+    expect(cells[0].find('[data-edited]').exists()).toBe(false)
+  })
+
   it('steps through one Frame’s pictures by each model in the viewer', async () => {
     const wrapper = mountIt()
     await wrapper.find('[data-compare-models]').trigger('click')

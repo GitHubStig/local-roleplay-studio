@@ -14,6 +14,7 @@ import Frame3dViewers from '../components/Frame3dViewers.vue'
 import FrameViewer from '../components/FrameViewer.vue'
 import JobQueue from '../components/JobQueue.vue'
 import { useJobs } from '../composables/useJobs'
+import { usePictureVersions } from '../composables/usePictureVersions'
 import { showPickedFrame, useFrameKeys } from '../composables/useFrameKeys'
 import { formingOf, jobForming, jobStatus, queueTabLabel, sweepOf } from '../jobs'
 import { useShownPreview } from '../composables/useShownPreview'
@@ -215,7 +216,7 @@ async function switchRenderFrames(on: boolean) {
   }
 }
 
-const { jobs, jobsFor, hasJob, queue, queueAll, dropJob, clear, retry, refreshJobs } = useJobs(props.id, {
+const { jobs, jobsFor, hasJob, queue, queueEdit, queueAll, dropJob, clear, retry, refreshJobs } = useJobs(props.id, {
   onSettled: async () => {
     await load()
   },
@@ -251,6 +252,9 @@ const shownRender = computed(() =>
 
 /** The Frame whose picture is open in the viewer, if any. */
 const viewingPicture = ref<number | null>(null)
+/** Painting an edit of it in the viewer (ADR 0021). */
+const paintingPicture = ref(false)
+const { pick: pickVersion, deleteEdit } = usePictureVersions(props.id, session, (m) => (frameError.value = m))
 /** Which Frame's scene or figure is open, if any. */
 const open3d = ref<{ index: number; kind: Made3d } | null>(null)
 
@@ -628,6 +632,8 @@ const promptDiff = computed(() => {
               button-class="rounded-lg border border-line px-3 py-2 text-sm disabled:opacity-50"
               @queue="(kind) => queue(kind, shown!.index)"
               @view="(kind) => (open3d = { index: shown!.index, kind })"
+              @edit="viewingPicture = shown!.index; paintingPicture = true"
+              @pick="(version) => pickVersion(shown!.index, version)"
             />
             <RenderAllButton
               v-if="featureOn('images') && session.frames.length"
@@ -915,10 +921,15 @@ const promptDiff = computed(() => {
     <FrameViewer
       v-if="session"
       v-model:open="viewingPicture"
+      v-model:painting="paintingPicture"
       :session-id="session.id"
       :frames="session.frames"
       :image-model="session.settings.imageModel"
       :name="frameTitle"
+      :editing="(index) => hasJob(index, 'edit')"
+      @edit="queueEdit"
+      @pick="pickVersion"
+      @delete-edit="deleteEdit"
     />
     <Frame3dViewers
       v-if="session"

@@ -44,6 +44,7 @@ import RestartButton from '../components/RestartButton.vue'
 import { useImageModels } from '../composables/useSettingsOptions'
 import { useFeatures } from '../composables/useFeatures'
 import { useJobs } from '../composables/useJobs'
+import { usePictureVersions } from '../composables/usePictureVersions'
 import { useDragReorder } from '../composables/useDragReorder'
 import { showPickedFrame, useFrameKeys } from '../composables/useFrameKeys'
 import { JOB_NAMES, jobForming, jobStatus, queueTabLabel, sweepOf } from '../jobs'
@@ -220,7 +221,7 @@ async function restart() {
 
 // --- Queued work: renders, upscales and 3D, each on its Frame.
 
-const { jobs, runningJobs, jobsFor, hasJob, queue, queueAll, dropJob, clear, retry, refreshJobs } = useJobs(props.id, {
+const { jobs, runningJobs, jobsFor, hasJob, queue, queueEdit, queueAll, dropJob, clear, retry, refreshJobs } = useJobs(props.id, {
   onSettled: async () => {
     await load()
   },
@@ -542,6 +543,13 @@ const timingsLabel = (f: StoryboardFrame) => {
 
 /** The Frame whose picture is open in the viewer, if any. */
 const viewingPicture = ref<number | null>(null)
+/** Painting an edit of it in the viewer (ADR 0021). */
+const paintingPicture = ref(false)
+const { pick: pickVersion, deleteEdit } = usePictureVersions(
+  props.id,
+  session,
+  (text) => (message.value = { kind: 'error', text }),
+)
 /** Which Frame's scene or figure is open, if any. */
 const open3d = ref<{ index: number; kind: Made3d } | null>(null)
 const frameTitle = (index: number) => `Frame ${index + 1}`
@@ -670,6 +678,8 @@ const imagesOn = computed(() => featureOn.value('images'))
               button-class="rounded-lg border border-line px-3 py-2 text-sm disabled:opacity-50"
               @queue="(kind) => queueSaved(kind, current!.index)"
               @view="(kind) => (open3d = { index: current!.index, kind })"
+              @edit="viewingPicture = current!.index; paintingPicture = true"
+              @pick="(version) => pickVersion(current!.index, version)"
             />
             <RenderAllButton
               v-if="imagesOn && writingStarted"
@@ -1033,10 +1043,15 @@ const imagesOn = computed(() => featureOn.value('images'))
     <FrameViewer
       v-if="session"
       v-model:open="viewingPicture"
+      v-model:painting="paintingPicture"
       :session-id="session.id"
       :frames="session.frames"
       :image-model="session.settings.imageModel"
       :name="frameTitle"
+      :editing="(index) => hasJob(index, 'edit')"
+      @edit="queueEdit"
+      @pick="pickVersion"
+      @delete-edit="deleteEdit"
     />
     <Frame3dViewers
       v-if="session"

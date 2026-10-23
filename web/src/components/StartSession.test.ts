@@ -30,6 +30,7 @@ const settings: api.Settings = {
   seedMode: 'random',
   seed: 42,
   upscaler: 'seedvr2-7b',
+  editModel: 'qwen-image-2.1-edit',
   upscaleBackend: 'mflux',
   voiceBackend: 'mlx-audio',
   limits: true,
@@ -55,6 +56,7 @@ const options: api.SettingsOptions = {
     comfyui: [],
   },
   sizePresets: [],
+  editModels: [{ id: 'qwen-image-2.1-edit', label: 'Qwen-Image 2.1 Edit' }],
   upscalers: [
     { id: 'seedvr2-7b', label: 'SeedVR2 7B' },
     { id: 'seedvr2-3b', label: 'SeedVR2 3B' },

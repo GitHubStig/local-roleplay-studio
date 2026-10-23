@@ -84,6 +84,7 @@ beforeEach(() => {
     seedMode: 'random',
     seed: 1,
     upscaler: 'seedvr2-7b',
+    editModel: 'qwen-image-2.1-edit',
     upscaleBackend: 'mflux',
     voiceBackend: 'mlx-audio',
     limits: true,
@@ -99,6 +100,7 @@ beforeEach(() => {
     imageModels: { mflux: [], comfyui: [] },
     sizePresets: [],
     upscalers: [],
+    editModels: [],
     features: ALL_AVAILABLE,
   })
 })

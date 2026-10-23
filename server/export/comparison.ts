@@ -13,6 +13,8 @@ export interface ExportPicture {
   image: string
   upscaled?: string
   stale?: boolean
+  /** An edit's instructions (ADR 0021), shown as a mark on its picture. */
+  edited?: string[]
 }
 
 /** What the Compare dialog sends (`ComparisonExport` in the web app). */
@@ -86,6 +88,12 @@ export function parseComparisonExport(body: unknown): ComparisonExport | string 
       if (p === null) continue
       if (!PICTURE_FILE.test(p?.image) || (p.upscaled && !PICTURE_FILE.test(p.upscaled))) {
         return 'Pictures must be files in the Session'
+      }
+      if (
+        p.edited !== undefined &&
+        (!Array.isArray(p.edited) || p.edited.some((i: unknown) => typeof i !== 'string'))
+      ) {
+        return "A picture's edits must be a list of instructions"
       }
     }
   }
@@ -215,6 +223,7 @@ export async function writeComparison(
         full: (await write(p.upscaled ?? p.image, 'images')).path,
         ...(thumb.width ? { width: thumb.width, height: thumb.height } : {}),
         ...(p.stale ? { stale: true } : {}),
+        ...(p.edited?.length ? { edited: p.edited } : {}),
       })
     }
     rows.push({

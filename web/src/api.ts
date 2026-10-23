@@ -16,6 +16,7 @@ export type SeedMode = 'random' | 'fixed'
 export const FEATURES = [
   'images',
   'upscale',
+  'edits',
   'voices',
   'scenes',
   'figures',
@@ -62,6 +63,8 @@ export interface Settings {
   upscaler: string
   /** Where Upscale runs (the ComfyUI at `imageBaseUrl`, or mflux), whichever rendered. */
   upscaleBackend: ImageBackend
+  /** Which model edits pictures; applies to the next edit, even mid-Session. */
+  editModel: string
   /** Where voices are made: the voice service (a Mac), or the ComfyUI at `imageBaseUrl`. */
   voiceBackend: 'mlx-audio' | 'comfyui'
   /** The Limits; off, only "everyone depicted is an adult" is enforced. Applies at once. */
@@ -120,6 +123,8 @@ export interface SettingsOptions extends TextModelOptions {
   imageBackends: ImageBackend[]
   sizePresets: SizePreset[]
   upscalers: { id: string; label: string }[]
+  /** The models that can edit a picture. */
+  editModels: { id: string; label: string }[]
   /** Which Features this machine can run, worked out when the server started. */
   features: Record<Feature, Availability>
 }
@@ -279,6 +284,43 @@ export interface Picture {
   lito?: Figure
   /** Seconds the render waited for another (only if it had to) and took. */
   timings?: { queued?: number; image: number }
+  /** Its edits, oldest first, each made from the one before (ADR 0021). */
+  edits?: PictureEdit[]
+  /** The version that is the picture: 0 (or none) for the render, n for edit n. */
+  picked?: number
+}
+
+/** A picture's edit: a version of it repainted as told, with what's made from it. */
+export interface PictureEdit {
+  image: string
+  /** What it was told to paint: one, or every one that led to it when copied into a Chain. */
+  instructions: string[]
+  editModel: string
+  seed: number
+  /** The area painted over the picture to repaint; none for all of it. */
+  mask?: string
+  /** Copied from a Storyboard, so it can't be made again. */
+  copied?: boolean
+  upscaled?: string
+  scene?: Scene
+  figure?: Figure
+  lito?: Figure
+  timings?: { queued?: number; edit: number }
+}
+
+/** The edit a picture shows, if its picked version is one. */
+export const pickedEdit = (picture: Picture): PictureEdit | undefined =>
+  picture.picked ? picture.edits?.[picture.picked - 1] : undefined
+
+/**
+ * A picture as it's shown and used: with its picked version's files (an edit's, ADR 0021) in place
+ * of its render's, so what's upscaled, made into 3D or viewed is that version.
+ */
+export function asPicked(picture: Picture): Picture {
+  const edit = pickedEdit(picture)
+  if (!edit) return picture
+  const { image, upscaled, scene, figure, lito } = edit
+  return { ...picture, image, upscaled, scene, figure, lito }
 }
 
 /** A Frame of any kind, as far as its pictures go. */
@@ -291,11 +333,21 @@ export interface PicturedFrame {
 }
 
 /**
- * The picture a Frame shows: its picture by `model` (the Session's), or else its latest, which is
- * then changed since render (as `shownPicture` on the server).
+ * The picture a Frame has to show, as stored: its picture by `model` (the Session's), or else its
+ * latest, which is then changed since render (as `shownPicture` on the server).
  */
-export const shownPicture = (frame: PicturedFrame, model: string): Picture | undefined =>
+export const framePicture = (frame: PicturedFrame, model: string): Picture | undefined =>
   frame.pictures.find((p) => p.imageModel === model) ?? frame.pictures.at(-1)
+
+/** The picture a Frame shows (`framePicture`), as its picked version (`asPicked`). */
+export function shownPicture(frame: PicturedFrame, model: string): Picture | undefined {
+  const picture = framePicture(frame, model)
+  return picture && asPicked(picture)
+}
+
+/** The newest version of a picture, which a new edit is made from: its last edit, or its render. */
+export const newestImage = (picture: Picture): string =>
+  picture.edits?.at(-1)?.image ?? picture.image
 
 /** A picture's Image Prompt changed since it was rendered, or it's by another Image Model. */
 export const changedSinceRender = (picture: Picture, model: string): boolean =>
@@ -610,7 +662,8 @@ export interface ComparisonExport {
   notice?: string
   models: Pick<ComparisonModel, 'label'>[]
   rows: (Omit<ComparisonRow, 'pictures'> & {
-    pictures: (Pick<Picture, 'image' | 'upscaled' | 'stale'> | null)[]
+    /** Each picture's files, and an edit's instructions (`edited`) to mark it by. */
+    pictures: ((Pick<Picture, 'image' | 'upscaled' | 'stale'> & { edited?: string[] }) | null)[]
   })[]
   /** The style scores for the exported columns, shown on the page as a tab of their own. */
   styles?: ExportedStyles
@@ -721,8 +774,8 @@ export const editStoryboardFrame = (
  * Background work on a Frame: picturing, rendering, upscaling or speaking it, making its picture
  * into a 2.5D scene (SHARP), or lifting its person out as a 3D figure (TripoSplat, LiTo); `voice`
  * designs a new take of the Character's voice, and `style` embeds the pictures for the style
- * scores (both filed under the opening Frame). A Chain has
- * `upscale`, `scene`, `figure` and `lito`; a Storyboard `render` too; a Roleplay has them all.
+ * scores (both filed under the opening Frame); `edit` repaints a picture as told. A Chain has
+ * `upscale`, `scene`, `figure`, `lito` and `edit`; a Storyboard `render` too; a Roleplay has them all.
  */
 export type JobKind =
   | 'picture'
@@ -735,6 +788,7 @@ export type JobKind =
   | 'figure'
   | 'lito'
   | 'style'
+  | 'edit'
 
 /** A queued, running or failed job. Finished jobs drop off the list. */
 export interface Job {
@@ -749,6 +803,8 @@ export interface Job {
   createdAt: string
   /** A render's Image Model, as the Session had it when queued: it renders by that one. */
   image?: { imageBackend: ImageBackend; imageModel: string; steps: number }
+  /** An edit's instruction, or that it makes the newest edit again. */
+  edit?: { instruction?: string; retry?: true }
 }
 
 /** A Session's jobs (a Roleplay's or a Chain's), in the order queued; several may run, one per machine. */
@@ -757,6 +813,24 @@ export const listJobs = (id: string) => request<Job[]>(`/api/sessions/${id}/jobs
 /** Queues a job on a Frame; returns the whole queue. Asking twice for the same job queues it once. */
 export const queueJob = (id: string, kind: JobKind, frameIndex: number) =>
   post<Job[]>(`/api/sessions/${id}/jobs`, { kind, frameIndex })
+
+/**
+ * Queues an edit of a Frame's picture: an instruction, and the area painted over it (a PNG, in
+ * base64) or none for all of it; or `retry` to make the newest edit again. Returns the queue.
+ */
+export const queueEdit = (id: string, frameIndex: number, edit: EditOrder) =>
+  post<Job[]>(`/api/sessions/${id}/jobs`, { kind: 'edit', frameIndex, edit })
+
+/** What an edit is told: what to paint, and where (a PNG, base64); or to make the newest again. */
+export type EditOrder = { instruction: string; mask?: string } | { retry: true }
+
+/** Picks which version of a Frame's picture is the picture (0 for its render); returns the Session. */
+export const pickVersion = <S>(id: string, index: number, picked: number) =>
+  put<S>(`/api/sessions/${id}/pictures/${index}/picked`, { picked })
+
+/** Deletes the newest edit of a Frame's picture; returns the Session. */
+export const deleteNewestEdit = <S>(id: string, index: number) =>
+  request<S>(`/api/sessions/${id}/pictures/${index}/edits/newest`, { method: 'DELETE' })
 
 /** Puts a failed job back in the queue; returns the queue. */
 export const retryJob = (id: string, jobId: string) =>

@@ -569,6 +569,23 @@ function removeSavedApiKey() {
               </select>
               <span class="text-sm text-muted">Used by Upscale; applies to the next upscale.</span>
             </label>
+            <FeatureSwitch
+              v-model="form.features.edits"
+              :availability="options.features.edits"
+              title="Edits"
+              data-feature="edits"
+            >
+              Repaints part of a picture as told, as a version beside it: paint over a bad hand, say
+              what to paint there instead. With mflux, whichever backend rendered it (~3 minutes,
+              15 GB).
+            </FeatureSwitch>
+            <label v-if="options.features.edits.available" class="flex flex-col gap-1">
+              <span class="text-sm text-muted">Edit model</span>
+              <select v-model="form.editModel" class="field" data-edit-model>
+                <option v-for="m in options.editModels" :key="m.id" :value="m.id">{{ m.label }}</option>
+              </select>
+              <span class="text-sm text-muted">Used by Edit; applies to the next edit.</span>
+            </label>
           </template>
           <FeatureSwitch
             v-model="form.features.style"

@@ -8,6 +8,7 @@ export const promptFor = (index: number): ImagePrompt =>
 export const ALL_ON: Record<Feature, boolean> = {
   images: true,
   upscale: true,
+  edits: true,
   voices: true,
   scenes: true,
   figures: true,
@@ -19,6 +20,7 @@ export const ALL_ON: Record<Feature, boolean> = {
 export const ALL_AVAILABLE: Record<Feature, Availability> = {
   images: { available: true },
   upscale: { available: true },
+  edits: { available: true },
   voices: { available: true },
   scenes: { available: true },
   figures: { available: true },

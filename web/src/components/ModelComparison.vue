@@ -1,10 +1,12 @@
 <script setup lang="ts" generic="F extends PicturedFrame">
 import { computed, ref, useTemplateRef, watch } from 'vue'
 import {
+  asPicked,
   deleteModelPictures,
   exportComparison,
   getStyleScores,
   imageUrl,
+  pickedEdit,
   type PicturedFrame,
 } from '../api'
 import type { ComparisonModel } from '../comparison'
@@ -60,7 +62,11 @@ const pictured = computed(() =>
       name: props.name(f.index),
       prompt: f.prompt,
       caption: props.caption?.(f) || undefined,
-      pictures: modelIds.value.map((m) => f.pictures.find((p) => p.imageModel === m) ?? null),
+      // Each as its picked version: an edit is compared as the picture it now is, and marked.
+      pictures: modelIds.value.map((m) => {
+        const picture = f.pictures.find((p) => p.imageModel === m)
+        return picture ? asPicked(picture) : null
+      }),
     }))
 )
 const rows = computed(() =>
@@ -71,6 +77,7 @@ const rows = computed(() =>
         thumb: imageUrl(props.sessionId, p.image),
         full: imageUrl(props.sessionId, p.upscaled ?? p.image),
         stale: p.stale,
+        edited: pickedEdit(p)?.instructions,
       }
     ),
   }))
@@ -224,7 +231,7 @@ async function exportPage() {
       rows: pictured.value.map((row) => ({
         ...row,
         pictures: exportedColumns.value.map((i) => row.pictures[i]).map((p) =>
-          p && { image: p.image, upscaled: p.upscaled, stale: p.stale }
+          p && { image: p.image, upscaled: p.upscaled, stale: p.stale, edited: pickedEdit(p)?.instructions }
         ),
       })),
       ...(styles.value && exportStyles.value ? { styles: styles.value } : {}),

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useMediaQuery } from '@vueuse/core'
 import { computed, ref, useTemplateRef, watch } from 'vue'
-import type { Comparison } from '../comparison'
+import type { Comparison, ComparisonPicture } from '../comparison'
 import { useDragReorder } from '../composables/useDragReorder'
 import { usePageKeys } from '../composables/usePageKeys'
 import Icon from './Icon.vue'
@@ -42,6 +42,15 @@ const rows = computed(() =>
   props.rows.map((row) => ({ ...row, pictures: shownOrder.value.map((i) => row.pictures[i]) }))
 )
 /** The hidden columns, folded at the right end, each with the index to show it again by. */
+/** What a picture's tooltip says: that it's an edit, and of what; or that it's out of date. */
+function pictureTitle(picture: ComparisonPicture): string | undefined {
+  const notes = [
+    picture.edited && `Edited: ${picture.edited.join('; ')}`,
+    picture.stale && 'Its Image Prompt changed since it was rendered',
+  ].filter(Boolean)
+  return notes.length ? notes.join('. ') : undefined
+}
+
 const hiddenModels = computed(() =>
   (order.value ?? []).filter((i) => hidden.value.includes(i)).map((i) => ({
     index: i,
@@ -243,10 +252,17 @@ usePageKeys(() => instead.value ?? scroller.value, () => viewing.value !== null)
               <button
                 v-if="picture"
                 type="button"
-                class="block"
-                :title="picture.stale ? 'Its Image Prompt changed since it was rendered' : undefined"
+                class="relative block"
+                :title="pictureTitle(picture)"
                 @click="viewing = { row: r, column: c }"
               >
+                <span
+                  v-if="picture.edited"
+                  class="absolute top-1 left-1 rounded bg-canvas/85 px-1.5 text-xs"
+                  data-edited
+                >
+                  Edited
+                </span>
                 <img
                   :src="picture.thumb"
                   :alt="`${row.name} by ${models[c].label}`"

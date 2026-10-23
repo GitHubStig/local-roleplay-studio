@@ -1,5 +1,15 @@
 import { computed, onBeforeUnmount, ref } from 'vue'
-import { cancelJob, clearJobs, type Job, type JobKind, listJobs, queueJob, retryJob } from '../api'
+import {
+  cancelJob,
+  clearJobs,
+  type EditOrder,
+  type Job,
+  type JobKind,
+  listJobs,
+  queueEdit as queueEditJob,
+  queueJob,
+  retryJob,
+} from '../api'
 import { JOB_NAMES } from '../jobs'
 
 /** Of several running jobs, the one to show: a render, else a picture, else the first. */
@@ -81,6 +91,15 @@ export function useJobs(
       opts.onError((err as Error).message)
     }
   }
+  /** Queues an edit of a Frame's picture (ADR 0021). */
+  async function queueEdit(index: number, order: EditOrder) {
+    try {
+      jobs.value = await queueEditJob(sessionId, index, order)
+      watchJobs()
+    } catch (err) {
+      opts.onError((err as Error).message)
+    }
+  }
   /** Queues a `kind` job on each of these Frames, in order. */
   async function queueAll(kind: JobKind, indexes: readonly number[]) {
     for (const index of indexes) await queue(kind, index)
@@ -121,6 +140,7 @@ export function useJobs(
     jobsFor,
     hasJob,
     queue,
+    queueEdit,
     queueAll,
     dropJob,
     clear,

@@ -28,6 +28,7 @@ const settings: Settings = {
   seedMode: 'random',
   seed: 42,
   upscaler: 'seedvr2-7b',
+  editModel: 'qwen-image-2.1-edit',
   upscaleBackend: 'mflux',
   voiceBackend: 'mlx-audio',
   limits: true,

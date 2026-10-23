@@ -148,10 +148,10 @@ export interface AppDeps {
 }
 
 /**
- * Frame images: `frame-3-1a2b3c4d.png`, or `frame-3.png` without the unique suffix; `-2048` marks
- * an upscaled one.
+ * Frame images: `frame-3-1a2b3c4d.png`, or `frame-3.png` without the unique suffix, and edits of
+ * them (`edit-3-1a2b3c4d.png`, ADR 0021); `-2048` marks an upscaled one.
  */
-const IMAGE_FILE = /^frame-\d+(-[0-9a-f]{8})?(-2048)?\.(png|svg)$/
+const IMAGE_FILE = /^(frame|edit)-\d+(-[0-9a-f]{8})?(-2048)?\.(png|svg)$/
 /**
  * A Roleplay's audio: its Character's voice (`voice-1a2b3c4d.wav`, lossless; FLAC from ComfyUI),
  * spoken lines (`speech-3-…`) and spoken thoughts (`thought-3-…`): MP3 (FLAC from ComfyUI), or WAV

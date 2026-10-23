@@ -37,4 +37,6 @@ export interface ComparisonPicture {
   height?: number
   /** Its Image Prompt changed since it was rendered. */
   stale?: boolean
+  /** It's an edit of the render (ADR 0021): what it was told to paint. */
+  edited?: string[]
 }

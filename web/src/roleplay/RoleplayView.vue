@@ -22,6 +22,7 @@ import JobQueue from '../components/JobQueue.vue'
 import PanelTabs from '../components/PanelTabs.vue'
 import RenderAllButton from '../components/RenderAllButton.vue'
 import { useJobs } from '../composables/useJobs'
+import { usePictureVersions } from '../composables/usePictureVersions'
 import { useFeatures } from '../composables/useFeatures'
 import { jobForming, jobStatus, queueTabLabel } from '../jobs'
 import { useShownPreview } from '../composables/useShownPreview'
@@ -51,6 +52,8 @@ const notice = ref<{ kind: 'error' | 'declined'; text: string } | null>(null)
 const transcript = useTemplateRef<HTMLElement>('transcript')
 /** The Frame whose picture is open in the viewer, if any. */
 const viewing = ref<number | null>(null)
+/** Painting an edit of its picture in the viewer (ADR 0021). */
+const paintingPicture = ref(false)
 
 /** The exchange in progress: the message sent, and the reply as it arrives. */
 interface Pending {
@@ -82,13 +85,18 @@ const suggesting = computed(() => pending.value?.kind === 'suggest')
 const writingCast = computed(() => pending.value?.kind === 'cast')
 // --- Background work: pictures, renders, upscales, voices and 3D, queued on the server.
 
-const { jobs, runningJobs, runningJob, runningOn, jobsFor, hasJob, queue, queueAll, dropJob, clear, retry, refreshJobs } = useJobs(
+const { jobs, runningJobs, runningJob, runningOn, jobsFor, hasJob, queue, queueEdit, queueAll, dropJob, clear, retry, refreshJobs } = useJobs(
   props.id,
   {
     onSettled: () => reload(),
     onError: (text) => (notice.value = { kind: 'error', text }),
     imageModel: () => session.value?.settings.imageModel,
   },
+)
+const { pick: pickVersion, deleteEdit } = usePictureVersions(
+  props.id,
+  session,
+  (text) => (notice.value = { kind: 'error', text }),
 )
 /**
  * The picture forming, over the picture of the Frame a job renders (one at a time). The Frame is
@@ -779,6 +787,8 @@ const lookSavingText = computed(() =>
                         :can-render="(!!frame.prompt && !frame.blocked) || hasJob(frame.index, 'picture')"
                         @queue="(kind) => queueSaved(kind, frame.index)"
                         @view="(kind) => (open3d = { index: frame.index, kind })"
+                        @edit="viewing = frame.index; paintingPicture = true"
+                        @pick="(version) => pickVersion(frame.index, version)"
                       />
                     </p>
                     <details v-if="frame.prompt" class="text-muted" data-image-prompt>
@@ -1195,10 +1205,15 @@ const lookSavingText = computed(() =>
     <FrameViewer
       v-if="session"
       v-model:open="viewing"
+      v-model:painting="paintingPicture"
       :session-id="session.id"
       :frames="session.frames"
       :image-model="session.settings.imageModel"
+      :editing="(index) => hasJob(index, 'edit')"
       @step="goToFrame"
+      @edit="queueEdit"
+      @pick="pickVersion"
+      @delete-edit="deleteEdit"
     />
     <Frame3dViewers
       v-if="session"

@@ -140,6 +140,8 @@ const frameStyle = computed(() => ({
           draggable="false"
           data-preview
         />
+        <!-- Drawn on the image itself, zoomed and panned with it (a paint layer), at its size. -->
+        <slot v-if="displayed && size" name="layer" :size="size" />
       </div>
       <span
         v-if="!displayed && emptyText"
