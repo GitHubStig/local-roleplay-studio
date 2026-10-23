@@ -814,6 +814,22 @@ The first step of "Editing a Frame's picture" (open-threads.md): `mflux-generate
 - **`-q 8` and `--low-ram` change nothing visible**: within 1.3 of 255 of the full run inside the mask. `-q 8` alone saves nothing (it quantizes after loading the full weights); with `--low-ram` the peak falls to 15.1 GB, so that's the pair to run, as for renders. Nothing to download: it runs on Qwen-Image 2.1's own weights.
 - About 3 minutes an edit at this size, every way, against ~90 s for a 1024² render with the saved 8-bit copy (above); likely the picture passed as a reference and the edit tool's guidance, as in the reference-portrait trial, not separated.
 
+**Two areas in one edit, and dark areas** (2026-10-23, Mac, `-q 8 --low-ram`, seed 42, a 1024² FLUX.2 Klein 9B picture from a Session: a lit face, a shirt in shadow, and a lit object apart from the face). Seven edits, ~3 minutes each, mean change of 255 in each area, nothing outside them moving by more than 1:
+
+| Painted | Told | Face | Second area |
+|---|---|---|---|
+| face + shirt (in shadow under the gun) | terse: "laughing face, red shirt" | 26.6 | 1.9 |
+| face + shirt | each area described ("In the painted area over his face: … In the painted area over his shirt: …") | 27.8 | 1.9 |
+| face | terse: "laughing face" | 26.5 | – |
+| face | described: "The same man's face, laughing, mouth wide open…" | 27.5 | – |
+| shirt | "The same shirt, bright red." | – | 2.5 |
+| face + the object (lit, apart from the face) | each area described, the object to be "painted bright red" | 26.1 | 22.1 |
+| object | "The same [object], painted bright red." | – | 19.0 |
+
+- **Several areas take one instruction each, in one edit**: the face laughed and the object turned red together, as each did alone. Saying which painted area gets what is enough; Qwen's own way, coloured outlines drawn on the picture with the prompt naming the colours, wasn't needed, and the mask keeps the rest exactly as it was.
+- **Dark areas resist**: a shirt in deep shadow went only faintly dark red, alone or with the face, as two objects asked for on a dark shelf on 2026-10-23 came back as the bottles that were there. Something bright painted into shadow stays mostly shadow.
+- **A face responds to terse or described wording alike**: an edit of a face that changes nothing is likelier asking in words the model doesn't know than painted wrong.
+
 ### Upscaler
 
 Upscale uses **SeedVR2 7B** by default (`seedvr2-7b`, `mflux-upscale-seedvr2 --resolution 2048`);
