@@ -1,5 +1,6 @@
 import { join } from '@std/path'
 import type { Settings } from '../settings.ts'
+import type { EditModel } from './editModels.ts'
 
 export interface ImageRequest {
   prompt: string
@@ -20,6 +21,22 @@ export interface UpscaleRequest {
   /** Directory to read from and write into. */
   dir: string
   /** File name without extension; the upscaler picks the extension. */
+  name: string
+}
+
+/** An edit of a picture (ADR 0021): repainted as told, in the painted area or all of it. */
+export interface EditRequest {
+  model: EditModel
+  /** File name of the image to edit, inside `dir`; the edit comes out the same size. */
+  image: string
+  /** File name of the painted area, a PNG of the same size (white repainted); none for all of it. */
+  mask?: string
+  /** What to paint. */
+  instruction: string
+  seed: number
+  /** Directory to read from and write into. */
+  dir: string
+  /** File name without extension; the edit model picks the extension. */
   name: string
 }
 
@@ -50,6 +67,13 @@ export interface ImageGenerator {
    */
   upscale(
     req: UpscaleRequest,
+    signal: AbortSignal,
+    onProgress?: OnProgress,
+    onDownload?: () => void,
+  ): Promise<string>
+  /** Edits a picture as told, and returns the file name it wrote inside `dir`. */
+  edit(
+    req: EditRequest,
     signal: AbortSignal,
     onProgress?: OnProgress,
     onDownload?: () => void,
@@ -87,16 +111,18 @@ function wrap(text: string, width: number): string[] {
 
 /**
  * Stands in for mflux: writes an SVG card showing the prompt, after an optional delay. Upscaling
- * copies the card under the new name.
+ * and editing copy the card under the new name.
  */
 export function placeholderImageGenerator(delayMs = 1500): ImageGenerator {
+  const copy = async (image: string, dir: string, name: string, signal: AbortSignal) => {
+    await delay(delayMs, signal)
+    const file = `${name}${image.slice(image.lastIndexOf('.'))}`
+    await Deno.copyFile(join(dir, image), join(dir, file))
+    return file
+  }
   return {
-    async upscale({ image, dir, name }, signal) {
-      await delay(delayMs, signal)
-      const file = `${name}${image.slice(image.lastIndexOf('.'))}`
-      await Deno.copyFile(join(dir, image), join(dir, file))
-      return file
-    },
+    upscale: ({ image, dir, name }, signal) => copy(image, dir, name, signal),
+    edit: ({ image, dir, name }, signal) => copy(image, dir, name, signal),
     async generate({ prompt, seed, dir, name }, signal) {
       await delay(delayMs, signal)
       const hue = seed % 360

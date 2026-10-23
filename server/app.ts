@@ -29,6 +29,14 @@ import type { FigureMaker } from './3d/figure.ts'
 import type { SceneMaker } from './3d/scene.ts'
 import type { StyleEmbedder } from './style/embedder.ts'
 import { embedStyles } from './style/job.ts'
+import {
+  checkEdit,
+  deleteNewestEdit,
+  editFrame,
+  pickVersion,
+  VersionError,
+} from './pictureEdits.ts'
+import { EDIT_MODELS } from './images/editModels.ts'
 import { loadStyleCache, StyleScoreError, styleScores, unembedded } from './style/scores.ts'
 import type { VoiceEngine } from './voice/voice.ts'
 import { roleplayExcerpt } from './roleplay/prompt.ts'
@@ -62,7 +70,13 @@ import {
   parseComparisonExport,
   writeComparison,
 } from './export/comparison.ts'
-import { deleteModelPictures, ImageModelError, shownPicture, switchImageModel } from './pictures.ts'
+import {
+  deleteModelPictures,
+  ImageModelError,
+  pickedVersion,
+  shownPicture,
+  switchImageModel,
+} from './pictures.ts'
 import { type HeavyJob, jobMachine, jobServer, machineKey } from './machine.ts'
 import { Previews } from './previews.ts'
 import { RenderQueue } from './renderQueue.ts'
@@ -387,6 +401,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
   const detected: Availabilities = deps.features ?? {
     images: { available: true },
     upscale: { available: true },
+    edits: { available: true },
     voices: given(deps.voice, 'voice service'),
     scenes: given(deps.scene, 'SHARP'),
     figures: given(deps.figure, 'TripoSplat'),
@@ -456,6 +471,22 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
         signal,
       )
     }
+    // The same in every kind of Session (ADR 0021).
+    if (session && job.kind === 'edit') {
+      const save = (change: (s: Session) => Session) =>
+        updateSession(deps.sessions, session.id, session.kind, change)
+      await editFrame(
+        { store: deps.sessions, imageGenerator: deps.imageGenerator, renderQueue },
+        session,
+        job.frameIndex,
+        job.edit!,
+        (await deps.settings.load()).editModel,
+        emit,
+        signal,
+        save,
+      )
+      return
+    }
     if (session?.kind === 'roleplay') {
       return runRoleplayJob(roleplayJobs, session, job, emit, signal)
     }
@@ -514,8 +545,13 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       store: deps.sessions,
       machineOf: async (session, kind) =>
         machineKey(jobMachine(kind, session.settings, await deps.settings.load())),
-      check: async (session, kind, index, pending) => {
+      check: async (session, kind, index, pending, edit) => {
         const feature = JOB_FEATURE[kind]
+        if (kind === 'edit') {
+          const name = session.kind === 'storyboard' ? `Frame ${index + 1}` : `Frame ${index}`
+          return (feature && (await featureOff(feature))) ??
+            checkEdit(session, index, name, pending, edit!)
+        }
         if (kind === 'style') {
           return (feature && (await featureOff(feature))) ??
             (session.frames.some((f) => f.pictures.length)
@@ -594,6 +630,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
         imageBackends: imageBackends(),
         sizePresets: SIZE_PRESETS,
         upscalers: UPSCALERS,
+        editModels: EDIT_MODELS,
         features: await availability(),
       })
     }],
@@ -674,7 +711,10 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
           scenarioId: s.scenarioId,
           title: titleOf(s, titles.get(s.scenarioId ?? '')),
           frames: s.frames.length,
-          latestImage: s.frames.map((f) => shownPicture(f, s.settings.imageModel)?.image)
+          latestImage: s.frames.map((f) => {
+            const picture = shownPicture(f, s.settings.imageModel)
+            return picture && pickedVersion(picture).image
+          })
             .findLast((image) => image) ?? null,
           // Shown in place of a picture until there is one: a Roleplay's latest line, a Chain's
           // latest Narration, a Storyboard's first Beat.
@@ -769,6 +809,47 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
         throw err
       }
     }],
+
+    // Picks which version of Frame `:index`'s picture is the picture (ADR 0021): `{ picked }`, 0
+    // for its render, n for its edit n. Sends back the Session.
+    [
+      'PUT',
+      new URLPattern({ pathname: '/api/sessions/:id/pictures/:index/picked' }),
+      async (req, p) => {
+        const body = await readJson(req) as { picked?: unknown } | undefined
+        const session = await deps.sessions.load(p.id!)
+        if (!session) return error('Session not found', 404)
+        try {
+          return json(
+            await pickVersion(deps.sessions, session, Number(p.index), Number(body?.picked)),
+          )
+        } catch (err) {
+          if (err instanceof VersionError) return error(err.message, 409)
+          throw err
+        }
+      },
+    ],
+
+    // Deletes the newest edit of Frame `:index`'s picture, unless an edit is queued or running on
+    // it (made from it, or making it again). Sends back the Session.
+    [
+      'DELETE',
+      new URLPattern({ pathname: '/api/sessions/:id/pictures/:index/edits/newest' }),
+      async (_req, p) => {
+        const session = await deps.sessions.load(p.id!)
+        if (!session) return error('Session not found', 404)
+        const index = Number(p.index)
+        const editing = jobs.list(session.id)
+          .some((j) => j.kind === 'edit' && j.frameIndex === index && j.status !== 'failed')
+        if (editing) return error('That picture is being edited: wait for it first', 409)
+        try {
+          return json(await deleteNewestEdit(deps.sessions, session, index))
+        } catch (err) {
+          if (err instanceof VersionError) return error(err.message, 409)
+          throw err
+        }
+      },
+    ],
 
     ['POST', new URLPattern({ pathname: '/api/sessions/:id/cancel' }), (_req, p) => {
       active.get(p.id!)?.controller.abort(new Error('Cancelled by player'))

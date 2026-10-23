@@ -7,6 +7,7 @@
  */
 import { join } from '@std/path'
 import type { Session } from '../session.ts'
+import { pickedVersion } from '../pictures.ts'
 import { decodeVector, type Embeddings } from './embedder.ts'
 
 /** A Session's embeddings so far: each picture's by file name, each caption's by its text. */
@@ -79,7 +80,8 @@ export function picturesOf(session: Session) {
     [...new Set(f.pictures.map((p) => p.imageModel))].map((model) => ({
       frame: f.index,
       model,
-      image: f.pictures.find((p) => p.imageModel === model)!.image,
+      // The version it shows (ADR 0021): an edit is scored as the picture it now is.
+      image: pickedVersion(f.pictures.find((p) => p.imageModel === model)!).image,
     }))
   )
 }

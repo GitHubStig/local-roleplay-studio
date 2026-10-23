@@ -12,7 +12,7 @@ import { error } from './http.ts'
 import type { Upscaler } from './images/upscalers.ts'
 import type { Job, JobEmit, JobKind } from './jobs.ts'
 import type { Session } from './session.ts'
-import { shownPictureOf } from './pictures.ts'
+import { shownVersionOf } from './pictures.ts'
 
 export const PICTURE_JOB_KINDS: readonly JobKind[] = ['upscale', 'scene', 'figure', 'lito']
 
@@ -38,7 +38,7 @@ export function checkPictureJob(
   name: string,
   pending: readonly JobKind[],
 ): Response | null {
-  const picture = shownPictureOf(session, index)
+  const picture = shownVersionOf(session, index)
   const coming = pending.some((k) => k === 'render' || k === 'picture')
   if (!picture && !coming) return error(`${name} has no picture yet`, 409)
   if (kind === 'upscale' && picture?.upscaled) return error(`${name} is already upscaled`, 409)

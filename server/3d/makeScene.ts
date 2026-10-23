@@ -3,7 +3,7 @@ import { secondsSince } from '../frames.ts'
 import { RenderQueue } from '../renderQueue.ts'
 import type { Scene, SceneMaker } from './scene.ts'
 import type { Session, SessionStore } from '../session.ts'
-import { changeFramePicture, shownPictureOf } from '../pictures.ts'
+import { changeFramePicture, shownVersionOf } from '../pictures.ts'
 
 export interface SceneDeps {
   store: SessionStore
@@ -36,7 +36,7 @@ export async function makeScene<S extends Session>(
   save: (change: (s: S) => S) => Promise<S>,
 ): Promise<S> {
   if (!deps.scene) throw new SceneError(SCENES_OFF)
-  const picture = shownPictureOf(session, index)
+  const picture = shownVersionOf(session, index)
   if (!picture) throw new SceneError(`Frame ${index} has no picture yet`)
   const { image } = picture
   // SHARP works at 1536 px: the 2048 px upscale has more to give it than a 1024 px original.

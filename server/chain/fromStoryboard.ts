@@ -6,7 +6,7 @@
 import { join } from '@std/path'
 import { joinPrompt, sentences } from '../imagePrompt.ts'
 import { shownSubjects } from '../look.ts'
-import type { Picture } from '../pictures.ts'
+import type { Picture, PictureVersion } from '../pictures.ts'
 import type {
   ChainFrame,
   ChainSession,
@@ -55,21 +55,40 @@ const copyName = (file: string, index: number) => {
   return named === file ? `${fresh}-${file}` : named
 }
 
-/** `picture` with its files renamed for Frame `index`, noting each copy to make. */
+/**
+ * `picture` with its files renamed for Frame `index`, noting each copy to make: its render, and its
+ * picked edit if it has one (ADR 0021), still picked, with every instruction that led to it. The
+ * other edits and the painted areas stay behind.
+ */
 function copiedPicture(picture: Picture, index: number, files: [string, string][]): Picture {
   const rename = (file: string) => {
     const to = copyName(file, index)
     files.push([file, to])
     return to
   }
-  const { upscaled, scene, figure, lito } = picture
+  const copied = <V extends PictureVersion>(version: V): V => {
+    const { upscaled, scene, figure, lito } = version
+    return {
+      ...version,
+      image: rename(version.image),
+      ...(upscaled ? { upscaled: rename(upscaled) } : {}),
+      ...(scene ? { scene: { ...scene, file: rename(scene.file) } } : {}),
+      ...(figure ? { figure: { ...figure, file: rename(figure.file) } } : {}),
+      ...(lito ? { lito: { ...lito, file: rename(lito.file) } } : {}),
+    }
+  }
+  const { edits, picked, ...render } = picture
+  const edit = picked ? edits?.[picked - 1] : undefined
+  if (!edit) return copied(render)
+  const { mask: _, ...made } = edit
   return {
-    ...picture,
-    image: rename(picture.image),
-    ...(upscaled ? { upscaled: rename(upscaled) } : {}),
-    ...(scene ? { scene: { ...scene, file: rename(scene.file) } } : {}),
-    ...(figure ? { figure: { ...figure, file: rename(figure.file) } } : {}),
-    ...(lito ? { lito: { ...lito, file: rename(lito.file) } } : {}),
+    ...copied(render),
+    edits: [{
+      ...copied(made),
+      instructions: edits!.slice(0, picked).flatMap((e) => e.instructions),
+      copied: true,
+    }],
+    picked: 1,
   }
 }
 

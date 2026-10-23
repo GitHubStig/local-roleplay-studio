@@ -290,6 +290,7 @@ Deno.test('Choosing ComfyUI makes pictures, and then Upscale, available where mf
     features: {
       images: off,
       upscale: off,
+      edits: off,
       voices: off,
       scenes: on,
       figures: on,
@@ -1190,6 +1191,98 @@ Deno.test('A Chain queues an upscale of one Frame, once', () =>
     assertEquals(again.status, 409)
   }))
 
+/** A PNG's bytes in base64, standing in for a painted area. */
+const MASK = btoa('\x89PNG painted')
+
+Deno.test('An edit repaints a picture as a new version, made from the newest and picked', () =>
+  withTempDir(async (root) => {
+    const images = fakeImageGenerator()
+    const { call } = await chainOfTwo(root, { imageGenerator: images })
+    const edit = (body: object) =>
+      call('POST', '/api/sessions/s1/jobs', { kind: 'edit', frameIndex: 1, edit: body })
+    const queued = await edit({ instruction: 'A hand with five fingers', mask: MASK })
+    assertEquals(queued.status, 201)
+    // The painted area isn't sent back with the job.
+    assertEquals((await queued.json())[0].edit, { instruction: 'A hand with five fingers' })
+    assertEquals(await settled(call), [])
+    const [, first] = await chainFrames(call)
+    const [one] = first.edits
+    assertMatch(one.image, /^edit-1-[0-9a-f]{8}\.png$/)
+    assertMatch(one.mask, /^mask-1-[0-9a-f]{8}\.png$/)
+    assertEquals([one.instructions, one.editModel, first.picked], [
+      ['A hand with five fingers'],
+      'qwen-image-2.1-edit',
+      1,
+    ])
+    assertEquals(
+      await Deno.readFile(join(root, 's1', one.mask)),
+      Uint8Array.from(atob(MASK), (c) => c.charCodeAt(0)),
+    )
+    assertEquals([images.edits[0].image, images.edits[0].mask], [first.image, one.mask])
+
+    // A second, of the whole picture, is made from the first.
+    assertEquals((await edit({ instruction: 'Warmer light' })).status, 201)
+    assertEquals(await settled(call), [])
+    const [, second] = await chainFrames(call)
+    assertEquals([images.edits[1].image, images.edits[1].mask], [one.image, undefined])
+    assertEquals([second.edits.length, second.picked], [2, 2])
+
+    // What's made from the picture is made from the picked version.
+    await call('POST', '/api/sessions/s1/jobs', { kind: 'upscale', frameIndex: 1 })
+    assertEquals(await settled(call), [])
+    assertEquals(images.upscaled, [second.edits[1].image])
+    const [, upscaled] = await chainFrames(call)
+    assertMatch(upscaled.edits[1].upscaled, /-2048\.png$/)
+    assertEquals(upscaled.upscaled, undefined)
+  }))
+
+Deno.test('An edit can be retried in its place, picked, and the newest deleted', () =>
+  withTempDir(async (root) => {
+    const images = fakeImageGenerator()
+    const { call } = await chainOfTwo(root, { imageGenerator: images })
+    const edit = (body: object) =>
+      call('POST', '/api/sessions/s1/jobs', { kind: 'edit', frameIndex: 1, edit: body })
+    // Nothing to retry yet; an instruction is needed, and one crossing a Limit is refused.
+    assertEquals((await edit({ retry: true })).status, 409)
+    assertEquals((await edit({ instruction: ' ' })).status, 400)
+    assertEquals((await edit({ instruction: 'A hand', mask: 'not base64!' })).status, 400)
+    assertEquals((await edit({ instruction: 'A naked child' })).status, 422)
+
+    await edit({ instruction: 'A hand', mask: MASK })
+    assertEquals(await settled(call), [])
+    const [, made] = await chainFrames(call)
+    await edit({ retry: true })
+    assertEquals(await settled(call), [])
+    const [, again] = await chainFrames(call)
+    // In its place, from the render, with the next seed and the same painted area.
+    assertEquals(again.edits.length, 1)
+    assertNotEquals(again.edits[0].image, made.edits[0].image)
+    assertEquals([again.edits[0].seed, again.edits[0].mask], [
+      made.edits[0].seed + 1,
+      made.edits[0].mask,
+    ])
+    assertEquals(images.edits[1].image, made.image)
+    const file = (name: string) => call('GET', `/api/sessions/s1/images/${name}`)
+    assertEquals((await file(made.edits[0].image)).status, 404)
+
+    // The render picked again, then the edit deleted: its files go, the render stays picked.
+    const pick = (picked: unknown) => call('PUT', '/api/sessions/s1/pictures/1/picked', { picked })
+    assertEquals((await pick(2)).status, 409)
+    assertEquals((await pick(0)).status, 200)
+    assertEquals((await chainFrames(call))[1].picked, 0)
+    assertEquals((await pick(1)).status, 200)
+    const deleted = await call('DELETE', '/api/sessions/s1/pictures/1/edits/newest')
+    assertEquals(deleted.status, 200)
+    const [, after] = await chainFrames(call)
+    assertEquals([after.edits, after.picked], [undefined, undefined])
+    assertEquals((await file(again.edits[0].image)).status, 404)
+    assertEquals((await file(again.image)).status, 200)
+    assertEquals(
+      (await call('DELETE', '/api/sessions/s1/pictures/1/edits/newest')).status,
+      409,
+    )
+  }))
+
 Deno.test('A Chain queues SHARP, TripoSplat and LiTo for one Frame', () =>
   withTempDir(async (root) => {
     const scene = fakeSceneMaker(), figure = fakeFigureMaker(), lito = fakeFigureMaker()
@@ -1315,6 +1408,7 @@ Deno.test('A Session switches Image backend, to mflux only where it can run', ()
       features: {
         images: off,
         upscale: off,
+        edits: off,
         voices: off,
         scenes: on,
         figures: on,
@@ -1419,6 +1513,7 @@ Deno.test('Without pictures every kind starts; a Chain writes its Frames without
       features: {
         images: off,
         upscale: off,
+        edits: off,
         voices: off,
         scenes: off,
         figures: off,

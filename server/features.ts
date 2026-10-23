@@ -2,7 +2,7 @@ import { join } from '@std/path'
 
 /**
  * The extras beyond the Text Model, each needing its own backend: pictures (mflux, or a ComfyUI
- * server), upscaling (SeedVR2 through mflux), voices (the mlx-audio service), 3D (SHARP,
+ * server), upscaling (SeedVR2 through mflux), editing pictures (an edit model through mflux), voices (the mlx-audio service), 3D (SHARP,
  * TripoSplat, LiTo), and the Compare dialog's style scores (CSD and CLIP). Which of them this machine can run is worked out once at startup
  * (`detectFeatures`); Settings can switch off any that can. Pictures are also available wherever
  * Settings choose ComfyUI (`app.ts`), which this can't know at startup.
@@ -10,6 +10,7 @@ import { join } from '@std/path'
 export const FEATURES = [
   'images',
   'upscale',
+  'edits',
   'voices',
   'scenes',
   'figures',
@@ -22,6 +23,7 @@ export type Feature = (typeof FEATURES)[number]
 export const FEATURE_NAMES: Record<Feature, string> = {
   images: 'Pictures',
   upscale: 'Upscale',
+  edits: 'Edits',
   voices: 'Voices',
   scenes: 'SHARP',
   figures: 'TripoSplat',
@@ -82,6 +84,8 @@ export async function detectFeatures(
     images: withMflux,
     // SeedVR2, through mflux.
     upscale: withMflux,
+    // An edit model, through mflux; not on ComfyUI yet (ADR 0021).
+    edits: withMflux,
     voices: !appleSilicon ? mlxOnly('The voice service (mlx-audio)') : uv ? yes : noUv,
     scenes: gpu('SHARP'),
     figures: gpu('TripoSplat'),

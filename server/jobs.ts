@@ -19,7 +19,8 @@ import type { Settings } from './settings.ts'
  * picture to 2048 px; `voice` designs a new take of the Character's voice, `speak` voices one
  * Frame's dialogue, and `speak-thought` its thought; `scene` makes a picture into a 2.5D scene
  * (SHARP); `figure` lifts the person in it out as a 3D figure (TripoSplat), and `lito` does so with
- * Apple's LiTo; `style` embeds the Session's pictures for the Compare dialog's style scores.
+ * Apple's LiTo; `style` embeds the Session's pictures for the Compare dialog's style scores; `edit`
+ * repaints a picture as told (ADR 0021).
  */
 export type JobKind =
   | 'picture'
@@ -32,6 +33,7 @@ export type JobKind =
   | 'figure'
   | 'lito'
   | 'style'
+  | 'edit'
 export const JOB_KINDS: readonly JobKind[] = [
   'picture',
   'render',
@@ -43,6 +45,7 @@ export const JOB_KINDS: readonly JobKind[] = [
   'figure',
   'lito',
   'style',
+  'edit',
 ]
 
 /**
@@ -60,7 +63,17 @@ export const JOB_FEATURE: Record<JobKind, Feature | null> = {
   figure: 'figures',
   lito: 'lito',
   style: 'style',
+  edit: 'edits',
 }
+
+/**
+ * What an `edit` is told: an instruction, and the area painted over the picture to repaint (a PNG,
+ * base64; white repainted), or none for the whole picture. A retry makes the newest edit again with
+ * a new seed, in its place, and is told nothing new.
+ */
+export type EditOrder =
+  | { instruction: string; mask?: string; retry?: never }
+  | { retry: true; instruction?: never; mask?: never }
 
 export interface Job {
   id: string
@@ -83,6 +96,8 @@ export interface Job {
    * Session switches to meanwhile, so it runs where it was queued to (`machine`).
    */
   image?: ImageChoice
+  /** An edit's order. Its painted area is left out of the list the page is sent (`list`). */
+  edit?: EditOrder
 }
 
 /** The Session settings that say which Image Model renders, and on which backend. */
@@ -113,32 +128,43 @@ export type JobRunner = (
 ) => Promise<void>
 
 /** Jobs that make or use a picture with an image model, which unload the Text Model first. */
-const IMAGE_JOBS: readonly JobKind[] = ['render', 'upscale', 'scene', 'figure', 'lito']
+const IMAGE_JOBS: readonly JobKind[] = ['render', 'upscale', 'scene', 'figure', 'lito', 'edit']
 
 /**
  * What each job waits for, when queued earlier on its Frame (or, for the Session's own jobs, on any
  * Frame): a render for its Image Prompt, an upscale for its render, 3D for its upscale, a spoken
- * line for its voice, the style scores for every picture. Jobs on one machine also keep their order.
+ * line for its voice, the style scores for every picture; an edit for the render or edit it's made
+ * from, and what's made from a picture for its edits. Jobs on one machine also keep their order.
  */
 const NEEDS: Record<JobKind, readonly JobKind[]> = {
   picture: [],
   render: ['picture'],
-  upscale: ['picture', 'render'],
+  upscale: ['picture', 'render', 'edit'],
   voice: [],
   speak: ['voice'],
   'speak-thought': ['voice'],
-  scene: ['picture', 'render', 'upscale'],
-  figure: ['picture', 'render', 'upscale'],
-  lito: ['picture', 'render', 'upscale'],
-  style: ['picture', 'render'],
+  scene: ['picture', 'render', 'edit', 'upscale'],
+  figure: ['picture', 'render', 'edit', 'upscale'],
+  lito: ['picture', 'render', 'edit', 'upscale'],
+  style: ['picture', 'render', 'edit'],
+  edit: ['picture', 'render', 'edit'],
 }
 
 /**
  * Whether `job` is the same work: the same kind, on the same Frame, by the same Image Model (by
- * name, whichever backend: a Frame keeps one picture per model, `shownPicture`).
+ * name, whichever backend: a Frame keeps one picture per model, `shownPicture`). Edits never are:
+ * each is made from the one before.
  */
 const sameWork = (job: Job, kind: JobKind, frameIndex: number, image?: ImageChoice) =>
-  job.kind === kind && job.frameIndex === frameIndex && job.image?.imageModel === image?.imageModel
+  kind !== 'edit' && job.kind === kind && job.frameIndex === frameIndex &&
+  job.image?.imageModel === image?.imageModel
+
+/** A job as the page is sent it: an edit without its painted area, which only the run needs. */
+const shown = (job: Job): Job => {
+  if (!job.edit?.mask) return { ...job }
+  const { mask: _, ...edit } = job.edit
+  return { ...job, edit }
+}
 
 interface Running {
   job: Job
@@ -161,7 +187,7 @@ export class SessionJobs {
 
   /** A Session's jobs, in the order they were queued. */
   list(sessionId: string): Job[] {
-    return (this.#jobs.get(sessionId) ?? []).map((job) => ({ ...job }))
+    return (this.#jobs.get(sessionId) ?? []).map(shown)
   }
 
   /**
@@ -169,7 +195,8 @@ export class SessionJobs {
    * instead of queueing it twice; a render by another Image Model is other work. A picture (a
    * Roleplay Frame's Image Prompt) goes ahead of queued image jobs: a new Reply's is written while
    * its Text Model is still loaded, not after a batch of renders that each unload it. `machine` is
-   * where it runs (`machineKey`), and `image` a render's Image Model (`Job.image`).
+   * where it runs (`machineKey`), `image` a render's Image Model (`Job.image`), and `edit` an
+   * edit's order.
    */
   enqueue(
     sessionId: string,
@@ -177,10 +204,11 @@ export class SessionJobs {
     frameIndex: number,
     machine = 'here',
     image?: ImageChoice,
+    edit?: EditOrder,
   ): Job {
     const jobs = this.#jobs.get(sessionId) ?? []
     const same = jobs.find((j) => sameWork(j, kind, frameIndex, image) && j.status !== 'failed')
-    if (same) return { ...same }
+    if (same) return shown(same)
     const job: Job = {
       id: crypto.randomUUID().slice(0, 8),
       kind,
@@ -189,6 +217,7 @@ export class SessionJobs {
       createdAt: new Date().toISOString(),
       machine,
       ...(image && { image }),
+      ...(edit && { edit }),
     }
     const ahead = kind === 'picture'
       ? jobs.findIndex((j) => j.status === 'queued' && IMAGE_JOBS.includes(j.kind))
@@ -198,7 +227,7 @@ export class SessionJobs {
       ahead < 0 ? [...jobs, job] : [...jobs.slice(0, ahead), job, ...jobs.slice(ahead)],
     )
     this.#next(sessionId)
-    return { ...job }
+    return shown(job)
   }
 
   /**
@@ -349,13 +378,15 @@ export interface JobRoutesContext {
   store: SessionStore
   /**
    * Why `kind` can't be queued on Frame `index` of `session` (a response), or null if it can.
-   * `pending`: the jobs already queued or running on that Frame, which may make what it needs.
+   * `pending`: the jobs already queued or running on that Frame, which may make what it needs;
+   * `edit`: an edit's order.
    */
   check(
     session: Session,
     kind: JobKind,
     index: number,
     pending: readonly JobKind[],
+    edit?: EditOrder,
   ): Promise<Response | null>
   /** Which machine `kind` would run on for `session` (`machineKey`); left out, all run here. */
   machineOf?(session: Session, kind: JobKind): Promise<string>
@@ -367,6 +398,28 @@ export interface JobRoutesContext {
  * reviewed, before the scene begins. Their calls are logged with the setup's, not Frame 0's.
  */
 export const SESSION_JOBS: readonly JobKind[] = ['voice', 'style']
+
+/** The longest instruction an edit takes, and the largest painted area (base64, ~6 MB). */
+const MAX_INSTRUCTION = 1000
+const MAX_MASK = 8_000_000
+
+/** An edit's order from a request (`EditOrder`), or why it isn't one. */
+export function editOrder(body: unknown): EditOrder | string {
+  const b = body as { instruction?: unknown; mask?: unknown; retry?: unknown } | undefined
+  if (b?.retry === true) return { retry: true }
+  const instruction = typeof b?.instruction === 'string' ? b.instruction.trim() : ''
+  if (!instruction) return 'Say what to paint'
+  if (instruction.length > MAX_INSTRUCTION) {
+    return `An instruction can be at most ${MAX_INSTRUCTION} characters`
+  }
+  if (b?.mask === undefined) return { instruction }
+  if (
+    typeof b.mask !== 'string' || b.mask.length > MAX_MASK || !/^[A-Za-z0-9+/]+=*$/.test(b.mask)
+  ) {
+    return 'mask must be a PNG, in base64'
+  }
+  return { instruction, mask: b.mask }
+}
 
 /** The job routes every Session kind shares, under `/api/sessions/:id/jobs`. */
 export function jobRoutes(ctx: JobRoutesContext): Route[] {
@@ -381,11 +434,15 @@ export function jobRoutes(ctx: JobRoutesContext): Route[] {
     ['POST', path(), async (req, p) => {
       const session = await ctx.store.load(p.id!)
       if (!session) return error('Session not found', 404)
-      const body = await readJson(req) as { kind?: unknown; frameIndex?: unknown } | undefined
+      const body = await readJson(req) as
+        | { kind?: unknown; frameIndex?: unknown; edit?: unknown }
+        | undefined
       const kind = body?.kind as JobKind
       if (!JOB_KINDS.includes(kind)) {
         return error(`kind must be one of: ${JOB_KINDS.join(', ')}`, 400)
       }
+      const edit = kind === 'edit' ? editOrder(body?.edit) : undefined
+      if (typeof edit === 'string') return error(edit, 400)
       const index = Number(body?.frameIndex)
       const ofSession = SESSION_JOBS.includes(kind) && index === 0
       if (!Number.isInteger(index) || (!session.frames[index] && !ofSession)) {
@@ -394,7 +451,7 @@ export function jobRoutes(ctx: JobRoutesContext): Route[] {
       const pending = ctx.jobs.list(session.id)
         .filter((j) => j.frameIndex === index && j.status !== 'failed')
         .map((j) => j.kind)
-      const refused = await ctx.check(session, kind, index, pending)
+      const refused = await ctx.check(session, kind, index, pending, edit)
       if (refused) return refused
       ctx.jobs.enqueue(
         session.id,
@@ -402,6 +459,7 @@ export function jobRoutes(ctx: JobRoutesContext): Route[] {
         index,
         await ctx.machineOf?.(session, kind),
         kind === 'render' ? imageChoiceOf(session) : undefined,
+        edit,
       )
       return json(ctx.jobs.list(session.id), 201)
     }],

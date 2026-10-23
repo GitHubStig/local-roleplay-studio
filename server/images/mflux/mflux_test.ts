@@ -1,14 +1,16 @@
-import { assertEquals, assertRejects } from '@std/assert'
+import { assertEquals, assertRejects, assertThrows } from '@std/assert'
 import { fromFileUrl, join } from '@std/path'
 import type { ImageRequest } from '../imageGenerator.ts'
 import { findMfluxModel, type MfluxModel } from './models.ts'
 import {
   curlQuotes,
+  editArgs,
   failureReason,
   loraArgs,
   mfluxArgs,
   mfluxImageGenerator,
   parseProgress,
+  pngSize,
   upscaleArgs,
 } from './mflux.ts'
 import { DEFAULT_SETTINGS } from '../../settings.ts'
@@ -20,6 +22,55 @@ const request = (dir: string, extra: Partial<ImageRequest['settings']> = {}): Im
   settings: { ...DEFAULT_SETTINGS, imageModel: 'fake', steps: 3, ...extra },
   dir,
   name: 'frame-0',
+})
+
+Deno.test("editArgs edits at the picture's size in 8 bits and low RAM, with its painted area", () => {
+  const req = {
+    model: 'qwen-image-2.1-edit' as const,
+    image: 'frame-1.png',
+    mask: 'mask-1.png',
+    instruction: 'A hand reaching forward',
+    seed: 7,
+    dir: '/s',
+    name: 'edit-1',
+  }
+  assertEquals(editArgs(req, { width: 1216, height: 832 }, '/s/edit-1.png'), [
+    '--image-paths',
+    '/s/frame-1.png',
+    '--mask-image',
+    '/s/mask-1.png',
+    '--prompt',
+    'A hand reaching forward',
+    '--seed',
+    '7',
+    '--width',
+    '1216',
+    '--height',
+    '832',
+    '--quantize',
+    '8',
+    '--low-ram',
+    '--output',
+    '/s/edit-1.png',
+  ])
+  // The whole picture, at a size rounded down to a multiple of 32.
+  const whole = editArgs({ ...req, mask: undefined }, { width: 1000, height: 700 }, 'out.png')
+  assertEquals(whole.includes('--mask-image'), false)
+  assertEquals(whole.slice(whole.indexOf('--width'), whole.indexOf('--quantize')), [
+    '--width',
+    '992',
+    '--height',
+    '672',
+  ])
+})
+
+Deno.test("pngSize reads a PNG's width and height from its header", () => {
+  const png = new Uint8Array(24)
+  png.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, 0x49, 0x48, 0x44, 0x52])
+  new DataView(png.buffer).setUint32(16, 1216)
+  new DataView(png.buffer).setUint32(20, 832)
+  assertEquals(pngSize(png), { width: 1216, height: 832 })
+  assertThrows(() => pngSize(new TextEncoder().encode('<svg></svg>')), Error, 'Not a PNG')
 })
 
 Deno.test('mfluxArgs builds the command line from settings', () => {

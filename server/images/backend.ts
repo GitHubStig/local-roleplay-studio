@@ -5,6 +5,7 @@ import type { ImageBackendKind } from './imageModels.ts'
  * Renders with the backend a Session's Settings name (`imageBackend`): mflux, where it's installed,
  * or a ComfyUI server. Upscales (SeedVR2 on either) where Settings say now (`upscaleBackend`),
  * whichever backend rendered: a Mac can render with mflux and upscale on a faster ComfyUI machine.
+ * Edits run on mflux, whichever backend rendered.
  */
 export function imageBackends(backends: {
   mflux?: ImageGenerator
@@ -30,6 +31,13 @@ export function imageBackends(backends: {
         throw new Error("mflux isn't installed here: choose ComfyUI for Upscale in Settings")
       }
       return backend.upscale(req, signal, onProgress, onDownload)
+    },
+    // mflux only, for now (ADR 0021): the `edits` Feature is off where it isn't installed.
+    edit(req, signal, onProgress, onDownload) {
+      if (!backends.mflux) {
+        return Promise.reject(new Error("Edits need mflux, which isn't installed here"))
+      }
+      return backends.mflux.edit(req, signal, onProgress, onDownload)
     },
   }
 }

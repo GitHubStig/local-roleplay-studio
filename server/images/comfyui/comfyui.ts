@@ -68,6 +68,11 @@ export function comfyuiImageGenerator(opts: {
      * folder, and afterwards a blank 1×1 picture is written over it, so ComfyUI keeps an empty
      * stub, which it clears from temp when it next starts (it has no API to delete an upload).
      */
+    // No ComfyUI route yet (ADR 0021): edits run on mflux (`images/backend.ts`).
+    edit() {
+      return Promise.reject(new Error("ComfyUI can't edit pictures yet"))
+    },
+
     async upscale(req, signal, onProgress) {
       const base = comfyBase(await opts.upscaleUrl?.() ?? '')
       const upscaler = findComfyUpscaler(req.model)

@@ -4,7 +4,7 @@ import {
   type Picture,
   pictureFiles,
   removeFiles,
-  shownPictureOf,
+  shownVersionOf,
   withPicture,
 } from './pictures.ts'
 import type { ImageGenerator } from './images/imageGenerator.ts'
@@ -249,7 +249,7 @@ export async function upscaleFrame(
   /** Saves the change onto the Session as it is now (`updateSession`): a job runs beside it. */
   save: (change: (s: Session) => Session) => Promise<Session>,
 ): Promise<Session> {
-  const picture = shownPictureOf(session, index)
+  const picture = shownVersionOf(session, index)
   if (!picture) throw new UpscaleError(`Frame ${index + 1} has no image to upscale`)
   if (picture.upscaled) throw new UpscaleError(`Frame ${index + 1} is already upscaled`)
   const { image } = picture

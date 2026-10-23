@@ -253,7 +253,7 @@ export function loggedChat(chat: Chat): Chat {
   }
 }
 
-/** `images`, with each render and upscale logged (`logCalls`). */
+/** `images`, with each render, upscale and edit logged (`logCalls`). */
 export function loggedImages(images: ImageGenerator): ImageGenerator {
   return {
     generate(req, signal, onProgress, onDownload, onPreview) {
@@ -283,6 +283,15 @@ export function loggedImages(images: ImageGenerator): ImageGenerator {
         req.model,
         { image: req.image, seed: req.seed },
         () => images.upscale(req, signal, onProgress, onDownload),
+        (image) => ({ image }),
+      )
+    },
+    edit(req, signal, onProgress, onDownload) {
+      return logged(
+        'edit',
+        req.model,
+        { image: req.image, mask: req.mask, instruction: req.instruction, seed: req.seed },
+        () => images.edit(req, signal, onProgress, onDownload),
         (image) => ({ image }),
       )
     },

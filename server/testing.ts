@@ -1,4 +1,4 @@
-import type { ImageGenerator, OnPreview, OnProgress } from './images/imageGenerator.ts'
+import type { EditRequest, ImageGenerator, OnPreview, OnProgress } from './images/imageGenerator.ts'
 import { parseScenario, type ScenarioLibrary } from './scenario.ts'
 import type { ImagePrompt } from './imagePrompt.ts'
 import type { Settings } from './settings.ts'
@@ -141,6 +141,7 @@ export function fakeImageGenerator(
   settings: Settings[]
   upscaled: string[]
   upscalers: string[]
+  edits: EditRequest[]
 } {
   const gen = {
     prompts: [] as string[],
@@ -150,6 +151,8 @@ export function fakeImageGenerator(
     upscaled: [] as string[],
     /** The upscaler model each was upscaled with. */
     upscalers: [] as string[],
+    /** What each edit was asked. */
+    edits: [] as EditRequest[],
     async generate(
       req: { prompt: string; settings: Settings; dir: string; name: string },
       signal: AbortSignal,
@@ -187,6 +190,19 @@ export function fakeImageGenerator(
       }
       const file = `${req.name}.png`
       await Deno.copyFile(`${req.dir}/${req.image}`, `${req.dir}/${file}`)
+      return file
+    },
+    async edit(req: EditRequest, signal: AbortSignal) {
+      gen.edits.push(req)
+      signal.throwIfAborted()
+      if (opts.fail) throw new Error('mflux crashed')
+      if (opts.hang) {
+        await new Promise((_, reject) =>
+          signal.addEventListener('abort', () => reject(signal.reason), { once: true })
+        )
+      }
+      const file = `${req.name}.png`
+      await Deno.writeTextFile(`${req.dir}/${file}`, `${req.image} edited: ${req.instruction}`)
       return file
     },
   }

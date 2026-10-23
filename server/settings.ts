@@ -5,6 +5,7 @@ import {
   type ImageBackendKind,
   imageModelsOf,
 } from './images/imageModels.ts'
+import { EDIT_MODELS, type EditModel } from './images/editModels.ts'
 import { type Upscaler, UPSCALERS } from './images/upscalers.ts'
 import { ART_STYLES, type ArtStyle } from './roleplay/art.ts'
 import { type Feature, FEATURES } from './features.ts'
@@ -78,6 +79,8 @@ export interface Settings {
    * `imageBackend`.
    */
   upscaleBackend: ImageBackendKind
+  /** Which model edits pictures (ADR 0021); read when editing, so it applies mid-Session too. */
+  editModel: EditModel
   /**
    * Where voices are made: the voice service (mlx-audio, a Mac), or the ComfyUI at `imageBaseUrl`
    * with TTS Audio Suite's nodes. Read when a voice is made, so it applies mid-Session too.
@@ -147,6 +150,7 @@ export const DEFAULT_SETTINGS: Settings = {
   seed: 42,
   upscaler: UPSCALERS[0].id,
   upscaleBackend: 'mflux',
+  editModel: EDIT_MODELS[0].id,
   voiceBackend: 'mlx-audio',
   artModel: '',
   artStyle: 'prose',
@@ -274,6 +278,9 @@ export function validateSettings(
   ) {
     issues.push(`upscaleBackend must be one of: ${IMAGE_BACKENDS.join(', ')}`)
   }
+  if (s.editModel !== undefined && !EDIT_MODELS.some((m) => m.id === s.editModel)) {
+    issues.push(`editModel must be one of: ${EDIT_MODELS.map((m) => m.id).join(', ')}`)
+  }
   if (
     s.voiceBackend !== undefined && !VOICE_BACKENDS.includes(s.voiceBackend as VoiceBackendKind)
   ) {
@@ -301,6 +308,7 @@ export function validateSettings(
       seed: s.seed as number,
       upscaler: (s.upscaler as Upscaler | undefined) ?? DEFAULT_SETTINGS.upscaler,
       upscaleBackend: (s.upscaleBackend as ImageBackendKind | undefined) ?? imageBackend,
+      editModel: (s.editModel as EditModel | undefined) ?? DEFAULT_SETTINGS.editModel,
       voiceBackend: (s.voiceBackend as VoiceBackendKind | undefined) ?? defaults.voiceBackend,
       artModel: (s.artModel as string | undefined) ?? '',
       artStyle: (s.artStyle as ArtStyle | undefined) ?? 'prose',

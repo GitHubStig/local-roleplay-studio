@@ -1,6 +1,8 @@
 import { fromFileUrl, join } from '@std/path'
 import { track } from '../../children.ts'
+import type { EditModel } from '../editModels.ts'
 import {
+  type EditRequest,
   type ImageGenerator,
   type ImageRequest,
   type OnProgress,
@@ -84,6 +86,49 @@ export function upscaleArgs(req: UpscaleRequest, output: string): string[] {
     String(UPSCALED_EDGE),
     '--seed',
     String(req.seed),
+    '--low-ram',
+    '--output',
+    output,
+  ]
+}
+
+/** Each edit model's command (ADR 0021). */
+const EDITORS: Record<EditModel, { label: string; command: string }> = {
+  'qwen-image-2.1-edit': { label: 'Qwen-Image 2.1 Edit', command: 'mflux-generate-qwen-2.1-edit' },
+}
+
+/** A PNG's width and height, from its header. */
+export function pngSize(bytes: Uint8Array): { width: number; height: number } {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+  if (bytes.length < 24 || view.getUint32(12) !== 0x49484452) throw new Error('Not a PNG')
+  return { width: view.getUint32(16), height: view.getUint32(20) }
+}
+
+/**
+ * The mflux command line for one edit, at the picture's own size (rounded down to a multiple of 32,
+ * which every size preset already is). Always `-q 8 --low-ram`: a 15.1 GB peak against 39 GB for
+ * the full weights, the edit looking the same (docs/models.md, "Qwen-Image 2.1 Edit").
+ */
+export function editArgs(
+  req: EditRequest,
+  size: { width: number; height: number },
+  output: string,
+): string[] {
+  const fit = (n: number) => String(Math.max(32, n - (n % 32)))
+  return [
+    '--image-paths',
+    join(req.dir, req.image),
+    ...(req.mask ? ['--mask-image', join(req.dir, req.mask)] : []),
+    '--prompt',
+    req.instruction,
+    '--seed',
+    String(req.seed),
+    '--width',
+    fit(size.width),
+    '--height',
+    fit(size.height),
+    '--quantize',
+    '8',
     '--low-ram',
     '--output',
     output,
@@ -174,6 +219,17 @@ export function mfluxImageGenerator(opts: MfluxOptions = {}): ImageGenerator {
       const args = upscaleArgs(req, join(req.dir, file))
       await runCommand(UPSCALER.command, args, UPSCALER.label, signal, onProgress, onDownload)
       await mustExist(req.dir, file, UPSCALER.label)
+      return file
+    },
+    async edit(req, signal, onProgress, onDownload) {
+      signal.throwIfAborted()
+      const editor = EDITORS[req.model]
+      if (!editor) throw new Error(`Unknown edit model "${req.model}"`)
+      const size = pngSize(await Deno.readFile(join(req.dir, req.image)))
+      const file = `${req.name}.png`
+      const args = editArgs(req, size, join(req.dir, file))
+      await runCommand(editor.command, args, editor.label, signal, onProgress, onDownload)
+      await mustExist(req.dir, file, editor.label)
       return file
     },
     async generate(req, signal, onProgress, onDownload) {

@@ -14,6 +14,7 @@ Deno.test('detectFeatures: an Apple Silicon Mac with mflux and uv runs everythin
   assertEquals(available(await detectFeatures(mac)), [
     'images',
     'upscale',
+    'edits',
     'voices',
     'scenes',
     'figures',
@@ -27,6 +28,7 @@ Deno.test('detectFeatures: Windows with an NVIDIA card runs SHARP and TripoSplat
   assertEquals(available(features), ['scenes', 'figures', 'style'])
   assertEquals(features.images.reason, 'mflux runs only on Apple Silicon Macs')
   assertEquals(features.upscale.reason, 'mflux runs only on Apple Silicon Macs')
+  assertEquals(features.edits.reason, 'mflux runs only on Apple Silicon Macs')
   assertEquals(
     features.voices.reason,
     'The voice service (mlx-audio) runs only on Apple Silicon Macs',

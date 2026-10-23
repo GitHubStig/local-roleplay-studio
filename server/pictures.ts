@@ -5,14 +5,45 @@ import { findImageModel, type ImageBackendKind } from './images/imageModels.ts'
 import type { Session, SessionStore } from './session.ts'
 import { updateSession } from './update.ts'
 
+/** A picture's image and what was made from it: its render, or an edit of it (ADR 0021). */
+export interface PictureVersion {
+  /** File name of the image inside the Session directory. */
+  image: string
+  /** The image upscaled to 2048 px, once upscaled. */
+  upscaled?: string
+  /** The picture made into a 2.5D scene (SHARP), once asked for. */
+  scene?: Scene
+  /** The person in the picture as a 3D figure (TripoSplat), once asked for. */
+  figure?: Figure
+  /** The same, made with Apple's LiTo. */
+  lito?: Figure
+}
+
+/** A picture's edit: a version made from the one before it by an edit model, as told. */
+export interface PictureEdit extends PictureVersion {
+  /**
+   * What the edit model was told to paint: one, or every one that led to it when it was copied
+   * from a later edit (a Chain made from a Storyboard).
+   */
+  instructions: string[]
+  /** The edit model (`images/editModels.ts`). */
+  editModel: string
+  seed: number
+  /** The area painted over the picture to repaint (a PNG, white repainted); none for all of it. */
+  mask?: string
+  /** Copied from another Session, so it can't be made again (retried) here. */
+  copied?: boolean
+  /** Seconds the edit waited for another render (only if it had to) and took. */
+  timings?: { queued?: number; edit: number }
+}
+
 /**
  * A Frame's picture by one Image Model, and what was made from it. A Frame keeps one per model it
  * was rendered with, so switching the Session's model back shows that model's again without
- * rendering.
+ * rendering. Its own files are its render's (the Original); its edits, if any, follow in a
+ * straight line, and `picked` says which version is the picture (`pickedVersion`).
  */
-export interface Picture {
-  /** File name of the image inside the Session directory. */
-  image: string
+export interface Picture extends PictureVersion {
   /** The Image Model that rendered it. */
   imageModel: string
   /**
@@ -20,19 +51,19 @@ export interface Picture {
    * were by the Session's backend, which `switchImageModel` writes onto them before it changes.
    */
   imageBackend?: ImageBackendKind
-  /** The image upscaled to 2048 px, once upscaled. */
-  upscaled?: string
   /** The Image Prompt changed since it was rendered. */
   stale?: boolean
-  /** The picture made into a 2.5D scene (SHARP), once asked for. */
-  scene?: Scene
-  /** The person in the picture as a 3D figure (TripoSplat), once asked for. */
-  figure?: Figure
-  /** The same, made with Apple's LiTo. */
-  lito?: Figure
   /** Seconds the render waited for another (only if it had to) and took. */
   timings?: { queued?: number; image: number }
+  /** Its edits, oldest first, each made from the one before. */
+  edits?: PictureEdit[]
+  /** The version that is the picture everywhere: 0 (or none) for the render, n for edit n. */
+  picked?: number
 }
+
+/** The version of a picture that is the picture: its picked edit, or its render. */
+export const pickedVersion = (p: Picture): PictureVersion =>
+  (p.picked && p.edits?.[p.picked - 1]) || p
 
 /** A Frame of any kind, as far as its pictures go. */
 export interface PicturedFrame {
@@ -54,6 +85,12 @@ export const shownPictureOf = (session: Session, index: number): Picture | undef
   return frame && shownPicture(frame, session.settings.imageModel)
 }
 
+/** The version of its picture Frame `index` of `session` uses, if it has a picture. */
+export const shownVersionOf = (session: Session, index: number): PictureVersion | undefined => {
+  const picture = shownPictureOf(session, index)
+  return picture && pickedVersion(picture)
+}
+
 /** A picture's Image Prompt changed since it was rendered, or it's by another Image Model. */
 export const changedSinceRender = (picture: Picture, model: string): boolean =>
   !!picture.stale || picture.imageModel !== model
@@ -70,17 +107,30 @@ export function withPicture(
   return { pictures: [...pictures.filter((p) => p !== replaced), picture], replaced }
 }
 
+/** Whether `image` is one of a picture's versions: its render or an edit. */
+const hasImage = (p: Picture, image: string) =>
+  p.image === image || !!p.edits?.some((e) => e.image === image)
+
 /**
- * `pictures` with the one whose image is `image` changed by `change`. Throws `PictureGoneError`
- * if it's no longer there (rendered again meanwhile, or its Frame undone).
+ * `pictures` with the version whose image is `image` (a render or an edit) changed by `change`.
+ * Throws `PictureGoneError` if it's no longer there (rendered again meanwhile, its edit deleted,
+ * or its Frame undone).
  */
 export function changePicture(
   pictures: Picture[],
   image: string,
-  change: (p: Picture) => Picture,
+  change: <V extends PictureVersion>(v: V) => V,
 ): Picture[] {
-  if (!pictures.some((p) => p.image === image)) throw new PictureGoneError('That picture changed')
-  return pictures.map((p) => (p.image === image ? change(p) : p))
+  if (!pictures.some((p) => hasImage(p, image))) {
+    throw new PictureGoneError('That picture changed')
+  }
+  return pictures.map((p) =>
+    p.image === image
+      ? change(p)
+      : p.edits?.some((e) => e.image === image)
+      ? { ...p, edits: p.edits.map((e) => (e.image === image ? change(e) : e)) }
+      : p
+  )
 }
 
 export class PictureGoneError extends Error {}
@@ -94,11 +144,29 @@ export class PictureGoneError extends Error {}
 export function changeFramePicture<S extends Session>(
   session: S,
   image: string,
+  change: <V extends PictureVersion>(v: V) => V,
+): S {
+  const frame = session.frames.find((f) => f.pictures.some((p) => hasImage(p, image)))
+  if (!frame) throw new PictureGoneError('That picture no longer exists')
+  const pictures = changePicture(frame.pictures, image, change)
+  return {
+    ...session,
+    frames: session.frames.map((f) => (f === frame ? { ...f, pictures } : f)),
+  } as S
+}
+
+/**
+ * `session` with the picture whose render is `image` changed by `change`, as a whole (its edits,
+ * which it picks), saving onto the Session as it is now. Throws `PictureGoneError` if it's gone.
+ */
+export function changeRenderedPicture<S extends Session>(
+  session: S,
+  image: string,
   change: (p: Picture) => Picture,
 ): S {
   const frame = session.frames.find((f) => f.pictures.some((p) => p.image === image))
   if (!frame) throw new PictureGoneError('That picture no longer exists')
-  const pictures = changePicture(frame.pictures, image, change)
+  const pictures = frame.pictures.map((p) => (p.image === image ? change(p) : p))
   return {
     ...session,
     frames: session.frames.map((f) => (f === frame ? { ...f, pictures } : f)),
@@ -109,9 +177,15 @@ export function changeFramePicture<S extends Session>(
 export const allStale = (pictures: Picture[]): Picture[] =>
   pictures.map((p) => ({ ...p, stale: true }))
 
-/** The files a picture is made of: the image, and its upscale, scene and figures. */
-export const pictureFiles = (p: Picture): string[] =>
-  [p.image, p.upscaled, p.scene?.file, p.figure?.file, p.lito?.file].filter((f): f is string => !!f)
+/** The files a version of a picture is made of: the image, and its upscale, scene and figures. */
+export const versionFiles = (v: PictureVersion): string[] =>
+  [v.image, v.upscaled, v.scene?.file, v.figure?.file, v.lito?.file].filter((f): f is string => !!f)
+
+/** The files a picture is made of: its render's, and each edit's with its painted area. */
+export const pictureFiles = (p: Picture): string[] => [
+  ...versionFiles(p),
+  ...(p.edits ?? []).flatMap((e) => [...versionFiles(e), ...(e.mask ? [e.mask] : [])]),
+]
 
 /** Every file of every picture a Frame holds. */
 export const allPictureFiles = (frame: PicturedFrame): string[] =>

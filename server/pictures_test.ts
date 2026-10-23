@@ -4,8 +4,11 @@ import { renderChainFrame, runChainFrame, undoLatestFrame } from './chain/frames
 import { findImageModel } from './images/imageModels.ts'
 import {
   changedSinceRender,
+  changePicture,
   ImageModelError,
+  pickedVersion,
   type Picture,
+  pictureFiles,
   shownPicture,
   switchImageModel,
   withPicture,
@@ -200,3 +203,37 @@ Deno.test("A render runs as Settings are now, keeping the Session's model, steps
     const used = images.settings.at(-1)!
     assertEquals([used.imageModel, used.steps, used.size], [KLEIN, 4, 'landscape'])
   }))
+
+Deno.test("A picture is its picked version, and is made of every version's files", () => {
+  const edit = (n: number) => ({
+    image: `edit-${n}.png`,
+    instructions: ['Paint'],
+    editModel: 'qwen-image-2.1-edit',
+    seed: 1,
+    mask: `mask-${n}.png`,
+  })
+  const picture = {
+    image: 'r.png',
+    imageModel: QWEN,
+    upscaled: 'r-2048.png',
+    edits: [edit(1), { ...edit(2), upscaled: 'e2-2048.png' }],
+  }
+  assertEquals(pickedVersion(picture).image, 'r.png')
+  assertEquals(pickedVersion({ ...picture, picked: 2 }).upscaled, 'e2-2048.png')
+  assertEquals(pictureFiles(picture), [
+    'r.png',
+    'r-2048.png',
+    'edit-1.png',
+    'mask-1.png',
+    'edit-2.png',
+    'e2-2048.png',
+    'mask-2.png',
+  ])
+  // What's made from a version goes onto that version, found by its image.
+  const [changed] = changePicture(
+    [picture],
+    'edit-1.png',
+    (v) => ({ ...v, upscaled: 'e1-2048.png' }),
+  )
+  assertEquals([changed.upscaled, changed.edits![0].upscaled], ['r-2048.png', 'e1-2048.png'])
+})
