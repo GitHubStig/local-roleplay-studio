@@ -57,7 +57,7 @@ Settings page ([What runs where](#configuration)).
 One model does every text job ([docs/models.md](docs/models.md) has the comparisons, uncensored
 builds and how to make one). Small models (4–8B) can't reliably follow the prompt format.
 
-- **Gemma 4 12B Heretic, on a Mac or Windows:**
+- **Gemma 4 12B Heretic, on a Mac or on a Windows/Linux box with enough VRAM:**
   `ollama pull hf.co/igorls/gemma-4-12B-it-heretic-GGUF:Q4_K_M`, Thinking off. Uncensored, and
   the most accurate of the small models tried here. **Q4_K_M** is a 4-bit quantization: the weights
   are stored in about 4.8 bits each on average (most in 4, some sensitive ones in 6) instead of 16,
@@ -86,7 +86,7 @@ builds and how to make one). Small models (4–8B) can't reliably follow the pro
 The default Image Model is **Qwen-Image 2.1**, which both image backends run. Choose the backend on
 the Images tab of Settings:
 
-- **mflux, on a Mac:** mflux 0.23+ (FLUX.3 Klein and Qwen-Image 2.1 Turbo need it): `uv tool install --managed-python --python 3.14 mflux --with 'pillow<13'`. (uv's own Python, kept apart from any other Python on the Mac; mflux runs on 3.10 or newer. Pillow 13.0 fails to import on Python 3.14.4, so every mflux command fails with it; drop the pin once Pillow fixes that.) Each model downloads from Hugging Face
+- **mflux, on Apple Silicon Macs:** mflux 0.23+ (FLUX.3 Klein and Qwen-Image 2.1 Turbo need it): `uv tool install --managed-python --python 3.14 mflux --with 'pillow<13'`. (uv's own Python, kept apart from any other Python on the Mac; mflux runs on 3.10 or newer. Pillow 13.0 fails to import on Python 3.14.4, so every mflux command fails with it; drop the pin once Pillow fixes that.) Each model downloads from Hugging Face
   into `~/.cache/huggingface` the first time it's used, 3–30 GB each, shown as "Downloading the
   model (first use only)…"; to fetch one ahead of time, run its command once:
 
@@ -104,10 +104,10 @@ the Images tab of Settings:
   | Boogu Image Turbo (~16 s at 512 px) | `mflux-generate-boogu --model boogu-image-turbo --prompt test --output /tmp/x.png` |
   | SeedVR2 upscaler, 7B and 3B (Upscale, ~46 s to 2048 px) | `mflux-upscale-seedvr2 --model seedvr2-7b --image-path /tmp/x.png --resolution 2048 --output /tmp/y.png` (one download holds both) |
 
-  **Qwen-Image 2.1 Viggle Turbo** is Qwen-Image 2.1 with Viggle's 6-step turbo LoRA
+  **Qwen-Image 2.1 Viggle Turbo** is a Qwen-Image 2.1 variant with Viggle's 6-step turbo LoRA
   ([Viggle/Qwen-Image-2.1-viggle-turbo](https://huggingface.co/Viggle/Qwen-Image-2.1-viggle-turbo),
   1.3 GB, Qwen's research license), which mflux downloads with its first render.
-- **ComfyUI, on any machine** (the one for Windows): ComfyUI must be running (Comfy Desktop, the
+- **ComfyUI, on any machine** (commonly Windows with an NVIDIA card): ComfyUI must be running (Comfy Desktop, the
   portable build or a manual install; the app doesn't start it) with the Image Model's files: for
   Qwen-Image 2.1, the `diffusion_models`, `text_encoders` (Qwen3-VL 8B) and `vae` files that
   ComfyUI's own "Qwen Image 2.1 text to image" template downloads. Add it on Settings' Machines
@@ -181,7 +181,7 @@ GB is used, CC-BY-4.0; CLIP ViT-L/14, 1.7 GB). On a Mac, 340 pictures take about
 ### Two machines
 
 The app finds ComfyUI and Ollama by address, so any machine can use another's on the local
-network, either way round. The useful case: a Mac rendering and upscaling on a Windows PC's
+network, either way round. A common case is a Mac rendering and upscaling on a Windows PC's
 ComfyUI. On Settings' Machines tab, add a ComfyUI at the PC's address (`http://<its IP>:8188`),
 and choose it under "Render on" and "Upscale on" (Images tab). On the tested pair, a picture took ~21 s instead of 56–97 s with mflux, and an
 upscale 14 s instead of ~66 s. The Text Model can live on the other machine the same way (an
