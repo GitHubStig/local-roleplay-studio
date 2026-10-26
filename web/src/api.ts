@@ -445,13 +445,19 @@ export type Activity = 'text' | 'queued' | 'image' | 'download'
 /** What the screens say while a model downloads. */
 export const DOWNLOADING = 'Downloading the model (first use only)…'
 
+/**
+ * What a Session keeps of Settings (ADR 0022): its models. Where they run, and everything else, is
+ * Settings' as they are now.
+ */
+export type SessionSettings = Pick<Settings, 'textModel' | 'thinking' | 'imageModel' | 'steps'>
+
 export interface SessionBase {
   id: string
   /** The typed Brief it started from; null when started from a Scenario. */
   brief: string | null
   /** The Scenario it started from; null when started from a typed Brief. */
   scenarioId: string | null
-  settings: Settings
+  settings: SessionSettings
   seed: number
   createdAt: string
   /** Its Scenario's title, or the start of its typed Brief (only from `getSession`). */

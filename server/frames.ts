@@ -17,7 +17,7 @@ import type { Previews } from './previews.ts'
 import type { HeavyJob } from './machine.ts'
 import { RenderQueue } from './renderQueue.ts'
 import type { Session, SessionStore } from './session.ts'
-import { renderSettings, type Settings } from './settings.ts'
+import { DEFAULT_SETTINGS, renderSettings, type Settings } from './settings.ts'
 import { GoneError } from './update.ts'
 import { ContextFullError } from './text/chat.ts'
 
@@ -155,9 +155,10 @@ export async function renderImage(
   emit: (event: ProgressEvent) => void,
   signal: AbortSignal,
 ): Promise<Picture> {
-  const settings = deps.settings
-    ? renderSettings(session.settings, await deps.settings())
-    : session.settings
+  const settings = renderSettings(
+    session.settings,
+    deps.settings ? await deps.settings() : DEFAULT_SETTINGS,
+  )
   // Found once, so the picture records where it was made.
   const job: HeavyJob = { kind: 'render', model: settings.imageModel }
   const backend = await deps.backendOf?.(job)

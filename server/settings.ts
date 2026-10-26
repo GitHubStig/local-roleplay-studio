@@ -106,10 +106,28 @@ export interface Settings {
 }
 
 /**
- * How a render runs on this machine, read from Settings at each render so a change reaches running
- * Sessions too. A Session keeps the rest of its image settings, which define its pictures: its
- * Image backend, Image Model and steps (switched together, `switchImageModel`), and its seed.
+ * What a Session keeps of Settings (ADR 0022): its models, which define what it makes. Its Text
+ * Model and Thinking as it started; its Image Model and steps, switched together in it
+ * (`switchImageModel`). Everything else, where each runs among it, is read from Settings as they
+ * are now, so a change there reaches running Sessions too.
  */
+export const SESSION_SETTINGS = [
+  'textModel',
+  'thinking',
+  'imageModel',
+  'steps',
+] as const satisfies readonly (keyof Settings)[]
+export type SessionSettings = Pick<Settings, (typeof SESSION_SETTINGS)[number]>
+
+/** What a new Session keeps of Settings (`SESSION_SETTINGS`). */
+export const sessionSettingsOf = (settings: Settings): SessionSettings => ({
+  textModel: settings.textModel,
+  thinking: settings.thinking,
+  imageModel: settings.imageModel,
+  steps: settings.steps,
+})
+
+/** How a render runs, as Settings are at each render; logged with each (`calls.ts`). */
 export const RENDER_SETTINGS = [
   'size',
   'stepCache',
@@ -117,10 +135,11 @@ export const RENDER_SETTINGS = [
   'float16',
 ] as const satisfies readonly (keyof Settings)[]
 
-/** The Settings a Session renders with: its own, with `RENDER_SETTINGS` as Settings are `now`. */
-export const renderSettings = (session: Settings, now: Settings): Settings => ({
-  ...session,
-  ...Object.fromEntries(RENDER_SETTINGS.map((key) => [key, now[key]])),
+/** The Settings a Session renders with: Settings `now`, with the Session's Image Model and steps. */
+export const renderSettings = (session: SessionSettings, now: Settings): Settings => ({
+  ...now,
+  imageModel: session.imageModel,
+  steps: session.steps,
 })
 
 const DEFAULT_IMAGE_MODEL = findImageModel('mflux', 'qwen-image-2.1')!

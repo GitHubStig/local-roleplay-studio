@@ -26,7 +26,13 @@ import {
   type SessionStore,
   type StoryboardSession,
 } from './session.ts'
-import { type Settings, type SettingsStore, SIZE_PRESETS, validateSettings } from './settings.ts'
+import {
+  sessionSettingsOf,
+  type Settings,
+  type SettingsStore,
+  SIZE_PRESETS,
+  validateSettings,
+} from './settings.ts'
 import type { TextModel } from './textModel.ts'
 import type { RoleplayModel } from './roleplay/model.ts'
 import type { FigureMaker } from './3d/figure.ts'
@@ -748,7 +754,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
         id: newSessionId(),
         brief,
         scenarioId,
-        settings,
+        settings: sessionSettingsOf(settings),
         seed: settings.seedMode === 'fixed' ? settings.seed : randomSeed(),
         createdAt: new Date().toISOString(),
       }

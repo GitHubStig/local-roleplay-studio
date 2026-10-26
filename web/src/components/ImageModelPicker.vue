@@ -1,11 +1,11 @@
-<script setup lang="ts" generic="S extends { id: string; settings: Settings; frames: readonly PicturedFrame[] }">
+<script setup lang="ts" generic="S extends { id: string; settings: SessionSettings; frames: readonly PicturedFrame[] }">
 import { computed, ref } from 'vue'
 import {
   IMAGE_BACKEND_NAMES,
   type ImageBackend,
   type PicturedFrame,
+  type SessionSettings,
   setImageModel,
-  type Settings,
 } from '../api'
 import SelectField from './SelectField.vue'
 import {

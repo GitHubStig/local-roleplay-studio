@@ -150,7 +150,7 @@ export const machineOf = (backend: Backend | undefined, own?: Set<string>): stri
  */
 export function jobBackend(
   kind: JobKind,
-  session: Settings,
+  session: Pick<Settings, 'imageModel'>,
   now: Settings,
   here: Here,
   opts: { editModel?: EditModel; text?: Backend },

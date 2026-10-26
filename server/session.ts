@@ -2,7 +2,7 @@ import { fromFileUrl, join } from '@std/path'
 import type { ImagePrompt } from './imagePrompt.ts'
 import type { RoleplaySession } from './roleplay/types.ts'
 import type { Picture } from './pictures.ts'
-import type { Settings } from './settings.ts'
+import type { SessionSettings } from './settings.ts'
 
 /**
  * How a Frame's Action was received. Only `done` can change the Image Prompt; `declined` (it
@@ -103,11 +103,11 @@ export interface SessionBase {
   /** The Scenario it started from (a saved Brief); null when started from a typed Brief. */
   scenarioId: string | null
   /**
-   * Settings as they were when the Session started. Later edits apply only to how a render runs
-   * (`RENDER_SETTINGS`, read at each render); its Image backend, Image Model and steps change only
-   * when switched in the Session (`switchImageModel`).
+   * What it keeps of Settings, as they were when it started: its models (`SESSION_SETTINGS`). Its
+   * Image Model and steps change only when switched in it (`switchImageModel`); the rest is read
+   * from Settings as they are now.
    */
-  settings: Settings
+  settings: SessionSettings
   /** The seed every image in this Session is rendered with. */
   seed: number
   createdAt: string
