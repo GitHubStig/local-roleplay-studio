@@ -152,8 +152,8 @@ Deno.test('validateSettings upscales where pictures are made, unless Upscale has
 Deno.test('Where mflux and the voice service cannot run, Settings default to ComfyUI', () => {
   const pc = machineDefaults({ mflux: false, voiceService: false })
   assertEquals(
-    [pc.imageBackend, pc.upscaleBackend, pc.voiceBackend, pc.imageModel],
-    ['comfyui', 'comfyui', 'comfyui', 'qwen-image-2.1'],
+    [pc.imageBackend, pc.upscaleBackend, pc.editModel, pc.voiceBackend, pc.imageModel],
+    ['comfyui', 'comfyui', 'qwen-image-2.1-edit-comfyui', 'comfyui', 'qwen-image-2.1'],
   )
   assertEquals(validateSettings(pc).ok, true)
   assertEquals(machineDefaults({ mflux: true, voiceService: true }), DEFAULT_SETTINGS)

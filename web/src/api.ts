@@ -123,8 +123,8 @@ export interface SettingsOptions extends TextModelOptions {
   imageBackends: ImageBackend[]
   sizePresets: SizePreset[]
   upscalers: { id: string; label: string }[]
-  /** The models that can edit a picture. */
-  editModels: { id: string; label: string }[]
+  /** The models that can edit a picture here, each on its backend. */
+  editModels: { id: string; label: string; backend: ImageBackend }[]
   /** Which Features this machine can run, worked out when the server started. */
   features: Record<Feature, Availability>
 }
@@ -807,7 +807,7 @@ export interface Job {
    * An edit's order: what to paint, the area painted for it (a mask file, saved when it was
    * queued), and whether it makes the newest edit again, in its place.
    */
-  edit?: { instruction: string; mask?: string; retry?: boolean }
+  edit?: { instruction: string; model?: string; mask?: string; retry?: boolean }
 }
 
 /** A Session's jobs (a Roleplay's or a Chain's), in the order queued; several may run, one per machine. */
@@ -822,11 +822,12 @@ export const queueEdit = (id: string, frameIndex: number, edit: EditOrder) =>
   post<Job[]>(`/api/sessions/${id}/jobs`, { kind: 'edit', frameIndex, edit })
 
 /**
- * What an edit is told: what to paint, and where (a PNG, base64; none for all of it); `retry` makes
- * the newest edit again, as told now, in its place.
+ * What an edit is told: what to paint, which model to use, and where (a PNG, base64; none for all
+ * of it); `retry` makes the newest edit again, as told now, in its place.
  */
 export interface EditOrder {
   instruction: string
+  model?: string
   mask?: string
   retry?: boolean
 }

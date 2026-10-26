@@ -77,4 +77,8 @@ Deno.test('jobMachine: a picture on the Text Model, a render on its Image backen
   )
   assertEquals(jobMachine('upscale', session, { ...now, upscaleBackend: 'comfyui' }), pc)
   assertEquals(jobMachine('scene', session, now), undefined)
+  // An edit on its edit model's backend, at the Session's ComfyUI.
+  const editing = { ...session, imageBaseUrl: pc }
+  assertEquals(jobMachine('edit', editing, now, 'flux3-klein-edit-comfyui'), pc)
+  assertEquals(jobMachine('edit', editing, now, 'qwen-image-2.1-edit'), undefined)
 })

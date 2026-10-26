@@ -1,3 +1,4 @@
+import type { EditModelOn } from '../editModels.ts'
 import type { Upscaler } from '../upscalers.ts'
 
 /**
@@ -197,4 +198,34 @@ export const COMFYUI_UPSCALERS: readonly ComfyUpscaler[] = (['7b', '3b'] as cons
 
 export function findComfyUpscaler(id: string): ComfyUpscaler | undefined {
   return COMFYUI_UPSCALERS.find((u) => u.id === id)
+}
+
+/**
+ * An edit model as ComfyUI runs it (ADR 0021): an Image Model's own files and steps, in an edit
+ * workflow (`workflows/<workflow>.json`), so nothing more is downloaded.
+ */
+export interface ComfyEditor {
+  id: EditModelOn<'comfyui'>
+  /** The Image Model whose files and steps it uses (`COMFYUI_MODELS`). */
+  model: string
+  workflow: string
+  /**
+   * Its prompt (`prompts/images/<prompt>.md`, and `<prompt>-whole` with nothing painted), told
+   * where to paint by boxes (`maskBoxes`); none for the instruction as typed.
+   */
+  prompt?: string
+}
+
+export const COMFYUI_EDITORS: readonly ComfyEditor[] = [
+  { id: 'qwen-image-2.1-edit-comfyui', model: 'qwen-image-2.1', workflow: 'qwen-image-2.1-edit' },
+  {
+    id: 'flux3-klein-edit-comfyui',
+    model: 'flux3-klein',
+    workflow: 'flux3-klein-edit',
+    prompt: 'flux3-edit',
+  },
+]
+
+export function findComfyEditor(id: string): ComfyEditor | undefined {
+  return COMFYUI_EDITORS.find((e) => e.id === id)
 }

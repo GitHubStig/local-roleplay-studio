@@ -36,7 +36,7 @@ import {
   pickVersion,
   VersionError,
 } from './pictureEdits.ts'
-import { EDIT_MODELS } from './images/editModels.ts'
+import { editModelsHere, findEditModel } from './images/editModels.ts'
 import { loadStyleCache, StyleScoreError, styleScores, unembedded } from './style/scores.ts'
 import type { VoiceEngine } from './voice/voice.ts'
 import { roleplayExcerpt } from './roleplay/prompt.ts'
@@ -488,7 +488,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
         session,
         job.frameIndex,
         job.edit!,
-        (await deps.settings.load()).editModel,
+        job.edit!.model ?? (await deps.settings.load()).editModel,
         emit,
         signal,
         save,
@@ -551,13 +551,19 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     ...jobRoutes({
       jobs,
       store: deps.sessions,
-      machineOf: async (session, kind) =>
-        machineKey(jobMachine(kind, session.settings, await deps.settings.load())),
+      machineOf: async (session, kind, edit) => {
+        const now = await deps.settings.load()
+        return machineKey(jobMachine(kind, session.settings, now, edit?.model ?? now.editModel))
+      },
       check: async (session, kind, index, pending, edit) => {
         const feature = JOB_FEATURE[kind]
         if (kind === 'edit') {
           const name = session.kind === 'storyboard' ? `Frame ${index + 1}` : `Frame ${index}`
-          return (feature && (await featureOff(feature))) ??
+          const model = findEditModel(edit!.model ?? (await deps.settings.load()).editModel)
+          const notHere = model && !imageBackends().includes(model.backend)
+            ? error(`${model.label} runs on mflux, which isn't installed here`, 409)
+            : null
+          return (feature && (await featureOff(feature))) ?? notHere ??
             checkEdit(session, index, name, pending, edit!)
         }
         if (kind === 'style') {
@@ -638,7 +644,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
         imageBackends: imageBackends(),
         sizePresets: SIZE_PRESETS,
         upscalers: UPSCALERS,
-        editModels: EDIT_MODELS,
+        editModels: editModelsHere(imageBackends()),
         features: await availability(),
       })
     }],

@@ -160,7 +160,7 @@ export const DEFAULT_SETTINGS: Settings = {
 }
 
 /**
- * The defaults on this machine: ComfyUI for pictures, Upscale and voices where mflux or the voice
+ * The defaults on this machine: ComfyUI for pictures, Upscale, edits and voices where mflux or the voice
  * service can't run (a PC), so a fresh install there starts on what it has.
  */
 export function machineDefaults(here: { mflux: boolean; voiceService: boolean }): Settings {
@@ -173,6 +173,7 @@ export function machineDefaults(here: { mflux: boolean; voiceService: boolean })
     imageModel: model.id,
     steps: model.defaultSteps,
     upscaleBackend: imageBackend,
+    editModel: here.mflux ? 'qwen-image-2.1-edit' : 'qwen-image-2.1-edit-comfyui',
     voiceBackend: here.voiceService ? 'mlx-audio' : 'comfyui',
   }
 }

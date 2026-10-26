@@ -2,10 +2,11 @@ import { join } from '@std/path'
 
 /**
  * The extras beyond the Text Model, each needing its own backend: pictures (mflux, or a ComfyUI
- * server), upscaling (SeedVR2 through mflux), editing pictures (an edit model through mflux), voices (the mlx-audio service), 3D (SHARP,
- * TripoSplat, LiTo), and the Compare dialog's style scores (CSD and CLIP). Which of them this machine can run is worked out once at startup
- * (`detectFeatures`); Settings can switch off any that can. Pictures are also available wherever
- * Settings choose ComfyUI (`app.ts`), which this can't know at startup.
+ * server), upscaling (SeedVR2 through mflux), editing pictures (Qwen through mflux or ComfyUI, and
+ * FLUX.3 through ComfyUI), voices (the mlx-audio service), 3D (SHARP, TripoSplat, LiTo), and the
+ * Compare dialog's style scores (CSD and CLIP). Which of them this machine can run is worked out
+ * once at startup (`detectFeatures`); Settings can switch off any that can. Pictures are also
+ * available wherever Settings choose ComfyUI (`app.ts`), which this can't know at startup.
  */
 export const FEATURES = [
   'images',
@@ -84,7 +85,7 @@ export async function detectFeatures(
     images: withMflux,
     // SeedVR2, through mflux.
     upscale: withMflux,
-    // An edit model, through mflux; not on ComfyUI yet (ADR 0021).
+    // An edit model through mflux, or ComfyUI when Settings choose it.
     edits: withMflux,
     voices: !appleSilicon ? mlxOnly('The voice service (mlx-audio)') : uv ? yes : noUv,
     scenes: gpu('SHARP'),
@@ -104,7 +105,11 @@ export function withBackends(
   detected: Availabilities,
   backends: { imageBackend: string; upscaleBackend: string; voiceBackend: string },
 ): Availabilities {
-  const viaComfyUI = (feature: 'images' | 'upscale' | 'voices', comfyui: boolean, choose: string) =>
+  const viaComfyUI = (
+    feature: 'images' | 'upscale' | 'edits' | 'voices',
+    comfyui: boolean,
+    choose: string,
+  ) =>
     comfyui ? yes : detected[feature].available ? detected[feature] : {
       available: false,
       reason: `${detected[feature].reason}; or choose ComfyUI ${choose} in Settings`,
@@ -112,6 +117,7 @@ export function withBackends(
   return {
     ...detected,
     images: viaComfyUI('images', backends.imageBackend === 'comfyui', 'as the Image backend'),
+    edits: viaComfyUI('edits', backends.imageBackend === 'comfyui', 'as the Image backend'),
     upscale: viaComfyUI('upscale', backends.upscaleBackend === 'comfyui', 'for Upscale'),
     voices: viaComfyUI('voices', backends.voiceBackend === 'comfyui', 'for Voices'),
   }

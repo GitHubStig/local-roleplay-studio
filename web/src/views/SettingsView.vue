@@ -16,9 +16,11 @@ import {
 import ComfyStatusLine from '../components/ComfyStatusLine.vue'
 import FeatureSwitch from '../components/FeatureSwitch.vue'
 import { useFeatures } from '../composables/useFeatures'
+import { editModelChoices } from '../composables/useSettingsOptions'
 
 const form = ref<Settings | null>(null)
 const options = ref<SettingsOptions | null>(null)
+const editModels = computed(() => editModelChoices(options.value?.editModels))
 const loadError = ref('')
 const saving = ref(false)
 const status = ref<{ kind: 'saved' | 'error'; message: string; issues?: string[] } | null>(null)
@@ -576,15 +578,20 @@ function removeSavedApiKey() {
               data-feature="edits"
             >
               Repaints part of a picture as told, as a version beside it: paint over a bad hand, say
-              what to paint there instead. With mflux, whichever backend rendered it (~3 minutes,
-              15 GB).
+              what to paint there instead.
             </FeatureSwitch>
             <label v-if="options.features.edits.available" class="flex flex-col gap-1">
-              <span class="text-sm text-muted">Edit model</span>
+              <span class="text-sm text-muted">Default edit model</span>
               <select v-model="form.editModel" class="field" data-edit-model>
-                <option v-for="m in options.editModels" :key="m.id" :value="m.id">{{ m.label }}</option>
+                <option v-if="!editModels.choices.some((m) => m.id === form?.editModel)" :value="form.editModel">
+                  {{ form.editModel }} (not available here)
+                </option>
+                <option v-for="m in editModels.choices" :key="m.id" :value="m.id">{{ m.label }}</option>
               </select>
-              <span class="text-sm text-muted">Used by Edit; applies to the next edit.</span>
+              <span class="text-sm text-muted">
+                What an edit starts on; the Edit dialog can choose another. ComfyUI's run on the
+                Session's ComfyUI.
+              </span>
             </label>
           </template>
           <FeatureSwitch

@@ -1,0 +1,62 @@
+{
+  "_note": "Qwen-Image 2.1 editing a picture (ADR 0021), from ComfyUI's template image_qwen_image_2_1_image_edit (25 steps, CFG 1, euler, simple; the reference at its own size, resolution 0), without its prompt enhancer, on Qwen-Image 2.1's own files. The picture is the reference (TextEncodeQwenImage21). The painted area is the latent's noise mask: the sampler repaints only it, the picture's own latent holding the rest, so the edit lands where it's painted; the picture is then pasted back outside it (ImageCompositeMasked), so nothing else moves. With nothing painted, comfyui.ts drops mask, encode, masked and composite, and the whole picture is repainted. $names are filled in by server/images/comfyui/comfyui.ts.",
+  "unet": {
+    "class_type": "UNETLoader",
+    "inputs": { "unet_name": "$unet", "weight_dtype": "default" }
+  },
+  "clip": {
+    "class_type": "CLIPLoader",
+    "inputs": { "clip_name": "$clip", "type": "qwen_image", "device": "default" }
+  },
+  "vae": { "class_type": "VAELoader", "inputs": { "vae_name": "$vae" } },
+  "image": { "class_type": "LoadImage", "inputs": { "image": "$image" } },
+  "mask": { "class_type": "LoadImageMask", "inputs": { "image": "$mask", "channel": "red" } },
+  "conditioning": {
+    "class_type": "TextEncodeQwenImage21",
+    "inputs": {
+      "clip": ["clip", 0],
+      "prompt": "$prompt",
+      "negative_prompt": "",
+      "resolution": 0,
+      "vae": ["vae", 0],
+      "images.image_1": ["image", 0]
+    }
+  },
+  "encode": { "class_type": "VAEEncode", "inputs": { "pixels": ["image", 0], "vae": ["vae", 0] } },
+  "masked": {
+    "class_type": "SetLatentNoiseMask",
+    "inputs": { "samples": ["encode", 0], "mask": ["mask", 0] }
+  },
+  "sampler": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": ["unet", 0],
+      "seed": "$seed",
+      "steps": "$steps",
+      "cfg": 1,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "positive": ["conditioning", 0],
+      "negative": ["conditioning", 1],
+      "latent_image": ["masked", 0],
+      "denoise": 1
+    }
+  },
+  "decode": {
+    "class_type": "VAEDecode",
+    "inputs": { "samples": ["sampler", 0], "vae": ["vae", 0] }
+  },
+  "rgb": { "class_type": "SplitImageWithAlpha", "inputs": { "image": ["decode", 0] } },
+  "composite": {
+    "class_type": "ImageCompositeMasked",
+    "inputs": {
+      "destination": ["image", 0],
+      "source": ["rgb", 0],
+      "mask": ["mask", 0],
+      "x": 0,
+      "y": 0,
+      "resize_source": false
+    }
+  },
+  "save": { "class_type": "SaveImageWebsocket", "inputs": { "images": ["composite", 0] } }
+}

@@ -5,17 +5,28 @@
  * service, SHARP, LiTo).
  */
 import { comfyBase } from './comfyui/client.ts'
+import { type EditModel, findEditModel } from './images/editModels.ts'
+import type { ImageBackendKind } from './images/imageModels.ts'
 import type { JobKind } from './jobs.ts'
 import { renderSettings, type Settings } from './settings.ts'
 import { OLLAMA_URL } from './text/ollama/ollama.ts'
 
 /**
  * A heavy job that may run on another machine, as the render queue is given it: a render with its
- * Session's Settings, an upscale or a voice. Any other (SHARP, a figure) runs here.
+ * Session's Settings, an edit with its edit model's backend and the Session's ComfyUI, an upscale or
+ * a voice. Any other (SHARP, a figure) runs here.
  */
 export type HeavyJob =
   | { kind: 'render'; settings: Pick<Settings, 'imageBackend' | 'imageBaseUrl'> }
+  | { kind: 'edit'; backend: ImageBackendKind; settings: Pick<Settings, 'imageBaseUrl'> }
   | { kind: 'upscale' | 'voice' }
+
+/** An edit as the render queue is given it: on its edit model's backend, at the Session's ComfyUI. */
+export const editJob = (model: EditModel, session: Pick<Settings, 'imageBaseUrl'>): HeavyJob => ({
+  kind: 'edit',
+  backend: findEditModel(model)?.backend ?? 'mflux',
+  settings: session,
+})
 
 const hostOf = (address: string) => {
   try {
@@ -57,8 +68,9 @@ export function sameMachine(
 }
 
 /**
- * Where a heavy job runs: a render on its Session's backend; an upscale and a voice on the backend
- * Settings choose now (ComfyUI at Settings' address); any other here.
+ * Where a heavy job runs: a render on its Session's backend, an edit on its edit model's (ComfyUI
+ * at the Session's address); an upscale and a voice on the backend Settings choose now (ComfyUI at
+ * Settings' address); any other here.
  */
 export function jobServer(
   job: HeavyJob | undefined,
@@ -68,6 +80,8 @@ export function jobServer(
   switch (job?.kind) {
     case 'render':
       return comfy(job.settings.imageBackend === 'comfyui', job.settings.imageBaseUrl)
+    case 'edit':
+      return comfy(job.backend === 'comfyui', job.settings.imageBaseUrl)
     case 'upscale':
       return comfy(now.upscaleBackend === 'comfyui', now.imageBaseUrl)
     case 'voice':
@@ -91,15 +105,23 @@ export const machineKey = (address: string | undefined, own: Set<string> = ownNa
 
 /**
  * Where a Session's queued job runs: a picture on the Text Model's server (it writes an Image
- * Prompt), a render on the Session's Image backend, an upscale on Settings' upscaler, a voice
- * designed or a line spoken on Settings' voice backend; 3D and the style scores here.
+ * Prompt), a render on the Session's Image backend, an edit on its edit model's backend (the one
+ * it was told, or Settings' now), an upscale on Settings' upscaler, a voice designed or a line
+ * spoken on Settings' voice backend; 3D and the style scores here.
  */
-export function jobMachine(kind: JobKind, session: Settings, now: Settings): string | undefined {
+export function jobMachine(
+  kind: JobKind,
+  session: Settings,
+  now: Settings,
+  editModel: EditModel = now.editModel,
+): string | undefined {
   switch (kind) {
     case 'picture':
       return textServer(now)
     case 'render':
       return jobServer({ kind: 'render', settings: renderSettings(session, now) }, now)
+    case 'edit':
+      return jobServer(editJob(editModel, session), now)
     case 'upscale':
       return jobServer({ kind: 'upscale' }, now)
     case 'voice':

@@ -1,3 +1,4 @@
+import { findEditModel } from './editModels.ts'
 import type { ImageGenerator } from './imageGenerator.ts'
 import type { ImageBackendKind } from './imageModels.ts'
 
@@ -5,7 +6,7 @@ import type { ImageBackendKind } from './imageModels.ts'
  * Renders with the backend a Session's Settings name (`imageBackend`): mflux, where it's installed,
  * or a ComfyUI server. Upscales (SeedVR2 on either) where Settings say now (`upscaleBackend`),
  * whichever backend rendered: a Mac can render with mflux and upscale on a faster ComfyUI machine.
- * Edits run on mflux, whichever backend rendered.
+ * Edits run where their edit model does (`editModels.ts`): on mflux, or the Session's ComfyUI.
  */
 export function imageBackends(backends: {
   mflux?: ImageGenerator
@@ -32,12 +33,16 @@ export function imageBackends(backends: {
       }
       return backend.upscale(req, signal, onProgress, onDownload)
     },
-    // mflux only, for now (ADR 0021): the `edits` Feature is off where it isn't installed.
     edit(req, signal, onProgress, onDownload) {
-      if (!backends.mflux) {
-        return Promise.reject(new Error("Edits need mflux, which isn't installed here"))
+      const backend = findEditModel(req.model)?.backend === 'comfyui'
+        ? backends.comfyui
+        : backends.mflux
+      if (!backend) {
+        return Promise.reject(
+          new Error("mflux isn't installed here: choose an edit model that runs on ComfyUI"),
+        )
       }
-      return backends.mflux.edit(req, signal, onProgress, onDownload)
+      return backend.edit(req, signal, onProgress, onDownload)
     },
   }
 }

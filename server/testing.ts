@@ -1,3 +1,4 @@
+import encodePng from '@jsquash/png/encode.js'
 import type { EditRequest, ImageGenerator, OnPreview, OnProgress } from './images/imageGenerator.ts'
 import { parseScenario, type ScenarioLibrary } from './scenario.ts'
 import type { ImagePrompt } from './imagePrompt.ts'
@@ -216,4 +217,19 @@ export async function withTempDir<T>(fn: (dir: string) => Promise<T>): Promise<T
   } finally {
     await Deno.remove(dir, { recursive: true })
   }
+}
+
+/** A black mask with white rectangles painted on it, each [left, top, right, bottom] in pixels. */
+export async function paintedMask(
+  width: number,
+  height: number,
+  ...areas: [number, number, number, number][]
+): Promise<Uint8Array<ArrayBuffer>> {
+  const data = new Uint8ClampedArray(width * height * 4)
+  for (let i = 0; i < width * height; i++) {
+    const [x, y] = [i % width, Math.floor(i / width)]
+    const white = areas.some(([l, t, r, b]) => x >= l && x < r && y >= t && y < b)
+    data.set([white ? 255 : 0, white ? 255 : 0, white ? 255 : 0, 255], i * 4)
+  }
+  return new Uint8Array(await encodePng(new ImageData(data, width, height)))
 }

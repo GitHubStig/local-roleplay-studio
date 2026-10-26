@@ -1,6 +1,6 @@
 import { fromFileUrl, join } from '@std/path'
 import { track } from '../../children.ts'
-import type { EditModel } from '../editModels.ts'
+import type { EditModelOn } from '../editModels.ts'
 import {
   type EditRequest,
   type ImageGenerator,
@@ -92,8 +92,8 @@ export function upscaleArgs(req: UpscaleRequest, output: string): string[] {
   ]
 }
 
-/** Each edit model's command (ADR 0021). */
-const EDITORS: Record<EditModel, { label: string; command: string }> = {
+/** The command for each edit model mflux runs (ADR 0021). */
+const EDITORS: Record<EditModelOn<'mflux'>, { label: string; command: string }> = {
   'qwen-image-2.1-edit': { label: 'Qwen-Image 2.1 Edit', command: 'mflux-generate-qwen-2.1-edit' },
 }
 
@@ -223,8 +223,8 @@ export function mfluxImageGenerator(opts: MfluxOptions = {}): ImageGenerator {
     },
     async edit(req, signal, onProgress, onDownload) {
       signal.throwIfAborted()
-      const editor = EDITORS[req.model]
-      if (!editor) throw new Error(`Unknown edit model "${req.model}"`)
+      const editor = EDITORS[req.model as EditModelOn<'mflux'>]
+      if (!editor) throw new Error(`mflux doesn't run the edit model "${req.model}"`)
       const size = pngSize(await Deno.readFile(join(req.dir, req.image)))
       const file = `${req.name}.png`
       const args = editArgs(req, size, join(req.dir, file))

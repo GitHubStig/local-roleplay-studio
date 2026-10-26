@@ -9,6 +9,7 @@ import { error } from './http.ts'
 import type { EditModel } from './images/editModels.ts'
 import type { EditOrder, JobEmit, JobKind } from './jobs.ts'
 import { crossedLimit } from './limits.ts'
+import { editJob } from './machine.ts'
 import {
   changeRenderedPicture,
   type PictureEdit,
@@ -91,14 +92,23 @@ export async function editFrame<S extends Session>(
   const release = await (deps.renderQueue ?? new RenderQueue()).acquire(signal, () => {
     waited = true
     emit({ type: 'phase', phase: 'queued' })
-  })
+  }, { job: editJob(model, session.settings) })
   try {
     const queued = waited ? secondsSince(start) : undefined
     emit({ type: 'phase', phase: 'image' })
     const began = performance.now()
     const { onProgress, onDownload } = imageProgress(emit)
     const image = await deps.imageGenerator.edit(
-      { model, image: from.image, mask, instruction, seed, dir, name },
+      {
+        model,
+        imageBaseUrl: session.settings.imageBaseUrl,
+        image: from.image,
+        mask,
+        instruction,
+        seed,
+        dir,
+        name,
+      },
       signal,
       onProgress,
       onDownload,

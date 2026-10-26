@@ -1,5 +1,5 @@
 import { assertEquals } from '@std/assert'
-import { detectFeatures, type Machine } from './features.ts'
+import { detectFeatures, type Machine, withBackends } from './features.ts'
 
 const machine = (os: Machine['os'], arch: Machine['arch'], commands: string[]): Machine => ({
   os,
@@ -49,4 +49,26 @@ Deno.test('detectFeatures: a Mac without mflux has no pictures, unless placehold
   const mac = machine('darwin', 'aarch64', ['uv'])
   assertEquals((await detectFeatures(mac)).images.available, false)
   assertEquals((await detectFeatures(mac, { placeholderImages: true })).images.available, true)
+})
+
+Deno.test('withBackends: choosing ComfyUI enables edits on a machine without mflux', async () => {
+  const detected = await detectFeatures(machine('windows', 'x86_64', ['uv', 'nvidia-smi']))
+  const usingComfyUI = withBackends(detected, {
+    imageBackend: 'comfyui',
+    upscaleBackend: 'mflux',
+    voiceBackend: 'mlx-audio',
+  })
+  assertEquals(usingComfyUI.images.available, true)
+  assertEquals(usingComfyUI.edits.available, true)
+
+  const usingMflux = withBackends(detected, {
+    imageBackend: 'mflux',
+    upscaleBackend: 'mflux',
+    voiceBackend: 'mlx-audio',
+  })
+  assertEquals(usingMflux.edits.available, false)
+  assertEquals(
+    usingMflux.edits.reason,
+    'mflux runs only on Apple Silicon Macs; or choose ComfyUI as the Image backend in Settings',
+  )
 })

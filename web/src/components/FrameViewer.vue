@@ -12,6 +12,7 @@ import {
   type PicturedFrame,
 } from '../api'
 import { useFeatures } from '../composables/useFeatures'
+import { editModelChoices, useSettingsOptions } from '../composables/useSettingsOptions'
 import ImageViewer from './ImageViewer.vue'
 import PaintLayer, { type Sketch } from './PaintLayer.vue'
 import PictureVersions, { type VersionEntry } from './PictureVersions.vue'
@@ -52,7 +53,9 @@ const emit = defineEmits<{
   /** Cancel an edit being made, or dismiss one that failed. */
   dropJob: [job: Job]
 }>()
-const { on: featureOn } = useFeatures()
+const { on: featureOn, settings } = useFeatures()
+const settingsOptions = useSettingsOptions()
+const editModels = computed(() => editModelChoices(settingsOptions.value?.editModels))
 
 const pictured = computed(() =>
   props.frames.flatMap((f) => {
@@ -85,6 +88,7 @@ interface Draft {
   /** The area painted before, which it starts from (a mask file). */
   base?: string
   instruction: string
+  model: string
   /** A failed edit it's made in place of, dismissed once it's sent. */
   replaces?: Job
 }
@@ -205,12 +209,17 @@ function step(by: number) {
   emit('step', frame.index)
 }
 
-function startDraft(next: Draft) {
-  draft.value = next
+/** Starts painting an edit, on the model it asks for if that runs here, or else Settings'. */
+function startDraft(next: Omit<Draft, 'model'> & { model?: string }) {
+  draft.value = { ...next, model: editModels.value.startOn(next.model, settings.value?.editModel) }
   sketch.value = { base: true, strokes: [] }
   history.clear()
   painting.value = true
 }
+// One begun before the edit models loaded moves onto one that runs here.
+watch(editModels, ({ startOn }) => {
+  if (draft.value) draft.value.model = startOn(draft.value.model, settings.value?.editModel)
+})
 /** A new edit; one already begun on this Frame carries on. */
 function editNew() {
   if (draft.value && !draft.value.retry && !draft.value.replaces) painting.value = true
@@ -220,12 +229,17 @@ function editNew() {
 function redoNewest() {
   const newest = edits.value.at(-1)
   if (!newest) return
-  startDraft({ retry: true, base: newest.mask, instruction: newest.instructions.join('; ') })
+  startDraft({
+    retry: true,
+    base: newest.mask,
+    instruction: newest.instructions.join('; '),
+    model: newest.editModel,
+  })
 }
 /** A failed edit asked for again, as it was, to change before it's sent. */
 function redoFailed(job: Job) {
-  const { instruction, mask, retry } = job.edit!
-  startDraft({ retry: !!retry, base: mask, instruction, replaces: job })
+  const { instruction, model, mask, retry } = job.edit!
+  startDraft({ retry: !!retry, base: mask, instruction, model, replaces: job })
 }
 function addStroke(stroke: Sketch['strokes'][number]) {
   sketch.value = { ...sketch.value, strokes: [...sketch.value.strokes, stroke] }
@@ -241,7 +255,12 @@ function send() {
   const told = d?.instruction.trim()
   if (!frame || !d || !told) return
   const mask = layer.value?.mask()
-  emit('edit', frame.index, { instruction: told, ...(mask && { mask }), ...(d.retry && { retry: true }) })
+  emit('edit', frame.index, {
+    instruction: told,
+    ...(d.model && { model: d.model }),
+    ...(mask && { mask }),
+    ...(d.retry && { retry: true }),
+  })
   if (d.replaces) emit('dropJob', d.replaces)
   awaitingEdit = true
   draft.value = null
@@ -384,6 +403,16 @@ const action =
     <template v-if="painting && draft" #below>
       <div class="flex flex-col gap-2 text-sm text-white/80" data-paint-tools>
         <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <label v-if="editModels.choices.length > 1" class="flex items-center gap-2">
+            Edit model
+            <select
+              v-model="draft.model"
+              class="rounded-lg border border-white/30 bg-black/40 p-1.5 text-white"
+              data-edit-model
+            >
+              <option v-for="m in editModels.choices" :key="m.id" :value="m.id">{{ m.label }}</option>
+            </select>
+          </label>
           <div class="inline-flex overflow-hidden rounded-lg border border-white/30" role="group">
             <button
               v-for="tool in [{ erase: false, label: 'Brush' }, { erase: true, label: 'Eraser' }]"

@@ -12,6 +12,7 @@ import { join } from '@std/path'
 import type { Feature } from './features.ts'
 import type { Phase } from './frames.ts'
 import { error, json, readJson, type Route } from './http.ts'
+import { EDIT_MODELS, type EditModel, findEditModel } from './images/editModels.ts'
 import type { Session, SessionStore } from './session.ts'
 import type { Settings } from './settings.ts'
 
@@ -68,12 +69,14 @@ export const JOB_FEATURE: Record<JobKind, Feature | null> = {
 }
 
 /**
- * What an `edit` is told: what to paint, and the area painted over the picture to repaint (a mask
- * file in the Session's folder, saved when the edit is queued; white repainted), or none for the
- * whole picture. A retry makes the newest edit again, as told now, with a new seed, in its place.
+ * What an `edit` is told: what to paint, which model to use, and the area painted over the picture
+ * to repaint (a mask file in the Session's folder, saved when the edit is queued; white repainted),
+ * or none for the whole picture. A retry makes the newest edit again, as told now, with a new seed,
+ * in its place.
  */
 export interface EditOrder {
   instruction: string
+  model?: EditModel
   mask?: string
   retry?: boolean
 }
@@ -396,8 +399,11 @@ export interface JobRoutesContext {
     pending: readonly JobKind[],
     edit?: EditOrder,
   ): Promise<Response | null>
-  /** Which machine `kind` would run on for `session` (`machineKey`); left out, all run here. */
-  machineOf?(session: Session, kind: JobKind): Promise<string>
+  /**
+   * Which machine `kind` would run on for `session` (`machineKey`), as an edit is told; left out,
+   * all run here.
+   */
+  machineOf?(session: Session, kind: JobKind, edit?: EditOrder): Promise<string>
 }
 
 /**
@@ -416,20 +422,30 @@ const MAX_MASK = 8_000_000
  * it isn't one.
  */
 export function editOrder(body: unknown): EditOrder | string {
-  const b = body as { instruction?: unknown; mask?: unknown; retry?: unknown } | undefined
+  const b = body as {
+    instruction?: unknown
+    model?: unknown
+    mask?: unknown
+    retry?: unknown
+  } | undefined
   const retry = b?.retry === true ? { retry: true } : {}
   const instruction = typeof b?.instruction === 'string' ? b.instruction.trim() : ''
   if (!instruction) return 'Say what to paint'
   if (instruction.length > MAX_INSTRUCTION) {
     return `An instruction can be at most ${MAX_INSTRUCTION} characters`
   }
-  if (b?.mask === undefined) return { instruction, ...retry }
+  const model = findEditModel(b?.model)?.id
+  if (b?.model !== undefined && !model) {
+    return `model must be one of: ${EDIT_MODELS.map((m) => m.id).join(', ')}`
+  }
+  const selectedModel = model ? { model } : {}
+  if (b?.mask === undefined) return { instruction, ...selectedModel, ...retry }
   if (
     typeof b.mask !== 'string' || b.mask.length > MAX_MASK || !/^[A-Za-z0-9+/]+=*$/.test(b.mask)
   ) {
     return 'mask must be a PNG, in base64'
   }
-  return { instruction, mask: b.mask, ...retry }
+  return { instruction, ...selectedModel, mask: b.mask, ...retry }
 }
 
 /** The job routes every Session kind shares, under `/api/sessions/:id/jobs`. */
@@ -475,7 +491,7 @@ export function jobRoutes(ctx: JobRoutesContext): Route[] {
         session.id,
         kind,
         index,
-        await ctx.machineOf?.(session, kind),
+        await ctx.machineOf?.(session, kind, edit),
         kind === 'render' ? imageChoiceOf(session) : undefined,
         edit,
       )

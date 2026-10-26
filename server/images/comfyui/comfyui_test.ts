@@ -1,11 +1,12 @@
 import { assertEquals, assertRejects, assertThrows } from '@std/assert'
 import { join } from '@std/path'
 import { DEFAULT_SETTINGS, type Settings } from '../../settings.ts'
-import { withTempDir } from '../../testing.ts'
+import { paintedMask, withTempDir } from '../../testing.ts'
+import type { EditRequest } from '../imageGenerator.ts'
 import { fillWorkflow } from '../../comfyui/client.ts'
 import { fakeComfyUI as fakeServer } from '../../comfyui/testing.ts'
 import { comfyuiImageGenerator } from './comfyui.ts'
-import { COMFYUI_MODELS, COMFYUI_UPSCALERS } from './models.ts'
+import { COMFYUI_EDITORS, COMFYUI_MODELS, COMFYUI_UPSCALERS, findComfyModel } from './models.ts'
 import { loadModelWorkflow, pickFiles } from './workflow.ts'
 
 const MAC_FILES: Record<string, string[]> = {
@@ -93,7 +94,7 @@ Deno.test('A ComfyUI render fills the workflow with the installed files, follows
       // ComfyUI keeps nothing: the prompt leaves its history once ComfyUI has written it there
       // (deleted any sooner, it stays), and its models are unloaded, as an mflux process frees its
       // memory when it ends.
-      await new Promise((r) => setTimeout(r, 80))
+      await comfy.whenPosted('/free')
       assertEquals(comfy.posted, [
         { path: '(in history)', body: null },
         { path: '/history', body: { delete: ['p1'] } },
@@ -102,6 +103,103 @@ Deno.test('A ComfyUI render fills the workflow with the installed files, follows
     } finally {
       await comfy.close()
     }
+  }))
+
+type Nodes = Record<string, { class_type: string; inputs: Record<string, unknown> }>
+
+/** An edit of a 100×50 picture (a stand-in: ComfyUI's fake doesn't read it) on the PC's files. */
+async function comfyEdit(
+  dir: string,
+  model: EditRequest['model'],
+  mask?: Uint8Array<ArrayBuffer>,
+) {
+  const comfy = fakeComfyUI({ files: PC_FILES })
+  try {
+    await Deno.writeFile(join(dir, 'frame.png'), new Uint8Array(500))
+    if (mask) await Deno.writeFile(join(dir, 'mask.png'), mask)
+    const file = await comfyuiImageGenerator().edit(
+      {
+        model,
+        imageBaseUrl: comfy.url,
+        image: 'frame.png',
+        ...(mask && { mask: 'mask.png' }),
+        instruction: 'An open hand.',
+        seed: 7,
+        dir,
+        name: 'edit-0-test',
+      },
+      new AbortController().signal,
+    )
+    assertEquals(await Deno.readFile(join(dir, file)), new Uint8Array([137, 80, 78, 71]))
+    await comfy.whenPosted('/free')
+    return { file, workflow: comfy.queued[0] as Nodes, uploads: comfy.uploads }
+  } finally {
+    await comfy.close()
+  }
+}
+
+Deno.test('A ComfyUI edit repaints only the painted area, on the Image Model’s own files, and blanks its uploads', () =>
+  withTempDir(async (dir) => {
+    const { file, workflow: w, uploads } = await comfyEdit(
+      dir,
+      'qwen-image-2.1-edit-comfyui',
+      await paintedMask(100, 50, [10, 10, 30, 30]),
+    )
+    assertEquals(file, 'edit-0-test.png')
+    assertEquals(
+      [w.unet.inputs.unet_name, w.clip.inputs.clip_name, w.vae.inputs.vae_name],
+      [
+        'qwen_image_2.1_int8_convrot.safetensors',
+        'qwen3vl_8b_int8_convrot.safetensors',
+        'qwen_image_2.1_vae_bf16.safetensors',
+      ],
+    )
+    // The picture is the reference; the instruction goes as typed; steps are the model's.
+    assertEquals(w.image.inputs.image, `${uploads[0].name} [temp]`)
+    assertEquals(w.conditioning.inputs['images.image_1'], ['image', 0])
+    assertEquals(w.conditioning.inputs.prompt, 'An open hand.')
+    assertEquals([w.sampler.inputs.seed, w.sampler.inputs.steps], [7, 25])
+    // The painted area is the latent's noise mask, and the picture is pasted back around it.
+    assertEquals(w.mask.inputs.image, `${uploads[1].name} [temp]`)
+    assertEquals(w.sampler.inputs.latent_image, ['masked', 0])
+    assertEquals(w.masked.inputs, { samples: ['encode', 0], mask: ['mask', 0] })
+    assertEquals(w.save.inputs.images, ['composite', 0])
+    // Both uploads are written over with a blank once it's done.
+    assertEquals(uploads.map((u) => [u.name, u.bytes < 100]), [
+      [uploads[0].name, false],
+      [uploads[1].name, false],
+      [uploads[0].name, true],
+      [uploads[1].name, true],
+    ])
+  }))
+
+Deno.test('A ComfyUI FLUX.3 edit is told where to paint, as a box for each painted area', () =>
+  withTempDir(async (dir) => {
+    const { workflow: w } = await comfyEdit(
+      dir,
+      'flux3-klein-edit-comfyui',
+      await paintedMask(100, 50, [0, 0, 16, 16], [64, 32, 96, 48]),
+    )
+    assertEquals(w.unet.inputs.unet_name, 'flux3_image_klein_sd_int8_convrot.safetensors')
+    assertEquals(w.conditioning.inputs['images.image0'], ['image', 0])
+    assertEquals(w.negative.class_type, 'ConditioningZeroOut')
+    assertEquals(w.sampler.inputs.steps, 16)
+    assertEquals(
+      w.text.inputs.text,
+      'In <ref_image_0>, repaint <obj_1> and <obj_2>: An open hand. Keep everything else ' +
+        'unchanged. [{"id":"obj_1","bbox":[0,0,320,160],"desc":"An open hand."},' +
+        '{"id":"obj_2","bbox":[640,640,960,960],"desc":"An open hand."}]',
+    )
+  }))
+
+Deno.test('A ComfyUI edit with nothing painted repaints the whole picture', () =>
+  withTempDir(async (dir) => {
+    const { workflow: w, uploads } = await comfyEdit(dir, 'flux3-klein-edit-comfyui')
+    for (const node of ['mask', 'encode', 'masked', 'composite']) assertEquals(w[node], undefined)
+    assertEquals(w.sampler.inputs.latent_image, ['conditioning', 2])
+    assertEquals(w.save.inputs.images, ['rgb', 0])
+    assertEquals(w.text.inputs.text, 'In <ref_image_0>, An open hand.')
+    assertEquals(uploads.map((u) => u.bytes < 100), [false, true])
   }))
 
 Deno.test("A ComfyUI render without the model's files says which are missing", () =>
@@ -167,9 +265,7 @@ Deno.test("Cancel interrupts only this render, and takes it out of ComfyUI's que
         'Cancelled by player',
       )
       // A Cancel returns at once, before the clean-up: wait for it.
-      for (let i = 0; i < 200 && comfy.posted.length < 5; i++) {
-        await new Promise((r) => setTimeout(r, 5))
-      }
+      await comfy.whenPosted('/free')
       assertEquals(comfy.posted.slice(0, 2), [
         { path: '/interrupt', body: { prompt_id: 'p1' } },
         { path: '/queue', body: { delete: ['p1'] } },
@@ -220,7 +316,7 @@ Deno.test('A ComfyUI upscale sends the picture to temp, runs SeedVR2, and blanks
         true,
       ])
       // Out of the history once ComfyUI has written it there, then its models unloaded.
-      await new Promise((r) => setTimeout(r, 80))
+      await comfy.whenPosted('/free')
       assertEquals(comfy.posted.map((p) => p.path), ['(in history)', '/history', '/free'])
     } finally {
       await comfy.close()
@@ -280,6 +376,17 @@ Deno.test('Every ComfyUI workflow loads, and fills with nothing left over', asyn
         ...(model.cfg === undefined ? {} : { cfg: model.cfg }),
         width: 512,
         height: 512,
+      },
+    })),
+    ...COMFYUI_EDITORS.map((editor) => ({
+      id: editor.workflow,
+      values: {
+        ...pickFiles(findComfyModel(editor.model)!, (folder) => PC_FILES[folder] ?? []),
+        image: 'x.png [temp]',
+        mask: 'mask.png [temp]',
+        prompt: 'p',
+        seed: 1,
+        steps: 2,
       },
     })),
     ...COMFYUI_UPSCALERS.map((upscaler) => ({

@@ -1,7 +1,21 @@
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { Job, PicturedFrame } from '../api'
+import type { Job, PicturedFrame, Settings, SettingsOptions } from '../api'
 import FrameViewer from './FrameViewer.vue'
+
+// Two edit models here, on two backends; Settings start an edit on the first.
+vi.mock('../api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../api')>()),
+  getSettings: vi.fn(() => Promise.resolve({ editModel: 'qwen-image-2.1-edit' } as Settings)),
+  getSettingsOptions: vi.fn(() =>
+    Promise.resolve({
+      editModels: [
+        { id: 'qwen-image-2.1-edit', label: 'Qwen-Image 2.1 Edit', backend: 'mflux' },
+        { id: 'flux3-klein-edit-comfyui', label: 'FLUX.3 Klein Edit', backend: 'comfyui' },
+      ],
+    } as SettingsOptions)
+  ),
+}))
 
 enableAutoUnmount(afterEach)
 afterEach(() => vi.unstubAllGlobals())
@@ -93,6 +107,9 @@ describe('FrameViewer', () => {
     await flushPromises()
     expect(shownSrc(wrapper)).toBe(url('edit-0-00000002.png'))
     expect(wrapper.find('[data-paint-tools]').exists()).toBe(true)
+    const model = wrapper.find('[data-edit-model]')
+    expect((model.element as HTMLSelectElement).value).toBe('qwen-image-2.1-edit')
+    await model.setValue('flux3-klein-edit-comfyui')
     // The arrow keys don't step while painting; Esc goes back to the picture, the draft kept.
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }))
     expect(wrapper.emitted('step')).toBeUndefined()
@@ -105,7 +122,9 @@ describe('FrameViewer', () => {
     const box = wrapper.find('[data-edit-instruction]').element as HTMLTextAreaElement
     expect(box.value).toBe('A cup')
     await wrapper.find('[data-send-edit]').trigger('click')
-    expect(wrapper.emitted('edit')).toEqual([[0, { instruction: 'A cup' }]])
+    expect(wrapper.emitted('edit')).toEqual([
+      [0, { instruction: 'A cup', model: 'flux3-klein-edit-comfyui' }],
+    ])
 
     // Queued: it shows among the versions, over what it's made from, with where it's painted.
     const running = editJob('running', { phase: 'image', progress: { step: 12, total: 40 } })

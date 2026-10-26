@@ -22,6 +22,12 @@ export function fakeComfyUI(
   /** Each queued prompt's `extra_data` (how it asks for previews), if any. */
   const extras: unknown[] = []
   const posted: { path: string; body: unknown }[] = []
+  /** Who waits for a path to be posted (`whenPosted`). */
+  const waiting: { path: string; resolve: () => void }[] = []
+  const post = (entry: { path: string; body: unknown }) => {
+    posted.push(entry)
+    for (const w of waiting.filter((w) => w.path === entry.path)) w.resolve()
+  }
   const uploads: {
     name: string
     type: string
@@ -96,7 +102,7 @@ export function fakeComfyUI(
           send('execution_success', {})
           // As ComfyUI: written to the history after it says so, then "executing" with no node.
           setTimeout(() => {
-            posted.push({ path: '(in history)', body: null })
+            post({ path: '(in history)', body: null })
             send('executing', { node: null })
           }, 30)
         } else if (finish !== 'hang') {
@@ -121,7 +127,7 @@ export function fakeComfyUI(
     }
     if (['/interrupt', '/queue', '/free', '/history'].includes(path)) {
       const body = await req.json()
-      posted.push({ path, body })
+      post({ path, body })
       if (path === '/interrupt') {
         // As ComfyUI: the prompt stops a moment later ("execution_interrupted"), then it's written
         // to the history, then "executing" with no node says it's done.
@@ -130,7 +136,7 @@ export function fakeComfyUI(
         }
         setTimeout(() => send('execution_interrupted', { prompt_id: 'p1' }), 50)
         setTimeout(() => {
-          posted.push({ path: '(in history)', body: null })
+          post({ path: '(in history)', body: null })
           send('executing', { node: null, prompt_id: 'p1' })
         }, 80)
       }
@@ -144,6 +150,11 @@ export function fakeComfyUI(
     queued,
     extras,
     posted,
+    /** Resolves once `path` has been posted (at once if it has), e.g. `/free` after a prompt. */
+    whenPosted: (path: string) =>
+      new Promise<void>((resolve) =>
+        posted.some((p) => p.path === path) ? resolve() : waiting.push({ path, resolve })
+      ),
     uploads,
     stats,
     close: () => {

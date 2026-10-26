@@ -103,7 +103,10 @@ const options: api.SettingsOptions = {
     ],
   },
   sizePresets: [{ id: 'portrait', label: 'Portrait', width: 832, height: 1216 }],
-  editModels: [{ id: 'qwen-image-2.1-edit', label: 'Qwen-Image 2.1 Edit' }],
+  editModels: [
+    { id: 'qwen-image-2.1-edit', label: 'Qwen-Image 2.1 Edit', backend: 'mflux' },
+    { id: 'flux3-klein-edit-comfyui', label: 'FLUX.3 Klein Edit', backend: 'comfyui' },
+  ],
   upscalers: [
     { id: 'seedvr2-7b', label: 'SeedVR2 7B' },
     { id: 'seedvr2-3b', label: 'SeedVR2 3B' },
@@ -377,6 +380,28 @@ describe('SettingsView', () => {
     await flushPromises()
     expect(api.saveSettings).toHaveBeenCalledWith({ ...settings, seedMode: 'fixed', seed: 7 })
     wrapper.unmount()
+  })
+
+  it('offers the edit models that run here, by backend, and keeps one that no longer does', async () => {
+    const wrapper = mount(SettingsView)
+    await flushPromises()
+    const labels = () => wrapper.findAll('[data-edit-model] option').map((o) => o.text())
+    expect(labels()).toEqual(['Qwen-Image 2.1 Edit · mflux', 'FLUX.3 Klein Edit · ComfyUI'])
+    // Without mflux, only ComfyUI's: Settings' own is shown, as not here, until another is chosen.
+    vi.mocked(api.getSettingsOptions).mockResolvedValue({
+      ...options,
+      editModels: [{
+        id: 'flux3-klein-edit-comfyui',
+        label: 'FLUX.3 Klein Edit',
+        backend: 'comfyui',
+      }],
+    })
+    const pc = mount(SettingsView)
+    await flushPromises()
+    expect(pc.findAll('[data-edit-model] option').map((o) => o.text())).toEqual([
+      'qwen-image-2.1-edit (not available here)',
+      'FLUX.3 Klein Edit',
+    ])
   })
 
   it('saves each control into its own field', async () => {

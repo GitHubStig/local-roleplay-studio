@@ -261,11 +261,18 @@ Deno.test('An edit repaints a picture as a new version, made from the newest and
     )
     assertEquals([images.edits[0].image, images.edits[0].mask], [first.image, one.mask])
 
-    // A second, of the whole picture, is made from the first.
-    assertEquals((await edit({ instruction: 'Warmer light' })).status, 201)
+    // A second, of the whole picture, uses the model selected in the Edit dialog.
+    assertEquals(
+      (await edit({ instruction: 'Warmer light', model: 'flux3-klein-edit-comfyui' })).status,
+      201,
+    )
     assertEquals(await settled(call), [])
     const [, second] = await chainFrames(call)
     assertEquals([images.edits[1].image, images.edits[1].mask], [one.image, undefined])
+    assertEquals([images.edits[1].model, second.edits[1].editModel], [
+      'flux3-klein-edit-comfyui',
+      'flux3-klein-edit-comfyui',
+    ])
     assertEquals([second.edits.length, second.picked], [2, 2])
 
     // What's made from the picture is made from the picked version.
@@ -317,6 +324,7 @@ Deno.test('An edit can be made again in its place, as told now, picked, and the 
     assertEquals((await edit({ retry: true })).status, 400)
     assertEquals((await edit({ instruction: ' ' })).status, 400)
     assertEquals((await edit({ instruction: 'A hand', mask: 'not base64!' })).status, 400)
+    assertEquals((await edit({ instruction: 'A hand', model: 'missing-model' })).status, 400)
     assertEquals((await edit({ instruction: 'A naked child' })).status, 422)
 
     await edit({ instruction: 'A hand', mask: MASK })

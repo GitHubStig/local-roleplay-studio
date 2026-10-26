@@ -56,3 +56,20 @@ export function useImageModels() {
   const jobName = (job: Job) => JOB_NAMES[job.kind] + (job.image ? ` ${byOf(job.image)}` : '')
   return { modelsOf, find, labelOf, byOf, renderedParts, jobName }
 }
+
+/**
+ * The edit models to choose from, named with their backend where they're on more than one, and
+ * which to start on: the first of `wanted` that runs here, or else the first that does.
+ */
+export function editModelChoices(models: SettingsOptions['editModels'] = []) {
+  const backends = new Set(models.map((m) => m.backend))
+  const choices = models.map((m) => ({
+    id: m.id,
+    label: backends.size > 1 ? `${m.label} · ${IMAGE_BACKEND_NAMES[m.backend]}` : m.label,
+  }))
+  const startOn = (...wanted: (string | undefined)[]) =>
+    wanted.find((id) => choices.some((c) => c.id === id)) ?? choices[0]?.id ??
+      wanted.find(Boolean) ??
+      ''
+  return { choices, startOn }
+}
