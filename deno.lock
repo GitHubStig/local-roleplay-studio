@@ -24,13 +24,13 @@
     "npm:@vue/test-utils@^2.5.1": "2.5.1_vue@3.5.44_typescript@6.0.3",
     "npm:@vue/tsconfig@~0.9.1": "0.9.1_typescript@6.0.3_vue@3.5.44",
     "npm:@vueuse/core@15": "15.0.0_vue@3.5.44_typescript@6.0.3",
-    "npm:happy-dom@^20.14.6": "20.14.6",
+    "npm:happy-dom@^21.0.4": "21.0.4",
     "npm:tailwindcss@^4.3.3": "4.3.3",
     "npm:three@~0.186.1": "0.186.1",
     "npm:typescript@~6.0.3": "6.0.3",
     "npm:vite-plugin-singlefile@^2.3.4": "2.3.4_vite@8.3.4_@types+node@24.19.2",
     "npm:vite@^8.3.4": "8.3.4_@types+node@24.19.2",
-    "npm:vitest@^5.0.5": "5.0.5_@types+node@24.19.2_happy-dom@20.14.6_vite@8.3.4",
+    "npm:vitest@^5.0.5": "5.0.5_@types+node@24.19.2_happy-dom@21.0.4_vite@8.3.4",
     "npm:vue-router@^5.4.0": "5.4.0_vite@8.3.4_vue@3.5.44_@types+node@24.19.2_typescript@6.0.3",
     "npm:vue-tsc@^3.3.13": "3.3.13_typescript@6.0.3",
     "npm:vue@^3.5.44": "3.5.44_typescript@6.0.3"
@@ -959,8 +959,8 @@
     "graceful-fs@4.2.11": {
       "integrity": "sha512-RbJ5/jmFcNNCcDV5o9eTnBLJ/HszWV0P73bc+Ff4nS/rJj+YaS6IGyiOL0VoBYX+l1Wrl3k63h/KrH+nhJ0XvQ=="
     },
-    "happy-dom@20.14.6": {
-      "integrity": "sha512-5DDsf4QmEIlRL6NkCv/fxSjYHHkZceL/IaYQdJc2h3G7DRTEai++VTjbfL0LB9geW2VrA3+vrjF3Efx+OTtX0Q==",
+    "happy-dom@21.0.4": {
+      "integrity": "sha512-tFm+GaLBgo6o0awHnvHaNoraVo27qJ+2tZEtZ+cIa08hXbeitrxAJajLI05hsUy/2/YTKcUjQYzHe5mCcraLBw==",
       "dependencies": [
         "@types/node",
         "@types/whatwg-mimetype",
@@ -1409,7 +1409,7 @@
       ],
       "bin": true
     },
-    "vitest@5.0.5_@types+node@24.19.2_happy-dom@20.14.6_vite@8.3.4": {
+    "vitest@5.0.5_@types+node@24.19.2_happy-dom@21.0.4_vite@8.3.4": {
       "integrity": "sha512-cPODOMF8YnkiiYtDdHo6n4wWmBrOBBbOIYH2d33M4l3CdNn72h+qMmO6uXffUN6A5AZFXNND/d+krS9mgkXRfg==",
       "dependencies": [
         "@types/chai",
@@ -1532,7 +1532,7 @@
             "npm:@vue/test-utils@^2.5.1",
             "npm:@vue/tsconfig@~0.9.1",
             "npm:@vueuse/core@15",
-            "npm:happy-dom@^20.14.6",
+            "npm:happy-dom@^21.0.4",
             "npm:tailwindcss@^4.3.3",
             "npm:three@~0.186.1",
             "npm:typescript@~6.0.3",
