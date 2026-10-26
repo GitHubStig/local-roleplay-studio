@@ -92,9 +92,13 @@ useEventListener(window, 'focus', checkServer)
           />
           <span v-if="serverOnline === false" class="text-danger">Server offline</span>
         </span>
-        <ThemeToggle />
+        <ThemeToggle class="max-sm:hidden" />
       </div>
     </header>
+    <!-- On a phone the header has no room for it: it waits in the corner, as on the exported page. -->
+    <div class="fixed right-3 bottom-3 z-50 rounded-lg bg-canvas/90 shadow-md sm:hidden" data-corner-theme>
+      <ThemeToggle />
+    </div>
     <!-- Up to 5 Session screens stay alive while you visit Home, Settings or other Sessions, so
          drafts, the viewed Frame and running Frames survive switching back and forth. -->
     <RouterView v-slot="{ Component, route: r }">
