@@ -23,7 +23,7 @@ describe('useStoredString', () => {
     const draft = useStoredString('draft:r1')
     draft.value = 'Mine.'
     localStorage.setItem('draft:r1', 'Theirs.')
-    window.dispatchEvent(new StorageEvent('storage', { key: 'draft:r1', newValue: 'Theirs.' }))
+    globalThis.dispatchEvent(new StorageEvent('storage', { key: 'draft:r1', newValue: 'Theirs.' }))
     await nextTick()
     expect(draft.value).toBe('Mine.')
   })

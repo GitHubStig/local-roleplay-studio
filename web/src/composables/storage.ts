@@ -21,7 +21,7 @@ let browser: StorageLike | undefined
 export function browserStorage(): StorageLike {
   if (browser) return browser
   try {
-    const storage = window.localStorage
+    const storage = globalThis.localStorage
     storage.getItem('')
     browser = storage
   } catch {

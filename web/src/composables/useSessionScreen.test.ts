@@ -154,7 +154,7 @@ describe('useSessionScreen', () => {
     const { work } = await mountScreen()
     const unload = () => {
       const e = new Event('beforeunload', { cancelable: true })
-      window.dispatchEvent(e)
+      globalThis.dispatchEvent(e)
       return e.defaultPrevented
     }
     expect(unload()).toBe(false)

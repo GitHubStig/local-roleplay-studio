@@ -926,7 +926,7 @@ describe('SessionView', () => {
   it('asks before a reload or leaving the site while its Frame runs', async () => {
     const leaving = () => {
       const e = new Event('beforeunload', { cancelable: true })
-      window.dispatchEvent(e)
+      globalThis.dispatchEvent(e)
       return e.defaultPrevented
     }
     let finish!: () => void
