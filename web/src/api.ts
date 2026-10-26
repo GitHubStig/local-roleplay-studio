@@ -75,7 +75,7 @@ export interface Settings {
   apiKeys?: Record<string, string>
   textModel: string
   thinking: boolean
-  imageBackend: ImageBackend
+  /** An Image Model by name: the same name on mflux and ComfyUI is the same model (ADR 0022). */
   imageModel: string
   steps: number
   size: string
@@ -142,8 +142,10 @@ export interface TextModelOptions {
 export interface SettingsOptions extends TextModelOptions {
   /** Each backend's Image Models. */
   imageModels: Record<ImageBackend, ImageModelOption[]>
-  /** The backends a Session can switch to here: ComfyUI, and mflux where it's installed. */
+  /** The kinds of backend whose models a Session can switch to: mflux here, ComfyUI if listed. */
   imageBackends: ImageBackend[]
+  /** The kind of backend each Image Model's renders go to now, by name; none for one nowhere. */
+  imageModelsOn?: Record<string, ImageBackend>
   sizePresets: SizePreset[]
   upscalers: { id: string; label: string }[]
   /** The models that can edit a picture here, each on its backend. */
@@ -485,7 +487,8 @@ export type Session = ChainSession | StoryboardSession | RoleplaySession
 /** Progress any streamed work reports: its phase, the model's reasoning, render steps. */
 export type ProgressEvent =
   /** `queued`: waiting for another Session's render to finish. */
-  | { type: 'phase'; phase: Activity }
+  /** `imageBackend`: the kind of backend a render runs on, once it starts (`phase: 'image'`). */
+  | { type: 'phase'; phase: Activity; imageBackend?: ImageBackend }
   | { type: 'thinking'; text: string; restart?: boolean }
   | { type: 'progress'; step: number; total: number }
 
@@ -539,11 +542,11 @@ export const getSession = (id: string) => request<Session>(`/api/sessions/${id}`
 
 /** Whether a Chain renders each Frame as it's made. */
 /**
- * Switches a Session's Image Model, one of `imageBackend`'s (its own if left out); it comes back
- * with its steps reset to that model's default.
+ * Switches a Session's Image Model, by name, to one a Backend listed can render (ADR 0022); it
+ * comes back with its steps reset to that model's default.
  */
-export const setImageModel = <S>(id: string, imageModel: string, imageBackend?: ImageBackend) =>
-  put<S>(`/api/sessions/${id}/image-model`, { imageModel, imageBackend })
+export const setImageModel = <S>(id: string, imageModel: string) =>
+  put<S>(`/api/sessions/${id}/image-model`, { imageModel })
 
 /**
  * Deletes every picture by one Image Model in a Session, with its upscales and 3D (Compare's
@@ -825,7 +828,12 @@ export interface Job {
   error?: string
   createdAt: string
   /** A render's Image Model, as the Session had it when queued: it renders by that one. */
-  image?: { imageBackend: ImageBackend; imageModel: string; steps: number }
+  image?: { imageModel: string; steps: number }
+  /**
+   * The kind of backend its render runs on, once it starts: "by Krea 2 · mflux", and whether
+   * there's a picture forming to show (ComfyUI's previews).
+   */
+  imageBackend?: ImageBackend
   /**
    * An edit's order: what to paint, the area painted for it (a mask file, saved when it was
    * queued), and whether it makes the newest edit again, in its place.

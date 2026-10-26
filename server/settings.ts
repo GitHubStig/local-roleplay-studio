@@ -1,8 +1,8 @@
 import { fromFileUrl } from '@std/path'
 import {
+  anyImageModel,
   findImageModel,
   IMAGE_BACKENDS,
-  type ImageBackendKind,
   imageModelsOf,
 } from './images/imageModels.ts'
 import { EDIT_MODELS, type EditModel } from './images/editModels.ts'
@@ -56,9 +56,10 @@ export interface Settings {
   textModel: string
   /** Let the Text Model reason before answering: slower, often more accurate. */
   thinking: boolean
-  /** Which kind of Backend the Image Model is one of (`images/imageModels.ts`). */
-  imageBackend: ImageBackendKind
-  /** One of the backend's Image Models. */
+  /**
+   * An Image Model, by name (`images/imageModels.ts`): the same name on mflux and ComfyUI is the
+   * same model, rendered wherever Settings send it (ADR 0022).
+   */
   imageModel: string
   steps: number
   size: string
@@ -132,7 +133,6 @@ export const DEFAULT_SETTINGS: Settings = {
   runOn: { text: 'ollama', images: 'here', upscale: 'here', edits: 'here', voices: 'here' },
   textModel: '',
   thinking: false,
-  imageBackend: 'mflux',
   // The model both backends run (mflux and ComfyUI), and the one measured most (docs/models.md).
   imageModel: DEFAULT_IMAGE_MODEL.id,
   steps: DEFAULT_IMAGE_MODEL.defaultSteps,
@@ -158,10 +158,7 @@ export const DEFAULT_SETTINGS: Settings = {
 export function machineDefaults(here: { mflux: boolean; voiceService: boolean }): Settings {
   if (here.mflux && here.voiceService) return DEFAULT_SETTINGS
   const comfyui: Backend = { id: 'comfyui', kind: 'comfyui', address: '' }
-  const imageBackend: ImageBackendKind = here.mflux ? 'mflux' : 'comfyui'
   const images = here.mflux ? 'here' : comfyui.id
-  const models = imageModelsOf(imageBackend)
-  const model = models.find((m) => m.id === DEFAULT_SETTINGS.imageModel) ?? models[0]
   return {
     ...DEFAULT_SETTINGS,
     backends: [...DEFAULT_SETTINGS.backends, comfyui],
@@ -172,9 +169,6 @@ export function machineDefaults(here: { mflux: boolean; voiceService: boolean })
       edits: images,
       voices: here.voiceService ? 'here' : comfyui.id,
     },
-    imageBackend,
-    imageModel: model.id,
-    steps: model.defaultSteps,
     editModel: here.mflux ? 'qwen-image-2.1-edit' : 'qwen-image-2.1-edit-comfyui',
   }
 }
@@ -211,14 +205,8 @@ function backendIssues(backends: unknown): string[] {
   return issues
 }
 
-/**
- * Checks a Settings object, filling in what an older file lacks: `imageBackend` from `defaults`
- * (this machine's), and `here` in the Backends.
- */
-export function validateSettings(
-  input: unknown,
-  defaults: Settings = DEFAULT_SETTINGS,
-): ValidationResult {
+/** Checks a Settings object, filling in what an older file lacks: `here` in the Backends. */
+export function validateSettings(input: unknown): ValidationResult {
   if (typeof input !== 'object' || input === null || Array.isArray(input)) {
     return { ok: false, issues: ['settings must be an object'] }
   }
@@ -242,12 +230,9 @@ export function validateSettings(
   if (s.thinking !== undefined && typeof s.thinking !== 'boolean') {
     issues.push('thinking must be true or false')
   }
-  const imageBackend = (s.imageBackend ?? defaults.imageBackend) as ImageBackendKind
-  if (!IMAGE_BACKENDS.includes(imageBackend)) {
-    issues.push(`imageBackend must be one of: ${IMAGE_BACKENDS.join(', ')}`)
-  } else if (typeof s.imageModel !== 'string' || !findImageModel(imageBackend, s.imageModel)) {
-    const ids = imageModelsOf(imageBackend).map((m) => m.id)
-    issues.push(`imageModel must be one of ${imageBackend}'s: ${ids.join(', ')}`)
+  if (typeof s.imageModel !== 'string' || !anyImageModel(s.imageModel)) {
+    const ids = new Set(IMAGE_BACKENDS.flatMap((b) => imageModelsOf(b).map((m) => m.id)))
+    issues.push(`imageModel must be one of: ${[...ids].join(', ')}`)
   }
   if (!Number.isInteger(s.steps) || (s.steps as number) < 1 || (s.steps as number) > 100) {
     issues.push('steps must be an integer from 1 to 100')
@@ -308,7 +293,6 @@ export function validateSettings(
       runOn: Object.fromEntries(WORKS.map((w) => [w, runOn![w]])) as Record<Work, string>,
       textModel: s.textModel as string,
       thinking: (s.thinking as boolean | undefined) ?? false,
-      imageBackend,
       imageModel: s.imageModel as string,
       steps: s.steps as number,
       size: s.size as string,
@@ -406,9 +390,7 @@ export function fileSettingsStore(
             'Add them in Settings, as Backends.',
         )
       }
-      // An Image backend an older file lacks isn't filled in here (`validateSettings`).
-      const { imageBackend: _i, ...filled } = defaults
-      const result = validateSettings({ ...filled, ...(parsed as object) }, defaults)
+      const result = validateSettings({ ...defaults, ...(parsed as object) })
       if (!result.ok) {
         console.warn(`Ignoring invalid settings file ${path}: ${result.issues.join('; ')}`)
         return { ...defaults }

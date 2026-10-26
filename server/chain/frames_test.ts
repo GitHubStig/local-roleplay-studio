@@ -1,6 +1,7 @@
 import { ContextFullError } from '../text/chat.ts'
 import { assertEquals, assertMatch, assertNotEquals, assertRejects } from '@std/assert'
 import { join } from '@std/path'
+import type { Backend } from '../backends.ts'
 import { DEFAULT_SETTINGS } from '../settings.ts'
 import { type ChainSession, dirSessionStore, type SessionStore } from '../session.ts'
 import {
@@ -596,6 +597,31 @@ Deno.test('runChainFrame records time spent waiting for another render', () =>
       signal(),
     )
     assertEquals(frame!.pictures[0].timings!.queued! >= 0.1, true)
+  }))
+
+Deno.test('A render says which kind of backend it runs on as it starts, and its picture keeps it', () =>
+  withTempDir(async (root) => {
+    const events: FrameEvent[] = []
+    const pc: Backend = { id: 'pc', kind: 'comfyui', address: 'http://192.168.50.85:8188' }
+    const frame = await runChainFrame(
+      {
+        store: chainStore(root),
+        textModel: scriptedTextModel([reply('standing')]),
+        imageGenerator: fakeImageGenerator(),
+        backendOf: () => Promise.resolve<Backend | undefined>(pc),
+      },
+      newSession(),
+      testScenario,
+      null,
+      (e) => events.push(e),
+      signal(),
+    )
+    // The page shows ComfyUI's previews as the picture forms, and none for mflux, which sends none.
+    assertEquals(
+      events.find((e) => e.type === 'phase' && e.phase === 'image'),
+      { type: 'phase', phase: 'image', imageBackend: 'comfyui' },
+    )
+    assertEquals(frame!.pictures[0].imageBackend, 'comfyui')
   }))
 
 Deno.test('A render that first downloads its model shows that, then rendering again with its steps', () => {

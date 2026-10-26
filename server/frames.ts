@@ -1,4 +1,5 @@
 import { join } from '@std/path'
+import { type Backend, imageKindOf } from './backends.ts'
 import {
   changeFramePicture,
   type Picture,
@@ -8,10 +9,12 @@ import {
   withPicture,
 } from './pictures.ts'
 import type { ImageGenerator } from './images/imageGenerator.ts'
+import type { ImageBackendKind } from './images/imageModels.ts'
 import type { Upscaler } from './images/upscalers.ts'
 import { crossedLimit, limitsEnabled } from './limits.ts'
 import { mightNameAPerson, type TextModel } from './textModel.ts'
 import type { Previews } from './previews.ts'
+import type { HeavyJob } from './machine.ts'
 import { RenderQueue } from './renderQueue.ts'
 import type { Session, SessionStore } from './session.ts'
 import { renderSettings, type Settings } from './settings.ts'
@@ -24,7 +27,8 @@ export type ProgressEvent =
    * `queued`: waiting for another Session's render to finish; `download`: downloading a model the
    * first time it's used, before rendering (or speaking) with it.
    */
-  | { type: 'phase'; phase: Phase }
+  /** `imageBackend`: the kind of backend a render runs on, once it starts (`phase: 'image'`). */
+  | { type: 'phase'; phase: Phase; imageBackend?: ImageBackendKind }
   /** More of the Text Model's reasoning; `restart` when a retry starts reasoning afresh. */
   | { type: 'thinking'; text: string; restart?: boolean }
   /** Image Model steps completed so far. */
@@ -64,6 +68,8 @@ export interface FrameDeps {
   previews?: Previews
   /** Settings as they are now, for how a render runs (`renderSettings`); else the Session's own. */
   settings?: () => Promise<Settings>
+  /** The Backend a heavy job goes to now (`backendOf`); left out, the image generator finds it. */
+  backendOf?: (job: HeavyJob) => Promise<Backend | undefined>
 }
 
 const TEXT_ATTEMPTS = 2
@@ -152,21 +158,25 @@ export async function renderImage(
   const settings = deps.settings
     ? renderSettings(session.settings, await deps.settings())
     : session.settings
+  // Found once, so the picture records where it was made.
+  const job: HeavyJob = { kind: 'render', model: settings.imageModel }
+  const backend = await deps.backendOf?.(job)
+  const kind = backend && imageKindOf(backend)
   const queueStart = performance.now()
   let waited = false
   const release = await (deps.renderQueue ?? new RenderQueue()).acquire(signal, () => {
     waited = true
     emit({ type: 'phase', phase: 'queued' })
-  }, { job: { kind: 'render', settings } })
+  }, { job })
   const queued = waited ? secondsSince(queueStart) : undefined
   const imageStart = performance.now()
   try {
-    emit({ type: 'phase', phase: 'image' })
+    emit({ type: 'phase', phase: 'image', ...(kind && { imageBackend: kind }) })
     const dir = deps.store.dir(session.id)
     await Deno.mkdir(dir, { recursive: true })
     const { onProgress, onDownload } = imageProgress(emit)
     const image = await deps.imageGenerator.generate(
-      { prompt, seed: session.seed, settings, dir, name },
+      { prompt, seed: session.seed, settings, dir, name, ...(backend && { backend }) },
       signal,
       onProgress,
       onDownload,
@@ -175,7 +185,7 @@ export async function renderImage(
     return {
       image,
       imageModel: settings.imageModel,
-      imageBackend: settings.imageBackend,
+      ...(kind && { imageBackend: kind }),
       timings: { ...(queued !== undefined && { queued }), image: secondsSince(imageStart) },
     }
   } finally {

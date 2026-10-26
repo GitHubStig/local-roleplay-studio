@@ -49,12 +49,12 @@ Deno.test('backendOf: the preferred Backend if it can, else the next listed that
     backends,
     runOn: { ...DEFAULT_SETTINGS.runOn, images: 'here', upscale: 'pc', voices: 'here' },
   }
-  const render = (imageBackend: 'mflux' | 'comfyui', here = mac) =>
-    backendOf({ kind: 'render', settings: { imageBackend } }, now, here)?.id
-  // A Mac renders with mflux here, and a ComfyUI model on the first ComfyUI listed.
-  assertEquals([render('mflux'), render('comfyui')], ['here', 'pc'])
-  // A PC can't run mflux: nowhere.
-  assertEquals(render('mflux', pc), undefined)
+  const render = (model: string, here = mac) => backendOf({ kind: 'render', model }, now, here)?.id
+  // A Mac renders here what mflux has (Qwen-Image 2.1 on both), and a ComfyUI-only model on the
+  // first ComfyUI listed.
+  assertEquals([render('qwen-image-2.1'), render('moss-image')], ['here', 'pc'])
+  // A PC can't run mflux: Qwen-Image on its ComfyUI, mflux's own models nowhere.
+  assertEquals([render('qwen-image-2.1', pc), render('krea-2', pc)], ['pc', undefined])
   // Upscale on the PC, as preferred, though here could.
   assertEquals(backendOf({ kind: 'upscale' }, now, mac)?.id, 'pc')
   // Voices here, or on the first ComfyUI where there's no voice service.
@@ -89,7 +89,7 @@ Deno.test('machineKey: here for this machine, the host for another', () => {
 })
 
 Deno.test('jobBackend: a picture with the Text Model, a render by its Image Model, a line as voices go', () => {
-  const session: Settings = { ...DEFAULT_SETTINGS, imageBackend: 'comfyui' }
+  const session: Settings = { ...DEFAULT_SETTINGS, imageModel: 'moss-image' }
   const now = { ...DEFAULT_SETTINGS, backends, runOn: { ...DEFAULT_SETTINGS.runOn, voices: 'pc' } }
   const text: Backend = { id: 'ollama', kind: 'ollama', address: 'http://192.168.50.85:11434' }
   const on = (kind: JobKind, s = session, editModel?: EditModel) =>

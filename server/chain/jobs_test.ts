@@ -453,7 +453,7 @@ Deno.test('A Session switches Image Model, and a Chain Frame by the old one rend
     const unknown = await switchTo('dall-e')
     assertEquals([unknown.status, (await unknown.json()).error], [
       400,
-      'mflux has no Image Model "dall-e"',
+      'There\'s no Image Model "dall-e"',
     ])
     assertEquals(
       (await call('PUT', '/api/sessions/nope/image-model', { imageModel: 'x' })).status,
@@ -470,34 +470,35 @@ Deno.test('A Session switches Image Model, and a Chain Frame by the old one rend
     assertEquals(images.prompts.length, 3)
   }))
 
-Deno.test('A Session switches Image backend, to mflux only where it can run', () =>
+Deno.test('A Session switches Image Model by name, to one a Backend listed can render', () =>
   withTempDir(async (root) => {
-    const switchTo = (call: ReturnType<typeof setup>['call'], body: unknown) =>
-      call('PUT', '/api/sessions/s1/image-model', body)
+    const switchTo = (call: ReturnType<typeof setup>['call'], imageModel: string) =>
+      call('PUT', '/api/sessions/s1/image-model', { imageModel })
+    // A Mac with no ComfyUI listed: mflux's models only.
     const { call } = await chainOfTwo(join(root, 'mac'))
     const options = await (await call('GET', '/api/settings/options')).json()
-    assertEquals(options.imageBackends, ['mflux', 'comfyui'])
-    assertEquals(
-      (await switchTo(call, { imageModel: 'qwen-image-2.1', imageBackend: 'dall-e' })).status,
-      400,
-    )
-    const comfy = await (await switchTo(call, {
-      imageModel: 'qwen-image-2.1',
-      imageBackend: 'comfyui',
-    })).json()
-    assertEquals([comfy.settings.imageBackend, comfy.settings.imageModel, comfy.settings.steps], [
-      'comfyui',
-      'qwen-image-2.1',
-      25,
+    assertEquals(options.imageBackends, ['mflux'])
+    assertEquals((await switchTo(call, 'dall-e')).status, 400)
+    const qwen = await (await switchTo(call, 'qwen-image-2.1')).json()
+    assertEquals([qwen.settings.imageModel, qwen.settings.steps], ['qwen-image-2.1', 25])
+    assertEquals('imageBackend' in qwen.settings, false)
+    // MOSS-Image is ComfyUI's only: refused until one is listed.
+    const moss = await switchTo(call, 'moss-image')
+    assertEquals([moss.status, (await moss.json()).error], [
+      409,
+      'No Backend renders moss-image: add one in Settings, on the Machines tab',
     ])
-    // Left out, the backend stays the Session's.
-    const klein = await (await switchTo(call, { imageModel: 'flux2-klein-4b' })).json()
-    assertEquals(klein.settings.imageBackend, 'comfyui')
 
+    // A PC: no mflux, a ComfyUI listed.
     const off = { available: false, reason: 'mflux runs only on Apple Silicon Macs' }
     const on = { available: true }
+    const comfyui = { id: 'comfyui', kind: 'comfyui' as const, address: '' }
     const pc = (await chainOfTwo(join(root, 'pc'), {
-      settings: { textModel: 'x', imageBackend: 'comfyui' },
+      settings: {
+        textModel: 'x',
+        backends: [...DEFAULT_SETTINGS.backends, comfyui],
+        runOn: { ...DEFAULT_SETTINGS.runOn, images: 'comfyui' },
+      },
       features: {
         images: off,
         upscale: off,
@@ -512,11 +513,9 @@ Deno.test('A Session switches Image backend, to mflux only where it can run', ()
     assertEquals((await (await pc('GET', '/api/settings/options')).json()).imageBackends, [
       'comfyui',
     ])
-    const refused = await switchTo(pc, { imageModel: 'qwen-image-2.1', imageBackend: 'mflux' })
-    assertEquals([refused.status, (await refused.json()).error], [
-      409,
-      "mflux isn't available here: mflux runs only on Apple Silicon Macs",
-    ])
+    assertEquals((await switchTo(pc, 'moss-image')).status, 200)
+    // Krea 2 is mflux's only, which can't run here.
+    assertEquals((await switchTo(pc, 'krea-2')).status, 409)
   }))
 
 Deno.test("Every picture by one Image Model is deleted, with its files, but not the Session's own model's", () =>

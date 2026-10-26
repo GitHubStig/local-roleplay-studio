@@ -31,11 +31,16 @@ export function useBackends(
   /** The Backends that can do a kind of work, for its tab to choose from. */
   const choicesFor = (work: Work) => (form.value?.backends ?? []).filter((b) => does(b, work))
 
-  /** Whether a Backend can do this job: a render or an edit on its model's kind of Backend. */
+  /**
+   * Whether a Backend can do this job: a render where its kind of Backend has the Image Model, an
+   * edit on its edit model's kind.
+   */
   function can(backend: Backend, work: Work): boolean {
     if (!does(backend, work)) return false
     const kind = backend.kind === 'here' ? 'mflux' : 'comfyui'
-    if (work === 'images') return kind === form.value?.imageBackend
+    if (work === 'images') {
+      return !!options.value?.imageModels[kind]?.some((m) => m.id === form.value?.imageModel)
+    }
     if (work === 'edits') {
       const model = options.value?.editModels.find((m) => m.id === form.value?.editModel)
       return !model || model.backend === kind
@@ -72,7 +77,6 @@ export function useBackends(
       form.value && JSON.stringify([
         comfyuis.value,
         form.value.runOn,
-        form.value.imageBackend,
         form.value.imageModel,
         form.value.upscaler,
         form.value.editModel,

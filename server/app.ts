@@ -1,11 +1,22 @@
 import { extname, join } from '@std/path'
 import { error, isJson, json, readJson, type Route } from './http.ts'
 import type { ImageGenerator } from './images/imageGenerator.ts'
-import { IMAGE_BACKENDS, type ImageBackendKind, imageModelsOf } from './images/imageModels.ts'
+import {
+  anyImageModel,
+  IMAGE_BACKENDS,
+  type ImageBackendKind,
+  imageModelsOf,
+} from './images/imageModels.ts'
 import type { ComfyStatus } from './comfyui/status.ts'
 import { UPSCALERS } from './images/upscalers.ts'
 import { crossedLimit, LimitError, setLimitsEnabled } from './limits.ts'
-import { type Backend, BACKEND_NAMES, BACKEND_WORK, type BackendKind } from './backends.ts'
+import {
+  type Backend,
+  BACKEND_NAMES,
+  BACKEND_WORK,
+  type BackendKind,
+  imageKindOf,
+} from './backends.ts'
 import type { TextChoice, TextModelInfo } from './text/backend.ts'
 import { briefScenario, type Scenario, type ScenarioLibrary, summarise } from './scenario.ts'
 import {
@@ -284,6 +295,9 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     seeding: { session: session.id, seed: session.seed },
   })
 
+  /** The Backend a heavy job goes to as Settings are now (`backendOf`). */
+  const heavyBackend = async (job: HeavyJob) => backendOf(job, await deps.settings.load(), detected)
+
   const frameDeps = (session: Session): FrameDeps => ({
     store: deps.sessions,
     textModel: deps.textModel(textChoice(session)),
@@ -291,6 +305,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     renderQueue,
     previews,
     settings: () => deps.settings.load(),
+    backendOf: heavyBackend,
   })
 
   /**
@@ -394,6 +409,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     renderQueue,
     previews,
     settings: () => deps.settings.load(),
+    backendOf: heavyBackend,
     textModel: deps.textModel(textChoice(session)),
     roleplayModel: deps.roleplayModel(textChoice(session)),
     voice: deps.voice,
@@ -414,11 +430,15 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     style: given(deps.style, 'style embedder'),
   }
   /**
-   * The Image backends a Session can switch to: ComfyUI always (whether its server answers is
-   * found at the render), mflux where it's installed.
+   * The kinds of Image backend whose models a Session can switch to: mflux where it's installed,
+   * ComfyUI where Settings list one (whether it answers is found at the render).
    */
-  const imageBackends = (): ImageBackendKind[] =>
-    IMAGE_BACKENDS.filter((b) => b === 'comfyui' || detected.images.available)
+  const imageBackends = async (): Promise<ImageBackendKind[]> => {
+    const { backends } = await deps.settings.load()
+    return IMAGE_BACKENDS.filter((kind) =>
+      kind === 'mflux' ? detected.images.available : backends.some((b) => b.kind === kind)
+    )
+  }
   /** What can run now, with Settings' backends (`withBackends`). */
   const availability = async (): Promise<Availabilities> =>
     withBackends(detected, await deps.settings.load())
@@ -561,15 +581,13 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     ...jobRoutes({
       jobs,
       store: deps.sessions,
-      machineOf: async (session, kind, edit) => {
+      backendOf: async (session, kind, edit) => {
         const now = await deps.settings.load()
         // A picture is written by the Art Agent's model, the Session's Text Model unless set.
         const text = kind === 'picture'
           ? await textBackendOf(now.artModel || session.settings.textModel)
           : undefined
-        return machineOf(
-          jobBackend(kind, session.settings, now, detected, { editModel: edit?.model, text }),
-        )
+        return jobBackend(kind, session.settings, now, detected, { editModel: edit?.model, text })
       },
       check: async (session, kind, index, pending, edit) => {
         const feature = JOB_FEATURE[kind]
@@ -667,10 +685,19 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
         ...await textModelOptions(now.backends.find((b) => b.id === now.runOn.text)),
         // Every backend's, so Settings can switch between them.
         imageModels: Object.fromEntries(IMAGE_BACKENDS.map((b) => [b, imageModelsOf(b)])),
-        imageBackends: imageBackends(),
+        imageBackends: await imageBackends(),
+        // Where each Image Model's renders go now, for the Session's picker to say (ADR 0022).
+        imageModelsOn: Object.fromEntries(
+          IMAGE_BACKENDS.flatMap((kind) => imageModelsOf(kind).map((m) => m.id))
+            .map((id) => [id, backendOf({ kind: 'render', model: id }, now, detected)] as const)
+            .flatMap(([id, backend]) => {
+              const kind = backend && imageKindOf(backend)
+              return kind ? [[id, kind]] : []
+            }),
+        ),
         sizePresets: SIZE_PRESETS,
         upscalers: UPSCALERS,
-        editModels: editModelsHere(imageBackends()),
+        editModels: editModelsHere(await imageBackends()),
         features: await availability(),
         // What this machine's own Backend runs, whatever else is listed.
         here: detected,
@@ -802,24 +829,22 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       })
     }],
 
-    // Switches the Session's Image Model: `{ imageModel, imageBackend? }`, one of that backend's
-    // (the Session's own if left out), on one this machine can render with (`imageBackends`).
+    // Switches the Session's Image Model: `{ imageModel }`, one a Backend listed in Settings can
+    // render (ADR 0022).
     ['PUT', new URLPattern({ pathname: '/api/sessions/:id/image-model' }), async (req, p) => {
-      const body = await readJson(req) as
-        | { imageModel?: unknown; imageBackend?: unknown }
-        | undefined
+      const body = await readJson(req) as { imageModel?: unknown } | undefined
       if (typeof body?.imageModel !== 'string') return error('imageModel must be a string', 400)
       const session = await deps.sessions.load(p.id!)
       if (!session) return error('Session not found', 404)
-      const backend = body.imageBackend ?? session.settings.imageBackend
-      if (!IMAGE_BACKENDS.includes(backend as ImageBackendKind)) {
-        return error(`imageBackend must be one of: ${IMAGE_BACKENDS.join(', ')}`, 400)
-      }
+      const backend = await heavyBackend({ kind: 'render', model: body.imageModel })
       if (
-        backend !== session.settings.imageBackend &&
-        !imageBackends().includes(backend as ImageBackendKind)
+        !backend && body.imageModel !== session.settings.imageModel &&
+        anyImageModel(body.imageModel)
       ) {
-        return error(`mflux isn't available here: ${detected.images.reason}`, 409)
+        return error(
+          `No Backend renders ${body.imageModel}: add one in Settings, on the Machines tab`,
+          409,
+        )
       }
       try {
         return json(
@@ -827,7 +852,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
             deps.sessions,
             session,
             body.imageModel,
-            backend as ImageBackendKind,
+            backend && imageKindOf(backend),
           ),
         )
       } catch (err) {

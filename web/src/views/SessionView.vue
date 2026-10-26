@@ -30,6 +30,7 @@ import {
   DOWNLOADING,
   imageUrl,
   type Outcome,
+  type ImageBackend,
   type ImagePrompt,
   type Job,
   streamFrame,
@@ -51,6 +52,8 @@ interface Pending {
   /** The Text Model's reasoning so far, when thinking is on. */
   thinking?: string
   progress?: { step: number; total: number }
+  /** The kind of backend its render runs on, once it starts. */
+  imageBackend?: ImageBackend
   narration?: string
   outcome?: Outcome
   prompt?: ImagePrompt
@@ -145,7 +148,11 @@ function onEvent(event: FrameEvent) {
   const s = session.value!
   switch (event.type) {
     case 'phase':
-      pending.value = { ...pending.value, phase: event.phase }
+      pending.value = {
+        ...pending.value,
+        phase: event.phase,
+        ...(event.imageBackend && { imageBackend: event.imageBackend }),
+      }
       break
     case 'progress':
       pending.value = { ...pending.value!, progress: { step: event.step, total: event.total } }
@@ -334,14 +341,18 @@ const renderingPhase = computed(() => {
  * The picture forming: a new Frame's, alone in its empty frame while it's shown, or a job's over
  * the shown Frame's old picture.
  */
+/** The Frame in progress's picture forming, if its render is on ComfyUI. */
+const formingOfPending = () =>
+  pending.value &&
+  formingOf(session.value, pending.value.phase, pending.value.progress, pending.value.imageBackend)
 const forming = computed(() =>
   pending.value
-    ? onPending.value ? formingOf(session.value, pending.value.phase, pending.value.progress) : null
+    ? onPending.value ? formingOfPending() : null
     : jobForming(session.value, shownJob.value)
 )
 /** The same, for the Frame in progress's thumbnail in the Frames list. */
 const pendingThumb = useShownPreview(
-  () => pending.value && formingOf(session.value, pending.value.phase, pending.value.progress),
+  () => pending.value && formingOfPending(),
   () => null,
 )
 

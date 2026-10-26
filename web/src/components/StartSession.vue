@@ -12,6 +12,7 @@ import {
   type SettingsOptions,
 } from '../api'
 import { useFeatures } from '../composables/useFeatures'
+import { imageModelOf } from '../composables/useSettingsOptions'
 import { useStoredString } from '../composables/storage'
 
 defineProps<{ error?: string }>()
@@ -76,12 +77,10 @@ onMounted(async () => {
   }
 })
 
-const imageModelLabel = computed(
-  () =>
-    options.value?.imageModels[settings.value?.imageBackend ?? 'mflux']
-      ?.find((m) => m.id === settings.value?.imageModel)?.label ??
-      settings.value?.imageModel,
-)
+const imageModelLabel = computed(() => {
+  const id = settings.value?.imageModel ?? ''
+  return imageModelOf(options.value, id)?.label ?? id
+})
 
 /** Why a Session can't start yet, or null when it can. */
 const blocker = computed(() => {

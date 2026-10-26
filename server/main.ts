@@ -160,7 +160,7 @@ async function logFeatures(saved: Settings) {
       : b.kind === 'here'
       ? 'this machine'
       : `${BACKEND_NAMES[b.kind]} at ${backendAddress(b)}`
-  const render = backendOf({ kind: 'render', settings: saved }, saved, features)
+  const render = backendOf({ kind: 'render', model: saved.imageModel }, saved, features)
   const upscale = backendOf({ kind: 'upscale' }, saved, features)
   const voices = backendOf({ kind: 'voice' }, saved, features)
   const on: Partial<Record<Feature, string>> = {

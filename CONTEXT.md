@@ -157,9 +157,9 @@ A Backend that runs the Text Model: an Ollama, or a server with the OpenAI chat 
 _Avoid_: provider, engine
 
 **Image Model**:
-The model that renders an Image Prompt into an image (Qwen-Image 2.1 by default). It runs on an **Image backend**. A Session starts on the one Settings name and can be switched to another; each Frame keeps its picture by every model it was rendered with, and shows the one by the Session's model.
+The model that renders an Image Prompt into an image (Qwen-Image 2.1 by default), known by its name: the same name on mflux and on ComfyUI is the same model. It runs on an **Image backend**. A Session starts on the one Settings name and can be switched to another; each Frame keeps its picture by every model it was rendered with, and shows the one by the Session's model.
 _Avoid_: Model, diffusion model, generator
 
 **Image backend**:
-What runs the Image Model: mflux (on a Mac) or a ComfyUI server (on any machine, this one or another). A Session starts on the one Settings name and can be switched to another with its Image Model; a model of the same name on either backend counts as the same, so its pictures stay. Which Backend renders, upscales or edits is Settings' choice, and applies at once.
+What runs the Image Model: mflux (on a Mac) or a ComfyUI server (on any machine, this one or another). A Session doesn't keep one: which Backend renders, upscales or edits is Settings' choice, and applies at once. Each picture says which backend made it.
 _Avoid_: renderer, provider, engine

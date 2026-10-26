@@ -54,7 +54,6 @@ const fakeComfyUI = (opts: Parameters<typeof fakeServer>[0] = {}) =>
 
 const settings = (extra: Partial<Settings> = {}): Settings => ({
   ...DEFAULT_SETTINGS,
-  imageBackend: 'comfyui',
   imageModel: 'qwen-image-2.1',
   steps: 25,
   size: 'square',

@@ -203,8 +203,8 @@ deno task dev       # starts the API on :8787 and the web app on :5180
 ```
 
 The same on Windows, in PowerShell. Open <http://localhost:5180>, go to **Settings**, choose a Text
-Model (on another backend: pick it and give its address first) and, for pictures, the Image backend
-(on Windows, ComfyUI, which must be running), then go **Home** (click **Local Roleplay Studio**) and
+Model (on another machine: add it on the Machines tab first) and, for pictures, an Image Model
+(on Windows, add your ComfyUI on the Machines tab first; it must be running), then go **Home** (click **Local Roleplay Studio**) and
 press **Start Session**. Your Sessions are listed on Home; open one to carry on, or delete it.
 
 ## Tasks

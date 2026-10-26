@@ -16,6 +16,7 @@ import { editModelChoices, useSettingsOptions } from '../composables/useSettings
 import ImageViewer from './ImageViewer.vue'
 import PaintLayer, { type Sketch } from './PaintLayer.vue'
 import PictureVersions, { type VersionEntry } from './PictureVersions.vue'
+import SelectField from './SelectField.vue'
 
 /**
  * A Session's pictures in the full-window viewer: it opens on one Frame, and ← and → (or ↑ and ↓)
@@ -405,13 +406,14 @@ const action =
         <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
           <label v-if="editModels.choices.length > 1" class="flex items-center gap-2">
             Edit model
-            <select
+            <SelectField
               v-model="draft.model"
+              compact
               class="rounded-lg border border-white/30 bg-black/40 p-1.5 text-white"
               data-edit-model
             >
               <option v-for="m in editModels.choices" :key="m.id" :value="m.id">{{ m.label }}</option>
-            </select>
+            </SelectField>
           </label>
           <div class="inline-flex overflow-hidden rounded-lg border border-white/30" role="group">
             <button

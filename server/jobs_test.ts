@@ -103,8 +103,8 @@ Deno.test('Between renders waits for every render running, on any machine', asyn
   assertEquals(done, true)
 })
 
-const KREA: ImageChoice = { imageBackend: 'mflux', imageModel: 'krea-2', steps: 20 }
-const KLEIN: ImageChoice = { imageBackend: 'comfyui', imageModel: 'flux2-klein', steps: 4 }
+const KREA: ImageChoice = { imageModel: 'krea-2', steps: 20 }
+const KLEIN: ImageChoice = { imageModel: 'flux2-klein', steps: 4 }
 
 Deno.test('A Frame can be queued to render by two Image Models, each on its machine', () => {
   const { jobs, running } = heldJobs()
@@ -117,8 +117,14 @@ Deno.test('A Frame can be queued to render by two Image Models, each on its mach
 })
 
 Deno.test('A render runs with the Image Model it was queued with', () => {
-  const session = { settings: { ...KLEIN, seed: 7 } } as unknown as Session
+  const session = {
+    settings: { imageModel: 'flux2-klein', steps: 4, seed: 7 },
+  } as unknown as Session
+  // The kind of Backend it was sent to is the job's, for the page, not the Session's.
   const job = { kind: 'render', image: KREA } as Job
-  assertEquals(asQueued(session, job).settings, { ...KREA, seed: 7 } as Session['settings'])
+  assertEquals(
+    asQueued(session, job).settings,
+    { imageModel: 'krea-2', steps: 20, seed: 7 } as unknown as Session['settings'],
+  )
   assertEquals(asQueued(session, { kind: 'upscale' } as Job), session)
 })

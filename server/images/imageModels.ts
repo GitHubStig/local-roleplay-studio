@@ -56,3 +56,11 @@ export function imageModelsOf(backend: ImageBackendKind): ImageModelOption[] {
 
 export const findImageModel = (backend: ImageBackendKind, id: string) =>
   imageModelsOf(backend).find((m) => m.id === id)
+
+/**
+ * Image Model `id` on any backend (ADR 0022: the same name is the same model): `prefer`'s if it
+ * has it, else the first backend's that does.
+ */
+export const anyImageModel = (id: string, prefer?: ImageBackendKind) =>
+  (prefer && findImageModel(prefer, id)) ??
+    IMAGE_BACKENDS.map((b) => findImageModel(b, id)).find(Boolean)

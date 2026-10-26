@@ -5,13 +5,13 @@ import {
   ApiError,
   getSettings,
   getSettingsOptions,
+  type Backend,
   type ImageBackend,
   saveSettings,
   type Settings,
   type SettingsOptions,
   type Work,
 } from '../api'
-import BackendOptions from '../components/BackendOptions.vue'
 import FeatureSwitch from '../components/FeatureSwitch.vue'
 import MachinesTab from '../components/MachinesTab.vue'
 import RunOn from '../components/RunOn.vue'
@@ -20,10 +20,9 @@ import ToggleSwitch from '../components/ToggleSwitch.vue'
 import { useBackends } from '../composables/useBackends'
 import { useFeatures } from '../composables/useFeatures'
 import {
-  backendGroups,
   editModelChoices,
-  fromOnBackend,
-  onBackend,
+  imageModelChoices,
+  imageModelOf,
 } from '../composables/useSettingsOptions'
 
 const form = ref<Settings | null>(null)
@@ -99,21 +98,29 @@ const canThink = computed(() =>
   !!form.value && (textListing.value?.thinkingModels ?? []).includes(form.value.textModel)
 )
 
-const imageModelsOf = (backend: ImageBackend) => options.value?.imageModels[backend] ?? []
-/** Every backend's Image Models, as the Session's Image Model picker lists them. */
-const imageModelGroups = computed(() =>
-  backendGroups(options.value, form.value?.imageBackend ?? 'mflux', imageModelsOf)
+/** The kind of backend a Backend renders on: mflux here, or its ComfyUI. */
+const imageKindOf = (b: Backend | undefined): ImageBackend | undefined =>
+  b?.kind === 'here' ? 'mflux' : b?.kind === 'comfyui' ? 'comfyui' : undefined
+/** Every Image Model a Backend in the form can render, by name, as the Session's picker lists them. */
+const imageModels = computed(() =>
+  imageModelChoices(
+    options.value,
+    form.value?.imageModel,
+    choicesFor('images').map(imageKindOf).filter((k): k is ImageBackend => !!k),
+    // Named as on the Backend renders prefer.
+    () => imageKindOf(form.value?.backends.find((b) => b.id === form.value?.runOn.images)),
+  )
 )
-/** The chosen Image Model's options, for the controls only some models have. */
+/** The chosen Image Model's options, where renders go, for the controls only some models have. */
 const imageModel = computed(() =>
-  form.value && imageModelsOf(form.value.imageBackend).find((m) => m.id === form.value?.imageModel)
+  form.value && imageModelOf(options.value, form.value.imageModel, imageKindOf(whereTo('images')))
 )
-/** The Default Image Model and its backend, picked together; steps start at the model's own. */
+/** The Default Image Model, by name; steps start at its own. */
 const defaultImageModel = computed({
-  get: () => form.value ? onBackend(form.value.imageBackend, form.value.imageModel) : '',
+  get: () => form.value?.imageModel ?? '',
   set(value) {
     if (!form.value) return
-    ;[form.value.imageBackend, form.value.imageModel] = fromOnBackend(value)
+    form.value.imageModel = value
     if (imageModel.value) form.value.steps = imageModel.value.defaultSteps
   },
 })
@@ -321,7 +328,7 @@ function saveNow() {
               <label class="flex flex-col gap-1">
                 <span class="text-sm text-muted">Default Image Model</span>
                 <SelectField v-model="defaultImageModel" data-image-model>
-                  <BackendOptions :groups="imageModelGroups" />
+                  <option v-for="m in imageModels" :key="m.id" :value="m.id">{{ m.label }}</option>
                 </SelectField>
                 <span class="text-sm text-muted">
                   What a new Session renders with; each Session can switch to another. mflux runs
@@ -391,7 +398,7 @@ function saveNow() {
               </ToggleSwitch>
 
               <ToggleSwitch
-                v-if="form.imageBackend === 'comfyui'"
+                v-if="whereTo('images')?.kind === 'comfyui'"
                 v-model="form.previews"
                 title="Show the picture forming"
                 data-previews

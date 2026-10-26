@@ -1,4 +1,5 @@
 import { join } from '@std/path'
+import type { Backend } from '../backends.ts'
 import type { Settings } from '../settings.ts'
 import type { EditModel } from './editModels.ts'
 
@@ -6,6 +7,8 @@ export interface ImageRequest {
   prompt: string
   seed: number
   settings: Settings
+  /** The Backend it renders on, as the caller found it (`backendOf`); else found when it renders. */
+  backend?: Backend
   /** Directory to write into. */
   dir: string
   /** File name without extension; the generator picks the extension. */

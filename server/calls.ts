@@ -18,6 +18,7 @@ import type { SceneMaker, SceneRequest } from './3d/scene.ts'
 import type { StyleEmbedder } from './style/embedder.ts'
 import type { VoiceEngine } from './voice/voice.ts'
 import { RENDER_SETTINGS } from './settings.ts'
+import { imageKindOf } from './backends.ts'
 
 /** Where the calls of a piece of work are logged. */
 interface CallScope {
@@ -264,7 +265,7 @@ export function loggedImages(images: ImageGenerator): ImageGenerator {
         {
           prompt: req.prompt,
           seed: req.seed,
-          imageBackend: settings.imageBackend,
+          imageBackend: req.backend && imageKindOf(req.backend),
           steps: settings.steps,
           ...Object.fromEntries(RENDER_SETTINGS.map((key) => [key, settings[key]])),
         },

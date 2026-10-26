@@ -139,6 +139,9 @@ Deno.test('GET /api/settings/options lists Text and Image Models', async () => {
   assertEquals(body.textModels, ['llama3:latest', 'qwen3.8:27b-mlx'])
   assertEquals(body.thinkingModels, ['qwen3.8:27b-mlx'])
   assertEquals(body.imageModels.mflux[0].id, 'flux2-klein-4b')
+  // Where each model's renders go now: here on mflux, with no ComfyUI listed.
+  assertEquals(body.imageModelsOn['qwen-image-2.1'], 'mflux')
+  assertEquals('moss-image' in body.imageModelsOn, false)
   assertEquals(body.imageModels.comfyui.map((m: { id: string }) => m.id), [
     'qwen-image-2.1',
     'qwen-image-2.1-turbo',
@@ -220,12 +223,8 @@ Deno.test('Adding a ComfyUI makes pictures, Upscale and voices available where m
   for (const extra of ['images', 'upscale', 'edits', 'voices']) {
     assertEquals(after[extra].available, true)
   }
-  // An Image Model must be the backend's own: Ideogram 4 is mflux's only.
-  const wrong = await call('PUT', '/api/settings', {
-    ...settings,
-    imageBackend: 'comfyui',
-    imageModel: 'ideogram-4',
-  })
+  // An Image Model must be one some backend has.
+  const wrong = await call('PUT', '/api/settings', { ...settings, imageModel: 'dall-e' })
   assertEquals(wrong.status, 400)
 })
 

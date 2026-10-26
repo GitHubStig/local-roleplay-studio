@@ -1,40 +1,54 @@
 <script setup lang="ts" generic="S extends { id: string; settings: Settings; frames: readonly PicturedFrame[] }">
 import { computed, ref } from 'vue'
-import { type PicturedFrame, setImageModel, type Settings } from '../api'
-import BackendOptions from './BackendOptions.vue'
 import {
-  backendGroups,
-  fromOnBackend,
-  onBackend,
-  useImageModels,
+  IMAGE_BACKEND_NAMES,
+  type ImageBackend,
+  type PicturedFrame,
+  setImageModel,
+  type Settings,
+} from '../api'
+import SelectField from './SelectField.vue'
+import {
+  imageModelChoices,
+  imageModelOf,
   useSettingsOptions,
 } from '../composables/useSettingsOptions'
 
 /**
  * The Session's Image Model, switched here (Settings has the one new Sessions start with), and the
- * steps it renders at. Where more than one Image backend can render here, each has its models, so
- * the Session can move to another backend too. Switching keeps the old model's pictures, shown
- * again on switching back; a Frame with none by the new model shows changed since render. A model
- * of the same name on another backend counts as the same, so its pictures stay. Renders already
+ * steps it renders at. Every model a Backend listed in Settings can render, by name: where it
+ * renders is Settings' to say (ADR 0022). Switching keeps the old model's pictures, shown again on
+ * switching back; a Frame with none by the new model shows changed since render. Renders already
  * under way finish on the old model.
  */
 const props = defineProps<{ session: S }>()
 const emit = defineEmits<{ switched: [session: S]; failed: [message: string] }>()
 const options = useSettingsOptions()
-const { modelsOf } = useImageModels()
 const switching = ref(false)
+const current = computed(() => props.session.settings.imageModel)
+/** The kind of backend a model's renders go to now, as Settings say. */
+const on = (id: string) => options.value?.imageModelsOn?.[id]
 const choices = computed(() =>
-  backendGroups(options.value, props.session.settings.imageBackend, modelsOf)
+  imageModelChoices(options.value, current.value).map((m) => {
+    const backend = on(m.id)
+    return { ...m, backend, label: backend ? `${m.label} · ${IMAGE_BACKEND_NAMES[backend]}` : m.label }
+  })
 )
-/** The Session's backend and model, as the options' values name them. */
-const current = computed(() => {
-  const { imageBackend, imageModel } = props.session.settings
-  return onBackend(imageBackend, imageModel)
-})
-const model = computed(() => {
-  const { imageBackend, imageModel } = props.session.settings
-  return modelsOf(imageBackend).find((m) => m.id === imageModel)
-})
+/**
+ * The models grouped by where their renders go now, as Settings say: a model on both backends is
+ * in one, and goes to the other only by changing Settings ("Render on"). The Session's own model,
+ * if no Backend renders it now, stands apart.
+ */
+const groups = computed(() =>
+  [
+    ...(Object.keys(IMAGE_BACKEND_NAMES) as ImageBackend[]).map((backend) => ({
+      name: IMAGE_BACKEND_NAMES[backend],
+      models: choices.value.filter((m) => m.backend === backend),
+    })),
+    { name: 'Not available now', models: choices.value.filter((m) => !m.backend) },
+  ].filter((g) => g.models.length)
+)
+const model = computed(() => imageModelOf(options.value, current.value, on(current.value)))
 /**
  * The steps a render takes: the Session's, or, for a model with only some (presets), its default
  * where the Session's aren't one of them (as `mfluxArgs` renders it).
@@ -45,15 +59,21 @@ const steps = computed(() => {
   return !stepChoices || stepChoices.includes(steps) ? steps : model.value!.defaultSteps
 })
 
-async function pick(select: HTMLSelectElement) {
+/** The model being switched to, shown until it's in, or the Session's own if that failed. */
+const picked = ref<string>()
+const selected = computed({
+  get: () => picked.value ?? current.value,
+  set: (id: string) => pick(id),
+})
+async function pick(id: string) {
+  picked.value = id
   switching.value = true
   try {
-    const [backend, id] = fromOnBackend(select.value)
-    emit('switched', await setImageModel<S>(props.session.id, id, backend))
+    emit('switched', await setImageModel<S>(props.session.id, id))
   } catch (err) {
-    select.value = current.value
     emit('failed', (err as Error).message)
   } finally {
+    picked.value = undefined
     switching.value = false
   }
 }
@@ -63,22 +83,25 @@ async function pick(select: HTMLSelectElement) {
   <div class="flex items-center gap-1.5 text-muted">
     <label
       class="flex items-center gap-1.5"
-      title="The Image Model this Session renders with, and on which backend; Settings has the one new Sessions start with"
+      title="The Image Model this Session renders with, and where its renders go now (Settings' Machines and Images tabs); Settings has the one new Sessions start with"
     >
-      Image Model
-      <select
-        class="rounded border border-line bg-surface px-1.5 py-0.5 text-fg"
-        :value="current"
-        :disabled="switching || choices.flatMap((c) => c.models).length < 2"
+      <span class="whitespace-nowrap">Image Model</span>
+      <SelectField
+        v-model="selected"
+        compact
+        class="rounded border border-line bg-surface py-0.5 pl-1.5 text-fg"
+        :disabled="switching || choices.length < 2"
         data-image-model
-        @change="pick($event.target as HTMLSelectElement)"
       >
-        <!-- Its own model, even before the list loads. -->
-        <option v-if="!model" :value="current">{{ session.settings.imageModel }}</option>
-        <BackendOptions :groups="choices" />
-      </select>
+        <template v-if="groups.length < 2">
+          <option v-for="m in choices" :key="m.id" :value="m.id">{{ m.label }}</option>
+        </template>
+        <optgroup v-for="g in groups" v-else :key="g.name" :label="g.name">
+          <option v-for="m in g.models" :key="m.id" :value="m.id">{{ m.label }}</option>
+        </optgroup>
+      </SelectField>
     </label>
-    <span title="The steps each render takes with this model" data-image-steps>
+    <span class="whitespace-nowrap" title="The steps each render takes with this model" data-image-steps>
       · {{ steps }} {{ steps === 1 ? 'step' : 'steps' }}
     </span>
   </div>

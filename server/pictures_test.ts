@@ -2,6 +2,7 @@ import { assertEquals, assertRejects } from '@std/assert'
 import { join } from '@std/path'
 import { renderChainFrame, runChainFrame, undoLatestFrame } from './chain/frames.ts'
 import { findImageModel } from './images/imageModels.ts'
+import { type Backend, HERE } from './backends.ts'
 import {
   changedSinceRender,
   changePicture,
@@ -79,6 +80,8 @@ async function chainOfTwo(root: string) {
     store,
     textModel: scriptedTextModel([reply('standing'), reply('sitting')]),
     imageGenerator: images,
+    // Renders go to this machine's mflux, unless a test sends them elsewhere.
+    backendOf: () => Promise.resolve<Backend | undefined>(HERE),
   }
   await runChainFrame(deps, session, testScenario, null, () => {}, signal())
   await runChainFrame(deps, session, testScenario, 'Sit', () => {}, signal())
@@ -101,7 +104,7 @@ Deno.test('Switching model changes only the model and its steps', () =>
     await assertRejects(
       () => switchImageModel(store, switched, 'no-such-model'),
       ImageModelError,
-      'mflux has no Image Model "no-such-model"',
+      'There\'s no Image Model "no-such-model"',
     )
   }))
 
@@ -132,39 +135,29 @@ Deno.test("A render on the new model keeps the old one's picture, shown again on
     assertEquals([await exists(old.image), await exists(remade.image)], [false, false])
   }))
 
-Deno.test("Switching backend keeps the same model's pictures, each saying the backend that made it", () =>
+Deno.test("The same model's pictures stay wherever it renders, each saying the backend that made it", () =>
   withTempDir(async (root) => {
-    const { store, deps, images } = await chainOfTwo(root)
+    const { store, deps } = await chainOfTwo(root)
     const loaded = (await store.load('s1')) as ChainSession
     assertEquals(loaded.frames[1].pictures[0].imageBackend, 'mflux')
-    // Frame 0's picture is from before pictures said their backend.
-    const { imageBackend: _, ...older } = loaded.frames[0].pictures[0]
-    await store.save({
-      ...loaded,
-      frames: [{ ...loaded.frames[0], pictures: [older] }, loaded.frames[1]],
-    })
 
     await assertRejects(
-      () => switchImageModel(store, loaded, KREA, 'comfyui'),
+      () => switchImageModel(store, loaded, 'dall-e'),
       ImageModelError,
-      'comfyui has no Image Model "krea-2"',
+      'There\'s no Image Model "dall-e"',
     )
-    const comfy = await switchImageModel(store, loaded, QWEN, 'comfyui') as ChainSession
-    assertEquals([comfy.settings.imageBackend, comfy.settings.imageModel, comfy.settings.steps], [
-      'comfyui',
-      QWEN,
-      findImageModel('comfyui', QWEN)!.defaultSteps,
-    ])
-    assertEquals(comfy.frames.map((f) => f.pictures.map((p) => p.imageBackend)), [['mflux'], [
-      'mflux',
-    ]])
-    const [shown] = comfy.frames[1].pictures
-    assertEquals(shownPicture(comfy.frames[1], QWEN), shown)
-    assertEquals(changedSinceRender(shown, QWEN), false)
+    // Steps start at the model's default where it would render: Z-Image Turbo takes 9 on mflux,
+    // 8 on ComfyUI.
+    const z = await switchImageModel(store, loaded, 'z-image-turbo', 'comfyui')
+    assertEquals([z.settings.imageModel, z.settings.steps], ['z-image-turbo', 8])
+    const qwen = await switchImageModel(store, z, QWEN) as ChainSession
+    assertEquals(shownPicture(qwen.frames[1], QWEN), loaded.frames[1].pictures[0])
 
-    // Rendered again on ComfyUI, it takes the mflux picture's place, as the same model.
-    const rendered = await renderChainFrame(deps, comfy, 1, () => {}, signal())
-    assertEquals(images.settings.at(-1)!.imageBackend, 'comfyui')
+    // Settings send renders to a ComfyUI now: rendered there, it takes the mflux picture's place,
+    // as the same model.
+    const pc: Backend = { id: 'pc', kind: 'comfyui', address: 'http://192.168.50.85:8188' }
+    const onPc = { ...deps, backendOf: () => Promise.resolve<Backend | undefined>(pc) }
+    const rendered = await renderChainFrame(onPc, qwen, 1, () => {}, signal())
     assertEquals(rendered.frames[1].pictures.map((p) => [p.imageModel, p.imageBackend]), [
       [QWEN, 'comfyui'],
     ])

@@ -14,18 +14,17 @@ import {
   type Work,
 } from './backends.ts'
 import { type EditModel, findEditModel } from './images/editModels.ts'
-import type { ImageBackendKind } from './images/imageModels.ts'
+import { findImageModel, type ImageBackendKind } from './images/imageModels.ts'
 import type { Availabilities } from './features.ts'
 import type { JobKind } from './jobs.ts'
 import type { Settings } from './settings.ts'
 
 /**
- * A heavy job, as the render queue is given it: a render by an Image Model of its Session's kind of
- * Backend, an edit by its edit model's, an upscale or a voice. Any other (SHARP, a figure) runs
- * here.
+ * A heavy job, as the render queue is given it: a render by its Image Model, an edit by its edit
+ * model's kind of Backend, an upscale or a voice. Any other (SHARP, a figure) runs here.
  */
 export type HeavyJob =
-  | { kind: 'render'; settings: Pick<Settings, 'imageBackend'> }
+  | { kind: 'render'; model: string }
   | { kind: 'edit'; backend: ImageBackendKind }
   | { kind: 'upscale' | 'voice' }
 
@@ -45,12 +44,18 @@ const WORK_OF: Record<HeavyJob['kind'], Work> = {
   voice: 'voices',
 }
 
-/** Whether `backend` can run `job`: this machine only what it has, a render on its model's kind. */
+/**
+ * Whether `backend` can run `job`: this machine only what it has; a render where its Image Model
+ * is, an edit on its edit model's kind of Backend.
+ */
 export function canRun(backend: Backend, job: HeavyJob, here: Here): boolean {
   const work = WORK_OF[job.kind]
   if (!BACKEND_WORK[backend.kind].includes(work)) return false
   if (backend.kind === 'here' && !here[work as keyof Here].available) return false
-  if (job.kind === 'render') return imageKindOf(backend) === job.settings.imageBackend
+  if (job.kind === 'render') {
+    const kind = imageKindOf(backend)
+    return !!kind && !!findImageModel(kind, job.model)
+  }
   if (job.kind === 'edit') return imageKindOf(backend) === job.backend
   return true
 }
@@ -154,7 +159,7 @@ export function jobBackend(
     case 'picture':
       return opts.text
     case 'render':
-      return backendOf({ kind: 'render', settings: session }, now, here)
+      return backendOf({ kind: 'render', model: session.imageModel }, now, here)
     case 'edit':
       return backendOf(editJob(opts.editModel ?? now.editModel), now, here)
     case 'upscale':

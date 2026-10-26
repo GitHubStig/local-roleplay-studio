@@ -3,6 +3,7 @@ import {
   getSettingsOptions,
   IMAGE_BACKEND_NAMES,
   type ImageBackend,
+  type ImageModelOption,
   type Job,
   type Picture,
   type SettingsOptions,
@@ -53,7 +54,11 @@ export function useImageModels() {
     ]
   }
   /** "Render by Krea 2 · mflux": what a job is called, with the Image Model a render goes by. */
-  const jobName = (job: Job) => JOB_NAMES[job.kind] + (job.image ? ` ${byOf(job.image)}` : '')
+  const jobName = (job: Job) =>
+    JOB_NAMES[job.kind] +
+    (job.image
+      ? ` ${byOf({ imageModel: job.image.imageModel, imageBackend: job.imageBackend })}`
+      : '')
   return { modelsOf, find, labelOf, byOf, renderedParts, jobName }
 }
 
@@ -74,36 +79,36 @@ export function editModelChoices(models: SettingsOptions['editModels'] = []) {
   return { choices, startOn }
 }
 
-/** "comfyui/qwen-image-2.1": a model on one backend, as a list across backends names it. */
-export const onBackend = (backend: ImageBackend, id: string) => `${backend}/${id}`
-/** The backend and model a list's value (`onBackend`) names. */
-export const fromOnBackend = (value: string) => value.split('/') as [ImageBackend, string]
-
-/** One backend's models in a list across backends, each with its `onBackend` value. */
-export interface BackendGroup {
-  backend: ImageBackend
-  name: string
-  models: { id: string; label: string; value: string }[]
+/**
+ * Image Model `id` as the screens see it (ADR 0022: the same name is the same model): `prefer`'s
+ * if that kind of backend has it, else the first that does.
+ */
+export function imageModelOf(
+  options: SettingsOptions | null | undefined,
+  id: string,
+  prefer?: ImageBackend,
+): ImageModelOption | undefined {
+  const on = (backend: ImageBackend) => options?.imageModels[backend]?.find((m) => m.id === id)
+  return (prefer && on(prefer)) ??
+    (Object.keys(options?.imageModels ?? {}) as ImageBackend[]).map(on).find(Boolean)
 }
 
 /**
- * Models across the Image backends, a group per backend: those that can render here, and always
- * `own` (the Session's, or Settings'), wherever it runs. `modelsOf` gives each backend's models
- * (its Image Models, or its upscalers).
+ * The Image Models to choose from, by name: each one a kind of backend that can render here has
+ * (`backends`, as Settings were saved unless told), once, and always `own` (the Session's, or
+ * Settings'), wherever it runs. Each is named as the backend it renders on (`on`) names it: a
+ * model may be quantized on one ("Z-Image Turbo (4-bit)") and not on another.
  */
-export function backendGroups(
+export function imageModelChoices(
   options: SettingsOptions | null | undefined,
-  own: ImageBackend,
-  modelsOf: (backend: ImageBackend) => readonly { id: string; label: string }[],
-): BackendGroup[] {
-  const here = options?.imageBackends ?? []
-  return (here.includes(own) ? here : [own, ...here]).map((backend) => ({
-    backend,
-    name: IMAGE_BACKEND_NAMES[backend],
-    models: modelsOf(backend).map((m) => ({
-      id: m.id,
-      label: m.label,
-      value: onBackend(backend, m.id),
-    })),
-  }))
+  own?: string,
+  backends: readonly ImageBackend[] = options?.imageBackends ?? [],
+  on: (id: string) => ImageBackend | undefined = (id) => options?.imageModelsOn?.[id],
+): { id: string; label: string }[] {
+  const ids = new Set<string>()
+  for (const backend of backends) {
+    for (const { id } of options?.imageModels[backend] ?? []) ids.add(id)
+  }
+  if (own) ids.add(own)
+  return [...ids].map((id) => ({ id, label: imageModelOf(options, id, on(id))?.label ?? id }))
 }

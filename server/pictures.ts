@@ -1,7 +1,7 @@
 import { join } from '@std/path'
 import type { Figure } from './3d/figure.ts'
 import type { Scene } from './3d/scene.ts'
-import { findImageModel, type ImageBackendKind } from './images/imageModels.ts'
+import { anyImageModel, type ImageBackendKind } from './images/imageModels.ts'
 import type { Session, SessionStore } from './session.ts'
 import { updateSession } from './update.ts'
 
@@ -199,35 +199,25 @@ export async function removeFiles(dir: string, files: string[]): Promise<void> {
 export class ImageModelError extends Error {}
 
 /**
- * Switches a Session to Image Model `model` of Image backend `backend` (its own by default),
- * resetting the steps to that model's default (the seed, size and everything else stay). Each Frame
- * then shows its picture by that model if it has one (`shownPicture`): by its name, whichever
- * backend made it, so the same model on another backend needs no render. Renders already under way
- * finish on the model and backend they started with; later ones use the new ones.
+ * Switches a Session to Image Model `model`, resetting the steps to its default on `backend`, the
+ * kind of Backend it would render on now (the seed, size and everything else stay). Each Frame then
+ * shows its picture by that model if it has one (`shownPicture`): by its name, whichever backend
+ * made it (ADR 0022). Renders already under way finish on the model they started with; later ones
+ * use the new one.
  */
 export async function switchImageModel(
   store: SessionStore,
   session: Session,
   model: string,
-  backend: ImageBackendKind = session.settings.imageBackend,
+  backend?: ImageBackendKind,
 ): Promise<Session> {
-  const option = findImageModel(backend, model)
-  if (!option) throw new ImageModelError(`${backend} has no Image Model "${model}"`)
+  const option = anyImageModel(model, backend)
+  if (!option) throw new ImageModelError(`There's no Image Model "${model}"`)
   return await updateSession(store, session.id, session.kind, (latest: Session) => {
-    const { imageBackend, imageModel } = latest.settings
-    if (imageModel === model && imageBackend === backend) return latest
+    if (latest.settings.imageModel === model) return latest
     return {
       ...latest,
-      settings: {
-        ...latest.settings,
-        imageBackend: backend,
-        imageModel: model,
-        steps: option.defaultSteps,
-      },
-      frames: imageBackend === backend ? latest.frames : latest.frames.map((f) => ({
-        ...f,
-        pictures: f.pictures.map((p) => (p.imageBackend ? p : { ...p, imageBackend })),
-      })),
+      settings: { ...latest.settings, imageModel: model, steps: option.defaultSteps },
     } as Session
   })
 }

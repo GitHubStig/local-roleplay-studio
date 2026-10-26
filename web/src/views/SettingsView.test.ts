@@ -21,7 +21,6 @@ const settings: api.Settings = {
     { id: 'ollama', kind: 'ollama', address: '' },
   ],
   runOn: { text: 'ollama', images: 'here', upscale: 'here', edits: 'here', voices: 'here' },
-  imageBackend: 'mflux',
   textModel: 'llama3:latest',
   thinking: false,
   imageModel: 'z-image-turbo',
@@ -161,15 +160,12 @@ describe('SettingsView', () => {
       error: "Couldn't reach ComfyUI at http://127.0.0.1:8188: is it running?",
     })
     await addBackend(wrapper, 'comfyui')
-    // Once one's added, the saved model is still listed, beside ComfyUI's.
-    const groups = () =>
-      wrapper.findAll('[data-image-model] optgroup').map((g) => [
-        g.attributes('label'),
-        g.findAll('option').map((o) => o.text()),
-      ])
-    expect(groups().map(([backend]) => backend)).toEqual(['mflux', 'ComfyUI'])
-    expect(groups()[1]).toEqual(['ComfyUI', ['Qwen-Image 2.1 · ComfyUI']])
-    await wrapper.find('[data-image-model]').setValue('comfyui/qwen-image-2.1')
+    // Once one's added, its models are listed by name, and the saved one stays though mflux's.
+    expect(wrapper.findAll('[data-image-model] option').map((o) => o.text())).toEqual([
+      'Qwen-Image 2.1',
+      'Z-Image Turbo',
+    ])
+    await wrapper.find('[data-image-model]').setValue('qwen-image-2.1')
     // Checked as soon as it's added: down, until ComfyUI is started and checked again.
     await vi.advanceTimersByTimeAsync(600)
     await flushPromises()
@@ -208,7 +204,6 @@ describe('SettingsView', () => {
         kind: 'comfyui',
         address: 'http://192.168.1.20:8188',
       }],
-      imageBackend: 'comfyui',
       imageModel: 'qwen-image-2.1',
       steps: 25,
     }))
@@ -241,7 +236,6 @@ describe('SettingsView', () => {
     await wrapper.find('form').trigger('submit')
     await flushPromises()
     expect(api.saveSettings).toHaveBeenCalledWith(expect.objectContaining({
-      imageBackend: 'mflux',
       runOn: { ...settings.runOn, upscale: 'comfyui' },
     }))
   })
@@ -330,16 +324,16 @@ describe('SettingsView', () => {
     const wrapper = mount(SettingsView)
     await flushPromises()
     expect(wrapper.find('[data-step-cache]').exists()).toBe(false)
-    await wrapper.find('[data-image-model]').setValue('mflux/qwen-image-2.1')
+    await wrapper.find('[data-image-model]').setValue('qwen-image-2.1')
     expect(wrapper.find('[data-step-cache]').exists()).toBe(true)
-    await wrapper.find('[data-image-model]').setValue('mflux/qwen-image-2.1-viggle')
+    await wrapper.find('[data-image-model]').setValue('qwen-image-2.1-viggle')
     expect(wrapper.find('[data-step-cache]').exists()).toBe(false)
   })
 
   it('offers only the steps a model has presets for, picked from a list', async () => {
     const wrapper = mount(SettingsView)
     await flushPromises()
-    await wrapper.find('[data-image-model]').setValue('mflux/ideogram-4')
+    await wrapper.find('[data-image-model]').setValue('ideogram-4')
     const choices = () => wrapper.find('[data-step-choices]')
     const select = () => choices().element as HTMLSelectElement
     expect(choices().findAll('option').map((o) => o.text())).toEqual(['12', '20', '48'])
@@ -347,19 +341,28 @@ describe('SettingsView', () => {
     await choices().setValue('12')
     expect(select().value).toBe('12')
     // One preset only: shown, not chosen.
-    await wrapper.find('[data-image-model]').setValue('mflux/qwen-image-2.1-viggle')
+    await wrapper.find('[data-image-model]').setValue('qwen-image-2.1-viggle')
     expect([select().value, select().disabled]).toEqual(['6', true])
     // Any count for the others.
-    await wrapper.find('[data-image-model]').setValue('mflux/qwen-image-2.1')
+    await wrapper.find('[data-image-model]').setValue('qwen-image-2.1')
     expect(choices().exists()).toBe(false)
     expect((wrapper.find('input[type=number]').element as HTMLInputElement).value).toBe('25')
   })
 
-  it('offers the picture forming only on ComfyUI, and saves it off', async () => {
+  /** Settings with a ComfyUI listed beside this machine, and Qwen-Image 2.1, which both have. */
+  const withComfyUI = () =>
+    vi.mocked(api.getSettings).mockResolvedValue({
+      ...structuredClone(settings),
+      backends: [...settings.backends, { id: 'pc', kind: 'comfyui', address: '' }],
+      imageModel: 'qwen-image-2.1',
+    })
+
+  it('offers the picture forming only where renders go to a ComfyUI, and saves it off', async () => {
+    withComfyUI()
     const wrapper = mount(SettingsView)
     await flushPromises()
     expect(wrapper.find('[data-previews]').exists()).toBe(false)
-    await wrapper.find('[data-image-model]').setValue('comfyui/qwen-image-2.1')
+    await wrapper.find('[data-run-on="images"] select').setValue('pc')
     await wrapper.find('[data-previews] input').setValue(false)
     await wrapper.find('form').trigger('submit')
     await flushPromises()
@@ -375,15 +378,21 @@ describe('SettingsView', () => {
     await wrapper.find('form').trigger('submit')
     await flushPromises()
     expect(api.saveSettings).toHaveBeenCalledWith(expect.objectContaining({ float16: false }))
-    // ComfyUI's models don't take it.
-    await wrapper.find('[data-image-model]').setValue('comfyui/qwen-image-2.1')
+  })
+
+  it('offers float16 only where renders go to mflux, which takes it', async () => {
+    withComfyUI()
+    const wrapper = mount(SettingsView)
+    await flushPromises()
+    expect(wrapper.find('[data-float16]').exists()).toBe(true)
+    await wrapper.find('[data-run-on="images"] select').setValue('pc')
     expect(wrapper.find('[data-float16]').exists()).toBe(false)
   })
 
   it('resets steps to the chosen Image Model default', async () => {
     const wrapper = mount(SettingsView)
     await flushPromises()
-    await wrapper.find('[data-image-model]').setValue('mflux/flux2-klein-4b')
+    await wrapper.find('[data-image-model]').setValue('flux2-klein-4b')
     expect((wrapper.find('input[type=number]').element as HTMLInputElement).value).toBe('4')
   })
 

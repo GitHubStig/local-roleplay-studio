@@ -73,7 +73,6 @@ beforeEach(() => {
       { id: 'ollama', kind: 'ollama', address: '' },
     ],
     runOn: { text: 'ollama', images: 'here', upscale: 'here', edits: 'here', voices: 'here' },
-    imageBackend: 'mflux',
     textModel: 'llama3:latest',
     thinking: false,
     imageModel: 'flux2-klein-4b',

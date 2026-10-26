@@ -9,10 +9,13 @@
  * queue. What a job does is up to its Session's kind (`JobRunner`).
  */
 import { join } from '@std/path'
+import type { Backend } from './backends.ts'
 import type { Feature } from './features.ts'
 import type { Phase } from './frames.ts'
 import { error, json, readJson, type Route } from './http.ts'
 import { EDIT_MODELS, type EditModel, findEditModel } from './images/editModels.ts'
+import type { ImageBackendKind } from './images/imageModels.ts'
+import { machineOf } from './machine.ts'
 import type { Session, SessionStore } from './session.ts'
 import type { Settings } from './settings.ts'
 
@@ -102,27 +105,42 @@ export interface Job {
    * Session switches to meanwhile, so it runs where it was queued to (`machine`).
    */
   image?: ImageChoice
+  /**
+   * The kind of backend its render runs on, once it starts: for the page, "by Krea 2 · mflux", and
+   * whether there's a picture forming to show (ComfyUI's previews).
+   */
+  imageBackend?: ImageBackendKind
   /** An edit's order. Its painted area is left out of the list the page is sent (`list`). */
   edit?: EditOrder
 }
 
-/** The Session settings that say which Image Model renders, and on which backend. */
-export type ImageChoice = Pick<Settings, 'imageBackend' | 'imageModel' | 'steps'>
+/** The Session settings that say which Image Model renders. */
+export type ImageChoice = Pick<Settings, 'imageModel' | 'steps'>
 
 /** The Image Model a render of `session` queued now keeps (`Job.image`). */
 export const imageChoiceOf = ({ settings }: Session): ImageChoice => ({
-  imageBackend: settings.imageBackend,
   imageModel: settings.imageModel,
   steps: settings.steps,
 })
 
 /** `session` as `job` renders it: with the Image Model it was queued with, if it's a render. */
 export const asQueued = <S extends Session>(session: S, job: Job): S =>
-  job.image ? { ...session, settings: { ...session.settings, ...job.image } } : session
+  job.image
+    ? {
+      ...session,
+      settings: { ...session.settings, imageModel: job.image.imageModel, steps: job.image.steps },
+    }
+    : session
 
 /** What a running job reports: its phase, or its progress through the steps. */
 export type JobEmit = (
-  event: { type: string; phase?: Phase; step?: number; total?: number },
+  event: {
+    type: string
+    phase?: Phase
+    step?: number
+    total?: number
+    imageBackend?: ImageBackendKind
+  },
 ) => void
 
 /** Does `job` for Session `sessionId`, reporting as it goes; throws if it fails. */
@@ -359,6 +377,7 @@ export class SessionJobs {
     job.phase = 'text'
     const emit: JobEmit = (event) => {
       if (event.type === 'phase' && event.phase) job.phase = event.phase
+      if (event.imageBackend) job.imageBackend = event.imageBackend
       if (event.type === 'progress') job.progress = { step: event.step!, total: event.total! }
     }
     this.#run(sessionId, job, emit, controller.signal)
@@ -400,10 +419,10 @@ export interface JobRoutesContext {
     edit?: EditOrder,
   ): Promise<Response | null>
   /**
-   * Which machine `kind` would run on for `session` (`machineKey`), as an edit is told; left out,
-   * all run here.
+   * Which Backend `kind` would go to for `session` now, as an edit is told (`jobBackend`), and so
+   * which machine it takes turns on; left out, all run here.
    */
-  machineOf?(session: Session, kind: JobKind, edit?: EditOrder): Promise<string>
+  backendOf?(session: Session, kind: JobKind, edit?: EditOrder): Promise<Backend | undefined>
 }
 
 /**
@@ -487,11 +506,12 @@ export function jobRoutes(ctx: JobRoutesContext): Route[] {
         await Deno.writeFile(join(ctx.store.dir(session.id), file), png)
         edit.mask = file
       }
+      const backend = await ctx.backendOf?.(session, kind, edit)
       ctx.jobs.enqueue(
         session.id,
         kind,
         index,
-        await ctx.machineOf?.(session, kind, edit),
+        ctx.backendOf ? machineOf(backend) : undefined,
         kind === 'render' ? imageChoiceOf(session) : undefined,
         edit,
       )

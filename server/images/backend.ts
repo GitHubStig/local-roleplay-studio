@@ -15,16 +15,16 @@ export function imageBackends(backends: {
   /** The Backend `job` goes to now; none when no Backend can run it. */
   backendOf: (job: HeavyJob) => Promise<Backend | undefined>
 }): ImageGenerator {
-  const on = async (job: HeavyJob, what: string): Promise<ImageGenerator> => {
-    const backend = await backends.backendOf(job)
+  const on = async (job: HeavyJob, what: string, given?: Backend): Promise<ImageGenerator> => {
+    const backend = given ?? await backends.backendOf(job)
     if (backend?.kind === 'comfyui') return backends.comfyui(backend.address)
     if (backend?.kind === 'here' && backends.mflux) return backends.mflux
     throw new Error(`No Backend can ${what}: add one in Settings, on the Machines tab`)
   }
   return {
     async generate(req, signal, onProgress, onDownload, onPreview) {
-      const job: HeavyJob = { kind: 'render', settings: req.settings }
-      return (await on(job, `render ${req.settings.imageModel}`))
+      const job: HeavyJob = { kind: 'render', model: req.settings.imageModel }
+      return (await on(job, `render ${req.settings.imageModel}`, req.backend))
         .generate(req, signal, onProgress, onDownload, onPreview)
     },
     async upscale(req, signal, onProgress, onDownload) {

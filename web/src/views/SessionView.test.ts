@@ -63,7 +63,7 @@ const session = (frames: api.ChainFrame[] = []): api.ChainSession => ({
   kind: 'chain',
   brief: null,
   scenarioId: 'tavern',
-  settings: { imageBackend: 'mflux', imageModel: 'qwen-image-2.1' } as api.Settings,
+  settings: { imageModel: 'qwen-image-2.1' } as api.Settings,
   seed: 1,
   createdAt: '2026-09-24T00:00:00.000Z',
   frames,
@@ -100,7 +100,11 @@ const buttonNamed = (wrapper: Awaited<ReturnType<typeof mountIt>>['wrapper'], na
 
 beforeEach(async () => {
   vi.mocked(api.getSettingsOptions).mockResolvedValue(
-    { features: ALL_AVAILABLE, imageModels: IMAGE_MODELS } as api.SettingsOptions,
+    {
+      features: ALL_AVAILABLE,
+      imageModels: IMAGE_MODELS,
+      imageBackends: ['mflux'],
+    } as api.SettingsOptions,
   )
   await loadSettingsOptions()
   localStorage.clear()
@@ -262,10 +266,7 @@ describe('SessionView', () => {
 
   it('puts a new Frame in the Frames at once, shown blank until its picture forms', async () => {
     let send!: (event: api.FrameEvent) => void
-    vi.mocked(api.getSession).mockResolvedValue({
-      ...session([frame(0, null)]),
-      settings: { imageBackend: 'comfyui' } as api.Settings,
-    })
+    vi.mocked(api.getSession).mockResolvedValue(session([frame(0, null)]))
     vi.mocked(api.streamFrame).mockImplementation((_id, _action, onEvent) => {
       send = onEvent
       return new Promise(() => {})
@@ -280,7 +281,8 @@ describe('SessionView', () => {
     // The Opening's picture is gone from the main panel: the new Frame has none yet.
     expect(wrapper.find('main [data-frame-picture]').exists()).toBe(false)
 
-    send({ type: 'phase', phase: 'image' })
+    // Rendering on ComfyUI, which sends a preview at each step.
+    send({ type: 'phase', phase: 'image', imageBackend: 'comfyui' })
     send({ type: 'progress', step: 3, total: 25 })
     await flushPromises()
     await loadImages()
@@ -515,7 +517,7 @@ describe('SessionView', () => {
     vi.mocked(api.getSession).mockResolvedValue(chain)
     const { wrapper } = await mountIt()
     const select = wrapper.find('[data-image-model]')
-    expect((select.element as HTMLSelectElement).value).toBe('mflux/qwen-image-2.1')
+    expect((select.element as HTMLSelectElement).value).toBe('qwen-image-2.1')
     // Up to date, it can still render again: with Settings' size and the rest as they are now.
     expect(wrapper.find('[data-changed]').exists()).toBe(false)
     expect(wrapper.find('[data-render-button]').text()).toBe('Re-render')
@@ -530,10 +532,10 @@ describe('SessionView', () => {
       ...chain,
       settings: { ...chain.settings, imageModel: 'flux2-klein-4b', steps: 4 },
     })
-    await select.setValue('mflux/flux2-klein-4b')
+    await select.setValue('flux2-klein-4b')
     await flushPromises()
-    expect(api.setImageModel).toHaveBeenCalledWith('s1', 'flux2-klein-4b', 'mflux')
-    expect((select.element as HTMLSelectElement).value).toBe('mflux/flux2-klein-4b')
+    expect(api.setImageModel).toHaveBeenCalledWith('s1', 'flux2-klein-4b')
+    expect((select.element as HTMLSelectElement).value).toBe('flux2-klein-4b')
     expect(wrapper.find('[data-image-steps]').text()).toBe('· 4 steps')
     expect(wrapper.find('[data-changed]').text()).toBe('Changed since render · by Qwen-Image 2.1')
     expect(wrapper.find('[data-render-button]').text()).toBe('Re-render')
@@ -554,19 +556,32 @@ describe('SessionView', () => {
     expect(wrapper.find('[data-rerendering]').text()).toBe('Rendering the image… step 2 of 4')
 
     // A failed switch puts the select back, and says why.
-    vi.mocked(api.setImageModel).mockRejectedValue(new Error('mflux has no Image Model "x"'))
-    await select.setValue('mflux/qwen-image-2.1')
+    vi.mocked(api.setImageModel).mockRejectedValue(new Error('No Backend renders x'))
+    await select.setValue('qwen-image-2.1')
     await flushPromises()
-    expect((select.element as HTMLSelectElement).value).toBe('mflux/flux2-klein-4b')
-    expect(wrapper.find('[data-frame-notice]').text()).toBe('mflux has no Image Model "x"')
+    expect((select.element as HTMLSelectElement).value).toBe('flux2-klein-4b')
+    expect(wrapper.find('[data-frame-notice]').text()).toBe('No Backend renders x')
   })
 
-  it('switches the Chain to the same model on another Image backend, keeping its pictures', async () => {
+  it('lists each Image Model once, by name, whichever backends have it, keeping its pictures', async () => {
     vi.mocked(api.getSettingsOptions).mockResolvedValue({
       features: ALL_AVAILABLE,
-      imageModels: { ...IMAGE_MODELS, comfyui: [{ ...IMAGE_MODELS.mflux[0], defaultSteps: 20 }] },
+      imageModels: {
+        ...IMAGE_MODELS,
+        comfyui: [IMAGE_MODELS.mflux[0], {
+          ...IMAGE_MODELS.mflux[0],
+          id: 'moss-image',
+          label: 'MOSS-Image',
+        }],
+      },
       imageBackends: ['mflux', 'comfyui'],
-    } as api.SettingsOptions)
+      // Settings send Qwen-Image 2.1 to the ComfyUI, though mflux has it too.
+      imageModelsOn: {
+        'qwen-image-2.1': 'comfyui',
+        'flux2-klein-4b': 'mflux',
+        'moss-image': 'comfyui',
+      } as const,
+    } as unknown as api.SettingsOptions)
     await loadSettingsOptions()
     const chain = session([
       frame(0, null),
@@ -578,36 +593,36 @@ describe('SessionView', () => {
     vi.mocked(api.getSession).mockResolvedValue(chain)
     const { wrapper } = await mountIt()
     const select = wrapper.find('[data-image-model]')
-    expect(select.findAll('optgroup').map((g) => g.attributes('label'))).toEqual([
-      'mflux',
-      'ComfyUI',
+    // Grouped by where renders go now: Qwen-Image 2.1, on both, is listed once, under ComfyUI.
+    expect(
+      select.findAll('optgroup').map((g) => [
+        g.attributes('label'),
+        g.findAll('option').map((o) => o.text()),
+      ]),
+    ).toEqual([
+      ['mflux', ['FLUX.2 Klein 4B · mflux']],
+      ['ComfyUI', ['Qwen-Image 2.1 · ComfyUI', 'MOSS-Image · ComfyUI']],
     ])
-    expect(select.findAll('option').map((o) => o.text())).toEqual([
-      'Qwen-Image 2.1 · mflux',
-      'FLUX.2 Klein 4B · mflux',
-      'Qwen-Image 2.1 · ComfyUI',
-    ])
-
-    vi.mocked(api.setImageModel).mockResolvedValue({
-      ...chain,
-      settings: { ...chain.settings, imageBackend: 'comfyui', steps: 20 },
-    })
-    await select.setValue('comfyui/qwen-image-2.1')
-    await flushPromises()
-    expect(api.setImageModel).toHaveBeenCalledWith('s1', 'qwen-image-2.1', 'comfyui')
-    expect(wrapper.find('[data-image-steps]').text()).toBe('· 20 steps')
-    // The same model's picture still counts as up to date, and says where it was made.
+    // Its picture says where it was made.
     expect(wrapper.find('[data-changed]').exists()).toBe(false)
     expect(wrapper.text()).toContain('Text 3.0 s · by Qwen-Image 2.1 · mflux')
     vi.mocked(api.getSettingsOptions).mockResolvedValue(
-      { features: ALL_AVAILABLE, imageModels: IMAGE_MODELS } as api.SettingsOptions,
+      {
+        features: ALL_AVAILABLE,
+        imageModels: IMAGE_MODELS,
+        imageBackends: ['mflux'],
+      } as api.SettingsOptions,
     )
     await loadSettingsOptions()
   })
 
   it('hides Upscale and the 3D buttons whose Features are off', async () => {
     vi.mocked(api.getSettingsOptions).mockResolvedValue(
-      { features: ALL_AVAILABLE, imageModels: IMAGE_MODELS } as api.SettingsOptions,
+      {
+        features: ALL_AVAILABLE,
+        imageModels: IMAGE_MODELS,
+        imageBackends: ['mflux'],
+      } as api.SettingsOptions,
     )
     vi.mocked(api.getSettings).mockResolvedValue({
       features: { ...ALL_ON, images: false, lito: false },
