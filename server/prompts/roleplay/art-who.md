@@ -1,6 +1,5 @@
 <!--
-Who a Roleplay picture adds and shows: the end of the Art Agent's picture call, prose or tags
-(art-frame.md, art-frame-tags.md). Newcomers join the Look, so someone the story brings in looks
+Who a Roleplay picture adds and shows: the end of the Art Agent's picture call (art-frame.md). Newcomers join the Look, so someone the story brings in looks
 the same in every later picture (ADR 0012).
 
 Values: identity (shared/identity.md), shown (shared/shown.md)

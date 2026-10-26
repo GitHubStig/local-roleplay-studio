@@ -7,7 +7,6 @@ import {
 } from './images/imageModels.ts'
 import { EDIT_MODELS, type EditModel } from './images/editModels.ts'
 import { type Upscaler, UPSCALERS } from './images/upscalers.ts'
-import { ART_STYLES, type ArtStyle } from './roleplay/art.ts'
 import { type Feature, FEATURES } from './features.ts'
 import {
   type Backend,
@@ -88,8 +87,6 @@ export interface Settings {
    * Read when a picture is made, so it applies to running Sessions too.
    */
   artModel: string
-  /** Whether the Art Agent writes prose (the default, and better) or tags. Applies at once. */
-  artStyle: ArtStyle
   /**
    * Which extras are switched on (all, by default): one that this machine can't run is off
    * whatever this says (`features.ts`). Read on every request, so it applies mid-Session too.
@@ -149,7 +146,6 @@ export const DEFAULT_SETTINGS: Settings = {
   upscaler: UPSCALERS[0].id,
   editModel: EDIT_MODELS[0].id,
   artModel: '',
-  artStyle: 'prose',
   features: Object.fromEntries(FEATURES.map((f) => [f, true])) as Record<Feature, boolean>,
   limits: true,
   callLog: false,
@@ -284,9 +280,6 @@ export function validateSettings(
   if (s.callLog !== undefined && typeof s.callLog !== 'boolean') {
     issues.push('callLog must be true or false')
   }
-  if (s.artStyle !== undefined && !ART_STYLES.includes(s.artStyle as ArtStyle)) {
-    issues.push(`artStyle must be one of: ${ART_STYLES.join(', ')}`)
-  }
   if (s.artModel !== undefined && typeof s.artModel !== 'string') {
     issues.push('artModel must be a string')
   }
@@ -328,7 +321,6 @@ export function validateSettings(
       upscaler: (s.upscaler as Upscaler | undefined) ?? DEFAULT_SETTINGS.upscaler,
       editModel: (s.editModel as EditModel | undefined) ?? DEFAULT_SETTINGS.editModel,
       artModel: (s.artModel as string | undefined) ?? '',
-      artStyle: (s.artStyle as ArtStyle | undefined) ?? 'prose',
       // One not mentioned (an older file, or a Feature added since) is on.
       features: { ...DEFAULT_SETTINGS.features, ...(features as Record<Feature, boolean>) },
       limits: (s.limits as boolean | undefined) ?? true,

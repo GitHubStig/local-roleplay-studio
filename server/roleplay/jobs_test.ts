@@ -212,27 +212,6 @@ Deno.test('Restarting a Roleplay takes it back to its Cast, deleting every excha
     assertEquals(begun.at(-1)![0], 'replied')
   }))
 
-Deno.test('Pictures are written as tags when Settings ask, recorded on the Frame', () =>
-  withTempDir(async (root) => {
-    const artist = scriptedRoleplayModel({
-      name: 'artist',
-      looks: [testLook('Ink.', 'Mira Vance, 34.', 'Sam Reyes, 25.')],
-      bodies: [artBody, artBody],
-    })
-    const { call, settings } = await roleplayWithArt(root, [], { roleplayModels: { artist } })
-    settings.current = { ...settings.current, artModel: 'artist', artStyle: 'tags' }
-    await call('POST', '/api/sessions/s1/jobs', { kind: 'picture', frameIndex: 0 })
-    assertEquals(await settled(call), [])
-    let session = await (await call('GET', '/api/sessions/s1')).json()
-    assertEquals(session.frames[0].pictureStyle, 'tags')
-    settings.current = { ...settings.current, artStyle: 'prose' }
-    await call('POST', '/api/sessions/s1/jobs', { kind: 'picture', frameIndex: 0 })
-    assertEquals(await settled(call), [])
-    session = await (await call('GET', '/api/sessions/s1')).json()
-    assertEquals(session.frames[0].pictureStyle, undefined)
-    assertEquals(artist.styles, ['tags', 'prose'])
-  }))
-
 Deno.test("Speaking a Frame designs the Character's voice first, and serves the audio", () =>
   withTempDir(async (root) => {
     const voice = fakeVoiceEngine()

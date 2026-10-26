@@ -771,7 +771,6 @@ describe('RoleplayView', () => {
         shown: ['Elena', 'the barkeep'],
         pictureTimings: { text: 24.6 },
         pictureModel: 'gemma4',
-        pictureStyle: 'tags',
       }]),
       look,
     })
@@ -781,7 +780,7 @@ describe('RoleplayView', () => {
     expect(wrapper.find('[data-image-prompt]').text()).toContain('Elena, 38. She waits.')
     expect(wrapper.find('[data-shown]').text()).toBe('Shows Elena and the barkeep')
     expect(wrapper.find('[data-picture-timings]').text()).toBe(
-      'Pictured in 24.6 s by gemma4, as tags',
+      'Pictured in 24.6 s by gemma4',
     )
     expect(wrapper.find('[data-picture-button]').text()).toBe('Picture again')
 

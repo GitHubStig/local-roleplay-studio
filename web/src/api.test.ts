@@ -34,7 +34,6 @@ const settings: Settings = {
   limits: true,
   callLog: false,
   artModel: '',
-  artStyle: 'prose',
   features: ALL_ON,
 }
 

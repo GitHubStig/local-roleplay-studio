@@ -1,6 +1,6 @@
 # Art Agent prose vs tags: a fixed test set
 
-The reference behind "Tags instead of prose" in [models.md](../../models.md): the same Art Agent
+The reference behind "Tags instead of prose" in [models.md](../../models.md), and so behind dropping the tags style (2026-10-26, [ADR 0023](../../adr/0023-the-art-agent-writes-prose.md)): the same Art Agent
 prompts rendered on every Image Model, so a new model can be compared with the others by rendering
 only its own nine pictures.
 

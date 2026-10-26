@@ -19,14 +19,7 @@ import type { RoleplayModel } from './model.ts'
 import { GoneError, updateSession } from './update.ts'
 import { allPictureFiles, removeFiles } from '../pictures.ts'
 import { CastError, openingMessages, parseCast, roleplayMessages } from './prompt.ts'
-import {
-  artFrameMessages,
-  artLookMessages,
-  type ArtStyle,
-  isLook,
-  pictured,
-  withNewcomers,
-} from './art.ts'
+import { artFrameMessages, artLookMessages, isLook, pictured, withNewcomers } from './art.ts'
 import { cleanLook, lookLimit, renameShown } from '../look.ts'
 import type { Cast, Reply, RoleplayFrame, RoleplaySession } from './types.ts'
 
@@ -54,8 +47,6 @@ export interface RoleplayDeps {
   textModel: TextModel
   /** The Art Agent's model when Settings name one; otherwise pictures use `roleplayModel`. */
   artModel?: RoleplayModel
-  /** Whether the Art Agent writes prose (the default) or tags. */
-  artStyle?: ArtStyle
   /** The voice service, when voices are available. */
   voice?: VoiceEngine
   /** SHARP, when 3D scenes are available. */
@@ -251,13 +242,12 @@ export async function pictureFrame(
   const start = performance.now()
   const written = current.look as Look
   const { pictureThinking: _, ...previous } = current.frames[index]
-  const style = deps.artStyle ?? 'prose'
-  const messages = await artFrameMessages(current, index, style)
+  const messages = await artFrameMessages(current, index)
   // Anyone the picture brings in joins the Look, so they look the same next time.
   let look = written
   const draw = async () => {
     const { body, shown, newcomers, clothing, thinking } = await withRetry(
-      (onThinking) => art.pictureFrame(messages, signal, onThinking, style),
+      (onThinking) => art.pictureFrame(messages, signal, onThinking),
       signal,
       emit,
     )
@@ -281,12 +271,11 @@ export async function pictureFrame(
   const updated = await updateSession(deps.store, session.id, (latest) => {
     const now = latest.frames[index]
     if (!now) throw new GoneError(`Frame ${index} no longer exists`)
-    const { pictureThinking: _, pictureStyle: __, ...kept } = now
+    const { pictureThinking: _, ...kept } = now
     frame = {
       ...pictured(kept, look, drawn.body!, drawn.shown, drawn.clothing),
       pictureTimings: { text: secondsSince(start) },
       pictureModel: art.name,
-      ...(style === 'tags' ? { pictureStyle: 'tags' as const } : {}),
       ...(thinking ? { pictureThinking: thinking } : {}),
     }
     const withLook: RoleplaySession = wroteLook

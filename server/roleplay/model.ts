@@ -15,9 +15,6 @@ import type { Look, Subject } from '../session.ts'
 import { parseFrameBody } from '../textModel.ts'
 import {
   artFrameSchema,
-  type ArtStyle,
-  artTagsSchema,
-  joinTags,
   parseRoleplayLook,
   parseWho,
   roleplayLookSchema,
@@ -53,7 +50,6 @@ export interface RoleplayModel {
     messages: ChatMessage[],
     signal: AbortSignal,
     onThinking?: (chunk: string) => void,
-    style?: ArtStyle,
   ): Promise<{
     body: string
     shown: string[]
@@ -146,11 +142,11 @@ export function chatRoleplayModel(chat: Chat, opts: RoleplayModelOptions = {}): 
         return withThinking({ look: parseRoleplayLook(parseJson(content)) }, thinking)
       }),
 
-    pictureFrame: (messages, signal, onThinking, style = 'prose') =>
+    pictureFrame: (messages, signal, onThinking) =>
       within(signal, limit(), async (s) => {
         const { content, thinking } = await chat.stream({
           messages,
-          schema: style === 'tags' ? artTagsSchema : artFrameSchema,
+          schema: artFrameSchema,
           job: 'picture',
           maxTokens: MAX_TOKENS.art,
           signal: s,
@@ -159,7 +155,7 @@ export function chatRoleplayModel(chat: Chat, opts: RoleplayModelOptions = {}): 
         const fields = trimFields(parseJson(content) as Record<string, unknown>)
         return withThinking(
           {
-            body: style === 'tags' ? joinTags(fields) : parseFrameBody(fields),
+            body: parseFrameBody(fields),
             ...parseWho(fields),
             clothing: String(fields.clothing ?? ''),
           },

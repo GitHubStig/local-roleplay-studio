@@ -82,8 +82,6 @@ export interface RoleplayFrame {
   /** For debugging: seconds the latest picture took, the model that wrote it, and its reasoning. */
   pictureTimings?: { text: number }
   pictureModel?: string
-  /** Written as tags rather than prose (Settings → Art Agent style); absent for prose. */
-  pictureStyle?: 'tags'
   pictureThinking?: string
   /** One per Image Model it was rendered with (`pictures.ts`); none until rendered. */
   pictures: Picture[]

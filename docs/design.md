@@ -291,9 +291,7 @@ each person's clothing sentence from the latest earlier picture showing them, an
 copies it, changing only what the story after that Frame changed (taken off, put on, torn,
 bloodied); marks such as blood, bruises, dirt and wet are part of it, so a garment taken off or a
 wound doesn't come and go between pictures. The seven sentences are each capped at 280 characters, written as a
-third-person view of that moment (or, with Settings → Art Agent style set to tags, a few short tags per aspect,
-recorded as `pictureStyle` and shown as "as tags"; prose is the default, as it did better, see
-[models.md](models.md)). The Image Prompt is the identity sentences of the people shown, those
+third-person view of that moment (prose only, not tags: [ADR 0023](adr/0023-the-art-agent-writes-prose.md)). The Image Prompt is the identity sentences of the people shown, those
 sentences, then the style; a picture that crosses a Limit is written once more, told which; it's checked against the Limits in
 force and shown under the Reply (marked if it crosses one). While a Frame is pictured, the light
 sweeps round that Reply, which says "Picturing this moment…" (or "Writing the Look, then

@@ -275,8 +275,9 @@ the answers come last and the sentences are trimmed in code (`trimFields`).
 
 ### Tags instead of prose (2026-09-29)
 
-Settings → Art Agent style can have the Art Agent write each aspect as short comma-separated tags
-instead of a sentence (`prompts/roleplay/art-frame-tags.md`). The identities stay the Look's
+Settings → Art Agent style could have the Art Agent write each aspect as short comma-separated tags
+instead of a sentence (`prompts/roleplay/art-frame-tags.md`; removed 2026-10-26 on these findings,
+[ADR 0023](adr/0023-the-art-agent-writes-prose.md)). The identities stay the Look's
 sentences; only the seven aspects become tags, and clothing tags still name each person, so the
 Limits' clothing check works the same. **Prose stays the default: it won on all seven installed
 Image Models.** Measured on three Frames of the Kael tavern Roleplay (6: Kael alone; 9 and 12:

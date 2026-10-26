@@ -123,7 +123,6 @@ Deno.test('validateSettings fills in what an older file lacks, keeps what it may
     ['upscaler', 'seedvr2-7b', 'seedvr2-3b', 'esrgan'],
     ['limits', true, false, 'no'],
     ['artModel', '', 'gemma4:31b-mlx', 3],
-    ['artStyle', 'prose', 'tags', 'booru'],
     ['stepCache', 0.4, null, 0.9],
     ['float16', true, false, 'yes'],
     ['previews', true, false, 'yes'],

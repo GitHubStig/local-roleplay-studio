@@ -90,7 +90,6 @@ beforeEach(() => {
     limits: true,
     callLog: false,
     artModel: '',
-    artStyle: 'prose',
     features: ALL_ON,
   })
   vi.mocked(api.getSettingsOptions).mockResolvedValue({

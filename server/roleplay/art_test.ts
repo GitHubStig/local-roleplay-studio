@@ -4,7 +4,6 @@ import { DEFAULT_SETTINGS } from '../settings.ts'
 import { lookForModel } from '../textModel.ts'
 import {
   artFrameMessages,
-  joinTags,
   lastWorn,
   parseRoleplayLook,
   parseWho,
@@ -220,22 +219,6 @@ Deno.test('A picture of no one has no identity sentences', () => {
   const empty = pictured(session.frames[1], look, 'The door stands closed.', [])
   assertEquals(empty.prompt, 'The door stands closed. An oil painting.')
   assertEquals(empty.blocked, undefined)
-})
-
-Deno.test('The tags style asks for tags, and joins them in aspect order', async () => {
-  assertStringIncludes((await artFrameMessages(session, 1, 'tags'))[0].content, 'short tags')
-  assertEquals((await artFrameMessages(session, 1))[0].content.includes('short tags'), false)
-  assertEquals(
-    joinTags({
-      color: 'grey, silver',
-      pose: 'Mira steadying Sam,',
-      camera: ' ',
-      clothing: 'Mira oilskin coat, Sam wool jumper.',
-      shown: ['Mira'],
-    }),
-    'Mira steadying Sam, Mira oilskin coat, Sam wool jumper, grey, silver',
-  )
-  assertThrows(() => joinTags({ pose: '', shown: [] }), Error, 'no tags')
 })
 
 Deno.test('lastWorn gives each person the clothing of the latest earlier picture showing them', () => {

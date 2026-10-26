@@ -9,7 +9,6 @@ import type { Scenario } from '../scenario.ts'
 import type { Session, SessionStore } from '../session.ts'
 import { pictureFrame, renderRoleplayFrame, type RoleplayDeps } from './engine.ts'
 import type { RoleplayModel } from './model.ts'
-import type { ArtStyle } from './art.ts'
 import type { RoleplaySession } from './types.ts'
 import { checkPictureJob, PICTURE_JOB_KINDS, runPictureJob } from '../pictureJobs.ts'
 import { designVoice, speakFrame, spokenText } from './voice.ts'
@@ -23,8 +22,6 @@ export interface RoleplayJobContext {
   upscaler(): Promise<Upscaler>
   /** The Art Agent's model chosen in Settings now, if one is; else pictures use the Text Model. */
   artModel(session: Session): Promise<RoleplayModel | undefined>
-  /** Whether the Art Agent writes prose or tags, as chosen in Settings now. */
-  artStyle(): Promise<ArtStyle>
 }
 
 /** Why `kind` can't be queued on a Roleplay's Frame `index`, or null if it can. */
@@ -58,11 +55,9 @@ export async function runRoleplayJob(
   const artModel = ['picture', 'voice', 'speak', 'speak-thought'].includes(job.kind)
     ? await ctx.artModel(session)
     : undefined
-  const artStyle = job.kind === 'picture' ? await ctx.artStyle() : undefined
   const withDeps = {
     ...ctx.deps(session),
     ...(artModel ? { artModel } : {}),
-    ...(artStyle ? { artStyle } : {}),
   }
   /** Saves onto the Roleplay as it is now: the conversation may have moved on meanwhile. */
   const save = (change: (s: RoleplaySession) => RoleplaySession) =>

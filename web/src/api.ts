@@ -98,8 +98,6 @@ export interface Settings {
   callLog: boolean
   /** The model that pictures Roleplay Frames; '' for the Session's Text Model. Applies at once. */
   artModel: string
-  /** Whether the Art Agent writes prose (better) or tags. Applies at once. */
-  artStyle: 'prose' | 'tags'
   /** Which Features are switched on (one this machine can't run is off whatever this says). */
   features: Record<Feature, boolean>
 }

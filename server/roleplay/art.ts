@@ -40,37 +40,6 @@ export const artFrameSchema = {
   required: [...frameSchema.required, 'newcomers', 'shown'],
 }
 
-/**
- * How the Art Agent writes a picture: seven sentences (prose), or short tags per aspect. Prose is
- * the default and did better on every Image Model tried (docs/models.md): tags can't say who does
- * what to whom.
- */
-export type ArtStyle = 'prose' | 'tags'
-export const ART_STYLES: readonly ArtStyle[] = ['prose', 'tags']
-
-const ASPECTS = ['pose', 'expression', 'camera', 'clothing', 'environment', 'lighting', 'color']
-
-/** The same reply as `artFrameSchema`, with comma-separated tags in place of each sentence. */
-export const artTagsSchema = {
-  type: 'object',
-  properties: {
-    ...Object.fromEntries(
-      ASPECTS.map((a) => [a, { type: 'string', description: `${a} tags, comma-separated` }]),
-    ),
-    ...whoSchema,
-  },
-  required: [...ASPECTS, 'newcomers', 'shown'],
-}
-
-/** A tags reply's aspects as one comma-separated list, in aspect order. */
-export function joinTags(fields: Record<string, unknown>): string {
-  const tags = ASPECTS
-    .map((a) => String(fields[a] ?? '').trim().replace(/[.,;]+$/, ''))
-    .filter(Boolean)
-  if (!tags.length) throw new Error('The Text Model wrote no tags')
-  return tags.join(', ')
-}
-
 /** Who a picture shows and adds, from the Art Agent's reply: names, and new people. */
 export function parseWho(
   fields: Record<string, unknown>,
@@ -222,13 +191,12 @@ export async function artLookMessages(
 export async function artFrameMessages(
   session: RoleplaySession,
   index: number,
-  style: ArtStyle = 'prose',
 ): Promise<ChatMessage[]> {
   return [
     {
       role: 'system',
       content: await loadPrompt(
-        style === 'tags' ? 'roleplay/art-frame-tags' : 'roleplay/art-frame',
+        'roleplay/art-frame',
         {
           ...session.cast!,
           placeAlone: await loadPrompt('shared/place-alone'),

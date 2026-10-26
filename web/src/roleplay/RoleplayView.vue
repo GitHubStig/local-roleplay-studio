@@ -797,9 +797,7 @@ const lookSavingText = computed(() =>
                       <p v-if="frame.pictureTimings" class="mt-1" data-picture-timings>
                         Pictured in {{ frame.pictureTimings.text.toFixed(1) }} s<template
                           v-if="frame.pictureModel"
-                        > by {{ frame.pictureModel }}</template><template
-                          v-if="frame.pictureStyle"
-                        >, as tags</template>
+                        > by {{ frame.pictureModel }}</template>
                       </p>
                       <p v-if="pictureOf(frame)" class="mt-1" data-render-timings>
                         Rendered: {{ renderedParts(pictureOf(frame)!).join(' · ') }}

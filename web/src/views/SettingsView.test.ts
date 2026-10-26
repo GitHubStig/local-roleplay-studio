@@ -38,7 +38,6 @@ const settings: api.Settings = {
   limits: true,
   callLog: false,
   artModel: '',
-  artStyle: 'prose',
   features: ALL_ON,
 }
 
@@ -458,7 +457,6 @@ describe('SettingsView', () => {
     await flushPromises()
     expect((wrapper.find('[data-limits]').element as HTMLInputElement).checked).toBe(true)
     await wrapper.find('[data-text-model]').setValue('gemma4:31b-mlx')
-    await wrapper.find('[data-art-style]').setValue('tags')
     await wrapper.find('[data-limits]').setValue(false)
     await wrapper.find('[data-upscaler]').setValue('seedvr2-3b')
     await wrapper.find('form').trigger('submit')
@@ -466,7 +464,6 @@ describe('SettingsView', () => {
     expect(api.saveSettings).toHaveBeenLastCalledWith({
       ...settings,
       textModel: 'gemma4:31b-mlx',
-      artStyle: 'tags',
       limits: false,
       upscaler: 'seedvr2-3b',
     })

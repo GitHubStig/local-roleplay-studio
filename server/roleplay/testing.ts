@@ -68,7 +68,6 @@ export function scriptedRoleplayModel(
 ): RoleplayModel & {
   asked: ChatMessage[][]
   art: ChatMessage[][]
-  styles: string[]
   suggested: ChatMessage[][]
   directed: ChatMessage[][]
 } {
@@ -84,21 +83,14 @@ export function scriptedRoleplayModel(
       signal.throwIfAborted()
       return { cast: await next(script.casts, 'Cast') }
     },
-    /** The messages each Art Agent call was given, and the style each picture was asked in. */
+    /** The messages each Art Agent call was given. */
     art: [] as ChatMessage[][],
-    styles: [] as string[],
     async writeLook(messages: ChatMessage[], signal: AbortSignal) {
       model.art.push(messages)
       signal.throwIfAborted()
       return { look: await next(script.looks, 'Look') }
     },
-    async pictureFrame(
-      messages: ChatMessage[],
-      signal: AbortSignal,
-      _onThinking?: unknown,
-      style?: string,
-    ) {
-      model.styles.push(style ?? 'prose')
+    async pictureFrame(messages: ChatMessage[], signal: AbortSignal) {
       model.art.push(messages)
       signal.throwIfAborted()
       const drawn = await next(script.bodies, 'picture')
