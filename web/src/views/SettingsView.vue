@@ -15,6 +15,7 @@ import BackendOptions from '../components/BackendOptions.vue'
 import FeatureSwitch from '../components/FeatureSwitch.vue'
 import MachinesTab from '../components/MachinesTab.vue'
 import RunOn from '../components/RunOn.vue'
+import SelectField from '../components/SelectField.vue'
 import ToggleSwitch from '../components/ToggleSwitch.vue'
 import { useBackends } from '../composables/useBackends'
 import { useFeatures } from '../composables/useFeatures'
@@ -268,10 +269,10 @@ function saveNow() {
             />
             <label class="flex flex-col gap-1">
               <span class="text-sm text-muted">Model</span>
-              <select v-model="form.textModel" class="field" data-text-model>
+              <SelectField v-model="form.textModel" data-text-model>
                 <option value="" disabled>Choose a model…</option>
                 <option v-for="m in textModelChoices" :key="m" :value="m">{{ m }}</option>
-              </select>
+              </SelectField>
               <span v-if="textListing?.textModelsError" class="text-sm text-warn">
                 {{ textListing.textModelsError }}
               </span>
@@ -287,10 +288,10 @@ function saveNow() {
             <h3 class="font-medium">Art Agent</h3>
             <label class="flex flex-col gap-1">
               <span class="text-sm text-muted">Model</span>
-              <select v-model="form.artModel" class="field" data-art-model>
+              <SelectField v-model="form.artModel" data-art-model>
                 <option value="">Same as the Text Model</option>
                 <option v-for="m in textModelChoices" :key="m" :value="m">{{ m }}</option>
-              </select>
+              </SelectField>
               <span class="text-sm text-muted">
                 Pictures Roleplay Frames (Thinking off); applies to the next picture, in running
                 Sessions too.
@@ -319,9 +320,9 @@ function saveNow() {
             <template v-if="picturesOn">
               <label class="flex flex-col gap-1">
                 <span class="text-sm text-muted">Default Image Model</span>
-                <select v-model="defaultImageModel" class="field" data-image-model>
+                <SelectField v-model="defaultImageModel" data-image-model>
                   <BackendOptions :groups="imageModelGroups" />
-                </select>
+                </SelectField>
                 <span class="text-sm text-muted">
                   What a new Session renders with; each Session can switch to another. mflux runs
                   on Apple Silicon Macs, ComfyUI on any machine (Windows with an NVIDIA card).
@@ -340,33 +341,32 @@ function saveNow() {
               <div class="grid grid-cols-[6rem_minmax(0,1fr)] gap-4">
                 <label class="flex flex-col gap-1">
                   <span class="text-sm text-muted">Steps</span>
-                  <select
+                  <SelectField
                     v-if="imageModel?.stepChoices"
                     v-model.number="form.steps"
-                    class="field"
                     :disabled="imageModel.stepChoices.length < 2"
                     title="This model renders only at these steps"
                     data-step-choices
                   >
                     <option v-for="n in imageModel.stepChoices" :key="n" :value="n">{{ n }}</option>
-                  </select>
+                  </SelectField>
                   <input v-else v-model.number="form.steps" type="number" min="1" max="100" class="field" />
                 </label>
                 <label class="flex flex-col gap-1">
                   <span class="text-sm text-muted">Size</span>
-                  <select v-model="form.size" class="field">
+                  <SelectField v-model="form.size">
                     <option v-for="p in options.sizePresets" :key="p.id" :value="p.id">{{ p.label }}</option>
-                  </select>
+                  </SelectField>
                 </label>
               </div>
 
               <label v-if="imageModel?.quantize" class="flex flex-col gap-1">
                 <span class="text-sm text-muted">Quantize</span>
-                <select v-model="form.quantize" class="field">
+                <SelectField v-model="form.quantize">
                   <option v-for="q in quantizeChoices" :key="String(q.value)" :value="q.value">
                     {{ q.label }}
                   </option>
-                </select>
+                </SelectField>
                 <span class="text-sm text-muted">
                   Converted as the model loads: less memory on the larger models.
                 </span>
@@ -374,11 +374,11 @@ function saveNow() {
 
               <label v-if="imageModel?.stepCache" class="flex flex-col gap-1" data-step-cache>
                 <span class="text-sm text-muted">Step cache</span>
-                <select v-model="form.stepCache" class="field">
+                <SelectField v-model="form.stepCache">
                   <option v-for="c in stepCacheChoices" :key="String(c.value)" :value="c.value">
                     {{ c.label }}
                   </option>
-                </select>
+                </SelectField>
                 <span class="text-sm text-muted">
                   Skips this share of the steps that change the picture least, reusing the one
                   before. At 0.4 it looks near the same.
@@ -415,9 +415,9 @@ function saveNow() {
               <template v-if="upscaleOn">
                 <label class="flex flex-col gap-1">
                   <span class="text-sm text-muted">Default upscaler</span>
-                  <select v-model="form.upscaler" class="field" data-upscaler>
+                  <SelectField v-model="form.upscaler" data-upscaler>
                     <option v-for="u in options.upscalers" :key="u.id" :value="u.id">{{ u.label }}</option>
-                  </select>
+                  </SelectField>
                   <span class="text-sm text-muted">
                     Applies to the next upscale, in running Sessions too.
                   </span>
@@ -451,12 +451,12 @@ function saveNow() {
               <template v-if="editsOn">
                 <label class="flex flex-col gap-1">
                   <span class="text-sm text-muted">Default edit model</span>
-                  <select v-model="form.editModel" class="field" data-edit-model>
+                  <SelectField v-model="form.editModel" data-edit-model>
                     <option v-if="!editModels.choices.some((m) => m.id === form?.editModel)" :value="form.editModel">
                       {{ form.editModel }} (not available here)
                     </option>
                     <option v-for="m in editModels.choices" :key="m.id" :value="m.id">{{ m.label }}</option>
-                  </select>
+                  </SelectField>
                   <span class="text-sm text-muted">
                     What an edit starts on; the Edit dialog can choose another.
                   </span>
@@ -602,11 +602,8 @@ function saveNow() {
 <style scoped>
 @reference "../style.css";
 
-.field {
-  @apply rounded-lg border border-line bg-surface px-3 py-2 disabled:opacity-50;
-}
 /** A group of Settings, headed by its title or switch. */
 .card {
-  @apply flex min-w-0 flex-col gap-5 rounded-lg border border-line p-4;
+  @apply flex min-w-0 flex-col gap-5 rounded-lg border border-line bg-surface/40 p-4;
 }
 </style>

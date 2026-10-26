@@ -109,7 +109,7 @@ function keyTyped(id: string) {
       <li
         v-for="(b, i) in backends"
         :key="b.id"
-        class="flex flex-col gap-2 rounded-lg border border-line p-3"
+        class="flex flex-col gap-2 rounded-lg border border-line bg-surface/40 p-3"
         :data-backend="b.id"
       >
         <div class="flex items-center gap-2">
@@ -217,11 +217,3 @@ function keyTyped(id: string) {
     </div>
   </div>
 </template>
-
-<style scoped>
-@reference "../style.css";
-
-.field {
-  @apply rounded-lg border border-line bg-surface px-3 py-2 disabled:opacity-50;
-}
-</style>

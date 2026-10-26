@@ -115,3 +115,8 @@
 .action-on {
   @apply border-info text-info hover:border-info hover:text-info;
 }
+
+/* A text field or dropdown in a form (dropdowns through `SelectField`, for their caret). */
+.field {
+  @apply rounded-lg border border-line bg-surface px-3 py-2 disabled:opacity-50;
+}
