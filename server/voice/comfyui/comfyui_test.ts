@@ -15,7 +15,7 @@ Deno.test('A voice designed through ComfyUI is saved, and its copy in temp is bl
   withTempDir(async (dir) => {
     const comfy = fakeComfyUI({ audio: CLIP })
     try {
-      const engine = comfyuiVoiceEngine({ baseUrl: () => Promise.resolve(comfy.url) })
+      const engine = comfyuiVoiceEngine({ address: comfy.url })
       const out = join(dir, 'voice-1a2b3c4d.flac')
       await engine.design(
         { description: 'A low, rough voice.', text: 'Sit down.', seed: 0, out },
@@ -46,7 +46,7 @@ Deno.test('A line spoken through ComfyUI clones the reference clip from temp, bl
       const ref = join(dir, 'voice-1a2b3c4d.flac')
       await Deno.writeFile(ref, new Uint8Array(300))
       const out = join(dir, 'speech-3-aaaaaaaa.flac')
-      await comfyuiVoiceEngine({ baseUrl: () => Promise.resolve(comfy.url) }).speak(
+      await comfyuiVoiceEngine({ address: comfy.url }).speak(
         {
           text: 'Third door on the left. Mind the step.',
           pace: 'slow',
@@ -87,7 +87,7 @@ Deno.test("ComfyUI's error fails the voice, and leaves no file", () =>
       const out = join(dir, 'voice-1a2b3c4d.flac')
       await assertRejects(
         () =>
-          comfyuiVoiceEngine({ baseUrl: () => Promise.resolve(comfy.url) }).design(
+          comfyuiVoiceEngine({ address: comfy.url }).design(
             { description: 'x', text: 'y', seed: 1, out },
             new AbortController().signal,
           ),

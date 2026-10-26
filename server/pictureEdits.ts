@@ -92,7 +92,7 @@ export async function editFrame<S extends Session>(
   const release = await (deps.renderQueue ?? new RenderQueue()).acquire(signal, () => {
     waited = true
     emit({ type: 'phase', phase: 'queued' })
-  }, { job: editJob(model, session.settings) })
+  }, { job: editJob(model) })
   try {
     const queued = waited ? secondsSince(start) : undefined
     emit({ type: 'phase', phase: 'image' })
@@ -101,7 +101,6 @@ export async function editFrame<S extends Session>(
     const image = await deps.imageGenerator.edit(
       {
         model,
-        imageBaseUrl: session.settings.imageBaseUrl,
         image: from.image,
         mask,
         instruction,

@@ -3,7 +3,6 @@
  * `jobs_test.ts`): the app over fakes, and readers for what it answers.
  */
 import { type AppDeps, createHandler } from './app.ts'
-import type { TextConnection, TextModelInfo } from './text/backend.ts'
 import type { ImageGenerator } from './images/imageGenerator.ts'
 import { dirSessionStore } from './session.ts'
 import type { Picture } from './pictures.ts'
@@ -20,19 +19,19 @@ import { fakeImageGenerator, reply, scenarioLibrary, scriptedTextModel } from '.
 /** Settings kept in memory, as the server keeps them in a file. */
 function memoryStore(initial: Settings = { ...DEFAULT_SETTINGS }): SettingsStore & {
   current: Settings
-  apiKey: string
+  apiKeys: Record<string, string>
 } {
   const store = {
     current: initial,
-    apiKey: '',
+    apiKeys: {} as Record<string, string>,
     load: () => Promise.resolve(store.current),
     save: (s: Settings) => {
       store.current = s
       return Promise.resolve()
     },
-    loadApiKey: () => Promise.resolve(store.apiKey),
-    saveApiKey: (key: string) => {
-      store.apiKey = key
+    loadApiKey: (backend: string) => Promise.resolve(store.apiKeys[backend] ?? ''),
+    saveApiKey: (backend: string, key: string) => {
+      store.apiKeys[backend] = key
       return Promise.resolve()
     },
   }
@@ -41,7 +40,7 @@ function memoryStore(initial: Settings = { ...DEFAULT_SETTINGS }): SettingsStore
 
 export interface SetupOptions {
   root?: string
-  listTextModels?: (connection: TextConnection, apiKey?: string) => Promise<TextModelInfo[]>
+  listTextModels?: AppDeps['listTextModels']
   comfyuiStatus?: AppDeps['comfyuiStatus']
   textModel?: TextModel
   imageGenerator?: ImageGenerator

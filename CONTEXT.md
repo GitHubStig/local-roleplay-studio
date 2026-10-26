@@ -144,8 +144,16 @@ _Avoid_: Enhance, HD, super-resolution
 The language model that does every text job: it writes and edits Image Prompts, plays the Character, pictures Roleplay Frames and suggests the player's Messages. It runs on a **Text backend**.
 _Avoid_: LLM, model, AI
 
+**Backend**:
+One program that runs models, at an address: a ComfyUI, an Ollama, a server with the OpenAI chat API, or this machine's own programs (mflux, the voice service, SHARP, TripoSplat, LiTo), which count as one. Two ComfyUIs are two Backends. Settings list them in the order work tries them, and each kind of work (text, pictures, Upscale, edits, voices) prefers one; when that one can't do a job, it goes to the next listed that can.
+_Avoid_: server, provider
+
+**Machine**:
+The computer a Backend runs on, known by its address. Jobs on one Machine take turns; jobs on different Machines run side by side.
+_Avoid_: host, node
+
 **Text backend**:
-Where the Text Model runs: Ollama, or a server with the OpenAI chat API (LM Studio, llama.cpp's server, a cloud service). Chosen in Settings; each Session keeps the one it started with.
+A Backend that runs the Text Model: an Ollama, or a server with the OpenAI chat API (LM Studio, llama.cpp's server, a cloud service). A Session keeps its Text Model, not the Backend: each call goes where Settings send it.
 _Avoid_: provider, engine
 
 **Image Model**:
@@ -153,5 +161,5 @@ The model that renders an Image Prompt into an image (Qwen-Image 2.1 by default)
 _Avoid_: Model, diffusion model, generator
 
 **Image backend**:
-What runs the Image Model: mflux (on a Mac) or a ComfyUI server (on any machine, this one or another). A Session starts on the one Settings name and can be switched to another with its Image Model; a model of the same name on either backend counts as the same, so its pictures stay. Upscale has its own choice, "Upscale with", which applies at once.
+What runs the Image Model: mflux (on a Mac) or a ComfyUI server (on any machine, this one or another). A Session starts on the one Settings name and can be switched to another with its Image Model; a model of the same name on either backend counts as the same, so its pictures stay. Which Backend renders, upscales or edits is Settings' choice, and applies at once.
 _Avoid_: renderer, provider, engine

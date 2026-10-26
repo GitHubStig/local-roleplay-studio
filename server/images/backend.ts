@@ -1,48 +1,39 @@
-import { findEditModel } from './editModels.ts'
+import type { Backend } from '../backends.ts'
+import { editJob, type HeavyJob } from '../machine.ts'
 import type { ImageGenerator } from './imageGenerator.ts'
-import type { ImageBackendKind } from './imageModels.ts'
 
 /**
- * Renders with the backend a Session's Settings name (`imageBackend`): mflux, where it's installed,
- * or a ComfyUI server. Upscales (SeedVR2 on either) where Settings say now (`upscaleBackend`),
- * whichever backend rendered: a Mac can render with mflux and upscale on a faster ComfyUI machine.
- * Edits run where their edit model does (`editModels.ts`): on mflux, or the Session's ComfyUI.
+ * Sends each job to the Backend Settings send it to now (`backendOf`, ADR 0022): a render by the
+ * Session's Image Model, an upscale (SeedVR2 on either, whichever rendered: a Mac can render with
+ * mflux and upscale on a faster ComfyUI machine), an edit by its edit model. This machine's runs
+ * on mflux, where it's installed; a ComfyUI, at its address.
  */
 export function imageBackends(backends: {
   mflux?: ImageGenerator
-  comfyui: ImageGenerator
-  /** Settings' `upscaleBackend`, read when upscaling. */
-  upscaleBackend: () => Promise<ImageBackendKind>
+  /** A ComfyUI at `address` ('' for its usual one here). */
+  comfyui: (address: string) => ImageGenerator
+  /** The Backend `job` goes to now; none when no Backend can run it. */
+  backendOf: (job: HeavyJob) => Promise<Backend | undefined>
 }): ImageGenerator {
+  const on = async (job: HeavyJob, what: string): Promise<ImageGenerator> => {
+    const backend = await backends.backendOf(job)
+    if (backend?.kind === 'comfyui') return backends.comfyui(backend.address)
+    if (backend?.kind === 'here' && backends.mflux) return backends.mflux
+    throw new Error(`No Backend can ${what}: add one in Settings, on the Machines tab`)
+  }
   return {
-    generate(req, signal, onProgress, onDownload, onPreview) {
-      const backend = req.settings.imageBackend === 'comfyui' ? backends.comfyui : backends.mflux
-      if (!backend) {
-        return Promise.reject(
-          new Error("mflux isn't installed here: choose ComfyUI as the Image backend in Settings"),
-        )
-      }
-      return backend.generate(req, signal, onProgress, onDownload, onPreview)
+    async generate(req, signal, onProgress, onDownload, onPreview) {
+      const job: HeavyJob = { kind: 'render', settings: req.settings }
+      return (await on(job, `render ${req.settings.imageModel}`))
+        .generate(req, signal, onProgress, onDownload, onPreview)
     },
     async upscale(req, signal, onProgress, onDownload) {
-      const backend = (await backends.upscaleBackend()) === 'comfyui'
-        ? backends.comfyui
-        : backends.mflux
-      if (!backend) {
-        throw new Error("mflux isn't installed here: choose ComfyUI for Upscale in Settings")
-      }
-      return backend.upscale(req, signal, onProgress, onDownload)
+      return (await on({ kind: 'upscale' }, 'upscale'))
+        .upscale(req, signal, onProgress, onDownload)
     },
-    edit(req, signal, onProgress, onDownload) {
-      const backend = findEditModel(req.model)?.backend === 'comfyui'
-        ? backends.comfyui
-        : backends.mflux
-      if (!backend) {
-        return Promise.reject(
-          new Error("mflux isn't installed here: choose an edit model that runs on ComfyUI"),
-        )
-      }
-      return backend.edit(req, signal, onProgress, onDownload)
+    async edit(req, signal, onProgress, onDownload) {
+      return (await on(editJob(req.model), `edit with ${req.model}`))
+        .edit(req, signal, onProgress, onDownload)
     },
   }
 }

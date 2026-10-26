@@ -14,10 +14,12 @@ vi.mock('../api', async (importOriginal) => ({
 }))
 
 const settings: api.Settings = {
-  textBackend: 'ollama',
-  textBaseUrl: '',
+  backends: [
+    { id: 'here', kind: 'here', address: '' },
+    { id: 'ollama', kind: 'ollama', address: '' },
+  ],
+  runOn: { text: 'ollama', images: 'here', upscale: 'here', edits: 'here', voices: 'here' },
   imageBackend: 'mflux',
-  imageBaseUrl: '',
   textModel: 'llama3:latest',
   thinking: false,
   imageModel: 'z-image-turbo',
@@ -31,8 +33,6 @@ const settings: api.Settings = {
   seed: 42,
   upscaler: 'seedvr2-7b',
   editModel: 'qwen-image-2.1-edit',
-  upscaleBackend: 'mflux',
-  voiceBackend: 'mlx-audio',
   limits: true,
   callLog: false,
   artModel: '',
@@ -65,6 +65,7 @@ const options: api.SettingsOptions = {
     { id: 'seedvr2-3b', label: 'SeedVR2 3B' },
   ],
   features: ALL_AVAILABLE,
+  here: ALL_AVAILABLE,
 }
 
 const tavern = { id: 'tavern', title: 'The Rain-Soaked Tavern', description: 'A stormy night.' }

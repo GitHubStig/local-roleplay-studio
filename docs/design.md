@@ -9,8 +9,9 @@ in [CONTEXT.md](../CONTEXT.md). The reasoning behind the bigger choices is in [a
 A local roleplay studio that turns stories into pictures. It runs on a Mac with Apple silicon, a
 Windows PC with an NVIDIA card, or both together: every AI service sits behind an interface with a
 backend per machine (the Text Model on Ollama or a server with the OpenAI chat API, ADR 0008; the
-Image Model on mflux or ComfyUI, ADR 0009), and each extra (pictures, Upscale, voices, 3D) is on
-where its backend can run (`server/features.ts`). Every Session starts from a **Brief** (typed, or a saved
+Image Model on mflux or ComfyUI, ADR 0009), Settings list the Backends on each machine and which
+each kind of work prefers (ADR 0022), and each extra (pictures, Upscale, voices, 3D) is on where a
+Backend can run it (`server/features.ts`). Every Session starts from a **Brief** (typed, or a saved
 **Scenario**) and is one of three kinds: a **Chain**, where each Frame is made from the
 previous one by an Action; a **Storyboard**, whose Frames are planned together, reviewed and written
 out from the plan, then edited and rendered one by one; or a **Roleplay**, a conversation with a Character whose moments can be
@@ -192,8 +193,8 @@ under `/api/sessions/:id/roleplay/` ([ADR 0007](adr/0007-roleplay-is-a-conversat
    nothing to say. The description is editable: changing it removes the clip, and the next line
    (or a new take) designs one from the new description. Designing and speaking are queued jobs
    (`voice`, `speak`) that wait their turn in the render queue, so a voice and an image never
-   compete for memory. Undo removes the undone exchange's audio. Voices come from the backend
-   Settings choose (`voiceBackend`, ADR 0010). The voice service
+   compete for memory. Undo removes the undone exchange's audio. Voices come from the Backend
+   Settings send them to (ADR 0010, 0022). The voice service
    (`python/voice/serve.py`, mlx-audio) is a Python process the server starts on first use and talks to
    over HTTP on localhost: Qwen3-TTS VoiceDesign designs, Higgs TTS 3 clones, one model loaded at a
    time and unloaded after a minute unused (it reloads in 2–3 s), its MLX cache cleared after
@@ -514,7 +515,7 @@ consistency* in [open-threads.md](open-threads.md).
   preloaded first, so there is no blank frame.
   **Upscale** (beside Send; with the 3D buttons in `PictureButtons`, shared by every kind) enlarges the shown Frame's
   image to 2048 px on its shortest edge with the SeedVR2 model chosen in Settings (7B by default, or 3B;
-  `mflux-upscale-seedvr2`, or ComfyUI's built-in SeedVR2 when Settings' "Upscale with" says ComfyUI,
+  `mflux-upscale-seedvr2`, or ComfyUI's built-in SeedVR2 when Settings send upscales to a ComfyUI,
   whichever backend rendered), through the
   same render queue, with the same sweep and step count, queued as a job so the next Action (or
   edit) needn't wait. The original stays as the thumbnail; the
@@ -563,18 +564,7 @@ consistency* in [open-threads.md](open-threads.md).
   **Cancel** and follows it until it finishes. A Session in the background never navigates
   on its own: if its Opening Frame fails there, you're taken Home with the reason when you return
   to it.
-- **Settings** (`/settings`): the Text backend (Ollama, or a server with the OpenAI chat API, with its
-  address and API key: ADR 0008), Text Model (the backend's models; on Ollama minus OCR and dedicated
-  vision-language models), Thinking (on or off; only for models that support it), the Image backend (mflux, or ComfyUI with
-  its address: ADR 0009), Image Model (the backend's own), steps (reset to the model's default when the Image Model
-  changes), quantization (8 or 4 bit, converted as the model loads), float16 (on by default, for the
-  models that take it: faster on M1 and M2 Macs, the picture slightly different), size (six presets from 512×512 to 1216×832), Upscaler (SeedVR2 7B or 3B) and where it runs ("Upscale with": mflux, or
-  ComfyUI at the address on the same tab, which may be another machine), Art Agent model (the model
-  that pictures Roleplay Frames, with Thinking off, or "Same as the Text Model"), Art Agent style
-  (prose, recommended, or tags), Limits (on by default; off leaves only "everyone depicted is an
-  adult"), on its own Seed tab as it seeds every model, the seed (random per Session, or
-  fixed), and on its own Log tab, the call log (off by default; see Storage). A Session copies the Text backend and model, Thinking, the Image backend and model, steps
-  and seed when it starts (the Image backend, model and steps can be switched in it); the rest applies at once, to running Sessions too (see Consistency).
+- **Settings** (`/settings`), a tab each. **Machines** (ADR 0022, since 2026-10-26): the Backends there are, in the order a job tries them: this machine's own programs (mflux, the voice service, SHARP, TripoSplat, LiTo, the style scores, as far as it runs them), and each ComfyUI (ADR 0009), Ollama or server with the OpenAI chat API (with its API key, kept in `settings.json`, never sent back: ADR 0008) added, each with its address and whether it answers. **Text**: which Backend the Text Model runs on, the Text Model (that Backend's models; on Ollama minus OCR and dedicated vision-language models), Thinking (on or off; only for models that support it), Art Agent model (the model that pictures Roleplay Frames, with Thinking off, or "Same as the Text Model") and style (prose, recommended, or tags). **Images**: the Default Image Model (every backend's, in one list), where renders go, steps (reset to the model's default when the Image Model changes), quantization (8 or 4 bit, converted as the model loads), float16 (on by default, for the models that take it: faster on M1 and M2 Macs, the picture slightly different), size (six presets from 512×512 to 1216×832), the Default upscaler (SeedVR2 7B or 3B) and where upscales go, the Default edit model and where edits go. **Voice**: where voices are made. **3D**: SHARP, TripoSplat and LiTo. **Advanced**: the Limits (on by default; off leaves only "everyone depicted is an adult"), the seed (random per Session, or fixed), the call log (off by default; see Storage) and the Image comparison style scores. Each kind of work goes to the Backend its tab prefers, or the next on the Machines tab that can do it (it hasn't the model, say), as Settings are when it's queued. A Session copies the Text Model, Thinking, the Image backend and model, steps and seed when it starts (the Image backend, model and steps can be switched in it); the rest applies at once, to running Sessions too (see Consistency).
 - **Theme:** Light (a parchment tint), Dark or System, remembered per browser. It's a display
   preference, not a Setting.
 
@@ -623,9 +613,10 @@ All under `/api`; the Vite dev server proxies it to the Deno server. A `POST` mu
 | Route | Purpose |
 |---|---|
 | `GET /health` | Liveness |
-| `GET`, `PUT /settings` | Read or save Settings (`400` with a list of issues if invalid). `textApiKeySet` says whether an API key is saved; a `textApiKey` in a `PUT` replaces it (`''` removes it) |
-| `GET /settings/options` | Text Models from the saved Text backend, every Image backend's models and the ones a Session can switch to here (`imageBackends`), size presets; still answers if the backend is down |
-| `POST /settings/text-models` | The models on a Text backend not saved yet (`textBackend`, `textBaseUrl`, optional `textApiKey`) |
+| `GET`, `PUT /settings` | Read or save Settings (`400` with a list of issues if invalid). `apiKeysSet` lists the Backends with an API key saved; `apiKeys` in a `PUT` replaces them by Backend id (`''` removes one) |
+| `GET /settings/options` | Text Models from the Backend the Text Model prefers, every Image backend's models and the ones a Session can switch to here (`imageBackends`), size presets, what can run (`features`) and what this machine runs itself (`here`); still answers if a Backend is down |
+| `POST /settings/text-models` | The models on a text Backend not saved yet (`kind`, `address`, and `apiKey`, or the `id` of a Backend whose saved key to use) |
+| `POST /settings/comfyui` | Whether a ComfyUI answers at an `address` not saved yet, and has the files for an `imageModel`, an `upscaler`, or `voices` |
 | `GET /scenarios` | Scenario summaries plus files that failed to load |
 | `GET /sessions` | Session summaries, newest first, with each one's current activity |
 | `POST /sessions` | Start a Session: `{ kind?: "chain" \| "storyboard" \| "roleplay", scenarioId \| brief, frameCount? }`; every kind starts without pictures (a Chain then with `renderFrames` off) |

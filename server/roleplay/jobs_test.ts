@@ -312,7 +312,7 @@ Deno.test('Without a voice service, speaking fails with a reason', () =>
     const res = await call('POST', '/api/sessions/s1/jobs', { kind: 'speak', frameIndex: 0 })
     assertEquals([res.status, (await res.json()).error], [
       409,
-      "Voices isn't available here: No voice service was set up; or choose ComfyUI for Voices in Settings",
+      "Voices isn't available here: No voice service was set up; or add a ComfyUI in Settings, on the Machines tab",
     ])
   }))
 

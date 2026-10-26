@@ -31,22 +31,51 @@ export interface Availability {
   reason?: string
 }
 
-/** Where the Text Model runs: Ollama, or any server with the OpenAI chat API. */
-export type TextBackend = 'ollama' | 'openai'
+/**
+ * What a Backend is (ADR 0022): this machine's own programs, a ComfyUI, an Ollama, or a server
+ * with the OpenAI chat API.
+ */
+export type BackendKind = 'here' | 'comfyui' | 'ollama' | 'openai'
+
+export const BACKEND_NAMES: Record<BackendKind, string> = {
+  here: 'This machine',
+  comfyui: 'ComfyUI',
+  ollama: 'Ollama',
+  openai: 'OpenAI-compatible server',
+}
+
+/** One program that runs models, at an address. */
+export interface Backend {
+  /** Fixed once it's added, so what names it still does when its address changes. */
+  id: string
+  kind: BackendKind
+  /** Where it answers; '' for its kind's usual address on this machine, and for `here`. */
+  address: string
+}
+
+/** The kinds of work, each sent to a Backend of its own. */
+export type Work = 'text' | 'images' | 'upscale' | 'edits' | 'voices'
+
+/** The work each kind of Backend can do (this machine only what it can run). */
+export const BACKEND_WORK: Record<BackendKind, readonly Work[]> = {
+  here: ['images', 'upscale', 'edits', 'voices'],
+  comfyui: ['images', 'upscale', 'edits', 'voices'],
+  ollama: ['text'],
+  openai: ['text'],
+}
 
 export interface Settings {
-  textBackend: TextBackend
-  /** The backend's address; '' for Ollama's default. */
-  textBaseUrl: string
-  /** From the server: whether an API key is saved (the key itself is never sent back). */
-  textApiKeySet?: boolean
-  /** Sent only to replace the saved API key; '' removes it. */
-  textApiKey?: string
+  /** The Backends there are, this machine's among them, in the order a job tries them. */
+  backends: Backend[]
+  /** The Backend each kind of work prefers, by id; the next listed that can, if it can't. */
+  runOn: Record<Work, string>
+  /** From the server: the Backends with an API key saved (the keys are never sent back). */
+  apiKeysSet?: string[]
+  /** Sent only to replace Backends' saved API keys, by id; '' removes one. */
+  apiKeys?: Record<string, string>
   textModel: string
   thinking: boolean
   imageBackend: ImageBackend
-  /** ComfyUI's address; '' for its default. */
-  imageBaseUrl: string
   imageModel: string
   steps: number
   size: string
@@ -61,12 +90,8 @@ export interface Settings {
   seed: number
   /** Which SeedVR2 model Upscale uses; applies to the next upscale, even mid-Session. */
   upscaler: string
-  /** Where Upscale runs (the ComfyUI at `imageBaseUrl`, or mflux), whichever rendered. */
-  upscaleBackend: ImageBackend
   /** Which model edits pictures; applies to the next edit, even mid-Session. */
   editModel: string
-  /** Where voices are made: the voice service (a Mac), or the ComfyUI at `imageBaseUrl`. */
-  voiceBackend: 'mlx-audio' | 'comfyui'
   /** The Limits; off, only "everyone depicted is an adult" is enforced. Applies at once. */
   limits: boolean
   /** Log every call to the Text and Image Models in its Session's folder, under `calls/`. */
@@ -125,8 +150,10 @@ export interface SettingsOptions extends TextModelOptions {
   upscalers: { id: string; label: string }[]
   /** The models that can edit a picture here, each on its backend. */
   editModels: { id: string; label: string; backend: ImageBackend }[]
-  /** Which Features this machine can run, worked out when the server started. */
+  /** Which Features can run, here or on a Backend listed (a ComfyUI). */
   features: Record<Feature, Availability>
+  /** Which Features this machine runs itself, worked out when the server started. */
+  here: Record<Feature, Availability>
 }
 
 export class ApiError extends Error {
@@ -161,27 +188,25 @@ export type ComfyStatus =
   | { up: false; error: string }
 
 /**
- * Checks ComfyUI at an address not saved yet ('' for its default), for the Image Model and the
- * upscaler that would run there.
+ * Checks a ComfyUI at an address not saved yet ('' for its usual one here), for the Image Model,
+ * the upscaler and voices that would run there.
  */
 export const checkComfyUI = (
-  imageBaseUrl: string,
+  address: string,
   uses: { imageModel?: string; upscaler?: string; voices?: boolean },
 ) =>
   request<ComfyStatus>('/api/settings/comfyui', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ imageBaseUrl, ...uses }),
+    body: JSON.stringify({ address, ...uses }),
   })
 
-/** The models on a Text backend that isn't saved yet; without a key, with the saved one. */
-export const listTextModels = (
-  connection: Pick<Settings, 'textBackend' | 'textBaseUrl' | 'textApiKey'>,
-) =>
+/** The models on a text Backend that isn't saved yet; without `apiKey`, with its saved one. */
+export const listTextModels = (backend: Backend & { apiKey?: string }) =>
   request<TextModelOptions>('/api/settings/text-models', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(connection),
+    body: JSON.stringify(backend),
   })
 
 export const saveSettings = (settings: Settings) =>

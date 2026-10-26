@@ -1,13 +1,18 @@
 import { assertEquals } from '@std/assert'
+import { type Backend, HERE } from './backends.ts'
+import type { EditModel } from './images/editModels.ts'
+import type { JobKind } from './jobs.ts'
 import {
+  backendOf,
+  editJob,
   isThisMachine,
-  jobMachine,
-  jobServer,
+  jobBackend,
   machineKey,
+  machineOf,
   sameMachine,
-  textServer,
+  textBackendFor,
 } from './machine.ts'
-import { DEFAULT_SETTINGS } from './settings.ts'
+import { DEFAULT_SETTINGS, type Settings } from './settings.ts'
 
 const own = new Set(['studio.local', '192.168.50.10'])
 
@@ -29,30 +34,50 @@ Deno.test('sameMachine: both here, or the same host elsewhere', () => {
   assertEquals(sameMachine('http://192.168.50.85:11434', 'http://192.168.50.85:8188', own), true)
 })
 
-Deno.test('jobServer: a render on its Session backend, upscale and voices on Settings now', () => {
-  const pc = 'http://192.168.50.85:8188'
-  const now = { ...DEFAULT_SETTINGS, imageBaseUrl: pc }
-  const render = (imageBackend: 'mflux' | 'comfyui') =>
-    jobServer({ kind: 'render', settings: { imageBackend, imageBaseUrl: pc } }, now)
-  assertEquals([render('mflux'), render('comfyui')], [undefined, pc])
-  assertEquals(jobServer({ kind: 'upscale' }, { ...now, upscaleBackend: 'comfyui' }), pc)
-  assertEquals(jobServer({ kind: 'upscale' }, { ...now, upscaleBackend: 'mflux' }), undefined)
-  assertEquals(jobServer({ kind: 'voice' }, { ...now, voiceBackend: 'comfyui' }), pc)
-  assertEquals(jobServer({ kind: 'voice' }, { ...now, voiceBackend: 'mlx-audio' }), undefined)
-  assertEquals(jobServer(undefined, now), undefined)
-  // ComfyUI's default address when Settings leave it empty.
-  assertEquals(
-    jobServer({ kind: 'upscale' }, { ...now, upscaleBackend: 'comfyui', imageBaseUrl: '' }),
-    'http://127.0.0.1:8188',
-  )
+const yes = { available: true }
+const no = { available: false, reason: 'not here' }
+/** A Mac: mflux and the voice service. */
+const mac = { images: yes, upscale: yes, edits: yes, voices: yes }
+/** A PC: neither. */
+const pc = { images: no, upscale: no, edits: no, voices: no }
+const PC_COMFYUI: Backend = { id: 'pc', kind: 'comfyui', address: 'http://192.168.50.85:8188' }
+const MAC_COMFYUI: Backend = { id: 'comfy', kind: 'comfyui', address: '' }
+const backends = [HERE, PC_COMFYUI, MAC_COMFYUI]
+
+Deno.test('backendOf: the preferred Backend if it can, else the next listed that can', () => {
+  const now = {
+    backends,
+    runOn: { ...DEFAULT_SETTINGS.runOn, images: 'here', upscale: 'pc', voices: 'here' },
+  }
+  const render = (imageBackend: 'mflux' | 'comfyui', here = mac) =>
+    backendOf({ kind: 'render', settings: { imageBackend } }, now, here)?.id
+  // A Mac renders with mflux here, and a ComfyUI model on the first ComfyUI listed.
+  assertEquals([render('mflux'), render('comfyui')], ['here', 'pc'])
+  // A PC can't run mflux: nowhere.
+  assertEquals(render('mflux', pc), undefined)
+  // Upscale on the PC, as preferred, though here could.
+  assertEquals(backendOf({ kind: 'upscale' }, now, mac)?.id, 'pc')
+  // Voices here, or on the first ComfyUI where there's no voice service.
+  assertEquals(backendOf({ kind: 'voice' }, now, mac)?.id, 'here')
+  assertEquals(backendOf({ kind: 'voice' }, now, pc)?.id, 'pc')
+  // An edit by its edit model's kind of Backend.
+  assertEquals(backendOf(editJob('qwen-image-2.1-edit'), now, mac)?.id, 'here')
+  assertEquals(backendOf(editJob('flux3-klein-edit-comfyui'), now, mac)?.id, 'pc')
+  // Anything else, here.
+  assertEquals(backendOf(undefined, now, pc), HERE)
 })
 
-Deno.test('textServer: the address in Settings, or Ollama default', () => {
-  assertEquals(textServer({ textBackend: 'ollama', textBaseUrl: '' })!.startsWith('http'), true)
-  assertEquals(
-    textServer({ textBackend: 'openai', textBaseUrl: 'http://pc:1234/v1' }),
-    'http://pc:1234/v1',
-  )
+Deno.test('textBackendFor: the preferred text Backend if it lists the model, else the next', async () => {
+  const lm: Backend = { id: 'lm', kind: 'openai', address: 'http://192.168.50.85:1234/v1' }
+  const ollama: Backend = { id: 'ollama', kind: 'ollama', address: '' }
+  const now = { backends: [HERE, ollama, lm], runOn: { ...DEFAULT_SETTINGS.runOn, text: 'lm' } }
+  const listed = (b: Backend) =>
+    b.id === 'lm' ? Promise.resolve(['gemma-4-26b']) : Promise.reject(new Error('down'))
+  assertEquals((await textBackendFor(now, 'gemma-4-26b', listed))?.id, 'lm')
+  // On none that answers: the preferred one, to say why.
+  assertEquals((await textBackendFor(now, 'llama3', listed))?.id, 'lm')
+  const both = (b: Backend) => Promise.resolve(b.id === 'ollama' ? ['llama3'] : ['gemma-4-26b'])
+  assertEquals((await textBackendFor(now, 'llama3', both))?.id, 'ollama')
 })
 
 Deno.test('machineKey: here for this machine, the host for another', () => {
@@ -63,22 +88,18 @@ Deno.test('machineKey: here for this machine, the host for another', () => {
   assertEquals(machineKey('http://192.168.50.85:11434', own), '192.168.50.85')
 })
 
-Deno.test('jobMachine: a picture on the Text Model, a render on its Image backend, a line on its voice', () => {
-  const pc = 'http://192.168.50.85:8188'
-  const session = { ...DEFAULT_SETTINGS, imageBackend: 'comfyui' as const }
-  const now = { ...DEFAULT_SETTINGS, imageBaseUrl: pc, textBaseUrl: 'http://192.168.50.85:11434' }
-  assertEquals(jobMachine('render', session, now), pc)
-  assertEquals(jobMachine('render', DEFAULT_SETTINGS, now), undefined)
-  assertEquals(jobMachine('picture', session, now), 'http://192.168.50.85:11434')
-  assertEquals(jobMachine('speak', session, { ...now, voiceBackend: 'comfyui' }), pc)
-  assertEquals(
-    jobMachine('speak-thought', session, { ...now, voiceBackend: 'mlx-audio' }),
-    undefined,
-  )
-  assertEquals(jobMachine('upscale', session, { ...now, upscaleBackend: 'comfyui' }), pc)
-  assertEquals(jobMachine('scene', session, now), undefined)
-  // An edit on its edit model's backend, at the Session's ComfyUI.
-  const editing = { ...session, imageBaseUrl: pc }
-  assertEquals(jobMachine('edit', editing, now, 'flux3-klein-edit-comfyui'), pc)
-  assertEquals(jobMachine('edit', editing, now, 'qwen-image-2.1-edit'), undefined)
+Deno.test('jobBackend: a picture with the Text Model, a render by its Image Model, a line as voices go', () => {
+  const session: Settings = { ...DEFAULT_SETTINGS, imageBackend: 'comfyui' }
+  const now = { ...DEFAULT_SETTINGS, backends, runOn: { ...DEFAULT_SETTINGS.runOn, voices: 'pc' } }
+  const text: Backend = { id: 'ollama', kind: 'ollama', address: 'http://192.168.50.85:11434' }
+  const on = (kind: JobKind, s = session, editModel?: EditModel) =>
+    machineOf(jobBackend(kind, s, now, mac, { editModel, text }), own)
+  assertEquals(on('render'), '192.168.50.85')
+  assertEquals(on('render', DEFAULT_SETTINGS), 'here')
+  assertEquals(on('picture'), '192.168.50.85')
+  assertEquals([on('speak'), on('speak-thought'), on('voice')], Array(3).fill('192.168.50.85'))
+  assertEquals([on('upscale'), on('scene')], ['here', 'here'])
+  // An edit by its edit model, the one told or Settings'.
+  assertEquals(on('edit', session, 'flux3-klein-edit-comfyui'), '192.168.50.85')
+  assertEquals(on('edit'), 'here')
 })

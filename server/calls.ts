@@ -266,12 +266,7 @@ export function loggedImages(images: ImageGenerator): ImageGenerator {
           seed: req.seed,
           imageBackend: settings.imageBackend,
           steps: settings.steps,
-          ...Object.fromEntries(
-            RENDER_SETTINGS.filter((key) => key !== 'imageBaseUrl').map((key) => [
-              key,
-              settings[key],
-            ]),
-          ),
+          ...Object.fromEntries(RENDER_SETTINGS.map((key) => [key, settings[key]])),
         },
         () => images.generate(req, signal, onProgress, onDownload, onPreview),
         (image) => ({ image }),

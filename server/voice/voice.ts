@@ -4,6 +4,7 @@
  * server starts the first time a voice is needed and keeps until it stops.
  */
 import { fromFileUrl } from '@std/path'
+import type { Backend } from '../backends.ts'
 import { track } from '../children.ts'
 
 export interface DesignRequest {
@@ -35,13 +36,6 @@ export interface SpeakRequest extends Partial<Delivery> {
 
 /** Called with true when a model starts downloading (its first use), and false when it's done. */
 export type OnDownload = (downloading: boolean) => void
-
-/**
- * Where voices are made: the voice service (mlx-audio, Apple Silicon Macs), or a ComfyUI server
- * with TTS Audio Suite's nodes (any machine; Windows with an NVIDIA card).
- */
-export const VOICE_BACKENDS = ['mlx-audio', 'comfyui'] as const
-export type VoiceBackendKind = (typeof VOICE_BACKENDS)[number]
 
 /** How an engine's audio is kept, and what it needs. */
 export interface VoiceProfile {
@@ -183,18 +177,21 @@ export function voiceService(opts: VoiceServiceOptions): VoiceEngine {
 }
 
 /**
- * Makes voices with the backend Settings choose now (`voiceBackend`): the voice service where it's
- * installed (a Mac), or ComfyUI.
+ * Makes voices on the Backend Settings send them to now (ADR 0022): this machine's voice service
+ * where it's installed (a Mac), or a ComfyUI at its address.
  */
 export function voiceBackends(backends: {
   mlx?: VoiceEngine
-  comfyui: VoiceEngine
-  voiceBackend: () => Promise<VoiceBackendKind>
+  /** A ComfyUI at `address` ('' for its usual one here). */
+  comfyui: (address: string) => VoiceEngine
+  /** The Backend voices go to now; none when no Backend can make them. */
+  backend: () => Promise<Backend | undefined>
 }): VoiceEngine {
   const pick = async () => {
-    if ((await backends.voiceBackend()) === 'comfyui') return backends.comfyui
-    if (backends.mlx) return backends.mlx
-    throw new Error("The voice service isn't available here: choose ComfyUI for Voices in Settings")
+    const backend = await backends.backend()
+    if (backend?.kind === 'comfyui') return backends.comfyui(backend.address)
+    if (backend?.kind === 'here' && backends.mlx) return backends.mlx
+    throw new Error('No Backend can make voices: add a ComfyUI in Settings, on the Machines tab')
   }
   return {
     profile: async () => (await pick()).profile(),

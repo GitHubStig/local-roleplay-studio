@@ -1,32 +1,91 @@
 /**
- * Which machine a job runs on, so the Text Model is unloaded for a heavy job only when they share
- * one (ADR 0013): a render on a ComfyUI across the network leaves this machine's memory alone.
- * A machine is named by a server's address; `undefined` is this machine (mflux, the voice
- * service, SHARP, LiTo).
+ * Which Backend a job runs on (ADR 0022), and so which machine: jobs take turns per machine (ADR
+ * 0020), and the Text Model is unloaded for a heavy job only when they share one (ADR 0013). A
+ * machine is named by a Backend's address; `undefined` is this machine.
  */
-import { comfyBase } from './comfyui/client.ts'
+import {
+  type Backend,
+  BACKEND_WORK,
+  backendAddress,
+  HERE,
+  imageKindOf,
+  inTurn,
+  pickBackend,
+  type Work,
+} from './backends.ts'
 import { type EditModel, findEditModel } from './images/editModels.ts'
 import type { ImageBackendKind } from './images/imageModels.ts'
+import type { Availabilities } from './features.ts'
 import type { JobKind } from './jobs.ts'
-import { renderSettings, type Settings } from './settings.ts'
-import { OLLAMA_URL } from './text/ollama/ollama.ts'
+import type { Settings } from './settings.ts'
 
 /**
- * A heavy job that may run on another machine, as the render queue is given it: a render with its
- * Session's Settings, an edit with its edit model's backend and the Session's ComfyUI, an upscale or
- * a voice. Any other (SHARP, a figure) runs here.
+ * A heavy job, as the render queue is given it: a render by an Image Model of its Session's kind of
+ * Backend, an edit by its edit model's, an upscale or a voice. Any other (SHARP, a figure) runs
+ * here.
  */
 export type HeavyJob =
-  | { kind: 'render'; settings: Pick<Settings, 'imageBackend' | 'imageBaseUrl'> }
-  | { kind: 'edit'; backend: ImageBackendKind; settings: Pick<Settings, 'imageBaseUrl'> }
+  | { kind: 'render'; settings: Pick<Settings, 'imageBackend'> }
+  | { kind: 'edit'; backend: ImageBackendKind }
   | { kind: 'upscale' | 'voice' }
 
-/** An edit as the render queue is given it: on its edit model's backend, at the Session's ComfyUI. */
-export const editJob = (model: EditModel, session: Pick<Settings, 'imageBaseUrl'>): HeavyJob => ({
+/** An edit as the render queue is given it: by its edit model's kind of Backend. */
+export const editJob = (model: EditModel): HeavyJob => ({
   kind: 'edit',
   backend: findEditModel(model)?.backend ?? 'mflux',
-  settings: session,
 })
+
+/** What this machine's own Backend can run, as found at startup (`features.ts`). */
+export type Here = Pick<Availabilities, 'images' | 'upscale' | 'edits' | 'voices'>
+
+const WORK_OF: Record<HeavyJob['kind'], Work> = {
+  render: 'images',
+  edit: 'edits',
+  upscale: 'upscale',
+  voice: 'voices',
+}
+
+/** Whether `backend` can run `job`: this machine only what it has, a render on its model's kind. */
+export function canRun(backend: Backend, job: HeavyJob, here: Here): boolean {
+  const work = WORK_OF[job.kind]
+  if (!BACKEND_WORK[backend.kind].includes(work)) return false
+  if (backend.kind === 'here' && !here[work as keyof Here].available) return false
+  if (job.kind === 'render') return imageKindOf(backend) === job.settings.imageBackend
+  if (job.kind === 'edit') return imageKindOf(backend) === job.backend
+  return true
+}
+
+/**
+ * The Backend a heavy job goes to as Settings are `now` (`pickBackend`); any other job, this
+ * machine's. Undefined when no Backend can run it.
+ */
+export function backendOf(
+  job: HeavyJob | undefined,
+  now: Pick<Settings, 'backends' | 'runOn'>,
+  here: Here,
+): Backend | undefined {
+  if (!job) return HERE
+  return pickBackend(now.backends, now.runOn[WORK_OF[job.kind]], (b) => canRun(b, job, here))
+}
+
+/**
+ * The Backend that runs the Text Model `model`: the first text Backend, Settings' preferred one
+ * first, that lists it (`listed`, which may fail for one that doesn't answer); the preferred one if
+ * none does, so its own error says why.
+ */
+export async function textBackendFor(
+  now: Pick<Settings, 'backends' | 'runOn'>,
+  model: string,
+  listed: (backend: Backend) => Promise<string[]>,
+): Promise<Backend | undefined> {
+  const text = inTurn(now.backends, now.runOn.text).filter((b) =>
+    BACKEND_WORK[b.kind].includes('text')
+  )
+  for (const backend of text) {
+    if ((await listed(backend).catch((): string[] => [])).includes(model)) return backend
+  }
+  return text[0]
+}
 
 const hostOf = (address: string) => {
   try {
@@ -68,67 +127,43 @@ export function sameMachine(
 }
 
 /**
- * Where a heavy job runs: a render on its Session's backend, an edit on its edit model's (ComfyUI
- * at the Session's address); an upscale and a voice on the backend Settings choose now (ComfyUI at
- * Settings' address); any other here.
- */
-export function jobServer(
-  job: HeavyJob | undefined,
-  now: Pick<Settings, 'upscaleBackend' | 'voiceBackend' | 'imageBaseUrl'>,
-): string | undefined {
-  const comfy = (on: boolean, address: string) => on ? comfyBase(address) : undefined
-  switch (job?.kind) {
-    case 'render':
-      return comfy(job.settings.imageBackend === 'comfyui', job.settings.imageBaseUrl)
-    case 'edit':
-      return comfy(job.backend === 'comfyui', job.settings.imageBaseUrl)
-    case 'upscale':
-      return comfy(now.upscaleBackend === 'comfyui', now.imageBaseUrl)
-    case 'voice':
-      return comfy(now.voiceBackend === 'comfyui', now.imageBaseUrl)
-    default:
-      return undefined
-  }
-}
-
-/** Where the Text Model runs: Ollama at Settings' address or its own; a server at its address. */
-export const textServer = (
-  s: Pick<Settings, 'textBackend' | 'textBaseUrl'>,
-): string | undefined => s.textBaseUrl || (s.textBackend === 'ollama' ? OLLAMA_URL : undefined)
-
-/**
  * The machine a job takes turns on, as a key: `here` for this one, its host for another. Jobs on
  * different machines run side by side; on one, they take turns.
  */
 export const machineKey = (address: string | undefined, own: Set<string> = ownNames()): string =>
   isThisMachine(address, own) ? 'here' : hostOf(address!)
 
+/** The machine a Backend is on, as a key (`machineKey`); this one for none. */
+export const machineOf = (backend: Backend | undefined, own?: Set<string>): string =>
+  machineKey(backend && backendAddress(backend), own)
+
 /**
- * Where a Session's queued job runs: a picture on the Text Model's server (it writes an Image
- * Prompt), a render on the Session's Image backend, an edit on its edit model's backend (the one
- * it was told, or Settings' now), an upscale on Settings' upscaler, a voice designed or a line
- * spoken on Settings' voice backend; 3D and the style scores here.
+ * Where a Session's queued job runs: a picture with the Text Model (it writes an Image Prompt), a
+ * render by the Session's Image Model, an edit by its edit model (the one it was told, or Settings'
+ * now), an upscale, a voice designed or a line spoken, each as Settings send it now; 3D and the
+ * style scores here.
  */
-export function jobMachine(
+export function jobBackend(
   kind: JobKind,
   session: Settings,
   now: Settings,
-  editModel: EditModel = now.editModel,
-): string | undefined {
+  here: Here,
+  opts: { editModel?: EditModel; text?: Backend },
+): Backend | undefined {
   switch (kind) {
     case 'picture':
-      return textServer(now)
+      return opts.text
     case 'render':
-      return jobServer({ kind: 'render', settings: renderSettings(session, now) }, now)
+      return backendOf({ kind: 'render', settings: session }, now, here)
     case 'edit':
-      return jobServer(editJob(editModel, session), now)
+      return backendOf(editJob(opts.editModel ?? now.editModel), now, here)
     case 'upscale':
-      return jobServer({ kind: 'upscale' }, now)
+      return backendOf({ kind: 'upscale' }, now, here)
     case 'voice':
     case 'speak':
     case 'speak-thought':
-      return jobServer({ kind: 'voice' }, now)
+      return backendOf({ kind: 'voice' }, now, here)
     default:
-      return undefined
+      return HERE
   }
 }

@@ -23,19 +23,16 @@ import { loadModelWorkflow, pickFiles } from './workflow.ts'
 /**
  * Pictures from a ComfyUI server (`comfyui/client.ts`): the model's workflow ends in
  * `SaveImageWebsocket` (which ships with ComfyUI), so the picture itself comes back over the
- * WebSocket and is saved into the Session's folder; ComfyUI writes no file. The address is the
- * Session's `imageBaseUrl`, or ComfyUI's default.
+ * WebSocket and is saved into the Session's folder; ComfyUI writes no file.
  */
 export function comfyuiImageGenerator(opts: {
-  /**
-   * ComfyUI's address for upscaling ('' for its default): Settings' now, as the Upscaler is read
-   * when upscaling. A render uses its Session's.
-   */
-  upscaleUrl?: () => Promise<string>
+  /** ComfyUI's address, its Backend's ('' for its usual one here). */
+  address?: string
   /** How often a running job checks that ComfyUI still answers (`watchAlive`); shorter in tests. */
   checkEveryMs?: number
 } = {}): ImageGenerator {
   const checkEveryMs = opts.checkEveryMs ?? 15_000
+  const base = comfyBase(opts.address ?? '')
   const picture = async (
     base: string,
     workflow: Workflow,
@@ -49,7 +46,6 @@ export function comfyuiImageGenerator(opts: {
   }
   return {
     async generate(req, signal, onProgress, _onDownload, onPreview) {
-      const base = comfyBase(req.settings.imageBaseUrl)
       const model = findComfyModel(req.settings.imageModel)
       if (!model) throw new Error(`ComfyUI has no Image Model "${req.settings.imageModel}" here`)
       const size = SIZE_PRESETS.find((p) => p.id === req.settings.size) ?? SIZE_PRESETS[0]
@@ -77,7 +73,6 @@ export function comfyuiImageGenerator(opts: {
      * back around it. With nothing painted, the whole picture is repainted.
      */
     async edit(req, signal, onProgress) {
-      const base = comfyBase(req.imageBaseUrl)
       const editor = findComfyEditor(req.model)
       const model = editor && findComfyModel(editor.model)
       if (!editor || !model) throw new Error(`ComfyUI has no edit model "${req.model}" here`)
@@ -107,7 +102,6 @@ export function comfyuiImageGenerator(opts: {
 
     /** SeedVR2, built into ComfyUI. */
     async upscale(req, signal, onProgress) {
-      const base = comfyBase(await opts.upscaleUrl?.() ?? '')
       const upscaler = findComfyUpscaler(req.model)
       if (!upscaler) throw new Error(`ComfyUI has no upscaler "${req.model}" here`)
       const files = await modelFiles(base, upscaler, signal)

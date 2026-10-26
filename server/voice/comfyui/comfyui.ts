@@ -26,12 +26,13 @@ import type { SpeakRequest, VoiceEngine } from '../voice.ts'
  * for a render, and ComfyUI unloads Higgs after (`/free`, as after every job).
  */
 export function comfyuiVoiceEngine(opts: {
-  /** ComfyUI's address ('' for its default): Settings' now. */
-  baseUrl: () => Promise<string>
+  /** ComfyUI's address, its Backend's ('' for its usual one here). */
+  address?: string
   /** How often a running job checks that ComfyUI still answers; shorter in tests. */
   checkEveryMs?: number
 }): VoiceEngine {
   const checkEveryMs = opts.checkEveryMs ?? 15_000
+  const base = comfyBase(opts.address ?? '')
 
   /** Runs a workflow and saves the clip it made to `out`, blanking ComfyUI's copy. */
   async function clip(base: string, workflow: Workflow, out: string, signal: AbortSignal) {
@@ -49,7 +50,6 @@ export function comfyuiVoiceEngine(opts: {
     profile: () => Promise.resolve({ ref: 'flac', speech: 'flac', heavy: true }),
 
     async design(req, signal) {
-      const base = comfyBase(await opts.baseUrl())
       const workflow = fillWorkflow(await voiceWorkflow('design'), {
         description: req.description,
         text: req.text,
@@ -59,7 +59,6 @@ export function comfyuiVoiceEngine(opts: {
     },
 
     async speak(req, signal) {
-      const base = comfyBase(await opts.baseUrl())
       const name = `rpg-${crypto.randomUUID()}${extname(req.ref)}`
       const uploaded = await upload(base, name, await Deno.readFile(req.ref))
       try {

@@ -3,20 +3,19 @@ import { computed, onMounted, ref } from 'vue'
 import { watchDebounced } from '@vueuse/core'
 import {
   ApiError,
-  checkComfyUI,
-  type ComfyStatus,
   getSettings,
   getSettingsOptions,
   type ImageBackend,
-  listTextModels,
   saveSettings,
   type Settings,
   type SettingsOptions,
-  type TextBackend,
+  type Work,
 } from '../api'
 import BackendOptions from '../components/BackendOptions.vue'
-import ComfyStatusLine from '../components/ComfyStatusLine.vue'
 import FeatureSwitch from '../components/FeatureSwitch.vue'
+import MachinesTab from '../components/MachinesTab.vue'
+import RunOn from '../components/RunOn.vue'
+import { useBackends } from '../composables/useBackends'
 import { useFeatures } from '../composables/useFeatures'
 import {
   backendGroups,
@@ -33,11 +32,12 @@ const saving = ref(false)
 const status = ref<{ kind: 'saved' | 'error'; message: string; issues?: string[] } | null>(null)
 
 /**
- * The Settings, a tab per part of the app (the Text Model's, each extra's), then Advanced: what
- * applies to every model (the Limits, the seed), and what's for looking into the app (the call log,
- * the style scores).
+ * The Settings: the Machines first (the Backends there are), a tab per part of the app (the Text
+ * Model's, each extra's), then Advanced: what applies to every model (the Limits, the seed), and
+ * what's for looking into the app (the call log, the style scores).
  */
 const TABS = [
+  { id: 'machines', label: 'Machines' },
   { id: 'text', label: 'Text' },
   { id: 'images', label: 'Images' },
   { id: 'voice', label: 'Voice' },
@@ -69,46 +69,32 @@ onMounted(async () => {
   }
 })
 
-/** Each backend's usual address, offered when it's chosen ('' is Ollama's default). */
-const DEFAULT_BASE_URL: Record<TextBackend, string> = {
-  ollama: '',
-  openai: 'http://localhost:1234/v1',
+/** New API keys typed, by Backend id; saved when a field is left. */
+const apiKeys = ref<Record<string, string>>({})
+const { choicesFor, whereTo, comfy, checkComfy, text } = useBackends(form, options, apiKeys)
+
+/** A Backend taken off the list: work that preferred it moves to the first left that can do it. */
+function removeBackend(index: number) {
+  if (!form.value) return
+  const [gone] = form.value.backends.splice(index, 1)
+  for (const work of Object.keys(form.value.runOn) as Work[]) {
+    if (form.value.runOn[work] === gone.id) form.value.runOn[work] = choicesFor(work)[0]?.id ?? ''
+  }
 }
-function onTextBackendChange() {
-  if (form.value) form.value.textBaseUrl = DEFAULT_BASE_URL[form.value.textBackend]
-}
 
-/** A new API key to save; '' leaves the saved one as it is. */
-const apiKey = ref('')
-const removeApiKey = ref(false)
+/** What the Text Model's Backend lists: as listed on this page, or as the server did on load. */
+const textListing = computed(() => (form.value && text.value[form.value.runOn.text]) ?? options.value)
 
-/** As the backend, its address or the key change, list what it offers. */
-watchDebounced(
-  () => form.value && [form.value.textBackend, form.value.textBaseUrl, apiKey.value],
-  async () => {
-    if (!form.value || !options.value) return
-    const { textBackend, textBaseUrl } = form.value
-    const textApiKey = removeApiKey.value ? '' : apiKey.value || undefined
-    const listed = await listTextModels({ textBackend, textBaseUrl, textApiKey }).catch((err) => ({
-      textModels: [],
-      thinkingModels: [],
-      textModelsError: (err as Error).message,
-    }))
-    options.value = { ...options.value, textModelsError: undefined, ...listed }
-  },
-  { debounce: 500 },
-)
-
-/** Keep a stored Text Model visible even if its backend no longer lists it. */
+/** Keep a stored Text Model visible even if its Backend no longer lists it. */
 const textModelChoices = computed(() => {
-  const models = options.value?.textModels ?? []
+  const models = textListing.value?.textModels ?? []
   const current = form.value?.textModel
   return current && !models.includes(current) ? [current, ...models] : models
 })
 
 /** Thinking only applies to Text Models that support it. */
 const canThink = computed(() =>
-  !!form.value && (options.value?.thinkingModels ?? []).includes(form.value.textModel)
+  !!form.value && (textListing.value?.thinkingModels ?? []).includes(form.value.textModel)
 )
 
 const imageModelsOf = (backend: ImageBackend) => options.value?.imageModels[backend] ?? []
@@ -129,69 +115,17 @@ const defaultImageModel = computed({
     if (imageModel.value) form.value.steps = imageModel.value.defaultSteps
   },
 })
-/** Every backend's upscalers: each runs SeedVR2, so they have the same. */
-const upscalerGroups = computed(() =>
-  backendGroups(options.value, form.value?.upscaleBackend ?? 'mflux', () =>
-    options.value?.upscalers ?? [])
-)
-/** The Default upscaler and its backend, picked together. */
-const defaultUpscaler = computed({
-  get: () => form.value ? onBackend(form.value.upscaleBackend, form.value.upscaler) : '',
-  set(value) {
-    if (form.value) [form.value.upscaleBackend, form.value.upscaler] = fromOnBackend(value)
-  },
-})
-/** Pictures, Upscale or voices run on ComfyUI, so its address matters. */
-const usesComfyUI = computed(() =>
-  form.value?.imageBackend === 'comfyui' || form.value?.upscaleBackend === 'comfyui' ||
-  form.value?.voiceBackend === 'comfyui'
-)
-/**
- * ComfyUI at the address shown: up or down, and whether what runs there has what it needs (the
- * Image Model's files, the upscaler's, voices' custom nodes).
- */
-const comfy = ref<ComfyStatus | 'checking' | null>(null)
-async function checkComfy() {
-  if (!form.value || !usesComfyUI.value) return (comfy.value = null)
-  comfy.value = 'checking'
-  const { imageBackend, upscaleBackend, voiceBackend, imageBaseUrl, imageModel, upscaler } =
-    form.value
-  comfy.value = await checkComfyUI(imageBaseUrl, {
-    imageModel: imageBackend === 'comfyui' ? imageModel : undefined,
-    upscaler: upscaleBackend === 'comfyui' ? upscaler : undefined,
-    voices: voiceBackend === 'comfyui' || undefined,
-  }).catch((err) => ({ up: false as const, error: (err as Error).message }))
-}
-// Checked when ComfyUI is chosen, and again as its address or what runs there changes.
-watchDebounced(
-  () =>
-    form.value && [
-      form.value.imageBackend,
-      form.value.upscaleBackend,
-      form.value.voiceBackend,
-      form.value.imageBaseUrl,
-      form.value.imageModel,
-      form.value.upscaler,
-    ],
-  checkComfy,
-  { debounce: 500, immediate: true },
-)
 
-/**
- * Whether pictures, Upscale or voices can run, as the form stands: choosing ComfyUI makes one
- * available before it's saved (a server runs it, not this machine).
- */
-const availableWith = (feature: 'images' | 'upscale' | 'voices', comfyui: boolean) =>
-  comfyui ? { available: true } : options.value?.features[feature] ?? { available: false }
-const imagesAvailability = computed(() =>
-  availableWith('images', form.value?.imageBackend === 'comfyui')
-)
-const upscaleAvailability = computed(() =>
-  availableWith('upscale', form.value?.upscaleBackend === 'comfyui')
-)
-const voicesAvailability = computed(() =>
-  availableWith('voices', form.value?.voiceBackend === 'comfyui')
-)
+/** Whether an extra can run as the form stands: here, or on a Backend listed that runs it. */
+const availableFor = (work: 'images' | 'upscale' | 'voices') =>
+  computed(() =>
+    choicesFor(work).length
+      ? { available: true }
+      : options.value?.features[work] ?? { available: false }
+  )
+const imagesAvailability = availableFor('images')
+const upscaleAvailability = availableFor('upscale')
+const voicesAvailability = availableFor('voices')
 const picturesHere = computed(() => imagesAvailability.value.available)
 
 /** The form as last saved (or loaded), so an unchanged one isn't saved again. */
@@ -199,14 +133,14 @@ let savedJson = ''
 const formJson = () => JSON.stringify(form.value)
 
 /**
- * Saves the form, and with it `textApiKey` when given ('' removes the saved one). What the server
+ * Saves the form, and with it `keys` when given (by Backend id; '' removes one). What the server
  * turns down (an address half typed, say) isn't saved, and says why at the top; the next change
  * tries again. The form isn't replaced by what comes back, so typing meanwhile isn't lost.
  */
-async function save(textApiKey?: string) {
+async function save(keys?: Record<string, string>) {
   if (!form.value) return
   const json = formJson()
-  if (json === savedJson && textApiKey === undefined) {
+  if (json === savedJson && keys === undefined) {
     // Back to what's saved (an address put right, say): what was turned down no longer stands.
     if (status.value?.kind === 'error') status.value = null
     return
@@ -215,15 +149,12 @@ async function save(textApiKey?: string) {
   savedJson = json
   saving.value = true
   try {
-    const saved = await saveSettings({ ...form.value, textApiKey })
-    if (form.value.textApiKeySet !== saved.textApiKeySet) {
-      form.value.textApiKeySet = saved.textApiKeySet
+    const saved = await saveSettings({ ...form.value, apiKeys: keys })
+    if (JSON.stringify(form.value.apiKeysSet) !== JSON.stringify(saved.apiKeysSet)) {
+      form.value.apiKeysSet = saved.apiKeysSet
       if (savedJson === json) savedJson = formJson()
     }
-    if (textApiKey !== undefined) {
-      apiKey.value = ''
-      removeApiKey.value = false
-    }
+    for (const id of Object.keys(keys ?? {})) delete apiKeys.value[id]
     await refreshFeatures()
     status.value = { kind: 'saved', message: 'Saved. Applies from the next Session.' }
   } catch (err) {
@@ -240,16 +171,12 @@ async function save(textApiKey?: string) {
 // Every change saves itself once typing pauses.
 watchDebounced(formJson, () => save(), { debounce: 600 })
 
-/** A new API key, or its removal: saved when the field is left (not while it's typed). */
-function saveApiKey() {
-  if (removeApiKey.value) return save('')
-  if (apiKey.value.trim()) return save(apiKey.value.trim())
-}
-/** Enter in a field saves at once. */
-const saveNow = () => saveApiKey() ?? save()
-function removeSavedApiKey() {
-  removeApiKey.value = true
-  saveApiKey()
+/** A Backend's new API key, or its removal (''). */
+const saveKey = (id: string, key: string) => save({ [id]: key })
+/** Enter in a field saves at once, with any API key typed. */
+function saveNow() {
+  const typed = Object.entries(apiKeys.value).filter(([, key]) => key.trim())
+  return save(typed.length ? Object.fromEntries(typed.map(([id, k]) => [id, k.trim()])) : undefined)
 }
 </script>
 
@@ -299,77 +226,36 @@ function removeSavedApiKey() {
 
       <form v-else class="flex flex-col gap-5" @submit.prevent="saveNow">
         <section
+          v-show="tab === 'machines'"
+          class="flex flex-col gap-5"
+          role="tabpanel"
+          data-tab-panel="machines"
+        >
+          <MachinesTab
+            v-model:backends="form.backends"
+            v-model:api-keys="apiKeys"
+            :here="options.here"
+            :comfy="comfy"
+            :text="text"
+            :api-keys-set="form.apiKeysSet ?? []"
+            @check="checkComfy"
+            @remove="removeBackend"
+            @save-key="saveKey"
+          />
+        </section>
+
+        <section
           v-show="tab === 'text'"
           class="flex flex-col gap-5"
           role="tabpanel"
           data-tab-panel="text"
         >
-          <label class="flex flex-col gap-1">
-            <span class="text-sm text-muted">Text backend</span>
-            <select
-              v-model="form.textBackend"
-              class="field"
-              data-text-backend
-              @change="onTextBackendChange"
-            >
-              <option value="ollama">Ollama</option>
-              <option value="openai">
-                OpenAI-compatible server (LM Studio, llama.cpp, OpenRouter…)
-              </option>
-            </select>
-          </label>
-
-          <label class="flex flex-col gap-1">
-            <span class="text-sm text-muted">Address</span>
-            <input
-              v-model.trim="form.textBaseUrl"
-              class="field"
-              data-text-base-url
-              :placeholder="
-                form.textBackend === 'ollama' ? 'http://localhost:11434' : 'http://localhost:1234/v1'
-              "
-            />
-            <span v-if="form.textBackend === 'ollama'" class="text-sm text-muted">
-              Empty for Ollama on this machine.
-            </span>
-            <span v-else class="text-sm text-muted">
-              With the API's version, as the server documents it: LM Studio
-              http://localhost:1234/v1, llama.cpp http://localhost:8080/v1, OpenRouter
-              https://openrouter.ai/api/v1. Picture rendering can't unload this server's model
-              to free memory, as it does Ollama's.
-            </span>
-          </label>
-
-          <div v-if="form.textBackend === 'openai'" class="flex flex-col gap-1">
-            <label class="flex flex-col gap-1">
-              <span class="text-sm text-muted">API key</span>
-              <input
-                v-model="apiKey"
-                type="password"
-                autocomplete="off"
-                class="field"
-                data-text-api-key
-                @change="saveApiKey"
-                :placeholder="
-                  form.textApiKeySet && !removeApiKey
-                    ? 'Saved; type a new one to replace it'
-                    : 'None (a local server needs none)'
-                "
-              />
-            </label>
-            <span class="text-sm text-muted">
-              Kept in settings.json on this machine, never sent back to the browser.
-              <button
-                v-if="form.textApiKeySet && !removeApiKey"
-                type="button"
-                class="underline"
-                data-remove-api-key
-                @click="removeSavedApiKey"
-              >
-                Remove the saved key
-              </button>
-            </span>
-          </div>
+          <RunOn
+            v-model="form.runOn.text"
+            label="Text Model runs on"
+            :choices="choicesFor('text')"
+            data-run-on="text"
+          />
 
           <label class="flex flex-col gap-1">
             <span class="text-sm text-muted">Text Model</span>
@@ -377,8 +263,8 @@ function removeSavedApiKey() {
               <option value="" disabled>Choose a model…</option>
               <option v-for="m in textModelChoices" :key="m" :value="m">{{ m }}</option>
             </select>
-            <span v-if="options.textModelsError" class="text-sm text-warn">
-              {{ options.textModelsError }}
+            <span v-if="textListing?.textModelsError" class="text-sm text-warn">
+              {{ textListing.textModelsError }}
             </span>
           </label>
 
@@ -447,21 +333,15 @@ function removeSavedApiKey() {
               Apple Silicon Macs, ComfyUI on any machine (Windows with an NVIDIA card).
             </span>
           </label>
-          <label v-if="usesComfyUI" class="flex flex-col gap-1">
-            <span class="text-sm text-muted">ComfyUI address</span>
-            <input
-              v-model.trim="form.imageBaseUrl"
-              class="field"
-              placeholder="http://127.0.0.1:8188"
-              data-image-base-url
-            />
-            <ComfyStatusLine :status="comfy" @check="checkComfy" />
-            <span class="text-sm text-muted">
-              Empty for ComfyUI on this machine at its usual port. ComfyUI must be running, with the
-              model's files installed (Settings says which when one is missing). Its pictures come
-              back through its API, so it can be on another machine.
-            </span>
-          </label>
+          <RunOn
+            v-model="form.runOn.images"
+            label="Render on"
+            :choices="choicesFor('images')"
+            :goes-to="whereTo('images')"
+            :status="comfy[whereTo('images')?.id ?? '']"
+            data-run-on="images"
+            @check="checkComfy"
+          />
 
           <template v-if="picturesHere">
             <label
@@ -548,16 +428,24 @@ function removeSavedApiKey() {
             </FeatureSwitch>
             <label class="flex flex-col gap-1">
               <span class="text-sm text-muted">Default upscaler</span>
-              <select v-model="defaultUpscaler" class="field" data-upscaler>
-                <BackendOptions :groups="upscalerGroups" />
+              <select v-model="form.upscaler" class="field" data-upscaler>
+                <option v-for="u in options.upscalers" :key="u.id" :value="u.id">{{ u.label }}</option>
               </select>
-              <span class="text-sm text-muted">
-                Applies to the next upscale, whichever backend rendered the picture. ComfyUI's runs
-                at the address above, which can be another machine: a Mac can render with mflux and
-                upscale on a faster PC (SeedVR2 7B: 9.5 s on an RTX 4070 against ~46 s on the Mac),
-                with Comfy-Org's SeedVR2 files there.
-              </span>
+              <span class="text-sm text-muted">Applies to the next upscale, in running Sessions too.</span>
             </label>
+            <RunOn
+              v-model="form.runOn.upscale"
+              label="Upscale on"
+              :choices="choicesFor('upscale')"
+              :goes-to="whereTo('upscale')"
+              :status="comfy[whereTo('upscale')?.id ?? '']"
+              data-run-on="upscale"
+              @check="checkComfy"
+            >
+              Whichever rendered the picture: a Mac can render with mflux and upscale on a faster PC
+              (SeedVR2 7B: 9.5 s on an RTX 4070 against ~46 s on the Mac), with Comfy-Org's SeedVR2
+              files there.
+            </RunOn>
             <FeatureSwitch
               v-model="form.features.edits"
               :availability="options.features.edits"
@@ -576,10 +464,19 @@ function removeSavedApiKey() {
                 <option v-for="m in editModels.choices" :key="m.id" :value="m.id">{{ m.label }}</option>
               </select>
               <span class="text-sm text-muted">
-                What an edit starts on; the Edit dialog can choose another. ComfyUI's run on the
-                Session's ComfyUI.
+                What an edit starts on; the Edit dialog can choose another.
               </span>
             </label>
+            <RunOn
+              v-if="options.features.edits.available"
+              v-model="form.runOn.edits"
+              label="Edit on"
+              :choices="choicesFor('edits')"
+              :goes-to="whereTo('edits')"
+              :status="comfy[whereTo('edits')?.id ?? '']"
+              data-run-on="edits"
+              @check="checkComfy"
+            />
           </template>
         </section>
 
@@ -598,23 +495,20 @@ function removeSavedApiKey() {
             Each Roleplay Character gets a voice designed from their description, and speaks their
             lines.
           </FeatureSwitch>
-          <label class="flex flex-col gap-1">
-            <span class="text-sm text-muted">Speak with</span>
-            <select v-model="form.voiceBackend" class="field" data-voice-backend>
-              <option value="mlx-audio">The voice service (mlx-audio; Apple Silicon Macs)</option>
-              <option value="comfyui">ComfyUI, at the address on the Images tab</option>
-            </select>
-            <span class="text-sm text-muted">
-              Both design a voice with Qwen3-TTS VoiceDesign and clone it with Higgs TTS 3. ComfyUI
-              needs TTS Audio Suite's custom nodes (install them through its Manager) and an NVIDIA
-              card with 12 GB; there a line takes a few seconds more than on a Mac.
-            </span>
-          </label>
-          <ComfyStatusLine
-            v-if="form.voiceBackend === 'comfyui'"
-            :status="comfy"
+          <RunOn
+            v-model="form.runOn.voices"
+            label="Voices on"
+            :choices="choicesFor('voices')"
+            :goes-to="whereTo('voices')"
+            :status="comfy[whereTo('voices')?.id ?? '']"
+            data-run-on="voices"
             @check="checkComfy"
-          />
+          >
+            This machine's voice service (mlx-audio, Apple Silicon Macs) or a ComfyUI both design a
+            voice with Qwen3-TTS VoiceDesign and clone it with Higgs TTS 3. ComfyUI needs TTS Audio
+            Suite's custom nodes (install them through its Manager) and an NVIDIA card with 12 GB;
+            there a line takes a few seconds more than on a Mac.
+          </RunOn>
         </section>
 
         <section

@@ -41,29 +41,43 @@ Deno.test('fileSettingsStore fills fields missing from an older file', () =>
     })
   }))
 
-Deno.test('fileSettingsStore keeps the API key in the file but out of Settings', () =>
+/** Settings with LM Studio listed, which takes an API key. */
+const withLmStudio = {
+  ...DEFAULT_SETTINGS,
+  backends: [
+    ...DEFAULT_SETTINGS.backends,
+    { id: 'lm', kind: 'openai' as const, address: 'http://localhost:1234/v1' },
+  ],
+  textModel: 'llama3:latest',
+}
+
+Deno.test("fileSettingsStore keeps each Backend's API key in the file but out of Settings", () =>
   withTempDir(async (dir) => {
     const path = join(dir, 'settings.json')
     const store = fileSettingsStore(path)
-    await store.saveApiKey('sk-secret')
-    await store.save({ ...DEFAULT_SETTINGS, textModel: 'llama3:latest' })
-    assertEquals(await store.loadApiKey(), 'sk-secret') // saving Settings keeps it
-    assertEquals('textApiKey' in await store.load(), false)
-    assertEquals(JSON.parse(await Deno.readTextFile(path)).textApiKey, 'sk-secret')
+    await store.saveApiKey('lm', 'sk-secret')
+    await store.save(withLmStudio)
+    assertEquals(await store.loadApiKey('lm'), 'sk-secret') // saving Settings keeps it
+    assertEquals(await store.loadApiKey('ollama'), '')
+    assertEquals('apiKeys' in await store.load(), false)
+    assertEquals(JSON.parse(await Deno.readTextFile(path)).apiKeys, { lm: 'sk-secret' })
     // Windows has no Unix modes: the file takes the folder's permissions there.
     if (Deno.build.os !== 'windows') assertEquals((await Deno.stat(path)).mode! & 0o777, 0o600)
-    await store.saveApiKey('')
-    assertEquals(await store.loadApiKey(), '')
+    await store.saveApiKey('lm', '')
+    assertEquals(await store.loadApiKey('lm'), '')
     assertEquals((await store.load()).textModel, 'llama3:latest')
+    // A Backend taken off the list takes its key with it.
+    await store.saveApiKey('lm', 'sk-secret')
+    await store.save(DEFAULT_SETTINGS)
+    assertEquals(await store.loadApiKey('lm'), '')
   }))
 
-Deno.test('fileSettingsStore keeps both Settings and the API key saved at the same time', () =>
+Deno.test('fileSettingsStore keeps both Settings and an API key saved at the same time', () =>
   withTempDir(async (dir) => {
     const store = fileSettingsStore(join(dir, 'settings.json'))
-    const settings = { ...DEFAULT_SETTINGS, textModel: 'llama3:latest' }
-    await Promise.all([store.save(settings), store.saveApiKey('sk-secret')])
-    assertEquals(await store.load(), settings)
-    assertEquals(await store.loadApiKey(), 'sk-secret')
+    await Promise.all([store.save(withLmStudio), store.saveApiKey('lm', 'sk-secret')])
+    assertEquals(await store.load(), withLmStudio)
+    assertEquals(await store.loadApiKey('lm'), 'sk-secret')
   }))
 
 Deno.test('fileSettingsStore falls back to defaults on a corrupt file', () =>
@@ -91,7 +105,6 @@ Deno.test("A Session renders with its own model, steps and seed's settings, and 
     stepCache: null,
     quantize: 8 as const,
     float16: false,
-    imageBaseUrl: 'http://pc:8188',
     seed: 1,
   }
   assertEquals(renderSettings(session, now), {
@@ -100,7 +113,6 @@ Deno.test("A Session renders with its own model, steps and seed's settings, and 
     stepCache: null,
     quantize: 8,
     float16: false,
-    imageBaseUrl: 'http://pc:8188',
   })
 })
 
@@ -135,39 +147,71 @@ Deno.test('validateSettings drops Fast from a file made before turbos were Image
   assertEquals(older.ok && 'fast' in older.settings, false)
 })
 
-Deno.test('validateSettings upscales where pictures are made, unless Upscale has its own backend', () => {
-  const { upscaleBackend: _, ...older } = DEFAULT_SETTINGS
-  const comfyui = { ...older, imageBackend: 'comfyui', imageModel: 'qwen-image-2.1' }
-  const follows = validateSettings(comfyui)
-  assertEquals(follows.ok && follows.settings.upscaleBackend, 'comfyui')
-  // A Mac rendering with mflux and upscaling on a ComfyUI machine.
-  const split = validateSettings({ ...DEFAULT_SETTINGS, upscaleBackend: 'comfyui' })
-  assertEquals(split.ok && [split.settings.imageBackend, split.settings.upscaleBackend], [
-    'mflux',
-    'comfyui',
+Deno.test('validateSettings checks the Backends, and always lists this machine', () => {
+  const ollama = DEFAULT_SETTINGS.backends[1]
+  /** What's wrong with these Backends listed after Ollama, which Settings send text to. */
+  const issues = (backends: unknown) => {
+    const listed = Array.isArray(backends) ? [ollama, ...backends] : backends
+    const result = validateSettings({ ...DEFAULT_SETTINGS, backends: listed })
+    return result.ok ? [] : result.issues
+  }
+  // This machine's own, when left out, comes first.
+  const filled = validateSettings({ ...DEFAULT_SETTINGS, backends: [ollama] })
+  assertEquals(filled.ok && filled.settings.backends, DEFAULT_SETTINGS.backends)
+  assertEquals(issues([ollama]), ['Each Backend needs an id of its own'])
+  assertEquals(issues([{ id: 'x', kind: 'a1111', address: '' }]), [
+    "Backend x's kind must be one of: here, comfyui, ollama, openai",
   ])
-  assertEquals(validateSettings({ ...DEFAULT_SETTINGS, upscaleBackend: 'esrgan' }).ok, false)
+  assertEquals(issues([{ id: 'pc', kind: 'here', address: '' }]), [
+    'Only this machine\'s own Backend is "here"',
+  ])
+  assertEquals(issues([{ id: 'pc', kind: 'comfyui', address: 'http://pc:8188' }]), [])
+  assertEquals(issues([{ id: 'pc', kind: 'comfyui', address: 'not an address' }]), [
+    "Backend pc's address must be like http://127.0.0.1:8188",
+  ])
+  assertEquals(issues('ollama')[0], 'backends must be a list')
 })
 
-Deno.test('Where mflux and the voice service cannot run, Settings default to ComfyUI', () => {
+Deno.test('Where mflux and the voice service cannot run, Settings default to a ComfyUI here', () => {
   const pc = machineDefaults({ mflux: false, voiceService: false })
+  assertEquals(pc.backends.map((b) => [b.kind, b.address]), [
+    ['here', ''],
+    ['ollama', ''],
+    ['comfyui', ''],
+  ])
+  assertEquals(pc.runOn, {
+    text: 'ollama',
+    images: 'comfyui',
+    upscale: 'comfyui',
+    edits: 'comfyui',
+    voices: 'comfyui',
+  })
   assertEquals(
-    [pc.imageBackend, pc.upscaleBackend, pc.editModel, pc.voiceBackend, pc.imageModel],
-    ['comfyui', 'comfyui', 'qwen-image-2.1-edit-comfyui', 'comfyui', 'qwen-image-2.1'],
+    [pc.imageBackend, pc.editModel, pc.imageModel],
+    ['comfyui', 'qwen-image-2.1-edit-comfyui', 'qwen-image-2.1'],
   )
   assertEquals(validateSettings(pc).ok, true)
   assertEquals(machineDefaults({ mflux: true, voiceService: true }), DEFAULT_SETTINGS)
 })
 
-Deno.test("An older file's missing backends: Upscale follows its pictures, voices this machine", () =>
+Deno.test('A file from before the Backends list loads with the defaults for them', () =>
   withTempDir(async (dir) => {
     const path = join(dir, 'settings.json')
-    // Pictures on ComfyUI, from before Upscale and voices had backends of their own.
-    const { upscaleBackend: _u, voiceBackend: _v, ...older } = DEFAULT_SETTINGS
-    await Deno.writeTextFile(path, JSON.stringify({ ...older, imageBackend: 'comfyui' }))
-    const pc = fileSettingsStore(path, machineDefaults({ mflux: false, voiceService: false }))
-    const onPc = await pc.load()
-    assertEquals([onPc.upscaleBackend, onPc.voiceBackend], ['comfyui', 'comfyui'])
-    const mac = await fileSettingsStore(path).load()
-    assertEquals([mac.upscaleBackend, mac.voiceBackend], ['comfyui', 'mlx-audio'])
+    const { backends: _b, runOn: _r, ...rest } = DEFAULT_SETTINGS
+    await Deno.writeTextFile(
+      path,
+      JSON.stringify({ ...rest, textModel: 'llama3:latest', imageBaseUrl: 'http://pc:8188' }),
+    )
+    const warn = console.warn
+    const warned: string[] = []
+    console.warn = (message: string) => warned.push(message)
+    try {
+      const loaded = await fileSettingsStore(path).load()
+      assertEquals(loaded, { ...DEFAULT_SETTINGS, textModel: 'llama3:latest' })
+    } finally {
+      console.warn = warn
+    }
+    // The address is left for the player to add as a Backend, and the log says so.
+    assertEquals(warned.length, 1)
+    assertEquals(warned[0].includes('imageBaseUrl are ignored'), true)
   }))

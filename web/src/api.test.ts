@@ -12,10 +12,12 @@ import { ALL_ON } from './testing'
 afterEach(() => vi.unstubAllGlobals())
 
 const settings: Settings = {
-  textBackend: 'ollama',
-  textBaseUrl: '',
+  backends: [
+    { id: 'here', kind: 'here', address: '' },
+    { id: 'ollama', kind: 'ollama', address: '' },
+  ],
+  runOn: { text: 'ollama', images: 'here', upscale: 'here', edits: 'here', voices: 'here' },
   imageBackend: 'mflux',
-  imageBaseUrl: '',
   textModel: 'llama3:latest',
   thinking: false,
   imageModel: 'z-image-turbo',
@@ -29,8 +31,6 @@ const settings: Settings = {
   seed: 42,
   upscaler: 'seedvr2-7b',
   editModel: 'qwen-image-2.1-edit',
-  upscaleBackend: 'mflux',
-  voiceBackend: 'mlx-audio',
   limits: true,
   callLog: false,
   artModel: '',

@@ -97,29 +97,26 @@ export async function detectFeatures(
 }
 
 /**
- * What can run now: as detected at startup, but with pictures, Upscale and voices available wherever
- * Settings send them to ComfyUI, which a running server provides rather than this machine. One that
- * isn't says it could be sent there.
+ * What can run now: as detected at startup, but with pictures, Upscale, edits and voices available
+ * wherever Settings list a ComfyUI, which a running server provides rather than this machine (ADR
+ * 0022). One that isn't says one could be added.
  */
 export function withBackends(
   detected: Availabilities,
-  backends: { imageBackend: string; upscaleBackend: string; voiceBackend: string },
+  settings: { backends: readonly { kind: string }[] },
 ): Availabilities {
-  const viaComfyUI = (
-    feature: 'images' | 'upscale' | 'edits' | 'voices',
-    comfyui: boolean,
-    choose: string,
-  ) =>
+  const comfyui = settings.backends.some((b) => b.kind === 'comfyui')
+  const viaComfyUI = (feature: 'images' | 'upscale' | 'edits' | 'voices') =>
     comfyui ? yes : detected[feature].available ? detected[feature] : {
       available: false,
-      reason: `${detected[feature].reason}; or choose ComfyUI ${choose} in Settings`,
+      reason: `${detected[feature].reason}; or add a ComfyUI in Settings, on the Machines tab`,
     }
   return {
     ...detected,
-    images: viaComfyUI('images', backends.imageBackend === 'comfyui', 'as the Image backend'),
-    edits: viaComfyUI('edits', backends.imageBackend === 'comfyui', 'as the Image backend'),
-    upscale: viaComfyUI('upscale', backends.upscaleBackend === 'comfyui', 'for Upscale'),
-    voices: viaComfyUI('voices', backends.voiceBackend === 'comfyui', 'for Voices'),
+    images: viaComfyUI('images'),
+    edits: viaComfyUI('edits'),
+    upscale: viaComfyUI('upscale'),
+    voices: viaComfyUI('voices'),
   }
 }
 

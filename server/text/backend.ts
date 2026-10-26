@@ -1,3 +1,4 @@
+import type { Backend } from '../backends.ts'
 import type { Chat } from './chat.ts'
 import type { Seeding } from './seeded.ts'
 import { ollamaBackend } from './ollama/ollama.ts'
@@ -10,19 +11,17 @@ import { openAiBackend } from './openai/openai.ts'
 export const TEXT_BACKENDS = ['ollama', 'openai'] as const
 export type TextBackendKind = (typeof TEXT_BACKENDS)[number]
 
-export const TEXT_BACKEND_NAMES: Record<TextBackendKind, string> = {
-  ollama: 'Ollama',
-  openai: 'the OpenAI-compatible server',
-}
-
 /** Which backend, and where: '' for its default address (Ollama's; required for `openai`). */
 export interface TextConnection {
   backend: TextBackendKind
   baseUrl: string
 }
 
-/** A Text Model on a backend, with thinking on or off, seeded from a Session's seed if given. */
-export interface TextChoice extends TextConnection {
+/**
+ * A Text Model, with thinking on or off, seeded from a Session's seed if given; it runs on the
+ * Backend Settings send it to (`textBackendFor`).
+ */
+export interface TextChoice {
   model: string
   thinking: boolean
   seeding?: Seeding
@@ -54,7 +53,8 @@ export function textBackend(
     : ollamaBackend(connection.baseUrl || undefined)
 }
 
-/** The connection Settings name. A Session saved before there was a choice ran on Ollama. */
-export const connectionOf = (
-  s: { textBackend?: TextBackendKind; textBaseUrl?: string },
-): TextConnection => ({ backend: s.textBackend ?? 'ollama', baseUrl: s.textBaseUrl ?? '' })
+/** How to reach a text Backend (`backends.ts`): an Ollama or an OpenAI-compatible server. */
+export const connectionOf = (backend: Backend): TextConnection => ({
+  backend: backend.kind as TextBackendKind,
+  baseUrl: backend.address,
+})

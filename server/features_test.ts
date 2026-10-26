@@ -51,24 +51,16 @@ Deno.test('detectFeatures: a Mac without mflux has no pictures, unless placehold
   assertEquals((await detectFeatures(mac, { placeholderImages: true })).images.available, true)
 })
 
-Deno.test('withBackends: choosing ComfyUI enables edits on a machine without mflux', async () => {
+Deno.test('withBackends: a ComfyUI listed enables edits on a machine without mflux', async () => {
   const detected = await detectFeatures(machine('windows', 'x86_64', ['uv', 'nvidia-smi']))
-  const usingComfyUI = withBackends(detected, {
-    imageBackend: 'comfyui',
-    upscaleBackend: 'mflux',
-    voiceBackend: 'mlx-audio',
-  })
-  assertEquals(usingComfyUI.images.available, true)
-  assertEquals(usingComfyUI.edits.available, true)
+  const withComfyUI = withBackends(detected, { backends: [{ kind: 'here' }, { kind: 'comfyui' }] })
+  assertEquals(withComfyUI.images.available, true)
+  assertEquals(withComfyUI.edits.available, true)
 
-  const usingMflux = withBackends(detected, {
-    imageBackend: 'mflux',
-    upscaleBackend: 'mflux',
-    voiceBackend: 'mlx-audio',
-  })
-  assertEquals(usingMflux.edits.available, false)
+  const without = withBackends(detected, { backends: [{ kind: 'here' }, { kind: 'ollama' }] })
+  assertEquals(without.edits.available, false)
   assertEquals(
-    usingMflux.edits.reason,
-    'mflux runs only on Apple Silicon Macs; or choose ComfyUI as the Image backend in Settings',
+    without.edits.reason,
+    'mflux runs only on Apple Silicon Macs; or add a ComfyUI in Settings, on the Machines tab',
   )
 })

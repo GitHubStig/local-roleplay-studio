@@ -68,10 +68,12 @@ beforeEach(() => {
   vi.mocked(api.streamFrame).mockReset()
   vi.mocked(api.cancelFrame).mockReset()
   vi.mocked(api.getSettings).mockResolvedValue({
-    textBackend: 'ollama',
-    textBaseUrl: '',
+    backends: [
+      { id: 'here', kind: 'here', address: '' },
+      { id: 'ollama', kind: 'ollama', address: '' },
+    ],
+    runOn: { text: 'ollama', images: 'here', upscale: 'here', edits: 'here', voices: 'here' },
     imageBackend: 'mflux',
-    imageBaseUrl: '',
     textModel: 'llama3:latest',
     thinking: false,
     imageModel: 'flux2-klein-4b',
@@ -85,8 +87,6 @@ beforeEach(() => {
     seed: 1,
     upscaler: 'seedvr2-7b',
     editModel: 'qwen-image-2.1-edit',
-    upscaleBackend: 'mflux',
-    voiceBackend: 'mlx-audio',
     limits: true,
     callLog: false,
     artModel: '',
@@ -102,6 +102,7 @@ beforeEach(() => {
     upscalers: [],
     editModels: [],
     features: ALL_AVAILABLE,
+    here: ALL_AVAILABLE,
   })
 })
 

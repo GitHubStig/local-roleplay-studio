@@ -16,10 +16,12 @@ vi.mock('../api', async (importOriginal) => ({
 }))
 
 const settings: api.Settings = {
-  textBackend: 'ollama',
-  textBaseUrl: '',
+  backends: [
+    { id: 'here', kind: 'here', address: '' },
+    { id: 'ollama', kind: 'ollama', address: '' },
+  ],
+  runOn: { text: 'ollama', images: 'here', upscale: 'here', edits: 'here', voices: 'here' },
   imageBackend: 'mflux',
-  imageBaseUrl: '',
   textModel: 'llama3:latest',
   thinking: false,
   imageModel: 'z-image-turbo',
@@ -33,8 +35,6 @@ const settings: api.Settings = {
   seed: 42,
   upscaler: 'seedvr2-7b',
   editModel: 'qwen-image-2.1-edit',
-  upscaleBackend: 'mflux',
-  voiceBackend: 'mlx-audio',
   limits: true,
   callLog: false,
   artModel: '',
@@ -112,12 +112,14 @@ const options: api.SettingsOptions = {
     { id: 'seedvr2-3b', label: 'SeedVR2 3B' },
   ],
   features: ALL_AVAILABLE,
+  here: ALL_AVAILABLE,
 }
 
 beforeEach(() => {
   // Fake, so a debounce left pending by one test never fires in the next.
   vi.useFakeTimers()
-  vi.mocked(api.getSettings).mockResolvedValue({ ...settings })
+  // A copy of its own for each test, as the page changes its lists in place.
+  vi.mocked(api.getSettings).mockImplementation(() => Promise.resolve(structuredClone(settings)))
   vi.mocked(api.getSettingsOptions).mockResolvedValue(options)
   vi.mocked(api.saveSettings).mockImplementation(async (s) => s)
 })
@@ -125,16 +127,31 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers())
 
 describe('SettingsView', () => {
-  it("without mflux, offers ComfyUI's Image Models beside the saved one", async () => {
+  /** Adds a Backend on the Machines tab, at `address` if given. */
+  async function addBackend(
+    wrapper: ReturnType<typeof mount>,
+    kind: 'comfyui' | 'ollama' | 'openai',
+    address?: string,
+  ) {
+    await wrapper.find('[data-tab="machines"]').trigger('click')
+    await wrapper.find(`[data-add-backend="${kind}"]`).trigger('click')
+    if (address) {
+      await wrapper.find(`[data-backend="${kind}"] [data-backend-address]`).setValue(address)
+    }
+  }
+
+  it('without mflux, renders on a ComfyUI once one is added', async () => {
     const noMflux = { available: false, reason: 'mflux runs only on Apple Silicon Macs' }
+    const here = { ...ALL_AVAILABLE, images: noMflux, upscale: noMflux, edits: noMflux }
     vi.mocked(api.getSettingsOptions).mockResolvedValue({
       ...options,
       imageBackends: ['comfyui'],
-      features: { ...options.features, images: noMflux, upscale: noMflux },
+      features: here,
+      here,
     })
     const wrapper = mount(SettingsView)
     await flushPromises()
-    // Nothing to set up with mflux, but the saved model is still listed, beside ComfyUI's.
+    // Nowhere to render yet, though the saved model is still listed, beside ComfyUI's.
     const groups = () =>
       wrapper.findAll('[data-image-model] optgroup').map((g) => [
         g.attributes('label'),
@@ -142,57 +159,59 @@ describe('SettingsView', () => {
       ])
     expect(groups().map(([backend]) => backend)).toEqual(['mflux', 'ComfyUI'])
     expect(groups()[1]).toEqual(['ComfyUI', ['Qwen-Image 2.1 · ComfyUI']])
+    expect(wrapper.find('[data-run-on="images"] select').text()).toContain('add one')
     expect(wrapper.find('[data-step-cache]').exists()).toBe(false)
     vi.mocked(api.checkComfyUI).mockResolvedValue({
       up: false,
       error: "Couldn't reach ComfyUI at http://127.0.0.1:8188: is it running?",
     })
+    await addBackend(wrapper, 'comfyui')
     await wrapper.find('[data-image-model]').setValue('comfyui/qwen-image-2.1')
-    expect(wrapper.find('[data-image-base-url]').exists()).toBe(true)
-    // Checked as soon as it's chosen: down, until ComfyUI is started and checked again.
+    // Checked as soon as it's added: down, until ComfyUI is started and checked again.
     await vi.advanceTimersByTimeAsync(600)
     await flushPromises()
-    expect(wrapper.find('[data-comfy-status]').text()).toContain('Down: Couldn')
+    const status = () => wrapper.find('[data-backend="comfyui"] [data-comfy-status]')
+    expect(status().text()).toContain('Down: Couldn')
     vi.mocked(api.checkComfyUI).mockResolvedValue({
       up: true,
       version: '0.39.1',
       device: 'mps',
       ready: true,
     })
-    await wrapper.find('[data-check-comfy]').trigger('click')
+    await status().find('[data-check-comfy]').trigger('click')
     await flushPromises()
-    expect(wrapper.find('[data-comfy-status]').text()).toContain('Up: ComfyUI 0.39.1 on mps')
-    expect(api.checkComfyUI).toHaveBeenLastCalledWith('', {
-      imageModel: 'qwen-image-2.1',
-      upscaler: undefined,
-    })
-    // ComfyUI's models have no Quantize, step cache or Fast; Upscale is still mflux's, so off.
-    expect(wrapper.text()).not.toContain('Quantize')
-    expect(wrapper.find('[data-step-cache]').exists()).toBe(false)
-    const upscale = () => wrapper.find('[data-feature="upscale"]')
-    expect(upscale().find('[data-unavailable]').exists()).toBe(true)
-    // Upscaling there too: available, and the check covers its files.
-    await wrapper.find('[data-upscaler]').setValue('comfyui/seedvr2-7b')
-    expect(upscale().find('[data-unavailable]').exists()).toBe(false)
-    await vi.advanceTimersByTimeAsync(600)
-    await flushPromises()
+    expect(status().text()).toContain('Up: ComfyUI 0.39.1 on mps')
+    // Pictures and Upscale both go there, as this machine can do neither: its check covers both.
     expect(api.checkComfyUI).toHaveBeenLastCalledWith('', {
       imageModel: 'qwen-image-2.1',
       upscaler: 'seedvr2-7b',
+      voices: undefined,
     })
-    await wrapper.find('[data-image-base-url]').setValue('http://192.168.1.20:8188')
+    // This machine stays preferred, but can't: the Images tab says where they go.
+    expect(wrapper.find('[data-run-on="images"] [data-goes-to]').text()).toContain('ComfyUI')
+    expect(wrapper.find('[data-run-on="images"] [data-comfy-status]').text()).toContain('Up')
+    // ComfyUI's models have no Quantize, step cache or float16.
+    expect(wrapper.text()).not.toContain('Quantize')
+    expect(wrapper.find('[data-step-cache]').exists()).toBe(false)
+    expect(wrapper.find('[data-feature="upscale"] [data-unavailable]').exists()).toBe(false)
+    await wrapper.find('[data-backend="comfyui"] [data-backend-address]').setValue(
+      'http://192.168.1.20:8188',
+    )
     await wrapper.find('form').trigger('submit')
     await flushPromises()
     expect(api.saveSettings).toHaveBeenCalledWith(expect.objectContaining({
+      backends: [...settings.backends, {
+        id: 'comfyui',
+        kind: 'comfyui',
+        address: 'http://192.168.1.20:8188',
+      }],
       imageBackend: 'comfyui',
-      imageBaseUrl: 'http://192.168.1.20:8188',
       imageModel: 'qwen-image-2.1',
       steps: 25,
-      upscaleBackend: 'comfyui',
     }))
   })
 
-  it('on a Mac, can render with mflux and upscale with ComfyUI on another machine', async () => {
+  it('on a Mac, can render with mflux and upscale on a ComfyUI on another machine', async () => {
     vi.mocked(api.checkComfyUI).mockResolvedValue({
       up: true,
       version: '0.39.1',
@@ -201,39 +220,38 @@ describe('SettingsView', () => {
     })
     const wrapper = mount(SettingsView)
     await flushPromises()
-    // Both on mflux: no ComfyUI address to give.
-    expect(wrapper.find('[data-image-base-url]').exists()).toBe(false)
-    await wrapper.find('[data-upscaler]').setValue('comfyui/seedvr2-7b')
-    await wrapper.find('[data-image-base-url]').setValue('http://192.168.1.20:8188')
+    await addBackend(wrapper, 'comfyui', 'http://192.168.1.20:8188')
+    await wrapper.find('[data-tab="images"]').trigger('click')
+    await wrapper.find('[data-run-on="upscale"] select').setValue('comfyui')
     await vi.advanceTimersByTimeAsync(600)
     await flushPromises()
-    // Only the upscaler runs there, so only its files are checked.
+    // Only the upscaler goes there, so only its files are checked.
     expect(api.checkComfyUI).toHaveBeenLastCalledWith('http://192.168.1.20:8188', {
       imageModel: undefined,
       upscaler: 'seedvr2-7b',
+      voices: undefined,
     })
-    expect(wrapper.find('[data-comfy-status]').text()).toContain(
+    expect(wrapper.find('[data-run-on="upscale"] [data-comfy-status]').text()).toContain(
       'on cuda:0 NVIDIA GeForce RTX 4070',
     )
+    expect(wrapper.find('[data-run-on="images"] [data-comfy-status]').exists()).toBe(false)
     await wrapper.find('form').trigger('submit')
     await flushPromises()
     expect(api.saveSettings).toHaveBeenCalledWith(expect.objectContaining({
       imageBackend: 'mflux',
-      upscaleBackend: 'comfyui',
-      imageBaseUrl: 'http://192.168.1.20:8188',
+      runOn: { ...settings.runOn, upscale: 'comfyui' },
     }))
   })
 
-  it('without the voice service, speaks with ComfyUI, checking it has the voice nodes', async () => {
+  it('without the voice service, speaks on a ComfyUI, checking it has the voice nodes', async () => {
+    const noVoices = {
+      available: false,
+      reason: 'The voice service (mlx-audio) runs only on Apple Silicon Macs',
+    }
     vi.mocked(api.getSettingsOptions).mockResolvedValue({
       ...options,
-      features: {
-        ...options.features,
-        voices: {
-          available: false,
-          reason: 'The voice service (mlx-audio) runs only on Apple Silicon Macs',
-        },
-      },
+      features: { ...options.features, voices: noVoices },
+      here: { ...options.here, voices: noVoices },
     })
     vi.mocked(api.checkComfyUI).mockResolvedValue({
       up: true,
@@ -244,13 +262,12 @@ describe('SettingsView', () => {
     })
     const wrapper = mount(SettingsView)
     await flushPromises()
-    await wrapper.find('[data-tab="voice"]').trigger('click')
     const voices = () => wrapper.find('[data-feature="voices"]')
     expect(voices().find('[data-unavailable]').exists()).toBe(true)
-    await wrapper.find('[data-voice-backend]').setValue('comfyui')
+    await addBackend(wrapper, 'comfyui')
     await vi.advanceTimersByTimeAsync(600)
     await flushPromises()
-    // Available once sent to ComfyUI; its check looks for the nodes, and says what's missing.
+    // Available once there's a ComfyUI; its check looks for the nodes, and says what's missing.
     expect(voices().find('[data-unavailable]').exists()).toBe(false)
     expect(api.checkComfyUI).toHaveBeenLastCalledWith('', {
       imageModel: undefined,
@@ -260,10 +277,29 @@ describe('SettingsView', () => {
     expect(wrapper.find('[data-tab-panel="voice"] [data-comfy-status]').text()).toContain(
       'TTS Audio Suite nodes',
     )
+  })
+
+  it('takes a Backend off the list, moving the work that preferred it, and reorders them', async () => {
+    vi.mocked(api.getSettings).mockResolvedValue({
+      ...settings,
+      backends: [...settings.backends, { id: 'pc', kind: 'comfyui', address: 'http://pc:8188' }],
+      runOn: { ...settings.runOn, upscale: 'pc', voices: 'pc' },
+    })
+    const wrapper = mount(SettingsView)
+    await flushPromises()
+    await wrapper.find('[data-tab="machines"]').trigger('click')
+    const order = () => wrapper.findAll('[data-backend]').map((b) => b.attributes('data-backend'))
+    expect(order()).toEqual(['here', 'ollama', 'pc'])
+    // This machine's own can't be taken off.
+    expect(wrapper.find('[data-backend="here"] [data-remove-backend]').exists()).toBe(false)
+    await wrapper.find('[data-backend="pc"] [data-move-up]').trigger('click')
+    expect(order()).toEqual(['here', 'pc', 'ollama'])
+    await wrapper.find('[data-backend="pc"] [data-remove-backend]').trigger('click')
     await wrapper.find('form').trigger('submit')
     await flushPromises()
-    expect(api.saveSettings).toHaveBeenCalledWith(expect.objectContaining({
-      voiceBackend: 'comfyui',
+    expect(api.saveSettings).toHaveBeenLastCalledWith(expect.objectContaining({
+      backends: settings.backends,
+      runOn: settings.runOn,
     }))
   })
 
@@ -373,6 +409,7 @@ describe('SettingsView', () => {
     vi.mocked(api.getSettingsOptions).mockResolvedValue({
       ...options,
       features: { ...ALL_AVAILABLE, images: { available: false, reason: 'No mflux here' } },
+      here: { ...ALL_AVAILABLE, images: { available: false, reason: 'No mflux here' } },
     })
     const wrapper = mount(SettingsView, { attachTo: document.body })
     await flushPromises()
@@ -423,7 +460,7 @@ describe('SettingsView', () => {
     await wrapper.find('[data-text-model]').setValue('gemma4:31b-mlx')
     await wrapper.find('[data-art-style]').setValue('tags')
     await wrapper.find('[data-limits]').setValue(false)
-    await wrapper.find('[data-upscaler]').setValue('mflux/seedvr2-3b')
+    await wrapper.find('[data-upscaler]').setValue('seedvr2-3b')
     await wrapper.find('form').trigger('submit')
     await flushPromises()
     expect(api.saveSettings).toHaveBeenLastCalledWith({
@@ -472,39 +509,45 @@ describe('SettingsView', () => {
     )
   })
 
-  it('switches to an OpenAI-compatible server, lists its models with a new key, and saves it', async () => {
+  it('adds an OpenAI-compatible server, lists its models with a new key, and saves it', async () => {
     vi.mocked(api.listTextModels).mockResolvedValue({
       textModels: ['gemma-4-26b'],
       thinkingModels: ['gemma-4-26b'],
     })
-    vi.mocked(api.saveSettings).mockImplementation(async ({ textApiKey: _, ...s }) => ({
-      ...s,
-      textApiKeySet: true,
-    }))
+    // As the server keeps keys: a key replaces one, '' removes it, and one left out stays.
+    const saved = new Set<string>()
+    vi.mocked(api.saveSettings).mockImplementation(async ({ apiKeys, ...s }) => {
+      for (const [id, key] of Object.entries(apiKeys ?? {})) {
+        if (key) saved.add(id)
+        else saved.delete(id)
+      }
+      return { ...s, apiKeysSet: [...saved] }
+    })
     const wrapper = mount(SettingsView)
     await flushPromises()
-    expect(wrapper.find('[data-text-api-key]').exists()).toBe(false)
+    expect(wrapper.find('[data-api-key]').exists()).toBe(false)
 
-    await wrapper.find('[data-text-backend]').setValue('openai')
-    const address = wrapper.find('[data-text-base-url]').element as HTMLInputElement
-    expect(address.value).toBe('http://localhost:1234/v1')
+    await addBackend(wrapper, 'openai', 'http://localhost:1234/v1')
     // The key is saved once the field is left (`change`), not while it's typed.
-    await wrapper.find('[data-text-api-key]').setValue('sk-new')
+    await wrapper.find('[data-api-key]').setValue('sk-new')
     await flushPromises()
     expect(api.saveSettings).toHaveBeenCalledWith(
-      expect.objectContaining({ textBackend: 'openai', textApiKey: 'sk-new' }),
+      expect.objectContaining({ apiKeys: { openai: 'sk-new' } }),
     )
     // Saved: the field empties, and says a key is saved.
-    const key = wrapper.find('[data-text-api-key]').element as HTMLInputElement
+    const key = wrapper.find('[data-api-key]').element as HTMLInputElement
     expect(key.value).toBe('')
-    expect(key.placeholder).toContain('Saved')
-    // The listing then asks with the saved key.
+    expect(key.placeholder).toContain('saved')
+    // The Text Model runs there: its models are listed, with the saved key.
+    await wrapper.find('[data-tab="text"]').trigger('click')
+    await wrapper.find('[data-run-on="text"] select').setValue('openai')
     await vi.advanceTimersByTimeAsync(600) // the listing waits for typing to stop
     await flushPromises()
     expect(api.listTextModels).toHaveBeenLastCalledWith({
-      textBackend: 'openai',
-      textBaseUrl: 'http://localhost:1234/v1',
-      textApiKey: undefined,
+      id: 'openai',
+      kind: 'openai',
+      address: 'http://localhost:1234/v1',
+      apiKey: undefined,
     })
     expect(wrapper.findAll('[data-text-model] option').map((o) => o.text())).toContain(
       'gemma-4-26b',
@@ -513,45 +556,56 @@ describe('SettingsView', () => {
     await wrapper.find('[data-text-model]').setValue('gemma-4-26b')
     await wrapper.find('form').trigger('submit')
     await flushPromises()
-    expect(api.saveSettings).toHaveBeenLastCalledWith(
-      expect.objectContaining({ textModel: 'gemma-4-26b', textApiKey: undefined }),
-    )
+    expect(api.saveSettings).toHaveBeenLastCalledWith(expect.objectContaining({
+      textModel: 'gemma-4-26b',
+      runOn: { ...settings.runOn, text: 'openai' },
+      apiKeys: undefined,
+    }))
 
     // Removing the key saves at once.
+    await wrapper.find('[data-tab="machines"]').trigger('click')
     await wrapper.find('[data-remove-api-key]').trigger('click')
     await flushPromises()
-    expect(api.saveSettings).toHaveBeenLastCalledWith(expect.objectContaining({ textApiKey: '' }))
+    expect(api.saveSettings).toHaveBeenLastCalledWith(
+      expect.objectContaining({ apiKeys: { openai: '' } }),
+    )
   })
 
   it('saves each change by itself once typing pauses, and says so at the top', async () => {
     const wrapper = mount(SettingsView)
     await flushPromises()
+    await wrapper.find('[data-tab="machines"]').trigger('click')
+    const address = () => wrapper.find('[data-backend="ollama"] [data-backend-address]')
+    const ollamaAt = (address: string) =>
+      expect.objectContaining({
+        backends: [settings.backends[0], { id: 'ollama', kind: 'ollama', address }],
+      })
     expect(wrapper.find('button[type=submit]').exists()).toBe(false)
-    await wrapper.find('[data-text-base-url]').setValue('http://192.168.1.20:11434')
+    await address().setValue('http://192.168.1.20:11434')
     // Nothing yet while typing; once it pauses, one save.
     expect(api.saveSettings).not.toHaveBeenCalled()
     await vi.advanceTimersByTimeAsync(700)
     await flushPromises()
     expect(api.saveSettings).toHaveBeenCalledTimes(1)
-    expect(api.saveSettings).toHaveBeenCalledWith(
-      expect.objectContaining({ textBaseUrl: 'http://192.168.1.20:11434' }),
-    )
+    expect(api.saveSettings).toHaveBeenCalledWith(ollamaAt('http://192.168.1.20:11434'))
     expect(wrapper.find('[data-settings-status] [data-saved]').text()).toContain(
       'Applies from the next Session',
     )
     // Turned down: not saved, and why, at the top; nothing is saved again until it changes.
     vi.mocked(api.saveSettings).mockRejectedValueOnce(
-      new api.ApiError('Invalid settings', 400, ['textBaseUrl must be an address']),
+      new api.ApiError('Invalid settings', 400, [
+        "Backend ollama's address must be like http://127.0.0.1:8188",
+      ]),
     )
-    await wrapper.find('[data-text-base-url]').setValue('http//oops')
+    await address().setValue('http//oops')
     await vi.advanceTimersByTimeAsync(700)
     await flushPromises()
     expect(wrapper.find('[data-settings-status] [data-save-error]').text()).toContain(
-      'textBaseUrl must be an address',
+      "Backend ollama's address must be like",
     )
     expect(api.saveSettings).toHaveBeenCalledTimes(2)
     // Put back as it was saved: nothing to save, and the error goes.
-    await wrapper.find('[data-text-base-url]').setValue('http://192.168.1.20:11434')
+    await address().setValue('http://192.168.1.20:11434')
     await vi.advanceTimersByTimeAsync(700)
     await flushPromises()
     expect(wrapper.find('[data-save-error]').exists()).toBe(false)

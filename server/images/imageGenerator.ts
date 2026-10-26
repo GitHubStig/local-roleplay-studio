@@ -27,8 +27,6 @@ export interface UpscaleRequest {
 /** An edit of a picture (ADR 0021): repainted as told, in the painted area or all of it. */
 export interface EditRequest {
   model: EditModel
-  /** The Session's ComfyUI address; empty for its default. */
-  imageBaseUrl: string
   /** File name of the image to edit, inside `dir`; the edit comes out the same size. */
   image: string
   /** File name of the painted area, a PNG of the same size (white repainted); none for all of it. */

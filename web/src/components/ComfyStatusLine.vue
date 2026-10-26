@@ -2,7 +2,7 @@
 import type { ComfyStatus } from '../api'
 
 /**
- * Whether ComfyUI answers at Settings' address, and has what will run there, with a button to
+ * Whether a ComfyUI Backend answers at its address, and has what will run there, with a button to
  * check again. Shown on each Settings tab that sends work to ComfyUI.
  */
 defineProps<{ status: ComfyStatus | 'checking' | null }>()

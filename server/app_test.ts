@@ -1,5 +1,5 @@
 import { assertEquals, assertMatch, assertStringIncludes } from '@std/assert'
-import type { TextConnection } from './text/backend.ts'
+import type { Backend } from './backends.ts'
 import { DEFAULT_SETTINGS } from './settings.ts'
 import { fakeImageGenerator, reply, scriptedTextModel, withTempDir } from './testing.ts'
 import { type JsonFrame, readEvents, setup } from './appTesting.ts'
@@ -16,21 +16,27 @@ Deno.test('unknown routes return 404', async () => {
 
 Deno.test('GET /api/settings returns stored settings', async () => {
   const res = await setup().call('GET', '/api/settings')
-  assertEquals(await res.json(), { ...DEFAULT_SETTINGS, textApiKeySet: false })
+  assertEquals(await res.json(), { ...DEFAULT_SETTINGS, apiKeysSet: [] })
 })
 
-Deno.test('The API key is saved apart from Settings, and never sent back', async () => {
+/** Settings with OpenRouter listed, as the Text Model's Backend. */
+const withOpenRouter = {
+  ...DEFAULT_SETTINGS,
+  backends: [
+    ...DEFAULT_SETTINGS.backends,
+    { id: 'openrouter', kind: 'openai', address: 'https://openrouter.ai/api/v1' },
+  ],
+  runOn: { ...DEFAULT_SETTINGS.runOn, text: 'openrouter' },
+}
+
+Deno.test("A Backend's API key is saved apart from Settings, and never sent back", async () => {
   const { settings, call } = setup()
-  const next = {
-    ...DEFAULT_SETTINGS,
-    textBackend: 'openai',
-    textBaseUrl: 'https://openrouter.ai/api/v1',
-    textApiKey: ' sk-secret ',
-  }
+  const next = { ...withOpenRouter, apiKeys: { openrouter: ' sk-secret ', nowhere: 'sk-lost' } }
   const saved = await (await call('PUT', '/api/settings', next)).json()
-  assertEquals(settings.apiKey, 'sk-secret')
-  assertEquals('textApiKey' in settings.current, false)
-  assertEquals(saved.textApiKeySet, true)
+  // Only for a Backend that's listed.
+  assertEquals(settings.apiKeys, { openrouter: 'sk-secret' })
+  assertEquals('apiKeys' in settings.current, false)
+  assertEquals(saved.apiKeysSet, ['openrouter'])
   assertEquals(JSON.stringify(saved).includes('sk-secret'), false)
   assertEquals(
     JSON.stringify(await (await call('GET', '/api/settings')).json()).includes('sk-secret'),
@@ -38,41 +44,56 @@ Deno.test('The API key is saved apart from Settings, and never sent back', async
   )
 
   // Left out, the key is kept; '' removes it.
-  const { textApiKey: _, ...withoutKey } = next
-  await call('PUT', '/api/settings', withoutKey)
-  assertEquals(settings.apiKey, 'sk-secret')
-  await call('PUT', '/api/settings', { ...withoutKey, textApiKey: '' })
-  assertEquals(settings.apiKey, '')
+  await call('PUT', '/api/settings', withOpenRouter)
+  assertEquals(settings.apiKeys.openrouter, 'sk-secret')
+  await call('PUT', '/api/settings', { ...withOpenRouter, apiKeys: { openrouter: '' } })
+  assertEquals(settings.apiKeys.openrouter, '')
 })
 
 Deno.test('An OpenAI-compatible server needs an address', async () => {
   const res = await setup().call('PUT', '/api/settings', {
-    ...DEFAULT_SETTINGS,
-    textBackend: 'openai',
+    ...withOpenRouter,
+    backends: [...DEFAULT_SETTINGS.backends, { id: 'lm', kind: 'openai', address: '' }],
+    runOn: DEFAULT_SETTINGS.runOn,
   })
   assertEquals(res.status, 400)
 })
 
-Deno.test('POST /api/settings/text-models lists a backend not saved yet', async () => {
-  const asked: [TextConnection, string | undefined][] = []
+Deno.test('Each kind of work is sent to a listed Backend that can do it', async () => {
+  const { call } = setup()
+  const issues = async (runOn: object) =>
+    (await (await call('PUT', '/api/settings', {
+      ...DEFAULT_SETTINGS,
+      runOn: { ...DEFAULT_SETTINGS.runOn, ...runOn },
+    })).json()).issues
+  assertEquals(await issues({ images: 'pc' }), ['runOn.images must be a Backend that can do it'])
+  assertEquals(await issues({ text: 'here' }), ['runOn.text must be a Backend that can do it'])
+  assertEquals(await issues({ voices: 'ollama' }), [
+    'runOn.voices must be a Backend that can do it',
+  ])
+})
+
+Deno.test('POST /api/settings/text-models lists a Backend not saved yet', async () => {
+  const asked: [Backend, string | undefined][] = []
   const { call } = setup({
-    listTextModels: (connection, apiKey) => {
-      asked.push([connection, apiKey])
+    listTextModels: (backend, apiKey) => {
+      asked.push([backend, apiKey])
       return Promise.reject(new Error('401 Unauthorized'))
     },
   })
   const body = await (await call('POST', '/api/settings/text-models', {
-    textBackend: 'openai',
-    textBaseUrl: ' http://localhost:1234/v1 ',
-    textApiKey: 'sk-new',
+    id: 'lm',
+    kind: 'openai',
+    address: ' http://localhost:1234/v1 ',
+    apiKey: 'sk-new',
   })).json()
-  assertEquals(asked, [[{ backend: 'openai', baseUrl: 'http://localhost:1234/v1' }, 'sk-new']])
+  assertEquals(asked, [[
+    { id: 'lm', kind: 'openai', address: 'http://localhost:1234/v1' },
+    'sk-new',
+  ]])
   assertEquals(body.textModels, [])
-  assertEquals(
-    body.textModelsError,
-    'Could not reach the OpenAI-compatible server: 401 Unauthorized',
-  )
-  const bad = await call('POST', '/api/settings/text-models', { textBackend: 'nope' })
+  assertEquals(body.textModelsError, 'Could not reach OpenAI-compatible server: 401 Unauthorized')
+  const bad = await call('POST', '/api/settings/text-models', { kind: 'comfyui', address: '' })
   assertEquals(bad.status, 400)
 })
 
@@ -88,7 +109,7 @@ Deno.test("A POST that isn't JSON is refused, as another site could send it", as
     new Request('http://localhost/api/settings/text-models', {
       method: 'POST',
       // What a page on another site can send without a preflight.
-      body: JSON.stringify({ textBackend: 'openai', textBaseUrl: 'http://elsewhere/v1' }),
+      body: JSON.stringify({ kind: 'openai', address: 'http://elsewhere/v1' }),
     }),
   )
   assertEquals([res.status, (await res.json()).error, listed], [415, 'Send JSON', false])
@@ -143,13 +164,13 @@ Deno.test('POST /api/settings/comfyui checks an address not saved yet', async ()
     },
   })
   const res = await call('POST', '/api/settings/comfyui', {
-    imageBaseUrl: ' http://192.168.1.20:8188 ',
+    address: ' http://192.168.1.20:8188 ',
     imageModel: 'qwen-image-2.1',
   })
   assertEquals((await res.json()).device, 'cuda:0 NVIDIA GeForce RTX 4070')
   // A Mac rendering with mflux checks only the upscaler it sends there.
   await call('POST', '/api/settings/comfyui', {
-    imageBaseUrl: 'http://192.168.1.20:8188',
+    address: 'http://192.168.1.20:8188',
     upscaler: 'seedvr2-7b',
   })
   assertEquals(asked, [
@@ -166,7 +187,7 @@ Deno.test('POST /api/settings/comfyui checks an address not saved yet', async ()
   ])
 })
 
-Deno.test('Choosing ComfyUI makes pictures, and then Upscale, available where mflux is not', async () => {
+Deno.test('Adding a ComfyUI makes pictures, Upscale and voices available where mflux is not', async () => {
   const off = { available: false, reason: 'mflux runs only on Apple Silicon Macs' }
   const on = { available: true }
   const { call } = setup({
@@ -182,37 +203,23 @@ Deno.test('Choosing ComfyUI makes pictures, and then Upscale, available where mf
     },
   })
   const before = (await (await call('GET', '/api/settings/options')).json()).features
-  assertEquals(before.images.available, false)
-  assertStringIncludes(before.images.reason, 'or choose ComfyUI')
+  for (const extra of ['images', 'upscale', 'edits', 'voices']) {
+    assertEquals(before[extra].available, false)
+    assertStringIncludes(before[extra].reason, 'or add a ComfyUI in Settings')
+  }
   const settings = await (await call('GET', '/api/settings')).json()
   const saved = await call('PUT', '/api/settings', {
     ...settings,
+    backends: [...settings.backends, { id: 'pc', kind: 'comfyui', address: '' }],
+    runOn: { ...settings.runOn, images: 'pc' },
     imageBackend: 'comfyui',
     imageModel: 'qwen-image-2.1',
   })
   assertEquals(saved.status, 200)
   const after = (await (await call('GET', '/api/settings/options')).json()).features
-  // Upscale has its own choice: still mflux, so still off.
-  assertEquals([after.images.available, after.upscale.available], [true, false])
-  assertStringIncludes(after.upscale.reason, 'or choose ComfyUI for Upscale')
-  await call('PUT', '/api/settings', {
-    ...settings,
-    imageBackend: 'comfyui',
-    imageModel: 'qwen-image-2.1',
-    upscaleBackend: 'comfyui',
-  })
-  const both = (await (await call('GET', '/api/settings/options')).json()).features
-  assertEquals(both.upscale.available, true)
-  // Voices too: off with no voice service here, on once sent to ComfyUI.
-  assertStringIncludes(both.voices.reason, 'or choose ComfyUI for Voices')
-  await call('PUT', '/api/settings', {
-    ...settings,
-    imageBackend: 'comfyui',
-    imageModel: 'qwen-image-2.1',
-    voiceBackend: 'comfyui',
-  })
-  const voices = (await (await call('GET', '/api/settings/options')).json()).features
-  assertEquals(voices.voices.available, true)
+  for (const extra of ['images', 'upscale', 'edits', 'voices']) {
+    assertEquals(after[extra].available, true)
+  }
   // An Image Model must be the backend's own: Ideogram 4 is mflux's only.
   const wrong = await call('PUT', '/api/settings', {
     ...settings,

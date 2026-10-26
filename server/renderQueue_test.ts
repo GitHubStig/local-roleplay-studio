@@ -63,10 +63,7 @@ Deno.test('RenderQueue lets jobs on different machines run at once', async () =>
   const queue = new RenderQueue({
     machineOf: (job) => Promise.resolve(job?.kind === 'render' ? 'pc' : 'here'),
   })
-  const render = {
-    kind: 'render',
-    settings: { imageBackend: 'comfyui', imageBaseUrl: '' },
-  } as const
+  const render = { kind: 'render', settings: { imageBackend: 'comfyui' } } as const
   const onPc = await queue.acquire(signal(), undefined, { job: render })
   let waited = false
   const here = await queue.acquire(signal(), () => (waited = true), { light: true })

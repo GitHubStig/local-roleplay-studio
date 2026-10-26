@@ -5,15 +5,8 @@ import { IMAGE_BACKENDS, type ImageBackendKind, imageModelsOf } from './images/i
 import type { ComfyStatus } from './comfyui/status.ts'
 import { UPSCALERS } from './images/upscalers.ts'
 import { crossedLimit, LimitError, setLimitsEnabled } from './limits.ts'
-import {
-  connectionOf,
-  TEXT_BACKEND_NAMES,
-  TEXT_BACKENDS,
-  type TextBackendKind,
-  type TextChoice,
-  type TextConnection,
-  type TextModelInfo,
-} from './text/backend.ts'
+import { type Backend, BACKEND_NAMES, BACKEND_WORK, type BackendKind } from './backends.ts'
+import type { TextChoice, TextModelInfo } from './text/backend.ts'
 import { briefScenario, type Scenario, type ScenarioLibrary, summarise } from './scenario.ts'
 import {
   type ChainSession,
@@ -78,7 +71,14 @@ import {
   shownPicture,
   switchImageModel,
 } from './pictures.ts'
-import { type HeavyJob, jobMachine, jobServer, machineKey } from './machine.ts'
+import {
+  backendOf,
+  editJob,
+  type HeavyJob,
+  jobBackend,
+  machineOf,
+  textBackendFor,
+} from './machine.ts'
 import { Previews } from './previews.ts'
 import { RenderQueue } from './renderQueue.ts'
 import { type FrameDeps, type Phase, UpscaleError } from './frames.ts'
@@ -108,8 +108,13 @@ import {
 
 export interface AppDeps {
   settings: SettingsStore
-  /** A Text backend's models; `apiKey` stands in for the saved one (trying a new key). */
-  listTextModels: (connection: TextConnection, apiKey?: string) => Promise<TextModelInfo[]>
+  /** A text Backend's models; `apiKey` stands in for its saved one (trying a new key). */
+  listTextModels: (backend: Backend, apiKey?: string) => Promise<TextModelInfo[]>
+  /**
+   * The Backend Settings send a Text Model to now (`textBackendFor`). Left out, Settings' preferred
+   * text Backend.
+   */
+  textBackendOf?: (model: string) => Promise<Backend | undefined>
   /** Whether ComfyUI answers at an address, and can run what Settings send it (for Settings). */
   comfyuiStatus?: (
     baseUrl: string,
@@ -217,7 +222,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
   /** One image render at a time, across all Sessions. */
   const renderQueue = new RenderQueue({
     freeMemory: deps.freeMemory,
-    machineOf: async (job) => machineKey(jobServer(job, await deps.settings.load())),
+    machineOf: async (job) => machineOf(backendOf(job, await deps.settings.load(), detected)),
   })
   /** The picture forming: each render's latest preview, while it renders. */
   const previews = new Previews()
@@ -267,15 +272,13 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
   }
 
   /**
-   * A Session's Text Model (or another model on its backend), with its Thinking unless given, and
-   * seeded from its seed.
+   * A Session's Text Model (or another), with its Thinking unless given, and seeded from its seed.
    */
   const textChoice = (
     session: Session,
     model = session.settings.textModel,
     thinking = session.settings.thinking ?? false,
   ): TextChoice => ({
-    ...connectionOf(session.settings),
     model,
     thinking,
     seeding: { session: session.id, seed: session.seed },
@@ -513,22 +516,30 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     throw new GoneError('This Session no longer exists')
   }
 
-  /** Settings as the browser sees them: whether there's an API key, never the key. */
+  /** Settings as the browser sees them: which Backends have an API key, never the keys. */
   const shownSettings = async (settings: Settings) => ({
     ...settings,
-    textApiKeySet: !!(await deps.settings.loadApiKey()),
+    apiKeysSet: (await Promise.all(
+      settings.backends.map(async (b) => (await deps.settings.loadApiKey(b.id)) ? [b.id] : []),
+    )).flat(),
   })
 
-  /** A Text backend's models for Settings to offer, or why it couldn't list them. */
-  async function textModelOptions(connection: TextConnection, apiKey?: string) {
+  /** The Backend Settings send a Text Model to now; their preferred text Backend, if not told. */
+  const textBackendOf = async (model: string) =>
+    deps.textBackendOf
+      ? deps.textBackendOf(model)
+      : textBackendFor(await deps.settings.load(), model, () => Promise.resolve([]))
+
+  /** A text Backend's models for Settings to offer, or why it couldn't list them. */
+  async function textModelOptions(backend: Backend | undefined, apiKey?: string) {
     let models: TextModelInfo[] = []
     let textModelsError: string | undefined
     try {
-      models = await deps.listTextModels(connection, apiKey)
+      if (!backend) throw new Error('none is listed, on the Machines tab')
+      models = await deps.listTextModels(backend, apiKey)
     } catch (err) {
-      textModelsError = `Could not reach ${TEXT_BACKEND_NAMES[connection.backend]}: ${
-        (err as Error).message
-      }`
+      const name = backend ? BACKEND_NAMES[backend.kind] : 'a text Backend'
+      textModelsError = `Could not reach ${name}: ${(err as Error).message}`
     }
     return {
       textModels: models.map((m) => m.name),
@@ -553,15 +564,22 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       store: deps.sessions,
       machineOf: async (session, kind, edit) => {
         const now = await deps.settings.load()
-        return machineKey(jobMachine(kind, session.settings, now, edit?.model ?? now.editModel))
+        // A picture is written by the Art Agent's model, the Session's Text Model unless set.
+        const text = kind === 'picture'
+          ? await textBackendOf(now.artModel || session.settings.textModel)
+          : undefined
+        return machineOf(
+          jobBackend(kind, session.settings, now, detected, { editModel: edit?.model, text }),
+        )
       },
       check: async (session, kind, index, pending, edit) => {
         const feature = JOB_FEATURE[kind]
         if (kind === 'edit') {
           const name = session.kind === 'storyboard' ? `Frame ${index + 1}` : `Frame ${index}`
-          const model = findEditModel(edit!.model ?? (await deps.settings.load()).editModel)
-          const notHere = model && !imageBackends().includes(model.backend)
-            ? error(`${model.label} runs on mflux, which isn't installed here`, 409)
+          const now = await deps.settings.load()
+          const model = findEditModel(edit!.model ?? now.editModel)
+          const notHere = model && !backendOf(editJob(model.id), now, detected)
+            ? error(`No Backend runs ${model.label}: add one in Settings, on the Machines tab`, 409)
             : null
           return (feature && (await featureOff(feature))) ?? notHere ??
             checkEdit(session, index, name, pending, edit!)
@@ -589,30 +607,36 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       async () => json(await shownSettings(await deps.settings.load())),
     ],
 
-    // A `textApiKey` string replaces the saved key ('' removes it); left out, it's kept.
+    // `apiKeys` maps a Backend's id to a key that replaces its saved one ('' removes it); one left
+    // out is kept, while the Backend is.
     ['PUT', new URLPattern({ pathname: '/api/settings' }), async (req) => {
       const body = await readJson(req)
       if (body === undefined) return error('Body must be JSON', 400)
       const result = validateSettings(body)
       if (!result.ok) return error('Invalid settings', 400, { issues: result.issues })
       await deps.settings.save(result.settings)
-      const { textApiKey } = body as { textApiKey?: unknown }
-      if (typeof textApiKey === 'string') await deps.settings.saveApiKey(textApiKey.trim())
+      const { apiKeys } = body as { apiKeys?: unknown }
+      if (typeof apiKeys === 'object' && apiKeys !== null) {
+        for (const [id, key] of Object.entries(apiKeys)) {
+          const listed = result.settings.backends.some((b) => b.id === id)
+          if (listed && typeof key === 'string') await deps.settings.saveApiKey(id, key.trim())
+        }
+      }
       return json(await shownSettings(result.settings))
     }],
 
-    // Whether ComfyUI is up at an address not saved yet, and can run what Settings would send it:
-    // the Image Model's files, the upscaler's, and voices' nodes.
+    // Whether a ComfyUI is up at an address not saved yet, and can run what Settings would send
+    // it: the Image Model's files, the upscaler's, and voices' nodes.
     ['POST', new URLPattern({ pathname: '/api/settings/comfyui' }), async (req) => {
       const body = await readJson(req) as
-        | { imageBaseUrl?: unknown; imageModel?: unknown; upscaler?: unknown; voices?: unknown }
+        | { address?: unknown; imageModel?: unknown; upscaler?: unknown; voices?: unknown }
         | undefined
       const optional = (v: unknown) => v === undefined || typeof v === 'string'
       if (
-        typeof body?.imageBaseUrl !== 'string' || !optional(body.imageModel) ||
+        typeof body?.address !== 'string' || !optional(body.imageModel) ||
         !optional(body.upscaler) || (body.voices !== undefined && typeof body.voices !== 'boolean')
       ) {
-        return error('Give an imageBaseUrl, and an imageModel, an upscaler or voices to check', 400)
+        return error('Give an address, and an imageModel, an upscaler or voices to check', 400)
       }
       if (!deps.comfyuiStatus) return error("ComfyUI isn't set up on this server", 409)
       const { imageModel, upscaler, voices } = body as {
@@ -621,24 +645,27 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
         voices?: boolean
       }
       return json(
-        await deps.comfyuiStatus(body.imageBaseUrl.trim(), { imageModel, upscaler, voices }),
+        await deps.comfyuiStatus(body.address.trim(), { imageModel, upscaler, voices }),
       )
     }],
 
-    // The models on a Text backend not saved yet, for Settings to offer as it's changed.
+    // The models on a text Backend not saved yet, for Settings to offer as it's changed: with
+    // `apiKey`, or the saved key of the Backend with that `id`.
     ['POST', new URLPattern({ pathname: '/api/settings/text-models' }), async (req) => {
       const body = await readJson(req) as Record<string, unknown> | undefined
-      const backend = body?.textBackend as TextBackendKind
-      if (!TEXT_BACKENDS.includes(backend) || typeof body?.textBaseUrl !== 'string') {
-        return error('Give a textBackend and a textBaseUrl', 400)
+      const kind = body?.kind as BackendKind
+      if (!BACKEND_WORK[kind]?.includes('text') || typeof body?.address !== 'string') {
+        return error('Give the kind of a text Backend, and its address', 400)
       }
-      const apiKey = typeof body.textApiKey === 'string' ? body.textApiKey.trim() : undefined
-      return json(await textModelOptions({ backend, baseUrl: body.textBaseUrl.trim() }, apiKey))
+      const id = typeof body.id === 'string' ? body.id : ''
+      const apiKey = typeof body.apiKey === 'string' ? body.apiKey.trim() : undefined
+      return json(await textModelOptions({ id, kind, address: body.address.trim() }, apiKey))
     }],
 
     ['GET', new URLPattern({ pathname: '/api/settings/options' }), async () => {
+      const now = await deps.settings.load()
       return json({
-        ...await textModelOptions(connectionOf(await deps.settings.load())),
+        ...await textModelOptions(now.backends.find((b) => b.id === now.runOn.text)),
         // Every backend's, so Settings can switch between them.
         imageModels: Object.fromEntries(IMAGE_BACKENDS.map((b) => [b, imageModelsOf(b)])),
         imageBackends: imageBackends(),
@@ -646,6 +673,8 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
         upscalers: UPSCALERS,
         editModels: editModelsHere(imageBackends()),
         features: await availability(),
+        // What this machine's own Backend runs, whatever else is listed.
+        here: detected,
       })
     }],
 

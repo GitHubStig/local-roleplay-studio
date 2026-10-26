@@ -3,6 +3,7 @@ import { join } from '@std/path'
 import type { Job } from '../jobs.ts'
 import type { ImageGenerator } from '../images/imageGenerator.ts'
 import type { Picture } from '../pictures.ts'
+import { DEFAULT_SETTINGS } from '../settings.ts'
 import { fakeFigureMaker, fakeSceneMaker } from '../3d/testing.ts'
 import {
   fakeImageGenerator,
@@ -237,7 +238,16 @@ const MASK = btoa('\x89PNG painted')
 Deno.test('An edit repaints a picture as a new version, made from the newest and picked', () =>
   withTempDir(async (root) => {
     const images = fakeImageGenerator()
-    const { call } = await chainOfTwo(root, { imageGenerator: images })
+    // A ComfyUI listed beside mflux, for the second edit's model.
+    const backends = [...DEFAULT_SETTINGS.backends, {
+      id: 'pc',
+      kind: 'comfyui' as const,
+      address: '',
+    }]
+    const { call } = await chainOfTwo(root, {
+      imageGenerator: images,
+      settings: { textModel: 'x', backends },
+    })
     const edit = (body: object) =>
       call('POST', '/api/sessions/s1/jobs', { kind: 'edit', frameIndex: 1, edit: body })
     const queued = await edit({ instruction: 'A hand with five fingers', mask: MASK })

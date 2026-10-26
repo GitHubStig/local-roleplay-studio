@@ -27,7 +27,6 @@ const request = (dir: string, extra: Partial<ImageRequest['settings']> = {}): Im
 Deno.test("editArgs edits at the picture's size in 8 bits and low RAM, with its painted area", () => {
   const req = {
     model: 'qwen-image-2.1-edit' as const,
-    imageBaseUrl: '',
     image: 'frame-1.png',
     mask: 'mask-1.png',
     instruction: 'A hand reaching forward',

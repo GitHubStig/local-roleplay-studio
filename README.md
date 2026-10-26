@@ -44,7 +44,7 @@ The vocabulary (Scenario, Session, Image Prompt, Frame, Action, …) is defined 
 - **Node.js 24+**, only for the Vue type check (see [Known quirks](#known-quirks)).
 - **A Text backend**: [Ollama](https://ollama.com) with a Text Model (below), or any server with
   the OpenAI chat API (LM Studio, llama.cpp's server, vLLM, or a cloud service such as OpenRouter),
-  chosen on the Text tab of Settings with its address and API key; see
+  added on the Machines tab of Settings with its address and API key; see
   [ADR 0008](docs/adr/0008-own-text-client.md) for what it can't do that Ollama can.
 - **[uv](https://docs.astral.sh/uv/)** for the optional Python extras (voices, SHARP, TripoSplat,
   LiTo): each installs its own Python packages on first use.
@@ -110,14 +110,14 @@ the Images tab of Settings:
 - **ComfyUI, on any machine** (the one for Windows): ComfyUI must be running (Comfy Desktop, the
   portable build or a manual install; the app doesn't start it) with the Image Model's files: for
   Qwen-Image 2.1, the `diffusion_models`, `text_encoders` (Qwen3-VL 8B) and `vae` files that
-  ComfyUI's own "Qwen Image 2.1 text to image" template downloads. Give its address in Settings
-  (empty for this machine's `http://127.0.0.1:8188`); Settings checks it's up and names any missing
-  file. The app talks to it only through its API, so it can be another machine, and ComfyUI keeps
+  ComfyUI's own "Qwen Image 2.1 text to image" template downloads. Add it on Settings' Machines
+  tab with its address (empty for this machine's `http://127.0.0.1:8188`), and choose it where
+  renders go; Settings checks it's up and names any missing file. The app talks to it only through its API, so it can be another machine, and ComfyUI keeps
   nothing: no copy of a picture and no prompt in its history. On an RTX 4070 it renders Qwen-Image
   2.1 at 832×1216 in ~21 s; on a Mac, ComfyUI is slower than mflux. Findings:
   [docs/research/comfyui.md](docs/research/comfyui.md).
-- **Upscale** (SeedVR2 7B or 3B, to 2048 px) runs where "Upscale with" says, whichever backend
-  rendered: mflux on a Mac (the table's last row; ~64 s for an 832×1216 picture), or ComfyUI's
+- **Upscale** (SeedVR2 7B or 3B, to 2048 px) runs where Settings send upscales ("Upscale on"),
+  whichever backend rendered: mflux on a Mac (the table's last row; ~64 s for an 832×1216 picture), or ComfyUI's
   built-in SeedVR2 (~12 s on an RTX 4070), with Comfy-Org's files there
   (`diffusion_models/seedvr2_7b_fp8_e4m3fn` and/or `seedvr2_3b_fp8_e4m3fn`, and
   `vae/seedvr2_ema_vae_fp16`, as ComfyUI's "SeedVR2 upscale image" templates download them;
@@ -182,12 +182,12 @@ GB is used, CC-BY-4.0; CLIP ViT-L/14, 1.7 GB). On a Mac, 340 pictures take about
 
 The app finds ComfyUI and Ollama by address, so any machine can use another's on the local
 network, either way round. The useful case: a Mac rendering and upscaling on a Windows PC's
-ComfyUI. Give the PC's address (`http://<its IP>:8188`) as the ComfyUI address, and set "Upscale
-with" to ComfyUI. On the tested pair, a picture took ~21 s instead of 56–97 s with mflux, and an
-upscale 14 s instead of ~66 s. The Text Model can live on the other machine the same way (the
-Text backend's address in Settings), e.g. to keep the Mac's memory for mflux. What runs as a
-local program can't be shared: mflux, the voice service, SHARP, TripoSplat and LiTo run where the
-app runs.
+ComfyUI. On Settings' Machines tab, add a ComfyUI at the PC's address (`http://<its IP>:8188`),
+and choose it under "Render on" and "Upscale on" (Images tab). On the tested pair, a picture took ~21 s instead of 56–97 s with mflux, and an
+upscale 14 s instead of ~66 s. The Text Model can live on the other machine the same way (an
+Ollama or a server at its address, chosen under "Text Model runs on"), e.g. to keep the Mac's
+memory for mflux. What runs as a local program can't be shared yet: mflux, the voice service,
+SHARP, TripoSplat and LiTo run where the app runs (ADR 0022).
 
 For another machine to reach ComfyUI, it must listen beyond its own machine: in Comfy Desktop, add
 `--listen 0.0.0.0` to the installation's launch arguments, and let the firewall allow TCP 8188 on
@@ -228,8 +228,9 @@ press **Start Session**. Your Sessions are listed on Home; open one to carry on,
 The web app's dev server is pinned to port **5180** and fails, rather than picking another port,
 if something else is using it.
 
-Everything else is chosen on the Settings page (in tabs: Text, Images, Voice, 3D) and saved to
-`settings.json`, including the Text backend's API key (never sent back to the browser).
+Everything else is chosen on the Settings page (in tabs: Machines, Text, Images, Voice, 3D,
+Advanced) and saved to `settings.json`, including each Backend's API key (never sent back to the
+browser).
 
 **What runs where.** Only a Text backend is required: Ollama, or a server with the OpenAI chat
 API. At startup the server works out which extras this machine can run, and says so in its log

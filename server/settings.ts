@@ -9,8 +9,15 @@ import { EDIT_MODELS, type EditModel } from './images/editModels.ts'
 import { type Upscaler, UPSCALERS } from './images/upscalers.ts'
 import { ART_STYLES, type ArtStyle } from './roleplay/art.ts'
 import { type Feature, FEATURES } from './features.ts'
-import { TEXT_BACKENDS, type TextBackendKind } from './text/backend.ts'
-import { VOICE_BACKENDS, type VoiceBackendKind } from './voice/voice.ts'
+import {
+  type Backend,
+  BACKEND_KINDS,
+  BACKEND_WORK,
+  type BackendKind,
+  HERE,
+  type Work,
+  WORKS,
+} from './backends.ts'
 
 export interface SizePreset {
   id: string
@@ -39,18 +46,19 @@ export type SeedMode = 'random' | 'fixed'
 
 /** Player-chosen configuration; read when a Session starts. */
 export interface Settings {
-  /** Where the Text Model runs (`text/backend.ts`). Its API key is kept apart: `SettingsStore`. */
-  textBackend: TextBackendKind
-  /** The backend's address; '' for Ollama's default. */
-  textBaseUrl: string
-  /** The model's name on the backend; empty until the player picks one. */
+  /**
+   * The Backends there are (ADR 0022), `here` among them, in the order a job tries them after its
+   * preferred one. An API key is kept apart: `SettingsStore`. Read for each job.
+   */
+  backends: Backend[]
+  /** The Backend each kind of work prefers, by id (`pickBackend`). Read for each job. */
+  runOn: Record<Work, string>
+  /** The model's name on its backend; empty until the player picks one. */
   textModel: string
   /** Let the Text Model reason before answering: slower, often more accurate. */
   thinking: boolean
-  /** Where pictures are made (`images/imageModels.ts`). */
+  /** Which kind of Backend the Image Model is one of (`images/imageModels.ts`). */
   imageBackend: ImageBackendKind
-  /** ComfyUI's address; '' for its default (`COMFYUI_URL`). Unused by mflux. */
-  imageBaseUrl: string
   /** One of the backend's Image Models. */
   imageModel: string
   steps: number
@@ -73,19 +81,8 @@ export interface Settings {
   seed: number
   /** Which SeedVR2 model Upscale uses; read when upscaling, so it applies mid-Session too. */
   upscaler: Upscaler
-  /**
-   * Where Upscale runs: mflux, or the ComfyUI at `imageBaseUrl` (which may be another machine),
-   * whichever backend rendered. Read when upscaling. An older file without it follows
-   * `imageBackend`.
-   */
-  upscaleBackend: ImageBackendKind
   /** Which model edits pictures (ADR 0021); read when editing, so it applies mid-Session too. */
   editModel: EditModel
-  /**
-   * Where voices are made: the voice service (mlx-audio, a Mac), or the ComfyUI at `imageBaseUrl`
-   * with TTS Audio Suite's nodes. Read when a voice is made, so it applies mid-Session too.
-   */
-  voiceBackend: VoiceBackendKind
   /**
    * The model that pictures Roleplay Frames (the Art Agent); '' for the Session's Text Model.
    * Read when a picture is made, so it applies to running Sessions too.
@@ -120,7 +117,6 @@ export const RENDER_SETTINGS = [
   'stepCache',
   'quantize',
   'float16',
-  'imageBaseUrl',
 ] as const satisfies readonly (keyof Settings)[]
 
 /** The Settings a Session renders with: its own, with `RENDER_SETTINGS` as Settings are `now`. */
@@ -131,13 +127,15 @@ export const renderSettings = (session: Settings, now: Settings): Settings => ({
 
 const DEFAULT_IMAGE_MODEL = findImageModel('mflux', 'qwen-image-2.1')!
 
+/** Ollama at its usual address on this machine, as a fresh install starts with. */
+const OLLAMA: Backend = { id: 'ollama', kind: 'ollama', address: '' }
+
 export const DEFAULT_SETTINGS: Settings = {
-  textBackend: 'ollama',
-  textBaseUrl: '',
+  backends: [HERE, OLLAMA],
+  runOn: { text: 'ollama', images: 'here', upscale: 'here', edits: 'here', voices: 'here' },
   textModel: '',
   thinking: false,
   imageBackend: 'mflux',
-  imageBaseUrl: '',
   // The model both backends run (mflux and ComfyUI), and the one measured most (docs/models.md).
   imageModel: DEFAULT_IMAGE_MODEL.id,
   steps: DEFAULT_IMAGE_MODEL.defaultSteps,
@@ -149,9 +147,7 @@ export const DEFAULT_SETTINGS: Settings = {
   seedMode: 'random',
   seed: 42,
   upscaler: UPSCALERS[0].id,
-  upscaleBackend: 'mflux',
   editModel: EDIT_MODELS[0].id,
-  voiceBackend: 'mlx-audio',
   artModel: '',
   artStyle: 'prose',
   features: Object.fromEntries(FEATURES.map((f) => [f, true])) as Record<Feature, boolean>,
@@ -160,21 +156,30 @@ export const DEFAULT_SETTINGS: Settings = {
 }
 
 /**
- * The defaults on this machine: ComfyUI for pictures, Upscale, edits and voices where mflux or the voice
- * service can't run (a PC), so a fresh install there starts on what it has.
+ * The defaults on this machine: where mflux or the voice service can't run (a PC), a ComfyUI here
+ * for pictures, Upscale, edits and voices, so a fresh install there starts on what it has.
  */
 export function machineDefaults(here: { mflux: boolean; voiceService: boolean }): Settings {
+  if (here.mflux && here.voiceService) return DEFAULT_SETTINGS
+  const comfyui: Backend = { id: 'comfyui', kind: 'comfyui', address: '' }
   const imageBackend: ImageBackendKind = here.mflux ? 'mflux' : 'comfyui'
+  const images = here.mflux ? 'here' : comfyui.id
   const models = imageModelsOf(imageBackend)
   const model = models.find((m) => m.id === DEFAULT_SETTINGS.imageModel) ?? models[0]
   return {
     ...DEFAULT_SETTINGS,
+    backends: [...DEFAULT_SETTINGS.backends, comfyui],
+    runOn: {
+      text: OLLAMA.id,
+      images,
+      upscale: images,
+      edits: images,
+      voices: here.voiceService ? 'here' : comfyui.id,
+    },
     imageBackend,
     imageModel: model.id,
     steps: model.defaultSteps,
-    upscaleBackend: imageBackend,
     editModel: here.mflux ? 'qwen-image-2.1-edit' : 'qwen-image-2.1-edit-comfyui',
-    voiceBackend: here.voiceService ? 'mlx-audio' : 'comfyui',
   }
 }
 
@@ -184,9 +189,35 @@ export type ValidationResult =
   | { ok: true; settings: Settings }
   | { ok: false; issues: string[] }
 
+/** What's wrong with a list of Backends, if anything. */
+function backendIssues(backends: unknown): string[] {
+  if (!Array.isArray(backends)) return ['backends must be a list']
+  const issues: string[] = []
+  const ids = new Set<string>()
+  for (const b of backends as Partial<Backend>[]) {
+    if (typeof b?.id !== 'string' || !b.id || ids.has(b.id)) {
+      issues.push('Each Backend needs an id of its own')
+      continue
+    }
+    ids.add(b.id)
+    if (!BACKEND_KINDS.includes(b.kind as BackendKind)) {
+      issues.push(`Backend ${b.id}'s kind must be one of: ${BACKEND_KINDS.join(', ')}`)
+    } else if ((b.kind === 'here') !== (b.id === HERE.id)) {
+      issues.push(`Only this machine's own Backend is "${HERE.id}"`)
+    }
+    if (typeof b.address !== 'string') issues.push(`Backend ${b.id}'s address must be a string`)
+    else if (b.address && !URL.canParse(b.address)) {
+      issues.push(`Backend ${b.id}'s address must be like http://127.0.0.1:8188`)
+    } else if (b.kind === 'openai' && !b.address) {
+      issues.push('An OpenAI-compatible server needs its address')
+    }
+  }
+  return issues
+}
+
 /**
- * Checks a Settings object, filling in what an older file lacks: `imageBackend` and `voiceBackend`
- * from `defaults` (this machine's), `upscaleBackend` from `imageBackend`.
+ * Checks a Settings object, filling in what an older file lacks: `imageBackend` from `defaults`
+ * (this machine's), and `here` in the Backends.
  */
 export function validateSettings(
   input: unknown,
@@ -198,15 +229,18 @@ export function validateSettings(
   const s = input as Record<string, unknown>
   const issues: string[] = []
 
-  if (s.textBackend !== undefined && !TEXT_BACKENDS.includes(s.textBackend as TextBackendKind)) {
-    issues.push(`textBackend must be one of: ${TEXT_BACKENDS.join(', ')}`)
-  }
-  if (s.textBaseUrl !== undefined && typeof s.textBaseUrl !== 'string') {
-    issues.push('textBaseUrl must be a string')
-  } else if (s.textBaseUrl && !URL.canParse(s.textBaseUrl as string)) {
-    issues.push('textBaseUrl must be an address like http://localhost:1234/v1')
-  } else if (s.textBackend === 'openai' && !s.textBaseUrl) {
-    issues.push('An OpenAI-compatible server needs its address')
+  issues.push(...backendIssues(s.backends))
+  const backends = Array.isArray(s.backends) ? s.backends as Backend[] : []
+  const listed = backends.some((b) => b?.id === HERE.id) ? backends : [HERE, ...backends]
+  const runOn = s.runOn as Record<string, unknown> | undefined
+  if (typeof runOn !== 'object' || runOn === null) issues.push('runOn must name a Backend per work')
+  else {
+    for (const work of WORKS) {
+      const backend = listed.find((b) => b?.id === runOn[work])
+      if (!backend || !BACKEND_WORK[backend.kind]?.includes(work)) {
+        issues.push(`runOn.${work} must be a Backend that can do it`)
+      }
+    }
   }
   if (typeof s.textModel !== 'string') issues.push('textModel must be a string')
   if (s.thinking !== undefined && typeof s.thinking !== 'boolean') {
@@ -218,11 +252,6 @@ export function validateSettings(
   } else if (typeof s.imageModel !== 'string' || !findImageModel(imageBackend, s.imageModel)) {
     const ids = imageModelsOf(imageBackend).map((m) => m.id)
     issues.push(`imageModel must be one of ${imageBackend}'s: ${ids.join(', ')}`)
-  }
-  if (s.imageBaseUrl !== undefined && typeof s.imageBaseUrl !== 'string') {
-    issues.push('imageBaseUrl must be a string')
-  } else if (s.imageBaseUrl && !URL.canParse(s.imageBaseUrl as string)) {
-    issues.push('imageBaseUrl must be an address like http://127.0.0.1:8188')
   }
   if (!Number.isInteger(s.steps) || (s.steps as number) < 1 || (s.steps as number) > 100) {
     issues.push('steps must be an integer from 1 to 100')
@@ -274,30 +303,19 @@ export function validateSettings(
   if (s.upscaler !== undefined && !UPSCALERS.some((u) => u.id === s.upscaler)) {
     issues.push(`upscaler must be one of: ${UPSCALERS.map((u) => u.id).join(', ')}`)
   }
-  if (
-    s.upscaleBackend !== undefined && !IMAGE_BACKENDS.includes(s.upscaleBackend as ImageBackendKind)
-  ) {
-    issues.push(`upscaleBackend must be one of: ${IMAGE_BACKENDS.join(', ')}`)
-  }
   if (s.editModel !== undefined && !EDIT_MODELS.some((m) => m.id === s.editModel)) {
     issues.push(`editModel must be one of: ${EDIT_MODELS.map((m) => m.id).join(', ')}`)
-  }
-  if (
-    s.voiceBackend !== undefined && !VOICE_BACKENDS.includes(s.voiceBackend as VoiceBackendKind)
-  ) {
-    issues.push(`voiceBackend must be one of: ${VOICE_BACKENDS.join(', ')}`)
   }
 
   if (issues.length > 0) return { ok: false, issues }
   return {
     ok: true,
     settings: {
-      textBackend: (s.textBackend as TextBackendKind | undefined) ?? 'ollama',
-      textBaseUrl: ((s.textBaseUrl as string | undefined) ?? '').trim(),
+      backends: listed.map(({ id, kind, address }) => ({ id, kind, address: address.trim() })),
+      runOn: Object.fromEntries(WORKS.map((w) => [w, runOn![w]])) as Record<Work, string>,
       textModel: s.textModel as string,
       thinking: (s.thinking as boolean | undefined) ?? false,
       imageBackend,
-      imageBaseUrl: ((s.imageBaseUrl as string | undefined) ?? '').trim(),
       imageModel: s.imageModel as string,
       steps: s.steps as number,
       size: s.size as string,
@@ -308,9 +326,7 @@ export function validateSettings(
       seedMode: s.seedMode as SeedMode,
       seed: s.seed as number,
       upscaler: (s.upscaler as Upscaler | undefined) ?? DEFAULT_SETTINGS.upscaler,
-      upscaleBackend: (s.upscaleBackend as ImageBackendKind | undefined) ?? imageBackend,
       editModel: (s.editModel as EditModel | undefined) ?? DEFAULT_SETTINGS.editModel,
-      voiceBackend: (s.voiceBackend as VoiceBackendKind | undefined) ?? defaults.voiceBackend,
       artModel: (s.artModel as string | undefined) ?? '',
       artStyle: (s.artStyle as ArtStyle | undefined) ?? 'prose',
       // One not mentioned (an older file, or a Feature added since) is on.
@@ -325,17 +341,27 @@ export interface SettingsStore {
   load(): Promise<Settings>
   save(settings: Settings): Promise<void>
   /**
-   * The Text backend's API key; '' for none. Kept out of `Settings`, which is copied into each
+   * A Backend's API key, by its id; '' for none. Kept out of `Settings`, which is copied into each
    * Session and sent to the browser.
    */
-  loadApiKey(): Promise<string>
-  saveApiKey(key: string): Promise<void>
+  loadApiKey(backend: string): Promise<string>
+  saveApiKey(backend: string, key: string): Promise<void>
+}
+
+/** Fields of a settings file from before the Backends list (ADR 0022), converted by hand. */
+const BEFORE_BACKENDS = ['textBackend', 'textBaseUrl', 'imageBaseUrl', 'textApiKey']
+
+/** The API keys a settings file holds, by Backend id. */
+function apiKeysOf(raw: Record<string, unknown>): Record<string, string> {
+  const keys = raw.apiKeys
+  if (typeof keys !== 'object' || keys === null) return {}
+  return Object.fromEntries(Object.entries(keys).filter(([, k]) => typeof k === 'string'))
 }
 
 /**
  * Stores Settings as JSON at `path`, falling back to `defaults` (this machine's: `machineDefaults`)
- * when missing or invalid, and filling in from them what an older file lacks. The API key is in the
- * same file (gitignored), as `textApiKey`.
+ * when missing or invalid, and filling in from them what an older file lacks. The API keys are in
+ * the same file (gitignored), as `apiKeys` by Backend id.
  */
 export function fileSettingsStore(
   path: string | URL,
@@ -381,9 +407,15 @@ export function fileSettingsStore(
         console.warn(`Ignoring unreadable settings file ${path}; using defaults`)
         return { ...defaults }
       }
-      // The backends an older file lacks aren't filled in here: Upscale follows the file's Image
-      // backend, and voices this machine's default (`validateSettings`).
-      const { imageBackend: _i, upscaleBackend: _u, voiceBackend: _v, ...filled } = defaults
+      const old = BEFORE_BACKENDS.filter((key) => key in (parsed as object))
+      if (old.length) {
+        console.warn(
+          `${path} is from before the Backends list (ADR 0022): ${old.join(', ')} are ignored. ` +
+            'Add them in Settings, as Backends.',
+        )
+      }
+      // An Image backend an older file lacks isn't filled in here (`validateSettings`).
+      const { imageBackend: _i, ...filled } = defaults
       const result = validateSettings({ ...filled, ...(parsed as object) }, defaults)
       if (!result.ok) {
         console.warn(`Ignoring invalid settings file ${path}: ${result.issues.join('; ')}`)
@@ -393,17 +425,23 @@ export function fileSettingsStore(
     },
     save: (settings) =>
       inTurn(async () => {
-        const { textApiKey } = await readRaw()
-        await write(textApiKey ? { ...settings, textApiKey } : settings)
+        const keys = apiKeysOf(await readRaw())
+        // Only the keys of Backends still listed.
+        const kept = Object.fromEntries(
+          Object.entries(keys).filter(([id]) => settings.backends.some((b) => b.id === id)),
+        )
+        await write(Object.keys(kept).length ? { ...settings, apiKeys: kept } : settings)
       }),
-    async loadApiKey() {
-      const { textApiKey } = await readRaw()
-      return typeof textApiKey === 'string' ? textApiKey : ''
+    async loadApiKey(backend) {
+      return apiKeysOf(await readRaw())[backend] ?? ''
     },
-    saveApiKey: (key) =>
+    saveApiKey: (backend, key) =>
       inTurn(async () => {
-        const { textApiKey: _, ...rest } = await readRaw()
-        await write(key ? { ...rest, textApiKey: key } : rest)
+        const raw = await readRaw()
+        const { apiKeys: _, ...rest } = raw
+        const { [backend]: _old, ...others } = apiKeysOf(raw)
+        const apiKeys = key ? { ...others, [backend]: key } : others
+        await write(Object.keys(apiKeys).length ? { ...rest, apiKeys } : rest)
       }),
   }
 }

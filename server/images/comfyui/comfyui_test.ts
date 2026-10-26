@@ -52,10 +52,9 @@ const PC_FILES: Record<string, string[]> = {
 const fakeComfyUI = (opts: Parameters<typeof fakeServer>[0] = {}) =>
   fakeServer({ files: MAC_FILES, ...opts })
 
-const settings = (url: string, extra: Partial<Settings> = {}): Settings => ({
+const settings = (extra: Partial<Settings> = {}): Settings => ({
   ...DEFAULT_SETTINGS,
   imageBackend: 'comfyui',
-  imageBaseUrl: url,
   imageModel: 'qwen-image-2.1',
   steps: 25,
   size: 'square',
@@ -67,11 +66,11 @@ Deno.test('A ComfyUI render fills the workflow with the installed files, follows
     const comfy = fakeComfyUI({ steps: 3 })
     try {
       const steps: [number, number][] = []
-      const file = await comfyuiImageGenerator().generate(
+      const file = await comfyuiImageGenerator({ address: comfy.url }).generate(
         {
           prompt: 'Kael at the bar.',
           seed: 7,
-          settings: settings(comfy.url),
+          settings: settings(),
           dir,
           name: 'frame-0-abc',
         },
@@ -117,10 +116,9 @@ async function comfyEdit(
   try {
     await Deno.writeFile(join(dir, 'frame.png'), new Uint8Array(500))
     if (mask) await Deno.writeFile(join(dir, 'mask.png'), mask)
-    const file = await comfyuiImageGenerator().edit(
+    const file = await comfyuiImageGenerator({ address: comfy.url }).edit(
       {
         model,
-        imageBaseUrl: comfy.url,
         image: 'frame.png',
         ...(mask && { mask: 'mask.png' }),
         instruction: 'An open hand.',
@@ -208,8 +206,8 @@ Deno.test("A ComfyUI render without the model's files says which are missing", (
     try {
       await assertRejects(
         () =>
-          comfyuiImageGenerator().generate(
-            { prompt: 'x', seed: 1, settings: settings(comfy.url), dir, name: 'f' },
+          comfyuiImageGenerator({ address: comfy.url }).generate(
+            { prompt: 'x', seed: 1, settings: settings(), dir, name: 'f' },
             new AbortController().signal,
           ),
         Error,
@@ -227,8 +225,8 @@ Deno.test("ComfyUI's errors and an unreachable server fail readably", () =>
     try {
       await assertRejects(
         () =>
-          comfyuiImageGenerator().generate(
-            { prompt: 'x', seed: 1, settings: settings(comfy.url), dir, name: 'f' },
+          comfyuiImageGenerator({ address: comfy.url }).generate(
+            { prompt: 'x', seed: 1, settings: settings(), dir, name: 'f' },
             new AbortController().signal,
           ),
         Error,
@@ -239,8 +237,8 @@ Deno.test("ComfyUI's errors and an unreachable server fail readably", () =>
     }
     await assertRejects(
       () =>
-        comfyuiImageGenerator().generate(
-          { prompt: 'x', seed: 1, settings: settings('http://localhost:9'), dir, name: 'f' },
+        comfyuiImageGenerator({ address: 'http://localhost:9' }).generate(
+          { prompt: 'x', seed: 1, settings: settings(), dir, name: 'f' },
           new AbortController().signal,
         ),
       Error,
@@ -255,8 +253,8 @@ Deno.test("Cancel interrupts only this render, and takes it out of ComfyUI's que
       const controller = new AbortController()
       await assertRejects(
         () =>
-          comfyuiImageGenerator().generate(
-            { prompt: 'x', seed: 1, settings: settings(comfy.url), dir, name: 'f' },
+          comfyuiImageGenerator({ address: comfy.url }).generate(
+            { prompt: 'x', seed: 1, settings: settings(), dir, name: 'f' },
             controller.signal,
             // Cancelled once it's rendering.
             () => controller.abort(new Error('Cancelled by player')),
@@ -292,7 +290,7 @@ Deno.test('A ComfyUI upscale sends the picture to temp, runs SeedVR2, and blanks
     const comfy = fakeComfyUI({ files: SEEDVR2_FILES })
     try {
       await Deno.writeFile(join(dir, 'frame-0-abc.png'), new Uint8Array(500))
-      const generator = comfyuiImageGenerator({ upscaleUrl: () => Promise.resolve(comfy.url) })
+      const generator = comfyuiImageGenerator({ address: comfy.url })
       const file = await generator.upscale(
         { model: 'seedvr2-7b', image: 'frame-0-abc.png', seed: 3, dir, name: 'frame-0-abc-2048' },
         new AbortController().signal,
@@ -330,7 +328,7 @@ Deno.test("A ComfyUI upscale without SeedVR2's files says which are missing, sen
       await Deno.writeFile(join(dir, 'f.png'), new Uint8Array(10))
       await assertRejects(
         () =>
-          comfyuiImageGenerator({ upscaleUrl: () => Promise.resolve(comfy.url) }).upscale(
+          comfyuiImageGenerator({ address: comfy.url }).upscale(
             { model: 'seedvr2-3b', image: 'f.png', seed: 1, dir, name: 'f-2048' },
             new AbortController().signal,
           ),
@@ -350,8 +348,8 @@ Deno.test('A ComfyUI that stops answering mid-render fails the render instead of
       const started = performance.now()
       await assertRejects(
         () =>
-          comfyuiImageGenerator({ checkEveryMs: 100 }).generate(
-            { prompt: 'x', seed: 1, settings: settings(comfy.url), dir, name: 'f' },
+          comfyuiImageGenerator({ address: comfy.url, checkEveryMs: 100 }).generate(
+            { prompt: 'x', seed: 1, settings: settings(), dir, name: 'f' },
             new AbortController().signal,
           ),
         Error,
