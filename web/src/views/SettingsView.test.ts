@@ -150,7 +150,18 @@ describe('SettingsView', () => {
     })
     const wrapper = mount(SettingsView)
     await flushPromises()
-    // Nowhere to render yet, though the saved model is still listed, beside ComfyUI's.
+    // Nowhere to render yet: the Pictures switch says why, and its options are hidden.
+    expect(wrapper.find('[data-feature="images"] [data-unavailable]').text()).toContain(
+      'runs only on Apple Silicon Macs',
+    )
+    expect(wrapper.find('[data-image-model]').exists()).toBe(false)
+    expect(wrapper.find('[data-card="upscale"]').exists()).toBe(false)
+    vi.mocked(api.checkComfyUI).mockResolvedValue({
+      up: false,
+      error: "Couldn't reach ComfyUI at http://127.0.0.1:8188: is it running?",
+    })
+    await addBackend(wrapper, 'comfyui')
+    // Once one's added, the saved model is still listed, beside ComfyUI's.
     const groups = () =>
       wrapper.findAll('[data-image-model] optgroup').map((g) => [
         g.attributes('label'),
@@ -158,13 +169,6 @@ describe('SettingsView', () => {
       ])
     expect(groups().map(([backend]) => backend)).toEqual(['mflux', 'ComfyUI'])
     expect(groups()[1]).toEqual(['ComfyUI', ['Qwen-Image 2.1 · ComfyUI']])
-    expect(wrapper.find('[data-run-on="images"] select').text()).toContain('add one')
-    expect(wrapper.find('[data-step-cache]').exists()).toBe(false)
-    vi.mocked(api.checkComfyUI).mockResolvedValue({
-      up: false,
-      error: "Couldn't reach ComfyUI at http://127.0.0.1:8188: is it running?",
-    })
-    await addBackend(wrapper, 'comfyui')
     await wrapper.find('[data-image-model]').setValue('comfyui/qwen-image-2.1')
     // Checked as soon as it's added: down, until ComfyUI is started and checked again.
     await vi.advanceTimersByTimeAsync(600)
@@ -299,6 +303,26 @@ describe('SettingsView', () => {
     expect(api.saveSettings).toHaveBeenLastCalledWith(expect.objectContaining({
       backends: settings.backends,
       runOn: settings.runOn,
+    }))
+  })
+
+  it("hides an extra's options while its switch is off, and every image option with Pictures", async () => {
+    const wrapper = mount(SettingsView)
+    await flushPromises()
+    const shown = (selector: string) => wrapper.find(selector).exists()
+    expect(wrapper.find('[data-feature="images"] input').attributes('role')).toBe('switch')
+    expect([shown('[data-upscaler]'), shown('[data-edit-model]')]).toEqual([true, true])
+    await wrapper.find('[data-feature="upscale"] input').setValue(false)
+    expect([shown('[data-upscaler]'), shown('[data-run-on="upscale"]')]).toEqual([false, false])
+    expect(shown('[data-edit-model]')).toBe(true)
+    // Pictures off: none of the image options, Upscale's and Edits' cards with them.
+    await wrapper.find('[data-feature="images"] input').setValue(false)
+    expect(['[data-image-model]', '[data-card="upscale"]', '[data-card="edits"]'].map(shown))
+      .toEqual([false, false, false])
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+    expect(api.saveSettings).toHaveBeenCalledWith(expect.objectContaining({
+      features: { ...settings.features, images: false, upscale: false },
     }))
   })
 
@@ -455,9 +479,9 @@ describe('SettingsView', () => {
   it('saves each control into its own field', async () => {
     const wrapper = mount(SettingsView)
     await flushPromises()
-    expect((wrapper.find('[data-limits]').element as HTMLInputElement).checked).toBe(true)
+    expect((wrapper.find('[data-limits] input').element as HTMLInputElement).checked).toBe(true)
     await wrapper.find('[data-text-model]').setValue('gemma4:31b-mlx')
-    await wrapper.find('[data-limits]').setValue(false)
+    await wrapper.find('[data-limits] input').setValue(false)
     await wrapper.find('[data-upscaler]').setValue('seedvr2-3b')
     await wrapper.find('form').trigger('submit')
     await flushPromises()
