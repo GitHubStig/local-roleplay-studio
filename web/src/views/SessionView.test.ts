@@ -517,13 +517,13 @@ describe('SessionView', () => {
     vi.mocked(api.getSession).mockResolvedValue(chain)
     const { wrapper } = await mountIt()
     const select = wrapper.find('[data-image-model]')
-    expect((select.element as HTMLSelectElement).value).toBe('qwen-image-2.1')
+    expect((select.element as HTMLSelectElement).value).toBe('mflux/qwen-image-2.1')
     // Up to date, it can still render again: with Settings' size and the rest as they are now.
     expect(wrapper.find('[data-changed]').exists()).toBe(false)
     expect(wrapper.find('[data-render-button]').text()).toBe('Re-render')
     expect(select.findAll('option').map((o) => o.text())).toEqual([
-      'Qwen-Image 2.1',
-      'FLUX.2 Klein 4B',
+      'Qwen-Image 2.1 · mflux',
+      'FLUX.2 Klein 4B · mflux',
     ])
     expect(wrapper.find('[data-image-steps]').text()).toBe('· 25 steps')
 
@@ -532,10 +532,10 @@ describe('SessionView', () => {
       ...chain,
       settings: { ...chain.settings, imageModel: 'flux2-klein-4b', steps: 4 },
     })
-    await select.setValue('flux2-klein-4b')
+    await select.setValue('mflux/flux2-klein-4b')
     await flushPromises()
-    expect(api.setImageModel).toHaveBeenCalledWith('s1', 'flux2-klein-4b')
-    expect((select.element as HTMLSelectElement).value).toBe('flux2-klein-4b')
+    expect(api.setImageModel).toHaveBeenCalledWith('s1', 'flux2-klein-4b', 'mflux')
+    expect((select.element as HTMLSelectElement).value).toBe('mflux/flux2-klein-4b')
     expect(wrapper.find('[data-image-steps]').text()).toBe('· 4 steps')
     expect(wrapper.find('[data-changed]').text()).toBe('Changed since render · by Qwen-Image 2.1')
     expect(wrapper.find('[data-render-button]').text()).toBe('Re-render')
@@ -557,13 +557,13 @@ describe('SessionView', () => {
 
     // A failed switch puts the select back, and says why.
     vi.mocked(api.setImageModel).mockRejectedValue(new Error('No Backend renders x'))
-    await select.setValue('qwen-image-2.1')
+    await select.setValue('mflux/qwen-image-2.1')
     await flushPromises()
-    expect((select.element as HTMLSelectElement).value).toBe('flux2-klein-4b')
+    expect((select.element as HTMLSelectElement).value).toBe('mflux/flux2-klein-4b')
     expect(wrapper.find('[data-frame-notice]').text()).toBe('No Backend renders x')
   })
 
-  it('lists each Image Model once, by name, whichever backends have it, keeping its pictures', async () => {
+  it('lists each Image Model under each kind of backend that has it, and keeps the kind picked', async () => {
     vi.mocked(api.getSettingsOptions).mockResolvedValue({
       features: ALL_AVAILABLE,
       imageModels: {
@@ -593,19 +593,31 @@ describe('SessionView', () => {
     vi.mocked(api.getSession).mockResolvedValue(chain)
     const { wrapper } = await mountIt()
     const select = wrapper.find('[data-image-model]')
-    // Grouped by where renders go now: Qwen-Image 2.1, on both, is listed once, under ComfyUI.
+    // Qwen-Image 2.1 is under both; the Session hasn't picked, so it shows where Settings send it.
     expect(
       select.findAll('optgroup').map((g) => [
         g.attributes('label'),
         g.findAll('option').map((o) => o.text()),
       ]),
     ).toEqual([
-      ['mflux', ['FLUX.2 Klein 4B · mflux']],
+      ['mflux', ['Qwen-Image 2.1 · mflux', 'FLUX.2 Klein 4B · mflux']],
       ['ComfyUI', ['Qwen-Image 2.1 · ComfyUI', 'MOSS-Image · ComfyUI']],
     ])
+    expect((select.element as HTMLSelectElement).value).toBe('comfyui/qwen-image-2.1')
     // Its picture says where it was made.
     expect(wrapper.find('[data-changed]').exists()).toBe(false)
     expect(wrapper.text()).toContain('Text 3.0 s · by Qwen-Image 2.1 · mflux')
+
+    // Picked on mflux, the Session keeps that kind; the same model's picture stays up to date.
+    vi.mocked(api.setImageModel).mockResolvedValue({
+      ...chain,
+      settings: { ...chain.settings, imageBackend: 'mflux' },
+    })
+    await select.setValue('mflux/qwen-image-2.1')
+    await flushPromises()
+    expect(api.setImageModel).toHaveBeenCalledWith('s1', 'qwen-image-2.1', 'mflux')
+    expect((select.element as HTMLSelectElement).value).toBe('mflux/qwen-image-2.1')
+    expect(wrapper.find('[data-changed]').exists()).toBe(false)
     vi.mocked(api.getSettingsOptions).mockResolvedValue(
       {
         features: ALL_AVAILABLE,

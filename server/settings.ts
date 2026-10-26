@@ -3,6 +3,7 @@ import {
   anyImageModel,
   findImageModel,
   IMAGE_BACKENDS,
+  type ImageBackendKind,
   imageModelsOf,
 } from './images/imageModels.ts'
 import { EDIT_MODELS, type EditModel } from './images/editModels.ts'
@@ -117,7 +118,14 @@ export const SESSION_SETTINGS = [
   'imageModel',
   'steps',
 ] as const satisfies readonly (keyof Settings)[]
-export type SessionSettings = Pick<Settings, (typeof SESSION_SETTINGS)[number]>
+export type SessionSettings = Pick<Settings, (typeof SESSION_SETTINGS)[number]> & {
+  /**
+   * The kind of backend its renders would rather run on, if picked in the Session (mflux or
+   * ComfyUI): a preference, not an address, so a Session's folder can be shared as it is, and
+   * rendered wherever it's opened. Left out, Settings say.
+   */
+  imageBackend?: ImageBackendKind
+}
 
 /** What a new Session keeps of Settings (`SESSION_SETTINGS`). */
 export const sessionSettingsOf = (settings: Settings): SessionSettings => ({
@@ -188,7 +196,6 @@ export function machineDefaults(here: { mflux: boolean; voiceService: boolean })
       edits: images,
       voices: here.voiceService ? 'here' : comfyui.id,
     },
-    editModel: here.mflux ? 'qwen-image-2.1-edit' : 'qwen-image-2.1-edit-comfyui',
   }
 }
 

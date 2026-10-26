@@ -41,7 +41,7 @@ Deno.test("Each job runs on its Backend: an edit on its edit model's, at that Co
   const signal = new AbortController().signal
   assertEquals(await both.edit(edit('qwen-image-2.1-edit'), signal), 'mflux.png')
   assertEquals(
-    await both.edit(edit('flux3-klein-edit-comfyui'), signal),
+    await both.edit(edit('flux3-klein-edit'), signal),
     'comfyui at http://192.168.50.85:8188.png',
   )
   // Upscale where Settings prefer, though mflux is here.

@@ -161,5 +161,5 @@ The model that renders an Image Prompt into an image (Qwen-Image 2.1 by default)
 _Avoid_: Model, diffusion model, generator
 
 **Image backend**:
-What runs the Image Model: mflux (on a Mac) or a ComfyUI server (on any machine, this one or another). A Session doesn't keep one: which Backend renders, upscales or edits is Settings' choice, and applies at once. Each picture says which backend made it.
+What runs the Image Model: mflux (on a Mac) or a ComfyUI server (on any machine, this one or another). Which Backend renders, upscales or edits is Settings' choice, and applies at once; a Session can pick a kind of backend for its renders, and an edit for itself, as a preference, never an address. Each picture says which backend made it.
 _Avoid_: renderer, provider, engine

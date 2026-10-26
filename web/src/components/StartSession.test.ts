@@ -55,8 +55,8 @@ const options: api.SettingsOptions = {
   },
   sizePresets: [],
   editModels: [
-    { id: 'qwen-image-2.1-edit', label: 'Qwen-Image 2.1 Edit', backend: 'mflux' },
-    { id: 'flux3-klein-edit-comfyui', label: 'FLUX.3 Klein Edit', backend: 'comfyui' },
+    { id: 'qwen-image-2.1-edit', label: 'Qwen-Image 2.1 Edit', backends: ['mflux', 'comfyui'] },
+    { id: 'flux3-klein-edit', label: 'FLUX.3 Klein Edit', backends: ['comfyui'] },
   ],
   upscalers: [
     { id: 'seedvr2-7b', label: 'SeedVR2 7B' },

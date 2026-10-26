@@ -260,9 +260,11 @@ Deno.test('An edit repaints a picture as a new version, made from the newest and
     const [one] = first.edits
     assertMatch(one.image, /^edit-1-[0-9a-f]{8}\.png$/)
     assertEquals(one.mask, mask)
-    assertEquals([one.instructions, one.editModel, first.picked], [
+    // Made here, on mflux: Qwen-Image 2.1 Edit runs on both, and Settings send edits here.
+    assertEquals([one.instructions, one.editModel, one.imageBackend, first.picked], [
       ['A hand with five fingers'],
       'qwen-image-2.1-edit',
+      'mflux',
       1,
     ])
     assertEquals(
@@ -273,15 +275,17 @@ Deno.test('An edit repaints a picture as a new version, made from the newest and
 
     // A second, of the whole picture, uses the model selected in the Edit dialog.
     assertEquals(
-      (await edit({ instruction: 'Warmer light', model: 'flux3-klein-edit-comfyui' })).status,
+      (await edit({ instruction: 'Warmer light', model: 'flux3-klein-edit' })).status,
       201,
     )
     assertEquals(await settled(call), [])
     const [, second] = await chainFrames(call)
     assertEquals([images.edits[1].image, images.edits[1].mask], [one.image, undefined])
-    assertEquals([images.edits[1].model, second.edits[1].editModel], [
-      'flux3-klein-edit-comfyui',
-      'flux3-klein-edit-comfyui',
+    // FLUX.3 Klein Edit runs only on ComfyUI, so it went to the one listed.
+    assertEquals([images.edits[1].model, second.edits[1].editModel, second.edits[1].imageBackend], [
+      'flux3-klein-edit',
+      'flux3-klein-edit',
+      'comfyui',
     ])
     assertEquals([second.edits.length, second.picked], [2, 2])
 
@@ -488,6 +492,28 @@ Deno.test('A Session switches Image Model by name, to one a Backend listed can r
       'textModel',
       'thinking',
     ])
+    // Picked on a kind of backend, the Session keeps it, as where it would rather render.
+    const onMflux = await (await call('PUT', '/api/sessions/s1/image-model', {
+      imageModel: 'qwen-image-2.1',
+      imageBackend: 'mflux',
+    })).json()
+    assertEquals([onMflux.settings.imageModel, onMflux.settings.imageBackend], [
+      'qwen-image-2.1',
+      'mflux',
+    ])
+    const wrongKind = await call('PUT', '/api/sessions/s1/image-model', {
+      imageModel: 'moss-image',
+      imageBackend: 'mflux',
+    })
+    assertEquals([wrongKind.status, (await wrongKind.json()).error], [
+      400,
+      'mflux has no Image Model "moss-image"',
+    ])
+    const noKind = await call('PUT', '/api/sessions/s1/image-model', {
+      imageModel: 'qwen-image-2.1',
+      imageBackend: 'dall-e',
+    })
+    assertEquals(noKind.status, 400)
     // MOSS-Image is ComfyUI's only: refused until one is listed.
     const moss = await switchTo(call, 'moss-image')
     assertEquals([moss.status, (await moss.json()).error], [

@@ -32,7 +32,7 @@ export function imageBackends(backends: {
         .upscale(req, signal, onProgress, onDownload)
     },
     async edit(req, signal, onProgress, onDownload) {
-      return (await on(editJob(req.model), `edit with ${req.model}`))
+      return (await on(editJob(req.model), `edit with ${req.model}`, req.backend))
         .edit(req, signal, onProgress, onDownload)
     },
   }

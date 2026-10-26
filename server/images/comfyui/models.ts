@@ -217,9 +217,9 @@ export interface ComfyEditor {
 }
 
 export const COMFYUI_EDITORS: readonly ComfyEditor[] = [
-  { id: 'qwen-image-2.1-edit-comfyui', model: 'qwen-image-2.1', workflow: 'qwen-image-2.1-edit' },
+  { id: 'qwen-image-2.1-edit', model: 'qwen-image-2.1', workflow: 'qwen-image-2.1-edit' },
   {
-    id: 'flux3-klein-edit-comfyui',
+    id: 'flux3-klein-edit',
     model: 'flux3-klein',
     workflow: 'flux3-klein-edit',
     prompt: 'flux3-edit',

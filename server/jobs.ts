@@ -14,10 +14,10 @@ import type { Feature } from './features.ts'
 import type { Phase } from './frames.ts'
 import { error, json, readJson, type Route } from './http.ts'
 import { EDIT_MODELS, type EditModel, findEditModel } from './images/editModels.ts'
-import type { ImageBackendKind } from './images/imageModels.ts'
+import { IMAGE_BACKENDS, type ImageBackendKind } from './images/imageModels.ts'
 import { machineOf } from './machine.ts'
 import type { Session, SessionStore } from './session.ts'
-import type { Settings } from './settings.ts'
+import type { SessionSettings } from './settings.ts'
 
 /**
  * `picture` writes a Roleplay Frame's Image Prompt and `render` renders it; `upscale` takes a
@@ -80,6 +80,8 @@ export const JOB_FEATURE: Record<JobKind, Feature | null> = {
 export interface EditOrder {
   instruction: string
   model?: EditModel
+  /** The kind of backend it would rather run on, picked in the Edit dialog; else Settings'. */
+  backend?: ImageBackendKind
   mask?: string
   retry?: boolean
 }
@@ -114,23 +116,23 @@ export interface Job {
   edit?: EditOrder
 }
 
-/** The Session settings that say which Image Model renders. */
-export type ImageChoice = Pick<Settings, 'imageModel' | 'steps'>
+/** The Session settings that say which Image Model renders, and where it would rather. */
+export type ImageChoice = Pick<SessionSettings, 'imageModel' | 'steps' | 'imageBackend'>
 
 /** The Image Model a render of `session` queued now keeps (`Job.image`). */
 export const imageChoiceOf = ({ settings }: Session): ImageChoice => ({
   imageModel: settings.imageModel,
   steps: settings.steps,
+  ...(settings.imageBackend && { imageBackend: settings.imageBackend }),
 })
 
 /** `session` as `job` renders it: with the Image Model it was queued with, if it's a render. */
-export const asQueued = <S extends Session>(session: S, job: Job): S =>
-  job.image
-    ? {
-      ...session,
-      settings: { ...session.settings, imageModel: job.image.imageModel, steps: job.image.steps },
-    }
-    : session
+export function asQueued<S extends Session>(session: S, job: Job): S {
+  if (!job.image) return session
+  // The kind it would rather run on is the queued render's too, if it had one.
+  const { imageBackend: _, ...settings } = session.settings
+  return { ...session, settings: { ...settings, ...job.image } }
+}
 
 /** What a running job reports: its phase, or its progress through the steps. */
 export type JobEmit = (
@@ -444,6 +446,7 @@ export function editOrder(body: unknown): EditOrder | string {
   const b = body as {
     instruction?: unknown
     model?: unknown
+    backend?: unknown
     mask?: unknown
     retry?: unknown
   } | undefined
@@ -457,7 +460,13 @@ export function editOrder(body: unknown): EditOrder | string {
   if (b?.model !== undefined && !model) {
     return `model must be one of: ${EDIT_MODELS.map((m) => m.id).join(', ')}`
   }
-  const selectedModel = model ? { model } : {}
+  if (b?.backend !== undefined && !IMAGE_BACKENDS.includes(b.backend as ImageBackendKind)) {
+    return `backend must be one of: ${IMAGE_BACKENDS.join(', ')}`
+  }
+  const selectedModel = {
+    ...(model && { model }),
+    ...(b?.backend !== undefined && { backend: b.backend as ImageBackendKind }),
+  }
   if (b?.mask === undefined) return { instruction, ...selectedModel, ...retry }
   if (
     typeof b.mask !== 'string' || b.mask.length > MAX_MASK || !/^[A-Za-z0-9+/]+=*$/.test(b.mask)

@@ -9,6 +9,7 @@ import { error } from './http.ts'
 import type { EditModel } from './images/editModels.ts'
 import type { EditOrder, JobEmit, JobKind } from './jobs.ts'
 import { crossedLimit } from './limits.ts'
+import { imageKindOf } from './backends.ts'
 import { editJob } from './machine.ts'
 import {
   changeRenderedPicture,
@@ -64,7 +65,7 @@ export function checkEdit(
  * was made from, and picks it. Its painted area, saved when it was queued, is kept beside it.
  */
 export async function editFrame<S extends Session>(
-  deps: Pick<FrameDeps, 'store' | 'imageGenerator' | 'renderQueue'>,
+  deps: Pick<FrameDeps, 'store' | 'imageGenerator' | 'renderQueue' | 'backendOf'>,
   session: S,
   index: number,
   order: EditOrder,
@@ -87,12 +88,15 @@ export async function editFrame<S extends Session>(
   const name = `edit-${index}-${crypto.randomUUID().slice(0, 8)}`
   const { instruction, mask } = order
   const seed = redo ? redo.seed + 1 : session.seed
+  // Found once, so the edit records where it was made.
+  const backend = await deps.backendOf?.(editJob(model, order.backend))
+  const kind = backend && imageKindOf(backend)
   const start = performance.now()
   let waited = false
   const release = await (deps.renderQueue ?? new RenderQueue()).acquire(signal, () => {
     waited = true
     emit({ type: 'phase', phase: 'queued' })
-  }, { job: editJob(model) })
+  }, { job: editJob(model, order.backend) })
   try {
     const queued = waited ? secondsSince(start) : undefined
     emit({ type: 'phase', phase: 'image' })
@@ -101,6 +105,7 @@ export async function editFrame<S extends Session>(
     const image = await deps.imageGenerator.edit(
       {
         model,
+        ...(backend && { backend }),
         image: from.image,
         mask,
         instruction,
@@ -117,6 +122,7 @@ export async function editFrame<S extends Session>(
       image,
       instructions: [instruction],
       editModel: model,
+      ...(kind && { imageBackend: kind }),
       seed,
       ...(mask && { mask }),
       timings: { ...(queued !== undefined ? { queued } : {}), edit: secondsSince(began) },

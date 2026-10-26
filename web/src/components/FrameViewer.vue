@@ -4,6 +4,8 @@ import { computed, reactive, ref, useTemplateRef, watch } from 'vue'
 import {
   type EditOrder,
   framePicture,
+  IMAGE_BACKEND_NAMES,
+  type ImageBackend,
   imageUrl,
   type Job,
   newestImage,
@@ -12,7 +14,7 @@ import {
   type PicturedFrame,
 } from '../api'
 import { useFeatures } from '../composables/useFeatures'
-import { editModelChoices, useSettingsOptions } from '../composables/useSettingsOptions'
+import { editChoices, useSettingsOptions } from '../composables/useSettingsOptions'
 import ImageViewer from './ImageViewer.vue'
 import PaintLayer, { type Sketch } from './PaintLayer.vue'
 import PictureVersions, { type VersionEntry } from './PictureVersions.vue'
@@ -56,7 +58,14 @@ const emit = defineEmits<{
 }>()
 const { on: featureOn, settings } = useFeatures()
 const settingsOptions = useSettingsOptions()
-const editModels = computed(() => editModelChoices(settingsOptions.value?.editModels))
+/** Each edit model on each kind of backend that runs it here, Settings' choice to start on. */
+const editModels = computed(() =>
+  editChoices(
+    settingsOptions.value?.editModels,
+    settingsOptions.value?.imageBackends,
+    (id) => settingsOptions.value?.editModelsOn?.[id],
+  )
+)
 
 const pictured = computed(() =>
   props.frames.flatMap((f) => {
@@ -90,6 +99,8 @@ interface Draft {
   base?: string
   instruction: string
   model: string
+  /** The kind of backend it would rather run on, as picked here. */
+  backend?: ImageBackend
   /** A failed edit it's made in place of, dismissed once it's sent. */
   replaces?: Job
 }
@@ -124,6 +135,11 @@ watch(editJobs, (now, before) => {
   if (viewedJobId.value && !now.some((j) => j.id === viewedJobId.value)) viewedJobId.value = null
 })
 
+/** "by Qwen-Image 2.1 Edit · mflux": what made an edit, and where, as a render's picture says. */
+const editedBy = (e: { editModel: string; imageBackend?: ImageBackend }) =>
+  `by ${settingsOptions.value?.editModels.find((m) => m.id === e.editModel)?.label ?? e.editModel}` +
+  (e.imageBackend ? ` · ${IMAGE_BACKEND_NAMES[e.imageBackend]}` : '')
+
 const versions = computed<VersionEntry[]>(() => {
   const p = picture.value
   if (!p) return []
@@ -133,7 +149,7 @@ const versions = computed<VersionEntry[]>(() => {
     ...edits.value.map((e, i) => ({
       key: String(i + 1),
       label: `Edit ${i + 1}`,
-      title: e.instructions.join('; '),
+      title: `${e.instructions.join('; ')} (${editedBy(e)})`,
       selected: picked === i + 1,
     })),
     ...editJobs.value.map((j, i): VersionEntry => ({
@@ -210,16 +226,32 @@ function step(by: number) {
   emit('step', frame.index)
 }
 
+/**
+ * The model and kind of backend an edit starts on: the one it asks for if that runs here, or else
+ * Settings' edit model, where Settings send edits.
+ */
+const startOn = (model?: string, backend?: ImageBackend) => {
+  const choice = editModels.value.startOn({ model, backend }, { model: settings.value?.editModel })
+  return choice ? { model: choice.model, backend: choice.backend } : { model: model ?? '', backend }
+}
 /** Starts painting an edit, on the model it asks for if that runs here, or else Settings'. */
 function startDraft(next: Omit<Draft, 'model'> & { model?: string }) {
-  draft.value = { ...next, model: editModels.value.startOn(next.model, settings.value?.editModel) }
+  draft.value = { ...next, ...startOn(next.model, next.backend) }
   sketch.value = { base: true, strokes: [] }
   history.clear()
   painting.value = true
 }
 // One begun before the edit models loaded moves onto one that runs here.
-watch(editModels, ({ startOn }) => {
-  if (draft.value) draft.value.model = startOn(draft.value.model, settings.value?.editModel)
+watch(editModels, () => {
+  if (draft.value) Object.assign(draft.value, startOn(draft.value.model, draft.value.backend))
+})
+/** The draft's model and kind of backend, as the dropdown's one value. */
+const draftChoice = computed({
+  get: () => draft.value ? `${draft.value.backend ?? ''}/${draft.value.model}` : '',
+  set(value: string) {
+    const choice = editModels.value.choices.find((c) => c.value === value)
+    if (draft.value && choice) Object.assign(draft.value, { model: choice.model, backend: choice.backend })
+  },
 })
 /** A new edit; one already begun on this Frame carries on. */
 function editNew() {
@@ -235,12 +267,13 @@ function redoNewest() {
     base: newest.mask,
     instruction: newest.instructions.join('; '),
     model: newest.editModel,
+    backend: newest.imageBackend,
   })
 }
 /** A failed edit asked for again, as it was, to change before it's sent. */
 function redoFailed(job: Job) {
-  const { instruction, model, mask, retry } = job.edit!
-  startDraft({ retry: !!retry, base: mask, instruction, model, replaces: job })
+  const { instruction, model, backend, mask, retry } = job.edit!
+  startDraft({ retry: !!retry, base: mask, instruction, model, backend, replaces: job })
 }
 function addStroke(stroke: Sketch['strokes'][number]) {
   sketch.value = { ...sketch.value, strokes: [...sketch.value.strokes, stroke] }
@@ -259,6 +292,7 @@ function send() {
   emit('edit', frame.index, {
     instruction: told,
     ...(d.model && { model: d.model }),
+    ...(d.backend && { backend: d.backend }),
     ...(mask && { mask }),
     ...(d.retry && { retry: true }),
   })
@@ -407,12 +441,14 @@ const action =
           <label v-if="editModels.choices.length > 1" class="flex items-center gap-2">
             Edit model
             <SelectField
-              v-model="draft.model"
+              v-model="draftChoice"
               compact
               class="rounded-lg border border-white/30 bg-black/40 p-1.5 text-white"
               data-edit-model
             >
-              <option v-for="m in editModels.choices" :key="m.id" :value="m.id">{{ m.label }}</option>
+              <option v-for="c in editModels.choices" :key="c.value" :value="c.value">
+                {{ c.label }}
+              </option>
             </SelectField>
           </label>
           <div class="inline-flex overflow-hidden rounded-lg border border-white/30" role="group">

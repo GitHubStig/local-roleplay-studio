@@ -3,17 +3,20 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Job, PicturedFrame, Settings, SettingsOptions } from '../api'
 import FrameViewer from './FrameViewer.vue'
 
-// Two edit models here, on two backends; Settings start an edit on the first.
+// Two edit models here, Qwen on both kinds of backend; Settings start an edit on Qwen, sending
+// edits to the ComfyUI.
 vi.mock('../api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../api')>()),
   getSettings: vi.fn(() => Promise.resolve({ editModel: 'qwen-image-2.1-edit' } as Settings)),
   getSettingsOptions: vi.fn(() =>
     Promise.resolve({
       editModels: [
-        { id: 'qwen-image-2.1-edit', label: 'Qwen-Image 2.1 Edit', backend: 'mflux' },
-        { id: 'flux3-klein-edit-comfyui', label: 'FLUX.3 Klein Edit', backend: 'comfyui' },
+        { id: 'qwen-image-2.1-edit', label: 'Qwen-Image 2.1 Edit', backends: ['mflux', 'comfyui'] },
+        { id: 'flux3-klein-edit', label: 'FLUX.3 Klein Edit', backends: ['comfyui'] },
       ],
-    } as SettingsOptions)
+      imageBackends: ['mflux', 'comfyui'],
+      editModelsOn: { 'qwen-image-2.1-edit': 'comfyui', 'flux3-klein-edit': 'comfyui' },
+    } as unknown as SettingsOptions)
   ),
 }))
 
@@ -108,8 +111,14 @@ describe('FrameViewer', () => {
     expect(shownSrc(wrapper)).toBe(url('edit-0-00000002.png'))
     expect(wrapper.find('[data-paint-tools]').exists()).toBe(true)
     const model = wrapper.find('[data-edit-model]')
-    expect((model.element as HTMLSelectElement).value).toBe('qwen-image-2.1-edit')
-    await model.setValue('flux3-klein-edit-comfyui')
+    // Each model once per kind of backend that runs it, Settings' choice to start on.
+    expect(model.findAll('option').map((o) => o.text())).toEqual([
+      'Qwen-Image 2.1 Edit · mflux',
+      'Qwen-Image 2.1 Edit · ComfyUI',
+      'FLUX.3 Klein Edit · ComfyUI',
+    ])
+    expect((model.element as HTMLSelectElement).value).toBe('comfyui/qwen-image-2.1-edit')
+    await model.setValue('comfyui/flux3-klein-edit')
     // The arrow keys don't step while painting; Esc goes back to the picture, the draft kept.
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }))
     expect(wrapper.emitted('step')).toBeUndefined()
@@ -123,7 +132,7 @@ describe('FrameViewer', () => {
     expect(box.value).toBe('A cup')
     await wrapper.find('[data-send-edit]').trigger('click')
     expect(wrapper.emitted('edit')).toEqual([
-      [0, { instruction: 'A cup', model: 'flux3-klein-edit-comfyui' }],
+      [0, { instruction: 'A cup', model: 'flux3-klein-edit', backend: 'comfyui' }],
     ])
 
     // Queued: it shows among the versions, over what it's made from, with where it's painted.

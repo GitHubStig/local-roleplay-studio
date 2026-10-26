@@ -356,7 +356,7 @@ written for image prompts, are left out).
   [ADR 0016](adr/0016-turbos-are-image-models.md)).
   Settings' Image Model is the one new Sessions start with. Renders under way finish on the old
   model; queued ones read the Session when their turn comes, so they use the new one.
-  The picker lists every model a Backend listed in Settings can render, once each by name (since 2026-10-26; it grouped them by backend from 2026-10-19). A model of the same name is the same on either backend, so its pictures stay up to date wherever it renders next; each picture says which backend made it, and a render's job says it once it starts, which is how the page knows to show ComfyUI's picture forming.
+  The picker lists each model under each kind of backend that has it and can render here (since 2026-10-19). Picking one keeps that kind on the Session (`imageBackend`, ADR 0022) as where it would rather render: a Backend of that kind if one has the model, else any. Not picked, Settings say. A model of the same name is the same on either backend, so its pictures stay up to date wherever it renders next; each picture says which backend made it, and a render's job says it once it starts, which is how the page knows to show ComfyUI's picture forming. The Edit dialog offers each edit model on each kind of backend the same way, for that edit.
 - **A Frame keeps a picture per Image Model** (`pictures`, `server/pictures.ts`), each with its
   upscale, scene, figures, stale flag and render timings. It shows its picture by the Session's
   model, or else its latest, which then reads **Changed since render · by <model>**; a picture whose

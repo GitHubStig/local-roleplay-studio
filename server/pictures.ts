@@ -28,6 +28,8 @@ export interface PictureEdit extends PictureVersion {
   instructions: string[]
   /** The edit model (`images/editModels.ts`). */
   editModel: string
+  /** The kind of backend that made it, as a Picture says what rendered it. */
+  imageBackend?: ImageBackendKind
   seed: number
   /** The area painted over the picture to repaint (a PNG, white repainted); none for all of it. */
   mask?: string
@@ -199,11 +201,11 @@ export async function removeFiles(dir: string, files: string[]): Promise<void> {
 export class ImageModelError extends Error {}
 
 /**
- * Switches a Session to Image Model `model`, resetting the steps to its default on `backend`, the
- * kind of Backend it would render on now (the seed, size and everything else stay). Each Frame then
- * shows its picture by that model if it has one (`shownPicture`): by its name, whichever backend
- * made it (ADR 0022). Renders already under way finish on the model they started with; later ones
- * use the new one.
+ * Switches a Session to Image Model `model`, rendering on `backend`'s kind if it's picked there
+ * (mflux or ComfyUI, a preference: ADR 0022), resetting the steps to its default there (the seed,
+ * size and everything else stay). Each Frame then shows its picture by that model if it has one
+ * (`shownPicture`): by its name, whichever backend made it. Renders already under way finish on
+ * the model they started with; later ones use the new one.
  */
 export async function switchImageModel(
   store: SessionStore,
@@ -214,10 +216,17 @@ export async function switchImageModel(
   const option = anyImageModel(model, backend)
   if (!option) throw new ImageModelError(`There's no Image Model "${model}"`)
   return await updateSession(store, session.id, session.kind, (latest: Session) => {
-    if (latest.settings.imageModel === model) return latest
+    const { imageModel, imageBackend, ...rest } = latest.settings
+    if (imageModel === model && imageBackend === backend) return latest
     return {
       ...latest,
-      settings: { ...latest.settings, imageModel: model, steps: option.defaultSteps },
+      settings: {
+        ...rest,
+        imageModel: model,
+        // The same model on another backend keeps its steps; another model starts at its own.
+        steps: imageModel === model ? latest.settings.steps : option.defaultSteps,
+        ...(backend && { imageBackend: backend }),
+      },
     } as Session
   })
 }

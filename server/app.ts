@@ -3,6 +3,8 @@ import { error, isJson, json, readJson, type Route } from './http.ts'
 import type { ImageGenerator } from './images/imageGenerator.ts'
 import {
   anyImageModel,
+  findImageModel,
+  IMAGE_BACKEND_NAMES,
   IMAGE_BACKENDS,
   type ImageBackendKind,
   imageModelsOf,
@@ -46,7 +48,7 @@ import {
   pickVersion,
   VersionError,
 } from './pictureEdits.ts'
-import { editModelsHere, findEditModel } from './images/editModels.ts'
+import { EDIT_MODELS, editModelsHere, findEditModel } from './images/editModels.ts'
 import { loadStyleCache, StyleScoreError, styleScores, unembedded } from './style/scores.ts'
 import type { VoiceEngine } from './voice/voice.ts'
 import { roleplayExcerpt } from './roleplay/prompt.ts'
@@ -512,7 +514,12 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       const save = (change: (s: Session) => Session) =>
         updateSession(deps.sessions, session.id, session.kind, change)
       await editFrame(
-        { store: deps.sessions, imageGenerator: deps.imageGenerator, renderQueue },
+        {
+          store: deps.sessions,
+          imageGenerator: deps.imageGenerator,
+          renderQueue,
+          backendOf: heavyBackend,
+        },
         session,
         job.frameIndex,
         job.edit!,
@@ -593,7 +600,11 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
         const text = kind === 'picture'
           ? await textBackendOf(now.artModel || session.settings.textModel)
           : undefined
-        return jobBackend(kind, session.settings, now, detected, { editModel: edit?.model, text })
+        return jobBackend(kind, session.settings, now, detected, {
+          editModel: edit?.model,
+          editBackend: edit?.backend,
+          text,
+        })
       },
       check: async (session, kind, index, pending, edit) => {
         const feature = JOB_FEATURE[kind]
@@ -601,7 +612,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
           const name = session.kind === 'storyboard' ? `Frame ${index + 1}` : `Frame ${index}`
           const now = await deps.settings.load()
           const model = findEditModel(edit!.model ?? now.editModel)
-          const notHere = model && !backendOf(editJob(model.id), now, detected)
+          const notHere = model && !await heavyBackend(editJob(model.id))
             ? error(`No Backend runs ${model.label}: add one in Settings, on the Machines tab`, 409)
             : null
           return (feature && (await featureOff(feature))) ?? notHere ??
@@ -704,6 +715,14 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
         sizePresets: SIZE_PRESETS,
         upscalers: UPSCALERS,
         editModels: editModelsHere(await imageBackends()),
+        // Where each edit model's edits go now, for the Edit dialog to say.
+        editModelsOn: Object.fromEntries(
+          EDIT_MODELS.flatMap((m) => {
+            const backend = backendOf(editJob(m.id), now, detected)
+            const kind = backend && imageKindOf(backend)
+            return kind ? [[m.id, kind]] : []
+          }),
+        ),
         features: await availability(),
         // What this machine's own Backend runs, whatever else is listed.
         here: detected,
@@ -835,14 +854,23 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       })
     }],
 
-    // Switches the Session's Image Model: `{ imageModel }`, one a Backend listed in Settings can
-    // render (ADR 0022).
+    // Switches the Session's Image Model: `{ imageModel, imageBackend? }`, by name, and the kind of
+    // backend it would rather render on, if picked (ADR 0022): one a Backend listed can render.
     ['PUT', new URLPattern({ pathname: '/api/sessions/:id/image-model' }), async (req, p) => {
-      const body = await readJson(req) as { imageModel?: unknown } | undefined
+      const body = await readJson(req) as
+        | { imageModel?: unknown; imageBackend?: unknown }
+        | undefined
       if (typeof body?.imageModel !== 'string') return error('imageModel must be a string', 400)
+      const on = body.imageBackend as ImageBackendKind | undefined
+      if (on !== undefined && !IMAGE_BACKENDS.includes(on)) {
+        return error(`imageBackend must be one of: ${IMAGE_BACKENDS.join(', ')}`, 400)
+      }
+      if (on && anyImageModel(body.imageModel) && !findImageModel(on, body.imageModel)) {
+        return error(`${IMAGE_BACKEND_NAMES[on]} has no Image Model "${body.imageModel}"`, 400)
+      }
       const session = await deps.sessions.load(p.id!)
       if (!session) return error('Session not found', 404)
-      const backend = await heavyBackend({ kind: 'render', model: body.imageModel })
+      const backend = await heavyBackend({ kind: 'render', model: body.imageModel, on })
       if (
         !backend && body.imageModel !== session.settings.imageModel &&
         anyImageModel(body.imageModel)
@@ -853,14 +881,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
         )
       }
       try {
-        return json(
-          await switchImageModel(
-            deps.sessions,
-            session,
-            body.imageModel,
-            backend && imageKindOf(backend),
-          ),
-        )
+        return json(await switchImageModel(deps.sessions, session, body.imageModel, on))
       } catch (err) {
         if (err instanceof ImageModelError) return error(err.message, 400)
         throw err

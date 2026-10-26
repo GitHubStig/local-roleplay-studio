@@ -139,7 +139,7 @@ Deno.test('A ComfyUI edit repaints only the painted area, on the Image Model’s
   withTempDir(async (dir) => {
     const { file, workflow: w, uploads } = await comfyEdit(
       dir,
-      'qwen-image-2.1-edit-comfyui',
+      'qwen-image-2.1-edit',
       await paintedMask(100, 50, [10, 10, 30, 30]),
     )
     assertEquals(file, 'edit-0-test.png')
@@ -174,7 +174,7 @@ Deno.test('A ComfyUI FLUX.3 edit is told where to paint, as a box for each paint
   withTempDir(async (dir) => {
     const { workflow: w } = await comfyEdit(
       dir,
-      'flux3-klein-edit-comfyui',
+      'flux3-klein-edit',
       await paintedMask(100, 50, [0, 0, 16, 16], [64, 32, 96, 48]),
     )
     assertEquals(w.unet.inputs.unet_name, 'flux3_image_klein_sd_int8_convrot.safetensors')
@@ -191,7 +191,7 @@ Deno.test('A ComfyUI FLUX.3 edit is told where to paint, as a box for each paint
 
 Deno.test('A ComfyUI edit with nothing painted repaints the whole picture', () =>
   withTempDir(async (dir) => {
-    const { workflow: w, uploads } = await comfyEdit(dir, 'flux3-klein-edit-comfyui')
+    const { workflow: w, uploads } = await comfyEdit(dir, 'flux3-klein-edit')
     for (const node of ['mask', 'encode', 'masked', 'composite']) assertEquals(w[node], undefined)
     assertEquals(w.sampler.inputs.latent_image, ['conditioning', 2])
     assertEquals(w.save.inputs.images, ['rgb', 0])

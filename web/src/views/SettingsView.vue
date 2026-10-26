@@ -27,7 +27,10 @@ import {
 
 const form = ref<Settings | null>(null)
 const options = ref<SettingsOptions | null>(null)
-const editModels = computed(() => editModelChoices(options.value?.editModels))
+// Each saying where its edits would go, as the form stands.
+const editModels = computed(() =>
+  editModelChoices(options.value?.editModels, (id) => imageKindOf(whereTo('edits', id)))
+)
 const loadError = ref('')
 const saving = ref(false)
 const status = ref<{ kind: 'saved' | 'error'; message: string; issues?: string[] } | null>(null)

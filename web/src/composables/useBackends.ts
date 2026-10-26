@@ -33,29 +33,32 @@ export function useBackends(
 
   /**
    * Whether a Backend can do this job: a render where its kind of Backend has the Image Model, an
-   * edit on its edit model's kind.
+   * edit on its edit model's kind (Settings', unless `editModel` says another).
    */
-  function can(backend: Backend, work: Work): boolean {
+  function can(backend: Backend, work: Work, editModel = form.value?.editModel): boolean {
     if (!does(backend, work)) return false
     const kind = backend.kind === 'here' ? 'mflux' : 'comfyui'
     if (work === 'images') {
       return !!options.value?.imageModels[kind]?.some((m) => m.id === form.value?.imageModel)
     }
     if (work === 'edits') {
-      const model = options.value?.editModels.find((m) => m.id === form.value?.editModel)
-      return !model || model.backend === kind
+      const model = options.value?.editModels.find((m) => m.id === editModel)
+      return !model || model.backends.includes(kind)
     }
     return true
   }
 
-  /** Where a kind of work goes: the preferred Backend if it can, else the next listed that can. */
-  function whereTo(work: Work): Backend | undefined {
+  /**
+   * Where a kind of work goes: the preferred Backend if it can, else the next listed that can; an
+   * edit by Settings' edit model, unless `editModel` says another.
+   */
+  function whereTo(work: Work, editModel?: string): Backend | undefined {
     if (!form.value) return undefined
     const { backends, runOn } = form.value
     return [
       ...backends.filter((b) => b.id === runOn[work]),
       ...backends.filter((b) => b.id !== runOn[work]),
-    ].find((b) => can(b, work))
+    ].find((b) => can(b, work, editModel ?? form.value?.editModel))
   }
 
   /** Each ComfyUI listed, up or down, with what would go there. */

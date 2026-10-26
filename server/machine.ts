@@ -13,25 +13,28 @@ import {
   pickBackend,
   type Work,
 } from './backends.ts'
-import { type EditModel, findEditModel } from './images/editModels.ts'
+import { type EditModel, editModelOn } from './images/editModels.ts'
 import { findImageModel, type ImageBackendKind } from './images/imageModels.ts'
 import type { Availabilities } from './features.ts'
 import type { JobKind } from './jobs.ts'
-import type { Settings } from './settings.ts'
+import type { SessionSettings, Settings } from './settings.ts'
 
 /**
  * A heavy job, as the render queue is given it: a render by its Image Model, an edit by its edit
- * model's kind of Backend, an upscale or a voice. Any other (SHARP, a figure) runs here.
+ * model, an upscale or a voice. Any other (SHARP, a figure) runs here. A render or an edit may say
+ * which kind of backend it would rather run on (`on`: the Session's choice, or the Edit dialog's),
+ * a preference, not a must: a Session shared with a machine that hasn't that kind still renders.
  */
 export type HeavyJob =
-  | { kind: 'render'; model: string }
-  | { kind: 'edit'; backend: ImageBackendKind }
+  | { kind: 'render'; model: string; on?: ImageBackendKind }
+  | { kind: 'edit'; model: EditModel; on?: ImageBackendKind }
   | { kind: 'upscale' | 'voice' }
 
-/** An edit as the render queue is given it: by its edit model's kind of Backend. */
-export const editJob = (model: EditModel): HeavyJob => ({
+/** An edit as the render queue is given it: by its edit model, on the kind it would rather. */
+export const editJob = (model: EditModel, on?: ImageBackendKind): HeavyJob => ({
   kind: 'edit',
-  backend: findEditModel(model)?.backend ?? 'mflux',
+  model,
+  ...(on && { on }),
 })
 
 /** What this machine's own Backend can run, as found at startup (`features.ts`). */
@@ -56,13 +59,17 @@ export function canRun(backend: Backend, job: HeavyJob, here: Here): boolean {
     const kind = imageKindOf(backend)
     return !!kind && !!findImageModel(kind, job.model)
   }
-  if (job.kind === 'edit') return imageKindOf(backend) === job.backend
+  if (job.kind === 'edit') {
+    const kind = imageKindOf(backend)
+    return !!kind && editModelOn(job.model, kind)
+  }
   return true
 }
 
 /**
- * The Backend a heavy job goes to as Settings are `now` (`pickBackend`); any other job, this
- * machine's. Undefined when no Backend can run it.
+ * The Backend a heavy job goes to as Settings are `now` (`pickBackend`): of the kind it would
+ * rather run on, if one can run it, else any; any other job, this machine's. Undefined when no
+ * Backend can run it.
  */
 export function backendOf(
   job: HeavyJob | undefined,
@@ -70,7 +77,11 @@ export function backendOf(
   here: Here,
 ): Backend | undefined {
   if (!job) return HERE
-  return pickBackend(now.backends, now.runOn[WORK_OF[job.kind]], (b) => canRun(b, job, here))
+  const preferred = now.runOn[WORK_OF[job.kind]]
+  const can = (b: Backend) => canRun(b, job, here)
+  const on = 'on' in job ? job.on : undefined
+  return (on && pickBackend(now.backends, preferred, (b) => imageKindOf(b) === on && can(b))) ||
+    pickBackend(now.backends, preferred, can)
 }
 
 /**
@@ -150,18 +161,20 @@ export const machineOf = (backend: Backend | undefined, own?: Set<string>): stri
  */
 export function jobBackend(
   kind: JobKind,
-  session: Pick<Settings, 'imageModel'>,
+  session: Pick<SessionSettings, 'imageModel' | 'imageBackend'>,
   now: Settings,
   here: Here,
-  opts: { editModel?: EditModel; text?: Backend },
+  opts: { editModel?: EditModel; editBackend?: ImageBackendKind; text?: Backend },
 ): Backend | undefined {
   switch (kind) {
     case 'picture':
       return opts.text
-    case 'render':
-      return backendOf({ kind: 'render', model: session.imageModel }, now, here)
+    case 'render': {
+      const on = session.imageBackend
+      return backendOf({ kind: 'render', model: session.imageModel, ...(on && { on }) }, now, here)
+    }
     case 'edit':
-      return backendOf(editJob(opts.editModel ?? now.editModel), now, here)
+      return backendOf(editJob(opts.editModel ?? now.editModel, opts.editBackend), now, here)
     case 'upscale':
       return backendOf({ kind: 'upscale' }, now, here)
     case 'voice':

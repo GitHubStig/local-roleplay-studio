@@ -149,7 +149,9 @@ export interface SettingsOptions extends TextModelOptions {
   sizePresets: SizePreset[]
   upscalers: { id: string; label: string }[]
   /** The models that can edit a picture here, each on its backend. */
-  editModels: { id: string; label: string; backend: ImageBackend }[]
+  editModels: { id: string; label: string; backends: ImageBackend[] }[]
+  /** The kind of backend each edit model's edits go to now, by name; none for one nowhere. */
+  editModelsOn?: Record<string, ImageBackend>
   /** Which Features can run, here or on a Backend listed (a ComfyUI). */
   features: Record<Feature, Availability>
   /** Which Features this machine runs itself, worked out when the server started. */
@@ -321,6 +323,8 @@ export interface PictureEdit {
   /** What it was told to paint: one, or every one that led to it when copied into a Chain. */
   instructions: string[]
   editModel: string
+  /** The kind of backend that made it. */
+  imageBackend?: ImageBackend
   seed: number
   /** The area painted over the picture to repaint; none for all of it. */
   mask?: string
@@ -449,7 +453,10 @@ export const DOWNLOADING = 'Downloading the model (first use only)…'
  * What a Session keeps of Settings (ADR 0022): its models. Where they run, and everything else, is
  * Settings' as they are now.
  */
-export type SessionSettings = Pick<Settings, 'textModel' | 'thinking' | 'imageModel' | 'steps'>
+export type SessionSettings = Pick<Settings, 'textModel' | 'thinking' | 'imageModel' | 'steps'> & {
+  /** The kind of backend its renders would rather run on, if picked in it; else Settings say. */
+  imageBackend?: ImageBackend
+}
 
 export interface SessionBase {
   id: string
@@ -548,11 +555,12 @@ export const getSession = (id: string) => request<Session>(`/api/sessions/${id}`
 
 /** Whether a Chain renders each Frame as it's made. */
 /**
- * Switches a Session's Image Model, by name, to one a Backend listed can render (ADR 0022); it
- * comes back with its steps reset to that model's default.
+ * Switches a Session's Image Model, by name, to one a Backend listed can render, and the kind of
+ * backend it would rather render on (ADR 0022); it comes back with its steps reset to that model's
+ * default.
  */
-export const setImageModel = <S>(id: string, imageModel: string) =>
-  put<S>(`/api/sessions/${id}/image-model`, { imageModel })
+export const setImageModel = <S>(id: string, imageModel: string, imageBackend?: ImageBackend) =>
+  put<S>(`/api/sessions/${id}/image-model`, { imageModel, imageBackend })
 
 /**
  * Deletes every picture by one Image Model in a Session, with its upscales and 3D (Compare's
@@ -844,7 +852,7 @@ export interface Job {
    * An edit's order: what to paint, the area painted for it (a mask file, saved when it was
    * queued), and whether it makes the newest edit again, in its place.
    */
-  edit?: { instruction: string; model?: string; mask?: string; retry?: boolean }
+  edit?: EditOrder
 }
 
 /** A Session's jobs (a Roleplay's or a Chain's), in the order queued; several may run, one per machine. */
@@ -865,6 +873,8 @@ export const queueEdit = (id: string, frameIndex: number, edit: EditOrder) =>
 export interface EditOrder {
   instruction: string
   model?: string
+  /** The kind of backend it would rather run on, as picked in the Edit dialog. */
+  backend?: ImageBackend
   mask?: string
   retry?: boolean
 }

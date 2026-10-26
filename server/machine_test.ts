@@ -62,9 +62,22 @@ Deno.test('backendOf: the preferred Backend if it can, else the next listed that
   assertEquals(backendOf({ kind: 'voice' }, now, pc)?.id, 'pc')
   // An edit by its edit model's kind of Backend.
   assertEquals(backendOf(editJob('qwen-image-2.1-edit'), now, mac)?.id, 'here')
-  assertEquals(backendOf(editJob('flux3-klein-edit-comfyui'), now, mac)?.id, 'pc')
+  assertEquals(backendOf(editJob('flux3-klein-edit'), now, mac)?.id, 'pc')
   // Anything else, here.
   assertEquals(backendOf(undefined, now, pc), HERE)
+})
+
+Deno.test('A kind a Session or an edit would rather run on is followed where it can be, else any', () => {
+  // Settings send renders and edits to the PC's ComfyUI.
+  const now = { backends, runOn: { ...DEFAULT_SETTINGS.runOn, images: 'pc', edits: 'pc' } }
+  const render = (on?: 'mflux' | 'comfyui', here = mac) =>
+    backendOf({ kind: 'render', model: 'qwen-image-2.1', ...(on && { on }) }, now, here)?.id
+  assertEquals([render(), render('mflux'), render('comfyui')], ['pc', 'here', 'pc'])
+  // A Session that picked mflux, opened on a PC: it still renders, on a ComfyUI.
+  assertEquals(render('mflux', pc), 'pc')
+  assertEquals(backendOf(editJob('qwen-image-2.1-edit', 'mflux'), now, mac)?.id, 'here')
+  // FLUX.3 Klein Edit has no mflux: it goes where it can.
+  assertEquals(backendOf(editJob('flux3-klein-edit', 'mflux'), now, mac)?.id, 'pc')
 })
 
 Deno.test('textBackendFor: the preferred text Backend if it lists the model, else the next', async () => {
@@ -100,6 +113,6 @@ Deno.test('jobBackend: a picture with the Text Model, a render by its Image Mode
   assertEquals([on('speak'), on('speak-thought'), on('voice')], Array(3).fill('192.168.50.85'))
   assertEquals([on('upscale'), on('scene')], ['here', 'here'])
   // An edit by its edit model, the one told or Settings'.
-  assertEquals(on('edit', session, 'flux3-klein-edit-comfyui'), '192.168.50.85')
+  assertEquals(on('edit', session, 'flux3-klein-edit'), '192.168.50.85')
   assertEquals(on('edit'), 'here')
 })

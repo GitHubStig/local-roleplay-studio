@@ -102,8 +102,8 @@ const options: api.SettingsOptions = {
   },
   sizePresets: [{ id: 'portrait', label: 'Portrait', width: 832, height: 1216 }],
   editModels: [
-    { id: 'qwen-image-2.1-edit', label: 'Qwen-Image 2.1 Edit', backend: 'mflux' },
-    { id: 'flux3-klein-edit-comfyui', label: 'FLUX.3 Klein Edit', backend: 'comfyui' },
+    { id: 'qwen-image-2.1-edit', label: 'Qwen-Image 2.1 Edit', backends: ['mflux', 'comfyui'] },
+    { id: 'flux3-klein-edit', label: 'FLUX.3 Klein Edit', backends: ['comfyui'] },
   ],
   upscalers: [
     { id: 'seedvr2-7b', label: 'SeedVR2 7B' },
@@ -137,6 +137,14 @@ describe('SettingsView', () => {
       await wrapper.find(`[data-backend="${kind}"] [data-backend-address]`).setValue(address)
     }
   }
+
+  /** Settings with a ComfyUI listed beside this machine, and Qwen-Image 2.1, which both have. */
+  const withComfyUI = () =>
+    vi.mocked(api.getSettings).mockResolvedValue({
+      ...structuredClone(settings),
+      backends: [...settings.backends, { id: 'pc', kind: 'comfyui', address: '' }],
+      imageModel: 'qwen-image-2.1',
+    })
 
   it('without mflux, renders on a ComfyUI once one is added', async () => {
     const noMflux = { available: false, reason: 'mflux runs only on Apple Silicon Macs' }
@@ -349,14 +357,6 @@ describe('SettingsView', () => {
     expect((wrapper.find('input[type=number]').element as HTMLInputElement).value).toBe('25')
   })
 
-  /** Settings with a ComfyUI listed beside this machine, and Qwen-Image 2.1, which both have. */
-  const withComfyUI = () =>
-    vi.mocked(api.getSettings).mockResolvedValue({
-      ...structuredClone(settings),
-      backends: [...settings.backends, { id: 'pc', kind: 'comfyui', address: '' }],
-      imageModel: 'qwen-image-2.1',
-    })
-
   it('offers the picture forming only where renders go to a ComfyUI, and saves it off', async () => {
     withComfyUI()
     const wrapper = mount(SettingsView)
@@ -463,25 +463,31 @@ describe('SettingsView', () => {
     wrapper.unmount()
   })
 
-  it('offers the edit models that run here, by backend, and keeps one that no longer does', async () => {
+  it('offers the edit models that run here, each saying where it would go, and keeps one that no longer does', async () => {
+    withComfyUI()
     const wrapper = mount(SettingsView)
     await flushPromises()
     const labels = () => wrapper.findAll('[data-edit-model] option').map((o) => o.text())
+    // Edits go to this machine, so Qwen-Image 2.1 Edit runs on mflux; FLUX.3 only on ComfyUI.
     expect(labels()).toEqual(['Qwen-Image 2.1 Edit · mflux', 'FLUX.3 Klein Edit · ComfyUI'])
-    // Without mflux, only ComfyUI's: Settings' own is shown, as not here, until another is chosen.
+    // Sent to the ComfyUI instead, before it's saved: both run there.
+    await wrapper.find('[data-run-on="edits"] select').setValue('pc')
+    expect(labels()).toEqual(['Qwen-Image 2.1 Edit · ComfyUI', 'FLUX.3 Klein Edit · ComfyUI'])
+    // Where nothing runs Qwen-Image 2.1 Edit, Settings' own is shown, as not here, until another
+    // is chosen.
     vi.mocked(api.getSettingsOptions).mockResolvedValue({
       ...options,
       editModels: [{
-        id: 'flux3-klein-edit-comfyui',
+        id: 'flux3-klein-edit',
         label: 'FLUX.3 Klein Edit',
-        backend: 'comfyui',
+        backends: ['comfyui'],
       }],
     })
     const pc = mount(SettingsView)
     await flushPromises()
     expect(pc.findAll('[data-edit-model] option').map((o) => o.text())).toEqual([
       'qwen-image-2.1-edit (not available here)',
-      'FLUX.3 Klein Edit',
+      'FLUX.3 Klein Edit · ComfyUI',
     ])
   })
 

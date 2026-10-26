@@ -190,7 +190,7 @@ Deno.test('Where mflux and the voice service cannot run, Settings default to a C
     edits: 'comfyui',
     voices: 'comfyui',
   })
-  assertEquals([pc.editModel, pc.imageModel], ['qwen-image-2.1-edit-comfyui', 'qwen-image-2.1'])
+  assertEquals([pc.editModel, pc.imageModel], ['qwen-image-2.1-edit', 'qwen-image-2.1'])
   assertEquals(validateSettings(pc).ok, true)
   assertEquals(machineDefaults({ mflux: true, voiceService: true }), DEFAULT_SETTINGS)
 })

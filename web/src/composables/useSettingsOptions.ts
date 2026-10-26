@@ -63,15 +63,18 @@ export function useImageModels() {
 }
 
 /**
- * The edit models to choose from, named with their backend where they're on more than one, and
- * which to start on: the first of `wanted` that runs here, or else the first that does.
+ * The edit models to choose from, by name, each saying where its edits go now (`on`, as Settings
+ * send them: ADR 0022), and which to start on: the first of `wanted` that runs here, or else the
+ * first that does.
  */
-export function editModelChoices(models: SettingsOptions['editModels'] = []) {
-  const backends = new Set(models.map((m) => m.backend))
-  const choices = models.map((m) => ({
-    id: m.id,
-    label: backends.size > 1 ? `${m.label} · ${IMAGE_BACKEND_NAMES[m.backend]}` : m.label,
-  }))
+export function editModelChoices(
+  models: SettingsOptions['editModels'] = [],
+  on: (id: string) => ImageBackend | undefined = () => undefined,
+) {
+  const choices = models.map(({ id, label }) => {
+    const backend = on(id)
+    return { id, label: backend ? `${label} · ${IMAGE_BACKEND_NAMES[backend]}` : label }
+  })
   const startOn = (...wanted: (string | undefined)[]) =>
     wanted.find((id) => choices.some((c) => c.id === id)) ?? choices[0]?.id ??
       wanted.find(Boolean) ??
@@ -111,4 +114,44 @@ export function imageModelChoices(
   }
   if (own) ids.add(own)
   return [...ids].map((id) => ({ id, label: imageModelOf(options, id, on(id))?.label ?? id }))
+}
+
+/** An edit model on one kind of backend, as the Edit dialog offers it. */
+export interface EditChoice {
+  model: string
+  backend: ImageBackend
+  /** `backend/model`, the dropdown's value. */
+  value: string
+  label: string
+}
+
+/**
+ * The edit models the Edit dialog offers: each once per kind of backend that runs it and can run
+ * here (`backends`), so an edit can be tried on either (ADR 0022: the kind, a preference, travels
+ * with the edit). And which to start on (`startOn`): the first of `wanted` offered as it is, or that
+ * model where Settings send its edits (`on`), or anywhere; else the first offered.
+ */
+export function editChoices(
+  models: SettingsOptions['editModels'] = [],
+  backends: readonly ImageBackend[] = [],
+  on: (id: string) => ImageBackend | undefined = () => undefined,
+) {
+  const choices: EditChoice[] = models.flatMap((m) =>
+    m.backends.filter((b) => backends.includes(b)).map((backend) => ({
+      model: m.id,
+      backend,
+      value: `${backend}/${m.id}`,
+      label: `${m.label} · ${IMAGE_BACKEND_NAMES[backend]}`,
+    }))
+  )
+  const find = (model?: string, backend?: ImageBackend) =>
+    choices.find((c) => c.model === model && c.backend === backend)
+  const startOn = (
+    ...wanted: { model?: string; backend?: ImageBackend }[]
+  ): EditChoice | undefined =>
+    wanted.map((w) => find(w.model, w.backend)).find(Boolean) ??
+      wanted.map((w) => find(w.model, w.model ? on(w.model) : undefined)).find(Boolean) ??
+      wanted.map((w) => choices.find((c) => c.model === w.model)).find(Boolean) ??
+      choices[0]
+  return { choices, startOn }
 }

@@ -160,7 +160,8 @@ export async function renderImage(
     deps.settings ? await deps.settings() : DEFAULT_SETTINGS,
   )
   // Found once, so the picture records where it was made.
-  const job: HeavyJob = { kind: 'render', model: settings.imageModel }
+  const on = session.settings.imageBackend
+  const job: HeavyJob = { kind: 'render', model: settings.imageModel, ...(on && { on }) }
   const backend = await deps.backendOf?.(job)
   const kind = backend && imageKindOf(backend)
   const queueStart = performance.now()
