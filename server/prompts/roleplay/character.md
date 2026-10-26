@@ -7,7 +7,7 @@ The reply's shape is enforced by the schema in server/roleplay/prompt.ts; the mo
 the schema, so "How to reply" is where it learns what each field means.
 
 Values: character, persona, setting (each shown as a YAML block), and their fields, e.g.
-character.name; limits (limits.md, or limits-adults-only.md while the Limits are off)
+character.name; limits (limits.md while the Limits are on, empty otherwise)
 -->
 
 # Your role

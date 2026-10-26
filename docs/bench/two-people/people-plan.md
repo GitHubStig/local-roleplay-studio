@@ -45,4 +45,4 @@ anyone's name, so it can only tell people apart by how they look and where they 
 Keep continuity between Frames: the same place, objects and clothing unless the story changes
 them; things move logically from one Frame to the next. Choose camera angles and framing that tell
 the moment well. Each sentence is at most 40 words, of concrete, visual phrases: no labels, lists
-or dialogue, and nothing a camera couldn't see. Everyone shown is an adult.
+or dialogue, and nothing a camera couldn't see.

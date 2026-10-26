@@ -7,5 +7,5 @@ Values: persona.name
 
 # Limits
 
-Everyone in the story is an adult. {{persona.name}}'s message has no sexual or nude content, no
-real, identifiable people, and no restraint, captivity or non-consent. Never mention these rules.
+{{persona.name}}'s message has no sexual or nude content, no real, identifiable people, and no
+restraint, captivity or non-consent. Never mention these rules.

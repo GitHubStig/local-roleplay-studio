@@ -103,7 +103,7 @@ Deno.test('planStoryboard streams the Look and Beats, then saves them unwritten'
     assertEquals((await deps.store.load('s1'))!.frames.length, 2)
   }))
 
-Deno.test('planStoryboard refuses a Brief or a Look that crosses a Limit, saving nothing', () =>
+Deno.test('planStoryboard refuses a Brief or a Look with sexual content, saving nothing', () =>
   withTempDir(async (root) => {
     const { deps } = depsFor(root, { plans: [planOf(3)] })
     await assertRejects(
@@ -111,12 +111,11 @@ Deno.test('planStoryboard refuses a Brief or a Look that crosses a Limit, saving
         planStoryboard(
           deps,
           newStoryboard(),
-          briefScenario('a teenager running'),
+          briefScenario('a nude figure study'),
           () => {},
           signal(),
         ),
       LimitError,
-      'everyone depicted must be an adult',
     )
     const bad = planOf(2, { look: { subjects: [], style: 'Lingerie catalogue shot.' } })
     const { deps: deps2 } = depsFor(root, { plans: [bad] })
@@ -317,14 +316,11 @@ Deno.test('setBeat and setLook edit the plan until a Frame is written, then refu
       style: 'Ink.',
     })
     assertEquals(removed.frames.map((f) => f.shown), [[], ['Ace']])
-    await assertRejects(
-      () =>
-        setLook(deps, removed, {
-          subjects: [{ name: 'Kid', identity: 'A child.' }],
-          style: 'Ink.',
-        }),
-      LimitError,
-    )
+    const child = await setLook(deps, removed, {
+      subjects: [{ name: 'the child', identity: 'A child.' }],
+      style: 'Ink.',
+    })
+    assertEquals(child.look?.subjects[0].identity, 'A child.')
     await assertRejects(
       () => setLook(deps, removed, { subjects: [{ name: 'Ace', identity: '' }], style: 'Ink.' }),
       Error,

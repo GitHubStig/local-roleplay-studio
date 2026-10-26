@@ -7,9 +7,12 @@ const PROMPTS: [string, Record<string, unknown>][] = [
   ['roleplay/character', { ...testCast, limits: 'Limits.' }],
   ['roleplay/opening-request', { ...testCast }],
   ['roleplay/cast', { limits: 'Limits.' }],
-  ['roleplay/limits-adults-only', { ...testCast }],
   ['roleplay/cast-request', { brief: 'A storm at sea.', facts: 'none' }],
   ['roleplay/limits', { ...testCast }],
+  [
+    'roleplay/voice',
+    { character: 'Mira', ageGuidance: 'their age', voiceGuidance: 'Natural speaking voice.' },
+  ],
 ]
 
 Deno.test('every prompt file fills in completely, without its notes', async () => {

@@ -191,24 +191,28 @@ Deno.test('sendMessage sends the whole conversation and saves the reply as a Fra
     assertEquals(events.at(-1)!.type, 'replied')
   }))
 
-Deno.test('sendMessage declines, saving nothing, a message or reply that crosses a Limit', () =>
+Deno.test('sendMessage permits age references but declines Messages or Replies crossing a Limit', () =>
   withTempDir(async (root) => {
     const { deps, session, store, roleplayModel } = await setUp(root, [
+      replyOf('Fine.'),
       replyOf('Fine.', { actions: 'She pulls off her sweater, then her underwear.' }),
     ])
     const events: RoleplayEvent[] = []
     const emit = (e: RoleplayEvent) => events.push(e)
-    // The term list declines before the Character is asked.
-    assertEquals(
-      await sendMessage(deps, session, 'You are fifteen years old now', emit, signal()),
-      null,
+    const accepted = await sendMessage(
+      deps,
+      session,
+      'You are fifteen years old now',
+      emit,
+      signal(),
     )
+    assertEquals(accepted!.frames.at(-1)?.message, 'You are fifteen years old now')
     assertEquals(await sendMessage(deps, session, 'Hi Taylor Swift', emit, signal()), null)
-    assertEquals(roleplayModel.asked.length, 0)
     // The reply crosses one.
     assertEquals(await sendMessage(deps, session, 'Help me.', emit, signal()), null)
-    assertEquals(events.filter((e) => e.type === 'declined').length, 3)
-    assertEquals(((await store.load('r1')) as RoleplaySession).frames.length, 1)
+    assertEquals(roleplayModel.asked.length, 2)
+    assertEquals(events.filter((e) => e.type === 'declined').length, 2)
+    assertEquals(((await store.load('r1')) as RoleplaySession).frames.length, 2)
   }))
 
 Deno.test("The Character's prose isn't held to the restraint list; the player's messages are", () =>

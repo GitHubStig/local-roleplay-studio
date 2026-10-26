@@ -442,24 +442,24 @@ Deno.test('runChainFrame declines an Action that crosses a limit without asking 
     assertEquals(images.prompts.length, 1)
   }))
 
-Deno.test('runChainFrame declines a prompt the Text Model wrote across a limit', () =>
+Deno.test('runChainFrame declines a prompt the Text Model wrote across a sexual Limit', () =>
   withTempDir(async (root) => {
     const { session, deps } = await openedSession(root, [
-      reply('kneeling', { prompt: `${promptWith('kneeling')} She is a 15 year old girl.` }),
+      reply('kneeling', { prompt: `${promptWith('kneeling')} She is nude.` }),
     ])
     const events: FrameEvent[] = []
     const frame = await runChainFrame(
       deps,
       session,
       testScenario,
-      'make her younger',
+      'change the lighting',
       (e) => events.push(e),
       signal(),
     )
     assertEquals(frame, null)
     assertEquals(events.at(-1), {
       type: 'declined',
-      message: 'Declined: everyone depicted must be an adult.',
+      message: 'Declined: no sexual or nude imagery.',
     })
     assertEquals(session.frames.length, 1)
   }))

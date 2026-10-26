@@ -92,7 +92,7 @@ export interface Settings {
   upscaler: string
   /** Which model edits pictures; applies to the next edit, even mid-Session. */
   editModel: string
-  /** The Limits; off, only "everyone depicted is an adult" is enforced. Applies at once. */
+  /** The Limits; off, none are enforced. Applies at once. */
   limits: boolean
   /** Log every call to the Text and Image Models in its Session's folder, under `calls/`. */
   callLog: boolean

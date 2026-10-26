@@ -29,9 +29,9 @@ There are three kinds of Session:
 Every kind runs on the Text Model alone; pictures, voices and 3D are added where the machine can
 make them.
 
-The engine enforces four limits on everything the models write: everyone depicted is an adult,
-no sexual or nude imagery, no real identifiable people, no restraint or captivity. Settings can
-turn the last three off; "everyone depicted is an adult" always stays.
+With Limits on, the engine enforces three rules on what the models write: no sexual or nude
+imagery, no real identifiable people, and no restraint or captivity. Age is not restricted.
+Settings can turn the three Limits off; when off, none are enforced.
 
 The vocabulary (Scenario, Session, Image Prompt, Frame, Action, …) is defined in
 [CONTEXT.md](CONTEXT.md). The design is in [docs/design.md](docs/design.md).

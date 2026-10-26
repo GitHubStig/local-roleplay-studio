@@ -7,8 +7,8 @@ people it shows.
 
 The reply's shape is roleplayLookSchema in server/roleplay/art.ts.
 
-Values: character.name, persona.name; identity (shared/identity.md); limits (art-limits.md, or
-art-limits-adults-only.md while the Limits are off)
+Values: character.name, persona.name; identity (shared/identity.md); limits (art-limits.md while
+the Limits are on, empty otherwise)
 -->
 
 # Your job

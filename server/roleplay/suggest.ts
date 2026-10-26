@@ -35,10 +35,7 @@ export async function suggestMessages(
   const examples = session.frames
     .flatMap((f) => (f.message === null ? [] : [f.message]))
     .slice(-EXAMPLES)
-  const limits = await loadPrompt(
-    limitsEnabled() ? 'roleplay/suggest-limits' : 'roleplay/suggest-limits-adults-only',
-    { ...cast },
-  )
+  const limits = limitsEnabled() ? await loadPrompt('roleplay/suggest-limits', { ...cast }) : ''
   return [
     { role: 'system', content: await loadPrompt('roleplay/suggest', { ...cast, limits }) },
     {

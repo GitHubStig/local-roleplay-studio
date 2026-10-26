@@ -555,13 +555,6 @@ function saveNow() {
           role="tabpanel"
           data-tab-panel="advanced"
         >
-          <div class="card">
-            <ToggleSwitch v-model="form.limits" title="Limits" data-limits>
-              On: no sexual or nude content, real people, or restraint, and everyone is an adult.
-              Off: only "everyone depicted is an adult" is enforced; it can't be turned off. Applies
-              at once, to running Sessions too.
-            </ToggleSwitch>
-          </div>
           <fieldset class="card">
             <legend class="sr-only">Seed</legend>
             <h3 class="font-medium" aria-hidden="true">Seed</h3>
@@ -602,6 +595,12 @@ function saveNow() {
               Compare measures how much each Image Model's art style varies across the Frames, with
               CSD and CLIP (4 GB, downloaded the first time).
             </FeatureSwitch>
+          </div>
+          <div class="card">
+            <ToggleSwitch v-model="form.limits" title="Limits" data-limits>
+              On: no sexual or nude content, real people, or restraint. Age is unrestricted.
+              Off: no Limits are enforced. Applies at once, to running Sessions too.
+            </ToggleSwitch>
           </div>
         </section>
       </form>

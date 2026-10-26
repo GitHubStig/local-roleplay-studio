@@ -67,7 +67,7 @@ export function roleplayRoutes(ctx: RoleplayRouteContext): Route[] {
       } catch (err) {
         if (err instanceof RoleplayError) return error(err.message, 409)
         if (err instanceof RoleplayLimitError) return error(err.message, 422)
-        // A hand-edited Cast that's incomplete, or a Character under 18.
+        // A hand-edited Cast that's incomplete.
         if (err instanceof CastError || err instanceof VoiceError) return error(err.message, 400)
         throw err
       }

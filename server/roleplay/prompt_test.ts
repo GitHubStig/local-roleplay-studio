@@ -1,4 +1,5 @@
 import { assertEquals, assertMatch, assertStringIncludes, assertThrows } from '@std/assert'
+import { setLimitsEnabled } from '../limits.ts'
 import { DEFAULT_SETTINGS } from '../settings.ts'
 import { briefScenario } from '../scenario.ts'
 import { testScenario } from '../testing.ts'
@@ -44,7 +45,8 @@ Deno.test('roleplaySystem names who plays whom, the Setting, the reply fields an
   assertStringIncludes(system, 'weather: A gale.')
   assertStringIncludes(system, "Never write Sam Reyes's actions, words or thoughts")
   assertMatch(system, /"internal"[\s\S]*"actions"[\s\S]*"dialogue"/)
-  assertStringIncludes(system, 'Everyone in the story is an adult')
+  assertEquals(system.includes('Everyone in the story is an adult'), false)
+  assertStringIncludes(system, 'No sexual or nude content')
 })
 
 Deno.test('roleplayMessages: the system message, the opening request, then turns, then the new message', async () => {
@@ -88,12 +90,28 @@ Deno.test('parseReplyText trims fields and needs actions or dialogue', () => {
   assertThrows(() => parseReplyText('not json'), Error, 'valid JSON')
 })
 
-Deno.test('parseCast refuses a Character under 18 and lists missing fields', () => {
+Deno.test('parseCast lists missing fields', () => {
   assertEquals(parseCast(testCast), testCast)
-  const young = { ...testCast, character: { ...testCast.character, age: 17 } }
-  assertThrows(() => parseCast(young), CastError, '18 or over')
+  const missingAge = { ...testCast, character: { ...testCast.character, age: '' } }
+  assertThrows(() => parseCast(missingAge), CastError, 'age must be a whole number')
   const gaps = { ...testCast, setting: { ...testCast.setting, weather: ' ' } }
   assertThrows(() => parseCast(gaps), CastError, 'setting weather is missing')
+})
+
+Deno.test('Cast prompt respects configurable Limits', async () => {
+  const [system] = await castMessages(briefScenario('A storm at sea.'))
+  assertStringIncludes(system.content, 'No sexual or nude content')
+  setLimitsEnabled(false)
+  try {
+    assertEquals(
+      (await castMessages(briefScenario('A storm at sea.')))[0].content.includes(
+        'No sexual or nude content',
+      ),
+      false,
+    )
+  } finally {
+    setLimitsEnabled(true)
+  }
 })
 
 Deno.test('openingMessages asks the Character to open the scene, under the same system message', async () => {

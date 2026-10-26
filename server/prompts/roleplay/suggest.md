@@ -6,8 +6,8 @@ thoughts), and the player's earlier Messages to copy their style.
 The reply is plain text, streamed into the text box as it's written; the engine tidies it
 (cleanSuggestion in server/roleplay/suggest.ts) and checks it against the Limits.
 
-Values: character.name, persona.name; limits (suggest-limits.md, or suggest-limits-adults-only.md
-while the Limits are off)
+Values: character.name, persona.name; limits (suggest-limits.md while the Limits are on, empty
+otherwise)
 -->
 
 # Your job

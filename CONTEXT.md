@@ -61,7 +61,7 @@ Who a Roleplay is with and where it starts: the Character, the Persona and the S
 _Avoid_: Character card, world, config
 
 **Character**:
-Who the text model plays in a Roleplay: name, age (18 or over), appearance, personality, voice, background, and a goal they pursue.
+Who the text model plays in a Roleplay: name, age, appearance, personality, voice, background, and a goal they pursue.
 _Avoid_: Bot, NPC, agent, AI
 
 **Persona**:
@@ -103,7 +103,7 @@ A terse list of what an Action changed, one short phrase per changed aspect, wri
 _Avoid_: Description, message, response, story
 
 **Limit**:
-One of the lines no Action or Brief can cross, enforced by the engine whatever the Scenario or text model says: everyone depicted is an adult, no sexual or nude imagery, no real identifiable people, no restraint or captivity. All but the first can be switched off in Settings.
+One of the lines no Action or Brief can cross while the Limits are on, enforced by the engine whatever the Scenario or text model says: no sexual or nude imagery, no real identifiable people, no restraint or captivity. Age is unrestricted. Settings can switch all three Limits off together.
 _Avoid_: Rule, filter, guardrail, policy
 
 **Outcome**:

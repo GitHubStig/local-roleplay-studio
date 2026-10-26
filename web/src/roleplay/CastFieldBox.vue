@@ -32,7 +32,6 @@ const emit = defineEmits<{ input: [value: string] }>()
     <input
       :value="value"
       :type="id.endsWith('.age') ? 'number' : 'text'"
-      :min="id.endsWith('.age') ? 18 : undefined"
       class="rounded border border-line bg-surface px-2 py-1 text-sm text-fg disabled:opacity-60"
       :disabled="disabled"
       :data-field="id"

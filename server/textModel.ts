@@ -67,8 +67,7 @@ async function sharedParts() {
     format: await loadPrompt('shared/format', { aspects }),
     // As a list item: its lines indented under the bullet.
     replacing: (await loadPrompt('shared/replacing')).replaceAll('\n', '\n  '),
-    // With the Limits off in Settings, only the adult one.
-    limits: await loadPrompt(limitsEnabled() ? 'shared/limits' : 'shared/limits-adults-only'),
+    limits: limitsEnabled() ? await loadPrompt('shared/limits') : '',
     body: BODY_ASPECTS.join(', '),
     placeAlone: await loadPrompt('shared/place-alone'),
     eachPerson: await loadPrompt('shared/each-person'),

@@ -1,9 +1,15 @@
 import { assertEquals } from '@std/assert'
-import { activeProseLimits, crossedLimit, PROSE_LIMITS, setLimitsEnabled } from './limits.ts'
+import {
+  activeLimits,
+  activeProseLimits,
+  crossedLimit,
+  PROSE_LIMITS,
+  setLimitsEnabled,
+} from './limits.ts'
 
 const hit = (text: string) => crossedLimit(text)?.id
 
-Deno.test('crossedLimit catches minors, sexual content and restraint', () => {
+Deno.test('crossedLimit catches sexual content and restraint, but not age or minors', () => {
   for (
     const t of [
       'make her a teenager',
@@ -14,9 +20,11 @@ Deno.test('crossedLimit catches minors, sexual content and restraint', () => {
       'aged 16 years',
       'little girl in a park',
       'schoolgirl outfit',
+      'a child on a swing',
+      'everyone depicted is a minor',
     ]
   ) {
-    assertEquals(hit(t), 'minors', t)
+    assertEquals(hit(t), undefined, t)
   }
   for (
     const t of [
@@ -71,28 +79,37 @@ Deno.test('crossedLimit leaves ordinary photography language alone', () => {
   }
 })
 
-Deno.test('PROSE_LIMITS leave out restraint and the colloquial "kid", nothing else', () => {
-  for (const t of ['she restrained him', 'Listen, kid, the band needs a trumpet.']) {
+Deno.test('PROSE_LIMITS enforce only sexual content', () => {
+  for (
+    const t of [
+      'she restrained him',
+      'Listen, kid, the band needs a trumpet.',
+      'a child in the doorway',
+      'she is sixteen years old',
+    ]
+  ) {
     assertEquals(crossedLimit(t, PROSE_LIMITS), undefined, t)
   }
-  assertEquals(crossedLimit('Listen, kid')?.id, 'minors')
   assertEquals(crossedLimit('she restrained him')?.id, 'restraint')
-  for (const t of ['a child in the doorway', 'she is sixteen years old', 'a schoolgirl']) {
-    assertEquals(crossedLimit(t, PROSE_LIMITS)?.id, 'minors', t)
-  }
   assertEquals(crossedLimit('a nude figure', PROSE_LIMITS)?.id, 'sexual')
 })
 
-Deno.test('With the Limits off, only the adult Limit is enforced', () => {
+Deno.test('With the Limits off, no Limit is enforced', () => {
   setLimitsEnabled(false)
   try {
-    for (const t of ['she restrained him', 'a nude figure', 'Listen, kid']) {
+    assertEquals(activeLimits(), [])
+    assertEquals(activeProseLimits(), [])
+    for (
+      const t of [
+        'she restrained him',
+        'a nude figure',
+        'Listen, kid',
+        'a child in the doorway',
+        'she is sixteen years old',
+      ]
+    ) {
       assertEquals(crossedLimit(t), undefined, t)
       assertEquals(crossedLimit(t, activeProseLimits()), undefined, t)
-    }
-    for (const t of ['a child in the doorway', 'she is sixteen years old']) {
-      assertEquals(crossedLimit(t)?.id, 'minors', t)
-      assertEquals(crossedLimit(t, activeProseLimits())?.id, 'minors', t)
     }
   } finally {
     setLimitsEnabled(true)

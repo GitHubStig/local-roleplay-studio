@@ -24,7 +24,8 @@ Deno.test('systemMessage has the paragraph rules, the order, the limits and the 
   assertStringIncludes(msg, '1. subject and identity:')
   assertStringIncludes(msg, '9. art style and medium:')
   assertStringIncludes(msg, 'Never leave the old detail')
-  assertStringIncludes(msg, 'everyone depicted is an adult')
+  assertEquals(msg.includes('everyone depicted is an adult'), false)
+  assertStringIncludes(msg, 'No sexual or nude content')
   assertStringIncludes(msg, 'Rules.')
 })
 

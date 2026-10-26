@@ -10,7 +10,7 @@ engine includes only the identities of the people shown, and adds the newcomers 
 
 Values: character.name, persona.name; placeAlone (shared/place-alone.md); eachPerson
 (shared/each-person.md); who (art-who.md);
-limits (art-limits.md, or art-limits-adults-only.md while the Limits are off)
+limits (art-limits.md while the Limits are on, empty otherwise)
 -->
 
 # Your job

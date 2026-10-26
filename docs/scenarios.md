@@ -11,7 +11,7 @@ the Brief the Cast is written from, and its `## System` notes (written for image
 left out.
 
 In a Chain, a Scenario only shapes the **opening** Image Prompt. After that, any of it can be changed by
-an Action; the only lines no Action can cross are the engine's four Limits
+an Action; the only lines no Action can cross are the engine's three Limits
 ([ADR 0002](adr/0002-guardrails-enforced-by-the-engine.md)).
 
 [`scenarios/tavern.md`](../scenarios/tavern.md) is a complete, working example, written to start either a
@@ -74,7 +74,7 @@ order, with details inside a sentence separated by commas or semicolons:
 | 8 | color | palette and grading |
 | 9 | art style and medium | photograph, painting, render… and its style |
 
-The engine renders "adult, " plus the paragraph. Keep each Setup fact in its own aspect: a
+The engine renders the paragraph. Keep each Setup fact in its own aspect: a
 subject described as having "a wry smile" puts an expression into the identity sentence, and
 it will contradict a later "make him frightened".
 

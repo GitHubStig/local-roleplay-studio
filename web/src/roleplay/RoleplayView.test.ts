@@ -420,6 +420,7 @@ describe('RoleplayView', () => {
     const { wrapper } = await mountIt()
     expect(wrapper.find('[data-field="persona.name"]').exists()).toBe(true)
     expect(wrapper.find('[data-field="setting.place"]').exists()).toBe(true)
+    expect(wrapper.find('[data-field="character.age"]').attributes('min')).toBeUndefined()
     expect(wrapper.find('[data-cast-start]').exists()).toBe(false)
   })
 

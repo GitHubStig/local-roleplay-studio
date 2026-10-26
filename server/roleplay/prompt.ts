@@ -18,12 +18,9 @@ const block = (value: object) => stringify(value, { lineWidth: 100 }).trim()
 export const roleplaySystem = async (cast: Cast): Promise<string> =>
   loadPrompt('roleplay/character', { ...cast, limits: await limitsFor({ ...cast }) })
 
-/**
- * The Limits as the model is told them: every Limit, or, while they're off in Settings, only the
- * adult one (`prompts/roleplay/limits*.md`).
- */
+/** The Limits as the model is told them, or nothing while they're off in Settings. */
 const limitsFor = (values: PromptValues) =>
-  loadPrompt(limitsEnabled() ? 'roleplay/limits' : 'roleplay/limits-adults-only', values)
+  limitsEnabled() ? loadPrompt('roleplay/limits', values) : Promise.resolve('')
 
 /** The Character's latest line, for a Roleplay's card on Home. */
 export function roleplayExcerpt(session: RoleplaySession): string | null {
@@ -160,7 +157,7 @@ export const castSchema = () =>
   object({
     character: object({
       name: text('first and last name'),
-      age: { type: 'integer', minimum: 18, description: '18 or over' },
+      age: { type: 'integer', description: 'age in years' },
       appearance: text('build, skin, hair, face, what they wear'),
       personality: text('temperament and manner'),
       voice: text('how they speak'),
@@ -179,7 +176,7 @@ export const castSchema = () =>
     }),
   })
 
-/** A hand edit that's incomplete: a Cast (or a Character under 18), or a Look. */
+/** A hand edit that's incomplete: a Cast or a Look. */
 export class CastError extends Error {}
 
 /** Checks and tidies a Cast; throws a CastError listing what's wrong. */
@@ -190,9 +187,12 @@ export function parseCast(value: unknown): Cast {
   const c = part('character')
   const p = part('persona')
   const s = part('setting')
+  const age = typeof c.age === 'number' || (typeof c.age === 'string' && c.age.trim() !== '')
+    ? Number(c.age)
+    : Number.NaN
   const character: Character = {
     name: str(c.name),
-    age: Number(c.age),
+    age,
     appearance: str(c.appearance),
     personality: str(c.personality),
     voice: str(c.voice),
@@ -203,8 +203,8 @@ export function parseCast(value: unknown): Cast {
   const setting: Setting = { place: str(s.place), time: str(s.time), weather: str(s.weather) }
 
   const issues: string[] = []
-  if (!Number.isInteger(character.age) || character.age < 18) {
-    issues.push('the Character must be 18 or over')
+  if (!Number.isInteger(character.age)) {
+    issues.push('the Character age must be a whole number')
   }
   for (
     const [what, fields] of [['character', character], ['persona', persona], [

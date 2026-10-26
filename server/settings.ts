@@ -95,7 +95,7 @@ export interface Settings {
    */
   features: Record<Feature, boolean>
   /**
-   * The Limits (ADR 0002); on by default. Off, only "everyone depicted is an adult" is enforced.
+   * The Limits (ADR 0002); on by default. Off, none are enforced.
    * Read on every request, so it applies mid-Session too.
    */
   limits: boolean

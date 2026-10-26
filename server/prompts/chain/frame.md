@@ -5,7 +5,7 @@ Frame, its Setup (shared/setup.md).
 
 Values: format (shared/format.md), eachPerson (shared/each-person.md), replacing
 (shared/replacing.md, indented to sit in the list),
-limits (shared/limits.md, or limits-adults-only.md while the Limits are off)
+limits (shared/limits.md while the Limits are on, empty otherwise)
 -->
 
 # Your job

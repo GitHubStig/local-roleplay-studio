@@ -327,7 +327,7 @@ Deno.test('POST /api/sessions starts from a typed Brief or a Scenario, not both'
       400,
     )
     assertEquals((await call('POST', '/api/sessions', {})).status, 400)
-    assertEquals((await call('POST', '/api/sessions', { brief: 'a child on a swing' })).status, 422)
+    assertEquals((await call('POST', '/api/sessions', { brief: 'a child on a swing' })).status, 201)
   }))
 
 Deno.test('Without pictures every kind starts; a Chain writes its Frames without rendering', () =>
@@ -373,7 +373,7 @@ Deno.test('Without pictures every kind starts; a Chain writes its Frames without
     assertEquals([chainCard.latestImage, chainCard.excerpt], [null, 'Pose: standing.'])
   }))
 
-Deno.test('Turning the Limits off in Settings applies at once, except the adult Limit', () =>
+Deno.test('Turning the Limits off in Settings disables all Limits at once', () =>
   withTempDir(async (root) => {
     const { call, settings } = setup({ root, settings: { textModel: 'x' } })
     try {
@@ -381,7 +381,7 @@ Deno.test('Turning the Limits off in Settings applies at once, except the adult 
       const nude = await call('POST', '/api/sessions', { brief: 'A nude figure study.' })
       assertEquals(nude.status, 201)
       const young = await call('POST', '/api/sessions', { brief: 'A fifteen-year-old runner.' })
-      assertEquals(young.status, 422)
+      assertEquals(young.status, 201)
     } finally {
       settings.current = { ...settings.current, limits: true }
       await call('GET', '/api/sessions')

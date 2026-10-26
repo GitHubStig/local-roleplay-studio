@@ -9,7 +9,7 @@ export type { Figure, Scene }
 /** Who the Text Model plays. */
 export interface Character {
   name: string
-  /** Always 18 or over; the engine refuses anything younger. */
+  /** The Character's age in years. */
   age: number
   appearance: string
   personality: string

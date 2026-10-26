@@ -84,7 +84,6 @@ current Image Prompt + Action ──► Text Model (Text backend) ──► { ou
      `unchanged`, and "Nothing in the picture changed. Try rewording the Action." shows in blue.
      So every Chain Frame has a picture of its own.
    - The Opening Frame always counts as done; if its prompt crosses a Limit, it fails.
-   - The paragraph is rendered as it is (no "adult, " in front since 2026-10-08; ADR 0002).
 5. **Image step.** Images render one at a time on each machine, across all Sessions (ADR 0020): if another Session is
    rendering there, this Frame waits in a queue (shown as "Waiting for another render…", and
    cancellable). Then the Backend Settings send renders to (ADR 0022) renders it with the Session's
@@ -168,8 +167,8 @@ under `/api/sessions/:id/roleplay/` ([ADR 0007](adr/0007-roleplay-is-a-conversat
    if it names someone), then the whole conversation goes to the Text Model: the system message
    (rules, Cast, reply format, Limits; the same every call), the opening Reply, each Message and
    Reply in turn, and the new Message. The Reply streams in field by field (`internal`,
-   `actions`, `dialogue`) and is checked for minors (without the colloquial "kid") and sexual
-   content. Either declined saves nothing and leaves the Message in the box.
+   `actions`, `dialogue`) and is checked for sexual content. Either declined saves nothing and
+   leaves the Message in the box.
 4. **Undo** removes the latest exchange and puts its Message back in the box; the opening can't be undone. **The Cast** can be edited by hand at any time; it applies from the next Reply. **Restart** (once confirmed, 2026-10-19) takes the Roleplay back to reviewing its Cast, to edit and begin again: every exchange goes, the opening too, with its pictures, upscales, 3D and spoken lines (the files deleted), while the Cast, the Look and the voice stay. Its jobs are cancelled (all but a voice design), and a render running is waited for, as a Storyboard's Restart does.
 5. **Suggest**, beside Send, writes a Message for the player into the box, streamed as it's
    written, to edit or send (nothing is saved, and a sent suggestion is checked like any other
@@ -263,8 +262,8 @@ under `/api/sessions/:id/roleplay/` ([ADR 0007](adr/0007-roleplay-is-a-conversat
      figure models tried (docs/research/image-to-3d.md).
 
 The prompts are Markdown files in `server/prompts/roleplay/` (`cast.md`, `cast-request.md`,
-`character.md`, `opening-request.md`, `limits.md`, `limits-adults-only.md`, and Suggest's
-`suggest.md`, `suggest-request.md`, `suggest-limits*.md`, and the voice's `voice.md`), each with a note at
+`character.md`, `opening-request.md`, `limits.md`, and Suggest's `suggest.md`, `suggest-request.md`,
+`suggest-limits.md`, and the voice's `voice.md`), each with a note at
 the top saying when it's used and what it's filled with; edits apply on the next call. A Chain's
 and a Storyboard's are the same way, in `server/prompts/chain/` and `server/prompts/storyboard/`
 (moved out of `server/textModel.ts` on 2026-10-06, word for word), with what both use (the
@@ -325,9 +324,11 @@ adds how the shown picture was rendered ("Rendered: Image 34.1 s · by Qwen-Imag
 deletes the undone exchange's pictures. For debugging, each picture's time and the Art
 Agent's reasoning (when Thinking is on) are saved on the Frame (`pictureTimings`,
 `pictureThinking`) and the Look's on the Session (`lookTimings`, `lookThinking`); the Image
-Prompt block shows the time, with the reasoning collapsed under it. While the Limits are on, the Art
-Agent is told to dress anyone the story has undressed; while they're off, only that everyone shown
-is an adult. The Look is editable in the side panel, rewriting every pictured Frame. Replies are
+Prompt block shows the time, with the reasoning collapsed under it. With Limits on, the Art Agent is
+told to dress anyone the story has undressed; the engine checks its prompt against the Limits and
+requires clothing to be named for each person in a multi-person picture. With Limits off, those
+instructions and checks are skipped. The Look is editable in the side panel, rewriting every
+pictured Frame. Replies are
 written with Ollama's `repeat_penalty` 1.15 over the whole conversation, which stopped long
 Roleplays looping on their own refrains.
 
@@ -562,7 +563,7 @@ consistency* in [open-threads.md](open-threads.md).
   **Cancel** and follows it until it finishes. A Session in the background never navigates
   on its own: if its Opening Frame fails there, you're taken Home with the reason when you return
   to it.
-- **Settings** (`/settings`), a tab each. **Machines** (ADR 0022, since 2026-10-26): the Backends there are, in the order a job tries them: this machine's own programs (mflux, the voice service, SHARP, TripoSplat, LiTo, the style scores, as far as it runs them), and each ComfyUI (ADR 0009), Ollama or server with the OpenAI chat API (with its API key, kept in `settings.json`, never sent back: ADR 0008) added, each with its address and whether it answers. **Text**: which Backend the Text Model runs on, the Text Model (that Backend's models; on Ollama minus OCR and dedicated vision-language models), Thinking (on or off; only for models that support it), Art Agent model (the model that pictures Roleplay Frames, with Thinking off, or "Same as the Text Model") and style (prose, recommended, or tags). **Images**: the Default Image Model (every model a Backend listed can render, by name), where renders go, steps (reset to the model's default when the Image Model changes), quantization (8 or 4 bit, converted as the model loads), float16 (on by default, for the models that take it: faster on M1 and M2 Macs, the picture slightly different), size (six presets from 512×512 to 1216×832), the Default upscaler (SeedVR2 7B or 3B) and where upscales go, the Default edit model and where edits go. **Voice**: where voices are made. **3D**: SHARP, TripoSplat and LiTo. **Advanced**: the Limits (on by default; off leaves only "everyone depicted is an adult"), the seed (random per Session, or fixed), the call log (off by default; see Storage) and the Image comparison style scores. Each kind of work goes to the Backend its tab prefers, or the next on the Machines tab that can do it (it hasn't the model, say), as Settings are when it's queued. A Session copies the Text Model, Thinking, the Image Model, steps and seed when it starts (the Image Model and steps can be switched in it); the rest applies at once, to running Sessions too (see Consistency).
+- **Settings** (`/settings`), a tab each. **Machines** (ADR 0022, since 2026-10-26): the Backends there are, in the order a job tries them: this machine's own programs (mflux, the voice service, SHARP, TripoSplat, LiTo, the style scores, as far as it runs them), and each ComfyUI (ADR 0009), Ollama or server with the OpenAI chat API (with its API key, kept in `settings.json`, never sent back: ADR 0008) added, each with its address and whether it answers. **Text**: which Backend the Text Model runs on, the Text Model (that Backend's models; on Ollama minus OCR and dedicated vision-language models), Thinking (on or off; only for models that support it), Art Agent model (the model that pictures Roleplay Frames, with Thinking off, or "Same as the Text Model") and style (prose, recommended, or tags). **Images**: the Default Image Model (every model a Backend listed can render, by name), where renders go, steps (reset to the model's default when the Image Model changes), quantization (8 or 4 bit, converted as the model loads), float16 (on by default, for the models that take it: faster on M1 and M2 Macs, the picture slightly different), size (six presets from 512×512 to 1216×832), the Default upscaler (SeedVR2 7B or 3B) and where upscales go, the Default edit model and where edits go. **Voice**: where voices are made. **3D**: SHARP, TripoSplat and LiTo. **Advanced**: the Limits (on by default; off enforces none), the seed (random per Session, or fixed), the call log (off by default; see Storage) and the Image comparison style scores. Each kind of work goes to the Backend its tab prefers, or the next on the Machines tab that can do it (it hasn't the model, say), as Settings are when it's queued. A Session copies the Text Model, Thinking, the Image Model, steps and seed when it starts (the Image Model and steps can be switched in it); the rest applies at once, to running Sessions too (see Consistency).
 - **Theme:** Light (a parchment tint), Dark or System, remembered per browser. It's a display
   preference, not a Setting.
 
@@ -651,7 +652,7 @@ All under `/api`; the Vite dev server proxies it to the Deno server. A `POST` mu
 | `DELETE /sessions/:id/jobs` | Every kind: Clear queue: cancel every running and queued job, and dismiss the failed ones; returns what's left (a cancelled running job until it stops) |
 | `PUT /sessions/:id/roleplay/look` | Roleplay: replace the Look, `{ subjects: [{ name, identity }], style }`, rewriting every pictured Frame (`400` if incomplete, `422` if it crosses a Limit); waits for a render running to end, holding the queue meanwhile |
 | `PUT /sessions/:id/roleplay/voice` | Roleplay: replace the voice description, `{ description }`, dropping the voice's clip until it's designed again (`400` if empty, too long, or it crosses a Limit) |
-| `PUT /sessions/:id/roleplay/cast` | Roleplay: replace the Cast (`400` if incomplete or the Character is under 18, `422` if it crosses a Limit) |
+| `PUT /sessions/:id/roleplay/cast` | Roleplay: replace the Cast (`400` if incomplete, `422` if it crosses a Limit) |
 
 A Frame's stream emits `phase` (`text`, then `queued` if another Session is rendering, then
 `image`), `thinking` (reasoning chunks; `restart` when a retry begins afresh), `text` (the provisional Image Prompt and Narration),
@@ -677,7 +678,7 @@ The design Q&A, and what changed later.
 
 | Decision | Chosen | Changed since |
 |---|---|---|
-| Premise | One picture of a fictional adult Subject, changed step by step, with guardrails | Now a local roleplay studio: Roleplays, Chains and Storyboards |
+| Premise | One picture of a fictional Subject, changed step by step, with guardrails | Now a local roleplay studio: Roleplays, Chains and Storyboards |
 | Goal | Open sandbox; no scoring | — |
 | Backend | Deno HTTP server; Vite proxies `/api` | — |
 | Images | mflux CLI per image, behind `ImageGenerator` | Downloads blocked (ADR 0004); since 2026-10-02 allowed on first use, shown as downloading; since 2026-10-07 also a ComfyUI server, chosen per Session (ADR 0009) |
@@ -688,7 +689,7 @@ The design Q&A, and what changed later.
 | Settings | Server-side `settings.json`; apply from the next Session | Small sizes added; since 2026-10-10 how a render runs applies at once, and the Image Model is switched in the Session, keeping a picture per model (ADR 0015) |
 | Side panel | Frames list with thumbnails; End/Reset as buttons only | End and Reset removed; Sessions are listed, opened and deleted on Home |
 | Several Sessions rendering | Queue images one at a time across Sessions | A queued Frame keeps you in its Session; one at a time on each machine since 2026-10-19 (ADR 0020) |
-| What an Action can change | Pose, camera, lighting, set, per Scenario | Anything in the prompt, within the four Limits |
+| What an Action can change | Pose, camera, lighting, set, per Scenario | Anything in the prompt, within the three Limits |
 | Limits | Per-Scenario brief, character refusals | Four engine Limits: term list + real-person check (ADR 0002) |
 | Narration | Character prose | A terse list of what changed |
 | Every Frame renders | Yes; no separate "take the shot" | A Chain's "Render each Frame" can be switched off (2026-10-06) |

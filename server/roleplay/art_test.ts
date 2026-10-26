@@ -69,13 +69,13 @@ Deno.test('Undressed people are covered in pictures only while the Limits are on
   try {
     const off = await system()
     assertEquals(off.includes('undressed'), false)
-    assertStringIncludes(off, 'Everyone shown is an adult')
+    assertEquals(off.includes('Everyone shown is an adult'), false)
   } finally {
     setLimitsEnabled(true)
   }
 })
 
-Deno.test('pictured composes the Image Prompt and blocks one that crosses a Limit in force', () => {
+Deno.test('pictured composes the Image Prompt and blocks the remaining Limits', () => {
   const frame = pictured(session.frames[1], look, 'She stands at the rail.', [MIRA])
   assertEquals(
     frame.prompt,
@@ -89,19 +89,15 @@ Deno.test('pictured composes the Image Prompt and blocks one that crosses a Limi
   assertEquals(frame.blocked, undefined)
   const bare = pictured(session.frames[1], look, 'She wears only a towel.', [MIRA])
   assertEquals(bare.blocked, 'no sexual or nude imagery')
-  setLimitsEnabled(false)
-  try {
-    assertEquals(
-      pictured(session.frames[1], look, 'She wears only a towel.', [MIRA]).blocked,
-      undefined,
-    )
-    assertEquals(
-      pictured(session.frames[1], look, 'A child at the rail.', [MIRA]).blocked,
-      'everyone depicted must be an adult',
-    )
-  } finally {
-    setLimitsEnabled(true)
-  }
+  assertEquals(
+    pictured(session.frames[1], look, 'A child at the rail.', [MIRA]).blocked,
+    undefined,
+  )
+  assertEquals(
+    withNewcomers(look, [{ name: 'the child', identity: 'A 12-year-old child.' }]).subjects.at(-1)
+      ?.name,
+    'the child',
+  )
 })
 
 Deno.test('trimFields keeps whole sentences within the length, and always the first', () => {
@@ -136,7 +132,7 @@ Deno.test('parseWho reads who a picture shows and adds; parseRoleplayLook needs 
   )
 })
 
-Deno.test('Newcomers join the Look, unless already in it or crossing a Limit', () => {
+Deno.test('Newcomers join the Look, unless already in it or crossing another Limit', () => {
   const barkeep = { name: 'the barkeep', identity: 'The barkeep, a stout man of 60.' }
   const grown = withNewcomers(look, [
     barkeep,
@@ -144,7 +140,7 @@ Deno.test('Newcomers join the Look, unless already in it or crossing a Limit', (
     { name: 'a boy', identity: 'A 12-year-old boy.' },
     { name: 'the goons', identity: 'Two men, mid-20s, sturdy builds.' },
   ])
-  assertEquals(grown.subjects.map((p) => p.name), [MIRA, SAM, 'the barkeep'])
+  assertEquals(grown.subjects.map((p) => p.name), [MIRA, SAM, 'the barkeep', 'a boy'])
   assertEquals(withNewcomers(look, []), look)
   // Shown with the others, with their own identity.
   assertEquals(

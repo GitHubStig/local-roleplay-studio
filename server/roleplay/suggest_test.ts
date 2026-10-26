@@ -65,7 +65,7 @@ Deno.test('Suggest is told the Limits in force', async () => {
   setLimitsEnabled(false)
   try {
     assertEquals((await system()).includes('sexual'), false)
-    assertStringIncludes(await system(), 'never involves anyone younger')
+    assertEquals((await system()).includes('younger'), false)
   } finally {
     setLimitsEnabled(true)
   }

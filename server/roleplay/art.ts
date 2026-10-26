@@ -125,8 +125,7 @@ export function trimFields(fields: Record<string, unknown>): Record<string, unkn
 
 const block = (value: object) => stringify(value, { lineWidth: 100 }).trim()
 
-const artLimits = () =>
-  loadPrompt(limitsEnabled() ? 'roleplay/art-limits' : 'roleplay/art-limits-adults-only')
+const artLimits = () => limitsEnabled() ? loadPrompt('roleplay/art-limits') : Promise.resolve('')
 
 /**
  * The story up to and including Frame `upTo`, as the Art Agent reads it: each Message and what the

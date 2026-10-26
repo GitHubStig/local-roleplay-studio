@@ -20,7 +20,7 @@ run() { # name, command, args…
   [ $code -ne 0 ] && tail -3 "$S/$name.log" | tee -a "$S/results.txt"
 }
 : > "$S/results.txt"
-portrait() { echo "adult, $1 A head-and-shoulders portrait of $2 alone, facing the viewer in a slight three-quarter turn, face clearly and evenly lit, in plain dark clothes, against a plain dark grey backdrop. $STYLE"; }
+portrait() { echo "$1 A head-and-shoulders portrait of $2 alone, facing the viewer in a slight three-quarter turn, face clearly and evenly lit, in plain dark clothes, against a plain dark grey backdrop. $STYLE"; }
 run portrait-kael mflux-generate-qwen-2.1 --prompt "$(portrait "$KAEL" him)"
 run portrait-elara mflux-generate-qwen-2.1 --prompt "$(portrait "$ELARA" her)"
 for i in 6 9 12; do
