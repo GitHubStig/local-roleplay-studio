@@ -830,6 +830,29 @@ The first step of "Editing a Frame's picture" (open-threads.md): `mflux-generate
 - **Dark areas resist**: a shirt in deep shadow went only faintly dark red, alone or with the face, as two objects asked for on a dark shelf on 2026-10-23 came back as the bottles that were there. Something bright painted into shadow stays mostly shadow.
 - **A face responds to terse or described wording alike**: an edit of a face that changes nothing is likelier asking in words the model doesn't know than painted wrong.
 
+### Edits through ComfyUI (Windows PC)
+
+ComfyUI runs two edit models (`server/images/comfyui/models.ts`, `COMFYUI_EDITORS`), each on its Image Model's own files, so nothing more is downloaded: Qwen-Image 2.1 Edit (`qwen_image_2.1_int8_convrot`, `qwen3vl_8b_int8_convrot`, `qwen_image_2.1_vae_bf16`) at 25 steps, and FLUX.3 Klein distilled (`flux3_image_klein_sd_int8_convrot`, `qwen3vl_4b_int8_convrot`, `flux2-vae`) at 16, as in ComfyUI's templates. The pictures were rendered from the public tavern scenario (`scenarios/tavern.md`), not taken from a Session. RTX 4070 (12 GB), 16 GB of RAM, ComfyUI 0.42.5.
+
+**First trials** (2026-10-24), with the first workflows, which gave the model the picture but not the painted area, and pasted the result back through the mask; a hand repainted at 832×1216:
+
+- **Both fit the 4070 at the app's portrait size**: Qwen's lowest free VRAM was 1.32 GB and free RAM 2.80 GB; FLUX.3's 1.55 GB and 4.63 GB, in about 17 s.
+- **Qwen's hand came out brighter and more sharply textured** than the oil painting around it. FLUX.3's kept the painting's dark palette and brushwork, once its oval covered the whole hand and wrist (one that missed part of the hand left stray fingertips).
+
+**Telling the model where to paint** (2026-10-26). The owner found FLUX.3's edits did nothing useful. A hand is already in the picture, so "change the hand" says where; something new isn't, and the model put it where it liked. Asked for "a pewter tankard of foaming ale" on a bare bar, FLUX.3 drew a large tankard in the middle of the bar and the mask kept a cut-off slice of it. Four ways (seed 43, one oval mask over the bar top; the mean change per pixel, of 255, inside the mask and outside it, before it's pasted back):
+
+| FLUX.3 told | Inside | Outside | Tankard |
+|---|---|---|---|
+| the instruction, as built | 20.5 | 11.6 | a slice of one drawn elsewhere |
+| + the area as a box (`<obj_1>` and its bbox, as ComfyUI's `Flux3LayoutPrompt` writes) | 35.9 | 9.9 | whole, in place |
+| + the area as the latent's noise mask (`SetLatentNoiseMask`) | 13.3 | 1.6 | cut off |
+| **both** | 29.7 | **1.7** | **whole, in place** |
+
+- **So both went in**: the box tells FLUX.3 where, and the noise mask holds the rest of the picture while it paints. Qwen has no boxes, but takes the noise mask the same way. Each edit is still pasted back through the mask, so nothing outside it moves.
+- **Through the app** (`comfyuiImageGenerator().edit`, the same picture and mask): FLUX.3 in 13.6 s, a whole tankard in place, though with a stray strap down one side; Qwen in 29.1 s, a smaller, cleaner one. Outside the mask a mean change of 0.01 each, the most 17–22 in the softened rim the paste-back blends across.
+- **Not tried yet**: Qwen's hand again with the noise mask, more seeds, and two painted areas in one FLUX.3 edit (each gets its own box).
+
+
 ### Upscaler
 
 Upscale uses **SeedVR2 7B** by default (`seedvr2-7b`, `mflux-upscale-seedvr2 --resolution 2048`);
