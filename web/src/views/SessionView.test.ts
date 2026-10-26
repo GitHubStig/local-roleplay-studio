@@ -158,8 +158,9 @@ describe('SessionView', () => {
   })
 
   it('sends the Direction on Enter and clears it once committed', async () => {
-    vi.mocked(api.streamFrame).mockImplementation(async (_id, _action, onEvent) => {
+    vi.mocked(api.streamFrame).mockImplementation((_id, _action, onEvent) => {
       onEvent({ type: 'committed', frame: frame(1, 'Sit down') })
+      return Promise.resolve()
     })
     const { wrapper } = await mountIt()
     const textarea = wrapper.find('textarea')
@@ -172,8 +173,9 @@ describe('SessionView', () => {
   })
 
   it('makes no Frame for an unclear Action: it stays in the box, with the question in blue', async () => {
-    vi.mocked(api.streamFrame).mockImplementationOnce(async (_id, _action, onEvent) => {
+    vi.mocked(api.streamFrame).mockImplementationOnce((_id, _action, onEvent) => {
       onEvent({ type: 'unclear', message: 'Which backdrop do you mean?' })
+      return Promise.resolve()
     })
     const { wrapper } = await mountIt()
     await wrapper.find('textarea').setValue('make it weird')
@@ -189,8 +191,9 @@ describe('SessionView', () => {
   })
 
   it('makes no Frame for an Action that changed nothing in the picture, saying so in blue', async () => {
-    vi.mocked(api.streamFrame).mockImplementationOnce(async (_id, _action, onEvent) => {
+    vi.mocked(api.streamFrame).mockImplementationOnce((_id, _action, onEvent) => {
       onEvent({ type: 'unchanged', message: 'Nothing in the picture changed.' })
+      return Promise.resolve()
     })
     const { wrapper } = await mountIt()
     await wrapper.find('textarea').setValue('wait a moment')
@@ -206,9 +209,10 @@ describe('SessionView', () => {
   })
 
   it('makes no Frame for a declined Action: it stays in the box, with the reason beside it', async () => {
-    vi.mocked(api.streamFrame).mockImplementationOnce(async (_id, _action, onEvent) => {
+    vi.mocked(api.streamFrame).mockImplementationOnce((_id, _action, onEvent) => {
       onEvent({ type: 'phase', phase: 'text' })
       onEvent({ type: 'declined', message: 'Declined: no sexual or nude imagery.' })
+      return Promise.resolve()
     })
     const { wrapper } = await mountIt()
     await wrapper.find('textarea').setValue('make her topless')
@@ -222,8 +226,9 @@ describe('SessionView', () => {
       expect.arrayContaining(['text-warn']),
     ])
     // Sending again clears it.
-    vi.mocked(api.streamFrame).mockImplementationOnce(async (_id, _action, onEvent) => {
+    vi.mocked(api.streamFrame).mockImplementationOnce((_id, _action, onEvent) => {
       onEvent({ type: 'committed', frame: frame(1, 'sit down') })
+      return Promise.resolve()
     })
     await wrapper.find('textarea').setValue('sit down')
     await buttonNamed(wrapper, 'Send').trigger('click')
@@ -232,8 +237,9 @@ describe('SessionView', () => {
   })
 
   it('keeps the Direction and shows the error when a Frame fails', async () => {
-    vi.mocked(api.streamFrame).mockImplementation(async (_id, _action, onEvent) => {
+    vi.mocked(api.streamFrame).mockImplementation((_id, _action, onEvent) => {
       onEvent({ type: 'failed', message: 'mflux crashed', sessionDiscarded: false })
+      return Promise.resolve()
     })
     const { wrapper } = await mountIt()
     await wrapper.find('textarea').setValue('Sit down')
@@ -256,8 +262,9 @@ describe('SessionView', () => {
 
   it('returns to the start screen when the Opening Frame is discarded', async () => {
     vi.mocked(api.getSession).mockResolvedValue(session())
-    vi.mocked(api.streamFrame).mockImplementation(async (_id, _action, onEvent) => {
+    vi.mocked(api.streamFrame).mockImplementation((_id, _action, onEvent) => {
       onEvent({ type: 'failed', message: 'Ollama: model not found', sessionDiscarded: true })
+      return Promise.resolve()
     })
     const { router } = await mountIt()
     expect(router.currentRoute.value.path).toBe('/')
@@ -479,9 +486,9 @@ describe('SessionView', () => {
 
   it('queues SHARP, TripoSplat and LiTo on the shown Frame, then offers to view what was made', async () => {
     vi.useFakeTimers()
-    vi.mocked(api.queueJob).mockImplementation(async (_id, kind, frameIndex) => [
-      job({ kind, frameIndex, status: 'running', phase: 'image' }),
-    ])
+    vi.mocked(api.queueJob).mockImplementation((_id, kind, frameIndex) =>
+      Promise.resolve([job({ kind, frameIndex, status: 'running', phase: 'image' })])
+    )
     const { wrapper } = await mountIt()
     await wrapper.find('[data-lito-button]').trigger('click')
     await flushPromises()
@@ -949,10 +956,12 @@ describe('SessionView', () => {
       renderFrames: false,
     })
     vi.mocked(api.queueJob).mockResolvedValue([job({ kind: 'render' })])
-    vi.mocked(api.setRenderFrames).mockImplementation(async (_id, on) => ({
-      ...session([frame(0, null, { pictures: [] })]),
-      renderFrames: on,
-    }))
+    vi.mocked(api.setRenderFrames).mockImplementation((_id, on) =>
+      Promise.resolve({
+        ...session([frame(0, null, { pictures: [] })]),
+        renderFrames: on,
+      })
+    )
     const { wrapper } = await mountIt()
     expect(wrapper.find('main').text()).toContain('Not rendered yet')
     // Nothing to upscale or make 3D of yet; Render queues the picture.
@@ -977,9 +986,9 @@ describe('SessionView', () => {
       frame(2, 'Stand', { pictures: [picture('frame-2.png', { imageModel: 'flux2-klein-4b' })] }),
     ]))
     const queued: api.Job[] = []
-    vi.mocked(api.queueJob).mockImplementation(async (_id, kind, frameIndex) => {
+    vi.mocked(api.queueJob).mockImplementation((_id, kind, frameIndex) => {
       queued.push(job({ id: `j${frameIndex}`, kind, frameIndex }))
-      return [...queued]
+      return Promise.resolve([...queued])
     })
     const { wrapper } = await mountIt()
     expect(wrapper.find('[data-render-all]').text()).toBe('Render all (2)')

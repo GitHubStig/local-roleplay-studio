@@ -9,7 +9,7 @@
  * Writes `transcripts/<seed>.md` (or `<seed>-scene.md`): each Message and Reply, the probes marked
  * with what they test, and with `scene` the scene noted after each probe.
  */
-import { fromFileUrl } from 'jsr:@std/path@^1.1.6'
+import { fileURLToPath } from 'node:url'
 import { dirScenarioLibrary } from '../../../server/scenario.ts'
 import { dirSessionStore } from '../../../server/session.ts'
 import { fileSettingsStore } from '../../../server/settings.ts'
@@ -172,8 +172,12 @@ async function run(seed: number, scene: boolean) {
       console.log(`${i + 1}/${SCRIPT.length}`)
     }
     lines.push('', `${SCRIPT.length} exchanges in ${Math.round((performance.now() - start) / 1000)} s.`)
-    const out = fromFileUrl(new URL(`./transcripts/${seed}${scene ? '-scene' : ''}.md`, import.meta.url))
-    await Deno.mkdir(fromFileUrl(new URL('./transcripts/', import.meta.url)), { recursive: true })
+    const out = fileURLToPath(
+      new URL(`./transcripts/${seed}${scene ? '-scene' : ''}.md`, import.meta.url),
+    )
+    await Deno.mkdir(fileURLToPath(new URL('./transcripts/', import.meta.url)), {
+      recursive: true,
+    })
     await Deno.writeTextFile(out, lines.join('\n') + '\n')
     console.log(out)
   } finally {

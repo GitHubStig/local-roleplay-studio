@@ -38,19 +38,19 @@ const settings: Settings = {
 
 describe('getHealth', () => {
   it('returns the server health payload', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => Response.json({ ok: true })))
+    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(Response.json({ ok: true }))))
     await expect(getHealth()).resolves.toEqual({ ok: true })
   })
 
   it('throws when the server responds with an error', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => new Response(null, { status: 502 })))
+    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response(null, { status: 502 }))))
     await expect(getHealth()).rejects.toThrow('502')
   })
 })
 
 describe('saveSettings', () => {
   it('PUTs the settings as JSON', async () => {
-    const fetch = vi.fn(async () => Response.json(settings))
+    const fetch = vi.fn(() => Promise.resolve(Response.json(settings)))
     vi.stubGlobal('fetch', fetch)
     await expect(saveSettings(settings)).resolves.toEqual(settings)
     expect(fetch).toHaveBeenCalledWith(
@@ -65,8 +65,10 @@ describe('saveSettings', () => {
   it('surfaces validation issues from the server', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () =>
-        Response.json({ error: 'Invalid settings', issues: ['steps bad'] }, { status: 400 })
+      vi.fn(() =>
+        Promise.resolve(
+          Response.json({ error: 'Invalid settings', issues: ['steps bad'] }, { status: 400 }),
+        )
       ),
     )
     const err = await saveSettings(settings).catch((e) => e)
@@ -92,8 +94,10 @@ describe('streamFrame', () => {
     new Response(events.map((e) => `event: x\ndata: ${JSON.stringify(e)}\n\n`).join(''))
 
   it('delivers every event and sends the Action', async () => {
-    const fetch = vi.fn(async () =>
-      sse({ type: 'phase', phase: 'text' }, { type: 'cancelled', sessionDiscarded: false })
+    const fetch = vi.fn(() =>
+      Promise.resolve(
+        sse({ type: 'phase', phase: 'text' }, { type: 'cancelled', sessionDiscarded: false }),
+      )
     )
     vi.stubGlobal('fetch', fetch)
     const events: unknown[] = []
@@ -106,7 +110,7 @@ describe('streamFrame', () => {
   })
 
   it('reports a stream that ends without a final event', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => sse({ type: 'phase', phase: 'text' })))
+    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(sse({ type: 'phase', phase: 'text' }))))
     const events: { type: string }[] = []
     await streamFrame('s1', null, (e) => events.push(e))
     expect(events.at(-1)?.type).toBe('failed')
@@ -115,8 +119,10 @@ describe('streamFrame', () => {
   it('throws when the server refuses the Frame', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () =>
-        Response.json({ error: 'A Frame is already in progress' }, { status: 409 })
+      vi.fn(() =>
+        Promise.resolve(
+          Response.json({ error: 'A Frame is already in progress' }, { status: 409 }),
+        )
       ),
     )
     await expect(streamFrame('s1', 'Sit', () => {})).rejects.toThrow('already in progress')

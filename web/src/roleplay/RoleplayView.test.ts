@@ -166,9 +166,10 @@ describe('RoleplayView', () => {
     expect(wrapper.find('[data-cast]').classes()).not.toContain('render-sweep')
 
     const opened = roleplaySession([frame(0, null, 'Get inside.')])
-    vi.mocked(roleplay.beginRoleplay).mockImplementation(async (_id, onEvent) =>
+    vi.mocked(roleplay.beginRoleplay).mockImplementation((_id, onEvent) => {
       onEvent({ type: 'replied', frame: opened.frames[0], session: opened })
-    )
+      return Promise.resolve()
+    })
     await wrapper.find('[data-begin]').trigger('click')
     await flushPromises()
     expect(wrapper.find('[data-review]').exists()).toBe(false)
@@ -178,10 +179,9 @@ describe('RoleplayView', () => {
 
   it('saves Cast edits before beginning', async () => {
     vi.mocked(api.getSession).mockResolvedValue({ ...roleplaySession(), cast })
-    vi.mocked(roleplay.saveCast).mockImplementation(async (_id, c) => ({
-      ...roleplaySession(),
-      cast: c,
-    }))
+    vi.mocked(roleplay.saveCast).mockImplementation((_id, c) =>
+      Promise.resolve({ ...roleplaySession(), cast: c })
+    )
     vi.mocked(roleplay.beginRoleplay).mockResolvedValue()
     const { wrapper } = await mountIt()
     expect(roleplay.writeCast).not.toHaveBeenCalled()
@@ -286,8 +286,9 @@ describe('RoleplayView', () => {
 
   it('suggests a new message, not from the last one, when that is left untouched', async () => {
     let n = 0
-    vi.mocked(roleplay.suggestMessage).mockImplementation(async (_id, _draft, onEvent) => {
+    vi.mocked(roleplay.suggestMessage).mockImplementation((_id, _draft, onEvent) => {
       onEvent({ type: 'suggestion', text: `suggestion ${++n}` })
+      return Promise.resolve()
     })
     const { wrapper } = await mountIt()
     const suggestNow = async () => {
@@ -304,13 +305,14 @@ describe('RoleplayView', () => {
   })
 
   it('puts back what was typed when a suggestion fails', async () => {
-    vi.mocked(roleplay.suggestMessage).mockImplementation(async (_id, _draft, onEvent) => {
+    vi.mocked(roleplay.suggestMessage).mockImplementation((_id, _draft, onEvent) => {
       onEvent({ type: 'suggestion-part', text: 'I pull' })
       onEvent({
         type: 'failed',
         message: 'The suggestion crossed a limit',
         sessionDiscarded: false,
       })
+      return Promise.resolve()
     })
     const { wrapper } = await mountIt()
     await wrapper.find('textarea').setValue('grab her')
@@ -321,9 +323,10 @@ describe('RoleplayView', () => {
   })
 
   it('keeps a declined message in the box to reword', async () => {
-    vi.mocked(roleplay.sendMessage).mockImplementation(async (_id, _text, onEvent) =>
+    vi.mocked(roleplay.sendMessage).mockImplementation((_id, _text, onEvent) => {
       onEvent({ type: 'declined', message: 'Declined: no restraint, captivity or non-consent.' })
-    )
+      return Promise.resolve()
+    })
     const { wrapper } = await mountIt()
     await wrapper.find('textarea').setValue('I tie her up.')
     await buttonNamed(wrapper, 'Send').trigger('click')
@@ -421,10 +424,9 @@ describe('RoleplayView', () => {
   })
 
   it('saves an edited Cast once the focus leaves it', async () => {
-    vi.mocked(roleplay.saveCast).mockImplementation(async (_id, c) => ({
-      ...roleplaySession([frame(0, null, 'Get inside.')]),
-      cast: c,
-    }))
+    vi.mocked(roleplay.saveCast).mockImplementation((_id, c) =>
+      Promise.resolve({ ...roleplaySession([frame(0, null, 'Get inside.')]), cast: c })
+    )
     const { wrapper } = await mountIt()
     await wrapper.find('[data-field="character.goal"]').setValue('Leave town.')
     expect(wrapper.find('[data-cast-form] [data-save-status]').text()).toContain(
@@ -588,9 +590,10 @@ describe('RoleplayView', () => {
     it('speaks each new reply while Speak replies is on', async () => {
       vi.mocked(api.queueJob).mockResolvedValue([job({ kind: 'speak', frameIndex: 1 })])
       const done = roleplaySession([frame(0, null, 'Get inside.'), frame(1, 'Hello.', 'Sit.')])
-      vi.mocked(roleplay.sendMessage).mockImplementation(async (_id, _text, onEvent) =>
+      vi.mocked(roleplay.sendMessage).mockImplementation((_id, _text, onEvent) => {
         onEvent({ type: 'replied', frame: done.frames[1], session: done })
-      )
+        return Promise.resolve()
+      })
       const { wrapper } = await mountIt()
       await wrapper.find('[data-autoplay]').setValue(true)
       await wrapper.find('textarea').setValue('Hello.')
@@ -604,9 +607,10 @@ describe('RoleplayView', () => {
         job({ kind: 'picture', frameIndex: 1 }),
       ])
       const done = roleplaySession([frame(0, null, 'Get inside.'), frame(1, 'Hello.', 'Sit.')])
-      vi.mocked(roleplay.sendMessage).mockImplementation(async (_id, _text, onEvent) =>
+      vi.mocked(roleplay.sendMessage).mockImplementation((_id, _text, onEvent) => {
         onEvent({ type: 'replied', frame: done.frames[1], session: done })
-      )
+        return Promise.resolve()
+      })
       const { wrapper } = await mountIt()
       const send = async (text: string) => {
         vi.mocked(api.queueJob).mockClear()
@@ -652,9 +656,9 @@ describe('RoleplayView', () => {
         }),
       ]))
       const queued: api.Job[] = []
-      vi.mocked(api.queueJob).mockReset().mockImplementation(async (_id, kind, frameIndex) => {
+      vi.mocked(api.queueJob).mockReset().mockImplementation((_id, kind, frameIndex) => {
         queued.push(job({ id: `${kind}${frameIndex}`, kind, frameIndex }))
-        return [...queued]
+        return Promise.resolve([...queued])
       })
       const { wrapper } = await mountIt()
       expect(wrapper.find('[data-render-all]').text()).toBe('Render all (3)')

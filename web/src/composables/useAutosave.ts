@@ -118,7 +118,7 @@ export function useAutosave<T>(opts: AutosaveOptions<T>) {
       const [snapshot, key] = [copy(draft.value!), draftKey]
       line(() => send(snapshot, key))
     }
-    return line(async () => !dirty.value)
+    return line(() => Promise.resolve(!dirty.value))
   }
 
   watch(

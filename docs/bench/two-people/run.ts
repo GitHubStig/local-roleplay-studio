@@ -9,7 +9,8 @@
  * as it is checked out); `people` runs this folder's `people-plan.md`, a block per person. Plans go
  * to `prompts/`, renders to `out/` (not committed).
  */
-import { fromFileUrl, join } from 'jsr:@std/path@^1.1.6'
+import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { dirScenarioLibrary } from '../../../server/scenario.ts'
 import { fileSettingsStore, type Settings } from '../../../server/settings.ts'
 import { chatTextModel } from '../../../server/textModel.ts'
@@ -20,7 +21,7 @@ import { comfyuiImageGenerator } from '../../../server/images/comfyui/comfyui.ts
 import { COMFYUI_MODELS } from '../../../server/images/comfyui/models.ts'
 import { asSentences, peopleAway, subjectSentence } from '../../../server/imagePrompt.ts'
 
-const here = (path: string) => fromFileUrl(new URL(path, import.meta.url))
+const here = (path: string) => fileURLToPath(new URL(path, import.meta.url))
 const FRAMES = 6
 const RENDER_SEED = 42
 const MODELS = ['qwen-image-2.1', 'flux3-klein']

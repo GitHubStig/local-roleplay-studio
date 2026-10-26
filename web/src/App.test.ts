@@ -12,12 +12,12 @@ import StoryboardView from './views/StoryboardView.vue'
 
 vi.mock('./api', async (importOriginal) => ({
   ...(await importOriginal<typeof api>()),
-  getHealth: vi.fn(async () => ({ ok: true })),
+  getHealth: vi.fn(() => Promise.resolve({ ok: true })),
   getSession: vi.fn(),
   getSettings: vi.fn(),
   getSettingsOptions: vi.fn(),
-  getScenarios: vi.fn(async () => ({ scenarios: [], errors: [] })),
-  listSessions: vi.fn(async () => []),
+  getScenarios: vi.fn(() => Promise.resolve({ scenarios: [], errors: [] })),
+  listSessions: vi.fn(() => Promise.resolve([])),
   streamFrame: vi.fn(),
   cancelFrame: vi.fn(),
 }))
@@ -175,10 +175,9 @@ describe('App navigation', () => {
   })
 
   it('keeps each Session as it was when switching between two', async () => {
-    vi.mocked(api.getSession).mockImplementation(async (id) => ({
-      ...structuredClone(session),
-      id,
-    }))
+    vi.mocked(api.getSession).mockImplementation((id) =>
+      Promise.resolve({ ...structuredClone(session), id })
+    )
     const { wrapper, router } = await mountApp('/sessions/s1')
     await wrapper.find('textarea').setValue('Direction for one')
     await router.push('/')

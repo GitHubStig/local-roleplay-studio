@@ -10,9 +10,11 @@ vi.mock('../api', async (importOriginal) => ({
   listSessions: vi.fn(),
   deleteSession: vi.fn(),
   createSession: vi.fn(),
-  getScenarios: vi.fn(async () => ({ scenarios: [], errors: [] })),
-  getSettings: vi.fn(async () => ({ textModel: 'x' })),
-  getSettingsOptions: vi.fn(async () => ({ textModels: ['x'], imageModels: [], sizePresets: [] })),
+  getScenarios: vi.fn(() => Promise.resolve({ scenarios: [], errors: [] })),
+  getSettings: vi.fn(() => Promise.resolve({ textModel: 'x' })),
+  getSettingsOptions: vi.fn(() =>
+    Promise.resolve({ textModels: ['x'], imageModels: [], sizePresets: [] })
+  ),
 }))
 
 const summary = (id: string, extra: Partial<api.SessionSummary> = {}): api.SessionSummary => ({

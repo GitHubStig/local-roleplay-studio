@@ -123,9 +123,9 @@ beforeEach(() => {
   vi.mocked(api.listJobs).mockReset().mockResolvedValue([])
   // Queued jobs accumulate, as the server's queue does.
   const queued: api.Job[] = []
-  vi.mocked(api.queueJob).mockReset().mockImplementation(async (_id, kind, index) => {
+  vi.mocked(api.queueJob).mockReset().mockImplementation((_id, kind, index) => {
     queued.push(job(kind, index))
-    return [...queued]
+    return Promise.resolve([...queued])
   })
   vi.mocked(api.getSession).mockResolvedValue(storyboard([frame(0), frame(1), frame(2)]))
 })
@@ -287,9 +287,10 @@ describe('StoryboardView', () => {
 
   it('goes Home with the error when planning fails and the Session is discarded', async () => {
     vi.mocked(api.getSession).mockResolvedValue(storyboard())
-    vi.mocked(api.planStoryboard).mockImplementation(async (_id, onEvent) =>
+    vi.mocked(api.planStoryboard).mockImplementation((_id, onEvent) => {
       onEvent({ type: 'failed', message: 'Ollama is down', sessionDiscarded: true })
-    )
+      return Promise.resolve()
+    })
     const { router } = await mountIt()
     expect(router.currentRoute.value.fullPath).toBe('/?error=Ollama+is+down')
   })
@@ -384,14 +385,15 @@ describe('StoryboardView', () => {
   })
 
   it('edits a Frame by Action, keeping a declined Action to reword', async () => {
-    vi.mocked(api.editStoryboardFrame).mockImplementation(async (_id, _i, _a, onEvent) =>
+    vi.mocked(api.editStoryboardFrame).mockImplementation((_id, _i, _a, onEvent) => {
       onEvent({
         type: 'edited',
         outcome: 'declined',
         narration: 'Declined: no minors.',
         session: storyboard([frame(0), frame(1), frame(2)]),
       })
-    )
+      return Promise.resolve()
+    })
     const { wrapper } = await mountIt()
     await wrapper.find('textarea').setValue('make him twelve')
     await buttonNamed(wrapper, 'Send').trigger('click')
@@ -603,8 +605,8 @@ describe('StoryboardView', () => {
   })
 
   it('chooses who a Frame shows', async () => {
-    vi.mocked(api.saveFrameBody).mockImplementation(async (_id, _index, body, shown) =>
-      storyboard([frame(0, { body, shown }), frame(1), frame(2)])
+    vi.mocked(api.saveFrameBody).mockImplementation((_id, _index, body, shown) =>
+      Promise.resolve(storyboard([frame(0, { body, shown }), frame(1), frame(2)]))
     )
     const { wrapper } = await mountIt()
     const chips = () => wrapper.findAll('[data-shown] button')
@@ -657,13 +659,13 @@ describe('StoryboardView', () => {
       }
       return saved
     })
-    vi.mocked(api.saveBeat).mockImplementation(async (_id, index, beat, shown) => {
+    vi.mocked(api.saveBeat).mockImplementation((_id, index, beat, shown) => {
       const known = shown.filter((n) => saved.look!.subjects.some((p) => p.name === n))
       saved = {
         ...saved,
         frames: saved.frames.map((f) => (f.index === index ? { ...f, beat, shown: known } : f)),
       }
-      return saved
+      return Promise.resolve(saved)
     })
     const { wrapper } = await mountIt()
     await wrapper.find('[data-subject-name]').setValue('Mira')

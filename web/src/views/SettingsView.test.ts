@@ -119,7 +119,7 @@ beforeEach(() => {
   // A copy of its own for each test, as the page changes its lists in place.
   vi.mocked(api.getSettings).mockImplementation(() => Promise.resolve(structuredClone(settings)))
   vi.mocked(api.getSettingsOptions).mockResolvedValue(options)
-  vi.mocked(api.saveSettings).mockImplementation(async (s) => s)
+  vi.mocked(api.saveSettings).mockImplementation((s) => Promise.resolve(s))
 })
 
 afterEach(() => vi.useRealTimers())
@@ -552,12 +552,12 @@ describe('SettingsView', () => {
     })
     // As the server keeps keys: a key replaces one, '' removes it, and one left out stays.
     const saved = new Set<string>()
-    vi.mocked(api.saveSettings).mockImplementation(async ({ apiKeys, ...s }) => {
+    vi.mocked(api.saveSettings).mockImplementation(({ apiKeys, ...s }) => {
       for (const [id, key] of Object.entries(apiKeys ?? {})) {
         if (key) saved.add(id)
         else saved.delete(id)
       }
-      return { ...s, apiKeysSet: [...saved] }
+      return Promise.resolve({ ...s, apiKeysSet: [...saved] })
     })
     const wrapper = mount(SettingsView)
     await flushPromises()
