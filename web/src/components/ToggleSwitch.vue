@@ -35,10 +35,10 @@ const on = defineModel<boolean>({ required: true })
   @apply relative mt-0.5 h-6 w-14 shrink-0 rounded-lg border border-line;
 }
 .knob {
-  @apply absolute left-0.5 top-0.5 flex h-[1.125rem] w-8 items-center justify-center rounded-md bg-surface text-xs text-muted shadow-sm transition duration-150 ease-out;
+  @apply absolute left-0.5 top-0.5 flex h-[1.125rem] w-8 items-center justify-center rounded-md border border-line bg-surface text-xs text-fg shadow-sm transition duration-150 ease-out;
 }
 .switch:checked + .track .knob {
-  @apply translate-x-[1.125rem] bg-fg text-canvas;
+  @apply translate-x-[1.125rem] border-fg bg-fg text-canvas;
 }
 .switch:checked + .track .off,
 .switch:not(:checked) + .track .on {
