@@ -125,21 +125,29 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers())
 
 describe('SettingsView', () => {
-  it('without mflux, offers ComfyUI, and its own Image Models once chosen', async () => {
+  it("without mflux, offers ComfyUI's Image Models beside the saved one", async () => {
     const noMflux = { available: false, reason: 'mflux runs only on Apple Silicon Macs' }
     vi.mocked(api.getSettingsOptions).mockResolvedValue({
       ...options,
+      imageBackends: ['comfyui'],
       features: { ...options.features, images: noMflux, upscale: noMflux },
     })
     const wrapper = mount(SettingsView)
     await flushPromises()
-    // Nothing to set up with mflux, but the backend can still be chosen.
-    expect(wrapper.find('[data-image-model]').exists()).toBe(false)
+    // Nothing to set up with mflux, but the saved model is still listed, beside ComfyUI's.
+    const groups = () =>
+      wrapper.findAll('[data-image-model] optgroup').map((g) => [
+        g.attributes('label'),
+        g.findAll('option').map((o) => o.text()),
+      ])
+    expect(groups().map(([backend]) => backend)).toEqual(['mflux', 'ComfyUI'])
+    expect(groups()[1]).toEqual(['ComfyUI', ['Qwen-Image 2.1 · ComfyUI']])
+    expect(wrapper.find('[data-step-cache]').exists()).toBe(false)
     vi.mocked(api.checkComfyUI).mockResolvedValue({
       up: false,
       error: "Couldn't reach ComfyUI at http://127.0.0.1:8188: is it running?",
     })
-    await wrapper.find('[data-image-backend]').setValue('comfyui')
+    await wrapper.find('[data-image-model]').setValue('comfyui/qwen-image-2.1')
     expect(wrapper.find('[data-image-base-url]').exists()).toBe(true)
     // Checked as soon as it's chosen: down, until ComfyUI is started and checked again.
     await vi.advanceTimersByTimeAsync(600)
@@ -158,15 +166,14 @@ describe('SettingsView', () => {
       imageModel: 'qwen-image-2.1',
       upscaler: undefined,
     })
-    const models = wrapper.findAll('[data-image-model] option').map((o) => o.text())
-    expect(models).toEqual(['Qwen-Image 2.1'])
     // ComfyUI's models have no Quantize, step cache or Fast; Upscale is still mflux's, so off.
     expect(wrapper.text()).not.toContain('Quantize')
     expect(wrapper.find('[data-step-cache]').exists()).toBe(false)
-    expect(wrapper.find('[data-upscaler]').exists()).toBe(false)
-    // Upscaling there too: the Upscaler can be chosen, and the check covers its files.
-    await wrapper.find('[data-upscale-backend]').setValue('comfyui')
-    expect(wrapper.find('[data-upscaler]').exists()).toBe(true)
+    const upscale = () => wrapper.find('[data-feature="upscale"]')
+    expect(upscale().find('[data-unavailable]').exists()).toBe(true)
+    // Upscaling there too: available, and the check covers its files.
+    await wrapper.find('[data-upscaler]').setValue('comfyui/seedvr2-7b')
+    expect(upscale().find('[data-unavailable]').exists()).toBe(false)
     await vi.advanceTimersByTimeAsync(600)
     await flushPromises()
     expect(api.checkComfyUI).toHaveBeenLastCalledWith('', {
@@ -196,7 +203,7 @@ describe('SettingsView', () => {
     await flushPromises()
     // Both on mflux: no ComfyUI address to give.
     expect(wrapper.find('[data-image-base-url]').exists()).toBe(false)
-    await wrapper.find('[data-upscale-backend]').setValue('comfyui')
+    await wrapper.find('[data-upscaler]').setValue('comfyui/seedvr2-7b')
     await wrapper.find('[data-image-base-url]').setValue('http://192.168.1.20:8188')
     await vi.advanceTimersByTimeAsync(600)
     await flushPromises()
@@ -264,16 +271,16 @@ describe('SettingsView', () => {
     const wrapper = mount(SettingsView)
     await flushPromises()
     expect(wrapper.find('[data-step-cache]').exists()).toBe(false)
-    await wrapper.find('[data-image-model]').setValue('qwen-image-2.1')
+    await wrapper.find('[data-image-model]').setValue('mflux/qwen-image-2.1')
     expect(wrapper.find('[data-step-cache]').exists()).toBe(true)
-    await wrapper.find('[data-image-model]').setValue('qwen-image-2.1-viggle')
+    await wrapper.find('[data-image-model]').setValue('mflux/qwen-image-2.1-viggle')
     expect(wrapper.find('[data-step-cache]').exists()).toBe(false)
   })
 
   it('offers only the steps a model has presets for, picked from a list', async () => {
     const wrapper = mount(SettingsView)
     await flushPromises()
-    await wrapper.find('[data-image-model]').setValue('ideogram-4')
+    await wrapper.find('[data-image-model]').setValue('mflux/ideogram-4')
     const choices = () => wrapper.find('[data-step-choices]')
     const select = () => choices().element as HTMLSelectElement
     expect(choices().findAll('option').map((o) => o.text())).toEqual(['12', '20', '48'])
@@ -281,10 +288,10 @@ describe('SettingsView', () => {
     await choices().setValue('12')
     expect(select().value).toBe('12')
     // One preset only: shown, not chosen.
-    await wrapper.find('[data-image-model]').setValue('qwen-image-2.1-viggle')
+    await wrapper.find('[data-image-model]').setValue('mflux/qwen-image-2.1-viggle')
     expect([select().value, select().disabled]).toEqual(['6', true])
     // Any count for the others.
-    await wrapper.find('[data-image-model]').setValue('qwen-image-2.1')
+    await wrapper.find('[data-image-model]').setValue('mflux/qwen-image-2.1')
     expect(choices().exists()).toBe(false)
     expect((wrapper.find('input[type=number]').element as HTMLInputElement).value).toBe('25')
   })
@@ -293,7 +300,7 @@ describe('SettingsView', () => {
     const wrapper = mount(SettingsView)
     await flushPromises()
     expect(wrapper.find('[data-previews]').exists()).toBe(false)
-    await wrapper.find('[data-image-backend]').setValue('comfyui')
+    await wrapper.find('[data-image-model]').setValue('comfyui/qwen-image-2.1')
     await wrapper.find('[data-previews] input').setValue(false)
     await wrapper.find('form').trigger('submit')
     await flushPromises()
@@ -310,14 +317,14 @@ describe('SettingsView', () => {
     await flushPromises()
     expect(api.saveSettings).toHaveBeenCalledWith(expect.objectContaining({ float16: false }))
     // ComfyUI's models don't take it.
-    await wrapper.find('[data-image-backend]').setValue('comfyui')
+    await wrapper.find('[data-image-model]').setValue('comfyui/qwen-image-2.1')
     expect(wrapper.find('[data-float16]').exists()).toBe(false)
   })
 
   it('resets steps to the chosen Image Model default', async () => {
     const wrapper = mount(SettingsView)
     await flushPromises()
-    await wrapper.find('[data-image-model]').setValue('flux2-klein-4b')
+    await wrapper.find('[data-image-model]').setValue('mflux/flux2-klein-4b')
     expect((wrapper.find('input[type=number]').element as HTMLInputElement).value).toBe('4')
   })
 
@@ -362,18 +369,23 @@ describe('SettingsView', () => {
     wrapper.unmount()
   })
 
-  it('keeps the seed on its own tab, there even where pictures cannot be made', async () => {
+  it('keeps the seed in Advanced, there even where pictures cannot be made', async () => {
     vi.mocked(api.getSettingsOptions).mockResolvedValue({
       ...options,
       features: { ...ALL_AVAILABLE, images: { available: false, reason: 'No mflux here' } },
     })
     const wrapper = mount(SettingsView, { attachTo: document.body })
     await flushPromises()
-    const seed = wrapper.find('[data-tab-panel="seed"]')
+    const seed = wrapper.find('[data-tab-panel="advanced"]')
     expect(wrapper.find('[data-tab-panel="images"] input[value="fixed"]').exists()).toBe(false)
     expect(seed.isVisible()).toBe(false)
-    await wrapper.find('[data-tab="seed"]').trigger('click')
+    await wrapper.find('[data-tab="advanced"]').trigger('click')
     expect(seed.isVisible()).toBe(true)
+    // With the Limits, the call log and the style scores, which aren't one model's either.
+    for (const control of ['[data-limits]', '[data-call-log]', '[data-feature="style"]']) {
+      expect(seed.find(control).exists()).toBe(true)
+    }
+    expect(seed.find('[data-feature="style"]').text()).toContain('Image comparison style scores')
     await seed.find('input[value="fixed"]').setValue(true)
     await seed.find('input[type="number"]').setValue(7)
     await wrapper.find('form').trigger('submit')
@@ -411,7 +423,7 @@ describe('SettingsView', () => {
     await wrapper.find('[data-text-model]').setValue('gemma4:31b-mlx')
     await wrapper.find('[data-art-style]').setValue('tags')
     await wrapper.find('[data-limits]').setValue(false)
-    await wrapper.find('[data-upscaler]').setValue('seedvr2-3b')
+    await wrapper.find('[data-upscaler]').setValue('mflux/seedvr2-3b')
     await wrapper.find('form').trigger('submit')
     await flushPromises()
     expect(api.saveSettings).toHaveBeenLastCalledWith({

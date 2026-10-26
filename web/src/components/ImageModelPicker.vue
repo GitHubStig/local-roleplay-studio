@@ -1,13 +1,14 @@
 <script setup lang="ts" generic="S extends { id: string; settings: Settings; frames: readonly PicturedFrame[] }">
 import { computed, ref } from 'vue'
+import { type PicturedFrame, setImageModel, type Settings } from '../api'
+import BackendOptions from './BackendOptions.vue'
 import {
-  IMAGE_BACKEND_NAMES,
-  type ImageBackend,
-  type PicturedFrame,
-  setImageModel,
-  type Settings,
-} from '../api'
-import { useImageModels, useSettingsOptions } from '../composables/useSettingsOptions'
+  backendGroups,
+  fromOnBackend,
+  onBackend,
+  useImageModels,
+  useSettingsOptions,
+} from '../composables/useSettingsOptions'
 
 /**
  * The Session's Image Model, switched here (Settings has the one new Sessions start with), and the
@@ -22,23 +23,13 @@ const emit = defineEmits<{ switched: [session: S]; failed: [message: string] }>(
 const options = useSettingsOptions()
 const { modelsOf } = useImageModels()
 const switching = ref(false)
-/** The backends to choose from: those that can render here, and always the Session's own. */
-const backends = computed<ImageBackend[]>(() => {
-  const own = props.session.settings.imageBackend
-  const here = options.value?.imageBackends ?? []
-  return here.includes(own) ? here : [own, ...here]
-})
 const choices = computed(() =>
-  backends.value.map((backend) => ({
-    backend,
-    name: IMAGE_BACKEND_NAMES[backend],
-    models: modelsOf(backend).map((m) => ({ ...m, value: `${backend}/${m.id}` })),
-  }))
+  backendGroups(options.value, props.session.settings.imageBackend, modelsOf)
 )
 /** The Session's backend and model, as the options' values name them. */
 const current = computed(() => {
   const { imageBackend, imageModel } = props.session.settings
-  return `${imageBackend}/${imageModel}`
+  return onBackend(imageBackend, imageModel)
 })
 const model = computed(() => {
   const { imageBackend, imageModel } = props.session.settings
@@ -57,7 +48,7 @@ const steps = computed(() => {
 async function pick(select: HTMLSelectElement) {
   switching.value = true
   try {
-    const [backend, id] = select.value.split('/') as [ImageBackend, string]
+    const [backend, id] = fromOnBackend(select.value)
     emit('switched', await setImageModel<S>(props.session.id, id, backend))
   } catch (err) {
     select.value = current.value
@@ -84,16 +75,7 @@ async function pick(select: HTMLSelectElement) {
       >
         <!-- Its own model, even before the list loads. -->
         <option v-if="!model" :value="current">{{ session.settings.imageModel }}</option>
-        <template v-if="choices.length < 2">
-          <option v-for="m in choices[0]?.models" :key="m.value" :value="m.value">
-            {{ m.label }}
-          </option>
-        </template>
-        <optgroup v-for="c in choices" v-else :key="c.backend" :label="c.name">
-          <option v-for="m in c.models" :key="m.value" :value="m.value">
-            {{ m.label }} · {{ c.name }}
-          </option>
-        </optgroup>
+        <BackendOptions :groups="choices" />
       </select>
     </label>
     <span title="The steps each render takes with this model" data-image-steps>

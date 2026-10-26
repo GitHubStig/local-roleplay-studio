@@ -7,16 +7,23 @@ import {
   type ComfyStatus,
   getSettings,
   getSettingsOptions,
+  type ImageBackend,
   listTextModels,
   saveSettings,
   type Settings,
   type SettingsOptions,
   type TextBackend,
 } from '../api'
+import BackendOptions from '../components/BackendOptions.vue'
 import ComfyStatusLine from '../components/ComfyStatusLine.vue'
 import FeatureSwitch from '../components/FeatureSwitch.vue'
 import { useFeatures } from '../composables/useFeatures'
-import { editModelChoices } from '../composables/useSettingsOptions'
+import {
+  backendGroups,
+  editModelChoices,
+  fromOnBackend,
+  onBackend,
+} from '../composables/useSettingsOptions'
 
 const form = ref<Settings | null>(null)
 const options = ref<SettingsOptions | null>(null)
@@ -26,16 +33,16 @@ const saving = ref(false)
 const status = ref<{ kind: 'saved' | 'error'; message: string; issues?: string[] } | null>(null)
 
 /**
- * The Settings, a tab per part of the app (the Text Model's, each extra's), then what applies to
- * every model: the seed, and the call log.
+ * The Settings, a tab per part of the app (the Text Model's, each extra's), then Advanced: what
+ * applies to every model (the Limits, the seed), and what's for looking into the app (the call log,
+ * the style scores).
  */
 const TABS = [
   { id: 'text', label: 'Text' },
   { id: 'images', label: 'Images' },
   { id: 'voice', label: 'Voice' },
   { id: '3d', label: '3D' },
-  { id: 'seed', label: 'Seed' },
-  { id: 'log', label: 'Log' },
+  { id: 'advanced', label: 'Advanced' },
 ] as const
 const tab = ref<(typeof TABS)[number]['id']>('text')
 const { refreshFeatures } = useFeatures()
@@ -104,22 +111,36 @@ const canThink = computed(() =>
   !!form.value && (options.value?.thinkingModels ?? []).includes(form.value.textModel)
 )
 
-/** The chosen backend's Image Models. */
-const imageModels = computed(() =>
-  form.value && options.value ? options.value.imageModels[form.value.imageBackend] : []
+const imageModelsOf = (backend: ImageBackend) => options.value?.imageModels[backend] ?? []
+/** Every backend's Image Models, as the Session's Image Model picker lists them. */
+const imageModelGroups = computed(() =>
+  backendGroups(options.value, form.value?.imageBackend ?? 'mflux', imageModelsOf)
 )
 /** The chosen Image Model's options, for the controls only some models have. */
-const imageModel = computed(() => imageModels.value.find((m) => m.id === form.value?.imageModel))
-
-function onImageModelChange() {
-  if (form.value && imageModel.value) form.value.steps = imageModel.value.defaultSteps
-}
-/** A backend has its own models: start on its first. */
-function onImageBackendChange() {
-  if (!form.value) return
-  form.value.imageModel = imageModels.value[0]?.id ?? ''
-  onImageModelChange()
-}
+const imageModel = computed(() =>
+  form.value && imageModelsOf(form.value.imageBackend).find((m) => m.id === form.value?.imageModel)
+)
+/** The Default Image Model and its backend, picked together; steps start at the model's own. */
+const defaultImageModel = computed({
+  get: () => form.value ? onBackend(form.value.imageBackend, form.value.imageModel) : '',
+  set(value) {
+    if (!form.value) return
+    ;[form.value.imageBackend, form.value.imageModel] = fromOnBackend(value)
+    if (imageModel.value) form.value.steps = imageModel.value.defaultSteps
+  },
+})
+/** Every backend's upscalers: each runs SeedVR2, so they have the same. */
+const upscalerGroups = computed(() =>
+  backendGroups(options.value, form.value?.upscaleBackend ?? 'mflux', () =>
+    options.value?.upscalers ?? [])
+)
+/** The Default upscaler and its backend, picked together. */
+const defaultUpscaler = computed({
+  get: () => form.value ? onBackend(form.value.upscaleBackend, form.value.upscaler) : '',
+  set(value) {
+    if (form.value) [form.value.upscaleBackend, form.value.upscaler] = fromOnBackend(value)
+  },
+})
 /** Pictures, Upscale or voices run on ComfyUI, so its address matters. */
 const usesComfyUI = computed(() =>
   form.value?.imageBackend === 'comfyui' || form.value?.upscaleBackend === 'comfyui' ||
@@ -398,17 +419,6 @@ function removeSavedApiKey() {
             </span>
           </label>
 
-          <label class="flex items-start gap-2">
-            <input v-model="form.limits" type="checkbox" class="mt-1" data-limits />
-            <span class="flex flex-col gap-0.5">
-              <span>Limits</span>
-              <span class="text-sm text-muted">
-                On: no sexual or nude content, real people, or restraint, and everyone is an adult.
-                Off: only "everyone depicted is an adult" is enforced; it can't be turned off.
-                Applies at once, to running Sessions too.
-              </span>
-            </span>
-          </label>
         </section>
 
         <section
@@ -428,16 +438,14 @@ function removeSavedApiKey() {
           </FeatureSwitch>
 
           <label class="flex flex-col gap-1">
-            <span class="text-sm text-muted">Image backend</span>
-            <select
-              v-model="form.imageBackend"
-              class="field"
-              data-image-backend
-              @change="onImageBackendChange"
-            >
-              <option value="mflux">mflux (Apple Silicon Macs)</option>
-              <option value="comfyui">ComfyUI (any machine; Windows with an NVIDIA card)</option>
+            <span class="text-sm text-muted">Default Image Model</span>
+            <select v-model="defaultImageModel" class="field" data-image-model>
+              <BackendOptions :groups="imageModelGroups" />
             </select>
+            <span class="text-sm text-muted">
+              What a new Session renders with; each Session can switch to another. mflux runs on
+              Apple Silicon Macs, ComfyUI on any machine (Windows with an NVIDIA card).
+            </span>
           </label>
           <label v-if="usesComfyUI" class="flex flex-col gap-1">
             <span class="text-sm text-muted">ComfyUI address</span>
@@ -456,20 +464,6 @@ function removeSavedApiKey() {
           </label>
 
           <template v-if="picturesHere">
-            <label class="flex flex-col gap-1">
-              <span class="text-sm text-muted">Image Model</span>
-              <select
-                v-model="form.imageModel"
-                class="field"
-                data-image-model
-                @change="onImageModelChange"
-              >
-                <option v-for="m in imageModels" :key="m.id" :value="m.id">
-                  {{ m.label }}
-                </option>
-              </select>
-            </label>
-
             <label
               v-if="form.imageBackend === 'comfyui'"
               class="flex items-start gap-2"
@@ -553,23 +547,16 @@ function removeSavedApiKey() {
               Enlarges a picture to 2048 px with SeedVR2, whichever backend rendered it.
             </FeatureSwitch>
             <label class="flex flex-col gap-1">
-              <span class="text-sm text-muted">Upscale with</span>
-              <select v-model="form.upscaleBackend" class="field" data-upscale-backend>
-                <option value="mflux">mflux (Apple Silicon Macs)</option>
-                <option value="comfyui">ComfyUI, at the address above</option>
+              <span class="text-sm text-muted">Default upscaler</span>
+              <select v-model="defaultUpscaler" class="field" data-upscaler>
+                <BackendOptions :groups="upscalerGroups" />
               </select>
               <span class="text-sm text-muted">
-                ComfyUI can be another machine: a Mac can render with mflux and upscale on a faster
-                PC (SeedVR2 7B: 9.5 s on an RTX 4070 against ~46 s on the Mac). It needs Comfy-Org's
-                SeedVR2 files there.
+                Applies to the next upscale, whichever backend rendered the picture. ComfyUI's runs
+                at the address above, which can be another machine: a Mac can render with mflux and
+                upscale on a faster PC (SeedVR2 7B: 9.5 s on an RTX 4070 against ~46 s on the Mac),
+                with Comfy-Org's SeedVR2 files there.
               </span>
-            </label>
-            <label v-if="upscaleAvailability.available" class="flex flex-col gap-1">
-              <span class="text-sm text-muted">Upscaler</span>
-              <select v-model="form.upscaler" class="field" data-upscaler>
-                <option v-for="u in options.upscalers" :key="u.id" :value="u.id">{{ u.label }}</option>
-              </select>
-              <span class="text-sm text-muted">Used by Upscale; applies to the next upscale.</span>
             </label>
             <FeatureSwitch
               v-model="form.features.edits"
@@ -594,15 +581,6 @@ function removeSavedApiKey() {
               </span>
             </label>
           </template>
-          <FeatureSwitch
-            v-model="form.features.style"
-            :availability="options.features.style"
-            title="Style scores"
-            data-feature="style"
-          >
-            Compare measures how much each Image Model's art style varies across the Frames, with
-            CSD and CLIP (4 GB, downloaded the first time).
-          </FeatureSwitch>
         </section>
 
         <section
@@ -672,11 +650,22 @@ function removeSavedApiKey() {
         </section>
 
         <section
-          v-show="tab === 'seed'"
+          v-show="tab === 'advanced'"
           class="flex flex-col gap-5"
           role="tabpanel"
-          data-tab-panel="seed"
+          data-tab-panel="advanced"
         >
+          <label class="flex items-start gap-2">
+            <input v-model="form.limits" type="checkbox" class="mt-1" data-limits />
+            <span class="flex flex-col gap-0.5">
+              <span>Limits</span>
+              <span class="text-sm text-muted">
+                On: no sexual or nude content, real people, or restraint, and everyone is an adult.
+                Off: only "everyone depicted is an adult" is enforced; it can't be turned off.
+                Applies at once, to running Sessions too.
+              </span>
+            </span>
+          </label>
           <fieldset class="flex flex-col gap-2">
             <legend class="mb-1 text-sm text-muted">Seed</legend>
             <label class="flex items-center gap-2">
@@ -700,14 +689,6 @@ function removeSavedApiKey() {
               so it can come out different. 3D figures always use 42 for now.
             </span>
           </fieldset>
-        </section>
-
-        <section
-          v-show="tab === 'log'"
-          class="flex flex-col gap-5"
-          role="tabpanel"
-          data-tab-panel="log"
-        >
           <label class="flex items-start gap-2">
             <input v-model="form.callLog" type="checkbox" class="mt-1" data-call-log />
             <span class="flex flex-col gap-0.5">
@@ -720,8 +701,16 @@ function removeSavedApiKey() {
               </span>
             </span>
           </label>
+          <FeatureSwitch
+            v-model="form.features.style"
+            :availability="options.features.style"
+            title="Image comparison style scores"
+            data-feature="style"
+          >
+            Compare measures how much each Image Model's art style varies across the Frames, with
+            CSD and CLIP (4 GB, downloaded the first time).
+          </FeatureSwitch>
         </section>
-
       </form>
     </div>
   </div>

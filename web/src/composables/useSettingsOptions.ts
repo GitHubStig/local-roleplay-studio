@@ -73,3 +73,37 @@ export function editModelChoices(models: SettingsOptions['editModels'] = []) {
       ''
   return { choices, startOn }
 }
+
+/** "comfyui/qwen-image-2.1": a model on one backend, as a list across backends names it. */
+export const onBackend = (backend: ImageBackend, id: string) => `${backend}/${id}`
+/** The backend and model a list's value (`onBackend`) names. */
+export const fromOnBackend = (value: string) => value.split('/') as [ImageBackend, string]
+
+/** One backend's models in a list across backends, each with its `onBackend` value. */
+export interface BackendGroup {
+  backend: ImageBackend
+  name: string
+  models: { id: string; label: string; value: string }[]
+}
+
+/**
+ * Models across the Image backends, a group per backend: those that can render here, and always
+ * `own` (the Session's, or Settings'), wherever it runs. `modelsOf` gives each backend's models
+ * (its Image Models, or its upscalers).
+ */
+export function backendGroups(
+  options: SettingsOptions | null | undefined,
+  own: ImageBackend,
+  modelsOf: (backend: ImageBackend) => readonly { id: string; label: string }[],
+): BackendGroup[] {
+  const here = options?.imageBackends ?? []
+  return (here.includes(own) ? here : [own, ...here]).map((backend) => ({
+    backend,
+    name: IMAGE_BACKEND_NAMES[backend],
+    models: modelsOf(backend).map((m) => ({
+      id: m.id,
+      label: m.label,
+      value: onBackend(backend, m.id),
+    })),
+  }))
+}
