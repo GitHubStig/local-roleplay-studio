@@ -126,11 +126,12 @@ Deno.test('Deleting a Chain Frame waits for no job on it, and the queue follows'
 Deno.test('A render running on a later Chain Frame lands on it after an earlier one is deleted', () =>
   withTempDir(async (root) => {
     const quick = fakeImageGenerator()
-    let gate: PromiseWithResolvers<void> | undefined
+    // Renders wait while it's held: the third Frame's, until the earlier Frame is deleted.
+    const gate: { held?: PromiseWithResolvers<void> } = {}
     const images = {
       ...quick,
       generate: async (...a: Parameters<typeof quick.generate>) => {
-        await gate?.promise
+        await gate.held?.promise
         return quick.generate(...a)
       },
     }
@@ -143,14 +144,14 @@ Deno.test('A render running on a later Chain Frame lands on it after an earlier 
     await readEvents(await call('POST', '/api/sessions/s1/frames', { action: 'Rise' }))
     const before = await chainFrames(call)
 
-    gate = Promise.withResolvers()
+    gate.held = Promise.withResolvers()
     await call('POST', '/api/sessions/s1/jobs', { kind: 'render', frameIndex: 3 })
     const deleted = await call('POST', '/api/sessions/s1/frames/1/delete', {
       frames: before.length,
       createdAt: before[1].createdAt,
     })
     assertEquals(deleted.status, 200)
-    gate.resolve()
+    gate.held.resolve()
     await settled(call)
 
     const after = await chainFrames(call)

@@ -90,7 +90,7 @@ export function roleplayRoutes(ctx: RoleplayRouteContext): Route[] {
       withRoleplay(p.id!, 'frame', async (session) => {
         if (!session.cast) return error('This Roleplay has no Cast yet', 409)
         if (session.frames.length) return error('The scene has already begun', 409)
-        return ctx.stream(session, 0, false, async (send, signal) => {
+        return await ctx.stream(session, 0, false, async (send, signal) => {
           await beginRoleplay(ctx.deps(session), session, send, signal)
         })
       })],
