@@ -178,6 +178,7 @@ Add a Markdown file to `scenarios/`. It appears on Home, under *Start a new Sess
 - [docs/scenarios.md](docs/scenarios.md): the Scenario file format
 - [docs/image-model-setup.md](docs/image-model-setup.md): image model setup and optional prefetching
 - [docs/models.md](docs/models.md): which Text and Image Models to use, and why
+- [docs/hf-cache.md](docs/hf-cache.md): removing models from the Hugging Face cache, and checking the disk space came back
 - [docs/uv-upgrades.md](docs/uv-upgrades.md): how to update uv and validate its Python scripts on Windows and Mac
 - [docs/research/](docs/research/): surveys and trials (ComfyUI, image to 3D, small uncensored models, LLM libraries)
 - [docs/adr/](docs/adr/): architecture decisions and why they were made
