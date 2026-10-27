@@ -12,7 +12,7 @@ uv tool install --managed-python --python 3.14 mflux
 
 On first use, mflux downloads the selected model and any associated files from Hugging Face into `~/.cache/huggingface`. The app reports the download while it is happening; subsequent renders use the cached files. You can let the first render in the app do this—there is no separate preload step. If you want to fetch a model before starting a Session, render one image with that model in a temporary Session; the downloaded files stay in the cache.
 
-Some models are gated. For FLUX.3 Klein and Ideogram 4, accept the model's terms on Hugging Face and sign in on the Mac with `hf auth login` before the first render. Other models may have their own licenses; check the model card before use.
+Some models are gated. For Ideogram 4, accept the model's terms on Hugging Face and sign in on the Mac with `hf auth login` before the first render. Other models may have their own licenses; check the model card before use.
 
 ## ComfyUI
 

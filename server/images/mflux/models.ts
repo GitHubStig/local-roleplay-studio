@@ -72,9 +72,10 @@ export const MFLUX_MODELS: readonly MfluxModel[] = [
     id: 'flux3-klein',
     label: 'FLUX.3 Klein',
     command: 'mflux-generate-flux3',
-    // The distilled checkpoint (mflux 0.23): 16 steps, no guidance. ~20 GB, fetched on first use.
-    // Gated (FLUX Kommunity License): accept its terms on Hugging Face and `hf auth login` first.
-    model: 'flux3-image-klein',
+    // The distilled checkpoint: 16 steps, no guidance. mflux-community's bf16 copy (18.5 GB, fetched on
+    // first use), not gated like Black Forest Labs' own repo, which mflux's `flux3-image-klein` names.
+    model: 'mflux-community/flux-3-image-klein-mflux-bf16',
+    baseModel: 'flux3-image-klein',
     defaultSteps: 16,
     float16: true,
   },
@@ -82,7 +83,6 @@ export const MFLUX_MODELS: readonly MfluxModel[] = [
     id: 'z-image-turbo',
     label: 'Z-Image Turbo (4-bit)',
     command: 'mflux-generate-z-image-turbo',
-    // mflux-community's saved 4-bit copy (5.9 GB); mflux's README still names the older filipstrand one.
     model: 'mflux-community/z-image-turbo-mflux-q4',
     baseModel: 'z-image-turbo',
     preQuantized: true,
