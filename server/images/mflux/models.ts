@@ -108,14 +108,16 @@ export const MFLUX_MODELS: readonly MfluxModel[] = [
     id: 'krea-2',
     label: 'Krea 2',
     command: 'mflux-generate-krea2',
-    model: 'krea-2',
+    model: 'mflux-community/krea-2-turbo-mflux-bf16',
+    baseModel: 'krea-2',
     defaultSteps: 8,
   },
   {
     id: 'krea-2-lora',
     label: 'Krea 2 + LoRA',
     command: 'mflux-generate-krea2',
-    model: 'krea-2',
+    model: 'mflux-community/krea-2-turbo-mflux-bf16',
+    baseModel: 'krea-2',
     defaultSteps: 8,
     lora: {
       path:

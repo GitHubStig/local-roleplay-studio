@@ -371,6 +371,18 @@ Deno.test('upscaleArgs upscales the shortest edge to 2048 with the chosen SeedVR
   )
 })
 
+Deno.test('mfluxArgs runs Krea 2, and Krea 2 + LoRA, from the saved copy', () => {
+  for (const id of ['krea-2', 'krea-2-lora']) {
+    const args = mfluxArgs(findMfluxModel(id)!, request('/d', { steps: 8 }), 'o.png')
+    assertEquals(args.slice(0, 4), [
+      '--model',
+      'mflux-community/krea-2-turbo-mflux-bf16',
+      '--base-model',
+      'krea-2',
+    ])
+  }
+})
+
 Deno.test('mfluxArgs runs FLUX.3 Klein and Qwen-Image 2.1 Turbo by their mflux names', () => {
   const flux3 = mfluxArgs(findMfluxModel('flux3-klein')!, request('/d', { steps: 16 }), 'o.png')
   assertEquals(flux3.slice(0, 4), [
