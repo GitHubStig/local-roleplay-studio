@@ -30,6 +30,10 @@ Release review: reviewed from the [release notes](https://github.com/mflux-commu
 
 - **Anima** (circlestone-labs; `mflux-generate-anima`, Turbo, Aesthetic and Base) and **Iris-3B** (`mflux-generate-iris`, Turbo by default and a base) are new. Sizes, licenses and fit on the 48 GB Mac are unknown; to be looked up before offering them.
 
+### Z-Image Turbo's repo moved to mflux-community (Mac, 2026-10-27)
+
+The app loaded Z-Image Turbo from `filipstrand/Z-Image-Turbo-mflux-4bit`, which still exists and still works on 0.24 (mflux's own README still names it). mflux-community now has `z-image-turbo-mflux-q3` to `-q6`, `-q8` and `-bf16` (Apache-2.0); `-q4` is the same size (5.9 GB), but a re-saved copy: 20 of the 21 files differ by hash. Rendered the same prompt (two people at a table, rain on the window), 832×1216, 9 steps, seed 42, `--low-ram`, float16: both peak at 4.40 GB; old 32 s from cache, new 137 s including the 5.9 GB download. Side by side the pictures are the same scene, composition and faces; the mean difference is 1.3 of 255 (maximum 181). One prompt and one seed. The app now uses `mflux-community/z-image-turbo-mflux-q4`; the old copy was removed from the Mac's Hugging Face cache (`hf cache rm`, 5.9 GB freed).
+
 ### Still to do
 
 Render through the app with the Image Models already cached, and compare the flags with `server/images/mflux/` (the release review above was not compared with them yet). Anima, Iris and the new flags are untried.

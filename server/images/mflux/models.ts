@@ -82,7 +82,8 @@ export const MFLUX_MODELS: readonly MfluxModel[] = [
     id: 'z-image-turbo',
     label: 'Z-Image Turbo (4-bit)',
     command: 'mflux-generate-z-image-turbo',
-    model: 'filipstrand/Z-Image-Turbo-mflux-4bit',
+    // mflux-community's saved 4-bit copy (5.9 GB); mflux's README still names the older filipstrand one.
+    model: 'mflux-community/z-image-turbo-mflux-q4',
     baseModel: 'z-image-turbo',
     preQuantized: true,
     defaultSteps: 9,

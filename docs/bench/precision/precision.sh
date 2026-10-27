@@ -49,7 +49,7 @@ other() { local name=$1 cmd=$2 model=$3 steps=$4; shift 4
 other klein4b mflux-generate-flux2 flux2-klein-4b 4
 other klein9b mflux-generate-flux2 flux2-klein-9b 4
 other klein9b-q8 mflux-generate-flux2 flux2-klein-9b 4 --quantize 8
-other zimage mflux-generate-z-image-turbo filipstrand/Z-Image-Turbo-mflux-4bit 9 --base-model z-image-turbo
+other zimage mflux-generate-z-image-turbo mflux-community/z-image-turbo-mflux-q4 9 --base-model z-image-turbo
 other krea2 mflux-generate-krea2 krea-2 8
 other ernie mflux-generate-ernie-image-turbo ernie-image-turbo 8
 other boogu mflux-generate-boogu boogu-image-turbo 4

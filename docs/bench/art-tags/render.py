@@ -21,7 +21,7 @@ MODELS = {
     'flux2-klein-4b': ('mflux-generate-flux2', ['--model', 'flux2-klein-4b'], 4),
     'flux2-klein-9b': ('mflux-generate-flux2', ['--model', 'flux2-klein-9b'], 4),
     'z-image-turbo': ('mflux-generate-z-image-turbo',
-                      ['--model', 'filipstrand/Z-Image-Turbo-mflux-4bit', '--base-model', 'z-image-turbo'], 9),
+                      ['--model', 'mflux-community/z-image-turbo-mflux-q4', '--base-model', 'z-image-turbo'], 9),
     'krea-2': ('mflux-generate-krea2', ['--model', 'krea-2'], 8),
     'ernie-image-turbo': ('mflux-generate-ernie-image-turbo', ['--model', 'ernie-image-turbo'], 8),
     'boogu-image-turbo': ('mflux-generate-boogu', ['--model', 'boogu-image-turbo'], 4),

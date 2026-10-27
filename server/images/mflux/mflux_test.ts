@@ -212,7 +212,7 @@ Deno.test('mfluxArgs passes the base model and skips quantize for pre-quantized 
   const args = mfluxArgs(findMfluxModel('z-image-turbo')!, request('/d', { quantize: 4 }), 'o.png')
   assertEquals(args.slice(0, 4), [
     '--model',
-    'filipstrand/Z-Image-Turbo-mflux-4bit',
+    'mflux-community/z-image-turbo-mflux-q4',
     '--base-model',
     'z-image-turbo',
   ])
