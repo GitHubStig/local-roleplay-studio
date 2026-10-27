@@ -1,0 +1,30 @@
+# Updating ComfyUI
+
+This is the routine for reviewing a ComfyUI release on the Apple Silicon Mac and the Windows PC. Upgrade ComfyUI on both machines first; then review the release against the app on each machine. A release review does not install models or mean that a model has been selected.
+
+## What goes where
+
+- **This file** is the repeatable upgrade and review procedure.
+- [research/comfyui.md](./research/comfyui.md) keeps the app's continuing ComfyUI integration findings: API behaviour, workflows, resource constraints and issues that still matter.
+- **The rolling upgrade log** in [research/comfyui-upgrade-log.md](./research/comfyui-upgrade-log.md) records each release review under a dated version heading: relevant changes, their relation to existing findings, and what was checked on each machine.
+- [models.md](./models.md) records models only after they have been selected and actually evaluated. Ideas not chosen yet belong in [open-threads.md](./open-threads.md).
+
+## Routine
+
+1. **Upgrade ComfyUI on both machines first.** Use the installation method already in use on that machine. Do not update model weights as part of the ComfyUI upgrade.
+2. **Record each installation separately:** date, machine (Mac or Windows PC), previous and new ComfyUI versions, Comfy Desktop version if applicable, GPU and VRAM, and any upgrade error. Keep local free disk space in mind; share an amount with the review only if it is useful and you are comfortable doing so.
+3. **Review the release notes on each machine.** Start from the installed previous version and cover every intervening ComfyUI release through the new version, not just the latest release. Use official ComfyUI release notes and follow relevant changes to their pull requests, code, documentation or official model pages. Compare them with [research/comfyui.md](./research/comfyui.md), prior release notes, and the app's ComfyUI workflows.
+4. **Separate what is known from what needs testing.** For each relevant change, say whether it fixes a documented issue, changes a node/API/tokenizer the app uses, or appears unrelated. A changelog entry is evidence that code changed, not proof that the app's issue is fixed; label unverified fixes and run a focused check before treating them as resolved.
+5. **Present image-model candidates; do not install them.** List models newly supported or otherwise newly worth considering, with official sources, generation/editing capability, available weight variants and file sizes, license or access restrictions, required ComfyUI nodes, and likely Mac/Windows memory and disk implications. Separate confirmed ComfyUI support from a model that only appears promising. State when size, license, or fit is unknown rather than guessing.
+6. **Let the user choose per machine.** Present the candidate list and ask which, if any, they want to try on the Mac and on Windows. Do not download, cache, or add model files, and do not start a large or memory-heavy run, until the user chooses. One machine's choice does not imply the same choice on the other.
+7. **Schedule benchmarks before running them.** If a fix, improvement or model needs a performance, memory or quality benchmark, tell the user in advance what will run, the expected duration and resource use, whether it needs any downloads, and what will be measured. Ask the user to choose a time when that machine is otherwise idle; do not start until they confirm. Other jobs can skew timing and resource measurements. A brief functional smoke check can confirm that a workflow runs, but do not present its timing as a benchmark.
+8. **Check the upgraded installations with existing models first.** Confirm the version and run a focused functional smoke check through the app on each machine, using models already cached. Check the app behaviour touched by the release (API calls, workflow nodes, previews, cancellation, and model unloading as relevant). Avoid real Session content; use public benchmark inputs where suitable. Apply the scheduling rule above before any measurement run.
+9. **Record the result.** Append a dated version section to [research/comfyui-upgrade-log.md](./research/comfyui-upgrade-log.md), with sources and separate Mac and Windows outcomes: version, checks run, pass/fail, and anything not tested. Update [research/comfyui.md](./research/comfyui.md) only when a continuing integration finding changes. Add selected and measured models to [models.md](./models.md); keep unselected candidates in [open-threads.md](./open-threads.md).
+
+## Review prompt
+
+Use this after both machines have been upgraded, once on each machine:
+
+> ComfyUI has been upgraded on the **[Mac / Windows PC]** from **[previous version]** to **[new version]** (Comfy Desktop **[version, if applicable]**; GPU/VRAM **[details]**). Review the official ComfyUI release notes from the previous version through the new version. Compare relevant changes with `docs/research/comfyui.md`, the earlier dated entries in `docs/research/comfyui-upgrade-log.md`, and the ComfyUI workflows in `server/images/comfyui/workflows/` and `server/voice/comfyui/workflows/`. Identify documented issues that a change may fix, but distinguish confirmed fixes from unverified possibilities. Then list image-generation or editing models that are newly supported or worth considering, with official model sources, weight variants and sizes, license/access requirements, required nodes, and this machine's likely memory/disk fit. Clearly separate actual ComfyUI support from candidates. Do not download or cache anything, run a benchmark, or select a model. If a benchmark is needed, first propose the runs, expected duration and resource use, possible downloads, and measurements, then ask me to choose a time when the machine is idle. Present the findings so I can choose models separately for this machine.
+
+Review the second machine independently as well. If an issue or model behaves differently by platform, report that difference rather than merging the results.

@@ -4,7 +4,9 @@ What was learned adding ComfyUI beside mflux (from 2026-10-07; the decision in [
 
 ## Reading a new release
 
-When Comfy Desktop updates ComfyUI, read the changes against what the app uses. So far (to 0.42.5, 2026-10-24) none has needed a change in the app. What to look at:
+The repeatable upgrade and review procedure is in [comfyui-upgrade.md](../comfyui-upgrade.md); release-specific reviews live beside this note in [research/](.). This file keeps the continuing integration findings, not the current release's test log. A release-note entry is not evidence that an issue is fixed on either machine until it has been checked there.
+
+When reviewing changes against what the app uses, look at:
 
 - **The API:** `server.py` and `execution.py` (`/prompt`, `/view`, `/upload/image`, `/history`, `/interrupt`, `/free`, `/models`, `/object_info`, `/system_stats`, the WebSocket messages).
 - **The workflows' nodes:** the inputs of every node in `server/images/comfyui/workflows/` and `server/voice/comfyui/workflows/`.
