@@ -389,6 +389,18 @@ Deno.test('mfluxArgs runs FLUX.2 Klein 4B and 9B from the saved copies', () => {
   }
 })
 
+Deno.test('mfluxArgs runs ERNIE-Image Turbo and Boogu Image Turbo from the saved copies', () => {
+  for (const id of ['ernie-image-turbo', 'boogu-image-turbo']) {
+    const args = mfluxArgs(findMfluxModel(id)!, request('/d'), 'o.png')
+    assertEquals(args.slice(0, 4), [
+      '--model',
+      `mflux-community/${id}-mflux-bf16`,
+      '--base-model',
+      id,
+    ])
+  }
+})
+
 Deno.test('mfluxArgs runs Krea 2, and Krea 2 + LoRA, from the saved copy', () => {
   for (const id of ['krea-2', 'krea-2-lora']) {
     const args = mfluxArgs(findMfluxModel(id)!, request('/d', { steps: 8 }), 'o.png')

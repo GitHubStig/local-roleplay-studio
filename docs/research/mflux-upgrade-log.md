@@ -48,6 +48,12 @@ FLUX.2 Klein 9B ran through mflux's alias `flux2-klein-9b`, which 0.24 resolves 
 
 FLUX.2 Klein 4B was pointed at `mflux-community/flux2-klein-4b-mflux-bf16` (16.0 GB, ungated, Apache-2.0) the same day. Only the repo's file layout was checked: not downloaded or rendered, since the BFL repo it replaced had been removed from the cache by the owner and there was nothing to compare against.
 
+### ERNIE-Image Turbo and Boogu Image Turbo moved to mflux-community (Mac, 2026-10-27)
+
+Both ran through mflux's aliases (`ernie-image-turbo` to `baidu/ERNIE-Image-Turbo`, `boogu-image-turbo` to `Boogu/Boogu-Image-0.1-Turbo`; neither gated, both Apache-2.0). The app now uses mflux-community's `ernie-image-turbo-mflux-bf16` (23.1 GB) and `boogu-image-turbo-mflux-bf16` (35.9 GB, against 24.0 and 38.5 GB cached), each with `--base-model` set to the alias. Same prompt (two people at a table, rain on the window), 832×1216, `--low-ram`, seed 42, ERNIE at 8 steps and Boogu at 4, no float16. Pictures from the two copies are byte-identical for both (mean difference 0.0, maximum 0, on two runs each). Peak memory: ERNIE 23.12 GB and Boogu 25.19 GB, for both copies. Wall clock from cache, including the model load: ERNIE 54 s and 51 s with the original, 52 s and 52 s with the community copy; Boogu 38 s and 34 s with the original, 34 s and 34 s with the community copy. The downloads were timed apart, with `hf download`: 319 s for ERNIE and 482 s for Boogu.
+
+The owner doesn't use either model enough locally to keep them, so after the test **all four copies were removed from this Mac** (`hf cache rm`): both models download again on first use. The two community copies, downloaded by `hf` 2.3.0, freed their disk space (26 to 81 GiB free). The two original repos, downloaded earlier by mflux's own `huggingface_hub` 1.33.0, left 13 blobs (62.4 GB) behind, all of which matched the removed repos' files by size and were deleted: 139 GiB free at the end.
+
 ### Still to do
 
 Render through the app with the Image Models already cached, and compare the flags with `server/images/mflux/` (the release review above was not compared with them yet). Anima, Iris and the new flags are untried.

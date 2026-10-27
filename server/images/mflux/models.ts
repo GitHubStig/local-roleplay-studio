@@ -131,14 +131,16 @@ export const MFLUX_MODELS: readonly MfluxModel[] = [
     id: 'ernie-image-turbo',
     label: 'ERNIE-Image Turbo',
     command: 'mflux-generate-ernie-image-turbo',
-    model: 'ernie-image-turbo',
+    model: 'mflux-community/ernie-image-turbo-mflux-bf16',
+    baseModel: 'ernie-image-turbo',
     defaultSteps: 8,
   },
   {
     id: 'boogu-image-turbo',
     label: 'Boogu Image Turbo',
     command: 'mflux-generate-boogu',
-    model: 'boogu-image-turbo',
+    model: 'mflux-community/boogu-image-turbo-mflux-bf16',
+    baseModel: 'boogu-image-turbo',
     defaultSteps: 4,
   },
   {
