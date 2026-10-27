@@ -55,4 +55,4 @@ To upgrade it:
 3. If that fails, upgrade the venv directly: `~/.hf-cli/venv/bin/python -m pip install --upgrade huggingface_hub`. Or run the install script again, which replaces the venv.
 4. `hf version` again, then `hf cache ls` to make sure it still reads the cache, and the orphan check above.
 
-Not tried: the pip route and the re-run of the script. Whether 2.3.0 changes how `hf cache rm` treats the old shared blobs was not tested (no model has been removed since). The Windows PC's `hf`, if it has one, was not checked.
+Not tried: the pip route and the re-run of the script. `hf cache rm` on 2.3.0 does not fix the old shared blobs: removing `black-forest-labs/FLUX.2-klein-9B` on 2026-10-27 reported 34.7G freed and freed no disk, leaving six blobs (34.5 GB), which the check found and, matched by size to the repo's files, were deleted. The Windows PC's `hf`, if it has one, was not checked.

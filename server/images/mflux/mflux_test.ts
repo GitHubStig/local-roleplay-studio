@@ -67,6 +67,8 @@ Deno.test('mfluxArgs builds the command line from settings', () => {
   const klein = findMfluxModel('flux2-klein-4b')!
   assertEquals(mfluxArgs(klein, request('/d', { size: 'square', quantize: 8 }), '/d/x.png'), [
     '--model',
+    'mflux-community/flux2-klein-4b-mflux-bf16',
+    '--base-model',
     'flux2-klein-4b',
     '--prompt',
     'a studio',
@@ -369,6 +371,22 @@ Deno.test('upscaleArgs upscales the shortest edge to 2048 with the chosen SeedVR
       '/d/x.png',
     ],
   )
+})
+
+Deno.test('mfluxArgs runs FLUX.2 Klein 4B and 9B from the saved copies', () => {
+  for (const size of ['4b', '9b']) {
+    const args = mfluxArgs(
+      findMfluxModel(`flux2-klein-${size}`)!,
+      request('/d', { steps: 4 }),
+      'o.png',
+    )
+    assertEquals(args.slice(0, 4), [
+      '--model',
+      `mflux-community/flux2-klein-${size}-mflux-bf16`,
+      '--base-model',
+      `flux2-klein-${size}`,
+    ])
+  }
 })
 
 Deno.test('mfluxArgs runs Krea 2, and Krea 2 + LoRA, from the saved copy', () => {
