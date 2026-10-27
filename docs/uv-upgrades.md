@@ -27,7 +27,7 @@ The direct Git dependencies are pinned to specific commits in the scripts' metad
 5. Run the import/CLI checks below for every script supported on that machine. Then run one real smoke job per supported backend, using public benchmark images and temporary output paths when weights are already cached.
 6. Inspect `git diff` for every lockfile. A uv-only update should normally leave the script metadata and lockfiles unchanged. If uv requires lockfile changes, review them and rerun the affected smoke tests; do not hide them by reverting lockfiles.
 
-The installed uv version and managed Python versions are useful to record with any failure. Record machine, date, interpreter version, lock-check result, and which GPU jobs were run in [research/windows.md](./research/windows.md) or a dated research note for the Mac.
+Record each machine's uv version, managed Python versions, lock-check result, and any smoke jobs in its rolling log: [Mac](./research/uv-upgrade-log-mac.md) and [Windows](./research/uv-upgrade-log-windows.md). Include the date and machine with each entry.
 
 ## Commands on each machine
 
