@@ -833,7 +833,7 @@ The first step of "Editing a Frame's picture" (open-threads.md): `mflux-generate
 
 ### Edits through ComfyUI (Windows PC)
 
-ComfyUI runs two edit models (`server/images/comfyui/models.ts`, `COMFYUI_EDITORS`), each on its Image Model's own files, so nothing more is downloaded: Qwen-Image 2.1 Edit (`qwen_image_2.1_int8_convrot`, `qwen3vl_8b_int8_convrot`, `qwen_image_2.1_vae_bf16`) at 25 steps, and FLUX.3 Klein distilled (`flux3_image_klein_sd_int8_convrot`, `qwen3vl_4b_int8_convrot`, `flux2-vae`) at 16, as in ComfyUI's templates. The pictures were rendered from the public tavern scenario (`scenarios/tavern.md`), not taken from a Session. RTX 4070 (12 GB), 16 GB of RAM, ComfyUI 0.42.5.
+ComfyUI now has four edit models (`server/images/comfyui/models.ts`, `COMFYUI_EDITORS`). The first two described here use their Image Model's own files, so nothing more is downloaded: Qwen-Image 2.1 Edit (`qwen_image_2.1_int8_convrot`, `qwen3vl_8b_int8_convrot`, `qwen_image_2.1_vae_bf16`) at 25 steps, and FLUX.3 Klein distilled (`flux3_image_klein_sd_int8_convrot`, `qwen3vl_4b_int8_convrot`, `flux2-vae`) at 16, as in ComfyUI's templates. The pictures were rendered from the public tavern scenario (`scenarios/tavern.md`), not taken from a Session. RTX 4070 (12 GB), 16 GB of RAM, ComfyUI 0.42.5.
 
 **First trials** (2026-10-24), with the first workflows, which gave the model the picture but not the painted area, and pasted the result back through the mask; a hand repainted at 832×1216:
 
@@ -852,6 +852,20 @@ ComfyUI runs two edit models (`server/images/comfyui/models.ts`, `COMFYUI_EDITOR
 - **So both went in**: the box tells FLUX.3 where, and the noise mask holds the rest of the picture while it paints. Qwen has no boxes, but takes the noise mask the same way. Each edit is still pasted back through the mask, so nothing outside it moves.
 - **Through the app** (`comfyuiImageGenerator().edit`, the same picture and mask): FLUX.3 in 13.6 s, a whole tankard in place, though with a stray strap down one side; Qwen in 29.1 s, a smaller, cleaner one. Outside the mask a mean change of 0.01 each, the most 17–22 in the softened rim the paste-back blends across.
 - **Not tried yet**: Qwen's hand again with the noise mask, more seeds, and two painted areas in one FLUX.3 edit (each gets its own box).
+
+### FIBO 2.0 on ComfyUI (2026-10-27, Windows PC)
+
+With the int8 Comfy-Org repack on the RTX 4070 (12 GB VRAM, 16 GB RAM), ComfyUI 0.43.0, using the app's `comfyuiImageGenerator` directly against its local API. One render each at 832×1216; the prompt described a rain-soaked tavern, a traveller at a window table, and an innkeeper setting down a mug. FIBO Dev used seed 42; both edits used the same render, seed 43, and a rectangular mask over the mug.
+
+| Model and task | Steps / CFG | App call | Peak VRAM | Least free RAM | Result |
+|---|---:|---:|---:|---:|---|
+| FIBO 2.0 Dev, text-to-image | 50 / 5 | 63.0 s | 11,518 MiB | 3,491 MiB | Rainy tavern scene with both people and the innkeeper serving the mug; painterly, with illegible sign text and a signature-like mark |
+| FIBO 2.0 Dev Edit, painted mug | 50 / 5 | 127.7 s | 11,451 MiB | 2,439 MiB | Replaced the mug with a silver tankard and blue stag; preserved the scene |
+| FIBO 2.0 Edit Turbo, painted mug | 4 / 1 | 13.4 s | 11,490 MiB | 3,069 MiB | Similar tankard edit in about one tenth of the Dev Edit time |
+
+Memory was sampled about twice a second with `nvidia-smi` and Windows' available physical memory counter; VRAM includes roughly 1.3 GiB already in use before each run. Pixel comparison of each edit with its source found a mean absolute RGB change of 23.2 (Dev) and 26.0 (Turbo) inside the mask, and exactly 0 outside it across 993,512 pixels. These are single runs, not a benchmark; the text model was not loaded. The tests used the typed instruction directly; adding a box-style location caption as with FLUX.3 was not compared.
+
+The FIBO edit workflows use the reference image's VAE-encoded latent with the painted noise mask; both edits changed only pixels inside the mask. Only int8 weights were run. The file picker accepts the named bf16 DiT and text-encoder alternatives, but neither was tested with an actual render.
 
 
 ### Upscaler

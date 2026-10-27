@@ -23,6 +23,11 @@ export interface ComfyModel {
 const QWEN_IMAGE_2_1_CLIP = { folder: 'text_encoders', patterns: [/^qwen3vl_8b.*\.safetensors$/] }
 const QWEN_IMAGE_2_1_VAE = { folder: 'vae', patterns: [/^qwen_image_2\.1_vae.*\.safetensors$/] }
 const FLUX2_VAE = { folder: 'vae', patterns: [/^flux2-vae.*\.safetensors$/] }
+const FIBO_CLIP = {
+  folder: 'text_encoders',
+  patterns: [/^qwen3vl_4b_int8_convrot\.safetensors$/, /^qwen3vl_4b_bf16\.safetensors$/],
+}
+const FIBO_VAE = { folder: 'vae', patterns: [/^flux2-vae_fibo2\.safetensors$/] }
 
 export const COMFYUI_MODELS: readonly ComfyModel[] = [
   {
@@ -143,6 +148,23 @@ export const COMFYUI_MODELS: readonly ComfyModel[] = [
     },
   },
   {
+    id: 'fibo-2.0',
+    label: 'FIBO 2.0 Dev',
+    defaultSteps: 50,
+    cfg: 5,
+    files: {
+      unet: {
+        folder: 'diffusion_models',
+        patterns: [
+          /^fibo2_dev_int8_convrot\.safetensors$/,
+          /^fibo2_dev_bf16\.safetensors$/,
+        ],
+      },
+      clip: FIBO_CLIP,
+      vae: FIBO_VAE,
+    },
+  },
+  {
     id: 'z-image-turbo',
     label: 'Z-Image Turbo',
     defaultSteps: 8,
@@ -209,6 +231,10 @@ export interface ComfyEditor {
   /** The Image Model whose files and steps it uses (`COMFYUI_MODELS`). */
   model: string
   workflow: string
+  /** Files or sampler settings that differ from the Image Model (`model`). */
+  files?: Pick<ComfyModel, 'label' | 'files'>
+  steps?: number
+  cfg?: number
   /**
    * Its prompt (`prompts/images/<prompt>.md`, and `<prompt>-whole` with nothing painted), told
    * where to paint by boxes (`maskBoxes`); none for the instruction as typed.
@@ -223,6 +249,32 @@ export const COMFYUI_EDITORS: readonly ComfyEditor[] = [
     model: 'flux3-klein',
     workflow: 'flux3-klein-edit',
     prompt: 'flux3-edit',
+  },
+  {
+    id: 'fibo-2.0-dev-edit',
+    model: 'fibo-2.0',
+    workflow: 'fibo-2.0-edit',
+  },
+  {
+    id: 'fibo-2.0-edit-turbo',
+    model: 'fibo-2.0',
+    workflow: 'fibo-2.0-edit-turbo',
+    files: {
+      label: 'FIBO 2.0 Edit Turbo',
+      files: {
+        unet: {
+          folder: 'diffusion_models',
+          patterns: [
+            /^fibo2_edit_turbo_int8_convrot\.safetensors$/,
+            /^fibo2_edit_turbo_bf16\.safetensors$/,
+          ],
+        },
+        clip: FIBO_CLIP,
+        vae: FIBO_VAE,
+      },
+    },
+    steps: 4,
+    cfg: 1,
   },
 ]
 

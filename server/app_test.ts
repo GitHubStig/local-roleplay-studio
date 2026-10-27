@@ -151,6 +151,7 @@ Deno.test('GET /api/settings/options lists Text and Image Models', async () => {
     'flux3-klein',
     'ming-image',
     'moss-image',
+    'fibo-2.0',
     'z-image-turbo',
   ])
 })

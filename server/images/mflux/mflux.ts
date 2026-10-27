@@ -9,6 +9,7 @@ import {
   UPSCALED_EDGE,
   type UpscaleRequest,
 } from '../imageGenerator.ts'
+import { pngSize } from '../png.ts'
 import { findMfluxModel, type Lora, MFLUX_MODELS, type MfluxModel } from './models.ts'
 import { SIZE_PRESETS } from '../../settings.ts'
 
@@ -95,13 +96,6 @@ export function upscaleArgs(req: UpscaleRequest, output: string): string[] {
 /** The command for each edit model mflux runs (ADR 0021). */
 const EDITORS: Record<EditModelOn<'mflux'>, { label: string; command: string }> = {
   'qwen-image-2.1-edit': { label: 'Qwen-Image 2.1 Edit', command: 'mflux-generate-qwen-2.1-edit' },
-}
-
-/** A PNG's width and height, from its header. */
-export function pngSize(bytes: Uint8Array): { width: number; height: number } {
-  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
-  if (bytes.length < 24 || view.getUint32(12) !== 0x49484452) throw new Error('Not a PNG')
-  return { width: view.getUint32(16), height: view.getUint32(20) }
 }
 
 /**

@@ -11,6 +11,7 @@ import {
 } from '../../comfyui/client.ts'
 import { loadPrompt } from '../../promptFiles.ts'
 import { maskBoxes } from '../maskBoxes.ts'
+import { pngSize } from '../png.ts'
 import {
   type ComfyEditor,
   type ComfyModel,
@@ -76,8 +77,9 @@ export function comfyuiImageGenerator(opts: {
       const editor = findComfyEditor(req.model)
       const model = editor && findComfyModel(editor.model)
       if (!editor || !model) throw new Error(`ComfyUI has no edit model "${req.model}" here`)
-      const files = await modelFiles(base, model, signal)
+      const files = await modelFiles(base, editor.files ?? model, signal)
       const image = await Deno.readFile(join(req.dir, req.image))
+      const size = pngSize(image)
       const mask = req.mask ? await Deno.readFile(join(req.dir, req.mask)) : undefined
       const prompt = await editPrompt(editor, req.instruction, mask)
       return withUploads(base, mask ? [image, mask] : [image], async ([image, mask]) => {
@@ -87,7 +89,10 @@ export function comfyuiImageGenerator(opts: {
           mask: mask ? `${mask} [temp]` : '',
           prompt,
           seed: req.seed,
-          steps: model.defaultSteps,
+          steps: editor.steps ?? model.defaultSteps,
+          ...((editor.cfg ?? model.cfg) === undefined ? {} : { cfg: editor.cfg ?? model.cfg }),
+          width: size.width,
+          height: size.height,
         })
         if (!mask) {
           for (const node of ['mask', 'encode', 'masked', 'composite']) delete workflow[node]

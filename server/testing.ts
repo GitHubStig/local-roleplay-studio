@@ -40,6 +40,33 @@ export const scenarioLibrary: ScenarioLibrary = {
 export const promptWith = (pose: string): ImagePrompt =>
   `A person, ${pose}, calm, eye level, a wool coat, in a tavern, lamplight, warm tones, oil painting.`
 
+/** A PNG signature and IHDR header for tests that only need to read image dimensions. */
+export function pngHeader(width: number, height: number): Uint8Array<ArrayBuffer> {
+  const png = new Uint8Array(24)
+  png.set([
+    0x89,
+    0x50,
+    0x4e,
+    0x47,
+    0x0d,
+    0x0a,
+    0x1a,
+    0x0a,
+    0,
+    0,
+    0,
+    13,
+    0x49,
+    0x48,
+    0x44,
+    0x52,
+  ])
+  const view = new DataView(png.buffer)
+  view.setUint32(16, width)
+  view.setUint32(20, height)
+  return png
+}
+
 /** Scripted Storyboard replies for `scriptedTextModel`. */
 export interface Scripts {
   plans?: (StoryboardPlan | Error)[]

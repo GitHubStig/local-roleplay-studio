@@ -1,4 +1,4 @@
-import { assertEquals, assertRejects, assertThrows } from '@std/assert'
+import { assertEquals, assertRejects } from '@std/assert'
 import { fromFileUrl, join } from '@std/path'
 import type { ImageRequest } from '../imageGenerator.ts'
 import { findMfluxModel, type MfluxModel } from './models.ts'
@@ -10,7 +10,6 @@ import {
   mfluxArgs,
   mfluxImageGenerator,
   parseProgress,
-  pngSize,
   upscaleArgs,
 } from './mflux.ts'
 import { DEFAULT_SETTINGS } from '../../settings.ts'
@@ -62,15 +61,6 @@ Deno.test("editArgs edits at the picture's size in 8 bits and low RAM, with its 
     '--height',
     '672',
   ])
-})
-
-Deno.test("pngSize reads a PNG's width and height from its header", () => {
-  const png = new Uint8Array(24)
-  png.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, 0x49, 0x48, 0x44, 0x52])
-  new DataView(png.buffer).setUint32(16, 1216)
-  new DataView(png.buffer).setUint32(20, 832)
-  assertEquals(pngSize(png), { width: 1216, height: 832 })
-  assertThrows(() => pngSize(new TextEncoder().encode('<svg></svg>')), Error, 'Not a PNG')
 })
 
 Deno.test('mfluxArgs builds the command line from settings', () => {

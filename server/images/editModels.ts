@@ -9,6 +9,8 @@ import type { ImageBackendKind } from './imageModels.ts'
 export const EDIT_MODELS = [
   { id: 'qwen-image-2.1-edit', label: 'Qwen-Image 2.1 Edit', backends: ['mflux', 'comfyui'] },
   { id: 'flux3-klein-edit', label: 'FLUX.3 Klein Edit', backends: ['comfyui'] },
+  { id: 'fibo-2.0-dev-edit', label: 'FIBO 2.0 Dev Edit', backends: ['comfyui'] },
+  { id: 'fibo-2.0-edit-turbo', label: 'FIBO 2.0 Edit Turbo', backends: ['comfyui'] },
 ] as const satisfies readonly {
   id: string
   label: string

@@ -1,7 +1,7 @@
 import { assertEquals, assertRejects, assertThrows } from '@std/assert'
 import { join } from '@std/path'
 import { DEFAULT_SETTINGS, type Settings } from '../../settings.ts'
-import { paintedMask, withTempDir } from '../../testing.ts'
+import { paintedMask, pngHeader, withTempDir } from '../../testing.ts'
 import type { EditRequest } from '../imageGenerator.ts'
 import { fillWorkflow } from '../../comfyui/client.ts'
 import { fakeComfyUI as fakeServer } from '../../comfyui/testing.ts'
@@ -19,8 +19,8 @@ const MAC_FILES: Record<string, string[]> = {
 }
 
 /**
- * The Windows PC's: Qwen-Image 2.1 and its Turbo, FLUX.2 Klein 4B, FLUX.3 Klein, Ming-Image,
- * MOSS-Image and Z-Image Turbo.
+ * The Windows PC's other installed models: Qwen-Image 2.1 and its Turbo, FLUX.2 Klein 4B,
+ * FLUX.3 Klein, Ming-Image, MOSS-Image and Z-Image Turbo.
  */
 const PC_FILES: Record<string, string[]> = {
   diffusion_models: [
@@ -46,6 +46,16 @@ const PC_FILES: Record<string, string[]> = {
     'ming_image_vae_bf16.safetensors',
     'qwen_image_2.1_vae_bf16.safetensors',
   ],
+}
+
+const FIBO_TEST_FILES: Record<string, string[]> = {
+  ...PC_FILES,
+  diffusion_models: [
+    ...PC_FILES.diffusion_models,
+    'fibo2_dev_int8_convrot.safetensors',
+    'fibo2_edit_turbo_int8_convrot.safetensors',
+  ],
+  vae: [...PC_FILES.vae, 'flux2-vae_fibo2.safetensors'],
 }
 
 /** A stand-in ComfyUI with the Mac's model files, unless told others. */
@@ -105,15 +115,18 @@ Deno.test('A ComfyUI render fills the workflow with the installed files, follows
 
 type Nodes = Record<string, { class_type: string; inputs: Record<string, unknown> }>
 
-/** An edit of a 100×50 picture (a stand-in: ComfyUI's fake doesn't read it) on the PC's files. */
+/** An edit of a 100×50 stand-in image against a fake ComfyUI model inventory. */
 async function comfyEdit(
   dir: string,
   model: EditRequest['model'],
   mask?: Uint8Array<ArrayBuffer>,
 ) {
-  const comfy = fakeComfyUI({ files: PC_FILES })
+  const comfy = fakeComfyUI({ files: FIBO_TEST_FILES })
   try {
-    await Deno.writeFile(join(dir, 'frame.png'), new Uint8Array(500))
+    // Padded past the 100 bytes that tell a real upload from its blanked stub.
+    const frame = new Uint8Array(500)
+    frame.set(pngHeader(100, 50))
+    await Deno.writeFile(join(dir, 'frame.png'), frame)
     if (mask) await Deno.writeFile(join(dir, 'mask.png'), mask)
     const file = await comfyuiImageGenerator({ address: comfy.url }).edit(
       {
@@ -168,6 +181,95 @@ Deno.test('A ComfyUI edit repaints only the painted area, on the Image Model’s
       [uploads[0].name, true],
       [uploads[1].name, true],
     ])
+  }))
+
+Deno.test('FIBO 2.0 Dev renders prose prompts with its native encoder and sampling defaults', () =>
+  withTempDir(async (dir) => {
+    const model = findComfyModel('fibo-2.0')!
+    assertEquals([model.defaultSteps, model.cfg], [50, 5])
+    assertEquals(findComfyModel('fibo-2.0-edit-turbo'), undefined)
+    const comfy = fakeComfyUI({ files: FIBO_TEST_FILES })
+    try {
+      await comfyuiImageGenerator({ address: comfy.url }).generate(
+        {
+          prompt: 'A painted wooden tankard on a tavern table.',
+          seed: 7,
+          settings: settings({ imageModel: 'fibo-2.0', steps: 50 }),
+          dir,
+          name: 'fibo',
+        },
+        new AbortController().signal,
+      )
+      const [workflow] = comfy.queued as Nodes[]
+      assertEquals(workflow.unet.inputs.unet_name, 'fibo2_dev_int8_convrot.safetensors')
+      assertEquals(workflow.clip.inputs, {
+        clip_name: 'qwen3vl_4b_int8_convrot.safetensors',
+        type: 'fibo2',
+        device: 'default',
+      })
+      assertEquals(workflow.vae.inputs.vae_name, 'flux2-vae_fibo2.safetensors')
+      assertEquals(workflow.conditioning.inputs, {
+        clip: ['clip', 0],
+        prompt: 'A painted wooden tankard on a tavern table.',
+        negative_prompt: '',
+        width: 1024,
+        height: 1024,
+        batch_size: 1,
+      })
+      assertEquals(
+        [
+          workflow.sampler.inputs.seed,
+          workflow.sampler.inputs.steps,
+          workflow.sampler.inputs.cfg,
+          workflow.sampler.inputs.latent_image,
+        ],
+        [7, 50, 5, ['conditioning', 2]],
+      )
+    } finally {
+      await comfy.close()
+    }
+  }))
+
+Deno.test('FIBO 2.0 edit models use the reference, painted noise mask and preserve unpainted pixels', () =>
+  withTempDir(async (dir) => {
+    for (
+      const [model, unet, steps, cfg] of [
+        ['fibo-2.0-dev-edit', 'fibo2_dev_int8_convrot.safetensors', 50, 5],
+        ['fibo-2.0-edit-turbo', 'fibo2_edit_turbo_int8_convrot.safetensors', 4, 1],
+      ] as const
+    ) {
+      const { workflow: w, uploads } = await comfyEdit(
+        dir,
+        model,
+        await paintedMask(100, 50, [10, 10, 30, 30]),
+      )
+      assertEquals(w.unet.inputs.unet_name, unet)
+      assertEquals(w.clip.inputs.type, 'fibo2')
+      assertEquals(w.conditioning.inputs['images.image_1'], ['image', 0])
+      assertEquals(w.conditioning.inputs.prompt, 'An open hand.')
+      assertEquals(
+        [w.conditioning.inputs.width, w.conditioning.inputs.height],
+        [100, 50],
+      )
+      assertEquals(w.sampler.inputs.latent_image, ['masked', 0])
+      assertEquals([w.sampler.inputs.steps, w.sampler.inputs.cfg], [steps, cfg])
+      assertEquals(w.encode.inputs, { pixels: ['image', 0], vae: ['vae', 0] })
+      assertEquals(w.masked.inputs.samples, ['encode', 0])
+      assertEquals(w.save.inputs.images, ['composite', 0])
+      assertEquals(uploads.map((u) => u.bytes < 100), [false, false, true, true])
+    }
+  }))
+
+Deno.test('FIBO 2.0 Dev edit repaints the whole reference when no area is painted', () =>
+  withTempDir(async (dir) => {
+    const { workflow: w, uploads } = await comfyEdit(dir, 'fibo-2.0-dev-edit')
+    assertEquals(w.mask, undefined)
+    assertEquals(w.masked, undefined)
+    assertEquals(w.composite, undefined)
+    assertEquals(w.sampler.inputs.latent_image, ['conditioning', 2])
+    assertEquals(w.save.inputs.images, ['rgb', 0])
+    assertEquals(w.rgb.class_type, 'SplitImageWithAlpha')
+    assertEquals(uploads.map((u) => u.bytes < 100), [false, true])
   }))
 
 Deno.test('A ComfyUI FLUX.3 edit is told where to paint, as a box for each painted area', () =>
@@ -366,7 +468,7 @@ Deno.test('Every ComfyUI workflow loads, and fills with nothing left over', asyn
     ...COMFYUI_MODELS.map((model) => ({
       id: model.id,
       values: {
-        ...pickFiles(model, (folder) => PC_FILES[folder] ?? []),
+        ...pickFiles(model, (folder) => FIBO_TEST_FILES[folder] ?? []),
         prompt: 'p',
         seed: 1,
         steps: 2,
@@ -375,17 +477,24 @@ Deno.test('Every ComfyUI workflow loads, and fills with nothing left over', asyn
         height: 512,
       },
     })),
-    ...COMFYUI_EDITORS.map((editor) => ({
-      id: editor.workflow,
-      values: {
-        ...pickFiles(findComfyModel(editor.model)!, (folder) => PC_FILES[folder] ?? []),
-        image: 'x.png [temp]',
-        mask: 'mask.png [temp]',
-        prompt: 'p',
-        seed: 1,
-        steps: 2,
-      },
-    })),
+    ...COMFYUI_EDITORS.map((editor) => {
+      const model = findComfyModel(editor.model)!
+      const cfg = editor.cfg ?? model.cfg
+      return {
+        id: editor.workflow,
+        values: {
+          ...pickFiles(editor.files ?? model, (folder) => FIBO_TEST_FILES[folder] ?? []),
+          image: 'x.png [temp]',
+          mask: 'mask.png [temp]',
+          prompt: 'p',
+          seed: 1,
+          steps: editor.steps ?? model.defaultSteps,
+          width: 512,
+          height: 512,
+          ...(cfg === undefined ? {} : { cfg }),
+        },
+      }
+    }),
     ...COMFYUI_UPSCALERS.map((upscaler) => ({
       id: 'seedvr2',
       values: {
@@ -427,6 +536,32 @@ Deno.test('Files are picked by the first pattern installed, so each machine can 
   assertEquals(
     pickFiles(qwen, (f) => both[f as keyof typeof both] ?? []).unet,
     'qwen_image_2.1_int8_convrot.safetensors',
+  )
+})
+
+Deno.test('FIBO files fall back to the supported bf16 variants when int8 files are absent', () => {
+  const installed: Record<string, string[]> = {
+    diffusion_models: ['fibo2_dev_bf16.safetensors', 'fibo2_edit_turbo_bf16.safetensors'],
+    text_encoders: ['qwen3vl_4b_bf16.safetensors'],
+    vae: ['flux2-vae_fibo2.safetensors'],
+  }
+  const dev = findComfyModel('fibo-2.0')!
+  const turbo = COMFYUI_EDITORS.find((editor) => editor.id === 'fibo-2.0-edit-turbo')!
+  assertEquals(
+    pickFiles(dev, (folder) => installed[folder] ?? []),
+    {
+      unet: 'fibo2_dev_bf16.safetensors',
+      clip: 'qwen3vl_4b_bf16.safetensors',
+      vae: 'flux2-vae_fibo2.safetensors',
+    },
+  )
+  assertEquals(
+    pickFiles(turbo.files!, (folder) => installed[folder] ?? []),
+    {
+      unet: 'fibo2_edit_turbo_bf16.safetensors',
+      clip: 'qwen3vl_4b_bf16.safetensors',
+      vae: 'flux2-vae_fibo2.safetensors',
+    },
   )
 })
 

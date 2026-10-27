@@ -1,0 +1,67 @@
+{
+  "_note": "FIBO 2.0 Dev editing a reference image with ComfyUI's native TextEncodeFibo2 node, 50 steps and CFG 5. The VAE-encoded reference latent is noise-masked to the painted area and composited back outside it. $names are filled in by server/images/comfyui/comfyui.ts.",
+  "unet": {
+    "class_type": "UNETLoader",
+    "inputs": { "unet_name": "$unet", "weight_dtype": "default" }
+  },
+  "clip": {
+    "class_type": "CLIPLoader",
+    "inputs": { "clip_name": "$clip", "type": "fibo2", "device": "default" }
+  },
+  "vae": { "class_type": "VAELoader", "inputs": { "vae_name": "$vae" } },
+  "image": { "class_type": "LoadImage", "inputs": { "image": "$image" } },
+  "mask": { "class_type": "LoadImageMask", "inputs": { "image": "$mask", "channel": "red" } },
+  "conditioning": {
+    "class_type": "TextEncodeFibo2",
+    "inputs": {
+      "clip": ["clip", 0],
+      "vae": ["vae", 0],
+      "images.image_1": ["image", 0],
+      "prompt": "$prompt",
+      "negative_prompt": "",
+      "width": "$width",
+      "height": "$height",
+      "batch_size": 1
+    }
+  },
+  "encode": { "class_type": "VAEEncode", "inputs": { "pixels": ["image", 0], "vae": ["vae", 0] } },
+  "masked": {
+    "class_type": "SetLatentNoiseMask",
+    "inputs": { "samples": ["encode", 0], "mask": ["mask", 0] }
+  },
+  "sampler": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": ["unet", 0],
+      "seed": "$seed",
+      "steps": "$steps",
+      "cfg": "$cfg",
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "positive": ["conditioning", 0],
+      "negative": ["conditioning", 1],
+      "latent_image": ["masked", 0],
+      "denoise": 1
+    }
+  },
+  "decode": {
+    "class_type": "VAEDecode",
+    "inputs": { "samples": ["sampler", 0], "vae": ["vae", 0] }
+  },
+  "rgb": { "class_type": "SplitImageWithAlpha", "inputs": { "image": ["decode", 0] } },
+  "composite": {
+    "class_type": "ImageCompositeMasked",
+    "inputs": {
+      "destination": ["image", 0],
+      "source": ["rgb", 0],
+      "mask": ["mask", 0],
+      "x": 0,
+      "y": 0,
+      "resize_source": false
+    }
+  },
+  "save": {
+    "class_type": "SaveImageWebsocket",
+    "inputs": { "images": ["composite", 0] }
+  }
+}
