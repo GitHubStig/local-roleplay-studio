@@ -17,9 +17,7 @@ A `uv tool` on uv's managed Python 3.14, with the commands on the PATH (`~/.loca
 uv tool install --managed-python --python 3.14 mflux
 ```
 
-mflux 0.23 and older needed `--with 'pillow<13'` (added 2026-10-17): they fail to import with Pillow 13.0 on Python 3.14.4. 0.24.0 requires Pillow 13 or newer, so the pin was dropped on 2026-10-27. The app only needs the commands to exist; it finds mflux through `mflux-generate-flux2` on the PATH (`server/features.ts`) and calls the per-model commands from `server/images/mflux/`.
-
-The project is now at <https://github.com/mflux-community/mflux> (it moved from Filip Strand's account in August 2026); the README still credits him.
+The app only needs the commands to exist; it finds mflux through `mflux-generate-flux2` on the PATH (`server/features.ts`) and calls the per-model commands from `server/images/mflux/`.
 
 ## Routine
 
@@ -28,7 +26,7 @@ The project is now at <https://github.com/mflux-community/mflux> (it moved from 
 3. **Separate what is known from what needs testing.** A changelog entry is evidence that code changed, not that the app's issue is fixed. Label unverified fixes and run a focused check before calling one resolved.
 4. **Present new models; do not download them.** For anything newly supported, give the official source, size, license or gating, the command, and the likely fit on the 48 GB Mac. Ask which, if any, to try. Weights are large; downloads wait for a yes.
 5. **Ask before upgrading if the release changes the install**, such as a new Python minimum, a changed pin, or a new required flag. A routine release can be installed straight away.
-6. **Install.** Reinstall with the command above, adjusted for the release (drop or change the `--with` pins the notes make obsolete), rather than `uv tool upgrade mflux`. `uv tool upgrade` honours the requirements the tool was first installed with, so an old `--with` pin carries over, and the 0.23 upgrade pulled in Pillow 13 and broke every command. A plain `uv tool install --upgrade mflux …` with the full intended options writes them afresh. Then check `uv tool list` and that `mflux-generate-flux2 --help` runs.
+6. **Install.** Reinstall with the command above, adjusted for the release (drop or change the `--with` pins the notes make obsolete), rather than `uv tool upgrade mflux`. `uv tool upgrade` honours the requirements the tool was first installed with, so an old `--with` pin carries over. A plain `uv tool install --upgrade mflux …` with the full intended options writes them afresh. Then check `uv tool list` and that `mflux-generate-flux2 --help` runs.
 7. **Smoke-check with models already cached.** Render one small picture (512², few steps) with FLUX.2 Klein 4B, and one with each other Image Model the release touched that is already cached. Check at least that the command-line flags the app passes are still accepted (`--low-ram`, the model and step flags, quantize or precision flags) and that the app shows the picture. Use a public input (`scenarios/tavern.md`), not a real Session. Note any model that fetched new files: 0.23 pins each built-in model to a Hugging Face commit, so an upgrade can fetch changed files, and the app reports a download when it happens.
 8. **Benchmarks are scheduled, not run.** A speed, memory or quality comparison is a long GPU run: say what will run, how long, what it downloads, and what it measures, and wait for the owner to pick a time when the Mac is otherwise idle. A smoke render's timing is not a benchmark.
 9. **Record the result.** Append a dated section to [research/mflux-upgrade-log.md](./research/mflux-upgrade-log.md) (newest first): versions, sources, checks run, pass or fail, and what was not tested. Update `image-model-setup.md` if the install command changed. Add selected and measured models to `models.md`; keep ideas in `open-threads.md`. Check the open threads that name mflux, such as the Qwen-Image 2.1 Turbo text encoder stored twice.
