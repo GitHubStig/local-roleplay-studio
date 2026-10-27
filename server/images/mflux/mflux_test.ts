@@ -152,6 +152,12 @@ Deno.test("mfluxArgs picks a preset model's preset by the steps, else its defaul
 
 Deno.test("mfluxArgs passes a model's own arguments", () => {
   const args = mfluxArgs(findMfluxModel('ming-image')!, request('/d', { quantize: 8 }), 'o.png')
+  assertEquals(args.slice(0, 4), [
+    '--model',
+    'mflux-community/ming-image-0-1-mflux-q8',
+    '--base-model',
+    'ming-image-design',
+  ])
   assertEquals(args.includes('--flatten-alpha'), true)
   assertEquals(args.includes('--quantize'), false)
 })

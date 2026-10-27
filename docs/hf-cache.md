@@ -6,7 +6,7 @@
 
 The cache holds each file once, as a blob, and each repo's `snapshots/` folder links to it. `hf cache rm` deletes a repo's links and then deletes a blob only if nothing else uses it. For that it relies on a `<blob>.refs` file beside each shared blob (hub/blobs/<two hex digits>/<sha256>).
 
-On 2026-10-27 the split showed up in one removal: two repos downloaded by `hf` 2.3.0 freed their space (59 GB), and two older ones fetched by mflux left 62.4 GB behind.
+On 2026-10-27 the split showed up in one removal: two repos downloaded by `hf` 2.3.0 freed their space (59 GB), and two older ones fetched by mflux left 62.4 GB behind. Not every older repo does: `joeynyc/Ming-Image-0.1-Design-mflux-q8-te5`, fetched two weeks before, freed its 19.2 GB and left nothing, so always run the check.
 
 The Mac's shared store was written by `huggingface_hub` 1.33.0, which mflux and mlx-audio each carry in their own `uv tool` environment, and it has no `.refs` files and no `.huggingface-shared-blobs` marker. The `hf` command (2.2.0 on 2026-10-27; 2.3.0 after `hf update` the same day) can't tell those blobs are free, so it leaves them. A cache downloaded by the 2.2.0 CLI cleaned up correctly in a test (a tiny repo: 552 KB before, 8 KB of lock files after). It also ignores them when it lists: `hf cache ls` warns "Repo path is not a valid HuggingFace cache directory: …/hub/blobs. Repo ignored." (the "1 cache inconsistencies" notice, shown in full with `--show-warnings`), so its total leaves the shared store out. So this should fade as models are downloaded again by newer libraries, and mflux's own version bump (`huggingface_hub` inside `uv tool list`) is what to watch. New and old blobs are mixed in the cache until then.
 

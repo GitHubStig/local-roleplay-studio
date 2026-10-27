@@ -185,9 +185,9 @@ export const MFLUX_MODELS: readonly MfluxModel[] = [
     id: 'ming-image',
     label: 'Ming-Image 0.1 Design',
     command: 'mflux-generate-ming',
-    // mflux's saved copy as its README recommends: the DiT at 8 bits (4 breaks the lettering), the
-    // ~16B MoE text encoder at 5, which still matches the original (19 GB, against 53 GB unsaved).
-    model: 'joeynyc/Ming-Image-0.1-Design-mflux-q8-te5',
+    // mflux-community's saved 8-bit copy: the DiT at 8 bits (4 breaks the lettering), and the ~16B MoE
+    // text encoder at 8 too (25 GB, against 53 GB unsaved).
+    model: 'mflux-community/ming-image-0-1-mflux-q8',
     baseModel: 'ming-image-design',
     preQuantized: true,
     defaultSteps: 12,
