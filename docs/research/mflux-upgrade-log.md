@@ -89,6 +89,22 @@ Decision (the owner, 2026-10-27): leave Qwen-Image 2.1 on the original. The comm
 
 Measured on Z-Image Turbo (mflux-community's 4-bit copy, 832×1216, 9 steps, seed 42, `--low-ram`, float16), two runs each, wall clock including the model load: default 28 s and 29 s, `--vae-full-precision` 28 s and 29 s. Peak memory 4.40 GB for both. The default decode reproduces the picture from earlier today exactly; `--vae-full-precision` gives a slightly different one (mean difference 0.47 of 255, maximum 43). So at this size the decode is not what sets the process's peak, and there is nothing to gain by changing the flag. Not measured: larger pictures, or the other six models. The speed, memory and picture numbers in [models.md](../models.md) for these models were taken on 0.22 or 0.23, with the older decode.
 
+### MOSS-Image on mflux 0.24.0: added, but black from long prompts (Mac, 2026-10-27)
+
+`mflux-generate-moss-image` with `mflux-community/moss-image-sft-mflux-bf16` (26.2 GB, Apache-2.0, not gated; the community also has q8 14.0 GB, q6 10.7, q4 7.5, q5 and q3). Downloaded with `hf download` on its own: **633 s**. mflux's defaults are 50 steps and guidance 3 (the negative branch skips layer 22, so two transformer passes a step); the app's entry uses them too (ComfyUI's template runs 25 and 2.5; not compared on mflux). A saved copy has only `mflux_model.json` and the tokenizer, no `config.json` in the folders, so a future edit command that wants the maker's layout could refuse it, as Qwen-Image 2.1's did. mflux has no MOSS edit command today (`Moss-Image-Edit` loads as a LoRA but the port takes no reference images).
+
+**It doesn't work on 0.24.0 for the app's prompts.** The Qwen3.5 text encoder's Gated DeltaNet goes non-finite on longer prompts and the picture comes out all black ("invalid value encountered in cast"). Seed 42, `--low-ram`, bf16, from cache:
+
+| Run | Result |
+|---|---|
+| Tavern Image Prompt (nine sentences, 350 tokens), 832×1216, 50 steps, guidance 3 | black, twice: 249 s and 246 s, peak MLX memory 26.83 GB |
+| Same prompt at 512², 6 steps | black; also with `-q 8`, and without `--low-ram` |
+| First 4 sentences (145 words, ~180 tokens) | renders |
+| First 5 sentences (176 words, ~217 tokens) | black |
+| Fox prompt, 512² and 832×1216, 10 steps | renders (18 s at 512²) |
+
+So the limit here is about 200 tokens, and the quotes don't matter. It is mflux issue #920 (reported at ~500 tokens), fixed by PR #939, merged on 2026-10-27 after the 0.24.0 release. Decision (the owner): wait for 0.24.1 rather than install from main. Not tested: any picture, so nothing is known yet of how it draws, the steps or guidance, the 8- and 4-step LoRAs, or q8 and q4.
+
 ### Still to do
 
 Render through the app with the Image Models already cached, and compare the flags with `server/images/mflux/` (the release review above was not compared with them yet). Not tried: Anima, Iris-3B, MOSS-Image on mflux (`--lora`, with the community's 8- and 4-step LoRAs), FIBO 2, `--small-text-encoder` and `--small-decoder`. Adding the new models is next.

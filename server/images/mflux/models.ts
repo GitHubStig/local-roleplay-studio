@@ -144,6 +144,20 @@ export const MFLUX_MODELS: readonly MfluxModel[] = [
     defaultSteps: 4,
   },
   {
+    id: 'moss-image',
+    label: 'MOSS-Image',
+    command: 'mflux-generate-moss-image',
+    // OpenMOSS's instruction-tuned checkpoint (Apache-2.0) from mflux-community's bf16 copy (26.2 GB,
+    // fetched on first use); Settings' Quantize converts it as it loads. Real CFG, so two passes a step.
+    // mflux's own 50 steps and guidance 3 (the model card's), not yet judged: mflux 0.24.0's text
+    // encoder returns NaN (a black picture) for prompts over ~200 tokens, so wait for the release with
+    // the fix (docs/open-threads.md).
+    model: 'mflux-community/moss-image-sft-mflux-bf16',
+    baseModel: 'moss-image-sft',
+    defaultSteps: 50,
+    cfg: 3,
+  },
+  {
     id: 'qwen-image-2.1',
     label: 'Qwen-Image 2.1',
     command: 'mflux-generate-qwen-2.1',

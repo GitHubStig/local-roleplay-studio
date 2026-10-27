@@ -176,6 +176,26 @@ Deno.test('mfluxArgs runs FIBO 1.5 as FIBO, at its own guidance', () => {
   ])
 })
 
+Deno.test('mfluxArgs runs MOSS-Image from the community copy, at real guidance', () => {
+  const args = mfluxArgs(findMfluxModel('moss-image')!, request('/d'), 'o.png')
+  assertEquals(args.slice(0, 4), [
+    '--model',
+    'mflux-community/moss-image-sft-mflux-bf16',
+    '--base-model',
+    'moss-image-sft',
+  ])
+  assertEquals(args.slice(args.indexOf('--guidance'), args.indexOf('--guidance') + 2), [
+    '--guidance',
+    '3',
+  ])
+  assertEquals(args.includes('--compute-precision'), false)
+  const q8 = mfluxArgs(findMfluxModel('moss-image')!, request('/d', { quantize: 8 }), 'o.png')
+  assertEquals(q8.slice(q8.indexOf('--quantize'), q8.indexOf('--quantize') + 2), [
+    '--quantize',
+    '8',
+  ])
+})
+
 Deno.test('curlQuotes turns straight double quotes curly', () => {
   assertEquals(
     curlQuotes('a sign reads "OPEN" and she says ("Yo!") "Hi"'),

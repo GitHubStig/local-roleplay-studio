@@ -639,6 +639,10 @@ The 0.22 to 0.23 upgrade itself is in [research/mflux-upgrade-log.md](research/m
 
 Also in 0.23, not used yet: `mflux-generate-flux3-edit` (up to ten reference images, a lighter candidate for Subject consistency than Qwen-Image 2.1's edit; open-threads.md), FLUX.3 LoRAs, and `mflux-generate-krea2-controlnet` (Krea 2 Turbo from a depth map).
 
+### MOSS-Image on mflux (2026-10-27, Mac): added, not usable yet
+
+Added as `moss-image` (the same name as on ComfyUI, "MOSS-Image on ComfyUI", above), from mflux-community's bf16 copy (26.2 GB; Apache-2.0), with mflux's own 50 steps and guidance 3 (ComfyUI's template runs 25 and 2.5; not compared on mflux). Measured on the Mac (M5 Pro, 48 GB, mflux 0.24.0, 832×1216, seed 42, `--low-ram`, bf16): download 633 s; peak MLX memory 26.83 GB; a 50-step render took 249 s and 246 s from cache, **but the picture is black**: mflux 0.24.0's Qwen3.5 text encoder returns NaN for prompts over about 200 tokens, and every Image Prompt is longer. Fixed on mflux's main after the release; waiting for 0.24.1. So there is no quality, speed or step finding yet, and the times above are of a run that drew nothing. Details and the prompt-length bisect: [research/mflux-upgrade-log.md](research/mflux-upgrade-log.md); what's left to try: open-threads.md.
+
 ### Viggle or Qwen's Turbo: a quick Qwen-Image 2.1 (2026-10-17)
 
 Two Image Models render Qwen-Image 2.1 in about half its time: **Viggle's turbo LoRA** on it (`qwen-image-2.1-viggle`, 6 steps) and **Qwen's own distilled Turbo** (`qwen-image-2.1-turbo`, 8 steps). Compared on the Mac (mflux 0.23) on the Chain of 31 Frames that the style scores were chosen on, each Frame asking for an art style of its own, all three rendered from the same Image Prompts and seed, then embedded for the Compare dialog's style scores ([research/style-scores.md](research/style-scores.md)):
