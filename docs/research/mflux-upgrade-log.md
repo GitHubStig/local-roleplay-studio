@@ -67,6 +67,12 @@ Qwen-Image 2.1 (`qwen-image-2.1`, and `qwen-image-2.1-viggle`, which is the same
 
 Decision (the owner, 2026-10-27): leave Qwen-Image 2.1 on the original. The community copy was removed from the cache again (below). **Check at each mflux release** whether the edit command accepts mflux-community's Qwen-Image 2.1 (a complete export, or an edit that loads the visual encoder from the original repo), then move generation and edits together ([open-threads.md](../open-threads.md)).
 
+### VAE decode in bf16 row strips: on by default, no gain seen on Z-Image Turbo (Mac, 2026-10-27)
+
+0.24's release notes say several models now decode the VAE in bf16 row strips (about 1.6 GB at 1024×1024, against 8.6 GB for the earlier full-image fp32 decode, which `--vae-full-precision` brings back). Read from the code: the initializers of FLUX.2 (Klein 4B and 9B), FLUX.3 Klein, Z-Image (Turbo and base), ERNIE-Image, Ideogram 4, FIBO 2 and Lens set `vae.decode_mode = LOW_MEMORY` unconditionally, whether or not `--low-ram` is used, and `--vae-full-precision` defaults to off. The app never passes it, so seven of its mflux Image Models (FLUX.2 Klein 4B and 9B, FLUX.3 Klein, Z-Image Turbo, Z-Image, ERNIE-Image Turbo and Ideogram 4) decode this way. Krea 2, Qwen-Image 2.1 (and its Turbo, Viggle and edit), Boogu, Ming-Image, FIBO 1.5 and SeedVR2 don't use it.
+
+Measured on Z-Image Turbo (mflux-community's 4-bit copy, 832×1216, 9 steps, seed 42, `--low-ram`, float16), two runs each, wall clock including the model load: default 28 s and 29 s, `--vae-full-precision` 28 s and 29 s. Peak memory 4.40 GB for both. The default decode reproduces the picture from earlier today exactly; `--vae-full-precision` gives a slightly different one (mean difference 0.47 of 255, maximum 43). So at this size the decode is not what sets the process's peak, and there is nothing to gain by changing the flag. Not measured: larger pictures, or the other six models. The speed, memory and picture numbers in [models.md](../models.md) for these models were taken on 0.22 or 0.23, with the older decode.
+
 ### Still to do
 
 Render through the app with the Image Models already cached, and compare the flags with `server/images/mflux/` (the release review above was not compared with them yet). Anima, Iris and the new flags are untried.
