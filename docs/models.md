@@ -635,7 +635,7 @@ Measured on the Mac (M5 Pro, 48 GB, 2026-10-17, mflux 0.23, float16, `--low-ram`
 
 **Qwen Turbo below 1024 px**, as mflux warns: at 512² the picture has a fine crosshatched grid over it, seen when zoomed. Not at 832×1216. **Qwen Turbo's text encoder is Qwen-Image 2.1's**: all 750 tensors byte-identical, only split into one file instead of four, so 17.5 GB of its 32.5 GB repeats what's on disk (the Hugging Face cache never shares files across repos, so a fresh install that runs both stores it twice too). Its VAE is the base VAE cast to bf16 (all 238 tensors equal after the cast; 0.7 GB against 1.4). Its transformer is distilled: 234 of 297 tensors differ. Rechecked 2026-10-18 with MLX array comparisons as well as byte hashes, with the transformers as a control. Not checked: either model over many Frames, or keeping a Subject consistent.
 
-Upgrading (Mac, 2026-10-17): `uv tool upgrade mflux` brought in Pillow 13.0.0, which fails to import on uv's Python 3.14.4 (`cannot import name '_IntegralLike' from 'numbers'`), so every mflux command failed. Reinstalled with `--with 'pillow<13'` (12.3.0), FLUX.2 Klein 4B rendered again: 512², 4 steps, float16, 10.1 s with the load, 10.2 GB peak. 0.23 pins each built-in model to a Hugging Face commit; Klein 4B's cache needed nothing fetched.
+The 0.22 to 0.23 upgrade itself (the Pillow 13 failure and its pin) is in [research/mflux-upgrade-log.md](research/mflux-upgrade-log.md#0230--mac-2026-10-17).
 
 Also in 0.23, not used yet: `mflux-generate-flux3-edit` (up to ten reference images, a lighter candidate for Subject consistency than Qwen-Image 2.1's edit; open-threads.md), FLUX.3 LoRAs, and `mflux-generate-krea2-controlnet` (Krea 2 Turbo from a depth map).
 
