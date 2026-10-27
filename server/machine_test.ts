@@ -12,7 +12,7 @@ import {
   sameMachine,
   textBackendFor,
 } from './machine.ts'
-import { DEFAULT_SETTINGS, type Settings } from './settings.ts'
+import { DEFAULT_SETTINGS, type SessionSettings } from './settings.ts'
 
 const own = new Set(['studio.local', '192.168.50.10'])
 
@@ -50,9 +50,8 @@ Deno.test('backendOf: the preferred Backend if it can, else the next listed that
     runOn: { ...DEFAULT_SETTINGS.runOn, images: 'here', upscale: 'pc', voices: 'here' },
   }
   const render = (model: string, here = mac) => backendOf({ kind: 'render', model }, now, here)?.id
-  // A Mac renders here what mflux has (Qwen-Image 2.1 on both), and a ComfyUI-only model on the
-  // first ComfyUI listed.
-  assertEquals([render('qwen-image-2.1'), render('fibo-2.0')], ['here', 'pc'])
+  // A Mac renders here what mflux has (Qwen-Image 2.1 on both).
+  assertEquals(render('qwen-image-2.1'), 'here')
   // A PC can't run mflux: Qwen-Image on its ComfyUI, mflux's own models nowhere.
   assertEquals([render('qwen-image-2.1', pc), render('krea-2', pc)], ['pc', undefined])
   // Upscale on the PC, as preferred, though here could.
@@ -102,7 +101,12 @@ Deno.test('machineKey: here for this machine, the host for another', () => {
 })
 
 Deno.test('jobBackend: a picture with the Text Model, a render by its Image Model, a line as voices go', () => {
-  const session: Settings = { ...DEFAULT_SETTINGS, imageModel: 'fibo-2.0' }
+  // A Session that would rather render on a ComfyUI, as one picked on a kind of backend does.
+  const session: Pick<SessionSettings, 'imageModel' | 'imageBackend'> = {
+    ...DEFAULT_SETTINGS,
+    imageModel: 'qwen-image-2.1',
+    imageBackend: 'comfyui',
+  }
   const now = { ...DEFAULT_SETTINGS, backends, runOn: { ...DEFAULT_SETTINGS.runOn, voices: 'pc' } }
   const text: Backend = { id: 'ollama', kind: 'ollama', address: 'http://192.168.50.85:11434' }
   const on = (kind: JobKind, s = session, editModel?: EditModel) =>

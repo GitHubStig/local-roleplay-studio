@@ -105,6 +105,12 @@ Measured on Z-Image Turbo (mflux-community's 4-bit copy, 832×1216, 9 steps, see
 
 So the limit here is about 200 tokens, and the quotes don't matter. It is mflux issue #920 (reported at ~500 tokens), fixed by PR #939, merged on 2026-10-27 after the 0.24.0 release. Decision (the owner): wait for 0.24.1 rather than install from main. Not tested: any picture, so nothing is known yet of how it draws, the steps or guidance, the 8- and 4-step LoRAs, or q8 and q4.
 
+### FIBO 2.0 Dev on mflux 0.24.0: added (Mac, 2026-10-27)
+
+`mflux-generate-fibo2` with `mflux-community/fibo-2-0-dev-mflux-bf16` (25.1 GB; also q8 13.4, q6 10.3, q4 7.2, q5, q3; not gated, licence `other`, CC BY-NC) and the Edit Turbo copies (`fibo-2-0-edit-turbo-mflux-*`, the same sizes). Downloaded with `hf download` on its own: **796 s**. Measurements, pictures and the checks are in [models.md](../models.md) ("FIBO 2.0 Dev on mflux"): 505–513 s at 50 steps with the VLM, 292 s at 30 steps with `--cfg-end 0.6`, peak 17.85 GB. The edit command takes the community copy; the mask edit repaints outside the mask. `--expand-prompt` gave a photograph where plain prose gave the painting asked for, so the entry sends prose. Not tried: LoRAs, Quantize, the q8 copy, `float16`.
+
+Edit Turbo (`mflux-community/fibo-2-0-edit-turbo-mflux-bf16`, 25.1 GB, download **360 s**) is the second Image Model, `fibo-2.0-turbo`: 21 s a picture from prose, 4 steps, peak 17.40 GB (models.md, "FIBO 2.0 Turbo on mflux").
+
 ### Still to do
 
 Render through the app with the Image Models already cached, and compare the flags with `server/images/mflux/` (the release review above was not compared with them yet). Not tried: Anima, Iris-3B, MOSS-Image on mflux (`--lora`, with the community's 8- and 4-step LoRAs), FIBO 2, `--small-text-encoder` and `--small-decoder`. Adding the new models is next.

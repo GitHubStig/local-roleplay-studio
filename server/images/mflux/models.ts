@@ -158,6 +158,38 @@ export const MFLUX_MODELS: readonly MfluxModel[] = [
     cfg: 3,
   },
   {
+    id: 'fibo-2.0',
+    label: 'FIBO 2.0 Dev',
+    command: 'mflux-generate-fibo2',
+    // Bria's FIBO 2.0 Dev (CC BY-NC) from mflux-community's bf16 copy (25.1 GB, fetched on first use),
+    // not gated like Bria's own repo; Settings' Quantize converts it as it loads. Trained on JSON
+    // captions, but the prose Image Prompt goes in as it is, as on ComfyUI: `--expand-prompt` (FIBO's
+    // VLM writing a caption first, 90 s more) gave a photograph where the prose gave the painting asked
+    // for (docs/models.md).
+    model: 'mflux-community/fibo-2-0-dev-mflux-bf16',
+    baseModel: 'fibo2',
+    // mflux's own 50 steps at guidance 5 (the model card's, and ComfyUI's), or 30 with guidance ending
+    // after 60% of them: about 40% faster, the same scene with small changes (docs/models.md).
+    defaultSteps: 50,
+    stepPresets: [
+      { steps: 50, args: ['--steps', '50'] },
+      { steps: 30, args: ['--steps', '30', '--cfg-end', '0.6'] },
+    ],
+    cfg: 5,
+  },
+  {
+    id: 'fibo-2.0-turbo',
+    label: 'FIBO 2.0 Turbo',
+    command: 'mflux-generate-fibo2',
+    // Bria's FIBO 2.0 Edit Turbo, which mflux's README says also makes pictures from a caption: Dev
+    // distilled to 4 steps without guidance. mflux-community's bf16 copy (25.1 GB, fetched on first use),
+    // CC BY-NC like Dev. The prose Image Prompt goes in as it is. It renders at 4 steps only.
+    model: 'mflux-community/fibo-2-0-edit-turbo-mflux-bf16',
+    baseModel: 'fibo2-edit-turbo',
+    defaultSteps: 4,
+    stepPresets: [{ steps: 4, args: ['--steps', '4'] }],
+  },
+  {
     id: 'qwen-image-2.1',
     label: 'Qwen-Image 2.1',
     command: 'mflux-generate-qwen-2.1',

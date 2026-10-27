@@ -503,25 +503,18 @@ Deno.test('A Session switches Image Model by name, to one a Backend listed can r
       'mflux',
     ])
     const wrongKind = await call('PUT', '/api/sessions/s1/image-model', {
-      imageModel: 'fibo-2.0',
-      imageBackend: 'mflux',
+      imageModel: 'krea-2',
+      imageBackend: 'comfyui',
     })
     assertEquals([wrongKind.status, (await wrongKind.json()).error], [
       400,
-      'mflux has no Image Model "fibo-2.0"',
+      'ComfyUI has no Image Model "krea-2"',
     ])
     const noKind = await call('PUT', '/api/sessions/s1/image-model', {
       imageModel: 'qwen-image-2.1',
       imageBackend: 'dall-e',
     })
     assertEquals(noKind.status, 400)
-    // FIBO 2.0 is ComfyUI's only: refused until one is listed.
-    const moss = await switchTo(call, 'fibo-2.0')
-    assertEquals([moss.status, (await moss.json()).error], [
-      409,
-      'No Backend renders fibo-2.0: add one in Settings, on the Machines tab',
-    ])
-
     // A PC: no mflux, a ComfyUI listed.
     const off = { available: false, reason: 'mflux runs only on Apple Silicon Macs' }
     const on = { available: true }

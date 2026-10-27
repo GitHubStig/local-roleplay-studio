@@ -196,6 +196,45 @@ Deno.test('mfluxArgs runs MOSS-Image from the community copy, at real guidance',
   ])
 })
 
+Deno.test('mfluxArgs runs FIBO 2.0 Dev from a prose prompt, at its steps and guidance', () => {
+  const fibo = findMfluxModel('fibo-2.0')!
+  const after = (args: string[], flag: string, n = 1) =>
+    args.slice(args.indexOf(flag) + 1, args.indexOf(flag) + 1 + n)
+  const full = mfluxArgs(fibo, request('/d', { steps: 50 }), 'o.png')
+  assertEquals(full.slice(0, 4), [
+    '--model',
+    'mflux-community/fibo-2-0-dev-mflux-bf16',
+    '--base-model',
+    'fibo2',
+  ])
+  assertEquals(after(full, '--steps'), ['50'])
+  assertEquals(full.includes('--cfg-end'), false)
+  assertEquals(after(full, '--guidance'), ['5'])
+  assertEquals(full.includes('--expand-prompt'), false)
+  // The faster preset ends guidance early; any other count renders at the default.
+  const fast = mfluxArgs(fibo, request('/d', { steps: 30 }), 'o.png')
+  assertEquals([after(fast, '--steps'), after(fast, '--cfg-end')], [['30'], ['0.6']])
+  const other = mfluxArgs(fibo, request('/d', { steps: 12 }), 'o.png')
+  assertEquals([after(other, '--steps'), other.includes('--cfg-end')], [['50'], false])
+  // Quoted lines pass straight through.
+  const quoted = mfluxArgs(fibo, { ...request('/d'), prompt: 'says "Yo!"' }, 'o.png')
+  assertEquals(after(quoted, '--prompt'), ['says "Yo!"'])
+})
+
+Deno.test('mfluxArgs runs FIBO 2.0 Turbo as the edit-turbo checkpoint, at 4 steps, without guidance', () => {
+  const turbo = findMfluxModel('fibo-2.0-turbo')!
+  const args = mfluxArgs(turbo, request('/d', { steps: 25 }), 'o.png')
+  assertEquals(args.slice(0, 4), [
+    '--model',
+    'mflux-community/fibo-2-0-edit-turbo-mflux-bf16',
+    '--base-model',
+    'fibo2-edit-turbo',
+  ])
+  assertEquals(args.slice(args.indexOf('--steps'), args.indexOf('--steps') + 2), ['--steps', '4'])
+  assertEquals(args.includes('--guidance'), false)
+  assertEquals(args.includes('--expand-prompt'), false)
+})
+
 Deno.test('curlQuotes turns straight double quotes curly', () => {
   assertEquals(
     curlQuotes('a sign reads "OPEN" and she says ("Yo!") "Hi"'),

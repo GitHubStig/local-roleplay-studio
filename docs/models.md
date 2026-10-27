@@ -643,6 +643,39 @@ Also in 0.23, not used yet: `mflux-generate-flux3-edit` (up to ten reference ima
 
 Added as `moss-image` (the same name as on ComfyUI, "MOSS-Image on ComfyUI", above), from mflux-community's bf16 copy (26.2 GB; Apache-2.0), with mflux's own 50 steps and guidance 3 (ComfyUI's template runs 25 and 2.5; not compared on mflux). Measured on the Mac (M5 Pro, 48 GB, mflux 0.24.0, 832×1216, seed 42, `--low-ram`, bf16): download 633 s; peak MLX memory 26.83 GB; a 50-step render took 249 s and 246 s from cache, **but the picture is black**: mflux 0.24.0's Qwen3.5 text encoder returns NaN for prompts over about 200 tokens, and every Image Prompt is longer. Fixed on mflux's main after the release; waiting for 0.24.1. So there is no quality, speed or step finding yet, and the times above are of a run that drew nothing. Details and the prompt-length bisect: [research/mflux-upgrade-log.md](research/mflux-upgrade-log.md); what's left to try: open-threads.md.
 
+### FIBO 2.0 Dev on mflux (2026-10-27, Mac)
+
+Added as `fibo-2.0` (the same name as on ComfyUI, "FIBO 2.0 on ComfyUI", above), `mflux-generate-fibo2` on mflux-community's bf16 copy (25.1 GB; not gated, CC BY-NC like Bria's own; Bria's repo is gated). Measured on the Mac (M5 Pro, 48 GB, mflux 0.24.0): 832×1216, seed 42, `--low-ram`, bf16, with the app's prose Image Prompt (the tavern one, 350 tokens, a sign reading "THE RUSTY LANTERN"), first through `--expand-prompt`, then as plain prose. Download 796 s. A repeat of each render gave a byte-identical picture.
+
+| | Wall clock from cache, including loads | Peak MLX memory |
+|---|---|---|
+| 50 steps, guidance 5 (mflux's, the model card's and ComfyUI's), with `--expand-prompt` | 513 s, then 505 s | 17.85 GB |
+| 30 steps, `--cfg-end 0.6` (mflux's faster setting), with `--expand-prompt` | 292 s | 17.85 GB |
+| 50 steps, guidance 5, plain prose (no VLM) | about 410 s (a render beside a download, so not timed for the record) | not kept |
+| FIBO-vlm alone, writing the caption | 92 s (load 5.4 s, writing 86.5 s, 5,762 characters) | 11.88 GB |
+| The same prose, ComfyUI on the RTX 4070 (int8, no VLM, 50 steps, CFG 5) | 62.8 s, then 60.7 s | not measured |
+
+- **The VLM is about 92 s of the 505 s** (a fifth), and about a third of the 30-step run. A JSON caption written by the Art Agent would skip it ([open-threads.md](open-threads.md)).
+- **The pictures**: on mflux both people, the letter in Kael's hand, the doorway behind him, the sign spelled right (though the VLM's `text_render` was empty), rain on the window. Photographic, though the caption's `style_medium` is "oil painting" (it also adds a `photographic_characteristics` block), and the lamp doesn't light his face from below. The 30-step picture has the same scene and elements (mean difference 14.5 of 255, PSNR 18.9 dB, a letter on the bar and a window curtain are new). On ComfyUI the same words give a real oil painting, with the sign spelled right (broken over two lines) and a signature-like mark at the bottom left, but Kael left of the doorway rather than in the foreground. One prompt, one seed each.
+- **`--expand-prompt` made it worse here.** Four pictures of the same prompt and seed: mflux with the caption is photographic, with Kael in the foreground; mflux with plain prose is an oil painting, with the composition and style close to ComfyUI's prose picture; ComfyUI given the same VLM caption is still a painting. So the photograph came from mflux's caption path (it drops empty fields and scores and sends a compact caption; not checked), not from the weights. One prompt and one seed. mflux's README says prose "works less well"; not seen here.
+- **The app's entry**: 50 steps, guidance 5, plain prose (no `--expand-prompt`: the VLM is about 92 s more, and the picture was the one that missed the style asked for); Settings' Steps offer 50 or 30 (`--cfg-end 0.6`, as mflux's README suggests). No `float16` (not tried) and no Quantize measured: converting as it loads has not lowered the peak or sped up anything elsewhere (below), and 17.85 GB fits without it.
+- **Quoted lines** pass through straight. FIBO 1.5's VLM broke on them, and this one's captions passed mflux's caption check for five prompts (including `says "Yo!"` and a sign reading "OPEN", about 50–67 s each); with plain prose the VLM isn't used at all, so no `curlyQuotes`.
+- **Edit**: `mflux-generate-fibo2-edit` runs on the community Dev copy (no refusal for missing `config.json`, unlike Qwen-Image 2.1's): "Replace the mug with a pewter tankard" at 8 steps took 151 s, peak 18.79 GB, and swapped the mug for a tankard. With `--mask-path` (a box over the mug) 154 s, but the picture changed outside the mask too (mean 6.6 of 255, up to 245), so mflux doesn't paste the rest back as the app's ComfyUI edit does. Not wired into the app: no edit model on mflux yet.
+- **Not tried**: a LoRA, Quantize or the saved q8 (13.4 GB), more prompts or seeds, `float16`, keeping people consistent across Frames, and Windows (no mflux).
+
+### FIBO 2.0 Turbo on mflux (2026-10-27, Mac): Dev's picture in 21 s
+
+Added as `fibo-2.0-turbo`: Bria's **Edit Turbo** checkpoint (Dev distilled to 4 steps without guidance; CC BY-NC) run as a generator, which mflux's README says it can do (`mflux-generate-fibo2 --model mflux-community/fibo-2-0-edit-turbo-mflux-bf16 --base-model fibo2-edit-turbo`). Download 360 s for 25.1 GB. Same Mac, prompt, seed and size as Dev above, bf16, `--low-ram`, 4 steps (mflux's default, guidance 1):
+
+| | Wall clock from cache | Peak MLX memory |
+|---|---|---|
+| Plain prose | **21 s** | 17.40 GB |
+| With `--expand-prompt` | 114 s, then 117 s (the repeat gave the identical picture) | 17.49 GB |
+
+- **The picture from plain prose** is an oil painting with both people, the letter in Kael's hand, the lamp on the bar, rain at the window and the sign spelled right (over two lines): as good on this prompt as Dev's 505 s one, in about a twentieth of the time and with the same memory. One prompt and one seed, with no side-by-side against Dev over several scenes yet.
+- **The app's entry**: no `--expand-prompt`, and a single step preset (4), so Settings' Steps, whatever they are, render at 4. mflux's own default guidance of 1 isn't passed.
+- **Not tried**: more prompts and seeds, Quantize or the q8 copy (13.4 GB), a LoRA, keeping people consistent across Frames, and the edit command with it ([open-threads.md](open-threads.md)).
+
 ### Viggle or Qwen's Turbo: a quick Qwen-Image 2.1 (2026-10-17)
 
 Two Image Models render Qwen-Image 2.1 in about half its time: **Viggle's turbo LoRA** on it (`qwen-image-2.1-viggle`, 6 steps) and **Qwen's own distilled Turbo** (`qwen-image-2.1-turbo`, 8 steps). Compared on the Mac (mflux 0.23) on the Chain of 31 Frames that the style scores were chosen on, each Frame asking for an art style of its own, all three rendered from the same Image Prompts and seed, then embedded for the Compare dialog's style scores ([research/style-scores.md](research/style-scores.md)):
