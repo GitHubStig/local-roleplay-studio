@@ -658,19 +658,17 @@ Two Image Models render Qwen-Image 2.1 in about half its time: **Viggle's turbo 
 mflux 0.21 adds a step cache for Qwen-Image 2.1 (`--step-cache-ratio`, TeaCache-style: it skips
 the transformer on that share of the steps whose timestep changes least, and reuses the step
 before) and a scheduler for Viggle's 6-step turbo LoRA (`--scheduler viggle_turbo`). Measured on
-the app's settings at the time: the saved 8-bit copy, 25 steps, no CFG, one prompt (Elara,
+the app's settings at the time (the 0.20 and 0.21 comparison is in [research/mflux-upgrade-log.md](research/mflux-upgrade-log.md)): the saved 8-bit copy, 25 steps, no CFG, one prompt (Elara,
 waist-up) and seed, at 1024×1024, everything else closed:
 
 | Run | Time | Peak memory | Looks |
 |---|---|---|---|
-| mflux 0.20, 25 steps | 103 s | | |
-| mflux 0.21, 25 steps | 98–100 s | 39.1–39.3 GB | the same picture as 0.20 |
+| 25 steps | 98–100 s | 39.1–39.3 GB | |
 | + step cache 0.4 | 66 s (1.5×) | 38.7 GB | near the same: same pose, face and dress; slightly softer brushwork |
 | turbo LoRA, 6 steps | 29–31 s (3.4×) | 38.9–39.2 GB | a different take on the prompt: smoother, more polished, less painterly; the face holds up |
 
-- **The release notes' "~1.8× faster" is mostly the step cache**: 0.21 alone is only 2–5% faster.
 - **Both work on the 8-bit saved copy**, the one the app renders from, and the copy saved by 0.20
-  loads in 0.21 (the app still saves a fresh one, named for 0.21, and deletes the old).
+  loads in 0.21.
 - **The step cache is on in the app** for Qwen-Image 2.1 (Settings → Step cache, 0.4 by default;
   0.25, 0.5 or off). The other Image Models' commands don't take it (2026-10-04). It leaves runs
   under 10 steps alone.
@@ -772,9 +770,6 @@ unified memory.
   on Klein).
 - **`--low-ram` cuts the peak by three-quarters at no cost in time**: 36 GB to 9.4 GB, the
   picture all but the same (mean 0.4 per pixel). It works with the step cache and the turbo LoRA.
-- **0.22 alone is a little faster than 0.21** (93 s against 98–100 s; the step cache 60 s against
-  66 s) and peaks 3 GB lower (36 GB against 39 GB). The release notes' ~24 GB to ~13 GB was at
-  512² from 8-bit weights.
 - **The saved 8-bit copy no longer helps Qwen-Image 2.1**: rendering from the original weights with
   `-q 8` gives the very same picture (mean difference 0.0) in the same time and peak. One caveat:
   the original weights were likely still in the disk cache (the copy had been saved from them

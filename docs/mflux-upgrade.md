@@ -14,10 +14,10 @@ This is the routine for reviewing and installing an mflux release on the Apple S
 A `uv tool` on uv's managed Python 3.14, with the commands on the PATH (`~/.local/bin/mflux-*`):
 
 ```sh
-uv tool install --managed-python --python 3.14 mflux --with 'pillow<13'
+uv tool install --managed-python --python 3.14 mflux
 ```
 
-The `--with 'pillow<13'` is a workaround that applies to 0.23 and older (added 2026-10-17): they fail to import with Pillow 13.0 on Python 3.14.4. mflux 0.24.0's release notes say it requires Pillow 13 or newer, so the pin has to go when moving to 0.24. The app only needs the commands to exist; it finds mflux through `mflux-generate-flux2` on the PATH (`server/features.ts`) and calls the per-model commands from `server/images/mflux/`.
+mflux 0.23 and older needed `--with 'pillow<13'` (added 2026-10-17): they fail to import with Pillow 13.0 on Python 3.14.4. 0.24.0 requires Pillow 13 or newer, so the pin was dropped on 2026-10-27. The app only needs the commands to exist; it finds mflux through `mflux-generate-flux2` on the PATH (`server/features.ts`) and calls the per-model commands from `server/images/mflux/`.
 
 The project is now at <https://github.com/mflux-community/mflux> (it moved from Filip Strand's account in August 2026); the README still credits him.
 
