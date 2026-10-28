@@ -9,11 +9,7 @@ How Ollama, the Text Model's backend on both machines, pulls, builds, loads and 
 | 0.35.1 | Mac | 2026-10-05: the Text Model survey and builds |
 | 0.40.0 | Windows PC | 2026-10-07: the GGUF on the RTX 4070 |
 | 0.40.5 | both | 2026-10-16: the Mac-against-PC timing |
-| 0.40.12 | Mac | installed on 2026-10-28; nothing measured on it yet |
-
-## To check
-
-- **A Gemma speed-up in a recent release** (noted by the owner, 2026-10-28; low priority). To measure it, rerun the 2026-10-16 timing below on each machine, the same script and models, before and after the update, and say which version each run was on. Not run yet.
+| 0.40.12 | both | installed on 2026-10-28 |
 
 ## Pulling and building models (2026-10-05, Ollama 0.35.1)
 
