@@ -18,6 +18,8 @@ vi.mock('./api', async (importOriginal) => ({
   getSettingsOptions: vi.fn(),
   getScenarios: vi.fn(() => Promise.resolve({ scenarios: [], errors: [] })),
   listSessions: vi.fn(() => Promise.resolve([])),
+  listJobs: vi.fn(() => Promise.resolve([])),
+  listTextModels: vi.fn(() => Promise.resolve({ textModels: [], thinkingModels: [] })),
   streamFrame: vi.fn(),
   cancelFrame: vi.fn(),
 }))

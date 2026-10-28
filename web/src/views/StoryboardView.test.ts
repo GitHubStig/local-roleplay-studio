@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import * as api from '../api'
 import { useCurrentSession } from '../composables/useCurrentSession'
-import { promptFor } from '../testing'
+import { ALL_AVAILABLE, ALL_ON, IMAGE_MODELS, promptFor } from '../testing'
 import StoryboardView from './StoryboardView.vue'
 
 vi.mock('../api', async (importOriginal) => ({
@@ -21,6 +21,16 @@ vi.mock('../api', async (importOriginal) => ({
   saveLook: vi.fn(),
   cancelFrame: vi.fn(),
   listJobs: vi.fn(),
+  getSettings: vi.fn(() => Promise.resolve({ features: ALL_ON } as api.Settings)),
+  getSettingsOptions: vi.fn(() =>
+    Promise.resolve(
+      {
+        features: ALL_AVAILABLE,
+        imageModels: IMAGE_MODELS,
+        imageBackends: [],
+      } as unknown as api.SettingsOptions,
+    )
+  ),
   queueJob: vi.fn(),
   chainFromStoryboard: vi.fn(),
 }))
