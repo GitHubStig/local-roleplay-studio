@@ -20,7 +20,7 @@ import { promptWith, testScenario } from './testing.ts'
 
 Deno.test('systemMessage has the paragraph rules, the order, the limits and the notes', async () => {
   const msg = await systemMessage(testScenario, false)
-  assertStringIncludes(msg, 'one paragraph of exactly nine sentences')
+  assertStringIncludes(msg, 'one paragraph of exactly nine sentences, one per aspect')
   assertStringIncludes(msg, '1. subject and identity:')
   assertStringIncludes(msg, '9. art style and medium:')
   assertStringIncludes(msg, 'Never leave the old detail')

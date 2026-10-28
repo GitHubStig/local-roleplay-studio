@@ -113,7 +113,7 @@ export function ollamaChat(
         }
       }
       // On Ollama's GGUF engine an overlong chat loses its oldest exchanges and fills the context
-      // to the brim, leaving the reply short of its cap (docs/open-threads.md).
+      // to the brim, leaving the reply short of its cap (README, "Ollama's context length").
       if (stopped === 'length') throw lengthError(tokens, cap)
       return { content, thinking: thinking.trim() }
     },

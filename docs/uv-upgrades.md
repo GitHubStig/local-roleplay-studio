@@ -97,7 +97,7 @@ If script metadata, Python ranges, package versions, or application code changed
 
 ## Python 3.15 status
 
-Python 3.15 is not enabled for these scripts yet. As checked on 2026-10-27, PyTorch 2.14.1 and torchvision 0.29.1 have CPython 3.15 wheels on PyTorch's Windows `cu132` index, but neither has a CPython 3.15 wheel on PyPI for the Mac. The pinned `mlx-spatial` commit also declares `requires-python = ">=3.13,<3.14"`. Keep the current script ranges until the Mac dependencies and LiTo's upstream Python range can be tested; see [open-threads.md](./open-threads.md#python-315-for-the-python-programs).
+Python 3.15 is not enabled for these scripts yet. As checked on 2026-10-27, PyTorch 2.14.1 and torchvision 0.29.1 have CPython 3.15 wheels on PyTorch's Windows `cu132` index, but neither has a CPython 3.15 wheel on PyPI for the Mac. The pinned `mlx-spatial` commit also declares `requires-python = ">=3.13,<3.14"`. Keep the current script ranges until the Mac dependencies and LiTo's upstream Python range can be tested; see "Python 3.15 for the Python programs" in [open-threads.md](./open-threads.md).
 
 ## References
 

@@ -29,7 +29,7 @@ export function loraArgs(lora: Lora): string[] {
 /**
  * The mflux command line for one image, at its steps (or its preset for them), with the model's
  * step cache and float16 as Settings ask. Always `--low-ram`: it holds a part of the model only while it's used, so the peak
- * is a quarter of what it is without it, in the same time (docs/models.md). A Quantize setting
+ * is a quarter of what it is without it, in the same time (docs/research/mflux-upgrade-log.md). A Quantize setting
  * converts the weights as they load.
  */
 export function mfluxArgs(
@@ -75,7 +75,7 @@ const UPSCALER = { label: 'SeedVR2 upscaler', command: 'mflux-upscale-seedvr2' }
 
 /**
  * The mflux command line for upscaling one image. `--low-ram` here costs time (SeedVR2 7B, 1024 px
- * to 2048: 57 s against 45–47 s) for a peak near half (20 GB against 36 GB; docs/models.md).
+ * to 2048: 57 s against 45–47 s) for a peak near half (20 GB against 36 GB; docs/research/image-models.md).
  */
 export function upscaleArgs(req: UpscaleRequest, output: string): string[] {
   return [
@@ -101,7 +101,7 @@ const EDITORS: Record<EditModelOn<'mflux'>, { label: string; command: string }> 
 /**
  * The mflux command line for one edit, at the picture's own size (rounded down to a multiple of 32,
  * which every size preset already is). Always `-q 8 --low-ram`: a 15.1 GB peak against 39 GB for
- * the full weights, the edit looking the same (docs/models.md, "Qwen-Image 2.1 Edit").
+ * the full weights, the edit looking the same (docs/research/image-models.md, "Qwen-Image 2.1 Edit").
  */
 export function editArgs(
   req: EditRequest,

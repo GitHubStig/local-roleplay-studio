@@ -85,7 +85,7 @@ The Character's answer to a Message: a brief thought, what they do, and what the
 _Avoid_: Response, completion, output, narration
 
 **Image Prompt**:
-The single authoritative description of one Frame's image: one paragraph of nine sentences, one per aspect in a fixed order (subject and identity, pose and limbs, expression, camera angle and framing, clothing, environment, lighting, color, art style and medium), and exactly what the Image Model renders.
+The single authoritative description of one Frame's image, and exactly what the Image Model renders: one paragraph covering nine aspects in a fixed order (subject and identity, pose and limbs, expression, camera angle and framing, clothing, environment, lighting, color, art style and medium). A Chain's is nine sentences, one per aspect, the subject sentence describing everyone in it; the Text Model rewrites it whole each Frame. A Storyboard Frame's and a Roleplay picture's are put together by the engine: the Look's identity of each Subject shown (none for a picture of the place alone), the Frame's own seven sentences (pose to color, the only part the Text Model writes, the Art Agent included), then the Look's art style. So those are nine sentences only when one Subject is shown.
 _Avoid_: Scene, sections, description, state
 
 **Frames**:

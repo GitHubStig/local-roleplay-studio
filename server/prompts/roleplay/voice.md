@@ -6,7 +6,7 @@ it's editable in the side panel.
 
 VoiceDesign takes words literally: told "a high, melodic pitch… lyrical", it made a 20-year-old
 sound like a child (338 Hz, against 160-230 for a woman's speaking voice), hence the rules on
-register and the words to avoid (docs/models.md).
+register and the words to avoid (docs/research/voices.md).
 
 The reply's shape is voiceSchema in server/roleplay/voice.ts.
 

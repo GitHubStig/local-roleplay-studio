@@ -4,6 +4,8 @@ status: accepted
 
 # The Image Prompt, one paragraph of nine sentences, replaces the Scenario-defined Scene
 
+Since [ADR 0012](0012-storyboard-look-lists-each-person.md), this holds for a Chain. A Storyboard Frame's and a Roleplay picture's Image Prompt covers the same nine aspects in the same order, but is put together by the engine: the Look's identity of each Subject shown, the Frame's seven sentences, then the Look's style.
+
 Each Session's state was a Scene whose JSON shape every Scenario defined, which the engine flattened into an image prompt behind a Scenario `imagePrefix`. It is now the **Image Prompt** itself: one paragraph of nine sentences, one per aspect, always in this order: subject and identity → pose and limbs → expression → camera angle and framing → clothing → environment → lighting → color → art style and medium. Details within a sentence are separated by commas or semicolons, and each sentence covers only its own aspect. Each Frame, the Text Model gets the current Image Prompt and the Action, and returns the rewritten paragraph (changed sentences rewritten, the rest copied word for word) plus a terse list of what changed. The engine renders the paragraph. The Scenario's Setup is only given on the Opening Frame; afterwards the Image Prompt is the whole state.
 
 ## Considered Options

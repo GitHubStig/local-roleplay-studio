@@ -100,7 +100,7 @@ export const MFLUX_MODELS: readonly MfluxModel[] = [
     model: 'mflux-community/z-image-base-mflux-q8',
     baseModel: 'z-image',
     preQuantized: true,
-    // mflux defaults to 50; 30 looks as good (docs/models.md) and takes ~190 s, not ~300.
+    // mflux defaults to 50; 30 looks as good (docs/research/image-models.md) and takes ~190 s, not ~300.
     defaultSteps: 30,
     float16: true,
     // mflux's guidance is 0 (no CFG) unless given; its README runs the base at 4.
@@ -151,7 +151,7 @@ export const MFLUX_MODELS: readonly MfluxModel[] = [
     // fetched on first use); Settings' Quantize converts it as it loads. Real CFG, so two passes a step.
     // mflux's own 50 steps and guidance 3 (the model card's), not yet judged: mflux 0.24.0's text
     // encoder returns NaN (a black picture) for prompts over ~200 tokens, so wait for the release with
-    // the fix (docs/open-threads.md).
+    // the fix (docs/open-threads.md, "MOSS-Image on mflux").
     model: 'mflux-community/moss-image-sft-mflux-bf16',
     baseModel: 'moss-image-sft',
     defaultSteps: 50,
@@ -165,11 +165,11 @@ export const MFLUX_MODELS: readonly MfluxModel[] = [
     // not gated like Bria's own repo; Settings' Quantize converts it as it loads. Trained on JSON
     // captions, but the prose Image Prompt goes in as it is, as on ComfyUI: `--expand-prompt` (FIBO's
     // VLM writing a caption first, 90 s more) gave a photograph where the prose gave the painting asked
-    // for (docs/models.md).
+    // for (docs/research/image-models.md).
     model: 'mflux-community/fibo-2-0-dev-mflux-bf16',
     baseModel: 'fibo2',
     // mflux's own 50 steps at guidance 5 (the model card's, and ComfyUI's), or 30 with guidance ending
-    // after 60% of them: about 40% faster, the same scene with small changes (docs/models.md).
+    // after 60% of them: about 40% faster, the same scene with small changes (docs/research/image-models.md).
     defaultSteps: 50,
     stepPresets: [
       { steps: 50, args: ['--steps', '50'] },

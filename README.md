@@ -25,10 +25,10 @@ Everything else is optional: what a machine can run is worked out at startup and
 
 ### The Text Model
 
-One model does every text job ([docs/models.md](docs/models.md) has the comparisons, uncensored builds and how to make one). Small models (4–8B) can't reliably follow the prompt format.
+One model does every text job ([docs/models.md](docs/models.md) has the comparison; [docs/research/ollama.md](docs/research/ollama.md) how to build one). Small models (4–8B) can't reliably follow the prompt format.
 
 - **Gemma 4 12B Heretic, on a Mac or on a Windows/Linux box with enough VRAM:** `ollama pull hf.co/igorls/gemma-4-12B-it-heretic-GGUF:Q4_K_M`, Thinking off. Uncensored, and the most accurate of the small models tried here. **Q4_K_M** is a 4-bit quantization: the weights are stored in about 4.8 bits each on average (most in 4, some sensitive ones in 6) instead of 16, so the model is 7.4 GB on disk and ~8–9.5 GB loaded, enough for a 12 GB card or a 16 GB Mac, at little cost in quality. The same build runs on both machines, so a Session behaves the same on either. ~5 s a Reply on an RTX 4070; on a Mac, ~8 s per Chain Action.
-- **Faster on a Mac with memory to spare (32 GB+):** Gemma 4 26B-A4B Heretic on Ollama's MLX engine (`gemma-4-26b-heretic:nvfp4`, made locally as models.md describes; 18 GB loaded), 2–3× faster than the 12B (~3.5 s per Chain Action) because only about 4B of its weights work per token. MLX builds run only on Apple silicon.
+- **Faster on a Mac with memory to spare (32 GB+):** Gemma 4 26B-A4B Heretic on Ollama's MLX engine (`gemma-4-26b-heretic:nvfp4`, made locally as [docs/research/ollama.md](docs/research/ollama.md#building-an-mlx-model-from-a-heretic-checkpoint) describes; 18 GB loaded), 2–3× faster than the 12B (~3.5 s per Chain Action) because only about 4B of its weights work per token. MLX builds run only on Apple silicon.
 - **Ollama's context length** (the slider in Ollama's settings, or `OLLAMA_CONTEXT_LENGTH`) matters for GGUF models, the ones Ollama runs on Windows and Linux. The app sends a Roleplay's whole history with every Reply (a 30-Frame Roleplay is 8–11k tokens, each exchange adds 220–310, so 200 Frames is about 65k) and doesn't set the context itself. When a chat doesn't fit, Ollama keeps the system message, drops the oldest exchanges, and fills the context to the brim, so the Reply has no room and fails, saying the conversation no longer fits. And Ollama reserves a GGUF model's context memory when it loads it, so too much can push the model off the GPU. Set it as high as still fits (`ollama ps` should say `100% GPU`). Gemma 4 keeps most layers' cache to a short window, so its context is cheap: on a 12 GB card, Gemma 4 12B Heretic (Q4_K_M) loads at 8.1 GB, 100% GPU, at 128k, and read a 56.5k-token chat with 11.2 GB of the card in use; 64k covers a 200-Frame Roleplay. On a Mac, the MLX models (the `safetensors` ones, like the Heretic 26B) ignore the slider: they take memory only as a prompt grows (17 GB loaded, 23 GB at 67k tokens).
 
 ### Pictures (optional)
@@ -177,10 +177,11 @@ Add a Markdown file to `scenarios/`. It appears on Home, under *Start a new Sess
 - [docs/design.md](docs/design.md): how the app works (Frame loop, failure handling, UI, storage)
 - [docs/scenarios.md](docs/scenarios.md): the Scenario file format
 - [docs/image-model-setup.md](docs/image-model-setup.md): image model setup and optional prefetching
-- [docs/models.md](docs/models.md): which Text and Image Models to use, and why
+- [docs/models.md](docs/models.md): which Text, Image and voice models the app uses now, and why
 - [docs/hf-cache.md](docs/hf-cache.md): removing models from the Hugging Face cache, and checking the disk space came back
 - [docs/uv-upgrades.md](docs/uv-upgrades.md): how to update uv and validate its Python scripts on Windows and Mac
-- [docs/research/](docs/research/): surveys and trials (ComfyUI, image to 3D, small uncensored models, LLM libraries)
+- [docs/mflux-upgrade.md](docs/mflux-upgrade.md), [docs/comfyui-upgrade.md](docs/comfyui-upgrade.md), [docs/mlx-audio-upgrade.md](docs/mlx-audio-upgrade.md): how to review and install a release of each
+- [docs/research/](docs/research/): the evidence and history, dated: every Text, Image Model and voice trial, Ollama, the upgrade logs, and surveys (ComfyUI, image to 3D, LLM libraries)
 - [docs/adr/](docs/adr/): architecture decisions and why they were made
 - [docs/open-threads.md](docs/open-threads.md): ideas deliberately deferred
 - [CONTEXT.md](CONTEXT.md): glossary

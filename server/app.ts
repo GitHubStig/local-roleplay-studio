@@ -472,7 +472,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     scenarioFor,
     upscaler,
     // A separate Art Agent model pictures with Thinking off: it made pictures 5–22× slower for no
-    // gain in correctness (docs/models.md).
+    // gain in correctness (docs/research/text-models.md).
     artModel: async (session) => {
       const { artModel } = await deps.settings.load()
       return artModel && artModel !== session.settings.textModel

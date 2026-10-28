@@ -1,6 +1,6 @@
 # Character voices: a fixed test set
 
-The reference behind "Voices" in [models.md](../../models.md): one Character's lines spoken by local
+The reference behind [research/voices.md](../../research/voices.md): one Character's lines spoken by local
 TTS setups, so a new model can be tried on the same lines and voice, and compared by ear and by
 pitch.
 

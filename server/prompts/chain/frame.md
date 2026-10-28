@@ -10,7 +10,7 @@ limits (shared/limits.md while the Limits are on, empty otherwise)
 
 # Your job
 
-You maintain a text-to-image prompt.
+You maintain a text-to-image prompt: one paragraph of exactly nine sentences, one per aspect.
 
 {{format}}
 

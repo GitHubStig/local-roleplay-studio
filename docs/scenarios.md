@@ -59,8 +59,7 @@ Only `##` headings count, matched case-insensitively.
 
 ## The Image Prompt
 
-Every Scenario produces the same shape: one paragraph of nine sentences, one per aspect, in this
-order, with details inside a sentence separated by commas or semicolons:
+In a Chain, every Scenario produces the same shape: one paragraph of nine sentences, one per aspect, in this order, with details inside a sentence separated by commas or semicolons (a Storyboard's and a Roleplay's pictures cover the same aspects, put together from a Look: see the Image Prompt in [CONTEXT.md](../CONTEXT.md)):
 
 | # | Aspect | Covers |
 |---|---|---|

@@ -63,7 +63,7 @@ one is low for every model (6–26%), as several captions ask for neighbouring s
 | qwen-image-2.1-viggle | 0.339 | 0.284 | 4.18 | 23% |
 | qwen-image-2.1-turbo | 0.296 | 0.240 | 3.58 | 16% |
 
-Qwen's Turbo is the least varied of the twelve by every measure; Viggle's turbo LoRA scores just under Qwen-Image 2.1 itself, whose pictures it nearly repeats ([models.md](../models.md), "Viggle or Qwen's Turbo").
+Qwen's Turbo is the least varied of the twelve by every measure; Viggle's turbo LoRA scores just under Qwen-Image 2.1 itself, whose pictures it nearly repeats ([image-models.md](image-models.md#viggle-or-qwens-turbo-a-quick-qwen-image-21-2026-10-17)).
 
 Not checked: whether these rankings agree with the owner's eye; a Session of another kind.
 

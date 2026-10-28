@@ -1,6 +1,8 @@
 /**
- * The nine sentences of an Image Prompt, in order. Each sentence covers one aspect only, so
+ * The nine aspects of an Image Prompt, in order. Each sentence covers one aspect only, so
  * every detail is said once, in one place, and changing an aspect means rewriting one sentence.
+ * A Chain's prompt is one sentence per aspect; a Storyboard's or Roleplay's has the Look's
+ * identity of each person shown for the first and its style for the last (`joinPrompt`).
  */
 export const PROMPT_ORDER = [
   { aspect: 'subject and identity', covers: 'who they are: age, build, skin, hair, face' },
@@ -15,8 +17,9 @@ export const PROMPT_ORDER = [
 ] as const
 
 /**
- * The whole state of a Session at one Frame: one paragraph of nine sentences, one per aspect of
- * `PROMPT_ORDER`, details within a sentence separated by commas or semicolons.
+ * The whole state of a Session at one Frame: one paragraph in the order of `PROMPT_ORDER`, details
+ * within a sentence separated by commas or semicolons. Nine sentences in a Chain; in a Storyboard
+ * or Roleplay, one identity per person shown, the Frame's seven sentences, then the style.
  */
 export type ImagePrompt = string
 

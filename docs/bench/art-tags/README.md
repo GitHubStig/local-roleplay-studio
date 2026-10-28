@@ -1,6 +1,6 @@
 # Art Agent prose vs tags: a fixed test set
 
-The reference behind "Tags instead of prose" in [models.md](../../models.md), and so behind dropping the tags style (2026-10-26, [ADR 0023](../../adr/0023-the-art-agent-writes-prose.md)): the same Art Agent
+The reference behind "Tags instead of prose" in [research/text-models.md](../../research/text-models.md#tags-instead-of-prose-2026-09-29), and so behind dropping the tags style (2026-10-26, [ADR 0023](../../adr/0023-the-art-agent-writes-prose.md)): the same Art Agent
 prompts rendered on every Image Model, so a new model can be compared with the others by rendering
 only its own nine pictures.
 
@@ -24,7 +24,7 @@ people, so a second person in its booru and plain pictures is the prompt's fault
 
 1. Add it to `MODELS` in `render.py`, as it's set up in `server/imageModels.ts`.
 2. `python3 render.py <model-id>` (needs mflux and Pillow): nine pictures, then `grids/<id>.jpg`.
-3. Compare its grid with the others, and add a row to the table in models.md.
+3. Compare its grid with the others, and add a row to the table in research/text-models.md.
 
 `python3 render.py --grid-only all` rebuilds every grid from `out/`; after a fresh clone `out/` is
 empty, so rebuilding needs the models rendered again.

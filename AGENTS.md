@@ -10,8 +10,8 @@ and how to run it is in the [README](README.md); this is how the owner likes the
 - [docs/design.md](docs/design.md): how the app works. [docs/adr/](docs/adr/): decisions and why.
 - [docs/open-threads.md](docs/open-threads.md): plans and parked ideas, with their status. Finished
   work moves out of it, into the design doc, an ADR or `docs/research/`.
-- [docs/models.md](docs/models.md) and [docs/research/](docs/research/): what's been measured, and
-  why each model was picked.
+- [docs/models.md](docs/models.md): which models the app uses now, and why, in short. The evidence
+  and history behind it are in [docs/research/](docs/research/): read those only when you need them.
 
 ## How the owner works
 
@@ -32,7 +32,7 @@ and how to run it is in the [README](README.md); this is how the owner likes the
   edits). Don't suggest splitting jobs across models: switching models means reloading them.
 - **Say what you checked, and what you didn't.** Real runs over assumptions; when something
   couldn't be tested (on Windows, say), say so.
-- **Record findings in the docs**, dated, and deferred ideas in `docs/open-threads.md`. `docs/models.md` is for the models themselves: speed, memory, quality, comparisons, and why each was picked. Findings about the app's own prompts and behaviour (how a prompt shape works with two people, what a Roleplay keeps track of) go in the bench's README or `docs/research/`, with what was decided in an ADR.
+- **Record findings in the docs**, dated, and deferred ideas in `docs/open-threads.md`. `docs/models.md` is the current picks only (speed, memory, quality, why each was picked), replaced as they change, never a log: each measurement goes, dated, in `docs/research/` (`text-models.md`, `image-models.md`, `voices.md`, `ollama.md`, or a runtime's upgrade log), and `models.md` takes the new numbers if they change a pick. Findings about the app's own prompts and behaviour (how a prompt shape works with two people, what a Roleplay keeps track of) go in the bench's README or `docs/research/`, with what was decided in an ADR.
 - **Agent instructions go in this file**, not in an agent-specific one, so any agent can use them.
 
 ## Two machines

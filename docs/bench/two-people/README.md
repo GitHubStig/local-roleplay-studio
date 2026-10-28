@@ -49,7 +49,7 @@ committed.
   didn't give ("Elara"), and a handle the same as the name ("the young woman"). Not worth the
   change to every part of the app on this evidence.
 - FLUX.3 Klein got all eleven right, and puts Kael's scars on his arms and shirt as well as his
-  face in every shape (seen before, models.md).
+  face in every shape (seen before, research/image-models.md).
 
 ## The Chain (the same day)
 

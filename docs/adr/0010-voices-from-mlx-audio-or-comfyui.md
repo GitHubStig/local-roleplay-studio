@@ -39,7 +39,7 @@ ComfyUI. Settings' ComfyUI check also looks for the pack's nodes (`/object_info`
 - **Voices in the browser** (the Web Speech API, or Kokoro through transformers.js). No install,
   but no voice designed from a description or cloned, so a Character would pick a preset; kept as an
   open thread.
-- **Other node packs.** The Qwen3-TTS-only ones clone generically (docs/models.md), and one pins
+- **Other node packs.** The Qwen3-TTS-only ones clone generically (docs/research/voices.md), and one pins
   Transformers 4, which would downgrade ComfyUI's; the Higgs-only pack's repository is gone.
 - **Converting FLAC to MP3** on the server, to keep lines small. Needs an encoder (ffmpeg) the app
   doesn't otherwise need.

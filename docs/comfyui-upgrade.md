@@ -7,7 +7,7 @@ This is the routine for reviewing a ComfyUI release on the Apple Silicon Mac and
 - **This file** is the repeatable upgrade and review procedure.
 - [research/comfyui.md](./research/comfyui.md) keeps the app's continuing ComfyUI integration findings: API behaviour, workflows, resource constraints and issues that still matter.
 - **The rolling upgrade log** in [research/comfyui-upgrade-log.md](./research/comfyui-upgrade-log.md) records each release review under a dated version heading: relevant changes, their relation to existing findings, and what was checked on each machine.
-- [models.md](./models.md) records models only after they have been selected and actually evaluated. Ideas not chosen yet belong in [open-threads.md](./open-threads.md).
+- [models.md](./models.md) holds only the current picks, once a model has been selected and actually evaluated; each measurement goes, dated, in [research/image-models.md](./research/image-models.md) (or [research/voices.md](./research/voices.md)). Ideas not chosen yet belong in [open-threads.md](./open-threads.md).
 
 ## Routine
 
@@ -19,7 +19,7 @@ This is the routine for reviewing a ComfyUI release on the Apple Silicon Mac and
 6. **Let the user choose per machine.** Present the candidate list and ask which, if any, they want to try on the Mac and on Windows. Do not download, cache, or add model files, and do not start a large or memory-heavy run, until the user chooses. One machine's choice does not imply the same choice on the other.
 7. **Schedule benchmarks before running them.** If a fix, improvement or model needs a performance, memory or quality benchmark, tell the user in advance what will run, the expected duration and resource use, whether it needs any downloads, and what will be measured. Ask the user to choose a time when that machine is otherwise idle; do not start until they confirm. Other jobs can skew timing and resource measurements. A brief functional smoke check can confirm that a workflow runs, but do not present its timing as a benchmark.
 8. **Check the upgraded installations with existing models first.** Confirm the version and run a focused functional smoke check through the app on each machine, using models already cached. Check the app behaviour touched by the release (API calls, workflow nodes, previews, cancellation, and model unloading as relevant). Avoid real Session content; use public benchmark inputs where suitable. Apply the scheduling rule above before any measurement run.
-9. **Record the result.** Append a dated version section to [research/comfyui-upgrade-log.md](./research/comfyui-upgrade-log.md), with sources and separate Mac and Windows outcomes: version, checks run, pass/fail, and anything not tested. Update [research/comfyui.md](./research/comfyui.md) only when a continuing integration finding changes. Add selected and measured models to [models.md](./models.md); keep unselected candidates in [open-threads.md](./open-threads.md).
+9. **Record the result.** Append a dated version section to [research/comfyui-upgrade-log.md](./research/comfyui-upgrade-log.md), with sources and separate Mac and Windows outcomes: version, checks run, pass/fail, and anything not tested. Update [research/comfyui.md](./research/comfyui.md) only when a continuing integration finding changes. Add measurements to [research/image-models.md](./research/image-models.md), and a selected model's current numbers to [models.md](./models.md); keep unselected candidates in [open-threads.md](./open-threads.md).
 
 ## Review prompt
 

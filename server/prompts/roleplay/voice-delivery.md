@@ -1,7 +1,7 @@
 <!--
 The system message of the call that directs how one line is spoken, each time a line is spoken: a
 pace and a sound, nothing more. Emotion and style tags pulled the cloned voice off the Character
-(up to a woman's pitch); pace and sounds held it, and sounded better than plain (docs/models.md).
+(up to a woman's pitch); pace and sounds held it, and sounded better than plain (docs/research/voices.md).
 Asked for mood and emotion as well, the Text Model over-acted, marking nearly every line slow;
 narrowed to this, the heretic gemma-4 26B-A4B and gemma4 31B each picked 15 of 16 test lines right.
 

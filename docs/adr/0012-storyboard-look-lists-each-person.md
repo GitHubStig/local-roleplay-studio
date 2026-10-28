@@ -37,7 +37,7 @@ number of people.
 ## Consequences
 
 - `shown` comes last in each Frame's reply: put first, gemma4 stalls on such answers (as found for
-  the Art Agent; docs/models.md).
+  the Art Agent; docs/research/text-models.md).
 - Renaming someone in the Look keeps them shown where they were, matched by their place in the list
   while the number of people is the same.
 - Storyboards planned before this aren't read any more: there was one, and it was deleted.
