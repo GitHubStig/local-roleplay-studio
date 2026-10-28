@@ -467,12 +467,12 @@ describe('SettingsView', () => {
     withComfyUI()
     const wrapper = mount(SettingsView)
     await flushPromises()
-    const labels = () => wrapper.findAll('[data-edit-model] option').map((o) => o.text())
+    const labels = () => wrapper.findAll('[data-edit-model] option').map((o) => o.text()).sort()
     // Edits go to this machine, so Qwen-Image 2.1 Edit runs on mflux; FLUX.3 only on ComfyUI.
-    expect(labels()).toEqual(['Qwen-Image 2.1 Edit · mflux', 'FLUX.3 Klein Edit · ComfyUI'])
+    expect(labels()).toEqual(['FLUX.3 Klein Edit · ComfyUI', 'Qwen-Image 2.1 Edit · mflux'])
     // Sent to the ComfyUI instead, before it's saved: both run there.
     await wrapper.find('[data-run-on="edits"] select').setValue('pc')
-    expect(labels()).toEqual(['Qwen-Image 2.1 Edit · ComfyUI', 'FLUX.3 Klein Edit · ComfyUI'])
+    expect(labels()).toEqual(['FLUX.3 Klein Edit · ComfyUI', 'Qwen-Image 2.1 Edit · ComfyUI'])
     // Where nothing runs Qwen-Image 2.1 Edit, Settings' own is shown, as not here, until another
     // is chosen.
     vi.mocked(api.getSettingsOptions).mockResolvedValue({
@@ -489,6 +489,23 @@ describe('SettingsView', () => {
       'qwen-image-2.1-edit (not available here)',
       'FLUX.3 Klein Edit · ComfyUI',
     ])
+  })
+
+  it('sorts the default Image Model and the default edit model by name, not as the lists have them', async () => {
+    withComfyUI()
+    const wrapper = mount(SettingsView)
+    await flushPromises()
+    const labelsOf = (selector: string) =>
+      wrapper.findAll(`${selector} option`).map((o) => o.text())
+    const sorted = (labels: string[]) =>
+      [...labels].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+    for (const selector of ['[data-image-model]', '[data-edit-model]']) {
+      const labels = labelsOf(selector)
+      expect(labels.length).toBeGreaterThan(1)
+      expect(labels).toEqual(sorted(labels))
+    }
+    // The fixture lists Z-Image Turbo before FLUX.2 Klein 4B, so this isn't the lists' own order.
+    expect(labelsOf('[data-image-model]')[0]).toBe('FLUX.2 Klein 4B')
   })
 
   it('saves each control into its own field', async () => {

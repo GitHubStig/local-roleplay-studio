@@ -528,9 +528,9 @@ describe('SessionView', () => {
     // Up to date, it can still render again: with Settings' size and the rest as they are now.
     expect(wrapper.find('[data-changed]').exists()).toBe(false)
     expect(wrapper.find('[data-render-button]').text()).toBe('Re-render')
-    expect(select.findAll('option').map((o) => o.text())).toEqual([
-      'Qwen-Image 2.1 · mflux',
+    expect(select.findAll('option').map((o) => o.text()).sort()).toEqual([
       'FLUX.2 Klein 4B · mflux',
+      'Qwen-Image 2.1 · mflux',
     ])
     expect(wrapper.find('[data-image-steps]').text()).toBe('· 25 steps')
 
@@ -570,6 +570,33 @@ describe('SessionView', () => {
     expect(wrapper.find('[data-frame-notice]').text()).toBe('No Backend renders x')
   })
 
+  it('sorts the Image Models by name within each kind of backend, keeping the groups', async () => {
+    vi.mocked(api.getSettingsOptions).mockResolvedValue({
+      features: ALL_AVAILABLE,
+      imageModels: {
+        ...IMAGE_MODELS,
+        comfyui: [IMAGE_MODELS.mflux[0], {
+          ...IMAGE_MODELS.mflux[0],
+          id: 'moss-image',
+          label: 'MOSS-Image',
+        }],
+      },
+      imageBackends: ['mflux', 'comfyui'],
+      imageModelsOn: {},
+    } as unknown as api.SettingsOptions)
+    await loadSettingsOptions()
+    vi.mocked(api.getSession).mockResolvedValue(session([frame(0, null)]))
+    const { wrapper } = await mountIt()
+    const groups = wrapper.find('[data-image-model]').findAll('optgroup').map((g) => ({
+      name: g.attributes('label'),
+      labels: g.findAll('option').map((o) => o.text()),
+    }))
+    // The lists have Qwen-Image 2.1 first in both; each group is by name, mflux still before ComfyUI.
+    expect(groups.map((g) => g.name)).toEqual(['mflux', 'ComfyUI'])
+    expect(groups[0].labels).toEqual(['FLUX.2 Klein 4B · mflux', 'Qwen-Image 2.1 · mflux'])
+    expect(groups[1].labels).toEqual(['MOSS-Image · ComfyUI', 'Qwen-Image 2.1 · ComfyUI'])
+  })
+
   it('lists each Image Model under each kind of backend that has it, and keeps the kind picked', async () => {
     vi.mocked(api.getSettingsOptions).mockResolvedValue({
       features: ALL_AVAILABLE,
@@ -604,11 +631,11 @@ describe('SessionView', () => {
     expect(
       select.findAll('optgroup').map((g) => [
         g.attributes('label'),
-        g.findAll('option').map((o) => o.text()),
+        g.findAll('option').map((o) => o.text()).sort(),
       ]),
     ).toEqual([
-      ['mflux', ['Qwen-Image 2.1 · mflux', 'FLUX.2 Klein 4B · mflux']],
-      ['ComfyUI', ['Qwen-Image 2.1 · ComfyUI', 'MOSS-Image · ComfyUI']],
+      ['mflux', ['FLUX.2 Klein 4B · mflux', 'Qwen-Image 2.1 · mflux']],
+      ['ComfyUI', ['MOSS-Image · ComfyUI', 'Qwen-Image 2.1 · ComfyUI']],
     ])
     expect((select.element as HTMLSelectElement).value).toBe('comfyui/qwen-image-2.1')
     // Its picture says where it was made.

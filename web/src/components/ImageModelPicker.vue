@@ -8,7 +8,7 @@ import {
   setImageModel,
 } from '../api'
 import SelectField from './SelectField.vue'
-import { imageModelOf, useSettingsOptions } from '../composables/useSettingsOptions'
+import { byLabel, imageModelOf, useSettingsOptions } from '../composables/useSettingsOptions'
 
 /**
  * The Session's Image Model, switched here (Settings has the one new Sessions start with), and the
@@ -41,7 +41,7 @@ const groups = computed(() =>
     models: (options.value?.imageModels[backend] ?? []).map((m) => ({
       value: value(backend, m.id),
       label: `${m.label} · ${IMAGE_BACKEND_NAMES[backend]}`,
-    })),
+    })).sort(byLabel),
   })).filter((g) => g.models.length)
 )
 /** The Session's own, if no group has it (its kind isn't here, or the list hasn't loaded). */

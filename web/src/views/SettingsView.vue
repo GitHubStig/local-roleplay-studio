@@ -20,6 +20,7 @@ import ToggleSwitch from '../components/ToggleSwitch.vue'
 import { useBackends } from '../composables/useBackends'
 import { useFeatures } from '../composables/useFeatures'
 import {
+  byLabel,
   editModelChoices,
   imageModelChoices,
   imageModelOf,
@@ -31,6 +32,8 @@ const options = ref<SettingsOptions | null>(null)
 const editModels = computed(() =>
   editModelChoices(options.value?.editModels, (id) => imageKindOf(whereTo('edits', id)))
 )
+/** The dropdown's order; `editModels.choices` keeps the lists' (`startOn` picks the first). */
+const editModelsSorted = computed(() => [...editModels.value.choices].sort(byLabel))
 const loadError = ref('')
 const saving = ref(false)
 const status = ref<{ kind: 'saved' | 'error'; message: string; issues?: string[] } | null>(null)
@@ -104,7 +107,7 @@ const canThink = computed(() =>
 /** The kind of backend a Backend renders on: mflux here, or its ComfyUI. */
 const imageKindOf = (b: Backend | undefined): ImageBackend | undefined =>
   b?.kind === 'here' ? 'mflux' : b?.kind === 'comfyui' ? 'comfyui' : undefined
-/** Every Image Model a Backend in the form can render, by name, as the Session's picker lists them. */
+/** Every Image Model a Backend in the form can render, by name, sorted by label (the lists' own order is not the dropdown's). */
 const imageModels = computed(() =>
   imageModelChoices(
     options.value,
@@ -112,7 +115,7 @@ const imageModels = computed(() =>
     choicesFor('images').map(imageKindOf).filter((k): k is ImageBackend => !!k),
     // Named as on the Backend renders prefer.
     () => imageKindOf(form.value?.backends.find((b) => b.id === form.value?.runOn.images)),
-  )
+  ).sort(byLabel)
 )
 /** The chosen Image Model's options, where renders go, for the controls only some models have. */
 const imageModel = computed(() =>
@@ -465,7 +468,7 @@ function saveNow() {
                     <option v-if="!editModels.choices.some((m) => m.id === form?.editModel)" :value="form.editModel">
                       {{ form.editModel }} (not available here)
                     </option>
-                    <option v-for="m in editModels.choices" :key="m.id" :value="m.id">{{ m.label }}</option>
+                    <option v-for="m in editModelsSorted" :key="m.id" :value="m.id">{{ m.label }}</option>
                   </SelectField>
                   <span class="text-sm text-muted">
                     What an edit starts on; the Edit dialog can choose another.

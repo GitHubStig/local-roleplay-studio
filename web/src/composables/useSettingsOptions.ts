@@ -96,6 +96,10 @@ export function imageModelOf(
     (Object.keys(options?.imageModels ?? {}) as ImageBackend[]).map(on).find(Boolean)
 }
 
+/** Orders choices by label for a dropdown: case-blind, numbers as numbers ("Krea 2" before "Krea 10"). */
+export const byLabel = (a: { label: string }, b: { label: string }) =>
+  a.label.localeCompare(b.label, undefined, { numeric: true, sensitivity: 'base' })
+
 /**
  * The Image Models to choose from, by name: each one a kind of backend that can render here has
  * (`backends`, as Settings were saved unless told), once, and always `own` (the Session's, or
