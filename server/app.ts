@@ -44,6 +44,7 @@ import { embedStyles } from './style/job.ts'
 import {
   checkEdit,
   deleteNewestEdit,
+  deleteUpscale,
   editFrame,
   pickVersion,
   VersionError,
@@ -938,6 +939,27 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
         if (editing) return error('That picture is being edited: wait for it first', 409)
         try {
           return json(await deleteNewestEdit(deps.sessions, session, index))
+        } catch (err) {
+          if (err instanceof VersionError) return error(err.message, 409)
+          throw err
+        }
+      },
+    ],
+
+    // Deletes the upscale of the picked version of Frame `:index`'s picture, unless one is queued
+    // or running on the Frame. Sends back the Session.
+    [
+      'DELETE',
+      new URLPattern({ pathname: '/api/sessions/:id/pictures/:index/upscale' }),
+      async (_req, p) => {
+        const session = await deps.sessions.load(p.id!)
+        if (!session) return error('Session not found', 404)
+        const index = Number(p.index)
+        const upscaling = jobs.list(session.id)
+          .some((j) => j.kind === 'upscale' && j.frameIndex === index && j.status !== 'failed')
+        if (upscaling) return error('That picture is being upscaled: wait for it first', 409)
+        try {
+          return json(await deleteUpscale(deps.sessions, session, index))
         } catch (err) {
           if (err instanceof VersionError) return error(err.message, 409)
           throw err

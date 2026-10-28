@@ -53,6 +53,8 @@ const emit = defineEmits<{
   pick: [index: number, version: number]
   /** Delete the newest edit of Frame `index`'s picture. */
   deleteEdit: [index: number]
+  /** Delete the upscale of the version of Frame `index`'s picture that is shown. */
+  deleteUpscale: [index: number]
   /** Cancel an edit being made, or dismiss one that failed. */
   dropJob: [job: Job]
 }>()
@@ -207,8 +209,9 @@ const shown = computed(() => {
   }
   const edit = pickedEdit(p)
   const version = edit ?? p
+  const plain = !!version.upscaled && seeingPlain.value
   return {
-    src: fileUrl(version.upscaled ?? version.image),
+    src: fileUrl(plain ? version.image : version.upscaled ?? version.image),
     alt: `Picture of ${name}`,
     label,
     caption: edit
@@ -218,6 +221,23 @@ const shown = computed(() => {
       : undefined,
   }
 })
+
+// --- The picked version's upscale: shown by default, looked at without it only here.
+/** The version shown without its upscale, to compare. Back to the upscale on another Frame or version. */
+const seeingPlain = ref(false)
+watch(() => [current.value?.index, picture.value?.picked ?? 0], () => (seeingPlain.value = false))
+/** The picked version's upscale, when it has one and no edit is being viewed in its place. */
+const upscale = computed(() => {
+  const p = picture.value
+  return p && !viewedJob.value ? (pickedEdit(p) ?? p).upscaled : undefined
+})
+function deleteUpscale() {
+  const frame = current.value
+  if (!frame || !upscale.value) return
+  if (!confirm(`Delete the upscale of ${props.name(frame.index)}? This can't be undone.`)) return
+  seeingPlain.value = false
+  emit('deleteUpscale', frame.index)
+}
 
 function step(by: number) {
   const frame = pictured.value[at.value + by]
@@ -399,6 +419,21 @@ const action =
           </button>
           <button type="button" :class="action" data-delete-edit @click="deleteNewest">
             Delete edit
+          </button>
+        </template>
+        <template v-if="upscale">
+          <button
+            type="button"
+            :class="[action, 'cursor-pointer whitespace-nowrap select-none', !seeingPlain && 'border-white/90 bg-white/90 text-black hover:text-black']"
+            :aria-pressed="!seeingPlain"
+            title="Look at this picture with and without its upscale"
+            data-toggle-upscale
+            @click="seeingPlain = !seeingPlain"
+          >
+            Upscaled
+          </button>
+          <button type="button" :class="[action, 'whitespace-nowrap select-none']" data-delete-upscale @click="deleteUpscale">
+            Delete upscale
           </button>
         </template>
         <button

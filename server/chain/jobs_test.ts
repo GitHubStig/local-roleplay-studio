@@ -231,6 +231,19 @@ Deno.test('A Chain queues an upscale of one Frame, once', () =>
     assertEquals((await call('GET', `/api/sessions/s1/images/${second.upscaled}`)).status, 200)
     const again = await call('POST', '/api/sessions/s1/jobs', { kind: 'upscale', frameIndex: 1 })
     assertEquals(again.status, 409)
+
+    // Deleting the upscale keeps the picture, and it can be upscaled again.
+    const upscale = (path = '/api/sessions/s1/pictures/1/upscale') => call('DELETE', path)
+    assertEquals((await upscale()).status, 200)
+    const [, after] = await chainFrames(call)
+    assertEquals([after.upscaled, after.image], [undefined, second.image])
+    assertEquals((await call('GET', `/api/sessions/s1/images/${second.upscaled}`)).status, 404)
+    assertEquals((await call('GET', `/api/sessions/s1/images/${second.image}`)).status, 200)
+    assertEquals((await upscale()).status, 409)
+    const redo = await call('POST', '/api/sessions/s1/jobs', { kind: 'upscale', frameIndex: 1 })
+    assertEquals(redo.status, 201)
+    assertEquals(await settled(call), [])
+    assertMatch((await chainFrames(call))[1].upscaled!, /-2048\.png$/)
   }))
 
 /** A PNG's bytes in base64, standing in for a painted area. */

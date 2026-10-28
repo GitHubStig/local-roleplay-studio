@@ -93,7 +93,7 @@ const { jobs, runningJobs, runningJob, runningOn, jobsFor, hasJob, queue, queueE
   },
 )
 /** Editing a picture in the viewer (ADR 0021): painting an edit, or watching one being made. */
-const { painting: paintingPicture, startEdit, showEdit, pick: pickVersion, deleteEdit } =
+const { painting: paintingPicture, startEdit, showEdit, pick: pickVersion, deleteEdit, deleteUpscale } =
   usePictureEditing(props.id, session, viewing, (text) => (notice.value = { kind: 'error', text }))
 /**
  * The picture forming, over the picture of the Frame a job renders (one at a time). The Frame is
@@ -1210,6 +1210,7 @@ const lookSavingText = computed(() =>
       @edit="queueEdit"
       @pick="pickVersion"
       @delete-edit="deleteEdit"
+      @delete-upscale="deleteUpscale"
       @drop-job="dropJob"
     />
     <Frame3dViewers

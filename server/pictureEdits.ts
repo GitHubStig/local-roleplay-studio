@@ -12,7 +12,9 @@ import { crossedLimit } from './limits.ts'
 import { imageKindOf } from './backends.ts'
 import { editJob } from './machine.ts'
 import {
+  changeFramePicture,
   changeRenderedPicture,
+  pickedVersion,
   type PictureEdit,
   PictureGoneError,
   removeFiles,
@@ -205,5 +207,29 @@ export async function deleteNewestEdit(
     ...versionFiles(gone!),
     ...(gone!.mask ? [gone!.mask] : []),
   ])
+  return updated
+}
+
+/**
+ * Deletes the upscale of the version of Frame `index`'s picture that is picked, keeping the version
+ * itself: a picture that looks worse upscaled goes back to its image as rendered or edited.
+ */
+export async function deleteUpscale(
+  store: SessionStore,
+  session: Session,
+  index: number,
+): Promise<Session> {
+  let gone: string | undefined
+  const updated = await updateSession(store, session.id, session.kind, (latest: Session) => {
+    const picture = shownPictureOf(latest, index)
+    const version = picture && pickedVersion(picture)
+    if (!version?.upscaled) throw new VersionError(`Frame ${index + 1}'s picture isn't upscaled`)
+    gone = version.upscaled
+    return changeFramePicture(latest, version.image, (v) => {
+      const { upscaled: _, ...rest } = v
+      return rest as typeof v
+    })
+  })
+  await removeFiles(store.dir(session.id), [gone!])
   return updated
 }

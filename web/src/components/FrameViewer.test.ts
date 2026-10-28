@@ -77,6 +77,34 @@ describe('FrameViewer', () => {
     expect(wrapper.emitted('pick')).toEqual([[0, 0]])
   })
 
+  it('toggles a version between its upscale and without, and deletes the upscale', async () => {
+    const upscaled = [{
+      ...frames[0],
+      pictures: [{ ...frames[0].pictures[0], picked: 0 }],
+    }]
+    const wrapper = mountIt({ frames: upscaled })
+    await flushPromises()
+    // The upscale shows by default; a version without one (Edit 1 here) has no buttons.
+    expect(shownSrc(wrapper)).toBe(url('frame-0-2048.png'))
+    expect(side(wrapper).find('[data-delete-upscale]').exists()).toBe(true)
+    await wrapper.setProps({ frames })
+    expect(side(wrapper).find('[data-toggle-upscale]').exists()).toBe(false)
+    expect(side(wrapper).find('[data-delete-upscale]').exists()).toBe(false)
+    await wrapper.setProps({ frames: upscaled })
+
+    await side(wrapper).find('[data-toggle-upscale]').trigger('click')
+    expect(shownSrc(wrapper)).toBe(url('frame-0.png'))
+    await side(wrapper).find('[data-toggle-upscale]').trigger('click')
+    expect(shownSrc(wrapper)).toBe(url('frame-0-2048.png'))
+
+    const confirm = vi.fn().mockReturnValueOnce(false).mockReturnValueOnce(true)
+    vi.stubGlobal('confirm', confirm)
+    await side(wrapper).find('[data-delete-upscale]').trigger('click')
+    expect(wrapper.emitted('deleteUpscale')).toBeUndefined()
+    await side(wrapper).find('[data-delete-upscale]').trigger('click')
+    expect(wrapper.emitted('deleteUpscale')).toEqual([[0]])
+  })
+
   it('makes the newest edit again from its area and instruction, or deletes it', async () => {
     const newest = [{ ...frames[0], pictures: [{ ...frames[0].pictures[0], picked: 2 }] }]
     const wrapper = mountIt({ frames: newest })

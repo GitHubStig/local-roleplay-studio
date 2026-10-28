@@ -545,7 +545,7 @@ const timingsLabel = (f: StoryboardFrame) => {
 /** The Frame whose picture is open in the viewer, if any. */
 const viewingPicture = ref<number | null>(null)
 /** Editing its picture there (ADR 0021): painting an edit, or watching one being made. */
-const { painting: paintingPicture, startEdit, showEdit, pick: pickVersion, deleteEdit } =
+const { painting: paintingPicture, startEdit, showEdit, pick: pickVersion, deleteEdit, deleteUpscale } =
   usePictureEditing(props.id, session, viewingPicture, (text) => (message.value = { kind: 'error', text }))
 /** Which Frame's scene or figure is open, if any. */
 const open3d = ref<{ index: number; kind: Made3d } | null>(null)
@@ -1050,6 +1050,7 @@ const imagesOn = computed(() => featureOn.value('images'))
       @edit="queueEdit"
       @pick="pickVersion"
       @delete-edit="deleteEdit"
+      @delete-upscale="deleteUpscale"
       @drop-job="dropJob"
     />
     <Frame3dViewers

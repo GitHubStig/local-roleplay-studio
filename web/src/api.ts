@@ -887,6 +887,10 @@ export const pickVersion = <S>(id: string, index: number, picked: number) =>
 export const deleteNewestEdit = <S>(id: string, index: number) =>
   request<S>(`/api/sessions/${id}/pictures/${index}/edits/newest`, { method: 'DELETE' })
 
+/** Deletes the upscale of a Frame's shown picture, keeping the picture; returns the Session. */
+export const deleteUpscale = <S>(id: string, index: number) =>
+  request<S>(`/api/sessions/${id}/pictures/${index}/upscale`, { method: 'DELETE' })
+
 /** Puts a failed job back in the queue; returns the queue. */
 export const retryJob = (id: string, jobId: string) =>
   post<Job[]>(`/api/sessions/${id}/jobs/${jobId}/retry`)
