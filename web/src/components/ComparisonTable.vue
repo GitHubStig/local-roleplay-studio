@@ -205,7 +205,7 @@ usePageKeys(() => instead.value ?? scroller.value, () => viewing.value !== null)
                   type="checkbox"
                   checked
                   :aria-label="`Show ${m.label}`"
-                  :title="`Untick to hide ${m.label}, and leave it out of Export`"
+                  :title="`Untick to hide ${m.label}${$slots.hidden ? ', and leave it out of Export' : ''}`"
                   data-show-model
                   @change="hide(c)"
                 />

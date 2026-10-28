@@ -20,6 +20,23 @@ describe('ExportPage', () => {
     expect(wrapper.find('[data-export-table]').attributes('inert')).toBeUndefined()
   })
 
+  it('lets a visitor hide a column, moving it to the right end', async () => {
+    const two = {
+      models: [{ label: 'a' }, { label: 'b' }],
+      rows: [{
+        name: 'Frame 0',
+        pictures: [{ thumb: 't/a.webp', full: 'i/a.webp' }, {
+          thumb: 't/b.webp',
+          full: 'i/b.webp',
+        }],
+      }],
+    }
+    const wrapper = mount(ExportPage, { props: two })
+    await wrapper.find('[data-model-column] [data-show-model]').trigger('change')
+    expect(wrapper.findAll('[data-model-column]').map((c) => c.text())).toEqual(['b'])
+    expect(wrapper.find('[data-hidden-column]').text()).toBe('a')
+  })
+
   it('keeps the table out of reach behind its notice until the visitor confirms', async () => {
     const notice = 'Some of these pictures show nude figures.'
     const wrapper = mount(ExportPage, { props: { ...comparison, notice } })
