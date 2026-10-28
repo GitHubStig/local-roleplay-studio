@@ -155,7 +155,7 @@ Deno.test("The same model's pictures stay wherever it renders, each saying the b
 
     // Settings send renders to a ComfyUI now: rendered there, it takes the mflux picture's place,
     // as the same model.
-    const pc: Backend = { id: 'pc', kind: 'comfyui', address: 'http://192.168.50.85:8188' }
+    const pc: Backend = { id: 'pc', kind: 'comfyui', address: 'http://192.0.2.85:8188' }
     const onPc = { ...deps, backendOf: () => Promise.resolve<Backend | undefined>(pc) }
     const rendered = await renderChainFrame(onPc, qwen, 1, () => {}, signal())
     assertEquals(rendered.frames[1].pictures.map((p) => [p.imageModel, p.imageBackend]), [

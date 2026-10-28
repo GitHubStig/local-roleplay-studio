@@ -602,7 +602,7 @@ Deno.test('runChainFrame records time spent waiting for another render', () =>
 Deno.test('A render says which kind of backend it runs on as it starts, and its picture keeps it', () =>
   withTempDir(async (root) => {
     const events: FrameEvent[] = []
-    const pc: Backend = { id: 'pc', kind: 'comfyui', address: 'http://192.168.50.85:8188' }
+    const pc: Backend = { id: 'pc', kind: 'comfyui', address: 'http://192.0.2.85:8188' }
     const frame = await runChainFrame(
       {
         store: chainStore(root),

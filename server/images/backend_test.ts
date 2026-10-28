@@ -22,7 +22,7 @@ const edit = (model: EditRequest['model']): EditRequest => ({
 
 const yes = { available: true }
 const no = { available: false, reason: 'mflux runs only on Apple Silicon Macs' }
-const PC: Backend = { id: 'pc', kind: 'comfyui', address: 'http://192.168.50.85:8188' }
+const PC: Backend = { id: 'pc', kind: 'comfyui', address: 'http://192.0.2.85:8188' }
 const settings = {
   ...DEFAULT_SETTINGS,
   backends: [...DEFAULT_SETTINGS.backends, PC],
@@ -42,11 +42,11 @@ Deno.test("Each job runs on its Backend: an edit on its edit model's, at that Co
   assertEquals(await both.edit(edit('qwen-image-2.1-edit'), signal), 'mflux.png')
   assertEquals(
     await both.edit(edit('flux3-klein-edit'), signal),
-    'comfyui at http://192.168.50.85:8188.png',
+    'comfyui at http://192.0.2.85:8188.png',
   )
   // Upscale where Settings prefer, though mflux is here.
   const upscale = { model: 'seedvr2-7b', image: 'frame.png', seed: 1, dir: '.', name: 'up' }
-  assertEquals(await both.upscale(upscale, signal), 'comfyui at http://192.168.50.85:8188')
+  assertEquals(await both.upscale(upscale, signal), 'comfyui at http://192.0.2.85:8188')
 
   // A PC without a ComfyUI listed can't edit with mflux's.
   const pc = imageBackends({

@@ -202,7 +202,7 @@ describe('SettingsView', () => {
     expect(wrapper.find('[data-step-cache]').exists()).toBe(false)
     expect(wrapper.find('[data-feature="upscale"] [data-unavailable]').exists()).toBe(false)
     await wrapper.find('[data-backend="comfyui"] [data-backend-address]').setValue(
-      'http://192.168.1.20:8188',
+      'http://192.0.2.20:8188',
     )
     await wrapper.find('form').trigger('submit')
     await flushPromises()
@@ -210,7 +210,7 @@ describe('SettingsView', () => {
       backends: [...settings.backends, {
         id: 'comfyui',
         kind: 'comfyui',
-        address: 'http://192.168.1.20:8188',
+        address: 'http://192.0.2.20:8188',
       }],
       imageModel: 'qwen-image-2.1',
       steps: 25,
@@ -226,13 +226,13 @@ describe('SettingsView', () => {
     })
     const wrapper = mount(SettingsView)
     await flushPromises()
-    await addBackend(wrapper, 'comfyui', 'http://192.168.1.20:8188')
+    await addBackend(wrapper, 'comfyui', 'http://192.0.2.20:8188')
     await wrapper.find('[data-tab="images"]').trigger('click')
     await wrapper.find('[data-run-on="upscale"] select').setValue('comfyui')
     await vi.advanceTimersByTimeAsync(600)
     await flushPromises()
     // Only the upscaler goes there, so only its files are checked.
-    expect(api.checkComfyUI).toHaveBeenLastCalledWith('http://192.168.1.20:8188', {
+    expect(api.checkComfyUI).toHaveBeenLastCalledWith('http://192.0.2.20:8188', {
       imageModel: undefined,
       upscaler: 'seedvr2-7b',
       voices: undefined,
@@ -634,13 +634,13 @@ describe('SettingsView', () => {
         backends: [settings.backends[0], { id: 'ollama', kind: 'ollama', address }],
       })
     expect(wrapper.find('button[type=submit]').exists()).toBe(false)
-    await address().setValue('http://192.168.1.20:11434')
+    await address().setValue('http://192.0.2.20:11434')
     // Nothing yet while typing; once it pauses, one save.
     expect(api.saveSettings).not.toHaveBeenCalled()
     await vi.advanceTimersByTimeAsync(700)
     await flushPromises()
     expect(api.saveSettings).toHaveBeenCalledTimes(1)
-    expect(api.saveSettings).toHaveBeenCalledWith(ollamaAt('http://192.168.1.20:11434'))
+    expect(api.saveSettings).toHaveBeenCalledWith(ollamaAt('http://192.0.2.20:11434'))
     expect(wrapper.find('[data-settings-status] [data-saved]').text()).toContain(
       'Applies from the next Session',
     )
@@ -658,7 +658,7 @@ describe('SettingsView', () => {
     )
     expect(api.saveSettings).toHaveBeenCalledTimes(2)
     // Put back as it was saved: nothing to save, and the error goes.
-    await address().setValue('http://192.168.1.20:11434')
+    await address().setValue('http://192.0.2.20:11434')
     await vi.advanceTimersByTimeAsync(700)
     await flushPromises()
     expect(wrapper.find('[data-save-error]').exists()).toBe(false)

@@ -169,22 +169,22 @@ Deno.test('POST /api/settings/comfyui checks an address not saved yet', async ()
     },
   })
   const res = await call('POST', '/api/settings/comfyui', {
-    address: ' http://192.168.1.20:8188 ',
+    address: ' http://192.0.2.20:8188 ',
     imageModel: 'qwen-image-2.1',
   })
   assertEquals((await res.json()).device, 'cuda:0 NVIDIA GeForce RTX 4070')
   // A Mac rendering with mflux checks only the upscaler it sends there.
   await call('POST', '/api/settings/comfyui', {
-    address: 'http://192.168.1.20:8188',
+    address: 'http://192.0.2.20:8188',
     upscaler: 'seedvr2-7b',
   })
   assertEquals(asked, [
-    ['http://192.168.1.20:8188', {
+    ['http://192.0.2.20:8188', {
       imageModel: 'qwen-image-2.1',
       upscaler: undefined,
       voices: undefined,
     }],
-    ['http://192.168.1.20:8188', {
+    ['http://192.0.2.20:8188', {
       imageModel: undefined,
       upscaler: 'seedvr2-7b',
       voices: undefined,

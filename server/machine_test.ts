@@ -14,24 +14,24 @@ import {
 } from './machine.ts'
 import { DEFAULT_SETTINGS, type SessionSettings } from './settings.ts'
 
-const own = new Set(['studio.local', '192.168.50.10'])
+const own = new Set(['studio.local', '192.0.2.10'])
 
 Deno.test('isThisMachine knows loopback and the machine own names and addresses', () => {
   for (const address of [undefined, '', 'http://localhost:11434', 'http://127.0.0.1:8188']) {
     assertEquals(isThisMachine(address, own), true, String(address))
   }
   assertEquals(isThisMachine('http://[::1]:8188', own), true)
-  assertEquals(isThisMachine('http://192.168.50.10:8188', own), true)
+  assertEquals(isThisMachine('http://192.0.2.10:8188', own), true)
   assertEquals(isThisMachine('http://studio.local:8188', own), true)
-  assertEquals(isThisMachine('http://192.168.50.85:8188', own), false)
+  assertEquals(isThisMachine('http://192.0.2.85:8188', own), false)
 })
 
 Deno.test('sameMachine: both here, or the same host elsewhere', () => {
   assertEquals(sameMachine('http://localhost:11434', undefined, own), true)
-  assertEquals(sameMachine('http://localhost:11434', 'http://192.168.50.10:8188', own), true)
-  assertEquals(sameMachine('http://localhost:11434', 'http://192.168.50.85:8188', own), false)
-  assertEquals(sameMachine('http://192.168.50.85:11434', undefined, own), false)
-  assertEquals(sameMachine('http://192.168.50.85:11434', 'http://192.168.50.85:8188', own), true)
+  assertEquals(sameMachine('http://localhost:11434', 'http://192.0.2.10:8188', own), true)
+  assertEquals(sameMachine('http://localhost:11434', 'http://192.0.2.85:8188', own), false)
+  assertEquals(sameMachine('http://192.0.2.85:11434', undefined, own), false)
+  assertEquals(sameMachine('http://192.0.2.85:11434', 'http://192.0.2.85:8188', own), true)
 })
 
 const yes = { available: true }
@@ -40,7 +40,7 @@ const no = { available: false, reason: 'not here' }
 const mac = { images: yes, upscale: yes, edits: yes, voices: yes }
 /** A PC: neither. */
 const pc = { images: no, upscale: no, edits: no, voices: no }
-const PC_COMFYUI: Backend = { id: 'pc', kind: 'comfyui', address: 'http://192.168.50.85:8188' }
+const PC_COMFYUI: Backend = { id: 'pc', kind: 'comfyui', address: 'http://192.0.2.85:8188' }
 const MAC_COMFYUI: Backend = { id: 'comfy', kind: 'comfyui', address: '' }
 const backends = [HERE, PC_COMFYUI, MAC_COMFYUI]
 
@@ -80,7 +80,7 @@ Deno.test('A kind a Session or an edit would rather run on is followed where it 
 })
 
 Deno.test('textBackendFor: the preferred text Backend if it lists the model, else the next', async () => {
-  const lm: Backend = { id: 'lm', kind: 'openai', address: 'http://192.168.50.85:1234/v1' }
+  const lm: Backend = { id: 'lm', kind: 'openai', address: 'http://192.0.2.85:1234/v1' }
   const ollama: Backend = { id: 'ollama', kind: 'ollama', address: '' }
   const now = { backends: [HERE, ollama, lm], runOn: { ...DEFAULT_SETTINGS.runOn, text: 'lm' } }
   const listed = (b: Backend) =>
@@ -95,9 +95,9 @@ Deno.test('textBackendFor: the preferred text Backend if it lists the model, els
 Deno.test('machineKey: here for this machine, the host for another', () => {
   assertEquals(machineKey(undefined, own), 'here')
   assertEquals(machineKey('http://127.0.0.1:8188', own), 'here')
-  assertEquals(machineKey('http://192.168.50.10:8188', own), 'here')
-  assertEquals(machineKey('http://192.168.50.85:8188', own), '192.168.50.85')
-  assertEquals(machineKey('http://192.168.50.85:11434', own), '192.168.50.85')
+  assertEquals(machineKey('http://192.0.2.10:8188', own), 'here')
+  assertEquals(machineKey('http://192.0.2.85:8188', own), '192.0.2.85')
+  assertEquals(machineKey('http://192.0.2.85:11434', own), '192.0.2.85')
 })
 
 Deno.test('jobBackend: a picture with the Text Model, a render by its Image Model, a line as voices go', () => {
@@ -108,15 +108,15 @@ Deno.test('jobBackend: a picture with the Text Model, a render by its Image Mode
     imageBackend: 'comfyui',
   }
   const now = { ...DEFAULT_SETTINGS, backends, runOn: { ...DEFAULT_SETTINGS.runOn, voices: 'pc' } }
-  const text: Backend = { id: 'ollama', kind: 'ollama', address: 'http://192.168.50.85:11434' }
+  const text: Backend = { id: 'ollama', kind: 'ollama', address: 'http://192.0.2.85:11434' }
   const on = (kind: JobKind, s = session, editModel?: EditModel) =>
     machineOf(jobBackend(kind, s, now, mac, { editModel, text }), own)
-  assertEquals(on('render'), '192.168.50.85')
+  assertEquals(on('render'), '192.0.2.85')
   assertEquals(on('render', DEFAULT_SETTINGS), 'here')
-  assertEquals(on('picture'), '192.168.50.85')
-  assertEquals([on('speak'), on('speak-thought'), on('voice')], Array(3).fill('192.168.50.85'))
+  assertEquals(on('picture'), '192.0.2.85')
+  assertEquals([on('speak'), on('speak-thought'), on('voice')], Array(3).fill('192.0.2.85'))
   assertEquals([on('upscale'), on('scene')], ['here', 'here'])
   // An edit by its edit model, the one told or Settings'.
-  assertEquals(on('edit', session, 'flux3-klein-edit'), '192.168.50.85')
+  assertEquals(on('edit', session, 'flux3-klein-edit'), '192.0.2.85')
   assertEquals(on('edit'), 'here')
 })
