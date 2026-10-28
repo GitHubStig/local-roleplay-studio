@@ -71,11 +71,11 @@ Details, and when to count again: [research/image-models.md](research/image-mode
 | Ming-Image 0.1 Design (`ming-image`) | both | 12 | 41–43 s | 16–18 s | 18.5 GB | a design model: lettering right; a signature mark on the PC |
 | MOSS-Image (`moss-image`) | both | 50 on mflux, 25 on ComfyUI | **black** on mflux 0.24.0 | 25–26 s | 26.8 GB | the closest to the words on the PC; on the Mac, waiting for mflux 0.24.1 |
 | FIBO 1.5 (`fibo-1.5`, 8-bit) | mflux | 6 | 131 s | – | 37.3 GB | its VLM writes a JSON caption first (most of the time); quotes sent curly |
-| FIBO 2.0 Dev (`fibo-2.0`) | both | 50 (or 30) | ~410 s | 61–63 s | 17.9 GB | slow on the Mac; prose, not `--expand-prompt` |
-| FIBO 2.0 Turbo (`fibo-2.0-turbo`) | mflux | 4 | 21 s | – | 17.4 GB | Dev's picture in a twentieth of the time |
+| FIBO 2.0 Dev (`fibo-2.0`) | both | 50 (or 30) | ~410 s | 60–63 s | 17.9 GB | slow on the Mac; prose, not `--expand-prompt` |
+| FIBO 2.0 Turbo (`fibo-2.0-turbo`) | both | 4 | 21 s | 9–10 s | 17.4 GB | Dev's picture in a twentieth of the time on the Mac, a sixth on the PC; the Edit Turbo checkpoint as a generator |
 | Ideogram 4 (`ideogram-4`, 8-bit) | mflux | 20 (12 or 48) | 57 s at 512² (0.22) | – | 30.4 GB | a typography model; garbles lettering from prose; gated |
 
-At 832×1216, wall clock from cache including the model load, unless it says otherwise. The Mac's on mflux 0.24.0 with `--low-ram` (2026-10-27), except Qwen-Image 2.1 Turbo (0.23), FLUX.2 Klein 4B (1024², 0.22), Z-Image (1216×832, 0.22), FIBO 1.5 (0.22) and Ideogram 4. The PC's are from cold on ComfyUI 0.40–0.43, Ollama unloaded (2026-10-15 to 2026-10-27). FIBO 2.0 Dev's prose time on the Mac was taken beside a download; with its VLM it took 505 s. Each model's trials: [research/image-models.md](research/image-models.md).
+At 832×1216, wall clock from cache including the model load, unless it says otherwise. The Mac's on mflux 0.24.0 with `--low-ram` (2026-10-27), except Qwen-Image 2.1 Turbo (0.23), FLUX.2 Klein 4B (1024², 0.22), Z-Image (1216×832, 0.22), FIBO 1.5 (0.22) and Ideogram 4. The PC's are from cold on ComfyUI 0.40–0.43, Ollama unloaded (2026-10-15 to 2026-10-28). FIBO 2.0 Dev's prose time on the Mac was taken beside a download; with its VLM it took 505 s. Each model's trials: [research/image-models.md](research/image-models.md).
 
 ### Editing a picture
 

@@ -165,6 +165,25 @@ export const COMFYUI_MODELS: readonly ComfyModel[] = [
     },
   },
   {
+    // Bria's Edit Turbo checkpoint as a generator (Dev distilled to 4 steps, no guidance), as on mflux.
+    id: 'fibo-2.0-turbo',
+    label: 'FIBO 2.0 Turbo',
+    defaultSteps: 4,
+    stepChoices: [4],
+    cfg: 1,
+    files: {
+      unet: {
+        folder: 'diffusion_models',
+        patterns: [
+          /^fibo2_edit_turbo_int8_convrot\.safetensors$/,
+          /^fibo2_edit_turbo_bf16\.safetensors$/,
+        ],
+      },
+      clip: FIBO_CLIP,
+      vae: FIBO_VAE,
+    },
+  },
+  {
     id: 'z-image-turbo',
     label: 'Z-Image Turbo',
     defaultSteps: 8,

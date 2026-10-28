@@ -539,6 +539,31 @@ Deno.test('Files are picked by the first pattern installed, so each machine can 
   )
 })
 
+Deno.test("FIBO 2.0 Turbo renders text with the Edit Turbo checkpoint as a generator", () =>
+  withTempDir(async (dir) => {
+    const model = findComfyModel('fibo-2.0-turbo')!
+    assertEquals([model.defaultSteps, model.cfg, model.stepChoices], [4, 1, [4]])
+    const comfy = fakeComfyUI({ files: FIBO_TEST_FILES })
+    try {
+      await comfyuiImageGenerator({ address: comfy.url }).generate(
+        {
+          prompt: 'A painted wooden tankard on a tavern table.',
+          seed: 7,
+          settings: settings({ imageModel: 'fibo-2.0-turbo', steps: 4 }),
+          dir,
+          name: 'fibo-turbo',
+        },
+        new AbortController().signal,
+      )
+      const [workflow] = comfy.queued as Nodes[]
+      assertEquals(workflow.unet.inputs.unet_name, 'fibo2_edit_turbo_int8_convrot.safetensors')
+      assertEquals(workflow.conditioning.class_type, 'TextEncodeFibo2')
+      assertEquals([workflow.sampler.inputs.steps, workflow.sampler.inputs.cfg], [4, 1])
+    } finally {
+      await comfy.close()
+    }
+  }))
+
 Deno.test('FIBO files fall back to the supported bf16 variants when int8 files are absent', () => {
   const installed: Record<string, string[]> = {
     diffusion_models: ['fibo2_dev_bf16.safetensors', 'fibo2_edit_turbo_bf16.safetensors'],

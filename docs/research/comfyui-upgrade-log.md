@@ -1,5 +1,9 @@
 # ComfyUI upgrade log
 
+## 2026-10-28: v0.43.1 seen on the Windows PC
+
+The PC's ComfyUI reported 0.43.1 (`/system_stats`) when FIBO 2.0 Turbo was first run on it as a text-to-image model: Dev's graph with the Edit Turbo checkpoint, 4 steps and CFG 1, rendered through the app in about 10 s ([image-models.md](image-models.md#fibo-20-on-comfyui-2026-10-27-windows-pc)). The 0.43.1 release notes were not reviewed here.
+
 ## 2026-10-27: v0.43.0
 
 Reviewed 2026-10-27 against the [v0.43.0 release notes](https://github.com/Comfy-Org/ComfyUI/releases/tag/v0.43.0), the linked ComfyUI pull requests and first-party model pages, and the retained integration findings in [comfyui.md](comfyui.md).
