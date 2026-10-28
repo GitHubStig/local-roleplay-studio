@@ -1,6 +1,7 @@
 import { assertEquals, assertRejects } from '@std/assert'
 import { fromFileUrl, join } from '@std/path'
 import type { ImageRequest } from '../imageGenerator.ts'
+import type { Float16 } from './chip.ts'
 import { findMfluxModel, type MfluxModel } from './models.ts'
 import {
   curlQuotes,
@@ -65,38 +66,46 @@ Deno.test("editArgs edits at the picture's size in 8 bits and low RAM, with its 
 
 Deno.test('mfluxArgs builds the command line from settings', () => {
   const klein = findMfluxModel('flux2-klein-4b')!
-  assertEquals(mfluxArgs(klein, request('/d', { size: 'square', quantize: 8 }), '/d/x.png'), [
-    '--model',
-    'mflux-community/flux2-klein-4b-mflux-bf16',
-    '--base-model',
-    'flux2-klein-4b',
-    '--prompt',
-    'a studio',
-    '--seed',
-    '7',
-    '--steps',
-    '3',
-    '--width',
-    '1024',
-    '--height',
-    '1024',
-    '--quantize',
-    '8',
-    '--compute-precision',
-    'float16',
-    '--low-ram',
-    '--output',
-    '/d/x.png',
-  ])
+  assertEquals(
+    mfluxArgs(klein, request('/d', { size: 'square', quantize: 8, float16: 'on' }), '/d/x.png'),
+    [
+      '--model',
+      'mflux-community/flux2-klein-4b-mflux-bf16',
+      '--base-model',
+      'flux2-klein-4b',
+      '--prompt',
+      'a studio',
+      '--seed',
+      '7',
+      '--steps',
+      '3',
+      '--width',
+      '1024',
+      '--height',
+      '1024',
+      '--quantize',
+      '8',
+      '--compute-precision',
+      'float16',
+      '--low-ram',
+      '--output',
+      '/d/x.png',
+    ],
+  )
 })
 
-Deno.test('mfluxArgs computes in float16 only when Settings ask and the model takes it', () => {
-  const float16 = (id: string, on: boolean) =>
-    mfluxArgs(findMfluxModel(id)!, request('/d', { float16: on }), 'o.png')
+Deno.test('mfluxArgs computes in float16 when Settings ask, or Automatic on M1 to M3, and the model takes it', () => {
+  const float16 = (id: string, setting: Float16, chip: number | null = null) =>
+    mfluxArgs(findMfluxModel(id)!, request('/d', { float16: setting }), 'o.png', chip)
       .includes('--compute-precision')
-  assertEquals(float16('qwen-image-2.1', true), true)
-  assertEquals(float16('qwen-image-2.1', false), false)
-  assertEquals(float16('krea-2', true), false)
+  assertEquals(float16('qwen-image-2.1', 'on', 5), true)
+  assertEquals(float16('qwen-image-2.1', 'off', 1), false)
+  assertEquals(float16('qwen-image-2.1', 'auto', 1), true)
+  assertEquals(float16('qwen-image-2.1', 'auto', 3), true)
+  assertEquals(float16('qwen-image-2.1', 'auto', 4), false)
+  assertEquals(float16('qwen-image-2.1', 'auto', 5), false)
+  assertEquals(float16('qwen-image-2.1', 'auto', null), false)
+  assertEquals(float16('krea-2', 'on'), false)
 })
 
 Deno.test('mfluxArgs adds the step cache only for models that take it', () => {

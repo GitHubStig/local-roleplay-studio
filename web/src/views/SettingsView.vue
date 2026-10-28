@@ -60,6 +60,12 @@ const quantizeChoices = [
   { value: 4, label: '4-bit' },
 ] as const
 
+const float16Choices = [
+  { value: 'auto', label: 'Automatic (by chip)' },
+  { value: 'on', label: 'On' },
+  { value: 'off', label: 'Off' },
+] as const
+
 const stepCacheChoices = [
   { value: null, label: 'Off' },
   { value: 0.25, label: '0.25 (about 1.4× faster)' },
@@ -398,10 +404,19 @@ function saveNow() {
                 </span>
               </label>
 
-              <ToggleSwitch v-if="imageModel?.float16" v-model="form.float16" title="float16" data-float16>
-                Computes in float16: faster on older Macs (M1, M2), no faster on M4 and M5. The
-                picture changes slightly for the same seed.
-              </ToggleSwitch>
+              <label v-if="imageModel?.float16" class="flex flex-col gap-1" data-float16>
+                <span class="text-sm text-muted">float16</span>
+                <SelectField v-model="form.float16">
+                  <option v-for="c in float16Choices" :key="c.value" :value="c.value">
+                    {{ c.label }}
+                  </option>
+                </SelectField>
+                <span class="text-sm text-muted">
+                  Faster on M1 and M2 Macs, no faster on M4 and M5 (measured on an M5 Pro; M3 is
+                  unmeasured). Automatic turns it on for M1 to M3. The picture changes slightly for
+                  the same seed.
+                </span>
+              </label>
 
               <ToggleSwitch
                 v-if="whereTo('images')?.kind === 'comfyui'"

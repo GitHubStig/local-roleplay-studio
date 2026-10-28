@@ -129,7 +129,7 @@ Deno.test('validateSettings fills in what an older file lacks, keeps what it may
     ['limits', true, false, 'no'],
     ['artModel', '', 'gemma4:31b-mlx', 3],
     ['stepCache', 0.4, null, 0.9],
-    ['float16', true, false, 'yes'],
+    ['float16', 'auto', 'on', 'yes'],
     ['previews', true, false, 'yes'],
   ]
   for (const [field, missing, valid, invalid] of fields) {
@@ -216,3 +216,12 @@ Deno.test('A file from before the Backends list loads with the defaults for them
     assertEquals(warned.length, 1)
     assertEquals(warned[0].includes('imageBaseUrl are ignored'), true)
   }))
+
+Deno.test("validateSettings reads an older file's float16 true as Automatic and false as off", () => {
+  const float16 = (value: unknown) => {
+    const result = validateSettings({ ...DEFAULT_SETTINGS, float16: value })
+    return result.ok && result.settings.float16
+  }
+  assertEquals(float16(true), 'auto')
+  assertEquals(float16(false), 'off')
+})

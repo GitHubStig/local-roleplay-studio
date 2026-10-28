@@ -82,8 +82,8 @@ export interface Settings {
   quantize: Quantize
   /** The fraction of steps the step cache skips, for models that take it; null for off. */
   stepCache: number | null
-  /** Compute in float16, for models that take it: faster on M1 and M2 Macs. */
-  float16: boolean
+  /** Compute in float16, for models that take it: faster on M1 and M2 Macs. Automatic is by chip. */
+  float16: 'auto' | 'on' | 'off'
   /** Show the picture forming while it renders (ComfyUI's previews). Applies at once. */
   previews: boolean
   seedMode: SeedMode

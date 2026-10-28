@@ -28,7 +28,7 @@ const settings: api.Settings = {
   size: 'portrait',
   quantize: null,
   stepCache: 0.4,
-  float16: true,
+  float16: 'auto',
   previews: true,
   seedMode: 'random',
   seed: 42,
@@ -369,15 +369,15 @@ describe('SettingsView', () => {
     expect(api.saveSettings).toHaveBeenCalledWith(expect.objectContaining({ previews: false }))
   })
 
-  it('offers float16 for models that take it, on by default, and saves it off', async () => {
+  it('offers float16 for models that take it, Automatic by default, and saves it off', async () => {
     const wrapper = mount(SettingsView)
     await flushPromises()
-    const box = wrapper.find('[data-float16] input').element as HTMLInputElement
-    expect(box.checked).toBe(true)
-    await wrapper.find('[data-float16] input').setValue(false)
+    const select = wrapper.find('[data-float16] select')
+    expect((select.element as HTMLSelectElement).value).toBe('auto')
+    await select.setValue('off')
     await wrapper.find('form').trigger('submit')
     await flushPromises()
-    expect(api.saveSettings).toHaveBeenCalledWith(expect.objectContaining({ float16: false }))
+    expect(api.saveSettings).toHaveBeenCalledWith(expect.objectContaining({ float16: 'off' }))
   })
 
   it('offers float16 only where renders go to mflux, which takes it', async () => {

@@ -31,7 +31,7 @@ export interface MfluxModel {
   curlyQuotes?: boolean
   /** Takes mflux's step cache (`--step-cache-ratio`): it skips the steps that change least. */
   stepCache?: boolean
-  /** Takes `--compute-precision float16`: faster on M1 and M2 Macs, the same on M4 and M5. */
+  /** Takes `--compute-precision float16`: faster on M1 and M2 Macs, the same on M4 and M5 (`chip.ts`). */
   float16?: boolean
 }
 

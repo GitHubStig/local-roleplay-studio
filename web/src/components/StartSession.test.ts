@@ -26,7 +26,7 @@ const settings: api.Settings = {
   size: 'portrait',
   quantize: null,
   stepCache: 0.4,
-  float16: true,
+  float16: 'auto',
   previews: true,
   seedMode: 'random',
   seed: 42,

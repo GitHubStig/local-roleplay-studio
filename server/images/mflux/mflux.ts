@@ -10,6 +10,7 @@ import {
   type UpscaleRequest,
 } from '../imageGenerator.ts'
 import { pngSize } from '../png.ts'
+import { float16On } from './chip.ts'
 import { findMfluxModel, type Lora, MFLUX_MODELS, type MfluxModel } from './models.ts'
 import { SIZE_PRESETS } from '../../settings.ts'
 
@@ -28,7 +29,7 @@ export function loraArgs(lora: Lora): string[] {
 
 /**
  * The mflux command line for one image, at its steps (or its preset for them), with the model's
- * step cache and float16 as Settings ask. Always `--low-ram`: it holds a part of the model only while it's used, so the peak
+ * step cache and float16 as Settings ask (`chip` is this Mac's, for float16's Automatic). Always `--low-ram`: it holds a part of the model only while it's used, so the peak
  * is a quarter of what it is without it, in the same time (docs/research/mflux-upgrade-log.md). A Quantize setting
  * converts the weights as they load.
  */
@@ -36,6 +37,7 @@ export function mfluxArgs(
   model: MfluxModel,
   req: ImageRequest,
   output: string,
+  chip?: number | null,
 ): string[] {
   const { settings } = req
   const size = SIZE_PRESETS.find((p) => p.id === settings.size) ?? SIZE_PRESETS[0]
@@ -60,7 +62,9 @@ export function mfluxArgs(
     '--height',
     String(size.height),
     ...(quantize ? ['--quantize', String(settings.quantize)] : []),
-    ...(settings.float16 && model.float16 ? ['--compute-precision', 'float16'] : []),
+    ...(model.float16 && float16On(settings.float16, chip)
+      ? ['--compute-precision', 'float16']
+      : []),
     ...(model.cfg === undefined ? [] : ['--guidance', String(model.cfg)]),
     ...(model.lora ? loraArgs(model.lora) : []),
     ...(model.args ?? []),

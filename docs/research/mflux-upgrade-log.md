@@ -165,6 +165,24 @@ waist-up) and seed, at 1024×1024, everything else closed:
   48 GB it would have to unload before every Reply, so it would help only back-to-back renders
   (Render all); dropped 2026-10-08.
 
+### float16 on every Image Model that takes it: no gain on an M5 Pro (Mac, 2026-10-28)
+
+Prompted by the Anima PR (mflux #931), which says float16 is about 20% slower than bf16 on an M5 Max. Measured on the Mac (M5 Pro, 48 GB, mflux 0.24.0) with the app's flags (`--low-ram`), seed 7, 1024×1024, each model's app steps, times including the model load ([bench/precision](../bench/precision/README.md), `float16.sh`). Default, then float16 (two runs each for all but the last two):
+
+| Model | Default | float16 | Peak |
+|---|---|---|---|
+| FLUX.2 Klein 9B | 20, 20 s | 20, 20 s | 20.2 GB |
+| FLUX.3 Klein | 42, 44 s | 44, 45 s | 11.7 GB |
+| Z-Image Turbo (4-bit) | 34, 32 s | 32, 32 s | 5.6 GB |
+| Z-Image (8-bit), 30 steps | 206 s | 207 s | 8.8 GB |
+| Qwen-Image 2.1, 25 steps | 90 s | 91 s | 16.3 GB |
+| Qwen-Image 2.1 Turbo | 35, 35 s | 35, 35 s | 16.3 GB |
+| Qwen-Image 2.1 Viggle Turbo | 32, 31 s | 31, 33 s | 16.8 GB |
+
+- **No difference in time or memory on any of them**, and none of the 20% slowdown the Anima PR saw. The pictures differ slightly (0.5–2.1 per pixel of 255, measured on 2026-10-09).
+- **Decision**: the float16 setting is now Automatic, Off or On, Automatic by default: on for M1 to M3, off from M4 (`server/images/mflux/chip.ts`). M1 and M2 are mflux's own claim and **unmeasured here**, as is M3 (a guess). If someone with an M1 to M4 measures it, replace the guess.
+- Not run: FLUX.2 Klein 4B (not downloaded; 10 s either way on 2026-10-09), and Windows (no mflux).
+
 ### Qwen-Image 2.1 on mflux 0.22: float16, `--low-ram` and the saved copy (2026-10-09)
 
 mflux 0.22 adds `--compute-precision float16` (FLUX.2 Klein, Z-Image, Qwen-Image 2.1) and loads

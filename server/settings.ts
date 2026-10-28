@@ -8,6 +8,7 @@ import {
 } from './images/imageModels.ts'
 import { EDIT_MODELS, type EditModel } from './images/editModels.ts'
 import { type Upscaler, UPSCALERS } from './images/upscalers.ts'
+import { type Float16, FLOAT16_CHOICES } from './images/mflux/chip.ts'
 import { type Feature, FEATURES } from './features.ts'
 import {
   type Backend,
@@ -69,9 +70,10 @@ export interface Settings {
   stepCache: StepCache
   /**
    * For Image Models that take it: compute in float16, faster on M1 and M2 Macs (the same on M4
-   * and M5), the picture slightly different for a seed. On by default.
+   * and M5), the picture slightly different for a seed. Automatic by default: on for M1 to M3.
+   * A file from before this had true or false: true was the default, so it reads as Automatic.
    */
-  float16: boolean
+  float16: Float16
   /**
    * Show the picture forming while it renders, from the previews a backend sends at each step
    * (ComfyUI; mflux sends none). On by default. Read on every request, so it applies at once.
@@ -166,7 +168,7 @@ export const DEFAULT_SETTINGS: Settings = {
   size: SIZE_PRESETS[0].id,
   quantize: null,
   stepCache: 0.4,
-  float16: true,
+  float16: 'auto',
   previews: true,
   seedMode: 'random',
   seed: 42,
@@ -272,8 +274,11 @@ export function validateSettings(input: unknown): ValidationResult {
   if (s.stepCache !== undefined && !STEP_CACHE_OPTIONS.includes(s.stepCache as StepCache)) {
     issues.push(`stepCache must be one of: ${STEP_CACHE_OPTIONS.join(', ')}`)
   }
-  if (s.float16 !== undefined && typeof s.float16 !== 'boolean') {
-    issues.push('float16 must be true or false')
+  if (
+    s.float16 !== undefined && typeof s.float16 !== 'boolean' &&
+    !FLOAT16_CHOICES.includes(s.float16 as Float16)
+  ) {
+    issues.push(`float16 must be one of: ${FLOAT16_CHOICES.join(', ')}`)
   }
   if (s.previews !== undefined && typeof s.previews !== 'boolean') {
     issues.push('previews must be true or false')
@@ -324,7 +329,11 @@ export function validateSettings(input: unknown): ValidationResult {
       size: s.size as string,
       quantize: s.quantize as Quantize,
       stepCache: s.stepCache === undefined ? DEFAULT_SETTINGS.stepCache : s.stepCache as StepCache,
-      float16: (s.float16 as boolean | undefined) ?? DEFAULT_SETTINGS.float16,
+      float16: s.float16 === undefined || s.float16 === true
+        ? DEFAULT_SETTINGS.float16
+        : s.float16 === false
+        ? 'off'
+        : s.float16 as Float16,
       previews: (s.previews as boolean | undefined) ?? DEFAULT_SETTINGS.previews,
       seedMode: s.seedMode as SeedMode,
       seed: s.seed as number,
