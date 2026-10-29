@@ -6,7 +6,7 @@ import FrameImage from '../components/FrameImage.vue'
 import CollapsibleTextarea from '../components/CollapsibleTextarea.vue'
 import FrameTab from '../components/FrameTab.vue'
 import ClipOverlay from '../components/ClipOverlay.vue'
-import { scrollToClips } from '../clips'
+import { clipsMaking, scrollToClips } from '../clips'
 import FrameListItem from '../components/FrameListItem.vue'
 import ImageModelPicker from '../components/ImageModelPicker.vue'
 import ModelComparison from '../components/ModelComparison.vue'
@@ -835,6 +835,7 @@ const promptDiff = computed(() => {
                 index: shown.index,
                 nextPictured: !!session.frames[shown.index + 1] && !!pictureOf(session.frames[shown.index + 1]),
                 nextName: frameName(shown.index + 1),
+                making: clipsMaking(jobsFor(shown.index)),
               }
               : undefined"
             @clip="(order) => queueClip(shown!.index, order)"

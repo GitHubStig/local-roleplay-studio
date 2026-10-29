@@ -39,7 +39,7 @@ import JobQueue from '../components/JobQueue.vue'
 import LookForm from '../components/LookForm.vue'
 import FrameTab from '../components/FrameTab.vue'
 import ClipOverlay from '../components/ClipOverlay.vue'
-import { scrollToClips } from '../clips'
+import { clipsMaking, scrollToClips } from '../clips'
 import FrameListItem from '../components/FrameListItem.vue'
 import ImageModelPicker from '../components/ImageModelPicker.vue'
 import ModelComparison from '../components/ModelComparison.vue'
@@ -886,6 +886,7 @@ const imagesOn = computed(() => featureOn.value('images'))
                   index: current.index,
                   nextPictured: !!session.frames[current.index + 1] && 'pictures' in session.frames[current.index + 1] && !!pictureOf(session.frames[current.index + 1]),
                   nextName: `Frame ${current.index + 2}`,
+                  making: clipsMaking(jobsFor(current.index)),
                 }
                 : undefined"
               @clip="(order) => queueClip(current!.index, order)"

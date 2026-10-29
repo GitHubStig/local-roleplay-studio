@@ -62,18 +62,28 @@ async function afterPicture(session: Session, index: number, kind: ClipKind): Pr
     : loadPrompt('video/clip-after-none')
 }
 
-/** The call that writes a clip's prompt: its kind's direction, the picture, the story around it. */
+/** A prompt to rewrite: the one a clip was made from, and what the player said was wrong with it. */
+export interface ClipRevision {
+  prompt: string
+  problem: string
+}
+
+/**
+ * The call that writes a clip's prompt: its kind's direction, the picture, the story around it;
+ * with `revise`, the prompt a clip was made from and what was wrong with it, to rewrite.
+ */
 export async function clipMessages(
   session: Session,
   index: number,
   ask: ClipAsk,
+  revise?: ClipRevision,
 ): Promise<{ system: string; user: string }> {
   // A Play out starts on the picture, by which the Frame's own story has happened.
   const story = await loadPrompt(
     ask.kind === 'play-out' ? 'video/clip-story-done' : 'video/clip-story',
     { story: frameStory(session, index) },
   )
-  return {
+  const messages = {
     system: await loadPrompt('video/clip', {
       direction: await loadPrompt(`video/${ask.kind}`),
       speech: await loadPrompt(ask.speech ? 'video/with-speech' : 'video/without-speech'),
@@ -86,6 +96,11 @@ export async function clipMessages(
       before: index > 0 ? frameStory(session, index - 1) : 'none: the story starts here',
       after: await afterPicture(session, index, ask.kind),
     }),
+  }
+  if (!revise) return messages
+  return {
+    ...messages,
+    user: await loadPrompt('video/clip-revise', { request: messages.user, ...revise }),
   }
 }
 
@@ -110,12 +125,13 @@ export async function writeClipPrompt(
   ask: ClipAsk,
   emit: (event: ClipPromptEvent) => void,
   signal: AbortSignal,
+  revise?: ClipRevision,
 ): Promise<string> {
   const name = session.kind === 'storyboard' ? `Frame ${index + 1}` : `Frame ${index}`
   if (!shownVersionOf(session, index)) throw new ClipPromptError(`${name} has no picture yet`)
   const refused = clipRefusal(session, index, ask.kind, name)
   if (refused) throw new ClipPromptError(refused)
-  const messages = await clipMessages(session, index, ask)
+  const messages = await clipMessages(session, index, ask, revise)
   emit({ type: 'phase', phase: 'text' })
   let written = ''
   const raw = await model.writeClip(messages, signal, (chunk) => {

@@ -24,7 +24,7 @@ const mountIt = (props: Partial<InstanceType<typeof FrameClips>['$props']> = {})
       index: 1,
       nextPictured: true,
       nextName: 'Frame 2',
-      making: false,
+      making: [],
       ...props,
     },
   })
@@ -52,6 +52,7 @@ describe('FrameClips', () => {
       1,
       { kind: 'idle-loop', seconds: 8, speech: true },
       expect.any(Function),
+      undefined,
     )
     const prompt = wrapper.find<HTMLTextAreaElement>('[data-clip-prompt]')
     expect(prompt.element.value).toBe('She steps in. Sound: rain.')
@@ -104,7 +105,29 @@ describe('FrameClips', () => {
     expect((wrapper.find('[data-clip-speech]').element as HTMLInputElement).checked).toBe(true)
   })
 
-  it('waits while a clip of the Frame is being made', () => {
-    expect(mountIt({ making: true }).find('[data-make-clip]').text()).toBe('Making…')
+  it("rewrites a clip's prompt by what was wrong with it, into the form", async () => {
+    const wrapper = mountIt({ clips: [leadIn] })
+    await wrapper.find('[data-clip-kind="idle-loop"]').trigger('click')
+    await wrapper.find('[data-clip-wrong]').trigger('click')
+    await wrapper.find('[data-clip-problem] textarea').setValue('She should stay at the table.')
+    await wrapper.find('[data-clip-problem]').trigger('submit')
+    await flushPromises()
+    expect(api.writeClipPrompt).toHaveBeenCalledWith(
+      's1',
+      1,
+      { kind: 'lead-in', seconds: 4, speech: true },
+      expect.any(Function),
+      { prompt: 'She walks in.', problem: 'She should stay at the table.' },
+    )
+    expect(wrapper.find<HTMLTextAreaElement>('[data-clip-prompt]').element.value).toBe(
+      'She steps in. Sound: rain.',
+    )
+    expect(wrapper.find('[data-clip-problem]').exists()).toBe(false)
+  })
+
+  it('waits while a clip of the Frame is being made, saying which', () => {
+    expect(mountIt({ making: ['lead-in'] }).find('[data-make-clip]').text()).toBe('Making Lead In…')
+    const two = mountIt({ making: ['lead-in', 'idle-loop'] }).find('[data-make-clip]')
+    expect([two.text(), two.attributes('disabled')]).toEqual(['Making Lead In, Idle Loop…', ''])
   })
 })

@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import {
   type Clip,
+  type ClipKind,
   type ClipOrder,
   type JobKind,
   type Made3d,
@@ -32,7 +33,14 @@ const props = withDefaults(
      * For its clips: the Session, the Frame's index, and whether the next Frame has a picture for
      * Into Next to end on (and what it's called). Left out, no Clip section.
      */
-    clips?: { sessionId: string; index: number; nextPictured: boolean; nextName: string }
+    clips?: {
+      sessionId: string
+      index: number
+      nextPictured: boolean
+      nextName: string
+      /** The kinds of clip queued or being made of it (`clipsMaking`). */
+      making: ClipKind[]
+    }
   }>(),
   { canRender: false },
 )
@@ -75,7 +83,7 @@ const has3d = computed(() =>
       :clips="pictureClips"
       :next-pictured="clips.nextPictured"
       :next-name="clips.nextName"
-      :making="hasJob('clip')"
+      :making="clips.making"
       @make="(order) => $emit('clip', order)"
       @play="(clip) => $emit('play', clip)"
     />

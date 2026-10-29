@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import {
   type Clip,
   CLIP_KIND_NAMES,
@@ -12,7 +12,8 @@ import {
  * The selected Frame's clips (docs/video-plan.md), in its tab, the same in every kind of Session:
  * pick where the picture sits in the clip, its length and whether anyone speaks; the Text Model
  * writes the prompt from the story, for the player to read and edit; then the clip is queued. The
- * clips already made are listed, to play over the picture or to make again.
+ * clips already made are listed, to play over the picture, to make again, or to say what was wrong
+ * with one, for the Text Model to rewrite its prompt by.
  */
 const props = defineProps<{
   sessionId: string
@@ -23,8 +24,8 @@ const props = defineProps<{
   /** The next Frame has a picture for Into Next to end on; `nextName` names it. */
   nextPictured: boolean
   nextName: string
-  /** A clip is already queued or being made on the Frame. */
-  making: boolean
+  /** The kinds of clip queued or being made of the Frame. */
+  making: ClipKind[]
 }>()
 const emit = defineEmits<{ make: [order: ClipOrder]; play: [clip: Clip] }>()
 
@@ -56,7 +57,15 @@ const hint = computed(() =>
   })[kind.value]
 )
 
-async function write() {
+/** Make clip, or which kinds are being made meanwhile. */
+const makeLabel = computed(() =>
+  props.making.length
+    ? `Making ${props.making.map((k) => CLIP_KIND_NAMES[k]).join(', ')}…`
+    : 'Make clip'
+)
+
+/** Writes the prompt; with `revise`, rewrites a clip's by what was wrong with it. */
+async function write(revise?: { prompt: string; problem: string }) {
   writing.value = true
   error.value = ''
   prompt.value = ''
@@ -66,7 +75,7 @@ async function write() {
       if (event.type === 'clip-prompt-part' || event.type === 'clip-prompt') {
         prompt.value = event.text
       } else if (event.type === 'failed') error.value = event.message
-    })
+    }, revise)
   } catch (err) {
     error.value = (err as Error).message
   } finally {
@@ -77,6 +86,20 @@ async function write() {
 function make() {
   const order = { kind: kind.value, prompt: prompt.value.trim(), seconds: seconds.value, speech: speech.value }
   emit('make', order)
+}
+
+/** The clip being said what was wrong with (its file), and what. */
+const fixing = ref<string | null>(null)
+const problem = ref('')
+/** Puts the clip back in the form, and has its prompt rewritten by what was wrong. */
+async function rewrite(clip: Clip) {
+  again(clip)
+  const revise = { prompt: clip.prompt, problem: problem.value.trim() }
+  fixing.value = null
+  problem.value = ''
+  // After the form has taken the clip's kind.
+  await nextTick()
+  await write(revise)
 }
 
 /** Puts a clip's order back in the form, to edit and make again. */
@@ -143,25 +166,25 @@ function again(clip: Clip) {
     />
     <p v-if="error" class="text-xs text-danger" role="alert">{{ error }}</p>
     <div class="flex items-center gap-2">
-      <button type="button" class="action" :disabled="writing" data-write-clip-prompt @click="write">
+      <button type="button" class="action" :disabled="writing" data-write-clip-prompt @click="write()">
         {{ prompt ? 'Write again' : 'Write prompt' }}
       </button>
       <button
         type="button"
         class="action"
-        :disabled="writing || making || !prompt.trim() || (kind === 'into-next' && !nextPictured)"
-        :title="making ? 'A clip is being made of this Frame' : 'Make the clip with LTX 2.5 (a few minutes)'"
+        :disabled="writing || !!making.length || !prompt.trim() || (kind === 'into-next' && !nextPictured)"
+        :title="making.length ? 'A clip is being made of this Frame' : 'Make the clip (a few minutes)'"
         data-make-clip
         @click="make"
       >
-        {{ making ? 'Making…' : 'Make clip' }}
+        {{ makeLabel }}
       </button>
     </div>
     <ul v-if="clips?.length" class="flex flex-col text-xs" data-clips>
       <li
         v-for="clip in clips"
         :key="clip.file"
-        class="flex items-center gap-2 border-t border-line py-1.5"
+        class="flex flex-wrap items-center gap-2 border-t border-line py-1.5"
         :data-clip="clip.kind"
       >
         <span class="w-16 font-medium">{{ CLIP_KIND_NAMES[clip.kind] }}</span>
@@ -176,6 +199,33 @@ function again(clip: Clip) {
         >
           Again
         </button>
+        <button
+          type="button"
+          class="action"
+          :class="{ 'action-on': fixing === clip.file }"
+          title="Say what was wrong with it, for the Text Model to rewrite its prompt"
+          data-clip-wrong
+          @click="fixing = fixing === clip.file ? null : clip.file"
+        >
+          What went wrong?
+        </button>
+        <form
+          v-if="fixing === clip.file"
+          class="flex w-full flex-col gap-1.5"
+          data-clip-problem
+          @submit.prevent="rewrite(clip)"
+        >
+          <textarea
+            v-model="problem"
+            rows="2"
+            class="w-full resize-y rounded border border-line bg-surface p-2 text-xs"
+            placeholder="What you saw, and what should happen instead: she walks out of the door; she should stay at the table and put the coin down."
+            aria-label="What was wrong with the clip"
+          />
+          <button type="submit" class="action self-start" :disabled="!problem.trim() || writing">
+            Rewrite the prompt
+          </button>
+        </form>
       </li>
     </ul>
   </section>

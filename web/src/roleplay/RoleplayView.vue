@@ -11,7 +11,7 @@ import RestartButton from '../components/RestartButton.vue'
 import ComposeBox from '../components/ComposeBox.vue'
 import FrameTab from '../components/FrameTab.vue'
 import ClipOverlay from '../components/ClipOverlay.vue'
-import { scrollToClips } from '../clips'
+import { clipsMaking, scrollToClips } from '../clips'
 import FrameListItem from '../components/FrameListItem.vue'
 import Icon from '../components/Icon.vue'
 import ImageModelPicker from '../components/ImageModelPicker.vue'
@@ -1083,6 +1083,7 @@ const lookSavingText = computed(() =>
                 index: selectedFrame.index,
                 nextPictured: !!session.frames[selectedFrame.index + 1] && !!pictureOf(session.frames[selectedFrame.index + 1]),
                 nextName: `Frame ${selectedFrame.index + 1}`,
+                making: clipsMaking(jobsFor(selectedFrame.index)),
               }"
               @clip="(order) => queueClip(selectedFrame!.index, order)"
               @play="(clip) => (playingClip = { index: selectedFrame!.index, clip })"

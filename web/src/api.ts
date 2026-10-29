@@ -914,16 +914,20 @@ export type ClipPromptEvent =
   | { type: 'clip-prompt-part'; text: string }
   | { type: 'clip-prompt'; text: string }
 
-/** Has the Text Model write a clip's prompt for Frame `index`, for the player to edit; nothing is saved. */
+/**
+ * Has the Text Model write a clip's prompt for Frame `index`, for the player to edit; nothing is
+ * saved. With `revise`, it rewrites the prompt a clip was made from, by what was wrong with it.
+ */
 export const writeClipPrompt = (
   id: string,
   index: number,
   ask: ClipAsk,
   onEvent: (event: ClipPromptEvent | EndEvent) => void,
+  revise?: { prompt: string; problem: string },
 ) =>
   streamEvents<ClipPromptEvent>(
     `/api/sessions/${id}/frames/${index}/clip-prompt`,
-    ask,
+    { ...ask, ...(revise && { revise }) },
     ['clip-prompt'],
     onEvent,
   )

@@ -122,3 +122,18 @@ Deno.test('A Play out is told the Frame has happened, and what happens next, if 
     // The newest Frame has nothing after it: nothing new happens.
     assertStringIncludes(last, await loadPrompt('video/clip-after-none'))
   }))
+
+Deno.test('A prompt is rewritten from the one a clip was made from and what was wrong with it', () =>
+  withTempDir(async (root) => {
+    const { call, model } = await chainWritingClips(root, ['She stays at the table.'])
+    const revise = { prompt: 'She walks to the door.', problem: 'She should stay at the table.' }
+    const events = await readEvents(await writePrompt(call, 1, { ...ask, revise }))
+    assertEquals(events.at(-1)?.[1].text, 'She stays at the table.')
+    const [{ user }] = model.clipRequests
+    assertStringIncludes(user, 'a 5-second Lead In clip')
+    assertStringIncludes(user, 'A clip was made from this prompt:\nShe walks to the door.')
+    assertStringIncludes(user, 'as the player watched it:\nShe should stay at the table.')
+    // Half a revision is refused.
+    const half = await writePrompt(call, 1, { ...ask, revise: { prompt: 'She walks.' } })
+    assertEquals(half.status, 400)
+  }))
