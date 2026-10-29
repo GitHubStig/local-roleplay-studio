@@ -133,3 +133,9 @@ Deno.test('A clip goes to the ComfyUI pictures go to, else the first listed, nev
   assertEquals(clip('here'), 'pc')
   assertEquals(clip('here', [HERE]), undefined)
 })
+
+Deno.test('Clips go to the ComfyUI Settings name for them, over the one pictures go to', () => {
+  const runOn = { ...DEFAULT_SETTINGS.runOn, images: 'comfy' }
+  assertEquals(backendOf({ kind: 'video' }, { backends, runOn, videoOn: 'pc' }, mac)?.id, 'pc')
+  assertEquals(backendOf({ kind: 'video' }, { backends, runOn }, mac)?.id, 'comfy')
+})

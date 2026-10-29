@@ -16,7 +16,6 @@ import {
 import FeatureSwitch from '../components/FeatureSwitch.vue'
 import MachinesTab from '../components/MachinesTab.vue'
 import RunOn from '../components/RunOn.vue'
-import ComfyStatusLine from '../components/ComfyStatusLine.vue'
 import SelectField from '../components/SelectField.vue'
 import ToggleSwitch from '../components/ToggleSwitch.vue'
 import { useBackends } from '../composables/useBackends'
@@ -102,7 +101,18 @@ function removeBackend(index: number) {
   for (const work of Object.keys(form.value.runOn) as Work[]) {
     if (form.value.runOn[work] === gone.id) form.value.runOn[work] = choicesFor(work)[0]?.id ?? ''
   }
+  if (form.value.videoOn === gone.id) delete form.value.videoOn
 }
+
+/** The ComfyUIs clips can go to: only a ComfyUI makes them. */
+const clipChoices = computed(() => form.value?.backends.filter((b) => b.kind === 'comfyui') ?? [])
+/** Clips on: the ComfyUI chosen, or else where they go now (the one pictures go to, or the first). */
+const clipsOn = computed({
+  get: () => form.value?.videoOn ?? clipsTo.value?.id ?? '',
+  set: (id: string) => {
+    if (form.value) form.value.videoOn = id
+  },
+})
 
 /** What the Text Model's Backend lists: as listed on this page, or as the server did on load. */
 const textListing = computed(() => (form.value && text.value[form.value.runOn.text]) ?? options.value)
@@ -574,14 +584,19 @@ function saveNow() {
                   half minutes for a 5-second clip on an RTX 4070 with 12 GB.
                 </span>
               </label>
-              <div v-if="clipsTo" class="flex flex-col gap-1 text-sm" data-clips-to>
-                <span class="text-muted">
-                  Made on {{ clipsTo.address || 'the ComfyUI on this machine' }}: the ComfyUI
-                  pictures go to, if they go to one, or else the first on the Machines tab, with the
-                  video model's files (from ComfyUI's template for it).
-                </span>
-                <ComfyStatusLine :status="comfy[clipsTo.id] ?? null" @check="checkComfy(clipsTo)" />
-              </div>
+              <RunOn
+                v-if="clipChoices.length"
+                v-model="clipsOn"
+                label="Clips on"
+                :choices="clipChoices"
+                :goes-to="clipsTo"
+                :status="comfy[clipsTo?.id ?? '']"
+                data-run-on="video"
+                @check="checkComfy"
+              >
+                A ComfyUI with the video model's files, from ComfyUI's own template for it. Until one
+                is chosen, clips go to the ComfyUI pictures go to, or else the first.
+              </RunOn>
             </template>
           </div>
         </section>

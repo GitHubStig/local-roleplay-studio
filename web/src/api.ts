@@ -93,6 +93,8 @@ export interface Settings {
   upscaler: string
   /** The video model clips are made with, on a ComfyUI. */
   videoModel: string
+  /** The ComfyUI clips go to, by Backend id; none for the one pictures go to, or else the first. */
+  videoOn?: string
   /** Which model edits pictures; applies to the next edit, even mid-Session. */
   editModel: string
   /** The Limits; off, none are enforced. Applies at once. */

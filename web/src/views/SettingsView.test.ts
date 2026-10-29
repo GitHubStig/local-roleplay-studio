@@ -483,6 +483,42 @@ describe('SettingsView', () => {
     wrapper.unmount()
   })
 
+  it('sends clips to the ComfyUI chosen, checking it for the video model', async () => {
+    const two = {
+      ...settings,
+      backends: [
+        ...settings.backends,
+        { id: 'mac', kind: 'comfyui' as const, address: '' },
+        { id: 'pc', kind: 'comfyui' as const, address: 'http://192.0.2.20:8188' },
+      ],
+    }
+    vi.mocked(api.getSettings).mockImplementation(() => Promise.resolve(structuredClone(two)))
+    vi.mocked(api.checkComfyUI).mockResolvedValue({
+      up: true,
+      version: '0.43.1',
+      device: 'cuda:0',
+      ready: true,
+    })
+    const wrapper = mount(SettingsView, { attachTo: document.body })
+    await flushPromises()
+    await wrapper.find('[data-tab="clips"]').trigger('click')
+    const on = wrapper.find<HTMLSelectElement>('[data-run-on="video"] select')
+    // Until chosen, the first ComfyUI (pictures go to this machine's mflux).
+    expect(on.element.value).toBe('mac')
+    expect(on.findAll('option').map((o) => o.element.value)).toEqual(['mac', 'pc'])
+    await on.setValue('pc')
+    await vi.runAllTimersAsync()
+    await flushPromises()
+    expect(api.checkComfyUI).toHaveBeenCalledWith(
+      'http://192.0.2.20:8188',
+      expect.objectContaining({ videoModel: 'ltx-2.5' }),
+    )
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+    expect(vi.mocked(api.saveSettings).mock.lastCall?.[0].videoOn).toBe('pc')
+    wrapper.unmount()
+  })
+
   it('comes back to the tab it was on, after a reload', async () => {
     const first = mount(SettingsView, { attachTo: document.body })
     await flushPromises()

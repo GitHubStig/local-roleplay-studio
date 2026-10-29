@@ -6,7 +6,6 @@ Ideas deliberately deferred. Promote an item to an ADR in `docs/adr/` when we ac
   - *More video models* (the owner: Wan 2.2, MiniMax H3): an entry each in `server/video/comfyui/models.ts` and a workflow. LTX 2.5's workflow guides the pictures in by `firstGuide` and `lastGuide` nodes, which `withoutEnds` drops for a kind of clip without that end; a model that takes its start and end pictures otherwise (Wan's first–last-frame node) needs its own way of leaving an end out.
   - *The Mac*: LTX 2.5 through its ComfyUI, and with which files (the PC's are `int8-convrot`, likely CUDA only; bf16 is much bigger, and the Mac is short of disk).
   - *Seeking in a clip*: the Session's file route sends whole files, without Range requests, which some browsers need to seek a video.
-  - *Which ComfyUI clips go to*: the one pictures go to, else the first listed; a picker of its own only if they should ever go to different ones.
   - *A clip's length*: the player picks it (3–10 s). Proposed: a Frame with a Voice clip runs the line's length plus a little either side; otherwise the Text Model suggests one from how much happens.
   - *LTX's own sound against the Voice clips*: a clip without dialogue has background sound only, so the Voice clips could play over it; not built.
   - *A Roleplay's pictures that agree*: its Art Agent writes each Frame's Image Prompt afresh, so the room drifts from Frame to Frame and Into Next cuts, where a Chain, which edits the last prompt, joined two Frames without one. Not raised with the owner yet.

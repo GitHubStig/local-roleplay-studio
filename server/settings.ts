@@ -94,6 +94,11 @@ export interface Settings {
   /** The video model clips are made with (`video/comfyui/models.ts`), on a ComfyUI. */
   videoModel: string
   /**
+   * The ComfyUI clips go to, by Backend id; none for the one pictures go to, or else the first.
+   * Not a kind of work in `runOn`: only a ComfyUI makes clips, and a machine may have none.
+   */
+  videoOn?: string
+  /**
    * The model that pictures Roleplay Frames (the Art Agent); '' for the Session's Text Model.
    * Read when a picture is made, so it applies to running Sessions too.
    */
@@ -324,6 +329,12 @@ export function validateSettings(input: unknown): ValidationResult {
     issues.push(`editModel must be one of: ${EDIT_MODELS.map((m) => m.id).join(', ')}`)
   }
 
+  if (
+    s.videoOn !== undefined &&
+    !listed.some((b) => b?.id === s.videoOn && b?.kind === 'comfyui')
+  ) {
+    issues.push('videoOn must be a ComfyUI on the Machines tab')
+  }
   if (s.videoModel !== undefined && !findComfyVideoModel(s.videoModel as string)) {
     issues.push(`videoModel must be one of: ${COMFYUI_VIDEO_MODELS.map((m) => m.id).join(', ')}`)
   }
@@ -352,6 +363,7 @@ export function validateSettings(input: unknown): ValidationResult {
       upscaler: (s.upscaler as Upscaler | undefined) ?? DEFAULT_SETTINGS.upscaler,
       editModel: (s.editModel as EditModel | undefined) ?? DEFAULT_SETTINGS.editModel,
       videoModel: (s.videoModel as string | undefined) ?? DEFAULT_SETTINGS.videoModel,
+      ...(s.videoOn !== undefined && { videoOn: s.videoOn as string }),
       artModel: (s.artModel as string | undefined) ?? '',
       // One not mentioned (an older file, or a Feature added since) is on.
       features: { ...DEFAULT_SETTINGS.features, ...(features as Record<Feature, boolean>) },

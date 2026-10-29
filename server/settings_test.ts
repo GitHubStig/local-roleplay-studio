@@ -225,3 +225,16 @@ Deno.test("validateSettings reads an older file's float16 true as Automatic and 
   assertEquals(float16(true), 'auto')
   assertEquals(float16(false), 'off')
 })
+
+Deno.test('Clips may name a ComfyUI to go to, one on the Machines tab', () => {
+  const comfy = { id: 'pc', kind: 'comfyui' as const, address: 'http://192.0.2.20:8188' }
+  const backends = [...DEFAULT_SETTINGS.backends, comfy]
+  const ok = validateSettings({ ...DEFAULT_SETTINGS, backends, videoOn: 'pc' })
+  assertEquals(ok.ok && ok.settings.videoOn, 'pc')
+  const none = validateSettings({ ...DEFAULT_SETTINGS, backends })
+  assertEquals(none.ok && 'videoOn' in none.settings, false)
+  for (const videoOn of ['gone', 'ollama']) {
+    const bad = validateSettings({ ...DEFAULT_SETTINGS, backends, videoOn })
+    assertEquals(bad.ok ? [] : bad.issues, ['videoOn must be a ComfyUI on the Machines tab'])
+  }
+})

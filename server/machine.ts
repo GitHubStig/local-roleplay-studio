@@ -29,7 +29,10 @@ export type HeavyJob =
   | { kind: 'render'; model: string; on?: ImageBackendKind }
   | { kind: 'edit'; model: EditModel; on?: ImageBackendKind }
   | { kind: 'upscale' | 'voice' }
-  /** A clip (`video/`): only a ComfyUI makes them, the one pictures go to if they go to one. */
+  /**
+   * A clip (`video/`): only a ComfyUI makes them, the one Settings name for them (`videoOn`), or
+   * else the one pictures go to if they go to one, else the first.
+   */
   | { kind: 'video' }
 
 /** An edit as the render queue is given it: by its edit model, on the kind it would rather. */
@@ -76,11 +79,14 @@ export function canRun(backend: Backend, job: HeavyJob, here: Here): boolean {
  */
 export function backendOf(
   job: HeavyJob | undefined,
-  now: Pick<Settings, 'backends' | 'runOn'>,
+  now: Pick<Settings, 'backends' | 'runOn' | 'videoOn'>,
   here: Here,
 ): Backend | undefined {
   if (!job) return HERE
-  const preferred = now.runOn[job.kind === 'video' ? 'images' : WORK_OF[job.kind]]
+  // Clips prefer the ComfyUI Settings name for them, else the one pictures go to.
+  const preferred = job.kind === 'video'
+    ? now.videoOn ?? now.runOn.images
+    : now.runOn[WORK_OF[job.kind]]
   const can = (b: Backend) => canRun(b, job, here)
   const on = 'on' in job ? job.on : undefined
   return (on && pickBackend(now.backends, preferred, (b) => imageKindOf(b) === on && can(b))) ||

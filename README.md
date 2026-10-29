@@ -66,7 +66,7 @@ For Roleplay Characters, two models: Qwen3-TTS VoiceDesign designs a voice from 
 
 ### Clips (optional)
 
-A Frame's picture made into a few seconds of video, from its Frame tab (ADR 0025). The Video model (Settings, Clips tab; LTX 2.5 for now) runs on a ComfyUI: the one pictures go to, if they go to one, or else the first on the Machines tab. Install its files from ComfyUI's own **LTX 2.5** template (Templates, then Download all: the 22B distilled transformer, the Gemma 4 text encoder and the video and audio VAEs); the Clips tab says whether that ComfyUI has them. A 5-second clip takes about two and a half minutes on an RTX 4070 with 12 GB. Not tried on a Mac yet.
+A Frame's picture made into a few seconds of video, from its Frame tab (ADR 0025). The Video model (Settings, Clips tab; LTX 2.5 for now) runs on a ComfyUI, chosen there under **Clips on** (until one is, the one pictures go to, or else the first on the Machines tab). Install its files from ComfyUI's own **LTX 2.5** template (Templates, then Download all: the 22B distilled transformer, the Gemma 4 text encoder and the video and audio VAEs); the Clips tab says whether that ComfyUI has them. A 5-second clip takes about two and a half minutes on an RTX 4070 with 12 GB. Not tried on a Mac yet.
 
 ### 3D (optional)
 
