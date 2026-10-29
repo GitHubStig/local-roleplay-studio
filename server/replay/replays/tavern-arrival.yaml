@@ -1,0 +1,11 @@
+# The public tavern Scenario as a Roleplay, for trying video clips on: the traveller comes in out of
+# the storm, crosses to the bar, pays and asks about the letter. Movement Frame to Frame (a door, a
+# walk, a coin, a letter) and a still moment or two.
+kind: roleplay
+seed: 7
+scenario: tavern
+messages:
+  - I push the door shut behind me against the wind and shake the rain from my cloak. "Is the kitchen still open, or only the bar?"
+  - I cross to the bar, take the stool nearest the fire and set a silver coin on the counter. "Something hot, then. And a room for the night."
+  - I nod at the letter by his hand. "Bad news travels fast on a night like this. Who's it from?"
+  - I lean back and wait, watching the rain run down the window, saying nothing.

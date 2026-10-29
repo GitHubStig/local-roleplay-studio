@@ -201,7 +201,7 @@ export function machineDefaults(here: { mflux: boolean; voiceService: boolean })
   }
 }
 
-const MAX_SEED = 2 ** 32 - 1
+export const MAX_SEED = 2 ** 32 - 1
 
 export type ValidationResult =
   | { ok: true; settings: Settings }

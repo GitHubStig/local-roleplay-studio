@@ -23,6 +23,10 @@
         "test:web"
       ]
     },
+    "replay": {
+      "description": "Rebuild a test Session from a replay file through the running app (server/replay/)",
+      "command": "deno run --allow-net --allow-read server/replay/replay.ts"
+    },
     "build": "cd web && deno task build",
     "check": "cd server && deno check . && cd ../web && deno task typecheck"
   },

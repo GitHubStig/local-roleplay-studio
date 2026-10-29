@@ -270,6 +270,21 @@ Deno.test('POST /api/sessions uses a fixed seed when set', () =>
     )
   }))
 
+Deno.test('POST /api/sessions takes a seed of its own over Settings', () =>
+  withTempDir(async (root) => {
+    const { call } = setup({
+      root,
+      settings: { textModel: 'x', seedMode: 'fixed', seed: 99 },
+    })
+    const create = (seed: unknown) => call('POST', '/api/sessions', { scenarioId: 'test', seed })
+    assertEquals((await (await create(7)).json()).seed, 7)
+    assertEquals((await (await create(0)).json()).seed, 0)
+    assertEquals((await create(-1)).status, 400)
+    assertEquals((await create(1.5)).status, 400)
+    assertEquals((await create('7')).status, 400)
+    assertEquals((await create(2 ** 32)).status, 400)
+  }))
+
 Deno.test('POST /api/sessions refuses without a Text Model or a known Scenario', async () => {
   assertEquals((await setup().call('POST', '/api/sessions', { scenarioId: 'test' })).status, 400)
   const { call } = setup({ settings: { textModel: 'x' } })

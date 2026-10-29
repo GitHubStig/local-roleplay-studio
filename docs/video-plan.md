@@ -44,7 +44,7 @@ From ComfyUI's LTX 2.5 template: `ltx-2.5-22b-distilled-transformer-comfy-int8-c
 ## Tasks
 
 - [x] Measure on the PC: each kind of clip, time and peak VRAM, and a still at the last frame only (2026-10-29).
-- [ ] A replay script that rebuilds a test Session through the app's HTTP API (a Scenario and a list of Messages, or a Storyboard's Cast and Briefs, with a fixed seed), so it doesn't depend on `session.json`'s format.
+- [x] A replay script that rebuilds a test Session through the app's HTTP API, so it doesn't depend on `session.json`'s format: `deno task replay` (2026-10-29), with the tavern as a Roleplay in `server/replay/replays/tavern-arrival.yaml`.
 - [ ] Sketch the UX with the owner.
 - [ ] Server: a `VideoGenerator` interface and its ComfyUI backend, with workflows in `server/video/comfyui/`, run as jobs on the machine's queue.
 - [ ] Prompts for each kind of clip in `server/prompts/video/`.

@@ -88,8 +88,7 @@ The README's "Where things live" maps the folders. When adding a file:
 ## Local data
 
 `sessions/`, `settings.json` and `models/` are gitignored, so a fresh clone starts without them.
-No Sessions are kept as test fixtures: to test against a story, make one through the app (a
-replay of the same Messages with a fixed seed gives the same Replies), and delete it after.
+No Sessions are kept as test fixtures: to test against a story, make one through the app, by hand or with `deno task replay server/replay/replays/<name>.yaml` (a Roleplay's Messages, a Chain's Actions or a Storyboard's Brief, with a seed, sent through the running app's API, so it survives changes to `session.json` and gives the same Replies each time), and delete it after.
 
 **What's in a Session stays out of the repo** unless the owner OKs it: no Roleplay text, Image
 Prompts, voice clips or pictures from real Sessions copied into `docs/`, tests or commits.

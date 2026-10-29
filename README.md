@@ -146,6 +146,7 @@ server/           Deno API: the app, Sessions, Settings, the job queue, what all
   3d/             SHARP scenes, TripoSplat and LiTo figures
   style/          Compare's style scores: the embedder, the measures and the job
   export/         the Compare table as a page of its own, its pictures as WebP
+  replay/         `deno task replay`: a test Session rebuilt through the API from a replay file
   prompts/        what the Text Model is told, one Markdown file each: chain/, storyboard/,
                   roleplay/, and shared/ for what more than one uses
 web/              Vue 3 + Vite + Tailwind 4 web app; export.html is the exported Compare page

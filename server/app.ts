@@ -29,6 +29,7 @@ import {
   type StoryboardSession,
 } from './session.ts'
 import {
+  MAX_SEED,
   sessionSettingsOf,
   type Settings,
   type SettingsStore,
@@ -739,7 +740,13 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
 
     ['POST', new URLPattern({ pathname: '/api/sessions' }), async (req) => {
       const body = await readJson(req) as
-        | { kind?: unknown; scenarioId?: unknown; brief?: unknown; frameCount?: unknown }
+        | {
+          kind?: unknown
+          scenarioId?: unknown
+          brief?: unknown
+          frameCount?: unknown
+          seed?: unknown
+        }
         | undefined
       const kind = body?.kind ?? 'chain'
       if (kind !== 'chain' && kind !== 'storyboard' && kind !== 'roleplay') {
@@ -768,6 +775,14 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
           return error(`frameCount must be ${FRAME_COUNT.min}–${FRAME_COUNT.max}`, 400)
         }
       }
+      // A seed of its own (a replay's, server/replay/), or else Settings'.
+      const seed = body?.seed
+      if (
+        seed !== undefined &&
+        (!Number.isInteger(seed) || (seed as number) < 0 || (seed as number) > MAX_SEED)
+      ) {
+        return error(`seed must be an integer from 0 to ${MAX_SEED}`, 400)
+      }
       const settings = await deps.settings.load()
       if (!settings.textModel) return error('Choose a Text Model in Settings first', 400)
       const base = {
@@ -775,7 +790,8 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
         brief,
         scenarioId,
         settings: sessionSettingsOf(settings),
-        seed: settings.seedMode === 'fixed' ? settings.seed : randomSeed(),
+        seed: (seed as number | undefined) ??
+          (settings.seedMode === 'fixed' ? settings.seed : randomSeed()),
         createdAt: new Date().toISOString(),
       }
       // Every kind starts without pictures: a Chain then only writes each Frame's prompt, to
