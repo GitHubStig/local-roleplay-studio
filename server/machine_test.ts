@@ -120,3 +120,16 @@ Deno.test('jobBackend: a picture with the Text Model, a render by its Image Mode
   assertEquals(on('edit', session, 'flux3-klein-edit'), '192.0.2.85')
   assertEquals(on('edit'), 'here')
 })
+
+Deno.test('A clip goes to the ComfyUI pictures go to, else the first listed, never here', () => {
+  const clip = (images: string, listed = backends) =>
+    backendOf(
+      { kind: 'video' },
+      { backends: listed, runOn: { ...DEFAULT_SETTINGS.runOn, images } },
+      mac,
+    )
+      ?.id
+  assertEquals(clip('comfy'), 'comfy')
+  assertEquals(clip('here'), 'pc')
+  assertEquals(clip('here', [HERE]), undefined)
+})

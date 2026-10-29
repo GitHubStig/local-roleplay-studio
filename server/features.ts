@@ -17,6 +17,7 @@ export const FEATURES = [
   'figures',
   'lito',
   'style',
+  'video',
 ] as const
 export type Feature = (typeof FEATURES)[number]
 
@@ -30,6 +31,7 @@ export const FEATURE_NAMES: Record<Feature, string> = {
   figures: 'TripoSplat',
   lito: 'LiTo',
   style: 'Style scores',
+  video: 'Clips',
 }
 
 /** Whether a Feature can run here, and if not, why not (for Settings to say). */
@@ -93,12 +95,14 @@ export async function detectFeatures(
     lito: !appleSilicon ? mlxOnly('LiTo (through mlx-spatial)') : uv ? yes : noUv,
     // PyTorch, on the GPU where there is one; small enough to run on the CPU, only slower.
     style: uv ? yes : noUv,
+    // LTX 2.5 runs only through a ComfyUI (`withBackends`).
+    video: no('Clips are made on a ComfyUI with LTX 2.5'),
   }
 }
 
 /**
- * What can run now: as detected at startup, but with pictures, Upscale, edits and voices available
- * wherever Settings list a ComfyUI, which a running server provides rather than this machine (ADR
+ * What can run now: as detected at startup, but with pictures, Upscale, edits, voices and clips
+ * available wherever Settings list a ComfyUI, which a running server provides rather than this machine (ADR
  * 0022). One that isn't says one could be added.
  */
 export function withBackends(
@@ -106,7 +110,7 @@ export function withBackends(
   settings: { backends: readonly { kind: string }[] },
 ): Availabilities {
   const comfyui = settings.backends.some((b) => b.kind === 'comfyui')
-  const viaComfyUI = (feature: 'images' | 'upscale' | 'edits' | 'voices') =>
+  const viaComfyUI = (feature: 'images' | 'upscale' | 'edits' | 'voices' | 'video') =>
     comfyui ? yes : detected[feature].available ? detected[feature] : {
       available: false,
       reason: `${detected[feature].reason}; or add a ComfyUI in Settings, on the Machines tab`,
@@ -117,6 +121,7 @@ export function withBackends(
     edits: viaComfyUI('edits'),
     upscale: viaComfyUI('upscale'),
     voices: viaComfyUI('voices'),
+    video: viaComfyUI('video'),
   }
 }
 

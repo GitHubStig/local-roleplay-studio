@@ -193,7 +193,7 @@ Deno.test('POST /api/settings/comfyui checks an address not saved yet', async ()
   ])
 })
 
-Deno.test('Adding a ComfyUI makes pictures, Upscale and voices available where mflux is not', async () => {
+Deno.test('Adding a ComfyUI makes pictures, Upscale, voices and clips available where mflux is not', async () => {
   const off = { available: false, reason: 'mflux runs only on Apple Silicon Macs' }
   const on = { available: true }
   const { call } = setup({
@@ -206,10 +206,11 @@ Deno.test('Adding a ComfyUI makes pictures, Upscale and voices available where m
       figures: on,
       lito: off,
       style: off,
+      video: off,
     },
   })
   const before = (await (await call('GET', '/api/settings/options')).json()).features
-  for (const extra of ['images', 'upscale', 'edits', 'voices']) {
+  for (const extra of ['images', 'upscale', 'edits', 'voices', 'video']) {
     assertEquals(before[extra].available, false)
     assertStringIncludes(before[extra].reason, 'or add a ComfyUI in Settings')
   }
@@ -223,7 +224,7 @@ Deno.test('Adding a ComfyUI makes pictures, Upscale and voices available where m
   })
   assertEquals(saved.status, 200)
   const after = (await (await call('GET', '/api/settings/options')).json()).features
-  for (const extra of ['images', 'upscale', 'edits', 'voices']) {
+  for (const extra of ['images', 'upscale', 'edits', 'voices', 'video']) {
     assertEquals(after[extra].available, true)
   }
   // An Image Model must be one some backend has.
@@ -364,6 +365,7 @@ Deno.test('Without pictures every kind starts; a Chain writes its Frames without
         figures: off,
         lito: off,
         style: off,
+        video: off,
       },
     })
     for (const kind of ['chain', 'storyboard', 'roleplay']) {

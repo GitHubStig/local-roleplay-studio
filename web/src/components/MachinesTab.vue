@@ -47,7 +47,7 @@ const PLACEHOLDERS: Record<Exclude<BackendKind, 'here'>, string> = {
 }
 /** What each kind is for, said as it's added. */
 const HINTS: Record<Exclude<BackendKind, 'here'>, string> = {
-  comfyui: "Pictures, Upscale, edits and voices, with the model's files installed there.",
+  comfyui: "Pictures, Upscale, edits, voices and clips, with the model's files installed there.",
   ollama: 'The Text Model. Empty for Ollama on this machine.',
   openai:
     'The Text Model, with the API version as the server documents it: LM Studio http://localhost:1234/v1, llama.cpp http://localhost:8080/v1, OpenRouter https://openrouter.ai/api/v1. Renders can unload a model from Ollama to free memory, not from these.',

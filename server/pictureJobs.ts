@@ -1,6 +1,6 @@
 /**
- * The jobs every kind of Session runs on a Frame's picture, once it has one: an upscale, and 3D
- * (a SHARP scene, a TripoSplat or LiTo figure). A Chain has only these; a Storyboard adds
+ * The jobs every kind of Session runs on a Frame's picture, once it has one: an upscale, 3D (a
+ * SHARP scene, a TripoSplat or LiTo figure), and clips. A Chain has only these; a Storyboard adds
  * rendering, and a Roleplay pictures, renders and voices too (each in its `jobs.ts`).
  */
 import type { FigureMaker } from './3d/figure.ts'
@@ -13,14 +13,17 @@ import type { Upscaler } from './images/upscalers.ts'
 import type { Job, JobEmit, JobKind } from './jobs.ts'
 import type { Session } from './session.ts'
 import { shownVersionOf } from './pictures.ts'
+import { makeClip } from './video/makeClip.ts'
+import type { VideoGenerator } from './video/videoGenerator.ts'
 
-export const PICTURE_JOB_KINDS: readonly JobKind[] = ['upscale', 'scene', 'figure', 'lito']
+export const PICTURE_JOB_KINDS: readonly JobKind[] = ['upscale', 'scene', 'figure', 'lito', 'clip']
 
 export interface PictureJobDeps
   extends Pick<FrameDeps, 'store' | 'imageGenerator' | 'renderQueue'> {
   scene?: SceneMaker
   figure?: FigureMaker
   lito?: FigureMaker
+  video?: VideoGenerator
   /** The upscaler chosen in Settings now. */
   upscaler(): Promise<Upscaler>
 }
@@ -74,6 +77,8 @@ export async function runPictureJob<S extends Session>(
   } else if (job.kind === 'figure' || job.kind === 'lito') {
     const model = job.kind === 'lito' ? 'lito' : 'triposplat'
     await liftFigure(deps, session, index, emit, signal, model, save)
+  } else if (job.kind === 'clip' && job.clip) {
+    await makeClip(deps, session, index, job.clip, emit, signal, save)
   } else {
     throw new Error(`${job.kind} isn't a picture job`)
   }

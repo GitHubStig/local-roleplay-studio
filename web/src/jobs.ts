@@ -13,6 +13,7 @@ export const JOB_NAMES: Record<JobKind, string> = {
   lito: 'LiTo',
   style: 'Style scores',
   edit: 'Edit',
+  clip: 'Clip',
 }
 
 /**

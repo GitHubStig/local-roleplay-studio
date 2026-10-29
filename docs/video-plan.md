@@ -49,7 +49,7 @@ From ComfyUI's LTX 2.5 template: `ltx-2.5-22b-distilled-transformer-comfy-int8-c
 - [x] A replay script that rebuilds a test Session through the app's HTTP API, so it doesn't depend on `session.json`'s format: `deno task replay` (2026-10-29), with the tavern as a Roleplay in `server/replay/replays/tavern-arrival.yaml`.
 - [ ] Sketch the UX with the owner.
 - [x] Server: a `VideoGenerator` interface and its ComfyUI backend (`server/video/`, 2026-10-29): one LTX 2.5 workflow, the guide at an end without a picture dropped, guides at 1.0; no copy of the pictures or the clip left with ComfyUI (both overwritten with stubs after).
-- [ ] Server: clips as jobs on the machine's queue, saved on the Frame, the generator chosen in `main.ts` (with a Feature for video in `features.ts`).
+- [x] Server: clips as jobs (2026-10-29): a `clip` job with its order (kind, prompt, seconds 2–10, speech), in the render queue as a `video` heavy job, saved on the picture version it's made from (one per kind, a new one replacing the old, deleted with the picture), served as `video/mp4`. The `video` Feature (Clips) is available where Settings list a ComfyUI; a clip goes to the ComfyUI pictures go to, else the first listed (no Settings picker of its own yet). Into Next is refused when the next Frame has no picture. Checked through the app on the PC: a 4 s Lead In in 133 s, 1152×800 from a 1216×832 picture.
 - [ ] Prompts for each kind of clip in `server/prompts/video/`.
 - [ ] Web: the buttons, a clip on its Frame.
 
@@ -60,3 +60,8 @@ Where the clip buttons go led to a wider cleanup of the Session screens, to sett
 The idea on the table: one selected Frame (the newest while playing, or the one clicked), marked in the conversation; its buttons, clip controls, 3D, Image Prompt and timings in a Frame tab in the side panel, under a strip of small pictures that shows where you are and scrolls the conversation. The conversation keeps the text, the picture and Listen, close to how a finished or exported Session would look. One shared component for all three kinds of Session.
 
 Agreed so far: a clip plays over its Frame's picture in the conversation, the same in every kind of Session, and in the large viewer; the panel holds only the controls. Undo stays beside Send. Open: whether the strip and selected Frame replace the Chain's and Storyboard's Frames tabs (needs a mock-up of all three), and making the side panel the same width in every kind of Session (a Roleplay's is the narrowest).
+
+## Left for later (noted 2026-10-29)
+
+- A switch for Clips in Settings (the Feature is on by default, and has none yet), and a picker for which ComfyUI clips go to, if pictures and clips should ever go to different ones.
+- Seeking in a clip: the Session's file route sends whole files, without Range requests, which some browsers need to seek a video (to check when the player is built).

@@ -10,6 +10,7 @@ import { DEFAULT_SETTINGS, type Settings, type SettingsStore } from './settings.
 import type { TextModel } from './textModel.ts'
 import type { RoleplayModel } from './roleplay/model.ts'
 import type { FigureMaker } from './3d/figure.ts'
+import type { VideoGenerator } from './video/videoGenerator.ts'
 import type { SceneMaker } from './3d/scene.ts'
 import type { Availabilities } from './features.ts'
 import type { VoiceEngine } from './voice/voice.ts'
@@ -51,6 +52,7 @@ export interface SetupOptions {
   scene?: SceneMaker
   figure?: FigureMaker
   lito?: FigureMaker
+  video?: VideoGenerator
   settings?: Partial<Settings>
   /** What this "machine" can run; left out, whatever backends are given. */
   features?: Availabilities
@@ -81,6 +83,7 @@ export function setup(opts: SetupOptions = {}) {
     scene: opts.scene,
     figure: opts.figure,
     lito: opts.lito,
+    video: opts.video,
     features: opts.features,
     exports: opts.exports,
     newSessionId: () => `s${++sessionCount}`,

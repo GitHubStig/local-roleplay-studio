@@ -18,6 +18,7 @@ import { IMAGE_BACKENDS, type ImageBackendKind } from './images/imageModels.ts'
 import { machineOf } from './machine.ts'
 import type { Session, SessionStore } from './session.ts'
 import type { SessionSettings } from './settings.ts'
+import { CLIP_KINDS, type ClipKind } from './video/videoGenerator.ts'
 
 /**
  * `picture` writes a Roleplay Frame's Image Prompt and `render` renders it; `upscale` takes a
@@ -39,6 +40,7 @@ export type JobKind =
   | 'lito'
   | 'style'
   | 'edit'
+  | 'clip'
 export const JOB_KINDS: readonly JobKind[] = [
   'picture',
   'render',
@@ -51,6 +53,7 @@ export const JOB_KINDS: readonly JobKind[] = [
   'lito',
   'style',
   'edit',
+  'clip',
 ]
 
 /**
@@ -69,6 +72,7 @@ export const JOB_FEATURE: Record<JobKind, Feature | null> = {
   lito: 'lito',
   style: 'style',
   edit: 'edits',
+  clip: 'video',
 }
 
 /**
@@ -84,6 +88,17 @@ export interface EditOrder {
   backend?: ImageBackendKind
   mask?: string
   retry?: boolean
+}
+
+/**
+ * What a `clip` is told (docs/video-plan.md): its kind, what happens in it (the movement, the
+ * camera, the sound), how many seconds it lasts, and whether anyone may speak in it.
+ */
+export interface ClipOrder {
+  kind: ClipKind
+  prompt: string
+  seconds: number
+  speech: boolean
 }
 
 export interface Job {
@@ -114,6 +129,8 @@ export interface Job {
   imageBackend?: ImageBackendKind
   /** An edit's order. Its painted area is left out of the list the page is sent (`list`). */
   edit?: EditOrder
+  /** A clip's order. */
+  clip?: ClipOrder
 }
 
 /** The Session settings that say which Image Model renders, and where it would rather. */
@@ -154,13 +171,22 @@ export type JobRunner = (
 ) => Promise<void>
 
 /** Jobs that make or use a picture with an image model, which unload the Text Model first. */
-const IMAGE_JOBS: readonly JobKind[] = ['render', 'upscale', 'scene', 'figure', 'lito', 'edit']
+const IMAGE_JOBS: readonly JobKind[] = [
+  'render',
+  'upscale',
+  'scene',
+  'figure',
+  'lito',
+  'edit',
+  'clip',
+]
 
 /**
  * What each job waits for, when queued earlier on its Frame (or, for the Session's own jobs, on any
  * Frame): a render for its Image Prompt, an upscale for its render, 3D for its upscale, a spoken
  * line for its voice, the style scores for every picture; an edit for the render or edit it's made
- * from, and what's made from a picture for its edits. Jobs on one machine also keep their order.
+ * from, and what's made from a picture for its edits (a clip too). Jobs on one machine also keep
+ * their order.
  */
 const NEEDS: Record<JobKind, readonly JobKind[]> = {
   picture: [],
@@ -174,16 +200,23 @@ const NEEDS: Record<JobKind, readonly JobKind[]> = {
   lito: ['picture', 'render', 'edit', 'upscale'],
   style: ['picture', 'render', 'edit'],
   edit: ['picture', 'render', 'edit'],
+  clip: ['picture', 'render', 'edit'],
 }
 
 /**
  * Whether `job` is the same work: the same kind, on the same Frame, by the same Image Model (by
- * name, whichever backend: a Frame keeps one picture per model, `shownPicture`). Edits never are:
- * each is made from the one before.
+ * name, whichever backend: a Frame keeps one picture per model, `shownPicture`), and for a clip,
+ * of the same kind. Edits never are: each is made from the one before.
  */
-const sameWork = (job: Job, kind: JobKind, frameIndex: number, image?: ImageChoice) =>
+const sameWork = (
+  job: Job,
+  kind: JobKind,
+  frameIndex: number,
+  image?: ImageChoice,
+  clip?: ClipKind,
+) =>
   kind !== 'edit' && job.kind === kind && job.frameIndex === frameIndex &&
-  job.image?.imageModel === image?.imageModel
+  job.image?.imageModel === image?.imageModel && job.clip?.kind === clip
 
 interface Running {
   job: Job
@@ -220,8 +253,8 @@ export class SessionJobs {
    * instead of queueing it twice; a render by another Image Model is other work. A picture (a
    * Roleplay Frame's Image Prompt) goes ahead of queued image jobs: a new Reply's is written while
    * its Text Model is still loaded, not after a batch of renders that each unload it. `machine` is
-   * where it runs (`machineKey`), `image` a render's Image Model (`Job.image`), and `edit` an
-   * edit's order.
+   * where it runs (`machineKey`), `image` a render's Image Model (`Job.image`), `edit` an
+   * edit's order and `clip` a clip's.
    */
   enqueue(
     sessionId: string,
@@ -230,9 +263,12 @@ export class SessionJobs {
     machine = 'here',
     image?: ImageChoice,
     edit?: EditOrder,
+    clip?: ClipOrder,
   ): Job {
     const jobs = this.#jobs.get(sessionId) ?? []
-    const same = jobs.find((j) => sameWork(j, kind, frameIndex, image) && j.status !== 'failed')
+    const same = jobs.find((j) =>
+      sameWork(j, kind, frameIndex, image, clip?.kind) && j.status !== 'failed'
+    )
     if (same) return { ...same }
     const job: Job = {
       id: crypto.randomUUID().slice(0, 8),
@@ -243,6 +279,7 @@ export class SessionJobs {
       machine,
       ...(image && { image }),
       ...(edit && { edit }),
+      ...(clip && { clip }),
     }
     const ahead = kind === 'picture'
       ? jobs.findIndex((j) => j.status === 'queued' && IMAGE_JOBS.includes(j.kind))
@@ -282,7 +319,8 @@ export class SessionJobs {
     if (!failed) return false
     const rest = jobs.filter((j) => j.id !== jobId)
     const again = rest.some((j) =>
-      sameWork(j, failed.kind, failed.frameIndex, failed.image) && j.status !== 'failed'
+      sameWork(j, failed.kind, failed.frameIndex, failed.image, failed.clip?.kind) &&
+      j.status !== 'failed'
     )
     const { error: _, ...job } = failed
     this.#jobs.set(sessionId, again ? rest : [...rest, { ...job, status: 'queued' }])
@@ -411,7 +449,7 @@ export interface JobRoutesContext {
   /**
    * Why `kind` can't be queued on Frame `index` of `session` (a response), or null if it can.
    * `pending`: the jobs already queued or running on that Frame, which may make what it needs;
-   * `edit`: an edit's order.
+   * `edit`: an edit's order; `clip`: a clip's.
    */
   check(
     session: Session,
@@ -419,6 +457,7 @@ export interface JobRoutesContext {
     index: number,
     pending: readonly JobKind[],
     edit?: EditOrder,
+    clip?: ClipOrder,
   ): Promise<Response | null>
   /**
    * Which Backend `kind` would go to for `session` now, as an edit is told (`jobBackend`), and so
@@ -476,6 +515,34 @@ export function editOrder(body: unknown): EditOrder | string {
   return { instruction, ...selectedModel, mask: b.mask, ...retry }
 }
 
+/** The longest clip prompt, and a clip's shortest and longest length in seconds. */
+const MAX_CLIP_PROMPT = 4000
+export const CLIP_SECONDS = { min: 2, max: 10 } as const
+
+/** A clip's order from a request, or why it isn't one. */
+export function clipOrder(body: unknown): ClipOrder | string {
+  const b = body as
+    | { kind?: unknown; prompt?: unknown; seconds?: unknown; speech?: unknown }
+    | undefined
+  if (!CLIP_KINDS.includes(b?.kind as ClipKind)) {
+    return `kind must be one of: ${CLIP_KINDS.join(', ')}`
+  }
+  const prompt = typeof b?.prompt === 'string' ? b.prompt.trim() : ''
+  if (!prompt) return 'Say what happens in the clip'
+  if (prompt.length > MAX_CLIP_PROMPT) {
+    return `A clip prompt can be at most ${MAX_CLIP_PROMPT} characters`
+  }
+  const seconds = b?.seconds
+  if (
+    typeof seconds !== 'number' || !Number.isInteger(seconds) || seconds < CLIP_SECONDS.min ||
+    seconds > CLIP_SECONDS.max
+  ) {
+    return `seconds must be a whole number from ${CLIP_SECONDS.min} to ${CLIP_SECONDS.max}`
+  }
+  if (typeof b?.speech !== 'boolean') return 'speech must be true or false'
+  return { kind: b.kind as ClipKind, prompt, seconds, speech: b.speech }
+}
+
 /** The job routes every Session kind shares, under `/api/sessions/:id/jobs`. */
 export function jobRoutes(ctx: JobRoutesContext): Route[] {
   const path = (rest = '') => new URLPattern({ pathname: `/api/sessions/:id/jobs${rest}` })
@@ -490,7 +557,7 @@ export function jobRoutes(ctx: JobRoutesContext): Route[] {
       const session = await ctx.store.load(p.id!)
       if (!session) return error('Session not found', 404)
       const body = await readJson(req) as
-        | { kind?: unknown; frameIndex?: unknown; edit?: unknown }
+        | { kind?: unknown; frameIndex?: unknown; edit?: unknown; clip?: unknown }
         | undefined
       const kind = body?.kind as JobKind
       if (!JOB_KINDS.includes(kind)) {
@@ -498,6 +565,8 @@ export function jobRoutes(ctx: JobRoutesContext): Route[] {
       }
       const edit = kind === 'edit' ? editOrder(body?.edit) : undefined
       if (typeof edit === 'string') return error(edit, 400)
+      const clip = kind === 'clip' ? clipOrder(body?.clip) : undefined
+      if (typeof clip === 'string') return error(clip, 400)
       const index = Number(body?.frameIndex)
       const ofSession = SESSION_JOBS.includes(kind) && index === 0
       if (!Number.isInteger(index) || (!session.frames[index] && !ofSession)) {
@@ -506,7 +575,7 @@ export function jobRoutes(ctx: JobRoutesContext): Route[] {
       const pending = ctx.jobs.list(session.id)
         .filter((j) => j.frameIndex === index && j.status !== 'failed')
         .map((j) => j.kind)
-      const refused = await ctx.check(session, kind, index, pending, edit)
+      const refused = await ctx.check(session, kind, index, pending, edit, clip)
       if (refused) return refused
       // The painted area is saved as it's queued, so the page can show it while the edit waits.
       if (edit?.mask) {
@@ -523,6 +592,7 @@ export function jobRoutes(ctx: JobRoutesContext): Route[] {
         ctx.backendOf ? machineOf(backend) : undefined,
         kind === 'render' ? imageChoiceOf(session) : undefined,
         edit,
+        clip,
       )
       return json(ctx.jobs.list(session.id), 201)
     }],

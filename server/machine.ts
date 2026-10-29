@@ -29,6 +29,8 @@ export type HeavyJob =
   | { kind: 'render'; model: string; on?: ImageBackendKind }
   | { kind: 'edit'; model: EditModel; on?: ImageBackendKind }
   | { kind: 'upscale' | 'voice' }
+  /** A clip (`video/`): only a ComfyUI makes them, the one pictures go to if they go to one. */
+  | { kind: 'video' }
 
 /** An edit as the render queue is given it: by its edit model, on the kind it would rather. */
 export const editJob = (model: EditModel, on?: ImageBackendKind): HeavyJob => ({
@@ -40,7 +42,7 @@ export const editJob = (model: EditModel, on?: ImageBackendKind): HeavyJob => ({
 /** What this machine's own Backend can run, as found at startup (`features.ts`). */
 export type Here = Pick<Availabilities, 'images' | 'upscale' | 'edits' | 'voices'>
 
-const WORK_OF: Record<HeavyJob['kind'], Work> = {
+const WORK_OF: Record<Exclude<HeavyJob['kind'], 'video'>, Work> = {
   render: 'images',
   edit: 'edits',
   upscale: 'upscale',
@@ -52,6 +54,7 @@ const WORK_OF: Record<HeavyJob['kind'], Work> = {
  * is, an edit on its edit model's kind of Backend.
  */
 export function canRun(backend: Backend, job: HeavyJob, here: Here): boolean {
+  if (job.kind === 'video') return backend.kind === 'comfyui'
   const work = WORK_OF[job.kind]
   if (!BACKEND_WORK[backend.kind].includes(work)) return false
   if (backend.kind === 'here' && !here[work as keyof Here].available) return false
@@ -77,7 +80,7 @@ export function backendOf(
   here: Here,
 ): Backend | undefined {
   if (!job) return HERE
-  const preferred = now.runOn[WORK_OF[job.kind]]
+  const preferred = now.runOn[job.kind === 'video' ? 'images' : WORK_OF[job.kind]]
   const can = (b: Backend) => canRun(b, job, here)
   const on = 'on' in job ? job.on : undefined
   return (on && pickBackend(now.backends, preferred, (b) => imageKindOf(b) === on && can(b))) ||
@@ -156,8 +159,8 @@ export const machineOf = (backend: Backend | undefined, own?: Set<string>): stri
 /**
  * Where a Session's queued job runs: a picture with the Text Model (it writes an Image Prompt), a
  * render by the Session's Image Model, an edit by its edit model (the one it was told, or Settings'
- * now), an upscale, a voice designed or a line spoken, each as Settings send it now; 3D and the
- * style scores here.
+ * now), an upscale, a voice designed or a line spoken, each as Settings send it now; a clip on a
+ * ComfyUI; 3D and the style scores here.
  */
 export function jobBackend(
   kind: JobKind,
@@ -181,6 +184,8 @@ export function jobBackend(
     case 'speak':
     case 'speak-thought':
       return backendOf({ kind: 'voice' }, now, here)
+    case 'clip':
+      return backendOf({ kind: 'video' }, now, here)
     default:
       return HERE
   }

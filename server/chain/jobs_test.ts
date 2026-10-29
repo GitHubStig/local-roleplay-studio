@@ -547,6 +547,7 @@ Deno.test('A Session switches Image Model by name, to one a Backend listed can r
         figures: on,
         lito: off,
         style: off,
+        video: off,
       },
     })).call
     assertEquals((await (await pc('GET', '/api/settings/options')).json()).imageBackends, [

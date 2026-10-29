@@ -1,6 +1,7 @@
 import { join } from '@std/path'
 import type { Figure } from './3d/figure.ts'
 import type { Scene } from './3d/scene.ts'
+import type { Clip } from './video/makeClip.ts'
 import { anyImageModel, type ImageBackendKind } from './images/imageModels.ts'
 import type { Session, SessionStore } from './session.ts'
 import { updateSession } from './update.ts'
@@ -17,6 +18,8 @@ export interface PictureVersion {
   figure?: Figure
   /** The same, made with Apple's LiTo. */
   lito?: Figure
+  /** Clips made from it, one of each kind, once asked for (`video/makeClip.ts`). */
+  clips?: Clip[]
 }
 
 /** A picture's edit: a version made from the one before it by an edit model, as told. */
@@ -179,9 +182,17 @@ export function changeRenderedPicture<S extends Session>(
 export const allStale = (pictures: Picture[]): Picture[] =>
   pictures.map((p) => ({ ...p, stale: true }))
 
-/** The files a version of a picture is made of: the image, and its upscale, scene and figures. */
+/** The files a version of a picture is made of: the image, its upscale, scene, figures and clips. */
 export const versionFiles = (v: PictureVersion): string[] =>
-  [v.image, v.upscaled, v.scene?.file, v.figure?.file, v.lito?.file].filter((f): f is string => !!f)
+  [
+    v.image,
+    v.upscaled,
+    v.scene?.file,
+    v.figure?.file,
+    v.lito?.file,
+    ...(v.clips ?? []).map((c) => c.file),
+  ]
+    .filter((f): f is string => !!f)
 
 /** The files a picture is made of: its render's, and each edit's with its painted area. */
 export const pictureFiles = (p: Picture): string[] => [

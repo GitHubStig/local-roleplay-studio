@@ -128,3 +128,12 @@ Deno.test('A render runs with the Image Model it was queued with', () => {
   )
   assertEquals(asQueued(session, { kind: 'upscale' } as Job), session)
 })
+
+Deno.test('Clips of different kinds on a Frame are separate jobs; the same kind is one', () => {
+  const { jobs } = heldJobs()
+  const clip = (kind: 'lead-in' | 'idle-loop') => ({ kind, prompt: 'p', seconds: 5, speech: false })
+  jobs.enqueue('s', 'clip', 0, 'here', undefined, undefined, clip('lead-in'))
+  jobs.enqueue('s', 'clip', 0, 'here', undefined, undefined, clip('idle-loop'))
+  jobs.enqueue('s', 'clip', 0, 'here', undefined, undefined, clip('lead-in'))
+  assertEquals(jobs.list('s').map((j) => j.clip?.kind), ['lead-in', 'idle-loop'])
+})

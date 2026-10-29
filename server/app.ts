@@ -39,6 +39,8 @@ import {
 import type { TextModel } from './textModel.ts'
 import type { RoleplayModel } from './roleplay/model.ts'
 import type { FigureMaker } from './3d/figure.ts'
+import type { VideoGenerator } from './video/videoGenerator.ts'
+import { clipRefusal } from './video/makeClip.ts'
 import type { SceneMaker } from './3d/scene.ts'
 import type { StyleEmbedder } from './style/embedder.ts'
 import { embedStyles } from './style/job.ts'
@@ -156,6 +158,8 @@ export interface AppDeps {
   figure?: FigureMaker
   /** The same with Apple's LiTo. */
   lito?: FigureMaker
+  /** Clips from a Frame's pictures (LTX 2.5 on a ComfyUI), when set up. */
+  video?: VideoGenerator
   /** Embeds pictures for the Compare dialog's style scores; without it, there are none. */
   style?: StyleEmbedder
   /**
@@ -192,6 +196,8 @@ const AUDIO_FILE =
  * TripoSplat; `lito-3-…`, LiTo).
  */
 const SCENE_FILE = /^(scene|figure|lito)-\d+-[0-9a-f]{8}\.ply$/
+/** A clip made from a Frame's picture (`clip-3-lead-in-1a2b3c4d.mp4`, `video/makeClip.ts`). */
+const CLIP_FILE = /^clip-\d+-[a-z-]+-[0-9a-f]{8}\.mp4$/
 const CONTENT_TYPES: Record<string, string> = {
   '.png': 'image/png',
   '.svg': 'image/svg+xml',
@@ -199,6 +205,7 @@ const CONTENT_TYPES: Record<string, string> = {
   '.mp3': 'audio/mpeg',
   '.flac': 'audio/flac',
   '.ply': 'application/octet-stream',
+  '.mp4': 'video/mp4',
 }
 
 const MAX_BRIEF_LENGTH = 4000
@@ -426,6 +433,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     scene: deps.scene,
     figure: deps.figure,
     lito: deps.lito,
+    video: deps.video,
   })
   const given = (backend: unknown, what: string): Availability =>
     backend ? { available: true } : { available: false, reason: `No ${what} was set up` }
@@ -438,6 +446,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     figures: given(deps.figure, 'TripoSplat'),
     lito: given(deps.lito, 'LiTo'),
     style: given(deps.style, 'style embedder'),
+    video: given(deps.video, 'video generator'),
   }
   /**
    * The kinds of Image backend whose models a Session can switch to: mflux where it's installed,
@@ -541,6 +550,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
         scene: deps.scene,
         figure: deps.figure,
         lito: deps.lito,
+        video: deps.video,
         upscaler,
       }
       return session.kind === 'chain'
@@ -608,10 +618,13 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
           text,
         })
       },
-      check: async (session, kind, index, pending, edit) => {
+      check: async (session, kind, index, pending, edit, clip) => {
         const feature = JOB_FEATURE[kind]
+        const name = session.kind === 'storyboard' ? `Frame ${index + 1}` : `Frame ${index}`
+        // Into Next ends on the next Frame's picture, which must be there now.
+        const noNext = kind === 'clip' && clipRefusal(session, index, clip!.kind, name)
+        if (noNext) return (feature && (await featureOff(feature))) ?? error(noNext, 409)
         if (kind === 'edit') {
-          const name = session.kind === 'storyboard' ? `Frame ${index + 1}` : `Frame ${index}`
           const now = await deps.settings.load()
           const model = findEditModel(edit!.model ?? now.editModel)
           const notHere = model && !await heavyBackend(editJob(model.id))
@@ -1422,7 +1435,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     }],
 
     ['GET', new URLPattern({ pathname: '/api/sessions/:id/images/:file' }), async (_req, p) => {
-      if (![IMAGE_FILE, AUDIO_FILE, SCENE_FILE].some((f) => f.test(p.file!))) {
+      if (![IMAGE_FILE, AUDIO_FILE, SCENE_FILE, CLIP_FILE].some((f) => f.test(p.file!))) {
         return error('Not found', 404)
       }
       try {

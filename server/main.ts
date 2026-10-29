@@ -23,6 +23,8 @@ import { uvStyleEmbedder } from './style/embedder.ts'
 import { buildComparisonPage } from './export/page.ts'
 import { voiceBackends, voiceService } from './voice/voice.ts'
 import { comfyuiVoiceEngine } from './voice/comfyui/comfyui.ts'
+import { videoBackends } from './video/videoGenerator.ts'
+import { comfyuiVideoGenerator } from './video/comfyui/comfyui.ts'
 import {
   detectFeatures,
   type Feature,
@@ -136,6 +138,11 @@ const handler = createHandler({
       : undefined,
     comfyui: (address) => loggedVoice(comfyuiVoiceEngine({ address }), 'comfyui'),
     backend: () => backendNow({ kind: 'voice' }),
+  }),
+  // Clips on a ComfyUI with LTX 2.5: the one pictures go to, if they go to one.
+  video: videoBackends({
+    comfyui: (address) => comfyuiVideoGenerator({ address }),
+    backend: () => backendNow({ kind: 'video' }),
   }),
   // Logged like the Text and Image Models' calls (`calls.ts`).
   scene: features.scenes.available ? loggedMaker(sharpSceneMaker(), 'scene', 'SHARP') : undefined,

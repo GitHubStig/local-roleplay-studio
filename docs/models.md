@@ -5,6 +5,7 @@ Which models the app uses now, and why, in short. This page is kept current: whe
 - [research/text-models.md](research/text-models.md): every Text Model bench (the Chain, the Art Agent, Suggest, Replies) and the survey of uncensored models.
 - [research/image-models.md](research/image-models.md): each Image Model's trials, edits, the Upscaler, and how much of a prompt each reads.
 - [research/voices.md](research/voices.md): how the voice engine was chosen and how lines are directed.
+- [research/video-models.md](research/video-models.md): LTX 2.5's clips, by kind, length and guide strength.
 - [research/ollama.md](research/ollama.md), and the upgrade logs for [mflux](research/mflux-upgrade-log.md), [ComfyUI](research/comfyui-upgrade-log.md) and [mlx-audio](research/mlx-audio-upgrade-log.md): what each runtime does, version by version.
 
 The Mac is the development Mac (Apple silicon, M5 Pro, 48 GB); the PC is the Windows PC (RTX 4070, 12 GB, 16 GB of RAM). Numbers are one prompt and one seed unless they say otherwise.
@@ -104,6 +105,17 @@ On the Mac, through mlx-audio 0.6.1 (the voice service, `python/voice/serve.py`)
 - Lines are saved as **MP3 at 96 kbps**; the reference clip stays WAV.
 
 Evidence: [research/voices.md](research/voices.md), and for the PC [research/comfyui.md](research/comfyui.md#voices-through-comfyui).
+
+## Clips
+
+LTX 2.5 on a ComfyUI ([video-plan.md](video-plan.md)): the 22B distilled transformer and the Gemma 4 12B text encoder (int8 on the PC), one pass of 8 steps, with its own sound.
+
+- **One workflow for every kind of clip**: the picture is guided in at the first frame, the last, or both, at strength 1.0, which lands nearest the picture (SSIM ~0.89) and still moves.
+- **About 70 s to load plus ~19 s per second of clip on the PC**, at ~900k pixels in the picture's shape (1280×704, 1152×800): a 4 s clip takes ~2 min. The card's 12 GB is full at any length; length is limited by time and drift, not memory.
+- **Without dialogue, the negative prompt keeps voices out** (speech, talking, dialogue, voices); a clip with speech makes up its own voices.
+- Not tried on the Mac.
+
+Evidence: [research/video-models.md](research/video-models.md).
 
 ## Memory
 

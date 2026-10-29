@@ -22,6 +22,7 @@ export const FEATURES = [
   'figures',
   'lito',
   'style',
+  'video',
 ] as const
 export type Feature = (typeof FEATURES)[number]
 
@@ -279,6 +280,27 @@ export interface Figure {
   timings: { queued?: number; figure: number }
 }
 
+/** The kinds of clip (docs/video-plan.md): where the picture sits in the clip. */
+export type ClipKind = 'lead-in' | 'play-out' | 'idle-loop' | 'into-next'
+
+/** What a clip is told: its kind, what happens, how many seconds, and whether anyone may speak. */
+export interface ClipOrder {
+  kind: ClipKind
+  prompt: string
+  seconds: number
+  speech: boolean
+}
+
+/** A clip made from a picture, one of each kind per picture. */
+export interface Clip extends ClipOrder {
+  /** The MP4, served like the pictures. */
+  file: string
+  seed: number
+  /** Into Next's last picture: the next Frame's image it ends on. */
+  next?: string
+  timings: { queued?: number; clip: number }
+}
+
 /** What a Frame's picture can be made into in 3D, by the field it's kept in. */
 export type Made3d = 'scene' | 'figure' | 'lito'
 
@@ -309,6 +331,8 @@ export interface Picture {
   figure?: Figure
   /** The same, made with Apple's LiTo. */
   lito?: Figure
+  /** Clips made from it, one of each kind, once asked for. */
+  clips?: Clip[]
   /** Seconds the render waited for another (only if it had to) and took. */
   timings?: { queued?: number; image: number }
   /** Its edits, oldest first, each made from the one before (ADR 0021). */
@@ -334,6 +358,7 @@ export interface PictureEdit {
   scene?: Scene
   figure?: Figure
   lito?: Figure
+  clips?: Clip[]
   timings?: { queued?: number; edit: number }
 }
 
@@ -829,6 +854,7 @@ export type JobKind =
   | 'lito'
   | 'style'
   | 'edit'
+  | 'clip'
 
 /** A queued, running or failed job. Finished jobs drop off the list. */
 export interface Job {
@@ -853,6 +879,8 @@ export interface Job {
    * queued), and whether it makes the newest edit again, in its place.
    */
   edit?: EditOrder
+  /** A clip's order. */
+  clip?: ClipOrder
 }
 
 /** A Session's jobs (a Roleplay's or a Chain's), in the order queued; several may run, one per machine. */

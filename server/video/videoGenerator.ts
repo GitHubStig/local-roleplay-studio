@@ -1,3 +1,5 @@
+import type { Backend } from '../backends.ts'
+
 /**
  * A Frame's picture as a short clip (docs/video-plan.md). Where the picture sits in the clip is the
  * kind of clip, as a picture shows the middle of what its Frame describes: a clip can lead up to
@@ -58,4 +60,25 @@ export function clipSize(width: number, height: number): { width: number; height
   const scale = Math.sqrt((1280 * 704) / (width * height))
   const side = (n: number) => Math.max(32, Math.round((n * scale) / 32) * 32)
   return { width: side(width), height: side(height) }
+}
+
+/**
+ * Makes clips on the ComfyUI Settings send them to now (`backendOf`'s `video`: the one pictures go
+ * to, if they go to one, else the first listed).
+ */
+export function videoBackends(backends: {
+  /** A ComfyUI at `address` ('' for its usual one here). */
+  comfyui: (address: string) => VideoGenerator
+  /** The Backend clips go to now; none when no Backend can make them. */
+  backend: () => Promise<Backend | undefined>
+}): VideoGenerator {
+  return {
+    async makeClip(req, signal, onProgress) {
+      const backend = await backends.backend()
+      if (backend?.kind !== 'comfyui') {
+        throw new Error('No Backend can make clips: add a ComfyUI in Settings, on the Machines tab')
+      }
+      return backends.comfyui(backend.address).makeClip(req, signal, onProgress)
+    },
+  }
 }
