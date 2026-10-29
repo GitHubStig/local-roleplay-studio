@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { useStoredString } from '../composables/storage'
 import { watchDebounced } from '@vueuse/core'
 import {
   ApiError,
@@ -15,6 +16,7 @@ import {
 import FeatureSwitch from '../components/FeatureSwitch.vue'
 import MachinesTab from '../components/MachinesTab.vue'
 import RunOn from '../components/RunOn.vue'
+import ComfyStatusLine from '../components/ComfyStatusLine.vue'
 import SelectField from '../components/SelectField.vue'
 import ToggleSwitch from '../components/ToggleSwitch.vue'
 import { useBackends } from '../composables/useBackends'
@@ -48,10 +50,17 @@ const TABS = [
   { id: 'text', label: 'Text' },
   { id: 'images', label: 'Images' },
   { id: 'voice', label: 'Voice' },
+  { id: 'clips', label: 'Clips' },
   { id: '3d', label: '3D' },
   { id: 'advanced', label: 'Advanced' },
 ] as const
-const tab = ref<(typeof TABS)[number]['id']>('text')
+type TabId = (typeof TABS)[number]['id']
+/** The tab shown: remembered per browser, so a reload comes back to it; Text until one is picked. */
+const storedTab = useStoredString('settings-tab')
+const tab = computed<TabId>({
+  get: () => TABS.find((t) => t.id === storedTab.value)?.id ?? 'text',
+  set: (id) => (storedTab.value = id),
+})
 const { refreshFeatures } = useFeatures()
 
 const quantizeChoices = [
@@ -84,7 +93,7 @@ onMounted(async () => {
 
 /** New API keys typed, by Backend id; saved when a field is left. */
 const apiKeys = ref<Record<string, string>>({})
-const { choicesFor, whereTo, comfy, checkComfy, text } = useBackends(form, options, apiKeys)
+const { choicesFor, whereTo, clipsTo, comfy, checkComfy, text } = useBackends(form, options, apiKeys)
 
 /** A Backend taken off the list: work that preferred it moves to the first left that can do it. */
 function removeBackend(index: number) {
@@ -534,6 +543,46 @@ function saveNow() {
               Audio Suite's custom nodes (install them through its Manager) and an NVIDIA card with
               12 GB; there a line takes a few seconds more than on a Mac.
             </RunOn>
+          </div>
+        </section>
+
+        <section
+          v-show="tab === 'clips'"
+          class="max-w-xl"
+          role="tabpanel"
+          data-tab-panel="clips"
+        >
+          <div class="card">
+            <FeatureSwitch
+              v-model="form.features.video"
+              :availability="options.features.video"
+              title="Clips"
+              data-feature="video"
+            >
+              A Frame's picture made into a short clip by a video model, from its Frame tab: leading up
+              to the picture, going on from it, looping on it, or into the next Frame's. The Text
+              Model writes each clip's prompt from the story, for you to edit.
+            </FeatureSwitch>
+            <template v-if="form.features.video && options.features.video?.available">
+              <label class="flex flex-col gap-1">
+                <span class="text-sm text-muted">Video model</span>
+                <SelectField v-model="form.videoModel" data-video-model>
+                  <option v-for="m in options.videoModels" :key="m.id" :value="m.id">{{ m.label }}</option>
+                </SelectField>
+                <span class="text-sm text-muted">
+                  Applies to the next clip, in running Sessions too. LTX 2.5 takes about two and a
+                  half minutes for a 5-second clip on an RTX 4070 with 12 GB.
+                </span>
+              </label>
+              <div v-if="clipsTo" class="flex flex-col gap-1 text-sm" data-clips-to>
+                <span class="text-muted">
+                  Made on {{ clipsTo.address || 'the ComfyUI on this machine' }}: the ComfyUI
+                  pictures go to, if they go to one, or else the first on the Machines tab, with the
+                  video model's files (from ComfyUI's template for it).
+                </span>
+                <ComfyStatusLine :status="comfy[clipsTo.id] ?? null" @check="checkComfy(clipsTo)" />
+              </div>
+            </template>
           </div>
         </section>
 

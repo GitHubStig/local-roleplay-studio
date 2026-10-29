@@ -91,6 +91,8 @@ export interface Settings {
   seed: number
   /** Which SeedVR2 model Upscale uses; applies to the next upscale, even mid-Session. */
   upscaler: string
+  /** The video model clips are made with, on a ComfyUI. */
+  videoModel: string
   /** Which model edits pictures; applies to the next edit, even mid-Session. */
   editModel: string
   /** The Limits; off, none are enforced. Applies at once. */
@@ -149,6 +151,7 @@ export interface SettingsOptions extends TextModelOptions {
   imageModelsOn?: Record<string, ImageBackend>
   sizePresets: SizePreset[]
   upscalers: { id: string; label: string }[]
+  videoModels: { id: string; label: string }[]
   /** The models that can edit a picture here, each on its backend. */
   editModels: { id: string; label: string; backends: ImageBackend[] }[]
   /** The kind of backend each edit model's edits go to now, by name; none for one nowhere. */
@@ -196,7 +199,7 @@ export type ComfyStatus =
  */
 export const checkComfyUI = (
   address: string,
-  uses: { imageModel?: string; upscaler?: string; voices?: boolean },
+  uses: { imageModel?: string; upscaler?: string; voices?: boolean; videoModel?: string },
 ) =>
   request<ComfyStatus>('/api/settings/comfyui', {
     method: 'POST',

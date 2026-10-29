@@ -27,7 +27,16 @@ async function makeClip(
   const comfy = fakeComfyUI({ files: FILES, video: CLIP, ...opts })
   try {
     const name = await comfyuiVideoGenerator({ address: comfy.url }).makeClip(
-      { prompt: 'She walks in.', speech: false, seconds: 5, seed: 7, dir, name: 'clip-3', ...req },
+      {
+        model: 'ltx-2.5',
+        prompt: 'She walks in.',
+        speech: false,
+        seconds: 5,
+        seed: 7,
+        dir,
+        name: 'clip-3',
+        ...req,
+      },
       new AbortController().signal,
     )
     return { name, comfy, workflow: comfy.queued[0] as Nodes }
@@ -107,6 +116,15 @@ Deno.test('A clip needs a picture at an end, and LTX 2.5’s files on ComfyUI', 
       () => makeClip(dir, { first: 'frame-3.png' }, { files: {} }),
       Error,
       'LTX 2.5',
+    )
+  }))
+
+Deno.test('A clip asks for its video model by name, and one ComfyUI has no workflow for is refused', () =>
+  withTempDir(async (dir) => {
+    await assertRejects(
+      () => makeClip(dir, { first: 'frame-3.png', model: 'wan-9' }),
+      Error,
+      'no video model "wan-9"',
     )
   }))
 

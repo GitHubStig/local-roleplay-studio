@@ -32,6 +32,7 @@ const settings: api.Settings = {
   seed: 42,
   upscaler: 'seedvr2-7b',
   editModel: 'qwen-image-2.1-edit',
+  videoModel: 'ltx-2.5',
   limits: true,
   callLog: false,
   artModel: '',
@@ -58,6 +59,7 @@ const options: api.SettingsOptions = {
     { id: 'qwen-image-2.1-edit', label: 'Qwen-Image 2.1 Edit', backends: ['mflux', 'comfyui'] },
     { id: 'flux3-klein-edit', label: 'FLUX.3 Klein Edit', backends: ['comfyui'] },
   ],
+  videoModels: [{ id: 'ltx-2.5', label: 'LTX 2.5' }],
   upscalers: [
     { id: 'seedvr2-7b', label: 'SeedVR2 7B' },
     { id: 'seedvr2-3b', label: 'SeedVR2 3B' },

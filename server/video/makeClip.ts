@@ -12,6 +12,8 @@ import { CLIP_ENDS, type ClipKind, type VideoGenerator } from './videoGenerator.
  */
 export interface Clip {
   kind: ClipKind
+  /** The video model that made it (`comfyui/models.ts`). */
+  model: string
   /** File name of the clip (an MP4) inside the Session directory. */
   file: string
   /** What it was told happens, and whether anyone could speak. */
@@ -29,6 +31,8 @@ export interface ClipDeps {
   store: SessionStore
   /** LTX 2.5 on a ComfyUI, when clips are available. */
   video?: VideoGenerator
+  /** The video model chosen in Settings now: read as the clip starts, as Upscale's upscaler is. */
+  videoModel(): Promise<string>
   renderQueue?: RenderQueue
 }
 
@@ -69,6 +73,7 @@ export async function makeClip<S extends Session>(
   if (refused) throw new ClipError(refused)
   const next = order.kind === 'into-next' ? shownVersionOf(session, index + 1)!.image : undefined
   const ends = CLIP_ENDS[order.kind]
+  const model = await deps.videoModel()
   const pictureAt = (end?: 'still' | 'next') => end === 'still' ? picture.image : end && next
   const dir = deps.store.dir(session.id)
   const name = `clip-${index}-${order.kind}-${crypto.randomUUID().slice(0, 8)}`
@@ -85,6 +90,7 @@ export async function makeClip<S extends Session>(
     const began = performance.now()
     file = await deps.video.makeClip(
       {
+        model,
         first: pictureAt(ends.first),
         last: pictureAt(ends.last),
         prompt: order.prompt,
@@ -100,6 +106,7 @@ export async function makeClip<S extends Session>(
     signal.throwIfAborted()
     const clip: Clip = {
       kind: order.kind,
+      model,
       file,
       prompt: order.prompt,
       speech: order.speech,

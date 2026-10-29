@@ -30,6 +30,7 @@ const settings: Settings = {
   seed: 42,
   upscaler: 'seedvr2-7b',
   editModel: 'qwen-image-2.1-edit',
+  videoModel: 'ltx-2.5',
   limits: true,
   callLog: false,
   artModel: '',

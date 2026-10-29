@@ -34,6 +34,7 @@ const settings: api.Settings = {
   seed: 42,
   upscaler: 'seedvr2-7b',
   editModel: 'qwen-image-2.1-edit',
+  videoModel: 'ltx-2.5',
   limits: true,
   callLog: false,
   artModel: '',
@@ -105,6 +106,7 @@ const options: api.SettingsOptions = {
     { id: 'qwen-image-2.1-edit', label: 'Qwen-Image 2.1 Edit', backends: ['mflux', 'comfyui'] },
     { id: 'flux3-klein-edit', label: 'FLUX.3 Klein Edit', backends: ['comfyui'] },
   ],
+  videoModels: [{ id: 'ltx-2.5', label: 'LTX 2.5' }],
   upscalers: [
     { id: 'seedvr2-7b', label: 'SeedVR2 7B' },
     { id: 'seedvr2-3b', label: 'SeedVR2 3B' },
@@ -114,6 +116,8 @@ const options: api.SettingsOptions = {
 }
 
 beforeEach(() => {
+  // The tab shown is remembered: each test starts on Text.
+  localStorage.clear()
   // Fake, so a debounce left pending by one test never fires in the next.
   vi.useFakeTimers()
   // A copy of its own for each test, as the page changes its lists in place.
@@ -193,6 +197,7 @@ describe('SettingsView', () => {
       imageModel: 'qwen-image-2.1',
       upscaler: 'seedvr2-7b',
       voices: undefined,
+      videoModel: 'ltx-2.5',
     })
     // This machine stays preferred, but can't: the Images tab says where they go.
     expect(wrapper.find('[data-run-on="images"] [data-goes-to]').text()).toContain('ComfyUI')
@@ -236,6 +241,8 @@ describe('SettingsView', () => {
       imageModel: undefined,
       upscaler: 'seedvr2-7b',
       voices: undefined,
+      // The only ComfyUI listed: clips go there too.
+      videoModel: 'ltx-2.5',
     })
     expect(wrapper.find('[data-run-on="upscale"] [data-comfy-status]').text()).toContain(
       'on cuda:0 NVIDIA GeForce RTX 4070',
@@ -278,6 +285,7 @@ describe('SettingsView', () => {
       imageModel: undefined,
       upscaler: undefined,
       voices: true,
+      videoModel: 'ltx-2.5',
     })
     expect(wrapper.find('[data-tab-panel="voice"] [data-comfy-status]').text()).toContain(
       'TTS Audio Suite nodes',
@@ -435,6 +443,63 @@ describe('SettingsView', () => {
       features: { ...settings.features, scenes: false },
     })
     wrapper.unmount()
+  })
+
+  it('switches Clips off on their own tab, saying why where no ComfyUI makes them', async () => {
+    vi.mocked(api.getSettingsOptions).mockResolvedValue({
+      ...options,
+      features: {
+        ...ALL_AVAILABLE,
+        video: { available: false, reason: 'Clips are made on a ComfyUI with LTX 2.5' },
+      },
+    })
+    const unavailable = mount(SettingsView, { attachTo: document.body })
+    await flushPromises()
+    await unavailable.find('[data-tab="clips"]').trigger('click')
+    expect(unavailable.find('[data-tab-panel="clips"]').isVisible()).toBe(true)
+    expect(unavailable.find('[data-feature="video"] [data-unavailable]').text()).toContain(
+      'a ComfyUI with LTX 2.5',
+    )
+    unavailable.unmount()
+
+    vi.mocked(api.getSettingsOptions).mockResolvedValue(options)
+    const wrapper = mount(SettingsView, { attachTo: document.body })
+    await flushPromises()
+    await wrapper.find('[data-tab="clips"]').trigger('click')
+    // Its video model, chosen from those the server lists.
+    const model = wrapper.find<HTMLSelectElement>(
+      '[data-video-model] select, select[data-video-model]',
+    )
+    expect(model.element.value).toBe('ltx-2.5')
+    expect(model.findAll('option').map((o) => o.text())).toEqual(['LTX 2.5'])
+    await wrapper.find('[data-feature="video"] input').setValue(false)
+    expect(wrapper.find('[data-video-model]').exists()).toBe(false)
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+    expect(api.saveSettings).toHaveBeenCalledWith({
+      ...settings,
+      features: { ...settings.features, video: false },
+    })
+    wrapper.unmount()
+  })
+
+  it('comes back to the tab it was on, after a reload', async () => {
+    const first = mount(SettingsView, { attachTo: document.body })
+    await flushPromises()
+    expect(first.find('[data-tab-panel="text"]').isVisible()).toBe(true)
+    await first.find('[data-tab="clips"]').trigger('click')
+    first.unmount()
+    const again = mount(SettingsView, { attachTo: document.body })
+    await flushPromises()
+    expect(again.find('[data-tab-panel="clips"]').isVisible()).toBe(true)
+    expect(again.find('[data-tab-panel="text"]').isVisible()).toBe(false)
+    again.unmount()
+    // A tab that's gone (renamed, say) falls back to Text.
+    localStorage.setItem('settings-tab', 'video')
+    const gone = mount(SettingsView, { attachTo: document.body })
+    await flushPromises()
+    expect(gone.find('[data-tab-panel="text"]').isVisible()).toBe(true)
+    gone.unmount()
   })
 
   it('keeps the seed in Advanced, there even where pictures cannot be made', async () => {

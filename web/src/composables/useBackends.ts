@@ -63,6 +63,14 @@ export function useBackends(
 
   /** Each ComfyUI listed, up or down, with what would go there. */
   const comfy = ref<Record<string, ComfyStatus | 'checking'>>({})
+  /**
+   * The ComfyUI clips go to, as the server picks it (`backendOf`'s `video`): the one pictures go
+   * to, if they go to one, else the first listed.
+   */
+  const clipsTo = computed(() => {
+    const comfyuis = (form.value?.backends ?? []).filter((b) => b.kind === 'comfyui')
+    return comfyuis.find((b) => b.id === form.value?.runOn.images) ?? comfyuis[0]
+  })
   async function checkComfy(backend: Backend) {
     if (!form.value) return
     const goes = (work: Work) => whereTo(work)?.id === backend.id
@@ -71,6 +79,7 @@ export function useBackends(
       imageModel: goes('images') ? form.value.imageModel : undefined,
       upscaler: goes('upscale') ? form.value.upscaler : undefined,
       voices: goes('voices') || undefined,
+      videoModel: clipsTo.value?.id === backend.id ? form.value.videoModel : undefined,
     }).catch((err) => ({ up: false as const, error: (err as Error).message }))
   }
   const comfyuis = computed(() => form.value?.backends.filter((b) => b.kind === 'comfyui') ?? [])
@@ -83,6 +92,7 @@ export function useBackends(
         form.value.imageModel,
         form.value.upscaler,
         form.value.editModel,
+        form.value.videoModel,
       ]),
     () => Promise.all(comfyuis.value.map(checkComfy)),
     { debounce: 500, immediate: true },
@@ -106,5 +116,5 @@ export function useBackends(
     { debounce: 500, immediate: true },
   )
 
-  return { does, choicesFor, whereTo, comfy, checkComfy, text }
+  return { does, choicesFor, whereTo, clipsTo, comfy, checkComfy, text }
 }

@@ -170,11 +170,13 @@ async function logFeatures(saved: Settings) {
   const render = backendOf({ kind: 'render', model: saved.imageModel }, saved, features)
   const upscale = backendOf({ kind: 'upscale' }, saved, features)
   const voices = backendOf({ kind: 'voice' }, saved, features)
+  const clips = backendOf({ kind: 'video' }, saved, features)
   const on: Partial<Record<Feature, string>> = {
     images: placeholderImages ? 'placeholders' : named(render),
     upscale: named(upscale),
     edits: named(backendOf(editJob(saved.editModel), saved, features)),
     voices: named(voices),
+    video: named(clips),
   }
   const now = withBackends(features, saved)
   for (const feature of FEATURES) {
@@ -189,8 +191,9 @@ async function logFeatures(saved: Settings) {
       imageModel: render?.id === comfy.id ? saved.imageModel : undefined,
       upscaler: upscale?.id === comfy.id ? saved.upscaler : undefined,
       voices: voices?.id === comfy.id || undefined,
+      videoModel: clips?.id === comfy.id ? saved.videoModel : undefined,
     }
-    if (!uses.imageModel && !uses.upscaler && !uses.voices) continue
+    if (!uses.imageModel && !uses.upscaler && !uses.voices && !uses.videoModel) continue
     const address = backendAddress(comfy)
     const status = await comfyuiStatus(comfy.address, uses)
     console.log(

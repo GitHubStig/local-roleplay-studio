@@ -20,6 +20,8 @@ export interface RoleplayJobContext {
   scenarioFor(session: Session): Promise<Scenario | Response>
   /** The upscaler chosen in Settings now. */
   upscaler(): Promise<Upscaler>
+  /** The video model chosen in Settings now. */
+  videoModel(): Promise<string>
   /** The Art Agent's model chosen in Settings now, if one is; else pictures use the Text Model. */
   artModel(session: Session): Promise<RoleplayModel | undefined>
 }
@@ -76,6 +78,13 @@ export async function runRoleplayJob(
   } else if (job.kind === 'render') {
     await renderRoleplayFrame(withDeps, session, job.frameIndex, emit, signal)
   } else {
-    await runPictureJob({ ...withDeps, upscaler: ctx.upscaler }, session, job, emit, signal, save)
+    await runPictureJob(
+      { ...withDeps, upscaler: ctx.upscaler, videoModel: ctx.videoModel },
+      session,
+      job,
+      emit,
+      signal,
+      save,
+    )
   }
 }

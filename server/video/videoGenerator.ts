@@ -21,6 +21,8 @@ export const CLIP_ENDS: Record<ClipKind, { first?: 'still'; last?: 'still' | 'ne
 }
 
 export interface ClipRequest {
+  /** The video model, by id (`comfyui/models.ts`). */
+  model: string
   /** The pictures at the clip's ends, file names inside `dir`; at least one. */
   first?: string
   last?: string

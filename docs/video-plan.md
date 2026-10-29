@@ -23,6 +23,7 @@ The Text Model writes each clip's prompt for its kind, from the Frame's story (a
 - The player picks the kind of clip; nothing detects it (2026-10-29).
 - An option to leave the dialogue out of a clip's prompt, so it has only background sound (the owner, 2026-10-29). The Voice clips can then play over it.
 - The ComfyUI backend finds LTX's files by name pattern, as it does an Image Model's, so each machine uses the copy it has installed.
+- The video model is a setting, as the upscaler is (the owner, 2026-10-29, with Wan 2.2 and MiniMax H3 in mind): `videoModel` in Settings, chosen on the Clips tab from those `server/video/comfyui/models.ts` lists (each its workflow and files), read as each clip starts and saved on it. The tab checks the ComfyUI clips go to for the model's files, as the other tabs check theirs. A new model is a new entry there and a workflow; for now each guides its pictures in by `firstGuide` and `lastGuide` nodes, as LTX 2.5's does, which a model that does it otherwise would change.
 - A Play out is told the Frame's story as already happened, and given what happens next (the next Frame's story, or nothing new on the newest Frame): told the Frame's story as what happens, it replayed it from the wrong place (2026-10-29).
 - Into Next may move the camera between two framings, the best of five tries at joining two pictures that disagree; no prompt makes them one moment at the same place (a still camera cut, a morph moved the people), so the app warns when it offers Into Next that it works best when the next picture shows the same place, and suggests Lead In on the next Frame otherwise (2026-10-29, [research/video-models.md](research/video-models.md)).
 
@@ -74,5 +75,5 @@ The mock-up (2026-10-29, drawn over the real screens) found that a Chain and a S
 
 ## Left for later (noted 2026-10-29)
 
-- A switch for Clips in Settings (the Feature is on by default, and has none yet), and a picker for which ComfyUI clips go to, if pictures and clips should ever go to different ones.
+- A picker for which ComfyUI clips go to, if pictures and clips should ever go to different ones (the switch for Clips is in Settings, on a Clips tab, since 2026-10-29).
 - Seeking in a clip: the Session's file route sends whole files, without Range requests, which some browsers need to seek a video (to check when the player is built).

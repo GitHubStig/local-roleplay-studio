@@ -9,28 +9,15 @@ import {
   upload,
   type Workflow,
 } from '../../comfyui/client.ts'
-import { type ModelFiles, modelFiles, withUploads } from '../../comfyui/files.ts'
+import { modelFiles, withUploads } from '../../comfyui/files.ts'
 import { loadPrompt } from '../../promptFiles.ts'
 import { pngSize } from '../../png.ts'
 import { clipFrames, clipSize, type VideoGenerator } from '../videoGenerator.ts'
-
-/** LTX 2.5's files, as ComfyUI's template downloads them (int8 on the PC, 2026-10-29). */
-export const LTX_2_5: ModelFiles = {
-  label: 'LTX 2.5',
-  files: {
-    unet: {
-      folder: 'diffusion_models',
-      patterns: [/^ltx-2\.5-22b-distilled-transformer.*\.safetensors$/],
-    },
-    clip: { folder: 'text_encoders', patterns: [/^gemma4-12b-with-proj-ltx-2\.5.*\.safetensors$/] },
-    vae: { folder: 'vae', patterns: [/^ltx-2\.5-video-vae.*\.safetensors$/] },
-    audioVae: { folder: 'vae', patterns: [/^ltx-2\.5-audio-vae.*\.safetensors$/] },
-  },
-}
+import { type ComfyVideoModel, findComfyVideoModel } from './models.ts'
 
 /**
- * Clips from a ComfyUI server with LTX 2.5 (docs/video-plan.md): one workflow for every kind of
- * clip, the pictures guided in at its first frame, its last, or both. The pictures are uploaded to
+ * Clips from a ComfyUI server, by the video model each asks for (`models.ts`; LTX 2.5 for now,
+ * docs/video-plan.md): one workflow per model for every kind of clip, the pictures guided in at its first frame, its last, or both. The pictures are uploaded to
  * ComfyUI's temp folder and blanked after, as for an edit; `SaveVideo` writes the clip to ComfyUI's
  * output folder, from which it's fetched (`/view`) and then overwritten with an empty stub, so no
  * copy stays with ComfyUI. The clip comes out at about 1280×704's pixels, in the first picture's
@@ -53,12 +40,14 @@ export function comfyuiVideoGenerator(opts: {
       const pictures = await Promise.all(ends.map((end) => Deno.readFile(join(req.dir, end))))
       const { width, height } = pngSize(pictures[0])
       const size = clipSize(width, height)
-      const files = await modelFiles(base, LTX_2_5, signal)
+      const model = findComfyVideoModel(req.model)
+      if (!model) throw new Error(`ComfyUI has no video model "${req.model}"`)
+      const files = await modelFiles(base, model, signal)
       const negative = await loadPrompt('video/negative')
       return withUploads(base, pictures, async (names) => {
         const uploaded = (end?: string) => end && `${names[ends.indexOf(end)]} [temp]`
         const workflow = fillWorkflow(
-          withoutEnds(await clipWorkflow(), { first: !!req.first, last: !!req.last }),
+          withoutEnds(await clipWorkflow(model), { first: !!req.first, last: !!req.last }),
           {
             ...files,
             prompt: req.prompt,
@@ -86,7 +75,8 @@ export function comfyuiVideoGenerator(opts: {
   }
 }
 
-const clipWorkflow = () => loadWorkflow(new URL('./workflows/ltx-2.5.json', import.meta.url))
+const clipWorkflow = (model: ComfyVideoModel) =>
+  loadWorkflow(new URL(`./workflows/${model.workflow}.json`, import.meta.url))
 
 /**
  * The workflow without the guide (and its picture's nodes) at an end that has no picture: whatever

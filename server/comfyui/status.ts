@@ -2,6 +2,7 @@ import { comfyBase, getJson } from './client.ts'
 import { modelFiles } from './files.ts'
 import { type ComfyModel, findComfyModel, findComfyUpscaler } from '../images/comfyui/models.ts'
 import { VOICE_NODES } from '../voice/comfyui/comfyui.ts'
+import { findComfyVideoModel } from '../video/comfyui/models.ts'
 
 /** Whether ComfyUI answers at an address, and can run what Settings send it: for Settings. */
 export type ComfyStatus =
@@ -10,12 +11,12 @@ export type ComfyStatus =
 
 /**
  * Asks the ComfyUI at `baseUrl` ('' for its default) what it is (`GET /system_stats`), and whether it
- * has what will run there: the Image Model's and the upscaler's files (either may be left out), and
- * for voices the custom nodes they need. Never throws: what's wrong is in the answer.
+ * has what will run there: the Image Model's, the upscaler's and the video model's files (any may be
+ * left out), and for voices the custom nodes they need. Never throws: what's wrong is in the answer.
  */
 export async function comfyuiStatus(
   baseUrl: string,
-  uses: { imageModel?: string; upscaler?: string; voices?: boolean },
+  uses: { imageModel?: string; upscaler?: string; voices?: boolean; videoModel?: string },
 ): Promise<ComfyStatus> {
   const base = comfyBase(baseUrl)
   const signal = AbortSignal.timeout(5000)
@@ -43,6 +44,7 @@ export async function comfyuiStatus(
   }
   await check(uses.imageModel, findComfyModel, 'Image Model')
   await check(uses.upscaler, findComfyUpscaler, 'upscaler')
+  await check(uses.videoModel, findComfyVideoModel, 'video model')
   if (uses.voices) {
     const absent = []
     for (const node of VOICE_NODES) {

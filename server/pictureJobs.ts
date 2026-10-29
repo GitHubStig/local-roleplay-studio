@@ -24,6 +24,8 @@ export interface PictureJobDeps
   figure?: FigureMaker
   lito?: FigureMaker
   video?: VideoGenerator
+  /** The video model chosen in Settings now. */
+  videoModel(): Promise<string>
   /** The upscaler chosen in Settings now. */
   upscaler(): Promise<Upscaler>
 }

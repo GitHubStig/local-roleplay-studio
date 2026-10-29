@@ -157,7 +157,10 @@ Deno.test('GET /api/settings/options lists Text and Image Models', async () => {
 })
 
 Deno.test('POST /api/settings/comfyui checks an address not saved yet', async () => {
-  const asked: [string, { imageModel?: string; upscaler?: string; voices?: boolean }][] = []
+  const asked: [
+    string,
+    { imageModel?: string; upscaler?: string; voices?: boolean; videoModel?: string },
+  ][] = []
   const { call } = setup({
     comfyuiStatus: (url, uses) => {
       asked.push([url, uses])
@@ -179,17 +182,21 @@ Deno.test('POST /api/settings/comfyui checks an address not saved yet', async ()
     address: 'http://192.0.2.20:8188',
     upscaler: 'seedvr2-7b',
   })
+  // And the video model, where clips go.
+  await call('POST', '/api/settings/comfyui', {
+    address: 'http://192.0.2.20:8188',
+    videoModel: 'ltx-2.5',
+  })
+  const none = {
+    imageModel: undefined,
+    upscaler: undefined,
+    voices: undefined,
+    videoModel: undefined,
+  }
   assertEquals(asked, [
-    ['http://192.0.2.20:8188', {
-      imageModel: 'qwen-image-2.1',
-      upscaler: undefined,
-      voices: undefined,
-    }],
-    ['http://192.0.2.20:8188', {
-      imageModel: undefined,
-      upscaler: 'seedvr2-7b',
-      voices: undefined,
-    }],
+    ['http://192.0.2.20:8188', { ...none, imageModel: 'qwen-image-2.1' }],
+    ['http://192.0.2.20:8188', { ...none, upscaler: 'seedvr2-7b' }],
+    ['http://192.0.2.20:8188', { ...none, videoModel: 'ltx-2.5' }],
   ])
 })
 

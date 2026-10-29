@@ -25,6 +25,8 @@ Deno.test('A Lead In is made from a Frame’s picture, kept on it, served, and u
       ['lead-in', 'She walks in.', 5, false, 1234],
     )
     assertEquals(opening.clips, undefined)
+    // By the video model Settings choose, as made with.
+    assertEquals([video.made[0].model, clip.model], ['ltx-2.5', 'ltx-2.5'])
     // The picture is the clip's last frame only.
     assertEquals([video.made[0].first, video.made[0].last], [undefined, second.image])
     const served = await call('GET', `/api/sessions/s1/images/${clip.file}`)

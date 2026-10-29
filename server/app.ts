@@ -11,6 +11,7 @@ import {
 } from './images/imageModels.ts'
 import type { ComfyStatus } from './comfyui/status.ts'
 import { UPSCALERS } from './images/upscalers.ts'
+import { COMFYUI_VIDEO_MODELS } from './video/comfyui/models.ts'
 import { crossedLimit, LimitError, setLimitsEnabled } from './limits.ts'
 import {
   type Backend,
@@ -142,7 +143,7 @@ export interface AppDeps {
   /** Whether ComfyUI answers at an address, and can run what Settings send it (for Settings). */
   comfyuiStatus?: (
     baseUrl: string,
-    uses: { imageModel?: string; upscaler?: string; voices?: boolean },
+    uses: { imageModel?: string; upscaler?: string; voices?: boolean; videoModel?: string },
   ) => Promise<ComfyStatus>
   scenarios: ScenarioLibrary
   sessions: SessionStore
@@ -480,11 +481,14 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
 
   /** The upscaler chosen in Settings now: it doesn't change the Frames, so it applies at once. */
   const upscaler = async () => (await deps.settings.load()).upscaler
+  /** The video model chosen in Settings now, read as each clip starts. */
+  const videoModel = async () => (await deps.settings.load()).videoModel
   const roleplayJobs: RoleplayJobContext = {
     store: deps.sessions,
     deps: roleplayDeps,
     scenarioFor,
     upscaler,
+    videoModel,
     // A separate Art Agent model pictures with Thinking off: it made pictures 5–22× slower for no
     // gain in correctness (docs/research/text-models.md).
     artModel: async (session) => {
@@ -555,6 +559,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
         lito: deps.lito,
         video: deps.video,
         upscaler,
+        videoModel,
       }
       return session.kind === 'chain'
         ? runChainJob(pictureDeps, session, job, emit, signal)
@@ -687,23 +692,34 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     // it: the Image Model's files, the upscaler's, and voices' nodes.
     ['POST', new URLPattern({ pathname: '/api/settings/comfyui' }), async (req) => {
       const body = await readJson(req) as
-        | { address?: unknown; imageModel?: unknown; upscaler?: unknown; voices?: unknown }
+        | {
+          address?: unknown
+          imageModel?: unknown
+          upscaler?: unknown
+          voices?: unknown
+          videoModel?: unknown
+        }
         | undefined
       const optional = (v: unknown) => v === undefined || typeof v === 'string'
       if (
         typeof body?.address !== 'string' || !optional(body.imageModel) ||
-        !optional(body.upscaler) || (body.voices !== undefined && typeof body.voices !== 'boolean')
+        !optional(body.upscaler) || !optional(body.videoModel) ||
+        (body.voices !== undefined && typeof body.voices !== 'boolean')
       ) {
-        return error('Give an address, and an imageModel, an upscaler or voices to check', 400)
+        return error(
+          'Give an address, and an imageModel, an upscaler, voices or a videoModel to check',
+          400,
+        )
       }
       if (!deps.comfyuiStatus) return error("ComfyUI isn't set up on this server", 409)
-      const { imageModel, upscaler, voices } = body as {
+      const { imageModel, upscaler, voices, videoModel } = body as {
         imageModel?: string
         upscaler?: string
         voices?: boolean
+        videoModel?: string
       }
       return json(
-        await deps.comfyuiStatus(body.address.trim(), { imageModel, upscaler, voices }),
+        await deps.comfyuiStatus(body.address.trim(), { imageModel, upscaler, voices, videoModel }),
       )
     }],
 
@@ -738,6 +754,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
         ),
         sizePresets: SIZE_PRESETS,
         upscalers: UPSCALERS,
+        videoModels: COMFYUI_VIDEO_MODELS.map(({ id, label }) => ({ id, label })),
         editModels: editModelsHere(await imageBackends()),
         // Where each edit model's edits go now, for the Edit dialog to say.
         editModelsOn: Object.fromEntries(

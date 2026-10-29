@@ -8,6 +8,11 @@ import {
 } from './images/imageModels.ts'
 import { EDIT_MODELS, type EditModel } from './images/editModels.ts'
 import { type Upscaler, UPSCALERS } from './images/upscalers.ts'
+import {
+  COMFYUI_VIDEO_MODELS,
+  DEFAULT_VIDEO_MODEL,
+  findComfyVideoModel,
+} from './video/comfyui/models.ts'
 import { type Float16, FLOAT16_CHOICES } from './images/mflux/chip.ts'
 import { type Feature, FEATURES } from './features.ts'
 import {
@@ -86,6 +91,8 @@ export interface Settings {
   upscaler: Upscaler
   /** Which model edits pictures (ADR 0021); read when editing, so it applies mid-Session too. */
   editModel: EditModel
+  /** The video model clips are made with (`video/comfyui/models.ts`), on a ComfyUI. */
+  videoModel: string
   /**
    * The model that pictures Roleplay Frames (the Art Agent); '' for the Session's Text Model.
    * Read when a picture is made, so it applies to running Sessions too.
@@ -174,6 +181,7 @@ export const DEFAULT_SETTINGS: Settings = {
   seed: 42,
   upscaler: UPSCALERS[0].id,
   editModel: EDIT_MODELS[0].id,
+  videoModel: DEFAULT_VIDEO_MODEL,
   artModel: '',
   features: Object.fromEntries(FEATURES.map((f) => [f, true])) as Record<Feature, boolean>,
   limits: true,
@@ -316,6 +324,10 @@ export function validateSettings(input: unknown): ValidationResult {
     issues.push(`editModel must be one of: ${EDIT_MODELS.map((m) => m.id).join(', ')}`)
   }
 
+  if (s.videoModel !== undefined && !findComfyVideoModel(s.videoModel as string)) {
+    issues.push(`videoModel must be one of: ${COMFYUI_VIDEO_MODELS.map((m) => m.id).join(', ')}`)
+  }
+
   if (issues.length > 0) return { ok: false, issues }
   return {
     ok: true,
@@ -339,6 +351,7 @@ export function validateSettings(input: unknown): ValidationResult {
       seed: s.seed as number,
       upscaler: (s.upscaler as Upscaler | undefined) ?? DEFAULT_SETTINGS.upscaler,
       editModel: (s.editModel as EditModel | undefined) ?? DEFAULT_SETTINGS.editModel,
+      videoModel: (s.videoModel as string | undefined) ?? DEFAULT_SETTINGS.videoModel,
       artModel: (s.artModel as string | undefined) ?? '',
       // One not mentioned (an older file, or a Feature added since) is on.
       features: { ...DEFAULT_SETTINGS.features, ...(features as Record<Feature, boolean>) },

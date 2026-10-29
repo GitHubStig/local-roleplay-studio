@@ -1,4 +1,4 @@
-import { assertEquals } from '@std/assert'
+import { assertEquals, assertStringIncludes } from '@std/assert'
 import { fakeComfyUI } from './testing.ts'
 import { comfyuiStatus } from './status.ts'
 import { VOICE_NODES } from '../voice/comfyui/comfyui.ts'
@@ -57,5 +57,28 @@ Deno.test("Settings' check for voices: TTS Audio Suite's nodes, naming those mis
   } finally {
     await ready.close()
     await bare.close()
+  }
+})
+
+Deno.test("Settings' check for clips: the video model's files, naming those missing", async () => {
+  const ltx = {
+    diffusion_models: ['ltx-2.5-22b-distilled-transformer-comfy-int8-convrot.safetensors'],
+    text_encoders: ['gemma4-12b-with-proj-ltx-2.5-comfy-int8-convrot.safetensors'],
+    vae: ['ltx-2.5-video-vae-bf16.safetensors', 'ltx-2.5-audio-vae-bf16.safetensors'],
+  }
+  const ready = fakeComfyUI({ files: ltx })
+  const noAudio = fakeComfyUI({ files: { ...ltx, vae: ['ltx-2.5-video-vae-bf16.safetensors'] } })
+  try {
+    const video = { videoModel: 'ltx-2.5' }
+    assertEquals((await comfyuiStatus(ready.url, video)).up && 'ready', 'ready')
+    const status = await comfyuiStatus(noAudio.url, video)
+    assertEquals(status.up && status.ready, false)
+    assertStringIncludes(status.up ? status.missing ?? '' : '', "LTX 2.5's files: vae/ (^ltx-2")
+    assertStringIncludes(status.up ? status.missing ?? '' : '', 'audio-vae')
+    const unknown = await comfyuiStatus(ready.url, { videoModel: 'wan-9' })
+    assertEquals(unknown.up && unknown.missing, 'ComfyUI has no video model "wan-9" here')
+  } finally {
+    await ready.close()
+    await noAudio.close()
   }
 })
