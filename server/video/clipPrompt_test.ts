@@ -102,3 +102,23 @@ Deno.test('A prompt loses an introduction and quote marks around it all, not ins
   assertEquals(cleanClipPrompt('Sure, here it is: “He waits.”'), 'He waits.')
   assertEquals(cleanClipPrompt('He says "Sit." She sits.'), 'He says "Sit." She sits.')
 })
+
+Deno.test('A Play out is told the Frame has happened, and what happens next, if anything', () =>
+  withTempDir(async (root) => {
+    const { call, model } = await chainWritingClips(root, ['She sits.', 'He waits.'])
+    const playOut = { ...ask, kind: 'play-out' }
+    await readEvents(await writePrompt(call, 0, playOut))
+    await readEvents(await writePrompt(call, 1, playOut))
+    const [opening, second] = await chainFrames(call)
+    const [first, last] = model.clipRequests.map((r) => r.user)
+    assertStringIncludes(
+      first,
+      await loadPrompt('video/clip-story-done', { story: opening.narration }),
+    )
+    assertStringIncludes(
+      first,
+      await loadPrompt('video/clip-after', { story: `Sit\n${second.narration}` }),
+    )
+    // The newest Frame has nothing after it: nothing new happens.
+    assertStringIncludes(last, await loadPrompt('video/clip-after-none'))
+  }))

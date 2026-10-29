@@ -44,18 +44,35 @@ export function frameStory(session: Session, index: number): string {
 /** What Frame `index`'s picture shows: its Image Prompt. */
 const pictureOf = (session: Session, index: number) => session.frames[index]?.prompt ?? ''
 
+/**
+ * What comes after the picture, as a clip of `kind` is told it: Into Next, the next picture it ends
+ * on; Play out, the next Frame's story, or on the newest Frame, that nothing new happens.
+ */
+async function afterPicture(session: Session, index: number, kind: ClipKind): Promise<string> {
+  const next = session.frames[index + 1]
+  if (kind === 'into-next') {
+    return loadPrompt('video/clip-next', {
+      picture: pictureOf(session, index + 1),
+      story: frameStory(session, index + 1),
+    })
+  }
+  if (kind !== 'play-out') return ''
+  return next
+    ? loadPrompt('video/clip-after', { story: frameStory(session, index + 1) })
+    : loadPrompt('video/clip-after-none')
+}
+
 /** The call that writes a clip's prompt: its kind's direction, the picture, the story around it. */
 export async function clipMessages(
   session: Session,
   index: number,
   ask: ClipAsk,
 ): Promise<{ system: string; user: string }> {
-  const next = ask.kind === 'into-next'
-    ? await loadPrompt('video/clip-next', {
-      picture: pictureOf(session, index + 1),
-      story: frameStory(session, index + 1),
-    })
-    : ''
+  // A Play out starts on the picture, by which the Frame's own story has happened.
+  const story = await loadPrompt(
+    ask.kind === 'play-out' ? 'video/clip-story-done' : 'video/clip-story',
+    { story: frameStory(session, index) },
+  )
   return {
     system: await loadPrompt('video/clip', {
       direction: await loadPrompt(`video/${ask.kind}`),
@@ -65,9 +82,9 @@ export async function clipMessages(
       kind: KIND_NAMES[ask.kind],
       seconds: ask.seconds,
       picture: pictureOf(session, index),
-      story: frameStory(session, index),
+      story,
       before: index > 0 ? frameStory(session, index - 1) : 'none: the story starts here',
-      next,
+      after: await afterPicture(session, index, ask.kind),
     }),
   }
 }

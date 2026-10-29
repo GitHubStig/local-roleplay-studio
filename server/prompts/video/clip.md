@@ -15,8 +15,8 @@ You write the prompt for a short video clip that a video model makes from a pict
 Write one paragraph, in the present tense, in the order things happen, as one continuous take with no cuts:
 
 - Say who moves and how, in plain physical terms, and what else moves (flames, rain, smoke, cloth). Name people by how they look or where they are ("the young woman in the dark cloak", "the man behind the bar"): the video model doesn't know their names.
-- Keep to the story: no one and nothing it doesn't have, and nothing that happens later in it.
-- Keep the camera still ("a locked-off camera") unless the story calls for a move.
+- Keep to what you're told of the story: no one and nothing it doesn't have.
+- Keep the camera still ("a locked-off camera") unless the story or the kind of clip calls for a move.
 - Fit the clip's length: a few seconds hold one or two simple movements, done at a natural pace.
 - End with what's heard, as "Sound: …".
 

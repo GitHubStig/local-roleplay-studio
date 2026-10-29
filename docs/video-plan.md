@@ -20,10 +20,11 @@ The Text Model writes each clip's prompt for its kind, from the Frame's story (a
 ## Decided
 
 - The kinds of clip are named Lead In, Play out, Idle Loop and Into Next (the owner, 2026-10-29).
-
 - The player picks the kind of clip; nothing detects it (2026-10-29).
 - An option to leave the dialogue out of a clip's prompt, so it has only background sound (the owner, 2026-10-29). The Voice clips can then play over it.
 - The ComfyUI backend finds LTX's files by name pattern, as it does an Image Model's, so each machine uses the copy it has installed.
+- A Play out is told the Frame's story as already happened, and given what happens next (the next Frame's story, or nothing new on the newest Frame): told the Frame's story as what happens, it replayed it from the wrong place (2026-10-29).
+- Into Next may move the camera between two framings, the best of five tries at joining two pictures that disagree; no prompt makes them one moment at the same place (a still camera cut, a morph moved the people), so the app warns when it offers Into Next that it works best when the next picture shows the same place, and suggests Lead In on the next Frame otherwise (2026-10-29, [research/video-models.md](research/video-models.md)).
 
 ## Open questions
 
@@ -51,7 +52,8 @@ From ComfyUI's LTX 2.5 template: `ltx-2.5-22b-distilled-transformer-comfy-int8-c
 - [x] Server: a `VideoGenerator` interface and its ComfyUI backend (`server/video/`, 2026-10-29): one LTX 2.5 workflow, the guide at an end without a picture dropped, guides at 1.0; no copy of the pictures or the clip left with ComfyUI (both overwritten with stubs after).
 - [x] Server: clips as jobs (2026-10-29): a `clip` job with its order (kind, prompt, seconds 2–10, speech), in the render queue as a `video` heavy job, saved on the picture version it's made from (one per kind, a new one replacing the old, deleted with the picture), served as `video/mp4`. The `video` Feature (Clips) is available where Settings list a ComfyUI; a clip goes to the ComfyUI pictures go to, else the first listed (no Settings picker of its own yet). Into Next is refused when the next Frame has no picture. Checked through the app on the PC: a 4 s Lead In in 133 s, 1152×800 from a 1216×832 picture.
 - [x] Prompts for each kind of clip in `server/prompts/video/` (2026-10-29): the Text Model writes one for the player to read and edit (`POST /api/sessions/:id/frames/:index/clip-prompt`, streamed, nothing saved), from the Frame's Image Prompt and story, the Frame before, and for Into Next the next one; read on the tavern in [research/video-models.md](research/video-models.md), not yet made into clips.
-- [ ] Web: the buttons, a clip on its Frame.
+- [ ] Web: the buttons, a clip on its Frame, and Into Next's warning.
+- [ ] Fixing a clip's prompt after watching it (the owner, 2026-10-29): the player says what went wrong ("she walks out of the door; she should stay at the table and put the coin down"), and the Text Model rewrites the prompt to match, for another try, as Edit takes an instruction. One Text Model call per try. It would have fixed Play out's retelling and "the bar in the background"; it can't join pictures that disagree, which it could say when asked for no travel between two places.
 
 ## Session screens: a selected Frame (discussion, 2026-10-29)
 
