@@ -58,6 +58,8 @@ From ComfyUI's LTX 2.5 template: `ltx-2.5-22b-distilled-transformer-comfy-int8-c
 
 ## Where things stand (2026-10-29, end of the first day)
 
+What was decided is in [ADR 0025](adr/0025-clips-by-kind.md), and how it works in [design.md](design.md) (Screens: the selected Frame and Clips); this plan keeps what's still to do.
+
 Built and committed: the video backend (LTX 2.5 on ComfyUI), clips as jobs on a Frame's picture, the Text Model writing (and rewriting) each kind of clip's prompt, the Session screens' Frame tab in all three kinds of Session with its Clip section, playing a clip over its picture, the Clips tab in Settings with the Video model and its ComfyUI check. Everything was checked on the Windows PC; nothing on the Mac.
 
 Next, when picked up:

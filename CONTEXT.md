@@ -138,6 +138,10 @@ _Avoid_: Remove, drop
 Enlarging a Frame's picture so its shortest edge is 2048 px, with the SeedVR2 upscaler; the original image is kept, and an upscaled picture is flagged so it isn't upscaled twice. A re-render by the same Image Model drops it; a picture by another model has its own.
 _Avoid_: Enhance, HD, super-resolution
 
+**Clip**:
+A few seconds of video made from a Frame's picture by the Video model (LTX 2.5 on a ComfyUI), kept on the picture it was made from, one of each kind. Its kind says where the picture sits in it: a **Lead In** ends on the picture (what leads up to it), a **Play out** starts on it (what happens next), an **Idle Loop** starts and ends on it (small movement, to loop), and an **Into Next** starts on it and ends on the next Frame's picture. Its prompt is written by the Text Model from the story, for the player to edit.
+_Avoid_: Video, animation, GIF, motion
+
 ### Configuration
 
 **Text Model**:

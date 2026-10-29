@@ -64,6 +64,10 @@ For Roleplay Characters, two models: Qwen3-TTS VoiceDesign designs a voice from 
 
   The models download into ComfyUI the first time each is used (8.9 GB for Higgs). Each voice unloads the Text Model first when it's on that machine, as a render does, since Higgs takes ~10 GB of the card. On an RTX 4070 a line takes about 3.7 s per second of speech (a Mac: 0.8 s), plus ~8 s to load Higgs after a Reply. Clips come back as FLAC, and ComfyUI keeps none: they're read from its temp folder and blanked there.
 
+### Clips (optional)
+
+A Frame's picture made into a few seconds of video, from its Frame tab (ADR 0025). The Video model (Settings, Clips tab; LTX 2.5 for now) runs on a ComfyUI: the one pictures go to, if they go to one, or else the first on the Machines tab. Install its files from ComfyUI's own **LTX 2.5** template (Templates, then Download all: the 22B distilled transformer, the Gemma 4 text encoder and the video and audio VAEs); the Clips tab says whether that ComfyUI has them. A 5-second clip takes about two and a half minutes on an RTX 4070 with 12 GB. Not tried on a Mac yet.
+
 ### 3D (optional)
 
 Each runs once per scene or figure through uv, downloading its weights with the first one (`uv run python/<tool>/make.py --download` fetches them ahead of time):
@@ -121,6 +125,7 @@ Everything else is chosen on the Settings page (in tabs: Machines, Text, Images,
 | Pictures | mflux, or ComfyUI | ComfyUI |
 | Upscale | mflux, or ComfyUI | ComfyUI |
 | Voices | mlx-audio (uv), or ComfyUI | ComfyUI (TTS Audio Suite) |
+| Clips | ComfyUI (LTX 2.5; untried) | ComfyUI (LTX 2.5) |
 | SHARP, TripoSplat | yes (uv) | yes (uv) |
 | LiTo | yes (uv) | no |
 
