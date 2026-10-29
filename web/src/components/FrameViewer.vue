@@ -2,6 +2,8 @@
 import { useEventListener, useManualRefHistory } from '@vueuse/core'
 import { computed, reactive, ref, useTemplateRef, watch } from 'vue'
 import {
+  type Clip,
+  CLIP_KIND_NAMES,
   type EditOrder,
   framePicture,
   IMAGE_BACKEND_NAMES,
@@ -15,9 +17,11 @@ import {
 } from '../api'
 import { useFeatures } from '../composables/useFeatures'
 import { editChoices, useSettingsOptions } from '../composables/useSettingsOptions'
+import ClipOverlay from './ClipOverlay.vue'
 import ImageViewer from './ImageViewer.vue'
 import PaintLayer, { type Sketch } from './PaintLayer.vue'
 import PictureVersions, { type VersionEntry } from './PictureVersions.vue'
+import Icon from './Icon.vue'
 import SelectField from './SelectField.vue'
 
 /**
@@ -25,7 +29,8 @@ import SelectField from './SelectField.vue'
  * step through the Frames that have a picture, showing each one's upscale if it has one. A picture
  * shows as its picked version (ADR 0021); its versions, beside it, pick another. Edit paints over
  * the newest version the area to repaint, and says what to paint there; the edit then shows among
- * the versions while it's made, over what it's made from, with its progress, until it lands.
+ * the versions while it's made, over what it's made from, with its progress, until it lands. The
+ * shown version's clips, under its versions, play over it.
  */
 const props = withDefaults(
   defineProps<{
@@ -231,6 +236,17 @@ const upscale = computed(() => {
   const p = picture.value
   return p && !viewedJob.value ? (pickedEdit(p) ?? p).upscaled : undefined
 })
+// --- The shown version's clips (ADR 0025), one playing over it at a time.
+const clips = computed(() => {
+  const p = picture.value
+  return p && !viewedJob.value && !painting.value ? (pickedEdit(p) ?? p).clips ?? [] : []
+})
+const playing = ref<Clip | null>(null)
+// It stops on another Frame or version, or once a new clip of its kind replaces it.
+watch(clips, (now) => {
+  if (playing.value && !now.some((c) => c.file === playing.value!.file)) playing.value = null
+})
+
 function deleteUpscale() {
   const frame = current.value
   if (!frame || !upscale.value) return
@@ -436,6 +452,29 @@ const action =
             Delete upscale
           </button>
         </template>
+        <div
+          v-if="clips.length"
+          class="flex overflow-hidden rounded-lg border border-white/30 bg-black/70"
+          :class="vertical ? 'flex-col' : 'flex-wrap'"
+          role="group"
+          aria-label="Clips of the picture"
+          data-viewer-clips
+        >
+          <button
+            v-for="c in clips"
+            :key="c.file"
+            type="button"
+            class="flex items-center gap-1.5 px-2 py-1 text-left"
+            :class="playing?.file === c.file ? 'bg-white/90 text-black' : 'hover:text-white'"
+            :aria-pressed="playing?.file === c.file"
+            :title="c.prompt"
+            :data-play-clip="c.kind"
+            @click="playing = playing?.file === c.file ? null : c"
+          >
+            <Icon :name="playing?.file === c.file ? 'stop' : 'play'" />
+            <span class="whitespace-nowrap">{{ CLIP_KIND_NAMES[c.kind] }}</span>
+          </button>
+        </div>
         <button
           v-if="featureOn('edits')"
           type="button"
@@ -448,6 +487,13 @@ const action =
           Edit
         </button>
       </PictureVersions>
+    </template>
+    <template v-if="playing" #over>
+      <ClipOverlay
+        :src="fileUrl(playing.file)"
+        :clip="playing"
+        @close="playing = null"
+      />
     </template>
     <template v-if="painting && draft" #layer="{ size }">
       <PaintLayer

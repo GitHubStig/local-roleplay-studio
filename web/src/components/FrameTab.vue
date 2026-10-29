@@ -40,6 +40,8 @@ const props = withDefaults(
       nextName: string
       /** The kinds of clip queued or being made of it (`clipsMaking`). */
       making: ClipKind[]
+      /** The clip playing over its picture, by its file. */
+      playing?: string
     }
   }>(),
   { canRender: false },
@@ -52,6 +54,8 @@ defineEmits<{
   clip: [order: ClipOrder]
   /** Play one of the picture's clips over it. */
   play: [clip: Clip]
+  /** Stop the clip playing. */
+  stop: []
 }>()
 const { on: featureOn } = useFeatures()
 
@@ -84,8 +88,10 @@ const has3d = computed(() =>
       :next-pictured="clips.nextPictured"
       :next-name="clips.nextName"
       :making="clips.making"
+      :playing="clips.playing"
       @make="(order) => $emit('clip', order)"
       @play="(clip) => $emit('play', clip)"
+      @stop="$emit('stop')"
     />
     <!-- Kept in view at the panel's foot, side by side: the panel scrolls and pads it by 1rem, so it
          sticks 1rem lower, over the padding, or the text shows below it. -->

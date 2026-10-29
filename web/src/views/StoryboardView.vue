@@ -29,6 +29,8 @@ import {
   writeStoryboard,
 } from '../api'
 import CollapsibleTextarea from '../components/CollapsibleTextarea.vue'
+import FoldedPrompt from '../components/FoldedPrompt.vue'
+import ShownPills from '../components/ShownPills.vue'
 import ComposeBox from '../components/ComposeBox.vue'
 import Frame3dViewers from '../components/Frame3dViewers.vue'
 import FrameImage from '../components/FrameImage.vue'
@@ -887,10 +889,12 @@ const imagesOn = computed(() => featureOn.value('images'))
                   nextPictured: !!session.frames[current.index + 1] && 'pictures' in session.frames[current.index + 1] && !!pictureOf(session.frames[current.index + 1]),
                   nextName: `Frame ${current.index + 2}`,
                   making: clipsMaking(jobsFor(current.index)),
+                  playing: playingClip?.index === current.index ? playingClip.clip.file : undefined,
                 }
                 : undefined"
               @clip="(order) => queueClip(current!.index, order)"
               @play="(clip) => (playingClip = { index: current!.index, clip })"
+              @stop="playingClip = null"
             >
             <form
               v-if="frameDraft"
@@ -909,24 +913,18 @@ const imagesOn = computed(() => featureOn.value('images'))
               <p v-if="current.blocked" class="text-xs text-danger">
                 Crosses a limit ({{ current.blocked }}): edit it before rendering.
               </p>
-              <div v-if="look?.subjects.length" class="flex flex-wrap items-center gap-1.5 text-xs" data-shown>
-                <span class="text-muted">Shows</span>
-                <button
-                  v-for="subject in look.subjects"
-                  :key="subject.name"
-                  type="button"
-                  class="rounded-full border border-line px-2 py-0.5 text-muted aria-pressed:bg-surface aria-pressed:text-fg disabled:opacity-50"
-                  :aria-pressed="frameDraft.shown.includes(subject.name)"
-                  :disabled="busy || renderingSelected || !frameEditable"
-                  @click="toggleShown(subject.name)"
-                >
-                  {{ subject.name }}
-                </button>
-                <span v-if="!frameDraft.shown.length" class="text-muted">· the place alone</span>
-                <span v-else-if="frameDraft.shown.length > MAX_SHOWN" class="text-muted">
+              <ShownPills
+                v-if="look?.subjects.length"
+                :names="look.subjects.map((s) => s.name)"
+                :shown="frameDraft.shown"
+                editable
+                :disabled="busy || renderingSelected || !frameEditable"
+                @toggle="toggleShown"
+              >
+                <span v-if="frameDraft.shown.length > MAX_SHOWN" class="text-muted">
                   · only the first {{ MAX_SHOWN }} are described
                 </span>
-              </div>
+              </ShownPills>
               <!-- Its border sweeps while an Action rewrites them, as the Action box's does. -->
               <div
                 class="rounded-md"
@@ -950,13 +948,9 @@ const imagesOn = computed(() => featureOn.value('images'))
                 :disabled="busy"
                 @revert="revertFrame"
               />
-              <details v-if="currentWritten" class="group/prompt text-muted" open>
-                <summary class="flex cursor-pointer select-none items-baseline gap-1.5 text-xs hover:text-fg">
-                  <span class="shrink-0 transition-transform group-open/prompt:rotate-90">›</span>
-                  Full prompt
-                </summary>
-                <p class="mt-1 text-xs leading-relaxed" data-prompt-text>{{ current.prompt }}</p>
-              </details>
+              <FoldedPrompt v-if="currentWritten" label="Full prompt" :preview="current.prompt">
+                <p class="text-xs leading-relaxed text-muted" data-prompt-text>{{ current.prompt }}</p>
+              </FoldedPrompt>
             </form>
             <!-- While the plan is reviewed: a Beat added after the selected Frame, or it removed. -->
             <div v-if="reviewing && current" class="flex flex-col gap-2 text-xs" data-beat-actions>

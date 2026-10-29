@@ -1,20 +1,32 @@
 <script setup lang="ts">
+import { useElementVisibility } from '@vueuse/core'
+import { useTemplateRef, watch } from 'vue'
 import { type Clip, CLIP_KIND_NAMES } from '../api'
 
 /**
  * A clip playing over its Frame's picture, in place (ADR 0025): in a picture's frame
  * (`position: relative`), the same size as it. An Idle Loop loops; the others close when they end.
+ * It plays only while it's in view, so one asked for from the side panel waits for the picture it
+ * covers to scroll into view.
  */
-defineProps<{ src: string; clip: Clip }>()
+const props = defineProps<{ src: string; clip: Clip }>()
 defineEmits<{ close: [] }>()
+
+const video = useTemplateRef<HTMLVideoElement>('video')
+const visible = useElementVisibility(video, { threshold: 0.5 })
+// Another clip in its place plays at once, if it's in view.
+watch([visible, () => props.src], ([inView]) => {
+  if (inView) video.value?.play().catch(() => {})
+  else video.value?.pause()
+}, { flush: 'post' })
 </script>
 
 <template>
   <div class="absolute inset-0 z-10 flex bg-black" data-clip-overlay>
     <video
+      ref="video"
       :src="src"
       class="h-full w-full object-contain"
-      autoplay
       controls
       playsinline
       :loop="clip.kind === 'idle-loop'"

@@ -829,7 +829,10 @@ describe('RoleplayView', () => {
     await flushPromises()
     expect(wrapper.find('[data-reply]').classes()).not.toContain('render-sweep')
     expect(wrapper.find('[data-image-prompt]').text()).toContain('Elena, 38. She waits.')
-    expect(wrapper.find('[data-shown]').text()).toBe('Shows Elena and the barkeep')
+    expect(wrapper.findAll('[data-shown-name]').map((p) => p.text())).toEqual([
+      'Elena',
+      'the barkeep',
+    ])
     expect(wrapper.find('[data-picture-timings]').text()).toBe(
       'Pictured in 24.6 s by gemma4',
     )

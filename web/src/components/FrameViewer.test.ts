@@ -219,4 +219,53 @@ describe('FrameViewer', () => {
     expect(side(wrapper).find('[data-edit]').exists()).toBe(true)
     expect(wrapper.find('[data-viewer-caption]').exists()).toBe(false)
   })
+
+  it("plays the shown version's clips over it, one at a time, stopping on another version", async () => {
+    const clip = (kind: 'lead-in' | 'idle-loop', file: string) => ({
+      kind,
+      file,
+      prompt: 'She looks up.',
+      seconds: 4,
+      speech: false,
+      seed: 1,
+      timings: { clip: 9 },
+    })
+    const withClips = [{
+      index: 0,
+      pictures: [{
+        ...frames[0].pictures[0],
+        clips: [clip('lead-in', 'clip-0-lead-in-00000000.mp4')],
+        edits: [
+          {
+            ...edit(1),
+            clips: [
+              clip('lead-in', 'clip-0-lead-in-11111111.mp4'),
+              clip('idle-loop', 'clip-0-idle-loop-22222222.mp4'),
+            ],
+          },
+          edit(2),
+        ],
+      }],
+    }]
+    const wrapper = mountIt({ frames: withClips })
+    await flushPromises()
+    const buttons = side(wrapper).findAll('[data-play-clip]')
+    expect(buttons.map((b) => b.text())).toEqual(['Lead In', 'Idle Loop'])
+    await buttons[1].trigger('click')
+    const video = wrapper.find('[data-clip-overlay] video')
+    expect(video.attributes('src')).toBe(url('clip-0-idle-loop-22222222.mp4'))
+    expect(video.attributes('loop')).toBeDefined()
+    await buttons[0].trigger('click')
+    expect(wrapper.find('[data-clip-overlay] video').attributes('src')).toBe(
+      url('clip-0-lead-in-11111111.mp4'),
+    )
+    await buttons[0].trigger('click')
+    expect(wrapper.find('[data-clip-overlay]').exists()).toBe(false)
+    await buttons[0].trigger('click')
+    await wrapper.setProps({
+      frames: [{ ...withClips[0], pictures: [{ ...withClips[0].pictures[0], picked: 2 }] }],
+    })
+    expect(wrapper.find('[data-clip-overlay]').exists()).toBe(false)
+    expect(side(wrapper).find('[data-play-clip]').exists()).toBe(false)
+  })
 })

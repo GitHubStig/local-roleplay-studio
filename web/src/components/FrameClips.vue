@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
 import {
   type Clip,
   CLIP_KIND_NAMES,
@@ -12,8 +12,8 @@ import {
  * The selected Frame's clips (ADR 0025), in its tab, the same in every kind of Session:
  * pick where the picture sits in the clip, its length and whether anyone speaks; the Text Model
  * writes the prompt from the story, for the player to read and edit; then the clip is queued. The
- * clips already made are listed, to play over the picture, to make again, or to say what was wrong
- * with one, for the Text Model to rewrite its prompt by.
+ * clips already made are listed, to play over the picture (and stop), to put back in the form to
+ * make again (Redo), or to say what was wrong with one, for the Text Model to rewrite its prompt by.
  */
 const props = defineProps<{
   sessionId: string
@@ -26,8 +26,10 @@ const props = defineProps<{
   nextName: string
   /** The kinds of clip queued or being made of the Frame. */
   making: ClipKind[]
+  /** The clip playing over the picture, by its file. */
+  playing?: string
 }>()
-const emit = defineEmits<{ make: [order: ClipOrder]; play: [clip: Clip] }>()
+const emit = defineEmits<{ make: [order: ClipOrder]; play: [clip: Clip]; stop: [] }>()
 
 const KINDS = Object.keys(CLIP_KIND_NAMES) as ClipKind[]
 const SECONDS = [3, 4, 5, 6, 8, 10]
@@ -91,6 +93,21 @@ function make() {
 /** The clip being said what was wrong with (its file), and what. */
 const fixing = ref<string | null>(null)
 const problem = ref('')
+const problemBox = useTemplateRef<HTMLTextAreaElement[]>('problemBox')
+/**
+ * What went wrong?: the clip back in the form, so its prompt shows while it's said what was wrong,
+ * and the focus on what was wrong. Again, it closes.
+ */
+async function toggleFixing(clip: Clip) {
+  if (fixing.value === clip.file) {
+    fixing.value = null
+    return
+  }
+  again(clip)
+  fixing.value = clip.file
+  await nextTick()
+  problemBox.value?.[0]?.focus()
+}
 /** Puts the clip back in the form, and has its prompt rewritten by what was wrong. */
 async function rewrite(clip: Clip) {
   again(clip)
@@ -189,7 +206,16 @@ function again(clip: Clip) {
       >
         <span class="w-16 font-medium">{{ CLIP_KIND_NAMES[clip.kind] }}</span>
         <span class="flex-1 text-muted">{{ clip.seconds }} s · {{ clip.speech ? 'with speech' : 'no dialogue' }}</span>
-        <button type="button" class="action" data-play-clip @click="emit('play', clip)">Play</button>
+        <button
+          type="button"
+          class="action"
+          :class="{ 'action-on': playing === clip.file }"
+          :aria-pressed="playing === clip.file"
+          data-play-clip
+          @click="playing === clip.file ? emit('stop') : emit('play', clip)"
+        >
+          {{ playing === clip.file ? 'Stop' : 'Play' }}
+        </button>
         <button
           type="button"
           class="action"
@@ -197,7 +223,7 @@ function again(clip: Clip) {
           data-clip-again
           @click="again(clip)"
         >
-          Again
+          Redo
         </button>
         <button
           type="button"
@@ -205,7 +231,7 @@ function again(clip: Clip) {
           :class="{ 'action-on': fixing === clip.file }"
           title="Say what was wrong with it, for the Text Model to rewrite its prompt"
           data-clip-wrong
-          @click="fixing = fixing === clip.file ? null : clip.file"
+          @click="toggleFixing(clip)"
         >
           What went wrong?
         </button>
@@ -216,6 +242,7 @@ function again(clip: Clip) {
           @submit.prevent="rewrite(clip)"
         >
           <textarea
+            ref="problemBox"
             v-model="problem"
             rows="2"
             class="w-full resize-y rounded border border-line bg-surface p-2 text-xs"

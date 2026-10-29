@@ -10,7 +10,7 @@ import Icon from './Icon.vue'
  * closes it. Given a `label` or `hasPrevious` / `hasNext`, the ‹ › buttons, the ← → keys and a
  * swipe sideways ask for the image before or after, and so do ↑ and ↓; with `vertical`, the up and
  * down buttons, the ↑ ↓ keys and a swipe up or down ask for the one above or below instead. The
- * parent decides which those are. A `caption` shows under the image, in a box of the same height whatever its length,
+ * parent decides which those are. The `over` slot covers the image (a clip playing over it). A `caption` shows under the image, in a box of the same height whatever its length,
  * so the image keeps its size while stepping through.
  */
 const props = defineProps<{
@@ -256,6 +256,8 @@ onClickOutside(
         <template #layer="{ size }">
           <slot name="layer" :size="size" />
         </template>
+        <!-- Over the image at its size, not zoomed with it (a clip playing). -->
+        <slot name="over" />
         <!-- Beside the image where there's room (a column of buttons); in a row under it if not. -->
         <template v-if="$slots.side" #side>
           <slot name="side" :vertical="true" />

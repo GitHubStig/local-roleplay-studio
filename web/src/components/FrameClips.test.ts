@@ -105,6 +105,41 @@ describe('FrameClips', () => {
     expect((wrapper.find('[data-clip-speech]').element as HTMLInputElement).checked).toBe(true)
   })
 
+  it('plays a clip, then stops it from the same button; Redo puts it back in the form', async () => {
+    const wrapper = mountIt({ clips: [leadIn], playing: leadIn.file })
+    const play = wrapper.find('[data-play-clip]')
+    expect([play.text(), play.attributes('aria-pressed')]).toEqual(['Stop', 'true'])
+    await play.trigger('click')
+    expect(wrapper.emitted('stop')).toHaveLength(1)
+    expect(wrapper.emitted('play')).toBeUndefined()
+    expect(wrapper.find('[data-clip-again]').text()).toBe('Redo')
+  })
+
+  it('shows the clip in the form while saying what was wrong, the focus on that', async () => {
+    const wrapper = mount(FrameClips, {
+      props: {
+        sessionId: 's1',
+        index: 1,
+        nextPictured: true,
+        nextName: 'Frame 2',
+        making: [],
+        clips: [leadIn],
+      },
+      attachTo: document.body,
+    })
+    await wrapper.find('[data-clip-kind="idle-loop"]').trigger('click')
+    await wrapper.find('[data-clip-wrong]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-clip-kind="lead-in"]').attributes('aria-checked')).toBe('true')
+    expect(wrapper.find<HTMLTextAreaElement>('[data-clip-prompt]').element.value).toBe(
+      'She walks in.',
+    )
+    expect(document.activeElement).toBe(wrapper.find('[data-clip-problem] textarea').element)
+    await wrapper.find('[data-clip-wrong]').trigger('click')
+    expect(wrapper.find('[data-clip-problem]').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
   it("rewrites a clip's prompt by what was wrong with it, into the form", async () => {
     const wrapper = mountIt({ clips: [leadIn] })
     await wrapper.find('[data-clip-kind="idle-loop"]').trigger('click')

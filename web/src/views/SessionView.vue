@@ -4,6 +4,7 @@ import { onBeforeRouteLeave } from 'vue-router'
 import ComposeBox from '../components/ComposeBox.vue'
 import FrameImage from '../components/FrameImage.vue'
 import CollapsibleTextarea from '../components/CollapsibleTextarea.vue'
+import FoldedPrompt from '../components/FoldedPrompt.vue'
 import FrameTab from '../components/FrameTab.vue'
 import ClipOverlay from '../components/ClipOverlay.vue'
 import { clipsMaking, scrollToClips } from '../clips'
@@ -836,10 +837,12 @@ const promptDiff = computed(() => {
                 nextPictured: !!session.frames[shown.index + 1] && !!pictureOf(session.frames[shown.index + 1]),
                 nextName: frameName(shown.index + 1),
                 making: clipsMaking(jobsFor(shown.index)),
+                playing: playingClip?.index === shown.index ? playingClip.clip.file : undefined,
               }
               : undefined"
             @clip="(order) => queueClip(shown!.index, order)"
             @play="(clip) => (playingClip = { index: shown!.index, clip })"
+            @stop="playingClip = null"
           >
           <template v-if="shown || (onPending && pending?.prompt)">
             <div class="flex items-start gap-2" :class="shown?.timings ? 'mb-1' : 'mb-3'">
@@ -860,27 +863,6 @@ const promptDiff = computed(() => {
             <p v-if="shown?.timings" class="mb-3 text-xs text-muted" data-timings>
               {{ timingsLabel(shown) }}
             </p>
-            <div
-              v-if="promptIndex! > 0 && promptDraft === null"
-              class="mb-2 flex flex-col gap-1 text-xs text-muted"
-            >
-              <label class="flex w-fit cursor-pointer items-center gap-1.5">
-                <input
-                  type="checkbox"
-                  :checked="!removedHidden"
-                  data-show-removed
-                  @change="removedHidden = !($event.target as HTMLInputElement).checked"
-                />
-                Show removed words
-              </label>
-              <p>
-                <span class="rounded bg-info/20 px-1 text-fg">added</span>
-                <template v-if="!removedHidden">
-                  and <span class="text-danger line-through">removed</span>
-                </template>
-                since Frame {{ promptIndex! - 1 }}.
-              </p>
-            </div>
             <form
               v-if="promptDraft !== null"
               class="flex flex-col gap-2"
@@ -911,20 +893,43 @@ const promptDiff = computed(() => {
                 </button>
               </div>
             </form>
-            <p v-else class="leading-relaxed" data-prompt>
-              <template v-for="(part, i) in promptDiff" :key="i">
-                <span
-                  v-if="part.kind !== 'removed' || !removedHidden"
-                  :class="{
-                    'rounded bg-info/20 text-fg': part.kind === 'added',
-                    'text-danger line-through opacity-70': part.kind === 'removed',
-                  }"
-                  :data-diff="part.kind"
-                >{{ part.text }}</span><template
-                  v-if="part.kind !== 'removed' || !removedHidden"
-                >{{ ' ' }}</template>
-              </template>
-            </p>
+            <FoldedPrompt v-else :preview="shown?.prompt ?? pending?.prompt">
+              <div
+                v-if="promptIndex! > 0"
+                class="flex flex-col gap-1 text-xs text-muted"
+              >
+                <label class="flex w-fit cursor-pointer items-center gap-1.5">
+                  <input
+                    type="checkbox"
+                    :checked="!removedHidden"
+                    data-show-removed
+                    @change="removedHidden = !($event.target as HTMLInputElement).checked"
+                  />
+                  Show removed words
+                </label>
+                <p>
+                  <span class="rounded bg-info/20 px-1 text-fg">added</span>
+                  <template v-if="!removedHidden">
+                    and <span class="text-danger line-through">removed</span>
+                  </template>
+                  since Frame {{ promptIndex! - 1 }}.
+                </p>
+              </div>
+              <p class="leading-relaxed" data-prompt>
+                <template v-for="(part, i) in promptDiff" :key="i">
+                  <span
+                    v-if="part.kind !== 'removed' || !removedHidden"
+                    :class="{
+                      'rounded bg-info/20 text-fg': part.kind === 'added',
+                      'text-danger line-through opacity-70': part.kind === 'removed',
+                    }"
+                    :data-diff="part.kind"
+                  >{{ part.text }}</span><template
+                    v-if="part.kind !== 'removed' || !removedHidden"
+                  >{{ ' ' }}</template>
+                </template>
+              </p>
+            </FoldedPrompt>
             <details v-if="shown?.thinking" :key="`thinking-${shown.index}`" class="mt-4 text-muted">
               <summary class="cursor-pointer select-none">Thinking</summary>
               <p class="mt-1 whitespace-pre-line text-xs leading-relaxed" data-frame-thinking>

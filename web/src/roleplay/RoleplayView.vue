@@ -11,6 +11,8 @@ import RestartButton from '../components/RestartButton.vue'
 import ComposeBox from '../components/ComposeBox.vue'
 import FrameTab from '../components/FrameTab.vue'
 import ClipOverlay from '../components/ClipOverlay.vue'
+import FoldedPrompt from '../components/FoldedPrompt.vue'
+import ShownPills from '../components/ShownPills.vue'
 import { clipsMaking, scrollToClips } from '../clips'
 import FrameListItem from '../components/FrameListItem.vue'
 import Icon from '../components/Icon.vue'
@@ -329,6 +331,12 @@ const selectedFrame = computed(() =>
 )
 /** A clip playing over its Frame's picture, from the Frame tab's Clip section. */
 const playingClip = ref<{ index: number; clip: Clip } | null>(null)
+/** Plays a clip over Frame `index`'s picture, scrolled into view: it starts once it's seen. */
+function playClip(index: number, clip: Clip) {
+  playingClip.value = { index, clip }
+  transcript.value?.querySelector(`[data-frame-index="${index}"] [data-picture-image]`)
+    ?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+}
 
 /** Picks Frame `index`; the newest, so the selection follows the Replies again. */
 function pick(index: number) {
@@ -667,10 +675,6 @@ const currentLook = computed(() => {
 })
 
 /** "Kael, Elara Vance and the barkeep", "no one": who a picture shows. */
-function shownNames(shown: string[] | undefined): string {
-  if (!shown?.length) return 'no one'
-  return shown.length === 1 ? shown[0] : `${shown.slice(0, -1).join(', ')} and ${shown.at(-1)}`
-}
 async function saveLookDraft(draft: Look): Promise<Look> {
   session.value = await saveLook(props.id, draft)
   return session.value.look!
@@ -758,7 +762,8 @@ const lookSavingText = computed(() =>
               :data-frame-index="frame.index"
               data-reply
             >
-              <!-- Text on the left, its picture beside it on wide windows (stacked on narrow ones). -->
+              <!-- Text on the left, its picture beside it on wide windows (stacked on narrow ones):
+                   three fifths of the row, between its old size and double it. -->
               <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:gap-5">
                 <div class="flex min-w-0 flex-1 flex-col gap-1.5">
                   <span class="text-xs text-muted">{{ characterName }}</span>
@@ -832,7 +837,7 @@ const lookSavingText = computed(() =>
                 <button
                   v-if="pictureOf(frame) || previewOn(frame.index)"
                   type="button"
-                  class="relative block w-full max-w-sm shrink-0 lg:w-72 lg:max-w-none xl:w-80"
+                  class="relative block w-full max-w-2xl shrink-0 lg:w-3/5 lg:min-w-72 lg:max-w-[40rem] xl:min-w-80"
                   title="Look closer"
                   data-picture-image
                   @click="pictureOf(frame) && (viewing = frame.index)"
@@ -1084,45 +1089,51 @@ const lookSavingText = computed(() =>
                 nextPictured: !!session.frames[selectedFrame.index + 1] && !!pictureOf(session.frames[selectedFrame.index + 1]),
                 nextName: `Frame ${selectedFrame.index + 1}`,
                 making: clipsMaking(jobsFor(selectedFrame.index)),
+                playing: playingClip?.index === selectedFrame.index ? playingClip.clip.file : undefined,
               }"
               @clip="(order) => queueClip(selectedFrame!.index, order)"
-              @play="(clip) => (playingClip = { index: selectedFrame!.index, clip })"
+              @play="(clip) => playClip(selectedFrame!.index, clip)"
+              @stop="playingClip = null"
             >
               <div class="flex flex-col gap-2">
                 <h3 class="text-base font-semibold">Frame {{ selectedFrame.index }}</h3>
+                <!-- Under the heading, as on a Chain's and a Storyboard's, whether the prompt is folded. -->
+                <p v-if="selectedFrame.prompt && selectedFrame.pictureTimings" class="text-xs text-muted" data-picture-timings>
+                  Pictured in {{ selectedFrame.pictureTimings.text.toFixed(1) }} s<template
+                    v-if="selectedFrame.pictureModel"
+                  > by {{ selectedFrame.pictureModel }}</template>
+                </p>
+                <p v-if="pictureOf(selectedFrame)" class="text-xs text-muted" data-render-timings>
+                  Rendered: {{ renderedParts(pictureOf(selectedFrame)!).join(' · ') }}
+                </p>
+                <ShownPills
+                  v-if="selectedFrame.prompt"
+                  :names="selectedFrame.shown ?? []"
+                  :shown="selectedFrame.shown ?? []"
+                />
                 <FrameJobs
                   :jobs="frameJobs(selectedFrame.index)"
                   :describe="describeJob"
                   @retry="retry"
                   @drop="drop"
                 />
-                <section class="flex flex-col gap-1.5" data-image-prompt>
-                  <div class="flex items-center justify-between gap-2">
-                    <h4 class="text-xs font-medium text-muted">
-                      Image Prompt
-                      <span v-if="selectedFrame.blocked" class="text-warn">· crosses a limit ({{ selectedFrame.blocked }})</span>
-                    </h4>
-                    <button
-                      type="button"
-                      class="action"
-                      :disabled="hasJob(selectedFrame.index, 'picture')"
-                      data-picture-button
-                      @click="queueSaved('picture', selectedFrame.index)"
-                    >
-                      {{ selectedFrame.prompt ? 'Picture again' : 'Picture this' }}
-                    </button>
-                  </div>
+                <FoldedPrompt :preview="selectedFrame.prompt">
+                  <template v-if="selectedFrame.blocked" #note>
+                    <span class="shrink-0 text-warn">· crosses a limit ({{ selectedFrame.blocked }})</span>
+                  </template>
+                  <template #actions>
+                      <button
+                        type="button"
+                        class="action"
+                        :disabled="hasJob(selectedFrame.index, 'picture')"
+                        data-picture-button
+                        @click="queueSaved('picture', selectedFrame.index)"
+                      >
+                        {{ selectedFrame.prompt ? 'Picture again' : 'Picture this' }}
+                      </button>
+                  </template>
                   <template v-if="selectedFrame.prompt">
-                    <p class="text-xs text-muted" data-shown>Shows {{ shownNames(selectedFrame.shown) }}</p>
                     <p class="leading-relaxed">{{ selectedFrame.prompt }}</p>
-                    <p v-if="selectedFrame.pictureTimings" class="text-xs text-muted" data-picture-timings>
-                      Pictured in {{ selectedFrame.pictureTimings.text.toFixed(1) }} s<template
-                        v-if="selectedFrame.pictureModel"
-                      > by {{ selectedFrame.pictureModel }}</template>
-                    </p>
-                    <p v-if="pictureOf(selectedFrame)" class="text-xs text-muted" data-render-timings>
-                      Rendered: {{ renderedParts(pictureOf(selectedFrame)!).join(' · ') }}
-                    </p>
                     <details v-if="selectedFrame.pictureThinking" class="text-xs text-muted">
                       <summary class="cursor-pointer select-none">Reasoning</summary>
                       <p class="mt-1 whitespace-pre-wrap leading-relaxed">{{ selectedFrame.pictureThinking }}</p>
@@ -1131,7 +1142,7 @@ const lookSavingText = computed(() =>
                   <p v-else class="text-xs text-muted">
                     Not pictured yet: Picture this has the Art Agent write its Image Prompt.
                   </p>
-                </section>
+                </FoldedPrompt>
               </div>
             </FrameTab>
             <p v-else class="text-muted">The Frames appear once the scene begins.</p>
