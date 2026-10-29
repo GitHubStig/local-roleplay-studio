@@ -61,7 +61,7 @@ silicon, 48 GB) and a Windows PC (RTX 4070, 12 GB, 16 GB of RAM), sharing this r
   in a component. Draw them for the app, rather than copying from an icon set, so none needs a
   licence.
 - Every AI service sits behind an interface on the server (`TextModel`, `RoleplayModel`,
-  `ImageGenerator`, `VoiceEngine`, `SceneMaker`, `FigureMaker`), chosen in `server/main.ts`. The
+  `ImageGenerator`, `VoiceEngine`, `VideoGenerator`, `SceneMaker`, `FigureMaker`), chosen in `server/main.ts`. The
   Text Model is reached only through `Chat` (`server/text/`), so its client can be replaced in one
   place.
   Which extras a machine can run is worked out at startup (`server/features.ts`).

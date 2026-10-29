@@ -218,19 +218,21 @@ function watchAlive(
 }
 
 /**
- * Sends a file to ComfyUI's temp folder under `name` (and `subfolder`), replacing any there, and
- * returns the name ComfyUI gave it. ComfyUI has no API to delete a file, so one that has been used
- * is overwritten with a stub this way; ComfyUI clears its temp folder when it next starts.
+ * Sends a file to ComfyUI's temp folder (or `type`, its output folder) under `name` (and
+ * `subfolder`), replacing any there, and returns the name ComfyUI gave it. ComfyUI has no API to
+ * delete a file, so one that has been used is overwritten with a stub this way; ComfyUI clears its
+ * temp folder when it next starts, but not its output folder, where an empty stub stays.
  */
 export async function upload(
   base: string,
   name: string,
   bytes: Uint8Array<ArrayBuffer>,
   subfolder = '',
+  type: 'temp' | 'output' = 'temp',
 ): Promise<string> {
   const form = new FormData()
   form.append('image', new Blob([bytes]), name)
-  form.append('type', 'temp')
+  form.append('type', type)
   form.append('subfolder', subfolder)
   form.append('overwrite', 'true')
   const res = await fetch(`${base}/upload/image`, {

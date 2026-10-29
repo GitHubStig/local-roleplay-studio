@@ -1,0 +1,155 @@
+{
+  "_note": "LTX 2.5, from ComfyUI's template video_ltx2_5_flf2v (one pass at the clip's size, 8 steps on the distilled transformer, CFG 1, Euler ancestral), in API format, with the prompt enhancer left out: the Text Model writes the prompt. A picture is guided in at the first frame (firstGuide) and at the last (lastGuide); a kind of clip that has only one drops the other's nodes (server/video/comfyui/comfyui.ts). Guides at 1.0, not the template's 0.7: it lands nearest the picture and still moves (docs/research/video-models.md). $names are filled in by server/video/comfyui/comfyui.ts. SaveVideo writes an MP4 (H.264, AAC) to ComfyUI's output folder, fetched and then blanked.",
+  "unet": {
+    "class_type": "UNETLoader",
+    "inputs": { "unet_name": "$unet", "weight_dtype": "default" }
+  },
+  "clip": {
+    "class_type": "CLIPLoader",
+    "inputs": { "clip_name": "$clip", "type": "ltxv", "device": "default" }
+  },
+  "vae": { "class_type": "VAELoader", "inputs": { "vae_name": "$vae" } },
+  "audioVae": { "class_type": "VAELoader", "inputs": { "vae_name": "$audioVae" } },
+  "prompt": {
+    "class_type": "CLIPTextEncode",
+    "inputs": { "clip": ["clip", 0], "text": "$prompt" }
+  },
+  "negative": {
+    "class_type": "CLIPTextEncode",
+    "inputs": { "clip": ["clip", 0], "text": "$negative" }
+  },
+  "conditioning": {
+    "class_type": "LTXVConditioning",
+    "inputs": { "positive": ["prompt", 0], "negative": ["negative", 0], "frame_rate": 24 }
+  },
+  "video": {
+    "class_type": "EmptyLTXVLatentVideo",
+    "inputs": { "width": "$width", "height": "$height", "length": "$frames", "batch_size": 1 }
+  },
+  "audio": {
+    "class_type": "LTXVEmptyLatentAudio",
+    "inputs": {
+      "frames_number": "$frames",
+      "frame_rate": 24,
+      "batch_size": 1,
+      "audio_vae": ["audioVae", 0]
+    }
+  },
+  "firstImage": { "class_type": "LoadImage", "inputs": { "image": "$first" } },
+  "firstScale": {
+    "class_type": "ImageScale",
+    "inputs": {
+      "image": ["firstImage", 0],
+      "upscale_method": "lanczos",
+      "width": "$width",
+      "height": "$height",
+      "crop": "center"
+    }
+  },
+  "firstPrep": {
+    "class_type": "LTXVPreprocess",
+    "inputs": { "image": ["firstScale", 0], "img_compression": 18 }
+  },
+  "firstGuide": {
+    "class_type": "LTXVAddGuide",
+    "inputs": {
+      "positive": ["conditioning", 0],
+      "negative": ["conditioning", 1],
+      "vae": ["vae", 0],
+      "latent": ["video", 0],
+      "image": ["firstPrep", 0],
+      "frame_idx": 0,
+      "strength": 1
+    }
+  },
+  "lastImage": { "class_type": "LoadImage", "inputs": { "image": "$last" } },
+  "lastScale": {
+    "class_type": "ImageScale",
+    "inputs": {
+      "image": ["lastImage", 0],
+      "upscale_method": "lanczos",
+      "width": "$width",
+      "height": "$height",
+      "crop": "center"
+    }
+  },
+  "lastPrep": {
+    "class_type": "LTXVPreprocess",
+    "inputs": { "image": ["lastScale", 0], "img_compression": 18 }
+  },
+  "lastGuide": {
+    "class_type": "LTXVAddGuide",
+    "inputs": {
+      "positive": ["firstGuide", 0],
+      "negative": ["firstGuide", 1],
+      "vae": ["vae", 0],
+      "latent": ["firstGuide", 2],
+      "image": ["lastPrep", 0],
+      "frame_idx": -1,
+      "strength": 1
+    }
+  },
+  "av": {
+    "class_type": "LTXVConcatAVLatent",
+    "inputs": { "video_latent": ["lastGuide", 2], "audio_latent": ["audio", 0] }
+  },
+  "guider": {
+    "class_type": "LTXVDualCFGGuider",
+    "inputs": {
+      "model": ["unet", 0],
+      "positive": ["lastGuide", 0],
+      "negative": ["lastGuide", 1],
+      "video_cfg": 1,
+      "audio_cfg": 1
+    }
+  },
+  "noise": { "class_type": "RandomNoise", "inputs": { "noise_seed": "$seed" } },
+  "sampler": { "class_type": "SamplerEulerAncestral", "inputs": { "eta": 0, "s_noise": 1 } },
+  "sigmas": {
+    "class_type": "ManualSigmas",
+    "inputs": { "sigmas": "1.0, 0.99375, 0.9875, 0.98125, 0.975, 0.909375, 0.725, 0.421875, 0.0" }
+  },
+  "sample": {
+    "class_type": "SamplerCustomAdvanced",
+    "inputs": {
+      "noise": ["noise", 0],
+      "guider": ["guider", 0],
+      "sampler": ["sampler", 0],
+      "sigmas": ["sigmas", 0],
+      "latent_image": ["av", 0]
+    }
+  },
+  "split": { "class_type": "LTXVSeparateAVLatent", "inputs": { "av_latent": ["sample", 0] } },
+  "crop": {
+    "class_type": "LTXVCropGuides",
+    "inputs": { "positive": ["lastGuide", 0], "negative": ["lastGuide", 1], "latent": ["split", 0] }
+  },
+  "decode": {
+    "class_type": "VAEDecodeTiled",
+    "inputs": {
+      "samples": ["crop", 2],
+      "vae": ["vae", 0],
+      "tile_size": 512,
+      "overlap": 64,
+      "temporal_size": 64,
+      "temporal_overlap": 8
+    }
+  },
+  "audioDecode": {
+    "class_type": "LTXVAudioVAEDecode",
+    "inputs": { "samples": ["split", 1], "audio_vae": ["audioVae", 0] }
+  },
+  "mux": {
+    "class_type": "CreateVideo",
+    "inputs": { "images": ["decode", 0], "audio": ["audioDecode", 0], "fps": 24 }
+  },
+  "out": {
+    "class_type": "SaveVideo",
+    "inputs": {
+      "video": ["mux", 0],
+      "filename_prefix": "rpg-clip",
+      "format": "auto",
+      "codec": "auto"
+    }
+  }
+}

@@ -1,5 +1,5 @@
 import { comfyBase, getJson } from './client.ts'
-import { modelFiles } from '../images/comfyui/comfyui.ts'
+import { modelFiles } from './files.ts'
 import { type ComfyModel, findComfyModel, findComfyUpscaler } from '../images/comfyui/models.ts'
 import { VOICE_NODES } from '../voice/comfyui/comfyui.ts'
 

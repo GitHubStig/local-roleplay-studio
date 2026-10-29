@@ -1,3 +1,4 @@
+import type { ModelFiles } from '../../comfyui/files.ts'
 import type { EditModelOn } from '../editModels.ts'
 import type { Upscaler } from '../upscalers.ts'
 
@@ -17,7 +18,7 @@ export interface ComfyModel {
   /** Fills its workflow's `$cfg`: real CFG (two passes a step) above 1. Only for a workflow that has one. */
   cfg?: number
   /** For each loader placeholder (`$unet`, `$clip`, `$vae`): its model folder and file patterns. */
-  files: Record<string, { folder: string; patterns: RegExp[] }>
+  files: ModelFiles['files']
 }
 
 const QWEN_IMAGE_2_1_CLIP = { folder: 'text_encoders', patterns: [/^qwen3vl_8b.*\.safetensors$/] }

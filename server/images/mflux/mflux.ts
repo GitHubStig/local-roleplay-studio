@@ -9,7 +9,7 @@ import {
   UPSCALED_EDGE,
   type UpscaleRequest,
 } from '../imageGenerator.ts'
-import { pngSize } from '../png.ts'
+import { pngSize } from '../../png.ts'
 import { float16On } from './chip.ts'
 import { findMfluxModel, type Lora, MFLUX_MODELS, type MfluxModel } from './models.ts'
 import { SIZE_PRESETS } from '../../settings.ts'

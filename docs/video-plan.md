@@ -8,16 +8,18 @@ Turn a Frame's picture into a short clip with LTX 2.5 on ComfyUI, on request. Wh
 
 The finding behind it (the owner, 2026-10-29): a picture shows the middle of what its Frame describes ("the traveller enters the tavern" renders her already inside, standing), while a clip should start a little before and end a little after. So the choice is where the still sits in the clip, not only whether there's a second picture.
 
-## Kinds of clip (working names)
+## Kinds of clip
 
-- **Idle**: the still as both the first and the last frame. Small movement that returns to the start, so it loops. The idle-animation thread's option 4.
-- **Lead in**: the still as the last frame. The action arriving at the picture (the door opens, she walks in).
+- **Idle Loop**: the still as both the first and the last frame. Small movement that returns to the start, so it loops. The idle-animation thread's option 4.
+- **Lead In**: the still as the last frame. The action arriving at the picture (the door opens, she walks in).
 - **Play out**: the still as the first frame. What happens after it (plain image-to-video).
-- **Into next**: this Frame's still first, the next Frame's last (first–last-frame). Offered only when the next Frame has a picture. It moves from one to the other only when the two pictures agree (the same room, laid out the same): between pictures that disagree it cuts or dissolves (2026-10-29), and Play out on one Frame then Lead in on the next, joined by a cut, is the better pair.
+- **Into Next**: this Frame's still first, the next Frame's last (first–last-frame). Offered only when the next Frame has a picture. It moves from one to the other only when the two pictures agree (the same room, laid out the same): between pictures that disagree it cuts or dissolves (2026-10-29), and Play out on one Frame then Lead In on the next, joined by a cut, is the better pair.
 
-The Text Model writes each clip's prompt for its kind, from the Frame's story (and the next Frame's, for Into next), describing the movement between the pictures rather than the pictures themselves.
+The Text Model writes each clip's prompt for its kind, from the Frame's story (and the next Frame's, for Into Next), describing the movement between the pictures rather than the pictures themselves.
 
 ## Decided
+
+- The kinds of clip are named Lead In, Play out, Idle Loop and Into Next (the owner, 2026-10-29).
 
 - The player picks the kind of clip; nothing detects it (2026-10-29).
 - An option to leave the dialogue out of a clip's prompt, so it has only background sound (the owner, 2026-10-29). The Voice clips can then play over it.
@@ -26,8 +28,8 @@ The Text Model writes each clip's prompt for its kind, from the Frame's story (a
 ## Open questions
 
 - How strongly to hold the ends: 1.0 lands closest and still moves, but no strength lands exactly on the picture ([research/video-models.md](research/video-models.md), 2026-10-29). Whether 1.0 looks too still is for watching.
-- Length: the clip's frame count must be 8n+1 (97 at 24 fps is ~4 s, 121 ~5 s). Proposed: a Frame with a Voice clip runs the line's length plus some lead and tail; otherwise the Text Model picks from a short list (3, 5 or 8 s), which the player can change; Idle stays short, as it loops.
-- Measured on the PC (2026-10-29, [research/video-models.md](research/video-models.md)): about 70 s to load plus ~19 s per second of clip at 1280×704; a still can sit at the last frame only, so every kind of clip is one workflow. Still to judge by watching: the motion, the sound, and Into next between two pictures that disagree.
+- Length: the clip's frame count must be 8n+1 (97 at 24 fps is ~4 s, 121 ~5 s). Proposed: a Frame with a Voice clip runs the line's length plus some lead and tail; otherwise the Text Model picks from a short list (3, 5 or 8 s), which the player can change; Idle Loop stays short, as it loops.
+- Measured on the PC (2026-10-29, [research/video-models.md](research/video-models.md)): about 70 s to load plus ~19 s per second of clip at 1280×704; a still can sit at the last frame only, so every kind of clip is one workflow. Still to judge by watching: the motion, the sound, and Into Next between two pictures that disagree.
 - Whether LTX runs on the Mac through ComfyUI, and with which files: the PC's are the `int8-convrot` variants, which may need CUDA.
 - LTX makes sound with the picture, which may clash with the Voice clips.
 - The UX: where the buttons go, and how a clip shows on its Frame. To sketch together before building it.
@@ -46,6 +48,15 @@ From ComfyUI's LTX 2.5 template: `ltx-2.5-22b-distilled-transformer-comfy-int8-c
 - [x] Measure on the PC: each kind of clip, time and peak VRAM, and a still at the last frame only (2026-10-29).
 - [x] A replay script that rebuilds a test Session through the app's HTTP API, so it doesn't depend on `session.json`'s format: `deno task replay` (2026-10-29), with the tavern as a Roleplay in `server/replay/replays/tavern-arrival.yaml`.
 - [ ] Sketch the UX with the owner.
-- [ ] Server: a `VideoGenerator` interface and its ComfyUI backend, with workflows in `server/video/comfyui/`, run as jobs on the machine's queue.
+- [x] Server: a `VideoGenerator` interface and its ComfyUI backend (`server/video/`, 2026-10-29): one LTX 2.5 workflow, the guide at an end without a picture dropped, guides at 1.0; no copy of the pictures or the clip left with ComfyUI (both overwritten with stubs after).
+- [ ] Server: clips as jobs on the machine's queue, saved on the Frame, the generator chosen in `main.ts` (with a Feature for video in `features.ts`).
 - [ ] Prompts for each kind of clip in `server/prompts/video/`.
 - [ ] Web: the buttons, a clip on its Frame.
+
+## Session screens: a selected Frame (discussion, 2026-10-29)
+
+Where the clip buttons go led to a wider cleanup of the Session screens, to settle with a mock-up before any code. The owner's points: while playing a Roleplay it's hard to tell which Frame you're on; every Frame carries a row of buttons (Picture again, Re-render, Upscale, Edit, SHARP, TripoSplat, LiTo), distracting and many DOM elements; the Image Prompt and timings could live outside the conversation.
+
+The idea on the table: one selected Frame (the newest while playing, or the one clicked), marked in the conversation; its buttons, clip controls, 3D, Image Prompt and timings in a Frame tab in the side panel, under a strip of small pictures that shows where you are and scrolls the conversation. The conversation keeps the text, the picture and Listen, close to how a finished or exported Session would look. One shared component for all three kinds of Session.
+
+Agreed so far: a clip plays over its Frame's picture in the conversation, the same in every kind of Session, and in the large viewer; the panel holds only the controls. Undo stays beside Send. Open: whether the strip and selected Frame replace the Chain's and Storyboard's Frames tabs (needs a mock-up of all three), and making the side panel the same width in every kind of Session (a Roleplay's is the narrowest).

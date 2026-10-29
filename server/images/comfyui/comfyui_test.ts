@@ -7,7 +7,8 @@ import { fillWorkflow } from '../../comfyui/client.ts'
 import { fakeComfyUI as fakeServer } from '../../comfyui/testing.ts'
 import { comfyuiImageGenerator } from './comfyui.ts'
 import { COMFYUI_EDITORS, COMFYUI_MODELS, COMFYUI_UPSCALERS, findComfyModel } from './models.ts'
-import { loadModelWorkflow, pickFiles } from './workflow.ts'
+import { loadModelWorkflow } from './workflow.ts'
+import { pickFiles } from '../../comfyui/files.ts'
 
 const MAC_FILES: Record<string, string[]> = {
   diffusion_models: [
@@ -539,7 +540,7 @@ Deno.test('Files are picked by the first pattern installed, so each machine can 
   )
 })
 
-Deno.test("FIBO 2.0 Turbo renders text with the Edit Turbo checkpoint as a generator", () =>
+Deno.test('FIBO 2.0 Turbo renders text with the Edit Turbo checkpoint as a generator', () =>
   withTempDir(async (dir) => {
     const model = findComfyModel('fibo-2.0-turbo')!
     assertEquals([model.defaultSteps, model.cfg, model.stepChoices], [4, 1, [4]])

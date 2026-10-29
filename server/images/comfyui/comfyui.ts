@@ -1,17 +1,10 @@
 import { join } from '@std/path'
 import { type ImageGenerator, type OnPreview, UPSCALED_EDGE } from '../imageGenerator.ts'
 import { SIZE_PRESETS } from '../../settings.ts'
-import {
-  comfyBase,
-  fillWorkflow,
-  getJson,
-  runWorkflow,
-  upload,
-  type Workflow,
-} from '../../comfyui/client.ts'
+import { comfyBase, fillWorkflow, runWorkflow, type Workflow } from '../../comfyui/client.ts'
 import { loadPrompt } from '../../promptFiles.ts'
 import { maskBoxes } from '../maskBoxes.ts'
-import { pngSize } from '../png.ts'
+import { pngSize } from '../../png.ts'
 import {
   type ComfyEditor,
   type ComfyModel,
@@ -19,7 +12,8 @@ import {
   findComfyModel,
   findComfyUpscaler,
 } from './models.ts'
-import { loadModelWorkflow, pickFiles } from './workflow.ts'
+import { loadModelWorkflow } from './workflow.ts'
+import { modelFiles, withUploads } from '../../comfyui/files.ts'
 
 /**
  * Pictures from a ComfyUI server (`comfyui/client.ts`): the model's workflow ends in
@@ -127,28 +121,6 @@ export function comfyuiImageGenerator(opts: {
 }
 
 /**
- * Uploads pictures for one workflow, as ComfyUI needs them as files: they go to its temp folder,
- * and afterwards a blank 1×1 picture is written over each, so ComfyUI keeps an empty stub, which it
- * clears from temp when it next starts (it has no API to delete an upload). A blank that fails is
- * let go, so what's reported is how the job went.
- */
-async function withUploads<T>(
-  base: string,
-  pictures: Uint8Array<ArrayBuffer>[],
-  use: (names: string[]) => Promise<T>,
-): Promise<T> {
-  const names: string[] = []
-  try {
-    for (const bytes of pictures) {
-      names.push(await upload(base, `rpg-${crypto.randomUUID()}.png`, bytes))
-    }
-    return await use(names)
-  } finally {
-    await Promise.all(names.map((name) => upload(base, name, BLANK_PNG).catch(() => {})))
-  }
-}
-
-/**
  * What an edit model is told: the instruction as typed, or its own prompt, which names each painted
  * area as a box (FLUX.3's layout table: `[ymin, xmin, ymax, xmax]` in thousandths).
  */
@@ -171,25 +143,4 @@ async function editPrompt(
       desc: instruction,
     }))),
   })
-}
-
-/** A 1×1 transparent PNG, written over an uploaded picture once it's been used. */
-const BLANK_PNG = Uint8Array.from(
-  atob(
-    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
-  ),
-  (c) => c.charCodeAt(0),
-)
-
-/** The files a model's loaders use on this ComfyUI (`pickFiles`); throws naming any missing. */
-export async function modelFiles(
-  base: string,
-  model: Pick<ComfyModel, 'label' | 'files'>,
-  signal: AbortSignal,
-) {
-  const installed = new Map<string, string[]>()
-  for (const folder of new Set(Object.values(model.files).map((f) => f.folder))) {
-    installed.set(folder, await getJson(base, `/models/${folder}`, signal))
-  }
-  return pickFiles(model, (folder) => installed.get(folder) ?? [])
 }

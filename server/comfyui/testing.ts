@@ -1,7 +1,8 @@
 /**
  * A stand-in ComfyUI for tests: lists `files`, takes a workflow, reports `steps` over the WebSocket,
  * then `finish` ('success', or an error message, or 'hang' until interrupted), sending a picture
- * (`SaveImageWebsocket`) and, with `audio`, an output node's clip (`PreviewAudio`, served by `/view`).
+ * (`SaveImageWebsocket`) and, with `audio`, an output node's clip (`PreviewAudio`, served by `/view`), or
+ * with `video`, its video (`SaveVideo`, in the output folder).
  */
 export function fakeComfyUI(
   opts: {
@@ -12,6 +13,8 @@ export function fakeComfyUI(
     dies?: boolean
     /** A clip the workflow's `out` node made, in temp. */
     audio?: { filename: string; bytes: Uint8Array<ArrayBuffer> }
+    /** A video the workflow's `out` node made, in the output folder. */
+    video?: { filename: string; bytes: Uint8Array<ArrayBuffer> }
     /** The custom nodes it has (`/object_info/<node>`). */
     nodes?: string[]
     /** What `/system_stats` says is free on the GPU, one per ask; the last one stays. */
@@ -69,10 +72,15 @@ export function fakeComfyUI(
       return Response.json(opts.nodes?.includes(node) ? { [node]: { input: {} } } : {})
     }
     if (path === '/view') {
-      return opts.audio && url.searchParams.get('filename') === opts.audio.filename &&
-          url.searchParams.get('type') === 'temp'
-        ? new Response(opts.audio.bytes)
-        : new Response('not found', { status: 404 })
+      const file = url.searchParams.get('filename')
+      const type = url.searchParams.get('type')
+      if (opts.audio && file === opts.audio.filename && type === 'temp') {
+        return new Response(opts.audio.bytes)
+      }
+      if (opts.video && file === opts.video.filename && type === 'output') {
+        return new Response(opts.video.bytes)
+      }
+      return new Response('not found', { status: 404 })
     }
     if (path === '/prompt') {
       const body = await req.json()
@@ -97,6 +105,15 @@ export function fakeComfyUI(
             send('executed', {
               node: 'out',
               output: { audio: [{ filename: opts.audio.filename, subfolder: '', type: 'temp' }] },
+            })
+          }
+          if (opts.video) {
+            send('executed', {
+              node: 'out',
+              output: {
+                images: [{ filename: opts.video.filename, subfolder: '', type: 'output' }],
+                animated: [true],
+              },
             })
           }
           send('execution_success', {})

@@ -1,5 +1,5 @@
 import { assertEquals, assertThrows } from '@std/assert'
-import { pngHeader } from '../testing.ts'
+import { pngHeader } from './testing.ts'
 import { pngSize } from './png.ts'
 
 Deno.test("pngSize reads a PNG's width and height from its header", () => {
