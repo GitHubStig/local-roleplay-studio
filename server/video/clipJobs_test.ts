@@ -3,6 +3,8 @@ import { join } from '@std/path'
 import { withTempDir } from '../testing.ts'
 import { chainFrames, chainOfTwo, settled } from '../appTesting.ts'
 import { fakeVideoGenerator } from './testing.ts'
+import { makeClip } from './makeClip.ts'
+import type { Session, SessionStore } from '../session.ts'
 
 const leadIn = { kind: 'lead-in', prompt: 'She walks in.', seconds: 5, speech: false }
 const queueClip = (
@@ -15,9 +17,13 @@ Deno.test('A Lead In is made from a Frame’s picture, kept on it, served, and u
   withTempDir(async (root) => {
     const video = fakeVideoGenerator()
     const { call } = await chainOfTwo(root, { video })
-    assertEquals((await queueClip(call, 1, leadIn)).status, 201)
+    const queued = await queueClip(call, 1, leadIn)
+    assertEquals(queued.status, 201)
+    // It keeps the Image Model of the picture it's made from.
+    const [job] = await queued.json()
     assertEquals(await settled(call), [])
     const [opening, second] = await chainFrames(call)
+    assertEquals(job.image.imageModel, second.imageModel)
     const [clip] = second.clips
     assertMatch(clip.file, /^clip-1-lead-in-[0-9a-f]{8}\.mp4$/)
     assertEquals(
@@ -109,4 +115,49 @@ Deno.test('A failed clip leaves the picture as it was, and no file behind', () =
     assertEquals((await chainFrames(call))[1].clips, undefined)
     const files = [...Deno.readDirSync(join(root, 's1'))].map((e) => e.name)
     assertEquals(files.filter((f) => f.startsWith('clip-')), [])
+  }))
+
+Deno.test('A clip is made from the picture of the Image Model it was queued for', () =>
+  withTempDir(async (root) => {
+    const video = fakeVideoGenerator()
+    // The Session shows Klein's pictures now; the clip was queued for Krea's.
+    const session = {
+      id: 's1',
+      seed: 3,
+      settings: { imageModel: 'flux2-klein' },
+      frames: [0, 1].map((index) => ({
+        index,
+        pictures: [
+          { image: `krea-${index}.png`, imageModel: 'krea-2' },
+          { image: `klein-${index}.png`, imageModel: 'flux2-klein' },
+        ],
+      })),
+    } as unknown as Session
+    await Deno.mkdir(join(root, 's1'))
+    const deps = {
+      store: { dir: (id: string) => join(root, id) } as SessionStore,
+      video,
+      videoModel: () => Promise.resolve('ltx-2.5'),
+    }
+    const order = { ...leadIn, kind: 'into-next' as const }
+    let saved: Session | undefined
+    await makeClip(
+      deps,
+      session,
+      0,
+      order,
+      'krea-2',
+      () => {},
+      new AbortController().signal,
+      (change) => {
+        saved = change(session)
+        return Promise.resolve(saved)
+      },
+    )
+    assertEquals([video.made[0].first, video.made[0].last], ['krea-0.png', 'krea-1.png'])
+    const pictures = saved!.frames[0].pictures as { imageModel: string; clips?: unknown[] }[]
+    assertEquals(pictures.map((p) => [p.imageModel, p.clips?.length]), [['krea-2', 1], [
+      'flux2-klein',
+      undefined,
+    ]])
   }))

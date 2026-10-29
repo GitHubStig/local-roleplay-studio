@@ -160,9 +160,31 @@ describe('FrameClips', () => {
     expect(wrapper.find('[data-clip-problem]').exists()).toBe(false)
   })
 
-  it('waits while a clip of the Frame is being made, saying which', () => {
-    expect(mountIt({ making: ['lead-in'] }).find('[data-make-clip]').text()).toBe('Making Lead In…')
-    const two = mountIt({ making: ['lead-in', 'idle-loop'] }).find('[data-make-clip]')
-    expect([two.text(), two.attributes('disabled')]).toEqual(['Making Lead In, Idle Loop…', ''])
+  it('waits while the kind chosen is being made, the other kinds free meanwhile', async () => {
+    const wrapper = mountIt({ making: ['lead-in', 'idle-loop'] })
+    const make = () => wrapper.find('[data-make-clip]')
+    expect([make().text(), make().attributes('disabled')]).toEqual(['Making Lead In…', ''])
+    expect(wrapper.find('[data-clips-making]').text()).toBe('Making Idle Loop meanwhile.')
+    await wrapper.find('[data-clip-kind="play-out"]').trigger('click')
+    await wrapper.find('[data-clip-prompt]').setValue('She stands.')
+    expect([make().text(), make().attributes('disabled')]).toEqual(['Make clip', undefined])
+    expect(wrapper.find('[data-clips-making]').text()).toBe('Making Lead In, Idle Loop meanwhile.')
+  })
+
+  it('lists the clips in the order the kinds are offered', () => {
+    const loop = { ...leadIn, kind: 'idle-loop' as const, file: 'clip-1-idle-loop-1a2b3c4d.mp4' }
+    const out = { ...leadIn, kind: 'play-out' as const, file: 'clip-1-play-out-1a2b3c4d.mp4' }
+    const wrapper = mountIt({ clips: [out, loop, leadIn] })
+    expect(wrapper.findAll('[data-clip]').map((r) => r.attributes('data-clip'))).toEqual([
+      'lead-in',
+      'idle-loop',
+      'play-out',
+    ])
+    expect(wrapper.findAll('[data-clip-kind]').map((b) => b.text())).toEqual([
+      'Lead In',
+      'Idle Loop',
+      'Play out',
+      'Into Next',
+    ])
   })
 })

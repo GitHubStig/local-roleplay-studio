@@ -103,7 +103,7 @@ interface Work {
   detached?: boolean
 }
 const work = ref<Work | null>(null)
-const { session, loadError, draft, busy, load, leave, cancel, onImageModel, pictureOf, changed } =
+const { session, loadError, draft, busy, load, leave, cancel, onImageModel, onClipsModel, pictureOf, changed } =
   useSessionScreen(props.id, 'storyboard', {
     work,
     // A new Storyboard is planned.
@@ -771,7 +771,12 @@ const imagesOn = computed(() => featureOn.value('images'))
               empty="Nothing queued. Render, Render all and Upscale add work here, to run while you carry on."
               :name="frameTitle"
               @go="goToFrame"
-              @clip="(index) => { pick(index); narrowTab = 'frame'; scrollToClips(frameList) }"
+              @clip="async (job) => {
+                await onClipsModel(job, (text) => (message = { kind: 'error', text }))
+                pick(job.frameIndex)
+                narrowTab = 'frame'
+                scrollToClips(frameList)
+              }"
               @edit="showEdit"
               @retry="retry"
               @drop="dropJob"
@@ -888,7 +893,7 @@ const imagesOn = computed(() => featureOn.value('images'))
                   index: current.index,
                   nextPictured: !!session.frames[current.index + 1] && 'pictures' in session.frames[current.index + 1] && !!pictureOf(session.frames[current.index + 1]),
                   nextName: `Frame ${current.index + 2}`,
-                  making: clipsMaking(jobsFor(current.index)),
+                  making: clipsMaking(jobsFor(current.index), pictureOf(current)?.imageModel),
                   playing: playingClip?.index === current.index ? playingClip.clip.file : undefined,
                 }
                 : undefined"

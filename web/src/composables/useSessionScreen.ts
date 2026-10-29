@@ -14,11 +14,14 @@ import {
   cancelFrame,
   changedSinceRender,
   getSession,
+  type Job,
   type PicturedFrame,
   type Session,
   type SessionKind,
+  setImageModel,
   shownPicture,
 } from '../api'
+import { useImageModels } from './useSettingsOptions'
 import { sessionPath } from '../sessionPath'
 import { clearCurrentSession, setCurrentSession } from './useCurrentSession'
 import { useStoredText } from './useStoredText'
@@ -169,6 +172,26 @@ export function useSessionScreen<K extends SessionKind, W extends ScreenWork>(
   function onImageModel(switched: S) {
     session.value = { ...session.value!, ...switched }
   }
+  const { labelOf } = useImageModels()
+  /**
+   * Before going to a clip from the queue: the Session switched to the Image Model whose picture
+   * the clip is of (`Job.image`), if it's on another and the player agrees, so its Clip section
+   * shows that picture's clips. `onError` hears why a switch failed.
+   */
+  async function onClipsModel(job: Job, onError: (message: string) => void) {
+    const model = job.image?.imageModel
+    const now = session.value?.settings.imageModel
+    if (!model || !now || model === now) return
+    const label = labelOf(model)
+    if (
+      !confirm(`This clip is of ${label}'s picture. Switch this Session to ${label} to see it?`)
+    ) return
+    try {
+      onImageModel(await setImageModel<S>(id, model, job.image!.imageBackend))
+    } catch (err) {
+      onError((err as Error).message)
+    }
+  }
   /** The picture a Frame shows, by the Session's Image Model if it has one. */
   const pictureOf = (frame: PicturedFrame) =>
     shownPicture(frame, session.value!.settings.imageModel)
@@ -178,5 +201,17 @@ export function useSessionScreen<K extends SessionKind, W extends ScreenWork>(
     return !!picture && changedSinceRender(picture, session.value!.settings.imageModel)
   }
 
-  return { session, loadError, draft, busy, load, leave, cancel, onImageModel, pictureOf, changed }
+  return {
+    session,
+    loadError,
+    draft,
+    busy,
+    load,
+    leave,
+    cancel,
+    onImageModel,
+    onClipsModel,
+    pictureOf,
+    changed,
+  }
 }

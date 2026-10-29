@@ -7,6 +7,7 @@ import {
   type ClipOrder,
   writeClipPrompt,
 } from '../api'
+import { sortClips } from '../clips'
 
 /**
  * The selected Frame's clips (ADR 0025), in its tab, the same in every kind of Session:
@@ -59,11 +60,15 @@ const hint = computed(() =>
   })[kind.value]
 )
 
-/** Make clip, or which kinds are being made meanwhile. */
-const makeLabel = computed(() =>
-  props.making.length
-    ? `Making ${props.making.map((k) => CLIP_KIND_NAMES[k]).join(', ')}…`
-    : 'Make clip'
+/** The picture's clips in the kinds' order. */
+const listed = computed(() => sortClips(props.clips))
+/** The kind chosen is being made already: one of each kind at a time, the others free meanwhile. */
+const makingThis = computed(() => props.making.includes(kind.value))
+/** Make clip, or that this kind is being made. */
+const makeLabel = computed(() => (makingThis.value ? `Making ${CLIP_KIND_NAMES[kind.value]}…` : 'Make clip'))
+/** The other kinds being made meanwhile, under the buttons. */
+const othersMaking = computed(() =>
+  props.making.filter((k) => k !== kind.value).map((k) => CLIP_KIND_NAMES[k]).join(', ')
 )
 
 /** Writes the prompt; with `revise`, rewrites a clip's by what was wrong with it. */
@@ -189,17 +194,18 @@ function again(clip: Clip) {
       <button
         type="button"
         class="action"
-        :disabled="writing || !!making.length || !prompt.trim() || (kind === 'into-next' && !nextPictured)"
-        :title="making.length ? 'A clip is being made of this Frame' : 'Make the clip (a few minutes)'"
+        :disabled="writing || makingThis || !prompt.trim() || (kind === 'into-next' && !nextPictured)"
+        :title="makingThis ? 'This kind of clip is being made of this picture' : 'Make the clip (a few minutes)'"
         data-make-clip
         @click="make"
       >
         {{ makeLabel }}
       </button>
     </div>
-    <ul v-if="clips?.length" class="flex flex-col text-xs" data-clips>
+    <p v-if="othersMaking" class="text-xs text-muted" data-clips-making>Making {{ othersMaking }} meanwhile.</p>
+    <ul v-if="listed.length" class="flex flex-col text-xs" data-clips>
       <li
-        v-for="clip in clips"
+        v-for="clip in listed"
         :key="clip.file"
         class="flex flex-wrap items-center gap-2 border-t border-line py-1.5"
         :data-clip="clip.kind"

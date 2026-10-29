@@ -289,11 +289,11 @@ export interface Figure {
 /** The kinds of clip (ADR 0025): where the picture sits in the clip. */
 export type ClipKind = 'lead-in' | 'play-out' | 'idle-loop' | 'into-next'
 
-/** What each kind of clip is called (ADR 0025). */
+/** What each kind of clip is called (ADR 0025), in the order they're offered and listed. */
 export const CLIP_KIND_NAMES: Record<ClipKind, string> = {
   'lead-in': 'Lead In',
-  'play-out': 'Play out',
   'idle-loop': 'Idle Loop',
+  'play-out': 'Play out',
   'into-next': 'Into Next',
 }
 
@@ -881,8 +881,11 @@ export interface Job {
   progress?: { step: number; total: number }
   error?: string
   createdAt: string
-  /** A render's Image Model, as the Session had it when queued: it renders by that one. */
-  image?: { imageModel: string; steps: number }
+  /**
+   * A render's Image Model, as the Session had it when queued: it renders by that one. A clip's,
+   * the Image Model of the picture it's made from. With the kind of backend it would rather use.
+   */
+  image?: { imageModel: string; steps: number; imageBackend?: ImageBackend }
   /**
    * The kind of backend its render runs on, once it starts: "by Krea 2 · mflux", and whether
    * there's a picture forming to show (ComfyUI's previews).

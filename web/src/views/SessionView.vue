@@ -66,7 +66,7 @@ interface Pending {
 }
 
 const pending = ref<Pending | null>(null)
-const { session, loadError, draft, busy, load, leave, cancel, onImageModel, pictureOf } =
+const { session, loadError, draft, busy, load, leave, cancel, onImageModel, onClipsModel, pictureOf } =
   useSessionScreen(props.id, 'chain', {
     work: pending,
     // A new Chain writes its Opening Frame.
@@ -714,7 +714,12 @@ const promptDiff = computed(() => {
               empty="Nothing queued. Render, Render all and Upscale add work here, to run while you carry on."
               :name="frameTitle"
               @go="(index) => { pick(index); panel = 'log' }"
-              @clip="(index) => { pick(index); panel = 'prompt'; scrollToClips(log) }"
+              @clip="async (job) => {
+                await onClipsModel(job, (m) => (frameError = m))
+                pick(job.frameIndex)
+                panel = 'prompt'
+                scrollToClips(log)
+              }"
               @edit="showEdit"
               @retry="retry"
               @drop="dropJob"
@@ -836,7 +841,7 @@ const promptDiff = computed(() => {
                 index: shown.index,
                 nextPictured: !!session.frames[shown.index + 1] && !!pictureOf(session.frames[shown.index + 1]),
                 nextName: frameName(shown.index + 1),
-                making: clipsMaking(jobsFor(shown.index)),
+                making: clipsMaking(jobsFor(shown.index), pictureOf(shown)?.imageModel),
                 playing: playingClip?.index === shown.index ? playingClip.clip.file : undefined,
               }
               : undefined"

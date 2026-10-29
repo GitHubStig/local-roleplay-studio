@@ -1,5 +1,6 @@
 import { ref } from 'vue'
 import {
+  CLIP_KIND_NAMES,
   getSettingsOptions,
   IMAGE_BACKEND_NAMES,
   type ImageBackend,
@@ -54,11 +55,18 @@ export function useImageModels() {
     ]
   }
   /** "Render by Krea 2 · mflux": what a job is called, with the Image Model a render goes by. */
+  /**
+   * A job as the queue names it: "Render by Krea 2 · mflux"; a clip by its kind and length, and
+   * whose picture it's made from, "Lead In clip, 5 s · Krea 2's picture".
+   */
   const jobName = (job: Job) =>
-    JOB_NAMES[job.kind] +
-    (job.image
-      ? ` ${byOf({ imageModel: job.image.imageModel, imageBackend: job.imageBackend })}`
-      : '')
+    job.kind === 'clip' && job.clip
+      ? `${CLIP_KIND_NAMES[job.clip.kind]} clip, ${job.clip.seconds} s` +
+        (job.image ? ` · ${labelOf(job.image.imageModel)}'s picture` : '')
+      : JOB_NAMES[job.kind] +
+        (job.image
+          ? ` ${byOf({ imageModel: job.image.imageModel, imageBackend: job.imageBackend })}`
+          : '')
   return { modelsOf, find, labelOf, byOf, renderedParts, jobName }
 }
 

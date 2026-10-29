@@ -137,3 +137,20 @@ Deno.test('Clips of different kinds on a Frame are separate jobs; the same kind 
   jobs.enqueue('s', 'clip', 0, 'here', undefined, undefined, clip('lead-in'))
   assertEquals(jobs.list('s').map((j) => j.clip?.kind), ['lead-in', 'idle-loop'])
 })
+
+Deno.test('A clip waits only for its own Image Model’s render of its Frame, and is one per model', async () => {
+  const { jobs, running, end } = heldJobs()
+  const leadIn = { kind: 'lead-in' as const, prompt: 'p', seconds: 5, speech: false }
+  jobs.enqueue('s', 'render', 0, 'mac', KREA)
+  jobs.enqueue('s', 'render', 1, 'pc', KLEIN)
+  jobs.enqueue('s', 'clip', 0, 'pc-video', KLEIN, undefined, leadIn)
+  jobs.enqueue('s', 'clip', 1, 'pc-video', KLEIN, undefined, leadIn)
+  // Frame 0's clip is of FLUX.2 Klein's picture: Krea's render doesn't hold it up. Frame 1's is.
+  assertEquals(running(), ['render 0', 'render 1', 'clip 0'])
+  // The same kind of clip for another model's picture is other work.
+  jobs.enqueue('s', 'clip', 0, 'pc-video', KREA, undefined, leadIn)
+  assertEquals(jobs.list('s').filter((j) => j.kind === 'clip').length, 3)
+  await end('render 1')
+  await end('clip 0')
+  assertEquals(running(), ['render 0', 'clip 1'])
+})

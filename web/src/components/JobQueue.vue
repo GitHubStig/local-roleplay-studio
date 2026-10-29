@@ -22,8 +22,8 @@ defineEmits<{
   go: [index: number]
   /** An edit: show it being made, in the viewer. */
   edit: [index: number]
-  /** A clip: show its Frame's Clip section. */
-  clip: [index: number]
+  /** A clip: show its Frame's Clip section, on the picture it's made from (`Job.image`). */
+  clip: [job: Job]
   retry: [job: Job]
   drop: [job: Job]
   clear: []
@@ -59,7 +59,7 @@ const { jobName } = useImageModels()
           @click="job.kind === 'edit'
             ? $emit('edit', job.frameIndex)
             : job.kind === 'clip'
-            ? $emit('clip', job.frameIndex)
+            ? $emit('clip', job)
             : $emit('go', job.frameIndex)"
         >
           <span class="font-medium">{{ jobName(job) }} · {{ name(job.frameIndex) }}</span>

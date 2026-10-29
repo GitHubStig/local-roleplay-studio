@@ -16,6 +16,7 @@ import { error, json, readJson, type Route } from './http.ts'
 import { EDIT_MODELS, type EditModel, findEditModel } from './images/editModels.ts'
 import { IMAGE_BACKENDS, type ImageBackendKind } from './images/imageModels.ts'
 import { machineOf } from './machine.ts'
+import { shownPictureOf } from './pictures.ts'
 import type { Session, SessionStore } from './session.ts'
 import type { SessionSettings } from './settings.ts'
 import { CLIP_KINDS, type ClipKind } from './video/videoGenerator.ts'
@@ -119,7 +120,8 @@ export interface Job {
   machine: string
   /**
    * A render's Image Model, as its Session had it when queued: the render uses it whatever the
-   * Session switches to meanwhile, so it runs where it was queued to (`machine`).
+   * Session switches to meanwhile, so it runs where it was queued to (`machine`). A clip's, the
+   * Image Model of the picture it's made from, as the Frame showed it when queued.
    */
   image?: ImageChoice
   /**
@@ -135,6 +137,15 @@ export interface Job {
 
 /** The Session settings that say which Image Model renders, and where it would rather. */
 export type ImageChoice = Pick<SessionSettings, 'imageModel' | 'steps' | 'imageBackend'>
+
+/**
+ * The Image Model a clip of Frame `index` of `session` queued now keeps (`Job.image`): the one
+ * whose picture the Frame shows, its latest when it has none by the Session's.
+ */
+export const clipImageOf = (session: Session, index: number): ImageChoice => ({
+  ...imageChoiceOf(session),
+  imageModel: shownPictureOf(session, index)?.imageModel ?? session.settings.imageModel,
+})
 
 /** The Image Model a render of `session` queued now keeps (`Job.image`). */
 export const imageChoiceOf = ({ settings }: Session): ImageChoice => ({
@@ -185,8 +196,9 @@ const IMAGE_JOBS: readonly JobKind[] = [
  * What each job waits for, when queued earlier on its Frame (or, for the Session's own jobs, on any
  * Frame): a render for its Image Prompt, an upscale for its render, 3D for its upscale, a spoken
  * line for its voice, the style scores for every picture; an edit for the render or edit it's made
- * from, and what's made from a picture for its edits (a clip too). Jobs on one machine also keep
- * their order.
+ * from, and what's made from a picture for its edits (a clip too). Not work on another Image
+ * Model's picture (a render by it, ahead of a clip of this one's): both record theirs (`Job.image`).
+ * Jobs on one machine also keep their order.
  */
 const NEEDS: Record<JobKind, readonly JobKind[]> = {
   picture: [],
@@ -217,6 +229,10 @@ const sameWork = (
 ) =>
   kind !== 'edit' && job.kind === kind && job.frameIndex === frameIndex &&
   job.image?.imageModel === image?.imageModel && job.clip?.kind === clip
+
+/** Two jobs on the pictures of two different Image Models, as both record (`Job.image`). */
+const otherPictures = (a: Job, b: Job) =>
+  !!a.image && !!b.image && a.image.imageModel !== b.image.imageModel
 
 interface Running {
   job: Job
@@ -400,7 +416,7 @@ export class SessionJobs {
       const ahead = jobs.slice(0, i).filter((j) => j.status !== 'failed')
       const waits = ahead.some((j) =>
         j.machine === job.machine ||
-        (NEEDS[job.kind].includes(j.kind) &&
+        (NEEDS[job.kind].includes(j.kind) && !otherPictures(j, job) &&
           (j.frameIndex === job.frameIndex || SESSION_JOBS.includes(j.kind) ||
             SESSION_JOBS.includes(job.kind)))
       )
@@ -599,7 +615,11 @@ export function jobRoutes(ctx: JobRoutesContext): Route[] {
         kind,
         index,
         ctx.backendOf ? machineOf(backend) : undefined,
-        kind === 'render' ? imageChoiceOf(session) : undefined,
+        kind === 'render'
+          ? imageChoiceOf(session)
+          : kind === 'clip'
+          ? clipImageOf(session, index)
+          : undefined,
         edit,
         clip,
       )

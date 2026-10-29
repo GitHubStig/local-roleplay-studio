@@ -3,7 +3,7 @@ import { secondsSince } from '../frames.ts'
 import type { ClipOrder, JobEmit } from '../jobs.ts'
 import { RenderQueue } from '../renderQueue.ts'
 import type { Session, SessionStore } from '../session.ts'
-import { changeFramePicture, shownVersionOf } from '../pictures.ts'
+import { changeFramePicture, pickedVersion, shownVersionOf } from '../pictures.ts'
 import { CLIP_ENDS, type ClipKind, type VideoGenerator } from './videoGenerator.ts'
 
 /**
@@ -53,27 +53,39 @@ export function clipRefusal(session: Session, index: number, kind: ClipKind, nam
 }
 
 /**
- * Makes a clip from Frame `index`'s picture, as `order` says, in its turn behind any render: LTX
- * 2.5 takes a whole 12 GB card. Saved onto the picture it was made from, if the Frame still has it.
+ * The version of Frame `index`'s picture by Image Model `model` that's picked, or the version the
+ * Frame shows if it has none by that model (or none is given).
+ */
+const versionBy = (session: Session, index: number, model?: string) => {
+  const picture = model && session.frames[index]?.pictures.find((p) => p.imageModel === model)
+  return picture ? pickedVersion(picture) : shownVersionOf(session, index)
+}
+
+/**
+ * Makes a clip from Frame `index`'s picture by Image Model `model` (the one it was queued for,
+ * whatever the Session shows now), as `order` says, in its turn behind any render: LTX 2.5 takes a
+ * whole 12 GB card. Into Next ends on the next Frame's picture by the same model, if it has one.
+ * Saved onto the picture it was made from, if the Frame still has it.
  */
 export async function makeClip<S extends Session>(
   deps: ClipDeps,
   session: S,
   index: number,
   order: ClipOrder,
+  model: string | undefined,
   emit: JobEmit,
   signal: AbortSignal,
   /** Saves the change onto the Session as it is now (`updateSession`). */
   save: (change: (s: S) => S) => Promise<S>,
 ): Promise<S> {
   if (!deps.video) throw new ClipError(CLIPS_OFF)
-  const picture = shownVersionOf(session, index)
+  const picture = versionBy(session, index, model)
   if (!picture) throw new ClipError(`Frame ${index} has no picture yet`)
   const refused = clipRefusal(session, index, order.kind, `Frame ${index}`)
   if (refused) throw new ClipError(refused)
-  const next = order.kind === 'into-next' ? shownVersionOf(session, index + 1)!.image : undefined
+  const next = order.kind === 'into-next' ? versionBy(session, index + 1, model)!.image : undefined
   const ends = CLIP_ENDS[order.kind]
-  const model = await deps.videoModel()
+  const videoModel = await deps.videoModel()
   const pictureAt = (end?: 'still' | 'next') => end === 'still' ? picture.image : end && next
   const dir = deps.store.dir(session.id)
   const name = `clip-${index}-${order.kind}-${crypto.randomUUID().slice(0, 8)}`
@@ -90,7 +102,7 @@ export async function makeClip<S extends Session>(
     const began = performance.now()
     file = await deps.video.makeClip(
       {
-        model,
+        model: videoModel,
         first: pictureAt(ends.first),
         last: pictureAt(ends.last),
         prompt: order.prompt,
@@ -106,7 +118,7 @@ export async function makeClip<S extends Session>(
     signal.throwIfAborted()
     const clip: Clip = {
       kind: order.kind,
-      model,
+      model: videoModel,
       file,
       prompt: order.prompt,
       speech: order.speech,

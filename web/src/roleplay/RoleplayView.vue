@@ -71,7 +71,7 @@ interface Pending {
   detached?: boolean
 }
 const pending = ref<Pending | null>(null)
-const { session, loadError, draft, busy, leave, cancel, onImageModel, pictureOf, changed } =
+const { session, loadError, draft, busy, leave, cancel, onImageModel, onClipsModel, pictureOf, changed } =
   useSessionScreen(props.id, 'roleplay', {
     work: pending,
     // A new Roleplay has its Cast written.
@@ -1035,7 +1035,12 @@ const lookSavingText = computed(() =>
               empty="Nothing queued. Picture, Render and Upscale in a Frame's tab add work here, to run while you carry on."
               :describe="describeJob"
               @go="goToFrame"
-              @clip="(index) => { goToFrame(index); narrowTab = 'frame'; scrollToClips(transcript) }"
+              @clip="async (job) => {
+                await onClipsModel(job, (text) => (notice = { kind: 'error', text }))
+                goToFrame(job.frameIndex)
+                narrowTab = 'frame'
+                scrollToClips(transcript)
+              }"
               @edit="showEdit"
               @retry="retry"
               @drop="drop"
@@ -1088,7 +1093,7 @@ const lookSavingText = computed(() =>
                 index: selectedFrame.index,
                 nextPictured: !!session.frames[selectedFrame.index + 1] && !!pictureOf(session.frames[selectedFrame.index + 1]),
                 nextName: `Frame ${selectedFrame.index + 1}`,
-                making: clipsMaking(jobsFor(selectedFrame.index)),
+                making: clipsMaking(jobsFor(selectedFrame.index), pictureOf(selectedFrame)?.imageModel),
                 playing: playingClip?.index === selectedFrame.index ? playingClip.clip.file : undefined,
               }"
               @clip="(order) => queueClip(selectedFrame!.index, order)"

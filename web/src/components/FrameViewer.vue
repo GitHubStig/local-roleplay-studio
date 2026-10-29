@@ -16,6 +16,7 @@ import {
   type PictureEdit,
   type PicturedFrame,
 } from '../api'
+import { sortClips } from '../clips'
 import { useFeatures } from '../composables/useFeatures'
 import { editChoices, useSettingsOptions } from '../composables/useSettingsOptions'
 import ClipOverlay from './ClipOverlay.vue'
@@ -262,7 +263,7 @@ const upscale = computed(() => {
 // --- The shown version's clips (ADR 0025), one playing over it at a time.
 const clips = computed(() => {
   const p = picture.value
-  return p && !viewedJob.value && !painting.value ? (pickedEdit(p) ?? p).clips ?? [] : []
+  return p && !viewedJob.value && !painting.value ? sortClips((pickedEdit(p) ?? p).clips) : []
 })
 const playing = ref<Clip | null>(null)
 // It stops on another Frame or version, or once a new clip of its kind replaces it.
