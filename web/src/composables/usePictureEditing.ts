@@ -33,9 +33,10 @@ export function usePictureEditing<S>(
       onError((err as Error).message)
     }
   }
-  async function deleteEdit(index: number) {
+  /** Deletes edit `version` of Frame `index`'s picture, the newest by its edit model. */
+  async function deleteEdit(index: number, version: number) {
     try {
-      session.value = await deleteNewestEdit<S>(sessionId, index)
+      session.value = await deleteNewestEdit<S>(sessionId, index, version)
     } catch (err) {
       onError((err as Error).message)
     }

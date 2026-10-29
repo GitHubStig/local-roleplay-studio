@@ -7,14 +7,36 @@ import type { ImageBackendKind } from './imageModels.ts'
  * those a kind of backend here runs (`editModelsHere`).
  */
 export const EDIT_MODELS = [
-  { id: 'qwen-image-2.1-edit', label: 'Qwen-Image 2.1 Edit', backends: ['mflux', 'comfyui'] },
-  { id: 'flux3-klein-edit', label: 'FLUX.3 Klein Edit', backends: ['comfyui'] },
-  { id: 'fibo-2.0-dev-edit', label: 'FIBO 2.0 Dev Edit', backends: ['comfyui'] },
-  { id: 'fibo-2.0-edit-turbo', label: 'FIBO 2.0 Edit Turbo', backends: ['comfyui'] },
+  {
+    id: 'qwen-image-2.1-edit',
+    label: 'Qwen-Image 2.1 Edit',
+    backends: ['mflux', 'comfyui'],
+    prompting: 'Takes an instruction: say what to paint there, terse or described.',
+  },
+  {
+    id: 'flux3-klein-edit',
+    label: 'FLUX.3 Klein Edit',
+    backends: ['comfyui'],
+    prompting: 'Wants what should be there described, as a caption of the result, not a command.',
+  },
+  {
+    id: 'fibo-2.0-dev-edit',
+    label: 'FIBO 2.0 Dev Edit',
+    backends: ['comfyui'],
+    prompting: 'Describe only what goes in the painted area: “keep the rest” can add things.',
+  },
+  {
+    id: 'fibo-2.0-edit-turbo',
+    label: 'FIBO 2.0 Edit Turbo',
+    backends: ['comfyui'],
+    prompting: 'Describe only what goes in the painted area: “keep the rest” can add things.',
+  },
 ] as const satisfies readonly {
   id: string
   label: string
   backends: readonly ImageBackendKind[]
+  /** How it likes to be told, shown under the instruction (research/image-models.md). */
+  prompting: string
 }[]
 export type EditModel = (typeof EDIT_MODELS)[number]['id']
 /** The edit models one kind of backend runs. */

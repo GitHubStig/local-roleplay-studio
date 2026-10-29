@@ -6,7 +6,7 @@
 import { join } from '@std/path'
 import { joinPrompt, sentences } from '../imagePrompt.ts'
 import { shownSubjects } from '../look.ts'
-import type { Picture, PictureVersion } from '../pictures.ts'
+import { editLine, type Picture, type PictureVersion } from '../pictures.ts'
 import type {
   ChainFrame,
   ChainSession,
@@ -57,7 +57,8 @@ const copyName = (file: string, index: number) => {
 
 /**
  * `picture` with its files renamed for Frame `index`, noting each copy to make: its render, and its
- * picked edit if it has one (ADR 0021), still picked, with every instruction that led to it. The
+ * picked edit if it has one (ADR 0021), still picked, with every instruction that led to it in its
+ * edit model's line. The
  * other edits and the painted areas stay behind.
  */
 function copiedPicture(picture: Picture, index: number, files: [string, string][]): Picture {
@@ -81,11 +82,12 @@ function copiedPicture(picture: Picture, index: number, files: [string, string][
   const edit = picked ? edits?.[picked - 1] : undefined
   if (!edit) return copied(render)
   const { mask: _, ...made } = edit
+  const line = editLine(picture, edit.editModel)
   return {
     ...copied(render),
     edits: [{
       ...copied(made),
-      instructions: edits!.slice(0, picked).flatMap((e) => e.instructions),
+      instructions: line.slice(0, line.indexOf(edit) + 1).flatMap((e) => e.instructions),
       copied: true,
     }],
     picked: 1,

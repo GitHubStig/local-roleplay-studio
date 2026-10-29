@@ -645,7 +645,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
             ? error(`No Backend runs ${model.label}: add one in Settings, on the Machines tab`, 409)
             : null
           return (feature && (await featureOff(feature))) ?? notHere ??
-            checkEdit(session, index, name, pending, edit!)
+            checkEdit(session, index, name, pending, edit!, model?.id ?? now.editModel)
         }
         if (kind === 'style') {
           return (feature && (await featureOff(feature))) ??
@@ -980,11 +980,12 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       },
     ],
 
-    // Deletes the newest edit of Frame `:index`'s picture, unless an edit is queued or running on
-    // it (made from it, or making it again). Sends back the Session.
+    // Deletes edit `:version` of Frame `:index`'s picture, the newest of its edit model's line,
+    // unless an edit is queued or running on it (made from it, or making it again). Sends back the
+    // Session.
     [
       'DELETE',
-      new URLPattern({ pathname: '/api/sessions/:id/pictures/:index/edits/newest' }),
+      new URLPattern({ pathname: '/api/sessions/:id/pictures/:index/edits/:version' }),
       async (_req, p) => {
         const session = await deps.sessions.load(p.id!)
         if (!session) return error('Session not found', 404)
@@ -993,7 +994,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
           .some((j) => j.kind === 'edit' && j.frameIndex === index && j.status !== 'failed')
         if (editing) return error('That picture is being edited: wait for it first', 409)
         try {
-          return json(await deleteNewestEdit(deps.sessions, session, index))
+          return json(await deleteNewestEdit(deps.sessions, session, index, Number(p.version)))
         } catch (err) {
           if (err instanceof VersionError) return error(err.message, 409)
           throw err

@@ -2,6 +2,8 @@
 /** A version of a picture as its button shows it: a render or edit, or an edit being made. */
 export interface VersionEntry {
   key: string
+  /** The edit model whose line it's in, headed once above its versions; none for the Original. */
+  group?: string
   label: string
   /** Shown on hover: what it was told to paint. */
   title?: string
@@ -11,7 +13,8 @@ export interface VersionEntry {
 }
 
 /**
- * A picture's versions (ADR 0021) as buttons, Original first, then each edit, then any being made;
+ * A picture's versions (ADR 0021) as buttons, Original first, then each edit model's, under its
+ * name, its edits being made last;
  * what can be done to the one chosen follows them (the default slot). A column beside the picture,
  * or a row under it where there's no room.
  */
@@ -32,9 +35,15 @@ defineEmits<{ choose: [key: string] }>()
       role="group"
       aria-label="Versions of the picture"
     >
+      <template v-for="(v, i) in versions" :key="v.key">
+      <span
+        v-if="v.group && v.group !== versions[i - 1]?.group"
+        class="border-t border-white/20 px-2 pt-1 text-[0.7rem] leading-tight text-white/50"
+        :class="vertical ? 'max-w-32' : 'self-center border-l border-t-0 pt-0'"
+        :title="v.group"
+        data-version-group
+      >{{ v.group }}</span>
       <button
-        v-for="v in versions"
-        :key="v.key"
         type="button"
         class="px-2 py-1 text-left disabled:opacity-50"
         :class="v.selected ? 'bg-white/90 text-black' : 'hover:text-white'"
@@ -48,6 +57,7 @@ defineEmits<{ choose: [key: string] }>()
         <span v-if="v.state === 'editing'" class="block animate-pulse text-xs">editing</span>
         <span v-else-if="v.state === 'failed'" class="block text-xs text-danger">failed</span>
       </button>
+      </template>
     </div>
     <slot />
   </div>

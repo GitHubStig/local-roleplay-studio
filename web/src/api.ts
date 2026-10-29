@@ -155,7 +155,8 @@ export interface SettingsOptions extends TextModelOptions {
   upscalers: { id: string; label: string }[]
   videoModels: { id: string; label: string }[]
   /** The models that can edit a picture here, each on its backend. */
-  editModels: { id: string; label: string; backends: ImageBackend[] }[]
+  /** Each with how it likes to be told what to paint. */
+  editModels: { id: string; label: string; backends: ImageBackend[]; prompting: string }[]
   /** The kind of backend each edit model's edits go to now, by name; none for one nowhere. */
   editModelsOn?: Record<string, ImageBackend>
   /** Which Features can run, here or on a Backend listed (a ComfyUI). */
@@ -412,9 +413,9 @@ export function shownPicture(frame: PicturedFrame, model: string): Picture | und
   return picture && asPicked(picture)
 }
 
-/** The newest version of a picture, which a new edit is made from: its last edit, or its render. */
-export const newestImage = (picture: Picture): string =>
-  picture.edits?.at(-1)?.image ?? picture.image
+/** A picture's edits by edit model `model`, oldest first: a line of its own from the Original. */
+export const editLine = (picture: Picture, model: string): PictureEdit[] =>
+  (picture.edits ?? []).filter((e) => e.editModel === model)
 
 /** A picture's Image Prompt changed since it was rendered, or it's by another Image Model. */
 export const changedSinceRender = (picture: Picture, model: string): boolean =>
@@ -955,9 +956,9 @@ export interface EditOrder {
 export const pickVersion = <S>(id: string, index: number, picked: number) =>
   put<S>(`/api/sessions/${id}/pictures/${index}/picked`, { picked })
 
-/** Deletes the newest edit of a Frame's picture; returns the Session. */
-export const deleteNewestEdit = <S>(id: string, index: number) =>
-  request<S>(`/api/sessions/${id}/pictures/${index}/edits/newest`, { method: 'DELETE' })
+/** Deletes edit `version` of a Frame's picture, the newest by its edit model; returns the Session. */
+export const deleteNewestEdit = <S>(id: string, index: number, version: number) =>
+  request<S>(`/api/sessions/${id}/pictures/${index}/edits/${version}`, { method: 'DELETE' })
 
 /** Deletes the upscale of a Frame's shown picture, keeping the picture; returns the Session. */
 export const deleteUpscale = <S>(id: string, index: number) =>

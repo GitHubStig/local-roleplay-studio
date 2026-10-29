@@ -103,8 +103,13 @@ const options: api.SettingsOptions = {
   },
   sizePresets: [{ id: 'portrait', label: 'Portrait', width: 832, height: 1216 }],
   editModels: [
-    { id: 'qwen-image-2.1-edit', label: 'Qwen-Image 2.1 Edit', backends: ['mflux', 'comfyui'] },
-    { id: 'flux3-klein-edit', label: 'FLUX.3 Klein Edit', backends: ['comfyui'] },
+    {
+      id: 'qwen-image-2.1-edit',
+      label: 'Qwen-Image 2.1 Edit',
+      backends: ['mflux', 'comfyui'],
+      prompting: '',
+    },
+    { id: 'flux3-klein-edit', label: 'FLUX.3 Klein Edit', backends: ['comfyui'], prompting: '' },
   ],
   videoModels: [{ id: 'ltx-2.5', label: 'LTX 2.5' }],
   upscalers: [
@@ -582,6 +587,7 @@ describe('SettingsView', () => {
         id: 'flux3-klein-edit',
         label: 'FLUX.3 Klein Edit',
         backends: ['comfyui'],
+        prompting: '',
       }],
     })
     const pc = mount(SettingsView)

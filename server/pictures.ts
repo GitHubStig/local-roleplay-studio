@@ -46,7 +46,8 @@ export interface PictureEdit extends PictureVersion {
  * A Frame's picture by one Image Model, and what was made from it. A Frame keeps one per model it
  * was rendered with, so switching the Session's model back shows that model's again without
  * rendering. Its own files are its render's (the Original); its edits, if any, follow in a
- * straight line, and `picked` says which version is the picture (`pickedVersion`).
+ * straight line per edit model, each line starting from the Original (`editLine`), and `picked`
+ * says which version is the picture (`pickedVersion`).
  */
 export interface Picture extends PictureVersion {
   /** The Image Model that rendered it. */
@@ -60,15 +61,23 @@ export interface Picture extends PictureVersion {
   stale?: boolean
   /** Seconds the render waited for another (only if it had to) and took. */
   timings?: { queued?: number; image: number }
-  /** Its edits, oldest first, each made from the one before. */
+  /** Its edits, oldest first, each made from the one before by the same edit model. */
   edits?: PictureEdit[]
-  /** The version that is the picture everywhere: 0 (or none) for the render, n for edit n. */
+  /** The version that is the picture everywhere: 0 (or none) for the render, n for `edits[n - 1]`. */
   picked?: number
 }
 
 /** The version of a picture that is the picture: its picked edit, or its render. */
 export const pickedVersion = (p: Picture): PictureVersion =>
   (p.picked && p.edits?.[p.picked - 1]) || p
+
+/** A picture's edits by edit model `model`, oldest first: a line of its own from the Original. */
+export const editLine = (p: Picture, model: string): PictureEdit[] =>
+  (p.edits ?? []).filter((e) => e.editModel === model)
+
+/** A picture's version a new edit by `model` is made from: that model's newest, or the Original. */
+export const editSource = (p: Picture, model: string): PictureVersion =>
+  editLine(p, model).at(-1) ?? p
 
 /** A Frame of any kind, as far as its pictures go. */
 export interface PicturedFrame {

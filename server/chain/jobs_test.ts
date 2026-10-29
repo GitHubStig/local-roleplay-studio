@@ -249,7 +249,7 @@ Deno.test('A Chain queues an upscale of one Frame, once', () =>
 /** A PNG's bytes in base64, standing in for a painted area. */
 const MASK = btoa('\x89PNG painted')
 
-Deno.test('An edit repaints a picture as a new version, made from the newest and picked', () =>
+Deno.test('An edit repaints a picture as a new version, made from its model’s newest and picked', () =>
   withTempDir(async (root) => {
     const images = fakeImageGenerator()
     // A ComfyUI listed beside mflux, for the second edit's model.
@@ -287,14 +287,15 @@ Deno.test('An edit repaints a picture as a new version, made from the newest and
     )
     assertEquals([images.edits[0].image, images.edits[0].mask], [first.image, one.mask])
 
-    // A second, of the whole picture, uses the model selected in the Edit dialog.
+    // A second, of the whole picture, uses the model selected in the Edit dialog: a line of its
+    // own, from the Original.
     assertEquals(
       (await edit({ instruction: 'Warmer light', model: 'flux3-klein-edit' })).status,
       201,
     )
     assertEquals(await settled(call), [])
     const [, second] = await chainFrames(call)
-    assertEquals([images.edits[1].image, images.edits[1].mask], [one.image, undefined])
+    assertEquals([images.edits[1].image, images.edits[1].mask], [first.image, undefined])
     // FLUX.3 Klein Edit runs only on ComfyUI, so it went to the one listed.
     assertEquals([images.edits[1].model, second.edits[1].editModel, second.edits[1].imageBackend], [
       'flux3-klein-edit',
@@ -302,17 +303,23 @@ Deno.test('An edit repaints a picture as a new version, made from the newest and
       'comfyui',
     ])
     assertEquals([second.edits.length, second.picked], [2, 2])
+    // Qwen's next carries on from Qwen's newest.
+    await edit({ instruction: 'A ring on it', model: 'qwen-image-2.1-edit' })
+    assertEquals(await settled(call), [])
+    assertEquals(images.edits[2].image, one.image)
 
     // What's made from the picture is made from the picked version.
     await call('POST', '/api/sessions/s1/jobs', { kind: 'upscale', frameIndex: 1 })
     assertEquals(await settled(call), [])
-    assertEquals(images.upscaled, [second.edits[1].image])
+    const [, third] = await chainFrames(call)
+    assertEquals(third.picked, 3)
+    assertEquals(images.upscaled, [third.edits[2].image])
     const [, upscaled] = await chainFrames(call)
-    assertMatch(upscaled.edits[1].upscaled, /-2048\.png$/)
+    assertMatch(upscaled.edits[2].upscaled, /-2048\.png$/)
     assertEquals(upscaled.upscaled, undefined)
     // Edits and their upscales are served, as the render is.
     const served = (name: string) => call('GET', `/api/sessions/s1/images/${name}`)
-    for (const name of [one.image, one.mask, upscaled.edits[1].image, upscaled.edits[1].upscaled]) {
+    for (const name of [one.image, one.mask, upscaled.edits[2].image, upscaled.edits[2].upscaled]) {
       assertEquals((await served(name)).status, 200)
     }
   }))
@@ -382,16 +389,67 @@ Deno.test('An edit can be made again in its place, as told now, picked, and the 
     assertEquals((await pick(0)).status, 200)
     assertEquals((await chainFrames(call))[1].picked, 0)
     assertEquals((await pick(1)).status, 200)
-    const deleted = await call('DELETE', '/api/sessions/s1/pictures/1/edits/newest')
+    const deleted = await call('DELETE', '/api/sessions/s1/pictures/1/edits/1')
     assertEquals(deleted.status, 200)
     const [, after] = await chainFrames(call)
     assertEquals([after.edits, after.picked], [undefined, undefined])
     assertEquals((await file(again.edits[0].image)).status, 404)
     assertEquals((await file(again.image)).status, 200)
     assertEquals(
-      (await call('DELETE', '/api/sessions/s1/pictures/1/edits/newest')).status,
+      (await call('DELETE', '/api/sessions/s1/pictures/1/edits/1')).status,
       409,
     )
+  }))
+
+Deno.test('Each edit model’s line is retried and deleted on its own, the others keeping their numbers', () =>
+  withTempDir(async (root) => {
+    const images = fakeImageGenerator()
+    const backends = [...DEFAULT_SETTINGS.backends, {
+      id: 'pc',
+      kind: 'comfyui' as const,
+      address: '',
+    }]
+    const { call } = await chainOfTwo(root, {
+      imageGenerator: images,
+      settings: { textModel: 'x', backends },
+    })
+    const edit = async (body: object) => {
+      await call('POST', '/api/sessions/s1/jobs', { kind: 'edit', frameIndex: 1, edit: body })
+      assertEquals(await settled(call), [])
+      return (await chainFrames(call))[1]
+    }
+    const qwen = 'qwen-image-2.1-edit', flux = 'flux3-klein-edit'
+    await edit({ instruction: 'Q1', model: qwen })
+    await edit({ instruction: 'F1', model: flux })
+    const made = await edit({ instruction: 'Q2', model: qwen })
+    // A retry of FLUX.3's stays second, made again from the Original.
+    const retried = await edit({ instruction: 'F1 again', model: flux, retry: true })
+    assertEquals(retried.edits.map((e: { instructions: string[] }) => e.instructions[0]), [
+      'Q1',
+      'F1 again',
+      'Q2',
+    ])
+    assertEquals([retried.picked, images.edits[3].image], [2, made.image])
+    const remove = (version: number) =>
+      call('DELETE', `/api/sessions/s1/pictures/1/edits/${version}`)
+    // Only a line's newest goes.
+    assertEquals((await remove(1)).status, 409)
+    await call('PUT', '/api/sessions/s1/pictures/1/picked', { picked: 3 })
+    // Q2 picked and deleted: Q1, the one before it in its line, is picked.
+    assertEquals((await remove(3)).status, 200)
+    const [, after] = await chainFrames(call)
+    assertEquals([
+      after.edits.map((e: { instructions: string[] }) => e.instructions[0]),
+      after.picked,
+    ], [
+      ['Q1', 'F1 again'],
+      1,
+    ])
+    // Q1 deleted while the FLUX.3 edit after it is picked: that stays picked, now first.
+    await call('PUT', '/api/sessions/s1/pictures/1/picked', { picked: 2 })
+    assertEquals((await remove(1)).status, 200)
+    const [, last] = await chainFrames(call)
+    assertEquals([last.edits.length, last.edits[0].instructions, last.picked], [1, ['F1 again'], 1])
   }))
 
 Deno.test('A Chain queues SHARP, TripoSplat and LiTo for one Frame', () =>

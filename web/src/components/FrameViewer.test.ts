@@ -11,8 +11,18 @@ vi.mock('../api', async (importOriginal) => ({
   getSettingsOptions: vi.fn(() =>
     Promise.resolve({
       editModels: [
-        { id: 'qwen-image-2.1-edit', label: 'Qwen-Image 2.1 Edit', backends: ['mflux', 'comfyui'] },
-        { id: 'flux3-klein-edit', label: 'FLUX.3 Klein Edit', backends: ['comfyui'] },
+        {
+          id: 'qwen-image-2.1-edit',
+          label: 'Qwen-Image 2.1 Edit',
+          backends: ['mflux', 'comfyui'],
+          prompting: 'An instruction.',
+        },
+        {
+          id: 'flux3-klein-edit',
+          label: 'FLUX.3 Klein Edit',
+          backends: ['comfyui'],
+          prompting: 'A caption.',
+        },
       ],
       imageBackends: ['mflux', 'comfyui'],
       editModelsOn: { 'qwen-image-2.1-edit': 'comfyui', 'flux3-klein-edit': 'comfyui' },
@@ -68,7 +78,9 @@ describe('FrameViewer', () => {
     const wrapper = mountIt()
     await flushPromises()
     expect(shownSrc(wrapper)).toBe(url('edit-0-00000001.png'))
-    expect(wrapper.find('[data-viewer-caption]').text()).toBe('Edit 1: Paint 1')
+    expect(wrapper.find('[data-viewer-caption]').text()).toBe(
+      'Qwen-Image 2.1 Edit, Edit 1: Paint 1',
+    )
     expect(versions(wrapper).map((b) => b.text())).toEqual(['Original', 'Edit 1', 'Edit 2'])
     expect(versions(wrapper)[1].attributes('aria-pressed')).toBe('true')
     // Redo and Delete are for the newest, once it's shown.
@@ -114,7 +126,7 @@ describe('FrameViewer', () => {
     await side(wrapper).find('[data-delete-edit]').trigger('click')
     expect(wrapper.emitted('deleteEdit')).toBeUndefined()
     await side(wrapper).find('[data-delete-edit]').trigger('click')
-    expect(wrapper.emitted('deleteEdit')).toEqual([[0]])
+    expect(wrapper.emitted('deleteEdit')).toEqual([[0, 2]])
 
     await side(wrapper).find('[data-redo-edit]').trigger('click')
     await flushPromises()
@@ -146,7 +158,11 @@ describe('FrameViewer', () => {
       'FLUX.3 Klein Edit · ComfyUI',
     ])
     expect((model.element as HTMLSelectElement).value).toBe('comfyui/qwen-image-2.1-edit')
+    expect(wrapper.find('[data-edit-prompting]').text()).toBe('An instruction.')
+    // FLUX.3 has no edits here: its first is painted over the Original, as it likes to be told.
     await model.setValue('comfyui/flux3-klein-edit')
+    expect(shownSrc(wrapper)).toBe(url('frame-0.png'))
+    expect(wrapper.find('[data-edit-prompting]').text()).toBe('A caption.')
     // The arrow keys don't step while painting; Esc goes back to the picture, the draft kept.
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }))
     expect(wrapper.emitted('step')).toBeUndefined()
@@ -182,6 +198,44 @@ describe('FrameViewer', () => {
     expect(side(wrapper).find('[data-edit]').attributes('disabled')).toBeDefined()
     await side(wrapper).find('[data-cancel-edit]').trigger('click')
     expect(wrapper.emitted('dropJob')).toEqual([[running]])
+  })
+
+  it('groups the versions by edit model, Redo and Delete acting on the line of the one shown', async () => {
+    const flux = { ...edit(3), editModel: 'flux3-klein-edit', instructions: ['A caption 3'] }
+    const lines = [{
+      ...frames[0],
+      pictures: [{ ...frames[0].pictures[0], edits: [edit(1), flux, edit(2)], picked: 2 }],
+    }]
+    const wrapper = mountIt({ frames: lines })
+    await flushPromises()
+    expect(side(wrapper).findAll('[data-version-group]').map((g) => g.text())).toEqual([
+      'Qwen-Image 2.1 Edit',
+      'FLUX.3 Klein Edit',
+    ])
+    expect(versions(wrapper).map((b) => [b.attributes('data-version'), b.text()])).toEqual([
+      ['0', 'Original'],
+      ['1', 'Edit 1'],
+      ['3', 'Edit 2'],
+      ['2', 'Edit 1'],
+    ])
+    expect(wrapper.find('[data-viewer-caption]').text()).toBe(
+      'FLUX.3 Klein Edit, Edit 1: A caption 3',
+    )
+    // FLUX.3's only edit is its line's newest: redone from the Original, by FLUX.3 alone.
+    await side(wrapper).find('[data-redo-edit]').trigger('click')
+    await flushPromises()
+    expect(shownSrc(wrapper)).toBe(url('frame-0.png'))
+    expect((wrapper.find('[data-edit-model]').element as HTMLSelectElement).disabled).toBe(true)
+    expect(wrapper.find('[data-paint-tools]').text()).toContain(
+      'It replaces FLUX.3 Klein Edit, Edit 1.',
+    )
+    // Qwen's first isn't its line's newest: nothing to redo or delete there.
+    await wrapper.find('[data-paint-tools] button[title^="Back"]').trigger('click')
+    await versions(wrapper)[1].trigger('click')
+    await wrapper.setProps({
+      frames: [{ ...lines[0], pictures: [{ ...lines[0].pictures[0], picked: 1 }] }],
+    })
+    expect(side(wrapper).find('[data-delete-edit]').exists()).toBe(false)
   })
 
   it('opens on an edit being made, and offers one that failed to redo or delete', async () => {

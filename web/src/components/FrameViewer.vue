@@ -4,15 +4,16 @@ import { computed, reactive, ref, useTemplateRef, watch } from 'vue'
 import {
   type Clip,
   CLIP_KIND_NAMES,
+  editLine,
   type EditOrder,
   framePicture,
   IMAGE_BACKEND_NAMES,
   type ImageBackend,
   imageUrl,
   type Job,
-  newestImage,
   pickedEdit,
   type Picture,
+  type PictureEdit,
   type PicturedFrame,
 } from '../api'
 import { useFeatures } from '../composables/useFeatures'
@@ -27,9 +28,10 @@ import SelectField from './SelectField.vue'
 /**
  * A Session's pictures in the full-window viewer: it opens on one Frame, and ← and → (or ↑ and ↓)
  * step through the Frames that have a picture, showing each one's upscale if it has one. A picture
- * shows as its picked version (ADR 0021); its versions, beside it, pick another. Edit paints over
- * the newest version the area to repaint, and says what to paint there; the edit then shows among
- * the versions while it's made, over what it's made from, with its progress, until it lands. The
+ * shows as its picked version (ADR 0021); its versions, beside it, by edit model, pick another.
+ * Edit paints the area to repaint over the newest version by the edit model chosen (the Original,
+ * for its first), and says what to paint there; the edit then shows among the versions while it's
+ * made, over what it's made from, with its progress, until it lands. The
  * shown version's clips, under its versions, play over it.
  */
 const props = withDefaults(
@@ -56,8 +58,8 @@ const emit = defineEmits<{
   edit: [index: number, order: EditOrder]
   /** Pick version `version` of Frame `index`'s picture. */
   pick: [index: number, version: number]
-  /** Delete the newest edit of Frame `index`'s picture. */
-  deleteEdit: [index: number]
+  /** Delete edit `version` of Frame `index`'s picture, the newest by its edit model. */
+  deleteEdit: [index: number, version: number]
   /** Delete the upscale of the version of Frame `index`'s picture that is shown. */
   deleteUpscale: [index: number]
   /** Cancel an edit being made, or dismiss one that failed. */
@@ -92,9 +94,15 @@ const editJobs = computed(() =>
 /** The edit being made, if any: no other can be asked for until it lands. */
 const inProgress = computed(() => editJobs.value.find((j) => j.status !== 'failed'))
 
-/** The image an edit is made from: the newest version, or for a retry the one before it. */
-function sourceOf(p: Picture, retry?: boolean): string {
-  return retry ? (p.edits?.at(-2)?.image ?? p.image) : newestImage(p)
+/** The edit model a job's edit is made with: the one it names, or else Settings'. */
+const jobModel = (job: Job) => job.edit?.model ?? settings.value?.editModel ?? ''
+/**
+ * The image an edit by `model` is made from: that model's newest version (the Original, for its
+ * first), or for a retry the one before it.
+ */
+function sourceOf(p: Picture, model: string, retry?: boolean): string {
+  const line = editLine(p, model)
+  return ((retry ? line.at(-2) : line.at(-1)) ?? p).image
 }
 const fileUrl = (file: string) => imageUrl(props.sessionId, file)
 
@@ -142,30 +150,45 @@ watch(editJobs, (now, before) => {
   if (viewedJobId.value && !now.some((j) => j.id === viewedJobId.value)) viewedJobId.value = null
 })
 
+const modelLabel = (id: string) => settingsOptions.value?.editModels.find((m) => m.id === id)?.label ?? id
 /** "by Qwen-Image 2.1 Edit · mflux": what made an edit, and where, as a render's picture says. */
 const editedBy = (e: { editModel: string; imageBackend?: ImageBackend }) =>
-  `by ${settingsOptions.value?.editModels.find((m) => m.id === e.editModel)?.label ?? e.editModel}` +
-  (e.imageBackend ? ` · ${IMAGE_BACKEND_NAMES[e.imageBackend]}` : '')
+  `by ${modelLabel(e.editModel)}` + (e.imageBackend ? ` · ${IMAGE_BACKEND_NAMES[e.imageBackend]}` : '')
+/** "Qwen-Image 2.1 Edit, Edit 2": an edit by its number in its model's line. */
+const editName = (p: Picture, e: PictureEdit) =>
+  `${modelLabel(e.editModel)}, Edit ${editLine(p, e.editModel).indexOf(e) + 1}`
 
 const versions = computed<VersionEntry[]>(() => {
   const p = picture.value
   if (!p) return []
   const picked = viewedJob.value ? -1 : (p.picked ?? 0)
+  // A group per edit model, in the order each was first used, its edits being made at its end.
+  const models = [...new Set([...edits.value.map((e) => e.editModel), ...editJobs.value.map(jobModel)])]
   return [
     { key: '0', label: 'Original', title: 'As rendered', selected: picked === 0 },
-    ...edits.value.map((e, i) => ({
-      key: String(i + 1),
-      label: `Edit ${i + 1}`,
-      title: `${e.instructions.join('; ')} (${editedBy(e)})`,
-      selected: picked === i + 1,
-    })),
-    ...editJobs.value.map((j, i): VersionEntry => ({
-      key: j.id,
-      label: j.edit!.retry ? `Edit ${edits.value.length} · redo` : `Edit ${edits.value.length + i + 1}`,
-      title: j.edit!.instruction,
-      state: j.status === 'failed' ? 'failed' : 'editing',
-      selected: j.id === viewedJobId.value,
-    })),
+    ...models.flatMap((m) => {
+      const line = editLine(p, m)
+      return [
+        ...line.map((e, i): VersionEntry => {
+          const version = edits.value.indexOf(e) + 1
+          return {
+            key: String(version),
+            group: modelLabel(m),
+            label: `Edit ${i + 1}`,
+            title: `${e.instructions.join('; ')} (${editedBy(e)})`,
+            selected: picked === version,
+          }
+        }),
+        ...editJobs.value.filter((j) => jobModel(j) === m).map((j, i): VersionEntry => ({
+          key: j.id,
+          group: modelLabel(m),
+          label: j.edit!.retry ? `Edit ${line.length} · redo` : `Edit ${line.length + i + 1}`,
+          title: j.edit!.instruction,
+          state: j.status === 'failed' ? 'failed' : 'editing',
+          selected: j.id === viewedJobId.value,
+        })),
+      ]
+    }),
   ]
 })
 function choose(key: string) {
@@ -196,7 +219,7 @@ const shown = computed(() => {
   if (painting.value && draft.value) {
     // What the edit is made from, at its own size: the mask is painted in its pixels.
     return {
-      src: fileUrl(sourceOf(p, draft.value.retry)),
+      src: fileUrl(sourceOf(p, draft.value.model, draft.value.retry)),
       alt: `Picture of ${name}, to paint over`,
       label: `Editing ${name}: paint over what to repaint`,
     }
@@ -204,7 +227,7 @@ const shown = computed(() => {
   const job = viewedJob.value
   if (job) {
     return {
-      src: fileUrl(sourceOf(p, job.edit!.retry)),
+      src: fileUrl(sourceOf(p, jobModel(job), job.edit!.retry)),
       alt: `Picture of ${name}, being edited`,
       label,
       caption: `${editStatus(job)}\n${job.edit!.instruction}`,
@@ -220,7 +243,7 @@ const shown = computed(() => {
     alt: `Picture of ${name}`,
     label,
     caption: edit
-      ? `Edit ${p.picked}: ${edit.instructions.join('; ')}`
+      ? `${editName(p, edit)}: ${edit.instructions.join('; ')}`
       : p.edits?.length || editJobs.value.length
       ? 'The Original, as rendered.'
       : undefined,
@@ -294,9 +317,9 @@ function editNew() {
   if (draft.value && !draft.value.retry && !draft.value.replaces) painting.value = true
   else startDraft({ retry: false, instruction: '' })
 }
-/** The newest edit made again: its area and instruction, to change before it's sent. */
+/** The edit shown, the newest by its model, made again: its area and instruction, to change first. */
 function redoNewest() {
-  const newest = edits.value.at(-1)
+  const newest = newestShown.value
   if (!newest) return
   startDraft({
     retry: true,
@@ -344,9 +367,11 @@ function close() {
 }
 function deleteNewest() {
   const frame = current.value
-  if (!frame || !edits.value.length) return
-  if (!confirm(`Delete Edit ${edits.value.length} of ${props.name(frame.index)}? This can't be undone.`)) return
-  emit('deleteEdit', frame.index)
+  const newest = newestShown.value
+  if (!frame || !newest) return
+  const name = editName(frame.picture, newest)
+  if (!confirm(`Delete ${name} of ${props.name(frame.index)}? This can't be undone.`)) return
+  emit('deleteEdit', frame.index, frame.picture.picked!)
 }
 
 // Asked to paint (Edit on the screen): a new edit, unless one is being made, which then shows.
@@ -371,10 +396,22 @@ useEventListener(document, 'keydown', (e: KeyboardEvent) => {
   else history.undo()
 })
 
-/** The newest edit is the one shown: Redo and Delete act on it. */
-const newestShown = computed(() =>
-  !viewedJob.value && !!edits.value.length && (picture.value?.picked ?? 0) === edits.value.length
+/** The edit shown, when it's the newest by its edit model: Redo and Delete act on it. */
+const newestShown = computed(() => {
+  const p = picture.value
+  const edit = p && !viewedJob.value ? pickedEdit(p) : undefined
+  return edit && editLine(p!, edit.editModel).at(-1) === edit ? edit : undefined
+})
+/** How the draft's edit model likes to be told what to paint. */
+const prompting = computed(() =>
+  settingsOptions.value?.editModels.find((m) => m.id === draft.value?.model)?.prompting
 )
+/** The edit a retry replaces: the newest by the draft's model. */
+const replacing = computed(() => {
+  const p = picture.value
+  const newest = p && draft.value?.retry ? editLine(p, draft.value.model).at(-1) : undefined
+  return newest && editName(p!, newest)
+})
 /** An action's button, on a dark backing: the screen behind shows through the dialog's backdrop. */
 const action =
   'shrink-0 rounded-lg border border-white/30 bg-black/70 px-2 py-1 text-left hover:text-white disabled:opacity-40'
@@ -424,7 +461,7 @@ const action =
         </template>
         <template v-else-if="newestShown && !inProgress">
           <button
-            v-if="featureOn('edits') && !edits.at(-1)!.copied"
+            v-if="featureOn('edits') && !newestShown.copied"
             type="button"
             :class="action"
             title="Change its area or instruction, and make it again"
@@ -524,6 +561,8 @@ const action =
             <SelectField
               v-model="draftChoice"
               compact
+              :disabled="draft.retry"
+              :title="draft.retry ? 'A redo is made by the model that made the edit' : 'Each model edits from its own newest version, or the Original'"
               class="rounded-lg border border-white/30 bg-black/40 p-1.5 text-white"
               data-edit-model
             >
@@ -593,9 +632,10 @@ const action =
           </button>
         </div>
         <p class="text-xs text-white/60">
+          <span v-if="prompting" class="block text-white/80" data-edit-prompting>{{ prompting }}</span>
           Say what to paint, not what's wrong. Painted more than one area? Say what goes in each:
           “on his face: …; on the gun: …”. With nothing painted, the whole picture is repainted.
-          <template v-if="draft.retry">It replaces Edit {{ edits.length }}.</template>
+          <template v-if="replacing">It replaces {{ replacing }}.</template>
         </p>
       </div>
     </template>
