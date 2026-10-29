@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { nextTick, ref } from 'vue'
-import type { Clip, Picture } from './api'
+import { asPicked, type Clip, type Picture } from './api'
 import { clipCount, usePlayingClip } from './clips'
 
 describe('usePlayingClip', () => {
@@ -29,5 +29,24 @@ describe('clipCount', () => {
     // Shown only until the Session's model renders the Frame: its clips aren't counted.
     expect(clipCount(picture, 'qwen-image-2.1-turbo')).toBe(0)
     expect(clipCount(undefined, 'krea-2')).toBe(0)
+  })
+
+  it("counts the picked edit's clips, not the Original's", () => {
+    const edit = {
+      image: 'e.png',
+      instructions: ['x'],
+      editModel: 'q',
+      seed: 1,
+      clips: [{} as Clip],
+    }
+    const picture = {
+      image: 'a.png',
+      imageModel: 'moss-image',
+      edits: [edit],
+      picked: 1,
+    } as Picture
+    expect(clipCount(asPicked(picture), 'moss-image')).toBe(1)
+    // The Original picked again: its own, none.
+    expect(clipCount(asPicked({ ...picture, picked: 0 }), 'moss-image')).toBe(0)
   })
 })

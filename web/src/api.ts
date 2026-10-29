@@ -382,13 +382,14 @@ export const pickedEdit = (picture: Picture): PictureEdit | undefined =>
 
 /**
  * A picture as it's shown and used: with its picked version's files (an edit's, ADR 0021) in place
- * of its render's, so what's upscaled, made into 3D or viewed is that version.
+ * of its render's, so what's upscaled, made into 3D, viewed or counted as its clips is that
+ * version.
  */
 export function asPicked(picture: Picture): Picture {
   const edit = pickedEdit(picture)
   if (!edit) return picture
-  const { image, upscaled, scene, figure, lito } = edit
-  return { ...picture, image, upscaled, scene, figure, lito }
+  const { image, upscaled, scene, figure, lito, clips } = edit
+  return { ...picture, image, upscaled, scene, figure, lito, clips }
 }
 
 /** A Frame of any kind, as far as its pictures go. */
