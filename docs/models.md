@@ -108,7 +108,7 @@ Evidence: [research/voices.md](research/voices.md), and for the PC [research/com
 
 ## Clips
 
-LTX 2.5 on a ComfyUI ([video-plan.md](video-plan.md)): the 22B distilled transformer and the Gemma 4 12B text encoder (int8 on the PC), one pass of 8 steps, with its own sound.
+LTX 2.5 on a ComfyUI ([ADR 0025](adr/0025-clips-by-kind.md)): the 22B distilled transformer and the Gemma 4 12B text encoder (int8 on the PC), one pass of 8 steps, with its own sound.
 
 - **One workflow for every kind of clip**: the picture is guided in at the first frame, the last, or both, at strength 1.0, which lands nearest the picture (SSIM ~0.89) and still moves.
 - **About 70 s to load plus ~19 s per second of clip on the PC**, at ~900k pixels in the picture's shape (1280×704, 1152×800): a 4 s clip takes ~2 min. The card's 12 GB is full at any length; length is limited by time and drift, not memory.

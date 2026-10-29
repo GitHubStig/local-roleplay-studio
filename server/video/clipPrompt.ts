@@ -1,6 +1,6 @@
 /**
  * A clip's prompt, written by the Text Model for the player to read and edit before the clip is
- * made (docs/video-plan.md): what moves between the pictures, from the story around the Frame.
+ * made (ADR 0025): what moves between the pictures, from the story around the Frame.
  * Nothing is saved. Its prompts are `prompts/video/clip*.md` and the kinds' own.
  */
 import type { ClipAsk } from '../jobs.ts'

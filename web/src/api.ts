@@ -283,10 +283,10 @@ export interface Figure {
   timings: { queued?: number; figure: number }
 }
 
-/** The kinds of clip (docs/video-plan.md): where the picture sits in the clip. */
+/** The kinds of clip (ADR 0025): where the picture sits in the clip. */
 export type ClipKind = 'lead-in' | 'play-out' | 'idle-loop' | 'into-next'
 
-/** What each kind of clip is called (docs/video-plan.md). */
+/** What each kind of clip is called (ADR 0025). */
 export const CLIP_KIND_NAMES: Record<ClipKind, string> = {
   'lead-in': 'Lead In',
   'play-out': 'Play out',

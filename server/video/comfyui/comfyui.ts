@@ -17,7 +17,7 @@ import { type ComfyVideoModel, findComfyVideoModel } from './models.ts'
 
 /**
  * Clips from a ComfyUI server, by the video model each asks for (`models.ts`; LTX 2.5 for now,
- * docs/video-plan.md): one workflow per model for every kind of clip, the pictures guided in at its first frame, its last, or both. The pictures are uploaded to
+ * ADR 0025): one workflow per model for every kind of clip, the pictures guided in at its first frame, its last, or both. The pictures are uploaded to
  * ComfyUI's temp folder and blanked after, as for an edit; `SaveVideo` writes the clip to ComfyUI's
  * output folder, from which it's fetched (`/view`) and then overwritten with an empty stub, so no
  * copy stays with ComfyUI. The clip comes out at about 1280×704's pixels, in the first picture's

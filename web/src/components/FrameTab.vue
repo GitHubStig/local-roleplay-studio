@@ -16,7 +16,7 @@ import PictureButtons from './PictureButtons.vue'
 
 /**
  * Everything about the selected Frame, in the side panel's Frame tab, the same in every kind of
- * Session (docs/video-plan.md): what the Session shows of it (its Image Prompt, in the default slot),
+ * Session (docs/design.md, "The selected Frame and its tab"): what the Session shows of it (its Image Prompt, in the default slot),
  * and at the panel's foot, always in view, what can be done with its picture and its 3D, side by
  * side. The row under the text box keeps only what's about the whole Session.
  */

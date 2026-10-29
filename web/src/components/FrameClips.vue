@@ -9,7 +9,7 @@ import {
 } from '../api'
 
 /**
- * The selected Frame's clips (docs/video-plan.md), in its tab, the same in every kind of Session:
+ * The selected Frame's clips (ADR 0025), in its tab, the same in every kind of Session:
  * pick where the picture sits in the clip, its length and whether anyone speaks; the Text Model
  * writes the prompt from the story, for the player to read and edit; then the clip is queued. The
  * clips already made are listed, to play over the picture, to make again, or to say what was wrong

@@ -7,7 +7,7 @@ import { changeFramePicture, shownVersionOf } from '../pictures.ts'
 import { CLIP_ENDS, type ClipKind, type VideoGenerator } from './videoGenerator.ts'
 
 /**
- * A clip made from a picture (docs/video-plan.md), kept on the picture version it was made from:
+ * A clip made from a picture (ADR 0025), kept on the picture version it was made from:
  * one of each kind, a new one replacing the old.
  */
 export interface Clip {

@@ -1,6 +1,6 @@
 # Video models
 
-Measurements behind the video plan ([video-plan.md](../video-plan.md)). Newest first.
+Measurements behind clips ([ADR 0025](../adr/0025-clips-by-kind.md)); what's still to do is in [open-threads.md](../open-threads.md), "Clips". Newest first.
 
 ## Into Next on a Chain, whose pictures agree (2026-10-29, Windows PC)
 

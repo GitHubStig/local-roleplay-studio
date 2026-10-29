@@ -2,7 +2,7 @@
 import { type Clip, CLIP_KIND_NAMES } from '../api'
 
 /**
- * A clip playing over its Frame's picture, in place (docs/video-plan.md): in a picture's frame
+ * A clip playing over its Frame's picture, in place (ADR 0025): in a picture's frame
  * (`position: relative`), the same size as it. An Idle Loop loops; the others close when they end.
  */
 defineProps<{ src: string; clip: Clip }>()

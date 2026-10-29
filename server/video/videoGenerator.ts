@@ -1,7 +1,7 @@
 import type { Backend } from '../backends.ts'
 
 /**
- * A Frame's picture as a short clip (docs/video-plan.md). Where the picture sits in the clip is the
+ * A Frame's picture as a short clip (ADR 0025). Where the picture sits in the clip is the
  * kind of clip, as a picture shows the middle of what its Frame describes: a clip can lead up to
  * it, go on from it, or move a little and come back to it.
  */

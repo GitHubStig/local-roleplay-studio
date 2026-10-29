@@ -4,7 +4,7 @@ status: accepted
 
 # Clips are made by kind, on the player's choice, from one workflow per model
 
-A Frame's picture can be made into a few seconds of video (LTX 2.5 on a ComfyUI, 2026-10-29; the working plan and its findings: [video-plan.md](../video-plan.md), [research/video-models.md](../research/video-models.md)).
+A Frame's picture can be made into a few seconds of video (LTX 2.5 on a ComfyUI, 2026-10-29; the findings: [research/video-models.md](../research/video-models.md); what's left: [open-threads.md](../open-threads.md), "Clips: what's left").
 
 - **The kind of clip is where the picture sits in it.** A picture shows the middle of what its Frame describes ("she enters" renders her already inside), while a clip should start a little before or end a little after. So a clip is a Lead In (ends on the picture), a Play out (starts on it), an Idle Loop (both ends) or an Into Next (this picture first, the next Frame's last).
 - **The player picks the kind; nothing detects it.** Which suits a Frame depends on how its pictures came out and on the player's edits, which nothing upstream sees. Into Next joins two pictures as one shot only when they agree about the place: between two parts of a room, five tries at the prompt gave a cut, a morph that moved the people, or at best a camera move, and the same story as a Chain, whose pictures agree, joined without one. So it's offered only with a next picture, and warns.

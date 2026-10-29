@@ -91,7 +91,7 @@ export interface EditOrder {
 }
 
 /**
- * What a `clip` is told (docs/video-plan.md): its kind, what happens in it (the movement, the
+ * What a `clip` is told (ADR 0025): its kind, what happens in it (the movement, the
  * camera, the sound), how many seconds it lasts, and whether anyone may speak in it.
  */
 export interface ClipOrder {
