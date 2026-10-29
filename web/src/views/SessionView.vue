@@ -4,7 +4,7 @@ import { onBeforeRouteLeave } from 'vue-router'
 import ComposeBox from '../components/ComposeBox.vue'
 import FrameImage from '../components/FrameImage.vue'
 import CollapsibleTextarea from '../components/CollapsibleTextarea.vue'
-import PictureButtons from '../components/PictureButtons.vue'
+import FrameTab from '../components/FrameTab.vue'
 import ImageModelPicker from '../components/ImageModelPicker.vue'
 import ModelComparison from '../components/ModelComparison.vue'
 import RenderAllButton from '../components/RenderAllButton.vue'
@@ -641,16 +641,6 @@ const promptDiff = computed(() => {
             >
               Cancel
             </button>
-            <PictureButtons
-              v-if="shown"
-              :picture="picture"
-              :has-job="(kind) => hasJob(shown!.index, kind)"
-              can-render
-              button-class="rounded-lg border border-line px-3 py-2 text-sm disabled:opacity-50"
-              @queue="(kind) => queue(kind, shown!.index)"
-              @view="(kind) => (open3d = { index: shown!.index, kind })"
-              @edit="startEdit(shown!.index)"
-            />
             <RenderAllButton
               v-if="featureOn('images') && session.frames.length"
               :count="toRender.length"
@@ -688,7 +678,7 @@ const promptDiff = computed(() => {
             :tabs="[
               { id: 'log', label: 'Frames' },
               { id: 'queue', label: queueTabLabel(jobs) },
-              { id: 'prompt', label: 'Prompt' },
+              { id: 'prompt', label: 'Frame' },
             ]"
           />
         </div>
@@ -832,9 +822,17 @@ const promptDiff = computed(() => {
           data-prompt-panel
         >
           <h2 class="hidden border-b border-line px-4 py-2 text-sm font-medium xl:block">
-            Prompt
+            Frame
           </h2>
           <div class="flex-1 overflow-y-auto p-4 text-sm" role="tabpanel">
+          <FrameTab
+            :picture="picture"
+            :has-job="(kind) => !!shown && hasJob(shown.index, kind)"
+            :can-render="!!shown && !onPending"
+            @queue="(kind) => queue(kind, shown!.index)"
+            @view="(kind) => (open3d = { index: shown!.index, kind })"
+            @edit="startEdit(shown!.index)"
+          >
           <template v-if="shown || (onPending && pending?.prompt)">
             <div class="flex items-start gap-2" :class="shown?.timings ? 'mb-1' : 'mb-3'">
               <p class="flex-1 text-muted">
@@ -928,6 +926,7 @@ const promptDiff = computed(() => {
           </template>
           <p v-else-if="onPending" class="animate-pulse text-muted">Writing the prompt…</p>
           <p v-else class="text-muted">No prompt yet.</p>
+          </FrameTab>
           </div>
         </section>
       </aside>

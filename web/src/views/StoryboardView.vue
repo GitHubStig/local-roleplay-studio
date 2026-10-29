@@ -36,7 +36,7 @@ import FrameViewer from '../components/FrameViewer.vue'
 import Icon from '../components/Icon.vue'
 import JobQueue from '../components/JobQueue.vue'
 import LookForm from '../components/LookForm.vue'
-import PictureButtons from '../components/PictureButtons.vue'
+import FrameTab from '../components/FrameTab.vue'
 import ImageModelPicker from '../components/ImageModelPicker.vue'
 import ModelComparison from '../components/ModelComparison.vue'
 import RenderAllButton from '../components/RenderAllButton.vue'
@@ -61,6 +61,25 @@ const router = useRouter()
 const selected = ref(0)
 const frameList = useTemplateRef<HTMLElement>('frameList')
 const panel = ref<'frames' | 'queue' | 'prompt'>('frames')
+/**
+ * Which tab the detail panel shows: the selected Frame, or the Look. Until picked, the Look while
+ * the plan is reviewed (where the review starts), and the Frame once Frames are written.
+ */
+const detailPicked = ref<'frame' | 'look' | null>(null)
+const detail = computed({
+  get: () => detailPicked.value ?? (writingStarted.value ? 'frame' : 'look'),
+  set: (tab) => (detailPicked.value = tab),
+})
+/** A narrow window's one row of tabs: the Frame and the Look are two of them. */
+const narrowTab = computed({
+  get: () => (panel.value === 'prompt' ? detail.value : panel.value),
+  set: (tab: 'frames' | 'queue' | 'frame' | 'look') => {
+    if (tab === 'frame' || tab === 'look') {
+      panel.value = 'prompt'
+      detail.value = tab
+    } else panel.value = tab
+  },
+})
 const message = ref<{ kind: 'error' | Outcome; text: string } | null>(null)
 
 /**
@@ -667,17 +686,6 @@ const imagesOn = computed(() => featureOn.value('images'))
             >
               Cancel
             </button>
-            <PictureButtons
-              v-if="current && currentWritten"
-              :picture="picture"
-              :has-job="(kind) => hasJob(current!.index, kind)"
-              :can-render="!current.blocked"
-              :busy="waitForText"
-              button-class="rounded-lg border border-line px-3 py-2 text-sm disabled:opacity-50"
-              @queue="(kind) => queueSaved(kind, current!.index)"
-              @view="(kind) => (open3d = { index: current!.index, kind })"
-              @edit="startEdit(current!.index)"
-            />
             <RenderAllButton
               v-if="imagesOn && writingStarted"
               :count="toRender.length"
@@ -721,11 +729,12 @@ const imagesOn = computed(() => featureOn.value('images'))
         <!-- Narrow windows: one panel at a time. From xl up: the Prompt beside the others. -->
         <div class="xl:hidden">
           <PanelTabs
-            v-model="panel"
+            v-model="narrowTab"
             :tabs="[
               { id: 'frames', label: 'Frames' },
               { id: 'queue', label: queueTabLabel(jobs) },
-              { id: 'prompt', label: 'Prompt' },
+              { id: 'frame', label: 'Frame' },
+              { id: 'look', label: 'Look' },
             ]"
           />
         </div>
@@ -832,12 +841,18 @@ const imagesOn = computed(() => featureOn.value('images'))
           :class="panel === 'prompt' ? 'flex' : 'hidden xl:flex'"
           data-prompt-panel
         >
-          <h2 class="hidden border-b border-line px-4 py-2 text-sm font-medium xl:block">Prompt</h2>
+          <div class="hidden xl:block">
+            <PanelTabs
+              v-model="detail"
+              :tabs="[{ id: 'frame', label: current ? `Frame ${current.index + 1}` : 'Frame' }, { id: 'look', label: 'Look' }]"
+            />
+          </div>
           <div class="flex flex-1 flex-col gap-4 overflow-y-auto p-4 text-sm" role="tabpanel">
             <p v-if="!look" class="text-muted">The Look and Frames appear as the plan is written.</p>
 
             <LookForm
               v-else
+              v-show="detail === 'look'"
               ref="lookForm"
               :look="look"
               :save="saveLookDraft"
@@ -857,8 +872,19 @@ const imagesOn = computed(() => featureOn.value('images'))
               </template>
             </LookForm>
 
+            <FrameTab
+              v-if="current"
+              v-show="detail === 'frame'"
+              :picture="picture"
+              :has-job="(kind) => hasJob(current!.index, kind)"
+              :can-render="currentWritten && !current.blocked"
+              :busy="waitForText"
+              @queue="(kind) => queueSaved(kind, current!.index)"
+              @view="(kind) => (open3d = { index: current!.index, kind })"
+              @edit="startEdit(current!.index)"
+            >
             <form
-              v-if="current && frameDraft"
+              v-if="frameDraft"
               class="flex min-w-0 flex-col gap-2"
               data-frame-editor
               @submit.prevent="flushFrame"
@@ -982,6 +1008,7 @@ const imagesOn = computed(() => featureOn.value('images'))
                 </button>
               </div>
             </div>
+            </FrameTab>
           </div>
           <!-- Below the Look and Beats, where the review ends: write the Frames, or stop the plan or writing. -->
           <div

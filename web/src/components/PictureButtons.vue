@@ -8,6 +8,7 @@ import Frame3dButtons from './Frame3dButtons.vue'
  * renders on demand), upscale it, make it into 3D, and edit it (in the viewer, ADR 0021, where its
  * versions are). Each queues a job; a button is off while that job is queued or running on the
  * Frame, and all are while `busy`, except Edit, which opens the viewer on an edit being made.
+ * `part` draws only the picture's own buttons or only the 3D ones, for a panel that groups them.
  */
 const props = withDefaults(
   defineProps<{
@@ -20,8 +21,9 @@ const props = withDefaults(
     /** Why nothing can be queued for now, shown on hover: the Text Model is at work, and a job would unload it. */
     busy?: string
     buttonClass?: string
+    part?: 'picture' | '3d' | 'all'
   }>(),
-  { canRender: false, buttonClass: 'action' },
+  { canRender: false, buttonClass: 'action', part: 'all' },
 )
 defineEmits<{
   queue: [kind: JobKind]
@@ -39,7 +41,7 @@ const pictured = () => !!props.picture || props.hasJob('render') || props.hasJob
 </script>
 
 <template>
-  <template v-if="featureOn('images')">
+  <template v-if="featureOn('images') && part !== '3d'">
     <button
       v-if="canRender"
       type="button"
@@ -74,6 +76,7 @@ const pictured = () => !!props.picture || props.hasJob('render') || props.hasJob
     </button>
   </template>
   <Frame3dButtons
+    v-if="part !== 'picture'"
     :picture="picture"
     :disabled="(kind) => !!busy || hasJob(kind)"
     :busy="busy"
