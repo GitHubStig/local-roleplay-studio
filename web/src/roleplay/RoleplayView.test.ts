@@ -352,6 +352,52 @@ describe('RoleplayView', () => {
     expect(buttonNamed(wrapper, 'Undo').attributes('disabled')).toBeDefined()
   })
 
+  it('selects the newest Frame, or the one picked in the list or the conversation', async () => {
+    const pictured = {
+      ...frame(1, 'Thanks.', 'Sit.'),
+      prompt: 'Elena by the stove.',
+      pictures: [picture('frame-1.png')],
+    }
+    vi.mocked(api.getSession).mockResolvedValue(
+      roleplaySession([frame(0, null, 'Get inside.'), pictured, frame(2, 'Tea?', 'Sure.')]),
+    )
+    const { wrapper } = await mountIt()
+    const tab = () => wrapper.find('[data-detail-panel] [data-tab="frame"]').text()
+    const current = () =>
+      wrapper.findAll('[data-reply]').map((r) => r.attributes('aria-current') === 'true')
+    expect(tab()).toBe('Frame 2')
+    expect(current()).toEqual([false, false, true])
+
+    await wrapper.findAll('[data-frames-list] [data-frame]')[1].trigger('click')
+    expect(tab()).toBe('Frame 1')
+    expect(current()).toEqual([false, true, false])
+    // Everything about the Frame is in its tab; the conversation keeps only Listen.
+    const panel = wrapper.find('[data-frame-panel]')
+    expect(panel.find('[data-picture-button]').text()).toBe('Picture again')
+    expect(panel.find('[data-render-button]').text()).toBe('Re-render')
+    expect(panel.text()).toContain('Elena by the stove.')
+    const transcript = wrapper.find('[data-transcript]')
+    expect(transcript.find('[data-picture-button]').exists()).toBe(false)
+    expect(transcript.find('[data-render-button]').exists()).toBe(false)
+    await panel.find('[data-picture-button]').trigger('click')
+    await flushPromises()
+    expect(api.queueJob).toHaveBeenCalledWith('r1', 'picture', 1)
+
+    await wrapper.findAll('[data-reply]')[0].trigger('click')
+    expect(tab()).toBe('Frame 0')
+  })
+
+  it('opens the side panel on the Look and Cast for review, and on the Frame once begun', async () => {
+    vi.mocked(api.getSession).mockResolvedValue({ ...roleplaySession(), cast })
+    const reviewing = (await mountIt()).wrapper
+    const selected = (w: typeof reviewing) =>
+      w.find('[data-detail-panel] [role="tab"][aria-selected="true"]').attributes('data-tab')
+    expect(selected(reviewing)).toBe('cast')
+    reviewing.unmount()
+    vi.mocked(api.getSession).mockResolvedValue(roleplaySession([frame(0, null, 'Get inside.')]))
+    expect(selected((await mountIt()).wrapper)).toBe('frame')
+  })
+
   it('restarts back to the Cast once confirmed, to begin again', async () => {
     vi.mocked(api.restartSession).mockResolvedValue({ ...roleplaySession([]), cast })
     const confirm = vi.fn().mockReturnValueOnce(false).mockReturnValueOnce(true)
@@ -504,7 +550,7 @@ describe('RoleplayView', () => {
       await vi.advanceTimersByTimeAsync(1100)
       await flushPromises()
       expect(played).toEqual(['speech-0-bbbbbbbb.wav'])
-      expect(wrapper.find('[data-listen]').text()).toBe('■ Stop')
+      expect(wrapper.find('[data-listen]').attributes('aria-label')).toBe('Stop')
     })
 
     it('plays a line already spoken, and speaks again one spoken in an earlier voice', async () => {
@@ -578,8 +624,8 @@ describe('RoleplayView', () => {
       await vi.advanceTimersByTimeAsync(1100)
       await flushPromises()
       expect(played).toEqual(['thought-0-cccccccc.wav'])
-      expect(wrapper.find('[data-listen-thought]').text()).toBe('■ Stop')
-      expect(wrapper.find('[data-listen]').text()).toBe('▶ Listen')
+      expect(wrapper.find('[data-listen-thought]').attributes('aria-label')).toBe('Stop')
+      expect(wrapper.find('[data-listen]').attributes('aria-label')).toBe('Listen')
     })
 
     it('has nothing to Listen to in a line of only "…"', async () => {

@@ -5,6 +5,7 @@ import ComposeBox from '../components/ComposeBox.vue'
 import FrameImage from '../components/FrameImage.vue'
 import CollapsibleTextarea from '../components/CollapsibleTextarea.vue'
 import FrameTab from '../components/FrameTab.vue'
+import FrameListItem from '../components/FrameListItem.vue'
 import ImageModelPicker from '../components/ImageModelPicker.vue'
 import ModelComparison from '../components/ModelComparison.vue'
 import RenderAllButton from '../components/RenderAllButton.vue'
@@ -715,28 +716,13 @@ const promptDiff = computed(() => {
             @keydown="onFrameKey"
           >
           <li v-for="frame in session.frames" :key="frame.index" class="group relative">
-            <button
-              type="button"
-              class="flex w-full gap-3 border-b border-line p-3 text-left text-sm hover:bg-surface"
-              :class="{ 'bg-surface': shown?.index === frame.index }"
-              :aria-current="shown?.index === frame.index"
+            <FrameListItem
+              :thumb="pictureOf(frame) && imageUrl(session.id, pictureOf(frame)!.image)"
+              :number="frame.index"
+              :current="shown?.index === frame.index"
               data-frame
               @click="pick(frame.index)"
             >
-              <img
-                v-if="pictureOf(frame)"
-                :src="imageUrl(session.id, pictureOf(frame)!.image)"
-                alt=""
-                class="h-20 w-14 shrink-0 rounded object-cover"
-              />
-              <span
-                v-else
-                class="flex h-20 w-14 shrink-0 items-center justify-center rounded border border-dashed border-line text-xs text-muted"
-                title="Not rendered yet"
-              >
-                {{ frame.index }}
-              </span>
-              <span class="flex min-w-0 flex-col gap-1">
                 <!-- Capped here; the Prompt tab and the text box show it in full. -->
                 <span class="line-clamp-2 font-medium" :title="frame.action ?? undefined" data-action>
                   {{ frame.action ?? 'Opening' }}
@@ -757,8 +743,7 @@ const promptDiff = computed(() => {
                 >
                   {{ frame.narration }}
                 </span>
-              </span>
-            </button>
+            </FrameListItem>
             <button
               v-if="canUndo && frame.index === session.frames.at(-1)?.index"
               type="button"

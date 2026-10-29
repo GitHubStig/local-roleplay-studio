@@ -37,6 +37,7 @@ import Icon from '../components/Icon.vue'
 import JobQueue from '../components/JobQueue.vue'
 import LookForm from '../components/LookForm.vue'
 import FrameTab from '../components/FrameTab.vue'
+import FrameListItem from '../components/FrameListItem.vue'
 import ImageModelPicker from '../components/ImageModelPicker.vue'
 import ModelComparison from '../components/ModelComparison.vue'
 import RenderAllButton from '../components/RenderAllButton.vue'
@@ -791,30 +792,16 @@ const imagesOn = computed(() => featureOn.value('images'))
               >
                 <Icon name="grip" />
               </button>
-              <button
-                type="button"
-                class="flex min-w-0 flex-1 gap-3 border-b border-line p-3 text-left text-sm hover:bg-surface"
-                :class="{ 'bg-surface': selected === f.index }"
-                :aria-current="selected === f.index"
+              <FrameListItem
+                class="flex-1"
+                :thumb="'pictures' in f && pictureOf(f) ? imageUrl(session.id, pictureOf(f)!.image) : null"
+                :number="f.index + 1"
+                :current="selected === f.index"
+                :dimmed="'pictures' in f && changed(f)"
+                :writing="writingIndex === f.index"
                 data-frame
                 @click="pick(f.index)"
               >
-                <img
-                  v-if="'pictures' in f && pictureOf(f)"
-                  :src="imageUrl(session.id, pictureOf(f)!.image)"
-                  alt=""
-                  class="h-20 w-14 shrink-0 rounded object-cover"
-                  :class="{ 'opacity-50': changed(f) }"
-                />
-                <span
-                  v-else
-                  class="flex h-20 w-14 shrink-0 items-center justify-center rounded border border-dashed border-line text-muted"
-                  :class="{ 'render-sweep': writingIndex === f.index }"
-                  :data-writing-frame="writingIndex === f.index ? '' : undefined"
-                >
-                  {{ f.index + 1 }}
-                </span>
-                <span class="flex min-w-0 flex-col gap-1">
                   <span class="line-clamp-3">{{ f.beat }}</span>
                   <span v-if="'pending' in f" class="animate-pulse text-xs text-muted">Planning…</span>
                   <span
@@ -830,8 +817,7 @@ const imagesOn = computed(() => featureOn.value('images'))
                   <span v-else class="text-xs font-medium" :class="status(f).tone" data-status>
                     {{ frameJob(f.index) ? `${JOB_NAMES[frameJob(f.index)!.kind]}…` : status(f).label }}
                   </span>
-                </span>
-              </button>
+              </FrameListItem>
             </li>
           </ol>
         </section>

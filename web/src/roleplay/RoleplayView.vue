@@ -9,7 +9,9 @@ import SaveStatus from '../components/SaveStatus.vue'
 import LookForm from '../components/LookForm.vue'
 import RestartButton from '../components/RestartButton.vue'
 import ComposeBox from '../components/ComposeBox.vue'
-import PictureButtons from '../components/PictureButtons.vue'
+import FrameTab from '../components/FrameTab.vue'
+import FrameListItem from '../components/FrameListItem.vue'
+import Icon from '../components/Icon.vue'
 import ImageModelPicker from '../components/ImageModelPicker.vue'
 import ModelComparison from '../components/ModelComparison.vue'
 import { useImageModels } from '../composables/useSettingsOptions'
@@ -190,9 +192,12 @@ async function reload() {
 /** The Frame the Queue tab last jumped to, highlighted for a moment. */
 const highlighted = ref<number | null>(null)
 let highlightTimer: ReturnType<typeof setTimeout> | undefined
-function goToFrame(index: number) {
+/** Scrolls the conversation to Frame `index`. */
+const scrollToFrame = (index: number) =>
   transcript.value?.querySelector(`[data-frame-index="${index}"]`)
     ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+function goToFrame(index: number) {
+  scrollToFrame(index)
   highlighted.value = index
   clearTimeout(highlightTimer)
   highlightTimer = setTimeout(() => (highlighted.value = null), 1600)
@@ -299,8 +304,6 @@ async function saveVoiceDraft() {
   }
 }
 
-/** The side panel's tab: the Look and Cast, or the queue. */
-const sideTab = ref<'cast' | 'queue'>('cast')
 
 const cast = computed(() => session.value?.cast ?? null)
 /** The Frames as shown (the server tidies each Reply as it saves it). */
@@ -308,6 +311,55 @@ const shownFrames = computed(() => session.value?.frames ?? [])
 /** The Cast is written but the scene hasn't begun: the player reviews it first. */
 const reviewing = computed(() => !!cast.value && session.value!.frames.length === 0)
 const begun = computed(() => (session.value?.frames.length ?? 0) > 0)
+
+/**
+ * The selected Frame: the one picked in the Frames list or the conversation, or else the newest,
+ * which each new Reply moves on to. Its tab in the side panel has everything about it.
+ */
+const picked = ref<number | null>(null)
+const selectedIndex = computed(() => {
+  const frames = session.value?.frames ?? []
+  return picked.value !== null && frames[picked.value] ? picked.value : frames.at(-1)?.index ?? null
+})
+const selectedFrame = computed(() =>
+  selectedIndex.value === null ? undefined : session.value?.frames[selectedIndex.value]
+)
+/** Picks Frame `index`; the newest, so the selection follows the Replies again. */
+function pick(index: number) {
+  picked.value = index === session.value?.frames.at(-1)?.index ? null : index
+}
+/** Picks a Frame from the list, and shows it in the conversation. */
+function pickFromList(index: number) {
+  pick(index)
+  scrollToFrame(index)
+}
+
+/**
+ * The side panel, as a Chain's: the Frames or the queue beside the detail (the selected Frame, or
+ * the Look and Cast); on a narrow window, one of them at a time. Until picked: the Look and Cast
+ * while it's reviewed, before the scene begins, and the Frames and the Frame once it has.
+ */
+const panelPicked = ref<'frames' | 'queue' | 'detail' | null>(null)
+const panel = computed(() => panelPicked.value ?? (begun.value ? 'frames' : 'detail'))
+const detailPicked = ref<'frame' | 'cast' | null>(null)
+const detail = computed({
+  get: () => detailPicked.value ?? (begun.value ? 'frame' : 'cast'),
+  set: (tab) => (detailPicked.value = tab),
+})
+const listTab = computed({
+  get: () => (panel.value === 'queue' ? 'queue' : 'frames'),
+  set: (tab: 'frames' | 'queue') => (panelPicked.value = tab),
+})
+/** A narrow window's one row of tabs: the Frame and the Look and Cast are two of them. */
+const narrowTab = computed({
+  get: () => (panel.value === 'detail' ? detail.value : listTab.value),
+  set: (tab: 'frames' | 'queue' | 'frame' | 'cast') => {
+    if (tab === 'frame' || tab === 'cast') {
+      panelPicked.value = 'detail'
+      detail.value = tab
+    } else panelPicked.value = tab
+  },
+})
 const characterName = computed(() => cast.value?.character.name ?? 'The Character')
 const personaName = computed(() => cast.value?.persona.name ?? 'You')
 
@@ -690,7 +742,10 @@ const lookSavingText = computed(() =>
               :class="{
                 'render-sweep': runningOn(frame.index) && runningOn(frame.index)!.kind !== 'voice',
                 'ring-2 ring-info': highlighted === frame.index,
+                'bg-canvas ring-1 ring-line': selectedIndex === frame.index && highlighted !== frame.index,
               }"
+              :aria-current="selectedIndex === frame.index"
+              @click="pick(frame.index)"
               :data-rendering="runningOn(frame.index)?.phase === 'queued'
               ? 'queued'
               : undefined"
@@ -710,20 +765,21 @@ const lookSavingText = computed(() =>
                     <button
                       v-if="canSpeak(frame, 'thought') && canListen(frame.thoughtSpeech)"
                       type="button"
-                      class="action ml-1.5 not-italic align-middle"
-                      :class="{ 'action-on': playing === partKey(frame.index, 'thought') }"
+                      class="ml-1 inline-flex align-[-0.1em] text-muted not-italic hover:text-fg disabled:opacity-50"
+                      :class="{ 'text-info': playing === partKey(frame.index, 'thought') }"
                       :disabled="hasJob(frame.index, 'speak-thought')"
+                      :aria-label="playing === partKey(frame.index, 'thought') ? 'Stop' : 'Listen'"
                       :title="frame.thoughtSpeech && !spokenNow(frame.thoughtSpeech)
                         ? 'Spoken in an earlier voice: Listen speaks it again'
                         : `Hear ${characterName} think it, whispered`"
                       data-listen-thought
-                      @click="listen(frame.index, 'thought')"
+                      @click.stop="listen(frame.index, 'thought')"
                     >
-                      {{ playing === partKey(frame.index, 'thought') ? '■ Stop' : '▶ Listen' }}
+                      <Icon :name="playing === partKey(frame.index, 'thought') ? 'stop' : 'speaker'" />
                     </button>
                     <UndirectedNote
                       v-if="spokenNow(frame.thoughtSpeech) && frame.thoughtSpeech?.undirected"
-                      class="ml-1.5"
+                      class="ml-1.5 not-italic"
                       :reason="frame.thoughtSpeech.undirected"
                       :busy="hasJob(frame.index, 'speak-thought')"
                       @again="queue('speak-thought', frame.index)"
@@ -732,82 +788,40 @@ const lookSavingText = computed(() =>
                   <p v-if="frame.reply.actions" class="max-w-prose italic" data-actions>
                     {{ frame.reply.actions }}
                   </p>
-                  <p v-if="frame.reply.dialogue" class="max-w-prose text-lg" data-dialogue>
+                  <p
+                    v-if="frame.reply.dialogue"
+                    class="max-w-prose text-lg"
+                    data-dialogue
+                  >
                     “{{ frame.reply.dialogue }}”
-                  </p>
-                  <div class="flex max-w-prose flex-col gap-1 text-xs" data-picture>
-                    <FrameJobs
-                      :jobs="frameJobs(frame.index)"
-                      :describe="describeJob"
-                      @retry="retry"
-                      @drop="drop"
+                    <button
+                      v-if="canSpeak(frame) && canListen(frame.speech)"
+                      type="button"
+                      class="ml-1 inline-flex align-[-0.1em] text-muted not-italic hover:text-fg disabled:opacity-50"
+                      :class="{ 'text-info': playing === partKey(frame.index, 'dialogue') }"
+                      :disabled="hasJob(frame.index, 'speak')"
+                      :aria-label="playing === partKey(frame.index, 'dialogue') ? 'Stop' : 'Listen'"
+                      :title="frame.speech && !spokenNow(frame.speech)
+                        ? 'Spoken in an earlier voice: Listen speaks it again'
+                        : `Hear ${characterName} say it`"
+                      data-listen
+                      @click.stop="listen(frame.index)"
+                    >
+                      <Icon :name="playing === partKey(frame.index, 'dialogue') ? 'stop' : 'speaker'" />
+                    </button>
+                    <span
+                      v-if="spokenNow(frame.speech) && deliveryWords(frame.speech)"
+                      class="ml-1 text-xs text-muted"
+                      data-delivery
+                    >· {{ deliveryWords(frame.speech) }}</span>
+                    <UndirectedNote
+                      v-if="spokenNow(frame.speech) && frame.speech?.undirected"
+                      class="ml-1.5 text-xs"
+                      :reason="frame.speech.undirected"
+                      :busy="hasJob(frame.index, 'speak')"
+                      @again="queue('speak', frame.index)"
                     />
-                    <p class="flex flex-wrap items-center gap-1.5">
-                      <button
-                        v-if="canSpeak(frame) && canListen(frame.speech)"
-                        type="button"
-                        class="action"
-                        :class="{ 'action-on': playing === partKey(frame.index, 'dialogue') }"
-                        :disabled="hasJob(frame.index, 'speak')"
-                        :title="frame.speech && !spokenNow(frame.speech)
-                          ? 'Spoken in an earlier voice: Listen speaks it again'
-                          : `Hear ${characterName} say it`"
-                        data-listen
-                        @click="listen(frame.index)"
-                      >
-                        {{ playing === partKey(frame.index, 'dialogue') ? '■ Stop' : '▶ Listen' }}
-                      </button>
-                      <span
-                        v-if="spokenNow(frame.speech) && deliveryWords(frame.speech)"
-                        class="mr-1.5 text-muted"
-                        data-delivery
-                      >· {{ deliveryWords(frame.speech) }}</span>
-                      <UndirectedNote
-                        v-if="spokenNow(frame.speech) && frame.speech?.undirected"
-                        class="mr-1.5"
-                        :reason="frame.speech.undirected"
-                        :busy="hasJob(frame.index, 'speak')"
-                        @again="queue('speak', frame.index)"
-                      />
-                      <button
-                        type="button"
-                        class="action"
-                        :disabled="hasJob(frame.index, 'picture')"
-                        data-picture-button
-                        @click="queueSaved('picture', frame.index)"
-                      >
-                        {{ frame.prompt ? 'Picture again' : 'Picture this' }}
-                      </button>
-                      <PictureButtons
-                        :picture="pictureOf(frame)"
-                        :has-job="(kind) => hasJob(frame.index, kind)"
-                        :can-render="(!!frame.prompt && !frame.blocked) || hasJob(frame.index, 'picture')"
-                        @queue="(kind) => queueSaved(kind, frame.index)"
-                        @view="(kind) => (open3d = { index: frame.index, kind })"
-                        @edit="startEdit(frame.index)"
-                      />
-                    </p>
-                    <details v-if="frame.prompt" class="text-muted" data-image-prompt>
-                      <summary class="cursor-pointer select-none">
-                        Image Prompt
-                        <span v-if="frame.blocked" class="text-warn">· crosses a limit ({{ frame.blocked }})</span>
-                      </summary>
-                      <p class="mt-1" data-shown>Shows {{ shownNames(frame.shown) }}</p>
-                      <p class="mt-1 leading-relaxed">{{ frame.prompt }}</p>
-                      <p v-if="frame.pictureTimings" class="mt-1" data-picture-timings>
-                        Pictured in {{ frame.pictureTimings.text.toFixed(1) }} s<template
-                          v-if="frame.pictureModel"
-                        > by {{ frame.pictureModel }}</template>
-                      </p>
-                      <p v-if="pictureOf(frame)" class="mt-1" data-render-timings>
-                        Rendered: {{ renderedParts(pictureOf(frame)!).join(' · ') }}
-                      </p>
-                      <details v-if="frame.pictureThinking" class="mt-1">
-                        <summary class="cursor-pointer select-none">Reasoning</summary>
-                        <p class="mt-1 whitespace-pre-wrap leading-relaxed">{{ frame.pictureThinking }}</p>
-                      </details>
-                    </details>
-                  </div>
+                  </p>
                 </div>
                 <button
                   v-if="pictureOf(frame) || previewOn(frame.index)"
@@ -971,27 +985,135 @@ const lookSavingText = computed(() =>
         </div>
       </main>
 
-      <aside class="flex w-80 flex-col border-l border-line xl:w-96" data-side-panel>
-        <PanelTabs
-          v-model="sideTab"
-          :tabs="[{ id: 'cast', label: 'Look & Cast' }, { id: 'queue', label: queueTabLabel(jobs) }]"
-        />
-
-        <!-- The queue: what's running, queued and failed; click one to go to its Frame. -->
-        <section v-if="sideTab === 'queue'" class="min-h-0 flex-1 overflow-y-auto" data-queue>
-          <JobQueue
-            :jobs="jobs"
-            empty="Nothing queued. Picture, Render and Upscale under a Reply add work here, to run while you carry on."
-            :describe="describeJob"
-            @go="goToFrame"
-            @edit="showEdit"
-            @retry="retry"
-            @drop="drop"
-            @clear="clear"
+      <aside class="flex w-80 flex-col border-l border-line xl:w-auto xl:flex-row" data-side-panel>
+        <!-- Narrow windows: one panel at a time. From xl up: the detail beside the others. -->
+        <div class="xl:hidden">
+          <PanelTabs
+            v-model="narrowTab"
+            :tabs="[
+              { id: 'frames', label: 'Frames' },
+              { id: 'queue', label: queueTabLabel(jobs) },
+              { id: 'frame', label: 'Frame' },
+              { id: 'cast', label: 'Look & Cast' },
+            ]"
           />
+        </div>
+
+        <section
+          class="min-h-0 flex-1 flex-col xl:w-72 xl:flex-none xl:border-r xl:border-line"
+          :class="panel === 'detail' ? 'hidden xl:flex' : 'flex'"
+          data-list-panel
+        >
+          <div class="hidden xl:block">
+            <PanelTabs
+              v-model="listTab"
+              :tabs="[{ id: 'frames', label: 'Frames' }, { id: 'queue', label: queueTabLabel(jobs) }]"
+            />
+          </div>
+          <!-- The queue: what's running, queued and failed; click one to go to its Frame. -->
+          <section v-if="listTab === 'queue'" class="min-h-0 flex-1 overflow-y-auto" data-queue>
+            <JobQueue
+              :jobs="jobs"
+              empty="Nothing queued. Picture, Render and Upscale in a Frame's tab add work here, to run while you carry on."
+              :describe="describeJob"
+              @go="goToFrame"
+              @edit="showEdit"
+              @retry="retry"
+              @drop="drop"
+              @clear="clear"
+            />
+          </section>
+
+          <ol v-else class="min-h-0 flex-1 overflow-y-auto" data-frames-list>
+            <li v-for="frame in shownFrames" :key="frame.index">
+              <FrameListItem
+                :thumb="pictureOf(frame) && imageUrl(session.id, pictureOf(frame)!.image)"
+                :number="frame.index"
+                :current="selectedIndex === frame.index"
+                :dimmed="changed(frame)"
+                data-frame
+                @click="pickFromList(frame.index)"
+              >
+                <span class="line-clamp-2 font-medium">{{ frame.message ?? 'Opening' }}</span>
+                <span class="line-clamp-3 text-muted">{{ frame.reply.actions }}</span>
+              </FrameListItem>
+            </li>
+          </ol>
         </section>
 
-        <div v-else class="min-h-0 flex-1 overflow-y-auto" data-cast-panel>
+        <section
+          class="min-h-0 flex-1 flex-col xl:w-[28rem] xl:flex-none"
+          :class="panel === 'detail' ? 'flex' : 'hidden xl:flex'"
+          data-detail-panel
+        >
+          <div class="hidden xl:block">
+            <PanelTabs
+              v-model="detail"
+              :tabs="[
+                { id: 'frame', label: selectedFrame ? `Frame ${selectedFrame.index}` : 'Frame' },
+                { id: 'cast', label: 'Look & Cast' },
+              ]"
+            />
+          </div>
+          <div v-show="detail === 'frame'" class="min-h-0 flex-1 overflow-y-auto p-4 text-sm" data-frame-panel>
+            <FrameTab
+              v-if="selectedFrame"
+              :picture="pictureOf(selectedFrame)"
+              :has-job="(kind) => hasJob(selectedFrame!.index, kind)"
+              :can-render="(!!selectedFrame.prompt && !selectedFrame.blocked) || hasJob(selectedFrame.index, 'picture')"
+              @queue="(kind) => queueSaved(kind, selectedFrame!.index)"
+              @view="(kind) => (open3d = { index: selectedFrame!.index, kind })"
+              @edit="startEdit(selectedFrame!.index)"
+            >
+              <div class="flex flex-col gap-2">
+                <h3 class="text-base font-semibold">Frame {{ selectedFrame.index }}</h3>
+                <FrameJobs
+                  :jobs="frameJobs(selectedFrame.index)"
+                  :describe="describeJob"
+                  @retry="retry"
+                  @drop="drop"
+                />
+                <section class="flex flex-col gap-1.5" data-image-prompt>
+                  <div class="flex items-center justify-between gap-2">
+                    <h4 class="text-xs font-medium text-muted">
+                      Image Prompt
+                      <span v-if="selectedFrame.blocked" class="text-warn">· crosses a limit ({{ selectedFrame.blocked }})</span>
+                    </h4>
+                    <button
+                      type="button"
+                      class="action"
+                      :disabled="hasJob(selectedFrame.index, 'picture')"
+                      data-picture-button
+                      @click="queueSaved('picture', selectedFrame.index)"
+                    >
+                      {{ selectedFrame.prompt ? 'Picture again' : 'Picture this' }}
+                    </button>
+                  </div>
+                  <template v-if="selectedFrame.prompt">
+                    <p class="text-xs text-muted" data-shown>Shows {{ shownNames(selectedFrame.shown) }}</p>
+                    <p class="leading-relaxed">{{ selectedFrame.prompt }}</p>
+                    <p v-if="selectedFrame.pictureTimings" class="text-xs text-muted" data-picture-timings>
+                      Pictured in {{ selectedFrame.pictureTimings.text.toFixed(1) }} s<template
+                        v-if="selectedFrame.pictureModel"
+                      > by {{ selectedFrame.pictureModel }}</template>
+                    </p>
+                    <p v-if="pictureOf(selectedFrame)" class="text-xs text-muted" data-render-timings>
+                      Rendered: {{ renderedParts(pictureOf(selectedFrame)!).join(' · ') }}
+                    </p>
+                    <details v-if="selectedFrame.pictureThinking" class="text-xs text-muted">
+                      <summary class="cursor-pointer select-none">Reasoning</summary>
+                      <p class="mt-1 whitespace-pre-wrap leading-relaxed">{{ selectedFrame.pictureThinking }}</p>
+                    </details>
+                  </template>
+                  <p v-else class="text-xs text-muted">
+                    Not pictured yet: Picture this has the Art Agent write its Image Prompt.
+                  </p>
+                </section>
+              </div>
+            </FrameTab>
+            <p v-else class="text-muted">The Frames appear once the scene begins.</p>
+          </div>
+        <div v-show="detail === 'cast'" class="min-h-0 flex-1 overflow-y-auto" data-cast-panel>
         <!-- Its border sweeps while the Cast is written, or written again. -->
         <section
           class="rounded-md border-b border-line p-4 text-sm"
@@ -1193,6 +1315,7 @@ const lookSavingText = computed(() =>
           </details>
         </form>
         </div>
+        </section>
       </aside>
     </template>
 
