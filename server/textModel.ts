@@ -55,6 +55,12 @@ export interface TextModel {
     signal: AbortSignal,
     onThinking?: (chunk: string) => void,
   ): Promise<StoryboardEdit>
+  /** Writes a clip's prompt, as plain text, passing it on as it's written (`video/clipPrompt.ts`). */
+  writeClip(
+    messages: { system: string; user: string },
+    signal: AbortSignal,
+    onContent?: (chunk: string) => void,
+  ): Promise<string>
 }
 
 // The prompts are Markdown files in `prompts/chain/`, `prompts/storyboard/` and `prompts/shared/`
@@ -544,7 +550,7 @@ export function parseStoryboardEdit(content: string): StoryboardEdit {
  * Output caps. A small model writing JSON under a schema sometimes never stops (padding with
  * whitespace until its large context fills), so every call gets a token cap and a time limit.
  */
-const MAX_TOKENS = { answer: 2048, yesNo: 32, perBeat: 120 }
+const MAX_TOKENS = { answer: 2048, yesNo: 32, perBeat: 120, clip: 600 }
 const TIME_LIMIT_MS = {
   answer: 2 * 60_000,
   thinking: 10 * 60_000,
@@ -578,7 +584,7 @@ export function chatTextModel(chat: Chat, opts: TextModelOptions = {}): TextMode
   async function streamChat(
     job: string,
     messages: { system: string; user: string } | Promise<{ system: string; user: string }>,
-    schema: object,
+    schema: object | undefined,
     maxTokens: number,
     signal: AbortSignal,
     onThinking?: (chunk: string) => void,
@@ -731,6 +737,15 @@ export function chatTextModel(chat: Chat, opts: TextModelOptions = {}): TextMode
       within(signal, answerLimit(), (s) => writeFrame(req, s, onThinking)),
     editStoryboardFrame: (req, signal, onThinking) =>
       within(signal, answerLimit(), (s) => edit(req, s, onThinking)),
+    // A paragraph, in plain text: no schema.
+    writeClip: (messages, signal, onContent) =>
+      within(
+        signal,
+        answerLimit(),
+        async (s) =>
+          (await streamChat('clip', messages, undefined, MAX_TOKENS.clip, s, undefined, onContent))
+            .content,
+      ),
   }
 }
 

@@ -73,6 +73,10 @@ Deno.test('Suggest is told the Limits in force', async () => {
 
 Deno.test('cleanSuggestion drops an introduction, the name in front, and quotes around it', () => {
   assertEquals(cleanSuggestion('"I take the wheel."', 'Sam Reyes'), 'I take the wheel.')
+  assertEquals(
+    cleanSuggestion("Here's one: I ask: who sent it?", 'Sam Reyes'),
+    'I ask: who sent it?',
+  )
   assertEquals(cleanSuggestion('Sam: I take the wheel.', 'Sam Reyes'), 'I take the wheel.')
   assertEquals(cleanSuggestion('**Sam Reyes:** I nod.', 'Sam Reyes'), 'I nod.')
   assertEquals(

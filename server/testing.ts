@@ -73,6 +73,8 @@ export interface Scripts {
   /** Each Frame's Write; with none scripted, a Frame is written as `writtenBody` says. */
   writes?: (StoryboardWrite | Error)[]
   edits?: (StoryboardEdit | Error)[]
+  /** Each clip prompt written. */
+  clips?: (string | Error)[]
 }
 
 /** The sentences the scripted Text Model writes for Frame `index` when none are scripted. */
@@ -92,6 +94,7 @@ export function scriptedTextModel(
   personChecks: string[]
   requests: FrameRequest[]
   writeRequests: StoryboardWriteRequest[]
+  clipRequests: { system: string; user: string }[]
 } {
   const next = <T>(queue: (T | Error)[] | undefined, what: string): Promise<T> => {
     const item = queue?.shift()
@@ -105,6 +108,8 @@ export function scriptedTextModel(
     requests: [] as FrameRequest[],
     /** Each Storyboard Frame written, in order. */
     writeRequests: [] as StoryboardWriteRequest[],
+    /** Each clip prompt asked for, in order. */
+    clipRequests: [] as { system: string; user: string }[],
     write(req: FrameRequest, signal: AbortSignal, onThinking?: (chunk: string) => void) {
       model.calls++
       model.requests.push(req)
@@ -139,6 +144,18 @@ export function scriptedTextModel(
       model.calls++
       signal.throwIfAborted()
       return next(scripts.edits, 'edit')
+    },
+    async writeClip(
+      messages: { system: string; user: string },
+      signal: AbortSignal,
+      onContent?: (chunk: string) => void,
+    ) {
+      model.calls++
+      model.clipRequests.push(messages)
+      signal.throwIfAborted()
+      const text = await next(scripts.clips, 'clip')
+      for (const word of text.split(/(?<= )/)) onContent?.(word)
+      return text
     },
   }
   return model

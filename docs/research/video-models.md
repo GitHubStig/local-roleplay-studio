@@ -2,6 +2,17 @@
 
 Measurements behind the video plan ([video-plan.md](../video-plan.md)). Newest first.
 
+## Clip prompts by the Text Model (2026-10-29, Windows PC)
+
+The first version of the prompts (`server/prompts/video/clip*.md` and the kinds' own), with the PC's Text Model (Gemma 4 12B heretic, Q4_K_M, on Ollama, Thinking off), on Frame 1 of a replay of the tavern (`server/replay/replays/tavern-arrival.yaml`): one prompt of each kind, 5 s, Play out with speech, the others without. Read, not yet made into clips.
+
+- All four kept to one paragraph in the present tense, named no one (people are described by clothes and place, as told), kept the camera still or said so, and ended on a "Sound:" line.
+- **Idle Loop** kept to small movement (a blink, breathing, a flicker) and brought no one out of place.
+- **Into Next** told the next Frame's action (walking to the bar, a coin on the counter), so it used the next picture and story.
+- **Play out with speech** quoted the Frame's lines exactly, with who speaks and how. Open: a Play out should go on from the picture, while these lines may already be in the picture's moment; a Frame's own dialogue may suit a Lead In better, and a Play out the next Frame's.
+- **Lead In** told the Frame's own action as the lead-up, which is the intent; whether it lands on the picture depends on where in that action the picture was drawn.
+- A fault found by the tests, not the model: stripping an introduction ("Here is the prompt:") ran to the line's last colon, so "Sound:" cut the prompt short; it now stops at the first colon (Suggest had the same, fixed too).
+
 ## LTX 2.5 on ComfyUI, each kind of clip (2026-10-29, Windows PC)
 
 The RTX 4070 (12 GB), ComfyUI 0.43.1, the files from ComfyUI's LTX 2.5 template: the 22B distilled transformer and the Gemma 4 12B text encoder (both `int8-convrot`), the video and audio VAEs (bf16). One workflow for every kind of clip, built from the template's first–last-frame graph (one pass, 8 steps, CFG 1, no upscale): an `LTXVAddGuide` at frame 0, at frame −1, or both, each at the template's strength 0.7; no prompt enhancer. 1280×704 at 24 fps, seed 7. The two pictures are the tavern scenario's, rendered with Z-Image Turbo at 1280×704 (seed 7, ~12 s each): Kael alone behind the bar, then the traveller arrived.

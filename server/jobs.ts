@@ -519,18 +519,14 @@ export function editOrder(body: unknown): EditOrder | string {
 const MAX_CLIP_PROMPT = 4000
 export const CLIP_SECONDS = { min: 2, max: 10 } as const
 
-/** A clip's order from a request, or why it isn't one. */
-export function clipOrder(body: unknown): ClipOrder | string {
-  const b = body as
-    | { kind?: unknown; prompt?: unknown; seconds?: unknown; speech?: unknown }
-    | undefined
+/** A clip as asked for, before its prompt is written: its kind, length and speech. */
+export type ClipAsk = Omit<ClipOrder, 'prompt'>
+
+/** What kind of clip a request asks for, how long and whether anyone speaks, or why it can't. */
+export function clipAsk(body: unknown): ClipAsk | string {
+  const b = body as { kind?: unknown; seconds?: unknown; speech?: unknown } | undefined
   if (!CLIP_KINDS.includes(b?.kind as ClipKind)) {
     return `kind must be one of: ${CLIP_KINDS.join(', ')}`
-  }
-  const prompt = typeof b?.prompt === 'string' ? b.prompt.trim() : ''
-  if (!prompt) return 'Say what happens in the clip'
-  if (prompt.length > MAX_CLIP_PROMPT) {
-    return `A clip prompt can be at most ${MAX_CLIP_PROMPT} characters`
   }
   const seconds = b?.seconds
   if (
@@ -540,7 +536,20 @@ export function clipOrder(body: unknown): ClipOrder | string {
     return `seconds must be a whole number from ${CLIP_SECONDS.min} to ${CLIP_SECONDS.max}`
   }
   if (typeof b?.speech !== 'boolean') return 'speech must be true or false'
-  return { kind: b.kind as ClipKind, prompt, seconds, speech: b.speech }
+  return { kind: b.kind as ClipKind, seconds, speech: b.speech }
+}
+
+/** A clip's order from a request, or why it isn't one. */
+export function clipOrder(body: unknown): ClipOrder | string {
+  const ask = clipAsk(body)
+  if (typeof ask === 'string') return ask
+  const b = body as { prompt?: unknown }
+  const prompt = typeof b.prompt === 'string' ? b.prompt.trim() : ''
+  if (!prompt) return 'Say what happens in the clip'
+  if (prompt.length > MAX_CLIP_PROMPT) {
+    return `A clip prompt can be at most ${MAX_CLIP_PROMPT} characters`
+  }
+  return { ...ask, prompt }
 }
 
 /** The job routes every Session kind shares, under `/api/sessions/:id/jobs`. */

@@ -68,7 +68,8 @@ export function typicalLength(messages: string[]): string {
  */
 export function cleanSuggestion(text: string, personaName: string): string {
   let s = text.trim()
-  s = s.replace(/^(?:here(?:'s| is)[^\n]*:|sure[^\n]*:)\s*/i, '')
+  // To the first colon only: a Message may have its own ("I ask: who sent it?").
+  s = s.replace(/^(?:here(?:'s| is)[^\n:]*:|sure[^\n:]*:)\s*/i, '')
   const names = [personaName, personaName.split(/\s+/)[0]].map((n) =>
     n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   )

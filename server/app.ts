@@ -57,6 +57,7 @@ import { loadStyleCache, StyleScoreError, styleScores, unembedded } from './styl
 import type { VoiceEngine } from './voice/voice.ts'
 import { roleplayExcerpt } from './roleplay/prompt.ts'
 import { roleplayRoutes } from './roleplay/routes.ts'
+import { clipRoutes } from './video/routes.ts'
 import { checkRoleplayJob, type RoleplayJobContext, runRoleplayJob } from './roleplay/jobs.ts'
 import { restartRoleplay } from './roleplay/engine.ts'
 import {
@@ -235,6 +236,7 @@ type LockKind =
   | 'setup'
   | 'suggest'
   | 'copy'
+  | 'clip-prompt'
 
 export function createHandler(deps: AppDeps): (req: Request) => Promise<Response> {
   const newSessionId = deps.newSessionId ?? defaultSessionId
@@ -273,6 +275,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     setup: 'The Roleplay is being set up',
     suggest: 'A message is being suggested',
     copy: 'This Storyboard is being made into a Chain',
+    'clip-prompt': "A clip's prompt is being written",
   }
 
   /** Takes the Session's lock, or returns a 409 saying what holds it. */
@@ -593,6 +596,12 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
   }
 
   const routes: Route[] = [
+    ...clipRoutes({
+      locked,
+      stream,
+      // Thinking off, as for Suggest: the prompt is a draft for the player to edit.
+      textModel: (session) => deps.textModel(textChoice(session, undefined, false)),
+    }),
     ...roleplayRoutes({
       locked,
       stream,

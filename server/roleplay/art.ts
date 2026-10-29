@@ -132,15 +132,20 @@ const artLimits = () => limitsEnabled() ? loadPrompt('roleplay/art-limits') : Pr
  * Character did and said. Thoughts are left out: a picture can't show them.
  */
 export function storyText(session: RoleplaySession, upTo: number): string {
+  return session.frames.slice(0, upTo + 1)
+    .map((f) => `Frame ${f.index}\n${exchangeText(session, f.index)}`)
+    .join('\n\n')
+}
+
+/** One exchange, as `storyText` has it: the Message, and what the Character did and said. */
+export function exchangeText(session: RoleplaySession, index: number): string {
+  const f = session.frames[index]
   const character = session.cast?.character.name ?? 'The Character'
   const persona = session.cast?.persona.name ?? 'The player'
-  return session.frames.slice(0, upTo + 1).map((f) => {
-    const lines = [`Frame ${f.index}`]
-    if (f.message !== null) lines.push(`${persona}: ${f.message}`)
-    const said = f.reply.dialogue ? ` "${f.reply.dialogue}"` : ''
-    lines.push(`${character}: ${f.reply.actions}${said}`)
-    return lines.join('\n')
-  }).join('\n\n')
+  const lines = f.message !== null ? [`${persona}: ${f.message}`] : []
+  const said = f.reply.dialogue ? ` "${f.reply.dialogue}"` : ''
+  lines.push(`${character}: ${f.reply.actions}${said}`)
+  return lines.join('\n')
 }
 
 /**
