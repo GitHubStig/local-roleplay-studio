@@ -2,10 +2,12 @@ import { computed, onBeforeUnmount, ref } from 'vue'
 import {
   cancelJob,
   clearJobs,
+  type ClipOrder,
   type EditOrder,
   type Job,
   type JobKind,
   listJobs,
+  queueClip as queueClipJob,
   queueEdit as queueEditJob,
   queueJob,
   retryJob,
@@ -100,6 +102,15 @@ export function useJobs(
       opts.onError((err as Error).message)
     }
   }
+  /** Queues a clip of a Frame's picture. */
+  async function queueClip(index: number, order: ClipOrder) {
+    try {
+      jobs.value = await queueClipJob(sessionId, index, order)
+      watchJobs()
+    } catch (err) {
+      opts.onError((err as Error).message)
+    }
+  }
   /** Queues a `kind` job on each of these Frames, in order. */
   async function queueAll(kind: JobKind, indexes: readonly number[]) {
     for (const index of indexes) await queue(kind, index)
@@ -141,6 +152,7 @@ export function useJobs(
     hasJob,
     queue,
     queueEdit,
+    queueClip,
     queueAll,
     dropJob,
     clear,

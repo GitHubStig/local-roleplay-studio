@@ -5,6 +5,8 @@ import ComposeBox from '../components/ComposeBox.vue'
 import FrameImage from '../components/FrameImage.vue'
 import CollapsibleTextarea from '../components/CollapsibleTextarea.vue'
 import FrameTab from '../components/FrameTab.vue'
+import ClipOverlay from '../components/ClipOverlay.vue'
+import { scrollToClips } from '../clips'
 import FrameListItem from '../components/FrameListItem.vue'
 import ImageModelPicker from '../components/ImageModelPicker.vue'
 import ModelComparison from '../components/ModelComparison.vue'
@@ -24,6 +26,7 @@ import { useStoredFlag } from '../composables/useStoredFlag'
 import { useSessionScreen } from '../composables/useSessionScreen'
 import { diffWords } from '../diff'
 import {
+  type Clip,
   type Activity,
   changedSinceRender,
   deleteChainFrame,
@@ -104,6 +107,8 @@ const shown = computed(() => {
 const latest = computed(() => session.value?.frames.at(-1))
 /** The picture of the Frame in the main panel. */
 const picture = computed(() => shown.value && pictureOf(shown.value))
+/** A clip playing over its Frame's picture, from the Frame tab's Clip section. */
+const playingClip = ref<{ index: number; clip: Clip } | null>(null)
 /** It's by another Image Model than the Chain's now, or from before its prompt was edited. */
 const pictureChanged = computed(() =>
   !!picture.value && changedSinceRender(picture.value, session.value!.settings.imageModel)
@@ -225,7 +230,7 @@ async function switchRenderFrames(on: boolean) {
   }
 }
 
-const { jobs, jobsFor, hasJob, queue, queueEdit, queueAll, dropJob, clear, retry, refreshJobs } = useJobs(props.id, {
+const { jobs, jobsFor, hasJob, queue, queueEdit, queueClip, queueAll, dropJob, clear, retry, refreshJobs } = useJobs(props.id, {
   onSettled: async () => {
     await load()
   },
@@ -496,6 +501,12 @@ const promptDiff = computed(() => {
             class="absolute right-3"
             :class="viewingOlder ? 'top-14' : 'top-3'"
           />
+          <ClipOverlay
+            v-if="playingClip && playingClip.index === shown?.index"
+            :src="imageUrl(session.id, playingClip.clip.file)"
+            :clip="playingClip.clip"
+            @close="playingClip = null"
+          />
           <div
             v-if="viewingOlder"
             class="absolute right-3 top-3 flex items-center gap-2 rounded-full bg-black/70 py-1 pl-3 pr-1 text-sm text-white"
@@ -702,6 +713,7 @@ const promptDiff = computed(() => {
               empty="Nothing queued. Render, Render all and Upscale add work here, to run while you carry on."
               :name="frameTitle"
               @go="(index) => { pick(index); panel = 'log' }"
+              @clip="(index) => { pick(index); panel = 'prompt'; scrollToClips(log) }"
               @edit="showEdit"
               @retry="retry"
               @drop="dropJob"
@@ -817,6 +829,16 @@ const promptDiff = computed(() => {
             @queue="(kind) => queue(kind, shown!.index)"
             @view="(kind) => (open3d = { index: shown!.index, kind })"
             @edit="startEdit(shown!.index)"
+            :clips="shown && !onPending
+              ? {
+                sessionId: session.id,
+                index: shown.index,
+                nextPictured: !!session.frames[shown.index + 1] && !!pictureOf(session.frames[shown.index + 1]),
+                nextName: frameName(shown.index + 1),
+              }
+              : undefined"
+            @clip="(order) => queueClip(shown!.index, order)"
+            @play="(clip) => (playingClip = { index: shown!.index, clip })"
           >
           <template v-if="shown || (onPending && pending?.prompt)">
             <div class="flex items-start gap-2" :class="shown?.timings ? 'mb-1' : 'mb-3'">

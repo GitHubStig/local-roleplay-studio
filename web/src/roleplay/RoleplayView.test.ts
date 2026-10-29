@@ -889,6 +889,31 @@ describe('RoleplayView', () => {
     )
   })
 
+  it("takes a clip in the Queue tab to its Frame's Clip section", async () => {
+    const pictured = {
+      ...frame(1, 'Thanks.', 'Sit.'),
+      prompt: 'By the stove.',
+      pictures: [picture('frame-1.png')],
+    }
+    vi.mocked(api.getSession).mockResolvedValue(
+      roleplaySession([frame(0, null, 'Get inside.'), pictured, frame(2, 'Tea?', 'Sure.')]),
+    )
+    vi.mocked(api.listJobs).mockResolvedValue([
+      job({ kind: 'clip', frameIndex: 1, status: 'running' }),
+    ])
+    const scrolled: Element[] = []
+    vi.spyOn(Element.prototype, 'scrollIntoView').mockImplementation(function (this: Element) {
+      scrolled.push(this)
+    })
+    const { wrapper } = await mountIt()
+    expect(wrapper.find('[data-detail-panel] [data-tab="frame"]').text()).toBe('Frame 2')
+    await wrapper.find('[data-tab=queue]').trigger('click')
+    await wrapper.find('[data-queue-item] button').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-detail-panel] [data-tab="frame"]').text()).toBe('Frame 1')
+    expect(scrolled.at(-1)).toBe(wrapper.find('[data-frame-clips]').element)
+  })
+
   it('lists jobs in the Queue tab: each goes to its Frame and can be cancelled', async () => {
     const failed = job({ id: 'j3', status: 'failed', error: "Frame 0 isn't pictured yet" })
     vi.mocked(api.listJobs).mockResolvedValue([job({ status: 'running' }), failed])

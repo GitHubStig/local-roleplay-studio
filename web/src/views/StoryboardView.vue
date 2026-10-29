@@ -2,6 +2,7 @@
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
+  type Clip,
   chainFromStoryboard,
   type Activity,
   DOWNLOADING,
@@ -37,6 +38,8 @@ import Icon from '../components/Icon.vue'
 import JobQueue from '../components/JobQueue.vue'
 import LookForm from '../components/LookForm.vue'
 import FrameTab from '../components/FrameTab.vue'
+import ClipOverlay from '../components/ClipOverlay.vue'
+import { scrollToClips } from '../clips'
 import FrameListItem from '../components/FrameListItem.vue'
 import ImageModelPicker from '../components/ImageModelPicker.vue'
 import ModelComparison from '../components/ModelComparison.vue'
@@ -141,6 +144,8 @@ const currentWritten = computed(() => !!current.value && isWritten(current.value
 const look = computed(() => session.value?.look ?? planning.value?.look ?? null)
 /** The picture of the selected Frame. */
 const picture = computed(() => (current.value ? pictureOf(current.value) : undefined))
+/** A clip playing over its Frame's picture, from the Frame tab's Clip section. */
+const playingClip = ref<{ index: number; clip: Clip } | null>(null)
 
 // --- Streamed work.
 
@@ -242,7 +247,7 @@ async function restart() {
 
 // --- Queued work: renders, upscales and 3D, each on its Frame.
 
-const { jobs, runningJobs, jobsFor, hasJob, queue, queueEdit, queueAll, dropJob, clear, retry, refreshJobs } = useJobs(props.id, {
+const { jobs, runningJobs, jobsFor, hasJob, queue, queueEdit, queueClip, queueAll, dropJob, clear, retry, refreshJobs } = useJobs(props.id, {
   onSettled: async () => {
     await load()
   },
@@ -625,6 +630,12 @@ const imagesOn = computed(() => featureOn.value('images'))
           @open="viewingPicture = current!.index"
         >
           <EditedChip :picture="picture" class="absolute right-3 top-12" />
+          <ClipOverlay
+            v-if="playingClip && playingClip.index === current?.index"
+            :src="imageUrl(session.id, playingClip.clip.file)"
+            :clip="playingClip.clip"
+            @close="playingClip = null"
+          />
           <div
             v-if="busy || selectedJob"
             class="absolute left-3 top-3 rounded-full bg-black/70 px-3 py-1 text-sm text-white"
@@ -758,6 +769,7 @@ const imagesOn = computed(() => featureOn.value('images'))
               empty="Nothing queued. Render, Render all and Upscale add work here, to run while you carry on."
               :name="frameTitle"
               @go="goToFrame"
+              @clip="(index) => { pick(index); narrowTab = 'frame'; scrollToClips(frameList) }"
               @edit="showEdit"
               @retry="retry"
               @drop="dropJob"
@@ -868,6 +880,16 @@ const imagesOn = computed(() => featureOn.value('images'))
               @queue="(kind) => queueSaved(kind, current!.index)"
               @view="(kind) => (open3d = { index: current!.index, kind })"
               @edit="startEdit(current!.index)"
+              :clips="currentWritten
+                ? {
+                  sessionId: session.id,
+                  index: current.index,
+                  nextPictured: !!session.frames[current.index + 1] && 'pictures' in session.frames[current.index + 1] && !!pictureOf(session.frames[current.index + 1]),
+                  nextName: `Frame ${current.index + 2}`,
+                }
+                : undefined"
+              @clip="(order) => queueClip(current!.index, order)"
+              @play="(clip) => (playingClip = { index: current!.index, clip })"
             >
             <form
               v-if="frameDraft"

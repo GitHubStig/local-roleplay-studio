@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useEventListener, useTextareaAutosize } from '@vueuse/core'
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
-import { getSession, imageUrl, type Look, type Made3d, restartSession } from '../api'
+import { type Clip, getSession, imageUrl, type Look, type Made3d, restartSession } from '../api'
 import { useSessionScreen } from '../composables/useSessionScreen'
 import { useStoredFlag } from '../composables/useStoredFlag'
 import { saveLine, useAutosave } from '../composables/useAutosave'
@@ -10,6 +10,8 @@ import LookForm from '../components/LookForm.vue'
 import RestartButton from '../components/RestartButton.vue'
 import ComposeBox from '../components/ComposeBox.vue'
 import FrameTab from '../components/FrameTab.vue'
+import ClipOverlay from '../components/ClipOverlay.vue'
+import { scrollToClips } from '../clips'
 import FrameListItem from '../components/FrameListItem.vue'
 import Icon from '../components/Icon.vue'
 import ImageModelPicker from '../components/ImageModelPicker.vue'
@@ -86,7 +88,7 @@ const suggesting = computed(() => pending.value?.kind === 'suggest')
 const writingCast = computed(() => pending.value?.kind === 'cast')
 // --- Background work: pictures, renders, upscales, voices and 3D, queued on the server.
 
-const { jobs, runningJobs, runningJob, runningOn, jobsFor, hasJob, queue, queueEdit, queueAll, dropJob, clear, retry, refreshJobs } = useJobs(
+const { jobs, runningJobs, runningJob, runningOn, jobsFor, hasJob, queue, queueEdit, queueClip, queueAll, dropJob, clear, retry, refreshJobs } = useJobs(
   props.id,
   {
     onSettled: () => reload(),
@@ -197,6 +199,7 @@ const scrollToFrame = (index: number) =>
   transcript.value?.querySelector(`[data-frame-index="${index}"]`)
     ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
 function goToFrame(index: number) {
+  pick(index)
   scrollToFrame(index)
   highlighted.value = index
   clearTimeout(highlightTimer)
@@ -324,6 +327,9 @@ const selectedIndex = computed(() => {
 const selectedFrame = computed(() =>
   selectedIndex.value === null ? undefined : session.value?.frames[selectedIndex.value]
 )
+/** A clip playing over its Frame's picture, from the Frame tab's Clip section. */
+const playingClip = ref<{ index: number; clip: Clip } | null>(null)
+
 /** Picks Frame `index`; the newest, so the selection follows the Replies again. */
 function pick(index: number) {
   picked.value = index === session.value?.frames.at(-1)?.index ? null : index
@@ -854,6 +860,13 @@ const lookSavingText = computed(() =>
                     class="absolute left-2 top-2 rounded-full bg-black/70 px-2 py-0.5 text-white"
                   >Changed since render · {{ byOf(pictureOf(frame)!) }}</span>
                   <EditedChip :picture="pictureOf(frame)" class="absolute right-2 top-2" />
+                  <ClipOverlay
+                    v-if="playingClip && playingClip.index === frame.index"
+                    :src="imageUrl(session.id, playingClip.clip.file)"
+                    :clip="playingClip.clip"
+                    @close="playingClip = null"
+                    @click.stop
+                  />
                 </button>
               </div>
             </li>
@@ -1017,6 +1030,7 @@ const lookSavingText = computed(() =>
               empty="Nothing queued. Picture, Render and Upscale in a Frame's tab add work here, to run while you carry on."
               :describe="describeJob"
               @go="goToFrame"
+              @clip="(index) => { goToFrame(index); narrowTab = 'frame'; scrollToClips(transcript) }"
               @edit="showEdit"
               @retry="retry"
               @drop="drop"
@@ -1064,6 +1078,14 @@ const lookSavingText = computed(() =>
               @queue="(kind) => queueSaved(kind, selectedFrame!.index)"
               @view="(kind) => (open3d = { index: selectedFrame!.index, kind })"
               @edit="startEdit(selectedFrame!.index)"
+              :clips="{
+                sessionId: session.id,
+                index: selectedFrame.index,
+                nextPictured: !!session.frames[selectedFrame.index + 1] && !!pictureOf(session.frames[selectedFrame.index + 1]),
+                nextName: `Frame ${selectedFrame.index + 1}`,
+              }"
+              @clip="(order) => queueClip(selectedFrame!.index, order)"
+              @play="(clip) => (playingClip = { index: selectedFrame!.index, clip })"
             >
               <div class="flex flex-col gap-2">
                 <h3 class="text-base font-semibold">Frame {{ selectedFrame.index }}</h3>

@@ -1,6 +1,15 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { type JobKind, type Made3d, MADE3D_FEATURE, type Picture } from '../api'
+import {
+  type Clip,
+  type ClipOrder,
+  type JobKind,
+  type Made3d,
+  MADE3D_FEATURE,
+  type Picture,
+  pickedEdit,
+} from '../api'
+import FrameClips from './FrameClips.vue'
 import { useFeatures } from '../composables/useFeatures'
 import PictureButtons from './PictureButtons.vue'
 
@@ -19,6 +28,11 @@ const props = withDefaults(
     canRender?: boolean
     /** Why nothing can be queued for now, shown on hover. */
     busy?: string
+    /**
+     * For its clips: the Session, the Frame's index, and whether the next Frame has a picture for
+     * Into Next to end on (and what it's called). Left out, no Clip section.
+     */
+    clips?: { sessionId: string; index: number; nextPictured: boolean; nextName: string }
   }>(),
   { canRender: false },
 )
@@ -26,9 +40,17 @@ defineEmits<{
   queue: [kind: JobKind]
   view: [kind: Made3d]
   edit: []
+  /** Queue a clip, as ordered. */
+  clip: [order: ClipOrder]
+  /** Play one of the picture's clips over it. */
+  play: [clip: Clip]
 }>()
 const { on: featureOn } = useFeatures()
 
+/** The clips of the picture's version shown (its picked edit's, if it has one). */
+const pictureClips = computed(() =>
+  props.picture && (pickedEdit(props.picture) ?? props.picture).clips
+)
 /** Whether the picture has buttons: it can be rendered, or there's a picture (or one coming). */
 const pictured = computed(() =>
   featureOn.value('images') &&
@@ -46,6 +68,17 @@ const has3d = computed(() =>
 <template>
   <div class="flex min-h-full flex-col gap-4" data-frame-tab>
     <div><slot /></div>
+    <FrameClips
+      v-if="clips && picture && featureOn('video')"
+      :session-id="clips.sessionId"
+      :index="clips.index"
+      :clips="pictureClips"
+      :next-pictured="clips.nextPictured"
+      :next-name="clips.nextName"
+      :making="hasJob('clip')"
+      @make="(order) => $emit('clip', order)"
+      @play="(clip) => $emit('play', clip)"
+    />
     <!-- Kept in view at the panel's foot, side by side: the panel scrolls and pads it by 1rem, so it
          sticks 1rem lower, over the padding, or the text shows below it. -->
     <div

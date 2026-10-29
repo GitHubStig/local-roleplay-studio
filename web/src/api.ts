@@ -283,6 +283,14 @@ export interface Figure {
 /** The kinds of clip (docs/video-plan.md): where the picture sits in the clip. */
 export type ClipKind = 'lead-in' | 'play-out' | 'idle-loop' | 'into-next'
 
+/** What each kind of clip is called (docs/video-plan.md). */
+export const CLIP_KIND_NAMES: Record<ClipKind, string> = {
+  'lead-in': 'Lead In',
+  'play-out': 'Play out',
+  'idle-loop': 'Idle Loop',
+  'into-next': 'Into Next',
+}
+
 /** What a clip is told: its kind, what happens, how many seconds, and whether anyone may speak. */
 export interface ClipOrder {
   kind: ClipKind
@@ -889,6 +897,33 @@ export const listJobs = (id: string) => request<Job[]>(`/api/sessions/${id}/jobs
 /** Queues a job on a Frame; returns the whole queue. Asking twice for the same job queues it once. */
 export const queueJob = (id: string, kind: JobKind, frameIndex: number) =>
   post<Job[]>(`/api/sessions/${id}/jobs`, { kind, frameIndex })
+
+/** Queues a clip of a Frame's picture (`ClipOrder`); returns the queue. */
+export const queueClip = (id: string, frameIndex: number, clip: ClipOrder) =>
+  post<Job[]>(`/api/sessions/${id}/jobs`, { kind: 'clip', frameIndex, clip })
+
+/** A clip as asked for, before its prompt is written. */
+export type ClipAsk = Omit<ClipOrder, 'prompt'>
+
+/** A clip prompt being written: piece by piece as it comes, then the whole of it, tidied. */
+export type ClipPromptEvent =
+  | { type: 'phase'; phase: 'text' }
+  | { type: 'clip-prompt-part'; text: string }
+  | { type: 'clip-prompt'; text: string }
+
+/** Has the Text Model write a clip's prompt for Frame `index`, for the player to edit; nothing is saved. */
+export const writeClipPrompt = (
+  id: string,
+  index: number,
+  ask: ClipAsk,
+  onEvent: (event: ClipPromptEvent | EndEvent) => void,
+) =>
+  streamEvents<ClipPromptEvent>(
+    `/api/sessions/${id}/frames/${index}/clip-prompt`,
+    ask,
+    ['clip-prompt'],
+    onEvent,
+  )
 
 /** Queues an edit of a Frame's picture (`EditOrder`); returns the queue. */
 export const queueEdit = (id: string, frameIndex: number, edit: EditOrder) =>
