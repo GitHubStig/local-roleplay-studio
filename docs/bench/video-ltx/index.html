@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LTX 2.5 clips</title>
+<style>
+  body { font: 14px system-ui, sans-serif; margin: 16px; background: #111; color: #ddd; }
+  h2 { font-size: 15px; margin: 24px 0 6px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-start; }
+  video { width: min(640px, 100%); }
+  img { width: 200px; }
+  figure { margin: 0; } figcaption { font-size: 12px; color: #999; }
+  pre { white-space: pre-wrap; color: #aaa; }
+</style>
+</head>
+<body>
+<h1>LTX 2.5 clips: the tavern (PC, 2026-10-29)</h1>
+<p>Pictures: <a href="kael.png">kael.png</a> (Frame 1), <a href="arrived.png">arrived.png</a> (Frame 2). Each clip's first and last frames are shown beside it.</p>
+<pre id="results"></pre>
+<div id="clips"></div>
+<script>
+  const runs = [
+    ['idle-kael-4s', 'Idle: Kael as both first and last frame, 4 s'],
+    ['idle-kael-4s-s085', 'Idle, the ends held at 0.85 (not 0.7)'],
+    ['idle-kael-4s-s1', 'Idle, the ends held at 1.0'],
+    ['leadin-arrived-5s-speech', 'Lead in: "arrived" as the last frame, 5 s, with Kael\'s line'],
+    ['leadin-arrived-5s-nospeech', 'Lead in: the same, without dialogue'],
+    ['playout-arrived-5s', 'Play out: "arrived" as the first frame, 5 s'],
+    ['next-kael-arrived-5s', 'Into next: Kael → arrived, 5 s'],
+    ['next-kael-arrived-8s', 'Into next: Kael → arrived, 8 s'],
+    ['playout-arrived-10s', 'Play out: "arrived" as the first frame, 10 s (drift)'],
+  ]
+  const clips = document.getElementById('clips')
+  for (const [name, label] of runs) {
+    const div = document.createElement('div')
+    div.innerHTML = `<h2>${label}</h2><div class="row"><video src="${name}_00001_.mp4" controls loop preload="metadata"></video>
+      <figure><img src="${name}-first_00001_.png"><figcaption>first frame</figcaption></figure>
+      <figure><img src="${name}-last_00001_.png"><figcaption>last frame</figcaption></figure></div>`
+    clips.append(div)
+  }
+  fetch('results.txt').then((r) => r.text()).then((t) => (document.getElementById('results').textContent = t)).catch(() => {})
+</script>
+</body>
+</html>
