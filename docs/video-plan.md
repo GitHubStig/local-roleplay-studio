@@ -61,7 +61,16 @@ Where the clip buttons go led to a wider cleanup of the Session screens, to sett
 
 The idea on the table: one selected Frame (the newest while playing, or the one clicked), marked in the conversation; its buttons, clip controls, 3D, Image Prompt and timings in a Frame tab in the side panel, under a strip of small pictures that shows where you are and scrolls the conversation. The conversation keeps the text, the picture and Listen, close to how a finished or exported Session would look. One shared component for all three kinds of Session.
 
-Agreed so far: a clip plays over its Frame's picture in the conversation, the same in every kind of Session, and in the large viewer; the panel holds only the controls. Undo stays beside Send. Open: whether the strip and selected Frame replace the Chain's and Storyboard's Frames tabs (needs a mock-up of all three), and making the side panel the same width in every kind of Session (a Roleplay's is the narrowest).
+Agreed so far: a clip plays over its Frame's picture in the conversation, the same in every kind of Session, and in the large viewer; the panel holds only the controls. Undo stays beside Send.
+
+The mock-up (2026-10-29, drawn over the real screens) found that a Chain and a Storyboard already work this way: one big picture of the selected Frame, a Frames list in the side panel, a panel for that Frame, one row of buttons. So the cleanup is mostly the Roleplay coming into line with them, from the same parts. Settled with the owner on the second version:
+
+- **The middle panel is for moving around**: Frames and Queue, the same in all three (a Roleplay gains the Frames list, which selects a Frame and scrolls the conversation to it).
+- **The right panel is for detail, in tabs**: the selected Frame, beside Look & Cast (a Roleplay) or Look (a Storyboard; out from above the Frame); a Chain has only the Frame.
+- **Everything about the selected Frame is in its tab**: its Image Prompt and timings (out of the conversation), Picture again beside the prompt it rewrites, Re-render, Upscale and Edit, the Clip section, 3D. **The row under the text box keeps only what's about the whole Session**: Send, Suggest, Render all, Undo (Chain from here on a Storyboard, which has no Undo).
+- **Listen becomes a small speaker icon** at the end of the thought and of the spoken line, in place of the two buttons; it needs a speaker icon drawn for the app.
+- **The Clip section, one component in all three**: the kind, the length, With speech, the prompt to read and edit (Write again), Make clip; the clips made, each with Play and What went wrong? (the prompt-fixing task); Into Next's warning.
+- Later: the right panel folds away to the side on a narrow screen (three columns are cramped at 1440 px; fine at 21:9, the owner's screens).
 
 ## Left for later (noted 2026-10-29)
 

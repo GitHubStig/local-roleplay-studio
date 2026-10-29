@@ -1,0 +1,11 @@
+# The public tavern Scenario as a Chain, for trying the Session screens and video clips on: the
+# traveller comes in, crosses to the bar, pays, and asks about the letter. A Chain renders each
+# Frame as it's made, so run it with --no-pictures.
+kind: chain
+seed: 7
+scenario: tavern
+actions:
+  - The traveller pushes the door shut against the wind and shakes the rain from her cloak.
+  - She crosses to the bar and sets a silver coin on the counter in front of Kael.
+  - Kael slides the letter out of sight under his hand as she nods at it.
+  - She leans back on her stool and watches the rain run down the window.

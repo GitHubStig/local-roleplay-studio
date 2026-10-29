@@ -2,6 +2,10 @@
 
 Measurements behind the video plan ([video-plan.md](../video-plan.md)). Newest first.
 
+## Into Next on a Chain, whose pictures agree (2026-10-29, Windows PC)
+
+The tavern as a Chain (`server/replay/replays/tavern-chain.yaml`, seed 7, Qwen-Image 2.1 Turbo on ComfyUI), whose Frames change the Image Prompt only as far as each Action asks: Frames 1 to 3 are the same room (the bar and its lamp, the window, the stairs), the people in the same places, Frame 2 a little closer. Into Next from Frame 1 (she shuts the door) to Frame 2 (she sets a coin on the bar), its prompt by the Text Model with the camera-move direction, 5 s, no dialogue: no cut (biggest frame-to-frame scene score 0.015, against 0.142–0.173 for the Roleplay's tries); she shuts the door, crosses to the bar and puts the coin down in front of Kael, in the same room throughout, and it ends on Frame 2. Midway the camera swings with her toward the window and Kael is out of frame for a moment. So Into Next is for pictures that agree, as a Chain's do; a Roleplay's, each pictured afresh by the Art Agent, often don't.
+
 ## One clip of each kind from those prompts (2026-10-29, Windows PC)
 
 The four prompts below, made into 5 s clips through the app (guides at 1.0, 1152×800 from a 1216×832 picture by Qwen-Image 2.1 Turbo), ~140 s each. Every clip landed on the right picture at the right end (SSIM ~0.71 against its own picture, 0.37–0.50 against the other, both scaled to the picture's size). Looked at as frames 0, 40, 80 and 120:
