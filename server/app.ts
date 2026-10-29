@@ -106,7 +106,7 @@ import {
 } from './machine.ts'
 import { Previews } from './previews.ts'
 import { RenderQueue } from './renderQueue.ts'
-import { type FrameDeps, type Phase, UpscaleError } from './frames.ts'
+import { type FrameDeps, frameName, type Phase, UpscaleError } from './frames.ts'
 import {
   DeleteError,
   deleteFrame,
@@ -634,9 +634,12 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       },
       check: async (session, kind, index, pending, edit, clip) => {
         const feature = JOB_FEATURE[kind]
-        const name = session.kind === 'storyboard' ? `Frame ${index + 1}` : `Frame ${index}`
-        // Into Next ends on the next Frame's picture, which must be there now.
-        const noNext = kind === 'clip' && clipRefusal(session, index, clip!.kind, name)
+        const name = frameName(index)
+        // A clip is of the Frame's picture by the Session's model, there or coming; Into Next ends
+        // on the next Frame's by it, which must be there now.
+        const coming = pending.some((k) => k === 'render' || k === 'picture')
+        const noNext = kind === 'clip' &&
+          clipRefusal(session, index, clip!.kind, name, undefined, coming)
         if (noNext) return (feature && (await featureOff(feature))) ?? error(noNext, 409)
         if (kind === 'edit') {
           const now = await deps.settings.load()
@@ -1125,7 +1128,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
           .find((j) => j.status === 'running' && j.frameIndex === index)
         if (running) {
           return error(
-            `Frame ${index} has a job running: wait for it, or cancel it, then delete`,
+            `${frameName(index)} has a job running: wait for it, or cancel it, then delete`,
             409,
           )
         }

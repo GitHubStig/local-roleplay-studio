@@ -9,6 +9,7 @@ import { allPictureFiles, allStale, removeFiles } from '../pictures.ts'
 import { renumberCallLogs } from '../calls.ts'
 import {
   type FrameDeps,
+  frameName,
   imageName,
   limitCrossedBy,
   type ProgressEvent,
@@ -200,7 +201,7 @@ export async function undoLatestFrame(
   const updated = await updateSession(store, session.id, 'chain', (now) => {
     latest = now.frames.at(-1)!
     if (!latest || latest.index !== index) {
-      throw new UndoError(`Frame ${index} is not the latest Frame`)
+      throw new UndoError(`${frameName(index)} is not the latest Frame`)
     }
     if (now.frames.length === 1) throw new UndoError("The Opening Frame can't be undone")
     return { ...now, frames: now.frames.slice(0, -1) }

@@ -1,3 +1,4 @@
+import { frameName } from '../frames.ts'
 import type { StreamEvent } from '../app.ts'
 import { error, readJson, type Route } from '../http.ts'
 import { clipAsk } from '../jobs.ts'
@@ -46,7 +47,7 @@ export function clipRoutes(ctx: ClipRouteContext): Route[] {
           if (!Number.isInteger(index) || !session.frames[index]) {
             return Promise.resolve(error('No such Frame', 404))
           }
-          const name = session.kind === 'storyboard' ? `Frame ${index + 1}` : `Frame ${index}`
+          const name = frameName(index)
           const refused = !shownVersionOf(session, index)
             ? `${name} has no picture yet`
             : clipRefusal(session, index, ask.kind, name)

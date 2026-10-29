@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { frameName } from '../frameName'
 import { computed, defineAsyncComponent } from 'vue'
 import { STYLE_MEASURES, type StyleScores } from '../styleScores'
 
@@ -18,7 +19,7 @@ const props = defineProps<{
 }>()
 
 const baseName = computed(() =>
-  props.frames.find((f) => f.index === props.scores.base)?.name ?? `Frame ${props.scores.base}`
+  props.frames.find((f) => f.index === props.scores.base)?.name ?? frameName(props.scores.base)
 )
 </script>
 

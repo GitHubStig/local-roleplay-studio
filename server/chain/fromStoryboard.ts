@@ -3,6 +3,7 @@
  * to carry on from that Frame by Actions. The Storyboard is left as it is. Done in code, with no
  * Text Model: the Image Prompts keep every word, so the pictures copied with them still show them.
  */
+import { frameName } from '../frames.ts'
 import { join } from '@std/path'
 import { joinPrompt, sentences } from '../imagePrompt.ts'
 import { shownSubjects } from '../look.ts'
@@ -110,10 +111,10 @@ export async function chainFromStoryboard(
   const last = storyboard.frames[upTo]
   if (!storyboard.look || !last) throw new CopyError('No such Frame')
   if (storyboard.frames.slice(0, upTo + 1).some((f) => !f.body)) {
-    throw new CopyError(`Write the Frames up to Frame ${upTo + 1} first`)
+    throw new CopyError(`Write the Frames up to ${frameName(upTo)} first`)
   }
   if (last.blocked) {
-    throw new CopyError(`Frame ${upTo + 1} crosses a limit (${last.blocked}): edit it first`)
+    throw new CopyError(`${frameName(upTo)} crosses a limit (${last.blocked}): edit it first`)
   }
   const files: [string, string][] = []
   const frames = storyboard.frames.slice(0, upTo + 1).filter((f) => !f.blocked).map(
@@ -123,7 +124,7 @@ export async function chainFromStoryboard(
       return {
         index,
         action: index === 0 ? null : f.beat,
-        narration: index === 0 ? f.beat : `From the Storyboard's Frame ${f.index + 1}.`,
+        narration: index === 0 ? f.beat : `From the Storyboard's ${frameName(f.index)}.`,
         outcome: 'done',
         prompt,
         pictures: samePicture(prompt, f.prompt)

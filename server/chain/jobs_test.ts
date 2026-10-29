@@ -112,7 +112,7 @@ Deno.test('Deleting a Chain Frame waits for no job on it, and the queue follows'
     const refused = await remove(2)
     assertEquals([refused.status, (await refused.json()).error], [
       409,
-      'Frame 2 has a job running: wait for it, or cancel it, then delete',
+      'Frame 3 has a job running: wait for it, or cancel it, then delete',
     ])
     assertEquals(await jobs(), [[2, 'running'], [3, 'queued'], [1, 'queued']])
 

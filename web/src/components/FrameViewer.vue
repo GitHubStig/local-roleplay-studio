@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { frameName } from '../frameName'
 import { useEventListener, useManualRefHistory } from '@vueuse/core'
 import { computed, reactive, ref, useTemplateRef, watch } from 'vue'
 import {
@@ -46,7 +47,7 @@ const props = withDefaults(
     /** The Session's jobs (`useJobs`): its edits being made, or failed, show as versions. */
     jobs?: readonly Job[]
   }>(),
-  { name: (index: number) => `Frame ${index}`, jobs: () => [] },
+  { name: frameName, jobs: () => [] },
 )
 /** The Frame open in the viewer, by index; null keeps it closed. */
 const open = defineModel<number | null>('open', { required: true })
@@ -263,7 +264,10 @@ const upscale = computed(() => {
 // --- The shown version's clips (ADR 0025), one playing over it at a time.
 const clips = computed(() => {
   const p = picture.value
-  return p && !viewedJob.value && !painting.value ? sortClips((pickedEdit(p) ?? p).clips) : []
+  // Not of a picture by another Image Model, shown only until the Session's renders the Frame.
+  return p && p.imageModel === props.imageModel && !viewedJob.value && !painting.value
+    ? sortClips((pickedEdit(p) ?? p).clips)
+    : []
 })
 const playing = ref<Clip | null>(null)
 // It stops on another Frame or version, or once a new clip of its kind replaces it.

@@ -322,4 +322,24 @@ describe('FrameViewer', () => {
     expect(wrapper.find('[data-clip-overlay]').exists()).toBe(false)
     expect(side(wrapper).find('[data-play-clip]').exists()).toBe(false)
   })
+
+  it("leaves out the clips of a picture by another Image Model, shown until the Session's renders", async () => {
+    const clip = {
+      kind: 'lead-in' as const,
+      file: 'clip-0-lead-in-00000000.mp4',
+      prompt: 'p',
+      seconds: 4,
+      speech: false,
+      seed: 1,
+      timings: { clip: 9 },
+    }
+    const other = [{
+      index: 0,
+      pictures: [{ image: 'frame-0.png', imageModel: 'krea-2', clips: [clip] }],
+    }]
+    const wrapper = mountIt({ frames: other })
+    await flushPromises()
+    expect(shownSrc(wrapper)).toBe(url('frame-0.png'))
+    expect(side(wrapper).find('[data-play-clip]').exists()).toBe(false)
+  })
 })

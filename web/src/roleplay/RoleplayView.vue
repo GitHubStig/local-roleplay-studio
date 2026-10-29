@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { frameName } from '../frameName'
 import { useEventListener, useTextareaAutosize } from '@vueuse/core'
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
 import { type Clip, getSession, imageUrl, type Look, type Made3d, restartSession } from '../api'
@@ -13,7 +14,7 @@ import FrameTab from '../components/FrameTab.vue'
 import ClipOverlay from '../components/ClipOverlay.vue'
 import FoldedPrompt from '../components/FoldedPrompt.vue'
 import ShownPills from '../components/ShownPills.vue'
-import { clipsMaking, scrollToClips } from '../clips'
+import { clipCount, clipsMaking, scrollToClips, usePlayingClip } from '../clips'
 import FrameListItem from '../components/FrameListItem.vue'
 import Icon from '../components/Icon.vue'
 import ImageModelPicker from '../components/ImageModelPicker.vue'
@@ -330,7 +331,7 @@ const selectedFrame = computed(() =>
   selectedIndex.value === null ? undefined : session.value?.frames[selectedIndex.value]
 )
 /** A clip playing over its Frame's picture, from the Frame tab's Clip section. */
-const playingClip = ref<{ index: number; clip: Clip } | null>(null)
+const playingClip = usePlayingClip(() => selectedIndex.value)
 /** Plays a clip over Frame `index`'s picture, scrolled into view: it starts once it's seen. */
 function playClip(index: number, clip: Clip) {
   playingClip.value = { index, clip }
@@ -845,7 +846,7 @@ const lookSavingText = computed(() =>
                   <img
                     v-if="pictureOf(frame)"
                     :src="imageUrl(session.id, pictureOf(frame)!.image)"
-                    :alt="`Picture of Frame ${frame.index}`"
+                    :alt="`Picture of ${frameName(frame.index)}`"
                     class="w-full rounded-md"
                     :class="{ 'opacity-50': changed(frame) }"
                     @load="onPictureLoad"
@@ -1052,9 +1053,10 @@ const lookSavingText = computed(() =>
             <li v-for="frame in shownFrames" :key="frame.index">
               <FrameListItem
                 :thumb="pictureOf(frame) && imageUrl(session.id, pictureOf(frame)!.image)"
-                :number="frame.index"
+                :number="frame.index + 1"
                 :current="selectedIndex === frame.index"
                 :dimmed="changed(frame)"
+                :clips="clipCount(pictureOf(frame), session.settings.imageModel)"
                 data-frame
                 @click="pickFromList(frame.index)"
               >
@@ -1074,7 +1076,7 @@ const lookSavingText = computed(() =>
             <PanelTabs
               v-model="detail"
               :tabs="[
-                { id: 'frame', label: selectedFrame ? `Frame ${selectedFrame.index}` : 'Frame' },
+                { id: 'frame', label: selectedFrame ? frameName(selectedFrame.index) : 'Frame' },
                 { id: 'cast', label: 'Look & Cast' },
               ]"
             />
@@ -1092,7 +1094,8 @@ const lookSavingText = computed(() =>
                 sessionId: session.id,
                 index: selectedFrame.index,
                 nextPictured: !!session.frames[selectedFrame.index + 1] && !!pictureOf(session.frames[selectedFrame.index + 1]),
-                nextName: `Frame ${selectedFrame.index + 1}`,
+                nextName: frameName(selectedFrame.index + 1),
+                imageModel: session.settings.imageModel,
                 making: clipsMaking(jobsFor(selectedFrame.index), pictureOf(selectedFrame)?.imageModel),
                 playing: playingClip?.index === selectedFrame.index ? playingClip.clip.file : undefined,
               }"
@@ -1101,7 +1104,7 @@ const lookSavingText = computed(() =>
               @stop="playingClip = null"
             >
               <div class="flex flex-col gap-2">
-                <h3 class="text-base font-semibold">Frame {{ selectedFrame.index }}</h3>
+                <h3 class="text-base font-semibold">{{ frameName(selectedFrame.index) }}</h3>
                 <!-- Under the heading, as on a Chain's and a Storyboard's, whether the prompt is folded. -->
                 <p v-if="selectedFrame.prompt && selectedFrame.pictureTimings" class="text-xs text-muted" data-picture-timings>
                   Pictured in {{ selectedFrame.pictureTimings.text.toFixed(1) }} s<template

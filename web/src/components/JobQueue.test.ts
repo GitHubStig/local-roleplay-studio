@@ -22,7 +22,7 @@ describe('JobQueue', () => {
   it("names a clip by its kind, length and whose picture it's of, and hands it on when clicked", async () => {
     const wrapper = mount(JobQueue, { props: { jobs: [clipJob], empty: '' } })
     const item = wrapper.find('[data-queue-item] button')
-    expect(item.text()).toContain("Lead In clip, 5 s · boogu-image-turbo's picture · Frame 2")
+    expect(item.text()).toContain("Lead In clip, 5 s · boogu-image-turbo's picture · Frame 3")
     await item.trigger('click')
     expect(wrapper.emitted('clip')).toEqual([[clipJob]])
   })

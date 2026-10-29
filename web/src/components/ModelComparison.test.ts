@@ -83,9 +83,9 @@ describe('ModelComparison', () => {
     await wrapper.find('[data-compare-row] button').trigger('click')
     await flushPromises()
     const label = () => wrapper.find('[data-viewer-label]').text()
-    expect(label()).toBe('Frame 0 · a')
+    expect(label()).toBe('Frame 1 · a')
     await wrapper.find('[data-next]').trigger('click')
-    expect(label()).toBe('Frame 0 · b')
+    expect(label()).toBe('Frame 1 · b')
     expect(wrapper.find('[data-next]').attributes('disabled')).toBeDefined()
   })
 
@@ -111,7 +111,7 @@ describe('ModelComparison', () => {
     await wrapper.find('[data-previous]').trigger('click')
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }))
     await flushPromises()
-    expect(wrapper.find('[data-viewer-label]').text()).toBe('Frame 1 · a')
+    expect(wrapper.find('[data-viewer-label]').text()).toBe('Frame 2 · a')
     expect(caption().exists()).toBe(true)
     expect(caption().text()).toBe('')
   })
@@ -142,11 +142,11 @@ describe('ModelComparison', () => {
       await flushPromises()
     }
     await press('ArrowDown')
-    expect(label()).toBe('Frame 2 · b')
+    expect(label()).toBe('Frame 3 · b')
     await press('ArrowDown')
-    expect(label()).toBe('Frame 2 · b')
+    expect(label()).toBe('Frame 3 · b')
     await press('ArrowUp')
-    expect(label()).toBe('Frame 0 · b')
+    expect(label()).toBe('Frame 1 · b')
   })
 
   it('exports what it shows, by the pictures’ files, and says where it went', async () => {
@@ -172,7 +172,7 @@ describe('ModelComparison', () => {
       models: [{ label: 'a' }, { label: 'b' }],
       rows: [
         {
-          name: 'Frame 0',
+          name: 'Frame 1',
           prompt: 'A tavern at dusk.',
           pictures: [
             { image: 'f0-a.png', upscaled: 'f0-a-2048.png', stale: undefined },
@@ -180,7 +180,7 @@ describe('ModelComparison', () => {
           ],
         },
         {
-          name: 'Frame 1',
+          name: 'Frame 2',
           prompt: undefined,
           pictures: [{ image: 'f1-a.png', upscaled: undefined, stale: undefined }, null],
         },
@@ -230,7 +230,7 @@ describe('ModelComparison', () => {
     expect(toggle.text()).toBe('‹ Hide prompts')
     await toggle.trigger('click')
     expect(wrapper.find('[data-compare-prompt]').exists()).toBe(false)
-    expect(wrapper.find('[data-compare-row]').text()).toContain('Frame 0')
+    expect(wrapper.find('[data-compare-row]').text()).toContain('Frame 1')
     expect(toggle.text()).toBe('Prompts ›')
     await toggle.trigger('click')
     expect(wrapper.find('[data-compare-prompt]').text()).toBe('A tavern at dusk.')
@@ -253,9 +253,9 @@ describe('ModelComparison', () => {
     await row.find('button').trigger('click')
     await flushPromises()
     const label = () => wrapper.find('[data-viewer-label]').text()
-    expect(label()).toBe('Frame 0 · b')
+    expect(label()).toBe('Frame 1 · b')
     await wrapper.find('[data-next]').trigger('click')
-    expect(label()).toBe('Frame 0 · a')
+    expect(label()).toBe('Frame 1 · a')
   })
 
   it('exports the columns as arranged, without the hidden ones, and keeps them on reopening', async () => {

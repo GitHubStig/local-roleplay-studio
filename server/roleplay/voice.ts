@@ -7,7 +7,7 @@
  */
 import { join } from '@std/path'
 import { stringify } from '@std/yaml'
-import { secondsSince } from '../frames.ts'
+import { frameName, secondsSince } from '../frames.ts'
 import { crossedLimit } from '../limits.ts'
 import type { ChatMessage } from '../text/chat.ts'
 import { loadPrompt } from '../promptFiles.ts'
@@ -92,7 +92,7 @@ export async function deliveryMessages(
 ): Promise<ChatMessage[]> {
   const cast = session.cast
   const frame = session.frames[index]
-  if (!cast || !frame) throw new VoiceError(`There is no Frame ${index}`)
+  if (!cast || !frame) throw new VoiceError(`There is no ${frameName(index)}`)
   return [
     { role: 'system', content: await loadPrompt('roleplay/voice-delivery', { ...cast }) },
     {
@@ -225,11 +225,11 @@ export async function speakFrame(
 ): Promise<RoleplaySession> {
   const voice = engine(deps)
   const frame = session.frames[index]
-  if (!frame) throw new VoiceError(`There is no Frame ${index}`)
+  if (!frame) throw new VoiceError(`There is no ${frameName(index)}`)
   const text = spokenText(frame, part)
   if (!text) {
     throw new VoiceError(
-      `Frame ${index} has ${part === 'thought' ? 'no thought' : 'nothing'} to say aloud`,
+      `${frameName(index)} has ${part === 'thought' ? 'no thought' : 'nothing'} to say aloud`,
     )
   }
   let current = session
@@ -242,7 +242,10 @@ export async function speakFrame(
   const directed = await deps.model.directLine(await deliveryMessages(current, index, part), signal)
     .catch((err) => {
       signal.throwIfAborted()
-      console.warn(`Directing Frame ${index}'s line failed; speaking it as written:`, err.message)
+      console.warn(
+        `Directing ${frameName(index)}'s line failed; speaking it as written:`,
+        err.message,
+      )
       undirected = String(err.message)
       return undefined
     })
@@ -288,7 +291,7 @@ export async function speakFrame(
     let old: string | undefined
     const updated = await updateSession(deps.store, session.id, (latest) => {
       const now = latest.frames[index]
-      if (!now) throw new GoneError(`Frame ${index} no longer exists`)
+      if (!now) throw new GoneError(`${frameName(index)} no longer exists`)
       old = now[key]?.file
       return {
         ...latest,

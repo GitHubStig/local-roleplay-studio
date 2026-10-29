@@ -3,6 +3,7 @@
  * made (ADR 0025): what moves between the pictures, from the story around the Frame.
  * Nothing is saved. Its prompts are `prompts/video/clip*.md` and the kinds' own.
  */
+import { frameName } from '../frames.ts'
 import type { ClipAsk } from '../jobs.ts'
 import { crossedLimit } from '../limits.ts'
 import { loadPrompt } from '../promptFiles.ts'
@@ -127,7 +128,7 @@ export async function writeClipPrompt(
   signal: AbortSignal,
   revise?: ClipRevision,
 ): Promise<string> {
-  const name = session.kind === 'storyboard' ? `Frame ${index + 1}` : `Frame ${index}`
+  const name = frameName(index)
   if (!shownVersionOf(session, index)) throw new ClipPromptError(`${name} has no picture yet`)
   const refused = clipRefusal(session, index, ask.kind, name)
   if (refused) throw new ClipPromptError(refused)

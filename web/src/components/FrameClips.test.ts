@@ -89,30 +89,35 @@ describe('FrameClips', () => {
     expect(withNext.find('[data-into-next-warning]').text()).toContain('Lead In on Frame 2')
   })
 
-  it('lists the clips made, to play or to put back in the form', async () => {
+  it("fills the form from a kind's clip, to Redo it, and empties it for a kind not made", async () => {
     const wrapper = mountIt({ clips: [leadIn] })
-    const row = wrapper.find('[data-clip="lead-in"]')
-    expect(row.text()).toContain('4 s · with speech')
-    await row.find('[data-play-clip]').trigger('click')
-    expect(wrapper.emitted('play')).toEqual([[leadIn]])
-    await wrapper.find('[data-clip-kind="idle-loop"]').trigger('click')
-    await row.find('[data-clip-again]').trigger('click')
-    await flushPromises()
-    expect(wrapper.find('[data-clip-kind="lead-in"]').attributes('aria-checked')).toBe('true')
-    expect(wrapper.find<HTMLTextAreaElement>('[data-clip-prompt]').element.value).toBe(
-      'She walks in.',
-    )
+    const prompt = () => wrapper.find<HTMLTextAreaElement>('[data-clip-prompt]').element.value
+    const make = () => wrapper.find('[data-make-clip]')
+    // Lead In is chosen to begin with, and has a clip: its order is in the form.
+    expect([prompt(), make().text()]).toEqual(['She walks in.', 'Redo clip'])
     expect((wrapper.find('[data-clip-speech]').element as HTMLInputElement).checked).toBe(true)
+    expect((wrapper.find('[data-clip-seconds]').element as HTMLSelectElement).value).toBe('4')
+    await wrapper.find('[data-clip-kind="idle-loop"]').trigger('click')
+    expect([prompt(), make().text()]).toEqual(['', 'Make clip'])
+    await wrapper.find('[data-clip-kind="lead-in"]').trigger('click')
+    await wrapper.find('[data-clip-prompt]').setValue('She runs in.')
+    await make().trigger('click')
+    expect(wrapper.emitted('make')).toEqual([[{
+      kind: 'lead-in',
+      prompt: 'She runs in.',
+      seconds: 4,
+      speech: true,
+    }]])
+    expect(wrapper.find('[data-clip-again]').exists()).toBe(false)
   })
 
-  it('plays a clip, then stops it from the same button; Redo puts it back in the form', async () => {
+  it('plays a clip, then stops it from the same button', async () => {
     const wrapper = mountIt({ clips: [leadIn], playing: leadIn.file })
     const play = wrapper.find('[data-play-clip]')
     expect([play.text(), play.attributes('aria-pressed')]).toEqual(['Stop', 'true'])
     await play.trigger('click')
     expect(wrapper.emitted('stop')).toHaveLength(1)
     expect(wrapper.emitted('play')).toBeUndefined()
-    expect(wrapper.find('[data-clip-again]').text()).toBe('Redo')
   })
 
   it('shows the clip in the form while saying what was wrong, the focus on that', async () => {

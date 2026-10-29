@@ -1,4 +1,5 @@
 import {
+  frameName,
   limitCrossedBy,
   type ProgressEvent,
   replacePicture,
@@ -214,7 +215,9 @@ export async function pictureFrame(
   emit: (event: RoleplayEvent) => void,
   signal: AbortSignal,
 ): Promise<RoleplaySession> {
-  if (!session.cast || !session.frames[index]) throw new RoleplayError(`There is no Frame ${index}`)
+  if (!session.cast || !session.frames[index]) {
+    throw new RoleplayError(`There is no ${frameName(index)}`)
+  }
   const art = deps.artModel ?? deps.roleplayModel
   emit({ type: 'phase', phase: 'text' })
   let current = session
@@ -270,7 +273,7 @@ export async function pictureFrame(
   let frame!: RoleplayFrame
   const updated = await updateSession(deps.store, session.id, (latest) => {
     const now = latest.frames[index]
-    if (!now) throw new GoneError(`Frame ${index} no longer exists`)
+    if (!now) throw new GoneError(`${frameName(index)} no longer exists`)
     const { pictureThinking: _, ...kept } = now
     frame = {
       ...pictured(kept, look, drawn.body!, drawn.shown, drawn.clothing),
@@ -338,9 +341,9 @@ export async function renderRoleplayFrame(
   signal: AbortSignal,
 ): Promise<RoleplaySession> {
   const frame = session.frames[index]
-  if (!frame?.prompt) throw new RoleplayError(`Frame ${index} isn't pictured yet`)
+  if (!frame?.prompt) throw new RoleplayError(`${frameName(index)} isn't pictured yet`)
   if (frame.blocked) {
-    throw new RoleplayLimitError(`Frame ${index} crosses a limit: ${frame.blocked}`)
+    throw new RoleplayLimitError(`${frameName(index)} crosses a limit: ${frame.blocked}`)
   }
   const { session: updated, frame: rendered } = await replacePicture(
     deps,
@@ -363,7 +366,7 @@ export async function undoLatestExchange(
 ): Promise<RoleplaySession> {
   const latest = session.frames.at(-1)
   if (!latest || latest.index !== index) {
-    throw new RoleplayError(`Frame ${index} is not the latest Frame`)
+    throw new RoleplayError(`${frameName(index)} is not the latest Frame`)
   }
   if (latest.message === null) throw new RoleplayError("The opening can't be undone")
   const updated = await updateSession(store, session.id, (latest) => ({

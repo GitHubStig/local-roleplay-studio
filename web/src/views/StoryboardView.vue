@@ -1,8 +1,8 @@
 <script setup lang="ts">
+import { frameName } from '../frameName'
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
-  type Clip,
   chainFromStoryboard,
   type Activity,
   DOWNLOADING,
@@ -41,7 +41,7 @@ import JobQueue from '../components/JobQueue.vue'
 import LookForm from '../components/LookForm.vue'
 import FrameTab from '../components/FrameTab.vue'
 import ClipOverlay from '../components/ClipOverlay.vue'
-import { clipsMaking, scrollToClips } from '../clips'
+import { clipCount, clipsMaking, scrollToClips, usePlayingClip } from '../clips'
 import FrameListItem from '../components/FrameListItem.vue'
 import ImageModelPicker from '../components/ImageModelPicker.vue'
 import ModelComparison from '../components/ModelComparison.vue'
@@ -147,7 +147,7 @@ const look = computed(() => session.value?.look ?? planning.value?.look ?? null)
 /** The picture of the selected Frame. */
 const picture = computed(() => (current.value ? pictureOf(current.value) : undefined))
 /** A clip playing over its Frame's picture, from the Frame tab's Clip section. */
-const playingClip = ref<{ index: number; clip: Clip } | null>(null)
+const playingClip = usePlayingClip(() => current.value?.index)
 
 // --- Streamed work.
 
@@ -576,7 +576,7 @@ const { painting: paintingPicture, startEdit, showEdit, pick: pickVersion, delet
   usePictureEditing(props.id, session, viewingPicture, (text) => (message.value = { kind: 'error', text }))
 /** Which Frame's scene or figure is open, if any. */
 const open3d = ref<{ index: number; kind: Made3d } | null>(null)
-const frameTitle = (index: number) => `Frame ${index + 1}`
+const frameTitle = frameName
 /** A Frame picked by the player: the one shown stops following the writing. */
 function pick(index: number) {
   following = false
@@ -818,6 +818,7 @@ const imagesOn = computed(() => featureOn.value('images'))
                 :current="selected === f.index"
                 :dimmed="'pictures' in f && changed(f)"
                 :writing="writingIndex === f.index"
+                :clips="'pictures' in f ? clipCount(pictureOf(f), session.settings.imageModel) : 0"
                 data-frame
                 @click="pick(f.index)"
               >
@@ -893,6 +894,7 @@ const imagesOn = computed(() => featureOn.value('images'))
                   index: current.index,
                   nextPictured: !!session.frames[current.index + 1] && 'pictures' in session.frames[current.index + 1] && !!pictureOf(session.frames[current.index + 1]),
                   nextName: `Frame ${current.index + 2}`,
+                  imageModel: session.settings.imageModel,
                   making: clipsMaking(jobsFor(current.index), pictureOf(current)?.imageModel),
                   playing: playingClip?.index === current.index ? playingClip.clip.file : undefined,
                 }

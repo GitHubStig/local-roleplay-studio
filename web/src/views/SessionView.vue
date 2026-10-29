@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { frameName } from '../frameName'
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
 import ComposeBox from '../components/ComposeBox.vue'
@@ -7,7 +8,7 @@ import CollapsibleTextarea from '../components/CollapsibleTextarea.vue'
 import FoldedPrompt from '../components/FoldedPrompt.vue'
 import FrameTab from '../components/FrameTab.vue'
 import ClipOverlay from '../components/ClipOverlay.vue'
-import { clipsMaking, scrollToClips } from '../clips'
+import { clipCount, clipsMaking, scrollToClips, usePlayingClip } from '../clips'
 import FrameListItem from '../components/FrameListItem.vue'
 import ImageModelPicker from '../components/ImageModelPicker.vue'
 import ModelComparison from '../components/ModelComparison.vue'
@@ -27,7 +28,6 @@ import { useStoredFlag } from '../composables/useStoredFlag'
 import { useSessionScreen } from '../composables/useSessionScreen'
 import { diffWords } from '../diff'
 import {
-  type Clip,
   type Activity,
   changedSinceRender,
   deleteChainFrame,
@@ -109,7 +109,7 @@ const latest = computed(() => session.value?.frames.at(-1))
 /** The picture of the Frame in the main panel. */
 const picture = computed(() => shown.value && pictureOf(shown.value))
 /** A clip playing over its Frame's picture, from the Frame tab's Clip section. */
-const playingClip = ref<{ index: number; clip: Clip } | null>(null)
+const playingClip = usePlayingClip(() => shown.value?.index)
 /** It's by another Image Model than the Chain's now, or from before its prompt was edited. */
 const pictureChanged = computed(() =>
   !!picture.value && changedSinceRender(picture.value, session.value!.settings.imageModel)
@@ -132,9 +132,10 @@ const onFrameKey = useFrameKeys(log, {
   current: () => shown.value?.index ?? session.value?.frames.length ?? 0,
   pick,
 })
-const frameName = (index: number) => (index === 0 ? 'the Opening' : `Frame ${index}`)
-/** The same, starting a title: the viewers' labels. */
-const frameTitle = (index: number) => (index === 0 ? 'The Opening' : `Frame ${index}`)
+/** What a Frame is called in a sentence: the Opening, or its number (`frameName`). */
+const frameProse = (index: number) => (index === 0 ? 'the Opening' : frameName(index))
+/** Its title, in the Frames list's places and the viewers' labels: "Frame 1 · Opening". */
+const frameTitle = (index: number) => (index === 0 ? `${frameName(0)} · Opening` : frameName(index))
 
 // --- While this Frame waits in the render queue, stay here: no leaving, no reloading.
 onBeforeRouteLeave(() => {
@@ -303,7 +304,7 @@ const deleting = ref(false)
  */
 async function deleteFrame(frame: ChainFrame) {
   if (busy.value || deleting.value) return
-  const what = `Delete Frame ${frame.index} and its pictures? The Frames after it are numbered down.`
+  const what = `Delete ${frameName(frame.index)} and its pictures? The Frames after it are numbered down.`
   if (!confirm(`${what} This can't be undone.`)) return
   deleting.value = true
   frameError.value = ''
@@ -513,7 +514,7 @@ const promptDiff = computed(() => {
             class="absolute right-3 top-3 flex items-center gap-2 rounded-full bg-black/70 py-1 pl-3 pr-1 text-sm text-white"
             data-viewing
           >
-            <span>Viewing {{ frameName(shown!.index) }} of {{ busy ? pendingIndex : latest!.index }}</span>
+            <span>Viewing {{ frameProse(shown!.index) }} of {{ (busy ? pendingIndex : latest!.index) + 1 }}</span>
             <button
               type="button"
               class="rounded-full bg-white/15 px-2.5 py-0.5 hover:bg-white/25"
@@ -624,7 +625,7 @@ const promptDiff = computed(() => {
               class="flex-1 cursor-default resize-none rounded-lg border border-dashed border-line bg-canvas p-3 text-muted"
               placeholder="The Opening Frame has no Action."
               readonly
-              :aria-label="`The Action sent on ${frameName(shown!.index)}`"
+              :aria-label="`The Action sent on ${frameProse(shown!.index)}`"
               data-past-action
             />
             <ComposeBox
@@ -736,8 +737,9 @@ const promptDiff = computed(() => {
           <li v-for="frame in session.frames" :key="frame.index" class="group relative">
             <FrameListItem
               :thumb="pictureOf(frame) && imageUrl(session.id, pictureOf(frame)!.image)"
-              :number="frame.index"
+              :number="frame.index + 1"
               :current="shown?.index === frame.index"
+              :clips="clipCount(pictureOf(frame), session.settings.imageModel)"
               data-frame
               @click="pick(frame.index)"
             >
@@ -841,6 +843,7 @@ const promptDiff = computed(() => {
                 index: shown.index,
                 nextPictured: !!session.frames[shown.index + 1] && !!pictureOf(session.frames[shown.index + 1]),
                 nextName: frameName(shown.index + 1),
+                imageModel: session.settings.imageModel,
                 making: clipsMaking(jobsFor(shown.index), pictureOf(shown)?.imageModel),
                 playing: playingClip?.index === shown.index ? playingClip.clip.file : undefined,
               }
@@ -852,7 +855,7 @@ const promptDiff = computed(() => {
           <template v-if="shown || (onPending && pending?.prompt)">
             <div class="flex items-start gap-2" :class="shown?.timings ? 'mb-1' : 'mb-3'">
               <p class="flex-1 text-muted">
-                Frame {{ promptIndex }} · {{ shown ? shown.action ?? 'Opening' : pendingAction }}
+                {{ frameName(promptIndex!) }} · {{ shown ? shown.action ?? 'Opening' : pendingAction }}
               </p>
               <button
                 v-if="shown && !onPending && promptDraft === null"
@@ -917,7 +920,7 @@ const promptDiff = computed(() => {
                   <template v-if="!removedHidden">
                     and <span class="text-danger line-through">removed</span>
                   </template>
-                  since Frame {{ promptIndex! - 1 }}.
+                  since {{ frameName(promptIndex! - 1) }}.
                 </p>
               </div>
               <p class="leading-relaxed" data-prompt>

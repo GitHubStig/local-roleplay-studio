@@ -5,7 +5,7 @@
  * only a line's newest can be retried (in its place, with a new seed) or deleted, and the one
  * picked is the picture everywhere (`pickedVersion`).
  */
-import { type FrameDeps, imageProgress, removeImage } from './frames.ts'
+import { type FrameDeps, frameName, imageProgress, removeImage } from './frames.ts'
 import { error } from './http.ts'
 import type { EditModel } from './images/editModels.ts'
 import type { EditOrder, JobEmit, JobKind } from './jobs.ts'
@@ -83,11 +83,11 @@ export async function editFrame<S extends Session>(
   save: (change: (s: S) => S) => Promise<S>,
 ): Promise<S> {
   const picture = shownPictureOf(session, index)
-  if (!picture) throw new EditError(`Frame ${index + 1} has no picture to edit`)
+  if (!picture) throw new EditError(`${frameName(index)} has no picture to edit`)
   const line = editLine(picture, model)
   const redo = order.retry ? line.at(-1) : undefined
   if (order.retry && (!redo || redo.copied)) {
-    throw new EditError(`Frame ${index + 1} has no edit to make again`)
+    throw new EditError(`${frameName(index)} has no edit to make again`)
   }
   // Made from the line's newest version; a retry, from the one before the edit it replaces.
   const from = (redo ? line.at(-2) : line.at(-1)) ?? picture
@@ -179,10 +179,10 @@ export function pickVersion(
 ): Promise<Session> {
   return updateSession(store, session.id, session.kind, (latest: Session) => {
     const picture = shownPictureOf(latest, index)
-    if (!picture) throw new VersionError(`Frame ${index + 1} has no picture`)
+    if (!picture) throw new VersionError(`${frameName(index)} has no picture`)
     const count = picture.edits?.length ?? 0
     if (!Number.isInteger(picked) || picked < 0 || picked > count) {
-      throw new VersionError(`Frame ${index + 1}'s picture has no version ${picked}`)
+      throw new VersionError(`${frameName(index)}'s picture has no version ${picked}`)
     }
     return changeRenderedPicture(latest, picture.image, (p) => ({ ...p, picked }))
   })
@@ -204,7 +204,7 @@ export async function deleteNewestEdit(
     const picture = shownPictureOf(latest, index)
     gone = picture?.edits?.[version - 1]
     if (!picture || !gone) {
-      throw new VersionError(`Frame ${index + 1}'s picture has no edit ${version}`)
+      throw new VersionError(`${frameName(index)}'s picture has no edit ${version}`)
     }
     const line = editLine(picture, gone.editModel)
     if (line.at(-1) !== gone) {
@@ -244,7 +244,7 @@ export async function deleteUpscale(
   const updated = await updateSession(store, session.id, session.kind, (latest: Session) => {
     const picture = shownPictureOf(latest, index)
     const version = picture && pickedVersion(picture)
-    if (!version?.upscaled) throw new VersionError(`Frame ${index + 1}'s picture isn't upscaled`)
+    if (!version?.upscaled) throw new VersionError(`${frameName(index)}'s picture isn't upscaled`)
     gone = version.upscaled
     return changeFramePicture(latest, version.image, (v) => {
       const { upscaled: _, ...rest } = v

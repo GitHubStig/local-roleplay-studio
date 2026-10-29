@@ -75,6 +75,13 @@ export interface FrameDeps {
 const TEXT_ATTEMPTS = 2
 
 /** Seconds since `start` (a `performance.now()` reading), to one decimal place. */
+/**
+ * What Frame `index` is called wherever a person reads it, the same in every kind of Session:
+ * numbered from 1, so index 0 (a Chain's or a Roleplay's Opening) is Frame 1. Not in what the
+ * Text Model is told, which keeps its own numbering.
+ */
+export const frameName = (index: number) => `Frame ${index + 1}`
+
 export const secondsSince = (start: number) => Math.round((performance.now() - start) / 100) / 10
 
 /**
@@ -262,8 +269,8 @@ export async function upscaleFrame(
   save: (change: (s: Session) => Session) => Promise<Session>,
 ): Promise<Session> {
   const picture = shownVersionOf(session, index)
-  if (!picture) throw new UpscaleError(`Frame ${index + 1} has no image to upscale`)
-  if (picture.upscaled) throw new UpscaleError(`Frame ${index + 1} is already upscaled`)
+  if (!picture) throw new UpscaleError(`${frameName(index)} has no image to upscale`)
+  if (picture.upscaled) throw new UpscaleError(`${frameName(index)} is already upscaled`)
   const { image } = picture
 
   const name = `${image.replace(/\.\w+$/, '')}-2048`

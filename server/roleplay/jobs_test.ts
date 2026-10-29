@@ -111,7 +111,7 @@ Deno.test('A failed job stays listed to retry or dismiss', () =>
     // Rendering a Frame that was never pictured fails.
     await call('POST', '/api/sessions/s1/jobs', { kind: 'render', frameIndex: 0 })
     const [failed] = await settled(call)
-    assertEquals([failed.status, failed.error], ['failed', "Frame 0 isn't pictured yet"])
+    assertEquals([failed.status, failed.error], ['failed', "Frame 1 isn't pictured yet"])
     // Kept, so it can be retried: back in the queue, where it fails again (still no picture).
     const retried = await call('POST', `/api/sessions/s1/jobs/${failed.id}/retry`)
     assertEquals(retried.status, 200)

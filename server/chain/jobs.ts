@@ -3,6 +3,7 @@
  * its picture, and the picture jobs every kind of Session has (`pictureJobs.ts`), while the player
  * carries on with the next Action.
  */
+import { frameName } from '../frames.ts'
 import { error } from '../http.ts'
 import type { Job, JobEmit, JobKind } from '../jobs.ts'
 import {
@@ -26,7 +27,7 @@ export function checkChainJob(
   // Any Frame renders again: Settings' size, Fast, quantize and float16 apply at each render.
   if (kind === 'render') return null
   if (!PICTURE_JOB_KINDS.includes(kind)) return error(`A Chain has no ${kind} jobs`, 409)
-  return checkPictureJob(session, index, kind, `Frame ${index}`, pending)
+  return checkPictureJob(session, index, kind, frameName(index), pending)
 }
 
 /** Does one of a Chain's jobs, saving onto the Chain as it is now (it may have moved on). */

@@ -1,5 +1,6 @@
 import {
   type FrameDeps,
+  frameName,
   limitCrossedBy,
   type ProgressEvent,
   replacePicture,
@@ -121,8 +122,8 @@ function checkPlanOpen(session: StoryboardSession): void {
 /** Refuses work on a Frame whose sentences aren't written yet. */
 function checkWritten(session: StoryboardSession, index: number): StoryboardFrame {
   const frame = session.frames[index]
-  if (!frame || !session.look) throw new Error(`There is no Frame ${index + 1}`)
-  if (!isWritten(frame)) throw new StageError(`Frame ${index + 1} isn't written yet`)
+  if (!frame || !session.look) throw new Error(`There is no ${frameName(index)}`)
+  if (!isWritten(frame)) throw new StageError(`${frameName(index)} isn't written yet`)
   return frame
 }
 
@@ -277,7 +278,7 @@ export async function renderStoryboardFrame(
   signal: AbortSignal,
 ): Promise<StoryboardFrame> {
   const frame = checkWritten(session, index)
-  if (frame.blocked) throw new LimitError(`Frame ${index + 1} crosses a limit: ${frame.blocked}`)
+  if (frame.blocked) throw new LimitError(`${frameName(index)} crosses a limit: ${frame.blocked}`)
 
   const { frame: rendered } = await replacePicture(
     deps,
@@ -327,7 +328,7 @@ export async function setBeat(
   shown?: string[],
 ): Promise<StoryboardSession> {
   const frame = session.frames[index]
-  if (!frame || !session.look) throw new Error(`There is no Frame ${index + 1}`)
+  if (!frame || !session.look) throw new Error(`There is no ${frameName(index)}`)
   checkPlanOpen(session)
   const line = beat.trim().replace(/\s+/g, ' ')
   if (!line) throw new Error('A Beat needs a line')

@@ -37,7 +37,7 @@ A kind of Session in which the player talks with a Character, one exchange per F
 _Avoid_: Chat, conversation mode, story mode
 
 **Frame**:
-One step of a Session. In a Chain or a Storyboard, one image: its Image Prompt, and its image once rendered. In a Roleplay, one exchange: the player's Message and the Character's Reply.
+One step of a Session. In a Chain or a Storyboard, one image: its Image Prompt, and its image once rendered. In a Roleplay, one exchange: the player's Message and the Character's Reply. Numbered from 1 wherever it's shown, in every kind (a Chain's or a Roleplay's Opening Frame is Frame 1); `session.json` and the API count from 0.
 _Avoid_: Turn, step, panel, shot
 
 **Opening Frame**:

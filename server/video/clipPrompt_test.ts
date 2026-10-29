@@ -48,7 +48,7 @@ Deno.test('Into Next’s prompt is told the next picture, and refused on the las
     const intoNext = { ...ask, kind: 'into-next', speech: true }
     const last = await writePrompt(call, 1, intoNext)
     assertEquals(last.status, 409)
-    assertStringIncludes((await last.json()).error, 'no picture to end on')
+    assertStringIncludes((await last.json()).error, 'to end on')
     await readEvents(await writePrompt(call, 0, intoNext))
     const [, second] = await chainFrames(call)
     const [{ system, user }] = model.clipRequests

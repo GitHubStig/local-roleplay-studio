@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { frameName as numbered } from '../frameName'
 import * as Plot from '@observablehq/plot'
 import { useElementSize, useMutationObserver } from '@vueuse/core'
 import { computed, ref, useTemplateRef, watch, watchEffect } from 'vue'
@@ -22,7 +23,7 @@ const props = defineProps<{
 }>()
 
 const frameOf = (index: number) => props.frames.find((f) => f.index === index)
-const frameName = (index: number) => frameOf(index)?.name ?? `Frame ${index}`
+const frameName = (index: number) => frameOf(index)?.name ?? numbered(index)
 
 const root = useTemplateRef<HTMLElement>('root')
 const { width } = useElementSize(root)

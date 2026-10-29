@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { frameName } from '../frameName'
 import { computed } from 'vue'
 import { imageUrl, type Made3d, type PicturedFrame, shownPicture } from '../api'
 import SceneViewer from './SceneViewer.vue'
@@ -13,7 +14,7 @@ const props = withDefaults(
     /** What a Frame is called in the viewer's title. */
     name?: (index: number) => string
   }>(),
-  { name: (index: number) => `Frame ${index}` },
+  { name: frameName },
 )
 /** Which Frame's scene or figure is open; null for none. Opening one closes the other, whose
  * close then leaves this be. */

@@ -1,6 +1,6 @@
 import { join } from '@std/path'
 import type { Figure, FigureMaker } from './figure.ts'
-import { secondsSince } from '../frames.ts'
+import { frameName, secondsSince } from '../frames.ts'
 import { RenderQueue } from '../renderQueue.ts'
 import type { Session, SessionStore } from '../session.ts'
 import { changeFramePicture, shownVersionOf } from '../pictures.ts'
@@ -47,7 +47,7 @@ export async function liftFigure<S extends Session>(
   const maker = deps[key]
   if (!maker) throw new FigureError(off)
   const picture = shownVersionOf(session, index)
-  if (!picture) throw new FigureError(`Frame ${index} has no picture yet`)
+  if (!picture) throw new FigureError(`${frameName(index)} has no picture yet`)
   const { image } = picture
   const from = picture.upscaled ?? image
   const dir = deps.store.dir(session.id)

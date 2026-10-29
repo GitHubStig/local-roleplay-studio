@@ -1,4 +1,5 @@
 <script setup lang="ts" generic="F extends PicturedFrame">
+import { frameName } from '../frameName'
 import { computed, ref, useTemplateRef, watch } from 'vue'
 import {
   asPicked,
@@ -41,7 +42,7 @@ const props = withDefaults(
      */
     oneStyle?: boolean
   }>(),
-  { name: (index: number) => `Frame ${index}` },
+  { name: frameName },
 )
 /** The Session changed here (a model's pictures were deleted): its screen loads it again. */
 const emit = defineEmits<{ changed: [] }>()

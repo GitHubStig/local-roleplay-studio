@@ -5,6 +5,7 @@
  * player picks (the one without a style of its own, often the first or the last).
  * docs/research/style-scores.md says how the measures were chosen.
  */
+import { frameName } from '../frames.ts'
 import { join } from '@std/path'
 import type { Session } from '../session.ts'
 import { pickedVersion } from '../pictures.ts'
@@ -153,7 +154,7 @@ export function styleScores(
     throw new StyleScoreError('Fewer than two Frames have a scored picture by every model')
   }
   if (!frames.includes(base)) {
-    throw new StyleScoreError(`Frame ${base} hasn't a scored picture by every model`)
+    throw new StyleScoreError(`${frameName(base)} hasn't a scored picture by every model`)
   }
   const captions = frames.map((i) => captionOf(session, i))
   const captionVectors = captions.every((c) => c && cache.texts[c]) &&

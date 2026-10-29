@@ -365,11 +365,11 @@ describe('RoleplayView', () => {
     const tab = () => wrapper.find('[data-detail-panel] [data-tab="frame"]').text()
     const current = () =>
       wrapper.findAll('[data-reply]').map((r) => r.attributes('aria-current') === 'true')
-    expect(tab()).toBe('Frame 2')
+    expect(tab()).toBe('Frame 3')
     expect(current()).toEqual([false, false, true])
 
     await wrapper.findAll('[data-frames-list] [data-frame]')[1].trigger('click')
-    expect(tab()).toBe('Frame 1')
+    expect(tab()).toBe('Frame 2')
     expect(current()).toEqual([false, true, false])
     // Everything about the Frame is in its tab; the conversation keeps only Listen.
     const panel = wrapper.find('[data-frame-panel]')
@@ -384,7 +384,7 @@ describe('RoleplayView', () => {
     expect(api.queueJob).toHaveBeenCalledWith('r1', 'picture', 1)
 
     await wrapper.findAll('[data-reply]')[0].trigger('click')
-    expect(tab()).toBe('Frame 0')
+    expect(tab()).toBe('Frame 1')
   })
 
   it('opens the side panel on the Look and Cast for review, and on the Frame once begun', async () => {
@@ -909,11 +909,11 @@ describe('RoleplayView', () => {
       scrolled.push(this)
     })
     const { wrapper } = await mountIt()
-    expect(wrapper.find('[data-detail-panel] [data-tab="frame"]').text()).toBe('Frame 2')
+    expect(wrapper.find('[data-detail-panel] [data-tab="frame"]').text()).toBe('Frame 3')
     await wrapper.find('[data-tab=queue]').trigger('click')
     await wrapper.find('[data-queue-item] button').trigger('click')
     await flushPromises()
-    expect(wrapper.find('[data-detail-panel] [data-tab="frame"]').text()).toBe('Frame 1')
+    expect(wrapper.find('[data-detail-panel] [data-tab="frame"]').text()).toBe('Frame 2')
     expect(scrolled.at(-1)).toBe(wrapper.find('[data-frame-clips]').element)
   })
 
@@ -927,7 +927,7 @@ describe('RoleplayView', () => {
     await tab.trigger('click')
     const items = wrapper.findAll('[data-queue-item]')
     expect(items.map((i) => i.text())).toEqual([
-      expect.stringContaining('Picture · Frame 0'),
+      expect.stringContaining('Picture · Frame 1'),
       expect.stringContaining("Failed: Frame 0 isn't pictured yet"),
     ])
 
@@ -1050,15 +1050,15 @@ describe('RoleplayView', () => {
     await again.find('[data-view-scene]').trigger('click')
     await flushPromises()
     const viewers = () => again.findAll('[data-scene-viewer]')
-    expect(viewers()[0].text()).toContain('Frame 0 · SHARP, 2.5D')
+    expect(viewers()[0].text()).toContain('Frame 1 · SHARP, 2.5D')
     expect(viewers()[0].text()).toContain("Couldn't show the scene")
     await again.find('[data-view-figure]').trigger('click')
     await flushPromises()
-    expect(viewers()[1].text()).toContain('Frame 0 · TripoSplat, 3D')
+    expect(viewers()[1].text()).toContain('Frame 1 · TripoSplat, 3D')
     expect(again.find('[data-lito-button]').exists()).toBe(false)
     await again.find('[data-view-lito]').trigger('click')
     await flushPromises()
-    expect(viewers()[1].text()).toContain('Frame 0 · LiTo, 3D')
+    expect(viewers()[1].text()).toContain('Frame 1 · LiTo, 3D')
   })
 
   it('steps through the rendered Frames in the viewer, scrolling the conversation to each', async () => {
@@ -1075,14 +1075,14 @@ describe('RoleplayView', () => {
     await wrapper.findAll('[data-picture-image]')[1].trigger('click')
     await flushPromises()
     const viewer = () => wrapper.find('[data-image-viewer]')
-    expect(viewer().find('[data-viewer-label]').text()).toBe('Frame 2 · 2 of 2')
+    expect(viewer().find('[data-viewer-label]').text()).toBe('Frame 3 · 2 of 2')
     expect(viewer().find('[data-next]').attributes('disabled')).toBeDefined()
 
-    // ← skips Frame 1, which has no picture.
+    // ← skips Frame 2, which has no picture.
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft' }))
     await flushPromises()
     await flushPromises()
-    expect(viewer().find('[data-viewer-label]').text()).toBe('Frame 0 · 1 of 2')
+    expect(viewer().find('[data-viewer-label]').text()).toBe('Frame 1 · 1 of 2')
     expect(viewer().find('[data-image-frame] img').attributes('src')).toBe(
       '/api/sessions/r1/images/frame-0-aaaaaaaa.png',
     )

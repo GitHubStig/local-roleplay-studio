@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { frameName } from '../frameName'
 import type { Job } from '../api'
 import { useImageModels } from '../composables/useSettingsOptions'
 import { jobStatus } from '../jobs'
@@ -16,7 +17,7 @@ withDefaults(
     /** What a Frame is called. */
     name?: (index: number) => string
   }>(),
-  { name: (index: number) => `Frame ${index}` },
+  { name: frameName },
 )
 defineEmits<{
   go: [index: number]

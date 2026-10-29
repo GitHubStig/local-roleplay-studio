@@ -69,7 +69,7 @@ Deno.test('Into Next ends on the next Frame’s picture, and the last Frame has 
     const intoNext = { ...leadIn, kind: 'into-next' }
     const last = await queueClip(call, 1, intoNext)
     assertEquals(last.status, 409)
-    assertStringIncludes((await last.json()).error, 'no picture to end on')
+    assertStringIncludes((await last.json()).error, 'to end on')
     assertEquals((await queueClip(call, 0, intoNext)).status, 201)
     await settled(call)
     const [opening, second] = await chainFrames(call)
@@ -160,4 +160,17 @@ Deno.test('A clip is made from the picture of the Image Model it was queued for'
       'flux2-klein',
       undefined,
     ]])
+  }))
+
+Deno.test('A clip is refused for a picture by another Image Model than the Session’s', () =>
+  withTempDir(async (root) => {
+    const { call } = await chainOfTwo(root, { video: fakeVideoGenerator() })
+    // Switched: the Frames show their old pictures, by another model, until rendered again.
+    const switched = await call('PUT', '/api/sessions/s1/image-model', {
+      imageModel: 'z-image-turbo',
+    })
+    assertEquals(switched.status, 200)
+    const refused = await queueClip(call, 1, leadIn)
+    assertEquals(refused.status, 409)
+    assertStringIncludes((await refused.json()).error, 'has no picture by Z-Image Turbo')
   }))

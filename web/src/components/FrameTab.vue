@@ -12,6 +12,7 @@ import {
 } from '../api'
 import FrameClips from './FrameClips.vue'
 import { useFeatures } from '../composables/useFeatures'
+import { useImageModels } from '../composables/useSettingsOptions'
 import PictureButtons from './PictureButtons.vue'
 
 /**
@@ -38,6 +39,8 @@ const props = withDefaults(
       index: number
       nextPictured: boolean
       nextName: string
+      /** The Session's Image Model: clips are of its picture, not another the Frame shows meanwhile. */
+      imageModel: string
       /** The kinds of clip queued or being made of it (`clipsMaking`). */
       making: ClipKind[]
       /** The clip playing over its picture, by its file. */
@@ -58,6 +61,9 @@ defineEmits<{
   stop: []
 }>()
 const { on: featureOn } = useFeatures()
+const { labelOf } = useImageModels()
+/** The picture shown is by the Session's Image Model, so it can have clips. */
+const ownPicture = computed(() => !!props.picture && props.picture.imageModel === props.clips?.imageModel)
 
 /** The clips of the picture's version shown (its picked edit's, if it has one). */
 const pictureClips = computed(() =>
@@ -80,8 +86,18 @@ const has3d = computed(() =>
 <template>
   <div class="flex min-h-full flex-col gap-4" data-frame-tab>
     <div><slot /></div>
+    <section
+      v-if="clips && picture && featureOn('video') && !ownPicture"
+      class="flex flex-col gap-1 border-t border-line pt-3"
+      data-frame-clips
+    >
+      <h3 class="text-xs font-medium text-muted">Clip</h3>
+      <p class="text-xs text-muted" data-clips-other-model>
+        Clips are made of a picture by {{ labelOf(clips.imageModel) }}: render this Frame with it first.
+      </p>
+    </section>
     <FrameClips
-      v-if="clips && picture && featureOn('video')"
+      v-else-if="clips && picture && featureOn('video')"
       :session-id="clips.sessionId"
       :index="clips.index"
       :clips="pictureClips"

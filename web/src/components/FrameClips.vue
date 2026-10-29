@@ -12,9 +12,10 @@ import { sortClips } from '../clips'
 /**
  * The selected Frame's clips (ADR 0025), in its tab, the same in every kind of Session:
  * pick where the picture sits in the clip, its length and whether anyone speaks; the Text Model
- * writes the prompt from the story, for the player to read and edit; then the clip is queued. The
- * clips already made are listed, to play over the picture (and stop), to put back in the form to
- * make again (Redo), or to say what was wrong with one, for the Text Model to rewrite its prompt by.
+ * writes the prompt from the story, for the player to read and edit; then the clip is queued. A
+ * kind the picture has a clip of fills the form from it, to change and make again (Redo clip, which
+ * replaces it). The clips made are listed, to play over the picture (and stop), or to say what was
+ * wrong with one, for the Text Model to rewrite its prompt by.
  */
 const props = defineProps<{
   sessionId: string
@@ -42,14 +43,25 @@ const prompt = ref('')
 const writing = ref(false)
 const error = ref('')
 
-/** A prompt carried over a change of kind, by Again. */
-let carried: string | null = null
-// A prompt is written for one kind of clip (and one Frame): it doesn't carry over to another.
-watch([kind, () => props.index], () => {
-  prompt.value = carried ?? ''
-  carried = null
+/** The picture's clip of the kind chosen, if it has one (one of each kind). */
+const made = computed(() => props.clips?.find((c) => c.kind === kind.value))
+/**
+ * The form as the chosen kind's clip was ordered, to make again; for a kind not made yet, an
+ * empty prompt, as a prompt is written for one kind (and one Frame) and doesn't carry over.
+ */
+function fillForm() {
   error.value = ''
-})
+  const clip = made.value
+  if (!clip) {
+    prompt.value = ''
+    return
+  }
+  seconds.value = clip.seconds
+  speech.value = clip.speech
+  prompt.value = clip.prompt
+}
+// Another kind, another Frame, or another picture's clip (the Session's Image Model switched).
+watch([kind, () => props.index, () => made.value?.file], fillForm, { immediate: true })
 
 const hint = computed(() =>
   ({
@@ -64,8 +76,10 @@ const hint = computed(() =>
 const listed = computed(() => sortClips(props.clips))
 /** The kind chosen is being made already: one of each kind at a time, the others free meanwhile. */
 const makingThis = computed(() => props.making.includes(kind.value))
-/** Make clip, or that this kind is being made. */
-const makeLabel = computed(() => (makingThis.value ? `Making ${CLIP_KIND_NAMES[kind.value]}…` : 'Make clip'))
+/** Make clip, Redo clip for a kind the picture has, or that this kind is being made. */
+const makeLabel = computed(() =>
+  makingThis.value ? `Making ${CLIP_KIND_NAMES[kind.value]}…` : made.value ? 'Redo clip' : 'Make clip'
+)
 /** The other kinds being made meanwhile, under the buttons. */
 const othersMaking = computed(() =>
   props.making.filter((k) => k !== kind.value).map((k) => CLIP_KIND_NAMES[k]).join(', ')
@@ -126,13 +140,8 @@ async function rewrite(clip: Clip) {
 
 /** Puts a clip's order back in the form, to edit and make again. */
 function again(clip: Clip) {
-  seconds.value = clip.seconds
-  speech.value = clip.speech
-  if (kind.value === clip.kind) prompt.value = clip.prompt
-  else {
-    carried = clip.prompt
-    kind.value = clip.kind
-  }
+  kind.value = clip.kind
+  fillForm()
 }
 </script>
 
@@ -195,7 +204,11 @@ function again(clip: Clip) {
         type="button"
         class="action"
         :disabled="writing || makingThis || !prompt.trim() || (kind === 'into-next' && !nextPictured)"
-        :title="makingThis ? 'This kind of clip is being made of this picture' : 'Make the clip (a few minutes)'"
+        :title="makingThis
+          ? 'This kind of clip is being made of this picture'
+          : made
+          ? `Make it again as set above, in place of this ${CLIP_KIND_NAMES[kind]} (a few minutes)`
+          : 'Make the clip (a few minutes)'"
         data-make-clip
         @click="make"
       >
@@ -221,15 +234,6 @@ function again(clip: Clip) {
           @click="playing === clip.file ? emit('stop') : emit('play', clip)"
         >
           {{ playing === clip.file ? 'Stop' : 'Play' }}
-        </button>
-        <button
-          type="button"
-          class="action"
-          title="Put its prompt back above, to change and make again"
-          data-clip-again
-          @click="again(clip)"
-        >
-          Redo
         </button>
         <button
           type="button"

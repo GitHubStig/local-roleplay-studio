@@ -356,10 +356,10 @@ describe('SessionView', () => {
     const { wrapper } = await mountIt()
     await wrapper.findAll('[role=tab]')[1].trigger('click')
     const panel = wrapper.find('[data-prompt-panel]')
-    expect(panel.text()).toContain('Frame 1 · Sit')
+    expect(panel.text()).toContain('Frame 2 · Sit')
     expect(panel.findAll('[data-diff=removed]').map((d) => d.text())).toEqual(['0, calm,'])
     expect(panel.findAll('[data-diff=added]').map((d) => d.text())).toEqual(['1, scared,'])
-    expect(panel.text()).toContain('since Frame 0')
+    expect(panel.text()).toContain('since Frame 1')
   })
 
   it('can hide the removed words, remembering the choice', async () => {
@@ -476,12 +476,12 @@ describe('SessionView', () => {
     await wrapper.find('main [data-frame-picture]').trigger('click')
     await flushPromises()
     const viewer = () => wrapper.find('[data-image-viewer]')
-    expect(viewer().find('[data-viewer-label]').text()).toBe('Frame 1 · 2 of 2')
+    expect(viewer().find('[data-viewer-label]').text()).toBe('Frame 2 · 2 of 2')
     expect(viewer().find('[data-image-frame] img').attributes('src')).toContain('frame-1-2048.png')
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft' }))
     await flushPromises()
     await flushPromises()
-    expect(viewer().find('[data-viewer-label]').text()).toBe('The Opening · 1 of 2')
+    expect(viewer().find('[data-viewer-label]').text()).toBe('Frame 1 · Opening · 1 of 2')
   })
 
   it('queues SHARP, TripoSplat and LiTo on the shown Frame, then offers to view what was made', async () => {
@@ -497,7 +497,7 @@ describe('SessionView', () => {
     expect(wrapper.find('[data-lito-button]').attributes('disabled')).toBeDefined()
     expect(wrapper.find('main [data-frame-job]').exists()).toBe(false)
     await wrapper.find('[data-tab=queue]').trigger('click')
-    expect(wrapper.find('[data-queue]').text()).toContain('LiTo · The Opening')
+    expect(wrapper.find('[data-queue]').text()).toContain('LiTo · Frame 1 · Opening')
     expect(wrapper.find('[data-queue]').text()).toContain('Making the 3D figure…')
     expect(wrapper.find('textarea').attributes('disabled')).toBeUndefined()
 
@@ -894,7 +894,7 @@ describe('SessionView', () => {
     await wrapper.find('textarea').setValue('my draft')
 
     await wrapper.findAll('aside [data-frame]')[1].trigger('click')
-    expect(wrapper.find('[data-viewing]').text()).toContain('Viewing Frame 1 of 4')
+    expect(wrapper.find('[data-viewing]').text()).toContain('Viewing Frame 2 of 5')
     const past = wrapper.find('[data-past-action]')
     expect((past.element as HTMLTextAreaElement).value).toBe('Sit')
     expect(past.attributes('readonly')).toBeDefined()
@@ -904,7 +904,7 @@ describe('SessionView', () => {
     expect(api.streamFrame).not.toHaveBeenCalled()
 
     await wrapper.findAll('aside [data-frame]')[0].trigger('click')
-    expect(wrapper.find('[data-viewing]').text()).toContain('Viewing the Opening of 4')
+    expect(wrapper.find('[data-viewing]').text()).toContain('Viewing the Opening of 5')
     expect((wrapper.find('[data-past-action]').element as HTMLTextAreaElement).value).toBe('')
     expect(wrapper.find('[data-past-action]').attributes('placeholder')).toBe(
       'The Opening Frame has no Action.',

@@ -1,9 +1,10 @@
 import { join } from '@std/path'
-import { secondsSince } from '../frames.ts'
+import { frameName, secondsSince } from '../frames.ts'
 import type { ClipOrder, JobEmit } from '../jobs.ts'
 import { RenderQueue } from '../renderQueue.ts'
 import type { Session, SessionStore } from '../session.ts'
-import { changeFramePicture, pickedVersion, shownVersionOf } from '../pictures.ts'
+import { anyImageModel } from '../images/imageModels.ts'
+import { changeFramePicture, pickedVersion } from '../pictures.ts'
 import { CLIP_ENDS, type ClipKind, type VideoGenerator } from './videoGenerator.ts'
 
 /**
@@ -41,30 +42,39 @@ export class ClipError extends Error {}
 /** Why no clip can be made: no video generator is set up. */
 export const CLIPS_OFF = "Clips aren't set up on this server"
 
+/** The picked version of Frame `index`'s picture by Image Model `model`, if it has one. */
+const versionBy = (session: Session, index: number, model: string) => {
+  const picture = session.frames[index]?.pictures.find((p) => p.imageModel === model)
+  return picture && pickedVersion(picture)
+}
+
 /**
- * Why a clip of `kind` can't be made from Frame `index` of `session` (named `name`), or null if it
- * can: Into Next needs the next Frame's picture, now (another Frame's render isn't waited for).
+ * Why a clip of `kind` can't be made from Frame `index` of `session` (named `name`) by Image Model
+ * `model` (the Session's, unless given), or null if it can. A clip is of a picture by that model,
+ * not one by another the Frame shows until it renders: unless one is `coming` (a render queued
+ * ahead). Into Next needs the next Frame's picture by it, now (another Frame's render isn't
+ * waited for).
  */
-export function clipRefusal(session: Session, index: number, kind: ClipKind, name: string) {
-  if (kind === 'into-next' && !shownVersionOf(session, index + 1)) {
-    return `${name}'s next Frame has no picture to end on`
+export function clipRefusal(
+  session: Session,
+  index: number,
+  kind: ClipKind,
+  name: string,
+  model = session.settings.imageModel,
+  coming = false,
+) {
+  const label = anyImageModel(model)?.label ?? model
+  if (!coming && !versionBy(session, index, model)) return `${name} has no picture by ${label} yet`
+  if (kind === 'into-next' && !versionBy(session, index + 1, model)) {
+    return `${name}'s next Frame has no picture by ${label} to end on`
   }
   return null
 }
 
 /**
- * The version of Frame `index`'s picture by Image Model `model` that's picked, or the version the
- * Frame shows if it has none by that model (or none is given).
- */
-const versionBy = (session: Session, index: number, model?: string) => {
-  const picture = model && session.frames[index]?.pictures.find((p) => p.imageModel === model)
-  return picture ? pickedVersion(picture) : shownVersionOf(session, index)
-}
-
-/**
  * Makes a clip from Frame `index`'s picture by Image Model `model` (the one it was queued for,
  * whatever the Session shows now), as `order` says, in its turn behind any render: LTX 2.5 takes a
- * whole 12 GB card. Into Next ends on the next Frame's picture by the same model, if it has one.
+ * whole 12 GB card. Into Next ends on the next Frame's picture by the same model.
  * Saved onto the picture it was made from, if the Frame still has it.
  */
 export async function makeClip<S extends Session>(
@@ -79,11 +89,11 @@ export async function makeClip<S extends Session>(
   save: (change: (s: S) => S) => Promise<S>,
 ): Promise<S> {
   if (!deps.video) throw new ClipError(CLIPS_OFF)
-  const picture = versionBy(session, index, model)
-  if (!picture) throw new ClipError(`Frame ${index} has no picture yet`)
-  const refused = clipRefusal(session, index, order.kind, `Frame ${index}`)
+  const by = model ?? session.settings.imageModel
+  const refused = clipRefusal(session, index, order.kind, frameName(index), by)
   if (refused) throw new ClipError(refused)
-  const next = order.kind === 'into-next' ? versionBy(session, index + 1, model)!.image : undefined
+  const picture = versionBy(session, index, by)!
+  const next = order.kind === 'into-next' ? versionBy(session, index + 1, by)!.image : undefined
   const ends = CLIP_ENDS[order.kind]
   const videoModel = await deps.videoModel()
   const pictureAt = (end?: 'still' | 'next') => end === 'still' ? picture.image : end && next

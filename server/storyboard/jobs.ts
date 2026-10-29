@@ -3,6 +3,7 @@
  * the picture jobs every kind of Session has (`pictureJobs.ts`), queued so the player can carry on
  * editing meanwhile.
  */
+import { frameName } from '../frames.ts'
 import type { FrameDeps } from '../frames.ts'
 import { error } from '../http.ts'
 import type { Job, JobEmit, JobKind } from '../jobs.ts'
@@ -24,12 +25,14 @@ export function checkStoryboardJob(
   pending: readonly JobKind[],
 ): Response | null {
   const frame = session.frames[index]
-  if (!isWritten(frame)) return error(`Frame ${index + 1} isn't written yet`, 409)
+  if (!isWritten(frame)) return error(`${frameName(index)} isn't written yet`, 409)
   if (kind === 'render') {
-    return frame.blocked ? error(`Frame ${index + 1} crosses a limit: ${frame.blocked}`, 422) : null
+    return frame.blocked
+      ? error(`${frameName(index)} crosses a limit: ${frame.blocked}`, 422)
+      : null
   }
   if (!PICTURE_JOB_KINDS.includes(kind)) return error(`A Storyboard has no ${kind} jobs`, 409)
-  return checkPictureJob(session, index, kind, `Frame ${index + 1}`, pending)
+  return checkPictureJob(session, index, kind, frameName(index), pending)
 }
 
 /** Does one of a Storyboard's jobs, saving onto it as it is now (it may have been edited). */

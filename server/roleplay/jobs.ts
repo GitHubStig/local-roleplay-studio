@@ -2,6 +2,7 @@
  * What a Roleplay's background work does (see `SessionJobs` in jobs.ts): pictures and renders its
  * Frames, upscales them, designs and speaks the Character's voice, and makes its pictures into 3D.
  */
+import { frameName } from '../frames.ts'
 import { error } from '../http.ts'
 import type { Job, JobEmit, JobKind } from '../jobs.ts'
 import type { Upscaler } from '../images/upscalers.ts'
@@ -34,13 +35,13 @@ export function checkRoleplayJob(
   pending: readonly JobKind[],
 ): Response | null {
   if (kind === 'speak' && !spokenText(session.frames[index], 'dialogue')) {
-    return error(`Frame ${index} has nothing to say aloud`, 409)
+    return error(`${frameName(index)} has nothing to say aloud`, 409)
   }
   if (kind === 'speak-thought' && !spokenText(session.frames[index], 'thought')) {
-    return error(`Frame ${index} has no thought to say aloud`, 409)
+    return error(`${frameName(index)} has no thought to say aloud`, 409)
   }
   if (PICTURE_JOB_KINDS.includes(kind)) {
-    return checkPictureJob(session, index, kind, `Frame ${index}`, pending)
+    return checkPictureJob(session, index, kind, frameName(index), pending)
   }
   return null
 }
