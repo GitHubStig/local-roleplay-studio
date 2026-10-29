@@ -5,6 +5,7 @@
  * drawn into it, and someone the story brings in joins the Look, to look the same next time.
  * Its prompts are `prompts/roleplay/art-*.md`.
  */
+import { frameName } from '../frames.ts'
 import { stringify } from '@std/yaml'
 import { crossedLimit, limitsEnabled } from '../limits.ts'
 import { composePrompt, matchShown, shownSubjects } from '../look.ts'
@@ -133,7 +134,7 @@ const artLimits = () => limitsEnabled() ? loadPrompt('roleplay/art-limits') : Pr
  */
 export function storyText(session: RoleplaySession, upTo: number): string {
   return session.frames.slice(0, upTo + 1)
-    .map((f) => `Frame ${f.index}\n${exchangeText(session, f.index)}`)
+    .map((f) => `${frameName(f.index)}\n${exchangeText(session, f.index)}`)
     .join('\n\n')
 }
 
@@ -163,7 +164,7 @@ export function lastWorn(session: RoleplaySession, index: number): string {
   const byFrame = new Map<RoleplayFrame, string[]>()
   for (const [name, f] of lastFrame) byFrame.set(f, [...(byFrame.get(f) ?? []), name])
   return [...byFrame].sort(([a], [b]) => a.index - b.index)
-    .map(([f, names]) => `- Frame ${f.index}, ${names.join(' and ')}: ${f.clothing}`)
+    .map(([f, names]) => `- ${frameName(f.index)}, ${names.join(' and ')}: ${f.clothing}`)
     .join('\n')
 }
 
@@ -219,7 +220,7 @@ export async function artFrameMessages(
         look: block(lookForModel(session.look!)),
         story: storyText(session, index),
         worn: lastWorn(session, index) || '(no one has been pictured yet)',
-        frame: index,
+        frame: index + 1,
       }),
     },
   ]

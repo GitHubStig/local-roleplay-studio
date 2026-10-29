@@ -1,5 +1,5 @@
 <!--
-The Frame's story in video/clip-request, for every kind of clip but Play out
+The Frame's story in video/clip-request, for a Lead In and an Idle Loop
 (server/video/clipPrompt.ts).
 
 Values: story (what happens in the Frame)

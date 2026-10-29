@@ -47,20 +47,15 @@ const pictureOf = (session: Session, index: number) => session.frames[index]?.pr
 
 /**
  * What comes after the picture, as a clip of `kind` is told it: Into Next, the next picture it ends
- * on; Play out, the next Frame's story, or on the newest Frame, that nothing new happens.
+ * on. A Play out isn't told the next Frame, even when there is one: it decides what happens next
+ * for itself (the owner, 2026-10-29), leaving the story's way to the next picture to Into Next.
  */
 async function afterPicture(session: Session, index: number, kind: ClipKind): Promise<string> {
-  const next = session.frames[index + 1]
-  if (kind === 'into-next') {
-    return loadPrompt('video/clip-next', {
-      picture: pictureOf(session, index + 1),
-      story: frameStory(session, index + 1),
-    })
-  }
-  if (kind !== 'play-out') return ''
-  return next
-    ? loadPrompt('video/clip-after', { story: frameStory(session, index + 1) })
-    : loadPrompt('video/clip-after-none')
+  if (kind !== 'into-next') return ''
+  return loadPrompt('video/clip-next', {
+    picture: pictureOf(session, index + 1),
+    story: frameStory(session, index + 1),
+  })
 }
 
 /** A prompt to rewrite: the one a clip was made from, and what the player said was wrong with it. */
@@ -79,9 +74,11 @@ export async function clipMessages(
   ask: ClipAsk,
   revise?: ClipRevision,
 ): Promise<{ system: string; user: string }> {
-  // A Play out starts on the picture, by which the Frame's own story has happened.
+  // A Play out and an Into Next start on the picture, by which the Frame's own story has happened.
   const story = await loadPrompt(
-    ask.kind === 'play-out' ? 'video/clip-story-done' : 'video/clip-story',
+    ask.kind === 'play-out' || ask.kind === 'into-next'
+      ? 'video/clip-story-done'
+      : 'video/clip-story',
     { story: frameStory(session, index) },
   )
   const messages = {

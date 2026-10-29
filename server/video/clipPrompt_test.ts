@@ -103,24 +103,20 @@ Deno.test('A prompt loses an introduction and quote marks around it all, not ins
   assertEquals(cleanClipPrompt('He says "Sit." She sits.'), 'He says "Sit." She sits.')
 })
 
-Deno.test('A Play out is told the Frame has happened, and what happens next, if anything', () =>
+Deno.test('A Play out is told the Frame has happened, and nothing of the next, to decide itself', () =>
   withTempDir(async (root) => {
     const { call, model } = await chainWritingClips(root, ['She sits.', 'He waits.'])
-    const playOut = { ...ask, kind: 'play-out' }
-    await readEvents(await writePrompt(call, 0, playOut))
-    await readEvents(await writePrompt(call, 1, playOut))
+    await readEvents(await writePrompt(call, 0, { ...ask, kind: 'play-out' }))
+    await readEvents(await writePrompt(call, 0, { ...ask, kind: 'into-next' }))
     const [opening, second] = await chainFrames(call)
-    const [first, last] = model.clipRequests.map((r) => r.user)
-    assertStringIncludes(
-      first,
-      await loadPrompt('video/clip-story-done', { story: opening.narration }),
-    )
-    assertStringIncludes(
-      first,
-      await loadPrompt('video/clip-after', { story: `Sit\n${second.narration}` }),
-    )
-    // The newest Frame has nothing after it: nothing new happens.
-    assertStringIncludes(last, await loadPrompt('video/clip-after-none'))
+    const [playOut, intoNext] = model.clipRequests.map((r) => r.user)
+    const done = await loadPrompt('video/clip-story-done', { story: opening.narration })
+    // Both start on the picture, so both are told its story as already happened.
+    assertStringIncludes(playOut, done)
+    assertStringIncludes(intoNext, done)
+    // Only Into Next is told the next Frame.
+    assertEquals(playOut.includes(second.narration), false)
+    assertStringIncludes(intoNext, second.narration)
   }))
 
 Deno.test('A prompt is rewritten from the one a clip was made from and what was wrong with it', () =>

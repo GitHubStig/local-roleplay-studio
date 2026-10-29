@@ -66,7 +66,7 @@ watch([kind, () => props.index, () => made.value?.file], fillForm, { immediate: 
 const hint = computed(() =>
   ({
     'lead-in': 'Ends on this picture: what leads up to it.',
-    'play-out': 'Starts on this picture: what happens next.',
+    'play-out': 'Starts on this picture: what happens next, as the Text Model decides.',
     'idle-loop': 'Starts and ends on this picture: small movement, to loop.',
     'into-next': `Starts on this picture and ends on ${props.nextName}'s.`,
   })[kind.value]

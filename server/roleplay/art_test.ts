@@ -56,10 +56,10 @@ const session: RoleplaySession = {
 Deno.test('storyText has both sides of each exchange, but no thoughts, up to the Frame', () => {
   assertEquals(
     storyText(session, 1),
-    'Frame 0\nMira Vance: Mira grips the wheel. "You are late."\n\n' +
-      'Frame 1\nSam Reyes: I grab the rail.\nMira Vance: Mira steadies him.',
+    'Frame 1\nMira Vance: Mira grips the wheel. "You are late."\n\n' +
+      'Frame 2\nSam Reyes: I grab the rail.\nMira Vance: Mira steadies him.',
   )
-  assertEquals(storyText(session, 0).includes('Frame 1'), false)
+  assertEquals(storyText(session, 0).includes('Frame 2'), false)
 })
 
 Deno.test('Undressed people are covered in pictures only while the Limits are on', async () => {
@@ -236,11 +236,11 @@ Deno.test('lastWorn gives each person the clothing of the latest earlier picture
   assertEquals(lastWorn(story, 0), '')
   assertEquals(
     lastWorn(story, 3),
-    '- Frame 0, Sam Reyes: Mira wears a coat; Sam wears oilskins.\n' +
-      '- Frame 1, Mira Vance: Mira has taken off her coat.',
+    '- Frame 1, Sam Reyes: Mira wears a coat; Sam wears oilskins.\n' +
+      '- Frame 2, Mira Vance: Mira has taken off her coat.',
   )
   assertEquals(
     lastWorn(story, 4),
-    '- Frame 3, Mira Vance and Sam Reyes: Mira wears a robe; Sam is soaked.',
+    '- Frame 4, Mira Vance and Sam Reyes: Mira wears a robe; Sam is soaked.',
   )
 })

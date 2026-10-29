@@ -275,7 +275,7 @@ Deno.test('pictureFrame writes the Look once, then each Frame from the story up 
     assertEquals(events.map((e) => e.type), ['phase', 'look', 'pictured'])
     assertEquals(first.look, look)
     assertStringIncludes(first.frames[1].prompt!, 'Mira Vance, a tall woman of 34.')
-    assertStringIncludes(scripted.art[1][1].content, 'Picture Frame 1.')
+    assertStringIncludes(scripted.art[1][1].content, 'Picture Frame 2.')
     // Kept for debugging: how long each call took, and any reasoning.
     assertEquals(typeof first.lookTimings?.text, 'number')
     assertEquals(typeof first.frames[1].pictureTimings?.text, 'number')

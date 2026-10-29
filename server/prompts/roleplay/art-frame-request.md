@@ -5,7 +5,7 @@ show them.
 
 Values: look (a YAML block), story (the exchanges, as text), worn (what each person wore when
 last pictured: the clothing sentence of the latest earlier picture showing them, a line per
-picture), frame (the Frame's number)
+picture), frame (the Frame's number, from 1, as the story numbers it)
 -->
 
 Look:
