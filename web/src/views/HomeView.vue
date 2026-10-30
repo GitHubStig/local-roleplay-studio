@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useElementSize } from '@vueuse/core'
+import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   createSession,
@@ -20,6 +21,18 @@ const { currentSessionId } = useCurrentSession()
 
 const sessions = ref<SessionSummary[] | null>(null)
 const listError = ref('')
+const CARD_REM = 12
+const GAP_REM = 1
+const page = useTemplateRef('page')
+const { width: pageWidth } = useElementSize(page)
+/** The Sessions section is as wide as the columns that fit (or are needed), so it centres as a block. */
+const sessionsWidth = computed(() => {
+  const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
+  const fit = Math.floor((pageWidth.value / rem + GAP_REM) / (CARD_REM + GAP_REM))
+  const columns = Math.min(fit, sessions.value?.length ?? 0)
+  if (columns < 1) return undefined
+  return `${columns * CARD_REM + (columns - 1) * GAP_REM}rem`
+})
 const deleteError = ref('')
 /** Why the last attempt to start failed, e.g. the Opening Frame errored. */
 const startError = ref('')
@@ -116,13 +129,17 @@ function ago(iso: string): string {
 
 <template>
   <div class="overflow-y-auto p-6">
-    <div class="mx-auto flex max-w-4xl flex-col gap-10">
-      <section v-if="listError || sessions?.length" class="flex flex-col gap-4">
+    <div ref="page" class="mx-auto flex max-w-[104rem] flex-col gap-10">
+      <section
+        v-if="listError || sessions?.length"
+        class="mx-auto flex max-w-full flex-col gap-4"
+        :style="{ width: sessionsWidth }"
+      >
         <h2 class="text-xl font-semibold">Your Sessions</h2>
         <p v-if="listError" class="text-danger">Could not load your Sessions: {{ listError }}</p>
         <p v-if="deleteError" class="text-sm text-danger" role="alert">{{ deleteError }}</p>
 
-        <ul class="grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] gap-4">
+        <ul class="grid grid-cols-[repeat(auto-fill,12rem)] gap-4">
           <li v-for="s in sessions" :key="s.id" class="group relative" data-session>
             <RouterLink
               :to="sessionPath(s.id, s.kind)"
@@ -172,7 +189,7 @@ function ago(iso: string): string {
         </ul>
       </section>
 
-      <StartSession :error="startError" @start="start" />
+      <StartSession :error="startError" class="mx-auto w-full max-w-4xl" @start="start" />
     </div>
   </div>
 </template>
