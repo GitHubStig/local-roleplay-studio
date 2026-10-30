@@ -250,15 +250,18 @@ export class SessionJobs {
   /** Each Session's running jobs, at most one per machine, by id. */
   #running = new Map<string, Map<string, Running>>()
   #run: JobRunner
-  #dropped?: (sessionId: string, job: Job) => void
+  #dropped?: (sessionId: string, job: Job) => void | Promise<void>
   /** Sessions whose queue is held: no job starts until `holding` ends. */
   #held = new Set<string>()
+  /** Each Session's last piece of `frames` work, which the next waits for. */
+  #frames = new Map<string, Promise<unknown>>()
 
   /**
    * `dropped` hears of each job that ends without being done: cancelled, or dismissed after it
-   * failed (e.g. to delete an edit's painted area, which only it used).
+   * failed (e.g. to delete an edit's painted area, which only it used). A running job cancelled
+   * stays listed until `dropped` is done, so an empty queue means it has cleaned up.
    */
-  constructor(run: JobRunner, dropped?: (sessionId: string, job: Job) => void) {
+  constructor(run: JobRunner, dropped?: (sessionId: string, job: Job) => void | Promise<void>) {
     this.#run = run
     this.#dropped = dropped
   }
@@ -401,6 +404,17 @@ export class SessionJobs {
   }
 
   /**
+   * Does `work` once the Session's other `frames` work is done, so that a Session saved with Frames
+   * renumbered and its jobs renumbered (`frameDeleted`) look like one change to a job that loads the
+   * Session and reads its Frame's index: never the one without the other.
+   */
+  frames<T>(sessionId: string, work: () => Promise<T>): Promise<T> {
+    const result = (this.#frames.get(sessionId) ?? Promise.resolve()).then(work, work)
+    this.#frames.set(sessionId, result.catch(() => {}))
+    return result
+  }
+
+  /**
    * What a running job is doing, for the Session's card on Home (the first queued, of several);
    * null when idle.
    */
@@ -455,10 +469,11 @@ export class SessionJobs {
           delete job.phase
           delete job.progress
         },
-        (err) => {
+        async (err) => {
+          // Cancelled: it leaves the queue once what it leaves behind is gone.
           if (controller.signal.aborted) {
-            this.#remove(sessionId, job.id)
-            return this.#dropped?.(sessionId, job)
+            await this.#dropped?.(sessionId, job)
+            return this.#remove(sessionId, job.id)
           }
           job.status = 'failed'
           job.error = (err as Error).message

@@ -175,13 +175,12 @@ Deno.test('A ComfyUI edit repaints only the painted area, on the Image Model’s
     assertEquals(w.sampler.inputs.latent_image, ['masked', 0])
     assertEquals(w.masked.inputs, { samples: ['encode', 0], mask: ['mask', 0] })
     assertEquals(w.save.inputs.images, ['composite', 0])
-    // Both uploads are written over with a blank once it's done.
-    assertEquals(uploads.map((u) => [u.name, u.bytes < 100]), [
-      [uploads[0].name, false],
-      [uploads[1].name, false],
-      [uploads[0].name, true],
-      [uploads[1].name, true],
-    ])
+    // Both uploads are written over with a blank once it's done (together, so in either order).
+    assertEquals(uploads.map((u) => u.bytes < 100), [false, false, true, true])
+    assertEquals(
+      uploads.slice(2).map((u) => u.name).sort(),
+      uploads.slice(0, 2).map((u) => u.name).sort(),
+    )
   }))
 
 Deno.test('FIBO 2.0 Dev renders prose prompts with its native encoder and sampling defaults', () =>

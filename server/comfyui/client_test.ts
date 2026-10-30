@@ -50,3 +50,24 @@ Deno.test('Previews are asked for only by a caller that takes them, and passed o
     await comfy.close()
   }
 })
+
+Deno.test('A prompt ComfyUI reports, even to its end, before saying it was queued is followed', async () => {
+  const comfy = fakeComfyUI({ steps: 3, reportsFirst: true })
+  try {
+    const started = performance.now()
+    const steps: number[] = []
+    const { png } = await runWorkflow(
+      comfy.url,
+      {},
+      new AbortController().signal,
+      15_000,
+      (step) => steps.push(step),
+    )
+    assertEquals([png?.length, steps], [4, [1, 2, 3]])
+    // Its end was heard too, rather than waited for (10 s).
+    assertEquals(comfy.posted.map((p) => p.path), ['(in history)', '/history', '/free'])
+    assertEquals(performance.now() - started < 1000, true)
+  } finally {
+    await comfy.close()
+  }
+})

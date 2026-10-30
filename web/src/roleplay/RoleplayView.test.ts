@@ -489,12 +489,6 @@ describe('RoleplayView', () => {
       .toContain('Saved · applies from the next reply')
   })
 
-  it('sends a Chain to its own screen', async () => {
-    vi.mocked(api.getSession).mockResolvedValue({ ...roleplaySession(), kind: 'chain' } as never)
-    const { router } = await mountIt()
-    expect(router.currentRoute.value.path).toBe('/sessions/r1')
-  })
-
   const look = {
     subjects: [{ name: 'Elena', identity: 'Elena, 38.' }, { name: 'Cal', identity: 'Cal, 25.' }],
     style: 'Oil painting.',

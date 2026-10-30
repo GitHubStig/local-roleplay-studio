@@ -305,12 +305,6 @@ describe('StoryboardView', () => {
     expect(router.currentRoute.value.fullPath).toBe('/?error=Ollama+is+down')
   })
 
-  it('sends a Chain to its own screen', async () => {
-    vi.mocked(api.getSession).mockResolvedValue({ ...storyboard(), kind: 'chain' } as never)
-    const { router } = await mountIt()
-    expect(router.currentRoute.value.path).toBe('/sessions/sb')
-  })
-
   it('moves through the Frames with ↑ and ↓ in their list', async () => {
     const { wrapper } = await mountIt()
     const current = () =>

@@ -19,6 +19,8 @@ export function fakeComfyUI(
     nodes?: string[]
     /** What `/system_stats` says is free on the GPU, one per ask; the last one stays. */
     vramFree?: number[]
+    /** Report the whole prompt, to its end, before answering that it was queued (a cached prompt). */
+    reportsFirst?: boolean
   } = {},
 ) {
   const queued: Record<string, unknown>[] = []
@@ -90,6 +92,7 @@ export function fakeComfyUI(
       const socket = sockets.get(body.client_id)!
       const send = (type: string, data: object) =>
         socket.send(JSON.stringify({ type, data: { prompt_id: promptId, ...data } }))
+      const { promise: reported, resolve: allSent } = Promise.withResolvers<void>()
       setTimeout(() => {
         for (let i = 1; i <= (opts.steps ?? 2); i++) {
           send('progress', { value: i, max: opts.steps ?? 2 })
@@ -121,13 +124,15 @@ export function fakeComfyUI(
           setTimeout(() => {
             post({ path: '(in history)', body: null })
             send('executing', { node: null })
+            allSent()
           }, 30)
         } else if (finish !== 'hang') {
           send('execution_error', { node_type: 'KSampler', exception_message: finish })
           // As ComfyUI: the failed prompt is written to the history too, then "executing" with no node.
-          setTimeout(() => send('executing', { node: null }), 30)
+          setTimeout(() => (send('executing', { node: null }), allSent()), 30)
         }
       }, 10)
+      if (opts.reportsFirst) await reported
       return Response.json({ prompt_id: promptId, number: 1, node_errors: {} })
     }
     if (path === '/upload/image') {

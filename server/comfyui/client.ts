@@ -78,6 +78,7 @@ export async function runWorkflow(
 ): Promise<WorkflowResult> {
   const clientId = crypto.randomUUID()
   const socket = await openSocket(base, clientId, signal)
+  const messages = inbox(socket)
   const before = await freeVram(base)
   let promptId: string | undefined
   let answering = true
@@ -110,6 +111,7 @@ export async function runWorkflow(
     try {
       return await finished(
         socket,
+        messages,
         promptId,
         AbortSignal.any([signal, stalled.signal]),
         onProgress,
@@ -122,7 +124,7 @@ export async function runWorkflow(
   } finally {
     // Awaited, so the next job (the Text Model, say) starts once ComfyUI has let go of the GPU;
     // but not after a Cancel, which returns at once, or once ComfyUI stopped answering.
-    const cleaned = cleanUp(base, socket, promptId, before)
+    const cleaned = cleanUp(base, socket, messages, promptId, before)
     if (!signal.aborted && answering) await cleaned
   }
 }
@@ -162,10 +164,11 @@ async function released(base: string, before: number, ms: number) {
 async function cleanUp(
   base: string,
   socket: WebSocket,
+  messages: Inbox,
   promptId: string | undefined,
   before: number | undefined,
 ) {
-  if (promptId) await stopped(socket, promptId, 10_000)
+  if (promptId) await stopped(socket, messages, promptId, 10_000)
   socket.close()
   if (promptId) post(base, '/history', { delete: [promptId] })
   await post(base, '/free', { unload_models: true, free_memory: true })
@@ -177,19 +180,27 @@ async function cleanUp(
  * means `executing` with no node: ComfyUI sends it after writing the prompt's history
  * (`main.py`'s `prompt_worker`), whereas `execution_interrupted` comes before.
  */
-function stopped(socket: WebSocket, promptId: string, ms: number): Promise<void> {
+function stopped(
+  socket: WebSocket,
+  messages: Inbox,
+  promptId: string,
+  ms: number,
+): Promise<void> {
   return new Promise((resolve) => {
     const timer = setTimeout(resolve, ms)
     const done = () => (clearTimeout(timer), resolve())
     socket.onclose = done
-    socket.onmessage = (e) => {
+    messages.read((e) => {
       if (typeof e.data !== 'string') return
       const { type, data } = JSON.parse(e.data) as {
         type: string
         data?: { prompt_id?: string; node?: string | null }
       }
-      if (type === 'executing' && data?.prompt_id === promptId && data.node === null) done()
-    }
+      if (type === 'executing' && data?.prompt_id === promptId && data.node === null) {
+        done()
+        return true
+      }
+    })
   })
 }
 
@@ -299,6 +310,7 @@ function openSocket(base: string, clientId: string, signal: AbortSignal): Promis
   const url = `${base.replace(/^http/, 'ws')}/ws?clientId=${encodeURIComponent(clientId)}`
   return new Promise((resolve, reject) => {
     const socket = new WebSocket(url)
+    socket.binaryType = 'arraybuffer'
     const fail = () => reject(new Error(`Couldn't reach ComfyUI at ${base}: is it running?`))
     // Cancelled while connecting. Once open, the socket stays until `cleanUp`, which after a
     // Cancel still needs it to hear the prompt stop.
@@ -328,17 +340,17 @@ const PNG = 2
  */
 function finished(
   socket: WebSocket,
+  messages: Inbox,
   promptId: string,
   signal: AbortSignal,
   onProgress?: (step: number, total: number) => void,
   onPreview?: (jpeg: Uint8Array<ArrayBuffer>) => void,
 ): Promise<WorkflowResult> {
   const result: WorkflowResult = { outputs: {} }
-  socket.binaryType = 'arraybuffer'
   return new Promise((resolve, reject) => {
     signal.addEventListener('abort', () => reject(signal.reason), { once: true })
     socket.onclose = () => reject(new Error('Lost the connection to ComfyUI mid-job'))
-    socket.onmessage = (e) => {
+    messages.read((e) => {
       if (e.data instanceof ArrayBuffer) {
         const header = new DataView(e.data)
         if (header.getUint32(0) !== IMAGE_MESSAGE) return
@@ -355,11 +367,37 @@ function finished(
         result.outputs[String(data.node)] = data.output as Record<string, unknown>
       } else if (type === 'execution_success') {
         resolve(result)
+        return true
       } else if (type === 'execution_error') {
         reject(new Error(`ComfyUI: ${data.node_type ?? ''} ${data.exception_message ?? ''}`.trim()))
+        return true
       } else if (type === 'execution_interrupted') {
         reject(signal.reason ?? new Error('ComfyUI was interrupted'))
+        return true
       }
-    }
+    })
   })
+}
+
+/**
+ * A WebSocket's messages, kept from the moment it opens until something reads them: ComfyUI can
+ * report on a prompt (even finish it, from its cache) before the answer to queueing it arrives.
+ * A reader is handed the kept ones first, then each new one, until it returns true; what comes
+ * after is kept for the next reader.
+ */
+type Inbox = { read: (handle: (e: MessageEvent) => boolean | void) => void }
+
+function inbox(socket: WebSocket): Inbox {
+  const kept: MessageEvent[] = []
+  let reader: ((e: MessageEvent) => boolean | void) | undefined
+  const give = (e: MessageEvent) => {
+    if (reader?.(e)) reader = undefined
+  }
+  socket.onmessage = (e) => reader ? give(e) : kept.push(e)
+  return {
+    read: (handle) => {
+      reader = handle
+      while (reader === handle && kept.length) give(kept.shift()!)
+    },
+  }
 }

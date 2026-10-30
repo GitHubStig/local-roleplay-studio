@@ -171,7 +171,11 @@ export async function storyboardFrames(call: ReturnType<typeof setup>['call'], i
  */
 export async function settled(call: ReturnType<typeof setup>['call'], id = 's1') {
   for (let i = 0; i < 200; i++) {
-    const jobs = await (await call('GET', `/api/sessions/${id}/jobs`)).json()
+    const res = await call('GET', `/api/sessions/${id}/jobs`)
+    const jobs = await res.json()
+    if (!Array.isArray(jobs)) {
+      throw new Error(`The jobs list: ${res.status} ${JSON.stringify(jobs)}`)
+    }
     if (!jobs.some((j: { status: string }) => j.status === 'queued' || j.status === 'running')) {
       return jobs.filter((j: { status: string }) => j.status !== 'done')
     }

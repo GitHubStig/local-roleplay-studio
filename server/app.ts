@@ -505,7 +505,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     },
   }
   /** Every Session's background work, run as its kind says: a Roleplay's or a Chain's. */
-  const jobs = new SessionJobs(
+  const jobs: SessionJobs = new SessionJobs(
     async (id, job, emit, signal) => {
       const { callLog } = await deps.settings.load()
       return logCalls(
@@ -517,13 +517,17 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       )
     },
     // An edit cancelled or dismissed: the area painted for it, saved as it was queued, goes too.
-    (id, job) => {
-      if (job.edit?.mask) removeFiles(deps.sessions.dir(id), [job.edit.mask])
+    async (id, job) => {
+      if (job.edit?.mask) await removeFiles(deps.sessions.dir(id), [job.edit.mask])
     },
   )
 
-  async function runJob(id: string, job: Job, emit: JobEmit, signal: AbortSignal) {
-    const loaded = await deps.sessions.load(id)
+  async function runJob(id: string, queued: Job, emit: JobEmit, signal: AbortSignal) {
+    // The job as it was when the Session loaded, its Frame's index matching that Session's.
+    const [loaded, job] = await jobs.frames(
+      id,
+      async () => [await deps.sessions.load(id), { ...queued }] as const,
+    )
     const session = loaded && asQueued(loaded, job)
     if (session && job.kind === 'style') {
       return embedStyles(
@@ -1154,11 +1158,12 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
         }
         try {
           return json(
-            await jobs.holding(session.id, async () => {
-              const updated = await deleteFrame(deps.sessions, session, index, seen)
-              jobs.frameDeleted(session.id, index)
-              return updated
-            }),
+            await jobs.holding(session.id, () =>
+              jobs.frames(session.id, async () => {
+                const updated = await deleteFrame(deps.sessions, session, index, seen)
+                jobs.frameDeleted(session.id, index)
+                return updated
+              })),
           )
         } catch (err) {
           if (err instanceof DeleteError || err instanceof GoneError) return error(err.message, 409)
