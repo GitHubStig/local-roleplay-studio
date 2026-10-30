@@ -32,7 +32,7 @@ import RenderAllButton from '../components/RenderAllButton.vue'
 import { useJobs } from '../composables/useJobs'
 import { usePictureEditing } from '../composables/usePictureEditing'
 import { useFeatures } from '../composables/useFeatures'
-import { jobForming, jobStatus, queueTabLabel } from '../jobs'
+import { jobForming, jobStatus, queueTab } from '../jobs'
 import { useShownPreview } from '../composables/useShownPreview'
 import {
   type Cast,
@@ -1011,7 +1011,7 @@ const lookSavingText = computed(() =>
             v-model="narrowTab"
             :tabs="[
               { id: 'frames', label: 'Frames' },
-              { id: 'queue', label: queueTabLabel(jobs) },
+              { id: 'queue', ...queueTab(jobs) },
               { id: 'frame', label: 'Frame' },
               { id: 'cast', label: 'Look & Cast' },
             ]"
@@ -1026,7 +1026,7 @@ const lookSavingText = computed(() =>
           <div class="hidden xl:block">
             <PanelTabs
               v-model="listTab"
-              :tabs="[{ id: 'frames', label: 'Frames' }, { id: 'queue', label: queueTabLabel(jobs) }]"
+              :tabs="[{ id: 'frames', label: 'Frames' }, { id: 'queue', ...queueTab(jobs) }]"
             />
           </div>
           <!-- The queue: what's running, queued and failed; click one to go to its Frame. -->

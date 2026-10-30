@@ -47,17 +47,7 @@ function open(job: Job) {
 <template>
   <p v-if="!jobs.length" class="p-4 text-sm text-muted" data-queue-empty>{{ empty }}</p>
   <template v-else>
-    <div class="flex justify-end gap-3 border-b border-line px-3 py-1.5">
-      <button
-        v-if="jobs.some((j) => j.status === 'done')"
-        type="button"
-        class="text-xs text-fg underline-offset-2 hover:underline"
-        title="Dismiss what's done, and leave the rest"
-        data-dismiss-done
-        @click="$emit('dismissDone')"
-      >
-        Dismiss done
-      </button>
+    <div class="flex justify-end gap-2 border-b border-line px-3 py-1.5">
       <button
         v-if="jobs.some((j) => j.status !== 'done')"
         type="button"
@@ -66,7 +56,25 @@ function open(job: Job) {
         data-clear-queue
         @click="$emit('clear')"
       >
-        Clear queue
+        Clear queue ({{ jobs.filter((j) => j.status !== 'done').length }})
+      </button>
+      <span
+        v-if="jobs.some((j) => j.status === 'done') && jobs.some((j) => j.status !== 'done')"
+        class="text-xs text-muted"
+        aria-hidden="true"
+        data-queue-actions-separator
+      >
+        ·
+      </span>
+      <button
+        v-if="jobs.some((j) => j.status === 'done')"
+        type="button"
+        class="text-xs text-fg underline-offset-2 hover:underline"
+        title="Dismiss what's done, and leave the rest"
+        data-dismiss-done
+        @click="$emit('dismissDone')"
+      >
+        Dismiss done ({{ jobs.filter((j) => j.status === 'done').length }})
       </button>
     </div>
     <ol>

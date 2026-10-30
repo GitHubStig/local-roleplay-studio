@@ -54,7 +54,7 @@ import { useJobs } from '../composables/useJobs'
 import { usePictureEditing } from '../composables/usePictureEditing'
 import { useDragReorder } from '../composables/useDragReorder'
 import { showPickedFrame, useFrameKeys } from '../composables/useFrameKeys'
-import { JOB_NAMES, jobForming, jobStatus, queueTabLabel, sweepOf } from '../jobs'
+import { JOB_NAMES, jobForming, jobStatus, queueTab, sweepOf } from '../jobs'
 import { useSessionScreen } from '../composables/useSessionScreen'
 import { saveLine, useAutosave } from '../composables/useAutosave'
 import SaveStatus from '../components/SaveStatus.vue'
@@ -746,7 +746,7 @@ const imagesOn = computed(() => featureOn.value('images'))
             v-model="narrowTab"
             :tabs="[
               { id: 'frames', label: 'Frames' },
-              { id: 'queue', label: queueTabLabel(jobs) },
+              { id: 'queue', ...queueTab(jobs) },
               { id: 'frame', label: 'Frame' },
               { id: 'look', label: 'Look' },
             ]"
@@ -761,7 +761,7 @@ const imagesOn = computed(() => featureOn.value('images'))
           <div class="hidden xl:block">
             <PanelTabs
               v-model="panel"
-              :tabs="[{ id: 'frames', label: 'Frames' }, { id: 'queue', label: queueTabLabel(jobs) }]"
+              :tabs="[{ id: 'frames', label: 'Frames' }, { id: 'queue', ...queueTab(jobs) }]"
             />
           </div>
           <!-- The queue: what's running, queued and failed; click one to go to its Frame. -->

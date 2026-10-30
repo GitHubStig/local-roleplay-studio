@@ -151,7 +151,7 @@ describe('StoryboardView', () => {
     ])
     const { wrapper } = await mountIt()
     expect(api.listJobs).toHaveBeenCalledWith('sb')
-    expect(wrapper.text()).toContain('Queue (2)')
+    expect(wrapper.find('[data-tab=queue] [data-tab-busy]').exists()).toBe(true)
   })
 
   it('plans a new Storyboard, listing its Beats as they arrive, for review', async () => {

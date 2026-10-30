@@ -22,7 +22,7 @@ import JobQueue from '../components/JobQueue.vue'
 import { useJobs } from '../composables/useJobs'
 import { usePictureEditing } from '../composables/usePictureEditing'
 import { showPickedFrame, useFrameKeys } from '../composables/useFrameKeys'
-import { formingOf, jobForming, jobStatus, queueTabLabel, sweepOf } from '../jobs'
+import { formingOf, jobForming, jobStatus, queueTab, sweepOf } from '../jobs'
 import { useShownPreview } from '../composables/useShownPreview'
 import { useStoredFlag } from '../composables/useStoredFlag'
 import { useSessionScreen } from '../composables/useSessionScreen'
@@ -691,7 +691,7 @@ const promptDiff = computed(() => {
             v-model="panel"
             :tabs="[
               { id: 'log', label: 'Frames' },
-              { id: 'queue', label: queueTabLabel(jobs) },
+              { id: 'queue', ...queueTab(jobs) },
               { id: 'prompt', label: 'Frame' },
             ]"
           />
@@ -705,7 +705,7 @@ const promptDiff = computed(() => {
           <div class="hidden xl:block">
             <PanelTabs
               v-model="panel"
-              :tabs="[{ id: 'log', label: 'Frames' }, { id: 'queue', label: queueTabLabel(jobs) }]"
+              :tabs="[{ id: 'log', label: 'Frames' }, { id: 'queue', ...queueTab(jobs) }]"
             />
           </div>
           <!-- The queue: what's running, queued and failed; click one to go to its Frame. -->

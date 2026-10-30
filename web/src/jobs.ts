@@ -24,15 +24,13 @@ export const JOB_NAMES: Record<JobKind, string> = {
 export const isOpen = (job: Pick<Job, 'status'>) =>
   job.status === 'queued' || job.status === 'running'
 
-/** The Queue tab's label, with how many jobs are running or queued, and how many are done or failed. */
-export const queueTabLabel = (jobs: readonly Job[]) => {
-  const count = (status: Job['status']) => jobs.filter((j) => j.status === status).length
-  const open = jobs.filter(isOpen).length
-  const done = count('done')
-  const failed = count('failed')
-  const counts = [open && `${open}`, done && `${done} done`, failed && `${failed} failed`]
-    .filter(Boolean)
-  return counts.length ? `Queue (${counts.join(', ')})` : 'Queue'
+/**
+ * The Queue tab: its label says how many jobs failed (the counts of the rest are in the queue's
+ * buttons), and `busy` that something is running or queued, shown as a spinner.
+ */
+export const queueTab = (jobs: readonly Job[]) => {
+  const failed = jobs.filter((j) => j.status === 'failed').length
+  return { label: failed ? `Queue (${failed} failed)` : 'Queue', busy: jobs.some(isOpen) }
 }
 
 export function jobStatus(job: Job, special?: (job: Job) => string | undefined): string {

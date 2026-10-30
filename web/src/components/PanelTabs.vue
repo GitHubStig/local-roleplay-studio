@@ -1,6 +1,8 @@
 <script setup lang="ts" generic="Id extends string">
-/** A row of tabs over a panel; the one picked is `v-model`. */
-defineProps<{ tabs: readonly { id: Id; label: string }[] }>()
+import Icon from './Icon.vue'
+
+/** A row of tabs over a panel; the one picked is `v-model`. A `busy` tab shows a spinner, as work is going on. */
+defineProps<{ tabs: readonly { id: Id; label: string; busy?: boolean }[] }>()
 const picked = defineModel<Id>({ required: true })
 </script>
 
@@ -17,6 +19,13 @@ const picked = defineModel<Id>({ required: true })
       @click="picked = tab.id"
     >
       {{ tab.label }}
+      <Icon
+        v-if="tab.busy"
+        name="spinner"
+        class="ml-1.5 animate-spin align-[-0.125em] text-info"
+        title="Working"
+        data-tab-busy
+      />
     </button>
   </div>
 </template>

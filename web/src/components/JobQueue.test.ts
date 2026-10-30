@@ -47,6 +47,8 @@ describe('JobQueue', () => {
 
       const mixed = mount(JobQueue, { props: { jobs: [done, clipJob], empty: '' } })
       expect(mixed.find('[data-clear-queue]').exists()).toBe(true)
+      expect(mixed.find('[data-queue-actions-separator]').exists()).toBe(true)
+      expect(onlyDone.find('[data-queue-actions-separator]').exists()).toBe(false)
       const open = mount(JobQueue, { props: { jobs: [clipJob], empty: '' } })
       expect(open.find('[data-dismiss-done]').exists()).toBe(false)
     })
