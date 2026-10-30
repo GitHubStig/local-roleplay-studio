@@ -18,8 +18,7 @@ import PictureButtons from './PictureButtons.vue'
 /**
  * Everything about the selected Frame, in the side panel's Frame tab, the same in every kind of
  * Session (docs/design.md, "The selected Frame and its tab"): what the Session shows of it (its Image Prompt, in the default slot),
- * and at the panel's foot, always in view, what can be done with its picture and its 3D, side by
- * side. The row under the text box keeps only what's about the whole Session.
+ * and just under that, what can be done with its picture and its 3D, side by side. The row under the text box keeps only what's about the whole Session.
  */
 const props = withDefaults(
   defineProps<{
@@ -86,34 +85,10 @@ const has3d = computed(() =>
 <template>
   <div class="flex min-h-full flex-col gap-4" data-frame-tab>
     <div><slot /></div>
-    <section
-      v-if="clips && picture && featureOn('video') && !ownPicture"
-      class="flex flex-col gap-1 border-t border-line pt-3"
-      data-frame-clips
-    >
-      <h3 class="text-xs font-medium text-muted">Clip</h3>
-      <p class="text-xs text-muted" data-clips-other-model>
-        Clips are made of a picture by {{ labelOf(clips.imageModel) }}: render this Frame with it first.
-      </p>
-    </section>
-    <FrameClips
-      v-else-if="clips && picture && featureOn('video')"
-      :session-id="clips.sessionId"
-      :index="clips.index"
-      :clips="pictureClips"
-      :next-pictured="clips.nextPictured"
-      :next-name="clips.nextName"
-      :making="clips.making"
-      :playing="clips.playing"
-      @make="(order) => $emit('clip', order)"
-      @play="(clip) => $emit('play', clip)"
-      @stop="$emit('stop')"
-    />
-    <!-- Kept in view at the panel's foot, side by side: the panel scrolls and pads it by 1rem, so it
-         sticks 1rem lower, over the padding, or the text shows below it. -->
+    <!-- Under the Image Prompt, before the clips, side by side. -->
     <div
       v-if="pictured || has3d"
-      class="sticky -bottom-4 -mx-4 -mb-4 mt-auto grid grid-cols-2 gap-4 border-t border-line bg-canvas px-4 py-3"
+      class="grid grid-cols-2 gap-4 border-t border-line pt-3"
       data-frame-buttons
     >
       <section
@@ -154,5 +129,28 @@ const has3d = computed(() =>
         </p>
       </section>
     </div>
+    <section
+      v-if="clips && picture && featureOn('video') && !ownPicture"
+      class="flex flex-col gap-1 border-t border-line pt-3"
+      data-frame-clips
+    >
+      <h3 class="text-xs font-medium text-muted">Clip</h3>
+      <p class="text-xs text-muted" data-clips-other-model>
+        Clips are made of a picture by {{ labelOf(clips.imageModel) }}: render this Frame with it first.
+      </p>
+    </section>
+    <FrameClips
+      v-else-if="clips && picture && featureOn('video')"
+      :session-id="clips.sessionId"
+      :index="clips.index"
+      :clips="pictureClips"
+      :next-pictured="clips.nextPictured"
+      :next-name="clips.nextName"
+      :making="clips.making"
+      :playing="clips.playing"
+      @make="(order) => $emit('clip', order)"
+      @play="(clip) => $emit('play', clip)"
+      @stop="$emit('stop')"
+    />
   </div>
 </template>

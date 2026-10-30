@@ -747,7 +747,7 @@ describe('RoleplayView', () => {
       vi.mocked(api.listJobs).mockResolvedValue([picture, render])
       vi.mocked(api.cancelJob).mockResolvedValue([render])
       const { wrapper } = await mountIt()
-      const cancel = wrapper.findAll('[data-frame-job] button').find((b) => b.text() === 'Cancel')!
+      const cancel = wrapper.find('[data-frame-job] [title="Cancel rendering"]')
       await cancel.trigger('click')
       await flushPromises()
       expect(vi.mocked(api.cancelJob).mock.calls).toEqual([['r1', 'p'], ['r1', 'r']])

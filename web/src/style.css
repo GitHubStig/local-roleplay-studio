@@ -112,6 +112,11 @@
     text-muted transition-colors hover:border-muted hover:text-fg disabled:opacity-50
     disabled:hover:border-line disabled:hover:text-muted;
 }
+.icon-button {
+  @apply inline-flex shrink-0 items-center justify-center rounded-full border border-current px-2
+    py-0.5
+    text-xs opacity-70 transition-opacity hover:opacity-100;
+}
 .action-on {
   @apply border-info text-info hover:border-info hover:text-info;
 }
