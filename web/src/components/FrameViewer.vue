@@ -18,6 +18,7 @@ import {
   type PicturedFrame,
 } from '../api'
 import { sortClips } from '../clips'
+import { isOpen } from '../jobs'
 import { useFeatures } from '../composables/useFeatures'
 import { editChoices, useSettingsOptions } from '../composables/useSettingsOptions'
 import ClipOverlay from './ClipOverlay.vue'
@@ -91,10 +92,12 @@ const edits = computed(() => picture.value?.edits ?? [])
 
 /** The open Frame's edits being made or failed, in the order queued. */
 const editJobs = computed(() =>
-  props.jobs.filter((j) => j.kind === 'edit' && j.frameIndex === current.value?.index && j.edit)
+  props.jobs.filter((j) =>
+    j.kind === 'edit' && j.frameIndex === current.value?.index && j.edit && j.status !== 'done'
+  )
 )
 /** The edit being made, if any: no other can be asked for until it lands. */
-const inProgress = computed(() => editJobs.value.find((j) => j.status !== 'failed'))
+const inProgress = computed(() => editJobs.value.find(isOpen))
 
 /** The edit model a job's edit is made with: the one it names, or else Settings'. */
 const jobModel = (job: Job) => job.edit?.model ?? settings.value?.editModel ?? ''

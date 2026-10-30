@@ -34,10 +34,11 @@ describe('formingOf', () => {
 describe('queueTabLabel', () => {
   const job = (status: Job['status']) => ({ status }) as Job
 
-  it('counts the open jobs, and the failed ones apart', () => {
+  it('counts the open jobs, and the done and failed ones apart', () => {
     expect(queueTabLabel([])).toBe('Queue')
     expect(queueTabLabel([job('running'), job('queued')])).toBe('Queue (2)')
     expect(queueTabLabel([job('failed'), job('failed')])).toBe('Queue (2 failed)')
     expect(queueTabLabel([job('running'), job('failed')])).toBe('Queue (1, 1 failed)')
+    expect(queueTabLabel([job('done'), job('done'), job('queued')])).toBe('Queue (1, 2 done)')
   })
 })

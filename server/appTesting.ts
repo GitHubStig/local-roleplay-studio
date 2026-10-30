@@ -165,11 +165,16 @@ export async function storyboardFrames(call: ReturnType<typeof setup>['call'], i
   )
 }
 
-/** Waits until a Session's queue has no queued or running jobs, and returns what's left. */
+/**
+ * Waits until a Session's queue has no queued or running jobs, and returns what's left: the failed
+ * ones. (Done jobs stay listed until dismissed.)
+ */
 export async function settled(call: ReturnType<typeof setup>['call'], id = 's1') {
   for (let i = 0; i < 200; i++) {
     const jobs = await (await call('GET', `/api/sessions/${id}/jobs`)).json()
-    if (!jobs.some((j: { status: string }) => j.status !== 'failed')) return jobs
+    if (!jobs.some((j: { status: string }) => j.status === 'queued' || j.status === 'running')) {
+      return jobs.filter((j: { status: string }) => j.status !== 'done')
+    }
     await new Promise((r) => setTimeout(r, 5))
   }
   throw new Error('jobs never settled')

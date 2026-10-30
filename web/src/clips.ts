@@ -1,5 +1,6 @@
 import { nextTick, ref, watch } from 'vue'
 import { type Clip, CLIP_KIND_NAMES, type ClipKind, type Job, type Picture } from './api'
+import { isOpen } from './jobs'
 
 /**
  * Scrolls the Frame tab to its Clip section, once it's drawn: where a clip job in the queue leads
@@ -19,7 +20,7 @@ export const scrollToClips = (within: Element | null | undefined) =>
  */
 export const clipsMaking = (jobs: readonly Job[], model?: string): ClipKind[] =>
   jobs.flatMap((j) =>
-    j.kind === 'clip' && j.status !== 'failed' && j.clip &&
+    j.kind === 'clip' && isOpen(j) && j.clip &&
       (!j.image || j.image.imageModel === model)
       ? [j.clip.kind]
       : []

@@ -871,12 +871,12 @@ export type JobKind =
   | 'edit'
   | 'clip'
 
-/** A queued, running or failed job. Finished jobs drop off the list. */
+/** A queued, running, failed or done job. Failed and done ones stay listed until dismissed. */
 export interface Job {
   id: string
   kind: JobKind
   frameIndex: number
-  status: 'queued' | 'running' | 'failed'
+  status: 'queued' | 'running' | 'failed' | 'done'
   /** Writing (text), waiting for a render (queued), rendering (image), or speaking (audio). */
   phase?: Activity | 'audio'
   progress?: { step: number; total: number }
@@ -972,10 +972,14 @@ export const deleteUpscale = <S>(id: string, index: number) =>
 export const retryJob = (id: string, jobId: string) =>
   post<Job[]>(`/api/sessions/${id}/jobs/${jobId}/retry`)
 
-/** Cancels a queued or running job, or dismisses a failed one; returns the queue. */
+/** Cancels a queued or running job, or dismisses a failed or done one; returns the queue. */
 export const cancelJob = (id: string, jobId: string) =>
   request<Job[]>(`/api/sessions/${id}/jobs/${jobId}`, { method: 'DELETE' })
 
 /** Clears a Session's queue: cancels what's running and queued, and dismisses what failed. */
 export const clearJobs = (id: string) =>
   request<Job[]>(`/api/sessions/${id}/jobs`, { method: 'DELETE' })
+
+/** Dismisses a Session's done jobs, leaving the rest; returns the queue. */
+export const dismissDoneJobs = (id: string) =>
+  request<Job[]>(`/api/sessions/${id}/jobs/done`, { method: 'DELETE' })

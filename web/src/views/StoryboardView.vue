@@ -249,7 +249,7 @@ async function restart() {
 
 // --- Queued work: renders, upscales and 3D, each on its Frame.
 
-const { jobs, runningJobs, jobsFor, hasJob, queue, queueEdit, queueClip, queueAll, dropJob, clear, retry, refreshJobs } = useJobs(props.id, {
+const { jobs, runningJobs, jobsFor, hasJob, queue, queueEdit, queueClip, queueAll, dropJob, clear, dismissDone, retry, refreshJobs } = useJobs(props.id, {
   onSettled: async () => {
     await load()
   },
@@ -781,6 +781,7 @@ const imagesOn = computed(() => featureOn.value('images'))
               @retry="retry"
               @drop="dropJob"
               @clear="clear"
+              @dismiss-done="dismissDone"
             />
           </div>
           <ol

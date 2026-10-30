@@ -106,8 +106,8 @@ export interface Job {
   id: string
   kind: JobKind
   frameIndex: number
-  /** Failed jobs stay listed, with their error, until dismissed. */
-  status: 'queued' | 'running' | 'failed'
+  /** Failed and done jobs stay listed, a failed one with its error, until dismissed. */
+  status: 'queued' | 'running' | 'failed' | 'done'
   /**
    * While running: writing (text), waiting for another render (queued), rendering (image),
    * speaking (audio), or downloading a model the first time it's used (download).
@@ -241,6 +241,10 @@ interface Running {
   done: Promise<void>
 }
 
+/** Whether `job` is still to do or being done: not failed, and not finished waiting to be seen. */
+export const isOpen = (job: Pick<Job, 'status'>) =>
+  job.status === 'queued' || job.status === 'running'
+
 export class SessionJobs {
   #jobs = new Map<string, Job[]>()
   /** Each Session's running jobs, at most one per machine, by id. */
@@ -282,9 +286,7 @@ export class SessionJobs {
     clip?: ClipOrder,
   ): Job {
     const jobs = this.#jobs.get(sessionId) ?? []
-    const same = jobs.find((j) =>
-      sameWork(j, kind, frameIndex, image, clip?.kind) && j.status !== 'failed'
-    )
+    const same = jobs.find((j) => sameWork(j, kind, frameIndex, image, clip?.kind) && isOpen(j))
     if (same) return { ...same }
     const job: Job = {
       id: crypto.randomUUID().slice(0, 8),
@@ -309,12 +311,16 @@ export class SessionJobs {
   }
 
   /**
-   * Cancels a queued or running job, or dismisses a failed one. False if there's no such job.
-   * Failed jobs are otherwise kept, so they can be retried.
+   * Cancels a queued or running job, or dismisses a failed or done one. False if there's no such
+   * job. Failed jobs are otherwise kept, so they can be retried, and done ones until seen.
    */
   cancel(sessionId: string, jobId: string): boolean {
     const job = this.#jobs.get(sessionId)?.find((j) => j.id === jobId)
     if (!job) return false
+    if (job.status === 'done') {
+      this.#remove(sessionId, jobId)
+      return true
+    }
     const running = this.#running.get(sessionId)?.get(jobId)
     if (running) running.controller.abort(new Error('Cancelled by player'))
     else {
@@ -335,13 +341,19 @@ export class SessionJobs {
     if (!failed) return false
     const rest = jobs.filter((j) => j.id !== jobId)
     const again = rest.some((j) =>
-      sameWork(j, failed.kind, failed.frameIndex, failed.image, failed.clip?.kind) &&
-      j.status !== 'failed'
+      sameWork(j, failed.kind, failed.frameIndex, failed.image, failed.clip?.kind) && isOpen(j)
     )
     const { error: _, ...job } = failed
     this.#jobs.set(sessionId, again ? rest : [...rest, { ...job, status: 'queued' }])
     if (!again) this.#next(sessionId)
     return true
+  }
+
+  /** Dismisses every done job, leaving what's running, queued or failed. */
+  dismissDone(sessionId: string) {
+    const rest = (this.#jobs.get(sessionId) ?? []).filter((j) => j.status !== 'done')
+    if (rest.length) this.#jobs.set(sessionId, rest)
+    else this.#jobs.delete(sessionId)
   }
 
   /** Cancels every job on the Frames `which` picks, e.g. an exchange that was undone. */
@@ -377,8 +389,8 @@ export class SessionJobs {
   }
 
   /**
-   * Frame `index` was deleted and the Frames after it numbered down one: its own queued and failed
-   * jobs go, and the later Frames' follow them, running ones too (they save onto their Frame where
+   * Frame `index` was deleted and the Frames after it numbered down one: its own queued, failed and
+   * done jobs go, and the later Frames' follow them, running ones too (they save onto their Frame where
    * it is then). None may be running on it.
    */
   frameDeleted(sessionId: string, index: number) {
@@ -413,7 +425,7 @@ export class SessionJobs {
     for (const [i, job] of jobs.entries()) {
       if (job.status !== 'queued') continue
       if (jobs.some((j) => j.status === 'running' && j.machine === job.machine)) continue
-      const ahead = jobs.slice(0, i).filter((j) => j.status !== 'failed')
+      const ahead = jobs.slice(0, i).filter(isOpen)
       const waits = ahead.some((j) =>
         j.machine === job.machine ||
         (NEEDS[job.kind].includes(j.kind) && !otherPictures(j, job) &&
@@ -438,7 +450,11 @@ export class SessionJobs {
     }
     this.#run(sessionId, job, emit, controller.signal)
       .then(
-        () => this.#remove(sessionId, job.id),
+        () => {
+          job.status = 'done'
+          delete job.phase
+          delete job.progress
+        },
         (err) => {
           if (controller.signal.aborted) {
             this.#remove(sessionId, job.id)
@@ -598,7 +614,7 @@ export function jobRoutes(ctx: JobRoutesContext): Route[] {
         return error('No such Frame', 404)
       }
       const pending = ctx.jobs.list(session.id)
-        .filter((j) => j.frameIndex === index && j.status !== 'failed')
+        .filter((j) => j.frameIndex === index && isOpen(j))
         .map((j) => j.kind)
       const refused = await ctx.check(session, kind, index, pending, edit, clip)
       if (refused) return refused
@@ -633,9 +649,15 @@ export function jobRoutes(ctx: JobRoutesContext): Route[] {
           : error('No such failed job', 404),
       )],
 
-    // Clears the queue: cancels what's running and queued, and dismisses what failed.
+    // Clears the queue: cancels what's running and queued, and dismisses what failed. What's done
+    // stays until it's seen.
     ['DELETE', path(), (_req, p) => {
-      ctx.jobs.cancelWhere(p.id!, () => true)
+      ctx.jobs.cancelWhere(p.id!, (job) => job.status !== 'done')
+      return Promise.resolve(json(ctx.jobs.list(p.id!)))
+    }],
+
+    ['DELETE', path('/done'), (_req, p) => {
+      ctx.jobs.dismissDone(p.id!)
       return Promise.resolve(json(ctx.jobs.list(p.id!)))
     }],
 

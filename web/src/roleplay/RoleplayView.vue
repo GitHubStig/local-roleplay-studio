@@ -91,7 +91,7 @@ const suggesting = computed(() => pending.value?.kind === 'suggest')
 const writingCast = computed(() => pending.value?.kind === 'cast')
 // --- Background work: pictures, renders, upscales, voices and 3D, queued on the server.
 
-const { jobs, runningJobs, runningJob, runningOn, jobsFor, hasJob, queue, queueEdit, queueClip, queueAll, dropJob, clear, retry, refreshJobs } = useJobs(
+const { jobs, runningJobs, runningJob, runningOn, jobsFor, hasJob, queue, queueEdit, queueClip, queueAll, dropJob, clear, dismissDone, retry, refreshJobs } = useJobs(
   props.id,
   {
     onSettled: () => reload(),
@@ -156,7 +156,7 @@ const renderReplies = useStoredFlag('roleplay-render-replies')
  * the picture.
  */
 async function drop(job: Job) {
-  const render = job.kind === 'picture' &&
+  const render = job.kind === 'picture' && job.status !== 'done' &&
     jobs.value.find((j) => j.kind === 'render' && j.frameIndex === job.frameIndex &&
       j.status === 'queued')
   await dropJob(job)
@@ -165,7 +165,7 @@ async function drop(job: Job) {
 
 /** A Frame's jobs; designing the voice is the Roleplay's, shown in the Voice panel instead. */
 const frameJobs = (index: number) => jobsFor(index).filter((j) => j.kind !== 'voice')
-const voiceJob = computed(() => jobs.value.find((j) => j.kind === 'voice') ?? null)
+const voiceJob = computed(() => jobs.value.find((j) => j.kind === 'voice' && j.status !== 'done') ?? null)
 /** The voice is being designed, or waits its turn to be. */
 const designingVoice = computed(() =>
   voiceJob.value?.status === 'running' || voiceJob.value?.status === 'queued'
@@ -1046,6 +1046,7 @@ const lookSavingText = computed(() =>
               @retry="retry"
               @drop="drop"
               @clear="clear"
+              @dismiss-done="dismissDone"
             />
           </section>
 

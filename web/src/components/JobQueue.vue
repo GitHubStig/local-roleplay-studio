@@ -2,11 +2,13 @@
 import { frameName } from '../frameName'
 import type { Job } from '../api'
 import { useImageModels } from '../composables/useSettingsOptions'
-import { jobStatus } from '../jobs'
+import { isOpen, jobStatus } from '../jobs'
 
 /**
- * A Session's whole queue: running, queued and failed; clicking one goes to its Frame. Clear queue
- * cancels and dismisses them all at once (after a Render all, say).
+ * A Session's whole queue: running, queued, failed and done; clicking one goes to its Frame (and
+ * a done one is dismissed, as seen). Clear queue cancels what's running and queued and dismisses
+ * what failed, all at once (after a Render all, say); what's done stays until Dismiss done.
+ * `describe` and `name` as `jobStatus` and `frameName`.
  */
 withDefaults(
   defineProps<{
@@ -19,7 +21,7 @@ withDefaults(
   }>(),
   { name: frameName },
 )
-defineEmits<{
+const emit = defineEmits<{
   go: [index: number]
   /** An edit: show it being made, in the viewer. */
   edit: [index: number]
@@ -28,18 +30,39 @@ defineEmits<{
   retry: [job: Job]
   drop: [job: Job]
   clear: []
+  /** Dismiss every done job. */
+  dismissDone: []
 }>()
 const { jobName } = useImageModels()
+
+/** Goes to the job's Frame; a done job has been seen by then, so it's dismissed. */
+function open(job: Job) {
+  if (job.kind === 'edit') emit('edit', job.frameIndex)
+  else if (job.kind === 'clip') emit('clip', job)
+  else emit('go', job.frameIndex)
+  if (job.status === 'done') emit('drop', job)
+}
 </script>
 
 <template>
   <p v-if="!jobs.length" class="p-4 text-sm text-muted" data-queue-empty>{{ empty }}</p>
   <template v-else>
-    <div class="flex justify-end border-b border-line px-3 py-1.5">
+    <div class="flex justify-end gap-3 border-b border-line px-3 py-1.5">
       <button
+        v-if="jobs.some((j) => j.status === 'done')"
+        type="button"
+        class="text-xs text-fg underline-offset-2 hover:underline"
+        title="Dismiss what's done, and leave the rest"
+        data-dismiss-done
+        @click="$emit('dismissDone')"
+      >
+        Dismiss done
+      </button>
+      <button
+        v-if="jobs.some((j) => j.status !== 'done')"
         type="button"
         class="text-xs text-danger underline-offset-2 hover:underline"
-        title="Cancel everything running and queued, and dismiss what failed"
+        title="Cancel everything running and queued, and dismiss what failed. What's done stays."
         data-clear-queue
         @click="$emit('clear')"
       >
@@ -57,11 +80,7 @@ const { jobName } = useImageModels()
           type="button"
           class="flex min-w-0 flex-1 flex-col gap-0.5 text-left"
           :title="job.kind === 'edit' ? 'See the edit' : `Go to ${name(job.frameIndex)}`"
-          @click="job.kind === 'edit'
-            ? $emit('edit', job.frameIndex)
-            : job.kind === 'clip'
-            ? $emit('clip', job)
-            : $emit('go', job.frameIndex)"
+          @click="open(job)"
         >
           <span class="font-medium">{{ jobName(job) }} · {{ name(job.frameIndex) }}</span>
           <span
@@ -69,6 +88,7 @@ const { jobName } = useImageModels()
             :class="{
               'animate-pulse text-info': job.status === 'running',
               'text-muted': job.status === 'queued',
+              'text-ok': job.status === 'done',
               'text-danger': job.status === 'failed',
             }"
           >
@@ -89,7 +109,7 @@ const { jobName } = useImageModels()
           class="shrink-0 text-xs text-danger underline-offset-2 hover:underline"
           @click="$emit('drop', job)"
         >
-          {{ job.status === 'failed' ? 'Dismiss' : 'Cancel' }}
+          {{ isOpen(job) ? 'Cancel' : 'Dismiss' }}
         </button>
       </li>
     </ol>

@@ -93,16 +93,37 @@ Deno.test('A picture goes ahead of queued renders, and Clear empties the queue',
     const jobs = await (await enqueue('picture', 1)).json()
     assertEquals(
       jobs.map((j: { kind: string; frameIndex: number }) => `${j.kind} ${j.frameIndex}`),
-      ['render 0', 'picture 1', 'render 1'],
+      ['picture 0', 'render 0', 'picture 1', 'render 1'],
     )
+    assertEquals(jobs[0].status, 'done')
 
-    const cleared = await call('DELETE', '/api/sessions/s1/jobs')
-    assertEquals(cleared.status, 200)
+    // Clear queue cancels what's open and leaves what's done, to be seen.
+    assertEquals((await call('DELETE', '/api/sessions/s1/jobs')).status, 200)
     release()
     assertEquals(await settled(call), [])
     const session = await (await call('GET', '/api/sessions/s1')).json()
     assertEquals(session.frames.map((f: { pictures: unknown[] }) => f.pictures.length), [0, 0])
     assertEquals(session.frames[1].prompt, undefined)
+    const left = await (await call('GET', '/api/sessions/s1/jobs')).json()
+    assertEquals(left.map((j: { kind: string; status: string }) => `${j.kind} ${j.status}`), [
+      'picture done',
+    ])
+  }))
+
+Deno.test('A done job stays listed until dismissed, and is no work in progress', () =>
+  withTempDir(async (root) => {
+    const { call } = await roleplayWithArt(root, [artBody, artBody])
+    const enqueue = () => call('POST', '/api/sessions/s1/jobs', { kind: 'picture', frameIndex: 0 })
+    const first = (await (await enqueue()).json())[0]
+    await settled(call)
+    const listed = await (await call('GET', '/api/sessions/s1/jobs')).json()
+    assertEquals([listed[0].id, listed[0].status], [first.id, 'done'])
+    // Asked for again, it's made again: a new job beside the done one.
+    const again = await (await enqueue()).json()
+    assertEquals(again.length, 2)
+    await settled(call)
+    const dismissed = await call('DELETE', '/api/sessions/s1/jobs/done')
+    assertEquals(await dismissed.json(), [])
   }))
 
 Deno.test('A failed job stays listed to retry or dismiss', () =>

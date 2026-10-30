@@ -20,16 +20,24 @@ export const JOB_NAMES: Record<JobKind, string> = {
  * What a job is doing, in a few words. A Roleplay says more about its own work (voices, pictures)
  * through `special`, which answers first when it has something to say.
  */
-/** The Queue tab's label, with how many jobs are running or queued, and how many failed. */
+/** Whether a job is still queued or running, rather than failed or done. */
+export const isOpen = (job: Pick<Job, 'status'>) =>
+  job.status === 'queued' || job.status === 'running'
+
+/** The Queue tab's label, with how many jobs are running or queued, and how many are done or failed. */
 export const queueTabLabel = (jobs: readonly Job[]) => {
-  const failed = jobs.filter((j) => j.status === 'failed').length
-  const open = jobs.length - failed
-  const counts = [open && `${open}`, failed && `${failed} failed`].filter(Boolean)
+  const count = (status: Job['status']) => jobs.filter((j) => j.status === status).length
+  const open = jobs.filter(isOpen).length
+  const done = count('done')
+  const failed = count('failed')
+  const counts = [open && `${open}`, done && `${done} done`, failed && `${failed} failed`]
+    .filter(Boolean)
   return counts.length ? `Queue (${counts.join(', ')})` : 'Queue'
 }
 
 export function jobStatus(job: Job, special?: (job: Job) => string | undefined): string {
   if (job.status === 'failed') return `Failed: ${job.error}`
+  if (job.status === 'done') return 'Done'
   if (job.status === 'queued') return 'Queued'
   if (job.phase === 'download') return DOWNLOADING
   const said = special?.(job)

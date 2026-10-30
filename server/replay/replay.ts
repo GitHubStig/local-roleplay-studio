@@ -160,7 +160,7 @@ async function jobsDone(api: (path: string) => Promise<Response>, id: string, ki
     if (failed.length) {
       throw new Error(failed.map((j) => `${kind} ${j.frameIndex}: ${j.error}`).join('; '))
     }
-    if (!jobs.length) break
+    if (!jobs.some((j) => j.status === 'queued' || j.status === 'running')) break
     await new Promise((resolve) => setTimeout(resolve, 3000))
   }
   console.log(`every ${kind}: ${((performance.now() - start) / 1000).toFixed(0)} s`)

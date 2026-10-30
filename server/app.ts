@@ -63,6 +63,7 @@ import { checkRoleplayJob, type RoleplayJobContext, runRoleplayJob } from './rol
 import { restartRoleplay } from './roleplay/engine.ts'
 import {
   asQueued,
+  isOpen,
   type Job,
   JOB_FEATURE,
   type JobEmit,
@@ -994,7 +995,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
         if (!session) return error('Session not found', 404)
         const index = Number(p.index)
         const editing = jobs.list(session.id)
-          .some((j) => j.kind === 'edit' && j.frameIndex === index && j.status !== 'failed')
+          .some((j) => j.kind === 'edit' && j.frameIndex === index && isOpen(j))
         if (editing) return error('That picture is being edited: wait for it first', 409)
         try {
           return json(await deleteNewestEdit(deps.sessions, session, index, Number(p.version)))
@@ -1015,7 +1016,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
         if (!session) return error('Session not found', 404)
         const index = Number(p.index)
         const upscaling = jobs.list(session.id)
-          .some((j) => j.kind === 'upscale' && j.frameIndex === index && j.status !== 'failed')
+          .some((j) => j.kind === 'upscale' && j.frameIndex === index && isOpen(j))
         if (upscaling) return error('That picture is being upscaled: wait for it first', 409)
         try {
           return json(await deleteUpscale(deps.sessions, session, index))

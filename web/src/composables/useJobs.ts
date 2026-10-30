@@ -3,6 +3,7 @@ import {
   cancelJob,
   clearJobs,
   type ClipOrder,
+  dismissDoneJobs,
   type EditOrder,
   type Job,
   type JobKind,
@@ -12,7 +13,7 @@ import {
   queueJob,
   retryJob,
 } from '../api'
-import { JOB_NAMES } from '../jobs'
+import { isOpen, JOB_NAMES } from '../jobs'
 
 /** Of several running jobs, the one to show: a render, else a picture, else the first. */
 const mainJob = (running: Job[]): Job | null =>
@@ -35,9 +36,9 @@ export function useJobs(
     imageModel?: () => string | undefined
   },
 ) {
-  /** In the order queued, failed ones until dismissed. */
+  /** In the order queued, failed and done ones until dismissed. */
   const jobs = ref<Job[]>([])
-  const openJobs = computed(() => jobs.value.filter((j) => j.status !== 'failed'))
+  const openJobs = computed(() => jobs.value.filter(isOpen))
   /** The jobs running: at most one per machine, so a render on another PC runs beside a line here. */
   const runningJobs = computed(() => jobs.value.filter((j) => j.status === 'running'))
   /** The running job to show, of several: a render (its picture forms), else a picture, else the first. */
@@ -45,8 +46,9 @@ export function useJobs(
   /** A Frame's running job to show, as `runningJob` picks it. */
   const runningOn = (index: number) =>
     mainJob(runningJobs.value.filter((j) => j.frameIndex === index))
-  /** A Frame's jobs, in queue order. */
-  const jobsFor = (index: number) => jobs.value.filter((j) => j.frameIndex === index)
+  /** A Frame's queued, running and failed jobs, in queue order (a done one's work is on the Frame). */
+  const jobsFor = (index: number) =>
+    jobs.value.filter((j) => j.frameIndex === index && j.status !== 'done')
   /**
    * A job of this kind is already queued or running on this Frame; for a render, by the Session's
    * Image Model.
@@ -70,9 +72,7 @@ export function useJobs(
     } catch {
       return
     }
-    const settled = openJobs.value.some((j) =>
-      !now.some((n) => n.id === j.id && n.status !== 'failed')
-    )
+    const settled = openJobs.value.some((j) => !now.some((n) => n.id === j.id && isOpen(n)))
     const failed = now.filter((n) =>
       n.status === 'failed' && openJobs.value.some((j) => j.id === n.id)
     )
@@ -115,7 +115,7 @@ export function useJobs(
   async function queueAll(kind: JobKind, indexes: readonly number[]) {
     for (const index of indexes) await queue(kind, index)
   }
-  /** Cancels a queued or running job, or dismisses a failed one. */
+  /** Cancels a queued or running job, or dismisses a failed or done one. */
   async function dropJob(job: Job) {
     try {
       jobs.value = await cancelJob(sessionId, job.id)
@@ -128,6 +128,14 @@ export function useJobs(
     try {
       jobs.value = await clearJobs(sessionId)
       watchJobs()
+    } catch {
+      await refreshJobs()
+    }
+  }
+  /** Dismisses every done job. */
+  async function dismissDone() {
+    try {
+      jobs.value = await dismissDoneJobs(sessionId)
     } catch {
       await refreshJobs()
     }
@@ -156,6 +164,7 @@ export function useJobs(
     queueAll,
     dropJob,
     clear,
+    dismissDone,
     retry,
     refreshJobs,
   }
