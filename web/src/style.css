@@ -113,9 +113,9 @@
     disabled:hover:border-line disabled:hover:text-muted;
 }
 .icon-button {
-  @apply inline-flex shrink-0 items-center justify-center rounded-full border border-current px-2
-    py-0.5
-    text-xs opacity-70 transition-opacity hover:opacity-100;
+  @apply inline-flex shrink-0 items-center justify-center rounded-md border border-line bg-canvas
+    p-1
+    text-sm transition-colors hover:border-current;
 }
 .action-on {
   @apply border-info text-info hover:border-info hover:text-info;
