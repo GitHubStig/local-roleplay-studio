@@ -156,14 +156,23 @@ export interface SessionStore {
 
 const SESSION_ID = /^[a-z0-9-]+$/
 
+export interface DirSessionStore extends SessionStore {
+  /** The folder the Sessions are in now. */
+  root(): string
+  /** Keeps Sessions in another folder from now on; the ones in the old one stay there. */
+  moveTo(root: string): void
+}
+
 /** Stores each Session as `<root>/<id>/session.json` plus its images. */
-export function dirSessionStore(root: string | URL): SessionStore {
-  const base = root instanceof URL ? fromFileUrl(root) : root
+export function dirSessionStore(root: string | URL): DirSessionStore {
+  let base = root instanceof URL ? fromFileUrl(root) : root
   const dir = (id: string) => {
     if (!SESSION_ID.test(id)) throw new Error(`Invalid Session id: ${id}`)
     return join(base, id)
   }
   return {
+    root: () => base,
+    moveTo: (root) => void (base = root),
     dir,
     async load(id) {
       if (!SESSION_ID.test(id)) return undefined

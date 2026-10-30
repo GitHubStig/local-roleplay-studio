@@ -15,6 +15,7 @@ import {
 } from '../api'
 import FeatureSwitch from '../components/FeatureSwitch.vue'
 import MachinesTab from '../components/MachinesTab.vue'
+import SessionsFolderTab from '../components/SessionsFolderTab.vue'
 import RunOn from '../components/RunOn.vue'
 import SelectField from '../components/SelectField.vue'
 import ToggleSwitch from '../components/ToggleSwitch.vue'
@@ -51,6 +52,7 @@ const TABS = [
   { id: 'voice', label: 'Voice' },
   { id: 'clips', label: 'Clips' },
   { id: '3d', label: '3D' },
+  { id: 'sessions', label: 'Sessions' },
   { id: 'advanced', label: 'Advanced' },
 ] as const
 type TabId = (typeof TABS)[number]['id']
@@ -61,6 +63,7 @@ const tab = computed<TabId>({
   set: (id) => (storedTab.value = id),
 })
 const { refreshFeatures } = useFeatures()
+
 
 const quantizeChoices = [
   { value: null, label: 'None (full precision)' },
@@ -629,6 +632,15 @@ function saveNow() {
               Apple's LiTo does the same as TripoSplat, through mlx-spatial (research-only licence).
             </FeatureSwitch>
           </div>
+        </section>
+
+        <section
+          v-show="tab === 'sessions'"
+          class="max-w-xl"
+          role="tabpanel"
+          data-tab-panel="sessions"
+        >
+          <SessionsFolderTab />
         </section>
 
         <section

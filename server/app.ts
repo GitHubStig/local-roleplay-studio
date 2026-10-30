@@ -59,6 +59,7 @@ import type { VoiceEngine } from './voice/voice.ts'
 import { roleplayExcerpt } from './roleplay/prompt.ts'
 import { roleplayRoutes } from './roleplay/routes.ts'
 import { clipRoutes } from './video/routes.ts'
+import { type SessionsFolder, sessionsFolderRoutes } from './sessionsFolder.ts'
 import { checkRoleplayJob, type RoleplayJobContext, runRoleplayJob } from './roleplay/jobs.ts'
 import { restartRoleplay } from './roleplay/engine.ts'
 import {
@@ -148,6 +149,10 @@ export interface AppDeps {
   ) => Promise<ComfyStatus>
   scenarios: ScenarioLibrary
   sessions: SessionStore
+  /** Where the Sessions are, which the player can move; left out, they can't. */
+  sessionsFolder?: SessionsFolder
+  /** Asks the player for a folder with the machine's dialog; left out, they type the path. */
+  pickFolder?: () => Promise<string | null>
   /** The Text Model as a Chain or Storyboard uses it. */
   textModel: (choice: TextChoice) => TextModel
   imageGenerator: ImageGenerator
@@ -602,6 +607,17 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
   }
 
   const routes: Route[] = [
+    ...(deps.sessionsFolder
+      ? sessionsFolderRoutes({
+        folder: deps.sessionsFolder,
+        pick: deps.pickFolder,
+        keep: async (path) =>
+          deps.settings.save({ ...await deps.settings.load(), sessionsFolder: path }),
+        busy: async () =>
+          active.size > 0 ||
+          (await deps.sessions.list()).some((s) => jobs.list(s.id).some(isOpen)),
+      })
+      : []),
     ...clipRoutes({
       locked,
       stream,
@@ -681,6 +697,9 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       if (body === undefined) return error('Body must be JSON', 400)
       const result = validateSettings(body)
       if (!result.ok) return error('Invalid settings', 400, { issues: result.issues })
+      // The Session folder is moved from its own tab, which also moves the Sessions in use.
+      const { sessionsFolder } = await deps.settings.load()
+      result.settings.sessionsFolder = sessionsFolder
       await deps.settings.save(result.settings)
       const { apiKeys } = body as { apiKeys?: unknown }
       if (typeof apiKeys === 'object' && apiKeys !== null) {

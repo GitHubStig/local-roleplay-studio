@@ -101,6 +101,8 @@ export interface Settings {
   limits: boolean
   /** Log every call to the Text and Image Models in its Session's folder, under `calls/`. */
   callLog: boolean
+  /** Where Sessions are kept: a full path, or '' for the app's own `sessions/`. Changed on its own tab, not with the rest. */
+  sessionsFolder: string
   /** The model that pictures Roleplay Frames; '' for the Session's Text Model. Applies at once. */
   artModel: string
   /** Which Features are switched on (one this machine can't run is off whatever this says). */
@@ -188,6 +190,44 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export const getHealth = () => request<Health>('/api/health')
 
 export const getSettings = () => request<Settings>('/api/settings')
+
+/** The folder Sessions are kept in, the default, and how many Sessions are in use. */
+export interface SessionsFolder {
+  inUse: string
+  default: string
+  count: number
+}
+
+/** A folder to move to: how many Sessions it holds, and whether it is already the one in use. */
+export interface FolderCheck {
+  path: string
+  count: number
+  exists: boolean
+  same: boolean
+}
+
+export const getSessionsFolder = () => request<SessionsFolder>('/api/sessions-folder')
+
+/** Opens the folder dialog on the machine the server runs on; null if the player cancels. */
+export const pickSessionsFolder = () =>
+  request<{ path: string | null }>('/api/sessions-folder/pick', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  })
+
+const withPath = (method: string, path: string): RequestInit => ({
+  method,
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ path }),
+})
+
+/** Whether a folder can hold Sessions, and how many it does. Moves nothing. */
+export const checkSessionsFolder = (path: string) =>
+  request<FolderCheck>('/api/sessions-folder/check', withPath('POST', path))
+
+/** Keeps Sessions in the folder from now on; '' for the default. */
+export const moveSessionsFolder = (path: string) =>
+  request<SessionsFolder>('/api/sessions-folder', withPath('PUT', path))
 
 export const getSettingsOptions = () => request<SettingsOptions>('/api/settings/options')
 

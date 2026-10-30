@@ -35,6 +35,7 @@ const settings: api.Settings = {
   videoModel: 'ltx-2.5',
   limits: true,
   callLog: false,
+  sessionsFolder: '',
   artModel: '',
   features: ALL_ON,
 }

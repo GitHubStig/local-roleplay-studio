@@ -131,6 +131,7 @@ Deno.test('validateSettings fills in what an older file lacks, keeps what it may
     ['stepCache', 0.4, null, 0.9],
     ['float16', 'auto', 'on', 'yes'],
     ['previews', true, false, 'yes'],
+    ['sessionsFolder', '', '/Users/me/Sessions', 'Sessions'],
   ]
   for (const [field, missing, valid, invalid] of fields) {
     const { [field]: _, ...older } = DEFAULT_SETTINGS

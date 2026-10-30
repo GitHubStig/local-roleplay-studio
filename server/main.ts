@@ -19,6 +19,8 @@ import { seededChat } from './text/seeded.ts'
 import { loggedChat, loggedEmbedder, loggedImages, loggedMaker, loggedVoice } from './calls.ts'
 import { litoFigureMaker, tripoFigureMaker } from './3d/figure.ts'
 import { sharpSceneMaker } from './3d/scene.ts'
+import { checkFolder } from './sessionsFolder.ts'
+import { pickFolder } from './folderPicker.ts'
 import { uvStyleEmbedder } from './style/embedder.ts'
 import { buildComparisonPage } from './export/page.ts'
 import { voiceBackends, voiceService } from './voice/voice.ts'
@@ -35,7 +37,7 @@ import {
 } from './features.ts'
 
 const port = Number(Deno.env.get('PORT') ?? 8787)
-const sessionsDir = fromFileUrl(new URL('../sessions/', import.meta.url))
+const defaultSessionsDir = fromFileUrl(new URL('../sessions/', import.meta.url))
 
 // What this machine can run, worked out once: a backend it can't run isn't set up at all, and
 // Settings says why (`features.ts`). IMAGE_GENERATOR=placeholder renders SVG cards instead of
@@ -48,6 +50,19 @@ const settings = fileSettingsStore(
   new URL('../settings.json', import.meta.url),
   machineDefaults({ mflux: features.images.available, voiceService: features.voices.available }),
 )
+// The Session folder Settings keep; one that isn't a folder is passed over for the default.
+const sessionsDir = await (async () => {
+  const kept = (await settings.load()).sessionsFolder
+  if (!kept) return defaultSessionsDir
+  const there = await checkFolder({
+    default: defaultSessionsDir,
+    inUse: () => '',
+    moveTo: () => Promise.resolve(),
+  }, kept)
+  if (there.ok) return kept
+  console.warn(`The Session folder can't be used (${there.reason}); using ${defaultSessionsDir}`)
+  return defaultSessionsDir
+})()
 await logFeatures(await settings.load())
 /** The Backend a heavy job goes to as Settings are now (ADR 0022). */
 const backendNow = async (job: HeavyJob) => backendOf(job, await settings.load(), features)
@@ -97,13 +112,25 @@ const chat = (c: TextChoice) => {
   return c.seeding ? seededChat(plain, c.seeding) : plain
 }
 
+const sessionStore = dirSessionStore(sessionsDir)
+const mlxVoice = features.voices.available ? voiceService({ root: sessionsDir }) : undefined
+
 const handler = createHandler({
   settings,
   listTextModels: (backend, apiKey) => text(backend, apiKey).listModels(),
   textBackendOf,
   comfyuiStatus,
   scenarios: dirScenarioLibrary(new URL('../scenarios/', import.meta.url)),
-  sessions: dirSessionStore(sessionsDir),
+  sessions: sessionStore,
+  sessionsFolder: {
+    default: defaultSessionsDir,
+    inUse: sessionStore.root,
+    moveTo: async (path) => {
+      await mlxVoice?.moveTo(path)
+      sessionStore.moveTo(path)
+    },
+  },
+  pickFolder,
   exports: { dir: fromFileUrl(new URL('../exports/', import.meta.url)), page: buildComparisonPage },
   textModel: (c) => chatTextModel(chat(c)),
   roleplayModel: (c) => chatRoleplayModel(chat(c)),
@@ -133,9 +160,7 @@ const handler = createHandler({
   // Voices on the Backend Settings send them to: this machine's voice service where it runs (a
   // Mac), or a ComfyUI with TTS Audio Suite's nodes.
   voice: voiceBackends({
-    mlx: features.voices.available
-      ? loggedVoice(voiceService({ root: sessionsDir }), 'mlx-audio')
-      : undefined,
+    mlx: mlxVoice && loggedVoice(mlxVoice, 'mlx-audio'),
     comfyui: (address) => loggedVoice(comfyuiVoiceEngine({ address }), 'comfyui'),
     backend: () => backendNow({ kind: 'voice' }),
   }),

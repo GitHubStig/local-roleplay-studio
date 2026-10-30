@@ -71,7 +71,11 @@ export interface VoiceServiceOptions {
 const SCRIPT = fromFileUrl(new URL('../../python/voice/serve.py', import.meta.url))
 
 /** The voice service, started on first use. */
-export function voiceService(opts: VoiceServiceOptions): VoiceEngine {
+export function voiceService(
+  opts: VoiceServiceOptions,
+): VoiceEngine & { moveTo(root: string): Promise<void> } {
+  let root = opts.root
+  let child: Deno.ChildProcess | undefined
   const port = opts.port ?? 8791
   const checkEveryMs = opts.checkEveryMs ?? 1000
   const base = `http://127.0.0.1:${port}`
@@ -83,8 +87,8 @@ export function voiceService(opts: VoiceServiceOptions): VoiceEngine {
   async function start(): Promise<void> {
     if (await healthy()) return
     const [cmd, ...args] = opts.command?.(port) ??
-      ['uv', 'run', '--quiet', SCRIPT, '--port', String(port), '--root', opts.root]
-    const child = track(
+      ['uv', 'run', '--quiet', SCRIPT, '--port', String(port), '--root', root]
+    const started = child = track(
       new Deno.Command(cmd, {
         args,
         stdout: 'null',
@@ -93,13 +97,13 @@ export function voiceService(opts: VoiceServiceOptions): VoiceEngine {
     )
     let stderr = ''
     ;(async () => {
-      for await (const chunk of child.stderr.pipeThrough(new TextDecoderStream())) {
+      for await (const chunk of started.stderr.pipeThrough(new TextDecoderStream())) {
         stderr = (stderr + chunk).slice(-4000)
       }
     })()
     const deadline = Date.now() + (opts.startLimitMs ?? 5 * 60_000)
     let exited = false
-    child.status.then(() => (exited = true))
+    started.status.then(() => (exited = true))
     while (Date.now() < deadline && !exited) {
       if (await healthy()) return
       await new Promise((r) => setTimeout(r, 500))
@@ -169,6 +173,24 @@ export function voiceService(opts: VoiceServiceOptions): VoiceEngine {
   }
 
   return {
+    // The service reads and writes only under its root, so it is stopped and starts again, with
+    // the new one, on next use.
+    async moveTo(next) {
+      root = next
+      const old = child
+      child = undefined
+      starting = null
+      if (old) {
+        try {
+          old.kill()
+        } catch { /* already gone */ }
+        await old.status.catch(() => {})
+      }
+      // `uv run` may leave its Python child answering on the port, still on the old root.
+      if (await healthy()) {
+        throw new Error('The voice service is still running on the old folder: stop it and retry')
+      }
+    },
     // Lines as MP3 (96 kbps, a quarter of the WAV); light enough to run beside the Text Model.
     profile: () => Promise.resolve({ ref: 'wav', speech: 'mp3', heavy: false }),
     design: (req, signal, onDownload) => call('/design', req, signal, onDownload),
