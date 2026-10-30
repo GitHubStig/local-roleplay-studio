@@ -120,7 +120,7 @@ describe('FrameClips', () => {
     expect(wrapper.emitted('play')).toBeUndefined()
   })
 
-  it('shows the clip in the form while saying what was wrong, the focus on that', async () => {
+  it('shows the clip in the form with Change it, the focus on the box', async () => {
     const wrapper = mount(FrameClips, {
       props: {
         sessionId: 's1',
@@ -139,30 +139,32 @@ describe('FrameClips', () => {
     expect(wrapper.find<HTMLTextAreaElement>('[data-clip-prompt]').element.value).toBe(
       'She walks in.',
     )
-    expect(document.activeElement).toBe(wrapper.find('[data-clip-problem] textarea').element)
-    await wrapper.find('[data-clip-wrong]').trigger('click')
-    expect(wrapper.find('[data-clip-problem]').exists()).toBe(false)
+    expect(document.activeElement).toBe(wrapper.find('[data-clip-change] input').element)
     wrapper.unmount()
   })
 
-  it("rewrites a clip's prompt by what was wrong with it, into the form", async () => {
+  it('rewrites the prompt in the box, edits and all, by what should change, then undoes it', async () => {
     const wrapper = mountIt({ clips: [leadIn] })
     await wrapper.find('[data-clip-kind="idle-loop"]').trigger('click')
-    await wrapper.find('[data-clip-wrong]').trigger('click')
-    await wrapper.find('[data-clip-problem] textarea').setValue('She should stay at the table.')
-    await wrapper.find('[data-clip-problem]').trigger('submit')
+    expect(wrapper.find('[data-clip-change]').exists()).toBe(false)
+    await wrapper.find('[data-clip-kind="lead-in"]').trigger('click')
+    await wrapper.find('[data-clip-prompt]').setValue('She walks in, hurrying.')
+    await wrapper.find('[data-clip-change] input').setValue('She should stay at the table.')
+    await wrapper.find('[data-clip-change]').trigger('submit')
     await flushPromises()
     expect(api.writeClipPrompt).toHaveBeenCalledWith(
       's1',
       1,
       { kind: 'lead-in', seconds: 4, speech: true },
       expect.any(Function),
-      { prompt: 'She walks in.', problem: 'She should stay at the table.' },
+      { prompt: 'She walks in, hurrying.', problem: 'She should stay at the table.' },
     )
-    expect(wrapper.find<HTMLTextAreaElement>('[data-clip-prompt]').element.value).toBe(
-      'She steps in. Sound: rain.',
-    )
-    expect(wrapper.find('[data-clip-problem]').exists()).toBe(false)
+    const box = () => wrapper.find<HTMLTextAreaElement>('[data-clip-prompt]').element
+    expect(box().value).toBe('She steps in. Sound: rain.')
+    expect(wrapper.find<HTMLInputElement>('[data-clip-change] input').element.value).toBe('')
+    await wrapper.find('[data-undo-rewrite]').trigger('click')
+    expect(box().value).toBe('She walks in, hurrying.')
+    expect(wrapper.find('[data-undo-rewrite]').exists()).toBe(false)
   })
 
   it('waits while the kind chosen is being made, the other kinds free meanwhile', async () => {

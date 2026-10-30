@@ -127,8 +127,8 @@ Deno.test('A prompt is rewritten from the one a clip was made from and what was 
     assertEquals(events.at(-1)?.[1].text, 'She stays at the table.')
     const [{ user }] = model.clipRequests
     assertStringIncludes(user, 'a 5-second Lead In clip')
-    assertStringIncludes(user, 'A clip was made from this prompt:\nShe walks to the door.')
-    assertStringIncludes(user, 'as the player watched it:\nShe should stay at the table.')
+    assertStringIncludes(user, 'is (or was) made from:\nShe walks to the door.')
+    assertStringIncludes(user, 'if they watched it:\nShe should stay at the table.')
     // Half a revision is refused.
     const half = await writePrompt(call, 1, { ...ask, revise: { prompt: 'She walks.' } })
     assertEquals(half.status, 400)

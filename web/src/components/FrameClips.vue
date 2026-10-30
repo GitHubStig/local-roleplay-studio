@@ -14,8 +14,9 @@ import { sortClips } from '../clips'
  * pick where the picture sits in the clip, its length and whether anyone speaks; the Text Model
  * writes the prompt from the story, for the player to read and edit; then the clip is queued. A
  * kind the picture has a clip of fills the form from it, to change and make again (Redo clip, which
- * replaces it). The clips made are listed, to play over the picture (and stop), or to say what was
- * wrong with one, for the Text Model to rewrite its prompt by.
+ * replaces it). Under the prompt, Change it has the Text Model rewrite it by what the player says
+ * should change, before the clip is made. The clips made are listed, to play over the picture (and
+ * stop), or to say what was wrong with one: that fills the same box, for the same rewrite.
  */
 const props = defineProps<{
   sessionId: string
@@ -109,33 +110,36 @@ function make() {
   emit('make', order)
 }
 
-/** The clip being said what was wrong with (its file), and what. */
-const fixing = ref<string | null>(null)
-const problem = ref('')
-const problemBox = useTemplateRef<HTMLTextAreaElement[]>('problemBox')
+/** What should change in the prompt, said in the Change it box. */
+const change = ref('')
+const changeBox = useTemplateRef<HTMLInputElement>('changeBox')
+/** The prompt as it was before the last rewrite, to go back to. */
+const before = ref<string | null>(null)
+
+/** Rewrites the prompt in the box (edits and all) by what was said should change. */
+async function rewrite() {
+  const revise = { prompt: prompt.value, problem: change.value.trim() }
+  const was = prompt.value
+  change.value = ''
+  await write(revise)
+  before.value = was
+}
+function undoRewrite() {
+  if (before.value === null) return
+  prompt.value = before.value
+  before.value = null
+}
+// A rewrite undone belongs to the prompt it was made on.
+watch([kind, () => props.index], () => (before.value = null))
+
 /**
- * What went wrong?: the clip back in the form, so its prompt shows while it's said what was wrong,
- * and the focus on what was wrong. Again, it closes.
+ * What went wrong? on a clip: its order back in the form, so its prompt shows, and the focus in
+ * the Change it box.
  */
 async function toggleFixing(clip: Clip) {
-  if (fixing.value === clip.file) {
-    fixing.value = null
-    return
-  }
   again(clip)
-  fixing.value = clip.file
   await nextTick()
-  problemBox.value?.[0]?.focus()
-}
-/** Puts the clip back in the form, and has its prompt rewritten by what was wrong. */
-async function rewrite(clip: Clip) {
-  again(clip)
-  const revise = { prompt: clip.prompt, problem: problem.value.trim() }
-  fixing.value = null
-  problem.value = ''
-  // After the form has taken the clip's kind.
-  await nextTick()
-  await write(revise)
+  changeBox.value?.focus()
 }
 
 /** Puts a clip's order back in the form, to edit and make again. */
@@ -215,6 +219,20 @@ function again(clip: Clip) {
         {{ makeLabel }}
       </button>
     </div>
+    <form v-if="prompt.trim() && !writing" class="flex items-center gap-2" data-clip-change @submit.prevent="rewrite">
+      <input
+        ref="changeBox"
+        v-model="change"
+        type="text"
+        class="min-w-0 flex-1 rounded border border-line bg-surface px-2 py-1 text-xs"
+        placeholder="Change it: she stays at the table and puts the coin down"
+        aria-label="What should change in the prompt"
+      />
+      <button type="submit" class="action" :disabled="!change.trim()">Rewrite</button>
+      <button v-if="before !== null" type="button" class="action" data-undo-rewrite @click="undoRewrite">
+        Undo
+      </button>
+    </form>
     <p v-if="othersMaking" class="text-xs text-muted" data-clips-making>Making {{ othersMaking }} meanwhile.</p>
     <ul v-if="listed.length" class="flex flex-col text-xs" data-clips>
       <li
@@ -238,31 +256,12 @@ function again(clip: Clip) {
         <button
           type="button"
           class="action"
-          :class="{ 'action-on': fixing === clip.file }"
           title="Say what was wrong with it, for the Text Model to rewrite its prompt"
           data-clip-wrong
           @click="toggleFixing(clip)"
         >
-          What went wrong?
+          Change it
         </button>
-        <form
-          v-if="fixing === clip.file"
-          class="flex w-full flex-col gap-1.5"
-          data-clip-problem
-          @submit.prevent="rewrite(clip)"
-        >
-          <textarea
-            ref="problemBox"
-            v-model="problem"
-            rows="2"
-            class="w-full resize-y rounded border border-line bg-surface p-2 text-xs"
-            placeholder="What you saw, and what should happen instead: she walks out of the door; she should stay at the table and put the coin down."
-            aria-label="What was wrong with the clip"
-          />
-          <button type="submit" class="action self-start" :disabled="!problem.trim() || writing">
-            Rewrite the prompt
-          </button>
-        </form>
       </li>
     </ul>
   </section>
