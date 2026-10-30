@@ -147,7 +147,7 @@ const previewOn = (index: number) => shownPreview.value && formingIndex.value ==
 /**
  * New Replies are pictured as they arrive (their Image Prompt written), wherever pictures can be
  * made: on unless switched off. Rendering them too is slower, so it's a switch of its own, off
- * unless switched on, and only with picturing. Both remembered per browser; Picture this and
+ * unless switched on, and only with picturing. Both remembered per browser; Write prompt and
  * Render stay for Replies made with them off.
  */
 const renderReplies = useStoredFlag('roleplay-render-replies')
@@ -1137,7 +1137,7 @@ const lookSavingText = computed(() =>
                         data-picture-button
                         @click="queueSaved('picture', selectedFrame.index)"
                       >
-                        {{ selectedFrame.prompt ? 'Picture again' : 'Picture this' }}
+                        {{ selectedFrame.prompt ? 'Write again' : 'Write prompt' }}
                       </button>
                   </template>
                   <template v-if="selectedFrame.prompt">
@@ -1148,7 +1148,7 @@ const lookSavingText = computed(() =>
                     </details>
                   </template>
                   <p v-else class="text-xs text-muted">
-                    Not pictured yet: Picture this has the Art Agent write its Image Prompt.
+                    Not pictured yet: Write prompt has the Art Agent write its Image Prompt.
                   </p>
                 </FoldedPrompt>
               </div>

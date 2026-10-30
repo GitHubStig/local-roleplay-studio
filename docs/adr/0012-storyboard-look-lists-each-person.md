@@ -63,7 +63,7 @@ or their identity crosses a Limit, so the next picture reuses their identity wor
   man"), and a newcomer whose identity starts like a group ("two men…", "a pair of…") isn't
   added: the picture's own sentences describe them, as before.
 - **No toggle per picture**, unlike a Storyboard Frame: in a Roleplay the story decides who is
-  present, and Picture again is the way to correct it.
+  present, and Write again is the way to correct it.
 - **The clothing check** (with the Limits on, everyone shown must be dressed by name) covers two
   or more people, matching any word of a name ("the barkeep" by "barkeep").
 - **Tried with gemma-4 26B heretic (NVFP4) on the Mac**, on a copy of the Kael tavern Roleplay

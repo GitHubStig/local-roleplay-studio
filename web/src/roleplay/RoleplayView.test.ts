@@ -373,7 +373,7 @@ describe('RoleplayView', () => {
     expect(current()).toEqual([false, true, false])
     // Everything about the Frame is in its tab; the conversation keeps only Listen.
     const panel = wrapper.find('[data-frame-panel]')
-    expect(panel.find('[data-picture-button]').text()).toBe('Picture again')
+    expect(panel.find('[data-picture-button]').text()).toBe('Write again')
     expect(panel.find('[data-render-button]').text()).toBe('Re-render')
     expect(panel.text()).toContain('Elena by the stove.')
     const transcript = wrapper.find('[data-transcript]')
@@ -836,7 +836,7 @@ describe('RoleplayView', () => {
     expect(wrapper.find('[data-picture-timings]').text()).toBe(
       'Pictured in 24.6 s by gemma4',
     )
-    expect(wrapper.find('[data-picture-button]').text()).toBe('Picture again')
+    expect(wrapper.find('[data-picture-button]').text()).toBe('Write again')
 
     vi.mocked(roleplay.saveLook).mockResolvedValue({ ...roleplaySession(), look })
     // The Look lists its people; their names come from the Cast, so they aren't edited, no one is

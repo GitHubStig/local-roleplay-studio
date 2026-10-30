@@ -67,7 +67,7 @@ is served, and keeps looking at the Persona (ADR 0012, "Roleplays too"):
   was retried; the other eight didn't. Worth watching: it's the kind of stall gemma4 showed when
   yes/no answers came first.
 - Whether the Persona, watching from a corner, is in the picture varied run to run: a judgement
-  call, which Picture again settles.
+  call, which Write again settles.
 
 ## Clothing carried from picture to picture (2026-10-09, Mac)
 
