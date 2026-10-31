@@ -1,0 +1,255 @@
+{
+  "_note": "Wan 2.2 14B, from ComfyUI's template video_wan2_2_14B_flf2v, its 4-step version: the high-noise model with the lightx2v LoRA for steps 0-2 and the low-noise one for 2-4, shift 5, CFG 1 (so the negative prompt has no effect), Euler, 16 fps, no sound. The pictures go in as WanFirstLastFrameToVideo's optional start_image and end_image; a kind of clip without one drops that end's nodes and the input (server/video/comfyui/comfyui.ts). $names are filled in by server/video/comfyui/comfyui.ts. SaveVideo writes an MP4 to ComfyUI's output folder, fetched and then blanked.",
+  "clip": {
+    "class_type": "CLIPLoader",
+    "inputs": {
+      "clip_name": "$clip",
+      "type": "wan",
+      "device": "default"
+    }
+  },
+  "prompt": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": [
+        "clip",
+        0
+      ],
+      "text": "$prompt"
+    }
+  },
+  "negative": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": [
+        "clip",
+        0
+      ],
+      "text": "$negative"
+    }
+  },
+  "vae": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "$vae"
+    }
+  },
+  "unetHigh": {
+    "class_type": "UNETLoader",
+    "inputs": {
+      "unet_name": "$unetHigh",
+      "weight_dtype": "default"
+    }
+  },
+  "loraHigh": {
+    "class_type": "LoraLoaderModelOnly",
+    "inputs": {
+      "model": [
+        "unetHigh",
+        0
+      ],
+      "lora_name": "$loraHigh",
+      "strength_model": 1
+    }
+  },
+  "shiftHigh": {
+    "class_type": "ModelSamplingSD3",
+    "inputs": {
+      "model": [
+        "loraHigh",
+        0
+      ],
+      "shift": 5
+    }
+  },
+  "unetLow": {
+    "class_type": "UNETLoader",
+    "inputs": {
+      "unet_name": "$unetLow",
+      "weight_dtype": "default"
+    }
+  },
+  "loraLow": {
+    "class_type": "LoraLoaderModelOnly",
+    "inputs": {
+      "model": [
+        "unetLow",
+        0
+      ],
+      "lora_name": "$loraLow",
+      "strength_model": 1
+    }
+  },
+  "shiftLow": {
+    "class_type": "ModelSamplingSD3",
+    "inputs": {
+      "model": [
+        "loraLow",
+        0
+      ],
+      "shift": 5
+    }
+  },
+  "firstImage": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "$first"
+    }
+  },
+  "firstScale": {
+    "class_type": "ImageScale",
+    "inputs": {
+      "image": [
+        "firstImage",
+        0
+      ],
+      "upscale_method": "lanczos",
+      "width": "$width",
+      "height": "$height",
+      "crop": "center"
+    }
+  },
+  "lastImage": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "$last"
+    }
+  },
+  "lastScale": {
+    "class_type": "ImageScale",
+    "inputs": {
+      "image": [
+        "lastImage",
+        0
+      ],
+      "upscale_method": "lanczos",
+      "width": "$width",
+      "height": "$height",
+      "crop": "center"
+    }
+  },
+  "video": {
+    "class_type": "WanFirstLastFrameToVideo",
+    "inputs": {
+      "positive": [
+        "prompt",
+        0
+      ],
+      "negative": [
+        "negative",
+        0
+      ],
+      "vae": [
+        "vae",
+        0
+      ],
+      "width": "$width",
+      "height": "$height",
+      "length": "$frames",
+      "batch_size": 1,
+      "start_image": [
+        "firstScale",
+        0
+      ],
+      "end_image": [
+        "lastScale",
+        0
+      ]
+    }
+  },
+  "high": {
+    "class_type": "KSamplerAdvanced",
+    "inputs": {
+      "model": [
+        "shiftHigh",
+        0
+      ],
+      "add_noise": "enable",
+      "noise_seed": "$seed",
+      "steps": 4,
+      "cfg": 1,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "positive": [
+        "video",
+        0
+      ],
+      "negative": [
+        "video",
+        1
+      ],
+      "latent_image": [
+        "video",
+        2
+      ],
+      "start_at_step": 0,
+      "end_at_step": 2,
+      "return_with_leftover_noise": "enable"
+    }
+  },
+  "low": {
+    "class_type": "KSamplerAdvanced",
+    "inputs": {
+      "model": [
+        "shiftLow",
+        0
+      ],
+      "add_noise": "disable",
+      "noise_seed": 0,
+      "steps": 4,
+      "cfg": 1,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "positive": [
+        "video",
+        0
+      ],
+      "negative": [
+        "video",
+        1
+      ],
+      "latent_image": [
+        "high",
+        0
+      ],
+      "start_at_step": 2,
+      "end_at_step": 10000,
+      "return_with_leftover_noise": "disable"
+    }
+  },
+  "decode": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "low",
+        0
+      ],
+      "vae": [
+        "vae",
+        0
+      ]
+    }
+  },
+  "mux": {
+    "class_type": "CreateVideo",
+    "inputs": {
+      "images": [
+        "decode",
+        0
+      ],
+      "fps": 16
+    }
+  },
+  "out": {
+    "class_type": "SaveVideo",
+    "inputs": {
+      "video": [
+        "mux",
+        0
+      ],
+      "filename_prefix": "rpg-clip",
+      "format": "auto",
+      "codec": "auto"
+    }
+  }
+}

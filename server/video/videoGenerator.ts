@@ -47,23 +47,6 @@ export interface VideoGenerator {
   makeClip(req: ClipRequest, signal: AbortSignal, onProgress?: OnProgress): Promise<string>
 }
 
-/** Frames per second of every clip. */
-export const CLIP_FPS = 24
-
-/** A clip's frame count: LTX takes 8n + 1, the nearest at 24 fps (5 s is 121). */
-export const clipFrames = (seconds: number) =>
-  Math.max(1, Math.round((seconds * CLIP_FPS) / 8)) * 8 + 1
-
-/**
- * A clip's size for a picture's: its shape, with about as many pixels as 1280×704 (the size
- * measured on the PC, docs/research/video-models.md), each side a multiple of 32, as LTX needs.
- */
-export function clipSize(width: number, height: number): { width: number; height: number } {
-  const scale = Math.sqrt((1280 * 704) / (width * height))
-  const side = (n: number) => Math.max(32, Math.round((n * scale) / 32) * 32)
-  return { width: side(width), height: side(height) }
-}
-
 /**
  * Makes clips on the ComfyUI Settings send them to now (`backendOf`'s `video`: the one pictures go
  * to, if they go to one, else the first listed).

@@ -9,9 +9,30 @@ import { comfyuiVideoGenerator, withoutEnds } from './comfyui.ts'
 
 const CLIP = { filename: 'rpg-clip_00001_.mp4', bytes: new Uint8Array([0, 0, 0, 24, 102, 116]) }
 const FILES = {
-  diffusion_models: ['ltx-2.5-22b-distilled-transformer-comfy-int8-convrot.safetensors'],
-  text_encoders: ['gemma4-12b-with-proj-ltx-2.5-comfy-int8-convrot.safetensors'],
-  vae: ['ltx-2.5-video-vae-bf16.safetensors', 'ltx-2.5-audio-vae-bf16.safetensors'],
+  diffusion_models: [
+    'ltx-2.5-22b-distilled-transformer-comfy-int8-convrot.safetensors',
+    'wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors',
+    'wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors',
+    'minimax_h3_fl2va_pruned_int8_convrot.safetensors',
+  ],
+  text_encoders: [
+    'gemma4-12b-with-proj-ltx-2.5-comfy-int8-convrot.safetensors',
+    'umt5_xxl_fp8_e4m3fn_scaled.safetensors',
+    'qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors',
+  ],
+  vae: [
+    'ltx-2.5-video-vae-bf16.safetensors',
+    'ltx-2.5-audio-vae-bf16.safetensors',
+    'wan_2.1_vae.safetensors',
+    'minimax_h3_video_vae_int8_convrot.safetensors',
+    'minimax_h3_video_vae_fp16.safetensors',
+    'minimax_h3_audio_vae_fp32.safetensors',
+  ],
+  loras: [
+    'wan2.2_i2v_lightx2v_4steps_lora_v1_high_noise.safetensors',
+    'wan2.2_i2v_lightx2v_4steps_lora_v1_low_noise.safetensors',
+    'minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors',
+  ],
 }
 type Nodes = Record<string, { class_type: string; inputs: Record<string, unknown> }>
 const workflow = () => loadWorkflow(new URL('./workflows/ltx-2.5.json', import.meta.url))
@@ -141,3 +162,39 @@ Deno.test('Without its last end, what took the last guide takes the first’s', 
     }
   }
 })
+
+Deno.test('Wan 2.2 takes a Lead In’s picture as its end image only, at 16 fps and its own size', () =>
+  withTempDir(async (dir) => {
+    const { workflow } = await makeClip(dir, { model: 'wan-2.2', last: 'frame-3.png' })
+    assertEquals(['firstImage', 'firstScale'].filter((id) => id in workflow), [])
+    assert(!('start_image' in workflow.video.inputs))
+    assertEquals(workflow.video.inputs.end_image, ['lastScale', 0])
+    assertEquals([workflow.video.inputs.width, workflow.video.inputs.height], [864, 480])
+    assertEquals(workflow.video.inputs.length, 81)
+    assertEquals(workflow.mux.inputs.fps, 16)
+    assertEquals(workflow.high.inputs.noise_seed, 7)
+    assertEquals(
+      workflow.unetHigh.inputs.unet_name,
+      'wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors',
+    )
+    assertEquals(
+      workflow.loraLow.inputs.lora_name,
+      'wan2.2_i2v_lightx2v_4steps_lora_v1_low_noise.safetensors',
+    )
+  }))
+
+Deno.test('MiniMax H3 takes a Play out’s picture as its first frame only, with the turbo LoRA', () =>
+  withTempDir(async (dir) => {
+    const { workflow } = await makeClip(dir, { model: 'minimax-h3', first: 'frame-3.png' })
+    assertEquals(['lastImage', 'lastScale'].filter((id) => id in workflow), [])
+    assert(!('last_frame' in workflow.video.inputs))
+    assertEquals(workflow.video.inputs.first_frame, ['firstScale', 0])
+    assertEquals(workflow.video.inputs.length, 124)
+    assertEquals(workflow.video.inputs.prompt, 'She walks in.')
+    assertEquals(
+      workflow.lora.inputs.lora_name,
+      'minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors',
+    )
+    // The fp16 video VAE where there is one.
+    assertEquals(workflow.vae.inputs.vae_name, 'minimax_h3_video_vae_fp16.safetensors')
+  }))

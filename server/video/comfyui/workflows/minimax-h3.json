@@ -1,0 +1,218 @@
+{
+  "_note": "MiniMax H3, from ComfyUI's template video_minimax_h3_i2v with its Lightning switch on: the fl2va model with the 8-step turbo LoRA, res_multistep, simple schedule, BasicGuider (no negative prompt), 24 fps, its own sound. The pictures go in as MiniMaxH3ImageToVideo's optional first_frame and last_frame; a kind of clip without one drops that end's nodes and the input (server/video/comfyui/comfyui.ts). $names are filled in by server/video/comfyui/comfyui.ts. SaveVideo writes an MP4 to ComfyUI's output folder, fetched and then blanked.",
+  "unet": {
+    "class_type": "UNETLoader",
+    "inputs": {
+      "unet_name": "$unet",
+      "weight_dtype": "default"
+    }
+  },
+  "lora": {
+    "class_type": "LoraLoaderModelOnly",
+    "inputs": {
+      "model": [
+        "unet",
+        0
+      ],
+      "lora_name": "$lora",
+      "strength_model": 1
+    }
+  },
+  "clip": {
+    "class_type": "CLIPLoader",
+    "inputs": {
+      "clip_name": "$clip",
+      "type": "minimax",
+      "device": "default"
+    }
+  },
+  "vae": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "$vae"
+    }
+  },
+  "audioVae": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "$audioVae"
+    }
+  },
+  "firstImage": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "$first"
+    }
+  },
+  "firstScale": {
+    "class_type": "ImageScale",
+    "inputs": {
+      "image": [
+        "firstImage",
+        0
+      ],
+      "upscale_method": "lanczos",
+      "width": "$width",
+      "height": "$height",
+      "crop": "center"
+    }
+  },
+  "lastImage": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "$last"
+    }
+  },
+  "lastScale": {
+    "class_type": "ImageScale",
+    "inputs": {
+      "image": [
+        "lastImage",
+        0
+      ],
+      "upscale_method": "lanczos",
+      "width": "$width",
+      "height": "$height",
+      "crop": "center"
+    }
+  },
+  "video": {
+    "class_type": "MiniMaxH3ImageToVideo",
+    "inputs": {
+      "clip": [
+        "clip",
+        0
+      ],
+      "vae": [
+        "vae",
+        0
+      ],
+      "prompt": "$prompt",
+      "width": "$width",
+      "height": "$height",
+      "length": "$frames",
+      "first_frame": [
+        "firstScale",
+        0
+      ],
+      "last_frame": [
+        "lastScale",
+        0
+      ]
+    }
+  },
+  "guider": {
+    "class_type": "BasicGuider",
+    "inputs": {
+      "model": [
+        "lora",
+        0
+      ],
+      "conditioning": [
+        "video",
+        0
+      ]
+    }
+  },
+  "noise": {
+    "class_type": "RandomNoise",
+    "inputs": {
+      "noise_seed": "$seed"
+    }
+  },
+  "sampler": {
+    "class_type": "KSamplerSelect",
+    "inputs": {
+      "sampler_name": "res_multistep"
+    }
+  },
+  "sigmas": {
+    "class_type": "BasicScheduler",
+    "inputs": {
+      "model": [
+        "lora",
+        0
+      ],
+      "scheduler": "simple",
+      "steps": 8,
+      "denoise": 1
+    }
+  },
+  "sample": {
+    "class_type": "SamplerCustomAdvanced",
+    "inputs": {
+      "noise": [
+        "noise",
+        0
+      ],
+      "guider": [
+        "guider",
+        0
+      ],
+      "sampler": [
+        "sampler",
+        0
+      ],
+      "sigmas": [
+        "sigmas",
+        0
+      ],
+      "latent_image": [
+        "video",
+        1
+      ]
+    }
+  },
+  "decode": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "sample",
+        0
+      ],
+      "vae": [
+        "vae",
+        0
+      ]
+    }
+  },
+  "audioDecode": {
+    "class_type": "VAEDecodeAudio",
+    "inputs": {
+      "samples": [
+        "sample",
+        0
+      ],
+      "vae": [
+        "audioVae",
+        0
+      ]
+    }
+  },
+  "mux": {
+    "class_type": "CreateVideo",
+    "inputs": {
+      "images": [
+        "decode",
+        0
+      ],
+      "audio": [
+        "audioDecode",
+        0
+      ],
+      "fps": 24
+    }
+  },
+  "out": {
+    "class_type": "SaveVideo",
+    "inputs": {
+      "video": [
+        "mux",
+        0
+      ],
+      "filename_prefix": "rpg-clip",
+      "format": "auto",
+      "codec": "auto"
+    }
+  }
+}
