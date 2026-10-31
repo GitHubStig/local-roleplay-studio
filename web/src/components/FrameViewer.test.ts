@@ -370,11 +370,12 @@ describe('FrameViewer', () => {
     }]
     const wrapper = mountIt({ frames: withClips })
     await flushPromises()
-    expect(side(wrapper).findAll('[data-play-clip]').map((b) => b.text())).toEqual([
-      'Lead In · LTX 2.5',
-      'Lead In · Wan 2.2 14B',
-      'Idle Loop',
-    ])
+    expect(side(wrapper).findAll('[data-play-clip]').map((b) => b.attributes('aria-label')))
+      .toEqual([
+        'Lead In by LTX 2.5',
+        'Lead In by Wan 2.2 14B',
+        'Idle Loop',
+      ])
     await side(wrapper).find('[data-play-clip]').trigger('click')
     await side(wrapper).find('[data-viewer-compare-clips]').trigger('click')
     // The clip playing over the picture stops, for the comparison.

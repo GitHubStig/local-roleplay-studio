@@ -113,7 +113,7 @@ const sound = (clip: Clip) =>
 <template>
   <dialog
     ref="dialog"
-    class="m-0 h-full max-h-none w-full max-w-none bg-transparent p-0 backdrop:bg-black/90"
+    class="m-0 h-full max-h-none w-full max-w-none bg-neutral-950 p-0 backdrop:bg-black"
     data-clip-compare
     @close="pause(), emit('close')"
   >

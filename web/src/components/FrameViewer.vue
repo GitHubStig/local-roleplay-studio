@@ -275,11 +275,9 @@ const clips = computed(() => {
     : []
 })
 const { labelOf: videoModelLabel } = useVideoModels()
-/** A clip's button: its kind, and its video model where the kind has clips by more than one. */
-const clipLabel = (c: Clip) =>
-  clips.value.filter((o) => o.kind === c.kind).length > 1
-    ? `${CLIP_KIND_NAMES[c.kind]} · ${videoModelLabel(c.model)}`
-    : CLIP_KIND_NAMES[c.kind]
+/** A clip's video model, under its kind, where the kind has clips by more than one. */
+const clipModel = (c: Clip) =>
+  clips.value.filter((o) => o.kind === c.kind).length > 1 ? videoModelLabel(c.model) : undefined
 /** The first kind made by two video models or more, to compare side by side. */
 const comparable = computed(() => clipsByKind(clips.value).find((g) => g.clips.length > 1)?.kind)
 const comparing = ref<ClipKind | null>(null)
@@ -524,11 +522,15 @@ const action =
             :class="playing?.file === c.file ? 'bg-white/90 text-black' : 'hover:text-white'"
             :aria-pressed="playing?.file === c.file"
             :title="c.prompt"
+            :aria-label="CLIP_KIND_NAMES[c.kind] + (clipModel(c) ? ` by ${clipModel(c)}` : '')"
             :data-play-clip="c.kind"
             @click="playing = playing?.file === c.file ? null : c"
           >
             <Icon :name="playing?.file === c.file ? 'stop' : 'play'" />
-            <span class="whitespace-nowrap">{{ clipLabel(c) }}</span>
+            <span class="flex flex-col leading-tight">
+              <span class="whitespace-nowrap">{{ CLIP_KIND_NAMES[c.kind] }}</span>
+              <span v-if="clipModel(c)" class="text-xs opacity-70">{{ clipModel(c) }}</span>
+            </span>
           </button>
           <button
             v-if="comparable"
