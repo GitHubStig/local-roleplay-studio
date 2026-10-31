@@ -286,7 +286,13 @@ export function loggedImages(images: ImageGenerator): ImageGenerator {
       return logged(
         'edit',
         req.model,
-        { image: req.image, mask: req.mask, instruction: req.instruction, seed: req.seed },
+        {
+          image: req.image,
+          mask: req.mask,
+          instruction: req.instruction,
+          seed: req.seed,
+          quantize: req.quantize,
+        },
         () => images.edit(req, signal, onProgress, onDownload),
         (image) => ({ image }),
       )

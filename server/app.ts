@@ -547,6 +547,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
           imageGenerator: deps.imageGenerator,
           renderQueue,
           backendOf: heavyBackend,
+          settings: () => deps.settings.load(),
         },
         session,
         job.frameIndex,

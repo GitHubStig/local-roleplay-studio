@@ -81,6 +81,8 @@ export interface Settings {
   steps: number
   size: string
   quantize: Quantize
+  /** How an edit on mflux quantizes as it loads (8-bit unless chosen). */
+  editQuantize: Quantize
   /** The fraction of steps the step cache skips, for models that take it; null for off. */
   stepCache: number | null
   /** Compute in float16, for models that take it: faster on M1 and M2 Macs. Automatic is by chip. */

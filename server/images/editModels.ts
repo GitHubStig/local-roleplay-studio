@@ -14,6 +14,12 @@ export const EDIT_MODELS = [
     prompting: 'Takes an instruction: say what to paint there, terse or described.',
   },
   {
+    id: 'qwen-image-2.1-turbo-edit',
+    label: 'Qwen-Image 2.1 Turbo Edit',
+    backends: ['mflux'],
+    prompting: 'Takes an instruction: say what to paint there, terse or described.',
+  },
+  {
     id: 'flux3-klein-edit',
     label: 'FLUX.3 Klein Edit',
     backends: ['comfyui'],

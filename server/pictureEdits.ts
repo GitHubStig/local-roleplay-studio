@@ -10,6 +10,7 @@ import { error } from './http.ts'
 import type { EditModel } from './images/editModels.ts'
 import type { EditOrder, JobEmit, JobKind } from './jobs.ts'
 import { crossedLimit } from './limits.ts'
+import { DEFAULT_SETTINGS } from './settings.ts'
 import { imageKindOf } from './backends.ts'
 import { editJob } from './machine.ts'
 import {
@@ -72,7 +73,7 @@ export function checkEdit(
  * saved when it was queued, is kept beside it.
  */
 export async function editFrame<S extends Session>(
-  deps: Pick<FrameDeps, 'store' | 'imageGenerator' | 'renderQueue' | 'backendOf'>,
+  deps: Pick<FrameDeps, 'store' | 'imageGenerator' | 'renderQueue' | 'backendOf' | 'settings'>,
   session: S,
   index: number,
   order: EditOrder,
@@ -117,6 +118,7 @@ export async function editFrame<S extends Session>(
         mask,
         instruction,
         seed,
+        quantize: (deps.settings ? await deps.settings() : DEFAULT_SETTINGS).editQuantize,
         dir,
         name,
       },

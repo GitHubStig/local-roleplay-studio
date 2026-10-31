@@ -15,6 +15,7 @@ import {
 } from '../api'
 import FeatureSwitch from '../components/FeatureSwitch.vue'
 import MachinesTab from '../components/MachinesTab.vue'
+import QuantizeField from '../components/QuantizeField.vue'
 import SessionsFolderTab from '../components/SessionsFolderTab.vue'
 import RunOn from '../components/RunOn.vue'
 import SelectField from '../components/SelectField.vue'
@@ -64,12 +65,6 @@ const tab = computed<TabId>({
 })
 const { refreshFeatures } = useFeatures()
 
-
-const quantizeChoices = [
-  { value: null, label: 'None (full precision)' },
-  { value: 8, label: '8-bit' },
-  { value: 4, label: '4-bit' },
-] as const
 
 const float16Choices = [
   { value: 'auto', label: 'Automatic (by chip)' },
@@ -177,6 +172,10 @@ const picturesOn = computed(() => isOn('images', imagesAvailability.value))
 const upscaleOn = computed(() => picturesOn.value && isOn('upscale', upscaleAvailability.value))
 const editsOn = computed(() => picturesOn.value && isOn('edits', editsAvailability.value))
 const voicesOn = computed(() => isOn('voices', voicesAvailability.value))
+/** Whether the default edit model's edits go to mflux, where Quantize applies to them. */
+const editsOnMflux = computed(() =>
+  !!form.value && imageKindOf(whereTo('edits', form.value.editModel)) === 'mflux'
+)
 
 /** The form as last saved (or loaded), so an unchanged one isn't saved again. */
 let savedJson = ''
@@ -401,17 +400,9 @@ function saveNow() {
                 </label>
               </div>
 
-              <label v-if="imageModel?.quantize" class="flex flex-col gap-1">
-                <span class="text-sm text-muted">Quantize</span>
-                <SelectField v-model="form.quantize">
-                  <option v-for="q in quantizeChoices" :key="String(q.value)" :value="q.value">
-                    {{ q.label }}
-                  </option>
-                </SelectField>
-                <span class="text-sm text-muted">
-                  Converted as the model loads: less memory on the larger models.
-                </span>
-              </label>
+              <QuantizeField v-if="imageModel?.quantize" v-model="form.quantize">
+                Converted as the model loads: less memory on the larger models.
+              </QuantizeField>
 
               <label v-if="imageModel?.stepCache" class="flex flex-col gap-1" data-step-cache>
                 <span class="text-sm text-muted">Step cache</span>
@@ -453,41 +444,6 @@ function saveNow() {
           </div>
 
           <div v-if="picturesOn" class="flex flex-col gap-6">
-            <div class="card" data-card="upscale">
-              <FeatureSwitch
-                v-model="form.features.upscale"
-                :availability="upscaleAvailability"
-                title="Upscale"
-                data-feature="upscale"
-              >
-                Enlarges a picture to 2048 px with SeedVR2, whichever backend rendered it.
-              </FeatureSwitch>
-              <template v-if="upscaleOn">
-                <label class="flex flex-col gap-1">
-                  <span class="text-sm text-muted">Default upscaler</span>
-                  <SelectField v-model="form.upscaler" data-upscaler>
-                    <option v-for="u in options.upscalers" :key="u.id" :value="u.id">{{ u.label }}</option>
-                  </SelectField>
-                  <span class="text-sm text-muted">
-                    Applies to the next upscale, in running Sessions too.
-                  </span>
-                </label>
-                <RunOn
-                  v-model="form.runOn.upscale"
-                  label="Upscale on"
-                  :choices="choicesFor('upscale')"
-                  :goes-to="whereTo('upscale')"
-                  :status="comfy[whereTo('upscale')?.id ?? '']"
-                  data-run-on="upscale"
-                  @check="checkComfy"
-                >
-                  Whichever rendered the picture: a Mac can render with mflux and upscale on a
-                  faster PC (SeedVR2 7B: 9.5 s on an RTX 4070 against ~46 s on the Mac), with
-                  Comfy-Org's SeedVR2 files there.
-                </RunOn>
-              </template>
-            </div>
-
             <div class="card" data-card="edits">
               <FeatureSwitch
                 v-model="form.features.edits"
@@ -520,6 +476,45 @@ function saveNow() {
                   data-run-on="edits"
                   @check="checkComfy"
                 />
+                <QuantizeField v-if="editsOnMflux" v-model="form.editQuantize" data-edit-quantize>
+                  For edits on this Mac. 8-bit takes about half the memory of full precision, in
+                  the same time.
+                </QuantizeField>
+              </template>
+            </div>
+
+            <div class="card" data-card="upscale">
+              <FeatureSwitch
+                v-model="form.features.upscale"
+                :availability="upscaleAvailability"
+                title="Upscale"
+                data-feature="upscale"
+              >
+                Enlarges a picture to 2048 px with SeedVR2, whichever backend rendered it.
+              </FeatureSwitch>
+              <template v-if="upscaleOn">
+                <label class="flex flex-col gap-1">
+                  <span class="text-sm text-muted">Default upscaler</span>
+                  <SelectField v-model="form.upscaler" data-upscaler>
+                    <option v-for="u in options.upscalers" :key="u.id" :value="u.id">{{ u.label }}</option>
+                  </SelectField>
+                  <span class="text-sm text-muted">
+                    Applies to the next upscale, in running Sessions too.
+                  </span>
+                </label>
+                <RunOn
+                  v-model="form.runOn.upscale"
+                  label="Upscale on"
+                  :choices="choicesFor('upscale')"
+                  :goes-to="whereTo('upscale')"
+                  :status="comfy[whereTo('upscale')?.id ?? '']"
+                  data-run-on="upscale"
+                  @check="checkComfy"
+                >
+                  Whichever rendered the picture: a Mac can render with mflux and upscale on a
+                  faster PC (SeedVR2 7B: 9.5 s on an RTX 4070 against ~46 s on the Mac), with
+                  Comfy-Org's SeedVR2 files there.
+                </RunOn>
               </template>
             </div>
           </div>

@@ -129,6 +129,7 @@ Deno.test('validateSettings fills in what an older file lacks, keeps what it may
     ['limits', true, false, 'no'],
     ['artModel', '', 'gemma4:31b-mlx', 3],
     ['stepCache', 0.4, null, 0.9],
+    ['editQuantize', 8, null, 6],
     ['float16', 'auto', 'on', 'yes'],
     ['previews', true, false, 'yes'],
     ['sessionsFolder', '', '/Users/me/Sessions', 'Sessions'],

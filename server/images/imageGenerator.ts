@@ -1,6 +1,6 @@
 import { join } from '@std/path'
 import type { Backend } from '../backends.ts'
-import type { Settings } from '../settings.ts'
+import type { Quantize, Settings } from '../settings.ts'
 import type { EditModel } from './editModels.ts'
 
 export interface ImageRequest {
@@ -39,6 +39,8 @@ export interface EditRequest {
   /** What to paint. */
   instruction: string
   seed: number
+  /** Bits to quantize the weights to as they load, on mflux (Settings' `editQuantize`); none for full. */
+  quantize?: Quantize
   /** Directory to read from and write into. */
   dir: string
   /** File name without extension; the edit model picks the extension. */

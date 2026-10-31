@@ -34,6 +34,7 @@ const settings: api.Settings = {
   seed: 42,
   upscaler: 'seedvr2-7b',
   editModel: 'qwen-image-2.1-edit',
+  editQuantize: 8,
   videoModel: 'ltx-2.5',
   limits: true,
   callLog: false,
@@ -577,9 +578,13 @@ describe('SettingsView', () => {
     const labels = () => wrapper.findAll('[data-edit-model] option').map((o) => o.text()).sort()
     // Edits go to this machine, so Qwen-Image 2.1 Edit runs on mflux; FLUX.3 only on ComfyUI.
     expect(labels()).toEqual(['FLUX.3 Klein Edit · ComfyUI', 'Qwen-Image 2.1 Edit · mflux'])
-    // Sent to the ComfyUI instead, before it's saved: both run there.
+    // On mflux, edits quantize as Settings say: 8-bit unless chosen.
+    const quantize = () => wrapper.find('[data-edit-quantize] select')
+    expect((quantize().element as HTMLSelectElement).value).toBe('8')
+    // Sent to the ComfyUI instead, before it's saved: both run there, and Quantize isn't offered.
     await wrapper.find('[data-run-on="edits"] select').setValue('pc')
     expect(labels()).toEqual(['FLUX.3 Klein Edit · ComfyUI', 'Qwen-Image 2.1 Edit · ComfyUI'])
+    expect(quantize().exists()).toBe(false)
     // Where nothing runs Qwen-Image 2.1 Edit, Settings' own is shown, as not here, until another
     // is chosen.
     vi.mocked(api.getSettingsOptions).mockResolvedValue({

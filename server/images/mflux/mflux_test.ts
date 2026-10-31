@@ -24,13 +24,14 @@ const request = (dir: string, extra: Partial<ImageRequest['settings']> = {}): Im
   name: 'frame-0',
 })
 
-Deno.test("editArgs edits at the picture's size in 8 bits and low RAM, with its painted area", () => {
+Deno.test("editArgs edits at the picture's size, quantized as Settings say, in low RAM, with its painted area and model", () => {
   const req = {
     model: 'qwen-image-2.1-edit' as const,
     image: 'frame-1.png',
     mask: 'mask-1.png',
     instruction: 'A hand reaching forward',
     seed: 7,
+    quantize: 8 as const,
     dir: '/s',
     name: 'edit-1',
   }
@@ -62,6 +63,25 @@ Deno.test("editArgs edits at the picture's size in 8 bits and low RAM, with its 
     '--height',
     '672',
   ])
+  // Full precision, as Settings may ask: no `--quantize`.
+  assertEquals(
+    editArgs({ ...req, quantize: null }, { width: 1216, height: 832 }, 'o.png').includes(
+      '--quantize',
+    ),
+    false,
+  )
+  // The base model is mflux's default; Turbo is named, from mflux-community's copy.
+  assertEquals(
+    editArgs({ ...req, model: 'qwen-image-2.1-turbo-edit' }, { width: 1216, height: 832 }, 'o.png')
+      .slice(0, 5),
+    [
+      '--model',
+      'mflux-community/qwen-image-2-1-turbo-mflux-bf16',
+      '--base-model',
+      'qwen-image-2.1-turbo',
+      '--image-paths',
+    ],
+  )
 })
 
 Deno.test('mfluxArgs builds the command line from settings', () => {
@@ -498,7 +518,12 @@ Deno.test('mfluxArgs runs FLUX.3 Klein and Qwen-Image 2.1 Turbo by their mflux n
   const turbo = findMfluxModel('qwen-image-2.1-turbo')!
   assertEquals(turbo.command, 'mflux-generate-qwen-2.1')
   const args = mfluxArgs(turbo, request('/d', { steps: 8, stepCache: 0.4 }), 'o.png')
-  assertEquals(args.slice(0, 2), ['--model', 'qwen-image-2.1-turbo'])
+  assertEquals(args.slice(0, 4), [
+    '--model',
+    'mflux-community/qwen-image-2-1-turbo-mflux-bf16',
+    '--base-model',
+    'qwen-image-2.1-turbo',
+  ])
   assertEquals(args.includes('--step-cache-ratio'), false)
 })
 

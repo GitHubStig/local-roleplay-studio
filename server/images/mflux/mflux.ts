@@ -97,15 +97,34 @@ export function upscaleArgs(req: UpscaleRequest, output: string): string[] {
   ]
 }
 
-/** The command for each edit model mflux runs (ADR 0021). */
-const EDITORS: Record<EditModelOn<'mflux'>, { label: string; command: string }> = {
-  'qwen-image-2.1-edit': { label: 'Qwen-Image 2.1 Edit', command: 'mflux-generate-qwen-2.1-edit' },
-}
+/**
+ * The command for each edit model mflux runs (ADR 0021), and the model it loads: mflux's own default
+ * for the base Qwen-Image 2.1 (mflux-community's copy can't edit, docs/research/mflux-upgrade-log.md).
+ * Turbo edits at its own 8 steps, mflux's default for it.
+ */
+const EDITORS: Record<EditModelOn<'mflux'>, { label: string; command: string; model?: string[] }> =
+  {
+    'qwen-image-2.1-edit': {
+      label: 'Qwen-Image 2.1 Edit',
+      command: 'mflux-generate-qwen-2.1-edit',
+    },
+    'qwen-image-2.1-turbo-edit': {
+      label: 'Qwen-Image 2.1 Turbo Edit',
+      command: 'mflux-generate-qwen-2.1-edit',
+      model: [
+        '--model',
+        'mflux-community/qwen-image-2-1-turbo-mflux-bf16',
+        '--base-model',
+        'qwen-image-2.1-turbo',
+      ],
+    },
+  }
 
 /**
  * The mflux command line for one edit, at the picture's own size (rounded down to a multiple of 32,
- * which every size preset already is). Always `-q 8 --low-ram`: a 15.1 GB peak against 39 GB for
- * the full weights, the edit looking the same (docs/research/image-models.md, "Qwen-Image 2.1 Edit").
+ * which every size preset already is), quantized as Settings ask (8-bit by default: a 15.1 GB peak
+ * against 39 GB for the full weights, the edit looking the same; docs/research/image-models.md,
+ * "Qwen-Image 2.1 Edit"). Always `--low-ram`.
  */
 export function editArgs(
   req: EditRequest,
@@ -114,6 +133,7 @@ export function editArgs(
 ): string[] {
   const fit = (n: number) => String(Math.max(32, n - (n % 32)))
   return [
+    ...(EDITORS[req.model as EditModelOn<'mflux'>]?.model ?? []),
     '--image-paths',
     join(req.dir, req.image),
     ...(req.mask ? ['--mask-image', join(req.dir, req.mask)] : []),
@@ -125,8 +145,7 @@ export function editArgs(
     fit(size.width),
     '--height',
     fit(size.height),
-    '--quantize',
-    '8',
+    ...(req.quantize ? ['--quantize', String(req.quantize)] : []),
     '--low-ram',
     '--output',
     output,

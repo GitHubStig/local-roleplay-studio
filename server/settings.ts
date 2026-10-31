@@ -91,6 +91,12 @@ export interface Settings {
   upscaler: Upscaler
   /** Which model edits pictures (ADR 0021); read when editing, so it applies mid-Session too. */
   editModel: EditModel
+  /**
+   * How an edit on mflux quantizes its weights as they load; read when editing. 8-bit by default:
+   * the full weights were no faster and took near twice the memory (docs/research/mflux-upgrade-log.md).
+   * A file from before this had none, so it reads as 8-bit.
+   */
+  editQuantize: Quantize
   /** The video model clips are made with (`video/comfyui/models.ts`), on a ComfyUI. */
   videoModel: string
   /**
@@ -193,6 +199,7 @@ export const DEFAULT_SETTINGS: Settings = {
   seed: 42,
   upscaler: UPSCALERS[0].id,
   editModel: EDIT_MODELS[0].id,
+  editQuantize: 8,
   videoModel: DEFAULT_VIDEO_MODEL,
   artModel: '',
   features: Object.fromEntries(FEATURES.map((f) => [f, true])) as Record<Feature, boolean>,
@@ -292,6 +299,9 @@ export function validateSettings(input: unknown): ValidationResult {
   if (!QUANTIZE_OPTIONS.includes(s.quantize as Quantize)) {
     issues.push('quantize must be null, 4 or 8')
   }
+  if (s.editQuantize !== undefined && !QUANTIZE_OPTIONS.includes(s.editQuantize as Quantize)) {
+    issues.push('editQuantize must be null, 4 or 8')
+  }
   if (s.stepCache !== undefined && !STEP_CACHE_OPTIONS.includes(s.stepCache as StepCache)) {
     issues.push(`stepCache must be one of: ${STEP_CACHE_OPTIONS.join(', ')}`)
   }
@@ -376,6 +386,9 @@ export function validateSettings(input: unknown): ValidationResult {
       seed: s.seed as number,
       upscaler: (s.upscaler as Upscaler | undefined) ?? DEFAULT_SETTINGS.upscaler,
       editModel: (s.editModel as EditModel | undefined) ?? DEFAULT_SETTINGS.editModel,
+      editQuantize: s.editQuantize === undefined
+        ? DEFAULT_SETTINGS.editQuantize
+        : s.editQuantize as Quantize,
       videoModel: (s.videoModel as string | undefined) ?? DEFAULT_SETTINGS.videoModel,
       ...(s.videoOn !== undefined && { videoOn: s.videoOn as string }),
       artModel: (s.artModel as string | undefined) ?? '',

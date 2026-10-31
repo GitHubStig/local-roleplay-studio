@@ -285,7 +285,11 @@ Deno.test('An edit repaints a picture as a new version, made from its model’s 
       await Deno.readFile(join(root, 's1', one.mask)),
       Uint8Array.from(atob(MASK), (c) => c.charCodeAt(0)),
     )
-    assertEquals([images.edits[0].image, images.edits[0].mask], [first.image, one.mask])
+    // Quantized as Settings say: 8-bit by default.
+    assertEquals(
+      [images.edits[0].image, images.edits[0].mask, images.edits[0].quantize],
+      [first.image, one.mask, 8],
+    )
 
     // A second, of the whole picture, uses the model selected in the Edit dialog: a line of its
     // own, from the Original.

@@ -204,9 +204,9 @@ export const MFLUX_MODELS: readonly MfluxModel[] = [
     label: 'Qwen-Image 2.1 Turbo',
     command: 'mflux-generate-qwen-2.1',
     // Qwen's own distilled checkpoint (mflux 0.23), not Viggle's LoRA: 8 steps on its fixed
-    // sigmas, no CFG. A download of its own (~32 GB). mflux warns it turns fine detail into a
-    // pixel grid below ~1024 px, so the small sizes suit it least.
-    model: 'qwen-image-2.1-turbo',
+    // sigmas, no CFG.
+    model: 'mflux-community/qwen-image-2-1-turbo-mflux-bf16',
+    baseModel: 'qwen-image-2.1-turbo',
     defaultSteps: 8,
     float16: true,
   },
