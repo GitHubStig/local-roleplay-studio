@@ -2,7 +2,7 @@
 
 A local roleplay studio: in a Roleplay the player talks with a Character played by a text model, and any moment can be pictured by an image model, spoken aloud and made 3D. A Chain changes one picture step by step instead (a text model rewrites the image prompt, an image model renders it), and a Storyboard plans a sequence of pictures at once.
 
-The terms below are the domain's terms. Refer to things by them in code, docs and the UI.
+The terms below are the domain's terms. Refer to things by them in code, docs and the UI. How each works is in [docs/design.md](docs/design.md).
 
 ## Language
 
@@ -37,11 +37,11 @@ A kind of Session in which the player talks with a Character, one exchange per F
 _Avoid_: Chat, conversation mode, story mode
 
 **Frame**:
-One step of a Session. In a Chain or a Storyboard, one image: its Image Prompt, and its image once rendered. In a Roleplay, one exchange: the player's Message and the Character's Reply. Numbered from 1 wherever it's shown, in every kind (a Chain's or a Roleplay's Opening Frame is Frame 1); `session.json` and the API count from 0.
+One step of a Session. In a Chain or a Storyboard, one image: its Image Prompt, and its image once rendered. In a Roleplay, one exchange: the player's Message and the Character's Reply. Numbered from 1 wherever it's shown.
 _Avoid_: Turn, step, panel, shot
 
 **Opening Frame**:
-The first Frame of a Chain, written from the Brief instead of from an Action.
+The first Frame of a Chain or a Roleplay, written from the Brief (or the Cast) instead of from an Action or a Message.
 _Avoid_: Frame 0, intro
 
 **Beat**:
@@ -49,19 +49,19 @@ One line of a Storyboard's plan: what happens in one Frame, and who it shows, re
 _Avoid_: Scene, step, moment
 
 **Look**:
-The identities and art style a Storyboard's Frames share, written once and used word for word: an identity for each Subject, and one art style. Fixed once the Frames are written. Each Frame's Image Prompt has the identities of the Subjects it shows (none for a picture of the place alone), then the style. A Roleplay has one too, its Subjects the people pictured.
+The identities and art style a Storyboard's or a Roleplay's pictures share, used word for word: an identity for each Subject, and one art style.
 _Avoid_: Style guide, theme, bible
 
 **Subject**:
-One of a Look's: a person, creature, animal or object the story follows from picture to picture, with a name and an identity (the subject sentence for it alone, by the features of its kind). A group that acts together and looks alike can be one, in a Storyboard.
+One of a Look's: a person, creature, animal or object the story follows from picture to picture, with a name and an identity. A group that acts together and looks alike can be one.
 _Avoid_: Person (for one of a Look's), character, entity
 
 **Cast**:
-Who a Roleplay is with and where it starts: the Character, the Persona and the Setting. Written once when the Roleplay is set up, from its Brief, and editable while it's reviewed; once the scene has begun, how it started (the names, the Character's age and appearance, the Persona, the Setting) is fixed, and only what steers the Character (personality, way of speaking, background, goal) stays editable.
+Who a Roleplay is with and where it starts: the Character, the Persona and the Setting, written from its Brief. Once the scene has begun, only what steers the Character can change.
 _Avoid_: Character card, world, config
 
 **Character**:
-Who the text model plays in a Roleplay: name, age, appearance, personality, voice, background, and a goal they pursue.
+Who the text model plays in a Roleplay: name, age, appearance, personality, way of speaking, background, and a goal they pursue.
 _Avoid_: Bot, NPC, agent, AI
 
 **Persona**:
@@ -69,23 +69,23 @@ Who the player plays in a Roleplay, so the Character knows who they're dealing w
 _Avoid_: User, player character, avatar
 
 **Setting**:
-Where and when a Roleplay's scene starts: the place, the time of day and the weather. The conversation carries it on from there. Not to be confused with a Scenario's Setup.
+Where and when a Roleplay's scene starts: the place, the time of day and the weather. Not to be confused with a Scenario's Setup.
 _Avoid_: Scene, location, world
 
 **Message**:
-What the player writes in a Roleplay: what their Persona says or does. **Suggest** can write one for them, into the box, to edit or send.
+What the player writes in a Roleplay: what their Persona says or does. **Suggest** can write one for them, to edit or send.
 _Avoid_: Action, prompt, input
-
-**Art Agent**:
-The Text Model's job of turning a Roleplay Frame into an Image Prompt: a Look for the Roleplay, written once, then each pictured Frame's sentences from the story up to it.
-_Avoid_: Illustrator, image agent, art bot
 
 **Reply**:
 The Character's answer to a Message: a brief thought, what they do, and what they say, as three separate fields.
 _Avoid_: Response, completion, output, narration
 
+**Art Agent**:
+The Text Model's job of turning a Roleplay Frame into an Image Prompt: the Roleplay's Look, written once, then each pictured Frame's sentences from the story up to it.
+_Avoid_: Illustrator, image agent, art bot
+
 **Image Prompt**:
-The single authoritative description of one Frame's image, and exactly what the Image Model renders: one paragraph covering nine aspects in a fixed order (subject and identity, pose and limbs, expression, camera angle and framing, clothing, environment, lighting, color, art style and medium). A Chain's is nine sentences, one per aspect, the subject sentence describing everyone in it; the Text Model rewrites it whole each Frame. A Storyboard Frame's and a Roleplay picture's are put together by the engine: the Look's identity of each Subject shown (none for a picture of the place alone), the Frame's own seven sentences (pose to color, the only part the Text Model writes, the Art Agent included), then the Look's art style. So those are nine sentences only when one Subject is shown.
+The single authoritative description of one Frame's image, and exactly what the Image Model renders: one paragraph covering nine aspects in a fixed order (subject and identity, pose and limbs, expression, camera angle and framing, clothing, environment, lighting, color, art style and medium). A Chain's is nine sentences the Text Model rewrites; a Storyboard's and a Roleplay's are the Look's identities of the Subjects shown, the Frame's own seven sentences, then the Look's style.
 _Avoid_: Scene, sections, description, state
 
 **Frames**:
@@ -103,7 +103,7 @@ A terse list of what an Action changed, one short phrase per changed aspect, wri
 _Avoid_: Description, message, response, story
 
 **Limit**:
-One of the lines no Action or Brief can cross while the Limits are on, enforced by the engine whatever the Scenario or text model says: no sexual or nude imagery, no real identifiable people, no restraint or captivity. Age is unrestricted. Settings can switch all three Limits off together.
+One of the three lines no Action, Brief or Message can cross while the Limits are on, enforced by the engine whatever the Scenario or text model says: no sexual or nude imagery, no real identifiable people, no restraint or captivity. Age is unrestricted. Settings can switch them off together.
 _Avoid_: Rule, filter, guardrail, policy
 
 **Outcome**:
@@ -111,23 +111,23 @@ How an Action was received: done, declined or unclear. Only a done Action change
 _Avoid_: Result, status, verdict
 
 **Declined Action**:
-An Action that crossed a Limit, or that the text model declined: no Frame is saved, and the Action stays with the player to reword. (Chains from before 2026-10-05 may still hold a Declined Frame, which kept the previous Image Prompt and image.)
+An Action that crossed a Limit, or that the text model declined: no Frame is saved, and the Action stays with the player to reword.
 _Avoid_: Rejected, refused, blocked
 
 **Unclear Action**:
-An Action the text model couldn't act on (gibberish, too vague, or about something that isn't there); it asks what to change. As with a Declined Action, no Frame is saved and the Action stays with the player to reword. (Chains from before 2026-10-05 may still hold an Unclear Frame.)
+An Action the text model couldn't act on (gibberish, too vague, or about something that isn't there); it asks what to change. No Frame is saved, and the Action stays with the player to reword.
 _Avoid_: Invalid, failed, error
 
 **Cancel**:
-Abandoning the work in progress so nothing changes; cancelling a Chain's Opening Frame abandons the Session.
+Abandoning the work in progress so nothing changes; cancelling an Opening Frame abandons the Session.
 _Avoid_: Abort, stop
 
 **Undo**:
-Removing the latest Frame of a Chain (so the previous Frame is current again) or of a Roleplay (its last exchange); the opening can't be undone. Its Action or Message goes back into the text box.
+Removing the latest Frame of a Chain or a Roleplay, so the one before is current again; its Action or Message goes back into the text box. The Opening Frame can't be undone.
 _Avoid_: revert, rollback
 
 **Restart**:
-Going back to the setup of a Session once it's under way, after a confirm: a Storyboard back to its plan (every Frame's sentences and pictures go, its Beats stay), a Roleplay back to reviewing its Cast (every exchange goes, the opening too; the Cast, Look and voice stay). Unlike Undo, it can't be taken back.
+Taking a Storyboard back to its plan, or a Roleplay back to reviewing its Cast, deleting what was made since. Unlike Undo, it can't be taken back.
 _Avoid_: Reset, start over
 
 **Delete** (a Chain Frame):
@@ -135,11 +135,15 @@ Removing a Chain Frame between the Opening and the latest, with its pictures; th
 _Avoid_: Remove, drop
 
 **Upscale**:
-Enlarging a Frame's picture so its shortest edge is 2048 px, with the SeedVR2 upscaler; the original image is kept, and an upscaled picture is flagged so it isn't upscaled twice. A re-render by the same Image Model drops it; a picture by another model has its own.
+Enlarging a Frame's picture with an upscaler, keeping the original.
 _Avoid_: Enhance, HD, super-resolution
 
+**Edit** (a picture):
+Repainting a picture, or an area painted over it, as the player says, with an edit model. Each edit is a version of the picture, beside the original.
+_Avoid_: Inpaint, fix, retouch
+
 **Clip**:
-A few seconds of video made from a Frame's picture by the Video model (LTX 2.5 on a ComfyUI), kept on the picture it was made from, one of each kind. Its kind says where the picture sits in it: a **Lead In** ends on the picture (what leads up to it), a **Play out** starts on it (what happens next), an **Idle Loop** starts and ends on it (small movement, to loop), and an **Into Next** starts on it and ends on the next Frame's picture. Its prompt is written by the Text Model from the story, for the player to edit.
+A few seconds of video made from a Frame's picture by the Video model, kept on that picture, one of each kind: a **Lead In** ends on the picture, a **Play out** starts on it, an **Idle Loop** starts and ends on it, and an **Into Next** starts on it and ends on the next Frame's picture.
 _Avoid_: Video, animation, GIF, motion
 
 ### Configuration
@@ -149,7 +153,7 @@ The language model that does every text job: it writes and edits Image Prompts, 
 _Avoid_: LLM, model, AI
 
 **Backend**:
-One program that runs models, at an address: a ComfyUI, an Ollama, a server with the OpenAI chat API, or this machine's own programs (mflux, the voice service, SHARP, TripoSplat, LiTo), which count as one. Two ComfyUIs are two Backends. Settings list them in the order work tries them, and each kind of work (text, pictures, Upscale, edits, voices) prefers one; when that one can't do a job, it goes to the next listed that can.
+One program that runs models, at an address: a ComfyUI, an Ollama, a server with the OpenAI chat API, or this machine's own programs, which count as one. Settings list them in the order work tries them, and each kind of work prefers one.
 _Avoid_: server, provider
 
 **Machine**:
@@ -157,13 +161,13 @@ The computer a Backend runs on, known by its address. Jobs on one Machine take t
 _Avoid_: host, node
 
 **Text backend**:
-A Backend that runs the Text Model: an Ollama, or a server with the OpenAI chat API (LM Studio, llama.cpp's server, a cloud service). A Session keeps its Text Model, not the Backend: each call goes where Settings send it.
+A Backend that runs the Text Model: an Ollama, or a server with the OpenAI chat API. A Session keeps its Text Model, not the Backend.
 _Avoid_: provider, engine
 
 **Image Model**:
-The model that renders an Image Prompt into an image (Qwen-Image 2.1 by default), known by its name: the same name on mflux and on ComfyUI is the same model. It runs on an **Image backend**. A Session starts on the one Settings name and can be switched to another; each Frame keeps its picture by every model it was rendered with, and shows the one by the Session's model.
+The model that renders an Image Prompt into an image, known by its name: the same name on mflux and on ComfyUI is the same model. A Session has one, and can be switched to another; each Frame keeps its picture by every model it was rendered with.
 _Avoid_: Model, diffusion model, generator
 
 **Image backend**:
-What runs the Image Model: mflux (on a Mac) or a ComfyUI server (on any machine, this one or another). Which Backend renders, upscales or edits is Settings' choice, and applies at once; a Session can pick a kind of backend for its renders, and an edit for itself, as a preference, never an address. Each picture says which backend made it.
+What runs the Image Model: mflux (on a Mac) or a ComfyUI.
 _Avoid_: renderer, provider, engine
