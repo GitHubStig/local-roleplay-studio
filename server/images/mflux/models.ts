@@ -193,7 +193,8 @@ export const MFLUX_MODELS: readonly MfluxModel[] = [
     id: 'qwen-image-2.1',
     label: 'Qwen-Image 2.1',
     command: 'mflux-generate-qwen-2.1',
-    model: 'qwen-image-2.1',
+    model: 'mflux-community/qwen-image-2-1-mflux-bf16',
+    baseModel: 'qwen-image-2.1',
     // mflux defaults to 40; 25 looks just as good at 512 px and is much faster.
     defaultSteps: 25,
     stepCache: true,
@@ -214,7 +215,8 @@ export const MFLUX_MODELS: readonly MfluxModel[] = [
     id: 'qwen-image-2.1-viggle',
     label: 'Qwen-Image 2.1 Viggle Turbo',
     command: 'mflux-generate-qwen-2.1',
-    model: 'qwen-image-2.1',
+    model: 'mflux-community/qwen-image-2-1-mflux-bf16',
+    baseModel: 'qwen-image-2.1',
     // Viggle's turbo LoRA (v0.3, 1.3 GB, fetched on first use; Qwen research license) on Qwen-Image
     // 2.1: about 3.4x faster, smoother and less painterly. It must run at exactly 6 steps with its
     // own scheduler, so it takes no step cache (which leaves runs under 10 steps be anyway).

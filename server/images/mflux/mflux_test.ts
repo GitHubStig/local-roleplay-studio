@@ -36,6 +36,10 @@ Deno.test("editArgs edits at the picture's size, quantized as Settings say, in l
     name: 'edit-1',
   }
   assertEquals(editArgs(req, { width: 1216, height: 832 }, '/s/edit-1.png'), [
+    '--model',
+    'mflux-community/qwen-image-2-1-mflux-bf16',
+    '--base-model',
+    'qwen-image-2.1',
     '--image-paths',
     join('/s', 'frame-1.png'),
     '--mask-image',
@@ -70,7 +74,7 @@ Deno.test("editArgs edits at the picture's size, quantized as Settings say, in l
     ),
     false,
   )
-  // The base model is mflux's default; Turbo is named, from mflux-community's copy.
+  // Turbo from its own mflux-community copy.
   assertEquals(
     editArgs({ ...req, model: 'qwen-image-2.1-turbo-edit' }, { width: 1216, height: 832 }, 'o.png')
       .slice(0, 5),
@@ -158,7 +162,12 @@ Deno.test('mfluxArgs adds the step cache only for models that take it', () => {
 Deno.test("mfluxArgs renders Viggle's turbo at its 6 steps, with its scheduler and LoRA", () => {
   const turbo = findMfluxModel('qwen-image-2.1-viggle')!
   const args = mfluxArgs(turbo, request('/d', { steps: 25, stepCache: 0.4 }), 'o.png')
-  assertEquals(args[args.indexOf('--model') + 1], 'qwen-image-2.1')
+  assertEquals(args.slice(0, 4), [
+    '--model',
+    'mflux-community/qwen-image-2-1-mflux-bf16',
+    '--base-model',
+    'qwen-image-2.1',
+  ])
   assertEquals(args.filter((a) => a === '--steps').length, 1)
   assertEquals(args[args.indexOf('--steps') + 1], '6')
   assertEquals(args[args.indexOf('--scheduler') + 1], 'viggle_turbo')
@@ -505,6 +514,16 @@ Deno.test('mfluxArgs runs Krea 2, and Krea 2 + LoRA, from the saved copy', () =>
       'krea-2',
     ])
   }
+})
+
+Deno.test('mfluxArgs runs Qwen-Image 2.1 from the saved copy', () => {
+  const args = mfluxArgs(findMfluxModel('qwen-image-2.1')!, request('/d'), 'o.png')
+  assertEquals(args.slice(0, 4), [
+    '--model',
+    'mflux-community/qwen-image-2-1-mflux-bf16',
+    '--base-model',
+    'qwen-image-2.1',
+  ])
 })
 
 Deno.test('mfluxArgs runs FLUX.3 Klein and Qwen-Image 2.1 Turbo by their mflux names', () => {

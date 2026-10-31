@@ -98,27 +98,31 @@ export function upscaleArgs(req: UpscaleRequest, output: string): string[] {
 }
 
 /**
- * The command for each edit model mflux runs (ADR 0021), and the model it loads: mflux's own default
- * for the base Qwen-Image 2.1 (mflux-community's copy can't edit, docs/research/mflux-upgrade-log.md).
- * Turbo edits at its own 8 steps, mflux's default for it.
+ * The command for each edit model mflux runs (ADR 0021), and the model it loads: mflux-community's
+ * copies, the same as generation's. Turbo edits at its own 8 steps, mflux's default for it.
  */
-const EDITORS: Record<EditModelOn<'mflux'>, { label: string; command: string; model?: string[] }> =
-  {
-    'qwen-image-2.1-edit': {
-      label: 'Qwen-Image 2.1 Edit',
-      command: 'mflux-generate-qwen-2.1-edit',
-    },
-    'qwen-image-2.1-turbo-edit': {
-      label: 'Qwen-Image 2.1 Turbo Edit',
-      command: 'mflux-generate-qwen-2.1-edit',
-      model: [
-        '--model',
-        'mflux-community/qwen-image-2-1-turbo-mflux-bf16',
-        '--base-model',
-        'qwen-image-2.1-turbo',
-      ],
-    },
-  }
+const EDITORS: Record<EditModelOn<'mflux'>, { label: string; command: string; model: string[] }> = {
+  'qwen-image-2.1-edit': {
+    label: 'Qwen-Image 2.1 Edit',
+    command: 'mflux-generate-qwen-2.1-edit',
+    model: [
+      '--model',
+      'mflux-community/qwen-image-2-1-mflux-bf16',
+      '--base-model',
+      'qwen-image-2.1',
+    ],
+  },
+  'qwen-image-2.1-turbo-edit': {
+    label: 'Qwen-Image 2.1 Turbo Edit',
+    command: 'mflux-generate-qwen-2.1-edit',
+    model: [
+      '--model',
+      'mflux-community/qwen-image-2-1-turbo-mflux-bf16',
+      '--base-model',
+      'qwen-image-2.1-turbo',
+    ],
+  },
+}
 
 /**
  * The mflux command line for one edit, at the picture's own size (rounded down to a multiple of 32,
