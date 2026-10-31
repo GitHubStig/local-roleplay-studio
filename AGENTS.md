@@ -7,7 +7,7 @@ and how to run it is in the [README](README.md); this is how the owner likes the
 
 - [CONTEXT.md](CONTEXT.md): the domain's terms (Session, Frame, Action, Roleplay, Look, Limit…).
   Use them in code, docs and the UI.
-- [docs/design.md](docs/design.md): how the app works. [docs/adr/](docs/adr/): decisions and why.
+- [docs/design.md](docs/design.md): how the app works now, its main behaviours only: no screen layout, timings or history (dates and what changed are in git and the ADRs). [docs/adr/](docs/adr/): decisions and why.
 - [docs/open-threads.md](docs/open-threads.md): plans and parked ideas, with their status. Finished
   work moves out of it, into the design doc, an ADR or `docs/research/`.
 - [docs/models.md](docs/models.md): which models the app uses now, and why, in short. The evidence
