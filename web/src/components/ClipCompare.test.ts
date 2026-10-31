@@ -54,7 +54,7 @@ describe('ClipCompare', () => {
     // Wan makes no sound, so the first that does is heard, and only it.
     const muted = () => panels().map((p) => p.find<HTMLVideoElement>('video').element.muted)
     expect(muted()).toEqual([true, false, true])
-    expect(panels()[0].text()).toContain('no sound')
+    expect(panels()[0].text()).toContain('no sound · made in 2:20')
     await panels()[0].find('button').trigger('click')
     expect(muted()).toEqual([true, false, true])
     await panels()[2].find('button').trigger('click')

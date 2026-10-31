@@ -39,7 +39,7 @@ const props = defineProps<{
 const emit = defineEmits<{ make: [order: ClipOrder]; play: [clip: Clip]; stop: [] }>()
 
 const KINDS = Object.keys(CLIP_KIND_NAMES) as ClipKind[]
-const { models, labelOf, silent: makesNoSound, chosen: model } = useVideoModels(() => props.sessionId)
+const { models, labelOf, silent: makesNoSound, soundOf, chosen: model } = useVideoModels(() => props.sessionId)
 /** The video model makes no sound (Wan 2.2), so there's no speech to ask for. */
 const silent = computed(() => makesNoSound(model.value))
 /** The kind compared side by side, while the comparison is open. */
@@ -291,7 +291,7 @@ function again(clip: Clip) {
         >
           <span class="flex-1 text-muted">
             {{ labelOf(clip.model) }} · {{ clip.seconds }} s ·
-            {{ makesNoSound(clip.model) ? 'no sound' : clip.speech ? 'with speech' : 'no dialogue' }}
+            {{ soundOf(clip) }}
           </span>
           <button
             type="button"

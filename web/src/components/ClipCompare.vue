@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue'
 import { type Clip, CLIP_KIND_NAMES, type ClipKind, imageUrl } from '../api'
-import { clipsByKind, useVideoModels } from '../clips'
+import { clipsByKind, clock, madeIn, useVideoModels, waitedFor } from '../clips'
 import Icon from './Icon.vue'
 
 /**
@@ -21,7 +21,7 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ close: [] }>()
 
-const { labelOf, silent } = useVideoModels()
+const { labelOf, silent, soundOf } = useVideoModels()
 const dialog = useTemplateRef<HTMLDialogElement>('dialog')
 const videos = useTemplateRef<HTMLVideoElement[]>('videos')
 
@@ -104,10 +104,6 @@ watch(() => props.kind, (kind) => {
   } else if (el.open) el.close()
 }, { flush: 'post' })
 onBeforeUnmount(pause)
-
-const clock = (s: number) => `${Math.floor(s / 60)}:${(Math.floor(s) % 60).toString().padStart(2, '0')}`
-const sound = (clip: Clip) =>
-  silent(clip.model) ? 'no sound' : clip.speech ? 'with speech' : 'no dialogue'
 </script>
 
 <template>
@@ -172,9 +168,8 @@ const sound = (clip: Clip) =>
           <figcaption class="flex flex-wrap items-center gap-x-2 text-xs">
             <span class="font-medium text-white">{{ labelOf(clip.model) }}</span>
             <Icon v-if="heard === clip.file" name="speaker" aria-label="Heard" />
-            <span class="text-white/60">
-              {{ [`${clip.seconds} s`, sizes[clip.file], `made in ${Math.round(clip.timings.clip)} s`, sound(clip)]
-                .filter(Boolean).join(' · ') }}
+            <span class="text-white/60" :title="waitedFor(clip)">
+              {{ [`${clip.seconds} s`, sizes[clip.file], soundOf(clip), madeIn(clip)].filter(Boolean).join(' · ') }}
             </span>
           </figcaption>
         </figure>

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { nextTick, ref } from 'vue'
 import { asPicked, type Clip, type Picture } from './api'
-import { clipCount, usePlayingClip } from './clips'
+import { clipCount, madeIn, usePlayingClip, waitedFor } from './clips'
 
 describe('usePlayingClip', () => {
   it('stops the clip once another Frame is selected, not on its own', async () => {
@@ -48,5 +48,14 @@ describe('clipCount', () => {
     expect(clipCount(asPicked(picture), 'moss-image')).toBe(1)
     // The Original picked again: its own, none.
     expect(clipCount(asPicked({ ...picture, picked: 0 }), 'moss-image')).toBe(0)
+  })
+})
+
+describe('madeIn', () => {
+  it('says how long a clip took in minutes, and its wait apart', () => {
+    const clip = { timings: { queued: 30.4, clip: 435.7 } } as Clip
+    expect(madeIn(clip)).toBe('made in 7:15')
+    expect(waitedFor(clip)).toBe('Waited 0:30 for another render')
+    expect(waitedFor({ timings: { clip: 59 } } as Clip)).toBeUndefined()
   })
 })

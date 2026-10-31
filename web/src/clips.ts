@@ -84,10 +84,27 @@ export function useVideoModels(sessionId?: () => string) {
   const models = computed(() => options.value?.videoModels ?? [])
   const labelOf = (id: string) => models.value.find((m) => m.id === id)?.label ?? id
   const silent = (id: string) => models.value.find((m) => m.id === id)?.sound === false
+  /** What a clip has to hear: none from a model that makes no sound, else speech or not. */
+  const soundOf = (clip: Clip) =>
+    silent(clip.model) ? 'no sound' : clip.speech ? 'with speech' : 'no dialogue'
   const picked = useLocalStorage(() => `clip-video-model:${sessionId?.() ?? ''}`, '')
   const chosen = computed({
     get: () => picked.value || settings.value?.videoModel || models.value[0]?.id || '',
     set: (id: string) => picked.value = id,
   })
-  return { models, labelOf, silent, chosen }
+  return { models, labelOf, silent, soundOf, chosen }
 }
+
+/** Seconds as minutes and seconds, "1:42". */
+export const clock = (s: number) =>
+  `${Math.floor(s / 60)}:${(Math.floor(s) % 60).toString().padStart(2, '0')}`
+
+/**
+ * How long a clip took to make, "made in 7:15"; not its wait for another render, which is the
+ * queue's, not the video model's.
+ */
+export const madeIn = (clip: Clip) => `made in ${clock(clip.timings.clip)}`
+
+/** What a clip waited for another render first, if it had to: "Waited 0:30 for another render". */
+export const waitedFor = (clip: Clip) =>
+  clip.timings.queued ? `Waited ${clock(clip.timings.queued)} for another render` : undefined
