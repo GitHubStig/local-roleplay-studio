@@ -782,7 +782,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
         ),
         sizePresets: SIZE_PRESETS,
         upscalers: UPSCALERS,
-        videoModels: COMFYUI_VIDEO_MODELS.map(({ id, label }) => ({ id, label })),
+        videoModels: COMFYUI_VIDEO_MODELS.map(({ id, label, sound }) => ({ id, label, sound })),
         editModels: editModelsHere(await imageBackends()),
         // Where each edit model's edits go now, for the Edit dialog to say.
         editModelsOn: Object.fromEntries(

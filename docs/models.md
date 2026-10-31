@@ -109,12 +109,15 @@ Evidence: [research/voices.md](research/voices.md), and for the PC [research/com
 
 ## Clips
 
-LTX 2.5 on a ComfyUI ([ADR 0025](adr/0025-clips-by-kind.md)): the 22B distilled transformer and the Gemma 4 12B text encoder (int8 on the PC), one pass of 8 steps, with its own sound.
+LTX 2.5 on a ComfyUI ([ADR 0025](adr/0025-clips-by-kind.md)): the 22B distilled transformer and the Gemma 4 12B text encoder (int8 on the PC), one pass of 8 steps, with its own sound. Wan 2.2 and MiniMax H3 can be picked instead (Settings, Video model).
 
-- **One workflow for every kind of clip**: the picture is guided in at the first frame, the last, or both, at strength 1.0, which lands nearest the picture (SSIM ~0.89) and still moves.
-- **About 70 s to load plus ~19 s per second of clip on the PC**, at ~900k pixels in the picture's shape (1280×704, 1152×800): a 4 s clip takes ~2 min. The card's 12 GB is full at any length; length is limited by time and drift, not memory.
+- **One workflow for every kind of clip**: the picture is guided in at the first frame, the last, or both, at strength 1.0, which lands nearest the picture (SSIM ~0.89 on a simple picture, 0.76 on a busy dark one) and still moves, more than Wan or H3.
+- **About 70 s to load plus ~19 s per second of clip on the PC**, at ~900k pixels in the picture's shape (1280×704, 1152×800): 5 s in ~140 s, 10 s in ~250 s, and 5 s at 0.4 MP in 78 s. The fastest of the three at every size: Wan and H3 take ~3× as long at its size. The card's 12 GB is full at any length; length is limited by time and drift, not memory.
 - **Without dialogue, the negative prompt keeps voices out** (speech, talking, dialogue, voices); a clip with speech makes up its own voices.
-- Not tried on the Mac.
+- **Wan 2.2 14B** (fp8, the lightx2v 4-step LoRAs, 16 fps, no sound) at 640²'s pixels: a 5 s clip in ~130 s on the PC, nearest the picture of the three (SSIM ~0.86); past 5 s, the colour drifts. At 720p's pixels 3.4× slower.
+- **MiniMax H3** (pruned int8, the nvfp4 32B text encoder, the 8-step turbo LoRA, 24 fps, its own sound) at 0.4 MP: 5 s in ~140 s, 10 s in ~300 s on the PC, holding at 10 s, a little darker than the picture (SSIM ~0.72): nothing LTX doesn't do faster. Doesn't fit on the 48 GB Mac: it swaps before the first step.
+- **Memory on the PC**: 8–11.6 GB of VRAM and 14.1–14.7 GB of the 16 GB of RAM for every model, length and size tried, as ComfyUI streams the weights from the SSD.
+- Not tried on the Mac: LTX and Wan.
 
 Evidence: [research/video-models.md](research/video-models.md).
 

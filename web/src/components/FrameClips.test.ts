@@ -1,11 +1,15 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import * as api from '../api'
+import { useFeatures } from '../composables/useFeatures'
 import FrameClips from './FrameClips.vue'
 
 vi.mock('../api', async (importOriginal) => ({
   ...(await importOriginal<typeof api>()),
   writeClipPrompt: vi.fn(),
+  // Not loaded unless a test says: until they load, With speech shows.
+  getSettings: vi.fn(() => new Promise(() => {})),
+  getSettingsOptions: vi.fn(() => new Promise(() => {})),
 }))
 
 const leadIn: api.Clip = {
@@ -193,5 +197,24 @@ describe('FrameClips', () => {
       'Play out',
       'Into Next',
     ])
+  })
+
+  it('asks for no speech from a video model that makes no sound, and doesn’t offer it', async () => {
+    vi.mocked(api.getSettings).mockResolvedValue({ videoModel: 'wan-2.2' } as api.Settings)
+    vi.mocked(api.getSettingsOptions).mockResolvedValue(
+      {
+        videoModels: [{ id: 'wan-2.2', label: 'Wan 2.2 14B', sound: false }],
+      } as api.SettingsOptions,
+    )
+    await useFeatures().refreshFeatures()
+    const wrapper = mountIt({ clips: [leadIn] })
+    expect(wrapper.find('[data-clip-speech]').exists()).toBe(false)
+    await wrapper.find('[data-write-clip-prompt]').trigger('click')
+    await flushPromises()
+    expect(vi.mocked(api.writeClipPrompt).mock.calls[0][2]).toEqual({
+      kind: 'lead-in',
+      seconds: 4,
+      speech: false,
+    })
   })
 })

@@ -66,7 +66,7 @@ const options: api.SettingsOptions = {
     },
     { id: 'flux3-klein-edit', label: 'FLUX.3 Klein Edit', backends: ['comfyui'], prompting: '' },
   ],
-  videoModels: [{ id: 'ltx-2.5', label: 'LTX 2.5' }],
+  videoModels: [{ id: 'ltx-2.5', label: 'LTX 2.5', sound: true }],
   upscalers: [
     { id: 'seedvr2-7b', label: 'SeedVR2 7B' },
     { id: 'seedvr2-3b', label: 'SeedVR2 3B' },

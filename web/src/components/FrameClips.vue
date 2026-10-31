@@ -8,6 +8,8 @@ import {
   writeClipPrompt,
 } from '../api'
 import { sortClips } from '../clips'
+import { useFeatures } from '../composables/useFeatures'
+import { useSettingsOptions } from '../composables/useSettingsOptions'
 
 /**
  * The selected Frame's clips (ADR 0025), in its tab, the same in every kind of Session:
@@ -35,6 +37,12 @@ const props = defineProps<{
 const emit = defineEmits<{ make: [order: ClipOrder]; play: [clip: Clip]; stop: [] }>()
 
 const KINDS = Object.keys(CLIP_KIND_NAMES) as ClipKind[]
+const { settings } = useFeatures()
+const options = useSettingsOptions()
+/** The video model makes no sound (Wan 2.2), so there's no speech to ask for. */
+const silent = computed(() =>
+  options.value?.videoModels?.find((m) => m.id === settings.value?.videoModel)?.sound === false
+)
 const SECONDS = [3, 4, 5, 6, 8, 10]
 
 const kind = ref<ClipKind>('lead-in')
@@ -92,7 +100,7 @@ async function write(revise?: { prompt: string; problem: string }) {
   error.value = ''
   prompt.value = ''
   try {
-    const ask = { kind: kind.value, seconds: seconds.value, speech: speech.value }
+    const ask = { kind: kind.value, seconds: seconds.value, speech: speech.value && !silent.value }
     await writeClipPrompt(props.sessionId, props.index, ask, (event) => {
       if (event.type === 'clip-prompt-part' || event.type === 'clip-prompt') {
         prompt.value = event.text
@@ -106,7 +114,12 @@ async function write(revise?: { prompt: string; problem: string }) {
 }
 
 function make() {
-  const order = { kind: kind.value, prompt: prompt.value.trim(), seconds: seconds.value, speech: speech.value }
+  const order = {
+    kind: kind.value,
+    prompt: prompt.value.trim(),
+    seconds: seconds.value,
+    speech: speech.value && !silent.value,
+  }
   emit('make', order)
 }
 
@@ -184,7 +197,7 @@ function again(clip: Clip) {
           <option v-for="s in SECONDS" :key="s" :value="s">{{ s }} s</option>
         </select>
       </label>
-      <label class="flex cursor-pointer items-center gap-1.5">
+      <label v-if="!silent" class="flex cursor-pointer items-center gap-1.5">
         <input v-model="speech" type="checkbox" data-clip-speech />
         With speech
       </label>

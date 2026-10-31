@@ -157,7 +157,8 @@ export interface SettingsOptions extends TextModelOptions {
   imageModelsOn?: Record<string, ImageBackend>
   sizePresets: SizePreset[]
   upscalers: { id: string; label: string }[]
-  videoModels: { id: string; label: string }[]
+  /** Each video model, and whether it makes sound (Wan 2.2 doesn't). */
+  videoModels: { id: string; label: string; sound: boolean }[]
   /** The models that can edit a picture here, each on its backend. */
   /** Each with how it likes to be told what to paint. */
   editModels: { id: string; label: string; backends: ImageBackend[]; prompting: string }[]
