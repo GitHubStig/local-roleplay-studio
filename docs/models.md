@@ -109,7 +109,7 @@ Evidence: [research/voices.md](research/voices.md), and for the PC [research/com
 
 ## Clips
 
-LTX 2.5 on a ComfyUI ([ADR 0025](adr/0025-clips-by-kind.md)): the 22B distilled transformer and the Gemma 4 12B text encoder (int8 on the PC), one pass of 8 steps, with its own sound. Wan 2.2 and MiniMax H3 can be picked instead (Settings, Video model).
+LTX 2.5 on a ComfyUI ([ADR 0025](adr/0025-clips-by-kind.md)): the 22B distilled transformer and the Gemma 4 12B text encoder (int8 on the PC), one pass of 8 steps, with its own sound. LTX 2.5 is the default (Settings, Default video model); Wan 2.2 and MiniMax H3 can be picked for any clip in its Clip section, each keeping its own clip of a kind to compare ([ADR 0026](adr/0026-clips-per-video-model.md)).
 
 - **One workflow for every kind of clip**: the picture is guided in at the first frame, the last, or both, at strength 1.0, which lands nearest the picture (SSIM ~0.89 on a simple picture, 0.76 on a busy dark one) and still moves, more than Wan or H3.
 - **About 70 s to load plus ~19 s per second of clip on the PC**, at ~900k pixels in the picture's shape (1280×704, 1152×800): 5 s in ~140 s, 10 s in ~250 s, and 5 s at 0.4 MP in 78 s. The fastest of the three at every size: Wan and H3 take ~3× as long at its size. The card's 12 GB is full at any length; length is limited by time and drift, not memory.

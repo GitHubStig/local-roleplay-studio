@@ -143,7 +143,7 @@ Repainting a picture, or an area painted over it, as the player says, with an ed
 _Avoid_: Inpaint, fix, retouch
 
 **Clip**:
-A few seconds of video made from a Frame's picture by the Video model, kept on that picture, one of each kind: a **Lead In** ends on the picture, a **Play out** starts on it, an **Idle Loop** starts and ends on it, and an **Into Next** starts on it and ends on the next Frame's picture.
+A few seconds of video made from a Frame's picture by a video model, kept on that picture, one of each kind per video model: a **Lead In** ends on the picture, a **Play out** starts on it, an **Idle Loop** starts and ends on it, and an **Into Next** starts on it and ends on the next Frame's picture.
 _Avoid_: Video, animation, GIF, motion
 
 ### Configuration
