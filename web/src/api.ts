@@ -340,16 +340,21 @@ export const CLIP_KIND_NAMES: Record<ClipKind, string> = {
   'into-next': 'Into Next',
 }
 
-/** What a clip is told: its kind, what happens, how many seconds, and whether anyone may speak. */
+/**
+ * What a clip is told: its kind, what happens, how many seconds, whether anyone may speak, and
+ * the video model that makes it (Settings' default if none).
+ */
 export interface ClipOrder {
   kind: ClipKind
   prompt: string
   seconds: number
   speech: boolean
+  model?: string
 }
 
-/** A clip made from a picture, one of each kind per picture. */
+/** A clip made from a picture, one of each kind per video model. */
 export interface Clip extends ClipOrder {
+  model: string
   /** The MP4, served like the pictures. */
   file: string
   seed: number
@@ -956,7 +961,7 @@ export const queueClip = (id: string, frameIndex: number, clip: ClipOrder) =>
   post<Job[]>(`/api/sessions/${id}/jobs`, { kind: 'clip', frameIndex, clip })
 
 /** A clip as asked for, before its prompt is written. */
-export type ClipAsk = Omit<ClipOrder, 'prompt'>
+export type ClipAsk = Omit<ClipOrder, 'prompt' | 'model'>
 
 /** A clip prompt being written: piece by piece as it comes, then the whole of it, tidied. */
 export type ClipPromptEvent =

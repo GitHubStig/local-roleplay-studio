@@ -1,5 +1,5 @@
 import { flushPromises, mount } from '@vue/test-utils'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as api from '../api'
 import { useFeatures } from '../composables/useFeatures'
 import FrameClips from './FrameClips.vue'
@@ -7,13 +7,21 @@ import FrameClips from './FrameClips.vue'
 vi.mock('../api', async (importOriginal) => ({
   ...(await importOriginal<typeof api>()),
   writeClipPrompt: vi.fn(),
-  // Not loaded unless a test says: until they load, With speech shows.
-  getSettings: vi.fn(() => new Promise(() => {})),
-  getSettingsOptions: vi.fn(() => new Promise(() => {})),
+  getSettings: vi.fn(() => Promise.resolve({ videoModel: 'ltx-2.5' } as api.Settings)),
+  getSettingsOptions: vi.fn(() =>
+    Promise.resolve({
+      videoModels: [
+        { id: 'ltx-2.5', label: 'LTX 2.5', sound: true },
+        { id: 'wan-2.2', label: 'Wan 2.2 14B', sound: false },
+        { id: 'minimax-h3', label: 'MiniMax H3', sound: true },
+      ],
+    } as api.SettingsOptions)
+  ),
 }))
 
 const leadIn: api.Clip = {
   kind: 'lead-in',
+  model: 'ltx-2.5',
   prompt: 'She walks in.',
   seconds: 4,
   speech: true,
@@ -33,7 +41,11 @@ const mountIt = (props: Partial<InstanceType<typeof FrameClips>['$props']> = {})
     },
   })
 
+beforeAll(() => useFeatures().refreshFeatures())
+
 beforeEach(() => {
+  // The video model last picked in a Session is remembered in this browser.
+  localStorage.clear()
   vi.mocked(api.writeClipPrompt).mockReset().mockImplementation(
     async (_id, _index, _ask, onEvent) => {
       onEvent({ type: 'clip-prompt-part', text: 'She ' })
@@ -63,7 +75,13 @@ describe('FrameClips', () => {
     await prompt.setValue('She sits still. Sound: rain.')
     await wrapper.find('[data-make-clip]').trigger('click')
     expect(wrapper.emitted('make')).toEqual([[
-      { kind: 'idle-loop', prompt: 'She sits still. Sound: rain.', seconds: 8, speech: true },
+      {
+        kind: 'idle-loop',
+        prompt: 'She sits still. Sound: rain.',
+        seconds: 8,
+        speech: true,
+        model: 'ltx-2.5',
+      },
     ]])
   })
 
@@ -111,6 +129,7 @@ describe('FrameClips', () => {
       prompt: 'She runs in.',
       seconds: 4,
       speech: true,
+      model: 'ltx-2.5',
     }]])
     expect(wrapper.find('[data-clip-again]').exists()).toBe(false)
   })
@@ -172,14 +191,18 @@ describe('FrameClips', () => {
   })
 
   it('waits while the kind chosen is being made, the other kinds free meanwhile', async () => {
-    const wrapper = mountIt({ making: ['lead-in', 'idle-loop'] })
+    const wrapper = mountIt({ making: [{ kind: 'lead-in' }, { kind: 'idle-loop' }] })
     const make = () => wrapper.find('[data-make-clip]')
     expect([make().text(), make().attributes('disabled')]).toEqual(['Making Lead In…', ''])
-    expect(wrapper.find('[data-clips-making]').text()).toBe('Making Idle Loop meanwhile.')
+    expect(wrapper.find('[data-clips-making]').text()).toBe(
+      'Making Idle Loop by LTX 2.5 meanwhile.',
+    )
     await wrapper.find('[data-clip-kind="play-out"]').trigger('click')
     await wrapper.find('[data-clip-prompt]').setValue('She stands.')
     expect([make().text(), make().attributes('disabled')]).toEqual(['Make clip', undefined])
-    expect(wrapper.find('[data-clips-making]').text()).toBe('Making Lead In, Idle Loop meanwhile.')
+    expect(wrapper.find('[data-clips-making]').text()).toBe(
+      'Making Lead In by LTX 2.5, Idle Loop by LTX 2.5 meanwhile.',
+    )
   })
 
   it('lists the clips in the order the kinds are offered', () => {
@@ -200,14 +223,8 @@ describe('FrameClips', () => {
   })
 
   it('asks for no speech from a video model that makes no sound, and doesn’t offer it', async () => {
-    vi.mocked(api.getSettings).mockResolvedValue({ videoModel: 'wan-2.2' } as api.Settings)
-    vi.mocked(api.getSettingsOptions).mockResolvedValue(
-      {
-        videoModels: [{ id: 'wan-2.2', label: 'Wan 2.2 14B', sound: false }],
-      } as api.SettingsOptions,
-    )
-    await useFeatures().refreshFeatures()
     const wrapper = mountIt({ clips: [leadIn] })
+    await wrapper.find('[data-clip-model]').setValue('wan-2.2')
     expect(wrapper.find('[data-clip-speech]').exists()).toBe(false)
     await wrapper.find('[data-write-clip-prompt]').trigger('click')
     await flushPromises()
@@ -216,5 +233,51 @@ describe('FrameClips', () => {
       seconds: 4,
       speech: false,
     })
+  })
+
+  it('keeps a clip of a kind per video model: another model starts from its prompt, to compare', async () => {
+    const wrapper = mountIt({ clips: [leadIn] })
+    const make = () => wrapper.find('[data-make-clip]')
+    const box = () => wrapper.find<HTMLTextAreaElement>('[data-clip-prompt]').element
+    expect([box().value, make().text()]).toEqual(['She walks in.', 'Redo clip'])
+    // H3 has no Lead In yet: the same prompt, to make a clip of its own beside LTX's.
+    await wrapper.find('[data-clip-model]').setValue('minimax-h3')
+    expect([box().value, make().text()]).toEqual(['She walks in.', 'Make clip'])
+    await make().trigger('click')
+    expect(wrapper.emitted('make')?.[0][0]).toMatchObject({ kind: 'lead-in', model: 'minimax-h3' })
+    // Remembered for the Session, in this browser.
+    expect(mountIt().find<HTMLSelectElement>('[data-clip-model]').element.value).toBe('minimax-h3')
+    expect(mountIt({ sessionId: 's2' }).find<HTMLSelectElement>('[data-clip-model]').element.value)
+      .toBe('ltx-2.5')
+  })
+
+  it('waits only while the same model makes the kind chosen', async () => {
+    const wrapper = mountIt({ making: [{ kind: 'lead-in', model: 'wan-2.2' }] })
+    expect(wrapper.find('[data-make-clip]').text()).toBe('Make clip')
+    expect(wrapper.find('[data-clips-making]').text()).toBe(
+      'Making Lead In by Wan 2.2 14B meanwhile.',
+    )
+    await wrapper.find('[data-clip-model]').setValue('wan-2.2')
+    expect(wrapper.find('[data-make-clip]').text()).toBe('Making Lead In…')
+  })
+
+  it('lists each kind’s clips by model, with Compare once two models have made it', async () => {
+    const byWan = { ...leadIn, model: 'wan-2.2', file: 'clip-1-lead-in-2b3c4d5e.mp4' }
+    const loop = { ...leadIn, kind: 'idle-loop' as const, file: 'clip-1-idle-loop-1a2b3c4d.mp4' }
+    const wrapper = mountIt({ clips: [leadIn, loop, byWan] })
+    const lead = wrapper.find('[data-clip="lead-in"]')
+    expect(lead.findAll('[data-clip-by]').map((r) => r.text().split(' · ').slice(0, 1).join()))
+      .toEqual([
+        'LTX 2.5',
+        'Wan 2.2 14B',
+      ])
+    expect(lead.find('[data-clip-by="wan-2.2"]').text()).toContain('no sound')
+    expect(wrapper.find('[data-clip="idle-loop"] [data-compare-clips]').exists()).toBe(false)
+    await lead.find('[data-compare-clips]').trigger('click')
+    const compared = wrapper.findAll('[data-clip-compare] [data-compared]')
+    expect(compared.map((f) => f.attributes('data-compared'))).toEqual(['ltx-2.5', 'wan-2.2'])
+    // Change it on Wan's puts Wan's order back in the form.
+    await lead.find('[data-clip-by="wan-2.2"] [data-clip-wrong]').trigger('click')
+    expect(wrapper.find<HTMLSelectElement>('[data-clip-model]').element.value).toBe('wan-2.2')
   })
 })

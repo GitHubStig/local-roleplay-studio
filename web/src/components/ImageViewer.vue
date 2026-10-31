@@ -80,6 +80,9 @@ const FLAT = { ...KEYS, ArrowUp: 'previous', ArrowDown: 'next' } as const
 useEventListener(document, 'keydown', (e: KeyboardEvent) => {
   if (!dialog.value?.open || !(e.key in KEYS) || e.altKey || e.ctrlKey || e.metaKey) return
   if (props.painting) return
+  // Not for a dialog opened over it (a clip comparison's timeline takes the arrow keys).
+  const over = (e.target as HTMLElement).closest?.('dialog')
+  if (over && over !== dialog.value) return
   e.preventDefault()
   go((props.vertical ? KEYS : FLAT)[e.key as keyof typeof KEYS])
 })

@@ -8,6 +8,7 @@ afterEach(() => sessionStorage.clear())
 
 const clip = (kind: Clip['kind']): Clip => ({
   kind,
+  model: 'ltx-2.5',
   file: `clip-0-${kind}-00000000.mp4`,
   prompt: 'She looks up.',
   seconds: 4,

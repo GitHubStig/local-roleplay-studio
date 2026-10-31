@@ -7,42 +7,43 @@ import {
   type ClipOrder,
   writeClipPrompt,
 } from '../api'
-import { sortClips } from '../clips'
-import { useFeatures } from '../composables/useFeatures'
-import { useSettingsOptions } from '../composables/useSettingsOptions'
+import { type ClipMaking, clipsByKind, useVideoModels } from '../clips'
+import ClipCompare from './ClipCompare.vue'
 
 /**
  * The selected Frame's clips (ADR 0025), in its tab, the same in every kind of Session:
- * pick where the picture sits in the clip, its length and whether anyone speaks; the Text Model
- * writes the prompt from the story, for the player to read and edit; then the clip is queued. A
- * kind the picture has a clip of fills the form from it, to change and make again (Redo clip, which
- * replaces it). Under the prompt, Change it has the Text Model rewrite it by what the player says
- * should change, before the clip is made. The clips made are listed, to play over the picture (and
- * stop), or to say what was wrong with one: that fills the same box, for the same rewrite.
+ * pick where the picture sits in the clip, its length, whether anyone speaks and the video model
+ * (the last picked in the Session, else Settings' default); the Text Model writes the prompt from
+ * the story, for the player to read and edit; then the clip is queued. Each video model keeps a clip
+ * of each kind. A kind the picture has a clip of fills the form from it: the chosen model's, to
+ * change and make again (Redo clip, which replaces it), or else another model's, so the same prompt
+ * goes to the next model to compare. Under the prompt, Change it has the Text Model rewrite it by
+ * what the player says should change, before the clip is made. The clips made are listed by kind,
+ * to play over the picture (and stop), to say what was wrong with one (that fills the same box, for
+ * the same rewrite), or, for a kind made by two models or more, to compare side by side.
  */
 const props = defineProps<{
   sessionId: string
   /** The Frame's index, as the server numbers it. */
   index: number
-  /** Its picture's clips, one of each kind. */
+  /** Its picture's clips, one of each kind per video model. */
   clips?: Clip[]
   /** The next Frame has a picture for Into Next to end on; `nextName` names it. */
   nextPictured: boolean
   nextName: string
-  /** The kinds of clip queued or being made of the Frame. */
-  making: ClipKind[]
+  /** The clips queued or being made of the Frame, by kind and video model. */
+  making: ClipMaking[]
   /** The clip playing over the picture, by its file. */
   playing?: string
 }>()
 const emit = defineEmits<{ make: [order: ClipOrder]; play: [clip: Clip]; stop: [] }>()
 
 const KINDS = Object.keys(CLIP_KIND_NAMES) as ClipKind[]
-const { settings } = useFeatures()
-const options = useSettingsOptions()
+const { models, labelOf, silent: makesNoSound, chosen: model } = useVideoModels(() => props.sessionId)
 /** The video model makes no sound (Wan 2.2), so there's no speech to ask for. */
-const silent = computed(() =>
-  options.value?.videoModels?.find((m) => m.id === settings.value?.videoModel)?.sound === false
-)
+const silent = computed(() => makesNoSound(model.value))
+/** The kind compared side by side, while the comparison is open. */
+const comparing = ref<ClipKind | null>(null)
 const SECONDS = [3, 4, 5, 6, 8, 10]
 
 const kind = ref<ClipKind>('lead-in')
@@ -52,15 +53,16 @@ const prompt = ref('')
 const writing = ref(false)
 const error = ref('')
 
-/** The picture's clip of the kind chosen, if it has one (one of each kind). */
-const made = computed(() => props.clips?.find((c) => c.kind === kind.value))
+/** The picture's clip of the kind chosen by the video model chosen, if it has one. */
+const made = computed(() => props.clips?.find((c) => c.kind === kind.value && c.model === model.value))
 /**
- * The form as the chosen kind's clip was ordered, to make again; for a kind not made yet, an
- * empty prompt, as a prompt is written for one kind (and one Frame) and doesn't carry over.
+ * The form as the chosen kind's clip was ordered, to make again: the chosen model's, else another
+ * model's, so the same prompt can be compared; for a kind not made yet, an empty prompt, as a
+ * prompt is written for one kind (and one Frame) and doesn't carry over.
  */
 function fillForm() {
   error.value = ''
-  const clip = made.value
+  const clip = made.value ?? props.clips?.find((c) => c.kind === kind.value)
   if (!clip) {
     prompt.value = ''
     return
@@ -69,7 +71,8 @@ function fillForm() {
   speech.value = clip.speech
   prompt.value = clip.prompt
 }
-// Another kind, another Frame, or another picture's clip (the Session's Image Model switched).
+// Another kind, another Frame, another picture's clip (the Session's Image Model switched), or
+// another video model's.
 watch([kind, () => props.index, () => made.value?.file], fillForm, { immediate: true })
 
 const hint = computed(() =>
@@ -81,17 +84,26 @@ const hint = computed(() =>
   })[kind.value]
 )
 
-/** The picture's clips in the kinds' order. */
-const listed = computed(() => sortClips(props.clips))
-/** The kind chosen is being made already: one of each kind at a time, the others free meanwhile. */
-const makingThis = computed(() => props.making.includes(kind.value))
+/** The picture's clips by kind, in the kinds' order. */
+const listed = computed(() => clipsByKind(props.clips))
+/** Whose clip a clip being made is: one ordered without a model is Settings' default's. */
+const makingBy = (m: ClipMaking) => m.model ?? model.value
+/**
+ * The kind chosen is being made already by the model chosen: one of each kind per model at a
+ * time, the others free meanwhile.
+ */
+const makingThis = computed(() =>
+  props.making.some((m) => m.kind === kind.value && makingBy(m) === model.value)
+)
 /** Make clip, Redo clip for a kind the picture has, or that this kind is being made. */
 const makeLabel = computed(() =>
   makingThis.value ? `Making ${CLIP_KIND_NAMES[kind.value]}…` : made.value ? 'Redo clip' : 'Make clip'
 )
 /** The other kinds being made meanwhile, under the buttons. */
 const othersMaking = computed(() =>
-  props.making.filter((k) => k !== kind.value).map((k) => CLIP_KIND_NAMES[k]).join(', ')
+  props.making.filter((m) => m.kind !== kind.value || makingBy(m) !== model.value)
+    .map((m) => CLIP_KIND_NAMES[m.kind] + (models.value.length > 1 ? ` by ${labelOf(makingBy(m))}` : ''))
+    .join(', ')
 )
 
 /** Writes the prompt; with `revise`, rewrites a clip's by what was wrong with it. */
@@ -119,6 +131,8 @@ function make() {
     prompt: prompt.value.trim(),
     seconds: seconds.value,
     speech: speech.value && !silent.value,
+    // None until the models load: the server takes Settings' default.
+    ...(model.value && { model: model.value }),
   }
   emit('make', order)
 }
@@ -155,9 +169,10 @@ async function toggleFixing(clip: Clip) {
   changeBox.value?.focus()
 }
 
-/** Puts a clip's order back in the form, to edit and make again. */
+/** Puts a clip's order back in the form, to edit and make again by its video model. */
 function again(clip: Clip) {
   kind.value = clip.kind
+  model.value = clip.model
   fillForm()
 }
 </script>
@@ -190,7 +205,13 @@ function again(clip: Clip) {
       Works when the two pictures show the same place. If {{ nextName }} looks like somewhere else, a
       Lead In on {{ nextName }} joins better.
     </p>
-    <div class="flex items-center gap-3 text-xs">
+    <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs">
+      <label v-if="models.length > 1" class="flex items-center gap-1.5">
+        Video model
+        <select v-model="model" class="rounded border border-line bg-surface px-1 py-0.5" data-clip-model>
+          <option v-for="m in models" :key="m.id" :value="m.id">{{ m.label }}</option>
+        </select>
+      </label>
       <label class="flex items-center gap-1.5">
         Length
         <select v-model.number="seconds" class="rounded border border-line bg-surface px-1 py-0.5" data-clip-seconds>
@@ -248,34 +269,52 @@ function again(clip: Clip) {
     </form>
     <p v-if="othersMaking" class="text-xs text-muted" data-clips-making>Making {{ othersMaking }} meanwhile.</p>
     <ul v-if="listed.length" class="flex flex-col text-xs" data-clips>
-      <li
-        v-for="clip in listed"
-        :key="clip.file"
-        class="flex flex-wrap items-center gap-2 border-t border-line py-1.5"
-        :data-clip="clip.kind"
-      >
-        <span class="w-16 font-medium">{{ CLIP_KIND_NAMES[clip.kind] }}</span>
-        <span class="flex-1 text-muted">{{ clip.seconds }} s · {{ clip.speech ? 'with speech' : 'no dialogue' }}</span>
-        <button
-          type="button"
-          class="action"
-          :class="{ 'action-on': playing === clip.file }"
-          :aria-pressed="playing === clip.file"
-          data-play-clip
-          @click="playing === clip.file ? emit('stop') : emit('play', clip)"
+      <li v-for="group in listed" :key="group.kind" class="border-t border-line py-1" :data-clip="group.kind">
+        <div class="flex items-center gap-2">
+          <span class="font-medium">{{ CLIP_KIND_NAMES[group.kind] }}</span>
+          <button
+            v-if="group.clips.length > 1"
+            type="button"
+            class="action ml-auto"
+            :title="`Play each model's ${CLIP_KIND_NAMES[group.kind]} side by side, together`"
+            data-compare-clips
+            @click="comparing = group.kind"
+          >
+            Compare
+          </button>
+        </div>
+        <div
+          v-for="clip in group.clips"
+          :key="clip.file"
+          class="flex flex-wrap items-center gap-2 py-0.5 pl-3"
+          :data-clip-by="clip.model"
         >
-          {{ playing === clip.file ? 'Stop' : 'Play' }}
-        </button>
-        <button
-          type="button"
-          class="action"
-          title="Say what was wrong with it, for the Text Model to rewrite its prompt"
-          data-clip-wrong
-          @click="toggleFixing(clip)"
-        >
-          Change it
-        </button>
+          <span class="flex-1 text-muted">
+            {{ labelOf(clip.model) }} · {{ clip.seconds }} s ·
+            {{ makesNoSound(clip.model) ? 'no sound' : clip.speech ? 'with speech' : 'no dialogue' }}
+          </span>
+          <button
+            type="button"
+            class="action"
+            :class="{ 'action-on': playing === clip.file }"
+            :aria-pressed="playing === clip.file"
+            data-play-clip
+            @click="playing === clip.file ? emit('stop') : emit('play', clip)"
+          >
+            {{ playing === clip.file ? 'Stop' : 'Play' }}
+          </button>
+          <button
+            type="button"
+            class="action"
+            title="Say what was wrong with it, for the Text Model to rewrite its prompt"
+            data-clip-wrong
+            @click="toggleFixing(clip)"
+          >
+            Change it
+          </button>
+        </div>
       </li>
     </ul>
+    <ClipCompare :session-id="sessionId" :clips="clips ?? []" :kind="comparing" @close="comparing = null" />
   </section>
 </template>

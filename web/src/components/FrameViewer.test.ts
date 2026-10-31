@@ -26,6 +26,10 @@ vi.mock('../api', async (importOriginal) => ({
       ],
       imageBackends: ['mflux', 'comfyui'],
       editModelsOn: { 'qwen-image-2.1-edit': 'comfyui', 'flux3-klein-edit': 'comfyui' },
+      videoModels: [
+        { id: 'ltx-2.5', label: 'LTX 2.5', sound: true },
+        { id: 'wan-2.2', label: 'Wan 2.2 14B', sound: false },
+      ],
     } as unknown as SettingsOptions)
   ),
 }))
@@ -277,6 +281,7 @@ describe('FrameViewer', () => {
   it("plays the shown version's clips over it, one at a time, stopping on another version", async () => {
     const clip = (kind: 'lead-in' | 'idle-loop', file: string) => ({
       kind,
+      model: 'ltx-2.5',
       file,
       prompt: 'She looks up.',
       seconds: 4,
@@ -326,6 +331,7 @@ describe('FrameViewer', () => {
   it("leaves out the clips of a picture by another Image Model, shown until the Session's renders", async () => {
     const clip = {
       kind: 'lead-in' as const,
+      model: 'ltx-2.5',
       file: 'clip-0-lead-in-00000000.mp4',
       prompt: 'p',
       seconds: 4,
@@ -341,5 +347,43 @@ describe('FrameViewer', () => {
     await flushPromises()
     expect(shownSrc(wrapper)).toBe(url('frame-0.png'))
     expect(side(wrapper).find('[data-play-clip]').exists()).toBe(false)
+  })
+
+  it('names the video model of a kind made by more than one, and compares them', async () => {
+    const clip = (model: string, kind: 'lead-in' | 'idle-loop' = 'lead-in') => ({
+      kind,
+      model,
+      file: `clip-0-${kind}-${model}.mp4`,
+      prompt: 'p',
+      seconds: 4,
+      speech: false,
+      seed: 1,
+      timings: { clip: 9 },
+    })
+    const withClips = [{
+      index: 0,
+      pictures: [{
+        ...frames[0].pictures[0],
+        picked: 0,
+        clips: [clip('ltx-2.5'), clip('ltx-2.5', 'idle-loop'), clip('wan-2.2')],
+      }],
+    }]
+    const wrapper = mountIt({ frames: withClips })
+    await flushPromises()
+    expect(side(wrapper).findAll('[data-play-clip]').map((b) => b.text())).toEqual([
+      'Lead In · LTX 2.5',
+      'Lead In · Wan 2.2 14B',
+      'Idle Loop',
+    ])
+    await side(wrapper).find('[data-play-clip]').trigger('click')
+    await side(wrapper).find('[data-viewer-compare-clips]').trigger('click')
+    // The clip playing over the picture stops, for the comparison.
+    expect(wrapper.find('[data-clip-overlay]').exists()).toBe(false)
+    expect(
+      wrapper.findAll('[data-clip-compare] [data-compared]').map((f) =>
+        f.attributes('data-compared')
+      ),
+    )
+      .toEqual(['ltx-2.5', 'wan-2.2'])
   })
 })

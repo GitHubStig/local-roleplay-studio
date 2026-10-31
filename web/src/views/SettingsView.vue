@@ -573,13 +573,14 @@ function saveNow() {
             </FeatureSwitch>
             <template v-if="form.features.video && options.features.video?.available">
               <label class="flex flex-col gap-1">
-                <span class="text-sm text-muted">Video model</span>
+                <span class="text-sm text-muted">Default video model</span>
                 <SelectField v-model="form.videoModel" data-video-model>
                   <option v-for="m in options.videoModels" :key="m.id" :value="m.id">{{ m.label }}</option>
                 </SelectField>
                 <span class="text-sm text-muted">
-                  Applies to the next clip, in running Sessions too. LTX 2.5 takes about two and a
-                  half minutes for a 5-second clip on an RTX 4070 with 12 GB.
+                  What a Session's clips start on; each Frame's Clip section can pick another, and keeps
+                  a clip of each kind per model, to compare. On an RTX 4070 with 12 GB, a 5-second clip
+                  takes about two and a half minutes with any of them; LTX 2.5 has the largest picture.
                 </span>
               </label>
               <RunOn

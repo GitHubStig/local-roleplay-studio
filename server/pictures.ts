@@ -18,7 +18,7 @@ export interface PictureVersion {
   figure?: Figure
   /** The same, made with Apple's LiTo. */
   lito?: Figure
-  /** Clips made from it, one of each kind, once asked for (`video/makeClip.ts`). */
+  /** Clips made from it, one of each kind per video model, once asked for (`video/makeClip.ts`). */
   clips?: Clip[]
 }
 

@@ -5,6 +5,7 @@ import { computed, reactive, ref, useTemplateRef, watch } from 'vue'
 import {
   type Clip,
   CLIP_KIND_NAMES,
+  type ClipKind,
   editLine,
   type EditOrder,
   framePicture,
@@ -17,10 +18,11 @@ import {
   type PictureEdit,
   type PicturedFrame,
 } from '../api'
-import { sortClips } from '../clips'
+import { clipsByKind, sortClips, useVideoModels } from '../clips'
 import { isOpen } from '../jobs'
 import { useFeatures } from '../composables/useFeatures'
 import { editChoices, useSettingsOptions } from '../composables/useSettingsOptions'
+import ClipCompare from './ClipCompare.vue'
 import ClipOverlay from './ClipOverlay.vue'
 import ImageViewer from './ImageViewer.vue'
 import PaintLayer, { type Sketch } from './PaintLayer.vue'
@@ -272,6 +274,15 @@ const clips = computed(() => {
     ? sortClips((pickedEdit(p) ?? p).clips)
     : []
 })
+const { labelOf: videoModelLabel } = useVideoModels()
+/** A clip's button: its kind, and its video model where the kind has clips by more than one. */
+const clipLabel = (c: Clip) =>
+  clips.value.filter((o) => o.kind === c.kind).length > 1
+    ? `${CLIP_KIND_NAMES[c.kind]} · ${videoModelLabel(c.model)}`
+    : CLIP_KIND_NAMES[c.kind]
+/** The first kind made by two video models or more, to compare side by side. */
+const comparable = computed(() => clipsByKind(clips.value).find((g) => g.clips.length > 1)?.kind)
+const comparing = ref<ClipKind | null>(null)
 const playing = ref<Clip | null>(null)
 // It stops on another Frame or version, or once a new clip of its kind replaces it.
 watch(clips, (now) => {
@@ -517,7 +528,17 @@ const action =
             @click="playing = playing?.file === c.file ? null : c"
           >
             <Icon :name="playing?.file === c.file ? 'stop' : 'play'" />
-            <span class="whitespace-nowrap">{{ CLIP_KIND_NAMES[c.kind] }}</span>
+            <span class="whitespace-nowrap">{{ clipLabel(c) }}</span>
+          </button>
+          <button
+            v-if="comparable"
+            type="button"
+            class="px-2 py-1 text-left whitespace-nowrap hover:text-white"
+            title="Play each video model's clip of a kind side by side, together"
+            data-viewer-compare-clips
+            @click="playing = null, comparing = comparable"
+          >
+            Compare clips
           </button>
         </div>
         <button
@@ -533,11 +554,21 @@ const action =
         </button>
       </PictureVersions>
     </template>
-    <template v-if="playing" #over>
+    <template v-if="playing || comparable" #over>
       <ClipOverlay
+        v-if="playing"
         :src="fileUrl(playing.file)"
         :clip="playing"
         @close="playing = null"
+      />
+      <!-- Here rather than beside the buttons, which are drawn twice (beside the image, and in a
+           row under it on a phone). -->
+      <ClipCompare
+        v-if="comparable"
+        :session-id="sessionId"
+        :clips="clips"
+        :kind="comparing"
+        @close="comparing = null"
       />
     </template>
     <template v-if="painting && draft" #layer="{ size }">

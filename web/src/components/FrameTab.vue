@@ -2,7 +2,6 @@
 import { computed } from 'vue'
 import {
   type Clip,
-  type ClipKind,
   type ClipOrder,
   type JobKind,
   type Made3d,
@@ -10,6 +9,7 @@ import {
   type Picture,
   pickedEdit,
 } from '../api'
+import type { ClipMaking } from '../clips'
 import FrameClips from './FrameClips.vue'
 import { useFeatures } from '../composables/useFeatures'
 import { useImageModels } from '../composables/useSettingsOptions'
@@ -40,8 +40,8 @@ const props = withDefaults(
       nextName: string
       /** The Session's Image Model: clips are of its picture, not another the Frame shows meanwhile. */
       imageModel: string
-      /** The kinds of clip queued or being made of it (`clipsMaking`). */
-      making: ClipKind[]
+      /** The clips queued or being made of it, by kind and video model (`clipsMaking`). */
+      making: ClipMaking[]
       /** The clip playing over its picture, by its file. */
       playing?: string
     }
