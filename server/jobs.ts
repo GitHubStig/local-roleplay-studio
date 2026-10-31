@@ -19,6 +19,7 @@ import { machineOf } from './machine.ts'
 import { shownPictureOf } from './pictures.ts'
 import type { Session, SessionStore } from './session.ts'
 import type { SessionSettings } from './settings.ts'
+import { COMFYUI_VIDEO_MODELS, findComfyVideoModel } from './video/comfyui/models.ts'
 import { CLIP_KINDS, type ClipKind } from './video/videoGenerator.ts'
 
 /**
@@ -93,13 +94,15 @@ export interface EditOrder {
 
 /**
  * What a `clip` is told (ADR 0025): its kind, what happens in it (the movement, the
- * camera, the sound), how many seconds it lasts, and whether anyone may speak in it.
+ * camera, the sound), how many seconds it lasts, whether anyone may speak in it, and the video
+ * model that makes it (Settings' default if none, read as it starts).
  */
 export interface ClipOrder {
   kind: ClipKind
   prompt: string
   seconds: number
   speech: boolean
+  model?: string
 }
 
 export interface Job {
@@ -218,17 +221,18 @@ const NEEDS: Record<JobKind, readonly JobKind[]> = {
 /**
  * Whether `job` is the same work: the same kind, on the same Frame, by the same Image Model (by
  * name, whichever backend: a Frame keeps one picture per model, `shownPicture`), and for a clip,
- * of the same kind. Edits never are: each is made from the one before.
+ * of the same kind by the same video model. Edits never are: each is made from the one before.
  */
 const sameWork = (
   job: Job,
   kind: JobKind,
   frameIndex: number,
   image?: ImageChoice,
-  clip?: ClipKind,
+  clip?: ClipOrder,
 ) =>
   kind !== 'edit' && job.kind === kind && job.frameIndex === frameIndex &&
-  job.image?.imageModel === image?.imageModel && job.clip?.kind === clip
+  job.image?.imageModel === image?.imageModel && job.clip?.kind === clip?.kind &&
+  job.clip?.model === clip?.model
 
 /** Two jobs on the pictures of two different Image Models, as both record (`Job.image`). */
 const otherPictures = (a: Job, b: Job) =>
@@ -289,7 +293,7 @@ export class SessionJobs {
     clip?: ClipOrder,
   ): Job {
     const jobs = this.#jobs.get(sessionId) ?? []
-    const same = jobs.find((j) => sameWork(j, kind, frameIndex, image, clip?.kind) && isOpen(j))
+    const same = jobs.find((j) => sameWork(j, kind, frameIndex, image, clip) && isOpen(j))
     if (same) return { ...same }
     const job: Job = {
       id: crypto.randomUUID().slice(0, 8),
@@ -344,7 +348,7 @@ export class SessionJobs {
     if (!failed) return false
     const rest = jobs.filter((j) => j.id !== jobId)
     const again = rest.some((j) =>
-      sameWork(j, failed.kind, failed.frameIndex, failed.image, failed.clip?.kind) && isOpen(j)
+      sameWork(j, failed.kind, failed.frameIndex, failed.image, failed.clip) && isOpen(j)
     )
     const { error: _, ...job } = failed
     this.#jobs.set(sessionId, again ? rest : [...rest, { ...job, status: 'queued' }])
@@ -567,7 +571,7 @@ const MAX_CLIP_PROMPT = 4000
 export const CLIP_SECONDS = { min: 2, max: 10 } as const
 
 /** A clip as asked for, before its prompt is written: its kind, length and speech. */
-export type ClipAsk = Omit<ClipOrder, 'prompt'>
+export type ClipAsk = Omit<ClipOrder, 'prompt' | 'model'>
 
 /** What kind of clip a request asks for, how long and whether anyone speaks, or why it can't. */
 export function clipAsk(body: unknown): ClipAsk | string {
@@ -590,13 +594,17 @@ export function clipAsk(body: unknown): ClipAsk | string {
 export function clipOrder(body: unknown): ClipOrder | string {
   const ask = clipAsk(body)
   if (typeof ask === 'string') return ask
-  const b = body as { prompt?: unknown }
+  const b = body as { prompt?: unknown; model?: unknown }
   const prompt = typeof b.prompt === 'string' ? b.prompt.trim() : ''
   if (!prompt) return 'Say what happens in the clip'
   if (prompt.length > MAX_CLIP_PROMPT) {
     return `A clip prompt can be at most ${MAX_CLIP_PROMPT} characters`
   }
-  return { ...ask, prompt }
+  if (b.model === undefined) return { ...ask, prompt }
+  if (!findComfyVideoModel(b.model as string)) {
+    return `model must be one of: ${COMFYUI_VIDEO_MODELS.map((m) => m.id).join(', ')}`
+  }
+  return { ...ask, prompt, model: b.model as string }
 }
 
 /** The job routes every Session kind shares, under `/api/sessions/:id/jobs`. */

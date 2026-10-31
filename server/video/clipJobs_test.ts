@@ -62,6 +62,27 @@ Deno.test('A kind made again replaces its clip; another kind sits beside it', ()
     assertEquals([video.made[2].first, video.made[2].last], [second.image, second.image])
   }))
 
+Deno.test('Each video model keeps its own clip of a kind, and replaces only its own', () =>
+  withTempDir(async (root) => {
+    const video = fakeVideoGenerator()
+    const { call } = await chainOfTwo(root, { video })
+    await queueClip(call, 1, leadIn)
+    await queueClip(call, 1, { ...leadIn, model: 'wan-2.2' })
+    await settled(call)
+    await queueClip(call, 1, { ...leadIn, prompt: 'She runs in.', model: 'wan-2.2' })
+    await settled(call)
+    const [, second] = await chainFrames(call)
+    assertEquals(
+      second.clips.map((c: { model: string; prompt: string }) => [c.model, c.prompt]),
+      [['ltx-2.5', 'She walks in.'], ['wan-2.2', 'She runs in.']],
+    )
+    // Made by the model each was queued with; one without took Settings' default.
+    assertEquals(video.made.map((m) => m.model), ['ltx-2.5', 'wan-2.2', 'wan-2.2'])
+    const unknown = await queueClip(call, 1, { ...leadIn, model: 'wan-9' })
+    assertEquals(unknown.status, 400)
+    assertStringIncludes((await unknown.json()).error, 'model must be one of')
+  }))
+
 Deno.test('Into Next ends on the next Frame’s picture, and the last Frame has none', () =>
   withTempDir(async (root) => {
     const video = fakeVideoGenerator()

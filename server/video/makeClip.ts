@@ -9,7 +9,7 @@ import { CLIP_ENDS, type ClipKind, type VideoGenerator } from './videoGenerator.
 
 /**
  * A clip made from a picture (ADR 0025), kept on the picture version it was made from:
- * one of each kind, a new one replacing the old.
+ * one of each kind by each video model, a new one replacing that model's old one.
  */
 export interface Clip {
   kind: ClipKind
@@ -30,9 +30,9 @@ export interface Clip {
 
 export interface ClipDeps {
   store: SessionStore
-  /** LTX 2.5 on a ComfyUI, when clips are available. */
+  /** The video models on a ComfyUI, when clips are available. */
   video?: VideoGenerator
-  /** The video model chosen in Settings now: read as the clip starts, as Upscale's upscaler is. */
+  /** Settings' default video model, for a clip ordered without one: read as it starts. */
   videoModel(): Promise<string>
   renderQueue?: RenderQueue
 }
@@ -73,8 +73,9 @@ export function clipRefusal(
 
 /**
  * Makes a clip from Frame `index`'s picture by Image Model `model` (the one it was queued for,
- * whatever the Session shows now), as `order` says, in its turn behind any render: LTX 2.5 takes a
- * whole 12 GB card. Into Next ends on the next Frame's picture by the same model.
+ * whatever the Session shows now), as `order` says, by its video model, in its turn behind any
+ * render: a video model takes a whole 12 GB card. Into Next ends on the next Frame's picture by
+ * the same Image Model.
  * Saved onto the picture it was made from, if the Frame still has it.
  */
 export async function makeClip<S extends Session>(
@@ -95,7 +96,7 @@ export async function makeClip<S extends Session>(
   const picture = versionBy(session, index, by)!
   const next = order.kind === 'into-next' ? versionBy(session, index + 1, by)!.image : undefined
   const ends = CLIP_ENDS[order.kind]
-  const videoModel = await deps.videoModel()
+  const videoModel = order.model ?? await deps.videoModel()
   const pictureAt = (end?: 'still' | 'next') => end === 'still' ? picture.image : end && next
   const dir = deps.store.dir(session.id)
   const name = `clip-${index}-${order.kind}-${crypto.randomUUID().slice(0, 8)}`
@@ -140,8 +141,9 @@ export async function makeClip<S extends Session>(
     let replaced: string | undefined
     const updated = await save((latest) =>
       changeFramePicture(latest, picture.image, (p) => {
-        replaced = p.clips?.find((c) => c.kind === clip.kind)?.file
-        return { ...p, clips: [...(p.clips ?? []).filter((c) => c.kind !== clip.kind), clip] }
+        const same = (c: Clip) => c.kind === clip.kind && c.model === clip.model
+        replaced = p.clips?.find(same)?.file
+        return { ...p, clips: [...(p.clips ?? []).filter((c) => !same(c)), clip] }
       })
     )
     if (replaced) await Deno.remove(join(dir, replaced)).catch(() => {})
