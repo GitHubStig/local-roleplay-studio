@@ -82,8 +82,6 @@ Qwen-Image 2.1 (generation, Viggle and the edit) ran from `Qwen/Qwen-Image-2.1` 
 - **Edit** (512×512, `-q 8`, "Make the red shirt green" on a plain test picture): near-identical (mean difference 0.066 of 255, maximum 6), 13.55 GB peak against 13.49, 49 s against 50 s.
 - **Generation** (832×1216, 25 steps, step cache 0.4) and **Viggle** (6 steps): byte-identical, the same peak memory (16.8 and 18.1 GB) and time.
 
-Moved on 2026-10-31; no disk saved. The original was removed (its blobs by hand, as `hf cache rm` freed nothing: [hf-cache.md](../hf-cache.md)). Not checked: the edit at 832×1216 or with a mask.
-
 **Qwen-Image 2.1 Turbo** moved the same day to `qwen-image-2-1-turbo-mflux-bf16` (`402a419`, 32.5 GB, the same as Qwen's), a complete export. Generation (832×1216, 8 steps) is byte-identical, 15.82 GB peak and 33–34 s both; the edit is near-identical (mean difference 0.12 of 255, maximum 18). Edits keep `-q 8`: without it they're no faster and peak at 20.9 GB against 12.8 at 512×512, and 24.4 against 13.5 at 832×1216. Turbo's edit is about 3.7× faster than the base model's (46–48 s against 178 s at 832×1216), so it was added as an edit model of its own, Qwen-Image 2.1 Turbo Edit (mflux only).
 
 ### VAE decode in bf16 row strips: on by default, no gain seen on Z-Image Turbo (Mac, 2026-10-27)
