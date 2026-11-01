@@ -297,7 +297,7 @@ ComfyUI now has four edit models (`server/images/comfyui/models.ts`, `COMFYUI_ED
 
 - **Qwen's hand is fixed by the noise mask**: the first trial's hand (2026-10-24, without it) came out brighter and sharper than the painting; now it matches.
 - **Qwen-Image 2.1 Turbo Edit runs on ComfyUI** (`qwen-image-2.1-turbo-edit`, from ComfyUI's `image_qwen_image_2_1_turbo_image_edit` template: Turbo's own DiT, already installed, on 8 fixed sigmas with `QwenImage21Cache`): a third less time than the base edit model, with the same memory and results as good here.
-- **Two areas in one FLUX.3 edit work, but can't be told apart**: what goes where would need an instruction per area, not one for all.
+- **Two areas in one FLUX.3 edit work, once the instruction says which goes where**: "a pewter tankard of foaming ale on the left, and a folded letter sealed with red wax on the right" put the tankard in the left area and the letter in the right on all three seeds (16.2–17.1 s), each whole; one tankard had a faint stray handle beside it, and one letter a pale glow around it. So an instruction per area isn't needed.
 - Not checked: Turbo Edit with nothing painted, pictures from other Image Models, more prompts.
 
 ## FIBO 2.0 on ComfyUI (2026-10-27, Windows PC)

@@ -23,7 +23,8 @@ export const EDIT_MODELS = [
     id: 'flux3-klein-edit',
     label: 'FLUX.3 Klein Edit',
     backends: ['comfyui'],
-    prompting: 'Wants what should be there described, as a caption of the result, not a command.',
+    prompting:
+      'Wants what should be there described, as a caption of the result, not a command. With several areas painted, say which goes where.',
   },
   {
     id: 'fibo-2.0-dev-edit',

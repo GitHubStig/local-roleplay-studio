@@ -90,7 +90,7 @@ At 832×1216, wall clock from cache including the model load, unless it says oth
 | FIBO 2.0 Dev Edit | ComfyUI | 122 s | |
 | FIBO 2.0 Edit Turbo | ComfyUI | 13–14 s | about Dev Edit's result in a tenth of the time |
 
-Every edit is pasted back through the painted mask, so nothing outside it changes. Several areas can be painted in one edit, but each is given the whole instruction, so FLUX.3 can't be told what goes where. The PC's times are from cold at 832×1216 on ComfyUI 0.43.2 with Comfy Kitchen's int8 attention, which takes 23–29% off an edit's sampling (2026-11-01).
+Every edit is pasted back through the painted mask, so nothing outside it changes. Several areas can be painted in one edit; each is given the whole instruction, so FLUX.3 needs telling which goes where ("… on the left, and … on the right"). The PC's times are from cold at 832×1216 on ComfyUI 0.43.2 with Comfy Kitchen's int8 attention, which takes 23–29% off an edit's sampling (2026-11-01).
 
 ### Upscaler
 
