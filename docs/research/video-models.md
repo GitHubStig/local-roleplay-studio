@@ -2,6 +2,10 @@
 
 Measurements behind clips ([ADR 0025](../adr/0025-clips-by-kind.md)); what's still to do is in [open-threads.md](../open-threads.md), "Clips". Newest first.
 
+## Into Next between pictures that don't agree: an LTX problem (the owner, 2026-11-01)
+
+A Roleplay's Art Agent writes each Frame's Image Prompt afresh, so two Frames' pictures show the room differently, where a Chain's, edited from the last prompt, agree (below). With LTX 2.5 the owner spent hours on Into Next prompts and clips between a Roleplay's pictures: whatever the prompt, LTX took them for two parts of the same place and walked the people out of the first frame and into the second. Wan 2.2 and MiniMax H3, added since, understand the two pictures as one moment and morph between them better, so Into Next works with them. So pictures that agree aren't needed: the threads for them (making the next picture as an edit of this one, or steering its render by this one's depth map with a ControlNet) were dropped. Seen in play, not measured.
+
 ## Clip sizes: how long a clip fits at Large (2026-11-01, Windows PC)
 
 For a size choice per video model (Small ~0.4 MP or Large, the model's trained ~0.9 MP: [ADR 0027](../adr/0027-a-clip-size-per-video-model.md)), the longest clip each makes at Large on the 12 GB card. ComfyUI 0.43.2 with Kitchen attention, through the app's generator at size Large, an Idle Loop of the tavern Roleplay's Frame used in the Kitchen trial below (1216×832), with that model's Idle Loop prompt from it, without speech, ~2.5 GB of RAM free before each run. 10 s first, then 8 s if it failed.

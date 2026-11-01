@@ -113,6 +113,7 @@ LTX 2.5 on a ComfyUI ([ADR 0025](adr/0025-clips-by-kind.md)): the 22B distilled 
 
 - **One workflow for every kind of clip**: the picture is guided in at the first frame, the last, or both, at strength 1.0, which lands nearest the picture (SSIM ~0.89 on a simple picture, 0.76 on a busy dark one) and still moves, more than Wan or H3.
 - **About 70 s to load plus ~10–12 s per second of clip on the PC**, at ~900k pixels in the picture's shape (1280×704, 1152×800): 5 s in ~120 s, 8 s in ~170 s. The fastest of the three at every size: Wan and H3 take ~3× as long at its size. The card's 12 GB is full at any length; length is limited by time and drift, not memory.
+- **Into Next between pictures that don't agree about the room** (a Roleplay's): LTX walks the people out of one and into the other; Wan and H3 morph between them, so pick one of those for it (the owner, in play; [research/video-models.md](research/video-models.md)).
 - **Without dialogue, the negative prompt keeps voices out** (speech, talking, dialogue, voices); a clip with speech makes up its own voices.
 - **A size per model** (Settings, Clips tab): Small (~0.4 MP) or Large (its trained size, ~0.9 MP); LTX makes Large and Wan and H3 Small unless set. At Large, Wan makes up to 5 s (longer runs out of 12 GB); the rest up to 10 s at either ([ADR 0027](adr/0027-a-clip-size-per-video-model.md)).
 - **Comfy Kitchen's int8 attention on every video model**: 12–40% off a clip on the PC, the same clips with small things moved ([research/video-models.md](research/video-models.md)).
