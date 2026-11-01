@@ -1,8 +1,12 @@
 {
-  "_note": "FLUX.3 Image Klein (the distilled 'sd' checkpoint), from ComfyUI's template image_flux3_klein_distilled_t2i (KSampler, CFG 1, euler, simple), in API format, without its prompt upsampler: the Text Model already writes the full scene. With CFG 1 the negative is never used, so it's zeroed rather than encoded. $names are filled in by server/images/comfyui/workflow.ts. The picture comes back over the WebSocket (SaveImageWebsocket), so ComfyUI writes no file.",
+  "_note": "FLUX.3 Image Klein (the distilled 'sd' checkpoint), from ComfyUI's template image_flux3_klein_distilled_t2i (KSampler, CFG 1, euler, simple), in API format, without its prompt upsampler: the Text Model already writes the full scene. With CFG 1 the negative is never used, so it's zeroed rather than encoded. $names are filled in by server/images/comfyui/workflow.ts. The picture comes back over the WebSocket (SaveImageWebsocket), so ComfyUI writes no file. Attention is Comfy Kitchen's int8 (ModelAttentionBackend), as Ming-Image's template has it: less time sampling on an NVIDIA card (docs/research/image-models.md), PyTorch's attention where it can't run, as on a Mac.",
   "unet": {
     "class_type": "UNETLoader",
     "inputs": { "unet_name": "$unet", "weight_dtype": "default" }
+  },
+  "attention": {
+    "class_type": "ModelAttentionBackend",
+    "inputs": { "model": ["unet", 0], "attention": "comfy kitchen attention" }
   },
   "clip": {
     "class_type": "CLIPLoader",
@@ -21,7 +25,7 @@
   "sampler": {
     "class_type": "KSampler",
     "inputs": {
-      "model": ["unet", 0],
+      "model": ["attention", 0],
       "positive": ["text", 0],
       "negative": ["negative", 0],
       "latent_image": ["latent", 0],

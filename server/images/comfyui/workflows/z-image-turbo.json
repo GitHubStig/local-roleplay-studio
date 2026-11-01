@@ -1,8 +1,12 @@
 {
-  "_note": "Z-Image Turbo, from ComfyUI's template image_z_image_turbo_int8 (8 steps, CFG 1 with a zeroed negative, res_multistep, simple, AuraFlow shift 3), in API format. $names are filled in by server/images/comfyui/workflow.ts. The picture comes back over the WebSocket (SaveImageWebsocket), so ComfyUI writes no file.",
+  "_note": "Z-Image Turbo, from ComfyUI's template image_z_image_turbo_int8 (8 steps, CFG 1 with a zeroed negative, res_multistep, simple, AuraFlow shift 3), in API format. $names are filled in by server/images/comfyui/workflow.ts. The picture comes back over the WebSocket (SaveImageWebsocket), so ComfyUI writes no file. Attention is Comfy Kitchen's int8 (ModelAttentionBackend), as Ming-Image's template has it: less time sampling on an NVIDIA card (docs/research/image-models.md), PyTorch's attention where it can't run, as on a Mac.",
   "unet": {
     "class_type": "UNETLoader",
     "inputs": { "unet_name": "$unet", "weight_dtype": "default" }
+  },
+  "attention": {
+    "class_type": "ModelAttentionBackend",
+    "inputs": { "model": ["unet", 0], "attention": "comfy kitchen attention" }
   },
   "clip": {
     "class_type": "CLIPLoader",
@@ -11,7 +15,7 @@
   "vae": { "class_type": "VAELoader", "inputs": { "vae_name": "$vae" } },
   "shift": {
     "class_type": "ModelSamplingAuraFlow",
-    "inputs": { "model": ["unet", 0], "shift": 3 }
+    "inputs": { "model": ["attention", 0], "shift": 3 }
   },
   "text": {
     "class_type": "CLIPTextEncode",

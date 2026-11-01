@@ -58,25 +58,25 @@ Details, and when to count again: [research/image-models.md](research/image-mode
 
 | Image Model (id) | Backends | Steps | Mac, mflux | PC, ComfyUI | Peak on the Mac | Notes |
 |---|---|---|---|---|---|---|
-| **Qwen-Image 2.1** (`qwen-image-2.1`) | both | 25 (step cache 0.4 on mflux) | 53 s | 21–33 s | 15.8 GB | the default; follows the words |
-| Qwen-Image 2.1 Turbo (`qwen-image-2.1-turbo`) | both | 8 | 33 s | 12–14 s | 15.8 GB | Qwen's own distilled model: a look of its own, the least varied in style; a fine grid below 1024 px on mflux |
+| **Qwen-Image 2.1** (`qwen-image-2.1`) | both | 25 (step cache 0.4 on mflux) | 53 s | 20–22 s | 15.8 GB | the default; follows the words |
+| Qwen-Image 2.1 Turbo (`qwen-image-2.1-turbo`) | both | 8 | 33 s | 12 s | 15.8 GB | Qwen's own distilled model: a look of its own, the least varied in style; a fine grid below 1024 px on mflux |
 | Qwen-Image 2.1 Viggle Turbo (`qwen-image-2.1-viggle`) | mflux | 6 | 31 s | – | 16.6 GB | a LoRA on Qwen-Image 2.1: the nearest of any model to its picture, so a preview of it |
-| FLUX.2 Klein 4B (`flux2-klein-4b`) | both | 4 | ~10 s | 10 s | ~10 GB | the fastest; keeps a subject consistent with a fixed seed; reads 512 tokens on mflux |
+| FLUX.2 Klein 4B (`flux2-klein-4b`) | both | 4 | ~10 s | 9 s | ~10 GB | the fastest; keeps a subject consistent with a fixed seed; reads 512 tokens on mflux |
 | FLUX.2 Klein 9B (`flux2-klein-9b`) | mflux | 4 | 19–20 s | – | 20.5 GB | stages two people a little better than 4B |
-| FLUX.3 Klein (`flux3-klein`) | both | 16 | 40 s | 11–13 s | 10.9 GB | the most detailed; tends to age the people |
+| FLUX.3 Klein (`flux3-klein`) | both | 16 | 40 s | 11 s | 10.9 GB | the most detailed; tends to age the people |
 | Z-Image Turbo (`z-image-turbo`; 4-bit on mflux) | both | 9 on mflux, 8 on ComfyUI | 28–30 s | 11 s | 4.4 GB | the lightest; ignored a described skin tone and hair once |
 | Z-Image (`z-image`, 8-bit) | mflux | 30 | ~190 s (0.22) | – | 7.8 GB | Turbo's undistilled base, with real guidance (4) |
 | Krea 2 (`krea-2`), and Krea 2 + LoRA (`krea-2-lora`) | mflux | 8 | 84–85 s | – | 34.3 GB | stages people best; the LoRA (Quiho's refusal reduction, 0.8) costs nothing more |
 | ERNIE-Image Turbo (`ernie-image-turbo`) | mflux | 8 | 52 s | – | 23.1 GB | |
 | Boogu Image Turbo (`boogu-image-turbo`) | mflux | 4 | 34 s | – | 25.2 GB | |
-| Ming-Image 0.1 Design (`ming-image`) | both | 12 | 41–43 s | 16–18 s | 18.5 GB | a design model: lettering right; a signature mark on the PC |
-| MOSS-Image (`moss-image`) | both | 50 on mflux, 25 on ComfyUI | **black** on mflux 0.24.0 | 25–26 s | 26.8 GB | the closest to the words on the PC; on the Mac, waiting for mflux 0.24.1 |
+| Ming-Image 0.1 Design (`ming-image`) | both | 12 | 41–43 s | 17 s | 18.5 GB | a design model: lettering right; a signature mark on the PC |
+| MOSS-Image (`moss-image`) | both | 50 on mflux, 25 on ComfyUI | **black** on mflux 0.24.0 | 26–28 s | 26.8 GB | the closest to the words on the PC; on the Mac, waiting for mflux 0.24.1 |
 | FIBO 1.5 (`fibo-1.5`, 8-bit) | mflux | 6 | 131 s | – | 37.3 GB | its VLM writes a JSON caption first (most of the time); quotes sent curly |
 | FIBO 2.0 Dev (`fibo-2.0`) | both | 50 (or 30) | ~410 s | 60–63 s | 17.9 GB | slow on the Mac; prose, not `--expand-prompt` |
-| FIBO 2.0 Turbo (`fibo-2.0-turbo`) | both | 4 | 21 s | 9–10 s | 17.4 GB | Dev's picture in a twentieth of the time on the Mac, a sixth on the PC; the Edit Turbo checkpoint as a generator |
+| FIBO 2.0 Turbo (`fibo-2.0-turbo`) | both | 4 | 21 s | 9 s | 17.4 GB | Dev's picture in a twentieth of the time on the Mac, a sixth on the PC; the Edit Turbo checkpoint as a generator |
 | Ideogram 4 (`ideogram-4`, 8-bit) | mflux | 20 (12 or 48) | 57 s at 512² (0.22) | – | 30.4 GB | a typography model; garbles lettering from prose; gated |
 
-At 832×1216, wall clock from cache including the model load, unless it says otherwise. The Mac's on mflux 0.24.0 with `--low-ram` (2026-10-27), except FLUX.2 Klein 4B (1024², 0.22), Z-Image (1216×832, 0.22), FIBO 1.5 (0.22) and Ideogram 4. The PC's are from cold on ComfyUI 0.40–0.43, Ollama unloaded (2026-10-15 to 2026-10-28). FIBO 2.0 Dev's prose time on the Mac was taken beside a download; with its VLM it took 505 s. Each model's trials: [research/image-models.md](research/image-models.md).
+At 832×1216, wall clock from cache including the model load, unless it says otherwise. The Mac's on mflux 0.24.0 with `--low-ram` (2026-10-27), except FLUX.2 Klein 4B (1024², 0.22), Z-Image (1216×832, 0.22), FIBO 1.5 (0.22) and Ideogram 4. The PC's are from cold on ComfyUI 0.43.2 with Comfy Kitchen's int8 attention, which takes 8–19% off sampling (2026-11-01), Ollama unloaded. FIBO 2.0 Dev's prose time on the Mac was taken beside a download; with its VLM it took 505 s. Each model's trials: [research/image-models.md](research/image-models.md).
 
 ### Editing a picture
 

@@ -1,12 +1,16 @@
 {
-  "_note": "Qwen-Image 2.1 Turbo (Qwen's own distilled DiT, not Viggle's LoRA), from ComfyUI's template image_qwen_image_2_1_turbo_t2i (8 steps on the template's fixed sigmas, so $steps isn't used; CFG 1, euler; QwenImage21Cache, which keeps the prompt's part of each step instead of recomputing it), in API format, without its optional prompt rewriter. $names are filled in by server/images/comfyui/workflow.ts. Sent as RGB (SplitImageWithAlpha), as qwen-image-2.1.json is.",
+  "_note": "Qwen-Image 2.1 Turbo (Qwen's own distilled DiT, not Viggle's LoRA), from ComfyUI's template image_qwen_image_2_1_turbo_t2i (8 steps on the template's fixed sigmas, so $steps isn't used; CFG 1, euler; QwenImage21Cache, which keeps the prompt's part of each step instead of recomputing it), in API format, without its optional prompt rewriter. $names are filled in by server/images/comfyui/workflow.ts. Sent as RGB (SplitImageWithAlpha), as qwen-image-2.1.json is. Attention is Comfy Kitchen's int8 (ModelAttentionBackend), as Ming-Image's template has it: less time sampling on an NVIDIA card (docs/research/image-models.md), PyTorch's attention where it can't run, as on a Mac.",
   "unet": {
     "class_type": "UNETLoader",
     "inputs": { "unet_name": "$unet", "weight_dtype": "default" }
   },
+  "attention": {
+    "class_type": "ModelAttentionBackend",
+    "inputs": { "model": ["unet", 0], "attention": "comfy kitchen attention" }
+  },
   "cache": {
     "class_type": "QwenImage21Cache",
-    "inputs": { "model": ["unet", 0], "device": "auto", "dtype": "default" }
+    "inputs": { "model": ["attention", 0], "device": "auto", "dtype": "default" }
   },
   "clip": {
     "class_type": "CLIPLoader",

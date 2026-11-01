@@ -1,8 +1,12 @@
 {
-  "_note": "Qwen-Image 2.1, from ComfyUI's template image_qwen_image_2_1_t2i (25 steps, CFG 1, euler, simple), in API format. $names are filled in by server/images/comfyui/workflow.ts. The picture comes back over the WebSocket (SaveImageWebsocket, which ships with ComfyUI), so ComfyUI writes no file: the app keeps the only copy. It's sent as RGB (SplitImageWithAlpha): Qwen-Image 2.1 decodes a fourth channel, at 240-255 rather than opaque, which TripoSplat took for a cut-out and an edit would read as an edit mask.",
+  "_note": "Qwen-Image 2.1, from ComfyUI's template image_qwen_image_2_1_t2i (25 steps, CFG 1, euler, simple), in API format. $names are filled in by server/images/comfyui/workflow.ts. The picture comes back over the WebSocket (SaveImageWebsocket, which ships with ComfyUI), so ComfyUI writes no file: the app keeps the only copy. It's sent as RGB (SplitImageWithAlpha): Qwen-Image 2.1 decodes a fourth channel, at 240-255 rather than opaque, which TripoSplat took for a cut-out and an edit would read as an edit mask. Attention is Comfy Kitchen's int8 (ModelAttentionBackend), as Ming-Image's template has it: less time sampling on an NVIDIA card (docs/research/image-models.md), PyTorch's attention where it can't run, as on a Mac.",
   "unet": {
     "class_type": "UNETLoader",
     "inputs": { "unet_name": "$unet", "weight_dtype": "default" }
+  },
+  "attention": {
+    "class_type": "ModelAttentionBackend",
+    "inputs": { "model": ["unet", 0], "attention": "comfy kitchen attention" }
   },
   "clip": {
     "class_type": "CLIPLoader",
@@ -25,7 +29,7 @@
   "sampler": {
     "class_type": "KSampler",
     "inputs": {
-      "model": ["unet", 0],
+      "model": ["attention", 0],
       "seed": "$seed",
       "steps": "$steps",
       "cfg": "$cfg",
