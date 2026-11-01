@@ -349,7 +349,7 @@ describe('FrameViewer', () => {
     expect(side(wrapper).find('[data-play-clip]').exists()).toBe(false)
   })
 
-  it('names the video model of a kind made by more than one, and compares them', async () => {
+  it("groups a kind made by more than one video model under its name, in the models' order, and compares them", async () => {
     const clip = (model: string, kind: 'lead-in' | 'idle-loop' = 'lead-in') => ({
       kind,
       model,
@@ -365,7 +365,8 @@ describe('FrameViewer', () => {
       pictures: [{
         ...frames[0].pictures[0],
         picked: 0,
-        clips: [clip('ltx-2.5'), clip('ltx-2.5', 'idle-loop'), clip('wan-2.2')],
+        // Wan 2.2's Lead In made first, an Idle Loop between.
+        clips: [clip('wan-2.2'), clip('ltx-2.5', 'idle-loop'), clip('ltx-2.5')],
       }],
     }]
     const wrapper = mountIt({ frames: withClips })
@@ -376,6 +377,9 @@ describe('FrameViewer', () => {
         'Lead In by Wan 2.2 14B',
         'Idle Loop',
       ])
+    expect(side(wrapper).findAll('[data-clip-kind-name]').map((n) => n.text())).toEqual(['Lead In'])
+    expect(side(wrapper).findAll('[data-play-clip]').map((b) => b.text()))
+      .toEqual(['LTX 2.5', 'Wan 2.2 14B', 'Idle Loop'])
     await side(wrapper).find('[data-play-clip]').trigger('click')
     await side(wrapper).find('[data-viewer-compare-clips]').trigger('click')
     // The clip playing over the picture stops, for the comparison.

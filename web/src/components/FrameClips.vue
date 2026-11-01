@@ -40,7 +40,7 @@ const props = defineProps<{
 const emit = defineEmits<{ make: [order: ClipOrder]; play: [clip: Clip]; stop: [] }>()
 
 const KINDS = Object.keys(CLIP_KIND_NAMES) as ClipKind[]
-const { models, labelOf, silent: makesNoSound, soundOf, sizeOf, lengthsOf, chosen: model } = useVideoModels(
+const { models, labelOf, silent: makesNoSound, soundOf, sizeOf, lengthsOf, inModelOrder, chosen: model } = useVideoModels(
   () => props.sessionId,
 )
 /** The video model makes no sound (Wan 2.2), so there's no speech to ask for. */
@@ -93,7 +93,9 @@ const hint = computed(() =>
 )
 
 /** The picture's clips by kind, in the kinds' order. */
-const listed = computed(() => clipsByKind(props.clips))
+const listed = computed(() =>
+  clipsByKind(props.clips).map((g) => ({ ...g, clips: inModelOrder(g.clips) }))
+)
 /** Whose clip a clip being made is: one ordered without a model is Settings' default's. */
 const makingBy = (m: ClipMaking) => m.model ?? model.value
 /**

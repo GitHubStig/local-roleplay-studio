@@ -97,6 +97,14 @@ export function useVideoModels(sessionId?: () => string) {
     const longest = model?.longest[sizeOf(id) ?? model.size] ?? Infinity
     return CLIP_SECONDS.filter((s) => s <= longest)
   }
+  /** Clips in the order of the video models, wherever each was made first. */
+  const inModelOrder = (clips: readonly Clip[]) => {
+    const at = (id: string) => {
+      const i = models.value.findIndex((m) => m.id === id)
+      return i < 0 ? Infinity : i
+    }
+    return [...clips].sort((a, b) => at(a.model) - at(b.model))
+  }
   /** What a clip has to hear: none from a model that makes no sound, else speech or not. */
   const soundOf = (clip: Clip) =>
     silent(clip.model) ? 'no sound' : clip.speech ? 'with speech' : 'no dialogue'
@@ -105,7 +113,7 @@ export function useVideoModels(sessionId?: () => string) {
     get: () => picked.value || settings.value?.videoModel || models.value[0]?.id || '',
     set: (id: string) => picked.value = id,
   })
-  return { models, labelOf, silent, soundOf, sizeOf, lengthsOf, chosen }
+  return { models, labelOf, silent, soundOf, sizeOf, lengthsOf, inModelOrder, chosen }
 }
 
 /** Seconds as minutes and seconds, "1:42". */

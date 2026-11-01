@@ -274,12 +274,19 @@ const clips = computed(() => {
     ? sortClips((pickedEdit(p) ?? p).clips)
     : []
 })
-const { labelOf: videoModelLabel } = useVideoModels()
-/** A clip's video model, under its kind, where the kind has clips by more than one. */
-const clipModel = (c: Clip) =>
-  clips.value.filter((o) => o.kind === c.kind).length > 1 ? videoModelLabel(c.model) : undefined
+const { labelOf: videoModelLabel, inModelOrder } = useVideoModels()
+/**
+ * The clips by kind, in the order the kinds are offered, each kind's in the order of the video
+ * models, so a kind made by several is named once, its models under it.
+ */
+const clipGroups = computed(() =>
+  clipsByKind(clips.value).map((g) => ({
+    ...g,
+    clips: inModelOrder(g.clips),
+  }))
+)
 /** The first kind made by two video models or more, to compare side by side. */
-const comparable = computed(() => clipsByKind(clips.value).find((g) => g.clips.length > 1)?.kind)
+const comparable = computed(() => clipGroups.value.find((g) => g.clips.length > 1)?.kind)
 const comparing = ref<ClipKind | null>(null)
 const playing = ref<Clip | null>(null)
 // It stops on another Frame or version, or once a new clip of its kind replaces it.
@@ -514,24 +521,33 @@ const action =
           aria-label="Clips of the picture"
           data-viewer-clips
         >
-          <button
-            v-for="c in clips"
-            :key="c.file"
-            type="button"
-            class="flex items-center gap-1.5 px-2 py-1 text-left"
-            :class="playing?.file === c.file ? 'bg-white/90 text-black' : 'hover:text-white'"
-            :aria-pressed="playing?.file === c.file"
-            :title="c.prompt"
-            :aria-label="CLIP_KIND_NAMES[c.kind] + (clipModel(c) ? ` by ${clipModel(c)}` : '')"
-            :data-play-clip="c.kind"
-            @click="playing = playing?.file === c.file ? null : c"
+          <div
+            v-for="g in clipGroups"
+            :key="g.kind"
+            class="flex flex-col"
+            :role="g.clips.length > 1 ? 'group' : undefined"
+            :aria-label="g.clips.length > 1 ? CLIP_KIND_NAMES[g.kind] : undefined"
+            :data-viewer-clip-kind="g.kind"
           >
-            <Icon :name="playing?.file === c.file ? 'stop' : 'play'" />
-            <span class="flex flex-col leading-tight">
-              <span class="whitespace-nowrap">{{ CLIP_KIND_NAMES[c.kind] }}</span>
-              <span v-if="clipModel(c)" class="text-xs opacity-70">{{ clipModel(c) }}</span>
+            <span v-if="g.clips.length > 1" class="px-2 pt-1 text-xs whitespace-nowrap opacity-70" data-clip-kind-name>
+              {{ CLIP_KIND_NAMES[g.kind] }}
             </span>
-          </button>
+            <button
+              v-for="c in g.clips"
+              :key="c.file"
+              type="button"
+              class="flex items-center gap-1.5 px-2 py-1 text-left"
+              :class="playing?.file === c.file ? 'bg-white/90 text-black' : 'hover:text-white'"
+              :aria-pressed="playing?.file === c.file"
+              :title="c.prompt"
+              :aria-label="CLIP_KIND_NAMES[c.kind] + (g.clips.length > 1 ? ` by ${videoModelLabel(c.model)}` : '')"
+              :data-play-clip="c.kind"
+              @click="playing = playing?.file === c.file ? null : c"
+            >
+              <Icon :name="playing?.file === c.file ? 'stop' : 'play'" />
+              {{ g.clips.length > 1 ? videoModelLabel(c.model) : CLIP_KIND_NAMES[c.kind] }}
+            </button>
+          </div>
           <button
             v-if="comparable"
             type="button"

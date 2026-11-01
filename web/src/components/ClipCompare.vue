@@ -21,14 +21,14 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ close: [] }>()
 
-const { labelOf, silent, soundOf } = useVideoModels()
+const { labelOf, silent, soundOf, inModelOrder } = useVideoModels()
 const dialog = useTemplateRef<HTMLDialogElement>('dialog')
 const videos = useTemplateRef<HTMLVideoElement[]>('videos')
 
 /** The kinds with clips by two or more models, to compare. */
 const kinds = computed(() => clipsByKind(props.clips).filter((g) => g.clips.length > 1).map((g) => g.kind))
 const shown = ref<ClipKind | null>(null)
-const compared = computed(() => props.clips.filter((c) => c.kind === shown.value))
+const compared = computed(() => inModelOrder(props.clips.filter((c) => c.kind === shown.value)))
 
 const playing = ref(false)
 const time = ref(0)

@@ -104,7 +104,7 @@ const frameStyle = computed(() => ({
        frame inside is sized to the image's proportions, so overlays sit on the image itself. -->
   <section
     class="flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-lg [container-type:size]"
-    :class="{ 'border border-line bg-surface': !bare, 'sm:px-36': $slots.side }"
+    :class="{ 'border border-line bg-surface': !bare, 'sm:px-48': $slots.side }"
   >
     <!-- What sits beside the image (a column of buttons), on as wide a screen as has room: the same
          room is kept on the other side, so the image stays centred. -->
@@ -164,7 +164,7 @@ const frameStyle = computed(() => ({
     </div>
       <div
         v-if="$slots.side"
-        class="absolute top-0 left-full ml-3 hidden w-32 sm:block"
+        class="absolute top-0 left-full ml-3 hidden w-44 sm:block"
         data-image-side
       >
         <slot name="side" />

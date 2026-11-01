@@ -46,17 +46,18 @@ describe('ClipCompare', () => {
     await wrapper.setProps({ kind: 'idle-loop' })
     await flushPromises()
     const panels = () => wrapper.findAll('[data-compared]')
+    // In the video models' order, whichever was made first.
     expect(panels().map((p) => p.attributes('data-compared'))).toEqual([
-      'wan-2.2',
       'ltx-2.5',
+      'wan-2.2',
       'minimax-h3',
     ])
-    // Wan makes no sound, so the first that does is heard, and only it.
+    // The first is heard, and only it; Wan makes no sound, so it can't take it.
     const muted = () => panels().map((p) => p.find<HTMLVideoElement>('video').element.muted)
-    expect(muted()).toEqual([true, false, true])
-    expect(panels()[0].text()).toContain('no sound · made in 2:20')
-    await panels()[0].find('button').trigger('click')
-    expect(muted()).toEqual([true, false, true])
+    expect(muted()).toEqual([false, true, true])
+    expect(panels()[1].text()).toContain('no sound · made in 2:20')
+    await panels()[1].find('button').trigger('click')
+    expect(muted()).toEqual([false, true, true])
     await panels()[2].find('button').trigger('click')
     expect(muted()).toEqual([true, true, false])
     // Only kinds made by two models or more can be compared.
