@@ -84,12 +84,13 @@ At 832×1216, wall clock from cache including the model load, unless it says oth
 |---|---|---|---|
 | Qwen-Image 2.1 Edit | mflux (`-q 8 --low-ram`) | ~3 min at 1216×832, 15.1 GB peak | the instruction must describe the result ("an open right hand…"), not ask for a fix; dark areas barely change |
 | Qwen-Image 2.1 Turbo Edit | mflux (`-q 8 --low-ram`) | ~47 s at 832×1216, 13.5 GB peak | 8 steps; tried only on a plain test picture (2026-10-31) |
-| Qwen-Image 2.1 Edit | ComfyUI | 24 s | a smaller, cleaner result than FLUX.3's |
+| Qwen-Image 2.1 Edit | ComfyUI | 24 s | a smaller, cleaner result than FLUX.3's; missed one tankard in three |
+| Qwen-Image 2.1 Turbo Edit | ComfyUI | 16 s | the base edit model's results in two thirds of the time, as good in a check of six edits (2026-11-01) |
 | FLUX.3 Klein edit | ComfyUI | 16 s | told where by a box as well as the mask, or it paints elsewhere |
 | FIBO 2.0 Dev Edit | ComfyUI | 122 s | |
 | FIBO 2.0 Edit Turbo | ComfyUI | 13–14 s | about Dev Edit's result in a tenth of the time |
 
-Every edit is pasted back through the painted mask, so nothing outside it changes. Several painted areas can take one instruction each, in one edit. The PC's times are from cold at 832×1216 on ComfyUI 0.43.2 with Comfy Kitchen's int8 attention, which takes 23–29% off an edit's sampling (2026-11-01).
+Every edit is pasted back through the painted mask, so nothing outside it changes. Several areas can be painted in one edit, but each is given the whole instruction, so FLUX.3 can't be told what goes where. The PC's times are from cold at 832×1216 on ComfyUI 0.43.2 with Comfy Kitchen's int8 attention, which takes 23–29% off an edit's sampling (2026-11-01).
 
 ### Upscaler
 

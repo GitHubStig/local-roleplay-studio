@@ -284,7 +284,21 @@ ComfyUI now has four edit models (`server/images/comfyui/models.ts`, `COMFYUI_ED
 
 - **So both went in**: the box tells FLUX.3 where, and the noise mask holds the rest of the picture while it paints. Qwen has no boxes, but takes the noise mask the same way. Each edit is still pasted back through the mask, so nothing outside it moves.
 - **Through the app** (`comfyuiImageGenerator().edit`, the same picture and mask): FLUX.3 in 13.6 s, a whole tankard in place, though with a stray strap down one side; Qwen in 29.1 s, a smaller, cleaner one. Outside the mask a mean change of 0.01 each, the most 17–22 in the softened rim the paste-back blends across.
-- **Not tried yet**: Qwen's hand again with the noise mask, more seeds, and two painted areas in one FLUX.3 edit (each gets its own box).
+
+**The hand again, two areas, and Qwen-Image 2.1 Turbo Edit** (2026-11-01, the Windows PC, ComfyUI 0.43.2 with Comfy Kitchen's int8 attention). A new picture from the public tavern scenario (Qwen-Image 2.1, seed 42, 832×1216: Kael behind the bar, his left hand flat on it, the left of the bar bare), then each edit through the app's `edit()` on seeds 43, 44 and 45, with soft-edged oval masks as the web paints them. Peak VRAM was 11.2–11.5 GB for every edit, with 5.9–6.1 GB of RAM free at the least; not one pixel outside a mask changed.
+
+| Edit | Time, from cold | Result |
+|---|---:|---|
+| Qwen-Image 2.1 Edit, hand → "his left hand clenched into a fist on the bar" | 23.9–24.5 s | a fist on all three, in the painting's dark palette and brushwork; two leave a small smudge where a fingertip was |
+| Qwen-Image 2.1 Turbo Edit, the same | 15.9–16.2 s | a fist on all three, much like the base model's, the brushwork a little smoother |
+| Qwen-Image 2.1 Edit, bare bar → "a pewter tankard of foaming ale" | 23.9–24.5 s | a tankard on two; seed 43 left the bar bare (a mean change of 3.8 inside the mask) |
+| Qwen-Image 2.1 Turbo Edit, the same | 15.8–16.6 s | a tankard on all three, in place and whole |
+| FLUX.3 Klein, two areas (the bar and the bar's front right) → "a pewter tankard of foaming ale and a folded letter sealed with red wax" | 16.3–17.2 s | both areas painted, whole and in place, on all three; but each box is given the whole instruction, so the first area got the tankard *and* the letter every time, and the second another tankard |
+
+- **Qwen's hand is fixed by the noise mask**: the first trial's hand (2026-10-24, without it) came out brighter and sharper than the painting; now it matches.
+- **Qwen-Image 2.1 Turbo Edit runs on ComfyUI** (`qwen-image-2.1-turbo-edit`, from ComfyUI's `image_qwen_image_2_1_turbo_image_edit` template: Turbo's own DiT, already installed, on 8 fixed sigmas with `QwenImage21Cache`): a third less time than the base edit model, with the same memory and results as good here.
+- **Two areas in one FLUX.3 edit work, but can't be told apart**: what goes where would need an instruction per area, not one for all.
+- Not checked: Turbo Edit with nothing painted, pictures from other Image Models, more prompts.
 
 ## FIBO 2.0 on ComfyUI (2026-10-27, Windows PC)
 
