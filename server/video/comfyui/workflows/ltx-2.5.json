@@ -1,8 +1,12 @@
 {
-  "_note": "LTX 2.5, from ComfyUI's template video_ltx2_5_flf2v (one pass at the clip's size, 8 steps on the distilled transformer, CFG 1, Euler ancestral), in API format, with the prompt enhancer left out: the Text Model writes the prompt. A picture is guided in at the first frame (firstGuide) and at the last (lastGuide); a kind of clip that has only one drops the other's nodes (server/video/comfyui/comfyui.ts). Guides at 1.0, not the template's 0.7: it lands nearest the picture and still moves (docs/research/video-models.md). $names are filled in by server/video/comfyui/comfyui.ts. SaveVideo writes an MP4 (H.264, AAC) to ComfyUI's output folder, fetched and then blanked.",
+  "_note": "LTX 2.5, from ComfyUI's template video_ltx2_5_flf2v (one pass at the clip's size, 8 steps on the distilled transformer, CFG 1, Euler ancestral), in API format, with the prompt enhancer left out: the Text Model writes the prompt. A picture is guided in at the first frame (firstGuide) and at the last (lastGuide); a kind of clip that has only one drops the other's nodes (server/video/comfyui/comfyui.ts). Guides at 1.0, not the template's 0.7: it lands nearest the picture and still moves (docs/research/video-models.md). $names are filled in by server/video/comfyui/comfyui.ts. SaveVideo writes an MP4 (H.264, AAC) to ComfyUI's output folder, fetched and then blanked. Attention is Comfy Kitchen's int8 (ModelAttentionBackend), as ComfyUI's FastVideo H3 templates have it: less time sampling on an NVIDIA card (docs/research/video-models.md), PyTorch's attention where it can't run, as on a Mac.",
   "unet": {
     "class_type": "UNETLoader",
     "inputs": { "unet_name": "$unet", "weight_dtype": "default" }
+  },
+  "attention": {
+    "class_type": "ModelAttentionBackend",
+    "inputs": { "model": ["unet", 0], "attention": "comfy kitchen attention" }
   },
   "clip": {
     "class_type": "CLIPLoader",
@@ -96,7 +100,7 @@
   "guider": {
     "class_type": "LTXVDualCFGGuider",
     "inputs": {
-      "model": ["unet", 0],
+      "model": ["attention", 0],
       "positive": ["lastGuide", 0],
       "negative": ["lastGuide", 1],
       "video_cfg": 1,

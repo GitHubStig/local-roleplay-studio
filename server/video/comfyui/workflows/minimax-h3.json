@@ -1,5 +1,5 @@
 {
-  "_note": "MiniMax H3, from ComfyUI's template video_minimax_h3_i2v with its Lightning switch on: the fl2va model with the 8-step turbo LoRA, res_multistep, simple schedule, BasicGuider (no negative prompt), 24 fps, its own sound. The pictures go in as MiniMaxH3ImageToVideo's optional first_frame and last_frame; a kind of clip without one drops that end's nodes and the input (server/video/comfyui/comfyui.ts). $names are filled in by server/video/comfyui/comfyui.ts. SaveVideo writes an MP4 to ComfyUI's output folder, fetched and then blanked.",
+  "_note": "MiniMax H3, from ComfyUI's template video_minimax_h3_i2v with its Lightning switch on: the fl2va model with the 8-step turbo LoRA, res_multistep, simple schedule, BasicGuider (no negative prompt), 24 fps, its own sound. The pictures go in as MiniMaxH3ImageToVideo's optional first_frame and last_frame; a kind of clip without one drops that end's nodes and the input (server/video/comfyui/comfyui.ts). $names are filled in by server/video/comfyui/comfyui.ts. SaveVideo writes an MP4 to ComfyUI's output folder, fetched and then blanked. Attention is Comfy Kitchen's int8 (ModelAttentionBackend), as ComfyUI's FastVideo H3 templates have it: less time sampling on an NVIDIA card (docs/research/video-models.md), PyTorch's attention where it can't run, as on a Mac.",
   "unet": {
     "class_type": "UNETLoader",
     "inputs": {
@@ -7,11 +7,21 @@
       "weight_dtype": "default"
     }
   },
+  "attention": {
+    "class_type": "ModelAttentionBackend",
+    "inputs": {
+      "model": [
+        "unet",
+        0
+      ],
+      "attention": "comfy kitchen attention"
+    }
+  },
   "lora": {
     "class_type": "LoraLoaderModelOnly",
     "inputs": {
       "model": [
-        "unet",
+        "attention",
         0
       ],
       "lora_name": "$lora",

@@ -2,6 +2,43 @@
 
 Measurements behind clips ([ADR 0025](../adr/0025-clips-by-kind.md)); what's still to do is in [open-threads.md](../open-threads.md), "Clips". Newest first.
 
+## Comfy Kitchen int8 attention on the video models (2026-11-01, Windows PC)
+
+Comfy Kitchen's int8 attention (`ModelAttentionBackend`) takes 8–29% off sampling on every ComfyUI Image Model and edit (research/image-models.md, "Comfy Kitchen attention on every ComfyUI Image Model"), and ComfyUI's own FastVideo H3 templates set it, so it was tried on the three video models: 12–19% off a whole clip on LTX 2.5, 24–40% on Wan 2.2 and MiniMax H3, with the same clips, small things moved. Every video workflow now sets it.
+
+ComfyUI 0.43.2 (comfy-kitchen 0.2.40), RTX 4070, each clip's workflow as the app sends it (`makeClip` in `server/video/comfyui/comfyui.ts`) with the node added after each UNet loader (both of Wan's models, high- and low-noise), Ollama unloaded, ~1.6 GB of RAM free on the desktop before the runs. Two sets:
+
+- **A Session's clips, remade**: one Frame of a tavern Roleplay (a Qwen-Image 2.1 Turbo picture, 1216×832) with all four kinds of clip made through the app by each model with PyTorch's attention, each remade with Kitchen's from the clip's own prompt, seed, length and pictures. For each model a PyTorch remake of Lead In gave the stored clip frame for frame, so the clips stored earlier the same day, and their times, serve as PyTorch's. LTX's Idle Loop and Into Next dated from 2026-10-29, before the video generator changed, so they were remade with PyTorch too. LTX at 1152×800, Wan 2.2 at 768×528, H3 at 768×512.
+- **An A/B on LTX 2.5**: an Idle Loop of the Qwen-Image 2.1 tavern picture from the Image Model trial (832×1216, so 800×1152, 121 frames), a hand-written prompt (small movements, the camera still, rain and creaking for sound, no one speaks), seed 7, 5 s, twice with each attention, alternating.
+
+| Model | Clip | Length | From cold, Kitchen | From cold, PyTorch | Saved | Sampling, Kitchen / PyTorch | Whole clip, Kitchen ~ PyTorch (SSIM) |
+|---|---|---|---:|---:|---:|---:|---:|
+| LTX 2.5 | Lead In | 5 s | 118.9 s | 135.1 s (145.2 s stored) | 12% | 47.4 / 61.8 s | 0.98 |
+| LTX 2.5 | Play Out, with speech | 5 s | 116.4 s | 136.9 s stored | 15% | 45.8 s / – | 0.93 |
+| LTX 2.5 | Idle Loop | 5 s | 117.6 s | 137.2 s | 14% | 46.9 / 64.4 s | 0.99 |
+| LTX 2.5 | Into Next | 8 s | 170.3 s | 209.0 s (216.2 s stored) | 19% | 76.8 / 109.4 s | 0.98 |
+| LTX 2.5 | A/B Idle Loop, 800×1152 | 5 s | 122.5–132.7 s | 139.8–140.8 s | 5–13% | 49.0–61.8 / 65.1–69.3 s | 0.97 |
+| Wan 2.2 | Lead In | 5 s | 89.8 s | 129.3 s (133.9 s stored) | 31% | 48.6 / 77.8 s | 0.92 |
+| Wan 2.2 | Play Out | 5 s | 89.4 s | 132.8 s stored | 33% | 48.8 s / – | 0.92 |
+| Wan 2.2 | Idle Loop | 5 s | 89.6 s | 129.7 s stored | 31% | 48.3 s / – | 0.97 |
+| Wan 2.2 | Into Next | 8 s | 153.2 s | 254.1 s stored | 40% | 86.2 s / – | 0.86 |
+| MiniMax H3 | Lead In | 5 s | 96.6 s | 126.6 s (135.6 s stored) | 24% | 56.4 / 82.7 s | 0.97 |
+| MiniMax H3 | Play Out, with speech | 5 s | 97.6 s | 135.2 s stored | 28% | 57.8 s / – | 0.97 |
+| MiniMax H3 | Idle Loop | 5 s | 103.0 s | 139.0 s stored | 26% | 61.4 s / – | 0.99 |
+| MiniMax H3 | Into Next | 8 s | 148.0 s | 232.1 s stored | 36% | 96.1 s / – | 0.96 |
+
+- **12–19% off a whole clip on LTX 2.5, 24–40% on Wan 2.2 and H3**, the most on the 8 s clips, more than for the Image Models, as a clip's attention covers all its frames at once. Against stored times the saving includes some run-to-run spread (the PyTorch remakes came 4–10 s under the stored times), so the Lead In pairs, made back to back, are the surest: 12% on LTX, 31% on Wan, 24% on H3. "Sampling" runs from the first step's progress to the last, which on LTX includes the tiled decode's progress too; it varied more than the totals (49.0 and 61.8 s for two identical LTX clips), likely as weights stream from the SSD with this little RAM, so the totals are the steadier measure.
+- **The clips repeat exactly**: each attention gave the same frames and sound every time (the MP4 files differ only in their container), so the differences below are the attention's.
+- **The same clips, with small things moved**: the same movement and story in each kind (frames at a quarter, half and three quarters looked at for Play Out and Into Next, middles for the A/B), with a figure's stance, a hand or the small objects on a table a little different. H3 held closest (0.96–0.99; Into Next looked the same but for a turn of a head), then LTX (0.93–0.99, lowest for Play Out, which moves the most); Wan 2.2 moved most (0.86–0.97): in Into Next the camera's path and timing differ a little (a man further to the side a quarter of the way in) and a face's expression changes, with the same people, cut and end, while its Lead In looked nearly the same. None looked worse.
+- **The ends land as well**, within 0.02 SSIM of PyTorch's either way. LTX's and H3's within 0.004 (LTX: Lead In's last 0.730 for both, Play Out's first 0.726 for both, Idle Loop's 0.714 and 0.712 against 0.715 and 0.711 with its seam 0.929 for both, Into Next's first 0.729 against 0.731 and last against the next picture 0.683 against 0.682, the A/B's ends 0.638 and 0.635 against 0.636 and 0.634 with its seam 0.894 for both; H3: Idle Loop's seam 0.948 for both). Wan's spread a little more: its Lead In last 0.814 against 0.829 and Into Next's last against the next picture 0.722 against 0.733 a little lower with Kitchen, its Play Out first 0.867 against 0.856, Idle Loop 0.869 and 0.851 against 0.858 and 0.854, and Into Next's first 0.795 against 0.777 a little higher; Idle Loop's seam 0.889 against 0.891.
+- **Sound** as loud either way: LTX's Play Out (with speech) mean −21.7 against −22.3 dB, H3's Lead In −23.7 against −23.6 dB and Play Out (with speech) −19.9 against −19.5 dB; not listened to. Wan makes none.
+- **One failure, not from the attention**: H3's Kitchen Idle Loop failed once in `MiniMaxH3ImageToVideo`, which encodes the pictures before sampling, with "HostBuffer.read_file_slice failed" (ComfyUI reading part of a weights file as it streams it); retried after freeing ComfyUI, it ran. That node isn't patched; H3 is the heaviest on RAM of the three (14.2–14.7 GB of 15.9, below). Seen once.
+- **Peak VRAM** either way: 11.2–11.7 GB for LTX, 10.5–10.6 GB for Wan, 11.2–11.4 GB for H3.
+
+All three workflows now set it, and a Lead In of each made after that by the app's `makeClip` gave the Kitchen remake's frames exactly.
+
+Not checked: 10 s clips, other sizes, pictures and seeds, and the Mac (where LTX and Wan are untried anyway, and H3 doesn't fit).
+
 ## Wan 2.2 and MiniMax H3 against LTX 2.5, by length and size (2026-10-31, the Windows PC and the Mac)
 
 LTX 2.5 as the app makes it (above), and the two new ones, both from ComfyUI's own templates, each with its fast LoRA: Wan 2.2 14B image-to-video (fp8, the high- and low-noise models with the lightx2v 4-step LoRAs, 2 + 2 steps, CFG 1, shift 5, 16 fps, no sound) and MiniMax H3 (the pruned int8 fl2va transformer, the nvfp4 Qwen3-VL 32B text encoder, the 8-step turbo LoRA, res_multistep, 24 fps, its own stereo sound). ComfyUI 0.43.2 on both machines. Every clip an Idle Loop (the picture at both ends) of the tavern replay's first picture (1216×832, Boogu Image Turbo), seed 7, one hand-written prompt (small movement, the camera still, rain and the hearth for sound, no one speaks), made by the app's generator (`comfyuiVideoGenerator`) from a scratch script, not through a Session. Memory polled every 3 s: on the PC from ComfyUI's `/system_stats` (VRAM of 11.99 GB, RAM of 15.9 GB), on the Mac from `vm_stat` and `vm.swapusage`. SSIM (ffmpeg, 1 is identical) of the first and last frames against the picture scaled to the clip, and of the last against the first (the loop's seam).

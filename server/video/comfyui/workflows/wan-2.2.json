@@ -1,5 +1,5 @@
 {
-  "_note": "Wan 2.2 14B, from ComfyUI's template video_wan2_2_14B_flf2v, its 4-step version: the high-noise model with the lightx2v LoRA for steps 0-2 and the low-noise one for 2-4, shift 5, CFG 1 (so the negative prompt has no effect), Euler, 16 fps, no sound. The pictures go in as WanFirstLastFrameToVideo's optional start_image and end_image; a kind of clip without one drops that end's nodes and the input (server/video/comfyui/comfyui.ts). $names are filled in by server/video/comfyui/comfyui.ts. SaveVideo writes an MP4 to ComfyUI's output folder, fetched and then blanked.",
+  "_note": "Wan 2.2 14B, from ComfyUI's template video_wan2_2_14B_flf2v, its 4-step version: the high-noise model with the lightx2v LoRA for steps 0-2 and the low-noise one for 2-4, shift 5, CFG 1 (so the negative prompt has no effect), Euler, 16 fps, no sound. The pictures go in as WanFirstLastFrameToVideo's optional start_image and end_image; a kind of clip without one drops that end's nodes and the input (server/video/comfyui/comfyui.ts). $names are filled in by server/video/comfyui/comfyui.ts. SaveVideo writes an MP4 to ComfyUI's output folder, fetched and then blanked. Attention is Comfy Kitchen's int8 (ModelAttentionBackend), as ComfyUI's FastVideo H3 templates have it: less time sampling on an NVIDIA card (docs/research/video-models.md), PyTorch's attention where it can't run, as on a Mac.",
   "clip": {
     "class_type": "CLIPLoader",
     "inputs": {
@@ -41,11 +41,21 @@
       "weight_dtype": "default"
     }
   },
+  "attentionHigh": {
+    "class_type": "ModelAttentionBackend",
+    "inputs": {
+      "model": [
+        "unetHigh",
+        0
+      ],
+      "attention": "comfy kitchen attention"
+    }
+  },
   "loraHigh": {
     "class_type": "LoraLoaderModelOnly",
     "inputs": {
       "model": [
-        "unetHigh",
+        "attentionHigh",
         0
       ],
       "lora_name": "$loraHigh",
@@ -69,11 +79,21 @@
       "weight_dtype": "default"
     }
   },
+  "attentionLow": {
+    "class_type": "ModelAttentionBackend",
+    "inputs": {
+      "model": [
+        "unetLow",
+        0
+      ],
+      "attention": "comfy kitchen attention"
+    }
+  },
   "loraLow": {
     "class_type": "LoraLoaderModelOnly",
     "inputs": {
       "model": [
-        "unetLow",
+        "attentionLow",
         0
       ],
       "lora_name": "$loraLow",
