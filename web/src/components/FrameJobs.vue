@@ -11,9 +11,9 @@ defineProps<{
   describe?: (job: Job) => string | undefined
 }>()
 defineEmits<{ retry: [job: Job]; drop: [job: Job] }>()
-/** What the job's button does: stop it as it runs, take it off the queue, or dismiss a failure. */
+/** What the job's button does: cancel it as it runs, take it off the queue, or dismiss a failure. */
 const dropLabel = (job: Job) =>
-  job.status === 'failed' ? 'Dismiss' : job.status === 'running' ? 'Cancel rendering' : 'Remove from queue'
+  job.status === 'failed' ? 'Dismiss' : job.status === 'running' ? 'Cancel' : 'Remove from queue'
 const { jobName } = useImageModels()
 </script>
 
@@ -41,15 +41,29 @@ const { jobName } = useImageModels()
     >
       <Icon name="retry" />
     </button>
+    <!-- Running: a spinner, which turns into Cancel under the pointer or keyboard focus. A screen
+         that can't hover shows both, the spinner beside the button, so a tap can't cancel unseen. -->
+    <span v-if="job.status === 'running'" class="hidden text-info touch:inline-flex" data-job-working>
+      <Icon name="spinner" class="animate-spin" />
+    </span>
     <button
       type="button"
-      class="icon-button text-danger"
+      class="group icon-button text-danger"
+      :class="{ quiet: job.status === 'running' }"
       :title="dropLabel(job)"
       :aria-label="dropLabel(job)"
       data-drop-job
       @click="$emit('drop', job)"
     >
-      <Icon :name="job.status === 'running' ? 'stop' : 'x'" />
+      <template v-if="job.status === 'running'">
+        <span class="inline-flex text-info group-hover:hidden group-focus-visible:hidden touch:hidden" data-job-spinner>
+          <Icon name="spinner" class="animate-spin" />
+        </span>
+        <span class="hidden group-hover:inline-flex group-focus-visible:inline-flex touch:inline-flex">
+          <Icon name="x" />
+        </span>
+      </template>
+      <Icon v-else name="x" />
     </button>
   </p>
   </div>

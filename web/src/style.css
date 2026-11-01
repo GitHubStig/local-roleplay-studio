@@ -6,6 +6,9 @@
 /* `short:` is a phone on its side, where height is what runs out: side columns, not rows. */
 @custom-variant short (@media (orientation: landscape) and (max-height: 500px));
 
+/* `touch:` is a screen that can't hover, where what hovering shows has to be there already. */
+@custom-variant touch (@media (hover: none));
+
 /* Tailwind 4 leaves buttons with the default cursor; every enabled button here is clickable. */
 @layer base {
   button:not(:disabled),
@@ -116,6 +119,12 @@
   @apply inline-flex shrink-0 items-center justify-center rounded-md border border-line bg-canvas
     p-1
     text-sm transition-colors hover:border-current;
+}
+/* An icon button that's only its icon until hovered or focused (a running job's spinner, which turns
+   into Cancel); as any other on a screen that can't hover. */
+.icon-button.quiet {
+  @apply border-transparent bg-transparent hover:border-current hover:bg-canvas
+    focus-visible:border-current focus-visible:bg-canvas touch:border-line touch:bg-canvas;
 }
 .action-on {
   @apply border-info text-info hover:border-info hover:text-info;
