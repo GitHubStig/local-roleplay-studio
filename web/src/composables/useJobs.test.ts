@@ -32,6 +32,48 @@ describe('useJobs', () => {
     }
   })
 
+  it('notifies when the whole queue is done while the tab is hidden, if turned on', async () => {
+    const shown: { title: string; body?: string }[] = []
+    vi.stubGlobal(
+      'Notification',
+      class {
+        static permission = 'granted'
+        constructor(title: string, options?: NotificationOptions) {
+          shown.push({ title, body: options?.body })
+        }
+        close() {}
+      },
+    )
+    const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden')
+    const { useJobs } = await import('./useJobs')
+    const { setCurrentSession } = await import('./useCurrentSession')
+    setCurrentSession('s1', 'roleplay', 'The Tavern')
+    const run = async (on: boolean, ...lists: Job[][]) => {
+      localStorage.setItem('notify-when-done', on ? '1' : '0')
+      const jobs = useJobs('s1', { onSettled: () => {}, onError: () => {} })
+      queueJob.mockResolvedValueOnce(lists[0])
+      for (const list of lists.slice(1)) listJobs.mockResolvedValueOnce(list)
+      await jobs.queue('upscale', 0)
+      await vi.advanceTimersByTimeAsync(1000 * (lists.length - 1))
+      await flushPromises()
+    }
+    const two = (a: Job['status'], b: Job['status']) => [upscale(a), { ...upscale(b), id: 'j2' }]
+
+    // Not while one of two is still running; once both are, saying how many failed.
+    await run(true, two('running', 'queued'), two('done', 'running'), two('done', 'failed'))
+    expect(shown).toEqual([
+      { title: 'The Tavern', body: 'The queue is done, 1 failed.' },
+    ])
+    shown.length = 0
+    await run(false, [upscale('running')], [upscale('done')])
+    visibility.mockReturnValue('visible')
+    await run(true, [upscale('running')], [upscale('done')])
+    expect(shown).toEqual([])
+    vi.unstubAllGlobals()
+    visibility.mockRestore()
+    localStorage.clear()
+  })
+
   it("counts a render as the Frame's only if it's by the Session's Image Model", async () => {
     const { useJobs } = await import('./useJobs')
     let model = 'krea-2'

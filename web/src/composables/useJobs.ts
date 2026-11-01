@@ -14,6 +14,7 @@ import {
   retryJob,
 } from '../api'
 import { isOpen, JOB_NAMES } from '../jobs'
+import { useDoneNotice } from './useDoneNotice'
 
 /** Of several running jobs, the one to show: a render, else a picture, else the first. */
 const mainJob = (running: Job[]): Job | null =>
@@ -24,7 +25,8 @@ const mainJob = (running: Job[]): Job | null =>
  * A Session's queued background work (a Roleplay's or a Chain's), followed while anything is
  * queued or running. A job that finishes or fails has changed the Session, so `onSettled` reloads
  * it; `onError` hears why a job couldn't be queued, and, with `reportFailures`, why one failed
- * (for a view that shows failures only in its Queue tab). `imageModel` is the Session's Image
+ * (for a view that shows failures only in its Queue tab). When the whole queue has finished, it
+ * may notify the player (`useDoneNotice`). `imageModel` is the Session's Image
  * Model: a render queued by another one doesn't count as its render (`hasJob`).
  */
 export function useJobs(
@@ -59,6 +61,8 @@ export function useJobs(
       (!j.image || !opts.imageModel || j.image.imageModel === opts.imageModel())
     )
 
+  const notifyDone = useDoneNotice(sessionId)
+
   let timer: ReturnType<typeof setTimeout> | undefined
   function watchJobs() {
     clearTimeout(timer)
@@ -76,6 +80,9 @@ export function useJobs(
     const failed = now.filter((n) =>
       n.status === 'failed' && openJobs.value.some((j) => j.id === n.id)
     )
+    if (openJobs.value.length && !now.some(isOpen)) {
+      notifyDone(now.filter((n) => n.status === 'failed').length)
+    }
     jobs.value = now
     if (opts.reportFailures) {
       for (const job of failed) opts.onError(`${JOB_NAMES[job.kind]} failed: ${job.error}`)

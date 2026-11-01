@@ -17,6 +17,7 @@ import {
 } from '../api'
 import FeatureSwitch from '../components/FeatureSwitch.vue'
 import MachinesTab from '../components/MachinesTab.vue'
+import NotifyWhenDone from '../components/NotifyWhenDone.vue'
 import QuantizeField from '../components/QuantizeField.vue'
 import SessionsFolderTab from '../components/SessionsFolderTab.vue'
 import RunOn from '../components/RunOn.vue'
@@ -669,11 +670,14 @@ function saveNow() {
 
         <section
           v-show="tab === 'sessions'"
-          class="max-w-xl"
+          class="flex max-w-xl flex-col gap-6"
           role="tabpanel"
           data-tab-panel="sessions"
         >
           <SessionsFolderTab />
+          <div class="card">
+            <NotifyWhenDone />
+          </div>
         </section>
 
         <section

@@ -100,6 +100,7 @@ Everything slow beyond a Chain's Frame is a queued job (`server/jobs.ts`, one qu
 - **Jobs don't hold the Session's lock**: every change to a Session (a Reply, a picture, a render, a Frame, an Undo) is saved by reloading it and applying just that change, one at a time (`server/update.ts`), so none overwrites another.
 - **Failed and done jobs stay listed** until dismissed, failed ones with Retry. Undoing a Frame cancels its jobs; deleting the Session cancels all of them.
 - **The queue lives in memory**: restarting the server forgets it.
+- **A system notification when the queue is done**, if turned on in Settings (Sessions; per browser, as the browser's permission is): once everything queued in the Session on screen has finished, failed or done, while the app's tab is hidden. Titled with the Session, it says how many failed; clicking it brings the tab back. Only the Session on screen is followed, as it's the only one whose queue the page polls. A page can't flash the taskbar or bounce the Dock (that needs a native shell), and a count in the tab's title or an app badge (which needs a PWA) wasn't wanted, as the Queue tab shows what's running and what failed.
 
 ## Pictures
 
