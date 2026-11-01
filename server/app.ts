@@ -489,12 +489,15 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
   const upscaler = async () => (await deps.settings.load()).upscaler
   /** The video model chosen in Settings now, read as each clip starts. */
   const videoModel = async () => (await deps.settings.load()).videoModel
+  /** Its clip size chosen in Settings now, read as each clip starts. */
+  const videoSize = async (model: string) => (await deps.settings.load()).videoSizes?.[model]
   const roleplayJobs: RoleplayJobContext = {
     store: deps.sessions,
     deps: roleplayDeps,
     scenarioFor,
     upscaler,
     videoModel,
+    videoSize,
     // A separate Art Agent model pictures with Thinking off: it made pictures 5–22× slower for no
     // gain in correctness (docs/research/text-models.md).
     artModel: async (session) => {
@@ -571,6 +574,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
         video: deps.video,
         upscaler,
         videoModel,
+        videoSize,
       }
       return session.kind === 'chain'
         ? runChainJob(pictureDeps, session, job, emit, signal)
@@ -782,7 +786,13 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
         ),
         sizePresets: SIZE_PRESETS,
         upscalers: UPSCALERS,
-        videoModels: COMFYUI_VIDEO_MODELS.map(({ id, label, sound }) => ({ id, label, sound })),
+        videoModels: COMFYUI_VIDEO_MODELS.map(({ id, label, sound, size, longest }) => ({
+          id,
+          label,
+          sound,
+          size,
+          longest,
+        })),
         editModels: editModelsHere(await imageBackends()),
         // Where each edit model's edits go now, for the Edit dialog to say.
         editModelsOn: Object.fromEntries(

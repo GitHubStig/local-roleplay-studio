@@ -7,13 +7,35 @@ import FrameClips from './FrameClips.vue'
 vi.mock('../api', async (importOriginal) => ({
   ...(await importOriginal<typeof api>()),
   writeClipPrompt: vi.fn(),
-  getSettings: vi.fn(() => Promise.resolve({ videoModel: 'ltx-2.5' } as api.Settings)),
+  getSettings: vi.fn(() =>
+    Promise.resolve(
+      { videoModel: 'ltx-2.5', videoSizes: { 'wan-2.2': 'large' } } as unknown as api.Settings,
+    )
+  ),
   getSettingsOptions: vi.fn(() =>
     Promise.resolve({
       videoModels: [
-        { id: 'ltx-2.5', label: 'LTX 2.5', sound: true },
-        { id: 'wan-2.2', label: 'Wan 2.2 14B', sound: false },
-        { id: 'minimax-h3', label: 'MiniMax H3', sound: true },
+        {
+          id: 'ltx-2.5',
+          label: 'LTX 2.5',
+          sound: true,
+          size: 'large',
+          longest: { small: 10, large: 10 },
+        },
+        {
+          id: 'wan-2.2',
+          label: 'Wan 2.2 14B',
+          sound: false,
+          size: 'small',
+          longest: { small: 10, large: 5 },
+        },
+        {
+          id: 'minimax-h3',
+          label: 'MiniMax H3',
+          sound: true,
+          size: 'small',
+          longest: { small: 10, large: 10 },
+        },
       ],
     } as api.SettingsOptions)
   ),
@@ -220,6 +242,21 @@ describe('FrameClips', () => {
       'Play out',
       'Into Next',
     ])
+  })
+
+  it("names each video model's size, and offers only the lengths it makes there", async () => {
+    const wrapper = mountIt()
+    await flushPromises()
+    const names = wrapper.findAll('[data-clip-model] option').map((o) => o.text())
+    expect(names).toEqual(['LTX 2.5 · Large', 'Wan 2.2 14B · Large', 'MiniMax H3 · Small'])
+    const lengths = () => wrapper.findAll('[data-clip-seconds] option').map((o) => o.text())
+    expect(lengths()).toEqual(['3 s', '4 s', '5 s', '6 s', '8 s', '10 s'])
+    await wrapper.find('[data-clip-seconds]').setValue('8')
+    // Wan 2.2 makes up to 5 s at Large: a longer length steps down to it.
+    await wrapper.find('[data-clip-model]').setValue('wan-2.2')
+    await flushPromises()
+    expect(lengths()).toEqual(['3 s', '4 s', '5 s'])
+    expect((wrapper.find('[data-clip-seconds]').element as HTMLSelectElement).value).toBe('5')
   })
 
   it('asks for no speech from a video model that makes no sound, and doesn’t offer it', async () => {

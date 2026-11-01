@@ -13,6 +13,7 @@ import {
   DEFAULT_VIDEO_MODEL,
   findComfyVideoModel,
 } from './video/comfyui/models.ts'
+import { CLIP_SIZES, type ClipSize } from './video/videoGenerator.ts'
 import { type Float16, FLOAT16_CHOICES } from './images/mflux/chip.ts'
 import { type Feature, FEATURES } from './features.ts'
 import {
@@ -99,6 +100,8 @@ export interface Settings {
   editQuantize: Quantize
   /** The video model clips are made with (`video/comfyui/models.ts`), on a ComfyUI. */
   videoModel: string
+  /** Each video model's clip size, by its id; one not listed makes clips at its own (`size`). */
+  videoSizes?: Record<string, ClipSize>
   /**
    * The ComfyUI clips go to, by Backend id; none for the one pictures go to, or else the first.
    * Not a kind of work in `runOn`: only a ComfyUI makes clips, and a machine may have none.
@@ -363,6 +366,17 @@ export function validateSettings(input: unknown): ValidationResult {
     issues.push(`videoModel must be one of: ${COMFYUI_VIDEO_MODELS.map((m) => m.id).join(', ')}`)
   }
 
+  const sizes = s.videoSizes as Record<string, unknown> | undefined
+  if (
+    sizes !== undefined &&
+    (typeof sizes !== 'object' || sizes === null ||
+      Object.entries(sizes).some(([k, v]) =>
+        !findComfyVideoModel(k) || !CLIP_SIZES.includes(v as ClipSize)
+      ))
+  ) {
+    issues.push(`videoSizes must map video models to ${CLIP_SIZES.join(' or ')}`)
+  }
+
   if (issues.length > 0) return { ok: false, issues }
   return {
     ok: true,
@@ -390,6 +404,7 @@ export function validateSettings(input: unknown): ValidationResult {
         ? DEFAULT_SETTINGS.editQuantize
         : s.editQuantize as Quantize,
       videoModel: (s.videoModel as string | undefined) ?? DEFAULT_SETTINGS.videoModel,
+      ...(sizes !== undefined && { videoSizes: sizes as Record<string, ClipSize> }),
       ...(s.videoOn !== undefined && { videoOn: s.videoOn as string }),
       artModel: (s.artModel as string | undefined) ?? '',
       // One not mentioned (an older file, or a Feature added since) is on.

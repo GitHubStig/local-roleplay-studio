@@ -14,7 +14,7 @@ import type { Job, JobEmit, JobKind } from './jobs.ts'
 import type { Session } from './session.ts'
 import { shownVersionOf } from './pictures.ts'
 import { makeClip } from './video/makeClip.ts'
-import type { VideoGenerator } from './video/videoGenerator.ts'
+import type { ClipSize, VideoGenerator } from './video/videoGenerator.ts'
 
 export const PICTURE_JOB_KINDS: readonly JobKind[] = ['upscale', 'scene', 'figure', 'lito', 'clip']
 
@@ -26,6 +26,8 @@ export interface PictureJobDeps
   video?: VideoGenerator
   /** The video model chosen in Settings now. */
   videoModel(): Promise<string>
+  /** The clip size chosen in Settings now for a video model; none for the model's own. */
+  videoSize(model: string): Promise<ClipSize | undefined>
   /** The upscaler chosen in Settings now. */
   upscaler(): Promise<Upscaler>
 }

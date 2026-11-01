@@ -1,4 +1,5 @@
 import type { ModelFiles } from '../../comfyui/files.ts'
+import type { ClipSize } from '../videoGenerator.ts'
 
 /**
  * A video model as ComfyUI runs it: its workflow in API format (`workflows/<workflow>.json`, with
@@ -13,8 +14,15 @@ export interface ComfyVideoModel extends ModelFiles {
   fps: number
   /** The frame count it takes nearest a length (each model has its own grid). */
   frames(seconds: number): number
-  /** About how many pixels a frame has, in the picture's shape, each side a multiple of `multiple`. */
-  pixels: number
+  /** About how many pixels a frame has at each size, in the picture's shape, each side a multiple of `multiple`. */
+  pixels: Record<ClipSize, number>
+  /** The size it makes unless Settings say otherwise. */
+  size: ClipSize
+  /**
+   * Its longest clip at each size, in seconds, as far as measured on a 12 GB card: a longer one
+   * ran out of its memory (docs/research/video-models.md).
+   */
+  longest: Record<ClipSize, number>
   multiple: number
   /** It makes its own sound (Wan 2.2 makes none). */
   sound: boolean
@@ -28,8 +36,10 @@ export const COMFYUI_VIDEO_MODELS: readonly ComfyVideoModel[] = [
     fps: 24,
     // 8n + 1 (5 s is 121).
     frames: (seconds) => Math.max(1, Math.round((seconds * 24) / 8)) * 8 + 1,
-    // The size measured on the PC (docs/research/video-models.md).
-    pixels: 1280 * 704,
+    // Its own size, as measured on the PC, by default (docs/research/video-models.md).
+    pixels: { small: 400_000, large: 1280 * 704 },
+    size: 'large',
+    longest: { small: 10, large: 10 },
     multiple: 32,
     sound: true,
     // As ComfyUI's LTX 2.5 template downloads them (int8 on the PC, 2026-10-29).
@@ -53,8 +63,11 @@ export const COMFYUI_VIDEO_MODELS: readonly ComfyVideoModel[] = [
     fps: 16,
     // 4n + 1 (5 s is 81).
     frames: (seconds) => Math.max(1, Math.round((seconds * 16) / 4)) * 4 + 1,
-    // The template's 640×640, for a 12 GB card.
-    pixels: 640 * 640,
+    // The template's 640×640, for a 12 GB card, by default; 720p's pixels at its trained size.
+    pixels: { small: 640 * 640, large: 1280 * 720 },
+    size: 'small',
+    // At 720p's pixels, 8 s and 10 s ran out of the 4070's memory in the second sampler (2026-11-01).
+    longest: { small: 10, large: 5 },
     multiple: 16,
     sound: false,
     // As ComfyUI's Wan 2.2 first–last-frame template downloads them (2026-10-31, the PC).
@@ -89,8 +102,10 @@ export const COMFYUI_VIDEO_MODELS: readonly ComfyVideoModel[] = [
       const n = Math.max(5, Math.round(seconds * 24))
       return n + ((5 - (n % 17) + 17) % 17)
     },
-    // The template's 0.4 megapixels.
-    pixels: 400_000,
+    // The template's 0.4 megapixels by default; 768p at its trained size.
+    pixels: { small: 400_000, large: 1152 * 768 },
+    size: 'small',
+    longest: { small: 10, large: 10 },
     multiple: 32,
     sound: true,
     // As ComfyUI's MiniMax H3 image-to-video template downloads them (2026-10-31, both machines).
@@ -116,15 +131,16 @@ export const DEFAULT_VIDEO_MODEL = COMFYUI_VIDEO_MODELS[0].id
 export const findComfyVideoModel = (id: string) => COMFYUI_VIDEO_MODELS.find((m) => m.id === id)
 
 /**
- * A clip's size for a picture's: its shape, with about as many pixels as the model makes, each side
- * a multiple of what it needs.
+ * A clip's size for a picture's: its shape, with about as many pixels as the model makes at `size`
+ * (its own, unless given), each side a multiple of what it needs.
  */
 export function clipSize(
-  model: Pick<ComfyVideoModel, 'pixels' | 'multiple'>,
+  model: Pick<ComfyVideoModel, 'pixels' | 'multiple' | 'size'>,
   width: number,
   height: number,
+  size: ClipSize = model.size,
 ): { width: number; height: number } {
-  const scale = Math.sqrt(model.pixels / (width * height))
+  const scale = Math.sqrt(model.pixels[size] / (width * height))
   const m = model.multiple
   const side = (n: number) => Math.max(m, Math.round((n * scale) / m) * m)
   return { width: side(width), height: side(height) }

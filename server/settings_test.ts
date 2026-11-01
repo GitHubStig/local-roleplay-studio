@@ -240,3 +240,14 @@ Deno.test('Clips may name a ComfyUI to go to, one on the Machines tab', () => {
     assertEquals(bad.ok ? [] : bad.issues, ['videoOn must be a ComfyUI on the Machines tab'])
   }
 })
+
+Deno.test('Each video model may have a clip size, Small or Large; one not given makes its own', () => {
+  const ok = validateSettings({ ...DEFAULT_SETTINGS, videoSizes: { 'wan-2.2': 'large' } })
+  assertEquals(ok.ok && ok.settings.videoSizes, { 'wan-2.2': 'large' })
+  const none = validateSettings({ ...DEFAULT_SETTINGS })
+  assertEquals(none.ok && 'videoSizes' in none.settings, false)
+  for (const videoSizes of [{ 'wan-9': 'large' }, { 'wan-2.2': 'medium' }, 'large']) {
+    const bad = validateSettings({ ...DEFAULT_SETTINGS, videoSizes })
+    assertEquals(bad.ok ? [] : bad.issues, ['videoSizes must map video models to small or large'])
+  }
+})

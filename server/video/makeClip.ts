@@ -5,7 +5,7 @@ import { RenderQueue } from '../renderQueue.ts'
 import type { Session, SessionStore } from '../session.ts'
 import { anyImageModel } from '../images/imageModels.ts'
 import { changeFramePicture, pickedVersion } from '../pictures.ts'
-import { CLIP_ENDS, type ClipKind, type VideoGenerator } from './videoGenerator.ts'
+import { CLIP_ENDS, type ClipKind, type ClipSize, type VideoGenerator } from './videoGenerator.ts'
 
 /**
  * A clip made from a picture (ADR 0025), kept on the picture version it was made from:
@@ -34,6 +34,8 @@ export interface ClipDeps {
   video?: VideoGenerator
   /** Settings' default video model, for a clip ordered without one: read as it starts. */
   videoModel(): Promise<string>
+  /** Settings' clip size for a video model, read as the clip starts; none for the model's own. */
+  videoSize(model: string): Promise<ClipSize | undefined>
   renderQueue?: RenderQueue
 }
 
@@ -97,6 +99,7 @@ export async function makeClip<S extends Session>(
   const next = order.kind === 'into-next' ? versionBy(session, index + 1, by)!.image : undefined
   const ends = CLIP_ENDS[order.kind]
   const videoModel = order.model ?? await deps.videoModel()
+  const size = await deps.videoSize(videoModel)
   const pictureAt = (end?: 'still' | 'next') => end === 'still' ? picture.image : end && next
   const dir = deps.store.dir(session.id)
   const name = `clip-${index}-${order.kind}-${crypto.randomUUID().slice(0, 8)}`
@@ -119,6 +122,7 @@ export async function makeClip<S extends Session>(
         prompt: order.prompt,
         speech: order.speech,
         seconds: order.seconds,
+        ...(size && { size }),
         seed: session.seed,
         dir,
         name,

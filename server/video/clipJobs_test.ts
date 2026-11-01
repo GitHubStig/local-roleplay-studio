@@ -62,10 +62,13 @@ Deno.test('A kind made again replaces its clip; another kind sits beside it', ()
     assertEquals([video.made[2].first, video.made[2].last], [second.image, second.image])
   }))
 
-Deno.test('Each video model keeps its own clip of a kind, and replaces only its own', () =>
+Deno.test('Each video model keeps its own clip of a kind, at its size, and replaces only its own', () =>
   withTempDir(async (root) => {
     const video = fakeVideoGenerator()
-    const { call } = await chainOfTwo(root, { video })
+    const { call } = await chainOfTwo(root, {
+      video,
+      settings: { textModel: 'x', videoSizes: { 'wan-2.2': 'large' } },
+    })
     await queueClip(call, 1, leadIn)
     await queueClip(call, 1, { ...leadIn, model: 'wan-2.2' })
     await settled(call)
@@ -78,6 +81,8 @@ Deno.test('Each video model keeps its own clip of a kind, and replaces only its 
     )
     // Made by the model each was queued with; one without took Settings' default.
     assertEquals(video.made.map((m) => m.model), ['ltx-2.5', 'wan-2.2', 'wan-2.2'])
+    // At the size Settings give its model; one not given makes its own.
+    assertEquals(video.made.map((m) => m.size), [undefined, 'large', 'large'])
     const unknown = await queueClip(call, 1, { ...leadIn, model: 'wan-9' })
     assertEquals(unknown.status, 400)
     assertStringIncludes((await unknown.json()).error, 'model must be one of')
@@ -159,6 +164,7 @@ Deno.test('A clip is made from the picture of the Image Model it was queued for'
       store: { dir: (id: string) => join(root, id) } as SessionStore,
       video,
       videoModel: () => Promise.resolve('ltx-2.5'),
+      videoSize: () => Promise.resolve(undefined),
     }
     const order = { ...leadIn, kind: 'into-next' as const }
     let saved: Session | undefined

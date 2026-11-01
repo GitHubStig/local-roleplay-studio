@@ -149,6 +149,21 @@ Deno.test('A clip asks for its video model by name, and one ComfyUI has no workf
     )
   }))
 
+Deno.test('A clip comes out at the size asked for, and one longer than its model makes there is refused', () =>
+  withTempDir(async (dir) => {
+    const { workflow } = await makeClip(dir, {
+      model: 'wan-2.2',
+      last: 'frame-3.png',
+      size: 'large',
+    })
+    assertEquals([workflow.video.inputs.width, workflow.video.inputs.height], [1296, 704])
+    await assertRejects(
+      () => makeClip(dir, { model: 'wan-2.2', last: 'frame-3.png', size: 'large', seconds: 8 }),
+      Error,
+      'Wan 2.2 14B makes clips of up to 5 s at Large',
+    )
+  }))
+
 Deno.test('Without its last end, what took the last guide takes the first’s', async () => {
   const nodes = withoutEnds(await workflow(), { first: true, last: false })
   assert(!('lastGuide' in nodes) && !('lastPrep' in nodes))

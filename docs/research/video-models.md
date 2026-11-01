@@ -2,6 +2,21 @@
 
 Measurements behind clips ([ADR 0025](../adr/0025-clips-by-kind.md)); what's still to do is in [open-threads.md](../open-threads.md), "Clips". Newest first.
 
+## Clip sizes: how long a clip fits at Large (2026-11-01, Windows PC)
+
+For a size choice per video model (Small ~0.4 MP or Large, the model's trained ~0.9 MP: [ADR 0027](../adr/0027-a-clip-size-per-video-model.md)), the longest clip each makes at Large on the 12 GB card. ComfyUI 0.43.2 with Kitchen attention, through the app's generator at size Large, an Idle Loop of the tavern Roleplay's Frame used in the Kitchen trial below (1216×832), with that model's Idle Loop prompt from it, without speech, ~2.5 GB of RAM free before each run. 10 s first, then 8 s if it failed.
+
+| Model at Large | Size | Length | Result | Time | Peak VRAM | Least RAM free |
+|---|---|---|---|---:|---:|---:|
+| Wan 2.2 | 720p's pixels | 10 s | out of GPU memory in the second (low-noise) sampler: 14.75 GiB allocated, 3.85 more asked for | 375 s | 11.6 GB | 0.4 GB |
+| Wan 2.2 | 720p's pixels | 8 s | out of GPU memory in the second sampler: 11.90 GiB allocated, 3.10 more asked for | 896 s | 11.7 GB | 0.7 GB |
+| MiniMax H3 | 1152×768 | 10 s (243 frames) | made | 547 s | 11.3 GB | 0.4 GB |
+
+- **Wan 2.2 at Large stops at 5 s**, which was made before (449 s, 9.5 GB, without Kitchen attention, "Wan 2.2 and MiniMax H3 against LTX 2.5" below); 6 s is untried. Its clip itself needs memory that can't be streamed from disk as the weights are, and at 720p's pixels 8 s is already too much. At Small it makes 10 s (351 s, 9.6 GB, below), though its colour drifts past 5 s.
+- **H3 at Large makes 10 s**: the same scene throughout, its ends against the picture 0.670 and 0.678 SSIM and its seam 0.937, as at Small. RAM was the tighter: 0.4 GB free at the least.
+- **LTX 2.5 at Large made 10 s before** (252 s, 10.7 GB, below), and the Clip section offers no more than 10 s, so it wasn't run again.
+- So the lengths offered: up to 10 s for each model at each size, except Wan 2.2 at Large, up to 5 s.
+
 ## Comfy Kitchen int8 attention on the video models (2026-11-01, Windows PC)
 
 Comfy Kitchen's int8 attention (`ModelAttentionBackend`) takes 8–29% off sampling on every ComfyUI Image Model and edit (research/image-models.md, "Comfy Kitchen attention on every ComfyUI Image Model"), and ComfyUI's own FastVideo H3 templates set it, so it was tried on the three video models: 12–19% off a whole clip on LTX 2.5, 24–40% on Wan 2.2 and MiniMax H3, with the same clips, small things moved. Every video workflow now sets it.

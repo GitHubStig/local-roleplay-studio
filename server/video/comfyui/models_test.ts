@@ -19,3 +19,14 @@ Deno.test('a clip keeps its picture’s shape, at about the model’s pixels, in
   assertEquals(clipSize(model('wan-2.2'), 1216, 832), { width: 768, height: 528 })
   assertEquals(clipSize(model('minimax-h3'), 1216, 832), { width: 768, height: 512 })
 })
+
+Deno.test('each model makes a Small and a Large size, its own by default', () => {
+  const ltx = model('ltx-2.5')
+  assertEquals(clipSize(ltx, 1280, 704, 'small'), { width: 864, height: 480 })
+  assertEquals(clipSize(model('wan-2.2'), 1216, 832, 'large'), { width: 1168, height: 800 })
+  assertEquals(clipSize(model('minimax-h3'), 1216, 832, 'large'), { width: 1152, height: 768 })
+  assertEquals(
+    ['ltx-2.5', 'wan-2.2', 'minimax-h3'].map((id) => model(id).size),
+    ['large', 'small', 'small'],
+  )
+})

@@ -7,6 +7,8 @@ import {
   getSettings,
   getSettingsOptions,
   type Backend,
+  CLIP_SIZE_NAMES,
+  type ClipSize,
   type ImageBackend,
   saveSettings,
   type Settings,
@@ -38,6 +40,13 @@ const editModels = computed(() =>
 /** The dropdown's order; `editModels.choices` keeps the lists' (`startOn` picks the first). */
 const editModelsSorted = computed(() => [...editModels.value.choices].sort(byLabel))
 const loadError = ref('')
+
+/** Sets a video model's clip size; its own (`own`) is kept as none, so a change to it applies. */
+function setVideoSize(id: string, own: ClipSize, size: ClipSize) {
+  if (!form.value) return
+  const { [id]: _, ...others } = form.value.videoSizes ?? {}
+  form.value.videoSizes = size === own ? others : { ...others, [id]: size }
+}
 const saving = ref(false)
 const status = ref<{ kind: 'saved' | 'error'; message: string; issues?: string[] } | null>(null)
 
@@ -580,9 +589,37 @@ function saveNow() {
                 <span class="text-sm text-muted">
                   What a Session's clips start on; each Frame's Clip section can pick another, and keeps
                   a clip of each kind per model, to compare. On an RTX 4070 with 12 GB, a 5-second clip
-                  takes about two and a half minutes with any of them; LTX 2.5 has the largest picture.
+                  takes about two minutes with LTX 2.5, and one and a half with Wan 2.2 or MiniMax H3,
+                  each at its own size.
                 </span>
               </label>
+              <div class="flex flex-col gap-1">
+                <span class="text-sm text-muted">Clip size</span>
+                <label
+                  v-for="m in options.videoModels"
+                  :key="m.id"
+                  class="flex items-center justify-between gap-3"
+                >
+                  <span>{{ m.label }}</span>
+                  <SelectField
+                    :model-value="form.videoSizes?.[m.id] ?? m.size"
+                    compact
+                    class="field w-auto"
+                    :data-video-size="m.id"
+                    @update:model-value="setVideoSize(m.id, m.size, $event as ClipSize)"
+                  >
+                    <option v-for="(name, s) in CLIP_SIZE_NAMES" :key="s" :value="s">
+                      {{ name }}{{ s === m.size ? ' (its own)' : '' }}
+                    </option>
+                  </SelectField>
+                </label>
+                <span class="text-sm text-muted">
+                  Small (about 0.4 megapixels) is faster; Large is the size each model was trained at
+                  (about 0.9), sharper, and a different take of the clip. Large takes Wan 2.2 and
+                  MiniMax H3 about three times as long, and Wan 2.2 makes up to 5 seconds at Large:
+                  longer runs out of a 12 GB card's memory.
+                </span>
+              </div>
               <RunOn
                 v-if="clipChoices.length"
                 v-model="clipsOn"

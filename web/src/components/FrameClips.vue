@@ -3,6 +3,7 @@ import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
 import {
   type Clip,
   CLIP_KIND_NAMES,
+  CLIP_SIZE_NAMES,
   type ClipKind,
   type ClipOrder,
   writeClipPrompt,
@@ -39,15 +40,22 @@ const props = defineProps<{
 const emit = defineEmits<{ make: [order: ClipOrder]; play: [clip: Clip]; stop: [] }>()
 
 const KINDS = Object.keys(CLIP_KIND_NAMES) as ClipKind[]
-const { models, labelOf, silent: makesNoSound, soundOf, chosen: model } = useVideoModels(() => props.sessionId)
+const { models, labelOf, silent: makesNoSound, soundOf, sizeOf, lengthsOf, chosen: model } = useVideoModels(
+  () => props.sessionId,
+)
 /** The video model makes no sound (Wan 2.2), so there's no speech to ask for. */
 const silent = computed(() => makesNoSound(model.value))
 /** The kind compared side by side, while the comparison is open. */
 const comparing = ref<ClipKind | null>(null)
-const SECONDS = [3, 4, 5, 6, 8, 10]
-
 const kind = ref<ClipKind>('lead-in')
 const seconds = ref(5)
+/** The lengths the video model chosen makes at its size (Settings'). */
+const lengths = computed(() => lengthsOf(model.value))
+// A length it can't make there (another model's, or a clip's from before a size change) steps down to
+// the longest it can.
+watch([lengths, seconds], ([ok, s]) => {
+  if (ok.length && !ok.includes(s)) seconds.value = ok.filter((n) => n <= s).pop() ?? ok[0]
+})
 const speech = ref(false)
 const prompt = ref('')
 const writing = ref(false)
@@ -209,13 +217,15 @@ function again(clip: Clip) {
       <label v-if="models.length > 1" class="flex items-center gap-1.5">
         Video model
         <select v-model="model" class="rounded border border-line bg-surface px-1 py-0.5" data-clip-model>
-          <option v-for="m in models" :key="m.id" :value="m.id">{{ m.label }}</option>
+          <option v-for="m in models" :key="m.id" :value="m.id">
+            {{ m.label }} · {{ CLIP_SIZE_NAMES[sizeOf(m.id) ?? m.size] }}
+          </option>
         </select>
       </label>
       <label class="flex items-center gap-1.5">
         Length
         <select v-model.number="seconds" class="rounded border border-line bg-surface px-1 py-0.5" data-clip-seconds>
-          <option v-for="s in SECONDS" :key="s" :value="s">{{ s }} s</option>
+          <option v-for="s in lengths" :key="s" :value="s">{{ s }} s</option>
         </select>
       </label>
       <label v-if="!silent" class="flex cursor-pointer items-center gap-1.5">

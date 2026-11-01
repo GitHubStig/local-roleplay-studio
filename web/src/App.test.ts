@@ -103,7 +103,15 @@ beforeEach(() => {
     imageModels: { mflux: [], comfyui: [] },
     sizePresets: [],
     upscalers: [],
-    videoModels: [{ id: 'ltx-2.5', label: 'LTX 2.5', sound: true }],
+    videoModels: [
+      {
+        id: 'ltx-2.5',
+        label: 'LTX 2.5',
+        sound: true,
+        size: 'large',
+        longest: { small: 10, large: 10 },
+      },
+    ],
     editModels: [],
     features: ALL_AVAILABLE,
     here: ALL_AVAILABLE,

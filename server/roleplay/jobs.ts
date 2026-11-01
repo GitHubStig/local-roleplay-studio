@@ -6,6 +6,7 @@ import { frameName } from '../frames.ts'
 import { error } from '../http.ts'
 import type { Job, JobEmit, JobKind } from '../jobs.ts'
 import type { Upscaler } from '../images/upscalers.ts'
+import type { ClipSize } from '../video/videoGenerator.ts'
 import type { Scenario } from '../scenario.ts'
 import type { Session, SessionStore } from '../session.ts'
 import { pictureFrame, renderRoleplayFrame, type RoleplayDeps } from './engine.ts'
@@ -23,6 +24,8 @@ export interface RoleplayJobContext {
   upscaler(): Promise<Upscaler>
   /** The video model chosen in Settings now. */
   videoModel(): Promise<string>
+  /** The clip size chosen in Settings now for a video model; none for the model's own. */
+  videoSize(model: string): Promise<ClipSize | undefined>
   /** The Art Agent's model chosen in Settings now, if one is; else pictures use the Text Model. */
   artModel(session: Session): Promise<RoleplayModel | undefined>
 }
@@ -80,7 +83,7 @@ export async function runRoleplayJob(
     await renderRoleplayFrame(withDeps, session, job.frameIndex, emit, signal)
   } else {
     await runPictureJob(
-      { ...withDeps, upscaler: ctx.upscaler, videoModel: ctx.videoModel },
+      { ...withDeps, upscaler: ctx.upscaler, videoModel: ctx.videoModel, videoSize: ctx.videoSize },
       session,
       job,
       emit,

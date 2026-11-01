@@ -113,7 +113,15 @@ const options: api.SettingsOptions = {
     },
     { id: 'flux3-klein-edit', label: 'FLUX.3 Klein Edit', backends: ['comfyui'], prompting: '' },
   ],
-  videoModels: [{ id: 'ltx-2.5', label: 'LTX 2.5', sound: true }],
+  videoModels: [
+    {
+      id: 'ltx-2.5',
+      label: 'LTX 2.5',
+      sound: true,
+      size: 'large',
+      longest: { small: 10, large: 10 },
+    },
+  ],
   upscalers: [
     { id: 'seedvr2-7b', label: 'SeedVR2 7B' },
     { id: 'seedvr2-3b', label: 'SeedVR2 3B' },
@@ -487,6 +495,27 @@ describe('SettingsView', () => {
       ...settings,
       features: { ...settings.features, video: false },
     })
+    wrapper.unmount()
+  })
+
+  it("sets each video model's clip size, its own kept as none", async () => {
+    vi.mocked(api.getSettingsOptions).mockResolvedValue(options)
+    const wrapper = mount(SettingsView, { attachTo: document.body })
+    await flushPromises()
+    await wrapper.find('[data-tab="clips"]').trigger('click')
+    const size = wrapper.find<HTMLSelectElement>('select[data-video-size="ltx-2.5"]')
+    expect(size.element.value).toBe('large')
+    expect(size.findAll('option').map((o) => o.text())).toEqual(['Small', 'Large (its own)'])
+    await size.setValue('small')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+    expect(vi.mocked(api.saveSettings).mock.lastCall?.[0].videoSizes).toEqual({
+      'ltx-2.5': 'small',
+    })
+    await size.setValue('large')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+    expect(vi.mocked(api.saveSettings).mock.lastCall?.[0].videoSizes).toEqual({})
     wrapper.unmount()
   })
 

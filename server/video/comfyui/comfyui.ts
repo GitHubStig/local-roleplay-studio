@@ -12,7 +12,7 @@ import {
 import { modelFiles, withUploads } from '../../comfyui/files.ts'
 import { loadPrompt } from '../../promptFiles.ts'
 import { pngSize } from '../../png.ts'
-import type { VideoGenerator } from '../videoGenerator.ts'
+import { CLIP_SIZE_NAMES, type VideoGenerator } from '../videoGenerator.ts'
 import { clipSize, type ComfyVideoModel, findComfyVideoModel } from './models.ts'
 
 /**
@@ -21,8 +21,8 @@ import { clipSize, type ComfyVideoModel, findComfyVideoModel } from './models.ts
  * both. The pictures are uploaded to
  * ComfyUI's temp folder and blanked after, as for an edit; `SaveVideo` writes the clip to ComfyUI's
  * output folder, from which it's fetched (`/view`) and then overwritten with an empty stub, so no
- * copy stays with ComfyUI. The clip comes out at about the model's pixels, in the first picture's
- * shape (`clipSize`), with the model's sound if it makes any.
+ * copy stays with ComfyUI. The clip comes out at about the model's pixels at its size, in the first
+ * picture's shape (`clipSize`), with the model's sound if it makes any.
  */
 export function comfyuiVideoGenerator(opts: {
   /** ComfyUI's address, its Backend's ('' for its usual one here). */
@@ -41,8 +41,16 @@ export function comfyuiVideoGenerator(opts: {
       const pictures = await Promise.all(ends.map((end) => Deno.readFile(join(req.dir, end))))
       const model = findComfyVideoModel(req.model)
       if (!model) throw new Error(`ComfyUI has no video model "${req.model}"`)
+      const sized = req.size ?? model.size
+      if (req.seconds > model.longest[sized]) {
+        throw new Error(
+          `${model.label} makes clips of up to ${model.longest[sized]} s at ${
+            CLIP_SIZE_NAMES[sized]
+          }: choose a shorter one, or a smaller size in Settings`,
+        )
+      }
       const { width, height } = pngSize(pictures[0])
-      const size = clipSize(model, width, height)
+      const size = clipSize(model, width, height, sized)
       const files = await modelFiles(base, model, signal)
       const negative = await loadPrompt('video/negative')
       return withUploads(base, pictures, async (names) => {

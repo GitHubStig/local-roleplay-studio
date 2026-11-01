@@ -5,6 +5,7 @@ import {
   CLIP_KIND_NAMES,
   type ClipKind,
   type ClipOrder,
+  type ClipSize,
   type Job,
   type Picture,
 } from './api'
@@ -73,10 +74,14 @@ export function usePlayingClip(selected: () => number | null | undefined) {
 export const clipCount = (picture: Picture | undefined, model: string): number =>
   picture && picture.imageModel === model ? picture.clips?.length ?? 0 : 0
 
+/** The lengths a clip can be, in seconds, up to a model's longest at its size. */
+export const CLIP_SECONDS = [3, 4, 5, 6, 8, 10]
+
 /**
- * The video models, by name, and whether one makes no sound (Wan 2.2). With `sessionId`, also the
- * one a Session's clips are made with (`chosen`): the last picked there, in this browser, else
- * Settings' default.
+ * The video models, by name, whether one makes no sound (Wan 2.2), the size each makes clips at
+ * (Settings', else its own) and the lengths it offers there. With `sessionId`, also the one a
+ * Session's clips are made with (`chosen`): the last picked there, in this browser, else Settings'
+ * default.
  */
 export function useVideoModels(sessionId?: () => string) {
   const options = useSettingsOptions()
@@ -84,6 +89,14 @@ export function useVideoModels(sessionId?: () => string) {
   const models = computed(() => options.value?.videoModels ?? [])
   const labelOf = (id: string) => models.value.find((m) => m.id === id)?.label ?? id
   const silent = (id: string) => models.value.find((m) => m.id === id)?.sound === false
+  const sizeOf = (id: string): ClipSize | undefined =>
+    settings.value?.videoSizes?.[id] ?? models.value.find((m) => m.id === id)?.size
+  /** The lengths `id` makes at its size: every one until the models load. */
+  const lengthsOf = (id: string) => {
+    const model = models.value.find((m) => m.id === id)
+    const longest = model?.longest[sizeOf(id) ?? model.size] ?? Infinity
+    return CLIP_SECONDS.filter((s) => s <= longest)
+  }
   /** What a clip has to hear: none from a model that makes no sound, else speech or not. */
   const soundOf = (clip: Clip) =>
     silent(clip.model) ? 'no sound' : clip.speech ? 'with speech' : 'no dialogue'
@@ -92,7 +105,7 @@ export function useVideoModels(sessionId?: () => string) {
     get: () => picked.value || settings.value?.videoModel || models.value[0]?.id || '',
     set: (id: string) => picked.value = id,
   })
-  return { models, labelOf, silent, soundOf, chosen }
+  return { models, labelOf, silent, soundOf, sizeOf, lengthsOf, chosen }
 }
 
 /** Seconds as minutes and seconds, "1:42". */

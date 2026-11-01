@@ -20,6 +20,13 @@ export const CLIP_ENDS: Record<ClipKind, { first?: 'still'; last?: 'still' | 'ne
   'into-next': { first: 'still', last: 'next' },
 }
 
+/** A clip's size: Small (~0.4 MP, faster) or Large (the model's trained size, ~0.9 MP). */
+export type ClipSize = 'small' | 'large'
+
+export const CLIP_SIZES: readonly ClipSize[] = ['small', 'large']
+
+export const CLIP_SIZE_NAMES: Record<ClipSize, string> = { small: 'Small', large: 'Large' }
+
 export interface ClipRequest {
   /** The video model, by id (`comfyui/models.ts`). */
   model: string
@@ -32,6 +39,8 @@ export interface ClipRequest {
   speech: boolean
   /** Its length in seconds. */
   seconds: number
+  /** Its size; the model's own, unless given. */
+  size?: ClipSize
   seed: number
   /** Directory to read the pictures from and write the clip into. */
   dir: string

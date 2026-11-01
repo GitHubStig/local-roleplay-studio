@@ -95,6 +95,8 @@ export interface Settings {
   upscaler: string
   /** The video model clips are made with, on a ComfyUI. */
   videoModel: string
+  /** Each video model's clip size, by its id; one not listed makes clips at its own. */
+  videoSizes?: Record<string, ClipSize>
   /** The ComfyUI clips go to, by Backend id; none for the one pictures go to, or else the first. */
   videoOn?: string
   /** Which model edits pictures; applies to the next edit, even mid-Session. */
@@ -157,8 +159,17 @@ export interface SettingsOptions extends TextModelOptions {
   imageModelsOn?: Record<string, ImageBackend>
   sizePresets: SizePreset[]
   upscalers: { id: string; label: string }[]
-  /** Each video model, and whether it makes sound (Wan 2.2 doesn't). */
-  videoModels: { id: string; label: string; sound: boolean }[]
+  /**
+   * Each video model, whether it makes sound (Wan 2.2 doesn't), the size it makes unless Settings say
+   * otherwise, and its longest clip at each size, in seconds.
+   */
+  videoModels: {
+    id: string
+    label: string
+    sound: boolean
+    size: ClipSize
+    longest: Record<ClipSize, number>
+  }[]
   /** The models that can edit a picture here, each on its backend. */
   /** Each with how it likes to be told what to paint. */
   editModels: { id: string; label: string; backends: ImageBackend[]; prompting: string }[]
@@ -339,6 +350,12 @@ export const CLIP_KIND_NAMES: Record<ClipKind, string> = {
   'play-out': 'Play out',
   'into-next': 'Into Next',
 }
+
+/** A clip's size: Small (~0.4 MP, faster) or Large (the model's trained size, ~0.9 MP). */
+export type ClipSize = 'small' | 'large'
+
+/** What each clip size is called, in the order they're offered. */
+export const CLIP_SIZE_NAMES: Record<ClipSize, string> = { small: 'Small', large: 'Large' }
 
 /**
  * What a clip is told: its kind, what happens, how many seconds, whether anyone may speak, and
