@@ -21,18 +21,20 @@ const MAC_FILES: Record<string, string[]> = {
 
 /**
  * The Windows PC's other installed models: Qwen-Image 2.1 and its Turbo, FLUX.2 Klein 4B,
- * FLUX.3 Klein, Ming-Image, MOSS-Image and Z-Image Turbo.
+ * FLUX.3 Klein, Ming-Image, MOSS-Image, Z-Image Turbo, and Krea 2 with its LoRA.
  */
 const PC_FILES: Record<string, string[]> = {
   diffusion_models: [
     'flux-2-klein-4b.safetensors',
     'flux3_image_klein_sd_int8_convrot.safetensors',
+    'krea2_turbo_int8_convrot.safetensors',
     'ming_image_0.1_design_int8_convrot.safetensors',
     'moss_image_sft_int8_convrot.safetensors',
     'qwen_image_2.1_int8_convrot.safetensors',
     'qwen_image_2.1_turbo_int8_convrot.safetensors',
     'z_image_turbo_int8_convrot.safetensors',
   ],
+  loras: ['Krea2_TextFusion_Refusal_Reduction.safetensors'],
   text_encoders: [
     'ming_image_0.1_ling_mini_2.0_w4a8.safetensors',
     'qwen3.5_9b_w4a8_gptq.safetensors',
@@ -46,6 +48,7 @@ const PC_FILES: Record<string, string[]> = {
     'flux2-vae_small.safetensors',
     'ming_image_vae_bf16.safetensors',
     'qwen_image_2.1_vae_bf16.safetensors',
+    'qwen_image_vae.safetensors',
   ],
 }
 
@@ -537,6 +540,22 @@ Deno.test('Files are picked by the first pattern installed, so each machine can 
     pickFiles(qwen, (f) => both[f as keyof typeof both] ?? []).unet,
     'qwen_image_2.1_int8_convrot.safetensors',
   )
+})
+
+Deno.test("Krea 2 runs the Mac's fp8 files, and the PC's int8 DiT on FLUX.3's encoder", () => {
+  const krea = findComfyModel('krea-2')!
+  const { unet, clip, vae } = pickFiles(krea, (f) => MAC_FILES[f] ?? [])
+  assertEquals([unet, clip, vae], [
+    'krea2_turbo_fp8_scaled.safetensors',
+    'qwen3vl_4b_fp8_scaled.safetensors',
+    'qwen_image_vae.safetensors',
+  ])
+  const pc = pickFiles(krea, (f) => PC_FILES[f] ?? [])
+  assertEquals([pc.unet, pc.clip, pc.vae], [
+    'krea2_turbo_int8_convrot.safetensors',
+    'qwen3vl_4b_int8_convrot.safetensors',
+    'qwen_image_vae.safetensors',
+  ])
 })
 
 Deno.test('FIBO 2.0 Turbo renders text with the Edit Turbo checkpoint as a generator', () =>

@@ -29,6 +29,18 @@ const FIBO_CLIP = {
   patterns: [/^qwen3vl_4b_int8_convrot\.safetensors$/, /^qwen3vl_4b_bf16\.safetensors$/],
 }
 const FIBO_VAE = { folder: 'vae', patterns: [/^flux2-vae_fibo2\.safetensors$/] }
+const KREA2_FILES = {
+  // int8 or fp8, both native on an NVIDIA card. No bf16: it's too big for the PC's memory.
+  unet: { folder: 'diffusion_models', patterns: [/^krea2_turbo_int8/, /^krea2_turbo_fp8/] },
+  // A Qwen3-VL-4B (ComfyUI's `krea2` type reads 12 of its layers): Krea's own fp8 build, or the
+  // int8 one FLUX.3 and FIBO 2.0 use.
+  clip: {
+    folder: 'text_encoders',
+    patterns: [/^qwen3vl_4b_fp8_scaled/, /^qwen3vl_4b_int8_convrot/],
+  },
+  // Qwen-Image's first VAE, not 2.1's.
+  vae: { folder: 'vae', patterns: [/^qwen_image_vae\.safetensors$/] },
+}
 
 export const COMFYUI_MODELS: readonly ComfyModel[] = [
   {
@@ -200,6 +212,18 @@ export const COMFYUI_MODELS: readonly ComfyModel[] = [
         patterns: [/^qwen_3_4b_fp8_mixed/, /^qwen_3_4b\.safetensors$/],
       },
       vae: { folder: 'vae', patterns: [/^ae\.safetensors$/] },
+    },
+  },
+  { id: 'krea-2', label: 'Krea 2', defaultSteps: 8, cfg: 1, files: KREA2_FILES },
+  {
+    id: 'krea-2-lora',
+    label: 'Krea 2 + LoRA',
+    defaultSteps: 8,
+    cfg: 1,
+    // Quiho's refusal reduction, as on mflux.
+    files: {
+      ...KREA2_FILES,
+      lora: { folder: 'loras', patterns: [/^Krea2_TextFusion_Refusal_Reduction\.safetensors$/] },
     },
   },
 ]

@@ -66,7 +66,7 @@ Details, and when to count again: [research/image-models.md](research/image-mode
 | FLUX.3 Klein (`flux3-klein`) | both | 16 | 40 s | 11 s | 10.9 GB | the most detailed; tends to age the people |
 | Z-Image Turbo (`z-image-turbo`; 4-bit on mflux) | both | 9 on mflux, 8 on ComfyUI | 28–30 s | 11 s | 4.4 GB | the lightest; ignored a described skin tone and hair once |
 | Z-Image (`z-image`, 8-bit) | mflux | 30 | ~190 s (0.22) | – | 7.8 GB | Turbo's undistilled base, with real guidance (4) |
-| Krea 2 (`krea-2`), and Krea 2 + LoRA (`krea-2-lora`) | mflux | 8 | 84–85 s | – | 34.3 GB | stages people best; the LoRA (Quiho's refusal reduction, 0.8) costs nothing more |
+| Krea 2 (`krea-2`), and Krea 2 + LoRA (`krea-2-lora`) | both | 8 | 84–85 s | 17 s | 34.3 GB | stages people best; the LoRA (Quiho's refusal reduction, 0.8) costs nothing more; int8 on the PC |
 | ERNIE-Image Turbo (`ernie-image-turbo`) | mflux | 8 | 52 s | – | 23.1 GB | |
 | Boogu Image Turbo (`boogu-image-turbo`) | mflux | 4 | 34 s | – | 25.2 GB | |
 | Ming-Image 0.1 Design (`ming-image`) | both | 12 | 41–43 s | 17 s | 18.5 GB | a design model: lettering right; a signature mark on the PC |

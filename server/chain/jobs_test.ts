@@ -578,12 +578,12 @@ Deno.test('A Session switches Image Model by name, to one a Backend listed can r
       'mflux',
     ])
     const wrongKind = await call('PUT', '/api/sessions/s1/image-model', {
-      imageModel: 'krea-2',
+      imageModel: 'boogu-image-turbo',
       imageBackend: 'comfyui',
     })
     assertEquals([wrongKind.status, (await wrongKind.json()).error], [
       400,
-      'ComfyUI has no Image Model "krea-2"',
+      'ComfyUI has no Image Model "boogu-image-turbo"',
     ])
     const noKind = await call('PUT', '/api/sessions/s1/image-model', {
       imageModel: 'qwen-image-2.1',
@@ -616,8 +616,8 @@ Deno.test('A Session switches Image Model by name, to one a Backend listed can r
       'comfyui',
     ])
     assertEquals((await switchTo(pc, 'fibo-2.0')).status, 200)
-    // Krea 2 is mflux's only, which can't run here.
-    assertEquals((await switchTo(pc, 'krea-2')).status, 409)
+    // Boogu is mflux's only, which can't run here.
+    assertEquals((await switchTo(pc, 'boogu-image-turbo')).status, 409)
   }))
 
 Deno.test("Every picture by one Image Model is deleted, with its files, but not the Session's own model's", () =>

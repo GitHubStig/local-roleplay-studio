@@ -1,0 +1,49 @@
+{
+  "_note": "Krea 2 Turbo with Quiho's refusal-reduction LoRA (Krea2_TextFusion_Refusal_Reduction at 0.8, as on mflux), otherwise krea-2.json: the LoRA through LoraLoaderModelOnly, as ComfyUI's template image_krea2_turbo_t2i_int8 loads its style LoRA. $names are filled in by server/images/comfyui/workflow.ts.",
+  "unet": {
+    "class_type": "UNETLoader",
+    "inputs": { "unet_name": "$unet", "weight_dtype": "default" }
+  },
+  "lora": {
+    "class_type": "LoraLoaderModelOnly",
+    "inputs": { "model": ["unet", 0], "lora_name": "$lora", "strength_model": 0.8 }
+  },
+  "attention": {
+    "class_type": "ModelAttentionBackend",
+    "inputs": { "model": ["lora", 0], "attention": "comfy kitchen attention" }
+  },
+  "clip": {
+    "class_type": "CLIPLoader",
+    "inputs": { "clip_name": "$clip", "type": "krea2", "device": "default" }
+  },
+  "vae": { "class_type": "VAELoader", "inputs": { "vae_name": "$vae" } },
+  "text": {
+    "class_type": "CLIPTextEncode",
+    "inputs": { "clip": ["clip", 0], "text": "$prompt" }
+  },
+  "negative": { "class_type": "ConditioningZeroOut", "inputs": { "conditioning": ["text", 0] } },
+  "latent": {
+    "class_type": "EmptyLatentImage",
+    "inputs": { "width": "$width", "height": "$height", "batch_size": 1 }
+  },
+  "sampler": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": ["attention", 0],
+      "seed": "$seed",
+      "steps": "$steps",
+      "cfg": "$cfg",
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "positive": ["text", 0],
+      "negative": ["negative", 0],
+      "latent_image": ["latent", 0],
+      "denoise": 1
+    }
+  },
+  "decode": {
+    "class_type": "VAEDecode",
+    "inputs": { "samples": ["sampler", 0], "vae": ["vae", 0] }
+  },
+  "save": { "class_type": "SaveImageWebsocket", "inputs": { "images": ["decode", 0] } }
+}

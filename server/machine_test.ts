@@ -53,7 +53,7 @@ Deno.test('backendOf: the preferred Backend if it can, else the next listed that
   // A Mac renders here what mflux has (Qwen-Image 2.1 on both).
   assertEquals(render('qwen-image-2.1'), 'here')
   // A PC can't run mflux: Qwen-Image on its ComfyUI, mflux's own models nowhere.
-  assertEquals([render('qwen-image-2.1', pc), render('krea-2', pc)], ['pc', undefined])
+  assertEquals([render('qwen-image-2.1', pc), render('boogu-image-turbo', pc)], ['pc', undefined])
   // Upscale on the PC, as preferred, though here could.
   assertEquals(backendOf({ kind: 'upscale' }, now, mac)?.id, 'pc')
   // Voices here, or on the first ComfyUI where there's no voice service.

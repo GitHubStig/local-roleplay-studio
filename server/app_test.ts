@@ -156,6 +156,8 @@ Deno.test('GET /api/settings/options lists Text and Image Models', async () => {
     'fibo-2.0',
     'fibo-2.0-turbo',
     'z-image-turbo',
+    'krea-2',
+    'krea-2-lora',
   ])
 })
 
