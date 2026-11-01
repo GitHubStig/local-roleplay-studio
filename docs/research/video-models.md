@@ -2,6 +2,12 @@
 
 Measurements behind clips ([ADR 0025](../adr/0025-clips-by-kind.md)); what's still to do is in [open-threads.md](../open-threads.md), "Clips". Newest first.
 
+## Names in clip prompts (2026-11-01, Windows PC)
+
+A clip prompt should call people by how they look: the video model sees two people in the picture and can't know which is "Kael". The system message says so, but Play out and Into Next are given the Frame's story as already happened, and Into Next the next Frame's too, both naming people, and the names were copied. Measured on the tavern Roleplay's five Frames through the running app, the Text Model gemma-4 12B (heretic, Q4_K_M) on Ollama, one prompt of each kind per Frame, 5 s, no speech: 4 of 19 named someone, all in those two kinds (1 of 5 Play outs, 3 of 4 Into Nexts; none of the Lead Ins or Idle Loops), as on the Mac on 2026-10-29 (3 of 4 Into Nexts, below).
+
+So a sentence now follows each story where it's given (`video/clip-story-done.md`, `video/clip-next.md`): the video model doesn't know the names, so call each person by how they look. The names stay in what the Text Model reads, as the picture's Image Prompt pairs each with a look, which is how it knows who's who. Then: 0 of 18 (Play out and Into Next on every Frame, twice), and the retelling kept the same beats in the same order, the names swapped for descriptions ("the woman in the high-collared dress"). Not tried: whether a named prompt actually makes a worse clip, on any of the video models.
+
 ## Into Next between pictures that don't agree: an LTX problem (the owner, 2026-11-01)
 
 A Roleplay's Art Agent writes each Frame's Image Prompt afresh, so two Frames' pictures show the room differently, where a Chain's, edited from the last prompt, agree (below). With LTX 2.5 the owner spent hours on Into Next prompts and clips between a Roleplay's pictures: whatever the prompt, LTX took them for two parts of the same place and walked the people out of the first frame and into the second. Wan 2.2 and MiniMax H3, added since, understand the two pictures as one moment and morph between them better, so Into Next works with them. So pictures that agree aren't needed: the threads for them (making the next picture as an edit of this one, or steering its render by this one's depth map with a ControlNet) were dropped. Seen in play, not measured.
