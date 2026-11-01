@@ -16,7 +16,7 @@ const queueClip = (
 Deno.test('A Lead In is made from a Frame’s picture, kept on it, served, and undone with it', () =>
   withTempDir(async (root) => {
     const video = fakeVideoGenerator()
-    const { call } = await chainOfTwo(root, { video })
+    const { call, handler } = await chainOfTwo(root, { video })
     const queued = await queueClip(call, 1, leadIn)
     assertEquals(queued.status, 201)
     // It keeps the Image Model of the picture it's made from.
@@ -38,6 +38,17 @@ Deno.test('A Lead In is made from a Frame’s picture, kept on it, served, and u
     const served = await call('GET', `/api/sessions/s1/images/${clip.file}`)
     assertEquals(served.headers.get('content-type'), 'video/mp4')
     await served.body?.cancel()
+    // By byte ranges, as Safari asks for them to seek in a video.
+    const part = await handler(
+      new Request(`http://localhost/api/sessions/s1/images/${clip.file}`, {
+        headers: { Range: 'bytes=0-2' },
+      }),
+    )
+    assertEquals(
+      [part.status, part.headers.get('content-type'), await part.text()],
+      [206, 'video/mp4', 'mp4'],
+    )
+    assertMatch(part.headers.get('content-range')!, /^bytes 0-2\/\d+$/)
     await call('DELETE', '/api/sessions/s1/frames/1')
     assertEquals((await call('GET', `/api/sessions/s1/images/${clip.file}`)).status, 404)
   }))

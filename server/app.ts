@@ -1,4 +1,5 @@
 import { extname, join } from '@std/path'
+import { serveFile } from '@std/http/file-server'
 import { error, isJson, json, readJson, type Route } from './http.ts'
 import type { ImageGenerator } from './images/imageGenerator.ts'
 import {
@@ -1500,21 +1501,16 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       return json({ folder, pictures })
     }],
 
-    ['GET', new URLPattern({ pathname: '/api/sessions/:id/images/:file' }), async (_req, p) => {
+    // Served by byte ranges where asked: Safari won't seek in a video (a clip) without them.
+    ['GET', new URLPattern({ pathname: '/api/sessions/:id/images/:file' }), async (req, p) => {
       if (![IMAGE_FILE, AUDIO_FILE, SCENE_FILE, CLIP_FILE].some((f) => f.test(p.file!))) {
         return error('Not found', 404)
       }
-      try {
-        const data = await Deno.readFile(join(deps.sessions.dir(p.id!), p.file!))
-        return new Response(data, {
-          headers: {
-            'Content-Type': CONTENT_TYPES[extname(p.file!)],
-            'Cache-Control': 'private, max-age=31536000, immutable',
-          },
-        })
-      } catch {
-        return error('Not found', 404)
-      }
+      const res = await serveFile(req, join(deps.sessions.dir(p.id!), p.file!))
+      if (res.status === 404) return error('Not found', 404)
+      res.headers.set('Content-Type', CONTENT_TYPES[extname(p.file!)])
+      res.headers.set('Cache-Control', 'private, max-age=31536000, immutable')
+      return res
     }],
   ]
 
