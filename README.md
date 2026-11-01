@@ -38,7 +38,7 @@ The default Image Model is **Qwen-Image 2.1**. Choose a backend on the Images ta
 - [**mflux**](https://github.com/mflux-community/mflux) (Apple Silicon Macs; mflux 0.23+): FLUX.2 Klein 4B and 9B, FLUX.3 Klein, Z-Image Turbo and Z-Image, Krea 2 and Krea 2 + LoRA, ERNIE-Image Turbo, Boogu Image Turbo, Qwen-Image 2.1, Qwen-Image 2.1 Turbo, Qwen-Image 2.1 Viggle Turbo, Ming-Image 0.1 Design, MOSS-Image (needs a release after mflux 0.24.0, which renders black from long prompts), FIBO 1.5, FIBO 2.0 Dev and Turbo, and Ideogram 4.
 - [**ComfyUI**](https://www.comfy.org) (any machine): Qwen-Image 2.1, Qwen-Image 2.1 Turbo, FLUX.2 Klein 4B, FLUX.3 Klein, Ming-Image 0.1 Design, MOSS-Image, FIBO 2.0 Dev and Turbo, and Z-Image Turbo. ComfyUI must be installed and running; it can be on another machine.
 
-**Image edits:** Qwen-Image 2.1 Edit on mflux or ComfyUI; FLUX.3 Klein Edit, FIBO 2.0 Dev Edit, and FIBO 2.0 Edit Turbo on ComfyUI.
+**Image edits:** Qwen-Image 2.1 Edit and Qwen-Image 2.1 Turbo Edit on mflux or ComfyUI; FLUX.3 Klein Edit, FIBO 2.0 Dev Edit, and FIBO 2.0 Edit Turbo on ComfyUI.
 
 **Upscaling:** SeedVR2 7B or 3B on either backend.
 

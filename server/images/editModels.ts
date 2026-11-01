@@ -16,7 +16,7 @@ export const EDIT_MODELS = [
   {
     id: 'qwen-image-2.1-turbo-edit',
     label: 'Qwen-Image 2.1 Turbo Edit',
-    backends: ['mflux'],
+    backends: ['mflux', 'comfyui'],
     prompting: 'Takes an instruction: say what to paint there, terse or described.',
   },
   {
