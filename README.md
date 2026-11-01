@@ -66,7 +66,7 @@ For Roleplay Characters, two models: Qwen3-TTS VoiceDesign designs a voice from 
 
 ### Clips (optional)
 
-A Frame's picture made into a few seconds of video, from its Frame tab (ADR 0025). The Video model (Settings, Clips tab; LTX 2.5 for now) runs on a ComfyUI, chosen there under **Clips on** (until one is, the one pictures go to, or else the first on the Machines tab). Install its files from ComfyUI's own **LTX 2.5** template (Templates, then Download all: the 22B distilled transformer, the Gemma 4 text encoder and the video and audio VAEs); the Clips tab says whether that ComfyUI has them. A 5-second clip takes about two and a half minutes on an RTX 4070 with 12 GB. Not tried on a Mac yet.
+A Frame's picture made into a few seconds of video, from its Frame tab (ADR 0025). Three video models run on a ComfyUI with an NVIDIA card: **LTX 2.5**, the Default video model (Settings, Clips tab), with its own sound; **Wan 2.2 14B**, silent, nearest the picture; and **MiniMax H3 (turbo)**, with its own sound. Any of them can be picked for a clip in its Frame's Clip section, each keeping its own clip of a kind (ADR 0026). They run on the ComfyUI chosen under **Clips on** (until one is, the one pictures go to, or else the first on the Machines tab), so a Mac can send its clips to a PC's. Install each model's files from ComfyUI's own template (Templates, then Download all): **LTX 2.5** first–last-frame, **Wan 2.2 14B** first–last-frame, and **MiniMax H3** image-to-video; the Clips tab says which files that ComfyUI is missing. On an RTX 4070 with 12 GB, a 5-second clip takes about two minutes with LTX 2.5, a minute and a half with Wan 2.2, and a minute and three quarters with H3. ComfyUI on a Mac isn't pursued for clips.
 
 ### 3D (optional)
 
