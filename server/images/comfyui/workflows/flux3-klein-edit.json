@@ -1,8 +1,12 @@
 {
-  "_note": "FLUX.3 Image Klein (the distilled 'sd' checkpoint) editing a picture (ADR 0021), from ComfyUI's template image_flux3_klein_distilled_image_edit (16 steps, CFG 1, euler, simple), without its prompt upsampler, and with the reference kept at its own size rather than resized to 1 MP. The picture is <ref_image_0> (ReferenceMultiLatent); the prompt names each painted area as a box (prompts/images/flux3-edit.md), and the painted area is the latent's noise mask, so the sampler repaints only it; the picture is then pasted back outside it (ImageCompositeMasked). With CFG 1 the negative is never used, so it's zeroed rather than encoded. With nothing painted, comfyui.ts drops mask, encode, masked and composite, and the whole picture is repainted. $names are filled in by server/images/comfyui/comfyui.ts.",
+  "_note": "FLUX.3 Image Klein (the distilled 'sd' checkpoint) editing a picture (ADR 0021), from ComfyUI's template image_flux3_klein_distilled_image_edit (16 steps, CFG 1, euler, simple), without its prompt upsampler, and with the reference kept at its own size rather than resized to 1 MP. The picture is <ref_image_0> (ReferenceMultiLatent); the prompt names each painted area as a box (prompts/images/flux3-edit.md), and the painted area is the latent's noise mask, so the sampler repaints only it; the picture is then pasted back outside it (ImageCompositeMasked). With CFG 1 the negative is never used, so it's zeroed rather than encoded. With nothing painted, comfyui.ts drops mask, encode, masked and composite, and the whole picture is repainted. $names are filled in by server/images/comfyui/comfyui.ts. Attention is Comfy Kitchen's int8 (ModelAttentionBackend), as Ming-Image's template has it: less time sampling on an NVIDIA card (docs/research/image-models.md), PyTorch's attention where it can't run, as on a Mac.",
   "unet": {
     "class_type": "UNETLoader",
     "inputs": { "unet_name": "$unet", "weight_dtype": "default" }
+  },
+  "attention": {
+    "class_type": "ModelAttentionBackend",
+    "inputs": { "model": ["unet", 0], "attention": "comfy kitchen attention" }
   },
   "clip": {
     "class_type": "CLIPLoader",
@@ -34,7 +38,7 @@
   "sampler": {
     "class_type": "KSampler",
     "inputs": {
-      "model": ["unet", 0],
+      "model": ["attention", 0],
       "seed": "$seed",
       "steps": "$steps",
       "cfg": 1,
