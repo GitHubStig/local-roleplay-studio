@@ -54,14 +54,18 @@ export function useImageModels() {
       byOf(picture),
     ]
   }
-  /** "Render by Krea 2 · mflux": what a job is called, with the Image Model a render goes by. */
+  /** A video model's name, or its id until the names load. */
+  const videoLabelOf = (id: string) =>
+    options.value?.videoModels.find((m) => m.id === id)?.label ?? id
   /**
-   * A job as the queue names it: "Render by Krea 2 · mflux"; a clip by its kind and length, and
-   * whose picture it's made from, "Lead In clip, 5 s · Krea 2's picture".
+   * A job as the queue names it: "Render by Krea 2 · mflux"; a clip by its kind and length, its video
+   * model (when ordered with one) and whose picture it's made from, "Lead In clip, 5 s by LTX 2.5 ·
+   * Krea 2's picture".
    */
   const jobName = (job: Job) =>
     job.kind === 'clip' && job.clip
       ? `${CLIP_KIND_NAMES[job.clip.kind]} clip, ${job.clip.seconds} s` +
+        (job.clip.model ? ` by ${videoLabelOf(job.clip.model)}` : '') +
         (job.image ? ` · ${labelOf(job.image.imageModel)}'s picture` : '')
       : JOB_NAMES[job.kind] +
         (job.image

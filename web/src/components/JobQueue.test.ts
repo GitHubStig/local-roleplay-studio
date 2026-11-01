@@ -1,11 +1,17 @@
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
-import type { Job } from '../api'
+import type { Job, SettingsOptions } from '../api'
 import JobQueue from './JobQueue.vue'
 
 vi.mock('../api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../api')>()),
-  getSettingsOptions: vi.fn(() => new Promise(() => {})),
+  getSettingsOptions: vi.fn(() =>
+    Promise.resolve(
+      {
+        videoModels: [{ id: 'ltx-2.5', label: 'LTX 2.5', sound: true }],
+      } as unknown as SettingsOptions,
+    )
+  ),
 }))
 
 const clipJob: Job = {
@@ -15,14 +21,17 @@ const clipJob: Job = {
   status: 'queued',
   createdAt: '',
   image: { imageModel: 'boogu-image-turbo', steps: 8 },
-  clip: { kind: 'lead-in', prompt: 'She walks in.', seconds: 5, speech: false },
+  clip: { kind: 'lead-in', prompt: 'She walks in.', seconds: 5, speech: false, model: 'ltx-2.5' },
 } as Job
 
 describe('JobQueue', () => {
-  it("names a clip by its kind, length and whose picture it's of, and hands it on when clicked", async () => {
+  it("names a clip by its kind, length, video model and whose picture it's of, and hands it on when clicked", async () => {
     const wrapper = mount(JobQueue, { props: { jobs: [clipJob], empty: '' } })
+    await flushPromises()
     const item = wrapper.find('[data-queue-item] button')
-    expect(item.text()).toContain("Lead In clip, 5 s · boogu-image-turbo's picture · Frame 3")
+    expect(item.text()).toContain(
+      "Lead In clip, 5 s by LTX 2.5 · boogu-image-turbo's picture · Frame 3",
+    )
     await item.trigger('click')
     expect(wrapper.emitted('clip')).toEqual([[clipJob]])
   })
