@@ -1,11 +1,6 @@
 # Windows, and backends other than Ollama and mflux (2026-10-06 to 2026-10-07)
 
-The record of taking the app from a Mac only to Windows with an NVIDIA card: the plan and how each
-step went, the first Windows run, the Text Model's context length on both machines, and the audit of
-the AI services' interfaces that started it. Moved here from [open-threads.md](../open-threads.md)
-on 2026-10-07, once done; what's left is there, under "Windows: what's left". ComfyUI's own
-findings are in [comfyui.md](comfyui.md); SHARP, TripoSplat and LiTo on Windows in
-[image-to-3d.md](image-to-3d.md).
+The record of taking the app from a Mac only to Windows with an NVIDIA card: the plan and how each step went, the first Windows run, the Text Model's context length on both machines, and the audit of the AI services' interfaces that started it. Moved here from [open-threads.md](../open-threads.md) on 2026-10-07, once done. What was left there closed on 2026-11-01: LiTo stays on the Mac ([ADR 0028](../adr/0028-lito-on-the-mac-only.md)), Linux, never run, was dropped from the threads, and the PC's slower voices were left as they are ([comfyui.md](comfyui.md)); only TTS Audio Suite's registry release is still an open thread. ComfyUI's own findings are in [comfyui.md](comfyui.md); SHARP, TripoSplat and LiTo on Windows in [image-to-3d.md](image-to-3d.md).
 
 ## The plan, and how it went
 
