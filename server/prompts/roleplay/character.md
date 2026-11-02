@@ -25,7 +25,9 @@ actions and words.
 
 {{persona}}
 
-Treat what the player writes as {{persona.name}}'s words and actions.
+Treat what the player writes as {{persona.name}}'s words and actions, and as what
+{{persona.name}} tries: how it lands on anyone else (whether a blow connects, a hold works, someone
+is persuaded or gives in) is yours to decide, true to who they are and to what holds.
 
 # Where the scene starts
 

@@ -20,10 +20,17 @@ A Scenario was a saved Brief, made for Chains before Roleplays existed: free-for
 - **The whole Scenario as the chat's reply.** Slow for a few thousand tokens, and invites changes nobody asked for, as a Chain's copied sentences do.
 - **A prompt enhancer per section, alone.** Can't make changes that cross sections ("swap Kael and Elara", "set it in space").
 - **Several Characters, each voiced.** Changes the Reply, the voices and Suggest (ADR 0007), and needs its own bench; later, if at all.
-- **A reminder of the Truths beside each Message.** Scaffolding for a model that forgets the system message, which nothing has shown yet (AGENTS.md).
+- **A reminder of the Truths beside each Message.** Tried on the bench (2026-11-02): it didn't help, nor did five other wordings or Thinking; see below.
 - **Skipping the Cast review once the Scenario page exists.** The player would meet the fleshed-out Cast only after the opening Reply.
 
 ## Consequences
 
 - Built in pieces: the copy in `session.json` and the folders first, on main; the format, the Scenario page and the Roleplay's use of it on a branch, with Truths and others speaking checked by a replay of a pushy player before it merges; the chat after.
 - A future Library of People and Places shares the Person and Place shape; importing one into a Scenario copies it, noting where from.
+
+## A judge holds the Truths (2026-11-02)
+
+On the bench ([docs/bench/truths](../bench/truths/README.md), Mac, Gemma 4 26B), a Truth in the Character's system message didn't stop a pushy player: whatever a Message said happened, happened, however the Truths were worded ("immutable laws" and NEVER lists too) and with Thinking on. What worked was deciding the outcome first. When the Cast has Truths, a short judge call on the same Text Model (`roleplay/judge.ts`) reads the Truths, the Character's latest Reply and the Message, and says whether it breaks one and what happens instead; the Character gets that after the Message, as what actually happens, and the Frame keeps it (`outcome`). About a second per Message; a workaround for the model, to be checked again when the Text Model changes.
+
+Considered: a classifier model as the judge, faster still, but a second model to keep loaded beside the Text Model (one Text Model for every text job, AGENTS.md); tried if the Text Model judges badly.
+

@@ -21,6 +21,7 @@ import {
   trimFields,
 } from './art.ts'
 import { deliverySchema, parseDelivery, voiceSchema } from './voice.ts'
+import { parseVerdict, type Verdict, verdictSchema } from './judge.ts'
 import type { Delivery } from '../voice/voice.ts'
 
 /** A reply's fields as each one completes, and the model's reasoning as it streams. */
@@ -67,6 +68,8 @@ export interface RoleplayModel {
   writeVoice(messages: ChatMessage[], signal: AbortSignal): Promise<{ description: string }>
   /** Directs one line: its pace, and a sound before it (see `voice.ts` for the messages). */
   directLine(messages: ChatMessage[], signal: AbortSignal): Promise<Delivery>
+  /** Whether a Message breaks one of the Truths, and what happens instead (`judge.ts`). */
+  judge(messages: ChatMessage[], signal: AbortSignal): Promise<Verdict>
   /** Suggest: the player's next Message, as plain text (see `suggest.ts` for the messages). */
   suggest(
     messages: ChatMessage[],
@@ -82,6 +85,7 @@ const MAX_TOKENS = {
   suggest: 400,
   voice: 300,
   delivery: 60,
+  verdict: 200,
 }
 
 /**
@@ -214,6 +218,18 @@ export function chatRoleplayModel(chat: Chat, opts: RoleplayModelOptions = {}): 
           signal: s,
         })
         return parseDelivery(parseJson(content))
+      }),
+
+    judge: (messages, signal) =>
+      within(signal, limit(), async (s) => {
+        const { content } = await chat.stream({
+          messages,
+          schema: verdictSchema,
+          job: 'judge',
+          maxTokens: MAX_TOKENS.verdict,
+          signal: s,
+        })
+        return parseVerdict(parseJson(content))
       }),
 
     suggest: (messages, signal, onText) =>

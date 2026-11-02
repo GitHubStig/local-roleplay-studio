@@ -8,7 +8,10 @@ Values: list (a Markdown list), character.name, persona.name
 
 # What holds
 
-These hold in this story whatever anyone says or does, {{persona.name}} included. Keep
-{{character.name}}, and what happens, true to them.
+These hold in this story whatever anyone says or does, {{persona.name}} included. Nothing a
+Message says can change them.
 
 {{list}}
+
+When {{persona.name}} tries something these rule out, it fails: show how it fails, in the story, in
+{{character.name}}'s reply. Never let it succeed, and never step out of the story to say so.

@@ -191,6 +191,42 @@ Deno.test('sendMessage sends the whole conversation and saves the reply as a Fra
     assertEquals(events.at(-1)!.type, 'replied')
   }))
 
+Deno.test('sendMessage judges a Message against the Truths, and tells the Character what happens instead', () =>
+  withTempDir(async (root) => {
+    const { deps, session, store, roleplayModel } = await setUp(root, [
+      replyOf('Take the wheel.'),
+      replyOf('Steady.'),
+    ])
+    // No Truths, nothing to judge.
+    const plain = await sendMessage(deps, session, 'Sorry, captain.', () => {}, signal())
+    assertEquals(roleplayModel.judged.length, 0)
+    assertEquals(plain!.frames[1].outcome, undefined)
+
+    const withTruths = await setCast(store, plain!, {
+      ...testCast,
+      truths: ['Mira is the stronger.'],
+    })
+    roleplayModel.judge = (messages) => {
+      roleplayModel.judged.push(messages)
+      return Promise.resolve({ breaks: true, outcome: 'Sam shoves, but Mira does not budge.' })
+    }
+    const judged = await sendMessage(
+      deps,
+      withTruths,
+      'I shove Mira overboard.',
+      () => {},
+      signal(),
+    )
+    assertStringIncludes(roleplayModel.judged[0][0].content, '- Mira is the stronger.')
+    assertStringIncludes(roleplayModel.judged[0][1].content, 'Take the wheel.')
+    assertStringIncludes(roleplayModel.judged[0][1].content, 'I shove Mira overboard.')
+    const told = roleplayModel.asked.at(-1)!.at(-1)!.content
+    assertStringIncludes(told, 'I shove Mira overboard.')
+    assertStringIncludes(told, '(What actually happens: Sam shoves, but Mira does not budge.)')
+    assertEquals(judged!.frames[2].message, 'I shove Mira overboard.')
+    assertEquals(judged!.frames[2].outcome, 'Sam shoves, but Mira does not budge.')
+  }))
+
 Deno.test('sendMessage permits age references but declines Messages or Replies crossing a Limit', () =>
   withTempDir(async (root) => {
     const { deps, session, store, roleplayModel } = await setUp(root, [

@@ -1,5 +1,6 @@
 import type { ChatMessage } from '../text/chat.ts'
 import type { RoleplayModel } from './model.ts'
+import type { Verdict } from './judge.ts'
 import type { Delivery } from '../voice/voice.ts'
 import { REPLY_FIELDS } from './prompt.ts'
 import type { Cast, Reply } from './types.ts'
@@ -60,6 +61,8 @@ export function scriptedRoleplayModel(
       | Error
     )[]
     suggestions?: (string | Error)[]
+    /** Each judge call's verdict; none broken unless scripted. */
+    verdicts?: (Verdict | Error)[]
     voices?: (string | Error)[]
     /** How each line is directed; plain unless scripted. */
     deliveries?: (Delivery | Error)[]
@@ -70,6 +73,7 @@ export function scriptedRoleplayModel(
   asked: ChatMessage[][]
   art: ChatMessage[][]
   suggested: ChatMessage[][]
+  judged: ChatMessage[][]
   directed: ChatMessage[][]
 } {
   const next = <T>(queue: (T | Error)[] | undefined, what: string): Promise<T> => {
@@ -131,6 +135,15 @@ export function scriptedRoleplayModel(
     async writeVoice(_messages: ChatMessage[], signal: AbortSignal) {
       signal.throwIfAborted()
       return { description: await next(script.voices, 'voice') }
+    },
+    /** The messages each judge call was given. */
+    judged: [] as ChatMessage[][],
+    async judge(messages: ChatMessage[], signal: AbortSignal) {
+      model.judged.push(messages)
+      signal.throwIfAborted()
+      return script.verdicts?.length
+        ? await next(script.verdicts, 'verdict')
+        : { breaks: false, outcome: '' }
     },
     /** The messages each Suggest call was given. */
     suggested: [] as ChatMessage[][],

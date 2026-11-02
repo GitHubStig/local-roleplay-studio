@@ -6,6 +6,9 @@ import { testCast } from './roleplay/testing.ts'
 const PROMPTS: [string, Record<string, unknown>][] = [
   ['roleplay/character', { ...testCast, truths: '', limits: 'Limits.' }],
   ['roleplay/truths', { ...testCast, list: '- Mira is the stronger.' }],
+  ['roleplay/judge', { ...testCast, truths: '- Mira is the stronger.' }],
+  ['roleplay/judge-request', { ...testCast, last: 'Take the wheel.', message: 'I shove her.' }],
+  ['roleplay/message', { message: 'I shove her.', outcome: 'She does not budge.' }],
   ['roleplay/opening-request', { ...testCast }],
   ['roleplay/cast', { limits: 'Limits.' }],
   ['roleplay/cast-request', { brief: 'A storm at sea.', facts: 'none' }],

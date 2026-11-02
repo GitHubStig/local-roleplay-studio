@@ -20,6 +20,7 @@ import type { RoleplayModel } from './model.ts'
 import { GoneError, updateSession } from './update.ts'
 import { allPictureFiles, removeFiles } from '../pictures.ts'
 import { CastError, openingMessages, parseCast, roleplayMessages } from './prompt.ts'
+import { judgeMessages } from './judge.ts'
 import { artFrameMessages, artLookMessages, isLook, pictured, withNewcomers } from './art.ts'
 import { cleanLook, lookLimit, renameShown } from '../look.ts'
 import type { Cast, Reply, RoleplayFrame, RoleplaySession } from './types.ts'
@@ -140,6 +141,7 @@ async function commit(
   reply: Reply & { thinking?: string },
   start: number,
   emit: (event: RoleplayEvent) => void,
+  outcome = '',
 ): Promise<RoleplaySession> {
   const { thinking, ...fields } = reply
   let frame!: RoleplayFrame
@@ -148,6 +150,7 @@ async function commit(
       index: latest.frames.length,
       message,
       reply: fields,
+      ...(outcome ? { outcome } : {}),
       ...(thinking ? { thinking } : {}),
       timings: { text: secondsSince(start) },
       pictures: [],
@@ -182,7 +185,13 @@ export async function sendMessage(
     return null
   }
 
-  const messages = await roleplayMessages(session, message)
+  // With Truths, a judge decides first whether the Message breaks one (`judge.ts`).
+  const judging = await judgeMessages(session, message)
+  const verdict = judging
+    ? await withRetry(() => deps.roleplayModel.judge(judging, signal), signal, emit)
+    : null
+  signal.throwIfAborted()
+  const messages = await roleplayMessages(session, message, verdict?.outcome)
   const reply = await withRetry(
     (onThinking) =>
       deps.roleplayModel.reply(messages, signal, {
@@ -201,7 +210,7 @@ export async function sendMessage(
     })
     return null
   }
-  return await commit(deps, session, message, reply, start, emit)
+  return await commit(deps, session, message, reply, start, emit, verdict?.outcome)
 }
 
 /**

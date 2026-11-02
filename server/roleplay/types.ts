@@ -65,6 +65,11 @@ export interface RoleplayFrame {
   index: number
   message: string | null
   reply: Reply
+  /**
+   * What happened instead, when the judge found the Message broke one of the Truths (`judge.ts`);
+   * the Character was told it with the Message.
+   */
+  outcome?: string
   /** The Text Model's reasoning, when thinking was on. */
   thinking?: string
   /** Seconds the reply took. */

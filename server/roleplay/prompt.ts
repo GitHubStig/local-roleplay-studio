@@ -48,6 +48,8 @@ export const replyContent = (reply: Reply) =>
 export async function roleplayMessages(
   session: RoleplaySession,
   message: string,
+  /** What happens instead, when the judge found the Message breaks a Truth (`judge.ts`). */
+  outcome = '',
 ): Promise<ChatMessage[]> {
   if (!session.cast) throw new Error('This Roleplay has not been set up')
   const messages = await openingMessages(session.cast)
@@ -55,7 +57,10 @@ export async function roleplayMessages(
     if (frame.message !== null) messages.push({ role: 'user', content: frame.message })
     messages.push({ role: 'assistant', content: replyContent(cleanReply(frame.reply)) })
   }
-  messages.push({ role: 'user', content: message })
+  messages.push({
+    role: 'user',
+    content: outcome ? await loadPrompt('roleplay/message', { message, outcome }) : message,
+  })
   return messages
 }
 
@@ -83,7 +88,7 @@ export const replySchema = () => ({
   required: [...REPLY_FIELDS],
 })
 
-const str = (v: unknown) => (typeof v === 'string' ? v.trim() : '')
+export const str = (v: unknown) => (typeof v === 'string' ? v.trim() : '')
 
 /** Reads a Reply; throws if it has neither actions nor dialogue. */
 export function parseReply(value: unknown): Reply {
