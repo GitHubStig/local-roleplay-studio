@@ -47,7 +47,7 @@ Workarounds the benches showed were needed. Check each again when the Text Model
 Every Image Model reads the nine aspects in the same order (subject and identity → pose → expression → camera → clothing → environment → lighting → color → art style). A Chain's Image Prompt is nine sentences; a Storyboard Frame's or a Roleplay picture's is the Look's identity of each person shown, the seven sentences the Text Model wrote for that Frame, then the Look's art style, so it grows with each person in it ([CONTEXT.md](../CONTEXT.md), "Image Prompt"). The style comes last, so a model that cuts the prompt loses the style first.
 
 - **ComfyUI cuts nothing**: every text encoder the app uses there reads the whole prompt (ComfyUI 0.41.1).
-- **mflux cuts at a fixed length** (counted on mflux 0.22, template included): FLUX.2 Klein 4B and 9B and Z-Image (Turbo and full) at **512 tokens**, which the longest Roleplay pictures (~520) already pass; Krea 2 and Boogu at 1024; Qwen-Image 2.1 (and its Viggle Turbo) and ERNIE at 2048; Ming-Image and FIBO 1.5's prose not at all; Ideogram 4 fails past 2048 rather than cutting. FLUX.3 Klein, MOSS-Image and FIBO 2.0 on mflux are not counted yet.
+- **mflux cuts at a fixed length** (counted on mflux 0.22, template included): FLUX.2 Klein 4B and 9B and Z-Image (Turbo and full) at **512 tokens**, which the longest Roleplay pictures (~520) already pass; Krea 2 and Boogu at 1024; Qwen-Image 2.1 (and its Viggle Turbo) and ERNIE at 2048; Ming-Image and FIBO 1.5's prose not at all; Ideogram 4 fails past 2048 rather than cutting. Iris-3B and its Turbo at 300 (mflux's own setting, not counted; a longer prompt renders without an error). FLUX.3 Klein, MOSS-Image and FIBO 2.0 on mflux are not counted yet.
 - A Text Model's pictures run 140–380 words (about 1.7× more from Qwen3.8 than Gemma 4 26B), and the app enforces only the 280-character cap per sentence (`FIELD_LENGTH`, `server/roleplay/art.ts`).
 
 Details, and when to count again: [research/image-models.md](research/image-models.md#how-much-of-the-image-prompt-each-model-reads-2026-10-09).
@@ -69,6 +69,8 @@ Details, and when to count again: [research/image-models.md](research/image-mode
 | Krea 2 (`krea-2`), and Krea 2 + LoRA (`krea-2-lora`) | both | 8 | 84–85 s | 17 s | 34.3 GB | stages people best; the LoRA (Quiho's refusal reduction, 0.8) costs nothing more; int8 on the PC |
 | ERNIE-Image Turbo (`ernie-image-turbo`) | mflux | 8 | 52 s | – | 23.1 GB | |
 | Boogu Image Turbo (`boogu-image-turbo`) | mflux | 4 | 34 s | – | 25.2 GB | |
+| Iris-3B Turbo (`iris-3b-turbo`) | mflux | 4 | 9 s | – | 7.4 GB | the fastest and lightest on the Mac; paints in pixels, no VAE; reads 300 tokens; one render tried (2026-11-02) |
+| Iris-3B (`iris-3b`) | mflux | 30 (mflux's 100) | 102 s (336 s at 100) | – | 8.4 GB | Turbo's undistilled base, with real guidance (3); more of an oil painting than Turbo; reads 300 tokens; one prompt tried (2026-11-02) |
 | Ming-Image 0.1 Design (`ming-image`) | both | 12 | 41–43 s | 17 s | 18.5 GB | a design model: lettering right; a signature mark on the PC |
 | MOSS-Image (`moss-image`) | both | 50 on mflux, 25 on ComfyUI | **black** on mflux 0.24.0 | 26–28 s | 26.8 GB | the closest to the words on the PC; on the Mac, waiting for mflux 0.24.1 |
 | FIBO 1.5 (`fibo-1.5`, 8-bit) | mflux | 6 | 131 s | – | 37.3 GB | its VLM writes a JSON caption first (most of the time); quotes sent curly |

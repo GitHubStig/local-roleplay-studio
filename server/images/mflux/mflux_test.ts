@@ -525,6 +525,26 @@ Deno.test('mfluxArgs runs ERNIE-Image Turbo and Boogu Image Turbo from the saved
   }
 })
 
+Deno.test('mfluxArgs runs Iris-3B Turbo at its own 4 steps, and its base at any, from the saved copies', () => {
+  const args = mfluxArgs(findMfluxModel('iris-3b-turbo')!, request('/d'), 'o.png')
+  assertEquals(args.slice(0, 4), [
+    '--model',
+    'mflux-community/iris-3b-turbo-mflux-bf16',
+    '--base-model',
+    'iris-3b',
+  ])
+  assertEquals(args.includes('--steps'), false)
+  // The base from its own copy, at the steps Settings give.
+  const base = mfluxArgs(findMfluxModel('iris-3b')!, request('/d'), 'o.png')
+  assertEquals(base.slice(0, 4), [
+    '--model',
+    'mflux-community/iris-3b-mflux-bf16',
+    '--base-model',
+    'iris-3b-base',
+  ])
+  assertEquals(base.slice(base.indexOf('--steps'), base.indexOf('--steps') + 2), ['--steps', '3'])
+})
+
 Deno.test('mfluxArgs runs Krea 2, and Krea 2 + LoRA, from the saved copy', () => {
   for (const id of ['krea-2', 'krea-2-lora']) {
     const args = mfluxArgs(findMfluxModel(id)!, request('/d', { steps: 8 }), 'o.png')

@@ -185,6 +185,25 @@ Added as `fibo-2.0-turbo`: Bria's **Edit Turbo** checkpoint (Dev distilled to 4 
 - **The app's entry**: no `--expand-prompt`, and a single step preset (4), so Settings' Steps, whatever they are, render at 4. mflux's own default guidance of 1 isn't passed.
 - **Not tried**: more prompts and seeds, Quantize or the q8 copy (13.4 GB), a LoRA, keeping people consistent across Frames, and the edit command with it ([open-threads.md](../open-threads.md)).
 
+## Iris-3B and its Turbo on mflux (2026-11-02, Mac): a picture in 9 s, or 102 s from the base
+
+Added as `iris-3b-turbo`: Speridlabs' Iris-3B Turbo (Apache-2.0), a 3B model that paints in pixels rather than a VAE's latents, distilled to 4 steps without guidance, with Qwen3-VL-4B's language tower as its text encoder. `mflux-generate-iris` (mflux 0.24.0) from mflux-community's bf16 copy (`iris-3b-turbo-mflux-bf16`, 14.0 GB with the text encoder; the download and first render took 202 s). One prompt (a rain-soaked tavern, a hooded traveller at a window table, an innkeeper in a leather apron setting down a pewter mug, as an oil painting), seed 42, 832×1216, `--low-ram`:
+
+- **8.7 s from cache, peak 7.43 GB**: the fastest and lightest Image Model on the Mac.
+- **The picture**: both people, staged as asked (the innkeeper setting the mug down in front of the traveller), the rain-streaked window, the lamps, the apron; a painterly look. Rain falls inside the room as well as outside it, and the mugs are glass, not pewter.
+- **Steps**: mflux runs Turbo's fixed 4-step schedule and warns that `--steps` is ignored, so the app's single step preset passes none.
+- **Prompt length**: mflux reads 300 tokens (its `max_sequence_length`); a prompt of about 250 words, repeated, rendered in 8.6 s with no error or warning, so past that it's cut silently.
+- **The undistilled base** (`iris-3b`, mflux's `iris-3b-base`: 100 steps of a second-order solver with guidance 3, so two passes a step), from mflux-community's bf16 copy (`iris-3b-mflux-bf16`, 14.0 GB with its own copy of the text encoder; the download and first render took 526 s). Same prompt and seed, from cache, peak 8.41 GB at any steps:
+
+| Steps | Wall clock | Against 100 steps |
+|---|---|---|
+| 100 (mflux's, the upstream code's) | 336 s | – |
+| 50 | 168 s | mean difference 21.6 of 255, PSNR 16.8 dB |
+| 30 | 102 s | mean difference 25.2, PSNR 16.4 dB |
+
+- **The base's pictures** are more of an oil painting than Turbo's, with visible brushwork; the mug a lidded pewter stein at 100 steps. The step counts give different takes of one scene (the people, window, lamps and apron in the same places, poses and light changed), not a worse one at fewer steps: 30 is darker, with the innkeeper behind the table and a signature-like mark at the bottom. Rain falls indoors in every one. So the app's entry defaults to 30, with Settings' Steps free up to 100. One prompt and one seed.
+- **Not tried**: more prompts and seeds, Quantize (mflux's README: `-q 8` 8.8 GB peak with little change, `-q 4` visibly softer), and keeping people consistent across Frames.
+
 ## Viggle or Qwen's Turbo: a quick Qwen-Image 2.1 (2026-10-17)
 
 Two Image Models render Qwen-Image 2.1 in about half its time: **Viggle's turbo LoRA** on it (`qwen-image-2.1-viggle`, 6 steps) and **Qwen's own distilled Turbo** (`qwen-image-2.1-turbo`, 8 steps). Compared on the Mac (mflux 0.23) on the Chain of 31 Frames that the style scores were chosen on, each Frame asking for an art style of its own, all three rendered from the same Image Prompts and seed, then embedded for the Compare dialog's style scores ([research/style-scores.md](style-scores.md)):

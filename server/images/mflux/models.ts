@@ -144,6 +144,31 @@ export const MFLUX_MODELS: readonly MfluxModel[] = [
     defaultSteps: 4,
   },
   {
+    id: 'iris-3b-turbo',
+    label: 'Iris-3B Turbo',
+    command: 'mflux-generate-iris',
+    // Speridlabs' Iris-3B Turbo (Apache-2.0): a 3B model that paints in pixels, with no VAE, distilled
+    // to 4 steps without guidance. mflux-community's bf16 copy (14 GB with its Qwen3-VL-4B text
+    // encoder, fetched on first use); Settings' Quantize converts it as it loads. mflux reads only the
+    // first 300 tokens of a prompt.
+    model: 'mflux-community/iris-3b-turbo-mflux-bf16',
+    baseModel: 'iris-3b',
+    // It renders at 4 steps only, so no `--steps`: mflux warns that it ignores it for Turbo.
+    defaultSteps: 4,
+    stepPresets: [{ steps: 4, args: [] }],
+  },
+  {
+    id: 'iris-3b',
+    label: 'Iris-3B',
+    command: 'mflux-generate-iris',
+    // Turbo's undistilled base: real guidance (mflux's 3), so two passes a step. mflux-community's bf16
+    // copy (14 GB, its own text encoder included, fetched on first use). mflux defaults to 100 steps
+    // (336 s); 30 gave another take of the same scene, as good, in 102 s (docs/research/image-models.md).
+    model: 'mflux-community/iris-3b-mflux-bf16',
+    baseModel: 'iris-3b-base',
+    defaultSteps: 30,
+  },
+  {
     id: 'moss-image',
     label: 'MOSS-Image',
     command: 'mflux-generate-moss-image',
