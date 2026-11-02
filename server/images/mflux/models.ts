@@ -29,6 +29,11 @@ export interface MfluxModel {
    * into its JSON caption unescaped, which breaks the JSON whatever the seed.
    */
   curlyQuotes?: boolean
+  /**
+   * Its prompt while the Limits are off (`prompts/images/<name>.md`, filled with the Image Prompt):
+   * Anima's safety tags. With the Limits on, the Image Prompt as it is.
+   */
+  limitsOffPrompt?: string
   /** Takes mflux's step cache (`--step-cache-ratio`): it skips the steps that change least. */
   stepCache?: boolean
   /** Takes `--compute-precision float16`: faster on M1 and M2 Macs, the same on M4 and M5 (`chip.ts`). */
@@ -167,6 +172,31 @@ export const MFLUX_MODELS: readonly MfluxModel[] = [
     model: 'mflux-community/iris-3b-mflux-bf16',
     baseModel: 'iris-3b-base',
     defaultSteps: 30,
+  },
+  {
+    id: 'anima-turbo',
+    label: 'Anima Turbo',
+    command: 'mflux-generate-anima',
+    // CircleStone Labs' 2B model for anime and illustration, distilled: mflux's 10 steps at guidance 1
+    // (the model card's 8 to 12). mflux-community's bf16 copy (5.6 GB, fetched on first use). The prose
+    // Image Prompt goes in as it is: the card's opening tags (`masterpiece, best quality…`) changed
+    // little (docs/research/image-models.md).
+    model: 'mflux-community/anima-turbo-mflux-bf16',
+    baseModel: 'anima-turbo',
+    defaultSteps: 10,
+  },
+  {
+    id: 'anima-aesthetic',
+    label: 'Anima Aesthetic (8-bit)',
+    command: 'mflux-generate-anima',
+    // Anima's aesthetic-tuned checkpoint, undistilled: mflux's 30 steps at guidance 4 (the model card's),
+    // so two passes a step. mflux-community's saved 8-bit copy (4.0 GB; its bf16 copy had no files on
+    // 2026-11-02). No negative prompt: the card's changed almost nothing (docs/research/image-models.md).
+    model: 'mflux-community/anima-aesthetic-mflux-q8',
+    baseModel: 'anima-aesthetic',
+    preQuantized: true,
+    defaultSteps: 30,
+    limitsOffPrompt: 'anima-limits-off',
   },
   {
     id: 'moss-image',

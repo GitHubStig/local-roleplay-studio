@@ -11,6 +11,8 @@ import {
 } from '../imageGenerator.ts'
 import { pngSize } from '../../png.ts'
 import { editPrompt } from '../editPrompt.ts'
+import { limitsEnabled } from '../../limits.ts'
+import { loadPrompt } from '../../promptFiles.ts'
 import { pasteBack } from '../pasteBack.ts'
 import { float16On } from './chip.ts'
 import { findMfluxModel, type Lora, MFLUX_MODELS, type MfluxModel } from './models.ts'
@@ -321,10 +323,13 @@ export function mfluxImageGenerator(opts: MfluxOptions = {}): ImageGenerator {
         findMfluxModel(req.settings.imageModel)
       if (!model) throw new Error(`Unknown Image Model "${req.settings.imageModel}"`)
 
+      const prompt = model.limitsOffPrompt && !limitsEnabled()
+        ? await loadPrompt(`images/${model.limitsOffPrompt}`, { prompt: req.prompt })
+        : req.prompt
       const file = `${req.name}.png`
       await runCommand(
         model.command,
-        mfluxArgs(model, req, join(req.dir, file)),
+        mfluxArgs(model, { ...req, prompt }, join(req.dir, file)),
         model.label,
         signal,
         onProgress,

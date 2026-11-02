@@ -15,6 +15,7 @@ import {
 } from './mflux.ts'
 import { DEFAULT_SETTINGS } from '../../settings.ts'
 import { withTempDir } from '../../testing.ts'
+import { setLimitsEnabled } from '../../limits.ts'
 
 const request = (dir: string, extra: Partial<ImageRequest['settings']> = {}): ImageRequest => ({
   prompt: 'a studio',
@@ -411,6 +412,33 @@ echo png > "$out"`,
 )
 
 Deno.test(
+  'mfluxImageGenerator gives Anima Aesthetic its safety tags while the Limits are off',
+  unix,
+  () =>
+    withTempDir(async (dir) => {
+      // The stand-in writes the prompt it's given as the picture.
+      const fake = await fakeMflux(
+        dir,
+        'out=""; p=""; while [ $# -gt 0 ]; do [ "$1" = "--output" ] && out="$2"; ' +
+          '[ "$1" = "--prompt" ] && p="$2"; shift; done; printf %s "$p" > "$out"',
+      )
+      const anima = { ...fake, limitsOffPrompt: 'anima-limits-off' }
+      const generator = mfluxImageGenerator({ models: [anima] })
+      const prompt = async () => {
+        const file = await generator.generate(request(dir), new AbortController().signal)
+        return Deno.readTextFile(join(dir, file))
+      }
+      assertEquals(await prompt(), 'a studio')
+      setLimitsEnabled(false)
+      try {
+        assertEquals(await prompt(), 'nsfw, explicit, a studio')
+      } finally {
+        setLimitsEnabled(true)
+      }
+    }),
+)
+
+Deno.test(
   'mfluxImageGenerator surfaces the error line when mflux fails',
   unix,
   () =>
@@ -513,8 +541,8 @@ Deno.test('mfluxArgs runs FLUX.2 Klein 4B and 9B from the saved copies', () => {
   }
 })
 
-Deno.test('mfluxArgs runs ERNIE-Image Turbo and Boogu Image Turbo from the saved copies', () => {
-  for (const id of ['ernie-image-turbo', 'boogu-image-turbo']) {
+Deno.test('mfluxArgs runs ERNIE-Image Turbo, Boogu Image Turbo and Anima Turbo from the saved copies', () => {
+  for (const id of ['ernie-image-turbo', 'boogu-image-turbo', 'anima-turbo']) {
     const args = mfluxArgs(findMfluxModel(id)!, request('/d'), 'o.png')
     assertEquals(args.slice(0, 4), [
       '--model',
@@ -543,6 +571,21 @@ Deno.test('mfluxArgs runs Iris-3B Turbo at its own 4 steps, and its base at any,
     'iris-3b-base',
   ])
   assertEquals(base.slice(base.indexOf('--steps'), base.indexOf('--steps') + 2), ['--steps', '3'])
+})
+
+Deno.test('mfluxArgs runs Anima Aesthetic from its saved 8-bit copy, never quantizing it again', () => {
+  const args = mfluxArgs(
+    findMfluxModel('anima-aesthetic')!,
+    request('/d', { quantize: 8 }),
+    'o.png',
+  )
+  assertEquals(args.slice(0, 4), [
+    '--model',
+    'mflux-community/anima-aesthetic-mflux-q8',
+    '--base-model',
+    'anima-aesthetic',
+  ])
+  assertEquals(args.includes('--quantize'), false)
 })
 
 Deno.test('mfluxArgs runs Krea 2, and Krea 2 + LoRA, from the saved copy', () => {

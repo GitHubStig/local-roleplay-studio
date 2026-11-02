@@ -70,6 +70,8 @@ Details, and when to count again: [research/image-models.md](research/image-mode
 | ERNIE-Image Turbo (`ernie-image-turbo`) | mflux | 8 | 52 s | – | 23.1 GB | |
 | Boogu Image Turbo (`boogu-image-turbo`) | mflux | 4 | 34 s | – | 25.2 GB | |
 | Iris-3B Turbo (`iris-3b-turbo`) | mflux | 4 | 9 s | – | 7.4 GB | the fastest and lightest on the Mac; paints in pixels, no VAE; reads 300 tokens; one render tried (2026-11-02) |
+| Anima Turbo (`anima-turbo`) | mflux | 10 | 14 s | – | 8.1 GB | an illustration model: clean digital art, even when asked for oil paint; kept the rain outside; one prompt tried (2026-11-02) |
+| Anima Aesthetic (`anima-aesthetic`, 8-bit) | mflux | 30 | 61 s | – | 8.1 GB | Anima tuned for looks, with real guidance (4): painterly and moodier than Turbo, and staged the scene better; one prompt tried (2026-11-02) |
 | Iris-3B (`iris-3b`) | mflux | 30 (mflux's 100) | 102 s (336 s at 100) | – | 8.4 GB | Turbo's undistilled base, with real guidance (3); more of an oil painting than Turbo; reads 300 tokens; one prompt tried (2026-11-02) |
 | Ming-Image 0.1 Design (`ming-image`) | both | 12 | 41–43 s | 17 s | 18.5 GB | a design model: lettering right; a signature mark on the PC |
 | MOSS-Image (`moss-image`) | both | 50 on mflux, 25 on ComfyUI | **black** on mflux 0.24.0 | 26–28 s | 26.8 GB | the closest to the words on the PC; on the Mac, waiting for mflux 0.24.1 |

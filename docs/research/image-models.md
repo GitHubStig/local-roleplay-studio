@@ -204,6 +204,22 @@ Added as `iris-3b-turbo`: Speridlabs' Iris-3B Turbo (Apache-2.0), a 3B model tha
 - **The base's pictures** are more of an oil painting than Turbo's, with visible brushwork; the mug a lidded pewter stein at 100 steps. The step counts give different takes of one scene (the people, window, lamps and apron in the same places, poses and light changed), not a worse one at fewer steps: 30 is darker, with the innkeeper behind the table and a signature-like mark at the bottom. Rain falls indoors in every one. So the app's entry defaults to 30, with Settings' Steps free up to 100. One prompt and one seed.
 - **Not tried**: more prompts and seeds, Quantize (mflux's README: `-q 8` 8.8 GB peak with little change, `-q 4` visibly softer), and keeping people consistent across Frames.
 
+## Anima Turbo and Aesthetic on mflux (2026-11-02, Mac): illustration in 14 s, or 61 s
+
+Added as `anima-turbo`: CircleStone Labs' Anima (a 2B fine-tune of NVIDIA's Cosmos-Predict2-2B for anime and illustration, with a Qwen3-0.6B text encoder and the Qwen-Image VAE), its distilled Turbo at mflux's 10 steps and guidance 1. `mflux-generate-anima` (mflux 0.24.0) from mflux-community's bf16 copy (`anima-turbo-mflux-bf16`, 5.3 GB on disk). The tavern prompt used for Iris above, seed 42, 832×1216, `--low-ram`, two runs each:
+
+| Prompt | Wall clock from cache | Peak MLX memory |
+|---|---|---|
+| The prose Image Prompt as it is | 15.6 s, then 13.8 s | 8.13 GB |
+| With the model card's opening (`masterpiece, best quality, score_7, safe, `) | 13.9 s, then 14.0 s | 8.13 GB |
+
+- **The picture**: a clean digital illustration, like game or comic art, not the oil painting asked for. Both people staged as asked, pewter mugs, the lamps, the apron, and rain on the window only: the first model in these tests to keep it out of the room. The innkeeper pours from one mug into another rather than setting it down.
+- **The card's opening** gave a slightly cleaner take of the same picture, so the app sends the prose as it is.
+- **Prompt length**: mflux reads up to 4096 tokens (`max_sequence_length`); 512 is only the context the transformer pads to.
+- **Aesthetic** (`anima-aesthetic`): the aesthetic-tuned checkpoint, undistilled, at mflux's 30 steps and guidance 4, so two passes a step. mflux-community's bf16 copy had no files yet, so their saved 8-bit copy (`anima-aesthetic-mflux-q8`, 4.0 GB, 3.7 GB on disk). Same prompt and seed: **61.2 s**, peak 8.14 GB; with the card's negative prompt (`worst quality, low quality, artist name, blurry, jpeg artifacts, chromatic aberration`, its `score_*` tags left out, as the card says for Aesthetic) 62.8 s and nearly the same picture, so the app sends none. Against Turbo's: painterly rather than flat digital art, darker and moodier, the innkeeper leaning over the table setting the mug down (Turbo's poured from one mug into another); the mugs reddish rather than pewter, the rain on the window only.
+- **Safety tags**: the card's prompts carry one of `safe`, `sensitive`, `nsfw` or `explicit`, which Anima was trained on, in the positive and the negative prompt. With the Limits off, Aesthetic's prompt starts with `nsfw, explicit, ` (`prompts/images/anima-limits-off.md`); with them on, the Image Prompt goes as it is. Not rendered with the tags yet, and Turbo doesn't get them.
+- **Not tried**: more prompts and seeds, Turbo's 8 or 12 steps, Quantize for Turbo, Danbooru tags, Aesthetic in bf16, and Base (30 steps with guidance 4, a plainer style, the one to train LoRAs on).
+
 ## Viggle or Qwen's Turbo: a quick Qwen-Image 2.1 (2026-10-17)
 
 Two Image Models render Qwen-Image 2.1 in about half its time: **Viggle's turbo LoRA** on it (`qwen-image-2.1-viggle`, 6 steps) and **Qwen's own distilled Turbo** (`qwen-image-2.1-turbo`, 8 steps). Compared on the Mac (mflux 0.23) on the Chain of 31 Frames that the style scores were chosen on, each Frame asking for an art style of its own, all three rendered from the same Image Prompts and seed, then embedded for the Compare dialog's style scores ([research/style-scores.md](style-scores.md)):
