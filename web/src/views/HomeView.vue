@@ -11,6 +11,7 @@ import {
   type SessionStart,
   type SessionSummary,
 } from '../api'
+import Icon from '../components/Icon.vue'
 import StartSession from '../components/StartSession.vue'
 import { clearCurrentSession, useCurrentSession } from '../composables/useCurrentSession'
 import { sessionPath } from '../sessionPath'
@@ -36,6 +37,11 @@ const sessionsWidth = computed(() => {
 const deleteError = ref('')
 /** Why the last attempt to start failed, e.g. the Opening Frame errored. */
 const startError = ref('')
+/**
+ * Whether Start a new Session is open: closed under the button while there are Sessions, open
+ * when there are none yet (null until the list first loads).
+ */
+const startOpen = ref<boolean | null>(null)
 
 let poll: ReturnType<typeof setTimeout> | undefined
 let alive = true
@@ -48,6 +54,7 @@ async function load() {
     if (!alive) return
     sessions.value = list
     listError.value = ''
+    startOpen.value ??= list.length === 0
   } catch (err) {
     if (alive) listError.value = (err as Error).message
     return
@@ -68,6 +75,7 @@ watch(
   (error) => {
     if (typeof error !== 'string') return
     startError.value = error
+    startOpen.value = true
     router.replace({ query: { ...route.query, error: undefined } })
     load()
   },
@@ -130,6 +138,20 @@ function ago(iso: string): string {
 <template>
   <div class="overflow-y-auto p-6">
     <div ref="page" class="mx-auto flex max-w-[104rem] flex-col gap-10">
+      <div class="mx-auto flex w-full max-w-4xl flex-col items-center gap-6">
+        <button
+          type="button"
+          class="flex items-center gap-2 rounded-lg bg-fg px-4 py-2 font-medium text-canvas"
+          :aria-expanded="!!startOpen"
+          data-new-session
+          @click="startOpen = !startOpen"
+        >
+          <Icon :name="startOpen ? 'chevron-up' : 'plus'" />
+          New Session
+        </button>
+        <StartSession v-if="startOpen" :error="startError" class="w-full" @start="start" />
+      </div>
+
       <section
         v-if="listError || sessions?.length"
         class="mx-auto flex max-w-full flex-col gap-4"
@@ -188,8 +210,6 @@ function ago(iso: string): string {
           </li>
         </ul>
       </section>
-
-      <StartSession :error="startError" class="mx-auto w-full max-w-4xl" @start="start" />
     </div>
   </div>
 </template>

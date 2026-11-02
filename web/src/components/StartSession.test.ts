@@ -122,7 +122,7 @@ describe('StartSession', () => {
     ])
   })
 
-  it('offers every kind when pictures are off, without naming an Image Model', async () => {
+  it('offers every kind when pictures are off', async () => {
     vi.mocked(api.getSettingsOptions).mockResolvedValue({
       ...options,
       features: {
@@ -137,7 +137,6 @@ describe('StartSession', () => {
       'chain',
       'storyboard',
     ])
-    expect(wrapper.text()).not.toContain('Image Model')
     // Pictures back on, for the other tests.
     vi.mocked(api.getSettingsOptions).mockResolvedValue(options)
     await useFeatures().refreshFeatures()

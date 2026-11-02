@@ -11,8 +11,6 @@ import {
   type Settings,
   type SettingsOptions,
 } from '../api'
-import { useFeatures } from '../composables/useFeatures'
-import { imageModelOf } from '../composables/useSettingsOptions'
 import { useStoredString } from '../composables/storage'
 
 defineProps<{ error?: string }>()
@@ -48,11 +46,6 @@ const list = ref<ScenarioList | null>(null)
 const settings = ref<Settings | null>(null)
 const options = ref<SettingsOptions | null>(null)
 const loadError = ref('')
-/**
- * Every kind starts without pictures (they're rendered when they can be, and asked for); the Image
- * Model is named only where they're on.
- */
-const { on: featureOn } = useFeatures()
 /** The kind picked last, remembered per browser; a Roleplay until one is. */
 const storedKind = useStoredString('start-kind')
 const kind = computed<SessionKind>({
@@ -75,11 +68,6 @@ onMounted(async () => {
   } catch (err) {
     loadError.value = (err as Error).message
   }
-})
-
-const imageModelLabel = computed(() => {
-  const id = settings.value?.imageModel ?? ''
-  return imageModelOf(options.value, id)?.label ?? id
 })
 
 /** Why a Session can't start yet, or null when it can. */
@@ -112,8 +100,7 @@ function start() {
 </script>
 
 <template>
-  <section class="flex flex-col gap-6">
-    <h2 class="text-xl font-semibold">Start a new Session</h2>
+  <section class="flex flex-col gap-6" aria-label="Start a new Session">
 
     <p v-if="loadError" class="text-danger">Could not load Scenarios: {{ loadError }}</p>
     <p v-else-if="!list || !settings || !options" class="text-muted">Loading…</p>
@@ -136,17 +123,21 @@ function start() {
 
       <fieldset class="flex flex-col gap-3">
         <legend class="mb-2 text-sm text-muted">Start from a Scenario, or write your own Brief</legend>
-        <label
-          v-for="s in list.scenarios"
-          :key="s.id"
-          class="flex cursor-pointer gap-3 rounded-lg border border-line bg-surface p-4 has-checked:border-fg"
-        >
-          <input v-model="selected" type="radio" name="scenario" :value="s.id" class="mt-1" />
-          <span class="flex flex-col gap-1">
-            <span class="font-medium">{{ s.title }}</span>
-            <span class="text-sm text-muted">{{ s.description }}</span>
-          </span>
-        </label>
+        <div class="grid grid-cols-[repeat(auto-fill,minmax(14rem,1fr))] gap-3">
+          <label
+            v-for="s in list.scenarios"
+            :key="s.id"
+            class="flex cursor-pointer gap-2 rounded-lg border border-line bg-surface p-3 has-checked:border-fg"
+            :title="s.description"
+            data-scenario
+          >
+            <input v-model="selected" type="radio" name="scenario" :value="s.id" class="mt-1" />
+            <span class="flex min-w-0 flex-col gap-0.5">
+              <span class="text-sm font-medium">{{ s.title }}</span>
+              <span class="line-clamp-2 text-xs text-muted">{{ s.description }}</span>
+            </span>
+          </label>
+        </div>
         <label
           class="flex cursor-pointer gap-3 rounded-lg border border-line bg-surface p-4 has-checked:border-fg"
         >
@@ -189,18 +180,6 @@ function start() {
           </li>
         </ul>
       </div>
-
-      <p class="text-sm text-muted">
-        Text Model <span class="text-fg">{{ settings.textModel || 'not set' }}</span>
-        <span v-if="settings.thinking && options.thinkingModels.includes(settings.textModel)">
-          (thinking)
-        </span>
-        <template v-if="featureOn('images')">
-          · Image Model <span class="text-fg">{{ imageModelLabel }}</span>
-        </template>
-        ·
-        <RouterLink to="/settings" class="underline">change in Settings</RouterLink>
-      </p>
 
       <div class="flex items-center gap-4">
         <button

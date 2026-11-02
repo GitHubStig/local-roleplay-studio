@@ -65,7 +65,26 @@ describe('HomeView', () => {
     )
     expect(cards[0].text()).toContain('3 Frames')
     expect(cards[0].find('[data-kind]').text()).toBe('Chain')
-    expect(wrapper.text()).toContain('Start a new Session')
+  })
+
+  it('keeps Start a new Session closed under its button while there are Sessions', async () => {
+    const { wrapper } = await mountIt()
+    const button = wrapper.find('[data-new-session]')
+    expect(button.attributes('aria-expanded')).toBe('false')
+    expect(wrapper.find('[data-start]').exists()).toBe(false)
+    await button.trigger('click')
+    await flushPromises()
+    expect(button.attributes('aria-expanded')).toBe('true')
+    expect(wrapper.find('[data-start]').exists()).toBe(true)
+    // Above Your Sessions, so it pushes them down.
+    const html = wrapper.html()
+    expect(html.indexOf('data-start')).toBeLessThan(html.indexOf('Your Sessions'))
+  })
+
+  it('opens Start a new Session when there are no Sessions yet', async () => {
+    vi.mocked(api.listSessions).mockResolvedValue([])
+    const { wrapper } = await mountIt()
+    expect(wrapper.find('[data-start]').exists()).toBe(true)
   })
 
   it("shows a Roleplay's latest line in place of an image", async () => {
@@ -129,6 +148,7 @@ describe('HomeView', () => {
     const { wrapper, router } = await mountIt()
     await router.replace({ path: '/', query: { error: 'Ollama: model not found' } })
     await flushPromises()
+    expect(wrapper.find('[data-new-session]').attributes('aria-expanded')).toBe('true')
     expect(wrapper.text()).toContain("Couldn't start the Session: Ollama: model not found")
   })
 
@@ -162,6 +182,8 @@ describe('HomeView', () => {
     })
     vi.mocked(api.createSession).mockResolvedValue({ id: 'new', kind: 'chain' } as api.Session)
     const { wrapper, router } = await mountIt()
+    await wrapper.find('[data-new-session]').trigger('click')
+    await flushPromises()
     await wrapper.find('input[value=chain]').setValue()
     await wrapper.find('[data-start]').trigger('click')
     await flushPromises()
@@ -172,6 +194,8 @@ describe('HomeView', () => {
   it('opens a new Storyboard on its own screen', async () => {
     vi.mocked(api.createSession).mockResolvedValue({ id: 'sb', kind: 'storyboard' } as api.Session)
     const { wrapper, router } = await mountIt()
+    await wrapper.find('[data-new-session]').trigger('click')
+    await flushPromises()
     await wrapper.find('input[value=storyboard]').setValue()
     await wrapper.find('[data-brief]').setValue('A dunk.')
     await wrapper.find('input[value=brief]').setValue()

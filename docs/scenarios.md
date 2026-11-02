@@ -1,6 +1,6 @@
 # Writing a Scenario
 
-A **Scenario** is a saved Brief: one Markdown file that a Session can start from instead of a typed Brief. Your own go in `scenarios/` (gitignored); the examples are in `example-scenarios/`, and one of yours with the same file name stands in for an example. The file name, minus `.md`, is its id (`tavern.md` → `tavern`). Files are read fresh on every request, so a new or edited Scenario shows up on Home, under *Start a new Session*, without a restart. A Session keeps its own copy of the Scenario it started from, so editing or deleting the file later leaves it alone.
+A **Scenario** is a saved Brief: one Markdown file that a Session can start from instead of a typed Brief. Your own go in `scenarios/` (gitignored); the examples are in `example-scenarios/`, and one of yours with the same file name stands in for an example. The file name, minus `.md`, is its id (`tavern.md` → `tavern`). Files are read fresh on every request, so a new or edited Scenario shows up on Home, under *New Session*, without a restart. A Session keeps its own copy of the Scenario it started from, so editing or deleting the file later leaves it alone.
 
 A Scenario can start any kind of Session. For a Roleplay, its Setup and `## Opening` serve as
 the Brief the Cast is written from, and its `## System` notes (written for image prompts) are
@@ -74,6 +74,6 @@ it will contradict a later "make him frightened".
 
 ## Checking a Scenario
 
-Open Home. A file that fails to parse is listed under *Start a new Session* with every problem
+Open Home. A file that fails to parse is listed under *New Session* with every problem
 found (missing title or description, a Setup that isn't a mapping, a missing `## Opening`). A
 valid file appears as a card.
