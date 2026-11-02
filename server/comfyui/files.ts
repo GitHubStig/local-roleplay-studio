@@ -91,26 +91,52 @@ export async function clearTraces(traces: ComfyTraces, waitMs = 30_000, everyMs 
   for (const { base, file } of traces.uploads) await blank(base, file)
 }
 
+/** A prompt as ComfyUI's history keeps it once it has finished: how it went, and its outputs. */
+export interface PromptHistory {
+  status?: { status_str?: string }
+  outputs?: Record<string, Record<string, unknown>>
+}
+
 /**
- * The files a prompt wrote, from ComfyUI's history once it's there; none if it never ran, or ran
- * before ComfyUI itself restarted. A prompt just stopped is written to the history a moment after
- * it leaves the queue, so that's waited for a few checks.
+ * A prompt's history once ComfyUI has finished it, waiting while it's queued or running (until
+ * `signal` aborts, or `waitMs` pass); none if it never ran, or ran before ComfyUI itself
+ * restarted. A prompt just stopped is written to the history a moment after it leaves the queue,
+ * so that's waited for a few checks.
  */
-async function outputsOf(base: string, promptId: string, waitMs: number, everyMs: number) {
+export async function historyOf(
+  base: string,
+  promptId: string,
+  { signal = AbortSignal.timeout(15 * 60_000), waitMs = Infinity, everyMs = 1000 } = {},
+): Promise<PromptHistory | undefined> {
   const until = Date.now() + waitMs
   let gone = 0
   while (Date.now() < until) {
-    const history = await getJson(base, `/history/${promptId}`, AbortSignal.timeout(15_000))
-    const entry = history?.[promptId] as { outputs?: Record<string, Record<string, unknown>> }
-    if (entry) return filesOf(entry.outputs ?? {})
-    const queue = await getJson(base, '/queue', AbortSignal.timeout(15_000))
+    const asked = AbortSignal.any([signal, AbortSignal.timeout(15_000)])
+    const history = await getJson(base, `/history/${promptId}`, asked)
+    if (history?.[promptId]) return history[promptId] as PromptHistory
+    const queue = await getJson(base, '/queue', asked)
     const queued = [...queue.queue_running ?? [], ...queue.queue_pending ?? []]
       .some((item: unknown[]) => item[1] === promptId)
     gone = queued ? 0 : gone + 1
-    if (gone > 3) return []
-    await new Promise((r) => setTimeout(r, everyMs))
+    if (gone > 3) return undefined
+    await new Promise<void>((resolve, reject) => {
+      const stop = () => {
+        clearTimeout(timer)
+        reject(signal.reason)
+      }
+      const timer = setTimeout(() => {
+        signal.removeEventListener('abort', stop)
+        resolve()
+      }, everyMs)
+      signal.addEventListener('abort', stop, { once: true })
+    })
   }
-  return []
+  return undefined
+}
+
+/** The files a prompt wrote, from its history (`historyOf`, up to `waitMs`). */
+async function outputsOf(base: string, promptId: string, waitMs: number, everyMs: number) {
+  return filesOf((await historyOf(base, promptId, { waitMs, everyMs }))?.outputs ?? {})
 }
 
 /** The files ComfyUI's output nodes list, in its temp or output folder. */

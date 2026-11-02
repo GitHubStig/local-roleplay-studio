@@ -213,3 +213,52 @@ Deno.test('MiniMax H3 takes a Play out’s picture as its first frame only, with
     // The fp16 video VAE where there is one.
     assertEquals(workflow.vae.inputs.vae_name, 'minimax_h3_video_vae_fp16.safetensors')
   }))
+
+Deno.test('A clip cut off by a restart is fetched once ComfyUI has made it, and nothing stays there', () =>
+  withTempDir(async (root) => {
+    const blanked: string[] = []
+    let asks = 0
+    const server = Deno.serve({ port: 0, onListen: () => {} }, async (req) => {
+      const url = new URL(req.url)
+      if (url.pathname === '/history/p1') {
+        // Still running at first; then done, with the clip in the output folder.
+        return Response.json(
+          ++asks < 2 ? {} : {
+            p1: {
+              status: { status_str: 'success' },
+              outputs: {
+                out: { images: [{ filename: CLIP.filename, subfolder: '', type: 'output' }] },
+              },
+            },
+          },
+        )
+      }
+      if (url.pathname === '/queue' && req.method === 'GET') {
+        return Response.json({ queue_running: asks < 2 ? [[0, 'p1']] : [], queue_pending: [] })
+      }
+      if (url.pathname === '/view') return new Response(CLIP.bytes)
+      if (url.pathname === '/upload/image') {
+        const form = await req.formData()
+        const image = form.get('image') as File
+        blanked.push(`${form.get('type')}:${image.name}:${image.size}`)
+        return Response.json({ name: image.name })
+      }
+      await req.body?.cancel()
+      return new Response(null)
+    })
+    try {
+      const base = `http://127.0.0.1:${server.addr.port}`
+      const video = comfyuiVideoGenerator({ address: base, checkEveryMs: 25 })
+      const left = {
+        prompts: [{ base, promptId: 'p1' }],
+        uploads: [{ base, file: { filename: 'rpg-1.png', subfolder: '', type: 'temp' } }],
+      }
+      const file = await video.pickUp!(left, root, 'clip-0', new AbortController().signal)
+      assertEquals(file, 'clip-0.mp4')
+      assertEquals(await Deno.readFile(join(root, file!)), CLIP.bytes)
+      assertEquals(blanked[0], `output:${CLIP.filename}:0`)
+      assert(blanked[1].startsWith('temp:rpg-1.png:'))
+    } finally {
+      await server.shutdown()
+    }
+  }))

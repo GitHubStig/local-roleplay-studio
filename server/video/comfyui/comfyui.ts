@@ -9,7 +9,7 @@ import {
   upload,
   type Workflow,
 } from '../../comfyui/client.ts'
-import { modelFiles, withUploads } from '../../comfyui/files.ts'
+import { clearTraces, historyOf, modelFiles, withUploads } from '../../comfyui/files.ts'
 import { loadPrompt } from '../../promptFiles.ts'
 import { pngSize } from '../../png.ts'
 import { CLIP_SIZE_NAMES, type VideoGenerator } from '../videoGenerator.ts'
@@ -80,6 +80,26 @@ export function comfyuiVideoGenerator(opts: {
         }
         return name
       })
+    },
+
+    async pickUp(left, dir, name, signal) {
+      const prompt = left.prompts.at(-1)
+      try {
+        if (!prompt) return undefined
+        const done = await historyOf(base, prompt.promptId, { signal, everyMs: checkEveryMs / 5 })
+        const file = done?.status?.status_str === 'success'
+          ? (done.outputs?.out?.images as ComfyFile[] | undefined)?.[0]
+          : undefined
+        if (!file) return undefined
+        await Deno.writeFile(join(dir, `${name}.mp4`), await download(base, file))
+        return `${name}.mp4`
+      } finally {
+        // Its outputs blanked (the clip is saved here by now), its history and uploads cleared;
+        // still running after a Cancel, stopped.
+        await clearTraces(left, 30_000, 1000).catch((err) =>
+          console.warn(`Couldn't clean up after a clip on ComfyUI: ${err.message}`)
+        )
+      }
     },
   }
 }

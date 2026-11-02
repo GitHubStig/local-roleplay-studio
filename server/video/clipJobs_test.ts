@@ -212,3 +212,79 @@ Deno.test('A clip is refused for a picture by another Image Model than the Sessi
     assertEquals(refused.status, 409)
     assertStringIncludes((await refused.json()).error, 'has no picture by Z-Image Turbo')
   }))
+
+Deno.test('A clip cut off by a restart is picked up from its ComfyUI, else made again', () =>
+  withTempDir(async (root) => {
+    const session = {
+      id: 's1',
+      seed: 3,
+      settings: { imageModel: 'krea-2' },
+      frames: [{ index: 0, pictures: [{ image: 'krea-0.png', imageModel: 'krea-2' }] }],
+    } as unknown as Session
+    await Deno.mkdir(join(root, 's1'))
+    const left = { prompts: [{ base: 'http://pc', promptId: 'p1' }], uploads: [] }
+    const run = async (pickedUp: boolean) => {
+      const video = fakeVideoGenerator()
+      const asked: unknown[] = []
+      const deps = {
+        store: { dir: (id: string) => join(root, id) } as SessionStore,
+        video: {
+          ...video,
+          pickUp: async (l: unknown, dir: string, name: string) => {
+            asked.push(l)
+            if (!pickedUp) return undefined
+            await Deno.writeTextFile(join(dir, `${name}.mp4`), 'picked up')
+            return `${name}.mp4`
+          },
+        },
+        videoModel: () => Promise.resolve('ltx-2.5'),
+        videoSize: () => Promise.resolve(undefined),
+      }
+      let saved: Session | undefined
+      await makeClip(
+        deps,
+        session,
+        0,
+        leadIn as never,
+        'krea-2',
+        () => {},
+        new AbortController().signal,
+        (change) => {
+          saved = change(session)
+          return Promise.resolve(saved)
+        },
+        left,
+      )
+      const [clip] = (saved!.frames[0].pictures[0] as { clips: { file: string }[] }).clips
+      return {
+        asked,
+        made: video.made.length,
+        text: await Deno.readTextFile(join(root, 's1', clip.file)),
+      }
+    }
+    assertEquals(await run(true), { asked: [left], made: 0, text: 'picked up' })
+    const again = await run(false)
+    assertEquals([again.asked, again.made], [[left], 1])
+  }))
+
+Deno.test('A clip ordered without a video model keeps Settings’ default from when it was queued', () =>
+  withTempDir(async (root) => {
+    const fake = fakeVideoGenerator()
+    // The first clip holds the machine until let go, so the second waits behind it.
+    const gate = Promise.withResolvers<void>()
+    let calls = 0
+    const video = {
+      ...fake,
+      makeClip: async (...a: Parameters<typeof fake.makeClip>) => {
+        if (calls++ === 0) await gate.promise
+        return fake.makeClip(...a)
+      },
+    }
+    const { call, settings } = await chainOfTwo(root, { video })
+    await queueClip(call, 1, leadIn)
+    await queueClip(call, 0, { ...leadIn, kind: 'play-out' })
+    await settings.save({ ...await settings.load(), videoModel: 'wan-2.2' })
+    gate.resolve()
+    assertEquals(await settled(call), [])
+    assertEquals(fake.made.map((m) => m.model), ['ltx-2.5', 'ltx-2.5'])
+  }))

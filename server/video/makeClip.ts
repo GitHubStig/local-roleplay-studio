@@ -6,6 +6,7 @@ import type { Session, SessionStore } from '../session.ts'
 import { anyImageModel } from '../images/imageModels.ts'
 import { changeFramePicture, pickedVersion } from '../pictures.ts'
 import { CLIP_ENDS, type ClipKind, type ClipSize, type VideoGenerator } from './videoGenerator.ts'
+import type { ComfyTraces } from '../comfyui/traces.ts'
 
 /**
  * A clip made from a picture (ADR 0025), kept on the picture version it was made from:
@@ -77,7 +78,8 @@ export function clipRefusal(
  * Makes a clip from Frame `index`'s picture by Image Model `model` (the one it was queued for,
  * whatever the Session shows now), as `order` says, by its video model, in its turn behind any
  * render: a video model takes a whole 12 GB card. Into Next ends on the next Frame's picture by
- * the same Image Model.
+ * the same Image Model. One a server restart cut off (`left`, what it left on its ComfyUI) is
+ * picked up there if ComfyUI finished it or still makes it, else made again.
  * Saved onto the picture it was made from, if the Frame still has it.
  */
 export async function makeClip<S extends Session>(
@@ -90,6 +92,7 @@ export async function makeClip<S extends Session>(
   signal: AbortSignal,
   /** Saves the change onto the Session as it is now (`updateSession`). */
   save: (change: (s: S) => S) => Promise<S>,
+  left?: ComfyTraces,
 ): Promise<S> {
   if (!deps.video) throw new ClipError(CLIPS_OFF)
   const by = model ?? session.settings.imageModel
@@ -114,22 +117,23 @@ export async function makeClip<S extends Session>(
     const queued = waited ? secondsSince(start) : undefined
     emit({ type: 'phase', phase: 'image' })
     const began = performance.now()
-    file = await deps.video.makeClip(
-      {
-        model: videoModel,
-        first: pictureAt(ends.first),
-        last: pictureAt(ends.last),
-        prompt: order.prompt,
-        speech: order.speech,
-        seconds: order.seconds,
-        ...(size && { size }),
-        seed: session.seed,
-        dir,
-        name,
-      },
-      signal,
-      (step, total) => emit({ type: 'progress', step, total }),
-    )
+    file = (left && await deps.video.pickUp?.(left, dir, name, signal)) ||
+      await deps.video.makeClip(
+        {
+          model: videoModel,
+          first: pictureAt(ends.first),
+          last: pictureAt(ends.last),
+          prompt: order.prompt,
+          speech: order.speech,
+          seconds: order.seconds,
+          ...(size && { size }),
+          seed: session.seed,
+          dir,
+          name,
+        },
+        signal,
+        (step, total) => emit({ type: 'progress', step, total }),
+      )
     signal.throwIfAborted()
     const clip: Clip = {
       kind: order.kind,

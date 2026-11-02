@@ -1,4 +1,5 @@
 import type { Backend } from '../backends.ts'
+import type { ComfyTraces } from '../comfyui/traces.ts'
 
 /**
  * A Frame's picture as a short clip (ADR 0025). Where the picture sits in the clip is the
@@ -54,6 +55,18 @@ export type OnProgress = (step: number, total: number) => void
 export interface VideoGenerator {
   /** Makes the clip and returns its file name inside `dir`. */
   makeClip(req: ClipRequest, signal: AbortSignal, onProgress?: OnProgress): Promise<string>
+  /**
+   * Picks up a clip a server restart cut off (`left`, what it left on its ComfyUI): waits for its
+   * prompt if it's still running, saves the clip it made into `dir` as `name` and returns its file
+   * name; none if there's none to pick up (it failed, or ComfyUI lost it). Either way, cleans up
+   * what was left.
+   */
+  pickUp?(
+    left: ComfyTraces,
+    dir: string,
+    name: string,
+    signal: AbortSignal,
+  ): Promise<string | undefined>
 }
 
 /**
@@ -73,6 +86,13 @@ export function videoBackends(backends: {
         throw new Error('No Backend can make clips: add a ComfyUI in Settings, on the Machines tab')
       }
       return backends.comfyui(backend.address).makeClip(req, signal, onProgress)
+    },
+    // On the ComfyUI it was made on, whatever Settings say now.
+    pickUp(left, dir, name, signal) {
+      const base = left.prompts.at(-1)?.base
+      return base
+        ? backends.comfyui(base).pickUp!(left, dir, name, signal)
+        : Promise.resolve(undefined)
     },
   }
 }

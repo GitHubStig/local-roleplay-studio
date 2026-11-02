@@ -82,7 +82,17 @@ export async function runPictureJob<S extends Session>(
     const model = job.kind === 'lito' ? 'lito' : 'triposplat'
     await liftFigure(deps, session, index, emit, signal, model, save)
   } else if (job.kind === 'clip' && job.clip) {
-    await makeClip(deps, session, index, job.clip, job.image?.imageModel, emit, signal, save)
+    await makeClip(
+      deps,
+      session,
+      index,
+      job.clip,
+      job.image?.imageModel,
+      emit,
+      signal,
+      save,
+      job.resume,
+    )
   } else {
     throw new Error(`${job.kind} isn't a picture job`)
   }

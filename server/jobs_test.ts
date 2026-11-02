@@ -289,3 +289,38 @@ Deno.test('A restart puts the queue back, cleaning up after a job cut off and ru
   assertEquals(listed[1].comfy, undefined)
   assertEquals(jobs.list('gone'), [])
 })
+
+Deno.test('A clip cut off by a restart is queued to pick up its result, not cleaned up', async () => {
+  const left: ComfyTraces = { prompts: [{ base: 'http://pc', promptId: 'p1' }], uploads: [] }
+  const store = memoryQueue([{
+    sessionId: 's',
+    jobs: [{
+      id: 'clip',
+      kind: 'clip',
+      frameIndex: 0,
+      status: 'running',
+      startedAt: '2026-11-02T10:02:00.000Z',
+      createdAt: '2026-11-02T10:00:00.000Z',
+      machine: 'pc',
+      comfy: left,
+    }],
+  }])
+  const runs: (Job | undefined)[] = []
+  const jobs = new SessionJobs(
+    (_id, j) => {
+      runs.push(structuredClone(j))
+      return Promise.resolve()
+    },
+    undefined,
+    store,
+  )
+  const cleared: ComfyTraces[] = []
+  await jobs.restore(() => Promise.resolve(true), (t) => {
+    cleared.push(t)
+    return Promise.resolve()
+  })
+  assertEquals(cleared, [])
+  assertEquals(runs[0]?.resume, left)
+  for (let i = 0; i < 5; i++) await Promise.resolve()
+  assertEquals(jobs.list('s')[0].resume, undefined)
+})

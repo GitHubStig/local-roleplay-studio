@@ -146,7 +146,19 @@ export interface Job {
    * restart cleans up after it if it can't (`restore`).
    */
   comfy?: ComfyTraces
+  /**
+   * What a job of a kind that can be picked up (`RESUMED`) left on a ComfyUI when a server restart
+   * cut it off: run again, it picks up the result there, or cleans up and starts anew.
+   */
+  resume?: ComfyTraces
 }
+
+/**
+ * Jobs a restart doesn't make again from the start, if their ComfyUI finished or still makes what
+ * they asked for: a clip takes minutes. A picture can't be picked up, as it comes back only over
+ * the WebSocket that died with the server.
+ */
+const RESUMED: readonly JobKind[] = ['clip']
 
 /** Every Session's jobs, as the queue is saved between runs of the server. */
 export type SavedQueue = { sessionId: string; jobs: Job[] }[]
@@ -313,10 +325,11 @@ export class SessionJobs {
 
   /**
    * Puts back the queue as it was saved, ahead of any job queued since the server started: queued,
-   * failed and done jobs as they were, and each job that was running cleaned up after on ComfyUI
-   * (`clear`, given what it left there) and queued again in its place, to run from the start. A
-   * Session that no longer exists (`exists`) loses its jobs. A ComfyUI that can't be cleaned up is
-   * logged, and the job runs again anyway.
+   * failed and done jobs as they were, and each job that was running queued again in its place:
+   * a clip to pick up what its ComfyUI made (`Job.resume`), any other cleaned up after on ComfyUI
+   * (`clear`, given what it left there) to run from the start. A Session that no longer exists
+   * (`exists`) loses its jobs. A ComfyUI that can't be cleaned up is logged, and the job runs again
+   * anyway.
    */
   async restore(
     exists: (sessionId: string) => Promise<boolean>,
@@ -333,7 +346,9 @@ export class SessionJobs {
     const kept = (await Promise.all(saved.map(async (s) => (await exists(s.sessionId) ? s : null))))
       .filter((s) => s !== null)
     await Promise.all(
-      kept.flatMap((s) => s.jobs).filter((j) => j.status === 'running' && j.comfy).map((j) =>
+      kept.flatMap((s) => s.jobs).filter((j) =>
+        j.status === 'running' && j.comfy && !RESUMED.includes(j.kind)
+      ).map((j) =>
         clear(j.comfy!).catch((err) =>
           console.warn(
             `Couldn't clean up after a ${j.kind} cut off by the restart (ComfyUI prompt ` +
@@ -344,10 +359,11 @@ export class SessionJobs {
     )
     for (const { sessionId, jobs } of kept) {
       const back = jobs.map((job): Job => {
-        const { phase: _p, progress: _g, comfy: _c, ...rest } = job
+        const { phase: _p, progress: _g, comfy, ...rest } = job
         if (job.status !== 'running') return rest
         const { startedAt: _s, imageBackend: _b, ...again } = rest
-        return { ...again, status: 'queued' }
+        const resume = RESUMED.includes(job.kind) && comfy?.prompts.length ? { resume: comfy } : {}
+        return { ...again, status: 'queued', ...resume }
       })
       this.#jobs.set(sessionId, [...back, ...(this.#jobs.get(sessionId) ?? [])])
     }
@@ -608,8 +624,9 @@ export class SessionJobs {
         },
       )
       .finally(() => {
-        // Whatever it left on a ComfyUI, it has cleaned up as it ended.
+        // Whatever it left on a ComfyUI, it has cleaned up as it ended, and what it picked up.
         delete job.comfy
+        delete job.resume
         this.#save()
         running.delete(job.id)
         if (!running.size) this.#running.delete(sessionId)
@@ -640,6 +657,11 @@ export interface JobRoutesContext {
    * which machine it takes turns on; left out, all run here.
    */
   backendOf?(session: Session, kind: JobKind, edit?: EditOrder): Promise<Backend | undefined>
+  /**
+   * Settings' default video model, which a clip ordered without one keeps from when it's queued,
+   * as a render keeps its Image Model; left out, the clip takes the default as it starts.
+   */
+  videoModel?(): Promise<string>
 }
 
 /**
@@ -754,8 +776,11 @@ export function jobRoutes(ctx: JobRoutesContext): Route[] {
       }
       const edit = kind === 'edit' ? editOrder(body?.edit) : undefined
       if (typeof edit === 'string') return error(edit, 400)
-      const clip = kind === 'clip' ? clipOrder(body?.clip) : undefined
-      if (typeof clip === 'string') return error(clip, 400)
+      const ordered = kind === 'clip' ? clipOrder(body?.clip) : undefined
+      if (typeof ordered === 'string') return error(ordered, 400)
+      const clip = ordered && !ordered.model && ctx.videoModel
+        ? { ...ordered, model: await ctx.videoModel() }
+        : ordered
       const index = Number(body?.frameIndex)
       const ofSession = SESSION_JOBS.includes(kind) && index === 0
       if (!Number.isInteger(index) || (!session.frames[index] && !ofSession)) {

@@ -554,8 +554,15 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       )
     },
     // An edit cancelled or dismissed: the area painted for it, saved as it was queued, goes too.
+    // A clip cut off by a restart, cancelled before it picked up its result: what it left on
+    // ComfyUI is cleaned up.
     async (id, job) => {
       if (job.edit?.mask) await removeFiles(deps.sessions.dir(id), [job.edit.mask])
+      if (job.resume && !job.startedAt) {
+        await clearTraces(job.resume).catch((err) =>
+          console.warn(`Couldn't clean up after a clip on ComfyUI: ${err.message}`)
+        )
+      }
     },
     deps.queue,
   )
@@ -684,6 +691,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       jobs,
       store: deps.sessions,
       backendOf: jobBackendOf,
+      videoModel,
       check: async (session, kind, index, pending, edit, clip) => {
         const feature = JOB_FEATURE[kind]
         const name = frameName(index)
