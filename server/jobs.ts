@@ -234,6 +234,16 @@ const sameWork = (
   job.image?.imageModel === image?.imageModel && job.clip?.kind === clip?.kind &&
   job.clip?.model === clip?.model
 
+/**
+ * Where image work on Frame `frameIndex` goes ahead of queued clips, which are made from pictures
+ * and take minutes: before the first queued clip after any of that Frame's own, so a clip isn't
+ * made from an edit asked for after it. -1 if there's none.
+ */
+function clipsAhead(jobs: readonly Job[], frameIndex: number): number {
+  const own = jobs.findLastIndex((j) => j.kind === 'clip' && j.frameIndex === frameIndex)
+  return jobs.findIndex((j, i) => i > own && j.kind === 'clip' && j.status === 'queued')
+}
+
 /** Two jobs on the pictures of two different Image Models, as both record (`Job.image`). */
 const otherPictures = (a: Job, b: Job) =>
   !!a.image && !!b.image && a.image.imageModel !== b.image.imageModel
@@ -308,6 +318,8 @@ export class SessionJobs {
     }
     const ahead = kind === 'picture'
       ? jobs.findIndex((j) => j.status === 'queued' && IMAGE_JOBS.includes(j.kind))
+      : IMAGE_JOBS.includes(kind) && kind !== 'clip'
+      ? clipsAhead(jobs, frameIndex)
       : -1
     this.#jobs.set(
       sessionId,

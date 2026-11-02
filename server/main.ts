@@ -3,7 +3,15 @@ import { createHandler } from './app.ts'
 import { type Backend, BACKEND_NAMES, BACKEND_WORK, backendAddress } from './backends.ts'
 import { placeholderImageGenerator } from './images/imageGenerator.ts'
 import { mfluxImageGenerator } from './images/mflux/mflux.ts'
-import { backendOf, editJob, type HeavyJob, sameMachine, textBackendFor } from './machine.ts'
+import {
+  backendOf,
+  editJob,
+  type HeavyJob,
+  machineOf,
+  sameMachine,
+  textBackendFor,
+} from './machine.ts'
+import { RenderQueue } from './renderQueue.ts'
 import { comfyuiImageGenerator } from './images/comfyui/comfyui.ts'
 import { comfyuiStatus } from './comfyui/status.ts'
 import { imageBackends } from './images/backend.ts'
@@ -16,6 +24,7 @@ import { connectionOf, textBackend, type TextChoice } from './text/backend.ts'
 import type { Chat } from './text/chat.ts'
 import { routedChat } from './text/routed.ts'
 import { seededChat } from './text/seeded.ts'
+import { turnTakingChat } from './text/turns.ts'
 import { loggedChat, loggedEmbedder, loggedImages, loggedMaker, loggedVoice } from './calls.ts'
 import { litoFigureMaker, tripoFigureMaker } from './3d/figure.ts'
 import { sharpSceneMaker } from './3d/scene.ts'
@@ -93,8 +102,29 @@ function listed(backend: Backend): Promise<string[]> {
 const textBackendOf = async (model: string) => textBackendFor(await settings.load(), model, listed)
 
 /**
+ * One heavy job at a time on each machine, the Text Model's calls taking turns with them there
+ * (`RenderQueue`). A big render next to a loaded Text Model pushed a 48 GB Mac into swap (375 s
+ * instead of 66 s for Qwen-Image 2.1 at 1024 px), so each render, upscale, scene and figure unloads
+ * it first, from every text Backend that can (Ollama; not a server on the OpenAI API) on the
+ * machine the job runs on: a render on a ComfyUI across the network leaves this one's loaded (ADR
+ * 0013).
+ */
+const renderQueue = new RenderQueue({
+  machineOf: async (job) => machineOf(backendOf(job, await settings.load(), features)),
+  freeMemory: async (job) => {
+    const now = await settings.load()
+    const where = backendOf(job, now, features)
+    const machine = where && backendAddress(where)
+    const there = now.backends.filter((b) =>
+      BACKEND_WORK[b.kind].includes('text') && sameMachine(backendAddress(b), machine)
+    )
+    await Promise.all(there.map((b) => text(b).freeMemory?.()))
+  },
+})
+
+/**
  * A chat with the model a choice names, on the Backend Settings send it to at each call, seeded
- * from its Session's seed when it has one.
+ * from its Session's seed when it has one, each call taking its turn on that Backend's machine.
  */
 const chat = (c: TextChoice) => {
   const chats = new Map<string, Chat>()
@@ -109,7 +139,11 @@ const chat = (c: TextChoice) => {
   })
   // Logged inside the seeding, so the log has each call's seed.
   const plain = loggedChat(routed)
-  return c.seeding ? seededChat(plain, c.seeding) : plain
+  const seeded = c.seeding ? seededChat(plain, c.seeding) : plain
+  return turnTakingChat(
+    seeded,
+    async (signal) => renderQueue.textTurn(machineOf(await textBackendOf(c.model)), signal),
+  )
 }
 
 const sessionStore = dirSessionStore(sessionsDir)
@@ -144,19 +178,7 @@ const handler = createHandler({
     }),
   ),
   features,
-  // A big render next to a loaded Text Model pushed a 48 GB Mac into swap (375 s instead of 66 s
-  // for Qwen-Image 2.1 at 1024 px), so each render, upscale, scene and figure unloads it first,
-  // from every text Backend that can (Ollama; not a server on the OpenAI API) on the machine the
-  // job runs on: a render on a ComfyUI across the network leaves this one's loaded (ADR 0013).
-  freeMemory: async (job) => {
-    const now = await settings.load()
-    const where = backendOf(job, now, features)
-    const machine = where && backendAddress(where)
-    const there = now.backends.filter((b) =>
-      BACKEND_WORK[b.kind].includes('text') && sameMachine(backendAddress(b), machine)
-    )
-    await Promise.all(there.map((b) => text(b).freeMemory?.()))
-  },
+  renderQueue,
   // Voices on the Backend Settings send them to: this machine's voice service where it runs (a
   // Mac), or a ComfyUI with TTS Audio Suite's nodes.
   voice: voiceBackends({

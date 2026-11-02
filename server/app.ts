@@ -99,14 +99,7 @@ import {
   shownPicture,
   switchImageModel,
 } from './pictures.ts'
-import {
-  backendOf,
-  editJob,
-  type HeavyJob,
-  jobBackend,
-  machineOf,
-  textBackendFor,
-} from './machine.ts'
+import { backendOf, editJob, type HeavyJob, jobBackend, textBackendFor } from './machine.ts'
 import { Previews } from './previews.ts'
 import { RenderQueue } from './renderQueue.ts'
 import { type FrameDeps, frameName, type Phase, UpscaleError } from './frames.ts'
@@ -178,8 +171,11 @@ export interface AppDeps {
    * into (`buildComparisonPage`); without it, there's no export.
    */
   exports?: { dir: string; page: () => Promise<ExportPage> }
-  /** Frees memory before a render, upscale, scene or figure: unloads the Text Model. */
-  freeMemory?: (job: HeavyJob | undefined) => Promise<void>
+  /**
+   * Where heavy jobs, and the Text Model's calls, take turns on each machine (`RenderQueue`), which
+   * frees memory before each heavy job. Left out, one that runs every job here and frees nothing.
+   */
+  renderQueue?: RenderQueue
   newSessionId?: () => string
   randomSeed?: () => number
 }
@@ -254,11 +250,8 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     string,
     { controller: AbortController; phase: Phase; frameIndex: number | null }
   >()
-  /** One image render at a time, across all Sessions. */
-  const renderQueue = new RenderQueue({
-    freeMemory: deps.freeMemory,
-    machineOf: async (job) => machineOf(backendOf(job, await deps.settings.load(), detected)),
-  })
+  /** One heavy job at a time on each machine, across all Sessions. */
+  const renderQueue = deps.renderQueue ?? new RenderQueue()
   /** The picture forming: each render's latest preview, while it renders. */
   const previews = new Previews()
 

@@ -90,6 +90,21 @@ Deno.test('A picture put ahead of queued jobs still waits for one running on its
   assertEquals(running(), ['render 0', 'picture 2'])
 })
 
+Deno.test('A render goes ahead of queued clips, but not of a clip on its own Frame', async () => {
+  const { jobs, started, end } = heldJobs()
+  jobs.enqueue('s', 'render', 0, 'pc')
+  jobs.enqueue('s', 'clip', 0, 'pc')
+  jobs.enqueue('s', 'clip', 1, 'pc')
+  jobs.enqueue('s', 'render', 2, 'pc')
+  jobs.enqueue('s', 'edit', 1, 'pc')
+  await end('render 0')
+  await end('render 2')
+  await end('clip 0')
+  await end('clip 1')
+  // The edit of Frame 1 stays behind its clip, which is made from the picture as it was asked for.
+  assertEquals(started, ['render 0', 'render 2', 'clip 0', 'clip 1', 'edit 1'])
+})
+
 Deno.test('Between renders waits for every render running, on any machine', async () => {
   const { jobs, end } = heldJobs()
   jobs.enqueue('s', 'render', 0, 'pc')

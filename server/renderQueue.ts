@@ -15,16 +15,34 @@ export interface RenderQueueOptions {
   machineOf?: (job: HeavyJob | undefined) => Promise<string>
 }
 
-/** One machine's turn-taking: whether a job has it, and who waits. */
+/**
+ * Who goes first among those waiting on a machine: the Text Model's calls, then heavy jobs, then
+ * clips (which are made from pictures, and take minutes), each in the order they came.
+ */
+const LANES = ['text', 'heavy', 'clip'] as const
+type Lane = (typeof LANES)[number]
+
+interface Waiter {
+  lane: Lane
+  go: () => void
+}
+
+/** One machine's turn-taking: a heavy job that has it, the text calls running, and who waits. */
 interface Turns {
   busy: boolean
-  waiting: (() => void)[]
+  texts: number
+  waiting: Waiter[]
 }
 
 /**
- * Lets one image render at a time on each machine, across every Session. Two renders at once would
- * compete for GPU memory (FLUX.2 Klein alone peaks near 18 GB), so later Frames wait their turn, in
- * order; a render on a ComfyUI across the network doesn't hold up one here.
+ * Lets one heavy job (an image render, an upscale, a voice, 3D, a clip) run at a time on each
+ * machine, across every Session. Two renders at once would compete for GPU memory (FLUX.2 Klein
+ * alone peaks near 18 GB), so later ones wait their turn; a render on a ComfyUI across the network
+ * doesn't hold up one here. The Text Model's calls take turns with them too, on its machine: a
+ * Reply asked for mid-render loaded the Text Model beside the image model and pushed the render
+ * into swap (seen in play, 2026-11-02). So text calls wait for the heavy job running, then go
+ * ahead of those waiting, all at once, and the next heavy job starts once the last has ended (and
+ * unloads the Text Model).
  */
 export class RenderQueue {
   #machines = new Map<string, Turns>()
@@ -39,8 +57,8 @@ export class RenderQueue {
   /**
    * Resolves with a release function once it's this caller's go to render, after freeing memory
    * for it unless it's `light` (a spoken line, small and frequent). `job` says where it runs, if
-   * it may be another machine. Calls `onWait` first if another render is in progress. Rejects if
-   * `signal` aborts while waiting.
+   * it may be another machine. Calls `onWait` first if it has to wait. Rejects if `signal` aborts
+   * while waiting.
    */
   async acquire(
     signal: AbortSignal,
@@ -51,36 +69,87 @@ export class RenderQueue {
     // Only awaited when asked, so callers on one machine queue in the order they came.
     const machine = this.#machineOf ? await this.#machineOf(job) : 'here'
     signal.throwIfAborted()
-    const turns = this.#machines.get(machine) ?? { busy: false, waiting: [] }
-    this.#machines.set(machine, turns)
-    if (turns.busy) {
+    const turns = this.#turns(machine)
+    if (turns.busy || turns.texts || turns.waiting.length) {
       onWait?.()
-      await new Promise<void>((resolve, reject) => {
-        const go = () => {
-          signal.removeEventListener('abort', leave)
-          resolve()
-        }
-        const leave = () => {
-          turns.waiting = turns.waiting.filter((w) => w !== go)
-          reject(signal.reason)
-        }
-        turns.waiting.push(go)
-        signal.addEventListener('abort', leave, { once: true })
-      })
-    }
-    turns.busy = true
+      await this.#wait(turns, job?.kind === 'video' ? 'clip' : 'heavy', signal)
+    } else turns.busy = true
     if (!light && this.#freeMemory) {
       await this.#freeMemory(job).catch((err) =>
         console.warn('Could not free memory:', err.message)
       )
     }
+    return this.#once(() => {
+      turns.busy = false
+      this.#handOn(turns)
+    })
+  }
+
+  /**
+   * Resolves with a release function once a Text Model call may run on `machine`: at once unless
+   * a heavy job runs there, else once it ends, ahead of the heavy jobs waiting. Text calls run side
+   * by side. Calls `onWait` first if it has to wait; rejects if `signal` aborts while waiting.
+   */
+  async textTurn(machine: string, signal: AbortSignal, onWait?: () => void): Promise<() => void> {
+    signal.throwIfAborted()
+    const turns = this.#turns(machine)
+    if (turns.busy) {
+      onWait?.()
+      await this.#wait(turns, 'text', signal)
+    } else turns.texts++
+    return this.#once(() => {
+      if (--turns.texts === 0) this.#handOn(turns)
+    })
+  }
+
+  #turns(machine: string): Turns {
+    const turns = this.#machines.get(machine) ?? { busy: false, texts: 0, waiting: [] }
+    this.#machines.set(machine, turns)
+    return turns
+  }
+
+  /** Waits in `lane`, behind those waiting in it and the lanes before it. */
+  #wait(turns: Turns, lane: Lane, signal: AbortSignal): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      const waiter: Waiter = {
+        lane,
+        go: () => {
+          signal.removeEventListener('abort', leave)
+          resolve()
+        },
+      }
+      const leave = () => {
+        turns.waiting = turns.waiting.filter((w) => w !== waiter)
+        reject(signal.reason)
+      }
+      const behind = turns.waiting.findIndex((w) => LANES.indexOf(w.lane) > LANES.indexOf(lane))
+      turns.waiting.splice(behind < 0 ? turns.waiting.length : behind, 0, waiter)
+      signal.addEventListener('abort', leave, { once: true })
+    })
+  }
+
+  /** The machine is free: every text call waiting goes, else the next heavy job. */
+  #handOn(turns: Turns) {
+    const texts = turns.waiting.filter((w) => w.lane === 'text')
+    if (texts.length) {
+      turns.waiting = turns.waiting.filter((w) => w.lane !== 'text')
+      turns.texts += texts.length
+      for (const w of texts) w.go()
+      return
+    }
+    const next = turns.waiting.shift()
+    if (!next) return
+    turns.busy = true
+    next.go()
+  }
+
+  /** `release`, harmless to call twice. */
+  #once(release: () => void): () => void {
     let released = false
     return () => {
       if (released) return
       released = true
-      const next = turns.waiting.shift()
-      if (next) next()
-      else turns.busy = false
+      release()
     }
   }
 }
