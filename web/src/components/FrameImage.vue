@@ -145,8 +145,9 @@ const frameStyle = computed(() => ({
         <!-- Drawn on the image itself, zoomed and panned with it (a paint layer), at its size. -->
         <slot v-if="displayed && size" name="layer" :size="size" />
       </div>
+      <!-- Not over a picture forming, which fills the empty frame. -->
       <span
-        v-if="!displayed && emptyText"
+        v-if="!displayed && !shownPreview && emptyText"
         class="absolute inset-0 flex items-center justify-center px-6 text-center text-muted"
       >
         {{ emptyText }}
