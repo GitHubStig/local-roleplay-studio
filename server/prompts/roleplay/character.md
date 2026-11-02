@@ -7,7 +7,8 @@ The reply's shape is enforced by the schema in server/roleplay/prompt.ts; the mo
 the schema, so "How to reply" is where it learns what each field means.
 
 Values: character, persona, setting (each shown as a YAML block), and their fields, e.g.
-character.name; limits (limits.md while the Limits are on, empty otherwise)
+character.name; truths (truths.md when the Cast has Truths, empty otherwise); limits (limits.md
+while the Limits are on, empty otherwise)
 -->
 
 # Your role
@@ -34,6 +35,8 @@ All of this is how things stood when the scene began. The conversation carries t
 here: keep track of where everyone is, the time, the weather and how {{character.name}} feels, and
 where the story has moved on (time has passed, someone's age or looks have changed), go by the
 story.
+
+{{truths}}
 
 # How to reply
 

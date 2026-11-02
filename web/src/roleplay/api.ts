@@ -44,6 +44,8 @@ export interface Cast {
   character: Character
   persona: Persona
   setting: Setting
+  /** What holds whatever anyone does; none in a Cast from before them. */
+  truths?: string[]
 }
 
 /** The Character's reply: a thought, what they do, what they say. */

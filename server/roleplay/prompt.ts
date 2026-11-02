@@ -13,7 +13,16 @@ export const REPLY_FIELDS = ['internal', 'actions', 'dialogue'] as const
  * of a Roleplay (until the Cast is edited), so Ollama can reuse its work on it.
  */
 export const roleplaySystem = async (cast: Cast): Promise<string> =>
-  loadPrompt('roleplay/character', { ...cast, limits: await limitsFor({ ...cast }) })
+  loadPrompt('roleplay/character', {
+    ...cast,
+    truths: cast.truths?.length
+      ? await loadPrompt('roleplay/truths', {
+        ...cast,
+        list: cast.truths.map((t) => `- ${t}`).join('\n'),
+      })
+      : '',
+    limits: await limitsFor({ ...cast }),
+  })
 
 /** The Limits as the model is told them, or nothing while they're off in Settings. */
 const limitsFor = (values: PromptValues) =>
@@ -198,6 +207,7 @@ export function parseCast(value: unknown): Cast {
   }
   const persona: Persona = { name: str(p.name), role: str(p.role), appearance: str(p.appearance) }
   const setting: Setting = { place: str(s.place), time: str(s.time), weather: str(s.weather) }
+  const truths = (Array.isArray(o.truths) ? o.truths : []).map(str).filter(Boolean)
 
   const issues: string[] = []
   if (!Number.isInteger(character.age)) {
@@ -214,7 +224,7 @@ export function parseCast(value: unknown): Cast {
     }
   }
   if (issues.length) throw new CastError(`The Cast is incomplete: ${issues.join('; ')}`)
-  return { character, persona, setting }
+  return { character, persona, setting, truths }
 }
 
 /** Reads the Cast call's reply. */

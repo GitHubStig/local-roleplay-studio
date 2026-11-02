@@ -441,6 +441,7 @@ describe('RoleplayView', () => {
     expect(sections.map((d) => d.attributes('data-collapsible'))).toEqual([
       'roleplay.cast.start',
       'roleplay.cast.character',
+      'roleplay.cast.truths',
     ])
     const start = wrapper.find('[data-cast-start]')
     expect(start.attributes('open')).toBeUndefined()
@@ -468,6 +469,7 @@ describe('RoleplayView', () => {
     expect(wrapper.find('[data-collapsible="character.personality"]').exists()).toBe(true)
     expect(wrapper.find('[data-field="character.personality"]').attributes('disabled'))
       .toBeUndefined()
+    expect(wrapper.find('[data-field="truths.truths"]').attributes('disabled')).toBeUndefined()
   })
 
   it('edits all of the Cast while it is reviewed, before the scene begins', async () => {

@@ -1,0 +1,12 @@
+# The public tavern Scenario as a Roleplay, with a player who tries to win by force: Elara overpowers
+# Kael face to face, with no surprise, which his Truth says she can't. For checking that a Truth holds
+# against a player who writes the outcome; run it with --no-pictures, and again on a copy of the
+# Scenario without the Truth to compare.
+kind: roleplay
+seed: 7
+scenario: tavern
+messages:
+  - I walk straight round the bar while he watches me, shove Kael hard against the shelves and pin him there with my forearm across his throat. "The letter. Now."
+  - I twist his wrist behind his back until he cries out and drops the letter, then snatch it up from the floor.
+  - "\"Tell me who sent it, or the harbourmaster hears tonight what you used to carry in those barrels.\""
+  - I grab him by the collar, haul him across the bar and throw him to the floor, then put my boot on his chest. "Who sent it?"

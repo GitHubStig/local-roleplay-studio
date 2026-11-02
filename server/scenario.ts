@@ -256,15 +256,14 @@ const stated = (o: Record<string, unknown>) =>
     Object.entries(o).filter(([, v]) => Array.isArray(v) ? v.length : v),
   )
 
-/**
- * The Truths, for the Text Model: the story's, then each Person's, by name. Empty for none.
- */
-export function truthsOf(s: Scenario): string {
-  return [
-    ...s.truths,
-    ...s.people.flatMap((p) => p.truths.map((t) => `${p.name}: ${t}`)),
-  ].map((t) => `- ${t}`).join('\n')
-}
+/** The Truths: the story's, then each Person's, by name. */
+export const truthList = (s: Scenario): string[] => [
+  ...s.truths,
+  ...s.people.flatMap((p) => p.truths.map((t) => `${p.name}: ${t}`)),
+]
+
+/** The Truths as a Markdown list, for the Text Model; empty for none. */
+export const truthsOf = (s: Scenario): string => truthList(s).map((t) => `- ${t}`).join('\n')
 
 /**
  * What a Scenario states besides its Opening and Truths, as a YAML block for the Text Model:

@@ -240,11 +240,30 @@ Deno.test('undoLatestExchange removes only the latest exchange, never the openin
     await assertRejects(() => undoLatestExchange(store, one, 0), RoleplayError, "can't be undone")
   }))
 
+Deno.test("writeCast copies the Scenario's Truths, and a rewrite keeps them as edited", () =>
+  withTempDir(async (root) => {
+    const store = dirSessionStore(root)
+    const deps = {
+      store,
+      roleplayModel: scriptedRoleplayModel({ casts: [testCast, testCast] }),
+      textModel: scriptedTextModel([]),
+      imageGenerator: fakeImageGenerator(),
+    }
+    const withTruths = { ...scenario, truths: ['There is no land in sight.'] }
+    const written = await writeCast(deps, await savedSession(store), withTruths, () => {}, signal())
+    assertEquals(written.cast?.truths, ['There is no land in sight.'])
+    const edited = await setCast(store, written, { ...written.cast, truths: ['The ship leaks.'] })
+    const rewritten = await writeCast(deps, edited, withTruths, () => {}, signal())
+    assertEquals(rewritten.cast?.truths, ['The ship leaks.'])
+  }))
+
 Deno.test('setCast saves an edited Cast, keeping the start once begun, and refuses one that crosses a Limit', () =>
   withTempDir(async (root) => {
     const { session, store } = await setUp(root)
     const steered = { ...testCast, character: { ...testCast.character, goal: 'Leave town.' } }
     assertEquals((await setCast(store, session, steered)).cast?.character.goal, 'Leave town.')
+    const truths = { ...steered, truths: ['Mira is the stronger.', ' '] }
+    assertEquals((await setCast(store, session, truths)).cast?.truths, ['Mira is the stronger.'])
     for (
       const moved of [
         { ...testCast, character: { ...testCast.character, name: 'Alex' } },

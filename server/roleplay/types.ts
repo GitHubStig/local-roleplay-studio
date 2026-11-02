@@ -40,6 +40,11 @@ export interface Cast {
   character: Character
   persona: Persona
   setting: Setting
+  /**
+   * What holds whatever anyone does: the Scenario's, copied as the Cast is first written (ADR 0032),
+   * then the player's to edit, before or after the scene begins. None in a Cast from before them.
+   */
+  truths?: string[]
 }
 
 /** The Character's reply to one message, in the order the model writes it. */

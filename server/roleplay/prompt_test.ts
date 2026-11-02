@@ -47,6 +47,10 @@ Deno.test('roleplaySystem names who plays whom, the Setting, the reply fields an
   assertMatch(system, /"internal"[\s\S]*"actions"[\s\S]*"dialogue"/)
   assertEquals(system.includes('Everyone in the story is an adult'), false)
   assertStringIncludes(system, 'No sexual or nude content')
+  assertEquals(system.includes('What holds'), false)
+  const truths = await roleplaySystem({ ...testCast, truths: ['Mira is the stronger.'] })
+  assertStringIncludes(truths, '# What holds')
+  assertStringIncludes(truths, '- Mira is the stronger.')
 })
 
 Deno.test('roleplayMessages: the system message, the opening request, then turns, then the new message', async () => {
