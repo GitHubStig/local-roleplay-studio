@@ -17,6 +17,8 @@ export interface ComfyModel {
   stepChoices?: number[]
   /** Fills its workflow's `$cfg`: real CFG (two passes a step) above 1. Only for a workflow that has one. */
   cfg?: number
+  /** Its prompt while the Limits are off (`modelPrompt`), as on mflux. */
+  limitsOffPrompt?: string
   /** For each loader placeholder (`$unet`, `$clip`, `$vae`): its model folder and file patterns. */
   files: ModelFiles['files']
 }
@@ -29,6 +31,9 @@ const FIBO_CLIP = {
   patterns: [/^qwen3vl_4b_int8_convrot\.safetensors$/, /^qwen3vl_4b_bf16\.safetensors$/],
 }
 const FIBO_VAE = { folder: 'vae', patterns: [/^flux2-vae_fibo2\.safetensors$/] }
+/** Anima's Qwen3-0.6B, and Qwen-Image's first VAE (CircleStone Labs' `split_files`). */
+const ANIMA_CLIP = { folder: 'text_encoders', patterns: [/^qwen_3_06b_base\.safetensors$/] }
+const ANIMA_VAE = { folder: 'vae', patterns: [/^qwen_image_vae\.safetensors$/] }
 const KREA2_FILES = {
   // int8 or fp8, both native on an NVIDIA card. No bf16: it's too big for the PC's memory.
   unet: { folder: 'diffusion_models', patterns: [/^krea2_turbo_int8/, /^krea2_turbo_fp8/] },
@@ -212,6 +217,39 @@ export const COMFYUI_MODELS: readonly ComfyModel[] = [
         patterns: [/^qwen_3_4b_fp8_mixed/, /^qwen_3_4b\.safetensors$/],
       },
       vae: { folder: 'vae', patterns: [/^ae\.safetensors$/] },
+    },
+  },
+  {
+    id: 'anima-turbo',
+    label: 'Anima Turbo',
+    // CircleStone Labs' 2B illustration model, distilled: 10 steps at CFG 1, as on mflux (the model
+    // card's 8 to 12). Their bf16 file, newest first; it's only 4.2 GB.
+    defaultSteps: 10,
+    cfg: 1,
+    files: {
+      unet: {
+        folder: 'diffusion_models',
+        patterns: [/^anima-turbo-v1\.1\.safetensors$/, /^anima-turbo-v1\.0\.safetensors$/],
+      },
+      clip: ANIMA_CLIP,
+      vae: ANIMA_VAE,
+    },
+  },
+  {
+    id: 'anima-aesthetic',
+    label: 'Anima Aesthetic',
+    // Undistilled, at the card's 30 steps and CFG 4 (two passes a step), as on mflux. Not v1.0b, the
+    // card's alternate without v1.0's merged style LoRAs.
+    defaultSteps: 30,
+    cfg: 4,
+    limitsOffPrompt: 'anima-limits-off',
+    files: {
+      unet: {
+        folder: 'diffusion_models',
+        patterns: [/^anima-aesthetic-v1\.1\.safetensors$/, /^anima-aesthetic-v1\.0\.safetensors$/],
+      },
+      clip: ANIMA_CLIP,
+      vae: ANIMA_VAE,
     },
   },
   { id: 'krea-2', label: 'Krea 2', defaultSteps: 8, cfg: 1, files: KREA2_FILES },

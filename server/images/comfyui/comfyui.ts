@@ -3,6 +3,7 @@ import { type ImageGenerator, type OnPreview, UPSCALED_EDGE } from '../imageGene
 import { SIZE_PRESETS } from '../../settings.ts'
 import { comfyBase, fillWorkflow, runWorkflow, type Workflow } from '../../comfyui/client.ts'
 import { editPrompt } from '../editPrompt.ts'
+import { modelPrompt } from '../modelPrompt.ts'
 import { pngSize } from '../../png.ts'
 import { findComfyEditor, findComfyModel, findComfyUpscaler } from './models.ts'
 import { loadModelWorkflow } from './workflow.ts'
@@ -40,7 +41,7 @@ export function comfyuiImageGenerator(opts: {
 
       const workflow = fillWorkflow(await loadModelWorkflow(model.id), {
         ...await modelFiles(base, model, signal),
-        prompt: req.prompt,
+        prompt: await modelPrompt(model.limitsOffPrompt, req.prompt),
         seed: req.seed,
         steps: req.settings.steps,
         ...(model.cfg === undefined ? {} : { cfg: model.cfg }),

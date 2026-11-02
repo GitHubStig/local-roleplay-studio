@@ -1,0 +1,45 @@
+{
+  "_note": "Anima Turbo, from ComfyUI's template image_anima_base_v1 (its CLIPLoader type, euler, simple, EmptyLatentImage) with CircleStone Labs' distilled Turbo checkpoint in place of Base and its Turbo LoRA: 10 steps at CFG 1 with a zeroed negative, as on mflux. The prose Image Prompt goes in as it is, without the card's quality tags. $names are filled in by server/images/comfyui/workflow.ts. The picture comes back over the WebSocket (SaveImageWebsocket), so ComfyUI writes no file. Attention is Comfy Kitchen's int8 (ModelAttentionBackend), as Ming-Image's template has it: less time sampling on an NVIDIA card (docs/research/image-models.md), PyTorch's attention where it can't run, as on a Mac.",
+  "unet": {
+    "class_type": "UNETLoader",
+    "inputs": { "unet_name": "$unet", "weight_dtype": "default" }
+  },
+  "attention": {
+    "class_type": "ModelAttentionBackend",
+    "inputs": { "model": ["unet", 0], "attention": "comfy kitchen attention" }
+  },
+  "clip": {
+    "class_type": "CLIPLoader",
+    "inputs": { "clip_name": "$clip", "type": "stable_diffusion", "device": "default" }
+  },
+  "vae": { "class_type": "VAELoader", "inputs": { "vae_name": "$vae" } },
+  "text": {
+    "class_type": "CLIPTextEncode",
+    "inputs": { "clip": ["clip", 0], "text": "$prompt" }
+  },
+  "negative": { "class_type": "ConditioningZeroOut", "inputs": { "conditioning": ["text", 0] } },
+  "latent": {
+    "class_type": "EmptyLatentImage",
+    "inputs": { "width": "$width", "height": "$height", "batch_size": 1 }
+  },
+  "sampler": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": ["attention", 0],
+      "positive": ["text", 0],
+      "negative": ["negative", 0],
+      "latent_image": ["latent", 0],
+      "seed": "$seed",
+      "steps": "$steps",
+      "cfg": "$cfg",
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "denoise": 1
+    }
+  },
+  "decode": {
+    "class_type": "VAEDecode",
+    "inputs": { "samples": ["sampler", 0], "vae": ["vae", 0] }
+  },
+  "save": { "class_type": "SaveImageWebsocket", "inputs": { "images": ["decode", 0] } }
+}

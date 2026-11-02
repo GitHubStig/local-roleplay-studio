@@ -9,6 +9,7 @@ import { comfyuiImageGenerator } from './comfyui.ts'
 import { COMFYUI_EDITORS, COMFYUI_MODELS, COMFYUI_UPSCALERS, findComfyModel } from './models.ts'
 import { loadModelWorkflow } from './workflow.ts'
 import { pickFiles } from '../../comfyui/files.ts'
+import { setLimitsEnabled } from '../../limits.ts'
 
 const MAC_FILES: Record<string, string[]> = {
   diffusion_models: [
@@ -52,13 +53,17 @@ const PC_FILES: Record<string, string[]> = {
   ],
 }
 
-const FIBO_TEST_FILES: Record<string, string[]> = {
+/** The PC's files, with FIBO 2.0's and Anima's, so every model has its own. */
+const ALL_FILES: Record<string, string[]> = {
   ...PC_FILES,
   diffusion_models: [
     ...PC_FILES.diffusion_models,
+    'anima-aesthetic-v1.1.safetensors',
+    'anima-turbo-v1.1.safetensors',
     'fibo2_dev_int8_convrot.safetensors',
     'fibo2_edit_turbo_int8_convrot.safetensors',
   ],
+  text_encoders: [...PC_FILES.text_encoders, 'qwen_3_06b_base.safetensors'],
   vae: [...PC_FILES.vae, 'flux2-vae_fibo2.safetensors'],
 }
 
@@ -125,7 +130,7 @@ async function comfyEdit(
   model: EditRequest['model'],
   mask?: Uint8Array<ArrayBuffer>,
 ) {
-  const comfy = fakeComfyUI({ files: FIBO_TEST_FILES })
+  const comfy = fakeComfyUI({ files: ALL_FILES })
   try {
     // Padded past the 100 bytes that tell a real upload from its blanked stub.
     const frame = new Uint8Array(500)
@@ -191,7 +196,7 @@ Deno.test('FIBO 2.0 Dev renders prose prompts with its native encoder and sampli
     const model = findComfyModel('fibo-2.0')!
     assertEquals([model.defaultSteps, model.cfg], [50, 5])
     assertEquals(findComfyModel('fibo-2.0-edit-turbo'), undefined)
-    const comfy = fakeComfyUI({ files: FIBO_TEST_FILES })
+    const comfy = fakeComfyUI({ files: ALL_FILES })
     try {
       await comfyuiImageGenerator({ address: comfy.url }).generate(
         {
@@ -472,7 +477,7 @@ Deno.test('Every ComfyUI workflow loads, and fills with nothing left over', asyn
     ...COMFYUI_MODELS.map((model) => ({
       id: model.id,
       values: {
-        ...pickFiles(model, (folder) => FIBO_TEST_FILES[folder] ?? []),
+        ...pickFiles(model, (folder) => ALL_FILES[folder] ?? []),
         prompt: 'p',
         seed: 1,
         steps: 2,
@@ -487,7 +492,7 @@ Deno.test('Every ComfyUI workflow loads, and fills with nothing left over', asyn
       return {
         id: editor.workflow,
         values: {
-          ...pickFiles(editor.files ?? model, (folder) => FIBO_TEST_FILES[folder] ?? []),
+          ...pickFiles(editor.files ?? model, (folder) => ALL_FILES[folder] ?? []),
           image: 'x.png [temp]',
           mask: 'mask.png [temp]',
           prompt: 'p',
@@ -563,7 +568,7 @@ Deno.test('FIBO 2.0 Turbo renders text with the Edit Turbo checkpoint as a gener
   withTempDir(async (dir) => {
     const model = findComfyModel('fibo-2.0-turbo')!
     assertEquals([model.defaultSteps, model.cfg, model.stepChoices], [4, 1, [4]])
-    const comfy = fakeComfyUI({ files: FIBO_TEST_FILES })
+    const comfy = fakeComfyUI({ files: ALL_FILES })
     try {
       await comfyuiImageGenerator({ address: comfy.url }).generate(
         {
@@ -640,3 +645,40 @@ Deno.test("Qwen-Image 2.1 never picks its Turbo's DiT, a Klein its undistilled b
     )
   )
 })
+
+Deno.test("Anima Aesthetic gets its safety tags while the Limits are off, and never v1.0b's file", () =>
+  withTempDir(async (dir) => {
+    const installed = {
+      diffusion_models: [
+        'anima-aesthetic-v1.0.safetensors',
+        'anima-aesthetic-v1.0b.safetensors',
+        'anima-turbo-v1.1.safetensors',
+      ],
+      text_encoders: ['qwen_3_06b_base.safetensors'],
+      vae: ['qwen_image_vae.safetensors'],
+    }
+    const comfy = fakeComfyUI({ files: installed })
+    const render = (imageModel: string) =>
+      comfyuiImageGenerator({ address: comfy.url }).generate(
+        { prompt: 'A tavern.', seed: 7, settings: settings({ imageModel }), dir, name: imageModel },
+        new AbortController().signal,
+      )
+    try {
+      await render('anima-aesthetic')
+      setLimitsEnabled(false)
+      try {
+        await render('anima-aesthetic')
+        await render('anima-turbo')
+      } finally {
+        setLimitsEnabled(true)
+      }
+      const [on, off, turbo] = comfy.queued as Nodes[]
+      assertEquals(on.unet.inputs.unet_name, 'anima-aesthetic-v1.0.safetensors')
+      assertEquals(on.text.inputs.text, 'A tavern.')
+      assertEquals(off.text.inputs.text, 'nsfw, explicit, A tavern.')
+      assertEquals(turbo.unet.inputs.unet_name, 'anima-turbo-v1.1.safetensors')
+      assertEquals(turbo.text.inputs.text, 'A tavern.')
+    } finally {
+      await comfy.close()
+    }
+  }))

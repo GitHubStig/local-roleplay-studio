@@ -220,6 +220,21 @@ Added as `anima-turbo`: CircleStone Labs' Anima (a 2B fine-tune of NVIDIA's Cosm
 - **Safety tags**: the card's prompts carry one of `safe`, `sensitive`, `nsfw` or `explicit`, which Anima was trained on, in the positive and the negative prompt. With the Limits off, Aesthetic's prompt starts with `nsfw, explicit, ` (`prompts/images/anima-limits-off.md`); with them on, the Image Prompt goes as it is. Not rendered with the tags yet, and Turbo doesn't get them.
 - **Not tried**: more prompts and seeds, Turbo's 8 or 12 steps, Quantize for Turbo, Danbooru tags, Aesthetic in bf16, and Base (30 steps with guidance 4, a plainer style, the one to train LoRAs on).
 
+### On ComfyUI (2026-11-02, Windows PC)
+
+The same two ids on ComfyUI 0.43.2. It has a template for Anima Base (`image_anima_base_v1`: `CLIPLoader` type `stable_diffusion`, `EmptyLatentImage`, euler, simple, 30 steps at CFG 4, with an optional Turbo LoRA) but none for Turbo or Aesthetic, so the app's workflows are that template with CircleStone Labs' own checkpoints in place of Base, plus Comfy Kitchen's int8 attention as on every ComfyUI Image Model: Turbo at 10 steps and CFG 1 with a zeroed negative, Aesthetic at 30 steps and CFG 4 with an empty negative, as on mflux. The files are CircleStone Labs' bf16 `split_files` (`circlestone-labs/Anima`, no Comfy-Org repack): `anima-turbo-v1.1` and `anima-aesthetic-v1.1` (4.2 GB each; v1.0 is taken if that's what's installed, never Aesthetic's v1.0b, the card's alternate without v1.0's merged style LoRAs), the Qwen3-0.6B `qwen_3_06b_base` (1.2 GB), and Qwen-Image's first VAE, already there for Krea 2. Which version mflux-community's copies were made from isn't stated.
+
+Through the app's own ComfyUI generator, a prompt written to the description above (the Mac's exact text isn't kept), seed 42, 832×1216, from cold (ComfyUI frees its models after every job), Ollama unloaded:
+
+| Model | From cold | Sampling | Peak VRAM |
+|---|---|---|---|
+| Anima Turbo | 8.3 s, then 7.4 s | 3.5–3.9 s | 8.1 GB |
+| Anima Aesthetic | 22.8 s, then 22.4 s | 18.3–18.4 s | 7.2 GB |
+
+- **The fastest Image Model on the PC**, and the lightest: about half Z-Image Turbo's 11 s, and 2–3 GB of the card left free, where every other model fills it.
+- **The pictures** looked as on the Mac: Turbo's a flat, clean digital illustration, Aesthetic's a painterly oil with visible brushwork and a signature-like mark at the bottom right. Both kept the rain outside on the window and set the mug down in front of the traveller; both gave the innkeeper a brimmed hat. The same seed gave the same file each time.
+- **The Limits off**: Aesthetic's prompt then starts with `nsfw, explicit, ` on ComfyUI too (the shared `server/images/modelPrompt.ts`), and the render differed from the one with the Limits on. The picture wasn't looked at.
+
 ## Viggle or Qwen's Turbo: a quick Qwen-Image 2.1 (2026-10-17)
 
 Two Image Models render Qwen-Image 2.1 in about half its time: **Viggle's turbo LoRA** on it (`qwen-image-2.1-viggle`, 6 steps) and **Qwen's own distilled Turbo** (`qwen-image-2.1-turbo`, 8 steps). Compared on the Mac (mflux 0.23) on the Chain of 31 Frames that the style scores were chosen on, each Frame asking for an art style of its own, all three rendered from the same Image Prompts and seed, then embedded for the Compare dialog's style scores ([research/style-scores.md](style-scores.md)):
