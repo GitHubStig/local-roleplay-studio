@@ -91,7 +91,7 @@ No Sessions are kept as test fixtures: to test against a story, make one through
 
 **What's in a Session stays out of the repo** unless the owner OKs it: no Roleplay text, Image
 Prompts, voice clips or pictures from real Sessions copied into `docs/`, tests or commits.
-Describe what was measured instead, or use the public tavern scenario (`scenarios/tavern.md`).
+Describe what was measured instead, or use the public tavern scenario (`example-scenarios/tavern.md`).
 
 ## 3D trial pages
 

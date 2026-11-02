@@ -19,7 +19,7 @@ import { updateSession } from './update.ts'
 export interface RoleplayJobContext {
   store: SessionStore
   deps(session: Session): RoleplayDeps
-  scenarioFor(session: Session): Promise<Scenario | Response>
+  scenarioFor(session: Session): Scenario | Response
   /** The upscaler chosen in Settings now. */
   upscaler(): Promise<Upscaler>
   /** The video model chosen in Settings now. */
@@ -69,7 +69,7 @@ export async function runRoleplayJob(
   const save = (change: (s: RoleplaySession) => RoleplaySession) =>
     updateSession(withDeps.store, session.id, change)
   if (job.kind === 'picture') {
-    const scenario = await ctx.scenarioFor(session)
+    const scenario = ctx.scenarioFor(session)
     if (scenario instanceof Response) throw new Error((await scenario.json()).error)
     await pictureFrame(withDeps, session, scenario, job.frameIndex, emit, signal)
   } else if (job.kind === 'voice' || job.kind === 'speak' || job.kind === 'speak-thought') {

@@ -16,7 +16,7 @@ import { fileQueueStore } from './queueStore.ts'
 import { comfyuiImageGenerator } from './images/comfyui/comfyui.ts'
 import { comfyuiStatus } from './comfyui/status.ts'
 import { imageBackends } from './images/backend.ts'
-import { dirScenarioLibrary } from './scenario.ts'
+import { combinedScenarioLibrary, dirScenarioLibrary } from './scenario.ts'
 import { dirSessionStore } from './session.ts'
 import { fileSettingsStore, machineDefaults, type Settings } from './settings.ts'
 import { chatTextModel } from './textModel.ts'
@@ -159,7 +159,11 @@ const handler = createHandler({
   listTextModels: (backend, apiKey) => text(backend, apiKey).listModels(),
   textBackendOf,
   comfyuiStatus,
-  scenarios: dirScenarioLibrary(new URL('../scenarios/', import.meta.url)),
+  // The player's own (gitignored), then the examples (ADR 0032).
+  scenarios: combinedScenarioLibrary(
+    dirScenarioLibrary(new URL('../scenarios/', import.meta.url)),
+    dirScenarioLibrary(new URL('../example-scenarios/', import.meta.url)),
+  ),
   sessions: sessionStore,
   sessionsFolder: {
     default: defaultSessionsDir,

@@ -307,15 +307,17 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     return (await deps.sessions.load(id)) ?? error('Session not found', 404)
   }
 
-  /** A Session's title: its Scenario's (`scenarioTitle`), or the start of its typed Brief. */
-  const titleOf = (session: Session, scenarioTitle: string | undefined) =>
-    session.brief ? briefScenario(session.brief).title : scenarioTitle ?? session.scenarioId ?? ''
+  /** A Session's title: its Scenario's, or the start of its typed Brief. */
+  const titleOf = (session: Session) =>
+    session.brief
+      ? briefScenario(session.brief).title
+      : session.scenario?.title ?? session.scenarioId ?? ''
 
-  /** The Scenario a Session starts from: its saved Scenario, or its typed Brief. */
-  async function scenarioFor(session: Session): Promise<Scenario | Response> {
+  /** The Scenario a Session starts from: its own copy of a Scenario, or its typed Brief. */
+  function scenarioFor(session: Session): Scenario | Response {
     if (session.brief) return briefScenario(session.brief)
-    const scenario = session.scenarioId ? await deps.scenarios.get(session.scenarioId) : undefined
-    return scenario ?? error(`Scenario "${session.scenarioId}" no longer exists`, 409)
+    return session.scenario ??
+      error(`This Session has no copy of its Scenario "${session.scenarioId}"`, 409)
   }
 
   /**
@@ -413,7 +415,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
   async function locked(
     id: string,
     kind: LockKind,
-    handle: (session: Session) => Promise<Response>,
+    handle: (session: Session) => Response | Promise<Response>,
   ): Promise<Response> {
     const busy = lock(id, kind)
     if (busy) return busy
@@ -745,16 +747,12 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     // Every machine's queue, for the queue page: the machines Settings list (the kinds of Backend on
     // each), every Session's jobs with its title, and the Text Model's calls running or waiting.
     ['GET', new URLPattern({ pathname: '/api/queue' }), async () => {
-      const [{ backends }, { scenarios }] = await Promise.all([
-        deps.settings.load(),
-        deps.scenarios.list(),
-      ])
+      const { backends } = await deps.settings.load()
       const machines = new Map<string, string[]>()
       for (const b of backends) {
         const key = machineOf(b)
         machines.set(key, [...machines.get(key) ?? [], BACKEND_NAMES[b.kind]])
       }
-      const titles = new Map(scenarios.map((s) => [s.id, s.title]))
       const text = renderQueue.textCalls()
       const ids = new Set([
         ...jobs.all().map((s) => s.sessionId),
@@ -762,7 +760,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       ])
       const sessions = (await Promise.all([...ids].map((id) => deps.sessions.load(id))))
         .filter((s) => !!s)
-        .map((s) => ({ id: s.id, kind: s.kind, title: titleOf(s, titles.get(s.scenarioId ?? '')) }))
+        .map((s) => ({ id: s.id, kind: s.kind, title: titleOf(s) }))
       return json({
         machines: [...machines].map(([key, kinds]) => ({ key, backends: [...new Set(kinds)] })),
         sessions,
@@ -914,9 +912,8 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
         const limit = crossedLimit(brief)?.message
         if (limit) return error(`The Brief crosses a limit: ${limit}`, 422)
       }
-      if (scenarioId && !(await deps.scenarios.get(scenarioId))) {
-        return error('Scenario not found', 404)
-      }
+      const scenario = scenarioId ? await deps.scenarios.get(scenarioId) : undefined
+      if (scenarioId && !scenario) return error('Scenario not found', 404)
       let frameCount = FRAME_COUNT.default
       if (kind === 'storyboard' && body?.frameCount !== undefined) {
         frameCount = Number(body.frameCount)
@@ -941,6 +938,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
         id: newSessionId(),
         brief,
         scenarioId,
+        ...scenario && { scenario },
         settings: sessionSettingsOf(settings),
         seed: (seed as number | undefined) ??
           (settings.seedMode === 'fixed' ? settings.seed : randomSeed()),
@@ -956,11 +954,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     }],
 
     ['GET', new URLPattern({ pathname: '/api/sessions' }), async () => {
-      const [sessions, { scenarios }] = await Promise.all([
-        deps.sessions.list(),
-        deps.scenarios.list(),
-      ])
-      const titles = new Map(scenarios.map((s) => [s.id, s.title]))
+      const sessions = await deps.sessions.list()
       const summaries = sessions.map((s) => {
         const updatedAt = s.frames.reduce(
           (latest, f) => f.createdAt > latest ? f.createdAt : latest,
@@ -970,7 +964,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
           id: s.id,
           kind: s.kind,
           scenarioId: s.scenarioId,
-          title: titleOf(s, titles.get(s.scenarioId ?? '')),
+          title: titleOf(s),
           frames: s.frames.length,
           latestImage: s.frames.map((f) => {
             const picture = shownPicture(f, s.settings.imageModel)
@@ -1011,10 +1005,9 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       // before the first arrives.
       const { size } = await deps.settings.load()
       const { width, height } = SIZE_PRESETS.find((p) => p.id === size) ?? SIZE_PRESETS[0]
-      const scenario = session.scenarioId ? await deps.scenarios.get(session.scenarioId) : undefined
       return json({
         ...session,
-        title: titleOf(session, scenario?.title),
+        title: titleOf(session),
         activity: work?.phase ?? null,
         activeFrame: work?.frameIndex ?? null,
         imageSize: { width, height },
@@ -1160,7 +1153,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
             }
             action = body.action.trim()
           }
-          const scenario = await scenarioFor(session)
+          const scenario = scenarioFor(session)
           if (scenario instanceof Response) return scenario
           // Its picture is a render job, queued as the Frame is saved, so the page that hears of
           // the Frame finds its render in the queue.
@@ -1258,10 +1251,10 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       'POST',
       new URLPattern({ pathname: '/api/sessions/:id/plan' }),
       (_req, p) =>
-        locked(p.id!, 'plan', async (session) => {
+        locked(p.id!, 'plan', (session) => {
           if (!needsStoryboard(session)) return error('Only a Storyboard is planned', 409)
           if (session.frames.length > 0) return error('This Storyboard is already planned', 409)
-          const scenario = await scenarioFor(session)
+          const scenario = scenarioFor(session)
           if (scenario instanceof Response) return scenario
           // A Storyboard that never got planned never started, like a Chain's Opening Frame.
           return stream(session, null, true, async (send, signal) => {
@@ -1276,9 +1269,9 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       'POST',
       new URLPattern({ pathname: '/api/sessions/:id/write' }),
       (_req, p) =>
-        locked(p.id!, 'write', async (session) => {
+        locked(p.id!, 'write', (session) => {
           if (!needsStoryboard(session)) return error('Only a Storyboard writes its Frames', 409)
-          const scenario = await scenarioFor(session)
+          const scenario = scenarioFor(session)
           if (scenario instanceof Response) return scenario
           // Refused up front, before the stream: nothing to write, or not planned yet.
           if (!session.look || session.frames.every((f) => f.body)) {
@@ -1344,7 +1337,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
             return error('action is required', 400)
           }
           const action = body.action.trim()
-          const scenario = await scenarioFor(session)
+          const scenario = scenarioFor(session)
           if (scenario instanceof Response) return scenario
           return stream(session, index, false, async (send, signal) => {
             const result = await editFrameByAction(

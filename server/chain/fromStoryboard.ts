@@ -139,6 +139,7 @@ export async function chainFromStoryboard(
     kind: 'chain',
     brief: storyboard.brief,
     scenarioId: storyboard.scenarioId,
+    ...storyboard.scenario && { scenario: storyboard.scenario },
     settings: storyboard.settings,
     seed: storyboard.seed,
     createdAt: chain.createdAt,

@@ -10,7 +10,7 @@ import { parse } from '@std/yaml'
 /** A replay file: which kind of Session, where it starts, and what the player sends. */
 export interface Replay {
   kind: 'roleplay' | 'chain' | 'storyboard'
-  /** A Scenario's id (its file name in `scenarios/`), or a Brief, not both. */
+  /** A Scenario's id (its file name in `scenarios/` or `example-scenarios/`), or a Brief, not both. */
   scenario?: string
   brief?: string
   /** A Roleplay's Messages, in order. */

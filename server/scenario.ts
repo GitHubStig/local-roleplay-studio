@@ -1,7 +1,7 @@
 import { extract } from '@std/front-matter/yaml'
 import { basename, extname, fromFileUrl, join } from '@std/path'
 
-/** A Scenario file, parsed. See `scenarios/*.md`. */
+/** A Scenario file, parsed. See `example-scenarios/*.md`. */
 export interface Scenario {
   /** File name without extension, e.g. `tavern`. */
   id: string
@@ -125,6 +125,27 @@ export function dirScenarioLibrary(dir: string | URL): ScenarioLibrary {
     return { scenarios, errors }
   }
 
+  return {
+    list,
+    async get(id) {
+      return (await list()).scenarios.find((s) => s.id === id)
+    },
+  }
+}
+
+/**
+ * Several libraries read as one, the first's Scenarios first; a later one's with an id already
+ * taken are left out, so the player's own Scenario stands in for an example of the same name.
+ */
+export function combinedScenarioLibrary(...libraries: ScenarioLibrary[]): ScenarioLibrary {
+  async function list() {
+    const lists = await Promise.all(libraries.map((l) => l.list()))
+    const ids = new Set<string>()
+    const scenarios = lists.flatMap((l) => l.scenarios).filter((s) =>
+      !ids.has(s.id) && ids.add(s.id)
+    )
+    return { scenarios, errors: lists.flatMap((l) => l.errors) }
+  }
   return {
     list,
     async get(id) {

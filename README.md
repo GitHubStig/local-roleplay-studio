@@ -134,7 +134,8 @@ Where mflux or the voice service can't run (a PC), Settings start on ComfyUI for
 ## Where things live
 
 ```
-scenarios/        Scenario files, one Markdown file each (see docs/scenarios.md)
+example-scenarios/  The example Scenarios, one Markdown file each (see docs/scenarios.md)
+scenarios/        Your own Scenarios (gitignored)
 settings.json     Your Settings (gitignored; created on first save)
 queue.json        The job queue, kept across restarts (gitignored)
 sessions/<id>/    Each Session: session.json plus its pictures, voices and 3D files (gitignored)
@@ -172,7 +173,7 @@ Sessions stay on disk until you delete them from Home (or remove their folder in
 
 ## Writing a new Scenario
 
-Add a Markdown file to `scenarios/`. It appears on Home, under *Start a new Session*, without a restart. If a file has a problem, Home lists every issue found in it. The format is documented in [docs/scenarios.md](docs/scenarios.md).
+Add a Markdown file to `scenarios/` (yours, gitignored; the examples are in `example-scenarios/`, and one of yours with the same file name stands in for an example). It appears on Home, under *Start a new Session*, without a restart. If a file has a problem, Home lists every issue found in it. The format is documented in [docs/scenarios.md](docs/scenarios.md).
 
 ## Known quirks
 

@@ -2,6 +2,7 @@ import { fromFileUrl, join } from '@std/path'
 import type { ImagePrompt } from './imagePrompt.ts'
 import type { RoleplaySession } from './roleplay/types.ts'
 import type { Picture } from './pictures.ts'
+import type { Scenario } from './scenario.ts'
 import type { SessionSettings } from './settings.ts'
 
 /**
@@ -100,8 +101,13 @@ export interface SessionBase {
   id: string
   /** The typed Brief this Session started from; null when it started from a Scenario. */
   brief: string | null
-  /** The Scenario it started from (a saved Brief); null when started from a typed Brief. */
+  /** The Scenario file it started from; null when started from a typed Brief. */
   scenarioId: string | null
+  /**
+   * Its own copy of that Scenario, taken when it started, so editing or deleting the file leaves
+   * it alone and it works where the file isn't (ADR 0032); absent for a typed Brief.
+   */
+  scenario?: Scenario
   /**
    * What it keeps of Settings, as they were when it started: its models (`SESSION_SETTINGS`). Its
    * Image Model and steps change only when switched in it (`switchImageModel`); the rest is read

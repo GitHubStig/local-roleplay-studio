@@ -1,7 +1,13 @@
 import { assertEquals, assertMatch, assertStringIncludes } from '@std/assert'
 import type { Backend } from './backends.ts'
 import { DEFAULT_SETTINGS } from './settings.ts'
-import { fakeImageGenerator, reply, scriptedTextModel, withTempDir } from './testing.ts'
+import {
+  fakeImageGenerator,
+  reply,
+  scriptedTextModel,
+  testScenario,
+  withTempDir,
+} from './testing.ts'
 import { type JsonFrame, madeFrame, readEvents, setup } from './appTesting.ts'
 
 Deno.test('GET /api/health reports ok', async () => {
@@ -274,6 +280,27 @@ Deno.test('POST /api/sessions snapshots settings and resolves the seed', () =>
     assertEquals(session.seed, 1234)
     assertEquals(session.settings.textModel, 'llama3:latest')
     assertEquals(session.frames, [])
+  }))
+
+Deno.test('A Session keeps its own copy of its Scenario, to work without the file', () =>
+  withTempDir(async (root) => {
+    const made = setup({ root, settings: { textModel: 'x' } })
+    await made.call('POST', '/api/sessions', { scenarioId: 'test' })
+    assertEquals((await made.sessions.load('s1'))?.scenario, testScenario)
+
+    const gone = {
+      list: () => Promise.resolve({ scenarios: [], errors: [] }),
+      get: () => Promise.resolve(undefined),
+    }
+    const { call } = setup({
+      root,
+      settings: { textModel: 'x' },
+      scenarios: gone,
+      textModel: scriptedTextModel([reply('standing')]),
+    })
+    assertEquals((await (await call('GET', '/api/sessions/s1')).json()).title, 'Test Shoot')
+    await madeFrame(call)
+    assertEquals((await (await call('GET', '/api/sessions/s1')).json()).frames.length, 1)
   }))
 
 Deno.test('POST /api/sessions uses a fixed seed when set', () =>

@@ -10,6 +10,8 @@ settings.json.tmp
 queue.json
 queue.json.tmp
 sessions/
+# The player's own Scenarios; the examples are in example-scenarios/
+scenarios/
 # Pages exported from the Compare dialog
 exports/
 # Saved quantized copies of Image Models, which the app made until 2026-10-09

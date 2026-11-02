@@ -12,7 +12,7 @@ Every Session starts from a **Brief** (typed, or a saved **Scenario**) and is on
 
 The **Image Prompt** is one paragraph covering nine aspects in a fixed order: subject and identity → pose and limbs → expression → camera angle and framing → clothing → environment → lighting → color → art style and medium ([ADR 0005](adr/0005-image-prompt-is-the-state.md)). A Chain's is nine sentences, one per aspect, which the Text Model rewrites. A Storyboard's and a Roleplay's are put together by the engine from a **Look**: the identity of each Subject shown, the seven sentences the Text Model wrote for that Frame (pose to color), then the art style ([ADR 0012](adr/0012-storyboard-look-lists-each-person.md)). Anything in it can be changed; the engine's three **Limits** are the only lines an Action can't cross ([ADR 0002](adr/0002-guardrails-enforced-by-the-engine.md)).
 
-The built-in Scenario is the Kael tavern (`scenarios/tavern.md`): an 18th-century tavern on a stormy night, Kael the Character and a well-off traveller the player.
+The built-in Scenario is the Kael tavern (`example-scenarios/tavern.md`): an 18th-century tavern on a stormy night, Kael the Character and a well-off traveller the player.
 
 ## The Frame loop
 
@@ -129,7 +129,7 @@ Hand edits (a Look, a Cast, a Storyboard Frame) save themselves when the focus l
 |---|---|---|
 | Settings | `settings.json` | Missing, corrupt or invalid → defaults; missing fields filled from defaults |
 | The job queue | `queue.json` | Every Session's jobs; written through a temp file, then renamed; missing → empty |
-| Scenarios | `scenarios/*.md` | Read fresh on every request, so edits need no restart |
+| Scenarios | `scenarios/*.md` (the player's, gitignored), then `example-scenarios/*.md` | Read fresh on every request, so edits need no restart; one of the player's stands in for an example of the same file name. A Session started from one keeps its own copy in `session.json` (`scenario`), so editing or deleting the file leaves it alone ([ADR 0032](adr/0032-scenarios-are-stories-kept-in-each-session.md)) |
 | Sessions | `<Session folder>/<id>/session.json` + its files | Id is `YYYYMMDD-HHMMSS-xxxx`; files are written to a temp file, then renamed, and carry a random suffix, so a Frame made after an Undo never reuses a file name |
 | Call log | `<id>/calls/frame-N.json`, `calls/setup.json` | Only with Settings' call log on |
 

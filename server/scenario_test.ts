@@ -1,6 +1,6 @@
 import { assertEquals, assertThrows } from '@std/assert'
 import { join } from '@std/path'
-import { dirScenarioLibrary, parseScenario } from './scenario.ts'
+import { combinedScenarioLibrary, dirScenarioLibrary, parseScenario } from './scenario.ts'
 
 const valid = `---
 title: Test Shoot
@@ -68,4 +68,22 @@ Deno.test('dirScenarioLibrary treats a missing directory as empty', async () => 
   const { scenarios, errors } = await dirScenarioLibrary('/nonexistent/scenarios').list()
   assertEquals(scenarios, [])
   assertEquals(errors, [])
+})
+
+Deno.test('combinedScenarioLibrary lists the first library first, and its id over a later one', async () => {
+  const library = (ids: string[], title: string) => {
+    const scenarios = ids.map((id) => ({ ...parseScenario(id, valid), title }))
+    return {
+      list: () => Promise.resolve({ scenarios, errors: [{ file: `${title}.md`, message: 'bad' }] }),
+      get: (id: string) => Promise.resolve(scenarios.find((s) => s.id === id)),
+    }
+  }
+  const lib = combinedScenarioLibrary(
+    library(['tavern'], 'Mine'),
+    library(['contact', 'tavern'], 'Example'),
+  )
+  const { scenarios, errors } = await lib.list()
+  assertEquals(scenarios.map((s) => [s.id, s.title]), [['tavern', 'Mine'], ['contact', 'Example']])
+  assertEquals(errors.map((e) => e.file), ['Mine.md', 'Example.md'])
+  assertEquals((await lib.get('tavern'))?.title, 'Mine')
 })

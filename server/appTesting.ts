@@ -42,6 +42,7 @@ function memoryStore(initial: Settings = { ...DEFAULT_SETTINGS }): SettingsStore
 export interface SetupOptions {
   root?: string
   listTextModels?: AppDeps['listTextModels']
+  scenarios?: AppDeps['scenarios']
   comfyuiStatus?: AppDeps['comfyuiStatus']
   textModel?: TextModel
   imageGenerator?: ImageGenerator
@@ -73,7 +74,7 @@ export function setup(opts: SetupOptions = {}) {
           { name: 'llama3:latest', thinking: false },
           { name: 'qwen3.8:27b-mlx', thinking: true },
         ])),
-    scenarios: scenarioLibrary,
+    scenarios: opts.scenarios ?? scenarioLibrary,
     sessions,
     textModel: () => opts.textModel ?? scriptedTextModel([]),
     imageGenerator: opts.imageGenerator ?? fakeImageGenerator(),

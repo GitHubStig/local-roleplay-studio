@@ -59,7 +59,7 @@ export interface RoleplayRouteContext {
     discardOnFailure: boolean,
     run: (send: (event: StreamEvent) => void, signal: AbortSignal) => Promise<void>,
   ): Response
-  scenarioFor(session: Session): Promise<Scenario | Response>
+  scenarioFor(session: Session): Scenario | Response
   deps(session: Session): RoleplayDeps
   /** The model Suggest writes with: the Session's Text Model, Thinking off. */
   suggestModel(session: Session): RoleplayModel
@@ -93,7 +93,7 @@ export function roleplayRoutes(ctx: RoleplayRouteContext): Route[] {
   const withRoleplay = (
     id: string,
     kind: RoleplayLockKind,
-    handle: (session: RoleplaySession) => Promise<Response>,
+    handle: (session: RoleplaySession) => Response | Promise<Response>,
   ) =>
     ctx.locked(id, kind, async (session) => {
       if (session.kind !== 'roleplay') return error('Only a Roleplay has this', 409)
@@ -110,9 +110,9 @@ export function roleplayRoutes(ctx: RoleplayRouteContext): Route[] {
 
   return [
     ['POST', path('cast'), (_req, p) =>
-      withRoleplay(p.id!, 'setup', async (session) => {
+      withRoleplay(p.id!, 'setup', (session) => {
         if (session.frames.length) return error('The scene has already begun', 409)
-        const scenario = await ctx.scenarioFor(session)
+        const scenario = ctx.scenarioFor(session)
         if (scenario instanceof Response) return scenario
         // A Roleplay whose first Cast was never written never started, like a Chain's Opening
         // Frame; a failed rewrite keeps the Cast it had.
