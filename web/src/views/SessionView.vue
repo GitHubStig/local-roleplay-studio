@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { frameName } from '../frameName'
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
-import { onBeforeRouteLeave } from 'vue-router'
 import ComposeBox from '../components/ComposeBox.vue'
 import FrameImage from '../components/FrameImage.vue'
 import CollapsibleTextarea from '../components/CollapsibleTextarea.vue'
@@ -24,8 +23,7 @@ import { useJobLink } from '../composables/useJobLink'
 import { sessionPath } from '../sessionPath'
 import { usePictureEditing } from '../composables/usePictureEditing'
 import { showPickedFrame, useFrameKeys } from '../composables/useFrameKeys'
-import { formingOf, jobForming, jobStatus, queueTab, sweepOf } from '../jobs'
-import { useShownPreview } from '../composables/useShownPreview'
+import { jobForming, jobStatus, queueTab, sweepOf } from '../jobs'
 import { useStoredFlag } from '../composables/useStoredFlag'
 import { useSessionScreen } from '../composables/useSessionScreen'
 import { diffWords } from '../diff'
@@ -34,11 +32,8 @@ import {
   changedSinceRender,
   deleteChainFrame,
   saveChainPrompt,
-  DOWNLOADING,
   imageUrl,
   type Outcome,
-  type ImageBackend,
-  type ImagePrompt,
   type Job,
   streamFrame,
   type ChainFrame,
@@ -51,19 +46,14 @@ import { useFeatures } from '../composables/useFeatures'
 
 const props = defineProps<{ id: string }>()
 
-/** The Frame in progress: provisional until committed. */
+/** The Frame in progress, until it's saved; its picture is a render job after (ADR 0030). */
 interface Pending {
+  /** Writing, or waiting for a render on the Text Model's machine to finish (`queued`). */
   phase: Activity
   /** Started elsewhere (before a reload, in another tab); followed by polling the Session. */
   detached?: boolean
   /** The Text Model's reasoning so far, when thinking is on. */
   thinking?: string
-  progress?: { step: number; total: number }
-  /** The kind of backend its render runs on, once it starts. */
-  imageBackend?: ImageBackend
-  narration?: string
-  outcome?: Outcome
-  prompt?: ImagePrompt
   cancelling?: boolean
 }
 
@@ -94,8 +84,6 @@ const panel = ref<'log' | 'queue' | 'prompt'>('log')
 const captionHidden = useStoredFlag('caption-hidden')
 const removedHidden = useStoredFlag('diff-removed-hidden')
 
-/** This Session's Frame is waiting for another Session's render to finish. */
-const queued = computed(() => pending.value?.phase === 'queued')
 /**
  * The Frame in progress is shown, in its own place at the end of the Frames: while one runs and no
  * earlier Frame was picked. It has no picture until its preview (ComfyUI's) or its image comes.
@@ -139,13 +127,6 @@ const frameProse = (index: number) => (index === 0 ? 'the Opening' : frameName(i
 /** Its title, in the Frames list's places and the viewers' labels: "Frame 1 · Opening". */
 const frameTitle = (index: number) => (index === 0 ? `${frameName(0)} · Opening` : frameName(index))
 
-// --- While this Frame waits in the render queue, stay here: no leaving, no reloading.
-onBeforeRouteLeave(() => {
-  if (!queued.value) return true
-  frameError.value = 'Waiting for another render. Cancel this Frame to leave.'
-  return false
-})
-
 // Back on the Frames, or with a new one: down to the latest while following it, or else to the
 // Frame picked (from the Queue tab, say).
 watch([() => session.value?.frames.length, panel], async () => {
@@ -158,14 +139,7 @@ function onEvent(event: FrameEvent) {
   const s = session.value!
   switch (event.type) {
     case 'phase':
-      pending.value = {
-        ...pending.value,
-        phase: event.phase,
-        ...(event.imageBackend && { imageBackend: event.imageBackend }),
-      }
-      break
-    case 'progress':
-      pending.value = { ...pending.value!, progress: { step: event.step, total: event.total } }
+      pending.value = { ...pending.value, phase: event.phase }
       break
     case 'thinking':
       pending.value = {
@@ -173,14 +147,13 @@ function onEvent(event: FrameEvent) {
         thinking: (event.restart ? '' : pending.value?.thinking ?? '') + event.text,
       }
       break
-    case 'text':
-      pending.value = { ...pending.value!, ...event }
-      break
     case 'committed':
       s.frames.push(event.frame)
       pending.value = null
       viewing.value = null
       draft.value = ''
+      // Its render, queued as it was saved.
+      refreshJobs()
       break
     case 'declined':
     case 'unclear':
@@ -360,50 +333,25 @@ function timingsLabel(frame: ChainFrame): string {
 /** The text box's border sweeps while the Text Model writes the new prompt. */
 const writing = computed(() => pending.value?.phase === 'text' && !pending.value.cancelling)
 
-/** The frame's border sweeps while an image renders (or waits to), until the new one lands. */
-const renderingPhase = computed(() => {
-  // A new Frame sweeps its own empty frame; a job sweeps only the Frame it is working on.
-  return sweepOf(onPending.value ? pending.value?.phase : shownJob.value?.phase)
-})
+/** The frame's border sweeps while a job renders the shown Frame (or waits to). */
+const renderingPhase = computed(() => (onPending.value ? null : sweepOf(shownJob.value?.phase)))
 
-/**
- * The picture forming: a new Frame's, alone in its empty frame while it's shown, or a job's over
- * the shown Frame's old picture.
- */
-/** The Frame in progress's picture forming, if its render is on ComfyUI. */
-const formingOfPending = () =>
-  pending.value &&
-  formingOf(session.value, pending.value.phase, pending.value.progress, pending.value.imageBackend)
-const forming = computed(() =>
-  pending.value
-    ? onPending.value ? formingOfPending() : null
-    : jobForming(session.value, shownJob.value)
-)
-/** The same, for the Frame in progress's thumbnail in the Frames list. */
-const pendingThumb = useShownPreview(
-  () => pending.value && formingOfPending(),
-  () => null,
-)
+/** The picture forming, over the shown Frame's old picture, while a job renders it on ComfyUI. */
+const forming = computed(() => (onPending.value ? null : jobForming(session.value, shownJob.value)))
 
-/** The caption: the provisional Narration of the Frame in progress, else the shown Frame's. */
-const captionText = computed(() =>
-  onPending.value ? pending.value?.narration ?? '' : shown.value?.narration ?? ''
-)
+/** The caption: the shown Frame's Narration; the one in progress has none until it's saved. */
+const captionText = computed(() => (onPending.value ? '' : shown.value?.narration ?? ''))
 
-/** The reasoning streaming in, shown in the caption's place until the Narration arrives. */
+/** The reasoning streaming in, shown in the caption's place while the Frame is written. */
 const liveThinking = computed(() =>
-  onPending.value && pending.value?.thinking && !pending.value.narration
-    ? pending.value.thinking
-    : ''
+  onPending.value && pending.value?.thinking ? pending.value.thinking : ''
 )
 const thinkingBox = useTemplateRef<HTMLElement>('thinkingBox')
 watch(liveThinking, async () => {
   await nextTick()
   thinkingBox.value?.scrollTo({ top: thinkingBox.value.scrollHeight })
 })
-const captionOutcome = computed(() =>
-  onPending.value ? pending.value?.outcome : shown.value?.outcome
-)
+const captionOutcome = computed(() => (onPending.value ? undefined : shown.value?.outcome))
 
 /** Labels for the Outcomes that leave the Image Prompt unchanged. */
 const OUTCOME_LABELS: Partial<Record<Outcome, string>> = {
@@ -414,9 +362,7 @@ const OUTCOME_LABELS: Partial<Record<Outcome, string>> = {
 const phaseLabel = computed(() => {
   if (pending.value?.cancelling) return 'Cancelling…'
   if (pending.value?.phase === 'queued') return 'Waiting for another render…'
-  if (pending.value?.phase === 'download') return DOWNLOADING
-  if (pending.value?.phase !== 'image') return 'Writing the prompt…'
-  return renderingLabel(pending.value.progress)
+  return 'Writing the prompt…'
 })
 
 /** A picture rendering, a new Frame's or a re-render's, with its step once it has one. */
@@ -463,12 +409,9 @@ async function savePrompt() {
   }
 }
 
-/**
- * The shown Frame's Image Prompt (or the new one, once written), word-diffed against the Frame
- * before it (none for the Opening).
- */
+/** The shown Frame's Image Prompt, word-diffed against the Frame before it (none for the Opening). */
 const promptDiff = computed(() => {
-  const prompt = onPending.value ? pending.value?.prompt : shown.value?.prompt
+  const prompt = onPending.value ? undefined : shown.value?.prompt
   if (!prompt || promptIndex.value === undefined) return []
   const before = session.value?.frames[promptIndex.value - 1]
   return before ? diffWords(before.prompt, prompt) : [{ kind: 'same' as const, text: prompt }]
@@ -602,11 +545,9 @@ const promptDiff = computed(() => {
               <p
                 class="max-h-24 overflow-y-auto pr-10 text-sm leading-relaxed"
                 :class="{
-                  'italic opacity-75': pending?.narration,
                   'text-amber-300': captionOutcome === 'declined',
                   'text-sky-300': captionOutcome === 'unclear',
                 }"
-                :data-provisional="pending?.narration ? '' : undefined"
                 data-caption
               >
                 {{ captionText }}
@@ -814,14 +755,7 @@ const promptDiff = computed(() => {
               data-pending-frame
               @click="viewing = null"
             >
-              <img
-                v-if="pendingThumb"
-                :src="pendingThumb.src"
-                alt=""
-                class="h-20 w-14 shrink-0 rounded object-cover"
-              />
               <span
-                v-else
                 class="flex h-20 w-14 shrink-0 animate-pulse items-center justify-center rounded border border-dashed border-line text-xs text-muted"
               >
                 {{ pendingIndex }}
@@ -829,9 +763,6 @@ const promptDiff = computed(() => {
               <span class="flex min-w-0 flex-col gap-1">
                 <span class="line-clamp-2 font-medium">{{ pendingAction }}</span>
                 <span class="animate-pulse text-xs text-info">{{ phaseLabel }}</span>
-                <span v-if="pending?.narration" class="line-clamp-3 italic text-muted">
-                  {{ pending.narration }}
-                </span>
               </span>
             </button>
           </li>
@@ -869,7 +800,7 @@ const promptDiff = computed(() => {
             @play="(clip) => (playingClip = { index: shown!.index, clip })"
             @stop="playingClip = null"
           >
-          <template v-if="shown || (onPending && pending?.prompt)">
+          <template v-if="shown">
             <div class="flex items-start gap-2" :class="shown?.timings ? 'mb-1' : 'mb-3'">
               <p class="flex-1 text-muted">
                 {{ frameName(promptIndex!) }} · {{ shown ? shown.action ?? 'Opening' : pendingAction }}
@@ -918,7 +849,7 @@ const promptDiff = computed(() => {
                 </button>
               </div>
             </form>
-            <FoldedPrompt v-else :preview="shown?.prompt ?? pending?.prompt">
+            <FoldedPrompt v-else :preview="shown.prompt">
               <div
                 v-if="promptIndex! > 0"
                 class="flex flex-col gap-1 text-xs text-muted"

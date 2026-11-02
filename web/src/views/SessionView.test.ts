@@ -140,19 +140,12 @@ describe('SessionView', () => {
     expect(wrapper.find('[data-writing]').exists()).toBe(true)
     expect(wrapper.find('[data-rendering]').exists()).toBe(false)
 
-    emit({ type: 'text', narration: 'Kael looks up.', outcome: 'done', prompt: promptFor(0) })
-    emit({ type: 'phase', phase: 'image' })
-    emit({ type: 'progress', step: 2, total: 4 })
-    await flushPromises()
-    expect(wrapper.find('[data-provisional]').text()).toBe('Kael looks up.')
-    expect(wrapper.find('[role=status]').text()).toContain('Rendering the image… step 2 of 4')
-    expect(wrapper.find('[data-rendering]').attributes('data-rendering')).toBe('image')
-    expect(wrapper.find('[data-writing]').exists()).toBe(false)
-
+    vi.mocked(api.listJobs).mockClear()
     emit({ type: 'committed', frame: frame(0, null, { narration: 'Kael looks up.' }) })
     finish()
     await loadImages()
-    expect(wrapper.find('[data-provisional]').exists()).toBe(false)
+    // Its picture is a render job, queued as it was saved (ADR 0030): the queue is fetched for it.
+    expect(api.listJobs).toHaveBeenCalledWith('s1')
     expect(wrapper.find('.render-sweep').exists()).toBe(false)
     expect(wrapper.find('[data-writing]').exists()).toBe(false)
     expect(wrapper.find('img').attributes('src')).toBe('/api/sessions/s1/images/frame-0.png')
@@ -272,13 +265,9 @@ describe('SessionView', () => {
     expect(router.currentRoute.value.query.error).toBe('Ollama: model not found')
   })
 
-  it('puts a new Frame in the Frames at once, shown blank until its picture forms', async () => {
-    let send!: (event: api.FrameEvent) => void
+  it('puts a new Frame in the Frames at once, shown blank while it is written', async () => {
     vi.mocked(api.getSession).mockResolvedValue(session([frame(0, null)]))
-    vi.mocked(api.streamFrame).mockImplementation((_id, _action, onEvent) => {
-      send = onEvent
-      return new Promise(() => {})
-    })
+    vi.mocked(api.streamFrame).mockImplementation(() => new Promise(() => {}))
     const { wrapper } = await mountIt()
     await wrapper.find('textarea').setValue('Sit down')
     await buttonNamed(wrapper, 'Send').trigger('click')
@@ -289,17 +278,7 @@ describe('SessionView', () => {
     // The Opening's picture is gone from the main panel: the new Frame has none yet.
     expect(wrapper.find('main [data-frame-picture]').exists()).toBe(false)
 
-    // Rendering on ComfyUI, which sends a preview at each step.
-    send({ type: 'phase', phase: 'image', imageBackend: 'comfyui' })
-    send({ type: 'progress', step: 3, total: 25 })
-    await flushPromises()
-    await loadImages()
-    const preview = wrapper.find('main [data-preview]')
-    expect(preview.attributes('src')).toBe('/api/sessions/s1/preview?step=3')
-    // Alone in its frame, it shows at full strength.
-    expect(preview.attributes('style')).toContain('opacity: 1')
-
-    // An earlier Frame can be looked at meanwhile, without the preview, and the new one picked again.
+    // An earlier Frame can be looked at meanwhile, and the new one picked again.
     await wrapper.findAll('aside [data-frame]')[0].trigger('click')
     await loadImages()
     expect(wrapper.find('main [data-frame-picture]').attributes('src')).toContain('frame-0.png')
@@ -851,7 +830,7 @@ describe('SessionView', () => {
     expect(wrapper.find('[role=alert]').text()).toBe('Frame 1 is not the latest Frame')
   })
 
-  it('shows when its render is waiting for another Session', async () => {
+  it('shows when its Frame waits for a render on the Text Model’s machine', async () => {
     let emit!: (e: api.FrameEvent) => void
     vi.mocked(api.streamFrame).mockImplementation((_id, _action, onEvent) => {
       emit = onEvent
@@ -860,11 +839,10 @@ describe('SessionView', () => {
     const { wrapper } = await mountIt()
     await wrapper.find('textarea').setValue('Sit')
     await buttonNamed(wrapper, 'Send').trigger('click')
-    emit({ type: 'text', outcome: 'done', narration: 'Kael sits.', prompt: promptFor(0) })
     emit({ type: 'phase', phase: 'queued' })
     await flushPromises()
     expect(wrapper.find('[role=status]').text()).toContain('Waiting for another render')
-    expect(wrapper.find('[data-rendering]').attributes('data-rendering')).toBe('queued')
+    expect(wrapper.find('[data-rendering]').exists()).toBe(false)
   })
 
   it('remembers an unsent Direction per Session', async () => {
@@ -938,7 +916,7 @@ describe('SessionView', () => {
     await flushPromises()
     expect(wrapper.find('[data-thinking]').text()).not.toContain('stool')
 
-    emit({ type: 'text', outcome: 'done', narration: 'Kael sits.', prompt: promptFor(0) })
+    emit({ type: 'committed', frame: frame(1, 'Sit', { narration: 'Kael sits.' }) })
     await flushPromises()
     expect(wrapper.find('[data-thinking]').exists()).toBe(false)
     expect(wrapper.find('[data-caption]').text()).toBe('Kael sits.')

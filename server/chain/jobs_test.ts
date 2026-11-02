@@ -16,6 +16,7 @@ import {
   chainFrames,
   chainOfTwo,
   type JsonFrame,
+  madeFrame,
   readEvents,
   settled,
   setup,
@@ -32,7 +33,7 @@ Deno.test('A Chain Frame other than the Opening is deleted, and those after it n
         reply('rising'),
       ]),
     })
-    await readEvents(await call('POST', '/api/sessions/s1/frames', { action: 'Kneel' }))
+    await madeFrame(call, 'Kneel')
     const before = (await (await call('GET', '/api/sessions/s1')).json()).frames as JsonFrame[]
     const remove = (index: number, frames = before.length) =>
       call('POST', `/api/sessions/s1/frames/${index}/delete`, {
@@ -67,7 +68,7 @@ Deno.test('A Chain Frame other than the Opening is deleted, and those after it n
     ])
     assertEquals((await call('POST', '/api/sessions/s1/frames/1/delete', {})).status, 400)
     // The next Frame is made from the latest, as ever.
-    const next = await readEvents(await call('POST', '/api/sessions/s1/frames', { action: 'Rise' }))
+    const next = await madeFrame(call, 'Rise')
     assertEquals((next.at(-1)![1].frame as JsonFrame).index, 2)
   }))
 
@@ -87,8 +88,8 @@ Deno.test('Deleting a Chain Frame waits for no job on it, and the queue follows'
       imageGenerator: images,
       textModel: scriptedTextModel(four),
     })
-    await readEvents(await call('POST', '/api/sessions/s1/frames', { action: 'Kneel' }))
-    await readEvents(await call('POST', '/api/sessions/s1/frames', { action: 'Rise' }))
+    await madeFrame(call, 'Kneel')
+    await madeFrame(call, 'Rise')
     const frames = (await (await call('GET', '/api/sessions/s1')).json()).frames as JsonFrame[]
     const remove = (index: number) =>
       call('POST', `/api/sessions/s1/frames/${index}/delete`, {
@@ -140,8 +141,8 @@ Deno.test('A render running on a later Chain Frame lands on it after an earlier 
       imageGenerator: images,
       textModel: scriptedTextModel(four),
     })
-    await readEvents(await call('POST', '/api/sessions/s1/frames', { action: 'Kneel' }))
-    await readEvents(await call('POST', '/api/sessions/s1/frames', { action: 'Rise' }))
+    await madeFrame(call, 'Kneel')
+    await madeFrame(call, 'Rise')
     const before = await chainFrames(call)
 
     gate.held = Promise.withResolvers()
@@ -708,7 +709,7 @@ Deno.test('A Chain with rendering off writes prompts, and renders a Frame when a
 
     // Switched back on, the next Frame renders as it's made.
     await call('PUT', '/api/sessions/s1/render-frames', { renderFrames: true })
-    await readEvents(await call('POST', '/api/sessions/s1/frames', { action: 'Kneel' }))
+    await madeFrame(call, 'Kneel')
     assertMatch((await chainFrames(call))[2].image!, /^frame-2-[0-9a-f]{8}\.png$/)
     assertEquals(images.prompts.length, 2)
   }))

@@ -2,7 +2,7 @@ import { assertEquals, assertMatch, assertStringIncludes } from '@std/assert'
 import type { Backend } from './backends.ts'
 import { DEFAULT_SETTINGS } from './settings.ts'
 import { fakeImageGenerator, reply, scriptedTextModel, withTempDir } from './testing.ts'
-import { type JsonFrame, readEvents, setup } from './appTesting.ts'
+import { type JsonFrame, madeFrame, readEvents, setup } from './appTesting.ts'
 
 Deno.test('GET /api/health reports ok', async () => {
   const res = await setup().call('GET', '/api/health')
@@ -319,12 +319,12 @@ Deno.test('GET /api/sessions lists Sessions newest first with their activity', (
     })
     assertEquals(await (await call('GET', '/api/sessions')).json(), [])
     await call('POST', '/api/sessions', { scenarioId: 'test' })
-    await readEvents(await call('POST', '/api/sessions/s1/frames', {}))
+    await madeFrame(call)
     await call('POST', '/api/sessions', { scenarioId: 'test' })
-    await readEvents(await call('POST', '/api/sessions/s2/frames', {}))
+    await madeFrame(call, undefined, 's2')
     // Timestamps have millisecond resolution; make s1's latest Frame clearly the newest.
     await new Promise((r) => setTimeout(r, 5))
-    await readEvents(await call('POST', '/api/sessions/s1/frames', { action: 'Sit' }))
+    await madeFrame(call, 'Sit')
 
     const list = await (await call('GET', '/api/sessions')).json()
     assertEquals(list.map((s: { id: string }) => s.id), ['s1', 's2'])
@@ -344,7 +344,7 @@ Deno.test('DELETE /api/sessions/:id removes a Session and its images', () =>
       textModel: scriptedTextModel([reply('standing')]),
     })
     await call('POST', '/api/sessions', { scenarioId: 'test' })
-    await readEvents(await call('POST', '/api/sessions/s1/frames', {}))
+    await madeFrame(call)
     assertEquals((await call('DELETE', '/api/sessions/s1')).status, 204)
     assertEquals((await call('GET', '/api/sessions/s1')).status, 404)
     assertEquals(await Deno.stat(`${root}/s1`).then(() => true, () => false), false)

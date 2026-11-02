@@ -37,22 +37,22 @@ current Image Prompt + Action ──► Text Model (Text backend) ──► { ou
    - A **Declined Action** (a crossed Limit, or the Text Model declining it) or an **Unclear Action** (the Text Model can't tell what to change, and asks) saves no Frame: the Action stays to reword, with the reason or the question beside it.
    - A done Action whose Image Prompt came back unchanged saves no Frame either: there'd be nothing new to see, and it's often a Narration claiming a change the prompt doesn't have. So every Chain Frame has a picture of its own.
    - The Opening Frame always counts as done; if its prompt crosses a Limit, it fails.
-5. **Image step.** The render waits its turn on its machine (see [Jobs](#jobs)), then the Backend Settings send renders to renders it with the Session's Image Model, steps and seed, and the rest as Settings are now (see [Pictures](#pictures)): the mflux CLI, one process per image ([ADR 0004](adr/0004-images-from-the-mflux-cli.md)), or a workflow queued on ComfyUI, followed over its WebSocket ([ADR 0009](adr/0009-comfyui-image-backend.md)). The Text Model is unloaded first if it runs on the same machine ([ADR 0013](adr/0013-unload-the-text-model-on-the-job-machine.md)). Progress streams to the player by step; on ComfyUI the player also watches the picture form, from a preview at each step that the server keeps in memory only (`server/previews.ts`). With a Chain's "Render each Frame" off (and always without pictures), this step is skipped and the Frame waits to be rendered.
-6. **Commit.** The Frame is appended to `session.json`.
+5. **Commit.** The Frame is appended to `session.json`, with no picture yet.
+6. **Render job** ([ADR 0030](adr/0030-a-chain-frame-renders-as-a-job.md)). While the Chain renders each Frame, the server queues the new Frame's `render` job as it's saved. It waits its turn on its machine (see [Jobs](#jobs)), then the Backend Settings send renders to renders it with the Session's Image Model, steps and seed, and the rest as Settings are now (see [Pictures](#pictures)): the mflux CLI, one process per image ([ADR 0004](adr/0004-images-from-the-mflux-cli.md)), or a workflow queued on ComfyUI, followed over its WebSocket ([ADR 0009](adr/0009-comfyui-image-backend.md)). The Text Model is unloaded first if it runs on the same machine ([ADR 0013](adr/0013-unload-the-text-model-on-the-job-machine.md)). Progress streams to the player by step; on ComfyUI the player also watches the picture form, from a preview at each step that the server keeps in memory only (`server/previews.ts`). With a Chain's "Render each Frame" off (and always without pictures), no render is queued and the Frame waits to be rendered.
 
 A Chain's latest Frame can be undone (its Action goes back to the box, its pictures and what was made from them deleted; never the Opening), as a Roleplay's latest exchange can (see [Roleplays](#roleplays)); a Storyboard has no Undo, as Restart takes it back to its plan. Any Frame's Image Prompt can be replaced by hand (refused if it crosses a Limit), which marks its pictures out of date. A Frame between the Opening and the latest can be deleted, the Frames after it numbered down with their queued jobs; it's refused while a job runs on it or a later Frame, as the job's result would land on the wrong Frame.
 
-### All or nothing
+### When a Frame fails
 
-A Frame commits whole or not at all ([ADR 0003](adr/0003-turns-are-all-or-nothing.md)):
+A Frame is saved once its Image Prompt is written; its picture comes from its render job (ADR 0030, replacing all or nothing, ADR 0003):
 
 | What happens | Result |
 |---|---|
 | Text Model fails twice | Frame fails; Image Prompt unchanged; the Action stays in the text box |
-| Image Model fails | Frame fails; Image Prompt unchanged; any partial image is deleted |
-| Player presses **Cancel** | Text request aborted; the mflux process killed, or the ComfyUI prompt interrupted; Image Prompt unchanged |
-| The page's connection drops (reload, tab closed) | As Cancel, so the browser asks before leaving while a Frame runs |
+| Player presses **Cancel** while it's written | Text request aborted; Image Prompt unchanged |
+| The page's connection drops (reload, tab closed) | As Cancel, so the browser asks before leaving while a Frame is written |
 | Opening Frame fails or is cancelled | The Session is discarded |
+| Its render fails or is cancelled | The Frame stays, without a picture; a failed render job waits in the queue to retry |
 
 Only one Frame runs per Session at a time; the server refuses a second with `409`. Frames, Undo and deleting a Session all take a per-Session lock *before* reading the Session, so two requests can never act on the same Session at once (two tabs sending at the same moment, or an Undo racing a Frame).
 

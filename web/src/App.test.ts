@@ -212,7 +212,7 @@ describe('App navigation', () => {
     )
   })
 
-  it("won't leave a Session while its Frame waits for another render", async () => {
+  it('leaves a Session while its Frame waits for a render, and finds it still waiting on return', async () => {
     let emit!: (e: api.FrameEvent) => void
     vi.mocked(api.streamFrame).mockImplementation((_id, _action, onEvent) => {
       emit = onEvent
@@ -224,16 +224,16 @@ describe('App navigation', () => {
     emit({ type: 'phase', phase: 'queued' })
     await flushPromises()
 
-    await router.push('/settings').catch(() => {})
-    await flushPromises()
-    expect(router.currentRoute.value.path).toBe('/sessions/s1')
-    expect(wrapper.find('[role=alert]').text()).toContain('Cancel this Frame to leave')
-
-    emit({ type: 'phase', phase: 'image' })
-    await flushPromises()
+    // Its render no longer waits inside it (ADR 0030): only its text call does, kept running.
     await router.push('/settings')
     await flushPromises()
     expect(router.currentRoute.value.path).toBe('/settings')
+    await router.push('/sessions/s1')
+    await flushPromises()
+    expect(wrapper.find('main [role=status]').text()).toContain('Waiting for another render')
+    emit({ type: 'phase', phase: 'text' })
+    await flushPromises()
+    expect(wrapper.find('main [role=status]').text()).toContain('Writing the prompt')
   })
 
   it('writes the Opening Frame exactly once for a new Session', async () => {
@@ -279,7 +279,7 @@ describe('App navigation', () => {
   it('follows a Frame it did not start, with Cancel, until it finishes', async () => {
     vi.useFakeTimers()
     try {
-      const running = { ...structuredClone(session), activity: 'image' as const }
+      const running = { ...structuredClone(session), activity: 'text' as const }
       const done = {
         ...structuredClone(session),
         activity: null,
@@ -288,7 +288,7 @@ describe('App navigation', () => {
       vi.mocked(api.getSession).mockResolvedValueOnce(running).mockResolvedValueOnce(running)
         .mockResolvedValue(done)
       const { wrapper } = await mountApp('/sessions/s1')
-      expect(wrapper.find('main [role=status]').text()).toContain('Rendering the image')
+      expect(wrapper.find('main [role=status]').text()).toContain('Writing the prompt')
       expect(wrapper.find('textarea').attributes('disabled')).toBeDefined()
       await wrapper.findAll('button').find((b) => b.text() === 'Cancel')!.trigger('click')
       expect(api.cancelFrame).toHaveBeenCalledWith('s1')

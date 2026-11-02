@@ -10,11 +10,8 @@ import { renumberCallLogs } from '../calls.ts'
 import {
   type FrameDeps,
   frameName,
-  imageName,
   limitCrossedBy,
   type ProgressEvent,
-  removeImage,
-  renderImage,
   replacePicture,
   secondsSince,
   withRetry,
@@ -26,8 +23,6 @@ export const UNCHANGED = 'Nothing in the picture changed. Try rewording the Acti
 /** Progress of a Chain Frame, streamed to the player as it happens. */
 export type FrameEvent =
   | ProgressEvent
-  /** The new Image Prompt before its image exists; provisional until `committed`. */
-  | { type: 'text'; outcome: Outcome; narration: string; prompt: ImagePrompt }
   | { type: 'committed'; frame: ChainFrame }
   /** The Action crossed a Limit, or the Text Model declined it: nothing was saved. */
   | { type: 'declined'; message: string }
@@ -37,10 +32,10 @@ export type FrameEvent =
   | { type: 'unchanged'; message: string }
 
 /**
- * Runs one Chain Frame: Text Model, then Image Model (rendering the Image Prompt), then commit. The
- * Frame commits whole or not at all: on failure or abort the Session on disk is untouched and any
- * image written is removed. A declined or unclear Action commits nothing either, nor one that left
- * the Image Prompt as it was, and returns null.
+ * Runs one Chain Frame: the Text Model writes its Image Prompt, and it's saved, its picture to
+ * come from a render job (ADR 0030). On failure or abort the Session on disk is untouched. A
+ * declined or unclear Action commits nothing either, nor one that left the Image Prompt as it was,
+ * and returns null.
  */
 export async function runChainFrame(
   deps: FrameDeps,
@@ -49,8 +44,6 @@ export async function runChainFrame(
   action: string | null,
   emit: (event: FrameEvent) => void,
   signal: AbortSignal,
-  /** Render the new picture; off, the Frame gets only its prompt, to render later. */
-  render = true,
 ): Promise<ChainFrame | null> {
   const previous = session.frames.at(-1)
   const index = session.frames.length
@@ -121,42 +114,28 @@ export async function runChainFrame(
     emit({ type: 'unchanged', message: UNCHANGED })
     return null
   }
-  emit({ type: 'text', outcome, narration, prompt: nextPrompt })
   const timings: FrameTimings = { text: secondsSince(textStart) }
+  signal.throwIfAborted()
 
-  const dir = deps.store.dir(session.id)
-  // Named up front so a failed or cancelled Frame can remove whatever the generator wrote, even if
-  // it finished writing just as the Frame was cancelled.
-  const name = imageName(index)
-  try {
-    const picture = render
-      ? await renderImage(deps, session, nextPrompt, name, emit, signal)
-      : undefined
-    signal.throwIfAborted()
-
-    const frame: ChainFrame = {
-      index,
-      action,
-      prompt: nextPrompt,
-      narration,
-      outcome,
-      ...(thinking ? { thinking } : {}),
-      pictures: picture ? [picture] : [],
-      timings,
-      createdAt: new Date().toISOString(),
-    }
-    // Onto the Chain as it is now: a job may have upscaled or made 3D of a picture meanwhile.
-    await updateSession(deps.store, session.id, 'chain', (latest) => ({
-      ...latest,
-      frames: [...latest.frames, frame],
-    }))
-    session.frames.push(frame)
-    emit({ type: 'committed', frame })
-    return frame
-  } catch (err) {
-    await removeImage(dir, name)
-    throw err
+  const frame: ChainFrame = {
+    index,
+    action,
+    prompt: nextPrompt,
+    narration,
+    outcome,
+    ...(thinking ? { thinking } : {}),
+    pictures: [],
+    timings,
+    createdAt: new Date().toISOString(),
   }
+  // Onto the Chain as it is now: a job may have upscaled or made 3D of a picture meanwhile.
+  await updateSession(deps.store, session.id, 'chain', (latest) => ({
+    ...latest,
+    frames: [...latest.frames, frame],
+  }))
+  session.frames.push(frame)
+  emit({ type: 'committed', frame })
+  return frame
 }
 
 /**

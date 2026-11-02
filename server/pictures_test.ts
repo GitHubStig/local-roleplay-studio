@@ -83,8 +83,11 @@ async function chainOfTwo(root: string) {
     // Renders go to this machine's mflux, unless a test sends them elsewhere.
     backendOf: () => Promise.resolve<Backend | undefined>(HERE),
   }
+  // Each rendered as its render job does (ADR 0030).
   await runChainFrame(deps, session, testScenario, null, () => {}, signal())
+  await renderChainFrame(deps, session, 0, () => {}, signal())
   await runChainFrame(deps, session, testScenario, 'Sit', () => {}, signal())
+  await renderChainFrame(deps, session, 1, () => {}, signal())
   const exists = (file: string) => Deno.stat(join(root, 's1', file)).then(() => true, () => false)
   return { store, deps, images, exists }
 }

@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by ADR 0030
 ---
 
 # A Frame commits whole or not at all

@@ -149,9 +149,26 @@ export async function chainOfTwo(root: string, opts: Partial<Parameters<typeof s
     ...opts,
   })
   await app.call('POST', '/api/sessions', { scenarioId: 'test' })
-  await readEvents(await app.call('POST', '/api/sessions/s1/frames', {}))
-  await readEvents(await app.call('POST', '/api/sessions/s1/frames', { action: 'Sit' }))
+  await madeFrame(app.call)
+  await madeFrame(app.call, 'Sit')
   return app
+}
+
+/**
+ * Makes a Chain Frame (the Opening without an `action`) and waits for its render job (ADR 0030),
+ * dismissed once done so the queue is as before; returns the Frame's events.
+ */
+export async function madeFrame(
+  call: ReturnType<typeof setup>['call'],
+  action?: string,
+  id = 's1',
+) {
+  const events = await readEvents(
+    await call('POST', `/api/sessions/${id}/frames`, action === undefined ? {} : { action }),
+  )
+  await settled(call, id)
+  await call('DELETE', `/api/sessions/${id}/jobs/finished`)
+  return events
 }
 
 /** A Chain's Frames as saved now. */

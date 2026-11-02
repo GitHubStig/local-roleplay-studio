@@ -65,10 +65,13 @@ import { checkRoleplayJob, type RoleplayJobContext, runRoleplayJob } from './rol
 import { restartRoleplay } from './roleplay/engine.ts'
 import {
   asQueued,
+  type EditOrder,
+  imageChoiceOf,
   isOpen,
   type Job,
   JOB_FEATURE,
   type JobEmit,
+  type JobKind,
   jobRoutes,
   SESSION_JOBS,
   SessionJobs,
@@ -115,6 +118,7 @@ import {
   DeleteError,
   deleteFrame,
   EditError,
+  type FrameEvent,
   runChainFrame,
   setFramePrompt,
   UndoError,
@@ -510,6 +514,20 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
         : undefined
     },
   }
+  /** Which Backend a job of `kind` would go to for `session` now, as an edit is told. */
+  async function jobBackendOf(session: Session, kind: JobKind, edit?: EditOrder) {
+    const now = await deps.settings.load()
+    // A picture is written by the Art Agent's model, the Session's Text Model unless set.
+    const text = kind === 'picture'
+      ? await textBackendOf(now.artModel || session.settings.textModel)
+      : undefined
+    return jobBackend(kind, session.settings, now, detected, {
+      editModel: edit?.model,
+      editBackend: edit?.backend,
+      text,
+    })
+  }
+
   /** Every Session's background work, run as its kind says: a Roleplay's or a Chain's. */
   const jobs: SessionJobs = new SessionJobs(
     async (id, job, emit, signal) => {
@@ -653,18 +671,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     ...jobRoutes({
       jobs,
       store: deps.sessions,
-      backendOf: async (session, kind, edit) => {
-        const now = await deps.settings.load()
-        // A picture is written by the Art Agent's model, the Session's Text Model unless set.
-        const text = kind === 'picture'
-          ? await textBackendOf(now.artModel || session.settings.textModel)
-          : undefined
-        return jobBackend(kind, session.settings, now, detected, {
-          editModel: edit?.model,
-          editBackend: edit?.backend,
-          text,
-        })
-      },
+      backendOf: jobBackendOf,
       check: async (session, kind, index, pending, edit, clip) => {
         const feature = JOB_FEATURE[kind]
         const name = frameName(index)
@@ -1118,12 +1125,27 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
           }
           const scenario = await scenarioFor(session)
           if (scenario instanceof Response) return scenario
+          // Its picture is a render job, queued as the Frame is saved, so the page that hears of
+          // the Frame finds its render in the queue.
+          const machine = render ? machineOf(await jobBackendOf(session, 'render')) : undefined
           return stream(session, null, opening, async (send, signal) => {
+            const sendQueueing = (event: FrameEvent) => {
+              if (event.type === 'committed' && machine) {
+                jobs.enqueue(
+                  session.id,
+                  'render',
+                  event.frame.index,
+                  machine,
+                  imageChoiceOf(session),
+                )
+              }
+              send(event)
+            }
             // The Frame being made, though the stream isn't one Frame's until it's saved.
             await logCallsUnder(
               session.frames.length,
               () =>
-                runChainFrame(frameDeps(session), session, scenario, action, send, signal, render),
+                runChainFrame(frameDeps(session), session, scenario, action, sendQueueing, signal),
             )
           })
         }),

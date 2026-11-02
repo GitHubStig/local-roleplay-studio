@@ -1,5 +1,5 @@
 import { ContextFullError } from '../text/chat.ts'
-import { assertEquals, assertMatch, assertNotEquals, assertRejects } from '@std/assert'
+import { assertEquals, assertNotEquals, assertRejects } from '@std/assert'
 import { join } from '@std/path'
 import type { Backend } from '../backends.ts'
 import { DEFAULT_SETTINGS } from '../settings.ts'
@@ -13,7 +13,14 @@ import {
   withTempDir,
 } from '../testing.ts'
 import { imageProgress, type ProgressEvent, upscaleFrame } from '../frames.ts'
-import { type FrameEvent, runChainFrame, UNCHANGED, UndoError, undoLatestFrame } from './frames.ts'
+import {
+  type FrameEvent,
+  renderChainFrame,
+  runChainFrame,
+  UNCHANGED,
+  UndoError,
+  undoLatestFrame,
+} from './frames.ts'
 import { RenderQueue } from '../renderQueue.ts'
 import { updateSession } from '../update.ts'
 
@@ -39,7 +46,22 @@ const chainStore = (root: string): SessionStore => {
   }
 }
 
-Deno.test('runChainFrame commits the Opening Frame with prefixed image prompt', () =>
+/**
+ * Renders a Chain Frame as its render job does, and keeps `session` up to date with it; returns
+ * the Frame as rendered.
+ */
+async function rendered(
+  deps: Parameters<typeof renderChainFrame>[0],
+  session: ChainSession,
+  index: number,
+  emit: (event: ProgressEvent) => void = () => {},
+) {
+  const updated = await renderChainFrame(deps, session, index, emit, signal())
+  session.frames = updated.frames
+  return updated.frames[index]
+}
+
+Deno.test('runChainFrame commits the Opening Frame with its image prompt, its picture to come', () =>
   withTempDir(async (root) => {
     const store = chainStore(root)
     const images = fakeImageGenerator()
@@ -53,10 +75,10 @@ Deno.test('runChainFrame commits the Opening Frame with prefixed image prompt', 
       (e) => events.push(e),
       signal(),
     )
-    assertEquals(frame!.index, 0)
-    assertMatch(frame!.pictures[0].image, /^frame-0-[0-9a-f]{8}\.png$/)
-    assertEquals(images.prompts, [promptWith('standing')])
-    assertEquals(events.map((e) => e.type), ['phase', 'text', 'phase', 'committed'])
+    assertEquals([frame!.index, frame!.prompt, frame!.pictures], [0, promptWith('standing'), []])
+    // Its render is a job of its own (ADR 0030).
+    assertEquals(images.prompts, [])
+    assertEquals(events.map((e) => e.type), ['phase', 'committed'])
     assertEquals((await store.load('s1'))?.frames.length, 1)
   }))
 
@@ -169,62 +191,9 @@ Deno.test('runChainFrame saves no Frame when the Text Model declines, and says w
     )
     assertEquals(frame, null)
     assertEquals(events.at(-1), { type: 'declined', message: 'She declines.' })
-    assertEquals(events.some((e) => e.type === 'text'), false)
     assertEquals(session.frames.length, 1)
     assertEquals((await store.load('s1'))?.frames.length, 1)
-    assertEquals(images.prompts.length, 1)
-  }))
-
-Deno.test('runChainFrame rolls back when the image fails', () =>
-  withTempDir(async (root) => {
-    const store = chainStore(root)
-    const session = newSession()
-    await store.save(session)
-    await assertRejects(
-      () =>
-        runChainFrame(
-          {
-            store,
-            textModel: scriptedTextModel([reply('standing')]),
-            imageGenerator: fakeImageGenerator({ fail: true }),
-          },
-          session,
-          testScenario,
-          null,
-          () => {},
-          signal(),
-        ),
-      Error,
-      'mflux crashed',
-    )
-    assertEquals(session.frames, [])
-    assertEquals((await store.load('s1'))?.frames, [])
-  }))
-
-Deno.test('runChainFrame aborted mid-image removes nothing committed', () =>
-  withTempDir(async (root) => {
-    const store = chainStore(root)
-    const session = newSession()
-    await store.save(session)
-    const controller = new AbortController()
-    const run = runChainFrame(
-      {
-        store,
-        textModel: scriptedTextModel([reply('standing')]),
-        imageGenerator: fakeImageGenerator({ hang: true }),
-      },
-      session,
-      testScenario,
-      null,
-      (e) => {
-        if (e.type === 'phase' && e.phase === 'image') queueMicrotask(() => controller.abort())
-      },
-      controller.signal,
-    )
-    await assertRejects(() => run)
-    assertEquals((await store.load('s1'))?.frames, [])
-    const files = await Array.fromAsync(Deno.readDir(join(root, 's1')))
-    assertEquals(files.map((f) => f.name), ['session.json'])
+    assertEquals(images.prompts.length, 0)
   }))
 
 Deno.test('runChainFrame saves no Frame when an Action is unclear, and passes on the question', () =>
@@ -248,9 +217,8 @@ Deno.test('runChainFrame saves no Frame when an Action is unclear, and passes on
     )
     assertEquals(frame, null)
     assertEquals(events.at(-1), { type: 'unclear', message: 'Sorry, what do you mean?' })
-    assertEquals(events.some((e) => e.type === 'text'), false)
     assertEquals(session.frames.length, 1)
-    assertEquals(images.prompts.length, 1)
+    assertEquals(images.prompts.length, 0)
   }))
 
 Deno.test('runChainFrame saves no Frame when a done Action leaves the Image Prompt unchanged', () =>
@@ -278,9 +246,8 @@ Deno.test('runChainFrame saves no Frame when a done Action leaves the Image Prom
     )
     assertEquals(frame, null)
     assertEquals(events.at(-1), { type: 'unchanged', message: UNCHANGED })
-    assertEquals(events.some((e) => e.type === 'text'), false)
     assertEquals((await store.load(session.id))!.frames.length, 1)
-    assertEquals(images.prompts.length, 1)
+    assertEquals(images.prompts.length, 0)
   }))
 
 Deno.test('runChainFrame treats the Opening Frame as done whatever the Text Model says', () =>
@@ -298,7 +265,6 @@ Deno.test('runChainFrame treats the Opening Frame as done whatever the Text Mode
       signal(),
     )
     assertEquals(frame!.outcome, 'done')
-    assertMatch(frame!.pictures[0].image, /^frame-0-[0-9a-f]{8}\.png$/)
   }))
 
 async function sessionWithFrames(root: string, replies: ReturnType<typeof reply>[]) {
@@ -311,8 +277,10 @@ async function sessionWithFrames(root: string, replies: ReturnType<typeof reply>
     imageGenerator: fakeImageGenerator(),
   }
   await runChainFrame(deps, session, testScenario, null, () => {}, signal())
+  await rendered(deps, session, 0)
   for (let i = 1; i < replies.length; i++) {
     await runChainFrame(deps, session, testScenario, `Action ${i}`, () => {}, signal())
+    await rendered(deps, session, i)
   }
   return { store, session, deps }
 }
@@ -372,39 +340,7 @@ Deno.test('a Frame after an Undo gets a fresh image name', () =>
     deps.textModel = scriptedTextModel([reply('kneeling')])
     const redo = await runChainFrame(deps, updated, testScenario, 'Kneel', () => {}, signal())
     assertEquals(redo!.index, 1)
-    assertNotEquals(redo!.pictures[0].image, undoneImage)
-  }))
-
-Deno.test('runChainFrame removes an image written just before the Frame was cancelled', () =>
-  withTempDir(async (root) => {
-    const store = chainStore(root)
-    const session = newSession()
-    await store.save(session)
-    const controller = new AbortController()
-    await assertRejects(() =>
-      runChainFrame(
-        {
-          store,
-          textModel: scriptedTextModel([reply('standing')]),
-          // Finishes writing, then the Frame is cancelled before the generator returns.
-          imageGenerator: {
-            ...fakeImageGenerator(),
-            async generate(req) {
-              await Deno.writeTextFile(join(req.dir, `${req.name}.png`), 'png')
-              controller.abort(new Error('Cancelled by player'))
-              throw controller.signal.reason
-            },
-          },
-        },
-        session,
-        testScenario,
-        null,
-        () => {},
-        controller.signal,
-      )
-    )
-    const files = await Array.fromAsync(Deno.readDir(join(root, 's1')))
-    assertEquals(files.map((f) => f.name), ['session.json'])
+    assertNotEquals((await rendered(deps, updated, 1)).pictures[0].image, undoneImage)
   }))
 
 async function openedSession(
@@ -439,7 +375,7 @@ Deno.test('runChainFrame declines an Action that crosses a limit without asking 
     })
     assertEquals(session.frames.length, 1)
     assertEquals(textModel.calls, 1) // the Opening Frame only
-    assertEquals(images.prompts.length, 1)
+    assertEquals(images.prompts.length, 0)
   }))
 
 Deno.test('runChainFrame declines a prompt the Text Model wrote across a sexual Limit', () =>
@@ -557,7 +493,7 @@ Deno.test('runChainFrame marks thinking from a retry as a restart, and saves no 
     assertEquals('thinking' in plain!, false)
   }))
 
-Deno.test('runChainFrame records how long the text and image steps took', () =>
+Deno.test('A Chain Frame records how long its text and its render took', () =>
   withTempDir(async (root) => {
     const session = newSession()
     const images = fakeImageGenerator()
@@ -574,54 +510,46 @@ Deno.test('runChainFrame records how long the text and image steps took', () =>
     }
     const opening = await runChainFrame(deps, session, testScenario, null, () => {}, signal())
     assertEquals(typeof opening!.timings!.text, 'number')
-    assertEquals(opening!.pictures[0].timings!.image >= 0.1, true)
-    assertEquals('queued' in opening!.pictures[0].timings!, false)
+    const { timings } = (await rendered(deps, session, 0)).pictures[0]
+    assertEquals(timings!.image >= 0.1, true)
+    assertEquals('queued' in timings!, false)
   }))
 
-Deno.test('runChainFrame records time spent waiting for another render', () =>
+Deno.test('A Chain Frame’s render records time spent waiting for another', () =>
   withTempDir(async (root) => {
     const queue = new RenderQueue()
+    const deps = {
+      store: chainStore(root),
+      textModel: scriptedTextModel([reply('standing')]),
+      imageGenerator: fakeImageGenerator(),
+      renderQueue: queue,
+    }
+    const session = newSession()
+    await runChainFrame(deps, session, testScenario, null, () => {}, signal())
     const release = await queue.acquire(new AbortController().signal)
     setTimeout(release, 150)
-    const frame = await runChainFrame(
-      {
-        store: chainStore(root),
-        textModel: scriptedTextModel([reply('standing')]),
-        imageGenerator: fakeImageGenerator(),
-        renderQueue: queue,
-      },
-      newSession(),
-      testScenario,
-      null,
-      () => {},
-      signal(),
-    )
-    assertEquals(frame!.pictures[0].timings!.queued! >= 0.1, true)
+    assertEquals((await rendered(deps, session, 0)).pictures[0].timings!.queued! >= 0.1, true)
   }))
 
 Deno.test('A render says which kind of backend it runs on as it starts, and its picture keeps it', () =>
   withTempDir(async (root) => {
-    const events: FrameEvent[] = []
+    const events: ProgressEvent[] = []
     const pc: Backend = { id: 'pc', kind: 'comfyui', address: 'http://192.0.2.85:8188' }
-    const frame = await runChainFrame(
-      {
-        store: chainStore(root),
-        textModel: scriptedTextModel([reply('standing')]),
-        imageGenerator: fakeImageGenerator(),
-        backendOf: () => Promise.resolve<Backend | undefined>(pc),
-      },
-      newSession(),
-      testScenario,
-      null,
-      (e) => events.push(e),
-      signal(),
-    )
+    const deps = {
+      store: chainStore(root),
+      textModel: scriptedTextModel([reply('standing')]),
+      imageGenerator: fakeImageGenerator(),
+      backendOf: () => Promise.resolve<Backend | undefined>(pc),
+    }
+    const session = newSession()
+    await runChainFrame(deps, session, testScenario, null, () => {}, signal())
+    const frame = await rendered(deps, session, 0, (e) => events.push(e))
     // The page shows ComfyUI's previews as the picture forms, and none for mflux, which sends none.
     assertEquals(
       events.find((e) => e.type === 'phase' && e.phase === 'image'),
       { type: 'phase', phase: 'image', imageBackend: 'comfyui' },
     )
-    assertEquals(frame!.pictures[0].imageBackend, 'comfyui')
+    assertEquals(frame.pictures[0].imageBackend, 'comfyui')
   }))
 
 Deno.test('A render that first downloads its model shows that, then rendering again with its steps', () => {

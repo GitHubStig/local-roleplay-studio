@@ -627,7 +627,6 @@ export type EndEvent =
 export type FrameEvent =
   | ProgressEvent
   | EndEvent
-  | { type: 'text'; outcome: Outcome; narration: string; prompt: ImagePrompt }
   | { type: 'committed'; frame: ChainFrame }
   /** The Action crossed a Limit, or the Text Model declined it: no Frame was saved. */
   | { type: 'declined'; message: string }
