@@ -97,7 +97,7 @@ Deno.test('A picture goes ahead of queued renders, and Clear empties the queue',
     )
     assertEquals(jobs[0].status, 'done')
 
-    // Clear queue cancels what's open and leaves what's done, to be seen.
+    // Cancel all cancels what's open and leaves what's done, to be seen.
     assertEquals((await call('DELETE', '/api/sessions/s1/jobs')).status, 200)
     release()
     assertEquals(await settled(call), [])
@@ -122,7 +122,7 @@ Deno.test('A done job stays listed until dismissed, and is no work in progress',
     const again = await (await enqueue()).json()
     assertEquals(again.length, 2)
     await settled(call)
-    const dismissed = await call('DELETE', '/api/sessions/s1/jobs/done')
+    const dismissed = await call('DELETE', '/api/sessions/s1/jobs/finished')
     assertEquals(await dismissed.json(), [])
   }))
 
@@ -139,7 +139,13 @@ Deno.test('A failed job stays listed to retry or dismiss', () =>
     const [again] = await settled(call)
     assertEquals([again.id, again.status], [failed.id, 'failed'])
     assertEquals((await call('POST', '/api/sessions/s1/jobs/nope/retry')).status, 404)
-    const dismissed = await call('DELETE', `/api/sessions/s1/jobs/${failed.id}`)
+    // Cancel all leaves it, to retry; Dismiss finished takes it.
+    const cancelled = await (await call('DELETE', '/api/sessions/s1/jobs')).json()
+    assertEquals(cancelled.map((j: { id: string }) => j.id), [failed.id])
+    assertEquals(await (await call('DELETE', '/api/sessions/s1/jobs/finished')).json(), [])
+    await call('POST', '/api/sessions/s1/jobs', { kind: 'render', frameIndex: 0 })
+    const [last] = await settled(call)
+    const dismissed = await call('DELETE', `/api/sessions/s1/jobs/${last.id}`)
     assertEquals(await dismissed.json(), [])
     assertEquals((await call('DELETE', '/api/sessions/s1/jobs/nope')).status, 404)
   }))

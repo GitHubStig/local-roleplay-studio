@@ -52,6 +52,22 @@ describe('machineQueues', () => {
     expect(here.waiting[0].session?.title).toBe('The tavern')
     expect([pc.name, pc.running, pc.waiting, pc.finished]).toEqual(['192.168.50.85', [], [], []])
   })
+  it('lists a job’s own text call as the job, once', () => {
+    const queue: Queue = {
+      machines: [],
+      sessions: [],
+      jobs: [job('p1', { kind: 'picture', status: 'running', phase: 'queued' })],
+      text: [
+        { machine: 'here', session: 's1', job: 'picture', status: 'waiting', since: '' },
+        { machine: 'here', session: 's1', job: 'reply', status: 'waiting', since: '' },
+      ],
+    }
+    const [here] = machineQueues(queue)
+    expect(here.waiting.map((r) => r.type === 'job' ? r.job.id : r.call.job)).toEqual([
+      'reply',
+      'p1',
+    ])
+  })
 })
 
 describe('lasted', () => {

@@ -109,6 +109,7 @@ import {
 } from './machine.ts'
 import { Previews } from './previews.ts'
 import { RenderQueue } from './renderQueue.ts'
+import { reportingTurns } from './text/turns.ts'
 import { type FrameDeps, frameName, type Phase, UpscaleError } from './frames.ts'
 import {
   DeleteError,
@@ -365,7 +366,11 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
             callLog,
             deps.sessions.dir(session.id),
             frameIndex,
-            () => run(send, controller.signal),
+            () =>
+              reportingTurns(
+                (phase) => send({ type: 'phase', phase }),
+                () => run(send, controller.signal),
+              ),
           )
         } catch (err) {
           if (discardOnFailure) await removeSession(deps.sessions, session.id)
@@ -514,7 +519,11 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
         deps.sessions.dir(id),
         // A voice or the style scores belong to the Session, not the Frame 0 they're queued as.
         SESSION_JOBS.includes(job.kind) ? null : job.frameIndex,
-        () => runJob(id, job, emit, signal),
+        () =>
+          reportingTurns(
+            (phase) => emit({ type: 'phase', phase }),
+            () => runJob(id, job, emit, signal),
+          ),
       )
     },
     // An edit cancelled or dismissed: the area painted for it, saved as it was queued, goes too.

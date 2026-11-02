@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { frameName } from '../frameName'
 import type { Job } from '../api'
 import { useImageModels } from '../composables/useSettingsOptions'
@@ -6,11 +7,11 @@ import { isOpen, jobStatus, openJob } from '../jobs'
 
 /**
  * A Session's whole queue: running, queued, failed and done; clicking one goes to its Frame (and
- * a done one is dismissed, as seen). Clear queue cancels what's running and queued and dismisses
- * what failed, all at once (after a Render all, say); what's done stays until Dismiss done.
+ * a done one is dismissed, as seen). Cancel all cancels what's running and queued, all at once
+ * (after a Render all, say); what's finished, done or failed, stays until Dismiss finished.
  * `describe` and `name` as `jobStatus` and `frameName`.
  */
-withDefaults(
+const props = withDefaults(
   defineProps<{
     jobs: readonly Job[]
     /** What to say when nothing's queued. */
@@ -29,11 +30,14 @@ const emit = defineEmits<{
   clip: [job: Job]
   retry: [job: Job]
   drop: [job: Job]
-  clear: []
-  /** Dismiss every done job. */
-  dismissDone: []
+  cancelAll: []
+  /** Dismiss every finished job, done or failed. */
+  dismissFinished: []
 }>()
 const { jobName } = useImageModels()
+/** What Cancel all and Dismiss finished each take. */
+const openCount = computed(() => props.jobs.filter(isOpen).length)
+const finishedCount = computed(() => props.jobs.length - openCount.value)
 
 /** Shows the job where it's seen (`openJob`). */
 const open = (job: Job) =>
@@ -50,17 +54,17 @@ const open = (job: Job) =>
   <template v-else>
     <div class="flex justify-end gap-2 border-b border-line px-3 py-1.5">
       <button
-        v-if="jobs.some((j) => j.status !== 'done')"
+        v-if="openCount"
         type="button"
         class="text-xs text-danger underline-offset-2 hover:underline"
-        title="Cancel everything running and queued, and dismiss what failed. What's done stays."
-        data-clear-queue
-        @click="$emit('clear')"
+        title="Cancel everything running and queued. What's finished stays."
+        data-cancel-all
+        @click="$emit('cancelAll')"
       >
-        Clear queue ({{ jobs.filter((j) => j.status !== 'done').length }})
+        Cancel all ({{ openCount }})
       </button>
       <span
-        v-if="jobs.some((j) => j.status === 'done') && jobs.some((j) => j.status !== 'done')"
+        v-if="openCount && finishedCount"
         class="text-xs text-muted"
         aria-hidden="true"
         data-queue-actions-separator
@@ -68,14 +72,14 @@ const open = (job: Job) =>
         ·
       </span>
       <button
-        v-if="jobs.some((j) => j.status === 'done')"
+        v-if="finishedCount"
         type="button"
         class="text-xs text-fg underline-offset-2 hover:underline"
-        title="Dismiss what's done, and leave the rest"
-        data-dismiss-done
-        @click="$emit('dismissDone')"
+        title="Dismiss what's finished, done or failed, and leave the rest"
+        data-dismiss-finished
+        @click="$emit('dismissFinished')"
       >
-        Dismiss done ({{ jobs.filter((j) => j.status === 'done').length }})
+        Dismiss finished ({{ finishedCount }})
       </button>
     </div>
     <ol>

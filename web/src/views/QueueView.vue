@@ -5,7 +5,14 @@ import { cancelJob, getQueue, KIND_LABELS, type Queue } from '../api'
 import { useImageModels } from '../composables/useSettingsOptions'
 import { frameName } from '../frameName'
 import { isOpen, jobLink, jobStatus } from '../jobs'
-import { lasted, machineQueues, type QueueJob, type QueueRow, textCallName } from '../queue'
+import {
+  lasted,
+  type MachineQueue,
+  machineQueues,
+  type QueueJob,
+  type QueueRow,
+  textCallName,
+} from '../queue'
 import { sessionPath } from '../sessionPath'
 
 /**
@@ -34,6 +41,40 @@ useIntervalFn(refresh, 2000, { immediateCallback: true })
 async function drop(job: QueueJob) {
   await cancelJob(job.sessionId, job.id).catch(() => {})
   await refresh()
+}
+
+/** The jobs among `rows` (a text call is its screen's to cancel). */
+const jobsOf = (rows: readonly QueueRow[]) =>
+  rows.flatMap((r) => (r.type === 'job' ? [r.job] : []))
+
+/**
+ * Drops each of `jobs` in turn, then shows the queue once: the waiting ones before the running,
+ * so none starts as another is cancelled.
+ */
+async function dropAll(jobs: readonly QueueJob[]) {
+  const waitingFirst = [...jobs].sort((a, b) => Number(a.status === 'running') - Number(b.status === 'running'))
+  for (const job of waitingFirst) await cancelJob(job.sessionId, job.id).catch(() => {})
+  await refresh()
+}
+
+/**
+ * A section's button, on the right of its heading: Cancel all on the first of Running and Waiting
+ * there is, for the machine's jobs in both; Dismiss all on Finished.
+ */
+function actionOf(m: MachineQueue, section: (typeof SECTIONS)[number]['key']) {
+  if (section === 'finished') {
+    const jobs = jobsOf(m.finished)
+    return { label: `Dismiss all (${jobs.length})`, title: "Dismiss what's finished here, done or failed", jobs, danger: false }
+  }
+  if (section === 'waiting' && m.running.length) return null
+  const jobs = [...jobsOf(m.running), ...jobsOf(m.waiting)]
+  if (!jobs.length) return null
+  return {
+    label: `Cancel all (${jobs.length})`,
+    title: "Cancel every job running and waiting here. The Text Model's calls carry on.",
+    jobs,
+    danger: true,
+  }
 }
 
 const linkOf = (row: QueueRow) =>
@@ -88,9 +129,20 @@ const SECTIONS = [
         </p>
         <template v-for="section in SECTIONS" :key="section.key">
           <template v-if="m[section.key].length">
-            <h4 class="bg-surface px-3 py-1 text-xs uppercase tracking-wide text-muted">
-              {{ section.title }}
-            </h4>
+            <div class="flex items-baseline justify-between gap-2 bg-surface px-3 py-1">
+              <h4 class="text-xs uppercase tracking-wide text-muted">{{ section.title }}</h4>
+              <button
+                v-if="actionOf(m, section.key)"
+                type="button"
+                class="text-xs underline-offset-2 hover:underline"
+                :class="actionOf(m, section.key)!.danger ? 'text-danger' : 'text-fg'"
+                :title="actionOf(m, section.key)!.title"
+                :data-section-action="section.key"
+                @click="dropAll(actionOf(m, section.key)!.jobs)"
+              >
+                {{ actionOf(m, section.key)!.label }}
+              </button>
+            </div>
             <ol :data-section="section.key">
               <li
                 v-for="row in m[section.key]"

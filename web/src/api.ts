@@ -1016,7 +1016,8 @@ export type ClipAsk = Omit<ClipOrder, 'prompt' | 'model'>
 
 /** A clip prompt being written: piece by piece as it comes, then the whole of it, tidied. */
 export type ClipPromptEvent =
-  | { type: 'phase'; phase: 'text' }
+  /** `queued`: waiting for a render on the Text Model's machine to finish. */
+  | { type: 'phase'; phase: 'text' | 'queued' }
   | { type: 'clip-prompt-part'; text: string }
   | { type: 'clip-prompt'; text: string }
 
@@ -1075,10 +1076,10 @@ export const retryJob = (id: string, jobId: string) =>
 export const cancelJob = (id: string, jobId: string) =>
   request<Job[]>(`/api/sessions/${id}/jobs/${jobId}`, { method: 'DELETE' })
 
-/** Clears a Session's queue: cancels what's running and queued, and dismisses what failed. */
-export const clearJobs = (id: string) =>
+/** Cancels everything running and queued in a Session; what's finished stays. Returns the queue. */
+export const cancelAllJobs = (id: string) =>
   request<Job[]>(`/api/sessions/${id}/jobs`, { method: 'DELETE' })
 
-/** Dismisses a Session's done jobs, leaving the rest; returns the queue. */
-export const dismissDoneJobs = (id: string) =>
-  request<Job[]>(`/api/sessions/${id}/jobs/done`, { method: 'DELETE' })
+/** Dismisses a Session's finished jobs, done and failed, leaving the rest; returns the queue. */
+export const dismissFinishedJobs = (id: string) =>
+  request<Job[]>(`/api/sessions/${id}/jobs/finished`, { method: 'DELETE' })

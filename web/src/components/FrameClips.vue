@@ -59,6 +59,8 @@ watch([lengths, seconds], ([ok, s]) => {
 const speech = ref(false)
 const prompt = ref('')
 const writing = ref(false)
+/** The prompt's call waits for a render on the Text Model's machine to finish. */
+const waiting = ref(false)
 const error = ref('')
 
 /** The picture's clip of the kind chosen by the video model chosen, if it has one. */
@@ -124,7 +126,8 @@ async function write(revise?: { prompt: string; problem: string }) {
   try {
     const ask = { kind: kind.value, seconds: seconds.value, speech: speech.value && !silent.value }
     await writeClipPrompt(props.sessionId, props.index, ask, (event) => {
-      if (event.type === 'clip-prompt-part' || event.type === 'clip-prompt') {
+      if (event.type === 'phase') waiting.value = event.phase === 'queued'
+      else if (event.type === 'clip-prompt-part' || event.type === 'clip-prompt') {
         prompt.value = event.text
       } else if (event.type === 'failed') error.value = event.message
     }, revise)
@@ -132,6 +135,7 @@ async function write(revise?: { prompt: string; problem: string }) {
     error.value = (err as Error).message
   } finally {
     writing.value = false
+    waiting.value = false
   }
 }
 
@@ -240,7 +244,7 @@ function again(clip: Clip) {
       rows="5"
       class="w-full resize-y rounded border border-line bg-surface p-2 text-xs leading-relaxed"
       :class="{ 'render-sweep': writing }"
-      :placeholder="writing ? 'Writing…' : 'What happens in the clip: Write prompt has the Text Model write it from the story, to edit here.'"
+      :placeholder="waiting ? 'Waiting for another render…' : writing ? 'Writing…' : 'What happens in the clip: Write prompt has the Text Model write it from the story, to edit here.'"
       :readonly="writing"
       aria-label="The clip's prompt"
       data-clip-prompt

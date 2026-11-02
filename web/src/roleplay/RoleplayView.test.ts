@@ -17,7 +17,7 @@ vi.mock('../api', async (importOriginal) => ({
   listJobs: vi.fn(),
   queueJob: vi.fn(),
   cancelJob: vi.fn(),
-  clearJobs: vi.fn(),
+  cancelAllJobs: vi.fn(),
   retryJob: vi.fn(),
   restartSession: vi.fn(),
 }))
@@ -234,6 +234,14 @@ describe('RoleplayView', () => {
       expect.any(Function),
     )
     expect(wrapper.find('[data-pending-message]').text()).toContain('Did anyone else make it?')
+    expect(wrapper.find('[role=status]').text()).toBe('Elena is replying…')
+
+    // Its call waits for a render on the Text Model's machine, then is written.
+    stream.emit({ type: 'phase', phase: 'queued' })
+    await flushPromises()
+    expect(wrapper.find('[role=status]').text()).toBe('Waiting for another render…')
+    stream.emit({ type: 'phase', phase: 'text' })
+    await flushPromises()
     expect(wrapper.find('[role=status]').text()).toBe('Elena is replying…')
 
     stream.emit({ type: 'reply-part', key: 'actions', value: 'Elena looks away.' })
@@ -714,12 +722,12 @@ describe('RoleplayView', () => {
       ])
       expect(wrapper.find('[data-render-all]').attributes('disabled')).toBeDefined()
 
-      // Clear queue cancels it all at once.
-      vi.mocked(api.clearJobs).mockResolvedValue([])
+      // Cancel all cancels it all at once.
+      vi.mocked(api.cancelAllJobs).mockResolvedValue([])
       await wrapper.find('[data-tab=queue]').trigger('click')
-      await wrapper.find('[data-clear-queue]').trigger('click')
+      await wrapper.find('[data-cancel-all]').trigger('click')
       await flushPromises()
-      expect(api.clearJobs).toHaveBeenCalledWith('r1')
+      expect(api.cancelAllJobs).toHaveBeenCalledWith('r1')
       expect(wrapper.find('[data-queue]').text()).toContain('Nothing queued')
     })
 

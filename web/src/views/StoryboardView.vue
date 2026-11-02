@@ -251,7 +251,7 @@ async function restart() {
 
 // --- Queued work: renders, upscales and 3D, each on its Frame.
 
-const { jobs, runningJobs, jobsFor, hasJob, queue, queueEdit, queueClip, queueAll, dropJob, clear, dismissDone, retry, refreshJobs } = useJobs(props.id, {
+const { jobs, runningJobs, jobsFor, hasJob, queue, queueEdit, queueClip, queueAll, dropJob, cancelAll, dismissFinished, retry, refreshJobs } = useJobs(props.id, {
   onSettled: async () => {
     await load()
   },
@@ -539,6 +539,7 @@ const statusLabel = computed(() => {
   const w = work.value
   if (!w) return ''
   if (w.cancelling) return 'Cancelling…'
+  if (w.phase === 'queued') return 'Waiting for another render…'
   const total = session.value?.frames.length || session.value?.frameCount || 0
   if (w.kind === 'plan') {
     if (!planning.value?.look) return 'Planning the Storyboard…'
@@ -791,8 +792,8 @@ const imagesOn = computed(() => featureOn.value('images'))
               @edit="showEdit"
               @retry="retry"
               @drop="dropJob"
-              @clear="clear"
-              @dismiss-done="dismissDone"
+              @cancel-all="cancelAll"
+              @dismiss-finished="dismissFinished"
             />
           </div>
           <ol

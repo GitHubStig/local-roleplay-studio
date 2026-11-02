@@ -1,4 +1,4 @@
-import type { Queue } from './api'
+import type { JobKind, Queue } from './api'
 
 /** A job as the queue page lists it: with its Session's id. */
 export type QueueJob = Queue['jobs'][number]
@@ -23,6 +23,21 @@ const TEXT_CALL_NAMES: Record<string, string> = {
 }
 export const textCallName = (job: string) => TEXT_CALL_NAMES[job] ?? 'Text'
 
+/** The jobs whose own text calls these are: a picture's Look and Image Prompt, a voice's lines. */
+const CALLS_OF_JOBS: Record<string, readonly JobKind[]> = {
+  picture: ['picture'],
+  look: ['picture'],
+  voice: ['voice', 'speak', 'speak-thought'],
+  delivery: ['speak', 'speak-thought'],
+}
+
+/** Whether `call` is a running job's own (`CALLS_OF_JOBS`), listed as the job instead. */
+const ofAJob = (call: TextCall, jobs: readonly QueueJob[]) =>
+  jobs.some((j) =>
+    j.sessionId === call.session && j.status === 'running' &&
+    !!CALLS_OF_JOBS[call.job]?.includes(j.kind)
+  )
+
 export type QueueRow =
   | { type: 'job'; job: QueueJob; session?: QueueSession }
   | { type: 'text'; call: TextCall; session?: QueueSession }
@@ -45,7 +60,7 @@ const by = <T>(key: (t: T) => string) => (a: T, b: T) => key(a).localeCompare(ke
 /**
  * Every machine's line, from the queue (`GET /api/queue`): the machines Settings list, in their
  * order, then any other a job or call runs on. Waiting go in the order they will: the Text Model's
- * calls first, then jobs waiting their turn (clips last), then jobs still queued, each in its
+ * calls first (a job's own listed as the job), then jobs waiting their turn (clips last), then jobs still queued, each in its
  * Session's order.
  */
 export function machineQueues(queue: Queue): MachineQueue[] {
@@ -69,7 +84,7 @@ export function machineQueues(queue: Queue): MachineQueue[] {
   ]
   return keys.map((key) => {
     const jobs = queue.jobs.filter((j) => j.machine === key)
-    const calls = queue.text.filter((c) => c.machine === key)
+    const calls = queue.text.filter((c) => c.machine === key && !ofAJob(c, queue.jobs))
     const inTurn = jobs.filter((j) => j.status === 'running' && j.phase === 'queued')
       .sort(by((j) => `${j.kind === 'clip' ? 1 : 0} ${j.startedAt}`))
     return {

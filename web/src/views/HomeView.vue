@@ -104,7 +104,7 @@ async function remove(s: SessionSummary) {
 
 const ACTIVITY_LABELS = {
   text: 'Writing…',
-  queued: 'Waiting to render…',
+  queued: 'Waiting for another render…',
   image: 'Rendering…',
   audio: 'Speaking…',
   download: 'Downloading a model…',

@@ -1,9 +1,9 @@
 import { computed, onBeforeUnmount, ref } from 'vue'
 import {
+  cancelAllJobs,
   cancelJob,
-  clearJobs,
   type ClipOrder,
-  dismissDoneJobs,
+  dismissFinishedJobs,
   type EditOrder,
   type Job,
   type JobKind,
@@ -130,19 +130,19 @@ export function useJobs(
       await refreshJobs()
     }
   }
-  /** Cancels everything running and queued, and dismisses what failed. */
-  async function clear() {
+  /** Cancels everything running and queued; what's finished stays. */
+  async function cancelAll() {
     try {
-      jobs.value = await clearJobs(sessionId)
+      jobs.value = await cancelAllJobs(sessionId)
       watchJobs()
     } catch {
       await refreshJobs()
     }
   }
-  /** Dismisses every done job. */
-  async function dismissDone() {
+  /** Dismisses every finished job, done or failed. */
+  async function dismissFinished() {
     try {
-      jobs.value = await dismissDoneJobs(sessionId)
+      jobs.value = await dismissFinishedJobs(sessionId)
     } catch {
       await refreshJobs()
     }
@@ -170,8 +170,8 @@ export function useJobs(
     queueClip,
     queueAll,
     dropJob,
-    clear,
-    dismissDone,
+    cancelAll,
+    dismissFinished,
     retry,
     refreshJobs,
   }

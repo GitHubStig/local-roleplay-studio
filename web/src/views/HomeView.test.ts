@@ -121,7 +121,7 @@ describe('HomeView', () => {
   it("shows what a busy Session is doing and won't delete it", async () => {
     vi.mocked(api.listSessions).mockResolvedValue([summary('a', { activity: 'queued' })])
     const { wrapper } = await mountIt()
-    expect(wrapper.find('[data-activity]').text()).toBe('Waiting to render…')
+    expect(wrapper.find('[data-activity]').text()).toBe('Waiting for another render…')
     expect(wrapper.find('[data-delete]').attributes('disabled')).toBeDefined()
   })
 

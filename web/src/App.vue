@@ -53,10 +53,6 @@ useEventListener(window, 'focus', checkServer)
             <Icon name="house" />
             Home
           </RouterLink>
-          <RouterLink to="/settings" class="tab" active-class="tab-active">
-            <Icon name="settings" />
-            Settings
-          </RouterLink>
           <RouterLink
             v-if="currentTo"
             :to="currentTo"
@@ -85,6 +81,10 @@ useEventListener(window, 'focus', checkServer)
           >
             <Icon name="queue" />
             Queue
+          </RouterLink>
+          <RouterLink to="/settings" class="tab" active-class="tab-active">
+            <Icon name="settings" />
+            Settings
           </RouterLink>
         </nav>
       </div>

@@ -170,7 +170,7 @@ Deno.test('A clip waits only for its own Image Model’s render of its Frame, an
   assertEquals(running(), ['render 0', 'clip 1'])
 })
 
-Deno.test('A done job stays listed until dismissed; Dismiss done leaves the rest', async () => {
+Deno.test('A done job stays listed until dismissed; Dismiss finished leaves what’s open', async () => {
   const { jobs, end } = heldJobs()
   const render = jobs.enqueue('s', 'render', 0)
   jobs.enqueue('s', 'speak', 1)
@@ -179,7 +179,7 @@ Deno.test('A done job stays listed until dismissed; Dismiss done leaves the rest
   assertEquals(status(), ['render done', 'speak running'])
   // The same work is queued again, not taken for the done job.
   assertEquals(jobs.enqueue('s', 'render', 0).id === render.id, false)
-  jobs.dismissDone('s')
+  jobs.dismissFinished('s')
   assertEquals(status(), ['speak running', 'render queued'])
   // Dismissing one done job by id leaves the others.
   await end('speak 1')

@@ -48,18 +48,18 @@ describe('JobQueue', () => {
       expect(wrapper.emitted('drop')).toEqual([[done]])
     })
 
-    it('is dismissed with Dismiss done, which Clear queue leaves to the jobs still open', async () => {
+    it('is dismissed with Dismiss finished, which Cancel all leaves to the jobs still open', async () => {
       const onlyDone = mount(JobQueue, { props: { jobs: [done], empty: '' } })
-      expect(onlyDone.find('[data-clear-queue]').exists()).toBe(false)
-      await onlyDone.find('[data-dismiss-done]').trigger('click')
-      expect(onlyDone.emitted('dismissDone')).toHaveLength(1)
+      expect(onlyDone.find('[data-cancel-all]').exists()).toBe(false)
+      await onlyDone.find('[data-dismiss-finished]').trigger('click')
+      expect(onlyDone.emitted('dismissFinished')).toHaveLength(1)
 
       const mixed = mount(JobQueue, { props: { jobs: [done, clipJob], empty: '' } })
-      expect(mixed.find('[data-clear-queue]').exists()).toBe(true)
+      expect(mixed.find('[data-cancel-all]').exists()).toBe(true)
       expect(mixed.find('[data-queue-actions-separator]').exists()).toBe(true)
       expect(onlyDone.find('[data-queue-actions-separator]').exists()).toBe(false)
       const open = mount(JobQueue, { props: { jobs: [clipJob], empty: '' } })
-      expect(open.find('[data-dismiss-done]').exists()).toBe(false)
+      expect(open.find('[data-dismiss-finished]').exists()).toBe(false)
     })
   })
 })

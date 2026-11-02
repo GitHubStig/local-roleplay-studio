@@ -2,7 +2,7 @@
 import { frameName } from '../frameName'
 import { useEventListener, useTextareaAutosize } from '@vueuse/core'
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
-import { type Clip, getSession, imageUrl, type Look, type Made3d, restartSession } from '../api'
+import { type Activity, type Clip, getSession, imageUrl, type Look, type Made3d, restartSession } from '../api'
 import { useSessionScreen } from '../composables/useSessionScreen'
 import { useStoredFlag } from '../composables/useStoredFlag'
 import { saveLine, useAutosave } from '../composables/useAutosave'
@@ -70,6 +70,8 @@ interface Pending {
   reply: Partial<Reply>
   thinking?: string
   cancelling?: boolean
+  /** Waiting for a render on the Text Model's machine to finish (`queued`), or writing. */
+  phase?: Activity
   /** Started elsewhere (another tab); followed by polling. */
   detached?: boolean
 }
@@ -93,7 +95,7 @@ const suggesting = computed(() => pending.value?.kind === 'suggest')
 const writingCast = computed(() => pending.value?.kind === 'cast')
 // --- Background work: pictures, renders, upscales, voices and 3D, queued on the server.
 
-const { jobs, runningJobs, runningJob, runningOn, jobsFor, hasJob, queue, queueEdit, queueClip, queueAll, dropJob, clear, dismissDone, retry, refreshJobs } = useJobs(
+const { jobs, runningJobs, runningJob, runningOn, jobsFor, hasJob, queue, queueEdit, queueClip, queueAll, dropJob, cancelAll, dismissFinished, retry, refreshJobs } = useJobs(
   props.id,
   {
     onSettled: () => reload(),
@@ -195,7 +197,7 @@ function describeJob(job: Job): string | undefined {
     if (job.kind === 'voice' || !session.value?.voice?.ref) return 'Designing the voice…'
     return 'Speaking…'
   }
-  if (job.kind === 'picture') {
+  if (job.kind === 'picture' && job.phase !== 'queued') {
     return currentLook.value ? 'Picturing this moment…' : 'Writing the Look, then picturing…'
   }
 }
@@ -414,6 +416,9 @@ function onEvent(event: RoleplayEvent) {
   const p = pending.value
   if (!p) return
   switch (event.type) {
+    case 'phase':
+      pending.value = { ...p, phase: event.phase }
+      break
     case 'thinking':
       pending.value = { ...p, thinking: (event.restart ? '' : p.thinking ?? '') + event.text }
       break
@@ -562,6 +567,7 @@ const statusLabel = computed(() => {
   if (!p) return ''
   if (p.cancelling) return 'Cancelling…'
   if (p.detached) return 'A reply is being written in another tab…'
+  if (p.phase === 'queued') return 'Waiting for another render…'
   if (p.kind === 'cast') return cast.value ? 'Rewriting the Cast…' : 'Writing the Cast…'
   if (p.kind === 'begin') return `${characterName.value} is starting the scene…`
   if (p.kind === 'suggest') return `Suggesting ${personaName.value}'s message…`
@@ -1056,8 +1062,8 @@ const lookSavingText = computed(() =>
               @edit="showEdit"
               @retry="retry"
               @drop="drop"
-              @clear="clear"
-              @dismiss-done="dismissDone"
+              @cancel-all="cancelAll"
+              @dismiss-finished="dismissFinished"
             />
           </section>
 

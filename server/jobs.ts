@@ -376,11 +376,9 @@ export class SessionJobs {
     return true
   }
 
-  /** Dismisses every done job, leaving what's running, queued or failed. */
-  dismissDone(sessionId: string) {
-    const rest = (this.#jobs.get(sessionId) ?? []).filter((j) => j.status !== 'done')
-    if (rest.length) this.#jobs.set(sessionId, rest)
-    else this.#jobs.delete(sessionId)
+  /** Dismisses every finished job, done or failed, leaving what's running or queued. */
+  dismissFinished(sessionId: string) {
+    this.cancelWhere(sessionId, (job) => !isOpen(job))
   }
 
   /** Cancels every job on the Frames `which` picks, e.g. an exchange that was undone. */
@@ -695,15 +693,15 @@ export function jobRoutes(ctx: JobRoutesContext): Route[] {
           : error('No such failed job', 404),
       )],
 
-    // Clears the queue: cancels what's running and queued, and dismisses what failed. What's done
-    // stays until it's seen.
+    // Cancel all: cancels what's running and queued. What's finished stays, a failed job to retry
+    // and a done one until it's seen.
     ['DELETE', path(), (_req, p) => {
-      ctx.jobs.cancelWhere(p.id!, (job) => job.status !== 'done')
+      ctx.jobs.cancelWhere(p.id!, isOpen)
       return Promise.resolve(json(ctx.jobs.list(p.id!)))
     }],
 
-    ['DELETE', path('/done'), (_req, p) => {
-      ctx.jobs.dismissDone(p.id!)
+    ['DELETE', path('/finished'), (_req, p) => {
+      ctx.jobs.dismissFinished(p.id!)
       return Promise.resolve(json(ctx.jobs.list(p.id!)))
     }],
 

@@ -234,7 +234,7 @@ async function switchRenderFrames(on: boolean) {
   }
 }
 
-const { jobs, jobsFor, hasJob, queue, queueEdit, queueClip, queueAll, dropJob, clear, dismissDone, retry, refreshJobs } = useJobs(props.id, {
+const { jobs, jobsFor, hasJob, queue, queueEdit, queueClip, queueAll, dropJob, cancelAll, dismissFinished, retry, refreshJobs } = useJobs(props.id, {
   onSettled: async () => {
     await load()
   },
@@ -740,8 +740,8 @@ const promptDiff = computed(() => {
               @edit="showEdit"
               @retry="retry"
               @drop="dropJob"
-              @clear="clear"
-              @dismiss-done="dismissDone"
+              @cancel-all="cancelAll"
+              @dismiss-finished="dismissFinished"
             />
           </div>
           <ol
