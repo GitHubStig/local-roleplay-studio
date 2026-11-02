@@ -119,6 +119,9 @@ export interface Job {
   progress?: { step: number; total: number }
   error?: string
   createdAt: string
+  /** When it last started, and ended (done or failed), for how long it waited and took. */
+  startedAt?: string
+  endedAt?: string
   /** The machine it runs on (`machineKey`): jobs on different machines run side by side. */
   machine: string
   /**
@@ -285,6 +288,11 @@ export class SessionJobs {
     return (this.#jobs.get(sessionId) ?? []).map((job) => ({ ...job }))
   }
 
+  /** The Sessions with jobs listed, each with its jobs in the order they were queued. */
+  all(): { sessionId: string; jobs: Job[] }[] {
+    return [...this.#jobs.keys()].map((sessionId) => ({ sessionId, jobs: this.list(sessionId) }))
+  }
+
   /**
    * Queues a job. Asking again for work already queued or running on that Frame returns that job
    * instead of queueing it twice; a render by another Image Model is other work. A picture (a
@@ -362,7 +370,7 @@ export class SessionJobs {
     const again = rest.some((j) =>
       sameWork(j, failed.kind, failed.frameIndex, failed.image, failed.clip) && isOpen(j)
     )
-    const { error: _, ...job } = failed
+    const { error: _, startedAt: _s, endedAt: _e, ...job } = failed
     this.#jobs.set(sessionId, again ? rest : [...rest, { ...job, status: 'queued' }])
     if (!again) this.#next(sessionId)
     return true
@@ -473,6 +481,7 @@ export class SessionJobs {
     this.#running.set(sessionId, running.set(job.id, { job, controller, done }))
     job.status = 'running'
     job.phase = 'text'
+    job.startedAt = new Date().toISOString()
     const emit: JobEmit = (event) => {
       if (event.type === 'phase' && event.phase) job.phase = event.phase
       if (event.imageBackend) job.imageBackend = event.imageBackend
@@ -482,6 +491,7 @@ export class SessionJobs {
       .then(
         () => {
           job.status = 'done'
+          job.endedAt = new Date().toISOString()
           delete job.phase
           delete job.progress
         },
@@ -493,6 +503,7 @@ export class SessionJobs {
           }
           job.status = 'failed'
           job.error = (err as Error).message
+          job.endedAt = new Date().toISOString()
           delete job.phase
           delete job.progress
         },

@@ -495,6 +495,7 @@ describe('RoleplayView', () => {
   }
   const job = (extra: Partial<roleplay.Job>): roleplay.Job => ({
     id: 'j1',
+    machine: 'here',
     kind: 'picture',
     frameIndex: 0,
     status: 'queued',

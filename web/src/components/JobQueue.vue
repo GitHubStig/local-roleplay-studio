@@ -2,7 +2,7 @@
 import { frameName } from '../frameName'
 import type { Job } from '../api'
 import { useImageModels } from '../composables/useSettingsOptions'
-import { isOpen, jobStatus } from '../jobs'
+import { isOpen, jobStatus, openJob } from '../jobs'
 
 /**
  * A Session's whole queue: running, queued, failed and done; clicking one goes to its Frame (and
@@ -35,13 +35,14 @@ const emit = defineEmits<{
 }>()
 const { jobName } = useImageModels()
 
-/** Goes to the job's Frame; a done job has been seen by then, so it's dismissed. */
-function open(job: Job) {
-  if (job.kind === 'edit') emit('edit', job.frameIndex)
-  else if (job.kind === 'clip') emit('clip', job)
-  else emit('go', job.frameIndex)
-  if (job.status === 'done') emit('drop', job)
-}
+/** Shows the job where it's seen (`openJob`). */
+const open = (job: Job) =>
+  openJob(job, {
+    go: (index) => emit('go', index),
+    edit: (index) => emit('edit', index),
+    clip: (j) => emit('clip', j),
+    drop: (j) => emit('drop', j),
+  })
 </script>
 
 <template>

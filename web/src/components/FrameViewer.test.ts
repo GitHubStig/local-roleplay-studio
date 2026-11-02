@@ -57,6 +57,7 @@ const frames: PicturedFrame[] = [{
 }]
 const editJob = (status: Job['status'], extra: Partial<Job> = {}): Job => ({
   id: 'j1',
+  machine: 'here',
   kind: 'edit',
   frameIndex: 0,
   status,

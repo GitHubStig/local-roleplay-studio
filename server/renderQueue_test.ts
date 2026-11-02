@@ -80,7 +80,7 @@ Deno.test('RenderQueue lets text calls run side by side when no heavy job runs',
   const queue = new RenderQueue()
   let waited = false
   const a = await queue.textTurn('here', signal())
-  const b = await queue.textTurn('here', signal(), () => (waited = true))
+  const b = await queue.textTurn('here', signal(), undefined, () => (waited = true))
   assertEquals(waited, false)
   a()
   b()
@@ -114,7 +114,7 @@ Deno.test('RenderQueue takes turns for text only on its own machine', async () =
   const queue = new RenderQueue({ machineOf: (job) => Promise.resolve(job ? 'pc' : 'here') })
   const render = await queue.acquire(signal(), undefined, { job: { kind: 'upscale' } })
   let waited = false
-  ;(await queue.textTurn('here', signal(), () => (waited = true)))()
+  ;(await queue.textTurn('here', signal(), undefined, () => (waited = true)))()
   assertEquals(waited, false)
   render()
 })
@@ -148,4 +148,20 @@ Deno.test('RenderQueue drops a text call that aborts while it waits', async () =
   let waited = false
   ;(await queue.acquire(signal(), () => (waited = true)))()
   assertEquals(waited, false)
+})
+
+Deno.test('RenderQueue lists the text calls running and waiting, by machine', async () => {
+  const queue = new RenderQueue({ machineOf: () => Promise.resolve('pc') })
+  const reply = await queue.textTurn('here', signal(), { session: 'a', job: 'reply' })
+  const render = await queue.acquire(signal())
+  const waiting = queue.textTurn('pc', signal(), { session: 'b', job: 'suggest' })
+  const calls = queue.textCalls().map(({ since: _, ...c }) => c)
+  assertEquals(calls, [
+    { session: 'a', job: 'reply', machine: 'here', status: 'running' },
+    { session: 'b', job: 'suggest', machine: 'pc', status: 'waiting' },
+  ])
+  reply()
+  render()
+  ;(await waiting)()
+  assertEquals(queue.textCalls(), [])
 })

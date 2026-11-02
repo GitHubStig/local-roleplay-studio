@@ -972,7 +972,33 @@ export interface Job {
   edit?: EditOrder
   /** A clip's order. */
   clip?: ClipOrder
+  /** When it last started, and ended (done or failed). */
+  startedAt?: string
+  endedAt?: string
+  /** The machine it runs on: `here` for the server's, else its host. */
+  machine: string
 }
+
+/** Every machine's queue, for the queue page (`GET /api/queue`). */
+export interface Queue {
+  /** The machines Settings list, `here` for the server's, with the kinds of Backend on each. */
+  machines: { key: string; backends: string[] }[]
+  /** The Sessions with jobs or text calls listed. */
+  sessions: { id: string; kind: SessionKind; title: string }[]
+  /** Every Session's jobs, each in its Session's order. */
+  jobs: (Job & { sessionId: string })[]
+  /** The Text Model's calls running, then waiting, on each machine, in the order they go. */
+  text: {
+    machine: string
+    session?: string
+    /** What it's for, as the call log names it (`reply`, `cast`…). */
+    job: string
+    status: 'running' | 'waiting'
+    since: string
+  }[]
+}
+
+export const getQueue = () => request<Queue>('/api/queue')
 
 /** A Session's jobs (a Roleplay's or a Chain's), in the order queued; several may run, one per machine. */
 export const listJobs = (id: string) => request<Job[]>(`/api/sessions/${id}/jobs`)

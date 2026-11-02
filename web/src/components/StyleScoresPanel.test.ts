@@ -34,6 +34,7 @@ const scores: StyleScores = {
 }
 const job: Job = {
   id: 'j1',
+  machine: 'here',
   kind: 'style',
   frameIndex: 0,
   status: 'running',

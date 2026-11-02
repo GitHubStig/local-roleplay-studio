@@ -20,6 +20,8 @@ import EditedChip from '../components/EditedChip.vue'
 import FrameViewer from '../components/FrameViewer.vue'
 import JobQueue from '../components/JobQueue.vue'
 import { useJobs } from '../composables/useJobs'
+import { useJobLink } from '../composables/useJobLink'
+import { sessionPath } from '../sessionPath'
 import { usePictureEditing } from '../composables/usePictureEditing'
 import { showPickedFrame, useFrameKeys } from '../composables/useFrameKeys'
 import { formingOf, jobForming, jobStatus, queueTab, sweepOf } from '../jobs'
@@ -269,8 +271,27 @@ const shownRender = computed(() =>
 /** The Frame whose picture is open in the viewer, if any. */
 const viewingPicture = ref<number | null>(null)
 /** Editing its picture there (ADR 0021): painting an edit, or watching one being made. */
+/** A queued job's Frame, from the Queue tab or a link to it. */
+function goToJobFrame(index: number) {
+  pick(index)
+  panel.value = 'log'
+}
+/** A clip's Frame, at its Clip section on the picture it's made from. */
+async function openClip(job: Job) {
+  await onClipsModel(job, (m) => (frameError.value = m))
+  pick(job.frameIndex)
+  panel.value = 'prompt'
+  scrollToClips(log.value)
+}
 const { painting: paintingPicture, startEdit, showEdit, pick: pickVersion, deleteEdit, deleteUpscale } =
   usePictureEditing(props.id, session, viewingPicture, (m) => (frameError.value = m))
+// A job linked to from the queue page opens as this Session's Queue tab opens it.
+useJobLink(() => sessionPath(props.id, 'chain'), () => !!session.value, jobs, refreshJobs, {
+  go: goToJobFrame,
+  edit: showEdit,
+  clip: openClip,
+  drop: dropJob,
+})
 /** Which Frame's scene or figure is open, if any. */
 const open3d = ref<{ index: number; kind: Made3d } | null>(null)
 
@@ -714,13 +735,8 @@ const promptDiff = computed(() => {
               :jobs="jobs"
               empty="Nothing queued. Render, Render all and Upscale add work here, to run while you carry on."
               :name="frameTitle"
-              @go="(index) => { pick(index); panel = 'log' }"
-              @clip="async (job) => {
-                await onClipsModel(job, (m) => (frameError = m))
-                pick(job.frameIndex)
-                panel = 'prompt'
-                scrollToClips(log)
-              }"
+              @go="goToJobFrame"
+              @clip="openClip"
               @edit="showEdit"
               @retry="retry"
               @drop="dropJob"

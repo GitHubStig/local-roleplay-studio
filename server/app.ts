@@ -99,7 +99,14 @@ import {
   shownPicture,
   switchImageModel,
 } from './pictures.ts'
-import { backendOf, editJob, type HeavyJob, jobBackend, textBackendFor } from './machine.ts'
+import {
+  backendOf,
+  editJob,
+  type HeavyJob,
+  jobBackend,
+  machineOf,
+  textBackendFor,
+} from './machine.ts'
 import { Previews } from './previews.ts'
 import { RenderQueue } from './renderQueue.ts'
 import { type FrameDeps, frameName, type Phase, UpscaleError } from './frames.ts'
@@ -681,6 +688,35 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
             : checkStoryboardJob(session, kind, index, pending))
       },
     }),
+
+    // Every machine's queue, for the queue page: the machines Settings list (the kinds of Backend on
+    // each), every Session's jobs with its title, and the Text Model's calls running or waiting.
+    ['GET', new URLPattern({ pathname: '/api/queue' }), async () => {
+      const [{ backends }, { scenarios }] = await Promise.all([
+        deps.settings.load(),
+        deps.scenarios.list(),
+      ])
+      const machines = new Map<string, string[]>()
+      for (const b of backends) {
+        const key = machineOf(b)
+        machines.set(key, [...machines.get(key) ?? [], BACKEND_NAMES[b.kind]])
+      }
+      const titles = new Map(scenarios.map((s) => [s.id, s.title]))
+      const text = renderQueue.textCalls()
+      const ids = new Set([
+        ...jobs.all().map((s) => s.sessionId),
+        ...text.flatMap((c) => c.session ? [c.session] : []),
+      ])
+      const sessions = (await Promise.all([...ids].map((id) => deps.sessions.load(id))))
+        .filter((s) => !!s)
+        .map((s) => ({ id: s.id, kind: s.kind, title: titleOf(s, titles.get(s.scenarioId ?? '')) }))
+      return json({
+        machines: [...machines].map(([key, kinds]) => ({ key, backends: [...new Set(kinds)] })),
+        sessions,
+        jobs: jobs.all().flatMap(({ sessionId, jobs }) => jobs.map((j) => ({ ...j, sessionId }))),
+        text,
+      })
+    }],
 
     ['GET', new URLPattern({ pathname: '/api/health' }), () => Promise.resolve(json({ ok: true }))],
 

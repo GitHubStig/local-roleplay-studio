@@ -1,10 +1,10 @@
-import type { Chat } from './chat.ts'
+import type { Chat, ChatCall } from './chat.ts'
 
 /**
- * Takes a turn for one call, resolving with what ends it; rejects if `signal` aborts while it
+ * Takes a turn for one call, resolving with what ends it; rejects if its `signal` aborts while it
  * waits.
  */
-export type TakeTurn = (signal: AbortSignal) => Promise<() => void>
+export type TakeTurn = (call: ChatCall) => Promise<() => void>
 
 /**
  * `chat`, with each call waiting its turn first (`take`), as heavy jobs on the Text Model's machine
@@ -19,7 +19,7 @@ export function turnTakingChat(chat: Chat, take: TakeTurn): Chat {
       return chat.thinks
     },
     async stream(call) {
-      const release = await take(call.signal)
+      const release = await take(call)
       try {
         return await chat.stream(call)
       } finally {

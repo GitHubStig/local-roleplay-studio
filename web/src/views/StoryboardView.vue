@@ -10,6 +10,7 @@ import {
   imageUrl,
   insertBeat,
   isWritten,
+  type Job,
   type JobKind,
   type Look,
   type Made3d,
@@ -51,6 +52,7 @@ import RestartButton from '../components/RestartButton.vue'
 import { useImageModels } from '../composables/useSettingsOptions'
 import { useFeatures } from '../composables/useFeatures'
 import { useJobs } from '../composables/useJobs'
+import { useJobLink } from '../composables/useJobLink'
 import { usePictureEditing } from '../composables/usePictureEditing'
 import { useDragReorder } from '../composables/useDragReorder'
 import { showPickedFrame, useFrameKeys } from '../composables/useFrameKeys'
@@ -572,8 +574,22 @@ const timingsLabel = (f: StoryboardFrame) => {
 /** The Frame whose picture is open in the viewer, if any. */
 const viewingPicture = ref<number | null>(null)
 /** Editing its picture there (ADR 0021): painting an edit, or watching one being made. */
+/** A clip's Frame, at its Clip section on the picture it's made from. */
+async function openClip(job: Job) {
+  await onClipsModel(job, (text) => (message.value = { kind: 'error', text }))
+  pick(job.frameIndex)
+  narrowTab.value = 'frame'
+  scrollToClips(frameList.value)
+}
 const { painting: paintingPicture, startEdit, showEdit, pick: pickVersion, deleteEdit, deleteUpscale } =
   usePictureEditing(props.id, session, viewingPicture, (text) => (message.value = { kind: 'error', text }))
+// A job linked to from the queue page opens as this Session's Queue tab opens it.
+useJobLink(() => sessionPath(props.id, 'storyboard'), () => !!session.value, jobs, refreshJobs, {
+  go: goToFrame,
+  edit: showEdit,
+  clip: openClip,
+  drop: dropJob,
+})
 /** Which Frame's scene or figure is open, if any. */
 const open3d = ref<{ index: number; kind: Made3d } | null>(null)
 const frameTitle = frameName
@@ -771,12 +787,7 @@ const imagesOn = computed(() => featureOn.value('images'))
               empty="Nothing queued. Render, Render all and Upscale add work here, to run while you carry on."
               :name="frameTitle"
               @go="goToFrame"
-              @clip="async (job) => {
-                await onClipsModel(job, (text) => (message = { kind: 'error', text }))
-                pick(job.frameIndex)
-                narrowTab = 'frame'
-                scrollToClips(frameList)
-              }"
+              @clip="openClip"
               @edit="showEdit"
               @retry="retry"
               @drop="dropJob"

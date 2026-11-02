@@ -22,15 +22,32 @@ export interface RenderQueueOptions {
 const LANES = ['text', 'heavy', 'clip'] as const
 type Lane = (typeof LANES)[number]
 
+/** A Text Model call, as the queue page shows it: for which Session, what for, since when. */
+export interface TextCall {
+  session?: string
+  /** What it's for, as the call log names it (`reply`, `cast`…). */
+  job: string
+  /** When it asked for its turn. */
+  since: string
+}
+
+/** A Text Model call on a machine, running or waiting its turn (`textCalls`). */
+export interface MachineTextCall extends TextCall {
+  machine: string
+  status: 'running' | 'waiting'
+}
+
 interface Waiter {
   lane: Lane
   go: () => void
+  /** A text call's. */
+  call?: TextCall
 }
 
 /** One machine's turn-taking: a heavy job that has it, the text calls running, and who waits. */
 interface Turns {
   busy: boolean
-  texts: number
+  texts: Set<TextCall>
   waiting: Waiter[]
 }
 
@@ -70,7 +87,7 @@ export class RenderQueue {
     const machine = this.#machineOf ? await this.#machineOf(job) : 'here'
     signal.throwIfAborted()
     const turns = this.#turns(machine)
-    if (turns.busy || turns.texts || turns.waiting.length) {
+    if (turns.busy || turns.texts.size || turns.waiting.length) {
       onWait?.()
       await this.#wait(turns, job?.kind === 'video' ? 'clip' : 'heavy', signal)
     } else turns.busy = true
@@ -88,31 +105,50 @@ export class RenderQueue {
   /**
    * Resolves with a release function once a Text Model call may run on `machine`: at once unless
    * a heavy job runs there, else once it ends, ahead of the heavy jobs waiting. Text calls run side
-   * by side. Calls `onWait` first if it has to wait; rejects if `signal` aborts while waiting.
+   * by side. `about` says which Session's call it is, and what for, for the queue page. Calls
+   * `onWait` first if it has to wait; rejects if `signal` aborts while waiting.
    */
-  async textTurn(machine: string, signal: AbortSignal, onWait?: () => void): Promise<() => void> {
+  async textTurn(
+    machine: string,
+    signal: AbortSignal,
+    about: Omit<TextCall, 'since'> = { job: 'text' },
+    onWait?: () => void,
+  ): Promise<() => void> {
     signal.throwIfAborted()
+    const call: TextCall = { ...about, since: new Date().toISOString() }
     const turns = this.#turns(machine)
     if (turns.busy) {
       onWait?.()
-      await this.#wait(turns, 'text', signal)
-    } else turns.texts++
+      await this.#wait(turns, 'text', signal, call)
+    } else turns.texts.add(call)
     return this.#once(() => {
-      if (--turns.texts === 0) this.#handOn(turns)
+      turns.texts.delete(call)
+      if (!turns.texts.size) this.#handOn(turns)
     })
   }
 
+  /** Every Text Model call running or waiting its turn, by machine, in the order they go. */
+  textCalls(): MachineTextCall[] {
+    return [...this.#machines].flatMap(([machine, turns]) => [
+      ...[...turns.texts].map((call) => ({ ...call, machine, status: 'running' as const })),
+      ...turns.waiting.flatMap((w) =>
+        w.call ? [{ ...w.call, machine, status: 'waiting' as const }] : []
+      ),
+    ])
+  }
+
   #turns(machine: string): Turns {
-    const turns = this.#machines.get(machine) ?? { busy: false, texts: 0, waiting: [] }
+    const turns = this.#machines.get(machine) ?? { busy: false, texts: new Set(), waiting: [] }
     this.#machines.set(machine, turns)
     return turns
   }
 
   /** Waits in `lane`, behind those waiting in it and the lanes before it. */
-  #wait(turns: Turns, lane: Lane, signal: AbortSignal): Promise<void> {
+  #wait(turns: Turns, lane: Lane, signal: AbortSignal, call?: TextCall): Promise<void> {
     return new Promise<void>((resolve, reject) => {
       const waiter: Waiter = {
         lane,
+        ...(call && { call }),
         go: () => {
           signal.removeEventListener('abort', leave)
           resolve()
@@ -133,8 +169,10 @@ export class RenderQueue {
     const texts = turns.waiting.filter((w) => w.lane === 'text')
     if (texts.length) {
       turns.waiting = turns.waiting.filter((w) => w.lane !== 'text')
-      turns.texts += texts.length
-      for (const w of texts) w.go()
+      for (const w of texts) {
+        turns.texts.add(w.call!)
+        w.go()
+      }
       return
     }
     const next = turns.waiting.shift()

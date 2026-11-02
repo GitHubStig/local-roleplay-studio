@@ -142,7 +142,11 @@ const chat = (c: TextChoice) => {
   const seeded = c.seeding ? seededChat(plain, c.seeding) : plain
   return turnTakingChat(
     seeded,
-    async (signal) => renderQueue.textTurn(machineOf(await textBackendOf(c.model)), signal),
+    async (call) =>
+      renderQueue.textTurn(machineOf(await textBackendOf(c.model)), call.signal, {
+        ...(c.seeding && { session: c.seeding.session }),
+        job: call.job ?? 'text',
+      }),
   )
 }
 

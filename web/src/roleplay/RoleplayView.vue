@@ -30,6 +30,8 @@ import JobQueue from '../components/JobQueue.vue'
 import PanelTabs from '../components/PanelTabs.vue'
 import RenderAllButton from '../components/RenderAllButton.vue'
 import { useJobs } from '../composables/useJobs'
+import { useJobLink } from '../composables/useJobLink'
+import { sessionPath } from '../sessionPath'
 import { usePictureEditing } from '../composables/usePictureEditing'
 import { useFeatures } from '../composables/useFeatures'
 import { jobForming, jobStatus, queueTab } from '../jobs'
@@ -100,8 +102,22 @@ const { jobs, runningJobs, runningJob, runningOn, jobsFor, hasJob, queue, queueE
   },
 )
 /** Editing a picture in the viewer (ADR 0021): painting an edit, or watching one being made. */
+/** A clip's Frame, at its Clip section on the picture it's made from. */
+async function openClip(job: Job) {
+  await onClipsModel(job, (text) => (notice.value = { kind: 'error', text }))
+  goToFrame(job.frameIndex)
+  narrowTab.value = 'frame'
+  scrollToClips(transcript.value)
+}
 const { painting: paintingPicture, startEdit, showEdit, pick: pickVersion, deleteEdit, deleteUpscale } =
   usePictureEditing(props.id, session, viewing, (text) => (notice.value = { kind: 'error', text }))
+// A job linked to from the queue page opens as this Session's Queue tab opens it.
+useJobLink(() => sessionPath(props.id, 'roleplay'), () => !!session.value, jobs, refreshJobs, {
+  go: goToFrame,
+  edit: showEdit,
+  clip: openClip,
+  drop: drop,
+})
 /**
  * The picture forming, over the picture of the Frame a job renders (one at a time). The Frame is
  * kept once the job ends, while the last preview stays over it until the new picture is in.
@@ -1036,12 +1052,7 @@ const lookSavingText = computed(() =>
               empty="Nothing queued. Picture, Render and Upscale in a Frame's tab add work here, to run while you carry on."
               :describe="describeJob"
               @go="goToFrame"
-              @clip="async (job) => {
-                await onClipsModel(job, (text) => (notice = { kind: 'error', text }))
-                goToFrame(job.frameIndex)
-                narrowTab = 'frame'
-                scrollToClips(transcript)
-              }"
+              @clip="openClip"
               @edit="showEdit"
               @retry="retry"
               @drop="drop"

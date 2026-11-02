@@ -51,6 +51,7 @@ const frame = (
 
 const job = (extra: Partial<api.Job>): api.Job => ({
   id: 'j1',
+  machine: 'here',
   kind: 'upscale',
   frameIndex: 0,
   status: 'queued',

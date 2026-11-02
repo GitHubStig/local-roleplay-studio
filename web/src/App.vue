@@ -76,6 +76,16 @@ useEventListener(window, 'focus', checkServer)
               </template>
             </span>
           </RouterLink>
+          <RouterLink
+            to="/queue"
+            class="tab"
+            active-class="tab-active"
+            title="Every machine's queue, across Sessions"
+            data-nav-queue
+          >
+            <Icon name="queue" />
+            Queue
+          </RouterLink>
         </nav>
       </div>
       <div class="flex shrink-0 items-center gap-3">

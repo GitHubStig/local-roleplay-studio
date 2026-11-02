@@ -38,6 +38,7 @@ vi.mock('../api', async (importOriginal) => ({
 /** A queued job, as the server lists it. */
 const job = (kind: api.JobKind, frameIndex: number, extra: Partial<api.Job> = {}): api.Job => ({
   id: `${kind}-${frameIndex}`,
+  machine: 'here',
   kind,
   frameIndex,
   status: 'queued',

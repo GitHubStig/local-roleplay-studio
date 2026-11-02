@@ -84,3 +84,32 @@ export const jobForming = (
   job && (job.kind === 'render' || job.kind === 'picture')
     ? formingOf(session, job.phase, job.progress, job.imageBackend)
     : null
+
+/** Where a job is seen, as its Session's screen shows it (`openJob`). */
+export interface JobPlaces {
+  /** Its Frame. */
+  go: (index: number) => void
+  /** An edit: being made, in the viewer. */
+  edit: (index: number) => void
+  /** A clip: its Frame's Clip section, on the picture it's made from (`Job.image`). */
+  clip: (job: Job) => void
+  /** Dismisses it. */
+  drop: (job: Job) => void
+}
+
+/**
+ * Shows a job where it's seen: an edit in the viewer, a clip in its Frame's Clip section, any other
+ * on its Frame; a done one has been seen by then, so it's dismissed.
+ */
+export function openJob(job: Job, to: JobPlaces) {
+  if (job.kind === 'edit') to.edit(job.frameIndex)
+  else if (job.kind === 'clip') to.clip(job)
+  else to.go(job.frameIndex)
+  if (job.status === 'done') to.drop(job)
+}
+
+/** A link to a job on its Session's screen, which opens it there (`useJobLink`). */
+export const jobLink = (path: string, job: Pick<Job, 'id' | 'frameIndex'>) => ({
+  path,
+  query: { job: job.id, frame: String(job.frameIndex) },
+})
