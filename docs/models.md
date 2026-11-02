@@ -91,6 +91,7 @@ At 832×1216, wall clock from cache including the model load, unless it says oth
 | FIBO 2.0 Edit Turbo | ComfyUI | 13–14 s | about Dev Edit's result in a tenth of the time |
 | FIBO 2.0 Dev Edit | mflux (`--low-ram`) | not timed at its 50 steps (8 took 151 s, 18.8 GB peak) | repaints outside the mask, so the app pastes the rest back |
 | FIBO 2.0 Edit Turbo | mflux (`--low-ram`) | 41 s at 832×1216 | 4 steps; pasted back like Dev Edit's; one edit tried (2026-11-02) |
+| FLUX.3 Klein Edit | mflux (`--low-ram`) | 80 s at 832×1216 | 16 steps; no mask on mflux, only the box in its prompt, so it repaints the whole picture and the app pastes it back; what it draws is sized to the painted area (four edits, 2026-11-02) |
 
 Every edit is pasted back through the painted mask, so nothing outside it changes. Several areas can be painted in one edit; each is given the whole instruction, so FLUX.3 needs telling which goes where ("… on the left, and … on the right"). The PC's times are from cold at 832×1216 on ComfyUI 0.43.2 with Comfy Kitchen's int8 attention, which takes 23–29% off an edit's sampling (2026-11-01).
 

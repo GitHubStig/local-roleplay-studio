@@ -98,6 +98,15 @@ Deno.test("editArgs edits at the picture's size, quantized as Settings say, in l
     '--mask-path',
     join('/s', 'mask-1.png'),
   ])
+  // FLUX.3 takes no mask, only its prompt, which says where to paint.
+  const flux3 = editArgs(
+    { ...req, model: 'flux3-klein-edit' },
+    { width: 1216, height: 832 },
+    'o',
+    'In <ref_image_0>, repaint <obj_1>: …',
+  )
+  assertEquals(flux3.includes(join('/s', 'mask-1.png')), false)
+  assertEquals(flux3[flux3.indexOf('--prompt') + 1], 'In <ref_image_0>, repaint <obj_1>: …')
 })
 
 Deno.test('mfluxArgs builds the command line from settings', () => {

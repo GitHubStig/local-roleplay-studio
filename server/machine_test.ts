@@ -59,9 +59,9 @@ Deno.test('backendOf: the preferred Backend if it can, else the next listed that
   // Voices here, or on the first ComfyUI where there's no voice service.
   assertEquals(backendOf({ kind: 'voice' }, now, mac)?.id, 'here')
   assertEquals(backendOf({ kind: 'voice' }, now, pc)?.id, 'pc')
-  // An edit by its edit model's kind of Backend.
+  // An edit by its edit model's kind of Backend: here on a Mac, on its ComfyUI on a PC.
   assertEquals(backendOf(editJob('qwen-image-2.1-edit'), now, mac)?.id, 'here')
-  assertEquals(backendOf(editJob('flux3-klein-edit'), now, mac)?.id, 'pc')
+  assertEquals(backendOf(editJob('flux3-klein-edit'), now, pc)?.id, 'pc')
   // Anything else, here.
   assertEquals(backendOf(undefined, now, pc), HERE)
 })
@@ -75,8 +75,8 @@ Deno.test('A kind a Session or an edit would rather run on is followed where it 
   // A Session that picked mflux, opened on a PC: it still renders, on a ComfyUI.
   assertEquals(render('mflux', pc), 'pc')
   assertEquals(backendOf(editJob('qwen-image-2.1-edit', 'mflux'), now, mac)?.id, 'here')
-  // FLUX.3 Klein Edit has no mflux: it goes where it can.
-  assertEquals(backendOf(editJob('flux3-klein-edit', 'mflux'), now, mac)?.id, 'pc')
+  // An edit that would rather run on mflux, on a PC: it goes where it can.
+  assertEquals(backendOf(editJob('flux3-klein-edit', 'mflux'), now, pc)?.id, 'pc')
 })
 
 Deno.test('textBackendFor: the preferred text Backend if it lists the model, else the next', async () => {
@@ -116,9 +116,8 @@ Deno.test('jobBackend: a picture with the Text Model, a render by its Image Mode
   assertEquals(on('picture'), '192.0.2.85')
   assertEquals([on('speak'), on('speak-thought'), on('voice')], Array(3).fill('192.0.2.85'))
   assertEquals([on('upscale'), on('scene')], ['here', 'here'])
-  // An edit by its edit model, the one told or Settings'.
-  assertEquals(on('edit', session, 'flux3-klein-edit'), '192.0.2.85')
-  assertEquals(on('edit'), 'here')
+  // An edit as edits go, by its edit model, the one told or Settings': all run here on mflux.
+  assertEquals([on('edit', session, 'flux3-klein-edit'), on('edit')], ['here', 'here'])
 })
 
 Deno.test('A clip goes to the ComfyUI pictures go to, else the first listed, never here', () => {

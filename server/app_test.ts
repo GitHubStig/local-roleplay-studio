@@ -141,10 +141,11 @@ Deno.test('GET /api/settings/options lists Text and Image Models', async () => {
   assertEquals(body.imageModels.mflux[0].id, 'flux2-klein-4b')
   // Where each model's renders go now: here on mflux, with no ComfyUI listed.
   assertEquals(body.imageModelsOn['qwen-image-2.1'], 'mflux')
-  // And each edit model's: FLUX.3 Klein Edit runs only on ComfyUI, and none is listed.
+  // And each edit model's: every one runs on mflux too.
   assertEquals(body.editModelsOn, {
     'qwen-image-2.1-edit': 'mflux',
     'qwen-image-2.1-turbo-edit': 'mflux',
+    'flux3-klein-edit': 'mflux',
     'fibo-2.0-dev-edit': 'mflux',
     'fibo-2.0-edit-turbo': 'mflux',
   })

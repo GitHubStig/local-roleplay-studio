@@ -39,9 +39,17 @@ Deno.test("Each job runs on its Backend: an edit on its edit model's, at that Co
       ),
   })
   const signal = new AbortController().signal
-  assertEquals(await both.edit(edit('qwen-image-2.1-edit'), signal), 'mflux.png')
+  assertEquals(await both.edit(edit('flux3-klein-edit'), signal), 'mflux.png')
+  // Edits where Settings prefer, though mflux runs the same model.
+  const toPC = { ...settings, runOn: { ...settings.runOn, edits: 'pc' } }
+  const editsOnPC = imageBackends({
+    mflux: editBackend('mflux'),
+    comfyui: (address) => editBackend(`comfyui at ${address}`),
+    backendOf: (job) =>
+      Promise.resolve(backendOf(job, toPC, { images: yes, upscale: yes, edits: yes, voices: yes })),
+  })
   assertEquals(
-    await both.edit(edit('flux3-klein-edit'), signal),
+    await editsOnPC.edit(edit('flux3-klein-edit'), signal),
     'comfyui at http://192.0.2.85:8188.png',
   )
   // Upscale where Settings prefer, though mflux is here.

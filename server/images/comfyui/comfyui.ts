@@ -2,16 +2,9 @@ import { join } from '@std/path'
 import { type ImageGenerator, type OnPreview, UPSCALED_EDGE } from '../imageGenerator.ts'
 import { SIZE_PRESETS } from '../../settings.ts'
 import { comfyBase, fillWorkflow, runWorkflow, type Workflow } from '../../comfyui/client.ts'
-import { loadPrompt } from '../../promptFiles.ts'
-import { maskBoxes } from '../maskBoxes.ts'
+import { editPrompt } from '../editPrompt.ts'
 import { pngSize } from '../../png.ts'
-import {
-  type ComfyEditor,
-  type ComfyModel,
-  findComfyEditor,
-  findComfyModel,
-  findComfyUpscaler,
-} from './models.ts'
+import { findComfyEditor, findComfyModel, findComfyUpscaler } from './models.ts'
 import { loadModelWorkflow } from './workflow.ts'
 import { modelFiles, withUploads } from '../../comfyui/files.ts'
 
@@ -75,7 +68,7 @@ export function comfyuiImageGenerator(opts: {
       const image = await Deno.readFile(join(req.dir, req.image))
       const size = pngSize(image)
       const mask = req.mask ? await Deno.readFile(join(req.dir, req.mask)) : undefined
-      const prompt = await editPrompt(editor, req.instruction, mask)
+      const prompt = await editPrompt(editor.prompt, req.instruction, mask)
       return withUploads(base, mask ? [image, mask] : [image], async ([image, mask]) => {
         const workflow = fillWorkflow(await loadModelWorkflow(editor.workflow), {
           ...files,
@@ -118,29 +111,4 @@ export function comfyuiImageGenerator(opts: {
       })
     },
   }
-}
-
-/**
- * What an edit model is told: the instruction as typed, or its own prompt, which names each painted
- * area as a box (FLUX.3's layout table: `[ymin, xmin, ymax, xmax]` in thousandths).
- */
-async function editPrompt(
-  editor: ComfyEditor,
-  instruction: string,
-  mask?: Uint8Array<ArrayBuffer>,
-) {
-  if (!editor.prompt) return instruction
-  const boxes = mask ? await maskBoxes(mask) : []
-  if (!boxes.length) return loadPrompt(`images/${editor.prompt}-whole`, { instruction })
-  const ids = boxes.map((_, i) => `obj_${i + 1}`)
-  const thousandths = (n: number) => Math.round(n * 1000)
-  return loadPrompt(`images/${editor.prompt}`, {
-    instruction,
-    areas: new Intl.ListFormat('en').format(ids.map((id) => `<${id}>`)),
-    layout: JSON.stringify(boxes.map((box, i) => ({
-      id: ids[i],
-      bbox: [box.top, box.left, box.bottom, box.right].map(thousandths),
-      desc: instruction,
-    }))),
-  })
 }

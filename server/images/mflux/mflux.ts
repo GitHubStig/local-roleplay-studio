@@ -10,6 +10,7 @@ import {
   type UpscaleRequest,
 } from '../imageGenerator.ts'
 import { pngSize } from '../../png.ts'
+import { editPrompt } from '../editPrompt.ts'
 import { pasteBack } from '../pasteBack.ts'
 import { float16On } from './chip.ts'
 import { findMfluxModel, type Lora, MFLUX_MODELS, type MfluxModel } from './models.ts'
@@ -101,8 +102,9 @@ export function upscaleArgs(req: UpscaleRequest, output: string): string[] {
 /**
  * The command for each edit model mflux runs (ADR 0021), the model it loads (mflux-community's
  * copies, the same as generation's) and how it's given the painted area. Each edits at mflux's own
- * steps for it: 8 for Qwen's Turbo, 50 at guidance 5 for FIBO 2.0 Dev, 4 for its Edit Turbo, as on
- * ComfyUI. FIBO changes the picture outside the mask too, so its edits are pasted back through it.
+ * steps for it: 8 for Qwen's Turbo, 50 at guidance 5 for FIBO 2.0 Dev, 4 for its Edit Turbo, 16 for
+ * FLUX.3 Klein, as on ComfyUI. FIBO and FLUX.3 change the picture outside the mask too, so their
+ * edits are pasted back through it; FLUX.3 takes no mask, only boxes in its prompt.
  */
 const EDITORS: Record<EditModelOn<'mflux'>, Editor> = {
   'qwen-image-2.1-edit': {
@@ -146,13 +148,27 @@ const EDITORS: Record<EditModelOn<'mflux'>, Editor> = {
     mask: '--mask-path',
     pasteBack: true,
   },
+  'flux3-klein-edit': {
+    label: 'FLUX.3 Klein Edit',
+    command: 'mflux-generate-flux3-edit',
+    model: [
+      '--model',
+      'mflux-community/flux-3-image-klein-mflux-bf16',
+      '--base-model',
+      'flux3-image-klein',
+    ],
+    prompt: 'flux3-edit',
+    pasteBack: true,
+  },
 }
 interface Editor {
   label: string
   command: string
   model: string[]
-  /** The option its mask goes in. */
-  mask: '--mask-image' | '--mask-path'
+  /** The option its mask goes in; none if it takes none. */
+  mask?: '--mask-image' | '--mask-path'
+  /** Its prompt, told where to paint (`editPrompt`); none for the instruction as typed. */
+  prompt?: string
   /** Changes the picture outside the mask, so it's pasted back through it (`pasteBack`). */
   pasteBack?: boolean
 }
@@ -167,6 +183,7 @@ export function editArgs(
   req: EditRequest,
   size: { width: number; height: number },
   output: string,
+  prompt = req.instruction,
 ): string[] {
   const fit = (n: number) => String(Math.max(32, n - (n % 32)))
   const editor = EDITORS[req.model as EditModelOn<'mflux'>]
@@ -174,9 +191,9 @@ export function editArgs(
     ...(editor?.model ?? []),
     '--image-paths',
     join(req.dir, req.image),
-    ...(req.mask ? [editor?.mask ?? '--mask-image', join(req.dir, req.mask)] : []),
+    ...(req.mask && editor?.mask ? [editor.mask, join(req.dir, req.mask)] : []),
     '--prompt',
-    req.instruction,
+    prompt,
     '--seed',
     String(req.seed),
     '--width',
@@ -280,15 +297,17 @@ export function mfluxImageGenerator(opts: MfluxOptions = {}): ImageGenerator {
       signal.throwIfAborted()
       const editor = EDITORS[req.model as EditModelOn<'mflux'>]
       if (!editor) throw new Error(`mflux doesn't run the edit model "${req.model}"`)
-      const size = pngSize(await Deno.readFile(join(req.dir, req.image)))
+      const picture = await Deno.readFile(join(req.dir, req.image))
+      const size = pngSize(picture)
+      const mask = req.mask ? await Deno.readFile(join(req.dir, req.mask)) : undefined
+      const prompt = await editPrompt(editor.prompt, req.instruction, mask)
       const file = `${req.name}.png`
-      const args = editArgs(req, size, join(req.dir, file))
+      const args = editArgs(req, size, join(req.dir, file), prompt)
       await runCommand(editor.command, args, editor.label, signal, onProgress, onDownload)
       await mustExist(req.dir, file, editor.label)
       // Pasted back, unless mflux had to make it smaller (a size not a multiple of 32).
-      if (editor.pasteBack && req.mask) {
-        const read = (name: string) => Deno.readFile(join(req.dir, name))
-        const [picture, edit, mask] = await Promise.all([req.image, file, req.mask].map(read))
+      if (editor.pasteBack && mask) {
+        const edit = await Deno.readFile(join(req.dir, file))
         const edited = pngSize(edit)
         if (edited.width === size.width && edited.height === size.height) {
           await Deno.writeFile(join(req.dir, file), await pasteBack(picture, edit, mask))

@@ -252,15 +252,9 @@ const MASK = btoa('\x89PNG painted')
 Deno.test('An edit repaints a picture as a new version, made from its model’s newest and picked', () =>
   withTempDir(async (root) => {
     const images = fakeImageGenerator()
-    // A ComfyUI listed beside mflux, for the second edit's model.
-    const backends = [...DEFAULT_SETTINGS.backends, {
-      id: 'pc',
-      kind: 'comfyui' as const,
-      address: '',
-    }]
     const { call } = await chainOfTwo(root, {
       imageGenerator: images,
-      settings: { textModel: 'x', backends },
+      settings: { textModel: 'x' },
     })
     const edit = (body: object) =>
       call('POST', '/api/sessions/s1/jobs', { kind: 'edit', frameIndex: 1, edit: body })
@@ -300,11 +294,10 @@ Deno.test('An edit repaints a picture as a new version, made from its model’s 
     assertEquals(await settled(call), [])
     const [, second] = await chainFrames(call)
     assertEquals([images.edits[1].image, images.edits[1].mask], [first.image, undefined])
-    // FLUX.3 Klein Edit runs only on ComfyUI, so it went to the one listed.
     assertEquals([images.edits[1].model, second.edits[1].editModel, second.edits[1].imageBackend], [
       'flux3-klein-edit',
       'flux3-klein-edit',
-      'comfyui',
+      'mflux',
     ])
     assertEquals([second.edits.length, second.picked], [2, 2])
     // Qwen's next carries on from Qwen's newest.
@@ -408,14 +401,9 @@ Deno.test('An edit can be made again in its place, as told now, picked, and the 
 Deno.test('Each edit model’s line is retried and deleted on its own, the others keeping their numbers', () =>
   withTempDir(async (root) => {
     const images = fakeImageGenerator()
-    const backends = [...DEFAULT_SETTINGS.backends, {
-      id: 'pc',
-      kind: 'comfyui' as const,
-      address: '',
-    }]
     const { call } = await chainOfTwo(root, {
       imageGenerator: images,
-      settings: { textModel: 'x', backends },
+      settings: { textModel: 'x' },
     })
     const edit = async (body: object) => {
       await call('POST', '/api/sessions/s1/jobs', { kind: 'edit', frameIndex: 1, edit: body })
