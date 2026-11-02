@@ -2,33 +2,38 @@
 
 Newest first. The procedure is in [mflux-upgrade.md](../mflux-upgrade.md). mflux runs on the Apple Silicon Mac only.
 
-## 0.24.0 — Mac, 2026-10-27
+## 0.24.0 — Mac, 2026-10-27 to 2026-11-02
+
+**What came of it** (closed 2026-11-02):
+
+- **New Image Models**: FIBO 2.0 Dev and Turbo (2026-10-27), Iris-3B and its Turbo, Anima Turbo and Aesthetic (2026-11-02), each measured in [image-models.md](image-models.md). MOSS-Image is in too, but renders black from the app's prompts until 0.24.1 ([open-threads.md](../open-threads.md), "MOSS-Image on mflux").
+- **Edits**: FIBO 2.0 Dev Edit, Edit Turbo and FLUX.3 Klein Edit run on mflux (2026-11-02), pasted back through the mask by the server, so every edit model runs on both mflux and ComfyUI ([image-models.md](image-models.md), "FIBO 2.0 Dev on mflux" and "Telling the model where to paint").
+- **Every Image Model loads from mflux-community's copies**, not gated ([below](#repos-moved-to-mflux-community-mac-2026-10-27)).
+- **No change needed**: the VAE decode in row strips gained nothing on Z-Image Turbo, and float16 gained nothing on an M5 Pro, so it's now Automatic (below).
+- **Not taken up**: `--small-text-encoder` and `--small-decoder` (Qwen-Image 2.1 and FLUX.2), `mflux-check`, `mflux-save --hf-symlink`.
 
 Upgraded the Mac from 0.23.0 with `uv tool install --upgrade --managed-python --python 3.14 mflux` (no Pillow pin). It installed mflux 0.24.0, Pillow 13.0.0 (from 12.3.0), opencv-python 5.0.0.93 (from 4.14.0.94), transformers 5.21.0 (from 5.20.1) and python-dateutil 3.0.0, on Python 3.14.10; 50 commands, among them the new `mflux-generate-fibo2`, `-fibo2-edit`, `-anima`, `-iris`, `-moss-image` and `mflux-check`. Commands start with Pillow 13, so the 0.23 import failure is gone.
 
 **Smoke check (Mac, M5 Pro, 48 GB):** `mflux-generate-flux2 --model flux2-klein-4b`, 512², 4 steps, seed 42, `--low-ram`, cached weights, nothing fetched: wrote a picture, 8.0 s wall clock, peak MLX memory 8.73 GB (0.23 on 2026-10-17: 10.1 s, 10.2 GB, measured differently, so not a comparison). Not tested: the app's own renders through the server, every other Image Model, the edit and upscale commands, and the new flags. Windows has no mflux.
 
-Release review: reviewed from the [release notes](https://github.com/mflux-community/mflux/releases) as summarised by a page fetch, not read line by line, and not compared yet with the flags in `server/images/mflux/`. 
+Release review: from the [release notes](https://github.com/mflux-community/mflux/releases) as summarised by a page fetch, not read line by line.
 
-### Install changes — decide before upgrading
+### Install changes
 
 - **Python 3.11 or newer** (3.10 dropped). The Mac's tool uses managed Python 3.14, so no change.
 - **Pillow 13.0.0 or newer is required** (it fixes a heap overflow in FlashPix JPEG decoding), and "commands no longer crash at startup with Pillow 13" is listed as fixed. This is the problem behind the `--with 'pillow<13'` pin of 2026-10-17 (below). The pin conflicts with 0.24, so the install dropped it (see above). Whether `uv tool upgrade` alone would have tripped over the old pin was not checked.
 - opencv-python 5 is now allowed.
 
-### Relevant to existing findings (unverified until tried)
+### What the release notes listed, and what came of each
 
-- **Qwen-Image 2.1 `--small-text-encoder`** (a ~2.1 GB download instead of 17.5 GB). Related to the Turbo text encoder stored twice ([open-threads.md](../open-threads.md)) and to the Qwen disk cost in [image-models.md](image-models.md#mflux-023-flux3-klein-and-qwen-image-21-turbo-on-the-mac-2026-10-17). Whether it changes output, and whether it works with the Turbo and Viggle variants, is unchecked. FLUX.2 also gets `--small-text-encoder` and `--small-decoder`.
-- **VAE decoding in row strips** for several models (about 1.6 GB at 1024²; `--vae-full-precision` restores the old behaviour). Peak memory in [image-models.md](image-models.md) may change for those models. `--vae-tiling` no longer shifts colours.
-- **FIBO 2** (`mflux-generate-fibo2`, `-edit`; Dev and Edit Turbo, with `--expand-prompt`, `--cfg-end`, `--step-cache-ratio`). The same models were added to the app on ComfyUI on 2026-10-27, CC BY-NC. See open-threads.md ("FIBO 2.0 as a ComfyUI Image Model").
-- **MOSS-Image** (`mflux-generate-moss-image`, `--model moss-image-base`, `--lora`), an Image Model on ComfyUI since 2026-10-19.
-- Fixes: saved Krea 2 checkpoints load by repo id; FLUX.2 klein `--config-from-metadata` rejects a non-boolean `small_text_encoder`; Z-Image ControlNet mlsd no longer crashes on OpenCV 5.
-- `mflux-check` validates local model packages without downloads (`--fix` restores missing shards from a local cache); `mflux-save --hf-symlink`.
+- **Qwen-Image 2.1 `--small-text-encoder`** (a ~2.1 GB download instead of 17.5 GB), and `--small-text-encoder` and `--small-decoder` for FLUX.2: not tried. They bear on Turbo's text encoder stored twice ([open-threads.md](../open-threads.md)).
+- **VAE decoding in row strips** for several models (about 1.6 GB at 1024²; `--vae-full-precision` restores the old behaviour): on by default, nothing gained on Z-Image Turbo ([below](#vae-decode-in-bf16-row-strips-on-by-default-no-gain-seen-on-z-image-turbo-mac-2026-10-27)). `--vae-tiling` no longer shifts colours.
+- **FIBO 2** (`mflux-generate-fibo2`, `-edit`): Dev, its Turbo and both edits are in the app ([below](#fibo-20-dev-on-mflux-0240-added-mac-2026-10-27)).
+- **MOSS-Image** (`mflux-generate-moss-image`): in the app, black from long prompts on 0.24.0 ([below](#moss-image-on-mflux-0240-added-but-black-from-long-prompts-mac-2026-10-27)).
+- **Anima** and **Iris-3B** (`mflux-generate-anima`, `-iris`), new in this release: Anima Turbo and Aesthetic, and Iris-3B and its Turbo, are in the app ([image-models.md](image-models.md)).
+- Fixes: saved Krea 2 checkpoints load by repo id (the app's Krea 2 does, since the move below); FLUX.2 klein `--config-from-metadata` rejects a non-boolean `small_text_encoder`; Z-Image ControlNet mlsd no longer crashes on OpenCV 5.
+- `mflux-check` validates local model packages without downloads (`--fix` restores missing shards from a local cache); `mflux-save --hf-symlink`. Neither used.
 - No CLI renames listed.
-
-### Candidates, not selected
-
-- **Anima** (circlestone-labs; `mflux-generate-anima`, Turbo, Aesthetic and Base) and **Iris-3B** (`mflux-generate-iris`, Turbo by default and a base) are new. Sizes, licenses and fit on the 48 GB Mac are unknown; to be looked up before offering them.
 
 ### Repos moved to mflux-community (Mac, 2026-10-27)
 
@@ -108,63 +113,9 @@ So the limit here is about 200 tokens, and the quotes don't matter. It is mflux 
 
 ### FIBO 2.0 Dev on mflux 0.24.0: added (Mac, 2026-10-27)
 
-`mflux-generate-fibo2` with `mflux-community/fibo-2-0-dev-mflux-bf16` (25.1 GB; also q8 13.4, q6 10.3, q4 7.2, q5, q3; not gated, licence `other`, CC BY-NC) and the Edit Turbo copies (`fibo-2-0-edit-turbo-mflux-*`, the same sizes). Downloaded with `hf download` on its own: **796 s**. Measurements, pictures and the checks are in [image-models.md](image-models.md#fibo-20-dev-on-mflux-2026-10-27-mac) ("FIBO 2.0 Dev on mflux"): 505–513 s at 50 steps with the VLM, 292 s at 30 steps with `--cfg-end 0.6`, peak 17.85 GB. The edit command takes the community copy; the mask edit repaints outside the mask. `--expand-prompt` gave a photograph where plain prose gave the painting asked for, so the entry sends prose. Not tried: LoRAs, Quantize, the q8 copy, `float16`.
+`mflux-generate-fibo2` with `mflux-community/fibo-2-0-dev-mflux-bf16` (25.1 GB; also q8 13.4, q6 10.3, q4 7.2, q5, q3; not gated, licence `other`, CC BY-NC) and the Edit Turbo copies (`fibo-2-0-edit-turbo-mflux-*`, the same sizes). Downloaded with `hf download` on its own: **796 s**. Measurements, pictures and the checks are in [image-models.md](image-models.md#fibo-20-dev-on-mflux-2026-10-27-mac) ("FIBO 2.0 Dev on mflux"): 505–513 s at 50 steps with the VLM, 292 s at 30 steps with `--cfg-end 0.6`, peak 17.85 GB. The edit command takes the community copy; it repaints outside the mask, so the app pastes the picture back through it (2026-11-02). `--expand-prompt` gave a photograph where plain prose gave the painting asked for, so the entry sends prose. Not tried: LoRAs, Quantize, the q8 copy, `float16`.
 
 Edit Turbo (`mflux-community/fibo-2-0-edit-turbo-mflux-bf16`, 25.1 GB, download **360 s**) is the second Image Model, `fibo-2.0-turbo`: 21 s a picture from prose, 4 steps, peak 17.40 GB ([image-models.md](image-models.md#fibo-20-turbo-on-mflux-2026-10-27-mac-devs-picture-in-21-s)).
-
-### Still to do
-
-Render through the app with the Image Models already cached, and compare the flags with `server/images/mflux/` (the release review above was not compared with them yet). Not tried: Anima, Iris-3B, MOSS-Image on mflux (`--lora`, with the community's 8- and 4-step LoRAs), FIBO 2, `--small-text-encoder` and `--small-decoder`. Adding the new models is next.
-
-## 0.23.0 — Mac, 2026-10-17
-
-Upgraded from 0.22 with `uv tool upgrade mflux`. That pulled in Pillow 13.0.0, which fails to import on uv's Python 3.14.4 (`cannot import name '_IntegralLike' from 'numbers'`), so every mflux command failed. Reinstalled with `uv tool install --managed-python --python 3.14 mflux --with 'pillow<13'` (Pillow 12.3.0); FLUX.2 Klein 4B then rendered again: 512², 4 steps, float16, 10.1 s including the load, 10.2 GB peak. 0.23 pins each built-in model to a Hugging Face commit; Klein 4B's cache needed nothing fetched.
-
-New in 0.23, which the app uses: FLUX.3 Klein and Qwen-Image 2.1 Turbo as mflux Image Models (measured in [image-models.md](image-models.md#mflux-023-flux3-klein-and-qwen-image-21-turbo-on-the-mac-2026-10-17)). Not used yet: `mflux-generate-flux3-edit`, FLUX.3 LoRAs, and the Z-Image and Krea 2 ControlNets ([open-threads.md](../open-threads.md)).
-
-Moved here from models.md on 2026-10-27; the earlier releases were not logged at the time.
-
-## Earlier releases (backfilled from models.md and open-threads.md; the measurements below were moved from models.md on 2026-10-28)
-
-- **0.22** (Mac, 2026-10-09 to 2026-10-14): on its own, a little faster than 0.21 on Qwen-Image 2.1 (1024², M5 Pro: 93 s against 98–100 s; with the step cache 60 s against 66 s) and a 3 GB lower peak (36 GB against 39 GB); the release notes' ~24 GB to ~13 GB was at 512² from 8-bit weights. The `--compute-precision float16` and lazy-loading measurements are in [below](#qwen-image-21-on-mflux-022-float16---low-ram-and-the-saved-copy-2026-10-09). Also: Ming-Image 0.1 Design, Ideogram 4 (gated), FIBO 1.5 and Z-Image base became Image Models; `mflux-generate-qwen-2.1-controlnet` noted. Ideogram 4 needs JSON captions and returned a safety-filter black picture on a plain tavern prompt.
-- **0.21** (Mac, 2026-10-04 to 2026-10-06): on its own only 2–5% faster than 0.20 on Qwen-Image 2.1 (1024², 8-bit copy, 25 steps: 98–100 s against 103 s, the same picture), so the release notes' "~1.8× faster" was mostly the step cache. The saved copy made by 0.20 loaded in 0.21 (the app saved a fresh one, named for 0.21). The step cache and turbo LoRA measurements are in [below](#qwen-image-21-on-mflux-021-the-step-cache-and-viggles-turbo-lora-2026-10-04). Also: Qwen-Image 2.1, its step cache (`--step-cache-ratio`) and Viggle's turbo LoRA; `mflux-generate-qwen-2.1-edit` with up to ten reference images and `--auto-mask`.
-- **0.20**: the version the early image-to-3d research used (Depth Pro in MLX, Qwen-Image-Edit-2509, Kontext, FLUX.2 edit).
-
-### Qwen-Image 2.1 on mflux 0.21: the step cache and Viggle's turbo LoRA (2026-10-04)
-
-mflux 0.21 adds a step cache for Qwen-Image 2.1 (`--step-cache-ratio`, TeaCache-style: it skips
-the transformer on that share of the steps whose timestep changes least, and reuses the step
-before) and a scheduler for Viggle's 6-step turbo LoRA (`--scheduler viggle_turbo`). Measured on
-the app's settings at the time (the 0.20 and 0.21 comparison is in [research/mflux-upgrade-log.md](mflux-upgrade-log.md)): the saved 8-bit copy, 25 steps, no CFG, one prompt (Elara,
-waist-up) and seed, at 1024×1024, everything else closed:
-
-| Run | Time | Peak memory | Looks |
-|---|---|---|---|
-| 25 steps | 98–100 s | 39.1–39.3 GB | |
-| + step cache 0.4 | 66 s (1.5×) | 38.7 GB | near the same: same pose, face and dress; slightly softer brushwork |
-| turbo LoRA, 6 steps | 29–31 s (3.4×) | 38.9–39.2 GB | a different take on the prompt: smoother, more polished, less painterly; the face holds up |
-
-- **Both work on the 8-bit saved copy**, the one the app renders from, and the copy saved by 0.20
-  loads in 0.21.
-- **The step cache is on in the app** for Qwen-Image 2.1 (Settings → Step cache, 0.4 by default;
-  0.25, 0.5 or off). The other Image Models' commands don't take it (2026-10-04). It leaves runs
-  under 10 steps alone.
-- **The turbo LoRA was Settings → Fast** (an Image Model of its own since 2026-10-14, ADR 0016):
-  `Viggle/Qwen-Image-2.1-viggle-turbo`
-  (v0.3, rank 256, 1.3 GB), passed to mflux as `repo:file`, so mflux fetches it into the Hugging
-  Face cache on first use. It must run at exactly 6 steps with its scheduler, so it takes no
-  other steps and no step cache. It's under Qwen's research license (non-commercial), like LiTo. At
-  512×512 on the 8-bit copy: 5 s of denoising, 24.5 GB peak. It's v0.3, the file the model card
-  says to use; v0.2.1 (crisper, grainier) is also in the repo. Viggle's 9-step mode (the same
-  LoRA, switched off for the last two steps, for finer detail at ~1.4–1.5× the time) isn't
-  possible through mflux, and was dropped on 2026-10-17: as a preview of 25 steps, 6 are close
-  enough ("Viggle or Qwen's Turbo", below).
-- **Most of a turbo render is starting up** (Mac, 2026-10-05): of a 32.7 s run, 5 s was denoising
-  and ~27 s loading ~22 GB, encoding the prompt and decoding the picture (loading surely the most);
-  Upscale (SeedVR2) is ~46 s, mostly loading. In 2026-09-24's measure, loading was ~5 s of a 42 s
-  Z-Image Turbo render. A service keeping the model loaded could bring it under 10 s, but on
-  48 GB it would have to unload before every Reply, so it would help only back-to-back renders
-  (Render all); dropped 2026-10-08.
 
 ### float16 on every Image Model that takes it: no gain on an M5 Pro (Mac, 2026-10-28)
 
@@ -183,6 +134,20 @@ Prompted by the Anima PR (mflux #931), which says float16 is about 20% slower th
 - **No difference in time or memory on any of them**, and none of the 20% slowdown the Anima PR saw. The pictures differ slightly (0.5–2.1 per pixel of 255, measured on 2026-10-09).
 - **Decision**: the float16 setting is now Automatic, Off or On, Automatic by default: on for M1 to M3, off from M4 (`server/images/mflux/chip.ts`). M1 and M2 are mflux's own claim and **unmeasured here**, as is M3 (a guess). If someone with an M1 to M4 measures it, replace the guess.
 - Not run: FLUX.2 Klein 4B (not downloaded; 10 s either way on 2026-10-09), and Windows (no mflux).
+
+## 0.23.0 — Mac, 2026-10-17
+
+Upgraded from 0.22 with `uv tool upgrade mflux`. That pulled in Pillow 13.0.0, which fails to import on uv's Python 3.14.4 (`cannot import name '_IntegralLike' from 'numbers'`), so every mflux command failed. Reinstalled with `uv tool install --managed-python --python 3.14 mflux --with 'pillow<13'` (Pillow 12.3.0); FLUX.2 Klein 4B then rendered again: 512², 4 steps, float16, 10.1 s including the load, 10.2 GB peak. 0.23 pins each built-in model to a Hugging Face commit; Klein 4B's cache needed nothing fetched.
+
+New in 0.23, which the app uses: FLUX.3 Klein and Qwen-Image 2.1 Turbo as mflux Image Models (measured in [image-models.md](image-models.md#mflux-023-flux3-klein-and-qwen-image-21-turbo-on-the-mac-2026-10-17)). `mflux-generate-flux3-edit` became FLUX.3 Klein Edit's mflux command on 2026-11-02 (0.24.0). Not used yet: FLUX.3 LoRAs, and the Z-Image and Krea 2 ControlNets ([open-threads.md](../open-threads.md), "Posing a Character with a ControlNet").
+
+Moved here from models.md on 2026-10-27; the earlier releases were not logged at the time.
+
+## Earlier releases (backfilled from models.md and open-threads.md; the measurements below were moved from models.md on 2026-10-28)
+
+- **0.22** (Mac, 2026-10-09 to 2026-10-14): on its own, a little faster than 0.21 on Qwen-Image 2.1 (1024², M5 Pro: 93 s against 98–100 s; with the step cache 60 s against 66 s) and a 3 GB lower peak (36 GB against 39 GB); the release notes' ~24 GB to ~13 GB was at 512² from 8-bit weights. The `--compute-precision float16` and lazy-loading measurements are in [below](#qwen-image-21-on-mflux-022-float16---low-ram-and-the-saved-copy-2026-10-09). Also: Ming-Image 0.1 Design, Ideogram 4 (gated), FIBO 1.5 and Z-Image base became Image Models; `mflux-generate-qwen-2.1-controlnet` noted. Ideogram 4 needs JSON captions and returned a safety-filter black picture on a plain tavern prompt.
+- **0.21** (Mac, 2026-10-04 to 2026-10-06): on its own only 2–5% faster than 0.20 on Qwen-Image 2.1 (1024², 8-bit copy, 25 steps: 98–100 s against 103 s, the same picture), so the release notes' "~1.8× faster" was mostly the step cache. The saved copy made by 0.20 loaded in 0.21 (the app saved a fresh one, named for 0.21). The step cache and turbo LoRA measurements are in [below](#qwen-image-21-on-mflux-021-the-step-cache-and-viggles-turbo-lora-2026-10-04). Also: Qwen-Image 2.1, its step cache (`--step-cache-ratio`) and Viggle's turbo LoRA; `mflux-generate-qwen-2.1-edit` with up to ten reference images and `--auto-mask`.
+- **0.20**: the version the early image-to-3d research used (Depth Pro in MLX, Qwen-Image-Edit-2509, Kontext, FLUX.2 edit).
 
 ### Qwen-Image 2.1 on mflux 0.22: float16, `--low-ram` and the saved copy (2026-10-09)
 
@@ -277,3 +242,35 @@ and bit width, where the published ones cover some (no 8-bit Klein 9B or Qwen-Im
 2026-10-01); no extra download; and made by the installed mflux.
 A published copy would only save the conversion on a fresh machine, for the models it covers. Qwen-Image 2.1's peak
 here, 20.5 GB, is lower than the ~35 GB measured on 2026-09-25 with an earlier setup.
+
+### Qwen-Image 2.1 on mflux 0.21: the step cache and Viggle's turbo LoRA (2026-10-04)
+
+mflux 0.21 adds a step cache for Qwen-Image 2.1 (`--step-cache-ratio`, TeaCache-style: it skips the transformer on that share of the steps whose timestep changes least, and reuses the step before) and a scheduler for Viggle's 6-step turbo LoRA (`--scheduler viggle_turbo`). Measured on the app's settings at the time (the 0.20 and 0.21 comparison is [above](#earlier-releases-backfilled-from-modelsmd-and-open-threadsmd-the-measurements-below-were-moved-from-modelsmd-on-2026-10-28)): the saved 8-bit copy, 25 steps, no CFG, one prompt (Elara, waist-up) and seed, at 1024×1024, everything else closed:
+
+| Run | Time | Peak memory | Looks |
+|---|---|---|---|
+| 25 steps | 98–100 s | 39.1–39.3 GB | |
+| + step cache 0.4 | 66 s (1.5×) | 38.7 GB | near the same: same pose, face and dress; slightly softer brushwork |
+| turbo LoRA, 6 steps | 29–31 s (3.4×) | 38.9–39.2 GB | a different take on the prompt: smoother, more polished, less painterly; the face holds up |
+
+- **Both work on the 8-bit saved copy**, the one the app renders from, and the copy saved by 0.20
+  loads in 0.21.
+- **The step cache is on in the app** for Qwen-Image 2.1 (Settings → Step cache, 0.4 by default;
+  0.25, 0.5 or off). The other Image Models' commands don't take it (2026-10-04). It leaves runs
+  under 10 steps alone.
+- **The turbo LoRA was Settings → Fast** (an Image Model of its own since 2026-10-14, ADR 0016):
+  `Viggle/Qwen-Image-2.1-viggle-turbo`
+  (v0.3, rank 256, 1.3 GB), passed to mflux as `repo:file`, so mflux fetches it into the Hugging
+  Face cache on first use. It must run at exactly 6 steps with its scheduler, so it takes no
+  other steps and no step cache. It's under Qwen's research license (non-commercial), like LiTo. At
+  512×512 on the 8-bit copy: 5 s of denoising, 24.5 GB peak. It's v0.3, the file the model card
+  says to use; v0.2.1 (crisper, grainier) is also in the repo. Viggle's 9-step mode (the same
+  LoRA, switched off for the last two steps, for finer detail at ~1.4–1.5× the time) isn't
+  possible through mflux, and was dropped on 2026-10-17: as a preview of 25 steps, 6 are close
+  enough ("Viggle or Qwen's Turbo", below).
+- **Most of a turbo render is starting up** (Mac, 2026-10-05): of a 32.7 s run, 5 s was denoising
+  and ~27 s loading ~22 GB, encoding the prompt and decoding the picture (loading surely the most);
+  Upscale (SeedVR2) is ~46 s, mostly loading. In 2026-09-24's measure, loading was ~5 s of a 42 s
+  Z-Image Turbo render. A service keeping the model loaded could bring it under 10 s, but on
+  48 GB it would have to unload before every Reply, so it would help only back-to-back renders
+  (Render all); dropped 2026-10-08.
