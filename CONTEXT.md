@@ -13,8 +13,16 @@ What a Session starts from: a description of what to make, typed by the player o
 _Avoid_: Premise, idea, opening prompt, pitch
 
 **Scenario**:
-A saved, reusable Brief in a file, optionally with Setup facts.
+A saved, reusable story a Session starts from: its People, Truths, Place, Style and Opening. What it states holds; what it leaves out is the Text Model's to invent. Each Session keeps its own copy.
 _Avoid_: Prompt file, template, level
+
+**Person**:
+One of a Scenario's People: anyone the story treats as someone (a human, an alien, a monster, a talking car), with how they look, what they wear at the start, who they are and what they want. In a Roleplay, one is the Character, one the Persona.
+_Avoid_: Character (for one of a Scenario's), NPC, entity
+
+**Truth**:
+A fact of a Scenario that holds whatever anyone does: about one Person (who is stronger, what they'll never do), or about the story. Unlike a goal, it isn't meant to change in play.
+_Avoid_: Rule, Limit, constraint, lore
 
 **Setup**:
 Facts a Scenario gives the text model when a Session starts, such as who is shown, where, and the look; any of it can change afterwards.
