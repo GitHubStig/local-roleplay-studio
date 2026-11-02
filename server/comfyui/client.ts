@@ -1,3 +1,5 @@
+import { leftTrace } from './traces.ts'
+
 /** ComfyUI's own default address. */
 export const COMFYUI_URL = 'http://127.0.0.1:8188'
 
@@ -97,6 +99,7 @@ export async function runWorkflow(
     const body = await queued.json().catch(() => ({}))
     if (!queued.ok) throw new Error(`ComfyUI refused the workflow: ${refusal(body)}`)
     promptId = body.prompt_id as string
+    leftTrace({ prompt: { base, promptId } })
     const cancel = () => {
       // Running: interrupt just this prompt. Still queued: take it out of the queue.
       post(base, '/interrupt', { prompt_id: promptId })
@@ -252,7 +255,9 @@ export async function upload(
     signal: AbortSignal.timeout(60_000),
   })
   if (!res.ok) throw new Error(`ComfyUI didn't take the file: HTTP ${res.status}`)
-  return (await res.json()).name
+  const named = (await res.json()).name as string
+  leftTrace({ upload: { base, file: { filename: named, subfolder, type } } })
+  return named
 }
 
 /** Fetches a file ComfyUI wrote (`/view`). */
@@ -285,7 +290,7 @@ export async function getJson(base: string, path: string, signal: AbortSignal) {
 }
 
 /** Sends a request without waiting for its answer beyond 10 s (a crashed ComfyUI may never give one). */
-const post = (base: string, path: string, body: object) =>
+export const post = (base: string, path: string, body: object) =>
   fetch(`${base}${path}`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },

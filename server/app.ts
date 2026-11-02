@@ -73,6 +73,7 @@ import {
   type JobEmit,
   type JobKind,
   jobRoutes,
+  type QueueStore,
   SESSION_JOBS,
   SessionJobs,
 } from './jobs.ts'
@@ -113,6 +114,8 @@ import {
 import { Previews } from './previews.ts'
 import { RenderQueue } from './renderQueue.ts'
 import { reportingTurns } from './text/turns.ts'
+import { notingTraces } from './comfyui/traces.ts'
+import { clearTraces } from './comfyui/files.ts'
 import { type FrameDeps, frameName, type Phase, UpscaleError } from './frames.ts'
 import {
   DeleteError,
@@ -188,6 +191,8 @@ export interface AppDeps {
    * frees memory before each heavy job. Left out, one that runs every job here and frees nothing.
    */
   renderQueue?: RenderQueue
+  /** Keeps the queue between runs of the server (`fileQueueStore`); left out, a restart forgets it. */
+  queue?: QueueStore
   newSessionId?: () => string
   randomSeed?: () => number
 }
@@ -540,7 +545,11 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
         () =>
           reportingTurns(
             (phase) => emit({ type: 'phase', phase }),
-            () => runJob(id, job, emit, signal),
+            () =>
+              notingTraces(
+                (comfy) => emit({ type: 'comfy', comfy }),
+                () => runJob(id, job, emit, signal),
+              ),
           ),
       )
     },
@@ -548,7 +557,10 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     async (id, job) => {
       if (job.edit?.mask) await removeFiles(deps.sessions.dir(id), [job.edit.mask])
     },
+    deps.queue,
   )
+  // The queue as it was when the server last stopped, once what was cut off is cleaned up.
+  jobs.restore(async (id) => !!(await deps.sessions.load(id)), (traces) => clearTraces(traces))
 
   async function runJob(id: string, queued: Job, emit: JobEmit, signal: AbortSignal) {
     // The job as it was when the Session loaded, its Frame's index matching that Session's.

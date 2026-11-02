@@ -5,6 +5,10 @@ node_modules
 settings.json
 # Left by a save cut short; holds the API key like settings.json
 settings.json.tmp
+# The job queue, kept between runs of the server: what jobs were told (an edit's instruction, a
+# clip's prompt) is Session content
+queue.json
+queue.json.tmp
 sessions/
 # Pages exported from the Compare dialog
 exports/

@@ -1,5 +1,13 @@
 import { assertEquals } from '@std/assert'
-import { asQueued, type ImageChoice, type Job, SessionJobs } from './jobs.ts'
+import {
+  asQueued,
+  type ImageChoice,
+  type Job,
+  type QueueStore,
+  type SavedQueue,
+  SessionJobs,
+} from './jobs.ts'
+import type { ComfyTraces } from './comfyui/traces.ts'
 import type { Session } from './session.ts'
 
 /** A queue whose jobs run until the test ends them: `started` lists them as `kind frame`. */
@@ -185,4 +193,99 @@ Deno.test('A done job stays listed until dismissed; Dismiss finished leaves what
   await end('speak 1')
   assertEquals(jobs.cancel('s', jobs.list('s')[0].id), true)
   assertEquals(status(), ['render running'])
+})
+
+/** A queue store in memory: what was saved last. */
+function memoryQueue(saved: SavedQueue = []) {
+  const store = {
+    saved,
+    load: () => Promise.resolve(structuredClone(store.saved)),
+    save: (queue: SavedQueue) => {
+      store.saved = structuredClone(queue)
+      return Promise.resolve()
+    },
+  }
+  return store satisfies QueueStore
+}
+
+Deno.test('The queue is saved as it changes, with what a running job left on ComfyUI', async () => {
+  const store = memoryQueue()
+  const ends: (() => void)[] = []
+  const jobs = new SessionJobs(
+    (_id, _job, emit) => {
+      emit({ type: 'progress', step: 1, total: 4 })
+      emit({ type: 'comfy', comfy: { prompt: { base: 'http://pc', promptId: 'p1' } } })
+      return new Promise<void>((resolve) => ends.push(resolve))
+    },
+    undefined,
+    store,
+  )
+  jobs.enqueue('s', 'render', 0, 'pc')
+  jobs.enqueue('s', 'render', 1, 'pc')
+  await jobs.saved()
+  const [running, queued] = store.saved[0].jobs
+  assertEquals([running.status, running.comfy?.prompts], ['running', [
+    { base: 'http://pc', promptId: 'p1' },
+  ]])
+  assertEquals(queued.status, 'queued')
+  // Once it ends, what it left is its own to have cleaned up.
+  ends[0]()
+  for (let i = 0; i < 5; i++) await Promise.resolve()
+  await jobs.saved()
+  assertEquals(store.saved[0].jobs.map((j) => [j.status, !!j.comfy]), [['done', false], [
+    'running',
+    true,
+  ]])
+})
+
+Deno.test('A restart puts the queue back, cleaning up after a job cut off and running it again', async () => {
+  const traces: ComfyTraces = { prompts: [{ base: 'http://pc', promptId: 'p1' }], uploads: [] }
+  const job = (id: string, extra: Partial<Job>): Job => ({
+    id,
+    kind: 'render',
+    frameIndex: 0,
+    status: 'queued',
+    createdAt: '2026-11-02T10:00:00.000Z',
+    machine: 'pc',
+    ...extra,
+  })
+  const store = memoryQueue([
+    {
+      sessionId: 's',
+      jobs: [
+        job('done', { status: 'done', endedAt: '2026-11-02T10:01:00.000Z' }),
+        job('cut', {
+          status: 'running',
+          phase: 'image',
+          startedAt: '2026-11-02T10:02:00.000Z',
+          comfy: traces,
+        }),
+        job('next', { frameIndex: 1 }),
+      ],
+    },
+    { sessionId: 'gone', jobs: [job('lost', {})] },
+  ])
+  const started: string[] = []
+  const jobs = new SessionJobs(
+    (_id, j) => {
+      started.push(j.id)
+      return new Promise(() => {})
+    },
+    undefined,
+    store,
+  )
+  const cleared: ComfyTraces[] = []
+  await jobs.restore((id) => Promise.resolve(id === 's'), (t) => {
+    cleared.push(t)
+    return Promise.resolve()
+  })
+  assertEquals(cleared, [traces])
+  assertEquals(started, ['cut'])
+  const listed = jobs.list('s')
+  assertEquals(listed.map((j) => [j.id, j.status]), [['done', 'done'], ['cut', 'running'], [
+    'next',
+    'queued',
+  ]])
+  assertEquals(listed[1].comfy, undefined)
+  assertEquals(jobs.list('gone'), [])
 })

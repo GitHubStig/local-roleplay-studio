@@ -1,4 +1,5 @@
-import { getJson, upload } from './client.ts'
+import { type ComfyFile, getJson, post, upload } from './client.ts'
+import type { ComfyTraces } from './traces.ts'
 
 /**
  * The files a workflow's loaders can use: for each loader placeholder (`$unet`, `$clip`, `$vae`),
@@ -71,3 +72,65 @@ const BLANK_PNG = Uint8Array.from(
   ),
   (c) => c.charCodeAt(0),
 )
+
+/**
+ * Cleans up what a job cut off by a server restart left on ComfyUI (`ComfyTraces`), as the job
+ * would have as it ended: each prompt taken out of the queue or stopped, its outputs blanked once
+ * ComfyUI has written them (read from its history, up to `waitMs`), and its history deleted; each
+ * upload blanked. ComfyUI has no API to delete a file, so a stub stays, as after any job. Throws
+ * if a ComfyUI can't be reached.
+ */
+export async function clearTraces(traces: ComfyTraces, waitMs = 30_000, everyMs = 1000) {
+  for (const { base, promptId } of traces.prompts) {
+    await getJson(base, '/queue', AbortSignal.timeout(15_000))
+    await post(base, '/queue', { delete: [promptId] })
+    await post(base, '/interrupt', { prompt_id: promptId })
+    for (const file of await outputsOf(base, promptId, waitMs, everyMs)) await blank(base, file)
+    await post(base, '/history', { delete: [promptId] })
+  }
+  for (const { base, file } of traces.uploads) await blank(base, file)
+}
+
+/**
+ * The files a prompt wrote, from ComfyUI's history once it's there; none if it never ran, or ran
+ * before ComfyUI itself restarted. A prompt just stopped is written to the history a moment after
+ * it leaves the queue, so that's waited for a few checks.
+ */
+async function outputsOf(base: string, promptId: string, waitMs: number, everyMs: number) {
+  const until = Date.now() + waitMs
+  let gone = 0
+  while (Date.now() < until) {
+    const history = await getJson(base, `/history/${promptId}`, AbortSignal.timeout(15_000))
+    const entry = history?.[promptId] as { outputs?: Record<string, Record<string, unknown>> }
+    if (entry) return filesOf(entry.outputs ?? {})
+    const queue = await getJson(base, '/queue', AbortSignal.timeout(15_000))
+    const queued = [...queue.queue_running ?? [], ...queue.queue_pending ?? []]
+      .some((item: unknown[]) => item[1] === promptId)
+    gone = queued ? 0 : gone + 1
+    if (gone > 3) return []
+    await new Promise((r) => setTimeout(r, everyMs))
+  }
+  return []
+}
+
+/** The files ComfyUI's output nodes list, in its temp or output folder. */
+const filesOf = (outputs: Record<string, Record<string, unknown>>): ComfyFile[] =>
+  Object.values(outputs).flatMap((node) =>
+    Object.values(node).flatMap((list) =>
+      Array.isArray(list)
+        ? list.filter((f): f is ComfyFile =>
+          typeof f?.filename === 'string' && (f.type === 'output' || f.type === 'temp')
+        )
+        : []
+    )
+  )
+
+/** Writes a stub over a file ComfyUI keeps: a blank picture over a PNG, else nothing. */
+const blank = (base: string, file: ComfyFile) =>
+  upload(
+    base,
+    file.filename,
+    file.filename.endsWith('.png') ? BLANK_PNG : new Uint8Array(),
+    file.subfolder,
+    file.type === 'output' ? 'output' : 'temp',
+  )

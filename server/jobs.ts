@@ -5,8 +5,9 @@
  * network doesn't hold up a line spoken here; a job also waits for the earlier ones it needs (a
  * render for its picture). Renders, upscales, voices and 3D also share the render queue every
  * Session uses, one per machine. Jobs don't hold the Session's lock: they save through `updateSession`,
- * onto whatever the Session has become meanwhile. Jobs live in memory: a server restart forgets the
- * queue. What a job does is up to its Session's kind (`JobRunner`).
+ * onto whatever the Session has become meanwhile. The queue is saved as it changes (`QueueStore`),
+ * so a server restart puts it back: a job that was running is cleaned up after and runs again
+ * (`restore`). What a job does is up to its Session's kind (`JobRunner`).
  */
 import { join } from '@std/path'
 import type { Backend } from './backends.ts'
@@ -21,6 +22,7 @@ import type { Session, SessionStore } from './session.ts'
 import type { SessionSettings } from './settings.ts'
 import { COMFYUI_VIDEO_MODELS, findComfyVideoModel } from './video/comfyui/models.ts'
 import { CLIP_KINDS, type ClipKind } from './video/videoGenerator.ts'
+import { type ComfyTrace, type ComfyTraces, withTrace } from './comfyui/traces.ts'
 
 /**
  * `picture` writes a Roleplay Frame's Image Prompt and `render` renders it; `upscale` takes a
@@ -139,6 +141,20 @@ export interface Job {
   edit?: EditOrder
   /** A clip's order. */
   clip?: ClipOrder
+  /**
+   * While it runs: what it has left on a ComfyUI, which it cleans up itself as it ends, and a
+   * restart cleans up after it if it can't (`restore`).
+   */
+  comfy?: ComfyTraces
+}
+
+/** Every Session's jobs, as the queue is saved between runs of the server. */
+export type SavedQueue = { sessionId: string; jobs: Job[] }[]
+
+/** Where the queue is kept between runs of the server: one file for the whole app. */
+export interface QueueStore {
+  load(): Promise<SavedQueue>
+  save(queue: SavedQueue): Promise<void>
 }
 
 /** The Session settings that say which Image Model renders, and where it would rather. */
@@ -176,6 +192,8 @@ export type JobEmit = (
     step?: number
     total?: number
     imageBackend?: ImageBackendKind
+    /** Something it has left on a ComfyUI (`Job.comfy`). */
+    comfy?: ComfyTrace
   },
 ) => void
 
@@ -272,15 +290,89 @@ export class SessionJobs {
   #held = new Set<string>()
   /** Each Session's last piece of `frames` work, which the next waits for. */
   #frames = new Map<string, Promise<unknown>>()
+  #store?: QueueStore
+  /** The save under way, and whether the queue has changed since it began. */
+  #saving?: Promise<void>
+  #changed = false
 
   /**
    * `dropped` hears of each job that ends without being done: cancelled, or dismissed after it
    * failed (e.g. to delete an edit's painted area, which only it used). A running job cancelled
-   * stays listed until `dropped` is done, so an empty queue means it has cleaned up.
+   * stays listed until `dropped` is done, so an empty queue means it has cleaned up. `store` keeps
+   * the queue between runs of the server; left out, a restart forgets it.
    */
-  constructor(run: JobRunner, dropped?: (sessionId: string, job: Job) => void | Promise<void>) {
+  constructor(
+    run: JobRunner,
+    dropped?: (sessionId: string, job: Job) => void | Promise<void>,
+    store?: QueueStore,
+  ) {
     this.#run = run
     this.#dropped = dropped
+    this.#store = store
+  }
+
+  /**
+   * Puts back the queue as it was saved, ahead of any job queued since the server started: queued,
+   * failed and done jobs as they were, and each job that was running cleaned up after on ComfyUI
+   * (`clear`, given what it left there) and queued again in its place, to run from the start. A
+   * Session that no longer exists (`exists`) loses its jobs. A ComfyUI that can't be cleaned up is
+   * logged, and the job runs again anyway.
+   */
+  async restore(
+    exists: (sessionId: string) => Promise<boolean>,
+    clear: (traces: ComfyTraces) => Promise<void>,
+  ) {
+    if (!this.#store) return
+    let saved: SavedQueue
+    try {
+      saved = await this.#store.load()
+    } catch (err) {
+      console.warn(`Couldn't read the saved queue, so it starts empty: ${(err as Error).message}`)
+      return
+    }
+    const kept = (await Promise.all(saved.map(async (s) => (await exists(s.sessionId) ? s : null))))
+      .filter((s) => s !== null)
+    await Promise.all(
+      kept.flatMap((s) => s.jobs).filter((j) => j.status === 'running' && j.comfy).map((j) =>
+        clear(j.comfy!).catch((err) =>
+          console.warn(
+            `Couldn't clean up after a ${j.kind} cut off by the restart (ComfyUI prompt ` +
+              `${j.comfy!.prompts.map((p) => p.promptId).join(', ') || 'none'}): ${err.message}`,
+          )
+        )
+      ),
+    )
+    for (const { sessionId, jobs } of kept) {
+      const back = jobs.map((job): Job => {
+        const { phase: _p, progress: _g, comfy: _c, ...rest } = job
+        if (job.status !== 'running') return rest
+        const { startedAt: _s, imageBackend: _b, ...again } = rest
+        return { ...again, status: 'queued' }
+      })
+      this.#jobs.set(sessionId, [...back, ...(this.#jobs.get(sessionId) ?? [])])
+    }
+    this.#save()
+    for (const { sessionId } of kept) this.#next(sessionId)
+  }
+
+  /** Resolves once the queue as it is now has been saved. */
+  async saved(): Promise<void> {
+    while (this.#saving) await this.#saving
+  }
+
+  /** Saves the queue, once at a time: a change while it's saved is saved again after. */
+  #save() {
+    if (!this.#store) return
+    this.#changed = true
+    if (this.#saving) return
+    this.#saving = (async () => {
+      while (this.#changed) {
+        this.#changed = false
+        await this.#store!.save(this.all()).catch((err) =>
+          console.warn(`Couldn't save the queue: ${err.message}`)
+        )
+      }
+    })().finally(() => (this.#saving = undefined))
   }
 
   /** A Session's jobs, in the order they were queued. */
@@ -334,6 +426,7 @@ export class SessionJobs {
       ahead < 0 ? [...jobs, job] : [...jobs.slice(0, ahead), job, ...jobs.slice(ahead)],
     )
     this.#next(sessionId)
+    this.#save()
     return { ...job }
   }
 
@@ -373,6 +466,7 @@ export class SessionJobs {
     const { error: _, startedAt: _s, endedAt: _e, ...job } = failed
     this.#jobs.set(sessionId, again ? rest : [...rest, { ...job, status: 'queued' }])
     if (!again) this.#next(sessionId)
+    this.#save()
     return true
   }
 
@@ -423,6 +517,7 @@ export class SessionJobs {
     for (const job of jobs) if (job.frameIndex > index) job.frameIndex--
     if (jobs.length) this.#jobs.set(sessionId, jobs)
     else this.#jobs.delete(sessionId)
+    this.#save()
   }
 
   /**
@@ -448,6 +543,7 @@ export class SessionJobs {
     const rest = (this.#jobs.get(sessionId) ?? []).filter((j) => j.id !== jobId)
     if (rest.length) this.#jobs.set(sessionId, rest)
     else this.#jobs.delete(sessionId)
+    this.#save()
   }
 
   /**
@@ -480,10 +576,15 @@ export class SessionJobs {
     job.status = 'running'
     job.phase = 'text'
     job.startedAt = new Date().toISOString()
+    this.#save()
     const emit: JobEmit = (event) => {
       if (event.type === 'phase' && event.phase) job.phase = event.phase
       if (event.imageBackend) job.imageBackend = event.imageBackend
       if (event.type === 'progress') job.progress = { step: event.step!, total: event.total! }
+      if (event.comfy) {
+        job.comfy = withTrace(job.comfy, event.comfy)
+        this.#save()
+      }
     }
     this.#run(sessionId, job, emit, controller.signal)
       .then(
@@ -507,6 +608,9 @@ export class SessionJobs {
         },
       )
       .finally(() => {
+        // Whatever it left on a ComfyUI, it has cleaned up as it ended.
+        delete job.comfy
+        this.#save()
         running.delete(job.id)
         if (!running.size) this.#running.delete(sessionId)
         ended()

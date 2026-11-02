@@ -1,6 +1,7 @@
 import { assertEquals } from '@std/assert'
-import { runWorkflow } from './client.ts'
+import { runWorkflow, upload } from './client.ts'
 import { fakeComfyUI } from './testing.ts'
+import { type ComfyTrace, notingTraces } from './traces.ts'
 
 const GB = 1024 ** 3
 
@@ -67,6 +68,23 @@ Deno.test('A prompt ComfyUI reports, even to its end, before saying it was queue
     // Its end was heard too, rather than waited for (10 s).
     assertEquals(comfy.posted.map((p) => p.path), ['(in history)', '/history', '/free'])
     assertEquals(performance.now() - started < 1000, true)
+  } finally {
+    await comfy.close()
+  }
+})
+
+Deno.test('A prompt queued and a file uploaded are told to the work noting them', async () => {
+  const comfy = fakeComfyUI()
+  try {
+    const traces: ComfyTrace[] = []
+    await notingTraces((t) => traces.push(t), async () => {
+      await upload(comfy.url, 'rpg-1.png', new Uint8Array([1]))
+      await runWorkflow(comfy.url, {}, new AbortController().signal, 15_000)
+    })
+    assertEquals(traces, [
+      { upload: { base: comfy.url, file: { filename: 'rpg-1.png', subfolder: '', type: 'temp' } } },
+      { prompt: { base: comfy.url, promptId: 'p1' } },
+    ])
   } finally {
     await comfy.close()
   }

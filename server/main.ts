@@ -12,6 +12,7 @@ import {
   textBackendFor,
 } from './machine.ts'
 import { RenderQueue } from './renderQueue.ts'
+import { fileQueueStore } from './queueStore.ts'
 import { comfyuiImageGenerator } from './images/comfyui/comfyui.ts'
 import { comfyuiStatus } from './comfyui/status.ts'
 import { imageBackends } from './images/backend.ts'
@@ -183,6 +184,7 @@ const handler = createHandler({
   ),
   features,
   renderQueue,
+  queue: fileQueueStore(new URL('../queue.json', import.meta.url)),
   // Voices on the Backend Settings send them to: this machine's voice service where it runs (a
   // Mac), or a ComfyUI with TTS Audio Suite's nodes.
   voice: voiceBackends({

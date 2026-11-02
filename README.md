@@ -136,6 +136,7 @@ Where mflux or the voice service can't run (a PC), Settings start on ComfyUI for
 ```
 scenarios/        Scenario files, one Markdown file each (see docs/scenarios.md)
 settings.json     Your Settings (gitignored; created on first save)
+queue.json        The job queue, kept across restarts (gitignored)
 sessions/<id>/    Each Session: session.json plus its pictures, voices and 3D files (gitignored)
 exports/<id>/     A Session's Compare table exported as a page, with its pictures (gitignored)
 server/           Deno API: the app, Sessions, Settings, the job queue, what all kinds of Session share
