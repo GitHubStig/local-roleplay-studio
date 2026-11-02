@@ -110,11 +110,15 @@ The same on Windows, in PowerShell. Open <http://localhost:5180>, go to **Settin
 
 | Environment variable | Default | Purpose |
 |---|---|---|
-| `PORT` | `8787` | API server port. The Vite proxy expects 8787. |
+| `PORT` | `8787` | API server port, and where the web app's dev server sends `/api` |
+| `WEB_PORT` | `5180` | The web app's dev server port |
+| `VOICE_PORT` | `8791` | The Mac's voice service port (`python/voice/serve.py`) |
 | `OLLAMA_HOST` | `http://localhost:11434` | Where Ollama listens |
 | `IMAGE_GENERATOR` | (Settings' backend) | Set to `placeholder` to render SVG cards instead, for working without a GPU |
 
-The web app's dev server is pinned to port **5180** and fails, rather than picking another port, if something else is using it.
+The web app's dev server is pinned to port **5180** (or `WEB_PORT`) and fails, rather than picking another port, if something else is using it.
+
+To run a second checkout beside the first (a `git worktree`, say), give it other ports, and a Sessions folder of its own in its own `settings.json`, so the two never write to the same Sessions: `PORT=8797 WEB_PORT=5190 VOICE_PORT=8792 deno task dev`, and `deno task replay … --server http://127.0.0.1:8797`. The two don't take turns on a machine, so keep heavy work to one at a time.
 
 Everything else is chosen on the Settings page (in tabs: Machines, Text, Images, Voice, 3D, Advanced) and saved to `settings.json`, including each Backend's API key (never sent back to the browser).
 

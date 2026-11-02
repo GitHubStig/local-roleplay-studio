@@ -2,14 +2,17 @@ import tailwindcss from '@tailwindcss/vite'
 import vue from '@vitejs/plugin-vue'
 import { defineConfig } from 'vitest/config'
 
+// Ports from the environment, so a second checkout (a worktree) can run beside the first.
+const env = (globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [vue(), tailwindcss()],
   server: {
-    port: 5180,
+    port: Number(env?.WEB_PORT ?? 5180),
     strictPort: true,
     proxy: {
-      '/api': 'http://localhost:8787',
+      '/api': `http://localhost:${env?.PORT ?? 8787}`,
     },
   },
   test: {

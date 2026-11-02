@@ -152,7 +152,12 @@ const chat = (c: TextChoice) => {
 }
 
 const sessionStore = dirSessionStore(sessionsDir)
-const mlxVoice = features.voices.available ? voiceService({ root: sessionsDir }) : undefined
+// A port of its own for a second checkout, which would otherwise use the first's service and its
+// Sessions folder.
+const voicePort = Deno.env.get('VOICE_PORT')
+const mlxVoice = features.voices.available
+  ? voiceService({ root: sessionsDir, port: voicePort ? Number(voicePort) : undefined })
+  : undefined
 
 const handler = createHandler({
   settings,
