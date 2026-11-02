@@ -1,6 +1,7 @@
 <!--
 The Cast call's user message: the Brief to write the Cast from. For a Scenario, the Brief is its
-## Opening section and the facts are its Setup; for a typed Brief there are no facts.
+Opening and the facts are the rest it states (factsOf, who plays whom too) but its Truths; for a
+typed Brief there are no facts.
 
 Values: brief, facts (a YAML block, or "none")
 -->

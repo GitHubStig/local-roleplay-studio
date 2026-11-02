@@ -1,7 +1,7 @@
 <!--
 The system message of an Action on one Storyboard Frame, once its Frames are written: the Look is
-fixed then, so an Action changes only its own Frame. Followed by the Scenario's notes
-(shared/scenario-notes.md).
+fixed then, so an Action changes only its own Frame. Followed by the Scenario's Truths
+(shared/scenario-truths.md).
 
 Values: format, body (the seven aspects each Frame has), placeAlone (shared/place-alone.md),
 eachPerson (shared/each-person.md), replacing (indented to sit in the list), limits

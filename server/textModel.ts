@@ -1,6 +1,5 @@
-import { stringify } from '@std/yaml'
 import { type ImagePrompt, PROMPT_ORDER } from './imagePrompt.ts'
-import type { Scenario } from './scenario.ts'
+import { factsOf, type Scenario, truthsOf } from './scenario.ts'
 import { type Look, type Outcome, OUTCOMES } from './session.ts'
 import { JsonStreamReader } from './jsonStream.ts'
 import { type Chat, within } from './text/chat.ts'
@@ -82,15 +81,13 @@ async function sharedParts() {
   }
 }
 
-/** A system message, with the Scenario's notes and (if `withSetup`) its Setup after it. */
-async function withNotes(rules: string, scenario: Scenario, withSetup: boolean) {
+/** A system message, with the Scenario's Truths and (if `withFacts`) its facts after it. */
+async function withNotes(rules: string, scenario: Scenario, withFacts: boolean) {
   const parts = [rules]
-  if (scenario.systemPrompt) {
-    parts.push(await loadPrompt('shared/scenario-notes', { notes: scenario.systemPrompt }))
-  }
-  if (withSetup && Object.keys(scenario.setup).length) {
-    parts.push(await loadPrompt('shared/setup', { setup: stringify(scenario.setup).trim() }))
-  }
+  const truths = truthsOf(scenario)
+  if (truths) parts.push(await loadPrompt('shared/scenario-truths', { truths }))
+  const facts = withFacts ? factsOf(scenario) : ''
+  if (facts) parts.push(await loadPrompt('shared/scenario-facts', { facts }))
   return parts.join('\n\n')
 }
 
@@ -102,7 +99,7 @@ export async function userMessage(
   { scenario, prompt, action, away = [] }: FrameRequest,
 ): Promise<string> {
   if (prompt === null || action === null) {
-    return loadPrompt('chain/opening-request', { opening: scenario.openingPrompt })
+    return loadPrompt('chain/opening-request', { opening: scenario.opening })
   }
   const gone = away.length
     ? await loadPrompt('chain/away', { people: away.map((p) => `- ${p}`).join('\n') })
@@ -266,7 +263,7 @@ export async function storyboardPlanMessages({ scenario, frameCount }: Storyboar
     ),
     user: await loadPrompt('storyboard/plan-request', {
       frameCount,
-      brief: scenario.openingPrompt,
+      brief: scenario.opening,
     }),
   }
 }
@@ -352,7 +349,7 @@ export async function storyboardWriteMessages(req: StoryboardWriteRequest) {
     user: await loadPrompt('storyboard/write-request', {
       look: JSON.stringify(lookForModel(req.look), null, 2),
       beats: req.beats.map(line).join('\n'),
-      brief: req.scenario.openingPrompt,
+      brief: req.scenario.opening,
       before: req.before.length
         ? req.before.map((body, i) => `${i + 1}. ${body}`).join('\n')
         : '(none: this is the first)',

@@ -185,7 +185,7 @@ export async function artLookMessages(
     {
       role: 'user',
       content: await loadPrompt('roleplay/art-look-request', {
-        brief: scenario.openingPrompt,
+        brief: scenario.opening,
         cast: block(session.cast!),
       }),
     },

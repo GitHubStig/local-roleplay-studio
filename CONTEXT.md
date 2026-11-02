@@ -24,10 +24,6 @@ _Avoid_: Character (for one of a Scenario's), NPC, entity
 A fact of a Scenario that holds whatever anyone does: about one Person (who is stronger, what they'll never do), or about the story. Unlike a goal, it isn't meant to change in play.
 _Avoid_: Rule, Limit, constraint, lore
 
-**Setup**:
-Facts a Scenario gives the text model when a Session starts, such as who is shown, where, and the look; any of it can change afterwards.
-_Avoid_: Config, context, world
-
 **Session**:
 One piece of work: a sequence of Frames started from a Brief, as a Chain, a Storyboard or a Roleplay. It can be left and returned to at any time, and lasts until deleted.
 _Avoid_: Game, run, project
@@ -77,7 +73,7 @@ Who the player plays in a Roleplay, so the Character knows who they're dealing w
 _Avoid_: User, player character, avatar
 
 **Setting**:
-Where and when a Roleplay's scene starts: the place, the time of day and the weather. Not to be confused with a Scenario's Setup.
+Where and when a Roleplay's scene starts: the place, the time of day and the weather. A Scenario's Place and Time are where it's written from.
 _Avoid_: Scene, location, world
 
 **Message**:

@@ -29,9 +29,9 @@ Deno.test('systemMessage has the paragraph rules, the order, the limits and the 
   assertStringIncludes(msg, 'Rules.')
 })
 
-Deno.test('systemMessage gives the Setup only on the Opening Frame', async () => {
-  assertStringIncludes(await systemMessage(testScenario, true), 'location: a studio')
-  assertEquals((await systemMessage(testScenario, false)).includes('location: a studio'), false)
+Deno.test("systemMessage gives the Scenario's facts only on the Opening Frame", async () => {
+  assertStringIncludes(await systemMessage(testScenario, true), 'place: A studio.')
+  assertEquals((await systemMessage(testScenario, false)).includes('place: A studio.'), false)
 })
 
 Deno.test('userMessage uses the opening instructions on the Opening Frame', async () => {

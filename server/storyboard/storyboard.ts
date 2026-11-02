@@ -141,7 +141,7 @@ export async function planStoryboard(
 ): Promise<StoryboardSession> {
   if (session.frames.length > 0) throw new Error('This Storyboard is already planned')
   emit({ type: 'phase', phase: 'text' })
-  const briefLimit = await limitCrossedBy(scenario.openingPrompt, deps.textModel, signal)
+  const briefLimit = await limitCrossedBy(scenario.opening, deps.textModel, signal)
   if (briefLimit) throw new LimitError(`The Brief crosses a limit: ${briefLimit}`)
 
   let look: Look | null = null

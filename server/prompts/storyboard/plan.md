@@ -1,7 +1,7 @@
 <!--
 The system message of a Storyboard's plan: one call writes the Look and the Beats, which the
 player reviews before the Frames are written from them (storyboard/write.md). Followed by the
-Scenario's notes and its Setup (shared/).
+Scenario's Truths and facts (shared/).
 
 Values: identity (shared/identity.md), shown (shared/shown.md), limits. (The others sharedParts
 gives go unused.)

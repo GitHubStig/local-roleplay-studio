@@ -1,7 +1,7 @@
 <!--
 The system message of every Chain Frame: the Text Model keeps one image prompt and applies each
-Action to it. Followed by the Scenario's notes (shared/scenario-notes.md) and, for the Opening
-Frame, its Setup (shared/setup.md).
+Action to it. Followed by the Scenario's Truths (shared/scenario-truths.md) and, for the Opening
+Frame, its facts (shared/scenario-facts.md).
 
 Values: format (shared/format.md), eachPerson (shared/each-person.md), replacing
 (shared/replacing.md, indented to sit in the list),

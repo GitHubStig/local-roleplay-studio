@@ -1,15 +1,12 @@
-import { stringify } from '@std/yaml'
 import type { ChatMessage } from '../text/chat.ts'
 import { limitsEnabled } from '../limits.ts'
 import { loadPrompt, type PromptValues } from '../promptFiles.ts'
-import type { Scenario } from '../scenario.ts'
+import { factsOf, type Scenario } from '../scenario.ts'
 import { excerpt } from '../session.ts'
 import type { Cast, Character, Persona, Reply, RoleplaySession, Setting } from './types.ts'
 
 /** The reply's fields, in the order the model writes them: think, then act, then speak. */
 export const REPLY_FIELDS = ['internal', 'actions', 'dialogue'] as const
-
-const block = (value: object) => stringify(value, { lineWidth: 100 }).trim()
 
 /**
  * The system message of every Reply, from `prompts/roleplay/character.md`: the same on every call
@@ -125,11 +122,11 @@ export function parseJson(content: string): unknown {
 // --- Writing the Cast ---------------------------------------------------------------------------
 
 /**
- * The Cast call (`prompts/roleplay/cast.md`, `cast-request.md`). A Scenario's Setup facts and
- * Opening serve as the Brief; its notes are about writing image prompts, so they're left out.
+ * The Cast call (`prompts/roleplay/cast.md`, `cast-request.md`): a Scenario's Opening serves as the
+ * Brief, with what else it states (who plays whom too) as facts.
  */
 export async function castMessages(scenario: Scenario): Promise<ChatMessage[]> {
-  const facts = Object.keys(scenario.setup).length ? block(scenario.setup) : 'none'
+  const facts = factsOf(scenario, true) || 'none'
   return [
     {
       role: 'system',
@@ -142,7 +139,7 @@ export async function castMessages(scenario: Scenario): Promise<ChatMessage[]> {
     },
     {
       role: 'user',
-      content: await loadPrompt('roleplay/cast-request', { brief: scenario.openingPrompt, facts }),
+      content: await loadPrompt('roleplay/cast-request', { brief: scenario.opening, facts }),
     },
   ]
 }

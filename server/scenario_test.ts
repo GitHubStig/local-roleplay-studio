@@ -1,42 +1,125 @@
-import { assertEquals, assertThrows } from '@std/assert'
+import { assertEquals, assertStringIncludes, assertThrows } from '@std/assert'
 import { join } from '@std/path'
-import { combinedScenarioLibrary, dirScenarioLibrary, parseScenario } from './scenario.ts'
+import {
+  briefScenario,
+  combinedScenarioLibrary,
+  dirScenarioLibrary,
+  factsOf,
+  parseScenario,
+  scenarioMarkdown,
+  truthsOf,
+} from './scenario.ts'
 
 const valid = `---
-title: Test Shoot
+title: The Tavern
 description: A short test.
-setup:
-  location: a studio
+player: Elara
+character: Kael
+---
+
+## Opening
+
+Kael looks up
+as the door opens.
+
+Rain blows in.
+
+## Place
+
+A small tavern
+by the harbour.
+
+## Time
+
+Late evening, in a storm.
+
+## Truths
+
+- It's the 18th century.
+- Nobody comes to help
+  on a night like this.
+
+## People
+
+### Kael
+
+- Looks: a 42-year-old man with a scarred face.
+- Wears: a leather apron.
+- Goal: find who sent the letter.
+- Truths:
+  - He's stronger than anyone in the room.
+  - He never sells out a crewmate.
+
+### Elara
+
+- Looks: a young woman with dark hair.
+`
+
+Deno.test('parseScenario reads every section, joining lines, and who plays whom', () => {
+  const s = parseScenario('tavern', valid)
+  assertEquals(s.id, 'tavern')
+  assertEquals(s.title, 'The Tavern')
+  assertEquals(s.opening, 'Kael looks up as the door opens.\n\nRain blows in.')
+  assertEquals(s.place, 'A small tavern by the harbour.')
+  assertEquals(s.time, 'Late evening, in a storm.')
+  assertEquals(s.style, '')
+  assertEquals(s.truths, ["It's the 18th century.", 'Nobody comes to help on a night like this.'])
+  assertEquals(s.people.map((p) => p.id), ['kael', 'elara'])
+  assertEquals(s.people[0], {
+    id: 'kael',
+    name: 'Kael',
+    looks: 'a 42-year-old man with a scarred face.',
+    wears: 'a leather apron.',
+    personality: '',
+    speaks: '',
+    background: '',
+    goal: 'find who sent the letter.',
+    truths: ["He's stronger than anyone in the room.", 'He never sells out a crewmate.'],
+  })
+  assertEquals([s.player, s.character], ['elara', 'kael'])
+})
+
+Deno.test('scenarioMarkdown writes what parseScenario reads back', () => {
+  const s = parseScenario('tavern', valid)
+  assertEquals(parseScenario('tavern', scenarioMarkdown(s)), s)
+  const min = parseScenario('min', `---\ntitle: T\ndescription: D\n---\n## Opening\nGo.\n`)
+  assertEquals(scenarioMarkdown(min), `---\ntitle: T\ndescription: D\n---\n\n## Opening\n\nGo.\n`)
+})
+
+Deno.test('parseScenario lists every problem at once', () => {
+  const text = `---
+title: ""
+setup: x
+player: Nobody
 ---
 
 ## System
 
-Stay in the studio.
+x
 
-## Opening
+## People
 
-The Subject arrives.
+### Kael
+
+- Height: tall
+stray
+
+### kael
 `
-
-Deno.test('parseScenario reads frontmatter and prompt sections', () => {
-  const s = parseScenario('test', valid)
-  assertEquals(s.id, 'test')
-  assertEquals(s.title, 'Test Shoot')
-  assertEquals(s.setup, { location: 'a studio' })
-  assertEquals(s.systemPrompt, 'Stay in the studio.')
-  assertEquals(s.openingPrompt, 'The Subject arrives.')
-})
-
-Deno.test('parseScenario needs only a title, a description and an Opening', () => {
-  const s = parseScenario('min', `---\ntitle: T\ndescription: D\n---\n## Opening\nGo.\n`)
-  assertEquals(s.setup, {})
-  assertEquals(s.systemPrompt, '')
-})
-
-Deno.test('parseScenario lists every problem at once', () => {
-  const text = `---\ntitle: ""\nsetup: [1]\n---\n\n## System\n\nx\n`
   const err = assertThrows(() => parseScenario('bad', text))
-  for (const expected of ['title', 'description', 'setup', '"## Opening"']) {
+  for (
+    const expected of [
+      'title',
+      'description',
+      'frontmatter "setup"',
+      'section "System"',
+      '"## Opening"',
+      'Kael: unknown line "Height"',
+      'Kael: "stray"',
+      'two people are called "kael"',
+      'player "Nobody"',
+    ]
+  ) {
     if (!(err as Error).message.includes(expected)) {
       throw new Error(`missing "${expected}" in: ${(err as Error).message}`)
     }
@@ -45,6 +128,33 @@ Deno.test('parseScenario lists every problem at once', () => {
 
 Deno.test('parseScenario rejects a file without frontmatter', () => {
   assertThrows(() => parseScenario('bare', '# just markdown'))
+})
+
+Deno.test("truthsOf lists the story's Truths, then each Person's by name", () => {
+  assertEquals(
+    truthsOf(parseScenario('tavern', valid)),
+    [
+      "- It's the 18th century.",
+      '- Nobody comes to help on a night like this.',
+      "- Kael: He's stronger than anyone in the room.",
+      '- Kael: He never sells out a crewmate.',
+    ].join('\n'),
+  )
+  assertEquals(truthsOf(briefScenario('Go.')), '')
+})
+
+Deno.test('factsOf states only what the Scenario states, and who plays whom when asked', () => {
+  const s = parseScenario('tavern', valid)
+  const facts = factsOf(s)
+  assertStringIncludes(facts, 'place: A small tavern by the harbour.')
+  assertStringIncludes(facts, 'goal: find who sent the letter.')
+  assertEquals(facts.includes('style'), false)
+  assertEquals(facts.includes('personality'), false)
+  assertEquals(facts.includes('stronger'), false)
+  assertEquals(facts.includes('plays'), false)
+  assertStringIncludes(factsOf(s, true), 'the player plays: Elara')
+  assertStringIncludes(factsOf(s, true), 'the Text Model plays: Kael')
+  assertEquals(factsOf(briefScenario('Go.')), '')
 })
 
 Deno.test('dirScenarioLibrary loads valid files and reports broken ones', async () => {
@@ -57,7 +167,7 @@ Deno.test('dirScenarioLibrary loads valid files and reports broken ones', async 
     const { scenarios, errors } = await lib.list()
     assertEquals(scenarios.map((s) => s.id), ['good'])
     assertEquals(errors.map((e) => e.file), ['broken.md'])
-    assertEquals((await lib.get('good'))?.title, 'Test Shoot')
+    assertEquals((await lib.get('good'))?.title, 'The Tavern')
     assertEquals(await lib.get('broken'), undefined)
   } finally {
     await Deno.remove(dir, { recursive: true })

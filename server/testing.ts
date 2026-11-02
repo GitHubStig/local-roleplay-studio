@@ -17,12 +17,13 @@ import type {
 export const scenarioText = `---
 title: Test Shoot
 description: A short test.
-setup: { location: a studio }
 ---
-## System
-Rules.
 ## Opening
 Start.
+## Place
+A studio.
+## Truths
+- Rules.
 `
 
 export const testScenario = parseScenario('test', scenarioText)

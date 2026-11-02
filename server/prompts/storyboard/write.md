@@ -1,7 +1,7 @@
 <!--
 The system message of writing one Storyboard Frame, a call per Frame once the player has reviewed
 the plan (storyboard/plan.md): the Look and every Beat are given, with the Frames written before
-it. Followed by the Scenario's notes and its Setup (shared/).
+it. Followed by the Scenario's Truths and facts (shared/).
 
 The engine starts each Frame's prompt with the identities of the people it shows (at most three,
 in the order given), and ends it with the style.
