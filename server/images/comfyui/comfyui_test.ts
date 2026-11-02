@@ -289,8 +289,9 @@ Deno.test('A ComfyUI FLUX.3 edit is told where to paint, as a box for each paint
     assertEquals(
       w.text.inputs.text,
       'In <ref_image_0>, repaint <obj_1> and <obj_2>: An open hand. Keep everything else ' +
-        'unchanged. [{"id":"obj_1","bbox":[0,0,320,160],"desc":"An open hand."},' +
-        '{"id":"obj_2","bbox":[640,640,960,960],"desc":"An open hand."}]',
+        'unchanged. [{"id":"obj_1","from":null,"src_bbox":null,"tgt_bbox":[0,0,320,160],' +
+        '"desc":"An open hand."},{"id":"obj_2","from":null,"src_bbox":null,' +
+        '"tgt_bbox":[640,640,960,960],"desc":"An open hand."}]',
     )
   }))
 
