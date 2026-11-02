@@ -86,6 +86,18 @@ Deno.test("editArgs edits at the picture's size, quantized as Settings say, in l
       '--image-paths',
     ],
   )
+  // FIBO 2.0's edits take the mask as `--mask-path`, from the same copies as its renders.
+  const fibo = editArgs({ ...req, model: 'fibo-2.0-edit-turbo' }, { width: 1216, height: 832 }, 'o')
+  assertEquals(fibo.slice(0, 8), [
+    '--model',
+    'mflux-community/fibo-2-0-edit-turbo-mflux-bf16',
+    '--base-model',
+    'fibo2-edit-turbo',
+    '--image-paths',
+    join('/s', 'frame-1.png'),
+    '--mask-path',
+    join('/s', 'mask-1.png'),
+  ])
 })
 
 Deno.test('mfluxArgs builds the command line from settings', () => {

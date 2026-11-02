@@ -145,6 +145,8 @@ Deno.test('GET /api/settings/options lists Text and Image Models', async () => {
   assertEquals(body.editModelsOn, {
     'qwen-image-2.1-edit': 'mflux',
     'qwen-image-2.1-turbo-edit': 'mflux',
+    'fibo-2.0-dev-edit': 'mflux',
+    'fibo-2.0-edit-turbo': 'mflux',
   })
   assertEquals(body.imageModels.comfyui.map((m: { id: string }) => m.id), [
     'qwen-image-2.1',

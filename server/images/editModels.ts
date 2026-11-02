@@ -29,13 +29,13 @@ export const EDIT_MODELS = [
   {
     id: 'fibo-2.0-dev-edit',
     label: 'FIBO 2.0 Dev Edit',
-    backends: ['comfyui'],
+    backends: ['mflux', 'comfyui'],
     prompting: 'Describe only what goes in the painted area: “keep the rest” can add things.',
   },
   {
     id: 'fibo-2.0-edit-turbo',
     label: 'FIBO 2.0 Edit Turbo',
-    backends: ['comfyui'],
+    backends: ['mflux', 'comfyui'],
     prompting: 'Describe only what goes in the painted area: “keep the rest” can add things.',
   },
 ] as const satisfies readonly {

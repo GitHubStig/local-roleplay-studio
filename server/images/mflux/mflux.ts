@@ -10,6 +10,7 @@ import {
   type UpscaleRequest,
 } from '../imageGenerator.ts'
 import { pngSize } from '../../png.ts'
+import { pasteBack } from '../pasteBack.ts'
 import { float16On } from './chip.ts'
 import { findMfluxModel, type Lora, MFLUX_MODELS, type MfluxModel } from './models.ts'
 import { SIZE_PRESETS } from '../../settings.ts'
@@ -98,10 +99,12 @@ export function upscaleArgs(req: UpscaleRequest, output: string): string[] {
 }
 
 /**
- * The command for each edit model mflux runs (ADR 0021), and the model it loads: mflux-community's
- * copies, the same as generation's. Turbo edits at its own 8 steps, mflux's default for it.
+ * The command for each edit model mflux runs (ADR 0021), the model it loads (mflux-community's
+ * copies, the same as generation's) and how it's given the painted area. Each edits at mflux's own
+ * steps for it: 8 for Qwen's Turbo, 50 at guidance 5 for FIBO 2.0 Dev, 4 for its Edit Turbo, as on
+ * ComfyUI. FIBO changes the picture outside the mask too, so its edits are pasted back through it.
  */
-const EDITORS: Record<EditModelOn<'mflux'>, { label: string; command: string; model: string[] }> = {
+const EDITORS: Record<EditModelOn<'mflux'>, Editor> = {
   'qwen-image-2.1-edit': {
     label: 'Qwen-Image 2.1 Edit',
     command: 'mflux-generate-qwen-2.1-edit',
@@ -111,6 +114,7 @@ const EDITORS: Record<EditModelOn<'mflux'>, { label: string; command: string; mo
       '--base-model',
       'qwen-image-2.1',
     ],
+    mask: '--mask-image',
   },
   'qwen-image-2.1-turbo-edit': {
     label: 'Qwen-Image 2.1 Turbo Edit',
@@ -121,7 +125,36 @@ const EDITORS: Record<EditModelOn<'mflux'>, { label: string; command: string; mo
       '--base-model',
       'qwen-image-2.1-turbo',
     ],
+    mask: '--mask-image',
   },
+  'fibo-2.0-dev-edit': {
+    label: 'FIBO 2.0 Dev Edit',
+    command: 'mflux-generate-fibo2-edit',
+    model: ['--model', 'mflux-community/fibo-2-0-dev-mflux-bf16', '--base-model', 'fibo2'],
+    mask: '--mask-path',
+    pasteBack: true,
+  },
+  'fibo-2.0-edit-turbo': {
+    label: 'FIBO 2.0 Edit Turbo',
+    command: 'mflux-generate-fibo2-edit',
+    model: [
+      '--model',
+      'mflux-community/fibo-2-0-edit-turbo-mflux-bf16',
+      '--base-model',
+      'fibo2-edit-turbo',
+    ],
+    mask: '--mask-path',
+    pasteBack: true,
+  },
+}
+interface Editor {
+  label: string
+  command: string
+  model: string[]
+  /** The option its mask goes in. */
+  mask: '--mask-image' | '--mask-path'
+  /** Changes the picture outside the mask, so it's pasted back through it (`pasteBack`). */
+  pasteBack?: boolean
 }
 
 /**
@@ -136,11 +169,12 @@ export function editArgs(
   output: string,
 ): string[] {
   const fit = (n: number) => String(Math.max(32, n - (n % 32)))
+  const editor = EDITORS[req.model as EditModelOn<'mflux'>]
   return [
-    ...(EDITORS[req.model as EditModelOn<'mflux'>]?.model ?? []),
+    ...(editor?.model ?? []),
     '--image-paths',
     join(req.dir, req.image),
-    ...(req.mask ? ['--mask-image', join(req.dir, req.mask)] : []),
+    ...(req.mask ? [editor?.mask ?? '--mask-image', join(req.dir, req.mask)] : []),
     '--prompt',
     req.instruction,
     '--seed',
@@ -251,6 +285,15 @@ export function mfluxImageGenerator(opts: MfluxOptions = {}): ImageGenerator {
       const args = editArgs(req, size, join(req.dir, file))
       await runCommand(editor.command, args, editor.label, signal, onProgress, onDownload)
       await mustExist(req.dir, file, editor.label)
+      // Pasted back, unless mflux had to make it smaller (a size not a multiple of 32).
+      if (editor.pasteBack && req.mask) {
+        const read = (name: string) => Deno.readFile(join(req.dir, name))
+        const [picture, edit, mask] = await Promise.all([req.image, file, req.mask].map(read))
+        const edited = pngSize(edit)
+        if (edited.width === size.width && edited.height === size.height) {
+          await Deno.writeFile(join(req.dir, file), await pasteBack(picture, edit, mask))
+        }
+      }
       return file
     },
     async generate(req, signal, onProgress, onDownload) {
