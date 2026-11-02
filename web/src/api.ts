@@ -593,8 +593,6 @@ export interface SessionBase {
 export interface ChainSession extends SessionBase {
   kind: 'chain'
   frames: ChainFrame[]
-  /** Render each Frame as it's made (on, or left out); off, only its prompt, to render later. */
-  renderFrames?: boolean
 }
 
 export interface StoryboardSession extends SessionBase {
@@ -683,13 +681,6 @@ export const deleteModelPictures = (id: string, imageModel: string) =>
     `/api/sessions/${id}/pictures?imageModel=${encodeURIComponent(imageModel)}`,
     { method: 'DELETE' },
   )
-
-export const setRenderFrames = (id: string, renderFrames: boolean) =>
-  request<ChainSession>(`/api/sessions/${id}/render-frames`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ renderFrames }),
-  })
 
 /** A saved Session as listed on Home. */
 export interface SessionSummary {
@@ -885,15 +876,19 @@ export async function streamEvents<E extends { type: string }>(
   }
 }
 
-/** Runs a Chain Frame (the Opening Frame when `action` is null), reporting its progress. */
+/**
+ * Runs a Chain Frame (the Opening Frame when `action` is null), reporting its progress; `render`
+ * off (this browser's switch) has it saved without its render queued.
+ */
 export const streamFrame = (
   sessionId: string,
   action: string | null,
   onEvent: (event: FrameEvent) => void,
+  render = true,
 ) =>
   streamEvents<FrameEvent>(
     `/api/sessions/${sessionId}/frames`,
-    action === null ? {} : { action },
+    { ...(action !== null && { action }), render },
     ['committed', 'declined', 'unclear', 'unchanged'],
     onEvent,
   )

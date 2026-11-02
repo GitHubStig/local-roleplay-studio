@@ -59,6 +59,7 @@ import { loadStyleCache, StyleScoreError, styleScores, unembedded } from './styl
 import type { VoiceEngine } from './voice/voice.ts'
 import { roleplayExcerpt } from './roleplay/prompt.ts'
 import { roleplayRoutes } from './roleplay/routes.ts'
+import { spokenText } from './roleplay/voice.ts'
 import { clipRoutes } from './video/routes.ts'
 import { type SessionsFolder, sessionsFolderRoutes } from './sessionsFolder.ts'
 import { checkRoleplayJob, type RoleplayJobContext, runRoleplayJob } from './roleplay/jobs.ts'
@@ -684,6 +685,22 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       deps: roleplayDeps,
       // Thinking off, as for pictures: a suggestion is a draft, and it should come quickly.
       suggestModel: (session) => deps.roleplayModel(textChoice(session, undefined, false)),
+      queuesAfterReply: async (session, after) => {
+        const machine = async (kind: JobKind) => machineOf(await jobBackendOf(session, kind))
+        const speak = after.speak && !(await featureOff('voices')) && await machine('speak')
+        const render = after.picture && after.render && !(await featureOff('images')) &&
+          await machine('render')
+        const picture = after.picture && await machine('picture')
+        return (frame) => {
+          if (speak && spokenText(frame, 'dialogue')) {
+            jobs.enqueue(session.id, 'speak', frame.index, speak)
+          }
+          if (picture) jobs.enqueue(session.id, 'picture', frame.index, picture)
+          if (render) {
+            jobs.enqueue(session.id, 'render', frame.index, render, imageChoiceOf(session))
+          }
+        }
+      },
       jobs,
       store: deps.sessions,
     }),
@@ -929,10 +946,8 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
           (settings.seedMode === 'fixed' ? settings.seed : randomSeed()),
         createdAt: new Date().toISOString(),
       }
-      // Every kind starts without pictures: a Chain then only writes each Frame's prompt, to
-      // render later, as a Storyboard and a Roleplay do until a render is asked for.
       const session: Session = kind === 'chain'
-        ? { ...base, kind, frames: [], renderFrames: !(await featureOff('images')) }
+        ? { ...base, kind, frames: [] }
         : kind === 'roleplay'
         ? { ...base, kind, cast: null, frames: [] }
         : { ...base, kind, frameCount, look: null, frames: [] }
@@ -1133,8 +1148,10 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
         locked(p.id!, 'frame', async (session) => {
           if (!needsChain(session)) return error('Only a Chain makes Frames from Actions', 409)
           // Rendered as it's made only while the Chain says so and pictures are on.
-          const render = session.renderFrames !== false && !(await featureOff('images'))
-          const body = await readJson(req) as { action?: unknown } | undefined
+          const body = await readJson(req) as { action?: unknown; render?: unknown } | undefined
+          // Rendered as it's made unless this browser's switch says not (sent as `render`), while
+          // pictures are on.
+          const render = body?.render !== false && !(await featureOff('images'))
           const opening = session.frames.length === 0
           let action: string | null = null
           if (!opening) {
@@ -1170,27 +1187,6 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
           })
         }),
     ],
-
-    // Whether a Chain renders each Frame as it's made: `{ renderFrames }`.
-    ['PUT', new URLPattern({ pathname: '/api/sessions/:id/render-frames' }), async (req, p) => {
-      const body = await readJson(req) as { renderFrames?: unknown } | undefined
-      if (typeof body?.renderFrames !== 'boolean') {
-        return error('renderFrames must be true or false', 400)
-      }
-      const session = await deps.sessions.load(p.id!)
-      if (!session) return error('Session not found', 404)
-      if (!needsChain(session)) return error('Only a Chain renders Frames as they are made', 409)
-      if (body.renderFrames) {
-        const off = await featureOff('images')
-        if (off) return off
-      }
-      return json(
-        await updateSession(deps.sessions, session.id, 'chain', (latest) => ({
-          ...latest,
-          renderFrames: body.renderFrames as boolean,
-        })),
-      )
-    }],
 
     ['DELETE', new URLPattern({ pathname: '/api/sessions/:id/frames/:index' }), (_req, p) => {
       const index = Number(p.index)
@@ -1488,7 +1484,6 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
               const chain = await chainFromStoryboard(deps.sessions, session, index, {
                 id: newSessionId(),
                 createdAt: new Date().toISOString(),
-                renderFrames: !(await featureOff('images')),
               })
               return json(chain, 201)
             } catch (err) {

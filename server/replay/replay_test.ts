@@ -31,19 +31,26 @@ Deno.test('a Session is created with the Scenario or Brief, and the seed, of the
   })
 })
 
-Deno.test('a Roleplay writes its Cast, begins, then sends each Message', () => {
+Deno.test('a Roleplay writes its Cast, begins, then sends each Message, asking for pictures or not', () => {
   const steps = stepsOf({ kind: 'roleplay', scenario: 't', messages: ['a', 'b'] })
+  const on = { picture: true, render: true }
   assertEquals(steps.map((s) => [s.path, s.body]), [
     ['roleplay/cast', undefined],
-    ['roleplay/begin', undefined],
-    ['roleplay/messages', { text: 'a' }],
-    ['roleplay/messages', { text: 'b' }],
+    ['roleplay/begin', on],
+    ['roleplay/messages', { text: 'a', ...on }],
+    ['roleplay/messages', { text: 'b', ...on }],
   ])
+  const off = stepsOf({ kind: 'roleplay', scenario: 't', messages: ['a'] }, false)
+  assertEquals(off[2].body, { text: 'a', picture: false, render: false })
 })
 
-Deno.test('a Chain makes its Opening Frame, then one for each Action', () => {
+Deno.test('a Chain makes its Opening Frame, then one for each Action, rendered or not', () => {
   const steps = stepsOf({ kind: 'chain', scenario: 't', actions: ['go'] })
-  assertEquals(steps.map((s) => [s.path, s.body]), [['frames', {}], ['frames', { action: 'go' }]])
+  assertEquals(steps.map((s) => [s.path, s.body]), [['frames', { render: true }], [
+    'frames',
+    { action: 'go', render: true },
+  ]])
+  assertEquals(stepsOf({ kind: 'chain', scenario: 't' }, false)[0].body, { render: false })
 })
 
 Deno.test('a Storyboard plans, then writes', () => {

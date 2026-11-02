@@ -106,7 +106,7 @@ export async function chainFromStoryboard(
   store: SessionStore,
   storyboard: StoryboardSession,
   upTo: number,
-  chain: Pick<ChainSession, 'id' | 'createdAt' | 'renderFrames'>,
+  chain: Pick<ChainSession, 'id' | 'createdAt'>,
 ): Promise<ChainSession> {
   const last = storyboard.frames[upTo]
   if (!storyboard.look || !last) throw new CopyError('No such Frame')
@@ -143,7 +143,6 @@ export async function chainFromStoryboard(
     seed: storyboard.seed,
     createdAt: chain.createdAt,
     frames,
-    ...(chain.renderFrames === undefined ? {} : { renderFrames: chain.renderFrames }),
   }
   const from = store.dir(storyboard.id)
   const to = store.dir(session.id)

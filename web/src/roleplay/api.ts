@@ -133,17 +133,39 @@ export type RoleplayEvent =
 
 const base = (id: string) => `/api/sessions/${id}/roleplay`
 
+/**
+ * What this browser's switches ask to follow a Reply: its line spoken (autoplay) and its picture
+ * rendered. The server queues them, after its picture, as it saves the Reply.
+ */
+export interface AfterReply {
+  speak: boolean
+  render: boolean
+}
+
 /** Writes (or, before the scene begins, rewrites) the Cast from the Brief, for review. */
 export const writeCast = (id: string, onEvent: (event: RoleplayEvent) => void) =>
   streamEvents<RoleplayEvent>(`${base(id)}/cast`, {}, ['cast'], onEvent)
 
 /** Begins the scene: the Character's opening Reply, from the Cast as it stands. */
-export const beginRoleplay = (id: string, onEvent: (event: RoleplayEvent) => void) =>
-  streamEvents<RoleplayEvent>(`${base(id)}/begin`, {}, ['replied'], onEvent)
+export const beginRoleplay = (
+  id: string,
+  after: AfterReply,
+  onEvent: (event: RoleplayEvent) => void,
+) => streamEvents<RoleplayEvent>(`${base(id)}/begin`, after, ['replied'], onEvent)
 
 /** Sends the player's message; ends with the reply, or `declined` if it crossed a Limit. */
-export const sendMessage = (id: string, text: string, onEvent: (event: RoleplayEvent) => void) =>
-  streamEvents<RoleplayEvent>(`${base(id)}/messages`, { text }, ['replied', 'declined'], onEvent)
+export const sendMessage = (
+  id: string,
+  text: string,
+  after: AfterReply,
+  onEvent: (event: RoleplayEvent) => void,
+) =>
+  streamEvents<RoleplayEvent>(
+    `${base(id)}/messages`,
+    { text, ...after },
+    ['replied', 'declined'],
+    onEvent,
+  )
 
 /**
  * Writes a message for the player to edit or send, from the story and what they've typed so far

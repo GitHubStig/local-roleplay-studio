@@ -108,7 +108,7 @@ describe('streamFrame', () => {
     expect(events).toHaveLength(2)
     expect(fetch).toHaveBeenCalledWith(
       '/api/sessions/s1/frames',
-      expect.objectContaining({ body: '{"action":"Sit"}' }),
+      expect.objectContaining({ body: '{"action":"Sit","render":true}' }),
     )
   })
 

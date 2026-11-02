@@ -34,7 +34,7 @@ Deno.test('A Session removed while a change to it is saving stays removed', () =
     await plain.save(chain())
     const { store, release } = slowSaves(plain)
     // A job's change has loaded the Session and is saving it as the Session is deleted.
-    const saving = updateSession(store, 'c1', 'chain', (s) => ({ ...s, renderFrames: false }))
+    const saving = updateSession(store, 'c1', 'chain', (s) => ({ ...s, seed: 8 }))
     await new Promise((r) => setTimeout(r, 10))
     const removing = removeSession(store, 'c1')
     release()

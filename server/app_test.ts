@@ -389,16 +389,13 @@ Deno.test('Without pictures every kind starts; a Chain writes its Frames without
       const res = await call('POST', '/api/sessions', { kind, brief: 'A rainy street.' })
       assertEquals(res.status, 201)
     }
-    const chain = await (await call('GET', '/api/sessions/s1')).json()
-    assertEquals(chain.renderFrames, false)
     const opening = await readEvents(await call('POST', '/api/sessions/s1/frames', {}))
     const frame = opening.at(-1)![1].frame as JsonFrame & { prompt: string }
     assertEquals(frame.pictures, [])
     assertStringIncludes(frame.prompt, 'standing')
     assertEquals(images.prompts.length, 0)
-    // Rendering, by the switch or a job, needs pictures.
-    const on = await call('PUT', '/api/sessions/s1/render-frames', { renderFrames: true })
-    assertEquals(on.status, 409)
+    // Rendering needs pictures: none is queued with the Frame, nor can one be asked for.
+    assertEquals(await (await call('GET', '/api/sessions/s1/jobs')).json(), [])
     const job = await call('POST', '/api/sessions/s1/jobs', { kind: 'render', frameIndex: 0 })
     assertEquals(job.status, 409)
 

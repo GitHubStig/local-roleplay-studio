@@ -27,7 +27,8 @@ async function roleplayWithArt(
   const { call } = harness
   await call('POST', '/api/sessions', { kind: 'roleplay', brief: 'A storm at sea.' })
   await readEvents(await call('POST', '/api/sessions/s1/roleplay/cast'))
-  await readEvents(await call('POST', '/api/sessions/s1/roleplay/begin'))
+  // Unpictured: each test asks for what it needs.
+  await readEvents(await call('POST', '/api/sessions/s1/roleplay/begin', { picture: false }))
   return harness
 }
 
@@ -86,7 +87,9 @@ Deno.test('A picture goes ahead of queued renders, and Clear empties the queue',
       call('POST', '/api/sessions/s1/jobs', { kind, frameIndex })
     await enqueue('picture', 0)
     await settled(call)
-    await readEvents(await call('POST', '/api/sessions/s1/roleplay/messages', { text: 'Sorry.' }))
+    await readEvents(
+      await call('POST', '/api/sessions/s1/roleplay/messages', { text: 'Sorry.', picture: false }),
+    )
     // Frame 0's render holds the queue; Frame 1's is queued behind it, then its picture.
     await enqueue('render', 0)
     await enqueue('render', 1)
@@ -250,8 +253,10 @@ Deno.test("Speaking a Frame designs the Character's voice first, and serves the 
     const { call } = setup({ root, settings: { textModel: 'x' }, roleplayModel: model, voice })
     await call('POST', '/api/sessions', { kind: 'roleplay', brief: 'A storm at sea.' })
     await readEvents(await call('POST', '/api/sessions/s1/roleplay/cast'))
-    await readEvents(await call('POST', '/api/sessions/s1/roleplay/begin'))
-    await readEvents(await call('POST', '/api/sessions/s1/roleplay/messages', { text: 'Sorry.' }))
+    await readEvents(await call('POST', '/api/sessions/s1/roleplay/begin', { picture: false }))
+    await readEvents(
+      await call('POST', '/api/sessions/s1/roleplay/messages', { text: 'Sorry.', picture: false }),
+    )
     const job = (kind: string, frameIndex: number) =>
       call('POST', '/api/sessions/s1/jobs', { kind, frameIndex })
     assertEquals((await job('speak', 1)).status, 409)
@@ -473,4 +478,43 @@ Deno.test('A voice is designed while the Cast is reviewed, before the scene begi
     const session = await (await call('GET', '/api/sessions/s1')).json()
     assertEquals([session.frames.length, session.voice.description], [0, 'A low, husky woman.'])
     assertEquals(voice.calls.map((c) => c.kind), ['design'])
+  }))
+
+Deno.test('A Reply’s picture, and its render as the switches ask, are queued as it’s saved', () =>
+  withTempDir(async (root) => {
+    const { call, settings } = setup({
+      root,
+      settings: { textModel: 'x' },
+      roleplayModel: scriptedRoleplayModel({
+        casts: [testCast],
+        replies: [replyOf('You are late.'), replyOf('Take the wheel.'), replyOf('Hold on.')],
+        looks: [testLook('Ink.', 'Mira Vance, 34.', 'Sam Reyes, 25.')],
+        bodies: [artBody, artBody, artBody],
+      }),
+    })
+    await call('POST', '/api/sessions', { kind: 'roleplay', brief: 'A storm at sea.' })
+    await readEvents(await call('POST', '/api/sessions/s1/roleplay/cast'))
+    const kinds = async () =>
+      (await (await call('GET', '/api/sessions/s1/jobs')).json()).map((j: {
+        kind: string
+        frameIndex: number
+      }) => `${j.kind} ${j.frameIndex}`)
+    // Queued by the time the page hears of the Reply: the stream's last event.
+    await readEvents(await call('POST', '/api/sessions/s1/roleplay/begin', { render: true }))
+    assertEquals(await kinds(), ['picture 0', 'render 0'])
+    await settled(call)
+    // Without the switch, the picture alone.
+    const message = (body: object) =>
+      call('POST', '/api/sessions/s1/roleplay/messages', { text: 'Sorry.', ...body })
+    await readEvents(await message({}))
+    assertEquals((await kinds()).slice(2), ['picture 1'])
+    await settled(call)
+    // Pictures off in Settings: the switch can't render it.
+    settings.current = {
+      ...settings.current,
+      features: { ...settings.current.features, images: false },
+    }
+    await readEvents(await message({ render: true }))
+    assertEquals((await kinds()).slice(3), ['picture 2'])
+    assertEquals(await settled(call), [])
   }))

@@ -46,7 +46,7 @@ const storyboard = (frames: StoryboardFrame[]): StoryboardSession => ({
   frames,
 })
 
-const chain = { id: 'chain', createdAt: '2026-10-16T01:00:00.000Z', renderFrames: true }
+const chain = { id: 'chain', createdAt: '2026-10-16T01:00:00.000Z' }
 
 /** Saves `board` with a file for each of its pictures, and their edits and painted areas. */
 async function saved(root: string, board: StoryboardSession) {
@@ -75,7 +75,7 @@ Deno.test('chainFromStoryboard copies the Frames up to one, as nine-sentence pro
     const made = await chainFromStoryboard(store, board, 1, chain)
 
     assertEquals(made.kind, 'chain')
-    assertEquals([made.brief, made.seed, made.renderFrames], [board.brief, 42, true])
+    assertEquals([made.brief, made.seed], [board.brief, 42])
     assertEquals(made.frames.map((f) => [f.index, f.action, f.outcome]), [
       [0, null, 'done'],
       [1, 'Beat 2', 'done'],

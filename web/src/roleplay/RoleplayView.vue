@@ -399,17 +399,19 @@ const personaName = computed(() => cast.value?.persona.name ?? 'You')
 // --- Streamed work.
 
 /**
- * What a new Reply sets going: its line spoken and its picture rendered, as the switches say, and
- * always its Image Prompt, written while the Text Model is still loaded (so it can be rendered
- * later, with no reload between renders).
+ * What this browser's switches ask to follow a Reply, sent with it: its line spoken and its
+ * picture rendered. The server queues them as it saves the Reply, after its Image Prompt, which is
+ * always written while the Text Model is still loaded (so it can be rendered later, with no reload
+ * between renders).
  */
-async function afterReply(frame: RoleplayFrame) {
+const afterOf = () => ({ speak: autoplay.value, render: renderReplies.value })
+
+/** A new Reply: its line is played once spoken, if autoplay asked for it; its jobs are queued. */
+function afterReply(frame: RoleplayFrame) {
   if (autoplay.value && featureOn.value('voices') && canSpeak(frame)) {
     toPlay.set(partKey(frame.index, 'dialogue'), { index: frame.index, part: 'dialogue' })
-    await queue('speak', frame.index)
   }
-  await queue('picture', frame.index)
-  if (renderReplies.value && featureOn.value('images')) await queue('render', frame.index)
+  refreshJobs()
 }
 
 function onEvent(event: RoleplayEvent) {
@@ -472,13 +474,13 @@ async function rewriteCast() {
 /** Begins the scene, saving any unsaved edits to the Cast first. */
 async function begin() {
   if (busy.value || !(await flushEdits('begun'))) return
-  await run({ kind: 'begin', reply: {} }, () => beginRoleplay(props.id, onEvent))
+  await run({ kind: 'begin', reply: {} }, () => beginRoleplay(props.id, afterOf(), onEvent))
 }
 
 async function send() {
   const text = draft.value.trim()
   if (!text || busy.value || !begun.value || !(await flushEdits('sent'))) return
-  run({ kind: 'message', message: text, reply: {} }, () => sendMessage(props.id, text, onEvent))
+  run({ kind: 'message', message: text, reply: {} }, () => sendMessage(props.id, text, afterOf(), onEvent))
 }
 
 /** The last suggestion written into the box, to tell whether it's still there untouched. */

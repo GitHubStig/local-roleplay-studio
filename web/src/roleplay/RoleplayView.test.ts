@@ -166,7 +166,7 @@ describe('RoleplayView', () => {
     expect(wrapper.find('[data-cast]').classes()).not.toContain('render-sweep')
 
     const opened = roleplaySession([frame(0, null, 'Get inside.')])
-    vi.mocked(roleplay.beginRoleplay).mockImplementation((_id, onEvent) => {
+    vi.mocked(roleplay.beginRoleplay).mockImplementation((_id, _after, onEvent) => {
       onEvent({ type: 'replied', frame: opened.frames[0], session: opened })
       return Promise.resolve()
     })
@@ -221,7 +221,7 @@ describe('RoleplayView', () => {
 
   it('shows the message at once, then the reply as each field arrives', async () => {
     const stream = held()
-    vi.mocked(roleplay.sendMessage).mockImplementation((_id, _text, onEvent) =>
+    vi.mocked(roleplay.sendMessage).mockImplementation((_id, _text, _after, onEvent) =>
       stream.call(onEvent)
     )
     const { wrapper } = await mountIt()
@@ -231,6 +231,7 @@ describe('RoleplayView', () => {
     expect(roleplay.sendMessage).toHaveBeenCalledWith(
       'r1',
       'Did anyone else make it?',
+      { speak: false, render: false },
       expect.any(Function),
     )
     expect(wrapper.find('[data-pending-message]').text()).toContain('Did anyone else make it?')
@@ -331,7 +332,7 @@ describe('RoleplayView', () => {
   })
 
   it('keeps a declined message in the box to reword', async () => {
-    vi.mocked(roleplay.sendMessage).mockImplementation((_id, _text, onEvent) => {
+    vi.mocked(roleplay.sendMessage).mockImplementation((_id, _text, _after, onEvent) => {
       onEvent({ type: 'declined', message: 'Declined: no restraint, captivity or non-consent.' })
       return Promise.resolve()
     })
@@ -637,56 +638,30 @@ describe('RoleplayView', () => {
       expect(wrapper.find('[data-listen]').exists()).toBe(false)
     })
 
-    it('speaks each new reply while Speak replies is on', async () => {
-      vi.mocked(api.queueJob).mockResolvedValue([job({ kind: 'speak', frameIndex: 1 })])
+    it('asks for each new reply to be spoken and rendered as its switches say, the server queueing them', async () => {
+      vi.mocked(api.queueJob).mockClear()
       const done = roleplaySession([frame(0, null, 'Get inside.'), frame(1, 'Hello.', 'Sit.')])
-      vi.mocked(roleplay.sendMessage).mockImplementation((_id, _text, onEvent) => {
-        onEvent({ type: 'replied', frame: done.frames[1], session: done })
-        return Promise.resolve()
-      })
-      const { wrapper } = await mountIt()
-      await wrapper.find('[data-autoplay]').setValue(true)
-      await wrapper.find('textarea').setValue('Hello.')
-      await buttonNamed(wrapper, 'Send').trigger('click')
-      await flushPromises()
-      expect(api.queueJob).toHaveBeenCalledWith('r1', 'speak', 1)
-    })
-
-    it('pictures each new reply, rendering it too with Render replies and Pictures on', async () => {
-      vi.mocked(api.queueJob).mockReset().mockResolvedValue([
-        job({ kind: 'picture', frameIndex: 1 }),
-      ])
-      const done = roleplaySession([frame(0, null, 'Get inside.'), frame(1, 'Hello.', 'Sit.')])
-      vi.mocked(roleplay.sendMessage).mockImplementation((_id, _text, onEvent) => {
+      vi.mocked(roleplay.sendMessage).mockImplementation((_id, _text, _after, onEvent) => {
         onEvent({ type: 'replied', frame: done.frames[1], session: done })
         return Promise.resolve()
       })
       const { wrapper } = await mountIt()
       const send = async (text: string) => {
-        vi.mocked(api.queueJob).mockClear()
+        vi.mocked(roleplay.sendMessage).mockClear()
         await wrapper.find('textarea').setValue(text)
         await buttonNamed(wrapper, 'Send').trigger('click')
         await flushPromises()
-        return vi.mocked(api.queueJob).mock.calls
+        return vi.mocked(roleplay.sendMessage).mock.calls[0][2]
       }
       expect((wrapper.find('[data-render-replies]').element as HTMLInputElement).checked).toBe(
         false,
       )
-      expect(await send('Hello.')).toEqual([['r1', 'picture', 1]])
-
+      expect(await send('Hello.')).toEqual({ speak: false, render: false })
       await wrapper.find('[data-render-replies]').setValue(true)
-      expect(await send('Hello.')).toEqual([['r1', 'picture', 1], ['r1', 'render', 1]])
-
-      // Pictures off: still pictured (it needs only the Text Model), but not rendered.
-      vi.mocked(api.getSettingsOptions).mockResolvedValue({
-        features: { ...ALL_AVAILABLE, images: { available: false, reason: 'mflux' } },
-      } as api.SettingsOptions)
-      await useFeatures().refreshFeatures()
-      expect(await send('Hello.')).toEqual([['r1', 'picture', 1]])
-      vi.mocked(api.getSettingsOptions).mockResolvedValue(
-        { features: ALL_AVAILABLE } as api.SettingsOptions,
-      )
-      await useFeatures().refreshFeatures()
+      await wrapper.find('[data-autoplay]').setValue(true)
+      expect(await send('Hello.')).toEqual({ speak: true, render: true })
+      // The page queues none of it itself (ADR 0031).
+      expect(api.queueJob).not.toHaveBeenCalled()
     })
 
     it('renders all that need it, picturing first the Frames without an Image Prompt', async () => {

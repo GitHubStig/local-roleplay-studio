@@ -39,7 +39,6 @@ import {
   type ChainFrame,
   type FrameEvent,
   type Made3d,
-  setRenderFrames,
   undoFrame,
 } from '../api'
 import { useFeatures } from '../composables/useFeatures'
@@ -82,6 +81,8 @@ const panel = ref<'log' | 'queue' | 'prompt'>('log')
 
 /** Viewing preferences, remembered per browser. */
 const captionHidden = useStoredFlag('caption-hidden')
+/** Render each new Frame as it's made (on), or only write its prompt: this browser's choice. */
+const renderFrames = useStoredFlag('chain-render-frames', true)
 const removedHidden = useStoredFlag('diff-removed-hidden')
 
 /**
@@ -179,7 +180,7 @@ async function runChainFrame(action: string | null) {
   notice.value = null
   pending.value = { phase: 'text' }
   try {
-    await streamFrame(props.id, action, onEvent)
+    await streamFrame(props.id, action, onEvent, renderFrames.value)
   } catch (err) {
     frameError.value = (err as Error).message
   } finally {
@@ -198,14 +199,6 @@ function submit() {
 
 /** Pictures on: a Chain can render as it goes; off, it only writes each Frame's prompt. */
 const { on: featureOn } = useFeatures()
-/** Flips whether each new Frame is rendered as it's made (the Chain's own switch). */
-async function switchRenderFrames(on: boolean) {
-  try {
-    session.value = await setRenderFrames(props.id, on)
-  } catch (err) {
-    frameError.value = (err as Error).message
-  }
-}
 
 const { jobs, jobsFor, hasJob, queue, queueEdit, queueClip, queueAll, dropJob, cancelAll, dismissFinished, retry, refreshJobs } = useJobs(props.id, {
   onSettled: async () => {
@@ -443,12 +436,7 @@ const promptDiff = computed(() => {
             class="flex cursor-pointer items-center gap-1.5 text-muted"
             title="Off: each Action writes only the new prompt, and you render the Frames you want"
           >
-            <input
-              type="checkbox"
-              :checked="session.renderFrames !== false"
-              data-render-frames
-              @change="switchRenderFrames(($event.target as HTMLInputElement).checked)"
-            />
+            <input v-model="renderFrames" type="checkbox" data-render-frames />
             Render each Frame
           </label>
         </div>
@@ -758,7 +746,7 @@ const promptDiff = computed(() => {
               <span
                 class="flex h-20 w-14 shrink-0 animate-pulse items-center justify-center rounded border border-dashed border-line text-xs text-muted"
               >
-                {{ pendingIndex }}
+                {{ pendingIndex + 1 }}
               </span>
               <span class="flex min-w-0 flex-col gap-1">
                 <span class="line-clamp-2 font-medium">{{ pendingAction }}</span>

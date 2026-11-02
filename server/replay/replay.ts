@@ -42,25 +42,33 @@ export const createBody = (replay: Replay) => ({
   ...(replay.seed !== undefined ? { seed: replay.seed } : {}),
 })
 
-/** What the player would do, step by step: each a request to the app. */
-export function stepsOf(replay: Replay): { path: string; body?: unknown; what: string }[] {
+/**
+ * What the player would do, step by step: each a request to the app. With `pictures`, a Roleplay's
+ * Replies and a Chain's Frames ask for their pictures as they're made, as the page's switches do,
+ * and the server queues them; without, none.
+ */
+export function stepsOf(
+  replay: Replay,
+  pictures = true,
+): { path: string; body?: unknown; what: string }[] {
   if (replay.kind === 'roleplay') {
+    const after = { picture: pictures, render: pictures }
     return [
       { path: 'roleplay/cast', what: 'the Cast' },
-      { path: 'roleplay/begin', what: 'the opening' },
+      { path: 'roleplay/begin', body: after, what: 'the opening' },
       ...(replay.messages ?? []).map((text, i) => ({
         path: 'roleplay/messages',
-        body: { text },
+        body: { text, ...after },
         what: `Message ${i + 1}`,
       })),
     ]
   }
   if (replay.kind === 'chain') {
     return [
-      { path: 'frames', body: {}, what: 'the Opening Frame' },
+      { path: 'frames', body: { render: pictures }, what: 'the Opening Frame' },
       ...(replay.actions ?? []).map((action, i) => ({
         path: 'frames',
-        body: { action },
+        body: { action, render: pictures },
         what: `Action ${i + 1}`,
       })),
     ]
@@ -126,24 +134,22 @@ async function main() {
   const session = (path: string, body?: unknown) =>
     api(`sessions/${id}/${path}`, { method: 'POST', body: JSON.stringify(body ?? {}) })
 
-  for (const step of stepsOf(replay)) {
+  const pictures = replay.pictures !== false && args.pictures
+  for (const step of stepsOf(replay, pictures)) {
     const start = performance.now()
     await follow(await session(step.path, step.body))
     console.log(`${step.what}: ${((performance.now() - start) / 1000).toFixed(0)} s`)
   }
 
-  if (replay.pictures !== false && args.pictures) {
+  // A Roleplay's and a Chain's were queued as each was made; a Storyboard's are asked for now.
+  if (pictures && replay.kind === 'storyboard') {
     const { frames } = await (await api(`sessions/${id}`)).json()
-    // A Roleplay's Art Agent writes each Image Prompt first; Chains and Storyboards have theirs.
-    const kinds = replay.kind === 'roleplay' ? ['picture', 'render'] : ['render']
-    for (const kind of kinds) {
-      for (let frameIndex = 0; frameIndex < frames.length; frameIndex++) {
-        const queued = await session('jobs', { kind, frameIndex })
-        if (!queued.ok) console.warn(`${kind} ${frameIndex}: ${(await queued.json()).error}`)
-      }
-      await jobsDone(api, id, kind)
+    for (let frameIndex = 0; frameIndex < frames.length; frameIndex++) {
+      const queued = await session('jobs', { kind: 'render', frameIndex })
+      if (!queued.ok) console.warn(`render ${frameIndex}: ${(await queued.json()).error}`)
     }
   }
+  if (pictures) await jobsDone(api, id, 'picture and render')
   console.log(`Done: ${args.server.replace(/\/$/, '')} → Session ${id}`)
 }
 

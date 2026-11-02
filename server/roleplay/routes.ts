@@ -7,6 +7,7 @@ import {
   beginRoleplay,
   type RoleplayDeps,
   RoleplayError,
+  type RoleplayEvent,
   RoleplayLimitError,
   sendMessage,
   setCast,
@@ -19,7 +20,24 @@ import { CastError } from './prompt.ts'
 import { suggestMessage } from './suggest.ts'
 import { logCallsUnder } from '../calls.ts'
 import { setVoiceDescription, VoiceError } from './voice.ts'
-import type { RoleplaySession } from './types.ts'
+import type { RoleplayFrame, RoleplaySession } from './types.ts'
+
+/**
+ * What follows a Reply, as the player's switches ask (in their browser): its line spoken, as
+ * autoplay plays it, and its picture rendered. Its picture (its Image Prompt) is written unless
+ * `picture` is false: left to be asked for, as tests and the replay tool may.
+ */
+export interface AfterReply {
+  speak: boolean
+  picture: boolean
+  render: boolean
+}
+
+/** What a Message or the opening was sent with to follow it. */
+const afterReplyOf = (body: unknown): AfterReply => {
+  const b = body as { speak?: unknown; picture?: unknown; render?: unknown } | undefined
+  return { speak: b?.speak === true, picture: b?.picture !== false, render: b?.render === true }
+}
 
 /** A player's message can be at most this long. */
 const MAX_MESSAGE_LENGTH = 4000
@@ -45,10 +63,27 @@ export interface RoleplayRouteContext {
   deps(session: Session): RoleplayDeps
   /** The model Suggest writes with: the Session's Text Model, Thinking off. */
   suggestModel(session: Session): RoleplayModel
+  /**
+   * Queues what follows a Reply as it's saved, as `after` asks, so the page that hears of it finds
+   * it in the queue: its line spoken, its picture, its render, in that order. Resolves, once it
+   * knows where each runs, with what queues them for the saved Reply's Frame.
+   */
+  queuesAfterReply(
+    session: RoleplaySession,
+    after: AfterReply,
+  ): Promise<(frame: RoleplayFrame) => void>
   /** Background work (pictures, renders, upscales…), to cancel what an Undo leaves behind. */
   jobs: SessionJobs
   store: SessionStore
 }
+
+/** `send`, queueing what follows a Reply (`queue`) as it's saved, before the page hears of it. */
+const queueing =
+  (send: (event: StreamEvent) => void, queue: (frame: RoleplayFrame) => void) =>
+  (event: RoleplayEvent) => {
+    if (event.type === 'replied') queue(event.frame)
+    send(event)
+  }
 
 /** The routes only a Roleplay has, under `/api/sessions/:id/roleplay/`. */
 export function roleplayRoutes(ctx: RoleplayRouteContext): Route[] {
@@ -86,12 +121,13 @@ export function roleplayRoutes(ctx: RoleplayRouteContext): Route[] {
         })
       })],
 
-    ['POST', path('begin'), (_req, p) =>
+    ['POST', path('begin'), (req, p) =>
       withRoleplay(p.id!, 'frame', async (session) => {
         if (!session.cast) return error('This Roleplay has no Cast yet', 409)
         if (session.frames.length) return error('The scene has already begun', 409)
+        const queue = await ctx.queuesAfterReply(session, afterReplyOf(await readJson(req)))
         return await ctx.stream(session, 0, false, async (send, signal) => {
-          await beginRoleplay(ctx.deps(session), session, send, signal)
+          await beginRoleplay(ctx.deps(session), session, queueing(send, queue), signal)
         })
       })],
 
@@ -104,8 +140,9 @@ export function roleplayRoutes(ctx: RoleplayRouteContext): Route[] {
         if (text.length > MAX_MESSAGE_LENGTH) {
           return error(`A message can be at most ${MAX_MESSAGE_LENGTH} characters`, 400)
         }
+        const queue = await ctx.queuesAfterReply(session, afterReplyOf(body))
         return ctx.stream(session, session.frames.length, false, async (send, signal) => {
-          await sendMessage(ctx.deps(session), session, text, send, signal)
+          await sendMessage(ctx.deps(session), session, text, queueing(send, queue), signal)
         })
       })],
 

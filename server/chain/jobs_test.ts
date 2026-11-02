@@ -650,9 +650,8 @@ Deno.test("A Chain carries on while a job runs, and Undo cancels the undone Fram
     const { call } = await chainOfTwo(root, { lito })
     await call('POST', '/api/sessions/s1/jobs', { kind: 'lito', frameIndex: 0 })
     // The next Frame isn't held up by the job (its render would wait its turn, so it has none).
-    await call('PUT', '/api/sessions/s1/render-frames', { renderFrames: false })
     const next = await readEvents(
-      await call('POST', '/api/sessions/s1/frames', { action: 'Kneel' }),
+      await call('POST', '/api/sessions/s1/frames', { action: 'Kneel', render: false }),
     )
     assertEquals(next.at(-1)![0], 'committed')
     await call('POST', '/api/sessions/s1/jobs', { kind: 'lito', frameIndex: 2 })
@@ -694,10 +693,11 @@ Deno.test('A Chain with rendering off writes prompts, and renders a Frame when a
       imageGenerator: images,
     })
     await call('POST', '/api/sessions', { scenarioId: 'test' })
-    const off = await call('PUT', '/api/sessions/s1/render-frames', { renderFrames: false })
-    assertEquals((await off.json()).renderFrames, false)
-    await readEvents(await call('POST', '/api/sessions/s1/frames', {}))
-    await readEvents(await call('POST', '/api/sessions/s1/frames', { action: 'Sit' }))
+    // This browser's switch off, sent with each Action.
+    await readEvents(await call('POST', '/api/sessions/s1/frames', { render: false }))
+    await readEvents(
+      await call('POST', '/api/sessions/s1/frames', { action: 'Sit', render: false }),
+    )
     assertEquals((await chainFrames(call)).map((f) => f.image), [null, null])
     assertEquals(images.prompts.length, 0)
 
@@ -707,8 +707,7 @@ Deno.test('A Chain with rendering off writes prompts, and renders a Frame when a
     assertMatch(second.image!, /^frame-1-[0-9a-f]{8}\.png$/)
     assertEquals(opening.image, null)
 
-    // Switched back on, the next Frame renders as it's made.
-    await call('PUT', '/api/sessions/s1/render-frames', { renderFrames: true })
+    // Switched back on (the default), the next Frame renders as it's made.
     await madeFrame(call, 'Kneel')
     assertMatch((await chainFrames(call))[2].image!, /^frame-2-[0-9a-f]{8}\.png$/)
     assertEquals(images.prompts.length, 2)

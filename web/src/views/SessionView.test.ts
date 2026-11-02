@@ -24,7 +24,6 @@ vi.mock('../api', async (importOriginal) => ({
   queueJob: vi.fn(),
   cancelJob: vi.fn(),
   retryJob: vi.fn(),
-  setRenderFrames: vi.fn(),
 }))
 
 /** A picture by the Chain's Image Model. */
@@ -161,7 +160,7 @@ describe('SessionView', () => {
     await textarea.setValue('Sit down')
     await textarea.trigger('keydown', { key: 'Enter' })
     await flushPromises()
-    expect(api.streamFrame).toHaveBeenCalledWith('s1', 'Sit down', expect.any(Function))
+    expect(api.streamFrame).toHaveBeenCalledWith('s1', 'Sit down', expect.any(Function), true)
     expect((textarea.element as HTMLTextAreaElement).value).toBe('')
     expect(wrapper.findAll('aside li')).toHaveLength(2)
   })
@@ -274,6 +273,8 @@ describe('SessionView', () => {
     await flushPromises()
     const entry = wrapper.find('[data-pending-frame]')
     expect(entry.text()).toContain('Sit down')
+    // Numbered as the Frames list numbers them, from 1: the second.
+    expect(entry.text()).toMatch(/^2/)
     expect(entry.attributes('aria-current')).toBe('true')
     // The Opening's picture is gone from the main panel: the new Frame has none yet.
     expect(wrapper.find('main [data-frame-picture]').exists()).toBe(false)
@@ -956,18 +957,10 @@ describe('SessionView', () => {
     expect(leaving()).toBe(false)
   })
 
-  it('renders a Frame made without its picture on request, and switches rendering', async () => {
-    vi.mocked(api.getSession).mockResolvedValue({
-      ...session([frame(0, null, { pictures: [] })]),
-      renderFrames: false,
-    })
+  it('renders a Frame made without its picture on request, and switches rendering in this browser', async () => {
+    vi.mocked(api.getSession).mockResolvedValue(session([frame(0, null, { pictures: [] })]))
     vi.mocked(api.queueJob).mockResolvedValue([job({ kind: 'render' })])
-    vi.mocked(api.setRenderFrames).mockImplementation((_id, on) =>
-      Promise.resolve({
-        ...session([frame(0, null, { pictures: [] })]),
-        renderFrames: on,
-      })
-    )
+    vi.mocked(api.streamFrame).mockImplementation(() => Promise.resolve())
     const { wrapper } = await mountIt()
     expect(wrapper.find('main').text()).toContain('Not rendered yet')
     // Nothing to upscale or make 3D of yet; Render queues the picture.
@@ -976,12 +969,16 @@ describe('SessionView', () => {
     await flushPromises()
     expect(api.queueJob).toHaveBeenCalledWith('s1', 'render', 0)
 
+    // On unless this browser switched it off; sent with each Action.
     const box = wrapper.find('[data-render-frames]')
-    expect((box.element as HTMLInputElement).checked).toBe(false)
-    await box.setValue(true)
+    expect((box.element as HTMLInputElement).checked).toBe(true)
+    await box.setValue(false)
+    expect(localStorage.getItem('chain-render-frames')).toBe('0')
+    await wrapper.find('textarea').setValue('Sit down')
+    await buttonNamed(wrapper, 'Send').trigger('click')
     await flushPromises()
-    expect(api.setRenderFrames).toHaveBeenCalledWith('s1', true)
-    expect((wrapper.find('[data-render-frames]').element as HTMLInputElement).checked).toBe(true)
+    expect(api.streamFrame).toHaveBeenCalledWith('s1', 'Sit down', expect.any(Function), false)
+    localStorage.removeItem('chain-render-frames')
   })
 
   it('queues a render of every Frame with no picture by its Image Model', async () => {
