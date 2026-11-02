@@ -69,9 +69,10 @@ beforeEach(() => {
   // The video model last picked in a Session is remembered in this browser.
   localStorage.clear()
   vi.mocked(api.writeClipPrompt).mockReset().mockImplementation(
-    async (_id, _index, _ask, onEvent) => {
+    (_id, _index, _ask, onEvent) => {
       onEvent({ type: 'clip-prompt-part', text: 'She ' })
       onEvent({ type: 'clip-prompt', text: 'She steps in. Sound: rain.' })
+      return Promise.resolve()
     },
   )
 })
@@ -108,12 +109,13 @@ describe('FrameClips', () => {
   })
 
   it('says why a prompt failed, and clears one written for another kind', async () => {
-    vi.mocked(api.writeClipPrompt).mockImplementationOnce(async (_id, _index, _ask, onEvent) => {
+    vi.mocked(api.writeClipPrompt).mockImplementationOnce((_id, _index, _ask, onEvent) => {
       onEvent({
         type: 'failed',
         message: 'A Frame is already in progress',
         sessionDiscarded: false,
       })
+      return Promise.resolve()
     })
     const wrapper = mountIt()
     await wrapper.find('[data-write-clip-prompt]').trigger('click')

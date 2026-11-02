@@ -20,7 +20,7 @@ export function useDoneNotice(sessionId: string) {
     title: 'Local Roleplay Studio',
     tag: 'queue-done',
   })
-  onClick(() => window.focus())
+  onClick(() => globalThis.focus())
 
   /** The queue has just finished, `failed` of its jobs failing. */
   return (failed: number) => {

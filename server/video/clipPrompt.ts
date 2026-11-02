@@ -50,8 +50,8 @@ const pictureOf = (session: Session, index: number) => session.frames[index]?.pr
  * on. A Play out isn't told the next Frame, even when there is one: it decides what happens next
  * for itself (the owner, 2026-10-29), leaving the story's way to the next picture to Into Next.
  */
-async function afterPicture(session: Session, index: number, kind: ClipKind): Promise<string> {
-  if (kind !== 'into-next') return ''
+function afterPicture(session: Session, index: number, kind: ClipKind): Promise<string> {
+  if (kind !== 'into-next') return Promise.resolve('')
   return loadPrompt('video/clip-next', {
     picture: pictureOf(session, index + 1),
     story: frameStory(session, index + 1),

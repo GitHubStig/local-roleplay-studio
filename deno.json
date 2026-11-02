@@ -28,7 +28,10 @@
       "command": "deno run --allow-net --allow-read server/replay/replay.ts"
     },
     "build": "cd web && deno task build",
-    "check": "cd server && deno check . && cd ../web && deno task typecheck"
+    "check": {
+      "description": "Lint everything (deno lint), then type-check the server and the web app",
+      "command": "deno lint && cd server && deno check . && cd ../web && deno task typecheck"
+    }
   },
   "fmt": {
     "semiColons": false,
