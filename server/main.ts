@@ -221,12 +221,13 @@ async function logFeatures(saved: Settings) {
     if (!uses.imageModel && !uses.upscaler && !uses.voices && !uses.videoModel) continue
     const address = backendAddress(comfy)
     const status = await comfyuiStatus(comfy.address, uses)
+    const missing = status.up ? Object.values(status.missing).join('; ') : ''
     console.log(
       !status.up
         ? `ComfyUI: not answering at ${address}; start it before rendering or speaking`
-        : status.ready
+        : !missing
         ? `ComfyUI at ${address}: up, ${status.version} on ${status.device}, with what it's sent`
-        : `ComfyUI at ${address}: up (${status.version}), but ${status.missing}`,
+        : `ComfyUI at ${address}: up (${status.version}), but ${missing}`,
     )
   }
 }

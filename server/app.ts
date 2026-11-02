@@ -10,7 +10,7 @@ import {
   type ImageBackendKind,
   imageModelsOf,
 } from './images/imageModels.ts'
-import type { ComfyStatus } from './comfyui/status.ts'
+import type { ComfyStatus, ComfyUses } from './comfyui/status.ts'
 import { UPSCALERS } from './images/upscalers.ts'
 import { COMFYUI_VIDEO_MODELS } from './video/comfyui/models.ts'
 import { crossedLimit, LimitError, setLimitsEnabled } from './limits.ts'
@@ -144,10 +144,7 @@ export interface AppDeps {
    */
   textBackendOf?: (model: string) => Promise<Backend | undefined>
   /** Whether ComfyUI answers at an address, and can run what Settings send it (for Settings). */
-  comfyuiStatus?: (
-    baseUrl: string,
-    uses: { imageModel?: string; upscaler?: string; voices?: boolean; videoModel?: string },
-  ) => Promise<ComfyStatus>
+  comfyuiStatus?: (baseUrl: string, uses: ComfyUses) => Promise<ComfyStatus>
   scenarios: ScenarioLibrary
   sessions: SessionStore
   /** Where the Sessions are, which the player can move; left out, they can't. */
@@ -745,12 +742,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
         )
       }
       if (!deps.comfyuiStatus) return error("ComfyUI isn't set up on this server", 409)
-      const { imageModel, upscaler, voices, videoModel } = body as {
-        imageModel?: string
-        upscaler?: string
-        voices?: boolean
-        videoModel?: string
-      }
+      const { imageModel, upscaler, voices, videoModel } = body as ComfyUses
       return json(
         await deps.comfyuiStatus(body.address.trim(), { imageModel, upscaler, voices, videoModel }),
       )

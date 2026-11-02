@@ -173,7 +173,7 @@ Deno.test('POST /api/settings/comfyui checks an address not saved yet', async ()
         up: true,
         version: '0.39.1',
         device: 'cuda:0 NVIDIA GeForce RTX 4070',
-        ready: true,
+        missing: {},
       })
     },
   })

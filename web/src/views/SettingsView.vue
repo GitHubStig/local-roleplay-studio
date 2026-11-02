@@ -384,6 +384,7 @@ function saveNow() {
                 :choices="choicesFor('images')"
                 :goes-to="whereTo('images')"
                 :status="comfy[whereTo('images')?.id ?? '']"
+                :uses="['imageModel']"
                 data-run-on="images"
                 @check="checkComfy"
               />
@@ -483,6 +484,7 @@ function saveNow() {
                   :choices="choicesFor('edits')"
                   :goes-to="whereTo('edits')"
                   :status="comfy[whereTo('edits')?.id ?? '']"
+                  :uses="[]"
                   data-run-on="edits"
                   @check="checkComfy"
                 />
@@ -518,6 +520,7 @@ function saveNow() {
                   :choices="choicesFor('upscale')"
                   :goes-to="whereTo('upscale')"
                   :status="comfy[whereTo('upscale')?.id ?? '']"
+                  :uses="['upscaler']"
                   data-run-on="upscale"
                   @check="checkComfy"
                 >
@@ -553,6 +556,7 @@ function saveNow() {
               :choices="choicesFor('voices')"
               :goes-to="whereTo('voices')"
               :status="comfy[whereTo('voices')?.id ?? '']"
+              :uses="['voices']"
               data-run-on="voices"
               @check="checkComfy"
             >
@@ -628,6 +632,7 @@ function saveNow() {
                 :choices="clipChoices"
                 :goes-to="clipsTo"
                 :status="comfy[clipsTo?.id ?? '']"
+                :uses="['videoModel']"
                 data-run-on="video"
                 @check="checkComfy"
               >

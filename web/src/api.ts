@@ -245,19 +245,27 @@ export const moveSessionsFolder = (path: string) =>
 
 export const getSettingsOptions = () => request<SettingsOptions>('/api/settings/options')
 
-/** Whether ComfyUI answers at an address, and has the files of what will run there. */
+/** What Settings would send a ComfyUI: the models and whether voices, any left out. */
+export interface ComfyUses {
+  imageModel?: string
+  upscaler?: string
+  voices?: boolean
+  videoModel?: string
+}
+
+/**
+ * Whether ComfyUI answers at an address, and has the files of what will run there: what's missing
+ * by what it's missing for, so each tab shows only its own.
+ */
 export type ComfyStatus =
-  | { up: true; version: string; device: string; ready: boolean; missing?: string }
+  | { up: true; version: string; device: string; missing: { [use in keyof ComfyUses]?: string } }
   | { up: false; error: string }
 
 /**
  * Checks a ComfyUI at an address not saved yet ('' for its usual one here), for the Image Model,
  * the upscaler and voices that would run there.
  */
-export const checkComfyUI = (
-  address: string,
-  uses: { imageModel?: string; upscaler?: string; voices?: boolean; videoModel?: string },
-) =>
+export const checkComfyUI = (address: string, uses: ComfyUses) =>
   request<ComfyStatus>('/api/settings/comfyui', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

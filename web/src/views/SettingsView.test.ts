@@ -202,7 +202,7 @@ describe('SettingsView', () => {
       up: true,
       version: '0.39.1',
       device: 'mps',
-      ready: true,
+      missing: {},
     })
     await status().find('[data-check-comfy]').trigger('click')
     await flushPromises()
@@ -242,7 +242,7 @@ describe('SettingsView', () => {
       up: true,
       version: '0.39.1',
       device: 'cuda:0 NVIDIA GeForce RTX 4070',
-      ready: true,
+      missing: {},
     })
     const wrapper = mount(SettingsView)
     await flushPromises()
@@ -284,8 +284,10 @@ describe('SettingsView', () => {
       up: true,
       version: '0.39.2',
       device: 'cuda:0 NVIDIA GeForce RTX 4070',
-      ready: false,
-      missing: "ComfyUI doesn't have the TTS Audio Suite nodes voices need",
+      missing: {
+        voices: "ComfyUI doesn't have the TTS Audio Suite nodes voices need",
+        videoModel: "ComfyUI doesn't have LTX 2.5's files",
+      },
     })
     const wrapper = mount(SettingsView)
     await flushPromises()
@@ -302,8 +304,15 @@ describe('SettingsView', () => {
       voices: true,
       videoModel: 'ltx-2.5',
     })
-    expect(wrapper.find('[data-tab-panel="voice"] [data-comfy-status]').text()).toContain(
-      'TTS Audio Suite nodes',
+    // Each tab says only what's missing for its own work; the Machines tab, all of it.
+    const voiceStatus = wrapper.find('[data-tab-panel="voice"] [data-comfy-status]').text()
+    expect(voiceStatus).toContain('TTS Audio Suite nodes')
+    expect(voiceStatus).not.toContain('LTX 2.5')
+    expect(wrapper.find('[data-run-on="video"] [data-comfy-status]').text()).not.toContain(
+      'TTS Audio Suite',
+    )
+    expect(wrapper.find('[data-backend="comfyui"] [data-comfy-status]').text()).toContain(
+      "TTS Audio Suite nodes voices need; ComfyUI doesn't have LTX 2.5's files",
     )
   })
 
@@ -533,7 +542,7 @@ describe('SettingsView', () => {
       up: true,
       version: '0.43.1',
       device: 'cuda:0',
-      ready: true,
+      missing: {},
     })
     const wrapper = mount(SettingsView, { attachTo: document.body })
     await flushPromises()

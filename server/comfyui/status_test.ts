@@ -18,19 +18,18 @@ Deno.test("Settings' check: ComfyUI's version and device, and whether the model'
       up: true,
       version: '0.39.1',
       device: 'mps',
-      ready: true,
+      missing: {},
     })
     const status = await comfyuiStatus(missing.url, qwen)
-    assertEquals([status.up, status.up && status.ready], [true, false])
-    assertEquals(status.up && status.missing?.includes('vae/'), true)
-    // Upscaling there too: the Mac's files have Qwen-Image's but not SeedVR2's.
+    assertEquals(status.up && status.missing.imageModel?.includes('vae/'), true)
+    // Upscaling there too: the Mac's files have Qwen-Image's but not SeedVR2's, and only the
+    // upscaler is said to be missing them.
     const both = await comfyuiStatus(ready.url, { ...qwen, upscaler: 'seedvr2-7b' })
-    assertEquals(both.up && [both.ready, both.missing], [
-      false,
-      "ComfyUI doesn't have SeedVR2 7B's files: diffusion_models/ " +
-      '(^seedvr2_7b_int8 or ^seedvr2_7b_fp8 or ^seedvr2_7b_(?!sharp).*\\.safetensors$); ' +
-      'vae/ (^seedvr2_ema_vae.*\\.safetensors$ or ^ema_vae)',
-    ])
+    assertEquals(both.up && both.missing, {
+      upscaler: "ComfyUI doesn't have SeedVR2 7B's files: diffusion_models/ " +
+        '(^seedvr2_7b_int8 or ^seedvr2_7b_fp8 or ^seedvr2_7b_(?!sharp).*\\.safetensors$); ' +
+        'vae/ (^seedvr2_ema_vae.*\\.safetensors$ or ^ema_vae)',
+    })
   } finally {
     await ready.close()
     await missing.close()
@@ -47,13 +46,13 @@ Deno.test("Settings' check for voices: TTS Audio Suite's nodes, naming those mis
       up: true,
       version: '0.39.1',
       device: 'mps',
-      ready: true,
+      missing: {},
     })
     const status = await comfyuiStatus(bare.url, { voices: true })
-    assertEquals(status.up && status.ready, false)
-    assertEquals(status.up && status.missing?.includes('Qwen3TTSEngineNode'), true)
-    assertEquals(status.up && status.missing?.includes('HiggsAudioV3EngineNode'), false)
-    assertEquals(status.up && status.missing?.includes('install TTS Audio Suite'), true)
+    const voices = status.up ? status.missing.voices ?? '' : ''
+    assertStringIncludes(voices, 'Qwen3TTSEngineNode')
+    assertEquals(voices.includes('HiggsAudioV3EngineNode'), false)
+    assertStringIncludes(voices, 'install TTS Audio Suite')
   } finally {
     await ready.close()
     await bare.close()
@@ -70,13 +69,19 @@ Deno.test("Settings' check for clips: the video model's files, naming those miss
   const noAudio = fakeComfyUI({ files: { ...ltx, vae: ['ltx-2.5-video-vae-bf16.safetensors'] } })
   try {
     const video = { videoModel: 'ltx-2.5' }
-    assertEquals((await comfyuiStatus(ready.url, video)).up && 'ready', 'ready')
+    const fine = await comfyuiStatus(ready.url, video)
+    assertEquals(fine.up && fine.missing, {})
     const status = await comfyuiStatus(noAudio.url, video)
-    assertEquals(status.up && status.ready, false)
-    assertStringIncludes(status.up ? status.missing ?? '' : '', "LTX 2.5's files: vae/ (^ltx-2")
-    assertStringIncludes(status.up ? status.missing ?? '' : '', 'audio-vae')
+    const clips = status.up ? status.missing.videoModel ?? '' : ''
+    assertStringIncludes(clips, "LTX 2.5's files: vae/ (^ltx-2")
+    assertStringIncludes(clips, 'audio-vae')
+    // The Image Model's files, missing here too, are left to its own tab.
+    const both = await comfyuiStatus(noAudio.url, { ...video, imageModel: 'qwen-image-2.1' })
+    assertEquals(both.up && Object.keys(both.missing), ['imageModel', 'videoModel'])
     const unknown = await comfyuiStatus(ready.url, { videoModel: 'wan-9' })
-    assertEquals(unknown.up && unknown.missing, 'ComfyUI has no video model "wan-9" here')
+    assertEquals(unknown.up && unknown.missing, {
+      videoModel: 'ComfyUI has no video model "wan-9" here',
+    })
   } finally {
     await ready.close()
     await noAudio.close()

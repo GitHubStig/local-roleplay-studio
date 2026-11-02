@@ -4,9 +4,25 @@ import { type ComfyModel, findComfyModel, findComfyUpscaler } from '../images/co
 import { VOICE_NODES } from '../voice/comfyui/comfyui.ts'
 import { findComfyVideoModel } from '../video/comfyui/models.ts'
 
-/** Whether ComfyUI answers at an address, and can run what Settings send it: for Settings. */
+/** What Settings would send a ComfyUI: the models and whether voices, any left out. */
+export interface ComfyUses {
+  imageModel?: string
+  upscaler?: string
+  voices?: boolean
+  videoModel?: string
+}
+
+/**
+ * Whether ComfyUI answers at an address, and can run what Settings send it: for Settings. What's
+ * missing is by what it's missing for, so each tab shows only its own.
+ */
 export type ComfyStatus =
-  | { up: true; version: string; device: string; ready: boolean; missing?: string }
+  | {
+    up: true
+    version: string
+    device: string
+    missing: { [use in keyof ComfyUses]?: string }
+  }
   | { up: false; error: string }
 
 /**
@@ -16,7 +32,7 @@ export type ComfyStatus =
  */
 export async function comfyuiStatus(
   baseUrl: string,
-  uses: { imageModel?: string; upscaler?: string; voices?: boolean; videoModel?: string },
+  uses: ComfyUses,
 ): Promise<ComfyStatus> {
   const base = comfyBase(baseUrl)
   const signal = AbortSignal.timeout(5000)
@@ -31,20 +47,21 @@ export async function comfyuiStatus(
     version: stats.system?.comfyui_version ?? '?',
     device: stats.devices?.[0]?.name ?? '?',
   }
-  const missing: string[] = []
+  const missing: { [use in keyof ComfyUses]?: string } = {}
   const check = async (
-    id: string | undefined,
+    use: 'imageModel' | 'upscaler' | 'videoModel',
     find: (id: string) => Pick<ComfyModel, 'label' | 'files'> | undefined,
     what: string,
   ) => {
+    const id = uses[use]
     if (id === undefined) return
     const model = find(id)
-    if (!model) return missing.push(`ComfyUI has no ${what} "${id}" here`)
-    await modelFiles(base, model, signal).catch((err) => missing.push((err as Error).message))
+    if (!model) return missing[use] = `ComfyUI has no ${what} "${id}" here`
+    await modelFiles(base, model, signal).catch((err) => missing[use] = (err as Error).message)
   }
-  await check(uses.imageModel, findComfyModel, 'Image Model')
-  await check(uses.upscaler, findComfyUpscaler, 'upscaler')
-  await check(uses.videoModel, findComfyVideoModel, 'video model')
+  await check('imageModel', findComfyModel, 'Image Model')
+  await check('upscaler', findComfyUpscaler, 'upscaler')
+  await check('videoModel', findComfyVideoModel, 'video model')
   if (uses.voices) {
     const absent = []
     for (const node of VOICE_NODES) {
@@ -52,13 +69,10 @@ export async function comfyuiStatus(
       if (!info[node]) absent.push(node)
     }
     if (absent.length) {
-      missing.push(
+      missing.voices =
         `ComfyUI doesn't have the TTS Audio Suite nodes voices need (${absent.join(', ')}): ` +
-          'install TTS Audio Suite through its Manager',
-      )
+        'install TTS Audio Suite through its Manager'
     }
   }
-  return missing.length
-    ? { ...up, ready: false, missing: missing.join('; ') }
-    : { ...up, ready: true }
+  return { ...up, missing }
 }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { type Backend, BACKEND_NAMES, type ComfyStatus } from '../api'
+import { type Backend, BACKEND_NAMES, type ComfyStatus, type ComfyUses } from '../api'
 import ComfyStatusLine from './ComfyStatusLine.vue'
 import SelectField from './SelectField.vue'
 
@@ -15,6 +15,8 @@ defineProps<{
   goesTo?: Backend
   /** Its check, when it goes to a ComfyUI. */
   status?: ComfyStatus | 'checking'
+  /** What of the check is this work's (`ComfyStatusLine`). */
+  uses?: (keyof ComfyUses)[]
 }>()
 const preferred = defineModel<string>({ required: true })
 defineEmits<{ check: [backend: Backend] }>()
@@ -43,6 +45,7 @@ const named = (b: Backend) =>
     <ComfyStatusLine
       v-if="goesTo?.kind === 'comfyui'"
       :status="status ?? null"
+      :uses="uses"
       @check="$emit('check', goesTo)"
     />
   </label>
