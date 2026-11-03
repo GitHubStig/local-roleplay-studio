@@ -417,7 +417,7 @@ Deno.test('POST /api/scenarios/suggest suggests for one part of the Scenario as 
   const ask = (field: string, scenario: object = testScenario) =>
     call('POST', '/api/scenarios/suggest', { scenario, field })
   assertEquals(await (await ask('time')).json(), { text: 'A winter night.' })
-  assertEquals(textModel.suggestRequests, ['the Time: the time of day, and the weather'])
+  assertEquals(textModel.suggestRequests, [{ scenario: testScenario, field: 'time', notes: '' }])
   assertEquals((await ask('people.nobody.goal')).status, 400)
   assertEquals((await ask('time', { ...testScenario, opening: '' })).status, 400)
 })

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import Icon from '../components/Icon.vue'
-import SuggestionNote, { type Hint } from './SuggestionNote.vue'
+import SuggestButton, { type Hint } from './SuggestButton.vue'
+import TruthBox from './TruthBox.vue'
 
 /** A list of Truths, the story's or one Person's: each editable, and removed with its button. */
 defineProps<{
@@ -22,43 +23,29 @@ const add = (text = '') => (truths.value = [...truths.value, text])
 <template>
   <div class="flex flex-col gap-1 text-xs text-muted" :data-truths="field">
     {{ label }}
-    <div v-for="(truth, i) in truths" :key="i" class="flex items-center gap-1">
-      <input
-        :value="truth"
-        type="text"
-        class="min-w-0 flex-1 rounded border border-line bg-surface px-2 py-1 text-sm text-fg disabled:opacity-60"
-        :disabled="disabled"
-        :aria-label="`${label} ${i + 1}`"
-        data-truth
-        @input="set(i, ($event.target as HTMLInputElement).value)"
-      />
+    <TruthBox
+      v-for="(truth, i) in truths"
+      :key="i"
+      :model-value="truth"
+      :label="`${label} ${i + 1}`"
+      :disabled="disabled"
+      @update:model-value="set(i, $event)"
+      @remove="remove(i)"
+    />
+    <p v-if="!truths.length && hint.offer" class="italic" data-offer>Suggested: {{ hint.offer }}</p>
+    <div class="flex items-center gap-3">
       <button
         type="button"
-        class="rounded p-1 hover:text-danger disabled:opacity-50"
+        class="flex items-center gap-1 rounded py-0.5 hover:text-fg disabled:opacity-50"
         :disabled="disabled"
-        title="Remove this Truth"
-        data-remove-truth
-        @click="remove(i)"
+        data-add-truth
+        @click="add()"
       >
-        <Icon name="x" />
+        <Icon name="plus" class="size-4" />
+        Add a Truth
       </button>
+      <SuggestButton :hint="hint" :disabled="disabled" @suggest="emit('suggest')" />
     </div>
-    <SuggestionNote
-      v-if="!truths.length"
-      :hint="hint"
-      :disabled="disabled"
-      @use="add(hint.text)"
-      @suggest="emit('suggest')"
-    />
-    <button
-      type="button"
-      class="flex items-center gap-1 self-start rounded py-0.5 hover:text-fg disabled:opacity-50"
-      :disabled="disabled"
-      data-add-truth
-      @click="add()"
-    >
-      <Icon name="plus" class="size-4" />
-      Add a Truth
-    </button>
+    <p v-if="hint.error" class="text-danger" data-suggest-error>{{ hint.error }}</p>
   </div>
 </template>

@@ -39,14 +39,43 @@ export function partOf(scenario: Scenario, field: string): string | undefined {
   return PERSON_PARTS[part as keyof typeof PERSON_PARTS](person.name)
 }
 
-export async function suggestMessages(scenario: Scenario, what: string): Promise<ChatMessage[]> {
+/** What Suggest is asked: one part of a Scenario, with what the player typed there as notes. */
+export interface SuggestRequest {
+  scenario: Scenario
+  field: string
+  /** What the player typed in the part, to build on; '' for a new suggestion from the story alone. */
+  notes: string
+}
+
+/**
+ * The Scenario with `field` emptied, so a suggestion isn't anchored on what's there (the player's
+ * own text goes as notes instead).
+ */
+export function withoutPart(scenario: Scenario, field: string): Scenario {
+  if (Object.hasOwn(STORY_PARTS, field)) {
+    return { ...scenario, [field]: field === 'truths' ? [] : '' }
+  }
+  const [, id, part] = field.match(/^people\.([^.]+)\.([a-z]+)$/) ?? []
+  return {
+    ...scenario,
+    people: scenario.people.map((p) =>
+      p.id === id ? { ...p, [part]: part === 'truths' ? [] : '' } : p
+    ),
+  }
+}
+
+export async function suggestMessages(
+  { scenario, field, notes }: SuggestRequest,
+): Promise<ChatMessage[]> {
+  const what = partOf(scenario, field)!
   return [
     { role: 'system', content: await loadPrompt('scenario/suggest', { what }) },
     {
       role: 'user',
       content: await loadPrompt('scenario/suggest-request', {
-        scenario: scenarioMarkdown(scenario),
+        scenario: scenarioMarkdown(withoutPart(scenario, field)),
         what,
+        notes: notes ? await loadPrompt('scenario/suggest-notes', { notes }) : '',
       }),
     },
   ]

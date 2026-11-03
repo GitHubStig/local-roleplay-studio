@@ -4,6 +4,7 @@ import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { getHealth, KIND_LABELS } from './api'
 import { useCurrentSession } from './composables/useCurrentSession'
+import { scenarioPagePath, useScenarioDraft } from './composables/useScenarioDraft'
 import { sessionPath } from './sessionPath'
 import ThemeToggle from './components/ThemeToggle.vue'
 import Icon from './components/Icon.vue'
@@ -19,6 +20,13 @@ const { currentSessionId, currentSessionKind, currentSessionTitle } = useCurrent
 const currentTo = computed(() =>
   currentSessionId.value ? sessionPath(currentSessionId.value, currentSessionKind.value) : null
 )
+/** The Scenario being set up leads back to its page, as the current Session does to it. */
+const { scenarioDraft } = useScenarioDraft()
+const scenarioTo = computed(() => scenarioDraft.value && scenarioPagePath(scenarioDraft.value.from))
+const scenarioTitle = computed(() => {
+  const d = scenarioDraft.value
+  return d?.scenario?.title ?? (d && 'brief' in d.from ? d.from.brief : '')
+})
 const onSession = computed(() =>
   route.name === 'session' || route.name === 'storyboard' || route.name === 'roleplay'
 )
@@ -69,6 +77,22 @@ useEventListener(window, 'focus', checkServer)
               <template v-if="currentSessionTitle">
                 <span class="text-muted" aria-hidden="true">·</span>
                 <span class="truncate" data-current-title>{{ currentSessionTitle }}</span>
+              </template>
+            </span>
+          </RouterLink>
+          <RouterLink
+            v-if="scenarioTo"
+            :to="scenarioTo"
+            class="tab min-w-0 max-w-80"
+            :class="{ 'tab-active': route.name === 'scenario' }"
+            :title="`The Scenario you're setting up: ${scenarioTitle}`"
+            data-current-scenario
+          >
+            <span class="flex min-w-0 items-baseline gap-1.5">
+              <span class="shrink-0 text-xs uppercase tracking-wide text-muted">Scenario</span>
+              <template v-if="scenarioTitle">
+                <span class="text-muted" aria-hidden="true">·</span>
+                <span class="truncate">{{ scenarioTitle }}</span>
               </template>
             </span>
           </RouterLink>

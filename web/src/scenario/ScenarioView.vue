@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   createSession,
@@ -14,17 +14,26 @@ import {
   type Suggestion,
 } from '../api'
 import Icon from '../components/Icon.vue'
+import SelectField from '../components/SelectField.vue'
 import { useStoredString } from '../composables/storage'
+import {
+  clearScenarioDraft,
+  sameSource,
+  saveScenarioDraft,
+  type ScenarioSource,
+  useScenarioDraft,
+} from '../composables/useScenarioDraft'
 import { useTextModelReady } from '../composables/useTextModelReady'
 import { sessionPath } from '../sessionPath'
 import ScenarioField from './ScenarioField.vue'
-import type { Hint } from './SuggestionNote.vue'
+import type { Hint } from './SuggestButton.vue'
 import TruthList from './TruthList.vue'
 
 /**
  * The Scenario page (ADR 0032): a Scenario picked on Home (`id`), or a typed Brief (`?brief=`),
  * expanded as it opens, edited by hand, and started as a Session. Edits go to the Session, not to
- * the Scenario's file.
+ * the Scenario's file; until it starts, they're kept per browser (`useScenarioDraft`), so the page
+ * can be left and come back to.
  */
 const props = defineProps<{ id?: string }>()
 const route = useRoute()
@@ -32,6 +41,10 @@ const router = useRouter()
 const { blocker: textModelBlocker } = useTextModelReady()
 
 const brief = computed(() => (typeof route.query.brief === 'string' ? route.query.brief : ''))
+const source = computed<ScenarioSource>(() =>
+  props.id ? { scenarioId: props.id } : { brief: brief.value }
+)
+const { scenarioDraft } = useScenarioDraft()
 /** The Scenario as it's being edited; null until it loads (or, for a Brief, until it's expanded). */
 const draft = ref<Scenario | null>(null)
 const suggestions = ref<Suggestion[]>([])
@@ -49,12 +62,10 @@ async function expand() {
   expanding.value = true
   expandError.value = ''
   try {
-    const result = await expandScenario(
-      props.id ? { scenarioId: props.id } : { brief: brief.value },
-      call.signal,
-    )
+    const result = await expandScenario(source.value, call.signal)
     draft.value = result.scenario
     suggestions.value = result.suggestions
+    lastSuggestion = {}
   } catch (err) {
     if (!call.signal.aborted) expandError.value = (err as Error).message
   } finally {
@@ -63,6 +74,13 @@ async function expand() {
 }
 
 onMounted(async () => {
+  // Back to the Scenario being set up: as it was left, without expanding it again.
+  const saved = scenarioDraft.value
+  if (saved?.scenario && sameSource(saved.from, source.value)) {
+    draft.value = saved.scenario
+    suggestions.value = saved.suggestions
+    return
+  }
   if (props.id) {
     try {
       draft.value = await getScenario(props.id)
@@ -78,26 +96,77 @@ onMounted(async () => {
 })
 onBeforeUnmount(() => expandCall?.abort())
 
+// Every edit kept as it's made, once there's something to keep: not while it's expanding, or
+// coming back would bring the Scenario back unexpanded.
+watch(
+  [draft, suggestions, expanding],
+  () => {
+    if (!draft.value || expanding.value) return
+    saveScenarioDraft({ from: source.value, scenario: draft.value, suggestions: suggestions.value })
+  },
+  { deep: true },
+)
+
 /** The parts a suggestion is being asked for, and why the last ask for each failed. */
 const suggesting = ref<string[]>([])
 const suggestErrors = ref<Record<string, string>>({})
+/** The suggestion each part was given last, to tell whether it's still there untouched. */
+let lastSuggestion: Record<string, string> = {}
 
-/** Asks for a suggestion for one blank part (another, if it has one), in place of any it had. */
+/** The object holding a part (`place`, `people.<id>.goal`), and the part's key in it. */
+function holder(field: string): [Record<string, unknown>, string] {
+  const [, id, key] = field.match(/^people\.([^.]+)\.(\w+)$/) ?? []
+  if (!id) return [draft.value as unknown as Record<string, unknown>, field]
+  const person = draft.value!.people.find((p) => p.id === id)!
+  return [person as unknown as Record<string, unknown>, key]
+}
+
+/** Expand's suggestion for a part, taken: it's used once. */
+function takeOffer(field: string): string | undefined {
+  const offer = suggestions.value.find((s) => s.field === field)
+  if (offer) suggestions.value = suggestions.value.filter((s) => s !== offer)
+  return offer?.text
+}
+
+/**
+ * Writes a suggestion into a part, as Roleplay's Suggest writes a message: Expand's, if it made
+ * one for the part and the part is empty; otherwise one from the Text Model, building on what's
+ * typed there, unless that's the last suggestion untouched (pressed again, it writes a new one).
+ * A list of Truths gets a new Truth, in place of the last suggested one if that's untouched.
+ */
 async function suggest(field: string) {
-  suggesting.value = [...suggesting.value, field]
-  delete suggestErrors.value[field]
-  try {
-    const { text } = await suggestPart(draft.value!, field)
-    suggestions.value = [...suggestions.value.filter((s) => s.field !== field), { field, text }]
-  } catch (err) {
-    suggestErrors.value[field] = (err as Error).message
-  } finally {
-    suggesting.value = suggesting.value.filter((f) => f !== field)
+  const [part, key] = holder(field)
+  const current = part[key] as string | string[]
+  const list = Array.isArray(current)
+  const typed = list ? '' : current.trim()
+  const replacing = list && current.length > 0 && current.at(-1) === lastSuggestion[field]
+  const offered = !typed && !replacing ? takeOffer(field) : undefined
+  let text = offered
+  if (!text) {
+    suggesting.value = [...suggesting.value, field]
+    delete suggestErrors.value[field]
+    try {
+      const notes = typed === lastSuggestion[field] ? '' : typed
+      text = (await suggestPart(draft.value!, field, notes)).text
+    } catch (err) {
+      suggestErrors.value[field] = (err as Error).message
+      return
+    } finally {
+      suggesting.value = suggesting.value.filter((f) => f !== field)
+    }
   }
+  if (!list) part[key] = text
+  else {
+    // As the list is now: it may have been edited while the suggestion was written.
+    const now = part[key] as string[]
+    const untouched = replacing && now.at(-1) === lastSuggestion[field]
+    part[key] = [...(untouched ? now.slice(0, -1) : now), text]
+  }
+  lastSuggestion[field] = text
 }
 
 const hintFor = (field: string): Hint => ({
-  text: suggestions.value.find((s) => s.field === field)?.text,
+  offer: suggestions.value.find((s) => s.field === field)?.text,
   busy: suggesting.value.includes(field),
   error: suggestErrors.value[field] ?? '',
 })
@@ -205,6 +274,7 @@ async function start() {
   }
   try {
     const session = await createSession(start)
+    clearScenarioDraft()
     router.push(sessionPath(session.id, session.kind))
   } catch (err) {
     startError.value = (err as Error).message
@@ -215,7 +285,8 @@ async function start() {
 </script>
 
 <template>
-  <div class="overflow-y-auto p-6">
+  <!-- Relative, so the off-screen labels for screen readers are placed in here, not below the app. -->
+  <div class="relative overflow-y-auto p-6">
     <div class="mx-auto flex max-w-4xl flex-col gap-8">
       <RouterLink to="/" class="flex items-center gap-1 self-start text-sm text-muted hover:text-fg">
         <Icon name="chevron-left" />
@@ -329,14 +400,14 @@ async function start() {
               <article
                 v-for="person in draft.people"
                 :key="person.id"
-                class="flex flex-col gap-2 rounded-lg border border-line bg-surface p-4"
+                class="flex flex-col gap-2 rounded-lg border border-line p-4"
                 :data-person="person.id"
               >
                 <div class="flex items-center gap-2">
                   <input
                     v-model="person.name"
                     type="text"
-                    class="min-w-0 flex-1 rounded border border-line bg-canvas px-2 py-1 font-medium disabled:opacity-60"
+                    class="min-w-0 flex-1 rounded border border-line bg-surface px-2 py-1 font-medium disabled:opacity-60"
                     aria-label="Name"
                     placeholder="Name"
                     :disabled="expanding"
@@ -394,31 +465,21 @@ async function start() {
             <div class="flex flex-wrap gap-4 text-sm">
               <label class="flex flex-col gap-1 text-xs text-muted">
                 You play
-                <select
-                  v-model="player"
-                  class="rounded border border-line bg-surface px-2 py-1 text-sm text-fg"
-                  :disabled="expanding"
-                  data-player
-                >
+                <SelectField v-model="player" :disabled="expanding" data-player>
                   <option value="">Left to the Cast</option>
                   <option v-for="p in draft.people" :key="p.id" :value="p.id">
                     {{ p.name || 'Unnamed' }}
                   </option>
-                </select>
+                </SelectField>
               </label>
               <label class="flex flex-col gap-1 text-xs text-muted">
                 The Text Model plays
-                <select
-                  v-model="character"
-                  class="rounded border border-line bg-surface px-2 py-1 text-sm text-fg"
-                  :disabled="expanding"
-                  data-character
-                >
+                <SelectField v-model="character" :disabled="expanding" data-character>
                   <option value="">Left to the Cast</option>
                   <option v-for="p in draft.people" :key="p.id" :value="p.id">
                     {{ p.name || 'Unnamed' }}
                   </option>
-                </select>
+                </SelectField>
               </label>
             </div>
           </section>
@@ -447,7 +508,7 @@ async function start() {
               type="number"
               min="1"
               :max="MAX_FRAMES"
-              class="w-20 rounded border border-line bg-surface px-2 py-1"
+              class="field w-24"
               data-frame-count
             />
           </label>

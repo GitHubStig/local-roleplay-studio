@@ -953,21 +953,24 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
 
     // Suggest, on the Scenario page (scenario/suggest.ts): one suggestion for one blank part.
     ['POST', new URLPattern({ pathname: '/api/scenarios/suggest' }), async (req) => {
-      const body = await readJson(req) as { scenario?: unknown; field?: unknown } | undefined
+      const body = await readJson(req) as
+        | { scenario?: unknown; field?: unknown; notes?: unknown }
+        | undefined
       let scenario: Scenario
       try {
         scenario = scenarioFrom(body?.scenario)
       } catch (err) {
         return error(`The Scenario isn't complete: ${(err as Error).message}`, 400)
       }
-      const what = typeof body?.field === 'string' ? partOf(scenario, body.field) : undefined
-      if (!what) return error('field must name a part of the Scenario', 400)
-      const limit = crossedLimit(scenarioText(scenario))?.message
+      const field = typeof body?.field === 'string' ? body.field : ''
+      if (!partOf(scenario, field)) return error('field must name a part of the Scenario', 400)
+      const notes = typeof body?.notes === 'string' ? body.notes.trim() : ''
+      const limit = crossedLimit([scenarioText(scenario), notes].join('\n'))?.message
       if (limit) return error(`The Scenario crosses a limit: ${limit}`, 422)
       const model = await scenarioPageModel()
       if (model instanceof Response) return model
       try {
-        const text = await model.suggestForScenario(scenario, what, req.signal)
+        const text = await model.suggestForScenario({ scenario, field, notes }, req.signal)
         const crossed = crossedLimit(text)?.message
         if (crossed) return error(`The suggestion crossed a limit (${crossed}); ask again`, 422)
         return json({ text })

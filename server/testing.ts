@@ -2,6 +2,7 @@ import encodePng from '@jsquash/png/encode.js'
 import type { EditRequest, ImageGenerator, OnPreview, OnProgress } from './images/imageGenerator.ts'
 import { parseScenario, type ScenarioLibrary } from './scenario.ts'
 import { expanded, type ExpandFrom } from './scenario/expand.ts'
+import type { SuggestRequest } from './scenario/suggest.ts'
 import type { ImagePrompt } from './imagePrompt.ts'
 import type { Settings } from './settings.ts'
 import type {
@@ -101,7 +102,7 @@ export function scriptedTextModel(
   requests: FrameRequest[]
   writeRequests: StoryboardWriteRequest[]
   clipRequests: { system: string; user: string }[]
-  suggestRequests: string[]
+  suggestRequests: SuggestRequest[]
 } {
   const next = <T>(queue: (T | Error)[] | undefined, what: string): Promise<T> => {
     const item = queue?.shift()
@@ -117,8 +118,8 @@ export function scriptedTextModel(
     writeRequests: [] as StoryboardWriteRequest[],
     /** Each clip prompt asked for, in order. */
     clipRequests: [] as { system: string; user: string }[],
-    /** Each Scenario part a suggestion was asked for, in words. */
-    suggestRequests: [] as string[],
+    /** Each suggestion asked for, in order. */
+    suggestRequests: [] as SuggestRequest[],
     write(req: FrameRequest, signal: AbortSignal, onThinking?: (chunk: string) => void) {
       model.calls++
       model.requests.push(req)
@@ -171,9 +172,9 @@ export function scriptedTextModel(
       signal.throwIfAborted()
       return expanded(from, await next(scripts.expansions, 'expansion'))
     },
-    suggestForScenario(_scenario: unknown, what: string, signal: AbortSignal) {
+    suggestForScenario(req: SuggestRequest, signal: AbortSignal) {
       model.calls++
-      model.suggestRequests.push(what)
+      model.suggestRequests.push(req)
       signal.throwIfAborted()
       return next(scripts.suggestions, 'suggestion')
     },

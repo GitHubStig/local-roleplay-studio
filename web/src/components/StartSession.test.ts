@@ -2,6 +2,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import * as api from '../api'
+import { clearScenarioDraft, saveScenarioDraft } from '../composables/useScenarioDraft'
 import StartSession from './StartSession.vue'
 
 vi.mock('../api', async (importOriginal) => ({
@@ -44,6 +45,23 @@ describe('StartSession', () => {
     await wrapper.find('[data-scenario=tavern]').trigger('click')
     await flushPromises()
     expect(router.currentRoute.value.fullPath).toBe('/scenario/tavern')
+  })
+
+  it('asks before another Scenario takes the place of the one being set up', async () => {
+    saveScenarioDraft({
+      from: { brief: 'A knight.' },
+      scenario: { title: 'Fog' } as api.Scenario,
+      suggestions: [],
+    })
+    const confirm = vi.fn(() => false)
+    vi.stubGlobal('confirm', confirm)
+    const { wrapper, router } = await mountIt()
+    await wrapper.find('[data-scenario=tavern]').trigger('click')
+    await flushPromises()
+    expect(confirm.mock.calls[0]).toEqual([expect.stringContaining('“Fog”')])
+    expect(router.currentRoute.value.name).not.toBe('scenario')
+    vi.unstubAllGlobals()
+    clearScenarioDraft()
   })
 
   it('opens the Scenario page on a typed Brief', async () => {

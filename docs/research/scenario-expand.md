@@ -12,3 +12,7 @@ What the Scenario page's Expand call ([ADR 0032](../adr/0032-scenarios-are-stori
 A Roleplay started through the API from the page's tavern, with the roles swapped and Elara's goal typed in, got a Cast with Elara as the Character pursuing that goal and Kael as the Persona, both Truths kept.
 
 **Suggest for one part** (`server/scenario/suggest.ts`), added because Expand suggests for only some blanks: on the tavern, 0.4–0.7 s a suggestion (Elara's personality, way of speaking, goal and a Truth about her; a story Truth), each fitting what's stated; asked twice for Elara's goal, it gave two different goals.
+
+With what the player typed as notes (2026-11-03, Mac), Suggest builds on it: "revenge on the harbourmaster" for Elara's goal came back as a fuller goal about the harbourmaster's corruption, in about a second.
+
+**Clothing in Looks** (2026-11-03, Mac): from a Brief about an archangel judging a soul, Expand suggested Looks as clothing ("Clad in armor…", "Dressed in the simple, worn clothes…"), as its suggestion prompt didn't say what Looks holds. Told that Looks is only what doesn't change, with clothing in Wears, three runs kept them apart (Looks: "skin like polished marble", "a weary, gentle face"; Wears: "Shimmering robes of woven light").

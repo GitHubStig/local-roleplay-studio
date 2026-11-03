@@ -85,7 +85,7 @@ A Truth isn't a goal: a goal can change or fail in play, and a Truth shouldn't.
 
 ## Starting from it
 
-Picking a Scenario on Home opens it on the Scenario page, where Expand says who plays whom (if the Scenario doesn't) and suggests what to put in some of the blank parts, which you can take or leave; *Suggest* under any other blank part asks for one there. Edit any part there, and pick who you play and who the Text Model plays; Start begins the Session from the Scenario as you've left it. Edits there go to that Session only: the file stays as it is.
+Picking a Scenario on Home opens it on the Scenario page, where Expand says who plays whom (if the Scenario doesn't) and suggests what to put in some of the blank parts (shown in grey); *Suggest* on any part writes a suggestion in, building on what you typed there, and pressing it again writes another. The page keeps your edits if you leave it, and the header leads back to it. Edit any part there, and pick who you play and who the Text Model plays; Start begins the Session from the Scenario as you've left it. Edits there go to that Session only: the file stays as it is.
 
 ## How each kind of Session uses it
 

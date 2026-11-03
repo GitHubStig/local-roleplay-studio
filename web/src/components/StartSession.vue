@@ -2,6 +2,12 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { getScenarios, type ScenarioList } from '../api'
+import {
+  sameSource,
+  scenarioPagePath,
+  type ScenarioSource,
+  useScenarioDraft,
+} from '../composables/useScenarioDraft'
 import { useTextModelReady } from '../composables/useTextModelReady'
 
 defineProps<{ error?: string }>()
@@ -14,6 +20,7 @@ const list = ref<ScenarioList | null>(null)
 const listError = ref('')
 const { loaded, loadError: settingsError, blocker: textModelBlocker } = useTextModelReady()
 const brief = ref('')
+const { scenarioDraft } = useScenarioDraft()
 
 onMounted(async () => {
   try {
@@ -32,12 +39,18 @@ const briefBlocker = computed(() => {
   return null
 })
 
-/** Opens the Scenario page on a Scenario, or on the typed Brief. */
-function open(to: { id: string } | { brief: string }) {
+/**
+ * Opens the Scenario page on a Scenario, or on the typed Brief: back to it as it was left if it's
+ * the one being set up, or in its place once the player agrees.
+ */
+function open(from: ScenarioSource) {
   if (textModelBlocker.value) return
-  router.push('id' in to
-    ? { name: 'scenario', params: { id: to.id } }
-    : { name: 'scenario', query: { brief: to.brief } })
+  const current = scenarioDraft.value
+  if (current?.scenario && !sameSource(current.from, from)) {
+    const title = current.scenario.title
+    if (!confirm(`Set this up in place of “${title}”? Your edits to that one are lost.`)) return
+  }
+  router.push(scenarioPagePath(from))
 }
 </script>
 
@@ -60,7 +73,7 @@ function open(to: { id: string } | { brief: string }) {
             :title="s.description"
             :disabled="!!textModelBlocker"
             :data-scenario="s.id"
-            @click="open({ id: s.id })"
+            @click="open({ scenarioId: s.id })"
           >
             <span class="text-sm font-medium">{{ s.title }}</span>
             <span class="line-clamp-2 text-xs text-muted">{{ s.description }}</span>

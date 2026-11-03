@@ -2,6 +2,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import * as api from '../api'
+import { clearScenarioDraft } from '../composables/useScenarioDraft'
 import ScenarioView from './ScenarioView.vue'
 
 vi.mock('../api', async (importOriginal) => ({
@@ -64,11 +65,19 @@ async function mountAt(path: string) {
   return { wrapper, router }
 }
 
+/** A part's Suggest button. */
+const suggestOf = (w: Awaited<ReturnType<typeof mountAt>>['wrapper'], field: string) =>
+  w.find(`[data-field="${field}"]`).element.parentElement!
+    .querySelector('[data-suggest]') as HTMLButtonElement
+const fieldValue = (w: Awaited<ReturnType<typeof mountAt>>['wrapper'], field: string) =>
+  (w.find(`[data-field="${field}"]`).element as HTMLTextAreaElement).value
+
 const startButton = (w: Awaited<ReturnType<typeof mountAt>>['wrapper']) =>
   w.find('[data-start]').element as HTMLButtonElement
 
 beforeEach(() => {
   localStorage.clear()
+  clearScenarioDraft()
   vi.mocked(api.getScenario).mockReset().mockResolvedValue(structuredClone(tavern))
   vi.mocked(api.expandScenario).mockReset().mockResolvedValue({
     scenario: structuredClone(expandedTavern),
@@ -89,18 +98,25 @@ describe('ScenarioView', () => {
       'elara',
     ])
     expect((wrapper.find('[data-player]').element as HTMLSelectElement).value).toBe('elara')
-    expect(wrapper.findAll('[data-suggestion-text]').map((s) => s.text())).toEqual([
+    // Expand's suggestions wait in their empty parts, for Suggest to put in.
+    expect(wrapper.find('[data-field=time]').attributes('placeholder')).toBe(
       'Suggested: A winter night.',
+    )
+    expect(wrapper.find('[data-truths="people.elara.truths"] [data-offer]').text()).toBe(
       'Suggested: Elara never lies.',
-    ])
+    )
   })
 
   it('starts a Roleplay from the Scenario as edited, and opens it', async () => {
     vi.mocked(api.createSession).mockResolvedValue({ id: 'r1', kind: 'roleplay' } as api.Session)
     const { wrapper, router } = await mountAt('/scenario/tavern')
     await wrapper.find('[data-field="people.kael.name"]').setValue('Tom')
-    await wrapper.findAll('[data-use]')[0].trigger('click')
-    await wrapper.findAll('[data-use]')[0].trigger('click')
+    suggestOf(wrapper, 'time').click()
+    ;(wrapper.find('[data-truths="people.elara.truths"] [data-suggest]').element as HTMLElement)
+      .click()
+    await flushPromises()
+    // Expand's own suggestions: no call to the Text Model.
+    expect(api.suggestPart).not.toHaveBeenCalled()
     // The player swapped to Kael's side: the Text Model's role clears.
     await wrapper.find('[data-player]').setValue('kael')
     await wrapper.find('[data-start]').trigger('click')
@@ -122,32 +138,46 @@ describe('ScenarioView', () => {
     expect(router.currentRoute.value.path).toBe('/roleplay/r1')
   })
 
-  it('asks for a suggestion for any blank part, and for another', async () => {
+  it('writes a suggestion into a part, a new one each time, building on what was typed', async () => {
     vi.mocked(api.suggestPart).mockResolvedValueOnce({ text: 'A goal.' })
       .mockResolvedValueOnce({ text: 'Another goal.' })
+      .mockResolvedValueOnce({ text: 'Revenge, and the letter.' })
     const { wrapper } = await mountAt('/scenario/tavern')
-    const goal = () => wrapper.find('[data-person=elara] [data-field="people.elara.goal"]')
-    const note = () => goal().element.closest('div')!.querySelector('[data-suggestion]')!
-    ;(note().querySelector('[data-suggest]') as HTMLButtonElement).click()
+    const goal = 'people.elara.goal'
+    suggestOf(wrapper, goal).click()
     await flushPromises()
-    expect(api.suggestPart).toHaveBeenCalledWith(expandedTavern, 'people.elara.goal')
-    expect(note().textContent).toContain('Suggested: A goal.')
-    ;(note().querySelector('[data-another]') as HTMLButtonElement).click()
+    expect(fieldValue(wrapper, goal)).toBe('A goal.')
+    suggestOf(wrapper, goal).click()
     await flushPromises()
-    expect(note().textContent).toContain('Suggested: Another goal.')
-    // Nothing to suggest for a part that's written.
-    expect(wrapper.find('[data-person=kael] [data-suggest]').exists()).toBe(true)
-    expect(wrapper.findAll('[data-person=kael] [data-suggestion]')).toHaveLength(6)
+    expect(fieldValue(wrapper, goal)).toBe('Another goal.')
+    await wrapper.find(`[data-field="${goal}"]`).setValue('Revenge')
+    suggestOf(wrapper, goal).click()
+    await flushPromises()
+    expect(fieldValue(wrapper, goal)).toBe('Revenge, and the letter.')
+    expect(vi.mocked(api.suggestPart).mock.calls.map((c) => [c[1], c[2]])).toEqual([
+      [goal, ''],
+      [goal, ''],
+      [goal, 'Revenge'],
+    ])
   })
 
-  it('removes a Person, and who they played with them', async () => {
+  it('comes back to the Scenario as it was left, without expanding it again', async () => {
+    vi.mocked(api.createSession).mockResolvedValue({ id: 'r1', kind: 'roleplay' } as api.Session)
+    const first = (await mountAt('/scenario/tavern')).wrapper
+    await first.find('[data-field=place]').setValue('A cellar.')
+    first.unmount()
     const { wrapper } = await mountAt('/scenario/tavern')
-    await wrapper.find('[data-person=elara] [data-remove-person]').trigger('click')
-    expect(wrapper.findAll('[data-person]')).toHaveLength(1)
-    expect((wrapper.find('[data-player]').element as HTMLSelectElement).value).toBe('')
+    expect(api.expandScenario).toHaveBeenCalledTimes(1)
+    expect(fieldValue(wrapper, 'place')).toBe('A cellar.')
+    await wrapper.find('[data-start]').trigger('click')
+    await flushPromises()
+    // Started: the next visit begins afresh.
+    wrapper.unmount()
+    await mountAt('/scenario/tavern')
+    expect(api.expandScenario).toHaveBeenCalledTimes(2)
   })
 
-  it('blocks Start while it expands, and without an Opening or a name', async () => {
+  it('blocks Start while it expands', async () => {
     let answer!: (v: Awaited<ReturnType<typeof api.expandScenario>>) => void
     vi.mocked(api.expandScenario).mockImplementation(() => new Promise((r) => (answer = r)))
     const { wrapper } = await mountAt('/scenario/tavern')
@@ -156,11 +186,6 @@ describe('ScenarioView', () => {
     answer({ scenario: structuredClone(expandedTavern), suggestions: [] })
     await flushPromises()
     expect(startButton(wrapper).disabled).toBe(false)
-    await wrapper.find('[data-field=opening]').setValue(' ')
-    expect(wrapper.text()).toContain('Write the Opening.')
-    await wrapper.find('[data-field=opening]').setValue('Kael waits.')
-    await wrapper.find('[data-add-person]').trigger('click')
-    expect(wrapper.text()).toContain('Give every Person a name.')
   })
 
   it('expands a typed Brief, and starts a Storyboard from it', async () => {
@@ -168,8 +193,6 @@ describe('ScenarioView', () => {
     const { wrapper, router } = await mountAt('/scenario?brief=A%20dunk.')
     expect(api.expandScenario).toHaveBeenCalledWith({ brief: 'A dunk.' }, expect.anything())
     await wrapper.find('input[value=storyboard]').setValue()
-    await wrapper.find('[data-frame-count]').setValue(33)
-    expect(wrapper.text()).toContain('1 to 32 Frames')
     await wrapper.find('[data-frame-count]').setValue(6)
     await wrapper.find('[data-start]').trigger('click')
     await flushPromises()
@@ -190,13 +213,5 @@ describe('ScenarioView', () => {
     expect(wrapper.find('[data-retry-expand]').exists()).toBe(true)
     await wrapper.find('[data-start]').trigger('click')
     expect(api.createSession).toHaveBeenCalledWith({ kind: 'roleplay', brief: 'A dunk.' })
-  })
-
-  it('remembers the kind picked last', async () => {
-    const first = (await mountAt('/scenario/tavern')).wrapper
-    await first.find('input[value=chain]').setValue()
-    first.unmount()
-    const again = (await mountAt('/scenario/tavern')).wrapper
-    expect(startButton(again).textContent?.trim()).toBe('Start Chain')
   })
 })

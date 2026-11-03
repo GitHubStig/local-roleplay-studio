@@ -10,6 +10,7 @@ Then suggest for what's left empty: for each empty part that would shape the sto
 suggestion of a sentence or two, specific to this story (at most one per part, and at most ten in
 all). A person's part names the person; a part of the story leaves person empty. A suggestion is
 for the player to take or leave, so make it something they'd want: a goal that makes for a good
-scene, a Truth that keeps the story's stakes.
+scene, a Truth that keeps the story's stakes. Looks is only what doesn't change (age, build, skin,
+hair, face): clothing and armour go in wears, and neither names an art style.
 
 Write plain prose: no labels, lists or Markdown inside a part.

@@ -1,6 +1,6 @@
-import { assertEquals } from '@std/assert'
+import { assertEquals, assertStringIncludes } from '@std/assert'
 import { scenarioFrom } from '../scenario.ts'
-import { cleanSuggestion, partOf } from './suggest.ts'
+import { cleanSuggestion, partOf, suggestMessages } from './suggest.ts'
 
 const scenario = scenarioFrom({
   title: 'T',
@@ -22,4 +22,16 @@ Deno.test("partOf names a story's part or a Person's, by their name", () => {
 Deno.test('cleanSuggestion leaves the suggestion alone, without a label or quotes', () => {
   assertEquals(cleanSuggestion('Goal: "Find the\n sender."'), 'Find the sender.')
   assertEquals(cleanSuggestion('Late at night: rain.'), 'Late at night: rain.')
+})
+
+Deno.test('Suggest leaves out what the part holds, and sends what was typed as notes', async () => {
+  const typed = { ...scenario, people: [{ ...scenario.people[0], goal: 'Revenge.' }] }
+  const [, fresh] = await suggestMessages({ scenario: typed, field: 'people.p1.goal', notes: '' })
+  assertEquals(fresh.content.includes('Revenge.'), false)
+  const [, built] = await suggestMessages({
+    scenario: typed,
+    field: 'people.p1.goal',
+    notes: 'Revenge.',
+  })
+  assertStringIncludes(built.content, 'to build on: Revenge.')
 })

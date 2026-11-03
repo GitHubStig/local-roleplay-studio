@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useTextareaAutosize } from '@vueuse/core'
-import { computed, useTemplateRef } from 'vue'
+import { computed, useId, useTemplateRef } from 'vue'
 import { useStoredFlag } from '../composables/useStoredFlag'
 
 /**
@@ -27,22 +27,33 @@ const textarea = useTemplateRef<HTMLTextAreaElement>('textarea')
 useTextareaAutosize({ element: textarea, input: value })
 
 const collapsed = useStoredFlag(`collapsed:${props.id}`)
+const boxId = useId()
 const preview = computed(() => value.value.replace(/\s+/g, ' ').trim())
 </script>
 
 <template>
-  <label v-if="alwaysOpen" class="flex flex-col gap-1 text-xs text-muted">
-    {{ label }}
-    <textarea
-      ref="textarea"
-      v-model="value"
-      rows="1"
-      class="w-full resize-none overflow-hidden rounded border border-line bg-surface p-2 text-sm text-fg disabled:opacity-60"
-      :disabled="disabled"
-      :placeholder="placeholder"
-      :data-field="id"
-    />
-  </label>
+  <!-- Buttons for the box (the `actions` slot) sit in its bottom-right corner, over a strip of
+       padding about half a line tall: small ones (18 px) fit it, overlapping only the space below
+       the last line's letters. -->
+  <div v-if="alwaysOpen" class="flex flex-col gap-1 text-xs text-muted">
+    <label :for="boxId">{{ label }}</label>
+    <div class="relative">
+      <textarea
+        :id="boxId"
+        ref="textarea"
+        v-model="value"
+        rows="1"
+        class="block w-full resize-none overflow-hidden rounded border border-line bg-surface p-2 text-sm text-fg disabled:opacity-60"
+        :class="{ 'pb-5': $slots.actions }"
+        :disabled="disabled"
+        :placeholder="placeholder"
+        :data-field="id"
+      />
+      <div v-if="$slots.actions" class="absolute right-1 bottom-1 flex gap-1">
+        <slot name="actions" />
+      </div>
+    </div>
+  </div>
   <details
     v-else
     class="group/field text-xs text-muted"

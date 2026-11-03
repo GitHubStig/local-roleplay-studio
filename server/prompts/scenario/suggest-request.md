@@ -1,8 +1,9 @@
 <!--
 Suggest's user message (scenario/suggest.ts): the Scenario as it stands on the page, as its file,
-and the part to suggest for.
+with the part asked about left out; the part; and the player's notes for it (suggest-notes.md), or
+nothing.
 
-Values: scenario (Markdown), what
+Values: scenario (Markdown), what, notes
 -->
 
 The Scenario:
@@ -10,3 +11,5 @@ The Scenario:
 {{scenario}}
 
 Suggest {{what}}.
+
+{{notes}}

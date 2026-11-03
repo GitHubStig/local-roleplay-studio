@@ -344,9 +344,12 @@ export interface Suggestion {
 
 export const getScenario = (id: string) => request<Scenario>(`/api/scenarios/${id}`)
 
-/** One suggestion for one blank part of the Scenario as it stands; another each time it's asked. */
-export const suggestPart = (scenario: Scenario, field: string) =>
-  post<{ text: string }>('/api/scenarios/suggest', { scenario, field })
+/**
+ * A suggestion for one part of the Scenario as it stands, building on `notes` (what's typed there);
+ * another each time it's asked.
+ */
+export const suggestPart = (scenario: Scenario, field: string, notes = '') =>
+  post<{ text: string }>('/api/scenarios/suggest', { scenario, field, notes })
 
 /** Expand, as the Scenario page opens: names the People and who's who, and suggests for blanks. */
 export const expandScenario = (
