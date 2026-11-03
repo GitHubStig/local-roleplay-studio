@@ -39,6 +39,11 @@ export async function judgeMessages(
       content: await loadPrompt('roleplay/judge', {
         ...cast,
         truths: cast.truths.map((t) => `- ${t}`).join('\n'),
+        others: cast.others?.length
+          ? await loadPrompt('roleplay/judge-others', {
+            list: cast.others.map((o) => `- ${o}`).join('\n'),
+          })
+          : '',
       }),
     },
     {

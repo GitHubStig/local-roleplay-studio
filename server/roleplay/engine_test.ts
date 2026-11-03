@@ -205,6 +205,7 @@ Deno.test('sendMessage judges a Message against the Truths, and tells the Charac
     const withTruths = await setCast(store, plain!, {
       ...testCast,
       truths: ['Mira is the stronger.'],
+      others: ['Old Tom: the cook.'],
     })
     roleplayModel.judge = (messages) => {
       roleplayModel.judged.push(messages)
@@ -218,6 +219,7 @@ Deno.test('sendMessage judges a Message against the Truths, and tells the Charac
       signal(),
     )
     assertStringIncludes(roleplayModel.judged[0][0].content, '- Mira is the stronger.')
+    assertStringIncludes(roleplayModel.judged[0][0].content, '- Old Tom: the cook.')
     assertStringIncludes(roleplayModel.judged[0][1].content, 'Take the wheel.')
     assertStringIncludes(roleplayModel.judged[0][1].content, 'I shove Mira overboard.')
     const told = roleplayModel.asked.at(-1)!.at(-1)!.content

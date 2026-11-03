@@ -6,7 +6,8 @@ model that took the player's outcomes as done, whatever its system message said,
 outcome it's given (docs/bench/truths). Runs only when the Cast has Truths. The Message and where
 things stand arrive in judge-request.md.
 
-Values: character.name, persona.name, truths (a Markdown list)
+Values: character.name, persona.name, truths (a Markdown list), others (judge-others.md when the
+Cast has other People, empty otherwise)
 -->
 
 # Your job
@@ -16,6 +17,8 @@ by the player. The player writes {{persona.name}}'s next move, sometimes with ho
 Decide whether it can happen, given what holds in this story:
 
 {{truths}}
+
+{{others}}
 
 - "breaks": true if the move, or how the player says it turns out, goes against any of these;
   false if not. Judge by what the Message says happens, not by how likely the player is to win.

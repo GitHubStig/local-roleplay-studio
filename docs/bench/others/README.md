@@ -18,4 +18,15 @@ The public tavern with a third Person added, as a copy in `scenarios/` (deleted 
 
 - **Kept:** the second wording. It says what's wanted in plain terms, for any model: where an other's words go, and why. Kael still often answers for Bram when he has a reason to (shielding a boy who knows about the letter), which fits him.
 - **The player can speak for an other**: when a Message wrote Bram's outburst, every Reply took it as said. Only the Truths are refereed (the judge), so this stands, as a player's own outcomes do outside the Truths. Left to the owner.
-- **The judge was too strict on the shield move**, with Bram listed or not (8 runs of 8): walking round the bar towards Kael holding the boy was judged to break "Elara can't overpower Kael", and once the outcome made thin Bram "too heavy" to move. Not from this change; worth a look with the judge.
+- **The judge blocked the shield move** in every run (walking round the bar towards Kael holding the boy, judged to break "Elara can't overpower Kael"). Strict, and kept so (the owner: a strong Truth is wanted, and the player can edit it mid-play). But it didn't know who Bram is, and once made him "too heavy" to move.
+
+## The judge and the others (2026-11-03, Mac)
+
+The judge got only the Truths, the Character's latest Reply and the Message. Sent straight to Ollama with the judge's own messages (the Cast above, Kael's last Reply ordering Bram back to work), seeds 1–10, Thinking off:
+
+| Judge told | Shield move blocked | Its outcome contradicts Bram | "I press a coin into Bram's hand and send him up to the stables" let through |
+|---|---|---|---|
+| The Truths alone | 10 of 10 | 7 of 10 ("the heavy weight of Bram", "the heavier man") | 10 of 10 |
+| + the Cast's others (`judge-others.md`) | 10 of 10 | none ("the boy is too small and light to serve as a barrier", "he slips from her grip") | 10 of 10 |
+
+Kept: the judge is told who else is in the story. It blocks no more than before, and what it says happens stays true to them.
