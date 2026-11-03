@@ -16,6 +16,7 @@ import {
   useScenarioDraft,
 } from '../composables/useScenarioDraft'
 import { useTextModelReady } from '../composables/useTextModelReady'
+import { ago } from '../ago'
 
 defineProps<{ error?: string }>()
 
@@ -68,6 +69,21 @@ async function remove(s: ScenarioSummary) {
 
 const loadError = computed(() => listError.value || settingsError.value)
 
+/** The Scenarios, the one edited last first, as Your Sessions are. */
+const scenarios = computed(() =>
+  [...(list.value?.scenarios ?? [])].sort((a, b) => (b.modified ?? '').localeCompare(a.modified ?? ''))
+)
+
+const fullDate = (iso: string) =>
+  new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+/** A card's tooltip: its description, then when it was made and last edited. */
+const cardTitle = (s: ScenarioSummary) =>
+  [
+    s.description,
+    s.created && `Made ${fullDate(s.created)}`,
+    s.modified && `Edited ${fullDate(s.modified)}`,
+  ].filter(Boolean).join('\n')
+
 /** Why the Brief can't be opened yet, or null when it can. */
 const briefBlocker = computed(() => {
   if (!brief.value.trim()) return 'Write the Brief.'
@@ -113,17 +129,20 @@ function open(from: ScenarioSource) {
         </div>
         <p v-if="fileError" class="text-sm text-danger" role="alert">{{ fileError }}</p>
         <div class="grid grid-cols-[repeat(auto-fill,minmax(14rem,1fr))] gap-3">
-          <div v-for="s in list.scenarios" :key="s.id" class="group relative flex">
+          <div v-for="s in scenarios" :key="s.id" class="group relative flex">
             <button
               type="button"
               class="flex min-w-0 flex-1 flex-col gap-0.5 rounded-lg border border-line bg-surface p-3 text-left hover:border-fg disabled:cursor-not-allowed disabled:opacity-60"
-              :title="s.description"
+              :title="cardTitle(s)"
               :disabled="!!textModelBlocker"
               :data-scenario="s.id"
               @click="open({ scenarioId: s.id })"
             >
               <span class="text-sm font-medium">{{ s.title }}</span>
               <span class="line-clamp-2 text-xs text-muted">{{ s.description }}</span>
+              <span v-if="s.modified" class="mt-1 text-xs text-muted/80" data-edited>
+                Edited {{ ago(s.modified) }}
+              </span>
             </button>
             <button
               v-if="s.own"

@@ -83,6 +83,14 @@ Deno.test('parseScenario reads every section, joining lines, and who plays whom'
 Deno.test('scenarioMarkdown writes what parseScenario reads back', () => {
   const s = parseScenario('tavern', valid)
   assertEquals(parseScenario('tavern', scenarioMarkdown(s)), s)
+  // Dates too, unquoted (a YAML timestamp) or quoted.
+  const dated = { ...s, created: '2026-11-01T09:00:00.000Z', modified: '2026-11-03T10:30:00.000Z' }
+  assertEquals(parseScenario('tavern', scenarioMarkdown(dated)), dated)
+  const unquoted = valid.replace(
+    'title: The Tavern',
+    'title: The Tavern\ncreated: 2026-11-01T09:00:00Z',
+  )
+  assertEquals(parseScenario('tavern', unquoted).created, '2026-11-01T09:00:00.000Z')
   const min = parseScenario('min', `---\ntitle: T\ndescription: D\n---\n## Opening\nGo.\n`)
   assertEquals(scenarioMarkdown(min), `---\ntitle: T\ndescription: D\n---\n\n## Opening\n\nGo.\n`)
 })
@@ -199,6 +207,9 @@ Deno.test('dirScenarioLibrary loads valid files and reports broken ones', async 
     assertEquals(errors.map((e) => e.file), ['broken.md'])
     assertEquals((await lib.get('good'))?.title, 'The Tavern')
     assertEquals(await lib.get('broken'), undefined)
+    // A file that doesn't give its dates has the file's own.
+    const { mtime } = await Deno.stat(join(dir, 'good.md'))
+    assertEquals(scenarios[0].modified, mtime!.toISOString())
   } finally {
     await Deno.remove(dir, { recursive: true })
   }

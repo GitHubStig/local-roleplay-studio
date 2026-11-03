@@ -293,6 +293,9 @@ export interface ScenarioSummary {
   description: string
   /** In the player's `scenarios/`, so it can be deleted. */
   own: boolean
+  /** When it was made and last saved (ISO), from the file or else its file's own dates. */
+  created?: string
+  modified?: string
 }
 
 export interface ScenarioLoadError {

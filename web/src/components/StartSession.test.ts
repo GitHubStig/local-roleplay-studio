@@ -103,6 +103,23 @@ describe('StartSession', () => {
     vi.unstubAllGlobals()
   })
 
+  it('lists the Scenario edited last first, saying when', async () => {
+    const day = (d: number) => new Date(Date.now() - d * 86400_000).toISOString()
+    vi.mocked(api.getScenarios).mockResolvedValue({
+      scenarios: [
+        { ...tavern, id: 'old', modified: day(3), created: day(9) },
+        { ...tavern, id: 'new', modified: day(1), created: day(2) },
+      ],
+      errors: [],
+    })
+    const { wrapper } = await mountIt()
+    expect(wrapper.findAll('[data-scenario]').map((c) => c.attributes('data-scenario'))).toEqual([
+      'new',
+      'old',
+    ])
+    expect(wrapper.find('[data-edited]').text()).toBe('Edited yesterday')
+  })
+
   it('reports Scenario files that failed to load', async () => {
     vi.mocked(api.getScenarios).mockResolvedValue({
       scenarios: [tavern],

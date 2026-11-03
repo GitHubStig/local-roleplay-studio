@@ -62,6 +62,7 @@ Write each paragraph or line on one line, and put a blank line between paragraph
 |---|---|
 | `title`, `description` | Its card on Home |
 | `player`, `character` | In a Roleplay, who you play and who the Text Model plays, by name |
+| `created`, `modified` | When it was first and last saved, written by the app as it saves (an import keeps its own); Home shows when it was last edited, and lists the latest first. Left out, the file's own dates on disk |
 | Opening | The situation when the story starts: who is where, doing what. Not a plot to follow, and not a picture |
 | Place | Where it starts |
 | Time | The time of day, and the weather |

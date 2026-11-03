@@ -26,6 +26,10 @@ export interface Scenario {
   player?: string
   /** The id of the Person the Text Model plays by default in a Roleplay. */
   character?: string
+  /** When the file was first saved, as an ISO date; from the file's own dates when it doesn't say. */
+  created?: string
+  /** When it was last saved, likewise. */
+  modified?: string
 }
 
 /** Anyone the story treats as someone: a human, an alien, a monster, a talking car. */
@@ -53,6 +57,8 @@ export interface ScenarioSummary {
   description: string
   /** In the player's `scenarios/`, so it can be deleted. */
   own: boolean
+  created?: string
+  modified?: string
 }
 
 export interface ScenarioLoadError {
@@ -182,9 +188,20 @@ export function parseScenario(id: string, text: string): Scenario {
   const description = str('description', true)
   const player = str('player', false)
   const character = str('character', false)
+  // YAML reads an unquoted timestamp as a date, a quoted one as text: either will do.
+  const date = (key: string) => {
+    const v = attrs[key]
+    if (v === undefined) return undefined
+    const at = v instanceof Date ? v : new Date(typeof v === 'string' ? v : NaN)
+    if (Number.isNaN(at.getTime())) issues.push(`${key} must be a date, e.g. 2026-11-03T10:00:00Z`)
+    else return at.toISOString()
+  }
+  const created = date('created')
+  const modified = date('modified')
+  const FRONT = ['title', 'description', 'player', 'character', 'created', 'modified']
   for (const key of Object.keys(attrs)) {
-    if (!['title', 'description', 'player', 'character'].includes(key)) {
-      issues.push(`unknown frontmatter "${key}"; it has title, description, player and character`)
+    if (!FRONT.includes(key)) {
+      issues.push(`unknown frontmatter "${key}"; it has ${FRONT.join(', ')}`)
     }
   }
 
@@ -228,6 +245,8 @@ export function parseScenario(id: string, text: string): Scenario {
     people,
     ...(player && { player: role('player', player) }),
     ...(character && { character: role('character', character) }),
+    ...(created && { created }),
+    ...(modified && { modified }),
   }
   if (scenario.player && scenario.player === scenario.character) {
     issues.push('the player and the character must be different People')
@@ -328,6 +347,8 @@ export function scenarioMarkdown(s: Scenario): string {
   const front: Record<string, string> = { title: s.title, description: s.description }
   if (nameOf(s.player)) front.player = nameOf(s.player)!
   if (nameOf(s.character)) front.character = nameOf(s.character)!
+  if (s.created) front.created = s.created
+  if (s.modified) front.modified = s.modified
   const list = (truths: string[], indent = '') => truths.map((t) => `${indent}- ${t}`).join('\n')
   const parts = [`---\n${stringify(front, { lineWidth: -1 }).trim()}\n---`]
   for (const key of PROSE) {
@@ -440,7 +461,15 @@ export function dirScenarioLibrary(dir: string | URL): ScenarioLibrary {
     for (const file of files) {
       try {
         const text = await Deno.readTextFile(join(root, file))
-        scenarios.push(parseScenario(basename(file, '.md'), text))
+        const scenario = parseScenario(basename(file, '.md'), text)
+        // A file that doesn't say when it was made or changed (an example, one written by hand):
+        // the file's own dates.
+        if (!scenario.created || !scenario.modified) {
+          const { birthtime, mtime } = await Deno.stat(join(root, file))
+          scenario.created ??= (birthtime ?? mtime)?.toISOString()
+          scenario.modified ??= mtime?.toISOString()
+        }
+        scenarios.push(scenario)
       } catch (err) {
         errors.push({ file, message: (err as Error).message })
       }
@@ -518,6 +547,6 @@ export async function seedScenarios(folder: string | URL, from: string | URL): P
 }
 
 export const summarise = (
-  { id, title, description }: Scenario,
+  { id, title, description, created, modified }: Scenario,
   own = false,
-): ScenarioSummary => ({ id, title, description, own })
+): ScenarioSummary => ({ id, title, description, own, created, modified })

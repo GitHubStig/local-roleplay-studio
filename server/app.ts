@@ -352,9 +352,10 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
    * Writes a Scenario's file in the player's `scenarios/`, once it reads back as valid (the
    * Limits too), and answers with it as read back; or why it's refused.
    */
-  async function saveScenario(id: string, markdown: string, status = 200): Promise<Response> {
+  async function saveScenario(id: string, sent: Scenario, status = 200): Promise<Response> {
     if (!deps.ownScenarios) return error("This server can't save Scenarios", 501)
     if (!SCENARIO_ID.test(id)) return error(`"${id}" isn't a Scenario id`, 400)
+    const markdown = scenarioMarkdown(sent)
     let scenario: Scenario
     try {
       scenario = parseScenario(id, markdown)
@@ -965,7 +966,12 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     ['PUT', new URLPattern({ pathname: '/api/scenarios/:id' }), async (req, p) => {
       const scenario = sentScenario((await readJson(req) as { scenario?: unknown })?.scenario)
       if (scenario instanceof Response) return scenario
-      return await saveScenario(p.id!, scenarioMarkdown(scenario))
+      // Made when the file was; changed now.
+      const created = SCENARIO_ID.test(p.id!)
+        ? (await deps.ownScenarios?.get(p.id!))?.created
+        : undefined
+      const now = new Date().toISOString()
+      return await saveScenario(p.id!, { ...scenario, created: created ?? now, modified: now })
     }],
 
     // A new Scenario of the player's: the page's under a new id (from its title), or an imported
@@ -974,22 +980,33 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       const body = await readJson(req) as
         | { scenario?: unknown; markdown?: unknown; name?: unknown }
         | undefined
-      let markdown: string
+      const now = new Date().toISOString()
+      let scenario: Scenario
       let name: string
       if (typeof body?.markdown === 'string') {
-        markdown = body.markdown
+        // An imported file keeps the dates it has.
+        try {
+          scenario = parseScenario('imported', body.markdown)
+        } catch (err) {
+          return error(`The Scenario can't be imported: ${(err as Error).message}`, 400)
+        }
+        scenario = {
+          ...scenario,
+          created: scenario.created ?? now,
+          modified: scenario.modified ?? now,
+        }
         name = typeof body.name === 'string' ? body.name.replace(/\.md$/i, '') : 'imported'
       } else {
-        const scenario = sentScenario(body?.scenario)
-        if (scenario instanceof Response) return scenario
-        markdown = scenarioMarkdown(scenario)
+        const sent = sentScenario(body?.scenario)
+        if (sent instanceof Response) return sent
+        scenario = { ...sent, created: now, modified: now }
         name = scenario.title
       }
       const base = personId(name).slice(0, 70) || 'scenario'
       const taken = new Set((await deps.scenarios.list()).scenarios.map((s) => s.id))
       let id = base
       for (let n = 2; taken.has(id) || await deps.ownScenarios?.has(id); n++) id = `${base}-${n}`
-      return await saveScenario(id, markdown, 201)
+      return await saveScenario(id, scenario, 201)
     }],
 
     // Deletes one of the player's Scenarios.

@@ -283,17 +283,27 @@ Deno.test("The player's Scenarios are saved, imported and deleted", () =>
     // Saved over its file (made, the first time).
     const edited = { ...testScenario, place: 'A cellar.' }
     assertEquals((await call('PUT', '/api/scenarios/test', { scenario: edited })).status, 200)
-    assertEquals((await ownScenarios.get('test'))?.place, 'A cellar.')
+    const first = await ownScenarios.get('test')
+    assertEquals([first?.place, first?.created === first?.modified], ['A cellar.', true])
+    // Saved again: made when it was first saved, changed now.
+    await call('PUT', '/api/scenarios/test', { scenario: edited })
+    const second = await ownScenarios.get('test')
+    assertEquals(second?.created, first?.created)
+    assertEquals(second!.modified! >= first!.modified!, true)
     // A new one never takes another's id: its title's, made unique.
     const copy = await (await call('POST', '/api/scenarios', { scenario: edited })).json()
     assertEquals(copy.id, 'test-shoot')
     const again = await (await call('POST', '/api/scenarios', { scenario: edited })).json()
     assertEquals(again.id, 'test-shoot-2')
-    const imported = await call('POST', '/api/scenarios', {
-      markdown: scenarioText,
-      name: 'Test.md',
-    })
-    assertEquals((await imported.json()).id, 'test-2')
+    // An import keeps the dates its file gives.
+    const dated = scenarioText.replace(
+      'title: Test Shoot',
+      'title: Test Shoot\ncreated: 2020-01-01T00:00:00Z',
+    )
+    const imported =
+      await (await call('POST', '/api/scenarios', { markdown: dated, name: 'Test.md' }))
+        .json()
+    assertEquals([imported.id, imported.created], ['test-2', '2020-01-01T00:00:00.000Z'])
     // A file that wouldn't load back isn't saved, nor one outside the folder.
     const broken = await call('POST', '/api/scenarios', { markdown: '# no frontmatter' })
     assertEquals(broken.status, 400)

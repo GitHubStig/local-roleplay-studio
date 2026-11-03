@@ -9,6 +9,7 @@ import {
   KIND_LABELS,
   type SessionSummary,
 } from '../api'
+import { ago } from '../ago'
 import Icon from '../components/Icon.vue'
 import StartSession from '../components/StartSession.vue'
 import { tabStorage, useStoredString } from '../composables/storage'
@@ -114,21 +115,6 @@ const ACTIVITY_LABELS = {
   download: 'Downloading a model…',
 } as const
 
-const relative = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' })
-
-/** "5 minutes ago", "yesterday", … */
-function ago(iso: string): string {
-  const seconds = (Date.parse(iso) - Date.now()) / 1000
-  const units: [Intl.RelativeTimeFormatUnit, number][] = [
-    ['day', 86400],
-    ['hour', 3600],
-    ['minute', 60],
-  ]
-  for (const [unit, size] of units) {
-    if (Math.abs(seconds) >= size) return relative.format(Math.round(seconds / size), unit)
-  }
-  return 'just now'
-}
 </script>
 
 <template>
