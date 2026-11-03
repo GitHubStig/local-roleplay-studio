@@ -11,8 +11,8 @@ A Scenario was a saved Brief, made for Chains before Roleplays existed: free-for
 - **A Roleplay stays one-on-one.** The Scenario names who the player plays and who the Text Model plays by default; the player can pick others. The rest of the People are known to the Character and in the Look, and may act and speak briefly in its `actions`: text, never voiced, no thoughts, and never the Persona.
 - **Each Session keeps its own copy** of the Scenario in `session.json` (`scenario`, with `scenarioId` as where it came from), so a shared Session works without the file, and an edited Scenario leaves its Sessions alone. `session.json`, Scenario files and anything saved later carry a `version`, added once this work settles rather than bumped along the way; an upgrader comes with the first version 2. The Sessions from before are upgraded by hand.
 - **The shape is a TypeScript type first**; a Scenario is saved as Markdown with fixed headings, as it reads well and imports easily. The examples move to `example-scenarios/` (in the repo, read-only in the app; editing one saves a copy); the player's own go in `scenarios/`, gitignored.
-- **A Session starts from the Scenario page.** A Scenario picked on Home, or a typed Brief, opens it: Expand (always run, and sparse: it names the People, who's who and the Opening, and suggests what's blank without filling it), hand edits, and later a chat. Then a Roleplay goes on to its Cast review as before. Chains and Storyboards get the new shape turned into what they read now, so their engines don't change at first.
-- **The chat replies with edits, not the whole Scenario**: each a field named from the type and its new text, with a note and suggestions for blanks. Each call sends the Scenario as it stands, once, last; never its old versions. Each section's rules are a prompt file of their own, put together into the chat's system message.
+- **A Session starts from the Scenario page.** A Scenario picked on Home, or a typed Brief, opens it: Expand (always run, and sparse: it names the People, who's who and the Opening, and suggests what's blank without filling it), Suggest on any part, and hand edits. Then a Roleplay goes on to its Cast review as before. Chains and Storyboards get the new shape turned into what they read now, so their engines don't change at first.
+- **A chat, if it comes, replies with edits, not the whole Scenario** (deferred, below): each a field named from the type and its new text, with a note and suggestions for blanks. Each call sends the Scenario as it stands, once, last; never its old versions. Each section's rules are a prompt file of their own, put together into the chat's system message.
 
 ## Considered Options
 
@@ -25,7 +25,7 @@ A Scenario was a saved Brief, made for Chains before Roleplays existed: free-for
 
 ## Consequences
 
-- Built in pieces: the copy in `session.json` and the folders first, on main; the format, the Scenario page and the Roleplay's use of it on a branch, with Truths and others speaking checked by a replay of a pushy player before it merges; the chat after.
+- Built in pieces: the copy in `session.json` and the folders first, on main; the format, the Scenario page and the Roleplay's use of it on a branch, with Truths and others speaking checked by a replay of a pushy player before it merges.
 - A future Library of People and Places shares the Person and Place shape; importing one into a Scenario copies it, noting where from.
 
 ## A judge holds the Truths (2026-11-02)
@@ -34,3 +34,6 @@ On the bench ([docs/bench/truths](../bench/truths/README.md), Mac, Gemma 4 26B),
 
 Considered: a classifier model as the judge, faster still, but a second model to keep loaded beside the Text Model (one Text Model for every text job, AGENTS.md); tried if the Text Model judges badly.
 
+## Suggest in place of the chat, for now (2026-11-03)
+
+The page's first version, without the chat, got a *Suggest* button on every part: one short Text Model call for that part alone, sent the Scenario as it stands and what's typed there as notes, its answer written straight in, and pressed again for another ([research/scenario-expand.md](../research/scenario-expand.md); about a second each on Gemma 4 26B). With hand edits it covers what the chat was mostly for: filling a part, building on a few words, trying again. So the chat is deferred, which is the per-section enhancer considered above, taken alone after all. What only a chat would add is a change across sections from one sentence ("swap Kael and Elara", "set it in space"), done by hand meanwhile. Revisit when that turns out common: the owner editing many parts by hand to carry out one idea. Bench it then for changes nobody asked for, and for the whitespace trap (a reply that takes itself as done early, as Expand's did).
