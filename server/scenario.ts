@@ -524,9 +524,10 @@ export function dirScenarioFolder(dir: string | URL): ScenarioFolder {
 }
 
 /**
- * Copies the example Scenarios (`from`, e.g. `example-scenarios/`) into the player's folder when it
- * has none of its own (a fresh install, or every one deleted), so they're the player's to keep,
- * edit or delete. Returns the files copied.
+ * Copies the example Scenarios (`from`, e.g. `example-scenarios/`) into the player's folder when
+ * there's no such folder yet (a fresh install, or a new worktree, which has its own), so they're
+ * the player's to keep, edit or delete. A folder that's there is left alone, emptied or not, so
+ * deleted examples stay deleted; removing the folder brings them back. Returns the files copied.
  */
 export async function seedScenarios(folder: string | URL, from: string | URL): Promise<string[]> {
   const path = (p: string | URL) => p instanceof URL ? fromFileUrl(p) : p
@@ -539,7 +540,12 @@ export async function seedScenarios(folder: string | URL, from: string | URL): P
       throw err
     }
   }
-  if ((await mdFiles(path(folder))).length) return []
+  try {
+    await Deno.stat(path(folder))
+    return []
+  } catch (err) {
+    if (!(err instanceof Deno.errors.NotFound)) throw err
+  }
   const files = await mdFiles(path(from))
   await Deno.mkdir(path(folder), { recursive: true })
   for (const file of files) await Deno.copyFile(join(path(from), file), join(path(folder), file))

@@ -131,7 +131,7 @@ Hand edits (a Look, a Cast, a Storyboard Frame) save themselves when the focus l
 |---|---|---|
 | Settings | `settings.json` | Missing, corrupt or invalid → defaults; missing fields filled from defaults |
 | The job queue | `queue.json` | Every Session's jobs; written through a temp file, then renamed; missing → empty |
-| Scenarios | `scenarios/*.md` (the player's, gitignored) | Read fresh on every request, so edits need no restart. The examples (`example-scenarios/*.md`) are copied in at startup while it has none, then the player's to keep or delete. A Session keeps its own copy in `session.json` (`scenario`), as the Scenario page left it, so editing or deleting the file leaves it alone ([ADR 0032](adr/0032-scenarios-are-stories-kept-in-each-session.md)) |
+| Scenarios | `scenarios/*.md` (the player's, gitignored) | Read fresh on every request, so edits need no restart. The examples (`example-scenarios/*.md`) are copied in at startup when there's no such folder yet (a fresh install, a new worktree), then the player's to keep or delete; an emptied folder stays empty. A Session keeps its own copy in `session.json` (`scenario`), as the Scenario page left it, so editing or deleting the file leaves it alone ([ADR 0032](adr/0032-scenarios-are-stories-kept-in-each-session.md)) |
 | Sessions | `<Session folder>/<id>/session.json` + its files | Id is `YYYYMMDD-HHMMSS-xxxx`; files are written to a temp file, then renamed, and carry a random suffix, so a Frame made after an Undo never reuses a file name |
 | Call log | `<id>/calls/frame-N.json`, `calls/setup.json` | Only with Settings' call log on |
 

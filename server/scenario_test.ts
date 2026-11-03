@@ -221,7 +221,7 @@ Deno.test('dirScenarioLibrary treats a missing directory as empty', async () => 
   assertEquals(errors, [])
 })
 
-Deno.test('seedScenarios copies the examples only into a folder with none of its own', async () => {
+Deno.test('seedScenarios copies the examples only where there is no folder yet', async () => {
   const root = await Deno.makeTempDir()
   try {
     const examples = join(root, 'examples')
@@ -230,11 +230,10 @@ Deno.test('seedScenarios copies the examples only into a folder with none of its
     await Deno.writeTextFile(join(examples, 'tavern.md'), valid)
     await Deno.writeTextFile(join(examples, 'notes.txt'), 'not a Scenario')
     assertEquals(await seedScenarios(mine, examples), ['tavern.md'])
-    // With one of the player's there, nothing is copied: a deleted example stays deleted.
+    // Emptied, it stays empty: a deleted example stays deleted.
     await Deno.remove(join(mine, 'tavern.md'))
-    await Deno.writeTextFile(join(mine, 'mine.md'), valid)
     assertEquals(await seedScenarios(mine, examples), [])
-    assertEquals((await Array.fromAsync(Deno.readDir(mine))).map((e) => e.name), ['mine.md'])
+    assertEquals((await Array.fromAsync(Deno.readDir(mine))).length, 0)
   } finally {
     await Deno.remove(root, { recursive: true })
   }

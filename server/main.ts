@@ -161,7 +161,8 @@ const mlxVoice = features.voices.available
 
 /**
  * The player's Scenarios (gitignored), which Home lists and the Scenario page saves to (ADR 0032):
- * the examples are copied in while it has none, so they're the player's to keep or delete.
+ * the examples are copied in when there's no such folder yet, so they're the player's to keep or
+ * delete.
  */
 const scenariosDir = new URL('../scenarios/', import.meta.url)
 const seeded = await seedScenarios(scenariosDir, new URL('../example-scenarios/', import.meta.url))
