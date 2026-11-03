@@ -81,15 +81,9 @@ const namesPeople = (from: ExpandFrom) => 'brief' in from || from.scenario.peopl
  */
 export const expandSchema = (from: ExpandFrom) =>
   object({
-    ...('brief' in from && {
-      title: text,
-      description: text,
-      opening: text,
-      place: text,
-      time: text,
-      style: text,
-      truths: texts,
-    }),
+    ...('brief' in from && { title: text, description: text }),
+    // The People and who plays whom before the Opening, so it can name them: written after it,
+    // the Opening named everyone in 2 Briefs in 9 ("a lighthouse keeper", "the player").
     ...(namesPeople(from) && {
       people: {
         type: 'array',
@@ -104,6 +98,13 @@ export const expandSchema = (from: ExpandFrom) =>
     }),
     player: text,
     character: text,
+    ...('brief' in from && {
+      opening: text,
+      place: text,
+      time: text,
+      style: text,
+      truths: texts,
+    }),
     suggestions: {
       type: 'array',
       items: object({
