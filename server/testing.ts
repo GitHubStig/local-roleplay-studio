@@ -1,6 +1,7 @@
 import encodePng from '@jsquash/png/encode.js'
 import type { EditRequest, ImageGenerator, OnPreview, OnProgress } from './images/imageGenerator.ts'
 import { parseScenario, type ScenarioLibrary } from './scenario.ts'
+import { expanded, type ExpandFrom } from './scenario/expand.ts'
 import type { ImagePrompt } from './imagePrompt.ts'
 import type { Settings } from './settings.ts'
 import type {
@@ -76,6 +77,10 @@ export interface Scripts {
   edits?: (StoryboardEdit | Error)[]
   /** Each clip prompt written. */
   clips?: (string | Error)[]
+  /** Each Expand's reply, as the model would write it (`scenario/expand.ts`). */
+  expansions?: (object | Error)[]
+  /** Each suggestion for a Scenario's part. */
+  suggestions?: (string | Error)[]
 }
 
 /** The sentences the scripted Text Model writes for Frame `index` when none are scripted. */
@@ -96,6 +101,7 @@ export function scriptedTextModel(
   requests: FrameRequest[]
   writeRequests: StoryboardWriteRequest[]
   clipRequests: { system: string; user: string }[]
+  suggestRequests: string[]
 } {
   const next = <T>(queue: (T | Error)[] | undefined, what: string): Promise<T> => {
     const item = queue?.shift()
@@ -111,6 +117,8 @@ export function scriptedTextModel(
     writeRequests: [] as StoryboardWriteRequest[],
     /** Each clip prompt asked for, in order. */
     clipRequests: [] as { system: string; user: string }[],
+    /** Each Scenario part a suggestion was asked for, in words. */
+    suggestRequests: [] as string[],
     write(req: FrameRequest, signal: AbortSignal, onThinking?: (chunk: string) => void) {
       model.calls++
       model.requests.push(req)
@@ -157,6 +165,17 @@ export function scriptedTextModel(
       const text = await next(scripts.clips, 'clip')
       for (const word of text.split(/(?<= )/)) onContent?.(word)
       return text
+    },
+    async expandScenario(from: ExpandFrom, signal: AbortSignal) {
+      model.calls++
+      signal.throwIfAborted()
+      return expanded(from, await next(scripts.expansions, 'expansion'))
+    },
+    suggestForScenario(_scenario: unknown, what: string, signal: AbortSignal) {
+      model.calls++
+      model.suggestRequests.push(what)
+      signal.throwIfAborted()
+      return next(scripts.suggestions, 'suggestion')
     },
   }
   return model

@@ -148,6 +148,7 @@ server/           Deno API: the app, Sessions, Settings, the job queue, what all
   chain/          a Chain's Frames and jobs
   storyboard/     a Storyboard's plan and edits
   roleplay/       a Roleplay: its engine, Art Agent, voices and jobs
+  scenario/       the Scenario page's Expand
   text/           the Text backends (Ollama, OpenAI-compatible) behind one Chat interface
   images/         the Image backends: mflux/, comfyui/ (its workflows in comfyui/workflows/),
                   and the placeholder
@@ -160,7 +161,7 @@ server/           Deno API: the app, Sessions, Settings, the job queue, what all
   export/         the Compare table as a page of its own, its pictures as WebP
   replay/         `deno task replay`: a test Session rebuilt through the API from a replay file
   prompts/        what the Text Model is told, one Markdown file each: chain/, storyboard/,
-                  roleplay/, and shared/ for what more than one uses
+                  roleplay/, scenario/, and shared/ for what more than one uses
 web/              Vue 3 + Vite + Tailwind 4 web app; export.html is the exported Compare page
 python/           What uv runs, each in its own folder, its packages in the file and locked beside it
                   (`make.py.lock`), so both machines run the same versions:

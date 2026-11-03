@@ -22,7 +22,14 @@ import {
   imageKindOf,
 } from './backends.ts'
 import type { TextChoice, TextModelInfo } from './text/backend.ts'
-import { briefScenario, type Scenario, type ScenarioLibrary, summarise } from './scenario.ts'
+import {
+  briefScenario,
+  type Scenario,
+  scenarioFrom,
+  type ScenarioLibrary,
+  scenarioText,
+  summarise,
+} from './scenario.ts'
 import {
   type ChainSession,
   excerpt,
@@ -39,6 +46,7 @@ import {
   validateSettings,
 } from './settings.ts'
 import type { TextModel } from './textModel.ts'
+import { partOf } from './scenario/suggest.ts'
 import type { RoleplayModel } from './roleplay/model.ts'
 import type { FigureMaker } from './3d/figure.ts'
 import type { VideoGenerator } from './video/videoGenerator.ts'
@@ -117,7 +125,7 @@ import { RenderQueue } from './renderQueue.ts'
 import { reportingTurns } from './text/turns.ts'
 import { notingTraces } from './comfyui/traces.ts'
 import { clearTraces } from './comfyui/files.ts'
-import { type FrameDeps, frameName, type Phase, UpscaleError } from './frames.ts'
+import { type FrameDeps, frameName, type Phase, UpscaleError, withRetry } from './frames.ts'
 import {
   DeleteError,
   deleteFrame,
@@ -307,17 +315,45 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     return (await deps.sessions.load(id)) ?? error('Session not found', 404)
   }
 
+  /** Why a typed Brief is refused: too long, or it crosses a Limit; undefined when it isn't. */
+  function briefRefused(brief: string): Response | undefined {
+    if (brief.length > MAX_BRIEF_LENGTH) {
+      return error(`A Brief can be at most ${MAX_BRIEF_LENGTH} characters`, 400)
+    }
+    const limit = crossedLimit(brief)?.message
+    if (limit) return error(`The Brief crosses a limit: ${limit}`, 422)
+  }
+
+  /**
+   * The Text Model as the Scenario page uses it, before there's a Session: Settings' model and
+   * Thinking, seeded from Settings' seed (or a new one), its repeats counted under one key.
+   */
+  async function scenarioPageModel(): Promise<TextModel | Response> {
+    const settings = await deps.settings.load()
+    if (!settings.textModel) return error('Choose a Text Model in Settings first', 400)
+    return deps.textModel({
+      model: settings.textModel,
+      thinking: settings.thinking,
+      seeding: {
+        session: 'scenario-page',
+        seed: settings.seedMode === 'fixed' ? settings.seed : randomSeed(),
+      },
+    })
+  }
+
   /** A Session's title: its Scenario's, or the start of its typed Brief. */
   const titleOf = (session: Session) =>
-    session.brief
-      ? briefScenario(session.brief).title
-      : session.scenario?.title ?? session.scenarioId ?? ''
+    session.scenario?.title ??
+      (session.brief ? briefScenario(session.brief).title : session.scenarioId ?? '')
 
-  /** The Scenario a Session starts from: its own copy of a Scenario, or its typed Brief. */
+  /**
+   * The Scenario a Session starts from: its own copy (as the Scenario page left it), or its typed
+   * Brief when it started without the page.
+   */
   function scenarioFor(session: Session): Scenario | Response {
+    if (session.scenario) return session.scenario
     if (session.brief) return briefScenario(session.brief)
-    return session.scenario ??
-      error(`This Session has no copy of its Scenario "${session.scenarioId}"`, 409)
+    return error(`This Session has no copy of its Scenario "${session.scenarioId}"`, 409)
   }
 
   /**
@@ -886,6 +922,60 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       return json({ scenarios: scenarios.map(summarise), errors })
     }],
 
+    ['GET', new URLPattern({ pathname: '/api/scenarios/:id' }), async (_req, p) => {
+      const scenario = await deps.scenarios.get(p.id!)
+      return scenario ? json(scenario) : error('Scenario not found', 404)
+    }],
+
+    // Expand, as the Scenario page opens (scenario/expand.ts): nothing is saved.
+    ['POST', new URLPattern({ pathname: '/api/scenarios/expand' }), async (req) => {
+      const body = await readJson(req) as { scenarioId?: unknown; brief?: unknown } | undefined
+      const scenarioId = typeof body?.scenarioId === 'string' ? body.scenarioId : null
+      const brief = typeof body?.brief === 'string' && body.brief.trim() ? body.brief.trim() : null
+      if (!scenarioId === !brief) return error('Give either a scenarioId or a brief', 400)
+      const refused = brief && briefRefused(brief)
+      if (refused) return refused
+      const scenario = scenarioId ? await deps.scenarios.get(scenarioId) : undefined
+      if (scenarioId && !scenario) return error('Scenario not found', 404)
+      const model = await scenarioPageModel()
+      if (model instanceof Response) return model
+      try {
+        // Retried once with a new seed, as a reply can still run away; the wording in
+        // expand-request.md took the whitespace loops from 2 seeds in 8 to none in 32 (2026-11-03).
+        const from = scenario ? { scenario } : { brief: brief! }
+        return json(
+          await withRetry(() => model.expandScenario(from, req.signal), req.signal, () => {}),
+        )
+      } catch (err) {
+        return error(`Expand failed: ${(err as Error).message}`, 502)
+      }
+    }],
+
+    // Suggest, on the Scenario page (scenario/suggest.ts): one suggestion for one blank part.
+    ['POST', new URLPattern({ pathname: '/api/scenarios/suggest' }), async (req) => {
+      const body = await readJson(req) as { scenario?: unknown; field?: unknown } | undefined
+      let scenario: Scenario
+      try {
+        scenario = scenarioFrom(body?.scenario)
+      } catch (err) {
+        return error(`The Scenario isn't complete: ${(err as Error).message}`, 400)
+      }
+      const what = typeof body?.field === 'string' ? partOf(scenario, body.field) : undefined
+      if (!what) return error('field must name a part of the Scenario', 400)
+      const limit = crossedLimit(scenarioText(scenario))?.message
+      if (limit) return error(`The Scenario crosses a limit: ${limit}`, 422)
+      const model = await scenarioPageModel()
+      if (model instanceof Response) return model
+      try {
+        const text = await model.suggestForScenario(scenario, what, req.signal)
+        const crossed = crossedLimit(text)?.message
+        if (crossed) return error(`The suggestion crossed a limit (${crossed}); ask again`, 422)
+        return json({ text })
+      } catch (err) {
+        return error(`Suggest failed: ${(err as Error).message}`, 502)
+      }
+    }],
+
     // --- Sessions ------------------------------------------------------------------------------
 
     ['POST', new URLPattern({ pathname: '/api/sessions' }), async (req) => {
@@ -894,6 +984,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
           kind?: unknown
           scenarioId?: unknown
           brief?: unknown
+          scenario?: unknown
           frameCount?: unknown
           seed?: unknown
         }
@@ -905,15 +996,22 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       const scenarioId = typeof body?.scenarioId === 'string' ? body.scenarioId : null
       const brief = typeof body?.brief === 'string' && body.brief.trim() ? body.brief.trim() : null
       if (!scenarioId === !brief) return error('Give either a scenarioId or a brief', 400)
-      if (brief && brief.length > MAX_BRIEF_LENGTH) {
-        return error(`A Brief can be at most ${MAX_BRIEF_LENGTH} characters`, 400)
+      const refused = brief && briefRefused(brief)
+      if (refused) return refused
+      // The Scenario as the Scenario page left it, or else the file as it is (a replay's).
+      let scenario: Scenario | undefined
+      if (body?.scenario !== undefined) {
+        try {
+          scenario = { ...scenarioFrom(body.scenario), id: scenarioId ?? '' }
+        } catch (err) {
+          return error(`The Scenario isn't complete: ${(err as Error).message}`, 400)
+        }
+        const limit = crossedLimit(scenarioText(scenario))?.message
+        if (limit) return error(`The Scenario crosses a limit: ${limit}`, 422)
+      } else if (scenarioId) {
+        scenario = await deps.scenarios.get(scenarioId)
+        if (!scenario) return error('Scenario not found', 404)
       }
-      if (brief) {
-        const limit = crossedLimit(brief)?.message
-        if (limit) return error(`The Brief crosses a limit: ${limit}`, 422)
-      }
-      const scenario = scenarioId ? await deps.scenarios.get(scenarioId) : undefined
-      if (scenarioId && !scenario) return error('Scenario not found', 404)
       let frameCount = FRAME_COUNT.default
       if (kind === 'storyboard' && body?.frameCount !== undefined) {
         frameCount = Number(body.frameCount)

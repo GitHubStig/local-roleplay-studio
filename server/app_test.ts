@@ -378,6 +378,74 @@ Deno.test('DELETE /api/sessions/:id removes a Session and its images', () =>
     assertEquals((await call('DELETE', '/api/sessions/s1')).status, 404)
   }))
 
+Deno.test('GET /api/scenarios/:id returns the whole Scenario', async () => {
+  const { call } = setup()
+  assertEquals(await (await call('GET', '/api/scenarios/test')).json(), testScenario)
+  assertEquals((await call('GET', '/api/scenarios/nope')).status, 404)
+})
+
+Deno.test('POST /api/scenarios/expand expands a Scenario or a Brief, saving nothing', () =>
+  withTempDir(async (root) => {
+    const textModel = scriptedTextModel([], [], {
+      expansions: [
+        {
+          people: [{ name: 'Ann', truths: [] }],
+          suggestions: [{ person: '', field: 'time', text: 'Dusk.' }],
+        },
+        { title: 'Fog', opening: 'Ann rides into fog.' },
+      ],
+    })
+    const { call, sessions } = setup({ root, settings: { textModel: 'x' }, textModel })
+    const fromFile = await (await call('POST', '/api/scenarios/expand', { scenarioId: 'test' }))
+      .json()
+    assertEquals(fromFile.scenario.people.map((p: { name: string }) => p.name), ['Ann'])
+    assertEquals(fromFile.suggestions, [{ field: 'time', text: 'Dusk.' }])
+    const fromBrief = await (await call('POST', '/api/scenarios/expand', { brief: 'A knight.' }))
+      .json()
+    assertEquals([fromBrief.scenario.title, fromBrief.scenario.opening], [
+      'Fog',
+      'Ann rides into fog.',
+    ])
+    assertEquals((await call('POST', '/api/scenarios/expand', {})).status, 400)
+    assertEquals((await call('POST', '/api/scenarios/expand', { scenarioId: 'nope' })).status, 404)
+    assertEquals(await sessions.list(), [])
+  }))
+
+Deno.test('POST /api/scenarios/suggest suggests for one part of the Scenario as sent', async () => {
+  const textModel = scriptedTextModel([], [], { suggestions: ['A winter night.'] })
+  const { call } = setup({ settings: { textModel: 'x' }, textModel })
+  const ask = (field: string, scenario: object = testScenario) =>
+    call('POST', '/api/scenarios/suggest', { scenario, field })
+  assertEquals(await (await ask('time')).json(), { text: 'A winter night.' })
+  assertEquals(textModel.suggestRequests, ['the Time: the time of day, and the weather'])
+  assertEquals((await ask('people.nobody.goal')).status, 400)
+  assertEquals((await ask('time', { ...testScenario, opening: '' })).status, 400)
+})
+
+Deno.test('POST /api/sessions keeps the Scenario as the Scenario page sends it', () =>
+  withTempDir(async (root) => {
+    const { call } = setup({ root, settings: { textModel: 'x' } })
+    const sent = {
+      ...testScenario,
+      people: [{ id: 'p1', name: 'Ann', looks: 'Tall.', truths: [] }, { id: 'p2', name: 'Bo' }],
+      player: 'p2',
+      character: 'p1',
+    }
+    const res = await call('POST', '/api/sessions', {
+      kind: 'roleplay',
+      scenarioId: 'test',
+      scenario: sent,
+    })
+    const session = await res.json()
+    assertEquals([session.scenarioId, session.scenario.id], ['test', 'test'])
+    assertEquals([session.scenario.player, session.scenario.people[0].looks], ['p2', 'Tall.'])
+    const brief = { brief: 'A knight.', scenario: { ...sent, title: 'Fog' } }
+    const fromBrief = await (await call('POST', '/api/sessions', brief)).json()
+    assertEquals([fromBrief.brief, fromBrief.scenario.title], ['A knight.', 'Fog'])
+    const incomplete = { scenarioId: 'test', scenario: { ...sent, opening: '' } }
+    assertEquals((await call('POST', '/api/sessions', incomplete)).status, 400)
+  }))
+
 Deno.test('POST /api/sessions starts from a typed Brief or a Scenario, not both', () =>
   withTempDir(async (root) => {
     const { call } = setup({ root, settings: { textModel: 'x' } })

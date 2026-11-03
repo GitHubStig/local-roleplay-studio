@@ -3,12 +3,10 @@ import { useElementSize } from '@vueuse/core'
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
-  createSession,
   deleteSession,
   imageUrl,
   listSessions,
   KIND_LABELS,
-  type SessionStart,
   type SessionSummary,
 } from '../api'
 import Icon from '../components/Icon.vue'
@@ -35,7 +33,7 @@ const sessionsWidth = computed(() => {
   return `${columns * CARD_REM + (columns - 1) * GAP_REM}rem`
 })
 const deleteError = ref('')
-/** Why the last attempt to start failed, e.g. the Opening Frame errored. */
+/** Why the last Session failed to start: its Opening Frame errored. */
 const startError = ref('')
 /**
  * Whether Start a new Session is open: closed under the button while there are Sessions, open
@@ -81,16 +79,6 @@ watch(
   },
   { immediate: true },
 )
-
-async function start(start: SessionStart) {
-  startError.value = ''
-  try {
-    const session = await createSession(start)
-    router.push(sessionPath(session.id, session.kind))
-  } catch (err) {
-    startError.value = (err as Error).message
-  }
-}
 
 async function remove(s: SessionSummary) {
   const what = `${s.title}, ${s.frames} ${s.frames === 1 ? 'Frame' : 'Frames'}`
@@ -149,7 +137,7 @@ function ago(iso: string): string {
           <Icon :name="startOpen ? 'chevron-up' : 'plus'" />
           New Session
         </button>
-        <StartSession v-if="startOpen" :error="startError" class="w-full" @start="start" />
+        <StartSession v-if="startOpen" :error="startError" class="w-full" />
       </div>
 
       <section

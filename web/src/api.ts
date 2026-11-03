@@ -305,6 +305,61 @@ export interface ScenarioList {
 
 export const getScenarios = () => request<ScenarioList>('/api/scenarios')
 
+/** Anyone the story treats as someone; '' or [] for what it leaves to the Text Model. */
+export interface Person {
+  /** Stays the same when they're renamed: what `player` and `character` name. */
+  id: string
+  name: string
+  looks: string
+  wears: string
+  personality: string
+  speaks: string
+  background: string
+  goal: string
+  truths: string[]
+}
+
+/** A Scenario, as the server's `scenario.ts` has it: what it states holds, the rest is left open. */
+export interface Scenario {
+  id: string
+  title: string
+  description: string
+  opening: string
+  place: string
+  time: string
+  style: string
+  truths: string[]
+  people: Person[]
+  /** The id of the Person the player plays in a Roleplay. */
+  player?: string
+  /** The id of the Person the Text Model plays in a Roleplay. */
+  character?: string
+}
+
+/** A suggestion for a blank part, by its field (`place`, `truths`, `people.<id>.goal`). */
+export interface Suggestion {
+  field: string
+  text: string
+}
+
+export const getScenario = (id: string) => request<Scenario>(`/api/scenarios/${id}`)
+
+/** One suggestion for one blank part of the Scenario as it stands; another each time it's asked. */
+export const suggestPart = (scenario: Scenario, field: string) =>
+  post<{ text: string }>('/api/scenarios/suggest', { scenario, field })
+
+/** Expand, as the Scenario page opens: names the People and who's who, and suggests for blanks. */
+export const expandScenario = (
+  from: { scenarioId: string } | { brief: string },
+  signal?: AbortSignal,
+) =>
+  request<{ scenario: Scenario; suggestions: Suggestion[] }>('/api/scenarios/expand', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(from),
+    signal,
+  })
+
 /**
  * A Session's whole state at one Frame: one paragraph describing the image, written in this order:
  * subject and identity → pose and limbs → expression → camera angle and framing → clothing →
@@ -654,9 +709,12 @@ export const post = <T>(path: string, body?: unknown) =>
     body: body === undefined ? undefined : JSON.stringify(body),
   })
 
-/** What a new Session starts from: a saved Scenario or a typed Brief. */
+/**
+ * What a new Session starts from: a saved Scenario or a typed Brief, and the Scenario as the
+ * Scenario page left it.
+ */
 export type SessionStart =
-  & { kind: SessionKind; frameCount?: number }
+  & { kind: SessionKind; frameCount?: number; scenario?: Scenario }
   & ({ scenarioId: string; brief?: never } | { brief: string; scenarioId?: never })
 
 export const createSession = (start: SessionStart) => post<Session>('/api/sessions', start)

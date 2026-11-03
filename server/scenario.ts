@@ -66,11 +66,18 @@ export const personId = (name: string) =>
   name.toLowerCase().normalize('NFKD').replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '')
 
 /** The prose sections, in the order they're written. */
-const PROSE = ['opening', 'place', 'time', 'style'] as const
+export const PROSE = ['opening', 'place', 'time', 'style'] as const
 const SECTIONS = [...PROSE, 'truths', 'people']
 
 /** A Person's fields as written (`- Looks: …`), in order. */
-const PERSON_FIELDS = ['looks', 'wears', 'personality', 'speaks', 'background', 'goal'] as const
+export const PERSON_FIELDS = [
+  'looks',
+  'wears',
+  'personality',
+  'speaks',
+  'background',
+  'goal',
+] as const
 const LABELS: Record<(typeof PERSON_FIELDS)[number] | 'truths', string> = {
   looks: 'Looks',
   wears: 'Wears',
@@ -226,6 +233,92 @@ export function parseScenario(id: string, text: string): Scenario {
   if (issues.length > 0) throw new Error(issues.join('; '))
   return scenario
 }
+
+/**
+ * A Scenario as the Scenario page sends it, checked and tidied; throws an Error listing every
+ * problem found. Its People keep the ids they were given, so renaming one keeps who plays whom.
+ */
+export function scenarioFrom(value: unknown): Scenario {
+  const o = isRecord(value) ? value : {}
+  const issues: string[] = []
+  const text = (v: unknown, what: string) => {
+    if (v === undefined) return ''
+    if (typeof v !== 'string') issues.push(`${what} must be text`)
+    return typeof v === 'string' ? v.trim() : ''
+  }
+  const list = (v: unknown, what: string) => {
+    if (v === undefined) return []
+    if (!Array.isArray(v) || !v.every((t) => typeof t === 'string')) {
+      issues.push(`${what} must be a list of text`)
+      return []
+    }
+    return v.map((t) => t.trim()).filter(Boolean)
+  }
+  if (o.people !== undefined && !Array.isArray(o.people)) issues.push('people must be a list')
+  const people = (Array.isArray(o.people) ? o.people : []).map((raw, i): Person => {
+    const p = isRecord(raw) ? raw : {}
+    const name = text(p.name, `person ${i + 1}'s name`)
+    const person: Person = {
+      id: text(p.id, `${name}'s id`) || personId(name),
+      name,
+      looks: '',
+      wears: '',
+      personality: '',
+      speaks: '',
+      background: '',
+      goal: '',
+      truths: list(p.truths, `${name}'s Truths`),
+    }
+    for (const f of PERSON_FIELDS) person[f] = text(p[f], `${name}'s ${LABELS[f]}`)
+    return person
+  })
+  const ids = new Set<string>()
+  const names = new Set<string>()
+  for (const p of people) {
+    if (!p.name) issues.push('every Person needs a name')
+    else if (names.has(p.name.toLowerCase())) issues.push(`two people are called "${p.name}"`)
+    if (ids.has(p.id)) issues.push(`two people have the id "${p.id}"`)
+    names.add(p.name.toLowerCase())
+    ids.add(p.id)
+  }
+  const role = (key: 'player' | 'character') => {
+    const id = text(o[key], key)
+    if (id && !ids.has(id)) issues.push(`the ${key} isn't one of the People`)
+    return id || undefined
+  }
+  const player = role('player')
+  const character = role('character')
+  const scenario: Scenario = {
+    id: text(o.id, 'id'),
+    title: text(o.title, 'title'),
+    description: text(o.description, 'description'),
+    opening: text(o.opening, 'opening'),
+    place: text(o.place, 'place'),
+    time: text(o.time, 'time'),
+    style: text(o.style, 'style'),
+    truths: list(o.truths, 'the Truths'),
+    people,
+    ...(player && { player }),
+    ...(character && { character }),
+  }
+  if (!scenario.title) issues.push('it needs a title')
+  if (!scenario.opening) issues.push('it needs an Opening')
+  if (player && player === character) {
+    issues.push('the player and the character must be different People')
+  }
+  if (issues.length > 0) throw new Error(issues.join('; '))
+  return scenario
+}
+
+/** Everything a Scenario says, as one text, for the Limits to check. */
+export const scenarioText = (s: Scenario): string =>
+  [
+    s.title,
+    s.description,
+    ...PROSE.map((key) => s[key]),
+    ...s.truths,
+    ...s.people.flatMap((p) => [p.name, ...PERSON_FIELDS.map((f) => p[f]), ...p.truths]),
+  ].filter(Boolean).join('\n')
 
 /** A Scenario as its file: `parseScenario` reads back what this writes. */
 export function scenarioMarkdown(s: Scenario): string {

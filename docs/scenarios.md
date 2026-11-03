@@ -83,6 +83,10 @@ A Person's lines, each optional:
 
 A Truth isn't a goal: a goal can change or fail in play, and a Truth shouldn't.
 
+## Starting from it
+
+Picking a Scenario on Home opens it on the Scenario page, where Expand says who plays whom (if the Scenario doesn't) and suggests what to put in some of the blank parts, which you can take or leave; *Suggest* under any other blank part asks for one there. Edit any part there, and pick who you play and who the Text Model plays; Start begins the Session from the Scenario as you've left it. Edits there go to that Session only: the file stays as it is.
+
 ## How each kind of Session uses it
 
 - **A Roleplay** writes its Cast from the Opening, with who plays whom and what else the Scenario states but its Truths; the Cast fills in what's left out, and you review it before the scene begins.

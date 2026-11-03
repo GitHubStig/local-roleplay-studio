@@ -6,6 +6,7 @@ import {
   dirScenarioLibrary,
   factsOf,
   parseScenario,
+  scenarioFrom,
   scenarioMarkdown,
   truthsOf,
 } from './scenario.ts'
@@ -124,6 +125,35 @@ stray
       throw new Error(`missing "${expected}" in: ${(err as Error).message}`)
     }
   }
+})
+
+Deno.test("scenarioFrom keeps a renamed Person's id, so who plays whom holds", () => {
+  const sent = parseScenario('tavern', valid)
+  const kael = { ...sent.people[0], name: 'Tom', goal: '  a drink ' }
+  const scenario = scenarioFrom({ ...sent, people: [kael, sent.people[1]] })
+  assertEquals(scenario.people[0], { ...kael, goal: 'a drink' })
+  assertEquals([scenario.player, scenario.character], ['elara', 'kael'])
+})
+
+Deno.test('scenarioFrom lists every problem at once', () => {
+  const err = assertThrows(() =>
+    scenarioFrom({
+      title: '',
+      opening: 3,
+      people: [{ name: 'Ann' }, { name: 'ann' }, { truths: 'x' }],
+      player: 'bob',
+    })
+  )
+  for (
+    const issue of [
+      'opening must be text',
+      'two people are called "ann"',
+      'Truths must be a list of text',
+      'every Person needs a name',
+      "the player isn't one of the People",
+      'it needs a title',
+    ]
+  ) assertStringIncludes((err as Error).message, issue)
 })
 
 Deno.test('parseScenario rejects a file without frontmatter', () => {

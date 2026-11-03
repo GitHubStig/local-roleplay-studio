@@ -36,6 +36,7 @@ Measured on the Mac with Ollama 0.35.1, 2026-10-05 and -06, on the same four tes
 Workarounds the benches showed were needed. Check each again when the Text Model changes, and drop any it no longer needs:
 
 - **Who's in the picture comes last** in the Art Agent's and Storyboard's replies, and no field has a `maxLength`: either way round, gemma4 wrote blank lines until its token cap. The sentences are trimmed in code instead (`trimFields`, `server/roleplay/art.ts`).
+- **A reply's request names its parts in order, and says it's done only after the last** (the Storyboard plan, the Scenario page's Expand): told nothing, gemma4 took its answer as done after an early part and, with `}` barred by the parts still required, wrote whitespace until its cap ([people-in-pictures.md](research/people-in-pictures.md), [scenario-expand.md](research/scenario-expand.md)).
 - **Each aspect is a field of its own** in a Storyboard Frame's or Art Agent's reply: given one string, a model squeezed all seven into a pose sentence ([ADR 0006](adr/0006-storyboards-plan-in-one-call.md)).
 - **The Art Agent writes prose, not tags**: prose was right on all seven Image Models tried, tags on none ([ADR 0023](adr/0023-the-art-agent-writes-prose.md)).
 - **Suggest is told the player's usual length in words** (the median of their last five Messages) and to keep their capitals and dropped "I": told only "their length and tone", every model tidied the player up.

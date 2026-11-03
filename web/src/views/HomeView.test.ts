@@ -9,7 +9,6 @@ vi.mock('../api', async (importOriginal) => ({
   ...(await importOriginal<typeof api>()),
   listSessions: vi.fn(),
   deleteSession: vi.fn(),
-  createSession: vi.fn(),
   getScenarios: vi.fn(() => Promise.resolve({ scenarios: [], errors: [] })),
   getSettings: vi.fn(() => Promise.resolve({ textModel: 'x' })),
   getSettingsOptions: vi.fn(() =>
@@ -37,6 +36,7 @@ async function mountIt() {
       { path: '/', component: HomeView },
       { path: '/sessions/:id', component: {} },
       { path: '/storyboards/:id', component: {} },
+      { path: '/scenario/:id?', name: 'scenario', component: {} },
     ],
   })
   await router.push('/')
@@ -71,20 +71,20 @@ describe('HomeView', () => {
     const { wrapper } = await mountIt()
     const button = wrapper.find('[data-new-session]')
     expect(button.attributes('aria-expanded')).toBe('false')
-    expect(wrapper.find('[data-start]').exists()).toBe(false)
+    expect(wrapper.find('[data-brief]').exists()).toBe(false)
     await button.trigger('click')
     await flushPromises()
     expect(button.attributes('aria-expanded')).toBe('true')
-    expect(wrapper.find('[data-start]').exists()).toBe(true)
+    expect(wrapper.find('[data-brief]').exists()).toBe(true)
     // Above Your Sessions, so it pushes them down.
     const html = wrapper.html()
-    expect(html.indexOf('data-start')).toBeLessThan(html.indexOf('Your Sessions'))
+    expect(html.indexOf('data-brief')).toBeLessThan(html.indexOf('Your Sessions'))
   })
 
   it('opens Start a new Session when there are no Sessions yet', async () => {
     vi.mocked(api.listSessions).mockResolvedValue([])
     const { wrapper } = await mountIt()
-    expect(wrapper.find('[data-start]').exists()).toBe(true)
+    expect(wrapper.find('[data-brief]').exists()).toBe(true)
   })
 
   it("shows a Roleplay's latest line in place of an image", async () => {
@@ -175,37 +175,16 @@ describe('HomeView', () => {
     }
   })
 
-  it('starts a new Chain and opens it', async () => {
+  it('opens the Scenario page on a Scenario picked', async () => {
     vi.mocked(api.getScenarios).mockResolvedValue({
       scenarios: [{ id: 'tavern', title: 'The Rain-Soaked Tavern', description: '' }],
       errors: [],
     })
-    vi.mocked(api.createSession).mockResolvedValue({ id: 'new', kind: 'chain' } as api.Session)
     const { wrapper, router } = await mountIt()
     await wrapper.find('[data-new-session]').trigger('click')
     await flushPromises()
-    await wrapper.find('input[value=chain]').setValue()
-    await wrapper.find('[data-start]').trigger('click')
+    await wrapper.find('[data-scenario=tavern]').trigger('click')
     await flushPromises()
-    expect(api.createSession).toHaveBeenCalledWith({ kind: 'chain', scenarioId: 'tavern' })
-    expect(router.currentRoute.value.path).toBe('/sessions/new')
-  })
-
-  it('opens a new Storyboard on its own screen', async () => {
-    vi.mocked(api.createSession).mockResolvedValue({ id: 'sb', kind: 'storyboard' } as api.Session)
-    const { wrapper, router } = await mountIt()
-    await wrapper.find('[data-new-session]').trigger('click')
-    await flushPromises()
-    await wrapper.find('input[value=storyboard]').setValue()
-    await wrapper.find('[data-brief]').setValue('A dunk.')
-    await wrapper.find('input[value=brief]').setValue()
-    await wrapper.find('[data-start]').trigger('click')
-    await flushPromises()
-    expect(api.createSession).toHaveBeenCalledWith({
-      kind: 'storyboard',
-      frameCount: 8,
-      brief: 'A dunk.',
-    })
-    expect(router.currentRoute.value.path).toBe('/storyboards/sb')
+    expect(router.currentRoute.value.path).toBe('/scenario/tavern')
   })
 })

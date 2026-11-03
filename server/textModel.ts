@@ -5,6 +5,14 @@ import { JsonStreamReader } from './jsonStream.ts'
 import { type Chat, within } from './text/chat.ts'
 import { limitsEnabled } from './limits.ts'
 import { loadPrompt } from './promptFiles.ts'
+import {
+  expanded,
+  type ExpandFrom,
+  expandMessages,
+  expandSchema,
+  type Expansion,
+} from './scenario/expand.ts'
+import { cleanSuggestion, suggestMessages } from './scenario/suggest.ts'
 
 /** What the Text Model produces for one Frame, before the engine applies its rules. */
 export interface FrameText {
@@ -60,6 +68,14 @@ export interface TextModel {
     signal: AbortSignal,
     onContent?: (chunk: string) => void,
   ): Promise<string>
+  /** Expand, on the Scenario page: a Scenario or Brief sorted, named and suggested for (`scenario/expand.ts`). */
+  expandScenario(
+    from: ExpandFrom,
+    signal: AbortSignal,
+    onThinking?: (chunk: string) => void,
+  ): Promise<Expansion>
+  /** Suggest, on the Scenario page: one suggestion for `what`, a blank part (`scenario/suggest.ts`). */
+  suggestForScenario(scenario: Scenario, what: string, signal: AbortSignal): Promise<string>
 }
 
 // The prompts are Markdown files in `prompts/chain/`, `prompts/storyboard/` and `prompts/shared/`
@@ -547,7 +563,14 @@ export function parseStoryboardEdit(content: string): StoryboardEdit {
  * Output caps. A small model writing JSON under a schema sometimes never stops (padding with
  * whitespace until its large context fills), so every call gets a token cap and a time limit.
  */
-const MAX_TOKENS = { answer: 2048, yesNo: 32, perBeat: 120, clip: 600 }
+const MAX_TOKENS = {
+  answer: 2048,
+  yesNo: 32,
+  perBeat: 120,
+  clip: 600,
+  expand: 2048,
+  suggestion: 200,
+}
 const TIME_LIMIT_MS = {
   answer: 2 * 60_000,
   thinking: 10 * 60_000,
@@ -743,6 +766,37 @@ export function chatTextModel(chat: Chat, opts: TextModelOptions = {}): TextMode
           (await streamChat('clip', messages, undefined, MAX_TOKENS.clip, s, undefined, onContent))
             .content,
       ),
+    expandScenario: (from, signal, onThinking) =>
+      within(signal, answerLimit(), async (s) => {
+        const { content } = await chat.stream({
+          messages: await expandMessages(from),
+          schema: expandSchema(from),
+          maxTokens: MAX_TOKENS.expand,
+          job: 'expand',
+          signal: s,
+          onThinking,
+        })
+        let value: unknown
+        try {
+          value = JSON.parse(content)
+        } catch {
+          throw new Error('The Text Model did not reply with valid JSON')
+        }
+        return expanded(from, value)
+      }),
+    // Plain text: no schema.
+    suggestForScenario: (scenario, what, signal) =>
+      within(signal, answerLimit(), async (s) => {
+        const { content } = await chat.stream({
+          messages: await suggestMessages(scenario, what),
+          maxTokens: MAX_TOKENS.suggestion,
+          job: 'suggest part',
+          signal: s,
+        })
+        const text = cleanSuggestion(content)
+        if (!text) throw new Error('The Text Model wrote no suggestion')
+        return text
+      }),
   }
 }
 
