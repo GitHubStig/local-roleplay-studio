@@ -351,9 +351,12 @@ export const getScenario = (id: string) => request<Scenario>(`/api/scenarios/${i
 export const suggestPart = (scenario: Scenario, field: string, notes = '') =>
   post<{ text: string }>('/api/scenarios/suggest', { scenario, field, notes })
 
-/** Expand, as the Scenario page opens: names the People and who's who, and suggests for blanks. */
+/**
+ * Expand, as the Scenario page opens: names the People and who's who, and suggests for blanks. Sent
+ * the Scenario as it stands when there's one, so what's been edited stands.
+ */
 export const expandScenario = (
-  from: { scenarioId: string } | { brief: string },
+  from: { scenario: Scenario } | { scenarioId: string } | { brief: string },
   signal?: AbortSignal,
 ) =>
   request<{ scenario: Scenario; suggestions: Suggestion[] }>('/api/scenarios/expand', {

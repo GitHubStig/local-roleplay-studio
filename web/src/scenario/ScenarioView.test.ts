@@ -92,7 +92,7 @@ beforeEach(() => {
 describe('ScenarioView', () => {
   it("expands a Scenario as it opens, and shows who's who and the suggestions", async () => {
     const { wrapper } = await mountAt('/scenario/tavern')
-    expect(api.expandScenario).toHaveBeenCalledWith({ scenarioId: 'tavern' }, expect.anything())
+    expect(api.expandScenario).toHaveBeenCalledWith({ scenario: tavern }, expect.anything())
     expect(wrapper.findAll('[data-person]').map((p) => p.attributes('data-person'))).toEqual([
       'kael',
       'elara',

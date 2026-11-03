@@ -55,14 +55,20 @@ const startError = ref('')
 const starting = ref(false)
 let expandCall: AbortController | undefined
 
-/** Expand: names the People and who's who, and suggests for blanks (replacing any edits). */
+/**
+ * Expand: names the People and who's who, and suggests for blanks. It's sent the Scenario as it
+ * stands when there is one (a Retry keeps the edits made since), else the Brief.
+ */
 async function expand() {
   expandCall?.abort()
   const call = (expandCall = new AbortController())
   expanding.value = true
   expandError.value = ''
   try {
-    const result = await expandScenario(source.value, call.signal)
+    const result = await expandScenario(
+      draft.value ? { scenario: draft.value } : source.value,
+      call.signal,
+    )
     draft.value = result.scenario
     suggestions.value = result.suggestions
     lastSuggestion = {}
@@ -313,7 +319,6 @@ async function start() {
             <button
               type="button"
               class="flex items-center gap-1 rounded border border-line px-2 py-1 hover:border-fg"
-              :title="draft && props.id ? 'Expand again, from the file: your edits are lost' : 'Expand again'"
               data-retry-expand
               @click="expand"
             >

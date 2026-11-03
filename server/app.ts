@@ -341,6 +341,18 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     })
   }
 
+  /** A Scenario the Scenario page sent, checked and within the Limits; or why it's refused. */
+  function sentScenario(value: unknown): Scenario | Response {
+    let scenario: Scenario
+    try {
+      scenario = scenarioFrom(value)
+    } catch (err) {
+      return error(`The Scenario isn't complete: ${(err as Error).message}`, 400)
+    }
+    const limit = crossedLimit(scenarioText(scenario))?.message
+    return limit ? error(`The Scenario crosses a limit: ${limit}`, 422) : scenario
+  }
+
   /** A Session's title: its Scenario's, or the start of its typed Brief. */
   const titleOf = (session: Session) =>
     session.scenario?.title ??
@@ -929,14 +941,24 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
 
     // Expand, as the Scenario page opens (scenario/expand.ts): nothing is saved.
     ['POST', new URLPattern({ pathname: '/api/scenarios/expand' }), async (req) => {
-      const body = await readJson(req) as { scenarioId?: unknown; brief?: unknown } | undefined
+      // A Scenario as it stands on the page (a Retry keeps its edits), its file, or a Brief.
+      const body = await readJson(req) as
+        | { scenario?: unknown; scenarioId?: unknown; brief?: unknown }
+        | undefined
       const scenarioId = typeof body?.scenarioId === 'string' ? body.scenarioId : null
       const brief = typeof body?.brief === 'string' && body.brief.trim() ? body.brief.trim() : null
-      if (!scenarioId === !brief) return error('Give either a scenarioId or a brief', 400)
-      const refused = brief && briefRefused(brief)
-      if (refused) return refused
-      const scenario = scenarioId ? await deps.scenarios.get(scenarioId) : undefined
-      if (scenarioId && !scenario) return error('Scenario not found', 404)
+      let scenario: Scenario | undefined
+      if (body?.scenario !== undefined) {
+        const sent = sentScenario(body.scenario)
+        if (sent instanceof Response) return sent
+        scenario = sent
+      } else {
+        if (!scenarioId === !brief) return error('Give a scenario, a scenarioId or a brief', 400)
+        const refused = brief && briefRefused(brief)
+        if (refused) return refused
+        scenario = scenarioId ? await deps.scenarios.get(scenarioId) : undefined
+        if (scenarioId && !scenario) return error('Scenario not found', 404)
+      }
       const model = await scenarioPageModel()
       if (model instanceof Response) return model
       try {
@@ -956,17 +978,13 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       const body = await readJson(req) as
         | { scenario?: unknown; field?: unknown; notes?: unknown }
         | undefined
-      let scenario: Scenario
-      try {
-        scenario = scenarioFrom(body?.scenario)
-      } catch (err) {
-        return error(`The Scenario isn't complete: ${(err as Error).message}`, 400)
-      }
+      const scenario = sentScenario(body?.scenario)
+      if (scenario instanceof Response) return scenario
       const field = typeof body?.field === 'string' ? body.field : ''
       if (!partOf(scenario, field)) return error('field must name a part of the Scenario', 400)
       const notes = typeof body?.notes === 'string' ? body.notes.trim() : ''
-      const limit = crossedLimit([scenarioText(scenario), notes].join('\n'))?.message
-      if (limit) return error(`The Scenario crosses a limit: ${limit}`, 422)
+      const limit = notes && crossedLimit(notes)?.message
+      if (limit) return error(`The notes cross a limit: ${limit}`, 422)
       const model = await scenarioPageModel()
       if (model instanceof Response) return model
       try {
@@ -1004,13 +1022,9 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       // The Scenario as the Scenario page left it, or else the file as it is (a replay's).
       let scenario: Scenario | undefined
       if (body?.scenario !== undefined) {
-        try {
-          scenario = { ...scenarioFrom(body.scenario), id: scenarioId ?? '' }
-        } catch (err) {
-          return error(`The Scenario isn't complete: ${(err as Error).message}`, 400)
-        }
-        const limit = crossedLimit(scenarioText(scenario))?.message
-        if (limit) return error(`The Scenario crosses a limit: ${limit}`, 422)
+        const sent = sentScenario(body.scenario)
+        if (sent instanceof Response) return sent
+        scenario = { ...sent, id: scenarioId ?? '' }
       } else if (scenarioId) {
         scenario = await deps.scenarios.get(scenarioId)
         if (!scenario) return error('Scenario not found', 404)

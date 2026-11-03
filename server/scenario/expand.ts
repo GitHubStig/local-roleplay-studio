@@ -173,9 +173,10 @@ export function expanded(from: ExpandFrom, value: unknown): Expansion {
     scenario = namesPeople(from) ? { ...stated, people: named } : stated
   }
 
+  // By name, not id: a Person added or renamed on the page keeps an id that isn't their name's.
   const byName = (name: unknown) => {
-    const id = personId(str(name))
-    return id ? scenario.people.find((p) => p.id === id) : undefined
+    const key = personId(str(name))
+    return key ? scenario.people.find((p) => personId(p.name) === key) : undefined
   }
   const player = scenario.player ?? byName(o.player)?.id
   const character = scenario.character ?? byName(o.character)?.id

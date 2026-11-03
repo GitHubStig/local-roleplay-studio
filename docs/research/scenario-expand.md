@@ -16,3 +16,7 @@ A Roleplay started through the API from the page's tavern, with the roles swappe
 With what the player typed as notes (2026-11-03, Mac), Suggest builds on it: "revenge on the harbourmaster" for Elara's goal came back as a fuller goal about the harbourmaster's corruption, in about a second.
 
 **Clothing in Looks** (2026-11-03, Mac): from a Brief about an archangel judging a soul, Expand suggested Looks as clothing ("Clad in armor…", "Dressed in the simple, worn clothes…"), as its suggestion prompt didn't say what Looks holds. Told that Looks is only what doesn't change, with clothing in Wears, three runs kept them apart (Looks: "skin like polished marble", "a weary, gentle face"; Wears: "Shimmering robes of woven light").
+
+**The "You believe…" suggestion didn't come back** (2026-11-03, Mac): on Contact, five Expands (34 suggestions in all, 19 and 15) and nine Suggests (goal, personality and Truths of three People) wrote none in the second person, with a line asking for the third person or without it. It was seen once, before Expand's request named its parts; the line was left out.
+
+**People added or renamed on the page** keep ids that aren't their names' (`p1` for Ann), and Expand found People by turning a name into an id, so it missed them: no who's who and no suggestions for them. It matches by name now. Found by its test, when Expand began to take the Scenario as it stands on the page (so a Retry keeps the edits made since).

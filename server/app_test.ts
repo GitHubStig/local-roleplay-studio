@@ -384,7 +384,7 @@ Deno.test('GET /api/scenarios/:id returns the whole Scenario', async () => {
   assertEquals((await call('GET', '/api/scenarios/nope')).status, 404)
 })
 
-Deno.test('POST /api/scenarios/expand expands a Scenario or a Brief, saving nothing', () =>
+Deno.test('POST /api/scenarios/expand expands a Scenario, as filed or as edited, or a Brief, saving nothing', () =>
   withTempDir(async (root) => {
     const textModel = scriptedTextModel([], [], {
       expansions: [
@@ -393,6 +393,7 @@ Deno.test('POST /api/scenarios/expand expands a Scenario or a Brief, saving noth
           suggestions: [{ person: '', field: 'time', text: 'Dusk.' }],
         },
         { title: 'Fog', opening: 'Ann rides into fog.' },
+        { player: 'Ann', suggestions: [] },
       ],
     })
     const { call, sessions } = setup({ root, settings: { textModel: 'x' }, textModel })
@@ -406,6 +407,11 @@ Deno.test('POST /api/scenarios/expand expands a Scenario or a Brief, saving noth
       'Fog',
       'Ann rides into fog.',
     ])
+    // As edited on the page: its edits stand.
+    const edited = { ...testScenario, place: 'A cellar.', people: [{ id: 'p1', name: 'Ann' }] }
+    const fromPage = await (await call('POST', '/api/scenarios/expand', { scenario: edited }))
+      .json()
+    assertEquals([fromPage.scenario.place, fromPage.scenario.player], ['A cellar.', 'p1'])
     assertEquals((await call('POST', '/api/scenarios/expand', {})).status, 400)
     assertEquals((await call('POST', '/api/scenarios/expand', { scenarioId: 'nope' })).status, 404)
     assertEquals(await sessions.list(), [])
