@@ -196,6 +196,21 @@ def unload_when_idle(idle):
                 unload()
 
 
+def exit_when_orphaned(parent):
+    """
+    Exits once the process that started it is gone. The server kills it when it stops, but not
+    when its cleanup can't run: a restart that kills `uv` outright (as `deno run --watch` does when
+    the server's `unload` handler doesn't run) leaves this running, with a stderr nothing reads, so
+    the next model load failed with BrokenPipeError, and the new server reused it (2026-11-03).
+    Orphaned, its parent becomes launchd (macOS) or init; Windows doesn't reparent, but voices run
+    only on the Mac.
+    """
+    while True:
+        time.sleep(1)
+        if os.getppid() != parent:
+            os._exit(0)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--port', type=int, default=8791)
@@ -214,6 +229,7 @@ def main():
     global ROOT
     ROOT = os.path.realpath(args.root)
     threading.Thread(target=unload_when_idle, args=(args.idle,), daemon=True).start()
+    threading.Thread(target=exit_when_orphaned, args=(os.getppid(),), daemon=True).start()
     # Threaded so /health answers while a voice is made (the models still take turns, by `lock`).
     ThreadingHTTPServer(('127.0.0.1', args.port), Handler).serve_forever()
 
