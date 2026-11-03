@@ -97,3 +97,11 @@ then with each person's last clothing sentence given to the Art Agent to copy fo
   nudity in any picture, and her clothing consistent from Frame to Frame (her cloak off, then her
   undergarments, then a wrap). One picture was blocked wrongly by the clothing check: "the two men
   wear…" dressed both men, but the check looked for "man"; a name's plural now counts.
+
+### Where the first picture's clothing comes from (2026-11-03, Mac)
+
+Before anyone had been pictured, the Art Agent had nothing to copy forward. The Scenario's Wears didn't reach it: the Cast summed up a Person's Wears into its appearance, or dropped them, and the Look holds only what doesn't change. With the Limits off, a new Roleplay's first picture showed both men undressed. The Character's Wears was stated in the Scenario, and the Persona had none. Frame 1 replayed straight to Ollama (seeds 1–8):
+
+- **Before:** 7 of 8 clothing sentences dressed no one. They said "wear no visible garments", "obscured by the golden haze", or "no clothes yet, so he is draped in a heavy, dark fabric". One gave "simple, era-appropriate garments".
+- **Each Person not yet pictured now starts from their Wears** ("At the start, …" among what each wore when last pictured), and anyone whose clothes aren't given is told to wear what suits them, the story and the moment, unless the story says otherwise. Result: 8 of 8 copied the Character's Wears word for word and dressed the Persona ("simple, soft-textured garments").
+- **With both Wears blanked**, the instruction alone dressed both men in 8 of 8 (a dark jacket and trousers, a linen tunic).

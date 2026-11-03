@@ -11,7 +11,7 @@ import { crossedLimit, limitsEnabled } from '../limits.ts'
 import { composePrompt, matchShown, shownSubjects } from '../look.ts'
 import type { ChatMessage } from '../text/chat.ts'
 import { loadPrompt } from '../promptFiles.ts'
-import type { Scenario } from '../scenario.ts'
+import { personId, type Scenario } from '../scenario.ts'
 import { frameSchema, lookForModel, lookSchema, parseLook } from '../textModel.ts'
 import type { Look, Subject } from '../session.ts'
 import type { RoleplayFrame, RoleplaySession } from './types.ts'
@@ -152,7 +152,8 @@ export function exchangeText(session: RoleplaySession, index: number): string {
 /**
  * What each person wore when last pictured before Frame `index`: the clothing sentence of the
  * latest earlier picture showing them, one line per picture ("Frame 12, Kael and Elara Vance:
- * …"); '' if no one has been pictured yet. The Art Agent copies it forward and changes only what
+ * …"); for a Person of the Scenario not pictured yet, what they wear at the start, as it states
+ * ("At the start, Kael: …"); '' if neither. The Art Agent copies it forward and changes only what
  * the story changed since, so clothes (and marks such as blood) don't come and go between pictures.
  */
 export function lastWorn(session: RoleplaySession, index: number): string {
@@ -163,9 +164,15 @@ export function lastWorn(session: RoleplaySession, index: number): string {
   }
   const byFrame = new Map<RoleplayFrame, string[]>()
   for (const [name, f] of lastFrame) byFrame.set(f, [...(byFrame.get(f) ?? []), name])
-  return [...byFrame].sort(([a], [b]) => a.index - b.index)
-    .map(([f, names]) => `- ${frameName(f.index)}, ${names.join(' and ')}: ${f.clothing}`)
-    .join('\n')
+  const seen = new Set([...lastFrame.keys()].map(personId))
+  const atStart = (session.scenario?.people ?? [])
+    .filter((p) => p.wears && !seen.has(personId(p.name)))
+    .map((p) => `- At the start, ${p.name}: ${p.wears}`)
+  return [
+    ...atStart,
+    ...[...byFrame].sort(([a], [b]) => a.index - b.index)
+      .map(([f, names]) => `- ${frameName(f.index)}, ${names.join(' and ')}: ${f.clothing}`),
+  ].join('\n')
 }
 
 /** The call that writes a Roleplay's Look, from its Cast and Brief. */

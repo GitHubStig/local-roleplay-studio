@@ -1,6 +1,7 @@
 import { assertEquals, assertStringIncludes, assertThrows } from '@std/assert'
 import { setLimitsEnabled } from '../limits.ts'
 import { DEFAULT_SETTINGS } from '../settings.ts'
+import { briefScenario, type Person, personId } from '../scenario.ts'
 import { lookForModel } from '../textModel.ts'
 import {
   artFrameMessages,
@@ -242,5 +243,40 @@ Deno.test('lastWorn gives each person the clothing of the latest earlier picture
   assertEquals(
     lastWorn(story, 4),
     '- Frame 4, Mira Vance and Sam Reyes: Mira wears a robe; Sam is soaked.',
+  )
+})
+
+Deno.test("lastWorn starts a Person not pictured yet from the Scenario's Wears", () => {
+  const person = (name: string, wears: string): Person => ({
+    id: personId(name),
+    name,
+    looks: '',
+    wears,
+    personality: '',
+    speaks: '',
+    background: '',
+    goal: '',
+    truths: [],
+  })
+  const story = {
+    ...session,
+    scenario: {
+      ...briefScenario('A storm at sea.'),
+      people: [
+        person(MIRA, 'Mira wears a navy coat.'),
+        person(SAM, ''),
+        person('Ada', 'Ada wears a cap.'),
+      ],
+    },
+    frames: [{ ...session.frames[0], shown: ['mira vance'], clothing: 'Mira wears a robe.' }],
+  }
+  assertEquals(
+    lastWorn(story, 0),
+    '- At the start, Mira Vance: Mira wears a navy coat.\n- At the start, Ada: Ada wears a cap.',
+  )
+  // Pictured since (matched by name, whatever the case), Mira's picture stands; Sam has no Wears.
+  assertEquals(
+    lastWorn(story, 1),
+    '- At the start, Ada: Ada wears a cap.\n- Frame 1, mira vance: Mira wears a robe.',
   )
 })

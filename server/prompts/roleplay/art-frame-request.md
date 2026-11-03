@@ -5,7 +5,8 @@ show them.
 
 Values: look (a YAML block), story (the exchanges, as text), worn (what each person wore when
 last pictured: the clothing sentence of the latest earlier picture showing them, a line per
-picture), frame (the Frame's number, from 1, as the story numbers it)
+picture; for a Person of the Scenario not pictured yet, their Wears, "At the start"), frame (the
+Frame's number, from 1, as the story numbers it)
 
 Naming the reply's parts in order, and saying it's done only after "shown", keeps Gemma 4 26B
 from closing the object after "color" and padding with whitespace until its cap, which the
@@ -20,7 +21,7 @@ The story so far:
 
 {{story}}
 
-What each person wore when last pictured:
+What each person wore when last pictured, or at the start:
 
 {{worn}}
 
