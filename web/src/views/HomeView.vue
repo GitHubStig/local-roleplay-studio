@@ -11,6 +11,7 @@ import {
 } from '../api'
 import Icon from '../components/Icon.vue'
 import StartSession from '../components/StartSession.vue'
+import { tabStorage, useStoredString } from '../composables/storage'
 import { clearCurrentSession, useCurrentSession } from '../composables/useCurrentSession'
 import { sessionPath } from '../sessionPath'
 
@@ -36,10 +37,18 @@ const deleteError = ref('')
 /** Why the last Session failed to start: its Opening Frame errored. */
 const startError = ref('')
 /**
- * Whether Start a new Session is open: closed under the button while there are Sessions, open
- * when there are none yet (null until the list first loads).
+ * Whether Start a new Session is open, remembered for this tab as it's opened or closed; until then
+ * closed under the button while there are Sessions, open when there are none yet (null until the
+ * list first loads).
  */
-const startOpen = ref<boolean | null>(null)
+const openStored = useStoredString('home.new-session-open', tabStorage())
+const startOpen = computed<boolean | null>({
+  get: () =>
+    openStored.value !== null
+      ? openStored.value === '1'
+      : sessions.value && sessions.value.length === 0,
+  set: (open) => (openStored.value = open ? '1' : '0'),
+})
 
 let poll: ReturnType<typeof setTimeout> | undefined
 let alive = true
@@ -52,7 +61,6 @@ async function load() {
     if (!alive) return
     sessions.value = list
     listError.value = ''
-    startOpen.value ??= list.length === 0
   } catch (err) {
     if (alive) listError.value = (err as Error).message
     return

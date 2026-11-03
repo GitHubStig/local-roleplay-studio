@@ -11,24 +11,31 @@ function memoryStorage(): StorageLike {
   }
 }
 
-let browser: StorageLike | undefined
+const opened = new Map<'localStorage' | 'sessionStorage', StorageLike>()
 
 /**
- * The browser's localStorage, or an in-memory stand-in if it's blocked. Even reading
+ * One of the browser's stores, or an in-memory stand-in if it's blocked. Even reading
  * `window.localStorage` can throw (cookies blocked, some private modes), so it's tried once, here,
  * instead of by each caller.
  */
-export function browserStorage(): StorageLike {
-  if (browser) return browser
-  try {
-    const storage = globalThis.localStorage
-    storage.getItem('')
-    browser = storage
-  } catch {
-    browser = memoryStorage()
+function openStorage(which: 'localStorage' | 'sessionStorage'): StorageLike {
+  if (!opened.has(which)) {
+    try {
+      const storage = globalThis[which]
+      storage.getItem('')
+      opened.set(which, storage)
+    } catch {
+      opened.set(which, memoryStorage())
+    }
   }
-  return browser
+  return opened.get(which)!
 }
+
+/** The browser's localStorage: kept per browser. */
+export const browserStorage = () => openStorage('localStorage')
+
+/** The browser's sessionStorage: kept for this tab, until it's closed. */
+export const tabStorage = () => openStorage('sessionStorage')
 
 /**
  * A string remembered per browser under `key`, or null when there's nothing stored; setting null
@@ -39,8 +46,8 @@ export function browserStorage(): StorageLike {
  * - not synced from other tabs (`listenToStorageChanges: false`): each tab keeps its own draft and
  *   its own place, and VueUse's syncing also drops a second change made in the same tick.
  */
-export function useStoredString(key: string): Ref<string | null> {
-  return useStorage<string | null>(key, null, browserStorage(), {
+export function useStoredString(key: string, storage = browserStorage()): Ref<string | null> {
+  return useStorage<string | null>(key, null, storage, {
     writeDefaults: false,
     flush: 'sync',
     listenToStorageChanges: false,

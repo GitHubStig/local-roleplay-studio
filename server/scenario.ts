@@ -51,6 +51,8 @@ export interface ScenarioSummary {
   id: string
   title: string
   description: string
+  /** In the player's `scenarios/`, so it can be deleted. */
+  own: boolean
 }
 
 export interface ScenarioLoadError {
@@ -454,29 +456,68 @@ export function dirScenarioLibrary(dir: string | URL): ScenarioLibrary {
   }
 }
 
-/**
- * Several libraries read as one, the first's Scenarios first; a later one's with an id already
- * taken are left out, so the player's own Scenario stands in for an example of the same name.
- */
-export function combinedScenarioLibrary(...libraries: ScenarioLibrary[]): ScenarioLibrary {
-  async function list() {
-    const lists = await Promise.all(libraries.map((l) => l.list()))
-    const ids = new Set<string>()
-    const scenarios = lists.flatMap((l) => l.scenarios).filter((s) =>
-      !ids.has(s.id) && ids.add(s.id)
-    )
-    return { scenarios, errors: lists.flatMap((l) => l.errors) }
+/** A Scenario's id as a file name: lower-case letters, digits and hyphens, so it stays in its folder. */
+export const SCENARIO_ID = /^[a-z0-9][a-z0-9-]{0,79}$/
+
+/** The player's Scenarios (`scenarios/`): listed on Home, and written by the Scenario page. */
+export interface ScenarioFolder extends ScenarioLibrary {
+  /** Whether a file has this id, valid or not. */
+  has(id: string): Promise<boolean>
+  /** Writes the Scenario as its file, in place of any of that id. */
+  save(id: string, markdown: string): Promise<void>
+  remove(id: string): Promise<void>
+}
+
+/** `dirScenarioLibrary`, writable: the folder is made on the first save. */
+export function dirScenarioFolder(dir: string | URL): ScenarioFolder {
+  const root = dir instanceof URL ? fromFileUrl(dir) : dir
+  const path = (id: string) => {
+    if (!SCENARIO_ID.test(id)) throw new Error(`"${id}" isn't a Scenario id`)
+    return join(root, `${id}.md`)
   }
   return {
-    list,
-    async get(id) {
-      return (await list()).scenarios.find((s) => s.id === id)
+    ...dirScenarioLibrary(root),
+    async has(id) {
+      try {
+        return (await Deno.stat(path(id))).isFile
+      } catch {
+        return false
+      }
     },
+    async save(id, markdown) {
+      await Deno.mkdir(root, { recursive: true })
+      // Whole or not at all: a half-written file would show on Home as broken.
+      await Deno.writeTextFile(`${path(id)}.tmp`, markdown)
+      await Deno.rename(`${path(id)}.tmp`, path(id))
+    },
+    remove: (id) => Deno.remove(path(id)),
   }
 }
 
-export const summarise = ({ id, title, description }: Scenario): ScenarioSummary => ({
-  id,
-  title,
-  description,
-})
+/**
+ * Copies the example Scenarios (`from`, e.g. `example-scenarios/`) into the player's folder when it
+ * has none of its own (a fresh install, or every one deleted), so they're the player's to keep,
+ * edit or delete. Returns the files copied.
+ */
+export async function seedScenarios(folder: string | URL, from: string | URL): Promise<string[]> {
+  const path = (p: string | URL) => p instanceof URL ? fromFileUrl(p) : p
+  const mdFiles = async (dir: string) => {
+    try {
+      return (await Array.fromAsync(Deno.readDir(dir)))
+        .filter((e) => e.isFile && extname(e.name) === '.md').map((e) => e.name).sort()
+    } catch (err) {
+      if (err instanceof Deno.errors.NotFound) return []
+      throw err
+    }
+  }
+  if ((await mdFiles(path(folder))).length) return []
+  const files = await mdFiles(path(from))
+  await Deno.mkdir(path(folder), { recursive: true })
+  for (const file of files) await Deno.copyFile(join(path(from), file), join(path(folder), file))
+  return files
+}
+
+export const summarise = (
+  { id, title, description }: Scenario,
+  own = false,
+): ScenarioSummary => ({ id, title, description, own })

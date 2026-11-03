@@ -24,9 +24,14 @@ import {
 import type { TextChoice, TextModelInfo } from './text/backend.ts'
 import {
   briefScenario,
+  parseScenario,
+  personId,
   type Scenario,
+  SCENARIO_ID,
+  type ScenarioFolder,
   scenarioFrom,
   type ScenarioLibrary,
+  scenarioMarkdown,
   scenarioText,
   summarise,
 } from './scenario.ts'
@@ -163,6 +168,8 @@ export interface AppDeps {
   /** Whether ComfyUI answers at an address, and can run what Settings send it (for Settings). */
   comfyuiStatus?: (baseUrl: string, uses: ComfyUses) => Promise<ComfyStatus>
   scenarios: ScenarioLibrary
+  /** The player's own Scenarios (`scenarios/`), which the page saves to; left out, it can't. */
+  ownScenarios?: ScenarioFolder
   sessions: SessionStore
   /** Where the Sessions are, which the player can move; left out, they can't. */
   sessionsFolder?: SessionsFolder
@@ -339,6 +346,25 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
         seed: settings.seedMode === 'fixed' ? settings.seed : randomSeed(),
       },
     })
+  }
+
+  /**
+   * Writes a Scenario's file in the player's `scenarios/`, once it reads back as valid (the
+   * Limits too), and answers with it as read back; or why it's refused.
+   */
+  async function saveScenario(id: string, markdown: string, status = 200): Promise<Response> {
+    if (!deps.ownScenarios) return error("This server can't save Scenarios", 501)
+    if (!SCENARIO_ID.test(id)) return error(`"${id}" isn't a Scenario id`, 400)
+    let scenario: Scenario
+    try {
+      scenario = parseScenario(id, markdown)
+    } catch (err) {
+      return error(`The Scenario can't be saved: ${(err as Error).message}`, 400)
+    }
+    const limit = crossedLimit(scenarioText(scenario))?.message
+    if (limit) return error(`The Scenario crosses a limit: ${limit}`, 422)
+    await deps.ownScenarios.save(id, markdown)
+    return json(scenario, status)
   }
 
   /** A Scenario the Scenario page sent, checked and within the Limits; or why it's refused. */
@@ -931,7 +957,49 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
 
     ['GET', new URLPattern({ pathname: '/api/scenarios' }), async () => {
       const { scenarios, errors } = await deps.scenarios.list()
-      return json({ scenarios: scenarios.map(summarise), errors })
+      const own = new Set((await deps.ownScenarios?.list())?.scenarios.map((s) => s.id))
+      return json({ scenarios: scenarios.map((s) => summarise(s, own.has(s.id))), errors })
+    }],
+
+    // Saves the Scenario page's Scenario over its file in the player's `scenarios/`.
+    ['PUT', new URLPattern({ pathname: '/api/scenarios/:id' }), async (req, p) => {
+      const scenario = sentScenario((await readJson(req) as { scenario?: unknown })?.scenario)
+      if (scenario instanceof Response) return scenario
+      return await saveScenario(p.id!, scenarioMarkdown(scenario))
+    }],
+
+    // A new Scenario of the player's: the page's under a new id (from its title), or an imported
+    // file's text (its id from the file name). Never in place of another.
+    ['POST', new URLPattern({ pathname: '/api/scenarios' }), async (req) => {
+      const body = await readJson(req) as
+        | { scenario?: unknown; markdown?: unknown; name?: unknown }
+        | undefined
+      let markdown: string
+      let name: string
+      if (typeof body?.markdown === 'string') {
+        markdown = body.markdown
+        name = typeof body.name === 'string' ? body.name.replace(/\.md$/i, '') : 'imported'
+      } else {
+        const scenario = sentScenario(body?.scenario)
+        if (scenario instanceof Response) return scenario
+        markdown = scenarioMarkdown(scenario)
+        name = scenario.title
+      }
+      const base = personId(name).slice(0, 70) || 'scenario'
+      const taken = new Set((await deps.scenarios.list()).scenarios.map((s) => s.id))
+      let id = base
+      for (let n = 2; taken.has(id) || await deps.ownScenarios?.has(id); n++) id = `${base}-${n}`
+      return await saveScenario(id, markdown, 201)
+    }],
+
+    // Deletes one of the player's Scenarios.
+    ['DELETE', new URLPattern({ pathname: '/api/scenarios/:id' }), async (_req, p) => {
+      const own = deps.ownScenarios
+      if (!own || !SCENARIO_ID.test(p.id!) || !(await own.has(p.id!))) {
+        return error('Scenario not found', 404)
+      }
+      await own.remove(p.id!)
+      return new Response(null, { status: 204 })
     }],
 
     ['GET', new URLPattern({ pathname: '/api/scenarios/:id' }), async (_req, p) => {

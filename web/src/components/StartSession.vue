@@ -1,7 +1,14 @@
 <script setup lang="ts">
+import { useFileDialog } from '@vueuse/core'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { getScenarios, type ScenarioList } from '../api'
+import {
+  createScenario,
+  deleteScenario,
+  getScenarios,
+  type ScenarioList,
+  type ScenarioSummary,
+} from '../api'
 import {
   sameSource,
   scenarioPagePath,
@@ -22,13 +29,42 @@ const { loaded, loadError: settingsError, blocker: textModelBlocker } = useTextM
 const brief = ref('')
 const { scenarioDraft } = useScenarioDraft()
 
-onMounted(async () => {
+async function load() {
   try {
     list.value = await getScenarios()
   } catch (err) {
     listError.value = (err as Error).message
   }
+}
+onMounted(load)
+
+/** Why the last Import or Delete failed. */
+const fileError = ref('')
+
+/** Import: a Scenario's Markdown file, added to the player's own under a name of its own. */
+const picker = useFileDialog({ accept: '.md,text/markdown', multiple: false, reset: true })
+picker.onChange(async (files) => {
+  const file = files?.[0]
+  if (!file) return
+  fileError.value = ''
+  try {
+    await createScenario({ markdown: await file.text(), name: file.name })
+    await load()
+  } catch (err) {
+    fileError.value = `Couldn't import ${file.name}: ${(err as Error).message}`
+  }
 })
+
+async function remove(s: ScenarioSummary) {
+  if (!confirm(`Delete your Scenario “${s.title}”? This can't be undone.`)) return
+  fileError.value = ''
+  try {
+    await deleteScenario(s.id)
+  } catch (err) {
+    fileError.value = (err as Error).message
+  }
+  await load()
+}
 
 const loadError = computed(() => listError.value || settingsError.value)
 
@@ -63,21 +99,43 @@ function open(from: ScenarioSource) {
       <p v-if="textModelBlocker" class="text-sm text-warn" data-blocker>{{ textModelBlocker }}</p>
 
       <div class="flex flex-col gap-3">
-        <h3 class="text-sm text-muted">Start from a Scenario, or write your own Brief</h3>
-        <div class="grid grid-cols-[repeat(auto-fill,minmax(14rem,1fr))] gap-3">
+        <div class="flex items-baseline justify-between gap-3">
+          <h3 class="text-sm text-muted">Start from a Scenario, or write your own Brief</h3>
           <button
-            v-for="s in list.scenarios"
-            :key="s.id"
             type="button"
-            class="flex min-w-0 flex-col gap-0.5 rounded-lg border border-line bg-surface p-3 text-left hover:border-fg disabled:cursor-not-allowed disabled:opacity-60"
-            :title="s.description"
-            :disabled="!!textModelBlocker"
-            :data-scenario="s.id"
-            @click="open({ scenarioId: s.id })"
+            class="rounded border border-line px-2 py-0.5 text-xs text-muted hover:border-fg hover:text-fg"
+            title="Add a Scenario's Markdown file to yours"
+            data-import
+            @click="picker.open()"
           >
-            <span class="text-sm font-medium">{{ s.title }}</span>
-            <span class="line-clamp-2 text-xs text-muted">{{ s.description }}</span>
+            Import…
           </button>
+        </div>
+        <p v-if="fileError" class="text-sm text-danger" role="alert">{{ fileError }}</p>
+        <div class="grid grid-cols-[repeat(auto-fill,minmax(14rem,1fr))] gap-3">
+          <div v-for="s in list.scenarios" :key="s.id" class="group relative flex">
+            <button
+              type="button"
+              class="flex min-w-0 flex-1 flex-col gap-0.5 rounded-lg border border-line bg-surface p-3 text-left hover:border-fg disabled:cursor-not-allowed disabled:opacity-60"
+              :title="s.description"
+              :disabled="!!textModelBlocker"
+              :data-scenario="s.id"
+              @click="open({ scenarioId: s.id })"
+            >
+              <span class="text-sm font-medium">{{ s.title }}</span>
+              <span class="line-clamp-2 text-xs text-muted">{{ s.description }}</span>
+            </button>
+            <button
+              v-if="s.own"
+              type="button"
+              class="absolute right-2 top-2 rounded border border-line bg-canvas/90 px-2 py-0.5 text-xs text-danger opacity-0 focus:opacity-100 group-hover:opacity-100"
+              title="Delete this Scenario of yours"
+              data-delete-scenario
+              @click="remove(s)"
+            >
+              Delete
+            </button>
+          </div>
         </div>
         <div class="flex flex-col gap-2 rounded-lg border border-line bg-surface p-4">
           <span class="font-medium">Your own Brief</span>

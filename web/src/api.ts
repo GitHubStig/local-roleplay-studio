@@ -291,6 +291,8 @@ export interface ScenarioSummary {
   id: string
   title: string
   description: string
+  /** In the player's `scenarios/`, so it can be deleted. */
+  own: boolean
 }
 
 export interface ScenarioLoadError {
@@ -343,6 +345,21 @@ export interface Suggestion {
 }
 
 export const getScenario = (id: string) => request<Scenario>(`/api/scenarios/${id}`)
+
+/** Saves a Scenario over its file in the player's `scenarios/`. */
+export const saveScenario = (id: string, scenario: Scenario) =>
+  request<Scenario>(`/api/scenarios/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ scenario }),
+  })
+
+/** A new Scenario of the player's, under a new id: the page's, or an imported file's text. */
+export const createScenario = (from: { scenario: Scenario } | { markdown: string; name: string }) =>
+  post<Scenario>('/api/scenarios', from)
+
+export const deleteScenario = (id: string) =>
+  request<void>(`/api/scenarios/${id}`, { method: 'DELETE' })
 
 /**
  * A suggestion for one part of the Scenario as it stands, building on `notes` (what's typed there);

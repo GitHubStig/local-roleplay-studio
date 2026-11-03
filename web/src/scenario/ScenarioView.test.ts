@@ -11,6 +11,8 @@ vi.mock('../api', async (importOriginal) => ({
   expandScenario: vi.fn(),
   createSession: vi.fn(),
   suggestPart: vi.fn(),
+  saveScenario: vi.fn(),
+  createScenario: vi.fn(),
   getSettings: vi.fn(() => Promise.resolve({ textModel: 'x' })),
   getSettingsOptions: vi.fn(() => Promise.resolve({ textModels: ['x'] })),
 }))
@@ -175,6 +177,27 @@ describe('ScenarioView', () => {
     wrapper.unmount()
     await mountAt('/scenario/tavern')
     expect(api.expandScenario).toHaveBeenCalledTimes(2)
+  })
+
+  it('saves to your Scenarios, or as a new one that the page then goes on with', async () => {
+    vi.mocked(api.saveScenario).mockResolvedValue(expandedTavern)
+    vi.mocked(api.createScenario).mockResolvedValue({ ...expandedTavern, id: 'the-tavern' })
+    const { wrapper, router } = await mountAt('/scenario/tavern')
+    await wrapper.find('[data-field=place]').setValue('A cellar.')
+    await wrapper.find('[data-save]').trigger('click')
+    await flushPromises()
+    expect(api.saveScenario).toHaveBeenCalledWith('tavern', {
+      ...expandedTavern,
+      place: 'A cellar.',
+    })
+    expect(wrapper.find('[data-save-status]').text()).toBe('Saved')
+    await wrapper.find('[data-save-new]').trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.path).toBe('/scenario/the-tavern')
+    // Its edits come along: the page there opens on them, without expanding again.
+    const there = (await mountAt('/scenario/the-tavern')).wrapper
+    expect(fieldValue(there, 'place')).toBe('A cellar.')
+    expect(api.expandScenario).toHaveBeenCalledTimes(1)
   })
 
   it('blocks Start while it expands', async () => {

@@ -2,11 +2,13 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
+  createScenario,
   createSession,
   expandScenario,
   getScenario,
   MAX_FRAMES,
   type Person,
+  saveScenario,
   type Scenario,
   type SessionKind,
   type SessionStart,
@@ -14,6 +16,8 @@ import {
   type Suggestion,
 } from '../api'
 import Icon from '../components/Icon.vue'
+import SaveStatus from '../components/SaveStatus.vue'
+import type { AutosaveStatus } from '../composables/useAutosave'
 import SelectField from '../components/SelectField.vue'
 import { useStoredString } from '../composables/storage'
 import {
@@ -223,6 +227,38 @@ const role = (key: 'player' | 'character', other: 'player' | 'character') =>
 const player = role('player', 'character')
 const character = role('character', 'player')
 
+/** How the last Save went (only saving, saved or refused: it saves when asked, not by itself). */
+const saveStatus = ref<AutosaveStatus>({ kind: 'idle' })
+
+/**
+ * Saves the Scenario to the player's own (`scenarios/`): over its file, or (`asNew`) as a new one,
+ * its id from the title, which the page then goes on with, its edits and suggestions kept.
+ */
+async function save(asNew: boolean) {
+  const scenario = draft.value!
+  saveStatus.value = { kind: 'saving' }
+  try {
+    if (!asNew) {
+      await saveScenario(props.id!, scenario)
+    } else {
+      const { id } = await createScenario({ scenario })
+      saveScenarioDraft({
+        from: { scenarioId: id },
+        scenario: { ...scenario, id },
+        suggestions: suggestions.value,
+      })
+      await router.replace({ name: 'scenario', params: { id } })
+    }
+    saveStatus.value = { kind: 'saved' }
+  } catch (err) {
+    saveStatus.value = { kind: 'refused', why: (err as Error).message }
+  }
+}
+// An edit after a Save makes "Saved" no longer true.
+watch(draft, () => {
+  if (saveStatus.value.kind === 'saved') saveStatus.value = { kind: 'idle' }
+}, { deep: true })
+
 /** Roleplay first: it's the one that runs without pictures. */
 const KINDS: { id: SessionKind; label: string; hint: string }[] = [
   {
@@ -355,6 +391,30 @@ async function start() {
               :disabled="expanding"
               data-field="description"
             />
+            <div class="flex flex-wrap items-center gap-3 px-1 text-sm">
+              <button
+                v-if="props.id"
+                type="button"
+                class="rounded border border-line px-3 py-1 hover:border-fg disabled:opacity-50"
+                title="Save over this Scenario's file in your Scenarios"
+                :disabled="expanding || saveStatus.kind === 'saving'"
+                data-save
+                @click="save(false)"
+              >
+                Save
+              </button>
+              <button
+                type="button"
+                class="rounded border border-line px-3 py-1 hover:border-fg disabled:opacity-50"
+                title="Save to your Scenarios as a new one, named from its title"
+                :disabled="expanding || saveStatus.kind === 'saving'"
+                data-save-new
+                @click="save(true)"
+              >
+                Save as new
+              </button>
+              <SaveStatus :status="saveStatus" :can-revert="false" />
+            </div>
           </header>
 
           <section class="flex flex-col gap-3">

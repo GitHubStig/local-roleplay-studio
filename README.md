@@ -178,7 +178,7 @@ Sessions stay on disk until you delete them from Home (or remove their folder in
 
 ## Writing a new Scenario
 
-Add a Markdown file to `scenarios/` (yours, gitignored; the examples are in `example-scenarios/`, and one of yours with the same file name stands in for an example). It appears on Home, under *New Session*, without a restart. If a file has a problem, Home lists every issue found in it. The format is documented in [docs/scenarios.md](docs/scenarios.md).
+Save one from the Scenario page, import a file with *Import…* on Home, or add a Markdown file to `scenarios/` (yours, gitignored; the examples in `example-scenarios/` are copied into it when it has none, as the app starts). It appears on Home, under *New Session*, without a restart. If a file has a problem, Home lists every issue found in it. The format is documented in [docs/scenarios.md](docs/scenarios.md).
 
 ## Known quirks
 

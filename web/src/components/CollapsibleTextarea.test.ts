@@ -32,7 +32,7 @@ describe('CollapsibleTextarea', () => {
   it('edits its text, and grows to fit it instead of scrolling', async () => {
     const wrapper = mount(host())
     const box = wrapper.find('textarea')
-    const height = () => (box.element as HTMLTextAreaElement).style.height
+    const height = () => (box.element as HTMLTextAreaElement).style.minHeight
     await nextTick()
     await nextTick()
     expect(height()).toBe('40px') // two lines

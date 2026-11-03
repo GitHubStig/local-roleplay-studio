@@ -1,6 +1,6 @@
 # Writing a Scenario
 
-A **Scenario** is a story a Session starts from, in one Markdown file: who's in it, where and when, how it looks, what holds whatever happens, and how it opens. Your own go in `scenarios/` (gitignored); the examples are in `example-scenarios/`, and one of yours with the same file name stands in for an example. The file name, minus `.md`, is its id (`tavern.md` → `tavern`). Files are read fresh on every request, so a new or edited Scenario shows up on Home, under *New Session*, without a restart. A Session keeps its own copy of the Scenario it started from, so editing or deleting the file later leaves it alone.
+A **Scenario** is a story a Session starts from, in one Markdown file: who's in it, where and when, how it looks, what holds whatever happens, and how it opens. Yours are in `scenarios/` (gitignored), which Home lists: when it has none (a fresh install, or every one deleted), the app copies the examples from `example-scenarios/` into it as it starts, so they're yours to keep, edit or delete. The file name, minus `.md`, is its id (`tavern.md` → `tavern`). Files are read fresh on every request, so a new or edited Scenario shows up on Home, under *New Session*, without a restart. A Session keeps its own copy of the Scenario it started from, so editing or deleting the file later leaves it alone.
 
 **Say what matters, and leave the rest out.** Only the title, the description and the Opening are needed. Whatever a Scenario states holds; whatever it leaves out is the Text Model's to invent, so a short Scenario leaves a model room to play, and the same Scenario and seed give the same Session ([ADR 0032](adr/0032-scenarios-are-stories-kept-in-each-session.md)).
 
@@ -85,7 +85,7 @@ A Truth isn't a goal: a goal can change or fail in play, and a Truth shouldn't.
 
 ## Starting from it
 
-Picking a Scenario on Home opens it on the Scenario page, where Expand says who plays whom (if the Scenario doesn't) and suggests what to put in some of the blank parts (shown in grey); *Suggest* on any part writes a suggestion in, building on what you typed there, and pressing it again writes another. The page keeps your edits if you leave it, and the header leads back to it. Edit any part there, and pick who you play and who the Text Model plays; Start begins the Session from the Scenario as you've left it. Edits there go to that Session only: the file stays as it is.
+Picking a Scenario on Home opens it on the Scenario page, where Expand says who plays whom (if the Scenario doesn't) and suggests what to put in some of the blank parts (shown in grey); *Suggest* on any part writes a suggestion in, building on what you typed there, and pressing it again writes another. The page keeps your edits if you leave it, and the header leads back to it. Edit any part there, and pick who you play and who the Text Model plays; Start begins the Session from the Scenario as you've left it. Edits there go to that Session only, unless you save them: *Save* writes them over its file in `scenarios/`, and *Save as new* makes a new Scenario named from its title. *Import…* on Home adds a Scenario file to yours, under a name of its own (an example from `example-scenarios/` too, to get one back), and each card can be deleted.
 
 ## How each kind of Session uses it
 

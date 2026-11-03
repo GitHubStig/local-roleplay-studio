@@ -47,6 +47,7 @@ async function mountIt() {
 
 beforeEach(() => {
   localStorage.clear()
+  sessionStorage.clear()
   vi.mocked(api.listSessions).mockReset().mockResolvedValue([summary('a'), summary('b')])
   vi.mocked(api.deleteSession).mockReset().mockResolvedValue()
   vi.stubGlobal('confirm', vi.fn(() => true))
@@ -79,6 +80,15 @@ describe('HomeView', () => {
     // Above Your Sessions, so it pushes them down.
     const html = wrapper.html()
     expect(html.indexOf('data-brief')).toBeLessThan(html.indexOf('Your Sessions'))
+  })
+
+  it('remembers Start a new Session opened or closed, for this tab', async () => {
+    const first = (await mountIt()).wrapper
+    await first.find('[data-new-session]').trigger('click')
+    first.unmount()
+    const again = (await mountIt()).wrapper
+    expect(again.find('[data-new-session]').attributes('aria-expanded')).toBe('true')
+    expect(localStorage.getItem('home.new-session-open')).toBeNull()
   })
 
   it('opens Start a new Session when there are no Sessions yet', async () => {
@@ -177,7 +187,7 @@ describe('HomeView', () => {
 
   it('opens the Scenario page on a Scenario picked', async () => {
     vi.mocked(api.getScenarios).mockResolvedValue({
-      scenarios: [{ id: 'tavern', title: 'The Rain-Soaked Tavern', description: '' }],
+      scenarios: [{ id: 'tavern', title: 'The Rain-Soaked Tavern', description: '', own: false }],
       errors: [],
     })
     const { wrapper, router } = await mountIt()

@@ -8,11 +8,17 @@ import StartSession from './StartSession.vue'
 vi.mock('../api', async (importOriginal) => ({
   ...(await importOriginal<typeof api>()),
   getScenarios: vi.fn(),
+  deleteScenario: vi.fn(),
   getSettings: vi.fn(),
   getSettingsOptions: vi.fn(),
 }))
 
-const tavern = { id: 'tavern', title: 'The Rain-Soaked Tavern', description: 'A stormy night.' }
+const tavern = {
+  id: 'tavern',
+  title: 'The Rain-Soaked Tavern',
+  description: 'A stormy night.',
+  own: false,
+}
 
 const mountIt = async () => {
   const router = createRouter({
@@ -83,6 +89,18 @@ describe('StartSession', () => {
     textModel('gone:1b')
     const again = (await mountIt()).wrapper
     expect(again.find('[data-blocker]').text()).toContain(`"gone:1b" isn't available`)
+  })
+
+  it('deletes one of your own Scenarios, after asking, but offers no Delete on an example', async () => {
+    const mine = { id: 'mine', title: 'Mine', description: '', own: true }
+    vi.mocked(api.getScenarios).mockResolvedValue({ scenarios: [tavern, mine], errors: [] })
+    vi.mocked(api.deleteScenario).mockResolvedValue()
+    vi.stubGlobal('confirm', vi.fn(() => true))
+    const { wrapper } = await mountIt()
+    expect(wrapper.findAll('[data-delete-scenario]')).toHaveLength(1)
+    await wrapper.find('[data-delete-scenario]').trigger('click')
+    expect(api.deleteScenario).toHaveBeenCalledWith('mine')
+    vi.unstubAllGlobals()
   })
 
   it('reports Scenario files that failed to load', async () => {

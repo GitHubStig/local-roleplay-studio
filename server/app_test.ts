@@ -1,9 +1,12 @@
 import { assertEquals, assertMatch, assertStringIncludes } from '@std/assert'
 import type { Backend } from './backends.ts'
 import { DEFAULT_SETTINGS } from './settings.ts'
+import { join } from '@std/path'
+import { dirScenarioFolder } from './scenario.ts'
 import {
   fakeImageGenerator,
   reply,
+  scenarioText,
   scriptedTextModel,
   testScenario,
   withTempDir,
@@ -264,10 +267,41 @@ Deno.test('GET /api/settings/options still answers when Ollama is down', async (
 
 Deno.test('GET /api/scenarios lists summaries and load errors', async () => {
   assertEquals(await (await setup().call('GET', '/api/scenarios')).json(), {
-    scenarios: [{ id: 'test', title: 'Test Shoot', description: 'A short test.' }],
+    scenarios: [{ id: 'test', title: 'Test Shoot', description: 'A short test.', own: false }],
     errors: [{ file: 'broken.md', message: 'title must be a non-empty string' }],
   })
 })
+
+Deno.test("The player's Scenarios are saved, imported and deleted", () =>
+  withTempDir(async (root) => {
+    const ownScenarios = dirScenarioFolder(join(root, 'scenarios'))
+    const { call } = setup({ ownScenarios, scenarios: ownScenarios })
+    const ids = async () =>
+      (await (await call('GET', '/api/scenarios')).json()).scenarios.map(
+        (s: { id: string; own: boolean }) => `${s.id}${s.own ? ' (own)' : ''}`,
+      )
+    // Saved over its file (made, the first time).
+    const edited = { ...testScenario, place: 'A cellar.' }
+    assertEquals((await call('PUT', '/api/scenarios/test', { scenario: edited })).status, 200)
+    assertEquals((await ownScenarios.get('test'))?.place, 'A cellar.')
+    // A new one never takes another's id: its title's, made unique.
+    const copy = await (await call('POST', '/api/scenarios', { scenario: edited })).json()
+    assertEquals(copy.id, 'test-shoot')
+    const again = await (await call('POST', '/api/scenarios', { scenario: edited })).json()
+    assertEquals(again.id, 'test-shoot-2')
+    const imported = await call('POST', '/api/scenarios', {
+      markdown: scenarioText,
+      name: 'Test.md',
+    })
+    assertEquals((await imported.json()).id, 'test-2')
+    // A file that wouldn't load back isn't saved, nor one outside the folder.
+    const broken = await call('POST', '/api/scenarios', { markdown: '# no frontmatter' })
+    assertEquals(broken.status, 400)
+    assertEquals((await call('PUT', '/api/scenarios/..%2Fx', { scenario: edited })).status, 400)
+    assertEquals((await call('DELETE', '/api/scenarios/test-shoot-2')).status, 204)
+    assertEquals((await call('DELETE', '/api/scenarios/nope')).status, 404)
+    assertEquals(await ids(), ['test-2 (own)', 'test-shoot (own)', 'test (own)'])
+  }))
 
 Deno.test('POST /api/sessions snapshots settings and resolves the seed', () =>
   withTempDir(async (root) => {

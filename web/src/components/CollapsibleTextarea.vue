@@ -22,9 +22,10 @@ const props = defineProps<{
 const value = defineModel<string>({ required: true })
 
 // As tall as its text (as it's typed, when its value changes, and when its width changes the
-// wrapping), so a panel of these scrolls as one instead of trapping the wheel in each box.
+// wrapping), so a panel of these scrolls as one instead of trapping the wheel in each box. A
+// minimum height, so an empty box can grow to its placeholder (below).
 const textarea = useTemplateRef<HTMLTextAreaElement>('textarea')
-useTextareaAutosize({ element: textarea, input: value })
+useTextareaAutosize({ element: textarea, input: value, styleProp: 'minHeight' })
 
 const collapsed = useStoredFlag(`collapsed:${props.id}`)
 const boxId = useId()
@@ -37,18 +38,29 @@ const preview = computed(() => value.value.replace(/\s+/g, ' ').trim())
        the last line's letters. -->
   <div v-if="alwaysOpen" class="flex flex-col gap-1 text-xs text-muted">
     <label :for="boxId">{{ label }}</label>
-    <div class="relative">
+    <!-- The box and an invisible copy of its placeholder share one grid cell, so an empty box is
+         as tall as its placeholder: a browser sizes it by what's typed, and a long placeholder ran
+         on under the buttons. -->
+    <div class="relative grid">
       <textarea
         :id="boxId"
         ref="textarea"
         v-model="value"
         rows="1"
-        class="block w-full resize-none overflow-hidden rounded border border-line bg-surface p-2 text-sm text-fg disabled:opacity-60"
+        class="col-start-1 row-start-1 block w-full resize-none overflow-hidden rounded border border-line bg-surface p-2 text-sm text-fg disabled:opacity-60"
         :class="{ 'pb-5': $slots.actions }"
         :disabled="disabled"
         :placeholder="placeholder"
         :data-field="id"
       />
+      <div
+        v-if="!value && placeholder"
+        aria-hidden="true"
+        class="invisible col-start-1 row-start-1 whitespace-pre-wrap break-words border border-transparent p-2 text-sm"
+        :class="{ 'pb-5': $slots.actions }"
+      >
+        {{ placeholder }}
+      </div>
       <div v-if="$slots.actions" class="absolute right-1 bottom-1 flex gap-1">
         <slot name="actions" />
       </div>

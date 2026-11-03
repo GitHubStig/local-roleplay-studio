@@ -43,6 +43,7 @@ export interface SetupOptions {
   root?: string
   listTextModels?: AppDeps['listTextModels']
   scenarios?: AppDeps['scenarios']
+  ownScenarios?: AppDeps['ownScenarios']
   comfyuiStatus?: AppDeps['comfyuiStatus']
   textModel?: TextModel
   imageGenerator?: ImageGenerator
@@ -75,6 +76,7 @@ export function setup(opts: SetupOptions = {}) {
           { name: 'qwen3.8:27b-mlx', thinking: true },
         ])),
     scenarios: opts.scenarios ?? scenarioLibrary,
+    ownScenarios: opts.ownScenarios,
     sessions,
     textModel: () => opts.textModel ?? scriptedTextModel([]),
     imageGenerator: opts.imageGenerator ?? fakeImageGenerator(),

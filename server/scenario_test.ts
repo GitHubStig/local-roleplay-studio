@@ -2,12 +2,12 @@ import { assertEquals, assertStringIncludes, assertThrows } from '@std/assert'
 import { join } from '@std/path'
 import {
   briefScenario,
-  combinedScenarioLibrary,
   dirScenarioLibrary,
   factsOf,
   parseScenario,
   scenarioFrom,
   scenarioMarkdown,
+  seedScenarios,
   truthsOf,
 } from './scenario.ts'
 
@@ -210,20 +210,21 @@ Deno.test('dirScenarioLibrary treats a missing directory as empty', async () => 
   assertEquals(errors, [])
 })
 
-Deno.test('combinedScenarioLibrary lists the first library first, and its id over a later one', async () => {
-  const library = (ids: string[], title: string) => {
-    const scenarios = ids.map((id) => ({ ...parseScenario(id, valid), title }))
-    return {
-      list: () => Promise.resolve({ scenarios, errors: [{ file: `${title}.md`, message: 'bad' }] }),
-      get: (id: string) => Promise.resolve(scenarios.find((s) => s.id === id)),
-    }
+Deno.test('seedScenarios copies the examples only into a folder with none of its own', async () => {
+  const root = await Deno.makeTempDir()
+  try {
+    const examples = join(root, 'examples')
+    const mine = join(root, 'scenarios')
+    await Deno.mkdir(examples)
+    await Deno.writeTextFile(join(examples, 'tavern.md'), valid)
+    await Deno.writeTextFile(join(examples, 'notes.txt'), 'not a Scenario')
+    assertEquals(await seedScenarios(mine, examples), ['tavern.md'])
+    // With one of the player's there, nothing is copied: a deleted example stays deleted.
+    await Deno.remove(join(mine, 'tavern.md'))
+    await Deno.writeTextFile(join(mine, 'mine.md'), valid)
+    assertEquals(await seedScenarios(mine, examples), [])
+    assertEquals((await Array.fromAsync(Deno.readDir(mine))).map((e) => e.name), ['mine.md'])
+  } finally {
+    await Deno.remove(root, { recursive: true })
   }
-  const lib = combinedScenarioLibrary(
-    library(['tavern'], 'Mine'),
-    library(['contact', 'tavern'], 'Example'),
-  )
-  const { scenarios, errors } = await lib.list()
-  assertEquals(scenarios.map((s) => [s.id, s.title]), [['tavern', 'Mine'], ['contact', 'Example']])
-  assertEquals(errors.map((e) => e.file), ['Mine.md', 'Example.md'])
-  assertEquals((await lib.get('tavern'))?.title, 'Mine')
 })

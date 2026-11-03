@@ -16,7 +16,7 @@ import { fileQueueStore } from './queueStore.ts'
 import { comfyuiImageGenerator } from './images/comfyui/comfyui.ts'
 import { comfyuiStatus } from './comfyui/status.ts'
 import { imageBackends } from './images/backend.ts'
-import { combinedScenarioLibrary, dirScenarioLibrary } from './scenario.ts'
+import { dirScenarioFolder, seedScenarios } from './scenario.ts'
 import { dirSessionStore } from './session.ts'
 import { fileSettingsStore, machineDefaults, type Settings } from './settings.ts'
 import { chatTextModel } from './textModel.ts'
@@ -159,16 +159,22 @@ const mlxVoice = features.voices.available
   ? voiceService({ root: sessionsDir, port: voicePort ? Number(voicePort) : undefined })
   : undefined
 
+/**
+ * The player's Scenarios (gitignored), which Home lists and the Scenario page saves to (ADR 0032):
+ * the examples are copied in while it has none, so they're the player's to keep or delete.
+ */
+const scenariosDir = new URL('../scenarios/', import.meta.url)
+const seeded = await seedScenarios(scenariosDir, new URL('../example-scenarios/', import.meta.url))
+if (seeded.length) console.log(`Copied the example Scenarios into scenarios/: ${seeded.join(', ')}`)
+const ownScenarios = dirScenarioFolder(scenariosDir)
+
 const handler = createHandler({
   settings,
   listTextModels: (backend, apiKey) => text(backend, apiKey).listModels(),
   textBackendOf,
   comfyuiStatus,
-  // The player's own (gitignored), then the examples (ADR 0032).
-  scenarios: combinedScenarioLibrary(
-    dirScenarioLibrary(new URL('../scenarios/', import.meta.url)),
-    dirScenarioLibrary(new URL('../example-scenarios/', import.meta.url)),
-  ),
+  scenarios: ownScenarios,
+  ownScenarios,
   sessions: sessionStore,
   sessionsFolder: {
     default: defaultSessionsDir,
