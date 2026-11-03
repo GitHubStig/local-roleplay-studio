@@ -21,6 +21,12 @@ export const roleplaySystem = async (cast: Cast): Promise<string> =>
         list: cast.truths.map((t) => `- ${t}`).join('\n'),
       })
       : '',
+    others: cast.others?.length
+      ? await loadPrompt('roleplay/others', {
+        ...cast,
+        list: cast.others.map((o) => `- ${o}`).join('\n'),
+      })
+      : '',
     limits: await limitsFor({ ...cast }),
   })
 
@@ -213,6 +219,7 @@ export function parseCast(value: unknown): Cast {
   const persona: Persona = { name: str(p.name), role: str(p.role), appearance: str(p.appearance) }
   const setting: Setting = { place: str(s.place), time: str(s.time), weather: str(s.weather) }
   const truths = (Array.isArray(o.truths) ? o.truths : []).map(str).filter(Boolean)
+  const others = (Array.isArray(o.others) ? o.others : []).map(str).filter(Boolean)
 
   const issues: string[] = []
   if (!Number.isInteger(character.age)) {
@@ -229,7 +236,7 @@ export function parseCast(value: unknown): Cast {
     }
   }
   if (issues.length) throw new CastError(`The Cast is incomplete: ${issues.join('; ')}`)
-  return { character, persona, setting, truths }
+  return { character, persona, setting, truths, others }
 }
 
 /** Reads the Cast call's reply. */

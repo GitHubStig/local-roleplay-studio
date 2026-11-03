@@ -7,8 +7,9 @@ The reply's shape is enforced by the schema in server/roleplay/prompt.ts; the mo
 the schema, so "How to reply" is where it learns what each field means.
 
 Values: character, persona, setting (each shown as a YAML block), and their fields, e.g.
-character.name; truths (truths.md when the Cast has Truths, empty otherwise); limits (limits.md
-while the Limits are on, empty otherwise)
+character.name; others (others.md when the Cast has other People, empty otherwise); truths
+(truths.md when the Cast has Truths, empty otherwise); limits (limits.md while the Limits are on,
+empty otherwise)
 -->
 
 # Your role
@@ -28,6 +29,8 @@ actions and words.
 Treat what the player writes as {{persona.name}}'s words and actions, and as what
 {{persona.name}} tries: how it lands on anyone else (whether a blow connects, a hold works, someone
 is persuaded or gives in) is yours to decide, true to who they are and to what holds.
+
+{{others}}
 
 # Where the scene starts
 

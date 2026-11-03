@@ -441,6 +441,7 @@ describe('RoleplayView', () => {
     expect(sections.map((d) => d.attributes('data-collapsible'))).toEqual([
       'roleplay.cast.start',
       'roleplay.cast.character',
+      'roleplay.cast.others',
       'roleplay.cast.truths',
     ])
     const start = wrapper.find('[data-cast-start]')

@@ -598,7 +598,12 @@ const CAST_FIELDS: CastField[] = [
   { group: 'setting', key: 'time', label: 'Time', long: true, start: true },
   { group: 'setting', key: 'weather', label: 'Weather', long: true, start: true },
   { group: 'truths', key: 'truths', label: 'One per line: what holds whatever anyone does', long: true },
+  { group: 'others', key: 'others', label: 'One per line: who else is in the story, and who they are', long: true },
 ]
+/** The Cast's parts that are lists, edited as a line each. */
+const LIST_GROUPS = ['truths', 'others'] as const
+const isList = (g: keyof Cast): g is (typeof LIST_GROUPS)[number] =>
+  (LIST_GROUPS as readonly string[]).includes(g)
 const GROUPS: { id: keyof Cast; title: () => string; preview: () => string }[] = [
   { id: 'character', title: () => 'Character', preview: () => characterName.value },
   { id: 'persona', title: () => 'You play', preview: () => personaName.value },
@@ -621,15 +626,18 @@ const castSections = computed((): CastSection[] => {
   const fields = (g: keyof Cast, start?: boolean) =>
     CAST_FIELDS.filter((f) => f.group === g && (start === undefined || !!f.start === start))
   // Not part of how it started: editable before and after it begins.
-  const truths: CastSection = {
-    id: 'truths',
-    title: 'Truths',
-    preview: castDraft.value?.truths?.filter((t) => t.trim()).join(' · ') || 'none',
-    parts: [{ fields: fields('truths') }],
-  }
+  const list = (id: (typeof LIST_GROUPS)[number], title: string): CastSection => ({
+    id,
+    title,
+    preview: castDraft.value?.[id]?.filter((t) => t.trim()).join(' · ') || 'none',
+    parts: [{ fields: fields(id) }],
+  })
+  const truths = list('truths', 'Truths')
+  const others = list('others', 'Others in the story')
   if (!begun.value) {
     return [
       ...GROUPS.map((g) => ({ id: g.id, title: g.title(), preview: g.preview(), parts: [{ fields: fields(g.id) }] })),
+      others,
       truths,
     ]
   }
@@ -648,6 +656,7 @@ const castSections = computed((): CastSection[] => {
       })),
     },
     { id: 'character', title: 'Character', preview: characterName.value, parts: [{ fields: fields('character', false) }] },
+    others,
     truths,
   ]
 })
@@ -658,7 +667,7 @@ const castCollapsed = useStoredFlag('collapsed:roleplay.cast')
  * it), remembered per browser; At the start begins collapsed.
  */
 const sectionCollapsed = Object.fromEntries(
-  ['character', 'persona', 'setting', 'truths', 'start', 'start.character', 'start.persona', 'start.setting'].map((id) => [
+  ['character', 'persona', 'setting', 'others', 'truths', 'start', 'start.character', 'start.persona', 'start.setting'].map((id) => [
     id,
     useStoredFlag(`collapsed:roleplay.cast.${id}`, id === 'start'),
   ]),
@@ -697,12 +706,12 @@ async function queueSaved(kind: JobKind, index: number) {
 }
 
 const fieldValue = (f: CastField) =>
-  f.group === 'truths'
-    ? (castDraft.value!.truths ?? []).join('\n')
+  isList(f.group)
+    ? (castDraft.value![f.group] ?? []).join('\n')
     : String((castDraft.value![f.group] as unknown as Record<string, unknown>)[f.key] ?? '')
 function setField(f: CastField, value: string) {
   // Lines as typed, blank ones too, so a new line stays; the server drops the blank ones.
-  if (f.group === 'truths') return void (castDraft.value!.truths = value.split('\n'))
+  if (isList(f.group)) return void (castDraft.value![f.group] = value.split('\n'))
   const group = castDraft.value![f.group] as unknown as Record<string, unknown>
   group[f.key] = f.key === 'age' ? Number(value) : value
 }

@@ -355,6 +355,22 @@ export const truthList = (s: Scenario): string[] => [
   ...s.people.flatMap((p) => p.truths.map((t) => `${p.name}: ${t}`)),
 ]
 
+/**
+ * The People besides two (in a Roleplay, the Character and the Persona, by id or by name: the Cast
+ * may give a fuller name, "Kael Thorne" for Kael), a line each: the name, then what the Scenario
+ * says of them but their Truths, which are with the story's.
+ */
+export function othersOf(s: Scenario, ...besides: string[]): string[] {
+  const left = besides.map(personId).filter(Boolean)
+  const isOne = (p: Person) =>
+    p.id === s.player || p.id === s.character ||
+    left.some((name) => name === personId(p.name) || name.startsWith(`${personId(p.name)}-`))
+  return s.people.filter((p) => !isOne(p)).map((p) => {
+    const said = PERSON_FIELDS.map((f) => p[f]).filter(Boolean)
+    return said.length ? `${p.name}: ${said.join(' ')}` : p.name
+  })
+}
+
 /** The Truths as a Markdown list, for the Text Model; empty for none. */
 export const truthsOf = (s: Scenario): string => truthList(s).map((t) => `- ${t}`).join('\n')
 

@@ -46,6 +46,8 @@ export interface Cast {
   setting: Setting
   /** What holds whatever anyone does; none in a Cast from before them. */
   truths?: string[]
+  /** The story's other People, a line each, who may act and speak briefly; none in a Cast from before them. */
+  others?: string[]
 }
 
 /** The Character's reply: a thought, what they do, what they say. */

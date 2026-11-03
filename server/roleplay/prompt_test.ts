@@ -51,6 +51,9 @@ Deno.test('roleplaySystem names who plays whom, the Setting, the reply fields an
   const truths = await roleplaySystem({ ...testCast, truths: ['Mira is the stronger.'] })
   assertStringIncludes(truths, '# What holds')
   assertStringIncludes(truths, '- Mira is the stronger.')
+  const others = await roleplaySystem({ ...testCast, others: ['Bram: the stable boy.'] })
+  assertStringIncludes(others, '# Others in the story')
+  assertStringIncludes(others, '- Bram: the stable boy.')
 })
 
 Deno.test('roleplayMessages: the system message, the opening request, then turns, then the new message', async () => {

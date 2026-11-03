@@ -27,6 +27,7 @@ export const testCast: Cast = {
     weather: 'A gale.',
   },
   truths: [],
+  others: [],
 }
 
 export const replyOf = (dialogue: string, extra: Partial<Reply> = {}): Reply => ({

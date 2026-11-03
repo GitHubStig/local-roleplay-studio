@@ -4,7 +4,8 @@ import { testCast } from './roleplay/testing.ts'
 
 /** Every prompt file, with the values its code fills it with. */
 const PROMPTS: [string, Record<string, unknown>][] = [
-  ['roleplay/character', { ...testCast, truths: '', limits: 'Limits.' }],
+  ['roleplay/character', { ...testCast, others: '', truths: '', limits: 'Limits.' }],
+  ['roleplay/others', { ...testCast, list: '- Bram: the stable boy.' }],
   ['roleplay/truths', { ...testCast, list: '- Mira is the stronger.' }],
   ['roleplay/judge', { ...testCast, truths: '- Mira is the stronger.' }],
   ['roleplay/judge-request', { ...testCast, last: 'Take the wheel.', message: 'I shove her.' }],
@@ -28,7 +29,7 @@ Deno.test('every prompt file fills in completely, without its notes', async () =
 })
 
 Deno.test('loadPrompt fills in text, numbers and YAML blocks', async () => {
-  const values = { ...testCast, truths: '', limits: 'No dragons.' }
+  const values = { ...testCast, others: '', truths: '', limits: 'No dragons.' }
   const text = (await loadPrompt('roleplay/character', values)).replace(/\s+/g, ' ')
   assertStringIncludes(text, 'You are Mira Vance')
   assertStringIncludes(text, 'age: 34')

@@ -10,7 +10,7 @@ import type { ImageGenerator } from '../images/imageGenerator.ts'
 import type { RenderQueue } from '../renderQueue.ts'
 import type { Settings } from '../settings.ts'
 import { activeProseLimits, crossedLimit } from '../limits.ts'
-import { type Scenario, truthList } from '../scenario.ts'
+import { othersOf, type Scenario, truthList } from '../scenario.ts'
 import type { Look, SessionStore } from '../session.ts'
 import type { TextModel } from '../textModel.ts'
 import type { FigureMaker } from '../3d/figure.ts'
@@ -65,8 +65,14 @@ export interface RoleplayDeps {
 }
 
 /** The text of a Cast and a reply that the Limits check. */
-const castText = ({ character, persona, setting, truths = [] }: Cast) =>
-  [...Object.values(character), ...Object.values(persona), ...Object.values(setting), ...truths]
+const castText = ({ character, persona, setting, truths = [], others = [] }: Cast) =>
+  [
+    ...Object.values(character),
+    ...Object.values(persona),
+    ...Object.values(setting),
+    ...truths,
+    ...others,
+  ]
     .join('\n')
 const replyText = (r: Reply) => [r.internal, r.actions, r.dialogue].join('\n')
 
@@ -93,8 +99,14 @@ export async function writeCast(
     emit,
   )
   signal.throwIfAborted()
-  // The Truths are the Scenario's, not the model's to write; a rewrite keeps them as edited.
-  const cast = { ...written, truths: session.cast?.truths ?? truthList(scenario) }
+  // The Truths and the others are the Scenario's, not the model's to write; a rewrite keeps them
+  // as edited.
+  const cast = {
+    ...written,
+    truths: session.cast?.truths ?? truthList(scenario),
+    others: session.cast?.others ??
+      othersOf(scenario, written.character.name, written.persona.name),
+  }
   const limit = crossedLimit(castText(cast))
   if (limit) throw new Error(`The Cast crossed a limit: ${limit.message}`)
   // Onto the Roleplay as it is now: a voice may have been designed while the Cast was written.

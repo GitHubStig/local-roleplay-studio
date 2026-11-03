@@ -45,6 +45,12 @@ export interface Cast {
    * then the player's to edit, before or after the scene begins. None in a Cast from before them.
    */
   truths?: string[]
+  /**
+   * The story's other People, a line each (name, then what the Scenario says of them): copied as
+   * the Cast is first written (ADR 0032), then the player's to edit. They may act and speak briefly
+   * in the Character's `actions`. None in a Cast from before them, or a story of two.
+   */
+  others?: string[]
 }
 
 /** The Character's reply to one message, in the order the model writes it. */

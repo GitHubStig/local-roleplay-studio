@@ -1,7 +1,7 @@
 import { assertEquals, assertRejects, assertStringIncludes } from '@std/assert'
 import { dirSessionStore } from '../session.ts'
 import { DEFAULT_SETTINGS } from '../settings.ts'
-import { briefScenario } from '../scenario.ts'
+import { briefScenario, scenarioFrom } from '../scenario.ts'
 import { fakeImageGenerator, scriptedTextModel, withTempDir } from '../testing.ts'
 import {
   beginRoleplay,
@@ -276,7 +276,7 @@ Deno.test('undoLatestExchange removes only the latest exchange, never the openin
     await assertRejects(() => undoLatestExchange(store, one, 0), RoleplayError, "can't be undone")
   }))
 
-Deno.test("writeCast copies the Scenario's Truths, and a rewrite keeps them as edited", () =>
+Deno.test("writeCast copies the Scenario's Truths and other People, and a rewrite keeps them as edited", () =>
   withTempDir(async (root) => {
     const store = dirSessionStore(root)
     const deps = {
@@ -285,12 +285,26 @@ Deno.test("writeCast copies the Scenario's Truths, and a rewrite keeps them as e
       textModel: scriptedTextModel([]),
       imageGenerator: fakeImageGenerator(),
     }
-    const withTruths = { ...scenario, truths: ['There is no land in sight.'] }
+    const person = (name: string, background = '') => ({
+      ...scenarioFrom({ title: 'T', opening: 'O', people: [{ name, background }] }).people[0],
+    })
+    // Mira and Sam are the Cast's Character and Persona: only the cook is anyone else.
+    const withTruths = {
+      ...scenario,
+      truths: ['There is no land in sight.'],
+      people: [person('Mira'), person('Sam'), person('Old Tom', 'The cook.')],
+    }
     const written = await writeCast(deps, await savedSession(store), withTruths, () => {}, signal())
     assertEquals(written.cast?.truths, ['There is no land in sight.'])
-    const edited = await setCast(store, written, { ...written.cast, truths: ['The ship leaks.'] })
+    assertEquals(written.cast?.others, ['Old Tom: The cook.'])
+    const edited = await setCast(store, written, {
+      ...written.cast,
+      truths: ['The ship leaks.'],
+      others: ['Old Tom: The cook, asleep below.'],
+    })
     const rewritten = await writeCast(deps, edited, withTruths, () => {}, signal())
     assertEquals(rewritten.cast?.truths, ['The ship leaks.'])
+    assertEquals(rewritten.cast?.others, ['Old Tom: The cook, asleep below.'])
   }))
 
 Deno.test('setCast saves an edited Cast, keeping the start once begun, and refuses one that crosses a Limit', () =>
