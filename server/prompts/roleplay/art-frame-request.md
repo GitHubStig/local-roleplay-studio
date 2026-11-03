@@ -6,6 +6,10 @@ show them.
 Values: look (a YAML block), story (the exchanges, as text), worn (what each person wore when
 last pictured: the clothing sentence of the latest earlier picture showing them, a line per
 picture), frame (the Frame's number, from 1, as the story numbers it)
+
+Naming the reply's parts in order, and saying it's done only after "shown", keeps Gemma 4 26B
+from closing the object after "color" and padding with whitespace until its cap, which the
+schema's required "newcomers" and "shown" force otherwise (AGENTS.md; research/text-models.md).
 -->
 
 Look:
@@ -20,4 +24,4 @@ What each person wore when last pictured:
 
 {{worn}}
 
-Picture Frame {{frame}}.
+Picture Frame {{frame}}. Answer with one JSON object: its seven sentences, "pose" to "color", then "newcomers" and "shown". You're done only when "shown" is written.
