@@ -2,6 +2,14 @@
 
 Newest first. The procedure is in [comfyui-upgrade.md](../comfyui-upgrade.md). ComfyUI runs on both machines: the Windows PC renders through it, and the Mac can.
 
+## 0.44.0 — both machines, 2026-11-04
+
+**What came of it**:
+
+- **Versions**: both machines went to 0.44.0 on 2026-11-04 (the owner). The Windows PC reports ComfyUI 0.44.0, workflow templates 0.11.101 (as required), frontend 1.57.6, comfy-aimdo 0.6.0, comfy-kitchen 0.2.40, PyTorch 2.13.0+cu130. The Mac wasn't checked here.
+- **Sol-H3-VAE taken up** for MiniMax H3's clips: 3× faster to decode, as close to the stock VAE as the eye can tell, and it fits at 10 s Large ([video-models.md](video-models.md#sol-h3-vae-against-h3s-own-vae-2026-11-04-windows-pc)). The app picks it where it's installed (`server/video/comfyui/models.ts`); the PC has the int8 file in the shared `models/vae`.
+- **No workflow changes**: the 17 templates the app's ComfyUI image and video workflows come from are byte for byte the same in `comfyui-workflow-templates-json` 0.1.127 (installed) as in 0.1.123 (the last check, 2026-10-27, from PyPI). The FIBO 2.0 workflows come from ComfyUI's nodes rather than a template, and the voice workflows from TTS Audio Suite.
+
 ## 0.43.x — both machines, 2026-10-27 to 2026-11-02
 
 **What came of it** (closed 2026-11-02):

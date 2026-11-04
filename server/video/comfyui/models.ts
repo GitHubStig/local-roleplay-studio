@@ -113,10 +113,13 @@ export const COMFYUI_VIDEO_MODELS: readonly ComfyVideoModel[] = [
       unet: { folder: 'diffusion_models', patterns: [/^minimax_h3_fl2va.*\.safetensors$/] },
       lora: { folder: 'loras', patterns: [/^minimax_h3_fl2v_turbo_8step.*\.safetensors$/] },
       clip: { folder: 'text_encoders', patterns: [/^qwen3vl_32b_minimax_h3.*\.safetensors$/] },
-      // The Mac has an fp16 video VAE as well as the int8 one.
+      // Sol-H3-VAE where it's installed: a decoder distilled from the stock one, with the stock
+      // encoder: 3× as fast to decode, and looks the same (docs/research/video-models.md). Then the stock
+      // VAE: the Mac has an fp16 one as well as the int8.
       vae: {
         folder: 'vae',
         patterns: [
+          /^minimax_h3_sol_vae.*\.safetensors$/,
           /^minimax_h3_video_vae_fp16\.safetensors$/,
           /^minimax_h3_video_vae.*\.safetensors$/,
         ],

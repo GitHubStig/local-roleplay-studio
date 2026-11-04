@@ -210,8 +210,19 @@ Deno.test('MiniMax H3 takes a Play out’s picture as its first frame only, with
       workflow.lora.inputs.lora_name,
       'minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors',
     )
-    // The fp16 video VAE where there is one.
+    // Without Sol-H3-VAE, the fp16 video VAE where there is one.
     assertEquals(workflow.vae.inputs.vae_name, 'minimax_h3_video_vae_fp16.safetensors')
+  }))
+
+Deno.test('MiniMax H3 encodes and decodes with Sol-H3-VAE where it is installed', () =>
+  withTempDir(async (dir) => {
+    const files = { ...FILES, vae: [...FILES.vae, 'minimax_h3_sol_vae_int8_convrot.safetensors'] }
+    const { workflow } = await makeClip(dir, { model: 'minimax-h3', first: 'frame-3.png' }, {
+      files,
+    })
+    assertEquals(workflow.vae.inputs.vae_name, 'minimax_h3_sol_vae_int8_convrot.safetensors')
+    assertEquals(workflow.decode.inputs.vae, ['vae', 0])
+    assertEquals(workflow.video.inputs.vae, ['vae', 0])
   }))
 
 Deno.test('A clip cut off by a restart is fetched once ComfyUI has made it, and nothing stays there', () =>

@@ -2,6 +2,21 @@
 
 Measurements behind clips ([ADR 0025](../adr/0025-clips-by-kind.md)); what's still to do is in [open-threads.md](../open-threads.md), "Clips". Newest first.
 
+## Sol-H3-VAE against H3's own VAE (2026-11-04, Windows PC)
+
+ComfyUI 0.44.0 can load Sol-H3-VAE ([PR #17411](https://github.com/comfy-org/ComfyUI/pull/17411)): a 24-layer decoder distilled from MiniMax H3's video decoder, which decodes a clip whole rather than in tiles and temporal chunks. Comfy-Org's int8 file (`minimax_h3_sol_vae_int8_convrot.safetensors`, 2.0 GB, in [Comfy-Org/MiniMax-H3](https://huggingface.co/Comfy-Org/MiniMax-H3)) was tried against the int8 stock VAE the PC had, on the app's H3 workflow sent straight to ComfyUI from a scratch script. To compare decoders on the same latent, a clip was sampled and decoded with the stock VAE, then the decode alone was run again with each VAE in turn (ComfyUI kept the sampled latent), timed per node from ComfyUI's WebSocket messages; VRAM sampled by `nvidia-smi` every 250 ms, Ollama unloaded. Two clips: an Idle-Loop-like 5 s at Small (864×480, 124 frames) from the bench's painted tavern picture (`docs/bench/video-ltx/kael.png`), and the app's worst case for memory, 10 s at Large (1280×704, 243 frames), from a photographic picture with smooth skin made for it (Z-Image Turbo), as the PR's issue [#17429](https://github.com/comfy-org/ComfyUI/issues/17429) reports faint seams on smooth skin. Seed 4300.
+
+| Clip | Stock decode | Sol decode | Sampling | Peak VRAM, decode only (stock / Sol) | Sol against stock |
+|---|---|---|---|---|---|
+| 5 s, Small, painted | 8.2–9.1 s (3 runs) | 2.5–2.8 s (3 runs) | 82–87 s | 10.9 / 11.5 GB | PSNR 37.0 dB, SSIM 0.964 |
+| 10 s, Large, photographic | 29.9–30.3 s (2 runs) | 9.6 s | 478 s | 8.5 / 10.2 GB | PSNR 43.3 dB, SSIM 0.988 |
+
+- **3× faster to decode**, which is 6 s off a 5 s Small clip (~6%) and 20 s off a 10 s Large one (~4%): sampling is still nearly all of a clip.
+- **It fits at the app's largest H3 clip**: decoding whole, Sol took 1.7 GB more than the stock VAE at 10 s Large, and peaked at 10.2 GB of the 12 GB card. A whole clip's peak (11.5 GB, during sampling) was the same with either.
+- **It looks the same**: frames side by side, whole and at 2–3× on the face, at three points in each clip, couldn't be told apart; an ×8 difference shows fine texture at edges and in hair, and a little in the brightest highlights (a fire). On the smooth-skinned face, sharpened and contrast-boosted, neither decode showed a grid or seams. The scores are after both went through the MP4 encode; two stock decodes of the same latent were identical frame for frame, so the difference is the decoder's.
+- **The file carries the stock encoder**: a clip with Sol as H3's only VAE (encoding the picture and decoding) was frame for frame the clip encoded by the stock VAE and decoded by Sol. So the app loads Sol in the stock VAE's place, with no change to the workflow, and falls back to the stock VAE where Sol isn't installed.
+- Not checked: the Mac (H3 doesn't fit there), clips past 10 s (the app makes none), Sol's fp16 file, and sound (Sol decodes video only; H3's audio VAE is unchanged).
+
 ## Names in clip prompts (2026-11-01, Windows PC)
 
 A clip prompt should call people by how they look: the video model sees two people in the picture and can't know which is "Kael". The system message says so, but Play out and Into Next are given the Frame's story as already happened, and Into Next the next Frame's too, both naming people, and the names were copied. Measured on the tavern Roleplay's five Frames through the running app, the Text Model gemma-4 12B (heretic, Q4_K_M) on Ollama, one prompt of each kind per Frame, 5 s, no speech: 4 of 19 named someone, all in those two kinds (1 of 5 Play outs, 3 of 4 Into Nexts; none of the Lead Ins or Idle Loops), as on the Mac on 2026-10-29 (3 of 4 Into Nexts, below).
