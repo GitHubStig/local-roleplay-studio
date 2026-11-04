@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useElementSize } from '@vueuse/core'
+import { useElementSize, useMediaQuery } from '@vueuse/core'
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
@@ -11,6 +11,7 @@ import {
 } from '../api'
 import { ago } from '../ago'
 import Icon from '../components/Icon.vue'
+import SplitHandle from '../components/SplitHandle.vue'
 import StartSession from '../components/StartSession.vue'
 import { tabStorage, useStoredString } from '../composables/storage'
 import { clearCurrentSession, useCurrentSession } from '../composables/useCurrentSession'
@@ -24,8 +25,9 @@ const sessions = ref<SessionSummary[] | null>(null)
 const listError = ref('')
 const CARD_REM = 12
 const GAP_REM = 1
-const page = useTemplateRef('page')
-const { width: pageWidth } = useElementSize(page)
+/** Where the Sessions go: the page's width, or its left column in an ultrawide window. */
+const sessionsArea = useTemplateRef('sessionsArea')
+const { width: pageWidth } = useElementSize(sessionsArea)
 /** The Sessions section is as wide as the columns that fit (or are needed), so it centres as a block. */
 const sessionsWidth = computed(() => {
   const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
@@ -37,9 +39,23 @@ const sessionsWidth = computed(() => {
 const deleteError = ref('')
 /** Why the last Session failed to start: its Opening Frame errored. */
 const startError = ref('')
+/** An ultrawide window (Tailwind's `wide`), where Start a new Session has a pane of its own, always open. */
+const wide = useMediaQuery('(min-width: 140rem)')
 /**
- * Whether Start a new Session is open, remembered for this tab as it's opened or closed; until then
- * closed under the button while there are Sessions, open when there are none yet (null until the
+ * There, the New Session pane's width in px, set by the splitter and remembered per browser;
+ * double-clicking the splitter forgets it, back to the default.
+ */
+const START_WIDTH = 704
+const START_MIN = 448
+const SESSIONS_MIN = 480
+const storedWidth = useStoredString('home.start-width')
+const startWidth = computed({
+  get: () => Number(storedWidth.value) || START_WIDTH,
+  set: (px: number) => (storedWidth.value = String(px)),
+})
+/**
+ * Whether Start a new Session is open under its button, remembered for this tab as it's opened or
+ * closed; until then closed while there are Sessions, open when there are none yet (null until the
  * list first loads).
  */
 const openStored = useStoredString('home.new-session-open', tabStorage())
@@ -118,10 +134,17 @@ const ACTIVITY_LABELS = {
 </script>
 
 <template>
-  <div class="overflow-y-auto p-6">
-    <div ref="page" class="mx-auto flex max-w-[104rem] flex-col gap-10">
+  <!-- In an ultrawide window, two panes that scroll on their own, a splitter between them: the
+       Sessions on the left, starting one on the right, each centred in its pane. -->
+  <div class="overflow-y-auto p-6 wide:flex wide:flex-row-reverse wide:overflow-hidden wide:p-0">
+    <div
+      class="wide:shrink-0 wide:overflow-y-auto wide:p-6"
+      :style="wide ? { width: `${startWidth}px` } : undefined"
+      data-start-pane
+    >
       <div class="mx-auto flex w-full max-w-4xl flex-col items-center gap-6">
         <button
+          v-if="!wide"
           type="button"
           class="flex items-center gap-2 rounded-lg bg-fg px-4 py-2 font-medium text-canvas"
           :aria-expanded="!!startOpen"
@@ -131,9 +154,19 @@ const ACTIVITY_LABELS = {
           <Icon :name="startOpen ? 'chevron-up' : 'plus'" />
           New Session
         </button>
-        <StartSession v-if="startOpen" :error="startError" class="w-full" />
+        <StartSession v-if="wide || startOpen" :error="startError" class="w-full" />
       </div>
-
+    </div>
+    <SplitHandle
+      v-if="wide"
+      v-model="startWidth"
+      :min="START_MIN"
+      :leave="SESSIONS_MIN"
+      label="Resize the Sessions and New Session"
+      title="Drag to resize; double-click to reset"
+      @dblclick="storedWidth = null"
+    />
+    <div ref="sessionsArea" class="mx-auto mt-10 max-w-[104rem] wide:mt-0 wide:min-w-0 wide:max-w-none wide:flex-1 wide:overflow-y-auto wide:p-6">
       <section
         v-if="listError || sessions?.length"
         class="mx-auto flex max-w-full flex-col gap-4"

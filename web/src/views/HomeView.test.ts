@@ -56,6 +56,24 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals())
 
 describe('HomeView', () => {
+  it('splits an ultrawide window in two, New Session open without its button; the splitter resets on a double-click', async () => {
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: query === '(min-width: 140rem)',
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    }))
+    localStorage.setItem('home.start-width', '1000')
+    const { wrapper } = await mountIt()
+    const pane = () => (wrapper.find('[data-start-pane]').element as HTMLElement).style.width
+    expect(wrapper.find('[data-new-session]').exists()).toBe(false)
+    expect(wrapper.find('[data-brief]').exists()).toBe(true)
+    expect(pane()).toBe('1000px')
+    await wrapper.find('[data-split-handle]').trigger('dblclick')
+    expect(pane()).toBe('704px')
+    expect(localStorage.getItem('home.start-width')).toBeNull()
+  })
+
   it('lists saved Sessions linking to each, with the latest image', async () => {
     const { wrapper } = await mountIt()
     const cards = wrapper.findAll('[data-session]')

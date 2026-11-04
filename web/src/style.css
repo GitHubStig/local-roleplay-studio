@@ -44,6 +44,11 @@
   --danger: var(--color-red-400);
 }
 
+/* An ultrawide window: room for Home's two columns, or three Settings cards abreast. */
+@theme {
+  --breakpoint-wide: 140rem;
+}
+
 @theme inline {
   --color-canvas: var(--canvas);
   --color-surface: var(--surface);

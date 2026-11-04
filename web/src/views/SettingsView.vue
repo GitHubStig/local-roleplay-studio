@@ -241,7 +241,8 @@ function saveNow() {
 
 <template>
   <div class="overflow-y-auto">
-    <div class="mx-auto max-w-4xl px-6 pb-6 pt-6">
+    <!-- Wider for Images in an ultrawide window, its three cards abreast. -->
+    <div class="mx-auto max-w-4xl px-6 pb-6 pt-6" :class="{ 'wide:max-w-7xl': tab === 'images' }">
       <div
         class="sticky top-0 z-10 -mx-6 mb-4 flex flex-col bg-canvas px-6 pb-4"
         data-settings-status
@@ -352,7 +353,7 @@ function saveNow() {
 
         <section
           v-show="tab === 'images'"
-          class="grid items-start gap-6 md:grid-cols-2"
+          class="grid items-start gap-6 md:grid-cols-2 wide:grid-cols-3"
           role="tabpanel"
           data-tab-panel="images"
         >
@@ -454,7 +455,7 @@ function saveNow() {
             </template>
           </div>
 
-          <div v-if="picturesOn" class="flex flex-col gap-6">
+          <div v-if="picturesOn" class="flex flex-col gap-6 wide:contents">
             <div class="card" data-card="edits">
               <FeatureSwitch
                 v-model="form.features.edits"
