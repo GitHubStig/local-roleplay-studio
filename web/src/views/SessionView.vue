@@ -206,6 +206,9 @@ const { jobs, jobsFor, hasJob, queue, queueEdit, queueClip, queueAll, dropJob, c
   },
   onError: (message) => (frameError.value = message),
   reportFailures: true,
+  onFailureGone: (message) => {
+    if (frameError.value === message) frameError.value = ''
+  },
   imageModel: () => session.value?.settings.imageModel,
 })
 /**

@@ -1,4 +1,4 @@
-import { computed, onBeforeUnmount, ref } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import {
   cancelAllJobs,
   cancelJob,
@@ -25,7 +25,8 @@ const mainJob = (running: Job[]): Job | null =>
  * A Session's queued background work (a Roleplay's or a Chain's), followed while anything is
  * queued or running. A job that finishes or fails has changed the Session, so `onSettled` reloads
  * it; `onError` hears why a job couldn't be queued, and, with `reportFailures`, why one failed
- * (for a view that shows failures only in its Queue tab). When the whole queue has finished, it
+ * (for a view that shows failures only in its Queue tab), then `onFailureGone` hears the same
+ * words once that job isn't failed any more (retried or dismissed), for the view to clear them. When the whole queue has finished, it
  * may notify the player (`useDoneNotice`). `imageModel` is the Session's Image
  * Model: a render queued by another one doesn't count as its render (`hasJob`).
  */
@@ -35,6 +36,7 @@ export function useJobs(
     onSettled: () => Promise<void> | void
     onError: (message: string) => void
     reportFailures?: boolean
+    onFailureGone?: (message: string) => void
     imageModel?: () => string | undefined
   },
 ) {
@@ -63,6 +65,16 @@ export function useJobs(
 
   const notifyDone = useDoneNotice()
 
+  /** The failures reported (`reportFailures`), by job, until the job isn't failed any more. */
+  const reported = new Map<string, string>()
+  watch(jobs, (list) => {
+    for (const [id, message] of reported) {
+      if (list.some((j) => j.id === id && j.status === 'failed')) continue
+      reported.delete(id)
+      opts.onFailureGone?.(message)
+    }
+  })
+
   let timer: ReturnType<typeof setTimeout> | undefined
   function watchJobs() {
     clearTimeout(timer)
@@ -85,7 +97,11 @@ export function useJobs(
     }
     jobs.value = now
     if (opts.reportFailures) {
-      for (const job of failed) opts.onError(`${JOB_NAMES[job.kind]} failed: ${job.error}`)
+      for (const job of failed) {
+        const message = `${JOB_NAMES[job.kind]} failed: ${job.error}`
+        reported.set(job.id, message)
+        opts.onError(message)
+      }
     }
     if (settled) await opts.onSettled()
     watchJobs()

@@ -257,6 +257,9 @@ const { jobs, runningJobs, jobsFor, hasJob, queue, queueEdit, queueClip, queueAl
   },
   onError: (text) => (message.value = { kind: 'error', text }),
   reportFailures: true,
+  onFailureGone: (text) => {
+    if (message.value?.text === text) message.value = null
+  },
   imageModel: () => session.value?.settings.imageModel,
 })
 /** A Frame's running job, if any, else the next queued one: what its status says it's doing. */

@@ -4,7 +4,8 @@ import type { Job } from '../api'
 
 const listJobs = vi.fn()
 const queueJob = vi.fn()
-vi.mock('../api', () => ({ listJobs, queueJob }))
+const retryJob = vi.fn()
+vi.mock('../api', () => ({ listJobs, queueJob, retryJob }))
 
 const upscale = (status: Job['status'], error?: string) =>
   ({ id: 'j1', kind: 'upscale', frameIndex: 0, status, createdAt: '', error }) as Job
@@ -30,6 +31,27 @@ describe('useJobs', () => {
         reportFailures ? [["Upscale failed: Couldn't reach ComfyUI"]] : [],
       )
     }
+  })
+
+  it('says a failure is gone once its job is retried', async () => {
+    const { useJobs } = await import('./useJobs')
+    const onFailureGone = vi.fn()
+    const jobs = useJobs('s1', {
+      onSettled: () => {},
+      onError: () => {},
+      reportFailures: true,
+      onFailureGone,
+    })
+    queueJob.mockResolvedValueOnce([upscale('running')])
+    listJobs.mockResolvedValueOnce([upscale('failed', "Couldn't reach ComfyUI")])
+    await jobs.queue('upscale', 0)
+    await vi.advanceTimersByTimeAsync(1000)
+    await flushPromises()
+    expect(onFailureGone).not.toHaveBeenCalled()
+    retryJob.mockResolvedValueOnce([upscale('queued')])
+    await jobs.retry(upscale('failed'))
+    await flushPromises()
+    expect(onFailureGone.mock.calls).toEqual([["Upscale failed: Couldn't reach ComfyUI"]])
   })
 
   it('notifies when the whole queue is done while the tab is hidden, if turned on', async () => {
