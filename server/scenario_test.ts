@@ -181,6 +181,17 @@ Deno.test("truthsOf lists the story's Truths, then each Person's by name", () =>
   assertEquals(truthsOf(briefScenario('Go.')), '')
 })
 
+Deno.test("truthsOf doesn't name a Person twice when their Truth starts with their name", () => {
+  const s = briefScenario('Go.')
+  const kael = parseScenario('tavern', valid).people.find((p) => p.name === 'Kael')!
+  const truths = ['Kael never sells out a crewmate.', "Kaelan's ship is his.", 'kael: cannot swim.']
+  assertEquals(
+    truthsOf({ ...s, people: [{ ...kael, truths }] }),
+    ['- Kael never sells out a crewmate.', "- Kael: Kaelan's ship is his.", '- kael: cannot swim.']
+      .join('\n'),
+  )
+})
+
 Deno.test('factsOf states only what the Scenario states, and who plays whom when asked', () => {
   const s = parseScenario('tavern', valid)
   const facts = factsOf(s)

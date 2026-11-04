@@ -22,6 +22,7 @@ import ModelComparison from '../components/ModelComparison.vue'
 import { useImageModels } from '../composables/useSettingsOptions'
 import UndirectedNote from './UndirectedNote.vue'
 import CastFieldBox from './CastFieldBox.vue'
+import ItemList from '../components/ItemList.vue'
 import Frame3dViewers from '../components/Frame3dViewers.vue'
 import EditedChip from '../components/EditedChip.vue'
 import FrameViewer from '../components/FrameViewer.vue'
@@ -597,11 +598,12 @@ const CAST_FIELDS: CastField[] = [
   { group: 'setting', key: 'place', label: 'Place', long: true, start: true },
   { group: 'setting', key: 'time', label: 'Time', long: true, start: true },
   { group: 'setting', key: 'weather', label: 'Weather', long: true, start: true },
-  { group: 'truths', key: 'truths', label: 'One per line: what holds whatever anyone does', long: true },
-  { group: 'others', key: 'others', label: 'One per line: who else is in the story, and who they are', long: true },
+  { group: 'truths', key: 'truths', label: 'What holds whatever anyone does', long: true },
+  { group: 'others', key: 'others', label: 'Who else is in the story, and who they are', long: true },
 ]
-/** The Cast's parts that are lists, edited as a line each. */
-const LIST_GROUPS = ['truths', 'others'] as const
+/** The Cast's parts that are lists, edited as a box each (`ItemList`), and what one item is. */
+const LIST_NOUNS = { truths: 'Truth', others: 'person' } as const
+const LIST_GROUPS = Object.keys(LIST_NOUNS) as (keyof typeof LIST_NOUNS)[]
 const isList = (g: keyof Cast): g is (typeof LIST_GROUPS)[number] =>
   (LIST_GROUPS as readonly string[]).includes(g)
 const GROUPS: { id: keyof Cast; title: () => string; preview: () => string }[] = [
@@ -706,12 +708,8 @@ async function queueSaved(kind: JobKind, index: number) {
 }
 
 const fieldValue = (f: CastField) =>
-  isList(f.group)
-    ? (castDraft.value![f.group] ?? []).join('\n')
-    : String((castDraft.value![f.group] as unknown as Record<string, unknown>)[f.key] ?? '')
+  String((castDraft.value![f.group] as unknown as Record<string, unknown>)[f.key] ?? '')
 function setField(f: CastField, value: string) {
-  // Lines as typed, blank ones too, so a new line stays; the server drops the blank ones.
-  if (isList(f.group)) return void (castDraft.value![f.group] = value.split('\n'))
   const group = castDraft.value![f.group] as unknown as Record<string, unknown>
   group[f.key] = f.key === 'age' ? Number(value) : value
 }
@@ -1279,16 +1277,28 @@ const lookSavingText = computed(() =>
                 </fieldset>
               </details>
               <fieldset v-else class="mb-3 flex min-w-0 flex-col gap-2">
-                <CastFieldBox
-                  v-for="f in part.fields"
-                  :id="`${f.group}.${f.key}`"
-                  :key="f.key"
-                  :label="f.label"
-                  :long="f.long"
-                  :value="fieldValue(f)"
-                  :disabled="busy || sec.locked"
-                  @input="setField(f, $event)"
-                />
+                <template v-for="f in part.fields" :key="f.key">
+                  <!-- A blank box stays as added; the server drops it once saved. -->
+                  <ItemList
+                    v-if="isList(f.group)"
+                    :model-value="castDraft![f.group] ?? []"
+                    :label="f.label"
+                    :noun="LIST_NOUNS[f.group]"
+                    :disabled="busy"
+                    :data-cast-list="f.group"
+                    @update:model-value="castDraft![f.group] = $event"
+                    @removed="flushCast"
+                  />
+                  <CastFieldBox
+                    v-else
+                    :id="`${f.group}.${f.key}`"
+                    :label="f.label"
+                    :long="f.long"
+                    :value="fieldValue(f)"
+                    :disabled="busy || sec.locked"
+                    @input="setField(f, $event)"
+                  />
+                </template>
               </fieldset>
             </template>
           </details>

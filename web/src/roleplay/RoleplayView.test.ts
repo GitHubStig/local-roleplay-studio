@@ -470,7 +470,36 @@ describe('RoleplayView', () => {
     expect(wrapper.find('[data-collapsible="character.personality"]').exists()).toBe(true)
     expect(wrapper.find('[data-field="character.personality"]').attributes('disabled'))
       .toBeUndefined()
-    expect(wrapper.find('[data-field="truths.truths"]').attributes('disabled')).toBeUndefined()
+    expect(wrapper.find('[data-cast-list="truths"] [data-add-item]').attributes('disabled'))
+      .toBeUndefined()
+  })
+
+  it('lists the Truths a box each: one added is typed in, one removed is saved at once', async () => {
+    const truths = ['Elena: She never leaves the light.', 'The gale lasts all night.']
+    vi.mocked(api.getSession).mockResolvedValue({
+      ...roleplaySession([frame(0, null, 'Get inside.')]),
+      cast: { ...cast, truths },
+    })
+    vi.mocked(roleplay.saveCast).mockImplementation((_id, c) =>
+      Promise.resolve({ ...roleplaySession([frame(0, null, 'Get inside.')]), cast: c })
+    )
+    const { wrapper } = await mountIt()
+    const list = () => wrapper.find('[data-cast-list="truths"]')
+    expect(list().findAll('[data-item]').map((b) => (b.element as HTMLTextAreaElement).value))
+      .toEqual(truths)
+
+    await list().findAll('[data-remove-item]')[0].trigger('click')
+    await flushPromises()
+    expect(roleplay.saveCast).toHaveBeenLastCalledWith('r1', { ...cast, truths: [truths[1]] })
+
+    await list().find('[data-add-item]').trigger('click')
+    await list().findAll('[data-item]')[1].setValue('No ship comes.')
+    await wrapper.find('[data-cast-form]').trigger('focusout')
+    await flushPromises()
+    expect(roleplay.saveCast).toHaveBeenLastCalledWith('r1', {
+      ...cast,
+      truths: [truths[1], 'No ship comes.'],
+    })
   })
 
   it('edits all of the Cast while it is reviewed, before the scene begins', async () => {

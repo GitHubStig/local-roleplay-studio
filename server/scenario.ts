@@ -372,11 +372,18 @@ const stated = (o: Record<string, unknown>) =>
     Object.entries(o).filter(([, v]) => Array.isArray(v) ? v.length : v),
   )
 
-/** The Truths: the story's, then each Person's, by name. */
+/**
+ * The Truths: the story's, then each Person's, after their name ("Kael: He never…"), unless the
+ * Truth starts with it already ("Kael never…").
+ */
 export const truthList = (s: Scenario): string[] => [
   ...s.truths,
-  ...s.people.flatMap((p) => p.truths.map((t) => `${p.name}: ${t}`)),
+  ...s.people.flatMap((p) => p.truths.map((t) => namesThem(t, p.name) ? t : `${p.name}: ${t}`)),
 ]
+/** Whether `truth` starts with `name`, as a whole word. */
+const namesThem = (truth: string, name: string) =>
+  truth.toLowerCase().startsWith(name.toLowerCase()) &&
+  !/[\p{L}\p{N}]/u.test(truth.charAt(name.length))
 
 /**
  * The People besides two (in a Roleplay, the Character and the Persona, by id or by name: the Cast

@@ -1,15 +1,16 @@
 <script setup lang="ts">
 import { useTextareaAutosize } from '@vueuse/core'
 import { useTemplateRef } from 'vue'
-import Icon from '../components/Icon.vue'
+import Icon from './Icon.vue'
 
-/** One Truth in a list: a box as tall as its text, as the other parts are, and its Remove button. */
-defineProps<{ label: string; disabled?: boolean }>()
+/** One item of a list (`ItemList`): a box as tall as its text, and its Remove button. */
+defineProps<{ label: string; removeTitle: string; disabled?: boolean }>()
 const value = defineModel<string>({ required: true })
 const emit = defineEmits<{ remove: [] }>()
 
 const textarea = useTemplateRef<HTMLTextAreaElement>('textarea')
 useTextareaAutosize({ element: textarea, input: value })
+defineExpose({ focus: () => textarea.value?.focus() })
 </script>
 
 <template>
@@ -21,14 +22,14 @@ useTextareaAutosize({ element: textarea, input: value })
       class="min-w-0 flex-1 resize-none overflow-hidden rounded border border-line bg-surface p-2 text-sm text-fg disabled:opacity-60"
       :disabled="disabled"
       :aria-label="label"
-      data-truth
+      data-item
     />
     <button
       type="button"
       class="rounded p-1 pt-2 hover:text-danger disabled:opacity-50"
       :disabled="disabled"
-      title="Remove this Truth"
-      data-remove-truth
+      :title="removeTitle"
+      data-remove-item
       @click="emit('remove')"
     >
       <Icon name="x" />
