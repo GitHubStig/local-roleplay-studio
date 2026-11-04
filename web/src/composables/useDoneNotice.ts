@@ -6,12 +6,13 @@ import { useStoredFlag } from './useStoredFlag'
 export const useNotifyWhenDone = () => useStoredFlag('notify-when-done')
 
 /**
- * A system notification when Session `sessionId`'s queue has all finished while the app's tab is
- * hidden, if the player turned it on in Settings (which asks the browser's permission). It's titled
- * with the Session's title (the app's name if that's unknown). Clicking it brings the tab back; it
- * closes by itself once the tab is seen.
+ * A system notification when a Session's queue has all finished while the app's tab is hidden, if
+ * the player turned it on in Settings (which asks the browser's permission): from the Session's
+ * screen (`useJobs`) or the Queue page, whichever is open. It's titled with the Session's title
+ * (the app's name if that's unknown). Clicking it brings the tab back; it closes by itself once
+ * the tab is seen.
  */
-export function useDoneNotice(sessionId: string) {
+export function useDoneNotice() {
   const on = useNotifyWhenDone()
   const visibility = useDocumentVisibility()
   const { currentSessionId, currentSessionTitle } = useCurrentSession()
@@ -22,10 +23,13 @@ export function useDoneNotice(sessionId: string) {
   })
   onClick(() => globalThis.focus())
 
-  /** The queue has just finished, `failed` of its jobs failing. */
-  return (failed: number) => {
+  /**
+   * Session `sessionId`'s queue has just finished, `failed` of its jobs failing; `title` is its
+   * title, if known (else the current Session's, if it's that one).
+   */
+  return (sessionId: string, failed: number, title?: string) => {
     if (!on.value || visibility.value !== 'hidden') return
-    const title = currentSessionId.value === sessionId ? currentSessionTitle.value : ''
+    title ||= currentSessionId.value === sessionId ? currentSessionTitle.value : ''
     void show({
       ...(title ? { title } : {}),
       body: failed ? `The queue is done, ${failed} failed.` : 'The queue is done.',

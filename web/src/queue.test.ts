@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Queue } from './api'
-import { lasted, machineQueues, textCallName } from './queue'
+import { lasted, machineQueues, sessionsDone, textCallName } from './queue'
 
 const job = (id: string, extra: Partial<Queue['jobs'][number]> = {}): Queue['jobs'][number] => ({
   id,
@@ -83,4 +83,23 @@ it('names text calls as the page shows them, Text for one it doesn’t know', ()
     'Frame',
     'Text',
   ])
+})
+
+describe('sessionsDone', () => {
+  it('names the Sessions whose open jobs have all finished, with how many failed', () => {
+    const before = [
+      job('a', { status: 'running' }),
+      job('b', { sessionId: 's2', status: 'running' }),
+      job('c', { sessionId: 's2' }),
+      job('d', { sessionId: 's3', status: 'done' }),
+    ]
+    const now = [
+      job('a', { status: 'failed' }),
+      job('b', { sessionId: 's2', status: 'done' }),
+      job('c', { sessionId: 's2', status: 'running' }),
+      job('d', { sessionId: 's3', status: 'done' }),
+    ]
+    expect(sessionsDone(before, now)).toEqual([{ sessionId: 's1', failed: 1 }])
+    expect(sessionsDone(now, now)).toEqual([])
+  })
 })

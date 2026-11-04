@@ -25,8 +25,11 @@ export const scrollToClips = (within: Element | null | undefined) =>
       ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   )
 
-/** A clip being made: its kind, by its video model (none for Settings' default). */
-export type ClipMaking = Pick<ClipOrder, 'kind' | 'model'>
+/**
+ * A clip being made: its order, by its video model (none for Settings' default), its prompt and
+ * all, to show in the form until it's made.
+ */
+export type ClipMaking = ClipOrder
 
 /**
  * The clips being made of a Frame's picture by Image Model `model` (queued or running, not
@@ -36,7 +39,7 @@ export const clipsMaking = (jobs: readonly Job[], model?: string): ClipMaking[] 
   jobs.flatMap((j) =>
     j.kind === 'clip' && isOpen(j) && j.clip &&
       (!j.image || j.image.imageModel === model)
-      ? [{ kind: j.clip.kind, model: j.clip.model }]
+      ? [j.clip]
       : []
   )
 

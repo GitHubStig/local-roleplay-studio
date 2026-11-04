@@ -11,8 +11,10 @@ import {
   machineQueues,
   type QueueJob,
   type QueueRow,
+  sessionsDone,
   textCallName,
 } from '../queue'
+import { useDoneNotice } from '../composables/useDoneNotice'
 import { sessionPath } from '../sessionPath'
 
 /**
@@ -25,11 +27,17 @@ const error = ref('')
 const now = ref(Date.now())
 const machines = computed(() => (queue.value ? machineQueues(queue.value) : []))
 const { jobName } = useImageModels()
+/** A Session's queue done here notifies as on its own screen, which isn't open meanwhile. */
+const notifyDone = useDoneNotice()
 
 async function refresh() {
   try {
+    const before = queue.value
     queue.value = await getQueue()
     error.value = ''
+    for (const { sessionId, failed } of before ? sessionsDone(before.jobs, queue.value.jobs) : []) {
+      notifyDone(sessionId, failed, queue.value.sessions.find((s) => s.id === sessionId)?.title)
+    }
   } catch (err) {
     error.value = (err as Error).message
   }

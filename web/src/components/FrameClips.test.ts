@@ -51,6 +51,14 @@ const leadIn: api.Clip = {
   seed: 7,
   timings: { clip: 140 },
 }
+/** A clip being made, as queued. */
+const order = (kind: api.ClipKind, extra: Partial<api.ClipOrder> = {}): api.ClipOrder => ({
+  kind,
+  prompt: `A ${kind}.`,
+  seconds: 4,
+  speech: false,
+  ...extra,
+})
 const mountIt = (props: Partial<InstanceType<typeof FrameClips>['$props']> = {}) =>
   mount(FrameClips, {
     props: {
@@ -215,7 +223,7 @@ describe('FrameClips', () => {
   })
 
   it('waits while the kind chosen is being made, the other kinds free meanwhile', async () => {
-    const wrapper = mountIt({ making: [{ kind: 'lead-in' }, { kind: 'idle-loop' }] })
+    const wrapper = mountIt({ making: [order('lead-in'), order('idle-loop')] })
     const make = () => wrapper.find('[data-make-clip]')
     expect([make().text(), make().attributes('disabled')]).toEqual(['Making Lead In…', ''])
     expect(wrapper.find('[data-clips-making]').text()).toBe(
@@ -227,6 +235,30 @@ describe('FrameClips', () => {
     expect(wrapper.find('[data-clips-making]').text()).toBe(
       'Making Lead In by LTX 2.5, Idle Loop by LTX 2.5 meanwhile.',
     )
+  })
+
+  it("shows a kind's prompt while it's being made, to make it by another model", async () => {
+    const wrapper = mountIt({
+      clips: [{ ...leadIn, kind: 'idle-loop', file: 'clip-1-idle-loop-1a2b3c4d.mp4' }],
+      making: [
+        order('lead-in', { prompt: 'She runs in.', seconds: 6, model: 'ltx-2.5' }),
+        order('idle-loop', { prompt: 'Newer.' }),
+      ],
+    })
+    const box = () => wrapper.find<HTMLTextAreaElement>('[data-clip-prompt]').element
+    expect([box().value, wrapper.find<HTMLSelectElement>('[data-clip-seconds]').element.value])
+      .toEqual(['She runs in.', '6'])
+    await wrapper.find('[data-clip-kind="play-out"]').trigger('click')
+    expect(box().value).toBe('')
+    // Being made again, its newer order over the clip it replaces.
+    await wrapper.find('[data-clip-kind="idle-loop"]').trigger('click')
+    expect(box().value).toBe('Newer.')
+    await wrapper.find('[data-clip-kind="lead-in"]').trigger('click')
+    await wrapper.find('[data-clip-model]').setValue('wan-2.2')
+    expect([box().value, wrapper.find('[data-make-clip]').text()]).toEqual([
+      'She runs in.',
+      'Make clip',
+    ])
   })
 
   it('lists the clips in the order the kinds are offered', () => {
@@ -291,7 +323,7 @@ describe('FrameClips', () => {
   })
 
   it('waits only while the same model makes the kind chosen', async () => {
-    const wrapper = mountIt({ making: [{ kind: 'lead-in', model: 'wan-2.2' }] })
+    const wrapper = mountIt({ making: [order('lead-in', { model: 'wan-2.2' })] })
     expect(wrapper.find('[data-make-clip]').text()).toBe('Make clip')
     expect(wrapper.find('[data-clips-making]').text()).toBe(
       'Making Lead In by Wan 2.2 14B meanwhile.',
@@ -313,6 +345,11 @@ describe('FrameClips', () => {
     expect(lead.find('[data-clip-by="wan-2.2"]').text()).toContain('no sound')
     expect(wrapper.find('[data-clip="idle-loop"] [data-compare-clips]').exists()).toBe(false)
     await lead.find('[data-compare-clips]').trigger('click')
+    expect(wrapper.emitted('stop')).toBeUndefined()
+    // A clip playing over the picture stops as the comparison opens.
+    await wrapper.setProps({ playing: leadIn.file })
+    await lead.find('[data-compare-clips]').trigger('click')
+    expect(wrapper.emitted('stop')).toHaveLength(1)
     const compared = wrapper.findAll('[data-clip-compare] [data-compared]')
     expect(compared.map((f) => f.attributes('data-compared'))).toEqual(['ltx-2.5', 'wan-2.2'])
     // Change it on Wan's puts Wan's order back in the form.

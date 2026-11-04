@@ -61,7 +61,7 @@ export function useJobs(
       (!j.image || !opts.imageModel || j.image.imageModel === opts.imageModel())
     )
 
-  const notifyDone = useDoneNotice(sessionId)
+  const notifyDone = useDoneNotice()
 
   let timer: ReturnType<typeof setTimeout> | undefined
   function watchJobs() {
@@ -81,7 +81,7 @@ export function useJobs(
       n.status === 'failed' && openJobs.value.some((j) => j.id === n.id)
     )
     if (openJobs.value.length && !now.some(isOpen)) {
-      notifyDone(now.filter((n) => n.status === 'failed').length)
+      notifyDone(sessionId, now.filter((n) => n.status === 'failed').length)
     }
     jobs.value = now
     if (opts.reportFailures) {

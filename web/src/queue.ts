@@ -1,4 +1,5 @@
 import type { JobKind, Queue } from './api'
+import { isOpen } from './jobs'
 
 /** A job as the queue page lists it: with its Session's id. */
 export type QueueJob = Queue['jobs'][number]
@@ -114,4 +115,21 @@ export function lasted(from: string, to: string | number): string {
   const end = typeof to === 'number' ? to : Date.parse(to)
   const s = Math.max(0, Math.round((end - Date.parse(from)) / 1000))
   return s < 60 ? `${s} s` : `${Math.floor(s / 60)} min ${s % 60} s`
+}
+
+/**
+ * The Sessions whose queue has just finished: jobs open in `before`, none open in `now`; each with
+ * how many of its jobs listed now failed, as a Session's screen counts them (`useJobs`).
+ */
+export function sessionsDone(
+  before: readonly QueueJob[],
+  now: readonly QueueJob[],
+): { sessionId: string; failed: number }[] {
+  const ids = new Set(before.filter(isOpen).map((j) => j.sessionId))
+  return [...ids]
+    .filter((id) => !now.some((j) => j.sessionId === id && isOpen(j)))
+    .map((sessionId) => ({
+      sessionId,
+      failed: now.filter((j) => j.sessionId === sessionId && j.status === 'failed').length,
+    }))
 }

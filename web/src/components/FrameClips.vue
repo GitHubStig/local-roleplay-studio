@@ -63,16 +63,21 @@ const writing = ref(false)
 const waiting = ref(false)
 const error = ref('')
 
+/** Whose clip a clip being made is: one ordered without a model is Settings' default's. */
+const makingBy = (m: ClipMaking) => m.model ?? model.value
 /** The picture's clip of the kind chosen by the video model chosen, if it has one. */
 const made = computed(() => props.clips?.find((c) => c.kind === kind.value && c.model === model.value))
 /**
- * The form as the chosen kind's clip was ordered, to make again: the chosen model's, else another
- * model's, so the same prompt can be compared; for a kind not made yet, an empty prompt, as a
- * prompt is written for one kind (and one Frame) and doesn't carry over.
+ * The form as the chosen kind's clip was ordered, to make again: the chosen model's, being made
+ * or made (the newer order first), else another model's, so the same prompt can be compared; for
+ * a kind neither made nor being made, an empty prompt, as a prompt is written for one kind (and
+ * one Frame) and doesn't carry over.
  */
 function fillForm() {
   error.value = ''
-  const clip = made.value ?? props.clips?.find((c) => c.kind === kind.value)
+  const ofKind = props.making.filter((m) => m.kind === kind.value)
+  const clip = ofKind.find((m) => makingBy(m) === model.value) ?? made.value ?? ofKind[0] ??
+    props.clips?.find((c) => c.kind === kind.value)
   if (!clip) {
     prompt.value = ''
     return
@@ -98,8 +103,6 @@ const hint = computed(() =>
 const listed = computed(() =>
   clipsByKind(props.clips).map((g) => ({ ...g, clips: inModelOrder(g.clips) }))
 )
-/** Whose clip a clip being made is: one ordered without a model is Settings' default's. */
-const makingBy = (m: ClipMaking) => m.model ?? model.value
 /**
  * The kind chosen is being made already by the model chosen: one of each kind per model at a
  * time, the others free meanwhile.
@@ -181,6 +184,12 @@ async function toggleFixing(clip: Clip) {
   again(clip)
   await nextTick()
   changeBox.value?.focus()
+}
+
+/** Opens a kind's comparison, stopping the clip playing over the picture, which would play on behind. */
+function compare(k: ClipKind) {
+  if (props.playing) emit('stop')
+  comparing.value = k
 }
 
 /** Puts a clip's order back in the form, to edit and make again by its video model. */
@@ -294,7 +303,7 @@ function again(clip: Clip) {
             class="action ml-auto"
             :title="`Play each model's ${CLIP_KIND_NAMES[group.kind]} side by side, together`"
             data-compare-clips
-            @click="comparing = group.kind"
+            @click="compare(group.kind)"
           >
             Compare
           </button>
