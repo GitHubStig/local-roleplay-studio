@@ -27,6 +27,10 @@
       "description": "Rebuild a test Session from a replay file through the running app (server/replay/)",
       "command": "deno run --allow-net --allow-read server/replay/replay.ts"
     },
+    "shot": {
+      "description": "Screenshot the running app in a headless browser, with optional steps (web/scripts/shot.ts)",
+      "command": "deno run --allow-all web/scripts/shot.ts"
+    },
     "build": "cd web && deno task build",
     "check": {
       "description": "Lint everything (deno lint), then type-check the server and the web app",

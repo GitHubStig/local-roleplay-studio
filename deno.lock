@@ -34,6 +34,7 @@
     "npm:@vue/tsconfig@~0.9.1": "0.9.1_typescript@6.0.3_vue@3.5.44",
     "npm:@vueuse/core@15": "15.0.0_vue@3.5.44_typescript@6.0.3",
     "npm:happy-dom@^21.0.4": "21.0.4",
+    "npm:playwright-core@^1.64.1": "1.64.1",
     "npm:tailwindcss@^4.3.3": "4.3.3",
     "npm:three@~0.186.1": "0.186.1",
     "npm:typescript@~6.0.3": "6.0.3",
@@ -1319,6 +1320,10 @@
         "pathe"
       ]
     },
+    "playwright-core@1.64.1": {
+      "integrity": "sha512-BC4s8y6SEVA6Q1rSxZTto8hI1KUI3xXlHGZgvGqP4IqPdI/a6FX9H29IDNz7vKo9l21b6LfYosScPL6M3xxyDQ==",
+      "bin": true
+    },
     "postcss@8.5.31": {
       "integrity": "sha512-YUbWYCgErwnMAVkjUnYa+KlMBzGpHwiIt/DE7f0G33AuX2LH9UcTk6KgWxd3zRU+pN3u/C+Xl3EnMLM4Hea7Sg==",
       "dependencies": [
@@ -1584,6 +1589,7 @@
             "npm:@vue/tsconfig@~0.9.1",
             "npm:@vueuse/core@15",
             "npm:happy-dom@^21.0.4",
+            "npm:playwright-core@^1.64.1",
             "npm:tailwindcss@^4.3.3",
             "npm:three@~0.186.1",
             "npm:typescript@~6.0.3",
