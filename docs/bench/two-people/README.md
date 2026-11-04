@@ -25,7 +25,7 @@ Qwen-Image 2.1 (25 steps, ~21 s each) and FLUX.3 Klein (16 steps, ~10.5 s each).
 
     deno run -A docs/bench/two-people/run.ts plan <today|wording|people> <seed>
     deno run -A docs/bench/two-people/run.ts render
-    <ComfyUI's venv python> -I docs/bench/two-people/grid.py
+    uv run --with pillow docs/bench/two-people/grid.py
 
 `prompts/`: each plan, with every Frame's Image Prompt. `grids/`: a sheet per shape, a row per
 Frame, Qwen-Image 2.1 on the left, FLUX.3 Klein on the right. `out/` (the full-size renders) isn't

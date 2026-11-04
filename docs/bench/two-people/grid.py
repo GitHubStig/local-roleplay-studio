@@ -1,7 +1,7 @@
 """Contact sheets of the two-people bench's renders (README.md): one per variant, a row per Frame
 and a column per Image Model, from out/ into grids/.
 
-    python -I docs/bench/two-people/grid.py
+    uv run --with pillow docs/bench/two-people/grid.py
 """
 
 import re
