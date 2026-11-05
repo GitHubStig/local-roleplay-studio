@@ -42,6 +42,25 @@ Deno.test('fileSettingsStore fills fields missing from an older file', () =>
     })
   }))
 
+Deno.test('fileSettingsStore swaps an Image Model no longer in the app for the default', () =>
+  withTempDir(async (dir) => {
+    const path = join(dir, 'settings.json')
+    await Deno.writeTextFile(
+      path,
+      JSON.stringify({ textModel: 'llama3:latest', imageModel: 'fibo-1.5', steps: 6 }),
+    )
+    const warn = console.warn
+    console.warn = () => {}
+    try {
+      assertEquals(await fileSettingsStore(path).load(), {
+        ...DEFAULT_SETTINGS,
+        textModel: 'llama3:latest',
+      })
+    } finally {
+      console.warn = warn
+    }
+  }))
+
 /** Settings with LM Studio listed, which takes an API key. */
 const withLmStudio = {
   ...DEFAULT_SETTINGS,

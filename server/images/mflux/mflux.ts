@@ -17,11 +17,6 @@ import { float16On } from './chip.ts'
 import { findMfluxModel, type Lora, MFLUX_MODELS, type MfluxModel } from './models.ts'
 import { SIZE_PRESETS } from '../../settings.ts'
 
-/** Straight double quotes as curly ones: opening after a space or bracket, or at the start. */
-export function curlQuotes(text: string): string {
-  return text.replace(/(^|[\s([{])"/g, '$1\u201c').replaceAll('"', '\u201d')
-}
-
 /** `--lora` for a LoRA, its `./` or `../` path resolved from the repo's root. */
 export function loraArgs(lora: Lora): string[] {
   const path = /^\.\.?\//.test(lora.path)
@@ -55,7 +50,7 @@ export function mfluxArgs(
     model.model,
     ...(model.baseModel ? ['--base-model', model.baseModel] : []),
     '--prompt',
-    model.curlyQuotes ? curlQuotes(req.prompt) : req.prompt,
+    req.prompt,
     '--seed',
     String(req.seed),
     ...(preset ? preset.args : ['--steps', String(settings.steps)]),

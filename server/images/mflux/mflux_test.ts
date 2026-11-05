@@ -4,7 +4,6 @@ import type { ImageRequest } from '../imageGenerator.ts'
 import type { Float16 } from './chip.ts'
 import { findMfluxModel, type MfluxModel } from './models.ts'
 import {
-  curlQuotes,
   editArgs,
   failureReason,
   loraArgs,
@@ -222,20 +221,6 @@ Deno.test("mfluxArgs passes a model's own arguments", () => {
   assertEquals(args.includes('--quantize'), false)
 })
 
-Deno.test('mfluxArgs runs FIBO 1.5 as FIBO, at its own guidance', () => {
-  const args = mfluxArgs(findMfluxModel('fibo-1.5')!, request('/d'), 'o.png')
-  assertEquals(args.slice(0, 4), [
-    '--model',
-    'mflux-community/fibo-1-5-mflux-q8',
-    '--base-model',
-    'fibo',
-  ])
-  assertEquals(args.slice(args.indexOf('--guidance'), args.indexOf('--guidance') + 2), [
-    '--guidance',
-    '1',
-  ])
-})
-
 Deno.test('mfluxArgs runs MOSS-Image from the community copy, at real guidance', () => {
   const args = mfluxArgs(findMfluxModel('moss-image')!, request('/d'), 'o.png')
   assertEquals(args.slice(0, 4), [
@@ -293,23 +278,6 @@ Deno.test('mfluxArgs runs FIBO 2.0 Turbo as the edit-turbo checkpoint, at 4 step
   assertEquals(args.slice(args.indexOf('--steps'), args.indexOf('--steps') + 2), ['--steps', '4'])
   assertEquals(args.includes('--guidance'), false)
   assertEquals(args.includes('--expand-prompt'), false)
-})
-
-Deno.test('curlQuotes turns straight double quotes curly', () => {
-  assertEquals(
-    curlQuotes('a sign reads "OPEN" and she says ("Yo!") "Hi"'),
-    'a sign reads \u201cOPEN\u201d and she says (\u201cYo!\u201d) \u201cHi\u201d',
-  )
-  assertEquals(curlQuotes('"Start" of it'), '\u201cStart\u201d of it')
-})
-
-Deno.test('mfluxArgs curls the quotes only for a model that needs it', () => {
-  const prompt = (id: string) => {
-    const args = mfluxArgs(findMfluxModel(id)!, { ...request('/d'), prompt: 'says "Yo!"' }, 'o.png')
-    return args[args.indexOf('--prompt') + 1]
-  }
-  assertEquals(prompt('fibo-1.5'), 'says \u201cYo!\u201d')
-  assertEquals(prompt('qwen-image-2.1'), 'says "Yo!"')
 })
 
 Deno.test('failureReason says what to do when a gated download is refused', () => {

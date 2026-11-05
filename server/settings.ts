@@ -493,7 +493,18 @@ export function fileSettingsStore(
             'Add them in Settings, as Backends.',
         )
       }
-      const result = validateSettings({ ...defaults, ...(parsed as object) })
+      const merged = { ...defaults, ...(parsed as object) } as Record<string, unknown>
+      // An Image Model since removed from the app falls back to the default, with its steps, rather
+      // than failing the file and losing every other setting.
+      if (typeof merged.imageModel === 'string' && !anyImageModel(merged.imageModel)) {
+        console.warn(
+          `${path}: the Image Model "${merged.imageModel}" is no longer in the app; ` +
+            `using ${defaults.imageModel}`,
+        )
+        merged.imageModel = defaults.imageModel
+        merged.steps = defaults.steps
+      }
+      const result = validateSettings(merged)
       if (!result.ok) {
         console.warn(`Ignoring invalid settings file ${path}: ${result.issues.join('; ')}`)
         return { ...defaults }

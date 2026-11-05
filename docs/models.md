@@ -48,7 +48,7 @@ Workarounds the benches showed were needed. Check each again when the Text Model
 Every Image Model reads the nine aspects in the same order (subject and identity → pose → expression → camera → clothing → environment → lighting → color → art style). A Chain's Image Prompt is nine sentences; a Storyboard Frame's or a Roleplay picture's is the Look's identity of each person shown, the seven sentences the Text Model wrote for that Frame, then the Look's art style, so it grows with each person in it ([CONTEXT.md](../CONTEXT.md), "Image Prompt"). The style comes last, so a model that cuts the prompt loses the style first.
 
 - **ComfyUI cuts nothing**: every text encoder the app uses there reads the whole prompt (ComfyUI 0.41.1).
-- **mflux cuts at a fixed length** (counted on mflux 0.22, template included): FLUX.2 Klein 4B and 9B and Z-Image (Turbo and full) at **512 tokens**, which the longest Roleplay pictures (~520) already pass; Krea 2 and Boogu at 1024; Qwen-Image 2.1 (and its Viggle Turbo) and ERNIE at 2048; Ming-Image and FIBO 1.5's prose not at all; Ideogram 4 fails past 2048 rather than cutting. Iris-3B and its Turbo at 300 (mflux's own setting, not counted; a longer prompt renders without an error). FLUX.3 Klein, MOSS-Image and FIBO 2.0 on mflux are not counted yet.
+- **mflux cuts at a fixed length** (counted on mflux 0.22, template included): FLUX.2 Klein 4B and 9B and Z-Image (Turbo and full) at **512 tokens**, which the longest Roleplay pictures (~520) already pass; Krea 2 and Boogu at 1024; Qwen-Image 2.1 (and its Viggle Turbo) and ERNIE at 2048; Ming-Image not at all; Ideogram 4 fails past 2048 rather than cutting. Iris-3B and its Turbo at 300 (mflux's own setting, not counted; a longer prompt renders without an error). FLUX.3 Klein, MOSS-Image and FIBO 2.0 on mflux are not counted yet.
 - A Text Model's pictures run 140–380 words (about 1.7× more from Qwen3.8 than Gemma 4 26B), and the app enforces only the 280-character cap per sentence (`FIELD_LENGTH`, `server/roleplay/art.ts`).
 
 Details, and when to count again: [research/image-models.md](research/image-models.md#how-much-of-the-image-prompt-each-model-reads-2026-10-09).
@@ -76,12 +76,11 @@ Details, and when to count again: [research/image-models.md](research/image-mode
 | Iris-3B (`iris-3b`) | mflux | 30 (mflux's 100) | 102 s (336 s at 100) | – | 8.4 GB | Turbo's undistilled base, with real guidance (3); more of an oil painting than Turbo; reads 300 tokens; one prompt tried (2026-11-02) |
 | Ming-Image 0.1 Design (`ming-image`) | both | 12 | 41–43 s | 17 s | 18.5 GB | a design model: lettering right; a signature mark on the PC |
 | MOSS-Image (`moss-image`) | both | 50 on mflux, 25 on ComfyUI | **black** on mflux 0.24.0 | 26–28 s | 26.8 GB | the closest to the words on the PC; on the Mac, waiting for mflux 0.24.1 |
-| FIBO 1.5 (`fibo-1.5`, 8-bit) | mflux | 6 | 131 s | – | 37.3 GB | its VLM writes a JSON caption first (most of the time); quotes sent curly |
 | FIBO 2.0 Dev (`fibo-2.0`) | both | 50 (or 30) | ~410 s | 60–63 s | 17.9 GB | slow on the Mac; prose, not `--expand-prompt` |
 | FIBO 2.0 Turbo (`fibo-2.0-turbo`) | both | 4 | 21 s | 9 s | 17.4 GB | Dev's picture in a twentieth of the time on the Mac, a sixth on the PC; the Edit Turbo checkpoint as a generator |
 | Ideogram 4 (`ideogram-4`, 8-bit) | mflux | 20 (12 or 48) | 57 s at 512² (0.22) | – | 30.4 GB | a typography model; garbles lettering from prose; gated |
 
-At 832×1216, wall clock from cache including the model load, unless it says otherwise. The Mac's on mflux 0.24.0 with `--low-ram` (2026-10-27), except FLUX.2 Klein 4B (1024², 0.22), Z-Image (1216×832, 0.22), FIBO 1.5 (0.22) and Ideogram 4. The PC's are from cold on ComfyUI 0.43.2 with Comfy Kitchen's int8 attention, which takes 8–19% off sampling (2026-11-01), Ollama unloaded. FIBO 2.0 Dev's prose time on the Mac was taken beside a download; with its VLM it took 505 s. Each model's trials: [research/image-models.md](research/image-models.md).
+At 832×1216, wall clock from cache including the model load, unless it says otherwise. The Mac's on mflux 0.24.0 with `--low-ram` (2026-10-27), except FLUX.2 Klein 4B (1024², 0.22), Z-Image (1216×832, 0.22) and Ideogram 4. The PC's are from cold on ComfyUI 0.43.2 with Comfy Kitchen's int8 attention, which takes 8–19% off sampling (2026-11-01), Ollama unloaded. FIBO 2.0 Dev's prose time on the Mac was taken beside a download; with its VLM it took 505 s. Each model's trials: [research/image-models.md](research/image-models.md).
 
 ### Editing a picture
 
@@ -137,8 +136,8 @@ Evidence: [research/video-models.md](research/video-models.md).
 
 - **A heavy job unloads the Text Model on the machine it runs on** (a render, an upscale, a 3D scene or figure, a voice from a heavy engine): a render beside the 18 GB 26B pushed the 48 GB Mac into swap and took 6× as long ([ADR 0013](adr/0013-unload-the-text-model-on-the-job-machine.md)).
 - **`--low-ram` is on for every mflux render and upscale**: it cut every peak by 2–27 GB, slowed no render, and cost SeedVR2 about 25%.
-- **Quantize converts as the model loads**; the app no longer saves quantized copies (dropped on mflux 0.22, when `--low-ram` lowered the peak further). The pre-quantized repos (Z-Image, Ming-Image, FIBO 1.5, Ideogram 4) are mflux-community's.
-- **The heaviest on the Mac**: FIBO 1.5 (37 GB), Krea 2 (34 GB), Ideogram 4 (30 GB), MOSS-Image (27 GB). Close everything else for those.
+- **Quantize converts as the model loads**; the app no longer saves quantized copies (dropped on mflux 0.22, when `--low-ram` lowered the peak further). The pre-quantized repos (Z-Image, Ming-Image, Ideogram 4) are mflux-community's.
+- **The heaviest on the Mac**: Krea 2 (34 GB), Ideogram 4 (30 GB), MOSS-Image (27 GB). Close everything else for those.
 - **On the PC** ComfyUI fills the 12 GB card for every model; the 16 GB of RAM held for MOSS-Image and Ming-Image with ~2 GB to spare, with Ollama unloaded.
 - **The voice service** unloads its model after a minute unused, and frees its working memory after every request.
 - Python's version (3.11 against 3.14) made no difference to memory or speed: the work runs in MLX on the GPU.

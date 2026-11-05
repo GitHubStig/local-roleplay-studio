@@ -25,11 +25,6 @@ export interface MfluxModel {
   /** Arguments passed on every render, after the rest. */
   args?: readonly string[]
   /**
-   * Straight double quotes in the prompt become curly ones. FIBO's VLM copies a quoted line ("Yo!")
-   * into its JSON caption unescaped, which breaks the JSON whatever the seed.
-   */
-  curlyQuotes?: boolean
-  /**
    * Its prompt while the Limits are off (`prompts/images/<name>.md`, filled with the Image Prompt):
    * Anima's safety tags. With the Limits on, the Image Prompt as it is.
    */
@@ -296,21 +291,6 @@ export const MFLUX_MODELS: readonly MfluxModel[] = [
     defaultSteps: 12,
     // It renders RGBA; pictures are RGB everywhere else (Qwen-Image 2.1 edits read alpha as a mask).
     args: ['--flatten-alpha'],
-  },
-  {
-    id: 'fibo-1.5',
-    label: 'FIBO 1.5 (8-bit)',
-    command: 'mflux-generate-fibo',
-    // mflux-community's saved 8-bit copy (15 GB). Bria's distilled FIBO, so it's read as FIBO and
-    // given its own settings: mflux would run FIBO's 50 steps at guidance 5, it wants 4–6 at 1.
-    // A plain prompt is first written out as FIBO's JSON caption by its own VLM (`briaai/FIBO-vlm`,
-    // 9 GB, fetched on first use), which is then freed before rendering.
-    model: 'mflux-community/fibo-1-5-mflux-q8',
-    baseModel: 'fibo',
-    preQuantized: true,
-    defaultSteps: 6,
-    cfg: 1,
-    curlyQuotes: true,
   },
   {
     id: 'ideogram-4',
