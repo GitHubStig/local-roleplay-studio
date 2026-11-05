@@ -19,4 +19,4 @@ So `artStyle` goes from Settings, with its prompt, schema and the "as tags" note
 
 ## Consequences
 
-A picturing format other than prose (JSON captions for Ideogram 4 or FIBO, open-threads.md) would be added for the Image Models that need it, not as a Setting for every model.
+A picturing format other than prose (JSON captions for Ideogram 4 or FIBO; since decided against, ADR 0033) would be added for the Image Models that need it, not as a Setting for every model.
