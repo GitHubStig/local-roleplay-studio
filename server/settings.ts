@@ -43,6 +43,17 @@ export const SIZE_PRESETS: readonly SizePreset[] = [
 ]
 
 export const QUANTIZE_OPTIONS = [null, 4, 8] as const
+
+/**
+ * How readily a Roleplay's music changes, and how far forward it comes (docs/music-plans.md):
+ * steady (few changes, kept low), following the story, or cinematic (changes readily, comes
+ * forward). Named steps rather than a number, as a model can't tell 35% from 40%.
+ */
+export const MUSIC_BEHAVIOURS = ['steady', 'story', 'cinematic'] as const
+export type MusicBehaviour = (typeof MUSIC_BEHAVIOURS)[number]
+/** What voices the music may have: none, or wordless ones and choirs. Lyrics come with songs. */
+export const MUSIC_VOCALS = ['instrumental', 'wordless'] as const
+export type MusicVocals = (typeof MUSIC_VOCALS)[number]
 export type Quantize = (typeof QUANTIZE_OPTIONS)[number]
 
 /** The fraction of steps the step cache skips; null for off. */
@@ -132,6 +143,12 @@ export interface Settings {
    * everything for it stays hidden until it's switched on.
    */
   music: boolean
+  /** How readily the music changes (`MUSIC_BEHAVIOURS`); a Session keeps its own. */
+  musicBehaviour: MusicBehaviour
+  /** What voices the music may have (`MUSIC_VOCALS`), held by the Cue's schema; a Session keeps its own. */
+  musicVocals: MusicVocals
+  /** The player's taste in music, in their words, for the Score; a Session keeps its own. */
+  musicTaste: string
   /**
    * Where the Sessions are kept: an absolute path, or '' for the `sessions/` folder in the app's
    * own. Read when the server starts; changed from the Sessions tab (`sessionsFolder.ts`), which
@@ -144,7 +161,8 @@ export interface Settings {
 /**
  * What a Session keeps of Settings (ADR 0022): its models, which define what it makes. Its Text
  * Model and Thinking as it started; its Image Model and steps, switched together in it
- * (`switchImageModel`). Everything else, where each runs among it, is read from Settings as they
+ * (`switchImageModel`); its music's behaviour, vocals and taste (missing from a Session made
+ * before them, which reads Settings'). Everything else, where each runs among it, is read from Settings as they
  * are now, so a change there reaches running Sessions too.
  */
 export const SESSION_SETTINGS = [
@@ -152,15 +170,23 @@ export const SESSION_SETTINGS = [
   'thinking',
   'imageModel',
   'steps',
+  'musicBehaviour',
+  'musicVocals',
+  'musicTaste',
 ] as const satisfies readonly (keyof Settings)[]
-export type SessionSettings = Pick<Settings, (typeof SESSION_SETTINGS)[number]> & {
-  /**
-   * The kind of backend its renders would rather run on, if picked in the Session (mflux or
-   * ComfyUI): a preference, not an address, so a Session's folder can be shared as it is, and
-   * rendered wherever it's opened. Left out, Settings say.
-   */
-  imageBackend?: ImageBackendKind
-}
+/** The music settings, which a Session made before them lacks. */
+type MusicKeys = 'musicBehaviour' | 'musicVocals' | 'musicTaste'
+export type SessionSettings =
+  & Pick<Settings, Exclude<(typeof SESSION_SETTINGS)[number], MusicKeys>>
+  & Partial<Pick<Settings, MusicKeys>>
+  & {
+    /**
+     * The kind of backend its renders would rather run on, if picked in the Session (mflux or
+     * ComfyUI): a preference, not an address, so a Session's folder can be shared as it is, and
+     * rendered wherever it's opened. Left out, Settings say.
+     */
+    imageBackend?: ImageBackendKind
+  }
 
 /** What a new Session keeps of Settings (`SESSION_SETTINGS`). */
 export const sessionSettingsOf = (settings: Settings): SessionSettings => ({
@@ -168,6 +194,9 @@ export const sessionSettingsOf = (settings: Settings): SessionSettings => ({
   thinking: settings.thinking,
   imageModel: settings.imageModel,
   steps: settings.steps,
+  musicBehaviour: settings.musicBehaviour,
+  musicVocals: settings.musicVocals,
+  musicTaste: settings.musicTaste,
 })
 
 /** How a render runs, as Settings are at each render; logged with each (`calls.ts`). */
@@ -214,6 +243,9 @@ export const DEFAULT_SETTINGS: Settings = {
   limits: true,
   callLog: false,
   music: false,
+  musicBehaviour: 'story',
+  musicVocals: 'instrumental',
+  musicTaste: '',
   sessionsFolder: '',
 }
 
@@ -339,6 +371,15 @@ export function validateSettings(input: unknown): ValidationResult {
   if (s.music !== undefined && typeof s.music !== 'boolean') {
     issues.push('music must be true or false')
   }
+  if (s.musicBehaviour !== undefined && !MUSIC_BEHAVIOURS.includes(s.musicBehaviour as never)) {
+    issues.push(`musicBehaviour must be one of: ${MUSIC_BEHAVIOURS.join(', ')}`)
+  }
+  if (s.musicVocals !== undefined && !MUSIC_VOCALS.includes(s.musicVocals as never)) {
+    issues.push(`musicVocals must be one of: ${MUSIC_VOCALS.join(', ')}`)
+  }
+  if (s.musicTaste !== undefined && typeof s.musicTaste !== 'string') {
+    issues.push('musicTaste must be text')
+  }
   if (s.sessionsFolder !== undefined) {
     if (typeof s.sessionsFolder !== 'string') issues.push('sessionsFolder must be a string')
     else if (s.sessionsFolder.trim() && !isAbsolute(s.sessionsFolder.trim())) {
@@ -421,6 +462,10 @@ export function validateSettings(input: unknown): ValidationResult {
       limits: (s.limits as boolean | undefined) ?? true,
       callLog: (s.callLog as boolean | undefined) ?? false,
       music: (s.music as boolean | undefined) ?? false,
+      musicBehaviour: (s.musicBehaviour as MusicBehaviour | undefined) ??
+        DEFAULT_SETTINGS.musicBehaviour,
+      musicVocals: (s.musicVocals as MusicVocals | undefined) ?? DEFAULT_SETTINGS.musicVocals,
+      musicTaste: ((s.musicTaste as string | undefined) ?? '').trim(),
       sessionsFolder: ((s.sessionsFolder as string | undefined) ?? '').trim(),
     },
   }

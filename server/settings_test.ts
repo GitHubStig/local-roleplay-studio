@@ -121,6 +121,7 @@ Deno.test('A Session keeps only its models, and renders with them and the rest a
     textModel: 'gemma4',
     imageModel: 'flux2-klein-4b',
     steps: 4,
+    musicTaste: 'Orchestral.',
   }
   const session = sessionSettingsOf(started)
   assertEquals(session, {
@@ -128,6 +129,9 @@ Deno.test('A Session keeps only its models, and renders with them and the rest a
     thinking: false,
     imageModel: 'flux2-klein-4b',
     steps: 4,
+    musicBehaviour: 'story',
+    musicVocals: 'instrumental',
+    musicTaste: 'Orchestral.',
   })
   const now = {
     ...DEFAULT_SETTINGS,
@@ -152,6 +156,10 @@ Deno.test('validateSettings fills in what an older file lacks, keeps what it may
     ['float16', 'auto', 'on', 'yes'],
     ['previews', true, false, 'yes'],
     ['sessionsFolder', '', '/Users/me/Sessions', 'Sessions'],
+    ['music', false, true, 'yes'],
+    ['musicBehaviour', 'story', 'cinematic', 'loud'],
+    ['musicVocals', 'instrumental', 'wordless', 'lyrics'],
+    ['musicTaste', '', 'Orchestral.', 3],
   ]
   for (const [field, missing, valid, invalid] of fields) {
     const { [field]: _, ...older } = DEFAULT_SETTINGS

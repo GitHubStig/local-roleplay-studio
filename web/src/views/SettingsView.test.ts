@@ -39,6 +39,9 @@ const settings: api.Settings = {
   limits: true,
   callLog: false,
   music: false,
+  musicBehaviour: 'story',
+  musicVocals: 'instrumental',
+  musicTaste: '',
   sessionsFolder: '',
   artModel: '',
   features: ALL_ON,
@@ -667,6 +670,25 @@ describe('SettingsView', () => {
     }
     // The fixture lists Z-Image Turbo before FLUX.2 Klein 4B, so this isn't the lists' own order.
     expect(labelsOf('[data-image-model]')[0]).toBe('FLUX.2 Klein 4B')
+  })
+
+  it("shows music's defaults only while Music is on, and saves them", async () => {
+    const wrapper = mount(SettingsView)
+    await flushPromises()
+    const panel = wrapper.find('[data-tab-panel="music"]')
+    expect(panel.find('[data-music-behaviour]').exists()).toBe(false)
+    await panel.find('[data-music] input').setValue(true)
+    await panel.find('[data-music-behaviour] input[value="cinematic"]').setValue(true)
+    await panel.find('[data-music-vocals] input[value="wordless"]').setValue(true)
+    await panel.find('[data-music-taste] textarea').setValue('Orchestral.')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+    expect(api.saveSettings).toHaveBeenLastCalledWith(expect.objectContaining({
+      music: true,
+      musicBehaviour: 'cinematic',
+      musicVocals: 'wordless',
+      musicTaste: 'Orchestral.',
+    }))
   })
 
   it('saves each control into its own field', async () => {

@@ -107,6 +107,12 @@ export interface Settings {
   callLog: boolean
   /** Music in a Roleplay, while it's being built: everything for it hides while off. */
   music: boolean
+  /** How readily the music changes, and how far forward it comes; a Session keeps its own. */
+  musicBehaviour: 'steady' | 'story' | 'cinematic'
+  /** What voices the music may have; a Session keeps its own. */
+  musicVocals: 'instrumental' | 'wordless'
+  /** The player's taste in music, in their words; a Session keeps its own. */
+  musicTaste: string
   /** Where Sessions are kept: a full path, or '' for the app's own `sessions/`. Changed on its own tab, not with the rest. */
   sessionsFolder: string
   /** The model that pictures Roleplay Frames; '' for the Session's Text Model. Applies at once. */
@@ -651,10 +657,14 @@ export const DOWNLOADING = 'Downloading the model (first use only)…'
  * What a Session keeps of Settings (ADR 0022): its models. Where they run, and everything else, is
  * Settings' as they are now.
  */
-export type SessionSettings = Pick<Settings, 'textModel' | 'thinking' | 'imageModel' | 'steps'> & {
-  /** The kind of backend its renders would rather run on, if picked in it; else Settings say. */
-  imageBackend?: ImageBackend
-}
+export type SessionSettings =
+  & Pick<Settings, 'textModel' | 'thinking' | 'imageModel' | 'steps'>
+  // Missing from a Session made before music had settings.
+  & Partial<Pick<Settings, 'musicBehaviour' | 'musicVocals' | 'musicTaste'>>
+  & {
+    /** The kind of backend its renders would rather run on, if picked in it; else Settings say. */
+    imageBackend?: ImageBackend
+  }
 
 export interface SessionBase {
   id: string

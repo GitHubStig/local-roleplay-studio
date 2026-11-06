@@ -56,6 +56,17 @@ const status = ref<{ kind: 'saved' | 'error'; message: string; issues?: string[]
  * Model's, each extra's), then Advanced: what applies to every model (the Limits, the seed), and
  * what's for looking into the app (the call log, the style scores).
  */
+/** Music's Behaviour, each a sentence the music's Text Model calls are given. */
+const MUSIC_BEHAVIOURS = [
+  { id: 'steady', label: 'Steady', about: 'few changes, kept low and in the background' },
+  { id: 'story', label: 'Follows the story', about: 'changes as the story turns' },
+  { id: 'cinematic', label: 'Cinematic', about: 'changes readily, and comes forward' },
+] as const
+const MUSIC_VOCALS = [
+  { id: 'instrumental', label: 'Instrumental only' },
+  { id: 'wordless', label: 'Allow wordless voices and choirs' },
+] as const
+
 const TABS = [
   { id: 'machines', label: 'Machines' },
   { id: 'text', label: 'Text' },
@@ -579,9 +590,42 @@ function saveNow() {
           <div class="card">
             <ToggleSwitch v-model="form.music" title="Music (in progress)" data-music>
               Music for Roleplays, being built in stages. On, what's there so far shows: for now,
-              a Scenario's Music.
+              a Scenario's Music, and the defaults below.
             </ToggleSwitch>
           </div>
+          <template v-if="form.music">
+            <fieldset class="card" data-music-behaviour>
+              <legend class="sr-only">Behaviour</legend>
+              <h3 class="font-medium" aria-hidden="true">Behaviour</h3>
+              <label v-for="b in MUSIC_BEHAVIOURS" :key="b.id" class="flex items-start gap-2">
+                <input v-model="form.musicBehaviour" type="radio" :value="b.id" class="mt-1.5" />
+                <span><span class="font-medium">{{ b.label }}</span>: {{ b.about }}</span>
+              </label>
+            </fieldset>
+            <fieldset class="card" data-music-vocals>
+              <legend class="sr-only">Vocals</legend>
+              <h3 class="font-medium" aria-hidden="true">Vocals</h3>
+              <label v-for="v in MUSIC_VOCALS" :key="v.id" class="flex items-center gap-2">
+                <input v-model="form.musicVocals" type="radio" :value="v.id" />
+                {{ v.label }}
+              </label>
+            </fieldset>
+            <label class="card flex flex-col gap-2" data-music-taste>
+              <span class="font-medium">Music taste</span>
+              <textarea
+                v-model="form.musicTaste"
+                rows="2"
+                class="field"
+                placeholder="Orchestral, no electronic instruments, ambience over melody…"
+              />
+              <span class="text-sm text-muted">
+                In your own words, for every Roleplay's music: what you like and what to avoid.
+              </span>
+            </label>
+            <p class="text-sm text-muted">
+              Each new Roleplay keeps these as they are when it starts.
+            </p>
+          </template>
         </section>
 
         <section
