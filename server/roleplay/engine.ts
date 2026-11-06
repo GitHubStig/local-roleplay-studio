@@ -21,7 +21,7 @@ import { CastError, openingMessages, parseCast, roleplayMessages } from './promp
 import { judgeMessages } from './judge.ts'
 import { artFrameMessages, artLookMessages, isLook, pictured, withNewcomers } from './art.ts'
 import { cleanLook, lookLimit, renameShown } from '../look.ts'
-import type { Cast, Reply, RoleplayFrame, RoleplaySession } from './types.ts'
+import type { Cast, Reply, RoleplayFrame, RoleplaySession, Score } from './types.ts'
 
 /** Progress of a Roleplay's setup or reply, streamed to the player as it happens. */
 export type RoleplayEvent =
@@ -35,6 +35,8 @@ export type RoleplayEvent =
   | { type: 'declined'; message: string }
   /** The Art Agent's Look, written the first time a Frame is pictured. */
   | { type: 'look'; look: Look }
+  /** The Score, written (`score.ts`). */
+  | { type: 'score'; score: Score; session: RoleplaySession }
   /** A Frame's picture: its Image Prompt, not yet rendered. */
   | { type: 'pictured'; frame: RoleplayFrame; session: RoleplaySession }
   /** A Frame's picture, rendered. */

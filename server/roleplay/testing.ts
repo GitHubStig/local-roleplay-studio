@@ -3,7 +3,7 @@ import type { RoleplayModel } from './model.ts'
 import type { Verdict } from './judge.ts'
 import type { Delivery } from '../voice/voice.ts'
 import { REPLY_FIELDS } from './prompt.ts'
-import type { Cast, Reply } from './types.ts'
+import type { Cast, Reply, Score } from './types.ts'
 import type { Look, Subject } from '../session.ts'
 
 export const testCast: Cast = {
@@ -43,6 +43,15 @@ export const testLook = (style = 'Ink.', mira = 'Mira.', sam = 'Sam.'): Look => 
   style,
 })
 
+/** A Score for the test Cast. */
+export const testScore = (genre = 'sea shanty folk'): Score => ({
+  genre,
+  palette: ['fiddle', 'concertina', 'bodhrán'],
+  atmosphere: 'Salt-worn and close, like a song sung below deck in a storm.',
+  tempo: { slowest: 60, fastest: 110 },
+  avoid: ['synthesizers'],
+})
+
 /**
  * A Roleplay model that plays back scripted Casts and replies, recording the messages each reply
  * was asked for. Streams each reply's fields as the real one does.
@@ -52,6 +61,7 @@ export function scriptedRoleplayModel(
     casts?: (Cast | Error)[]
     replies?: (Reply | Error)[]
     looks?: (Look | Error)[]
+    scores?: (Score | Error)[]
     /**
      * Each picture: its sentences, or those with who it shows (both of the test Cast unless given)
      * and anyone it brings in.
@@ -76,6 +86,7 @@ export function scriptedRoleplayModel(
   suggested: ChatMessage[][]
   judged: ChatMessage[][]
   directed: ChatMessage[][]
+  scored: ChatMessage[][]
 } {
   const next = <T>(queue: (T | Error)[] | undefined, what: string): Promise<T> => {
     const item = queue?.shift()
@@ -95,6 +106,13 @@ export function scriptedRoleplayModel(
       model.art.push(messages)
       signal.throwIfAborted()
       return { look: await next(script.looks, 'Look') }
+    },
+    /** The messages each Score call was given. */
+    scored: [] as ChatMessage[][],
+    async writeScore(messages: ChatMessage[], signal: AbortSignal) {
+      model.scored.push(messages)
+      signal.throwIfAborted()
+      return { score: await next(script.scores, 'Score') }
     },
     async pictureFrame(messages: ChatMessage[], signal: AbortSignal) {
       model.art.push(messages)

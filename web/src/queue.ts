@@ -12,6 +12,7 @@ const TEXT_CALL_NAMES: Record<string, string> = {
   reply: 'Reply',
   cast: 'Cast',
   look: 'Look',
+  score: 'Score',
   picture: 'Image Prompt',
   voice: 'Voice description',
   delivery: 'Directing a line',

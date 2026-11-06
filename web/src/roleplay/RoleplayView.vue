@@ -21,6 +21,7 @@ import ImageModelPicker from '../components/ImageModelPicker.vue'
 import ModelComparison from '../components/ModelComparison.vue'
 import { useImageModels } from '../composables/useSettingsOptions'
 import UndirectedNote from './UndirectedNote.vue'
+import MusicTab from './MusicTab.vue'
 import CastFieldBox from './CastFieldBox.vue'
 import ItemList from '../components/ItemList.vue'
 import Frame3dViewers from '../components/Frame3dViewers.vue'
@@ -238,7 +239,9 @@ const open3d = ref<{ index: number; kind: Made3d } | null>(null)
 /** New Replies are spoken as they arrive; remembered per browser. */
 const autoplay = useStoredFlag('roleplay-voice-autoplay')
 /** Which extras are on: off, their buttons are hidden, but what they made still plays and opens. */
-const { on: featureOn } = useFeatures()
+const { on: featureOn, settings: settingsNow } = useFeatures()
+/** Music is being built (docs/music-plans.md): its tab shows only while it's switched on. */
+const musicOn = computed(() => !!settingsNow.value?.music)
 /** A line can be listened to: voices are on, or it was already spoken. */
 const canListen = (speech: Speech | undefined) => featureOn.value('voices') || spokenNow(speech)
 /** What of a Reply is spoken: its dialogue, or the Character's thought (whispered). */
@@ -375,20 +378,22 @@ function pickFromList(index: number) {
  */
 const panelPicked = ref<'frames' | 'queue' | 'detail' | null>(null)
 const panel = computed(() => panelPicked.value ?? (begun.value ? 'frames' : 'detail'))
-const detailPicked = ref<'frame' | 'cast' | null>(null)
+const detailPicked = ref<'frame' | 'cast' | 'music' | null>(null)
 const detail = computed({
-  get: () => detailPicked.value ?? (begun.value ? 'frame' : 'cast'),
+  get: () =>
+    (detailPicked.value === 'music' && !musicOn.value ? null : detailPicked.value) ??
+      (begun.value ? 'frame' : 'cast'),
   set: (tab) => (detailPicked.value = tab),
 })
 const listTab = computed({
   get: () => (panel.value === 'queue' ? 'queue' : 'frames'),
   set: (tab: 'frames' | 'queue') => (panelPicked.value = tab),
 })
-/** A narrow window's one row of tabs: the Frame and the Look and Cast are two of them. */
+/** A narrow window's one row of tabs: the Frame, the Look and Cast, and the Music are among them. */
 const narrowTab = computed({
   get: () => (panel.value === 'detail' ? detail.value : listTab.value),
-  set: (tab: 'frames' | 'queue' | 'frame' | 'cast') => {
-    if (tab === 'frame' || tab === 'cast') {
+  set: (tab: 'frames' | 'queue' | 'frame' | 'cast' | 'music') => {
+    if (tab === 'frame' || tab === 'cast' || tab === 'music') {
       panelPicked.value = 'detail'
       detail.value = tab
     } else panelPicked.value = tab
@@ -681,6 +686,7 @@ const sectionCollapsed = Object.fromEntries(
  */
 const line = saveLine()
 const lookForm = useTemplateRef<InstanceType<typeof LookForm>>('lookForm')
+const musicTab = useTemplateRef<InstanceType<typeof MusicTab>>('musicTab')
 const {
   draft: castDraft,
   status: castStatus,
@@ -699,7 +705,10 @@ const {
 
 /** Saves what's edited by hand, before work that reads it; false, saying why, if it can't. */
 async function flushEdits(what: string): Promise<boolean> {
-  if ((await (lookForm.value?.flush() ?? true)) && (await flushCast())) return true
+  if (
+    (await (lookForm.value?.flush() ?? true)) && (await flushCast()) &&
+    (await (musicTab.value?.flush() ?? true))
+  ) return true
   notice.value = { kind: 'error', text: `Not ${what}: an edit isn't saved (see Look & Cast)` }
   return false
 }
@@ -1061,6 +1070,7 @@ const lookSavingText = computed(() =>
               { id: 'queue', ...queueTab(jobs) },
               { id: 'frame', label: 'Frame' },
               { id: 'cast', label: 'Look & Cast' },
+              ...(musicOn ? [{ id: 'music' as const, label: 'Music' }] : []),
             ]"
           />
         </div>
@@ -1121,6 +1131,7 @@ const lookSavingText = computed(() =>
               :tabs="[
                 { id: 'frame', label: selectedFrame ? frameName(selectedFrame.index) : 'Frame' },
                 { id: 'cast', label: 'Look & Cast' },
+                ...(musicOn ? [{ id: 'music' as const, label: 'Music' }] : []),
               ]"
             />
           </div>
@@ -1411,6 +1422,15 @@ const lookSavingText = computed(() =>
           </div>
           </details>
         </form>
+        </div>
+        <div v-if="musicOn" v-show="detail === 'music'" class="min-h-0 flex-1 overflow-y-auto" data-music-panel>
+          <MusicTab
+            ref="musicTab"
+            :session="session"
+            :line="line"
+            :disabled="busy"
+            @saved="(s) => (session = s)"
+          />
         </div>
         </section>
       </aside>

@@ -55,7 +55,7 @@ async function add() {
         @click="add"
       >
         <Icon name="plus" class="size-4" />
-        Add a {{ props.noun }}
+        Add {{ /^[aeiou]/i.test(props.noun) ? 'an' : 'a' }} {{ props.noun }}
       </button>
       <slot name="actions" />
     </div>

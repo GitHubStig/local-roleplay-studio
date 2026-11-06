@@ -10,7 +10,8 @@ import {
   REPLY_FIELDS,
   replySchema,
 } from './prompt.ts'
-import type { Cast, Reply } from './types.ts'
+import type { Cast, Reply, Score } from './types.ts'
+import { cleanScore, scoreSchema } from './score.ts'
 import type { Look, Subject } from '../session.ts'
 import { parseFrameBody } from '../textModel.ts'
 import {
@@ -46,6 +47,12 @@ export interface RoleplayModel {
     signal: AbortSignal,
     onThinking?: (chunk: string) => void,
   ): Promise<{ look: Look; thinking?: string }>
+  /** The Roleplay's Score, its music's identity (see `score.ts` for the messages). */
+  writeScore(
+    messages: ChatMessage[],
+    signal: AbortSignal,
+    onThinking?: (chunk: string) => void,
+  ): Promise<{ score: Score; thinking?: string }>
   /** The Art Agent: who one Frame's picture shows, and its seven sentences as a paragraph. */
   pictureFrame(
     messages: ChatMessage[],
@@ -82,6 +89,7 @@ const MAX_TOKENS = {
   reply: 1024,
   cast: 1024,
   art: 1600,
+  score: 500,
   suggest: 400,
   voice: 300,
   delivery: 60,
@@ -144,6 +152,19 @@ export function chatRoleplayModel(chat: Chat, opts: RoleplayModelOptions = {}): 
           onThinking,
         })
         return withThinking({ look: parseRoleplayLook(parseJson(content)) }, thinking)
+      }),
+
+    writeScore: (messages, signal, onThinking) =>
+      within(signal, limit(), async (s) => {
+        const { content, thinking } = await chat.stream({
+          messages,
+          schema: scoreSchema,
+          job: 'score',
+          maxTokens: MAX_TOKENS.score,
+          signal: s,
+          onThinking,
+        })
+        return withThinking({ score: cleanScore(parseJson(content)) }, thinking)
       }),
 
     pictureFrame: (messages, signal, onThinking) =>

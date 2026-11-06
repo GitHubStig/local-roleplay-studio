@@ -158,5 +158,33 @@ export interface RoleplaySession extends SessionBase {
   lookThinking?: string
   /** The Character's voice; written the first time a line is spoken. */
   voice?: RoleplayVoice
+  /**
+   * The music's identity, shared by every Cue (docs/music-plans.md): written from the Cast, the
+   * Brief, the Scenario's Music and the Music taste when asked for, or the first time the music is
+   * directed; editable. Absent until then, and while Music is off.
+   */
+  score?: Score
+  /** For debugging: seconds the Score took to write, the model that wrote it, and its reasoning. */
+  scoreTimings?: { text: number }
+  scoreModel?: string
+  scoreThinking?: string
   frames: RoleplayFrame[]
+}
+
+/**
+ * A Roleplay's musical identity, as a film's score keeps one sound while its moods change: what
+ * every Cue is made in. Its avoid list binds what writes the Cues; it never reaches a music model,
+ * as naming a thing pulls it in.
+ */
+export interface Score {
+  /** A short phrase: "dark folk", "late-romantic orchestral". */
+  genre: string
+  /** The instruments its Cues are drawn from; voices aren't among them (the Cue's Vocals say). */
+  palette: string[]
+  /** One or two sentences: how the music feels throughout. */
+  atmosphere: string
+  /** The range every Cue's tempo keeps within, in beats per minute. */
+  tempo: { slowest: number; fastest: number }
+  /** Short phrases: instruments, styles or clichés the music never uses. */
+  avoid: string[]
 }

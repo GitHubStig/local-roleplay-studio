@@ -658,9 +658,10 @@ export const DOWNLOADING = 'Downloading the model (first use only)…'
  * Settings' as they are now.
  */
 export type SessionSettings =
-  & Pick<Settings, 'textModel' | 'thinking' | 'imageModel' | 'steps'>
-  // Missing from a Session made before music had settings.
-  & Partial<Pick<Settings, 'musicBehaviour' | 'musicVocals' | 'musicTaste'>>
+  & Pick<
+    Settings,
+    'textModel' | 'thinking' | 'imageModel' | 'steps' | 'musicBehaviour' | 'musicVocals' | 'musicTaste'
+  >
   & {
     /** The kind of backend its renders would rather run on, if picked in it; else Settings say. */
     imageBackend?: ImageBackend

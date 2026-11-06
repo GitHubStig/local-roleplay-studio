@@ -21,6 +21,8 @@ import { suggestMessage } from './suggest.ts'
 import { logCallsUnder } from '../calls.ts'
 import { setVoiceDescription, VoiceError } from './voice.ts'
 import type { RoleplayFrame, RoleplaySession } from './types.ts'
+import type { Settings } from '../settings.ts'
+import { ScoreError, ScoreLimitError, setMusicSettings, setScore, writeScore } from './score.ts'
 
 /**
  * What follows a Reply, as the player's switches ask (in their browser): its line spoken, as
@@ -42,7 +44,7 @@ const afterReplyOf = (body: unknown): AfterReply => {
 /** A player's message can be at most this long. */
 const MAX_MESSAGE_LENGTH = 4000
 
-type RoleplayLockKind = 'setup' | 'frame' | 'undo' | 'edit' | 'render' | 'suggest'
+type RoleplayLockKind = 'setup' | 'frame' | 'undo' | 'edit' | 'render' | 'suggest' | 'score'
 
 /** What the app lends a Session kind's routes: its locks, streams and models. */
 export interface RoleplayRouteContext {
@@ -63,6 +65,10 @@ export interface RoleplayRouteContext {
   deps(session: Session): RoleplayDeps
   /** The model Suggest writes with: the Session's Text Model, Thinking off. */
   suggestModel(session: Session): RoleplayModel
+  /** The model the Score is written with: the Art Agent's, as for the Look. */
+  scoreModel(session: Session): Promise<RoleplayModel>
+  /** Settings as they are now. */
+  settings(): Promise<Settings>
   /**
    * Queues what follows a Reply as it's saved, as `after` asks, so the page that hears of it finds
    * it in the queue: its line spoken, its picture, its render, in that order. Resolves, once it
@@ -101,12 +107,19 @@ export function roleplayRoutes(ctx: RoleplayRouteContext): Route[] {
         return await handle(session)
       } catch (err) {
         if (err instanceof RoleplayError) return error(err.message, 409)
-        if (err instanceof RoleplayLimitError) return error(err.message, 422)
+        if (err instanceof RoleplayLimitError || err instanceof ScoreLimitError) {
+          return error(err.message, 422)
+        }
+        if (err instanceof ScoreError) return error(err.message, 400)
         // A hand-edited Cast that's incomplete.
         if (err instanceof CastError || err instanceof VoiceError) return error(err.message, 400)
         throw err
       }
     })
+
+  /** Why the music's routes are refused: Music is switched off in Settings. */
+  const musicOff = async () =>
+    (await ctx.settings()).music ? null : error('Music is switched off in Settings', 409)
 
   return [
     ['POST', path('cast'), (_req, p) =>
@@ -192,6 +205,42 @@ export function roleplayRoutes(ctx: RoleplayRouteContext): Route[] {
         return json(
           await setVoiceDescription(ctx.deps(session).store, session, await readJson(req)),
         )
+      })],
+
+    // The music's identity, written (or written again) from the Cast, the Brief and the tastes.
+    ['POST', path('score'), (_req, p) =>
+      withRoleplay(p.id!, 'score', async (session) => {
+        const off = await musicOff()
+        if (off) return off
+        if (!session.cast) return error('This Roleplay has not been set up', 409)
+        const scenario = ctx.scenarioFor(session)
+        if (scenario instanceof Response) return scenario
+        const model = await ctx.scoreModel(session)
+        return ctx.stream(session, null, false, async (send, signal) => {
+          await writeScore(
+            { store: ctx.store, model },
+            session,
+            scenario,
+            send,
+            signal,
+          )
+        })
+      })],
+
+    ['PUT', path('score'), (req, p) =>
+      withRoleplay(p.id!, 'edit', async (session) => {
+        const off = await musicOff()
+        if (off) return off
+        if (!session.score) return error('This Roleplay has no Score yet', 409)
+        return json(await setScore(ctx.store, session, await readJson(req)))
+      })],
+
+    // The Roleplay's own Behaviour, Vocals and Music taste.
+    ['PUT', path('music'), (req, p) =>
+      withRoleplay(p.id!, 'edit', async (session) => {
+        const off = await musicOff()
+        if (off) return off
+        return json(await setMusicSettings(ctx.store, session, await readJson(req)))
       })],
 
     ['PUT', path('cast'), (req, p) =>

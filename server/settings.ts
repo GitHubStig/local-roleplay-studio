@@ -161,8 +161,7 @@ export interface Settings {
 /**
  * What a Session keeps of Settings (ADR 0022): its models, which define what it makes. Its Text
  * Model and Thinking as it started; its Image Model and steps, switched together in it
- * (`switchImageModel`); its music's behaviour, vocals and taste (missing from a Session made
- * before them, which reads Settings'). Everything else, where each runs among it, is read from Settings as they
+ * (`switchImageModel`); its music's behaviour, vocals and taste. Everything else, where each runs among it, is read from Settings as they
  * are now, so a change there reaches running Sessions too.
  */
 export const SESSION_SETTINGS = [
@@ -174,11 +173,8 @@ export const SESSION_SETTINGS = [
   'musicVocals',
   'musicTaste',
 ] as const satisfies readonly (keyof Settings)[]
-/** The music settings, which a Session made before them lacks. */
-type MusicKeys = 'musicBehaviour' | 'musicVocals' | 'musicTaste'
 export type SessionSettings =
-  & Pick<Settings, Exclude<(typeof SESSION_SETTINGS)[number], MusicKeys>>
-  & Partial<Pick<Settings, MusicKeys>>
+  & Pick<Settings, (typeof SESSION_SETTINGS)[number]>
   & {
     /**
      * The kind of backend its renders would rather run on, if picked in the Session (mflux or

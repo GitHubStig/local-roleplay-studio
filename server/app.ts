@@ -271,6 +271,7 @@ type LockKind =
   | 'suggest'
   | 'copy'
   | 'clip-prompt'
+  | 'score'
 
 export function createHandler(deps: AppDeps): (req: Request) => Promise<Response> {
   const newSessionId = deps.newSessionId ?? defaultSessionId
@@ -307,6 +308,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     suggest: 'A message is being suggested',
     copy: 'This Storyboard is being made into a Chain',
     'clip-prompt': "A clip's prompt is being written",
+    score: 'The Score is being written',
   }
 
   /** Takes the Session's lock, or returns a 409 saying what holds it. */
@@ -761,6 +763,9 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       deps: roleplayDeps,
       // Thinking off, as for pictures: a suggestion is a draft, and it should come quickly.
       suggestModel: (session) => deps.roleplayModel(textChoice(session, undefined, false)),
+      scoreModel: async (session) =>
+        (await roleplayJobs.artModel(session)) ?? roleplayDeps(session).roleplayModel,
+      settings: () => deps.settings.load(),
       queuesAfterReply: async (session, after) => {
         const machine = async (kind: JobKind) => machineOf(await jobBackendOf(session, kind))
         const speak = after.speak && !(await featureOff('voices')) && await machine('speak')

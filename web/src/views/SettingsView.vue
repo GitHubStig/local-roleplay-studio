@@ -25,6 +25,7 @@ import SelectField from '../components/SelectField.vue'
 import ToggleSwitch from '../components/ToggleSwitch.vue'
 import { useBackends } from '../composables/useBackends'
 import { useFeatures } from '../composables/useFeatures'
+import { MUSIC_BEHAVIOURS, MUSIC_VOCALS } from '../music'
 import {
   byLabel,
   editModelChoices,
@@ -56,17 +57,6 @@ const status = ref<{ kind: 'saved' | 'error'; message: string; issues?: string[]
  * Model's, each extra's), then Advanced: what applies to every model (the Limits, the seed), and
  * what's for looking into the app (the call log, the style scores).
  */
-/** Music's Behaviour, each a sentence the music's Text Model calls are given. */
-const MUSIC_BEHAVIOURS = [
-  { id: 'steady', label: 'Steady', about: 'few changes, kept low and in the background' },
-  { id: 'story', label: 'Follows the story', about: 'changes as the story turns' },
-  { id: 'cinematic', label: 'Cinematic', about: 'changes readily, and comes forward' },
-] as const
-const MUSIC_VOCALS = [
-  { id: 'instrumental', label: 'Instrumental only' },
-  { id: 'wordless', label: 'Allow wordless voices and choirs' },
-] as const
-
 const TABS = [
   { id: 'machines', label: 'Machines' },
   { id: 'text', label: 'Text' },

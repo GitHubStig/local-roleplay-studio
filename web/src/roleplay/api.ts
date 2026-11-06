@@ -12,6 +12,8 @@ import {
   streamEvents,
 } from '../api'
 
+import type { MusicSettings } from '../music'
+
 export type { Figure, Scene }
 export { cancelJob, type Job, type JobKind, listJobs, queueJob, retryJob } from '../api'
 
@@ -118,10 +120,30 @@ export interface RoleplaySession extends Omit<SessionBase, 'activity'> {
   lookTimings?: { text: number }
   lookThinking?: string
   voice?: RoleplayVoice
+  /** The music's identity, shared by every Cue: absent until written. */
+  score?: Score
+  scoreTimings?: { text: number }
+  scoreModel?: string
+  scoreThinking?: string
   /** As for any Session, or speaking a line (audio). */
   activity?: Activity | 'audio' | null
   frames: RoleplayFrame[]
 }
+
+/** A Roleplay's musical identity: what every Cue is made in. */
+export interface Score {
+  genre: string
+  /** The instruments its Cues are drawn from. */
+  palette: string[]
+  atmosphere: string
+  /** In beats per minute. */
+  tempo: { slowest: number; fastest: number }
+  /** What its Cues never use; never sent to a music model. */
+  avoid: string[]
+}
+
+/** The tempo range a Score may set, in beats per minute, as the server holds it. */
+export const TEMPO = { slowest: 40, fastest: 200 }
 
 export type RoleplayEvent =
   | ProgressEvent
@@ -131,6 +153,7 @@ export type RoleplayEvent =
   | { type: 'replied'; frame: RoleplayFrame; session: RoleplaySession }
   | { type: 'declined'; message: string }
   | { type: 'look'; look: Look }
+  | { type: 'score'; score: Score; session: RoleplaySession }
   /** Suggest: the message as written so far, then the whole of it, tidied. */
   | { type: 'suggestion-part'; text: string }
   | { type: 'suggestion'; text: string }
@@ -194,3 +217,14 @@ export const saveVoice = (id: string, description: string) =>
 
 /** Replaces the Cast; applies from the next reply. */
 export const saveCast = (id: string, cast: Cast) => put<RoleplaySession>(`${base(id)}/cast`, cast)
+
+/** Writes the Score, or writes it again, from the Cast, the Brief and the tastes (Music on). */
+export const writeScore = (id: string, onEvent: (event: RoleplayEvent) => void) =>
+  streamEvents<RoleplayEvent>(`${base(id)}/score`, {}, ['score'], onEvent)
+
+/** Replaces the Score, edited by hand. */
+export const saveScore = (id: string, score: Score) => put<RoleplaySession>(`${base(id)}/score`, score)
+
+/** Replaces the Roleplay's own Behaviour, Vocals and Music taste. */
+export const saveMusicSettings = (id: string, music: MusicSettings) =>
+  put<RoleplaySession>(`${base(id)}/music`, music)

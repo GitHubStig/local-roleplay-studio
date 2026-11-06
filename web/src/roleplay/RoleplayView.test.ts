@@ -83,7 +83,12 @@ const roleplaySession = (frames: roleplay.RoleplayFrame[] = []): roleplay.Rolepl
   kind: 'roleplay',
   brief: 'A lighthouse in a storm.',
   scenarioId: null,
-  settings: { imageModel: 'qwen-image-2.1' } as api.Settings,
+  settings: {
+    imageModel: 'qwen-image-2.1',
+    musicBehaviour: 'story',
+    musicVocals: 'instrumental',
+    musicTaste: '',
+  } as api.Settings,
   seed: 1,
   createdAt: '2026-09-27T00:00:00.000Z',
   cast: frames.length ? cast : null,
@@ -999,6 +1004,24 @@ describe('RoleplayView', () => {
     vi.mocked(api.getSettingsOptions).mockResolvedValue(
       { features: ALL_AVAILABLE } as api.SettingsOptions,
     )
+    vi.mocked(api.getSettings).mockResolvedValue({ features: ALL_ON } as api.Settings)
+    await useFeatures().refreshFeatures()
+  })
+
+  it('has a Music tab only while Music is on in Settings', async () => {
+    const tabs = (wrapper: Awaited<ReturnType<typeof mountIt>>['wrapper']) =>
+      wrapper.findAll('[role="tab"], button').map((b) => b.text()).filter((t) => t === 'Music')
+    const off = await mountIt()
+    expect(tabs(off.wrapper)).toEqual([])
+    expect(off.wrapper.find('[data-music-panel]').exists()).toBe(false)
+    off.wrapper.unmount()
+
+    vi.mocked(api.getSettings).mockResolvedValue({ features: ALL_ON, music: true } as api.Settings)
+    await useFeatures().refreshFeatures()
+    const on = await mountIt()
+    // One in the narrow window's row of tabs, one beside the Frame and the Look and Cast.
+    expect(tabs(on.wrapper)).toEqual(['Music', 'Music'])
+    expect(on.wrapper.find('[data-music-panel] [data-write-score]').exists()).toBe(true)
     vi.mocked(api.getSettings).mockResolvedValue({ features: ALL_ON } as api.Settings)
     await useFeatures().refreshFeatures()
   })
