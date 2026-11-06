@@ -1,0 +1,38 @@
+# The public tavern Scenario for the Music Director's bench (docs/music-plans.md): wary talk turns
+# slowly into recognition. Elara is the daughter Kael left behind twenty years ago, and the Messages
+# steer the turns so they land on the same Frames whatever the seeded Replies say. Slow, tender
+# shifts with no change of place, and nothing sharp: a Director that cuts here is too eager.
+kind: roleplay
+seed: 7
+scenario: tavern
+pictures: false
+music: { behaviour: story, vocals: instrumental }
+messages:
+  - I push the door shut against the wind and shake the rain from my cloak. "Is there a fire I could sit by, and something hot?"
+  - I take the stool by the fire and warm my hands, watching him over the rim of the mug. "You're not from this town either. You hold yourself like a sailor."
+  - I glance at the letter in his hand. "Bad news? You look like a man who's had a great deal of it."
+  - I turn the mug slowly between my hands. "I've come a long way looking for someone. A man who sailed out of this harbour twenty years ago and never sailed back."
+  - "\"My mother used to sing a song about him. The fiddler's tune, the one about the grey gull.\" I hum the first bars, quietly."
+  - I set the mug down and look at the scar through his eyebrow for a long moment. "She said he had a scar just there. From a boom that swung loose in a gale."
+  - "\"Her name was Maren. She kept a blue ribbon of his in her sewing box until the day she died.\""
+  - I swallow hard and keep my voice level. "I'm her daughter. I think I might be yours."
+  - I wait, saying nothing, while the rain runs down the window and the fire cracks.
+  - "\"I didn't come to make you pay for anything. I just wanted to know if you were real.\""
+  - I reach into my cloak and lay the faded blue ribbon on the bar between us.
+  - I laugh, a little wet, and wipe my eyes with the heel of my hand. "You still hum it wrong. She always said you did."
+  - "\"Will you tell me about her? About the two of you, before?\" I pull my stool closer to the bar."
+course:
+  - begin: the opening, Kael alone with the letter as a stranger comes in
+  - hold: a stranger out of the storm, guarded on both sides
+  - hold: warming up by the fire, still small talk
+  - hold: curiosity about the letter, nothing between them yet
+  - gentle: her search begins; the talk turns towards the past
+  - hold: the song deepens the same thread
+  - gentle: the scar; suspicion that she means him
+  - hold: her mother's name, the same ache growing
+  - gentle: the reveal, said softly; a turn, but not a blow
+  - any: stunned silence; holding or falling silent both fit
+  - gentle: she lets him off; the tension eases into tenderness
+  - hold: the ribbon, the same tenderness
+  - hold: laughter through tears, still tender
+  - hold: they begin to talk as family

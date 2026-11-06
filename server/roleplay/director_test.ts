@@ -122,6 +122,7 @@ Deno.test("A Cue's vocals are held by the Vocals setting, in its schema and in w
     { ...cueValues('awe'), instruments: ['harp'] },
   )
   assertThrows(() => cleanCue(cueValues('awe', { instruments: [] }), 'instrumental'))
+  assertEquals(cleanCue(cueValues('fragile</'), 'instrumental').mood, 'fragile')
   assertEquals(
     cleanDirection(direction('transition', { line: ' "Take the wheel." ' })).line,
     'Take the wheel.',

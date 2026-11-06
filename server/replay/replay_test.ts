@@ -1,5 +1,5 @@
 import { assertEquals, assertRejects, assertThrows } from '@std/assert'
-import { argsOf, createBody, follow, parseReplay, stepsOf } from './replay.ts'
+import { argsOf, createBody, follow, keepsTo, parseReplay, stepOf, stepsOf } from './replay.ts'
 
 Deno.test('a replay file names a kind and a Scenario or a Brief', () => {
   assertEquals(parseReplay('kind: roleplay\nscenario: tavern\nmessages: [hi]').messages, ['hi'])
@@ -10,6 +10,34 @@ Deno.test('a replay file names a kind and a Scenario or a Brief', () => {
     Error,
     'scenario or a brief',
   )
+})
+
+Deno.test("a replay's course has a step for each Frame, the opening first", () => {
+  const replay = parseReplay(
+    'kind: roleplay\nscenario: t\nmusic: {}\nmessages: [a]\ncourse:\n  - begin: wary\n  - sharp: a blade',
+  )
+  assertEquals(replay.course, [{ step: 'begin', why: 'wary' }, { step: 'sharp', why: 'a blade' }])
+  assertThrows(
+    () => parseReplay('kind: roleplay\nscenario: t\nmessages: [a]\ncourse: [begin: x]'),
+    Error,
+    '1 steps for 2 Frames',
+  )
+  assertThrows(
+    () => parseReplay('kind: roleplay\nscenario: t\nmessages: []\ncourse: [loud: x]'),
+    Error,
+    'not loud',
+  )
+  assertEquals(stepsOf(replay, false)[1].body, { picture: false, render: false, direct: true })
+})
+
+Deno.test("a Frame's decision keeps to its course step, or doesn't", () => {
+  const sharp = stepOf({ decision: 'transition', entry: 'sharp' })
+  assertEquals([sharp, stepOf({ decision: 'continue', entry: 'gentle' })], ['sharp', 'hold'])
+  assertEquals(
+    [keepsTo('change', sharp), keepsTo('gentle', sharp), keepsTo('hold', 'silence')],
+    [true, false, false],
+  )
+  assertEquals([keepsTo('begin', 'gentle'), keepsTo('any', 'hold')], [true, true])
 })
 
 Deno.test('the replay files in replays/ parse', async () => {
@@ -33,7 +61,7 @@ Deno.test('a Session is created with the Scenario or Brief, and the seed, of the
 
 Deno.test('a Roleplay writes its Cast, begins, then sends each Message, asking for pictures or not', () => {
   const steps = stepsOf({ kind: 'roleplay', scenario: 't', messages: ['a', 'b'] })
-  const on = { picture: true, render: true }
+  const on = { picture: true, render: true, direct: false }
   assertEquals(steps.map((s) => [s.path, s.body]), [
     ['roleplay/cast', undefined],
     ['roleplay/begin', on],
@@ -41,7 +69,7 @@ Deno.test('a Roleplay writes its Cast, begins, then sends each Message, asking f
     ['roleplay/messages', { text: 'b', ...on }],
   ])
   const off = stepsOf({ kind: 'roleplay', scenario: 't', messages: ['a'] }, false)
-  assertEquals(off[2].body, { text: 'a', picture: false, render: false })
+  assertEquals(off[2].body, { text: 'a', picture: false, render: false, direct: false })
 })
 
 Deno.test('a Chain makes its Opening Frame, then one for each Action, rendered or not', () => {

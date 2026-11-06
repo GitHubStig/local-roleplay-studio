@@ -1,0 +1,39 @@
+# The public tavern Scenario for the Music Director's bench (docs/music-plans.md): the control. A
+# long, even conversation of small talk at the bar where nothing between Elara and Kael shifts, for
+# the Director to hold one Cue through: it catches a Director that changes too readily.
+kind: roleplay
+seed: 7
+scenario: tavern
+pictures: false
+music: { behaviour: story, vocals: instrumental }
+messages:
+  - I come in out of the rain and hang my cloak by the fire. "Evening. Is it always this wild here in autumn?"
+  - "\"I'll have whatever's warm, thank you.\" I take a stool at the bar."
+  - I sip the cider and nod. "That's good. Spiced? My aunt used to make it with cloves."
+  - "\"Do many ships still put in here, or is it mostly fishing now?\""
+  - I listen and nod along, warming my hands on the mug. "And the road to Penmarrow, is it passable after rain like this?"
+  - "\"I'll wait for the coach, then. Is there a room free for a night or two?\""
+  - I look around at the low beams and the lamps. "It's a cosy place. Have you kept it long?"
+  - "\"My father kept bees. I never had the patience for it.\" I smile and drink."
+  - I point at a ship in a bottle on the shelf behind him. "Did you make that one yourself?"
+  - "\"Is there anywhere in town for a good breakfast, or should I just come down here?\""
+  - I yawn behind my hand. "Forgive me, it's been a long day on the road."
+  - "\"Do you get many travellers through in winter?\""
+  - I finish my cider and set the mug down. "Another, if you don't mind, then I'll head up."
+  - "\"Goodnight, then. Thank you for the fire.\" I gather my cloak and head for the stairs."
+course:
+  - begin: the opening, Kael alone with the letter as a stranger comes in
+  - hold: a traveller out of the rain, easy
+  - hold: ordering a drink
+  - hold: the cider
+  - hold: ships and fishing
+  - hold: the road
+  - hold: a room
+  - hold: the tavern
+  - hold: bees
+  - hold: the ship in a bottle
+  - hold: breakfast
+  - hold: tiredness
+  - hold: winter trade
+  - hold: another drink
+  - hold: goodnight

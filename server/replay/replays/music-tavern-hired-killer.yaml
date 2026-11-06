@@ -1,0 +1,38 @@
+# The public tavern Scenario for the Music Director's bench (docs/music-plans.md): Elara is friendly
+# on the surface, but she was paid to kill Kael, and her Messages let the menace show under the
+# talk (a hand near a knife, a look at the door) before the blade comes out. A test of whether the
+# Director hears it early, and of a sharp change when the fight starts.
+kind: roleplay
+seed: 7
+scenario: tavern
+pictures: false
+music: { behaviour: story, vocals: instrumental }
+messages:
+  - I come in out of the storm smiling, shaking the rain from my cloak. "What a night! Tell me you've still got something warm to pour."
+  - I lean on the bar, easy and friendly. "You run this place alone? Brave man, out here at the end of the world."
+  - I laugh at whatever he says and glance, just once, at the bolt on the door behind me.
+  - I let my right hand rest inside my cloak, where the knife is, and keep smiling. "That letter. Somebody owes you money, or you owe them?"
+  - "\"Funny. A friend of mine mentioned a Kael. Said he used to run brandy past the excise men, a long time ago.\" I watch his hands, not his face."
+  - I walk slowly along the bar towards the end where he stands, trailing a finger through a ring of spilled ale. "Nobody else coming in tonight, are they?"
+  - I slide the bolt across the door behind me without looking at it. "Draughty. You don't mind."
+  - "\"I'll be honest with you, Kael, because I like you. Someone paid me a lot of money to come here tonight.\""
+  - I draw the knife from my cloak and lunge across the bar at him.
+  - I scramble back to my feet among the broken mugs and come at him again, slashing wide.
+  - I go down hard against the stairs, the knife skittering away across the floor, and lie there gasping.
+  - "\"Fine. Fine! It wasn't personal.\" I hold up my empty hands. \"They'll only send someone else.\""
+  - I wipe the blood from my lip and look up at him. "Unless you pay me more than they did."
+course:
+  - begin: the opening, Kael alone with the letter as a stranger comes in
+  - hold: a cheerful stranger out of the storm
+  - hold: friendly talk at the bar
+  - change: a glance at the bolt; the first hint something's wrong under the smile
+  - hold: the hand on the knife; the same menace, closer
+  - hold: she knows his past; the menace sharpens but stays hidden
+  - hold: closing in, still the same threat
+  - hold: the bolt drawn; the trap closes
+  - gentle: honesty, which is worse; dread
+  - sharp: the blade comes out
+  - hold: the fight goes on
+  - change: she's beaten; the fight ends
+  - gentle: surrender; danger turns into bargaining
+  - hold: the bargain, uneasy

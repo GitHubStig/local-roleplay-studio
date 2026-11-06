@@ -98,7 +98,8 @@ export function cleanCue(value: unknown, vocals: MusicVocals): CueValues {
     .map(text)
     .filter((i) => i && !seen.has(i.toLowerCase()) && seen.add(i.toLowerCase()))
   const values: CueValues = {
-    mood: text(v.mood),
+    // Without stray markup at its end ("fragile</", seen once on 2026-11-06).
+    mood: text(v.mood).replace(/[\s<>/\\]+$/, ''),
     energy: oneOf(v.energy, ENERGIES),
     density: oneOf(v.density, DENSITIES),
     tempo: oneOf(v.tempo, TEMPOS),

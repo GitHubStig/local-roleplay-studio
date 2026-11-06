@@ -1,0 +1,35 @@
+# The Buffet of Souls for the Music Director's bench (docs/music-plans.md): somber, then regret,
+# then a quiet acceptance, all within one low, gentle mood. Played Steady, to test it against
+# Follows the story (the bench plays both): Steady should hold through the small shifts.
+kind: roleplay
+seed: 7
+scenario: the-buffet-of-souls
+pictures: false
+music: { behaviour: steady, vocals: instrumental }
+messages:
+  - I stare at the plate he's set in front of me. "I'm sorry, I don't... where is this? Who are all these people?"
+  - I watch the others at the tables, eating quietly. "They all look so calm. Shouldn't someone be screaming?"
+  - "\"All at once? All of us?\" I put the fork down. \"Then I'm really gone.\""
+  - I push the food around the plate. "I had a list. Things I was going to do when work calmed down."
+  - "\"My sister. We hadn't spoken in four years. Over money. Money.\" I shake my head."
+  - I look at the bright door at the far end of the hall. "What's through there?"
+  - I'm quiet for a while, watching the light from the door. "I wish I'd called her. Just once."
+  - I take a bite at last, and it tastes like my mother's cooking. I laugh in surprise.
+  - "\"You really think she knows? That I'd have called?\""
+  - I sit back and let my shoulders drop for the first time. "It's strange. I'm not afraid."
+  - I watch a woman at the next table get up and walk to the door, and it opens for her.
+  - I fold my napkin and set it beside the plate. "Will you walk with me? To the door?"
+course:
+  - begin: the opening, Patrick sits down with Elias at the buffet; somber
+  - hold: waking somewhere strange, somber
+  - hold: watching the calm souls
+  - hold: realising he's dead; somber, deeper, the same mood
+  - hold: regret begins, in the same low mood
+  - any: his sister; regret deepens (Steady should hold, Follows the story may shift gently)
+  - hold: curiosity about the door
+  - hold: the same regret
+  - any: a small surprised laugh; warmth creeping in
+  - hold: hope, quietly
+  - any: acceptance (Steady may hold; a gentle shift fits too)
+  - hold: someone crosses
+  - any: ready to go; a gentle shift fits, nothing sharp

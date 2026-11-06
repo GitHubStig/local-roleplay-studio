@@ -1,0 +1,36 @@
+# Knocking on Heaven's Door for the Music Director's bench (docs/music-plans.md): it begins in awe,
+# and its Scenario asks for a wordless choir. Played with wordless voices allowed, to see the cue
+# writer use them where they fit; the bench plays it with Instrumental only too, to check the Vocals
+# setting holds them back. Awe gives way to fear of judgment, then to warmth, then to the crossing.
+kind: roleplay
+seed: 7
+scenario: knocking-on-heavens-door
+pictures: false
+music: { behaviour: story, vocals: wordless }
+messages:
+  - I look up at the gates, too big to take in, and my voice comes out very small. "Is this... am I dead?"
+  - I turn slowly, taking in the marble and the light. "It's so quiet. I thought there'd be... more people."
+  - I look down at my hands; they're still mine. "I don't remember dying. I remember a car. Rain."
+  - I take a step back from him. "Are you going to judge me? Is that what this is?"
+  - I can't meet his eyes. "I wasn't a good man. I left my wife when she was sick. I told myself it was work."
+  - My voice breaks. "I never told my son I was proud of him. He waited for it his whole life."
+  - I sink to my knees on the marble and cover my face with my hands.
+  - I look up when he speaks, tears running. "How can you say that? After everything?"
+  - "\"She forgave me? She knew?\" I let him help me to my feet."
+  - I laugh, shaky, wiping my face. "I thought I'd feel lighter. I do. I actually do."
+  - I look towards the gates, and they're opening, slowly, light pouring through. "Will I see them again?"
+  - I take a breath, and step towards the light. "Thank you. For waiting with me."
+course:
+  - begin: the opening, Michael waits at the gates; awe
+  - hold: arrival before the gates, awe
+  - hold: still awe, quieter
+  - hold: confusion, inside the same awe
+  - gentle: fear of judgment; the awe turns uneasy
+  - hold: confession; the same unease, heavier
+  - change: grief breaks through
+  - hold: collapse, the same grief
+  - gentle: mercy offered; grief turns towards hope
+  - hold: forgiveness taken in
+  - gentle: lightness; relief
+  - hold: the gates open, relief rising into wonder
+  - change: the crossing, a final swell
