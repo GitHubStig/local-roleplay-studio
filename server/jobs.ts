@@ -30,7 +30,8 @@ import { type ComfyTrace, type ComfyTraces, withTrace } from './comfyui/traces.t
  * Frame's dialogue, and `speak-thought` its thought; `scene` makes a picture into a 2.5D scene
  * (SHARP); `figure` lifts the person in it out as a 3D figure (TripoSplat), and `lito` does so with
  * Apple's LiTo; `style` embeds the Session's pictures for the Compare dialog's style scores; `edit`
- * repaints a picture as told (ADR 0021).
+ * repaints a picture as told (ADR 0021); `direct` directs the music at a Roleplay Frame (the
+ * Music Director, docs/music-plans.md).
  */
 export type JobKind =
   | 'picture'
@@ -45,6 +46,7 @@ export type JobKind =
   | 'style'
   | 'edit'
   | 'clip'
+  | 'direct'
 export const JOB_KINDS: readonly JobKind[] = [
   'picture',
   'render',
@@ -58,6 +60,7 @@ export const JOB_KINDS: readonly JobKind[] = [
   'style',
   'edit',
   'clip',
+  'direct',
 ]
 
 /**
@@ -77,6 +80,8 @@ export const JOB_FEATURE: Record<JobKind, Feature | null> = {
   style: 'style',
   edit: 'edits',
   clip: 'video',
+  // Music is a setting while it's built, not a Feature: the app checks it (`check`).
+  direct: null,
 }
 
 /**
@@ -249,6 +254,7 @@ const NEEDS: Record<JobKind, readonly JobKind[]> = {
   style: ['picture', 'render', 'edit'],
   edit: ['picture', 'render', 'edit'],
   clip: ['picture', 'render', 'edit'],
+  direct: [],
 }
 
 /**

@@ -593,8 +593,10 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
   /** Which Backend a job of `kind` would go to for `session` now, as an edit is told. */
   async function jobBackendOf(session: Session, kind: JobKind, edit?: EditOrder) {
     const now = await deps.settings.load()
-    // A picture is written by the Session's Text Model, where it runs.
-    const text = kind === 'picture' ? await textBackendOf(session.settings.textModel) : undefined
+    // A picture and the music are directed by the Session's Text Model, where it runs.
+    const text = kind === 'picture' || kind === 'direct'
+      ? await textBackendOf(session.settings.textModel)
+      : undefined
     return jobBackend(kind, session.settings, now, detected, {
       editModel: edit?.model,
       editBackend: edit?.backend,
@@ -760,7 +762,11 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
         const render = after.picture && after.render && !(await featureOff('images')) &&
           await machine('render')
         const picture = after.picture && await machine('picture')
+        // The music is directed first, while the Text Model is loaded for the picture too.
+        const direct = after.direct && (await deps.settings.load()).music &&
+          await machine('direct')
         return (frame) => {
+          if (direct) jobs.enqueue(session.id, 'direct', frame.index, direct)
           if (speak && spokenText(frame, 'dialogue')) {
             jobs.enqueue(session.id, 'speak', frame.index, speak)
           }
@@ -795,6 +801,9 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
             : null
           return (feature && (await featureOff(feature))) ?? notHere ??
             checkEdit(session, index, name, pending, edit!, model?.id ?? now.editModel)
+        }
+        if (kind === 'direct' && !(await deps.settings.load()).music) {
+          return error('Music is switched off in Settings', 409)
         }
         if (kind === 'style') {
           return (feature && (await featureOff(feature))) ??

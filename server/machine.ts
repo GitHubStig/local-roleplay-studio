@@ -177,6 +177,7 @@ export function jobBackend(
 ): Backend | undefined {
   switch (kind) {
     case 'picture':
+    case 'direct':
       return opts.text
     case 'render': {
       const on = session.imageBackend

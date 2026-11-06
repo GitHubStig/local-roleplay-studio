@@ -26,19 +26,28 @@ import { ScoreError, ScoreLimitError, setMusicSettings, setScore, writeScore } f
 
 /**
  * What follows a Reply, as the player's switches ask (in their browser): its line spoken, as
- * autoplay plays it, and its picture rendered. Its picture (its Image Prompt) is written unless
+ * autoplay plays it, its music directed, and its picture rendered. Its picture (its Image Prompt) is written unless
  * `picture` is false: left to be asked for, as tests and the replay tool may.
  */
 export interface AfterReply {
   speak: boolean
   picture: boolean
   render: boolean
+  /** Its music directed (Score as you play), while Music is on. */
+  direct: boolean
 }
 
 /** What a Message or the opening was sent with to follow it. */
 const afterReplyOf = (body: unknown): AfterReply => {
-  const b = body as { speak?: unknown; picture?: unknown; render?: unknown } | undefined
-  return { speak: b?.speak === true, picture: b?.picture !== false, render: b?.render === true }
+  const b = body as
+    | { speak?: unknown; picture?: unknown; render?: unknown; direct?: unknown }
+    | undefined
+  return {
+    speak: b?.speak === true,
+    picture: b?.picture !== false,
+    render: b?.render === true,
+    direct: b?.direct === true,
+  }
 }
 
 /** A player's message can be at most this long. */

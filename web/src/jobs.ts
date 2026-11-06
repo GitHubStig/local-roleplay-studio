@@ -14,6 +14,7 @@ export const JOB_NAMES: Record<JobKind, string> = {
   style: 'Style scores',
   edit: 'Edit',
   clip: 'Clip',
+  direct: 'Music',
 }
 
 /**

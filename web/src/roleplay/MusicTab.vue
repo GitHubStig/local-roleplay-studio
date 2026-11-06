@@ -1,12 +1,15 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
+import { frameName } from '../frameName'
 import { type SaveLine, useAutosave } from '../composables/useAutosave'
 import CollapsibleTextarea from '../components/CollapsibleTextarea.vue'
 import ItemList from '../components/ItemList.vue'
 import SaveStatus from '../components/SaveStatus.vue'
 import { MUSIC_BEHAVIOURS, MUSIC_VOCALS, type MusicSettings, musicSettingsOf } from '../music'
 import {
+  type Cue,
   type RoleplayEvent,
+  type RoleplayFrame,
   type RoleplaySession,
   type Score,
   saveMusicSettings,
@@ -16,9 +19,10 @@ import {
 } from './api'
 
 /**
- * A Roleplay's Music tab, while Music is on (docs/music-plans.md): its Score, written when asked
- * for (or the first time its music is directed) and edited by hand, and its own Behaviour, Vocals
- * and Music taste. Each part saves itself when the focus leaves it (`useAutosave`); the screen
+ * A Roleplay's Music tab, while Music is on (docs/music-plans.md): how the music was directed at
+ * the Frame shown, the Cues as a strip across the Frames, its Score, written when asked for (or
+ * the first time its music is directed) and edited by hand, and its own Behaviour, Vocals and
+ * Music taste. Each part saves itself when the focus leaves it (`useAutosave`); the screen
  * calls `flush` before work that reads them.
  */
 const props = defineProps<{
@@ -27,8 +31,58 @@ const props = defineProps<{
   line: SaveLine
   /** Something else is being written (a Reply, the Cast). */
   disabled?: boolean
+  /** The Frame shown in the Frame tab, if any. */
+  frame: RoleplayFrame | null
+  /** The Frame's music is being directed, or waits to be. */
+  directing?: boolean
 }>()
-const emit = defineEmits<{ saved: [session: RoleplaySession] }>()
+const emit = defineEmits<{
+  saved: [session: RoleplaySession]
+  /** Direct the music at this Frame (again). */
+  direct: [index: number]
+  /** Go to this Frame. */
+  go: [index: number]
+}>()
+
+// --- The Frame's music, and the Cues.
+
+const cues = computed(() => props.session.cues ?? [])
+const frameCue = computed(() =>
+  props.frame?.music ? cues.value.find((c) => c.id === props.frame!.music!.cue) : undefined
+)
+/** What the Director decided, in words. */
+function decisionText(frame: RoleplayFrame): string {
+  const m = frame.music!
+  if (m.decision === 'continue') return 'The music continues'
+  if (m.decision === 'silence') return m.entry === 'sharp' ? 'The music cuts to silence' : 'The music fades to silence'
+  return m.entry === 'sharp' ? 'The music changes sharply' : 'The music changes gently'
+}
+/** An instrument the Score's palette doesn't have (since edited, or picked outside it): flagged. */
+const outside = (instrument: string) =>
+  !!props.session.score &&
+  !props.session.score.palette.some((p) => p.toLowerCase() === instrument.toLowerCase())
+
+/** How many Frames each Cue lasts: until the next begins, or the latest Frame. */
+const cueSpans = computed(() => {
+  const count = props.session.frames.length
+  return cues.value.map((cue, i) => ({ cue, frames: (cues.value[i + 1]?.start ?? count) - cue.start }))
+})
+const counts = computed(() => {
+  const directed = props.session.frames.filter((f) => f.music)
+  const decided = (d: string) => directed.filter((f) => f.music!.decision === d).length
+  const music = cueSpans.value.filter((s) => s.cue.values)
+  return {
+    cues: music.length,
+    silences: cueSpans.value.length - music.length,
+    average: music.length ? music.reduce((n, s) => n + s.frames, 0) / music.length : 0,
+    directed: directed.length,
+    changes: decided('transition'),
+    continues: decided('continue'),
+    silent: decided('silence'),
+  }
+})
+const cueTitle = (cue: Cue, frames: number) =>
+  `${frameName(cue.start)}, ${frames} Frame${frames === 1 ? '' : 's'}: ${cue.values?.mood ?? 'silence'}`
 
 // --- The Score.
 
@@ -114,6 +168,87 @@ defineExpose({ flush })
 
 <template>
   <div class="flex flex-col text-sm" data-music>
+    <section v-if="frame" class="flex flex-col gap-2 border-b border-line p-4" data-frame-music>
+      <div class="flex items-baseline gap-1.5">
+        <h2 class="shrink-0 text-base font-semibold">{{ frameName(frame.index) }}</h2>
+        <span class="min-w-0 truncate text-muted">· its music</span>
+        <button
+          type="button"
+          class="action ml-auto shrink-0"
+          :disabled="directing || disabled"
+          data-direct
+          @click="emit('direct', frame.index)"
+        >
+          {{ frame.music ? 'Direct again' : 'Direct' }}
+        </button>
+      </div>
+      <p v-if="directing" class="animate-pulse text-muted">Directing the music…</p>
+      <template v-if="frame.music">
+        <p class="font-medium" data-decision>{{ decisionText(frame) }}</p>
+        <blockquote v-if="frame.music.line" class="border-l-2 border-line pl-2 italic" data-line>
+          {{ frame.music.line }}
+        </blockquote>
+        <p class="leading-relaxed" data-reading>{{ frame.music.reading }}</p>
+        <div v-if="frameCue" class="rounded border border-line p-2" data-frame-cue>
+          <p class="text-xs text-muted">
+            Cue from {{ frameName(frameCue.start) }}<template v-if="frameCue.start !== frame.index">
+              · <button type="button" class="underline hover:text-fg" @click="emit('go', frameCue.start)">go there</button></template>
+          </p>
+          <template v-if="frameCue.values">
+            <p class="mt-1">{{ frameCue.values.mood }}</p>
+            <p class="text-xs text-muted">
+              {{ frameCue.values.energy }} · {{ frameCue.values.density }} · {{ frameCue.values.tempo }}
+              <template v-if="frameCue.values.vocals !== 'none'"> · {{ frameCue.values.vocals }}</template>
+            </p>
+            <p class="mt-1 flex flex-wrap gap-1" data-cue-instruments>
+              <span
+                v-for="i in frameCue.values.instruments"
+                :key="i"
+                class="rounded bg-surface px-1.5 py-0.5 text-xs"
+                :class="{ 'text-warn': outside(i) }"
+                :title="outside(i) ? 'Not in the Score\'s instruments' : undefined"
+                :data-outside="outside(i) || undefined"
+              >{{ i }}<template v-if="outside(i)"> (not in the Score)</template></span>
+            </p>
+          </template>
+          <p v-else class="mt-1 text-muted">Silence</p>
+        </div>
+        <p class="text-xs text-muted" data-direct-timings>
+          Directed in {{ frame.music.timings.text.toFixed(1) }} s by {{ frame.music.model }}
+        </p>
+      </template>
+      <p v-else-if="!directing" class="text-muted">
+        Not directed yet: Score as you play directs each new reply, or Direct does this one.
+      </p>
+    </section>
+
+    <section v-if="cueSpans.length" class="flex flex-col gap-2 border-b border-line p-4" data-cues>
+      <h2 class="text-base font-semibold">Cues</h2>
+      <div class="flex h-6 w-full overflow-hidden rounded border border-line" data-cue-strip>
+        <button
+          v-for="({ cue, frames }, i) in cueSpans"
+          :key="cue.id"
+          type="button"
+          class="h-full border-r border-canvas last:border-r-0"
+          :class="[
+            cue.values ? (i % 2 ? 'bg-fg/50' : 'bg-fg/75') : 'bg-line',
+            frameCue?.id === cue.id ? 'outline outline-2 -outline-offset-2 outline-warn' : '',
+          ]"
+          :style="{ flexGrow: frames }"
+          :title="cueTitle(cue, frames)"
+          :data-cue="cue.id"
+          @click="emit('go', cue.start)"
+        />
+      </div>
+      <p class="text-xs text-muted" data-cue-counts>
+        {{ counts.cues }} Cue{{ counts.cues === 1 ? '' : 's' }}<template v-if="counts.silences">
+          and {{ counts.silences }} silence{{ counts.silences === 1 ? '' : 's' }}</template>,
+        {{ counts.average.toFixed(1) }} Frames each on average · of {{ counts.directed }} Frames
+        directed: {{ counts.continues }} continued, {{ counts.changes }} changed,
+        {{ counts.silent }} fell silent
+      </p>
+    </section>
+
     <!-- Its border sweeps while the Score is written, or written again. -->
     <section class="flex flex-col gap-3 border-b border-line p-4" :class="{ 'render-sweep': writing }" data-score>
       <div class="flex items-baseline gap-1.5">

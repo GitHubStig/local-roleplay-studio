@@ -199,6 +199,9 @@ function describeJob(job: Job): string | undefined {
     if (job.kind === 'voice' || !session.value?.voice?.ref) return 'Designing the voice…'
     return 'Speaking…'
   }
+  if (job.kind === 'direct' && job.phase !== 'queued') {
+    return session.value?.score ? 'Directing the music…' : 'Writing the Score, then directing…'
+  }
   if (job.kind === 'picture' && job.phase !== 'queued') {
     return currentLook.value ? 'Picturing this moment…' : 'Writing the Look, then picturing…'
   }
@@ -238,6 +241,8 @@ const open3d = ref<{ index: number; kind: Made3d } | null>(null)
 
 /** New Replies are spoken as they arrive; remembered per browser. */
 const autoplay = useStoredFlag('roleplay-voice-autoplay')
+/** Whether each new Reply's music is directed (Music on), as the Speak replies switch is kept. */
+const scoreAsYouPlay = useStoredFlag('roleplay-score-as-you-play')
 /** Which extras are on: off, their buttons are hidden, but what they made still plays and opens. */
 const { on: featureOn, settings: settingsNow } = useFeatures()
 /** Music is being built (docs/music-plans.md): its tab shows only while it's switched on. */
@@ -410,7 +415,11 @@ const personaName = computed(() => cast.value?.persona.name ?? 'You')
  * always written while the Text Model is still loaded (so it can be rendered later, with no reload
  * between renders).
  */
-const afterOf = () => ({ speak: autoplay.value, render: renderReplies.value })
+const afterOf = () => ({
+  speak: autoplay.value,
+  render: renderReplies.value,
+  direct: musicOn.value && scoreAsYouPlay.value,
+})
 
 /** A new Reply: its line is played once spoken, if autoplay asked for it; its jobs are queued. */
 function afterReply(frame: RoleplayFrame) {
@@ -758,6 +767,14 @@ const lookSavingText = computed(() =>
             </template>
           </p>
           <div class="flex shrink-0 items-center gap-4">
+            <label
+              v-if="musicOn"
+              class="flex cursor-pointer items-center gap-1.5 text-muted"
+              title="Direct each new reply's music: whether it continues, changes or falls silent"
+            >
+              <input v-model="scoreAsYouPlay" type="checkbox" data-score-as-you-play />
+              Score as you play
+            </label>
             <label
               v-if="featureOn('voices')"
               class="flex cursor-pointer items-center gap-1.5 text-muted"
@@ -1429,7 +1446,11 @@ const lookSavingText = computed(() =>
             :session="session"
             :line="line"
             :disabled="busy"
+            :frame="selectedFrame ?? null"
+            :directing="!!selectedFrame && hasJob(selectedFrame.index, 'direct')"
             @saved="(s) => (session = s)"
+            @direct="(index) => queueSaved('direct', index)"
+            @go="(index) => { goToFrame(index); detail = 'music' }"
           />
         </div>
         </section>

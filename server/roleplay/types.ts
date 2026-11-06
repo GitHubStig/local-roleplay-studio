@@ -105,7 +105,67 @@ export interface RoleplayFrame {
   speech?: Speech
   /** The Character's thought (`internal`), spoken in the same voice; out of date likewise. */
   thoughtSpeech?: Speech
+  /** How the music was directed at this Frame, once it has been (`director.ts`). */
+  music?: FrameMusic
   createdAt: string
+}
+
+/** What the Music Director decides at a Frame (docs/music-plans.md). */
+export const DECISIONS = ['continue', 'transition', 'silence'] as const
+export type Decision = (typeof DECISIONS)[number]
+/** How a change comes in: a crossfade, or a cut. Ignored when the music continues. */
+export const ENTRIES = ['gentle', 'sharp'] as const
+export type Entry = (typeof ENTRIES)[number]
+
+/** The Music Director's reading of a Frame, and what it decided. */
+export interface FrameMusic {
+  /** The Cue this Frame plays under (`Cue.id`). */
+  cue: string
+  /** How the ground between the people stands now, and how it has moved since the Cue began. */
+  reading: string
+  decision: Decision
+  entry: Entry
+  /** The line that caused a change, quoted; '' when the music continues. */
+  line: string
+  /** The model that directed it, and seconds it took (the cue writer's too, on a change). */
+  model: string
+  timings: { text: number }
+}
+
+export const ENERGIES = ['calm', 'restrained', 'building', 'intense'] as const
+export const DENSITIES = ['sparse', 'layered', 'full'] as const
+export const TEMPOS = ['slow', 'moderate', 'fast'] as const
+/** What voices a Cue may have, as far as the Vocals setting lets it. */
+export const CUE_VOCALS = ['none', 'wordless', 'choir'] as const
+
+/** What the cue writer picks for a Cue, within the Score. */
+export interface CueValues {
+  /** Short phrases: the feeling and its texture. */
+  mood: string
+  energy: (typeof ENERGIES)[number]
+  density: (typeof DENSITIES)[number]
+  /** Turned into beats per minute within the Score's range by the music's adapter. */
+  tempo: (typeof TEMPOS)[number]
+  /** Drawn from the Score's palette; one outside it is flagged in the Music tab, not refused. */
+  instruments: string[]
+  vocals: (typeof CUE_VOCALS)[number]
+}
+
+/**
+ * A stretch of music over several Frames, from the Frame where it began until the next Cue: the
+ * Score plus its values, or silence. Kept with the reading and the line that started it.
+ */
+export interface Cue {
+  id: string
+  /** The Frame it began on. */
+  start: number
+  /** Its music; none for a silence. */
+  values?: CueValues
+  /** How it came in. */
+  entry: Entry
+  /** The Director's reading at the Frame it began on, and the line that caused it ('' if none). */
+  reading: string
+  line: string
 }
 
 /** A Frame's dialogue spoken in the Character's voice. */
@@ -168,6 +228,8 @@ export interface RoleplaySession extends SessionBase {
   scoreTimings?: { text: number }
   scoreModel?: string
   scoreThinking?: string
+  /** The music's Cues, in the order of the Frames they began on (`director.ts`). */
+  cues?: Cue[]
   frames: RoleplayFrame[]
 }
 

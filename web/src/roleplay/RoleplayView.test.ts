@@ -236,7 +236,7 @@ describe('RoleplayView', () => {
     expect(roleplay.sendMessage).toHaveBeenCalledWith(
       'r1',
       'Did anyone else make it?',
-      { speak: false, render: false },
+      { speak: false, render: false, direct: false },
       expect.any(Function),
     )
     expect(wrapper.find('[data-pending-message]').text()).toContain('Did anyone else make it?')
@@ -693,10 +693,10 @@ describe('RoleplayView', () => {
       expect((wrapper.find('[data-render-replies]').element as HTMLInputElement).checked).toBe(
         false,
       )
-      expect(await send('Hello.')).toEqual({ speak: false, render: false })
+      expect(await send('Hello.')).toEqual({ speak: false, render: false, direct: false })
       await wrapper.find('[data-render-replies]').setValue(true)
       await wrapper.find('[data-autoplay]').setValue(true)
-      expect(await send('Hello.')).toEqual({ speak: true, render: true })
+      expect(await send('Hello.')).toEqual({ speak: true, render: true, direct: false })
       // The page queues none of it itself (ADR 0031).
       expect(api.queueJob).not.toHaveBeenCalled()
     })
@@ -1021,6 +1021,17 @@ describe('RoleplayView', () => {
     const on = await mountIt()
     // One in the narrow window's row of tabs, one beside the Frame and the Look and Cast.
     expect(tabs(on.wrapper)).toEqual(['Music', 'Music'])
+    // Score as you play has each new Reply's music directed.
+    await on.wrapper.find('[data-score-as-you-play]').setValue(true)
+    vi.mocked(roleplay.sendMessage).mockResolvedValue()
+    await on.wrapper.find('textarea').setValue('Hello.')
+    await buttonNamed(on.wrapper, 'Send').trigger('click')
+    await flushPromises()
+    expect(vi.mocked(roleplay.sendMessage).mock.calls[0][2]).toEqual({
+      speak: false,
+      render: false,
+      direct: true,
+    })
     expect(on.wrapper.find('[data-music-panel] [data-write-score]').exists()).toBe(true)
     vi.mocked(api.getSettings).mockResolvedValue({ features: ALL_ON } as api.Settings)
     await useFeatures().refreshFeatures()

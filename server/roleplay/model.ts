@@ -12,6 +12,7 @@ import {
 } from './prompt.ts'
 import type { Cast, Reply, Score } from './types.ts'
 import { cleanScore, scoreSchema } from './score.ts'
+import { directorSchema } from './director.ts'
 import type { Look, Subject } from '../session.ts'
 import { parseFrameBody } from '../textModel.ts'
 import {
@@ -53,6 +54,19 @@ export interface RoleplayModel {
     signal: AbortSignal,
     onThinking?: (chunk: string) => void,
   ): Promise<{ score: Score; thinking?: string }>
+  /** The Music Director: whether the music changes at a Frame (see `director.ts`). */
+  direct(
+    messages: ChatMessage[],
+    signal: AbortSignal,
+    onThinking?: (chunk: string) => void,
+  ): Promise<{ direction: unknown; thinking?: string }>
+  /** The cue writer: a new Cue's values, under `schema` (`cueSchema`, held by the Vocals). */
+  writeCue(
+    messages: ChatMessage[],
+    schema: object,
+    signal: AbortSignal,
+    onThinking?: (chunk: string) => void,
+  ): Promise<{ values: unknown; thinking?: string }>
   /** The Art Agent: who one Frame's picture shows, and its seven sentences as a paragraph. */
   pictureFrame(
     messages: ChatMessage[],
@@ -90,6 +104,8 @@ const MAX_TOKENS = {
   cast: 1024,
   art: 1600,
   score: 500,
+  director: 400,
+  cue: 250,
   suggest: 400,
   voice: 300,
   delivery: 60,
@@ -165,6 +181,32 @@ export function chatRoleplayModel(chat: Chat, opts: RoleplayModelOptions = {}): 
           onThinking,
         })
         return withThinking({ score: cleanScore(parseJson(content)) }, thinking)
+      }),
+
+    direct: (messages, signal, onThinking) =>
+      within(signal, limit(), async (s) => {
+        const { content, thinking } = await chat.stream({
+          messages,
+          schema: directorSchema,
+          job: 'director',
+          maxTokens: MAX_TOKENS.director,
+          signal: s,
+          onThinking,
+        })
+        return withThinking({ direction: parseJson(content) }, thinking)
+      }),
+
+    writeCue: (messages, schema, signal, onThinking) =>
+      within(signal, limit(), async (s) => {
+        const { content, thinking } = await chat.stream({
+          messages,
+          schema,
+          job: 'cue',
+          maxTokens: MAX_TOKENS.cue,
+          signal: s,
+          onThinking,
+        })
+        return withThinking({ values: parseJson(content) }, thinking)
       }),
 
     pictureFrame: (messages, signal, onThinking) =>

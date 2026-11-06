@@ -86,7 +86,43 @@ export interface RoleplayFrame {
   speech?: Speech
   /** The Character's thought, spoken (whispered) in the same voice. */
   thoughtSpeech?: Speech
+  /** How the music was directed at this Frame, once it has been. */
+  music?: FrameMusic
   createdAt: string
+}
+
+/** The Music Director's reading of a Frame, and what it decided. */
+export interface FrameMusic {
+  /** The Cue it plays under (`Cue.id`). */
+  cue: string
+  reading: string
+  decision: 'continue' | 'transition' | 'silence'
+  /** How a change came in; meaningless when the music continued. */
+  entry: 'gentle' | 'sharp'
+  /** The line that caused a change, quoted; '' when it continued. */
+  line: string
+  model: string
+  timings: { text: number }
+}
+
+/** What the cue writer picked for a Cue, within the Score. */
+export interface CueValues {
+  mood: string
+  energy: 'calm' | 'restrained' | 'building' | 'intense'
+  density: 'sparse' | 'layered' | 'full'
+  tempo: 'slow' | 'moderate' | 'fast'
+  instruments: string[]
+  vocals: 'none' | 'wordless' | 'choir'
+}
+
+/** A stretch of music from the Frame it began on until the next Cue: its values, or silence. */
+export interface Cue {
+  id: string
+  start: number
+  values?: CueValues
+  entry: 'gentle' | 'sharp'
+  reading: string
+  line: string
 }
 
 /** A Frame's dialogue spoken in the Character's voice. */
@@ -125,6 +161,8 @@ export interface RoleplaySession extends Omit<SessionBase, 'activity'> {
   scoreTimings?: { text: number }
   scoreModel?: string
   scoreThinking?: string
+  /** The music's Cues, in the order of the Frames they began on. */
+  cues?: Cue[]
   /** As for any Session, or speaking a line (audio). */
   activity?: Activity | 'audio' | null
   frames: RoleplayFrame[]
@@ -154,6 +192,7 @@ export type RoleplayEvent =
   | { type: 'declined'; message: string }
   | { type: 'look'; look: Look }
   | { type: 'score'; score: Score; session: RoleplaySession }
+  | { type: 'directed'; frame: RoleplayFrame; session: RoleplaySession }
   /** Suggest: the message as written so far, then the whole of it, tidied. */
   | { type: 'suggestion-part'; text: string }
   | { type: 'suggestion'; text: string }
@@ -167,6 +206,8 @@ const base = (id: string) => `/api/sessions/${id}/roleplay`
 export interface AfterReply {
   speak: boolean
   render: boolean
+  /** Its music directed (Score as you play, while Music is on). */
+  direct: boolean
 }
 
 /** Writes (or, before the scene begins, rewrites) the Cast from the Brief, for review. */

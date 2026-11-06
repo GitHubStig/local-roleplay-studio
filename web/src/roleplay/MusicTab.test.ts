@@ -41,7 +41,7 @@ const session = (extra: Partial<roleplay.RoleplaySession> = {}): roleplay.Rolepl
 })
 
 function mountIt(s = session()) {
-  return mount(MusicTab, { props: { session: s, line: saveLine() } })
+  return mount(MusicTab, { props: { session: s, line: saveLine(), frame: null } })
 }
 
 beforeEach(() => {
@@ -125,5 +125,65 @@ describe('MusicTab', () => {
     await wrapper.find('[data-write-score]').trigger('click')
     await flushPromises()
     expect(calls).toEqual(['taste', 'score'])
+  })
+
+  it("shows how a Frame's music was directed, flagging an instrument the Score has lost", async () => {
+    const music = (decision: 'continue' | 'transition', cue: string, line = '') => ({
+      cue,
+      reading: 'She knows him now.',
+      decision,
+      entry: 'sharp' as const,
+      line,
+      model: 'gemma',
+      timings: { text: 1.25 },
+    })
+    const frame = (index: number, m: ReturnType<typeof music>): roleplay.RoleplayFrame => ({
+      index,
+      message: index ? 'Hi.' : null,
+      reply: { internal: '', actions: '', dialogue: '' },
+      pictures: [],
+      createdAt: '',
+      music: m,
+    })
+    const values = {
+      mood: 'recognition, aching',
+      energy: 'building' as const,
+      density: 'layered' as const,
+      tempo: 'slow' as const,
+      instruments: ['cello', 'harp'],
+      vocals: 'none' as const,
+    }
+    const frames = [
+      frame(0, music('transition', 'a')),
+      frame(1, music('continue', 'a')),
+      frame(2, music('transition', 'b', 'Father?')),
+    ]
+    const s = session({
+      score,
+      frames,
+      cues: [
+        { id: 'a', start: 0, entry: 'gentle', reading: '', line: '' },
+        { id: 'b', start: 2, values, entry: 'sharp', reading: 'She knows him now.', line: 'Father?' },
+      ],
+    })
+    const wrapper = mount(MusicTab, { props: { session: s, line: saveLine(), frame: frames[2] } })
+    expect(wrapper.find('[data-decision]').text()).toBe('The music changes sharply')
+    expect(wrapper.find('[data-line]').text()).toBe('Father?')
+    expect(wrapper.find('[data-reading]').text()).toBe('She knows him now.')
+    expect(wrapper.find('[data-frame-cue]').text()).toContain('recognition, aching')
+    // The harp isn't among the Score's instruments: flagged, not refused.
+    expect(wrapper.findAll('[data-outside]').map((i) => i.text())).toEqual(['harp (not in the Score)'])
+    // A silence of two Frames, then a Cue of one.
+    expect(wrapper.findAll('[data-cue]').map((c) => c.attributes('style'))).toEqual([
+      'flex-grow: 2;',
+      'flex-grow: 1;',
+    ])
+    expect(wrapper.find('[data-cue-counts]').text()).toMatch(/1 Cue\s+and 1 silence/)
+    expect(wrapper.find('[data-cue-counts]').text()).toMatch(/1 continued, 2 changed/)
+
+    await wrapper.find('[data-direct]').trigger('click')
+    expect(wrapper.emitted('direct')![0]).toEqual([2])
+    await wrapper.find('[data-cue="a"]').trigger('click')
+    expect(wrapper.emitted('go')![0]).toEqual([0])
   })
 })

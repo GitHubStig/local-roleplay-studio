@@ -21,6 +21,7 @@ import { CastError, openingMessages, parseCast, roleplayMessages } from './promp
 import { judgeMessages } from './judge.ts'
 import { artFrameMessages, artLookMessages, isLook, pictured, withNewcomers } from './art.ts'
 import { cleanLook, lookLimit, renameShown } from '../look.ts'
+import { withoutCuesFrom } from './director.ts'
 import type { Cast, Reply, RoleplayFrame, RoleplaySession, Score } from './types.ts'
 
 /** Progress of a Roleplay's setup or reply, streamed to the player as it happens. */
@@ -37,6 +38,8 @@ export type RoleplayEvent =
   | { type: 'look'; look: Look }
   /** The Score, written (`score.ts`). */
   | { type: 'score'; score: Score; session: RoleplaySession }
+  /** A Frame's music, directed (`director.ts`). */
+  | { type: 'directed'; frame: RoleplayFrame; session: RoleplaySession }
   /** A Frame's picture: its Image Prompt, not yet rendered. */
   | { type: 'pictured'; frame: RoleplayFrame; session: RoleplaySession }
   /** A Frame's picture, rendered. */
@@ -389,8 +392,9 @@ export async function undoLatestExchange(
     throw new RoleplayError(`${frameName(index)} is not the latest Frame`)
   }
   if (latest.message === null) throw new RoleplayError("The opening can't be undone")
+  // A Cue it began goes with it.
   const updated = await updateSession(store, session.id, (latest) => ({
-    ...latest,
+    ...withoutCuesFrom(latest, index),
     frames: latest.frames.slice(0, -1),
   }))
   await removeFiles(store.dir(session.id), exchangeFiles(latest))
@@ -409,7 +413,7 @@ export async function restartRoleplay(
   let files: string[] = []
   const updated = await updateSession(store, session.id, (latest) => {
     files = latest.frames.flatMap(exchangeFiles)
-    return { ...latest, frames: [] }
+    return { ...latest, frames: [], cues: [] }
   })
   await removeFiles(store.dir(session.id), files)
   return updated

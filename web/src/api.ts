@@ -1019,7 +1019,8 @@ export const editStoryboardFrame = (
  * Background work on a Frame: picturing, rendering, upscaling or speaking it, making its picture
  * into a 2.5D scene (SHARP), or lifting its person out as a 3D figure (TripoSplat, LiTo); `voice`
  * designs a new take of the Character's voice, and `style` embeds the pictures for the style
- * scores (both filed under the opening Frame); `edit` repaints a picture as told. A Chain has
+ * scores (both filed under the opening Frame); `edit` repaints a picture as told; `direct` directs
+ * a Roleplay Frame's music. A Chain has
  * `upscale`, `scene`, `figure`, `lito` and `edit`; a Storyboard `render` too; a Roleplay has them all.
  */
 export type JobKind =
@@ -1035,6 +1036,7 @@ export type JobKind =
   | 'style'
   | 'edit'
   | 'clip'
+  | 'direct'
 
 /** A queued, running, failed or done job. Failed and done ones stay listed until dismissed. */
 export interface Job {
