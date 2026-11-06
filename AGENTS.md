@@ -10,6 +10,7 @@ and how to run it is in the [README](README.md); this is how the owner likes the
 - [docs/design.md](docs/design.md): how the app works now, its main behaviours only: no screen layout, timings or history (dates and what changed are in git and the ADRs). [docs/adr/](docs/adr/): decisions and why.
 - [docs/open-threads.md](docs/open-threads.md): plans and parked ideas, with their status. Finished
   work moves out of it, into the design doc, an ADR or `docs/research/`.
+- `docs/<piece>-plans.md` (such as [docs/music-plans.md](docs/music-plans.md)): a plan for a piece of work too big for one session, in stages, updated as it goes, so a new session picks it up from the file. When the work is done, its pieces move into the design doc, ADRs, CONTEXT.md and `docs/research/`, and the plan is deleted.
 - [docs/models.md](docs/models.md): which models the app uses now, and why, in short. The evidence
   and history behind it are in [docs/research/](docs/research/): read those only when you need them.
 
