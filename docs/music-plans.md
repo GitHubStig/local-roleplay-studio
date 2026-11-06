@@ -119,4 +119,5 @@ ACE-Step and MiniMax Music 3, on both machines where each runs. Known so far (20
 
 ## Log
 
-- 2026-11-06 (Mac): plan written from the design discussion; the open questions answered (a Music section in the Scenario; the rest settled by bench). mlx-audio upgraded to 0.6.4 the same day ([log](research/mlx-audio-upgrade-log.md)).
+- 2026-11-06 (Mac): plan written from the design discussion; the open questions answered (a Music section in the Scenario; the rest settled by bench).
+- 2026-11-06 (Mac), later: stage 1's first three steps built and committed (the Music switch on its own Settings tab; the Scenario's Music, written by Expand and Suggest; Behaviour, Vocals and Music taste, kept by each Session). Real people stopped being a Limit the same day (ADR 0034), and the two afterlife Scenarios became examples for the bench replays. **Next: the Score**: when it's written (at Begin, or the first time the Director runs), its prompt and schema (checked against Ollama for runaways), where it's kept on a Roleplay, and the Roleplay's Music tab to show and edit it. mlx-audio upgraded to 0.6.4 the same day ([log](research/mlx-audio-upgrade-log.md)).
