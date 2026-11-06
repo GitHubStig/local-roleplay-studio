@@ -50,11 +50,10 @@ const newStoryboard = (frameCount = 3): StoryboardSession => ({
 
 function depsFor(
   root: string,
-  scripts: Parameters<typeof scriptedTextModel>[2] = {},
-  realPeople: string[] = [],
+  scripts: Parameters<typeof scriptedTextModel>[1] = {},
 ) {
   const images = fakeImageGenerator()
-  const textModel = scriptedTextModel([], realPeople, scripts)
+  const textModel = scriptedTextModel([], scripts)
   return {
     deps: { store: dirSessionStore(root), textModel, imageGenerator: images },
     images,
@@ -65,7 +64,7 @@ function depsFor(
 /** A Storyboard of three Frames, planned (and written, unless `write` is false). */
 async function planned(
   root: string,
-  scripts: Parameters<typeof scriptedTextModel>[2] = {},
+  scripts: Parameters<typeof scriptedTextModel>[1] = {},
   write = true,
 ) {
   const { deps, images, textModel } = depsFor(root, { plans: [planOf(3)], ...scripts })

@@ -7,5 +7,4 @@ Values: persona.name
 
 # Limits
 
-{{persona.name}}'s message has no sexual or nude content, no real, identifiable people, and no
-restraint, captivity or non-consent. Never mention these rules.
+{{persona.name}}'s message has no sexual or nude content, and no restraint, captivity or non-consent. Never mention these rules.

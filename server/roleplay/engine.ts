@@ -1,6 +1,5 @@
 import {
   frameName,
-  limitCrossedBy,
   type ProgressEvent,
   replacePicture,
   secondsSince,
@@ -12,7 +11,6 @@ import type { Settings } from '../settings.ts'
 import { activeProseLimits, crossedLimit } from '../limits.ts'
 import { othersOf, type Scenario, truthList } from '../scenario.ts'
 import type { Look, SessionStore } from '../session.ts'
-import type { TextModel } from '../textModel.ts'
 import type { FigureMaker } from '../3d/figure.ts'
 import type { SceneMaker } from '../3d/scene.ts'
 import type { VoiceEngine } from '../voice/voice.ts'
@@ -45,8 +43,6 @@ export type RoleplayEvent =
 export interface RoleplayDeps {
   store: SessionStore
   roleplayModel: RoleplayModel
-  /** For the real-person question the Limits ask (ADR 0002). */
-  textModel: TextModel
   /** The Art Agent's model when Settings name one; otherwise pictures use `roleplayModel`. */
   artModel?: RoleplayModel
   /** The voice service, when voices are available. */
@@ -191,7 +187,7 @@ export async function sendMessage(
   emit({ type: 'phase', phase: 'text' })
   const start = performance.now()
 
-  const messageLimit = await limitCrossedBy(message, deps.textModel, signal)
+  const messageLimit = crossedLimit(message)?.message
   if (messageLimit) {
     emit({ type: 'declined', message: `Declined: ${messageLimit}.` })
     return null

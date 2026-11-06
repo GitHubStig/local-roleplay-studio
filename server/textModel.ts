@@ -42,8 +42,6 @@ export interface TextModel {
     signal: AbortSignal,
     onThinking?: (chunk: string) => void,
   ): Promise<FrameText>
-  /** Whether an Action asks to depict a real, identifiable person. */
-  namesRealPerson(action: string, signal: AbortSignal): Promise<boolean>
   /** Plans a Storyboard: its Look and Beats, reported as they arrive. */
   planStoryboard(
     req: StoryboardPlanRequest,
@@ -565,7 +563,6 @@ export function parseStoryboardEdit(content: string): StoryboardEdit {
  */
 const MAX_TOKENS = {
   answer: 2048,
-  yesNo: 32,
   perBeat: 120,
   clip: 600,
   expand: 2048,
@@ -574,7 +571,6 @@ const MAX_TOKENS = {
 const TIME_LIMIT_MS = {
   answer: 2 * 60_000,
   thinking: 10 * 60_000,
-  yesNo: 30_000,
   /** Added to a Storyboard plan's limit for each Beat it has to write. */
   perBeat: 10_000,
 }
@@ -725,32 +721,10 @@ export function chatTextModel(chat: Chat, opts: TextModelOptions = {}): TextMode
     return withThinking(parseStoryboardEdit(content), thinking)
   }
 
-  async function askRealPerson(action: string, signal: AbortSignal): Promise<boolean> {
-    const { content } = await chat.stream({
-      messages: [{ role: 'user', content: await realPersonQuestion(action) }],
-      schema: {
-        type: 'object',
-        properties: { realPerson: { type: 'boolean' } },
-        required: ['realPerson'],
-      },
-      maxTokens: MAX_TOKENS.yesNo,
-      noThinking: true,
-      job: 'real person',
-      signal,
-    })
-    try {
-      return JSON.parse(content).realPerson === true
-    } catch {
-      return false
-    }
-  }
-
   const answerLimit = () => chat.thinks ? limits.thinking : limits.answer
   return {
     write: (req, signal, onThinking) =>
       within(signal, answerLimit(), (s) => write(req, s, onThinking)),
-    namesRealPerson: (action, signal) =>
-      within(signal, limits.yesNo, (s) => askRealPerson(action, s)),
     planStoryboard: (req, signal, on) =>
       within(signal, answerLimit() + req.frameCount * limits.perBeat, (s) => plan(req, s, on)),
     writeStoryboardFrame: (req, signal, onThinking) =>
@@ -798,22 +772,4 @@ export function chatTextModel(chat: Chat, opts: TextModelOptions = {}): TextMode
         return text
       }),
   }
-}
-
-export const realPersonQuestion = (action: string) => loadPrompt('shared/real-person', { action })
-
-/** Clauses that name an artist or style to imitate, e.g. "in the style of Michelangelo". */
-const STYLE_CLAUSE =
-  /\b(?:(?:art |painting |drawing )?style(?: is| of| like|:)?|in the style of|inspired by|painted by|drawn by|like a painting by|in the manner of|à la)\s+[^.,;]*/gi
-
-/**
- * Worth asking `namesRealPerson` about: outside any style clause, the Action has a capitalised
- * full name, or talks about resembling someone. Keeps the extra question off ordinary Actions,
- * and off style references like "art style is Hokusai / Japanese woodblock".
- */
-export function mightNameAPerson(action: string): boolean {
-  const rest = action.replace(STYLE_CLAUSE, ' ')
-  return /\b[A-Z][a-z]+(?:[ -][A-Z][a-z']+)+\b/.test(rest) ||
-    /\b(?:looks? like|looking like|resembl\w*|celebrit\w*|famous|lookalike|impersonat\w*)\b/i
-      .test(rest)
 }

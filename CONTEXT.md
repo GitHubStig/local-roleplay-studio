@@ -107,7 +107,7 @@ A terse list of what an Action changed, one short phrase per changed aspect, wri
 _Avoid_: Description, message, response, story
 
 **Limit**:
-One of the three lines no Action, Brief or Message can cross while the Limits are on, enforced by the engine whatever the Scenario or text model says: no sexual or nude imagery, no real identifiable people, no restraint or captivity. Age is unrestricted. Settings can switch them off together.
+One of the two lines no Action, Brief or Message can cross while the Limits are on, enforced by the engine whatever the Scenario or text model says: no sexual or nude imagery, no restraint or captivity. Age is unrestricted, and real people are allowed. Settings can switch them off together.
 _Avoid_: Rule, filter, guardrail, policy
 
 **Outcome**:

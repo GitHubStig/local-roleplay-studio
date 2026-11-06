@@ -346,10 +346,9 @@ Deno.test('a Frame after an Undo gets a fresh image name', () =>
 async function openedSession(
   root: string,
   replies: ReturnType<typeof reply>[],
-  realPeople: string[] = [],
 ) {
   const session = newSession()
-  const textModel = scriptedTextModel([reply('standing'), ...replies], realPeople)
+  const textModel = scriptedTextModel([reply('standing'), ...replies])
   const images = fakeImageGenerator()
   const deps = { store: chainStore(root), textModel, imageGenerator: images }
   await runChainFrame(deps, session, testScenario, null, () => {}, signal())
@@ -421,32 +420,6 @@ Deno.test('runChainFrame fails an Opening Frame whose prompt crosses a limit', (
       Error,
       'crossed a limit: no sexual or nude imagery',
     )
-  }))
-
-Deno.test('runChainFrame asks about real people only when an Action might name one', () =>
-  withTempDir(async (root) => {
-    const { session, textModel, deps } = await openedSession(
-      root,
-      [reply('crouching')],
-      ['Serena Williams'],
-    )
-    const events: FrameEvent[] = []
-    const declined = await runChainFrame(
-      deps,
-      session,
-      testScenario,
-      'make her look like Serena Williams',
-      (e) => events.push(e),
-      signal(),
-    )
-    assertEquals(declined, null)
-    assertEquals(events.at(-1), {
-      type: 'declined',
-      message: 'Declined: no real, identifiable people.',
-    })
-    const done = await runChainFrame(deps, session, testScenario, 'crouch low', () => {}, signal())
-    assertEquals(done!.outcome, 'done')
-    assertEquals(textModel.personChecks, ['make her look like Serena Williams'])
   }))
 
 Deno.test("runChainFrame streams the Text Model's thinking and saves it with the Frame", () =>

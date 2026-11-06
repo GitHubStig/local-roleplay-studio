@@ -430,7 +430,7 @@ Deno.test('GET /api/scenarios/:id returns the whole Scenario', async () => {
 
 Deno.test('POST /api/scenarios/expand expands a Scenario, as filed or as edited, or a Brief, saving nothing', () =>
   withTempDir(async (root) => {
-    const textModel = scriptedTextModel([], [], {
+    const textModel = scriptedTextModel([], {
       expansions: [
         {
           people: [{ name: 'Ann', truths: [] }],
@@ -462,7 +462,7 @@ Deno.test('POST /api/scenarios/expand expands a Scenario, as filed or as edited,
   }))
 
 Deno.test('POST /api/scenarios/suggest suggests for one part of the Scenario as sent', async () => {
-  const textModel = scriptedTextModel([], [], { suggestions: ['A winter night.'] })
+  const textModel = scriptedTextModel([], { suggestions: ['A winter night.'] })
   const { call } = setup({ settings: { textModel: 'x' }, textModel })
   const ask = (field: string, scenario: object = testScenario) =>
     call('POST', '/api/scenarios/suggest', { scenario, field })

@@ -527,7 +527,6 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     previews,
     settings: () => deps.settings.load(),
     backendOf: heavyBackend,
-    textModel: deps.textModel(textChoice(session)),
     roleplayModel: deps.roleplayModel(textChoice(session)),
     voice: deps.voice,
     scene: deps.scene,

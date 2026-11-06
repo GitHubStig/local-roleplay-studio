@@ -1,7 +1,6 @@
 import {
   type FrameDeps,
   frameName,
-  limitCrossedBy,
   type ProgressEvent,
   replacePicture,
   secondsSince,
@@ -141,7 +140,7 @@ export async function planStoryboard(
 ): Promise<StoryboardSession> {
   if (session.frames.length > 0) throw new Error('This Storyboard is already planned')
   emit({ type: 'phase', phase: 'text' })
-  const briefLimit = await limitCrossedBy(scenario.opening, deps.textModel, signal)
+  const briefLimit = crossedLimit(scenario.opening)?.message
   if (briefLimit) throw new LimitError(`The Brief crosses a limit: ${briefLimit}`)
 
   let look: Look | null = null
@@ -198,11 +197,7 @@ export async function writeStoryboard(
   if (from < 0) throw new StageError('Every Frame is written already')
   emit({ type: 'phase', phase: 'text' })
   checkLook(look)
-  const beatLimit = await limitCrossedBy(
-    session.frames.map((f) => f.beat).join('\n'),
-    deps.textModel,
-    signal,
-  )
+  const beatLimit = crossedLimit(session.frames.map((f) => f.beat).join('\n'))?.message
   if (beatLimit) throw new LimitError(`A Beat crosses a limit: ${beatLimit}`)
 
   const beats: PlannedBeat[] = session.frames.map(({ beat, shown }) => ({ beat, shown }))
@@ -493,7 +488,7 @@ export async function editFrameByAction(
   const start = performance.now()
   const unchanged = (outcome: Outcome, narration: string) => ({ outcome, narration, session })
 
-  const actionLimit = await limitCrossedBy(action, deps.textModel, signal)
+  const actionLimit = crossedLimit(action)?.message
   if (actionLimit) return unchanged('declined', `Declined: ${actionLimit}.`)
 
   const edit = await withRetry(

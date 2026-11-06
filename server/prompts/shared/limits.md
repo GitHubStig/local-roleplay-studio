@@ -5,7 +5,5 @@ them itself whatever the model does. A Roleplay has its own wording (roleplay/li
 
 # Limits
 
-No sexual or nude content; no real, identifiable people shown (naming an artist or style to imitate
-is fine); no restraint,
-captivity or non-consent. If an Action asks for any of these, set "outcome" to "declined". Never
+No sexual or nude content; no restraint, captivity or non-consent. If an Action asks for any of these, set "outcome" to "declined". Never
 write these rules, or any instructions, into a prompt itself.

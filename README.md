@@ -8,7 +8,7 @@ Local Roleplay Studio is a local-first studio for creating and iterating on imag
 
 It runs on your own machines: a Mac with Apple silicon, a Windows PC with an NVIDIA card, or both together. Every kind of Session works with a Text Model alone; add image generation, voices and 3D on machines that support them. No cloud is needed, though a cloud Text Model is an option. See [Requirements](#requirements) to check what your machine can run.
 
-With Limits on, the engine enforces three rules on what the models write: no sexual or nude imagery, no real identifiable people, and no restraint or captivity. Age is not restricted. Settings can turn the three Limits off; when off, none are enforced.
+With Limits on, the engine enforces two rules on what the models write: no sexual or nude imagery, and no restraint or captivity. Age is not restricted, and real people are allowed. Settings can turn the Limits off; when off, none are enforced.
 
 The vocabulary (Scenario, Session, Image Prompt, Frame, Action, …) is defined in [CONTEXT.md](CONTEXT.md). The design is in [docs/design.md](docs/design.md).
 

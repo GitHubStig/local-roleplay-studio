@@ -94,7 +94,7 @@ Picking a Scenario on Home opens it on the Scenario page, where Expand says who 
 - **A Chain** gets the Truths on every Frame, and the rest on its Opening Frame only; after that, any of it can be changed by an Action.
 - **A Storyboard** gets the Opening as the story to tell, and the Truths and the rest when it plans and writes its Frames.
 
-In every kind, the engine's three Limits hold whatever a Scenario says ([ADR 0002](adr/0002-guardrails-enforced-by-the-engine.md)).
+In every kind, the engine's Limits hold whatever a Scenario says ([ADR 0002](adr/0002-guardrails-enforced-by-the-engine.md)).
 
 ## Checking a Scenario
 

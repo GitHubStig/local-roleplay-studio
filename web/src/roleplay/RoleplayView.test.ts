@@ -706,7 +706,7 @@ describe('RoleplayView', () => {
         pictured(0, { pictures: [picture('frame-0-aaaaaaaa.png')] }),
         pictured(1),
         frame(2, 'Hello.', 'Sit.'),
-        pictured(3, { blocked: 'real people' }),
+        pictured(3, { blocked: 'restraint' }),
         // By another Image Model than the Roleplay's.
         pictured(4, {
           pictures: [picture('frame-4-aaaaaaaa.png', { imageModel: 'flux2-klein-4b' })],

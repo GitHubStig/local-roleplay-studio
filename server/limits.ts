@@ -1,7 +1,7 @@
 /**
  * Hard Limits the engine enforces on Actions, Briefs and Image Prompts while enabled (ADR 0002).
  * A term list is blunt, so the patterns aim at unambiguous phrases; the Text Model is also told
- * the Limits and declines what the list can't catch, such as real, identifiable people.
+ * the Limits and declines what the list can't catch.
  */
 export interface Limit {
   id: 'sexual' | 'restraint'

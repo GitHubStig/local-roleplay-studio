@@ -19,7 +19,7 @@ The built-in Scenario is the Kael tavern (`example-scenarios/tavern.md`): an 18t
 ## The Frame loop
 
 ```
-Action ──► Limits check (term list; a real-person question if it names someone)
+Action ──► Limits check (term list)
    │           └─ crossed ──► Declined: prompt and image unchanged
    ▼
 current Image Prompt + Action ──► Text Model (Text backend) ──► { outcome, narration, prompt }
@@ -31,7 +31,7 @@ current Image Prompt + Action ──► Text Model (Text backend) ──► { ou
                                         commit: append the Frame to session.json
 ```
 
-1. **Limits on the Action.** The Action is checked against the Limits' term list before the Text Model is asked. An Action that looks like it names someone (a capitalised full name, "look like", "resemble"; names inside a style clause such as "in the style of Michelangelo" don't count) also gets a narrow yes/no question to the Text Model about real people. A crossed Limit declines the Action at once, naming the Limit.
+1. **Limits on the Action.** The Action is checked against the Limits' term list before the Text Model is asked. A crossed Limit declines the Action at once, naming the Limit.
 2. **Text step.** The system message is the engine's rules (the nine sentences and what each covers; rewrite only the affected sentences and copy the rest word for word; remove whatever a change contradicts; the Limits; the reply format), then the Scenario's **Truths**, plus what else it states (its place, time, style and People) on the Opening Frame only. The user message is the current Image Prompt and the Action, and nothing else of earlier Frames ([ADR 0001](adr/0001-scene-is-sole-turn-state.md)) but who has been in the picture and isn't now, each as last described (`peopleAway`), so someone who left comes back described as before. The reply is constrained by a JSON schema (Ollama's `format`, or the OpenAI API's `response_format`), with `outcome` (`done`, `declined` or `unclear`) first, so the model decides before it writes. The Narration is a terse list of what changed: the model's own account, not checked against the prompt, so it can miss or overstate a change; the word diff of the prompt is always right. With **Thinking** on, the model reasons first, and its reasoning is saved with the Frame; models that can't think are asked again without it.
 3. **Retry and limits on the call.** An unusable reply (bad JSON, an empty prompt, or one cut off by the length cap) is retried once, then the Frame fails. Every Text Model call has a token cap and a time limit (`server/textModel.ts`): small models writing JSON under a schema occasionally never stop, padding with whitespace, and without the caps one such reply blocked Ollama, and every request behind it, for minutes. A reply cut off because the conversation outgrew the backend's context isn't retried: it fails saying so.
 4. **Engine rules** ([ADR 0002](adr/0002-guardrails-enforced-by-the-engine.md)):
@@ -62,7 +62,7 @@ Only one Frame runs per Session at a time; the server refuses a second with `409
 
 A Storyboard is started from a Brief and a Frame count (1–32), then made in three steps ([ADR 0019](adr/0019-storyboards-plan-review-write.md)): **planned**, reviewed by the player, then **written** a Frame at a time.
 
-1. **Limits on the Brief:** the term list and, if it names someone, the real-person question.
+1. **Limits on the Brief:** the term list.
 2. **Plan**, one Text Model call, streaming in: the **Look** (an identity for each **Subject**: everyone and everything the story follows, people, creatures, animals and objects with a part of their own, each named, a group that looks alike as one; and the art style, shared by every Frame), then the **Beats**, one line per Frame with who it shows. All or nothing: a failed or cancelled plan discards the Storyboard.
 3. **Review:** the plan waits for the player, who can edit the Look and each Beat and who it shows, add, remove and reorder Beats. Nothing is written or rendered yet.
 4. **Write Frames:** a Text Model call per Frame, in order, each given the Look, every Beat with who it shows, the Brief and the seven sentences of the Frames before it; it answers with the Frame's own seven sentences. The Beats are checked with the Limits first, as an Action is. Each Frame is saved as it comes, so a failure or Cancel keeps those written, and writing again carries on from the next.

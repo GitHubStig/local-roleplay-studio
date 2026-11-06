@@ -37,7 +37,7 @@ Deno.test('A Storyboard is planned, reviewed, written, rendered and edited over 
     const { call } = setup({
       root,
       settings: { textModel: 'x' },
-      textModel: scriptedTextModel([], [], {
+      textModel: scriptedTextModel([], {
         plans: [planOf(3)],
         edits: [{
           outcome: 'done',
@@ -142,7 +142,7 @@ Deno.test("Beats are added, removed and moved in a Storyboard's plan over the AP
     const { call } = setup({
       root,
       settings: { textModel: 'x' },
-      textModel: scriptedTextModel([], [], { plans: [planOf(2)] }),
+      textModel: scriptedTextModel([], { plans: [planOf(2)] }),
     })
     await call('POST', '/api/sessions', { kind: 'storyboard', brief: 'A dunk.', frameCount: 2 })
     // Not planned yet: nowhere to add it.
@@ -233,7 +233,7 @@ Deno.test("Chains and Storyboards refuse each other's routes", () =>
 Deno.test('Cancelling a plan discards the Storyboard', () =>
   withTempDir(async (root) => {
     let release!: () => void
-    const hanging = scriptedTextModel([], [], {})
+    const hanging = scriptedTextModel([], {})
     hanging.planStoryboard = (_req, signal) =>
       new Promise((_, reject) => {
         release = () => reject(signal.reason)

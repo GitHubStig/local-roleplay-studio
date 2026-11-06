@@ -10,7 +10,6 @@ import { renumberCallLogs } from '../calls.ts'
 import {
   type FrameDeps,
   frameName,
-  limitCrossedBy,
   type ProgressEvent,
   replacePicture,
   secondsSince,
@@ -57,9 +56,7 @@ export async function runChainFrame(
 
   // The engine, not the Text Model, enforces the limits (ADR 0002). An Action that plainly
   // crosses one is declined without asking the Text Model to write anything.
-  const actionLimit = previous && action
-    ? await limitCrossedBy(action, deps.textModel, signal)
-    : undefined
+  const actionLimit = previous && action ? crossedLimit(action)?.message : undefined
   if (previous && actionLimit) {
     outcome = 'declined'
     narration = `Declined: ${actionLimit}.`

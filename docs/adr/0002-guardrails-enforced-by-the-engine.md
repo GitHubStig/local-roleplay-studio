@@ -1,5 +1,5 @@
 ---
-status: accepted (revised with ADR 0005)
+status: accepted (revised with ADR 0005 and ADR 0034)
 ---
 
 # Limits are enforced by the engine, not by the models
@@ -7,7 +7,7 @@ status: accepted (revised with ADR 0005)
 The Text Models this runs locally include uncensored ones, and any Section of the Image Prompt can be changed by an Action, so the lines that matter can't depend on a model's judgement. When the Limits are on, the engine enforces three Limits on every Frame: no sexual or nude imagery; no real, identifiable people; no restraint or captivity. Age is unrestricted. The Text Model is told the Limits too, but the engine checks anyway:
 
 - **A term list** (`server/limits.ts`) is checked against the Action, *before* the Text Model is asked, and against the new Image Prompt it writes. A hit declines the Action: no Frame is saved (the Image Prompt and image stay as they were), and the player is told which Limit. Until 2026-10-05 a declined Action was saved as a Frame that kept the previous prompt and image; it now saves nothing, as a declined Roleplay Message does (ADR 0007), so it's simply reworded and sent again.
-- **Real people** can't be caught by a list, so an Action that looks like it names someone (a capitalised full name, "look like", "resemble", "celebrity") gets a narrow yes/no question to the Text Model: "does this ask to depict a real, identifiable person?" Small models answer that far more reliably than they follow a rule buried in long instructions.
+- **Real people** (a Limit until 2026-11-06, dropped by [ADR 0034](0034-real-people-are-not-a-limit.md)) can't be caught by a list, so an Action that looks like it names someone (a capitalised full name, "look like", "resemble", "celebrity") gets a narrow yes/no question to the Text Model: "does this ask to depict a real, identifiable person?" Small models answer that far more reliably than they follow a rule buried in long instructions.
 - An Opening Frame whose prompt crosses a Limit fails rather than being declined, since there's no earlier prompt to keep.
 
 Anything inside the Limits is the player's to direct, and the Text Model's to carry out.

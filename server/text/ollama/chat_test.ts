@@ -176,7 +176,7 @@ Deno.test('a Text Model on Ollama gives up with a readable error when a reply ta
   try {
     const tm = ollamaTextModel('m', {
       baseUrl: ollama.baseUrl,
-      timeLimits: { answer: 200, yesNo: 200 },
+      timeLimits: { answer: 200 },
     })
     await assertRejects(
       () =>
@@ -184,11 +184,6 @@ Deno.test('a Text Model on Ollama gives up with a readable error when a reply ta
           { scenario: testScenario, prompt: null, action: null },
           new AbortController().signal,
         ),
-      Error,
-      "didn't finish within",
-    )
-    await assertRejects(
-      () => tm.namesRealPerson('look like Serena Williams', new AbortController().signal),
       Error,
       "didn't finish within",
     )

@@ -89,16 +89,13 @@ export const writtenBody = (index: number) =>
   `Pose ${index + 1}. Calm. Wide shot. Kit. Court. Light. Grey.`
 
 /**
- * A Text Model that replies from queues; an Error in a queue is thrown instead. It says an Action
- * names a real person when it mentions one of `realPeople`.
+ * A Text Model that replies from queues; an Error in a queue is thrown instead.
  */
 export function scriptedTextModel(
   replies: (FrameText | Error)[],
-  realPeople: string[] = [],
   scripts: Scripts = {},
 ): TextModel & {
   calls: number
-  personChecks: string[]
   requests: FrameRequest[]
   writeRequests: StoryboardWriteRequest[]
   clipRequests: { system: string; user: string }[]
@@ -111,7 +108,6 @@ export function scriptedTextModel(
   }
   const model = {
     calls: 0,
-    personChecks: [] as string[],
     /** Each Chain Frame asked for, in order. */
     requests: [] as FrameRequest[],
     /** Each Storyboard Frame written, in order. */
@@ -130,10 +126,6 @@ export function scriptedTextModel(
         for (const word of item.thinking?.split(/(?<= )/) ?? []) onThinking?.(word)
       }
       return next(replies, 'reply')
-    },
-    namesRealPerson(action: string) {
-      model.personChecks.push(action)
-      return Promise.resolve(realPeople.some((name) => action.includes(name)))
     },
     async planStoryboard(_req: unknown, signal: AbortSignal, on: PlanHandlers = {}) {
       model.calls++

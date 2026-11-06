@@ -8,7 +8,7 @@ Deno.test('A Storyboard Frame upscales once rendered; a re-render replaces the u
     const { call } = setup({
       root,
       settings: { textModel: 'x' },
-      textModel: scriptedTextModel([], [], { plans: [planOf(2)] }),
+      textModel: scriptedTextModel([], { plans: [planOf(2)] }),
     })
     await call('POST', '/api/sessions', { kind: 'storyboard', brief: 'A dunk.', frameCount: 2 })
     await readEvents(await call('POST', '/api/sessions/s1/plan'))
@@ -46,7 +46,7 @@ Deno.test('A Restart cancels the renders, waits for the one running, and clears 
     const { call } = setup({
       root,
       settings: { textModel: 'x' },
-      textModel: scriptedTextModel([], [], { plans: [planOf(2)] }),
+      textModel: scriptedTextModel([], { plans: [planOf(2)] }),
       imageGenerator: holding,
     })
     await call('POST', '/api/sessions', { kind: 'storyboard', brief: 'A dunk.', frameCount: 2 })
@@ -74,7 +74,7 @@ Deno.test('A Storyboard queues SHARP, TripoSplat and LiTo; a re-render drops the
     const { call } = setup({
       root,
       settings: { textModel: 'x' },
-      textModel: scriptedTextModel([], [], { plans: [planOf(2)] }),
+      textModel: scriptedTextModel([], { plans: [planOf(2)] }),
       scene: fakeSceneMaker(),
       figure: fakeFigureMaker(),
       lito: fakeFigureMaker(),

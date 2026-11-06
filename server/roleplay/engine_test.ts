@@ -2,7 +2,7 @@ import { assertEquals, assertRejects, assertStringIncludes } from '@std/assert'
 import { dirSessionStore } from '../session.ts'
 import { DEFAULT_SETTINGS } from '../settings.ts'
 import { briefScenario, scenarioFrom } from '../scenario.ts'
-import { fakeImageGenerator, scriptedTextModel, withTempDir } from '../testing.ts'
+import { fakeImageGenerator, withTempDir } from '../testing.ts'
 import {
   beginRoleplay,
   pictureFrame,
@@ -57,7 +57,6 @@ async function setUp(
   const deps = {
     store,
     roleplayModel,
-    textModel: scriptedTextModel([], ['Taylor Swift']),
     imageGenerator: fakeImageGenerator(),
   }
   const events: RoleplayEvent[] = []
@@ -95,7 +94,6 @@ Deno.test('beginRoleplay writes the opening from the Cast as edited, and only on
     const deps = {
       store,
       roleplayModel,
-      textModel: scriptedTextModel([]),
       imageGenerator: fakeImageGenerator(),
     }
     const written = await writeCast(deps, await savedSession(store), scenario, () => {}, signal())
@@ -133,7 +131,6 @@ Deno.test('writeCast keeps a voice designed while the Cast was written', () =>
           return await roleplayModel.writeCast(...args)
         },
       },
-      textModel: scriptedTextModel([]),
       imageGenerator: fakeImageGenerator(),
     }
     const written = await writeCast(deps, session, scenario, () => {}, signal())
@@ -157,7 +154,6 @@ Deno.test('writeCast fails, saving nothing, when the Cast crosses a Limit', () =
           {
             store,
             roleplayModel,
-            textModel: scriptedTextModel([]),
             imageGenerator: fakeImageGenerator(),
           },
           newSession(),
@@ -245,11 +241,10 @@ Deno.test('sendMessage permits age references but declines Messages or Replies c
       signal(),
     )
     assertEquals(accepted!.frames.at(-1)?.message, 'You are fifteen years old now')
-    assertEquals(await sendMessage(deps, session, 'Hi Taylor Swift', emit, signal()), null)
     // The reply crosses one.
     assertEquals(await sendMessage(deps, session, 'Help me.', emit, signal()), null)
     assertEquals(roleplayModel.asked.length, 2)
-    assertEquals(events.filter((e) => e.type === 'declined').length, 2)
+    assertEquals(events.filter((e) => e.type === 'declined').length, 1)
     assertEquals(((await store.load('r1')) as RoleplaySession).frames.length, 2)
   }))
 
@@ -284,7 +279,6 @@ Deno.test("writeCast copies the Scenario's Truths and other People, and a rewrit
     const deps = {
       store,
       roleplayModel: scriptedRoleplayModel({ casts: [testCast, testCast] }),
-      textModel: scriptedTextModel([]),
       imageGenerator: fakeImageGenerator(),
     }
     const person = (name: string, background = '') => ({

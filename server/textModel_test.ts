@@ -2,7 +2,6 @@ import { assertEquals, assertRejects, assertStringIncludes, assertThrows } from 
 import type { Chat } from './text/chat.ts'
 import {
   chatTextModel,
-  mightNameAPerson,
   outputSchema,
   parseFrameBody,
   parseFrameText,
@@ -11,7 +10,6 @@ import {
   parseStoryboardPlan,
   parseStoryboardWrite,
   plainSentences,
-  realPersonQuestion,
   storyboardPlanSchema,
   systemMessage,
   userMessage,
@@ -92,34 +90,6 @@ Deno.test('parseFrameText rejects bad replies', () => {
     Error,
     'no prompt',
   )
-})
-
-Deno.test('realPersonQuestion says style references are not real people', async () => {
-  assertStringIncludes(await realPersonQuestion('art style is Michelangelo'), 'style to imitate')
-})
-
-Deno.test('mightNameAPerson flags names and lookalike requests, not ordinary edits', () => {
-  for (
-    const a of [
-      'make her look like Serena Williams',
-      'dress her as Taylor Swift',
-      'she resembles a famous actress',
-    ]
-  ) {
-    assertEquals(mightNameAPerson(a), true, a)
-  }
-  for (
-    const a of [
-      'crouch low',
-      'teal backdrop, film noir',
-      'swap to an 85mm lens',
-      "he's frightened. art style is Hokusai / Japanese woodblock",
-      'paint it in the style of Frida Kahlo',
-      'inspired by Annie Leibovitz, moody',
-    ]
-  ) {
-    assertEquals(mightNameAPerson(a), false, a)
-  }
 })
 
 Deno.test('plainSentences strips aspect labels and list markers a model writes in', () => {

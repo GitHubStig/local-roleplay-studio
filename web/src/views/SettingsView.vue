@@ -735,7 +735,7 @@ function saveNow() {
           </div>
           <div class="card">
             <ToggleSwitch v-model="form.limits" title="Limits" data-limits>
-              On: no sexual or nude content, real people, or restraint. Age is unrestricted.
+              On: no sexual or nude content, or restraint. Age is unrestricted. Real people are allowed.
               Off: no Limits are enforced. Applies at once, to running Sessions too.
             </ToggleSwitch>
           </div>

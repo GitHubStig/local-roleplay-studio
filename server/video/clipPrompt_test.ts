@@ -7,7 +7,7 @@ import { cleanClipPrompt, frameStory } from './clipPrompt.ts'
 
 /** A Chain of two Frames whose Text Model writes `clips` as clip prompts. */
 async function chainWritingClips(root: string, clips: (string | Error)[]) {
-  const model = scriptedTextModel([reply('standing'), reply('sitting')], [], { clips })
+  const model = scriptedTextModel([reply('standing'), reply('sitting')], { clips })
   return { model, ...await chainOfTwo(root, { textModel: model }) }
 }
 

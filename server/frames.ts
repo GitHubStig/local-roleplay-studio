@@ -11,8 +11,7 @@ import {
 import type { ImageGenerator } from './images/imageGenerator.ts'
 import type { ImageBackendKind } from './images/imageModels.ts'
 import type { Upscaler } from './images/upscalers.ts'
-import { crossedLimit, limitsEnabled } from './limits.ts'
-import { mightNameAPerson, type TextModel } from './textModel.ts'
+import type { TextModel } from './textModel.ts'
 import type { Previews } from './previews.ts'
 import type { HeavyJob } from './machine.ts'
 import { RenderQueue } from './renderQueue.ts'
@@ -71,6 +70,9 @@ export interface FrameDeps {
   /** The Backend a heavy job goes to now (`backendOf`); left out, the image generator finds it. */
   backendOf?: (job: HeavyJob) => Promise<Backend | undefined>
 }
+
+/** What rendering a picture needs: a Roleplay renders with these, its text going through its own model. */
+export type RenderDeps = Omit<FrameDeps, 'textModel'>
 
 const TEXT_ATTEMPTS = 2
 
@@ -133,29 +135,12 @@ export async function withRetry<T>(
 }
 
 /**
- * Which Limit an Action (or a Brief) crosses, if any (ADR 0002): the term list first, then, for
- * text that looks like it names someone, a narrow real-person question to the Text Model.
- */
-export async function limitCrossedBy(
-  text: string,
-  textModel: TextModel,
-  signal: AbortSignal,
-): Promise<string | undefined> {
-  const listed = crossedLimit(text)?.message
-  if (listed) return listed
-  if (limitsEnabled() && mightNameAPerson(text) && await textModel.namesRealPerson(text, signal)) {
-    return 'no real, identifiable people'
-  }
-  return undefined
-}
-
-/**
  * Renders `prompt` into `<dir>/<name>.png` with the Session's Image Model, through the shared
  * render queue, run as Settings are now (`renderSettings`). Returns the picture, with how long it
  * waited and how long it rendered.
  */
 export async function renderImage(
-  deps: FrameDeps,
+  deps: RenderDeps,
   session: Session,
   prompt: string,
   name: string,
@@ -211,7 +196,7 @@ export async function renderImage(
  * nothing changes, and the new file is removed.
  */
 export async function replacePicture<S extends Session>(
-  deps: FrameDeps,
+  deps: RenderDeps,
   session: S,
   index: number,
   prompt: string,
