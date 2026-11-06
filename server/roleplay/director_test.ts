@@ -109,6 +109,12 @@ Deno.test('The Director reads the Score, the whole story with thoughts, the Beha
   const [, first] = await directorMessages(session(), 0, undefined)
   assertMatch(first.content, /No music has played yet/)
   assertEquals(musicStory(session(), 0).includes('Sorry.'), false)
+  // Since the Cue began: only the Frames from its first.
+  const [, since] = await directorMessages(session(), 1, { ...playing, start: 1 }, 'since')
+  assertEquals(
+    [since.content.includes('He looks like trouble.'), since.content.includes('Sorry.')],
+    [false, true],
+  )
 })
 
 Deno.test("A Cue's vocals are held by the Vocals setting, in its schema and in what's kept", () => {

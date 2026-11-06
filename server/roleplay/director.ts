@@ -120,13 +120,14 @@ export const cueOf = (session: RoleplaySession, frame: RoleplayFrame): Cue | und
   frame.music ? session.cues?.find((c) => c.id === frame.music!.cue) : undefined
 
 /**
- * The story up to and including Frame `upTo`, as the Director reads it: each Message, and what the
- * Character thought, did and said. Thoughts are in: the music can hear what isn't said.
+ * The story from Frame `from` up to and including Frame `upTo`, as the Director reads it: each
+ * Message, and what the Character thought, did and said. Thoughts are in: the music can hear what
+ * isn't said.
  */
-export function musicStory(session: RoleplaySession, upTo: number): string {
+export function musicStory(session: RoleplaySession, upTo: number, from = 0): string {
   const character = session.cast?.character.name ?? 'The Character'
   const persona = session.cast?.persona.name ?? 'The player'
-  return session.frames.slice(0, upTo + 1).map((f) => {
+  return session.frames.slice(from, upTo + 1).map((f) => {
     const lines = [frameName(f.index)]
     if (f.message !== null) lines.push(`${persona}: ${f.message}`)
     if (f.reply.internal) lines.push(`${character} (thinks): ${f.reply.internal}`)
@@ -163,11 +164,18 @@ const scoreText = (session: RoleplaySession) => {
 const behaviourOf = (session: RoleplaySession) =>
   loadPrompt(`roleplay/music-behaviour-${session.settings.musicBehaviour}`)
 
+/**
+ * What the Director reads: the whole story, or only the Frames since the Cue playing began (the
+ * bench compares them, docs/music-plans.md).
+ */
+export type DirectorReads = 'whole' | 'since'
+
 /** The call that directs the music at Frame `index`, under the Cue playing before it. */
 export async function directorMessages(
   session: RoleplaySession,
   index: number,
   playing: Cue | undefined,
+  reads: DirectorReads = 'whole',
 ): Promise<ChatMessage[]> {
   return [
     {
@@ -178,7 +186,7 @@ export async function directorMessages(
       role: 'user',
       content: await loadPrompt('roleplay/director-request', {
         score: scoreText(session),
-        story: musicStory(session, index),
+        story: musicStory(session, index, reads === 'since' ? playing?.start ?? 0 : 0),
         playing: playing
           ? await loadPrompt('roleplay/director-playing', {
             cue: cueText(playing),
@@ -225,6 +233,8 @@ export interface DirectorDeps {
   store: SessionStore
   /** The Session's Text Model. */
   model: RoleplayModel
+  /** What the Director reads; the whole story unless the bench says otherwise. */
+  reads?: DirectorReads
 }
 
 /** A short id for a new Cue. */
@@ -257,7 +267,7 @@ export async function directFrame(
     async (onThinking) =>
       cleanDirection(
         (await deps.model.direct(
-          await directorMessages(current, index, playing),
+          await directorMessages(current, index, playing, deps.reads),
           signal,
           onThinking,
         )).direction,

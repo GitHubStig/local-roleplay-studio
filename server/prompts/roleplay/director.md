@@ -8,7 +8,11 @@ The reading is what lets it follow a course rather than react to each line: the 
 Director gets the reading the Cue began with.
 
 "entry" is always written, as a schema can't ask for it only on a change; it's ignored when the
-music continues. The reply's shape is directorSchema in server/roleplay/director.ts.
+music continues. "sharp" was described as a cut "for a sudden turn (a blow, a revelation, a door kicked in)" until
+2026-11-06, and was then picked for a narrowed look or a warning, 40 times in 20 bench runs
+(docs/bench/music-director/README.md); it's now kept for events that break the scene.
+
+The reply's shape is directorSchema in server/roleplay/director.ts.
 
 Values: behaviour (music-behaviour-*.md, from the Roleplay's Behaviour)
 -->
@@ -29,9 +33,11 @@ whether the ground between them has shifted since it began.
 - "decision": "continue" while the ground holds, even as the words change; "transition" when it
   has shifted enough for the music to change; "silence" when the moment is better with no music
   at all.
-- "entry": how a change comes in: "gentle", a slow crossfade, for a shift that has built up over
-  the exchanges; "sharp", a cut, for a sudden turn (a blow, a revelation, a door kicked in).
-  When the music continues, write "gentle".
+- "entry": how a change comes in. "gentle", a slow crossfade, is almost every change: a shift that
+  builds over the exchanges, a mood that turns, tension that rises or a truth that comes out
+  slowly. "sharp", a cut, is only for a sudden event that breaks the scene at once: a blow, a
+  weapon drawn, a death, someone bursting in. A look, a guarded word, a warning or a growing
+  unease is never sharp, however tense. When the music continues, write "gentle".
 - "line": on a change, the line in the story that caused it, copied word for word; "" when the
   music continues.
 

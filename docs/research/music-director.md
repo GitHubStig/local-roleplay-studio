@@ -20,3 +20,8 @@ What the misses were:
 - **A turn a Frame early or late.** In Heaven the grief came at the confession, a Frame before the course had it, and the relief a Frame after the mercy; a Reply can turn a scene before the Message the course expected, or after it. The arc was followed; the course was too exact. The bench should allow a Frame either side for a change.
 - **Wordless voices where they fit.** Allowed them, the cue writer used none in the tavern's Cues and none in Heaven until relief and the opening gates (Frames 10–13 of 13).
 - **Odd ends.** One Cue's mood ended in a stray `</` (now trimmed by `cleanCue`). Heaven's Score left out the Scenario's pipe organ this time (it kept it in 8 of 8 when the Score was benched): seed variance.
+
+## Over several seeds (2026-11-06, Mac)
+
+The bench ([docs/bench/music-director/](../bench/music-director/README.md)) ran these replays over seeds 1–4 under variants, a change a Frame either side counting as kept. It confirmed "sharp" for small shifts (40 in 20 runs); the prompt's narrower "sharp" took the same stories from 84% of Frames kept to 88%, sharp to 4 (the hired killer's blade), and none the wrong way.
+
