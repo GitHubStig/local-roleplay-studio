@@ -26,6 +26,10 @@ Daytime, the light under the canopy dim and green.
 
 A gritty 1980s action film still on 35mm, with heavy grain, high contrast and a sweaty, humid haze.
 
+## Music
+
+A 1980s action-film score: taut, pounding drums and low brass stabs over tense strings, building to a roar with the gunfire, then cutting to a ringing near-silence when the guns run dry. Brooding and primal, never heroic or triumphant.
+
 ## People
 
 ### Mac

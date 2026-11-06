@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import * as api from '../api'
 import { clearScenarioDraft } from '../composables/useScenarioDraft'
+import { useFeatures } from '../composables/useFeatures'
 import ScenarioView from './ScenarioView.vue'
 
 vi.mock('../api', async (importOriginal) => ({
@@ -38,6 +39,7 @@ const tavern: api.Scenario = {
   place: '',
   time: '',
   style: '',
+  music: '',
   truths: [],
   people: [person('kael', 'Kael', { goal: 'Find the sender.' })],
   character: 'kael',
@@ -92,6 +94,27 @@ beforeEach(() => {
 })
 
 describe('ScenarioView', () => {
+  it("shows the Music only once Settings' Music is on, or the Scenario has some", async () => {
+    expect((await mountAt('/scenario/tavern')).wrapper.find('[data-field=music]').exists()).toBe(
+      false,
+    )
+    clearScenarioDraft()
+    vi.mocked(api.expandScenario).mockResolvedValueOnce({
+      scenario: { ...structuredClone(expandedTavern), music: 'A lone fiddle.' },
+      suggestions: [],
+    })
+    expect(fieldValue((await mountAt('/scenario/tavern')).wrapper, 'music')).toBe('A lone fiddle.')
+    vi.mocked(api.getSettings).mockResolvedValueOnce(
+      { textModel: 'x', music: true } as api.Settings,
+    )
+    await useFeatures().refreshFeatures()
+    clearScenarioDraft()
+    expect((await mountAt('/scenario/tavern')).wrapper.find('[data-field=music]').exists()).toBe(
+      true,
+    )
+    await useFeatures().refreshFeatures()
+  })
+
   it("expands a Scenario as it opens, and shows who's who and the suggestions", async () => {
     const { wrapper } = await mountAt('/scenario/tavern')
     expect(api.expandScenario).toHaveBeenCalledWith({ scenario: tavern }, expect.anything())

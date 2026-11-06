@@ -128,6 +128,11 @@ export interface Settings {
    */
   callLog: boolean
   /**
+   * Music in a Roleplay, while it's being built (docs/music-plans.md): off by default, and
+   * everything for it stays hidden until it's switched on.
+   */
+  music: boolean
+  /**
    * Where the Sessions are kept: an absolute path, or '' for the `sessions/` folder in the app's
    * own. Read when the server starts; changed from the Sessions tab (`sessionsFolder.ts`), which
    * moves to the new folder at once, so `PUT /api/settings` leaves it as saved. Sessions already
@@ -208,6 +213,7 @@ export const DEFAULT_SETTINGS: Settings = {
   features: Object.fromEntries(FEATURES.map((f) => [f, true])) as Record<Feature, boolean>,
   limits: true,
   callLog: false,
+  music: false,
   sessionsFolder: '',
 }
 
@@ -330,6 +336,9 @@ export function validateSettings(input: unknown): ValidationResult {
   if (s.callLog !== undefined && typeof s.callLog !== 'boolean') {
     issues.push('callLog must be true or false')
   }
+  if (s.music !== undefined && typeof s.music !== 'boolean') {
+    issues.push('music must be true or false')
+  }
   if (s.sessionsFolder !== undefined) {
     if (typeof s.sessionsFolder !== 'string') issues.push('sessionsFolder must be a string')
     else if (s.sessionsFolder.trim() && !isAbsolute(s.sessionsFolder.trim())) {
@@ -411,6 +420,7 @@ export function validateSettings(input: unknown): ValidationResult {
       features: { ...DEFAULT_SETTINGS.features, ...(features as Record<Feature, boolean>) },
       limits: (s.limits as boolean | undefined) ?? true,
       callLog: (s.callLog as boolean | undefined) ?? false,
+      music: (s.music as boolean | undefined) ?? false,
       sessionsFolder: ((s.sessionsFolder as string | undefined) ?? '').trim(),
     },
   }

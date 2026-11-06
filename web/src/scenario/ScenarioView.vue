@@ -27,6 +27,7 @@ import {
   type ScenarioSource,
   useScenarioDraft,
 } from '../composables/useScenarioDraft'
+import { useFeatures } from '../composables/useFeatures'
 import { useTextModelReady } from '../composables/useTextModelReady'
 import { sessionPath } from '../sessionPath'
 import ScenarioField from './ScenarioField.vue'
@@ -51,6 +52,10 @@ const source = computed<ScenarioSource>(() =>
 const { scenarioDraft } = useScenarioDraft()
 /** The Scenario as it's being edited; null until it loads (or, for a Brief, until it's expanded). */
 const draft = ref<Scenario | null>(null)
+/** A draft saved before Scenarios had Music has none: blank, for the Text Model to pick. */
+const withMusic = (s: Scenario): Scenario => ({ ...s, music: s.music ?? '' })
+/** The Music field shows while Settings' Music is on, or when the Scenario has some already. */
+const musicOn = computed(() => useFeatures().settings.value?.music ?? false)
 const suggestions = ref<Suggestion[]>([])
 const loadError = ref('')
 const expanding = ref(false)
@@ -73,7 +78,7 @@ async function expand() {
       draft.value ? { scenario: draft.value } : source.value,
       call.signal,
     )
-    draft.value = result.scenario
+    draft.value = withMusic(result.scenario)
     suggestions.value = result.suggestions
     lastSuggestion = {}
   } catch (err) {
@@ -87,13 +92,13 @@ onMounted(async () => {
   // Back to the Scenario being set up: as it was left, without expanding it again.
   const saved = scenarioDraft.value
   if (saved?.scenario && sameSource(saved.from, source.value)) {
-    draft.value = saved.scenario
+    draft.value = withMusic(saved.scenario)
     suggestions.value = saved.suggestions
     return
   }
   if (props.id) {
     try {
-      draft.value = await getScenario(props.id)
+      draft.value = withMusic(await getScenario(props.id))
     } catch (err) {
       loadError.value = (err as Error).message
       return
@@ -447,6 +452,15 @@ async function start() {
               label="Style: the art style of every picture (blank, and the Look picks one)"
               :hint="hintFor('style')"
               @suggest="suggest('style')"
+              :disabled="expanding"
+            />
+            <ScenarioField
+              v-if="musicOn || draft.music"
+              v-model="draft.music"
+              field="music"
+              label="Music: what the story's music is like (blank, and the Text Model picks)"
+              :hint="hintFor('music')"
+              @suggest="suggest('music')"
               :disabled="expanding"
             />
             <TruthList

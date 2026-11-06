@@ -62,8 +62,9 @@ Answered 2026-11-06 with the owner: each of these is decided by what sounds or r
 
 No music model, no downloads. The aim is to read a few Roleplays' Cues and judge the Director's taste before generating anything.
 
-- [ ] The Music setting (feature flag), with Behaviour, Vocals and Music taste in Settings, and their copies on the Session.
-- [ ] The Scenario's `## Music` section (type, parsing, the Scenario page, docs/scenarios.md, the examples).
+- [x] The Music setting (feature flag): `music` in Settings, off by default, on a Music tab of its own, where its other settings will go too (2026-11-06).
+- [ ] Behaviour, Vocals and Music taste in Settings, and their copies on the Session.
+- [x] The Scenario's `## Music` section (2026-11-06): parsed and written like Style, checked by the Limits, left out of `factsOf` so the Character and the Art Agent never see it; on the Scenario page (shown while Music is on, or when the Scenario has some) with Suggest; in docs/scenarios.md; written for the tavern and the two afterlife examples. Expand writes it from a Brief that names music and can suggest it (checked for runaways over 32 calls, research/scenario-expand.md); otherwise it's left blank for the Score to pick. Every example has one, Contact too, as any Scenario can start any kind of Session.
 - [ ] The Score: written once (prompt in `server/prompts/roleplay/` or a `music/` part), saved with the Session, editable.
 - [ ] The Director and cue writer calls, their schemas (checked straight against Ollama over seeds 1–8 for runaway whitespace), queued after a Reply when Score as you play is on; Frames record their Cue.
 - [ ] The Music tab beside Frame and Look & Cast: for the Frame, the reading, decision and Cue; for the Session, the Cues as a strip across the Frames and counts (Cues, average length, decisions).

@@ -61,6 +61,7 @@ const TABS = [
   { id: 'text', label: 'Text' },
   { id: 'images', label: 'Images' },
   { id: 'voice', label: 'Voice' },
+  { id: 'music', label: 'Music' },
   { id: 'clips', label: 'Clips' },
   { id: '3d', label: '3D' },
   { id: 'sessions', label: 'Sessions' },
@@ -566,6 +567,20 @@ function saveNow() {
               Audio Suite's custom nodes (install them through its Manager) and an NVIDIA card with
               12 GB; there a line takes a few seconds more than on a Mac.
             </RunOn>
+          </div>
+        </section>
+
+        <section
+          v-show="tab === 'music'"
+          class="flex max-w-xl flex-col gap-6"
+          role="tabpanel"
+          data-tab-panel="music"
+        >
+          <div class="card">
+            <ToggleSwitch v-model="form.music" title="Music (in progress)" data-music>
+              Music for Roleplays, being built in stages. On, what's there so far shows: for now,
+              a Scenario's Music.
+            </ToggleSwitch>
           </div>
         </section>
 

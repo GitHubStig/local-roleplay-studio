@@ -21,6 +21,10 @@ Late evening, in a storm; the last of the other customers have gone.
 
 A moody, cinematic oil painting with heavy, visible brushstrokes, chiaroscuro lighting with deep shadows and warm, flickering amber highlights, gritty 18th-century atmospheric realism.
 
+## Music
+
+Folk instruments of an 18th-century harbour: a lone fiddle, a low cello, a squeezebox, and the odd sea shanty half-remembered; slow and smoky, intimate rather than grand. Nothing modern or electronic.
+
 ## Truths
 
 - It's the 18th century: nothing modern.

@@ -38,6 +38,7 @@ const settings: api.Settings = {
   videoModel: 'ltx-2.5',
   limits: true,
   callLog: false,
+  music: false,
   sessionsFolder: '',
   artModel: '',
   features: ALL_ON,
@@ -597,9 +598,18 @@ describe('SettingsView', () => {
     await wrapper.find('[data-tab="advanced"]').trigger('click')
     expect(seed.isVisible()).toBe(true)
     // With the Limits, the call log and the style scores, which aren't one model's either.
-    for (const control of ['[data-limits]', '[data-call-log]', '[data-feature="style"]']) {
+    for (
+      const control of [
+        '[data-limits]',
+        '[data-call-log]',
+        '[data-feature="style"]',
+      ]
+    ) {
       expect(seed.find(control).exists()).toBe(true)
     }
+    // Music has a tab of its own.
+    expect(seed.find('[data-music]').exists()).toBe(false)
+    expect(wrapper.find('[data-tab-panel="music"] [data-music]').exists()).toBe(true)
     expect(seed.find('[data-feature="style"]').text()).toContain('Image comparison style scores')
     await seed.find('input[value="fixed"]').setValue(true)
     await seed.find('input[type="number"]').setValue(7)

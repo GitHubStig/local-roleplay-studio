@@ -17,6 +17,10 @@ The threshold is a vast, sweeping expanse of pearlescent marble that reflects th
 
 The eternal golden twilight hangs suspended in a breathless, windless stillness, as if the heavens themselves are holding a quiet, reverent pause.
 
+## Music
+
+Sacred and vast: a choir singing without words, a pipe organ held low, harp and soft strings, rising slowly; awe more than fear, with warmth under the solemnity. No drums or electronic sounds.
+
 ## People
 
 ### Elias

@@ -21,6 +21,10 @@ The hall is bathed in a perpetual, golden late-afternoon glow that mimics a warm
 
 A soft, dreamlike impressionist oil painting with thick, glowing brushstrokes that capture the warmth of the golden sunset and the hazy, ethereal atmosphere of the hall.
 
+## Music
+
+Gentle and bittersweet, like the last scene of a film: a soft piano, warm strings and a far-off acoustic guitar, slow and unhurried; regret giving way to peace. Nothing grand or ominous.
+
 ## Truths
 
 - Everyone present died at the same time as the protagonist elsewhere in the world

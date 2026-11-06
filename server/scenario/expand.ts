@@ -33,7 +33,7 @@ export interface Expansion {
 }
 
 /** A Scenario's own parts that can be blank and suggested. */
-const STORY_FIELDS = ['place', 'time', 'style', 'truths'] as const
+const STORY_FIELDS = ['place', 'time', 'style', 'music', 'truths'] as const
 const PERSON_PARTS = [...PERSON_FIELDS, 'truths'] as const
 const MAX_SUGGESTIONS = 10
 
@@ -103,6 +103,7 @@ export const expandSchema = (from: ExpandFrom) =>
       place: text,
       time: text,
       style: text,
+      music: text,
       truths: texts,
     }),
     suggestions: {
@@ -163,6 +164,7 @@ export function expanded(from: ExpandFrom, value: unknown): Expansion {
       place: str(o.place),
       time: str(o.time),
       style: str(o.style),
+      music: str(o.music),
       truths: strs(o.truths),
       people: proposed,
     }

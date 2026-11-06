@@ -10,6 +10,7 @@ const scenario = scenarioFrom({
 
 Deno.test("partOf names a story's part or a Person's, by their name", () => {
   assertEquals(partOf(scenario, 'time'), 'the Time: the time of day, and the weather')
+  assertStringIncludes(partOf(scenario, 'music')!, 'the Music')
   assertEquals(
     partOf(scenario, 'people.p1.goal'),
     "Kael's Goal: what they want in this story, and what drives them",

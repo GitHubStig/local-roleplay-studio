@@ -105,6 +105,8 @@ export interface Settings {
   limits: boolean
   /** Log every call to the Text and Image Models in its Session's folder, under `calls/`. */
   callLog: boolean
+  /** Music in a Roleplay, while it's being built: everything for it hides while off. */
+  music: boolean
   /** Where Sessions are kept: a full path, or '' for the app's own `sessions/`. Changed on its own tab, not with the rest. */
   sessionsFolder: string
   /** The model that pictures Roleplay Frames; '' for the Session's Text Model. Applies at once. */
@@ -333,6 +335,8 @@ export interface Scenario {
   place: string
   time: string
   style: string
+  /** What the story's music is like; '' for the Text Model to pick. */
+  music: string
   truths: string[]
   people: Person[]
   /** The id of the Person the player plays in a Roleplay. */

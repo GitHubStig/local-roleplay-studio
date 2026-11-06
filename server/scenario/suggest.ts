@@ -12,6 +12,7 @@ const STORY_PARTS: Record<string, string> = {
   place: 'the Place: where the story starts',
   time: 'the Time: the time of day, and the weather',
   style: 'the Style: the art style every picture is made in',
+  music: "the Music: what the story's music is like (its genre, instruments and mood)",
   truths: 'a Truth: something that holds in the story whatever anyone does or says',
 }
 

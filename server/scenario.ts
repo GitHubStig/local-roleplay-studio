@@ -19,6 +19,11 @@ export interface Scenario {
   time: string
   /** The art style every picture is made in; '' for the Look to pick one. */
   style: string
+  /**
+   * What the story's music is like; '' for the Text Model to pick (docs/music-plans.md). Missing
+   * from a Session's copy made before it.
+   */
+  music: string
   /** What holds about the story whatever anyone does. */
   truths: string[]
   people: Person[]
@@ -74,7 +79,7 @@ export const personId = (name: string) =>
   name.toLowerCase().normalize('NFKD').replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '')
 
 /** The prose sections, in the order they're written. */
-export const PROSE = ['opening', 'place', 'time', 'style'] as const
+export const PROSE = ['opening', 'place', 'time', 'style', 'music'] as const
 const SECTIONS = [...PROSE, 'truths', 'people']
 
 /** A Person's fields as written (`- Looks: …`), in order. */
@@ -241,6 +246,7 @@ export function parseScenario(id: string, text: string): Scenario {
     place: prose('place'),
     time: prose('time'),
     style: prose('style'),
+    music: prose('music'),
     truths: items(sections.get('truths') ?? ''),
     people,
     ...(player && { player: role('player', player) }),
@@ -317,6 +323,7 @@ export function scenarioFrom(value: unknown): Scenario {
     place: text(o.place, 'place'),
     time: text(o.time, 'time'),
     style: text(o.style, 'style'),
+    music: text(o.music, 'music'),
     truths: list(o.truths, 'the Truths'),
     people,
     ...(player && { player }),
@@ -406,7 +413,8 @@ export const truthsOf = (s: Scenario): string => truthList(s).map((t) => `- ${t}
 
 /**
  * What a Scenario states besides its Opening and Truths, as a YAML block for the Text Model:
- * the place, time and style, and each Person but their Truths. Empty when it states none.
+ * the place, time and style, and each Person but their Truths. Empty when it states none. Not the
+ * music, which is for the music alone, not the Character or the pictures.
  */
 export function factsOf(s: Scenario, roles = false): string {
   const name = (id?: string) => s.people.find((p) => p.id === id)?.name
@@ -436,6 +444,7 @@ export function briefScenario(brief: string): Scenario {
     place: '',
     time: '',
     style: '',
+    music: '',
     truths: [],
     people: [],
   }

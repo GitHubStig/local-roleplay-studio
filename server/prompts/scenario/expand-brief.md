@@ -23,9 +23,6 @@ the Scenario's parts, and add only what the story can't start without:
 - opening: the situation when the story starts: who is where, doing what, in the third person.
   Name every person in it by the names you gave them, the player's own too (never "the player").
   Keep to what the Brief says: not a plot to follow.
-- place, time, style, truths, and each person's looks, wears, personality, speaks, background,
-  goal and truths: only what the Brief states, in its words where you can, and the rest left
-  empty ("" or []). An art style the Brief names goes in style; what must hold whatever anyone does
-  ("there's no magic", "she can't be hurt") goes in truths.
+- place, time, style, music, truths, and each person's looks, wears, personality, speaks, background, goal and truths: only what the Brief states, in its words where you can, and the rest left empty ("" or []). An art style the Brief names goes in style, and music it names (a genre, instruments, a mood for the soundtrack) in music; what must hold whatever anyone does ("there's no magic", "she can't be hurt") goes in truths.
 
 {{suggest}}

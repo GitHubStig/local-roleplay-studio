@@ -12,6 +12,7 @@ Deno.test('Expand sorts a Brief into its parts, and suggests only for what stays
     place: 'A lighthouse.',
     time: '',
     style: '',
+    music: 'Sea shanties.',
     truths: [],
     people: [
       { name: 'Mara', ...blank, looks: 'Grey-haired.', truths: [] },
@@ -23,6 +24,7 @@ Deno.test('Expand sorts a Brief into its parts, and suggests only for what stays
     suggestions: [
       { person: '', field: 'time', text: 'A winter night.' },
       { person: '', field: 'place', text: 'Not blank.' },
+      { person: '', field: 'music', text: 'Not blank either.' },
       { person: 'Mara', field: 'goal', text: 'Keep the light lit.' },
       { person: 'Mara', field: 'goal', text: 'A second one.' },
       { person: 'Mara', field: 'looks', text: 'Not blank.' },
@@ -31,10 +33,11 @@ Deno.test('Expand sorts a Brief into its parts, and suggests only for what stays
     ],
   })
   assertEquals(scenario.people.map((p) => [p.id, p.looks]), [['mara', 'Grey-haired.'], ['ned', '']])
-  assertEquals([scenario.title, scenario.opening, scenario.place], [
+  assertEquals([scenario.title, scenario.opening, scenario.place, scenario.music], [
     'The Keeper',
     'Mara finds Ned on the rocks.',
     'A lighthouse.',
+    'Sea shanties.',
   ])
   assertEquals([scenario.player, scenario.character], ['ned', 'mara'])
   assertEquals(suggestions, [

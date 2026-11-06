@@ -32,6 +32,10 @@ Late evening, in a storm.
 
 A moody, cinematic oil painting…
 
+## Music
+
+A lone fiddle and a low cello, slow and smoky…
+
 ## Truths
 
 - It's the 18th century: nothing modern.
@@ -67,6 +71,7 @@ Write each paragraph or line on one line, and put a blank line between paragraph
 | Place | Where it starts |
 | Time | The time of day, and the weather |
 | Style | The art style every picture is made in. Leave it out, and the Text Model picks one for the story |
+| Music | What the story's music is like in a Roleplay: its genre, instruments and mood, and what to avoid. It's for the music alone: the Character and the pictures never see it. Leave it out, and the Text Model picks. Music is still being built ([music-plans.md](music-plans.md)); the Scenario page shows the part once Settings' Music is on |
 | Truths | What holds in the story whatever anyone does or says: "there's no magic", "the enemy is never seen" |
 | People | Anyone the story treats as someone (a human, an alien, a monster, a talking car), a `###` heading each, by name |
 

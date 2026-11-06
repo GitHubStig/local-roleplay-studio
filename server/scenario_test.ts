@@ -34,6 +34,11 @@ by the harbour.
 
 Late evening, in a storm.
 
+## Music
+
+A lone fiddle,
+low and smoky.
+
 ## Truths
 
 - It's the 18th century.
@@ -64,6 +69,7 @@ Deno.test('parseScenario reads every section, joining lines, and who plays whom'
   assertEquals(s.place, 'A small tavern by the harbour.')
   assertEquals(s.time, 'Late evening, in a storm.')
   assertEquals(s.style, '')
+  assertEquals(s.music, 'A lone fiddle, low and smoky.')
   assertEquals(s.truths, ["It's the 18th century.", 'Nobody comes to help on a night like this.'])
   assertEquals(s.people.map((p) => p.id), ['kael', 'elara'])
   assertEquals(s.people[0], {
@@ -198,6 +204,8 @@ Deno.test('factsOf states only what the Scenario states, and who plays whom when
   assertStringIncludes(facts, 'place: A small tavern by the harbour.')
   assertStringIncludes(facts, 'goal: find who sent the letter.')
   assertEquals(facts.includes('style'), false)
+  // The music is for the music alone, not the Character or the pictures.
+  assertEquals(facts.includes('fiddle'), false)
   assertEquals(facts.includes('personality'), false)
   assertEquals(facts.includes('stronger'), false)
   assertEquals(facts.includes('plays'), false)
