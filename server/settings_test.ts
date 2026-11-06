@@ -150,7 +150,6 @@ Deno.test('validateSettings fills in what an older file lacks, keeps what it may
     ['thinking', false, true, 'yes'],
     ['upscaler', 'seedvr2-7b', 'seedvr2-3b', 'esrgan'],
     ['limits', true, false, 'no'],
-    ['artModel', '', 'gemma4:31b-mlx', 3],
     ['stepCache', 0.4, null, 0.9],
     ['editQuantize', 8, null, 6],
     ['float16', 'auto', 'on', 'yes'],

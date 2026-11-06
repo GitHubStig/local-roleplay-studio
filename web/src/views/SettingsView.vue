@@ -336,21 +336,6 @@ function saveNow() {
               <template v-if="form.textModel && !canThink">{{ form.textModel }} can't think.</template>
             </ToggleSwitch>
           </div>
-
-          <div class="card">
-            <h3 class="font-medium">Art Agent</h3>
-            <label class="flex flex-col gap-1">
-              <span class="text-sm text-muted">Model</span>
-              <SelectField v-model="form.artModel" data-art-model>
-                <option value="">Same as the Text Model</option>
-                <option v-for="m in textModelChoices" :key="m" :value="m">{{ m }}</option>
-              </SelectField>
-              <span class="text-sm text-muted">
-                Pictures Roleplay Frames (Thinking off); applies to the next picture, in running
-                Sessions too.
-              </span>
-            </label>
-          </div>
         </section>
 
         <section

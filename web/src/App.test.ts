@@ -97,7 +97,6 @@ beforeEach(() => {
     musicVocals: 'instrumental',
     musicTaste: '',
     sessionsFolder: '',
-    artModel: '',
     features: ALL_ON,
   })
   vi.mocked(api.getSettingsOptions).mockResolvedValue({

@@ -116,7 +116,6 @@ export interface Settings {
   /** Where Sessions are kept: a full path, or '' for the app's own `sessions/`. Changed on its own tab, not with the rest. */
   sessionsFolder: string
   /** The model that pictures Roleplay Frames; '' for the Session's Text Model. Applies at once. */
-  artModel: string
   /** Which Features are switched on (one this machine can't run is off whatever this says). */
   features: Record<Feature, boolean>
 }

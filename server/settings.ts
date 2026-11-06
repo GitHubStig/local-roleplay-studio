@@ -119,11 +119,6 @@ export interface Settings {
    */
   videoOn?: string
   /**
-   * The model that pictures Roleplay Frames (the Art Agent); '' for the Session's Text Model.
-   * Read when a picture is made, so it applies to running Sessions too.
-   */
-  artModel: string
-  /**
    * Which extras are switched on (all, by default): one that this machine can't run is off
    * whatever this says (`features.ts`). Read on every request, so it applies mid-Session too.
    */
@@ -234,7 +229,6 @@ export const DEFAULT_SETTINGS: Settings = {
   editModel: EDIT_MODELS[0].id,
   editQuantize: 8,
   videoModel: DEFAULT_VIDEO_MODEL,
-  artModel: '',
   features: Object.fromEntries(FEATURES.map((f) => [f, true])) as Record<Feature, boolean>,
   limits: true,
   callLog: false,
@@ -382,9 +376,6 @@ export function validateSettings(input: unknown): ValidationResult {
       issues.push('sessionsFolder must be a full path, like /Users/you/Sessions, or empty')
     }
   }
-  if (s.artModel !== undefined && typeof s.artModel !== 'string') {
-    issues.push('artModel must be a string')
-  }
   const features = s.features as Record<string, unknown> | undefined
   if (
     features !== undefined &&
@@ -452,7 +443,6 @@ export function validateSettings(input: unknown): ValidationResult {
       videoModel: (s.videoModel as string | undefined) ?? DEFAULT_SETTINGS.videoModel,
       ...(sizes !== undefined && { videoSizes: sizes as Record<string, ClipSize> }),
       ...(s.videoOn !== undefined && { videoOn: s.videoOn as string }),
-      artModel: (s.artModel as string | undefined) ?? '',
       // One not mentioned (an older file, or a Feature added since) is on.
       features: { ...DEFAULT_SETTINGS.features, ...(features as Record<Feature, boolean>) },
       limits: (s.limits as boolean | undefined) ?? true,

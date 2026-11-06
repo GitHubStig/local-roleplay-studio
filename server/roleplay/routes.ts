@@ -65,8 +65,6 @@ export interface RoleplayRouteContext {
   deps(session: Session): RoleplayDeps
   /** The model Suggest writes with: the Session's Text Model, Thinking off. */
   suggestModel(session: Session): RoleplayModel
-  /** The model the Score is written with: the Art Agent's, as for the Look. */
-  scoreModel(session: Session): Promise<RoleplayModel>
   /** Settings as they are now. */
   settings(): Promise<Settings>
   /**
@@ -215,7 +213,7 @@ export function roleplayRoutes(ctx: RoleplayRouteContext): Route[] {
         if (!session.cast) return error('This Roleplay has not been set up', 409)
         const scenario = ctx.scenarioFor(session)
         if (scenario instanceof Response) return scenario
-        const model = await ctx.scoreModel(session)
+        const model = ctx.deps(session).roleplayModel
         return ctx.stream(session, null, false, async (send, signal) => {
           await writeScore(
             { store: ctx.store, model },

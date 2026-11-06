@@ -445,22 +445,6 @@ Deno.test('Without SHARP, making a scene fails with a reason', () =>
     assertEquals((await res.json()).error, "SHARP isn't available here: No SHARP was set up")
   }))
 
-Deno.test('Pictures use the Art Agent model set in Settings, recorded on the Frame', () =>
-  withTempDir(async (root) => {
-    const artist = scriptedRoleplayModel({
-      name: 'artist',
-      looks: [testLook('Ink.', 'Mira Vance, 34.', 'Sam Reyes, 25.')],
-      bodies: [artBody],
-    })
-    const { call, settings } = await roleplayWithArt(root, [], { roleplayModels: { artist } })
-    settings.current = { ...settings.current, artModel: 'artist' }
-    await call('POST', '/api/sessions/s1/jobs', { kind: 'picture', frameIndex: 0 })
-    assertEquals(await settled(call), [])
-    const session = await (await call('GET', '/api/sessions/s1')).json()
-    assertEquals([session.lookModel, session.frames[0].pictureModel], ['artist', 'artist'])
-    assertEquals(artist.art.length, 2)
-  }))
-
 Deno.test('A voice is designed while the Cast is reviewed, before the scene begins', () =>
   withTempDir(async (root) => {
     const voice = fakeVoiceEngine()

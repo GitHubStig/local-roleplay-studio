@@ -12,7 +12,7 @@ The Mac is the development Mac (Apple silicon, M5 Pro, 48 GB); the PC is the Win
 
 ## Text Model
 
-**Gemma 4 12B Heretic, GGUF Q4_K_M, Thinking off, for every text job, on either machine** (`hf.co/igorls/gemma-4-12B-it-heretic-GGUF:Q4_K_M`, since 2026-10-08). On a Mac with memory to spare, **Gemma 4 26B-A4B Heretic** (`gemma-4-26b-heretic:nvfp4`, built locally with `ollama create -q nvfp4` from `coder3101/gemma-4-26B-A4B-it-heretic`; [how](research/ollama.md#building-an-mlx-model-from-a-heretic-checkpoint)) is 2–3× faster and as careful. Set it in **Settings → Text Model**; it applies from the next Session. Settings also has an Art Agent model: leave it empty, so the same model pictures too.
+**Gemma 4 12B Heretic, GGUF Q4_K_M, Thinking off, for every text job, on either machine** (`hf.co/igorls/gemma-4-12B-it-heretic-GGUF:Q4_K_M`, since 2026-10-08). On a Mac with memory to spare, **Gemma 4 26B-A4B Heretic** (`gemma-4-26b-heretic:nvfp4`, built locally with `ollama create -q nvfp4` from `coder3101/gemma-4-26B-A4B-it-heretic`; [how](research/ollama.md#building-an-mlx-model-from-a-heretic-checkpoint)) is 2–3× faster and as careful. Set it in **Settings → Text Model**; it applies from the next Session.
 
 | Model | Loaded | Chain, per Action | Art Agent, per picture | Suggest | Reply | Runs on | Verdict |
 |---|---|---|---|---|---|---|---|

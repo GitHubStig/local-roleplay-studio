@@ -28,5 +28,5 @@ Settings had one place for each kind of work: one ComfyUI address for pictures, 
 - The Session's Image Model picker lists each model under each kind of backend that has it, as before this ADR; Settings' Default Image Model is one list, by name, each saying where Settings send it. A Picture, and an edit version, keep recording which kind of Backend made them, and a render says so as it starts, which is how the page knows to show ComfyUI's picture forming.
 - Built on 2026-10-26, on the Mac, in four steps: the Backends list (2a), an Image Model known by its name (2b-1), a Session keeping only its models (2b-2), an edit model per model (2b-3). The Mac's `settings.json` and Sessions were converted by hand as each step landed; the PC's Sessions were to be deleted rather than converted.
 - A Text Model is known by its name, which differs between Ollama and a server with the OpenAI chat API, so a Session's Text Model is found only on the Backends that list it.
-- The Art Agent model, if set, goes where the Session's Text Model goes.
+- The Art Agent model, if set, went where the Session's Text Model goes. The option was removed on 2026-11-06, unused: every text job uses the Session's Text Model, as AGENTS.md has it.
 - 3D and the style scores run only here for now, but are sent to this machine's Backend like any other job.

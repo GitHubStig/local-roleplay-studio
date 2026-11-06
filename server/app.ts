@@ -589,22 +589,12 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     upscaler,
     videoModel,
     videoSize,
-    // A separate Art Agent model pictures with Thinking off: it made pictures 5–22× slower for no
-    // gain in correctness (docs/research/text-models.md).
-    artModel: async (session) => {
-      const { artModel } = await deps.settings.load()
-      return artModel && artModel !== session.settings.textModel
-        ? deps.roleplayModel(textChoice(session, artModel, false))
-        : undefined
-    },
   }
   /** Which Backend a job of `kind` would go to for `session` now, as an edit is told. */
   async function jobBackendOf(session: Session, kind: JobKind, edit?: EditOrder) {
     const now = await deps.settings.load()
-    // A picture is written by the Art Agent's model, the Session's Text Model unless set.
-    const text = kind === 'picture'
-      ? await textBackendOf(now.artModel || session.settings.textModel)
-      : undefined
+    // A picture is written by the Session's Text Model, where it runs.
+    const text = kind === 'picture' ? await textBackendOf(session.settings.textModel) : undefined
     return jobBackend(kind, session.settings, now, detected, {
       editModel: edit?.model,
       editBackend: edit?.backend,
@@ -763,8 +753,6 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       deps: roleplayDeps,
       // Thinking off, as for pictures: a suggestion is a draft, and it should come quickly.
       suggestModel: (session) => deps.roleplayModel(textChoice(session, undefined, false)),
-      scoreModel: async (session) =>
-        (await roleplayJobs.artModel(session)) ?? roleplayDeps(session).roleplayModel,
       settings: () => deps.settings.load(),
       queuesAfterReply: async (session, after) => {
         const machine = async (kind: JobKind) => machineOf(await jobBackendOf(session, kind))

@@ -56,7 +56,7 @@ export class VoiceError extends Error {}
 
 export interface VoiceDeps {
   store: SessionStore
-  /** Writes the voice description: the Art Agent's model, as for the Look. */
+  /** Writes the voice description and directs each line: the Session's Text Model. */
   model: RoleplayModel
   voice?: VoiceEngine
   renderQueue?: RenderQueue

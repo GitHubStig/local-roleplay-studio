@@ -39,7 +39,6 @@ const settings: Settings = {
   musicVocals: 'instrumental',
   musicTaste: '',
   sessionsFolder: '',
-  artModel: '',
   features: ALL_ON,
 }
 

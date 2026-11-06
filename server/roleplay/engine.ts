@@ -45,8 +45,6 @@ export type RoleplayEvent =
 export interface RoleplayDeps {
   store: SessionStore
   roleplayModel: RoleplayModel
-  /** The Art Agent's model when Settings name one; otherwise pictures use `roleplayModel`. */
-  artModel?: RoleplayModel
   /** The voice service, when voices are available. */
   voice?: VoiceEngine
   /** SHARP, when 3D scenes are available. */
@@ -240,7 +238,7 @@ export async function pictureFrame(
   if (!session.cast || !session.frames[index]) {
     throw new RoleplayError(`There is no ${frameName(index)}`)
   }
-  const art = deps.artModel ?? deps.roleplayModel
+  const art = deps.roleplayModel
   emit({ type: 'phase', phase: 'text' })
   let current = session
   // No Look yet (or one from before it listed its Subjects): write one.

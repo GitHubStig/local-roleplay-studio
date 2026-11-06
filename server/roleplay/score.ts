@@ -124,7 +124,7 @@ export async function scoreMessages(
 
 export interface ScoreDeps {
   store: SessionStore
-  /** The model that writes it: the Art Agent's, as for the Look and the voice. */
+  /** The Session's Text Model. */
   model: RoleplayModel
 }
 

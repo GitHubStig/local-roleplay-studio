@@ -10,7 +10,6 @@ import type { ClipSize } from '../video/videoGenerator.ts'
 import type { Scenario } from '../scenario.ts'
 import type { Session, SessionStore } from '../session.ts'
 import { pictureFrame, renderRoleplayFrame, type RoleplayDeps } from './engine.ts'
-import type { RoleplayModel } from './model.ts'
 import type { RoleplaySession } from './types.ts'
 import { checkPictureJob, PICTURE_JOB_KINDS, runPictureJob } from '../pictureJobs.ts'
 import { designVoice, speakFrame, spokenText } from './voice.ts'
@@ -26,8 +25,6 @@ export interface RoleplayJobContext {
   videoModel(): Promise<string>
   /** The clip size chosen in Settings now for a video model; none for the model's own. */
   videoSize(model: string): Promise<ClipSize | undefined>
-  /** The Art Agent's model chosen in Settings now, if one is; else pictures use the Text Model. */
-  artModel(session: Session): Promise<RoleplayModel | undefined>
 }
 
 /** Why `kind` can't be queued on a Roleplay's Frame `index`, or null if it can. */
@@ -57,14 +54,7 @@ export async function runRoleplayJob(
   emit: JobEmit,
   signal: AbortSignal,
 ): Promise<void> {
-  // The Art Agent's model pictures Frames, and describes the Character's voice as it does the Look.
-  const artModel = ['picture', 'voice', 'speak', 'speak-thought'].includes(job.kind)
-    ? await ctx.artModel(session)
-    : undefined
-  const withDeps = {
-    ...ctx.deps(session),
-    ...(artModel ? { artModel } : {}),
-  }
+  const withDeps = ctx.deps(session)
   /** Saves onto the Roleplay as it is now: the conversation may have moved on meanwhile. */
   const save = (change: (s: RoleplaySession) => RoleplaySession) =>
     updateSession(withDeps.store, session.id, change)
@@ -73,7 +63,7 @@ export async function runRoleplayJob(
     if (scenario instanceof Response) throw new Error((await scenario.json()).error)
     await pictureFrame(withDeps, session, scenario, job.frameIndex, emit, signal)
   } else if (job.kind === 'voice' || job.kind === 'speak' || job.kind === 'speak-thought') {
-    const voiceDeps = { ...withDeps, model: withDeps.artModel ?? withDeps.roleplayModel }
+    const voiceDeps = { ...withDeps, model: withDeps.roleplayModel }
     if (job.kind === 'voice') await designVoice(voiceDeps, session, emit, signal)
     else {
       const part = job.kind === 'speak-thought' ? 'thought' : 'dialogue'

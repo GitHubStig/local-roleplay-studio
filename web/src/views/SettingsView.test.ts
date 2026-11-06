@@ -43,7 +43,6 @@ const settings: api.Settings = {
   musicVocals: 'instrumental',
   musicTaste: '',
   sessionsFolder: '',
-  artModel: '',
   features: ALL_ON,
 }
 
@@ -707,21 +706,6 @@ describe('SettingsView', () => {
       upscaler: 'seedvr2-3b',
     })
     expect(wrapper.text()).toContain('Applies from the next Session')
-  })
-
-  it('sets a separate Art Agent model, from the installed Text Models', async () => {
-    const wrapper = mount(SettingsView)
-    await flushPromises()
-    const select = wrapper.find('[data-art-model]')
-    expect(select.findAll('option').map((o) => o.text())).toEqual([
-      'Same as the Text Model',
-      'gemma4:31b-mlx',
-      'llama3:latest',
-    ])
-    await select.setValue('gemma4:31b-mlx')
-    await wrapper.find('form').trigger('submit')
-    await flushPromises()
-    expect(api.saveSettings).toHaveBeenCalledWith({ ...settings, artModel: 'gemma4:31b-mlx' })
   })
 
   it('offers Thinking only for Text Models that can think', async () => {
