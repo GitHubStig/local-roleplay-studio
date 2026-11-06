@@ -4,7 +4,7 @@ A **Scenario** is a story a Session starts from, in one Markdown file: who's in 
 
 **Say what matters, and leave the rest out.** Only the title, the description and the Opening are needed. Whatever a Scenario states holds; whatever it leaves out is the Text Model's to invent, so a short Scenario leaves a model room to play, and the same Scenario and seed give the same Session ([ADR 0032](adr/0032-scenarios-are-stories-kept-in-each-session.md)).
 
-[`example-scenarios/tavern.md`](../example-scenarios/tavern.md) is written for a Roleplay (you play Elara, the Text Model plays Kael), and [`example-scenarios/contact.md`](../example-scenarios/contact.md) for a Storyboard of five people. Either can start any kind of Session.
+[`example-scenarios/tavern.md`](../example-scenarios/tavern.md) is written for a Roleplay (you play Elara, the Text Model plays Kael), and [`example-scenarios/contact.md`](../example-scenarios/contact.md) for a Storyboard of five people. Two more are Roleplays in the afterlife, both with you as Elias: [`knocking-on-heavens-door.md`](../example-scenarios/knocking-on-heavens-door.md), at heaven's gate with the archangel Michael, and [`the-buffet-of-souls.md`](../example-scenarios/the-buffet-of-souls.md), in a hall where the newly dead wait, guided by Patrick Swayze (a real person, which the Limits allow: [ADR 0034](adr/0034-real-people-are-not-a-limit.md)). Any of them can start any kind of Session.
 
 ## Layout
 

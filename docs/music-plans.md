@@ -72,7 +72,7 @@ No music model, no downloads. The aim is to read a few Roleplays' Cues and judge
 - [ ] Bench replays (`server/replay/replays/`), longer than the ones there now (about 12–16 Messages), each with a planned emotional course written at its top: where the music should hold, where it should shift and how sharply. That's the answer key the Director's decisions are checked against. The Messages steer the turning points, so they land in the same place whatever the seeded Replies say:
   - **Tavern, a lost relative**: wary talk turns into recognition, Elara as Kael's long-lost daughter or old love; slow, tender shifts with no change of place.
   - **Tavern, a hired killer**: friendly on the surface, deceit underneath, then a fight; a sharp transition, and a test of whether the Director hears the menace before the blade comes out.
-  - **Knocking on Heaven's Door**: begins in awe, a test of choir and wordless vocals and of the Vocals setting holding them back.
+  - **Knocking on Heaven's Door** (an example Scenario since 2026-11-06, as is the Buffet, so their replays run on both machines): begins in awe, a test of choir and wordless vocals and of the Vocals setting holding them back.
   - **The Buffet of Souls**: somber, regret, maybe acceptance; slow shifts within one low mood, a test of Steady against Follows the story.
   - **A control where nothing shifts**: a long, even conversation (the tavern's small talk), for the Director to hold one Cue through; it catches a Director that changes too readily.
 - [ ] A bench: those Roleplays, over several seeds: split against merged calls, whole story against since the Cue began; decisions, Cues, time per Frame, runaways. Findings in the bench's README.
