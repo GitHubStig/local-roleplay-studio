@@ -105,7 +105,7 @@ Every edit is pasted back through the painted mask, so nothing outside it change
 
 ## Voices
 
-On the Mac, through mlx-audio 0.6.1 (the voice service, `python/voice/serve.py`); on the PC, through ComfyUI's TTS Audio Suite, with the same two models ([ADR 0010](adr/0010-voices-from-mlx-audio-or-comfyui.md)):
+On the Mac, through mlx-audio 0.6.4 (the voice service, `python/voice/serve.py`); on the PC, through ComfyUI's TTS Audio Suite, with the same two models ([ADR 0010](adr/0010-voices-from-mlx-audio-or-comfyui.md)):
 
 - **Qwen3-TTS VoiceDesign (1.7B) designs each Character's voice once**, from the Text Model's description of it in sound terms. The description asks for a natural adult voice: an adult age, a register, and none of the words that make a voice young or extreme ("high-pitched", "melodic").
 - **Higgs TTS 3 (4B) clones that voice for every line**: untagged, at steadier sampling (temperature 0.5, top-k 30), it held the voice 24 times in 24, against 6 with emotion tags. Licensed for research only, non-commercial.
