@@ -127,9 +127,33 @@ The same stories directed with `MODEL=gemma-4-12b-heretic:nvfp4` (the MLX build;
 - **It agrees on chunks**: whole is best at 61 Frames, two chunks of 50 at 100, and smaller chunks add changes. So one rule, whole up to 75 Frames and even chunks of no more beyond, suits both models.
 - No runaway in any run.
 
+## One call against two (2026-11-07, Mac)
+
+The Director and the cue writer merged (a bench variant, removed once benched and never committed): one reply with the decision and then the music from this Frame on, always written (a schema can't ask for it only on a change) and kept only on a change. Against the two calls (`base`):
+
+| | Two calls | One call |
+|---|---|---|
+| 26B, 20 short stories | 243 of 276 (88%), 7 missed, 26 extra, 2.6–2.9 s/Frame | 240 (87%), 14 missed, 22 extra, 3.2–3.5 s/Frame |
+| 12B, 20 short stories | 212 (77%), 8 missed, 56 extra, 4.5–5.5 s/Frame | 223 (81%), 10 missed, 43 extra, 6.0–6.2 s/Frame |
+| 26B, 61 Frames (seeds 1, 2) | 106 of 122 (87%), 15 extra, 2.8 s/Frame | 113 (93%), 8 extra, 3.6 s/Frame |
+
+The Cues each wrote (changes only):
+
+| | Instruments outside the Score's palette | Voiced Cues (Heaven allows them) | Same energy, density and tempo as the Cue before |
+|---|---|---|---|
+| 26B, two calls / one | 0 of 238 / 6 of 245 | 10 / 4 | 20 / 9 |
+| 12B, two calls / one | 0 of 399 / 0 of 394 | 10 / 7 | 7 / 10 |
+| 26B, 61 Frames, two calls / one | 0 of 61 / 18 of 52 | 0 / 0 | 5 / 3 |
+
+- **Decisions**: about even on the 26B's short stories (a few more turns missed, a few fewer extra), better on the 12B (fewer extra changes) and on the long story.
+- **Slower, not quicker**: every Frame now writes a Cue's values, though most continue; the second call came only on a change.
+- **Its Cues are looser**: on the 26B the instruments drift from the palette's names ("fiddles", "low fiddle"), and on one long run the mood ran into them ("low, mourning cello", "dull wooden thud", "single low fiddle note"), which a music model's adapter would need clean. It used voices less where they're allowed.
+- No runaway in about 1,000 calls under the merged schema.
+
+Decided with the owner: **the two calls stay**, and the merged variant was removed. The decisions' gain is small and could be noise (20 stories, one long one), and Score the Roleplay reaches 89% on both models anyway, so it would help only the music as you play, and mostly on the 12B; the looser Cues and the slower Frames weigh more. If the 12B's music as you play falls short on the PC, the in-between is worth benching: a merged call that only names the music's direction ("warmer", "darker") and leaves the values to the cue writer on a change.
+
 ## Not checked
 
-- **One call against two**: the Director and the cue writer merged, the plan's last comparison, left until both prompts settle.
 - **A Roleplay over 100 Frames**, and Score the Roleplay's 75-Frame chunks, read with or without thinking.
 - **Thinking on for the Director as you play** (Score the Roleplay's is above), and the PC's GGUF build of the 12B itself.
 - **The Behaviour's sentences** against each other beyond the two single-replay checks above.
