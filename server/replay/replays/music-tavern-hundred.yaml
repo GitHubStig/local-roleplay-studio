@@ -1,0 +1,209 @@
+# The public tavern Scenario, a long evening and the next day for Score the Roleplay over 100 Frames
+# (docs/music-plans.md): the 60 Messages of music-tavern-long-night, then a calm morning, the excise
+# men returning (dread), a shot and flight to the boat (sharp), and peace at sea. Nine turns, two sharp.
+kind: roleplay
+seed: 13
+scenario: tavern
+pictures: false
+music: { behaviour: story, vocals: instrumental }
+messages:
+  - "I push in out of the storm and stamp the mud off my boots. \"Evening. Is the kitchen still open?\""
+  - "I hang my wet cloak by the fire. \"Whatever's hot, and a cider if you have it.\""
+  - "I take a long drink. \"That's good. Local?\""
+  - "\"I came up the coast road. Half of it's washed out past the bridge.\""
+  - "I nod at the ship in a bottle over the bar. \"Did you make that?\""
+  - "\"My grandfather made those. He said the trick is patience and tweezers.\""
+  - "I laugh. \"Do you get many travellers this late in the year?\""
+  - "\"I'll want a room for the night, if there's one going.\""
+  - "I stretch my legs towards the fire. \"It's a good fire. You keep a good house.\""
+  - "\"Does the storm usually last long out here?\""
+  - "I glance at the old cutlass on the wall. \"That's not a fisherman's blade.\""
+  - "\"You don't talk like a man who's always kept an inn.\""
+  - "I lower my voice. \"Did you ever sail with the Gull? The smuggling ship?\""
+  - "I watch his face. \"You flinched when I said it.\""
+  - "\"I'm not the excise. I'm not here to drag up old crimes.\""
+  - "I turn my mug in my hands. \"I'm looking for someone who sailed on her. Twenty years ago.\""
+  - "\"His name was Kael. They said he went ashore up this coast and never came back.\""
+  - "I study the scar across the back of his hand. \"They said he had a scar, just there.\""
+  - "\"Please don't lie to me. I've come a very long way.\""
+  - 'I take out a faded ribbon and lay it on the bar between us.'
+  - "\"My mother was Maren. She gave me this the night she died, and told me to find you.\""
+  - "My voice cracks. \"I'm your daughter. I think you know that.\""
+  - "I wipe my eyes quickly. \"You don't have to say anything yet.\""
+  - "\"She never said a bad word about you. Not once.\""
+  - "I laugh through the tears. \"She said you sang badly and loudly.\""
+  - "\"I have her eyes, they tell me. Do I?\""
+  - 'I reach across the bar and take his scarred hand.'
+  - "\"Why did you never come back for us?\""
+  - "I listen, and nod slowly. \"I think I understand. I don't forgive it yet, but I understand.\""
+  - "\"Will you tell me about her, when she was young?\""
+  - "Someone hammers on the door. I go still. \"Are you expecting anyone?\""
+  - "The door bursts open and three men with cudgels shoulder in out of the rain, the excise badge on the first one's coat."
+  - 'I step between them and Kael, my hand going to the knife at my belt.'
+  - 'The first man swings at me and I duck under it and drive my shoulder into his chest.'
+  - "I grab the cutlass off the wall and toss it to Kael. \"You'll want this!\""
+  - "I kick a stool into the second man's legs and he goes down hard."
+  - 'The third man catches me across the arm and I cry out and stagger back.'
+  - 'I hold my bleeding arm and watch Kael drive the last of them out into the storm.'
+  - 'I slam the bolt across the door, breathing hard.'
+  - "I sink down against the wall, shaking. \"Is that what you ran from?\""
+  - "I let him clean the cut on my arm, wincing. \"Gently. Please.\""
+  - "\"You fought for me. Like a father would.\""
+  - "I watch him wind the bandage. \"Did you do this for my mother, once?\""
+  - "\"Tell me the truth now. All of it.\""
+  - "I listen to the whole story without interrupting, and when he's done I'm crying again."
+  - "\"I wish she'd lived to see you again.\""
+  - 'I lean my head against his shoulder.'
+  - "\"I forgive you. I think I did the moment you threw me that cutlass.\""
+  - "I sit up and wipe my face. \"So. What do I call you?\""
+  - "I try it out, shyly. \"Father.\""
+  - "Later, by the fire, I listen to the storm dying away outside. \"It's quieter now.\""
+  - "\"Will they come back, those men?\""
+  - "I nod. \"Then we'll be ready. Both of us.\""
+  - "\"Could I stay a while? Help you run the place?\""
+  - "I smile at the ship in a bottle. \"You could teach me how to make those.\""
+  - "\"Patience and tweezers, you said.\""
+  - "I yawn and stretch. \"I haven't slept properly in weeks.\""
+  - "\"Sing me something? Badly and loudly, like she said.\""
+  - 'I laugh softly at the song and pull the blanket around my shoulders.'
+  - "\"Goodnight, Father.\" I close my eyes by the fire."
+  - "In the morning I come down the stairs to grey light and the smell of bread. \"You're up early.\""
+  - "I sit at the bar and pull a mug of tea towards me. \"I slept like the dead.\""
+  - "\"Show me how you open up. I want to be useful.\""
+  - "I sweep the broken mugs from last night into a pile. \"You lost half your crockery.\""
+  - "I laugh as he shows me how to tap a cask. \"That's harder than it looks.\""
+  - "\"Gulls on the harbour wall. Is it always this quiet in the mornings?\""
+  - "I take down the ship in a bottle and turn it in the light. \"Start me on one tonight?\""
+  - "\"I keep wanting to tell her. My mother. That I found you.\""
+  - "I wipe down the tables, humming the tune from last night."
+  - "\"We should mend the door before anyone sees it.\""
+  - "I look up from the door hinge. A rider in excise blue is coming down the coast road. \"Father.\""
+  - "I put the hammer down slowly. \"He's alone. That's worse, isn't it? It means he's sure.\""
+  - "The officer comes in and looks at the broken door, then at me. I keep my hands where he can see them."
+  - "\"Last night? A brawl. Drunks off a fishing boat. We threw them out.\""
+  - "I watch him read a paper with Kael's old name on it, and my mouth goes dry."
+  - "\"Twenty years. Doesn't the Crown ever forget anything?\""
+  - "I lay a purse on the bar beside his hand and say nothing."
+  - "He pushes the purse back. I swallow. \"Then what do you want?\""
+  - "\"Noon tomorrow. He'll come back with men. That's what he means, isn't it?\""
+  - "I watch the officer ride away and only then let myself shake."
+  - "A shot cracks outside and the window beside me bursts. \"They didn't wait for noon!\""
+  - "I drag him down behind the bar. \"The back way. Is there a back way?\""
+  - "I snatch up the ship in a bottle and the ribbon and run after him through the cellar."
+  - "We come out among the rocks below the tavern and I slip on the weed. \"Go! I'm right behind you!\""
+  - "I hear them shouting up on the cliff path and keep running for the jetty."
+  - "I throw off the mooring rope while he pulls at the oars. \"Row! Row!\""
+  - "A musket ball slaps the water beside the hull and I duck, shrieking."
+  - "I take the second oar and we pull together until my arms burn."
+  - "The shouts grow faint behind us. I look back at the smoke rising over the tavern."
+  - "\"Your home. All your things.\" I'm crying again, and I can't stop."
+  - "By evening the coast is a grey line behind us and the sea is calm and wide. \"Where do we go now?\""
+  - "I trail my hand in the water. \"I've never been on a boat this small.\""
+  - "\"I saved this.\" I hold up the ship in a bottle, not even cracked."
+  - "I laugh, and it surprises me. \"Patience and tweezers. We'll need both.\""
+  - "\"Tell me about the islands to the south. Did you sail there, with the Gull?\""
+  - "I watch the first stars come out over the water."
+  - "\"I think she'd have liked this. The two of us, and the sea.\""
+  - "I lean against his shoulder in the stern as the boat rocks."
+  - "\"Goodnight, Father. Wake me when you're tired, and I'll take the oars.\""
+course:
+  - begin: the opening, Kael alone with the letter as a stranger comes in
+  - hold: a traveller in from the rain
+  - hold: ordering
+  - hold: the cider
+  - hold: the road
+  - hold: the ship in a bottle
+  - hold: small talk
+  - hold: trade
+  - hold: a room
+  - hold: warmth
+  - hold: the weather
+  - gentle: the cutlass, the talk turns to his past
+  - hold: pressing
+  - hold: the ship's name
+  - hold: noticing
+  - hold: reassuring
+  - hold: her search
+  - hold: his own name
+  - hold: the scar
+  - hold: pleading
+  - hold: the ribbon
+  - gentle: the reveal, Maren, his daughter
+  - hold: said aloud
+  - hold: giving him time
+  - hold: her mother
+  - hold: laughter through tears
+  - hold: her face
+  - hold: touch
+  - hold: the hard question
+  - hold: not yet forgiving
+  - hold: asking for stories
+  - hold: a knock, unease
+  - sharp: the door kicked in
+  - hold: standing her ground
+  - hold: the fight
+  - hold: the cutlass, fighting together
+  - hold: the fight
+  - hold: she's hurt
+  - hold: they're driven out
+  - hold: the door barred
+  - hold: the fight over, shaking
+  - gentle: tending her wound, the fear gives way to closeness
+  - hold: closeness
+  - hold: memory of Maren
+  - hold: the truth
+  - hold: grief
+  - hold: grief
+  - hold: leaning on him
+  - hold: forgiveness
+  - hold: what to call him
+  - hold: father
+  - gentle: later, a quiet night settles
+  - hold: a passing worry
+  - hold: together
+  - hold: plans
+  - hold: the ship again
+  - hold: an echo
+  - hold: tiredness
+  - hold: a song
+  - hold: laughing at the song
+  - hold: goodnight
+  - gentle: morning, light and ordinary
+  - hold: tea
+  - hold: learning the work
+  - hold: sweeping up
+  - hold: the cask
+  - hold: quiet morning
+  - hold: the ship again
+  - hold: a passing ache
+  - hold: humming
+  - hold: mending the door
+  - gentle: the rider, dread comes back
+  - hold: dread
+  - hold: the officer
+  - hold: lying for him
+  - hold: the warrant
+  - hold: pleading, quiet
+  - hold: the bribe
+  - hold: refused
+  - hold: a deadline
+  - hold: after he goes
+  - sharp: a shot, they've come early
+  - hold: under fire
+  - hold: running through the cellar
+  - hold: the rocks
+  - hold: the chase
+  - hold: the boat
+  - hold: shots on the water
+  - hold: rowing together
+  - hold: the tavern burning
+  - hold: loss
+  - gentle: open sea, peace after flight
+  - hold: the sea
+  - hold: the ship saved
+  - hold: laughter
+  - hold: stories of the islands
+  - hold: stars
+  - hold: her mother remembered
+  - hold: leaning on him
+  - hold: goodnight at sea

@@ -89,11 +89,47 @@ The pass (`server/roleplay/hindsight.ts`) over the same 20 stories, and over a l
 | Course, chunks of 30 (6 either side) | 56 / 50 (87%) | 15 | 0.9 |
 | Course, the whole story in one call | 56 / 54 (90%) | 11 | 0.65 |
 
-Read whole, the 61 Frames took about 40 s in all; in chunks of 30, seed 2 put four changes near the boundary at Frame 31. So the app reads up to 100 Frames (about 30k tokens) in one call and chunks only beyond that, with 10 more read either side. 100 Frames read whole is untried.
+Read whole, the 61 Frames took about 40 s in all; in chunks of 30, seed 2 put four changes near the boundary at Frame 31.
+
+**100 Frames** (`music-tavern-hundred`: the long night's 60 Messages, then a calm morning, the excise men back with a warrant, a shot and flight to the boat (sharp), and peace at sea; nine turns, two sharp). Played once through the app under Score as you play (Session `20261107-055229-e1e2`, kept), then the pass run over that story at seeds 1 and 2:
+
+| | Kept, seed 1 / 2 | Extra | s/Frame |
+|---|---|---|---|
+| As you play (the app's run, scored the bench's way) | 84 of 100 | 13 | 4.2 |
+| Course, the whole story in one call | 84 / 84 | 14 / 14 | 0.85 |
+| Course, two chunks of 50 (10 either side) | 88 / 89 | 11 / 9 | 0.7 |
+
+Read whole, 100 Frames is too much: its changes crowd the last ten Frames. So the app reads a story whole up to 75 Frames and splits a longer one evenly into chunks of no more than 75, 10 more read either side: 61 Frames whole, 100 as two of 50, 150 as two of 75 (untried).
+
+**Thinking on** (`THINK=1`), the same course-first wording:
+
+| | Kept | Missed | Extra | s/Frame |
+|---|---|---|---|---|
+| The 20 short stories, thinking off | 245 of 276 (89%) | 14 | 17 | 0.9–1.4 |
+| The 20 short stories, thinking on | 241 (87%) | 22 | 13 | 7–12 |
+| 100 Frames in two chunks, thinking off | 88 / 89 | 3 / 3 | 11 / 9 | 0.7 |
+| 100 Frames in two chunks, thinking on | 88 / 89 | 3 / 3 | 9 / 8 | 5.8–6.5 |
+
+Thinking makes it quieter (fewer changes, more of them missed, Heaven 83%) and about ten times slower, about 10 minutes for 100 Frames against 70 s, for no gain. The app follows the Session's Thinking switch as for every text job; each call's limit with thinking is 10 minutes, which a 50-Frame chunk kept well inside (about 5); a 75-Frame one is untried.
+
+## Gemma 4 12B (2026-11-07, Mac)
+
+The same stories directed with `MODEL=gemma-4-12b-heretic:nvfp4` (the MLX build; the PC runs the GGUF Q4_K_M of the same model, assumed close), thinking off. The stories were played by the 26B; only the directing changes model.
+
+| | 12B | 26B |
+|---|---|---|
+| The Director as you play, 20 short stories | 212 of 276 (77%), 56 extra, 4.5–5.5 s/Frame | 243 (88%), 26 extra, 2.6–2.9 |
+| Score the Roleplay, 20 short stories | 245 (89%), 18 extra, 1.7–2.9 s/Frame | 245 (89%), 17 extra, 0.9–1.4 |
+| 61 Frames, whole / chunks of 30 | 111 / 105 of 122 (91% / 86%) | 90% / 87% |
+| 100 Frames, whole / two of 50 / four of 25 | 178 / 184 / 175 of 200 (89% / 92% / 88%) | 84% / 88.5% / not run |
+
+- **The 12B as you play changes far too often** (56 extra changes against 26); with hindsight it keeps to the course as well as the 26B. The 12B gains the most from Score the Roleplay.
+- **It agrees on chunks**: whole is best at 61 Frames, two chunks of 50 at 100, and smaller chunks add changes. So one rule, whole up to 75 Frames and even chunks of no more beyond, suits both models.
+- No runaway in any run.
 
 ## Not checked
 
 - **One call against two**: the Director and the cue writer merged, the plan's last comparison, left until both prompts settle.
-- **A Roleplay over 100 Frames**: the Director as you play reading it all each time, and Score the Roleplay's 100-Frame chunks.
-- **Thinking on**, and any Text Model but Gemma 4 26B; the PC's 12B in particular.
+- **A Roleplay over 100 Frames**, and Score the Roleplay's 75-Frame chunks, read with or without thinking.
+- **Thinking on for the Director as you play** (Score the Roleplay's is above), and the PC's GGUF build of the 12B itself.
 - **The Behaviour's sentences** against each other beyond the two single-replay checks above.

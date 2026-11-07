@@ -104,24 +104,26 @@ export interface Chunk {
   readTo: number
 }
 
-/** How many Frames a chunk scores, and how many more it reads either side. */
+/** The most Frames a chunk scores, and how many more it reads either side. */
 export interface Chunking {
   frames: number
   around: number
 }
 
 /**
- * The whole story in one call up to 100 Frames (about 30k tokens, README), and 10 more read either
- * side beyond that. A 61-Frame story kept to its course better read whole than in chunks of 30,
- * and chunks of 5 changed far more (docs/bench/music-director/README.md, 2026-11-07).
+ * The whole story in one call up to 75 Frames, and longer ones in even chunks of no more, each
+ * reading 10 more either side. A 61-Frame story kept to its course better read whole than in
+ * chunks of 30; a 100-Frame one better in two chunks of 50 than whole, where changes piled up
+ * towards its end; chunks of 5 changed far more (docs/bench/music-director/README.md, 2026-11-07).
  */
-export const CHUNKING: Chunking = { frames: 100, around: 10 }
+export const CHUNKING: Chunking = { frames: 75, around: 10 }
 
-/** The chunks a story of `count` Frames is read in, one after another. */
+/** The chunks a story of `count` Frames is read in, one after another, as even as they can be. */
 export function chunksOf(count: number, { frames, around }: Chunking = CHUNKING): Chunk[] {
+  const size = Math.ceil(count / Math.ceil(count / frames))
   const chunks: Chunk[] = []
-  for (let first = 0; first < count; first += frames) {
-    const last = Math.min(first + frames, count) - 1
+  for (let first = 0; first < count; first += size) {
+    const last = Math.min(first + size, count) - 1
     chunks.push({
       first,
       last,

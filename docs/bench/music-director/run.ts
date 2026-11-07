@@ -14,7 +14,7 @@
  *   deno run -A docs/bench/music-director/run.ts table <variant>...
  *     sums the saved results, a row per variant and replay
  *
- * `ONLY=tavern-small-talk,…` runs only those replays; `AS=<name>` saves `direct`'s results under that name instead of the variant's, to compare a prompt's wordings. `stories/` and `results/` aren't committed: the README has what they showed.
+ * `MODEL=<name>` directs with another Text Model, `THINK=1` turns its thinking on. `ONLY=tavern-small-talk,…` runs only those replays; `AS=<name>` saves `direct`'s results under that name instead of the variant's, to compare a prompt's wordings. `stories/` and `results/` aren't committed: the README has what they showed.
  */
 import { fileURLToPath } from 'node:url'
 import { dirScenarioLibrary } from '../../../server/scenario.ts'
@@ -75,6 +75,10 @@ const VARIANTS: Record<string, Variant> = {
   hindsight: { reads: 'whole', hindsight: { frames: 30, around: 6 } },
   /** The whole story in one call, however long: against `hindsight`'s 30-Frame chunks on a long one. */
   'hindsight-whole': { reads: 'whole', hindsight: { frames: 10_000, around: 0 } },
+  /** A long story in chunks of no more than 30 Frames, 6 more read either side. */
+  'hindsight-30': { reads: 'whole', hindsight: { frames: 30, around: 6 } },
+  /** A long story in chunks of 50 Frames, 10 more read either side, against reading it whole. */
+  'hindsight-50': { reads: 'whole', hindsight: { frames: 50, around: 10 } },
   /** The same in chunks of 5 Frames, 2 more read either side: how the chunks join. */
   'hindsight-chunked': { reads: 'whole', hindsight: { frames: 5, around: 2 } },
   /** The control played Cinematic: how much more it changes. */
@@ -88,6 +92,11 @@ const settings = await fileSettingsStore(here('../../../settings.json')).load()
 const scenarios = dirScenarioLibrary(here('../../../example-scenarios/'))
 const replayOf = async (name: string) =>
   parseReplay(await Deno.readTextFile(here(`../../../server/replay/replays/${name}.yaml`)))
+
+/** The Text Model `direct` runs with (`MODEL=`), else Settings'; `play` always uses Settings'. */
+const MODEL = Deno.env.get('MODEL') ?? settings.textModel
+/** Thinking on for `direct` (`THINK=1`), against the app's default of off. */
+const THINK = Deno.env.get('THINK') === '1'
 
 /** Replies that ended in whitespace: a runaway under the schema (AGENTS.md). */
 let runaways = 0
@@ -113,17 +122,23 @@ function watched(chat: Chat, times: Record<string, number[]>): Chat {
   }
 }
 
-const chatFor = (id: string, seed: number, times: Record<string, number[]> = {}) =>
+const chatFor = (
+  id: string,
+  seed: number,
+  times: Record<string, number[]> = {},
+  model = MODEL,
+) =>
   watched(
     seededChat(
       textBackend({ backend: 'ollama', baseUrl: '' }, () => Promise.resolve(''))
-        .chat(settings.textModel, false),
+        .chat(model, THINK),
       { session: id, seed },
     ),
     times,
   )
 
-const signal = () => AbortSignal.timeout(300_000)
+// Long enough for Score the Roleplay over 100 Frames with thinking on.
+const signal = () => AbortSignal.timeout(1_800_000)
 const quiet = () => {}
 
 /** Plays a replay's Messages at `seed`, and writes its Score, as its own music settings say. */
@@ -134,7 +149,7 @@ async function play(name: string, seed: number): Promise<RoleplaySession> {
   try {
     const store = dirSessionStore(root)
     const id = `${name}-${seed}`
-    const model = chatRoleplayModel(chatFor(id, seed))
+    const model = chatRoleplayModel(chatFor(id, seed, {}, settings.textModel))
     const deps = { store, roleplayModel: model, imageGenerator: placeholderImageGenerator() }
     let session: RoleplaySession = {
       id,

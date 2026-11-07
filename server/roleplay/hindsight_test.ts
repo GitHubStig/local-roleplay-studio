@@ -77,12 +77,14 @@ Deno.test('A long story is read in chunks, each reading a few Frames either side
     { first: 2, last: 3, readFrom: 1, readTo: 4 },
     { first: 4, last: 4, readFrom: 3, readTo: 4 },
   ])
-  // Read whole up to 100 Frames.
-  assertEquals(chunksOf(100).length, 1)
-  assertEquals(chunksOf(150), [
-    { first: 0, last: 99, readFrom: 0, readTo: 109 },
-    { first: 100, last: 149, readFrom: 90, readTo: 149 },
+  // Read whole up to 75 Frames, and in even chunks beyond.
+  assertEquals(chunksOf(75).length, 1)
+  assertEquals(chunksOf(100), [
+    { first: 0, last: 49, readFrom: 0, readTo: 59 },
+    { first: 50, last: 99, readFrom: 40, readTo: 99 },
   ])
+  assertEquals(chunksOf(160).map((c) => c.last - c.first + 1), [54, 54, 52])
+
   const session = { ...sessionOf(), score: testScore() }
   const [, middle] = await hindsightMessages(
     session,
