@@ -15,6 +15,7 @@ export const JOB_NAMES: Record<JobKind, string> = {
   edit: 'Edit',
   clip: 'Clip',
   direct: 'Music',
+  'score-roleplay': 'Score the Roleplay',
 }
 
 /**

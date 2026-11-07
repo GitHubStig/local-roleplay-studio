@@ -70,7 +70,9 @@ export interface Direction {
   line: string
 }
 
-const text = (x: unknown) => (typeof x === 'string' ? x.trim() : '')
+export const text = (x: unknown) => (typeof x === 'string' ? x.trim() : '')
+/** A line quoted word for word, its own quotation marks dropped. */
+export const unquoted = (line: unknown) => text(line).replace(/^["“'‘]+|["”'’]+$/g, '').trim()
 const oneOf = <T extends string>(x: unknown, all: readonly T[]): T => {
   if (!all.includes(x as T)) throw new Error(`Expected one of ${all.join(', ')}, got ${x}`)
   return x as T
@@ -85,8 +87,7 @@ export function cleanDirection(value: unknown): Direction {
     reading,
     decision: oneOf(v.decision, DECISIONS),
     entry: oneOf(v.entry, ENTRIES),
-    // Quoted word for word, its own quotation marks dropped.
-    line: text(v.line).replace(/^["“'‘]+|["”'’]+$/g, '').trim(),
+    line: unquoted(v.line),
   }
 }
 
@@ -138,7 +139,7 @@ export function musicStory(session: RoleplaySession, upTo: number, from = 0): st
 }
 
 /** A Cue as the Director and the cue writer read it. */
-function cueText(cue: Cue): string {
+export function cueText(cue: Cue): string {
   if (!cue.values) return `silence, since ${frameName(cue.start)}`
   const v = cue.values
   return [
@@ -150,7 +151,7 @@ function cueText(cue: Cue): string {
 }
 
 /** The Score as the Director and the cue writer read it. */
-const scoreText = (session: RoleplaySession) => {
+export const scoreText = (session: RoleplaySession) => {
   const s = session.score!
   return [
     `Genre: ${s.genre}`,
@@ -161,7 +162,7 @@ const scoreText = (session: RoleplaySession) => {
   ].join('\n')
 }
 
-const behaviourOf = (session: RoleplaySession) =>
+export const behaviourOf = (session: RoleplaySession) =>
   loadPrompt(`roleplay/music-behaviour-${session.settings.musicBehaviour}`)
 
 /**
@@ -238,7 +239,7 @@ export interface DirectorDeps {
 }
 
 /** A short id for a new Cue. */
-const newCueId = () => `cue-${crypto.randomUUID().slice(0, 8)}`
+export const newCueId = () => `cue-${crypto.randomUUID().slice(0, 8)}`
 
 /**
  * Directs the music at Frame `index`: writes the Score first if the Roleplay has none, asks the
@@ -282,23 +283,7 @@ export async function directFrame(
 
   let cue: Cue | undefined
   if (decision === 'transition') {
-    const vocals = current.settings.musicVocals
-    const values = await withRetry(
-      async (onThinking) =>
-        cleanCue(
-          (await deps.model.writeCue(
-            await cueMessages(current, index, playing, direction),
-            cueSchema(vocals),
-            signal,
-            onThinking,
-          )).values,
-          vocals,
-        ),
-      signal,
-      emit,
-    )
-    const limit = crossedLimit([values.mood, ...values.instruments].join('\n'))
-    if (limit) throw new Error(`The Cue crossed a limit: ${limit.message}`)
+    const values = await writeCueAt(deps, current, index, playing, direction, emit, signal)
     cue = { id: newCueId(), start: index, values, ...cueStart(direction) }
   } else if (decision === 'silence') {
     cue = { id: newCueId(), start: index, ...cueStart(direction) }
@@ -339,6 +324,39 @@ export async function directFrame(
 }
 
 /**
+ * The cue writer's values for the Cue a change at Frame `index` begins, after `previous`; throws if
+ * they cross a Limit.
+ */
+export async function writeCueAt(
+  deps: Pick<DirectorDeps, 'model'>,
+  session: RoleplaySession,
+  index: number,
+  previous: Cue | undefined,
+  direction: Direction,
+  emit: (event: RoleplayEvent) => void,
+  signal: AbortSignal,
+): Promise<CueValues> {
+  const vocals = session.settings.musicVocals
+  const values = await withRetry(
+    async (onThinking) =>
+      cleanCue(
+        (await deps.model.writeCue(
+          await cueMessages(session, index, previous, direction),
+          cueSchema(vocals),
+          signal,
+          onThinking,
+        )).values,
+        vocals,
+      ),
+    signal,
+    emit,
+  )
+  const limit = crossedLimit([values.mood, ...values.instruments].join('\n'))
+  if (limit) throw new Error(`The Cue crossed a limit: ${limit.message}`)
+  return values
+}
+
+/**
  * A quoted line without the name the story puts before it ("Elara: I'm looking…"), as the Director
  * sometimes copies it with the line (seen 2026-11-06 on the tavern).
  */
@@ -347,11 +365,16 @@ export function withoutSpeaker(line: string, session: RoleplaySession): string {
   const said = names.map((n) => `${n}: `).find((p) => line.startsWith(p))
   if (!said) return line
   const rest = line.slice(said.length).trim()
-  return /^["“][^"“”]*["”]$/.test(rest) ? rest.slice(1, -1).trim() : rest
+  // Its closing quotation mark may be gone already (`unquoted`).
+  return rest.match(/^["“]([^"“”]*)["”]?$/)?.[1].trim() ?? rest
 }
 
 /** What a Cue keeps of the direction that began it. */
-const cueStart = (d: Direction) => ({ entry: d.entry, reading: d.reading, line: d.line })
+export const cueStart = (d: Pick<Direction, 'entry' | 'reading' | 'line'>) => ({
+  entry: d.entry,
+  reading: d.reading,
+  line: d.line,
+})
 
 /** A Roleplay without the Cues that began on Frame `index`, as after it's undone. */
 export const withoutCuesFrom = (session: RoleplaySession, index: number): RoleplaySession =>

@@ -140,6 +140,8 @@ Deno.test("A Cue's vocals are held by the Vocals setting, in its schema and in w
     'Mira grips the wheel. "You are late."',
   )
   assertEquals(withoutSpeaker('Mira Vance: "Take the wheel."', session()), 'Take the wheel.')
+  // As cleanDirection leaves it, its closing quotation mark already dropped.
+  assertEquals(withoutSpeaker('Mira Vance: "Take the wheel.', session()), 'Take the wheel.')
 })
 
 /** A begun Roleplay of two Frames, with Music on, whose model directs as `directions` say. */

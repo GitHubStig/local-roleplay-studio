@@ -659,7 +659,13 @@ export const DOWNLOADING = 'Downloading the model (first use only)…'
 export type SessionSettings =
   & Pick<
     Settings,
-    'textModel' | 'thinking' | 'imageModel' | 'steps' | 'musicBehaviour' | 'musicVocals' | 'musicTaste'
+    | 'textModel'
+    | 'thinking'
+    | 'imageModel'
+    | 'steps'
+    | 'musicBehaviour'
+    | 'musicVocals'
+    | 'musicTaste'
   >
   & {
     /** The kind of backend its renders would rather run on, if picked in it; else Settings say. */
@@ -1037,6 +1043,7 @@ export type JobKind =
   | 'edit'
   | 'clip'
   | 'direct'
+  | 'score-roleplay'
 
 /** A queued, running, failed or done job. Failed and done ones stay listed until dismissed. */
 export interface Job {

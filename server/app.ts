@@ -594,7 +594,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
   async function jobBackendOf(session: Session, kind: JobKind, edit?: EditOrder) {
     const now = await deps.settings.load()
     // A picture and the music are directed by the Session's Text Model, where it runs.
-    const text = kind === 'picture' || kind === 'direct'
+    const text = kind === 'picture' || kind === 'direct' || kind === 'score-roleplay'
       ? await textBackendOf(session.settings.textModel)
       : undefined
     return jobBackend(kind, session.settings, now, detected, {
@@ -802,8 +802,12 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
           return (feature && (await featureOff(feature))) ?? notHere ??
             checkEdit(session, index, name, pending, edit!, model?.id ?? now.editModel)
         }
-        if (kind === 'direct' && !(await deps.settings.load()).music) {
-          return error('Music is switched off in Settings', 409)
+        if (kind === 'direct' || kind === 'score-roleplay') {
+          if (!(await deps.settings.load()).music) {
+            return error('Music is switched off in Settings', 409)
+          }
+          if (session.kind !== 'roleplay') return error('Only a Roleplay has music yet', 409)
+          if (!session.frames.length) return error('The scene has not begun yet', 409)
         }
         if (kind === 'style') {
           return (feature && (await featureOff(feature))) ??

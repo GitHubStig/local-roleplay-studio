@@ -65,6 +65,8 @@ export function scriptedRoleplayModel(
     /** Each Director's reply and each Cue's values, as the model would write them. */
     directions?: (Record<string, unknown> | Error)[]
     cues?: (Record<string, unknown> | Error)[]
+    /** Each chunk's turns in Score the Roleplay, as the model would write them. */
+    turns?: (Record<string, unknown>[] | Error)[]
     /**
      * Each picture: its sentences, or those with who it shows (both of the test Cast unless given)
      * and anyone it brings in.
@@ -91,6 +93,7 @@ export function scriptedRoleplayModel(
   directed: ChatMessage[][]
   scored: ChatMessage[][]
   directedMusic: ChatMessage[][]
+  spotted: ChatMessage[][]
   cued: { messages: ChatMessage[]; schema: object }[]
 } {
   const next = <T>(queue: (T | Error)[] | undefined, what: string): Promise<T> => {
@@ -125,6 +128,13 @@ export function scriptedRoleplayModel(
       model.directedMusic.push(messages)
       signal.throwIfAborted()
       return { direction: await next(script.directions, 'direction') }
+    },
+    /** The messages each chunk of Score the Roleplay was given. */
+    spotted: [] as ChatMessage[][],
+    async scoreStory(messages: ChatMessage[], signal: AbortSignal) {
+      model.spotted.push(messages)
+      signal.throwIfAborted()
+      return { course: 'They drift, then turn.', turns: await next(script.turns, 'turns') }
     },
     /** The messages and schema each cue writer call was given. */
     cued: [] as { messages: ChatMessage[]; schema: object }[],

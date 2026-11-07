@@ -31,7 +31,8 @@ import { type ComfyTrace, type ComfyTraces, withTrace } from './comfyui/traces.t
  * (SHARP); `figure` lifts the person in it out as a 3D figure (TripoSplat), and `lito` does so with
  * Apple's LiTo; `style` embeds the Session's pictures for the Compare dialog's style scores; `edit`
  * repaints a picture as told (ADR 0021); `direct` directs the music at a Roleplay Frame (the
- * Music Director, docs/music-plans.md).
+ * Music Director, docs/music-plans.md), and `score-roleplay` scores a whole Roleplay's with
+ * hindsight.
  */
 export type JobKind =
   | 'picture'
@@ -47,6 +48,7 @@ export type JobKind =
   | 'edit'
   | 'clip'
   | 'direct'
+  | 'score-roleplay'
 export const JOB_KINDS: readonly JobKind[] = [
   'picture',
   'render',
@@ -61,6 +63,7 @@ export const JOB_KINDS: readonly JobKind[] = [
   'edit',
   'clip',
   'direct',
+  'score-roleplay',
 ]
 
 /**
@@ -82,6 +85,7 @@ export const JOB_FEATURE: Record<JobKind, Feature | null> = {
   clip: 'video',
   // Music is a setting while it's built, not a Feature: the app checks it (`check`).
   direct: null,
+  'score-roleplay': null,
 }
 
 /**
@@ -255,6 +259,7 @@ const NEEDS: Record<JobKind, readonly JobKind[]> = {
   edit: ['picture', 'render', 'edit'],
   clip: ['picture', 'render', 'edit'],
   direct: [],
+  'score-roleplay': [],
 }
 
 /**
@@ -671,11 +676,12 @@ export interface JobRoutesContext {
 }
 
 /**
- * Jobs about the Session rather than one Frame (a Roleplay's voice, the style scores' embeddings):
+ * Jobs about the Session rather than one Frame (a Roleplay's voice and its music scored with
+ * hindsight, the style scores' embeddings):
  * queued as Frame 0's, which needn't exist yet, as a voice can be designed while the Cast is
  * reviewed, before the scene begins. Their calls are logged with the setup's, not Frame 0's.
  */
-export const SESSION_JOBS: readonly JobKind[] = ['voice', 'style']
+export const SESSION_JOBS: readonly JobKind[] = ['voice', 'style', 'score-roleplay']
 
 /** The longest instruction an edit takes, and the largest painted area (base64, ~6 MB). */
 const MAX_INSTRUCTION = 1000

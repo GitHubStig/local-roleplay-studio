@@ -79,6 +79,7 @@ const counts = computed(() => {
     changes: decided('transition'),
     continues: decided('continue'),
     silent: decided('silence'),
+    stingers: directed.filter((f) => f.music!.stinger).length,
   }
 })
 const cueTitle = (cue: Cue, frames: number) =>
@@ -188,7 +189,14 @@ defineExpose({ flush })
         <blockquote v-if="frame.music.line" class="border-l-2 border-line pl-2 italic" data-line>
           {{ frame.music.line }}
         </blockquote>
-        <p class="leading-relaxed" data-reading>{{ frame.music.reading }}</p>
+        <p v-if="frame.music.reading" class="leading-relaxed" data-reading>{{ frame.music.reading }}</p>
+        <div v-if="frame.music.stinger" class="flex flex-col gap-1 rounded border border-line p-2" data-stinger>
+          <p class="font-medium">A stinger here, over the music</p>
+          <blockquote v-if="frame.music.stinger.line" class="border-l-2 border-line pl-2 italic">
+            {{ frame.music.stinger.line }}
+          </blockquote>
+          <p class="leading-relaxed">{{ frame.music.stinger.reading }}</p>
+        </div>
         <div v-if="frameCue" class="rounded border border-line p-2" data-frame-cue>
           <p class="text-xs text-muted">
             Cue from {{ frameName(frameCue.start) }}<template v-if="frameCue.start !== frame.index">
@@ -213,12 +221,17 @@ defineExpose({ flush })
           </template>
           <p v-else class="mt-1 text-muted">Silence</p>
         </div>
-        <p class="text-xs text-muted" data-direct-timings>
+        <p v-if="frame.music.hindsight" class="text-xs text-muted" data-direct-timings>
+          Scored with hindsight by {{ frame.music.model }}<template v-if="frame.music.timings.text">,
+            its Cue written in {{ frame.music.timings.text.toFixed(1) }} s</template>
+        </p>
+        <p v-else class="text-xs text-muted" data-direct-timings>
           Directed in {{ frame.music.timings.text.toFixed(1) }} s by {{ frame.music.model }}
         </p>
       </template>
       <p v-else-if="!directing" class="text-muted">
-        Not directed yet: Score as you play directs each new reply, or Direct does this one.
+        Not directed yet: Score as you play directs each new reply, Direct does this one, and Score
+        the Roleplay does them all.
       </p>
     </section>
 
@@ -245,8 +258,22 @@ defineExpose({ flush })
           and {{ counts.silences }} silence{{ counts.silences === 1 ? '' : 's' }}</template>,
         {{ counts.average.toFixed(1) }} Frames each on average · of {{ counts.directed }} Frames
         directed: {{ counts.continues }} continued, {{ counts.changes }} changed,
-        {{ counts.silent }} fell silent
+        {{ counts.silent }} fell silent<template v-if="counts.stingers">,
+          {{ counts.stingers }} with a stinger</template>
       </p>
+      <details v-if="session.hindsight" class="text-xs text-muted" data-hindsight>
+        <summary class="cursor-pointer select-none">
+          Last scored with hindsight in {{ session.hindsight.timings.text.toFixed(0) }} s by
+          {{ session.hindsight.model }}, in {{ session.hindsight.chunks }}
+          part{{ session.hindsight.chunks === 1 ? '' : 's' }}
+        </summary>
+        <p
+          v-for="(course, i) in session.hindsight.courses"
+          :key="i"
+          class="mt-1 leading-relaxed"
+          data-hindsight-course
+        >{{ course }}</p>
+      </details>
     </section>
 
     <!-- Its border sweeps while the Score is written, or written again. -->

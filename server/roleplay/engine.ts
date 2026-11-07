@@ -40,6 +40,8 @@ export type RoleplayEvent =
   | { type: 'score'; score: Score; session: RoleplaySession }
   /** A Frame's music, directed (`director.ts`). */
   | { type: 'directed'; frame: RoleplayFrame; session: RoleplaySession }
+  /** The whole Roleplay's music, scored with hindsight (`hindsight.ts`). */
+  | { type: 'scored'; session: RoleplaySession }
   /** A Frame's picture: its Image Prompt, not yet rendered. */
   | { type: 'pictured'; frame: RoleplayFrame; session: RoleplaySession }
   /** A Frame's picture, rendered. */

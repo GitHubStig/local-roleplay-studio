@@ -103,6 +103,10 @@ export interface FrameMusic {
   line: string
   model: string
   timings: { text: number }
+  /** Directed by Score the Roleplay, with hindsight; its timings are the cue writer's alone. */
+  hindsight?: true
+  /** A short accent placed here with hindsight, over the music playing (not played yet). */
+  stinger?: { reading: string; line: string }
 }
 
 /** What the cue writer picked for a Cue, within the Score. */
@@ -163,6 +167,8 @@ export interface RoleplaySession extends Omit<SessionBase, 'activity'> {
   scoreThinking?: string
   /** The music's Cues, in the order of the Frames they began on. */
   cues?: Cue[]
+  /** The last time the whole Roleplay was scored with hindsight. */
+  hindsight?: { model: string; chunks: number; courses: string[]; timings: { text: number } }
   /** As for any Session, or speaking a line (audio). */
   activity?: Activity | 'audio' | null
   frames: RoleplayFrame[]
@@ -264,7 +270,8 @@ export const writeScore = (id: string, onEvent: (event: RoleplayEvent) => void) 
   streamEvents<RoleplayEvent>(`${base(id)}/score`, {}, ['score'], onEvent)
 
 /** Replaces the Score, edited by hand. */
-export const saveScore = (id: string, score: Score) => put<RoleplaySession>(`${base(id)}/score`, score)
+export const saveScore = (id: string, score: Score) =>
+  put<RoleplaySession>(`${base(id)}/score`, score)
 
 /** Replaces the Roleplay's own Behaviour, Vocals and Music taste. */
 export const saveMusicSettings = (id: string, music: MusicSettings) =>

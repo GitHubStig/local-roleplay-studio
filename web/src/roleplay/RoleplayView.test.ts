@@ -1037,6 +1037,38 @@ describe('RoleplayView', () => {
     await useFeatures().refreshFeatures()
   })
 
+  it('scores the whole Roleplay with hindsight beside Render all, once confirmed if it has Cues', async () => {
+    const off = await mountIt()
+    expect(off.wrapper.find('[data-score-all]').exists()).toBe(false)
+    off.wrapper.unmount()
+
+    vi.mocked(api.getSettings).mockResolvedValue({ features: ALL_ON, music: true } as api.Settings)
+    await useFeatures().refreshFeatures()
+    const cue = { id: 'cue-1', start: 0, entry: 'gentle', reading: 'Wary.', line: '' } as const
+    vi.mocked(api.getSession).mockResolvedValue({
+      ...roleplaySession([frame(0, null, 'Get inside.')]),
+      cues: [cue],
+    })
+    vi.mocked(api.queueJob).mockReset().mockResolvedValue([
+      job({ kind: 'score-roleplay', status: 'running', frameIndex: 0 }),
+    ])
+    const confirm = vi.fn().mockReturnValueOnce(false).mockReturnValueOnce(true)
+    vi.stubGlobal('confirm', confirm)
+    const { wrapper } = await mountIt()
+    expect(wrapper.find('[data-score-all]').text()).toBe('Score the Roleplay')
+    await wrapper.find('[data-score-all]').trigger('click')
+    await flushPromises()
+    expect(api.queueJob).not.toHaveBeenCalled()
+    await wrapper.find('[data-score-all]').trigger('click')
+    await flushPromises()
+    expect(api.queueJob).toHaveBeenCalledWith('r1', 'score-roleplay', 0)
+    expect(wrapper.find('[data-score-all]').text()).toBe('Scoring…')
+    // The Roleplay's job, not Frame 1's.
+    expect(wrapper.find('[data-frame-job]').exists()).toBe(false)
+    vi.mocked(api.getSettings).mockResolvedValue({ features: ALL_ON } as api.Settings)
+    await useFeatures().refreshFeatures()
+  })
+
   it('offers each picture in 3D by model: SHARP for the scene, TripoSplat and LiTo for the person', async () => {
     const image = 'frame-0-aaaaaaaa.png'
     const rendered = { ...frame(0, null, 'Get inside.'), pictures: [picture(image)] }

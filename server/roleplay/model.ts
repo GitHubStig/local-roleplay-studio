@@ -13,6 +13,7 @@ import {
 import type { Cast, Reply, Score } from './types.ts'
 import { cleanScore, scoreSchema } from './score.ts'
 import { directorSchema } from './director.ts'
+import { hindsightSchema } from './hindsight.ts'
 import type { Look, Subject } from '../session.ts'
 import { parseFrameBody } from '../textModel.ts'
 import {
@@ -60,6 +61,12 @@ export interface RoleplayModel {
     signal: AbortSignal,
     onThinking?: (chunk: string) => void,
   ): Promise<{ direction: unknown; thinking?: string }>
+  /** Score the Roleplay: the turns in a chunk of the story, with hindsight (`hindsight.ts`). */
+  scoreStory(
+    messages: ChatMessage[],
+    signal: AbortSignal,
+    onThinking?: (chunk: string) => void,
+  ): Promise<{ course: unknown; turns: unknown; thinking?: string }>
   /** The cue writer: a new Cue's values, under `schema` (`cueSchema`, held by the Vocals). */
   writeCue(
     messages: ChatMessage[],
@@ -105,6 +112,9 @@ const MAX_TOKENS = {
   art: 1600,
   score: 500,
   director: 400,
+  // The course, then the turns of up to 100 Frames: a 61-Frame story had 10–15, of about 100
+  // tokens each (2026-11-07).
+  hindsight: 4000,
   cue: 250,
   suggest: 400,
   voice: 300,
@@ -194,6 +204,20 @@ export function chatRoleplayModel(chat: Chat, opts: RoleplayModelOptions = {}): 
           onThinking,
         })
         return withThinking({ direction: parseJson(content) }, thinking)
+      }),
+
+    scoreStory: (messages, signal, onThinking) =>
+      within(signal, limit(), async (s) => {
+        const { content, thinking } = await chat.stream({
+          messages,
+          schema: hindsightSchema,
+          job: 'hindsight',
+          maxTokens: MAX_TOKENS.hindsight,
+          signal: s,
+          onThinking,
+        })
+        const reply = parseJson(content) as { course?: unknown; turns?: unknown } | null
+        return withThinking({ course: reply?.course, turns: reply?.turns }, thinking)
       }),
 
     writeCue: (messages, schema, signal, onThinking) =>

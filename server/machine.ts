@@ -178,6 +178,7 @@ export function jobBackend(
   switch (kind) {
     case 'picture':
     case 'direct':
+    case 'score-roleplay':
       return opts.text
     case 'render': {
       const on = session.imageBackend

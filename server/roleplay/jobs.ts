@@ -1,6 +1,6 @@
 /**
  * What a Roleplay's background work does (see `SessionJobs` in jobs.ts): pictures and renders its
- * Frames, directs their music, upscales them, designs and speaks the Character's voice, and makes
+ * Frames, directs their music (or scores it all with hindsight), upscales them, designs and speaks the Character's voice, and makes
  * its pictures into 3D.
  */
 import { frameName } from '../frames.ts'
@@ -12,6 +12,7 @@ import type { Scenario } from '../scenario.ts'
 import type { Session, SessionStore } from '../session.ts'
 import { pictureFrame, renderRoleplayFrame, type RoleplayDeps } from './engine.ts'
 import { directFrame } from './director.ts'
+import { scoreRoleplay } from './hindsight.ts'
 import type { RoleplaySession } from './types.ts'
 import { checkPictureJob, PICTURE_JOB_KINDS, runPictureJob } from '../pictureJobs.ts'
 import { designVoice, speakFrame, spokenText } from './voice.ts'
@@ -60,17 +61,13 @@ export async function runRoleplayJob(
   /** Saves onto the Roleplay as it is now: the conversation may have moved on meanwhile. */
   const save = (change: (s: RoleplaySession) => RoleplaySession) =>
     updateSession(withDeps.store, session.id, change)
-  if (job.kind === 'direct') {
+  if (job.kind === 'direct' || job.kind === 'score-roleplay') {
     const scenario = ctx.scenarioFor(session)
     if (scenario instanceof Response) throw new Error((await scenario.json()).error)
-    await directFrame(
-      { store: withDeps.store, model: withDeps.roleplayModel },
-      session,
-      scenario,
-      job.frameIndex,
-      emit,
-      signal,
-    )
+    const deps = { store: withDeps.store, model: withDeps.roleplayModel }
+    if (job.kind === 'direct') {
+      await directFrame(deps, session, scenario, job.frameIndex, emit, signal)
+    } else await scoreRoleplay(deps, session, scenario, emit, signal)
   } else if (job.kind === 'picture') {
     const scenario = ctx.scenarioFor(session)
     if (scenario instanceof Response) throw new Error((await scenario.json()).error)

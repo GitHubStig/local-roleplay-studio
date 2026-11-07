@@ -14,6 +14,7 @@ const TEXT_CALL_NAMES: Record<string, string> = {
   look: 'Look',
   score: 'Score',
   director: 'Music Director',
+  hindsight: 'Score the Roleplay',
   cue: 'Cue',
   picture: 'Image Prompt',
   voice: 'Voice description',
@@ -33,9 +34,10 @@ const CALLS_OF_JOBS: Record<string, readonly JobKind[]> = {
   look: ['picture'],
   voice: ['voice', 'speak', 'speak-thought'],
   delivery: ['speak', 'speak-thought'],
-  score: ['direct'],
+  score: ['direct', 'score-roleplay'],
   director: ['direct'],
-  cue: ['direct'],
+  hindsight: ['score-roleplay'],
+  cue: ['direct', 'score-roleplay'],
 }
 
 /** Whether `call` is a running job's own (`CALLS_OF_JOBS`), listed as the job instead. */

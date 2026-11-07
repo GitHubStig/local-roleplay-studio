@@ -130,6 +130,16 @@ export interface FrameMusic {
   /** The model that directed it, and seconds it took (the cue writer's too, on a change). */
   model: string
   timings: { text: number }
+  /**
+   * Directed by Score the Roleplay, with hindsight (`hindsight.ts`), rather than as it was played;
+   * its timings are then the cue writer's alone, as the pass reads many Frames at once.
+   */
+  hindsight?: true
+  /**
+   * A stinger: a short accent placed here with hindsight, over the music playing, which goes on.
+   * Recorded for now; played once there's music (docs/music-plans.md, stage 4).
+   */
+  stinger?: { reading: string; line: string }
 }
 
 export const ENERGIES = ['calm', 'restrained', 'building', 'intense'] as const
@@ -230,6 +240,14 @@ export interface RoleplaySession extends SessionBase {
   scoreThinking?: string
   /** The music's Cues, in the order of the Frames they began on (`director.ts`). */
   cues?: Cue[]
+  /** For debugging: the last time the whole Roleplay was scored with hindsight (`hindsight.ts`). */
+  hindsight?: {
+    model: string
+    chunks: number
+    /** How each chunk heard the course between them, written before its turns. */
+    courses: string[]
+    timings: { text: number }
+  }
   frames: RoleplayFrame[]
 }
 

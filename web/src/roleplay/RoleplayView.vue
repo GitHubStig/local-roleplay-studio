@@ -183,8 +183,12 @@ async function drop(job: Job) {
   if (render) await dropJob(render)
 }
 
-/** A Frame's jobs; designing the voice is the Roleplay's, shown in the Voice panel instead. */
-const frameJobs = (index: number) => jobsFor(index).filter((j) => j.kind !== 'voice')
+/**
+ * A Frame's jobs; designing the voice and scoring the music with hindsight are the Roleplay's,
+ * shown in the Voice panel and on Score the Roleplay instead.
+ */
+const frameJobs = (index: number) =>
+  jobsFor(index).filter((j) => j.kind !== 'voice' && j.kind !== 'score-roleplay')
 const voiceJob = computed(() => jobs.value.find((j) => j.kind === 'voice' && j.status !== 'done') ?? null)
 /** The voice is being designed, or waits its turn to be. */
 const designingVoice = computed(() =>
@@ -198,6 +202,9 @@ function describeJob(job: Job): string | undefined {
     if (job.phase === 'text') return 'Describing the voice…'
     if (job.kind === 'voice' || !session.value?.voice?.ref) return 'Designing the voice…'
     return 'Speaking…'
+  }
+  if (job.kind === 'score-roleplay' && job.phase !== 'queued') {
+    return session.value?.score ? 'Scoring the Roleplay…' : 'Writing the Score, then scoring…'
   }
   if (job.kind === 'direct' && job.phase !== 'queued') {
     return session.value?.score ? 'Directing the music…' : 'Writing the Score, then directing…'
@@ -344,6 +351,16 @@ const shownFrames = computed(() => session.value?.frames ?? [])
 /** The Cast is written but the scene hasn't begun: the player reviews it first. */
 const reviewing = computed(() => !!cast.value && session.value!.frames.length === 0)
 const begun = computed(() => (session.value?.frames.length ?? 0) > 0)
+
+/** Score the Roleplay, the pass with hindsight: queued or running. */
+const scoringAll = computed(() => hasJob(0, 'score-roleplay'))
+/** Scores the whole Roleplay's music with hindsight, once confirmed if it replaces Cues. */
+async function scoreAll() {
+  const what = 'Score the whole Roleplay with hindsight? Its Cues, and how each Frame\'s music ' +
+    'was directed, are replaced.'
+  if (session.value?.cues?.length && !confirm(what)) return
+  await queueSaved('score-roleplay', 0)
+}
 
 /**
  * The selected Frame: the one picked in the Frames list or the conversation, or else the newest,
@@ -1056,6 +1073,17 @@ const lookSavingText = computed(() =>
               title="Queue a render of every Frame not rendered yet by this Image Model, or changed since"
               @render="renderAll"
             />
+            <button
+              v-if="musicOn && begun"
+              type="button"
+              class="rounded-lg border border-line px-3 py-2 text-sm disabled:opacity-50"
+              :disabled="scoringAll"
+              title="Score every Frame's music again with hindsight, as a film is scored once it's cut: its Cues are replaced"
+              data-score-all
+              @click="scoreAll"
+            >
+              {{ scoringAll ? 'Scoring…' : 'Score the Roleplay' }}
+            </button>
             <p
               class="min-w-0 flex-1 truncate text-sm"
               :class="notice?.kind === 'declined' ? 'text-warn' : 'text-danger'"

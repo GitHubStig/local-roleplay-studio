@@ -14,7 +14,7 @@
  *   deno run -A docs/bench/music-director/run.ts table <variant>...
  *     sums the saved results, a row per variant and replay
  *
- * `ONLY=tavern-small-talk,…` runs only those replays. `stories/` and `results/` aren't committed: the README has what they showed.
+ * `ONLY=tavern-small-talk,…` runs only those replays; `AS=<name>` saves `direct`'s results under that name instead of the variant's, to compare a prompt's wordings. `stories/` and `results/` aren't committed: the README has what they showed.
  */
 import { fileURLToPath } from 'node:url'
 import { dirScenarioLibrary } from '../../../server/scenario.ts'
@@ -28,6 +28,7 @@ import { placeholderImageGenerator } from '../../../server/images/imageGenerator
 import { beginRoleplay, sendMessage, writeCast } from '../../../server/roleplay/engine.ts'
 import { writeScore } from '../../../server/roleplay/score.ts'
 import { directFrame, type DirectorReads } from '../../../server/roleplay/director.ts'
+import { type Chunking, scoreRoleplay } from '../../../server/roleplay/hindsight.ts'
 import type { RoleplaySession } from '../../../server/roleplay/types.ts'
 import {
   type CourseStep,
@@ -48,9 +49,13 @@ const ALL_REPLAYS = [
 /** Every replay, or only those named in `ONLY` (comma-separated), for a quick try. */
 const REPLAYS = Deno.env.get('ONLY')?.split(',').map((n) => `music-${n}`) ?? ALL_REPLAYS
 
-/** A variant: what the Director reads, and the music settings it changes for some replays. */
+/**
+ * A variant: what the Director reads, and the music settings it changes for some replays; or, with
+ * `hindsight`, Score the Roleplay's pass over the whole story, chunked as it says.
+ */
 interface Variant {
   reads: DirectorReads
+  hindsight?: Chunking
   /** Per replay, what's changed from its own music; a replay not listed is left out. */
   only?: Record<string, Partial<Pick<Settings, 'musicBehaviour' | 'musicVocals'>>>
 }
@@ -66,6 +71,12 @@ const VARIANTS: Record<string, Variant> = {
     reads: 'whole',
     only: { 'music-heavens-door': { musicVocals: 'instrumental' } },
   },
+  /** Score the Roleplay, with hindsight: each story in one call, as the app reads 15 Frames. */
+  hindsight: { reads: 'whole', hindsight: { frames: 30, around: 6 } },
+  /** The whole story in one call, however long: against `hindsight`'s 30-Frame chunks on a long one. */
+  'hindsight-whole': { reads: 'whole', hindsight: { frames: 10_000, around: 0 } },
+  /** The same in chunks of 5 Frames, 2 more read either side: how the chunks join. */
+  'hindsight-chunked': { reads: 'whole', hindsight: { frames: 5, around: 2 } },
   /** The control played Cinematic: how much more it changes. */
   'control-cinematic': {
     reads: 'whole',
@@ -170,6 +181,8 @@ interface Score {
   cues: number
   /** Cues with voices (wordless or choir). */
   voiced: number
+  /** Stingers placed (Score the Roleplay only). */
+  stingers: number
 }
 
 const CHANGES = ['gentle', 'sharp', 'change', 'silence'] as const
@@ -208,6 +221,7 @@ export function scoreRun(course: CourseStep[], decided: string[]): Score {
     sharp: decided.filter((d) => d === 'sharp').length,
     cues: 0,
     voiced: 0,
+    stingers: 0,
   }
 }
 
@@ -231,7 +245,15 @@ async function direct(name: string, seed: number, variant: Variant) {
     }
     await store.save(session)
     const model = chatRoleplayModel(chatFor(`${session.id}-direct`, seed, times))
-    for (const f of session.frames) {
+    if (variant.hindsight) {
+      session = await scoreRoleplay(
+        { store, model, chunking: variant.hindsight },
+        session,
+        scenario,
+        quiet,
+        signal(),
+      )
+    } else for (const f of session.frames) {
       session = await directFrame(
         { store, model, reads: variant.reads },
         session,
@@ -246,9 +268,11 @@ async function direct(name: string, seed: number, variant: Variant) {
     const score = {
       ...scoreRun(replay.course!, decided),
       cues: cues.filter((c) => c.values).length,
+      stingers: session.frames.filter((f) => f.music?.stinger).length,
       voiced: cues.filter((c) => c.values && c.values.vocals !== 'none').length,
     }
-    const perFrame = (times.director ?? []).concat(times.cue ?? []).reduce((a, b) => a + b, 0) /
+    const perFrame = [...times.director ?? [], ...times.hindsight ?? [], ...times.cue ?? []]
+      .reduce((a, b) => a + b, 0) /
       session.frames.length
     return {
       name,
@@ -281,6 +305,7 @@ function summary(results: Result[]) {
     sharp: sum('sharp'),
     cues: sum('cues'),
     voiced: sum('voiced'),
+    stingers: sum('stingers'),
     sPerFrame: (results.reduce((n, r) => n + r.secondsPerFrame, 0) / results.length).toFixed(1),
   }
 }
@@ -310,7 +335,7 @@ if (import.meta.main) {
         console.log(`${variantName} ${name} seed ${seed}:`, JSON.stringify(summary([result])))
       }
       await Deno.writeTextFile(
-        here(`./results/${variantName}-${seed}.json`),
+        here(`./results/${Deno.env.get('AS') ?? variantName}-${seed}.json`),
         JSON.stringify(results, null, 1),
       )
     }
@@ -320,21 +345,21 @@ if (import.meta.main) {
     for (const variantName of rest) {
       const results: Result[] = []
       for await (const entry of Deno.readDir(here('./results/'))) {
-        if (entry.name.startsWith(`${variantName}-`) && /-\d+\.json$/.test(entry.name)) {
+        if (new RegExp(`^${variantName}-\\d+\\.json$`).test(entry.name)) {
           results.push(...JSON.parse(await Deno.readTextFile(here(`./results/${entry.name}`))))
         }
       }
       for (const name of [...new Set(results.map((r) => r.name))]) {
         const s = summary(results.filter((r) => r.name === name))
         rows.push(
-          `| ${variantName} | ${name.replace('music-', '')} | ${s.runs} | ${s.kept} | ${s.missed} | ${s.extra} | ${s.wrongEntry} | ${s.sharp} | ${s.cues} | ${s.voiced} | ${s.sPerFrame} |`,
+          `| ${variantName} | ${name.replace('music-', '')} | ${s.runs} | ${s.kept} | ${s.missed} | ${s.extra} | ${s.wrongEntry} | ${s.sharp} | ${s.cues} | ${s.voiced} | ${s.stingers || 0} | ${s.sPerFrame} |`,
         )
       }
     }
     console.log(
-      '| Variant | Replay | Runs | Kept | Missed | Extra | Wrong entry | Sharp | Cues | Voiced | s/Frame |',
+      '| Variant | Replay | Runs | Kept | Missed | Extra | Wrong entry | Sharp | Cues | Voiced | Stingers | s/Frame |',
     )
-    console.log('|---|---|---|---|---|---|---|---|---|---|---|')
+    console.log('|---|---|---|---|---|---|---|---|---|---|---|---|')
     console.log(rows.join('\n'))
   } else {
     console.error('Usage: run.ts play <seed>... | direct <variant> <seed>... | table <variant>...')

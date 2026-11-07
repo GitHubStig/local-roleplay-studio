@@ -163,7 +163,14 @@ describe('MusicTab', () => {
       frames,
       cues: [
         { id: 'a', start: 0, entry: 'gentle', reading: '', line: '' },
-        { id: 'b', start: 2, values, entry: 'sharp', reading: 'She knows him now.', line: 'Father?' },
+        {
+          id: 'b',
+          start: 2,
+          values,
+          entry: 'sharp',
+          reading: 'She knows him now.',
+          line: 'Father?',
+        },
       ],
     })
     const wrapper = mount(MusicTab, { props: { session: s, line: saveLine(), frame: frames[2] } })
@@ -172,7 +179,9 @@ describe('MusicTab', () => {
     expect(wrapper.find('[data-reading]').text()).toBe('She knows him now.')
     expect(wrapper.find('[data-frame-cue]').text()).toContain('recognition, aching')
     // The harp isn't among the Score's instruments: flagged, not refused.
-    expect(wrapper.findAll('[data-outside]').map((i) => i.text())).toEqual(['harp (not in the Score)'])
+    expect(wrapper.findAll('[data-outside]').map((i) => i.text())).toEqual([
+      'harp (not in the Score)',
+    ])
     // A silence of two Frames, then a Cue of one.
     expect(wrapper.findAll('[data-cue]').map((c) => c.attributes('style'))).toEqual([
       'flex-grow: 2;',
@@ -185,5 +194,45 @@ describe('MusicTab', () => {
     expect(wrapper.emitted('direct')![0]).toEqual([2])
     await wrapper.find('[data-cue="a"]').trigger('click')
     expect(wrapper.emitted('go')![0]).toEqual([0])
+  })
+
+  it('shows a Frame scored with hindsight: no reading where the music continues, and its stinger', () => {
+    const frame: roleplay.RoleplayFrame = {
+      index: 1,
+      message: 'Hi.',
+      reply: { internal: '', actions: '', dialogue: '' },
+      pictures: [],
+      createdAt: '',
+      music: {
+        cue: 'a',
+        reading: '',
+        decision: 'continue',
+        entry: 'gentle',
+        line: '',
+        model: 'gemma',
+        timings: { text: 0 },
+        hindsight: true,
+        stinger: { reading: 'The blade comes out.', line: 'Hold still.' },
+      },
+    }
+    const s = session({
+      score,
+      frames: [frame],
+      cues: [{ id: 'a', start: 0, entry: 'gentle', reading: '', line: '' }],
+      hindsight: {
+        model: 'gemma',
+        chunks: 1,
+        courses: ['Small talk, then trust.'],
+        timings: { text: 12 },
+      },
+    })
+    const wrapper = mount(MusicTab, { props: { session: s, line: saveLine(), frame } })
+    expect(wrapper.find('[data-decision]').text()).toBe('The music continues')
+    expect(wrapper.find('[data-reading]').exists()).toBe(false)
+    expect(wrapper.find('[data-stinger]').text()).toContain('Hold still.')
+    expect(wrapper.find('[data-direct-timings]').text()).toBe('Scored with hindsight by gemma')
+    expect(wrapper.find('[data-cue-counts]').text()).toMatch(/1 with a stinger/)
+    expect(wrapper.find('[data-hindsight]').text()).toMatch(/in 12 s by\s+gemma, in 1\s+part/)
+    expect(wrapper.find('[data-hindsight-course]').text()).toBe('Small talk, then trust.')
   })
 })
