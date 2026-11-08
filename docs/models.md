@@ -6,6 +6,7 @@ Which models the app uses now, and why, in short. This page is kept current: whe
 - [research/image-models.md](research/image-models.md): each Image Model's trials, edits, the Upscaler, and how much of a prompt each reads.
 - [research/voices.md](research/voices.md): how the voice engine was chosen and how lines are directed.
 - [research/video-models.md](research/video-models.md): LTX 2.5's clips, by kind, length and guide strength.
+- [research/music-models.md](research/music-models.md): the music models tried for a Roleplay's Cues, and how to prompt the pick.
 - [research/ollama.md](research/ollama.md), and the upgrade logs for [mflux](research/mflux-upgrade-log.md), [ComfyUI](research/comfyui-upgrade-log.md) and [mlx-audio](research/mlx-audio-upgrade-log.md): what each runtime does, version by version.
 
 The Mac is the development Mac (Apple silicon, M5 Pro, 48 GB); the PC is the Windows PC (RTX 4070, 12 GB, 16 GB of RAM). Numbers are one prompt and one seed unless they say otherwise.
@@ -131,6 +132,18 @@ LTX 2.5 on a ComfyUI ([ADR 0025](adr/0025-clips-by-kind.md)): the 22B distilled 
 - Not tried on the Mac: LTX and Wan.
 
 Evidence: [research/video-models.md](research/video-models.md).
+
+## Music
+
+ACE-Step 1.5 on a ComfyUI, with ComfyUI's own nodes ([ADR 0035](adr/0035-music-from-ace-step-through-comfyui.md)): the **XL turbo (4B) with its 4B planner**, 8 steps. Not in the app yet (the music plan's stage 3); measured on the Mac, 2026-11-08, not tried on the PC.
+
+- **About 170 s for a minute of music** (2.8 s a second), ComfyUI at 26–27 GB at the most, 34 GB for a 150 s song; it keeps ~21 GB loaded between runs. The 1.7B planner takes half the time (about 80 s a minute) and sounds less composed, "usable but not great": the quicker setting.
+- **The length asked** (60–180 s tried), each ending in a fade; the key and tempo mostly followed; lyrics sung as written.
+- **Prompted as its guide asks**, by the Text Model: the sound and how it develops over the track, section tags following it, no tempo, key or length in the caption, no negations ([research/music-models.md](research/music-models.md#prompting-it)).
+- **Looped**, the fade-out cut and a 3 s crossfade; extending isn't possible through ComfyUI. Cues are related by the Score's text, not by covers.
+- MiniMax Music 3 (mlx-audio) was tried and dropped: its length is its own (14–43 s), 4–5 s a second of music, voices where none were asked.
+
+Evidence: [research/music-models.md](research/music-models.md), and the clips in [bench/music-models/](bench/music-models/README.md).
 
 ## Memory
 

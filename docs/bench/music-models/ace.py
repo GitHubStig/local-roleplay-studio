@@ -1,17 +1,26 @@
 # /// script
 # requires-python = ">=3.14,<3.15"
-# dependencies = []
+# dependencies = ["soundfile"]
 # [tool.uv]
 # python-preference = "only-managed"
 # ///
 """
 Renders the music bench's cases with ACE-Step 1.5 through a running ComfyUI (ComfyUI's own
 "ACE-Step 1.5 split" template: the 2B turbo, the 0.6B and 1.7B text encoders, 8 steps), timing
-each and noting how much more of the machine's memory was in use at the most. See README.md.
+each and noting ComfyUI's own memory at the most (macOS's footprint, polled every 2 s). See README.md.
 
     uv run ace.py                       # every case, seed 1, on 127.0.0.1:8188
     uv run ace.py tavern-60 song-150    # only these
     DIT=acestep_v1.5_xl_turbo_bf16 uv run ace.py tavern-60
+    FROM=out/ace-step-1.5-xl-turbo/tavern-60-s1.flac MODE=cover uv run ace.py tavern-tense-60
+    FROM=out/ace-step-1.5-xl-turbo/tavern-60-s1.flac MODE=extend uv run ace.py tavern-60
+
+FROM and MODE make a Cue from an earlier one's audio, with ComfyUI's own nodes (it has no template
+for either): MODE=cover gives the earlier audio to "Set Reference Audio" (ReferenceTimbreAudio,
+which ComfyUI's ACE-Step 1.5 treats as a cover: the source the new music is built over), the
+planner's audio codes off, as that node asks; MODE=extend joins EXTEND_BY seconds (30) of empty
+latent to the earlier audio's and masks the sampling to the new part and the OVERLAP seconds (10)
+before it, so only that is drawn and the join is drawn again.
     COMFYUI=http://192.168.50.85:8188 SEED=2 uv run ace.py
 
 The captions are written as ACE-Step's guide asks (docs/en/Tutorial.md in its repo): prose on the
@@ -19,7 +28,7 @@ style, emotion, instruments, timbre and production, with the tempo, key and leng
 them and set as their own inputs; an instrumental's lyrics are structure tags that agree with the
 caption. Output goes to out/ace-step-1.5-turbo/, results to results.jsonl.
 """
-import json, os, sys, threading, time, urllib.request
+import json, os, sys, threading, time, urllib.parse, urllib.request
 from pathlib import Path
 
 HERE = Path(__file__).parent
@@ -158,6 +167,119 @@ HEAVEN_4_LYRICS = """[Intro - low choir hum, low organ]
 
 [Outro - low choir fades]"""
 
+# The tension test (2026-11-08): no tense Cue came out tense (three captions, two models, two
+# planners). A leaves folk for a thriller score; B keeps the tavern's instruments with the ways of
+# playing that make strings tense (tremolo, staccato, a relentless pulse); C is B quicker, to hear
+# how much tempo carries it.
+TENSE_A = ('Suspense thriller film score. Pulsing low strings play a relentless staccato ostinato, '
+           'dark sustained cellos and basses swell beneath, sharp dissonant string stabs, a deep, slow '
+           'drum hit like a heartbeat. Tense, ominous, menacing, anxious, building dread. Dark, tight '
+           'and cinematic.')
+TENSE_A_LYRICS = """[Intro - pulsing low strings, ostinato]
+
+[Build - dissonant stabs, tension rising]
+
+[Climax - full strings, menacing]
+
+[Outro - low pulse, unresolved]"""
+TENSE_B = ('Tense, dark folk score. A fiddle plays a nervous tremolo, a cello plays a relentless '
+           'staccato pulse, a frame drum keeps a tight, insistent beat. Anxious, suspicious, menacing, '
+           'like danger in the room. Dark, dry and tight.')
+TENSE_B_LYRICS = """[Intro - cello staccato pulse, frame drum]
+
+[Verse - fiddle tremolo, nervous]
+
+[Build - pulse tightens, tension rising]
+
+[Outro - tremolo, unresolved]"""
+
+# A again, after the owner's listen: it had tension but was monotonous (the same stabs without a
+# break, nothing until 20 s in), as it asked for a texture and no course. This one says how it
+# develops, in the caption and in each section, and is meant for the 4B planner.
+TENSE_D = ('Suspense thriller film score that keeps developing. It opens on a low, uneasy string pulse '
+           'with a single dark cello line; within a few bars sharp dissonant string stabs break in, the '
+           'pulse quickens, and low brass and a slow, heavy drum join, the tension climbing in waves. '
+           'Midway it drops to a near-silent held note and a ticking pulse, then surges back louder and '
+           'denser. Ominous, menacing, anxious, building dread. Dark, tight and cinematic.')
+TENSE_D_LYRICS = """[Intro - low string pulse, dark cello line, uneasy]
+
+[Build - dissonant stabs break in, pulse quickens]
+
+[Rise - low brass and heavy drum join, tension climbing]
+
+[Break - near-silent held note, ticking pulse]
+
+[Climax - full strings and brass surge back, menacing]
+
+[Outro - stabs stop, one low note, unresolved]"""
+
+# The other Cues written as a course too (2026-11-08), as D was: how each piece unfolds, its
+# section tags following the same stages.
+TAVERN_D = ('Intimate acoustic folk from an 18th-century harbour tavern on a rainy night, guarded warmth, '
+            'smoky and close. It opens on a lone fiddle playing a slow, weary melody; a low cello slips in '
+            'beneath it a few bars later; midway a soft squeezebox breathes in with gentle chords and the '
+            'three play together, warmer but still hushed; then the squeezebox falls away and the fiddle '
+            'and cello settle back to a quiet close. A live, roomy recording, warm and woody.')
+TAVERN_D_LYRICS = """[Intro - lone fiddle, slow and weary]
+
+[Verse - low cello slips in beneath]
+
+[Middle - soft squeezebox chords join, warmer]
+
+[Outro - squeezebox falls away, fiddle and cello, quiet]"""
+HEAVEN_D = ('Sacred ambient choral music at the gates of heaven, vast awe with warmth under the solemnity. '
+            'It opens on a pipe organ held low and slow harp arpeggios; a low, soft wordless choir then '
+            'enters in the background and stays beneath everything to the end; warm, soft strings join '
+            'the choir midway and the sound grows fuller but stays calm; it ends on the low choir and '
+            'organ alone, fading. Airy, lush and spacious, cathedral reverb.')
+HEAVEN_D_LYRICS = """[Intro - low organ, slow harp]
+
+[Verse - low soft choir enters in the background]
+
+[Middle - warm strings join the choir, fuller, calm]
+
+[Outro - low choir and organ alone, fading]"""
+BUFFET_D = ('Gentle cinematic underscore for the last scene of a film, bittersweet regret giving way to '
+            'peace. It opens on a soft solo piano playing a simple, bittersweet melody; warm strings swell '
+            'in beneath it; midway a far-off acoustic guitar answers the piano and the mood eases; the '
+            'strings fall away and it ends on the piano alone, at peace. Unhurried, intimate and warm, a '
+            'polished studio recording with a soft, airy room.')
+BUFFET_D_LYRICS = """[Intro - soft solo piano, bittersweet]
+
+[Verse - warm strings swell beneath]
+
+[Middle - far-off acoustic guitar answers, easing]
+
+[Outro - piano alone, at peace]"""
+
+# A choir that's heard (2026-11-08): no Heaven since the first had one the owner could hear. Each
+# since had instrumental section tags and a choir "low", "soft" or "in the background", which the
+# planner may take as an instrumental with a trace of choir. ACE-Step's guide puts sung sounds in
+# the lyrics, wordless ones as vowels: E is the liked course Heaven with choir lines to sing; F makes
+# the choir its lead.
+HEAVEN_E_LYRICS = """[Intro - low organ, slow harp]
+
+[Choir - soft, wordless]
+Ooh... ooh...
+Aah... aah...
+
+[Choir - with warm strings, fuller, calm]
+Ooh... aah...
+Ooh... aah...
+
+[Outro - choir and organ, fading]
+Aah..."""
+HEAVEN_F = ('Sacred choral music at the gates of heaven, vast awe with warmth under the solemnity. A soft '
+            'choir sings slow, wordless ooh and aah, clearly heard, carrying the piece from start to end; '
+            'a pipe organ holds low chords and a harp plays slow arpeggios beneath it; warm strings join '
+            'the choir midway and it grows fuller but stays calm; it ends on the choir alone, fading. '
+            'Airy, lush and spacious, cathedral reverb.')
+
+FROM = os.environ.get('FROM')
+MODE = os.environ.get('MODE', 'cover')
+EXTEND_BY = float(os.environ.get('EXTEND_BY', '30'))
+OVERLAP = float(os.environ.get('OVERLAP', '10'))
+
 # name → (caption, lyrics, seconds, bpm, key)
 CASES = {
     'tavern-60': (TAVERN, TAVERN_LYRICS, 60, 70, 'A minor'),
@@ -172,6 +294,15 @@ CASES = {
     'heaven-2-60': (HEAVEN_2, HEAVEN_2_LYRICS, 60, 60, 'D major'),
     'heaven-3-60': (HEAVEN_3, HEAVEN_3_LYRICS, 60, 60, 'D major'),
     'heaven-4-60': (HEAVEN_4, HEAVEN_4_LYRICS, 60, 60, 'D major'),
+    'tense-a-60': (TENSE_A, TENSE_A_LYRICS, 60, 100, 'D minor'),
+    'tense-b-60': (TENSE_B, TENSE_B_LYRICS, 60, 100, 'D minor'),
+    'tense-c-60': (TENSE_B, TENSE_B_LYRICS, 60, 132, 'D minor'),
+    'tense-d-60': (TENSE_D, TENSE_D_LYRICS, 60, 100, 'D minor'),
+    'tavern-d-60': (TAVERN_D, TAVERN_D_LYRICS, 60, 70, 'A minor'),
+    'heaven-d-60': (HEAVEN_D, HEAVEN_D_LYRICS, 60, 60, 'D major'),
+    'buffet-d-60': (BUFFET_D, BUFFET_D_LYRICS, 60, 66, 'F major'),
+    'heaven-e-60': (HEAVEN_D, HEAVEN_E_LYRICS, 60, 60, 'D major'),
+    'heaven-f-60': (HEAVEN_F, HEAVEN_E_LYRICS, 60, 60, 'D major'),
 }
 
 
@@ -201,6 +332,46 @@ def workflow(caption, lyrics, seconds, bpm, key, prefix):
     }
 
 
+def from_audio(graph, uploaded, source_seconds, seconds):
+    """The workflow changed to build on an earlier Cue's audio (MODE), uploaded as `uploaded`."""
+    graph['text']['inputs']['generate_audio_codes'] = False
+    graph['load'] = {'class_type': 'LoadAudio', 'inputs': {'audio': uploaded}}
+    graph['encode'] = {'class_type': 'VAEEncodeAudio', 'inputs': {'audio': ['load', 0], 'vae': ['vae', 0]}}
+    if MODE == 'cover':
+        graph['reference'] = {'class_type': 'ReferenceTimbreAudio',
+                              'inputs': {'conditioning': ['text', 0], 'latent': ['encode', 0]}}
+        graph['sample']['inputs']['positive'] = ['reference', 0]
+    elif MODE == 'extend':
+        tenths = round(seconds * 10)
+        graph['latent']['inputs']['seconds'] = EXTEND_BY
+        graph['joined'] = {'class_type': 'LatentConcat',
+                           'inputs': {'samples1': ['encode', 0], 'samples2': ['latent', 0], 'dim': 'x'}}
+        graph['keep'] = {'class_type': 'SolidMask', 'inputs': {'value': 0.0, 'width': tenths, 'height': 1}}
+        graph['draw'] = {'class_type': 'SolidMask',
+                         'inputs': {'value': 1.0, 'width': round((EXTEND_BY + OVERLAP) * 10), 'height': 1}}
+        graph['mask'] = {'class_type': 'MaskComposite',
+                         'inputs': {'destination': ['keep', 0], 'source': ['draw', 0],
+                                    'x': round((source_seconds - OVERLAP) * 10), 'y': 0, 'operation': 'add'}}
+        graph['masked'] = {'class_type': 'SetLatentNoiseMask', 'inputs': {'samples': ['joined', 0], 'mask': ['mask', 0]}}
+        graph['sample']['inputs']['latent_image'] = ['masked', 0]
+    else:
+        raise SystemExit(f'MODE is cover or extend, not {MODE}')
+    return graph
+
+
+def upload(path):
+    """Sends a file to ComfyUI's input folder, where LoadAudio finds it."""
+    boundary = 'bench' + str(time.time_ns())
+    body = (f'--{boundary}\r\nContent-Disposition: form-data; name="image"; filename="{path.name}"\r\n'
+            f'Content-Type: application/octet-stream\r\n\r\n').encode() + path.read_bytes() + (
+            f'\r\n--{boundary}\r\nContent-Disposition: form-data; name="overwrite"\r\n\r\ntrue'
+            f'\r\n--{boundary}--\r\n').encode()
+    req = urllib.request.Request(COMFYUI + '/upload/image', data=body,
+                                 headers={'Content-Type': f'multipart/form-data; boundary={boundary}'})
+    with urllib.request.urlopen(req) as res:
+        return json.loads(res.read())['name']
+
+
 def call(path, body=None):
     data = json.dumps(body).encode() if body is not None else None
     req = urllib.request.Request(COMFYUI + path, data=data, headers={'Content-Type': 'application/json'})
@@ -208,24 +379,46 @@ def call(path, body=None):
         return res.read()
 
 
-def ram_free():
-    return json.loads(call('/system_stats'))['system']['ram_free']
+def comfyui_footprint():
+    """ComfyUI's own memory now (macOS's phys_footprint, which counts Metal's), in bytes; 0 if unknown."""
+    import re, subprocess
+    try:
+        pid = subprocess.run(['lsof', '-nP', f'-iTCP:{urllib.parse.urlparse(COMFYUI).port or 8188}', '-sTCP:LISTEN', '-t'],
+                             capture_output=True, text=True).stdout.split()[0]
+        out = subprocess.run(['footprint', '-p', pid], capture_output=True, text=True).stdout
+        m = re.search(r'phys_footprint:\s+([\d.]+)\s+(KB|MB|GB)', out)
+        return float(m[1]) * {'KB': 1e3, 'MB': 1e6, 'GB': 1e9}[m[2]]
+    except Exception:
+        return 0
 
 
 def render(name):
     caption, lyrics, seconds, bpm, key = CASES[name]
-    total = json.loads(call('/system_stats'))['system']['ram_total']
-    before = total - ram_free()
+    graph = None
+    label = name
+    if FROM:
+        source = Path(FROM)
+        import soundfile
+        source_seconds = soundfile.info(source).duration
+        if MODE == 'extend':
+            seconds = round(source_seconds + EXTEND_BY, 1)
+        uploaded = upload(source)
+        graph = from_audio(workflow(caption, lyrics, seconds, bpm, key, f'bench/{name}'), uploaded,
+                           source_seconds, seconds)
+        label = f'{name}-{MODE}-from-{source.stem}'
+    # ComfyUI's own memory, on the same machine only (a remote one reads 0).
+    before = comfyui_footprint()
     most = [before]
     done = threading.Event()
 
     def watch():
         while not done.wait(2):
-            most[0] = max(most[0], total - ram_free())
+            most[0] = max(most[0], comfyui_footprint())
 
     threading.Thread(target=watch, daemon=True).start()
     start = time.perf_counter()
-    prompt = json.loads(call('/prompt', {'prompt': workflow(caption, lyrics, seconds, bpm, key, f'bench/{name}')}))
+    graph = graph or workflow(caption, lyrics, seconds, bpm, key, f'bench/{name}')
+    prompt = json.loads(call('/prompt', {'prompt': graph}))
     pid = prompt['prompt_id']
     while True:
         history = json.loads(call(f'/history/{pid}')).get(pid)
@@ -240,16 +433,15 @@ def render(name):
     q = urllib.parse.urlencode({'filename': audio['filename'], 'subfolder': audio['subfolder'], 'type': audio['type']})
     out = HERE / 'out' / MODEL
     out.mkdir(parents=True, exist_ok=True)
-    path = out / f'{name}-s{SEED}{Path(audio["filename"]).suffix}'
+    path = out / f'{label}-s{SEED}{Path(audio["filename"]).suffix}'
     path.write_bytes(call(f'/view?{q}'))
-    row = dict(model=MODEL, dit=DIT, lm=LM, case=name, seed=SEED, steps=8, asked=seconds, bpm=bpm, key=key,
-               took=round(took, 1), used_before_gb=round(before / 1e9, 1), used_most_gb=round(most[0] / 1e9, 1),
+    row = dict(model=MODEL, dit=DIT, lm=LM, case=label, mode=MODE if FROM else 'text', source=FROM, seed=SEED, steps=8, asked=seconds, bpm=bpm, key=key,
+               took=round(took, 1), comfyui_before_gb=round(before / 1e9, 1), comfyui_most_gb=round(most[0] / 1e9, 1),
                file=path.name, date=time.strftime('%Y-%m-%d'))
     print(json.dumps(row), flush=True)
     with open(HERE / 'results.jsonl', 'a') as f:
         f.write(json.dumps(row) + '\n')
 
 
-import urllib.parse
 for name in sys.argv[1:] or list(CASES):
     render(name)

@@ -1,6 +1,6 @@
 # Music models bench
 
-Stage 2 of [the music plan](../../music-plans.md): what each music model does with the captions an adapter would write from a Score and a Cue. `render.py` renders its cases (MiniMax Music 3 through mlx-audio, on the Mac); clips go to `out/` as WAV (gitignored), timings to `results.jsonl`; the clips kept for reference are in [clips/](clips/), one folder per build, as 96 kbps AAC (`ffmpeg -i x.wav -c:a aac -b:a 96k x.m4a`). The captions follow the example Scenarios' Music sections; the song quotes tavern-style lines of the kind a Roleplay collects.
+Stage 2 of [the music plan](../../music-plans.md): what each music model does with the captions a cue writer would give it, judged by the owner's ear; what was concluded is in [research/music-models.md](../../research/music-models.md). `render.py` renders MiniMax Music 3 through mlx-audio (dropped; its builds deleted), `ace.py` ACE-Step 1.5 through a running ComfyUI (the pick), `words.py` times a song's words with Whisper, and `analyse.py` sets measures of each clip beside the owner's verdicts (`verdicts.json`). Raw output goes to `out/` (gitignored), timings to `results.jsonl`; the clips kept for reference are in [clips/](clips/), one folder per setup, as 96 kbps AAC (`ffmpeg -i x.flac -c:a aac -b:a 96k x.m4a`): only those the owner liked and those that show a finding (27 of 89, 2026-11-08), so a clip named below may not be there; `verdicts.json` still lists every clip judged, and `analysis.jsonl` has its measures. The captions follow the example Scenarios' Music sections; the songs quote tavern-style lines of the kind a Roleplay collects. All on the Mac (M5 Pro, 48 GB).
 
 ## MiniMax Music 3, mxfp8 against 4-bit (2026-11-07, Mac)
 
@@ -67,9 +67,25 @@ The model card's reproducible request (`scripts/end_to_end/minimax_ttm_test.py` 
 - MiniMax's own clip has the same sound the owner heard in ours: "a tiny bit high, warbly, tangy, electronic-ish, fake-ish". That's the model's.
 - How it's meant to be prompted, which the bench's captions weren't (one line of tags): MiniMax Music 3 is made for songs with vocals; instrumentals come from `[instrumental]` and are secondary (the guides say to give section tags, `[Intro]`, `[Instrumental]`, `[Solo]`, `[Outro]`, rather than `[instrumental]` alone), which may be why voices came in where none were asked for. The caption it wants is prose only a Text Model could write from a scene, not a template's tags.
 
+## MiniMax with its own prompt format (2026-11-08, Mac)
+
+A fair last test: the tavern, Heaven (the owner's low choir), the Buffet and a tense Cue as Structured Captions in the format of MiniMax's own example (Global Metadata with the BPM and key, the emotional progression, the setting, the production; an Arrangement saying when each instrument plays), the lyrics section tags (`[intro] [instrumental] [solo] [instrumental] [outro]`) rather than `[instrumental]` alone, as the guides advise. `render.py guide-*-120`, the 4-bit, seed 1, a 120 s cap ([clips](clips/MiniMax-Music3-4bit/)).
+
+| Case | Length | Time | Peak |
+|---|---|---|---|
+| Tavern | 26.3 s | 111 s | 23.4 GB |
+| Heaven | 22.1 s | 95 s | 21.2 GB |
+| Buffet | 42.7 s | 196 s | 31.0 GB |
+| Tense | 29.9 s | 132 s | 25.9 GB |
+
+- **Still the model's length**: each ended itself (a fade) at 22–43 s, five section tags and a 120 s cap notwithstanding; the same 4.2–4.6 s of rendering a second.
+- **By ear** (the owner): "much better than our initial batch". The tavern "ok, short and better"; the Buffet ok, but with singing, which may not fit the scene (voices again where none were asked); Heaven "like a Christmas song"; the tense Cue not tense and not tavern-like, "a different song".
+
+So MiniMax's own format matters a great deal for it (as ACE-Step's guide did for ACE-Step), and the bench's first verdict was partly the captions' fault; but the length, the voices and the time remain.
+
 ## Verdict on MiniMax Music 3 (2026-11-08)
 
-Not good enough for the app's music, by the owner's ear: "all pretty bad… inconsistent… feels like super slop", the 4-bit song "ok-ish", and "I might just mute it". Against it as well: its length is its own (14–32 s, or cut at the cap), 4–5 s of rendering for each second of music, 20–30 GB on the Mac with the Text Model unloaded, voices where none were asked, no keys followed, and no reference audio for variations in mlx-audio. Of the four builds the 4-bit was best (it sang the song whole); the mxfp4 wasn't tried, as the least accurate 4-bit format. Better captions weren't tried; they might bring the instrumentals nearer the scene, but not remove the sound. Kept as the song model to compare with, for the end credits.
+Not good enough for the app's music, by the owner's ear: "all pretty bad… inconsistent… feels like super slop", the 4-bit song "ok-ish", and "I might just mute it". Against it as well: its length is its own (14–32 s, or cut at the cap), 4–5 s of rendering for each second of music, 20–30 GB on the Mac with the Text Model unloaded, voices where none were asked, no keys followed, and no reference audio for variations in mlx-audio. Of the four builds the 4-bit was best (it sang the song whole); the mxfp4 wasn't tried, as the least accurate 4-bit format. Its own prompt format, tried after (above), made it much better by ear, but not its length (22–43 s), its voices where none were asked, or its time. **Dropped** (the owner, 2026-11-08), as its length can't be set; its model files removed once this was written down.
 
 ## ACE-Step 1.5 through ComfyUI (2026-11-08, Mac)
 
@@ -111,10 +127,102 @@ So: describe what's heard, never the subtext; change one thing at a time; no neg
 - **By ear** (the owner): richer, but "a bit more synthesizer-ish"; some instruments sound ok; the song's voice is good; every clip seemed faster in beat than the 2B's. Heaven's fourth: seed 1 "ok, no choir but fits the scene", seed 2 "similar-ish and decent", better than the 2B's.
 - The "faster" isn't the tempo, as far as can be measured: a beat tracker reads slow, sparse music poorly (the same clip at 54 or 172 BPM), but the XL plays more notes in some (Heaven 5.2 onsets a second against 1.8, tense 3.5 against 2.8, the rest about the same), so busier playing, more likely.
 
+## Variations and extending (2026-11-08, Mac)
+
+ComfyUI 0.44.2 has no template for either, and its ACE-Step 1.5 nodes are text to music and "Set Reference Audio" (`ReferenceTimbreAudio`) only; `ace.py`'s `FROM=` and `MODE=` build them from its own nodes.
+
+- **Extending: not possible through ComfyUI's nodes.** ACE-Step's repaint (`src_latents`, `chunk_masks`) isn't exposed: its `extra_conds` (`comfy/model_base.py`, `ACEStep15`) passes only the reference audio. ComfyUI's general way, a latent noise mask over the new part (`LatentConcat` of the earlier audio and 30 s of empty latent, `SetLatentNoiseMask`), fails at sampling: the mask is reshaped for pictures (`[1, 1, 1, 900]`), one dimension too many for an audio latent ("Input and output must have the same number of spatial dimensions"). ACE-Step's own repo does repaint (3–90 s at a time, per its guide), if it's ever needed; with lengths of 3 minutes rendered directly, a long Cue may need it less than a player that loops.
+- **Variations: "Set Reference Audio" is a cover.** ComfyUI's ACE-Step 1.5 treats a reference as the source the new music is built over (`is_covers`), the planner's audio codes off. From the XL tavern Cue (`tavern-60-s1`), on the XL, seed 1: the same caption again, and the tense caption ([clips](clips/ace-step-1.5-xl-turbo/)). Each took **29 s** for 60 s of music, a third of the time from text, as the planner doesn't run. The Mac's memory in use reached 47.4–47.6 GB of 48, but ComfyUI's own peak since it started (`footprint -p`, `phys_footprint_peak`) was 32 GB, over everything that day (the XL, the planner, the failed extension): the rest was most likely the owner's Text Model, loaded just before. From here, ComfyUI's own footprint is what to measure, not the Mac's.
+- How much each follows the source, measured (a rough guide; the ear decides): harmony over time (the chroma's correlation, frame by frame) and the loudness's shape, against the source.
+
+| Against `tavern-60-s1` | Harmony over time | Loudness shape |
+|---|---|---|
+| Cover, the same caption | 0.47 | 0.66 |
+| Cover, the tense caption | 0.45 | 0.36 |
+| The tense caption from text, for comparison | 0.26 | 0.23 |
+| Heaven from text, for comparison | 0.13 | 0.33 |
+
+The numbers overstate it. By ear (the owner): the same-caption cover "sounds a little similar but instruments seem different", and the tense cover "sounds totally different". So a full-strength cover doesn't keep Cues sounding like one score; ComfyUI's node takes no strength (ACE-Step's own `audio_cover_strength`). **Cues stay related by text**: the Score's instruments, genre and production in every Cue's caption, the Cue changing only the mood, energy and arrangement, and the player crossfading.
+
+## The XL with its 4B planner (2026-11-08, Mac)
+
+ComfyUI's XL template as it is: the XL turbo with the 4B planner (`qwen_4b_ace15`, 8.4 GB) in place of the 1.7B, the same captions and seeds as the XL clips above ([clips](clips/ace-step-1.5-xl-turbo-4b-lm/)). Memory is ComfyUI's own now (`footprint`, polled every 2 s), not the Mac's.
+
+| Case | Time | ComfyUI's memory, at the most |
+|---|---|---|
+| Tavern | 174 s for 60 s (first, with the load) | 27.0 GB |
+| Heaven, the low choir, seeds 1 and 2 | 170 s and 167 s | 26.0 GB |
+| Tavern, tense | 169 s | 26.0 GB |
+| Song with lyrics | 431 s for 150 s | 34.0 GB |
+
+- **Twice as slow as with the 1.7B** (about 170 s against 80 s for 60 s of music): the planner, which writes the audio codes before the music model runs, is most of the time.
+- ComfyUI keeps 21 GB loaded between runs, and reaches 26 GB for a minute of music, 34 GB for the song.
+- **By ear** (the owner): the tavern and both Heavens "slow, somber… kinda can fit the scene", and richer, "like the instruments go along with each other"; the song "slow and moody… more thought and production-grade". The tense Cue still isn't tense, on any model or planner so far: the caption, or what this model makes of tension in folk, is the open question.
+
+## Tension (2026-11-08, Mac)
+
+No tense Cue had come out tense (three captions, two models, two planners), so three approaches, on the XL with the 1.7B planner, two seeds each ([clips](clips/ace-step-1.5-xl-turbo/)): **A** a thriller score (pulsing low strings in a staccato ostinato, dissonant stabs, a slow drum, 100 BPM; `tense-a-60`); **B** the tavern's instruments played the ways that make strings tense (a fiddle tremolo, a staccato cello pulse, a tight frame drum, 100 BPM; `tense-b-60`); **C** B at 132 BPM (`tense-c-60`). About 80 s each, ComfyUI at 24 GB.
+
+- **A has tension**, by ear (the owner), but monotonous: the same stabs every few seconds without a break, nothing picking up until 20 s in, then only small additions. The caption asked for an ostinato and got one, literally.
+- **B and C don't**: folk instruments sound "too playful" for tension, and C is "just regular folk". Tempo didn't carry it.
+
+So a scene's tension may need a genre the Score's palette doesn't have: a folk Score's instruments undo it. Either the cue writer may step outside the palette for a scene that needs it (a Cue's instruments flagged off the palette, as now, rather than barred), or the Score names more than one register from the start. And a caption has to ask for development over time, not only a texture (A's stabs went on unchanged).
+
+**D**, A rewritten as a course (`tense-d-60`, on the 4B planner, two seeds, 175–202 s, ComfyUI at 26–27 GB): the caption says how it unfolds (a low uneasy pulse; dissonant stabs break in and the pulse quickens; brass and a heavy drum join, climbing in waves; a near-silent break midway; a surge back; one low unresolved note), and each stage is a section tag, so the planner is given the shape twice ([clips](clips/ace-step-1.5-xl-turbo-4b-lm/)). By ear (the owner): **"actually good"**, the first tense Cue that is.
+
+So, for the cue writer: a Cue's caption names the sound and **how it develops over the track**, and its section tags follow the same course, stage by stage; the genre may leave the Score's palette when the scene needs it (tension wasn't possible in folk). With the earlier rules: what's heard, never the subtext; no negations; the player's own words for a steer; a take or two to pick from.
+
+## Course captions, and the 4B planner against the 1.7B (2026-11-08, Mac)
+
+The tavern, Heaven and the Buffet written as courses too (`tavern-d-60`, `heaven-d-60`, `buffet-d-60`: how each unfolds, section tags following it), on the XL with the 4B planner and with the 1.7B, two seeds each, and D on the 1.7B ([4B](clips/ace-step-1.5-xl-turbo-4b-lm/), [1.7B](clips/ace-step-1.5-xl-turbo/)). 4B: 170–172 s for 60 s of music, ComfyUI at 26–27 GB; 1.7B: 79–84 s, 24 GB.
+
+- **On the 4B, the course captions are the best yet**, by ear (the owner): both tavern seeds liked, the Buffet good and decent, Heaven's seed 2 liked (though no choir is heard in either seed).
+- **On the 1.7B, usable but not great**: every clip "not bad" or ok, the tense Cue "some tenseness but a distracting tune and instrument" and "not bad"; louder, more going on and less smooth than the 4B's; Heaven more synthesizer-like; one Buffet "gappy, the instruments and tunes not layering or playing together". "Overall the 4B is better."
+- So both did part: the course caption made the 1.7B's Cues ok where its earlier ones weren't, and the 4B planner made them good. **The 4B planner is the pick for quality, at twice the time.**
+- The measures below don't see the difference between the planners: over the seven pairs of the same caption and seed, the 1.7B's are no louder (+0.04 dB on average), no busier (fewer notes a second, −0.8), no brighter, and no more synthesizer-like by CLAP (+0.005). What the owner hears ("playing together", "smooth") is the arrangement's coherence, which none of them measure.
+
+## The ear against measures (2026-11-08, Mac)
+
+`analyse.py` sets the owner's verdicts (`verdicts.json`: 47 clips since the planner comparison; 40 when first run, each 2 good, 1 ok, 0 bad, with the owner's words) beside measures of each clip, over 10 s windows: how far the sound moves from window to window (development), how alike all windows are (repetition), the loudness's range, brightness (spectral centroid), noisiness (flatness), notes a second; and CLAP (`laion/clap-htsat-unfused`, audio against text, on the CPU) for the clip against its own caption and against words for what may be in it. Results in `analysis.jsonl`. One listener, few clips: hints, not findings.
+
+- **No measure predicts a liked clip overall** (Spearman across the 40, every measure within ±0.35; only "drums" past p 0.05, at −0.34). Clips of different scenes are good for different reasons, so a single score doesn't follow the ear.
+- **CLAP doesn't pick the better take**: of four pairs of seeds where the owner preferred one, the clip nearer its own caption was the preferred one twice. So the app can't choose between takes by CLAP; the player picks.
+- **But several of the owner's specific remarks are borne out:**
+  - *"Like a Christmas song"* (MiniMax's Heaven): the most Christmas-like clip of all by CLAP (0.56; the other Heavens 0.08–0.42). Among the Heavens, the Christmas score runs against the verdict: the bad ones 0.31–0.42, the liked `heaven-d-60-s2` 0.18.
+  - *"The choir is gone"* (Heaven's second try): the choir score fell from 0.41 on the first Heaven, the one that "started out great", to 0.21–0.25 on the second (other scenes, without a choir: 0.10 on average, 0.28 at most). The course Heavens score 0.26 and 0.36: some choir, perhaps too faint to hear as one, as the owner heard none.
+  - *"Very monotonous"* (tension A): the least development of every clip (0.002–0.005, against 0.012–0.049 for the other tense clips) and the narrowest loudness range of the ACE-Step clips (4.1–4.6 dB). The tense Cue the owner liked (D) develops three times as much (0.015–0.016) and spans 6.8–8.0 dB.
+  - *"A tiny bit high"* (MiniMax): its song is the brightest (centroid 1650 Hz, against 960–1440 for ACE-Step's songs).
+  - *"A bit more synthesizer-ish"* (the XL): slightly, on the clips both made, for what CLAP's "synthesizer" is worth (the tavern 0.13 on the 2B against 0.16 on the XL with the 4B planner, the song 0.12 against 0.15).
+  - *Tension itself*: CLAP's "tense" doesn't tell the tense Cue the owner liked from the ones the owner didn't (0.37–0.47 against 0.19–0.41).
+
+So measures can catch particular failures a take may have, and could be checks the app runs on one: a scene that shouldn't sound like Christmas, a Cue that doesn't develop (an instrument asked for and not there, the choir, turned out not to be one: see below). They don't replace the ear: they can only say what's wrong, never what's good.
+
+## Loops and word times (2026-11-08, Mac)
+
+**Loops**: `tavern-d-60-s1` (the 4B planner, liked) played three times over, with ffmpeg as the player would (`out/loops/`, not kept). Every ACE-Step clip ends in a fade to silence (this one's last 4 s at −64 dB), so a loop has to deal with the tail.
+
+- Joined end to end: "wow, I felt like the music ended, do I need to restart it?" Not usable.
+- A 4 s crossfade over the silent tail: fine and "less jarring", but maybe too long.
+- The tail trimmed (to −55 dB, 60 s to 56.8 s) and a 2 s crossfade: "sounds fast".
+
+So the player loops a Cue by cutting its fade-out and crossfading **3 s** into its start (the owner).
+
+**Word times**: `words.py` times each word of a song with Whisper (large-v3-turbo through mlx-audio, `word_timestamps`), finds each of six quoted lines, and cuts a clip of each line from its times plus a second either side (`out/words/`). On the three ACE-Step songs (the 2B, the XL, the XL with the 4B planner) every line was found, word for word on 16 of the 18 (the other two missing their last word, "eye"), and by ear (the owner) **Whisper "is right on every clip"**. Not needed after all: the end song is only a song, with nothing shown in time with its lines (the owner).
+
+## A choir that's heard (2026-11-08, Mac)
+
+No Heaven since the first had a choir the owner could hear. Each had instrumental section tags and a choir "low", "soft" or "in the background", which the planner may take as an instrumental with a trace of choir; ACE-Step's guide puts sung sounds in the lyrics, wordless ones as vowels. On the XL with the 4B planner, two seeds each ([clips](clips/ace-step-1.5-xl-turbo-4b-lm/)), about 171–181 s, ComfyUI at 27 GB:
+
+- **E** (`heaven-e-60`): the liked course Heaven's caption, unchanged, with choir sections in the lyrics to sing ("Ooh… ooh… / Aah… aah…"). By ear: **"yeah, I can hear them now"**, on both seeds, both decent.
+- **F** (`heaven-f-60`): the same lyrics, and the choir made the lead in the caption ("clearly heard, carrying the piece"). By ear: seed 1's voice "warbly, and distracts"; seed 2 better, but "sounds like I'm in a church", which might suit a church scene.
+
+So **voices come from the lyrics**: a choir in the background needs lines to sing, its place in the mix set by the caption. Made the lead, ACE-Step's voices are warbly, as MiniMax's were.
+
+CLAP doesn't hear the difference: its choir score is the same for the course Heaven without a heard choir (0.33, read again from its m4a) as for E's (0.32–0.33). So the earlier hope, that a measure could warn when a choir asked for isn't there, doesn't hold. F's warbly seed 1 is again the most Christmas-like of these (0.42 against 0.18–0.32).
+
 ## Not checked yet
 
-- **MiniMax with Structured Captions** written for the scenes, and more seeds: how long instrumental pieces tend to run, and whether section tags (`[intro]`, `[verse]`, `[outro]` with `[instrumental]`) make them longer.
-- **Whisper's word times** on the song, for the end credits.
 - **ACE-Step on the PC** (CUDA, 12 GB): whether the XL fits.
-- **The XL with its 4B planner** (`qwen_4b_ace15`, 8.4 GB more), as ComfyUI's template has it.
-- **ACE-Step's reference audio, cover and repaint**: variations of a Cue, and extending one by repaint (3–90 s at a time, per its guide).
+- **Cover strength** (ACE-Step's `audio_cover_strength`, which ComfyUI's node doesn't take): a weaker cover might keep a Cue's sound where a full one didn't.
+- **An end song written from a story's ending**, 2–3 minutes (the songs here are written for the bench).
+- **Memory beside the Image Model**: not needed on one machine, where jobs take turns (ADR 0020); on the PC, whether ComfyUI frees ACE-Step before a picture.

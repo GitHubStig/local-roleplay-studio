@@ -1,0 +1,207 @@
+{
+  "_note": "The owner's verdicts by ear (2026-11-07 and 08, Mac), each clip's path under clips/, scored 2 good, 1 ok or mixed, 0 bad, with the owner's words. analyse.py reads it. Only clips the owner commented on one by one.",
+  "ace-step-1.5-turbo/tavern-60-s1.m4a": [
+    2,
+    "tavern sounds good"
+  ],
+  "ace-step-1.5-turbo/song-150-s1.m4a": [
+    2,
+    "song-150 sounds good"
+  ],
+  "ace-step-1.5-turbo/heaven-60-s1.m4a": [
+    1,
+    "started out good but went with something i didn't like"
+  ],
+  "ace-step-1.5-turbo/tavern-tense-60-s1.m4a": [
+    0,
+    "not tense at all"
+  ],
+  "ace-step-1.5-turbo/tavern-tense-2-60-s2.m4a": [
+    0,
+    "slightly better… weird electronic instrument… not great"
+  ],
+  "ace-step-1.5-turbo/heaven-2-60-s1.m4a": [
+    0,
+    "bad. just bad"
+  ],
+  "ace-step-1.5-turbo/heaven-2-60-s2.m4a": [
+    0,
+    "bad too. the choir is gone"
+  ],
+  "ace-step-1.5-turbo/heaven-3-60-s1.m4a": [
+    0,
+    "still not what i want"
+  ],
+  "ace-step-1.5-turbo/heaven-3-60-s2.m4a": [
+    1,
+    "alright ish"
+  ],
+  "ace-step-1.5-turbo/heaven-4-60-s1.m4a": [
+    0,
+    "s2 is better than s1"
+  ],
+  "ace-step-1.5-turbo/heaven-4-60-s2.m4a": [
+    1,
+    "better than s1 but still meh"
+  ],
+  "ace-step-1.5-xl-turbo/heaven-4-60-s1.m4a": [
+    1,
+    "ok. no choir but fits the scene"
+  ],
+  "ace-step-1.5-xl-turbo/heaven-4-60-s2.m4a": [
+    1,
+    "similar ish and decent"
+  ],
+  "ace-step-1.5-xl-turbo/song-150-s1.m4a": [
+    2,
+    "song's voice is good"
+  ],
+  "ace-step-1.5-xl-turbo/tavern-60-cover-from-tavern-60-s1-s1.m4a": [
+    1,
+    "a little similar but instruments seem different"
+  ],
+  "ace-step-1.5-xl-turbo/tense-a-60-s1.m4a": [
+    1,
+    "some tension but very monotonous"
+  ],
+  "ace-step-1.5-xl-turbo/tense-a-60-s2.m4a": [
+    1,
+    "some tension but very monotonous"
+  ],
+  "ace-step-1.5-xl-turbo/tense-b-60-s1.m4a": [
+    0,
+    "folk too playful, not good"
+  ],
+  "ace-step-1.5-xl-turbo/tense-b-60-s2.m4a": [
+    0,
+    "folk too playful, not good"
+  ],
+  "ace-step-1.5-xl-turbo/tense-c-60-s1.m4a": [
+    0,
+    "just regular folk"
+  ],
+  "ace-step-1.5-xl-turbo/tense-c-60-s2.m4a": [
+    0,
+    "just regular folk"
+  ],
+  "ace-step-1.5-xl-turbo-4b-lm/tavern-60-s1.m4a": [
+    1,
+    "slow, somber… kinda can fit the scene, richer"
+  ],
+  "ace-step-1.5-xl-turbo-4b-lm/heaven-4-60-s1.m4a": [
+    1,
+    "slow, somber… kinda can fit the scene"
+  ],
+  "ace-step-1.5-xl-turbo-4b-lm/heaven-4-60-s2.m4a": [
+    1,
+    "slow, somber… kinda can fit the scene"
+  ],
+  "ace-step-1.5-xl-turbo-4b-lm/tavern-tense-60-s1.m4a": [
+    0,
+    "nope. not tense"
+  ],
+  "ace-step-1.5-xl-turbo-4b-lm/song-150-s1.m4a": [
+    2,
+    "slow and moody… more production grade"
+  ],
+  "ace-step-1.5-xl-turbo-4b-lm/tense-d-60-s1.m4a": [
+    2,
+    "tense-d is actually good"
+  ],
+  "ace-step-1.5-xl-turbo-4b-lm/tense-d-60-s2.m4a": [
+    2,
+    "tense-d is actually good"
+  ],
+  "ace-step-1.5-xl-turbo-4b-lm/tavern-d-60-s1.m4a": [
+    2,
+    "i like"
+  ],
+  "ace-step-1.5-xl-turbo-4b-lm/tavern-d-60-s2.m4a": [
+    2,
+    "i like"
+  ],
+  "ace-step-1.5-xl-turbo-4b-lm/heaven-d-60-s1.m4a": [
+    1,
+    "no choir"
+  ],
+  "ace-step-1.5-xl-turbo-4b-lm/heaven-d-60-s2.m4a": [
+    2,
+    "no choir but i like seed 2"
+  ],
+  "ace-step-1.5-xl-turbo-4b-lm/buffet-d-60-s1.m4a": [
+    2,
+    "good"
+  ],
+  "ace-step-1.5-xl-turbo-4b-lm/buffet-d-60-s2.m4a": [
+    1,
+    "decent"
+  ],
+  "MiniMax-Music3-4bit/reference-120-s1.m4a": [
+    1,
+    "sounds fine"
+  ],
+  "MiniMax-Music3-4bit/song-150-s1.m4a": [
+    1,
+    "ok ish"
+  ],
+  "MiniMax-Music3-4bit/guide-tavern-120-s1.m4a": [
+    1,
+    "ok. short and better"
+  ],
+  "MiniMax-Music3-4bit/guide-heaven-120-s1.m4a": [
+    0,
+    "like christmas song"
+  ],
+  "MiniMax-Music3-4bit/guide-tense-120-s1.m4a": [
+    0,
+    "doesn't sound tense or tavern-y"
+  ],
+  "MiniMax-Music3-4bit/guide-buffet-120-s1.m4a": [
+    1,
+    "ok too, but there's singing"
+  ],
+  "ace-step-1.5-xl-turbo/tense-d-60-s1.m4a": [
+    1,
+    "some tenseness but distracting tune and instrument"
+  ],
+  "ace-step-1.5-xl-turbo/tense-d-60-s2.m4a": [
+    1,
+    "not bad"
+  ],
+  "ace-step-1.5-xl-turbo/tavern-d-60-s1.m4a": [
+    1,
+    "not bad; louder, more going on, less smooth than the 4B's"
+  ],
+  "ace-step-1.5-xl-turbo/tavern-d-60-s2.m4a": [
+    1,
+    "not bad too; louder, more going on, less smooth than the 4B's"
+  ],
+  "ace-step-1.5-xl-turbo/heaven-d-60-s1.m4a": [
+    1,
+    "ok scene wise but more synthesizer-like than the 4B's"
+  ],
+  "ace-step-1.5-xl-turbo/heaven-d-60-s2.m4a": [
+    1,
+    "ok too but the 4B's beats it"
+  ],
+  "ace-step-1.5-xl-turbo/buffet-d-60-s1.m4a": [
+    0,
+    "gappy, instruments and tunes not layering or playing together well"
+  ],
+  "ace-step-1.5-xl-turbo-4b-lm/heaven-e-60-s1.m4a": [
+    2,
+    "yeah i can hear them now. decent"
+  ],
+  "ace-step-1.5-xl-turbo-4b-lm/heaven-e-60-s2.m4a": [
+    2,
+    "i can hear them in s2 too. decent"
+  ],
+  "ace-step-1.5-xl-turbo-4b-lm/heaven-f-60-s1.m4a": [
+    0,
+    "lead choir, the voice sounds warbly and distracts"
+  ],
+  "ace-step-1.5-xl-turbo-4b-lm/heaven-f-60-s2.m4a": [
+    1,
+    "better than s1 but sounds like i'm in a church"
+  ]
+}

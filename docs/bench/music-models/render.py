@@ -82,6 +82,68 @@ if _REFERENCE.exists():
     CASES['reference-120'] = (_ns['CAPTION'], _ns['LYRICS'], 120)
 
 
+# Our scenes again, prompted as MiniMax's model card and prompt guides ask (2026-11-08), for a fair
+# last test: a Structured Caption (Global Metadata, Vocal Details, Arrangement) in prose, like its
+# own example's, and for an instrumental, section tags in the lyrics rather than [instrumental] alone.
+def structured(genre, bpm, key, progression, scene, production, arrangement):
+    return f"""Global Metadata
+Basic Attributes: bpm is {bpm}. key is {key[0]}, and scale is {key[1]}. {genre}.
+Global Emotional Progression: {progression}
+Application Scenarios & Imagery: {scene}
+Sonics & Production Profile: {production}
+Vocal Details
+Vocal Gender & Timbre: Instrumental track; the only sounds are the instruments described below.
+Arrangement
+Instrument Lifecycle Description (Primary/Secondary Layering):
+{arrangement}"""
+
+
+INSTRUMENTAL_SECTIONS = '[intro]\n[instrumental]\n[solo]\n[instrumental]\n[outro]'
+GUIDE_CASES = {
+    'guide-tavern': structured(
+        'Acoustic Folk / Celtic Tavern Folk', 70, ('A', 'minor'),
+        'The piece opens in guarded quiet, a lone fiddle feeling its way, and warms slowly as the cello '
+        'and squeezebox join, never rising above an intimate murmur. It stays smoky and close throughout, '
+        'like two strangers testing each other by a fire, and settles back into the lone fiddle to end.',
+        'An 18th-century harbour tavern on a rainy night, the fire low, a conversation held in half-voices.',
+        'A live, roomy recording with natural wood-panelled reverb; warm and woody, mid-range, soft dynamics, '
+        'the instruments close and slightly off-centre, nothing polished.',
+        'Primary: A lone fiddle carries a slow, weary melody from the intro to the outro.\n'
+        'Secondary: A low cello enters after the intro with long, soft notes beneath the fiddle; a squeezebox '
+        'breathes in soft chords in the middle section and drops out for the ending.'),
+    'guide-heaven': structured(
+        'Sacred Choral Ambient', 60, ('D', 'major'),
+        'The piece opens in solemn stillness on a low organ and harp, and a low, soft wordless choir enters '
+        'beneath them, humming in the background throughout. It stays calm and reverent, vast awe with warmth '
+        'under the solemnity, and fades on the choir and organ together.',
+        'A soul standing at the gates of heaven, light and quiet all around.',
+        'A cathedral acoustic with long, soft reverb; airy, lush and spacious, low in register, gentle dynamics.',
+        'Primary: A low, soft wordless choir hums in the background from the first section to the last.\n'
+        'Secondary: A pipe organ holds low, slowly changing chords; slow harp arpeggios and warm, soft strings '
+        'move gently above it.'),
+    'guide-buffet': structured(
+        'Cinematic Underscore / Soft Piano', 66, ('F', 'major'),
+        'The piece opens on a soft solo piano in bittersweet regret, warm strings swell beneath it in the '
+        'middle, and it resolves slowly into peace and acceptance, ending on the piano alone.',
+        'The last scene of a film: a quiet room, a life looked back on, letting go.',
+        'A polished studio recording with a soft, airy room; intimate and warm, gentle dynamics.',
+        'Primary: A soft solo piano plays a simple, bittersweet melody throughout.\n'
+        'Secondary: Warm strings swell beneath the piano in the middle section; a far-off acoustic guitar '
+        'answers the piano near the end.'),
+    'guide-tense': structured(
+        'Dark Folk / Suspense Score', 100, ('D', 'minor'),
+        'The piece opens already uneasy and tightens steadily: a nervous, anxious feeling of danger in the '
+        'room, menace that keeps building and never resolves.',
+        'A harbour tavern where a stranger is about to draw a blade.',
+        'A dry, close, tight recording; dark low end, sharp attacks, rising dynamics.',
+        'Primary: A cello plays a relentless staccato pulse from the intro to the outro.\n'
+        'Secondary: A fiddle plays a nervous tremolo above it, getting louder; a frame drum keeps a tight, '
+        'insistent beat that grows heavier toward the end.'),
+}
+for _name, _caption in GUIDE_CASES.items():
+    CASES[f'{_name}-120'] = (_caption, INSTRUMENTAL_SECTIONS, 120)
+
+
 def main():
     names = sys.argv[1:] or list(CASES)
     out = HERE / 'out' / MODEL.split('/')[-1]
