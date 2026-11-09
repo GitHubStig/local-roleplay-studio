@@ -6,7 +6,7 @@ import { clipCount, madeIn, usePlayingClip, waitedFor } from './clips'
 describe('usePlayingClip', () => {
   it('stops the clip once another Frame is selected, not on its own', async () => {
     const selected = ref(2)
-    const playing = usePlayingClip(() => selected.value)
+    const playing = usePlayingClip(() => selected.value, () => 'krea-2')
     const clip = { kind: 'idle-loop', file: 'clip-2-idle-loop-00000000.mp4' } as Clip
     playing.value = { index: 2, clip }
     selected.value = 2
@@ -17,6 +17,16 @@ describe('usePlayingClip', () => {
     expect(playing.value).toBeNull()
     // Back on its Frame, it stays stopped.
     selected.value = 2
+    await nextTick()
+    expect(playing.value).toBeNull()
+  })
+
+  it('stops the clip once the Session switches Image Model', async () => {
+    const model = ref('krea-2')
+    const playing = usePlayingClip(() => 2, () => model.value)
+    const clip = { kind: 'idle-loop', file: 'clip-2-idle-loop-00000000.mp4' } as Clip
+    playing.value = { index: 2, clip }
+    model.value = 'qwen-image-2.1'
     await nextTick()
     expect(playing.value).toBeNull()
   })

@@ -101,7 +101,7 @@ const latest = computed(() => session.value?.frames.at(-1))
 /** The picture of the Frame in the main panel. */
 const picture = computed(() => shown.value && pictureOf(shown.value))
 /** A clip playing over its Frame's picture, from the Frame tab's Clip section. */
-const playingClip = usePlayingClip(() => shown.value?.index)
+const playingClip = usePlayingClip(() => shown.value?.index, () => session.value?.settings.imageModel)
 /** It's by another Image Model than the Chain's now, or from before its prompt was edited. */
 const pictureChanged = computed(() =>
   !!picture.value && changedSinceRender(picture.value, session.value!.settings.imageModel)

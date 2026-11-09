@@ -150,7 +150,7 @@ const look = computed(() => session.value?.look ?? planning.value?.look ?? null)
 /** The picture of the selected Frame. */
 const picture = computed(() => (current.value ? pictureOf(current.value) : undefined))
 /** A clip playing over its Frame's picture, from the Frame tab's Clip section. */
-const playingClip = usePlayingClip(() => current.value?.index)
+const playingClip = usePlayingClip(() => current.value?.index, () => session.value?.settings.imageModel)
 
 // --- Streamed work.
 

@@ -1,6 +1,8 @@
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ask } from '../ask'
+import FrameTab from '../components/FrameTab.vue'
+import ImageModelPicker from '../components/ImageModelPicker.vue'
 import ModelComparison from '../components/ModelComparison.vue'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import * as api from '../api'
@@ -755,6 +757,21 @@ describe('SessionView', () => {
     expect(api.deleteChainFrame).toHaveBeenCalledWith('s1', 1, { frames: 3, createdAt: made })
     expect(wrapper.findAll('aside [data-frame]')).toHaveLength(2)
     expect(wrapper.find('main img').attributes('src')).toContain('frame-2.png')
+  })
+
+  it('stops the clip playing when the Session switches Image Model', async () => {
+    const clip = { kind: 'idle-loop', file: 'clip-0.mp4' } as api.Clip
+    const chain = session([frame(0, null)])
+    vi.mocked(api.getSession).mockResolvedValue(chain)
+    const { wrapper } = await mountIt()
+    wrapper.findComponent(FrameTab).vm.$emit('play', clip)
+    await flushPromises()
+    expect(wrapper.find('[data-clip-overlay]').exists()).toBe(true)
+
+    const switched = { ...chain, settings: { imageModel: 'krea-2' } as api.Settings }
+    wrapper.findComponent(ImageModelPicker).vm.$emit('switched', switched)
+    await flushPromises()
+    expect(wrapper.find('[data-clip-overlay]').exists()).toBe(false)
   })
 
   it('loads the Session and its jobs again when Pictures changed them', async () => {

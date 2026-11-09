@@ -395,7 +395,7 @@ const music = useMusicPlayer({
 })
 const hasTracks = computed(() => !!session.value?.cues?.some((c) => c.track))
 /** A clip playing over its Frame's picture, from the Frame tab's Clip section. */
-const playingClip = usePlayingClip(() => selectedIndex.value)
+const playingClip = usePlayingClip(() => selectedIndex.value, () => session.value?.settings.imageModel)
 /** Plays a clip over Frame `index`'s picture, scrolled into view: it starts once it's seen. */
 function playClip(index: number, clip: Clip) {
   playingClip.value = { index, clip }

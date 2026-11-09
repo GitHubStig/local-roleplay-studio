@@ -59,13 +59,18 @@ export const clipsByKind = (clips: readonly Clip[] = []): { kind: ClipKind; clip
 /**
  * The clip playing over a Frame's picture, from the Frame tab's Clip section, the same on every
  * kind's screen: stopped once another Frame is selected (`selected`, by index), so a loop or a clip
- * held on its last frame doesn't carry on behind.
+ * held on its last frame doesn't carry on behind; and once the Session switches Image Model
+ * (`imageModel`), as a clip is of its picture by the model it was on.
  */
-export function usePlayingClip(selected: () => number | null | undefined) {
+export function usePlayingClip(
+  selected: () => number | null | undefined,
+  imageModel: () => string | undefined,
+) {
   const playing = ref<{ index: number; clip: Clip } | null>(null)
   watch(selected, (index) => {
     if (playing.value && playing.value.index !== index) playing.value = null
   })
+  watch(imageModel, () => (playing.value = null))
   return playing
 }
 
