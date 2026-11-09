@@ -126,6 +126,37 @@ describe('MusicEngine', () => {
     engine.stop()
   })
 
+  it('fades out as the page is left, and starts afresh on coming back', async () => {
+    const { ctx, sources } = fakeContext()
+    const engine = new MusicEngine(ctx, () => Promise.resolve(buffer()))
+    await engine.play('a.flac')
+    engine.leave()
+    expect(sources[0].gain.ramps.at(-1)).toEqual([0, FADES.sharp])
+    expect(engine.position).toBe(null)
+    await engine.play('a.flac', 'gentle')
+    expect(sources[1].gain.ramps[0]).toEqual([1, TURN_ON_FADE])
+    engine.stop()
+  })
+
+  it('falls silent for a video and freezes, then carries on from there', async () => {
+    vi.useFakeTimers()
+    const { ctx, raw } = fakeContext()
+    const suspend = vi.fn()
+    const resume = vi.fn()
+    Object.assign(raw, { suspend, resume })
+    const engine = new MusicEngine(ctx, () => Promise.resolve(buffer()))
+    await engine.play('a.flac')
+    engine.setHushed(true)
+    expect(suspend).not.toHaveBeenCalled()
+    await vi.advanceTimersByTimeAsync(100)
+    expect(suspend).toHaveBeenCalledOnce()
+    // Asked for a new level meanwhile, it stays silent.
+    engine.setDucked(true)
+    engine.setHushed(false)
+    expect(resume).toHaveBeenCalledOnce()
+    engine.stop()
+  })
+
   it('fades in over a second when turned on, and as the Director says after a silence', async () => {
     const { ctx, sources } = fakeContext()
     const engine = new MusicEngine(ctx, () => Promise.resolve(buffer()))

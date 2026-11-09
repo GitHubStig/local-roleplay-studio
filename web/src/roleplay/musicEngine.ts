@@ -9,6 +9,8 @@
 export const LOOP_CROSSFADE = 3
 /** Seconds a gentle change crossfades over, and a sharp one: 0.3 s was close to instant (the owner). */
 export const FADES = { gentle: 3, sharp: 1 } as const
+/** Seconds it takes to fall silent for a video, or when turned off. */
+export const HUSH_FADE = 0.05
 /** Seconds it fades in when turned on: after a click, the 3 s of a gentle change is a long wait. */
 export const TURN_ON_FADE = 1
 /** How far the music falls while a line is spoken. */
@@ -58,6 +60,8 @@ export class MusicEngine {
   #master: GainNode
   #volume = 1
   #ducked = false
+  #hushed = false
+  #hush: ReturnType<typeof setTimeout> | undefined
   #file: string | null = null
   #voice: Voice | null = null
   #loop: ReturnType<typeof setTimeout> | undefined
@@ -109,18 +113,46 @@ export class MusicEngine {
     )
   }
 
+  /** Fades out as the player leaves the page; playing again starts afresh, as when turned on. */
+  leave() {
+    this.#asked++
+    this.#file = null
+    this.#turnedOn = true
+    this.#fadeOut(FADES.sharp)
+  }
+
   /** Stops at once, the player's asked it to or the page is going; playing again starts afresh. */
   stop() {
     this.#asked++
     this.#file = null
     this.#turnedOn = true
-    this.#fadeOut(0.05)
+    this.#fadeOut(HUSH_FADE)
   }
 
   /** The player's volume, 0 to 1. */
   setVolume(volume: number) {
     this.#volume = volume
     this.#level()
+  }
+
+  /**
+   * Silences the music in 0.05 s and freezes it where it is, while a video is open; `false` carries on
+   * from there. Everything scheduled is on the context's own clock, so it freezes too.
+   */
+  setHushed(hushed: boolean) {
+    this.#hushed = hushed
+    clearTimeout(this.#hush)
+    const { gain } = this.#master
+    const now = this.#ctx.currentTime
+    gain.cancelScheduledValues(now)
+    if (hushed) {
+      gain.setValueAtTime(gain.value, now)
+      gain.linearRampToValueAtTime(0, now + HUSH_FADE)
+      this.#hush = setTimeout(() => this.#ctx.suspend(), HUSH_FADE * 1000 + 10)
+    } else {
+      this.#ctx.resume()
+      this.#level()
+    }
   }
 
   /** Lowers the music while a line is spoken. */
@@ -130,6 +162,7 @@ export class MusicEngine {
   }
 
   #level() {
+    if (this.#hushed) return
     const level = this.#volume * (this.#ducked ? DUCKED : 1)
     this.#master.gain.setTargetAtTime(level, this.#ctx.currentTime, 0.1)
   }
