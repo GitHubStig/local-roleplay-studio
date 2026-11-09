@@ -1,5 +1,5 @@
 <!--
-The Score call, system message (docs/music-plans.md). Runs once per Roleplay, while Music is on:
+The Score call, system message (docs/design.md). Runs once per Roleplay, while Music is on:
 from the Music tab's Write the Score, or the first time the music is directed. It writes the
 musical identity every Cue shares, as a film's score keeps one sound while its moods change. The
 player can edit it afterwards in the Music tab.

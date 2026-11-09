@@ -110,7 +110,7 @@ export interface RoleplayFrame {
   createdAt: string
 }
 
-/** What the Music Director decides at a Frame (docs/music-plans.md). */
+/** What the Music Director decides at a Frame (docs/design.md). */
 export const DECISIONS = ['continue', 'transition', 'silence'] as const
 export type Decision = (typeof DECISIONS)[number]
 /** How a change comes in: a crossfade, or a cut. Ignored when the music continues. */
@@ -137,7 +137,7 @@ export interface FrameMusic {
   hindsight?: true
   /**
    * A stinger: a short accent placed here with hindsight, over the music playing, which goes on.
-   * Recorded for now; played once there's music (docs/music-plans.md, stage 4).
+   * Recorded for now; played once there's music (docs/design.md, stage 4).
    */
   stinger?: { reading: string; line: string }
 }
@@ -283,7 +283,7 @@ export interface RoleplaySession extends SessionBase {
   /** The Character's voice; written the first time a line is spoken. */
   voice?: RoleplayVoice
   /**
-   * The music's identity, shared by every Cue (docs/music-plans.md): written from the Cast, the
+   * The music's identity, shared by every Cue (docs/design.md): written from the Cast, the
    * Brief, the Scenario's Music and the Music taste when asked for, or the first time the music is
    * directed; editable. Absent until then, and while Music is off.
    */

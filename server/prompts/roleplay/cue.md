@@ -1,5 +1,5 @@
 <!--
-The cue writer's call, system message (docs/music-plans.md, ADR 0035). Runs only when the Music
+The cue writer's call, system message (docs/design.md, ADR 0035). Runs only when the Music
 Director decides on a change: from its reading, the Cue before and the Score, it picks the new Cue's
 values and writes what ACE-Step 1.5 renders. Captions written from rules alone swung between droning
 and busy over seven tries, by ear, so it starts from captions the owner found good

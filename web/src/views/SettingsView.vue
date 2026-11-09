@@ -575,9 +575,8 @@ function saveNow() {
           data-tab-panel="music"
         >
           <div class="card">
-            <ToggleSwitch v-model="form.music" title="Music (in progress)" data-music>
-              Music for Roleplays, being built in stages. On, what's there so far shows: for now,
-              a Scenario's Music, and the defaults here.
+            <ToggleSwitch v-model="form.music" title="Music" data-music>
+              Music for Roleplays that follows the story, made on a ComfyUI.
             </ToggleSwitch>
             <p v-if="form.music" class="text-sm text-muted">
               Each new Roleplay keeps these as they are when it starts.

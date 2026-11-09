@@ -31,7 +31,7 @@ import { type ComfyTrace, type ComfyTraces, withTrace } from './comfyui/traces.t
  * (SHARP); `figure` lifts the person in it out as a 3D figure (TripoSplat), and `lito` does so with
  * Apple's LiTo; `style` embeds the Session's pictures for the Compare dialog's style scores; `edit`
  * repaints a picture as told (ADR 0021); `direct` directs the music at a Roleplay Frame (the
- * Music Director, docs/music-plans.md), `score-roleplay` scores a whole Roleplay's with
+ * Music Director, docs/design.md), `score-roleplay` scores a whole Roleplay's with
  * hindsight, `music` makes the track of the Cue that begins on a Frame, and `steer` writes that Cue
  * again as the player asked.
  */
@@ -88,7 +88,7 @@ export const JOB_FEATURE: Record<JobKind, Feature | null> = {
   style: 'style',
   edit: 'edits',
   clip: 'video',
-  // Music is a setting while it's built, not a Feature: the app checks it (`check`).
+  // Music is a setting, not a Feature: the app checks it (`check`).
   direct: null,
   'score-roleplay': null,
   music: null,

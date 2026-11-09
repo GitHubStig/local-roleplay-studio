@@ -1,5 +1,5 @@
 /**
- * The Music Director (docs/music-plans.md): after a Reply, it reads the whole story, the Cue
+ * The Music Director (docs/design.md): after a Reply, it reads the whole story, the Cue
  * playing and why it began, and decides whether the ground between the people has shifted since:
  * the music continues, changes (a new Cue, gently or sharply), or falls silent. On a change, the
  * cue writer picks the new Cue's values within the Score. Its prompts are
@@ -236,7 +236,7 @@ export const behaviourOf = (session: RoleplaySession) =>
 
 /**
  * What the Director reads: the whole story, or only the Frames since the Cue playing began (the
- * bench compares them, docs/music-plans.md).
+ * bench compares them, docs/design.md).
  */
 export type DirectorReads = 'whole' | 'since'
 

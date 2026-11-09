@@ -1,5 +1,5 @@
 /**
- * A Cue's music (docs/music-plans.md, ADR 0035): the track a music model makes from its caption, in
+ * A Cue's music (docs/design.md, ADR 0035): the track a music model makes from its caption, in
  * its turn behind lines and pictures, kept with the Session and replaced when the Cue is.
  */
 import { join } from '@std/path'

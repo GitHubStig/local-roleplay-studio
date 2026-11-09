@@ -20,7 +20,7 @@ export interface Scenario {
   /** The art style every picture is made in; '' for the Look to pick one. */
   style: string
   /**
-   * What the story's music is like; '' for the Text Model to pick (docs/music-plans.md).
+   * What the story's music is like; '' for the Text Model to pick (docs/design.md).
    */
   music: string
   /** What holds about the story whatever anyone does. */

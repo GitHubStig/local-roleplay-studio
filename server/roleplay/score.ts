@@ -1,6 +1,6 @@
 /**
  * A Roleplay's Score: its music's identity, written once like the Look and shared by every Cue
- * (docs/music-plans.md). Written from the Cast, the Brief, the Scenario's Music and the Session's
+ * (docs/design.md). Written from the Cast, the Brief, the Scenario's Music and the Session's
  * Music taste; edited by hand in the Music tab. Its prompts are `prompts/roleplay/score*.md`.
  */
 import { secondsSince, withRetry } from '../frames.ts'

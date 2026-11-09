@@ -1,5 +1,5 @@
 /**
- * Score the Roleplay (docs/music-plans.md): the pass with hindsight, like a film's spotting session.
+ * Score the Roleplay (docs/design.md): the pass with hindsight, like a film's spotting session.
  * It reads the story in chunks, each placing the turns on its own Frames (a change, a silence or a
  * stinger) while reading a few Frames either side, then has the cue writer write each change's Cue,
  * and replaces every Cue and every Frame's music with what it found. Its prompts are

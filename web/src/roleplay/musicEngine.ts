@@ -1,5 +1,5 @@
 /**
- * Plays a Roleplay's music with Web Audio (docs/music-plans.md, ADR 0035): one track at a time, looped
+ * Plays a Roleplay's music with Web Audio (docs/design.md, ADR 0035): one track at a time, looped
  * with its fade-out cut and a crossfade into its start, and changed with a crossfade, or a quick cut
  * when the Director says the change is sharp. It holds no idea of the story: `useMusicPlayer` says what
  * should be playing.

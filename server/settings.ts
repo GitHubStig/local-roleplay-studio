@@ -45,7 +45,7 @@ export const SIZE_PRESETS: readonly SizePreset[] = [
 export const QUANTIZE_OPTIONS = [null, 4, 8] as const
 
 /**
- * How readily a Roleplay's music changes, and how far forward it comes (docs/music-plans.md):
+ * How readily a Roleplay's music changes, and how far forward it comes (docs/design.md):
  * steady (few changes, kept low), following the story, or cinematic (changes readily, comes
  * forward). Named steps rather than a number, as a model can't tell 35% from 40%.
  */
@@ -133,7 +133,7 @@ export interface Settings {
    */
   callLog: boolean
   /**
-   * Music in a Roleplay, while it's being built (docs/music-plans.md): off by default, and
+   * Music in a Roleplay (docs/design.md): off by default, and
    * everything for it stays hidden until it's switched on.
    */
   music: boolean

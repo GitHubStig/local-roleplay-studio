@@ -135,7 +135,7 @@ Evidence: [research/video-models.md](research/video-models.md).
 
 ## Music
 
-ACE-Step 1.5 on a ComfyUI, with ComfyUI's own nodes ([ADR 0035](adr/0035-music-from-ace-step-through-comfyui.md)): the **XL turbo (4B) with its 4B planner**, 8 steps. Not in the app yet (the music plan's stage 3); measured on the Mac, 2026-11-08, and the PC, 2026-11-09.
+ACE-Step 1.5 on a ComfyUI, with ComfyUI's own nodes ([ADR 0035](adr/0035-music-from-ace-step-through-comfyui.md)): the **XL turbo (4B) with its 4B planner**, 8 steps. Measured on the Mac, 2026-11-08, and the PC, 2026-11-09.
 
 - **On the Mac, about 170 s for a minute of music** (2.8 s a second), ComfyUI at 26–27 GB at the most, 34 GB for a 150 s song; it keeps ~21 GB loaded between runs. **A Reply arriving during a track waits for it, up to about 3.5 minutes**, as the Text Model can't sit beside it ([research](research/music-models.md#music-on-the-macs-own-comfyui-through-the-app-2026-11-09-mac)), so send music to a PC where there is one. It's the one setup, with no quicker setting: the 1.7B planner took half the time and sounded "usable but not great", and the owner deleted it and the 2B turbo on both machines (2026-11-09), as quality matters as much as speed.
 - **On the PC, about 20 s for a minute of music** (36 s for a 150 s song), and it fits: the card at 11.2–11.6 GB at the most, as ComfyUI loads to fill it, ComfyUI's RAM at 3.4 GB at the most. `/free` empties the card at once, and a picture after music is as quick as one before. By ear, comparable with the Mac's, and the 4B planner is the best here too. The same seed makes different music on each machine, though it repeats on one.

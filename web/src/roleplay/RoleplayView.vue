@@ -260,7 +260,7 @@ const autoplay = useStoredFlag('roleplay-voice-autoplay')
 const scoreAsYouPlay = useStoredFlag('roleplay-score-as-you-play')
 /** Which extras are on: off, their buttons are hidden, but what they made still plays and opens. */
 const { on: featureOn, settings: settingsNow } = useFeatures()
-/** Music is being built (docs/music-plans.md): its tab shows only while it's switched on. */
+/** Music is being built (docs/design.md): its tab shows only while it's switched on. */
 const musicOn = computed(() => !!settingsNow.value?.music)
 /** A line can be listened to: voices are on, or it was already spoken. */
 const canListen = (speech: Speech | undefined) => featureOn.value('voices') || spokenNow(speech)

@@ -96,6 +96,37 @@ _Avoid_: Scene, sections, description, state
 The ordered list of a Session's Frames, shown to the player; in a Chain, never fed back to the text model.
 _Avoid_: Turn log, history, timeline
 
+### Music
+
+**Score**:
+A Roleplay's musical identity, kept through all its music: its genre, instruments, atmosphere, range of tempo, and what to avoid.
+_Avoid_: Theme, soundtrack
+
+**Cue**:
+A stretch of music over several Frames, from the Frame it begins on until the next Cue, or a silence. Each directed Frame plays under one.
+_Avoid_: Song, segment
+
+**Track**:
+The audio a music model made for a Cue. A Cue has one at a time, and it loops while the Cue plays.
+_Avoid_: Clip, which is a Frame's video
+
+**Take**:
+One try at a Cue's Track from the same words, with another seed. A new Take replaces the last.
+
+**Music Director**:
+The Text Model's job of reading the story after a Reply and deciding whether the Cue continues, changes, or falls silent, gently or sharply.
+_Avoid_: Composer
+
+**Cue writer**:
+The Text Model's job of writing a new Cue's words for the music model, from the Director's reading.
+
+**Steer**:
+What the player asks of a Cue in their own words, which the cue writer puts first.
+_Avoid_: Prompt, which is the Text Model's or a picture's
+
+**Music taste**:
+What the player likes in music, in their own words, for the Score and every Cue.
+
 ### Changing Frames
 
 **Action**:

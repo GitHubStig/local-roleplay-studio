@@ -1,5 +1,5 @@
 <!--
-Score the Roleplay's call, system message (docs/music-plans.md): the pass with hindsight, like a
+Score the Roleplay's call, system message (docs/design.md): the pass with hindsight, like a
 film's spotting session. Runs when the player presses Score the Roleplay, over the story in
 chunks (hindsight-request.md); it replaces every Cue. Unlike the Music Director (director.md), it
 sees what comes after each Frame, so it can lead into a turning point and place stingers.

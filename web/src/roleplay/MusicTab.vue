@@ -21,7 +21,7 @@ import {
 } from './api'
 
 /**
- * A Roleplay's Music tab, while Music is on (docs/music-plans.md): how the music was directed at
+ * A Roleplay's Music tab, while Music is on (docs/design.md): how the music was directed at
  * the Frame shown, the Cues as a strip across the Frames, its Score, written when asked for (or
  * the first time its music is directed) and edited by hand, and its own Behaviour and
  * Music taste. Each part saves itself when the focus leaves it (`useAutosave`); the screen

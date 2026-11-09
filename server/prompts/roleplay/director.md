@@ -1,5 +1,5 @@
 <!--
-The Music Director's call, system message (docs/music-plans.md). Runs after each Reply while Music
+The Music Director's call, system message (docs/design.md). Runs after each Reply while Music
 is on and the player's Score as you play is, queued before the Reply's picture so the Text Model
 stays loaded for both. It reads the whole story and the Cue playing, and decides whether the music
 continues, changes or falls silent; on a change, the cue writer (cue.md) picks the new Cue.
