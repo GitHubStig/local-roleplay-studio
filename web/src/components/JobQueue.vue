@@ -24,6 +24,8 @@ const props = withDefaults(
 )
 const emit = defineEmits<{
   go: [index: number]
+  /** The music's work: its Frame, on the Music tab. */
+  music: [index: number]
   /** An edit: show it being made, in the viewer. */
   edit: [index: number]
   /** A clip: show its Frame's Clip section, on the picture it's made from (`Job.image`). */
@@ -43,6 +45,7 @@ const finishedCount = computed(() => props.jobs.length - openCount.value)
 const open = (job: Job) =>
   openJob(job, {
     go: (index) => emit('go', index),
+    music: (index) => emit('music', index),
     edit: (index) => emit('edit', index),
     clip: (j) => emit('clip', j),
     drop: (j) => emit('drop', j),

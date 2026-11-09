@@ -39,6 +39,18 @@ describe('JobQueue', () => {
   describe('with a job done', () => {
     const done: Job = { ...clipJob, id: 'j2', kind: 'render', status: 'done', clip: undefined }
 
+    it.each(['score-roleplay', 'direct', 'music'] as const)(
+      'opens %s on the Music tab, not just its Frame',
+      async (kind) => {
+        const job: Job = { ...done, kind, frameIndex: 0 }
+        const wrapper = mount(JobQueue, { props: { jobs: [job], empty: '' } })
+        await wrapper.find('[data-queue-item] button').trigger('click')
+        expect(wrapper.emitted('music')).toEqual([[0]])
+        expect(wrapper.emitted('go')).toBeUndefined()
+        expect(wrapper.emitted('drop')).toEqual([[job]])
+      },
+    )
+
     it('goes to its Frame and dismisses it, as seen', async () => {
       const wrapper = mount(JobQueue, { props: { jobs: [done], empty: '' } })
       const item = wrapper.find('[data-queue-item]')

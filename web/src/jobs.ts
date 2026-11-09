@@ -88,6 +88,9 @@ export const jobForming = (
     ? formingOf(session, job.phase, job.progress, job.imageBackend)
     : null
 
+/** The jobs about a Roleplay's music, whose results are on its Music tab. */
+const MUSIC_JOBS: readonly JobKind[] = ['direct', 'score-roleplay', 'music']
+
 /** Where a job is seen, as its Session's screen shows it (`openJob`). */
 export interface JobPlaces {
   /** Its Frame. */
@@ -96,17 +99,20 @@ export interface JobPlaces {
   edit: (index: number) => void
   /** A clip: its Frame's Clip section, on the picture it's made from (`Job.image`). */
   clip: (job: Job) => void
+  /** The music's work: its Frame, on the Music tab, where a screen has one. */
+  music?: (index: number) => void
   /** Dismisses it. */
   drop: (job: Job) => void
 }
 
 /**
- * Shows a job where it's seen: an edit in the viewer, a clip in its Frame's Clip section, any other
- * on its Frame; a done one has been seen by then, so it's dismissed.
+ * Shows a job where it's seen: an edit in the viewer, a clip in its Frame's Clip section, the music's
+ * work on the Music tab, any other on its Frame; a done one has been seen by then, so it's dismissed.
  */
 export function openJob(job: Job, to: JobPlaces) {
   if (job.kind === 'edit') to.edit(job.frameIndex)
   else if (job.kind === 'clip') to.clip(job)
+  else if (to.music && MUSIC_JOBS.includes(job.kind)) to.music(job.frameIndex)
   else to.go(job.frameIndex)
   if (job.status === 'done') to.drop(job)
 }

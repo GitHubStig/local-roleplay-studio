@@ -121,6 +121,7 @@ useJobLink(() => sessionPath(props.id, 'roleplay'), () => !!session.value, jobs,
   go: goToFrame,
   edit: showEdit,
   clip: openClip,
+  music: goToMusic,
   drop: drop,
 })
 /**
@@ -238,6 +239,12 @@ function goToFrame(index: number) {
   highlighted.value = index
   clearTimeout(highlightTimer)
   highlightTimer = setTimeout(() => (highlighted.value = null), 1600)
+}
+
+/** A Frame, with the music's side of it open. */
+function goToMusic(index: number) {
+  goToFrame(index)
+  detail.value = 'music'
 }
 
 // --- 3D, by model (experimental): SHARP, TripoSplat and LiTo (PictureButtons).
@@ -1175,6 +1182,7 @@ const lookSavingText = computed(() =>
               empty="Nothing queued. Picture, Render and Upscale in a Frame's tab add work here, to run while you carry on."
               :describe="describeJob"
               @go="goToFrame"
+              @music="goToMusic"
               @clip="openClip"
               @edit="showEdit"
               @retry="retry"
@@ -1518,7 +1526,7 @@ const lookSavingText = computed(() =>
             @saved="(s) => (session = s)"
             @direct="(index) => queueSaved('direct', index)"
             @take="(index) => queueSaved('music', index)"
-            @go="(index) => { goToFrame(index); detail = 'music' }"
+            @go="goToMusic"
           />
         </div>
         </section>
