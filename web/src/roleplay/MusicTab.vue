@@ -36,6 +36,8 @@ const props = defineProps<{
   frame: RoleplayFrame | null
   /** The Frame's music is being directed, or waits to be. */
   directing?: boolean
+  /** The Frames whose Cue's music is being made, or waits to be. */
+  makingMusic?: readonly number[]
   /** Where the track playing is, if the music is on. */
   trackPosition?: MusicPosition | null
 }>()
@@ -45,6 +47,8 @@ const emit = defineEmits<{
   direct: [index: number]
   /** Go to this Frame. */
   go: [index: number]
+  /** Make the music of the Cue beginning on this Frame, or a new take of it. */
+  take: [index: number]
 }>()
 
 // --- The Frame's music, and the Cues.
@@ -317,10 +321,34 @@ defineExpose({ flush })
                 :data-outside="outside(i) || undefined"
               >{{ i }}<template v-if="outside(i)"> (not in the Score)</template></span>
             </p>
-            <p v-if="frameCue.track" class="mt-1 text-xs text-muted" data-cue-track-timings>
-              {{ frameCue.track.seconds }} s at {{ frameCue.track.bpm }} beats a minute, in
-              {{ frameCue.values.key }}, made in {{ frameCue.track.timings.music.toFixed(0) }} s
-            </p>
+            <div class="mt-2 flex items-center justify-between gap-2">
+              <p
+                v-if="makingMusic?.includes(frameCue.start)"
+                class="animate-pulse text-xs text-muted"
+                data-cue-making
+              >
+                {{ frameCue.track ? 'Making a new take…' : 'Making its music…' }}
+              </p>
+              <p v-else-if="frameCue.track" class="text-xs text-muted" data-cue-track-timings>
+                {{ frameCue.track.seconds }} s at {{ frameCue.track.bpm }} beats a minute, in
+                {{ frameCue.values.key }}, made in {{ frameCue.track.timings.music.toFixed(0) }} s
+              </p>
+              <span v-else />
+              <button
+                type="button"
+                class="action shrink-0"
+                :disabled="disabled || makingMusic?.includes(frameCue.start)"
+                :title="
+                  frameCue.track
+                    ? 'The same words again with another seed, replacing this take'
+                    : 'Make this Cue\'s music'
+                "
+                data-cue-take
+                @click="emit('take', frameCue.start)"
+              >
+                {{ frameCue.track ? 'New take' : 'Make its music' }}
+              </button>
+            </div>
           </template>
           <p v-else class="mt-1 text-muted">Silence</p>
         </div>

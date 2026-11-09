@@ -37,7 +37,7 @@ import { useJobLink } from '../composables/useJobLink'
 import { sessionPath } from '../sessionPath'
 import { usePictureEditing } from '../composables/usePictureEditing'
 import { useFeatures } from '../composables/useFeatures'
-import { jobForming, jobStatus, queueTab } from '../jobs'
+import { isOpen, jobForming, jobStatus, queueTab } from '../jobs'
 import { useShownPreview } from '../composables/useShownPreview'
 import {
   type Cast,
@@ -1514,8 +1514,10 @@ const lookSavingText = computed(() =>
             :frame="selectedFrame ?? null"
             :directing="!!selectedFrame && hasJob(selectedFrame.index, 'direct')"
             :track-position="music.position.value"
+            :making-music="jobs.filter((j) => j.kind === 'music' && isOpen(j)).map((j) => j.frameIndex)"
             @saved="(s) => (session = s)"
             @direct="(index) => queueSaved('direct', index)"
+            @take="(index) => queueSaved('music', index)"
             @go="(index) => { goToFrame(index); detail = 'music' }"
           />
         </div>

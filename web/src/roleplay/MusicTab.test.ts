@@ -221,6 +221,46 @@ describe('MusicTab', () => {
     expect(playing.find('[data-track-played]').attributes('style')).toContain('73.')
   })
 
+  it('asks for a new take of the Cue, and says so while it is made', async () => {
+    const track = { file: 'a.flac', seconds: 60, bpm: 68, seed: 1, timings: { music: 19 } }
+    const values = {
+      mood: 'wary',
+      energy: 'calm',
+      density: 'sparse',
+      tempo: 'slow',
+      instruments: ['cello'],
+      vocals: 'none',
+      shape: 'intimate',
+      key: 'A minor',
+      caption: 'A cello.',
+      lyrics: '[Intro]',
+    }
+    const frames = [0, 1].map((index) => ({
+      index,
+      music: {
+        cue: 'a',
+        reading: '',
+        decision: 'continue',
+        entry: 'gentle',
+        line: '',
+        model: 'x',
+        timings: { text: 1 },
+      },
+    })) as unknown as roleplay.RoleplayFrame[]
+    const s = session({
+      frames,
+      cues: [{ id: 'a', start: 0, entry: 'gentle', reading: '', line: '', values, track }],
+    } as never)
+    const wrapper = mount(MusicTab, { props: { session: s, line: saveLine(), frame: frames[1] } })
+    expect(wrapper.find('[data-cue-take]').text()).toBe('New take')
+    await wrapper.find('[data-cue-take]').trigger('click')
+    // By the Frame the Cue begins on, from any of its Frames.
+    expect(wrapper.emitted('take')).toEqual([[0]])
+    await wrapper.setProps({ makingMusic: [0] })
+    expect(wrapper.find('[data-cue-making]').text()).toBe('Making a new take…')
+    expect(wrapper.find<HTMLButtonElement>('[data-cue-take]').element.disabled).toBe(true)
+  })
+
   it('fills the selected Cue by how far the Frame is into it', () => {
     const frames = [0, 1, 2].map((index) => ({
       index,

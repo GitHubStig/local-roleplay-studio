@@ -52,8 +52,9 @@ async function removeUnused(dir: string, session: RoleplaySession) {
 
 /**
  * Makes the track of the Cue beginning on Frame `index`, or picks up the one a restart cut off
- * (`left`). Nothing to do if that Cue is gone, or has its track. Saved onto the Cue if it's still
- * there, by its id: one directed again meanwhile gets its own job.
+ * (`left`). A Cue that has one gets a new take from its words, the next seed, replacing it once made,
+ * so it plays on until then. Nothing to do if that Cue is gone. Saved onto the Cue if it's still there,
+ * by its id: one directed again meanwhile gets its own job.
  */
 export async function makeCueTrack(
   deps: MusicDeps,
@@ -65,14 +66,14 @@ export async function makeCueTrack(
 ): Promise<void> {
   if (!deps.music) throw new Error('Music is not set up on this server')
   const cue = session.cues?.find((c) => c.start === index)
-  if (!cue?.values || cue.track) return
+  if (!cue?.values) return
   const refused = musicRefusal(session, index)
   if (refused) throw new Error(refused)
   const values = cue.values
   const dir = deps.store.dir(session.id)
   const name = `music-${cue.id}-${crypto.randomUUID().slice(0, 8)}`
-  // Each Cue its own take, repeatable from the Session's seed.
-  const seed = session.seed + index
+  // Each Cue its own take, repeatable from the Session's seed; a new take, the next.
+  const seed = cue.track ? cue.track.seed + 1 : session.seed + index
   const bpm = bpmOf(values.tempo, session.score!.tempo)
   const start = performance.now()
   let waited = false

@@ -133,6 +133,28 @@ Deno.test('A Cue directed again gets a new track, and the old file goes', () =>
     assertEquals(files, [second])
   }))
 
+Deno.test('A new take makes the same words again with the next seed, replacing the track', () =>
+  withTempDir(async (root) => {
+    const { call, asked } = await played(root, {
+      directions: [direction('transition')],
+      cues: [cue('wary')],
+    })
+    await direct(call, 0)
+    const first = (await roleplay(call)).cues![0]
+    const res = await call('POST', '/api/sessions/s1/jobs', { kind: 'music', frameIndex: 0 })
+    assertEquals(res.status, 201)
+    await settled(call)
+    const second = (await roleplay(call)).cues![0]
+    assertEquals(second.id, first.id)
+    assertEquals(second.values, first.values)
+    assertEquals(second.track!.seed, first.track!.seed + 1)
+    assert(second.track!.file !== first.track!.file)
+    assertEquals(asked.map((a) => a.seed), [first.track!.seed, first.track!.seed + 1])
+    assertEquals(asked[1].caption, asked[0].caption)
+    const files = [...Deno.readDirSync(join(root, 's1'))].map((f) => f.name)
+    assertEquals(files.filter((n) => n.startsWith('music-')), [second.track!.file])
+  }))
+
 Deno.test("A track can't be made without Music on, a Cue there, or a ComfyUI", () =>
   withTempDir(async (root) => {
     const { call, settings } = await played(root, {
