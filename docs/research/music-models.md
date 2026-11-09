@@ -9,7 +9,7 @@ The evidence behind the music pick in [models.md](../models.md#music) and [ADR 0
 
 ## ACE-Step's setups
 
-ACE-Step is a planner (a language model that sketches the piece as audio codes) and a music model (a DiT that renders it).
+ACE-Step is a planner (a language model that sketches the piece as audio codes) and a music model (a DiT that renders it). Both machines now keep only the pick, the XL turbo with the 4B planner: the owner deleted the others (the PC and the Mac, 2026-11-09), as quality matters as much as speed, so there's no quicker setting. These are the measurements that led there.
 
 | Music model | Planner | 60 s of music | ComfyUI's memory, at the most | By ear |
 |---|---|---|---|---|
@@ -58,6 +58,8 @@ ACE-Step sang the bench's song (verses and choruses with lines of the kind a Rol
 
 ## Measures against the ear
 
-Measures of each clip (how much it develops, its loudness's range, brightness, notes a second; CLAP, audio against text) were set beside the owner's 47 verdicts. None predicts a liked clip, none picks the better of two takes (two of four), and none hears the difference between the planners; but several bear out a particular remark: the Christmas-like Heaven, the choir gone, the monotonous tension, MiniMax's brightness. CLAP's choir score didn't tell a heard choir from one the owner couldn't hear, though. So they could be checks a take might fail ("sounds like Christmas", "doesn't develop"), never a judge of a good one.
+Measures of each clip (how much it develops, its loudness's range, brightness, notes a second; CLAP, audio against text) were set beside the owner's 47 verdicts. None predicts a liked clip, none picks the better of two takes (two of four), and none hears the difference between the planners; but several bear out a particular remark: the Christmas-like Heaven, the choir gone, the monotonous tension, MiniMax's brightness. CLAP's choir score didn't tell a heard choir from one the owner couldn't hear, though. So they could be checks a take might fail ("doesn't develop"), never a judge of a good one. "Sounds like Christmas" is weaker than it looked, once read in one format (below).
 
-One hint since (2026-11-09, the PC, one seed): how much the sound changes between 2 s windows falls in the ear's order of the three setups on all four instrumentals, following "doesn't flow" where the 10 s measures don't. Nine measures were tried, so it wants checking on the Mac's planner pairs ([bench](../bench/music-models/README.md#ace-step-15-on-the-pc-2026-11-09-windows-pc)).
+One hint that didn't hold: on the PC (2026-11-09, one seed), how much the sound changes between 2 s windows fell in the ear's order of the three setups on all four instrumentals, following "doesn't flow" where the 10 s measures don't. On the Mac (2026-11-09), it runs the other way on the seven XL pairs of the same caption and seed: the preferred 4B planner changes more on five by the mean (0.025 against 0.018) and six by the 95th percentile (0.059 against 0.037), and the "gappy" 1.7B Buffet reads as smoother than the "good" 4B one. It doesn't follow the verdicts or pick the better take either, and seeds move it about as much as the planners. So it's most likely luck among the nine measures tried, and nothing is built on it ([bench](../bench/music-models/README.md#the-2-s-measure-of-flow-on-the-macs-planner-pairs)).
+
+**CLAP's scores depend on the audio's format** (2026-11-09, Mac): on the same audio, 96 kbps AAC raises "Christmas" by 0.10 on average (up to 0.19), and "electronic" by 0.06, against the FLAC, though each probe's order mostly survives. So compare them within one format only, and any check on a take should read one format. Read in one, the gap between the bad Heavens and the liked one narrows ([bench](../bench/music-models/README.md#clap-depends-on-the-audios-format)).

@@ -10,6 +10,9 @@ which, if any, agree with the ear. See README.md.
 
     uv run analyse.py            # every clip with a verdict; a table, and each measure's correlation
 
+It reads only the .m4a in clips/, as CLAP's scores depend on the audio's format, and merges into
+analysis.jsonl: a clip no longer in clips/ keeps its earlier row, as its raw audio may be gone.
+
 Per clip, over 10 s windows:
 - development: how far each window's sound (its mel spectrum) moves from the one before, on average;
 - repetition: how alike all windows are to each other, on average;
@@ -101,14 +104,17 @@ def main():
         return torch.nn.functional.normalize(e, dim=-1)
 
     probe_e = text_embeds(list(PROBES.values()))
+    results = HERE / 'analysis.jsonl'
+    earlier = {r['clip']: r for r in map(json.loads, results.read_text().splitlines())} if results.exists() else {}
     rows = []
     for rel, (score, words) in verdicts.items():
         path = HERE / 'clips' / rel
         if not path.exists():
-            alt = HERE / 'out' / Path(rel).parent / (Path(rel).stem + '.flac')
-            path = alt if alt.exists() else None
-        if path is None:
-            print(f'missing: {rel}', file=sys.stderr)
+            if rel in earlier:
+                print(f'kept its earlier row: {rel}', file=sys.stderr)
+                rows.append({**earlier[rel], 'score': score})
+            else:
+                print(f'missing: {rel}', file=sys.stderr)
             continue
         y, sr = decode(path), 48000
         row = {'clip': rel, 'score': score, **measures(librosa.resample(y, orig_sr=48000, target_sr=22050), 22050)}
@@ -124,7 +130,7 @@ def main():
         row['own_caption'] = float((a @ text_embeds([caption]).T)[0, 0]) if caption else float('nan')
         rows.append(row)
         print(json.dumps({k: (round(v, 3) if isinstance(v, float) else v) for k, v in row.items()}), flush=True)
-    (HERE / 'analysis.jsonl').write_text(''.join(json.dumps(r) + '\n' for r in rows))
+    results.write_text(''.join(json.dumps(r) + '\n' for r in rows))
     keys = [k for k in rows[0] if k not in ('clip', 'score')]
     scores = np.array([r['score'] for r in rows], dtype=float)
     print('\nCorrelation with the verdict (Spearman), across', len(rows), 'clips:')

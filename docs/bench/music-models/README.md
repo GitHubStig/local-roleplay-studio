@@ -188,8 +188,8 @@ The tavern, Heaven and the Buffet written as courses too (`tavern-d-60`, `heaven
 - **No measure predicts a liked clip overall** (Spearman across the 40, every measure within ±0.35; only "drums" past p 0.05, at −0.34). Clips of different scenes are good for different reasons, so a single score doesn't follow the ear.
 - **CLAP doesn't pick the better take**: of four pairs of seeds where the owner preferred one, the clip nearer its own caption was the preferred one twice. So the app can't choose between takes by CLAP; the player picks.
 - **But several of the owner's specific remarks are borne out:**
-  - *"Like a Christmas song"* (MiniMax's Heaven): the most Christmas-like clip of all by CLAP (0.56; the other Heavens 0.08–0.42). Among the Heavens, the Christmas score runs against the verdict: the bad ones 0.31–0.42, the liked `heaven-d-60-s2` 0.18.
-  - *"The choir is gone"* (Heaven's second try): the choir score fell from 0.41 on the first Heaven, the one that "started out great", to 0.21–0.25 on the second (other scenes, without a choir: 0.10 on average, 0.28 at most). The course Heavens score 0.26 and 0.36: some choir, perhaps too faint to hear as one, as the owner heard none.
+  - *"Like a Christmas song"* (MiniMax's Heaven): the most Christmas-like clip of all by CLAP (0.56; the other Heavens 0.18–0.42). Among the Heavens, the Christmas score runs against the verdict, a little: the bad ones 0.31–0.42, the liked `heaven-d-60-s2` 0.28 (corrected 2026-11-09: this said 0.18, its FLAC's figure beside the others' AAC; [see below](#clap-depends-on-the-audios-format)).
+  - *"The choir is gone"* (Heaven's second try): the choir score fell from 0.41 on the first Heaven, the one that "started out great", to 0.21–0.25 on the second (other scenes, without a choir: 0.10 on average, 0.28 at most). The course Heavens score 0.24 and 0.33 (from their AAC, corrected 2026-11-09): some choir, perhaps too faint to hear as one, as the owner heard none.
   - *"Very monotonous"* (tension A): the least development of every clip (0.002–0.005, against 0.012–0.049 for the other tense clips) and the narrowest loudness range of the ACE-Step clips (4.1–4.6 dB). The tense Cue the owner liked (D) develops three times as much (0.015–0.016) and spans 6.8–8.0 dB.
   - *"A tiny bit high"* (MiniMax): its song is the brightest (centroid 1650 Hz, against 960–1440 for ACE-Step's songs).
   - *"A bit more synthesizer-ish"* (the XL): slightly, on the clips both made, for what CLAP's "synthesizer" is worth (the tavern 0.13 on the 2B against 0.16 on the XL with the 4B planner, the song 0.12 against 0.15).
@@ -275,12 +275,57 @@ So a seed gives a new take on the other machine, as far from the Mac's seed 1 as
 | XL, 1.7B | 0.029 | 0.069 |
 | XL, 4B | 0.021 | 0.058 |
 
-Both fall in the ear's order on all four captions, where the seven other measures tried (those of `analyse.py`, and jumps in level) don't. The 10 s `development` of `analyse.py`, which didn't see the planners on the Mac, doesn't here either, so the short window may be what matters. Nine measures were tried, so one in order may be luck: it wants checking on the Mac's seven planner pairs, and on later verdicts, before it's used for anything.
+Both fall in the ear's order on all four captions, where the seven other measures tried (those of `analyse.py`, and jumps in level) don't. The 10 s `development` of `analyse.py`, which didn't see the planners on the Mac, doesn't here either, so the short window may be what matters. Nine measures were tried, so one in order may be luck. Checked on the Mac's planner pairs, [it doesn't hold](#the-2-s-measure-of-flow-on-the-macs-planner-pairs).
 
 Not checked on the PC: their keys and tempo, the song's lyrics with Whisper, a Text Model loaded beside ACE-Step (the app unloads it first), and a first render from a cold disk. A music job through the app waits for stage 3.
 
+## Checks on the Mac after the PC's (2026-11-09, Mac)
+
+### The 2 s measure of flow on the Mac's planner pairs
+
+**It doesn't hold.** The same measure as the PC's, which gave the PC's figures exactly from its kept `.m4a`, on the Mac's seven XL pairs of the same caption and seed, from their FLACs. The 4B planner is the one the owner preferred on six of the seven (even on the other), yet it has the larger changes on five by the mean and on six by the 95th percentile, the opposite of the PC's order.
+
+| Clip | 1.7B: mean, 95th percentile (verdict) | 4B: mean, 95th percentile (verdict) |
+|---|---|---|
+| `tense-d-60-s1` | 0.005, 0.018 (1) | 0.014, 0.049 (2) |
+| `tense-d-60-s2` | 0.011, 0.032 (1) | 0.007, 0.017 (2) |
+| `tavern-d-60-s1` | 0.029, 0.057 (1) | 0.043, 0.098 (2) |
+| `tavern-d-60-s2` | 0.029, 0.054 (1) | 0.044, 0.082 (2) |
+| `heaven-d-60-s1` | 0.014, 0.031 (1) | 0.011, 0.036 (1) |
+| `heaven-d-60-s2` | 0.019, 0.028 (1) | 0.023, 0.033 (2) |
+| `buffet-d-60-s1` | 0.020, 0.036 (0) | 0.032, 0.101 (2) |
+| **Average** | **0.018, 0.037** | **0.025, 0.059** |
+
+- **The clearest case runs backwards**: the 1.7B's Buffet, "gappy, instruments and tunes not layering or playing together", reads as smoother than the 4B's, "good", by nearly three times on the worst changes.
+- **Over all 13 pairs that were kept**, adding the older captions, a second Buffet and the song, the 4B is lower on 6 by the mean and 5 by the 95th percentile: no better than a coin.
+- **Seeds move it about as much as the planners**: between two seeds of a course caption on one planner, 0.0055 on average; between planners on one seed, 0.0077.
+- **It doesn't follow the verdicts either**: across the 45 instrumentals from ACE-Step with a verdict, Spearman +0.04 for the mean and −0.05 for the 95th percentile; by verdict 0, 1 and 2, the means are 0.025, 0.022 and 0.029. Of five pairs of takes of one caption and setup where the owner preferred one, the preferred one changed less on none by the mean and one by the 95th percentile. It's higher for songs than instrumentals, so the songs are left out here.
+
+So the PC's order on four clips was most likely luck among nine measures tried, or something of that one seed, and nothing should be built on it. It might still tell the 2B from the XL (the Mac's 2B against the XL with the 1.7B, same caption and seed: 0.038 against 0.018, 0.039 against 0.016, 0.059 against 0.037, and 0.088 against 0.054 for the song), which wasn't pursued, as the 2B is gone.
+
+### CLAP depends on the audio's format
+
+The first run of `analyse.py` read clips that were kept as AAC at the time; some were later cut from `clips/`, leaving only their FLACs. Run again, it read 25 clips from FLAC, and CLAP's scores moved, so that run's rows weren't kept: `analysis.jsonl` holds the earlier rows, all from AAC, and the three `-pc` clips', from AAC too (their figures came from that run). Encoding a FLAC at 96 kbps gave the earlier row's figures to three decimals on the three clips tried.
+
+- **On the same audio, 96 kbps AAC raises "Christmas" by 0.10 on average** (45 clips, 0.30 to 0.40, up to 0.19 on one), and "electronic" by 0.06 (up to 0.15). The other probes move by 0.015–0.04 on average, with up to 0.15 on a clip. Notes a second moved by up to 1.3.
+- **Each probe's order mostly survives** (Spearman between the formats 0.97 for Christmas, 0.75–0.98 across probes), and its agreement with the verdicts barely changes. So compare CLAP's figures within one format only, and any check the app makes on a take should read one format.
+- **It had crept into this README**: the Christmas and choir figures for `heaven-d-60` were from FLAC beside others from AAC, corrected above. On one format, the gap between the bad Heavens and the liked one narrows (above), and from FLAC the bad ones (0.12–0.34) overlap it (0.18), so that remark is weaker than it looked. The other figures in that section weren't all checked for format; `analysis.jsonl` is one format throughout.
+
+`analyse.py` read the PC's clips and cut `ace.py` correctly, 29 s in all on the CPU with CLAP already cached. With the PC's verdicts added, across all 54 rows, no measure predicts a liked clip: every one within ±0.28, and only "drums" past p 0.05, at −0.28.
+
+### `ace.py` on the Mac
+
+`tavern-d-60` on the XL with the 4B planner, seed 3, `FREE=1`, rendered twice; the rows and files were then removed. The file went to `out/ace-step-1.5-xl-turbo-4b-lm/` with no "-mac", 60.0 s long; the row said `"machine": "mac"`, `comfyui_most_gb` 27.0 both times, `took` 171.8 s (with 21 GB already loaded) and 190.5 s (from freed, with other work running on the CPU, so not a clean timing). `free_took` and `freed_ram_gb` were filled in. **A seed repeats on the Mac**, byte for byte, as on the PC (one clip tried).
+
+**`/free` on the Mac**: `free_took` is 0.1 s, as there's no VRAM figure for the wait to watch, so it says nothing there. ComfyUI's memory does fall, but over about 2.4 s after the job ends (polled about every 0.6 s, from 27 GB to 1.3 GB, and 9 to 34 GB free by ComfyUI's `vram_free`). `ace.py` looks after a fixed 2 s, right on that edge, so `freed_ram_gb` read 21.0 once and 1.3 the other, the first with `footprint` a few seconds later at 2.4 GB. So on the Mac, trust a later reading. The app's own wait watches `vram_free` (`server/comfyui/client.ts`), which fell with the memory.
+
+### The other setups deleted
+
+The owner deleted the 2B turbo and the 1.7B planner on the Mac (8.5 GB), as on the PC, so both machines have one setup, the XL with the 4B planner, and `ace.py` defaults to it. Its folder names didn't change, and the tables above stay as history.
+
+The raw FLACs went too (`out/`, and ComfyUI's copies in its `output/bench`, 265 MB each). So only `clips/` remains, at 96 kbps, and **`analyse.py` can now read 27 of its 54 verdict clips**. It reads only `clips/`, so the file stays in one format, and merges: the other 27 keep their earlier rows, whose figures can't be measured again. The planner pairs above can't be measured again, as only `tavern-d-60-s1` has both clips kept.
+
 ## Not checked yet
 
-- **The 2 s measure of flow on the Mac's planner pairs** (above).
 - **Cover strength** (ACE-Step's `audio_cover_strength`, which ComfyUI's node doesn't take): a weaker cover might keep a Cue's sound where a full one didn't.
 - **An end song written from a story's ending**, 2–3 minutes (the songs here are written for the bench).

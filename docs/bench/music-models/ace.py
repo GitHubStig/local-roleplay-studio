@@ -6,14 +6,13 @@
 # ///
 """
 Renders the music bench's cases with ACE-Step 1.5 through a running ComfyUI (ComfyUI's own
-"ACE-Step 1.5 split" template: the 2B turbo, the 0.6B and 1.7B text encoders, 8 steps), timing
-each and noting ComfyUI's memory at the most (comfyui_memory, polled every 2 s). See README.md.
+"ACE-Step 1.5 split" template, the pick by default: the XL turbo, the 0.6B and 4B text encoders,
+8 steps), timing each and noting ComfyUI's memory at the most (comfyui_memory, polled every 2 s). See README.md.
 
     uv run ace.py                       # every case, seed 1, on 127.0.0.1:8188
     uv run ace.py tavern-60 song-150    # only these
-    DIT=acestep_v1.5_xl_turbo_bf16 uv run ace.py tavern-60
-    FROM=out/ace-step-1.5-xl-turbo/tavern-60-s1.flac MODE=cover uv run ace.py tavern-tense-60
-    FROM=out/ace-step-1.5-xl-turbo/tavern-60-s1.flac MODE=extend uv run ace.py tavern-60
+    FROM=out/ace-step-1.5-xl-turbo-4b-lm/tavern-60-s1.flac MODE=cover uv run ace.py tavern-tense-60
+    FROM=out/ace-step-1.5-xl-turbo-4b-lm/tavern-60-s1.flac MODE=extend uv run ace.py tavern-60
 
 FROM and MODE make a Cue from an earlier one's audio, with ComfyUI's own nodes (it has no template
 for either): MODE=cover gives the earlier audio to "Set Reference Audio" (ReferenceTimbreAudio,
@@ -26,7 +25,7 @@ before it, so only that is drawn and the join is drawn again.
 The captions are written as ACE-Step's guide asks (docs/en/Tutorial.md in its repo): prose on the
 style, emotion, instruments, timbre and production, with the tempo, key and length left out of
 them and set as their own inputs; an instrumental's lyrics are structure tags that agree with the
-caption. Output goes to out/<setup>/ (out/ace-step-1.5-turbo/, with "-pc" on the end on the PC, as
+caption. Output goes to out/<setup>/ (out/ace-step-1.5-xl-turbo-4b-lm/, with "-pc" on the end on the PC, as
 the same seed makes another clip on another machine; MACHINE= overrides which), results to
 results.jsonl. FREE=1 frees ComfyUI after each render, as the app does after every job, and records
 how long the card took to empty and what stayed.
@@ -40,10 +39,13 @@ PORT = urllib.parse.urlparse(COMFYUI).port or 8188
 SEED = int(os.environ.get('SEED', '1'))
 MACHINE = os.environ.get('MACHINE', 'pc' if sys.platform == 'win32' else 'mac')
 FREE = os.environ.get('FREE') == '1'
-# The DiT and the planner (the LM that writes audio codes first): the 2B turbo with the 1.7B by default;
-# DIT=acestep_v1.5_xl_turbo_bf16 for the 4B XL turbo, LM=qwen_4b_ace15 for the 4B planner its template uses.
-DIT = os.environ.get('DIT', 'acestep_v1.5_turbo')
-LM = os.environ.get('LM', 'qwen_1.7b_ace15')
+# The DiT and the planner (the LM that writes audio codes first): the XL turbo with its 4B planner, the
+# pick. DIT=acestep_v1.5_turbo and LM=qwen_1.7b_ace15 are the setups benched before it, whose files both
+# machines have since deleted (2026-11-09).
+DIT = os.environ.get('DIT', 'acestep_v1.5_xl_turbo_bf16')
+LM = os.environ.get('LM', 'qwen_4b_ace15')
+# A folder's name leaves the 1.7B planner out, as it was the first default, so results.jsonl, clips/ and
+# verdicts.json keep matching their folders. Don't name the folders after the default.
 NAMES = {'acestep_v1.5_turbo': 'turbo', 'acestep_v1.5_xl_turbo_bf16': 'xl-turbo'}
 MODEL = f"ace-step-1.5-{NAMES.get(DIT, DIT)}" + ('' if LM == 'qwen_1.7b_ace15' else f"-{LM.split('_')[1]}-lm") + ('' if MACHINE == 'mac' else f'-{MACHINE}')
 
