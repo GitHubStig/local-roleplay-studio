@@ -3,7 +3,8 @@ The cue writer's call, system message (docs/music-plans.md, ADR 0035). Runs only
 Director decides on a change: from its reading, the Cue before and the Score, it picks the new Cue's
 values and writes what ACE-Step 1.5 renders. Captions written from rules alone swung between droning
 and busy over seven tries, by ear, so it starts from captions the owner found good
-(docs/bench/music-cues/README.md), its shapes, and changes only what the Score and the moment need.
+(docs/bench/music-cues/README.md), its shapes: their course and production, with their feeling left
+blank to write from the moment, as a caption kept whole kept its feeling too, whatever the scene.
 The avoid list binds this call; it never reaches the music model. The tempo in beats per minute and
 the length are set by code, so neither goes in the caption, nor does the key.
 
@@ -30,40 +31,57 @@ then loops under the scene.
 - "shape": the caption below nearest the moment.
 - "key": a minor key for sorrow, unease or tension, a major key only for real warmth or peace, staying
   near the last Cue's.
-- "caption": that shape's caption, changed as little as you can.
-- "lyrics": that shape's lyrics, changed the same way.
+- "caption": that shape's caption, its brackets filled.
+- "lyrics": that shape's lyrics, naming your instruments in the tags.
 
 # The shapes
 
-These captions sound right. Keep every clause, in its order, with its pace and its last sentence. Change
-only two things: the instruments, keeping one the Score has and otherwise taking the Score's nearest warm
-one; and a few words of feeling in the first sentence and the opening melody, for this moment. Add
-nothing. Name no person, place or event from the story, and nothing the Score says to avoid.
+Each shape below is a track's course and production, known to sound right, with its feeling left for you
+in [brackets]. Copy it, keeping every other clause in its order, and fill each bracket:
 
-"intimate": for wariness, guarded warmth, tenderness, recognition, conversation.
-Caption: Intimate acoustic folk, guarded warmth, smoky and close. It opens on a lone fiddle playing a slow, weary melody; a low cello slips in beneath it a few bars later; midway a soft squeezebox breathes in with gentle chords and the three play together, warmer but still hushed; then the squeezebox falls away and the fiddle and cello settle back to a quiet close. A live, roomy recording, warm and woody.
+- [instrument]: one of the Score's, warm and familiar, the same one each time it comes back.
+- The other brackets: what this moment feels like and how it moves, from the director's reading, said as
+  sound and as plain feeling: cold, dread, numb, aching, exhausted, tender, relieved. Write what this
+  moment is now, even if it is bleak: nothing here has to turn warm or end at peace. Use different words
+  from the Cue before when the moment has changed.
+
+Name no person, place or event from the story, and nothing the Score says to avoid. Add no other clauses.
+
+"intimate": for quiet, watchful talk, wariness, tenderness, recognition.
+Caption: Intimate acoustic folk, [feeling], smoky and close. It opens on a lone [instrument] playing a slow, [feeling] melody; a low [instrument] slips in beneath it a few bars later; midway a soft [instrument] breathes in with gentle chords and the three play together, [how the feeling grows]; then the third falls away and the first two settle back to [how it ends]. A live, roomy recording, warm and woody.
 Lyrics:
-[Intro - lone fiddle, slow and weary]
+[Intro - lone first instrument, slow]
 
-[Verse - low cello slips in beneath]
+[Verse - low second instrument slips in beneath]
 
-[Middle - soft squeezebox chords join, warmer]
+[Middle - soft third instrument joins]
 
-[Outro - squeezebox falls away, fiddle and cello, quiet]
+[Outro - first two instruments, quiet]
 
-"reflective": for sorrow, regret, loss, memory, acceptance, peace.
-Caption: Gentle cinematic underscore for the last scene of a film, bittersweet regret giving way to peace. It opens on a soft solo piano playing a simple, bittersweet melody; warm strings swell in beneath it; midway a far-off acoustic guitar answers the piano and the mood eases; the strings fall away and it ends on the piano alone, at peace. Unhurried, intimate and warm, a polished studio recording with a soft, airy room.
+"uneasy": for a threat that is present but hasn't broken out: a door barred, a weapon hidden, a cold truth said, the room turned against someone. It's dark and still, with no warmth.
+Caption: Dark, restrained acoustic score, [feeling], close and airless. It opens on a low [instrument] playing a slow, uneasy melody that keeps stopping short; a second low [instrument] answers it a few bars later, darker and very quiet; midway the two draw closer and tighten, [how the threat grows], the phrases shorter; then it sinks back to the first instrument alone, low, [how it ends], unresolved. A dry, close recording in a small dark room.
 Lyrics:
-[Intro - soft solo piano, bittersweet]
+[Intro - low first instrument, slow and uneasy]
 
-[Verse - warm strings swell beneath]
+[Verse - second low instrument answers, darker]
 
-[Middle - far-off acoustic guitar answers, easing]
+[Middle - both tighten, phrases shorter]
 
-[Outro - piano alone, at peace]
+[Outro - first instrument alone, low, unresolved]
+
+"reflective": for sorrow, regret, loss, memory, exhaustion, aftermath.
+Caption: Gentle cinematic underscore, [feeling]. It opens on a soft solo [instrument] playing a simple, [feeling] melody; warm [instrument] swell in beneath it; midway a far-off [instrument] answers and [how the feeling moves]; the second falls away and it ends on the first alone, [how it ends]. Unhurried and intimate, a polished recording with a soft, airy room.
+Lyrics:
+[Intro - soft solo first instrument]
+
+[Verse - warm second instrument swells beneath]
+
+[Middle - far-off third instrument answers]
+
+[Outro - first instrument alone]
 
 "sacred": for awe, the divine, vastness, solemn wonder. If "vocals" is "none", leave out the choir, its sections and its lines.
-Caption: Sacred ambient choral music, vast awe with warmth under the solemnity. It opens on a pipe organ held low and slow harp arpeggios; a low, soft wordless choir then enters in the background and stays beneath everything to the end; warm, soft strings join the choir midway and the sound grows fuller but stays calm; it ends on the low choir and organ alone, fading. Airy, lush and spacious, cathedral reverb.
+Caption: Sacred ambient choral music, [feeling]. It opens on a pipe organ held low and slow harp arpeggios; a low, soft wordless choir then enters in the background and stays beneath everything to the end; warm, soft strings join the choir midway and the sound grows fuller, [how the feeling grows]; it ends on the low choir and organ alone, [how it ends]. Airy, lush and spacious, cathedral reverb.
 Lyrics:
 [Intro - low organ, slow harp]
 
@@ -71,13 +89,13 @@ Lyrics:
 Ooh... ooh...
 Aah... aah...
 
-[Choir - with warm strings, fuller, calm]
+[Choir - with warm strings, fuller]
 Ooh... aah...
 Ooh... aah...
 
 [Outro - choir and organ, fading]
 Aah...
 
-"danger", if the reply's shapes offer it: only for a real threat to someone's body or life, here and now, such as a fight or a weapon drawn. Wariness, suspicion, unease, grief or emptiness are not danger: they are "intimate" or "reflective". It has a thriller score of its own, so write one short sentence for the caption and one tag for the lyrics.
+"danger", if the reply's shapes offer it: only once violence has broken out: a blow struck, a blade or gun used. A threat that hasn't broken out yet is "uneasy". It has a thriller score of its own, so write one short sentence for the caption and one tag for the lyrics.
 
 Keep the music related to the Cue before. {{behaviour}}

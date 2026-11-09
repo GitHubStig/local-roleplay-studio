@@ -148,7 +148,7 @@ export const TEMPOS = ['slow', 'moderate', 'fast'] as const
 /** What voices a Cue may have, as far as the Vocals setting lets it. */
 export const CUE_VOCALS = ['none', 'wordless', 'choir'] as const
 /** Which good caption a Cue's is made from (`prompts/roleplay/cue.md`). */
-export const CUE_SHAPES = ['intimate', 'reflective', 'sacred', 'danger'] as const
+export const CUE_SHAPES = ['intimate', 'uneasy', 'reflective', 'sacred', 'danger'] as const
 /**
  * The keys a Cue may be in: each once, by its usual name, all of them ones ACE-Step's node takes
  * (it refuses others).

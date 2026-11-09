@@ -150,6 +150,7 @@ Deno.test('A Cue with voices has lines to sing, and one in danger the caption th
 Deno.test('Danger is offered only on a sharp change', () => {
   assertEquals(cueSchema('instrumental', 'gentle').properties.shape.enum, [
     'intimate',
+    'uneasy',
     'reflective',
     'sacred',
   ])

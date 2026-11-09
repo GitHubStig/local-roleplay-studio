@@ -108,3 +108,9 @@ The owner asked for the test (2026-11-09), since adapted captions could hold bac
 **About level with the adapted captions, and no better**: free writing by a stronger writer hit the same walls. So the limit isn't only Gemma's: ACE-Step takes direction loosely, and awe and a heard choir haven't come reliably from anyone's words. Asked plainly for a tune, a repeated figure or a clearly heard choir, it does the first too much and not always the last. The adapted captions stay, and the rules are kept in [rules-prompt.md](rules-prompt.md) to try again with any new Text Model or music model, by ear.
 
 **New for judging**: a Cue is heard as a change from the one before, not alone, so a fight can be right alone and too strong after the tavern. Isolated clips can't test that, which is one more reason to judge the rest in play.
+
+### In a story: it sounded good and didn't fit
+
+The hired-killer replay through the app, with its pictures, by the owner (2026-11-09): "music sounds good but doesn't really match what's going on in the story". Reading its Cues showed why: the Director read each moment well, but a caption kept almost whole kept its own feeling, so the opening, the barred door and the cold confession had nearly one caption ("warmer but still hushed"), and the aftermath of an attempted murder went "giving way to peace". Keeping a liked caption kept its story too.
+
+So a shape now keeps only the course and production, its feeling left in brackets for the Text Model to fill from the reading, and nothing has to turn warm or end at peace. A shape for a threat that hasn't broken out (`uneasy`) was added, not from a clip the owner liked, and danger is kept to violence that has. Written over that story's Cues in the Session itself, at the owner's word; not yet heard. The model fills brackets with a little of the story at times ("the hidden blade", "the storm outside"), which the old rules forbade.

@@ -117,7 +117,7 @@ export interface CueValues {
   tempo: 'slow' | 'moderate' | 'fast'
   instruments: string[]
   vocals: 'none' | 'wordless' | 'choir'
-  shape: 'intimate' | 'reflective' | 'sacred' | 'danger'
+  shape: 'intimate' | 'uneasy' | 'reflective' | 'sacred' | 'danger'
   key: string
   /** What the music model is told it sounds like and how it develops. */
   caption: string
