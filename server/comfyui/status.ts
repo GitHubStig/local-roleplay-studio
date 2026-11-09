@@ -3,13 +3,15 @@ import { modelFiles } from './files.ts'
 import { type ComfyModel, findComfyModel, findComfyUpscaler } from '../images/comfyui/models.ts'
 import { VOICE_NODES } from '../voice/comfyui/comfyui.ts'
 import { findComfyVideoModel } from '../video/comfyui/models.ts'
+import { ACE_STEP } from '../music/comfyui/comfyui.ts'
 
-/** What Settings would send a ComfyUI: the models and whether voices, any left out. */
+/** What Settings would send a ComfyUI: the models and whether voices or music, any left out. */
 export interface ComfyUses {
   imageModel?: string
   upscaler?: string
   voices?: boolean
   videoModel?: string
+  music?: boolean
 }
 
 /**
@@ -27,8 +29,8 @@ export type ComfyStatus =
 
 /**
  * Asks the ComfyUI at `baseUrl` ('' for its default) what it is (`GET /system_stats`), and whether it
- * has what will run there: the Image Model's, the upscaler's and the video model's files (any may be
- * left out), and for voices the custom nodes they need. Never throws: what's wrong is in the answer.
+ * has what will run there: the Image Model's, the upscaler's, the video model's and music's files (any
+ * may be left out), and for voices the custom nodes they need. Never throws: what's wrong is in the answer.
  */
 export async function comfyuiStatus(
   baseUrl: string,
@@ -62,6 +64,9 @@ export async function comfyuiStatus(
   await check('imageModel', findComfyModel, 'Image Model')
   await check('upscaler', findComfyUpscaler, 'upscaler')
   await check('videoModel', findComfyVideoModel, 'video model')
+  if (uses.music) {
+    await modelFiles(base, ACE_STEP, signal).catch((err) => missing.music = (err as Error).message)
+  }
   if (uses.voices) {
     const absent = []
     for (const node of VOICE_NODES) {

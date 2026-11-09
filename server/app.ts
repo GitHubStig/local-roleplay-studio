@@ -888,23 +888,31 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
           upscaler?: unknown
           voices?: unknown
           videoModel?: unknown
+          music?: unknown
         }
         | undefined
       const optional = (v: unknown) => v === undefined || typeof v === 'string'
       if (
         typeof body?.address !== 'string' || !optional(body.imageModel) ||
         !optional(body.upscaler) || !optional(body.videoModel) ||
-        (body.voices !== undefined && typeof body.voices !== 'boolean')
+        (body.voices !== undefined && typeof body.voices !== 'boolean') ||
+        (body.music !== undefined && typeof body.music !== 'boolean')
       ) {
         return error(
-          'Give an address, and an imageModel, an upscaler, voices or a videoModel to check',
+          'Give an address, and an imageModel, an upscaler, voices, a videoModel or music to check',
           400,
         )
       }
       if (!deps.comfyuiStatus) return error("ComfyUI isn't set up on this server", 409)
-      const { imageModel, upscaler, voices, videoModel } = body as ComfyUses
+      const { imageModel, upscaler, voices, videoModel, music } = body as ComfyUses
       return json(
-        await deps.comfyuiStatus(body.address.trim(), { imageModel, upscaler, voices, videoModel }),
+        await deps.comfyuiStatus(body.address.trim(), {
+          imageModel,
+          upscaler,
+          voices,
+          videoModel,
+          music,
+        }),
       )
     }],
 

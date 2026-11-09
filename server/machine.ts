@@ -34,6 +34,11 @@ export type HeavyJob =
    * else the one pictures go to if they go to one, else the first.
    */
   | { kind: 'video' }
+  /**
+   * Music (`music/`): only a ComfyUI makes it (ADR 0035), the one Settings name for it (`musicOn`),
+   * or else the one pictures go to if they go to one, else the first.
+   */
+  | { kind: 'music' }
 
 /** An edit as the render queue is given it: by its edit model, on the kind it would rather. */
 export const editJob = (model: EditModel, on?: ImageBackendKind): HeavyJob => ({
@@ -45,7 +50,7 @@ export const editJob = (model: EditModel, on?: ImageBackendKind): HeavyJob => ({
 /** What this machine's own Backend can run, as found at startup (`features.ts`). */
 export type Here = Pick<Availabilities, 'images' | 'upscale' | 'edits' | 'voices'>
 
-const WORK_OF: Record<Exclude<HeavyJob['kind'], 'video'>, Work> = {
+const WORK_OF: Record<Exclude<HeavyJob['kind'], 'video' | 'music'>, Work> = {
   render: 'images',
   edit: 'edits',
   upscale: 'upscale',
@@ -57,7 +62,7 @@ const WORK_OF: Record<Exclude<HeavyJob['kind'], 'video'>, Work> = {
  * is, an edit on its edit model's kind of Backend.
  */
 export function canRun(backend: Backend, job: HeavyJob, here: Here): boolean {
-  if (job.kind === 'video') return backend.kind === 'comfyui'
+  if (job.kind === 'video' || job.kind === 'music') return backend.kind === 'comfyui'
   const work = WORK_OF[job.kind]
   if (!BACKEND_WORK[backend.kind].includes(work)) return false
   if (backend.kind === 'here' && !here[work as keyof Here].available) return false
@@ -79,13 +84,15 @@ export function canRun(backend: Backend, job: HeavyJob, here: Here): boolean {
  */
 export function backendOf(
   job: HeavyJob | undefined,
-  now: Pick<Settings, 'backends' | 'runOn' | 'videoOn'>,
+  now: Pick<Settings, 'backends' | 'runOn' | 'videoOn' | 'musicOn'>,
   here: Here,
 ): Backend | undefined {
   if (!job) return HERE
-  // Clips prefer the ComfyUI Settings name for them, else the one pictures go to.
+  // Clips and music prefer the ComfyUI Settings name for them, else the one pictures go to.
   const preferred = job.kind === 'video'
     ? now.videoOn ?? now.runOn.images
+    : job.kind === 'music'
+    ? now.musicOn ?? now.runOn.images
     : now.runOn[WORK_OF[job.kind]]
   const can = (b: Backend) => canRun(b, job, here)
   const on = 'on' in job ? job.on : undefined

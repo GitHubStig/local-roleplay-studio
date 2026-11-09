@@ -133,6 +133,15 @@ Deno.test('A clip goes to the ComfyUI pictures go to, else the first listed, nev
   assertEquals(clip('here', [HERE]), undefined)
 })
 
+Deno.test('Music goes to the ComfyUI Settings name for it, else the one pictures go to, never here', () => {
+  const runOn = { ...DEFAULT_SETTINGS.runOn, images: 'comfy' }
+  assertEquals(backendOf({ kind: 'music' }, { backends, runOn, musicOn: 'pc' }, mac)?.id, 'pc')
+  assertEquals(backendOf({ kind: 'music' }, { backends, runOn }, mac)?.id, 'comfy')
+  // What clips are sent to doesn't move it.
+  assertEquals(backendOf({ kind: 'music' }, { backends, runOn, videoOn: 'pc' }, mac)?.id, 'comfy')
+  assertEquals(backendOf({ kind: 'music' }, { backends: [HERE], runOn }, mac), undefined)
+})
+
 Deno.test('Clips go to the ComfyUI Settings name for them, over the one pictures go to', () => {
   const runOn = { ...DEFAULT_SETTINGS.runOn, images: 'comfy' }
   assertEquals(backendOf({ kind: 'video' }, { backends, runOn, videoOn: 'pc' }, mac)?.id, 'pc')

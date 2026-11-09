@@ -118,6 +118,8 @@ export interface Settings {
    * Not a kind of work in `runOn`: only a ComfyUI makes clips, and a machine may have none.
    */
   videoOn?: string
+  /** The ComfyUI music goes to, by Backend id; none for the one pictures go to, or else the first. */
+  musicOn?: string
   /**
    * Which extras are switched on (all, by default): one that this machine can't run is off
    * whatever this says (`features.ts`). Read on every request, so it applies mid-Session too.
@@ -399,6 +401,12 @@ export function validateSettings(input: unknown): ValidationResult {
   ) {
     issues.push('videoOn must be a ComfyUI on the Machines tab')
   }
+  if (
+    s.musicOn !== undefined &&
+    !listed.some((b) => b?.id === s.musicOn && b?.kind === 'comfyui')
+  ) {
+    issues.push('musicOn must be a ComfyUI on the Machines tab')
+  }
   if (s.videoModel !== undefined && !findComfyVideoModel(s.videoModel as string)) {
     issues.push(`videoModel must be one of: ${COMFYUI_VIDEO_MODELS.map((m) => m.id).join(', ')}`)
   }
@@ -443,6 +451,7 @@ export function validateSettings(input: unknown): ValidationResult {
       videoModel: (s.videoModel as string | undefined) ?? DEFAULT_SETTINGS.videoModel,
       ...(sizes !== undefined && { videoSizes: sizes as Record<string, ClipSize> }),
       ...(s.videoOn !== undefined && { videoOn: s.videoOn as string }),
+      ...(s.musicOn !== undefined && { musicOn: s.musicOn as string }),
       // One not mentioned (an older file, or a Feature added since) is on.
       features: { ...DEFAULT_SETTINGS.features, ...(features as Record<Feature, boolean>) },
       limits: (s.limits as boolean | undefined) ?? true,

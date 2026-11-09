@@ -267,6 +267,19 @@ Deno.test('Clips may name a ComfyUI to go to, one on the Machines tab', () => {
   }
 })
 
+Deno.test('Music may name a ComfyUI to go to, one on the Machines tab', () => {
+  const comfy = { id: 'pc', kind: 'comfyui' as const, address: 'http://192.0.2.20:8188' }
+  const backends = [...DEFAULT_SETTINGS.backends, comfy]
+  const ok = validateSettings({ ...DEFAULT_SETTINGS, backends, musicOn: 'pc' })
+  assertEquals(ok.ok && ok.settings.musicOn, 'pc')
+  const none = validateSettings({ ...DEFAULT_SETTINGS, backends })
+  assertEquals(none.ok && 'musicOn' in none.settings, false)
+  for (const musicOn of ['gone', 'ollama']) {
+    const bad = validateSettings({ ...DEFAULT_SETTINGS, backends, musicOn })
+    assertEquals(bad.ok ? [] : bad.issues, ['musicOn must be a ComfyUI on the Machines tab'])
+  }
+})
+
 Deno.test('Each video model may have a clip size, Small or Large; one not given makes its own', () => {
   const ok = validateSettings({ ...DEFAULT_SETTINGS, videoSizes: { 'wan-2.2': 'large' } })
   assertEquals(ok.ok && ok.settings.videoSizes, { 'wan-2.2': 'large' })

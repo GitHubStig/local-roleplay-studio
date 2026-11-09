@@ -240,6 +240,7 @@ async function logFeatures(saved: Settings) {
   const upscale = backendOf({ kind: 'upscale' }, saved, features)
   const voices = backendOf({ kind: 'voice' }, saved, features)
   const clips = backendOf({ kind: 'video' }, saved, features)
+  const music = backendOf({ kind: 'music' }, saved, features)
   const on: Partial<Record<Feature, string>> = {
     images: placeholderImages ? 'placeholders' : named(render),
     upscale: named(upscale),
@@ -261,8 +262,11 @@ async function logFeatures(saved: Settings) {
       upscaler: upscale?.id === comfy.id ? saved.upscaler : undefined,
       voices: voices?.id === comfy.id || undefined,
       videoModel: clips?.id === comfy.id ? saved.videoModel : undefined,
+      music: (saved.music && music?.id === comfy.id) || undefined,
     }
-    if (!uses.imageModel && !uses.upscaler && !uses.voices && !uses.videoModel) continue
+    if (!uses.imageModel && !uses.upscaler && !uses.voices && !uses.videoModel && !uses.music) {
+      continue
+    }
     const address = backendAddress(comfy)
     const status = await comfyuiStatus(comfy.address, uses)
     const missing = status.up ? Object.values(status.missing).join('; ') : ''

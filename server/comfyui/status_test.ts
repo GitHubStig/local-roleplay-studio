@@ -59,6 +59,27 @@ Deno.test("Settings' check for voices: TTS Audio Suite's nodes, naming those mis
   }
 })
 
+Deno.test("Settings' check for music: ACE-Step's files, naming those missing", async () => {
+  const files = {
+    diffusion_models: ['acestep_v1.5_xl_turbo_bf16.safetensors'],
+    text_encoders: ['qwen_0.6b_ace15.safetensors', 'qwen_4b_ace15.safetensors'],
+    vae: ['ace_1.5_vae.safetensors'],
+  }
+  const ready = fakeComfyUI({ files })
+  const no4B = fakeComfyUI({ files: { ...files, text_encoders: ['qwen_0.6b_ace15.safetensors'] } })
+  try {
+    const fine = await comfyuiStatus(ready.url, { music: true })
+    assertEquals(fine.up && fine.missing, {})
+    const status = await comfyuiStatus(no4B.url, { music: true })
+    assertStringIncludes(status.up ? status.missing.music ?? '' : '', 'qwen_4b_ace15')
+    const unasked = await comfyuiStatus(no4B.url, {})
+    assertEquals(unasked.up && unasked.missing, {})
+  } finally {
+    await ready.close()
+    await no4B.close()
+  }
+})
+
 Deno.test("Settings' check for clips: the video model's files, naming those missing", async () => {
   const ltx = {
     diffusion_models: ['ltx-2.5-22b-distilled-transformer-comfy-int8-convrot.safetensors'],

@@ -156,6 +156,7 @@ server/           Deno API: the app, Sessions, Settings, the job queue, what all
                   comfyui/workflows/)
   comfyui/        what talking to ComfyUI takes, for pictures, voices and clips alike
   video/          clips from a Frame's pictures: comfyui/ (LTX 2.5, its workflow in comfyui/workflows/)
+  music/          a Roleplay's music: comfyui/ (ACE-Step 1.5, its workflow in comfyui/workflows/)
   3d/             SHARP scenes, TripoSplat and LiTo figures
   style/          Compare's style scores: the embedder, the measures and the job
   export/         the Compare table as a page of its own, its pictures as WebP

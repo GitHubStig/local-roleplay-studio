@@ -99,6 +99,8 @@ export interface Settings {
   videoSizes?: Record<string, ClipSize>
   /** The ComfyUI clips go to, by Backend id; none for the one pictures go to, or else the first. */
   videoOn?: string
+  /** The ComfyUI music goes to, by Backend id; none for the one pictures go to, or else the first. */
+  musicOn?: string
   /** Which model edits pictures; applies to the next edit, even mid-Session. */
   editModel: string
   /** The Limits; off, none are enforced. Applies at once. */
@@ -258,6 +260,7 @@ export interface ComfyUses {
   upscaler?: string
   voices?: boolean
   videoModel?: string
+  music?: boolean
 }
 
 /**

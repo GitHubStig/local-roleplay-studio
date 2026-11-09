@@ -211,6 +211,7 @@ Deno.test('POST /api/settings/comfyui checks an address not saved yet', async ()
     upscaler: undefined,
     voices: undefined,
     videoModel: undefined,
+    music: undefined,
   }
   assertEquals(asked, [
     ['http://192.0.2.20:8188', { ...none, imageModel: 'qwen-image-2.1' }],

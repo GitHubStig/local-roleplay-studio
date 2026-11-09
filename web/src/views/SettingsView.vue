@@ -102,7 +102,7 @@ onMounted(async () => {
 
 /** New API keys typed, by Backend id; saved when a field is left. */
 const apiKeys = ref<Record<string, string>>({})
-const { choicesFor, whereTo, clipsTo, comfy, checkComfy, text } = useBackends(form, options, apiKeys)
+const { choicesFor, whereTo, clipsTo, musicTo, comfy, checkComfy, text } = useBackends(form, options, apiKeys)
 
 /** A Backend taken off the list: work that preferred it moves to the first left that can do it. */
 function removeBackend(index: number) {
@@ -112,15 +112,24 @@ function removeBackend(index: number) {
     if (form.value.runOn[work] === gone.id) form.value.runOn[work] = choicesFor(work)[0]?.id ?? ''
   }
   if (form.value.videoOn === gone.id) delete form.value.videoOn
+  if (form.value.musicOn === gone.id) delete form.value.musicOn
 }
 
-/** The ComfyUIs clips can go to: only a ComfyUI makes them. */
+/** The ComfyUIs clips and music can go to: only a ComfyUI makes them. */
 const clipChoices = computed(() => form.value?.backends.filter((b) => b.kind === 'comfyui') ?? [])
 /** Clips on: the ComfyUI chosen, or else where they go now (the one pictures go to, or the first). */
 const clipsOn = computed({
   get: () => form.value?.videoOn ?? clipsTo.value?.id ?? '',
   set: (id: string) => {
     if (form.value) form.value.videoOn = id
+  },
+})
+
+/** Music on: the ComfyUI chosen, or else where it goes now (the one pictures go to, or the first). */
+const musicOn = computed({
+  get: () => form.value?.musicOn ?? musicTo.value?.id ?? '',
+  set: (id: string) => {
+    if (form.value) form.value.musicOn = id
   },
 })
 
@@ -243,8 +252,11 @@ function saveNow() {
 
 <template>
   <div class="overflow-y-auto">
-    <!-- Wider for Images in an ultrawide window, its three cards abreast. -->
-    <div class="mx-auto max-w-4xl px-6 pb-6 pt-6" :class="{ 'wide:max-w-7xl': tab === 'images' }">
+    <!-- Wider for Images and Music in an ultrawide window, three cards abreast. -->
+    <div
+      class="mx-auto max-w-4xl px-6 pb-6 pt-6"
+      :class="{ 'wide:max-w-7xl': tab === 'images' || tab === 'music' }"
+    >
       <div
         class="sticky top-0 z-10 -mx-6 mb-4 flex flex-col bg-canvas px-6 pb-4"
         data-settings-status
@@ -558,15 +570,18 @@ function saveNow() {
 
         <section
           v-show="tab === 'music'"
-          class="flex max-w-xl flex-col gap-6"
+          class="gap-6 md:columns-2 wide:columns-3 *:mb-6 *:break-inside-avoid"
           role="tabpanel"
           data-tab-panel="music"
         >
           <div class="card">
             <ToggleSwitch v-model="form.music" title="Music (in progress)" data-music>
               Music for Roleplays, being built in stages. On, what's there so far shows: for now,
-              a Scenario's Music, and the defaults below.
+              a Scenario's Music, and the defaults here.
             </ToggleSwitch>
+            <p v-if="form.music" class="text-sm text-muted">
+              Each new Roleplay keeps these as they are when it starts.
+            </p>
           </div>
           <template v-if="form.music">
             <fieldset class="card" data-music-behaviour>
@@ -597,9 +612,21 @@ function saveNow() {
                 In your own words, for every Roleplay's music: what you like and what to avoid.
               </span>
             </label>
-            <p class="text-sm text-muted">
-              Each new Roleplay keeps these as they are when it starts.
-            </p>
+            <div v-if="clipChoices.length" class="card">
+              <RunOn
+                v-model="musicOn"
+                label="Music on"
+                :choices="clipChoices"
+                :goes-to="musicTo"
+                :status="comfy[musicTo?.id ?? '']"
+                :uses="['music']"
+                data-run-on="music"
+                @check="checkComfy"
+              >
+                A ComfyUI with ACE-Step 1.5's files: the XL turbo and its 4B planner. Until one is
+                chosen, music goes to the ComfyUI pictures go to, or else the first.
+              </RunOn>
+            </div>
           </template>
         </section>
 
