@@ -435,7 +435,7 @@ const promptDiff = computed(() => {
             :thumbnail="session.thumbnail"
             :name="frameTitle"
             :caption="(f) => f.narration"
-            @changed="load"
+            @changed="load(); refreshJobs()"
           />
           <label
             class="flex cursor-pointer items-center gap-1.5 text-muted"

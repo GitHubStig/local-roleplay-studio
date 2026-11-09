@@ -9,6 +9,7 @@ import {
   hasVersion,
   homeImage,
   imageUrl,
+  listJobs,
   pickedEdit,
   type Picture,
   type PicturedFrame,
@@ -231,10 +232,19 @@ const styleBaseName = computed(() =>
  */
 const deleting = useTemplateRef<HTMLDialogElement>('deleting')
 const doomed = ref<
-  { model: string; label: string; pictures: number; extras: number; problem?: string; busy?: true }
+  {
+    model: string
+    label: string
+    pictures: number
+    extras: number
+    problem?: string
+    busy?: true
+    /** A style job is running, which reads the pictures: the server refuses until it's done. */
+    scoring?: true
+  }
   | null
 >(null)
-function askToDelete(index: number) {
+async function askToDelete(index: number) {
   const model = modelIds.value[index]
   const pictures = props.frames.flatMap((f) => f.pictures.filter((p) => p.imageModel === model))
   doomed.value = {
@@ -244,6 +254,10 @@ function askToDelete(index: number) {
     extras: pictures.filter((p) => p.upscaled || p.scene || p.figure || p.lito).length,
   }
   deleting.value?.showModal()
+  const jobs = await listJobs(props.sessionId).catch(() => [])
+  if (doomed.value?.model === model && jobs.some((j) => j.kind === 'style' && j.status === 'running')) {
+    doomed.value = { ...doomed.value, scoring: true }
+  }
 }
 async function deleteNow() {
   const asked = doomed.value
@@ -457,8 +471,11 @@ async function exportPage() {
         <p>
           All {{ doomed.pictures }} {{ doomed.pictures === 1 ? 'picture' : 'pictures' }}
           {{ doomed.label }} made in this Session<template v-if="doomed.extras">, with the upscales
-          and 3D made from {{ doomed.extras }} of them</template>, from every Frame. This can't be
-          undone.
+          and 3D made from {{ doomed.extras }} of them</template>, from every Frame. Anything
+          queued or running on them is cancelled too. This can't be undone.
+        </p>
+        <p v-if="doomed.scoring" class="text-warn" data-delete-scoring>
+          Style scores are being worked out: wait for them to finish first.
         </p>
         <p v-if="doomed.problem" class="text-danger" data-delete-problem>{{ doomed.problem }}</p>
         <div class="flex justify-end gap-3">
@@ -472,7 +489,7 @@ async function exportPage() {
           <button
             type="submit"
             class="rounded-lg bg-danger px-4 py-2 font-medium text-canvas disabled:opacity-50"
-            :disabled="doomed.busy"
+            :disabled="doomed.busy || doomed.scoring"
             data-delete-now
           >
             {{ doomed.busy ? 'Deleting…' : 'Delete' }}

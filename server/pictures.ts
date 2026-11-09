@@ -141,6 +141,14 @@ export function chooseThumbnail(
   })
 }
 
+/** Throws `ImageModelError` if `model` is the Session's own: its pictures can't be deleted. */
+export function refuseOwnModel(session: Session, model: string) {
+  if (session.settings.imageModel !== model) return
+  throw new ImageModelError(
+    `${model} is this Session's Image Model: switch to another before deleting its pictures`,
+  )
+}
+
 /** A picture's Image Prompt changed since it was rendered, or it's by another Image Model. */
 export const changedSinceRender = (picture: Picture, model: string): boolean =>
   !!picture.stale || picture.imageModel !== model
@@ -302,11 +310,7 @@ export async function deleteModelPictures(
   let files: string[] = []
   let deleted = 0
   const updated = await updateSession(store, session.id, session.kind, (latest: Session) => {
-    if (latest.settings.imageModel === model) {
-      throw new ImageModelError(
-        `${model} is this Session's Image Model: switch to another before deleting its pictures`,
-      )
-    }
+    refuseOwnModel(latest, model)
     const gone = latest.frames.flatMap((f) => f.pictures.filter((p) => p.imageModel === model))
     files = gone.flatMap(pictureFiles)
     deleted = gone.length

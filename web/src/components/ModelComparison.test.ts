@@ -1,6 +1,13 @@
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { deleteModelPictures, exportComparison, type PicturedFrame, setThumbnail } from '../api'
+import {
+  deleteModelPictures,
+  exportComparison,
+  type Job,
+  listJobs,
+  type PicturedFrame,
+  setThumbnail,
+} from '../api'
 import ModelComparison from './ModelComparison.vue'
 
 vi.mock('../api', async (importOriginal) => ({
@@ -11,6 +18,7 @@ vi.mock('../api', async (importOriginal) => ({
   getStyleScores: vi.fn(() => Promise.reject(new Error('Not scored yet'))),
   deleteModelPictures: vi.fn(() => Promise.resolve({ session: {}, deleted: 2 })),
   setThumbnail: vi.fn(() => Promise.resolve({})),
+  listJobs: vi.fn(() => Promise.resolve([])),
 }))
 
 enableAutoUnmount(afterEach)
@@ -382,6 +390,29 @@ describe('ModelComparison', () => {
       { label: 'a' },
       { label: 'b' },
     ])
+  })
+
+  it('won’t delete a hidden model’s pictures while style scores are being worked out', async () => {
+    localStorage.setItem('compare-hidden:s1', '["a"]')
+    const running = { kind: 'style', status: 'running' } as Job
+    vi.mocked(listJobs).mockResolvedValueOnce([running])
+    vi.mocked(deleteModelPictures).mockClear()
+    const wrapper = mountIt()
+    await wrapper.find('[data-compare-models]').trigger('click')
+    await flushPromises()
+    await wrapper.find('[data-delete-model-pictures]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-delete-scoring]').exists()).toBe(true)
+    expect(wrapper.find('[data-delete-now]').attributes('disabled')).toBeDefined()
+
+    // A queued one starts only after: it scores what's left.
+    vi.mocked(listJobs).mockResolvedValueOnce([{ ...running, status: 'queued' }])
+    await wrapper.find('[data-delete-model-dialog] button').trigger('click')
+    await wrapper.find('[data-delete-model-pictures]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-delete-scoring]').exists()).toBe(false)
+    expect(wrapper.find('[data-delete-now]').attributes('disabled')).toBeUndefined()
+    localStorage.clear()
   })
 
   it('remembers hidden columns for the Session, and deletes a hidden model’s pictures when asked', async () => {

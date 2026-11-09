@@ -3,6 +3,7 @@ import {
   asQueued,
   type ImageChoice,
   type Job,
+  onModelPictures,
   type QueueStore,
   type SavedQueue,
   SessionJobs,
@@ -323,4 +324,65 @@ Deno.test('A clip cut off by a restart is queued to pick up its result, not clea
   assertEquals(runs[0]?.resume, left)
   for (let i = 0; i < 5; i++) await Promise.resolve()
   assertEquals(jobs.list('s')[0].resume, undefined)
+})
+
+Deno.test("The work on a model's pictures is what would act on them, there or still to come", () => {
+  const job = (id: string, kind: Job['kind'], frameIndex: number, imageModel?: string) =>
+    ({
+      id,
+      kind,
+      frameIndex,
+      status: 'queued',
+      ...(imageModel && { image: { imageModel } }),
+    }) as Job
+  const session = (...frames: string[][]) =>
+    ({
+      settings: { imageModel: 'own' },
+      frames: frames.map((models, index) => ({
+        index,
+        pictures: models.map((imageModel) => ({ image: `${imageModel}.png`, imageModel })),
+      })),
+    }) as unknown as Session
+  const upscale = job('up', 'upscale', 0)
+  const picked = (s: Session, ...jobs: Job[]) => onModelPictures(s, 'old', jobs)(upscale)
+
+  // The picture the Frame shows.
+  assertEquals(picked(session(['old']), upscale), true)
+  assertEquals(picked(session(['old', 'new']), upscale), false)
+  assertEquals(picked(session(['old', 'own']), upscale), false)
+  // Nothing there: the render it's waiting on.
+  assertEquals(picked(session([]), job('r', 'render', 0, 'old'), upscale), true)
+  assertEquals(picked(session([]), job('r', 'render', 0, 'new'), upscale), false)
+  // A picture by the Session's own model on its way is what the Frame will show.
+  assertEquals(picked(session(['old']), job('r', 'render', 0, 'own'), upscale), false)
+  assertEquals(picked(session(['old']), job('p', 'picture', 0), upscale), false)
+  // Only what's ahead of it, on its Frame, and still to come.
+  assertEquals(picked(session([]), upscale, job('r', 'render', 0, 'old')), false)
+  assertEquals(picked(session([], []), job('r', 'render', 1, 'old'), upscale), false)
+  const failed = { ...job('r', 'render', 0, 'old'), status: 'failed' } as Job
+  assertEquals(picked(session([]), failed, upscale), false)
+  // Jobs that record their model go by it; others on no picture aren't touched.
+  assertEquals(onModelPictures(session(['own']), 'old', [])(job('c', 'clip', 0, 'old')), true)
+  assertEquals(onModelPictures(session(['old']), 'old', [])(job('s', 'speak', 0)), false)
+})
+
+Deno.test('Work waits for the jobs cancelled to end, and even one that finished anyway goes', async () => {
+  const { jobs, end, started } = heldJobs()
+  jobs.enqueue('s', 'render', 0)
+  jobs.enqueue('s', 'render', 1)
+  jobs.enqueue('s', 'speak', 2)
+  let worked = false
+  const done = jobs.without('s', (j) => j.kind === 'render', () => {
+    worked = true
+    return Promise.resolve('worked')
+  })
+  // These jobs don't heed the cancel: the first is still running, and the queued one has gone.
+  await Promise.resolve()
+  assertEquals(worked, false)
+  assertEquals(jobs.list('s').map((j) => j.frameIndex), [0, 2])
+  await end('render 0')
+  assertEquals(await done, 'worked')
+  // The queue, held till then, goes on with what's left.
+  assertEquals(jobs.list('s').map((j) => j.frameIndex), [2])
+  assertEquals(started, ['render 0', 'speak 2'])
 })

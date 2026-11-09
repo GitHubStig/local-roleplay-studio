@@ -89,6 +89,7 @@ import {
   type JobEmit,
   type JobKind,
   jobRoutes,
+  onModelPictures,
   type QueueStore,
   SESSION_JOBS,
   SessionJobs,
@@ -117,6 +118,7 @@ import {
   homeImage,
   ImageModelError,
   PictureGoneError,
+  refuseOwnModel,
   removeFiles,
   switchImageModel,
 } from './pictures.ts'
@@ -1312,15 +1314,26 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     }],
 
     // Deletes every picture by one Image Model (`?imageModel=`), with its upscales and 3D, from
-    // Compare's hidden columns; not the Session's own model. Sends back the Session, and how many
-    // pictures went.
+    // Pictures' hidden columns; not the Session's own model. The work queued or running on them is
+    // cancelled first, and what's running has ended before anything goes, so none saves after.
+    // Sends back the Session, and how many pictures went.
     ['DELETE', new URLPattern({ pathname: '/api/sessions/:id/pictures' }), async (req, p) => {
       const model = new URL(req.url).searchParams.get('imageModel')
       if (!model) return error('imageModel is required', 400)
       const session = await deps.sessions.load(p.id!)
       if (!session) return error('Session not found', 404)
       try {
-        return json(await deleteModelPictures(deps.sessions, session, model))
+        refuseOwnModel(session, model)
+        if (jobs.list(session.id).some((j) => j.kind === 'style' && j.status === 'running')) {
+          return error('Style scores are being worked out: wait for them to finish first', 409)
+        }
+        return json(
+          await jobs.without(
+            session.id,
+            onModelPictures(session, model, jobs.list(session.id)),
+            () => deleteModelPictures(deps.sessions, session, model),
+          ),
+        )
       } catch (err) {
         if (err instanceof ImageModelError) return error(err.message, 409)
         throw err

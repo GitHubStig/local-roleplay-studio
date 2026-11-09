@@ -1,6 +1,7 @@
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ask } from '../ask'
+import ModelComparison from '../components/ModelComparison.vue'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import * as api from '../api'
 import { ALL_AVAILABLE, ALL_ON, IMAGE_MODELS, promptFor } from '../testing'
@@ -754,6 +755,17 @@ describe('SessionView', () => {
     expect(api.deleteChainFrame).toHaveBeenCalledWith('s1', 1, { frames: 3, createdAt: made })
     expect(wrapper.findAll('aside [data-frame]')).toHaveLength(2)
     expect(wrapper.find('main img').attributes('src')).toContain('frame-2.png')
+  })
+
+  it('loads the Session and its jobs again when Pictures changed them', async () => {
+    vi.mocked(api.getSession).mockResolvedValue(session([frame(0, null)]))
+    const { wrapper } = await mountIt()
+    vi.mocked(api.getSession).mockClear()
+    vi.mocked(api.listJobs).mockClear()
+    wrapper.findComponent(ModelComparison).vm.$emit('changed')
+    await flushPromises()
+    expect(api.getSession).toHaveBeenCalledWith('s1')
+    expect(api.listJobs).toHaveBeenCalledWith('s1')
   })
 
   it('edits a Frame’s Image Prompt by hand, its picture then changed since render', async () => {

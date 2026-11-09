@@ -857,7 +857,7 @@ const lookSavingText = computed(() =>
                 :image-model="session.settings.imageModel"
                 :thumbnail="session.thumbnail"
                 :caption="(f) => f.reply.actions"
-                @changed="reload"
+                @changed="reload(); refreshJobs()"
                 one-style
               />
               <label

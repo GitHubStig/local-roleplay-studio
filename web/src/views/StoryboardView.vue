@@ -639,7 +639,7 @@ const imagesOn = computed(() => featureOn.value('images'))
             :thumbnail="session.thumbnail"
             :name="frameTitle"
             :caption="(f) => f.beat"
-            @changed="load"
+            @changed="load(); refreshJobs()"
             one-style
           />
         </div>

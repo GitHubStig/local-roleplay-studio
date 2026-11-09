@@ -2,6 +2,7 @@ import { assertEquals, assertMatch, assertNotEquals, assertRejects } from '@std/
 import { join } from '@std/path'
 import type { Job } from '../jobs.ts'
 import type { ImageGenerator } from '../images/imageGenerator.ts'
+import type { StyleEmbedder } from '../style/embedder.ts'
 import type { Picture } from '../pictures.ts'
 import { DEFAULT_SETTINGS } from '../settings.ts'
 import { fakeFigureMaker, fakeSceneMaker } from '../3d/testing.ts'
@@ -666,6 +667,107 @@ Deno.test("Every picture by one Image Model is deleted, with its files, but not 
     assertEquals((await deleted.json()).deleted, 2)
     assertEquals(await frames(), [[], ['flux2-klein-4b']])
     assertEquals(await Deno.stat(file).catch(() => null), null)
+  }))
+
+Deno.test("Deleting a model's pictures cancels the work on them, and only that", () =>
+  withTempDir(async (root) => {
+    const old = 'qwen-image-2.1'
+    const other = 'flux2-klein-4b'
+    // Renders by the old model take until they're cancelled, once it's held.
+    let held = false
+    const images = fakeImageGenerator()
+    const generate = images.generate
+    images.generate = async (req, signal, ...rest) => {
+      if (held && req.settings.imageModel === old) {
+        await new Promise((_, no) => signal.addEventListener('abort', () => no(signal.reason)))
+      }
+      return generate(req, signal, ...rest)
+    }
+    const { call } = await chainOfTwo(root, { imageGenerator: images })
+    // Frame 2 has no picture yet.
+    await readEvents(
+      await call('POST', '/api/sessions/s1/frames', { action: 'Kneel', render: false }),
+    )
+    const switchTo = (imageModel: string) =>
+      call('PUT', '/api/sessions/s1/image-model', { imageModel })
+    const queue = (kind: string, frameIndex: number) =>
+      call('POST', '/api/sessions/s1/jobs', { kind, frameIndex })
+    const jobs = async () =>
+      ((await (await call('GET', '/api/sessions/s1/jobs')).json()) as Job[]).map((
+        j,
+      ) => [j.kind, j.frameIndex, j.image?.imageModel ?? null])
+
+    // Frame 1 has a picture by each; Frame 0 only the old model's.
+    await switchTo(other)
+    await queue('render', 1)
+    await settled(call)
+    await switchTo(old)
+    await call('DELETE', '/api/sessions/s1/jobs/finished')
+    held = true
+    await queue('render', 0)
+    await queue('render', 1)
+    await queue('render', 2)
+    await queue('upscale', 2)
+    await switchTo(other)
+    await queue('upscale', 0)
+    await queue('upscale', 1)
+    await queue('render', 0)
+    const all = [
+      ['render', 0, old],
+      ['render', 1, old],
+      ['render', 2, old],
+      ['upscale', 2, null],
+      ['upscale', 0, null],
+      ['upscale', 1, null],
+      ['render', 0, other],
+    ]
+    assertEquals(await jobs(), all)
+
+    // Refused: nothing is cancelled.
+    const own = await call('DELETE', `/api/sessions/s1/pictures?imageModel=${other}`)
+    assertEquals(own.status, 409)
+    assertEquals(await jobs(), all)
+
+    const deleted = await call('DELETE', `/api/sessions/s1/pictures?imageModel=${old}`)
+    assertEquals((await deleted.json()).deleted, 2)
+    assertEquals((await jobs()).filter(([, , model]) => model === old), [])
+    await settled(call)
+    assertEquals(await jobs(), [['upscale', 1, null], ['render', 0, other]])
+    const { frames } = await (await call('GET', '/api/sessions/s1')).json()
+    assertEquals(frames.map((f: JsonFrame) => f.pictures.map((p: Picture) => p.imageModel)), [
+      [other],
+      [other],
+      [],
+    ])
+    assertEquals(!!frames[1].pictures[0].upscaled, true)
+  }))
+
+Deno.test("A model's pictures aren't deleted while style scores are being worked out", () =>
+  withTempDir(async (root) => {
+    let release!: () => void
+    const held = new Promise<void>((r) => (release = r))
+    const style: StyleEmbedder = {
+      async embed() {
+        await held
+        return { images: {}, texts: {} }
+      },
+    }
+    const { call } = await chainOfTwo(root, { style })
+    const old = 'qwen-image-2.1'
+    await call('PUT', '/api/sessions/s1/image-model', { imageModel: 'flux2-klein-4b' })
+    await call('POST', '/api/sessions/s1/jobs', { kind: 'style', frameIndex: 0 })
+    const refused = await call('DELETE', `/api/sessions/s1/pictures?imageModel=${old}`)
+    assertEquals([refused.status, (await refused.json()).error], [
+      409,
+      'Style scores are being worked out: wait for them to finish first',
+    ])
+    const { frames } = await (await call('GET', '/api/sessions/s1')).json()
+    assertEquals(frames.map((f: JsonFrame) => f.pictures.length), [1, 1])
+
+    release()
+    await settled(call)
+    const deleted = await call('DELETE', `/api/sessions/s1/pictures?imageModel=${old}`)
+    assertEquals((await deleted.json()).deleted, 2)
   }))
 
 Deno.test("A Chain carries on while a job runs, and Undo cancels the undone Frame's jobs", () =>

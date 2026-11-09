@@ -212,6 +212,37 @@ export function asQueued<S extends Session>(session: S, job: Job): S {
   return { ...session, settings: { ...settings, ...job.image } }
 }
 
+/** The kinds of job that work on the picture their Frame shows when they run, recording no model. */
+const ON_SHOWN_PICTURE: readonly JobKind[] = ['upscale', 'scene', 'figure', 'lito', 'edit']
+
+/**
+ * The Image Model of the picture a job with no model of its own will work on, as things stand: the
+ * Session's, if the Frame has its picture or one is coming ahead of the job, as a Frame shows that
+ * first; or else the newest picture's, whether it's one coming or one the Frame has.
+ */
+function modelWorkedOn(session: Session, job: Job, jobs: readonly Job[]): string | undefined {
+  const own = session.settings.imageModel
+  const pictures = session.frames[job.frameIndex]?.pictures ?? []
+  const coming = jobs.slice(0, jobs.findIndex((j) => j.id === job.id)).filter((j) =>
+    j.frameIndex === job.frameIndex && isOpen(j) && (j.kind === 'render' || j.kind === 'picture')
+  )
+  if (
+    pictures.some((p) => p.imageModel === own) ||
+    coming.some((j) => j.kind === 'picture' || j.image?.imageModel === own)
+  ) return own
+  return coming.at(-1)?.image?.imageModel ?? pictures.at(-1)?.imageModel
+}
+
+/**
+ * Picks the jobs on Image Model `model`'s pictures in `session`, among its `jobs`: a render or clip
+ * that records it (`Job.image`), or other work on a picture by it, there now or waiting to be made.
+ */
+export const onModelPictures =
+  (session: Session, model: string, jobs: readonly Job[]) => (job: Job): boolean =>
+    job.image
+      ? job.image.imageModel === model
+      : ON_SHOWN_PICTURE.includes(job.kind) && modelWorkedOn(session, job, jobs) === model
+
 /** What a running job reports: its phase, or its progress through the steps. */
 export type JobEmit = (
   event: {
@@ -532,6 +563,22 @@ export class SessionJobs {
       this.#held.delete(sessionId)
       this.#next(sessionId)
     }
+  }
+
+  /**
+   * Does `work` once the jobs `which` picks are gone: cancelled, with those running ended, so none
+   * can save after it, and the queue held so nothing else starts first.
+   */
+  without<T>(sessionId: string, which: (job: Job) => boolean, work: () => Promise<T>): Promise<T> {
+    return this.holding(sessionId, async () => {
+      const running = [...this.#running.get(sessionId)?.values() ?? []]
+        .filter((r) => which(r.job))
+      this.cancelWhere(sessionId, which)
+      await Promise.all(running.map((r) => r.done))
+      // One that finished just as it was cancelled is still listed, as done.
+      this.cancelWhere(sessionId, which)
+      return await work()
+    })
   }
 
   /**
