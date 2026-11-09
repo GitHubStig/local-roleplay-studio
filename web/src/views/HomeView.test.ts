@@ -1,10 +1,12 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { ask } from '../ask'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import * as api from '../api'
 import { setCurrentSession, useCurrentSession } from '../composables/useCurrentSession'
 import HomeView from './HomeView.vue'
 
+vi.mock('../ask', () => ({ ask: vi.fn() }))
 vi.mock('../api', async (importOriginal) => ({
   ...(await importOriginal<typeof api>()),
   listSessions: vi.fn(),
@@ -50,7 +52,7 @@ beforeEach(() => {
   sessionStorage.clear()
   vi.mocked(api.listSessions).mockReset().mockResolvedValue([summary('a'), summary('b')])
   vi.mocked(api.deleteSession).mockReset().mockResolvedValue()
-  vi.stubGlobal('confirm', vi.fn(() => true))
+  vi.mocked(ask).mockReset().mockResolvedValue(true)
 })
 
 afterEach(() => vi.unstubAllGlobals())
@@ -159,9 +161,10 @@ describe('HomeView', () => {
   })
 
   it('does nothing if the delete is not confirmed', async () => {
-    vi.mocked(confirm).mockReturnValue(false)
+    vi.mocked(ask).mockResolvedValue(false)
     const { wrapper } = await mountIt()
     await wrapper.findAll('[data-delete]')[0].trigger('click')
+    await flushPromises()
     expect(api.deleteSession).not.toHaveBeenCalled()
   })
 

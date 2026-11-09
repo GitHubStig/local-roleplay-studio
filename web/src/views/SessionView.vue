@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ask } from '../ask'
 import { frameName } from '../frameName'
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
 import ComposeBox from '../components/ComposeBox.vue'
@@ -295,7 +296,7 @@ const deleting = ref(false)
 async function deleteFrame(frame: ChainFrame) {
   if (busy.value || deleting.value) return
   const what = `Delete ${frameName(frame.index)} and its pictures? The Frames after it are numbered down.`
-  if (!confirm(`${what} This can't be undone.`)) return
+  if (!(await ask(`${what} This can't be undone.`, { action: 'Delete', danger: true }))) return
   deleting.value = true
   frameError.value = ''
   try {

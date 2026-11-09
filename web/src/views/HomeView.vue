@@ -10,6 +10,7 @@ import {
   type SessionSummary,
 } from '../api'
 import { ago } from '../ago'
+import { ask } from '../ask'
 import Icon from '../components/Icon.vue'
 import SplitHandle from '../components/SplitHandle.vue'
 import StartSession from '../components/StartSession.vue'
@@ -107,7 +108,8 @@ watch(
 
 async function remove(s: SessionSummary) {
   const what = `${s.title}, ${s.frames} ${s.frames === 1 ? 'Frame' : 'Frames'}`
-  if (!confirm(`Delete this Session (${what}) and its images? This can't be undone.`)) return
+  const question = `Delete this Session (${what}) and its images? This can't be undone.`
+  if (!(await ask(question, { action: 'Delete', danger: true }))) return
   deleteError.value = ''
   try {
     await deleteSession(s.id)

@@ -1,10 +1,12 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { ask } from '../ask'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import * as api from '../api'
 import { clearScenarioDraft, saveScenarioDraft } from '../composables/useScenarioDraft'
 import StartSession from './StartSession.vue'
 
+vi.mock('../ask', () => ({ ask: vi.fn() }))
 vi.mock('../api', async (importOriginal) => ({
   ...(await importOriginal<typeof api>()),
   getScenarios: vi.fn(),
@@ -59,14 +61,12 @@ describe('StartSession', () => {
       scenario: { title: 'Fog' } as api.Scenario,
       suggestions: [],
     })
-    const confirm = vi.fn(() => false)
-    vi.stubGlobal('confirm', confirm)
+    vi.mocked(ask).mockReset().mockResolvedValue(false)
     const { wrapper, router } = await mountIt()
     await wrapper.find('[data-scenario=tavern]').trigger('click')
     await flushPromises()
-    expect(confirm.mock.calls[0]).toEqual([expect.stringContaining('“Fog”')])
+    expect(vi.mocked(ask).mock.calls[0][0]).toContain('“Fog”')
     expect(router.currentRoute.value.name).not.toBe('scenario')
-    vi.unstubAllGlobals()
     clearScenarioDraft()
   })
 
@@ -95,12 +95,12 @@ describe('StartSession', () => {
     const mine = { id: 'mine', title: 'Mine', description: '', own: true }
     vi.mocked(api.getScenarios).mockResolvedValue({ scenarios: [tavern, mine], errors: [] })
     vi.mocked(api.deleteScenario).mockResolvedValue()
-    vi.stubGlobal('confirm', vi.fn(() => true))
+    vi.mocked(ask).mockReset().mockResolvedValue(true)
     const { wrapper } = await mountIt()
     expect(wrapper.findAll('[data-delete-scenario]')).toHaveLength(1)
     await wrapper.find('[data-delete-scenario]').trigger('click')
+    await flushPromises()
     expect(api.deleteScenario).toHaveBeenCalledWith('mine')
-    vi.unstubAllGlobals()
   })
 
   it('lists the Scenario edited last first, saying when', async () => {

@@ -150,7 +150,7 @@ onClickOutside(
     if (near(e, '[data-image-frame]') || near(e, '[data-image-side]')) return
     dialog.value.close()
   },
-  { ignore: [controls, below, '[data-image-side]', '[data-viewer-side-row]'] },
+  { ignore: [controls, below, '[data-image-side]', '[data-viewer-side-row]', '[data-confirm-dialog]'] },
 )
 </script>
 

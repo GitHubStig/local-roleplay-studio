@@ -1,11 +1,13 @@
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { ask } from '../ask'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import * as api from '../api'
 import { useCurrentSession } from '../composables/useCurrentSession'
 import { ALL_AVAILABLE, ALL_ON, IMAGE_MODELS, promptFor } from '../testing'
 import StoryboardView from './StoryboardView.vue'
 
+vi.mock('../ask', () => ({ ask: vi.fn() }))
 vi.mock('../api', async (importOriginal) => ({
   ...(await importOriginal<typeof api>()),
   getSession: vi.fn(),
@@ -277,12 +279,12 @@ describe('StoryboardView', () => {
     vi.mocked(api.restartSession).mockResolvedValue(
       storyboard([planned(0), planned(1), planned(2)]),
     )
-    const confirm = vi.fn().mockReturnValueOnce(false).mockReturnValueOnce(true)
-    vi.stubGlobal('confirm', confirm)
+    vi.mocked(ask).mockReset().mockResolvedValueOnce(false).mockResolvedValueOnce(true)
     const { wrapper } = await mountIt()
     // At the right of the Look's heading.
     expect(wrapper.find('[data-look] summary [data-restart]').exists()).toBe(true)
     await wrapper.find('[data-restart]').trigger('click')
+    await flushPromises()
     expect(api.restartSession).not.toHaveBeenCalled()
     vi.mocked(api.getSession).mockResolvedValue(storyboard([planned(0), planned(1), planned(2)]))
     await wrapper.find('[data-restart]').trigger('click')
@@ -544,15 +546,15 @@ describe('StoryboardView', () => {
     vi.mocked(api.removeBeat).mockResolvedValue(
       storyboard([planned(0), { ...planned(2), index: 1 }]),
     )
-    const confirm = vi.fn(() => false)
-    vi.stubGlobal('confirm', confirm)
+    vi.mocked(ask).mockReset().mockResolvedValue(false)
     const { wrapper } = await mountIt()
     await wrapper.findAll('[data-frame]')[1].trigger('click')
     await wrapper.find('[data-field="storyboard.frame"]').setValue('Half typed')
 
     await wrapper.find('[data-remove-beat]').trigger('click')
+    await flushPromises()
     expect(api.removeBeat).not.toHaveBeenCalled()
-    confirm.mockReturnValue(true)
+    vi.mocked(ask).mockResolvedValue(true)
     await wrapper.find('[data-remove-beat]').trigger('click')
     await flushPromises()
 

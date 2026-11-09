@@ -22,6 +22,7 @@ import {
   shownPicture,
 } from '../api'
 import { useImageModels } from './useSettingsOptions'
+import { ask } from '../ask'
 import { sessionPath } from '../sessionPath'
 import { clearCurrentSession, setCurrentSession } from './useCurrentSession'
 import { useStoredText } from './useStoredText'
@@ -183,9 +184,8 @@ export function useSessionScreen<K extends SessionKind, W extends ScreenWork>(
     const now = session.value?.settings.imageModel
     if (!model || !now || model === now) return
     const label = labelOf(model)
-    if (
-      !confirm(`This clip is of ${label}'s picture. Switch this Session to ${label} to see it?`)
-    ) return
+    const what = `This clip is of ${label}'s picture. Switch this Session to ${label} to see it?`
+    if (!(await ask(what, { action: 'Switch' }))) return
     try {
       onImageModel(await setImageModel<S>(id, model, job.image!.imageBackend))
     } catch (err) {

@@ -1,10 +1,12 @@
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { ask } from '../ask'
 import type { Job, PicturedFrame, Settings, SettingsOptions } from '../api'
 import FrameViewer from './FrameViewer.vue'
 
 // Two edit models here, Qwen on both kinds of backend; Settings start an edit on Qwen, sending
 // edits to the ComfyUI.
+vi.mock('../ask', () => ({ ask: vi.fn() }))
 vi.mock('../api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../api')>()),
   getSettings: vi.fn(() => Promise.resolve({ editModel: 'qwen-image-2.1-edit' } as Settings)),
@@ -114,11 +116,12 @@ describe('FrameViewer', () => {
     await side(wrapper).find('[data-toggle-upscale]').trigger('click')
     expect(shownSrc(wrapper)).toBe(url('frame-0-2048.png'))
 
-    const confirm = vi.fn().mockReturnValueOnce(false).mockReturnValueOnce(true)
-    vi.stubGlobal('confirm', confirm)
+    vi.mocked(ask).mockReset().mockResolvedValueOnce(false).mockResolvedValueOnce(true)
     await side(wrapper).find('[data-delete-upscale]').trigger('click')
+    await flushPromises()
     expect(wrapper.emitted('deleteUpscale')).toBeUndefined()
     await side(wrapper).find('[data-delete-upscale]').trigger('click')
+    await flushPromises()
     expect(wrapper.emitted('deleteUpscale')).toEqual([[0]])
   })
 
@@ -126,11 +129,12 @@ describe('FrameViewer', () => {
     const newest = [{ ...frames[0], pictures: [{ ...frames[0].pictures[0], picked: 2 }] }]
     const wrapper = mountIt({ frames: newest })
     await flushPromises()
-    const confirm = vi.fn().mockReturnValueOnce(false).mockReturnValueOnce(true)
-    vi.stubGlobal('confirm', confirm)
+    vi.mocked(ask).mockReset().mockResolvedValueOnce(false).mockResolvedValueOnce(true)
     await side(wrapper).find('[data-delete-edit]').trigger('click')
+    await flushPromises()
     expect(wrapper.emitted('deleteEdit')).toBeUndefined()
     await side(wrapper).find('[data-delete-edit]').trigger('click')
+    await flushPromises()
     expect(wrapper.emitted('deleteEdit')).toEqual([[0, 2]])
 
     await side(wrapper).find('[data-redo-edit]').trigger('click')

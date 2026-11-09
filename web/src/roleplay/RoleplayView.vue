@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ask } from '../ask'
 import { frameName } from '../frameName'
 import { useEventListener, useTextareaAutosize } from '@vueuse/core'
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
@@ -366,7 +367,7 @@ const scoringAll = computed(() => hasJob(0, 'score-roleplay'))
 async function scoreAll() {
   const what = 'Score the whole Roleplay with hindsight? Its Cues, and how each Frame\'s music ' +
     'was directed, are replaced.'
-  if (session.value?.cues?.length && !confirm(what)) return
+  if (session.value?.cues?.length && !(await ask(what, { action: 'Score', danger: true }))) return
   await queueSaved('score-roleplay', 0)
 }
 
@@ -577,7 +578,7 @@ async function restart() {
   const what =
     'Restart this Roleplay? Every exchange is deleted, the opening too, with its pictures and ' +
     "spoken lines; the Cast, Look and voice stay, to edit before beginning again. This can't be undone."
-  if (!confirm(what)) return
+  if (!(await ask(what, { action: 'Restart', danger: true }))) return
   notice.value = null
   try {
     session.value = await restartSession<RoleplaySession>(props.id)

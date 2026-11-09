@@ -1,5 +1,6 @@
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { ask } from '../ask'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import * as api from '../api'
 import { useCurrentSession } from '../composables/useCurrentSession'
@@ -8,6 +9,7 @@ import { ALL_AVAILABLE, ALL_ON } from '../testing'
 import * as roleplay from './api'
 import RoleplayView from './RoleplayView.vue'
 
+vi.mock('../ask', () => ({ ask: vi.fn() }))
 vi.mock('../api', async (importOriginal) => ({
   ...(await importOriginal<typeof api>()),
   getSession: vi.fn(),
@@ -413,13 +415,13 @@ describe('RoleplayView', () => {
 
   it('restarts back to the Cast once confirmed, to begin again', async () => {
     vi.mocked(api.restartSession).mockResolvedValue({ ...roleplaySession([]), cast })
-    const confirm = vi.fn().mockReturnValueOnce(false).mockReturnValueOnce(true)
-    vi.stubGlobal('confirm', confirm)
+    vi.mocked(ask).mockReset().mockResolvedValueOnce(false).mockResolvedValueOnce(true)
     const { wrapper } = await mountIt()
     expect(wrapper.find('[data-review]').exists()).toBe(false)
     // At the right of the Cast's heading, not under its fields.
     expect(wrapper.find('[data-cast] summary [data-restart]').exists()).toBe(true)
     await wrapper.find('[data-restart]').trigger('click')
+    await flushPromises()
     expect(api.restartSession).not.toHaveBeenCalled()
     await wrapper.find('[data-restart]').trigger('click')
     await flushPromises()
@@ -1051,8 +1053,7 @@ describe('RoleplayView', () => {
     vi.mocked(api.queueJob).mockReset().mockResolvedValue([
       job({ kind: 'score-roleplay', status: 'running', frameIndex: 0 }),
     ])
-    const confirm = vi.fn().mockReturnValueOnce(false).mockReturnValueOnce(true)
-    vi.stubGlobal('confirm', confirm)
+    vi.mocked(ask).mockReset().mockResolvedValueOnce(false).mockResolvedValueOnce(true)
     const { wrapper } = await mountIt()
     expect(wrapper.find('[data-score-all]').text()).toBe('Score the Roleplay')
     await wrapper.find('[data-score-all]').trigger('click')

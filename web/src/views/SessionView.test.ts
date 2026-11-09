@@ -1,5 +1,6 @@
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { ask } from '../ask'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import * as api from '../api'
 import { ALL_AVAILABLE, ALL_ON, IMAGE_MODELS, promptFor } from '../testing'
@@ -7,6 +8,7 @@ import { useFeatures } from '../composables/useFeatures'
 import { loadSettingsOptions } from '../composables/useSettingsOptions'
 import SessionView from './SessionView.vue'
 
+vi.mock('../ask', () => ({ ask: vi.fn() }))
 vi.mock('../api', async (importOriginal) => ({
   ...(await importOriginal<typeof api>()),
   getSession: vi.fn(),
@@ -738,21 +740,20 @@ describe('SessionView', () => {
     vi.mocked(api.deleteChainFrame).mockResolvedValue(
       session([frame(0, null), frame(1, 'Stand', { pictures: [picture('frame-2.png')] })]),
     )
-    const confirm = vi.fn().mockReturnValueOnce(false).mockReturnValueOnce(true)
-    vi.stubGlobal('confirm', confirm)
+    vi.mocked(ask).mockReset().mockResolvedValueOnce(false).mockResolvedValueOnce(true)
     const { wrapper } = await mountIt()
     // Looking at the Frame to delete.
     await wrapper.findAll('aside [data-frame]')[1].trigger('click')
 
     await wrapper.find('[data-delete-frame]').trigger('click')
+    await flushPromises()
     expect(api.deleteChainFrame).not.toHaveBeenCalled()
     await wrapper.find('[data-delete-frame]').trigger('click')
     await flushPromises()
-    expect(confirm).toHaveBeenCalledTimes(2)
+    expect(ask).toHaveBeenCalledTimes(2)
     expect(api.deleteChainFrame).toHaveBeenCalledWith('s1', 1, { frames: 3, createdAt: made })
     expect(wrapper.findAll('aside [data-frame]')).toHaveLength(2)
     expect(wrapper.find('main img').attributes('src')).toContain('frame-2.png')
-    vi.unstubAllGlobals()
   })
 
   it('edits a Frame’s Image Prompt by hand, its picture then changed since render', async () => {

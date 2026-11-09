@@ -17,6 +17,7 @@ import {
 } from '../composables/useScenarioDraft'
 import { useTextModelReady } from '../composables/useTextModelReady'
 import { ago } from '../ago'
+import { ask } from '../ask'
 
 defineProps<{ error?: string }>()
 
@@ -57,7 +58,8 @@ picker.onChange(async (files) => {
 })
 
 async function remove(s: ScenarioSummary) {
-  if (!confirm(`Delete your Scenario “${s.title}”? This can't be undone.`)) return
+  const what = `Delete your Scenario “${s.title}”? This can't be undone.`
+  if (!(await ask(what, { action: 'Delete', danger: true }))) return
   fileError.value = ''
   try {
     await deleteScenario(s.id)
@@ -95,12 +97,13 @@ const briefBlocker = computed(() => {
  * Opens the Scenario page on a Scenario, or on the typed Brief: back to it as it was left if it's
  * the one being set up, or in its place once the player agrees.
  */
-function open(from: ScenarioSource) {
+async function open(from: ScenarioSource) {
   if (textModelBlocker.value) return
   const current = scenarioDraft.value
   if (current?.scenario && !sameSource(current.from, from)) {
     const title = current.scenario.title
-    if (!confirm(`Set this up in place of “${title}”? Your edits to that one are lost.`)) return
+    const what = `Set this up in place of “${title}”? Your edits to that one are lost.`
+    if (!(await ask(what, { action: 'Set up', danger: true }))) return
   }
   router.push(scenarioPagePath(from))
 }

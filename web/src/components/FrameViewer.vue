@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ask } from '../ask'
 import { frameName } from '../frameName'
 import { useEventListener, useManualRefHistory } from '@vueuse/core'
 import { computed, reactive, ref, useTemplateRef, watch } from 'vue'
@@ -294,10 +295,11 @@ watch(clips, (now) => {
   if (playing.value && !now.some((c) => c.file === playing.value!.file)) playing.value = null
 })
 
-function deleteUpscale() {
+async function deleteUpscale() {
   const frame = current.value
   if (!frame || !upscale.value) return
-  if (!confirm(`Delete the upscale of ${props.name(frame.index)}? This can't be undone.`)) return
+  const what = `Delete the upscale of ${props.name(frame.index)}? This can't be undone.`
+  if (!(await ask(what, { action: 'Delete', danger: true }))) return
   seeingPlain.value = false
   emit('deleteUpscale', frame.index)
 }
@@ -389,12 +391,13 @@ function close() {
   painting.value = false
   open.value = null
 }
-function deleteNewest() {
+async function deleteNewest() {
   const frame = current.value
   const newest = newestShown.value
   if (!frame || !newest) return
   const name = editName(frame.picture, newest)
-  if (!confirm(`Delete ${name} of ${props.name(frame.index)}? This can't be undone.`)) return
+  const what = `Delete ${name} of ${props.name(frame.index)}? This can't be undone.`
+  if (!(await ask(what, { action: 'Delete', danger: true }))) return
   emit('deleteEdit', frame.index, frame.picture.picked!)
 }
 

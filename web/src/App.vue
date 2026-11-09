@@ -6,6 +6,7 @@ import { getHealth, KIND_LABELS } from './api'
 import { useCurrentSession } from './composables/useCurrentSession'
 import { scenarioPagePath, useScenarioDraft } from './composables/useScenarioDraft'
 import { sessionPath } from './sessionPath'
+import ConfirmDialog from './components/ConfirmDialog.vue'
 import ThemeToggle from './components/ThemeToggle.vue'
 import Icon from './components/Icon.vue'
 
@@ -140,6 +141,7 @@ useEventListener(window, 'focus', checkServer)
         <component :is="Component" :key="r.path" class="min-h-0 flex-1" />
       </KeepAlive>
     </RouterView>
+    <ConfirmDialog />
   </div>
 </template>
 

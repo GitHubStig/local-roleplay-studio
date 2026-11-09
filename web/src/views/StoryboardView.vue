@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ask } from '../ask'
 import { frameName } from '../frameName'
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
 import { useRouter } from 'vue-router'
@@ -239,7 +240,7 @@ async function restart() {
   const what =
     'Restart this Storyboard? Every Frame\'s sentences and pictures are deleted, and the Look and ' +
     "Beats can be edited again. This can't be undone."
-  if (!confirm(what)) return
+  if (!(await ask(what, { action: 'Restart', danger: true }))) return
   message.value = null
   try {
     session.value = await restartSession<StoryboardSession>(props.id)
@@ -426,7 +427,7 @@ async function addBeat() {
 const removing = ref(false)
 async function removeFrameBeat(frame: StoryboardFrame) {
   const what = `Remove Frame ${frame.index + 1}'s Beat? The Frames after it move up one.`
-  if (removing.value || !confirm(what)) return
+  if (removing.value || !(await ask(what, { action: 'Remove', danger: true }))) return
   if (selected.value === frame.index && frameDraft.value) {
     frameDraft.value = { text: frame.beat, shown: frame.shown }
   }
