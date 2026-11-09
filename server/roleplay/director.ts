@@ -52,7 +52,7 @@ export const vocalsAllowed = (vocals: MusicVocals): readonly CueValues['vocals']
   vocals === 'instrumental' ? ['none'] : CUE_VOCALS
 
 /** The cue writer's reply, in the order it's written; its vocals held by the Vocals setting. */
-export const cueSchema = (vocals: MusicVocals) => ({
+export const cueSchema = (vocals: MusicVocals, entry: Entry = 'sharp') => ({
   type: 'object',
   properties: {
     mood: { type: 'string' },
@@ -61,7 +61,9 @@ export const cueSchema = (vocals: MusicVocals) => ({
     tempo: { type: 'string', enum: [...TEMPOS] },
     instruments: { type: 'array', items: { type: 'string' } },
     vocals: { type: 'string', enum: [...vocalsAllowed(vocals)] },
-    shape: { type: 'string', enum: [...CUE_SHAPES] },
+    // Only on a sharp change: asked in words, it also took a wary or a hollow moment for danger
+    // (2026-11-09), and "sharp" is held to what breaks the scene.
+    shape: { type: 'string', enum: CUE_SHAPES.filter((s) => s !== 'danger' || entry === 'sharp') },
     key: { type: 'string', enum: [...CUE_KEYS] },
     caption: { type: 'string' },
     lyrics: { type: 'string' },
@@ -433,7 +435,7 @@ export async function writeCueAt(
       await withDanger(cleanCue(
         (await deps.model.writeCue(
           await cueMessages(session, index, previous, direction),
-          cueSchema(vocals),
+          cueSchema(vocals, direction.entry),
           signal,
           onThinking,
         )).values,

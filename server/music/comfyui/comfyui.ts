@@ -8,7 +8,7 @@ import {
   runWorkflow,
   upload,
 } from '../../comfyui/client.ts'
-import { type ModelFiles, modelFiles } from '../../comfyui/files.ts'
+import { clearTraces, historyOf, type ModelFiles, modelFiles } from '../../comfyui/files.ts'
 import type { MusicGenerator } from '../musicGenerator.ts'
 
 /** ACE-Step 1.5's XL turbo with its 4B planner, the one setup on every machine (ADR 0035). */
@@ -60,6 +60,25 @@ export function comfyuiMusicGenerator(opts: {
         await upload(base, file.filename, new Uint8Array(), file.subfolder).catch(() => {})
       }
       return name
+    },
+
+    async pickUp(left, dir, name, signal) {
+      const prompt = left.prompts.at(-1)
+      try {
+        if (!prompt) return undefined
+        const done = await historyOf(base, prompt.promptId, { signal, everyMs: checkEveryMs / 5 })
+        const file = done?.status?.status_str === 'success'
+          ? (done.outputs?.out?.audio as ComfyFile[] | undefined)?.[0]
+          : undefined
+        if (!file) return undefined
+        const saved = `${name}${extname(file.filename)}`
+        await Deno.writeFile(join(dir, saved), await download(base, file))
+        return saved
+      } finally {
+        await clearTraces(left, 30_000, 1000).catch((err) =>
+          console.warn(`Couldn't clean up after music on ComfyUI: ${err.message}`)
+        )
+      }
     },
   }
 }

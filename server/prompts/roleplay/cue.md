@@ -78,6 +78,6 @@ Ooh... aah...
 [Outro - choir and organ, fading]
 Aah...
 
-"danger": only for a real threat to someone's body or life, here and now: a fight, a weapon drawn, a door barred against them. Wariness, suspicion, unease, grief or emptiness are not danger: they are "intimate" or "reflective". It has a thriller score of its own, so write one short sentence for the caption and one tag for the lyrics.
+"danger", if the reply's shapes offer it: only for a real threat to someone's body or life, here and now, such as a fight or a weapon drawn. Wariness, suspicion, unease, grief or emptiness are not danger: they are "intimate" or "reflective". It has a thriller score of its own, so write one short sentence for the caption and one tag for the lyrics.
 
 Keep the music related to the Cue before. {{behaviour}}

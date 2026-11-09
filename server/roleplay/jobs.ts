@@ -13,6 +13,7 @@ import type { Session, SessionStore } from '../session.ts'
 import { pictureFrame, renderRoleplayFrame, type RoleplayDeps } from './engine.ts'
 import { directFrame } from './director.ts'
 import { scoreRoleplay } from './hindsight.ts'
+import { makeCueTrack, type MusicDeps, musicRefusal } from './music.ts'
 import type { RoleplaySession } from './types.ts'
 import { checkPictureJob, PICTURE_JOB_KINDS, runPictureJob } from '../pictureJobs.ts'
 import { designVoice, speakFrame, spokenText } from './voice.ts'
@@ -28,6 +29,8 @@ export interface RoleplayJobContext {
   videoModel(): Promise<string>
   /** The clip size chosen in Settings now for a video model; none for the model's own. */
   videoSize(model: string): Promise<ClipSize | undefined>
+  /** The music model. */
+  music?: MusicDeps['music']
 }
 
 /** Why `kind` can't be queued on a Roleplay's Frame `index`, or null if it can. */
@@ -37,6 +40,10 @@ export function checkRoleplayJob(
   index: number,
   pending: readonly JobKind[],
 ): Response | null {
+  if (kind === 'music') {
+    const refused = musicRefusal(session, index)
+    return refused ? error(refused, 409) : null
+  }
   if (kind === 'speak' && !spokenText(session.frames[index], 'dialogue')) {
     return error(`${frameName(index)} has nothing to say aloud`, 409)
   }
@@ -68,6 +75,15 @@ export async function runRoleplayJob(
     if (job.kind === 'direct') {
       await directFrame(deps, session, scenario, job.frameIndex, emit, signal)
     } else await scoreRoleplay(deps, session, scenario, emit, signal)
+  } else if (job.kind === 'music') {
+    await makeCueTrack(
+      { store: withDeps.store, music: ctx.music, renderQueue: withDeps.renderQueue },
+      session,
+      job.frameIndex,
+      emit,
+      signal,
+      job.resume,
+    )
   } else if (job.kind === 'picture') {
     const scenario = ctx.scenarioFor(session)
     if (scenario instanceof Response) throw new Error((await scenario.json()).error)

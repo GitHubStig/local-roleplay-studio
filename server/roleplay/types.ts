@@ -215,6 +215,19 @@ export interface Cue {
   /** The Director's reading at the Frame it began on, and the line that caused it ('' if none). */
   reading: string
   line: string
+  /** Its music, once made (`makeCueTrack`). */
+  track?: CueTrack
+}
+
+/** A Cue's music: what the music model made from its values. */
+export interface CueTrack {
+  /** File name inside the Session directory. */
+  file: string
+  seconds: number
+  bpm: number
+  seed: number
+  /** Seconds it waited for other heavy work (only if it had to) and took. */
+  timings: { queued?: number; music: number }
 }
 
 /** A Frame's dialogue spoken in the Character's voice. */

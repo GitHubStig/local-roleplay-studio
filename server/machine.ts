@@ -172,8 +172,8 @@ export const machineOf = (backend: Backend | undefined, own?: Set<string>): stri
 /**
  * Where a Session's queued job runs: a picture with the Text Model (it writes an Image Prompt), a
  * render by the Session's Image Model, an edit by its edit model (the one it was told, or Settings'
- * now), an upscale, a voice designed or a line spoken, each as Settings send it now; a clip on a
- * ComfyUI; 3D and the style scores here.
+ * now), an upscale, a voice designed or a line spoken, each as Settings send it now; a clip or music
+ * on a ComfyUI; 3D and the style scores here.
  */
 export function jobBackend(
   kind: JobKind,
@@ -201,6 +201,8 @@ export function jobBackend(
       return backendOf({ kind: 'voice' }, now, here)
     case 'clip':
       return backendOf({ kind: 'video' }, now, here)
+    case 'music':
+      return backendOf({ kind: 'music' }, now, here)
     default:
       return HERE
   }

@@ -11,6 +11,7 @@ import type { TextModel } from './textModel.ts'
 import type { RoleplayModel } from './roleplay/model.ts'
 import type { FigureMaker } from './3d/figure.ts'
 import type { VideoGenerator } from './video/videoGenerator.ts'
+import type { MusicGenerator } from './music/musicGenerator.ts'
 import type { SceneMaker } from './3d/scene.ts'
 import type { Availabilities } from './features.ts'
 import type { VoiceEngine } from './voice/voice.ts'
@@ -55,6 +56,7 @@ export interface SetupOptions {
   figure?: FigureMaker
   lito?: FigureMaker
   video?: VideoGenerator
+  music?: MusicGenerator
   settings?: Partial<Settings>
   /** What this "machine" can run; left out, whatever backends are given. */
   features?: Availabilities
@@ -87,6 +89,7 @@ export function setup(opts: SetupOptions = {}) {
     figure: opts.figure,
     lito: opts.lito,
     video: opts.video,
+    music: opts.music,
     features: opts.features,
     exports: opts.exports,
     newSessionId: () => `s${++sessionCount}`,

@@ -89,7 +89,7 @@ export class RenderQueue {
     const turns = this.#turns(machine)
     if (turns.busy || turns.texts.size || turns.waiting.length) {
       onWait?.()
-      await this.#wait(turns, job?.kind === 'video' ? 'clip' : 'heavy', signal)
+      await this.#wait(turns, job?.kind === 'video' || job?.kind === 'music' ? 'clip' : 'heavy', signal)
     } else turns.busy = true
     if (!light && this.#freeMemory) {
       await this.#freeMemory(job).catch((err) =>

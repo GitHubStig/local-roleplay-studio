@@ -1047,6 +1047,7 @@ export type JobKind =
   | 'clip'
   | 'direct'
   | 'score-roleplay'
+  | 'music'
 
 /** A queued, running, failed or done job. Failed and done ones stay listed until dismissed. */
 export interface Job {

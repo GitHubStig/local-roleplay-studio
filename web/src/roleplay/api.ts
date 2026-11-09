@@ -125,6 +125,15 @@ export interface CueValues {
   lyrics: string
 }
 
+/** A Cue's music, once made. */
+export interface CueTrack {
+  file: string
+  seconds: number
+  bpm: number
+  seed: number
+  timings: { queued?: number; music: number }
+}
+
 /** A stretch of music from the Frame it began on until the next Cue: its values, or silence. */
 export interface Cue {
   id: string
@@ -133,6 +142,8 @@ export interface Cue {
   entry: 'gentle' | 'sharp'
   reading: string
   line: string
+  /** Its music, once made. */
+  track?: CueTrack
 }
 
 /** A Frame's dialogue spoken in the Character's voice. */

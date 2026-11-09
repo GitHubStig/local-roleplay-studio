@@ -147,6 +147,15 @@ Deno.test('A Cue with voices has lines to sing, and one in danger the caption th
   assertEquals([danger.tempo, danger.key, danger.vocals], ['fast', 'D minor', 'none'])
 })
 
+Deno.test('Danger is offered only on a sharp change', () => {
+  assertEquals(cueSchema('instrumental', 'gentle').properties.shape.enum, [
+    'intimate',
+    'reflective',
+    'sacred',
+  ])
+  assertEquals(cueSchema('instrumental', 'sharp').properties.shape.enum.includes('danger'), true)
+})
+
 Deno.test("A Cue's tempo sits in the Score's range, a fast one at least 100", () => {
   assertEquals(bpmOf('fast', { slowest: 50, fastest: 85 }), 100)
   const range = { slowest: 60, fastest: 120 }

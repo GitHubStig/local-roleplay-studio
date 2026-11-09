@@ -5,6 +5,7 @@ import { type SaveLine, useAutosave } from '../composables/useAutosave'
 import CollapsibleTextarea from '../components/CollapsibleTextarea.vue'
 import ItemList from '../components/ItemList.vue'
 import SaveStatus from '../components/SaveStatus.vue'
+import { imageUrl } from '../api'
 import { MUSIC_BEHAVIOURS, MUSIC_VOCALS, type MusicSettings, musicSettingsOf } from '../music'
 import {
   type Cue,
@@ -169,6 +170,48 @@ defineExpose({ flush })
 
 <template>
   <div class="flex flex-col text-sm" data-music>
+    <!-- First, so the strip stays put as the Frame below it changes length. -->
+    <section v-if="cueSpans.length" class="flex flex-col gap-2 border-b border-line p-4" data-cues>
+      <h2 class="text-base font-semibold">Cues</h2>
+      <div class="flex h-6 w-full overflow-hidden rounded border border-line" data-cue-strip>
+        <button
+          v-for="({ cue, frames }, i) in cueSpans"
+          :key="cue.id"
+          type="button"
+          class="h-full border-r border-canvas last:border-r-0"
+          :class="[
+            cue.values ? (i % 2 ? 'bg-fg/50' : 'bg-fg/75') : 'bg-line',
+            frameCue?.id === cue.id ? 'outline outline-2 -outline-offset-2 outline-warn' : '',
+          ]"
+          :style="{ flexGrow: frames }"
+          :title="cueTitle(cue, frames)"
+          :data-cue="cue.id"
+          @click="emit('go', cue.start)"
+        />
+      </div>
+      <p class="text-xs text-muted" data-cue-counts>
+        {{ counts.cues }} Cue{{ counts.cues === 1 ? '' : 's' }}<template v-if="counts.silences">
+          and {{ counts.silences }} silence{{ counts.silences === 1 ? '' : 's' }}</template>,
+        {{ counts.average.toFixed(1) }} Frames each on average · of {{ counts.directed }} Frames
+        directed: {{ counts.continues }} continued, {{ counts.changes }} changed,
+        {{ counts.silent }} fell silent<template v-if="counts.stingers">,
+          {{ counts.stingers }} with a stinger</template>
+      </p>
+      <details v-if="session.hindsight" class="text-xs text-muted" data-hindsight>
+        <summary class="cursor-pointer select-none">
+          Last scored with hindsight in {{ session.hindsight.timings.text.toFixed(0) }} s by
+          {{ session.hindsight.model }}, in {{ session.hindsight.chunks }}
+          part{{ session.hindsight.chunks === 1 ? '' : 's' }}
+        </summary>
+        <p
+          v-for="(course, i) in session.hindsight.courses"
+          :key="i"
+          class="mt-1 leading-relaxed"
+          data-hindsight-course
+        >{{ course }}</p>
+      </details>
+    </section>
+
     <section v-if="frame" class="flex flex-col gap-2 border-b border-line p-4" data-frame-music>
       <div class="flex items-baseline gap-1.5">
         <h2 class="shrink-0 text-base font-semibold">{{ frameName(frame.index) }}</h2>
@@ -218,6 +261,18 @@ defineExpose({ flush })
                 :data-outside="outside(i) || undefined"
               >{{ i }}<template v-if="outside(i)"> (not in the Score)</template></span>
             </p>
+            <audio
+              v-if="frameCue.track"
+              class="mt-2 w-full"
+              controls
+              preload="none"
+              :src="imageUrl(session.id, frameCue.track.file)"
+              data-cue-track
+            />
+            <p v-if="frameCue.track" class="mt-1 text-xs text-muted" data-cue-track-timings>
+              {{ frameCue.track.seconds }} s at {{ frameCue.track.bpm }} beats a minute, in
+              {{ frameCue.values.key }}, made in {{ frameCue.track.timings.music.toFixed(0) }} s
+            </p>
           </template>
           <p v-else class="mt-1 text-muted">Silence</p>
         </div>
@@ -233,47 +288,6 @@ defineExpose({ flush })
         Not directed yet: Score as you play directs each new reply, Direct does this one, and Score
         the Roleplay does them all.
       </p>
-    </section>
-
-    <section v-if="cueSpans.length" class="flex flex-col gap-2 border-b border-line p-4" data-cues>
-      <h2 class="text-base font-semibold">Cues</h2>
-      <div class="flex h-6 w-full overflow-hidden rounded border border-line" data-cue-strip>
-        <button
-          v-for="({ cue, frames }, i) in cueSpans"
-          :key="cue.id"
-          type="button"
-          class="h-full border-r border-canvas last:border-r-0"
-          :class="[
-            cue.values ? (i % 2 ? 'bg-fg/50' : 'bg-fg/75') : 'bg-line',
-            frameCue?.id === cue.id ? 'outline outline-2 -outline-offset-2 outline-warn' : '',
-          ]"
-          :style="{ flexGrow: frames }"
-          :title="cueTitle(cue, frames)"
-          :data-cue="cue.id"
-          @click="emit('go', cue.start)"
-        />
-      </div>
-      <p class="text-xs text-muted" data-cue-counts>
-        {{ counts.cues }} Cue{{ counts.cues === 1 ? '' : 's' }}<template v-if="counts.silences">
-          and {{ counts.silences }} silence{{ counts.silences === 1 ? '' : 's' }}</template>,
-        {{ counts.average.toFixed(1) }} Frames each on average · of {{ counts.directed }} Frames
-        directed: {{ counts.continues }} continued, {{ counts.changes }} changed,
-        {{ counts.silent }} fell silent<template v-if="counts.stingers">,
-          {{ counts.stingers }} with a stinger</template>
-      </p>
-      <details v-if="session.hindsight" class="text-xs text-muted" data-hindsight>
-        <summary class="cursor-pointer select-none">
-          Last scored with hindsight in {{ session.hindsight.timings.text.toFixed(0) }} s by
-          {{ session.hindsight.model }}, in {{ session.hindsight.chunks }}
-          part{{ session.hindsight.chunks === 1 ? '' : 's' }}
-        </summary>
-        <p
-          v-for="(course, i) in session.hindsight.courses"
-          :key="i"
-          class="mt-1 leading-relaxed"
-          data-hindsight-course
-        >{{ course }}</p>
-      </details>
     </section>
 
     <!-- Its border sweeps while the Score is written, or written again. -->

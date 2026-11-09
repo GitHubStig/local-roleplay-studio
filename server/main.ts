@@ -37,6 +37,8 @@ import { voiceBackends, voiceService } from './voice/voice.ts'
 import { comfyuiVoiceEngine } from './voice/comfyui/comfyui.ts'
 import { videoBackends } from './video/videoGenerator.ts'
 import { comfyuiVideoGenerator } from './video/comfyui/comfyui.ts'
+import { musicBackends } from './music/musicGenerator.ts'
+import { comfyuiMusicGenerator } from './music/comfyui/comfyui.ts'
 import {
   detectFeatures,
   type Feature,
@@ -212,6 +214,11 @@ const handler = createHandler({
   video: videoBackends({
     comfyui: (address) => comfyuiVideoGenerator({ address }),
     backend: () => backendNow({ kind: 'video' }),
+  }),
+  // Music on a ComfyUI with ACE-Step 1.5: the one Settings name, or the one pictures go to.
+  music: musicBackends({
+    comfyui: (address) => comfyuiMusicGenerator({ address }),
+    backend: () => backendNow({ kind: 'music' }),
   }),
   // Logged like the Text and Image Models' calls (`calls.ts`).
   scene: features.scenes.available ? loggedMaker(sharpSceneMaker(), 'scene', 'SHARP') : undefined,

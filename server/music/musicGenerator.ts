@@ -1,4 +1,5 @@
 import type { Backend } from '../backends.ts'
+import type { ComfyTraces } from '../comfyui/traces.ts'
 
 /** What a music model is given to make a Cue's track: the Text Model's words, and set values. */
 export interface MusicRequest {
@@ -24,6 +25,17 @@ export type OnProgress = (step: number, total: number) => void
 export interface MusicGenerator {
   /** Makes the track and returns its file name inside `dir`. */
   makeMusic(req: MusicRequest, signal: AbortSignal, onProgress?: OnProgress): Promise<string>
+  /**
+   * Picks up a track a server restart cut off (`left`, what it left on its ComfyUI): waits for its
+   * prompt if it's still running, saves the track into `dir` as `name` and returns its file name;
+   * none if there's none to pick up. Either way, cleans up what was left.
+   */
+  pickUp?(
+    left: ComfyTraces,
+    dir: string,
+    name: string,
+    signal: AbortSignal,
+  ): Promise<string | undefined>
 }
 
 /**
@@ -43,6 +55,13 @@ export function musicBackends(backends: {
         throw new Error('No Backend can make music: add a ComfyUI in Settings, on the Machines tab')
       }
       return backends.comfyui(backend.address).makeMusic(req, signal, onProgress)
+    },
+    // On the ComfyUI it was made on, whatever Settings say now.
+    pickUp(left, dir, name, signal) {
+      const base = left.prompts.at(-1)?.base
+      return base
+        ? backends.comfyui(base).pickUp!(left, dir, name, signal)
+        : Promise.resolve(undefined)
     },
   }
 }

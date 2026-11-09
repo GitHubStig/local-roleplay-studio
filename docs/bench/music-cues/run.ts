@@ -65,7 +65,7 @@ async function write(label: string, seeds: number[]) {
           const messages = await cueMessages(session, frame.index, previous, direction)
           const { values } = await model.writeCue(
             messages,
-            cueSchema(vocals),
+            cueSchema(vocals, frame.entry),
             AbortSignal.timeout(180_000),
           )
           const cue = await withDanger(cleanCue(values, vocals))

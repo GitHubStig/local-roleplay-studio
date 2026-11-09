@@ -76,6 +76,8 @@ import { spokenText } from './roleplay/voice.ts'
 import { clipRoutes } from './video/routes.ts'
 import { type SessionsFolder, sessionsFolderRoutes } from './sessionsFolder.ts'
 import { checkRoleplayJob, type RoleplayJobContext, runRoleplayJob } from './roleplay/jobs.ts'
+import { cuesWaiting } from './roleplay/music.ts'
+import type { MusicGenerator } from './music/musicGenerator.ts'
 import { restartRoleplay } from './roleplay/engine.ts'
 import {
   asQueued,
@@ -190,6 +192,8 @@ export interface AppDeps {
   lito?: FigureMaker
   /** Clips from a Frame's pictures (LTX 2.5 on a ComfyUI), when set up. */
   video?: VideoGenerator
+  /** The music model on a ComfyUI, when music is set up. */
+  music?: MusicGenerator
   /** Embeds pictures for the Compare dialog's style scores; without it, there are none. */
   style?: StyleEmbedder
   /**
@@ -233,6 +237,8 @@ const AUDIO_FILE =
 const SCENE_FILE = /^(scene|figure|lito)-\d+-[0-9a-f]{8}\.ply$/
 /** A clip made from a Frame's picture (`clip-3-lead-in-1a2b3c4d.mp4`, `video/makeClip.ts`). */
 const CLIP_FILE = /^clip-\d+-[a-z-]+-[0-9a-f]{8}\.mp4$/
+/** A Cue's track (`music-cue-1a2b3c4d-5e6f7a8b.flac`, `roleplay/music.ts`). */
+const MUSIC_FILE = /^music-cue-[0-9a-f]{8}-[0-9a-f]{8}\.flac$/
 const CONTENT_TYPES: Record<string, string> = {
   '.png': 'image/png',
   '.svg': 'image/svg+xml',
@@ -589,6 +595,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     upscaler,
     videoModel,
     videoSize,
+    music: deps.music,
   }
   /** Which Backend a job of `kind` would go to for `session` now, as an edit is told. */
   async function jobBackendOf(session: Session, kind: JobKind, edit?: EditOrder) {
@@ -602,6 +609,17 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       editBackend: edit?.backend,
       text,
     })
+  }
+
+  /** Queues the music of a Roleplay's Cues that have none yet, if a Backend can make it. */
+  async function queueMusic(id: string) {
+    const session = await deps.sessions.load(id)
+    if (session?.kind !== 'roleplay' || !deps.music || !(await deps.settings.load()).music) return
+    const backend = await jobBackendOf(session, 'music')
+    if (!backend) return
+    for (const index of cuesWaiting(session)) {
+      jobs.enqueue(id, 'music', index, machineOf(backend))
+    }
   }
 
   /** Every Session's background work, run as its kind says: a Roleplay's or a Chain's. */
@@ -678,7 +696,10 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       return
     }
     if (session?.kind === 'roleplay') {
-      return runRoleplayJob(roleplayJobs, session, job, emit, signal)
+      await runRoleplayJob(roleplayJobs, session, job, emit, signal)
+      // The Cues just written get their music, behind what's already queued.
+      if (job.kind === 'direct' || job.kind === 'score-roleplay') await queueMusic(id)
+      return
     }
     if (session?.kind === 'chain' || session?.kind === 'storyboard') {
       const pictureDeps = {
@@ -802,12 +823,18 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
           return (feature && (await featureOff(feature))) ?? notHere ??
             checkEdit(session, index, name, pending, edit!, model?.id ?? now.editModel)
         }
-        if (kind === 'direct' || kind === 'score-roleplay') {
+        if (kind === 'direct' || kind === 'score-roleplay' || kind === 'music') {
           if (!(await deps.settings.load()).music) {
             return error('Music is switched off in Settings', 409)
           }
           if (session.kind !== 'roleplay') return error('Only a Roleplay has music yet', 409)
           if (!session.frames.length) return error('The scene has not begun yet', 409)
+        }
+        if (kind === 'music' && !await heavyBackend({ kind: 'music' })) {
+          return error(
+            'No Backend can make music: add a ComfyUI in Settings, on the Machines tab',
+            409,
+          )
         }
         if (kind === 'style') {
           return (feature && (await featureOff(feature))) ??
@@ -1776,7 +1803,9 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
 
     // Served by byte ranges where asked: Safari won't seek in a video (a clip) without them.
     ['GET', new URLPattern({ pathname: '/api/sessions/:id/images/:file' }), async (req, p) => {
-      if (![IMAGE_FILE, AUDIO_FILE, SCENE_FILE, CLIP_FILE].some((f) => f.test(p.file!))) {
+      if (
+        ![IMAGE_FILE, AUDIO_FILE, SCENE_FILE, CLIP_FILE, MUSIC_FILE].some((f) => f.test(p.file!))
+      ) {
         return error('Not found', 404)
       }
       const res = await serveFile(req, join(deps.sessions.dir(p.id!), p.file!))

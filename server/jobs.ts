@@ -31,8 +31,8 @@ import { type ComfyTrace, type ComfyTraces, withTrace } from './comfyui/traces.t
  * (SHARP); `figure` lifts the person in it out as a 3D figure (TripoSplat), and `lito` does so with
  * Apple's LiTo; `style` embeds the Session's pictures for the Compare dialog's style scores; `edit`
  * repaints a picture as told (ADR 0021); `direct` directs the music at a Roleplay Frame (the
- * Music Director, docs/music-plans.md), and `score-roleplay` scores a whole Roleplay's with
- * hindsight.
+ * Music Director, docs/music-plans.md), `score-roleplay` scores a whole Roleplay's with
+ * hindsight, and `music` makes the track of the Cue that begins on a Frame.
  */
 export type JobKind =
   | 'picture'
@@ -49,6 +49,7 @@ export type JobKind =
   | 'clip'
   | 'direct'
   | 'score-roleplay'
+  | 'music'
 export const JOB_KINDS: readonly JobKind[] = [
   'picture',
   'render',
@@ -64,6 +65,7 @@ export const JOB_KINDS: readonly JobKind[] = [
   'clip',
   'direct',
   'score-roleplay',
+  'music',
 ]
 
 /**
@@ -86,6 +88,7 @@ export const JOB_FEATURE: Record<JobKind, Feature | null> = {
   // Music is a setting while it's built, not a Feature: the app checks it (`check`).
   direct: null,
   'score-roleplay': null,
+  music: null,
 }
 
 /**
@@ -164,10 +167,10 @@ export interface Job {
 
 /**
  * Jobs a restart doesn't make again from the start, if their ComfyUI finished or still makes what
- * they asked for: a clip takes minutes. A picture can't be picked up, as it comes back only over
+ * they asked for: a clip or a track can take minutes. A picture can't be picked up, as it comes back only over
  * the WebSocket that died with the server.
  */
-const RESUMED: readonly JobKind[] = ['clip']
+const RESUMED: readonly JobKind[] = ['clip', 'music']
 
 /** Every Session's jobs, as the queue is saved between runs of the server. */
 export type SavedQueue = { sessionId: string; jobs: Job[] }[]
@@ -235,7 +238,11 @@ const IMAGE_JOBS: readonly JobKind[] = [
   'lito',
   'edit',
   'clip',
+  'music',
 ]
+
+/** Jobs that take minutes and may be late: other image work goes ahead of them while queued. */
+const LATE_JOBS: readonly JobKind[] = ['clip', 'music']
 
 /**
  * What each job waits for, when queued earlier on its Frame (or, for the Session's own jobs, on any
@@ -260,6 +267,7 @@ const NEEDS: Record<JobKind, readonly JobKind[]> = {
   clip: ['picture', 'render', 'edit'],
   direct: [],
   'score-roleplay': [],
+  music: [],
 }
 
 /**
@@ -279,13 +287,13 @@ const sameWork = (
   job.clip?.model === clip?.model
 
 /**
- * Where image work on Frame `frameIndex` goes ahead of queued clips, which are made from pictures
- * and take minutes: before the first queued clip after any of that Frame's own, so a clip isn't
- * made from an edit asked for after it. -1 if there's none.
+ * Where image work on Frame `frameIndex` goes ahead of queued clips and music, which take minutes:
+ * before the first queued one after any clip of that Frame's own, so a clip isn't made from an edit
+ * asked for after it. -1 if there's none.
  */
 function clipsAhead(jobs: readonly Job[], frameIndex: number): number {
   const own = jobs.findLastIndex((j) => j.kind === 'clip' && j.frameIndex === frameIndex)
-  return jobs.findIndex((j, i) => i > own && j.kind === 'clip' && j.status === 'queued')
+  return jobs.findIndex((j, i) => i > own && LATE_JOBS.includes(j.kind) && j.status === 'queued')
 }
 
 /** Two jobs on the pictures of two different Image Models, as both record (`Job.image`). */
@@ -445,7 +453,7 @@ export class SessionJobs {
     }
     const ahead = kind === 'picture'
       ? jobs.findIndex((j) => j.status === 'queued' && IMAGE_JOBS.includes(j.kind))
-      : IMAGE_JOBS.includes(kind) && kind !== 'clip'
+      : IMAGE_JOBS.includes(kind) && !LATE_JOBS.includes(kind)
       ? clipsAhead(jobs, frameIndex)
       : -1
     this.#jobs.set(
