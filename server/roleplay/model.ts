@@ -115,7 +115,8 @@ const MAX_TOKENS = {
   // The course, then the turns of up to 75 Frames: a 61-Frame story had 10–15, of about 100
   // tokens each (2026-11-07).
   hindsight: 4000,
-  cue: 250,
+  // The values, a caption of up to 90 words and the lyrics' tags: 200–350 tokens (2026-11-09).
+  cue: 700,
   suggest: 400,
   voice: 300,
   delivery: 60,

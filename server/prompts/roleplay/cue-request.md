@@ -17,4 +17,5 @@ At {{frame}} the music changes, {{entry}}. The director's reading: {{reading}}
 The line that caused it: {{line}}
 
 Write the next Cue. Answer with one JSON object: "mood", "energy", "density", "tempo",
-"instruments", then "vocals". You're done only when the vocals are written.
+"instruments", "vocals", "shape", "key", "caption", then "lyrics". You're done only when the lyrics are
+written.

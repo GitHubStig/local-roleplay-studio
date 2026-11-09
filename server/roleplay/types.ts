@@ -147,6 +147,38 @@ export const DENSITIES = ['sparse', 'layered', 'full'] as const
 export const TEMPOS = ['slow', 'moderate', 'fast'] as const
 /** What voices a Cue may have, as far as the Vocals setting lets it. */
 export const CUE_VOCALS = ['none', 'wordless', 'choir'] as const
+/** Which good caption a Cue's is made from (`prompts/roleplay/cue.md`). */
+export const CUE_SHAPES = ['intimate', 'reflective', 'sacred', 'danger'] as const
+/**
+ * The keys a Cue may be in: each once, by its usual name, all of them ones ACE-Step's node takes
+ * (it refuses others).
+ */
+export const CUE_KEYS = [
+  'C major',
+  'Db major',
+  'D major',
+  'Eb major',
+  'E major',
+  'F major',
+  'Gb major',
+  'G major',
+  'Ab major',
+  'A major',
+  'Bb major',
+  'B major',
+  'C minor',
+  'C# minor',
+  'D minor',
+  'Eb minor',
+  'E minor',
+  'F minor',
+  'F# minor',
+  'G minor',
+  'G# minor',
+  'A minor',
+  'Bb minor',
+  'B minor',
+] as const
 
 /** What the cue writer picks for a Cue, within the Score. */
 export interface CueValues {
@@ -154,11 +186,18 @@ export interface CueValues {
   mood: string
   energy: (typeof ENERGIES)[number]
   density: (typeof DENSITIES)[number]
-  /** Turned into beats per minute within the Score's range by the music's adapter. */
+  /** Turned into beats per minute within the Score's range (`bpmOf`). */
   tempo: (typeof TEMPOS)[number]
   /** Drawn from the Score's palette; one outside it is flagged in the Music tab, not refused. */
   instruments: string[]
   vocals: (typeof CUE_VOCALS)[number]
+  /** A `danger` one, which the Text Model's words can't carry, takes `withDanger`'s words. */
+  shape: (typeof CUE_SHAPES)[number]
+  key: (typeof CUE_KEYS)[number]
+  /** What the music model is told it sounds like and how it develops, in its own style (ADR 0035). */
+  caption: string
+  /** Section tags following the caption, with lines of vowels for any voices to sing. */
+  lyrics: string
 }
 
 /**

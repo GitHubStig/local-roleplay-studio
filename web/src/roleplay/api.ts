@@ -117,6 +117,12 @@ export interface CueValues {
   tempo: 'slow' | 'moderate' | 'fast'
   instruments: string[]
   vocals: 'none' | 'wordless' | 'choir'
+  shape: 'intimate' | 'reflective' | 'sacred' | 'danger'
+  key: string
+  /** What the music model is told it sounds like and how it develops. */
+  caption: string
+  /** Section tags following the caption, with lines of vowels for any voices to sing. */
+  lyrics: string
 }
 
 /** A stretch of music from the Frame it began on until the next Cue: its values, or silence. */

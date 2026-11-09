@@ -3,6 +3,7 @@ import { replyOf, scriptedRoleplayModel, testCast, testScore } from './testing.t
 import { withTempDir } from '../testing.ts'
 import { readEvents, settled, setup } from '../appTesting.ts'
 import {
+  bpmOf,
   cleanCue,
   cleanDirection,
   cueMessages,
@@ -10,6 +11,7 @@ import {
   directorMessages,
   directorSchema,
   musicStory,
+  withDanger,
   withoutSpeaker,
 } from './director.ts'
 import type { Cue, RoleplaySession } from './types.ts'
@@ -28,6 +30,10 @@ const cueValues = (mood = 'guarded, hushed', extra: Record<string, unknown> = {}
   tempo: 'slow',
   instruments: ['fiddle', 'cello'],
   vocals: 'none',
+  shape: 'intimate',
+  key: 'A minor',
+  caption: 'A lone fiddle, then a low cello slips in beneath it.',
+  lyrics: '[Intro - lone fiddle]',
   ...extra,
 })
 
@@ -82,10 +88,71 @@ Deno.test("The Director's and the cue writer's requests name their parts in the 
     'tempo',
     'instruments',
     'vocals',
+    'shape',
+    'key',
+    'caption',
+    'lyrics',
   ])
   assertMatch(
     cue.content,
-    /"mood", "energy", "density", "tempo",\s+"instruments", then "vocals"\. You're done only when the vocals/,
+    /"mood", "energy", "density", "tempo",\s+"instruments", "vocals", "shape", "key", "caption", then "lyrics"\. You're done only when the lyrics/,
+  )
+})
+
+Deno.test('A Cue with no voices keeps only its section tags, as anything else would be sung', () => {
+  const lyrics = '[Intro - fiddle]\nOoh... ooh...\n\n[Outro - fading]\nAah...\nThe rain falls'
+  assertEquals(
+    cleanCue(cueValues('awe', { lyrics }), 'instrumental').lyrics,
+    '[Intro - fiddle]\n\n[Outro - fading]',
+  )
+  assertEquals(
+    cleanCue(cueValues('awe', { lyrics, vocals: 'choir' }), 'wordless').lyrics,
+    lyrics,
+  )
+  assertThrows(() => cleanCue(cueValues('awe', { lyrics: 'Ooh...' }), 'instrumental'))
+  assertMatch(
+    cleanCue(cueValues('awe', { vocals: 'choir' }), 'wordless').caption,
+    /beneath it\. A low, soft wordless choir sings in the background throughout\.$/,
+  )
+  assertEquals(
+    cleanCue(
+      cueValues('awe', { vocals: 'choir', caption: 'A low choir, then a harp.' }),
+      'wordless',
+    )
+      .caption,
+    'A low choir, then a harp.',
+  )
+  assertEquals(cleanCue(cueValues('awe'), 'instrumental').caption.includes('choir'), false)
+  assertThrows(() => cleanCue(cueValues('awe', { caption: ' ' }), 'instrumental'))
+  assertThrows(() => cleanCue(cueValues('awe', { key: 'H minor' }), 'instrumental'))
+})
+
+Deno.test('A Cue with voices has lines to sing, and one in danger the caption that worked', async () => {
+  const voiced = cleanCue(
+    cueValues('awe', { vocals: 'choir', lyrics: '[Theme - harp]\n[Outro - fading]' }),
+    'wordless',
+  )
+  assertMatch(voiced.lyrics, /^\[Theme - harp\]\n\n\[Choir - soft, wordless\]\nOoh/)
+  assertMatch(voiced.lyrics, /\[Outro - fading\]\nAah\.\.\.$/)
+  const sung = '[Choir]\nOoh...\nAah...\nOoh...'
+  assertEquals(
+    cleanCue(cueValues('awe', { vocals: 'choir', lyrics: sung }), 'wordless').lyrics,
+    sung,
+  )
+  const calm = cleanCue(cueValues(), 'instrumental')
+  assertEquals(await withDanger(calm), calm)
+  const danger = await withDanger(cleanCue(cueValues('dread', { shape: 'danger' }), 'instrumental'))
+  assertMatch(danger.caption, /^Suspense thriller film score that keeps developing\./)
+  assertMatch(danger.lyrics, /^\[Intro - low string pulse/)
+  assertEquals([danger.tempo, danger.key, danger.vocals], ['fast', 'D minor', 'none'])
+})
+
+Deno.test("A Cue's tempo sits in the Score's range, a fast one at least 100", () => {
+  assertEquals(bpmOf('fast', { slowest: 50, fastest: 85 }), 100)
+  const range = { slowest: 60, fastest: 120 }
+  assertEquals(
+    [bpmOf('slow', range), bpmOf('moderate', range), bpmOf('fast', range)],
+    [90, 105, 120],
   )
 })
 

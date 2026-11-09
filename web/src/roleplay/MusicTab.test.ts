@@ -152,6 +152,10 @@ describe('MusicTab', () => {
       tempo: 'slow' as const,
       instruments: ['cello', 'harp'],
       vocals: 'none' as const,
+      shape: 'intimate' as const,
+      key: 'A minor',
+      caption: 'A lone cello, then a harp.',
+      lyrics: '[Intro - lone cello]',
     }
     const frames = [
       frame(0, music('transition', 'a')),

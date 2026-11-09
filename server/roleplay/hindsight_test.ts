@@ -27,6 +27,10 @@ const cueValues = (mood: string) => ({
   tempo: 'slow',
   instruments: ['fiddle'],
   vocals: 'none',
+  shape: 'intimate',
+  key: 'A minor',
+  caption: 'A lone fiddle, then a low cello slips in beneath it.',
+  lyrics: '[Intro - lone fiddle]',
 })
 const lines = ['You are late.', 'Take the wheel.', 'Hold on!', 'We made it.', 'Rest now.']
 

@@ -17,6 +17,8 @@ import type { RoleplayModel } from './model.ts'
 import { writeScore } from './score.ts'
 import {
   type Cue,
+  CUE_KEYS,
+  CUE_SHAPES,
   CUE_VOCALS,
   type CueValues,
   type Decision,
@@ -28,6 +30,7 @@ import {
   type FrameMusic,
   type RoleplayFrame,
   type RoleplaySession,
+  type Score,
   TEMPOS,
 } from './types.ts'
 import { GoneError, updateSession } from './update.ts'
@@ -58,9 +61,69 @@ export const cueSchema = (vocals: MusicVocals) => ({
     tempo: { type: 'string', enum: [...TEMPOS] },
     instruments: { type: 'array', items: { type: 'string' } },
     vocals: { type: 'string', enum: [...vocalsAllowed(vocals)] },
+    shape: { type: 'string', enum: [...CUE_SHAPES] },
+    key: { type: 'string', enum: [...CUE_KEYS] },
+    caption: { type: 'string' },
+    lyrics: { type: 'string' },
   },
-  required: ['mood', 'energy', 'density', 'tempo', 'instruments', 'vocals'],
+  required: [
+    'mood',
+    'energy',
+    'density',
+    'tempo',
+    'instruments',
+    'vocals',
+    'shape',
+    'key',
+    'caption',
+    'lyrics',
+  ],
 })
+
+/** How long a Cue's track is, before it loops. */
+export const CUE_SECONDS = 60
+
+/**
+ * A Cue's tempo in beats per minute: half or three quarters up the Score's range, or its fastest, and
+ * a fast Cue at least 100. Scores set low ranges, and the Cues the owner liked ran at 60–70, and
+ * tension at 100 or more (docs/bench/music-models/README.md, "Tension").
+ */
+export function bpmOf(tempo: CueValues['tempo'], range: Score['tempo']): number {
+  const at = (up: number) => Math.round(range.slowest + (range.fastest - range.slowest) * up)
+  return tempo === 'fast' ? Math.max(range.fastest, 100) : at(tempo === 'slow' ? 1 / 2 : 3 / 4)
+}
+
+/**
+ * A caption that has its voices. Their lines to sing aren't enough on their own: in the bench's Cues
+ * with voices, those whose captions didn't name them weren't heard (2026-11-09), and the Text Model
+ * leaves them out of about half.
+ */
+const withVoices = (caption: string) =>
+  !caption || /\b(choir|voices?)\b/i.test(caption)
+    ? caption
+    : `${caption} A low, soft wordless choir sings in the background throughout.`
+
+/**
+ * Lyrics with lines for voices to sing, as they're only heard with them, and the Text Model gave too
+ * few to 3 of 7 Cues with voices (2026-11-09): with under three, the lines of the Heaven the owner
+ * could hear them in go between its first section and its last.
+ */
+function withLines(lyrics: string) {
+  const lines = lyrics.split('\n').map((line) => line.trim()).filter(Boolean)
+  if (lines.filter((line) => !line.startsWith('[')).length >= 3) return lyrics
+  const tags = lines.filter((line) => line.startsWith('['))
+  if (!tags.length) return lyrics
+  return [
+    tags[0],
+    '[Choir - soft, wordless]\nOoh... ooh...\nAah... aah...',
+    '[Choir - with warm strings, fuller, calm]\nOoh... aah...\nOoh... aah...',
+    ...(tags.length > 1 ? [`${tags.at(-1)}\nAah...`] : []),
+  ].join('\n\n')
+}
+
+/** Lyrics with no lines to sing: only their section tags, as anything else would be sung. */
+const onlyTags = (lyrics: string) =>
+  lyrics.split('\n').map((line) => line.trim()).filter((line) => /^\[.*\]$/.test(line)).join('\n\n')
 
 /** What the Director decided, tidied. */
 export interface Direction {
@@ -91,13 +154,16 @@ export function cleanDirection(value: unknown): Direction {
   }
 }
 
-/** The cue writer's reply, tidied; throws without a mood or an instrument. */
+/** The cue writer's reply, tidied; throws without a mood, an instrument, a caption or lyrics. */
 export function cleanCue(value: unknown, vocals: MusicVocals): CueValues {
   const v = (value ?? {}) as Record<string, unknown>
   const seen = new Set<string>()
   const instruments = (Array.isArray(v.instruments) ? v.instruments : [])
     .map(text)
     .filter((i) => i && !seen.has(i.toLowerCase()) && seen.add(i.toLowerCase()))
+  const vocal = oneOf(v.vocals, vocalsAllowed(vocals))
+  const lyrics = vocal === 'none' ? onlyTags(text(v.lyrics)) : withLines(text(v.lyrics))
+  const caption = vocal === 'none' ? text(v.caption) : withVoices(text(v.caption))
   const values: CueValues = {
     // Without stray markup at its end ("fragile</", seen once on 2026-11-06).
     mood: text(v.mood).replace(/[\s<>/\\]+$/, ''),
@@ -105,10 +171,16 @@ export function cleanCue(value: unknown, vocals: MusicVocals): CueValues {
     density: oneOf(v.density, DENSITIES),
     tempo: oneOf(v.tempo, TEMPOS),
     instruments,
-    vocals: oneOf(v.vocals, vocalsAllowed(vocals)),
+    vocals: vocal,
+    shape: oneOf(v.shape, CUE_SHAPES),
+    key: oneOf(v.key, CUE_KEYS),
+    caption,
+    lyrics,
   }
   if (!values.mood) throw new Error('The Cue has no mood')
   if (!instruments.length) throw new Error('The Cue has no instruments')
+  if (!values.caption) throw new Error('The Cue has no caption')
+  if (!lyrics) throw new Error('The Cue has no lyrics')
   return values
 }
 
@@ -214,12 +286,15 @@ export async function cueMessages(
       content: await loadPrompt('roleplay/cue', {
         behaviour: await behaviourOf(session),
         vocals: await loadPrompt(`roleplay/cue-vocals-${vocals}`),
+        seconds: String(CUE_SECONDS),
       }),
     },
     {
       role: 'user',
       content: await loadPrompt('roleplay/cue-request', {
         score: scoreText(session),
+        // Its values, not its caption: shown the caption, a third of the next ones read as changes
+        // to it ("the organ falls away"), which the music model can't follow (2026-11-09).
         previous: previous ? cueText(previous) : 'none: this is the first music in the story',
         frame: frameName(index),
         reading: direction.reading,
@@ -236,6 +311,22 @@ export interface DirectorDeps {
   model: RoleplayModel
   /** What the Director reads; the whole story unless the bench says otherwise. */
   reads?: DirectorReads
+}
+
+/**
+ * A Cue as it's made: one marked as danger takes the caption and lyrics the owner found good, fast and
+ * in their key, with no voices, as no tension the Text Model wrote came near them (2026-11-09).
+ */
+export async function withDanger(values: CueValues): Promise<CueValues> {
+  if (values.shape !== 'danger') return values
+  return {
+    ...values,
+    tempo: 'fast',
+    key: 'D minor',
+    vocals: 'none',
+    caption: (await loadPrompt('roleplay/cue-danger-caption')).trim(),
+    lyrics: (await loadPrompt('roleplay/cue-danger-lyrics')).trim(),
+  }
 }
 
 /** A short id for a new Cue. */
@@ -339,7 +430,7 @@ export async function writeCueAt(
   const vocals = session.settings.musicVocals
   const values = await withRetry(
     async (onThinking) =>
-      cleanCue(
+      await withDanger(cleanCue(
         (await deps.model.writeCue(
           await cueMessages(session, index, previous, direction),
           cueSchema(vocals),
@@ -347,11 +438,13 @@ export async function writeCueAt(
           onThinking,
         )).values,
         vocals,
-      ),
+      )),
     signal,
     emit,
   )
-  const limit = crossedLimit([values.mood, ...values.instruments].join('\n'))
+  const limit = crossedLimit(
+    [values.mood, ...values.instruments, values.caption, values.lyrics].join('\n'),
+  )
   if (limit) throw new Error(`The Cue crossed a limit: ${limit.message}`)
   return values
 }
