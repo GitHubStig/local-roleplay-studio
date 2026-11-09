@@ -86,7 +86,6 @@ const roleplaySession = (frames: roleplay.RoleplayFrame[] = []): roleplay.Rolepl
   settings: {
     imageModel: 'qwen-image-2.1',
     musicBehaviour: 'story',
-    musicVocals: 'instrumental',
     musicTaste: '',
   } as api.Settings,
   seed: 1,

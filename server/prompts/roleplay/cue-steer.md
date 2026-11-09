@@ -11,4 +11,5 @@ The player has asked for this music: "{{steer}}". That comes first, above the di
 Score and everything in it, and the shape's wording. An instrument they name is in the caption, and
 leads, even one the Score avoids. If they ask for only certain instruments, those are the only ones in
 the caption and the lyrics: rewrite or drop any clause naming another. If they ask for a feeling, change
-every word of feeling to it. "instruments" lists exactly what's in the caption.
+every word of feeling to it. If they ask for voices or a choir, "vocals" is "choir" and the caption and
+lyrics have it, whatever the shape; if they ask for none, "vocals" is "none". "instruments" lists exactly what's in the caption.

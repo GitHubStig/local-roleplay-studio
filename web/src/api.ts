@@ -112,7 +112,6 @@ export interface Settings {
   /** How readily the music changes, and how far forward it comes; a Session keeps its own. */
   musicBehaviour: 'steady' | 'story' | 'cinematic'
   /** What voices the music may have; a Session keeps its own. */
-  musicVocals: 'instrumental' | 'wordless'
   /** The player's taste in music, in their words; a Session keeps its own. */
   musicTaste: string
   /** Where Sessions are kept: a full path, or '' for the app's own `sessions/`. Changed on its own tab, not with the rest. */
@@ -667,7 +666,6 @@ export type SessionSettings =
     | 'imageModel'
     | 'steps'
     | 'musicBehaviour'
-    | 'musicVocals'
     | 'musicTaste'
   >
   & {

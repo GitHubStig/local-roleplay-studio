@@ -5,7 +5,7 @@ kind: roleplay
 seed: 7
 scenario: tavern
 pictures: false
-music: { behaviour: story, vocals: instrumental }
+music: { behaviour: story }
 messages:
   - I come in out of the rain and hang my cloak by the fire. "Evening. Is it always this wild here in autumn?"
   - "\"I'll have whatever's warm, thank you.\" I take a stool at the bar."

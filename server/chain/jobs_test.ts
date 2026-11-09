@@ -556,7 +556,6 @@ Deno.test('A Session switches Image Model by name, to one a Backend listed can r
       'imageModel',
       'musicBehaviour',
       'musicTaste',
-      'musicVocals',
       'steps',
       'textModel',
       'thinking',

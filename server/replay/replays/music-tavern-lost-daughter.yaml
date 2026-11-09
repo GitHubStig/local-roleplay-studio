@@ -6,7 +6,7 @@ kind: roleplay
 seed: 7
 scenario: tavern
 pictures: false
-music: { behaviour: story, vocals: instrumental }
+music: { behaviour: story }
 messages:
   - I push the door shut against the wind and shake the rain from my cloak. "Is there a fire I could sit by, and something hot?"
   - I take the stool by the fire and warm my hands, watching him over the rim of the mug. "You're not from this town either. You hold yourself like a sailor."

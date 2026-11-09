@@ -30,7 +30,7 @@ export interface Replay {
    * A Roleplay's music, directed after each Reply (Score as you play), with its own settings; any
    * left out are Settings'.
    */
-  music?: { behaviour?: string; vocals?: string; taste?: string }
+  music?: { behaviour?: string; taste?: string }
   /**
    * What the music should do at each Frame, the opening first: the answer key the Director's
    * decisions are checked against. Each a `step: why` (`COURSE_STEPS`).
@@ -195,7 +195,6 @@ async function main() {
     const { settings } = await (await api(`sessions/${id}`)).json()
     const music = {
       behaviour: replay.music.behaviour ?? settings.musicBehaviour,
-      vocals: replay.music.vocals ?? settings.musicVocals,
       taste: replay.music.taste ?? settings.musicTaste,
     }
     const set = await api(`sessions/${id}/roleplay/music`, {

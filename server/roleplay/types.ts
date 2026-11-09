@@ -145,8 +145,8 @@ export interface FrameMusic {
 export const ENERGIES = ['calm', 'restrained', 'building', 'intense'] as const
 export const DENSITIES = ['sparse', 'layered', 'full'] as const
 export const TEMPOS = ['slow', 'moderate', 'fast'] as const
-/** What voices a Cue may have, as far as the Vocals setting lets it. */
-export const CUE_VOCALS = ['none', 'wordless', 'choir'] as const
+/** Whether a Cue has voices: a low, soft choir singing vowels, or none. */
+export const CUE_VOCALS = ['none', 'choir'] as const
 /** Which good caption a Cue's is made from (`prompts/roleplay/cue.md`). */
 export const CUE_SHAPES = ['intimate', 'uneasy', 'reflective', 'sacred', 'danger'] as const
 /**

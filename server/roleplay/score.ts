@@ -9,9 +9,7 @@ import { loadPrompt } from '../promptFiles.ts'
 import type { Scenario } from '../scenario.ts'
 import {
   MUSIC_BEHAVIOURS,
-  MUSIC_VOCALS,
   type MusicBehaviour,
-  type MusicVocals,
 } from '../settings.ts'
 import type { SessionStore } from '../session.ts'
 import type { ChatMessage } from '../text/chat.ts'
@@ -177,14 +175,13 @@ export async function setScore(
 /** The music settings a Roleplay keeps, as edited in its Music tab. */
 export interface MusicSettings {
   behaviour: MusicBehaviour
-  vocals: MusicVocals
   taste: string
 }
 
 /** The longest Music taste kept. */
 const MAX_TASTE = 2000
 
-/** Replaces the Roleplay's own Behaviour, Vocals and Music taste (`SESSION_SETTINGS`). */
+/** Replaces the Roleplay's own Behaviour and Music taste (`SESSION_SETTINGS`). */
 export async function setMusicSettings(
   store: SessionStore,
   session: RoleplaySession,
@@ -193,9 +190,6 @@ export async function setMusicSettings(
   const v = (value ?? {}) as Record<string, unknown>
   if (!MUSIC_BEHAVIOURS.includes(v.behaviour as MusicBehaviour)) {
     throw new ScoreError(`behaviour must be one of: ${MUSIC_BEHAVIOURS.join(', ')}`)
-  }
-  if (!MUSIC_VOCALS.includes(v.vocals as MusicVocals)) {
-    throw new ScoreError(`vocals must be one of: ${MUSIC_VOCALS.join(', ')}`)
   }
   if (typeof v.taste !== 'string') throw new ScoreError('taste must be text')
   const taste = v.taste.trim()
@@ -207,7 +201,6 @@ export async function setMusicSettings(
     settings: {
       ...latest.settings,
       musicBehaviour: v.behaviour as MusicBehaviour,
-      musicVocals: v.vocals as MusicVocals,
       musicTaste: taste,
     },
   }))

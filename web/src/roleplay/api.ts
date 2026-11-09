@@ -116,7 +116,7 @@ export interface CueValues {
   density: 'sparse' | 'layered' | 'full'
   tempo: 'slow' | 'moderate' | 'fast'
   instruments: string[]
-  vocals: 'none' | 'wordless' | 'choir'
+  vocals: 'none' | 'choir'
   shape: 'intimate' | 'uneasy' | 'reflective' | 'sacred' | 'danger'
   key: string
   /** What the music model is told it sounds like and how it develops. */

@@ -1,12 +1,10 @@
 # Knocking on Heaven's Door for the Music Director's bench (docs/music-plans.md): it begins in awe,
-# and its Scenario asks for a wordless choir. Played with wordless voices allowed, to see the cue
-# writer use them where they fit; the bench plays it with Instrumental only too, to check the Vocals
-# setting holds them back. Awe gives way to fear of judgment, then to warmth, then to the crossing.
+# and its Scenario asks for a wordless choir, to see the cue writer use one where it fits. Awe gives way to fear of judgment, then to warmth, then to the crossing.
 kind: roleplay
 seed: 7
 scenario: knocking-on-heavens-door
 pictures: false
-music: { behaviour: story, vocals: wordless }
+music: { behaviour: story }
 messages:
   - I look up at the gates, too big to take in, and my voice comes out very small. "Is this... am I dead?"
   - I turn slowly, taking in the marble and the light. "It's so quiet. I thought there'd be... more people."

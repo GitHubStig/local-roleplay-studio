@@ -59,16 +59,15 @@ async function write(label: string, seeds: number[]) {
       for (const frame of run.frames.filter((f) => f.decision === 'transition')) {
         calls++
         const direction = { ...frame, decision: 'transition' as const }
-        const vocals = session.settings.musicVocals
         const start = performance.now()
         try {
           const messages = await cueMessages(session, frame.index, previous, direction)
           const { values } = await model.writeCue(
             messages,
-            cueSchema(vocals, frame.entry),
+            cueSchema(frame.entry),
             AbortSignal.timeout(180_000),
           )
-          const cue = await withDanger(cleanCue(values, vocals))
+          const cue = await withDanger(cleanCue(values))
           const took = (performance.now() - start) / 1000
           seconds.push(took)
           previous = { id: `cue-${frame.index}`, start: frame.index, values: cue, entry: frame.entry, reading: frame.reading, line: frame.line }

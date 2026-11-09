@@ -6,7 +6,7 @@ kind: roleplay
 seed: 7
 scenario: tavern
 pictures: false
-music: { behaviour: story, vocals: instrumental }
+music: { behaviour: story }
 messages:
   - I come in out of the storm smiling, shaking the rain from my cloak. "What a night! Tell me you've still got something warm to pour."
   - I lean on the bar, easy and friendly. "You run this place alone? Brave man, out here at the end of the world."

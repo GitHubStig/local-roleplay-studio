@@ -8,11 +8,9 @@ blank to write from the moment, as a caption kept whole kept its feeling too, wh
 The avoid list binds this call; it never reaches the music model. The tempo in beats per minute and
 the length are set by code, so neither goes in the caption, nor does the key.
 
-The reply's shape is cueSchema in server/roleplay/director.ts, its "vocals" held to what the
-Vocals setting allows. A Cue of the danger shape takes cue-danger-*.md whatever it writes.
+The reply's shape is cueSchema in server/roleplay/director.ts. A Cue of the danger shape takes cue-danger-*.md whatever it writes.
 
-Values: behaviour (music-behaviour-*.md), vocals (cue-vocals-*.md, from the Vocals setting), seconds
-(how long a track is)
+Values: behaviour (music-behaviour-*.md), seconds (how long a track is)
 -->
 
 # Your job
@@ -27,7 +25,9 @@ then loops under the scene.
 - "density": "sparse", "layered" or "full".
 - "tempo": "slow", unless "shape" is "danger", then "fast".
 - "instruments": the instruments in your caption.
-- "vocals": {{vocals}}
+- "vocals": "choir" where a low, soft wordless choir carries the moment, such as awe, the sacred or
+  great sorrow; "none" for most music, as voices sit under what's spoken. What the player asks for in
+  voices decides it, either way.
 - "shape": the caption below nearest the moment.
 - "key": a minor key for sorrow, unease or tension, a major key only for real warmth or peace, staying
   near the last Cue's.

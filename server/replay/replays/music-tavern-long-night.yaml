@@ -5,7 +5,7 @@ kind: roleplay
 seed: 11
 scenario: tavern
 pictures: false
-music: { behaviour: story, vocals: instrumental }
+music: { behaviour: story }
 messages:
   - "I push in out of the storm and stamp the mud off my boots. \"Evening. Is the kitchen still open?\""
   - "I hang my wet cloak by the fire. \"Whatever's hot, and a cider if you have it.\""

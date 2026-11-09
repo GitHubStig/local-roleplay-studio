@@ -57,20 +57,15 @@ interface Variant {
   reads: DirectorReads
   hindsight?: Chunking
   /** Per replay, what's changed from its own music; a replay not listed is left out. */
-  only?: Record<string, Partial<Pick<Settings, 'musicBehaviour' | 'musicVocals'>>>
+  only?: Record<string, Partial<Pick<Settings, 'musicBehaviour'>>>
 }
 const VARIANTS: Record<string, Variant> = {
-  /** Each replay as written: its own Behaviour and Vocals, the whole story. */
+  /** Each replay as written: its own Behaviour, the whole story. */
   base: { reads: 'whole' },
   /** The same, reading only the Frames since the Cue playing began. */
   since: { reads: 'since' },
   /** The Buffet played Follows the story, against its Steady. */
   'buffet-story': { reads: 'whole', only: { 'music-buffet-of-souls': { musicBehaviour: 'story' } } },
-  /** Heaven with Instrumental only, against its wordless voices. */
-  'heaven-instrumental': {
-    reads: 'whole',
-    only: { 'music-heavens-door': { musicVocals: 'instrumental' } },
-  },
   /** Score the Roleplay, with hindsight: each story in one call, as the app reads 15 Frames. */
   hindsight: { reads: 'whole', hindsight: { frames: 30, around: 6 } },
   /** The whole story in one call, however long: against `hindsight`'s 30-Frame chunks on a long one. */
@@ -161,7 +156,6 @@ async function play(name: string, seed: number): Promise<RoleplaySession> {
         ...DEFAULT_SETTINGS,
         ...settings,
         musicBehaviour: (replay.music?.behaviour ?? 'story') as Settings['musicBehaviour'],
-        musicVocals: (replay.music?.vocals ?? 'instrumental') as Settings['musicVocals'],
         musicTaste: replay.music?.taste ?? '',
       },
       seed,

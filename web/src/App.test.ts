@@ -94,7 +94,6 @@ beforeEach(() => {
     callLog: false,
     music: false,
     musicBehaviour: 'story',
-    musicVocals: 'instrumental',
     musicTaste: '',
     sessionsFolder: '',
     features: ALL_ON,

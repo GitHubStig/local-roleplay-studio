@@ -130,7 +130,6 @@ Deno.test('A Session keeps only its models, and renders with them and the rest a
     imageModel: 'flux2-klein-4b',
     steps: 4,
     musicBehaviour: 'story',
-    musicVocals: 'instrumental',
     musicTaste: 'Orchestral.',
   })
   const now = {
@@ -157,7 +156,6 @@ Deno.test('validateSettings fills in what an older file lacks, keeps what it may
     ['sessionsFolder', '', '/Users/me/Sessions', 'Sessions'],
     ['music', false, true, 'yes'],
     ['musicBehaviour', 'story', 'cinematic', 'loud'],
-    ['musicVocals', 'instrumental', 'wordless', 'lyrics'],
     ['musicTaste', '', 'Orchestral.', 3],
   ]
   for (const [field, missing, valid, invalid] of fields) {

@@ -25,7 +25,7 @@ import SelectField from '../components/SelectField.vue'
 import ToggleSwitch from '../components/ToggleSwitch.vue'
 import { useBackends } from '../composables/useBackends'
 import { useFeatures } from '../composables/useFeatures'
-import { MUSIC_BEHAVIOURS, MUSIC_VOCALS } from '../music'
+import { MUSIC_BEHAVIOURS } from '../music'
 import {
   byLabel,
   editModelChoices,
@@ -590,14 +590,6 @@ function saveNow() {
               <label v-for="b in MUSIC_BEHAVIOURS" :key="b.id" class="flex items-start gap-2">
                 <input v-model="form.musicBehaviour" type="radio" :value="b.id" class="mt-1.5" />
                 <span><span class="font-medium">{{ b.label }}</span>: {{ b.about }}</span>
-              </label>
-            </fieldset>
-            <fieldset class="card" data-music-vocals>
-              <legend class="sr-only">Vocals</legend>
-              <h3 class="font-medium" aria-hidden="true">Vocals</h3>
-              <label v-for="v in MUSIC_VOCALS" :key="v.id" class="flex items-center gap-2">
-                <input v-model="form.musicVocals" type="radio" :value="v.id" />
-                {{ v.label }}
               </label>
             </fieldset>
             <label class="card flex flex-col gap-2" data-music-taste>

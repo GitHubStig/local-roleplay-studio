@@ -103,13 +103,13 @@ Deno.test("A Roleplay's Score is written while Music is on, edited, and its musi
     const crossing = { ...testScore(), atmosphere: 'Sexy lingerie and low light.' }
     assertEquals((await call('PUT', '/api/sessions/s1/roleplay/score', crossing)).status, 422)
 
-    const own = { behaviour: 'cinematic', vocals: 'wordless', taste: ' Choirs. ' }
+    const own = { behaviour: 'cinematic', taste: ' Choirs. ' }
     const changed = await (await call('PUT', '/api/sessions/s1/roleplay/music', own)).json()
     assertEquals(
-      [changed.settings.musicBehaviour, changed.settings.musicVocals, changed.settings.musicTaste],
-      ['cinematic', 'wordless', 'Choirs.'],
+      [changed.settings.musicBehaviour, changed.settings.musicTaste],
+      ['cinematic', 'Choirs.'],
     )
-    const wrong = { ...own, vocals: 'lyrics' }
+    const wrong = { ...own, behaviour: 'loud' }
     assertEquals((await call('PUT', '/api/sessions/s1/roleplay/music', wrong)).status, 400)
 
     await music(false)

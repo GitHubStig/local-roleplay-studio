@@ -264,7 +264,7 @@ export function roleplayRoutes(ctx: RoleplayRouteContext): Route[] {
         )
       })],
 
-    // The Roleplay's own Behaviour, Vocals and Music taste.
+    // The Roleplay's own Behaviour and Music taste.
     ['PUT', path('music'), (req, p) =>
       withRoleplay(p.id!, 'edit', async (session) => {
         const off = await musicOff()

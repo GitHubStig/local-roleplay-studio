@@ -9,7 +9,6 @@ import { frameName, secondsSince, withRetry } from '../frames.ts'
 import { crossedLimit } from '../limits.ts'
 import { loadPrompt } from '../promptFiles.ts'
 import type { Scenario } from '../scenario.ts'
-import type { MusicVocals } from '../settings.ts'
 import type { SessionStore } from '../session.ts'
 import type { ChatMessage } from '../text/chat.ts'
 import type { RoleplayEvent } from './engine.ts'
@@ -47,12 +46,8 @@ export const directorSchema = {
   required: ['reading', 'decision', 'entry', 'line'],
 }
 
-/** The voices a Cue may have under the Vocals setting: none, or wordless ones and choirs. */
-export const vocalsAllowed = (vocals: MusicVocals): readonly CueValues['vocals'][] =>
-  vocals === 'instrumental' ? ['none'] : CUE_VOCALS
-
-/** The cue writer's reply, in the order it's written; its vocals held by the Vocals setting. */
-export const cueSchema = (vocals: MusicVocals, entry: Entry = 'sharp') => ({
+/** The cue writer's reply, in the order it's written. */
+export const cueSchema = (entry: Entry = 'sharp') => ({
   type: 'object',
   properties: {
     mood: { type: 'string' },
@@ -60,7 +55,7 @@ export const cueSchema = (vocals: MusicVocals, entry: Entry = 'sharp') => ({
     density: { type: 'string', enum: [...DENSITIES] },
     tempo: { type: 'string', enum: [...TEMPOS] },
     instruments: { type: 'array', items: { type: 'string' } },
-    vocals: { type: 'string', enum: [...vocalsAllowed(vocals)] },
+    vocals: { type: 'string', enum: [...CUE_VOCALS] },
     // Only on a sharp change: asked in words, it also took a wary or a hollow moment for danger
     // (2026-11-09), and "sharp" is held to what breaks the scene.
     shape: { type: 'string', enum: CUE_SHAPES.filter((s) => s !== 'danger' || entry === 'sharp') },
@@ -157,13 +152,13 @@ export function cleanDirection(value: unknown): Direction {
 }
 
 /** The cue writer's reply, tidied; throws without a mood, an instrument, a caption or lyrics. */
-export function cleanCue(value: unknown, vocals: MusicVocals): CueValues {
+export function cleanCue(value: unknown): CueValues {
   const v = (value ?? {}) as Record<string, unknown>
   const seen = new Set<string>()
   const instruments = (Array.isArray(v.instruments) ? v.instruments : [])
     .map(text)
     .filter((i) => i && !seen.has(i.toLowerCase()) && seen.add(i.toLowerCase()))
-  const vocal = oneOf(v.vocals, vocalsAllowed(vocals))
+  const vocal = oneOf(v.vocals, CUE_VOCALS)
   const lyrics = vocal === 'none' ? onlyTags(text(v.lyrics)) : withLines(text(v.lyrics))
   const caption = vocal === 'none' ? text(v.caption) : withVoices(text(v.caption))
   const values: CueValues = {
@@ -283,14 +278,12 @@ export async function cueMessages(
   /** What the player asked of this Cue, if they did. */
   steer?: string,
 ): Promise<ChatMessage[]> {
-  const vocals = session.settings.musicVocals
   const taste = session.settings.musicTaste.trim()
   return [
     {
       role: 'system',
       content: await loadPrompt('roleplay/cue', {
         behaviour: await behaviourOf(session),
-        vocals: await loadPrompt(`roleplay/cue-vocals-${vocals}`),
         seconds: String(CUE_SECONDS),
       }),
     },
@@ -439,18 +432,16 @@ export async function writeCueAt(
   signal: AbortSignal,
   steer?: string,
 ): Promise<CueValues> {
-  const vocals = session.settings.musicVocals
   const values = await withRetry(
     async (onThinking) =>
       await withDanger(cleanCue(
         (await deps.model.writeCue(
           await cueMessages(session, index, previous, direction, steer),
           // Danger's words are fixed, so a Cue being steered can't take them.
-          cueSchema(vocals, steer ? 'gentle' : direction.entry),
+          cueSchema(steer ? 'gentle' : direction.entry),
           signal,
           onThinking,
         )).values,
-        vocals,
       )),
     signal,
     emit,

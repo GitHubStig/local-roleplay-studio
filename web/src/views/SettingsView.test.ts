@@ -40,7 +40,6 @@ const settings: api.Settings = {
   callLog: false,
   music: false,
   musicBehaviour: 'story',
-  musicVocals: 'instrumental',
   musicTaste: '',
   sessionsFolder: '',
   features: ALL_ON,
@@ -713,14 +712,12 @@ describe('SettingsView', () => {
     expect(panel.find('[data-music-behaviour]').exists()).toBe(false)
     await panel.find('[data-music] input').setValue(true)
     await panel.find('[data-music-behaviour] input[value="cinematic"]').setValue(true)
-    await panel.find('[data-music-vocals] input[value="wordless"]').setValue(true)
     await panel.find('[data-music-taste] textarea').setValue('Orchestral.')
     await wrapper.find('form').trigger('submit')
     await flushPromises()
     expect(api.saveSettings).toHaveBeenLastCalledWith(expect.objectContaining({
       music: true,
       musicBehaviour: 'cinematic',
-      musicVocals: 'wordless',
       musicTaste: 'Orchestral.',
     }))
   })

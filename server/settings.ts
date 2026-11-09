@@ -51,9 +51,6 @@ export const QUANTIZE_OPTIONS = [null, 4, 8] as const
  */
 export const MUSIC_BEHAVIOURS = ['steady', 'story', 'cinematic'] as const
 export type MusicBehaviour = (typeof MUSIC_BEHAVIOURS)[number]
-/** What voices the music may have: none, or wordless ones and choirs. Lyrics come with songs. */
-export const MUSIC_VOCALS = ['instrumental', 'wordless'] as const
-export type MusicVocals = (typeof MUSIC_VOCALS)[number]
 export type Quantize = (typeof QUANTIZE_OPTIONS)[number]
 
 /** The fraction of steps the step cache skips; null for off. */
@@ -142,8 +139,6 @@ export interface Settings {
   music: boolean
   /** How readily the music changes (`MUSIC_BEHAVIOURS`); a Session keeps its own. */
   musicBehaviour: MusicBehaviour
-  /** What voices the music may have (`MUSIC_VOCALS`), held by the Cue's schema; a Session keeps its own. */
-  musicVocals: MusicVocals
   /** The player's taste in music, in their words, for the Score; a Session keeps its own. */
   musicTaste: string
   /**
@@ -158,7 +153,7 @@ export interface Settings {
 /**
  * What a Session keeps of Settings (ADR 0022): its models, which define what it makes. Its Text
  * Model and Thinking as it started; its Image Model and steps, switched together in it
- * (`switchImageModel`); its music's behaviour, vocals and taste. Everything else, where each runs among it, is read from Settings as they
+ * (`switchImageModel`); its music's behaviour and taste. Everything else, where each runs among it, is read from Settings as they
  * are now, so a change there reaches running Sessions too.
  */
 export const SESSION_SETTINGS = [
@@ -167,7 +162,6 @@ export const SESSION_SETTINGS = [
   'imageModel',
   'steps',
   'musicBehaviour',
-  'musicVocals',
   'musicTaste',
 ] as const satisfies readonly (keyof Settings)[]
 export type SessionSettings =
@@ -188,7 +182,6 @@ export const sessionSettingsOf = (settings: Settings): SessionSettings => ({
   imageModel: settings.imageModel,
   steps: settings.steps,
   musicBehaviour: settings.musicBehaviour,
-  musicVocals: settings.musicVocals,
   musicTaste: settings.musicTaste,
 })
 
@@ -236,7 +229,6 @@ export const DEFAULT_SETTINGS: Settings = {
   callLog: false,
   music: false,
   musicBehaviour: 'story',
-  musicVocals: 'instrumental',
   musicTaste: '',
   sessionsFolder: '',
 }
@@ -366,9 +358,6 @@ export function validateSettings(input: unknown): ValidationResult {
   if (s.musicBehaviour !== undefined && !MUSIC_BEHAVIOURS.includes(s.musicBehaviour as never)) {
     issues.push(`musicBehaviour must be one of: ${MUSIC_BEHAVIOURS.join(', ')}`)
   }
-  if (s.musicVocals !== undefined && !MUSIC_VOCALS.includes(s.musicVocals as never)) {
-    issues.push(`musicVocals must be one of: ${MUSIC_VOCALS.join(', ')}`)
-  }
   if (s.musicTaste !== undefined && typeof s.musicTaste !== 'string') {
     issues.push('musicTaste must be text')
   }
@@ -459,7 +448,6 @@ export function validateSettings(input: unknown): ValidationResult {
       music: (s.music as boolean | undefined) ?? false,
       musicBehaviour: (s.musicBehaviour as MusicBehaviour | undefined) ??
         DEFAULT_SETTINGS.musicBehaviour,
-      musicVocals: (s.musicVocals as MusicVocals | undefined) ?? DEFAULT_SETTINGS.musicVocals,
       musicTaste: ((s.musicTaste as string | undefined) ?? '').trim(),
       sessionsFolder: ((s.sessionsFolder as string | undefined) ?? '').trim(),
     },

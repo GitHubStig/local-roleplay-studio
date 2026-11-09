@@ -221,7 +221,6 @@ function sessionOf(): RoleplaySession {
       imageModel: 'qwen-image-2.1',
       steps: 8,
       musicBehaviour: 'story',
-      musicVocals: 'instrumental',
       musicTaste: '',
     },
     seed: 1,

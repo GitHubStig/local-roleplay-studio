@@ -6,7 +6,7 @@ import CollapsibleTextarea from '../components/CollapsibleTextarea.vue'
 import ItemList from '../components/ItemList.vue'
 import SaveStatus from '../components/SaveStatus.vue'
 import type { MusicPosition } from './musicEngine'
-import { MUSIC_BEHAVIOURS, MUSIC_VOCALS, type MusicSettings, musicSettingsOf } from '../music'
+import { MUSIC_BEHAVIOURS, type MusicSettings, musicSettingsOf } from '../music'
 import {
   type Cue,
   type RoleplayEvent,
@@ -23,7 +23,7 @@ import {
 /**
  * A Roleplay's Music tab, while Music is on (docs/music-plans.md): how the music was directed at
  * the Frame shown, the Cues as a strip across the Frames, its Score, written when asked for (or
- * the first time its music is directed) and edited by hand, and its own Behaviour, Vocals and
+ * the first time its music is directed) and edited by hand, and its own Behaviour and
  * Music taste. Each part saves itself when the focus leaves it (`useAutosave`); the screen
  * calls `flush` before work that reads them.
  */
@@ -347,7 +347,7 @@ defineExpose({ flush })
             <p class="mt-1">{{ frameCue.values.mood }}</p>
             <p class="text-xs text-muted">
               {{ frameCue.values.energy }} · {{ frameCue.values.density }} · {{ frameCue.values.tempo }}
-              <template v-if="frameCue.values.vocals !== 'none'"> · {{ frameCue.values.vocals }}</template>
+              <template v-if="frameCue.values.vocals !== 'none'"> · choir</template>
             </p>
             <p class="mt-1 flex flex-wrap gap-1" data-cue-instruments>
               <span
@@ -545,13 +545,6 @@ defineExpose({ flush })
         <label v-for="b in MUSIC_BEHAVIOURS" :key="b.id" class="flex items-start gap-2">
           <input v-model="musicDraft.behaviour" type="radio" :value="b.id" class="mt-1" @change="music.flush" />
           <span><span class="font-medium">{{ b.label }}</span>: {{ b.about }}</span>
-        </label>
-      </fieldset>
-      <fieldset class="flex flex-col gap-1" data-music-vocals>
-        <legend class="mb-1 font-medium">Vocals</legend>
-        <label v-for="v in MUSIC_VOCALS" :key="v.id" class="flex items-center gap-2">
-          <input v-model="musicDraft.vocals" type="radio" :value="v.id" @change="music.flush" />
-          {{ v.label }}
         </label>
       </fieldset>
       <CollapsibleTextarea

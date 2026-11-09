@@ -30,7 +30,6 @@ const session = (extra: Partial<roleplay.RoleplaySession> = {}): roleplay.Rolepl
     imageModel: 'qwen-image-2.1',
     steps: 8,
     musicBehaviour: 'cinematic',
-    musicVocals: 'wordless',
     musicTaste: 'Strings.',
   },
   seed: 1,
@@ -100,12 +99,11 @@ describe('MusicTab', () => {
         (i.element as HTMLInputElement).checked
       )!
         .element as HTMLInputElement).value
-    expect([checked('behaviour'), checked('vocals')]).toEqual(['cinematic', 'wordless'])
+    expect(checked('behaviour')).toBe('cinematic')
     await wrapper.findAll('[data-music-behaviour] input')[0].setValue(true)
     await flushPromises()
     expect(roleplay.saveMusicSettings).toHaveBeenCalledWith('r1', {
       behaviour: 'steady',
-      vocals: 'wordless',
       taste: 'Strings.',
     })
   })

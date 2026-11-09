@@ -5,7 +5,7 @@ kind: roleplay
 seed: 7
 scenario: the-buffet-of-souls
 pictures: false
-music: { behaviour: steady, vocals: instrumental }
+music: { behaviour: steady }
 messages:
   - I stare at the plate he's set in front of me. "I'm sorry, I don't... where is this? Who are all these people?"
   - I watch the others at the tables, eating quietly. "They all look so calm. Shouldn't someone be screaming?"

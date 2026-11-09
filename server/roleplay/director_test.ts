@@ -48,7 +48,6 @@ const session = (extra: Partial<RoleplaySession> = {}): RoleplaySession => ({
     imageModel: 'qwen-image-2.1',
     steps: 8,
     musicBehaviour: 'steady',
-    musicVocals: 'instrumental',
     musicTaste: '',
   },
   seed: 1,
@@ -81,7 +80,7 @@ Deno.test("The Director's and the cue writer's requests name their parts in the 
     undefined,
     cleanDirection(direction('transition')),
   )
-  assertEquals(cueSchema('instrumental').required, [
+  assertEquals(cueSchema().required, [
     'mood',
     'energy',
     'density',
@@ -102,59 +101,57 @@ Deno.test("The Director's and the cue writer's requests name their parts in the 
 Deno.test('A Cue with no voices keeps only its section tags, as anything else would be sung', () => {
   const lyrics = '[Intro - fiddle]\nOoh... ooh...\n\n[Outro - fading]\nAah...\nThe rain falls'
   assertEquals(
-    cleanCue(cueValues('awe', { lyrics }), 'instrumental').lyrics,
+    cleanCue(cueValues('awe', { lyrics })).lyrics,
     '[Intro - fiddle]\n\n[Outro - fading]',
   )
   assertEquals(
-    cleanCue(cueValues('awe', { lyrics, vocals: 'choir' }), 'wordless').lyrics,
+    cleanCue(cueValues('awe', { lyrics, vocals: 'choir' })).lyrics,
     lyrics,
   )
-  assertThrows(() => cleanCue(cueValues('awe', { lyrics: 'Ooh...' }), 'instrumental'))
+  assertThrows(() => cleanCue(cueValues('awe', { lyrics: 'Ooh...' })))
   assertMatch(
-    cleanCue(cueValues('awe', { vocals: 'choir' }), 'wordless').caption,
+    cleanCue(cueValues('awe', { vocals: 'choir' })).caption,
     /beneath it\. A low, soft wordless choir sings in the background throughout\.$/,
   )
   assertEquals(
     cleanCue(
       cueValues('awe', { vocals: 'choir', caption: 'A low choir, then a harp.' }),
-      'wordless',
     )
       .caption,
     'A low choir, then a harp.',
   )
-  assertEquals(cleanCue(cueValues('awe'), 'instrumental').caption.includes('choir'), false)
-  assertThrows(() => cleanCue(cueValues('awe', { caption: ' ' }), 'instrumental'))
-  assertThrows(() => cleanCue(cueValues('awe', { key: 'H minor' }), 'instrumental'))
+  assertEquals(cleanCue(cueValues('awe')).caption.includes('choir'), false)
+  assertThrows(() => cleanCue(cueValues('awe', { caption: ' ' })))
+  assertThrows(() => cleanCue(cueValues('awe', { key: 'H minor' })))
 })
 
 Deno.test('A Cue with voices has lines to sing, and one in danger the caption that worked', async () => {
   const voiced = cleanCue(
     cueValues('awe', { vocals: 'choir', lyrics: '[Theme - harp]\n[Outro - fading]' }),
-    'wordless',
   )
   assertMatch(voiced.lyrics, /^\[Theme - harp\]\n\n\[Choir - soft, wordless\]\nOoh/)
   assertMatch(voiced.lyrics, /\[Outro - fading\]\nAah\.\.\.$/)
   const sung = '[Choir]\nOoh...\nAah...\nOoh...'
   assertEquals(
-    cleanCue(cueValues('awe', { vocals: 'choir', lyrics: sung }), 'wordless').lyrics,
+    cleanCue(cueValues('awe', { vocals: 'choir', lyrics: sung })).lyrics,
     sung,
   )
-  const calm = cleanCue(cueValues(), 'instrumental')
+  const calm = cleanCue(cueValues())
   assertEquals(await withDanger(calm), calm)
-  const danger = await withDanger(cleanCue(cueValues('dread', { shape: 'danger' }), 'instrumental'))
+  const danger = await withDanger(cleanCue(cueValues('dread', { shape: 'danger' })))
   assertMatch(danger.caption, /^Suspense thriller film score that keeps developing\./)
   assertMatch(danger.lyrics, /^\[Intro - low string pulse/)
   assertEquals([danger.tempo, danger.key, danger.vocals], ['fast', 'D minor', 'none'])
 })
 
 Deno.test('Danger is offered only on a sharp change', () => {
-  assertEquals(cueSchema('instrumental', 'gentle').properties.shape.enum, [
+  assertEquals(cueSchema('gentle').properties.shape.enum, [
     'intimate',
     'uneasy',
     'reflective',
     'sacred',
   ])
-  assertEquals(cueSchema('instrumental', 'sharp').properties.shape.enum.includes('danger'), true)
+  assertEquals(cueSchema('sharp').properties.shape.enum.includes('danger'), true)
 })
 
 Deno.test("A Cue's tempo sits in the Score's range, a fast one at least 100", () => {
@@ -170,7 +167,7 @@ Deno.test('The Director reads the Score, the whole story with thoughts, the Beha
   const playing: Cue = {
     id: 'cue-a',
     start: 0,
-    values: cleanCue(cueValues(), 'instrumental'),
+    values: cleanCue(cueValues()),
     entry: 'gentle',
     reading: 'Strangers sizing each other up.',
     line: '',
@@ -194,18 +191,17 @@ Deno.test('The Director reads the Score, the whole story with thoughts, the Beha
   )
 })
 
-Deno.test("A Cue's vocals are held by the Vocals setting, in its schema and in what's kept", () => {
-  assertEquals(cueSchema('instrumental').properties.vocals.enum, ['none'])
-  assertEquals(cueSchema('wordless').properties.vocals.enum, ['none', 'wordless', 'choir'])
-  assertThrows(() => cleanCue(cueValues('awe', { vocals: 'choir' }), 'instrumental'))
-  assertEquals(cleanCue(cueValues('awe', { vocals: 'choir' }), 'wordless').vocals, 'choir')
+Deno.test('A Cue has a choir or no voices, and what it says is kept', () => {
+  assertEquals(cueSchema().properties.vocals.enum, ['none', 'choir'])
+  assertThrows(() => cleanCue(cueValues('awe', { vocals: 'lyrics' })))
+  assertEquals(cleanCue(cueValues('awe', { vocals: 'choir' })).vocals, 'choir')
   // Tidied: trimmed, no repeated instrument; none at all is refused.
   assertEquals(
-    cleanCue(cueValues(' awe ', { instruments: [' harp', 'Harp', ''] }), 'instrumental'),
+    cleanCue(cueValues(' awe ', { instruments: [' harp', 'Harp', ''] })),
     { ...cueValues('awe'), instruments: ['harp'] },
   )
-  assertThrows(() => cleanCue(cueValues('awe', { instruments: [] }), 'instrumental'))
-  assertEquals(cleanCue(cueValues('fragile</'), 'instrumental').mood, 'fragile')
+  assertThrows(() => cleanCue(cueValues('awe', { instruments: [] })))
+  assertEquals(cleanCue(cueValues('fragile</')).mood, 'fragile')
   assertEquals(
     cleanDirection(direction('transition', { line: ' "Take the wheel." ' })).line,
     'Take the wheel.',
@@ -245,7 +241,7 @@ const roleplay = async (call: ReturnType<typeof setup>['call']) =>
 
 Deno.test('With Score as you play, each Reply is directed: the Score first, a Cue begun, held, then changed', () =>
   withTempDir(async (root) => {
-    const { call, model } = await scored(
+    const { call } = await scored(
       root,
       // The opening's "continue" begins the music, as none plays yet.
       [
@@ -276,11 +272,6 @@ Deno.test('With Score as you play, each Reply is directed: the Score first, a Cu
       [s.cues![0].id, 'continue'],
       [s.cues![1].id, 'transition'],
     ])
-    // Instrumental only: the cue writer was held to no voices.
-    assertEquals(
-      (model.cued[0].schema as ReturnType<typeof cueSchema>).properties.vocals.enum,
-      ['none'],
-    )
 
     // Undone, the Frame and the Cue it began go; its job is cancelled with it.
     await call('DELETE', '/api/sessions/s1/roleplay/frames/2')

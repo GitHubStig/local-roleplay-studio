@@ -4,8 +4,7 @@ from the Music tab's Write the Score, or the first time the music is directed. I
 musical identity every Cue shares, as a film's score keeps one sound while its moods change. The
 player can edit it afterwards in the Music tab.
 
-Voices are left out of the palette: whether a Cue has any is the Vocals setting's, held by the
-Cue's schema, so a choir in the palette would let the cue writer break it.
+Voices are left out of the palette: whether a Cue has any is the cue writer's to say.
 
 The avoid list binds whoever writes the Cues; it never reaches a music model, as naming a thing in
 a music prompt pulls it in.
