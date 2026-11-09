@@ -24,7 +24,7 @@ const summary = (id: string, extra: Partial<api.SessionSummary> = {}): api.Sessi
   scenarioId: 'tavern',
   title: 'The Rain-Soaked Tavern',
   frames: 3,
-  latestImage: 'frame-2-abcdef12.png',
+  thumbnail: 'frame-2-abcdef12.png',
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
   activity: null,
@@ -119,7 +119,7 @@ describe('HomeView', () => {
 
   it("shows a Roleplay's latest line in place of an image", async () => {
     vi.mocked(api.listSessions).mockResolvedValue([
-      summary('r', { kind: 'roleplay', latestImage: null, excerpt: 'Sit down.' }),
+      summary('r', { kind: 'roleplay', thumbnail: null, excerpt: 'Sit down.' }),
     ])
     const { wrapper } = await mountIt()
     expect(wrapper.find('[data-session] a').attributes('href')).toBe('/roleplay/r')
@@ -128,7 +128,7 @@ describe('HomeView', () => {
 
   it("shows a Storyboard's Beat in place of an image, without a line's quotation marks", async () => {
     vi.mocked(api.listSessions).mockResolvedValue([
-      summary('s', { kind: 'storyboard', latestImage: null, excerpt: 'Kael reads the letter.' }),
+      summary('s', { kind: 'storyboard', thumbnail: null, excerpt: 'Kael reads the letter.' }),
     ])
     const { wrapper } = await mountIt()
     expect(wrapper.find('[data-excerpt]').text()).toBe('Kael reads the letter.')

@@ -579,6 +579,25 @@ export function shownPicture(frame: PicturedFrame, model: string): Picture | und
   return picture && asPicked(picture)
 }
 
+/** `image` is a version of this picture: its render, or one of its edits. */
+export const hasVersion = (picture: Picture, image: string): boolean =>
+  picture.image === image || !!picture.edits?.some((e) => e.image === image)
+
+/**
+ * The image that shows a Session on Home: `thumbnail`, for as long as it exists, or else the
+ * newest Frame's picture (as `homeImage` on the server).
+ */
+export function homeImage(
+  frames: readonly PicturedFrame[],
+  model: string,
+  thumbnail?: string,
+): string | null {
+  if (thumbnail && frames.some((f) => f.pictures.some((p) => hasVersion(p, thumbnail)))) {
+    return thumbnail
+  }
+  return frames.map((f) => shownPicture(f, model)?.image).filter(Boolean).at(-1) ?? null
+}
+
 /** A picture's edits by edit model `model`, oldest first: a line of its own from the Original. */
 export const editLine = (picture: Picture, model: string): PictureEdit[] =>
   (picture.edits ?? []).filter((e) => e.editModel === model)
@@ -682,6 +701,8 @@ export interface SessionBase {
   settings: SessionSettings
   seed: number
   createdAt: string
+  /** The image chosen to show it on Home; absent, Home shows the newest picture. */
+  thumbnail?: string
   /** Its Scenario's title, or the start of its typed Brief (only from `getSession`). */
   title?: string
   /** What work in progress is doing, or null when idle (only from `getSession`). */
@@ -777,6 +798,12 @@ export const getSession = (id: string) => request<Session>(`/api/sessions/${id}`
 export const setImageModel = <S>(id: string, imageModel: string, imageBackend?: ImageBackend) =>
   put<S>(`/api/sessions/${id}/image-model`, { imageModel, imageBackend })
 
+/** Chooses the image that shows a Session on Home, or with null goes back to the newest picture. */
+export const setThumbnail = (id: string, image: string | null) =>
+  image === null
+    ? request<Session>(`/api/sessions/${id}/thumbnail`, { method: 'DELETE' })
+    : put<Session>(`/api/sessions/${id}/thumbnail`, { image })
+
 /**
  * Deletes every picture by one Image Model in a Session, with its upscales and 3D (Compare's
  * hidden columns); not the Session's own model. It comes back with how many pictures went.
@@ -795,7 +822,8 @@ export interface SessionSummary {
   /** The Scenario's title, or the start of the typed Brief. */
   title: string
   frames: number
-  latestImage: string | null
+  /** The image that shows it here: the one chosen, or else the newest picture. */
+  thumbnail: string | null
   /**
    * Shown on its card in place of a picture until there is one: a Roleplay's latest line, a
    * Chain's latest Narration, a Storyboard's first Beat.

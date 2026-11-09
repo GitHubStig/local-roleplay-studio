@@ -63,7 +63,7 @@ Deno.test('Picturing, rendering and upscaling a Roleplay Frame are queued jobs, 
     )
     assertEquals(shown((await look.json()).frames[0]).stale, true)
     const [card] = await (await call('GET', '/api/sessions')).json()
-    assertEquals(card.latestImage, frame.image)
+    assertEquals(card.thumbnail, frame.image)
   }))
 
 Deno.test('A picture goes ahead of queued renders, and Clear empties the queue', () =>

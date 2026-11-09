@@ -6,11 +6,15 @@ import {
   deleteModelPictures,
   exportComparison,
   getStyleScores,
+  hasVersion,
+  homeImage,
   imageUrl,
   pickedEdit,
+  type Picture,
   type PicturedFrame,
+  setThumbnail,
 } from '../api'
-import type { ComparisonModel } from '../comparison'
+import type { ComparisonModel, ComparisonPicture } from '../comparison'
 import { useStoredString } from '../composables/storage'
 import { useStoredFlag } from '../composables/useStoredFlag'
 import { useStyleBase } from '../composables/useStyleBase'
@@ -21,10 +25,11 @@ import StyleScoresPanel from './StyleScoresPanel.vue'
 
 /**
  * A Session's pictures side by side (ComparisonTable), a row per Frame and a column per Image
- * Model that rendered any, opened by its Compare button (shown once two models have). Export
- * writes the same as a page of its own, on the server. Style scores shows, in place of the table,
- * how varied each shown model's art style is (StyleScoresPanel). A hidden column can have all its
- * model's pictures deleted, but the Session's own model's; `changed` says so.
+ * Model that rendered any, opened by its Pictures button (shown once there's a picture). Thumbnail
+ * mode chooses the one that shows the Session on Home, starred. With two models or more, Export
+ * writes the same as a page of its own, on the server, and Style scores shows, in place of the
+ * table, how varied each shown model's art style is (StyleScoresPanel). A hidden column can have
+ * all its model's pictures deleted, but the Session's own model's; `changed` says so.
  */
 const props = withDefaults(
   defineProps<{
@@ -32,6 +37,8 @@ const props = withDefaults(
     frames: readonly F[]
     /** The Session's Image Model, marked in its column. */
     imageModel: string
+    /** The image chosen to show the Session on Home, if any. */
+    thumbnail?: string
     /** What a Frame is called in its row. */
     name?: (index: number) => string
     /** What happens in a Frame, under its picture in the viewer (`ComparisonRow.caption`). */
@@ -44,7 +51,7 @@ const props = withDefaults(
   }>(),
   { name: frameName },
 )
-/** The Session changed here (a model's pictures were deleted): its screen loads it again. */
+/** The Session changed here (a thumbnail chosen, a model's pictures deleted): its screen loads it again. */
 const emit = defineEmits<{ changed: [] }>()
 const { labelOf } = useImageModels()
 
@@ -55,6 +62,12 @@ const modelIds = computed(() => [
 const models = computed<ComparisonModel[]>(() =>
   modelIds.value.map((m) => ({ label: labelOf(m), current: m === props.imageModel }))
 )
+/** What Home shows, starred on the picture it's a version of. */
+const home = computed(() => homeImage(props.frames, props.imageModel, props.thumbnail))
+function starOf(picture: Picture): ComparisonPicture['star'] {
+  if (!home.value || !hasVersion(picture, home.value)) return undefined
+  return home.value === props.thumbnail ? 'chosen' : 'automatic'
+}
 /** The Frames with any picture, each with its picture by each model (or none). */
 const pictured = computed(() =>
   props.frames
@@ -66,7 +79,7 @@ const pictured = computed(() =>
       // Each as its picked version: an edit is compared as the picture it now is, and marked.
       pictures: modelIds.value.map((m) => {
         const picture = f.pictures.find((p) => p.imageModel === m)
-        return picture ? asPicked(picture) : null
+        return picture ? { ...asPicked(picture), star: starOf(picture) } : null
       }),
     }))
 )
@@ -79,6 +92,8 @@ const rows = computed(() =>
         full: imageUrl(props.sessionId, p.upscaled ?? p.image),
         stale: p.stale,
         edited: pickedEdit(p)?.instructions,
+        id: p.image,
+        star: p.star,
       }
     ),
   }))
@@ -141,10 +156,34 @@ const showScores = ref(false)
 
 const open = ref(false)
 const dialog = useTemplateRef<HTMLDialogElement>('dialog')
+const showStar = () =>
+  dialog.value?.querySelector('[data-thumbnail]')?.scrollIntoView({ block: 'center' })
 watch(open, (now) => {
-  if (now) dialog.value?.showModal()
-  else if (dialog.value?.open) dialog.value.close()
+  if (now) {
+    dialog.value?.showModal()
+    if (props.thumbnail) showStar()
+  } else {
+    choosing.value = false
+    if (dialog.value?.open) dialog.value.close()
+  }
 }, { flush: 'post' })
+
+/** Thumbnail mode: a click on a picture chooses it, and on the one chosen, goes back to the newest. */
+const choosing = ref(false)
+const thumbnailError = ref('')
+watch(choosing, (now) => {
+  thumbnailError.value = ''
+  if (now) showStar()
+}, { flush: 'post' })
+async function choose(picture: ComparisonPicture) {
+  thumbnailError.value = ''
+  try {
+    await setThumbnail(props.sessionId, picture.star === 'chosen' ? null : picture.id!)
+    emit('changed')
+  } catch (err) {
+    thumbnailError.value = (err as Error).message
+  }
+}
 
 /** The notice an exported page shows first, unless the player writes their own. */
 const NOTICE = 'Some of these pictures show nude figures, as in classical painting.'
@@ -246,18 +285,18 @@ async function exportPage() {
 
 <template>
   <button
-    v-if="models.length > 1"
+    v-if="models.length"
     type="button"
     class="rounded border border-line px-2 py-0.5 text-muted hover:text-fg"
-    title="This Session's pictures side by side, a column per Image Model"
+    title="This Session's pictures side by side, a column per Image Model, and its thumbnail on Home"
     data-compare-models
     @click="open = true"
   >
-    Compare
+    Pictures
   </button>
 
   <dialog
-    v-if="models.length > 1"
+    v-if="models.length"
     ref="dialog"
     class="m-0 h-full max-h-none w-full max-w-none bg-canvas p-0 text-fg backdrop:bg-black/60"
     data-model-comparison
@@ -267,10 +306,12 @@ async function exportPage() {
       v-if="open"
       v-model:order="order"
       v-model:hidden="hidden"
-      title="Compare Image Models"
+      title="Pictures"
       :models
       :rows
-      hideable
+      :hideable="models.length > 1"
+      :choosing
+      @choose="choose"
     >
       <template #hidden="{ index }">
         <button
@@ -284,7 +325,7 @@ async function exportPage() {
           Delete pictures…
         </button>
       </template>
-      <template v-if="showScores" #instead>
+      <template v-if="showScores && models.length > 1" #instead>
         <StyleScoresPanel
           :session-id="sessionId"
           :models="shownModels"
@@ -295,8 +336,31 @@ async function exportPage() {
           :one-style
         />
       </template>
-      <template #actions>
+      <template v-if="choosing" #actions>
+        <span class="text-muted" data-thumbnail-hint>Click a picture to use it as the thumbnail</span>
+        <span v-if="thumbnailError" class="text-danger" data-thumbnail-problem>{{ thumbnailError }}</span>
         <button
+          type="button"
+          class="rounded bg-fg px-2 py-0.5 font-medium text-canvas"
+          data-thumbnail-done
+          @click="choosing = false"
+        >
+          Done
+        </button>
+      </template>
+      <template v-else #actions>
+        <button
+          v-if="!showScores"
+          type="button"
+          class="rounded border border-line px-2 py-0.5 text-muted hover:text-fg"
+          title="Choose the picture that shows this Session on Home"
+          data-choose-thumbnail
+          @click="choosing = true"
+        >
+          Thumbnail
+        </button>
+        <button
+          v-if="models.length > 1"
           type="button"
           class="rounded border border-line px-2 py-0.5 text-muted hover:text-fg"
           :aria-pressed="showScores"
@@ -311,6 +375,7 @@ async function exportPage() {
         </span>
         <span v-else-if="exported?.error" class="text-danger">{{ exported.error }}</span>
         <button
+          v-if="models.length > 1"
           type="button"
           class="rounded border border-line px-2 py-0.5 text-muted hover:text-fg disabled:opacity-50"
           title="Write this as a page of its own, its pictures as WebP, to open or host anywhere"
@@ -326,6 +391,7 @@ async function exportPage() {
       </template>
     </ComparisonTable>
     <dialog
+      v-if="models.length > 1"
       ref="asking"
       class="m-auto w-full max-w-md rounded-lg border border-line bg-surface p-6 text-fg backdrop:bg-black/60"
       data-export-options

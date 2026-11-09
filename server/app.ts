@@ -112,11 +112,12 @@ import {
   writeComparison,
 } from './export/comparison.ts'
 import {
+  chooseThumbnail,
   deleteModelPictures,
+  homeImage,
   ImageModelError,
-  pickedVersion,
+  PictureGoneError,
   removeFiles,
-  shownPicture,
   switchImageModel,
 } from './pictures.ts'
 import {
@@ -1211,11 +1212,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
           scenarioId: s.scenarioId,
           title: titleOf(s),
           frames: s.frames.length,
-          latestImage: s.frames.map((f) => {
-            const picture = shownPicture(f, s.settings.imageModel)
-            return picture && pickedVersion(picture).image
-          })
-            .findLast((image) => image) ?? null,
+          thumbnail: homeImage(s),
           // Shown in place of a picture until there is one: a Roleplay's latest line, a Chain's
           // latest Narration, a Storyboard's first Beat.
           excerpt: s.kind === 'roleplay'
@@ -1291,6 +1288,27 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
         if (err instanceof ImageModelError) return error(err.message, 400)
         throw err
       }
+    }],
+
+    // Chooses the image that shows the Session on Home, and sends the Session back.
+    ['PUT', new URLPattern({ pathname: '/api/sessions/:id/thumbnail' }), async (req, p) => {
+      const body = await readJson(req) as { image?: unknown } | undefined
+      if (typeof body?.image !== 'string') return error('image must be a string', 400)
+      const session = await deps.sessions.load(p.id!)
+      if (!session) return error('Session not found', 404)
+      try {
+        return json(await chooseThumbnail(deps.sessions, session, body.image))
+      } catch (err) {
+        if (err instanceof PictureGoneError) return error(err.message, 409)
+        throw err
+      }
+    }],
+
+    // Goes back to Home showing the newest picture.
+    ['DELETE', new URLPattern({ pathname: '/api/sessions/:id/thumbnail' }), async (_req, p) => {
+      const session = await deps.sessions.load(p.id!)
+      if (!session) return error('Session not found', 404)
+      return json(await chooseThumbnail(deps.sessions, session, null))
     }],
 
     // Deletes every picture by one Image Model (`?imageModel=`), with its upscales and 3D, from

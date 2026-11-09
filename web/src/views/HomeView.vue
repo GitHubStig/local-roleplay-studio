@@ -187,8 +187,8 @@ const ACTIVITY_LABELS = {
             >
               <div class="aspect-[3/4] bg-canvas">
                 <img
-                  v-if="s.latestImage"
-                  :src="imageUrl(s.id, s.latestImage)"
+                  v-if="s.thumbnail"
+                  :src="imageUrl(s.id, s.thumbnail)"
                   alt=""
                   class="h-full w-full object-cover"
                 />

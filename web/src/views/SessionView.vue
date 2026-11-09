@@ -432,6 +432,7 @@ const promptDiff = computed(() => {
             :session-id="session.id"
             :frames="session.frames"
             :image-model="session.settings.imageModel"
+            :thumbnail="session.thumbnail"
             :name="frameTitle"
             :caption="(f) => f.narration"
             @changed="load"

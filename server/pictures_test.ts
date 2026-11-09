@@ -1,14 +1,17 @@
 import { assertEquals, assertRejects } from '@std/assert'
 import { join } from '@std/path'
+import type { Session } from './session.ts'
 import { renderChainFrame, runChainFrame, undoLatestFrame } from './chain/frames.ts'
 import { findImageModel } from './images/imageModels.ts'
 import { type Backend, HERE } from './backends.ts'
 import {
   changedSinceRender,
   changePicture,
+  homeImage,
   ImageModelError,
   pickedVersion,
   type Picture,
+  type PictureEdit,
   pictureFiles,
   shownPicture,
   switchImageModel,
@@ -232,4 +235,30 @@ Deno.test("A picture is its picked version, and is made of every version's files
     (v) => ({ ...v, upscaled: 'e1-2048.png' }),
   )
   assertEquals([changed.upscaled, changed.edits![0].upscaled], ['r-2048.png', 'e1-2048.png'])
+})
+
+Deno.test('A chosen thumbnail survives another model and a newer picture, until its file goes', () => {
+  const frame = (index: number, pictures: Picture[]) => ({ index, pictures })
+  const picture = (image: string, imageModel: string, more: Partial<Picture> = {}) =>
+    ({ image, imageModel, ...more }) as Picture
+  const session = (frames: { index: number; pictures: Picture[] }[], thumbnail?: string) =>
+    ({ frames, thumbnail, settings: { imageModel: 'a' } }) as unknown as Session
+  const edited = picture('render.png', 'a', {
+    edits: [{ image: 'edit.png' } as PictureEdit],
+    picked: 1,
+  })
+  const frames = [
+    frame(0, [picture('old-a.png', 'a'), picture('old-b.png', 'b')]),
+    frame(1, [edited]),
+    frame(2, []),
+  ]
+
+  // The newest Frame with a picture, as its picked version.
+  assertEquals(homeImage(session(frames)), 'edit.png')
+  assertEquals(homeImage(session([frame(0, [])])), null)
+  // By a model the Session isn't on, or a version not picked.
+  assertEquals(homeImage(session(frames, 'old-b.png')), 'old-b.png')
+  assertEquals(homeImage(session(frames, 'render.png')), 'render.png')
+  // Its file gone.
+  assertEquals(homeImage(session(frames, 'deleted.png')), 'edit.png')
 })

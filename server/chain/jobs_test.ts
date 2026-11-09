@@ -510,6 +510,38 @@ Deno.test('The Compare dialog exports to a folder per Session', () =>
     assertEquals((await off('POST', '/api/sessions/s1/export', comparison)).status, 404)
   }))
 
+Deno.test('Home shows the thumbnail chosen until its file goes, and else the newest picture', () =>
+  withTempDir(async (root) => {
+    const { call } = await chainOfTwo(root)
+    const session = async () => await (await call('GET', '/api/sessions/s1')).json()
+    const card = async () => (await (await call('GET', '/api/sessions')).json())[0].thumbnail
+    const choose = (image: unknown) => call('PUT', '/api/sessions/s1/thumbnail', { image })
+    const frames = (await session()).frames
+    const [first, newest] = frames.map((f: { pictures: { image: string }[] }) =>
+      f.pictures[0].image
+    )
+    assertEquals(await card(), newest)
+
+    assertEquals((await choose(42)).status, 400)
+    assertEquals((await call('PUT', '/api/sessions/nope/thumbnail', { image: first })).status, 404)
+    assertEquals((await call('DELETE', '/api/sessions/nope/thumbnail')).status, 404)
+    const unknown = await choose('elsewhere.png')
+    assertEquals([unknown.status, (await unknown.json()).error], [
+      409,
+      'That picture no longer exists',
+    ])
+    assertEquals(await card(), newest)
+
+    assertEquals((await choose(first)).status, 200)
+    assertEquals(await card(), first)
+    assertEquals((await session()).thumbnail, first)
+
+    // Back to the newest, and the choice leaves the Session.
+    assertEquals((await call('DELETE', '/api/sessions/s1/thumbnail')).status, 200)
+    assertEquals(await card(), newest)
+    assertEquals('thumbnail' in await session(), false)
+  }))
+
 Deno.test('A Session switches Image Model, and a Chain Frame by the old one renders again', () =>
   withTempDir(async (root) => {
     const images = fakeImageGenerator()

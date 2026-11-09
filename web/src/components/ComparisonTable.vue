@@ -9,17 +9,29 @@ import ImageViewer from './ImageViewer.vue'
 
 /**
  * Pictures side by side, a row per Frame headed by its Image Prompt and a column per Image Model:
- * the Compare dialog's (under a header, given a `title`), and the whole of its exported page. A
+ * the Pictures dialog's (under a header, given a `title`), and the whole of its exported page. A
  * picture opens in the viewer, where ← and → (or a swipe sideways) step through that Frame's
  * pictures by the other models, and ↑ and ↓ (or a swipe up or down) through the Frames that model
  * rendered, each Frame's caption under its picture. A column moves by dragging its
  * header's grip (or with ← and → on it). With `hideable`, each column has a checkbox: unticked, it
  * moves to the right end, folded to its header. The arrangement is `order` and `hidden`, which the
- * Compare dialog keeps (and exports by); otherwise it lasts until the table is next opened. An
+ * Pictures dialog keeps (and exports by); otherwise it lasts until the table is next opened. An
  * `instead` slot shows in place of the table, under the same header (the dialog's style scores),
  * and a `hidden` slot follows each hidden column's name (given its index into `models`).
  */
-const props = defineProps<Comparison & { title?: string; hideable?: boolean }>()
+const props = defineProps<Comparison & {
+  title?: string
+  hideable?: boolean
+  /** Thumbnail mode: a click on a picture chooses it, rather than opening the viewer. */
+  choosing?: boolean
+}>()
+defineEmits<{ choose: [picture: ComparisonPicture] }>()
+
+/** What a picture's star says. */
+const STARS = {
+  chosen: "This Session's thumbnail on Home, as you chose it",
+  automatic: "This Session's thumbnail on Home for now, as its newest picture",
+}
 
 /**
  * The models' columns as arranged: indexes into `models`, the hidden ones last; a model rendering
@@ -154,7 +166,7 @@ usePageKeys(() => instead.value ?? scroller.value, () => viewing.value !== null)
     <div v-if="title" class="flex items-center gap-3 border-b border-line px-4 py-2 text-sm">
       <h2 class="font-medium">{{ title }}</h2>
       <span class="text-muted">
-        {{ rows.length }} {{ rows.length === 1 ? 'Frame' : 'Frames' }} · {{ models.length }} models
+        {{ rows.length }} {{ rows.length === 1 ? 'Frame' : 'Frames' }} · {{ models.length }} {{ models.length === 1 ? 'model' : 'models' }}
         <template v-if="hiddenModels.length">({{ hiddenModels.length }} hidden)</template>
       </span>
       <div class="ml-auto flex items-center gap-3">
@@ -252,10 +264,23 @@ usePageKeys(() => instead.value ?? scroller.value, () => viewing.value !== null)
               <button
                 v-if="picture"
                 type="button"
-                class="relative block"
-                :title="pictureTitle(picture)"
-                @click="viewing = { row: r, column: c }"
+                class="relative block rounded"
+                :class="{ 'hover:outline-2 hover:outline-fg': choosing }"
+                :title="choosing
+                  ? picture.star === 'chosen' ? 'Stop using it as the thumbnail' : 'Use it as the thumbnail'
+                  : pictureTitle(picture)"
+                data-compare-picture
+                @click="choosing ? $emit('choose', picture) : (viewing = { row: r, column: c })"
               >
+                <span
+                  v-if="picture.star"
+                  class="absolute top-1 right-1 z-1 flex rounded bg-canvas/85 p-1"
+                  :class="picture.star === 'chosen' ? 'text-warn' : 'text-muted'"
+                  :title="choosing ? undefined : STARS[picture.star]"
+                  :data-thumbnail="picture.star"
+                >
+                  <Icon :name="picture.star === 'chosen' ? 'star-filled' : 'star'" />
+                </span>
                 <span
                   v-if="picture.edited"
                   class="absolute top-1 left-1 rounded bg-canvas/85 px-1.5 text-xs"

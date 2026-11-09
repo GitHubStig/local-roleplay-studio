@@ -783,7 +783,7 @@ function saveNow() {
               title="Image comparison style scores"
               data-feature="style"
             >
-              Compare measures how much each Image Model's art style varies across the Frames, with
+              Pictures measures how much each Image Model's art style varies across the Frames, with
               CSD and CLIP (4 GB, downloaded the first time).
             </FeatureSwitch>
           </div>

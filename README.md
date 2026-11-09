@@ -46,9 +46,9 @@ Across all three Session types, any pictured Frame can be re-rendered, edited, u
 
 mflux downloads model files the first time you render with a model. ComfyUI model files must be installed in ComfyUI separately; the app checks for missing files. See [docs/image-model-setup.md](docs/image-model-setup.md) for setup and download details, and [docs/models.md](docs/models.md) for model comparisons.
 
-### Compare and share
+### Pictures and sharing
 
-Once at least two Image Models have rendered pictures in a Session, **Compare** lays them out by Frame so you can view the results side by side. **Export** makes a standalone page with the comparison and its pictures that you can open locally or publish on a static host. If you include Style scores, the exported page can switch between the pictures and the scores.
+**Pictures** lays out a Session's pictures by Frame, with a column per Image Model, so you can view the results side by side, and choose the **Thumbnail** that shows the Session on Home (without one, Home shows the newest picture). Starred is what Home shows now. **Export** makes a standalone page with the comparison and its pictures that you can open locally or publish on a static host. If you include Style scores, the exported page can switch between the pictures and the scores.
 
 Examples: [image comparison](https://vivid-sorbet-76fq.here.now/) · [style scores](https://vivid-sorbet-76fq.here.now/?view=scores)
 
@@ -78,7 +78,7 @@ Each runs once per scene or figure through uv, downloading its weights with the 
 
 ### Style scores (optional)
 
-Compare's **Style scores** measure how much each Image Model's art style varies across a Session's Frames. `python/style/make.py` runs once per scoring through uv, on the GPU (a Mac's or an NVIDIA one) or slowly on the CPU, and downloads its two models the first time (CSD, 2.4 GB of which 1.2 GB is used, CC-BY-4.0; CLIP ViT-L/14, 1.7 GB). On a Mac, 340 pictures take about 35 s.
+With two Image Models or more, Pictures' **Style scores** measure how much each Image Model's art style varies across a Session's Frames. `python/style/make.py` runs once per scoring through uv, on the GPU (a Mac's or an NVIDIA one) or slowly on the CPU, and downloads its two models the first time (CSD, 2.4 GB of which 1.2 GB is used, CC-BY-4.0; CLIP ViT-L/14, 1.7 GB). On a Mac, 340 pictures take about 35 s.
 
 ### Two machines
 
@@ -143,7 +143,7 @@ scenarios/        Your own Scenarios (gitignored)
 settings.json     Your Settings (gitignored; created on first save)
 queue.json        The job queue, kept across restarts (gitignored)
 sessions/<id>/    Each Session: session.json plus its pictures, voices and 3D files (gitignored)
-exports/<id>/     A Session's Compare table exported as a page, with its pictures (gitignored)
+exports/<id>/     A Session's Pictures table exported as a page, with its pictures (gitignored)
 server/           Deno API: the app, Sessions, Settings, the job queue, what all kinds of Session share
   chain/          a Chain's Frames and jobs
   storyboard/     a Storyboard's plan and edits
@@ -158,19 +158,19 @@ server/           Deno API: the app, Sessions, Settings, the job queue, what all
   video/          clips from a Frame's pictures: comfyui/ (LTX 2.5, its workflow in comfyui/workflows/)
   music/          a Roleplay's music: comfyui/ (ACE-Step 1.5, its workflow in comfyui/workflows/)
   3d/             SHARP scenes, TripoSplat and LiTo figures
-  style/          Compare's style scores: the embedder, the measures and the job
-  export/         the Compare table as a page of its own, its pictures as WebP
+  style/          Pictures' style scores: the embedder, the measures and the job
+  export/         the Pictures table as a page of its own, its pictures as WebP
   replay/         `deno task replay`: a test Session rebuilt through the API from a replay file
   prompts/        what the Text Model is told, one Markdown file each: chain/, storyboard/,
                   roleplay/, scenario/, and shared/ for what more than one uses
-web/              Vue 3 + Vite + Tailwind 4 web app; export.html is the exported Compare page
+web/              Vue 3 + Vite + Tailwind 4 web app; export.html is the exported Pictures page
 python/           What uv runs, each in its own folder, its packages in the file and locked beside it
                   (`make.py.lock`), so both machines run the same versions:
   voice/          the voice service (mlx-audio, so Mac only)
   sharp/          Apple's SHARP: a picture as a 2.5D scene
   triposplat/     TripoSplat: the person in a picture as a 3D figure (VAST's code in vendor/)
   lito/           Apple's LiTo, through mlx-spatial: the same, another way
-  style/          CSD and CLIP: the pictures as vectors, for Compare's style scores
+  style/          CSD and CLIP: the pictures as vectors, for Pictures' style scores
 docs/             Design, models, research, Scenario format, ADRs and open threads
 CONTEXT.md        Glossary of the game's terms
 ```

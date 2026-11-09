@@ -855,6 +855,7 @@ const lookSavingText = computed(() =>
                 :session-id="session.id"
                 :frames="session.frames"
                 :image-model="session.settings.imageModel"
+                :thumbnail="session.thumbnail"
                 :caption="(f) => f.reply.actions"
                 @changed="reload"
                 one-style

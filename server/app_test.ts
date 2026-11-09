@@ -404,7 +404,7 @@ Deno.test('GET /api/sessions lists Sessions newest first with their activity', (
     // A Session on its own carries its title too, for the screen's tab.
     assertEquals((await (await call('GET', '/api/sessions/s1')).json()).title, 'Test Shoot')
     assertEquals(list[0].frames, 2)
-    assertMatch(list[0].latestImage, /^frame-1-/)
+    assertMatch(list[0].thumbnail, /^frame-1-/)
     assertEquals(list[0].activity, null)
   }))
 
@@ -548,7 +548,7 @@ Deno.test('Without pictures every kind starts; a Chain writes its Frames without
     // Home shows the Chain's Narration in place of a picture (a Storyboard its first Beat).
     const cards = await (await call('GET', '/api/sessions')).json()
     const chainCard = cards.find((c: { id: string }) => c.id === 's1')
-    assertEquals([chainCard.latestImage, chainCard.excerpt], [null, 'Pose: standing.'])
+    assertEquals([chainCard.thumbnail, chainCard.excerpt], [null, 'Pose: standing.'])
   }))
 
 Deno.test('Turning the Limits off in Settings disables all Limits at once', () =>

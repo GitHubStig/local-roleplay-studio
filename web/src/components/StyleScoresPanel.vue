@@ -10,7 +10,7 @@ import SelectField from './SelectField.vue'
 import StyleScoresView from './StyleScoresView.vue'
 
 /**
- * The Compare dialog's style scores: how varied each shown Image Model's art style is across the
+ * The Pictures dialog's style scores: how varied each shown Image Model's art style is across the
  * Frames, against a base Frame the player picks (remembered per Session in this browser). Score
  * embeds the pictures in the background (a `style` job, CSD and CLIP); after that the scores come
  * back at once for any base Frame or set of models, and Score again takes in pictures made since.

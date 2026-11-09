@@ -8,7 +8,7 @@ const StyleCharts = defineAsyncComponent(() => import('./StyleCharts.vue'))
 
 /**
  * Style scores as shown: what they're measured against, the charts, and the numbers in a table.
- * The Compare dialog's (StyleScoresPanel, under its base Frame's list) and an exported page's.
+ * The Pictures dialog's (StyleScoresPanel, under its base Frame's list) and an exported page's.
  */
 const props = defineProps<{
   scores: StyleScores

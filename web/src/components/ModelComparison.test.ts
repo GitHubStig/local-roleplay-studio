@@ -1,6 +1,6 @@
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { deleteModelPictures, exportComparison, type PicturedFrame } from '../api'
+import { deleteModelPictures, exportComparison, type PicturedFrame, setThumbnail } from '../api'
 import ModelComparison from './ModelComparison.vue'
 
 vi.mock('../api', async (importOriginal) => ({
@@ -10,6 +10,7 @@ vi.mock('../api', async (importOriginal) => ({
   // Not scored: an export carries no style scores.
   getStyleScores: vi.fn(() => Promise.reject(new Error('Not scored yet'))),
   deleteModelPictures: vi.fn(() => Promise.resolve({ session: {}, deleted: 2 })),
+  setThumbnail: vi.fn(() => Promise.resolve({})),
 }))
 
 enableAutoUnmount(afterEach)
@@ -27,16 +28,100 @@ const frames: PicturedFrame[] = [
   { index: 2, pictures: [] },
 ]
 
-const mountIt = (shown = frames) =>
+const mountIt = (shown = frames, thumbnail?: string) =>
   mount(ModelComparison, {
-    props: { sessionId: 's1', frames: shown, imageModel: 'b' },
+    props: { sessionId: 's1', frames: shown, imageModel: 'b', thumbnail },
     attachTo: document.body,
   })
 
 describe('ModelComparison', () => {
-  it('offers Compare only once two Image Models have rendered', () => {
-    expect(mountIt([frames[1]]).find('[data-compare-models]').exists()).toBe(false)
-    expect(mountIt().find('[data-compare-models]').exists()).toBe(true)
+  it('offers Pictures once there is a picture, with Export and Style scores from two models', async () => {
+    expect(mountIt([frames[2]]).find('[data-compare-models]').exists()).toBe(false)
+    const one = mountIt([frames[1]])
+    expect(one.find('[data-compare-models]').text()).toBe('Pictures')
+    await one.find('[data-compare-models]').trigger('click')
+    await flushPromises()
+    expect(one.findAll('[data-compare-row]')).toHaveLength(1)
+    expect(one.find('[data-choose-thumbnail]').exists()).toBe(true)
+    expect(one.find('[data-export]').exists()).toBe(false)
+    expect(one.find('[data-show-style-scores]').exists()).toBe(false)
+    expect(one.find('[data-show-model]').exists()).toBe(false)
+
+    const two = mountIt()
+    await two.find('[data-compare-models]').trigger('click')
+    await flushPromises()
+    expect(two.find('[data-export]').exists()).toBe(true)
+    expect(two.find('[data-show-style-scores]').exists()).toBe(true)
+  })
+
+  it('stars what Home shows: the newest picture, outlined, until one is chosen', async () => {
+    const stars = (w: ReturnType<typeof mountIt>) =>
+      w.findAll('[data-thumbnail]').map((s) => [
+        s.attributes('data-thumbnail'),
+        s.element.parentElement!.querySelector('img')!.getAttribute('src'),
+      ])
+    const auto = mountIt()
+    await auto.find('[data-compare-models]').trigger('click')
+    await flushPromises()
+    expect(stars(auto)).toEqual([['automatic', '/api/sessions/s1/images/f1-a.png']])
+
+    // By another model than the Session's: it stays.
+    const chosen = mountIt(frames, 'f0-a.png')
+    await chosen.find('[data-compare-models]').trigger('click')
+    await flushPromises()
+    expect(stars(chosen)).toEqual([['chosen', '/api/sessions/s1/images/f0-a.png']])
+
+    // Its file gone: back to the newest.
+    const gone = mountIt(frames, 'deleted.png')
+    await gone.find('[data-compare-models]').trigger('click')
+    await flushPromises()
+    expect(stars(gone)).toEqual([['automatic', '/api/sessions/s1/images/f1-a.png']])
+  })
+
+  it('chooses a thumbnail only in its mode, and unchooses it the same way', async () => {
+    vi.mocked(setThumbnail).mockClear()
+    const wrapper = mountIt(frames, 'f0-a.png')
+    await wrapper.find('[data-compare-models]').trigger('click')
+    await flushPromises()
+    const pictures = () => wrapper.findAll('[data-compare-picture]')
+
+    // Out of the mode, a click views it.
+    await pictures()[1].trigger('click')
+    expect(setThumbnail).not.toHaveBeenCalled()
+    wrapper.findComponent({ name: 'ImageViewer' }).vm.$emit('close')
+    await flushPromises()
+
+    await wrapper.find('[data-choose-thumbnail]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-thumbnail-hint]').exists()).toBe(true)
+    expect(wrapper.find('[data-export]').exists()).toBe(false)
+
+    await pictures()[1].trigger('click')
+    await flushPromises()
+    expect(setThumbnail).toHaveBeenLastCalledWith('s1', 'f0-b.png')
+    expect(wrapper.emitted('changed')).toHaveLength(1)
+
+    await pictures()[0].trigger('click')
+    await flushPromises()
+    expect(setThumbnail).toHaveBeenLastCalledWith('s1', null)
+    expect(wrapper.find('[data-thumbnail-hint]').exists()).toBe(true)
+
+    await wrapper.find('[data-thumbnail-done]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-thumbnail-hint]').exists()).toBe(false)
+  })
+
+  it('says why a thumbnail could not be chosen', async () => {
+    vi.mocked(setThumbnail).mockRejectedValueOnce(new Error('That picture no longer exists'))
+    const wrapper = mountIt()
+    await wrapper.find('[data-compare-models]').trigger('click')
+    await flushPromises()
+    await wrapper.find('[data-choose-thumbnail]').trigger('click')
+    await flushPromises()
+    await wrapper.findAll('[data-compare-picture]')[0].trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-thumbnail-problem]').text()).toBe('That picture no longer exists')
+    expect(wrapper.emitted('changed')).toBeUndefined()
   })
 
   it('shows a row per pictured Frame and a column per model, gaps where none rendered', async () => {

@@ -117,6 +117,8 @@ export interface SessionBase {
   /** The seed every image in this Session is rendered with. */
   seed: number
   createdAt: string
+  /** The image chosen to show it on Home (`homeImage`); absent, Home shows the newest picture. */
+  thumbnail?: string
 }
 
 export interface ChainSession extends SessionBase {

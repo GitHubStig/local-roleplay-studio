@@ -39,4 +39,8 @@ export interface ComparisonPicture {
   stale?: boolean
   /** It's an edit of the render (ADR 0021): what it was told to paint. */
   edited?: string[]
+  /** What it's chosen by in thumbnail mode: its file (only in the Pictures dialog). */
+  id?: string
+  /** It's what Home shows: chosen by the player, or for now as the newest. */
+  star?: 'chosen' | 'automatic'
 }

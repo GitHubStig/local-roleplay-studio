@@ -72,7 +72,7 @@ Deno.test("A Roleplay's Cast is written and reviewed, then it begins, is talked 
     assertEquals(edited.cast.character.goal, 'Leave town.')
 
     const [summary] = await (await call('GET', '/api/sessions')).json()
-    assertEquals([summary.kind, summary.frames, summary.latestImage], ['roleplay', 1, null])
+    assertEquals([summary.kind, summary.frames, summary.thumbnail], ['roleplay', 1, null])
     assertEquals(summary.excerpt, 'You are late.')
   }))
 

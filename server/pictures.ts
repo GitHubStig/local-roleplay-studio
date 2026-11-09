@@ -105,6 +105,42 @@ export const shownVersionOf = (session: Session, index: number): PictureVersion 
   return picture && pickedVersion(picture)
 }
 
+/** `image` is a version of this picture: its render, or one of its edits. */
+const hasVersion = (p: Picture, image: string): boolean =>
+  p.image === image || !!p.edits?.some((e) => e.image === image)
+
+const inSession = (session: Session, image: string): boolean =>
+  (session.frames as PicturedFrame[]).some((f) => f.pictures.some((p) => hasVersion(p, image)))
+
+/**
+ * The image that shows a Session on Home: the one chosen, for as long as it exists, whichever
+ * Image Model made it; or else the newest Frame's picture.
+ */
+export function homeImage(session: Session): string | null {
+  const chosen = session.thumbnail
+  if (chosen && inSession(session, chosen)) return chosen
+  return (session.frames as PicturedFrame[]).map((f) => {
+    const picture = shownPicture(f, session.settings.imageModel)
+    return picture && pickedVersion(picture).image
+  }).findLast((image) => image) ?? null
+}
+
+/** Chooses `image` to show the Session on Home, or with null goes back to the newest picture. */
+export function chooseThumbnail(
+  store: SessionStore,
+  session: Session,
+  image: string | null,
+): Promise<Session> {
+  return updateSession(store, session.id, session.kind, (latest: Session) => {
+    if (image === null) {
+      const { thumbnail: _, ...rest } = latest
+      return rest as Session
+    }
+    if (!inSession(latest, image)) throw new PictureGoneError('That picture no longer exists')
+    return { ...latest, thumbnail: image }
+  })
+}
+
 /** A picture's Image Prompt changed since it was rendered, or it's by another Image Model. */
 export const changedSinceRender = (picture: Picture, model: string): boolean =>
   !!picture.stale || picture.imageModel !== model
