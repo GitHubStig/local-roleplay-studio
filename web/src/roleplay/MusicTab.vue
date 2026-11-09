@@ -5,7 +5,7 @@ import { type SaveLine, useAutosave } from '../composables/useAutosave'
 import CollapsibleTextarea from '../components/CollapsibleTextarea.vue'
 import ItemList from '../components/ItemList.vue'
 import SaveStatus from '../components/SaveStatus.vue'
-import { imageUrl } from '../api'
+import type { MusicPosition } from './musicEngine'
 import { MUSIC_BEHAVIOURS, MUSIC_VOCALS, type MusicSettings, musicSettingsOf } from '../music'
 import {
   type Cue,
@@ -36,6 +36,8 @@ const props = defineProps<{
   frame: RoleplayFrame | null
   /** The Frame's music is being directed, or waits to be. */
   directing?: boolean
+  /** Where the track playing is, if the music is on. */
+  trackPosition?: MusicPosition | null
 }>()
 const emit = defineEmits<{
   saved: [session: RoleplaySession]
@@ -83,6 +85,19 @@ const counts = computed(() => {
     stingers: directed.filter((f) => f.music!.stinger).length,
   }
 })
+/** The Cue of the Frame shown, as the strip shows it. */
+const shownSpan = computed(() => cueSpans.value.find((s) => s.cue.id === frameCue.value?.id))
+/** Seconds as minutes and seconds. */
+const clock = (seconds: number) =>
+  `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`
+/** How far the Frame shown is into its Cue, 0 on the Frame it begins on. */
+const cueProgress = computed(() =>
+  shownSpan.value && props.frame
+    ? (props.frame.index - shownSpan.value.cue.start) / shownSpan.value.frames
+    : 0
+)
+const spanName = ({ cue, frames }: { cue: Cue; frames: number }) =>
+  frames === 1 ? frameName(cue.start) : `Frames ${cue.start + 1}–${cue.start + frames}`
 const cueTitle = (cue: Cue, frames: number) =>
   `${frameName(cue.start)}, ${frames} Frame${frames === 1 ? '' : 's'}: ${cue.values?.mood ?? 'silence'}`
 
@@ -173,21 +188,62 @@ defineExpose({ flush })
     <!-- First, so the strip stays put as the Frame below it changes length. -->
     <section v-if="cueSpans.length" class="flex flex-col gap-2 border-b border-line p-4" data-cues>
       <h2 class="text-base font-semibold">Cues</h2>
-      <div class="flex h-6 w-full overflow-hidden rounded border border-line" data-cue-strip>
+      <div class="flex h-8 w-full gap-0.5" data-cue-strip>
         <button
-          v-for="({ cue, frames }, i) in cueSpans"
+          v-for="{ cue, frames } in cueSpans"
           :key="cue.id"
           type="button"
-          class="h-full border-r border-canvas last:border-r-0"
-          :class="[
-            cue.values ? (i % 2 ? 'bg-fg/50' : 'bg-fg/75') : 'bg-line',
-            frameCue?.id === cue.id ? 'outline outline-2 -outline-offset-2 outline-warn' : '',
-          ]"
+          class="relative h-full min-w-0 basis-0 overflow-hidden rounded-sm text-xs tabular-nums transition-colors"
+          :class="
+            frameCue?.id === cue.id
+              ? 'bg-info font-semibold text-canvas ring-2 ring-info ring-offset-1 ring-offset-canvas'
+              : cue.values
+              ? 'bg-fg/20 text-muted hover:bg-fg/35'
+              : 'border border-dashed border-line text-muted hover:bg-fg/10'
+          "
           :style="{ flexGrow: frames }"
           :title="cueTitle(cue, frames)"
+          :aria-current="frameCue?.id === cue.id || undefined"
           :data-cue="cue.id"
           @click="emit('go', cue.start)"
+        >
+          <span
+            v-if="frameCue?.id === cue.id && cueProgress"
+            class="absolute inset-y-0 left-0 bg-canvas/35 transition-[width]"
+            :style="{ width: `${cueProgress * 100}%` }"
+            data-cue-progress
+          />
+          <span class="relative">{{ cue.start + 1 }}</span>
+        </button>
+      </div>
+      <!-- The track playing, across the whole strip, for those who look. -->
+      <div
+        v-if="trackPosition"
+        class="relative h-1.5 w-full overflow-hidden rounded-full bg-fg/15"
+        role="progressbar"
+        aria-label="The track playing"
+        :aria-valuenow="Math.round(trackPosition.at)"
+        :aria-valuemax="Math.round(trackPosition.length)"
+        data-track-position
+      >
+        <div
+          class="absolute inset-y-0 left-0 bg-info"
+          :style="{ width: `${(trackPosition.at / trackPosition.length) * 100}%` }"
+          data-track-played
         />
+      </div>
+      <div v-if="shownSpan || trackPosition" class="flex items-baseline justify-between gap-3">
+        <p v-if="shownSpan" class="min-w-0 leading-snug" data-cue-shown>
+          <span class="font-medium">{{ spanName(shownSpan) }}</span>
+          <span class="text-muted"> · {{ shownSpan.cue.values?.mood ?? 'silence' }}</span>
+        </p>
+        <span
+          v-if="trackPosition"
+          class="ml-auto shrink-0 text-xs tabular-nums text-muted"
+          data-track-time
+        >
+          {{ clock(trackPosition.at) }} / {{ clock(trackPosition.length) }}
+        </span>
       </div>
       <p class="text-xs text-muted" data-cue-counts>
         {{ counts.cues }} Cue{{ counts.cues === 1 ? '' : 's' }}<template v-if="counts.silences">
@@ -261,14 +317,6 @@ defineExpose({ flush })
                 :data-outside="outside(i) || undefined"
               >{{ i }}<template v-if="outside(i)"> (not in the Score)</template></span>
             </p>
-            <audio
-              v-if="frameCue.track"
-              class="mt-2 w-full"
-              controls
-              preload="none"
-              :src="imageUrl(session.id, frameCue.track.file)"
-              data-cue-track
-            />
             <p v-if="frameCue.track" class="mt-1 text-xs text-muted" data-cue-track-timings>
               {{ frameCue.track.seconds }} s at {{ frameCue.track.bpm }} beats a minute, in
               {{ frameCue.values.key }}, made in {{ frameCue.track.timings.music.toFixed(0) }} s

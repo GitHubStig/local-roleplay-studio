@@ -192,12 +192,58 @@ describe('MusicTab', () => {
       'flex-grow: 1;',
     ])
     expect(wrapper.find('[data-cue-counts]').text()).toMatch(/1 Cue\s+and 1 silence/)
+    // The Cue of the Frame shown is marked, and named beneath the strip.
+    expect(wrapper.findAll('[data-cue][aria-current]').length).toBe(1)
+    expect(wrapper.find('[data-cue-shown]').exists()).toBe(true)
     expect(wrapper.find('[data-cue-counts]').text()).toMatch(/1 continued, 2 changed/)
 
     await wrapper.find('[data-direct]').trigger('click')
     expect(wrapper.emitted('direct')![0]).toEqual([2])
     await wrapper.find('[data-cue="a"]').trigger('click')
     expect(wrapper.emitted('go')![0]).toEqual([0])
+  })
+
+  it('shows where the track playing is, only while one plays', () => {
+    const shown = (trackPosition: { file: string; at: number; length: number } | null) =>
+      mount(MusicTab, {
+        props: {
+          session: session({
+            cues: [{ id: 'a', start: 0, entry: 'gentle', reading: '', line: '' }],
+          }),
+          line: saveLine(),
+          frame: null,
+          trackPosition,
+        },
+      })
+    expect(shown(null).find('[data-track-position]').exists()).toBe(false)
+    const playing = shown({ file: 'a.flac', at: 42, length: 57 })
+    expect(playing.find('[data-track-time]').text()).toBe('0:42 / 0:57')
+    expect(playing.find('[data-track-played]').attributes('style')).toContain('73.')
+  })
+
+  it('fills the selected Cue by how far the Frame is into it', () => {
+    const frames = [0, 1, 2].map((index) => ({
+      index,
+      music: {
+        cue: 'a',
+        reading: '',
+        decision: 'continue',
+        entry: 'gentle',
+        line: '',
+        model: 'x',
+        timings: { text: 1 },
+      },
+    })) as unknown as roleplay.RoleplayFrame[]
+    const s = session({
+      frames,
+      cues: [{ id: 'a', start: 0, entry: 'gentle', reading: '', line: '' }],
+    })
+    const at = (i: number) =>
+      mount(MusicTab, { props: { session: s, line: saveLine(), frame: frames[i] } })
+        .find('[data-cue-progress]')
+    expect(at(0).exists()).toBe(false)
+    expect(at(1).attributes('style')).toContain('33.')
+    expect(at(2).attributes('style')).toContain('66.')
   })
 
   it('shows a Frame scored with hindsight: no reading where the music continues, and its stinger', () => {

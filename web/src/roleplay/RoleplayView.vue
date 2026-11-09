@@ -22,6 +22,7 @@ import ModelComparison from '../components/ModelComparison.vue'
 import { useImageModels } from '../composables/useSettingsOptions'
 import UndirectedNote from './UndirectedNote.vue'
 import MusicTab from './MusicTab.vue'
+import { useMusicPlayer } from './useMusicPlayer'
 import CastFieldBox from './CastFieldBox.vue'
 import ItemList from '../components/ItemList.vue'
 import Frame3dViewers from '../components/Frame3dViewers.vue'
@@ -374,6 +375,17 @@ const selectedIndex = computed(() => {
 const selectedFrame = computed(() =>
   selectedIndex.value === null ? undefined : session.value?.frames[selectedIndex.value]
 )
+/**
+ * The music: it follows the Frame selected, or else the newest, and lowers while a line is spoken.
+ * For the whole page, so a dialog or a tab doesn't touch it.
+ */
+const music = useMusicPlayer({
+  sessionId: props.id,
+  session,
+  frame: computed(() => selectedFrame.value ?? session.value?.frames.at(-1)),
+  speaking: computed(() => playing.value !== null),
+})
+const hasTracks = computed(() => !!session.value?.cues?.some((c) => c.track))
 /** A clip playing over its Frame's picture, from the Frame tab's Clip section. */
 const playingClip = usePlayingClip(() => selectedIndex.value)
 /** Plays a clip over Frame `index`'s picture, scrolled into view: it starts once it's seen. */
@@ -776,14 +788,14 @@ const lookSavingText = computed(() =>
 
     <template v-else-if="session">
       <main class="flex min-w-0 flex-1 flex-col gap-3 p-4">
-        <div class="flex items-center justify-between gap-3 text-sm">
-          <p class="min-w-0 truncate text-muted" role="status">
+        <div class="flex flex-wrap items-center justify-between gap-3 text-sm">
+          <p class="min-w-0 flex-1 basis-40 truncate text-muted" role="status">
             <span v-if="busy" class="animate-pulse">{{ statusLabel }}</span>
             <template v-else-if="cast">
               {{ characterName }} and {{ personaName }} · {{ cast.setting.place }}
             </template>
           </p>
-          <div class="flex shrink-0 items-center gap-4">
+          <div class="ml-auto flex max-w-full flex-wrap items-center justify-end gap-x-4 gap-y-1">
             <label
               v-if="musicOn"
               class="flex cursor-pointer items-center gap-1.5 text-muted"
@@ -792,6 +804,31 @@ const lookSavingText = computed(() =>
               <input v-model="scoreAsYouPlay" type="checkbox" data-score-as-you-play />
               Score as you play
             </label>
+            <span v-if="musicOn && hasTracks" class="flex items-center gap-1.5 text-muted" data-music-player>
+              <button
+                type="button"
+                class="action flex items-center gap-1"
+                :class="{ 'action-on': music.on.value }"
+                :aria-pressed="music.on.value"
+                :data-music-file="music.on.value ? music.target.value?.file ?? undefined : undefined"
+                :title="music.on.value ? 'Turn the music off' : 'Play the music of the Frame you\'re on'"
+                data-music-toggle
+                @click="music.on.value = !music.on.value"
+              >
+                <Icon :name="music.on.value ? 'music' : 'music-off'" />
+                <span class="sr-only">{{ music.on.value ? 'Music on' : 'Music off' }}</span>
+              </button>
+              <input
+                v-model.number="music.volume.value"
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                class="w-16"
+                aria-label="Music volume"
+                data-music-volume
+              />
+            </span>
             <label
               v-if="featureOn('voices')"
               class="flex cursor-pointer items-center gap-1.5 text-muted"
@@ -1476,6 +1513,7 @@ const lookSavingText = computed(() =>
             :disabled="busy"
             :frame="selectedFrame ?? null"
             :directing="!!selectedFrame && hasJob(selectedFrame.index, 'direct')"
+            :track-position="music.position.value"
             @saved="(s) => (session = s)"
             @direct="(index) => queueSaved('direct', index)"
             @go="(index) => { goToFrame(index); detail = 'music' }"
