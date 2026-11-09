@@ -142,6 +142,8 @@ export interface Cue {
   entry: 'gentle' | 'sharp'
   reading: string
   line: string
+  /** What the player asked of it. */
+  steer?: string
   /** Its music, once made. */
   track?: CueTrack
 }
@@ -291,5 +293,8 @@ export const saveScore = (id: string, score: Score) =>
   put<RoleplaySession>(`${base(id)}/score`, score)
 
 /** Replaces the Roleplay's own Behaviour, Vocals and Music taste. */
+/** Keeps what the player asks of a Cue; a `steer` job then writes it again. */
+export const saveCueSteer = (id: string, cue: string, steer: string) =>
+  put<RoleplaySession>(`${base(id)}/cues/${cue}/steer`, { steer })
 export const saveMusicSettings = (id: string, music: MusicSettings) =>
   put<RoleplaySession>(`${base(id)}/music`, music)

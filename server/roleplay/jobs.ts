@@ -11,7 +11,7 @@ import type { ClipSize } from '../video/videoGenerator.ts'
 import type { Scenario } from '../scenario.ts'
 import type { Session, SessionStore } from '../session.ts'
 import { pictureFrame, renderRoleplayFrame, type RoleplayDeps } from './engine.ts'
-import { directFrame } from './director.ts'
+import { directFrame, steerCue } from './director.ts'
 import { scoreRoleplay } from './hindsight.ts'
 import { makeCueTrack, type MusicDeps, musicRefusal } from './music.ts'
 import type { RoleplaySession } from './types.ts'
@@ -40,6 +40,9 @@ export function checkRoleplayJob(
   index: number,
   pending: readonly JobKind[],
 ): Response | null {
+  if (kind === 'steer' && !session.cues?.some((c) => c.start === index && c.values && c.steer)) {
+    return error(`Nothing to steer on ${frameName(index)}`, 409)
+  }
   if (kind === 'music') {
     const refused = musicRefusal(session, index)
     return refused ? error(refused, 409) : null
@@ -75,6 +78,14 @@ export async function runRoleplayJob(
     if (job.kind === 'direct') {
       await directFrame(deps, session, scenario, job.frameIndex, emit, signal)
     } else await scoreRoleplay(deps, session, scenario, emit, signal)
+  } else if (job.kind === 'steer') {
+    await steerCue(
+      { store: withDeps.store, model: withDeps.roleplayModel },
+      session,
+      job.frameIndex,
+      emit,
+      signal,
+    )
   } else if (job.kind === 'music') {
     await makeCueTrack(
       { store: withDeps.store, music: ctx.music, renderQueue: withDeps.renderQueue },

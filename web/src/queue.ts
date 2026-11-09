@@ -37,7 +37,7 @@ const CALLS_OF_JOBS: Record<string, readonly JobKind[]> = {
   score: ['direct', 'score-roleplay'],
   director: ['direct'],
   hindsight: ['score-roleplay'],
-  cue: ['direct', 'score-roleplay'],
+  cue: ['direct', 'score-roleplay', 'steer'],
 }
 
 /** Whether `call` is a running job's own (`CALLS_OF_JOBS`), listed as the job instead. */

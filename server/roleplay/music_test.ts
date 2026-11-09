@@ -67,7 +67,7 @@ async function played(root: string, script: Parameters<typeof scriptedRoleplayMo
   await readEvents(
     await call('POST', '/api/sessions/s1/roleplay/messages', { text: 'Sorry.', ...after }),
   )
-  return { ...harness, asked }
+  return { ...harness, asked, model }
 }
 const roleplay = async (call: ReturnType<typeof setup>['call']) =>
   (await (await call('GET', '/api/sessions/s1')).json()) as RoleplaySession
@@ -153,6 +153,60 @@ Deno.test('A new take makes the same words again with the next seed, replacing t
     assertEquals(asked[1].caption, asked[0].caption)
     const files = [...Deno.readDirSync(join(root, 's1'))].map((f) => f.name)
     assertEquals(files.filter((n) => n.startsWith('music-')), [second.track!.file])
+  }))
+
+Deno.test('A steer writes the Cue again with the words first, then makes its new take', () =>
+  withTempDir(async (root) => {
+    const { call, asked, model } = await played(root, {
+      directions: [direction('transition'), direction('transition')],
+      cues: [cue('wary'), cue('darker'), cue('later')],
+    })
+    await direct(call, 0)
+    const before = (await roleplay(call)).cues![0]
+    const res = await call('PUT', `/api/sessions/s1/roleplay/cues/${before.id}/steer`, {
+      steer: ' more piano, darker ',
+    })
+    assertEquals(res.status, 200)
+    await call('POST', '/api/sessions/s1/jobs', { kind: 'steer', frameIndex: 0 })
+    await settled(call)
+    const after = (await roleplay(call)).cues![0]
+    assertEquals([after.id, after.steer, after.values!.mood], [
+      before.id,
+      'more piano, darker',
+      'darker',
+    ])
+    // Told it first, and offered no danger, whose words are fixed.
+    const { messages, schema } = model.cued[1]
+    assertMatch(messages[1].content, /asked for this music: "more piano, darker"/)
+    const shapes = (schema as { properties: { shape: { enum: string[] } } }).properties.shape.enum
+    assertEquals(shapes.includes('danger'), false)
+    // Its words are what's made, with the next seed.
+    assertEquals(asked.at(-1)!.caption, 'Folk, darker. It opens on a fiddle.')
+    assertEquals(after.track!.seed, before.track!.seed + 1)
+    // The next Cue is told, so it isn't dropped.
+    await direct(call, 1)
+    assertMatch(
+      model.cued[2].messages[1].content,
+      /asked this of the music before this: "more piano, darker"/,
+    )
+  }))
+
+Deno.test('A steer that says nothing, or for no Cue, is refused', () =>
+  withTempDir(async (root) => {
+    const { call } = await played(root, {
+      directions: [direction('transition')],
+      cues: [cue('wary')],
+    })
+    await direct(call, 0)
+    const { id } = (await roleplay(call)).cues![0]
+    const steer = (cueId: string, text: string) =>
+      call('PUT', `/api/sessions/s1/roleplay/cues/${cueId}/steer`, { steer: text })
+    assertEquals((await steer(id, '  ')).status, 400)
+    assertEquals((await steer(id, 'x'.repeat(301))).status, 400)
+    assertEquals((await steer('cue-none', 'darker')).status, 404)
+    // Nothing asked yet, so nothing to write.
+    const queued = await call('POST', '/api/sessions/s1/jobs', { kind: 'steer', frameIndex: 0 })
+    assertEquals(queued.status, 409)
   }))
 
 Deno.test("A track can't be made without Music on, a Cue there, or a ComfyUI", () =>

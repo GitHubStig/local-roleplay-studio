@@ -601,7 +601,8 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
   async function jobBackendOf(session: Session, kind: JobKind, edit?: EditOrder) {
     const now = await deps.settings.load()
     // A picture and the music are directed by the Session's Text Model, where it runs.
-    const text = kind === 'picture' || kind === 'direct' || kind === 'score-roleplay'
+    const text = kind === 'picture' || kind === 'direct' || kind === 'score-roleplay' ||
+        kind === 'steer'
       ? await textBackendOf(session.settings.textModel)
       : undefined
     return jobBackend(kind, session.settings, now, detected, {
@@ -612,12 +613,12 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
   }
 
   /** Queues the music of a Roleplay's Cues that have none yet, if a Backend can make it. */
-  async function queueMusic(id: string) {
+  async function queueMusic(id: string, also?: number) {
     const session = await deps.sessions.load(id)
     if (session?.kind !== 'roleplay' || !deps.music || !(await deps.settings.load()).music) return
     const backend = await jobBackendOf(session, 'music')
     if (!backend) return
-    for (const index of cuesWaiting(session)) {
+    for (const index of new Set([...cuesWaiting(session), ...(also === undefined ? [] : [also])])) {
       jobs.enqueue(id, 'music', index, machineOf(backend))
     }
   }
@@ -699,6 +700,8 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       await runRoleplayJob(roleplayJobs, session, job, emit, signal)
       // The Cues just written get their music, behind what's already queued.
       if (job.kind === 'direct' || job.kind === 'score-roleplay') await queueMusic(id)
+      // A steered Cue has a track, which plays on until its new one is made.
+      if (job.kind === 'steer') await queueMusic(id, job.frameIndex)
       return
     }
     if (session?.kind === 'chain' || session?.kind === 'storyboard') {
@@ -823,7 +826,9 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
           return (feature && (await featureOff(feature))) ?? notHere ??
             checkEdit(session, index, name, pending, edit!, model?.id ?? now.editModel)
         }
-        if (kind === 'direct' || kind === 'score-roleplay' || kind === 'music') {
+        if (
+          kind === 'direct' || kind === 'score-roleplay' || kind === 'music' || kind === 'steer'
+        ) {
           if (!(await deps.settings.load()).music) {
             return error('Music is switched off in Settings', 409)
           }

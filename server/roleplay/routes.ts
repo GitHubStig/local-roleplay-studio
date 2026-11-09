@@ -17,6 +17,8 @@ import {
 } from './engine.ts'
 import type { RoleplayModel } from './model.ts'
 import { CastError } from './prompt.ts'
+import { steerRefusal } from './director.ts'
+import { updateSession } from './update.ts'
 import { suggestMessage } from './suggest.ts'
 import { logCallsUnder } from '../calls.ts'
 import { setVoiceDescription, VoiceError } from './voice.ts'
@@ -240,6 +242,26 @@ export function roleplayRoutes(ctx: RoleplayRouteContext): Route[] {
         if (off) return off
         if (!session.score) return error('This Roleplay has no Score yet', 409)
         return json(await setScore(ctx.store, session, await readJson(req)))
+      })],
+
+    // What the player asks of a Cue, kept on it; a `steer` job then writes it again.
+    ['PUT', path('cues/:cue/steer'), (req, p) =>
+      withRoleplay(p.id!, 'edit', async (session) => {
+        const off = await musicOff()
+        if (off) return off
+        const body = await readJson(req) as { steer?: unknown } | undefined
+        const steer = typeof body?.steer === 'string' ? body.steer.trim() : ''
+        const refused = steerRefusal(steer)
+        if (refused) return error(refused, 400)
+        if (!session.cues?.some((c) => c.id === p.cue && c.values)) {
+          return error('No such Cue', 404)
+        }
+        return json(
+          await updateSession(ctx.store, session.id, (latest) => ({
+            ...latest,
+            cues: latest.cues?.map((c) => c.id === p.cue ? { ...c, steer } : c),
+          })),
+        )
       })],
 
     // The Roleplay's own Behaviour, Vocals and Music taste.

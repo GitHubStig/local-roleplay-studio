@@ -280,8 +280,11 @@ export async function cueMessages(
   index: number,
   previous: Cue | undefined,
   direction: Direction,
+  /** What the player asked of this Cue, if they did. */
+  steer?: string,
 ): Promise<ChatMessage[]> {
   const vocals = session.settings.musicVocals
+  const taste = session.settings.musicTaste.trim()
   return [
     {
       role: 'system',
@@ -295,6 +298,12 @@ export async function cueMessages(
       role: 'user',
       content: await loadPrompt('roleplay/cue-request', {
         score: scoreText(session),
+        taste: taste ? await loadPrompt('roleplay/cue-taste', { taste }) : '',
+        steer: steer
+          ? await loadPrompt('roleplay/cue-steer', { steer })
+          : previous?.steer
+          ? await loadPrompt('roleplay/cue-steer-earlier', { steer: previous.steer })
+          : '',
         // Its values, not its caption: shown the caption, a third of the next ones read as changes
         // to it ("the organ falls away"), which the music model can't follow (2026-11-09).
         previous: previous ? cueText(previous) : 'none: this is the first music in the story',
@@ -428,14 +437,16 @@ export async function writeCueAt(
   direction: Direction,
   emit: (event: RoleplayEvent) => void,
   signal: AbortSignal,
+  steer?: string,
 ): Promise<CueValues> {
   const vocals = session.settings.musicVocals
   const values = await withRetry(
     async (onThinking) =>
       await withDanger(cleanCue(
         (await deps.model.writeCue(
-          await cueMessages(session, index, previous, direction),
-          cueSchema(vocals, direction.entry),
+          await cueMessages(session, index, previous, direction, steer),
+          // Danger's words are fixed, so a Cue being steered can't take them.
+          cueSchema(vocals, steer ? 'gentle' : direction.entry),
           signal,
           onThinking,
         )).values,
@@ -449,6 +460,49 @@ export async function writeCueAt(
   )
   if (limit) throw new Error(`The Cue crossed a limit: ${limit.message}`)
   return values
+}
+
+/** The longest steer kept. */
+const MAX_STEER = 300
+
+/** Why a steer can't be kept: it's empty, too long, or crosses a Limit. */
+export function steerRefusal(steer: string): string | null {
+  if (!steer) return 'Say how the music should change'
+  if (steer.length > MAX_STEER) return `A steer can be at most ${MAX_STEER} characters`
+  const limit = crossedLimit(steer)
+  return limit ? limit.message : null
+}
+
+/**
+ * Writes the Cue beginning on Frame `index` again, as the player asked (`Cue.steer`), keeping its
+ * place, its reading and its track, which plays on until its `music` job has made the new one. The
+ * Frames under it stay under it.
+ */
+export async function steerCue(
+  deps: Pick<DirectorDeps, 'store' | 'model'>,
+  session: RoleplaySession,
+  index: number,
+  emit: (event: RoleplayEvent) => void,
+  signal: AbortSignal,
+): Promise<void> {
+  const cue = session.cues?.find((c) => c.start === index)
+  if (!cue?.values || !cue.steer) throw new GoneError(`Nothing to steer on ${frameName(index)}`)
+  const direction = { ...cueStart(cue), decision: 'transition' as const }
+  const values = await writeCueAt(
+    deps,
+    session,
+    index,
+    cueBefore(session, index),
+    direction,
+    emit,
+    signal,
+    cue.steer,
+  )
+  signal.throwIfAborted()
+  await updateSession(deps.store, session.id, (latest) => ({
+    ...latest,
+    cues: latest.cues?.map((c) => c.id === cue.id ? { ...c, values } : c),
+  }))
 }
 
 /**

@@ -1522,10 +1522,11 @@ const lookSavingText = computed(() =>
             :frame="selectedFrame ?? null"
             :directing="!!selectedFrame && hasJob(selectedFrame.index, 'direct')"
             :track-position="music.position.value"
-            :making-music="jobs.filter((j) => j.kind === 'music' && isOpen(j)).map((j) => j.frameIndex)"
+            :making-music="jobs.filter((j) => (j.kind === 'music' || j.kind === 'steer') && isOpen(j)).map((j) => j.frameIndex)"
             @saved="(s) => (session = s)"
             @direct="(index) => queueSaved('direct', index)"
             @take="(index) => queueSaved('music', index)"
+            @steered="(index) => queueSaved('steer', index)"
             @go="goToMusic"
           />
         </div>

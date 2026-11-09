@@ -32,7 +32,8 @@ import { type ComfyTrace, type ComfyTraces, withTrace } from './comfyui/traces.t
  * Apple's LiTo; `style` embeds the Session's pictures for the Compare dialog's style scores; `edit`
  * repaints a picture as told (ADR 0021); `direct` directs the music at a Roleplay Frame (the
  * Music Director, docs/music-plans.md), `score-roleplay` scores a whole Roleplay's with
- * hindsight, and `music` makes the track of the Cue that begins on a Frame.
+ * hindsight, `music` makes the track of the Cue that begins on a Frame, and `steer` writes that Cue
+ * again as the player asked.
  */
 export type JobKind =
   | 'picture'
@@ -50,6 +51,7 @@ export type JobKind =
   | 'direct'
   | 'score-roleplay'
   | 'music'
+  | 'steer'
 export const JOB_KINDS: readonly JobKind[] = [
   'picture',
   'render',
@@ -66,6 +68,7 @@ export const JOB_KINDS: readonly JobKind[] = [
   'direct',
   'score-roleplay',
   'music',
+  'steer',
 ]
 
 /**
@@ -89,6 +92,7 @@ export const JOB_FEATURE: Record<JobKind, Feature | null> = {
   direct: null,
   'score-roleplay': null,
   music: null,
+  steer: null,
 }
 
 /**
@@ -268,6 +272,7 @@ const NEEDS: Record<JobKind, readonly JobKind[]> = {
   direct: [],
   'score-roleplay': [],
   music: [],
+  steer: [],
 }
 
 /**

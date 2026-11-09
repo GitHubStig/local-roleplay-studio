@@ -261,6 +261,48 @@ describe('MusicTab', () => {
     expect(wrapper.find<HTMLButtonElement>('[data-cue-take]').element.disabled).toBe(true)
   })
 
+  it('steers the Cue shown, says what was asked, and can keep it for the Roleplay', async () => {
+    const values = {
+      mood: 'wary',
+      energy: 'calm',
+      density: 'sparse',
+      tempo: 'slow',
+      instruments: ['cello'],
+      vocals: 'none',
+      shape: 'intimate',
+      key: 'A minor',
+      caption: 'A cello.',
+      lyrics: '[Intro]',
+    }
+    const frames = [0, 1].map((index) => ({
+      index,
+      music: {
+        cue: 'a',
+        reading: '',
+        decision: 'continue',
+        entry: 'gentle',
+        line: '',
+        model: 'x',
+        timings: { text: 1 },
+      },
+    })) as unknown as roleplay.RoleplayFrame[]
+    const cues = [{ id: 'a', start: 0, entry: 'gentle', reading: '', line: '', values }]
+    const s = session({ frames, cues } as never)
+    const steered = session({ frames, cues: [{ ...cues[0], steer: 'more piano' }] } as never)
+    const saved = vi.spyOn(roleplay, 'saveCueSteer').mockResolvedValue(steered)
+    const wrapper = mount(MusicTab, { props: { session: s, line: saveLine(), frame: frames[1] } })
+    expect(wrapper.find('[data-cue-steer] button').attributes('disabled')).toBeDefined()
+    await wrapper.find('[data-cue-steer] input').setValue(' more piano ')
+    await wrapper.find('[data-cue-steer]').trigger('submit')
+    await flushPromises()
+    expect(saved).toHaveBeenCalledWith(s.id, 'a', 'more piano')
+    expect(wrapper.emitted('steered')).toEqual([[0]])
+    await wrapper.setProps({ session: steered })
+    expect(wrapper.find('[data-cue-steered]').text()).toContain('more piano')
+    expect(wrapper.find('[data-keep-steer]').exists()).toBe(true)
+    saved.mockRestore()
+  })
+
   it('fills the selected Cue by how far the Frame is into it', () => {
     const frames = [0, 1, 2].map((index) => ({
       index,

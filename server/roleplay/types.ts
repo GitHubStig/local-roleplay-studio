@@ -215,6 +215,8 @@ export interface Cue {
   /** The Director's reading at the Frame it began on, and the line that caused it ('' if none). */
   reading: string
   line: string
+  /** What the player asked of it in the Music tab, which the cue writer put first (`steerCue`). */
+  steer?: string
   /** Its music, once made (`makeCueTrack`). */
   track?: CueTrack
 }

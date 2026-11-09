@@ -1048,6 +1048,7 @@ export type JobKind =
   | 'direct'
   | 'score-roleplay'
   | 'music'
+  | 'steer'
 
 /** A queued, running, failed or done job. Failed and done ones stay listed until dismissed. */
 export interface Job {

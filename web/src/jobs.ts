@@ -17,6 +17,7 @@ export const JOB_NAMES: Record<JobKind, string> = {
   direct: 'Music',
   'score-roleplay': 'Score the Roleplay',
   music: 'Music track',
+  steer: 'Steer the music',
 }
 
 /**
@@ -89,7 +90,7 @@ export const jobForming = (
     : null
 
 /** The jobs about a Roleplay's music, whose results are on its Music tab. */
-const MUSIC_JOBS: readonly JobKind[] = ['direct', 'score-roleplay', 'music']
+const MUSIC_JOBS: readonly JobKind[] = ['direct', 'score-roleplay', 'music', 'steer']
 
 /** Where a job is seen, as its Session's screen shows it (`openJob`). */
 export interface JobPlaces {

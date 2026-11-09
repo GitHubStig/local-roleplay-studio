@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { frameName } from '../frameName'
 import { type SaveLine, useAutosave } from '../composables/useAutosave'
 import CollapsibleTextarea from '../components/CollapsibleTextarea.vue'
@@ -13,6 +13,7 @@ import {
   type RoleplayFrame,
   type RoleplaySession,
   type Score,
+  saveCueSteer,
   saveMusicSettings,
   saveScore,
   TEMPO,
@@ -49,6 +50,8 @@ const emit = defineEmits<{
   go: [index: number]
   /** Make the music of the Cue beginning on this Frame, or a new take of it. */
   take: [index: number]
+  /** The Cue beginning on this Frame has been asked for something: write it again. */
+  steered: [index: number]
 }>()
 
 // --- The Frame's music, and the Cues.
@@ -104,6 +107,41 @@ const spanName = ({ cue, frames }: { cue: Cue; frames: number }) =>
   frames === 1 ? frameName(cue.start) : `Frames ${cue.start + 1}–${cue.start + frames}`
 const cueTitle = (cue: Cue, frames: number) =>
   `${frameName(cue.start)}, ${frames} Frame${frames === 1 ? '' : 's'}: ${cue.values?.mood ?? 'silence'}`
+
+// --- Steering the Cue.
+
+const steerText = ref('')
+const steerError = ref('')
+watch(() => frameCue.value?.id, () => {
+  steerText.value = ''
+  steerError.value = ''
+})
+/** Asks for the Cue shown to be written again, with the player's words first. */
+async function steer() {
+  const cue = frameCue.value
+  const words = steerText.value.trim()
+  if (!cue || !words) return
+  steerError.value = ''
+  try {
+    emit('saved', await saveCueSteer(props.session.id, cue.id, words))
+    emit('steered', cue.start)
+    steerText.value = ''
+  } catch (err) {
+    steerError.value = (err as Error).message
+  }
+}
+/** Whether the Cue's steer is in the Session's Music taste already. */
+const steerKept = computed(() =>
+  !!frameCue.value?.steer && !!musicDraft.value?.taste.includes(frameCue.value.steer)
+)
+/** Adds the Cue's steer to the Session's Music taste, for every Cue from here on. */
+function keepSteer() {
+  const words = frameCue.value?.steer
+  if (!words || !musicDraft.value) return
+  const taste = musicDraft.value.taste.trim()
+  musicDraft.value.taste = taste ? `${taste}. ${words}` : words
+  music.flush()
+}
 
 // --- The Score.
 
@@ -349,6 +387,37 @@ defineExpose({ flush })
                 {{ frameCue.track ? 'New take' : 'Make its music' }}
               </button>
             </div>
+            <form class="mt-2 flex gap-2" data-cue-steer @submit.prevent="steer">
+              <input
+                v-model="steerText"
+                class="field min-w-0 flex-1 py-1 text-sm"
+                maxlength="300"
+                placeholder="More piano, darker…"
+                aria-label="How should this music change?"
+                :disabled="disabled || makingMusic?.includes(frameCue.start)"
+              />
+              <button
+                type="submit"
+                class="action shrink-0"
+                :disabled="disabled || !steerText.trim() || makingMusic?.includes(frameCue.start)"
+              >
+                Steer
+              </button>
+            </form>
+            <p v-if="steerError" class="mt-1 text-xs text-danger" data-steer-error>{{ steerError }}</p>
+            <p v-if="frameCue.steer" class="mt-1 flex items-baseline gap-2 text-xs text-muted" data-cue-steered>
+              <span class="min-w-0 flex-1">You asked: “{{ frameCue.steer }}”</span>
+              <button
+                v-if="!steerKept"
+                type="button"
+                class="shrink-0 underline hover:text-fg"
+                data-keep-steer
+                @click="keepSteer"
+              >
+                Keep for this Roleplay
+              </button>
+              <span v-else class="shrink-0">Kept for this Roleplay</span>
+            </p>
           </template>
           <p v-else class="mt-1 text-muted">Silence</p>
         </div>
