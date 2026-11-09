@@ -39,7 +39,7 @@ PROBES = {
 def captions():
     """Each case's caption, from ace.py and render.py, without running them."""
     found = {}
-    for script, cut in (('ace.py', '\nfor name in sys.argv'), ('render.py', '\nmain()')):
+    for script, cut in (('ace.py', "\nif __name__ == '__main__'"), ('render.py', '\nmain()')):
         g = {'__file__': str(HERE / script), '__name__': 'analyse'}
         src = (HERE / script).read_text().split(cut)[0]
         # render.py's imports need mlx, which this script doesn't: only its strings are wanted.

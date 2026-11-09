@@ -1,13 +1,13 @@
 # /// script
 # requires-python = ">=3.14,<3.15"
-# dependencies = ["soundfile"]
+# dependencies = ["psutil", "soundfile"]
 # [tool.uv]
 # python-preference = "only-managed"
 # ///
 """
 Renders the music bench's cases with ACE-Step 1.5 through a running ComfyUI (ComfyUI's own
 "ACE-Step 1.5 split" template: the 2B turbo, the 0.6B and 1.7B text encoders, 8 steps), timing
-each and noting ComfyUI's own memory at the most (macOS's footprint, polled every 2 s). See README.md.
+each and noting ComfyUI's memory at the most (comfyui_memory, polled every 2 s). See README.md.
 
     uv run ace.py                       # every case, seed 1, on 127.0.0.1:8188
     uv run ace.py tavern-60 song-150    # only these
@@ -26,20 +26,26 @@ before it, so only that is drawn and the join is drawn again.
 The captions are written as ACE-Step's guide asks (docs/en/Tutorial.md in its repo): prose on the
 style, emotion, instruments, timbre and production, with the tempo, key and length left out of
 them and set as their own inputs; an instrumental's lyrics are structure tags that agree with the
-caption. Output goes to out/ace-step-1.5-turbo/, results to results.jsonl.
+caption. Output goes to out/<setup>/ (out/ace-step-1.5-turbo/, with "-pc" on the end on the PC, as
+the same seed makes another clip on another machine; MACHINE= overrides which), results to
+results.jsonl. FREE=1 frees ComfyUI after each render, as the app does after every job, and records
+how long the card took to empty and what stayed.
 """
-import json, os, sys, threading, time, urllib.parse, urllib.request
+import json, os, re, subprocess, sys, threading, time, urllib.parse, urllib.request
 from pathlib import Path
 
 HERE = Path(__file__).parent
 COMFYUI = os.environ.get('COMFYUI', 'http://127.0.0.1:8188').rstrip('/')
+PORT = urllib.parse.urlparse(COMFYUI).port or 8188
 SEED = int(os.environ.get('SEED', '1'))
+MACHINE = os.environ.get('MACHINE', 'pc' if sys.platform == 'win32' else 'mac')
+FREE = os.environ.get('FREE') == '1'
 # The DiT and the planner (the LM that writes audio codes first): the 2B turbo with the 1.7B by default;
 # DIT=acestep_v1.5_xl_turbo_bf16 for the 4B XL turbo, LM=qwen_4b_ace15 for the 4B planner its template uses.
 DIT = os.environ.get('DIT', 'acestep_v1.5_turbo')
 LM = os.environ.get('LM', 'qwen_1.7b_ace15')
 NAMES = {'acestep_v1.5_turbo': 'turbo', 'acestep_v1.5_xl_turbo_bf16': 'xl-turbo'}
-MODEL = f"ace-step-1.5-{NAMES.get(DIT, DIT)}" + ('' if LM == 'qwen_1.7b_ace15' else f"-{LM.split('_')[1]}-lm")
+MODEL = f"ace-step-1.5-{NAMES.get(DIT, DIT)}" + ('' if LM == 'qwen_1.7b_ace15' else f"-{LM.split('_')[1]}-lm") + ('' if MACHINE == 'mac' else f'-{MACHINE}')
 
 TAVERN = ('Intimate acoustic folk from an 18th-century harbour tavern on a rainy night. A lone fiddle '
           'plays a slow, weary melody over a low cello and a soft, breathing squeezebox. Guarded warmth, '
@@ -379,18 +385,49 @@ def call(path, body=None):
         return res.read()
 
 
-def comfyui_footprint():
-    """ComfyUI's own memory now (macOS's phys_footprint, which counts Metal's), in bytes; 0 if unknown."""
-    import re, subprocess
+def comfyui_memory():
+    """ComfyUI's memory now, in GB, if it runs on this machine ({} if not, as for a remote one).
+
+    `ram` is its process's on either machine: macOS's phys_footprint, which counts Metal's, or
+    Windows' working set. The card's is apart on the PC, so there's also `vram` (the whole card's in
+    use, as nvidia-smi can't split it by process under Windows; compare it with the row's before),
+    `commit` (what the process has reserved of RAM and page file), and the machine's `machine_ram`
+    and `page_file` in use, as a 16 GB machine may fit only by paging.
+    """
+    gb = 1024 ** 3
     try:
-        pid = subprocess.run(['lsof', '-nP', f'-iTCP:{urllib.parse.urlparse(COMFYUI).port or 8188}', '-sTCP:LISTEN', '-t'],
+        if sys.platform == 'win32':
+            import psutil  # here, as analyse.py runs this file for its captions without psutil
+            pid = next(c.pid for c in psutil.net_connections('tcp')
+                       if c.status == psutil.CONN_LISTEN and c.laddr.port == PORT)
+            process = psutil.Process(pid).memory_info()
+            vram = subprocess.run(['nvidia-smi', '--query-gpu=memory.used', '--format=csv,noheader,nounits'],
+                                  capture_output=True, text=True).stdout
+            machine = psutil.virtual_memory()
+            return {'ram': process.rss / gb, 'vram': float(vram) / 1024, 'commit': process.vms / gb,
+                    'machine_ram': (machine.total - machine.available) / gb, 'page_file': psutil.swap_memory().used / gb}
+        pid = subprocess.run(['lsof', '-nP', f'-iTCP:{PORT}', '-sTCP:LISTEN', '-t'],
                              capture_output=True, text=True).stdout.split()[0]
         out = subprocess.run(['footprint', '-p', pid], capture_output=True, text=True).stdout
         m = re.search(r'phys_footprint:\s+([\d.]+)\s+(KB|MB|GB)', out)
-        return float(m[1]) * {'KB': 1e3, 'MB': 1e6, 'GB': 1e9}[m[2]]
+        return {'ram': float(m[1]) * {'KB': 1 / 1024 ** 2, 'MB': 1 / 1024, 'GB': 1}[m[2]]}
     except Exception:
-        return 0
+        return {}
 
+
+def free_comfyui(vram_before):
+    """Frees ComfyUI as the app does after every job (server/comfyui/client.ts, cleanUp), waiting up to
+    30 s for the card to come back to about what it was before the job. Says how long that took, and what's left."""
+    start = time.perf_counter()
+    call('/free', {'unload_models': True, 'free_memory': True})
+    while time.perf_counter() - start < 30:
+        if comfyui_memory().get('vram', 0) <= vram_before + 0.5:
+            break
+        time.sleep(0.5)
+    took = time.perf_counter() - start
+    time.sleep(2)  # the RAM may follow the card
+    left = comfyui_memory()
+    return {'free_took': round(took, 1), 'freed_ram_gb': round(left.get('ram', 0), 1), 'freed_vram_gb': round(left.get('vram', 0), 1)}
 
 def render(name):
     caption, lyrics, seconds, bpm, key = CASES[name]
@@ -406,16 +443,17 @@ def render(name):
         graph = from_audio(workflow(caption, lyrics, seconds, bpm, key, f'bench/{name}'), uploaded,
                            source_seconds, seconds)
         label = f'{name}-{MODE}-from-{source.stem}'
-    # ComfyUI's own memory, on the same machine only (a remote one reads 0).
-    before = comfyui_footprint()
-    most = [before]
+    before = comfyui_memory()
+    most = dict(before)
     done = threading.Event()
 
     def watch():
         while not done.wait(2):
-            most[0] = max(most[0], comfyui_footprint())
+            for key, value in comfyui_memory().items():
+                most[key] = max(most[key], value)
 
-    threading.Thread(target=watch, daemon=True).start()
+    watcher = threading.Thread(target=watch, daemon=True)
+    watcher.start()
     start = time.perf_counter()
     graph = graph or workflow(caption, lyrics, seconds, bpm, key, f'bench/{name}')
     prompt = json.loads(call('/prompt', {'prompt': graph}))
@@ -427,21 +465,28 @@ def render(name):
         time.sleep(1)
     took = time.perf_counter() - start
     done.set()
+    watcher.join()
+    measured = {f'{key}_most_gb': round(value, 1) for key, value in most.items() if key != 'ram'}
+    if 'vram' in before:
+        measured['vram_before_gb'] = round(before['vram'], 1)
     if history['status'].get('status_str') != 'success':
-        raise RuntimeError(json.dumps(history['status'])[:2000])
+        raise RuntimeError(f'{json.dumps(history["status"])[:2000]}\nAt the most: {measured}, ram {most.get("ram")}')
     audio = history['outputs']['save']['audio'][0]
     q = urllib.parse.urlencode({'filename': audio['filename'], 'subfolder': audio['subfolder'], 'type': audio['type']})
     out = HERE / 'out' / MODEL
     out.mkdir(parents=True, exist_ok=True)
     path = out / f'{label}-s{SEED}{Path(audio["filename"]).suffix}'
     path.write_bytes(call(f'/view?{q}'))
-    row = dict(model=MODEL, dit=DIT, lm=LM, case=label, mode=MODE if FROM else 'text', source=FROM, seed=SEED, steps=8, asked=seconds, bpm=bpm, key=key,
-               took=round(took, 1), comfyui_before_gb=round(before / 1e9, 1), comfyui_most_gb=round(most[0] / 1e9, 1),
-               file=path.name, date=time.strftime('%Y-%m-%d'))
+    if FREE:
+        measured |= free_comfyui(before.get('vram', 0))
+    row = dict(machine=MACHINE, model=MODEL, dit=DIT, lm=LM, case=label, mode=MODE if FROM else 'text', source=FROM, seed=SEED, steps=8, asked=seconds, bpm=bpm, key=key,
+               took=round(took, 1), comfyui_before_gb=round(before.get('ram', 0), 1), comfyui_most_gb=round(most.get('ram', 0), 1),
+               **measured, file=path.name, date=time.strftime('%Y-%m-%d'))
     print(json.dumps(row), flush=True)
-    with open(HERE / 'results.jsonl', 'a') as f:
+    with open(HERE / 'results.jsonl', 'a', newline='\n') as f:
         f.write(json.dumps(row) + '\n')
 
 
-for name in sys.argv[1:] or list(CASES):
-    render(name)
+if __name__ == '__main__':
+    for name in sys.argv[1:] or list(CASES):
+        render(name)

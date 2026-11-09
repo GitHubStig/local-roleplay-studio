@@ -1,5 +1,5 @@
 {
-  "_note": "The owner's verdicts by ear (2026-11-07 and 08, Mac), each clip's path under clips/, scored 2 good, 1 ok or mixed, 0 bad, with the owner's words. analyse.py reads it. Only clips the owner commented on one by one.",
+  "_note": "The owner's verdicts by ear (2026-11-07 and 08, Mac; the -pc folders 2026-11-09, PC), each clip's path under clips/, scored 2 good, 1 ok or mixed, 0 bad, with the owner's words. analyse.py reads it. Only clips the owner commented on one by one.",
   "ace-step-1.5-turbo/tavern-60-s1.m4a": [
     2,
     "tavern sounds good"
@@ -203,5 +203,17 @@
   "ace-step-1.5-xl-turbo-4b-lm/heaven-f-60-s2.m4a": [
     1,
     "better than s1 but sounds like i'm in a church"
+  ],
+  "ace-step-1.5-turbo-pc/buffet-d-60-s1.m4a": [
+    0,
+    "random notes that bring me out of the music"
+  ],
+  "ace-step-1.5-xl-turbo-pc/buffet-d-60-s1.m4a": [
+    1,
+    "notes are richer and fuller and more stable"
+  ],
+  "ace-step-1.5-xl-turbo-4b-lm-pc/buffet-d-60-s1.m4a": [
+    2,
+    "seems best, slower, longer sustain, knows to go soft and keep the mood"
   ]
 }

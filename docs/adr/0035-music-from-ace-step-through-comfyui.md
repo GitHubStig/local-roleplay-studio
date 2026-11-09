@@ -22,5 +22,5 @@ A Roleplay's music (docs/music-plans.md) needs a model that turns a Cue into a t
 ## Consequences
 
 - A music job is heavy: ComfyUI keeps ~21 GB loaded and reaches 26–34 GB on the Mac, so it unloads the Text Model first, as a render does (ADR 0013), takes its turn with the machine's other jobs (ADR 0020), and frees ComfyUI after.
-- Whether the XL with its 4B planner fits the PC's 12 GB card hasn't been tried; the 2B turbo is the fallback there.
+- The XL with its 4B planner fits the PC's 12 GB card and 16 GB of RAM, and runs about nine times the Mac's speed, about 20 s for a minute of music; ComfyUI frees it at once when asked, so no fallback is needed there (2026-11-09, [research/music-models.md](../research/music-models.md#on-the-pc-2026-11-09-windows-pc)).
 - The plan's stage 3 builds the `MusicGenerator` on this, with the cue writer's prompt rewritten for ACE-Step.

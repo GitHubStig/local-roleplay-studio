@@ -1,6 +1,6 @@
 # Music models bench
 
-Stage 2 of [the music plan](../../music-plans.md): what each music model does with the captions a cue writer would give it, judged by the owner's ear; what was concluded is in [research/music-models.md](../../research/music-models.md). `render.py` renders MiniMax Music 3 through mlx-audio (dropped; its builds deleted), `ace.py` ACE-Step 1.5 through a running ComfyUI (the pick), `words.py` times a song's words with Whisper, and `analyse.py` sets measures of each clip beside the owner's verdicts (`verdicts.json`). Raw output goes to `out/` (gitignored), timings to `results.jsonl`; the clips kept for reference are in [clips/](clips/), one folder per setup, as 96 kbps AAC (`ffmpeg -i x.flac -c:a aac -b:a 96k x.m4a`): only those the owner liked and those that show a finding (27 of 89, 2026-11-08), so a clip named below may not be there; `verdicts.json` still lists every clip judged, and `analysis.jsonl` has its measures. The captions follow the example Scenarios' Music sections; the songs quote tavern-style lines of the kind a Roleplay collects. All on the Mac (M5 Pro, 48 GB).
+Stage 2 of [the music plan](../../music-plans.md): what each music model does with the captions a cue writer would give it, judged by the owner's ear; what was concluded is in [research/music-models.md](../../research/music-models.md). `render.py` renders MiniMax Music 3 through mlx-audio (dropped; its builds deleted), `ace.py` ACE-Step 1.5 through a running ComfyUI (the pick), `words.py` times a song's words with Whisper, and `analyse.py` sets measures of each clip beside the owner's verdicts (`verdicts.json`). Raw output goes to `out/` (gitignored), timings to `results.jsonl`; the clips kept for reference are in [clips/](clips/), one folder per setup, as 96 kbps AAC (`ffmpeg -i x.flac -c:a aac -b:a 96k x.m4a`): only those the owner liked and those that show a finding (27 of 89, 2026-11-08), so a clip named below may not be there; `verdicts.json` still lists every clip judged, and `analysis.jsonl` has its measures. The captions follow the example Scenarios' Music sections; the songs quote tavern-style lines of the kind a Roleplay collects. On the Mac (M5 Pro, 48 GB) unless a section says the PC; a row of `results.jsonl` with no `machine` is the Mac's.
 
 ## MiniMax Music 3, mxfp8 against 4-bit (2026-11-07, Mac)
 
@@ -220,9 +220,67 @@ So **voices come from the lyrics**: a choir in the background needs lines to sin
 
 CLAP doesn't hear the difference: its choir score is the same for the course Heaven without a heard choir (0.33, read again from its m4a) as for E's (0.32–0.33). So the earlier hope, that a measure could warn when a choir asked for isn't there, doesn't hold. F's warbly seed 1 is again the most Christmas-like of these (0.42 against 0.18–0.32).
 
+## ACE-Step 1.5 on the PC (2026-11-09, Windows PC)
+
+The RTX 4070 (12 GB) with 16 GB of RAM, ComfyUI 0.44.2 (Comfy Desktop, CUDA, its dynamic VRAM loading), `ace.py` with the cases the owner liked on the Mac, seed 1, one at a time, `FREE=1` (freed after each, as the app does). Everyday apps were open, fewer as the run went on (the machine's RAM in use peaked at 13–14 GB early on, 12–13 GB later), and no Text Model was loaded. Clips are in the `-pc` folders of [clips/](clips/), all 15 kept until the owner has listened.
+
+| Setup | 60 s of music | 150 s song | Card in use, at the most (60 s; song) | ComfyUI's RAM, at the most | Its commit | Machine's RAM in use |
+|---|---|---|---|---|---|---|
+| **XL turbo, 4B planner** | **19–21 s** | **36 s** | **11.2 GB; 11.6 GB** | **2.7–3.4 GB** | **14–16.5 GB** | **13.1–14.0 GB** |
+| XL turbo, 1.7B planner | 14 s | 21 s | 10.4–10.8 GB; 10.9 GB | 2.6 GB | 15 GB | 12.5–13.0 GB |
+| 2B turbo, 1.7B planner | 12 s | 18 s | 7.8–9.6 GB; 11.6 GB | 2.6–2.8 GB | 12–16 GB | 12.1–12.3 GB |
+
+The card's figure is the whole card's (nvidia-smi can't split it by process under Windows), with 0.4–1.4 GB of it the desktop's before a job (the XL with the 4B planner, run again with less open, reached 10.8–10.9 GB). RAM is ComfyUI's working set; commit is what it has reserved of RAM and page file. Polled every 2 s.
+
+- **All three fit, and the XL with the 4B planner runs here without trouble**: no failure, and the page file stayed at 0.5–0.6 GB. The planner ran at about 50 steps a second (seen in ComfyUI's log, all 300 steps), and the DiT's 8 steps took about 2 s. The 2B fallback isn't needed.
+- **About nine times the Mac's speed** with the 4B planner (19 s against about 170 s), so the 1.7B's saving is small here (5 s), where on the Mac it halves the time.
+- **The card's figure isn't what a setup needs**: dynamic loading fills what's free (a picture reaches 10.8–11.3 GB too), and the planner and the DiT take turns on the card. So 11.6 GB doesn't say how close to the limit it is, only that it fit with the desktop's share taken.
+- **ComfyUI's RAM stays low** because the weights are read from the disk as they're needed, rather than held in the process: the Mac's 26–34 GB aren't comparable. The disk cache was warm (the files just downloaded, and read again by each run), so a first render after a reboot, likely slower, wasn't measured.
+- **Every clip is the length asked**, ending in a fade (−62 to −67 dB over its last second), about as loud as the Mac's.
+- **A seed repeats on one machine**: the XL's tavern rendered again, other setups run in between, came out the same file, byte for byte (one clip tried).
+
+**`/free`**: ComfyUI frees ACE-Step when asked, so a picture after music has the card to itself. In all 15 renders the card was back to where it began within 0.1 s of asking (0.3–0.5 GB, or 1.4–1.5 GB in the first four), and ComfyUI's RAM at 2.2–2.5 GB (1.2 GB on its first start, before any job). The same picture through the app's generator (Qwen-Image 2.1 Turbo, landscape):
+
+| When | Time | Card, before → at the most → after |
+|---|---|---|
+| Before any music | 14.5 s | 1.4 → 11.3 → 1.4 GB |
+| Right after the XL and 4B planner's song, freed | 12.7 s | 0.3 → 10.8 → 0.4 GB |
+| After two clips left loaded, then a `/free` alone | 12.7 s | 0.5 → 10.9 → 0.5 GB |
+
+Left loaded, ComfyUI kept 4.7 GB on the card and 8.5 GB of commit, down to 0.5 GB and 4.0 GB on `/free`. Freeing costs a clip little: 19 s from freed against 18 s left loaded, so the app can free after each job as it does.
+
+**By ear** (the owner, the PC's clips): the same order as on the Mac. For instrumentals and background music, the 2B with the 1.7B is "not great, lots of things going on that doesn't flow"; the XL with the 1.7B "better, smoother, but still some things going on that doesn't flow-ish"; **the XL with the 4B planner "so far the best"**. For a song with a voice (`song-150`), all three sound "decent, believable". So the 2B isn't a good fallback for Cues; the planner matters less for a song, though on the Mac the owner heard the 4B's as more "production-grade". Against the Mac's, the owner finds the PC's clips comparable.
+
+The Buffet, the clearest case (slow piano with long sustain on all three, none of them gappy): on the 2B, "random notes" that bring the owner out of the music; on the XL with the 1.7B, notes "richer and fuller" and more stable; on the XL with the 4B, the best, slower with a longer sustain, it "knows to go soft and keep the mood". The measures agree: notes a second 0.50, 0.48 and 0.27, and the worst changes between 2 s windows 0.130, 0.040 and 0.035.
+
+**The same seed isn't the same music on the other machine.** Seed, caption inputs, steps, tempo, key, length, DiT and planner are the same in `results.jsonl` on both, from one `ace.py` (the Mac's 2B song is from before the rows named a DiT), yet no clip came out alike. From the `.m4a` on both sides, 0–1 where 1 is identical: the waveform (the best match at any offset), harmony over time (chroma, frame by frame) and the loudness's shape (the mel spectrum's correlation stays at 0.7–0.9 for any two clips, so it tells little). The first three rows are the three captions with a second seed kept on the Mac, all on the XL with the 4B planner.
+
+| Pair | Waveform | Harmony | Loudness shape |
+|---|---|---|---|
+| PC seed 1 against Mac seed 1 | 0.18 | 0.46 | 0.66 |
+| PC seed 1 against Mac seed 2 | 0.10 | 0.44 | 0.69 |
+| Mac seed 1 against Mac seed 2 | 0.12 | 0.44 | 0.69 |
+| PC against Mac, all eight kept pairs (three setups, songs too) | 0.13 | 0.31 | 0.57 |
+| Unrelated captions, on the PC | 0.05 | 0.05 | 0.27 |
+
+So a seed gives a new take on the other machine, as far from the Mac's seed 1 as the Mac's seed 2 is: the caption is what the two share. A Session's seed can't promise the same music across machines, though on one machine it repeats. The waveform is a little nearer with the same seed on all three captions, which might be shared starting noise with the planner's codes differing, too little to hear and not looked into.
+
+**The level varies a lot between takes.** The same Buffet caption and seed averages −25.8 dB on the PC's XL with the 4B planner (−22.2 and −22.7 on the other setups) against −15.0 dB on the Mac; other cases are within 4 dB, and the PC's song is the louder there. The PC's clips run from −12 to −26 dB. The PC's Buffets are evenly quiet rather than gappy (about −19 to −30 dB until they fade), and two are near silent for their last 10 s (−50 dB and below), so a loop's cut has more to take off than the 3 s or so the tavern needed. Being soft is part of what the owner likes in the 4B's Buffet, so it isn't a fault: if the player ever matches Cues' levels (stage 3), it shouldn't flatten a Cue meant to be soft. Whether it's needed is for listening to Cues crossfaded.
+
+**A measure that follows "doesn't flow"**, a hint from one seed and one listener: how much the mel spectrum changes between 2 s windows (one minus their cosine similarity, the last 5 s left out), on the PC's instrumentals.
+
+| Setup | Mean change | The worst changes (95th percentile) |
+|---|---|---|
+| 2B, 1.7B | 0.044 | 0.108 |
+| XL, 1.7B | 0.029 | 0.069 |
+| XL, 4B | 0.021 | 0.058 |
+
+Both fall in the ear's order on all four captions, where the seven other measures tried (those of `analyse.py`, and jumps in level) don't. The 10 s `development` of `analyse.py`, which didn't see the planners on the Mac, doesn't here either, so the short window may be what matters. Nine measures were tried, so one in order may be luck: it wants checking on the Mac's seven planner pairs, and on later verdicts, before it's used for anything.
+
+Not checked on the PC: their keys and tempo, the song's lyrics with Whisper, a Text Model loaded beside ACE-Step (the app unloads it first), and a first render from a cold disk. A music job through the app waits for stage 3.
+
 ## Not checked yet
 
-- **ACE-Step on the PC** (CUDA, 12 GB): whether the XL fits.
+- **The 2 s measure of flow on the Mac's planner pairs** (above).
 - **Cover strength** (ACE-Step's `audio_cover_strength`, which ComfyUI's node doesn't take): a weaker cover might keep a Cue's sound where a full one didn't.
 - **An end song written from a story's ending**, 2–3 minutes (the songs here are written for the bench).
-- **Memory beside the Image Model**: not needed on one machine, where jobs take turns (ADR 0020); on the PC, whether ComfyUI frees ACE-Step before a picture.

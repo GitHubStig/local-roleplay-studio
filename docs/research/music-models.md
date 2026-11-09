@@ -1,6 +1,6 @@
 # Music models: findings
 
-The evidence behind the music pick in [models.md](../models.md#music) and [ADR 0035](../adr/0035-music-from-ace-step-through-comfyui.md): which model makes a Roleplay's Cues, how it's prompted, and what it can't do. Stage 2 of [the music plan](../music-plans.md). Every number is from the Mac (M5 Pro, 48 GB), 2026-11-07 and -08; the PC hasn't been tried. The tables, the captions and every clip are in the bench, [bench/music-models/](../bench/music-models/README.md); this is what was concluded from it. How the Music Director decides when the music changes is in [music-director.md](music-director.md) and its own bench.
+The evidence behind the music pick in [models.md](../models.md#music) and [ADR 0035](../adr/0035-music-from-ace-step-through-comfyui.md): which model makes a Roleplay's Cues, how it's prompted, and what it can't do. Stage 2 of [the music plan](../music-plans.md). The numbers are from the Mac (M5 Pro, 48 GB), 2026-11-07 and -08, except [on the PC](#on-the-pc-2026-11-09-windows-pc) (RTX 4070, 12 GB, 16 GB of RAM), 2026-11-09. The tables, the captions and every clip are in the bench, [bench/music-models/](../bench/music-models/README.md); this is what was concluded from it. How the Music Director decides when the music changes is in [music-director.md](music-director.md) and its own bench.
 
 ## Two models
 
@@ -17,7 +17,22 @@ ACE-Step is a planner (a language model that sketches the piece as audio codes) 
 | XL turbo (4B) | 1.7B | 79–85 s | 24 GB | richer, a little more synthesizer-like, busier; "usable but not great" |
 | **XL turbo (4B)** | **4B** | **167–202 s** | **26–27 GB (34 GB for a 150 s song)** | **the best: "playing together", smoother, "more production-grade"** |
 
-ComfyUI keeps about 21 GB loaded between runs; the app frees it after (`/free`).
+ComfyUI keeps about 21 GB loaded between runs; the app frees it after (`/free`). Those are the Mac's; the PC's are next.
+
+### On the PC (2026-11-09, Windows PC)
+
+| Music model | Planner | 60 s of music | 150 s song | Card in use, at the most (60 s; song) | ComfyUI's RAM |
+|---|---|---|---|---|---|
+| 2B turbo | 1.7B | 12 s | 18 s | 7.8–9.6 GB; 11.6 GB | 2.6–2.8 GB |
+| XL turbo (4B) | 1.7B | 14 s | 21 s | 10.4–10.8 GB; 10.9 GB | 2.6 GB |
+| **XL turbo (4B)** | **4B** | **19–21 s** | **36 s** | **11.2 GB; 11.6 GB** | **2.7–3.4 GB** |
+
+- **The pick fits and is about nine times the Mac's speed**: the XL with its 4B planner, on 12 GB with 16 GB of RAM and everyday apps open, with no failure and no growth in the page file. So the 2B fallback isn't needed. The card's figure is the whole card's and dynamic loading fills what's free, so it shows it fit, not how much a setup needs.
+- **`/free` works**: the card back where it began within 0.1 s in all 15 renders, and a picture just after music as quick as one before (12.7 s against 14.5 s). Freeing costs the next clip about a second.
+- **By ear, the same order as on the Mac** (the owner): for instrumentals, the 2B "not great, lots of things going on that doesn't flow", the XL with the 1.7B smoother but still not flowing, the XL with the 4B planner the best. For a song with a voice, all three "decent, believable". So the 2B isn't a good fallback for Cues. The PC's clips are comparable with the Mac's.
+- **A seed repeats on one machine**, byte for byte (one clip tried), **but not across machines**: measured against the Mac's clips, the PC's seed 1 is as far from the Mac's seed 1 as the Mac's seed 2 is (harmony over time 0.46 against 0.44; unrelated captions 0.05). It's another take of the caption.
+- **The level varies between takes**: the Buffet's caption and seed average −26 dB on the PC against −15 dB on the Mac. That softness is part of what the owner likes in it ("knows to go soft and keep the mood"), so it isn't a fault; matching Cues' levels in the player is a question for listening to them crossfaded, and shouldn't flatten a soft Cue.
+- Not checked: a first render from a cold disk (the disk cache was warm) and a Text Model beside it. Details in the [bench](../bench/music-models/README.md#ace-step-15-on-the-pc-2026-11-09-windows-pc).
 
 ## Prompting it
 
@@ -44,3 +59,5 @@ ACE-Step sang the bench's song (verses and choruses with lines of the kind a Rol
 ## Measures against the ear
 
 Measures of each clip (how much it develops, its loudness's range, brightness, notes a second; CLAP, audio against text) were set beside the owner's 47 verdicts. None predicts a liked clip, none picks the better of two takes (two of four), and none hears the difference between the planners; but several bear out a particular remark: the Christmas-like Heaven, the choir gone, the monotonous tension, MiniMax's brightness. CLAP's choir score didn't tell a heard choir from one the owner couldn't hear, though. So they could be checks a take might fail ("sounds like Christmas", "doesn't develop"), never a judge of a good one.
+
+One hint since (2026-11-09, the PC, one seed): how much the sound changes between 2 s windows falls in the ear's order of the three setups on all four instrumentals, following "doesn't flow" where the 10 s measures don't. Nine measures were tried, so it wants checking on the Mac's planner pairs ([bench](../bench/music-models/README.md#ace-step-15-on-the-pc-2026-11-09-windows-pc)).
