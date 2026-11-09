@@ -34,6 +34,12 @@ ComfyUI keeps about 21 GB loaded between runs; the app frees it after (`/free`).
 - **The level varies between takes**: the Buffet's caption and seed average −26 dB on the PC against −15 dB on the Mac. That softness is part of what the owner likes in it ("knows to go soft and keep the mood"), so it isn't a fault; matching Cues' levels in the player is a question for listening to them crossfaded, and shouldn't flatten a soft Cue.
 - Not checked: a first render from a cold disk (the disk cache was warm) and a Text Model beside it. Details in the [bench](../bench/music-models/README.md#ace-step-15-on-the-pc-2026-11-09-windows-pc).
 
+### Music on the Mac's own ComfyUI, through the app (2026-11-09, Mac)
+
+The hired-killer replay, 13 Messages and 8 Cues, with the 26B and ACE-Step both on the Mac, no pictures, no other load. Each track took 185–214 s, ComfyUI 27 GB at the most, the free memory 35% at the lowest, and the swap about where it began (5.4 GB). ComfyUI and Ollama both let go after, ComfyUI down to 1.2 GB.
+
+**A Reply that arrives while a track renders waits for it: 192–223 s, for 6 of the 13 Messages**, against 5–11 s for the rest. The Text Model can't sit beside ACE-Step on the Mac, so text calls wait for the heavy job running (ADR 0029). The whole replay took 28 minutes, nearly all of it the music, where the same story took under 3 with music on the PC. So on the Mac, music as it stands holds up the story.
+
 ## Prompting it
 
 What changed the results most, over the bench's tries with the owner listening:

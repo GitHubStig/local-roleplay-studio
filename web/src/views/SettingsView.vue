@@ -616,7 +616,9 @@ function saveNow() {
                 @check="checkComfy"
               >
                 A ComfyUI with ACE-Step 1.5's files: the XL turbo and its 4B planner. Until one is
-                chosen, music goes to the ComfyUI pictures go to, or else the first.
+                chosen, music goes to the ComfyUI pictures go to, or else the first. On the machine
+                that runs the Text Model, a Reply waits for any track being made, which can take
+                minutes: another machine's ComfyUI avoids that.
               </RunOn>
             </div>
           </template>
