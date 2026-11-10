@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ask } from '../ask'
 import { frameName } from '../frameName'
-import { useEventListener, useTextareaAutosize } from '@vueuse/core'
+import { useTextareaAutosize } from '@vueuse/core'
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
 import { type Activity, type Clip, getSession, imageUrl, type Look, type Made3d, restartSession } from '../api'
 import { useSessionScreen } from '../composables/useSessionScreen'
@@ -25,6 +25,8 @@ import { useImageModels } from '../composables/useSettingsOptions'
 import UndirectedNote from './UndirectedNote.vue'
 import MusicTab from './MusicTab.vue'
 import { useMusicPlayer } from './useMusicPlayer'
+import { canSpeak, deliveryWords, partKey, useListening } from './useListening'
+import { CAST_SECTION_IDS, type CastField, castSectionsOf, isList, LIST_NOUNS } from './castSections'
 import CastFieldBox from './CastFieldBox.vue'
 import ItemList from '../components/ItemList.vue'
 import Frame3dViewers from '../components/Frame3dViewers.vue'
@@ -47,7 +49,6 @@ import {
   type RoleplayEvent,
   type RoleplaySession,
   type RoleplayFrame,
-  type Speech,
   beginRoleplay,
   type Job,
   type JobKind,
@@ -264,73 +265,14 @@ const scoreAsYouPlay = useStoredFlag('roleplay-score-as-you-play')
 const { on: featureOn, settings: settingsNow } = useFeatures()
 /** Music is being built (docs/design.md): its tab shows only while it's switched on. */
 const musicOn = computed(() => !!settingsNow.value?.music)
-/** A line can be listened to: voices are on, or it was already spoken. */
-const canListen = (speech: Speech | undefined) => featureOn.value('voices') || spokenNow(speech)
-/** What of a Reply is spoken: its dialogue, or the Character's thought (whispered). */
-type Part = 'dialogue' | 'thought'
-const SPEAK_JOB = { dialogue: 'speak', thought: 'speak-thought' } as const
-const speechOf = (frame: RoleplayFrame, part: Part) =>
-  part === 'thought' ? frame.thoughtSpeech : frame.speech
-/** Whether a part has words to say aloud (a Reply of only "…" doesn't). */
-const canSpeak = (frame: { reply: Reply }, part: Part = 'dialogue') =>
-  /[A-Za-z]/.test(part === 'thought' ? frame.reply.internal : frame.reply.dialogue)
-/** How a spoken line was directed, in a few words: "slowly, with a sigh"; '' if plainly. */
-function deliveryWords(speech?: Speech): string {
-  const d = speech?.delivery
-  if (!d) return ''
-  const pace = { normal: '', slow: 'slowly', fast: 'quickly' }[d.pace]
-  const sound = { none: '', sigh: 'a sigh', laughter: 'a laugh', cough: 'a cough' }[d.sound]
-  return [pace, sound && `with ${sound}`].filter(Boolean).join(', ')
-}
-/** A part's audio is in the Character's voice as it is now. */
-const spokenNow = (speech?: Speech) => !!speech && speech.ref === session.value?.voice?.ref
-
-const player = new Audio()
-/** What's playing: a Frame's part (`3`, `3:thought`), or 'voice' for the voice's reference clip. */
-const playing = ref<string | null>(null)
-const partKey = (index: number, part: Part) => (part === 'thought' ? `${index}:thought` : `${index}`)
-function stopAudio() {
-  player.pause()
-  playing.value = null
-}
-useEventListener(player, 'ended', () => (playing.value = null))
-function play(file: string, what: string) {
-  stopAudio()
-  player.src = imageUrl(props.id, file)
-  // Browsers return a promise; some test environments return nothing.
-  Promise.resolve(player.play()).then(() => (playing.value = what), () => (playing.value = null))
-}
-
-/** Parts to play once they've been spoken: asked to Listen to, or new while autoplay is on. */
-const toPlay = new Map<string, { index: number; part: Part }>()
-/**
- * Plays a Frame's line or thought, speaking it first (in the voice as it is now) if it hasn't
- * been, or was spoken in an earlier voice.
- */
-function listen(index: number, part: Part = 'dialogue') {
-  const frame = session.value?.frames[index]
-  if (!frame) return
-  const key = partKey(index, part)
-  if (playing.value === key) return stopAudio()
-  const speech = speechOf(frame, part)
-  if (speech && spokenNow(speech)) return play(speech.file, key)
-  toPlay.set(key, { index, part })
-  if (!hasJob(index, SPEAK_JOB[part])) queue(SPEAK_JOB[part], index)
-}
-// Play what was waiting to be spoken, once it is; forget it if speaking failed or it was undone.
-watch([() => session.value?.frames, jobs], () => {
-  for (const [key, { index, part }] of [...toPlay]) {
-    const frame = session.value?.frames[index]
-    const failed = jobs.value.some((j) =>
-      j.frameIndex === index && j.kind === SPEAK_JOB[part] && j.status === 'failed'
-    )
-    const speech = frame && speechOf(frame, part)
-    if (!frame || failed) toPlay.delete(key)
-    else if (speech && spokenNow(speech) && !hasJob(index, SPEAK_JOB[part])) {
-      toPlay.delete(key)
-      play(speech.file, key)
-    }
-  }
+/** Listening to the Character's lines and thoughts, and to the voice itself (`useListening`). */
+const { canListen, spokenNow, playing, stopAudio, play, listen, playWhenSpoken } = useListening({
+  sessionId: props.id,
+  session,
+  jobs,
+  hasJob,
+  queue: (kind, index) => queue(kind, index),
+  voicesOn: () => featureOn.value('voices'),
 })
 
 /** The voice description as edited in the side panel. */
@@ -462,7 +404,7 @@ const afterOf = () => ({
 /** A new Reply: its line is played once spoken, if autoplay asked for it; its jobs are queued. */
 function afterReply(frame: RoleplayFrame) {
   if (autoplay.value && featureOn.value('voices') && canSpeak(frame)) {
-    toPlay.set(partKey(frame.index, 'dialogue'), { index: frame.index, part: 'dialogue' })
+    playWhenSpoken(frame.index, 'dialogue')
   }
   refreshJobs()
 }
@@ -631,89 +573,13 @@ const statusLabel = computed(() => {
 
 // --- The Cast, editable by hand.
 
-/**
- * `start`: how things were when the scene began (who's who, their age and looks, where it starts);
- * fixed once it has begun, as the story moves on from it (the server refuses a change too).
- */
-type CastField = { group: keyof Cast; key: string; label: string; long?: boolean; start?: boolean }
-const CAST_FIELDS: CastField[] = [
-  { group: 'character', key: 'name', label: 'Name', start: true },
-  { group: 'character', key: 'age', label: 'Age', start: true },
-  { group: 'character', key: 'appearance', label: 'Appearance', long: true, start: true },
-  { group: 'character', key: 'personality', label: 'Personality', long: true },
-  { group: 'character', key: 'voice', label: 'Way of speaking', long: true },
-  { group: 'character', key: 'background', label: 'Background', long: true },
-  { group: 'character', key: 'goal', label: 'Goal', long: true },
-  { group: 'persona', key: 'name', label: 'Name', start: true },
-  { group: 'persona', key: 'role', label: 'Who they are to the Character', long: true, start: true },
-  { group: 'persona', key: 'appearance', label: 'Appearance', long: true, start: true },
-  { group: 'setting', key: 'place', label: 'Place', long: true, start: true },
-  { group: 'setting', key: 'time', label: 'Time', long: true, start: true },
-  { group: 'setting', key: 'weather', label: 'Weather', long: true, start: true },
-  { group: 'truths', key: 'truths', label: 'What holds whatever anyone does', long: true },
-  { group: 'others', key: 'others', label: 'Who else is in the story, and who they are', long: true },
-]
-/** The Cast's parts that are lists, edited as a box each (`ItemList`), and what one item is. */
-const LIST_NOUNS = { truths: 'Truth', others: 'person' } as const
-const LIST_GROUPS = Object.keys(LIST_NOUNS) as (keyof typeof LIST_NOUNS)[]
-const isList = (g: keyof Cast): g is (typeof LIST_GROUPS)[number] =>
-  (LIST_GROUPS as readonly string[]).includes(g)
-const GROUPS: { id: keyof Cast; title: () => string; preview: () => string }[] = [
-  { id: 'character', title: () => 'Character', preview: () => characterName.value },
-  { id: 'persona', title: () => 'You play', preview: () => personaName.value },
-  { id: 'setting', title: () => 'Where it starts', preview: () => castDraft.value?.setting.place ?? '' },
-]
-
-/**
- * The Cast's sections: in review, a group each, all editable. Once begun, how it started first,
- * read-only (a part per group), then what still steers the Character.
- */
-type CastSection = {
-  id: string
-  title: string
-  preview: string
-  locked?: boolean
-  /** A part with an `id` collapses on its own, its boxes inside it not. */
-  parts: { id?: string; title?: string; preview?: string; fields: CastField[] }[]
-}
-const castSections = computed((): CastSection[] => {
-  const fields = (g: keyof Cast, start?: boolean) =>
-    CAST_FIELDS.filter((f) => f.group === g && (start === undefined || !!f.start === start))
-  // Not part of how it started: editable before and after it begins.
-  const list = (id: (typeof LIST_GROUPS)[number], title: string): CastSection => ({
-    id,
-    title,
-    preview: castDraft.value?.[id]?.filter((t) => t.trim()).join(' · ') || 'none',
-    parts: [{ fields: fields(id) }],
+/** The Cast's sections as edited: a group each in review, then how it started and what still steers. */
+const castSections = computed(() =>
+  castSectionsOf(castDraft.value, begun.value, {
+    character: characterName.value,
+    persona: personaName.value,
   })
-  const truths = list('truths', 'Truths')
-  const others = list('others', 'Others in the story')
-  if (!begun.value) {
-    return [
-      ...GROUPS.map((g) => ({ id: g.id, title: g.title(), preview: g.preview(), parts: [{ fields: fields(g.id) }] })),
-      others,
-      truths,
-    ]
-  }
-  const c = castDraft.value
-  return [
-    {
-      id: 'start',
-      title: 'At the start',
-      preview: c ? `${c.character.name}, ${c.character.age} · ${c.persona.name} · ${c.setting.place}` : '',
-      locked: true,
-      parts: GROUPS.map((g) => ({
-        id: `start.${g.id}`,
-        title: g.title(),
-        preview: g.preview(),
-        fields: fields(g.id, true),
-      })),
-    },
-    { id: 'character', title: 'Character', preview: characterName.value, parts: [{ fields: fields('character', false) }] },
-    others,
-    truths,
-  ]
-})
+)
 /** The whole Cast collapses to its heading, as the Look and Voice do. */
 const castCollapsed = useStoredFlag('collapsed:roleplay.cast')
 /**
@@ -721,7 +587,7 @@ const castCollapsed = useStoredFlag('collapsed:roleplay.cast')
  * it), remembered per browser; At the start begins collapsed.
  */
 const sectionCollapsed = Object.fromEntries(
-  ['character', 'persona', 'setting', 'others', 'truths', 'start', 'start.character', 'start.persona', 'start.setting'].map((id) => [
+  CAST_SECTION_IDS.map((id) => [
     id,
     useStoredFlag(`collapsed:roleplay.cast.${id}`, id === 'start'),
   ]),

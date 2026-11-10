@@ -138,7 +138,7 @@ useEventListener(window, 'focus', checkServer)
          draft, the viewed Frame and running Frames survive going there and back. Opening another
          Session replaces it, as only one is in progress at a time. -->
     <RouterView v-slot="{ Component, route: r }">
-      <KeepAlive :include="['SessionView', 'StoryboardView', 'RoleplayView']" :max="1">
+      <KeepAlive :include="['ChainView', 'StoryboardView', 'RoleplayView']" :max="1">
         <component :is="Component" :key="r.path" class="min-h-0 flex-1" />
       </KeepAlive>
     </RouterView>

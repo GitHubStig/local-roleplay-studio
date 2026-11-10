@@ -8,7 +8,7 @@ import { createMemoryHistory, createRouter } from 'vue-router'
 import * as api from '../api'
 import { ALL_AVAILABLE, IMAGE_MODELS, promptFor } from '../testing'
 import { loadSettingsOptions } from '../composables/useSettingsOptions'
-import SessionView from './SessionView.vue'
+import ChainView from './ChainView.vue'
 
 vi.mock('../ask', () => ({ ask: vi.fn() }))
 vi.mock('../api', async (importOriginal) => ({
@@ -81,7 +81,7 @@ async function mountIt() {
     routes: [{ path: '/', component: {} }, { path: '/sessions/:id', component: {} }],
   })
   await router.push('/sessions/s1')
-  const wrapper = mount(SessionView, { props: { id: 's1' }, global: { plugins: [router] } })
+  const wrapper = mount(ChainView, { props: { id: 's1' }, global: { plugins: [router] } })
   await flushPromises()
   await loadImages()
   return { wrapper, router }
@@ -129,7 +129,7 @@ afterEach(() => {
 // Unmounted screens would leave window listeners (e.g. "Leave site?") behind for later tests.
 enableAutoUnmount(afterEach)
 
-describe('SessionView', () => {
+describe('ChainView', () => {
   it('runs the Opening Frame for a new Session, showing provisional text first', async () => {
     vi.mocked(api.getSession).mockResolvedValue(session())
     let emit!: (e: api.FrameEvent) => void

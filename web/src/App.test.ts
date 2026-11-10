@@ -6,9 +6,9 @@ import { ALL_AVAILABLE, ALL_ON, promptFor } from './testing'
 import App from './App.vue'
 import { clearCurrentSession } from './composables/useCurrentSession'
 import HomeView from './views/HomeView.vue'
-import SessionView from './views/SessionView.vue'
+import ChainView from './chain/ChainView.vue'
 import SettingsView from './views/SettingsView.vue'
-import StoryboardView from './views/StoryboardView.vue'
+import StoryboardView from './storyboard/StoryboardView.vue'
 
 vi.mock('./api', async (importOriginal) => ({
   ...(await importOriginal<typeof api>()),
@@ -51,7 +51,7 @@ async function mountApp(path: string) {
     history: createMemoryHistory(),
     routes: [
       { path: '/', name: 'home', component: HomeView },
-      { path: '/sessions/:id', name: 'session', component: SessionView, props: true },
+      { path: '/sessions/:id', name: 'session', component: ChainView, props: true },
       { path: '/storyboards/:id', name: 'storyboard', component: StoryboardView, props: true },
       { path: '/settings', name: 'settings', component: SettingsView },
     ],
