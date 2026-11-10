@@ -26,9 +26,9 @@ import { seededChat } from '../../../server/text/seeded.ts'
 import type { Chat } from '../../../server/text/chat.ts'
 import { placeholderImageGenerator } from '../../../server/images/imageGenerator.ts'
 import { beginRoleplay, sendMessage, writeCast } from '../../../server/roleplay/engine.ts'
-import { writeScore } from '../../../server/roleplay/score.ts'
-import { directFrame, type DirectorReads } from '../../../server/roleplay/director.ts'
-import { type Chunking, scoreRoleplay } from '../../../server/roleplay/hindsight.ts'
+import { writeScore } from '../../../server/roleplay/music/score.ts'
+import { directFrame, type DirectorReads } from '../../../server/roleplay/music/director.ts'
+import { type Chunking, scoreRoleplay } from '../../../server/roleplay/music/hindsight.ts'
 import type { RoleplaySession } from '../../../server/roleplay/types.ts'
 import {
   type CourseStep,

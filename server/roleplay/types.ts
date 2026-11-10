@@ -94,7 +94,7 @@ export const DENSITIES = ['sparse', 'layered', 'full'] as const
 export const TEMPOS = ['slow', 'moderate', 'fast'] as const
 /** Whether a Cue has voices: a low, soft choir singing vowels, or none. */
 export const CUE_VOCALS = ['none', 'choir'] as const
-/** Which good caption a Cue's is made from (`prompts/roleplay/cue.md`). */
+/** Which good caption a Cue's is made from (`prompts/roleplay/music/cue.md`). */
 export const CUE_SHAPES = ['intimate', 'uneasy', 'reflective', 'sacred', 'danger'] as const
 /**
  * The keys a Cue may be in: each once, by its usual name, all of them ones ACE-Step's node takes

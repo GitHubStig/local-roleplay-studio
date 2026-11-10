@@ -1,6 +1,6 @@
 # The cue writer's bench (2026-11-09, Mac)
 
-Does the cue writer (`server/roleplay/director.ts`, `server/prompts/roleplay/cue*.md`) write what ACE-Step renders well, by the rules the music-model bench found ([research/music-models.md](../../research/music-models.md#prompting-it)), and does its reply end?
+Does the cue writer (`server/roleplay/music/director.ts`, `server/prompts/roleplay/music/cue*.md`) write what ACE-Step renders well, by the rules the music-model bench found ([research/music-models.md](../../research/music-models.md#prompting-it)), and does its reply end?
 
     deno run -A docs/bench/music-cues/run.ts write <label> <seed>...
     python3 docs/bench/music-cues/scan.py docs/bench/music-cues/out/<label>.jsonl

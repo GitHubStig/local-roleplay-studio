@@ -36,7 +36,7 @@ The owner's idea (2026-11-09): when a Roleplay is finished and the player is onl
 
 ### Music for Storyboards
 
-Worth keeping (the owner, 2026-11-09). A scoring pass over the plan suits them, as their Beats are known up front; a Chain has no story to follow. The prompts and code sit in the Roleplay's part for now: what doesn't read a Roleplay (the cue writer, the Behaviour prompts, the Cue types) moves to a shared `music/` part when this is built.
+Worth keeping (the owner, 2026-11-09). A scoring pass over the plan suits them, as their Beats are known up front; a Chain has no story to follow. The prompts and code sit in the Roleplay's part for now (`server/roleplay/music/`, `server/prompts/roleplay/music/`): what doesn't read a Roleplay (the cue writer, the Behaviour prompts, the Cue types) moves to a shared `music/` part when this is built.
 
 ### Stingers: undecided
 

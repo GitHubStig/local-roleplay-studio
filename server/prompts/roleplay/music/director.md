@@ -12,7 +12,7 @@ music continues. "sharp" was described as a cut "for a sudden turn (a blow, a re
 2026-11-06, and was then picked for a narrowed look or a warning, 40 times in 20 bench runs
 (docs/bench/music-director/README.md); it's now kept for events that break the scene.
 
-The reply's shape is directorSchema in server/roleplay/director.ts.
+The reply's shape is directorSchema in server/roleplay/music/director.ts.
 
 Values: behaviour (music-behaviour-*.md, from the Roleplay's Behaviour)
 -->

@@ -1,6 +1,6 @@
 # The Music Director's bench (2026-11-06, Mac)
 
-Does the Music Director (`server/roleplay/director.ts`, docs/music-plans.md) change the music where a story turns, and hold it where it doesn't? The bench replays (`server/replay/replays/music-*.yaml`) each give a course, a step per Frame (begin, hold, gentle, sharp, change, silence, any), and the Director's decisions are scored against it.
+Does the Music Director (`server/roleplay/music/director.ts`, docs/music-plans.md) change the music where a story turns, and hold it where it doesn't? The bench replays (`server/replay/replays/music-*.yaml`) each give a course, a step per Frame (begin, hold, gentle, sharp, change, silence, any), and the Director's decisions are scored against it.
 
 ## What was run
 
@@ -62,7 +62,7 @@ No runaway in any of it (about 1,500 Director and cue writer calls).
 
 ## Score the Roleplay, with hindsight (2026-11-07, Mac)
 
-The pass (`server/roleplay/hindsight.ts`) over the same 20 stories, and over a long one. `direct hindsight` reads each story as the app does (whole, up to 100 Frames), `hindsight-chunked` in chunks of 5 Frames with 2 more read either side, `hindsight-whole` in one call however long; `AS=<name>` keeps each wording's results apart.
+The pass (`server/roleplay/music/hindsight.ts`) over the same 20 stories, and over a long one. `direct hindsight` reads each story as the app does (whole, up to 100 Frames), `hindsight-chunked` in chunks of 5 Frames with 2 more read either side, `hindsight-whole` in one call however long; `AS=<name>` keeps each wording's results apart.
 
 **Three wordings**, against the Director as you play (`base`, after "sharp" was narrowed), Frames kept of 276:
 

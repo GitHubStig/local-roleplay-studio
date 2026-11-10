@@ -3,16 +3,16 @@
  * playing and why it began, and decides whether the ground between the people has shifted since:
  * the music continues, changes (a new Cue, gently or sharply), or falls silent. On a change, the
  * cue writer picks the new Cue's values within the Score. Its prompts are
- * `prompts/roleplay/director*.md` and `cue*.md`.
+ * `prompts/roleplay/music/director*.md` and `cue*.md`.
  */
-import { frameName, secondsSince, withRetry } from '../frames.ts'
-import { crossedLimit } from '../limits.ts'
-import { loadPrompt } from '../promptFiles.ts'
-import type { Scenario } from '../scenario.ts'
-import type { SessionStore } from '../session.ts'
-import type { ChatMessage } from '../text/chat.ts'
-import type { RoleplayEvent } from './engine.ts'
-import type { RoleplayModel } from './model.ts'
+import { frameName, secondsSince, withRetry } from '../../frames.ts'
+import { crossedLimit } from '../../limits.ts'
+import { loadPrompt } from '../../promptFiles.ts'
+import type { Scenario } from '../../scenario.ts'
+import type { SessionStore } from '../../session.ts'
+import type { ChatMessage } from '../../text/chat.ts'
+import type { RoleplayEvent } from '../engine.ts'
+import type { RoleplayModel } from '../model.ts'
 import { writeScore } from './score.ts'
 import {
   type Cue,
@@ -30,9 +30,9 @@ import {
   type RoleplayFrame,
   type RoleplaySession,
   TEMPOS,
-} from './types.ts'
-import type { Score } from '../../shared/roleplay.ts'
-import { GoneError, updateSession } from './update.ts'
+} from '../types.ts'
+import type { Score } from '../../../shared/roleplay.ts'
+import { GoneError, updateSession } from '../update.ts'
 
 /** The Director's reply, in the order it's written. */
 export const directorSchema = {
@@ -232,7 +232,7 @@ export const scoreText = (session: RoleplaySession) => {
 }
 
 export const behaviourOf = (session: RoleplaySession) =>
-  loadPrompt(`roleplay/music-behaviour-${session.settings.musicBehaviour}`)
+  loadPrompt(`roleplay/music/behaviour-${session.settings.musicBehaviour}`)
 
 /**
  * What the Director reads: the whole story, or only the Frames since the Cue playing began (the
@@ -250,19 +250,21 @@ export async function directorMessages(
   return [
     {
       role: 'system',
-      content: await loadPrompt('roleplay/director', { behaviour: await behaviourOf(session) }),
+      content: await loadPrompt('roleplay/music/director', {
+        behaviour: await behaviourOf(session),
+      }),
     },
     {
       role: 'user',
-      content: await loadPrompt('roleplay/director-request', {
+      content: await loadPrompt('roleplay/music/director-request', {
         score: scoreText(session),
         story: musicStory(session, index, reads === 'since' ? playing?.start ?? 0 : 0),
         playing: playing
-          ? await loadPrompt('roleplay/director-playing', {
+          ? await loadPrompt('roleplay/music/director-playing', {
             cue: cueText(playing),
             reading: playing.reading,
           })
-          : await loadPrompt('roleplay/director-first'),
+          : await loadPrompt('roleplay/music/director-first'),
         frame: frameName(index),
       }),
     },
@@ -282,20 +284,20 @@ export async function cueMessages(
   return [
     {
       role: 'system',
-      content: await loadPrompt('roleplay/cue', {
+      content: await loadPrompt('roleplay/music/cue', {
         behaviour: await behaviourOf(session),
         seconds: String(CUE_SECONDS),
       }),
     },
     {
       role: 'user',
-      content: await loadPrompt('roleplay/cue-request', {
+      content: await loadPrompt('roleplay/music/cue-request', {
         score: scoreText(session),
-        taste: taste ? await loadPrompt('roleplay/cue-taste', { taste }) : '',
+        taste: taste ? await loadPrompt('roleplay/music/cue-taste', { taste }) : '',
         steer: steer
-          ? await loadPrompt('roleplay/cue-steer', { steer })
+          ? await loadPrompt('roleplay/music/cue-steer', { steer })
           : previous?.steer
-          ? await loadPrompt('roleplay/cue-steer-earlier', { steer: previous.steer })
+          ? await loadPrompt('roleplay/music/cue-steer-earlier', { steer: previous.steer })
           : '',
         // Its values, not its caption: shown the caption, a third of the next ones read as changes
         // to it ("the organ falls away"), which the music model can't follow (2026-11-09).
@@ -328,8 +330,8 @@ export async function withDanger(values: CueValues): Promise<CueValues> {
     tempo: 'fast',
     key: 'D minor',
     vocals: 'none',
-    caption: (await loadPrompt('roleplay/cue-danger-caption')).trim(),
-    lyrics: (await loadPrompt('roleplay/cue-danger-lyrics')).trim(),
+    caption: (await loadPrompt('roleplay/music/cue-danger-caption')).trim(),
+    lyrics: (await loadPrompt('roleplay/music/cue-danger-lyrics')).trim(),
   }
 }
 

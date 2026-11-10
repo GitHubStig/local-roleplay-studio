@@ -3,12 +3,12 @@
  * It reads the story in chunks, each placing the turns on its own Frames (a change, a silence or a
  * stinger) while reading a few Frames either side, then has the cue writer write each change's Cue,
  * and replaces every Cue and every Frame's music with what it found. Its prompts are
- * `prompts/roleplay/hindsight*.md`; the cue writer's are the Director's (`director.ts`).
+ * `prompts/roleplay/music/hindsight*.md`; the cue writer's are the Director's (`director.ts`).
  */
-import { frameName, secondsSince, withRetry } from '../frames.ts'
-import { loadPrompt } from '../promptFiles.ts'
-import type { Scenario } from '../scenario.ts'
-import type { ChatMessage } from '../text/chat.ts'
+import { frameName, secondsSince, withRetry } from '../../frames.ts'
+import { loadPrompt } from '../../promptFiles.ts'
+import type { Scenario } from '../../scenario.ts'
+import type { ChatMessage } from '../../text/chat.ts'
 import {
   behaviourOf,
   cueStart,
@@ -22,10 +22,10 @@ import {
   withoutSpeaker,
   writeCueAt,
 } from './director.ts'
-import type { RoleplayEvent } from './engine.ts'
+import type { RoleplayEvent } from '../engine.ts'
 import { writeScore } from './score.ts'
-import { type Cue, ENTRIES, type Entry, type FrameMusic, type RoleplaySession } from './types.ts'
-import { GoneError, updateSession } from './update.ts'
+import { type Cue, ENTRIES, type Entry, type FrameMusic, type RoleplaySession } from '../types.ts'
+import { GoneError, updateSession } from '../update.ts'
 
 /** What the pass can mark on a Frame; the music continues through every Frame it doesn't. */
 export const TURNS = ['transition', 'silence', 'stinger'] as const
@@ -144,20 +144,22 @@ export async function hindsightMessages(
   return [
     {
       role: 'system',
-      content: await loadPrompt('roleplay/hindsight', { behaviour: await behaviourOf(session) }),
+      content: await loadPrompt('roleplay/music/hindsight', {
+        behaviour: await behaviourOf(session),
+      }),
     },
     {
       role: 'user',
-      content: await loadPrompt('roleplay/hindsight-request', {
+      content: await loadPrompt('roleplay/music/hindsight-request', {
         score: scoreText(session),
         story: musicStory(session, chunk.readTo, chunk.readFrom),
         playing: playing
-          ? await loadPrompt('roleplay/director-playing', {
+          ? await loadPrompt('roleplay/music/director-playing', {
             cue: cueText(playing),
             reading: playing.reading,
           })
-          : await loadPrompt('roleplay/hindsight-first'),
-        around: around ? ` ${await loadPrompt('roleplay/hindsight-around')}` : '',
+          : await loadPrompt('roleplay/music/hindsight-first'),
+        around: around ? ` ${await loadPrompt('roleplay/music/hindsight-around')}` : '',
         first: chunk.first + 1,
         last: chunk.last + 1,
       }),

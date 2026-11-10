@@ -9,7 +9,7 @@ music continues through every Frame without one. "entry" is always written, as f
 it's ignored on a stinger. "sharp" is worded as narrowly as in director.md, where the bench found
 a looser wording picked for small shifts (docs/bench/music-director/README.md).
 
-The reply's shape is hindsightSchema in server/roleplay/hindsight.ts.
+The reply's shape is hindsightSchema in server/roleplay/music/hindsight.ts.
 
 Values: behaviour (music-behaviour-*.md, from the Roleplay's Behaviour)
 -->

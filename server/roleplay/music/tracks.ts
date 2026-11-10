@@ -3,15 +3,15 @@
  * its turn behind lines and pictures, kept with the Session and replaced when the Cue is.
  */
 import { join } from '@std/path'
-import { frameName, secondsSince } from '../frames.ts'
-import type { JobEmit } from '../jobs.ts'
-import type { ComfyTraces } from '../comfyui/traces.ts'
-import type { MusicGenerator } from '../music/musicGenerator.ts'
-import { RenderQueue } from '../renderQueue.ts'
-import type { SessionStore } from '../session.ts'
+import { frameName, secondsSince } from '../../frames.ts'
+import type { JobEmit } from '../../jobs.ts'
+import type { ComfyTraces } from '../../comfyui/traces.ts'
+import type { MusicGenerator } from '../../music/musicGenerator.ts'
+import { RenderQueue } from '../../renderQueue.ts'
+import type { SessionStore } from '../../session.ts'
 import { bpmOf, CUE_SECONDS } from './director.ts'
-import type { Cue, RoleplaySession } from './types.ts'
-import { updateSession } from './update.ts'
+import type { Cue, RoleplaySession } from '../types.ts'
+import { updateSession } from '../update.ts'
 
 export interface MusicDeps {
   store: SessionStore

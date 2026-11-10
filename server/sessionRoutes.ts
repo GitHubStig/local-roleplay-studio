@@ -48,7 +48,7 @@ const AUDIO_FILE =
 const SCENE_FILE = /^(scene|figure|lito)-\d+-[0-9a-f]{8}\.ply$/
 /** A clip made from a Frame's picture (`clip-3-lead-in-1a2b3c4d.mp4`, `video/makeClip.ts`). */
 const CLIP_FILE = /^clip-\d+-[a-z-]+-[0-9a-f]{8}\.mp4$/
-/** A Cue's track (`music-cue-1a2b3c4d-5e6f7a8b.flac`, `roleplay/music.ts`). */
+/** A Cue's track (`music-cue-1a2b3c4d-5e6f7a8b.flac`, `roleplay/music/tracks.ts`). */
 const MUSIC_FILE = /^music-cue-[0-9a-f]{8}-[0-9a-f]{8}\.flac$/
 const CONTENT_TYPES: Record<string, string> = {
   '.png': 'image/png',

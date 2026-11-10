@@ -11,9 +11,9 @@ import {
   replySchema,
 } from './prompt.ts'
 import type { Cast, Reply, Score } from '../../shared/roleplay.ts'
-import { cleanScore, scoreSchema } from './score.ts'
-import { directorSchema } from './director.ts'
-import { hindsightSchema } from './hindsight.ts'
+import { cleanScore, scoreSchema } from './music/score.ts'
+import { directorSchema } from './music/director.ts'
+import { hindsightSchema } from './music/hindsight.ts'
 import type { Look, Subject } from '../../shared/session.ts'
 import { parseFrameBody } from '../frameBody.ts'
 import {

@@ -1,6 +1,6 @@
 <!--
 The cue writer's caption by rules alone, kept to try again when the Text Model changes (ADR 0035):
-put it in place of "# The shapes" in server/prompts/roleplay/cue.md, drop "shape" from the reply and
+put it in place of "# The shapes" in server/prompts/roleplay/music/cue.md, drop "shape" from the reply and
 its description, write the Cues with `run.ts`, and judge them by ear against the adapted ones. What
 it was missing with Gemma 4 26B, and with Claude writing by hand, is in README.md. "Long notes" and
 "keep the melody moving" aren't here: each pushed every caption one way.

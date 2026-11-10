@@ -1,7 +1,7 @@
 import { assertEquals, assertMatch, assertThrows } from '@std/assert'
-import { replyOf, scriptedRoleplayModel, testCast, testScore } from './testing.ts'
-import { withTempDir } from '../testing.ts'
-import { readEvents, settled, setup } from '../appTesting.ts'
+import { replyOf, scriptedRoleplayModel, testCast, testScore } from '../testing.ts'
+import { withTempDir } from '../../testing.ts'
+import { readEvents, settled, setup } from '../../appTesting.ts'
 import {
   bpmOf,
   cleanCue,
@@ -14,7 +14,7 @@ import {
   withDanger,
   withoutSpeaker,
 } from './director.ts'
-import type { Cue, RoleplaySession } from './types.ts'
+import type { Cue, RoleplaySession } from '../types.ts'
 
 const direction = (decision: string, extra: Record<string, unknown> = {}) => ({
   reading: 'Wary, testing each other.',

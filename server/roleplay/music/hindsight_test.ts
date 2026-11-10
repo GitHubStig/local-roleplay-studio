@@ -1,8 +1,8 @@
 import { assertEquals, assertMatch, assertNotMatch } from '@std/assert'
-import { replyOf, scriptedRoleplayModel, testCast, testScore } from './testing.ts'
-import { withTempDir } from '../testing.ts'
-import { readEvents, settled, setup } from '../appTesting.ts'
-import type { Scenario } from '../scenario.ts'
+import { replyOf, scriptedRoleplayModel, testCast, testScore } from '../testing.ts'
+import { withTempDir } from '../../testing.ts'
+import { readEvents, settled, setup } from '../../appTesting.ts'
+import type { Scenario } from '../../scenario.ts'
 import {
   chunksOf,
   cleanTurns,
@@ -10,7 +10,7 @@ import {
   hindsightSchema,
   scoreRoleplay,
 } from './hindsight.ts'
-import type { RoleplaySession } from './types.ts'
+import type { RoleplaySession } from '../types.ts'
 
 const turn = (frame: number, decision: string, extra: Record<string, unknown> = {}) => ({
   frame,

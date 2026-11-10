@@ -22,7 +22,7 @@ import { CastError, openingMessages, parseCast, roleplayMessages } from './promp
 import { judgeMessages } from './judge.ts'
 import { artFrameMessages, artLookMessages, isLook, pictured, withNewcomers } from './art.ts'
 import { cleanLook, lookLimit, renameShown } from '../look.ts'
-import { withoutCuesFrom } from './director.ts'
+import { withoutCuesFrom } from './music/director.ts'
 import type { RoleplayFrame, RoleplaySession } from './types.ts'
 import type { Cast, Reply, Score } from '../../shared/roleplay.ts'
 import { Refusal } from '../refusal.ts'

@@ -8,7 +8,7 @@ blank to write from the moment, as a caption kept whole kept its feeling too, wh
 The avoid list binds this call; it never reaches the music model. The tempo in beats per minute and
 the length are set by code, so neither goes in the caption, nor does the key.
 
-The reply's shape is cueSchema in server/roleplay/director.ts. A Cue of the danger shape takes cue-danger-*.md whatever it writes.
+The reply's shape is cueSchema in server/roleplay/music/director.ts. A Cue of the danger shape takes cue-danger-*.md whatever it writes.
 
 Values: behaviour (music-behaviour-*.md), seconds (how long a track is)
 -->

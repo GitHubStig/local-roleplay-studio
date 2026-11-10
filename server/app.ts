@@ -26,7 +26,7 @@ import { spokenText } from './roleplay/voice.ts'
 import { clipRoutes } from './video/routes.ts'
 import { type SessionsFolder, sessionsFolderRoutes } from './sessionsFolder.ts'
 import { checkRoleplayJob, type RoleplayJobContext, runRoleplayJob } from './roleplay/jobs.ts'
-import { cuesWaiting } from './roleplay/music.ts'
+import { cuesWaiting } from './roleplay/music/tracks.ts'
 import type { MusicGenerator } from './music/musicGenerator.ts'
 import {
   asQueued,

@@ -1,21 +1,21 @@
 /**
  * A Roleplay's Score: its music's identity, written once like the Look and shared by every Cue
  * (docs/design.md). Written from the Cast, the Brief, the Scenario's Music and the Session's
- * Music taste; edited by hand in the Music tab. Its prompts are `prompts/roleplay/score*.md`.
+ * Music taste; edited by hand in the Music tab. Its prompts are `prompts/roleplay/music/score*.md`.
  */
-import { secondsSince, withRetry } from '../frames.ts'
-import { crossedLimit } from '../limits.ts'
-import { loadPrompt } from '../promptFiles.ts'
-import type { Scenario } from '../scenario.ts'
-import { MUSIC_BEHAVIOURS, type MusicBehaviour } from '../settings.ts'
-import type { SessionStore } from '../session.ts'
-import type { ChatMessage } from '../text/chat.ts'
-import type { RoleplayEvent } from './engine.ts'
-import type { RoleplayModel } from './model.ts'
-import type { RoleplaySession } from './types.ts'
-import type { Score } from '../../shared/roleplay.ts'
-import { updateSession } from './update.ts'
-import { Refusal } from '../refusal.ts'
+import { secondsSince, withRetry } from '../../frames.ts'
+import { crossedLimit } from '../../limits.ts'
+import { loadPrompt } from '../../promptFiles.ts'
+import type { Scenario } from '../../scenario.ts'
+import { MUSIC_BEHAVIOURS, type MusicBehaviour } from '../../settings.ts'
+import type { SessionStore } from '../../session.ts'
+import type { ChatMessage } from '../../text/chat.ts'
+import type { RoleplayEvent } from '../engine.ts'
+import type { RoleplayModel } from '../model.ts'
+import type { RoleplaySession } from '../types.ts'
+import type { Score } from '../../../shared/roleplay.ts'
+import { updateSession } from '../update.ts'
+import { Refusal } from '../../refusal.ts'
 
 /** The tempo range a Score may set, in beats per minute. */
 export const TEMPO = { slowest: 40, fastest: 200 }
@@ -105,18 +105,18 @@ export async function scoreMessages(
   return [
     {
       role: 'system',
-      content: await loadPrompt('roleplay/score', TEMPO),
+      content: await loadPrompt('roleplay/music/score', TEMPO),
     },
     {
       role: 'user',
-      content: await loadPrompt('roleplay/score-request', {
+      content: await loadPrompt('roleplay/music/score-request', {
         brief: scenario.opening,
         cast: session.cast!,
         music: music
-          ? await loadPrompt('roleplay/score-music', { music })
+          ? await loadPrompt('roleplay/music/score-music', { music })
           : 'The story says nothing of its music: pick what fits it.',
         taste: taste.trim()
-          ? await loadPrompt('roleplay/score-taste', { taste: taste.trim() })
+          ? await loadPrompt('roleplay/music/score-taste', { taste: taste.trim() })
           : '',
       }),
     },

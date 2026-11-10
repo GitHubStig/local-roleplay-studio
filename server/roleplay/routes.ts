@@ -14,14 +14,14 @@ import {
   writeCast,
 } from './engine.ts'
 import type { RoleplayModel } from './model.ts'
-import { steerRefusal } from './director.ts'
+import { steerRefusal } from './music/director.ts'
 import { updateSession } from './update.ts'
 import { suggestMessage } from './suggest.ts'
 import { logCallsUnder } from '../calls.ts'
 import { setVoiceDescription } from './voice.ts'
 import type { RoleplayFrame, RoleplaySession } from './types.ts'
 import type { Settings } from '../settings.ts'
-import { setMusicSettings, setScore, writeScore } from './score.ts'
+import { setMusicSettings, setScore, writeScore } from './music/score.ts'
 
 /**
  * What follows a Reply, as the player's switches ask (in their browser): its line spoken, as

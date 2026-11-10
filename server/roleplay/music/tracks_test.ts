@@ -1,10 +1,10 @@
 import { assert, assertEquals, assertMatch } from '@std/assert'
 import { join } from '@std/path'
-import { readEvents, settled, setup } from '../appTesting.ts'
-import type { MusicGenerator, MusicRequest } from '../music/musicGenerator.ts'
-import { withTempDir } from '../testing.ts'
-import { replyOf, scriptedRoleplayModel, testCast, testScore } from './testing.ts'
-import type { RoleplaySession } from './types.ts'
+import { readEvents, settled, setup } from '../../appTesting.ts'
+import type { MusicGenerator, MusicRequest } from '../../music/musicGenerator.ts'
+import { withTempDir } from '../../testing.ts'
+import { replyOf, scriptedRoleplayModel, testCast, testScore } from '../testing.ts'
+import type { RoleplaySession } from '../types.ts'
 
 const COMFY = { id: 'pc', kind: 'comfyui' as const, address: 'http://192.0.2.20:8188' }
 const direction = (decision: string) => ({
