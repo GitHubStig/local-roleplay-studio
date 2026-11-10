@@ -134,10 +134,11 @@ useEventListener(window, 'focus', checkServer)
     <div class="fixed right-3 bottom-3 z-50 rounded-lg bg-canvas/90 shadow-md sm:hidden" data-corner-theme>
       <ThemeToggle />
     </div>
-    <!-- Up to 5 Session screens stay alive while you visit Home, Settings or other Sessions, so
-         drafts, the viewed Frame and running Frames survive switching back and forth. -->
+    <!-- The last Session screen stays alive while you visit Home, the Queue or Settings, so its
+         draft, the viewed Frame and running Frames survive going there and back. Opening another
+         Session replaces it, as only one is in progress at a time. -->
     <RouterView v-slot="{ Component, route: r }">
-      <KeepAlive :include="['SessionView', 'StoryboardView', 'RoleplayView']" :max="5">
+      <KeepAlive :include="['SessionView', 'StoryboardView', 'RoleplayView']" :max="1">
         <component :is="Component" :key="r.path" class="min-h-0 flex-1" />
       </KeepAlive>
     </RouterView>
