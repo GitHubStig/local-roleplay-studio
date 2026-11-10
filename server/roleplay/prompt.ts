@@ -4,6 +4,7 @@ import { loadPrompt, type PromptValues } from '../promptFiles.ts'
 import { factsOf, type Scenario } from '../scenario.ts'
 import { excerpt } from '../session.ts'
 import type { Cast, Character, Persona, Reply, RoleplaySession, Setting } from './types.ts'
+import { Refusal } from '../refusal.ts'
 
 /** The reply's fields, in the order the model writes them: think, then act, then speak. */
 export const REPLY_FIELDS = ['internal', 'actions', 'dialogue'] as const
@@ -194,7 +195,9 @@ export const castSchema = () =>
   })
 
 /** A hand edit that's incomplete: a Cast or a Look. */
-export class CastError extends Error {}
+export class CastError extends Refusal {
+  static override status = 400
+}
 
 /** Checks and tidies a Cast; throws a CastError listing what's wrong. */
 export function parseCast(value: unknown): Cast {

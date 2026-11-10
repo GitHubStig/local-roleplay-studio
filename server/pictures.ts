@@ -5,6 +5,7 @@ import type { Clip } from './video/makeClip.ts'
 import { anyImageModel, type ImageBackendKind } from './images/imageModels.ts'
 import type { Session, SessionStore } from './session.ts'
 import { updateSession } from './update.ts'
+import { Refusal } from './refusal.ts'
 
 /** A picture's image and what was made from it: its render, or an edit of it (ADR 0021). */
 export interface PictureVersion {
@@ -146,6 +147,7 @@ export function refuseOwnModel(session: Session, model: string) {
   if (session.settings.imageModel !== model) return
   throw new ImageModelError(
     `${model} is this Session's Image Model: switch to another before deleting its pictures`,
+    409,
   )
 }
 
@@ -191,7 +193,7 @@ export function changePicture(
   )
 }
 
-export class PictureGoneError extends Error {}
+export class PictureGoneError extends Refusal {}
 
 /**
  * `session` with its picture whose image is `image` changed by `change`, for work made from a
@@ -262,7 +264,9 @@ export async function removeFiles(dir: string, files: string[]): Promise<void> {
   for (const file of files) await Deno.remove(join(dir, file)).catch(() => {})
 }
 
-export class ImageModelError extends Error {}
+export class ImageModelError extends Refusal {
+  static override status = 400
+}
 
 /**
  * Switches a Session to Image Model `model`, rendering on `backend`'s kind if it's picked there

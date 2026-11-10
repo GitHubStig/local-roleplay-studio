@@ -1,4 +1,4 @@
-import { error, json, readJson, type Route } from '../http.ts'
+import { error, json, readJson, requiredText, type Route } from '../http.ts'
 import type { StreamEvent } from '../app.ts'
 import type { Scenario } from '../scenario.ts'
 import type { Session, SessionStore } from '../session.ts'
@@ -6,9 +6,7 @@ import type { SessionJobs } from '../jobs.ts'
 import {
   beginRoleplay,
   type RoleplayDeps,
-  RoleplayError,
   type RoleplayEvent,
-  RoleplayLimitError,
   sendMessage,
   setCast,
   setLook,
@@ -16,15 +14,14 @@ import {
   writeCast,
 } from './engine.ts'
 import type { RoleplayModel } from './model.ts'
-import { CastError } from './prompt.ts'
 import { steerRefusal } from './director.ts'
 import { updateSession } from './update.ts'
 import { suggestMessage } from './suggest.ts'
 import { logCallsUnder } from '../calls.ts'
-import { setVoiceDescription, VoiceError } from './voice.ts'
+import { setVoiceDescription } from './voice.ts'
 import type { RoleplayFrame, RoleplaySession } from './types.ts'
 import type { Settings } from '../settings.ts'
-import { ScoreError, ScoreLimitError, setMusicSettings, setScore, writeScore } from './score.ts'
+import { setMusicSettings, setScore, writeScore } from './score.ts'
 
 /**
  * What follows a Reply, as the player's switches ask (in their browser): its line spoken, as
@@ -72,7 +69,7 @@ export interface RoleplayRouteContext {
     discardOnFailure: boolean,
     run: (send: (event: StreamEvent) => void, signal: AbortSignal) => Promise<void>,
   ): Response
-  scenarioFor(session: Session): Scenario | Response
+  scenarioFor(session: Session): Scenario
   deps(session: Session): RoleplayDeps
   /** The model Suggest writes with: the Session's Text Model, Thinking off. */
   suggestModel(session: Session): RoleplayModel
@@ -112,18 +109,7 @@ export function roleplayRoutes(ctx: RoleplayRouteContext): Route[] {
   ) =>
     ctx.locked(id, kind, async (session) => {
       if (session.kind !== 'roleplay') return error('Only a Roleplay has this', 409)
-      try {
-        return await handle(session)
-      } catch (err) {
-        if (err instanceof RoleplayError) return error(err.message, 409)
-        if (err instanceof RoleplayLimitError || err instanceof ScoreLimitError) {
-          return error(err.message, 422)
-        }
-        if (err instanceof ScoreError) return error(err.message, 400)
-        // A hand-edited Cast that's incomplete.
-        if (err instanceof CastError || err instanceof VoiceError) return error(err.message, 400)
-        throw err
-      }
+      return await handle(session)
     })
 
   /** Why the music's routes are refused: Music is switched off in Settings. */
@@ -135,7 +121,6 @@ export function roleplayRoutes(ctx: RoleplayRouteContext): Route[] {
       withRoleplay(p.id!, 'setup', (session) => {
         if (session.frames.length) return error('The scene has already begun', 409)
         const scenario = ctx.scenarioFor(session)
-        if (scenario instanceof Response) return scenario
         // A Roleplay whose first Cast was never written never started, like a Chain's Opening
         // Frame; a failed rewrite keeps the Cast it had.
         return ctx.stream(session, null, !session.cast, async (send, signal) => {
@@ -157,8 +142,7 @@ export function roleplayRoutes(ctx: RoleplayRouteContext): Route[] {
       withRoleplay(p.id!, 'frame', async (session) => {
         if (!session.frames.length) return error('The scene has not begun yet', 409)
         const body = await readJson(req) as { text?: unknown } | undefined
-        const text = typeof body?.text === 'string' ? body.text.trim() : ''
-        if (!text) return error('text is required', 400)
+        const text = requiredText(body, 'text')
         if (text.length > MAX_MESSAGE_LENGTH) {
           return error(`A message can be at most ${MAX_MESSAGE_LENGTH} characters`, 400)
         }
@@ -223,7 +207,6 @@ export function roleplayRoutes(ctx: RoleplayRouteContext): Route[] {
         if (off) return off
         if (!session.cast) return error('This Roleplay has not been set up', 409)
         const scenario = ctx.scenarioFor(session)
-        if (scenario instanceof Response) return scenario
         const model = ctx.deps(session).roleplayModel
         return ctx.stream(session, null, false, async (send, signal) => {
           await writeScore(

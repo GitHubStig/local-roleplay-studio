@@ -22,7 +22,7 @@ import { updateSession } from './update.ts'
 export interface RoleplayJobContext {
   store: SessionStore
   deps(session: Session): RoleplayDeps
-  scenarioFor(session: Session): Scenario | Response
+  scenarioFor(session: Session): Scenario
   /** The upscaler chosen in Settings now. */
   upscaler(): Promise<Upscaler>
   /** The video model chosen in Settings now. */
@@ -73,7 +73,6 @@ export async function runRoleplayJob(
     updateSession(withDeps.store, session.id, change)
   if (job.kind === 'direct' || job.kind === 'score-roleplay') {
     const scenario = ctx.scenarioFor(session)
-    if (scenario instanceof Response) throw new Error((await scenario.json()).error)
     const deps = { store: withDeps.store, model: withDeps.roleplayModel }
     if (job.kind === 'direct') {
       await directFrame(deps, session, scenario, job.frameIndex, emit, signal)
@@ -97,7 +96,6 @@ export async function runRoleplayJob(
     )
   } else if (job.kind === 'picture') {
     const scenario = ctx.scenarioFor(session)
-    if (scenario instanceof Response) throw new Error((await scenario.json()).error)
     await pictureFrame(withDeps, session, scenario, job.frameIndex, emit, signal)
   } else if (job.kind === 'voice' || job.kind === 'speak' || job.kind === 'speak-thought') {
     const voiceDeps = { ...withDeps, model: withDeps.roleplayModel }

@@ -13,8 +13,9 @@ import {
 import type { TextModel } from '../textModel.ts'
 import { partOf } from './suggest.ts'
 import { withRetry } from '../frames.ts'
+import { Refusal } from '../refusal.ts'
 import type { AppContext } from '../appContext.ts'
-import { briefRefused, sentScenario } from '../sessionRoutes.ts'
+import { checkBrief, sentScenario } from '../sessionRoutes.ts'
 
 export function scenarioRoutes(ctx: AppContext): Route[] {
   const { deps, randomSeed } = ctx
@@ -23,9 +24,9 @@ export function scenarioRoutes(ctx: AppContext): Route[] {
    * The Text Model as the Scenario page uses it, before there's a Session: Settings' model and
    * Thinking, seeded from Settings' seed (or a new one), its repeats counted under one key.
    */
-  async function scenarioPageModel(): Promise<TextModel | Response> {
+  async function scenarioPageModel(): Promise<TextModel> {
     const settings = await deps.settings.load()
-    if (!settings.textModel) return error('Choose a Text Model in Settings first', 400)
+    if (!settings.textModel) throw new Refusal('Choose a Text Model in Settings first', 400)
     return deps.textModel({
       model: settings.textModel,
       thinking: settings.thinking,
@@ -66,7 +67,6 @@ export function scenarioRoutes(ctx: AppContext): Route[] {
     // Saves the Scenario page's Scenario over its file in the player's `scenarios/`.
     ['PUT', new URLPattern({ pathname: '/api/scenarios/:id' }), async (req, p) => {
       const scenario = sentScenario((await readJson(req) as { scenario?: unknown })?.scenario)
-      if (scenario instanceof Response) return scenario
       // Made when the file was; changed now.
       const created = SCENARIO_ID.test(p.id!)
         ? (await deps.ownScenarios?.get(p.id!))?.created
@@ -99,7 +99,6 @@ export function scenarioRoutes(ctx: AppContext): Route[] {
         name = typeof body.name === 'string' ? body.name.replace(/\.md$/i, '') : 'imported'
       } else {
         const sent = sentScenario(body?.scenario)
-        if (sent instanceof Response) return sent
         scenario = { ...sent, created: now, modified: now }
         name = scenario.title
       }
@@ -136,17 +135,14 @@ export function scenarioRoutes(ctx: AppContext): Route[] {
       let scenario: Scenario | undefined
       if (body?.scenario !== undefined) {
         const sent = sentScenario(body.scenario)
-        if (sent instanceof Response) return sent
         scenario = sent
       } else {
         if (!scenarioId === !brief) return error('Give a scenario, a scenarioId or a brief', 400)
-        const refused = brief && briefRefused(brief)
-        if (refused) return refused
+        if (brief) checkBrief(brief)
         scenario = scenarioId ? await deps.scenarios.get(scenarioId) : undefined
         if (scenarioId && !scenario) return error('Scenario not found', 404)
       }
       const model = await scenarioPageModel()
-      if (model instanceof Response) return model
       try {
         // Retried once with a new seed, as a reply can still run away; the wording in
         // expand-request.md took the whitespace loops from 2 seeds in 8 to none in 32 (2026-11-03).
@@ -165,14 +161,12 @@ export function scenarioRoutes(ctx: AppContext): Route[] {
         | { scenario?: unknown; field?: unknown; notes?: unknown }
         | undefined
       const scenario = sentScenario(body?.scenario)
-      if (scenario instanceof Response) return scenario
       const field = typeof body?.field === 'string' ? body.field : ''
       if (!partOf(scenario, field)) return error('field must name a part of the Scenario', 400)
       const notes = typeof body?.notes === 'string' ? body.notes.trim() : ''
       const limit = notes && crossedLimit(notes)?.message
       if (limit) return error(`The notes cross a limit: ${limit}`, 422)
       const model = await scenarioPageModel()
-      if (model instanceof Response) return model
       try {
         const text = await model.suggestForScenario({ scenario, field, notes }, req.signal)
         const crossed = crossedLimit(text)?.message

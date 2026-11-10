@@ -28,6 +28,7 @@ import {
 import { RenderQueue } from './renderQueue.ts'
 import type { Session, SessionStore } from './session.ts'
 import { updateSession } from './update.ts'
+import { Refusal } from './refusal.ts'
 
 export class EditError extends Error {}
 
@@ -167,7 +168,7 @@ export async function editFrame<S extends Session>(
   }
 }
 
-export class VersionError extends Error {}
+export class VersionError extends Refusal {}
 
 /**
  * Picks version `picked` of the picture Frame `index` shows (0 its render, n its edit n), so it's

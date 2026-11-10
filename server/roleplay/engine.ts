@@ -23,6 +23,7 @@ import { artFrameMessages, artLookMessages, isLook, pictured, withNewcomers } fr
 import { cleanLook, lookLimit, renameShown } from '../look.ts'
 import { withoutCuesFrom } from './director.ts'
 import type { Cast, Reply, RoleplayFrame, RoleplaySession, Score } from './types.ts'
+import { Refusal } from '../refusal.ts'
 
 /** Progress of a Roleplay's setup or reply, streamed to the player as it happens. */
 export type RoleplayEvent =
@@ -77,9 +78,11 @@ const castText = ({ character, persona, setting, truths = [], others = [] }: Cas
     .join('\n')
 const replyText = (r: Reply) => [r.internal, r.actions, r.dialogue].join('\n')
 
-export class RoleplayError extends Error {}
+export class RoleplayError extends Refusal {}
 /** A hand edit crosses a Limit. */
-export class RoleplayLimitError extends Error {}
+export class RoleplayLimitError extends Refusal {
+  static override status = 422
+}
 
 /**
  * Writes the Cast from the Roleplay's Brief (or Scenario), for the player to review before the

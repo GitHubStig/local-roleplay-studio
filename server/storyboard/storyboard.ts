@@ -22,6 +22,7 @@ import type { Scenario } from '../scenario.ts'
 import type { FrameTimings, Look, Outcome, StoryboardFrame, StoryboardSession } from '../session.ts'
 import { plainSentences } from '../frameBody.ts'
 import type { PlannedBeat } from './text.ts'
+import { Refusal } from '../refusal.ts'
 
 /** Progress of Storyboard work, streamed to the player as it happens. */
 export type StoryboardEvent =
@@ -39,7 +40,7 @@ export type StoryboardEvent =
  * Work that the Storyboard's stage doesn't allow: the plan's Look and Beats are edited only until
  * the first Frame is written, and a Frame is edited or rendered only once written.
  */
-export class StageError extends Error {}
+export class StageError extends Refusal {}
 
 /** A Frame's sentences are written: it has a prompt, and can be edited and rendered. */
 export const isWritten = (frame: StoryboardFrame) => frame.body !== ''

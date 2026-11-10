@@ -81,6 +81,7 @@ The README's "Where things live" maps the folders. When adding a file:
   what several parts share stays at the top of `server/` (`app.ts`, `session.ts`, `frames.ts`…).
   Don't put shared code in one part's folder for another to import; move it up instead.
 - **A part's routes are in its `routes.ts`** (`chain/routes.ts`, `roleplay/routes.ts`), a function from the app's context (`server/appContext.ts`: the stores, the queue, the Session locks and streams) to its routes, which `server/app.ts` puts together. What every kind of Session shares is in `sessionRoutes.ts`, `pictureRoutes.ts` and `settingsRoutes.ts` at the top. What the Text Model is asked for a part, its schema and its parser, is in that part's `text.ts`.
+- **What the player can act on is thrown as a `Refusal`** (`server/refusal.ts`: a Limit crossed, a Frame gone, a job in the way), with its status, from wherever it's found; the router answers it. A part's own refusals extend it (`class UndoError extends Refusal {}`, 409 unless it sets `static override status`). Don't return a `Response` from a helper for the route to check, or catch a refusal in a route to turn it into one.
 - **A folder per backend** inside a service's folder (`text/ollama/`, `text/openai/`), with what
   they share (the interface, helpers) beside them. A new backend is a new folder.
 - **Tests beside the file**, as `name_test.ts`.

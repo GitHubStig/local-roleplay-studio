@@ -19,6 +19,7 @@ import type { Session, SessionStore } from './session.ts'
 import { DEFAULT_SETTINGS, renderSettings, type Settings } from './settings.ts'
 import { GoneError } from './update.ts'
 import { ContextFullError } from './text/chat.ts'
+import { Refusal } from './refusal.ts'
 
 /** Progress any piece of work reports as it happens, in a Chain or a Storyboard. */
 export type ProgressEvent =
@@ -236,7 +237,7 @@ export async function removeImage(dir: string, name: string): Promise<void> {
   }
 }
 
-export class UpscaleError extends Error {}
+export class UpscaleError extends Refusal {}
 
 /**
  * Upscales the picture Frame `index` shows to 2048 px through the shared render queue, then marks

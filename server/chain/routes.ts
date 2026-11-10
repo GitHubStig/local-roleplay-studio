@@ -1,25 +1,16 @@
 /** A Chain's routes: a Frame from an Action, Undo, and a new Chain from a Storyboard's Frames. */
-import { error, json, readJson, type Route } from '../http.ts'
+import { error, json, readJson, requiredText, type Route } from '../http.ts'
 import { imageChoiceOf } from '../jobs.ts'
 import { logCallsUnder } from '../calls.ts'
-import { chainFromStoryboard, CopyError } from './fromStoryboard.ts'
+import { chainFromStoryboard } from './fromStoryboard.ts'
 import { machineOf } from '../machine.ts'
 import { type FrameEvent, runChainFrame, undoLatestFrame } from './frames.ts'
+import { scenarioFor } from '../appContext.ts'
 import type { AppContext } from '../appContext.ts'
 import { frameIndexOf, needsChain, needsStoryboard } from '../appContext.ts'
 
 export function chainRoutes(ctx: AppContext): Route[] {
-  const {
-    deps,
-    jobs,
-    newSessionId,
-    locked,
-    stream,
-    scenarioFor,
-    frameDeps,
-    featureOff,
-    jobBackendOf,
-  } = ctx
+  const { deps, jobs, newSessionId, locked, stream, frameDeps, featureOff, jobBackendOf } = ctx
 
   return [
     [
@@ -34,15 +25,8 @@ export function chainRoutes(ctx: AppContext): Route[] {
           // pictures are on.
           const render = body?.render !== false && !(await featureOff('images'))
           const opening = session.frames.length === 0
-          let action: string | null = null
-          if (!opening) {
-            if (typeof body?.action !== 'string' || !body.action.trim()) {
-              return error('action is required', 400)
-            }
-            action = body.action.trim()
-          }
+          const action = opening ? null : requiredText(body, 'action')
           const scenario = scenarioFor(session)
-          if (scenario instanceof Response) return scenario
           // Its picture is a render job, queued as the Frame is saved, so the page that hears of
           // the Frame finds its render in the queue.
           const machine = render ? machineOf(await jobBackendOf(session, 'render')) : undefined
@@ -94,17 +78,11 @@ export function chainRoutes(ctx: AppContext): Route[] {
               return error('Only a Storyboard is made into a Chain', 409)
             }
             const index = frameIndexOf(session, p.index)
-            if (index instanceof Response) return index
-            try {
-              const chain = await chainFromStoryboard(deps.sessions, session, index, {
-                id: newSessionId(),
-                createdAt: new Date().toISOString(),
-              })
-              return json(chain, 201)
-            } catch (err) {
-              if (err instanceof CopyError) return error(err.message, 409)
-              throw err
-            }
+            const chain = await chainFromStoryboard(deps.sessions, session, index, {
+              id: newSessionId(),
+              createdAt: new Date().toISOString(),
+            })
+            return json(chain, 201)
           })),
     ],
   ]

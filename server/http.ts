@@ -1,4 +1,5 @@
 /** Small HTTP helpers shared by the app's routes and each Session kind's own routes. */
+import { Refusal } from './refusal.ts'
 
 export type Params = Record<string, string | undefined>
 export type Route = [
@@ -22,4 +23,11 @@ export async function readJson(req: Request): Promise<unknown> {
   } catch {
     return undefined
   }
+}
+
+/** A field of a JSON body that must be text: trimmed, or refused with "<name> is required". */
+export function requiredText(body: unknown, name: string): string {
+  const value = (body as Record<string, unknown> | undefined)?.[name]
+  if (typeof value !== 'string' || !value.trim()) throw new Refusal(`${name} is required`, 400)
+  return value.trim()
 }

@@ -17,6 +17,7 @@ import type { Delivery, OnDownload, VoiceEngine } from '../voice/voice.ts'
 import type { RoleplayModel } from './model.ts'
 import type { RoleplayFrame, RoleplaySession, RoleplayVoice, Speech } from './types.ts'
 import { GoneError, updateSession } from './update.ts'
+import { Refusal } from '../refusal.ts'
 
 /** What every reference clip says: a few varied sentences, so the clip carries the whole voice. */
 export const REF_TEXT =
@@ -52,7 +53,9 @@ export function parseDelivery(value: unknown): Delivery {
   }
 }
 
-export class VoiceError extends Error {}
+export class VoiceError extends Refusal {
+  static override status = 400
+}
 
 export interface VoiceDeps {
   store: SessionStore

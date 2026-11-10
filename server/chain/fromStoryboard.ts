@@ -15,6 +15,7 @@ import type {
   StoryboardFrame,
   StoryboardSession,
 } from '../session.ts'
+import { Refusal } from '../refusal.ts'
 
 /** The subject sentence of a Frame that shows no one. */
 export const NO_ONE = 'No one is in the picture.'
@@ -47,7 +48,7 @@ const samePicture = (a: string, b: string) => {
   return words(a) === words(b)
 }
 
-export class CopyError extends Error {}
+export class CopyError extends Refusal {}
 
 /** A file's name in the Chain: its kind and its new Frame's index, with a fresh suffix. */
 const copyName = (file: string, index: number) => {

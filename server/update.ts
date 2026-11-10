@@ -1,7 +1,8 @@
 import type { Session, SessionStore } from './session.ts'
+import { Refusal } from './refusal.ts'
 
 /** A Session (or a Frame of it) that went away while something was still working on it. */
-export class GoneError extends Error {}
+export class GoneError extends Refusal {}
 
 /** The latest save of each Session, so saves to one Session run one after another. */
 const saving = new Map<string, Promise<unknown>>()

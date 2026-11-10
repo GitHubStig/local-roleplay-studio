@@ -6,7 +6,7 @@ import type { AppDeps, LockKind, StreamEvent } from './app.ts'
 import type { Backend } from './backends.ts'
 import type { Availabilities, Feature } from './features.ts'
 import type { FrameDeps, Phase } from './frames.ts'
-import { error } from './http.ts'
+import { Refusal } from './refusal.ts'
 import type { ImageBackendKind } from './images/imageModels.ts'
 import type { EditOrder, JobKind, SessionJobs } from './jobs.ts'
 import type { HeavyJob } from './machine.ts'
@@ -41,9 +41,8 @@ export interface AppContext {
     discardOnFailure: boolean,
     run: (send: (event: StreamEvent) => void, signal: AbortSignal) => Promise<void>,
   ): Response
-  loadSession(id: string): Promise<Session | Response>
-  /** The Scenario a Session starts from, or why it has none. */
-  scenarioFor(session: Session): Scenario | Response
+  /** The Session, or a 404 (`Refusal`). */
+  loadSession(id: string): Promise<Session>
   frameDeps(session: Session): FrameDeps
   /** Why a Feature can't be used now (a 409), or null if it can. */
   featureOff(feature: Feature): Promise<Response | null>
@@ -67,8 +66,19 @@ export const titleOf = (session: Session) =>
 
 export const needsChain = (s: Session): s is ChainSession => s.kind === 'chain'
 export const needsStoryboard = (s: Session): s is StoryboardSession => s.kind === 'storyboard'
-export const frameIndexOf = (s: Session, raw: string | undefined): number | Response => {
+/** The Frame a route names, or a 404 (`Refusal`). */
+export const frameIndexOf = (s: Session, raw: string | undefined): number => {
   const index = Number(raw)
-  if (!Number.isInteger(index) || !s.frames[index]) return error('No such Frame', 404)
+  if (!Number.isInteger(index) || !s.frames[index]) throw new Refusal('No such Frame', 404)
   return index
+}
+
+/**
+ * The Scenario a Session starts from: its own copy (as the Scenario page left it), or its typed
+ * Brief when it started without the page. Refused if it has neither.
+ */
+export function scenarioFor(session: Session): Scenario {
+  if (session.scenario) return session.scenario
+  if (session.brief) return briefScenario(session.brief)
+  throw new Refusal(`This Session has no copy of its Scenario "${session.scenarioId}"`)
 }

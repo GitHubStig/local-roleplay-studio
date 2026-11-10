@@ -10,6 +10,7 @@ import { join } from '@std/path'
 import type { Session } from '../session.ts'
 import { pickedVersion } from '../pictures.ts'
 import { decodeVector, type Embeddings } from './embedder.ts'
+import { Refusal } from '../refusal.ts'
 
 /** A Session's embeddings so far: each picture's by file name, each caption's by its text. */
 export interface StyleCache {
@@ -130,7 +131,7 @@ export interface StyleScores {
   unembedded: number
 }
 
-export class StyleScoreError extends Error {}
+export class StyleScoreError extends Refusal {}
 
 /**
  * The scores for `models` (every Image Model with a picture if left out) against Frame `base`, on

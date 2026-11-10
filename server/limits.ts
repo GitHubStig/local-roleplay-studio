@@ -1,3 +1,4 @@
+import { Refusal } from './refusal.ts'
 /**
  * Hard Limits the engine enforces on Actions, Briefs and Image Prompts while enabled (ADR 0002).
  * A term list is blunt, so the patterns aim at unambiguous phrases; the Text Model is also told
@@ -118,7 +119,9 @@ export const activeLimits = (): readonly Limit[] => (enabled ? LIMITS : [])
 export const activeProseLimits = (): readonly Limit[] => (enabled ? PROSE_LIMITS : [])
 
 /** A Brief, Action or edit by hand that crosses a Limit (ADR 0002); a `422` to the player. */
-export class LimitError extends Error {}
+export class LimitError extends Refusal {
+  static override status = 422
+}
 
 /** The first of `limits` (the Limits in force, unless given) that `text` crosses, if any. */
 export function crossedLimit(

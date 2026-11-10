@@ -1,6 +1,5 @@
 /** A Storyboard's routes: its plan, writing its Frames, editing one by Action, its Beats and Look. */
-import { error, json, readJson, type Route } from '../http.ts'
-import { GoneError } from '../update.ts'
+import { error, json, readJson, requiredText, type Route } from '../http.ts'
 import {
   editFrameByAction,
   insertBeat,
@@ -9,11 +8,12 @@ import {
   setLook,
   writeStoryboard,
 } from './storyboard.ts'
+import { scenarioFor } from '../appContext.ts'
 import type { AppContext } from '../appContext.ts'
 import { frameIndexOf, isStringList, needsStoryboard } from '../appContext.ts'
 
 export function storyboardRoutes(ctx: AppContext): Route[] {
-  const { deps, locked, stream, scenarioFor, frameDeps } = ctx
+  const { deps, locked, stream, frameDeps } = ctx
 
   return [
     [
@@ -24,7 +24,6 @@ export function storyboardRoutes(ctx: AppContext): Route[] {
           if (!needsStoryboard(session)) return error('Only a Storyboard is planned', 409)
           if (session.frames.length > 0) return error('This Storyboard is already planned', 409)
           const scenario = scenarioFor(session)
-          if (scenario instanceof Response) return scenario
           // A Storyboard that never got planned never started, like a Chain's Opening Frame.
           return stream(session, null, true, async (send, signal) => {
             await planStoryboard(frameDeps(session), session, scenario, send, signal)
@@ -41,7 +40,6 @@ export function storyboardRoutes(ctx: AppContext): Route[] {
         locked(p.id!, 'write', (session) => {
           if (!needsStoryboard(session)) return error('Only a Storyboard writes its Frames', 409)
           const scenario = scenarioFor(session)
-          if (scenario instanceof Response) return scenario
           // Refused up front, before the stream: nothing to write, or not planned yet.
           if (!session.look || session.frames.every((f) => f.body)) {
             return error(
@@ -64,16 +62,8 @@ export function storyboardRoutes(ctx: AppContext): Route[] {
             return error('Only a Storyboard edits Frames in place', 409)
           }
           const index = frameIndexOf(session, p.index)
-          if (index instanceof Response) {
-            return index
-          }
-          const body = await readJson(req) as { action?: unknown } | undefined
-          if (typeof body?.action !== 'string' || !body.action.trim()) {
-            return error('action is required', 400)
-          }
-          const action = body.action.trim()
+          const action = requiredText(await readJson(req), 'action')
           const scenario = scenarioFor(session)
-          if (scenario instanceof Response) return scenario
           return stream(session, index, false, async (send, signal) => {
             const result = await editFrameByAction(
               frameDeps(session),
@@ -143,12 +133,7 @@ export function storyboardRoutes(ctx: AppContext): Route[] {
               400,
             )
           }
-          try {
-            return json(await reorderBeats({ store: deps.sessions }, session, order, body.seen))
-          } catch (err) {
-            if (err instanceof GoneError) return error(err.message, 409)
-            throw err
-          }
+          return json(await reorderBeats({ store: deps.sessions }, session, order, body.seen))
         }),
     ],
 

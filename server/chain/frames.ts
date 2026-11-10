@@ -15,6 +15,7 @@ import {
   secondsSince,
   withRetry,
 } from '../frames.ts'
+import { Refusal } from '../refusal.ts'
 
 /** Why a done Action that left the Image Prompt as it was makes no Frame. */
 export const UNCHANGED = 'Nothing in the picture changed. Try rewording the Action.'
@@ -161,7 +162,7 @@ export async function renderChainFrame(
   return updated
 }
 
-export class UndoError extends Error {}
+export class UndoError extends Refusal {}
 
 /**
  * Removes a Chain's latest Frame, so the previous Frame's Image Prompt is current again. `index` must name the
@@ -187,7 +188,7 @@ export async function undoLatestFrame(
   return updated
 }
 
-export class DeleteError extends Error {}
+export class DeleteError extends Refusal {}
 
 /**
  * Deletes a Chain's Frame `index`, any but the Opening Frame, and numbers the Frames after it down
@@ -246,4 +247,6 @@ export async function setFramePrompt(
   })
 }
 
-export class EditError extends Error {}
+export class EditError extends Refusal {
+  static override status = 400
+}

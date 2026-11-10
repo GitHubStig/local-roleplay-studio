@@ -7,16 +7,14 @@ import { secondsSince, withRetry } from '../frames.ts'
 import { crossedLimit } from '../limits.ts'
 import { loadPrompt } from '../promptFiles.ts'
 import type { Scenario } from '../scenario.ts'
-import {
-  MUSIC_BEHAVIOURS,
-  type MusicBehaviour,
-} from '../settings.ts'
+import { MUSIC_BEHAVIOURS, type MusicBehaviour } from '../settings.ts'
 import type { SessionStore } from '../session.ts'
 import type { ChatMessage } from '../text/chat.ts'
 import type { RoleplayEvent } from './engine.ts'
 import type { RoleplayModel } from './model.ts'
 import type { RoleplaySession, Score } from './types.ts'
 import { updateSession } from './update.ts'
+import { Refusal } from '../refusal.ts'
 
 /** The tempo range a Score may set, in beats per minute. */
 export const TEMPO = { slowest: 40, fastest: 200 }
@@ -45,9 +43,13 @@ export const scoreSchema = {
 }
 
 /** A Score, or the music settings, can't be saved as given. */
-export class ScoreError extends Error {}
+export class ScoreError extends Refusal {
+  static override status = 400
+}
 /** A hand-edited Score crosses a Limit. */
-export class ScoreLimitError extends Error {}
+export class ScoreLimitError extends Refusal {
+  static override status = 422
+}
 
 /** Phrases tidied: trimmed, blanks and repeats (in any case) dropped, at most `max`. */
 const phrases = (value: unknown, max: number): string[] => {

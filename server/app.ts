@@ -1,16 +1,12 @@
+import { Refusal } from './refusal.ts'
 import { error, isJson, json, type Route } from './http.ts'
 import type { ImageGenerator } from './images/imageGenerator.ts'
 import { IMAGE_BACKENDS, type ImageBackendKind } from './images/imageModels.ts'
 import type { ComfyStatus, ComfyUses } from './comfyui/status.ts'
-import { LimitError, setLimitsEnabled } from './limits.ts'
+import { setLimitsEnabled } from './limits.ts'
 import { type Backend, BACKEND_NAMES } from './backends.ts'
 import type { TextChoice, TextModelInfo } from './text/backend.ts'
-import {
-  briefScenario,
-  type Scenario,
-  type ScenarioFolder,
-  type ScenarioLibrary,
-} from './scenario.ts'
+import type { ScenarioFolder, ScenarioLibrary } from './scenario.ts'
 import type { Session, SessionStore } from './session.ts'
 import type { SettingsStore } from './settings.ts'
 import type { TextModel } from './textModel.ts'
@@ -72,11 +68,9 @@ import { RenderQueue } from './renderQueue.ts'
 import { reportingTurns } from './text/turns.ts'
 import { notingTraces } from './comfyui/traces.ts'
 import { clearTraces } from './comfyui/files.ts'
-import { type FrameDeps, frameName, type Phase, UpscaleError } from './frames.ts'
-import { UndoError } from './chain/frames.ts'
-import { StageError } from './storyboard/storyboard.ts'
+import { type FrameDeps, frameName, type Phase } from './frames.ts'
 
-import { type AppContext, titleOf } from './appContext.ts'
+import { type AppContext, scenarioFor, titleOf } from './appContext.ts'
 import { settingsRoutes } from './settingsRoutes.ts'
 import { scenarioRoutes } from './scenario/routes.ts'
 import { sessionRoutes } from './sessionRoutes.ts'
@@ -215,18 +209,10 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
   }
   const unlock = (id: string) => locks.delete(id)
 
-  async function loadSession(id: string): Promise<Session | Response> {
-    return (await deps.sessions.load(id)) ?? error('Session not found', 404)
-  }
-
-  /**
-   * The Scenario a Session starts from: its own copy (as the Scenario page left it), or its typed
-   * Brief when it started without the page.
-   */
-  function scenarioFor(session: Session): Scenario | Response {
-    if (session.scenario) return session.scenario
-    if (session.brief) return briefScenario(session.brief)
-    return error(`This Session has no copy of its Scenario "${session.scenarioId}"`, 409)
+  async function loadSession(id: string): Promise<Session> {
+    const session = await deps.sessions.load(id)
+    if (!session) throw new Refusal('Session not found', 404)
+    return session
   }
 
   /**
@@ -331,16 +317,9 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     let streaming = false
     try {
       const session = await loadSession(id)
-      if (session instanceof Response) return session
       const res = await handle(session)
       streaming = res.headers.get('Content-Type') === 'text/event-stream'
       return res
-    } catch (err) {
-      if (err instanceof LimitError) return error(err.message, 422)
-      if (err instanceof UndoError || err instanceof UpscaleError || err instanceof StageError) {
-        return error(err.message, 409)
-      }
-      throw err
     } finally {
       if (!streaming) unlock(id)
     }
@@ -559,7 +538,6 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     locked,
     stream,
     loadSession,
-    scenarioFor,
     frameDeps,
     featureOff,
     availability,
@@ -718,7 +696,14 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     for (const [method, pattern, handle] of routes) {
       if (req.method !== method) continue
       const match = pattern.exec(req.url)
-      if (match) return await handle(req, match.pathname.groups)
+      if (!match) continue
+      try {
+        return await handle(req, match.pathname.groups)
+      } catch (err) {
+        // What the player can act on is answered as such (`refusal.ts`); anything else is a fault.
+        if (err instanceof Refusal) return error(err.message, err.status)
+        throw err
+      }
     }
     return error('Not found', 404)
   }

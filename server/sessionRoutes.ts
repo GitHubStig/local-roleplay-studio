@@ -13,10 +13,10 @@ import { MAX_SEED, sessionSettingsOf, SIZE_PRESETS } from './settings.ts'
 import { roleplayExcerpt } from './roleplay/prompt.ts'
 import { restartRoleplay } from './roleplay/engine.ts'
 import type { Job } from './jobs.ts'
-import { GoneError, removeSession, updateSession } from './update.ts'
+import { removeSession, updateSession } from './update.ts'
 import { homeImage } from './pictures.ts'
 import { frameName } from './frames.ts'
-import { DeleteError, deleteFrame, EditError, setFramePrompt } from './chain/frames.ts'
+import { deleteFrame, setFramePrompt } from './chain/frames.ts'
 import {
   FRAME_COUNT,
   removeBeat,
@@ -24,6 +24,7 @@ import {
   setBeat,
   setFrameBody,
 } from './storyboard/storyboard.ts'
+import { Refusal } from './refusal.ts'
 import type { AppContext } from './appContext.ts'
 import { frameIndexOf, isStringList, needsChain, needsStoryboard, titleOf } from './appContext.ts'
 
@@ -61,29 +62,30 @@ const CONTENT_TYPES: Record<string, string> = {
 
 const MAX_BRIEF_LENGTH = 4000
 
-/** Why a typed Brief is refused: too long, or it crosses a Limit; undefined when it isn't. */
-export function briefRefused(brief: string): Response | undefined {
+/** Refuses a typed Brief that's too long, or crosses a Limit. */
+export function checkBrief(brief: string): void {
   if (brief.length > MAX_BRIEF_LENGTH) {
-    return error(`A Brief can be at most ${MAX_BRIEF_LENGTH} characters`, 400)
+    throw new Refusal(`A Brief can be at most ${MAX_BRIEF_LENGTH} characters`, 400)
   }
   const limit = crossedLimit(brief)?.message
-  if (limit) return error(`The Brief crosses a limit: ${limit}`, 422)
+  if (limit) throw new Refusal(`The Brief crosses a limit: ${limit}`, 422)
 }
 
-/** A Scenario the Scenario page sent, checked and within the Limits; or why it's refused. */
-export function sentScenario(value: unknown): Scenario | Response {
+/** A Scenario the Scenario page sent, checked and within the Limits; refused if it isn't. */
+export function sentScenario(value: unknown): Scenario {
   let scenario: Scenario
   try {
     scenario = scenarioFrom(value)
   } catch (err) {
-    return error(`The Scenario isn't complete: ${(err as Error).message}`, 400)
+    throw new Refusal(`The Scenario isn't complete: ${(err as Error).message}`, 400)
   }
   const limit = crossedLimit(scenarioText(scenario))?.message
-  return limit ? error(`The Scenario crosses a limit: ${limit}`, 422) : scenario
+  if (limit) throw new Refusal(`The Scenario crosses a limit: ${limit}`, 422)
+  return scenario
 }
 
 export function sessionRoutes(ctx: AppContext): Route[] {
-  const { deps, jobs, active, previews, newSessionId, randomSeed, locked } = ctx
+  const { deps, jobs, active, previews, newSessionId, randomSeed, locked, loadSession } = ctx
 
   return [
     ['POST', new URLPattern({ pathname: '/api/sessions' }), async (req) => {
@@ -104,13 +106,11 @@ export function sessionRoutes(ctx: AppContext): Route[] {
       const scenarioId = typeof body?.scenarioId === 'string' ? body.scenarioId : null
       const brief = typeof body?.brief === 'string' && body.brief.trim() ? body.brief.trim() : null
       if (!scenarioId === !brief) return error('Give either a scenarioId or a brief', 400)
-      const refused = brief && briefRefused(brief)
-      if (refused) return refused
+      if (brief) checkBrief(brief)
       // The Scenario as the Scenario page left it, or else the file as it is (a replay's).
       let scenario: Scenario | undefined
       if (body?.scenario !== undefined) {
         const sent = sentScenario(body.scenario)
-        if (sent instanceof Response) return sent
         scenario = { ...sent, id: scenarioId ?? '' }
       } else if (scenarioId) {
         scenario = await deps.scenarios.get(scenarioId)
@@ -195,8 +195,7 @@ export function sessionRoutes(ctx: AppContext): Route[] {
     ],
 
     ['GET', new URLPattern({ pathname: '/api/sessions/:id' }), async (_req, p) => {
-      const session = await deps.sessions.load(p.id!)
-      if (!session) return error('Session not found', 404)
+      const session = await loadSession(p.id!)
       // `activity` lets a screen that didn't start the running work (another tab) show it.
       const work = active.get(session.id)
       // The size its pictures render at (as Settings are now), so a screen can shape the frame
@@ -219,8 +218,7 @@ export function sessionRoutes(ctx: AppContext): Route[] {
       if (typeof body?.textModel !== 'string' || !body.textModel.trim()) {
         return error('textModel must be a model name', 400)
       }
-      const session = await deps.sessions.load(p.id!)
-      if (!session) return error('Session not found', 404)
+      const session = await loadSession(p.id!)
       const textModel = body.textModel.trim()
       return json(
         await updateSession(
@@ -260,12 +258,7 @@ export function sessionRoutes(ctx: AppContext): Route[] {
         const seen = { frames: body.frames as number, createdAt: body.createdAt }
         // A Storyboard's Beat, before its Frames are written: nothing is rendered or queued yet.
         if (needsStoryboard(session)) {
-          try {
-            return json(await removeBeat({ store: deps.sessions }, session, index, seen))
-          } catch (err) {
-            if (err instanceof GoneError) return error(err.message, 409)
-            throw err
-          }
+          return json(await removeBeat({ store: deps.sessions }, session, index, seen))
         }
         const running = jobs.list(session.id)
           .find((j) => j.status === 'running' && j.frameIndex === index)
@@ -275,19 +268,14 @@ export function sessionRoutes(ctx: AppContext): Route[] {
             409,
           )
         }
-        try {
-          return json(
-            await jobs.holding(session.id, () =>
-              jobs.frames(session.id, async () => {
-                const updated = await deleteFrame(deps.sessions, session, index, seen)
-                jobs.frameDeleted(session.id, index)
-                return updated
-              })),
-          )
-        } catch (err) {
-          if (err instanceof DeleteError || err instanceof GoneError) return error(err.message, 409)
-          throw err
-        }
+        return json(
+          await jobs.holding(session.id, () =>
+            jobs.frames(session.id, async () => {
+              const updated = await deleteFrame(deps.sessions, session, index, seen)
+              jobs.frameDeleted(session.id, index)
+              return updated
+            })),
+        )
       })
     }],
 
@@ -337,17 +325,10 @@ export function sessionRoutes(ctx: AppContext): Route[] {
             return error('A Roleplay edits its Frames its own way', 409)
           }
           const index = frameIndexOf(session, p.index)
-          if (index instanceof Response) return index
           if (needsChain(session)) {
             const body = await readJson(req) as { prompt?: unknown } | undefined
             if (typeof body?.prompt !== 'string') return error('prompt is required', 400)
-            try {
-              return json(await setFramePrompt(deps.sessions, session, index, body.prompt))
-            } catch (err) {
-              if (err instanceof EditError) return error(err.message, 400)
-              if (err instanceof GoneError) return error(err.message, 409)
-              throw err
-            }
+            return json(await setFramePrompt(deps.sessions, session, index, body.prompt))
           }
           const body = await readJson(req) as
             | { body?: unknown; beat?: unknown; shown?: unknown }
