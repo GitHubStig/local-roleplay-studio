@@ -11,10 +11,11 @@ import { crossedLimit, limitsEnabled } from '../limits.ts'
 import { composePrompt, matchShown, shownSubjects } from '../look.ts'
 import type { ChatMessage } from '../text/chat.ts'
 import { loadPrompt } from '../promptFiles.ts'
-import { personId, type Scenario } from '../scenario.ts'
+import { personId } from '../scenario.ts'
+import type { Scenario } from '../../shared/scenario.ts'
 import { frameSchema, lookForModel, lookSchema, parseLook } from '../frameBody.ts'
 import type { Look, Subject } from '../../shared/session.ts'
-import type { RoleplayFrame, RoleplaySession } from './types.ts'
+import type { RoleplayFrame, RoleplaySession } from '../../shared/roleplay.ts'
 import { allStale } from '../pictures.ts'
 
 /**

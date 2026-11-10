@@ -7,7 +7,7 @@
  */
 import { frameName } from '../frames.ts'
 import { join } from '@std/path'
-import type { Session } from '../session.ts'
+import type { Session } from '../../shared/session.ts'
 import { pickedVersion } from '../pictures.ts'
 import { decodeVector, type Embeddings } from './embedder.ts'
 import { Refusal } from '../refusal.ts'

@@ -1,5 +1,5 @@
 import { assertAlmostEquals, assertEquals, assertThrows } from '@std/assert'
-import type { ChainSession } from '../session.ts'
+import type { ChainSession } from '../../shared/session.ts'
 import { promptWith } from '../testing.ts'
 import {
   captionOf,

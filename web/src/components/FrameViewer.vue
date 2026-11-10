@@ -18,6 +18,7 @@ import {
   type Picture,
   type PictureEdit,
   type PicturedFrame,
+  type EditModel,
 } from '../api'
 import { clipsByKind, sortClips, useVideoModels } from '../clips'
 import { isOpen } from '../jobs'
@@ -376,7 +377,8 @@ function send() {
   const mask = layer.value?.mask()
   emit('edit', frame.index, {
     instruction: told,
-    ...(d.model && { model: d.model }),
+    // A name from the list of edit models, or from an edit made before: the server checks it.
+    ...(d.model && { model: d.model as EditModel }),
     ...(d.backend && { backend: d.backend }),
     ...(mask && { mask }),
     ...(d.retry && { retry: true }),

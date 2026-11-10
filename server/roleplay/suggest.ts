@@ -8,7 +8,7 @@ import type { ChatMessage } from '../text/chat.ts'
 import { loadPrompt } from '../promptFiles.ts'
 import { storyText } from './art.ts'
 import type { RoleplayModel } from './model.ts'
-import type { RoleplaySession } from './types.ts'
+import type { RoleplaySession } from '../../shared/roleplay.ts'
 
 /** How many of the player's latest Messages are shown to Suggest for their style. */
 const EXAMPLES = 5

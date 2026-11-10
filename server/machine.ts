@@ -5,12 +5,12 @@
  */
 import { backendAddress, HERE, imageKindOf, inTurn, pickBackend } from './backends.ts'
 import { type Backend, BACKEND_WORK, type Work } from '../shared/backends.ts'
-import { type EditModel, editModelOn } from './images/editModels.ts'
+import { editModelOn } from './images/editModels.ts'
+import type { EditModel, ImageBackendKind } from '../shared/images.ts'
 import { findImageModel } from './images/imageModels.ts'
-import type { ImageBackendKind } from '../shared/images.ts'
 import type { Availabilities } from '../shared/features.ts'
 import type { JobKind } from '../shared/jobKinds.ts'
-import type { SessionSettings, Settings } from './settings.ts'
+import type { SessionSettings, Settings } from '../shared/settings.ts'
 
 /**
  * A heavy job, as the render queue is given it: a render by its Image Model, an edit by its edit

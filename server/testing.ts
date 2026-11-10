@@ -4,7 +4,7 @@ import { parseScenario, type ScenarioLibrary } from './scenario.ts'
 import { expanded, type ExpandFrom } from './scenario/expand.ts'
 import type { SuggestRequest } from './scenario/suggest.ts'
 import type { ImagePrompt } from '../shared/images.ts'
-import type { Settings } from './settings.ts'
+import type { Settings } from '../shared/settings.ts'
 import type { FrameRequest, FrameText } from './chain/text.ts'
 import type {
   PlanHandlers,

@@ -1,116 +1,42 @@
 import {
-  type Activity,
   type EndEvent,
   type Figure,
+  type Loaded,
   type Look,
-  type Picture,
-  type ProgressEvent,
   put,
   request,
   type Scene,
-  type SessionBase,
   streamEvents,
 } from '../api'
 
 import type { MusicSettings } from '../music'
+import type { RoleplayEvent as StoredRoleplayEvent } from '../../../shared/events.ts'
 export {
   type Cast,
   type Character,
+  type Cue,
   type CueTrack,
+  type CueValues,
+  type FrameMusic,
   type Persona,
   type Reply,
+  type RoleplayFrame,
+  type RoleplayVoice,
   type Score,
   type Setting,
+  type Speech,
 } from '../../../shared/roleplay.ts'
-import type { Cast, Cue, FrameMusic, Reply, Score, Speech } from '../../../shared/roleplay.ts'
-export { type Cue, type CueValues, type FrameMusic, type Speech } from '../../../shared/roleplay.ts'
+import type {
+  Cast,
+  RoleplaySession as StoredRoleplaySession,
+  Score,
+} from '../../../shared/roleplay.ts'
 
 export type { Figure, Scene }
 export { cancelJob, type Job, type JobKind, listJobs, queueJob, retryJob } from '../api'
 
-/** One exchange; the Opening Frame has no message, since the Character speaks first. */
-export interface RoleplayFrame {
-  index: number
-  message: string | null
-  reply: Reply
-  thinking?: string
-  timings: { text: number }
-  /** The Text Model that wrote the Reply, as a Session can switch (ADR 0037). */
-  textModel: string
-  /** Once pictured: the picture's seven sentences and its Image Prompt, not yet rendered. */
-  body?: string
-  prompt?: string
-  /** The Image Prompt crosses a Limit. */
-  blocked?: string
-  /** Who the picture shows. */
-  /** Who the picture shows, by their names in the Look; none for the place alone. */
-  shown?: string[]
-  clothing?: string
-  /** For debugging: how long the latest picture took, and the Art Agent's reasoning. */
-  pictureTimings?: { text: number }
-  /** The model that wrote the latest picture. */
-  pictureModel?: string
-  pictureThinking?: string
-  /** One per Image Model it was rendered with, oldest first; none until rendered. */
-  pictures: Picture[]
-  /** The Character's line, spoken; in an earlier voice when `speech.ref` isn't the voice's now. */
-  speech?: Speech
-  /** The Character's thought, spoken (whispered) in the same voice. */
-  thoughtSpeech?: Speech
-  /** How the music was directed at this Frame, once it has been. */
-  music?: FrameMusic
-  createdAt: string
-}
-
-/** The Character's voice: a description, and the reference clip designed from it (once designed). */
-export interface RoleplayVoice {
-  description: string
-  ref?: string
-  model?: string
-}
-
-export interface RoleplaySession extends Omit<SessionBase, 'activity'> {
-  kind: 'roleplay'
-  /** Null until set up. */
-  cast: Cast | null
-  /**
-   * Each person's identity and the art style, shared by every picture: written from the Cast when
-   * one is first pictured, joined by anyone the story brings into a picture.
-   */
-  look: Look | null
-  lookTimings?: { text: number }
-  lookThinking?: string
-  voice?: RoleplayVoice
-  /** The music's identity, shared by every Cue: absent until written. */
-  score?: Score
-  scoreTimings?: { text: number }
-  scoreModel?: string
-  scoreThinking?: string
-  /** The music's Cues, in the order of the Frames they began on. */
-  cues: Cue[]
-  /** The last time the whole Roleplay was scored with hindsight. */
-  hindsight?: { model: string; chunks: number; courses: string[]; timings: { text: number } }
-  /** As for any Session, or speaking a line (audio). */
-  activity?: Activity | 'audio' | null
-  frames: RoleplayFrame[]
-}
-
 /** The tempo range a Score may set, in beats per minute, as the server holds it. */
 export const TEMPO = { slowest: 40, fastest: 200 }
-
-export type RoleplayEvent =
-  | ProgressEvent
-  | EndEvent
-  | { type: 'cast'; cast: Cast; session: RoleplaySession }
-  | { type: 'reply-part'; key: keyof Reply; value: string }
-  | { type: 'replied'; frame: RoleplayFrame; session: RoleplaySession }
-  | { type: 'declined'; message: string }
-  | { type: 'look'; look: Look }
-  | { type: 'score'; score: Score; session: RoleplaySession }
-  | { type: 'directed'; frame: RoleplayFrame; session: RoleplaySession }
-  /** Suggest: the message as written so far, then the whole of it, tidied. */
-  | { type: 'suggestion-part'; text: string }
-  | { type: 'suggestion'; text: string }
 
 const base = (id: string) => `/api/sessions/${id}/roleplay`
 
@@ -118,7 +44,7 @@ const base = (id: string) => `/api/sessions/${id}/roleplay`
  * What this browser's switches ask to follow a Reply: its line spoken (autoplay) and its picture
  * rendered. The server queues them, after its picture, as it saves the Reply.
  */
-export interface AfterReply {
+export interface ReplySwitches {
   speak: boolean
   render: boolean
   /** Its music directed (Score as you play, while Music is on). */
@@ -132,7 +58,7 @@ export const writeCast = (id: string, onEvent: (event: RoleplayEvent) => void) =
 /** Begins the scene: the Character's opening Reply, from the Cast as it stands. */
 export const beginRoleplay = (
   id: string,
-  after: AfterReply,
+  after: ReplySwitches,
   onEvent: (event: RoleplayEvent) => void,
 ) => streamEvents<RoleplayEvent>(`${base(id)}/begin`, after, ['replied'], onEvent)
 
@@ -140,7 +66,7 @@ export const beginRoleplay = (
 export const sendMessage = (
   id: string,
   text: string,
-  after: AfterReply,
+  after: ReplySwitches,
   onEvent: (event: RoleplayEvent) => void,
 ) =>
   streamEvents<RoleplayEvent>(
@@ -188,3 +114,8 @@ export const saveCueSteer = (id: string, cue: string, steer: string) =>
   put<RoleplaySession>(`${base(id)}/cues/${cue}/steer`, { steer })
 export const saveMusicSettings = (id: string, music: MusicSettings) =>
   put<RoleplaySession>(`${base(id)}/music`, music)
+
+/** A Roleplay as loaded: what's stored, and what loading adds. */
+export type RoleplaySession = StoredRoleplaySession & Loaded
+
+export type RoleplayEvent = StoredRoleplayEvent | EndEvent

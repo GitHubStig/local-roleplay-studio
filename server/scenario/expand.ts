@@ -1,13 +1,7 @@
 import type { ChatMessage } from '../text/chat.ts'
 import { loadPrompt } from '../promptFiles.ts'
-import {
-  briefScenario,
-  PERSON_FIELDS,
-  personId,
-  type Scenario,
-  scenarioMarkdown,
-} from '../scenario.ts'
-import type { Person, Suggestion } from '../../shared/scenario.ts'
+import { briefScenario, PERSON_FIELDS, personId, scenarioMarkdown } from '../scenario.ts'
+import type { Person, Scenario, Suggestion } from '../../shared/scenario.ts'
 
 /**
  * Expand, run as the Scenario page opens (ADR 0032): sparse on purpose. It sorts a typed Brief into

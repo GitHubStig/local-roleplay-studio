@@ -5,7 +5,8 @@
  */
 import { type FrameDeps, frameName } from '../frames.ts'
 import { error } from '../http.ts'
-import type { Job, JobEmit } from '../jobs.ts'
+import type { JobEmit } from '../jobs.ts'
+import type { Job } from '../../shared/jobs.ts'
 import type { JobKind } from '../../shared/jobKinds.ts'
 import {
   checkPictureJob,
@@ -13,7 +14,7 @@ import {
   type PictureJobDeps,
   runPictureJob,
 } from '../pictureJobs.ts'
-import type { ChainSession } from '../session.ts'
+import type { ChainSession } from '../../shared/session.ts'
 import { renderChainFrame } from './frames.ts'
 import { updateSession } from '../update.ts'
 

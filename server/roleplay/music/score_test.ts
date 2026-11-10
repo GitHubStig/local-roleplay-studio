@@ -3,8 +3,8 @@ import { scriptedRoleplayModel, testCast, testScore } from '../testing.ts'
 import { withTempDir } from '../../testing.ts'
 import { readEvents, setup } from '../../appTesting.ts'
 import { cleanScore, ScoreError, scoreMessages, scoreSchema } from './score.ts'
-import type { Scenario } from '../../scenario.ts'
-import type { RoleplaySession } from '../types.ts'
+import type { Scenario } from '../../../shared/scenario.ts'
+import type { RoleplaySession } from '../../../shared/roleplay.ts'
 
 Deno.test('A Score is tidied: trimmed, no blanks or repeats, its tempo in range and in order', () => {
   assertEquals(

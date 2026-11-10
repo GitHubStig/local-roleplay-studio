@@ -1,11 +1,5 @@
-import {
-  type FrameDeps,
-  frameName,
-  type ProgressEvent,
-  replacePicture,
-  secondsSince,
-  withRetry,
-} from '../frames.ts'
+import { type FrameDeps, frameName, replacePicture, secondsSince, withRetry } from '../frames.ts'
+import type { StoryboardEvent } from '../../shared/events.ts'
 import { logCallsUnder, makeRoomInCallLogs, renumberCallLogs, reorderCallLogs } from '../calls.ts'
 import { GoneError, updateSession } from '../update.ts'
 import { allPictureFiles, allStale, removeFiles } from '../pictures.ts'
@@ -18,24 +12,17 @@ import {
   shownSubjects,
 } from '../look.ts'
 import { crossedLimit, LimitError } from '../limits.ts'
-import type { Scenario } from '../scenario.ts'
-import type { StoryboardFrame, StoryboardSession } from '../session.ts'
-import type { FrameTimings, Look, Outcome } from '../../shared/session.ts'
+import type { Scenario } from '../../shared/scenario.ts'
+import type {
+  FrameTimings,
+  Look,
+  Outcome,
+  StoryboardFrame,
+  StoryboardSession,
+} from '../../shared/session.ts'
 import { plainSentences } from '../frameBody.ts'
 import type { PlannedBeat } from './text.ts'
 import { Refusal } from '../refusal.ts'
-
-/** Progress of Storyboard work, streamed to the player as it happens. */
-export type StoryboardEvent =
-  | ProgressEvent
-  /** Parts of the plan, as the Text Model writes them; provisional until `planned`. */
-  | { type: 'look'; look: Look }
-  | { type: 'planned-beat'; index: number; beat: string; shown: string[] }
-  | { type: 'planned'; session: StoryboardSession }
-  /** A Frame written from the plan, saved as it comes; `written` once the last one is. */
-  | { type: 'written-frame'; frame: StoryboardFrame }
-  | { type: 'written'; session: StoryboardSession }
-  | { type: 'rendered'; frame: StoryboardFrame }
 
 /**
  * Work that the Storyboard's stage doesn't allow: the plan's Look and Beats are edited only until

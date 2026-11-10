@@ -9,7 +9,6 @@ import {
   renderRoleplayFrame,
   restartRoleplay,
   RoleplayError,
-  type RoleplayEvent,
   RoleplayLimitError,
   sendMessage,
   setCast,
@@ -17,11 +16,12 @@ import {
   undoLatestExchange,
   writeCast,
 } from './engine.ts'
+import type { RoleplayEvent } from '../../shared/events.ts'
 import { CastError } from './prompt.ts'
 import { replyOf, scriptedRoleplayModel, testCast, testLook } from './testing.ts'
 import type { Look } from '../../shared/session.ts'
 import { updateSession } from './update.ts'
-import type { RoleplaySession } from './types.ts'
+import type { RoleplaySession } from '../../shared/roleplay.ts'
 
 const signal = () => new AbortController().signal
 const scenario = briefScenario('A storm at sea; the player is the new first mate.')

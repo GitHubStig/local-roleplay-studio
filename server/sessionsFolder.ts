@@ -1,6 +1,7 @@
 import { dirname, isAbsolute, join, resolve } from '@std/path'
 import { error, json, readJson, type Route } from './http.ts'
 import { dirSessionStore } from './session.ts'
+import type { FolderCheck } from '../shared/sessionsFolder.ts'
 
 /** The folder the Sessions are kept in, which the player can move to another while the app runs. */
 export interface SessionsFolder {
@@ -10,10 +11,6 @@ export interface SessionsFolder {
   /** Keeps Sessions in `path` from now on (the folder is made if it isn't there). */
   moveTo(path: string): Promise<void>
 }
-
-export type FolderCheck =
-  | { ok: true; path: string; count: number; exists: boolean; same: boolean }
-  | { ok: false; reason: string }
 
 /** A folder's path as one thing: no trailing slash, and links followed where it exists. */
 async function sameFolder(a: string, b: string): Promise<boolean> {

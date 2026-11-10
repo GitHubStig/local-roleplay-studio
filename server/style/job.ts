@@ -1,7 +1,8 @@
 import { join } from '@std/path'
 import type { JobEmit } from '../jobs.ts'
 import { RenderQueue } from '../renderQueue.ts'
-import type { Session, SessionStore } from '../session.ts'
+import type { SessionStore } from '../session.ts'
+import type { Session } from '../../shared/session.ts'
 import type { StyleEmbedder } from './embedder.ts'
 import { loadStyleCache, saveStyleCache, unembedded, withEmbeddings } from './scores.ts'
 

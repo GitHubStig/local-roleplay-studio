@@ -15,7 +15,7 @@ import {
   roleplaySystem,
 } from './prompt.ts'
 import { replyOf, testCast } from './testing.ts'
-import type { RoleplaySession } from './types.ts'
+import type { RoleplaySession } from '../../shared/roleplay.ts'
 
 const session = (frames: RoleplaySession['frames']): RoleplaySession => ({
   id: 'r1',

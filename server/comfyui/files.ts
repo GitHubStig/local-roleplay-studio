@@ -1,5 +1,5 @@
-import { type ComfyFile, getJson, post, upload } from './client.ts'
-import type { ComfyTraces } from './traces.ts'
+import { getJson, post, upload } from './client.ts'
+import type { ComfyFile, ComfyTraces } from '../../shared/comfyui.ts'
 
 /**
  * The files a workflow's loaders can use: for each loader placeholder (`$unet`, `$clip`, `$vae`),

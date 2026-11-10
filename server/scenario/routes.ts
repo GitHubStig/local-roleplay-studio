@@ -4,12 +4,12 @@ import { crossedLimit } from '../limits.ts'
 import {
   parseScenario,
   personId,
-  type Scenario,
   SCENARIO_ID,
   scenarioMarkdown,
   scenarioText,
   summarise,
 } from '../scenario.ts'
+import type { Scenario } from '../../shared/scenario.ts'
 import type { TextModel } from '../textModel.ts'
 import { partOf } from './suggest.ts'
 import { withRetry } from '../frames.ts'

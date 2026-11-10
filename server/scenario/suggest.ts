@@ -1,6 +1,7 @@
 import type { ChatMessage } from '../text/chat.ts'
 import { loadPrompt } from '../promptFiles.ts'
-import { type PERSON_FIELDS, type Scenario, scenarioMarkdown } from '../scenario.ts'
+import { type PERSON_FIELDS, scenarioMarkdown } from '../scenario.ts'
+import type { Scenario } from '../../shared/scenario.ts'
 
 /**
  * Suggest, on the Scenario page: one suggestion for one blank part, when the player asks for it

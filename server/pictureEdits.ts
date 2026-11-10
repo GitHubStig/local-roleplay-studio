@@ -7,8 +7,9 @@
  */
 import { type FrameDeps, frameName, imageProgress, removeImage } from './frames.ts'
 import { error } from './http.ts'
-import type { EditModel } from './images/editModels.ts'
-import type { EditOrder, JobEmit } from './jobs.ts'
+import type { EditModel } from '../shared/images.ts'
+import type { JobEmit } from './jobs.ts'
+import type { EditOrder } from '../shared/jobs.ts'
 import type { JobKind } from '../shared/jobKinds.ts'
 import { crossedLimit } from './limits.ts'
 import { DEFAULT_SETTINGS } from './settings.ts'
@@ -27,7 +28,8 @@ import {
 } from './pictures.ts'
 import type { PictureEdit } from '../shared/pictures.ts'
 import { RenderQueue } from './renderQueue.ts'
-import type { Session, SessionStore } from './session.ts'
+import type { SessionStore } from './session.ts'
+import type { Session } from '../shared/session.ts'
 import { updateSession } from './update.ts'
 import { Refusal } from './refusal.ts'
 

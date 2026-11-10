@@ -1,7 +1,7 @@
 import { assertEquals, assertRejects } from '@std/assert'
 import { fromFileUrl, join } from '@std/path'
 import type { ImageRequest } from '../imageGenerator.ts'
-import type { Float16 } from './chip.ts'
+import type { Float16 } from '../../../shared/settings.ts'
 import { findMfluxModel, type MfluxModel } from './models.ts'
 import {
   editArgs,

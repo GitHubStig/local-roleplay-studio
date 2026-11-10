@@ -19,7 +19,8 @@
 import { fileURLToPath } from 'node:url'
 import { dirScenarioLibrary } from '../../../server/scenario.ts'
 import { dirSessionStore } from '../../../server/session.ts'
-import { DEFAULT_SETTINGS, fileSettingsStore, type Settings } from '../../../server/settings.ts'
+import { DEFAULT_SETTINGS, fileSettingsStore } from '../../../server/settings.ts'
+import { type Settings } from '../../../shared/settings.ts'
 import { chatRoleplayModel } from '../../../server/roleplay/model.ts'
 import { textBackend } from '../../../server/text/backend.ts'
 import { seededChat } from '../../../server/text/seeded.ts'
@@ -29,7 +30,7 @@ import { beginRoleplay, sendMessage, writeCast } from '../../../server/roleplay/
 import { writeScore } from '../../../server/roleplay/music/score.ts'
 import { directFrame, type DirectorReads } from '../../../server/roleplay/music/director.ts'
 import { type Chunking, scoreRoleplay } from '../../../server/roleplay/music/hindsight.ts'
-import type { RoleplaySession } from '../../../server/roleplay/types.ts'
+import type { RoleplaySession } from '../../../shared/roleplay.ts'
 import {
   type CourseStep,
   keepsTo,

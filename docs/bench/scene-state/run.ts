@@ -19,7 +19,7 @@ import { connectionOf, textBackend } from '../../../server/text/backend.ts'
 import { seededChat } from '../../../server/text/seeded.ts'
 import { placeholderImageGenerator } from '../../../server/images/imageGenerator.ts'
 import { beginRoleplay, sendMessage, writeCast } from '../../../server/roleplay/engine.ts'
-import type { RoleplaySession } from '../../../server/roleplay/types.ts'
+import type { RoleplaySession } from '../../../shared/roleplay.ts'
 import { replySchema } from '../../../server/roleplay/prompt.ts'
 import type { Chat } from '../../../server/text/chat.ts'
 

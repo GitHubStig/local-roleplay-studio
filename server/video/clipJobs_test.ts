@@ -4,7 +4,8 @@ import { withTempDir } from '../testing.ts'
 import { chainFrames, chainOfTwo, settled } from '../appTesting.ts'
 import { fakeVideoGenerator } from './testing.ts'
 import { makeClip } from './makeClip.ts'
-import type { Session, SessionStore } from '../session.ts'
+import type { SessionStore } from '../session.ts'
+import type { Session } from '../../shared/session.ts'
 
 const leadIn = { kind: 'lead-in', prompt: 'She walks in.', seconds: 5, speech: false }
 const queueClip = (

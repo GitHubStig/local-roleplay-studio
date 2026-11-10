@@ -1,6 +1,7 @@
 import { assertEquals, assertRejects } from '@std/assert'
 import { join } from '@std/path'
-import { type ChainSession, dirSessionStore, type Session } from './session.ts'
+import { dirSessionStore } from './session.ts'
+import type { ChainSession, Session } from '../shared/session.ts'
 import { renderChainFrame, runChainFrame, undoLatestFrame } from './chain/frames.ts'
 import { findImageModel } from './images/imageModels.ts'
 import { HERE } from './backends.ts'

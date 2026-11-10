@@ -16,8 +16,12 @@ import type { SessionStore } from '../session.ts'
 import type { OnDownload, VoiceEngine } from '../voice/voice.ts'
 import type { Delivery } from '../../shared/voice.ts'
 import type { RoleplayModel } from './model.ts'
-import type { RoleplayFrame, RoleplaySession, RoleplayVoice } from './types.ts'
-import type { Speech } from '../../shared/roleplay.ts'
+import type {
+  RoleplayFrame,
+  RoleplaySession,
+  RoleplayVoice,
+  Speech,
+} from '../../shared/roleplay.ts'
 import { GoneError, updateSession } from './update.ts'
 import { Refusal } from '../refusal.ts'
 

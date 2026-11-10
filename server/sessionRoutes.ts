@@ -7,12 +7,14 @@ import { extname, join } from '@std/path'
 import { serveFile } from '@std/http/file-server'
 import { error, json, readJson, type Route } from './http.ts'
 import { crossedLimit } from './limits.ts'
-import { type Scenario, scenarioFrom, scenarioText } from './scenario.ts'
-import { excerpt, type Session } from './session.ts'
+import { scenarioFrom, scenarioText } from './scenario.ts'
+import type { Scenario } from '../shared/scenario.ts'
+import { excerpt } from './session.ts'
+import type { Session } from '../shared/session.ts'
 import { MAX_SEED, sessionSettingsOf, SIZE_PRESETS } from './settings.ts'
 import { roleplayExcerpt } from './roleplay/prompt.ts'
 import { restartRoleplay } from './roleplay/engine.ts'
-import type { Job } from './jobs.ts'
+import type { Job } from '../shared/jobs.ts'
 import { removeSession, updateSession } from './update.ts'
 import { homeImage } from './pictures.ts'
 import { frameName } from './frames.ts'
@@ -25,8 +27,14 @@ import {
   setFrameBody,
 } from './storyboard/storyboard.ts'
 import { Refusal } from './refusal.ts'
-import type { AppContext } from './appContext.ts'
-import { frameIndexOf, isStringList, needsChain, needsStoryboard, titleOf } from './appContext.ts'
+import {
+  type AppContext,
+  frameIndexOf,
+  isStringList,
+  needsChain,
+  needsStoryboard,
+  titleOf,
+} from './appContext.ts'
 
 /**
  * Frame images: `frame-3-1a2b3c4d.png`, or `frame-3.png` without the unique suffix, edits of them

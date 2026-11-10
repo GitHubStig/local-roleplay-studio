@@ -1,5 +1,5 @@
 import type { Backend } from '../../shared/backends.ts'
-import type { ComfyTraces } from '../comfyui/traces.ts'
+import type { ComfyTraces } from '../../shared/comfyui.ts'
 import type { ClipKind, ClipSize } from '../../shared/clips.ts'
 
 export const CLIP_KINDS: readonly ClipKind[] = ['lead-in', 'play-out', 'idle-loop', 'into-next']

@@ -8,13 +8,12 @@
 import { frameName, secondsSince, withRetry } from '../../frames.ts'
 import { crossedLimit } from '../../limits.ts'
 import { loadPrompt } from '../../promptFiles.ts'
-import type { Scenario } from '../../scenario.ts'
+import type { Scenario } from '../../../shared/scenario.ts'
 import type { SessionStore } from '../../session.ts'
 import type { ChatMessage } from '../../text/chat.ts'
-import type { RoleplayEvent } from '../engine.ts'
+import type { RoleplayEvent } from '../../../shared/events.ts'
 import type { RoleplayModel } from '../model.ts'
 import { writeScore } from './score.ts'
-import type { RoleplayFrame, RoleplaySession } from '../types.ts'
 import {
   type Cue,
   CUE_KEYS,
@@ -28,6 +27,8 @@ import {
   ENTRIES,
   type Entry,
   type FrameMusic,
+  type RoleplayFrame,
+  type RoleplaySession,
   type Score,
   TEMPOS,
 } from '../../../shared/roleplay.ts'

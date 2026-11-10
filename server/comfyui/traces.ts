@@ -1,16 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks'
-import type { ComfyFile } from './client.ts'
-
-/**
- * What a piece of work has left on a ComfyUI that it would clean up itself as it ends: the prompts
- * it queued (in its history, and their outputs) and the files it uploaded. Kept with a job while it
- * runs (`Job.comfy`), so a job cut off by a server restart can be cleaned up after
- * (`clearTraces`, `files.ts`).
- */
-export interface ComfyTraces {
-  prompts: { base: string; promptId: string }[]
-  uploads: { base: string; file: ComfyFile }[]
-}
+import type { ComfyFile, ComfyTraces } from '../../shared/comfyui.ts'
 
 /** One trace, as it's left. */
 export type ComfyTrace =

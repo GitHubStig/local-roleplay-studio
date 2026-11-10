@@ -6,7 +6,7 @@ import {
   getSessionsFolder,
   moveSessionsFolder,
   pickSessionsFolder,
-  type SessionsFolder,
+  type SessionsFolderInfo,
 } from '../api'
 import Icon from './Icon.vue'
 
@@ -15,7 +15,7 @@ import Icon from './Icon.vue'
  * with the machine's dialog, checked (its Sessions counted), and only moved to once the player
  * confirms, when it applies at once.
  */
-const folder = ref<SessionsFolder | null>(null)
+const folder = ref<SessionsFolderInfo | null>(null)
 /** The folder chosen and checked, waiting for the player to confirm. */
 const chosen = ref<FolderCheck | null>(null)
 const working = ref(false)

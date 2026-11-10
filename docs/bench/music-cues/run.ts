@@ -12,9 +12,9 @@
  */
 import { join } from 'node:path'
 import { comfyuiMusicGenerator } from '../../../server/music/comfyui/comfyui.ts'
-import { bpmOf, CUE_SECONDS, cleanCue, cueMessages, cueSchema, withDanger } from '../../../server/roleplay/music/director.ts'
+import { CUE_SECONDS, bpmOf, cleanCue, cueMessages, cueSchema, withDanger } from '../../../server/roleplay/music/director.ts'
 import { chatRoleplayModel } from '../../../server/roleplay/model.ts'
-import type { Cue, RoleplaySession } from '../../../server/roleplay/types.ts'
+import type { Cue, RoleplaySession } from '../../../shared/roleplay.ts'
 import { textBackend } from '../../../server/text/backend.ts'
 import { seededChat } from '../../../server/text/seeded.ts'
 

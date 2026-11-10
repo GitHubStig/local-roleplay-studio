@@ -24,3 +24,21 @@ export type ComfyStatus =
     missing: { [use in keyof ComfyUses]?: string }
   }
   | { up: false; error: string }
+
+/** A file ComfyUI wrote (an output node's `ui`), as `/view` serves it. */
+export interface ComfyFile {
+  filename: string
+  subfolder: string
+  type: string
+}
+
+/**
+ * What a piece of work has left on a ComfyUI that it would clean up itself as it ends: the prompts
+ * it queued (in its history, and their outputs) and the files it uploaded. Kept with a job while it
+ * runs (`Job.comfy`), so a job cut off by a server restart can be cleaned up after
+ * (`clearTraces`, `files.ts`).
+ */
+export interface ComfyTraces {
+  prompts: { base: string; promptId: string }[]
+  uploads: { base: string; file: ComfyFile }[]
+}

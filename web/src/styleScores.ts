@@ -1,5 +1,5 @@
 export { type ModelStyleScores, type StyleScores } from '../../shared/style.ts'
-import { type ModelStyleScores, type StyleScores } from '../../shared/style.ts'
+import type { ModelStyleScores, StyleScores } from '../../shared/style.ts'
 /**
  * How varied each Image Model's art style is across a Session's Frames, as the server measures it
  * (`server/style/scores.ts`): shown as charts in the Compare dialog, each under a description of

@@ -9,13 +9,13 @@ import { joinPrompt, sentences } from '../imagePrompt.ts'
 import { shownSubjects } from '../look.ts'
 import { editLine } from '../pictures.ts'
 import type { Picture, PictureVersion } from '../../shared/pictures.ts'
+import type { SessionStore } from '../session.ts'
 import type {
   ChainFrame,
   ChainSession,
-  SessionStore,
   StoryboardFrame,
   StoryboardSession,
-} from '../session.ts'
+} from '../../shared/session.ts'
 import { Refusal } from '../refusal.ts'
 
 /** The subject sentence of a Frame that shows no one. */

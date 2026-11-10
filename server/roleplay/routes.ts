@@ -1,26 +1,27 @@
 import { error, json, readJson, requiredText, type Route } from '../http.ts'
 import type { StreamEvent } from '../app.ts'
-import type { Scenario } from '../scenario.ts'
-import type { Session, SessionStore } from '../session.ts'
+import type { Scenario } from '../../shared/scenario.ts'
+import type { SessionStore } from '../session.ts'
+import type { Session } from '../../shared/session.ts'
 import type { SessionJobs } from '../jobs.ts'
 import {
   beginRoleplay,
   type RoleplayDeps,
-  type RoleplayEvent,
   sendMessage,
   setCast,
   setLook,
   undoLatestExchange,
   writeCast,
 } from './engine.ts'
+import type { RoleplayEvent } from '../../shared/events.ts'
 import type { RoleplayModel } from './model.ts'
 import { steerRefusal } from './music/director.ts'
 import { updateSession } from './update.ts'
 import { suggestMessage } from './suggest.ts'
 import { logCallsUnder } from '../calls.ts'
 import { setVoiceDescription } from './voice.ts'
-import type { RoleplayFrame, RoleplaySession } from './types.ts'
-import type { Settings } from '../settings.ts'
+import type { RoleplayFrame, RoleplaySession } from '../../shared/roleplay.ts'
+import type { Settings } from '../../shared/settings.ts'
 import { setMusicSettings, setScore, writeScore } from './music/score.ts'
 
 /**

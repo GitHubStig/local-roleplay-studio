@@ -1,7 +1,7 @@
 import { assertEquals } from '@std/assert'
 import { HERE } from './backends.ts'
 import type { Backend } from '../shared/backends.ts'
-import type { EditModel } from './images/editModels.ts'
+import type { EditModel } from '../shared/images.ts'
 import type { JobKind } from '../shared/jobKinds.ts'
 import {
   backendOf,
@@ -13,7 +13,8 @@ import {
   sameMachine,
   textBackendFor,
 } from './machine.ts'
-import { DEFAULT_SETTINGS, type SessionSettings } from './settings.ts'
+import { DEFAULT_SETTINGS } from './settings.ts'
+import type { SessionSettings } from '../shared/settings.ts'
 
 const own = new Set(['studio.local', '192.0.2.10'])
 

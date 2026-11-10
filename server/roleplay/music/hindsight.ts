@@ -7,7 +7,7 @@
  */
 import { frameName, secondsSince, withRetry } from '../../frames.ts'
 import { loadPrompt } from '../../promptFiles.ts'
-import type { Scenario } from '../../scenario.ts'
+import type { Scenario } from '../../../shared/scenario.ts'
 import type { ChatMessage } from '../../text/chat.ts'
 import {
   behaviourOf,
@@ -22,10 +22,15 @@ import {
   withoutSpeaker,
   writeCueAt,
 } from './director.ts'
-import type { RoleplayEvent } from '../engine.ts'
+import type { RoleplayEvent } from '../../../shared/events.ts'
 import { writeScore } from './score.ts'
-import type { RoleplaySession } from '../types.ts'
-import { type Cue, ENTRIES, type Entry, type FrameMusic } from '../../../shared/roleplay.ts'
+import {
+  type Cue,
+  ENTRIES,
+  type Entry,
+  type FrameMusic,
+  type RoleplaySession,
+} from '../../../shared/roleplay.ts'
 import { GoneError, updateSession } from '../update.ts'
 
 /** What the pass can mark on a Frame; the music continues through every Frame it doesn't. */

@@ -1,7 +1,7 @@
 import type { ChatMessage } from '../text/chat.ts'
 import { loadPrompt } from '../promptFiles.ts'
 import { str } from './prompt.ts'
-import type { RoleplaySession } from './types.ts'
+import type { RoleplaySession } from '../../shared/roleplay.ts'
 
 /**
  * Whether the player's newest Message breaks one of the Cast's Truths, and if so what happens

@@ -15,7 +15,7 @@ import {
   withNewcomers,
 } from './art.ts'
 import { replyOf, testCast } from './testing.ts'
-import type { RoleplaySession } from './types.ts'
+import type { RoleplaySession } from '../../shared/roleplay.ts'
 
 const MIRA = 'Mira Vance'
 const SAM = 'Sam Reyes'

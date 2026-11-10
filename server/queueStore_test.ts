@@ -1,6 +1,6 @@
 import { assertEquals } from '@std/assert'
 import { join } from '@std/path'
-import type { Job } from './jobs.ts'
+import type { Job } from '../shared/jobs.ts'
 import { fileQueueStore } from './queueStore.ts'
 import { withTempDir } from './testing.ts'
 

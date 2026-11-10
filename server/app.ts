@@ -7,7 +7,8 @@ import { setLimitsEnabled } from './limits.ts'
 import { type Backend, BACKEND_NAMES } from '../shared/backends.ts'
 import type { TextChoice, TextModelInfo } from './text/backend.ts'
 import type { ScenarioFolder, ScenarioLibrary } from './scenario.ts'
-import type { Session, SessionStore } from './session.ts'
+import type { SessionStore } from './session.ts'
+import type { Phase, Session } from '../shared/session.ts'
 import type { SettingsStore } from './settings.ts'
 import type { TextModel } from './textModel.ts'
 import type { RoleplayModel } from './roleplay/model.ts'
@@ -29,16 +30,15 @@ import { cuesWaiting } from './roleplay/music/tracks.ts'
 import type { MusicGenerator } from './music/musicGenerator.ts'
 import {
   asQueued,
-  type EditOrder,
   imageChoiceOf,
   isOpen,
-  type Job,
   type JobEmit,
   jobRoutes,
   type QueueStore,
   SessionJobs,
   textChoiceOf,
 } from './jobs.ts'
+import type { EditOrder, Job } from '../shared/jobs.ts'
 import { JOB_FEATURE, SESSION_JOBS } from './jobKinds.ts'
 import type { JobKind } from '../shared/jobKinds.ts'
 import { logCalls } from './calls.ts'
@@ -62,7 +62,7 @@ import { RenderQueue } from './renderQueue.ts'
 import { reportingTurns } from './text/turns.ts'
 import { notingTraces } from './comfyui/traces.ts'
 import { clearTraces } from './comfyui/files.ts'
-import { type FrameDeps, frameName, type Phase } from './frames.ts'
+import { type FrameDeps, frameName } from './frames.ts'
 
 import { type AppContext, scenarioFor, titleOf } from './appContext.ts'
 import { settingsRoutes } from './settingsRoutes.ts'

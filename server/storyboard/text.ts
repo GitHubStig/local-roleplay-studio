@@ -2,7 +2,7 @@
  * What the Text Model is asked for a Storyboard (its plan, each Frame's sentences, an edit by
  * Action) and its replies: the messages, the schemas and the parsers.
  */
-import type { Scenario } from '../scenario.ts'
+import type { Scenario } from '../../shared/scenario.ts'
 import { OUTCOMES } from '../session.ts'
 import type { Look, Outcome } from '../../shared/session.ts'
 import { loadPrompt } from '../promptFiles.ts'

@@ -1,7 +1,4 @@
 import type { RoleplaySession } from './roleplay/api'
-import type { ImageBackendKind, ImageModelOption, ImagePrompt } from '../../shared/images.ts'
-import type { ComparisonModel, ComparisonRow } from './comparison'
-import type { ExportedStyles, StyleScores } from './styleScores'
 export {
   type Backend,
   BACKEND_NAMES,
@@ -9,118 +6,104 @@ export {
   type BackendKind,
   type Work,
 } from '../../shared/backends.ts'
-import type { Backend, Work } from '../../shared/backends.ts'
-export { type ClipAsk, type ClipKind, type ClipOrder, type ClipSize } from '../../shared/clips.ts'
+import type { Backend } from '../../shared/backends.ts'
+export {
+  type Clip,
+  type ClipAsk,
+  type ClipKind,
+  type ClipOrder,
+  type ClipSize,
+} from '../../shared/clips.ts'
 import type { ClipAsk, ClipKind, ClipOrder, ClipSize } from '../../shared/clips.ts'
-export { type ComfyUses } from '../../shared/comfyui.ts'
+export { type ComfyStatus, type ComfyUses } from '../../shared/comfyui.ts'
 import type { ComfyStatus, ComfyUses } from '../../shared/comfyui.ts'
+export { type ComparisonExport } from '../../shared/comparison.ts'
+import type { ComparisonExport } from '../../shared/comparison.ts'
+export { type ClipPromptEvent, type EndEvent, type ProgressEvent } from '../../shared/events.ts'
+import type {
+  ClipPromptEvent,
+  EndEvent,
+  FrameEvent as StoredFrameEvent,
+  StoryboardEvent as StoredStoryboardEvent,
+} from '../../shared/events.ts'
 export { type Availability, type Feature, FEATURES } from '../../shared/features.ts'
 import type { Availability, Feature } from '../../shared/features.ts'
-export { type ImageModelOption, type ImagePrompt } from '../../shared/images.ts'
+export {
+  type EditModel,
+  IMAGE_BACKEND_NAMES,
+  type ImageModelOption,
+  type ImagePrompt,
+  type Upscaler,
+} from '../../shared/images.ts'
+import type {
+  EditModel,
+  ImageBackendKind,
+  ImageModelOption,
+  ImagePrompt,
+} from '../../shared/images.ts'
 export { type JobKind } from '../../shared/jobKinds.ts'
 import type { JobKind } from '../../shared/jobKinds.ts'
+export { type EditOrder } from '../../shared/jobs.ts'
+import type { EditOrder, Job as StoredJob } from '../../shared/jobs.ts'
+export { type Picture, type PictureEdit } from '../../shared/pictures.ts'
+import type { Picture, PictureEdit } from '../../shared/pictures.ts'
 export {
   type Person,
+  type Scenario,
   type ScenarioLoadError,
   type ScenarioSummary,
   type Suggestion,
 } from '../../shared/scenario.ts'
 import type {
-  Person,
+  Scenario,
   ScenarioLoadError,
   ScenarioSummary,
   Suggestion,
 } from '../../shared/scenario.ts'
 export {
+  type ChainFrame,
   type FrameTimings,
   type Look,
   type Outcome,
   type SessionKind,
+  type StoryboardFrame,
   type Subject,
 } from '../../shared/session.ts'
-import type { FrameTimings, Look, Outcome, SessionKind } from '../../shared/session.ts'
-export { type SeedMode, type SizePreset } from '../../shared/settings.ts'
-import type { Quantize, SeedMode, SizePreset } from '../../shared/settings.ts'
-export { type Figure } from '../../shared/threeD.ts'
-export { type Clip } from '../../shared/clips.ts'
-export { type ComfyStatus } from '../../shared/comfyui.ts'
-export { IMAGE_BACKEND_NAMES } from '../../shared/images.ts'
-export { type Picture, type PictureEdit } from '../../shared/pictures.ts'
-import type { Picture, PictureEdit } from '../../shared/pictures.ts'
-export { type Quantize } from '../../shared/settings.ts'
-export { type Scene } from '../../shared/threeD.ts'
+import type {
+  ChainSession as StoredChainSession,
+  Look,
+  Phase,
+  SessionBase as StoredSessionBase,
+  SessionKind,
+  StoryboardFrame,
+  StoryboardSession as StoredStoryboardSession,
+} from '../../shared/session.ts'
+import type { FolderCheck as StoredFolderCheck } from '../../shared/sessionsFolder.ts'
+export {
+  type Quantize,
+  type SeedMode,
+  type SessionSettings,
+  type SizePreset,
+} from '../../shared/settings.ts'
+import type { Settings as StoredSettings, SizePreset } from '../../shared/settings.ts'
+export { type Figure, type Scene } from '../../shared/threeD.ts'
+import type { StyleScores } from './styleScores'
 export interface Health {
   ok: boolean
-}
-
-export interface Settings {
-  /** The Backends there are, this machine's among them, in the order a job tries them. */
-  backends: Backend[]
-  /** The Backend each kind of work prefers, by id; the next listed that can, if it can't. */
-  runOn: Record<Work, string>
-  /** From the server: the Backends with an API key saved (the keys are never sent back). */
-  apiKeysSet?: string[]
-  /** Sent only to replace Backends' saved API keys, by id; '' removes one. */
-  apiKeys?: Record<string, string>
-  textModel: string
-  thinking: boolean
-  /** An Image Model by name: the same name on mflux and ComfyUI is the same model (ADR 0022). */
-  imageModel: string
-  steps: number
-  size: string
-  quantize: Quantize
-  /** How an edit on mflux quantizes as it loads (8-bit unless chosen). */
-  editQuantize: Quantize
-  /** The fraction of steps the step cache skips, for models that take it; null for off. */
-  stepCache: number | null
-  /** Compute in float16, for models that take it: faster on M1 and M2 Macs. Automatic is by chip. */
-  float16: 'auto' | 'on' | 'off'
-  /** Show the picture forming while it renders (ComfyUI's previews). Applies at once. */
-  previews: boolean
-  seedMode: SeedMode
-  seed: number
-  /** Which SeedVR2 model Upscale uses; applies to the next upscale, even mid-Session. */
-  upscaler: string
-  /** The video model clips are made with, on a ComfyUI. */
-  videoModel: string
-  /** Each video model's clip size, by its id; one not listed makes clips at its own. */
-  videoSizes?: Record<string, ClipSize>
-  /** The ComfyUI clips go to, by Backend id; none for the one pictures go to, or else the first. */
-  videoOn?: string
-  /** The ComfyUI music goes to, by Backend id; none for the one pictures go to, or else the first. */
-  musicOn?: string
-  /** Which model edits pictures; applies to the next edit, even mid-Session. */
-  editModel: string
-  /** The Limits; off, none are enforced. Applies at once. */
-  limits: boolean
-  /** Log every call to the Text and Image Models in its Session's folder, under `calls/`. */
-  callLog: boolean
-  /** Music in a Roleplay, while it's being built: everything for it hides while off. */
-  music: boolean
-  /** How readily the music changes, and how far forward it comes; a Session keeps its own. */
-  musicBehaviour: 'steady' | 'story' | 'cinematic'
-  /** What voices the music may have; a Session keeps its own. */
-  /** The player's taste in music, in their words; a Session keeps its own. */
-  musicTaste: string
-  /** Where Sessions are kept: a full path, or '' for the app's own `sessions/`. Changed on its own tab, not with the rest. */
-  sessionsFolder: string
-  /** The model that pictures Roleplay Frames; '' for the Session's Text Model. Applies at once. */
-  /** Which Features are switched on (one this machine can't run is off whatever this says). */
-  features: Record<Feature, boolean>
 }
 
 /** Where pictures are made: mflux (Apple Silicon Macs) or a ComfyUI server (any machine). */
 export type ImageBackend = ImageBackendKind
 
 /** A Text backend's models, or why it couldn't list them. */
-export interface TextModelOptions {
+export interface TextModelList {
   textModels: string[]
   /** The Text Models that can reason before answering. */
   thinkingModels: string[]
   textModelsError?: string
 }
 
-export interface SettingsOptions extends TextModelOptions {
+export interface SettingsOptions extends TextModelList {
   /** Each backend's Image Models. */
   imageModels: Record<ImageBackend, ImageModelOption[]>
   /** The kinds of backend whose models a Session can switch to: mflux here, ComfyUI if listed. */
@@ -142,7 +125,7 @@ export interface SettingsOptions extends TextModelOptions {
   }[]
   /** The models that can edit a picture here, each on its backend. */
   /** Each with how it likes to be told what to paint. */
-  editModels: { id: string; label: string; backends: ImageBackend[]; prompting: string }[]
+  editModels: { id: EditModel; label: string; backends: ImageBackend[]; prompting: string }[]
   /** The kind of backend each edit model's edits go to now, by name; none for one nowhere. */
   editModelsOn?: Record<string, ImageBackend>
   /** Which Features can run, here or on a Backend listed (a ComfyUI). */
@@ -176,21 +159,13 @@ export const getHealth = () => request<Health>('/api/health')
 export const getSettings = () => request<Settings>('/api/settings')
 
 /** The folder Sessions are kept in, the default, and how many Sessions are in use. */
-export interface SessionsFolder {
+export interface SessionsFolderInfo {
   inUse: string
   default: string
   count: number
 }
 
-/** A folder to move to: how many Sessions it holds, and whether it is already the one in use. */
-export interface FolderCheck {
-  path: string
-  count: number
-  exists: boolean
-  same: boolean
-}
-
-export const getSessionsFolder = () => request<SessionsFolder>('/api/sessions-folder')
+export const getSessionsFolder = () => request<SessionsFolderInfo>('/api/sessions-folder')
 
 /** Opens the folder dialog on the machine the server runs on; null if the player cancels. */
 export const pickSessionsFolder = () =>
@@ -211,7 +186,7 @@ export const checkSessionsFolder = (path: string) =>
 
 /** Keeps Sessions in the folder from now on; '' for the default. */
 export const moveSessionsFolder = (path: string) =>
-  request<SessionsFolder>('/api/sessions-folder', withPath('PUT', path))
+  request<SessionsFolderInfo>('/api/sessions-folder', withPath('PUT', path))
 
 export const getSettingsOptions = () => request<SettingsOptions>('/api/settings/options')
 
@@ -228,7 +203,7 @@ export const checkComfyUI = (address: string, uses: ComfyUses) =>
 
 /** The models on a text Backend that isn't saved yet; without `apiKey`, with its saved one. */
 export const listTextModels = (backend: Backend & { apiKey?: string }) =>
-  request<TextModelOptions>('/api/settings/text-models', {
+  request<TextModelList>('/api/settings/text-models', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(backend),
@@ -247,25 +222,6 @@ export interface ScenarioList {
 }
 
 export const getScenarios = () => request<ScenarioList>('/api/scenarios')
-
-/** A Scenario, as the server's `scenario.ts` has it: what it states holds, the rest is left open. */
-export interface Scenario {
-  id: string
-  title: string
-  description: string
-  opening: string
-  place: string
-  time: string
-  style: string
-  /** What the story's music is like; '' for the Text Model to pick. */
-  music: string
-  truths: string[]
-  people: Person[]
-  /** The id of the Person the player plays in a Roleplay. */
-  player?: string
-  /** The id of the Person the Text Model plays in a Roleplay. */
-  character?: string
-}
 
 export const getScenario = (id: string) => request<Scenario>(`/api/scenarios/${id}`)
 
@@ -392,44 +348,6 @@ export const editLine = (picture: Picture, model: string): PictureEdit[] =>
 export const changedSinceRender = (picture: Picture, model: string): boolean =>
   !!picture.stale || picture.imageModel !== model
 
-/** A Chain Frame: made from the previous one by an Action. */
-export interface ChainFrame extends PicturedFrame {
-  action: string | null
-  prompt: ImagePrompt
-  narration: string
-  outcome: Outcome
-  /** The Text Model's reasoning, when thinking was on. */
-  thinking?: string
-  timings: FrameTimings
-  /** The Text Model that wrote it, as a Session can switch (ADR 0037). */
-  textModel: string
-  createdAt: string
-}
-
-/**
- * A Storyboard Frame: planned as a Beat and who it shows, reviewed, then written out from the
- * plan, and edited and rendered on its own.
- */
-export interface StoryboardFrame extends PicturedFrame {
-  /** What happens in this Frame. */
-  beat: string
-  /**
-   * Its own seven sentences; the prompt adds who it shows before and the Look's style after.
-   * Empty, with an empty prompt, until the Frame is written.
-   */
-  body: string
-  /** Names of the Look's Subjects it shows, most prominent first; none for the place alone. */
-  shown: string[]
-  /** Exactly what the Image Model renders. */
-  prompt: ImagePrompt
-  /** It crosses a Limit and can't be rendered until edited. */
-  blocked?: string
-  timings?: FrameTimings
-  /** The Text Model that wrote its sentences, as a Session can switch (ADR 0037); none until written. */
-  textModel?: string
-  createdAt: string
-}
-
 /** The most Subjects one Storyboard Frame's prompt describes (`MAX_SHOWN` on the server). */
 export const MAX_SHOWN = 3
 /** The most Frames a Storyboard has (`FRAME_COUNT.max` on the server). */
@@ -443,107 +361,15 @@ export const KIND_LABELS: Record<SessionKind, string> = {
 }
 
 /** `download`: a model is downloading, the first time it's used, before it renders or speaks. */
-export type Activity = 'text' | 'queued' | 'image' | 'download'
+export type Activity = Phase
 
 /** What the screens say while a model downloads. */
 export const DOWNLOADING = 'Downloading the model (first use only)…'
 
-/**
- * What a Session keeps of Settings (ADR 0022): its models. Where they run, and everything else, is
- * Settings' as they are now.
- */
-export type SessionSettings =
-  & Pick<
-    Settings,
-    | 'textModel'
-    | 'thinking'
-    | 'imageModel'
-    | 'steps'
-    | 'musicBehaviour'
-    | 'musicTaste'
-  >
-  & {
-    /** The kind of backend its renders would rather run on, if picked in it; else Settings say. */
-    imageBackend?: ImageBackend
-  }
-
-export interface SessionBase {
-  id: string
-  /** The typed Brief it started from; null when started from a Scenario. */
-  brief: string | null
-  /** The Scenario it started from; null when started from a typed Brief. */
-  scenarioId: string | null
-  settings: SessionSettings
-  seed: number
-  createdAt: string
-  /** The image chosen to show it on Home; absent, Home shows the newest picture. */
-  thumbnail?: string
-  /** Its Scenario's title, or the start of its typed Brief (only from `getSession`). */
-  title?: string
-  /** What work in progress is doing, or null when idle (only from `getSession`). */
-  activity?: Activity | null
-  /** Which Frame that work is on, for Storyboards (only from `getSession`). */
-  activeFrame?: number | null
-  /** The size its pictures render at, from its Settings (only from `getSession`). */
-  imageSize?: { width: number; height: number }
-}
-
-export interface ChainSession extends SessionBase {
-  kind: 'chain'
-  frames: ChainFrame[]
-}
-
-export interface StoryboardSession extends SessionBase {
-  kind: 'storyboard'
-  frameCount: number
-  /** Null until planned; edited, with the Beats, only until the first Frame is written. */
-  look: Look | null
-  frames: StoryboardFrame[]
-}
-
 /** A Storyboard Frame's sentences are written: it has a prompt, and can be edited and rendered. */
 export const isWritten = (frame: StoryboardFrame) => frame.body !== ''
 
-export type Session = ChainSession | StoryboardSession | RoleplaySession
-
-/** Progress any streamed work reports: its phase, the model's reasoning, render steps. */
-export type ProgressEvent =
-  /** `queued`: waiting for another Session's render to finish. */
-  /** `imageBackend`: the kind of backend a render runs on, once it starts (`phase: 'image'`). */
-  | { type: 'phase'; phase: Activity; imageBackend?: ImageBackend }
-  | { type: 'thinking'; text: string; restart?: boolean }
-  | { type: 'progress'; step: number; total: number }
-
-/** How streamed work ends when it doesn't succeed. */
-export type EndEvent =
-  | { type: 'failed'; message: string; sessionDiscarded: boolean }
-  | { type: 'cancelled'; sessionDiscarded: boolean }
-
-/** A Chain Frame's stream. */
-export type FrameEvent =
-  | ProgressEvent
-  | EndEvent
-  | { type: 'committed'; frame: ChainFrame }
-  /** The Action crossed a Limit, or the Text Model declined it: no Frame was saved. */
-  | { type: 'declined'; message: string }
-  /** The Text Model couldn't tell what to change, and asks: no Frame was saved. */
-  | { type: 'unclear'; message: string }
-  /** The Text Model took the Action but left the Image Prompt as it was: no Frame was saved. */
-  | { type: 'unchanged'; message: string }
-
 /** An upscale's stream: ends with the Session, the Frame now upscaled. */
-
-/** A Storyboard's streams: planning, writing the Frames, rendering one, editing one by Action. */
-export type StoryboardEvent =
-  | ProgressEvent
-  | EndEvent
-  | { type: 'look'; look: Look }
-  | { type: 'planned-beat'; index: number; beat: string; shown: string[] }
-  | { type: 'planned'; session: StoryboardSession }
-  | { type: 'written-frame'; frame: StoryboardFrame }
-  | { type: 'written'; session: StoryboardSession }
-  | { type: 'rendered'; frame: StoryboardFrame }
-  | { type: 'edited'; outcome: Outcome; narration: string; session: StoryboardSession }
 
 export const post = <T>(path: string, body?: unknown) =>
   request<T>(path, {
@@ -710,23 +536,6 @@ export async function cancelFrame(id: string): Promise<void> {
 export const imageUrl = (sessionId: string, file: string) =>
   `/api/sessions/${sessionId}/images/${file}`
 
-/**
- * What the Compare dialog exports: its rows and columns, each picture by its files in the Session
- * (`Picture`'s), and the models by name only (no "current"). The server writes them as a page with
- * its pictures as WebP.
- */
-export interface ComparisonExport {
-  /** Asks the page's visitors to confirm they're 18 or older, under this text. */
-  notice?: string
-  models: Pick<ComparisonModel, 'label'>[]
-  rows: (Omit<ComparisonRow, 'pictures'> & {
-    /** Each picture's files, and an edit's instructions (`edited`) to mark it by. */
-    pictures: ((Pick<Picture, 'image' | 'upscaled' | 'stale'> & { edited?: string[] }) | null)[]
-  })[]
-  /** The style scores for the exported columns, shown on the page as a tab of their own. */
-  styles?: ExportedStyles
-}
-
 /** Exports a Session's comparison as a page; it says where on the server the folder went. */
 export const exportComparison = (id: string, comparison: ComparisonExport) =>
   post<{ folder: string; pictures: number }>(`/api/sessions/${id}/export`, comparison)
@@ -832,41 +641,6 @@ export const editStoryboardFrame = (
 
 // --- Background work, queued per Session: every kind's.
 
-/** A queued, running, failed or done job. Failed and done ones stay listed until dismissed. */
-export interface Job {
-  id: string
-  kind: JobKind
-  frameIndex: number
-  status: 'queued' | 'running' | 'failed' | 'done'
-  /** Writing (text), waiting for a render (queued), rendering (image), or speaking (audio). */
-  phase?: Activity | 'audio'
-  progress?: { step: number; total: number }
-  error?: string
-  createdAt: string
-  /**
-   * A render's Image Model, as the Session had it when queued: it renders by that one. A clip's,
-   * the Image Model of the picture it's made from. With the kind of backend it would rather use.
-   */
-  image?: { imageModel: string; steps: number; imageBackend?: ImageBackend }
-  /**
-   * The kind of backend its render runs on, once it starts: "by Krea 2 · mflux", and whether
-   * there's a picture forming to show (ComfyUI's previews).
-   */
-  imageBackend?: ImageBackend
-  /**
-   * An edit's order: what to paint, the area painted for it (a mask file, saved when it was
-   * queued), and whether it makes the newest edit again, in its place.
-   */
-  edit?: EditOrder
-  /** A clip's order. */
-  clip?: ClipOrder
-  /** When it last started, and ended (done or failed). */
-  startedAt?: string
-  endedAt?: string
-  /** The machine it runs on: `here` for the server's, else its host. */
-  machine: string
-}
-
 /** Every machine's queue, for the queue page (`GET /api/queue`). */
 export interface Queue {
   /** The machines Settings list, `here` for the server's, with the kinds of Backend on each. */
@@ -899,13 +673,6 @@ export const queueJob = (id: string, kind: JobKind, frameIndex: number) =>
 export const queueClip = (id: string, frameIndex: number, clip: ClipOrder) =>
   post<Job[]>(`/api/sessions/${id}/jobs`, { kind: 'clip', frameIndex, clip })
 
-/** A clip prompt being written: piece by piece as it comes, then the whole of it, tidied. */
-export type ClipPromptEvent =
-  /** `queued`: waiting for a render on the Text Model's machine to finish. */
-  | { type: 'phase'; phase: 'text' | 'queued' }
-  | { type: 'clip-prompt-part'; text: string }
-  | { type: 'clip-prompt'; text: string }
-
 /**
  * Has the Text Model write a clip's prompt for Frame `index`, for the player to edit; nothing is
  * saved. With `revise`, it rewrites the prompt a clip was made from, by what was wrong with it.
@@ -927,19 +694,6 @@ export const writeClipPrompt = (
 /** Queues an edit of a Frame's picture (`EditOrder`); returns the queue. */
 export const queueEdit = (id: string, frameIndex: number, edit: EditOrder) =>
   post<Job[]>(`/api/sessions/${id}/jobs`, { kind: 'edit', frameIndex, edit })
-
-/**
- * What an edit is told: what to paint, which model to use, and where (a PNG, base64; none for all
- * of it); `retry` makes the newest edit again, as told now, in its place.
- */
-export interface EditOrder {
-  instruction: string
-  model?: string
-  /** The kind of backend it would rather run on, as picked in the Edit dialog. */
-  backend?: ImageBackend
-  mask?: string
-  retry?: boolean
-}
 
 /** Picks which version of a Frame's picture is the picture (0 for its render); returns the Session. */
 export const pickVersion = <S>(id: string, index: number, picked: number) =>
@@ -968,3 +722,36 @@ export const cancelAllJobs = (id: string) =>
 /** Dismisses a Session's finished jobs, done and failed, leaving the rest; returns the queue. */
 export const dismissFinishedJobs = (id: string) =>
   request<Job[]>(`/api/sessions/${id}/jobs/finished`, { method: 'DELETE' })
+
+/** Settings as the browser has them: what's stored, and the API keys' two one-way fields. */
+export type Settings = StoredSettings & {
+  /** From the server: the Backends with an API key saved (the keys are never sent back). */
+  apiKeysSet?: string[]
+  /** Sent only to replace Backends' saved API keys, by id; '' removes one. */
+  apiKeys?: Record<string, string>
+}
+
+/** What loading a Session adds to what's stored (only from `getSession`). */
+export interface Loaded {
+  /** Its Scenario's title, or the start of its typed Brief. */
+  title?: string
+  /** What work in progress is doing (speaking a line is `audio`), or null when idle. */
+  activity?: Phase | null
+  /** Which Frame that work is on, for Storyboards. */
+  activeFrame?: number | null
+  /** The size its pictures render at, from its Settings. */
+  imageSize?: { width: number; height: number }
+}
+export type SessionBase = StoredSessionBase & Loaded
+export type ChainSession = StoredChainSession & Loaded
+export type StoryboardSession = StoredStoryboardSession & Loaded
+export type Session = ChainSession | StoryboardSession | RoleplaySession
+
+/** A job as the browser is sent it. */
+export type Job = StoredJob
+
+export type FrameEvent = StoredFrameEvent | EndEvent
+export type StoryboardEvent = StoredStoryboardEvent | EndEvent
+
+/** A folder to move to, checked: a folder that can't be used is answered as an error instead. */
+export type FolderCheck = Extract<StoredFolderCheck, { ok: true }>

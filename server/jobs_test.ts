@@ -1,16 +1,15 @@
 import { assertEquals } from '@std/assert'
 import {
   asQueued,
-  type ImageChoice,
-  type Job,
   onModelPictures,
   type QueueStore,
   type SavedQueue,
   SessionJobs,
   textChoiceOf,
 } from './jobs.ts'
-import type { ComfyTraces } from './comfyui/traces.ts'
-import type { Session } from './session.ts'
+import type { ImageChoice, Job } from '../shared/jobs.ts'
+import type { ComfyTraces } from '../shared/comfyui.ts'
+import type { Session } from '../shared/session.ts'
 
 /** A queue whose jobs run until the test ends them: `started` lists them as `kind frame`. */
 function heldJobs() {

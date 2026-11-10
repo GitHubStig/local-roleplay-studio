@@ -1,6 +1,6 @@
 import type { ModelFiles } from '../../comfyui/files.ts'
 import type { EditModelOn } from '../editModels.ts'
-import type { Upscaler } from '../upscalers.ts'
+import type { Upscaler } from '../../../shared/images.ts'
 
 /**
  * An Image Model as ComfyUI runs it: a workflow in API format (`workflows/<id>.json`, with

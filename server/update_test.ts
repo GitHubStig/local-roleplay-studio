@@ -1,5 +1,6 @@
 import { assertEquals, assertRejects } from '@std/assert'
-import { dirSessionStore, type Session, type SessionStore } from './session.ts'
+import { dirSessionStore, type SessionStore } from './session.ts'
+import type { Session } from '../shared/session.ts'
 import { DEFAULT_SETTINGS } from './settings.ts'
 import { withTempDir } from './testing.ts'
 import { GoneError, removeSession, updateSession } from './update.ts'

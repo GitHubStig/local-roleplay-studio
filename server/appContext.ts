@@ -5,16 +5,18 @@
 import type { AppDeps, LockKind, StreamEvent } from './app.ts'
 import type { Backend } from '../shared/backends.ts'
 import type { Availabilities, Feature } from '../shared/features.ts'
-import type { FrameDeps, Phase } from './frames.ts'
+import type { FrameDeps } from './frames.ts'
+import type { ChainSession, Phase, Session, StoryboardSession } from '../shared/session.ts'
 import { Refusal } from './refusal.ts'
 import type { ImageBackendKind } from '../shared/images.ts'
-import type { EditOrder, SessionJobs } from './jobs.ts'
+import type { SessionJobs } from './jobs.ts'
+import type { EditOrder } from '../shared/jobs.ts'
 import type { JobKind } from '../shared/jobKinds.ts'
 import type { HeavyJob } from './machine.ts'
 import type { Previews } from './previews.ts'
 import type { RenderQueue } from './renderQueue.ts'
-import { briefScenario, type Scenario } from './scenario.ts'
-import type { ChainSession, Session, StoryboardSession } from './session.ts'
+import { briefScenario } from './scenario.ts'
+import type { Scenario } from '../shared/scenario.ts'
 
 export interface AppContext {
   deps: AppDeps

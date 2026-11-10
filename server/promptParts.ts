@@ -3,7 +3,8 @@
  * `prompts/chain/`, `prompts/storyboard/` and `prompts/shared/` (`promptFiles.ts`).
  */
 import { PROMPT_ORDER } from './imagePrompt.ts'
-import { factsOf, type Scenario, truthsOf } from './scenario.ts'
+import { factsOf, truthsOf } from './scenario.ts'
+import type { Scenario } from '../shared/scenario.ts'
 import { limitsEnabled } from './limits.ts'
 import { loadPrompt } from './promptFiles.ts'
 import { BODY_ASPECTS } from './frameBody.ts'

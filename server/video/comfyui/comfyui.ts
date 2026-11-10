@@ -1,7 +1,6 @@
 import { join } from '@std/path'
 import {
   comfyBase,
-  type ComfyFile,
   download,
   fillWorkflow,
   loadWorkflow,
@@ -9,6 +8,7 @@ import {
   upload,
   type Workflow,
 } from '../../comfyui/client.ts'
+import type { ComfyFile } from '../../../shared/comfyui.ts'
 import { clearTraces, historyOf, modelFiles, withUploads } from '../../comfyui/files.ts'
 import { loadPrompt } from '../../promptFiles.ts'
 import { pngSize } from '../../png.ts'

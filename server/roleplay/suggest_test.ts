@@ -9,7 +9,7 @@ import {
   typicalLength,
 } from './suggest.ts'
 import { replyOf, scriptedRoleplayModel, testCast } from './testing.ts'
-import type { RoleplayFrame, RoleplaySession } from './types.ts'
+import type { RoleplayFrame, RoleplaySession } from '../../shared/roleplay.ts'
 
 const frame = (index: number, message: string | null, dialogue: string): RoleplayFrame => ({
   index,

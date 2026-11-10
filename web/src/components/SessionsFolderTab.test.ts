@@ -36,6 +36,7 @@ describe('SessionsFolderTab', () => {
   it('counts the Sessions in a folder chosen, and moves only once confirmed', async () => {
     vi.mocked(api.pickSessionsFolder).mockResolvedValue({ path: '/Volumes/Big/Sessions' })
     vi.mocked(api.checkSessionsFolder).mockResolvedValue({
+      ok: true,
       path: '/Volumes/Big/Sessions',
       count: 1,
       exists: true,
@@ -73,6 +74,7 @@ describe('SessionsFolderTab', () => {
 
     vi.mocked(api.pickSessionsFolder).mockResolvedValueOnce({ path: '/x' })
     vi.mocked(api.checkSessionsFolder).mockResolvedValue({
+      ok: true,
       path: '/x',
       count: 0,
       exists: false,
@@ -89,6 +91,7 @@ describe('SessionsFolderTab', () => {
   it('does nothing for the folder in use, and drops a pending choice when it is picked again', async () => {
     vi.mocked(api.pickSessionsFolder).mockResolvedValueOnce({ path: '/other' })
     vi.mocked(api.checkSessionsFolder).mockResolvedValueOnce({
+      ok: true,
       path: '/other',
       count: 0,
       exists: true,
@@ -101,6 +104,7 @@ describe('SessionsFolderTab', () => {
 
     vi.mocked(api.pickSessionsFolder).mockResolvedValueOnce({ path: '/app/sessions' })
     vi.mocked(api.checkSessionsFolder).mockResolvedValueOnce({
+      ok: true,
       path: '/app/sessions',
       count: 3,
       exists: true,

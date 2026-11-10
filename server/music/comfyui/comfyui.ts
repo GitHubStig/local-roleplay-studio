@@ -1,13 +1,13 @@
 import { extname, join } from '@std/path'
 import {
   comfyBase,
-  type ComfyFile,
   download,
   fillWorkflow,
   loadWorkflow,
   runWorkflow,
   upload,
 } from '../../comfyui/client.ts'
+import type { ComfyFile } from '../../../shared/comfyui.ts'
 import { clearTraces, historyOf, type ModelFiles, modelFiles } from '../../comfyui/files.ts'
 import type { MusicGenerator } from '../musicGenerator.ts'
 

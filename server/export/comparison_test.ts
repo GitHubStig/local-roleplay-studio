@@ -2,12 +2,8 @@ import { assertEquals, assertMatch, assertRejects } from '@std/assert'
 import encodePng from '@jsquash/png/encode.js'
 import { join } from '@std/path'
 import { withTempDir } from '../testing.ts'
-import {
-  type ComparisonExport,
-  comparisonTitle,
-  parseComparisonExport,
-  writeComparison,
-} from './comparison.ts'
+import { comparisonTitle, parseComparisonExport, writeComparison } from './comparison.ts'
+import type { ComparisonExport } from '../../shared/comparison.ts'
 
 const HTML = '<title>x</title><script id="comparison" type="application/json">{}</script><p>'
 const PAGE = { html: HTML, plot: 'window.Plot = {}' }

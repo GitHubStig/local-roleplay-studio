@@ -7,7 +7,7 @@ import {
   BACKEND_NAMES,
   type ComfyStatus,
   type Feature,
-  type TextModelOptions,
+  type TextModelList,
 } from '../api'
 import ComfyStatusLine from './ComfyStatusLine.vue'
 import Icon from './Icon.vue'
@@ -23,7 +23,7 @@ const props = defineProps<{
   /** Each ComfyUI's check, by id. */
   comfy: Record<string, ComfyStatus | 'checking'>
   /** What each text Backend lists, by id. */
-  text: Record<string, TextModelOptions>
+  text: Record<string, TextModelList>
   /** The Backends with an API key saved. */
   apiKeysSet: string[]
 }>()

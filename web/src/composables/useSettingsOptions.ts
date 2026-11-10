@@ -88,7 +88,8 @@ export function useImageModels() {
  */
 export function editModelChoices(
   models: SettingsOptions['editModels'] = [],
-  on: (id: string) => ImageBackend | undefined = () => undefined,
+  on: (id: SettingsOptions['editModels'][number]['id']) => ImageBackend | undefined = () =>
+    undefined,
 ) {
   const choices = models.map(({ id, label }) => {
     const backend = on(id)

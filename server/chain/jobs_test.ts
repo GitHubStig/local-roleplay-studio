@@ -1,5 +1,5 @@
 import { assertEquals, assertMatch, assertNotEquals } from '@std/assert'
-import type { Job } from '../jobs.ts'
+import type { Job } from '../../shared/jobs.ts'
 import { fakeFigureMaker } from '../3d/testing.ts'
 import {
   fakeImageGenerator,

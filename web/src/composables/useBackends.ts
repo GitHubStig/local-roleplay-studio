@@ -5,10 +5,11 @@ import {
   BACKEND_WORK,
   checkComfyUI,
   type ComfyStatus,
+  type EditModel,
   listTextModels,
   type Settings,
   type SettingsOptions,
-  type TextModelOptions,
+  type TextModelList,
   type Work,
 } from '../api'
 
@@ -52,7 +53,7 @@ export function useBackends(
    * Where a kind of work goes: the preferred Backend if it can, else the next listed that can; an
    * edit by Settings' edit model, unless `editModel` says another.
    */
-  function whereTo(work: Work, editModel?: string): Backend | undefined {
+  function whereTo(work: Work, editModel?: EditModel): Backend | undefined {
     if (!form.value) return undefined
     const { backends, runOn } = form.value
     return [
@@ -107,7 +108,7 @@ export function useBackends(
   )
 
   /** What each text Backend listed lists, or why it couldn't. */
-  const text = ref<Record<string, TextModelOptions>>({})
+  const text = ref<Record<string, TextModelList>>({})
   async function listText(backend: Backend) {
     const apiKey = apiKeys.value[backend.id] || undefined
     text.value[backend.id] = await listTextModels({ ...backend, apiKey }).catch((err) => ({

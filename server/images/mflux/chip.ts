@@ -1,11 +1,8 @@
-/** How float16 is chosen: always, never, or by this Mac's chip (`float16On`). */
-export const FLOAT16_CHOICES = ['auto', 'on', 'off'] as const
-export type Float16 = (typeof FLOAT16_CHOICES)[number]
-
 /**
  * The generation of this Mac's Apple chip (5 for an "Apple M5 Pro"), or null when it isn't one.
  * Asked of macOS once, as the chip can't change while the server runs.
  */
+import type { Float16 } from '../../../shared/settings.ts'
 let generation: number | null | undefined
 export function chipGeneration(): number | null {
   if (generation !== undefined) return generation

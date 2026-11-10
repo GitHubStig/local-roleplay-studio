@@ -4,7 +4,7 @@ import { readEvents, settled, setup } from '../../appTesting.ts'
 import type { MusicGenerator, MusicRequest } from '../../music/musicGenerator.ts'
 import { withTempDir } from '../../testing.ts'
 import { replyOf, scriptedRoleplayModel, testCast, testScore } from '../testing.ts'
-import type { RoleplaySession } from '../types.ts'
+import type { RoleplaySession } from '../../../shared/roleplay.ts'
 
 const COMFY = { id: 'pc', kind: 'comfyui' as const, address: 'http://192.0.2.20:8188' }
 const direction = (decision: string) => ({

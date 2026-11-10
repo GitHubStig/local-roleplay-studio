@@ -1,7 +1,6 @@
 import { extname } from '@std/path'
 import {
   comfyBase,
-  type ComfyFile,
   download,
   fillWorkflow,
   loadWorkflow,
@@ -9,6 +8,7 @@ import {
   upload,
   type Workflow,
 } from '../../comfyui/client.ts'
+import type { ComfyFile } from '../../../shared/comfyui.ts'
 import type { SpeakRequest, VoiceEngine } from '../voice.ts'
 
 /**

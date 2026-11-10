@@ -5,13 +5,12 @@
 import { join } from '@std/path'
 import { frameName, secondsSince } from '../../frames.ts'
 import type { JobEmit } from '../../jobs.ts'
-import type { ComfyTraces } from '../../comfyui/traces.ts'
+import type { ComfyTraces } from '../../../shared/comfyui.ts'
 import type { MusicGenerator } from '../../music/musicGenerator.ts'
 import { RenderQueue } from '../../renderQueue.ts'
 import type { SessionStore } from '../../session.ts'
 import { bpmOf, CUE_SECONDS } from './director.ts'
-import type { RoleplaySession } from '../types.ts'
-import type { Cue } from '../../../shared/roleplay.ts'
+import type { Cue, RoleplaySession } from '../../../shared/roleplay.ts'
 import { updateSession } from '../update.ts'
 
 export interface MusicDeps {

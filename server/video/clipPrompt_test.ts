@@ -2,7 +2,7 @@ import { assert, assertEquals, assertStringIncludes } from '@std/assert'
 import { reply, scriptedTextModel, withTempDir } from '../testing.ts'
 import { chainFrames, chainOfTwo, readEvents } from '../appTesting.ts'
 import { loadPrompt } from '../promptFiles.ts'
-import type { Session } from '../session.ts'
+import type { Session } from '../../shared/session.ts'
 import { cleanClipPrompt, frameStory } from './clipPrompt.ts'
 
 /** A Chain of two Frames whose Text Model writes `clips` as clip prompts. */

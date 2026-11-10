@@ -3,11 +3,12 @@ import { frameName, secondsSince } from '../frames.ts'
 import type { JobEmit } from '../jobs.ts'
 import type { Clip, ClipKind, ClipOrder, ClipSize } from '../../shared/clips.ts'
 import { RenderQueue } from '../renderQueue.ts'
-import type { Session, SessionStore } from '../session.ts'
+import type { SessionStore } from '../session.ts'
+import type { Session } from '../../shared/session.ts'
 import { anyImageModel } from '../images/imageModels.ts'
 import { changeFramePicture, pickedVersion } from '../pictures.ts'
 import { CLIP_ENDS, type VideoGenerator } from './videoGenerator.ts'
-import type { ComfyTraces } from '../comfyui/traces.ts'
+import type { ComfyTraces } from '../../shared/comfyui.ts'
 
 export interface ClipDeps {
   store: SessionStore

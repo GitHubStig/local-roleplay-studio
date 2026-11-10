@@ -1,41 +1,7 @@
 import { extract } from '@std/front-matter/yaml'
 import { stringify } from '@std/yaml'
 import { basename, extname, fromFileUrl, join } from '@std/path'
-import type { Person, ScenarioLoadError, ScenarioSummary } from '../shared/scenario.ts'
-
-/**
- * A Scenario: a story a Session starts from (ADR 0032). What it states holds; what it leaves blank
- * ('' or empty) is the Text Model's to invent. Saved as Markdown (`example-scenarios/*.md`,
- * `docs/scenarios.md`): `scenarioMarkdown` writes it, `parseScenario` reads it back.
- */
-export interface Scenario {
-  /** File name without extension, e.g. `tavern`. */
-  id: string
-  title: string
-  description: string
-  /** The situation when the story starts; the only part a Scenario must have. */
-  opening: string
-  place: string
-  /** The time of day, and the weather. */
-  time: string
-  /** The art style every picture is made in; '' for the Look to pick one. */
-  style: string
-  /**
-   * What the story's music is like; '' for the Text Model to pick (docs/design.md).
-   */
-  music: string
-  /** What holds about the story whatever anyone does. */
-  truths: string[]
-  people: Person[]
-  /** The id of the Person the player plays by default in a Roleplay. */
-  player?: string
-  /** The id of the Person the Text Model plays by default in a Roleplay. */
-  character?: string
-  /** When the file was first saved, as an ISO date; from the file's own dates when it doesn't say. */
-  created?: string
-  /** When it was last saved, likewise. */
-  modified?: string
-}
+import type { Person, Scenario, ScenarioLoadError, ScenarioSummary } from '../shared/scenario.ts'
 
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === 'object' && v !== null && !Array.isArray(v)

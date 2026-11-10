@@ -1,6 +1,7 @@
 import { assertEquals } from '@std/assert'
 import { join } from '@std/path'
-import { dirSessionStore, type Session } from '../session.ts'
+import { dirSessionStore } from '../session.ts'
+import type { Session } from '../../shared/session.ts'
 import { promptWith, withTempDir } from '../testing.ts'
 import { type Embeddings, type StyleEmbedder, uvStyleEmbedder } from './embedder.ts'
 import { embedStyles } from './job.ts'

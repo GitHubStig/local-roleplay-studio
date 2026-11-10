@@ -1,4 +1,5 @@
-import type { Session, SessionStore } from './session.ts'
+import type { SessionStore } from './session.ts'
+import type { Session } from '../shared/session.ts'
 import { Refusal } from './refusal.ts'
 
 /** A Session (or a Frame of it) that went away while something was still working on it. */

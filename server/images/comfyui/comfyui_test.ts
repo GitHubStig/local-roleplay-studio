@@ -1,6 +1,7 @@
 import { assertEquals, assertRejects, assertThrows } from '@std/assert'
 import { join } from '@std/path'
-import { DEFAULT_SETTINGS, type Settings } from '../../settings.ts'
+import { DEFAULT_SETTINGS } from '../../settings.ts'
+import type { Settings } from '../../../shared/settings.ts'
 import { paintedMask, pngHeader, withTempDir } from '../../testing.ts'
 import type { EditRequest } from '../imageGenerator.ts'
 import { fillWorkflow } from '../../comfyui/client.ts'

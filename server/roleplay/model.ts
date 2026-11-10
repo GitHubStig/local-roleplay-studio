@@ -1,6 +1,6 @@
 import { JsonStreamReader } from '../jsonStream.ts'
 import { type Chat, type ChatMessage, within } from '../text/chat.ts'
-import type { Scenario } from '../scenario.ts'
+import type { Scenario } from '../../shared/scenario.ts'
 import {
   castMessages,
   castSchema,

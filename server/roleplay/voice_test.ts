@@ -7,7 +7,7 @@ import { withTempDir } from '../testing.ts'
 import type { SpeakRequest } from '../voice/voice.ts'
 import { fakeVoiceEngine } from '../voice/testing.ts'
 import { replyOf, scriptedRoleplayModel, testCast } from './testing.ts'
-import type { RoleplaySession } from './types.ts'
+import type { RoleplaySession } from '../../shared/roleplay.ts'
 import {
   designVoice,
   parseDelivery,

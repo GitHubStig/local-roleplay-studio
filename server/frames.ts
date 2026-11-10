@@ -10,32 +10,19 @@ import {
 } from './pictures.ts'
 import type { Picture } from '../shared/pictures.ts'
 import type { ImageGenerator } from './images/imageGenerator.ts'
-import type { ImageBackendKind } from '../shared/images.ts'
-import type { Upscaler } from './images/upscalers.ts'
+import type { Upscaler } from '../shared/images.ts'
 import type { TextModel } from './textModel.ts'
 import type { Previews } from './previews.ts'
 import type { HeavyJob } from './machine.ts'
 import { RenderQueue } from './renderQueue.ts'
-import type { Session, SessionStore } from './session.ts'
-import { DEFAULT_SETTINGS, renderSettings, type Settings } from './settings.ts'
+import type { SessionStore } from './session.ts'
+import type { Session } from '../shared/session.ts'
+import { DEFAULT_SETTINGS, renderSettings } from './settings.ts'
+import type { Settings } from '../shared/settings.ts'
 import { GoneError } from './update.ts'
 import { ContextFullError } from './text/chat.ts'
 import { Refusal } from './refusal.ts'
-
-/** Progress any piece of work reports as it happens, in a Chain or a Storyboard. */
-export type ProgressEvent =
-  /**
-   * `queued`: waiting for another Session's render to finish; `download`: downloading a model the
-   * first time it's used, before rendering (or speaking) with it.
-   */
-  /** `imageBackend`: the kind of backend a render runs on, once it starts (`phase: 'image'`). */
-  | { type: 'phase'; phase: Phase; imageBackend?: ImageBackendKind }
-  /** More of the Text Model's reasoning; `restart` when a retry starts reasoning afresh. */
-  | { type: 'thinking'; text: string; restart?: boolean }
-  /** Image Model steps completed so far. */
-  | { type: 'progress'; step: number; total: number }
-
-export type Phase = 'text' | 'queued' | 'image' | 'audio' | 'download'
+import type { ProgressEvent } from '../shared/events.ts'
 
 /**
  * Image Model progress as events: `download` while the model downloads, then `image` again with

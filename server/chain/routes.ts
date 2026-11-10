@@ -4,10 +4,15 @@ import { imageChoiceOf } from '../jobs.ts'
 import { logCallsUnder } from '../calls.ts'
 import { chainFromStoryboard } from './fromStoryboard.ts'
 import { machineOf } from '../machine.ts'
-import { type FrameEvent, runChainFrame, undoLatestFrame } from './frames.ts'
-import { scenarioFor } from '../appContext.ts'
-import type { AppContext } from '../appContext.ts'
-import { frameIndexOf, needsChain, needsStoryboard } from '../appContext.ts'
+import { runChainFrame, undoLatestFrame } from './frames.ts'
+import type { FrameEvent } from '../../shared/events.ts'
+import {
+  type AppContext,
+  frameIndexOf,
+  needsChain,
+  needsStoryboard,
+  scenarioFor,
+} from '../appContext.ts'
 
 export function chainRoutes(ctx: AppContext): Route[] {
   const { deps, jobs, newSessionId, locked, stream, frameDeps, featureOff, jobBackendOf } = ctx

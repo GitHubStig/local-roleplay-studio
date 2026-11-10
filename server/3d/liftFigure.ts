@@ -3,7 +3,8 @@ import type { FigureMaker } from './figure.ts'
 import type { Figure } from '../../shared/threeD.ts'
 import { frameName, secondsSince } from '../frames.ts'
 import { RenderQueue } from '../renderQueue.ts'
-import type { Session, SessionStore } from '../session.ts'
+import type { SessionStore } from '../session.ts'
+import type { Session } from '../../shared/session.ts'
 import { changeFramePicture, shownVersionOf } from '../pictures.ts'
 
 export interface FigureDeps {

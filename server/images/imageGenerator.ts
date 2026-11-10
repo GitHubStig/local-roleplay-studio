@@ -1,8 +1,7 @@
 import { join } from '@std/path'
 import type { Backend } from '../../shared/backends.ts'
-import type { Settings } from '../settings.ts'
-import type { Quantize } from '../../shared/settings.ts'
-import type { EditModel } from './editModels.ts'
+import type { Quantize, Settings } from '../../shared/settings.ts'
+import type { EditModel } from '../../shared/images.ts'
 
 export interface ImageRequest {
   prompt: string

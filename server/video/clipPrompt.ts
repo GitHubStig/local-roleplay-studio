@@ -9,9 +9,10 @@ import { crossedLimit } from '../limits.ts'
 import { loadPrompt } from '../promptFiles.ts'
 import { shownVersionOf } from '../pictures.ts'
 import { exchangeText } from '../roleplay/art.ts'
-import type { Session } from '../session.ts'
+import type { Session } from '../../shared/session.ts'
 import type { TextModel } from '../textModel.ts'
 import { clipRefusal } from './makeClip.ts'
+import type { ClipPromptEvent } from '../../shared/events.ts'
 
 /** What each kind of clip is called in the prompt, as the player sees it. */
 const KIND_NAMES: Record<ClipKind, string> = {
@@ -20,13 +21,6 @@ const KIND_NAMES: Record<ClipKind, string> = {
   'idle-loop': 'Idle Loop',
   'into-next': 'Into Next',
 }
-
-export type ClipPromptEvent =
-  | { type: 'phase'; phase: 'text' }
-  /** The prompt as written so far, untidied. */
-  | { type: 'clip-prompt-part'; text: string }
-  /** The whole prompt, tidied. */
-  | { type: 'clip-prompt'; text: string }
 
 export class ClipPromptError extends Error {}
 

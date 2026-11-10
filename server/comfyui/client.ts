@@ -1,4 +1,5 @@
 import { leftTrace } from './traces.ts'
+import type { ComfyFile } from '../../shared/comfyui.ts'
 
 /** ComfyUI's own default address. */
 export const COMFYUI_URL = 'http://127.0.0.1:8188'
@@ -15,13 +16,6 @@ export const COMFYUI_URL = 'http://127.0.0.1:8188'
 
 /** A workflow in ComfyUI's API format: node id → its class and inputs. */
 export type Workflow = Record<string, { class_type: string; inputs: Record<string, unknown> }>
-
-/** A file ComfyUI wrote (an output node's `ui`), as `/view` serves it. */
-export interface ComfyFile {
-  filename: string
-  subfolder: string
-  type: string
-}
 
 /** What a finished workflow gave back. */
 export interface WorkflowResult {

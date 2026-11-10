@@ -1,6 +1,6 @@
 import type { SessionStore } from '../session.ts'
 import { GoneError, updateSession as update } from '../update.ts'
-import type { RoleplaySession } from './types.ts'
+import type { RoleplaySession } from '../../shared/roleplay.ts'
 
 export { GoneError }
 

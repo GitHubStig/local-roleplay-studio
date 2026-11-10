@@ -3,7 +3,8 @@ import { assertEquals, assertNotEquals, assertRejects } from '@std/assert'
 import { join } from '@std/path'
 import type { Backend } from '../../shared/backends.ts'
 import { DEFAULT_SETTINGS } from '../settings.ts'
-import { type ChainSession, dirSessionStore, type SessionStore } from '../session.ts'
+import { dirSessionStore, type SessionStore } from '../session.ts'
+import type { ChainSession } from '../../shared/session.ts'
 import {
   fakeImageGenerator,
   promptWith,
@@ -12,15 +13,9 @@ import {
   testScenario,
   withTempDir,
 } from '../testing.ts'
-import { imageProgress, type ProgressEvent, upscaleFrame } from '../frames.ts'
-import {
-  type FrameEvent,
-  renderChainFrame,
-  runChainFrame,
-  UNCHANGED,
-  UndoError,
-  undoLatestFrame,
-} from './frames.ts'
+import { imageProgress, upscaleFrame } from '../frames.ts'
+import type { FrameEvent, ProgressEvent } from '../../shared/events.ts'
+import { renderChainFrame, runChainFrame, UNCHANGED, UndoError, undoLatestFrame } from './frames.ts'
 import { RenderQueue } from '../renderQueue.ts'
 import { updateSession } from '../update.ts'
 

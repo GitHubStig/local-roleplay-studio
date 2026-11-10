@@ -1,15 +1,11 @@
-import {
-  frameName,
-  type ProgressEvent,
-  replacePicture,
-  secondsSince,
-  withRetry,
-} from '../frames.ts'
+import { frameName, replacePicture, secondsSince, withRetry } from '../frames.ts'
+import type { RoleplayEvent } from '../../shared/events.ts'
 import type { ImageGenerator } from '../images/imageGenerator.ts'
 import type { RenderQueue } from '../renderQueue.ts'
-import type { Settings } from '../settings.ts'
+import type { Settings } from '../../shared/settings.ts'
 import { activeProseLimits, crossedLimit } from '../limits.ts'
-import { othersOf, type Scenario, truthList } from '../scenario.ts'
+import { othersOf, truthList } from '../scenario.ts'
+import type { Scenario } from '../../shared/scenario.ts'
 import type { SessionStore } from '../session.ts'
 import type { Look } from '../../shared/session.ts'
 import type { FigureMaker } from '../3d/figure.ts'
@@ -23,32 +19,8 @@ import { judgeMessages } from './judge.ts'
 import { artFrameMessages, artLookMessages, isLook, pictured, withNewcomers } from './art.ts'
 import { cleanLook, lookLimit, renameShown } from '../look.ts'
 import { withoutCuesFrom } from './music/director.ts'
-import type { RoleplayFrame, RoleplaySession } from './types.ts'
-import type { Cast, Reply, Score } from '../../shared/roleplay.ts'
+import type { Cast, Reply, RoleplayFrame, RoleplaySession } from '../../shared/roleplay.ts'
 import { Refusal } from '../refusal.ts'
-
-/** Progress of a Roleplay's setup or reply, streamed to the player as it happens. */
-export type RoleplayEvent =
-  | ProgressEvent
-  /** The Cast, once written. */
-  | { type: 'cast'; cast: Cast; session: RoleplaySession }
-  /** One field of the reply, the moment the model finishes writing it. */
-  | { type: 'reply-part'; key: keyof Reply; value: string }
-  | { type: 'replied'; frame: RoleplayFrame; session: RoleplaySession }
-  /** The message or the reply crossed a Limit: nothing was saved. */
-  | { type: 'declined'; message: string }
-  /** The Art Agent's Look, written the first time a Frame is pictured. */
-  | { type: 'look'; look: Look }
-  /** The Score, written (`score.ts`). */
-  | { type: 'score'; score: Score; session: RoleplaySession }
-  /** A Frame's music, directed (`director.ts`). */
-  | { type: 'directed'; frame: RoleplayFrame; session: RoleplaySession }
-  /** The whole Roleplay's music, scored with hindsight (`hindsight.ts`). */
-  | { type: 'scored'; session: RoleplaySession }
-  /** A Frame's picture: its Image Prompt, not yet rendered. */
-  | { type: 'pictured'; frame: RoleplayFrame; session: RoleplaySession }
-  /** A Frame's picture, rendered. */
-  | { type: 'rendered'; frame: RoleplayFrame; session: RoleplaySession }
 
 export interface RoleplayDeps {
   store: SessionStore

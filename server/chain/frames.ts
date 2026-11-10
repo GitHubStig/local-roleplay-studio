@@ -2,36 +2,19 @@ import { equal } from '@std/assert'
 import { peopleAway } from '../imagePrompt.ts'
 import type { ImagePrompt } from '../../shared/images.ts'
 import { crossedLimit, LimitError } from '../limits.ts'
-import type { Scenario } from '../scenario.ts'
-import type { ChainFrame, ChainSession, SessionStore } from '../session.ts'
-import type { FrameTimings, Outcome } from '../../shared/session.ts'
+import type { Scenario } from '../../shared/scenario.ts'
+import type { SessionStore } from '../session.ts'
+import type { ChainFrame, ChainSession, FrameTimings, Outcome } from '../../shared/session.ts'
 import type { FrameText } from './text.ts'
 import { GoneError, updateSession } from '../update.ts'
 import { allPictureFiles, allStale, removeFiles } from '../pictures.ts'
 import { renumberCallLogs } from '../calls.ts'
-import {
-  type FrameDeps,
-  frameName,
-  type ProgressEvent,
-  replacePicture,
-  secondsSince,
-  withRetry,
-} from '../frames.ts'
+import { type FrameDeps, frameName, replacePicture, secondsSince, withRetry } from '../frames.ts'
+import type { FrameEvent, ProgressEvent } from '../../shared/events.ts'
 import { Refusal } from '../refusal.ts'
 
 /** Why a done Action that left the Image Prompt as it was makes no Frame. */
 export const UNCHANGED = 'Nothing in the picture changed. Try rewording the Action.'
-
-/** Progress of a Chain Frame, streamed to the player as it happens. */
-export type FrameEvent =
-  | ProgressEvent
-  | { type: 'committed'; frame: ChainFrame }
-  /** The Action crossed a Limit, or the Text Model declined it: nothing was saved. */
-  | { type: 'declined'; message: string }
-  /** The Text Model couldn't tell what to change, and asks: nothing was saved. */
-  | { type: 'unclear'; message: string }
-  /** The Text Model took the Action but left the Image Prompt as it was: nothing was saved. */
-  | { type: 'unchanged'; message: string }
 
 /**
  * Runs one Chain Frame: the Text Model writes its Image Prompt, and it's saved, its picture to
