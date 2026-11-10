@@ -20,7 +20,8 @@ import {
 import { crossedLimit, LimitError } from '../limits.ts'
 import type { Scenario } from '../scenario.ts'
 import type { FrameTimings, Look, Outcome, StoryboardFrame, StoryboardSession } from '../session.ts'
-import { plainSentences, type PlannedBeat } from '../textModel.ts'
+import { plainSentences } from '../frameBody.ts'
+import type { PlannedBeat } from './text.ts'
 
 /** Progress of Storyboard work, streamed to the player as it happens. */
 export type StoryboardEvent =

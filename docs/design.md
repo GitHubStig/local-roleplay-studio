@@ -20,14 +20,14 @@ Read the part you're working on, not all of them.
 
 | Part | What's in it | Code |
 |---|---|---|
-| [Chains](design/chain.md) | The Frame loop: an Action, the Limits, the Text Model's reply, the engine's rules, the render; Undo, hand edits, and what happens when a Frame fails | `server/chain/`, `server/textModel.ts`, `server/frames.ts` |
-| [Storyboards](design/storyboard.md) | Plan, review, write; what can be done to a written Frame; Chain from here | `server/storyboard/`, `server/textModel.ts` |
+| [Chains](design/chain.md) | The Frame loop: an Action, the Limits, the Text Model's reply, the engine's rules, the render; Undo, hand edits, and what happens when a Frame fails | `server/chain/` (its routes in `routes.ts`, what the Text Model is asked in `text.ts`), `server/textModel.ts`, `server/frames.ts` |
+| [Storyboards](design/storyboard.md) | Plan, review, write; what can be done to a written Frame; Chain from here | `server/storyboard/` (`routes.ts`, `text.ts`), `server/frameBody.ts` (a Frame's seven sentences and a Look as the Text Model writes them, shared with the Art Agent), `server/textModel.ts` |
 | [Roleplays](design/roleplay.md) | The Cast, a Message and its Reply, the Truths' judge, Undo, Restart, Suggest; picturing a Frame (the Art Agent, the Look); voices | `server/roleplay/`, `web/src/roleplay/` |
 | [Music](design/music.md) | A Roleplay's Score, the Music Director, the cue writer, Tracks and the player | `server/roleplay/` (`score.ts`, `director.ts`, `hindsight.ts`, `music.ts`), `server/music/` |
-| [The Scenario page](design/scenario-page.md) | How a Session starts: Expand, Suggest, who plays whom, saving a Scenario | `server/scenario.ts`, `server/scenario/`, `web/src/scenario/` |
+| [The Scenario page](design/scenario-page.md) | How a Session starts: Expand, Suggest, who plays whom, saving a Scenario | `server/scenario.ts`, `server/scenario/` (`routes.ts`, `expand.ts`, `suggest.ts`), `web/src/scenario/` |
 | [Jobs](design/jobs.md) | The queue: turns per machine, what waits for what, text calls among heavy jobs, the queue file and restarts, the Queue page | `server/jobs.ts`, `server/machine.ts`, `server/renderQueue.ts`, `server/text/turns.ts` |
-| [Pictures](design/pictures.md) | The seed, a picture per Image Model, Upscale, edits, clips, 3D, the Pictures table and its export, style scores, the thumbnail | `server/pictures.ts`, `server/pictureEdits.ts`, `server/pictureJobs.ts`, `server/images/`, `server/video/`, `server/3d/`, `server/style/`, `server/export/` |
-| [Settings, storage and the API](design/settings-and-storage.md) | What Settings hold and when they apply, autosave, where everything is kept, the call log, the API's shape | `server/settings.ts`, `server/session.ts`, `server/calls.ts`, `server/app.ts` |
+| [Pictures](design/pictures.md) | The seed, a picture per Image Model, Upscale, edits, clips, 3D, the Pictures table and its export, style scores, the thumbnail | `server/pictures.ts`, `server/pictureEdits.ts`, `server/pictureJobs.ts`, `server/pictureRoutes.ts`, `server/images/`, `server/video/`, `server/3d/`, `server/style/`, `server/export/` |
+| [Settings, storage and the API](design/settings-and-storage.md) | What Settings hold and when they apply, autosave, where everything is kept, the call log, the API's shape | `server/settings.ts`, `server/settingsRoutes.ts`, `server/session.ts`, `server/sessionRoutes.ts`, `server/calls.ts`, `server/app.ts` (the locks, the streams and what each part's routes are lent, `appContext.ts`) |
 
 ## Stack
 

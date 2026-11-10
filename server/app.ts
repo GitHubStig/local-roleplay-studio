@@ -1,57 +1,19 @@
-import { extname, join } from '@std/path'
-import { serveFile } from '@std/http/file-server'
-import { error, isJson, json, readJson, type Route } from './http.ts'
+import { error, isJson, json, type Route } from './http.ts'
 import type { ImageGenerator } from './images/imageGenerator.ts'
-import {
-  anyImageModel,
-  findImageModel,
-  IMAGE_BACKEND_NAMES,
-  IMAGE_BACKENDS,
-  type ImageBackendKind,
-  imageModelsOf,
-} from './images/imageModels.ts'
+import { IMAGE_BACKENDS, type ImageBackendKind } from './images/imageModels.ts'
 import type { ComfyStatus, ComfyUses } from './comfyui/status.ts'
-import { UPSCALERS } from './images/upscalers.ts'
-import { COMFYUI_VIDEO_MODELS } from './video/comfyui/models.ts'
-import { crossedLimit, LimitError, setLimitsEnabled } from './limits.ts'
-import {
-  type Backend,
-  BACKEND_NAMES,
-  BACKEND_WORK,
-  type BackendKind,
-  imageKindOf,
-} from './backends.ts'
+import { LimitError, setLimitsEnabled } from './limits.ts'
+import { type Backend, BACKEND_NAMES } from './backends.ts'
 import type { TextChoice, TextModelInfo } from './text/backend.ts'
 import {
   briefScenario,
-  parseScenario,
-  personId,
   type Scenario,
-  SCENARIO_ID,
   type ScenarioFolder,
-  scenarioFrom,
   type ScenarioLibrary,
-  scenarioMarkdown,
-  scenarioText,
-  summarise,
 } from './scenario.ts'
-import {
-  type ChainSession,
-  excerpt,
-  type Session,
-  type SessionStore,
-  type StoryboardSession,
-} from './session.ts'
-import {
-  MAX_SEED,
-  sessionSettingsOf,
-  type Settings,
-  type SettingsStore,
-  SIZE_PRESETS,
-  validateSettings,
-} from './settings.ts'
+import type { Session, SessionStore } from './session.ts'
+import type { SettingsStore } from './settings.ts'
 import type { TextModel } from './textModel.ts'
-import { partOf } from './scenario/suggest.ts'
 import type { RoleplayModel } from './roleplay/model.ts'
 import type { FigureMaker } from './3d/figure.ts'
 import type { VideoGenerator } from './video/videoGenerator.ts'
@@ -59,18 +21,9 @@ import { clipRefusal } from './video/makeClip.ts'
 import type { SceneMaker } from './3d/scene.ts'
 import type { StyleEmbedder } from './style/embedder.ts'
 import { embedStyles } from './style/job.ts'
-import {
-  checkEdit,
-  deleteNewestEdit,
-  deleteUpscale,
-  editFrame,
-  pickVersion,
-  VersionError,
-} from './pictureEdits.ts'
-import { EDIT_MODELS, editModelsHere, findEditModel } from './images/editModels.ts'
-import { loadStyleCache, StyleScoreError, styleScores, unembedded } from './style/scores.ts'
+import { checkEdit, editFrame } from './pictureEdits.ts'
+import { findEditModel } from './images/editModels.ts'
 import type { VoiceEngine } from './voice/voice.ts'
-import { roleplayExcerpt } from './roleplay/prompt.ts'
 import { roleplayRoutes } from './roleplay/routes.ts'
 import { spokenText } from './roleplay/voice.ts'
 import { clipRoutes } from './video/routes.ts'
@@ -78,7 +31,6 @@ import { type SessionsFolder, sessionsFolderRoutes } from './sessionsFolder.ts'
 import { checkRoleplayJob, type RoleplayJobContext, runRoleplayJob } from './roleplay/jobs.ts'
 import { cuesWaiting } from './roleplay/music.ts'
 import type { MusicGenerator } from './music/musicGenerator.ts'
-import { restartRoleplay } from './roleplay/engine.ts'
 import {
   asQueued,
   type EditOrder,
@@ -89,13 +41,12 @@ import {
   type JobEmit,
   type JobKind,
   jobRoutes,
-  onModelPictures,
   type QueueStore,
   SESSION_JOBS,
   SessionJobs,
   textChoiceOf,
 } from './jobs.ts'
-import { logCalls, logCallsUnder } from './calls.ts'
+import { logCalls } from './calls.ts'
 import {
   type Availabilities,
   type Availability,
@@ -104,25 +55,10 @@ import {
   withBackends,
 } from './features.ts'
 import { checkChainJob, runChainJob } from './chain/jobs.ts'
-import { chainFromStoryboard, CopyError } from './chain/fromStoryboard.ts'
 import { checkStoryboardJob, runStoryboardJob } from './storyboard/jobs.ts'
 import { GoneError, removeSession, updateSession } from './update.ts'
-import {
-  comparisonTitle,
-  type ExportPage,
-  parseComparisonExport,
-  writeComparison,
-} from './export/comparison.ts'
-import {
-  chooseThumbnail,
-  deleteModelPictures,
-  homeImage,
-  ImageModelError,
-  PictureGoneError,
-  refuseOwnModel,
-  removeFiles,
-  switchImageModel,
-} from './pictures.ts'
+import type { ExportPage } from './export/comparison.ts'
+import { removeFiles } from './pictures.ts'
 import {
   backendOf,
   editJob,
@@ -136,31 +72,17 @@ import { RenderQueue } from './renderQueue.ts'
 import { reportingTurns } from './text/turns.ts'
 import { notingTraces } from './comfyui/traces.ts'
 import { clearTraces } from './comfyui/files.ts'
-import { type FrameDeps, frameName, type Phase, UpscaleError, withRetry } from './frames.ts'
-import {
-  DeleteError,
-  deleteFrame,
-  EditError,
-  type FrameEvent,
-  runChainFrame,
-  setFramePrompt,
-  UndoError,
-  undoLatestFrame,
-} from './chain/frames.ts'
-import {
-  editFrameByAction,
-  FRAME_COUNT,
-  insertBeat,
-  planStoryboard,
-  removeBeat,
-  reorderBeats,
-  restartStoryboard,
-  setBeat,
-  setFrameBody,
-  setLook,
-  StageError,
-  writeStoryboard,
-} from './storyboard/storyboard.ts'
+import { type FrameDeps, frameName, type Phase, UpscaleError } from './frames.ts'
+import { UndoError } from './chain/frames.ts'
+import { StageError } from './storyboard/storyboard.ts'
+
+import { type AppContext, titleOf } from './appContext.ts'
+import { settingsRoutes } from './settingsRoutes.ts'
+import { scenarioRoutes } from './scenario/routes.ts'
+import { sessionRoutes } from './sessionRoutes.ts'
+import { pictureRoutes } from './pictureRoutes.ts'
+import { chainRoutes } from './chain/routes.ts'
+import { storyboardRoutes } from './storyboard/routes.ts'
 
 export interface AppDeps {
   settings: SettingsStore
@@ -221,53 +143,16 @@ export interface AppDeps {
   randomSeed?: () => number
 }
 
-/**
- * Frame images: `frame-3-1a2b3c4d.png`, or `frame-3.png` without the unique suffix, edits of them
- * (`edit-3-1a2b3c4d.png`, ADR 0021) and the areas painted for them (`mask-3-1a2b3c4d.png`);
- * `-2048` marks an upscaled one.
- */
-const IMAGE_FILE = /^(frame|edit|mask)-\d+(-[0-9a-f]{8})?(-2048)?\.(png|svg)$/
-/**
- * A Roleplay's audio: its Character's voice (`voice-1a2b3c4d.wav`, lossless; FLAC from ComfyUI),
- * spoken lines (`speech-3-…`) and spoken thoughts (`thought-3-…`): MP3 (FLAC from ComfyUI), or WAV
- * from before 2026-10-02.
- */
-const AUDIO_FILE =
-  /^(voice-[0-9a-f]{8}\.(wav|flac)|(speech|thought)-\d+-[0-9a-f]{8}\.(mp3|wav|flac))$/
-/**
- * A Roleplay Frame's 2.5D scene (`scene-3-1a2b3c4d.ply`, SHARP) or 3D figure (`figure-3-…`,
- * TripoSplat; `lito-3-…`, LiTo).
- */
-const SCENE_FILE = /^(scene|figure|lito)-\d+-[0-9a-f]{8}\.ply$/
-/** A clip made from a Frame's picture (`clip-3-lead-in-1a2b3c4d.mp4`, `video/makeClip.ts`). */
-const CLIP_FILE = /^clip-\d+-[a-z-]+-[0-9a-f]{8}\.mp4$/
-/** A Cue's track (`music-cue-1a2b3c4d-5e6f7a8b.flac`, `roleplay/music.ts`). */
-const MUSIC_FILE = /^music-cue-[0-9a-f]{8}-[0-9a-f]{8}\.flac$/
-const CONTENT_TYPES: Record<string, string> = {
-  '.png': 'image/png',
-  '.svg': 'image/svg+xml',
-  '.wav': 'audio/wav',
-  '.mp3': 'audio/mpeg',
-  '.flac': 'audio/flac',
-  '.ply': 'application/octet-stream',
-  '.mp4': 'video/mp4',
-}
-
-const MAX_BRIEF_LENGTH = 4000
-
 function defaultSessionId(): string {
   const stamp = new Date().toISOString().replace(/\D/g, '').slice(0, 14)
   return `${stamp.slice(0, 8)}-${stamp.slice(8)}-${crypto.randomUUID().slice(0, 4)}`
 }
 
-const isStringList = (value: unknown): value is string[] =>
-  Array.isArray(value) && value.every((v) => typeof v === 'string')
-
 const defaultSeed = () => crypto.getRandomValues(new Uint32Array(1))[0]
 
 /** One server-sent event of a work stream: its `type`, plus whatever that event carries. */
 export type StreamEvent = { type: string; phase?: Phase; [field: string]: unknown }
-type LockKind =
+export type LockKind =
   | 'frame'
   | 'undo'
   | 'delete'
@@ -333,69 +218,6 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
   async function loadSession(id: string): Promise<Session | Response> {
     return (await deps.sessions.load(id)) ?? error('Session not found', 404)
   }
-
-  /** Why a typed Brief is refused: too long, or it crosses a Limit; undefined when it isn't. */
-  function briefRefused(brief: string): Response | undefined {
-    if (brief.length > MAX_BRIEF_LENGTH) {
-      return error(`A Brief can be at most ${MAX_BRIEF_LENGTH} characters`, 400)
-    }
-    const limit = crossedLimit(brief)?.message
-    if (limit) return error(`The Brief crosses a limit: ${limit}`, 422)
-  }
-
-  /**
-   * The Text Model as the Scenario page uses it, before there's a Session: Settings' model and
-   * Thinking, seeded from Settings' seed (or a new one), its repeats counted under one key.
-   */
-  async function scenarioPageModel(): Promise<TextModel | Response> {
-    const settings = await deps.settings.load()
-    if (!settings.textModel) return error('Choose a Text Model in Settings first', 400)
-    return deps.textModel({
-      model: settings.textModel,
-      thinking: settings.thinking,
-      seeding: {
-        session: 'scenario-page',
-        seed: settings.seedMode === 'fixed' ? settings.seed : randomSeed(),
-      },
-    })
-  }
-
-  /**
-   * Writes a Scenario's file in the player's `scenarios/`, once it reads back as valid (the
-   * Limits too), and answers with it as read back; or why it's refused.
-   */
-  async function saveScenario(id: string, sent: Scenario, status = 200): Promise<Response> {
-    if (!deps.ownScenarios) return error("This server can't save Scenarios", 501)
-    if (!SCENARIO_ID.test(id)) return error(`"${id}" isn't a Scenario id`, 400)
-    const markdown = scenarioMarkdown(sent)
-    let scenario: Scenario
-    try {
-      scenario = parseScenario(id, markdown)
-    } catch (err) {
-      return error(`The Scenario can't be saved: ${(err as Error).message}`, 400)
-    }
-    const limit = crossedLimit(scenarioText(scenario))?.message
-    if (limit) return error(`The Scenario crosses a limit: ${limit}`, 422)
-    await deps.ownScenarios.save(id, markdown)
-    return json(scenario, status)
-  }
-
-  /** A Scenario the Scenario page sent, checked and within the Limits; or why it's refused. */
-  function sentScenario(value: unknown): Scenario | Response {
-    let scenario: Scenario
-    try {
-      scenario = scenarioFrom(value)
-    } catch (err) {
-      return error(`The Scenario isn't complete: ${(err as Error).message}`, 400)
-    }
-    const limit = crossedLimit(scenarioText(scenario))?.message
-    return limit ? error(`The Scenario crosses a limit: ${limit}`, 422) : scenario
-  }
-
-  /** A Session's title: its Scenario's, or the start of its typed Brief. */
-  const titleOf = (session: Session) =>
-    session.scenario?.title ??
-      (session.brief ? briefScenario(session.brief).title : session.scenarioId ?? '')
 
   /**
    * The Scenario a Session starts from: its own copy (as the Scenario page left it), or its typed
@@ -522,14 +344,6 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     } finally {
       if (!streaming) unlock(id)
     }
-  }
-
-  const needsChain = (s: Session): s is ChainSession => s.kind === 'chain'
-  const needsStoryboard = (s: Session): s is StoryboardSession => s.kind === 'storyboard'
-  const frameIndexOf = (s: Session, raw: string | undefined): number | Response => {
-    const index = Number(raw)
-    if (!Number.isInteger(index) || !s.frames[index]) return error('No such Frame', 404)
-    return index
   }
 
   const roleplayDeps = (session: Session) => ({
@@ -726,36 +540,32 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     throw new GoneError('This Session no longer exists')
   }
 
-  /** Settings as the browser sees them: which Backends have an API key, never the keys. */
-  const shownSettings = async (settings: Settings) => ({
-    ...settings,
-    apiKeysSet: (await Promise.all(
-      settings.backends.map(async (b) => (await deps.settings.loadApiKey(b.id)) ? [b.id] : []),
-    )).flat(),
-  })
-
   /** The Backend Settings send a Text Model to now; their preferred text Backend, if not told. */
   const textBackendOf = async (model: string) =>
     deps.textBackendOf
       ? deps.textBackendOf(model)
       : textBackendFor(await deps.settings.load(), model, () => Promise.resolve([]))
 
-  /** A text Backend's models for Settings to offer, or why it couldn't list them. */
-  async function textModelOptions(backend: Backend | undefined, apiKey?: string) {
-    let models: TextModelInfo[] = []
-    let textModelsError: string | undefined
-    try {
-      if (!backend) throw new Error('none is listed, on the Machines tab')
-      models = await deps.listTextModels(backend, apiKey)
-    } catch (err) {
-      const name = backend ? BACKEND_NAMES[backend.kind] : 'a text Backend'
-      textModelsError = `Could not reach ${name}: ${(err as Error).message}`
-    }
-    return {
-      textModels: models.map((m) => m.name),
-      thinkingModels: models.filter((m) => m.thinking).map((m) => m.name),
-      textModelsError,
-    }
+  /** What each part's routes are lent (`appContext.ts`). */
+  const ctx: AppContext = {
+    deps,
+    jobs,
+    active,
+    previews,
+    renderQueue,
+    detected,
+    newSessionId,
+    randomSeed,
+    locked,
+    stream,
+    loadSession,
+    scenarioFor,
+    frameDeps,
+    featureOff,
+    availability,
+    imageBackends,
+    heavyBackend,
+    jobBackendOf,
   }
 
   const routes: Route[] = [
@@ -861,6 +671,13 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       },
     }),
 
+    ...settingsRoutes(ctx),
+    ...scenarioRoutes(ctx),
+    ...sessionRoutes(ctx),
+    ...pictureRoutes(ctx),
+    ...chainRoutes(ctx),
+    ...storyboardRoutes(ctx),
+
     // Every machine's queue, for the queue page: the machines Settings list (the kinds of Backend on
     // each), every Session's jobs with its title, and the Text Model's calls running or waiting.
     ['GET', new URLPattern({ pathname: '/api/queue' }), async () => {
@@ -887,994 +704,6 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     }],
 
     ['GET', new URLPattern({ pathname: '/api/health' }), () => Promise.resolve(json({ ok: true }))],
-
-    [
-      'GET',
-      new URLPattern({ pathname: '/api/settings' }),
-      async () => json(await shownSettings(await deps.settings.load())),
-    ],
-
-    // `apiKeys` maps a Backend's id to a key that replaces its saved one ('' removes it); one left
-    // out is kept, while the Backend is.
-    ['PUT', new URLPattern({ pathname: '/api/settings' }), async (req) => {
-      const body = await readJson(req)
-      if (body === undefined) return error('Body must be JSON', 400)
-      const result = validateSettings(body)
-      if (!result.ok) return error('Invalid settings', 400, { issues: result.issues })
-      // The Session folder is moved from its own tab, which also moves the Sessions in use.
-      const { sessionsFolder } = await deps.settings.load()
-      result.settings.sessionsFolder = sessionsFolder
-      await deps.settings.save(result.settings)
-      const { apiKeys } = body as { apiKeys?: unknown }
-      if (typeof apiKeys === 'object' && apiKeys !== null) {
-        for (const [id, key] of Object.entries(apiKeys)) {
-          const listed = result.settings.backends.some((b) => b.id === id)
-          if (listed && typeof key === 'string') await deps.settings.saveApiKey(id, key.trim())
-        }
-      }
-      return json(await shownSettings(result.settings))
-    }],
-
-    // Whether a ComfyUI is up at an address not saved yet, and can run what Settings would send
-    // it: the Image Model's files, the upscaler's, and voices' nodes.
-    ['POST', new URLPattern({ pathname: '/api/settings/comfyui' }), async (req) => {
-      const body = await readJson(req) as
-        | {
-          address?: unknown
-          imageModel?: unknown
-          upscaler?: unknown
-          voices?: unknown
-          videoModel?: unknown
-          music?: unknown
-        }
-        | undefined
-      const optional = (v: unknown) => v === undefined || typeof v === 'string'
-      if (
-        typeof body?.address !== 'string' || !optional(body.imageModel) ||
-        !optional(body.upscaler) || !optional(body.videoModel) ||
-        (body.voices !== undefined && typeof body.voices !== 'boolean') ||
-        (body.music !== undefined && typeof body.music !== 'boolean')
-      ) {
-        return error(
-          'Give an address, and an imageModel, an upscaler, voices, a videoModel or music to check',
-          400,
-        )
-      }
-      if (!deps.comfyuiStatus) return error("ComfyUI isn't set up on this server", 409)
-      const { imageModel, upscaler, voices, videoModel, music } = body as ComfyUses
-      return json(
-        await deps.comfyuiStatus(body.address.trim(), {
-          imageModel,
-          upscaler,
-          voices,
-          videoModel,
-          music,
-        }),
-      )
-    }],
-
-    // The models on a text Backend not saved yet, for Settings to offer as it's changed: with
-    // `apiKey`, or the saved key of the Backend with that `id`.
-    ['POST', new URLPattern({ pathname: '/api/settings/text-models' }), async (req) => {
-      const body = await readJson(req) as Record<string, unknown> | undefined
-      const kind = body?.kind as BackendKind
-      if (!BACKEND_WORK[kind]?.includes('text') || typeof body?.address !== 'string') {
-        return error('Give the kind of a text Backend, and its address', 400)
-      }
-      const id = typeof body.id === 'string' ? body.id : ''
-      const apiKey = typeof body.apiKey === 'string' ? body.apiKey.trim() : undefined
-      return json(await textModelOptions({ id, kind, address: body.address.trim() }, apiKey))
-    }],
-
-    ['GET', new URLPattern({ pathname: '/api/settings/options' }), async () => {
-      const now = await deps.settings.load()
-      return json({
-        ...await textModelOptions(now.backends.find((b) => b.id === now.runOn.text)),
-        // Every backend's, so Settings can switch between them.
-        imageModels: Object.fromEntries(IMAGE_BACKENDS.map((b) => [b, imageModelsOf(b)])),
-        imageBackends: await imageBackends(),
-        // Where each Image Model's renders go now, for the Session's picker to say (ADR 0022).
-        imageModelsOn: Object.fromEntries(
-          IMAGE_BACKENDS.flatMap((kind) => imageModelsOf(kind).map((m) => m.id))
-            .map((id) => [id, backendOf({ kind: 'render', model: id }, now, detected)] as const)
-            .flatMap(([id, backend]) => {
-              const kind = backend && imageKindOf(backend)
-              return kind ? [[id, kind]] : []
-            }),
-        ),
-        sizePresets: SIZE_PRESETS,
-        upscalers: UPSCALERS,
-        videoModels: COMFYUI_VIDEO_MODELS.map(({ id, label, sound, size, longest }) => ({
-          id,
-          label,
-          sound,
-          size,
-          longest,
-        })),
-        editModels: editModelsHere(await imageBackends()),
-        // Where each edit model's edits go now, for the Edit dialog to say.
-        editModelsOn: Object.fromEntries(
-          EDIT_MODELS.flatMap((m) => {
-            const backend = backendOf(editJob(m.id), now, detected)
-            const kind = backend && imageKindOf(backend)
-            return kind ? [[m.id, kind]] : []
-          }),
-        ),
-        features: await availability(),
-        // What this machine's own Backend runs, whatever else is listed.
-        here: detected,
-      })
-    }],
-
-    ['GET', new URLPattern({ pathname: '/api/scenarios' }), async () => {
-      const { scenarios, errors } = await deps.scenarios.list()
-      const own = new Set((await deps.ownScenarios?.list())?.scenarios.map((s) => s.id))
-      return json({ scenarios: scenarios.map((s) => summarise(s, own.has(s.id))), errors })
-    }],
-
-    // Saves the Scenario page's Scenario over its file in the player's `scenarios/`.
-    ['PUT', new URLPattern({ pathname: '/api/scenarios/:id' }), async (req, p) => {
-      const scenario = sentScenario((await readJson(req) as { scenario?: unknown })?.scenario)
-      if (scenario instanceof Response) return scenario
-      // Made when the file was; changed now.
-      const created = SCENARIO_ID.test(p.id!)
-        ? (await deps.ownScenarios?.get(p.id!))?.created
-        : undefined
-      const now = new Date().toISOString()
-      return await saveScenario(p.id!, { ...scenario, created: created ?? now, modified: now })
-    }],
-
-    // A new Scenario of the player's: the page's under a new id (from its title), or an imported
-    // file's text (its id from the file name). Never in place of another.
-    ['POST', new URLPattern({ pathname: '/api/scenarios' }), async (req) => {
-      const body = await readJson(req) as
-        | { scenario?: unknown; markdown?: unknown; name?: unknown }
-        | undefined
-      const now = new Date().toISOString()
-      let scenario: Scenario
-      let name: string
-      if (typeof body?.markdown === 'string') {
-        // An imported file keeps the dates it has.
-        try {
-          scenario = parseScenario('imported', body.markdown)
-        } catch (err) {
-          return error(`The Scenario can't be imported: ${(err as Error).message}`, 400)
-        }
-        scenario = {
-          ...scenario,
-          created: scenario.created ?? now,
-          modified: scenario.modified ?? now,
-        }
-        name = typeof body.name === 'string' ? body.name.replace(/\.md$/i, '') : 'imported'
-      } else {
-        const sent = sentScenario(body?.scenario)
-        if (sent instanceof Response) return sent
-        scenario = { ...sent, created: now, modified: now }
-        name = scenario.title
-      }
-      const base = personId(name).slice(0, 70) || 'scenario'
-      const taken = new Set((await deps.scenarios.list()).scenarios.map((s) => s.id))
-      let id = base
-      for (let n = 2; taken.has(id) || await deps.ownScenarios?.has(id); n++) id = `${base}-${n}`
-      return await saveScenario(id, scenario, 201)
-    }],
-
-    // Deletes one of the player's Scenarios.
-    ['DELETE', new URLPattern({ pathname: '/api/scenarios/:id' }), async (_req, p) => {
-      const own = deps.ownScenarios
-      if (!own || !SCENARIO_ID.test(p.id!) || !(await own.has(p.id!))) {
-        return error('Scenario not found', 404)
-      }
-      await own.remove(p.id!)
-      return new Response(null, { status: 204 })
-    }],
-
-    ['GET', new URLPattern({ pathname: '/api/scenarios/:id' }), async (_req, p) => {
-      const scenario = await deps.scenarios.get(p.id!)
-      return scenario ? json(scenario) : error('Scenario not found', 404)
-    }],
-
-    // Expand, as the Scenario page opens (scenario/expand.ts): nothing is saved.
-    ['POST', new URLPattern({ pathname: '/api/scenarios/expand' }), async (req) => {
-      // A Scenario as it stands on the page (a Retry keeps its edits), its file, or a Brief.
-      const body = await readJson(req) as
-        | { scenario?: unknown; scenarioId?: unknown; brief?: unknown }
-        | undefined
-      const scenarioId = typeof body?.scenarioId === 'string' ? body.scenarioId : null
-      const brief = typeof body?.brief === 'string' && body.brief.trim() ? body.brief.trim() : null
-      let scenario: Scenario | undefined
-      if (body?.scenario !== undefined) {
-        const sent = sentScenario(body.scenario)
-        if (sent instanceof Response) return sent
-        scenario = sent
-      } else {
-        if (!scenarioId === !brief) return error('Give a scenario, a scenarioId or a brief', 400)
-        const refused = brief && briefRefused(brief)
-        if (refused) return refused
-        scenario = scenarioId ? await deps.scenarios.get(scenarioId) : undefined
-        if (scenarioId && !scenario) return error('Scenario not found', 404)
-      }
-      const model = await scenarioPageModel()
-      if (model instanceof Response) return model
-      try {
-        // Retried once with a new seed, as a reply can still run away; the wording in
-        // expand-request.md took the whitespace loops from 2 seeds in 8 to none in 32 (2026-11-03).
-        const from = scenario ? { scenario } : { brief: brief! }
-        return json(
-          await withRetry(() => model.expandScenario(from, req.signal), req.signal, () => {}),
-        )
-      } catch (err) {
-        return error(`Expand failed: ${(err as Error).message}`, 502)
-      }
-    }],
-
-    // Suggest, on the Scenario page (scenario/suggest.ts): one suggestion for one blank part.
-    ['POST', new URLPattern({ pathname: '/api/scenarios/suggest' }), async (req) => {
-      const body = await readJson(req) as
-        | { scenario?: unknown; field?: unknown; notes?: unknown }
-        | undefined
-      const scenario = sentScenario(body?.scenario)
-      if (scenario instanceof Response) return scenario
-      const field = typeof body?.field === 'string' ? body.field : ''
-      if (!partOf(scenario, field)) return error('field must name a part of the Scenario', 400)
-      const notes = typeof body?.notes === 'string' ? body.notes.trim() : ''
-      const limit = notes && crossedLimit(notes)?.message
-      if (limit) return error(`The notes cross a limit: ${limit}`, 422)
-      const model = await scenarioPageModel()
-      if (model instanceof Response) return model
-      try {
-        const text = await model.suggestForScenario({ scenario, field, notes }, req.signal)
-        const crossed = crossedLimit(text)?.message
-        if (crossed) return error(`The suggestion crossed a limit (${crossed}); ask again`, 422)
-        return json({ text })
-      } catch (err) {
-        return error(`Suggest failed: ${(err as Error).message}`, 502)
-      }
-    }],
-
-    // --- Sessions ------------------------------------------------------------------------------
-
-    ['POST', new URLPattern({ pathname: '/api/sessions' }), async (req) => {
-      const body = await readJson(req) as
-        | {
-          kind?: unknown
-          scenarioId?: unknown
-          brief?: unknown
-          scenario?: unknown
-          frameCount?: unknown
-          seed?: unknown
-        }
-        | undefined
-      const kind = body?.kind ?? 'chain'
-      if (kind !== 'chain' && kind !== 'storyboard' && kind !== 'roleplay') {
-        return error('kind must be "chain", "storyboard" or "roleplay"', 400)
-      }
-      const scenarioId = typeof body?.scenarioId === 'string' ? body.scenarioId : null
-      const brief = typeof body?.brief === 'string' && body.brief.trim() ? body.brief.trim() : null
-      if (!scenarioId === !brief) return error('Give either a scenarioId or a brief', 400)
-      const refused = brief && briefRefused(brief)
-      if (refused) return refused
-      // The Scenario as the Scenario page left it, or else the file as it is (a replay's).
-      let scenario: Scenario | undefined
-      if (body?.scenario !== undefined) {
-        const sent = sentScenario(body.scenario)
-        if (sent instanceof Response) return sent
-        scenario = { ...sent, id: scenarioId ?? '' }
-      } else if (scenarioId) {
-        scenario = await deps.scenarios.get(scenarioId)
-        if (!scenario) return error('Scenario not found', 404)
-      }
-      let frameCount = FRAME_COUNT.default
-      if (kind === 'storyboard' && body?.frameCount !== undefined) {
-        frameCount = Number(body.frameCount)
-        if (
-          !Number.isInteger(frameCount) || frameCount < FRAME_COUNT.min ||
-          frameCount > FRAME_COUNT.max
-        ) {
-          return error(`frameCount must be ${FRAME_COUNT.min}–${FRAME_COUNT.max}`, 400)
-        }
-      }
-      // A seed of its own (a replay's, server/replay/), or else Settings'.
-      const seed = body?.seed
-      if (
-        seed !== undefined &&
-        (!Number.isInteger(seed) || (seed as number) < 0 || (seed as number) > MAX_SEED)
-      ) {
-        return error(`seed must be an integer from 0 to ${MAX_SEED}`, 400)
-      }
-      const settings = await deps.settings.load()
-      if (!settings.textModel) return error('Choose a Text Model in Settings first', 400)
-      const base = {
-        id: newSessionId(),
-        brief,
-        scenarioId,
-        ...scenario && { scenario },
-        settings: sessionSettingsOf(settings),
-        seed: (seed as number | undefined) ??
-          (settings.seedMode === 'fixed' ? settings.seed : randomSeed()),
-        createdAt: new Date().toISOString(),
-      }
-      const session: Session = kind === 'chain'
-        ? { ...base, kind, frames: [] }
-        : kind === 'roleplay'
-        ? { ...base, kind, cast: null, look: null, cues: [], frames: [] }
-        : { ...base, kind, frameCount, look: null, frames: [] }
-      await deps.sessions.save(session)
-      return json(session, 201)
-    }],
-
-    ['GET', new URLPattern({ pathname: '/api/sessions' }), async () => {
-      const sessions = await deps.sessions.list()
-      const summaries = sessions.map((s) => {
-        const updatedAt = s.frames.reduce(
-          (latest, f) => f.createdAt > latest ? f.createdAt : latest,
-          s.createdAt,
-        )
-        return {
-          id: s.id,
-          kind: s.kind,
-          scenarioId: s.scenarioId,
-          title: titleOf(s),
-          frames: s.frames.length,
-          thumbnail: homeImage(s),
-          // Shown in place of a picture until there is one: a Roleplay's latest line, a Chain's
-          // latest Narration, a Storyboard's first Beat.
-          excerpt: s.kind === 'roleplay'
-            ? roleplayExcerpt(s)
-            : excerpt(s.kind === 'chain' ? s.frames.at(-1)?.narration : s.frames[0]?.beat),
-          createdAt: s.createdAt,
-          updatedAt,
-          activity: active.get(s.id)?.phase ?? jobs.activity(s.id),
-        }
-      })
-      summaries.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
-      return json(summaries)
-    }],
-
-    [
-      'DELETE',
-      new URLPattern({ pathname: '/api/sessions/:id' }),
-      (_req, p) =>
-        locked(p.id!, 'delete', async (session) => {
-          jobs.cancelWhere(session.id, () => true)
-          await removeSession(deps.sessions, session.id)
-          return new Response(null, { status: 204 })
-        }),
-    ],
-
-    ['GET', new URLPattern({ pathname: '/api/sessions/:id' }), async (_req, p) => {
-      const session = await deps.sessions.load(p.id!)
-      if (!session) return error('Session not found', 404)
-      // `activity` lets a screen that didn't start the running work (another tab) show it.
-      const work = active.get(session.id)
-      // The size its pictures render at (as Settings are now), so a screen can shape the frame
-      // before the first arrives.
-      const { size } = await deps.settings.load()
-      const { width, height } = SIZE_PRESETS.find((p) => p.id === size) ?? SIZE_PRESETS[0]
-      return json({
-        ...session,
-        title: titleOf(session),
-        activity: work?.phase ?? null,
-        activeFrame: work?.frameIndex ?? null,
-        imageSize: { width, height },
-      })
-    }],
-
-    // Switches the Session's Image Model: `{ imageModel, imageBackend? }`, by name, and the kind of
-    // backend it would rather render on, if picked (ADR 0022): one a Backend listed can render.
-    ['PUT', new URLPattern({ pathname: '/api/sessions/:id/image-model' }), async (req, p) => {
-      const body = await readJson(req) as
-        | { imageModel?: unknown; imageBackend?: unknown }
-        | undefined
-      if (typeof body?.imageModel !== 'string') return error('imageModel must be a string', 400)
-      const on = body.imageBackend as ImageBackendKind | undefined
-      if (on !== undefined && !IMAGE_BACKENDS.includes(on)) {
-        return error(`imageBackend must be one of: ${IMAGE_BACKENDS.join(', ')}`, 400)
-      }
-      if (on && anyImageModel(body.imageModel) && !findImageModel(on, body.imageModel)) {
-        return error(`${IMAGE_BACKEND_NAMES[on]} has no Image Model "${body.imageModel}"`, 400)
-      }
-      const session = await deps.sessions.load(p.id!)
-      if (!session) return error('Session not found', 404)
-      const backend = await heavyBackend({ kind: 'render', model: body.imageModel, on })
-      if (
-        !backend && body.imageModel !== session.settings.imageModel &&
-        anyImageModel(body.imageModel)
-      ) {
-        return error(
-          `No Backend renders ${body.imageModel}: add one in Settings, on the Machines tab`,
-          409,
-        )
-      }
-      try {
-        return json(await switchImageModel(deps.sessions, session, body.imageModel, on))
-      } catch (err) {
-        if (err instanceof ImageModelError) return error(err.message, 400)
-        throw err
-      }
-    }],
-
-    // Switches the Session's Text Model: `{ textModel }`, by name (ADR 0037). Its Thinking stays as it
-    // started. What's writing now finishes on the old one, as do jobs queued before (`Job.text`).
-    ['PUT', new URLPattern({ pathname: '/api/sessions/:id/text-model' }), async (req, p) => {
-      const body = await readJson(req) as { textModel?: unknown } | undefined
-      if (typeof body?.textModel !== 'string' || !body.textModel.trim()) {
-        return error('textModel must be a model name', 400)
-      }
-      const session = await deps.sessions.load(p.id!)
-      if (!session) return error('Session not found', 404)
-      const textModel = body.textModel.trim()
-      return json(
-        await updateSession(
-          deps.sessions,
-          session.id,
-          session.kind,
-          (latest: Session) =>
-            latest.settings.textModel === textModel
-              ? latest
-              : { ...latest, settings: { ...latest.settings, textModel } } as Session,
-        ),
-      )
-    }],
-
-    // Chooses the image that shows the Session on Home, and sends the Session back.
-    ['PUT', new URLPattern({ pathname: '/api/sessions/:id/thumbnail' }), async (req, p) => {
-      const body = await readJson(req) as { image?: unknown } | undefined
-      if (typeof body?.image !== 'string') return error('image must be a string', 400)
-      const session = await deps.sessions.load(p.id!)
-      if (!session) return error('Session not found', 404)
-      try {
-        return json(await chooseThumbnail(deps.sessions, session, body.image))
-      } catch (err) {
-        if (err instanceof PictureGoneError) return error(err.message, 409)
-        throw err
-      }
-    }],
-
-    // Goes back to Home showing the newest picture.
-    ['DELETE', new URLPattern({ pathname: '/api/sessions/:id/thumbnail' }), async (_req, p) => {
-      const session = await deps.sessions.load(p.id!)
-      if (!session) return error('Session not found', 404)
-      return json(await chooseThumbnail(deps.sessions, session, null))
-    }],
-
-    // Deletes every picture by one Image Model (`?imageModel=`), with its upscales and 3D, from
-    // Pictures' hidden columns; not the Session's own model. The work queued or running on them is
-    // cancelled first, and what's running has ended before anything goes, so none saves after.
-    // Sends back the Session, and how many pictures went.
-    ['DELETE', new URLPattern({ pathname: '/api/sessions/:id/pictures' }), async (req, p) => {
-      const model = new URL(req.url).searchParams.get('imageModel')
-      if (!model) return error('imageModel is required', 400)
-      const session = await deps.sessions.load(p.id!)
-      if (!session) return error('Session not found', 404)
-      try {
-        refuseOwnModel(session, model)
-        if (jobs.list(session.id).some((j) => j.kind === 'style' && j.status === 'running')) {
-          return error('Style scores are being worked out: wait for them to finish first', 409)
-        }
-        return json(
-          await jobs.without(
-            session.id,
-            onModelPictures(session, model, jobs.list(session.id)),
-            () => deleteModelPictures(deps.sessions, session, model),
-          ),
-        )
-      } catch (err) {
-        if (err instanceof ImageModelError) return error(err.message, 409)
-        throw err
-      }
-    }],
-
-    // Picks which version of Frame `:index`'s picture is the picture (ADR 0021): `{ picked }`, 0
-    // for its render, n for its edit n. Sends back the Session.
-    [
-      'PUT',
-      new URLPattern({ pathname: '/api/sessions/:id/pictures/:index/picked' }),
-      async (req, p) => {
-        const body = await readJson(req) as { picked?: unknown } | undefined
-        const session = await deps.sessions.load(p.id!)
-        if (!session) return error('Session not found', 404)
-        try {
-          return json(
-            await pickVersion(deps.sessions, session, Number(p.index), Number(body?.picked)),
-          )
-        } catch (err) {
-          if (err instanceof VersionError) return error(err.message, 409)
-          throw err
-        }
-      },
-    ],
-
-    // Deletes edit `:version` of Frame `:index`'s picture, the newest of its edit model's line,
-    // unless an edit is queued or running on it (made from it, or making it again). Sends back the
-    // Session.
-    [
-      'DELETE',
-      new URLPattern({ pathname: '/api/sessions/:id/pictures/:index/edits/:version' }),
-      async (_req, p) => {
-        const session = await deps.sessions.load(p.id!)
-        if (!session) return error('Session not found', 404)
-        const index = Number(p.index)
-        const editing = jobs.list(session.id)
-          .some((j) => j.kind === 'edit' && j.frameIndex === index && isOpen(j))
-        if (editing) return error('That picture is being edited: wait for it first', 409)
-        try {
-          return json(await deleteNewestEdit(deps.sessions, session, index, Number(p.version)))
-        } catch (err) {
-          if (err instanceof VersionError) return error(err.message, 409)
-          throw err
-        }
-      },
-    ],
-
-    // Deletes the upscale of the picked version of Frame `:index`'s picture, unless one is queued
-    // or running on the Frame. Sends back the Session.
-    [
-      'DELETE',
-      new URLPattern({ pathname: '/api/sessions/:id/pictures/:index/upscale' }),
-      async (_req, p) => {
-        const session = await deps.sessions.load(p.id!)
-        if (!session) return error('Session not found', 404)
-        const index = Number(p.index)
-        const upscaling = jobs.list(session.id)
-          .some((j) => j.kind === 'upscale' && j.frameIndex === index && isOpen(j))
-        if (upscaling) return error('That picture is being upscaled: wait for it first', 409)
-        try {
-          return json(await deleteUpscale(deps.sessions, session, index))
-        } catch (err) {
-          if (err instanceof VersionError) return error(err.message, 409)
-          throw err
-        }
-      },
-    ],
-
-    ['POST', new URLPattern({ pathname: '/api/sessions/:id/cancel' }), (_req, p) => {
-      active.get(p.id!)?.controller.abort(new Error('Cancelled by player'))
-      return Promise.resolve(new Response(null, { status: 204 }))
-    }],
-
-    // --- Chains --------------------------------------------------------------------------------
-
-    [
-      'POST',
-      new URLPattern({ pathname: '/api/sessions/:id/frames' }),
-      (req, p) =>
-        locked(p.id!, 'frame', async (session) => {
-          if (!needsChain(session)) return error('Only a Chain makes Frames from Actions', 409)
-          // Rendered as it's made only while the Chain says so and pictures are on.
-          const body = await readJson(req) as { action?: unknown; render?: unknown } | undefined
-          // Rendered as it's made unless this browser's switch says not (sent as `render`), while
-          // pictures are on.
-          const render = body?.render !== false && !(await featureOff('images'))
-          const opening = session.frames.length === 0
-          let action: string | null = null
-          if (!opening) {
-            if (typeof body?.action !== 'string' || !body.action.trim()) {
-              return error('action is required', 400)
-            }
-            action = body.action.trim()
-          }
-          const scenario = scenarioFor(session)
-          if (scenario instanceof Response) return scenario
-          // Its picture is a render job, queued as the Frame is saved, so the page that hears of
-          // the Frame finds its render in the queue.
-          const machine = render ? machineOf(await jobBackendOf(session, 'render')) : undefined
-          return stream(session, null, opening, async (send, signal) => {
-            const sendQueueing = (event: FrameEvent) => {
-              if (event.type === 'committed' && machine) {
-                jobs.enqueue(
-                  session.id,
-                  'render',
-                  event.frame.index,
-                  machine,
-                  imageChoiceOf(session),
-                )
-              }
-              send(event)
-            }
-            // The Frame being made, though the stream isn't one Frame's until it's saved.
-            await logCallsUnder(
-              session.frames.length,
-              () =>
-                runChainFrame(frameDeps(session), session, scenario, action, sendQueueing, signal),
-            )
-          })
-        }),
-    ],
-
-    ['DELETE', new URLPattern({ pathname: '/api/sessions/:id/frames/:index' }), (_req, p) => {
-      const index = Number(p.index)
-      if (!Number.isInteger(index)) {
-        return Promise.resolve(error('Frame index must be a number', 400))
-      }
-      return locked(p.id!, 'undo', async (session) => {
-        if (!needsChain(session)) return error('Only a Chain has Undo', 409)
-        const undone = await undoLatestFrame(deps.sessions, session, index)
-        jobs.cancelWhere(session.id, (job) => job.frameIndex === index)
-        return json(undone)
-      })
-    }],
-
-    // Deletes a Chain's Frame, any but the Opening Frame, or a Storyboard's Beat while it's planned:
-    // `{ frames, createdAt }`, how many Frames it had and when this one was made, so a repeated
-    // request can't delete the one after it. A Chain's is refused while a job runs on it; jobs on
-    // later Frames, queued or running, follow them as they're numbered down.
-    ['POST', new URLPattern({ pathname: '/api/sessions/:id/frames/:index/delete' }), (req, p) => {
-      const index = Number(p.index)
-      if (!Number.isInteger(index)) {
-        return Promise.resolve(error('Frame index must be a number', 400))
-      }
-      return locked(p.id!, 'delete-frame', async (session) => {
-        if (!needsChain(session) && !needsStoryboard(session)) {
-          return error('Only a Chain or a Storyboard deletes Frames this way', 409)
-        }
-        const body = await readJson(req) as { frames?: unknown; createdAt?: unknown } | undefined
-        if (typeof body?.createdAt !== 'string' || !Number.isInteger(body.frames)) {
-          return error('frames (a count) and createdAt are required', 400)
-        }
-        const seen = { frames: body.frames as number, createdAt: body.createdAt }
-        // A Storyboard's Beat, before its Frames are written: nothing is rendered or queued yet.
-        if (needsStoryboard(session)) {
-          try {
-            return json(await removeBeat({ store: deps.sessions }, session, index, seen))
-          } catch (err) {
-            if (err instanceof GoneError) return error(err.message, 409)
-            throw err
-          }
-        }
-        const running = jobs.list(session.id)
-          .find((j) => j.status === 'running' && j.frameIndex === index)
-        if (running) {
-          return error(
-            `${frameName(index)} has a job running: wait for it, or cancel it, then delete`,
-            409,
-          )
-        }
-        try {
-          return json(
-            await jobs.holding(session.id, () =>
-              jobs.frames(session.id, async () => {
-                const updated = await deleteFrame(deps.sessions, session, index, seen)
-                jobs.frameDeleted(session.id, index)
-                return updated
-              })),
-          )
-        } catch (err) {
-          if (err instanceof DeleteError || err instanceof GoneError) return error(err.message, 409)
-          throw err
-        }
-      })
-    }],
-
-    // --- Storyboards ---------------------------------------------------------------------------
-
-    [
-      'POST',
-      new URLPattern({ pathname: '/api/sessions/:id/plan' }),
-      (_req, p) =>
-        locked(p.id!, 'plan', (session) => {
-          if (!needsStoryboard(session)) return error('Only a Storyboard is planned', 409)
-          if (session.frames.length > 0) return error('This Storyboard is already planned', 409)
-          const scenario = scenarioFor(session)
-          if (scenario instanceof Response) return scenario
-          // A Storyboard that never got planned never started, like a Chain's Opening Frame.
-          return stream(session, null, true, async (send, signal) => {
-            await planStoryboard(frameDeps(session), session, scenario, send, signal)
-          })
-        }),
-    ],
-
-    // Writes the Frames of a reviewed plan, a call per Frame, each saved as it comes: a failure or
-    // Cancel keeps those written, and writing again carries on from the next.
-    [
-      'POST',
-      new URLPattern({ pathname: '/api/sessions/:id/write' }),
-      (_req, p) =>
-        locked(p.id!, 'write', (session) => {
-          if (!needsStoryboard(session)) return error('Only a Storyboard writes its Frames', 409)
-          const scenario = scenarioFor(session)
-          if (scenario instanceof Response) return scenario
-          // Refused up front, before the stream: nothing to write, or not planned yet.
-          if (!session.look || session.frames.every((f) => f.body)) {
-            return error(
-              session.look ? 'Every Frame is written already' : 'Plan the Storyboard first',
-              409,
-            )
-          }
-          return stream(session, null, false, async (send, signal) => {
-            await writeStoryboard(frameDeps(session), session, scenario, send, signal)
-          })
-        }),
-    ],
-
-    // A Storyboard back to the plan: every Frame's sentences and pictures go, so the Look and
-    // Beats can be edited again. A Roleplay back to its Cast: every exchange goes, the opening too.
-    // Their jobs are cancelled (all but a Roleplay's voice, which stays), and it waits for a render
-    // running to end.
-    [
-      'POST',
-      new URLPattern({ pathname: '/api/sessions/:id/restart' }),
-      async (_req, p) => {
-        // Only these kinds' jobs are cancelled, so it's checked before taking the lock.
-        const found = await deps.sessions.load(p.id!)
-        if (found?.kind !== 'storyboard' && found?.kind !== 'roleplay') {
-          return error(
-            found ? 'Only a Storyboard or a Roleplay restarts' : 'Session not found',
-            found ? 409 : 404,
-          )
-        }
-        const cancelled = (job: Job) => found.kind === 'storyboard' || job.kind !== 'voice'
-        jobs.cancelWhere(p.id!, cancelled)
-        return jobs.betweenRenders(p.id!, () =>
-          locked(p.id!, 'edit', async (session) => {
-            if (session.kind === 'roleplay') {
-              if (!session.frames.length) return error('The scene has not begun yet', 409)
-              jobs.cancelWhere(session.id, cancelled)
-              return json(await restartRoleplay(deps.sessions, session))
-            }
-            if (!needsStoryboard(session) || !session.look) {
-              return error('Only a planned Storyboard restarts', 409)
-            }
-            jobs.cancelWhere(session.id, cancelled)
-            return json(await restartStoryboard({ store: deps.sessions }, session))
-          }))
-      },
-    ],
-
-    [
-      'POST',
-      new URLPattern({ pathname: '/api/sessions/:id/frames/:index/edit' }),
-      (req, p) =>
-        locked(p.id!, 'edit', async (session) => {
-          if (!needsStoryboard(session)) {
-            return error('Only a Storyboard edits Frames in place', 409)
-          }
-          const index = frameIndexOf(session, p.index)
-          if (index instanceof Response) {
-            return index
-          }
-          const body = await readJson(req) as { action?: unknown } | undefined
-          if (typeof body?.action !== 'string' || !body.action.trim()) {
-            return error('action is required', 400)
-          }
-          const action = body.action.trim()
-          const scenario = scenarioFor(session)
-          if (scenario instanceof Response) return scenario
-          return stream(session, index, false, async (send, signal) => {
-            const result = await editFrameByAction(
-              frameDeps(session),
-              session,
-              scenario,
-              index,
-              action,
-              send,
-              signal,
-            )
-            send({ type: 'edited', ...result })
-          })
-        }),
-    ],
-
-    // A Frame edited by hand: a Storyboard's `{ body, shown }` (`{ beat, shown }`, its Beat, before
-    // its Frames are written), or a Chain's `{ prompt }`, its
-    // Image Prompt, which marks its pictures out of date.
-    [
-      'PUT',
-      new URLPattern({ pathname: '/api/sessions/:id/frames/:index' }),
-      (req, p) =>
-        locked(p.id!, 'edit', async (session) => {
-          if (!needsChain(session) && !needsStoryboard(session)) {
-            return error('A Roleplay edits its Frames its own way', 409)
-          }
-          const index = frameIndexOf(session, p.index)
-          if (index instanceof Response) return index
-          if (needsChain(session)) {
-            const body = await readJson(req) as { prompt?: unknown } | undefined
-            if (typeof body?.prompt !== 'string') return error('prompt is required', 400)
-            try {
-              return json(await setFramePrompt(deps.sessions, session, index, body.prompt))
-            } catch (err) {
-              if (err instanceof EditError) return error(err.message, 400)
-              if (err instanceof GoneError) return error(err.message, 409)
-              throw err
-            }
-          }
-          const body = await readJson(req) as
-            | { body?: unknown; beat?: unknown; shown?: unknown }
-            | undefined
-          if (body?.shown !== undefined && !isStringList(body.shown)) {
-            return error('shown must be a list of names', 400)
-          }
-          // Before the Frames are written, its Beat; after, its sentences.
-          if (typeof body?.beat === 'string') {
-            return json(
-              await setBeat({ store: deps.sessions }, session, index, body.beat, body.shown),
-            )
-          }
-          if (typeof body?.body !== 'string') return error('body or beat is required', 400)
-          return json(
-            await setFrameBody({ store: deps.sessions }, session, index, body.body, body.shown),
-          )
-        }),
-    ],
-
-    // A Beat added to a Storyboard's plan by hand, `{ at, beat, shown }`, before its Frames are
-    // written: the Frames from `at` on move up one.
-    [
-      'POST',
-      new URLPattern({ pathname: '/api/sessions/:id/beats' }),
-      (req, p) =>
-        locked(p.id!, 'edit', async (session) => {
-          if (!needsStoryboard(session)) return error('Only a Storyboard has Beats', 409)
-          const body = await readJson(req) as
-            | { at?: unknown; beat?: unknown; shown?: unknown }
-            | undefined
-          if (typeof body?.beat !== 'string' || !body.beat.trim()) {
-            return error('beat is required', 400)
-          }
-          const at = body.at
-          if (
-            typeof at !== 'number' || !Number.isInteger(at) || at < 0 || at > session.frames.length
-          ) {
-            return error(`at must be 0 to ${session.frames.length}`, 400)
-          }
-          if (body.shown !== undefined && !isStringList(body.shown)) {
-            return error('shown must be a list of names', 400)
-          }
-          const added = await insertBeat(
-            { store: deps.sessions },
-            session,
-            at,
-            body.beat,
-            body.shown,
-          )
-          return json(added, 201)
-        }),
-    ],
-
-    // A Storyboard's Beats in a new order, before its Frames are written: `{ order, seen }`, the
-    // index each had in its new place, and their lines as seen, in the old order (`409` if they've
-    // changed since).
-    [
-      'PUT',
-      new URLPattern({ pathname: '/api/sessions/:id/beats/order' }),
-      (req, p) =>
-        locked(p.id!, 'edit', async (session) => {
-          if (!needsStoryboard(session)) return error('Only a Storyboard has Beats', 409)
-          const body = await readJson(req) as { order?: unknown; seen?: unknown } | undefined
-          const order = body?.order
-          const n = session.frames.length
-          const permutation = Array.isArray(order) && order.length === n &&
-            [...order].sort((a, b) => a - b).every((i, k) => i === k)
-          if (!permutation || !isStringList(body?.seen)) {
-            return error(
-              `order (each of 0 to ${n - 1} once) and seen (the Beats) are required`,
-              400,
-            )
-          }
-          try {
-            return json(await reorderBeats({ store: deps.sessions }, session, order, body.seen))
-          } catch (err) {
-            if (err instanceof GoneError) return error(err.message, 409)
-            throw err
-          }
-        }),
-    ],
-
-    // A new Chain from a Storyboard's Frames up to `index`, to carry on from that Frame by
-    // Actions; the Storyboard stays as it is. Made between renders, as it copies their pictures.
-    [
-      'POST',
-      new URLPattern({ pathname: '/api/sessions/:id/frames/:index/chain' }),
-      (_req, p) =>
-        jobs.betweenRenders(p.id!, () =>
-          locked(p.id!, 'copy', async (session) => {
-            if (!needsStoryboard(session)) {
-              return error('Only a Storyboard is made into a Chain', 409)
-            }
-            const index = frameIndexOf(session, p.index)
-            if (index instanceof Response) return index
-            try {
-              const chain = await chainFromStoryboard(deps.sessions, session, index, {
-                id: newSessionId(),
-                createdAt: new Date().toISOString(),
-              })
-              return json(chain, 201)
-            } catch (err) {
-              if (err instanceof CopyError) return error(err.message, 409)
-              throw err
-            }
-          })),
-    ],
-
-    [
-      'PUT',
-      new URLPattern({ pathname: '/api/sessions/:id/look' }),
-      // Only before the Frames are written (`setLook`), so no render can be using it.
-      (req, p) =>
-        locked(p.id!, 'edit', async (session) => {
-          if (!needsStoryboard(session) || !session.look) {
-            return error('Only a planned Storyboard has a Look', 409)
-          }
-          const body = await readJson(req) as { subjects?: unknown; style?: unknown } | undefined
-          const subjects = body?.subjects
-          if (
-            !Array.isArray(subjects) || typeof body?.style !== 'string' ||
-            subjects.some((p) => typeof p?.name !== 'string' || typeof p?.identity !== 'string')
-          ) {
-            return error('subjects (each with a name and identity) and style are required', 400)
-          }
-          return json(
-            await setLook({ store: deps.sessions }, session, { subjects, style: body.style }),
-          )
-        }),
-    ],
-
-    // The picture forming: the latest preview of the Session's render, while there is one and
-    // Settings show it. The browser asks again as the step count moves (`?step=`), so never cached.
-    ['GET', new URLPattern({ pathname: '/api/sessions/:id/preview' }), async (_req, p) => {
-      const jpeg = previews.get(p.id!)
-      if (!jpeg || !(await deps.settings.load()).previews) return error('No preview', 404)
-      return new Response(jpeg, {
-        headers: { 'Content-Type': 'image/jpeg', 'Cache-Control': 'no-store' },
-      })
-    }],
-
-    // The Compare dialog's style scores, against Frame `base`, for the Image Models in `models`
-    // (comma-separated; all of them if left out), from the pictures the `style` job embedded.
-    ['GET', new URLPattern({ pathname: '/api/sessions/:id/style-scores' }), async (req, p) => {
-      const session = await loadSession(p.id!)
-      if (session instanceof Response) return session
-      const query = new URL(req.url).searchParams
-      const base = Number(query.get('base') ?? 0)
-      if (!Number.isInteger(base) || !session.frames[base]) return error('No such Frame', 404)
-      const models = query.get('models')?.split(',').filter(Boolean)
-      const cache = await loadStyleCache(deps.sessions.dir(session.id))
-      if (!cache) return error('Not scored yet', 404)
-      try {
-        const todo = unembedded(session, cache)
-        return json({
-          ...styleScores(session, cache, base, models),
-          unembedded: todo.images.length + todo.texts.length,
-        })
-      } catch (err) {
-        if (err instanceof StyleScoreError) return error(err.message, 409)
-        throw err
-      }
-    }],
-
-    // The Compare dialog as a page of its own, with its pictures as WebP, in a folder under
-    // `exports/` named for the Session: `ComparisonExport`. It says where the folder went.
-    ['POST', new URLPattern({ pathname: '/api/sessions/:id/export' }), async (req, p) => {
-      if (!deps.exports) return error("Exporting isn't set up", 404)
-      const comparison = parseComparisonExport(await readJson(req))
-      if (typeof comparison === 'string') return error(comparison, 400)
-      const session = await deps.sessions.load(p.id!)
-      if (!session) return error('Session not found', 404)
-      const folder = join(deps.exports.dir, p.id!)
-      const { pictures } = await writeComparison(
-        deps.sessions.dir(p.id!),
-        folder,
-        await deps.exports.page(),
-        comparison,
-        comparisonTitle(new Date(), session.seed),
-      )
-      return json({ folder, pictures })
-    }],
-
-    // Served by byte ranges where asked: Safari won't seek in a video (a clip) without them.
-    ['GET', new URLPattern({ pathname: '/api/sessions/:id/images/:file' }), async (req, p) => {
-      if (
-        ![IMAGE_FILE, AUDIO_FILE, SCENE_FILE, CLIP_FILE, MUSIC_FILE].some((f) => f.test(p.file!))
-      ) {
-        return error('Not found', 404)
-      }
-      const res = await serveFile(req, join(deps.sessions.dir(p.id!), p.file!))
-      if (res.status === 404) return error('Not found', 404)
-      res.headers.set('Content-Type', CONTENT_TYPES[extname(p.file!)])
-      res.headers.set('Cache-Control', 'private, max-age=31536000, immutable')
-      return res
-    }],
   ]
 
   return async (req) => {

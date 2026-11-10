@@ -6,7 +6,7 @@
 import { asSentences, joinPrompt } from './imagePrompt.ts'
 import { crossedLimit } from './limits.ts'
 import type { Look, Subject } from './session.ts'
-import { plainSentences } from './textModel.ts'
+import { plainSentences } from './frameBody.ts'
 
 /**
  * The most Subjects whose identities one Frame's prompt carries: an Image Model keeps two or three

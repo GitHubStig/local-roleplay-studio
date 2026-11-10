@@ -15,7 +15,7 @@ import { cleanScore, scoreSchema } from './score.ts'
 import { directorSchema } from './director.ts'
 import { hindsightSchema } from './hindsight.ts'
 import type { Look, Subject } from '../session.ts'
-import { parseFrameBody } from '../textModel.ts'
+import { parseFrameBody } from '../frameBody.ts'
 import {
   artFrameSchema,
   parseRoleplayLook,

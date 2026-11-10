@@ -5,16 +5,15 @@ import { expanded, type ExpandFrom } from './scenario/expand.ts'
 import type { SuggestRequest } from './scenario/suggest.ts'
 import type { ImagePrompt } from './imagePrompt.ts'
 import type { Settings } from './settings.ts'
+import type { FrameRequest, FrameText } from './chain/text.ts'
 import type {
-  FrameRequest,
-  FrameText,
   PlanHandlers,
   StoryboardEdit,
   StoryboardPlan,
   StoryboardWrite,
   StoryboardWriteRequest,
-  TextModel,
-} from './textModel.ts'
+} from './storyboard/text.ts'
+import type { TextModel } from './textModel.ts'
 
 export const scenarioText = `---
 title: Test Shoot
