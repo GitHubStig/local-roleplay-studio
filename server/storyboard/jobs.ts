@@ -6,7 +6,8 @@
 import { frameName } from '../frames.ts'
 import type { FrameDeps } from '../frames.ts'
 import { error } from '../http.ts'
-import type { Job, JobEmit, JobKind } from '../jobs.ts'
+import type { Job, JobEmit } from '../jobs.ts'
+import type { JobKind } from '../jobKinds.ts'
 import {
   checkPictureJob,
   PICTURE_JOB_KINDS,

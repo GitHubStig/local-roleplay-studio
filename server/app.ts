@@ -33,15 +33,13 @@ import {
   imageChoiceOf,
   isOpen,
   type Job,
-  JOB_FEATURE,
   type JobEmit,
-  type JobKind,
   jobRoutes,
   type QueueStore,
-  SESSION_JOBS,
   SessionJobs,
   textChoiceOf,
 } from './jobs.ts'
+import { JOB_FEATURE, type JobKind, SESSION_JOBS } from './jobKinds.ts'
 import { logCalls } from './calls.ts'
 import {
   type Availabilities,

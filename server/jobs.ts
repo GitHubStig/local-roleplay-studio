@@ -11,7 +11,17 @@
  */
 import { join } from '@std/path'
 import type { Backend } from './backends.ts'
-import type { Feature } from './features.ts'
+import {
+  IMAGE_JOBS,
+  JOB_KINDS,
+  type JobKind,
+  LATE_JOBS,
+  NEEDS,
+  ON_SHOWN_PICTURE,
+  RESUMED,
+  SESSION_JOBS,
+  TEXT_JOBS,
+} from './jobKinds.ts'
 import type { Phase } from './frames.ts'
 import { error, json, readJson, type Route } from './http.ts'
 import { EDIT_MODELS, type EditModel, findEditModel } from './images/editModels.ts'
@@ -23,77 +33,6 @@ import type { SessionSettings } from './settings.ts'
 import { COMFYUI_VIDEO_MODELS, findComfyVideoModel } from './video/comfyui/models.ts'
 import { CLIP_KINDS, type ClipKind } from './video/videoGenerator.ts'
 import { type ComfyTrace, type ComfyTraces, withTrace } from './comfyui/traces.ts'
-
-/**
- * `picture` writes a Roleplay Frame's Image Prompt and `render` renders it; `upscale` takes a
- * picture to 2048 px; `voice` designs a new take of the Character's voice, `speak` voices one
- * Frame's dialogue, and `speak-thought` its thought; `scene` makes a picture into a 2.5D scene
- * (SHARP); `figure` lifts the person in it out as a 3D figure (TripoSplat), and `lito` does so with
- * Apple's LiTo; `style` embeds the Session's pictures for the Compare dialog's style scores; `edit`
- * repaints a picture as told (ADR 0021); `direct` directs the music at a Roleplay Frame (the
- * Music Director, docs/design.md), `score-roleplay` scores a whole Roleplay's with
- * hindsight, `music` makes the track of the Cue that begins on a Frame, and `steer` writes that Cue
- * again as the player asked.
- */
-export type JobKind =
-  | 'picture'
-  | 'render'
-  | 'upscale'
-  | 'voice'
-  | 'speak'
-  | 'speak-thought'
-  | 'scene'
-  | 'figure'
-  | 'lito'
-  | 'style'
-  | 'edit'
-  | 'clip'
-  | 'direct'
-  | 'score-roleplay'
-  | 'music'
-  | 'steer'
-export const JOB_KINDS: readonly JobKind[] = [
-  'picture',
-  'render',
-  'upscale',
-  'voice',
-  'speak',
-  'speak-thought',
-  'scene',
-  'figure',
-  'lito',
-  'style',
-  'edit',
-  'clip',
-  'direct',
-  'score-roleplay',
-  'music',
-  'steer',
-]
-
-/**
- * The Feature each job needs: a job whose Feature is off can't be queued. Picturing a Frame (its
- * Image Prompt, by the Text Model) needs none, so a Roleplay can be rendered later.
- */
-export const JOB_FEATURE: Record<JobKind, Feature | null> = {
-  picture: null,
-  render: 'images',
-  upscale: 'upscale',
-  voice: 'voices',
-  speak: 'voices',
-  'speak-thought': 'voices',
-  scene: 'scenes',
-  figure: 'figures',
-  lito: 'lito',
-  style: 'style',
-  edit: 'edits',
-  clip: 'video',
-  // Music is a setting, not a Feature: the app checks it (`check`).
-  direct: null,
-  'score-roleplay': null,
-  music: null,
-  steer: null,
-}
 
 /**
  * What an `edit` is told: what to paint, which model to use, and the area painted over the picture
@@ -175,13 +114,6 @@ export interface Job {
   resume?: ComfyTraces
 }
 
-/**
- * Jobs a restart doesn't make again from the start, if their ComfyUI finished or still makes what
- * they asked for: a clip or a track can take minutes. A picture can't be picked up, as it comes back only over
- * the WebSocket that died with the server.
- */
-const RESUMED: readonly JobKind[] = ['clip', 'music']
-
 /** Every Session's jobs, as the queue is saved between runs of the server. */
 export type SavedQueue = { sessionId: string; jobs: Job[] }[]
 
@@ -190,17 +122,6 @@ export interface QueueStore {
   load(): Promise<SavedQueue>
   save(queue: SavedQueue): Promise<void>
 }
-
-/** The jobs that ask the Text Model, which keep the one their Session had when queued (`Job.text`). */
-export const TEXT_JOBS: readonly JobKind[] = [
-  'picture',
-  'direct',
-  'score-roleplay',
-  'steer',
-  'voice',
-  'speak',
-  'speak-thought',
-]
 
 /** The Session settings that say which Text Model writes, and whether it thinks. */
 export type TextChoiceKept = Pick<SessionSettings, 'textModel' | 'thinking'>
@@ -241,9 +162,6 @@ export function asQueued<S extends Session>(session: S, job: Job): S {
   const settings = job.image ? { ...rest, ...job.image } : session.settings
   return { ...session, settings: { ...settings, ...job.text } }
 }
-
-/** The kinds of job that work on the picture their Frame shows when they run, recording no model. */
-const ON_SHOWN_PICTURE: readonly JobKind[] = ['upscale', 'scene', 'figure', 'lito', 'edit']
 
 /**
  * The Image Model of the picture a job with no model of its own will work on, as things stand: the
@@ -293,48 +211,6 @@ export type JobRunner = (
   emit: JobEmit,
   signal: AbortSignal,
 ) => Promise<void>
-
-/** Jobs that make or use a picture with an image model, which unload the Text Model first. */
-const IMAGE_JOBS: readonly JobKind[] = [
-  'render',
-  'upscale',
-  'scene',
-  'figure',
-  'lito',
-  'edit',
-  'clip',
-  'music',
-]
-
-/** Jobs that take minutes and may be late: other image work goes ahead of them while queued. */
-const LATE_JOBS: readonly JobKind[] = ['clip', 'music']
-
-/**
- * What each job waits for, when queued earlier on its Frame (or, for the Session's own jobs, on any
- * Frame): a render for its Image Prompt, an upscale for its render, 3D for its upscale, a spoken
- * line for its voice, the style scores for every picture; an edit for the render or edit it's made
- * from, and what's made from a picture for its edits (a clip too). Not work on another Image
- * Model's picture (a render by it, ahead of a clip of this one's): both record theirs (`Job.image`).
- * Jobs on one machine also keep their order.
- */
-const NEEDS: Record<JobKind, readonly JobKind[]> = {
-  picture: [],
-  render: ['picture'],
-  upscale: ['picture', 'render', 'edit'],
-  voice: [],
-  speak: ['voice'],
-  'speak-thought': ['voice'],
-  scene: ['picture', 'render', 'edit', 'upscale'],
-  figure: ['picture', 'render', 'edit', 'upscale'],
-  lito: ['picture', 'render', 'edit', 'upscale'],
-  style: ['picture', 'render', 'edit'],
-  edit: ['picture', 'render', 'edit'],
-  clip: ['picture', 'render', 'edit'],
-  direct: [],
-  'score-roleplay': [],
-  music: [],
-  steer: [],
-}
 
 /**
  * Whether `job` is the same work: the same kind, on the same Frame, by the same Image Model (by
@@ -767,14 +643,6 @@ export interface JobRoutesContext {
    */
   videoModel?(): Promise<string>
 }
-
-/**
- * Jobs about the Session rather than one Frame (a Roleplay's voice and its music scored with
- * hindsight, the style scores' embeddings):
- * queued as Frame 0's, which needn't exist yet, as a voice can be designed while the Cast is
- * reviewed, before the scene begins. Their calls are logged with the setup's, not Frame 0's.
- */
-export const SESSION_JOBS: readonly JobKind[] = ['voice', 'style', 'score-roleplay']
 
 /** The longest instruction an edit takes, and the largest painted area (base64, ~6 MB). */
 const MAX_INSTRUCTION = 1000

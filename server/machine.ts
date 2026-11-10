@@ -16,7 +16,7 @@ import {
 import { type EditModel, editModelOn } from './images/editModels.ts'
 import { findImageModel, type ImageBackendKind } from './images/imageModels.ts'
 import type { Availabilities } from './features.ts'
-import type { JobKind } from './jobs.ts'
+import type { JobKind } from './jobKinds.ts'
 import type { SessionSettings, Settings } from './settings.ts'
 
 /**
