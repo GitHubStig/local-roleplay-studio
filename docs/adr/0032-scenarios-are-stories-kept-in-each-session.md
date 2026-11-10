@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted (the chat and the `version` field deferred)
 ---
 
 # Scenarios are stories, kept in each Session

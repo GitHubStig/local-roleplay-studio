@@ -20,10 +20,6 @@ export const JOB_NAMES: Record<JobKind, string> = {
   steer: 'Steer the music',
 }
 
-/**
- * What a job is doing, in a few words. A Roleplay says more about its own work (voices, pictures)
- * through `special`, which answers first when it has something to say.
- */
 /** Whether a job is still queued or running, rather than failed or done. */
 export const isOpen = (job: Pick<Job, 'status'>) =>
   job.status === 'queued' || job.status === 'running'
@@ -37,6 +33,10 @@ export const queueTab = (jobs: readonly Job[]) => {
   return { label: failed ? `Queue (${failed} failed)` : 'Queue', busy: jobs.some(isOpen) }
 }
 
+/**
+ * What a job is doing, in a few words. A Roleplay says more about its own work (voices, pictures)
+ * through `special`, which answers first when it has something to say.
+ */
 export function jobStatus(job: Job, special?: (job: Job) => string | undefined): string {
   if (job.status === 'failed') return `Failed: ${job.error}`
   if (job.status === 'done') return 'Done'

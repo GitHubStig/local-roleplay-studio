@@ -108,7 +108,6 @@ const { jobs, runningJobs, runningJob, runningOn, jobsFor, hasJob, queue, queueE
     imageModel: () => session.value?.settings.imageModel,
   },
 )
-/** Editing a picture in the viewer (ADR 0021): painting an edit, or watching one being made. */
 /** A clip's Frame, at its Clip section on the picture it's made from. */
 async function openClip(job: Job) {
   await onClipsModel(job, (text) => (notice.value = { kind: 'error', text }))
@@ -116,6 +115,7 @@ async function openClip(job: Job) {
   narrowTab.value = 'frame'
   scrollToClips(transcript.value)
 }
+/** Editing a picture in the viewer (ADR 0021): painting an edit, or watching one being made. */
 const { painting: paintingPicture, startEdit, showEdit, pick: pickVersion, deleteEdit, deleteUpscale } =
   usePictureEditing(props.id, session, viewing, (text) => (notice.value = { kind: 'error', text }))
 // A job linked to from the queue page opens as this Session's Queue tab opens it.

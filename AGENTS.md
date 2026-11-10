@@ -63,7 +63,7 @@ silicon, 48 GB) and a Windows PC (RTX 4070, 12 GB, 16 GB of RAM), sharing this r
   in a component. Draw them for the app, rather than copying from an icon set, so none needs a
   licence.
 - Every AI service sits behind an interface on the server (`TextModel`, `RoleplayModel`,
-  `ImageGenerator`, `VoiceEngine`, `VideoGenerator`, `MusicGenerator`, `SceneMaker`, `FigureMaker`), chosen in `server/main.ts`. The
+  `ImageGenerator`, `VoiceEngine`, `VideoGenerator`, `MusicGenerator`, `SceneMaker`, `FigureMaker`, `StyleEmbedder`), chosen in `server/main.ts`. The
   Text Model is reached only through `Chat` (`server/text/`), so its client can be replaced in one
   place.
   Which extras a machine can run is worked out at startup (`server/features.ts`).
@@ -90,7 +90,7 @@ The README's "Where things live" maps the folders. When adding a file:
 
 ## Local data
 
-`sessions/`, `settings.json`, `queue.json` and `models/` are gitignored, so a fresh clone starts without them.
+`sessions/`, `scenarios/`, `exports/`, `settings.json` and `queue.json` are gitignored, so a fresh clone starts without them.
 
 **No upgrade code: upgrade the data by hand.** There's no versioning yet and the shapes are still changing, so a new field in `session.json` or `settings.json` is required, not optional for files from before, and the code carries no fallback (`?? []`, a default for a missing field, a conversion of an old value). Instead, upgrade every Session and `settings.json` on the Mac by hand as the change lands (back them up first, and check each still loads), and say in the change's summary what was upgraded. A field stays optional only where its absence means something (a thumbnail not picked, a Frame not yet pictured). The PC keeps no Sessions.
 No Sessions are kept as test fixtures: to test against a story, make one through the app, by hand or with `deno task replay server/replay/replays/<name>.yaml` (a Roleplay's Messages, a Chain's Actions or a Storyboard's Brief, with a seed, sent through the running app's API, so it survives changes to `session.json` and gives the same Replies each time), and delete it after.

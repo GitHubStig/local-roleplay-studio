@@ -68,6 +68,10 @@ For Roleplay Characters, two models: Qwen3-TTS VoiceDesign designs a voice from 
 
 A Frame's picture made into a few seconds of video, from its Frame tab (ADR 0025). Three video models run on a ComfyUI with an NVIDIA card: **LTX 2.5**, the Default video model (Settings, Clips tab), with its own sound; **Wan 2.2 14B**, silent, nearest the picture; and **MiniMax H3 (turbo)**, with its own sound. Any of them can be picked for a clip in its Frame's Clip section, each keeping its own clip of a kind (ADR 0026). They run on the ComfyUI chosen under **Clips on** (until one is, the one pictures go to, or else the first on the Machines tab), so a Mac can send its clips to a PC's. Install each model's files from ComfyUI's own template (Templates, then Download all): **LTX 2.5** first–last-frame, **Wan 2.2 14B** first–last-frame, and **MiniMax H3** image-to-video; the Clips tab says which files that ComfyUI is missing. On an RTX 4070 with 12 GB, a 5-second clip takes about two minutes with LTX 2.5, a minute and a half with Wan 2.2, and a minute and three quarters with H3, each at its own size; the Clips tab can set each model to Small (~0.4 MP, faster) or Large (its trained size, ~0.9 MP), which takes Wan 2.2 and H3 about three times as long. ComfyUI on a Mac isn't pursued for clips.
 
+### Music (optional)
+
+A Roleplay's music, following the story as it's played (Settings, Music tab; off by default). **ACE-Step 1.5** (the XL turbo with its 4B planner) makes each track on a ComfyUI, with ComfyUI's own nodes: the one chosen under **Music on**, or else the one pictures go to. Install its files from ComfyUI's ACE-Step 1.5 template. A minute of music takes about 20 s on an RTX 4070 and about 170 s on a Mac, where a Reply arriving meanwhile waits for the track, so send music to a PC where there is one ([docs/models.md](docs/models.md#music)).
+
 ### 3D (optional)
 
 Each runs once per scene or figure through uv, downloading its weights with the first one (`uv run python/<tool>/make.py --download` fetches them ahead of time):
@@ -102,7 +106,9 @@ The same on Windows, in PowerShell. Open <http://localhost:5180>, go to **Settin
 |---|---|
 | `deno task dev` | API server (auto-restarts on change) plus the Vite dev server |
 | `deno task test` | Server tests (`deno test --parallel`, a file per worker) and web tests (Vitest), side by side |
-| `deno task check` | Type-checks the server with Deno and the web app with `vue-tsc` |
+| `deno task check` | Lints both (`deno lint`), then type-checks the server with Deno and the web app with `vue-tsc` |
+| `deno task replay <file>` | Rebuilds a test Session from a replay file (`server/replay/replays/`) through the running app |
+| `deno task shot <path>` | Screenshots the running app in a headless browser (`web/scripts/shot.ts`) |
 | `deno task build` | Production build of the web app into `web/dist` |
 | `deno fmt` | Formats the TypeScript files |
 
@@ -120,7 +126,7 @@ The web app's dev server is pinned to port **5180** (or `WEB_PORT`) and fails, r
 
 To run a second checkout beside the first (a `git worktree`, say), give it other ports, and a Sessions folder of its own in its own `settings.json`, so the two never write to the same Sessions: `PORT=8797 WEB_PORT=5190 VOICE_PORT=8792 deno task dev`, and `deno task replay … --server http://127.0.0.1:8797`. The two don't take turns on a machine, so keep heavy work to one at a time.
 
-Everything else is chosen on the Settings page (in tabs: Machines, Text, Images, Voice, 3D, Advanced) and saved to `settings.json`, including each Backend's API key (never sent back to the browser).
+Everything else is chosen on the Settings page (in tabs: Machines, Text, Images, Voice, Music, Clips, 3D, Sessions, Advanced) and saved to `settings.json`, including each Backend's API key (never sent back to the browser).
 
 **What runs where.** Only a Text backend is required: Ollama, or a server with the OpenAI chat API. At startup the server works out which extras this machine can run, and says so in its log and on the Settings page:
 
@@ -129,7 +135,8 @@ Everything else is chosen on the Settings page (in tabs: Machines, Text, Images,
 | Pictures | mflux, or ComfyUI | ComfyUI |
 | Upscale | mflux, or ComfyUI | ComfyUI |
 | Voices | mlx-audio (uv), or ComfyUI | ComfyUI (TTS Audio Suite) |
-| Clips | ComfyUI (LTX 2.5; untried) | ComfyUI (LTX 2.5) |
+| Clips | not pursued | ComfyUI (LTX 2.5, Wan 2.2, MiniMax H3) |
+| Music | ComfyUI (ACE-Step 1.5) | ComfyUI (ACE-Step 1.5) |
 | SHARP, TripoSplat | yes (uv) | yes (uv) |
 | LiTo | yes (uv) | no |
 
@@ -155,7 +162,8 @@ server/           Deno API: the app, Sessions, Settings, the job queue, what all
   voice/          the Voice backends: the voice service's client, and comfyui/ (its workflows in
                   comfyui/workflows/)
   comfyui/        what talking to ComfyUI takes, for pictures, voices and clips alike
-  video/          clips from a Frame's pictures: comfyui/ (LTX 2.5, its workflow in comfyui/workflows/)
+  video/          clips from a Frame's pictures: comfyui/ (LTX 2.5, Wan 2.2 and MiniMax H3, their workflows in
+                  comfyui/workflows/)
   music/          a Roleplay's music: comfyui/ (ACE-Step 1.5, its workflow in comfyui/workflows/)
   3d/             SHARP scenes, TripoSplat and LiTo figures
   style/          Pictures' style scores: the embedder, the measures and the job
@@ -199,4 +207,5 @@ Save one from the Scenario page, import a file with *Import…* on Home, or add 
 - [docs/research/](docs/research/): the evidence and history, dated: every Text, Image Model and voice trial, Ollama, the upgrade logs, and surveys (ComfyUI, image to 3D, LLM libraries)
 - [docs/adr/](docs/adr/): architecture decisions and why they were made
 - [docs/open-threads.md](docs/open-threads.md): ideas deliberately deferred
+- [docs/music-plans.md](docs/music-plans.md): what's left to do for music
 - [CONTEXT.md](CONTEXT.md): glossary
