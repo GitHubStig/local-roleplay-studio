@@ -438,50 +438,33 @@ Deno.test('A scene is made from the upscale when there is one', () =>
     assertEquals(scene.made[0].image, join(root, 's1', frame.upscaled))
   }))
 
-Deno.test('A figure lifted from a Frame is served, and goes with a re-render', () =>
-  withTempDir(async (root) => {
-    const figure = fakeFigureMaker()
-    const { call } = await roleplayWithArt(root, [artBody], { figure })
-    const job = (kind: string) => call('POST', '/api/sessions/s1/jobs', { kind, frameIndex: 0 })
-    assertEquals((await job('figure')).status, 409)
-    for (const kind of ['picture', 'render', 'figure']) {
-      await job(kind)
-      assertEquals(await settled(call), [])
-    }
-    let frame = shown((await (await call('GET', '/api/sessions/s1')).json()).frames[0])
-    assertEquals(frame.figure.from, frame.image)
-    assertMatch(frame.figure.file, /^figure-0-[0-9a-f]{8}\.ply$/)
-    const ply = await call('GET', `/api/sessions/s1/images/${frame.figure.file}`)
-    assertEquals(ply.status, 200)
-    const file = frame.figure.file
-    await job('render')
-    await settled(call)
-    frame = shown((await (await call('GET', '/api/sessions/s1')).json()).frames[0])
-    assertEquals(frame.figure, undefined)
-    assertEquals((await call('GET', `/api/sessions/s1/images/${file}`)).status, 404)
-  }))
-
-Deno.test('A LiTo figure is kept beside the TripoSplat one, served, and goes with a re-render', () =>
+Deno.test('A TripoSplat figure and a LiTo one are kept side by side, served, and go with a re-render', () =>
   withTempDir(async (root) => {
     const figure = fakeFigureMaker(), lito = fakeFigureMaker()
     const { call } = await roleplayWithArt(root, [artBody], { figure, lito })
     const job = (kind: string) => call('POST', '/api/sessions/s1/jobs', { kind, frameIndex: 0 })
+    assertEquals((await job('figure')).status, 409)
     assertEquals((await job('lito')).status, 409)
     for (const kind of ['picture', 'render', 'figure', 'lito']) {
       await job(kind)
       assertEquals(await settled(call), [])
     }
     let frame = shown((await (await call('GET', '/api/sessions/s1')).json()).frames[0])
+    assertEquals(frame.figure.from, frame.image)
     assertMatch(frame.figure.file, /^figure-0-[0-9a-f]{8}\.ply$/)
     assertMatch(frame.lito.file, /^lito-0-[0-9a-f]{8}\.ply$/)
     assertEquals([figure.made.length, lito.made.length], [1, 1])
-    assertEquals((await call('GET', `/api/sessions/s1/images/${frame.lito.file}`)).status, 200)
-    const file = frame.lito.file
+    const files = [frame.figure.file, frame.lito.file]
+    for (const file of files) {
+      assertEquals((await call('GET', `/api/sessions/s1/images/${file}`)).status, 200)
+    }
     await job('render')
     await settled(call)
     frame = shown((await (await call('GET', '/api/sessions/s1')).json()).frames[0])
     assertEquals([frame.figure, frame.lito], [undefined, undefined])
-    assertEquals((await call('GET', `/api/sessions/s1/images/${file}`)).status, 404)
+    for (const file of files) {
+      assertEquals((await call('GET', `/api/sessions/s1/images/${file}`)).status, 404)
+    }
   }))
 
 Deno.test('Without SHARP, making a scene fails with a reason', () =>

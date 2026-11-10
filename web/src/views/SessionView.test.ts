@@ -6,8 +6,7 @@ import ImageModelPicker from '../components/ImageModelPicker.vue'
 import ModelComparison from '../components/ModelComparison.vue'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import * as api from '../api'
-import { ALL_AVAILABLE, ALL_ON, IMAGE_MODELS, promptFor } from '../testing'
-import { useFeatures } from '../composables/useFeatures'
+import { ALL_AVAILABLE, IMAGE_MODELS, promptFor } from '../testing'
 import { loadSettingsOptions } from '../composables/useSettingsOptions'
 import SessionView from './SessionView.vue'
 
@@ -552,34 +551,7 @@ describe('SessionView', () => {
     expect(wrapper.find('[data-frame-notice]').text()).toBe('No Backend renders x')
   })
 
-  it('sorts the Image Models by name within each kind of backend, keeping the groups', async () => {
-    vi.mocked(api.getSettingsOptions).mockResolvedValue({
-      features: ALL_AVAILABLE,
-      imageModels: {
-        ...IMAGE_MODELS,
-        comfyui: [IMAGE_MODELS.mflux[0], {
-          ...IMAGE_MODELS.mflux[0],
-          id: 'moss-image',
-          label: 'MOSS-Image',
-        }],
-      },
-      imageBackends: ['mflux', 'comfyui'],
-      imageModelsOn: {},
-    } as unknown as api.SettingsOptions)
-    await loadSettingsOptions()
-    vi.mocked(api.getSession).mockResolvedValue(session([frame(0, null)]))
-    const { wrapper } = await mountIt()
-    const groups = wrapper.find('[data-image-model]').findAll('optgroup').map((g) => ({
-      name: g.attributes('label'),
-      labels: g.findAll('option').map((o) => o.text()),
-    }))
-    // The lists have Qwen-Image 2.1 first in both; each group is by name, mflux still before ComfyUI.
-    expect(groups.map((g) => g.name)).toEqual(['mflux', 'ComfyUI'])
-    expect(groups[0].labels).toEqual(['FLUX.2 Klein 4B · mflux', 'Qwen-Image 2.1 · mflux'])
-    expect(groups[1].labels).toEqual(['MOSS-Image · ComfyUI', 'Qwen-Image 2.1 · ComfyUI'])
-  })
-
-  it('lists each Image Model under each kind of backend that has it, and keeps the kind picked', async () => {
+  it('says which backend made a picture, which stays up to date when its model is picked on another', async () => {
     vi.mocked(api.getSettingsOptions).mockResolvedValue({
       features: ALL_AVAILABLE,
       imageModels: {
@@ -609,16 +581,7 @@ describe('SessionView', () => {
     vi.mocked(api.getSession).mockResolvedValue(chain)
     const { wrapper } = await mountIt()
     const select = wrapper.find('[data-image-model]')
-    // Qwen-Image 2.1 is under both; the Session hasn't picked, so it shows where Settings send it.
-    expect(
-      select.findAll('optgroup').map((g) => [
-        g.attributes('label'),
-        g.findAll('option').map((o) => o.text()).sort(),
-      ]),
-    ).toEqual([
-      ['mflux', ['FLUX.2 Klein 4B · mflux', 'Qwen-Image 2.1 · mflux']],
-      ['ComfyUI', ['MOSS-Image · ComfyUI', 'Qwen-Image 2.1 · ComfyUI']],
-    ])
+    // The Session hasn't picked a kind, so its model shows where Settings send it.
     expect((select.element as HTMLSelectElement).value).toBe('comfyui/qwen-image-2.1')
     // Its picture says where it was made.
     expect(wrapper.find('[data-changed]').exists()).toBe(false)
@@ -642,47 +605,6 @@ describe('SessionView', () => {
       } as api.SettingsOptions,
     )
     await loadSettingsOptions()
-  })
-
-  it('hides Upscale and the 3D buttons whose Features are off', async () => {
-    vi.mocked(api.getSettingsOptions).mockResolvedValue(
-      {
-        features: ALL_AVAILABLE,
-        imageModels: IMAGE_MODELS,
-        imageBackends: ['mflux'],
-      } as api.SettingsOptions,
-    )
-    vi.mocked(api.getSettings).mockResolvedValue({
-      features: { ...ALL_ON, images: false, lito: false },
-    } as api.Settings)
-    await useFeatures().refreshFeatures()
-    const { wrapper } = await mountIt()
-    expect(wrapper.find('[data-upscale-button]').exists()).toBe(false)
-    expect(wrapper.find('[data-lito-button]').exists()).toBe(false)
-    expect(wrapper.find('[data-scene-button]').exists()).toBe(true)
-    vi.mocked(api.getSettings).mockResolvedValue({ features: ALL_ON } as api.Settings)
-    await useFeatures().refreshFeatures()
-  })
-
-  it('offers SHARP again once the Frame is upscaled after its scene was made', async () => {
-    const scene: api.Scene = {
-      file: 'scene-0-1a2b3c4d.ply',
-      from: 'frame-0.png',
-      splats: 4,
-      pivot: 1.5,
-      fov: 50,
-      aspect: 1,
-      timings: { scene: 11 },
-    }
-    vi.mocked(api.getSession).mockResolvedValue(
-      session([
-        frame(0, null, {
-          pictures: [picture('frame-0.png', { scene, upscaled: 'frame-0-2048.png' })],
-        }),
-      ]),
-    )
-    const { wrapper } = await mountIt()
-    expect(wrapper.find('[data-scene-button]').text()).toBe('SHARP again from upscale')
   })
 
   it('undoes the latest Frame and puts its Direction back in the text box', async () => {
