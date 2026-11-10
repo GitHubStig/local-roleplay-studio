@@ -1,4 +1,4 @@
-import type { ImageBackendKind } from './imageModels.ts'
+import type { ImageBackendKind } from '../../shared/images.ts'
 
 /**
  * The edit models (ADR 0021): each repaints a picture as told, in an area painted over it, whatever

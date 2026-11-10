@@ -6,7 +6,7 @@
  * the list that can do it (`pickBackend`).
  */
 import { comfyBase } from './comfyui/client.ts'
-import type { ImageBackendKind } from './images/imageModels.ts'
+import type { ImageBackendKind } from '../shared/images.ts'
 import { OLLAMA_URL } from './text/ollama/ollama.ts'
 import type { Backend } from '../shared/backends.ts'
 

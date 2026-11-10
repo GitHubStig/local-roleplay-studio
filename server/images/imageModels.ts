@@ -1,18 +1,10 @@
 import { COMFYUI_MODELS } from './comfyui/models.ts'
 import { MFLUX_MODELS } from './mflux/models.ts'
-import type { ImageModelOption } from '../../shared/images.ts'
-
-/**
- * Where pictures are made: mflux (Apple Silicon Macs) or a ComfyUI server (any machine; Windows
- * with an NVIDIA card). Each has its own Image Models (`mflux/models.ts`, `comfyui/models.ts`).
- */
-export const IMAGE_BACKENDS = ['mflux', 'comfyui'] as const
-export type ImageBackendKind = (typeof IMAGE_BACKENDS)[number]
-
-export const IMAGE_BACKEND_NAMES: Record<ImageBackendKind, string> = {
-  mflux: 'mflux',
-  comfyui: 'ComfyUI',
-}
+import {
+  IMAGE_BACKENDS,
+  type ImageBackendKind,
+  type ImageModelOption,
+} from '../../shared/images.ts'
 
 export { COMFYUI_URL } from '../comfyui/client.ts'
 

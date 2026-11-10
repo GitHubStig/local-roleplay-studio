@@ -1,11 +1,6 @@
 import { fromFileUrl, isAbsolute } from '@std/path'
-import {
-  anyImageModel,
-  findImageModel,
-  IMAGE_BACKENDS,
-  type ImageBackendKind,
-  imageModelsOf,
-} from './images/imageModels.ts'
+import { anyImageModel, findImageModel, imageModelsOf } from './images/imageModels.ts'
+import { IMAGE_BACKENDS, type ImageBackendKind } from '../shared/images.ts'
 import { EDIT_MODELS, type EditModel } from './images/editModels.ts'
 import { type Upscaler, UPSCALERS } from './images/upscalers.ts'
 import {
@@ -26,7 +21,12 @@ import {
   type Work,
   WORKS,
 } from '../shared/backends.ts'
-import type { SeedMode, SizePreset } from '../shared/settings.ts'
+import {
+  type Quantize,
+  QUANTIZE_OPTIONS,
+  type SeedMode,
+  type SizePreset,
+} from '../shared/settings.ts'
 
 export const SIZE_PRESETS: readonly SizePreset[] = [
   { id: 'portrait', label: 'Portrait 832×1216', width: 832, height: 1216 },
@@ -37,8 +37,6 @@ export const SIZE_PRESETS: readonly SizePreset[] = [
   { id: 'landscape-small', label: 'Small landscape 768×512 (faster)', width: 768, height: 512 },
 ]
 
-export const QUANTIZE_OPTIONS = [null, 4, 8] as const
-
 /**
  * How readily a Roleplay's music changes, and how far forward it comes (docs/design.md):
  * steady (few changes, kept low), following the story, or cinematic (changes readily, comes
@@ -46,7 +44,6 @@ export const QUANTIZE_OPTIONS = [null, 4, 8] as const
  */
 export const MUSIC_BEHAVIOURS = ['steady', 'story', 'cinematic'] as const
 export type MusicBehaviour = (typeof MUSIC_BEHAVIOURS)[number]
-export type Quantize = (typeof QUANTIZE_OPTIONS)[number]
 
 /** The fraction of steps the step cache skips; null for off. */
 export const STEP_CACHE_OPTIONS = [null, 0.25, 0.4, 0.5] as const

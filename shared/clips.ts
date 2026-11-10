@@ -28,3 +28,24 @@ export interface ClipOrder {
 
 /** A clip as asked for, before its prompt is written: its kind, length and speech. */
 export type ClipAsk = Omit<ClipOrder, 'prompt' | 'model'>
+
+/**
+ * A clip made from a picture (ADR 0025), kept on the picture version it was made from:
+ * one of each kind by each video model, a new one replacing that model's old one.
+ */
+export interface Clip {
+  kind: ClipKind
+  /** The video model that made it (`comfyui/models.ts`). */
+  model: string
+  /** File name of the clip (an MP4) inside the Session directory. */
+  file: string
+  /** What it was told happens, and whether anyone could speak. */
+  prompt: string
+  speech: boolean
+  seconds: number
+  seed: number
+  /** Into Next's last picture: the next Frame's image it ends on. */
+  next?: string
+  /** Seconds it waited for another render (only if it had to) and took. */
+  timings: { queued?: number; clip: number }
+}

@@ -10,7 +10,8 @@ import type { MusicGenerator } from '../../music/musicGenerator.ts'
 import { RenderQueue } from '../../renderQueue.ts'
 import type { SessionStore } from '../../session.ts'
 import { bpmOf, CUE_SECONDS } from './director.ts'
-import type { Cue, RoleplaySession } from '../types.ts'
+import type { RoleplaySession } from '../types.ts'
+import type { Cue } from '../../../shared/roleplay.ts'
 import { updateSession } from '../update.ts'
 
 export interface MusicDeps {

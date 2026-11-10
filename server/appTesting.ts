@@ -5,7 +5,7 @@
 import { type AppDeps, createHandler } from './app.ts'
 import type { ImageGenerator } from './images/imageGenerator.ts'
 import { dirSessionStore } from './session.ts'
-import type { Picture } from './pictures.ts'
+import type { Picture } from '../shared/pictures.ts'
 import { DEFAULT_SETTINGS, type Settings, type SettingsStore } from './settings.ts'
 import type { TextModel } from './textModel.ts'
 import type { RoleplayModel } from './roleplay/model.ts'

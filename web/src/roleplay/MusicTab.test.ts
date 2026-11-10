@@ -170,7 +170,7 @@ describe('MusicTab', () => {
       instruments: ['cello', 'harp'],
       vocals: 'none' as const,
       shape: 'intimate' as const,
-      key: 'A minor',
+      key: 'A minor' as const,
       caption: 'A lone cello, then a harp.',
       lyrics: '[Intro - lone cello]',
     }

@@ -1,10 +1,8 @@
 import type { SessionBase } from '../session.ts'
 import type { Look } from '../../shared/session.ts'
-import type { Delivery } from '../voice/voice.ts'
-import type { Scene } from '../3d/scene.ts'
-import type { Figure } from '../../shared/threeD.ts'
-import type { Picture } from '../pictures.ts'
-import type { Cast, CueTrack, Reply, Score } from '../../shared/roleplay.ts'
+import type { Figure, Scene } from '../../shared/threeD.ts'
+import type { Picture } from '../../shared/pictures.ts'
+import type { Cast, Cue, FrameMusic, Reply, Score, Speech } from '../../shared/roleplay.ts'
 
 export type { Figure, Scene }
 
@@ -55,134 +53,6 @@ export interface RoleplayFrame {
   /** How the music was directed at this Frame, once it has been (`director.ts`). */
   music?: FrameMusic
   createdAt: string
-}
-
-/** What the Music Director decides at a Frame (docs/design.md). */
-export const DECISIONS = ['continue', 'transition', 'silence'] as const
-export type Decision = (typeof DECISIONS)[number]
-/** How a change comes in: a crossfade, or a cut. Ignored when the music continues. */
-export const ENTRIES = ['gentle', 'sharp'] as const
-export type Entry = (typeof ENTRIES)[number]
-
-/** The Music Director's reading of a Frame, and what it decided. */
-export interface FrameMusic {
-  /** The Cue this Frame plays under (`Cue.id`). */
-  cue: string
-  /** How the ground between the people stands now, and how it has moved since the Cue began. */
-  reading: string
-  decision: Decision
-  entry: Entry
-  /** The line that caused a change, quoted; '' when the music continues. */
-  line: string
-  /** The model that directed it, and seconds it took (the cue writer's too, on a change). */
-  model: string
-  timings: { text: number }
-  /**
-   * Directed by Score the Roleplay, with hindsight (`hindsight.ts`), rather than as it was played;
-   * its timings are then the cue writer's alone, as the pass reads many Frames at once.
-   */
-  hindsight?: true
-  /**
-   * A stinger: a short accent placed here with hindsight, over the music playing, which goes on.
-   * Recorded for now; played once there's music (docs/design.md, stage 4).
-   */
-  stinger?: { reading: string; line: string }
-}
-
-export const ENERGIES = ['calm', 'restrained', 'building', 'intense'] as const
-export const DENSITIES = ['sparse', 'layered', 'full'] as const
-export const TEMPOS = ['slow', 'moderate', 'fast'] as const
-/** Whether a Cue has voices: a low, soft choir singing vowels, or none. */
-export const CUE_VOCALS = ['none', 'choir'] as const
-/** Which good caption a Cue's is made from (`prompts/roleplay/music/cue.md`). */
-export const CUE_SHAPES = ['intimate', 'uneasy', 'reflective', 'sacred', 'danger'] as const
-/**
- * The keys a Cue may be in: each once, by its usual name, all of them ones ACE-Step's node takes
- * (it refuses others).
- */
-export const CUE_KEYS = [
-  'C major',
-  'Db major',
-  'D major',
-  'Eb major',
-  'E major',
-  'F major',
-  'Gb major',
-  'G major',
-  'Ab major',
-  'A major',
-  'Bb major',
-  'B major',
-  'C minor',
-  'C# minor',
-  'D minor',
-  'Eb minor',
-  'E minor',
-  'F minor',
-  'F# minor',
-  'G minor',
-  'G# minor',
-  'A minor',
-  'Bb minor',
-  'B minor',
-] as const
-
-/** What the cue writer picks for a Cue, within the Score. */
-export interface CueValues {
-  /** Short phrases: the feeling and its texture. */
-  mood: string
-  energy: (typeof ENERGIES)[number]
-  density: (typeof DENSITIES)[number]
-  /** Turned into beats per minute within the Score's range (`bpmOf`). */
-  tempo: (typeof TEMPOS)[number]
-  /** Drawn from the Score's palette; one outside it is flagged in the Music tab, not refused. */
-  instruments: string[]
-  vocals: (typeof CUE_VOCALS)[number]
-  /** A `danger` one, which the Text Model's words can't carry, takes `withDanger`'s words. */
-  shape: (typeof CUE_SHAPES)[number]
-  key: (typeof CUE_KEYS)[number]
-  /** What the music model is told it sounds like and how it develops, in its own style (ADR 0035). */
-  caption: string
-  /** Section tags following the caption, with lines of vowels for any voices to sing. */
-  lyrics: string
-}
-
-/**
- * A stretch of music over several Frames, from the Frame where it began until the next Cue: the
- * Score plus its values, or silence. Kept with the reading and the line that started it.
- */
-export interface Cue {
-  id: string
-  /** The Frame it began on. */
-  start: number
-  /** Its music; none for a silence. */
-  values?: CueValues
-  /** How it came in. */
-  entry: Entry
-  /** The Director's reading at the Frame it began on, and the line that caused it ('' if none). */
-  reading: string
-  line: string
-  /** What the player asked of it in the Music tab, which the cue writer put first (`steerCue`). */
-  steer?: string
-  /** Its music, once made (`makeCueTrack`). */
-  track?: CueTrack
-}
-
-/** A Frame's dialogue spoken in the Character's voice. */
-export interface Speech {
-  /** WAV file inside the Session directory. */
-  file: string
-  /** The voice it was spoken in: the reference clip, as `RoleplayVoice.ref`. */
-  ref: string
-  /** Seconds it waited for a render and took to speak. */
-  timings: { queued?: number; audio: number }
-  /** How it was directed: absent if directing failed and it was spoken as written. */
-  delivery?: Delivery
-  /**
-   * Why directing failed, when it did and the line was spoken as written: shown beside Listen, so
-   * the player can speak it again (a Text Model that crashed, say, may load the next time).
-   */
-  undirected?: string
 }
 
 /**

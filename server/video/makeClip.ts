@@ -1,34 +1,13 @@
 import { join } from '@std/path'
 import { frameName, secondsSince } from '../frames.ts'
 import type { JobEmit } from '../jobs.ts'
-import type { ClipKind, ClipOrder, ClipSize } from '../../shared/clips.ts'
+import type { Clip, ClipKind, ClipOrder, ClipSize } from '../../shared/clips.ts'
 import { RenderQueue } from '../renderQueue.ts'
 import type { Session, SessionStore } from '../session.ts'
 import { anyImageModel } from '../images/imageModels.ts'
 import { changeFramePicture, pickedVersion } from '../pictures.ts'
 import { CLIP_ENDS, type VideoGenerator } from './videoGenerator.ts'
 import type { ComfyTraces } from '../comfyui/traces.ts'
-
-/**
- * A clip made from a picture (ADR 0025), kept on the picture version it was made from:
- * one of each kind by each video model, a new one replacing that model's old one.
- */
-export interface Clip {
-  kind: ClipKind
-  /** The video model that made it (`comfyui/models.ts`). */
-  model: string
-  /** File name of the clip (an MP4) inside the Session directory. */
-  file: string
-  /** What it was told happens, and whether anyone could speak. */
-  prompt: string
-  speech: boolean
-  seconds: number
-  seed: number
-  /** Into Next's last picture: the next Frame's image it ends on. */
-  next?: string
-  /** Seconds it waited for another render (only if it had to) and took. */
-  timings: { queued?: number; clip: number }
-}
 
 export interface ClipDeps {
   store: SessionStore

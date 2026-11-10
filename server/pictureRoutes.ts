@@ -4,13 +4,8 @@
  */
 import { join } from '@std/path'
 import { error, json, readJson, type Route } from './http.ts'
-import {
-  anyImageModel,
-  findImageModel,
-  IMAGE_BACKEND_NAMES,
-  IMAGE_BACKENDS,
-  type ImageBackendKind,
-} from './images/imageModels.ts'
+import { anyImageModel, findImageModel } from './images/imageModels.ts'
+import { IMAGE_BACKEND_NAMES, IMAGE_BACKENDS, type ImageBackendKind } from '../shared/images.ts'
 import { deleteNewestEdit, deleteUpscale, pickVersion } from './pictureEdits.ts'
 import { loadStyleCache, styleScores, unembedded } from './style/scores.ts'
 import { isOpen, onModelPictures } from './jobs.ts'

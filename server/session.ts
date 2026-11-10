@@ -1,7 +1,7 @@
 import { fromFileUrl, join } from '@std/path'
 import type { ImagePrompt } from '../shared/images.ts'
 import type { RoleplaySession } from './roleplay/types.ts'
-import type { Picture } from './pictures.ts'
+import type { Picture } from '../shared/pictures.ts'
 import type { Scenario } from './scenario.ts'
 import type { SessionSettings } from './settings.ts'
 import type { FrameTimings, Look, Outcome } from '../shared/session.ts'

@@ -7,7 +7,8 @@ import { frameName } from '../frames.ts'
 import { join } from '@std/path'
 import { joinPrompt, sentences } from '../imagePrompt.ts'
 import { shownSubjects } from '../look.ts'
-import { editLine, type Picture, type PictureVersion } from '../pictures.ts'
+import { editLine } from '../pictures.ts'
+import type { Picture, PictureVersion } from '../../shared/pictures.ts'
 import type {
   ChainFrame,
   ChainSession,

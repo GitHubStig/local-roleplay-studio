@@ -22,7 +22,8 @@ export {
   type Score,
   type Setting,
 } from '../../../shared/roleplay.ts'
-import { type Cast, type CueTrack, type Reply, type Score } from '../../../shared/roleplay.ts'
+import type { Cast, Cue, FrameMusic, Reply, Score, Speech } from '../../../shared/roleplay.ts'
+export { type Cue, type CueValues, type FrameMusic, type Speech } from '../../../shared/roleplay.ts'
 
 export type { Figure, Scene }
 export { cancelJob, type Job, type JobKind, listJobs, queueJob, retryJob } from '../api'
@@ -59,66 +60,6 @@ export interface RoleplayFrame {
   /** How the music was directed at this Frame, once it has been. */
   music?: FrameMusic
   createdAt: string
-}
-
-/** The Music Director's reading of a Frame, and what it decided. */
-export interface FrameMusic {
-  /** The Cue it plays under (`Cue.id`). */
-  cue: string
-  reading: string
-  decision: 'continue' | 'transition' | 'silence'
-  /** How a change came in; meaningless when the music continued. */
-  entry: 'gentle' | 'sharp'
-  /** The line that caused a change, quoted; '' when it continued. */
-  line: string
-  model: string
-  timings: { text: number }
-  /** Directed by Score the Roleplay, with hindsight; its timings are the cue writer's alone. */
-  hindsight?: true
-  /** A short accent placed here with hindsight, over the music playing (not played yet). */
-  stinger?: { reading: string; line: string }
-}
-
-/** What the cue writer picked for a Cue, within the Score. */
-export interface CueValues {
-  mood: string
-  energy: 'calm' | 'restrained' | 'building' | 'intense'
-  density: 'sparse' | 'layered' | 'full'
-  tempo: 'slow' | 'moderate' | 'fast'
-  instruments: string[]
-  vocals: 'none' | 'choir'
-  shape: 'intimate' | 'uneasy' | 'reflective' | 'sacred' | 'danger'
-  key: string
-  /** What the music model is told it sounds like and how it develops. */
-  caption: string
-  /** Section tags following the caption, with lines of vowels for any voices to sing. */
-  lyrics: string
-}
-
-/** A stretch of music from the Frame it began on until the next Cue: its values, or silence. */
-export interface Cue {
-  id: string
-  start: number
-  values?: CueValues
-  entry: 'gentle' | 'sharp'
-  reading: string
-  line: string
-  /** What the player asked of it. */
-  steer?: string
-  /** Its music, once made. */
-  track?: CueTrack
-}
-
-/** A Frame's dialogue spoken in the Character's voice. */
-export interface Speech {
-  file: string
-  /** The reference clip of the voice it was spoken in. */
-  ref: string
-  timings: { queued?: number; audio: number }
-  /** How it was directed; absent if it was spoken as written. */
-  delivery?: { pace: 'normal' | 'slow' | 'fast'; sound: 'none' | 'sigh' | 'laughter' | 'cough' }
-  /** Why directing failed, when it was spoken as written instead. */
-  undirected?: string
 }
 
 /** The Character's voice: a description, and the reference clip designed from it (once designed). */

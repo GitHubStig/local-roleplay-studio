@@ -20,12 +20,12 @@ import {
   editLine,
   editSource,
   pickedVersion,
-  type PictureEdit,
   PictureGoneError,
   removeFiles,
   shownPictureOf,
   versionFiles,
 } from './pictures.ts'
+import type { PictureEdit } from '../shared/pictures.ts'
 import { RenderQueue } from './renderQueue.ts'
 import type { Session, SessionStore } from './session.ts'
 import { updateSession } from './update.ts'

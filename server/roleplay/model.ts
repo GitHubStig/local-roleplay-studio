@@ -25,7 +25,7 @@ import {
 } from './art.ts'
 import { deliverySchema, parseDelivery, voiceSchema } from './voice.ts'
 import { parseVerdict, type Verdict, verdictSchema } from './judge.ts'
-import type { Delivery } from '../voice/voice.ts'
+import type { Delivery } from '../../shared/voice.ts'
 
 /** A reply's fields as each one completes, and the model's reasoning as it streams. */
 export interface ReplyHandlers {

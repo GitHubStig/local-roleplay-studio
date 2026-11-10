@@ -1,4 +1,5 @@
 import type { RoleplaySession } from './roleplay/api'
+import type { ImageBackendKind, ImageModelOption, ImagePrompt } from '../../shared/images.ts'
 import type { ComparisonModel, ComparisonRow } from './comparison'
 import type { ExportedStyles, StyleScores } from './styleScores'
 export {
@@ -8,28 +9,27 @@ export {
   type BackendKind,
   type Work,
 } from '../../shared/backends.ts'
-import { type Backend, type Work } from '../../shared/backends.ts'
+import type { Backend, Work } from '../../shared/backends.ts'
 export { type ClipAsk, type ClipKind, type ClipOrder, type ClipSize } from '../../shared/clips.ts'
-import { type ClipAsk, type ClipKind, type ClipOrder, type ClipSize } from '../../shared/clips.ts'
+import type { ClipAsk, ClipKind, ClipOrder, ClipSize } from '../../shared/clips.ts'
 export { type ComfyUses } from '../../shared/comfyui.ts'
-import { type ComfyUses } from '../../shared/comfyui.ts'
+import type { ComfyStatus, ComfyUses } from '../../shared/comfyui.ts'
 export { type Availability, type Feature, FEATURES } from '../../shared/features.ts'
-import { type Availability, type Feature } from '../../shared/features.ts'
+import type { Availability, Feature } from '../../shared/features.ts'
 export { type ImageModelOption, type ImagePrompt } from '../../shared/images.ts'
-import { type ImageModelOption, type ImagePrompt } from '../../shared/images.ts'
 export { type JobKind } from '../../shared/jobKinds.ts'
-import { type JobKind } from '../../shared/jobKinds.ts'
+import type { JobKind } from '../../shared/jobKinds.ts'
 export {
   type Person,
   type ScenarioLoadError,
   type ScenarioSummary,
   type Suggestion,
 } from '../../shared/scenario.ts'
-import {
-  type Person,
-  type ScenarioLoadError,
-  type ScenarioSummary,
-  type Suggestion,
+import type {
+  Person,
+  ScenarioLoadError,
+  ScenarioSummary,
+  Suggestion,
 } from '../../shared/scenario.ts'
 export {
   type FrameTimings,
@@ -38,21 +38,21 @@ export {
   type SessionKind,
   type Subject,
 } from '../../shared/session.ts'
-import {
-  type FrameTimings,
-  type Look,
-  type Outcome,
-  type SessionKind,
-} from '../../shared/session.ts'
+import type { FrameTimings, Look, Outcome, SessionKind } from '../../shared/session.ts'
 export { type SeedMode, type SizePreset } from '../../shared/settings.ts'
-import { type SeedMode, type SizePreset } from '../../shared/settings.ts'
+import type { Quantize, SeedMode, SizePreset } from '../../shared/settings.ts'
 export { type Figure } from '../../shared/threeD.ts'
-import { type Figure } from '../../shared/threeD.ts'
+export { type Clip } from '../../shared/clips.ts'
+export { type ComfyStatus } from '../../shared/comfyui.ts'
+export { IMAGE_BACKEND_NAMES } from '../../shared/images.ts'
+export { type Picture, type PictureEdit } from '../../shared/pictures.ts'
+import type { Picture, PictureEdit } from '../../shared/pictures.ts'
+export { type Quantize } from '../../shared/settings.ts'
+export { type Scene } from '../../shared/threeD.ts'
 export interface Health {
   ok: boolean
 }
 
-export type Quantize = null | 4 | 8
 export interface Settings {
   /** The Backends there are, this machine's among them, in the order a job tries them. */
   backends: Backend[]
@@ -110,12 +110,7 @@ export interface Settings {
 }
 
 /** Where pictures are made: mflux (Apple Silicon Macs) or a ComfyUI server (any machine). */
-export type ImageBackend = 'mflux' | 'comfyui'
-
-export const IMAGE_BACKEND_NAMES: Record<ImageBackend, string> = {
-  mflux: 'mflux',
-  comfyui: 'ComfyUI',
-}
+export type ImageBackend = ImageBackendKind
 
 /** A Text backend's models, or why it couldn't list them. */
 export interface TextModelOptions {
@@ -221,14 +216,6 @@ export const moveSessionsFolder = (path: string) =>
 export const getSettingsOptions = () => request<SettingsOptions>('/api/settings/options')
 
 /**
- * Whether ComfyUI answers at an address, and has the files of what will run there: what's missing
- * by what it's missing for, so each tab shows only its own.
- */
-export type ComfyStatus =
-  | { up: true; version: string; device: string; missing: { [use in keyof ComfyUses]?: string } }
-  | { up: false; error: string }
-
-/**
  * Checks a ComfyUI at an address not saved yet ('' for its usual one here), for the Image Model,
  * the upscaler and voices that would run there.
  */
@@ -319,24 +306,6 @@ export const expandScenario = (
     signal,
   })
 
-/**
- * A Frame's picture as a 2.5D scene of Gaussian splats, made with SHARP: it turns a little from the
- * picture's view, not all the way round.
- */
-export interface Scene {
-  /** `.ply` file, served like the pictures. */
-  file: string
-  /** The picture it was made from: the upscale if there was one, else the original. */
-  from?: string
-  splats: number
-  /** The depth to orbit around. */
-  pivot: number
-  /** The camera it was made for: vertical field of view in degrees, and width / height. */
-  fov: number
-  aspect: number
-  timings: { queued?: number; scene: number }
-}
-
 /** What each kind of clip is called (ADR 0025), in the order they're offered and listed. */
 export const CLIP_KIND_NAMES: Record<ClipKind, string> = {
   'lead-in': 'Lead In',
@@ -348,17 +317,6 @@ export const CLIP_KIND_NAMES: Record<ClipKind, string> = {
 /** What each clip size is called, in the order they're offered. */
 export const CLIP_SIZE_NAMES: Record<ClipSize, string> = { small: 'Small', large: 'Large' }
 
-/** A clip made from a picture, one of each kind per video model. */
-export interface Clip extends ClipOrder {
-  model: string
-  /** The MP4, served like the pictures. */
-  file: string
-  seed: number
-  /** Into Next's last picture: the next Frame's image it ends on. */
-  next?: string
-  timings: { queued?: number; clip: number }
-}
-
 /** What a Frame's picture can be made into in 3D, by the field it's kept in. */
 export type Made3d = 'scene' | 'figure' | 'lito'
 
@@ -367,57 +325,6 @@ export const MADE3D_FEATURE: Record<Made3d, Feature> = {
   scene: 'scenes',
   figure: 'figures',
   lito: 'lito',
-}
-
-/**
- * A Frame's picture by one Image Model, and what's made from it, in every kind of Session: what the
- * picture buttons, the 3D buttons and the viewers read.
- */
-export interface Picture {
-  image: string
-  /** The Image Model that rendered it. */
-  imageModel: string
-  /** The Image backend it ran on; older pictures may not say. */
-  imageBackend?: ImageBackend
-  /** The image upscaled to 2048 px, once upscaled. */
-  upscaled?: string
-  /** The Image Prompt changed since it was rendered. */
-  stale?: boolean
-  /** The picture made into a 2.5D scene (SHARP), once asked for. */
-  scene?: Scene
-  /** The person in the picture as a 3D figure (TripoSplat), once asked for. */
-  figure?: Figure
-  /** The same, made with Apple's LiTo. */
-  lito?: Figure
-  /** Clips made from it, one of each kind, once asked for. */
-  clips?: Clip[]
-  /** Seconds the render waited for another (only if it had to) and took. */
-  timings?: { queued?: number; image: number }
-  /** Its edits, oldest first, each made from the one before (ADR 0021). */
-  edits?: PictureEdit[]
-  /** The version that is the picture: 0 (or none) for the render, n for edit n. */
-  picked?: number
-}
-
-/** A picture's edit: a version of it repainted as told, with what's made from it. */
-export interface PictureEdit {
-  image: string
-  /** What it was told to paint: one, or every one that led to it when copied into a Chain. */
-  instructions: string[]
-  editModel: string
-  /** The kind of backend that made it. */
-  imageBackend?: ImageBackend
-  seed: number
-  /** The area painted over the picture to repaint; none for all of it. */
-  mask?: string
-  /** Copied from a Storyboard, so it can't be made again. */
-  copied?: boolean
-  upscaled?: string
-  scene?: Scene
-  figure?: Figure
-  lito?: Figure
-  clips?: Clip[]
-  timings?: { queued?: number; edit: number }
 }
 
 /** The edit a picture shows, if its picked version is one. */

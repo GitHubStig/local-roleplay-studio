@@ -10,3 +10,7 @@ export interface SizePreset {
   width: number
   height: number
 }
+
+export const QUANTIZE_OPTIONS = [null, 4, 8] as const
+
+export type Quantize = (typeof QUANTIZE_OPTIONS)[number]

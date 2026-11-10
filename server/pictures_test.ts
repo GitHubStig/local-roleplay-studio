@@ -11,13 +11,12 @@ import {
   homeImage,
   ImageModelError,
   pickedVersion,
-  type Picture,
-  type PictureEdit,
   pictureFiles,
   shownPicture,
   switchImageModel,
   withPicture,
 } from './pictures.ts'
+import type { Picture, PictureEdit } from '../shared/pictures.ts'
 import { DEFAULT_SETTINGS } from './settings.ts'
 import {
   fakeImageGenerator,

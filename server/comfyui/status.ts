@@ -4,20 +4,7 @@ import { type ComfyModel, findComfyModel, findComfyUpscaler } from '../images/co
 import { VOICE_NODES } from '../voice/comfyui/comfyui.ts'
 import { findComfyVideoModel } from '../video/comfyui/models.ts'
 import { ACE_STEP } from '../music/comfyui/comfyui.ts'
-import type { ComfyUses } from '../../shared/comfyui.ts'
-
-/**
- * Whether ComfyUI answers at an address, and can run what Settings send it: for Settings. What's
- * missing is by what it's missing for, so each tab shows only its own.
- */
-export type ComfyStatus =
-  | {
-    up: true
-    version: string
-    device: string
-    missing: { [use in keyof ComfyUses]?: string }
-  }
-  | { up: false; error: string }
+import type { ComfyStatus, ComfyUses } from '../../shared/comfyui.ts'
 
 /**
  * Asks the ComfyUI at `baseUrl` ('' for its default) what it is (`GET /system_stats`), and whether it

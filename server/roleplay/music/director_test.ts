@@ -14,7 +14,8 @@ import {
   withDanger,
   withoutSpeaker,
 } from './director.ts'
-import type { Cue, RoleplaySession } from '../types.ts'
+import type { RoleplaySession } from '../types.ts'
+import type { Cue } from '../../../shared/roleplay.ts'
 
 const direction = (decision: string, extra: Record<string, unknown> = {}) => ({
   reading: 'Wary, testing each other.',

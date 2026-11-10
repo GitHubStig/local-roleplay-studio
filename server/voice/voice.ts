@@ -6,6 +6,7 @@
 import { fromFileUrl } from '@std/path'
 import type { Backend } from '../../shared/backends.ts'
 import { track } from '../children.ts'
+import type { Delivery } from '../../shared/voice.ts'
 
 export interface DesignRequest {
   /** The voice, in words: age, pitch, texture, manner. */
@@ -15,12 +16,6 @@ export interface DesignRequest {
   seed: number
   /** Where to write the WAV file. */
   out: string
-}
-
-/** How a line is delivered, beyond its words: a pace, and a sound just before it. */
-export interface Delivery {
-  pace: 'normal' | 'slow' | 'fast'
-  sound: 'none' | 'sigh' | 'laughter' | 'cough'
 }
 
 export interface SpeakRequest extends Partial<Delivery> {

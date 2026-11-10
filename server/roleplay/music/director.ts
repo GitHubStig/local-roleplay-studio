@@ -14,6 +14,7 @@ import type { ChatMessage } from '../../text/chat.ts'
 import type { RoleplayEvent } from '../engine.ts'
 import type { RoleplayModel } from '../model.ts'
 import { writeScore } from './score.ts'
+import type { RoleplayFrame, RoleplaySession } from '../types.ts'
 import {
   type Cue,
   CUE_KEYS,
@@ -27,11 +28,9 @@ import {
   ENTRIES,
   type Entry,
   type FrameMusic,
-  type RoleplayFrame,
-  type RoleplaySession,
+  type Score,
   TEMPOS,
-} from '../types.ts'
-import type { Score } from '../../../shared/roleplay.ts'
+} from '../../../shared/roleplay.ts'
 import { GoneError, updateSession } from '../update.ts'
 
 /** The Director's reply, in the order it's written. */

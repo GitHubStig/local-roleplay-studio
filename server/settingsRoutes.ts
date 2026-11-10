@@ -1,6 +1,7 @@
 /** Settings' routes: reading and saving them, and what they can choose from. */
 import { error, json, readJson, type Route } from './http.ts'
-import { IMAGE_BACKENDS, imageModelsOf } from './images/imageModels.ts'
+import { imageModelsOf } from './images/imageModels.ts'
+import { IMAGE_BACKENDS } from '../shared/images.ts'
 import type { ComfyUses } from '../shared/comfyui.ts'
 import { UPSCALERS } from './images/upscalers.ts'
 import { COMFYUI_VIDEO_MODELS } from './video/comfyui/models.ts'

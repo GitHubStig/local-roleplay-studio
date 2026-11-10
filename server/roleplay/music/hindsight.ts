@@ -24,7 +24,8 @@ import {
 } from './director.ts'
 import type { RoleplayEvent } from '../engine.ts'
 import { writeScore } from './score.ts'
-import { type Cue, ENTRIES, type Entry, type FrameMusic, type RoleplaySession } from '../types.ts'
+import type { RoleplaySession } from '../types.ts'
+import { type Cue, ENTRIES, type Entry, type FrameMusic } from '../../../shared/roleplay.ts'
 import { GoneError, updateSession } from '../update.ts'
 
 /** What the pass can mark on a Frame; the music continues through every Frame it doesn't. */

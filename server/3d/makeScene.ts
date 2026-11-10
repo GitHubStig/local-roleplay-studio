@@ -1,7 +1,8 @@
 import { join } from '@std/path'
 import { frameName, secondsSince } from '../frames.ts'
 import { RenderQueue } from '../renderQueue.ts'
-import type { Scene, SceneMaker } from './scene.ts'
+import type { SceneMaker } from './scene.ts'
+import type { Scene } from '../../shared/threeD.ts'
 import type { Session, SessionStore } from '../session.ts'
 import { changeFramePicture, shownVersionOf } from '../pictures.ts'
 

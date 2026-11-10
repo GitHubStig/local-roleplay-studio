@@ -3,14 +3,14 @@ import { imageKindOf } from './backends.ts'
 import type { Backend } from '../shared/backends.ts'
 import {
   changeFramePicture,
-  type Picture,
   pictureFiles,
   removeFiles,
   shownVersionOf,
   withPicture,
 } from './pictures.ts'
+import type { Picture } from '../shared/pictures.ts'
 import type { ImageGenerator } from './images/imageGenerator.ts'
-import type { ImageBackendKind } from './images/imageModels.ts'
+import type { ImageBackendKind } from '../shared/images.ts'
 import type { Upscaler } from './images/upscalers.ts'
 import type { TextModel } from './textModel.ts'
 import type { Previews } from './previews.ts'

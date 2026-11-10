@@ -2,7 +2,7 @@ import { assertEquals, assertMatch } from '@std/assert'
 import { join } from '@std/path'
 import type { Job } from './jobs.ts'
 import type { StyleEmbedder } from './style/embedder.ts'
-import type { Picture } from './pictures.ts'
+import type { Picture } from '../shared/pictures.ts'
 import { DEFAULT_SETTINGS } from './settings.ts'
 import { fakeImageGenerator, withTempDir } from './testing.ts'
 import {
