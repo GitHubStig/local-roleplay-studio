@@ -13,7 +13,7 @@ The Mac is the development Mac (Apple silicon, M5 Pro, 48 GB); the PC is the Win
 
 ## Text Model
 
-**Gemma 4 12B Heretic, GGUF Q4_K_M, Thinking off, for every text job, on either machine** (`hf.co/igorls/gemma-4-12B-it-heretic-GGUF:Q4_K_M`, since 2026-10-08). On a Mac with memory to spare, **Gemma 4 26B-A4B Heretic** (`gemma-4-26b-heretic:nvfp4`, built locally with `ollama create -q nvfp4` from `coder3101/gemma-4-26B-A4B-it-heretic`; [how](research/ollama.md#building-an-mlx-model-from-a-heretic-checkpoint)) is 2–3× faster and as careful. Set it in **Settings → Text Model**; it applies from the next Session.
+**Gemma 4 12B Heretic, GGUF Q4_K_M, Thinking off, for every text job, on either machine** (`hf.co/igorls/gemma-4-12B-it-heretic-GGUF:Q4_K_M`). On a Mac with memory to spare, **Gemma 4 26B-A4B Heretic** (`gemma-4-26b-heretic:nvfp4`, built locally with `ollama create -q nvfp4` from `coder3101/gemma-4-26B-A4B-it-heretic`; [how](research/ollama.md#building-an-mlx-model-from-a-heretic-checkpoint)) is 2–3× faster and as careful. Set it in **Settings → Text Model**; it applies from the next Session.
 
 | Model | Loaded | Chain, per Action | Art Agent, per picture | Suggest | Reply | Runs on | Verdict |
 |---|---|---|---|---|---|---|---|
@@ -30,7 +30,7 @@ Measured on the Mac with Ollama 0.35.1, 2026-10-05 and -06, on the same four tes
 - **Thinking stays off.** It made the Art Agent 5–22× slower with no gain in who's in the picture, and Gemma 4 catches implied changes without it.
 - **Models under ~8B can't hold the Chain's prompt**: they drop sentences, write notes into it, or skip the change while saying it's done.
 - **Uncensored builds change nothing about what's rendered**: the engine's Limits check every Action and every prompt, whichever model wrote it ([ADR 0002](adr/0002-guardrails-enforced-by-the-engine.md)).
-- Ollama's context length matters for the GGUF on Windows: see the README ("Ollama's context length").
+- Ollama's context length matters for the GGUF on Windows: see [setup.md](setup.md#ollamas-context-length).
 
 ### What the prompts rely on
 
@@ -41,7 +41,7 @@ Workarounds the benches showed were needed. Check each again when the Text Model
 - **Each aspect is a field of its own** in a Storyboard Frame's or Art Agent's reply: given one string, a model squeezed all seven into a pose sentence ([ADR 0006](adr/0006-storyboards-plan-in-one-call.md)).
 - **The Art Agent writes prose, not tags**: prose was right on all seven Image Models tried, tags on none ([ADR 0023](adr/0023-the-art-agent-writes-prose.md)).
 - **Suggest is told the player's usual length in words** (the median of their last five Messages) and to keep their capitals and dropped "I": told only "their length and tone", every model tidied the player up.
-- **Every Text Model call has a token cap and a time limit**: a runaway reply once held Ollama for 14 minutes ([design.md](design.md#the-frame-loop)).
+- **Every Text Model call has a token cap and a time limit**: a runaway reply once held Ollama for 14 minutes ([design/chain.md](design/chain.md#the-frame-loop)).
 - **A Roleplay's history starts with the request for the opening Reply**, so turns alternate from the start: Mistral's template refused anything else.
 
 ## Image Prompt length
@@ -56,7 +56,7 @@ Details, and when to count again: [research/image-models.md](research/image-mode
 
 ## Image Model
 
-**Qwen-Image 2.1** (`qwen-image-2.1`, 25 steps, the default since 2026-10-08): it runs on both backends, reads the whole of every prompt, stages two people right from prose, and has been measured the most. For a quick look at what it will draw, **Qwen-Image 2.1 Viggle Turbo** (the Mac); for speed on its own terms, **FLUX.2 Klein 4B** or **FLUX.3 Klein**.
+**Qwen-Image 2.1** (`qwen-image-2.1`, 25 steps, the default): it runs on both backends, reads the whole of every prompt, stages two people right from prose, and has been measured the most. For a quick look at what it will draw, **Qwen-Image 2.1 Viggle Turbo** (the Mac); for speed on its own terms, **FLUX.2 Klein 4B** or **FLUX.3 Klein**.
 
 | Image Model (id) | Backends | Steps | Mac, mflux | PC, ComfyUI | Peak on the Mac | Notes |
 |---|---|---|---|---|---|---|
@@ -137,12 +137,11 @@ Evidence: [research/video-models.md](research/video-models.md).
 
 ACE-Step 1.5 on a ComfyUI, with ComfyUI's own nodes ([ADR 0035](adr/0035-music-from-ace-step-through-comfyui.md)): the **XL turbo (4B) with its 4B planner**, 8 steps. Measured on the Mac, 2026-11-08, and the PC, 2026-11-09.
 
-- **On the Mac, about 170 s for a minute of music** (2.8 s a second), ComfyUI at 26–27 GB at the most, 34 GB for a 150 s song; it keeps ~21 GB loaded between runs. **A Reply arriving during a track waits for it, up to about 3.5 minutes**, as the Text Model can't sit beside it ([research](research/music-models.md#music-on-the-macs-own-comfyui-through-the-app-2026-11-09-mac)), so send music to a PC where there is one. It's the one setup, with no quicker setting: the 1.7B planner took half the time and sounded "usable but not great", and the owner deleted it and the 2B turbo on both machines (2026-11-09), as quality matters as much as speed.
+- **On the Mac, about 170 s for a minute of music** (2.8 s a second), ComfyUI at 26–27 GB at the most, 34 GB for a 150 s song; it keeps ~21 GB loaded between runs. **A Reply arriving during a track waits for it, up to about 3.5 minutes**, as the Text Model can't sit beside it ([research](research/music-models.md#music-on-the-macs-own-comfyui-through-the-app-2026-11-09-mac)), so send music to a PC where there is one. It's the one setup, with no quicker setting, as quality matters as much as speed ([ADR 0035](adr/0035-music-from-ace-step-through-comfyui.md)).
 - **On the PC, about 20 s for a minute of music** (36 s for a 150 s song), and it fits: the card at 11.2–11.6 GB at the most, as ComfyUI loads to fill it, ComfyUI's RAM at 3.4 GB at the most. `/free` empties the card at once, and a picture after music is as quick as one before. By ear, comparable with the Mac's, and the 4B planner is the best here too. The same seed makes different music on each machine, though it repeats on one.
 - **The length asked** (60–180 s tried), each ending in a fade; the key and tempo mostly followed; lyrics sung as written.
 - **Prompted from captions the owner found good**, which the Text Model adapts to the moment ([ADR 0035](adr/0035-music-from-ace-step-through-comfyui.md)): the sound and how it develops over the track, section tags following it, no tempo, key or length in the caption, no negations ([research/music-models.md](research/music-models.md#prompting-it)).
 - **Looped**, the fade-out cut and a 3 s crossfade; extending isn't possible through ComfyUI. Cues are related by the Score's text, not by covers.
-- MiniMax Music 3 (mlx-audio) was tried and dropped: its length is its own (14–43 s), 4–5 s a second of music, voices where none were asked.
 
 Evidence: [research/music-models.md](research/music-models.md), and the clips in [bench/music-models/](bench/music-models/README.md).
 
@@ -150,7 +149,7 @@ Evidence: [research/music-models.md](research/music-models.md), and the clips in
 
 - **A heavy job unloads the Text Model on the machine it runs on** (a render, an upscale, a 3D scene or figure, a voice from a heavy engine): a render beside the 18 GB 26B pushed the 48 GB Mac into swap and took 6× as long ([ADR 0013](adr/0013-unload-the-text-model-on-the-job-machine.md)).
 - **`--low-ram` is on for every mflux render and upscale**: it cut every peak by 2–27 GB, slowed no render, and cost SeedVR2 about 25%.
-- **Quantize converts as the model loads**; the app no longer saves quantized copies (dropped on mflux 0.22, when `--low-ram` lowered the peak further). The pre-quantized repos (Z-Image, Ming-Image, Ideogram 4) are mflux-community's.
+- **Quantize converts as the model loads**; no quantized copies are saved. The pre-quantized repos (Z-Image, Ming-Image, Ideogram 4) are mflux-community's.
 - **The heaviest on the Mac**: Krea 2 (34 GB), Ideogram 4 (30 GB), MOSS-Image (27 GB). Close everything else for those.
 - **On the PC** ComfyUI fills the 12 GB card for every model; the 16 GB of RAM held for MOSS-Image and Ming-Image with ~2 GB to spare, with Ollama unloaded.
 - **The voice service** unloads its model after a minute unused, and frees its working memory after every request.

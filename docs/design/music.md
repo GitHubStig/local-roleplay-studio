@@ -1,0 +1,12 @@
+# Music
+
+Part of the [design](../design.md). Terms in **bold** are defined in [CONTEXT.md](../../CONTEXT.md).
+
+A Roleplay can have music that follows the story the way a film's composer does, while Music is on in Settings. The decisions are in [ADR 0035](../adr/0035-music-from-ace-step-through-comfyui.md) and [ADR 0036](../adr/0036-a-director-follows-the-story.md).
+
+- **The Score** is the Roleplay's musical identity, written once from its Cast and Brief, the Scenario's Music and the Music taste, and editable by hand. Its avoid list binds the Text Model, and never reaches the music model, as naming a thing brings it in.
+- **The Music Director** runs after a Reply with Score as you play on, or by hand on a Frame. It reads the whole story, thoughts too, and the Cue playing and why it began, and decides whether the music continues, changes (gently, or sharply for what breaks the scene) or falls silent. **Score the Roleplay** does the same with hindsight over every Frame, replacing them all.
+- **The cue writer** writes a change's Cue: its values, then a caption and lyrics for the music model. It starts from a shape (`intimate`, `uneasy`, `reflective`, `sacred`), a course and production known to sound right, and fills the feeling from the Director's reading. A sharp change can take `danger`, a fixed thriller score. It gives a Cue a choir where one carries the moment, with lines of vowels to sing, as voices come only from lyrics. The key comes from it, and the tempo from code, within the Score's range.
+- **A Track** is made by a `music` job on a ComfyUI, the one Settings name or else where pictures go, behind other image work. On the Text Model's machine a Reply waits for a Track being made.
+- **The player** runs for the whole page, for the Frame selected or else the newest. Within a Cue nothing changes; another Cue crossfades, quickly if it came sharply; a Track not yet made leaves the last playing. It loops a Track with its fade-out cut and a crossfade, lowers under a spoken line, pauses while a video with sound is open, and fades when the page is left.
+- **New take** makes a Cue's words again with the next seed. **A steer** writes the Cue again with the player's words first, above the Score and its avoid list, then makes its Track; the next Cue is told of it, and Keep for this Roleplay adds it to the Music taste. What's playing plays on until its replacement is ready.

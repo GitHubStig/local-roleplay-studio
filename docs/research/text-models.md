@@ -80,7 +80,7 @@ starts missing them.
 - **Runaway replies.** Small models writing JSON under a schema occasionally never stop, padding
   with whitespace until their context fills. One such reply from spark blocked Ollama, and every
   request queued behind it, for 14 minutes. Every Text Model call now has a token cap and a time
-  limit (see [design.md](../design.md#the-frame-loop)).
+  limit (see [design/chain.md](../design/chain.md#the-frame-loop)).
 - **The Setup matters.** Describing someone's identity with an expression in it ("a wry smile")
   puts that expression into the identity sentence, where it then contradicts "make him
   frightened". Keep each Setup fact in its own aspect ([scenarios.md](../scenarios.md)).

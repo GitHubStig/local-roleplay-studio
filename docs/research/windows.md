@@ -56,3 +56,12 @@ Gaps 1, 2, 3 and 5 are done; gap 4 (voices assume a cloning TTS) is in open-thre
   3. *(Done 2026-10-06: `main.ts` injects it, from the Session's Text backend.)* *`app.ts` defaults to Ollama itself:* `roleplayModel` falls back to `ollamaRoleplayModel` inside `createHandler` instead of being injected from `main.ts` like the rest, and `TextModelInfo` comes from `ollama.ts`.
   4. *Voices assume a cloning TTS.* `VoiceEngine` is `design` (a voice from a description) plus `speak` (cloning the designed reference clip), with pace, sound and whisper; a provider without cloning (preset voices only) would need another way to keep a Character's voice consistent, e.g. picking a preset once per Character.
   5. *(Done for SHARP and TripoSplat: both select CUDA when available, MPS on a Mac, and CPU otherwise.)* LiTo remains Apple Silicon only: its cut-out uses MPS, and its pipeline uses MLX.
+
+## Flaky tests under the full parallel run (open thread)
+
+*Moved from open-threads.md on 2026-11-10, as it stood; its short entry stays there.*
+
+**Flaky tests under the full parallel run** (noted 2026-10-29; looked into 2026-10-30, the Windows PC):
+
+- *The web run crashes* in about one full run in fourteen (6 of 85, Deno 2.9.8, the PC): `error: Uncaught Error: IPC channel is already disconnected`, from Deno's own `node:child_process`, which Vitest's `forks` pool uses. It's a Deno regression since 2.9.7, [denoland/deno#37040](https://github.com/denoland/deno/issues/37040), open on 2026-10-30, and not fixed in 2.9.8 or on main. Nothing in the repo can avoid it (Vitest's `threads` pool doesn't run on Deno: `parentPort.removeAllListeners` isn't implemented). Until it's fixed, rerun, or use Deno 2.9.6; check again when Deno updates. Not checked: the Mac's Deno version.
+- *Once, "The jobs list" wasn't a list* (1 of 50 runs, the PC): `settled` got something other than an array from `GET /jobs` in "A rendered Frame makes a 3D scene…" (`roleplay/jobs_test.ts`), most likely an error from loading the Session. Not reproduced, and a loop racing saves against loads of one file gave no errors in 3 s. `settled` now says what the server answered, for next time.

@@ -1,6 +1,6 @@
 # Plan: what's left for music
 
-Music in a Roleplay is built: how it works is in [design.md](design.md#music), its terms in [CONTEXT.md](../CONTEXT.md), the decisions in [ADR 0035](adr/0035-music-from-ace-step-through-comfyui.md) and [ADR 0036](adr/0036-a-director-follows-the-story.md), and the evidence in [research/music-models.md](research/music-models.md) and the benches ([music-cues](bench/music-cues/README.md), [music-director](bench/music-director/README.md), [music-models](bench/music-models/README.md)). This is only what's left. When it's done or moved to [open-threads.md](open-threads.md), this file goes.
+Music in a Roleplay is built: how it works is in [design/music.md](design/music.md), its terms in [CONTEXT.md](../CONTEXT.md), the decisions in [ADR 0035](adr/0035-music-from-ace-step-through-comfyui.md) and [ADR 0036](adr/0036-a-director-follows-the-story.md), and the evidence in [research/music-models.md](research/music-models.md) and the benches ([music-cues](bench/music-cues/README.md), [music-director](bench/music-director/README.md), [music-models](bench/music-models/README.md)). This is only what's left. When it's done or moved to [open-threads.md](open-threads.md), this file goes.
 
 ## Suggested order
 

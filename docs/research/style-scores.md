@@ -1,6 +1,6 @@
 # Style scores: measuring how varied an Image Model's art style is (2026-10-14)
 
-What the Compare dialog's **Style scores** ([design.md](../design.md), *Compare*) measure, with
+What the Compare dialog's **Style scores** ([design/pictures.md](../design/pictures.md), *Style scores*) measure, with
 which models, and why it runs in Python. Measured on the Mac (Apple silicon, 48 GB), 2026-10-14.
 
 ## The question

@@ -5,14 +5,18 @@ and how to run it is in the [README](README.md); this is how the owner likes the
 
 ## Read first
 
-- [CONTEXT.md](CONTEXT.md): the domain's terms (Session, Frame, Action, Roleplay, Look, Limit…).
-  Use them in code, docs and the UI.
-- [docs/design.md](docs/design.md): how the app works now, its main behaviours only: no screen layout, timings or history (dates and what changed are in git and the ADRs). [docs/adr/](docs/adr/): decisions and why.
-- [docs/open-threads.md](docs/open-threads.md): plans and parked ideas, with their status. Finished
-  work moves out of it, into the design doc, an ADR or `docs/research/`.
-- `docs/<piece>-plans.md` (such as [docs/music-plans.md](docs/music-plans.md)): a plan for a piece of work too big for one session, in stages, updated as it goes, so a new session picks it up from the file. When the work is done, its pieces move into the design doc, ADRs, CONTEXT.md and `docs/research/`, and the plan is deleted.
-- [docs/models.md](docs/models.md): which models the app uses now, and why, in short. The evidence
-  and history behind it are in [docs/research/](docs/research/): read those only when you need them.
+Always: [CONTEXT.md](CONTEXT.md), the domain's terms (Session, Frame, Action, Roleplay, Look, Limit…). Use them in code, docs and the UI.
+
+Then only what the work needs, rather than every doc:
+
+| Working on | Read |
+|---|---|
+| Any part of the app | [docs/design.md](docs/design.md), a short overview and index, then that part's page in [docs/design/](docs/design/): `chain.md`, `storyboard.md`, `roleplay.md`, `music.md`, `scenario-page.md`, `jobs.md`, `pictures.md`, `settings-and-storage.md`. How the app works now, its main behaviours only: no screen layout, timings or history (dates and what changed are in git and the ADRs) |
+| Why something is the way it is | [docs/adr/](docs/adr/), which the design pages link to |
+| What to do next, or an idea that came up | [docs/open-threads.md](docs/open-threads.md): plans and parked ideas, a few lines each with their status, the detail in the research file each links to. Finished work moves out of it, into the design doc, an ADR or `docs/research/` |
+| A piece of work too big for one session | `docs/<piece>-plans.md` (such as [docs/music-plans.md](docs/music-plans.md)): a plan in stages, updated as it goes, so a new session picks it up from the file. When the work is done, its pieces move into the design doc, ADRs, CONTEXT.md and `docs/research/`, and the plan is deleted |
+| Models: which, how fast, how much memory | [docs/models.md](docs/models.md): the picks now, and why, in short. The evidence and history are in [docs/research/](docs/research/): read those only when you need them |
+| Installing or upgrading a runtime | [docs/setup.md](docs/setup.md), [docs/image-model-setup.md](docs/image-model-setup.md), and the upgrade guides ([mflux](docs/mflux-upgrade.md), [ComfyUI](docs/comfyui-upgrade.md), [mlx-audio](docs/mlx-audio-upgrade.md), [uv](docs/uv-upgrades.md)) |
 
 ## How the owner works
 
@@ -33,7 +37,7 @@ and how to run it is in the [README](README.md); this is how the owner likes the
   edits). Don't suggest splitting jobs across models: switching models means reloading them.
 - **Say what you checked, and what you didn't.** Real runs over assumptions; when something
   couldn't be tested (on Windows, say), say so.
-- **Record findings in the docs**, dated, and deferred ideas in `docs/open-threads.md`. `docs/models.md` is the current picks only (speed, memory, quality, why each was picked), replaced as they change, never a log: each measurement goes, dated, in `docs/research/` (`text-models.md`, `image-models.md`, `voices.md`, `ollama.md`, or a runtime's upgrade log), and `models.md` takes the new numbers if they change a pick. Findings about the app's own prompts and behaviour (how a prompt shape works with two people, what a Roleplay keeps track of) go in the bench's README or `docs/research/`, with what was decided in an ADR.
+- **Record findings in the docs**, dated, and deferred ideas in `docs/open-threads.md`, a few lines each, with anything longer in the research file it links to. `docs/models.md` is the current picks only (speed, memory, quality, why each was picked), replaced as they change, never a log: each measurement goes, dated, in `docs/research/` (`text-models.md`, `image-models.md`, `voices.md`, `ollama.md`, or a runtime's upgrade log), and `models.md` takes the new numbers if they change a pick. Findings about the app's own prompts and behaviour (how a prompt shape works with two people, what a Roleplay keeps track of) go in the bench's README or `docs/research/`, with what was decided in an ADR.
 - **Agent instructions go in this file**, not in an agent-specific one, so any agent can use them.
 
 ## Two machines
@@ -82,7 +86,7 @@ The README's "Where things live" maps the folders. When adding a file:
 - **Prompts are Markdown files** in `server/prompts/<part>/`, never strings in code, each with a
   note at the top saying when it's used and what it's filled with. What more than one part uses
   goes in `server/prompts/shared/`.
-- **A reply under a JSON schema says how it ends.** When a Text Model call's schema has several required parts, its request names them in order and says the reply is done only when the last is written ("Answer with one JSON object: "character", "persona", then "setting". You're done only when the setting is written."). Otherwise Gemma 4 26B can take its answer as done after an earlier part. The schema then bars the closing `}`, so the model writes whitespace until it hits its token cap, and each attempt costs its whole cap in time. This has happened four times: the Storyboard plan (6 Briefs in 12), Expand (2 seeds in 8), the Cast (11 seeds in 32) and the Roleplay's Picture (6 calls in 80), and the wording took each to none or nearly none ([text-models.md](docs/research/text-models.md#runaway-whitespace-under-a-schema)). Don't fix it by putting the last part first, or by making it optional: for Expand, the first made the runaways worse and the second meant the model left that part empty. Check a new call by sending it straight to Ollama over seeds 1–8 or more and looking for replies that end in whitespace. The seed is only a rough guide: the same seed can fail once and pass the next time.
+- **A reply under a JSON schema says how it ends.** When a Text Model call's schema has several required parts, its request names them in order and says the reply is done only when the last is written ("Answer with one JSON object: "character", "persona", then "setting". You're done only when the setting is written."). Otherwise Gemma 4 26B can stop after an earlier part and write whitespace until its token cap ([text-models.md](docs/research/text-models.md#runaway-whitespace-under-a-schema) has the four times it happened). Don't fix it by putting the last part first, or by making it optional: both made it worse. Check a new call by sending it straight to Ollama over seeds 1–8 or more and looking for replies that end in whitespace; the same seed can fail once and pass the next time.
 - **Python programs** go in `python/<tool>/`, one folder each (`make.py` for a run-once script,
   `serve.py` for a service), with code copied from elsewhere in a `vendor/` folder beside them.
   Each has a lock beside it (`uv lock --script python/<tool>/make.py`, committed), which `uv run` follows, so both machines run the same versions. Upgrading is a change of its own: `uv lock --script … --upgrade-package <name>` (or `--upgrade`), checked on both machines where it runs there.

@@ -1,6 +1,6 @@
 # Pictures in an exported Compare page: format and encoder (2026-10-11)
 
-What the Compare export ([design.md](../design.md), *Export*) writes its pictures as, and with
+What the Compare export ([design/pictures.md](../design/pictures.md), *Export*) writes its pictures as, and with
 what. Measured on the Mac (Apple silicon, 48 GB), 2026-10-11.
 
 ## WebP or AVIF

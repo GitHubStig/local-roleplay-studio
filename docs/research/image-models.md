@@ -445,3 +445,15 @@ code on the GPU; Python only drives it. The memory is the models' weights: see t
 headroom thread in [open-threads.md](../open-threads.md). mflux, mlx-audio and the voice service run
 on uv's own Python (`--managed-python`, `python-preference = "only-managed"`), apart from any
 other Python on the Mac.
+
+## Qwen-Image 2.1 Turbo's text encoder stored twice (open thread)
+
+*Moved from open-threads.md on 2026-11-10, as it stood; its short entry stays there.*
+
+**Qwen-Image 2.1 Turbo's text encoder stored twice** (noted 2026-10-17, Mac, mflux 0.23). Turbo's repo holds Qwen-Image 2.1's text encoder byte for byte (all 750 tensors), split into one file instead of four, and its VAE is the base VAE in bf16, so the cache keeps 17.5 GB (and 0.7 GB) twice (image-models.md); a fresh install does too, since the Hugging Face cache never shares files across repos. Linking Turbo's `text_encoder/` to the base model's files would free it, but it's a hand edit inside the Hugging Face cache that an mflux upgrade could undo; the owner chose to keep both for now. Check with each mflux release: whether mflux loads Turbo's text encoder from the base repo (an issue drafted for mflux, 2026-10-18). Turbo and the base model now both load from mflux-community's copies (2026-10-31), whose text encoders are the same size (16 GB on disk), so the doubling stays. Or drop Turbo, if Viggle's LoRA (about as fast, 1.3 GB) serves as well.
+
+## MOSS-Image on mflux (open thread)
+
+*Moved from open-threads.md on 2026-11-10, as it stood; its short entry stays there.*
+
+**MOSS-Image on mflux** (noted 2026-10-27, Mac, mflux 0.24.0). The Image Model is in `models.ts` (`moss-image`, mflux-community's bf16 copy, 50 steps, guidance 3, mflux's own), but 0.24.0 renders black from prompts over ~200 tokens, which is every Art Agent Image Prompt (mflux issue #920, fixed on main by PR #939, after the release). Waiting for 0.24.1; the bf16 copy is cached (26.2 GB). Then: render the tavern prompt twice (832×1216, seed 42, `--low-ram`), look at it against ComfyUI's, settle steps and guidance (mflux's 50 and 3 against ComfyUI's 25 and 2.5), try Quantize 8 and 4 on the bf16 copy against the saved q8, and try the community's step-distilled LoRAs (`lodestones/MOSS-Image-SFT-8-steps-dmd:lora.safetensors`, 8 steps, guidance 1; `darask0/MOSS-Image_4-step_adapter_lora`, 4 steps, as a local path, as both are named `lora.safetensors`) as an Image Model of its own, like Viggle. Check the 8-bit copy's weights are not merged in (mflux keeps a LoRA a separate layer by default, which loses less).
