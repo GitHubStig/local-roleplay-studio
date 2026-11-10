@@ -183,11 +183,11 @@ export function cleanCue(value: unknown): CueValues {
 
 /** The Cue playing just before Frame `index`: the latest to begin on an earlier Frame. */
 export const cueBefore = (session: RoleplaySession, index: number): Cue | undefined =>
-  (session.cues ?? []).findLast((c) => c.start < index)
+  session.cues.findLast((c) => c.start < index)
 
 /** The Cue Frame `index` plays under, if it's been directed. */
 export const cueOf = (session: RoleplaySession, frame: RoleplayFrame): Cue | undefined =>
-  frame.music ? session.cues?.find((c) => c.id === frame.music!.cue) : undefined
+  frame.music ? session.cues.find((c) => c.id === frame.music!.cue) : undefined
 
 /**
  * The story from Frame `from` up to and including Frame `upTo`, as the Director reads it: each
@@ -397,11 +397,11 @@ export async function directFrame(
     const now = latest.frames[index]
     if (!now) throw new GoneError(`${frameName(index)} no longer exists`)
     frame = { ...now, music }
-    const kept = (latest.cues ?? []).filter((c) => c.start !== index)
+    const kept = latest.cues.filter((c) => c.start !== index)
     const cues = cue ? [...kept, cue].sort((a, b) => a.start - b.start) : kept
     // A Frame directed again under a Cue it no longer begins: those after it that played under
     // the old one now play under the one before.
-    const gone = new Set((latest.cues ?? []).filter((c) => c.start === index).map((c) => c.id))
+    const gone = new Set(latest.cues.filter((c) => c.start === index).map((c) => c.id))
     return {
       ...latest,
       cues,
@@ -476,7 +476,7 @@ export async function steerCue(
   emit: (event: RoleplayEvent) => void,
   signal: AbortSignal,
 ): Promise<void> {
-  const cue = session.cues?.find((c) => c.start === index)
+  const cue = session.cues.find((c) => c.start === index)
   if (!cue?.values || !cue.steer) throw new GoneError(`Nothing to steer on ${frameName(index)}`)
   const direction = { ...cueStart(cue), decision: 'transition' as const }
   const values = await writeCueAt(
@@ -492,7 +492,7 @@ export async function steerCue(
   signal.throwIfAborted()
   await updateSession(deps.store, session.id, (latest) => ({
     ...latest,
-    cues: latest.cues?.map((c) => c.id === cue.id ? { ...c, values } : c),
+    cues: latest.cues.map((c) => c.id === cue.id ? { ...c, values } : c),
   }))
 }
 
@@ -518,6 +518,6 @@ export const cueStart = (d: Pick<Direction, 'entry' | 'reading' | 'line'>) => ({
 
 /** A Roleplay without the Cues that began on Frame `index`, as after it's undone. */
 export const withoutCuesFrom = (session: RoleplaySession, index: number): RoleplaySession =>
-  session.cues?.some((c) => c.start >= index)
+  session.cues.some((c) => c.start >= index)
     ? { ...session, cues: session.cues.filter((c) => c.start < index) }
     : session

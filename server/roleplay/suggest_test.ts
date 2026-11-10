@@ -16,6 +16,8 @@ const frame = (index: number, message: string | null, dialogue: string): Rolepla
   message,
   reply: replyOf(dialogue, { internal: `Secret thought ${index}.` }),
   pictures: [],
+  timings: { text: 1 },
+  textModel: 'scripted',
   createdAt: '2026-09-30T00:00:00.000Z',
 })
 
@@ -28,6 +30,8 @@ const session = (frames: RoleplayFrame[]): RoleplaySession => ({
   seed: 1,
   createdAt: '2026-09-30T00:00:00.000Z',
   cast: testCast,
+  look: null,
+  cues: [],
   frames,
 })
 

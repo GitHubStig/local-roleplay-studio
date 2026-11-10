@@ -26,6 +26,8 @@ const session = (frames: RoleplaySession['frames']): RoleplaySession => ({
   seed: 1,
   createdAt: '2026-09-27T00:00:00.000Z',
   cast: testCast,
+  look: null,
+  cues: [],
   frames,
 })
 
@@ -34,6 +36,8 @@ const frame = (index: number, message: string | null, dialogue: string) => ({
   message,
   reply: replyOf(dialogue),
   pictures: [],
+  timings: { text: 1 },
+  textModel: 'scripted',
   createdAt: '2026-09-27T00:00:00.000Z',
 })
 

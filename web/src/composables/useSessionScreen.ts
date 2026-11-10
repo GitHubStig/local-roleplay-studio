@@ -170,7 +170,8 @@ export function useSessionScreen<K extends SessionKind, W extends ScreenWork>(
   })
 
   /** The Session switched Image Model: it comes back without what only a load adds. */
-  function onImageModel(switched: S) {
+  /** The Session as a picker switched its Image Model or Text Model. */
+  function onSwitched(switched: S) {
     session.value = { ...session.value!, ...switched }
   }
   const { labelOf } = useImageModels()
@@ -187,7 +188,7 @@ export function useSessionScreen<K extends SessionKind, W extends ScreenWork>(
     const what = `This clip is of ${label}'s picture. Switch this Session to ${label} to see it?`
     if (!(await ask(what, { action: 'Switch' }))) return
     try {
-      onImageModel(await setImageModel<S>(id, model, job.image!.imageBackend))
+      onSwitched(await setImageModel<S>(id, model, job.image!.imageBackend))
     } catch (err) {
       onError((err as Error).message)
     }
@@ -209,7 +210,7 @@ export function useSessionScreen<K extends SessionKind, W extends ScreenWork>(
     load,
     leave,
     cancel,
-    onImageModel,
+    onSwitched,
     onClipsModel,
     pictureOf,
     changed,

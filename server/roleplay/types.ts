@@ -42,15 +42,15 @@ export interface Cast {
   setting: Setting
   /**
    * What holds whatever anyone does: the Scenario's, copied as the Cast is first written (ADR 0032),
-   * then the player's to edit, before or after the scene begins. None in a Cast from before them.
+   * then the player's to edit, before or after the scene begins.
    */
-  truths?: string[]
+  truths: string[]
   /**
    * The story's other People, a line each (name, then what the Scenario says of them): copied as
    * the Cast is first written (ADR 0032), then the player's to edit. They may act and speak briefly
-   * in the Character's `actions`. None in a Cast from before them, or a story of two.
+   * in the Character's `actions`. None in a story of two.
    */
-  others?: string[]
+  others: string[]
 }
 
 /** The Character's reply to one message, in the order the model writes it. */
@@ -79,7 +79,9 @@ export interface RoleplayFrame {
   /** The Text Model's reasoning, when thinking was on. */
   thinking?: string
   /** Seconds the reply took. */
-  timings?: { text: number }
+  timings: { text: number }
+  /** The Text Model that wrote the Reply, as a Session can switch Text Model (ADR 0037). */
+  textModel: string
   /**
    * Once pictured by the Art Agent: the Frame's seven sentences, and its Image Prompt (the Look's
    * subject, these, then the Look's style), exactly what the Image Model renders.
@@ -275,7 +277,7 @@ export interface RoleplaySession extends SessionBase {
    * Each Subject's identity and the art style, shared by every picture (ADR 0012): written from the
    * Cast when a Frame is first pictured, and joined by anyone the story brings into a picture.
    */
-  look?: Look | null
+  look: Look | null
   /** For debugging: seconds the Look took to write, the model that wrote it, and its reasoning. */
   lookTimings?: { text: number }
   lookModel?: string
@@ -293,7 +295,7 @@ export interface RoleplaySession extends SessionBase {
   scoreModel?: string
   scoreThinking?: string
   /** The music's Cues, in the order of the Frames they began on (`director.ts`). */
-  cues?: Cue[]
+  cues: Cue[]
   /** For debugging: the last time the whole Roleplay was scored with hindsight (`hindsight.ts`). */
   hindsight?: {
     model: string

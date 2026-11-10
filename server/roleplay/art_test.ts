@@ -35,6 +35,7 @@ const session: RoleplaySession = {
   seed: 1,
   createdAt: '2026-09-27T00:00:00.000Z',
   cast: testCast,
+  cues: [],
   look,
   frames: [
     {
@@ -42,6 +43,8 @@ const session: RoleplaySession = {
       message: null,
       reply: replyOf('You are late.', { internal: 'He looks lost.' }),
       pictures: [],
+      timings: { text: 1 },
+      textModel: 'scripted',
       createdAt: '2026-09-27T00:00:00.000Z',
     },
     {
@@ -49,6 +52,8 @@ const session: RoleplaySession = {
       message: 'I grab the rail.',
       reply: replyOf('', { actions: 'Mira steadies him.' }),
       pictures: [],
+      timings: { text: 1 },
+      textModel: 'scripted',
       createdAt: '2026-09-27T00:00:00.000Z',
     },
   ],

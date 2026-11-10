@@ -66,6 +66,56 @@ Deno.test('Picturing, rendering and upscaling a Roleplay Frame are queued jobs, 
     assertEquals(card.thumbnail, frame.image)
   }))
 
+Deno.test('A Roleplay switches Text Model: what it writes next is by the new one, and says so', () =>
+  withTempDir(async (root) => {
+    const before = scriptedRoleplayModel({
+      name: 'gemma4:26b',
+      casts: [testCast],
+      replies: [replyOf('You are late.')],
+    })
+    const after = scriptedRoleplayModel({
+      name: 'qwen3.8:27b-mlx',
+      replies: [replyOf('Take the wheel.')],
+      looks: [testLook('Ink.', 'Mira Vance, 34.', 'Sam Reyes, 25.')],
+      bodies: [artBody],
+    })
+    const { call } = setup({
+      root,
+      settings: { textModel: 'gemma4:26b' },
+      roleplayModels: { 'gemma4:26b': before, 'qwen3.8:27b-mlx': after },
+    })
+    await call('POST', '/api/sessions', { kind: 'roleplay', brief: 'A storm at sea.' })
+    await readEvents(await call('POST', '/api/sessions/s1/roleplay/cast'))
+    await readEvents(await call('POST', '/api/sessions/s1/roleplay/begin', { picture: false }))
+
+    const switchTo = (body: unknown) => call('PUT', '/api/sessions/s1/text-model', body)
+    assertEquals((await switchTo({ textModel: '' })).status, 400)
+    assertEquals(
+      (await call('PUT', '/api/sessions/nope/text-model', { textModel: 'x' })).status,
+      404,
+    )
+    const switched = await switchTo({ textModel: 'qwen3.8:27b-mlx' })
+    assertEquals((await switched.json()).settings.textModel, 'qwen3.8:27b-mlx')
+
+    await readEvents(
+      await call('POST', '/api/sessions/s1/roleplay/messages', { text: 'Sorry.', picture: true }),
+    )
+    assertEquals(await settled(call), [])
+    const session = await (await call('GET', '/api/sessions/s1')).json()
+    // Thinking stays as the Session started.
+    assertEquals(session.settings.thinking, false)
+    assertEquals(session.frames.map((f: { textModel: string }) => f.textModel), [
+      'gemma4:26b',
+      'qwen3.8:27b-mlx',
+    ])
+    // The new model wrote the Look and pictured the Reply; the old one asked nothing after.
+    assertEquals([session.lookModel, session.frames[1].pictureModel], [
+      'qwen3.8:27b-mlx',
+      'qwen3.8:27b-mlx',
+    ])
+    assertEquals(before.art.length, 0)
+  }))
+
 Deno.test('A picture goes ahead of queued renders, and Clear empties the queue', () =>
   withTempDir(async (root) => {
     const images = fakeImageGenerator()

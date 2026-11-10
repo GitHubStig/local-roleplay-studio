@@ -39,6 +39,8 @@ const session: api.Session = {
     prompt: promptFor(0),
     narration: 'Kael looks up.',
     outcome: 'done',
+    timings: { text: 1 },
+    textModel: 'x',
     pictures: [{ image: 'frame-0.png', imageModel: 'qwen-image-2.1' }],
     createdAt: '2026-09-24T00:00:00.000Z',
   }],

@@ -56,7 +56,7 @@ const emit = defineEmits<{
 
 // --- The Frame's music, and the Cues.
 
-const cues = computed(() => props.session.cues ?? [])
+const cues = computed(() => props.session.cues)
 const frameCue = computed(() =>
   props.frame?.music ? cues.value.find((c) => c.id === props.frame!.music!.cue) : undefined
 )

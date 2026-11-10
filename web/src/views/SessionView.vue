@@ -11,10 +11,11 @@ import ClipOverlay from '../components/ClipOverlay.vue'
 import { clipCount, clipsMaking, scrollToClips, usePlayingClip } from '../clips'
 import FrameListItem from '../components/FrameListItem.vue'
 import ImageModelPicker from '../components/ImageModelPicker.vue'
+import TextModelPicker from '../components/TextModelPicker.vue'
 import ModelComparison from '../components/ModelComparison.vue'
 import RenderAllButton from '../components/RenderAllButton.vue'
 import PanelTabs from '../components/PanelTabs.vue'
-import { useImageModels } from '../composables/useSettingsOptions'
+import { useImageModels, writtenPart } from '../composables/useSettingsOptions'
 import Frame3dViewers from '../components/Frame3dViewers.vue'
 import EditedChip from '../components/EditedChip.vue'
 import FrameViewer from '../components/FrameViewer.vue'
@@ -58,7 +59,7 @@ interface Pending {
 }
 
 const pending = ref<Pending | null>(null)
-const { session, loadError, draft, busy, load, leave, cancel, onImageModel, onClipsModel, pictureOf } =
+const { session, loadError, draft, busy, load, leave, cancel, onSwitched, onClipsModel, pictureOf } =
   useSessionScreen(props.id, 'chain', {
     work: pending,
     // A new Chain writes its Opening Frame.
@@ -318,12 +319,12 @@ async function deleteFrame(frame: ChainFrame) {
 }
 
 /**
- * "Text 9.8 s · Waited 12.3 s · Image 5.1 s · by Qwen-Image 2.1": writing the Frame, then rendering
+ * "Text 9.8 s by gemma4:26b · Waited 12.3 s · Image 5.1 s · by Qwen-Image 2.1": writing the Frame, then rendering
  * the picture it shows, once it has one.
  */
 function timingsLabel(frame: ChainFrame): string {
   const picture = pictureOf(frame)
-  return [`Text ${frame.timings!.text.toFixed(1)} s`, ...(picture ? renderedParts(picture) : [])]
+  return [writtenPart(frame), ...(picture ? renderedParts(picture) : [])]
     .join(' · ')
 }
 
@@ -422,28 +423,35 @@ const promptDiff = computed(() => {
     <template v-else-if="session">
       <main class="flex min-w-0 flex-1 flex-col gap-3 p-4">
         <!-- The Chain's switches, above the picture, as a Roleplay's are above its conversation. -->
-        <div v-if="featureOn('images')" class="flex items-center justify-end gap-4 text-sm">
-          <ImageModelPicker
+        <div class="flex flex-wrap items-center justify-end gap-x-4 gap-y-1 text-sm">
+          <TextModelPicker
             :session="session"
-            @switched="onImageModel"
+            @switched="onSwitched"
             @failed="(message) => (frameError = message)"
           />
-          <ModelComparison
-            :session-id="session.id"
-            :frames="session.frames"
-            :image-model="session.settings.imageModel"
-            :thumbnail="session.thumbnail"
-            :name="frameTitle"
-            :caption="(f) => f.narration"
-            @changed="load(); refreshJobs()"
-          />
-          <label
-            class="flex cursor-pointer items-center gap-1.5 text-muted"
-            title="Off: each Action writes only the new prompt, and you render the Frames you want"
-          >
-            <input v-model="renderFrames" type="checkbox" data-render-frames />
-            Render each Frame
-          </label>
+          <template v-if="featureOn('images')">
+            <ImageModelPicker
+              :session="session"
+              @switched="onSwitched"
+              @failed="(message) => (frameError = message)"
+            />
+            <ModelComparison
+              :session-id="session.id"
+              :frames="session.frames"
+              :image-model="session.settings.imageModel"
+              :thumbnail="session.thumbnail"
+              :name="frameTitle"
+              :caption="(f) => f.narration"
+              @changed="load(); refreshJobs()"
+            />
+            <label
+              class="flex cursor-pointer items-center gap-1.5 text-muted"
+              title="Off: each Action writes only the new prompt, and you render the Frames you want"
+            >
+              <input v-model="renderFrames" type="checkbox" data-render-frames />
+              Render each Frame
+            </label>
+          </template>
         </div>
         <FrameImage
           :src="picture ? imageUrl(session.id, picture.upscaled ?? picture.image) : null"
@@ -794,7 +802,7 @@ const promptDiff = computed(() => {
             @stop="playingClip = null"
           >
           <template v-if="shown">
-            <div class="flex items-start gap-2" :class="shown?.timings ? 'mb-1' : 'mb-3'">
+            <div class="mb-1 flex items-start gap-2">
               <p class="flex-1 text-muted">
                 {{ frameName(promptIndex!) }} · {{ shown ? shown.action ?? 'Opening' : pendingAction }}
               </p>
@@ -809,7 +817,7 @@ const promptDiff = computed(() => {
                 Edit
               </button>
             </div>
-            <p v-if="shown?.timings" class="mb-3 text-xs text-muted" data-timings>
+            <p class="mb-3 text-xs text-muted" data-timings>
               {{ timingsLabel(shown) }}
             </p>
             <form

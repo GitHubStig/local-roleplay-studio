@@ -52,6 +52,8 @@ const cast: roleplay.Cast = {
   },
   persona: { name: 'Cal', role: 'A stranded sailor.', appearance: 'Soaked.' },
   setting: { place: 'The lighthouse.', time: 'Midnight.', weather: 'A gale.' },
+  truths: [],
+  others: [],
 }
 
 const reply = (dialogue: string, extra: Partial<roleplay.Reply> = {}): roleplay.Reply => ({
@@ -76,6 +78,8 @@ const frame = (
   index,
   message,
   reply: reply(dialogue),
+  timings: { text: 1 },
+  textModel: 'x',
   pictures: [],
   createdAt: '2026-09-27T00:00:00.000Z',
 })
@@ -93,6 +97,8 @@ const roleplaySession = (frames: roleplay.RoleplayFrame[] = []): roleplay.Rolepl
   seed: 1,
   createdAt: '2026-09-27T00:00:00.000Z',
   cast: frames.length ? cast : null,
+  look: null,
+  cues: [],
   frames,
 })
 

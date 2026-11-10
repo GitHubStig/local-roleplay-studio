@@ -29,12 +29,14 @@ interface FrameBase {
   prompt: ImagePrompt
   /** One per Image Model it was rendered with (`pictures.ts`); none until rendered. */
   pictures: Picture[]
-  timings?: FrameTimings
   createdAt: string
 }
 
 /** A committed Chain Frame. The Opening Frame has index 0 and no Action. */
 export interface ChainFrame extends FrameBase {
+  timings: FrameTimings
+  /** The Text Model that wrote it, as a Session can switch Text Model (ADR 0037). */
+  textModel: string
   action: string | null
   /** A terse list of what changed, for the player; never fed back to the Text Model. */
   narration: string
@@ -48,6 +50,10 @@ export interface ChainFrame extends FrameBase {
  * and edited and rendered on its own.
  */
 export interface StoryboardFrame extends FrameBase {
+  /** How long its sentences took to write, and the Text Model that wrote them (ADR 0037), last
+   * time they were written; none until written. */
+  timings?: FrameTimings
+  textModel?: string
   /** What happens in this Frame, from the Storyboard's plan. */
   beat: string
   /**
@@ -110,8 +116,8 @@ export interface SessionBase {
   scenario?: Scenario
   /**
    * What it keeps of Settings, as they were when it started: its models (`SESSION_SETTINGS`). Its
-   * Image Model and steps change only when switched in it (`switchImageModel`); the rest is read
-   * from Settings as they are now.
+   * Text Model, and its Image Model and steps, change only when switched in it (ADR 0037,
+   * `switchImageModel`); the rest is read from Settings as they are now.
    */
   settings: SessionSettings
   /** The seed every image in this Session is rendered with. */

@@ -85,7 +85,6 @@ export interface Settings {
   /**
    * For Image Models that take it: compute in float16, faster on M1 and M2 Macs (the same on M4
    * and M5), the picture slightly different for a seed. Automatic by default: on for M1 to M3.
-   * A file from before this had true or false: true was the default, so it reads as Automatic.
    */
   float16: Float16
   /**
@@ -103,7 +102,6 @@ export interface Settings {
   /**
    * How an edit on mflux quantizes its weights as they load; read when editing. 8-bit by default:
    * the full weights were no faster and took near twice the memory (docs/research/mflux-upgrade-log.md).
-   * A file from before this had none, so it reads as 8-bit.
    */
   editQuantize: Quantize
   /** The video model clips are made with (`video/comfyui/models.ts`), on a ComfyUI. */
@@ -152,8 +150,9 @@ export interface Settings {
 
 /**
  * What a Session keeps of Settings (ADR 0022): its models, which define what it makes. Its Text
- * Model and Thinking as it started; its Image Model and steps, switched together in it
- * (`switchImageModel`); its music's behaviour and taste. Everything else, where each runs among it, is read from Settings as they
+ * Model, switched in it (`PUT /sessions/:id/text-model`, ADR 0037), and Thinking as it started;
+ * its Image Model and steps, switched together in it (`switchImageModel`); its music's behaviour
+ * and taste. Everything else, where each runs among it, is read from Settings as they
  * are now, so a change there reaches running Sessions too.
  */
 export const SESSION_SETTINGS = [
@@ -286,7 +285,10 @@ function backendIssues(backends: unknown): string[] {
   return issues
 }
 
-/** Checks a Settings object, filling in what an older file lacks: `here` in the Backends. */
+/**
+ * Checks a Settings object: every field, as the page sends them all and a file is read over the
+ * defaults (`fileSettingsStore`). This machine's Backend, `here`, is listed if it's left out.
+ */
 export function validateSettings(input: unknown): ValidationResult {
   if (typeof input !== 'object' || input === null || Array.isArray(input)) {
     return { ok: false, issues: ['settings must be an object'] }
@@ -308,9 +310,7 @@ export function validateSettings(input: unknown): ValidationResult {
     }
   }
   if (typeof s.textModel !== 'string') issues.push('textModel must be a string')
-  if (s.thinking !== undefined && typeof s.thinking !== 'boolean') {
-    issues.push('thinking must be true or false')
-  }
+  if (typeof s.thinking !== 'boolean') issues.push('thinking must be true or false')
   if (typeof s.imageModel !== 'string' || !anyImageModel(s.imageModel)) {
     const ids = new Set(IMAGE_BACKENDS.flatMap((b) => imageModelsOf(b).map((m) => m.id)))
     issues.push(`imageModel must be one of: ${[...ids].join(', ')}`)
@@ -324,21 +324,16 @@ export function validateSettings(input: unknown): ValidationResult {
   if (!QUANTIZE_OPTIONS.includes(s.quantize as Quantize)) {
     issues.push('quantize must be null, 4 or 8')
   }
-  if (s.editQuantize !== undefined && !QUANTIZE_OPTIONS.includes(s.editQuantize as Quantize)) {
+  if (!QUANTIZE_OPTIONS.includes(s.editQuantize as Quantize)) {
     issues.push('editQuantize must be null, 4 or 8')
   }
-  if (s.stepCache !== undefined && !STEP_CACHE_OPTIONS.includes(s.stepCache as StepCache)) {
+  if (!STEP_CACHE_OPTIONS.includes(s.stepCache as StepCache)) {
     issues.push(`stepCache must be one of: ${STEP_CACHE_OPTIONS.join(', ')}`)
   }
-  if (
-    s.float16 !== undefined && typeof s.float16 !== 'boolean' &&
-    !FLOAT16_CHOICES.includes(s.float16 as Float16)
-  ) {
+  if (!FLOAT16_CHOICES.includes(s.float16 as Float16)) {
     issues.push(`float16 must be one of: ${FLOAT16_CHOICES.join(', ')}`)
   }
-  if (s.previews !== undefined && typeof s.previews !== 'boolean') {
-    issues.push('previews must be true or false')
-  }
+  if (typeof s.previews !== 'boolean') issues.push('previews must be true or false')
   if (s.seedMode !== 'random' && s.seedMode !== 'fixed') {
     issues.push('seedMode must be "random" or "fixed"')
   }
@@ -346,41 +341,29 @@ export function validateSettings(input: unknown): ValidationResult {
     issues.push(`seed must be an integer from 0 to ${MAX_SEED}`)
   }
 
-  if (s.limits !== undefined && typeof s.limits !== 'boolean') {
-    issues.push('limits must be true or false')
-  }
-  if (s.callLog !== undefined && typeof s.callLog !== 'boolean') {
-    issues.push('callLog must be true or false')
-  }
-  if (s.music !== undefined && typeof s.music !== 'boolean') {
-    issues.push('music must be true or false')
-  }
-  if (s.musicBehaviour !== undefined && !MUSIC_BEHAVIOURS.includes(s.musicBehaviour as never)) {
+  if (typeof s.limits !== 'boolean') issues.push('limits must be true or false')
+  if (typeof s.callLog !== 'boolean') issues.push('callLog must be true or false')
+  if (typeof s.music !== 'boolean') issues.push('music must be true or false')
+  if (!MUSIC_BEHAVIOURS.includes(s.musicBehaviour as never)) {
     issues.push(`musicBehaviour must be one of: ${MUSIC_BEHAVIOURS.join(', ')}`)
   }
-  if (s.musicTaste !== undefined && typeof s.musicTaste !== 'string') {
-    issues.push('musicTaste must be text')
-  }
-  if (s.sessionsFolder !== undefined) {
-    if (typeof s.sessionsFolder !== 'string') issues.push('sessionsFolder must be a string')
-    else if (s.sessionsFolder.trim() && !isAbsolute(s.sessionsFolder.trim())) {
-      issues.push('sessionsFolder must be a full path, like /Users/you/Sessions, or empty')
-    }
+  if (typeof s.musicTaste !== 'string') issues.push('musicTaste must be text')
+  if (typeof s.sessionsFolder !== 'string') issues.push('sessionsFolder must be a string')
+  else if (s.sessionsFolder.trim() && !isAbsolute(s.sessionsFolder.trim())) {
+    issues.push('sessionsFolder must be a full path, like /Users/you/Sessions, or empty')
   }
   const features = s.features as Record<string, unknown> | undefined
   if (
-    features !== undefined &&
-    (typeof features !== 'object' || features === null ||
-      Object.entries(features).some(([k, v]) =>
-        !FEATURES.includes(k as Feature) || typeof v !== 'boolean'
-      ))
+    typeof features !== 'object' || features === null ||
+    !FEATURES.every((f) => typeof features[f] === 'boolean') ||
+    Object.keys(features).some((k) => !FEATURES.includes(k as Feature))
   ) {
     issues.push(`features must map ${FEATURES.join(', ')} to true or false`)
   }
-  if (s.upscaler !== undefined && !UPSCALERS.some((u) => u.id === s.upscaler)) {
+  if (!UPSCALERS.some((u) => u.id === s.upscaler)) {
     issues.push(`upscaler must be one of: ${UPSCALERS.map((u) => u.id).join(', ')}`)
   }
-  if (s.editModel !== undefined && !EDIT_MODELS.some((m) => m.id === s.editModel)) {
+  if (!EDIT_MODELS.some((m) => m.id === s.editModel)) {
     issues.push(`editModel must be one of: ${EDIT_MODELS.map((m) => m.id).join(', ')}`)
   }
 
@@ -396,7 +379,7 @@ export function validateSettings(input: unknown): ValidationResult {
   ) {
     issues.push('musicOn must be a ComfyUI on the Machines tab')
   }
-  if (s.videoModel !== undefined && !findComfyVideoModel(s.videoModel as string)) {
+  if (!findComfyVideoModel(s.videoModel as string)) {
     issues.push(`videoModel must be one of: ${COMFYUI_VIDEO_MODELS.map((m) => m.id).join(', ')}`)
   }
 
@@ -418,38 +401,30 @@ export function validateSettings(input: unknown): ValidationResult {
       backends: listed.map(({ id, kind, address }) => ({ id, kind, address: address.trim() })),
       runOn: Object.fromEntries(WORKS.map((w) => [w, runOn![w]])) as Record<Work, string>,
       textModel: s.textModel as string,
-      thinking: (s.thinking as boolean | undefined) ?? false,
+      thinking: s.thinking as boolean,
       imageModel: s.imageModel as string,
       steps: s.steps as number,
       size: s.size as string,
       quantize: s.quantize as Quantize,
-      stepCache: s.stepCache === undefined ? DEFAULT_SETTINGS.stepCache : s.stepCache as StepCache,
-      float16: s.float16 === undefined || s.float16 === true
-        ? DEFAULT_SETTINGS.float16
-        : s.float16 === false
-        ? 'off'
-        : s.float16 as Float16,
-      previews: (s.previews as boolean | undefined) ?? DEFAULT_SETTINGS.previews,
+      stepCache: s.stepCache as StepCache,
+      float16: s.float16 as Float16,
+      previews: s.previews as boolean,
       seedMode: s.seedMode as SeedMode,
       seed: s.seed as number,
-      upscaler: (s.upscaler as Upscaler | undefined) ?? DEFAULT_SETTINGS.upscaler,
-      editModel: (s.editModel as EditModel | undefined) ?? DEFAULT_SETTINGS.editModel,
-      editQuantize: s.editQuantize === undefined
-        ? DEFAULT_SETTINGS.editQuantize
-        : s.editQuantize as Quantize,
-      videoModel: (s.videoModel as string | undefined) ?? DEFAULT_SETTINGS.videoModel,
+      upscaler: s.upscaler as Upscaler,
+      editModel: s.editModel as EditModel,
+      editQuantize: s.editQuantize as Quantize,
+      videoModel: s.videoModel as string,
       ...(sizes !== undefined && { videoSizes: sizes as Record<string, ClipSize> }),
       ...(s.videoOn !== undefined && { videoOn: s.videoOn as string }),
       ...(s.musicOn !== undefined && { musicOn: s.musicOn as string }),
-      // One not mentioned (an older file, or a Feature added since) is on.
-      features: { ...DEFAULT_SETTINGS.features, ...(features as Record<Feature, boolean>) },
-      limits: (s.limits as boolean | undefined) ?? true,
-      callLog: (s.callLog as boolean | undefined) ?? false,
-      music: (s.music as boolean | undefined) ?? false,
-      musicBehaviour: (s.musicBehaviour as MusicBehaviour | undefined) ??
-        DEFAULT_SETTINGS.musicBehaviour,
-      musicTaste: ((s.musicTaste as string | undefined) ?? '').trim(),
-      sessionsFolder: ((s.sessionsFolder as string | undefined) ?? '').trim(),
+      features: features as Record<Feature, boolean>,
+      limits: s.limits as boolean,
+      callLog: s.callLog as boolean,
+      music: s.music as boolean,
+      musicBehaviour: s.musicBehaviour as MusicBehaviour,
+      musicTaste: (s.musicTaste as string).trim(),
+      sessionsFolder: (s.sessionsFolder as string).trim(),
     },
   }
 }
@@ -464,9 +439,6 @@ export interface SettingsStore {
   loadApiKey(backend: string): Promise<string>
   saveApiKey(backend: string, key: string): Promise<void>
 }
-
-/** Fields of a settings file from before the Backends list (ADR 0022), converted by hand. */
-const BEFORE_BACKENDS = ['textBackend', 'textBaseUrl', 'imageBaseUrl', 'textApiKey']
 
 /** The API keys a settings file holds, by Backend id. */
 function apiKeysOf(raw: Record<string, unknown>): Record<string, string> {
@@ -523,13 +495,6 @@ export function fileSettingsStore(
       } catch {
         console.warn(`Ignoring unreadable settings file ${path}; using defaults`)
         return { ...defaults }
-      }
-      const old = BEFORE_BACKENDS.filter((key) => key in (parsed as object))
-      if (old.length) {
-        console.warn(
-          `${path} is from before the Backends list (ADR 0022): ${old.join(', ')} are ignored. ` +
-            'Add them in Settings, as Backends.',
-        )
       }
       const merged = { ...defaults, ...(parsed as object) } as Record<string, unknown>
       // An Image Model since removed from the app falls back to the default, with its steps, rather

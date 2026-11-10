@@ -25,11 +25,11 @@ const hasWords = (cue: Cue) => !!cue.values?.caption
 
 /** The Frames of the Cues still waiting for a track, to queue their `music` jobs. */
 export const cuesWaiting = (session: RoleplaySession): number[] =>
-  (session.cues ?? []).filter((c) => hasWords(c) && !c.track).map((c) => c.start)
+  session.cues.filter((c) => hasWords(c) && !c.track).map((c) => c.start)
 
 /** Why Frame `index` of `session` can't have a track made, or null if it can. */
 export function musicRefusal(session: RoleplaySession, index: number): string | null {
-  const cue = session.cues?.find((c) => c.start === index)
+  const cue = session.cues.find((c) => c.start === index)
   if (!cue?.values) return `No music begins on ${frameName(index)}`
   if (!hasWords(cue)) {
     return `This Cue is from before the music model had words: direct ${frameName(index)} again`
@@ -42,7 +42,7 @@ export function musicRefusal(session: RoleplaySession, index: number): string | 
  * Session makes its tracks one at a time, so none is being written.
  */
 async function removeUnused(dir: string, session: RoleplaySession) {
-  const used = new Set((session.cues ?? []).flatMap((c) => c.track ? [c.track.file] : []))
+  const used = new Set(session.cues.flatMap((c) => c.track ? [c.track.file] : []))
   for await (const { name } of Deno.readDir(dir)) {
     if (name.startsWith('music-') && !used.has(name)) {
       await Deno.remove(join(dir, name)).catch(() => {})
@@ -65,7 +65,7 @@ export async function makeCueTrack(
   left?: ComfyTraces,
 ): Promise<void> {
   if (!deps.music) throw new Error('Music is not set up on this server')
-  const cue = session.cues?.find((c) => c.start === index)
+  const cue = session.cues.find((c) => c.start === index)
   if (!cue?.values) return
   const refused = musicRefusal(session, index)
   if (refused) throw new Error(refused)
@@ -111,7 +111,7 @@ export async function makeCueTrack(
     }
     const updated = await updateSession(deps.store, session.id, (latest) => ({
       ...latest,
-      cues: latest.cues?.map((c) => c.id === cue.id ? { ...c, track } : c),
+      cues: latest.cues.map((c) => c.id === cue.id ? { ...c, track } : c),
     }))
     await removeUnused(dir, updated)
     emit({ type: 'music' })

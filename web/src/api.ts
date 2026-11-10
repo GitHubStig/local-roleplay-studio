@@ -614,7 +614,9 @@ export interface ChainFrame extends PicturedFrame {
   outcome: Outcome
   /** The Text Model's reasoning, when thinking was on. */
   thinking?: string
-  timings?: FrameTimings
+  timings: FrameTimings
+  /** The Text Model that wrote it, as a Session can switch (ADR 0037). */
+  textModel: string
   createdAt: string
 }
 
@@ -637,6 +639,8 @@ export interface StoryboardFrame extends PicturedFrame {
   /** It crosses a Limit and can't be rendered until edited. */
   blocked?: string
   timings?: FrameTimings
+  /** The Text Model that wrote its sentences, as a Session can switch (ADR 0037); none until written. */
+  textModel?: string
   createdAt: string
 }
 
@@ -797,6 +801,13 @@ export const getSession = (id: string) => request<Session>(`/api/sessions/${id}`
  */
 export const setImageModel = <S>(id: string, imageModel: string, imageBackend?: ImageBackend) =>
   put<S>(`/api/sessions/${id}/image-model`, { imageModel, imageBackend })
+
+/**
+ * Switches a Session's Text Model, by name (ADR 0037); its Thinking stays as it started. What's
+ * being written finishes on the old one, as do jobs queued before.
+ */
+export const setTextModel = <S>(id: string, textModel: string) =>
+  put<S>(`/api/sessions/${id}/text-model`, { textModel })
 
 /** Chooses the image that shows a Session on Home, or with null goes back to the newest picture. */
 export const setThumbnail = (id: string, image: string | null) =>

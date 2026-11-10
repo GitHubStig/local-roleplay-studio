@@ -7,6 +7,7 @@ import {
   type QueueStore,
   type SavedQueue,
   SessionJobs,
+  textChoiceOf,
 } from './jobs.ts'
 import type { ComfyTraces } from './comfyui/traces.ts'
 import type { Session } from './session.ts'
@@ -151,6 +152,31 @@ Deno.test('A render runs with the Image Model it was queued with', () => {
     { imageModel: 'krea-2', steps: 20, seed: 7 } as unknown as Session['settings'],
   )
   assertEquals(asQueued(session, { kind: 'upscale' } as Job), session)
+})
+
+Deno.test('A job that asks the Text Model keeps the one queued with; a render keeps none', () => {
+  const { jobs } = heldJobs()
+  const session = {
+    settings: { textModel: 'gemma4:26b', thinking: true, imageModel: 'krea-2', steps: 20 },
+  } as unknown as Session
+  const text = textChoiceOf(session)
+  jobs.enqueue('s', 'picture', 0, 'here', undefined, undefined, undefined, text)
+  jobs.enqueue('s', 'render', 0, 'here', KREA, undefined, undefined, text)
+  const [picture, render] = jobs.list('s')
+  assertEquals([picture.text, render.text], [
+    { textModel: 'gemma4:26b', thinking: true },
+    undefined,
+  ])
+
+  // Switched since: the picture still runs by the model it was queued with.
+  const switched = {
+    settings: { ...session.settings, textModel: 'qwen3.8:27b', thinking: false },
+  } as unknown as Session
+  assertEquals(
+    asQueued(switched, picture).settings,
+    session.settings,
+  )
+  assertEquals(asQueued(switched, render).settings, switched.settings)
 })
 
 Deno.test('Clips of different kinds on a Frame are separate jobs; the same kind is one', () => {

@@ -34,6 +34,8 @@ function chain(captions: string[], models: string[]): ChainSession {
       action: index ? narration : null,
       narration,
       outcome: 'done' as const,
+      timings: { text: 1 },
+      textModel: 'scripted',
       prompt: promptWith(`pose ${index}`),
       pictures: models.map((imageModel) => ({
         image: `frame-${index}-${imageModel}.png`,

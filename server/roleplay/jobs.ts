@@ -40,7 +40,7 @@ export function checkRoleplayJob(
   index: number,
   pending: readonly JobKind[],
 ): Response | null {
-  if (kind === 'steer' && !session.cues?.some((c) => c.start === index && c.values && c.steer)) {
+  if (kind === 'steer' && !session.cues.some((c) => c.start === index && c.values && c.steer)) {
     return error(`Nothing to steer on ${frameName(index)}`, 409)
   }
   if (kind === 'music') {

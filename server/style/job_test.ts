@@ -19,6 +19,8 @@ const session = (frames: number): Session => ({
     action: null,
     narration: `Style ${index}`,
     outcome: 'done' as const,
+    timings: { text: 1 },
+    textModel: 'scripted',
     prompt: promptWith('standing'),
     pictures: [{ image: `frame-${index}-1a2b3c4d.png`, imageModel: 'qwen-image-2.1' }],
     createdAt: '2026-10-14T00:00:00.000Z',

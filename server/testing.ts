@@ -107,6 +107,7 @@ export function scriptedTextModel(
     return item instanceof Error ? Promise.reject(item) : Promise.resolve(item)
   }
   const model = {
+    name: 'scripted',
     calls: 0,
     /** Each Chain Frame asked for, in order. */
     requests: [] as FrameRequest[],

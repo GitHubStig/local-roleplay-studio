@@ -123,6 +123,7 @@ export async function runChainFrame(
     ...(thinking ? { thinking } : {}),
     pictures: [],
     timings,
+    textModel: deps.textModel.name,
     createdAt: new Date().toISOString(),
   }
   // Onto the Chain as it is now: a job may have upscaled or made 3D of a picture meanwhile.

@@ -46,11 +46,12 @@ import ClipOverlay from '../components/ClipOverlay.vue'
 import { clipCount, clipsMaking, scrollToClips, usePlayingClip } from '../clips'
 import FrameListItem from '../components/FrameListItem.vue'
 import ImageModelPicker from '../components/ImageModelPicker.vue'
+import TextModelPicker from '../components/TextModelPicker.vue'
 import ModelComparison from '../components/ModelComparison.vue'
 import RenderAllButton from '../components/RenderAllButton.vue'
 import PanelTabs from '../components/PanelTabs.vue'
 import RestartButton from '../components/RestartButton.vue'
-import { useImageModels } from '../composables/useSettingsOptions'
+import { useImageModels, writtenPart } from '../composables/useSettingsOptions'
 import { useFeatures } from '../composables/useFeatures'
 import { useJobs } from '../composables/useJobs'
 import { useJobLink } from '../composables/useJobLink'
@@ -106,7 +107,7 @@ interface Work {
   detached?: boolean
 }
 const work = ref<Work | null>(null)
-const { session, loadError, draft, busy, load, leave, cancel, onImageModel, onClipsModel, pictureOf, changed } =
+const { session, loadError, draft, busy, load, leave, cancel, onSwitched, onClipsModel, pictureOf, changed } =
   useSessionScreen(props.id, 'storyboard', {
     work,
     // A new Storyboard is planned.
@@ -570,9 +571,10 @@ const waitingToWrite = (f: { index: number }) =>
 const { renderedParts, jobName } = useImageModels()
 /** Writing the Frame, then rendering the picture it shows, once it has one, and by which model. */
 const timingsLabel = (f: StoryboardFrame) => {
-  if (!f.timings) return ''
+  // Both are written with its sentences; none before.
+  if (!f.timings || !f.textModel) return ''
   const picture = pictureOf(f)
-  return [`Text ${f.timings.text.toFixed(1)} s`, ...(picture ? renderedParts(picture) : [])]
+  return [writtenPart({ timings: f.timings, textModel: f.textModel }), ...(picture ? renderedParts(picture) : [])]
     .join(' · ')
 }
 
@@ -626,22 +628,29 @@ const imagesOn = computed(() => featureOn.value('images'))
 
     <template v-else-if="session">
       <main class="flex min-w-0 flex-1 flex-col gap-3 p-4">
-        <div v-if="featureOn('images')" class="flex items-center justify-end gap-4 text-sm">
-          <ImageModelPicker
+        <div class="flex flex-wrap items-center justify-end gap-x-4 gap-y-1 text-sm">
+          <TextModelPicker
             :session="session"
-            @switched="onImageModel"
+            @switched="onSwitched"
             @failed="(text) => (message = { kind: 'error', text })"
           />
-          <ModelComparison
-            :session-id="session.id"
-            :frames="session.frames"
-            :image-model="session.settings.imageModel"
-            :thumbnail="session.thumbnail"
-            :name="frameTitle"
-            :caption="(f) => f.beat"
-            @changed="load(); refreshJobs()"
-            one-style
-          />
+          <template v-if="featureOn('images')">
+            <ImageModelPicker
+              :session="session"
+              @switched="onSwitched"
+              @failed="(text) => (message = { kind: 'error', text })"
+            />
+            <ModelComparison
+              :session-id="session.id"
+              :frames="session.frames"
+              :image-model="session.settings.imageModel"
+              :thumbnail="session.thumbnail"
+              :name="frameTitle"
+              :caption="(f) => f.beat"
+              @changed="load(); refreshJobs()"
+              one-style
+            />
+          </template>
         </div>
         <FrameImage
           :src="picture ? imageUrl(session.id, picture.upscaled ?? picture.image) : null"

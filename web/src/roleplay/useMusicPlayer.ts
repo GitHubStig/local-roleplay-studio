@@ -17,7 +17,7 @@ export function musicAt(
   session: Pick<RoleplaySession, 'cues'> | null | undefined,
   frame: Pick<RoleplayFrame, 'music'> | null | undefined,
 ): { file: string | null; entry: Cue['entry'] } | undefined {
-  const cue = frame?.music && session?.cues?.find((c) => c.id === frame.music!.cue)
+  const cue = frame?.music && session?.cues.find((c) => c.id === frame.music!.cue)
   if (!cue) return undefined
   if (!cue.values) return { file: null, entry: cue.entry }
   return cue.track ? { file: cue.track.file, entry: cue.entry } : undefined

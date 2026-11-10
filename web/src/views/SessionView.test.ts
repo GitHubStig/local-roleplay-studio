@@ -48,6 +48,8 @@ const frame = (
   prompt: promptFor(index),
   narration: `Narration ${index}.`,
   outcome: 'done',
+  timings: { text: 1 },
+  textModel: 'x',
   pictures: [picture(`frame-${index}.png`)],
   createdAt: '2026-09-24T00:00:00.000Z',
   ...extra,
@@ -382,19 +384,13 @@ describe('SessionView', () => {
     const { wrapper } = await mountIt()
     await wrapper.findAll('[role=tab]')[1].trigger('click')
     // Not rendered yet.
-    expect(wrapper.find('[data-timings]').text()).toBe('Text 3.0 s')
+    expect(wrapper.find('[data-timings]').text()).toBe('Text 3.0 s by x')
     await wrapper.findAll('[role=tab]')[0].trigger('click')
     await wrapper.findAll('aside [data-frame]')[0].trigger('click')
     await wrapper.findAll('[role=tab]')[1].trigger('click')
     expect(wrapper.find('[data-timings]').text()).toBe(
-      'Text 9.8 s · Waited 12.3 s · Image 5.1 s · by Qwen-Image 2.1',
+      'Text 9.8 s by x · Waited 12.3 s · Image 5.1 s · by Qwen-Image 2.1',
     )
-  })
-
-  it('shows no timings for Frames saved before they were recorded', async () => {
-    const { wrapper } = await mountIt()
-    await wrapper.findAll('[role=tab]')[1].trigger('click')
-    expect(wrapper.find('[data-timings]').exists()).toBe(false)
   })
 
   it('shows Frames and Prompt together on wide windows, as tabs on narrow ones', async () => {
@@ -626,7 +622,7 @@ describe('SessionView', () => {
     expect((select.element as HTMLSelectElement).value).toBe('comfyui/qwen-image-2.1')
     // Its picture says where it was made.
     expect(wrapper.find('[data-changed]').exists()).toBe(false)
-    expect(wrapper.text()).toContain('Text 3.0 s · by Qwen-Image 2.1 · mflux')
+    expect(wrapper.text()).toContain('Text 3.0 s by x · by Qwen-Image 2.1 · mflux')
 
     // Picked on mflux, the Session keeps that kind; the same model's picture stays up to date.
     vi.mocked(api.setImageModel).mockResolvedValue({

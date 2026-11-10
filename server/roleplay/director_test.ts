@@ -53,6 +53,8 @@ const session = (extra: Partial<RoleplaySession> = {}): RoleplaySession => ({
   seed: 1,
   createdAt: '2026-11-06T00:00:00.000Z',
   cast: testCast,
+  look: null,
+  cues: [],
   score: testScore(),
   frames: [
     {
@@ -60,9 +62,19 @@ const session = (extra: Partial<RoleplaySession> = {}): RoleplaySession => ({
       message: null,
       reply: replyOf('You are late.', { internal: 'He looks like trouble.' }),
       pictures: [],
+      timings: { text: 1 },
+      textModel: 'scripted',
       createdAt: '',
     },
-    { index: 1, message: 'Sorry.', reply: replyOf('Take the wheel.'), pictures: [], createdAt: '' },
+    {
+      index: 1,
+      message: 'Sorry.',
+      reply: replyOf('Take the wheel.'),
+      pictures: [],
+      timings: { text: 1 },
+      textModel: 'scripted',
+      createdAt: '',
+    },
   ],
   ...extra,
 })

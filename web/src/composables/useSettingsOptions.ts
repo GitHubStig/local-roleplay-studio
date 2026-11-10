@@ -33,6 +33,13 @@ export function useSettingsOptions() {
   return options
 }
 
+/**
+ * "Text 9.8 s by gemma4:26b": how long writing a Frame took, and by which Text Model (a Session can
+ * switch: ADR 0037).
+ */
+export const writtenPart = (frame: { timings: { text: number }; textModel: string }) =>
+  `Text ${frame.timings.text.toFixed(1)} s by ${frame.textModel}`
+
 /** Each Image backend's models, by name. */
 export function useImageModels() {
   const options = useSettingsOptions()

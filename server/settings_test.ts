@@ -143,38 +143,38 @@ Deno.test('A Session keeps only its models, and renders with them and the rest a
   assertEquals(renderSettings(session, now), { ...now, imageModel: 'flux2-klein-4b', steps: 4 })
 })
 
-Deno.test('validateSettings fills in what an older file lacks, keeps what it may be, refuses the rest', () => {
-  // Each field: what it comes to when missing, a value it may take, and one it may not.
-  const fields: [keyof typeof DEFAULT_SETTINGS, unknown, unknown, unknown][] = [
-    ['thinking', false, true, 'yes'],
-    ['upscaler', 'seedvr2-7b', 'seedvr2-3b', 'esrgan'],
-    ['limits', true, false, 'no'],
-    ['stepCache', 0.4, null, 0.9],
-    ['editQuantize', 8, null, 6],
-    ['float16', 'auto', 'on', 'yes'],
-    ['previews', true, false, 'yes'],
-    ['sessionsFolder', '', '/Users/me/Sessions', 'Sessions'],
-    ['music', false, true, 'yes'],
-    ['musicBehaviour', 'story', 'cinematic', 'loud'],
-    ['musicTaste', '', 'Orchestral.', 3],
+Deno.test('validateSettings needs every field, keeps what it may be, refuses the rest', () => {
+  // Each field: a value it may take, and one it may not.
+  const fields: [keyof typeof DEFAULT_SETTINGS, unknown, unknown][] = [
+    ['thinking', true, 'yes'],
+    ['upscaler', 'seedvr2-3b', 'esrgan'],
+    ['limits', false, 'no'],
+    ['stepCache', null, 0.9],
+    ['editQuantize', null, 6],
+    ['float16', 'on', true],
+    ['previews', false, 'yes'],
+    ['sessionsFolder', '/Users/me/Sessions', 'Sessions'],
+    ['music', true, 'yes'],
+    ['musicBehaviour', 'cinematic', 'loud'],
+    ['musicTaste', 'Orchestral.', 3],
+    ['features', { ...DEFAULT_SETTINGS.features, video: false }, { images: true }],
   ]
-  for (const [field, missing, valid, invalid] of fields) {
-    const { [field]: _, ...older } = DEFAULT_SETTINGS
-    const filled = validateSettings(older)
-    assertEquals(filled.ok && filled.settings[field], missing, `${field} when missing`)
+  for (const [field, valid, invalid] of fields) {
+    const { [field]: _, ...missing } = DEFAULT_SETTINGS
+    assertEquals(validateSettings(missing).ok, false, `${field} when missing`)
     const kept = validateSettings({ ...DEFAULT_SETTINGS, [field]: valid })
-    assertEquals(kept.ok && kept.settings[field], valid, `${field} = ${valid}`)
+    assertEquals(kept.ok && kept.settings[field], valid, `${field} = ${JSON.stringify(valid)}`)
     assertEquals(
       validateSettings({ ...DEFAULT_SETTINGS, [field]: invalid }).ok,
       false,
-      `${field} = ${invalid}`,
+      `${field} = ${JSON.stringify(invalid)}`,
     )
   }
 })
 
-Deno.test('validateSettings drops Fast from a file made before turbos were Image Models', () => {
-  const older = validateSettings({ ...DEFAULT_SETTINGS, fast: true })
-  assertEquals(older.ok && 'fast' in older.settings, false)
+Deno.test('validateSettings keeps only the fields Settings have', () => {
+  const result = validateSettings({ ...DEFAULT_SETTINGS, fast: true })
+  assertEquals(result.ok && 'fast' in result.settings, false)
 })
 
 Deno.test('validateSettings checks the Backends, and always lists this machine', () => {
@@ -219,37 +219,6 @@ Deno.test('Where mflux and the voice service cannot run, Settings default to a C
   assertEquals([pc.editModel, pc.imageModel], ['qwen-image-2.1-edit', 'qwen-image-2.1'])
   assertEquals(validateSettings(pc).ok, true)
   assertEquals(machineDefaults({ mflux: true, voiceService: true }), DEFAULT_SETTINGS)
-})
-
-Deno.test('A file from before the Backends list loads with the defaults for them', () =>
-  withTempDir(async (dir) => {
-    const path = join(dir, 'settings.json')
-    const { backends: _b, runOn: _r, ...rest } = DEFAULT_SETTINGS
-    await Deno.writeTextFile(
-      path,
-      JSON.stringify({ ...rest, textModel: 'llama3:latest', imageBaseUrl: 'http://pc:8188' }),
-    )
-    const warn = console.warn
-    const warned: string[] = []
-    console.warn = (message: string) => warned.push(message)
-    try {
-      const loaded = await fileSettingsStore(path).load()
-      assertEquals(loaded, { ...DEFAULT_SETTINGS, textModel: 'llama3:latest' })
-    } finally {
-      console.warn = warn
-    }
-    // The address is left for the player to add as a Backend, and the log says so.
-    assertEquals(warned.length, 1)
-    assertEquals(warned[0].includes('imageBaseUrl are ignored'), true)
-  }))
-
-Deno.test("validateSettings reads an older file's float16 true as Automatic and false as off", () => {
-  const float16 = (value: unknown) => {
-    const result = validateSettings({ ...DEFAULT_SETTINGS, float16: value })
-    return result.ok && result.settings.float16
-  }
-  assertEquals(float16(true), 'auto')
-  assertEquals(float16(false), 'off')
 })
 
 Deno.test('Clips may name a ComfyUI to go to, one on the Machines tab', () => {

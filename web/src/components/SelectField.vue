@@ -6,7 +6,8 @@ import Icon from './Icon.vue'
  * A dropdown, its options as its slot. The browser's own caret sits hard against the right edge
  * and can't be moved, so it's hidden and the chevron icon drawn in its place, in from the edge, in
  * the colour of the text around it. It looks like a form's field (`.field`) unless given a `class`
- * of its own; `compact` is for a small one in a line of text, its caret closer in. Attributes
+ * of its own; `compact` is for a small one in a line of text, its caret closer in, as wide as
+ * the option picked. Attributes
  * (`class`, `data-*`, `disabled`, `title`) go to the `<select>` itself.
  */
 defineOptions({ inheritAttrs: false })
@@ -23,8 +24,9 @@ const attrs = useAttrs()
       :class="[
         attrs.class ?? 'field',
         'min-w-0 cursor-pointer appearance-none disabled:cursor-default',
-        // A form's field fills its column; a compact one sizes to its longest option.
-        compact ? '!pr-6' : 'w-full !pr-9',
+        // A form's field fills its column; a compact one sizes to the option picked, where the
+        // browser can (`field-sizing`), else to its longest.
+        compact ? '!pr-6 [field-sizing:content]' : 'w-full !pr-9',
       ]"
     >
       <slot />

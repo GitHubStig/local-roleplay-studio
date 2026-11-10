@@ -35,6 +35,8 @@ const newSession = (): RoleplaySession => ({
   seed: 1,
   createdAt: '2026-09-27T00:00:00.000Z',
   cast: null,
+  look: null,
+  cues: [],
   frames: [],
 })
 

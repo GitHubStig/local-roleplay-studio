@@ -28,12 +28,16 @@ const roleplay = (): RoleplaySession => ({
   seed: 100,
   createdAt: '2026-10-01T00:00:00.000Z',
   cast: testCast,
+  look: null,
+  cues: [],
   frames: [
     {
       index: 0,
       message: null,
       reply: replyOf('*Hold* the wheel.'),
       pictures: [],
+      timings: { text: 1 },
+      textModel: 'scripted',
       createdAt: '2026-10-01T00:00:00.000Z',
     },
     {
@@ -41,6 +45,8 @@ const roleplay = (): RoleplaySession => ({
       message: 'I wait.',
       reply: replyOf('...'),
       pictures: [],
+      timings: { text: 1 },
+      textModel: 'scripted',
       createdAt: '2026-10-01T00:00:00.000Z',
     },
   ],

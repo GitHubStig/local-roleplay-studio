@@ -81,6 +81,7 @@ function makeFrame(
     prompt,
     pictures: frame.pictures,
     ...(timings ? { timings } : {}),
+    ...(frame.textModel ? { textModel: frame.textModel } : {}),
     ...(blocked ? { blocked } : {}),
     createdAt: frame.createdAt,
   }
@@ -218,9 +219,12 @@ export async function writeStoryboard(
         emit,
       ))
     signal.throwIfAborted()
-    const frame = makeFrame(look, latest.frames[index], body, latest.frames[index].shown, {
-      text: secondsSince(start),
-    })
+    const frame = {
+      ...makeFrame(look, latest.frames[index], body, latest.frames[index].shown, {
+        text: secondsSince(start),
+      }),
+      textModel: deps.textModel.name,
+    }
     latest = await updateSession(deps.store, session.id, 'storyboard', (s) => ({
       ...s,
       frames: s.frames.map((f) => f.index === index ? frame : f),
@@ -518,7 +522,11 @@ export async function editFrameByAction(
     ...latest,
     frames: latest.frames.map((f) =>
       f.index === index
-        ? { ...recompose(f, look, edit.body, edit.shown), timings: { text: secondsSince(start) } }
+        ? {
+          ...recompose(f, look, edit.body, edit.shown),
+          timings: { text: secondsSince(start) },
+          textModel: deps.textModel.name,
+        }
         : f
     ),
   }))

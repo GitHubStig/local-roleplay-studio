@@ -226,9 +226,27 @@ function sessionOf(): RoleplaySession {
     seed: 1,
     createdAt: '',
     cast: testCast,
+    look: null,
+    cues: [],
     frames: [
-      { index: 0, message: null, reply: replyOf(lines[0]), pictures: [], createdAt: '' },
-      { index: 1, message: 'Sorry.', reply: replyOf(lines[1]), pictures: [], createdAt: '' },
+      {
+        index: 0,
+        message: null,
+        reply: replyOf(lines[0]),
+        pictures: [],
+        timings: { text: 1 },
+        textModel: 'scripted',
+        createdAt: '',
+      },
+      {
+        index: 1,
+        message: 'Sorry.',
+        reply: replyOf(lines[1]),
+        pictures: [],
+        timings: { text: 1 },
+        textModel: 'scripted',
+        createdAt: '',
+      },
     ],
   }
 }

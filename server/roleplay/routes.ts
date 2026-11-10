@@ -253,13 +253,13 @@ export function roleplayRoutes(ctx: RoleplayRouteContext): Route[] {
         const steer = typeof body?.steer === 'string' ? body.steer.trim() : ''
         const refused = steerRefusal(steer)
         if (refused) return error(refused, 400)
-        if (!session.cues?.some((c) => c.id === p.cue && c.values)) {
+        if (!session.cues.some((c) => c.id === p.cue && c.values)) {
           return error('No such Cue', 404)
         }
         return json(
           await updateSession(ctx.store, session.id, (latest) => ({
             ...latest,
-            cues: latest.cues?.map((c) => c.id === p.cue ? { ...c, steer } : c),
+            cues: latest.cues.map((c) => c.id === p.cue ? { ...c, steer } : c),
           })),
         )
       })],

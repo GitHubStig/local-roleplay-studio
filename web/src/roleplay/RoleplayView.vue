@@ -19,6 +19,7 @@ import { clipCount, clipsMaking, scrollToClips, usePlayingClip } from '../clips'
 import FrameListItem from '../components/FrameListItem.vue'
 import Icon from '../components/Icon.vue'
 import ImageModelPicker from '../components/ImageModelPicker.vue'
+import TextModelPicker from '../components/TextModelPicker.vue'
 import ModelComparison from '../components/ModelComparison.vue'
 import { useImageModels } from '../composables/useSettingsOptions'
 import UndirectedNote from './UndirectedNote.vue'
@@ -80,7 +81,7 @@ interface Pending {
   detached?: boolean
 }
 const pending = ref<Pending | null>(null)
-const { session, loadError, draft, busy, leave, cancel, onImageModel, onClipsModel, pictureOf, changed } =
+const { session, loadError, draft, busy, leave, cancel, onSwitched, onClipsModel, pictureOf, changed } =
   useSessionScreen(props.id, 'roleplay', {
     work: pending,
     // A new Roleplay has its Cast written.
@@ -367,7 +368,7 @@ const scoringAll = computed(() => hasJob(0, 'score-roleplay'))
 async function scoreAll() {
   const what = 'Score the whole Roleplay with hindsight? Its Cues, and how each Frame\'s music ' +
     'was directed, are replaced.'
-  if (session.value?.cues?.length && !(await ask(what, { action: 'Score', danger: true }))) return
+  if (session.value?.cues.length && !(await ask(what, { action: 'Score', danger: true }))) return
   await queueSaved('score-roleplay', 0)
 }
 
@@ -393,7 +394,7 @@ const music = useMusicPlayer({
   frame: computed(() => selectedFrame.value ?? session.value?.frames.at(-1)),
   speaking: computed(() => playing.value !== null),
 })
-const hasTracks = computed(() => !!session.value?.cues?.some((c) => c.track))
+const hasTracks = computed(() => !!session.value?.cues.some((c) => c.track))
 /** A clip playing over its Frame's picture, from the Frame tab's Clip section. */
 const playingClip = usePlayingClip(() => selectedIndex.value, () => session.value?.settings.imageModel)
 /** Plays a clip over Frame `index`'s picture, scrolled into view: it starts once it's seen. */
@@ -845,10 +846,15 @@ const lookSavingText = computed(() =>
               <input v-model="autoplay" type="checkbox" data-autoplay />
               Speak replies
             </label>
+            <TextModelPicker
+              :session="session"
+              @switched="onSwitched"
+              @failed="(text) => (notice = { kind: 'error', text })"
+            />
             <template v-if="featureOn('images')">
               <ImageModelPicker
                 :session="session"
-                @switched="onImageModel"
+                @switched="onSwitched"
                 @failed="(text) => (notice = { kind: 'error', text })"
               />
               <ModelComparison
@@ -1252,6 +1258,9 @@ const lookSavingText = computed(() =>
               <div class="flex flex-col gap-2">
                 <h3 class="text-base font-semibold">{{ frameName(selectedFrame.index) }}</h3>
                 <!-- Under the heading, as on a Chain's and a Storyboard's, whether the prompt is folded. -->
+                <p class="text-xs text-muted" data-reply-timings>
+                  Replied in {{ selectedFrame.timings.text.toFixed(1) }} s by {{ selectedFrame.textModel }}
+                </p>
                 <p v-if="selectedFrame.prompt && selectedFrame.pictureTimings" class="text-xs text-muted" data-picture-timings>
                   Pictured in {{ selectedFrame.pictureTimings.text.toFixed(1) }} s<template
                     v-if="selectedFrame.pictureModel"

@@ -130,6 +130,9 @@ export async function chainFromStoryboard(
         pictures: samePicture(prompt, f.prompt)
           ? pictures
           : pictures.map((p) => ({ ...p, stale: true })),
+        // Written (its body is checked above), so it has both.
+        timings: f.timings!,
+        textModel: f.textModel!,
         createdAt: chain.createdAt,
       }
     },

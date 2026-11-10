@@ -149,6 +149,12 @@ export interface Job {
    */
   image?: ImageChoice
   /**
+   * A job that asks the Text Model (`TEXT_JOBS`): its Text Model and Thinking, as its Session had
+   * them when queued, so it runs by them where it was queued to (`machine`), whatever the Session
+   * switches to meanwhile (ADR 0037).
+   */
+  text?: TextChoiceKept
+  /**
    * The kind of backend its render runs on, once it starts: for the page, "by Krea 2 · mflux", and
    * whether there's a picture forming to show (ComfyUI's previews).
    */
@@ -185,6 +191,26 @@ export interface QueueStore {
   save(queue: SavedQueue): Promise<void>
 }
 
+/** The jobs that ask the Text Model, which keep the one their Session had when queued (`Job.text`). */
+export const TEXT_JOBS: readonly JobKind[] = [
+  'picture',
+  'direct',
+  'score-roleplay',
+  'steer',
+  'voice',
+  'speak',
+  'speak-thought',
+]
+
+/** The Session settings that say which Text Model writes, and whether it thinks. */
+export type TextChoiceKept = Pick<SessionSettings, 'textModel' | 'thinking'>
+
+/** The Text Model a job of `session` queued now keeps (`Job.text`). */
+export const textChoiceOf = ({ settings }: Session): TextChoiceKept => ({
+  textModel: settings.textModel,
+  thinking: settings.thinking,
+})
+
 /** The Session settings that say which Image Model renders, and where it would rather. */
 export type ImageChoice = Pick<SessionSettings, 'imageModel' | 'steps' | 'imageBackend'>
 
@@ -204,12 +230,16 @@ export const imageChoiceOf = ({ settings }: Session): ImageChoice => ({
   ...(settings.imageBackend && { imageBackend: settings.imageBackend }),
 })
 
-/** `session` as `job` renders it: with the Image Model it was queued with, if it's a render. */
+/**
+ * `session` as `job` runs it: with the Image Model it was queued with, if it's a render or a clip,
+ * and the Text Model, if it asks one.
+ */
 export function asQueued<S extends Session>(session: S, job: Job): S {
-  if (!job.image) return session
+  if (!job.image && !job.text) return session
   // The kind it would rather run on is the queued render's too, if it had one.
-  const { imageBackend: _, ...settings } = session.settings
-  return { ...session, settings: { ...settings, ...job.image } }
+  const { imageBackend: _, ...rest } = session.settings
+  const settings = job.image ? { ...rest, ...job.image } : session.settings
+  return { ...session, settings: { ...settings, ...job.text } }
 }
 
 /** The kinds of job that work on the picture their Frame shows when they run, recording no model. */
@@ -462,7 +492,8 @@ export class SessionJobs {
    * Roleplay Frame's Image Prompt) goes ahead of queued image jobs: a new Reply's is written while
    * its Text Model is still loaded, not after a batch of renders that each unload it. `machine` is
    * where it runs (`machineKey`), `image` a render's Image Model (`Job.image`), `edit` an
-   * edit's order and `clip` a clip's.
+   * edit's order and `clip` a clip's; `text` the Session's Text Model, kept by a job of a kind that
+   * asks it (`TEXT_JOBS`).
    */
   enqueue(
     sessionId: string,
@@ -472,6 +503,7 @@ export class SessionJobs {
     image?: ImageChoice,
     edit?: EditOrder,
     clip?: ClipOrder,
+    text?: TextChoiceKept,
   ): Job {
     const jobs = this.#jobs.get(sessionId) ?? []
     const same = jobs.find((j) => sameWork(j, kind, frameIndex, image, clip) && isOpen(j))
@@ -486,6 +518,7 @@ export class SessionJobs {
       ...(image && { image }),
       ...(edit && { edit }),
       ...(clip && { clip }),
+      ...(text && TEXT_JOBS.includes(kind) && { text }),
     }
     const ahead = kind === 'picture'
       ? jobs.findIndex((j) => j.status === 'queued' && IMAGE_JOBS.includes(j.kind))
@@ -883,6 +916,7 @@ export function jobRoutes(ctx: JobRoutesContext): Route[] {
           : undefined,
         edit,
         clip,
+        textChoiceOf(session),
       )
       return json(ctx.jobs.list(session.id), 201)
     }],

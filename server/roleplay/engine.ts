@@ -166,6 +166,7 @@ async function commit(
       ...(outcome ? { outcome } : {}),
       ...(thinking ? { thinking } : {}),
       timings: { text: secondsSince(start) },
+      textModel: deps.roleplayModel.name,
       pictures: [],
       createdAt: new Date().toISOString(),
     }

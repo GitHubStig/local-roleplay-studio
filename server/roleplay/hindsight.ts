@@ -254,7 +254,7 @@ export async function scoreRoleplay(
     if (!latest.frames.length) throw new GoneError(`${frameName(0)} no longer exists`)
     // Cues directed on Frames after those read, while the pass ran, stay; those on Frames undone
     // meanwhile go.
-    const later = (latest.cues ?? []).filter((c) => c.start >= count)
+    const later = latest.cues.filter((c) => c.start >= count)
     const all = [...cues, ...later].filter((c) => c.start < latest.frames.length)
     const ids = new Set(all.map((c) => c.id))
     const last = cues.findLast((c) => ids.has(c.id))!.id

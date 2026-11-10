@@ -93,6 +93,7 @@ import {
   type QueueStore,
   SESSION_JOBS,
   SessionJobs,
+  textChoiceOf,
 } from './jobs.ts'
 import { logCalls, logCallsUnder } from './calls.ts'
 import {
@@ -412,7 +413,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
   const textChoice = (
     session: Session,
     model = session.settings.textModel,
-    thinking = session.settings.thinking ?? false,
+    thinking = session.settings.thinking,
   ): TextChoice => ({
     model,
     thinking,
@@ -792,12 +793,13 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
         // The music is directed first, while the Text Model is loaded for the picture too.
         const direct = after.direct && (await deps.settings.load()).music &&
           await machine('direct')
+        const text = textChoiceOf(session)
+        const queue = (kind: JobKind, index: number, machine: string) =>
+          jobs.enqueue(session.id, kind, index, machine, undefined, undefined, undefined, text)
         return (frame) => {
-          if (direct) jobs.enqueue(session.id, 'direct', frame.index, direct)
-          if (speak && spokenText(frame, 'dialogue')) {
-            jobs.enqueue(session.id, 'speak', frame.index, speak)
-          }
-          if (picture) jobs.enqueue(session.id, 'picture', frame.index, picture)
+          if (direct) queue('direct', frame.index, direct)
+          if (speak && spokenText(frame, 'dialogue')) queue('speak', frame.index, speak)
+          if (picture) queue('picture', frame.index, picture)
           if (render) {
             jobs.enqueue(session.id, 'render', frame.index, render, imageChoiceOf(session))
           }
@@ -1195,7 +1197,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       const session: Session = kind === 'chain'
         ? { ...base, kind, frames: [] }
         : kind === 'roleplay'
-        ? { ...base, kind, cast: null, frames: [] }
+        ? { ...base, kind, cast: null, look: null, cues: [], frames: [] }
         : { ...base, kind, frameCount, look: null, frames: [] }
       await deps.sessions.save(session)
       return json(session, 201)
@@ -1290,6 +1292,29 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
         if (err instanceof ImageModelError) return error(err.message, 400)
         throw err
       }
+    }],
+
+    // Switches the Session's Text Model: `{ textModel }`, by name (ADR 0037). Its Thinking stays as it
+    // started. What's writing now finishes on the old one, as do jobs queued before (`Job.text`).
+    ['PUT', new URLPattern({ pathname: '/api/sessions/:id/text-model' }), async (req, p) => {
+      const body = await readJson(req) as { textModel?: unknown } | undefined
+      if (typeof body?.textModel !== 'string' || !body.textModel.trim()) {
+        return error('textModel must be a model name', 400)
+      }
+      const session = await deps.sessions.load(p.id!)
+      if (!session) return error('Session not found', 404)
+      const textModel = body.textModel.trim()
+      return json(
+        await updateSession(
+          deps.sessions,
+          session.id,
+          session.kind,
+          (latest: Session) =>
+            latest.settings.textModel === textModel
+              ? latest
+              : { ...latest, settings: { ...latest.settings, textModel } } as Session,
+        ),
+      )
     }],
 
     // Chooses the image that shows the Session on Home, and sends the Session back.

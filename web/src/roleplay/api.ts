@@ -46,10 +46,10 @@ export interface Cast {
   character: Character
   persona: Persona
   setting: Setting
-  /** What holds whatever anyone does; none in a Cast from before them. */
-  truths?: string[]
-  /** The story's other People, a line each, who may act and speak briefly; none in a Cast from before them. */
-  others?: string[]
+  /** What holds whatever anyone does. */
+  truths: string[]
+  /** The story's other People, a line each, who may act and speak briefly; none in a story of two. */
+  others: string[]
 }
 
 /** The Character's reply: a thought, what they do, what they say. */
@@ -65,7 +65,9 @@ export interface RoleplayFrame {
   message: string | null
   reply: Reply
   thinking?: string
-  timings?: { text: number }
+  timings: { text: number }
+  /** The Text Model that wrote the Reply, as a Session can switch (ADR 0037). */
+  textModel: string
   /** Once pictured: the picture's seven sentences and its Image Prompt, not yet rendered. */
   body?: string
   prompt?: string
@@ -175,7 +177,7 @@ export interface RoleplaySession extends Omit<SessionBase, 'activity'> {
    * Each person's identity and the art style, shared by every picture: written from the Cast when
    * one is first pictured, joined by anyone the story brings into a picture.
    */
-  look?: Look | null
+  look: Look | null
   lookTimings?: { text: number }
   lookThinking?: string
   voice?: RoleplayVoice
@@ -185,7 +187,7 @@ export interface RoleplaySession extends Omit<SessionBase, 'activity'> {
   scoreModel?: string
   scoreThinking?: string
   /** The music's Cues, in the order of the Frames they began on. */
-  cues?: Cue[]
+  cues: Cue[]
   /** The last time the whole Roleplay was scored with hindsight. */
   hindsight?: { model: string; chunks: number; courses: string[]; timings: { text: number } }
   /** As for any Session, or speaking a line (audio). */

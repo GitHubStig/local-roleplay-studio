@@ -36,6 +36,8 @@ export interface FrameRequest {
 }
 
 export interface TextModel {
+  /** The model's name, as its Backend lists it: recorded on what it writes. */
+  readonly name: string
   /** `onThinking` receives the model's reasoning as it streams in, when thinking is on. */
   write(
     req: FrameRequest,
@@ -723,6 +725,7 @@ export function chatTextModel(chat: Chat, opts: TextModelOptions = {}): TextMode
 
   const answerLimit = () => chat.thinks ? limits.thinking : limits.answer
   return {
+    name: chat.model,
     write: (req, signal, onThinking) =>
       within(signal, answerLimit(), (s) => write(req, s, onThinking)),
     planStoryboard: (req, signal, on) =>

@@ -15,13 +15,13 @@ export const REPLY_FIELDS = ['internal', 'actions', 'dialogue'] as const
 export const roleplaySystem = async (cast: Cast): Promise<string> =>
   loadPrompt('roleplay/character', {
     ...cast,
-    truths: cast.truths?.length
+    truths: cast.truths.length
       ? await loadPrompt('roleplay/truths', {
         ...cast,
         list: cast.truths.map((t) => `- ${t}`).join('\n'),
       })
       : '',
-    others: cast.others?.length
+    others: cast.others.length
       ? await loadPrompt('roleplay/others', {
         ...cast,
         list: cast.others.map((o) => `- ${o}`).join('\n'),

@@ -35,6 +35,8 @@ const session = (extra: Partial<roleplay.RoleplaySession> = {}): roleplay.Rolepl
   seed: 1,
   createdAt: '2026-11-06T00:00:00.000Z',
   cast: {} as roleplay.Cast,
+  look: null,
+  cues: [],
   frames: [],
   ...extra,
 })
@@ -139,6 +141,8 @@ describe('MusicTab', () => {
       index,
       message: index ? 'Hi.' : null,
       reply: { internal: '', actions: '', dialogue: '' },
+      timings: { text: 1 },
+      textModel: 'x',
       pictures: [],
       createdAt: '',
       music: m,
@@ -331,6 +335,8 @@ describe('MusicTab', () => {
       index: 1,
       message: 'Hi.',
       reply: { internal: '', actions: '', dialogue: '' },
+      timings: { text: 1 },
+      textModel: 'x',
       pictures: [],
       createdAt: '',
       music: {

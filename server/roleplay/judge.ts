@@ -31,7 +31,7 @@ export async function judgeMessages(
   message: string,
 ): Promise<ChatMessage[] | null> {
   const cast = session.cast
-  if (!cast?.truths?.length) return null
+  if (!cast?.truths.length) return null
   const last = session.frames.at(-1)?.reply
   return [
     {
@@ -39,7 +39,7 @@ export async function judgeMessages(
       content: await loadPrompt('roleplay/judge', {
         ...cast,
         truths: cast.truths.map((t) => `- ${t}`).join('\n'),
-        others: cast.others?.length
+        others: cast.others.length
           ? await loadPrompt('roleplay/judge-others', {
             list: cast.others.map((o) => `- ${o}`).join('\n'),
           })
