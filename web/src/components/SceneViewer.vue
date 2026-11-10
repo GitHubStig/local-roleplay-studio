@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onClickOutside } from '@vueuse/core'
 import { onBeforeUnmount, ref, useTemplateRef, watch } from 'vue'
+import { useCloseOnLeave } from '../composables/useCloseOnLeave'
 
 /**
  * A full-window look at a picture made into a 2.5D scene (Gaussian splats from SHARP: it turns a
@@ -27,6 +28,7 @@ const props = defineProps<{
 const emit = defineEmits<{ close: [] }>()
 
 const dialog = useTemplateRef<HTMLDialogElement>('dialog')
+useCloseOnLeave(dialog)
 const stage = useTemplateRef<HTMLDivElement>('stage')
 const canvas = useTemplateRef<HTMLCanvasElement>('canvas')
 const controlsBar = useTemplateRef<HTMLElement>('controlsBar')

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onClickOutside, useEventListener, useSwipe } from '@vueuse/core'
 import { useTemplateRef, watch } from 'vue'
+import { useCloseOnLeave } from '../composables/useCloseOnLeave'
 import FrameImage from './FrameImage.vue'
 import Icon from './Icon.vue'
 
@@ -54,6 +55,7 @@ function onCancel(e: Event) {
   emit('stopPainting')
 }
 const dialog = useTemplateRef<HTMLDialogElement>('dialog')
+useCloseOnLeave(dialog)
 
 /** Asks for the image that way, if there is one. */
 type Way = 'previous' | 'next' | 'up' | 'down'

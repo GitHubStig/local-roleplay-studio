@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue'
 import { type Clip, CLIP_KIND_NAMES, type ClipKind, imageUrl } from '../api'
 import { clipsByKind, clock, madeIn, useVideoModels, waitedFor } from '../clips'
 import Icon from './Icon.vue'
+import { useCloseOnLeave } from '../composables/useCloseOnLeave'
 
 /**
  * A picture's clips of one kind side by side, one per video model, played in step: one Play, one
@@ -23,6 +24,7 @@ const emit = defineEmits<{ close: [] }>()
 
 const { labelOf, silent, soundOf, inModelOrder } = useVideoModels()
 const dialog = useTemplateRef<HTMLDialogElement>('dialog')
+useCloseOnLeave(dialog)
 const videos = useTemplateRef<HTMLVideoElement[]>('videos')
 
 /** The kinds with clips by two or more models, to compare. */

@@ -1,5 +1,6 @@
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { defineComponent, h, KeepAlive, ref } from 'vue'
 import {
   deleteModelPictures,
   exportComparison,
@@ -60,6 +61,30 @@ describe('ModelComparison', () => {
     await flushPromises()
     expect(two.find('[data-export]').exists()).toBe(true)
     expect(two.find('[data-show-style-scores]').exists()).toBe(true)
+  })
+
+  it('closes when its screen is left, so it is not inline over the screen on coming back', async () => {
+    const shown = ref(true)
+    const Screen = defineComponent({
+      name: 'RoleplayView',
+      setup: () => () => h(ModelComparison, { sessionId: 's1', frames, imageModel: 'b' }),
+    })
+    const wrapper = mount(
+      defineComponent(() => () => h(KeepAlive, null, [shown.value ? h(Screen) : h('p', 'Home')])),
+      { attachTo: document.body },
+    )
+    await wrapper.find('[data-compare-models]').trigger('click')
+    await flushPromises()
+    const dialog = document.querySelector<HTMLDialogElement>('[data-model-comparison]')!
+    expect(dialog.open).toBe(true)
+
+    shown.value = false
+    await flushPromises()
+    expect(dialog.open).toBe(false)
+    shown.value = true
+    await flushPromises()
+    expect(dialog.open).toBe(false)
+    expect(wrapper.find('[data-compare-row]').exists()).toBe(false)
   })
 
   it('stars what Home shows: the newest picture, outlined, until one is chosen', async () => {

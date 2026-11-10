@@ -19,6 +19,7 @@ import type { ComparisonModel, ComparisonPicture } from '../comparison'
 import { useStoredString } from '../composables/storage'
 import { useStoredFlag } from '../composables/useStoredFlag'
 import { useStyleBase } from '../composables/useStyleBase'
+import { useCloseOnLeave } from '../composables/useCloseOnLeave'
 import type { ExportedStyles } from '../styleScores'
 import { useImageModels } from '../composables/useSettingsOptions'
 import ComparisonTable from './ComparisonTable.vue'
@@ -231,6 +232,7 @@ const styleBaseName = computed(() =>
  * how many of them have an upscale or 3D made from them, which go too.
  */
 const deleting = useTemplateRef<HTMLDialogElement>('deleting')
+useCloseOnLeave(dialog, asking, deleting)
 const doomed = ref<
   {
     model: string
