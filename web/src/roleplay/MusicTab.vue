@@ -3,6 +3,7 @@ import { useElementSize } from '@vueuse/core'
 import { computed, ref, useTemplateRef, watch } from 'vue'
 import { frameName } from '../frameName'
 import { type SaveLine, useAutosave } from '../composables/useAutosave'
+import { useStoredFlag } from '../composables/useStoredFlag'
 import { cueRows } from './cueRows'
 import CollapsibleTextarea from '../components/CollapsibleTextarea.vue'
 import ItemList from '../components/ItemList.vue'
@@ -205,6 +206,8 @@ const flush = async () => (await music.flush()) && (await score.flush())
 const writing = ref(false)
 const thinking = ref('')
 const failed = ref<string | null>(null)
+/** The Score collapsed to its heading and genre, remembered in this browser. */
+const scoreCollapsed = useStoredFlag('collapsed:roleplay.music.score')
 
 function onEvent(event: RoleplayEvent) {
   if (event.type === 'thinking') thinking.value = (event.restart ? '' : thinking.value) + event.text
@@ -220,6 +223,8 @@ async function write() {
     return
   }
   writing.value = true
+  // Opened, to show the reasoning as it's written, and why it failed if it does.
+  scoreCollapsed.value = false
   thinking.value = ''
   try {
     await writeScore(props.session.id, onEvent)
@@ -447,96 +452,108 @@ defineExpose({ flush })
     </section>
 
     <!-- Its border sweeps while the Score is written, or written again. -->
-    <section class="flex flex-col gap-3 border-b border-line p-4" :class="{ 'render-sweep': writing }" data-score>
-      <div class="flex items-baseline gap-1.5">
-        <h2 class="shrink-0 text-base font-semibold">Score</h2>
-        <span class="min-w-0 truncate text-muted">· the sound every Cue shares</span>
-        <button
-          type="button"
-          class="action ml-auto shrink-0"
-          :disabled="writing || disabled || !session.cast"
-          data-write-score
-          @click="write"
-        >
-          {{ session.score ? 'Write again' : 'Write the Score' }}
-        </button>
-      </div>
-      <p v-if="session.score && session.scoreTimings" class="text-xs text-muted" data-score-timings>
-        Written in {{ session.scoreTimings.text.toFixed(1) }} s<template v-if="session.scoreModel">
-          by {{ session.scoreModel }}</template>
-      </p>
-      <p v-if="failed" class="text-danger" role="alert">{{ failed }}</p>
-      <p v-if="writing" class="animate-pulse text-muted">Writing the Score…</p>
-      <p v-else-if="!scoreDraft" class="text-muted">
-        No Score yet. It's written from the Cast, the Brief, the Scenario's Music and the taste
-        below, when you ask, or once the music follows the story.
-      </p>
-
-      <form
-        v-if="scoreDraft"
-        class="flex flex-col gap-3"
-        data-score-form
-        @submit.prevent="score.flush"
-        @focusout="score.onFocusout"
+    <section class="border-b border-line p-4" :class="{ 'render-sweep': writing }" data-score>
+      <details
+        class="group/score"
+        :open="!scoreCollapsed"
+        data-collapsible="roleplay.music.score"
+        @toggle="scoreCollapsed = !($event.target as HTMLDetailsElement).open"
       >
-        <label class="flex flex-col gap-1 text-xs text-muted">
-          Genre
-          <input v-model="scoreDraft.genre" class="field text-sm" :disabled="writing" data-score-genre />
-        </label>
-        <ItemList
-          v-model="scoreDraft.palette"
-          label="Instruments"
-          noun="instrument"
-          :disabled="writing"
-          data-score-palette
-          @removed="score.flush"
-        />
-        <CollapsibleTextarea
-          id="roleplay.music.atmosphere"
-          v-model="scoreDraft.atmosphere"
-          label="Atmosphere"
-          :disabled="writing"
-        />
-        <fieldset class="flex items-center gap-2 text-xs text-muted" data-score-tempo>
-          <legend class="mb-1">Tempo, in beats per minute</legend>
-          <input
-            v-model.number="scoreDraft.tempo.slowest"
-            type="number"
-            :min="TEMPO.slowest"
-            :max="TEMPO.fastest"
-            class="field w-20 text-sm"
-            aria-label="Slowest"
-            :disabled="writing"
-          />
-          to
-          <input
-            v-model.number="scoreDraft.tempo.fastest"
-            type="number"
-            :min="TEMPO.slowest"
-            :max="TEMPO.fastest"
-            class="field w-20 text-sm"
-            aria-label="Fastest"
-            :disabled="writing"
-          />
-        </fieldset>
-        <ItemList
-          v-model="scoreDraft.avoid"
-          label="Avoid (never sent to the music model)"
-          noun="thing to avoid"
-          :disabled="writing"
-          data-score-avoid
-          @removed="score.flush"
-        />
-        <SaveStatus
-          :status="score.status.value"
-          :can-revert="score.canRevert.value"
-          :disabled="writing"
-          @revert="score.revert"
-        />
-      </form>
-      <details v-if="writing ? thinking : session.scoreThinking" class="text-xs text-muted">
-        <summary class="cursor-pointer select-none">Reasoning</summary>
-        <p class="mt-1 whitespace-pre-wrap leading-relaxed">{{ writing ? thinking : session.scoreThinking }}</p>
+        <summary class="flex cursor-pointer select-none items-baseline gap-1.5 hover:text-fg">
+          <span class="shrink-0 text-muted transition-transform group-open/score:rotate-90">›</span>
+          <h2 class="shrink-0 text-base font-semibold">Score</h2>
+          <span class="min-w-0 truncate text-muted">
+            · {{ scoreCollapsed && session.score ? session.score.genre : 'the sound every Cue shares' }}
+          </span>
+          <button
+            type="button"
+            class="action ml-auto shrink-0"
+            :disabled="writing || disabled || !session.cast"
+            data-write-score
+            @click="write"
+          >
+            {{ session.score ? 'Write again' : 'Write the Score' }}
+          </button>
+        </summary>
+        <div class="mt-3 flex flex-col gap-3">
+          <p v-if="session.score && session.scoreTimings" class="text-xs text-muted" data-score-timings>
+            Written in {{ session.scoreTimings.text.toFixed(1) }} s<template v-if="session.scoreModel">
+              by {{ session.scoreModel }}</template>
+          </p>
+          <p v-if="failed" class="text-danger" role="alert">{{ failed }}</p>
+          <p v-if="writing" class="animate-pulse text-muted">Writing the Score…</p>
+          <p v-else-if="!scoreDraft" class="text-muted">
+            No Score yet. It's written from the Cast, the Brief, the Scenario's Music and the taste
+            below, when you ask, or once the music follows the story.
+          </p>
+
+          <form
+            v-if="scoreDraft"
+            class="flex flex-col gap-3"
+            data-score-form
+            @submit.prevent="score.flush"
+            @focusout="score.onFocusout"
+          >
+            <label class="flex flex-col gap-1 text-xs text-muted">
+              Genre
+              <input v-model="scoreDraft.genre" class="field text-sm" :disabled="writing" data-score-genre />
+            </label>
+            <ItemList
+              v-model="scoreDraft.palette"
+              label="Instruments"
+              noun="instrument"
+              :disabled="writing"
+              data-score-palette
+              @removed="score.flush"
+            />
+            <CollapsibleTextarea
+              id="roleplay.music.atmosphere"
+              v-model="scoreDraft.atmosphere"
+              label="Atmosphere"
+              :disabled="writing"
+            />
+            <fieldset class="flex items-center gap-2 text-xs text-muted" data-score-tempo>
+              <legend class="mb-1">Tempo, in beats per minute</legend>
+              <input
+                v-model.number="scoreDraft.tempo.slowest"
+                type="number"
+                :min="TEMPO.slowest"
+                :max="TEMPO.fastest"
+                class="field w-20 text-sm"
+                aria-label="Slowest"
+                :disabled="writing"
+              />
+              to
+              <input
+                v-model.number="scoreDraft.tempo.fastest"
+                type="number"
+                :min="TEMPO.slowest"
+                :max="TEMPO.fastest"
+                class="field w-20 text-sm"
+                aria-label="Fastest"
+                :disabled="writing"
+              />
+            </fieldset>
+            <ItemList
+              v-model="scoreDraft.avoid"
+              label="Avoid (never sent to the music model)"
+              noun="thing to avoid"
+              :disabled="writing"
+              data-score-avoid
+              @removed="score.flush"
+            />
+            <SaveStatus
+              :status="score.status.value"
+              :can-revert="score.canRevert.value"
+              :disabled="writing"
+              @revert="score.revert"
+            />
+          </form>
+          <details v-if="writing ? thinking : session.scoreThinking" class="text-xs text-muted">
+            <summary class="cursor-pointer select-none">Reasoning</summary>
+            <p class="mt-1 whitespace-pre-wrap leading-relaxed">{{ writing ? thinking : session.scoreThinking }}</p>
+          </details>
+        </div>
       </details>
     </section>
 

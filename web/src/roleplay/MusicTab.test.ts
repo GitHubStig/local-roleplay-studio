@@ -49,6 +49,7 @@ beforeEach(() => {
   vi.mocked(roleplay.writeScore).mockReset()
   vi.mocked(roleplay.saveScore).mockReset()
   vi.mocked(roleplay.saveMusicSettings).mockReset()
+  localStorage.clear()
 })
 enableAutoUnmount(afterEach)
 
@@ -70,6 +71,20 @@ describe('MusicTab', () => {
     expect(wrapper.find('[data-write-score]').text()).toBe('Write again')
     expect(wrapper.find('[data-score-timings]').text()).toBe('Written in 2.5 s by gemma')
     expect((wrapper.find('[data-score-genre]').element as HTMLInputElement).value).toBe('dark folk')
+  })
+
+  it('collapses the Score to its genre, and opens it to write it again', async () => {
+    localStorage.setItem('collapsed:roleplay.music.score', '1')
+    vi.mocked(roleplay.writeScore).mockResolvedValue()
+    const wrapper = mountIt(session({ score }))
+    const details = () =>
+      wrapper.find<HTMLDetailsElement>('[data-collapsible="roleplay.music.score"]').element
+    expect(details().open).toBe(false)
+    expect(wrapper.find('[data-score] summary').text()).toContain('dark folk')
+    await wrapper.find('[data-write-score]').trigger('click')
+    await flushPromises()
+    expect(details().open).toBe(true)
+    expect(localStorage.getItem('collapsed:roleplay.music.score')).toBeNull()
   })
 
   it('saves an edited Score when the focus leaves it, trimmed', async () => {
