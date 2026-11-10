@@ -1,4 +1,4 @@
-import type { Backend } from '../backends.ts'
+import type { Backend } from '../../shared/backends.ts'
 import { editJob, type HeavyJob } from '../machine.ts'
 import type { ImageGenerator } from './imageGenerator.ts'
 

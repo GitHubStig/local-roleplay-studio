@@ -11,11 +11,12 @@ import { type FrameDeps, upscaleFrame } from './frames.ts'
 import { error } from './http.ts'
 import type { Upscaler } from './images/upscalers.ts'
 import type { Job, JobEmit } from './jobs.ts'
-import type { JobKind } from './jobKinds.ts'
+import type { JobKind } from '../shared/jobKinds.ts'
 import type { Session } from './session.ts'
 import { shownVersionOf } from './pictures.ts'
 import { makeClip } from './video/makeClip.ts'
-import type { ClipSize, VideoGenerator } from './video/videoGenerator.ts'
+import type { VideoGenerator } from './video/videoGenerator.ts'
+import type { ClipSize } from '../shared/clips.ts'
 
 export const PICTURE_JOB_KINDS: readonly JobKind[] = ['upscale', 'scene', 'figure', 'lito', 'clip']
 

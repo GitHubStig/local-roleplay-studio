@@ -1,7 +1,8 @@
 import { assertEquals } from '@std/assert'
-import { type Backend, HERE } from './backends.ts'
+import { HERE } from './backends.ts'
+import type { Backend } from '../shared/backends.ts'
 import type { EditModel } from './images/editModels.ts'
-import type { JobKind } from './jobKinds.ts'
+import type { JobKind } from '../shared/jobKinds.ts'
 import {
   backendOf,
   editJob,

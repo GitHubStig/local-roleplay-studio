@@ -1,16 +1,11 @@
 /** Settings' routes: reading and saving them, and what they can choose from. */
 import { error, json, readJson, type Route } from './http.ts'
 import { IMAGE_BACKENDS, imageModelsOf } from './images/imageModels.ts'
-import type { ComfyUses } from './comfyui/status.ts'
+import type { ComfyUses } from '../shared/comfyui.ts'
 import { UPSCALERS } from './images/upscalers.ts'
 import { COMFYUI_VIDEO_MODELS } from './video/comfyui/models.ts'
-import {
-  type Backend,
-  BACKEND_NAMES,
-  BACKEND_WORK,
-  type BackendKind,
-  imageKindOf,
-} from './backends.ts'
+import { imageKindOf } from './backends.ts'
+import { type Backend, BACKEND_NAMES, BACKEND_WORK, type BackendKind } from '../shared/backends.ts'
 import type { TextModelInfo } from './text/backend.ts'
 import { type Settings, SIZE_PRESETS, validateSettings } from './settings.ts'
 import { EDIT_MODELS, editModelsHere } from './images/editModels.ts'

@@ -3,7 +3,7 @@
  * parsers, shared by Storyboards and a Roleplay's Art Agent.
  */
 import { PROMPT_ORDER } from './imagePrompt.ts'
-import type { Look } from './session.ts'
+import type { Look } from '../shared/session.ts'
 
 /** The sentences a Storyboard Frame writes itself; the Look supplies the first and last. */
 export const BODY_ASPECTS = PROMPT_ORDER.slice(1, 8).map((p) => p.aspect)

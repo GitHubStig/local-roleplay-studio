@@ -3,7 +3,8 @@ import { limitsEnabled } from '../limits.ts'
 import { loadPrompt, type PromptValues } from '../promptFiles.ts'
 import { factsOf, type Scenario } from '../scenario.ts'
 import { excerpt } from '../session.ts'
-import type { Cast, Character, Persona, Reply, RoleplaySession, Setting } from './types.ts'
+import type { RoleplaySession } from './types.ts'
+import type { Cast, Character, Persona, Reply, Setting } from '../../shared/roleplay.ts'
 import { Refusal } from '../refusal.ts'
 
 /** The reply's fields, in the order the model writes them: think, then act, then speak. */

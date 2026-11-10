@@ -1,70 +1,58 @@
 import type { RoleplaySession } from './roleplay/api'
 import type { ComparisonModel, ComparisonRow } from './comparison'
 import type { ExportedStyles, StyleScores } from './styleScores'
+export {
+  type Backend,
+  BACKEND_NAMES,
+  BACKEND_WORK,
+  type BackendKind,
+  type Work,
+} from '../../shared/backends.ts'
+import { type Backend, type Work } from '../../shared/backends.ts'
+export { type ClipAsk, type ClipKind, type ClipOrder, type ClipSize } from '../../shared/clips.ts'
+import { type ClipAsk, type ClipKind, type ClipOrder, type ClipSize } from '../../shared/clips.ts'
+export { type ComfyUses } from '../../shared/comfyui.ts'
+import { type ComfyUses } from '../../shared/comfyui.ts'
+export { type Availability, type Feature, FEATURES } from '../../shared/features.ts'
+import { type Availability, type Feature } from '../../shared/features.ts'
+export { type ImageModelOption, type ImagePrompt } from '../../shared/images.ts'
+import { type ImageModelOption, type ImagePrompt } from '../../shared/images.ts'
+export { type JobKind } from '../../shared/jobKinds.ts'
+import { type JobKind } from '../../shared/jobKinds.ts'
+export {
+  type Person,
+  type ScenarioLoadError,
+  type ScenarioSummary,
+  type Suggestion,
+} from '../../shared/scenario.ts'
+import {
+  type Person,
+  type ScenarioLoadError,
+  type ScenarioSummary,
+  type Suggestion,
+} from '../../shared/scenario.ts'
+export {
+  type FrameTimings,
+  type Look,
+  type Outcome,
+  type SessionKind,
+  type Subject,
+} from '../../shared/session.ts'
+import {
+  type FrameTimings,
+  type Look,
+  type Outcome,
+  type SessionKind,
+} from '../../shared/session.ts'
+export { type SeedMode, type SizePreset } from '../../shared/settings.ts'
+import { type SeedMode, type SizePreset } from '../../shared/settings.ts'
+export { type Figure } from '../../shared/threeD.ts'
+import { type Figure } from '../../shared/threeD.ts'
 export interface Health {
   ok: boolean
 }
 
 export type Quantize = null | 4 | 8
-export type SeedMode = 'random' | 'fixed'
-
-/**
- * The extras beyond the Text Model, each with its own backend: pictures, voices, 3D (SHARP,
- * TripoSplat, LiTo), and the Compare dialog's style scores. One is on when this machine can run it
- * and Settings has it switched on.
- */
-export const FEATURES = [
-  'images',
-  'upscale',
-  'edits',
-  'voices',
-  'scenes',
-  'figures',
-  'lito',
-  'style',
-  'video',
-] as const
-export type Feature = (typeof FEATURES)[number]
-
-/** Whether this machine can run a Feature, and if not, why not. */
-export interface Availability {
-  available: boolean
-  reason?: string
-}
-
-/**
- * What a Backend is (ADR 0022): this machine's own programs, a ComfyUI, an Ollama, or a server
- * with the OpenAI chat API.
- */
-export type BackendKind = 'here' | 'comfyui' | 'ollama' | 'openai'
-
-export const BACKEND_NAMES: Record<BackendKind, string> = {
-  here: 'This machine',
-  comfyui: 'ComfyUI',
-  ollama: 'Ollama',
-  openai: 'OpenAI-compatible server',
-}
-
-/** One program that runs models, at an address. */
-export interface Backend {
-  /** Fixed once it's added, so what names it still does when its address changes. */
-  id: string
-  kind: BackendKind
-  /** Where it answers; '' for its kind's usual address on this machine, and for `here`. */
-  address: string
-}
-
-/** The kinds of work, each sent to a Backend of its own. */
-export type Work = 'text' | 'images' | 'upscale' | 'edits' | 'voices'
-
-/** The work each kind of Backend can do (this machine only what it can run). */
-export const BACKEND_WORK: Record<BackendKind, readonly Work[]> = {
-  here: ['images', 'upscale', 'edits', 'voices'],
-  comfyui: ['images', 'upscale', 'edits', 'voices'],
-  ollama: ['text'],
-  openai: ['text'],
-}
-
 export interface Settings {
   /** The Backends there are, this machine's among them, in the order a job tries them. */
   backends: Backend[]
@@ -127,27 +115,6 @@ export type ImageBackend = 'mflux' | 'comfyui'
 export const IMAGE_BACKEND_NAMES: Record<ImageBackend, string> = {
   mflux: 'mflux',
   comfyui: 'ComfyUI',
-}
-
-export interface ImageModelOption {
-  id: string
-  label: string
-  defaultSteps: number
-  /** Takes the step cache (mflux). */
-  stepCache: boolean
-  /** The only steps it renders at, when it has presets for them (mflux); any count otherwise. */
-  stepChoices?: number[]
-  /** Can be quantized to 8 or 4 bits as it loads (mflux). */
-  quantize: boolean
-  /** Takes float16 compute (mflux). */
-  float16: boolean
-}
-
-export interface SizePreset {
-  id: string
-  label: string
-  width: number
-  height: number
 }
 
 /** A Text backend's models, or why it couldn't list them. */
@@ -253,15 +220,6 @@ export const moveSessionsFolder = (path: string) =>
 
 export const getSettingsOptions = () => request<SettingsOptions>('/api/settings/options')
 
-/** What Settings would send a ComfyUI: the models and whether voices, any left out. */
-export interface ComfyUses {
-  imageModel?: string
-  upscaler?: string
-  voices?: boolean
-  videoModel?: string
-  music?: boolean
-}
-
 /**
  * Whether ComfyUI answers at an address, and has the files of what will run there: what's missing
  * by what it's missing for, so each tab shows only its own.
@@ -296,42 +254,12 @@ export const saveSettings = (settings: Settings) =>
     body: JSON.stringify(settings),
   })
 
-export interface ScenarioSummary {
-  id: string
-  title: string
-  description: string
-  /** In the player's `scenarios/`, so it can be deleted. */
-  own: boolean
-  /** When it was made and last saved (ISO), from the file or else its file's own dates. */
-  created?: string
-  modified?: string
-}
-
-export interface ScenarioLoadError {
-  file: string
-  message: string
-}
-
 export interface ScenarioList {
   scenarios: ScenarioSummary[]
   errors: ScenarioLoadError[]
 }
 
 export const getScenarios = () => request<ScenarioList>('/api/scenarios')
-
-/** Anyone the story treats as someone; '' or [] for what it leaves to the Text Model. */
-export interface Person {
-  /** Stays the same when they're renamed: what `player` and `character` name. */
-  id: string
-  name: string
-  looks: string
-  wears: string
-  personality: string
-  speaks: string
-  background: string
-  goal: string
-  truths: string[]
-}
 
 /** A Scenario, as the server's `scenario.ts` has it: what it states holds, the rest is left open. */
 export interface Scenario {
@@ -350,12 +278,6 @@ export interface Scenario {
   player?: string
   /** The id of the Person the Text Model plays in a Roleplay. */
   character?: string
-}
-
-/** A suggestion for a blank part, by its field (`place`, `truths`, `people.<id>.goal`). */
-export interface Suggestion {
-  field: string
-  text: string
 }
 
 export const getScenario = (id: string) => request<Scenario>(`/api/scenarios/${id}`)
@@ -398,21 +320,6 @@ export const expandScenario = (
   })
 
 /**
- * A Session's whole state at one Frame: one paragraph describing the image, written in this order:
- * subject and identity → pose and limbs → expression → camera angle and framing → clothing →
- * environment → lighting → color → art style and medium.
- */
-export type ImagePrompt = string
-
-/** How an Action was received; only `done` changes an Image Prompt. */
-export type Outcome = 'done' | 'declined' | 'unclear'
-
-/** Seconds writing the Frame took; each picture keeps its own render's. */
-export interface FrameTimings {
-  text: number
-}
-
-/**
  * A Frame's picture as a 2.5D scene of Gaussian splats, made with SHARP: it turns a little from the
  * picture's view, not all the way round.
  */
@@ -430,19 +337,6 @@ export interface Scene {
   timings: { queued?: number; scene: number }
 }
 
-/** The person in a Frame's picture lifted out as a full 3D figure (TripoSplat or LiTo). */
-export interface Figure {
-  /** `.ply` file, served like the pictures. */
-  file: string
-  splats: number
-  /** The picture it was made from: the upscale if there was one. */
-  from: string
-  timings: { queued?: number; figure: number }
-}
-
-/** The kinds of clip (ADR 0025): where the picture sits in the clip. */
-export type ClipKind = 'lead-in' | 'play-out' | 'idle-loop' | 'into-next'
-
 /** What each kind of clip is called (ADR 0025), in the order they're offered and listed. */
 export const CLIP_KIND_NAMES: Record<ClipKind, string> = {
   'lead-in': 'Lead In',
@@ -451,23 +345,8 @@ export const CLIP_KIND_NAMES: Record<ClipKind, string> = {
   'into-next': 'Into Next',
 }
 
-/** A clip's size: Small (~0.4 MP, faster) or Large (the model's trained size, ~0.9 MP). */
-export type ClipSize = 'small' | 'large'
-
 /** What each clip size is called, in the order they're offered. */
 export const CLIP_SIZE_NAMES: Record<ClipSize, string> = { small: 'Small', large: 'Large' }
-
-/**
- * What a clip is told: its kind, what happens, how many seconds, whether anyone may speak, and
- * the video model that makes it (Settings' default if none).
- */
-export interface ClipOrder {
-  kind: ClipKind
-  prompt: string
-  seconds: number
-  speech: boolean
-  model?: string
-}
 
 /** A clip made from a picture, one of each kind per video model. */
 export interface Clip extends ClipOrder {
@@ -644,25 +523,10 @@ export interface StoryboardFrame extends PicturedFrame {
   createdAt: string
 }
 
-/** One Subject of a Look (a person, creature, animal or object): Frames that show it use its identity. */
-export interface Subject {
-  name: string
-  identity: string
-}
-
 /** The most Subjects one Storyboard Frame's prompt describes (`MAX_SHOWN` on the server). */
 export const MAX_SHOWN = 3
 /** The most Frames a Storyboard has (`FRAME_COUNT.max` on the server). */
 export const MAX_FRAMES = 32
-
-/** The identities and art style Storyboard Frames share: each takes who it shows. */
-export interface Look {
-  subjects: Subject[]
-  style: string
-}
-
-/** A Chain makes each Frame from the previous one; a Storyboard plans all its Frames together. */
-export type SessionKind = 'chain' | 'storyboard' | 'roleplay'
 
 /** What each kind of Session is called on screen. */
 export const KIND_LABELS: Record<SessionKind, string> = {
@@ -1061,32 +925,6 @@ export const editStoryboardFrame = (
 
 // --- Background work, queued per Session: every kind's.
 
-/**
- * Background work on a Frame: picturing, rendering, upscaling or speaking it, making its picture
- * into a 2.5D scene (SHARP), or lifting its person out as a 3D figure (TripoSplat, LiTo); `voice`
- * designs a new take of the Character's voice, and `style` embeds the pictures for the style
- * scores (both filed under the opening Frame); `edit` repaints a picture as told; `direct` directs
- * a Roleplay Frame's music. A Chain has
- * `upscale`, `scene`, `figure`, `lito` and `edit`; a Storyboard `render` too; a Roleplay has them all.
- */
-export type JobKind =
-  | 'picture'
-  | 'render'
-  | 'upscale'
-  | 'voice'
-  | 'speak'
-  | 'speak-thought'
-  | 'scene'
-  | 'figure'
-  | 'lito'
-  | 'style'
-  | 'edit'
-  | 'clip'
-  | 'direct'
-  | 'score-roleplay'
-  | 'music'
-  | 'steer'
-
 /** A queued, running, failed or done job. Failed and done ones stay listed until dismissed. */
 export interface Job {
   id: string
@@ -1153,9 +991,6 @@ export const queueJob = (id: string, kind: JobKind, frameIndex: number) =>
 /** Queues a clip of a Frame's picture (`ClipOrder`); returns the queue. */
 export const queueClip = (id: string, frameIndex: number, clip: ClipOrder) =>
   post<Job[]>(`/api/sessions/${id}/jobs`, { kind: 'clip', frameIndex, clip })
-
-/** A clip as asked for, before its prompt is written. */
-export type ClipAsk = Omit<ClipOrder, 'prompt' | 'model'>
 
 /** A clip prompt being written: piece by piece as it comes, then the whole of it, tidied. */
 export type ClipPromptEvent =

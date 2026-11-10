@@ -11,6 +11,7 @@ import type { Session } from '../session.ts'
 import { pickedVersion } from '../pictures.ts'
 import { decodeVector, type Embeddings } from './embedder.ts'
 import { Refusal } from '../refusal.ts'
+import type { ModelStyleScores, StyleScores } from '../../shared/style.ts'
 
 /** A Session's embeddings so far: each picture's by file name, each caption's by its text. */
 export interface StyleCache {
@@ -97,38 +98,6 @@ export function unembedded(session: Session, cache: StyleCache | null) {
     ),
   ].filter((t) => !cache?.texts[t])
   return { images, texts }
-}
-
-/** One Image Model's scores. Distances are 1 − cosine similarity: 0 for the same, up to 2. */
-export interface ModelStyleScores {
-  model: string
-  /** The average distance between any two of its pictures: how far apart its styles are. */
-  spread: number
-  /** The average distance of its pictures from its picture of the base Frame. */
-  fromBase: number
-  /**
-   * How many distinct styles its pictures amount to (the Vendi score): 1 if they're all alike, up
-   * to the number of Frames if every one is its own.
-   */
-  styles: number
-  /**
-   * How often a picture is nearer its own Frame's caption than any other compared Frame's (CLIP),
-   * and how often among the nearest three; absent when the Frames have no captions to tell apart.
-   */
-  matches?: { first: number; topThree: number }
-  /** Per compared Frame: its picture's distance from the base Frame's (0 for the base). */
-  fromBaseByFrame: number[]
-  /** Per compared Frame: where its own caption ranks among the Frames' (1 is nearest). */
-  captionRank?: number[]
-}
-
-export interface StyleScores {
-  base: number
-  /** The Frames compared: those every compared model pictured, in order. */
-  frames: number[]
-  models: ModelStyleScores[]
-  /** Pictures and captions not embedded yet: scoring again would take them in. */
-  unembedded: number
 }
 
 export class StyleScoreError extends Refusal {}

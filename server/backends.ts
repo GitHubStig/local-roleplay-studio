@@ -8,39 +8,10 @@
 import { comfyBase } from './comfyui/client.ts'
 import type { ImageBackendKind } from './images/imageModels.ts'
 import { OLLAMA_URL } from './text/ollama/ollama.ts'
-
-export const BACKEND_KINDS = ['here', 'comfyui', 'ollama', 'openai'] as const
-export type BackendKind = (typeof BACKEND_KINDS)[number]
-
-export const BACKEND_NAMES: Record<BackendKind, string> = {
-  here: 'This machine',
-  comfyui: 'ComfyUI',
-  ollama: 'Ollama',
-  openai: 'OpenAI-compatible server',
-}
-
-export interface Backend {
-  /** Fixed once it's added, so what names it still does when its address changes. */
-  id: string
-  kind: BackendKind
-  /** Where it answers; '' for its kind's usual address on this machine, and for `here`. */
-  address: string
-}
+import type { Backend } from '../shared/backends.ts'
 
 /** This machine's own programs, always in the list. */
 export const HERE: Backend = { id: 'here', kind: 'here', address: '' }
-
-/** The kinds of work, each sent to a Backend of its own (`Settings.runOn`). */
-export const WORKS = ['text', 'images', 'upscale', 'edits', 'voices'] as const
-export type Work = (typeof WORKS)[number]
-
-/** The work each kind of Backend can do; `here` only what this machine can run (`features.ts`). */
-export const BACKEND_WORK: Record<BackendKind, readonly Work[]> = {
-  here: ['images', 'upscale', 'edits', 'voices'],
-  comfyui: ['images', 'upscale', 'edits', 'voices'],
-  ollama: ['text'],
-  openai: ['text'],
-}
 
 /** Which Image backend a Backend renders on: mflux here, or its ComfyUI. */
 export const imageKindOf = (backend: Backend): ImageBackendKind | undefined =>

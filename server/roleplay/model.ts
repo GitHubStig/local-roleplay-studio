@@ -10,11 +10,11 @@ import {
   REPLY_FIELDS,
   replySchema,
 } from './prompt.ts'
-import type { Cast, Reply, Score } from './types.ts'
+import type { Cast, Reply, Score } from '../../shared/roleplay.ts'
 import { cleanScore, scoreSchema } from './score.ts'
 import { directorSchema } from './director.ts'
 import { hindsightSchema } from './hindsight.ts'
-import type { Look, Subject } from '../session.ts'
+import type { Look, Subject } from '../../shared/session.ts'
 import { parseFrameBody } from '../frameBody.ts'
 import {
   artFrameSchema,

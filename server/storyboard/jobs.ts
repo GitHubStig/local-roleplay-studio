@@ -3,11 +3,10 @@
  * the picture jobs every kind of Session has (`pictureJobs.ts`), queued so the player can carry on
  * editing meanwhile.
  */
-import { frameName } from '../frames.ts'
-import type { FrameDeps } from '../frames.ts'
+import { type FrameDeps, frameName } from '../frames.ts'
 import { error } from '../http.ts'
 import type { Job, JobEmit } from '../jobs.ts'
-import type { JobKind } from '../jobKinds.ts'
+import type { JobKind } from '../../shared/jobKinds.ts'
 import {
   checkPictureJob,
   PICTURE_JOB_KINDS,

@@ -1,5 +1,6 @@
 import { COMFYUI_MODELS } from './comfyui/models.ts'
 import { MFLUX_MODELS } from './mflux/models.ts'
+import type { ImageModelOption } from '../../shared/images.ts'
 
 /**
  * Where pictures are made: mflux (Apple Silicon Macs) or a ComfyUI server (any machine; Windows
@@ -14,21 +15,6 @@ export const IMAGE_BACKEND_NAMES: Record<ImageBackendKind, string> = {
 }
 
 export { COMFYUI_URL } from '../comfyui/client.ts'
-
-/** An Image Model as Settings and the screens see it, whichever backend runs it. */
-export interface ImageModelOption {
-  id: string
-  label: string
-  defaultSteps: number
-  /** Takes the step cache (mflux). */
-  stepCache: boolean
-  /** The only steps it renders at, when it has presets (mflux) or a fixed schedule; any otherwise. */
-  stepChoices?: number[]
-  /** Can be quantized to 8 or 4 bits as it loads (mflux). */
-  quantize: boolean
-  /** Takes float16 compute (mflux). */
-  float16: boolean
-}
 
 export function imageModelsOf(backend: ImageBackendKind): ImageModelOption[] {
   return backend === 'comfyui'

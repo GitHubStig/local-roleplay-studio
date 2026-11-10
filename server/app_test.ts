@@ -1,5 +1,5 @@
 import { assertEquals, assertMatch, assertStringIncludes } from '@std/assert'
-import type { Backend } from './backends.ts'
+import type { Backend } from '../shared/backends.ts'
 import { DEFAULT_SETTINGS } from './settings.ts'
 import { join } from '@std/path'
 import { dirScenarioFolder } from './scenario.ts'

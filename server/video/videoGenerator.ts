@@ -1,12 +1,6 @@
-import type { Backend } from '../backends.ts'
+import type { Backend } from '../../shared/backends.ts'
 import type { ComfyTraces } from '../comfyui/traces.ts'
-
-/**
- * A Frame's picture as a short clip (ADR 0025). Where the picture sits in the clip is the
- * kind of clip, as a picture shows the middle of what its Frame describes: a clip can lead up to
- * it, go on from it, or move a little and come back to it.
- */
-export type ClipKind = 'lead-in' | 'play-out' | 'idle-loop' | 'into-next'
+import type { ClipKind, ClipSize } from '../../shared/clips.ts'
 
 export const CLIP_KINDS: readonly ClipKind[] = ['lead-in', 'play-out', 'idle-loop', 'into-next']
 
@@ -20,9 +14,6 @@ export const CLIP_ENDS: Record<ClipKind, { first?: 'still'; last?: 'still' | 'ne
   'idle-loop': { first: 'still', last: 'still' },
   'into-next': { first: 'still', last: 'next' },
 }
-
-/** A clip's size: Small (~0.4 MP, faster) or Large (the model's trained size, ~0.9 MP). */
-export type ClipSize = 'small' | 'large'
 
 export const CLIP_SIZES: readonly ClipSize[] = ['small', 'large']
 

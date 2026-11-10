@@ -3,8 +3,8 @@ import type { RoleplayModel } from './model.ts'
 import type { Verdict } from './judge.ts'
 import type { Delivery } from '../voice/voice.ts'
 import { REPLY_FIELDS } from './prompt.ts'
-import type { Cast, Reply, Score } from './types.ts'
-import type { Look, Subject } from '../session.ts'
+import type { Cast, Reply, Score } from '../../shared/roleplay.ts'
+import type { Look, Subject } from '../../shared/session.ts'
 
 export const testCast: Cast = {
   character: {

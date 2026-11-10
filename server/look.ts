@@ -5,7 +5,7 @@
  */
 import { asSentences, joinPrompt } from './imagePrompt.ts'
 import { crossedLimit } from './limits.ts'
-import type { Look, Subject } from './session.ts'
+import type { Look, Subject } from '../shared/session.ts'
 import { plainSentences } from './frameBody.ts'
 
 /**

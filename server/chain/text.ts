@@ -1,7 +1,8 @@
 /** What the Text Model is asked for a Chain's Frame, and its reply: the messages, the schema and the parser. */
-import type { ImagePrompt } from '../imagePrompt.ts'
+import type { ImagePrompt } from '../../shared/images.ts'
 import type { Scenario } from '../scenario.ts'
-import { type Outcome, OUTCOMES } from '../session.ts'
+import { OUTCOMES } from '../session.ts'
+import type { Outcome } from '../../shared/session.ts'
 import { loadPrompt } from '../promptFiles.ts'
 import { sharedParts, withNotes } from '../promptParts.ts'
 

@@ -3,20 +3,12 @@
  * 0020), and the Text Model is unloaded for a heavy job only when they share one (ADR 0013). A
  * machine is named by a Backend's address; `undefined` is this machine.
  */
-import {
-  type Backend,
-  BACKEND_WORK,
-  backendAddress,
-  HERE,
-  imageKindOf,
-  inTurn,
-  pickBackend,
-  type Work,
-} from './backends.ts'
+import { backendAddress, HERE, imageKindOf, inTurn, pickBackend } from './backends.ts'
+import { type Backend, BACKEND_WORK, type Work } from '../shared/backends.ts'
 import { type EditModel, editModelOn } from './images/editModels.ts'
 import { findImageModel, type ImageBackendKind } from './images/imageModels.ts'
-import type { Availabilities } from './features.ts'
-import type { JobKind } from './jobKinds.ts'
+import type { Availabilities } from '../shared/features.ts'
+import type { JobKind } from '../shared/jobKinds.ts'
 import type { SessionSettings, Settings } from './settings.ts'
 
 /**

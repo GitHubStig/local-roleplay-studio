@@ -3,7 +3,8 @@
  * Action) and its replies: the messages, the schemas and the parsers.
  */
 import type { Scenario } from '../scenario.ts'
-import { type Look, type Outcome, OUTCOMES } from '../session.ts'
+import { OUTCOMES } from '../session.ts'
+import type { Look, Outcome } from '../../shared/session.ts'
 import { loadPrompt } from '../promptFiles.ts'
 import {
   frameSchema,

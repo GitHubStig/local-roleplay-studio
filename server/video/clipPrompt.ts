@@ -4,7 +4,7 @@
  * Nothing is saved. Its prompts are `prompts/video/clip*.md` and the kinds' own.
  */
 import { frameName } from '../frames.ts'
-import type { ClipAsk } from '../jobs.ts'
+import type { ClipAsk, ClipKind } from '../../shared/clips.ts'
 import { crossedLimit } from '../limits.ts'
 import { loadPrompt } from '../promptFiles.ts'
 import { shownVersionOf } from '../pictures.ts'
@@ -12,7 +12,6 @@ import { exchangeText } from '../roleplay/art.ts'
 import type { Session } from '../session.ts'
 import type { TextModel } from '../textModel.ts'
 import { clipRefusal } from './makeClip.ts'
-import type { ClipKind } from './videoGenerator.ts'
 
 /** What each kind of clip is called in the prompt, as the player sees it. */
 const KIND_NAMES: Record<ClipKind, string> = {

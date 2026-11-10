@@ -13,51 +13,19 @@ import {
 } from '../api'
 
 import type { MusicSettings } from '../music'
+export {
+  type Cast,
+  type Character,
+  type CueTrack,
+  type Persona,
+  type Reply,
+  type Score,
+  type Setting,
+} from '../../../shared/roleplay.ts'
+import { type Cast, type CueTrack, type Reply, type Score } from '../../../shared/roleplay.ts'
 
 export type { Figure, Scene }
 export { cancelJob, type Job, type JobKind, listJobs, queueJob, retryJob } from '../api'
-
-/** Who the Text Model plays. */
-export interface Character {
-  name: string
-  age: number
-  appearance: string
-  personality: string
-  voice: string
-  background: string
-  goal: string
-}
-
-/** Who the player plays. */
-export interface Persona {
-  name: string
-  role: string
-  appearance: string
-}
-
-/** Where and when the scene starts. */
-export interface Setting {
-  place: string
-  time: string
-  weather: string
-}
-
-export interface Cast {
-  character: Character
-  persona: Persona
-  setting: Setting
-  /** What holds whatever anyone does. */
-  truths: string[]
-  /** The story's other People, a line each, who may act and speak briefly; none in a story of two. */
-  others: string[]
-}
-
-/** The Character's reply: a thought, what they do, what they say. */
-export interface Reply {
-  internal: string
-  actions: string
-  dialogue: string
-}
 
 /** One exchange; the Opening Frame has no message, since the Character speaks first. */
 export interface RoleplayFrame {
@@ -127,15 +95,6 @@ export interface CueValues {
   lyrics: string
 }
 
-/** A Cue's music, once made. */
-export interface CueTrack {
-  file: string
-  seconds: number
-  bpm: number
-  seed: number
-  timings: { queued?: number; music: number }
-}
-
 /** A stretch of music from the Frame it began on until the next Cue: its values, or silence. */
 export interface Cue {
   id: string
@@ -193,18 +152,6 @@ export interface RoleplaySession extends Omit<SessionBase, 'activity'> {
   /** As for any Session, or speaking a line (audio). */
   activity?: Activity | 'audio' | null
   frames: RoleplayFrame[]
-}
-
-/** A Roleplay's musical identity: what every Cue is made in. */
-export interface Score {
-  genre: string
-  /** The instruments its Cues are drawn from. */
-  palette: string[]
-  atmosphere: string
-  /** In beats per minute. */
-  tempo: { slowest: number; fastest: number }
-  /** What its Cues never use; never sent to a music model. */
-  avoid: string[]
 }
 
 /** The tempo range a Score may set, in beats per minute, as the server holds it. */

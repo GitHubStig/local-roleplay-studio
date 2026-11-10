@@ -1,5 +1,5 @@
 import { join } from '@std/path'
-import type { Backend } from '../backends.ts'
+import type { Backend } from '../../shared/backends.ts'
 import type { Quantize, Settings } from '../settings.ts'
 import type { EditModel } from './editModels.ts'
 

@@ -1,5 +1,5 @@
 import { assertEquals, assertRejects, assertStringIncludes } from '@std/assert'
-import { dirSessionStore } from '../session.ts'
+import { dirSessionStore, type SessionStore } from '../session.ts'
 import { DEFAULT_SETTINGS } from '../settings.ts'
 import { briefScenario, scenarioFrom } from '../scenario.ts'
 import { fakeImageGenerator, withTempDir } from '../testing.ts'
@@ -19,7 +19,7 @@ import {
 } from './engine.ts'
 import { CastError } from './prompt.ts'
 import { replyOf, scriptedRoleplayModel, testCast, testLook } from './testing.ts'
-import type { Look, SessionStore } from '../session.ts'
+import type { Look } from '../../shared/session.ts'
 import { updateSession } from './update.ts'
 import type { RoleplaySession } from './types.ts'
 

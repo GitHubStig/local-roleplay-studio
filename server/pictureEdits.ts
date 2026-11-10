@@ -9,7 +9,7 @@ import { type FrameDeps, frameName, imageProgress, removeImage } from './frames.
 import { error } from './http.ts'
 import type { EditModel } from './images/editModels.ts'
 import type { EditOrder, JobEmit } from './jobs.ts'
-import type { JobKind } from './jobKinds.ts'
+import type { JobKind } from '../shared/jobKinds.ts'
 import { crossedLimit } from './limits.ts'
 import { DEFAULT_SETTINGS } from './settings.ts'
 import { imageKindOf } from './backends.ts'

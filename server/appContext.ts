@@ -3,13 +3,13 @@
  * the Session locks and streams, and what Settings and this machine allow now.
  */
 import type { AppDeps, LockKind, StreamEvent } from './app.ts'
-import type { Backend } from './backends.ts'
-import type { Availabilities, Feature } from './features.ts'
+import type { Backend } from '../shared/backends.ts'
+import type { Availabilities, Feature } from '../shared/features.ts'
 import type { FrameDeps, Phase } from './frames.ts'
 import { Refusal } from './refusal.ts'
 import type { ImageBackendKind } from './images/imageModels.ts'
 import type { EditOrder, SessionJobs } from './jobs.ts'
-import type { JobKind } from './jobKinds.ts'
+import type { JobKind } from '../shared/jobKinds.ts'
 import type { HeavyJob } from './machine.ts'
 import type { Previews } from './previews.ts'
 import type { RenderQueue } from './renderQueue.ts'

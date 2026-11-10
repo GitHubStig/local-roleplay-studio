@@ -1,5 +1,6 @@
 import { join } from '@std/path'
-import { type Backend, imageKindOf } from './backends.ts'
+import { imageKindOf } from './backends.ts'
+import type { Backend } from '../shared/backends.ts'
 import {
   changeFramePicture,
   type Picture,

@@ -1,5 +1,5 @@
 import type { ModelFiles } from '../../comfyui/files.ts'
-import type { ClipSize } from '../videoGenerator.ts'
+import type { ClipSize } from '../../../shared/clips.ts'
 
 /**
  * A video model as ComfyUI runs it: its workflow in API format (`workflows/<workflow>.json`, with

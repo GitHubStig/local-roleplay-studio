@@ -1,4 +1,4 @@
-import type { Backend } from '../backends.ts'
+import type { Backend } from '../../shared/backends.ts'
 import type { Chat } from './chat.ts'
 import type { Seeding } from './seeded.ts'
 import { ollamaBackend } from './ollama/ollama.ts'

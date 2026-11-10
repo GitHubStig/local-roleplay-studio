@@ -1,5 +1,5 @@
 import { basename, extname, join } from '@std/path'
-import type { StyleScores } from '../style/scores.ts'
+import type { StyleScores } from '../../shared/style.ts'
 import { pngToWebp } from './webp.ts'
 
 /**

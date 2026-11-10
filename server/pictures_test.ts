@@ -1,9 +1,10 @@
 import { assertEquals, assertRejects } from '@std/assert'
 import { join } from '@std/path'
-import type { Session } from './session.ts'
+import { type ChainSession, dirSessionStore, type Session } from './session.ts'
 import { renderChainFrame, runChainFrame, undoLatestFrame } from './chain/frames.ts'
 import { findImageModel } from './images/imageModels.ts'
-import { type Backend, HERE } from './backends.ts'
+import { HERE } from './backends.ts'
+import type { Backend } from '../shared/backends.ts'
 import {
   changedSinceRender,
   changePicture,
@@ -18,7 +19,6 @@ import {
   withPicture,
 } from './pictures.ts'
 import { DEFAULT_SETTINGS } from './settings.ts'
-import { type ChainSession, dirSessionStore } from './session.ts'
 import {
   fakeImageGenerator,
   reply,

@@ -2,9 +2,10 @@ import { Refusal } from './refusal.ts'
 import { error, isJson, json, type Route } from './http.ts'
 import type { ImageGenerator } from './images/imageGenerator.ts'
 import { IMAGE_BACKENDS, type ImageBackendKind } from './images/imageModels.ts'
-import type { ComfyStatus, ComfyUses } from './comfyui/status.ts'
+import type { ComfyStatus } from './comfyui/status.ts'
+import type { ComfyUses } from '../shared/comfyui.ts'
 import { setLimitsEnabled } from './limits.ts'
-import { type Backend, BACKEND_NAMES } from './backends.ts'
+import { type Backend, BACKEND_NAMES } from '../shared/backends.ts'
 import type { TextChoice, TextModelInfo } from './text/backend.ts'
 import type { ScenarioFolder, ScenarioLibrary } from './scenario.ts'
 import type { Session, SessionStore } from './session.ts'
@@ -39,15 +40,11 @@ import {
   SessionJobs,
   textChoiceOf,
 } from './jobs.ts'
-import { JOB_FEATURE, type JobKind, SESSION_JOBS } from './jobKinds.ts'
+import { JOB_FEATURE, SESSION_JOBS } from './jobKinds.ts'
+import type { JobKind } from '../shared/jobKinds.ts'
 import { logCalls } from './calls.ts'
-import {
-  type Availabilities,
-  type Availability,
-  type Feature,
-  FEATURE_NAMES,
-  withBackends,
-} from './features.ts'
+import { FEATURE_NAMES, withBackends } from './features.ts'
+import type { Availabilities, Availability, Feature } from '../shared/features.ts'
 import { checkChainJob, runChainJob } from './chain/jobs.ts'
 import { checkStoryboardJob, runStoryboardJob } from './storyboard/jobs.ts'
 import { GoneError, removeSession, updateSession } from './update.ts'

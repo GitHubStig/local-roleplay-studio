@@ -2,12 +2,12 @@ import type { ChatMessage } from '../text/chat.ts'
 import { loadPrompt } from '../promptFiles.ts'
 import {
   briefScenario,
-  type Person,
   PERSON_FIELDS,
   personId,
   type Scenario,
   scenarioMarkdown,
 } from '../scenario.ts'
+import type { Person, Suggestion } from '../../shared/scenario.ts'
 
 /**
  * Expand, run as the Scenario page opens (ADR 0032): sparse on purpose. It sorts a typed Brief into
@@ -17,15 +17,6 @@ import {
 
 /** What Expand starts from: a Scenario picked on Home, or a typed Brief. */
 export type ExpandFrom = { scenario: Scenario } | { brief: string }
-
-/**
- * A suggestion for a blank part, for the player to take or leave. `field` names it from the
- * Scenario's type: `place`, `truths`, `people.<id>.goal`.
- */
-export interface Suggestion {
-  field: string
-  text: string
-}
 
 export interface Expansion {
   scenario: Scenario

@@ -10,11 +10,10 @@
  * (`restore`). What a job does is up to its Session's kind (`JobRunner`).
  */
 import { join } from '@std/path'
-import type { Backend } from './backends.ts'
+import type { Backend } from '../shared/backends.ts'
 import {
   IMAGE_JOBS,
   JOB_KINDS,
-  type JobKind,
   LATE_JOBS,
   NEEDS,
   ON_SHOWN_PICTURE,
@@ -22,6 +21,7 @@ import {
   SESSION_JOBS,
   TEXT_JOBS,
 } from './jobKinds.ts'
+import type { JobKind } from '../shared/jobKinds.ts'
 import type { Phase } from './frames.ts'
 import { error, json, readJson, type Route } from './http.ts'
 import { EDIT_MODELS, type EditModel, findEditModel } from './images/editModels.ts'
@@ -31,7 +31,8 @@ import { shownPictureOf } from './pictures.ts'
 import type { Session, SessionStore } from './session.ts'
 import type { SessionSettings } from './settings.ts'
 import { COMFYUI_VIDEO_MODELS, findComfyVideoModel } from './video/comfyui/models.ts'
-import { CLIP_KINDS, type ClipKind } from './video/videoGenerator.ts'
+import { CLIP_KINDS } from './video/videoGenerator.ts'
+import type { ClipAsk, ClipKind, ClipOrder } from '../shared/clips.ts'
 import { type ComfyTrace, type ComfyTraces, withTrace } from './comfyui/traces.ts'
 
 /**
@@ -47,19 +48,6 @@ export interface EditOrder {
   backend?: ImageBackendKind
   mask?: string
   retry?: boolean
-}
-
-/**
- * What a `clip` is told (ADR 0025): its kind, what happens in it (the movement, the
- * camera, the sound), how many seconds it lasts, whether anyone may speak in it, and the video
- * model that makes it (Settings' default if none, read as it starts).
- */
-export interface ClipOrder {
-  kind: ClipKind
-  prompt: string
-  seconds: number
-  speech: boolean
-  model?: string
 }
 
 export interface Job {
@@ -689,9 +677,6 @@ export function editOrder(body: unknown): EditOrder | string {
 /** The longest clip prompt, and a clip's shortest and longest length in seconds. */
 const MAX_CLIP_PROMPT = 4000
 export const CLIP_SECONDS = { min: 2, max: 10 } as const
-
-/** A clip as asked for, before its prompt is written: its kind, length and speech. */
-export type ClipAsk = Omit<ClipOrder, 'prompt' | 'model'>
 
 /** What kind of clip a request asks for, how long and whether anyone speaks, or why it can't. */
 export function clipAsk(body: unknown): ClipAsk | string {

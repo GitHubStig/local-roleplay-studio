@@ -4,6 +4,7 @@
  * A Chain's prompt is one sentence per aspect; a Storyboard's or Roleplay's has the Look's
  * identity of each person shown for the first and its style for the last (`joinPrompt`).
  */
+import type { ImagePrompt } from '../shared/images.ts'
 export const PROMPT_ORDER = [
   { aspect: 'subject and identity', covers: 'who they are: age, build, skin, hair, face' },
   { aspect: 'pose and limbs', covers: 'body position, limbs and hands' },
@@ -15,13 +16,6 @@ export const PROMPT_ORDER = [
   { aspect: 'color', covers: 'the palette and grading' },
   { aspect: 'art style and medium', covers: 'photograph, painting, render… and its style' },
 ] as const
-
-/**
- * The whole state of a Session at one Frame: one paragraph in the order of `PROMPT_ORDER`, details
- * within a sentence separated by commas or semicolons. Nine sentences in a Chain; in a Storyboard
- * or Roleplay, one identity per person shown, the Frame's seven sentences, then the style.
- */
-export type ImagePrompt = string
 
 /**
  * An Image Prompt from its parts written apart (Storyboard and Roleplay pictures): the identities

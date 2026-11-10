@@ -1,7 +1,7 @@
 import { ContextFullError } from '../text/chat.ts'
 import { assertEquals, assertNotEquals, assertRejects } from '@std/assert'
 import { join } from '@std/path'
-import type { Backend } from '../backends.ts'
+import type { Backend } from '../../shared/backends.ts'
 import { DEFAULT_SETTINGS } from '../settings.ts'
 import { type ChainSession, dirSessionStore, type SessionStore } from '../session.ts'
 import {

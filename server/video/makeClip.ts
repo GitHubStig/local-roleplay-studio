@@ -1,11 +1,12 @@
 import { join } from '@std/path'
 import { frameName, secondsSince } from '../frames.ts'
-import type { ClipOrder, JobEmit } from '../jobs.ts'
+import type { JobEmit } from '../jobs.ts'
+import type { ClipKind, ClipOrder, ClipSize } from '../../shared/clips.ts'
 import { RenderQueue } from '../renderQueue.ts'
 import type { Session, SessionStore } from '../session.ts'
 import { anyImageModel } from '../images/imageModels.ts'
 import { changeFramePicture, pickedVersion } from '../pictures.ts'
-import { CLIP_ENDS, type ClipKind, type ClipSize, type VideoGenerator } from './videoGenerator.ts'
+import { CLIP_ENDS, type VideoGenerator } from './videoGenerator.ts'
 import type { ComfyTraces } from '../comfyui/traces.ts'
 
 /**

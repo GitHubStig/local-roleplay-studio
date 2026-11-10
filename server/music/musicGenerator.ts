@@ -1,4 +1,4 @@
-import type { Backend } from '../backends.ts'
+import type { Backend } from '../../shared/backends.ts'
 import type { ComfyTraces } from '../comfyui/traces.ts'
 
 /** What a music model is given to make a Cue's track: the Text Model's words, and set values. */

@@ -3,36 +3,8 @@
  * it to `JobKind` and give it a row; then its runner (`app.ts`'s `runJob`, by the Session's kind)
  * and its name in the web app (`web/src/jobs.ts`).
  */
-import type { Feature } from './features.ts'
-
-/**
- * `picture` writes a Roleplay Frame's Image Prompt and `render` renders it; `upscale` takes a
- * picture to 2048 px; `voice` designs a new take of the Character's voice, `speak` voices one
- * Frame's dialogue, and `speak-thought` its thought; `scene` makes a picture into a 2.5D scene
- * (SHARP); `figure` lifts the person in it out as a 3D figure (TripoSplat), and `lito` does so with
- * Apple's LiTo; `style` embeds the Session's pictures for the Compare dialog's style scores; `edit`
- * repaints a picture as told (ADR 0021); `direct` directs the music at a Roleplay Frame (the
- * Music Director, docs/design.md), `score-roleplay` scores a whole Roleplay's with
- * hindsight, `music` makes the track of the Cue that begins on a Frame, and `steer` writes that Cue
- * again as the player asked.
- */
-export type JobKind =
-  | 'picture'
-  | 'render'
-  | 'upscale'
-  | 'voice'
-  | 'speak'
-  | 'speak-thought'
-  | 'scene'
-  | 'figure'
-  | 'lito'
-  | 'style'
-  | 'edit'
-  | 'clip'
-  | 'direct'
-  | 'score-roleplay'
-  | 'music'
-  | 'steer'
+import type { Feature } from '../shared/features.ts'
+import type { JobKind } from '../shared/jobKinds.ts'
 
 interface JobKindInfo {
   /**

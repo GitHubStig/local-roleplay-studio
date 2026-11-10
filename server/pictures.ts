@@ -1,5 +1,5 @@
 import { join } from '@std/path'
-import type { Figure } from './3d/figure.ts'
+import type { Figure } from '../shared/threeD.ts'
 import type { Scene } from './3d/scene.ts'
 import type { Clip } from './video/makeClip.ts'
 import { anyImageModel, type ImageBackendKind } from './images/imageModels.ts'

@@ -166,6 +166,8 @@ server/           Deno API: the app, Sessions, Settings, the job queue, what all
   replay/         `deno task replay`: a test Session rebuilt through the API from a replay file
   prompts/        what the Text Model is told, one Markdown file each: chain/, storyboard/,
                   roleplay/, scenario/, and shared/ for what more than one uses
+shared/           Types and plain values the server and the web app both use (no code that needs Deno
+                  or a browser)
 web/              Vue 3 + Vite + Tailwind 4 web app; export.html is the exported Pictures page
 python/           What uv runs, each in its own folder, its packages in the file and locked beside it
                   (`make.py.lock`), so both machines run the same versions:

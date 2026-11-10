@@ -11,6 +11,8 @@ export default defineConfig({
   server: {
     port: Number(env?.WEB_PORT ?? 5180),
     strictPort: true,
+    // What the server and the web app share (`shared/`) is beside this folder, not in it.
+    fs: { allow: ['..'] },
     proxy: {
       '/api': `http://localhost:${env?.PORT ?? 8787}`,
     },

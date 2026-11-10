@@ -1,6 +1,7 @@
 import { fromFileUrl } from '@std/path'
 import { createHandler } from './app.ts'
-import { type Backend, BACKEND_NAMES, BACKEND_WORK, backendAddress } from './backends.ts'
+import { backendAddress } from './backends.ts'
+import { type Backend, BACKEND_NAMES, BACKEND_WORK } from '../shared/backends.ts'
 import { placeholderImageGenerator } from './images/imageGenerator.ts'
 import { mfluxImageGenerator } from './images/mflux/mflux.ts'
 import {
@@ -39,14 +40,8 @@ import { videoBackends } from './video/videoGenerator.ts'
 import { comfyuiVideoGenerator } from './video/comfyui/comfyui.ts'
 import { musicBackends } from './music/musicGenerator.ts'
 import { comfyuiMusicGenerator } from './music/comfyui/comfyui.ts'
-import {
-  detectFeatures,
-  type Feature,
-  FEATURE_NAMES,
-  FEATURES,
-  thisMachine,
-  withBackends,
-} from './features.ts'
+import { detectFeatures, FEATURE_NAMES, thisMachine, withBackends } from './features.ts'
+import { type Feature, FEATURES } from '../shared/features.ts'
 
 const port = Number(Deno.env.get('PORT') ?? 8787)
 const defaultSessionsDir = fromFileUrl(new URL('../sessions/', import.meta.url))

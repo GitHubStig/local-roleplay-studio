@@ -1,25 +1,5 @@
 import { join } from '@std/path'
-
-/**
- * The extras beyond the Text Model, each needing its own backend: pictures (mflux, or a ComfyUI
- * server), upscaling (SeedVR2 through mflux), editing pictures (Qwen through mflux or ComfyUI, and
- * FLUX.3 through ComfyUI), voices (the mlx-audio service), 3D (SHARP, TripoSplat, LiTo), and the
- * Compare dialog's style scores (CSD and CLIP). Which of them this machine can run is worked out
- * once at startup (`detectFeatures`); Settings can switch off any that can. Pictures are also
- * available wherever Settings choose ComfyUI (`app.ts`), which this can't know at startup.
- */
-export const FEATURES = [
-  'images',
-  'upscale',
-  'edits',
-  'voices',
-  'scenes',
-  'figures',
-  'lito',
-  'style',
-  'video',
-] as const
-export type Feature = (typeof FEATURES)[number]
+import type { Availabilities, Availability, Feature } from '../shared/features.ts'
 
 /** What each Feature is called when saying it's off. */
 export const FEATURE_NAMES: Record<Feature, string> = {
@@ -33,13 +13,6 @@ export const FEATURE_NAMES: Record<Feature, string> = {
   style: 'Style scores',
   video: 'Clips',
 }
-
-/** Whether a Feature can run here, and if not, why not (for Settings to say). */
-export interface Availability {
-  available: boolean
-  reason?: string
-}
-export type Availabilities = Record<Feature, Availability>
 
 /** What `detectFeatures` looks at; the real machine by default, a fake one in tests. */
 export interface Machine {

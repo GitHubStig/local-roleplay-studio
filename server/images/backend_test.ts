@@ -1,5 +1,5 @@
 import { assertEquals, assertRejects } from '@std/assert'
-import type { Backend } from '../backends.ts'
+import type { Backend } from '../../shared/backends.ts'
 import type { EditRequest, ImageGenerator } from './imageGenerator.ts'
 import { imageBackends } from './backend.ts'
 import { backendOf } from '../machine.ts'

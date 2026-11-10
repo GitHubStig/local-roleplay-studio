@@ -13,7 +13,7 @@ import type { ChatMessage } from '../text/chat.ts'
 import { loadPrompt } from '../promptFiles.ts'
 import { personId, type Scenario } from '../scenario.ts'
 import { frameSchema, lookForModel, lookSchema, parseLook } from '../frameBody.ts'
-import type { Look, Subject } from '../session.ts'
+import type { Look, Subject } from '../../shared/session.ts'
 import type { RoleplayFrame, RoleplaySession } from './types.ts'
 import { allStale } from '../pictures.ts'
 

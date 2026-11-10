@@ -1,7 +1,8 @@
 import { assertEquals, assertStringIncludes, assertThrows } from '@std/assert'
 import { setLimitsEnabled } from '../limits.ts'
 import { DEFAULT_SETTINGS } from '../settings.ts'
-import { briefScenario, type Person, personId } from '../scenario.ts'
+import { briefScenario, personId } from '../scenario.ts'
+import type { Person } from '../../shared/scenario.ts'
 import { lookForModel } from '../frameBody.ts'
 import {
   artFrameMessages,

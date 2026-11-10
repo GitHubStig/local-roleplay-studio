@@ -29,9 +29,9 @@ import {
   type FrameMusic,
   type RoleplayFrame,
   type RoleplaySession,
-  type Score,
   TEMPOS,
 } from './types.ts'
+import type { Score } from '../../shared/roleplay.ts'
 import { GoneError, updateSession } from './update.ts'
 
 /** The Director's reply, in the order it's written. */

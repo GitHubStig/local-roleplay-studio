@@ -1,6 +1,7 @@
 import { extract } from '@std/front-matter/yaml'
 import { stringify } from '@std/yaml'
 import { basename, extname, fromFileUrl, join } from '@std/path'
+import type { Person, ScenarioLoadError, ScenarioSummary } from '../shared/scenario.ts'
 
 /**
  * A Scenario: a story a Session starts from (ADR 0032). What it states holds; what it leaves blank
@@ -34,40 +35,6 @@ export interface Scenario {
   created?: string
   /** When it was last saved, likewise. */
   modified?: string
-}
-
-/** Anyone the story treats as someone: a human, an alien, a monster, a talking car. */
-export interface Person {
-  /** From the name (`personId`): what the Scenario's `player` and `character` name. */
-  id: string
-  name: string
-  /** Permanent features (age, build, skin, hair, face), in no art style. */
-  looks: string
-  /** What they have on at the start. */
-  wears: string
-  personality: string
-  /** Their way of speaking. */
-  speaks: string
-  background: string
-  /** What they want in this story, and what drives them. */
-  goal: string
-  /** What holds about them whatever anyone does, whoever plays them. */
-  truths: string[]
-}
-
-export interface ScenarioSummary {
-  id: string
-  title: string
-  description: string
-  /** In the player's `scenarios/`, so it can be deleted. */
-  own: boolean
-  created?: string
-  modified?: string
-}
-
-export interface ScenarioLoadError {
-  file: string
-  message: string
 }
 
 const isRecord = (v: unknown): v is Record<string, unknown> =>

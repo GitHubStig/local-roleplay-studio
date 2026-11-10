@@ -2,12 +2,8 @@ import { assertEquals, assertNotEquals, assertRejects } from '@std/assert'
 import { join } from '@std/path'
 import { composePrompt } from '../look.ts'
 import { sentences, subjectSentence } from '../imagePrompt.ts'
-import {
-  dirSessionStore,
-  type Look,
-  type StoryboardFrame,
-  type StoryboardSession,
-} from '../session.ts'
+import { dirSessionStore, type StoryboardFrame, type StoryboardSession } from '../session.ts'
+import type { Look } from '../../shared/session.ts'
 import { DEFAULT_SETTINGS } from '../settings.ts'
 import { withTempDir } from '../testing.ts'
 import { pictureFiles } from '../pictures.ts'

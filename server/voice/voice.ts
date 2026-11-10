@@ -4,7 +4,7 @@
  * server starts the first time a voice is needed and keeps until it stops.
  */
 import { fromFileUrl } from '@std/path'
-import type { Backend } from '../backends.ts'
+import type { Backend } from '../../shared/backends.ts'
 import { track } from '../children.ts'
 
 export interface DesignRequest {

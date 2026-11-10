@@ -13,25 +13,20 @@ import {
   DEFAULT_VIDEO_MODEL,
   findComfyVideoModel,
 } from './video/comfyui/models.ts'
-import { CLIP_SIZES, type ClipSize } from './video/videoGenerator.ts'
+import { CLIP_SIZES } from './video/videoGenerator.ts'
+import type { ClipSize } from '../shared/clips.ts'
 import { type Float16, FLOAT16_CHOICES } from './images/mflux/chip.ts'
-import { type Feature, FEATURES } from './features.ts'
+import { type Feature, FEATURES } from '../shared/features.ts'
+import { HERE } from './backends.ts'
 import {
   type Backend,
   BACKEND_KINDS,
   BACKEND_WORK,
   type BackendKind,
-  HERE,
   type Work,
   WORKS,
-} from './backends.ts'
-
-export interface SizePreset {
-  id: string
-  label: string
-  width: number
-  height: number
-}
+} from '../shared/backends.ts'
+import type { SeedMode, SizePreset } from '../shared/settings.ts'
 
 export const SIZE_PRESETS: readonly SizePreset[] = [
   { id: 'portrait', label: 'Portrait 832×1216', width: 832, height: 1216 },
@@ -56,8 +51,6 @@ export type Quantize = (typeof QUANTIZE_OPTIONS)[number]
 /** The fraction of steps the step cache skips; null for off. */
 export const STEP_CACHE_OPTIONS = [null, 0.25, 0.4, 0.5] as const
 export type StepCache = (typeof STEP_CACHE_OPTIONS)[number]
-
-export type SeedMode = 'random' | 'fixed'
 
 /** Player-chosen configuration; read when a Session starts. */
 export interface Settings {

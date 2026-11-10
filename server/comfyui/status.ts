@@ -4,15 +4,7 @@ import { type ComfyModel, findComfyModel, findComfyUpscaler } from '../images/co
 import { VOICE_NODES } from '../voice/comfyui/comfyui.ts'
 import { findComfyVideoModel } from '../video/comfyui/models.ts'
 import { ACE_STEP } from '../music/comfyui/comfyui.ts'
-
-/** What Settings would send a ComfyUI: the models and whether voices or music, any left out. */
-export interface ComfyUses {
-  imageModel?: string
-  upscaler?: string
-  voices?: boolean
-  videoModel?: string
-  music?: boolean
-}
+import type { ComfyUses } from '../../shared/comfyui.ts'
 
 /**
  * Whether ComfyUI answers at an address, and can run what Settings send it: for Settings. What's
