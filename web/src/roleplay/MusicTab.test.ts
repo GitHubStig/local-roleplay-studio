@@ -189,10 +189,12 @@ describe('MusicTab', () => {
       'harp (not in the Score)',
     ])
     // A silence of two Frames, then a Cue of one.
-    expect(wrapper.findAll('[data-cue]').map((c) => c.attributes('style'))).toEqual([
-      'flex-grow: 2;',
-      'flex-grow: 1;',
-    ])
+    expect(wrapper.findAll<HTMLElement>('[data-cue]').map((c) => c.element.style.flexGrow)).toEqual(
+      [
+        '2',
+        '1',
+      ],
+    )
     expect(wrapper.find('[data-cue-counts]').text()).toMatch(/1 Cue\s+and 1 silence/)
     // The Cue of the Frame shown is marked, and named beneath the strip.
     expect(wrapper.findAll('[data-cue][aria-current]').length).toBe(1)

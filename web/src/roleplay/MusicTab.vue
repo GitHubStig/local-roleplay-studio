@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { useElementSize } from '@vueuse/core'
+import { computed, ref, useTemplateRef, watch } from 'vue'
 import { frameName } from '../frameName'
 import { type SaveLine, useAutosave } from '../composables/useAutosave'
+import { cueRows } from './cueRows'
 import CollapsibleTextarea from '../components/CollapsibleTextarea.vue'
 import ItemList from '../components/ItemList.vue'
 import SaveStatus from '../components/SaveStatus.vue'
@@ -103,6 +105,12 @@ const cueProgress = computed(() =>
     ? (props.frame.index - shownSpan.value.cue.start) / shownSpan.value.frames
     : 0
 )
+/** The strip in rows of whole Cues when they're too many for one: 48 px or more each. */
+const strip = useTemplateRef<HTMLElement>('strip')
+const { width: stripWidth } = useElementSize(strip)
+const stripRows = computed(() => cueRows(cueSpans.value, stripWidth.value, 48))
+/** At least as wide as its number and some padding: `px-1.5` is 0.75rem in all. */
+const labelWidth = (cue: Cue) => `calc(${String(cue.start + 1).length}ch + 0.75rem)`
 const spanName = ({ cue, frames }: { cue: Cue; frames: number }) =>
   frames === 1 ? frameName(cue.start) : `Frames ${cue.start + 1}–${cue.start + frames}`
 const cueTitle = (cue: Cue, frames: number) =>
@@ -230,33 +238,36 @@ defineExpose({ flush })
     <!-- First, so the strip stays put as the Frame below it changes length. -->
     <section v-if="cueSpans.length" class="flex flex-col gap-2 border-b border-line p-4" data-cues>
       <h2 class="text-base font-semibold">Cues</h2>
-      <div class="flex h-8 w-full gap-0.5" data-cue-strip>
-        <button
-          v-for="{ cue, frames } in cueSpans"
-          :key="cue.id"
-          type="button"
-          class="relative h-full min-w-0 basis-0 overflow-hidden rounded-sm text-xs tabular-nums transition-colors"
-          :class="
-            frameCue?.id === cue.id
-              ? 'bg-info font-semibold text-canvas ring-2 ring-info ring-offset-1 ring-offset-canvas'
-              : cue.values
-              ? 'bg-fg/20 text-muted hover:bg-fg/35'
-              : 'border border-dashed border-line text-muted hover:bg-fg/10'
-          "
-          :style="{ flexGrow: frames }"
-          :title="cueTitle(cue, frames)"
-          :aria-current="frameCue?.id === cue.id || undefined"
-          :data-cue="cue.id"
-          @click="emit('go', cue.start)"
-        >
-          <span
-            v-if="frameCue?.id === cue.id && cueProgress"
-            class="absolute inset-y-0 left-0 bg-canvas/35 transition-[width]"
-            :style="{ width: `${cueProgress * 100}%` }"
-            data-cue-progress
-          />
-          <span class="relative">{{ cue.start + 1 }}</span>
-        </button>
+      <!-- In rows of whole Cues when they're many, each row's Cues as wide as their Frames. -->
+      <div ref="strip" class="flex w-full flex-col gap-1" data-cue-strip>
+        <div v-for="(row, r) in stripRows" :key="r" class="flex h-8 w-full gap-0.5" data-cue-row>
+          <button
+            v-for="{ cue, frames } in row"
+            :key="cue.id"
+            type="button"
+            class="relative h-full min-w-0 basis-0 overflow-hidden rounded-sm px-1.5 text-xs tabular-nums transition-colors"
+            :class="
+              frameCue?.id === cue.id
+                ? 'bg-info font-semibold text-canvas ring-2 ring-info ring-offset-1 ring-offset-canvas'
+                : cue.values
+                ? 'bg-fg/20 text-muted hover:bg-fg/35'
+                : 'border border-dashed border-line text-muted hover:bg-fg/10'
+            "
+            :style="{ flexGrow: frames, minWidth: labelWidth(cue) }"
+            :title="cueTitle(cue, frames)"
+            :aria-current="frameCue?.id === cue.id || undefined"
+            :data-cue="cue.id"
+            @click="emit('go', cue.start)"
+          >
+            <span
+              v-if="frameCue?.id === cue.id && cueProgress"
+              class="absolute inset-y-0 left-0 bg-canvas/35 transition-[width]"
+              :style="{ width: `${cueProgress * 100}%` }"
+              data-cue-progress
+            />
+            <span class="relative">{{ cue.start + 1 }}</span>
+          </button>
+        </div>
       </div>
       <!-- The track playing, across the whole strip, for those who look. -->
       <div
