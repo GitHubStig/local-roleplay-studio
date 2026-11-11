@@ -209,6 +209,35 @@ describe('FrameViewer', () => {
     expect(wrapper.emitted('dropJob')).toEqual([[running]])
   })
 
+  it('writes a camera move picked into the box, to change before sending', async () => {
+    const wrapper = mountIt()
+    await flushPromises()
+    await side(wrapper).find('[data-edit]').trigger('click')
+    await flushPromises()
+    const camera = wrapper.find('[data-camera-move]')
+    expect(camera.findAll('optgroup').map((g) => g.attributes('label'))).toEqual([
+      'Angle',
+      'Close-up',
+      'Viewpoint',
+    ])
+    const face = camera.findAll('option').find((o) => o.text() === 'Face')!
+    await camera.setValue(face.element.value)
+    await flushPromises()
+    const box = wrapper.find('[data-edit-instruction]').element as HTMLTextAreaElement
+    expect(box.value).toBe(
+      "A close-up of the woman's face, filling the picture, in the same place and light.",
+    )
+    // Back to "Camera…", so the same move can be picked again.
+    expect((camera.element as HTMLSelectElement).value).toBe('')
+    await wrapper.find('[data-edit-instruction]').setValue(
+      "A close-up of the man's face, filling the picture.",
+    )
+    await wrapper.find('[data-send-edit]').trigger('click')
+    expect(wrapper.emitted('edit')![0][1]).toMatchObject({
+      instruction: "A close-up of the man's face, filling the picture.",
+    })
+  })
+
   it('groups the versions by edit model, Redo and Delete acting on the line of the one shown', async () => {
     const flux = { ...edit(3), editModel: 'flux3-klein-edit', instructions: ['A caption 3'] }
     const lines = [{

@@ -31,6 +31,7 @@ import PaintLayer, { type Sketch } from './PaintLayer.vue'
 import PictureVersions, { type VersionEntry } from './PictureVersions.vue'
 import Icon from './Icon.vue'
 import SelectField from './SelectField.vue'
+import { CAMERA_GROUPS } from '../cameraMoves'
 
 /**
  * A Session's pictures in the full-window viewer: it opens on one Frame, and ← and → (or ↑ and ↓)
@@ -369,6 +370,13 @@ function clearSketch() {
   sketch.value = { base: false, strokes: [] }
   history.commit()
 }
+/** A camera move picked: its wording goes into the box, to change before sending; the list resets. */
+const cameraPick = ref('')
+watch(cameraPick, (instruction) => {
+  if (!instruction || !draft.value) return
+  draft.value.instruction = instruction
+  cameraPick.value = ''
+})
 function send() {
   const frame = current.value
   const d = draft.value
@@ -633,6 +641,18 @@ const action =
               </option>
             </SelectField>
           </label>
+          <SelectField
+            v-model="cameraPick"
+            compact
+            title="Move the camera: writes the move into the box below, for you to change (who it's of, above all). Paint nothing: the whole picture is repainted."
+            class="rounded-lg border border-white/30 bg-black/40 p-1.5 text-white"
+            data-camera-move
+          >
+            <option value="">Camera…</option>
+            <optgroup v-for="g in CAMERA_GROUPS" :key="g.group" :label="g.group">
+              <option v-for="m in g.moves" :key="m.label" :value="m.instruction">{{ m.label }}</option>
+            </optgroup>
+          </SelectField>
           <div class="inline-flex overflow-hidden rounded-lg border border-white/30" role="group">
             <button
               v-for="tool in [{ erase: false, label: 'Brush' }, { erase: true, label: 'Eraser' }]"
