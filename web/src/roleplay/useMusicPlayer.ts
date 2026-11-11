@@ -28,15 +28,20 @@ export function musicAt(
  * how loud are remembered per browser. It follows `frame`, the one in view: within one Cue nothing
  * happens; another Cue crossfades. It lowers while `speaking`, pauses while a video with sound is open, and fades when the page is left, as the
  * app keeps a Roleplay's page alive behind others (and a second Roleplay would play over it). A browser lets sound start only after
- * the player has touched the page, so music left on starts at the first touch.
+ * the player has touched the page, so music left on starts at the first touch. With Music off in Settings
+ * (`allowed`) nothing plays, whatever the page's own switch says, and what's playing stops.
  */
 export function useMusicPlayer(opts: {
   sessionId: string
   session: Ref<RoleplaySession | null | undefined>
   frame: Ref<RoleplayFrame | null | undefined>
   speaking: Ref<boolean>
+  /** Music is on in Settings. */
+  allowed: Ref<boolean>
 }) {
   const on = useStoredFlag('roleplay-music-playing')
+  /** Whether music plays: switched on here, and in Settings. */
+  const playing = computed(() => on.value && opts.allowed.value)
   const storedVolume = useStoredString('roleplay-music-volume')
   const volume = computed({
     get: () => Number(storedVolume.value ?? 0.6),
@@ -90,7 +95,7 @@ export function useMusicPlayer(opts: {
   watch(hushed, (now) => engine?.setHushed(now))
 
   function follow() {
-    if (!on.value || away) return
+    if (!playing.value || away) return
     ctx ??= new AudioContext()
     if (!engine) {
       engine = new MusicEngine(ctx, load)
@@ -106,8 +111,8 @@ export function useMusicPlayer(opts: {
     }
   }
 
-  watch([on, () => target.value?.file], () => {
-    if (on.value) follow()
+  watch([playing, () => target.value?.file], () => {
+    if (playing.value) follow()
     else engine?.stop()
   }, { immediate: true })
   watch(volume, (v) => engine?.setVolume(v))
@@ -116,11 +121,11 @@ export function useMusicPlayer(opts: {
   const position = ref<MusicPosition | null>(null)
   useIntervalFn(() => {
     checkVideos()
-    position.value = on.value ? engine?.position ?? null : null
+    position.value = playing.value ? engine?.position ?? null : null
   }, 250)
   // Music left on, on a page just opened: sound may only start once the player has touched it.
   useEventListener(document, 'pointerdown', () => {
-    if (on.value && ctx?.state === 'suspended' && !hushed.value) ctx.resume()
+    if (playing.value && ctx?.state === 'suspended' && !hushed.value) ctx.resume()
   })
   onDeactivated(() => {
     away = true

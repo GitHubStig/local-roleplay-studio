@@ -335,6 +335,7 @@ const music = useMusicPlayer({
   session,
   frame: computed(() => selectedFrame.value ?? session.value?.frames.at(-1)),
   speaking: computed(() => playing.value !== null),
+  allowed: musicOn,
 })
 const hasTracks = computed(() => !!session.value?.cues.some((c) => c.track))
 /** A clip playing over its Frame's picture, from the Frame tab's Clip section. */
