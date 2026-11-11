@@ -11,6 +11,8 @@ import SaveStatus from '../components/SaveStatus.vue'
 import LookForm from '../components/LookForm.vue'
 import RestartButton from '../components/RestartButton.vue'
 import ComposeBox from '../components/ComposeBox.vue'
+import PutBackOffer from '../components/PutBackOffer.vue'
+import { usePutBack } from '../composables/usePutBack'
 import FrameTab from '../components/FrameTab.vue'
 import ClipOverlay from '../components/ClipOverlay.vue'
 import FoldedPrompt from '../components/FoldedPrompt.vue'
@@ -90,6 +92,8 @@ const { session, loadError, draft, busy, leave, cancel, onSwitched, onClipsModel
     following: (_s, followed): Pending => followed ?? { kind: 'message', reply: {}, detached: true },
     refreshJobs: () => refreshJobs(),
   })
+/** An undone exchange's Message, offered beside the box when it held a draft. */
+const { offered, putBack, use: usePutBackText, dismiss: dismissPutBack } = usePutBack(draft)
 /** The Character is writing into the conversation (not picturing a Frame beside it). */
 const replying = computed(() => {
   const kind = pending.value?.kind
@@ -452,6 +456,7 @@ function onEvent(event: RoleplayEvent) {
 async function run(next: Pending, call: () => Promise<void>) {
   pending.value = next
   notice.value = null
+  dismissPutBack()
   try {
     await call()
   } catch (err) {
@@ -526,7 +531,7 @@ async function undo() {
   try {
     session.value = await undoExchanges(props.id, from, latest.index)
     picked.value = null
-    if (!draft.value.trim()) draft.value = first.message ?? ''
+    putBack(`${frameName(from)}'s Message`, first.message)
   } catch (err) {
     notice.value = { kind: 'error', text: (err as Error).message }
   }
@@ -1019,7 +1024,14 @@ const lookSavingText = computed(() =>
             >
               {{ scoringAll ? 'Scoring…' : 'Score the Roleplay' }}
             </button>
+            <PutBackOffer
+              v-if="offered && !notice"
+              :offered="offered"
+              @use="usePutBackText"
+              @dismiss="dismissPutBack"
+            />
             <p
+              v-else
               class="min-w-0 flex-1 truncate text-sm"
               :class="notice?.kind === 'declined' ? 'text-warn' : 'text-danger'"
               :title="notice?.text"

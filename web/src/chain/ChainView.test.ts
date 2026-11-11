@@ -640,7 +640,7 @@ describe('ChainView', () => {
     expect(wrapper.find('[data-undo-main]').text()).toBe('Undo')
   })
 
-  it('keeps a half-typed Direction instead of overwriting it on Undo', async () => {
+  it('keeps a half-typed Direction on Undo, offering the undone one beside it', async () => {
     vi.mocked(api.getSession).mockResolvedValue(session([frame(0, null), frame(1, 'Sit down')]))
     vi.mocked(api.undoFrames).mockResolvedValue(session([frame(0, null)]))
     const { wrapper } = await mountIt()
@@ -648,6 +648,13 @@ describe('ChainView', () => {
     await wrapper.find('[data-undo]').trigger('click')
     await flushPromises()
     expect((wrapper.find('textarea').element as HTMLTextAreaElement).value).toBe('Kneel')
+    // The undone Action is offered beside it, to swap in.
+    expect(wrapper.find('[data-put-back]').text()).toContain("Frame 2's Action: Sit down")
+    await wrapper.find('[data-put-back-use]').trigger('click')
+    expect((wrapper.find('textarea').element as HTMLTextAreaElement).value).toBe('Sit down')
+    expect(wrapper.find('[data-put-back]').text()).toContain('Your draft: Kneel')
+    await wrapper.find('[data-put-back-dismiss]').trigger('click')
+    expect(wrapper.find('[data-put-back]').exists()).toBe(false)
   })
 
   it('offers Undo only after the Opening Frame, on the latest Frame', async () => {

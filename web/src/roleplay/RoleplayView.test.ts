@@ -373,6 +373,23 @@ describe('RoleplayView', () => {
     expect(buttonNamed(wrapper, 'Undo').attributes('disabled')).toBeDefined()
   })
 
+  it('keeps a half-typed message on Undo, offering the undone one beside it', async () => {
+    vi.mocked(api.getSession).mockResolvedValue(
+      roleplaySession([frame(0, null, 'Get inside.'), frame(1, 'Thanks.', 'Sit.')]),
+    )
+    vi.mocked(roleplay.undoExchanges).mockResolvedValue(
+      roleplaySession([frame(0, null, 'Get inside.')]),
+    )
+    const { wrapper } = await mountIt()
+    await wrapper.find('textarea').setValue('Hello?')
+    await wrapper.find('[data-undo]').trigger('click')
+    await flushPromises()
+    expect((wrapper.find('textarea').element as HTMLTextAreaElement).value).toBe('Hello?')
+    expect(wrapper.find('[data-put-back]').text()).toContain("Frame 2's Message: Thanks.")
+    await wrapper.find('[data-put-back-use]').trigger('click')
+    expect((wrapper.find('textarea').element as HTMLTextAreaElement).value).toBe('Thanks.')
+  })
+
   it('undoes back to an earlier Frame selected, once confirmed, putting the next message back', async () => {
     vi.mocked(api.getSession).mockResolvedValue(
       roleplaySession([

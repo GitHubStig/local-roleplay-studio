@@ -10,6 +10,8 @@ import FrameTab from '../components/FrameTab.vue'
 import ClipOverlay from '../components/ClipOverlay.vue'
 import { clipCount, clipsMaking, scrollToClips, usePlayingClip } from '../clips'
 import FrameListItem from '../components/FrameListItem.vue'
+import PutBackOffer from '../components/PutBackOffer.vue'
+import { usePutBack } from '../composables/usePutBack'
 import ImageModelPicker from '../components/ImageModelPicker.vue'
 import TextModelPicker from '../components/TextModelPicker.vue'
 import ModelComparison from '../components/ModelComparison.vue'
@@ -69,6 +71,8 @@ const { session, loadError, draft, busy, load, leave, cancel, onSwitched, onClip
     onFollowed: () => (viewing.value = null),
     refreshJobs: () => refreshJobs(),
   })
+/** An undone Frame's Action, offered beside the box when it held a draft. */
+const { offered, putBack, use: usePutBackText, dismiss: dismissPutBack } = usePutBack(draft)
 const frameError = ref('')
 /**
  * Why the last Action made no Frame (declined; unclear, and the Text Model asks what to change;
@@ -180,6 +184,7 @@ function onEvent(event: FrameEvent) {
 async function runChainFrame(action: string | null) {
   frameError.value = ''
   notice.value = null
+  dismissPutBack()
   pending.value = { phase: 'text' }
   try {
     await streamFrame(props.id, action, onEvent, renderFrames.value)
@@ -293,7 +298,7 @@ async function undo(from: number, confirm: boolean) {
   try {
     session.value = await undoFrames(props.id, from, last.index)
     viewing.value = null
-    if (!draft.value.trim() && first.action) draft.value = first.action
+    putBack(`${frameName(from)}'s Action`, first.action)
   } catch (err) {
     frameError.value = (err as Error).message
   } finally {
@@ -638,7 +643,14 @@ const promptDiff = computed(() => {
               title="Queue a render of every Frame not rendered yet by this Image Model"
               @render="queueAll('render', toRender.map((f) => f.index))"
             />
+            <PutBackOffer
+              v-if="offered && !frameError && !notice"
+              :offered="offered"
+              @use="usePutBackText"
+              @dismiss="dismissPutBack"
+            />
             <p
+              v-else
               class="min-w-0 flex-1 truncate text-sm"
               :class="frameError ? 'text-danger' : notice?.kind === 'declined' ? 'text-warn' : 'text-info'"
               :title="frameError || notice?.text"
