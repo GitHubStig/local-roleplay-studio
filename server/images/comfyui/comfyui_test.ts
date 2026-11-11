@@ -6,7 +6,7 @@ import { paintedMask, pngHeader, withTempDir } from '../../testing.ts'
 import type { EditRequest } from '../imageGenerator.ts'
 import { fillWorkflow } from '../../comfyui/client.ts'
 import { fakeComfyUI as fakeServer } from '../../comfyui/testing.ts'
-import { comfyuiImageGenerator } from './comfyui.ts'
+import { budgetSize, comfyuiImageGenerator } from './comfyui.ts'
 import { COMFYUI_EDITORS, COMFYUI_MODELS, COMFYUI_UPSCALERS, findComfyModel } from './models.ts'
 import { loadModelWorkflow } from './workflow.ts'
 import { pickFiles } from '../../comfyui/files.ts'
@@ -176,13 +176,21 @@ Deno.test('A ComfyUI edit repaints only the painted area, on the Image Model’s
     )
     // The picture is the reference; the instruction goes as typed; steps are the model's.
     assertEquals(w.image.inputs.image, `${uploads[0].name} [temp]`)
-    assertEquals(w.conditioning.inputs['images.image_1'], ['image', 0])
     assertEquals(w.conditioning.inputs.prompt, 'An open hand.')
     assertEquals([w.sampler.inputs.seed, w.sampler.inputs.steps], [7, 25])
     // The painted area is the latent's noise mask, and the picture is pasted back around it.
     assertEquals(w.mask.inputs.image, `${uploads[1].name} [temp]`)
     assertEquals(w.sampler.inputs.latent_image, ['masked', 0])
+    // On the reference's own latent at a 1024² budget: at the picture's own size, Qwen's edits
+    // came out grainy (docs/research/image-models.md). The result is scaled back to the picture's
+    // size, then pasted.
+    assertEquals(w.conditioning.inputs.resolution, 1024)
+    assertEquals([w.fit.inputs.width, w.fit.inputs.height], [1440, 736])
+    assertEquals(w.conditioning.inputs['images.image_1'], ['fit', 0])
+    assertEquals(w.encode.inputs.pixels, ['fit', 0])
     assertEquals(w.masked.inputs, { samples: ['encode', 0], mask: ['mask', 0] })
+    assertEquals([w.back.inputs.width, w.back.inputs.height], [100, 50])
+    assertEquals(w.composite.inputs.source, ['back', 0])
     assertEquals(w.save.inputs.images, ['composite', 0])
     // Both uploads are written over with a blank once it's done (together, so in either order).
     assertEquals(uploads.map((u) => u.bytes < 100), [false, false, true, true])
@@ -309,6 +317,22 @@ Deno.test('A ComfyUI edit with nothing painted repaints the whole picture', () =
     assertEquals(w.save.inputs.images, ['rgb', 0])
     assertEquals(w.text.inputs.text, 'In <ref_image_0>, An open hand.')
     assertEquals(uploads.map((u) => u.bytes < 100), [false, true])
+  }))
+
+Deno.test('budgetSize scales a picture to a 1024² budget in multiples of 32, as Qwen sizes it', () => {
+  assertEquals(budgetSize({ width: 1216, height: 832 }), { fitWidth: 1248, fitHeight: 832 })
+  assertEquals(budgetSize({ width: 832, height: 1216 }), { fitWidth: 832, fitHeight: 1248 })
+  assertEquals(budgetSize({ width: 1024, height: 1024 }), { fitWidth: 1024, fitHeight: 1024 })
+})
+
+Deno.test('A Qwen-Image 2.1 edit with nothing painted saves the result scaled to the picture', () =>
+  withTempDir(async (dir) => {
+    for (const model of ['qwen-image-2.1-edit', 'qwen-image-2.1-turbo-edit'] as const) {
+      const { workflow: w } = await comfyEdit(dir, model)
+      assertEquals(w.sampler.inputs.latent_image, ['conditioning', 2])
+      assertEquals(w.save.inputs.images, ['back', 0])
+      assertEquals([w.back.inputs.width, w.back.inputs.height], [100, 50])
+    }
   }))
 
 Deno.test("A ComfyUI render without the model's files says which are missing", () =>
@@ -501,6 +525,7 @@ Deno.test('Every ComfyUI workflow loads, and fills with nothing left over', asyn
           steps: editor.steps ?? model.defaultSteps,
           width: 512,
           height: 512,
+          ...budgetSize({ width: 512, height: 512 }),
           ...(cfg === undefined ? {} : { cfg }),
         },
       }

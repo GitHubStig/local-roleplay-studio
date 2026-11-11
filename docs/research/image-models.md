@@ -378,6 +378,19 @@ ComfyUI now has four edit models (`server/images/comfyui/models.ts`, `COMFYUI_ED
 - **Two areas in one FLUX.3 edit work, once the instruction says which goes where**: "a pewter tankard of foaming ale on the left, and a folded letter sealed with red wax on the right" put the tankard in the left area and the letter in the right on all three seeds (16.2–17.1 s), each whole; one tankard had a faint stray handle beside it, and one letter a pale glow around it. So an instruction per area isn't needed.
 - Not checked: Turbo Edit with nothing painted, pictures from other Image Models, more prompts.
 
+## Qwen-Image 2.1's edits on ComfyUI at a 1024² budget (2026-11-11, Windows PC, from the Mac)
+
+The app's Qwen-Image 2.1 Edit and Turbo Edit workflows gave the reference at its own size (`TextEncodeQwenImage21`'s `resolution` 0, as ComfyUI's template starts), so the edit was worked on a canvas the picture's size. On ComfyUI 0.45.2 that came out grainy wherever it was repainted: on a whole picture (nothing painted) the walls, ceiling and floor turned over-sharpened and noisy, a mean change of 23–29 against the original even where nothing was asked, with or without Comfy Kitchen's int8 attention, at 25 or 40 steps, with `QwenImage21Cache` off. On a painted area, only that area showed it (the repainted hand "brighter and more sharply textured", above). mflux's Qwen-Image 2.1 Edit on the Mac, at the picture's own size, was clean (a mean change of 9.6, 177 s at 1216×832).
+
+What fixed it: the picture scaled to a 1024² budget, each side a multiple of 32, as mflux sizes a reference (`budgetSize`, `server/images/comfyui/comfyui.ts`: 1216×832 becomes 1248×832), as both the reference and the canvas, the result scaled back to the picture's size. A canvas at the picture's own size with the reference at the budget was as noisy as before; the encoder's own latent as the canvas left a dark rim around a painted area, as it isn't the picture. Through the app's `edit()`, on a 1216×832 render of two people, seed 42:
+
+| Edit | Time | Whole picture: "make the man's flannel shirt bright red" | Painted area (his shirt): "a bright red flannel shirt" |
+|---|---:|---|---|
+| Qwen-Image 2.1 Edit (25 steps) | 25 s | clean, the shirt red, a mean change of 4.7 | clean, no rim; nothing outside the area changed |
+| Qwen-Image 2.1 Turbo Edit (8 steps) | 16 s | clean, 5.2 | the same |
+
+Both also moved the camera when told to ("seen from a low angle: the camera near the floor, looking up at them"), as mflux's did, the people and the room kept.
+
 ## FIBO 2.0 on ComfyUI (2026-10-27, Windows PC)
 
 With the int8 Comfy-Org repack on the RTX 4070 (12 GB VRAM, 16 GB RAM), ComfyUI 0.43.0 (0.43.1 for Turbo's text-to-image, added 2026-10-28), using the app's `comfyuiImageGenerator` directly against its local API. One render each at 832×1216; the prompt described a rain-soaked tavern, a traveller at a window table, and an innkeeper setting down a mug. FIBO Dev and Turbo text-to-image used seed 42; both edits used the same render, seed 43, and a rectangular mask over the mug. **FIBO 2.0 Turbo** (`fibo-2.0-turbo`) is the Edit Turbo checkpoint (`fibo2_edit_turbo_int8_convrot`, already installed for the edit, so no new download) run as a generator, as on mflux ("FIBO 2.0 Turbo on mflux", above): Dev's text-to-image graph (`fibo-2.0-turbo.json`) at 4 steps and CFG 1.

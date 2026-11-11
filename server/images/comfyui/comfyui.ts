@@ -10,6 +10,19 @@ import { loadModelWorkflow } from './workflow.ts'
 import { modelFiles, withUploads } from '../../comfyui/files.ts'
 
 /**
+ * A picture's size scaled to a 1024² pixel budget, each side a multiple of 32, as Qwen-Image 2.1
+ * sizes a reference (mflux's `QwenImage21LatentCreator.dimensions`; ComfyUI's
+ * `TextEncodeQwenImage21` at `resolution` 1024): its edits are worked at this size, as at the
+ * picture's own they came out grainy on ComfyUI (docs/research/image-models.md).
+ */
+export function budgetSize({ width, height }: { width: number; height: number }) {
+  const ratio = width / height
+  const w = Math.sqrt(1024 * 1024 * ratio)
+  const side = (n: number) => Math.max(32, Math.round(n / 32) * 32)
+  return { fitWidth: side(w), fitHeight: side(w / ratio) }
+}
+
+/**
  * Pictures from a ComfyUI server (`comfyui/client.ts`): the model's workflow ends in
  * `SaveImageWebsocket` (which ships with ComfyUI), so the picture itself comes back over the
  * WebSocket and is saved into the Session's folder; ComfyUI writes no file.
@@ -81,11 +94,14 @@ export function comfyuiImageGenerator(opts: {
           ...((editor.cfg ?? model.cfg) === undefined ? {} : { cfg: editor.cfg ?? model.cfg }),
           width: size.width,
           height: size.height,
+          ...budgetSize(size),
         })
         if (!mask) {
+          // What would have been pasted back is the picture: the decoded result, or for Qwen's
+          // that scaled back to the picture's size.
+          workflow.save.inputs.images = workflow.composite.inputs.source
           for (const node of ['mask', 'encode', 'masked', 'composite']) delete workflow[node]
           workflow.sampler.inputs.latent_image = ['conditioning', 2]
-          workflow.save.inputs.images = ['rgb', 0]
         }
         const file = `${req.name}.png`
         await Deno.writeFile(join(req.dir, file), await picture(base, workflow, signal, onProgress))

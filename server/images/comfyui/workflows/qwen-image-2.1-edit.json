@@ -1,5 +1,5 @@
 {
-  "_note": "Qwen-Image 2.1 editing a picture (ADR 0021), from ComfyUI's template image_qwen_image_2_1_image_edit (25 steps, CFG 1, euler, simple; the reference at its own size, resolution 0), without its prompt enhancer, on Qwen-Image 2.1's own files. The picture is the reference (TextEncodeQwenImage21). The painted area is the latent's noise mask: the sampler repaints only it, the picture's own latent holding the rest, so the edit lands where it's painted; the picture is then pasted back outside it (ImageCompositeMasked), so nothing else moves. With nothing painted, comfyui.ts drops mask, encode, masked and composite, and the whole picture is repainted. $names are filled in by server/images/comfyui/comfyui.ts. Attention is Comfy Kitchen's int8 (ModelAttentionBackend), as Ming-Image's template has it: less time sampling on an NVIDIA card (docs/research/image-models.md), PyTorch's attention where it can't run, as on a Mac.",
+  "_note": "Qwen-Image 2.1 editing a picture (ADR 0021), from ComfyUI's template image_qwen_image_2_1_image_edit (25 steps, CFG 1, euler, simple; the reference at a 1024² pixel budget, resolution 1024, as ComfyUI sizes it; the template starts at 0, its own size, which came out over-sharpened and grainy wherever the picture was repainted, docs/research/image-models.md), without its prompt enhancer, on Qwen-Image 2.1's own files. The picture is the reference (TextEncodeQwenImage21). The painted area is the latent's noise mask: the sampler repaints only it, the picture's own latent holding the rest, so the edit lands where it's painted; the picture is then pasted back outside it (ImageCompositeMasked), so nothing else moves. With nothing painted, comfyui.ts drops mask, encode, masked and composite, and the whole picture is repainted. $names are filled in by server/images/comfyui/comfyui.ts. Attention is Comfy Kitchen's int8 (ModelAttentionBackend), as Ming-Image's template has it: less time sampling on an NVIDIA card (docs/research/image-models.md), PyTorch's attention where it can't run, as on a Mac. The picture is first scaled to that budget ($fitWidth × $fitHeight, worked out in comfyui.ts as mflux does) and encoded as the canvas, so the painted area's surroundings are the picture; the result is scaled back to the picture's size ($width × $height) before it is pasted back or saved.",
   "unet": {
     "class_type": "UNETLoader",
     "inputs": { "unet_name": "$unet", "weight_dtype": "default" }
@@ -15,18 +15,28 @@
   "vae": { "class_type": "VAELoader", "inputs": { "vae_name": "$vae" } },
   "image": { "class_type": "LoadImage", "inputs": { "image": "$image" } },
   "mask": { "class_type": "LoadImageMask", "inputs": { "image": "$mask", "channel": "red" } },
+  "fit": {
+    "class_type": "ImageScale",
+    "inputs": {
+      "image": ["image", 0],
+      "upscale_method": "lanczos",
+      "width": "$fitWidth",
+      "height": "$fitHeight",
+      "crop": "disabled"
+    }
+  },
   "conditioning": {
     "class_type": "TextEncodeQwenImage21",
     "inputs": {
       "clip": ["clip", 0],
       "prompt": "$prompt",
       "negative_prompt": "",
-      "resolution": 0,
+      "resolution": 1024,
       "vae": ["vae", 0],
-      "images.image_1": ["image", 0]
+      "images.image_1": ["fit", 0]
     }
   },
-  "encode": { "class_type": "VAEEncode", "inputs": { "pixels": ["image", 0], "vae": ["vae", 0] } },
+  "encode": { "class_type": "VAEEncode", "inputs": { "pixels": ["fit", 0], "vae": ["vae", 0] } },
   "masked": {
     "class_type": "SetLatentNoiseMask",
     "inputs": { "samples": ["encode", 0], "mask": ["mask", 0] }
@@ -51,11 +61,21 @@
     "inputs": { "samples": ["sampler", 0], "vae": ["vae", 0] }
   },
   "rgb": { "class_type": "SplitImageWithAlpha", "inputs": { "image": ["decode", 0] } },
+  "back": {
+    "class_type": "ImageScale",
+    "inputs": {
+      "image": ["rgb", 0],
+      "upscale_method": "lanczos",
+      "width": "$width",
+      "height": "$height",
+      "crop": "disabled"
+    }
+  },
   "composite": {
     "class_type": "ImageCompositeMasked",
     "inputs": {
       "destination": ["image", 0],
-      "source": ["rgb", 0],
+      "source": ["back", 0],
       "mask": ["mask", 0],
       "x": 0,
       "y": 0,
