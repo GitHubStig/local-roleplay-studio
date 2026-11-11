@@ -4,7 +4,7 @@ import { frameName } from '../frameName'
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
-  chainFromStoryboard,
+  chainFromFrame,
   type Activity,
   DOWNLOADING,
   editStoryboardFrame,
@@ -515,7 +515,7 @@ async function continueAsChain(index: number) {
   copying.value = true
   message.value = null
   try {
-    const chain = await chainFromStoryboard(props.id, index)
+    const chain = await chainFromFrame(props.id, index)
     router.push(sessionPath(chain.id, 'chain'))
   } catch (err) {
     message.value = { kind: 'error', text: (err as Error).message }
@@ -764,7 +764,7 @@ const imagesOn = computed(() => featureOn.value('images'))
               data-continue-chain
               @click="continueAsChain(current.index)"
             >
-              {{ copying ? 'Making…' : 'Chain from here' }}
+              {{ copying ? 'Making…' : `Chain from ${frameName(current.index)}` }}
             </button>
           </div>
         </div>

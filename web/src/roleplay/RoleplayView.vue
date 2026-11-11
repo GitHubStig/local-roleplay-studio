@@ -3,7 +3,8 @@ import { ask } from '../ask'
 import { frameName, framesName } from '../frameName'
 import { useTextareaAutosize } from '@vueuse/core'
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
-import { type Activity, type Clip, getSession, imageUrl, type Look, type Made3d, restartSession } from '../api'
+import { useRouter } from 'vue-router'
+import { type Activity, chainFromFrame, type Clip, getSession, imageUrl, type Look, type Made3d, restartSession } from '../api'
 import { useSessionScreen } from '../composables/useSessionScreen'
 import { useStoredFlag } from '../composables/useStoredFlag'
 import { saveLine, useAutosave } from '../composables/useAutosave'
@@ -651,6 +652,23 @@ async function queueSaved(kind: JobKind, index: number) {
   if (await flushEdits('queued')) queue(kind, index)
 }
 
+/** A new Chain opening on Frame `index`'s picture, opened to carry on from it by Actions. */
+const router = useRouter()
+const copying = ref(false)
+async function continueAsChain(index: number) {
+  if (copying.value || !(await flushEdits('copied'))) return
+  copying.value = true
+  notice.value = null
+  try {
+    const chain = await chainFromFrame(props.id, index)
+    router.push(sessionPath(chain.id, 'chain'))
+  } catch (err) {
+    notice.value = { kind: 'error', text: (err as Error).message }
+  } finally {
+    copying.value = false
+  }
+}
+
 const fieldValue = (f: CastField) =>
   String((castDraft.value![f.group] as unknown as Record<string, unknown>)[f.key] ?? '')
 function setField(f: CastField, value: string) {
@@ -1039,6 +1057,22 @@ const lookSavingText = computed(() =>
             >
               {{ notice?.text }}
             </p>
+            <!-- Left of Undo, which stays at the far end: it opens a new Session from the selected Frame. -->
+            <button
+              v-if="begun && !busy && selectedFrame"
+              type="button"
+              class="rounded-lg border border-line px-3 py-2 text-sm disabled:opacity-50"
+              :disabled="!selectedFrame.prompt || !!selectedFrame.blocked || copying"
+              :title="!selectedFrame.prompt
+              ? `Picture ${frameName(selectedFrame.index)} first: a Chain starts from its Image Prompt`
+              : selectedFrame.blocked
+              ? `Picture ${frameName(selectedFrame.index)} again first: it crosses a limit`
+              : `A new Chain opening on ${frameName(selectedFrame.index)}'s Image Prompt and picture, to carry on from it by Actions. This Roleplay stays as it is.`"
+              data-continue-chain
+              @click="continueAsChain(selectedFrame.index)"
+            >
+              {{ copying ? 'Making…' : `Chain from ${frameName(selectedFrame.index)}` }}
+            </button>
             <button
               type="button"
               class="rounded-lg border border-line px-3 py-2 text-sm disabled:opacity-50"

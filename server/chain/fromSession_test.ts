@@ -7,7 +7,15 @@ import type { Look, StoryboardFrame, StoryboardSession } from '../../shared/sess
 import { DEFAULT_SETTINGS } from '../settings.ts'
 import { withTempDir } from '../testing.ts'
 import { pictureFiles } from '../pictures.ts'
-import { chainFromStoryboard, CopyError, NO_ONE, oneSubject } from './fromStoryboard.ts'
+import {
+  chainFromRoleplay,
+  chainFromStoryboard,
+  CopyError,
+  NO_ONE,
+  oneSubject,
+} from './fromSession.ts'
+import type { RoleplayFrame, RoleplaySession } from '../../shared/roleplay.ts'
+import { replyOf, testCast } from '../roleplay/testing.ts'
 
 const look: Look = {
   subjects: [
@@ -182,5 +190,111 @@ Deno.test('chainFromStoryboard saves nothing when a picture file is missing', ()
     const store = dirSessionStore(root)
     await store.save(board)
     await assertRejects(() => chainFromStoryboard(store, board, 0, chain), Deno.errors.NotFound)
+    assertEquals(await store.load('chain'), undefined)
+  }))
+
+const roleplay = (frames: RoleplayFrame[]): RoleplaySession => ({
+  id: 'talk',
+  kind: 'roleplay',
+  brief: 'Two old friends meet on a dock.',
+  scenarioId: null,
+  settings: { ...DEFAULT_SETTINGS, textModel: 'fake' },
+  seed: 7,
+  createdAt: '2026-11-11T00:00:00.000Z',
+  cast: testCast,
+  look,
+  cues: [],
+  frames,
+})
+
+const exchange = (index: number, extra: Partial<RoleplayFrame> = {}): RoleplayFrame => ({
+  index,
+  message: index ? `Message ${index}` : null,
+  reply: replyOf(`Reply ${index}`),
+  timings: { text: 1 },
+  textModel: 'fake',
+  pictures: [],
+  createdAt: '2026-11-11T00:00:00.000Z',
+  ...extra,
+})
+
+const pictured = (index: number, shown: string[], extra: Partial<RoleplayFrame> = {}) =>
+  exchange(index, {
+    body,
+    shown,
+    prompt: composePrompt(look, body, shown),
+    pictureTimings: { text: 3.5 },
+    pictureModel: 'artist',
+    pictures: [{
+      image: `frame-${index}-0000000${index}.png`,
+      imageModel: 'qwen',
+      clips: [{
+        kind: 'idle-loop',
+        model: 'ltx',
+        file: `clip-${index}-00000000.mp4`,
+        prompt: 'She breathes.',
+        speech: false,
+        seconds: 4,
+        seed: 7,
+        timings: { clip: 30 },
+      }],
+    }],
+    ...extra,
+  })
+
+/** Saves `talk` with a file for each of its pictures. */
+async function savedRoleplay(root: string, talk: RoleplaySession) {
+  const store = dirSessionStore(root)
+  await store.save(talk)
+  for (const f of talk.frames) {
+    for (const file of f.pictures.flatMap(pictureFiles)) {
+      await Deno.writeTextFile(join(store.dir(talk.id), file), file)
+    }
+  }
+  return store
+}
+
+Deno.test('chainFromRoleplay opens a Chain on one pictured Frame, its picture copied', () =>
+  withTempDir(async (root) => {
+    const talk = roleplay([pictured(0, ['Mara']), exchange(1), pictured(2, ['Mara', 'Cal'])])
+    const store = await savedRoleplay(root, talk)
+    const made = await chainFromRoleplay(store, talk, 2, chain)
+
+    assertEquals([made.kind, made.brief, made.seed], ['chain', talk.brief, 7])
+    assertEquals(made.frames.length, 1)
+    const [opening] = made.frames
+    assertEquals([opening.index, opening.action, opening.outcome], [0, null, 'done'])
+    assertEquals(opening.narration, "From the Roleplay's Frame 3.")
+    assertEquals([opening.timings, opening.textModel], [{ text: 3.5 }, 'artist'])
+    // Nine sentences, both people in one subject sentence, the picture still matching it.
+    assertEquals(sentences(opening.prompt).length, 9)
+    assertEquals(subjectSentence(opening.prompt), oneSubject(look.subjects.map((p) => p.identity)))
+    const [picture] = opening.pictures
+    assertEquals([picture.stale, picture.clips], [undefined, undefined])
+    assertEquals(picture.image.startsWith('frame-0-'), true)
+    assertEquals(
+      await Deno.readTextFile(join(store.dir('chain'), picture.image)),
+      'frame-2-00000002.png',
+    )
+    assertEquals((await store.load('talk'))?.frames.length, 3)
+  }))
+
+Deno.test('chainFromRoleplay refuses a Frame not pictured, or one crossing a limit', () =>
+  withTempDir(async (root) => {
+    const talk = roleplay([
+      pictured(0, ['Mara'], { blocked: 'no nudity' }),
+      exchange(1),
+    ])
+    const store = await savedRoleplay(root, talk)
+    await assertRejects(
+      () => chainFromRoleplay(store, talk, 1, chain),
+      CopyError,
+      'Picture Frame 2 first',
+    )
+    await assertRejects(
+      () => chainFromRoleplay(store, talk, 0, chain),
+      CopyError,
+      'Frame 1 crosses a limit',
+    )
     assertEquals(await store.load('chain'), undefined)
   }))

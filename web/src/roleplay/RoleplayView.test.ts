@@ -22,6 +22,7 @@ vi.mock('../api', async (importOriginal) => ({
   cancelAllJobs: vi.fn(),
   retryJob: vi.fn(),
   restartSession: vi.fn(),
+  chainFromFrame: vi.fn(),
 }))
 vi.mock('./api', async (importOriginal) => ({
   ...(await importOriginal<typeof roleplay>()),
@@ -449,6 +450,43 @@ describe('RoleplayView', () => {
 
     await wrapper.findAll('[data-reply]')[0].trigger('click')
     expect(tab()).toBe('Frame 1')
+  })
+
+  it('makes a Chain from the selected Frame once pictured, and opens it', async () => {
+    const pictured = (index: number, extra = {}) => ({
+      ...frame(index, index ? 'Thanks.' : null, 'Sit.'),
+      prompt: 'Elena by the stove.',
+      pictures: [picture(`frame-${index}.png`)],
+      ...extra,
+    })
+    vi.mocked(api.getSession).mockResolvedValue(
+      roleplaySession([
+        pictured(0, { blocked: 'no nudity' }),
+        pictured(1),
+        frame(2, 'Tea?', 'Sure.'),
+      ]),
+    )
+    vi.mocked(api.chainFromFrame).mockResolvedValue({ id: 'ch', kind: 'chain' } as never)
+    const { wrapper, router } = await mountIt()
+    const button = () => wrapper.find('[data-continue-chain]')
+    // Beside Undo, not in the Frame's tab; the newest isn't pictured yet, so nothing to start from.
+    expect(wrapper.find('[data-frame-panel] [data-continue-chain]').exists()).toBe(false)
+    expect(button().attributes('disabled')).toBeDefined()
+    expect(button().attributes('title')).toContain('Picture Frame 3 first')
+    expect(button().text()).toBe('Chain from Frame 3')
+    // Undo stays at the far end, this just before it.
+    const bar = [...button().element.parentElement!.children].slice(-2)
+    expect(bar.map((b) => b.hasAttribute('data-undo'))).toEqual([false, true])
+    expect(wrapper.find('[data-undo]').text()).toBe('Undo')
+    const frames = () => wrapper.findAll('[data-frames-list] [data-frame]')
+    await frames()[0].trigger('click')
+    expect(button().attributes('disabled')).toBeDefined()
+    await frames()[1].trigger('click')
+    expect(button().text()).toBe('Chain from Frame 2')
+    await button().trigger('click')
+    await flushPromises()
+    expect(api.chainFromFrame).toHaveBeenCalledWith('r1', 1)
+    expect(router.currentRoute.value.path).toBe('/sessions/ch')
   })
 
   it('opens the side panel on the Look and Cast for review, and on the Frame once begun', async () => {

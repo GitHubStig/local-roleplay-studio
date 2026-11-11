@@ -1,7 +1,8 @@
 /**
- * A Chain made from a Storyboard: a new Session holding the Storyboard's Frames up to one of them,
- * to carry on from that Frame by Actions. The Storyboard is left as it is. Done in code, with no
- * Text Model: the Image Prompts keep every word, so the pictures copied with them still show them.
+ * A Chain made from another Session, to carry on from one of its Frames by Actions (ADR 0018): a
+ * Storyboard's Frames up to one of them, or a Roleplay's pictured Frame as its Opening Frame. The
+ * Session it's made from is left as it is. Done in code, with no Text Model: the Image Prompts keep
+ * every word, so the pictures copied with them still show them.
  */
 import { frameName } from '../frames.ts'
 import { join } from '@std/path'
@@ -10,12 +11,8 @@ import { shownSubjects } from '../look.ts'
 import { editLine } from '../pictures.ts'
 import type { Picture, PictureVersion } from '../../shared/pictures.ts'
 import type { SessionStore } from '../session.ts'
-import type {
-  ChainFrame,
-  ChainSession,
-  StoryboardFrame,
-  StoryboardSession,
-} from '../../shared/session.ts'
+import type { ChainFrame, ChainSession, Look, StoryboardSession } from '../../shared/session.ts'
+import type { RoleplaySession } from '../../shared/roleplay.ts'
 import { Refusal } from '../refusal.ts'
 
 /** The subject sentence of a Frame that shows no one. */
@@ -34,14 +31,12 @@ export function oneSubject(identities: string[]): string {
  * A Storyboard Frame's Image Prompt as a Chain's: nine sentences, the first describing everyone
  * shown.
  */
-export const chainPrompt = (storyboard: StoryboardSession, frame: StoryboardFrame): string => {
-  const look = storyboard.look!
-  return joinPrompt(
+export const chainPrompt = (look: Look, frame: { body: string; shown: string[] }): string =>
+  joinPrompt(
     oneSubject(shownSubjects(look, frame.shown).map((p) => p.identity)),
     frame.body,
     look.style,
   )
-}
 
 /** Two prompts that differ only in where a sentence ends: a picture of one is a picture of both. */
 const samePicture = (a: string, b: string) => {
@@ -61,8 +56,8 @@ const copyName = (file: string, index: number) => {
 /**
  * `picture` with its files renamed for Frame `index`, noting each copy to make: its render, and its
  * picked edit if it has one (ADR 0021), still picked, with every instruction that led to it in its
- * edit model's line. The
- * other edits and the painted areas stay behind.
+ * edit model's line. The other edits, the painted areas and the clips stay behind (a clip into the
+ * next Frame would end on a picture the Chain may not have).
  */
 function copiedPicture(picture: Picture, index: number, files: [string, string][]): Picture {
   const rename = (file: string) => {
@@ -71,9 +66,9 @@ function copiedPicture(picture: Picture, index: number, files: [string, string][
     return to
   }
   const copied = <V extends PictureVersion>(version: V): V => {
-    const { upscaled, scene, figure, lito } = version
+    const { upscaled, scene, figure, lito, clips: _, ...rest } = version
     return {
-      ...version,
+      ...rest as V,
       image: rename(version.image),
       ...(upscaled ? { upscaled: rename(upscaled) } : {}),
       ...(scene ? { scene: { ...scene, file: rename(scene.file) } } : {}),
@@ -121,17 +116,14 @@ export async function chainFromStoryboard(
   const files: [string, string][] = []
   const frames = storyboard.frames.slice(0, upTo + 1).filter((f) => !f.blocked).map(
     (f, index): ChainFrame => {
-      const prompt = chainPrompt(storyboard, f)
-      const pictures = f.pictures.map((p) => copiedPicture(p, index, files))
+      const prompt = chainPrompt(storyboard.look!, f)
       return {
         index,
         action: index === 0 ? null : f.beat,
         narration: index === 0 ? f.beat : `From the Storyboard's ${frameName(f.index)}.`,
         outcome: 'done',
         prompt,
-        pictures: samePicture(prompt, f.prompt)
-          ? pictures
-          : pictures.map((p) => ({ ...p, stale: true })),
+        pictures: matching(prompt, f.prompt, f.pictures.map((p) => copiedPicture(p, index, files))),
         // Written (its body is checked above), so it has both.
         timings: f.timings!,
         textModel: f.textModel!,
@@ -139,22 +131,78 @@ export async function chainFromStoryboard(
       }
     },
   )
+  return await saveCopy(store, storyboard, frames, files, chain)
+}
+
+/**
+ * Makes and saves a Chain whose Opening Frame is `roleplay`'s Frame `index`: its Image Prompt as
+ * nine sentences (everyone shown joined into one subject sentence) and its pictures, so the Chain
+ * starts from exactly that picture. It needs an Image Prompt that crosses no Limit. The Brief,
+ * Settings and seed are the Roleplay's; the conversation stays behind.
+ */
+export async function chainFromRoleplay(
+  store: SessionStore,
+  roleplay: RoleplaySession,
+  index: number,
+  chain: Pick<ChainSession, 'id' | 'createdAt'>,
+): Promise<ChainSession> {
+  const frame = roleplay.frames[index]
+  if (!frame) throw new CopyError('No such Frame')
+  if (!roleplay.look || frame.body === undefined || !frame.prompt) {
+    throw new CopyError(`Picture ${frameName(index)} first: a Chain starts from its Image Prompt`)
+  }
+  if (frame.blocked) {
+    throw new CopyError(
+      `${frameName(index)} crosses a limit (${frame.blocked}): picture it again first`,
+    )
+  }
+  const files: [string, string][] = []
+  const prompt = chainPrompt(roleplay.look, { body: frame.body, shown: frame.shown ?? [] })
+  const opening: ChainFrame = {
+    index: 0,
+    action: null,
+    narration: `From the Roleplay's ${frameName(index)}.`,
+    outcome: 'done',
+    prompt,
+    pictures: matching(prompt, frame.prompt, frame.pictures.map((p) => copiedPicture(p, 0, files))),
+    timings: frame.pictureTimings ?? { text: 0 },
+    textModel: frame.pictureModel ?? frame.textModel,
+    createdAt: chain.createdAt,
+  }
+  return await saveCopy(store, roleplay, [opening], files, chain)
+}
+
+/** `pictures`, marked out of date unless `prompt` shows what `was` did. */
+const matching = (prompt: string, was: string, pictures: Picture[]) =>
+  samePicture(prompt, was) ? pictures : pictures.map((p) => ({ ...p, stale: true }))
+
+/**
+ * Saves a Chain of `frames` made from `from`, with its Brief, Scenario, Settings and seed, copying
+ * `files` across; on any failure nothing of it is left.
+ */
+async function saveCopy(
+  store: SessionStore,
+  from: StoryboardSession | RoleplaySession,
+  frames: ChainFrame[],
+  files: [string, string][],
+  chain: Pick<ChainSession, 'id' | 'createdAt'>,
+): Promise<ChainSession> {
   const session: ChainSession = {
     id: chain.id,
     kind: 'chain',
-    brief: storyboard.brief,
-    scenarioId: storyboard.scenarioId,
-    ...storyboard.scenario && { scenario: storyboard.scenario },
-    settings: storyboard.settings,
-    seed: storyboard.seed,
+    brief: from.brief,
+    scenarioId: from.scenarioId,
+    ...from.scenario && { scenario: from.scenario },
+    settings: from.settings,
+    seed: from.seed,
     createdAt: chain.createdAt,
     frames,
   }
-  const from = store.dir(storyboard.id)
+  const source = store.dir(from.id)
   const to = store.dir(session.id)
   try {
     await Deno.mkdir(to, { recursive: true })
-    for (const [a, b] of files) await Deno.copyFile(join(from, a), join(to, b))
+    for (const [a, b] of files) await Deno.copyFile(join(source, a), join(to, b))
     await store.save(session)
   } catch (err) {
     await store.remove(session.id)

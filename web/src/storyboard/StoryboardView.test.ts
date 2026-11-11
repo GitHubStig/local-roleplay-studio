@@ -34,7 +34,7 @@ vi.mock('../api', async (importOriginal) => ({
     )
   ),
   queueJob: vi.fn(),
-  chainFromStoryboard: vi.fn(),
+  chainFromFrame: vi.fn(),
 }))
 
 /** A queued job, as the server lists it. */
@@ -432,12 +432,13 @@ describe('StoryboardView', () => {
   })
 
   it('continues as a Chain from the Frame shown, and opens it', async () => {
-    vi.mocked(api.chainFromStoryboard).mockResolvedValue({ id: 'ch', kind: 'chain' } as never)
+    vi.mocked(api.chainFromFrame).mockResolvedValue({ id: 'ch', kind: 'chain' } as never)
     const { wrapper, router } = await mountIt()
     await wrapper.findAll('[data-frame]')[1].trigger('click')
+    expect(wrapper.find('[data-continue-chain]').text()).toBe('Chain from Frame 2')
     await wrapper.find('[data-continue-chain]').trigger('click')
     await flushPromises()
-    expect(api.chainFromStoryboard).toHaveBeenCalledWith('sb', 1)
+    expect(api.chainFromFrame).toHaveBeenCalledWith('sb', 1)
     expect(router.currentRoute.value.path).toBe('/sessions/ch')
   })
 

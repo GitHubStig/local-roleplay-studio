@@ -1,8 +1,11 @@
-/** A Chain's routes: a Frame from an Action, Undo, and a new Chain from a Storyboard's Frames. */
+/**
+ * A Chain's routes: a Frame from an Action, Undo, and a new Chain from a Storyboard's Frames or a
+ * Roleplay's Frame.
+ */
 import { error, json, readJson, requiredText, type Route } from '../http.ts'
 import { imageChoiceOf } from '../jobs.ts'
 import { logCallsUnder } from '../calls.ts'
-import { chainFromStoryboard } from './fromStoryboard.ts'
+import { chainFromRoleplay, chainFromStoryboard } from './fromSession.ts'
 import { machineOf } from '../machine.ts'
 import { runChainFrame, undoFrames } from './frames.ts'
 import type { FrameEvent } from '../../shared/events.ts'
@@ -70,22 +73,21 @@ export function chainRoutes(ctx: AppContext): Route[] {
       })
     }],
 
-    // A new Chain from a Storyboard's Frames up to `index`, to carry on from that Frame by
-    // Actions; the Storyboard stays as it is. Made between renders, as it copies their pictures.
+    // A new Chain from a Storyboard's Frames up to `index`, or from a Roleplay's Frame `index` as
+    // its Opening Frame, to carry on from that Frame by Actions; the Session it's made from stays
+    // as it is. Made between renders, as it copies their pictures.
     [
       'POST',
       new URLPattern({ pathname: '/api/sessions/:id/frames/:index/chain' }),
       (_req, p) =>
         jobs.betweenRenders(p.id!, () =>
           locked(p.id!, 'copy', async (session) => {
-            if (!needsStoryboard(session)) {
-              return error('Only a Storyboard is made into a Chain', 409)
-            }
+            if (needsChain(session)) return error('A Chain carries on by Actions', 409)
             const index = frameIndexOf(session, p.index)
-            const chain = await chainFromStoryboard(deps.sessions, session, index, {
-              id: newSessionId(),
-              createdAt: new Date().toISOString(),
-            })
+            const made = { id: newSessionId(), createdAt: new Date().toISOString() }
+            const chain = needsStoryboard(session)
+              ? await chainFromStoryboard(deps.sessions, session, index, made)
+              : await chainFromRoleplay(deps.sessions, session, index, made)
             return json(chain, 201)
           })),
     ],

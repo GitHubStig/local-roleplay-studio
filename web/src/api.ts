@@ -515,10 +515,11 @@ export const restartSession = <S extends StoryboardSession | RoleplaySession>(id
   post<S>(`/api/sessions/${id}/restart`)
 
 /**
- * Makes a new Chain from a Storyboard's Frames up to `index`, with their pictures, to carry on
- * from that Frame by Actions; the Storyboard stays as it is.
+ * Makes a new Chain to carry on from Frame `index` by Actions, with its pictures: from a
+ * Storyboard, its Frames up to that one; from a Roleplay, that pictured Frame as its Opening Frame.
+ * The Session it's made from stays as it is.
  */
-export const chainFromStoryboard = (id: string, index: number) =>
+export const chainFromFrame = (id: string, index: number) =>
   post<ChainSession>(`/api/sessions/${id}/frames/${index}/chain`)
 
 /** Replaces a Chain Frame's Image Prompt, typed by hand; its pictures are then out of date. */
