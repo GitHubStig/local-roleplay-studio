@@ -134,6 +134,18 @@ def wider(grids: Path) -> None:
         sheet(f"Qwen-Image 2.1 Turbo Edit, wider check: {label}", ["", ""], pairs, grids / f"wider-{label}.jpg")
 
 
+def untried(grids: Path) -> None:
+    out = HERE / "out" / "untried"
+    if not (out / "untried.json").exists():
+        return
+    told = json.loads((out / "untried.json").read_text())
+    labels = ["waist up", "legs", "wider", "POV", "extreme close-up: eyes", "from behind"]
+    rows = [("Baselines", [out / "two-baseline.png", out / "solo-baseline.png"])] + [
+        (f"{labels[i]}", [out / f"two-u{i + 1}.png", out / f"solo-u{i + 1}.png"]) for i in range(len(labels))
+    ]
+    sheet("Turbo Edit, moves not tried before", ["two people", "one man"], rows, grids / "untried.jpg")
+
+
 if __name__ == "__main__":
     main()
     firsts(HERE / "grids")
@@ -141,3 +153,4 @@ if __name__ == "__main__":
     wordings(HERE / "grids")
     nexts(HERE / "grids")
     wider(HERE / "grids")
+    untried(HERE / "grids")

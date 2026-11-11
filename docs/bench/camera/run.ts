@@ -49,6 +49,7 @@ import {
   SEQUENCES,
   SOLO,
   TARGETS,
+  UNTRIED,
   WORDINGS,
 } from './scene.ts'
 import { MOVES as MOVES_FOR_WORDINGS } from './scene.ts'
@@ -520,6 +521,27 @@ async function poses() {
   }
 }
 
+/** The moves not yet tried, on the bedroom (seed 42's render) and the kitchen. */
+async function untried() {
+  const dir = here('out/untried')
+  await Deno.mkdir(dir, { recursive: true })
+  await Deno.copyFile(here('out/edits/baseline.png'), `${dir}/two-baseline.png`)
+  await Deno.copyFile(here('out/wider/solo-baseline.png'), `${dir}/solo-baseline.png`)
+  const images = comfyuiImageGenerator({ address: comfyuiAddress() })
+  for (const [label, moves] of Object.entries(UNTRIED)) {
+    for (const [i, instruction] of moves.entries()) {
+      const name = `${label}-u${i + 1}`
+      const start = performance.now()
+      await images.edit(
+        { model: 'qwen-image-2.1-turbo-edit', image: `${label}-baseline.png`, instruction, seed: RENDER_SEED, dir, name },
+        AbortSignal.timeout(600_000),
+      )
+      console.log(`${name}: ${((performance.now() - start) / 1000).toFixed(1)} s`)
+    }
+  }
+  await Deno.writeTextFile(`${dir}/untried.json`, JSON.stringify(UNTRIED, null, 2))
+}
+
 async function targets(file: string, seed = 1) {
   const { runs } = JSON.parse(await Deno.readTextFile(file)) as { runs: Run[] }
   const prompts: { name: string; prompt: string }[] = [{ name: '00-baseline', prompt: SCENE }]
@@ -570,4 +592,5 @@ else if (stage === 'wordings') await wordings()
 else if (stage === 'next') await next()
 else if (stage === 'wider') await wider()
 else if (stage === 'poses') await poses()
+else if (stage === 'untried') await untried()
 else console.log('Usage: deno run -A docs/bench/camera/run.ts text <seeds> | targets <results.json>')

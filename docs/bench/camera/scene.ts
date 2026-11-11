@@ -146,3 +146,23 @@ export const BEST_SOLO = [
   "A close-up of the man's black clogs on the tiled floor, filling the picture.",
   keep('Move the camera behind the man, looking over his shoulder at the bread and the window: the back of his head and shoulder large in the foreground.'),
 ]
+
+/** Moves not yet tried, for the picker: on the bedroom (two people) and the kitchen (one man). */
+export const UNTRIED: Record<'two' | 'solo', string[]> = {
+  two: [
+    'A shot of the woman from the waist up, filling the picture, in the same room and light.',
+    "A close-up of the woman's legs, filling the picture.",
+    'Move the camera back to show more of the room around them. Keep everything else exactly as in the image.',
+    "Seen through the man's eyes from the doorway: the woman on the bed as he sees her, his hands just visible at the bottom of the picture.",
+    "An extreme close-up of the woman's eyes, filling the picture.",
+    'Move the camera behind the woman, seeing her from behind. Keep everything else exactly as in the image.',
+  ],
+  solo: [
+    'A shot of the man from the waist up, filling the picture, in the same kitchen and light.',
+    "A close-up of the man's legs, filling the picture.",
+    'Move the camera back to show more of the kitchen around him. Keep everything else exactly as in the image.',
+    "Seen through the man's eyes: the bread and the knife on the board as he sees them, his hands at the bottom of the picture.",
+    "An extreme close-up of the man's eyes, filling the picture.",
+    'Move the camera behind the man, seeing him from behind. Keep everything else exactly as in the image.',
+  ],
+}

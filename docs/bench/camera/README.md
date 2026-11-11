@@ -123,3 +123,18 @@ As the owner asked: poses Roleplays often use, which an edit has to keep as the 
 - **The close-ups all worked**: her face (her look back at the camera kept), her hands on the sheets, her socked feet. On her back, her hands' close-up showed her sitting up, though.
 - **Over the shoulder came out as from behind**, the whole of her seen from behind on all fours, and from beside her head lying down: the camera moved round, her pose kept.
 - Qwen-Image 2.1 drew her knees up but together, not apart as asked, before any edit.
+
+### Six moves not tried before (2026-11-11, PC, Turbo Edit)
+
+For the camera picker: on the bedroom (seed 42's render) and the kitchen (one man), `run.ts untried`; the sheet is `grids/untried.jpg`.
+
+| Move | Two people | One man |
+|---|---|---|
+| Extreme close-up of the eyes | done | done (his face changed a little) |
+| From behind ("Move the camera behind …, seeing her from behind. Keep everything else …") | done, Tom kept | done |
+| Close-up of the legs | done, her legs and sneakers | done, his lower half |
+| From the waist up | her waist up, but Tom taken out | no change |
+| Wider ("Move the camera back to show more of the room …") | a little wider | no change |
+| POV ("Seen through the man's eyes …") | no change | a closer view of him, not his view |
+
+So the extreme close-up, from behind and the legs join the moves that work; the waist up, a wider shot and POV don't, as worded.
