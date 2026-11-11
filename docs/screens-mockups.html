@@ -1,0 +1,941 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Studio Screen Review</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600&display=swap">
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          canvas: 'var(--canvas)', surface: 'var(--surface)', line: 'var(--line)',
+          fg: 'var(--fg)', muted: 'var(--muted)', ok: 'var(--ok)', warn: 'var(--warn)',
+          danger: 'var(--danger)', ink: 'var(--ink)', inkfg: 'var(--inkfg)', hi: 'var(--hi)',
+        },
+      },
+    },
+  }
+</script>
+<style>
+  /* Layout: one reading column for the argument, mockups break out wider; the app's own tokens throughout. */
+  :root {
+    /* The app's parchment, as web/src/style.css has it. */
+    --canvas: #ede0bf; --surface: #f6ecd2; --line: #d2bf93; --fg: #3a2817; --muted: #6e573b;
+    --ok: #3f6b2a; --warn: #8f520c; --danger: #962a1c;
+    --ink: #3a2817; --inkfg: #f6ecd2;
+    --hi: #b7791f;
+    --page: #e6d7b2;
+    --display: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+    --body: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --canvas: #0a0a0a; --surface: #171717; --line: #262626; --fg: #f5f5f5; --muted: #a3a3a3;
+      --ok: #34d399; --warn: #fbbf24; --danger: #f87171; --ink: #f5f5f5; --inkfg: #171717;
+      --hi: #fbbf24; --page: #050505; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --canvas: #0a0a0a; --surface: #171717; --line: #262626; --fg: #f5f5f5; --muted: #a3a3a3;
+    --ok: #34d399; --warn: #fbbf24; --danger: #f87171; --ink: #f5f5f5; --inkfg: #171717;
+    --hi: #fbbf24; --page: #050505; color-scheme: dark;
+  }
+  /* The lamplight dark proposed in section 10, applied to one mockup at a time. */
+  .lamp {
+    --canvas: #16110c; --surface: #211912; --line: #3b2d1e; --fg: #efe2c4; --muted: #a8916c;
+    --ok: #8fbf6a; --warn: #e3a547; --danger: #e07a62; --ink: #efe2c4; --inkfg: #16110c; --hi: #e3a547;
+  }
+  /* And the app's parchment light, so a mockup can be shown light whatever the viewer's theme. */
+  .parch {
+    --canvas: #ede0bf; --surface: #f6ecd2; --line: #d2bf93; --fg: #3a2817; --muted: #6e573b;
+    --ok: #3f6b2a; --warn: #8f520c; --danger: #962a1c; --ink: #3a2817; --inkfg: #f6ecd2; --hi: #b7791f;
+  }
+  html, body { background: var(--page); color: var(--fg); font-family: var(--body); }
+  body { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 0 64px; }
+  h1, h2, h3 { font-family: var(--display); text-wrap: balance; letter-spacing: -0.01em; }
+  .prose-col { max-width: 46rem; margin-inline: auto; }
+  .wide { max-width: 78rem; margin-inline: auto; }
+  .prose-col p, .prose-col li { line-height: 1.65; }
+  .eyebrow { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 600; }
+  .scroller { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .mock { min-width: 940px; height: 560px; font-size: 12px; font-family: ui-sans-serif, system-ui, sans-serif; }
+  .phone { width: 280px; height: 580px; font-size: 12px; font-family: ui-sans-serif, system-ui, sans-serif; flex: none; }
+  /* Stand-in pictures: lamplight in a dark room, a ship at sea, a harbour at night. None from a real Session. */
+  .pic { background: radial-gradient(circle at 70% 35%, #f3b54a 0 4%, #a8611d 12%, transparent 38%), radial-gradient(ellipse at 30% 80%, #4b3320, transparent 60%), linear-gradient(160deg, #2a1d12, #120c07 70%); }
+  .pic2 { background: radial-gradient(circle at 25% 30%, #e9a441 0 3%, #8a4f19 10%, transparent 34%), linear-gradient(200deg, #33241a, #0e0905 75%); }
+  .pic3 { background: radial-gradient(circle at 55% 60%, #d98b33 0 5%, #6e3b12 16%, transparent 42%), linear-gradient(180deg, #1d150e, #0b0805); }
+  .sea { background: radial-gradient(ellipse at 50% 58%, #c9d8d4 0 6%, transparent 22%), linear-gradient(180deg, #8fb3c4 0%, #c9dbe0 45%, #3f6f86 46%, #1f4458 100%); }
+  .sea2 { background: radial-gradient(circle at 30% 25%, #fff3c4 0 4%, transparent 14%), linear-gradient(180deg, #e8c48a 0%, #d8a46a 45%, #5a6f86 46%, #2b3f55 100%); }
+  .harbour { background: radial-gradient(circle at 72% 30%, #f7e2a8 0 2%, transparent 8%), radial-gradient(ellipse at 40% 75%, #c7802e 0 4%, transparent 20%), linear-gradient(180deg, #0f1a2a 0%, #1b2a3e 55%, #0b121c 56%, #05090f 100%); }
+  .ic { display: inline-flex; width: 16px; height: 16px; flex: none; }
+  .ic svg { width: 100%; height: 100%; }
+  .tabbtn[aria-selected="true"] { background: var(--ink); color: var(--inkfg); border-color: var(--ink); }
+  .tabbtn:focus-visible, button:focus-visible, a:focus-visible { outline: 2px solid var(--hi); outline-offset: 2px; }
+  .rec { color: var(--hi); font-weight: 600; }
+  .glass { background: color-mix(in srgb, var(--surface) 82%, transparent); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+  .fade-top { mask-image: linear-gradient(to bottom, transparent 0, #000 40px); -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 40px); }
+  .side { transition: width .25s ease, opacity .2s ease; }
+  @media (prefers-reduced-motion: reduce) { .side { transition: none; } }
+  .collapsed { width: 0 !important; opacity: 0; overflow: hidden; border: 0 !important; padding: 0 !important; }
+  .note { border-left: 3px solid var(--line); padding-left: 12px; color: var(--muted); }
+  .callout { position: absolute; background: var(--hi); color: #1b1206; font-size: 10px; font-weight: 600; border-radius: 999px; width: 18px; height: 18px; display: grid; place-items: center; box-shadow: 0 0 0 2px var(--surface); }
+  .callout.inl { position: relative; display: inline-grid; vertical-align: middle; }
+  table.picks td, table.picks th { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+  [hidden] { display: none !important; }
+  .tool { color: #fff; }
+  .toolbar { container-type: inline-size; }
+  @container (max-width: 400px) { .tl { display: none; } }
+  .spin { animation: spin 1.2s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .spin { animation: none; } }
+</style>
+
+<script>
+  const ICONS = {
+    house: '<path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
+    story: '<path d="M4 5h16v11H9l-5 4z"/>',
+    queue: '<path d="M4 6h16M4 12h16M4 18h10"/>',
+    gear: '<circle cx="12" cy="12" r="3.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/>',
+    moon: '<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
+    pleft: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/>',
+    pright: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/>',
+    sliders: '<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>',
+    expand: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
+    dots: '<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>',
+    send: '<path d="M5 12h14M13 6l6 6-6 6"/>',
+    undo: '<path d="M9 14 4 9l5-5M4 9h11a5 5 0 0 1 0 10h-3"/>',
+    spark: '<path d="M12 3l2 6 6 2-6 2-2 6-2-6-6-2 6-2z"/>',
+    music: '<path d="M9 18V6l11-2v12"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>',
+    film: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 4v16M17 4v16M3 9h4M3 15h4M17 9h4M17 15h4"/>',
+    cube: '<path d="M12 3 3 8v8l9 5 9-5V8z"/><path d="M3 8l9 5 9-5M12 13v8"/>',
+    up: '<path d="M12 19V5M6 11l6-6 6 6"/>',
+    brush: '<path d="M14 4l6 6-9 9H5v-6z"/>',
+    x: '<path d="M6 6l12 12M18 6 6 18"/>',
+    search: '<circle cx="11" cy="11" r="6"/><path d="m20 20-4-4"/>',
+    retry: '<path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/>',
+    spinner: '<path d="M12 3a9 9 0 1 0 9 9"/>',
+    speaker: '<path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M17 9a4 4 0 0 1 0 6"/>',
+    eye: '<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+    play: '<path d="M7 5v14l11-7z"/>',
+    doc: '<path d="M7 3h8l4 4v14H7z"/><path d="M10 12h6M10 16h6"/>',
+    pause: '<path d="M8 5v14M16 5v14"/>',
+    grip: '<circle cx="9" cy="6" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="18" r="1"/>',
+  }
+  function drawIcons(root) {
+    root.querySelectorAll('[data-ic]').forEach((el) => {
+      if (el.querySelector('svg')) return
+      // Drawn inside the marked element, so its own padding never squeezes the icon.
+      el.innerHTML = `<span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[el.dataset.ic] ?? ''}</svg></span>`
+    })
+  }
+  /** The icon rail, the same in every mockup; `on` names the place shown. */
+  function rail(on, badge = 2) {
+    const item = (ic, name) => `<span class="relative grid h-8 w-8 place-items-center rounded-lg ${on === name ? 'bg-surface text-fg shadow-sm' : ''}"><span data-ic="${ic}"></span>${name === 'queue' && badge ? `<span class="absolute -right-0.5 -top-0.5 rounded-full bg-ink px-1 text-[9px] leading-[14px] text-inkfg">${badge}</span>` : ''}</span>`
+    return `<div class="flex w-12 flex-none flex-col items-center gap-2 border-r border-line py-3 text-muted">${item('house', 'home')}${item('story', 'session')}${item('queue', 'queue')}<span class="mt-auto h-2 w-2 rounded-full bg-ok"></span>${item('moon', 'theme')}${item('gear', 'settings')}</div>`
+  }
+  /** The buttons that sit on a picture: on hover, or always on a touch screen. */
+  /** `d.clips` and `d.threed` count what's been made, shown on the menu buttons. */
+  function pictureTools(d = {}) {
+    // Words beside the icons while the picture is wide enough; icons alone (with a tooltip) when it isn't.
+    const b = (ic, label, open, extra = '') => `<span title="${label}" class="flex items-center gap-1 rounded-lg px-2 py-1 ${open ? 'bg-white/20' : 'hover:bg-white/10'}"><span data-ic="${ic}"></span><span class="tl">${label}</span>${extra}</span>`
+    const n = (x) => (x ? `<span>${x}</span>` : '')
+    return `<div class="tool toolbar absolute inset-x-2 bottom-2 flex items-center gap-0.5 whitespace-nowrap rounded-xl bg-[rgba(0,0,0,.55)] p-1 text-[11px] backdrop-blur">${b('retry', 'Re-render')}${b('up', 'Upscale')}${b('brush', 'Edit')}<span class="mx-1 h-4 w-px flex-none bg-white/30"></span>${b('film', 'Clip', d.open === 'clip', n(d.clips) + '▾')}${b('cube', '3D', false, n(d.threed) + '▾')}<span class="ml-auto px-1.5" title="Full screen" data-ic="expand"></span></div><button data-drawer="prompt" title="The Image Prompt, who's shown, timings" class="tool absolute right-3 top-3 flex items-center gap-1 rounded-md bg-[rgba(0,0,0,.45)] px-2 py-0.5 text-[11px] hover:bg-[rgba(0,0,0,.7)]"><span data-ic="doc"></span>Prompt</button>`
+  }
+</script>
+
+<header class="wide pt-12 pb-8">
+  <p class="eyebrow">Local Roleplay Studio · 11 Nov 2026 · Mac · the direction so far</p>
+  <h1 class="mt-2 text-4xl font-semibold sm:text-5xl">Studio Screen Review</h1>
+  <p class="mt-4 max-w-2xl text-[15px] leading-relaxed text-muted">One direction now, not a menu: a rail around every screen, the film strip for every kind of Session, a drawer in place of the Frame panel, and the Scenario page on one page. The layouts that were dropped along the way are gone from this page. What's still open is the look, at the end.</p>
+  <nav class="mt-6 flex flex-wrap gap-2 text-[13px]" aria-label="Sections">
+    <a class="rounded-full border border-line bg-surface px-3 py-1 hover:border-fg" href="#found">What I found</a>
+    <a class="rounded-full border border-line bg-surface px-3 py-1 hover:border-fg" href="#shell">The rail</a>
+    <a class="rounded-full border border-line bg-surface px-3 py-1 hover:border-fg" href="#strip">Sessions: the film strip</a>
+    <a class="rounded-full border border-line bg-surface px-3 py-1 hover:border-fg" href="#frame">The drawer</a>
+    <a class="rounded-full border border-line bg-surface px-3 py-1 hover:border-fg" href="#scenario">Scenario page</a>
+    <a class="rounded-full border border-line bg-surface px-3 py-1 hover:border-fg" href="#pages">Settings & Queue</a>
+    <a class="rounded-full border border-line bg-surface px-3 py-1 hover:border-fg" href="#phone">Phone</a>
+    <a class="rounded-full border border-line bg-surface px-3 py-1 hover:border-fg" href="#ultrawide">Wide screens</a>
+    <a class="rounded-full border border-line bg-surface px-3 py-1 hover:border-fg" href="#look">The look (open)</a>
+    <a class="rounded-full border border-line bg-surface px-3 py-1 hover:border-fg" href="#picks">Decided and open</a>
+  </nav>
+</header>
+
+<main class="flex flex-col gap-20">
+
+<section id="found" class="prose-col">
+  <p class="eyebrow">1</p>
+  <h2 class="mt-1 text-2xl font-semibold">What I found</h2>
+  <p class="mt-3 text-muted">I took screenshots of Home, the Queue, Settings, a Roleplay, a Chain, your new Storyboard and the Scenario page at phone (390 px), desktop (1440 px) and wide (1920, 2560 and 3440 px) widths, in the light theme. Here are the problems, in plain terms, most important first.</p>
+  <ol class="mt-6 flex flex-col gap-5">
+    <li class="grid grid-cols-[28px_1fr] gap-2"><span class="font-semibold text-muted">1</span><div><strong>The story or the picture gets the leftover space.</strong> Every Session screen has a row of settings above its main view (Text Model, Image Model, steps; in a Roleplay also Pictures, Render replies, Score as you play and the music slider) and a row of equal-weight buttons below it. The settings rarely change, but they're in view on every turn.</div></li>
+    <li class="grid grid-cols-[28px_1fr] gap-2"><span class="font-semibold text-muted">2</span><div><strong>The Frames list is a sidebar in the middle</strong>, on all three kinds of Session. It does the job a left panel does in every chat app, but it sits between the main view and the Frame panel, so the screen is three columns of similar weight and nothing reads as the main thing.</div></li>
+    <li class="grid grid-cols-[28px_1fr] gap-2"><span class="font-semibold text-muted">3</span><div><strong>The Frame panel is one long column</strong>: timings, the Image Prompt, picture buttons, 3D buttons and the clip controls, all the same size. Buttons that act on the picture sit away from the picture.</div></li>
+    <li class="grid grid-cols-[28px_1fr] gap-2"><span class="font-semibold text-muted">4</span><div><strong>The Scenario page is one long form with Start at the very bottom.</strong> About twenty Suggest buttons repeat down the page, the choice of Roleplay, Chain or Storyboard comes last although it changes what matters above it, and the description is cut off in one line.</div></li>
+    <li class="grid grid-cols-[28px_1fr] gap-2"><span class="font-semibold text-muted">5</span><div><strong>Settings and the Queue are two different kinds of page</strong>: different widths, titles and spacing.</div></li>
+    <li class="grid grid-cols-[28px_1fr] gap-2"><span class="font-semibold text-muted">6</span><div><strong>At phone width the Session screens squash instead of stack</strong>, and the header runs over itself. <strong>At 3440 px</strong> a Roleplay's words and pictures drift to opposite edges. Home's two-column layout waits until 2240 px.</div></li>
+    <li class="grid grid-cols-[28px_1fr] gap-2"><span class="font-semibold text-muted">7</span><div><strong>The "old-school game" feeling comes from boxes, not the colour</strong>: blocks with borders inside blocks with borders. The parchment is worth keeping. Dark mode is plain grey, so it has none of the app's character.</div></li>
+  </ol>
+  <p class="note mt-8 text-[13px]">What I didn't check: dark-mode screenshots (I read the colours from the code) and a real phone. I opened the Scenario page in my own headless browser, so its draft stays there and doesn't replace yours. The mockups use the public tavern Scenario's names, invented lines and gradients for pictures, not anything from your Sessions.</p>
+</section>
+
+<section id="shell" class="wide">
+  <div class="prose-col">
+    <p class="eyebrow">2</p>
+    <h2 class="mt-1 text-2xl font-semibold">The rail around every screen</h2>
+    <p class="mt-3">The header goes, and a thin rail takes its place.</p>
+  </div>
+  <div class="mt-6">
+      <div class="scroller rounded-xl border border-line"><div class="mock flex bg-canvas text-fg" style="height:300px">
+        <div data-rail="session"></div>
+        <div class="flex flex-1 flex-col">
+          <div class="flex items-center justify-between border-b border-line px-4 py-2"><div class="flex items-baseline gap-2"><span class="text-[10px] uppercase tracking-wide text-muted">Roleplay</span><span class="text-[14px] font-semibold">The Rain-Soaked Tavern</span></div><span class="text-muted">the Session's own bar</span></div>
+          <div class="grid flex-1 place-items-center text-muted">the Session screen, the full height of the window</div>
+        </div>
+      </div></div>
+      <p class="prose-col mt-4 text-[14px]">A thin rail: the places you go at the top (Home, the current Session, the Queue with a count of what's running), and at its foot what you set once in a while (the server dot, the theme button, Settings). The shape of VS Code, Slack and most AI apps; full height for the screen; a bottom tab bar on a phone.</p>
+  </div>
+</section>
+
+<section id="strip" class="wide">
+  <div class="prose-col">
+    <p class="eyebrow">3</p>
+    <h2 class="mt-1 text-2xl font-semibold">Sessions: the film strip</h2>
+    <p class="mt-3">The same screen for a Roleplay, a Chain and a Storyboard: the Session's bar, a strip of Frames under it, the picked Frame large, a floating box at the bottom, and a drawer on the right that stays closed until you ask for it. There's no left panel: the strip <em>is</em> the Frames list, turned on its side.</p>
+    <p class="mt-3">Two things make it work:</p>
+    <ul class="mt-2 list-disc pl-5">
+      <li><strong>A Frame with no picture shows its words in its tile</strong> (the Message, or the Beat), so the strip is never a row of blanks, and a Roleplay played without Pictures still works.</li>
+      <li><strong>The ▦ button at the end of the strip</strong> opens every Frame as a contact sheet with a search box, for finding a moment in a long Session.</li>
+    </ul>
+    <p class="mt-3"><strong>The Queue</strong> is in two places: running work shows on its Frame's tile as a spinner, and the rail's Queue button slides in the rest, with this Session's jobs first.</p>
+  </div>
+  <div class="mt-6 flex flex-wrap gap-2" role="tablist" data-tabs="fs">
+    <button class="tabbtn rounded-full border border-line px-3 py-1 text-[13px]" role="tab" aria-selected="true" data-tab="rp">Roleplay</button>
+    <button class="tabbtn rounded-full border border-line px-3 py-1 text-[13px]" role="tab" aria-selected="false" data-tab="chain">Chain</button>
+    <button class="tabbtn rounded-full border border-line px-3 py-1 text-[13px]" role="tab" aria-selected="false" data-tab="sb">Storyboard</button>
+    <button class="tabbtn rounded-full border border-line px-3 py-1 text-[13px]" role="tab" aria-selected="false" data-tab="plan">Storyboard, the plan</button>
+    <button class="tabbtn rounded-full border border-line px-3 py-1 text-[13px]" role="tab" aria-selected="false" data-tab="sheet">Contact sheet</button>
+    <button class="tabbtn rounded-full border border-line px-3 py-1 text-[13px]" role="tab" aria-selected="false" data-tab="imm">Immersive view</button>
+  </div>
+  <div class="mt-4" data-panels="fs">
+    <!-- Roleplay -->
+    <div data-panel="rp">
+      <div class="scroller rounded-xl border border-line"><div class="mock relative flex bg-canvas text-fg" data-fold>
+        <div data-rail="session"></div>
+        <div class="relative flex min-w-0 flex-1 flex-col">
+          <div class="flex items-center justify-between border-b border-line px-4 py-2">
+            <div class="flex items-baseline gap-2"><span class="text-[10px] uppercase tracking-wide text-muted">Roleplay</span><span class="text-[13px] font-semibold">The Rain-Soaked Tavern</span></div>
+            <span class="flex items-center gap-1 text-muted"><span class="flex items-center gap-1 px-2"><span data-ic="music"></span>Fiddle, low</span><span class="px-2">Look & Cast</span><span data-ic="eye"></span><span data-ic="sliders"></span></span>
+          </div>
+          <div data-strip='[{"c":"pic2","n":"1"},{"c":"pic3","n":"2"},{"t":"I sit by the fire and watch him","n":"3"},{"c":"pic","n":"4","sel":1},{"spin":1,"n":"5"},{"next":1}]'></div>
+          <div class="relative flex min-h-0 flex-1 gap-5 px-5 pt-4">
+            <div class="relative h-[290px] flex-[1.3] overflow-hidden rounded-xl pic"><span class="tool absolute left-3 top-3 rounded-md bg-[rgba(0,0,0,.45)] px-2 py-0.5 text-[11px]">Frame 4 of 5</span><div data-tools data-clips="1"></div></div>
+            <div class="fade-top flex min-w-0 flex-1 flex-col gap-2 overflow-hidden pb-24">
+              <p class="italic text-muted opacity-60">…Kael pours without asking and pushes the mug across the bar.</p>
+              <div class="mt-1 self-end rounded-2xl rounded-br-md bg-ink px-3 py-1.5 text-inkfg">I set a coin on the bar. "Whatever's warm, and whatever's in that letter."</div>
+              <div class="text-[11px] font-medium text-muted">Kael</div>
+              <p class="italic text-muted">She saw the letter. Of course she did.</p>
+              <p class="italic">Kael folds the letter once and slides it under the till, then reaches for a cracked mug.</p>
+              <p class="text-[14px] leading-snug">"Warm I can do. The letter's mine. Sit by the fire, traveller, before you drown my floor."</p>
+              <div class="mt-1 self-end rounded-2xl rounded-br-md bg-ink px-3 py-1.5 text-inkfg opacity-60">I take the mug and don't move from the bar.</div>
+            </div>
+            <div class="glass absolute bottom-3 left-1/2 flex w-[560px] -translate-x-1/2 items-center gap-2 rounded-2xl border border-line p-2 shadow-lg"><span class="flex-1 px-1.5 text-muted">What Elara says or does…</span><span class="flex items-center gap-1 text-muted"><span data-ic="spark"></span>Suggest</span><span class="text-muted" data-ic="undo"></span><span class="text-muted" data-ic="dots"></span><span class="rounded-lg bg-ink px-3 py-1 text-inkfg">Send</span></div>
+          </div>
+        </div>
+        <aside class="side collapsed flex w-64 flex-none flex-col border-l border-line" data-side="right">
+          <div class="flex items-center justify-between border-b border-line px-3 py-2.5"><span class="font-semibold">Frame 4 · Image Prompt</span><button data-drawer="close" class="text-muted"><span data-ic="x"></span></button></div>
+          <div class="flex flex-col gap-3 p-3"><div class="flex gap-1.5"><span class="rounded-full border border-line px-2 py-0.5">Kael</span><span class="rounded-full border border-line px-2 py-0.5">Elara</span></div><div><div class="eyebrow">Image Prompt</div><p class="mt-1 line-clamp-6 text-muted">Kael, a 42-year-old man with a lean build… stands behind the warped bar, folding a letter under the till…</p></div></div>
+        </aside>
+      </div></div>
+      <div class="prose-col mt-4 text-[14px]">
+        <p><strong>The picture stays put on the left; the story scrolls on the right.</strong> The picked exchange is in the middle of the conversation, with the one before and after faded around it, so you can still read the whole Roleplay by scrolling. Scrolling the story changes the picture and the strip to follow; clicking a tile scrolls the story to it.</p>
+        <p class="mt-2">Frame 3 had no picture, so its tile shows its Message. Frame 5 is rendering. The dashed tile at the end is where your next Message lands. Prompt, on the picture's top corner, opens the drawer (next section).</p>
+      </div>
+    </div>
+
+    <!-- Chain -->
+    <div data-panel="chain" hidden>
+      <div class="scroller rounded-xl border border-line"><div class="mock relative flex bg-canvas text-fg" data-fold>
+        <div data-rail="session" data-badge="0"></div>
+        <div class="relative flex min-w-0 flex-1 flex-col">
+          <div class="flex items-center justify-between border-b border-line px-4 py-2">
+            <div class="flex items-baseline gap-2"><span class="text-[10px] uppercase tracking-wide text-muted">Chain</span><span class="text-[13px] font-semibold">A ship in a bottle</span></div>
+            <span class="flex items-center gap-1 text-muted"><span data-ic="sliders"></span></span>
+          </div>
+          <div data-strip='[{"c":"sea","n":"29"},{"c":"sea","n":"30"},{"c":"sea","n":"31"},{"c":"sea","n":"32"},{"c":"sea2","n":"33"},{"c":"sea2","n":"34","sel":1},{"next":1}]' data-first="34"></div>
+          <div class="relative flex min-h-0 flex-1 gap-5 px-5 pt-4">
+            <div class="relative h-[290px] flex-[1.4] overflow-hidden rounded-xl sea2">
+              <span class="tool absolute left-3 top-3 rounded-md bg-[rgba(0,0,0,.45)] px-2 py-0.5 text-[11px]">Frame 34 of 34</span>
+              <div data-tools></div>
+            </div>
+            <div class="flex min-w-0 flex-1 flex-col gap-2 pb-24">
+              <p class="eyebrow">Action</p>
+              <p class="text-[15px] font-medium">As an old engraving</p>
+              <p class="eyebrow mt-2">What changed</p>
+              <ul class="flex flex-col gap-1"><li>Art style: an old copperplate engraving, fine cross-hatching.</li><li>Color: sepia and black ink on cream paper.</li></ul>
+              <span class="mt-1 text-muted underline">See the prompt's changes</span>
+            </div>
+            <div class="glass absolute bottom-3 left-1/2 flex w-[520px] -translate-x-1/2 items-center gap-2 rounded-2xl border border-line p-2 shadow-lg"><span class="flex-1 px-1.5 text-muted">What to change…</span><span class="text-muted" data-ic="undo"></span><span class="text-muted" data-ic="dots"></span><span class="rounded-lg bg-ink px-3 py-1 text-inkfg">Send</span></div>
+          </div>
+        </div>
+        <aside class="side collapsed flex w-72 flex-none flex-col border-l border-line" data-side="right">
+          <div class="flex items-center justify-between border-b border-line px-3 py-2.5"><span class="font-semibold">Frame 34 · Image Prompt</span><button data-drawer="close" class="text-muted"><span data-ic="x"></span></button></div>
+          <div class="p-3"><div class="eyebrow">Image Prompt</div><p class="mt-1 leading-relaxed">…The palette is <span class="rounded bg-line px-0.5">sepia and black ink on cream paper</span> <span class="text-danger line-through">warm amber and rose</span>.</p></div>
+        </aside>
+      </div></div>
+      <div class="prose-col mt-4 text-[14px]"><p>A Chain suits the strip best of the three: every Frame has a picture, and stepping through them is exactly how you watch a picture change. The Action and its Narration sit beside the picture, so you read what changed while looking at it. The prompt with its changes marked is behind the picture's Prompt button. Each Send adds a tile at the end.</p></div>
+    </div>
+
+    <!-- Storyboard, written -->
+    <div data-panel="sb" hidden>
+      <div class="scroller rounded-xl border border-line"><div class="mock relative flex bg-canvas text-fg" data-fold>
+        <div data-rail="session" data-badge="0"></div>
+        <div class="relative flex min-w-0 flex-1 flex-col">
+          <div class="flex items-center justify-between border-b border-line px-4 py-2">
+            <div class="flex items-baseline gap-2"><span class="text-[10px] uppercase tracking-wide text-muted">Storyboard</span><span class="text-[13px] font-semibold">The harbour, by night</span></div>
+            <span class="flex items-center gap-1 text-muted"><span class="rounded-md border border-line px-2 py-0.5 text-fg">Render all (6)</span><span class="px-2">Look</span><span data-ic="sliders"></span></span>
+          </div>
+          <div data-strip='[{"c":"harbour","n":"1"},{"spin":1,"n":"2"},{"t":"Elara slips in from the rain","n":"3","sel":1},{"t":"The letter on the bar","n":"4"},{"t":"Kael reads it by the lamp","n":"5"},{"t":"A knock at the door","n":"6"},{"t":"Both turn to the door","n":"7"},{"t":"The door opens on the storm","n":"8"}]' data-plain="1"></div>
+          <div class="relative flex min-h-0 flex-1 gap-5 px-5 pt-4">
+            <div class="grid h-[290px] flex-[1.4] place-items-center rounded-xl border border-dashed border-line"><div class="flex flex-col items-center gap-2 text-muted"><span>Not rendered yet</span><span class="rounded-lg bg-ink px-3 py-1 text-inkfg">Render Frame 3</span></div></div>
+            <div class="flex min-w-0 flex-1 flex-col gap-2 pb-24">
+              <p class="eyebrow">Beat 3</p>
+              <p class="text-[15px] font-medium">Elara slips in from the rain</p>
+              <div class="flex gap-1.5"><span class="rounded-full border border-line px-2 py-0.5">Elara</span><span class="rounded-full border border-line px-2 py-0.5">Kael</span></div>
+              <p class="eyebrow mt-2">The Frame's seven sentences</p>
+              <p class="rounded-lg border border-line bg-surface p-2 leading-relaxed">Elara stands in the open doorway, rain running from her hood. Kael looks up from behind the bar…</p>
+            </div>
+            <div class="glass absolute bottom-3 left-1/2 flex w-[520px] -translate-x-1/2 items-center gap-2 rounded-2xl border border-line p-2 shadow-lg"><span class="flex-1 px-1.5 text-muted">What to change in Frame 3…</span><span class="text-muted" data-ic="dots"></span><span class="rounded-lg bg-ink px-3 py-1 text-inkfg">Send</span></div>
+          </div>
+        </div>
+        <aside class="side collapsed flex w-72 flex-none flex-col border-l border-line" data-side="right">
+          <div class="flex items-center justify-between border-b border-line px-3 py-2.5"><span class="font-semibold">Frame 3 · Image Prompt</span><button data-drawer="close" class="text-muted"><span data-ic="x"></span></button></div>
+          <p class="p-3 text-muted">The full prompt and timings.</p>
+        </aside>
+      </div></div>
+      <div class="prose-col mt-4 text-[14px]"><p>A Storyboard's strip is its Beats in order: rendered Frames show their picture, the rest their Beat's words. You can see at a glance how far it's got, which today's list says only in small grey words. The picked Frame's Beat, who it shows and its seven sentences sit beside the picture, where today they're in the far panel; the full prompt is behind Prompt.</p></div>
+    </div>
+
+    <!-- Storyboard, plan -->
+    <div data-panel="plan" hidden>
+      <div class="scroller rounded-xl border border-line"><div class="mock relative flex bg-canvas text-fg">
+        <div data-rail="session" data-badge="0"></div>
+        <div class="relative flex min-w-0 flex-1 flex-col">
+          <div class="flex items-center justify-between border-b border-line px-4 py-2"><div class="flex items-baseline gap-2"><span class="text-[10px] uppercase tracking-wide text-muted">Storyboard</span><span class="text-[13px] font-semibold">The harbour, by night</span><span class="ml-2 rounded-full bg-surface px-2 py-0.5 text-[11px] text-muted">The plan · not written yet</span></div><span class="text-muted" data-ic="sliders"></span></div>
+          <div class="flex items-stretch gap-2 overflow-hidden border-b border-line px-4 py-3">
+            <div class="flex h-20 w-36 flex-none flex-col justify-between rounded-lg border border-line bg-surface p-2"><span class="flex justify-between text-muted"><span>1</span><span data-ic="grip"></span></span><span>A storm rolls in over the harbour</span></div>
+            <div class="flex h-20 w-36 flex-none flex-col justify-between rounded-lg border border-line bg-surface p-2"><span class="flex justify-between text-muted"><span>2</span><span data-ic="grip"></span></span><span>Kael bars the shutters</span></div>
+            <div class="flex h-20 w-36 flex-none flex-col justify-between rounded-lg border-2 border-fg bg-surface p-2"><span class="flex justify-between text-muted"><span>3</span><span data-ic="grip"></span></span><span>Elara slips in from the rain</span></div>
+            <div class="flex h-20 w-36 flex-none flex-col justify-between rounded-lg border border-line bg-surface p-2"><span class="flex justify-between text-muted"><span>4</span><span data-ic="grip"></span></span><span>The letter on the bar</span></div>
+            <div class="flex h-20 w-36 flex-none flex-col justify-between rounded-lg border border-line bg-surface p-2"><span class="flex justify-between text-muted"><span>5</span><span data-ic="grip"></span></span><span>Kael reads it by the lamp</span></div>
+            <div class="grid h-20 w-20 flex-none place-items-center rounded-lg border border-dashed border-line text-muted">+ Beat</div>
+          </div>
+          <div class="flex flex-1 gap-8 px-8 pt-5">
+            <div class="flex flex-1 flex-col gap-2"><p class="eyebrow">Beat 3</p><div class="rounded-lg border border-line bg-surface p-2 text-[14px]">Elara slips in from the rain</div><p class="eyebrow mt-2">Shows</p><div class="flex gap-1.5"><span class="rounded-full border border-line px-2 py-0.5">Elara</span><span class="rounded-full border border-line px-2 py-0.5">Kael</span><span class="rounded-full border border-dashed border-line px-2 py-0.5 text-muted">+</span></div><span class="mt-2 text-danger">Remove this Beat</span></div>
+            <div class="flex w-72 flex-col gap-2"><p class="eyebrow">Look</p><div><div class="font-medium">Kael</div><p class="text-muted">a 42-year-old man, lean and rigid…</p></div><div><div class="font-medium">Elara</div><p class="text-muted">a slender young woman…</p></div><div><div class="font-medium">Art style</div><p class="text-muted">a moody, cinematic oil painting…</p></div></div>
+          </div>
+          <div class="flex items-center justify-between border-t border-line px-6 py-3"><span class="text-muted">Drag the Beats to reorder; nothing is written or rendered yet.</span><span class="rounded-lg bg-ink px-4 py-1.5 text-inkfg">Write 8 Frames</span></div>
+        </div>
+      </div></div>
+      <div class="prose-col mt-4 text-[14px]"><p>While you review the plan, the strip is the Beats as cards you drag to reorder, which is how storyboard artists lay out cards on a wall. Pick one to edit it below; the Look sits beside. Once written, the same strip fills with pictures as they render.</p></div>
+    </div>
+
+    <!-- Contact sheet -->
+    <div data-panel="sheet" hidden>
+      <div class="scroller rounded-xl border border-line"><div class="mock relative flex bg-canvas text-fg">
+        <div data-rail="session"></div>
+        <div class="flex min-w-0 flex-1 flex-col">
+          <div class="flex items-center justify-between border-b border-line px-4 py-2"><div class="flex items-baseline gap-2"><span class="text-[10px] uppercase tracking-wide text-muted">Roleplay</span><span class="text-[13px] font-semibold">The Rain-Soaked Tavern</span><span class="ml-2 text-muted">· 100 Frames</span></div><span class="flex items-center gap-2"><span class="flex w-56 items-center gap-1.5 rounded-lg border border-line bg-surface px-2 py-1 text-muted"><span data-ic="search"></span>letter</span><span class="text-muted" data-ic="x"></span></span></div>
+          <div class="grid flex-1 grid-cols-6 content-start gap-3 overflow-hidden p-4" id="sheetgrid"></div>
+        </div>
+      </div></div>
+      <div class="prose-col mt-4 text-[14px]"><p>The ▦ at the end of the strip opens every Frame as a grid, each with its first words, and a search across the Messages and Replies (here, "letter" picks out four Frames). Pick one and you're back on the strip, on that Frame. This does what the Frames list does for a long Session, without keeping a list on screen all the time.</p></div>
+    </div>
+
+    <!-- Immersive -->
+    <div data-panel="imm" hidden>
+      <div class="scroller rounded-xl border border-line"><div class="mock relative flex overflow-hidden text-[#f6ecd2]" style="background:#0e0905">
+        <div class="pic absolute inset-0 opacity-90"></div>
+        <div class="absolute inset-0" style="background:linear-gradient(90deg, rgba(10,6,3,.1) 30%, rgba(10,6,3,.88) 62%)"></div>
+        <div class="relative ml-auto flex w-[44%] flex-col px-6 pt-6">
+          <div class="flex items-center justify-between text-[#d9c9a3]"><span class="text-[10px] uppercase tracking-[0.12em]">The Rain-Soaked Tavern · Frame 4</span><span class="flex items-center gap-1 rounded-md border border-[#6b5434] px-2 py-0.5"><span data-ic="x"></span>Esc</span></div>
+          <div class="mt-auto flex flex-col gap-3 pb-28">
+            <div class="max-w-[85%] self-end rounded-2xl bg-[#f6ecd2] px-3.5 py-2 text-[#3a2817]">I set a coin on the bar. "Whatever's warm, and whatever's in that letter."</div>
+            <p class="italic text-[#cbb78f]">She saw the letter. Of course she did.</p>
+            <p class="italic">Kael folds the letter once and slides it under the till.</p>
+            <p class="text-[16px] leading-snug">"Warm I can do. The letter's mine. Sit by the fire, traveller, before you drown my floor."</p>
+          </div>
+        </div>
+        <div class="absolute bottom-4 right-6 w-[40%]"><div class="flex items-center gap-2 rounded-2xl border border-[#6b5434] bg-[rgba(20,13,7,.75)] p-2 backdrop-blur"><span class="flex-1 px-1.5 text-[#bfa984]">What Elara says or does…</span><span class="text-[#bfa984]" data-ic="spark"></span><span class="rounded-lg bg-[#f6ecd2] px-3 py-1 text-[#3a2817]">Send</span></div></div>
+        <div class="absolute bottom-4 left-6 flex items-center gap-2 text-[#d9c9a3]"><span data-ic="music"></span>Fiddle, low · <span class="opacity-70">← → Frames</span></div>
+      </div></div>
+      <div class="prose-col mt-4 text-[14px]">
+        <p><strong>A view of its own, as you said:</strong> its own address (<code>/roleplay/…/immersive</code>), opened from the eye button in the Session bar or with <kbd class="rounded border border-line px-1">F</kbd>, closed with <kbd class="rounded border border-line px-1">Esc</kbd>. The picture fills the screen, the latest lines sit on its darker side, and the arrow keys step through Frames. It's the same Roleplay and the same text box as the strip view, with everything else put away. It leans into the game feeling on purpose, here only.</p>
+      </div>
+    </div>
+  </div>
+  <div class="prose-col mt-6 text-[14px]">
+    <p><strong>What it costs:</strong> the strip takes about 70 px of height, which matters most on a laptop. So it folds down to a thin line of dots when you want the room, and it's hidden in the immersive view.</p>
+  </div>
+</section>
+
+<section id="frame" class="wide">
+  <div class="prose-col">
+    <p class="eyebrow">4</p>
+    <h2 class="mt-1 text-2xl font-semibold">The Frame panel becomes a drawer</h2>
+    <p class="mt-3">The Frame panel had no reason to sit open once its buttons moved onto the picture, so now nothing sits open. In the mockup, click <strong>Prompt</strong> on the picture, or <strong>Look & Cast</strong> or the music button in the Session's bar.</p>
+  </div>
+  <div class="scroller mt-6 rounded-xl border border-line"><div class="mock relative flex bg-canvas text-fg" data-fold>
+    <div data-rail="session"></div>
+    <div class="relative flex min-w-0 flex-1 flex-col">
+      <div class="flex items-center justify-between border-b border-line px-4 py-2">
+        <div class="flex items-baseline gap-2"><span class="text-[10px] uppercase tracking-wide text-muted">Roleplay</span><span class="text-[13px] font-semibold">The Rain-Soaked Tavern</span></div>
+        <div class="flex items-center gap-1 text-muted">
+          <button data-drawer="music" class="flex items-center gap-1 rounded-md px-2 py-1 hover:bg-surface"><span data-ic="music"></span>Fiddle, low</button>
+          <button data-drawer="look" class="rounded-md px-2 py-1 hover:bg-surface">Look & Cast</button>
+          <span class="rounded-md p-1" title="Immersive view" data-ic="eye"></span>
+          <span class="rounded-md p-1" title="This Session's models and switches" data-ic="sliders"></span>
+        </div>
+      </div>
+      <div data-strip='[{"c":"pic2","n":"1"},{"c":"pic3","n":"2"},{"t":"I sit by the fire and watch him","n":"3"},{"c":"pic","n":"4","sel":1},{"spin":1,"n":"5"},{"next":1}]'></div>
+      <div class="relative flex min-h-0 flex-1 gap-5 bg-canvas px-5 pt-4" data-story>
+        <div class="relative h-[290px] flex-[1.3] overflow-hidden rounded-xl pic">
+          <span class="tool absolute left-3 top-3 rounded-md bg-[rgba(0,0,0,.45)] px-2 py-0.5 text-[11px]">Frame 4 of 5 · Krea 2 ▾</span>
+          <div data-tools data-clips="1" data-threed="1"></div>
+        </div>
+        <div class="fade-top flex min-w-0 flex-1 flex-col gap-2 overflow-hidden pb-24">
+          <p class="italic text-muted opacity-60">…Kael pours without asking and pushes the mug across the bar.</p>
+          <div class="mt-1 self-end rounded-2xl rounded-br-md bg-ink px-3 py-1.5 text-inkfg">I set a coin on the bar. "Whatever's warm, and whatever's in that letter."</div>
+          <div class="text-[11px] font-medium text-muted">Kael</div>
+          <p class="italic text-muted">She saw the letter. Of course she did.</p>
+          <p class="italic">Kael folds the letter once and slides it under the till, then reaches for a cracked mug.</p>
+          <p class="text-[14px] leading-snug">"Warm I can do. The letter's mine. Sit by the fire, traveller, before you drown my floor."</p>
+        </div>
+        <div class="glass absolute bottom-3 left-1/2 flex w-[min(520px,90%)] -translate-x-1/2 items-center gap-2 rounded-2xl border border-line p-2 shadow-lg"><span class="flex-1 px-1.5 text-muted">What Elara says or does…</span><span class="flex items-center gap-1 text-muted"><span data-ic="spark"></span>Suggest</span><span class="text-muted" data-ic="undo"></span><span class="text-muted" data-ic="dots"></span><span class="rounded-lg bg-ink px-3 py-1 text-inkfg">Send</span></div>
+      </div>
+    </div>
+    <aside class="side collapsed flex w-72 flex-none flex-col border-l border-line" data-side="right">
+      <div data-drawer-panel="prompt" class="flex flex-col">
+        <div class="flex items-center justify-between border-b border-line px-3 py-2.5"><span class="font-semibold">Frame 4 · Image Prompt</span><button data-drawer="close" class="text-muted" title="Close"><span data-ic="x"></span></button></div>
+        <div class="flex flex-col gap-3 p-3">
+          <div class="flex items-center gap-1.5"><span class="text-muted">Shows</span><span class="rounded-full border border-line px-2 py-0.5">Kael</span><span class="rounded-full border border-line px-2 py-0.5">Elara</span></div>
+          <p class="leading-relaxed">Kael, a 42-year-old man with a lean build, weathered scarred skin and tired, piercing eyes. Elara, a slender young woman with pale, cold-flushed skin. Kael stands behind the warped bar, folding a letter under the till while he watches her. Elara sits by the fire, her cloak dripping…</p>
+          <div class="flex gap-2"><span class="rounded border border-line px-2 py-0.5">Write again</span><span class="rounded border border-line px-2 py-0.5">Edit</span></div>
+          <p class="text-muted">Replied 3.7 s · pictured 6.0 s · rendered 18.5 s by Krea 2 on ComfyUI</p>
+        </div>
+      </div>
+      <div data-drawer-panel="look" hidden class="flex flex-col">
+        <div class="flex items-center justify-between border-b border-line px-3 py-2.5"><span class="font-semibold">Look & Cast</span><button data-drawer="close" class="text-muted" title="Close"><span data-ic="x"></span></button></div>
+        <div class="flex flex-col gap-3 p-3">
+          <p class="eyebrow">Look</p>
+          <div><div class="font-medium">Kael</div><p class="text-muted">a 42-year-old man, lean and rigid, weathered skin, old scars…</p></div>
+          <div><div class="font-medium">Elara</div><p class="text-muted">a slender young woman, pale skin flushed by the cold…</p></div>
+          <div><div class="font-medium">Art style</div><p class="text-muted">a moody, cinematic oil painting, heavy brushstrokes…</p></div>
+          <p class="eyebrow mt-1">Cast · what steers Kael</p>
+          <div><div class="font-medium">Personality</div><p class="text-muted">dry and wry; nervous about the letter</p></div>
+          <div><div class="font-medium">Goal</div><p class="text-muted">find out who sent it before they come back</p></div>
+        </div>
+      </div>
+      <div data-drawer-panel="music" hidden class="flex flex-col">
+        <div class="flex items-center justify-between border-b border-line px-3 py-2.5"><span class="font-semibold">Music</span><button data-drawer="close" class="text-muted" title="Close"><span data-ic="x"></span></button></div>
+        <div class="flex flex-col gap-3 p-3">
+          <div><p class="eyebrow">Playing now</p><div class="mt-1 flex items-center gap-2"><span data-ic="pause"></span><div><div class="font-medium">Fiddle, low</div><div class="text-muted">Cue since Frame 2</div></div></div></div>
+          <div class="flex items-center gap-2 text-muted">Volume <span class="h-1 flex-1 rounded bg-line"><span class="block h-1 w-2/3 rounded bg-fg"></span></span></div>
+          <div class="flex gap-2"><span class="rounded border border-line px-2 py-0.5">New Take</span><span class="rounded border border-line px-2 py-0.5">Steer…</span></div>
+          <div><p class="eyebrow">Score</p><p class="mt-1 text-muted">A lone fiddle, a low cello, a squeezebox; slow and smoky. Nothing modern.</p></div>
+        </div>
+      </div>
+    </aside>
+  </div></div>
+  <div class="prose-col mt-4 text-[14px]">
+    <p><strong>What was in the panel, and where each part went:</strong></p>
+    <ul class="mt-1 list-disc pl-5">
+      <li><strong>Re-render, Upscale, Edit, Clip, 3D</strong>: on the picture, as before.</li>
+      <li><strong>The Image Prompt, who's shown, the timings</strong>: behind the <strong>Prompt</strong> button on the picture's top corner. It opens the drawer beside the picture rather than over it, because you usually read the prompt while looking at what it made.</li>
+      <li><strong>Look & Cast, and Music</strong>: these were never about one Frame. They're about the whole Roleplay, and sat in tabs beside the Frame only because that's where there was room. Now each is a button in the Session's bar that opens the same drawer.</li>
+    </ul>
+    <p class="mt-2">The drawer closes with its ✕, with <kbd class="rounded border border-line px-1">Esc</kbd>, or by clicking the same button again, and it remembers whether you left it open. So someone who tunes prompts all day can keep it open, and someone playing never sees it.</p>
+    <p class="mt-2 text-muted">A Chain's drawer shows the prompt with its changes marked. A Storyboard's shows the full prompt, with the Look as its second button.</p>
+  </div>
+</section>
+
+<section id="scenario" class="wide">
+  <div class="prose-col">
+    <p class="eyebrow">5</p>
+    <h2 class="mt-1 text-2xl font-semibold">The Scenario page, on one page</h2>
+    <p class="mt-3">Today it's one long column with Start three screens down and about twenty Suggest buttons. This keeps everything on one page with nothing to click through, in two columns.</p>
+  </div>
+  <div class="mt-6">
+    <div class="scroller rounded-xl border border-line"><div class="mock relative flex bg-canvas text-fg" style="height:620px">
+      <div data-rail="scenario" data-badge="0"></div>
+      <div class="flex min-w-0 flex-1 flex-col">
+        <div class="flex items-center justify-between border-b border-line px-5 py-2.5">
+          <div class="flex min-w-0 items-baseline gap-2"><span class="text-[10px] uppercase tracking-wide text-muted">Scenario</span><span class="text-[14px] font-semibold">The Rain-Soaked Tavern</span><span class="truncate text-muted">· edited, not saved</span></div>
+          <div class="flex items-center gap-2"><span class="text-muted">Save ▾</span><span class="flex rounded-lg border border-line p-0.5"><span class="rounded-md bg-surface px-2 py-0.5 font-medium shadow-sm">Roleplay</span><span class="px-2 py-0.5 text-muted">Chain</span><span class="px-2 py-0.5 text-muted">Storyboard</span></span><span class="rounded-lg bg-ink px-3 py-1 text-inkfg">Start Roleplay</span></div>
+        </div>
+        <div class="flex min-h-0 flex-1 gap-8 overflow-hidden px-7 pt-4">
+          <div class="flex min-w-0 flex-1 flex-col gap-2.5">
+            <p class="text-muted">An 18th-century tavern on a stormy night. Kael, a retired smuggler, runs it and is rattled by a letter just slipped under the door; you're Elara, a well-off young traveller who might solve his troubles, for a price.</p>
+            <p class="eyebrow mt-2">The story</p>
+            <div class="grid grid-cols-[72px_1fr] gap-x-3 gap-y-2.5">
+              <span class="text-muted">Opening</span><span class="border-b border-line pb-2 leading-relaxed">Late on a stormy night, Kael is alone behind the bar of his tavern, turning over a letter just slipped under the door, when Elara comes in out of the rain.</span>
+              <span class="text-muted">Place</span><span class="relative border-b-2 border-fg pb-2 leading-relaxed">A small, creaking tavern in a remote harbour town: a warped bar, cracked mugs, a narrow staircase up to the rooms, a grimy window lashed by rain. <span class="absolute -bottom-3 right-0 flex items-center gap-1 rounded-full border border-line bg-surface px-2 py-0.5 text-[11px] shadow-sm"><span data-ic="spark"></span>Suggest</span></span>
+              <span class="text-muted">Time</span><span class="border-b border-line pb-2">Late evening, in a storm; the last customers have gone.</span>
+              <span class="text-muted">Style</span><span class="border-b border-line pb-2 leading-relaxed">A moody, cinematic oil painting, heavy brushstrokes, chiaroscuro and warm amber light.</span>
+              <span class="text-muted">Truths</span><span class="flex flex-col gap-1"><span>• It's the 18th century: nothing modern.</span><span class="text-muted">+ Add a Truth</span></span>
+            </div>
+            <div class="mt-1 flex flex-wrap items-center gap-1.5 text-muted"><span>Left to the Text Model:</span><span class="rounded-full border border-dashed border-line px-2 py-0.5">+ Music</span></div>
+          </div>
+          <div class="flex w-[46%] flex-none flex-col gap-3">
+            <p class="eyebrow">People</p>
+            <div class="flex flex-col gap-1.5 border-b border-line pb-3">
+              <div class="flex items-center gap-2"><span class="text-[14px] font-semibold">Kael</span><span class="rounded-full border border-line px-2 py-0.5 text-[10px]">the Text Model plays ▾</span></div>
+              <div class="grid grid-cols-[72px_1fr] gap-x-3 gap-y-1">
+                <span class="text-muted">Looks</span><span>a 42-year-old man, lean and rigid, weathered skin, old scars, tired piercing eyes</span>
+                <span class="text-muted">Personality</span><span>dry and wry; nervous about the letter, keeps it to himself</span>
+                <span class="text-muted">Speaks</span><span>in short sentences</span>
+                <span class="text-muted">Background</span><span>a retired smuggler who runs the tavern</span>
+                <span class="text-muted">Truth</span><span>Kael is far stronger than Elara; she can't overpower him unless she catches him off guard.</span>
+              </div>
+              <div class="mt-1 flex flex-wrap items-center gap-1.5 text-muted"><span>Left to the Text Model:</span><span class="rounded-full border border-dashed border-line px-2 py-0.5">+ Wears</span><span class="rounded-full border border-dashed border-line px-2 py-0.5">+ Goal</span></div>
+            </div>
+            <div class="flex flex-col gap-1.5 border-b border-line pb-3">
+              <div class="flex items-center gap-2"><span class="text-[14px] font-semibold">Elara</span><span class="rounded-full border border-line px-2 py-0.5 text-[10px]">you play ▾</span></div>
+              <div class="grid grid-cols-[72px_1fr] gap-x-3 gap-y-1">
+                <span class="text-muted">Looks</span><span>a slender young woman, pale skin flushed by the cold, dark hair pulled back, calculating eyes</span>
+                <span class="text-muted">Background</span><span>well-off, and travelling alone</span>
+                <span class="text-muted">Goal</span><span>she could be the answer to Kael's woes, but for a price</span>
+              </div>
+              <div class="mt-1 flex flex-wrap items-center gap-1.5 text-muted"><span>Left to the Text Model:</span><span class="rounded-full border border-dashed border-line px-2 py-0.5">+ Wears</span><span class="rounded-full border border-dashed border-line px-2 py-0.5">+ Personality</span><span class="rounded-full border border-dashed border-line px-2 py-0.5">+ Speaks</span></div>
+            </div>
+            <span class="text-muted">+ Add a Person</span>
+          </div>
+        </div>
+      </div>
+    </div></div>
+    <div class="prose-col mt-4 text-[14px]">
+      <p><strong>Everything on one page, about one screen high:</strong> the story on the left, the People on the right, Start and the kind of Session in a bar along the top that stays in view.</p>
+      <ul class="mt-1 list-disc pl-5">
+        <li><strong>Empty parts fold into one line of chips</strong>: "Left to the Text Model: + Wears + Goal". That's what makes it fit: today each empty part is a full box. Click a chip to fill it in or Suggest it.</li>
+        <li><strong>Labels in a column on the left</strong>, the text on the right, so it reads like a character sheet rather than a form.</li>
+        <li><strong>Who plays whom</strong> is the small chip beside each name, so Who's who isn't a section of its own.</li>
+        <li><strong>Suggest appears on the part you're in</strong> (in the mockup, on Place), instead of twenty buttons at once. On a touch screen it shows on every part.</li>
+      </ul>
+      <p class="mt-2">With three or more People the right column scrolls by itself; the story stays put.</p>
+    </div>
+  </div>
+</section>
+
+<section id="pages" class="wide">
+  <div class="prose-col">
+    <p class="eyebrow">6</p>
+    <h2 class="mt-1 text-2xl font-semibold">Settings and the Queue: pages or overlays?</h2>
+    <p class="mt-3">You liked the new shape (sections down the left, rows on the right). As for page or dialog, I'd treat the two differently, because you use them differently:</p>
+    <ul class="mt-3 list-disc pl-5">
+      <li><strong>Settings: a large panel over the screen you were on</strong>, like Discord's or ChatGPT's. It keeps its own address (<code>/settings/images</code>), so a link or a refresh still opens it, and <kbd class="rounded border border-line px-1">Esc</kbd> or the ✕ takes you back exactly where you were. You go to Settings to change one thing and come back, and an overlay says so. A small dialog would be too cramped for Machines or Images.</li>
+      <li><strong>Queue: a panel sliding in from the side</strong> when you click the rail's Queue button, over the Session, so you can watch a render while seeing the story. A link in it opens the <strong>full Queue page</strong> for the long view (every machine, finished jobs and their timings).</li>
+    </ul>
+    <p class="mt-3 text-muted">Today Settings and the Queue are pages, but the Session behind them is kept alive, so going there and back already loses nothing. The overlay mostly changes how it feels: you're still in the Session.</p>
+  </div>
+  <div class="mt-6 grid gap-6 lg:grid-cols-2">
+    <figure>
+      <div class="scroller rounded-xl border border-line"><div class="relative flex overflow-hidden bg-canvas text-fg" style="min-width:470px; height:400px; font-size:12px">
+        <div data-rail="settings" data-badge="0"></div>
+        <div class="flex-1 p-4 opacity-40"><div class="pic h-24 w-2/3 rounded-xl"></div><p class="mt-2">"Warm I can do. The letter's mine."</p></div>
+        <div class="absolute inset-0 left-12 bg-[rgba(30,20,10,.35)]"></div>
+        <div class="absolute inset-y-5 left-16 right-4 flex overflow-hidden rounded-xl border border-line bg-canvas shadow-2xl">
+          <nav class="flex w-32 flex-col gap-0.5 border-r border-line p-3">
+            <div class="mb-2 text-[14px] font-semibold">Settings</div>
+            <p class="eyebrow">Models</p>
+            <span class="rounded-md bg-surface px-2 py-1 font-medium shadow-sm">Text</span><span class="px-2 py-1 text-muted">Images</span><span class="px-2 py-1 text-muted">Voice</span><span class="px-2 py-1 text-muted">Music</span><span class="px-2 py-1 text-muted">Clips</span><span class="px-2 py-1 text-muted">3D</span>
+            <p class="eyebrow mt-2">App</p>
+            <span class="px-2 py-1 text-muted">Machines</span><span class="px-2 py-1 text-muted">Sessions</span><span class="px-2 py-1 text-muted">Appearance</span><span class="px-2 py-1 text-muted">Advanced</span>
+          </nav>
+          <div class="flex-1 p-4">
+            <div class="flex items-center justify-between"><h3 class="text-[15px] font-semibold">Text Model</h3><span class="text-muted" data-ic="x"></span></div>
+            <p class="mt-1 text-muted">Writes every Reply, Image Prompt and suggestion.</p>
+            <div class="mt-3 flex flex-col divide-y divide-[var(--line)] border-y border-line">
+              <div class="flex items-center justify-between py-2.5"><span>Runs on</span><span class="rounded-md border border-line bg-surface px-2 py-1">Ollama ▾</span></div>
+              <div class="flex items-center justify-between py-2.5"><span>Model</span><span class="rounded-md border border-line bg-surface px-2 py-1">gemma-4-26b ▾</span></div>
+              <div class="flex items-center justify-between py-2.5"><div><div>Thinking</div><div class="text-muted">Reasons first. Often better, slower.</div></div><span class="h-5 w-9 rounded-full border border-line bg-surface"></span></div>
+            </div>
+          </div>
+        </div>
+      </div></div>
+      <figcaption class="mt-3 text-[14px]"><strong>Settings over the Session.</strong> The theme lives in Appearance and keeps its quick button in the rail.</figcaption>
+    </figure>
+    <figure>
+      <div class="scroller rounded-xl border border-line"><div class="relative flex overflow-hidden bg-canvas text-fg" style="min-width:470px; height:400px; font-size:12px">
+        <div data-rail="queue"></div>
+        <div class="flex-1 p-4"><div class="pic h-28 w-3/4 rounded-xl"></div><p class="mt-2">"Warm I can do. The letter's mine."</p><p class="mt-1 text-muted">You can keep reading and playing while the panel is open.</p></div>
+        <div class="absolute inset-y-0 left-12 flex w-72 flex-col border-r border-line bg-canvas shadow-2xl">
+          <div class="flex items-center justify-between border-b border-line px-3 py-2.5"><span class="text-[14px] font-semibold">Queue</span><span class="flex items-center gap-2 text-muted"><span class="underline">Full page</span><span data-ic="x"></span></span></div>
+          <div class="flex flex-col gap-3 p-3">
+            <div><p class="eyebrow">This Session</p><div class="mt-1 border-b border-line pb-2"><div class="flex items-center gap-1.5"><span class="spin" data-ic="spinner"></span>Render · Frame 4</div><div class="text-muted">Windows PC · step 5 of 8</div></div><div class="border-b border-line py-2"><div>Spoken line · Frame 4</div><div class="text-muted">This Mac · waiting for the render</div></div></div>
+            <div><p class="eyebrow">Other Sessions</p><div class="mt-1 border-b border-line pb-2"><div>Picture · Frame 2</div><div class="text-muted">A ship in a bottle · This Mac · queued</div></div></div>
+            <div class="flex justify-between text-muted"><span>3 finished</span><span>Dismiss · Cancel all</span></div>
+          </div>
+        </div>
+      </div></div>
+      <figcaption class="mt-3 text-[14px]"><strong>The Queue sliding in from the rail</strong>, with the Session you're in first. It's the only Queue inside a Session, in every layout. The full page keeps the layout you liked, with machines down the left.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section id="phone" class="wide">
+  <div class="prose-col">
+    <p class="eyebrow">7</p>
+    <h2 class="mt-1 text-2xl font-semibold">At phone width</h2>
+    <p class="mt-3">The strip view needs little changing for a phone: a thin strip at the top, the picture full width, then the exchange. A swipe on the picture steps through Frames. The rail becomes a tab bar at the bottom, and the drawer slides up as a sheet.</p>
+  </div>
+  <div class="scroller mt-6"><div class="flex justify-center gap-6 pb-2" style="min-width:900px">
+    <figure class="flex flex-col items-center gap-2">
+      <div class="phone relative flex flex-col overflow-hidden rounded-[28px] border-4 border-fg bg-canvas text-fg">
+        <div class="flex items-center justify-between border-b border-line px-3 py-2"><span class="truncate font-semibold">The Rain-Soaked Tavern</span><span class="flex gap-2 text-muted"><span data-ic="music"></span><span data-ic="sliders"></span></span></div>
+        <div class="flex gap-1 overflow-hidden border-b border-line px-2 py-1.5"><span class="pic2 h-8 w-12 flex-none rounded"></span><span class="pic3 h-8 w-12 flex-none rounded"></span><span class="grid h-8 w-12 flex-none place-items-center rounded border border-dashed border-line text-[8px] text-muted">I sit by…</span><span class="pic h-8 w-12 flex-none rounded ring-2 ring-fg"></span><span class="grid h-8 w-12 flex-none place-items-center rounded bg-line"><span class="spin" data-ic="spinner"></span></span></div>
+        <div class="relative"><div class="pic aspect-[16/10] w-full"></div><span class="tool absolute right-2 top-2 rounded-md bg-[rgba(0,0,0,.45)] px-2 py-0.5 text-[10px]">Prompt</span><div class="tool absolute inset-x-2 bottom-2 flex items-center justify-around rounded-xl bg-[rgba(0,0,0,.55)] p-1.5"><span data-ic="retry"></span><span data-ic="up"></span><span data-ic="brush"></span><span data-ic="film"></span><span data-ic="cube"></span><span data-ic="expand"></span></div></div>
+        <div class="flex flex-1 flex-col gap-1.5 overflow-hidden px-3 pt-2">
+          <div class="self-end rounded-2xl rounded-br-md bg-ink px-3 py-1.5 text-inkfg">I set a coin on the bar.</div>
+          <p class="italic">Kael folds the letter once and slides it under the till.</p>
+          <p class="text-[13px]">"Warm I can do. The letter's mine."</p>
+        </div>
+        <div class="glass mx-2 mb-2 flex items-center gap-2 rounded-2xl border border-line p-1.5 shadow-lg"><span class="flex-1 px-1.5 text-muted">What Elara says…</span><span class="text-muted" data-ic="spark"></span><span class="rounded-lg bg-ink px-2.5 py-1 text-inkfg">Send</span></div>
+        <div class="flex justify-around border-t border-line py-2 text-muted"><span data-ic="house"></span><span class="text-fg" data-ic="story"></span><span data-ic="queue"></span><span data-ic="gear"></span></div>
+      </div>
+      <figcaption class="text-[13px] text-muted">A Roleplay: strip, picture, exchange</figcaption>
+    </figure>
+    <figure class="flex flex-col items-center gap-2">
+      <div class="phone relative flex flex-col overflow-hidden rounded-[28px] border-4 border-fg bg-canvas text-fg">
+        <div class="flex items-center justify-between border-b border-line px-3 py-2 opacity-50"><span class="font-semibold">The Rain-Soaked Tavern</span></div>
+        <div class="opacity-50"><div class="flex gap-1 overflow-hidden border-b border-line px-2 py-1.5"><span class="pic2 h-8 w-12 flex-none rounded"></span><span class="pic3 h-8 w-12 flex-none rounded"></span><span class="grid h-8 w-12 flex-none place-items-center rounded border border-dashed border-line text-[8px] text-muted">I sit by…</span><span class="pic h-8 w-12 flex-none rounded ring-2 ring-fg"></span><span class="grid h-8 w-12 flex-none place-items-center rounded bg-line"><span class="spin" data-ic="spinner"></span></span></div></div>
+        <div class="pic aspect-[16/10] w-full"></div>
+        <div class="absolute inset-x-0 bottom-0 flex h-[52%] flex-col rounded-t-2xl border-t border-line bg-surface shadow-2xl">
+          <div class="mx-auto mt-2 h-1 w-10 rounded-full bg-line"></div>
+          <div class="flex items-center justify-between px-4 py-2"><span class="font-semibold">Frame 4 · Image Prompt</span><span class="text-muted" data-ic="x"></span></div>
+          <div class="flex flex-col gap-2 px-4"><div class="flex gap-1.5"><span class="rounded-full border border-line px-2 py-0.5">Kael</span><span class="rounded-full border border-line px-2 py-0.5">Elara</span></div><p class="leading-relaxed">Kael, a 42-year-old man with a lean build, weathered scarred skin… stands behind the warped bar, folding a letter under the till…</p><div class="flex gap-2"><span class="rounded border border-line px-2 py-0.5">Write again</span><span class="rounded border border-line px-2 py-0.5">Edit</span></div></div>
+        </div>
+      </div>
+      <figcaption class="text-[13px] text-muted">The drawer slides up, the picture still in view</figcaption>
+    </figure>
+    <figure class="flex flex-col items-center gap-2">
+      <div class="phone relative flex flex-col overflow-hidden rounded-[28px] border-4 border-fg bg-canvas text-fg">
+        <div class="px-4 pb-2 pt-4 text-[17px] font-semibold">Settings</div>
+        <p class="eyebrow px-4">Models</p>
+        <div class="mx-3 mt-1 flex flex-col divide-y divide-[var(--line)] rounded-xl border border-line bg-surface"><span class="flex justify-between px-3 py-2.5">Text <span class="text-muted">gemma-4-26b ›</span></span><span class="flex justify-between px-3 py-2.5">Images <span class="text-muted">Krea 2 ›</span></span><span class="flex justify-between px-3 py-2.5">Voice <span class="text-muted">›</span></span><span class="flex justify-between px-3 py-2.5">Music <span class="text-muted">›</span></span></div>
+        <p class="eyebrow mt-3 px-4">App</p>
+        <div class="mx-3 mt-1 flex flex-col divide-y divide-[var(--line)] rounded-xl border border-line bg-surface"><span class="flex justify-between px-3 py-2.5">Machines <span class="text-muted">2 ›</span></span><span class="flex justify-between px-3 py-2.5">Appearance <span class="text-muted">Light ›</span></span></div>
+        <div class="mt-auto"><div class="flex justify-around border-t border-line py-2 text-muted"><span data-ic="house"></span><span data-ic="story"></span><span data-ic="queue"></span><span class="text-fg" data-ic="gear"></span></div></div>
+      </div>
+      <figcaption class="text-[13px] text-muted">Settings opens as a list</figcaption>
+    </figure>
+  </div></div>
+</section>
+
+<section id="ultrawide" class="wide">
+  <div class="prose-col">
+    <p class="eyebrow">8</p>
+    <h2 class="mt-1 text-2xl font-semibold">Wide and ultrawide screens</h2>
+    <p class="mt-3">The last mockup of this was a small, empty-looking sketch. Here it is drawn properly, in the strip view, at the shape of a 21:9 screen.</p>
+  </div>
+  <div class="scroller mt-6 rounded-xl border border-line"><div class="relative flex bg-canvas text-fg" data-fold style="min-width:1180px; aspect-ratio:21/9; font-size:11px; font-family: ui-sans-serif, system-ui, sans-serif">
+    <div data-rail="session"></div>
+    <div class="relative flex min-w-0 flex-1 flex-col">
+      <div class="flex items-center justify-between border-b border-line px-4 py-2">
+        <div class="flex items-baseline gap-2"><span class="text-[10px] uppercase tracking-wide text-muted">Roleplay</span><span class="text-[13px] font-semibold">The Rain-Soaked Tavern</span></div>
+        <div class="flex items-center gap-1 text-muted"><span class="flex items-center gap-1 px-2"><span data-ic="music"></span>Fiddle, low</span><span class="px-2">Look & Cast</span><span data-ic="eye"></span><span data-ic="sliders"></span></div>
+      </div>
+      <div data-strip='[{"c": "pic2", "n": "1"}, {"c": "pic3", "n": "2"}, {"t": "I sit by the fire and watch him", "n": "3"}, {"c": "pic2", "n": "4"}, {"c": "pic", "n": "5"}, {"c": "pic3", "n": "6"}, {"c": "pic2", "n": "7"}, {"c": "pic", "n": "8"}, {"c": "pic3", "n": "9"}, {"c": "pic", "n": "10", "sel": 1}, {"c": "pic2", "n": "11"}, {"c": "pic3", "n": "12"}, {"c": "pic", "n": "13"}, {"c": "pic2", "n": "14"}, {"spin": 1, "n": "15"}, {"next": 1}]'></div>
+      <div class="relative flex min-h-0 flex-1 justify-center gap-6 px-6 pt-4">
+        <div class="relative aspect-video overflow-hidden rounded-xl pic" style="height: calc(100% - 76px)">
+          <span class="tool absolute left-3 top-3 rounded-md bg-[rgba(0,0,0,.45)] px-2 py-0.5 text-[11px]">Frame 10 of 15 · Krea 2 ▾</span>
+          <div data-tools data-clips="2" data-threed="1"></div>
+        </div>
+        <div class="fade-top flex w-[300px] flex-none flex-col gap-2 overflow-hidden pb-20">
+          <p class="italic text-muted opacity-60">…Kael pours without asking and pushes the mug across the bar.</p>
+          <div class="mt-1 self-end rounded-2xl rounded-br-md bg-ink px-3 py-1.5 text-inkfg">I set a coin on the bar. "Whatever's warm, and whatever's in that letter."</div>
+          <div class="text-[11px] font-medium text-muted">Kael</div>
+          <p class="italic text-muted">She saw the letter. Of course she did.</p>
+          <p class="italic">Kael folds the letter once and slides it under the till, then reaches for a cracked mug without taking his eyes off her.</p>
+          <p class="text-[13px] leading-snug">"Warm I can do. The letter's mine. Sit by the fire, traveller, before you drown my floor."</p>
+          <div class="mt-1 self-end rounded-2xl rounded-br-md bg-ink px-3 py-1.5 text-inkfg opacity-60">I take the mug and don't move from the bar.</div>
+        </div>
+        <div class="glass absolute bottom-3 left-1/2 flex w-[540px] -translate-x-1/2 items-center gap-2 rounded-2xl border border-line p-2 shadow-lg"><span class="flex-1 px-1.5 text-muted">What Elara says or does…</span><span class="flex items-center gap-1 text-muted"><span data-ic="spark"></span>Suggest</span><span class="text-muted" data-ic="undo"></span><span class="text-muted" data-ic="dots"></span><span class="rounded-lg bg-ink px-3 py-1 text-inkfg">Send</span></div>
+      </div>
+    </div>
+    <aside class="side flex w-64 flex-none flex-col border-l border-line" data-side="right">
+      <div class="flex items-center justify-between border-b border-line px-3 py-2.5"><span class="font-semibold">Frame 10 · Image Prompt</span><button data-drawer="close" class="text-muted"><span data-ic="x"></span></button></div>
+      <div class="flex flex-col gap-3 p-3">
+        <div class="flex items-center gap-1.5"><span class="text-muted">Shows</span><span class="rounded-full border border-line px-2 py-0.5">Kael</span><span class="rounded-full border border-line px-2 py-0.5">Elara</span></div>
+        <p class="leading-relaxed">Kael, a 42-year-old man with a lean build, weathered scarred skin and tired, piercing eyes. Elara, a slender young woman with pale, cold-flushed skin. Kael stands behind the warped bar, folding a letter under the till while he watches her. Elara sits by the fire, her cloak dripping onto the boards…</p>
+        <div class="flex gap-2"><span class="rounded border border-line px-2 py-0.5">Write again</span><span class="rounded border border-line px-2 py-0.5">Edit</span></div>
+        <p class="text-muted">Replied 3.7 s · pictured 6.0 s · rendered 18.5 s</p>
+      </div>
+    </aside>
+  </div></div>
+  <div class="prose-col mt-4 text-[14px]">
+    <p><strong>What the extra width is used for</strong>, rather than stretching everything:</p>
+    <ul class="mt-1 list-disc pl-5">
+      <li><strong>The picture grows to the full height</strong> of the screen, which is what you'd want a big screen for.</li>
+      <li><strong>The story keeps a book-page width</strong> right beside it. Today, at 3440 px, the words sit at the far left and the pictures at the far right, with an empty band between.</li>
+      <li><strong>The drawer starts open</strong>, as there's room for it; close it and the picture and story centre themselves.</li>
+      <li><strong>The strip shows more Frames</strong>, about thirty at 3440 px.</li>
+    </ul>
+  </div>
+
+  <div class="prose-col mt-12">
+    <h3 class="text-xl font-semibold">Home, from 1920</h3>
+    <p class="mt-3">At 1920 today, Home shows its Session cards in a centred strip with empty margins, and the Scenarios hidden behind New Session. The two-column Home, which now waits for 2240 px, fits easily: Sessions on the left, starting something new on the right.</p>
+  </div>
+  <div class="scroller mt-6 rounded-xl border border-line"><div class="relative flex bg-canvas text-fg" style="min-width:1000px; aspect-ratio:16/8.2; font-size:11px; font-family: ui-sans-serif, system-ui, sans-serif">
+    <div data-rail="home" data-badge="0"></div>
+    <div class="flex min-w-0 flex-1 flex-col gap-3 overflow-hidden p-5">
+      <div class="flex items-center justify-between"><span class="text-[15px] font-semibold">Your Sessions</span><span class="flex w-48 items-center gap-1.5 rounded-lg border border-line px-2 py-1 text-muted"><span data-ic="search"></span>Search</span></div>
+      <div class="grid grid-cols-6 gap-3"><div class="flex flex-col overflow-hidden rounded-lg bg-surface shadow-sm"><span class="pic aspect-[4/5] w-full"></span><div class="flex flex-col gap-0.5 p-2"><span class="truncate font-medium">The Rain-Soaked Tavern</span><span class="text-[9px] uppercase tracking-wide text-muted">Roleplay</span><span class="text-muted">13 Frames · 4 hours ago</span></div></div><div class="flex flex-col overflow-hidden rounded-lg bg-surface shadow-sm"><span class="sea2 aspect-[4/5] w-full"></span><div class="flex flex-col gap-0.5 p-2"><span class="truncate font-medium">A ship in a bottle</span><span class="text-[9px] uppercase tracking-wide text-muted">Chain</span><span class="text-muted">34 Frames · yesterday</span></div></div><div class="flex flex-col overflow-hidden rounded-lg bg-surface shadow-sm"><span class="harbour aspect-[4/5] w-full"></span><div class="flex flex-col gap-0.5 p-2"><span class="truncate font-medium">The harbour, by night</span><span class="text-[9px] uppercase tracking-wide text-muted">Storyboard</span><span class="text-muted">8 Frames · 2 days ago</span></div></div><div class="flex flex-col overflow-hidden rounded-lg bg-surface shadow-sm"><span class="pic2 aspect-[4/5] w-full"></span><div class="flex flex-col gap-0.5 p-2"><span class="truncate font-medium">The Rain-Soaked Tavern</span><span class="text-[9px] uppercase tracking-wide text-muted">Roleplay</span><span class="text-muted">100 Frames · 4 days ago</span></div></div><div class="flex flex-col overflow-hidden rounded-lg bg-surface shadow-sm"><span class="sea aspect-[4/5] w-full"></span><div class="flex flex-col gap-0.5 p-2"><span class="truncate font-medium">The lighthouse in winter</span><span class="text-[9px] uppercase tracking-wide text-muted">Roleplay</span><span class="text-muted">22 Frames · a week ago</span></div></div><div class="flex flex-col overflow-hidden rounded-lg bg-surface shadow-sm"><span class="pic3 aspect-[4/5] w-full"></span><div class="flex flex-col gap-0.5 p-2"><span class="truncate font-medium">Night train north</span><span class="text-[9px] uppercase tracking-wide text-muted">Chain</span><span class="text-muted">9 Frames · 2 weeks ago</span></div></div></div>
+    </div>
+    <aside class="flex w-[300px] flex-none flex-col gap-3 border-l border-line p-4">
+      <span class="text-[15px] font-semibold">Start something new</span>
+      <div><p class="eyebrow">Your own Brief</p><div class="mt-1 h-16 rounded-lg border border-line bg-surface p-2 text-muted">Who's in it, where, and what's happening…</div><span class="mt-2 inline-block rounded-lg bg-ink px-3 py-1 text-inkfg">Open</span></div>
+      <div class="flex items-center justify-between"><p class="eyebrow">Or a Scenario</p><span class="text-muted">Import…</span></div>
+      <div class="flex flex-col divide-y divide-[var(--line)] border-y border-line">
+        <div class="py-2"><div class="font-medium">The Rain-Soaked Tavern</div><div class="line-clamp-2 text-muted">An 18th-century tavern on a stormy night. Kael, a retired smuggler, is rattled by a letter…</div></div>
+        <div class="py-2"><div class="font-medium">The lighthouse in winter</div><div class="line-clamp-2 text-muted">A keeper alone in a storm; you wash up at her door.</div></div>
+        <div class="py-2"><div class="font-medium">Night train north</div><div class="line-clamp-2 text-muted">A sleeper carriage, a stranger in your seat, eleven hours to the border.</div></div>
+      </div>
+    </aside>
+  </div></div>
+  <div class="prose-col mt-4 text-[14px]">
+    <p><strong>Switch on Home's own width, not the window's.</strong> A maximised window on a 1920 screen is often a few pixels narrower (a Dock at the side, a scrollbar on Windows), so a breakpoint of exactly 1920 can miss. Measuring Home itself, at about 1800 px, always catches it, and keeps working with the rail in place. Your own Brief goes above the Scenarios, as typing one is the quickest way in.</p>
+  </div>
+</section>
+
+<section id="look" class="wide">
+  <div class="prose-col">
+    <p class="eyebrow">9</p>
+    <h2 class="mt-1 text-2xl font-semibold">The look, and a dark mode worth using</h2>
+    <p class="mt-3">Most of the "game UI" feel comes from boxes inside boxes, which the layouts above take out. The colours are a separate choice, and the one thing still open:</p>
+  </div>
+  <div class="mx-auto mt-6 grid max-w-3xl gap-5 md:grid-cols-2" id="looks"></div>
+  <p class="prose-col mt-5 text-[14px]">My pick is now the <strong>soft split</strong>. It keeps the parchment everywhere, so the app still looks like nothing else, and it still tells the story apart from the tools, which is what you liked about the split.</p>
+
+  <div class="prose-col mt-12">
+    <h3 class="text-xl font-semibold">Why today's dark mode doesn't work, and a fix</h3>
+    <p class="mt-3">Light mode is parchment with brown ink, a world of its own. Dark mode swaps all of it for Tailwind's plain neutral greys, so it feels like a different, generic app. Suggestions, in order of how much they'd help:</p>
+    <ol class="mt-3 list-decimal space-y-2 pl-5">
+      <li><strong>Make it lamplight: the same parchment world at night.</strong> Near-black with a brown tint for the background, a lighter brown for panels, and the parchment colour itself as the text. Nothing pure black or pure grey.</li>
+      <li><strong>Keep the brown ink as the accent.</strong> In light mode, buttons and the player's Messages are dark ink on paper. In lamplight they become paper on dark: the same pairing, turned over.</li>
+      <li><strong>Lower the contrast a touch</strong>: off-white text rather than white, which is easier on the eyes at night and makes the pictures, not the words, the brightest thing on screen.</li>
+      <li><strong>Fewer lines.</strong> Borders look heavier in the dark, so panels are told apart by a slightly different background rather than outlines.</li>
+    </ol>
+    <p class="mt-3">Since you prefer light, I'd make the dark mode a quick step at the end, and set the app to start in Light rather than System.</p>
+    <h3 class="mt-8 text-xl font-semibold">A split that isn't jarring</h3>
+    <p class="mt-3">The first split looked jarring for two reasons, and both can be fixed:</p>
+    <ul class="mt-2 list-disc pl-5">
+      <li><strong>It changed colour family.</strong> Warm parchment sat against cool grey, so the screen looked like two apps glued together. The soft split stays in one family: the tools are the same paper, only paler and less saturated, and the story is the full parchment. In the dark, the tools are a brown-tinted charcoal and the story is lamplit brown.</li>
+      <li><strong>It had a hard edge.</strong> The story was a block of colour running to the screen's edges. Now it's a sheet with rounded corners and a soft shadow, lying on the desk, so the change of tone reads as "a page" rather than as a seam.</li>
+    </ul>
+    <p class="mt-3">So the difference is one of tone, not of colour: enough to see what's the story and what's the tools, with nothing shouting. Try each on the Roleplay screen, and click Prompt on the picture to see the drawer in each:</p>
+  </div>
+  <div class="mt-4 flex flex-wrap gap-2" role="tablist" data-tabs="dark">
+    <button class="tabbtn rounded-full border border-line px-3 py-1 text-[13px]" role="tab" aria-selected="false" data-tab="parch">Parchment light</button>
+    <button class="tabbtn rounded-full border border-line px-3 py-1 text-[13px]" role="tab" aria-selected="true" data-tab="soft">Soft split light</button>
+    <button class="tabbtn rounded-full border border-line px-3 py-1 text-[13px]" role="tab" aria-selected="false" data-tab="lamp">Lamplight dark</button>
+    <button class="tabbtn rounded-full border border-line px-3 py-1 text-[13px]" role="tab" aria-selected="false" data-tab="softd">Soft split dark</button>
+    <button class="tabbtn rounded-full border border-line px-3 py-1 text-[13px]" role="tab" aria-selected="false" data-tab="grey">Today's dark, for comparison</button>
+  </div>
+  <div class="mt-3 flex flex-wrap items-center gap-2" role="tablist" data-tabs="edge">
+    <span class="text-[13px] text-muted">The story's edge, in a split:</span>
+    <button class="tabbtn rounded-full border border-line px-3 py-1 text-[13px]" role="tab" aria-selected="false" data-tab="square">Square sheet</button>
+    <button class="tabbtn rounded-full border border-line px-3 py-1 text-[13px]" role="tab" aria-selected="true" data-tab="flush">Flush, no sheet (picked)</button>
+    <button class="tabbtn rounded-full border border-line px-3 py-1 text-[13px]" role="tab" aria-selected="false" data-tab="round">Rounded sheet</button>
+  </div>
+  <div class="mt-4" id="darkdemo"></div>
+</section>
+
+<section id="picks" class="prose-col">
+  <p class="eyebrow">10</p>
+  <h2 class="mt-1 text-2xl font-semibold">Decided, assumed, and open</h2>
+  <div class="scroller mt-4"><table class="picks w-full text-[14px]">
+    <thead><tr><th class="eyebrow">What</th><th class="eyebrow">Where it stands</th></tr></thead>
+    <tbody>
+      <tr><td>The film strip for every kind of Session</td><td><strong>Decided</strong> (yours)</td></tr>
+      <tr><td>Immersive as a view of its own</td><td><strong>Decided</strong> (yours)</td></tr>
+      <tr><td>The Scenario page on one page, two columns</td><td><strong>Decided</strong> (yours)</td></tr>
+      <tr><td>Settings and the Queue as sections down the left, with rows</td><td><strong>Decided</strong> (yours)</td></tr>
+      <tr><td>The rail in place of the header, with the theme button and Settings at its foot</td><td>Assumed: say if not</td></tr>
+      <tr><td>The floating text box, on all three kinds</td><td>Assumed</td></tr>
+      <tr><td>Picture buttons on the picture; Clip and 3D as menus there only</td><td>Assumed</td></tr>
+      <tr><td>The Frame panel as a drawer; Look & Cast and Music in the Session's bar</td><td>Assumed</td></tr>
+      <tr><td>The Queue on the Frame's tile, plus the rail's slide-in</td><td>Assumed</td></tr>
+      <tr><td>Settings as an overlay with its own address, not a page</td><td>Assumed</td></tr>
+      <tr><td>Home's two columns from about 1800 px of its own width</td><td>Assumed</td></tr>
+      <tr><td>The look: the soft split, flush (the story in full parchment, the tools paler, no sheet edge)</td><td><strong>Decided</strong> (yours)</td></tr>
+      <tr><td>Dark mode: the soft split's dark</td><td><strong>Decided</strong> (yours)</td></tr>
+    </tbody>
+  </table></div>
+  <h3 class="mt-10 text-lg font-semibold">The order I'd build it in</h3>
+  <ol class="mt-3 list-decimal space-y-2 pl-5">
+    <li><strong>The rail</strong>, and the tab bar on a phone.</li>
+    <li><strong>The strip view for a Roleplay</strong>: the strip, the picture beside the story, the floating box, the picture's buttons, the drawer.</li>
+    <li><strong>Chain and Storyboard</strong> moved into the same view, with the Beat cards for a plan.</li>
+    <li><strong>The contact sheet</strong>, and the Queue's slide-in panel.</li>
+    <li><strong>Settings</strong> as an overlay in its new shape, and the Queue page to match.</li>
+    <li><strong>The Scenario page.</strong></li>
+    <li><strong>Home</strong> at wide widths, and the look once you've picked it.</li>
+    <li><strong>The immersive view</strong>, then <strong>dark mode</strong>.</li>
+  </ol>
+  <p class="mt-3 text-muted">Each step is a piece of its own, with before-and-after screenshots at phone, desktop and wide sizes for you to look at before it's committed. The plan would go in <code>docs/screens-plans.md</code>, so a later session can pick it up.</p>
+</section>
+
+</main>
+
+<script>
+  // The three looks, drawn from one template.
+  const LOOKS = [
+    { n: 1, name: 'Parchment throughout', note: 'One paper for everything, with lines instead of cards.',
+      light: { bg: '#ede0bf', fg: '#3a2817', mu: '#6e573b', ink: '#3a2817', inkfg: '#f6ecd2', line: '#d2bf93', box: '#f6ecd2' },
+      dark: { bg: '#16110c', fg: '#efe2c4', mu: '#a8916c', ink: '#efe2c4', inkfg: '#16110c', line: '#3b2d1e', box: '#211912' } },
+    { n: 2, name: 'Soft split', note: 'The story is a sheet of parchment; the tools around it are the same paper, paler and quieter.',
+      light: { bg: '#f4eedd', fg: '#3a2817', mu: '#75644c', ink: '#3a2817', inkfg: '#f6ecd2', line: '#ddd2b5', box: '#ede0bf' },
+      dark: { bg: '#151312', fg: '#e9e2d3', mu: '#9c9283', ink: '#efe2c4', inkfg: '#21180f', line: '#2f2a25', box: '#241a10' } },
+  ]
+  function swatch(t, story) {
+    return `<div style="background:${t.bg};color:${t.fg};border:1px solid ${t.line}" class="flex flex-col gap-2 rounded-lg p-3 text-[12px]">
+      <div style="background:${story ? t.box : 'transparent'};border-radius:8px;padding:${story ? '8px' : '0'}" class="flex flex-col gap-2">
+        <div style="background:${t.ink};color:${t.inkfg}" class="self-end rounded-2xl rounded-br-md px-3 py-1.5">I set a coin on the bar.</div>
+        <p style="color:${t.mu}" class="italic">She saw the letter.</p>
+        <p>"Warm I can do. The letter's mine."</p>
+      </div>
+      <div style="border-top:1px solid ${t.line};color:${t.mu}" class="flex items-center justify-between pt-2"><span>Settings · Text Model</span><span style="border:1px solid ${t.line};color:${t.fg}" class="rounded px-1.5">gemma ▾</span></div>
+    </div>`
+  }
+  document.getElementById('looks').innerHTML = LOOKS.map((l) => `
+    <figure class="flex flex-col gap-2">
+      <figcaption><span class="font-semibold">${l.n} · ${l.name}</span>${l.n === 2 ? ' <span class="rec text-[12px]">recommended</span>' : ''}<div class="text-[13px] text-muted">${l.note}</div></figcaption>
+      <div class="grid grid-cols-2 gap-2">${swatch(l.light, l.n === 2)}${swatch(l.dark, l.n === 2)}</div>
+      <div class="grid grid-cols-2 text-center text-[11px] text-muted"><span>light</span><span>dark</span></div>
+    </figure>`).join('')
+
+  // The dark-mode demo: a copy of the full-page Roleplay, recoloured by a class on its root.
+  const full = document.querySelector('#frame .mock')
+  const demo = full.cloneNode(true)
+  const wrap = document.createElement('div')
+  wrap.className = 'scroller rounded-xl border border-line'
+  wrap.appendChild(demo)
+  document.getElementById('darkdemo').appendChild(wrap)
+  const demoStory = demo.querySelector('[data-story]')
+  // Each theme's tokens: the whole screen's, and the story's where it differs (split).
+  const T = {
+    parch: { '--canvas': '#ede0bf', '--surface': '#f6ecd2', '--line': '#d2bf93', '--fg': '#3a2817', '--muted': '#6e573b', '--ink': '#3a2817', '--inkfg': '#f6ecd2', '--ok': '#3f6b2a', '--hi': '#b7791f' },
+    grey: { '--canvas': '#0a0a0a', '--surface': '#171717', '--line': '#262626', '--fg': '#f5f5f5', '--muted': '#a3a3a3', '--ink': '#f5f5f5', '--inkfg': '#171717', '--ok': '#34d399', '--hi': '#fbbf24' },
+    lamp: { '--canvas': '#16110c', '--surface': '#211912', '--line': '#3b2d1e', '--fg': '#efe2c4', '--muted': '#a8916c', '--ink': '#efe2c4', '--inkfg': '#16110c', '--ok': '#8fbf6a', '--hi': '#e3a547' },
+    toolsSoft: { '--canvas': '#f4eedd', '--surface': '#faf6ea', '--line': '#ddd2b5', '--fg': '#3a2817', '--muted': '#75644c', '--ink': '#3a2817', '--inkfg': '#f6ecd2', '--ok': '#3f6b2a', '--hi': '#b7791f' },
+    toolsSoftDark: { '--canvas': '#151312', '--surface': '#1e1b19', '--line': '#2f2a25', '--fg': '#e9e2d3', '--muted': '#9c9283', '--ink': '#e9e2d3', '--inkfg': '#151312', '--ok': '#8fbf6a', '--hi': '#e3a547' },
+    storyLamp: { '--canvas': '#241a10', '--surface': '#2f2317', '--line': '#453421', '--fg': '#f1e4c6', '--muted': '#b49d77', '--ink': '#f1e4c6', '--inkfg': '#241a10', '--hi': '#e3a547' },
+  }
+  const MODES = {
+    parch: [T.parch, null], grey: [T.grey, null], lamp: [T.lamp, null],
+    soft: [T.toolsSoft, T.parch], softd: [T.toolsSoftDark, T.storyLamp],
+  }
+  function paint(el, tokens) {
+    for (const k of Object.keys(T.parch)) el.style.removeProperty(k)
+    if (tokens) for (const [k, v] of Object.entries(tokens)) el.style.setProperty(k, v)
+  }
+  let mode = 'soft'
+  let edge = 'flush'
+  function showMode(m) {
+    mode = m
+    const [root, story] = MODES[m]
+    paint(demo, root)
+    paint(demoStory, story)
+    // In a split the story is a sheet lying on the desk: inset, rounded, with a soft shadow.
+    // or square, or flush: no sheet at all, only the change of tone.
+    const sheet = story && edge !== 'flush'
+    demoStory.style.margin = sheet ? '0 10px 10px' : ''
+    demoStory.style.borderRadius = sheet && edge === 'round' ? '14px' : ''
+    demoStory.style.boxShadow = sheet ? '0 0 0 1px var(--line), 0 10px 28px -14px rgba(0,0,0,.45)' : ''
+  }
+  showMode('soft')
+  document.querySelector('[data-tabs="edge"]').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-tab]')
+    if (!btn) return
+    btn.parentElement.querySelectorAll('[data-tab]').forEach((b) => b.setAttribute('aria-selected', String(b === btn)))
+    edge = btn.dataset.tab
+    showMode(mode)
+  })
+  document.querySelector('[data-tabs="dark"]').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-tab]')
+    if (!btn) return
+    btn.parentElement.querySelectorAll('[data-tab]').forEach((b) => b.setAttribute('aria-selected', String(b === btn)))
+    showMode(btn.dataset.tab)
+  })
+
+  // Film strips: a tile per Frame, its picture or its words; the picked one ringed.
+  document.querySelectorAll('[data-strip]').forEach((el) => {
+    const tiles = JSON.parse(el.dataset.strip).map((t) => {
+      const num = t.n ? `<span class="absolute bottom-0.5 left-1 text-[9px] ${t.c ? 'text-white' : 'text-muted'}">${t.n}</span>` : ''
+      const ring = t.sel ? ' ring-2 ring-fg ring-offset-1 ring-offset-[var(--canvas)]' : ''
+      if (t.next) return `<span class="grid h-12 w-20 flex-none place-items-center rounded border border-dashed border-line text-[10px] text-muted">next</span>`
+      if (t.spin) return `<span class="relative grid h-12 w-20 flex-none place-items-center rounded bg-line text-fg${ring}"><span class="spin" data-ic="spinner"></span>${num}</span>`
+      if (t.t) return `<span class="relative flex h-12 w-20 flex-none rounded border border-dashed border-line bg-surface p-1 text-[9px] leading-tight${ring}">${t.t}${num}</span>`
+      return `<span class="relative h-12 w-20 flex-none rounded ${t.c}${ring}">${num}</span>`
+    }).join('')
+    el.outerHTML = `<div class="flex items-center gap-1.5 overflow-hidden border-b border-line px-4 py-2"><span class="flex-none text-muted" title="Earlier Frames">‹</span>${tiles}<span class="ml-auto flex flex-none items-center gap-1 pl-2 text-muted"><span title="All Frames, with search" class="rounded-md border border-line px-1.5 py-0.5">▦</span></span></div>`
+  })
+  const sheet = document.getElementById('sheetgrid')
+  if (sheet) {
+    const words = ['Kael turns a letter over', 'I shake the rain from my cloak', 'I sit by the fire', 'I set a coin on the bar', 'Kael reads the letter twice', 'A knock at the door', 'I ask who sent it', 'He burns the letter', 'The storm gets worse', 'I offer to pay his debt', 'Kael laughs, once', 'Footsteps upstairs']
+    const pics = ['pic', 'pic2', 'pic3']
+    sheet.innerHTML = words.map((w, i) => {
+      const hit = /letter/.test(w)
+      return `<div class="flex flex-col gap-1 ${hit ? '' : 'opacity-35'}"><span class="aspect-[16/10] rounded ${pics[i % 3]} ${hit ? 'ring-2 ring-hi' : ''}"></span><span class="truncate text-[11px]"><span class="text-muted">${i + 1} · </span>${w}</span></div>`
+    }).join('')
+  }
+
+  // Rails and picture buttons, filled in where marked.
+  document.querySelectorAll('[data-rail]').forEach((el) => { el.outerHTML = rail(el.dataset.rail, el.dataset.badge === '0' ? 0 : 2) })
+  document.querySelectorAll('[data-tools]').forEach((el) => { el.outerHTML = pictureTools(el.dataset) })
+
+  // Tabs: one group per data-tabs, its panels in the matching data-panels.
+  document.querySelectorAll('[data-tabs]').forEach((list) => {
+    if (list.dataset.tabs === 'dark' || list.dataset.tabs === 'edge') return
+    const panels = document.querySelector(`[data-panels="${list.dataset.tabs}"]`)
+    list.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-tab]')
+      if (!btn || !panels) return
+      list.querySelectorAll('[data-tab]').forEach((b) => {
+        const on = b === btn
+        b.setAttribute('aria-selected', String(on))
+        if (list.dataset.tabs === 'rpa-left') { b.classList.toggle('border-b-2', on); b.classList.toggle('border-fg', on); b.classList.toggle('text-fg', on); b.classList.toggle('font-medium', on) }
+      })
+      panels.querySelectorAll(':scope > [data-panel]').forEach((p) => { p.hidden = p.dataset.panel !== btn.dataset.tab })
+    })
+  })
+
+  // The drawer: opened by what asks for it, closed by its ✕ or the same button again.
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-drawer]')
+    if (!btn) return
+    const side = btn.closest('[data-fold]')?.querySelector('[data-side="right"]')
+    if (!side) return
+    const want = btn.dataset.drawer
+    const panels = side.querySelectorAll('[data-drawer-panel]')
+    const open = !side.classList.contains('collapsed')
+    if (want === 'close' || (open && (!panels.length || side.dataset.showing === want))) { side.classList.add('collapsed'); return }
+    side.classList.remove('collapsed')
+    side.dataset.showing = want
+    panels.forEach((p) => { p.hidden = p.dataset.drawerPanel !== want })
+  })
+
+  // Folding panels, as the real buttons would.
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-toggle]')
+    if (!btn) return
+    btn.closest('[data-fold]')?.querySelector(`[data-side="${btn.dataset.toggle}"]`)?.classList.toggle('collapsed')
+  })
+
+  drawIcons(document)
+</script>

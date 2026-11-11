@@ -44,6 +44,7 @@
     "exclude": [
       "**/*.md",
       "docs/bench/",
+      "docs/screens-mockups.html",
       "web/index.html",
       "web/export.html",
       "web/public/",
