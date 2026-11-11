@@ -276,7 +276,7 @@ const canUndo = computed(() => !busy.value && (session.value?.frames.length ?? 0
 const undoing = ref(false)
 /**
  * The first Frame the main panel's Undo takes back: the latest, or while an earlier Frame is shown,
- * every Frame after it (Undo to here), so it stops on the Frame in view.
+ * every Frame after it (Undo to a Frame), so it stops on the Frame in view.
  */
 const undoFrom = computed(() => (viewingOlder.value ? shown.value!.index + 1 : latest.value?.index))
 
@@ -669,7 +669,7 @@ const promptDiff = computed(() => {
               data-undo-main
               @click="undo(undoFrom!, viewingOlder)"
             >
-              {{ viewingOlder ? 'Undo to here' : 'Undo' }}
+              {{ viewingOlder ? `Undo to ${frameName(shown!.index)}` : 'Undo' }}
             </button>
           </div>
         </div>

@@ -628,7 +628,7 @@ describe('ChainView', () => {
     const { wrapper } = await mountIt()
     expect(wrapper.find('[data-undo-main]').text()).toBe('Undo')
     await wrapper.findAll('aside [data-frame]')[1].trigger('click')
-    expect(wrapper.find('[data-undo-main]').text()).toBe('Undo to here')
+    expect(wrapper.find('[data-undo-main]').text()).toBe('Undo to Frame 2')
     await wrapper.find('[data-undo-main]').trigger('click')
     await flushPromises()
     expect(vi.mocked(ask).mock.calls[0][0]).toContain('Undo Frames 3–4')

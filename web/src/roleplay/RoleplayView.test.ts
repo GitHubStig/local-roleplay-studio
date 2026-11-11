@@ -406,7 +406,7 @@ describe('RoleplayView', () => {
     const { wrapper } = await mountIt()
     expect(wrapper.find('[data-undo]').text()).toBe('Undo')
     await wrapper.findAll('[data-reply]')[0].trigger('click')
-    expect(wrapper.find('[data-undo]').text()).toBe('Undo to here')
+    expect(wrapper.find('[data-undo]').text()).toBe('Undo to Frame 1')
     await wrapper.find('[data-undo]').trigger('click')
     await flushPromises()
     expect(vi.mocked(ask).mock.calls[0][0]).toContain('Undo Frames 2–3, back to Frame 1')

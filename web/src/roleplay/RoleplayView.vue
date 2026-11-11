@@ -511,7 +511,7 @@ async function suggest() {
 
 /** The latest exchange can be undone (never the opening): its message goes back in the box. */
 const canUndo = computed(() => !busy.value && (session.value?.frames.at(-1)?.message ?? null) !== null)
-/** An earlier Frame is selected: Undo takes back every exchange after it (Undo to here). */
+/** An earlier Frame is selected: Undo takes back every exchange after it (Undo to a Frame). */
 const selectedOlder = computed(() =>
   selectedIndex.value !== null && selectedIndex.value !== session.value?.frames.at(-1)?.index
 )
@@ -1083,7 +1083,7 @@ const lookSavingText = computed(() =>
               data-undo
               @click="undo"
             >
-              {{ selectedOlder ? 'Undo to here' : 'Undo' }}
+              {{ selectedOlder ? `Undo to ${frameName(selectedIndex!)}` : 'Undo' }}
             </button>
           </div>
         </div>
