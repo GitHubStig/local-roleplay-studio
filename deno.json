@@ -41,6 +41,14 @@
     "semiColons": false,
     "singleQuote": true,
     "lineWidth": 100,
-    "exclude": ["**/*.md", "docs/bench/", "web/index.html", "web/export.html", "web/public/"]
+    "exclude": [
+      "**/*.md",
+      "docs/bench/",
+      "web/index.html",
+      "web/export.html",
+      "web/public/",
+      "server/replay/replays/",
+      "web/src/assets/icons/"
+    ]
   }
 }
