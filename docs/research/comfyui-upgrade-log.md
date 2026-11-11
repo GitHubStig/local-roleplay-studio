@@ -2,6 +2,52 @@
 
 Newest first. The procedure is in [comfyui-upgrade.md](../comfyui-upgrade.md). ComfyUI runs on both machines: the Windows PC renders through it, and the Mac can.
 
+## 0.45.2 — the Windows PC, 2026-11-11
+
+Reviewed against the [v0.45.0 release notes](https://github.com/Comfy-Org/ComfyUI/releases/tag/v0.45.0) and the commits of v0.44.1, v0.44.2, v0.45.1 and v0.45.2, tags without release notes (`gh api repos/Comfy-Org/ComfyUI/compare/…`), from 0.44.0. The point releases carry only partner (paid API) nodes, template bumps and, in 0.45.2, a `none` choice for `CreateVideo`'s chroma subsampling, which the app's clip workflows leave at its default; everything below is in 0.45.0.
+
+**Versions**: the owner upgraded the Windows PC from 0.44.0 to 0.45.1 on 2026-11-11, where the checks below ran, then to **0.45.2** the same day. The local API reports ComfyUI 0.45.2, frontend 1.58.5, workflow templates 0.11.106 (as required), comfy-aimdo 0.6.0, comfy-kitchen 0.2.41, PyTorch 2.13.0+cu130, RTX 4070 12 GB. The Mac hasn't been upgraded or reviewed.
+
+### Release items relevant to the app
+
+- **Qwen 3.x text encoders combine their parallel linears** ([#17361](https://github.com/Comfy-Org/ComfyUI/pull/17361), with a fix for a model reused without prefetching, [#17625](https://github.com/Comfy-Org/ComfyUI/pull/17625), and for fp8 Qwen generating text, [#17620](https://github.com/Comfy-Org/ComfyUI/pull/17620)). Touches the Qwen3-VL encoders behind Qwen-Image 2.1, FLUX.3 Klein and FIBO 2.0; the PR measured ~9% on a Qwen 3.5 9B generating text on a 5090. No change here: Qwen-Image 2.1, FLUX.3 Klein and FIBO 2.0 Turbo took the same time as on 0.43.2, and the same pictures each run (the bench below).
+- **SeedVR2's VAE sizes its slices to free memory** ([#17508](https://github.com/Comfy-Org/ComfyUI/pull/17508)): byte-identical output when nothing is spare, otherwise caches stay on the card; 30–45% off the VAE on a 5090 for video. On the app's Upscale, one frame through the tiled VAE, no change in time for 7B or 3B, with ~0.8–0.9 GB more of the card at the peak (the bench below).
+- **A guard on the audio stream's scale** in `MiniMaxH3`, the model class behind the app's H3 clips ([#17543](https://github.com/Comfy-Org/ComfyUI/pull/17543), "Fix potential crash": `getattr(…, "audio_scale", 1.0)`). Not tied to any failure seen here; an H3 clip with sound came out whole (the bench below).
+- **Templates**: of the templates the app's ComfyUI image and video workflows come from, those for Qwen-Image 2.1 (and Turbo, and both edits), FLUX.3 Klein (and edit), Krea 2 int8, Anima, SeedVR2 and LTX 2.5 are byte for byte the same in `comfyui-workflow-templates-json` 0.1.132 (installed) as in 0.1.127 (from PyPI). FLUX.2 Klein, MOSS, Z-Image Turbo, Krea 2 (fp8) and MiniMax H3 i2v changed only in their model-link notes; Ming-Image's prompt rewriter, which the app leaves out, moved from `TextGenerate` to `TextGenerateV2`, and its seed from fixed to randomize. No workflow changes needed.
+
+### Candidates the release made possible
+
+- **MiniMax H3 Image** ([#17655](https://github.com/Comfy-Org/ComfyUI/pull/17655); templates `image_minimax_h3_image_t2i`, `image_minimax_h3_image_edit`): text-to-image and editing with any number of reference pictures in one checkpoint, a 33B DiT distilled to 6 steps at CFG 1, from H3's DiT without the audio stream ([model card](https://huggingface.co/MiniMaxAI/MiniMax-H3-Image)). Comfy-Org's files ([Comfy-Org/MiniMax-H3-Image](https://huggingface.co/Comfy-Org/MiniMax-H3-Image)): DiT 40.2 GB bf16, 21.0 GB int8, 12.6 GB w4a8; VAE 1.2 GB; text encoder Qwen3-VL 32B, 27.1 GB int8 or 15.7 GB nvfp4. The nvfp4 encoder is the same file (same SHA-256) the PC already has for H3's clips, so the PC needs only a DiT and the VAE (~22 GB with int8, ~14 GB with w4a8, which the PC runs natively as `asym_w4a8_int8`). Templates default to 4 MP and a Qwen 3.5 9B prompt expander, which the app would leave out as with the others. Fit at 12 GB rests on Dynamic VRAM streaming, as it does for H3's clips.
+- **P-H3 Image** (Pruna AI; `PH3ImageConditioning`, templates `image_p_h3_t2i`, `image_p_h3_image_edit`; already in 0.44.0's templates, not reviewed then): text-to-image and editing as a 2 GB LoRA on H3's video DiT (`minimax_h3_fl2va_pruned_int8_convrot`, which the PC already has), with its own text encoder (5.1 GB int8, 3.6 GB w4a8) and VAE (3.2 GB int8) ([PrunaAI/P-H3-Image-Comfy](https://huggingface.co/PrunaAI/P-H3-Image-Comfy)); standalone DiTs too (21.2 GB int8, 13.4 GB w4a8).
+- **Not Image Models**: RelayVSR ([#17511](https://github.com/Comfy-Org/ComfyUI/pull/17511), 5.2 GB int8 + 0.13 GB decoder per scale) upscales video ×2/×4, a possible upscaler for clips; WeVisOne-VL ([#17632](https://github.com/Comfy-Org/ComfyUI/pull/17632)) detects, segments and points in pictures (2B/4B Qwen3-VL fine-tunes). Partner nodes (Seedream 5.5, GPT Image 2.6/V3, the MiniMax H3 Image API node) are paid and off the machine.
+
+**Tried and dropped**: MiniMax H3 Image (2026-11-11): about 35 s a picture, and the owner found its people deformed ([image-models.md](image-models.md#minimax-h3-image-on-comfyui-with-an-rtx-4070-2026-11-11)); its DiT and VAE were deleted from the PC the same day. P-H3 Image passed over (the owner).
+
+### Windows PC check — 2026-11-11
+
+**Smoke check**, through the app's `comfyuiImageGenerator` with the public tavern still-life prompt: Qwen-Image 2.1 at 1024² (23.2 s), a FLUX.3 Klein edit of the whole picture, done as asked (17.8 s), and SeedVR2 7B to 2048² (10.8 s), all valid; after each, VRAM back to within 0.1 GiB of before (`/free`), and `GET /history` empty at the end.
+
+**A small bench of what 0.45 touched**, against the 0.43.2 numbers in [image-models.md](image-models.md#comfy-kitchen-attention-on-every-comfyui-image-model-2026-11-01-windows-pc) (same prompt, Frame 9's prose from `docs/bench/art-tags/prompts/gemma4-31b.json`, seed 42, 832×1216, Kitchen attention, from cold, Ollama unloaded), through the app's generators: the whole bench twice, each job twice in each, so four runs a job; the Qwen-Image 2.1 edit five more on its own. "Sampling" is from the first step's progress to the last; memory sampled every 250 ms with `docs/bench/memory.ts` (VRAM by `nvidia-smi`; RAM as Windows' available memory, of 16 GB, in the second run only).
+
+| Job | 0.45.1, from cold | 0.45.1, sampling | 0.43.2, from cold | 0.43.2, sampling | Peak VRAM | Least RAM free |
+|---|---:|---:|---:|---:|---:|---:|
+| Qwen-Image 2.1, 25 steps | 19.5–20.9 s | 9.6–9.8 s | 19.6–21.6 s | 9.7–10.1 s | 11.2–11.3 GB | 4.2–4.6 GB |
+| FLUX.3 Klein, 16 steps | 10.6–11.2 s | 4.2–4.3 s | 10.7 s | 4.3 s | 10.7–10.9 GB | 4.4 GB |
+| FIBO 2.0 Turbo, 4 steps | 9.4–9.5 s | 1.3 s | 9.3–9.5 s | 1.3 s | 11.2–11.3 GB | 4.5 GB |
+| SeedVR2 7B, that render to 2048×2992 | 12.4–13.9 s | – | 12.4 s (0.39, fp8) | – | 10.3–10.6 GB (9.6–9.8 before) | 3.5–3.7 GB |
+| SeedVR2 3B, the same | 10.6–11.4 s | – | 11.1 s (0.39, fp8) | – | 6.1–6.2 GB (5.3–5.5 before) | 3.8–3.9 GB |
+| FLUX.3 Klein edit, whole picture | 16.0–16.2 s | 8.5–8.6 s | 16.1–16.3 s (masked) | 8.5 s | 11.2 GB | 4.5–6.7 GB |
+| Qwen-Image 2.1 edit, whole picture, on its own | 23.5–25.4 s | 11.1–12.5 s | 23.9 s (masked) | 11.1 s | 11.2–11.5 GB | 6.5–6.6 GB |
+| The same, late in the full bench | 33.7–34.3 s | 21.0–21.3 s | | | 11.2 GB | 4.4 GB |
+| MiniMax H3 clip, 5 s Small (864×480), first picture only | 103.2–105.6 s | 69.9–72.2 s | 96.6 s (a Lead In at 768×512) | 56.4 s | 11.2 GB | 1.7 GB |
+
+- **No speed-up at the app's sizes**: the Qwen 3.x encoders' combined linears and SeedVR2's adaptive VAE slices left every time within the run-to-run spread. SeedVR2 now uses ~0.8–0.9 GB more of the card at its peak, as the PR says it should when memory is free.
+- **The same pictures each time**: every run of each job gave the same file to the byte.
+- **The H3 clip** (`docs/bench/video-ltx/kael.png`, a still prompt with rain and fire, no speech, seed 4300) came out whole both times: 124 frames at 864×480 with sound (mean −36.9 dB, not listened to). It isn't the same clip as 0.43.2's, so its time isn't comparable. It left the least RAM free, 1.7 GB.
+- **The Qwen-Image 2.1 edit sampled twice as slowly late in the full bench**, both times (after the renders, the upscales and a FLUX.3 edit, with ~4.4 GB of RAM free), against 11.1–12.5 s in five runs on its own (~6.5 GB free), one of them right after a FLUX.3 edit, so not FLUX.3's doing. Likely its weights had left Windows' file cache and were streamed from the SSD at each step, as Dynamic VRAM does (comfyui.md, "Memory and speed"); not confirmed, nor whether 0.44 did the same.
+
+Not checked: MOSS, Ming, Krea 2, Anima, FIBO 2.0 Dev, Z-Image Turbo, FLUX.2 Klein, voices (TTS Audio Suite), music, the other clip models; masked edits; the Mac.
+
 ## 0.44.0 — both machines, 2026-11-04
 
 **What came of it**:
