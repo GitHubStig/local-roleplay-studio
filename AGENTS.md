@@ -51,6 +51,7 @@ silicon, 48 GB) and a Windows PC (RTX 4070, 12 GB, 16 GB of RAM), sharing this r
   several times between them.
 - **Some things can only be checked on one**: mflux, voices and LiTo on the Mac; CUDA on the PC.
   Say so when a change can't be run where it's made, so the other machine can check it.
+- **Measure memory in a bench with `docs/bench/memory.ts`** (`availableRam`, `watchMemory`), not Deno's `systemMemoryInfo()` directly: its `available` is always 0 on Windows, which has read as "no RAM free" more than once.
 
 ## Conventions
 
