@@ -50,7 +50,7 @@ Deno.test('A Lead In is made from a Frame’s picture, kept on it, served, and u
       [206, 'video/mp4', 'mp4'],
     )
     assertMatch(part.headers.get('content-range')!, /^bytes 0-2\/\d+$/)
-    await call('DELETE', '/api/sessions/s1/frames/1')
+    await call('DELETE', '/api/sessions/s1/frames/1?latest=1')
     assertEquals((await call('GET', `/api/sessions/s1/images/${clip.file}`)).status, 404)
   }))
 

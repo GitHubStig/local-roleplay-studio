@@ -29,7 +29,7 @@ vi.mock('./api', async (importOriginal) => ({
   beginRoleplay: vi.fn(),
   sendMessage: vi.fn(),
   suggestMessage: vi.fn(),
-  undoExchange: vi.fn(),
+  undoExchanges: vi.fn(),
   saveCast: vi.fn(),
   saveLook: vi.fn(),
   saveVoice: vi.fn(),
@@ -140,7 +140,7 @@ beforeEach(() => {
       roleplay.beginRoleplay,
       roleplay.sendMessage,
       roleplay.suggestMessage,
-      roleplay.undoExchange,
+      roleplay.undoExchanges,
       roleplay.saveCast,
     ]
   ) {
@@ -362,15 +362,41 @@ describe('RoleplayView', () => {
   it('undoes the latest exchange, putting its message back in the box; never the opening', async () => {
     const two = roleplaySession([frame(0, null, 'Get inside.'), frame(1, 'Thanks.', 'Sit.')])
     vi.mocked(api.getSession).mockResolvedValue(two)
-    vi.mocked(roleplay.undoExchange).mockResolvedValue(
+    vi.mocked(roleplay.undoExchanges).mockResolvedValue(
       roleplaySession([frame(0, null, 'Get inside.')]),
     )
     const { wrapper } = await mountIt()
     await buttonNamed(wrapper, 'Undo').trigger('click')
     await flushPromises()
-    expect(roleplay.undoExchange).toHaveBeenCalledWith('r1', 1)
+    expect(roleplay.undoExchanges).toHaveBeenCalledWith('r1', 1, 1)
     expect((wrapper.find('textarea').element as HTMLTextAreaElement).value).toBe('Thanks.')
     expect(buttonNamed(wrapper, 'Undo').attributes('disabled')).toBeDefined()
+  })
+
+  it('undoes back to an earlier Frame selected, once confirmed, putting the next message back', async () => {
+    vi.mocked(api.getSession).mockResolvedValue(
+      roleplaySession([
+        frame(0, null, 'Get inside.'),
+        frame(1, 'Thanks.', 'Sit.'),
+        frame(2, 'Tea?', 'Sure.'),
+      ]),
+    )
+    vi.mocked(roleplay.undoExchanges).mockResolvedValue(
+      roleplaySession([frame(0, null, 'Get inside.')]),
+    )
+    vi.mocked(ask).mockReset().mockResolvedValueOnce(false).mockResolvedValueOnce(true)
+    const { wrapper } = await mountIt()
+    expect(wrapper.find('[data-undo]').text()).toBe('Undo')
+    await wrapper.findAll('[data-reply]')[0].trigger('click')
+    expect(wrapper.find('[data-undo]').text()).toBe('Undo to here')
+    await wrapper.find('[data-undo]').trigger('click')
+    await flushPromises()
+    expect(vi.mocked(ask).mock.calls[0][0]).toContain('Undo Frames 2–3, back to Frame 1')
+    expect(roleplay.undoExchanges).not.toHaveBeenCalled()
+    await wrapper.find('[data-undo]').trigger('click')
+    await flushPromises()
+    expect(roleplay.undoExchanges).toHaveBeenCalledWith('r1', 1, 2)
+    expect((wrapper.find('textarea').element as HTMLTextAreaElement).value).toBe('Thanks.')
   })
 
   it('selects the newest Frame, or the one picked in the list or the conversation', async () => {

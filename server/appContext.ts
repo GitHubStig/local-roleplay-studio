@@ -77,6 +77,21 @@ export const frameIndexOf = (s: Session, raw: string | undefined): number => {
 }
 
 /**
+ * What an Undo asks for: the first Frame to undo (`:index`), and the latest Frame as the player saw
+ * it (`?latest=`), so a repeat can't undo more than they meant.
+ */
+export function undoAsked(req: Request, raw: string | undefined): { from: number; latest: number } {
+  const from = Number(raw)
+  const seen = new URL(req.url).searchParams.get('latest')
+  const latest = Number(seen)
+  if (!Number.isInteger(from)) throw new Refusal('Frame index must be a number', 400)
+  if (seen === null || !Number.isInteger(latest)) {
+    throw new Refusal('The latest Frame seen must be a number', 400)
+  }
+  return { from, latest }
+}
+
+/**
  * The Scenario a Session starts from: its own copy (as the Scenario page left it), or its typed
  * Brief when it started without the page. Refused if it has neither.
  */

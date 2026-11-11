@@ -150,26 +150,29 @@ export async function renderChainFrame(
 export class UndoError extends Refusal {}
 
 /**
- * Removes a Chain's latest Frame, so the previous Frame's Image Prompt is current again. `index` must name the
- * latest Frame, so a repeated request can't undo two. The Opening Frame can't be undone. Its
- * pictures, and what was made from them, are deleted.
+ * Undoes a Chain's Frames from `from` on, so the Frame before it is current again, and its Image
+ * Prompt. `latest` is the latest Frame as the player saw it, so a repeated request, or one sent as a
+ * new Frame came, can't undo more than they meant. The Opening Frame can't be undone. Their pictures,
+ * and what was made from them, are deleted.
  */
-export async function undoLatestFrame(
+export async function undoFrames(
   store: SessionStore,
   session: ChainSession,
-  index: number,
+  from: number,
+  latest: number,
 ): Promise<ChainSession> {
-  let latest!: ChainFrame
+  let undone: ChainFrame[] = []
   // As it is now: a job may have made something from the latest picture meanwhile.
   const updated = await updateSession(store, session.id, 'chain', (now) => {
-    latest = now.frames.at(-1)!
-    if (!latest || latest.index !== index) {
-      throw new UndoError(`${frameName(index)} is not the latest Frame`)
+    if (now.frames.at(-1)?.index !== latest) {
+      throw new UndoError(`${frameName(latest)} is not the latest Frame`)
     }
-    if (now.frames.length === 1) throw new UndoError("The Opening Frame can't be undone")
-    return { ...now, frames: now.frames.slice(0, -1) }
+    if (from <= 0) throw new UndoError("The Opening Frame can't be undone")
+    if (from > latest) throw new UndoError(`${frameName(from)} is after the latest Frame`)
+    undone = now.frames.slice(from)
+    return { ...now, frames: now.frames.slice(0, from) }
   })
-  await removeFiles(store.dir(session.id), allPictureFiles(latest))
+  await removeFiles(store.dir(session.id), undone.flatMap(allPictureFiles))
   return updated
 }
 

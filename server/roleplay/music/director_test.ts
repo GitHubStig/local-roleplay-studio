@@ -286,7 +286,7 @@ Deno.test('With Score as you play, each Reply is directed: the Score first, a Cu
     ])
 
     // Undone, the Frame and the Cue it began go; its job is cancelled with it.
-    await call('DELETE', '/api/sessions/s1/roleplay/frames/2')
+    await call('DELETE', '/api/sessions/s1/roleplay/frames/2?latest=2')
     assertEquals((await roleplay(call)).cues!.map((c) => c.start), [0])
   }))
 

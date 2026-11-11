@@ -138,7 +138,7 @@ Deno.test('A render in progress serves its latest preview while Settings show it
     assertEquals((await call('GET', '/api/sessions/s1/preview')).status, 404)
   }))
 
-Deno.test('DELETE /api/sessions/:id/frames/:index undoes only the latest Frame', () =>
+Deno.test('DELETE /api/sessions/:id/frames/:index undoes from a Frame on, as the latest Frame was seen', () =>
   withTempDir(async (root) => {
     const { call } = setup({
       root,
@@ -149,13 +149,14 @@ Deno.test('DELETE /api/sessions/:id/frames/:index undoes only the latest Frame',
     await readEvents(await call('POST', '/api/sessions/s1/frames', {}))
     await readEvents(await call('POST', '/api/sessions/s1/frames', { action: 'Sit' }))
 
-    assertEquals((await call('DELETE', '/api/sessions/s1/frames/0')).status, 409)
-    assertEquals((await call('DELETE', '/api/sessions/s1/frames/x')).status, 400)
-    const res = await call('DELETE', '/api/sessions/s1/frames/1')
+    assertEquals((await call('DELETE', '/api/sessions/s1/frames/0?latest=1')).status, 409)
+    assertEquals((await call('DELETE', '/api/sessions/s1/frames/x?latest=1')).status, 400)
+    assertEquals((await call('DELETE', '/api/sessions/s1/frames/1')).status, 400)
+    const res = await call('DELETE', '/api/sessions/s1/frames/1?latest=1')
     assertEquals(res.status, 200)
     assertEquals((await res.json()).frames.length, 1)
-    assertEquals((await call('DELETE', '/api/sessions/s1/frames/1')).status, 409)
-    assertEquals((await call('DELETE', '/api/sessions/s1/frames/0')).status, 409)
+    assertEquals((await call('DELETE', '/api/sessions/s1/frames/1?latest=1')).status, 409)
+    assertEquals((await call('DELETE', '/api/sessions/s1/frames/0?latest=0')).status, 409)
     await settled(call)
   }))
 
@@ -171,7 +172,7 @@ Deno.test('Undo is refused while a Frame is in progress', () =>
     const reader = res.body!.pipeThrough(new TextDecoderStream()).getReader()
     let seen = ''
     while (!seen.includes('"phase":"text"')) seen += (await reader.read()).value
-    assertEquals((await call('DELETE', '/api/sessions/s1/frames/0')).status, 409)
+    assertEquals((await call('DELETE', '/api/sessions/s1/frames/0?latest=0')).status, 409)
     await call('POST', '/api/sessions/s1/cancel')
     for (let r = await reader.read(); !r.done; r = await reader.read()) { /* drain */ }
   }))
@@ -244,7 +245,7 @@ Deno.test('Undo and a Frame sent at once never bring back the undone Frame', () 
     await readEvents(await call('POST', '/api/sessions/s1/frames', { action: 'Sit' }))
 
     const [undo, frame] = await Promise.all([
-      call('DELETE', '/api/sessions/s1/frames/1'),
+      call('DELETE', '/api/sessions/s1/frames/1?latest=1'),
       call('POST', '/api/sessions/s1/frames', { action: 'Kneel' }),
     ])
     if (frame.status === 200) await readEvents(frame)
@@ -279,7 +280,7 @@ Deno.test('A Session is free again after a Frame, a failed Frame, an early refus
     assertEquals(failed.at(-1)![0], 'failed')
     assertEquals((await call('POST', '/api/sessions/s1/frames', {})).status, 400)
     await readEvents(await call('POST', '/api/sessions/s1/frames', { action: 'Sit' }))
-    assertEquals((await call('DELETE', '/api/sessions/s1/frames/1')).status, 200)
+    assertEquals((await call('DELETE', '/api/sessions/s1/frames/1?latest=1')).status, 200)
     const last = await readEvents(
       await call('POST', '/api/sessions/s1/frames', { action: 'Kneel' }),
     )

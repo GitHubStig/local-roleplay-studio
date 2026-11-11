@@ -15,7 +15,7 @@ import {
 } from '../testing.ts'
 import { imageProgress, upscaleFrame } from '../frames.ts'
 import type { FrameEvent, ProgressEvent } from '../../shared/events.ts'
-import { renderChainFrame, runChainFrame, UNCHANGED, UndoError, undoLatestFrame } from './frames.ts'
+import { renderChainFrame, runChainFrame, UNCHANGED, UndoError, undoFrames } from './frames.ts'
 import { RenderQueue } from '../renderQueue.ts'
 import { updateSession } from '../update.ts'
 
@@ -283,18 +283,18 @@ async function sessionWithFrames(root: string, replies: ReturnType<typeof reply>
 const imageExists = (root: string, file: string) =>
   Deno.stat(join(root, 's1', file)).then(() => true, () => false)
 
-Deno.test('undoLatestFrame restores the previous Scene and deletes the image', () =>
+Deno.test('undoFrames restores the previous Scene and deletes the image', () =>
   withTempDir(async (root) => {
     const { store, session } = await sessionWithFrames(root, [reply('standing'), reply('sitting')])
     const undone = session.frames[1]
-    const updated = await undoLatestFrame(store, session, 1)
+    const updated = await undoFrames(store, session, 1, 1)
     assertEquals(updated.frames.map((t) => t.prompt), [promptWith('standing')])
     assertEquals((await store.load('s1'))?.frames.length, 1)
     assertEquals(await imageExists(root, undone.pictures[0].image), false)
     assertEquals(await imageExists(root, session.frames[0].pictures[0].image), true)
   }))
 
-Deno.test("undoLatestFrame deletes the undone Frame's upscale too", () =>
+Deno.test("undoFrames deletes the undone Frame's upscale too", () =>
   withTempDir(async (root) => {
     const { store, session, deps } = await sessionWithFrames(root, [
       reply('standing'),
@@ -311,17 +311,38 @@ Deno.test("undoLatestFrame deletes the undone Frame's upscale too", () =>
     ) as typeof session
     const latest = upscaled.frames[1]
     assertEquals(await imageExists(root, latest.pictures[0].upscaled!), true)
-    await undoLatestFrame(store, upscaled, 1)
+    await undoFrames(store, upscaled, 1, 1)
     assertEquals(await imageExists(root, latest.pictures[0].upscaled!), false)
   }))
 
-Deno.test('undoLatestFrame refuses anything but the latest Frame, and the Opening Frame', () =>
+Deno.test('undoFrames refuses unless the latest Frame is the one seen, and never the Opening Frame', () =>
   withTempDir(async (root) => {
     const { store, session } = await sessionWithFrames(root, [reply('standing'), reply('sitting')])
-    await assertRejects(() => undoLatestFrame(store, session, 0), UndoError, 'not the latest')
-    const updated = await undoLatestFrame(store, session, 1)
-    await assertRejects(() => undoLatestFrame(store, updated, 1), UndoError, 'not the latest')
-    await assertRejects(() => undoLatestFrame(store, updated, 0), UndoError, "can't be undone")
+    await assertRejects(() => undoFrames(store, session, 1, 0), UndoError, 'not the latest')
+    await assertRejects(() => undoFrames(store, session, 0, 1), UndoError, "can't be undone")
+    await assertRejects(() => undoFrames(store, session, 2, 1), UndoError, 'after the latest')
+    const updated = await undoFrames(store, session, 1, 1)
+    // A repeat can't undo the Frame before.
+    await assertRejects(() => undoFrames(store, updated, 1, 1), UndoError, 'not the latest')
+    await assertRejects(() => undoFrames(store, updated, 0, 0), UndoError, "can't be undone")
+  }))
+
+Deno.test('undoFrames undoes every Frame from the one asked for, with their pictures', () =>
+  withTempDir(async (root) => {
+    const { store } = await sessionWithFrames(root, [
+      reply('standing'),
+      reply('sitting'),
+      reply('kneeling'),
+      reply('lying'),
+    ])
+    const before = (await store.load('s1')) as ChainSession
+    const updated = await undoFrames(store, before, 2, 3)
+    assertEquals(updated.frames.map((f) => f.index), [0, 1])
+    assertEquals((await store.load('s1'))?.frames.length, 2)
+    for (const f of before.frames.slice(2)) {
+      assertEquals(await imageExists(root, f.pictures[0].image), false)
+    }
+    assertEquals(await imageExists(root, before.frames[1].pictures[0].image), true)
   }))
 
 Deno.test('a Frame after an Undo gets a fresh image name', () =>
@@ -331,7 +352,7 @@ Deno.test('a Frame after an Undo gets a fresh image name', () =>
       reply('sitting'),
     ])
     const undoneImage = session.frames[1].pictures[0].image
-    const updated = await undoLatestFrame(store, session, 1)
+    const updated = await undoFrames(store, session, 1, 1)
     deps.textModel = scriptedTextModel([reply('kneeling')])
     const redo = await runChainFrame(deps, updated, testScenario, 'Kneel', () => {}, signal())
     assertEquals(redo!.index, 1)

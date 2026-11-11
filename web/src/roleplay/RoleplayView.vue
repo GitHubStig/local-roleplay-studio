@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ask } from '../ask'
-import { frameName } from '../frameName'
+import { frameName, framesName } from '../frameName'
 import { useTextareaAutosize } from '@vueuse/core'
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
 import { type Activity, type Clip, getSession, imageUrl, type Look, type Made3d, restartSession } from '../api'
@@ -57,7 +57,7 @@ import {
   saveVoice,
   sendMessage,
   suggestMessage,
-  undoExchange,
+  undoExchanges,
   writeCast,
 } from './api'
 
@@ -505,12 +505,28 @@ async function suggest() {
 
 /** The latest exchange can be undone (never the opening): its message goes back in the box. */
 const canUndo = computed(() => !busy.value && (session.value?.frames.at(-1)?.message ?? null) !== null)
+/** An earlier Frame is selected: Undo takes back every exchange after it (Undo to here). */
+const selectedOlder = computed(() =>
+  selectedIndex.value !== null && selectedIndex.value !== session.value?.frames.at(-1)?.index
+)
+/**
+ * Undoes the latest exchange, or with an earlier Frame selected every one after it, once confirmed,
+ * so it stops on the Frame in view; the first one's message goes back in the box.
+ */
 async function undo() {
   const latest = session.value?.frames.at(-1)
   if (!canUndo.value || !latest) return
+  const from = selectedOlder.value ? selectedIndex.value! + 1 : latest.index
+  const first = session.value!.frames[from]
+  if (selectedOlder.value) {
+    const what = `Undo ${framesName(from, latest.index)}, back to ${frameName(from - 1)}, and put ` +
+      'your message back in the box? Their pictures and spoken lines are deleted.'
+    if (!(await ask(what, { action: 'Undo', danger: true }))) return
+  }
   try {
-    session.value = await undoExchange(props.id, latest.index)
-    if (!draft.value.trim()) draft.value = latest.message ?? ''
+    session.value = await undoExchanges(props.id, from, latest.index)
+    picked.value = null
+    if (!draft.value.trim()) draft.value = first.message ?? ''
   } catch (err) {
     notice.value = { kind: 'error', text: (err as Error).message }
   }
@@ -1015,10 +1031,13 @@ const lookSavingText = computed(() =>
               type="button"
               class="rounded-lg border border-line px-3 py-2 text-sm disabled:opacity-50"
               :disabled="!canUndo"
-              title="Undo the latest exchange and put your message back in the box"
+              :title="selectedOlder
+                ? `Undo every exchange after ${frameName(selectedIndex!)}, back to it, and put the next message back in the box`
+                : 'Undo the latest exchange and put your message back in the box'"
+              data-undo
               @click="undo"
             >
-              Undo
+              {{ selectedOlder ? 'Undo to here' : 'Undo' }}
             </button>
           </div>
         </div>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ask } from '../ask'
-import { frameName } from '../frameName'
+import { frameName, framesName } from '../frameName'
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
 import ComposeBox from '../components/ComposeBox.vue'
 import FrameImage from '../components/FrameImage.vue'
@@ -41,7 +41,7 @@ import {
   type ChainFrame,
   type FrameEvent,
   type Made3d,
-  undoFrame,
+  undoFrames,
 } from '../api'
 import { useFeatures } from '../composables/useFeatures'
 
@@ -269,17 +269,31 @@ const open3d = ref<{ index: number; kind: Made3d } | null>(null)
 /** Undo is possible for any Frame after the Opening Frame, while nothing is running. */
 const canUndo = computed(() => !busy.value && (session.value?.frames.length ?? 0) > 1)
 const undoing = ref(false)
+/**
+ * The first Frame the main panel's Undo takes back: the latest, or while an earlier Frame is shown,
+ * every Frame after it (Undo to here), so it stops on the Frame in view.
+ */
+const undoFrom = computed(() => (viewingOlder.value ? shown.value!.index + 1 : latest.value?.index))
 
-/** Removes the latest Frame and puts its Action back in the text box to edit and resend. */
-async function undo() {
-  const latest = session.value?.frames.at(-1)
-  if (!canUndo.value || !latest || undoing.value) return
+/**
+ * Removes the Frames from `from` on and puts the first one's Action back in the text box to edit
+ * and resend; once confirmed, unless it's only the latest, undone where it's shown.
+ */
+async function undo(from: number, confirm: boolean) {
+  const last = session.value?.frames.at(-1)
+  const first = session.value?.frames[from]
+  if (!canUndo.value || !last || !first || undoing.value) return
+  if (confirm) {
+    const what = `Undo ${framesName(from, last.index)}, and put ${frameName(from)}'s Action back in ` +
+      'the box? Their pictures, and what was made from them, are deleted.'
+    if (!(await ask(what, { action: 'Undo', danger: true }))) return
+  }
   undoing.value = true
   frameError.value = ''
   try {
-    session.value = await undoFrame(props.id, latest.index)
+    session.value = await undoFrames(props.id, from, last.index)
     viewing.value = null
-    if (!draft.value.trim() && latest.action) draft.value = latest.action
+    if (!draft.value.trim() && first.action) draft.value = first.action
   } catch (err) {
     frameError.value = (err as Error).message
   } finally {
@@ -637,10 +651,13 @@ const promptDiff = computed(() => {
               type="button"
               class="rounded-lg border border-line px-3 py-2 text-sm disabled:opacity-50"
               :disabled="!canUndo || undoing"
-              title="Undo the latest Frame and put its Action back in the box"
-              @click="undo"
+              :title="viewingOlder
+                ? `Undo every Frame after ${frameProse(shown!.index)}, back to it, and put the next Action back in the box`
+                : 'Undo the latest Frame and put its Action back in the box'"
+              data-undo-main
+              @click="undo(undoFrom!, viewingOlder)"
             >
-              Undo
+              {{ viewingOlder ? 'Undo to here' : 'Undo' }}
             </button>
           </div>
         </div>
@@ -730,7 +747,7 @@ const promptDiff = computed(() => {
               :disabled="undoing"
               title="Undo this Frame"
               data-undo
-              @click="undo"
+              @click="undo(frame.index, false)"
             >
               Undo
             </button>

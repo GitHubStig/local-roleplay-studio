@@ -158,7 +158,7 @@ Abandoning the work in progress so nothing changes; cancelling an Opening Frame 
 _Avoid_: Abort, stop
 
 **Undo**:
-Removing the latest Frame of a Chain or a Roleplay, so the one before is current again; its Action or Message goes back into the text box. The Opening Frame can't be undone.
+Removing the latest Frame of a Chain or a Roleplay, so the one before is current again; its Action or Message goes back into the text box. The Opening Frame can't be undone. Looking at an earlier Frame, **Undo to here** removes every Frame after it at once, once confirmed, and puts the first one's Action or Message back.
 _Avoid_: revert, rollback
 
 **Restart**:

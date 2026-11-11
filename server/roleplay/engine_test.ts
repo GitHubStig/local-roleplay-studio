@@ -13,7 +13,7 @@ import {
   sendMessage,
   setCast,
   setLook,
-  undoLatestExchange,
+  undoExchanges,
   writeCast,
 } from './engine.ts'
 import type { RoleplayEvent } from '../../shared/events.ts'
@@ -265,14 +265,40 @@ Deno.test("The Character's prose isn't held to the restraint list; the player's 
     assertEquals(updated!.frames.length, 2)
   }))
 
-Deno.test('undoLatestExchange removes only the latest exchange, never the opening', () =>
+Deno.test('undoExchanges undoes from the exchange asked for, never the opening', () =>
   withTempDir(async (root) => {
     const { deps, session, store } = await setUp(root, [replyOf('Take the wheel.')])
     const two = (await sendMessage(deps, session, 'Sorry.', () => {}, signal()))!
-    await assertRejects(() => undoLatestExchange(store, two, 0), RoleplayError, 'not the latest')
-    const one = await undoLatestExchange(store, two, 1)
+    await assertRejects(() => undoExchanges(store, two, 1, 0), RoleplayError, 'not the latest')
+    await assertRejects(() => undoExchanges(store, two, 0, 1), RoleplayError, "can't be undone")
+    const one = await undoExchanges(store, two, 1, 1)
     assertEquals(one.frames.length, 1)
-    await assertRejects(() => undoLatestExchange(store, one, 0), RoleplayError, "can't be undone")
+    await assertRejects(() => undoExchanges(store, one, 1, 1), RoleplayError, 'not the latest')
+    await assertRejects(() => undoExchanges(store, one, 0, 0), RoleplayError, "can't be undone")
+  }))
+
+Deno.test('undoExchanges undoes several exchanges at once, with the Cues they began', () =>
+  withTempDir(async (root) => {
+    const { deps, session, store } = await setUp(root, [
+      replyOf('Take the wheel.'),
+      replyOf('North.'),
+    ])
+    const two = (await sendMessage(deps, session, 'Sorry.', () => {}, signal()))!
+    const three = (await sendMessage(deps, two, 'Where to?', () => {}, signal()))!
+    const cue = (id: string, start: number) => ({
+      id,
+      start,
+      entry: 'gentle' as const,
+      reading: '',
+      line: '',
+    })
+    const cued = await updateSession(store, three.id, (s) => ({
+      ...s,
+      cues: [cue('a', 0), cue('b', 1), cue('c', 2)],
+    }))
+    const one = await undoExchanges(store, cued, 1, 2)
+    assertEquals(one.frames.map((f) => f.index), [0])
+    assertEquals(one.cues.map((c) => c.id), ['a'])
   }))
 
 Deno.test("writeCast copies the Scenario's Truths and other People, and a rewrite keeps them as edited", () =>
@@ -510,7 +536,7 @@ Deno.test('Undoing an exchange deletes its picture', () =>
       signal(),
     )
     const { image } = rendered.frames[1].pictures[0]
-    await undoLatestExchange(store, rendered, 1)
+    await undoExchanges(store, rendered, 1, 1)
     assertEquals(
       await Deno.stat(`${store.dir('r1')}/${image}`).then(() => true, () => false),
       false,

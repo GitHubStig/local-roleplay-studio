@@ -55,7 +55,7 @@ Deno.test('A Chain queues SHARP, TripoSplat and LiTo for one Frame', () =>
     assertEquals(picture.status, 409)
 
     // Undoing the Frame deletes them with its picture.
-    await call('DELETE', '/api/sessions/s1/frames/1')
+    await call('DELETE', '/api/sessions/s1/frames/1?latest=1')
     for (
       const file of [second.image!, second.scene!.file, second.figure!.file, second.lito!.file]
     ) {

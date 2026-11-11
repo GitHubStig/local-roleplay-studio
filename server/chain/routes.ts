@@ -4,7 +4,7 @@ import { imageChoiceOf } from '../jobs.ts'
 import { logCallsUnder } from '../calls.ts'
 import { chainFromStoryboard } from './fromStoryboard.ts'
 import { machineOf } from '../machine.ts'
-import { runChainFrame, undoLatestFrame } from './frames.ts'
+import { runChainFrame, undoFrames } from './frames.ts'
 import type { FrameEvent } from '../../shared/events.ts'
 import {
   type AppContext,
@@ -12,6 +12,7 @@ import {
   needsChain,
   needsStoryboard,
   scenarioFor,
+  undoAsked,
 } from '../appContext.ts'
 
 export function chainRoutes(ctx: AppContext): Route[] {
@@ -58,15 +59,13 @@ export function chainRoutes(ctx: AppContext): Route[] {
         }),
     ],
 
-    ['DELETE', new URLPattern({ pathname: '/api/sessions/:id/frames/:index' }), (_req, p) => {
-      const index = Number(p.index)
-      if (!Number.isInteger(index)) {
-        return Promise.resolve(error('Frame index must be a number', 400))
-      }
+    // Undo, from Frame `:index` on.
+    ['DELETE', new URLPattern({ pathname: '/api/sessions/:id/frames/:index' }), (req, p) => {
+      const { from, latest } = undoAsked(req, p.index)
       return locked(p.id!, 'undo', async (session) => {
         if (!needsChain(session)) return error('Only a Chain has Undo', 409)
-        const undone = await undoLatestFrame(deps.sessions, session, index)
-        jobs.cancelWhere(session.id, (job) => job.frameIndex === index)
+        const undone = await undoFrames(deps.sessions, session, from, latest)
+        jobs.cancelWhere(session.id, (job) => job.frameIndex >= from)
         return json(undone)
       })
     }],

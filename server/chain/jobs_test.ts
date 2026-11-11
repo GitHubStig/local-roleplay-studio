@@ -236,7 +236,7 @@ Deno.test("A Chain carries on while a job runs, and Undo cancels the undone Fram
     )
     assertEquals(next.at(-1)![0], 'committed')
     await call('POST', '/api/sessions/s1/jobs', { kind: 'lito', frameIndex: 2 })
-    assertEquals((await call('DELETE', '/api/sessions/s1/frames/2')).status, 200)
+    assertEquals((await call('DELETE', '/api/sessions/s1/frames/2?latest=2')).status, 200)
     release()
     assertEquals(await settled(call), [])
     // Frame 0's figure landed on the Chain as it is now; Frame 2's job went with Frame 2.

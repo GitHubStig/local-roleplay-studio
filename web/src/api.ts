@@ -448,9 +448,12 @@ export const listSessions = () => request<SessionSummary[]>('/api/sessions')
 export const deleteSession = (id: string) =>
   request<void>(`/api/sessions/${id}`, { method: 'DELETE' })
 
-/** Undoes a Chain's latest Frame, which must be Frame `index`; returns the updated Session. */
-export const undoFrame = (id: string, index: number) =>
-  request<ChainSession>(`/api/sessions/${id}/frames/${index}`, { method: 'DELETE' })
+/**
+ * Undoes a Chain's Frames from `from` on, as the player saw it with Frame `latest` the latest, so a
+ * repeat can't undo more; returns the updated Session.
+ */
+export const undoFrames = (id: string, from: number, latest: number) =>
+  request<ChainSession>(`/api/sessions/${id}/frames/${from}?latest=${latest}`, { method: 'DELETE' })
 
 /**
  * Deletes a Chain's Frame `index`, any but the Opening Frame, as the player saw the Chain: its

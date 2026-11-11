@@ -361,23 +361,31 @@ export async function renderRoleplayFrame(
   return updated
 }
 
-/** Removes the latest exchange, so the player can say something else. The opening stays. */
-export async function undoLatestExchange(
+/**
+ * Undoes the exchanges from Frame `from` on, so the player can say something else from the one
+ * before. `latest` is the latest Frame as the player saw it, so a repeated request can't undo more
+ * than they meant. The opening stays.
+ */
+export async function undoExchanges(
   store: SessionStore,
   session: RoleplaySession,
-  index: number,
+  from: number,
+  latest: number,
 ): Promise<RoleplaySession> {
-  const latest = session.frames.at(-1)
-  if (!latest || latest.index !== index) {
-    throw new RoleplayError(`${frameName(index)} is not the latest Frame`)
+  if (session.frames.at(-1)?.index !== latest) {
+    throw new RoleplayError(`${frameName(latest)} is not the latest Frame`)
   }
-  if (latest.message === null) throw new RoleplayError("The opening can't be undone")
-  // A Cue it began goes with it.
-  const updated = await updateSession(store, session.id, (latest) => ({
-    ...withoutCuesFrom(latest, index),
-    frames: latest.frames.slice(0, -1),
+  if (from > latest) throw new RoleplayError(`${frameName(from)} is after the latest Frame`)
+  if (from <= 0 || session.frames[from].message === null) {
+    throw new RoleplayError("The opening can't be undone")
+  }
+  const undone = session.frames.slice(from)
+  // A Cue one of them began goes with it.
+  const updated = await updateSession(store, session.id, (now) => ({
+    ...withoutCuesFrom(now, from),
+    frames: now.frames.slice(0, from),
   }))
-  await removeFiles(store.dir(session.id), exchangeFiles(latest))
+  await removeFiles(store.dir(session.id), undone.flatMap(exchangeFiles))
   return updated
 }
 

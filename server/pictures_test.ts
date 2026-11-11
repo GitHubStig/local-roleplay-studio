@@ -2,7 +2,7 @@ import { assertEquals, assertRejects } from '@std/assert'
 import { join } from '@std/path'
 import { dirSessionStore } from './session.ts'
 import type { ChainSession, Session } from '../shared/session.ts'
-import { renderChainFrame, runChainFrame, undoLatestFrame } from './chain/frames.ts'
+import { renderChainFrame, runChainFrame, undoFrames } from './chain/frames.ts'
 import { findImageModel } from './images/imageModels.ts'
 import { HERE } from './backends.ts'
 import type { Backend } from '../shared/backends.ts'
@@ -137,7 +137,7 @@ Deno.test("A render on the new model keeps the old one's picture, shown again on
     assertEquals(shownPicture(back.frames[1], QWEN), old)
 
     // Undo deletes every model's picture.
-    await undoLatestFrame(store, back as ChainSession, 1)
+    await undoFrames(store, back as ChainSession, 1, 1)
     assertEquals([await exists(old.image), await exists(remade.image)], [false, false])
   }))
 

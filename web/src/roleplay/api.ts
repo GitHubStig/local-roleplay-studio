@@ -86,9 +86,9 @@ export const suggestMessage = (
   onEvent: (event: RoleplayEvent) => void,
 ) => streamEvents<RoleplayEvent>(`${base(id)}/suggest`, { draft }, ['suggestion'], onEvent)
 
-/** Removes the latest exchange. */
-export const undoExchange = (id: string, index: number) =>
-  request<RoleplaySession>(`${base(id)}/frames/${index}`, { method: 'DELETE' })
+/** Undoes the exchanges from Frame `from` on, as the player saw it with Frame `latest` the latest. */
+export const undoExchanges = (id: string, from: number, latest: number) =>
+  request<RoleplaySession>(`${base(id)}/frames/${from}?latest=${latest}`, { method: 'DELETE' })
 
 /** Replaces the Look, rewriting every pictured Frame's Image Prompt. */
 export const saveLook = (id: string, look: Look) => put<RoleplaySession>(`${base(id)}/look`, look)

@@ -10,7 +10,7 @@ import {
   sendMessage,
   setCast,
   setLook,
-  undoLatestExchange,
+  undoExchanges,
   writeCast,
 } from './engine.ts'
 import type { RoleplayEvent } from '../../shared/events.ts'
@@ -19,6 +19,7 @@ import { steerRefusal } from './music/director.ts'
 import { updateSession } from './update.ts'
 import { suggestMessage } from './suggest.ts'
 import { logCallsUnder } from '../calls.ts'
+import { undoAsked } from '../appContext.ts'
 import { setVoiceDescription } from './voice.ts'
 import type { RoleplayFrame, RoleplaySession } from '../../shared/roleplay.ts'
 import type { Settings } from '../../shared/settings.ts'
@@ -171,14 +172,15 @@ export function roleplayRoutes(ctx: RoleplayRouteContext): Route[] {
         })
       })],
 
-    ['DELETE', path('frames/:index'), (_req, p) =>
-      withRoleplay(p.id!, 'undo', async (session) => {
-        const index = Number(p.index)
-        if (!Number.isInteger(index)) return error('Frame index must be a number', 400)
-        const undone = await undoLatestExchange(ctx.deps(session).store, session, index)
-        ctx.jobs.cancelWhere(session.id, (job) => job.frameIndex === index)
+    // Undo, from Frame `:index` on.
+    ['DELETE', path('frames/:index'), (req, p) => {
+      const { from, latest } = undoAsked(req, p.index)
+      return withRoleplay(p.id!, 'undo', async (session) => {
+        const undone = await undoExchanges(ctx.deps(session).store, session, from, latest)
+        ctx.jobs.cancelWhere(session.id, (job) => job.frameIndex >= from)
         return json(undone)
-      })],
+      })
+    }],
 
     // Saved between renders, so the next one queued renders it.
     [

@@ -263,7 +263,7 @@ Deno.test('Undoing an exchange cancels its jobs; deleting the Roleplay cancels t
     await call('POST', '/api/sessions/s1/jobs', { kind: 'render', frameIndex: 1 })
     // The pictures written, the render hangs.
     while (!images.prompts.length) await new Promise((r) => setTimeout(r, 5))
-    assertEquals((await call('DELETE', '/api/sessions/s1/roleplay/frames/1')).status, 200)
+    assertEquals((await call('DELETE', '/api/sessions/s1/roleplay/frames/1?latest=1')).status, 200)
     assertEquals(await settled(call), [])
   }))
 
@@ -420,7 +420,7 @@ Deno.test('A rendered Frame makes a 3D scene, served; a re-render or Undo remove
     await job('scene', 1)
     await settled(call)
     frame = shown((await (await call('GET', '/api/sessions/s1')).json()).frames[1])
-    await call('DELETE', '/api/sessions/s1/roleplay/frames/1')
+    await call('DELETE', '/api/sessions/s1/roleplay/frames/1?latest=1')
     assertEquals((await call('GET', `/api/sessions/s1/images/${frame.scene.file}`)).status, 404)
   }))
 

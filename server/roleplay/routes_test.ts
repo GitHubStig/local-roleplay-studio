@@ -59,9 +59,10 @@ Deno.test("A Roleplay's Cast is written and reviewed, then it begins, is talked 
       'replied',
     ])
 
-    const undone = await (await call('DELETE', '/api/sessions/s1/roleplay/frames/1')).json()
+    const undone = await (await call('DELETE', '/api/sessions/s1/roleplay/frames/1?latest=1'))
+      .json()
     assertEquals(undone.frames.length, 1)
-    assertEquals((await call('DELETE', '/api/sessions/s1/roleplay/frames/0')).status, 409)
+    assertEquals((await call('DELETE', '/api/sessions/s1/roleplay/frames/0?latest=0')).status, 409)
 
     const young = { ...testCast, character: { ...testCast.character, age: 16 } }
     assertEquals((await call('PUT', '/api/sessions/s1/roleplay/cast', young)).status, 400)

@@ -18,7 +18,7 @@ vi.mock('../api', async (importOriginal) => ({
   cancelFrame: vi.fn(),
   endSession: vi.fn(),
   createSession: vi.fn(),
-  undoFrame: vi.fn(),
+  undoFrames: vi.fn(),
   deleteChainFrame: vi.fn(),
   saveChainPrompt: vi.fn(),
   getSettings: vi.fn(),
@@ -609,19 +609,40 @@ describe('ChainView', () => {
 
   it('undoes the latest Frame and puts its Direction back in the text box', async () => {
     vi.mocked(api.getSession).mockResolvedValue(session([frame(0, null), frame(1, 'Sit down')]))
-    vi.mocked(api.undoFrame).mockResolvedValue(session([frame(0, null)]))
+    vi.mocked(api.undoFrames).mockResolvedValue(session([frame(0, null)]))
     const { wrapper } = await mountIt()
     await buttonNamed(wrapper, 'Undo').trigger('click')
     await loadImages()
-    expect(api.undoFrame).toHaveBeenCalledWith('s1', 1)
+    expect(api.undoFrames).toHaveBeenCalledWith('s1', 1, 1)
     expect(wrapper.findAll('aside [data-frame]')).toHaveLength(1)
     expect((wrapper.find('textarea').element as HTMLTextAreaElement).value).toBe('Sit down')
     expect(wrapper.find('main img').attributes('src')).toContain('frame-0.png')
   })
 
+  it('undoes back to an earlier Frame shown, once confirmed, putting the next Action back', async () => {
+    vi.mocked(api.getSession).mockResolvedValue(
+      session([frame(0, null), frame(1, 'Sit'), frame(2, 'Stand'), frame(3, 'Kneel')]),
+    )
+    vi.mocked(api.undoFrames).mockResolvedValue(session([frame(0, null), frame(1, 'Sit')]))
+    vi.mocked(ask).mockReset().mockResolvedValueOnce(false).mockResolvedValueOnce(true)
+    const { wrapper } = await mountIt()
+    expect(wrapper.find('[data-undo-main]').text()).toBe('Undo')
+    await wrapper.findAll('aside [data-frame]')[1].trigger('click')
+    expect(wrapper.find('[data-undo-main]').text()).toBe('Undo to here')
+    await wrapper.find('[data-undo-main]').trigger('click')
+    await flushPromises()
+    expect(vi.mocked(ask).mock.calls[0][0]).toContain('Undo Frames 3–4')
+    expect(api.undoFrames).not.toHaveBeenCalled()
+    await wrapper.find('[data-undo-main]').trigger('click')
+    await flushPromises()
+    expect(api.undoFrames).toHaveBeenCalledWith('s1', 2, 3)
+    expect((wrapper.find('textarea').element as HTMLTextAreaElement).value).toBe('Stand')
+    expect(wrapper.find('[data-undo-main]').text()).toBe('Undo')
+  })
+
   it('keeps a half-typed Direction instead of overwriting it on Undo', async () => {
     vi.mocked(api.getSession).mockResolvedValue(session([frame(0, null), frame(1, 'Sit down')]))
-    vi.mocked(api.undoFrame).mockResolvedValue(session([frame(0, null)]))
+    vi.mocked(api.undoFrames).mockResolvedValue(session([frame(0, null)]))
     const { wrapper } = await mountIt()
     await wrapper.find('textarea').setValue('Kneel')
     await wrapper.find('[data-undo]').trigger('click')
@@ -770,7 +791,7 @@ describe('ChainView', () => {
 
   it('shows why an Undo was refused', async () => {
     vi.mocked(api.getSession).mockResolvedValue(session([frame(0, null), frame(1, 'Sit')]))
-    vi.mocked(api.undoFrame).mockRejectedValue(
+    vi.mocked(api.undoFrames).mockRejectedValue(
       new api.ApiError('Frame 1 is not the latest Frame', 409),
     )
     const { wrapper } = await mountIt()
