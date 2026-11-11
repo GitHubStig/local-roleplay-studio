@@ -1,5 +1,5 @@
 /**
- * The camera bench's scene and Actions (docs/camera-plans.md): a small bedroom with two people,
+ * The camera bench's scene and Actions (ADR 0038): a small bedroom with two people,
  * written by hand as a Chain's nine sentences, and the camera Actions applied to it.
  */
 

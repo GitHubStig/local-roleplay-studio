@@ -1,6 +1,6 @@
 # The camera bench
 
-How an Action asking for a camera angle, a shot type or a target is turned into an Image Prompt, and which camera wording the Image Models follow. The plan, in stages, is [docs/camera-plans.md](../../camera-plans.md).
+How the camera can be moved (an angle, a shot type, a target) with the people, poses and place kept: first through a Chain's Image Prompt and a re-render, which can't, then as an edit of the picture, which can, and in what wording. What was decided from it is [ADR 0038](../../adr/0038-the-camera-is-moved-by-an-edit.md).
 
 - `scene.ts`: the scene, a small bedroom with two people (Ana packing a suitcase on the bed, Tom leaning in the doorway), written by hand as a Chain's nine sentences; the Actions; and two sequences of Actions.
 - `run.ts`: `deno run -A docs/bench/camera/run.ts text 1-8` sends each Action through the Chain's own call (`server/prompts/chain/frame.md`, as checked out) on the Settings' Text Model, one call per Action and seed, and writes every reply to `out/` (not committed).
@@ -138,3 +138,9 @@ For the camera picker: on the bedroom (seed 42's render) and the kitchen (one ma
 | POV ("Seen through the man's eyes …") | no change | a closer view of him, not his view |
 
 So the extreme close-up, from behind and the legs join the moves that work; the waist up, a wider shot and POV don't, as worded.
+
+### The Camera list's hardest moves on mflux (2026-11-11, Mac)
+
+Over the shoulder, a close-up of the face and a low angle, in the Camera list's own wording (`web/src/cameraMoves.ts`), on mflux 0.24.0's Qwen-Image 2.1 Turbo Edit (`--quantize 8 --low-ram`, the Mac's default), from the bedroom picture the PC's edits started from, seed 42. `run.ts mflux`; kept in `out/mflux/`. 47–48 s each, against 16 s on the PC.
+
+All three came out as on the PC's ComfyUI: one Tom, his back large in the foreground, Ana on the bed beyond; a true close-up of Ana's face, her braid and sweater kept; the camera near the floor, the two people and their poses as they were.

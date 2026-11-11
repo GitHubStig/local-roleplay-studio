@@ -1,5 +1,5 @@
 /**
- * The camera bench, Stage 1 (docs/camera-plans.md): what the Chain's own call does today with an
+ * The camera bench, Stage 1 (ADR 0038): what the Chain's own call does today with an
  * Action asking for a camera angle, a shot type or a target. Each Action is applied to one
  * hand-written bedroom prompt (two people), through the Chain's system and user messages as they
  * are checked out, on the Settings' Text Model and Limits, one call per Action and seed. Text only.
@@ -542,6 +542,36 @@ async function untried() {
   await Deno.writeTextFile(`${dir}/untried.json`, JSON.stringify(UNTRIED, null, 2))
 }
 
+/**
+ * The Camera list's hardest moves on mflux's Qwen-Image 2.1 Turbo Edit (the Mac's default), in
+ * the list's own wording, from the bedroom baseline the PC's edits started from.
+ */
+async function mfluxCamera() {
+  const { CAMERA_MOVES } = await import('../../../web/src/cameraMoves.ts')
+  const dir = here('out/mflux')
+  await Deno.mkdir(dir, { recursive: true })
+  await Deno.copyFile(here('out/edits/baseline.png'), `${dir}/baseline.png`)
+  const images = mfluxImageGenerator()
+  for (const label of ['Over the shoulder', 'Face', 'Low angle']) {
+    const move = CAMERA_MOVES.find((m) => m.label === label)!
+    const name = `turbo-${label.toLowerCase().replaceAll(' ', '-')}`
+    const start = performance.now()
+    await images.edit(
+      {
+        model: 'qwen-image-2.1-turbo-edit',
+        image: 'baseline.png',
+        instruction: move.instruction,
+        seed: RENDER_SEED,
+        quantize: settings.editQuantize,
+        dir,
+        name,
+      },
+      AbortSignal.timeout(1_200_000),
+    )
+    console.log(`${name}: ${((performance.now() - start) / 1000).toFixed(1)} s`)
+  }
+}
+
 async function targets(file: string, seed = 1) {
   const { runs } = JSON.parse(await Deno.readTextFile(file)) as { runs: Run[] }
   const prompts: { name: string; prompt: string }[] = [{ name: '00-baseline', prompt: SCENE }]
@@ -593,4 +623,5 @@ else if (stage === 'next') await next()
 else if (stage === 'wider') await wider()
 else if (stage === 'poses') await poses()
 else if (stage === 'untried') await untried()
+else if (stage === 'mflux') await mfluxCamera()
 else console.log('Usage: deno run -A docs/bench/camera/run.ts text <seeds> | targets <results.json>')
