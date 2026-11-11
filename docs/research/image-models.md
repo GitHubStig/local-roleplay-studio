@@ -389,7 +389,7 @@ What fixed it: the picture scaled to a 1024² budget, each side a multiple of 32
 | Qwen-Image 2.1 Edit (25 steps) | 25 s | clean, the shirt red, a mean change of 4.7 | clean, no rim; nothing outside the area changed |
 | Qwen-Image 2.1 Turbo Edit (8 steps) | 16 s | clean, 5.2 | the same |
 
-Both also moved the camera when told to ("seen from a low angle: the camera near the floor, looking up at them"), as mflux's did, the people and the room kept.
+Both also moved the camera when told to ("seen from a low angle: the camera near the floor, looking up at them"), as mflux's did, the people and the room kept: [the camera bench](../bench/camera/README.md).
 
 ## FIBO 2.0 on ComfyUI (2026-10-27, Windows PC)
 
