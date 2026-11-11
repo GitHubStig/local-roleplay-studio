@@ -12,7 +12,7 @@
 import json
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 HERE = Path(__file__).parent
 MODELS = ["qwen-image-2.1", "krea-2", "moss-image"]
@@ -23,9 +23,9 @@ LABEL = 30
 def sheet(title: str, columns: list[str], rows: list[tuple[str, list]], path: Path) -> None:
     """A row per label, its pictures side by side under the column headings."""
     font = ImageFont.load_default(size=18)
-    some = next(f for _, fs in rows for f in fs if f)
-    first = Image.open(some)
-    height = round(first.height * WIDTH / first.width)
+    # Tall enough for the tallest picture at the column's width; each fits its cell, its shape kept.
+    sizes = [Image.open(f).size for _, fs in rows for f in fs if f and f.exists()]
+    height = max(round(h * WIDTH / w) for w, h in sizes)
     out = Image.new("RGB", (WIDTH * len(columns), (height + LABEL) * len(rows) + LABEL * 2), "white")
     draw = ImageDraw.Draw(out)
     draw.text((8, 6), title, fill="black", font=font)
@@ -36,7 +36,8 @@ def sheet(title: str, columns: list[str], rows: list[tuple[str, list]], path: Pa
         draw.text((8, y + 6), label, fill="black", font=font)
         for c, f in enumerate(files):
             if f and f.exists():
-                out.paste(Image.open(f).convert("RGB").resize((WIDTH, height)), (c * WIDTH, y + LABEL))
+                picture = ImageOps.contain(Image.open(f).convert("RGB"), (WIDTH, height))
+                out.paste(picture, (c * WIDTH + (WIDTH - picture.width) // 2, y + LABEL))
     out.save(path, quality=85)
     print(path)
 
