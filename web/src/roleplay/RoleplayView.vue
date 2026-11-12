@@ -353,7 +353,7 @@ const music = useMusicPlayer({
   allowed: musicOn,
 })
 const hasTracks = computed(() => !!session.value?.cues.some((c) => c.track))
-/** A clip playing over its Frame's picture, from the Frame tab's Clip section. */
+/** A clip playing over its Frame's picture, from the drawer's Clips. */
 const playingClip = usePlayingClip(() => selectedIndex.value, () => session.value?.settings.imageModel)
 /** Plays a clip over Frame `index`'s picture, beside the story. */
 function playClip(index: number, clip: Clip) {
@@ -375,11 +375,11 @@ function pickFromStrip(index: number) {
  * or the Music; closed until asked for, and remembered per browser. The Cast opens it while it's
  * reviewed, before the scene begins.
  */
-type DrawerTab = 'prompt' | 'cast' | 'music'
+type DrawerTab = 'prompt' | 'clip' | 'cast' | 'music'
 const { tab: drawer, toggle: toggleDrawer } = useDrawer<DrawerTab>(
   'roleplay-drawer',
   'prompt',
-  (tab) => tab !== 'music' || musicOn.value,
+  (tab) => (tab !== 'music' || musicOn.value) && (tab !== 'clip' || clipsMenu.value !== null),
 )
 watch(reviewing, (now, was) => {
   if (now) drawer.value = 'cast'
@@ -388,6 +388,7 @@ watch(reviewing, (now, was) => {
 }, { immediate: true })
 const drawerTabs = computed(() => [
   { id: 'prompt' as const, label: selectedFrame.value ? `${frameName(selectedFrame.value.index)}'s prompt` : 'Prompt' },
+  ...(clipsMenu.value !== null ? [{ id: 'clip' as const, label: 'Clips' }] : []),
   { id: 'cast' as const, label: 'Look & Cast' },
   ...(musicOn.value ? [{ id: 'music' as const, label: 'Music' }] : []),
 ])
@@ -743,7 +744,7 @@ const selectedPicture = computed(() => selectedFrame.value && pictureOf(selected
 const ownPicture = computed(() =>
   !!selectedPicture.value && selectedPicture.value.imageModel === session.value?.settings.imageModel
 )
-/** How many clips the Clip menu says the picture has, or null for no Clip menu. */
+/** How many clips the picture's Clip button says it has, or null for no Clip button. */
 const clipsMenu = computed(() =>
   selectedPicture.value && featureOn.value('video')
     ? (pickedEdit(selectedPicture.value) ?? selectedPicture.value).clips?.length ?? 0
@@ -881,6 +882,7 @@ const pickFromAll = (index: number) => pickFromStrip(index)
                 :working="workOf(selectedFrame.index)"
                 :can-render="!!selectedFrame.prompt && !selectedFrame.blocked"
                 :clips="clipsMenu"
+                :clips-open="drawer === 'clip'"
                 :playing="playingClip && playingClip.index === selectedFrame.index ? { src: imageUrl(session.id, playingClip.clip.file), clip: playingClip.clip } : null"
                 @queue="(kind) => queueSaved(kind, selectedFrame!.index)"
                 @view="(kind) => (open3d = { index: selectedFrame!.index, kind })"
@@ -891,25 +893,8 @@ const pickFromAll = (index: number) => pickFromStrip(index)
                 @drop="drop"
                 @cancel-all="(list) => dropEach(list, drop)"
                 @stop-clip="playingClip = null"
+                @clips="toggleDrawer('clip')"
               >
-                <template #clip>
-                  <p v-if="!ownPicture" class="text-xs text-muted" data-clips-other-model>
-                    Clips are made of a picture by {{ labelOf(session.settings.imageModel) }}: render this Frame with it first.
-                  </p>
-                  <FrameClips
-                    v-else-if="selectedPicture"
-                    :session-id="session.id"
-                    :index="selectedFrame.index"
-                    :clips="(pickedEdit(selectedPicture) ?? selectedPicture).clips"
-                    :next-pictured="!!session.frames[selectedFrame.index + 1] && !!pictureOf(session.frames[selectedFrame.index + 1])"
-                    :next-name="frameName(selectedFrame.index + 1)"
-                    :making="clipsMaking(jobsFor(selectedFrame.index), selectedPicture.imageModel)"
-                    :playing="playingClip?.index === selectedFrame.index ? playingClip.clip.file : undefined"
-                    @make="(order) => queueClip(selectedFrame!.index, order)"
-                    @play="(clip) => playClip(selectedFrame!.index, clip)"
-                    @stop="playingClip = null"
-                  />
-                </template>
                 <template #empty>
                   <span class="text-muted">
                     <template v-if="workingOn(selectedFrame.index)">{{ frameName(selectedFrame.index) }} is being pictured</template>
@@ -1496,6 +1481,28 @@ const pickFromAll = (index: number) => pickFromStrip(index)
                 @steered="(index) => queueSaved('steer', index)"
                 @go="goToMusic"
               />
+            </div>
+          </template>
+          <template #clip>
+            <div class="flex flex-col gap-2 p-4 text-sm" data-clips-panel>
+              <template v-if="selectedFrame && selectedPicture">
+                <p v-if="!ownPicture" class="text-xs text-muted" data-clips-other-model>
+                  Clips are made of a picture by {{ labelOf(session.settings.imageModel) }}: render this Frame with it first.
+                </p>
+                <FrameClips
+                  v-else
+                  :session-id="session.id"
+                  :index="selectedFrame.index"
+                  :clips="(pickedEdit(selectedPicture) ?? selectedPicture).clips"
+                  :next-pictured="!!session.frames[selectedFrame.index + 1] && !!pictureOf(session.frames[selectedFrame.index + 1])"
+                  :next-name="frameName(selectedFrame.index + 1)"
+                  :making="clipsMaking(jobsFor(selectedFrame.index), selectedPicture.imageModel)"
+                  :playing="playingClip?.index === selectedFrame.index ? playingClip.clip.file : undefined"
+                  @make="(order) => queueClip(selectedFrame!.index, order)"
+                  @play="(clip) => playClip(selectedFrame!.index, clip)"
+                  @stop="playingClip = null"
+                />
+              </template>
             </div>
           </template>
         </SessionDrawer>

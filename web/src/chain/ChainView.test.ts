@@ -713,9 +713,14 @@ describe('ChainView', () => {
     vi.mocked(api.getSession).mockResolvedValue(chain)
     const { wrapper } = await mountIt()
     await openMenu(wrapper, '[data-clip-menu-button]')
+    // The clips open in the drawer beside the picture, not over it.
+    expect(wrapper.find('[data-drawer]').attributes('data-drawer-tab')).toBe('clip')
     wrapper.findComponent(FrameClips).vm.$emit('play', clip)
     await flushPromises()
     expect(wrapper.find('[data-clip-overlay]').exists()).toBe(true)
+    // Only the clip's own controls are on it while it plays.
+    expect(wrapper.find('[data-picture-toolbar]').exists()).toBe(false)
+    expect(wrapper.find('[data-open-prompt]').exists()).toBe(false)
 
     const switched = { ...chain, settings: { imageModel: 'krea-2' } as api.Settings }
     await openMenu(wrapper, '[data-session-settings-button]')

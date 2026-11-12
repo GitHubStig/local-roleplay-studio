@@ -15,6 +15,7 @@
  *   --name NAME       the first screenshot's name (default: shot); steps name their own
  *   --store key=value put in localStorage before the page loads (repeatable)
  *   --dark            the dark colour scheme
+ *   --touch           a phone's touch screen, which can't hover (what hovering shows is always there)
  *   --full            whole-page screenshots, not just the window
  *   --base URL        the app (default http://127.0.0.1:$WEB_PORT, else :5180)
  *   --mock PATH=FILE  answer requests for PATH (a URL pattern, like /api/sessions/x/jobs) with
@@ -68,6 +69,7 @@ const browser = await chromium.launch()
 const page = await browser.newPage({
   viewport: { width, height },
   colorScheme: flag('dark') ? 'dark' : 'light',
+  ...(flag('touch') && { hasTouch: true, isMobile: true }),
 })
 page.on(
   'console',

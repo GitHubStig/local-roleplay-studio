@@ -11,11 +11,11 @@ import { useShownPreview } from '../composables/useShownPreview'
 
 /**
  * The picked Frame's picture on a Session's stage, in every kind of Session: as large as the room
- * beside the story allows, in its own shape; its buttons on it (`PictureToolbar`, the Clip menu's
- * content the `clip` slot's); over its top which Frame it is (`label`), its jobs as one line
+ * beside the story allows, in its own shape; its buttons on it (`PictureToolbar`); over its top which Frame it is (`label`), its jobs as one line
  * (`FrameJobsLine`), and Prompt, which opens the drawer. A Frame with no picture shows a dashed
  * frame in its place, holding the `empty` slot (what it says, and a button to picture it). The
- * picture forming (`preview`) shows over the old one, or alone; a clip plays over it (`clip`).
+ * picture forming (`preview`) shows over the old one, or alone; a clip plays over it (`playing`), with
+ * only the clip's own controls on it, so the picture's buttons and label step aside meanwhile.
  * A new picture is loaded before it's shown, so stepping through Frames never flashes blank, and
  * the picture's size shows on its label while the pointer is over it.
  */
@@ -43,8 +43,10 @@ const props = withDefaults(
     canRender?: boolean
     /** Why nothing can be queued now, on hover. */
     busy?: string
-    /** How many clips the picture has, or null for no Clip menu. */
+    /** How many clips the picture has, or null for no Clip button. */
     clips?: number | null
+    /** The drawer is open at the Frame's clips. */
+    clipsOpen?: boolean
     /** A clip playing over it. */
     playing?: { src: string; clip: Clip } | null
   }>(),
@@ -60,6 +62,7 @@ const props = withDefaults(
     canRender: false,
     busy: undefined,
     clips: null,
+    clipsOpen: false,
     playing: null,
   },
 )
@@ -75,6 +78,8 @@ const emit = defineEmits<{
   drop: [job: Job]
   cancelAll: [jobs: Job[]]
   stopClip: []
+  /** The drawer, at the Frame's clips. */
+  clips: []
 }>()
 
 /** The picture on screen: it changes only once the next has loaded, or at once from none. */
@@ -152,20 +157,20 @@ const shown = () => !!displayed.value || !!forming.value
         @click.stop
       />
       <PictureToolbar
-        v-if="picture"
+        v-if="picture && !playing"
         :picture="picture"
         :has-job="hasJob"
         :working="working"
         :can-render="canRender"
         :busy="busy"
         :clips="clips"
+        :clips-open="clipsOpen"
         @queue="(kind) => emit('queue', kind)"
         @view="(kind) => emit('view', kind)"
         @edit="emit('edit')"
         @expand="emit('open')"
-      >
-        <template #clip><slot name="clip" /></template>
-      </PictureToolbar>
+        @clips="emit('clips')"
+      />
     </template>
     <!-- No picture: a frame in its place, saying why, to picture it from. -->
     <div
@@ -176,7 +181,7 @@ const shown = () => !!displayed.value || !!forming.value
       <div class="flex flex-col items-center gap-2"><slot name="empty" /></div>
     </div>
     <!-- Over its top: which Frame, its work, anything the Session adds, and its Image Prompt. -->
-    <div class="pointer-events-none absolute inset-x-2 top-2 z-20 flex items-start gap-1.5 *:pointer-events-auto">
+    <div v-if="!playing" class="pointer-events-none absolute inset-x-2 top-2 z-20 flex items-start gap-1.5 *:pointer-events-auto">
       <span
         v-if="displayed && label"
         class="shrink-0 rounded-md bg-black/55 px-2 py-0.5 text-xs text-white backdrop-blur-sm"

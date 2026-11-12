@@ -8,10 +8,10 @@ import PopMenu from './PopMenu.vue'
 
 /**
  * A picture's buttons, on the picture, in every kind of Session: Re-render, Upscale and Edit, then
- * Clip and 3D as menus that say how many are made, and full screen at the end. Shown while the
- * pointer is over the picture (`group/picture`) or a menu is open, always on a screen that can't
- * hover; the names drop to icons when the picture is narrow. The Clip menu's content is the `clip`
- * slot's; left out (`clips` null), there's no Clip menu.
+ * Clip, which opens the Frame's clips in the drawer beside the picture (so nothing covers it), and
+ * 3D as a menu, each saying how many are made, and full screen at the end. Shown while the pointer
+ * is over the picture (`group/picture`) or a menu is open, always on a screen that can't hover;
+ * the names drop to icons when the picture is narrow. With `clips` null there's no Clip button.
  */
 const props = withDefaults(
   defineProps<{
@@ -20,12 +20,14 @@ const props = withDefaults(
     working?: (kind: JobKind) => 'running' | 'queued' | null
     canRender?: boolean
     busy?: string
-    /** How many clips the picture has, or null for no Clip menu. */
+    /** How many clips the picture has, or null for no Clip button. */
     clips?: number | null
+    /** The drawer is open at the clips. */
+    clipsOpen?: boolean
   }>(),
-  { canRender: false, working: () => null, clips: null },
+  { canRender: false, working: () => null, clips: null, clipsOpen: false },
 )
-defineEmits<{ queue: [kind: JobKind]; view: [kind: Made3d]; edit: []; expand: [] }>()
+defineEmits<{ queue: [kind: JobKind]; view: [kind: Made3d]; edit: []; expand: []; clips: [] }>()
 const { on: featureOn } = useFeatures()
 
 /** How many 3D are made of the picture, and whether any can be made or viewed at all. */
@@ -62,25 +64,21 @@ const working3d = computed(() =>
         @edit="$emit('edit')"
       />
       <span v-if="clips !== null || has3d" class="mx-1 h-4 w-px shrink-0 bg-white/30" />
-      <PopMenu v-if="clips !== null" side="above" panel-class="w-[26rem] p-3 text-sm" data-clip-menu>
-        <template #button="{ open, toggle }">
-          <button
-            type="button"
-            class="tool-button"
-            :class="{ 'bg-white/20': open }"
-            :title="clips ? `Clips: ${clips} made` : 'Clips: make one from this picture'"
-            data-clip-menu-button
-            @click="toggle"
-          >
-            <Icon :name="working('clip') === 'running' ? 'spinner' : 'film'" :class="{ 'animate-spin': working('clip') === 'running' }" />
-            <span data-label>Clip</span>
-            <span v-if="clips" class="tabular-nums">{{ clips }}</span>
-            <span v-if="working('clip') === 'queued'" class="h-1.5 w-1.5 rounded-full bg-amber-400" data-waiting />
-            <Icon name="chevron-down" class="opacity-70" />
-          </button>
-        </template>
-        <slot name="clip" />
-      </PopMenu>
+      <button
+        v-if="clips !== null"
+        type="button"
+        class="tool-button"
+        :class="{ 'bg-white/20': clipsOpen }"
+        :title="clips ? `Clips: ${clips} made` : 'Clips: make one from this picture'"
+        :aria-pressed="clipsOpen"
+        data-clip-menu-button
+        @click="$emit('clips')"
+      >
+        <Icon :name="working('clip') === 'running' ? 'spinner' : 'film'" :class="{ 'animate-spin': working('clip') === 'running' }" />
+        <span data-label>Clip</span>
+        <span v-if="clips" class="tabular-nums">{{ clips }}</span>
+        <span v-if="working('clip') === 'queued'" class="h-1.5 w-1.5 rounded-full bg-amber-400" data-waiting />
+      </button>
       <PopMenu v-if="has3d" side="above" panel-class="w-72 p-1 text-sm" data-3d-menu>
         <template #button="{ open, toggle }">
           <button

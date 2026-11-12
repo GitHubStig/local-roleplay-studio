@@ -85,7 +85,11 @@ const notice = ref<{ kind: 'declined' | 'unclear' | 'unchanged'; text: string } 
 /** Index of the Frame shown in the main panel; null follows the latest. */
 const viewing = ref<number | null>(null)
 /** The drawer beside the story: the shown Frame's Image Prompt, its changes marked. */
-const { tab: drawer, toggle: toggleDrawer } = useDrawer<'prompt'>('chain-drawer', 'prompt')
+const { tab: drawer, toggle: toggleDrawer } = useDrawer<'prompt' | 'clip'>(
+  'chain-drawer',
+  'prompt',
+  (tab) => tab !== 'clip' || clipsMenu.value !== null,
+)
 
 /** Viewing preferences, remembered per browser. */
 /** Render each new Frame as it's made (on), or only write its prompt: this browser's choice. */
@@ -106,7 +110,7 @@ const shown = computed(() => {
 const latest = computed(() => session.value?.frames.at(-1))
 /** The picture of the Frame in the main panel. */
 const picture = computed(() => shown.value && pictureOf(shown.value))
-/** A clip playing over its Frame's picture, from the Frame tab's Clip section. */
+/** A clip playing over its Frame's picture, from the drawer's Clips. */
 const playingClip = usePlayingClip(() => shown.value?.index, () => session.value?.settings.imageModel)
 /** It's by another Image Model than the Chain's now, or from before its prompt was edited. */
 const pictureChanged = computed(() =>
@@ -236,7 +240,7 @@ const tiles = computed<StripTile[]>(() =>
 const ownPicture = computed(() =>
   !!picture.value && picture.value.imageModel === session.value?.settings.imageModel
 )
-/** How many clips the Clip menu says the picture has, or null for no Clip menu. */
+/** How many clips the picture's Clip button says it has, or null for no Clip button. */
 const clipsMenu = computed(() =>
   picture.value && featureOn.value('video')
     ? (pickedEdit(picture.value) ?? picture.value).clips?.length ?? 0
@@ -489,6 +493,7 @@ const pickFromAll = (index: number) => pick(index)
               :working="shown ? workOf(shown.index) : undefined"
               :can-render="!!shown"
               :clips="clipsMenu"
+              :clips-open="drawer === 'clip'"
               :playing="playingClip && playingClip.index === shown?.index ? { src: imageUrl(session.id, playingClip.clip.file), clip: playingClip.clip } : null"
               @queue="(kind) => queue(kind, shown!.index)"
               @view="(kind) => (open3d = { index: shown!.index, kind })"
@@ -499,25 +504,8 @@ const pickFromAll = (index: number) => pick(index)
               @drop="dropJob"
               @cancel-all="(list) => dropEach(list)"
               @stop-clip="playingClip = null"
+              @clips="toggleDrawer('clip')"
             >
-              <template #clip>
-                <p v-if="!ownPicture" class="text-xs text-muted" data-clips-other-model>
-                  Clips are made of a picture by the Chain's Image Model: render this Frame with it first.
-                </p>
-                <FrameClips
-                  v-else-if="shown && picture"
-                  :session-id="session.id"
-                  :index="shown.index"
-                  :clips="(pickedEdit(picture) ?? picture).clips"
-                  :next-pictured="!!session.frames[shown.index + 1] && !!pictureOf(session.frames[shown.index + 1])"
-                  :next-name="frameName(shown.index + 1)"
-                  :making="clipsMaking(jobsFor(shown.index), picture.imageModel)"
-                  :playing="playingClip?.index === shown.index ? playingClip.clip.file : undefined"
-                  @make="(order) => queueClip(shown!.index, order)"
-                  @play="(clip) => (playingClip = { index: shown!.index, clip })"
-                  @stop="playingClip = null"
-                />
-              </template>
               <template #empty>
                 <span class="text-muted" data-empty>
                   <template v-if="onPending">{{ phaseLabel }}</template>
@@ -693,7 +681,10 @@ const pickFromAll = (index: number) => pick(index)
 
         <SessionDrawer
           v-model="drawer"
-          :tabs="[{ id: 'prompt', label: promptIndex !== undefined ? `${frameName(promptIndex)}'s prompt` : 'Prompt' }]"
+          :tabs="[
+            { id: 'prompt', label: promptIndex !== undefined ? `${frameName(promptIndex)}'s prompt` : 'Prompt' },
+            ...(clipsMenu !== null ? [{ id: 'clip' as const, label: 'Clips' }] : []),
+          ]"
         >
           <template #prompt>
             <div class="p-4 text-sm" data-prompt-panel>
@@ -792,6 +783,28 @@ const pickFromAll = (index: number) => pick(index)
           </template>
           <p v-else-if="onPending" class="animate-pulse text-muted">Writing the prompt…</p>
           <p v-else class="text-muted">No prompt yet.</p>
+            </div>
+          </template>
+          <template #clip>
+            <div class="flex flex-col gap-2 p-4 text-sm" data-clips-panel>
+              <template v-if="shown && picture">
+                <p v-if="!ownPicture" class="text-xs text-muted" data-clips-other-model>
+                  Clips are made of a picture by the Chain's Image Model: render this Frame with it first.
+                </p>
+                <FrameClips
+                  v-else
+                  :session-id="session.id"
+                  :index="shown.index"
+                  :clips="(pickedEdit(picture) ?? picture).clips"
+                  :next-pictured="!!session.frames[shown.index + 1] && !!pictureOf(session.frames[shown.index + 1])"
+                  :next-name="frameName(shown.index + 1)"
+                  :making="clipsMaking(jobsFor(shown.index), picture.imageModel)"
+                  :playing="playingClip?.index === shown.index ? playingClip.clip.file : undefined"
+                  @make="(order) => queueClip(shown!.index, order)"
+                  @play="(clip) => (playingClip = { index: shown!.index, clip })"
+                  @stop="playingClip = null"
+                />
+              </template>
             </div>
           </template>
         </SessionDrawer>

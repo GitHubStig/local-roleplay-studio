@@ -28,13 +28,13 @@ onKeyStroke('Escape', (e) => {
     data-drawer
     :data-drawer-tab="tab"
   >
-    <div class="flex shrink-0 items-center gap-1 border-b border-line px-2 text-sm" role="tablist">
+    <div class="flex shrink-0 items-center gap-1 overflow-x-auto border-b border-line px-2 text-sm whitespace-nowrap" role="tablist">
       <button
         v-for="t in tabs"
         :key="t.id"
         type="button"
         role="tab"
-        class="-mb-px border-b-2 px-2.5 py-2"
+        class="-mb-px shrink-0 border-b-2 px-2.5 py-2"
         :class="t.id === tab ? 'border-fg font-medium text-fg' : 'border-transparent text-muted hover:text-fg'"
         :aria-selected="t.id === tab"
         :data-drawer-button="t.id"
@@ -44,7 +44,7 @@ onKeyStroke('Escape', (e) => {
       </button>
       <button
         type="button"
-        class="ml-auto rounded-md p-1.5 text-muted hover:text-fg"
+        class="sticky right-0 ml-auto shrink-0 rounded-md bg-canvas p-1.5 text-muted hover:text-fg"
         title="Close (Esc)"
         aria-label="Close"
         data-drawer-close

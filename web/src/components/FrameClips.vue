@@ -12,7 +12,7 @@ import { type ClipMaking, clipsByKind, useVideoModels } from '../clips'
 import ClipCompare from './ClipCompare.vue'
 
 /**
- * The selected Frame's clips (ADR 0025), in its tab, the same in every kind of Session:
+ * The selected Frame's clips (ADR 0025), in the drawer beside its picture, the same in every kind of Session:
  * pick where the picture sits in the clip, its length, whether anyone speaks and the video model
  * (the last picked in the Session, else Settings' default); the Text Model writes the prompt from
  * the story, for the player to read and edit; then the clip is queued. Each video model keeps a clip
@@ -201,8 +201,8 @@ function again(clip: Clip) {
 </script>
 
 <template>
-  <section class="flex flex-col gap-2 border-t border-line pt-3" data-frame-clips>
-    <h3 class="text-xs font-medium text-muted">Clip</h3>
+  <section class="flex flex-col gap-2" data-frame-clips>
+    <h3 class="text-xs font-medium text-muted">Make a clip</h3>
     <div role="radiogroup" aria-label="Kind of clip" class="flex overflow-hidden rounded-md border border-line text-xs">
       <button
         v-for="k in KINDS"
