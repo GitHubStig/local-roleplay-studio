@@ -7,7 +7,7 @@ import { useCurrentSession } from './composables/useCurrentSession'
 import { scenarioPagePath, useScenarioDraft } from './composables/useScenarioDraft'
 import { sessionPath } from './sessionPath'
 import ConfirmDialog from './components/ConfirmDialog.vue'
-import ThemeToggle from './components/ThemeToggle.vue'
+import ThemeButton from './components/ThemeButton.vue'
 import Icon from './components/Icon.vue'
 
 const serverOnline = ref<boolean | null>(null)
@@ -46,102 +46,84 @@ useEventListener(window, 'focus', checkServer)
 </script>
 
 <template>
-  <div class="flex h-screen flex-col bg-canvas text-fg">
-    <header class="flex items-center justify-between gap-4 border-b border-line px-4 py-2">
-      <div class="flex min-w-0 items-center gap-5">
-        <h1 class="shrink-0 text-lg font-semibold">Local Roleplay Studio</h1>
-        <!-- The screens as tabs, the one on screen filled. -->
-        <nav class="flex min-w-0 items-center gap-1 text-sm" aria-label="Screens">
-          <RouterLink
-            to="/"
-            class="tab"
-            exact-active-class="tab-active"
-            title="Your Sessions, and new ones"
-            data-nav-home
-          >
-            <Icon name="house" />
-            Home
-          </RouterLink>
-          <RouterLink
-            v-if="currentTo"
-            :to="currentTo"
-            class="tab min-w-0 max-w-80"
-            :class="{ 'tab-active': onSession }"
-            :title="`The Session opened last${currentSessionTitle ? `: ${currentSessionTitle}` : ''}`"
-            data-current-session
-          >
-            <!-- On the title's baseline: the smaller capitals sat off it, centred as boxes. -->
-            <span class="flex min-w-0 items-baseline gap-1.5">
-              <span class="shrink-0 text-xs uppercase tracking-wide text-muted" data-current-kind>
-                {{ KIND_LABELS[currentSessionKind] }}
-              </span>
-              <template v-if="currentSessionTitle">
-                <span class="text-muted" aria-hidden="true">·</span>
-                <span class="truncate" data-current-title>{{ currentSessionTitle }}</span>
-              </template>
-            </span>
-          </RouterLink>
-          <RouterLink
-            v-if="scenarioTo"
-            :to="scenarioTo"
-            class="tab min-w-0 max-w-80"
-            :class="{ 'tab-active': route.name === 'scenario' }"
-            :title="`The Scenario you're setting up: ${scenarioTitle}`"
-            data-current-scenario
-          >
-            <span class="flex min-w-0 items-baseline gap-1.5">
-              <span class="shrink-0 text-xs uppercase tracking-wide text-muted">Scenario</span>
-              <template v-if="scenarioTitle">
-                <span class="text-muted" aria-hidden="true">·</span>
-                <span class="truncate">{{ scenarioTitle }}</span>
-              </template>
-            </span>
-          </RouterLink>
-          <RouterLink
-            to="/queue"
-            class="tab"
-            active-class="tab-active"
-            title="Every machine's queue, across Sessions"
-            data-nav-queue
-          >
-            <Icon name="queue" />
-            Queue
-          </RouterLink>
-          <RouterLink to="/settings" class="tab" active-class="tab-active">
-            <Icon name="settings" />
-            Settings
-          </RouterLink>
-        </nav>
-      </div>
-      <div class="flex shrink-0 items-center gap-3">
-        <!-- A dot while all's well; said in words when the server is down. -->
-        <span
-          class="flex items-center gap-1.5 text-sm"
-          role="status"
-          :title="serverOnline === null ? 'Checking the server…' : serverOnline ? 'Server online' : 'Server offline'"
-          data-server
-        >
-          <span
-            class="h-2 w-2 rounded-full"
-            :class="serverOnline === null ? 'bg-line' : serverOnline ? 'bg-ok' : 'bg-danger'"
-          />
-          <span v-if="serverOnline === false" class="text-danger">Server offline</span>
+  <!-- The rail down the left (along the bottom on a phone held upright), the screen beside it. -->
+  <div class="flex h-dvh flex-col bg-canvas text-fg sm:flex-row short:flex-row">
+    <nav
+      class="order-last flex shrink-0 items-center justify-around border-t border-line px-2 py-1 sm:order-first sm:w-12 sm:flex-col sm:justify-start sm:gap-2 sm:border-t-0 sm:border-r sm:px-0 sm:py-3 short:order-first short:w-12 short:flex-col short:justify-start short:gap-2 short:border-t-0 short:border-r short:px-0 short:py-3"
+      aria-label="Screens"
+      data-rail
+    >
+      <RouterLink to="/" class="rail-item" exact-active-class="rail-active" title="Home: your Sessions, and new ones" data-nav-home>
+        <Icon name="house" />
+        <span class="sr-only">Home</span>
+      </RouterLink>
+      <RouterLink
+        v-if="currentTo"
+        :to="currentTo"
+        class="rail-item"
+        :class="{ 'rail-active': onSession }"
+        :title="`${KIND_LABELS[currentSessionKind]}${currentSessionTitle ? `: ${currentSessionTitle}` : ''}, the Session opened last`"
+        data-current-session
+      >
+        <Icon name="session" />
+        <span class="sr-only">
+          <span data-current-kind>{{ KIND_LABELS[currentSessionKind] }}</span>
+          <template v-if="currentSessionTitle">: <span data-current-title>{{ currentSessionTitle }}</span></template>
         </span>
-        <ThemeToggle class="max-sm:hidden" />
-      </div>
-    </header>
-    <!-- On a phone the header has no room for it: it waits in the corner, as on the exported page. -->
-    <div class="fixed right-3 bottom-3 z-50 rounded-lg bg-canvas/90 shadow-md sm:hidden" data-corner-theme>
-      <ThemeToggle />
+      </RouterLink>
+      <RouterLink
+        v-if="scenarioTo"
+        :to="scenarioTo"
+        class="rail-item"
+        :class="{ 'rail-active': route.name === 'scenario' }"
+        :title="`The Scenario you're setting up: ${scenarioTitle}`"
+        data-current-scenario
+      >
+        <Icon name="scenario" />
+        <span class="sr-only">Scenario: {{ scenarioTitle }}</span>
+      </RouterLink>
+      <RouterLink to="/queue" class="rail-item" active-class="rail-active" title="Queue: every machine's work, across Sessions" data-nav-queue>
+        <Icon name="queue" />
+        <span class="sr-only">Queue</span>
+      </RouterLink>
+      <!-- What's set once in a while, at the rail's foot: not on a phone's tab bar but Settings. -->
+      <span
+        class="hidden h-9 w-9 place-items-center sm:mt-auto sm:grid short:mt-auto short:grid"
+        role="status"
+        :title="serverOnline === null ? 'Checking the server…' : serverOnline ? 'Server online' : 'Server offline'"
+        data-server
+      >
+        <span
+          class="h-2 w-2 rounded-full"
+          :class="serverOnline === null ? 'bg-line' : serverOnline ? 'bg-ok' : 'bg-danger'"
+        />
+        <span v-if="serverOnline === false" class="sr-only">Server offline</span>
+      </span>
+      <ThemeButton class="rail-item hidden! sm:grid! short:grid!" />
+      <RouterLink to="/settings" class="rail-item" active-class="rail-active" title="Settings" data-nav-settings>
+        <Icon name="settings" />
+        <span class="sr-only">Settings</span>
+      </RouterLink>
+    </nav>
+    <div class="flex min-h-0 min-w-0 flex-1 flex-col">
+      <!-- The rail has no room to say it: a line across the top while the server is down. -->
+      <p
+        v-if="serverOnline === false"
+        class="shrink-0 border-b border-line bg-danger px-4 py-1 text-sm text-canvas"
+        role="alert"
+        data-server-offline
+      >
+        Server offline: the app can't reach it. Checking again every 15 s.
+      </p>
+      <!-- The last Session screen stays alive while you visit Home, the Queue or Settings, so its
+           draft, the viewed Frame and running Frames survive going there and back. Opening another
+           Session replaces it, as only one is in progress at a time. -->
+      <RouterView v-slot="{ Component, route: r }">
+        <KeepAlive :include="['ChainView', 'StoryboardView', 'RoleplayView']" :max="1">
+          <component :is="Component" :key="r.path" class="min-h-0 flex-1" />
+        </KeepAlive>
+      </RouterView>
     </div>
-    <!-- The last Session screen stays alive while you visit Home, the Queue or Settings, so its
-         draft, the viewed Frame and running Frames survive going there and back. Opening another
-         Session replaces it, as only one is in progress at a time. -->
-    <RouterView v-slot="{ Component, route: r }">
-      <KeepAlive :include="['ChainView', 'StoryboardView', 'RoleplayView']" :max="1">
-        <component :is="Component" :key="r.path" class="min-h-0 flex-1" />
-      </KeepAlive>
-    </RouterView>
     <ConfirmDialog />
   </div>
 </template>
@@ -149,10 +131,10 @@ useEventListener(window, 'focus', checkServer)
 <style scoped>
 @reference "./style.css";
 
-.tab {
-  @apply flex items-center gap-1.5 rounded-md border border-transparent px-3 py-1 text-muted hover:text-fg;
+.rail-item {
+  @apply grid h-9 w-9 place-items-center rounded-lg text-lg text-muted transition-colors hover:text-fg;
 }
-.tab-active {
-  @apply border-line bg-surface font-medium text-fg shadow-sm;
+.rail-active {
+  @apply bg-surface text-fg shadow-sm;
 }
 </style>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import SessionBar from '../components/SessionBar.vue'
 import { ask } from '../ask'
 import { frameName } from '../frameName'
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
@@ -623,10 +624,13 @@ const imagesOn = computed(() => featureOn.value('images'))
 </script>
 
 <template>
-  <div class="flex min-h-0">
+  <div class="flex min-h-0 flex-col">
     <p v-if="loadError" class="p-6 text-danger">Could not load this Storyboard: {{ loadError }}</p>
 
     <template v-else-if="session">
+      <!-- Until stage 3 of the screens plan builds its strip view: its kind and title. -->
+      <SessionBar kind="Storyboard" :title="session.title ?? ''" />
+      <div class="flex min-h-0 flex-1">
       <main class="story flex min-w-0 flex-1 flex-col gap-3 p-4">
         <div class="flex flex-wrap items-center justify-end gap-x-4 gap-y-1 text-sm">
           <TextModelPicker
@@ -1099,6 +1103,7 @@ const imagesOn = computed(() => featureOn.value('images'))
           </div>
         </section>
       </aside>
+      </div>
     </template>
 
     <p v-else class="p-6 text-muted">Loading…</p>

@@ -1,25 +1,33 @@
 <script setup lang="ts">
 import { ask } from '../ask'
 import { frameName, framesName } from '../frameName'
-import { useTextareaAutosize } from '@vueuse/core'
+import { useStoredString } from '../composables/storage'
+import { useMediaQuery, useTextareaAutosize } from '@vueuse/core'
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { type Activity, chainFromFrame, type Clip, getSession, imageUrl, type Look, type Made3d, restartSession } from '../api'
+import { type Activity, chainFromFrame, type Clip, getSession, imageUrl, type Look, type Made3d, pickedEdit, restartSession } from '../api'
 import { useSessionScreen } from '../composables/useSessionScreen'
 import { useStoredFlag } from '../composables/useStoredFlag'
 import { saveLine, useAutosave } from '../composables/useAutosave'
 import SaveStatus from '../components/SaveStatus.vue'
 import LookForm from '../components/LookForm.vue'
 import RestartButton from '../components/RestartButton.vue'
-import ComposeBox from '../components/ComposeBox.vue'
 import PutBackOffer from '../components/PutBackOffer.vue'
 import { usePutBack } from '../composables/usePutBack'
-import FrameTab from '../components/FrameTab.vue'
 import ClipOverlay from '../components/ClipOverlay.vue'
 import FoldedPrompt from '../components/FoldedPrompt.vue'
 import ShownPills from '../components/ShownPills.vue'
-import { clipCount, clipsMaking, scrollToClips, usePlayingClip } from '../clips'
-import FrameListItem from '../components/FrameListItem.vue'
+import { clipCount, clipsMaking, usePlayingClip } from '../clips'
+import FrameClips from '../components/FrameClips.vue'
+import FrameStrip, { type StripTile } from '../components/FrameStrip.vue'
+import FloatingBox from '../components/FloatingBox.vue'
+import FrameJobs from '../components/FrameJobs.vue'
+import FrameJobsLine from '../components/FrameJobsLine.vue'
+import PictureToolbar from '../components/PictureToolbar.vue'
+import PopMenu from '../components/PopMenu.vue'
+import SessionBar from '../components/SessionBar.vue'
+import SessionDrawer from '../components/SessionDrawer.vue'
+import ToggleSwitch from '../components/ToggleSwitch.vue'
 import Icon from '../components/Icon.vue'
 import ImageModelPicker from '../components/ImageModelPicker.vue'
 import TextModelPicker from '../components/TextModelPicker.vue'
@@ -35,16 +43,12 @@ import ItemList from '../components/ItemList.vue'
 import Frame3dViewers from '../components/Frame3dViewers.vue'
 import EditedChip from '../components/EditedChip.vue'
 import FrameViewer from '../components/FrameViewer.vue'
-import FrameJobs from '../components/FrameJobs.vue'
-import JobQueue from '../components/JobQueue.vue'
-import PanelTabs from '../components/PanelTabs.vue'
-import RenderAllButton from '../components/RenderAllButton.vue'
 import { useJobs } from '../composables/useJobs'
 import { useJobLink } from '../composables/useJobLink'
 import { sessionPath } from '../sessionPath'
 import { usePictureEditing } from '../composables/usePictureEditing'
 import { useFeatures } from '../composables/useFeatures'
-import { isOpen, jobForming, jobStatus, queueTab } from '../jobs'
+import { isOpen, jobForming, jobStatus } from '../jobs'
 import { useShownPreview } from '../composables/useShownPreview'
 import {
   type Cast,
@@ -106,7 +110,7 @@ const suggesting = computed(() => pending.value?.kind === 'suggest')
 const writingCast = computed(() => pending.value?.kind === 'cast')
 // --- Background work: pictures, renders, upscales, voices and 3D, queued on the server.
 
-const { jobs, runningJobs, runningJob, runningOn, jobsFor, hasJob, queue, queueEdit, queueClip, queueAll, dropJob, cancelAll, dismissFinished, retry, refreshJobs } = useJobs(
+const { jobs, runningJobs, runningJob, runningOn, jobsFor, hasJob, queue, queueEdit, queueClip, queueAll, dropJob, retry, refreshJobs } = useJobs(
   props.id,
   {
     onSettled: () => reload(),
@@ -118,8 +122,6 @@ const { jobs, runningJobs, runningJob, runningOn, jobsFor, hasJob, queue, queueE
 async function openClip(job: Job) {
   await onClipsModel(job, (text) => (notice.value = { kind: 'error', text }))
   goToFrame(job.frameIndex)
-  narrowTab.value = 'frame'
-  scrollToClips(transcript.value)
 }
 /** Editing a picture in the viewer (ADR 0021): painting an edit, or watching one being made. */
 const { painting: paintingPicture, startEdit, showEdit, pick: pickVersion, deleteEdit, deleteUpscale } =
@@ -141,7 +143,7 @@ const forming = computed(() => jobForming(session.value, runningJob.value))
 watch(forming, (now) => {
   if (now) formingIndex.value = runningJob.value!.frameIndex
 })
-const { byOf, renderedParts } = useImageModels()
+const { byOf, labelOf, renderedParts } = useImageModels()
 /**
  * The Frames Render all would render: those with no picture by the Roleplay's Image Model, or one
  * changed since, unless their Image Prompt crosses a Limit or a render is queued.
@@ -193,12 +195,23 @@ async function drop(job: Job) {
   if (render) await dropJob(render)
 }
 
+/** Speaking a line or a thought: shown by the speaker beside the Reply, as it isn't about the picture. */
+const SPOKEN: readonly JobKind[] = ['speak', 'speak-thought']
 /**
- * A Frame's jobs; designing the voice and scoring the music with hindsight are the Roleplay's,
- * shown in the Voice panel and on Score the Roleplay instead.
+ * A Frame's jobs, on its picture; designing the voice and scoring the music with hindsight are the
+ * Roleplay's, shown in the Voice panel and on Score the Roleplay instead, and speaking is by its line.
  */
 const frameJobs = (index: number) =>
-  jobsFor(index).filter((j) => j.kind !== 'voice' && j.kind !== 'score-roleplay')
+  jobsFor(index).filter((j) =>
+    j.kind !== 'voice' && j.kind !== 'score-roleplay' && !SPOKEN.includes(j.kind)
+  )
+const speakJobs = (index: number) => jobsFor(index).filter((j) => SPOKEN.includes(j.kind))
+/** Cancels a Frame's jobs one by one, skipping any a cancel before took with it. */
+async function dropAll(list: Job[]) {
+  for (const job of list) {
+    if (jobs.value.some((j) => j.id === job.id && isOpen(j))) await drop(job)
+  }
+}
 const voiceJob = computed(() => jobs.value.find((j) => j.kind === 'voice' && j.status !== 'done') ?? null)
 /** The voice is being designed, or waits its turn to be. */
 const designingVoice = computed(() =>
@@ -238,9 +251,14 @@ async function reload() {
 const highlighted = ref<number | null>(null)
 let highlightTimer: ReturnType<typeof setTimeout> | undefined
 /** Scrolls the conversation to Frame `index`. */
-const scrollToFrame = (index: number) =>
-  transcript.value?.querySelector(`[data-frame-index="${index}"]`)
-    ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+/** Scrolls the story so Frame `index`'s exchange starts at the picking line. */
+function scrollToFrame(index: number) {
+  const list = transcript.value
+  const exchange = list?.querySelector(`[data-exchange="${index}"]`)
+  if (!list || !exchange) return
+  const top = exchange.getBoundingClientRect().top - list.getBoundingClientRect().top + list.scrollTop
+  list.scrollTo({ top: top - list.clientHeight / 4 + 24, behavior: 'smooth' })
+}
 function goToFrame(index: number) {
   pick(index)
   scrollToFrame(index)
@@ -252,7 +270,7 @@ function goToFrame(index: number) {
 /** A Frame, with the music's side of it open. */
 function goToMusic(index: number) {
   goToFrame(index)
-  detail.value = 'music'
+  drawer.value = 'music'
 }
 
 // --- 3D, by model (experimental): SHARP, TripoSplat and LiTo (PictureButtons).
@@ -280,7 +298,7 @@ const { canListen, spokenNow, playing, stopAudio, play, listen, playWhenSpoken }
   voicesOn: () => featureOn.value('voices'),
 })
 
-/** The voice description as edited in the side panel. */
+/** The voice description as edited in the drawer. */
 const voiceDraft = ref('')
 /** The Voice section collapses to its heading and the description, remembered per browser. */
 const voiceCollapsed = useStoredFlag('collapsed:roleplay.voice')
@@ -321,7 +339,7 @@ async function scoreAll() {
 
 /**
  * The selected Frame: the one picked in the Frames list or the conversation, or else the newest,
- * which each new Reply moves on to. Its tab in the side panel has everything about it.
+ * which each new Reply moves on to. Its picture is beside the story, its Image Prompt in the drawer.
  */
 const picked = ref<number | null>(null)
 const selectedIndex = computed(() => {
@@ -345,51 +363,50 @@ const music = useMusicPlayer({
 const hasTracks = computed(() => !!session.value?.cues.some((c) => c.track))
 /** A clip playing over its Frame's picture, from the Frame tab's Clip section. */
 const playingClip = usePlayingClip(() => selectedIndex.value, () => session.value?.settings.imageModel)
-/** Plays a clip over Frame `index`'s picture, scrolled into view: it starts once it's seen. */
+/** Plays a clip over Frame `index`'s picture, beside the story. */
 function playClip(index: number, clip: Clip) {
   playingClip.value = { index, clip }
-  transcript.value?.querySelector(`[data-frame-index="${index}"] [data-picture-image]`)
-    ?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
 }
 
 /** Picks Frame `index`; the newest, so the selection follows the Replies again. */
 function pick(index: number) {
   picked.value = index === session.value?.frames.at(-1)?.index ? null : index
 }
-/** Picks a Frame from the list, and shows it in the conversation. */
-function pickFromList(index: number) {
+/** Picks a Frame from the strip, and shows it in the story. */
+function pickFromStrip(index: number) {
   pick(index)
   scrollToFrame(index)
 }
 
 /**
- * The side panel, as a Chain's: the Frames or the queue beside the detail (the selected Frame, or
- * the Look and Cast); on a narrow window, one of them at a time. Until picked: the Look and Cast
- * while it's reviewed, before the scene begins, and the Frames and the Frame once it has.
+ * The drawer beside the story (`SessionDrawer`): the picked Frame's Image Prompt, the Look and Cast,
+ * or the Music; closed until asked for, and remembered per browser. The Cast opens it while it's
+ * reviewed, before the scene begins.
  */
-const panelPicked = ref<'frames' | 'queue' | 'detail' | null>(null)
-const panel = computed(() => panelPicked.value ?? (begun.value ? 'frames' : 'detail'))
-const detailPicked = ref<'frame' | 'cast' | 'music' | null>(null)
-const detail = computed({
-  get: () =>
-    (detailPicked.value === 'music' && !musicOn.value ? null : detailPicked.value) ??
-      (begun.value ? 'frame' : 'cast'),
-  set: (tab) => (detailPicked.value = tab),
-})
-const listTab = computed({
-  get: () => (panel.value === 'queue' ? 'queue' : 'frames'),
-  set: (tab: 'frames' | 'queue') => (panelPicked.value = tab),
-})
-/** A narrow window's one row of tabs: the Frame, the Look and Cast, and the Music are among them. */
-const narrowTab = computed({
-  get: () => (panel.value === 'detail' ? detail.value : listTab.value),
-  set: (tab: 'frames' | 'queue' | 'frame' | 'cast' | 'music') => {
-    if (tab === 'frame' || tab === 'cast' || tab === 'music') {
-      panelPicked.value = 'detail'
-      detail.value = tab
-    } else panelPicked.value = tab
+type DrawerTab = 'prompt' | 'cast' | 'music'
+const storedDrawer = useStoredString('roleplay-drawer')
+/** A screen wide enough for the drawer beside a full-height picture and the story. */
+const wide = useMediaQuery('(min-width: 2560px)')
+const drawer = computed<DrawerTab | null>({
+  get: () => {
+    // Never opened or closed yet: open on a wide screen, as there's room.
+    const tab = (storedDrawer.value ?? (wide.value ? 'prompt' : 'closed')) as DrawerTab | 'closed'
+    return tab === 'closed' || (tab === 'music' && !musicOn.value) ? null : tab
   },
+  set: (tab) => (storedDrawer.value = tab ?? 'closed'),
 })
+/** Opens the drawer at a tab, or closes it if that tab is open already. */
+const toggleDrawer = (tab: DrawerTab) => (drawer.value = drawer.value === tab ? null : tab)
+watch(reviewing, (now, was) => {
+  if (now) drawer.value = 'cast'
+  // Begun: the drawer it opened for the review steps aside for the picture.
+  else if (was && drawer.value === 'cast') drawer.value = null
+}, { immediate: true })
+const drawerTabs = computed(() => [
+  { id: 'prompt' as const, label: selectedFrame.value ? `${frameName(selectedFrame.value.index)}'s prompt` : 'Prompt' },
+  { id: 'cast' as const, label: 'Look & Cast' },
+  ...(musicOn.value ? [{ id: 'music' as const, label: 'Music' }] : []),
+])
 const characterName = computed(() => cast.value?.character.name ?? 'The Character')
 const personaName = computed(() => cast.value?.persona.name ?? 'You')
 
@@ -568,18 +585,33 @@ watch([
   })
 })
 
-/**
- * Pictures load after the conversation has scrolled to its end, pushing the end out of view. Until
- * the player scrolls away from the end, keep it there as each picture loads.
- */
+/** The story is scrolled to its end, where it stays as Replies come in. */
 let atEnd = true
+/**
+ * Until then, the player is scrolling the story themselves (a wheel, a touch, the scrollbar, a
+ * key): only that picks. Scrolling for them (to a Frame, to the end) and the story narrowing as
+ * the drawer opens don't.
+ */
+let playerScrollsUntil = 0
+const playerScrolls = () => (playerScrollsUntil = Date.now() + 800)
+/**
+ * Scrolling the story picks the exchange nearest a line a quarter of the way down its view (where
+ * the eye rests reading on, the owner found the middle too low), so the picture beside it and the
+ * strip follow what's being read; at the end, the newest, which new Replies move on to.
+ */
 function onTranscriptScroll() {
   const list = transcript.value!
   atEnd = list.scrollHeight - list.scrollTop - list.clientHeight < 40
-}
-function onPictureLoad() {
-  const list = transcript.value
-  if (list && atEnd) list.scrollTo({ top: list.scrollHeight, behavior: 'auto' })
+  if (Date.now() > playerScrollsUntil) return
+  if (atEnd) return (picked.value = null)
+  const middle = list.getBoundingClientRect().top + list.clientHeight / 4
+  let nearest: { index: number; distance: number } | null = null
+  for (const el of list.querySelectorAll<HTMLElement>('[data-exchange]')) {
+    const box = el.getBoundingClientRect()
+    const distance = middle < box.top ? box.top - middle : middle > box.bottom ? middle - box.bottom : 0
+    if (!nearest || distance < nearest.distance) nearest = { index: Number(el.dataset.exchange), distance }
+  }
+  if (nearest) pick(nearest.index)
 }
 
 const statusLabel = computed(() => {
@@ -690,6 +722,63 @@ async function saveLookDraft(draft: Look): Promise<Look> {
   return session.value.look!
 }
 /** A Look saved while a picture renders waits for it, so the renders queued behind it have it. */
+// --- The strip and the picture beside the story.
+
+/** What a Frame's tile and picture show of the work on it: running, or waiting its turn. */
+function workingOn(index: number): 'running' | 'queued' | null {
+  const open = frameJobs(index).filter(isOpen)
+  return open.some((j) => j.status === 'running') ? 'running' : open.length ? 'queued' : null
+}
+/** Whether a job of this kind runs on Frame `index`, or waits. */
+const workingOf = (index: number) => (kind: JobKind) => {
+  const job = jobsFor(index).find((j) => j.kind === kind && isOpen(j))
+  return job ? (job.status === 'running' ? 'running' : 'queued') : null
+}
+const tiles = computed<StripTile[]>(() =>
+  shownFrames.value.map((f) => ({
+    index: f.index,
+    thumb: pictureOf(f) ? imageUrl(props.id, pictureOf(f)!.image) : null,
+    words: f.message ?? 'Opening',
+    working: workingOn(f.index),
+    dimmed: changed(f),
+    clips: clipCount(pictureOf(f), session.value!.settings.imageModel),
+  }))
+)
+/** The picked Frame's picture, if it has one by the Roleplay's Image Model. */
+const selectedPicture = computed(() => selectedFrame.value && pictureOf(selectedFrame.value))
+/** The picture shown is by the Session's Image Model, so it can have clips. */
+const ownPicture = computed(() =>
+  !!selectedPicture.value && selectedPicture.value.imageModel === session.value?.settings.imageModel
+)
+/** How many clips the Clip menu says the picture has, or null for no Clip menu. */
+const clipsMenu = computed(() =>
+  selectedPicture.value && featureOn.value('video')
+    ? (pickedEdit(selectedPicture.value) ?? selectedPicture.value).clips?.length ?? 0
+    : null
+)
+/** The picked Frame can be pictured now: Picture it writes its Image Prompt if need be, then renders. */
+const canPicture = computed(() =>
+  !!selectedFrame.value && !selectedFrame.value.blocked && featureOn.value('images') &&
+  !hasJob(selectedFrame.value.index, 'picture') && !hasJob(selectedFrame.value.index, 'render')
+)
+/**
+ * The picture's shape, from the image once it's loaded (3:2 until then): its box keeps it while
+ * growing to the height there is, so the toolbar and corners sit on the picture itself.
+ */
+const pictureRatio = ref(1.5)
+function onPictureLoad(e: Event) {
+  const img = e.target as HTMLImageElement
+  if (img.naturalWidth && img.naturalHeight) pictureRatio.value = img.naturalWidth / img.naturalHeight
+}
+
+async function pictureIt(index: number) {
+  if (!(await flushEdits('pictured'))) return
+  const frame = session.value?.frames[index]
+  if (!frame) return
+  if (!frame.prompt) await queueAll('picture', [index])
+  await queueAll('render', [index])
+}
+
 const lookSavingText = computed(() =>
   runningJobs.value.some((j) => j.kind === 'render')
     ? 'Saving once the picture rendering is done…'
@@ -698,496 +787,560 @@ const lookSavingText = computed(() =>
 </script>
 
 <template>
-  <div class="flex min-h-0">
+  <div class="flex min-h-0 min-w-0 flex-col">
     <p v-if="loadError" class="p-6 text-danger">Could not load this Roleplay: {{ loadError }}</p>
 
     <template v-else-if="session">
-      <main class="story flex min-w-0 flex-1 flex-col gap-3 p-4">
-        <div class="flex flex-wrap items-center justify-between gap-3 text-sm">
-          <p class="min-w-0 flex-1 basis-40 truncate text-muted" role="status">
-            <span v-if="busy" class="animate-pulse">{{ statusLabel }}</span>
-            <template v-else-if="cast">
-              {{ characterName }} and {{ personaName }} · {{ cast.setting.place }}
-            </template>
-          </p>
-          <div class="ml-auto flex max-w-full flex-wrap items-center justify-end gap-x-4 gap-y-1">
-            <label
-              v-if="musicOn"
-              class="flex cursor-pointer items-center gap-1.5 text-muted"
-              title="Direct each new reply's music: whether it continues, changes or falls silent"
+      <SessionBar kind="Roleplay" :title="session.title ?? ''" :status="busy ? statusLabel : undefined">
+        <template v-if="musicOn">
+          <span v-if="hasTracks" class="flex items-center gap-1" data-music-player>
+            <button
+              type="button"
+              class="rounded-md p-1.5 hover:bg-surface hover:text-fg"
+              :class="{ 'text-fg': music.on.value }"
+              :aria-pressed="music.on.value"
+              :data-music-file="music.on.value ? music.target.value?.file ?? undefined : undefined"
+              :title="music.on.value ? 'Turn the music off' : 'Play the music of the Frame you\'re on'"
+              data-music-toggle
+              @click="music.on.value = !music.on.value"
             >
-              <input v-model="scoreAsYouPlay" type="checkbox" data-score-as-you-play />
-              Score as you play
-            </label>
-            <span v-if="musicOn && hasTracks" class="flex items-center gap-1.5 text-muted" data-music-player>
-              <button
-                type="button"
-                class="action flex items-center gap-1"
-                :class="{ 'action-on': music.on.value }"
-                :aria-pressed="music.on.value"
-                :data-music-file="music.on.value ? music.target.value?.file ?? undefined : undefined"
-                :title="music.on.value ? 'Turn the music off' : 'Play the music of the Frame you\'re on'"
-                data-music-toggle
-                @click="music.on.value = !music.on.value"
-              >
-                <Icon :name="music.on.value ? 'music' : 'music-off'" />
-                <span class="sr-only">{{ music.on.value ? 'Music on' : 'Music off' }}</span>
-              </button>
-              <input
-                v-model.number="music.volume.value"
-                type="range"
-                min="0"
-                max="1"
-                step="0.05"
-                class="w-16"
-                aria-label="Music volume"
-                data-music-volume
-              />
-            </span>
-            <label
-              v-if="featureOn('voices')"
-              class="flex cursor-pointer items-center gap-1.5 text-muted"
-              :title="`Speak each new reply in ${characterName}'s voice`"
+              <Icon :name="music.on.value ? 'music' : 'music-off'" />
+              <span class="sr-only">{{ music.on.value ? 'Music on' : 'Music off' }}</span>
+            </button>
+            <input
+              v-model.number="music.volume.value"
+              type="range"
+              min="0"
+              max="1"
+              step="0.05"
+              class="w-14 max-md:hidden"
+              aria-label="Music volume"
+              data-music-volume
+            />
+          </span>
+          <button
+            type="button"
+            class="rounded-md px-2 py-1 hover:bg-surface hover:text-fg"
+            :class="{ 'bg-surface text-fg': drawer === 'music' }"
+            title="The Score, its Cues, and this Frame's music"
+            data-open-music
+            @click="toggleDrawer('music')"
+          >
+            <span class="max-sm:hidden">Music</span><Icon name="music" class="sm:hidden" /><span class="sr-only sm:hidden">Music</span>
+          </button>
+        </template>
+        <button
+          type="button"
+          class="rounded-md px-2 py-1 whitespace-nowrap hover:bg-surface hover:text-fg"
+          :class="{ 'bg-surface text-fg': drawer === 'cast' }"
+          title="The Look, the Cast and the voice"
+          data-open-cast
+          @click="toggleDrawer('cast')"
+        >
+          <span class="max-sm:hidden">Look & Cast</span><Icon name="cast" class="sm:hidden" /><span class="sr-only sm:hidden">Look & Cast</span>
+        </button>
+        <!-- Until the All Frames view takes it (stage 4 of the screens plan). -->
+        <span v-if="featureOn('images')" class="max-md:hidden"><ModelComparison
+          :session-id="session.id"
+          :frames="session.frames"
+          :image-model="session.settings.imageModel"
+          :thumbnail="session.thumbnail"
+          :caption="(f) => f.reply.actions"
+          @changed="reload(); refreshJobs()"
+          one-style
+        /></span>
+        <!-- The Roleplay's models and switches, its Image Model named. -->
+        <PopMenu align="end" panel-class="w-[26rem] p-4 text-sm" data-session-settings>
+          <template #button="{ open, toggle }">
+            <button
+              type="button"
+              class="flex items-center gap-1.5 rounded-md px-2 py-1 hover:bg-surface hover:text-fg"
+              :class="{ 'bg-surface text-fg': open }"
+              title="This Roleplay's models and switches"
+              data-session-settings-button
+              @click="toggle"
             >
-              <input v-model="autoplay" type="checkbox" data-autoplay />
-              Speak replies
-            </label>
+              <Icon name="sliders" />
+              <span v-if="featureOn('images')" class="max-w-40 truncate max-md:hidden">{{ labelOf(session.settings.imageModel) }}</span>
+            </button>
+          </template>
+          <div class="flex flex-col gap-3">
+            <h2 class="font-semibold">This Roleplay</h2>
             <TextModelPicker
+              class="justify-between"
               :session="session"
               @switched="onSwitched"
               @failed="(text) => (notice = { kind: 'error', text })"
             />
-            <template v-if="featureOn('images')">
-              <ImageModelPicker
-                :session="session"
-                @switched="onSwitched"
-                @failed="(text) => (notice = { kind: 'error', text })"
-              />
-              <ModelComparison
-                :session-id="session.id"
-                :frames="session.frames"
-                :image-model="session.settings.imageModel"
-                :thumbnail="session.thumbnail"
-                :caption="(f) => f.reply.actions"
-                @changed="reload(); refreshJobs()"
-                one-style
-              />
-              <label
-                class="flex cursor-pointer items-center gap-1.5 text-muted"
-                title="Render each new reply's picture as its Image Prompt is written (slower)"
-              >
-                <input v-model="renderReplies" type="checkbox" data-render-replies />
-                Render replies
-              </label>
-            </template>
+            <ImageModelPicker
+              v-if="featureOn('images')"
+              class="flex-wrap justify-between"
+              :session="session"
+              @switched="onSwitched"
+              @failed="(text) => (notice = { kind: 'error', text })"
+            />
+            <div class="flex flex-col gap-3 border-t border-line pt-3">
+              <ToggleSwitch v-if="featureOn('images')" v-model="renderReplies" title="Render replies" data-render-replies>
+                Each new Reply's picture is rendered as its Image Prompt is written (slower)
+              </ToggleSwitch>
+              <ToggleSwitch v-if="featureOn('voices')" v-model="autoplay" title="Speak replies" data-autoplay>
+                Each new Reply is spoken in {{ characterName }}'s voice
+              </ToggleSwitch>
+              <ToggleSwitch v-if="musicOn" v-model="scoreAsYouPlay" title="Score as you play" data-score-as-you-play>
+                Each new Reply's music is directed: it continues, changes or falls silent
+              </ToggleSwitch>
+            </div>
           </div>
-        </div>
+        </PopMenu>
+      </SessionBar>
 
-        <ol
-          ref="transcript"
-          @scroll.passive="onTranscriptScroll"
-          class="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto rounded-lg border border-line bg-surface p-4"
-          data-transcript
-        >
-          <template v-for="frame in shownFrames" :key="frame.index">
-            <li v-if="frame.message !== null" class="flex flex-col items-end gap-1" data-message>
-              <span class="text-xs text-muted">{{ personaName }}</span>
-              <p class="max-w-prose whitespace-pre-wrap rounded-lg bg-fg px-3 py-2 text-canvas">
-                {{ frame.message }}
-              </p>
-            </li>
-            <li
-              class="-mx-2 rounded-lg p-2 transition-shadow duration-500"
-              :class="{
-                'render-sweep': runningOn(frame.index) && runningOn(frame.index)!.kind !== 'voice',
-                'ring-2 ring-info': highlighted === frame.index,
-                'bg-canvas ring-1 ring-line': selectedIndex === frame.index && highlighted !== frame.index,
-              }"
-              :aria-current="selectedIndex === frame.index"
-              @click="pick(frame.index)"
-              :data-rendering="runningOn(frame.index)?.phase === 'queued'
-              ? 'queued'
-              : undefined"
-              :data-frame-index="frame.index"
-              data-reply
+      <FrameStrip v-if="begun" :tiles="tiles" :picked="selectedIndex" @pick="pickFromStrip">
+        <template #end>
+          <span
+            v-if="replying"
+            class="grid h-12 w-20 shrink-0 place-items-center rounded border border-dashed border-line text-muted render-sweep [@media(max-height:640px)]:h-6 [@media(max-height:640px)]:w-9"
+            title="The next exchange, being written"
+            data-strip-next
+          ><Icon name="spinner" class="animate-spin" /></span>
+        </template>
+      </FrameStrip>
+
+      <div class="flex min-h-0 flex-1">
+        <!-- The story: the picked Frame's picture on the left (above, on a phone), the exchanges
+             beside it, the text box at its foot. -->
+        <main class="story relative flex min-w-0 flex-1 flex-col">
+          <!-- On a wide screen the picture grows to the height there is and the story keeps a
+               book-page width beside it, the two centred rather than drifting to either edge. -->
+          <div
+            class="mx-auto flex min-h-0 w-full flex-1 flex-col gap-3 px-4 pt-3 pb-24 lg:pb-[6.5rem] lg:max-w-[calc((100dvh-14rem)*var(--ratio)+44rem)] lg:flex-row lg:gap-6 lg:px-6 lg:pt-4"
+            :style="{ '--ratio': pictureRatio }"
+          >
+            <section
+              v-if="begun && selectedFrame && (featureOn('images') || selectedPicture || frameJobs(selectedFrame.index).length)"
+              class="flex shrink-0 justify-center lg:min-w-0 lg:flex-1 lg:items-start lg:justify-end lg:[container-type:size]"
+              data-picture-side
             >
-              <!-- Text on the left, its picture beside it on wide windows (stacked on narrow ones):
-                   three fifths of the row, between its old size and double it. -->
-              <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:gap-5">
-                <div class="flex min-w-0 flex-1 flex-col gap-1.5">
-                  <span class="text-xs text-muted">{{ characterName }}</span>
-                  <p
-                    v-if="frame.reply.internal"
-                    class="max-w-prose text-sm italic text-muted"
-                    data-internal
+              <div
+                class="group/picture relative max-w-full rounded-xl"
+                :class="{
+                  'w-full lg:max-w-[48rem]': !selectedPicture && !previewOn(selectedFrame.index),
+                  'aspect-(--ratio) w-[min(100%,calc(38dvh*var(--ratio)))] lg:w-[min(100cqw,calc(100cqh*var(--ratio)))]': selectedPicture || previewOn(selectedFrame.index),
+                  'render-sweep': runningOn(selectedFrame.index) && runningOn(selectedFrame.index)!.kind !== 'voice' }"
+                :data-rendering="runningOn(selectedFrame.index)?.phase === 'queued' ? 'queued' : undefined"
+                data-picture
+              >
+                <template v-if="selectedPicture || previewOn(selectedFrame.index)">
+                  <button
+                    type="button"
+                    class="block h-full w-full"
+                    :title="`Look closer at ${frameName(selectedFrame.index)}'s picture`"
+                    data-picture-image
+                    @click="selectedPicture && (viewing = selectedFrame.index)"
                   >
-                    {{ frame.reply.internal }}
-                    <button
-                      v-if="canSpeak(frame, 'thought') && canListen(frame.thoughtSpeech)"
-                      type="button"
-                      class="ml-1 inline-flex align-[-0.1em] text-muted not-italic hover:text-fg disabled:opacity-50"
-                      :class="{ 'text-info': playing === partKey(frame.index, 'thought') }"
-                      :disabled="hasJob(frame.index, 'speak-thought')"
-                      :aria-label="playing === partKey(frame.index, 'thought') ? 'Stop' : 'Listen'"
-                      :title="frame.thoughtSpeech && !spokenNow(frame.thoughtSpeech)
-                        ? 'Spoken in an earlier voice: Listen speaks it again'
-                        : `Hear ${characterName} think it, whispered`"
-                      data-listen-thought
-                      @click.stop="listen(frame.index, 'thought')"
-                    >
-                      <Icon :name="playing === partKey(frame.index, 'thought') ? 'stop' : 'speaker'" />
-                    </button>
-                    <UndirectedNote
-                      v-if="spokenNow(frame.thoughtSpeech) && frame.thoughtSpeech?.undirected"
-                      class="ml-1.5 not-italic"
-                      :reason="frame.thoughtSpeech.undirected"
-                      :busy="hasJob(frame.index, 'speak-thought')"
-                      @again="queue('speak-thought', frame.index)"
+                    <img
+                      v-if="selectedPicture"
+                      :src="imageUrl(session.id, selectedPicture.image)"
+                      :alt="`Picture of ${frameName(selectedFrame.index)}`"
+                      class="block h-full w-full rounded-xl object-cover"
+                      :class="{ 'opacity-50': changed(selectedFrame) }"
+                      @load="onPictureLoad"
                     />
-                  </p>
-                  <p v-if="frame.reply.actions" class="max-w-prose italic" data-actions>
-                    {{ frame.reply.actions }}
-                  </p>
-                  <p
-                    v-if="frame.reply.dialogue"
-                    class="max-w-prose text-lg"
-                    data-dialogue
-                  >
-                    “{{ frame.reply.dialogue }}”
-                    <button
-                      v-if="canSpeak(frame) && canListen(frame.speech)"
-                      type="button"
-                      class="ml-1 inline-flex align-[-0.1em] text-muted not-italic hover:text-fg disabled:opacity-50"
-                      :class="{ 'text-info': playing === partKey(frame.index, 'dialogue') }"
-                      :disabled="hasJob(frame.index, 'speak')"
-                      :aria-label="playing === partKey(frame.index, 'dialogue') ? 'Stop' : 'Listen'"
-                      :title="frame.speech && !spokenNow(frame.speech)
-                        ? 'Spoken in an earlier voice: Listen speaks it again'
-                        : `Hear ${characterName} say it`"
-                      data-listen
-                      @click.stop="listen(frame.index)"
-                    >
-                      <Icon :name="playing === partKey(frame.index, 'dialogue') ? 'stop' : 'speaker'" />
-                    </button>
-                    <span
-                      v-if="spokenNow(frame.speech) && deliveryWords(frame.speech)"
-                      class="ml-1 text-xs text-muted"
-                      data-delivery
-                    >· {{ deliveryWords(frame.speech) }}</span>
-                    <UndirectedNote
-                      v-if="spokenNow(frame.speech) && frame.speech?.undirected"
-                      class="ml-1.5 text-xs"
-                      :reason="frame.speech.undirected"
-                      :busy="hasJob(frame.index, 'speak')"
-                      @again="queue('speak', frame.index)"
+                    <!-- The picture forming: over the old one, or alone for a first render. -->
+                    <img
+                      v-if="previewOn(selectedFrame.index)"
+                      :src="shownPreview!.src"
+                      alt=""
+                      class="block h-full w-full rounded-xl object-cover transition-opacity duration-500"
+                      :class="{ 'absolute inset-0': selectedPicture }"
+                      :style="{ opacity: selectedPicture ? shownPreview!.opacity : 1 }"
+                      data-preview
                     />
-                  </p>
-                </div>
-                <button
-                  v-if="pictureOf(frame) || previewOn(frame.index)"
-                  type="button"
-                  class="relative block w-full max-w-2xl shrink-0 lg:w-3/5 lg:min-w-72 lg:max-w-[40rem] xl:min-w-80"
-                  title="Look closer"
-                  data-picture-image
-                  @click="pictureOf(frame) && (viewing = frame.index)"
-                >
-                  <img
-                    v-if="pictureOf(frame)"
-                    :src="imageUrl(session.id, pictureOf(frame)!.image)"
-                    :alt="`Picture of ${frameName(frame.index)}`"
-                    class="w-full rounded-md"
-                    :class="{ 'opacity-50': changed(frame) }"
-                    @load="onPictureLoad"
-                  />
-                  <!-- The picture forming: over the old one, or alone for a first render. -->
-                  <img
-                    v-if="previewOn(frame.index)"
-                    :src="shownPreview!.src"
-                    alt=""
-                    class="w-full rounded-md transition-opacity duration-500"
-                    :class="{ 'absolute inset-0 h-full object-cover': pictureOf(frame) }"
-                    :style="{ opacity: pictureOf(frame) ? shownPreview!.opacity : 1 }"
-                    data-preview
-                  />
-                  <span
-                    v-if="changed(frame)"
-                    class="absolute left-2 top-2 rounded-full bg-black/70 px-2 py-0.5 text-white"
-                  >Changed since render · {{ byOf(pictureOf(frame)!) }}</span>
-                  <EditedChip :picture="pictureOf(frame)" class="absolute right-2 top-2" />
+                  </button>
                   <ClipOverlay
-                    v-if="playingClip && playingClip.index === frame.index"
+                    v-if="playingClip && playingClip.index === selectedFrame.index"
+                    class="rounded-xl"
                     :src="imageUrl(session.id, playingClip.clip.file)"
                     :clip="playingClip.clip"
                     @close="playingClip = null"
                     @click.stop
                   />
-                </button>
+                  <PictureToolbar
+                    v-if="selectedPicture"
+                    :picture="selectedPicture"
+                    :has-job="(kind) => hasJob(selectedFrame!.index, kind)"
+                    :working="workingOf(selectedFrame.index)"
+                    :can-render="!!selectedFrame.prompt && !selectedFrame.blocked"
+                    :clips="clipsMenu"
+                    @queue="(kind) => queueSaved(kind, selectedFrame!.index)"
+                    @view="(kind) => (open3d = { index: selectedFrame!.index, kind })"
+                    @edit="startEdit(selectedFrame!.index)"
+                    @expand="viewing = selectedFrame.index"
+                  >
+                    <template #clip>
+                      <p v-if="!ownPicture" class="text-xs text-muted" data-clips-other-model>
+                        Clips are made of a picture by {{ labelOf(session.settings.imageModel) }}: render this Frame with it first.
+                      </p>
+                      <FrameClips
+                        v-else
+                        :session-id="session.id"
+                        :index="selectedFrame.index"
+                        :clips="(pickedEdit(selectedPicture) ?? selectedPicture).clips"
+                        :next-pictured="!!session.frames[selectedFrame.index + 1] && !!pictureOf(session.frames[selectedFrame.index + 1])"
+                        :next-name="frameName(selectedFrame.index + 1)"
+                        :making="clipsMaking(jobsFor(selectedFrame.index), selectedPicture.imageModel)"
+                        :playing="playingClip?.index === selectedFrame.index ? playingClip.clip.file : undefined"
+                        @make="(order) => queueClip(selectedFrame!.index, order)"
+                        @play="(clip) => playClip(selectedFrame!.index, clip)"
+                        @stop="playingClip = null"
+                      />
+                    </template>
+                  </PictureToolbar>
+                </template>
+                <!-- Not pictured: a frame in the picture's place, to picture it from. -->
+                <div
+                  v-else
+                  class="grid aspect-[4/3] w-full max-h-[38dvh] place-items-center rounded-xl border-2 border-dashed border-line p-4 text-center lg:max-h-[100cqh]"
+                  data-not-pictured
+                >
+                  <div class="flex flex-col items-center gap-2">
+                    <span class="text-muted">
+                      <template v-if="workingOn(selectedFrame.index)">{{ frameName(selectedFrame.index) }} is being pictured</template>
+                      <template v-else-if="selectedFrame.blocked">{{ frameName(selectedFrame.index) }}'s Image Prompt crosses a limit ({{ selectedFrame.blocked }})</template>
+                      <template v-else>{{ frameName(selectedFrame.index) }} isn't pictured</template>
+                    </span>
+                    <button
+                      v-if="canPicture"
+                      type="button"
+                      class="rounded-lg bg-fg px-3 py-1.5 text-sm font-medium text-canvas"
+                      :title="selectedFrame.prompt ? 'Render its Image Prompt' : 'The Art Agent writes its Image Prompt, then it\'s rendered'"
+                      data-picture-it
+                      @click="pictureIt(selectedFrame.index)"
+                    >
+                      Picture it
+                    </button>
+                  </div>
+                </div>
+                <!-- Over the picture's top: which Frame, its work, and its Image Prompt. -->
+                <div class="pointer-events-none absolute inset-x-2 top-2 z-20 flex items-start gap-1.5">
+                  <span
+                    v-if="selectedPicture"
+                    class="pointer-events-auto shrink-0 rounded-md bg-black/55 px-2 py-0.5 text-xs text-white backdrop-blur-sm"
+                    data-picture-label
+                  >
+                    {{ frameName(selectedFrame.index) }} of {{ shownFrames.length }}<template v-if="changed(selectedFrame)"> · changed since render {{ byOf(selectedPicture) }}</template>
+                  </span>
+                  <span class="pointer-events-auto min-w-0">
+                    <FrameJobsLine
+                      :jobs="frameJobs(selectedFrame.index)"
+                      :describe="describeJob"
+                      @retry="retry"
+                      @drop="drop"
+                      @cancel-all="dropAll"
+                    />
+                  </span>
+                  <EditedChip :picture="selectedPicture" class="pointer-events-auto ml-auto" />
+                  <button
+                    type="button"
+                    class="pointer-events-auto flex shrink-0 items-center gap-1 rounded-md px-2 py-0.5 text-xs backdrop-blur-sm"
+                    :class="[
+                      selectedPicture ? 'bg-black/55 text-white hover:bg-black/75' : 'border border-line bg-surface text-muted hover:text-fg',
+                      { 'ml-auto': !selectedPicture?.edits?.length },
+                    ]"
+                    title="The Image Prompt, who's shown, and the timings"
+                    data-open-prompt
+                    @click="toggleDrawer('prompt')"
+                  >
+                    <Icon name="prompt" />Prompt
+                  </button>
+                </div>
               </div>
-            </li>
-          </template>
+            </section>
 
-          <!-- The Cast is written: review it, then begin. -->
-          <li v-if="reviewing && !busy" class="m-auto flex max-w-md flex-col items-center gap-3 text-center" data-review>
-            <p class="text-muted">
-              Review the Cast on the right: who {{ characterName }} is, who you play, and where it
-              starts. Edit anything you like, then begin; {{ characterName }} speaks first.
-            </p>
-            <div class="flex gap-2">
-              <button
-                type="button"
-                class="rounded-lg bg-fg px-4 py-2 font-medium text-canvas"
-                data-begin
-                @click="begin"
-              >
-                Begin
-              </button>
-              <button
-                type="button"
-                class="rounded-lg border border-line px-3 py-2 text-sm"
-                title="Write a new Cast from the Brief"
-                data-rewrite
-                @click="rewriteCast"
-              >
-                Rewrite Cast
-              </button>
-            </div>
-          </li>
+            <ol
+              ref="transcript"
+              @scroll.passive="onTranscriptScroll"
+              @wheel.passive="playerScrolls"
+              @touchmove.passive="playerScrolls"
+              @pointerdown="playerScrolls"
+              @keydown="playerScrolls"
+              class="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pb-2"
+              :class="{ 'lg:w-[38rem] lg:flex-none': begun && selectedFrame && (featureOn('images') || selectedPicture) }"
+              data-transcript
+            >
+              <template v-for="frame in shownFrames" :key="frame.index">
+                <li
+                  class="flex cursor-pointer flex-col gap-2 rounded-xl px-3 py-2 transition-shadow duration-500"
+                  :class="{
+                    'ring-2 ring-info': highlighted === frame.index,
+                    'bg-surface': selectedIndex === frame.index && highlighted !== frame.index && begun,
+                  }"
+                  :aria-current="selectedIndex === frame.index"
+                  :data-exchange="frame.index"
+                  @click="pick(frame.index)"
+                >
+                  <div v-if="frame.message !== null" class="flex flex-col items-end gap-1" data-message>
+                    <span class="text-xs text-muted">{{ personaName }}</span>
+                    <p class="max-w-prose whitespace-pre-wrap rounded-2xl rounded-br-md bg-fg px-3 py-2 text-canvas">
+                      {{ frame.message }}
+                    </p>
+                  </div>
+                  <div :data-frame-index="frame.index" data-reply>
+                    <div class="flex min-w-0 flex-1 flex-col gap-1.5">
+                      <span class="text-xs text-muted">{{ characterName }}</span>
+                      <p
+                        v-if="frame.reply.internal"
+                        class="max-w-prose text-sm italic text-muted"
+                        data-internal
+                      >
+                        {{ frame.reply.internal }}
+                        <button
+                          v-if="canSpeak(frame, 'thought') && canListen(frame.thoughtSpeech)"
+                          type="button"
+                          class="ml-1 inline-flex align-[-0.1em] text-muted not-italic hover:text-fg disabled:opacity-50"
+                          :class="{ 'text-info': playing === partKey(frame.index, 'thought') }"
+                          :disabled="hasJob(frame.index, 'speak-thought')"
+                          :aria-label="playing === partKey(frame.index, 'thought') ? 'Stop' : 'Listen'"
+                          :title="frame.thoughtSpeech && !spokenNow(frame.thoughtSpeech)
+                            ? 'Spoken in an earlier voice: Listen speaks it again'
+                            : `Hear ${characterName} think it, whispered`"
+                          data-listen-thought
+                          @click.stop="listen(frame.index, 'thought')"
+                        >
+                          <Icon :name="playing === partKey(frame.index, 'thought') ? 'stop' : 'speaker'" />
+                        </button>
+                        <UndirectedNote
+                          v-if="spokenNow(frame.thoughtSpeech) && frame.thoughtSpeech?.undirected"
+                          class="ml-1.5 not-italic"
+                          :reason="frame.thoughtSpeech.undirected"
+                          :busy="hasJob(frame.index, 'speak-thought')"
+                          @again="queue('speak-thought', frame.index)"
+                        />
+                      </p>
+                      <p v-if="frame.reply.actions" class="max-w-prose italic" data-actions>
+                        {{ frame.reply.actions }}
+                      </p>
+                      <p
+                        v-if="frame.reply.dialogue"
+                        class="max-w-prose text-lg"
+                        data-dialogue
+                      >
+                        “{{ frame.reply.dialogue }}”
+                        <button
+                          v-if="canSpeak(frame) && canListen(frame.speech)"
+                          type="button"
+                          class="ml-1 inline-flex align-[-0.1em] text-muted not-italic hover:text-fg disabled:opacity-50"
+                          :class="{ 'text-info': playing === partKey(frame.index, 'dialogue') }"
+                          :disabled="hasJob(frame.index, 'speak')"
+                          :aria-label="playing === partKey(frame.index, 'dialogue') ? 'Stop' : 'Listen'"
+                          :title="frame.speech && !spokenNow(frame.speech)
+                            ? 'Spoken in an earlier voice: Listen speaks it again'
+                            : `Hear ${characterName} say it`"
+                          data-listen
+                          @click.stop="listen(frame.index)"
+                        >
+                          <Icon :name="playing === partKey(frame.index, 'dialogue') ? 'stop' : 'speaker'" />
+                        </button>
+                        <span
+                          v-if="spokenNow(frame.speech) && deliveryWords(frame.speech)"
+                          class="ml-1 text-xs text-muted"
+                          data-delivery
+                        >· {{ deliveryWords(frame.speech) }}</span>
+                        <UndirectedNote
+                          v-if="spokenNow(frame.speech) && frame.speech?.undirected"
+                          class="ml-1.5 text-xs"
+                          :reason="frame.speech.undirected"
+                          :busy="hasJob(frame.index, 'speak')"
+                          @again="queue('speak', frame.index)"
+                        />
+                      </p>
+                    </div>
+                    <FrameJobs
+                      class="mt-1.5 max-w-sm text-xs"
+                      :jobs="speakJobs(frame.index)"
+                      :describe="describeJob"
+                      @retry="retry"
+                      @drop="drop"
+                    />
+                  </div>
+                </li>
+              </template>
 
-          <!-- The exchange in progress. -->
-          <template v-if="pending && replying">
-            <li v-if="pending.message" class="flex flex-col items-end gap-1" data-pending-message>
-              <span class="text-xs text-muted">{{ personaName }}</span>
-              <p class="max-w-prose whitespace-pre-wrap rounded-lg bg-fg/80 px-3 py-2 text-canvas">
-                {{ pending.message }}
-              </p>
-            </li>
-            <li class="flex flex-col gap-1.5 opacity-80" data-pending-reply>
-              <span class="text-xs text-muted">{{ characterName }}</span>
-              <p v-if="pending.reply.internal" class="max-w-prose text-sm italic text-muted">
-                {{ pending.reply.internal }}
-              </p>
-              <p v-if="pending.reply.actions" class="max-w-prose italic">{{ pending.reply.actions }}</p>
-              <p v-if="pending.reply.dialogue" class="max-w-prose text-lg">“{{ pending.reply.dialogue }}”</p>
-              <p
-                v-if="!pending.reply.actions && !pending.reply.dialogue"
-                class="max-w-prose whitespace-pre-wrap text-sm text-muted"
-              >
-                <span class="animate-pulse">…</span>
-                <template v-if="pending.thinking"> {{ pending.thinking }}</template>
-              </p>
-            </li>
-          </template>
-        </ol>
+              <!-- The Cast is written: review it, then begin. -->
+              <li v-if="reviewing && !busy" class="m-auto flex max-w-md flex-col items-center gap-3 text-center" data-review>
+                <p class="text-muted">
+                  Review the Cast in Look & Cast: who {{ characterName }} is, who you play, and where it
+                  starts. Edit anything you like, then begin; {{ characterName }} speaks first.
+                </p>
+                <div class="flex gap-2">
+                  <button
+                    type="button"
+                    class="rounded-lg bg-fg px-4 py-2 font-medium text-canvas"
+                    data-begin
+                    @click="begin"
+                  >
+                    Begin
+                  </button>
+                  <button
+                    type="button"
+                    class="rounded-lg border border-line px-3 py-2 text-sm"
+                    title="Write a new Cast from the Brief"
+                    data-rewrite
+                    @click="rewriteCast"
+                  >
+                    Rewrite Cast
+                  </button>
+                </div>
+              </li>
 
-        <div class="flex shrink-0 flex-col gap-2">
-          <div
-            class="flex rounded-lg"
-            :class="{ 'render-sweep': (replying || suggesting) && !pending?.cancelling }"
-            :data-writing="replying ? '' : undefined"
-            :data-suggesting="suggesting ? '' : undefined"
-          >
-            <ComposeBox
+              <!-- The exchange in progress. -->
+              <template v-if="pending && replying">
+                <li v-if="pending.message" class="flex flex-col items-end gap-1" data-pending-message>
+                  <span class="text-xs text-muted">{{ personaName }}</span>
+                  <p class="max-w-prose whitespace-pre-wrap rounded-lg bg-fg/80 px-3 py-2 text-canvas">
+                    {{ pending.message }}
+                  </p>
+                </li>
+                <li class="flex flex-col gap-1.5 opacity-80" data-pending-reply>
+                  <span class="text-xs text-muted">{{ characterName }}</span>
+                  <p v-if="pending.reply.internal" class="max-w-prose text-sm italic text-muted">
+                    {{ pending.reply.internal }}
+                  </p>
+                  <p v-if="pending.reply.actions" class="max-w-prose italic">{{ pending.reply.actions }}</p>
+                  <p v-if="pending.reply.dialogue" class="max-w-prose text-lg">“{{ pending.reply.dialogue }}”</p>
+                  <p
+                    v-if="!pending.reply.actions && !pending.reply.dialogue"
+                    class="max-w-prose whitespace-pre-wrap text-sm text-muted"
+                  >
+                    <span class="animate-pulse">…</span>
+                    <template v-if="pending.thinking"> {{ pending.thinking }}</template>
+                  </p>
+                </li>
+              </template>
+            </ol>
+          </div>
+
+          <!-- Floating over the foot of the story: the picture and the story end just above it at
+               one line, and as it grows it rises over them. -->
+          <div class="pointer-events-none absolute inset-x-0 bottom-0 z-30 mx-auto w-full max-w-3xl px-3 pb-4 *:pointer-events-auto lg:pb-6">
+            <FloatingBox
               v-model="draft"
-              :placeholder="`What ${personaName} says or does… (Enter to send, Shift+Enter for a new line)`"
-              :disabled="!begun || busy"
-              @send="send"
-            />
-          </div>
-          <div class="flex items-center gap-2">
-            <button
-              v-if="!busy"
-              type="button"
-              class="rounded-lg bg-fg px-4 py-2 font-medium text-canvas disabled:opacity-50"
-              :disabled="!draft.trim() || !begun"
-              @click="send"
-            >
-              Send
-            </button>
-            <button
-              v-if="!busy"
-              type="button"
-              class="rounded-lg border border-line px-3 py-2 text-sm disabled:opacity-50"
+              :placeholder="`What ${personaName} says or does…`"
               :disabled="!begun"
-              :title="draft.trim()
-                ? `Write ${personaName}'s message out from what you've typed`
-                : `Suggest what ${personaName} might say or do next`"
-              data-suggest
-              @click="suggest"
+              :busy="busy"
+              :detached="pending?.detached"
+              :cancelling="pending?.cancelling"
+              :working="replying || suggesting"
+              :data-writing="replying ? '' : undefined"
+              :data-suggesting="suggesting ? '' : undefined"
+              @send="send"
+              @cancel="cancel"
             >
-              Suggest
-            </button>
-            <button
-              v-else-if="!pending?.detached"
-              type="button"
-              class="rounded-lg border border-danger px-4 py-2 font-medium text-danger disabled:opacity-50"
-              :disabled="pending?.cancelling"
-              @click="cancel"
-            >
-              Cancel
-            </button>
-            <RenderAllButton
-              v-if="featureOn('images') && begun"
-              :count="toRender.length"
-              title="Queue a render of every Frame not rendered yet by this Image Model, or changed since"
-              @render="renderAll"
-            />
-            <button
-              v-if="musicOn && begun"
-              type="button"
-              class="rounded-lg border border-line px-3 py-2 text-sm disabled:opacity-50"
-              :disabled="scoringAll"
-              title="Score every Frame's music again with hindsight, as a film is scored once it's cut: its Cues are replaced"
-              data-score-all
-              @click="scoreAll"
-            >
-              {{ scoringAll ? 'Scoring…' : 'Score the Roleplay' }}
-            </button>
-            <PutBackOffer
-              v-if="offered && !notice"
-              :offered="offered"
-              @use="usePutBackText"
-              @dismiss="dismissPutBack"
-            />
-            <p
-              v-else
-              class="min-w-0 flex-1 truncate text-sm"
-              :class="notice?.kind === 'declined' ? 'text-warn' : 'text-danger'"
-              :title="notice?.text"
-              role="alert"
-            >
-              {{ notice?.text }}
-            </p>
-            <!-- Left of Undo, which stays at the far end: it opens a new Session from the selected Frame. -->
-            <button
-              v-if="begun && !busy && selectedFrame"
-              type="button"
-              class="rounded-lg border border-line px-3 py-2 text-sm disabled:opacity-50"
-              :disabled="!selectedFrame.prompt || !!selectedFrame.blocked || copying"
-              :title="!selectedFrame.prompt
-              ? `Picture ${frameName(selectedFrame.index)} first: a Chain starts from its Image Prompt`
-              : selectedFrame.blocked
-              ? `Picture ${frameName(selectedFrame.index)} again first: it crosses a limit`
-              : `A new Chain opening on ${frameName(selectedFrame.index)}'s Image Prompt and picture, to carry on from it by Actions. This Roleplay stays as it is.`"
-              data-continue-chain
-              @click="continueAsChain(selectedFrame.index)"
-            >
-              {{ copying ? 'Making…' : `Chain from ${frameName(selectedFrame.index)}` }}
-            </button>
-            <button
-              type="button"
-              class="rounded-lg border border-line px-3 py-2 text-sm disabled:opacity-50"
-              :disabled="!canUndo"
-              :title="selectedOlder
-                ? `Undo every exchange after ${frameName(selectedIndex!)}, back to it, and put the next message back in the box`
-                : 'Undo the latest exchange and put your message back in the box'"
-              data-undo
-              @click="undo"
-            >
-              {{ selectedOlder ? `Undo to ${frameName(selectedIndex!)}` : 'Undo' }}
-            </button>
+              <template #notice>
+                <PutBackOffer
+                  v-if="offered && !notice"
+                  :offered="offered"
+                  @use="usePutBackText"
+                  @dismiss="dismissPutBack"
+                />
+                <p
+                  v-else-if="notice"
+                  class="truncate px-2 text-sm"
+                  :class="notice.kind === 'declined' ? 'text-warn' : 'text-danger'"
+                  :title="notice.text"
+                  role="alert"
+                >
+                  {{ notice.text }}
+                </p>
+              </template>
+              <template v-if="!busy">
+                <button
+                  type="button"
+                  class="flex items-center gap-1 rounded-lg px-2 py-1.5 hover:bg-canvas hover:text-fg disabled:opacity-50"
+                  :disabled="!begun"
+                  :title="draft.trim()
+                    ? `Write ${personaName}'s message out from what you've typed`
+                    : `Suggest what ${personaName} might say or do next`"
+                  data-suggest
+                  @click="suggest"
+                >
+                  <Icon name="spark" /><span class="max-sm:hidden">Suggest</span>
+                </button>
+                <button
+                  type="button"
+                  class="flex items-center gap-1 rounded-lg px-2 py-1.5 hover:bg-canvas hover:text-fg disabled:opacity-50"
+                  :disabled="!canUndo"
+                  :title="selectedOlder
+                    ? `Undo every exchange after ${frameName(selectedIndex!)}, back to it, and put the next message back in the box`
+                    : 'Undo the latest exchange and put your message back in the box'"
+                  :aria-label="selectedOlder ? `Undo to ${frameName(selectedIndex!)}` : 'Undo'"
+                  data-undo
+                  @click="undo"
+                >
+                  <Icon name="undo" /><span v-if="selectedOlder" class="max-sm:hidden">to {{ frameName(selectedIndex!) }}</span>
+                </button>
+                <PopMenu v-if="begun" align="end" side="above" panel-class="w-72 p-1 text-sm" data-more-menu>
+                  <template #button="{ open, toggle }">
+                    <button
+                      type="button"
+                      class="rounded-lg px-2 py-1.5 hover:bg-canvas hover:text-fg"
+                      :class="{ 'bg-canvas text-fg': open }"
+                      title="More"
+                      aria-label="More"
+                      data-more
+                      @click="toggle"
+                    >
+                      <Icon name="dots" />
+                    </button>
+                  </template>
+                  <template #default="{ close }">
+                    <button
+                      v-if="featureOn('images')"
+                      type="button"
+                      class="menu-row"
+                      :disabled="!toRender.length"
+                      title="Queue a render of every Frame not rendered yet by this Image Model, or changed since"
+                      data-render-all
+                      @click="renderAll(); close()"
+                    >
+                      Render all<span v-if="toRender.length" class="ml-auto text-muted tabular-nums" data-render-count>{{ toRender.length }}</span>
+                    </button>
+                    <button
+                      v-if="musicOn"
+                      type="button"
+                      class="menu-row"
+                      :disabled="scoringAll"
+                      title="Score every Frame's music again with hindsight, as a film is scored once it's cut: its Cues are replaced"
+                      data-score-all
+                      @click="scoreAll(); close()"
+                    >
+                      {{ scoringAll ? 'Scoring…' : 'Score the Roleplay' }}
+                    </button>
+                    <button
+                      v-if="selectedFrame"
+                      type="button"
+                      class="menu-row"
+                      :disabled="!selectedFrame.prompt || !!selectedFrame.blocked || copying"
+                      :title="!selectedFrame.prompt
+                      ? `Picture ${frameName(selectedFrame.index)} first: a Chain starts from its Image Prompt`
+                      : selectedFrame.blocked
+                      ? `Picture ${frameName(selectedFrame.index)} again first: it crosses a limit`
+                      : `A new Chain opening on ${frameName(selectedFrame.index)}'s Image Prompt and picture, to carry on from it by Actions. This Roleplay stays as it is.`"
+                      data-continue-chain
+                      @click="continueAsChain(selectedFrame.index); close()"
+                    >
+                      {{ copying ? 'Making…' : `Chain from ${frameName(selectedFrame.index)}` }}
+                    </button>
+                  </template>
+                </PopMenu>
+              </template>
+            </FloatingBox>
           </div>
-        </div>
-      </main>
+        </main>
 
-      <aside class="flex w-80 flex-col border-l border-line xl:w-auto xl:flex-row" data-side-panel>
-        <!-- Narrow windows: one panel at a time. From xl up: the detail beside the others. -->
-        <div class="xl:hidden">
-          <PanelTabs
-            v-model="narrowTab"
-            :tabs="[
-              { id: 'frames', label: 'Frames' },
-              { id: 'queue', ...queueTab(jobs) },
-              { id: 'frame', label: 'Frame' },
-              { id: 'cast', label: 'Look & Cast' },
-              ...(musicOn ? [{ id: 'music' as const, label: 'Music' }] : []),
-            ]"
-          />
-        </div>
-
-        <section
-          class="min-h-0 flex-1 flex-col xl:w-72 xl:flex-none xl:border-r xl:border-line"
-          :class="panel === 'detail' ? 'hidden xl:flex' : 'flex'"
-          data-list-panel
-        >
-          <div class="hidden xl:block">
-            <PanelTabs
-              v-model="listTab"
-              :tabs="[{ id: 'frames', label: 'Frames' }, { id: 'queue', ...queueTab(jobs) }]"
-            />
-          </div>
-          <!-- The queue: what's running, queued and failed; click one to go to its Frame. -->
-          <section v-if="listTab === 'queue'" class="min-h-0 flex-1 overflow-y-auto" data-queue>
-            <JobQueue
-              :jobs="jobs"
-              empty="Nothing queued. Picture, Render and Upscale in a Frame's tab add work here, to run while you carry on."
-              :describe="describeJob"
-              @go="goToFrame"
-              @music="goToMusic"
-              @clip="openClip"
-              @edit="showEdit"
-              @retry="retry"
-              @drop="drop"
-              @cancel-all="cancelAll"
-              @dismiss-finished="dismissFinished"
-            />
-          </section>
-
-          <ol v-else class="min-h-0 flex-1 overflow-y-auto" data-frames-list>
-            <li v-for="frame in shownFrames" :key="frame.index">
-              <FrameListItem
-                :thumb="pictureOf(frame) && imageUrl(session.id, pictureOf(frame)!.image)"
-                :number="frame.index + 1"
-                :current="selectedIndex === frame.index"
-                :dimmed="changed(frame)"
-                :clips="clipCount(pictureOf(frame), session.settings.imageModel)"
-                data-frame
-                @click="pickFromList(frame.index)"
-              >
-                <span class="line-clamp-2 font-medium">{{ frame.message ?? 'Opening' }}</span>
-                <span class="line-clamp-3 text-muted">{{ frame.reply.actions }}</span>
-              </FrameListItem>
-            </li>
-          </ol>
-        </section>
-
-        <section
-          class="min-h-0 flex-1 flex-col xl:w-[28rem] xl:flex-none"
-          :class="panel === 'detail' ? 'flex' : 'hidden xl:flex'"
-          data-detail-panel
-        >
-          <div class="hidden xl:block">
-            <PanelTabs
-              v-model="detail"
-              :tabs="[
-                { id: 'frame', label: selectedFrame ? frameName(selectedFrame.index) : 'Frame' },
-                { id: 'cast', label: 'Look & Cast' },
-                ...(musicOn ? [{ id: 'music' as const, label: 'Music' }] : []),
-              ]"
-            />
-          </div>
-          <div v-show="detail === 'frame'" class="min-h-0 flex-1 overflow-y-auto p-4 text-sm" data-frame-panel>
-            <FrameTab
-              v-if="selectedFrame"
-              :picture="pictureOf(selectedFrame)"
-              :has-job="(kind) => hasJob(selectedFrame!.index, kind)"
-              :can-render="(!!selectedFrame.prompt && !selectedFrame.blocked) || hasJob(selectedFrame.index, 'picture')"
-              @queue="(kind) => queueSaved(kind, selectedFrame!.index)"
-              @view="(kind) => (open3d = { index: selectedFrame!.index, kind })"
-              @edit="startEdit(selectedFrame!.index)"
-              :clips="{
-                sessionId: session.id,
-                index: selectedFrame.index,
-                nextPictured: !!session.frames[selectedFrame.index + 1] && !!pictureOf(session.frames[selectedFrame.index + 1]),
-                nextName: frameName(selectedFrame.index + 1),
-                imageModel: session.settings.imageModel,
-                making: clipsMaking(jobsFor(selectedFrame.index), pictureOf(selectedFrame)?.imageModel),
-                playing: playingClip?.index === selectedFrame.index ? playingClip.clip.file : undefined,
-              }"
-              @clip="(order) => queueClip(selectedFrame!.index, order)"
-              @play="(clip) => playClip(selectedFrame!.index, clip)"
-              @stop="playingClip = null"
-            >
-              <div class="flex flex-col gap-2">
+        <SessionDrawer v-model="drawer" :tabs="drawerTabs">
+          <template #prompt>
+            <div class="p-4 text-sm" data-frame-panel>
+              <div v-if="selectedFrame" class="flex flex-col gap-2">
                 <h3 class="text-base font-semibold">{{ frameName(selectedFrame.index) }}</h3>
                 <!-- Under the heading, as on a Chain's and a Storyboard's, whether the prompt is folded. -->
                 <p class="text-xs text-muted" data-reply-timings>
@@ -1205,12 +1358,6 @@ const lookSavingText = computed(() =>
                   v-if="selectedFrame.prompt"
                   :names="selectedFrame.shown ?? []"
                   :shown="selectedFrame.shown ?? []"
-                />
-                <FrameJobs
-                  :jobs="frameJobs(selectedFrame.index)"
-                  :describe="describeJob"
-                  @retry="retry"
-                  @drop="drop"
                 />
                 <FoldedPrompt :preview="selectedFrame.prompt">
                   <template v-if="selectedFrame.blocked" #note>
@@ -1239,242 +1386,246 @@ const lookSavingText = computed(() =>
                   </p>
                 </FoldedPrompt>
               </div>
-            </FrameTab>
-            <p v-else class="text-muted">The Frames appear once the scene begins.</p>
-          </div>
-        <div v-show="detail === 'cast'" class="min-h-0 flex-1 overflow-y-auto" data-cast-panel>
-        <!-- Its border sweeps while the Cast is written, or written again. -->
-        <section
-          class="rounded-md border-b border-line p-4 text-sm"
-          :class="{ 'render-sweep': writingCast }"
-          data-cast
-        >
-        <details
-          class="group/castsection"
-          :open="!castCollapsed"
-          data-collapsible="roleplay.cast"
-          @toggle="castCollapsed = !($event.target as HTMLDetailsElement).open"
-        >
-        <summary class="flex cursor-pointer select-none items-baseline gap-1.5 hover:text-fg">
-          <span class="shrink-0 text-muted transition-transform group-open/castsection:rotate-90">›</span>
-          <h2 class="shrink-0 text-base font-semibold">Cast</h2>
-          <span class="min-w-0 truncate text-muted">· for {{ characterName }}'s replies</span>
-          <RestartButton
-            v-if="begun && castDraft"
-            :disabled="busy"
-            title="Begin the scene again: every exchange is deleted, the opening too, and the Cast, Look and voice stay"
-            @restart="restart"
-          />
-        </summary>
-        <p v-if="!castDraft" class="mt-3 text-muted">
-          <span v-if="busy" class="animate-pulse">Writing the Cast from your Brief…</span>
-          <template v-else>No Cast yet.</template>
-        </p>
-        <form
-          v-else
-          class="mt-3 flex flex-col gap-3"
-          data-cast-form
-          @submit.prevent="flushCast"
-          @focusout="onCastFocusout"
-        >
-          <!-- min-w-0: a fieldset is otherwise as wide as its widest unwrappable line, which a
-               collapsed field's one-line preview is -->
-          <details
-            v-for="sec in castSections"
-            :key="sec.id"
-            class="group/cast min-w-0"
-            :open="!sectionCollapsed[sec.id].value"
-            :data-collapsible="`roleplay.cast.${sec.id}`"
-            :data-cast-start="sec.locked || undefined"
-            @toggle="sectionCollapsed[sec.id].value = !($event.target as HTMLDetailsElement).open"
-          >
-            <summary class="mb-1 flex cursor-pointer select-none items-baseline gap-1.5 hover:text-fg">
-              <span class="shrink-0 text-muted transition-transform group-open/cast:rotate-90">›</span>
-              <h3 class="shrink-0 font-medium">{{ sec.title }}</h3>
-              <span v-if="sectionCollapsed[sec.id].value" class="min-w-0 truncate text-muted">· {{ sec.preview }}</span>
+              <p v-if="!selectedFrame" class="text-muted">The Frames appear once the scene begins.</p>
+            </div>
+          </template>
+          <template #cast>
+            <div data-cast-panel>
+            <!-- Its border sweeps while the Cast is written, or written again. -->
+            <section
+              class="rounded-md border-b border-line p-4 text-sm"
+              :class="{ 'render-sweep': writingCast }"
+              data-cast
+            >
+            <details
+              class="group/castsection"
+              :open="!castCollapsed"
+              data-collapsible="roleplay.cast"
+              @toggle="castCollapsed = !($event.target as HTMLDetailsElement).open"
+            >
+            <summary class="flex cursor-pointer select-none items-baseline gap-1.5 hover:text-fg">
+              <span class="shrink-0 text-muted transition-transform group-open/castsection:rotate-90">›</span>
+              <h2 class="shrink-0 text-base font-semibold">Cast</h2>
+              <span class="min-w-0 truncate text-muted">· for {{ characterName }}'s replies</span>
+              <RestartButton
+                v-if="begun && castDraft"
+                :disabled="busy"
+                title="Begin the scene again: every exchange is deleted, the opening too, and the Cast, Look and voice stay"
+                @restart="restart"
+              />
             </summary>
-            <template v-for="(part, i) in sec.parts" :key="i">
+            <p v-if="!castDraft" class="mt-3 text-muted">
+              <span v-if="busy" class="animate-pulse">Writing the Cast from your Brief…</span>
+              <template v-else>No Cast yet.</template>
+            </p>
+            <form
+              v-else
+              class="mt-3 flex flex-col gap-3"
+              data-cast-form
+              @submit.prevent="flushCast"
+              @focusout="onCastFocusout"
+            >
+              <!-- min-w-0: a fieldset is otherwise as wide as its widest unwrappable line, which a
+                   collapsed field's one-line preview is -->
               <details
-                v-if="part.id"
-                class="group/part mb-2 min-w-0"
-                :open="!sectionCollapsed[part.id].value"
-                :data-collapsible="`roleplay.cast.${part.id}`"
-                @toggle="sectionCollapsed[part.id!].value = !($event.target as HTMLDetailsElement).open"
+                v-for="sec in castSections"
+                :key="sec.id"
+                class="group/cast min-w-0"
+                :open="!sectionCollapsed[sec.id].value"
+                :data-collapsible="`roleplay.cast.${sec.id}`"
+                :data-cast-start="sec.locked || undefined"
+                @toggle="sectionCollapsed[sec.id].value = !($event.target as HTMLDetailsElement).open"
               >
-                <summary class="mb-1 flex cursor-pointer select-none items-baseline gap-1.5 text-xs hover:text-fg">
-                  <span class="shrink-0 text-muted transition-transform group-open/part:rotate-90">›</span>
-                  <h4 class="shrink-0 font-medium">{{ part.title }}</h4>
-                  <span v-if="sectionCollapsed[part.id].value" class="min-w-0 truncate text-muted">· {{ part.preview }}</span>
+                <summary class="mb-1 flex cursor-pointer select-none items-baseline gap-1.5 hover:text-fg">
+                  <span class="shrink-0 text-muted transition-transform group-open/cast:rotate-90">›</span>
+                  <h3 class="shrink-0 font-medium">{{ sec.title }}</h3>
+                  <span v-if="sectionCollapsed[sec.id].value" class="min-w-0 truncate text-muted">· {{ sec.preview }}</span>
                 </summary>
-                <fieldset class="flex min-w-0 flex-col gap-2">
-                  <CastFieldBox
-                    v-for="f in part.fields"
-                    :id="`${f.group}.${f.key}`"
-                    :key="f.key"
-                    :label="f.label"
-                    :long="f.long"
-                    :value="fieldValue(f)"
-                    :disabled="busy || sec.locked"
-                    always-open
-                    @input="setField(f, $event)"
-                  />
-                </fieldset>
-              </details>
-              <fieldset v-else class="mb-3 flex min-w-0 flex-col gap-2">
-                <template v-for="f in part.fields" :key="f.key">
-                  <!-- A blank box stays as added; the server drops it once saved. -->
-                  <ItemList
-                    v-if="isList(f.group)"
-                    :model-value="castDraft![f.group] ?? []"
-                    :label="f.label"
-                    :noun="LIST_NOUNS[f.group]"
-                    :disabled="busy"
-                    :data-cast-list="f.group"
-                    @update:model-value="castDraft![f.group] = $event"
-                    @removed="flushCast"
-                  />
-                  <CastFieldBox
-                    v-else
-                    :id="`${f.group}.${f.key}`"
-                    :label="f.label"
-                    :long="f.long"
-                    :value="fieldValue(f)"
-                    :disabled="busy || sec.locked"
-                    @input="setField(f, $event)"
-                  />
+                <template v-for="(part, i) in sec.parts" :key="i">
+                  <details
+                    v-if="part.id"
+                    class="group/part mb-2 min-w-0"
+                    :open="!sectionCollapsed[part.id].value"
+                    :data-collapsible="`roleplay.cast.${part.id}`"
+                    @toggle="sectionCollapsed[part.id!].value = !($event.target as HTMLDetailsElement).open"
+                  >
+                    <summary class="mb-1 flex cursor-pointer select-none items-baseline gap-1.5 text-xs hover:text-fg">
+                      <span class="shrink-0 text-muted transition-transform group-open/part:rotate-90">›</span>
+                      <h4 class="shrink-0 font-medium">{{ part.title }}</h4>
+                      <span v-if="sectionCollapsed[part.id].value" class="min-w-0 truncate text-muted">· {{ part.preview }}</span>
+                    </summary>
+                    <fieldset class="flex min-w-0 flex-col gap-2">
+                      <CastFieldBox
+                        v-for="f in part.fields"
+                        :id="`${f.group}.${f.key}`"
+                        :key="f.key"
+                        :label="f.label"
+                        :long="f.long"
+                        :value="fieldValue(f)"
+                        :disabled="busy || sec.locked"
+                        always-open
+                        @input="setField(f, $event)"
+                      />
+                    </fieldset>
+                  </details>
+                  <fieldset v-else class="mb-3 flex min-w-0 flex-col gap-2">
+                    <template v-for="f in part.fields" :key="f.key">
+                      <!-- A blank box stays as added; the server drops it once saved. -->
+                      <ItemList
+                        v-if="isList(f.group)"
+                        :model-value="castDraft![f.group] ?? []"
+                        :label="f.label"
+                        :noun="LIST_NOUNS[f.group]"
+                        :disabled="busy"
+                        :data-cast-list="f.group"
+                        @update:model-value="castDraft![f.group] = $event"
+                        @removed="flushCast"
+                      />
+                      <CastFieldBox
+                        v-else
+                        :id="`${f.group}.${f.key}`"
+                        :label="f.label"
+                        :long="f.long"
+                        :value="fieldValue(f)"
+                        :disabled="busy || sec.locked"
+                        @input="setField(f, $event)"
+                      />
+                    </template>
+                  </fieldset>
                 </template>
-              </fieldset>
-            </template>
-          </details>
-          <SaveStatus
-            :status="castStatus"
-            :can-revert="castCanRevert"
-            :disabled="busy"
-            :saved-text="begun ? 'applies from the next reply' : undefined"
-            @revert="revertCast"
-          />
-        </form>
-        </details>
-        </section>
-        <LookForm
-          v-if="currentLook"
-          ref="lookForm"
-          class="border-b border-line p-4 text-sm"
-          :look="currentLook"
-          :save="saveLookDraft"
-          :line="line"
-          id-prefix="roleplay.look"
-          every="for every picture"
-          :kept="[characterName, personaName]"
-          :disabled="busy"
-          :saving-text="lookSavingText"
-        />
-        <!-- Its border sweeps while the voice is designed, slower while that waits its turn. -->
-        <form
-          v-if="cast && featureOn('voices')"
-          class="flex flex-col gap-2 border-b border-line p-4 text-sm"
-          :class="{ 'render-sweep': designingVoice }"
-          :data-rendering="voiceJob?.status === 'queued' ? 'queued' : undefined"
-          data-voice
-          @submit.prevent="saveVoiceDraft"
-        >
-          <details
-            class="group/voice min-w-0"
-            :open="!voiceCollapsed"
-            data-collapsible="roleplay.voice"
-            @toggle="voiceCollapsed = !($event.target as HTMLDetailsElement).open"
-          >
-          <summary class="flex cursor-pointer select-none items-baseline gap-1.5 hover:text-fg">
-            <span class="shrink-0 text-muted transition-transform group-open/voice:rotate-90">›</span>
-            <h2 class="shrink-0 text-base font-semibold">Voice</h2>
-            <span class="min-w-0 truncate text-muted">
-              · {{ voiceCollapsed && voiceDraft.trim() ? voiceDraft : `how ${characterName} sounds aloud` }}
-            </span>
-          </summary>
-          <div class="mt-3 flex flex-col gap-2">
-          <!-- The section's only field, so it doesn't collapse on its own as the Cast's do. -->
-          <textarea
-            ref="voiceTextarea"
-            v-model="voiceDraft"
-            rows="1"
-            aria-label="Voice description"
-            class="w-full resize-none overflow-hidden rounded border border-line bg-surface p-2 text-sm text-fg"
-            :placeholder="`Described from the Cast the first time ${characterName} speaks, or describe it yourself: age, pitch, texture, manner.`"
-            :disabled="!!voiceJob && voiceJob.status !== 'failed'"
-            data-field="voice.description"
-          />
-          <p v-if="voiceJob" class="flex items-center gap-2 text-xs" data-voice-job>
-            <span
-              :class="{
-                'animate-pulse text-info': voiceJob.status === 'running',
-                'text-muted': voiceJob.status === 'queued',
-                'text-danger': voiceJob.status === 'failed',
-              }"
-            >{{ jobStatus(voiceJob, describeJob) }}</span>
-            <button
-              type="button"
-              class="text-danger underline-offset-2 hover:underline"
-              @click="drop(voiceJob)"
+              </details>
+              <SaveStatus
+                :status="castStatus"
+                :can-revert="castCanRevert"
+                :disabled="busy"
+                :saved-text="begun ? 'applies from the next reply' : undefined"
+                @revert="revertCast"
+              />
+            </form>
+            </details>
+            </section>
+            <LookForm
+              v-if="currentLook"
+              ref="lookForm"
+              class="border-b border-line p-4 text-sm"
+              :look="currentLook"
+              :save="saveLookDraft"
+              :line="line"
+              id-prefix="roleplay.look"
+              every="for every picture"
+              :kept="[characterName, personaName]"
+              :disabled="busy"
+              :saving-text="lookSavingText"
+            />
+            <!-- Its border sweeps while the voice is designed, slower while that waits its turn. -->
+            <form
+              v-if="cast && featureOn('voices')"
+              class="flex flex-col gap-2 border-b border-line p-4 text-sm"
+              :class="{ 'render-sweep': designingVoice }"
+              :data-rendering="voiceJob?.status === 'queued' ? 'queued' : undefined"
+              data-voice
+              @submit.prevent="saveVoiceDraft"
             >
-              {{ voiceJob.status === 'failed' ? 'Dismiss' : 'Cancel' }}
-            </button>
-          </p>
-          <div class="flex flex-wrap items-center gap-2">
-            <button
-              v-if="voiceChanged"
-              type="submit"
-              class="rounded border border-line px-3 py-1 text-xs disabled:opacity-50"
-              :disabled="!!voiceJob && voiceJob.status !== 'failed'"
-            >
-              Save and design
-            </button>
-            <button
-              v-if="session.voice?.ref"
-              type="button"
-              class="rounded border border-line px-3 py-1 text-xs"
-              :class="{ 'text-info': playing === 'voice' }"
-              data-play-voice
-              @click="playing === 'voice' ? stopAudio() : play(session.voice.ref, 'voice')"
-            >
-              {{ playing === 'voice' ? 'Stop' : 'Play voice' }}
-            </button>
-            <button
-              v-if="!voiceChanged"
-              type="button"
-              class="rounded border border-line px-3 py-1 text-xs disabled:opacity-50"
-              :disabled="!!voiceJob && voiceJob.status !== 'failed'"
-              :title="session.voice?.ref
-                ? 'Design the voice again from this description: lines already spoken keep the old one'
-                : 'Design the voice now'"
-              data-new-take
-              @click="queue('voice', 0)"
-            >
-              {{ session.voice?.ref ? 'New take' : 'Design voice' }}
-            </button>
-          </div>
-          </div>
-          </details>
-        </form>
-        </div>
-        <div v-if="musicOn" v-show="detail === 'music'" class="min-h-0 flex-1 overflow-y-auto" data-music-panel>
-          <MusicTab
-            ref="musicTab"
-            :session="session"
-            :line="line"
-            :disabled="busy"
-            :frame="selectedFrame ?? null"
-            :directing="!!selectedFrame && hasJob(selectedFrame.index, 'direct')"
-            :track-position="music.position.value"
-            :making-music="jobs.filter((j) => (j.kind === 'music' || j.kind === 'steer') && isOpen(j)).map((j) => j.frameIndex)"
-            @saved="(s) => (session = s)"
-            @direct="(index) => queueSaved('direct', index)"
-            @take="(index) => queueSaved('music', index)"
-            @steered="(index) => queueSaved('steer', index)"
-            @go="goToMusic"
-          />
-        </div>
-        </section>
-      </aside>
+              <details
+                class="group/voice min-w-0"
+                :open="!voiceCollapsed"
+                data-collapsible="roleplay.voice"
+                @toggle="voiceCollapsed = !($event.target as HTMLDetailsElement).open"
+              >
+              <summary class="flex cursor-pointer select-none items-baseline gap-1.5 hover:text-fg">
+                <span class="shrink-0 text-muted transition-transform group-open/voice:rotate-90">›</span>
+                <h2 class="shrink-0 text-base font-semibold">Voice</h2>
+                <span class="min-w-0 truncate text-muted">
+                  · {{ voiceCollapsed && voiceDraft.trim() ? voiceDraft : `how ${characterName} sounds aloud` }}
+                </span>
+              </summary>
+              <div class="mt-3 flex flex-col gap-2">
+              <!-- The section's only field, so it doesn't collapse on its own as the Cast's do. -->
+              <textarea
+                ref="voiceTextarea"
+                v-model="voiceDraft"
+                rows="1"
+                aria-label="Voice description"
+                class="w-full resize-none overflow-hidden rounded border border-line bg-surface p-2 text-sm text-fg"
+                :placeholder="`Described from the Cast the first time ${characterName} speaks, or describe it yourself: age, pitch, texture, manner.`"
+                :disabled="!!voiceJob && voiceJob.status !== 'failed'"
+                data-field="voice.description"
+              />
+              <p v-if="voiceJob" class="flex items-center gap-2 text-xs" data-voice-job>
+                <span
+                  :class="{
+                    'animate-pulse text-info': voiceJob.status === 'running',
+                    'text-muted': voiceJob.status === 'queued',
+                    'text-danger': voiceJob.status === 'failed',
+                  }"
+                >{{ jobStatus(voiceJob, describeJob) }}</span>
+                <button
+                  type="button"
+                  class="text-danger underline-offset-2 hover:underline"
+                  @click="drop(voiceJob)"
+                >
+                  {{ voiceJob.status === 'failed' ? 'Dismiss' : 'Cancel' }}
+                </button>
+              </p>
+              <div class="flex flex-wrap items-center gap-2">
+                <button
+                  v-if="voiceChanged"
+                  type="submit"
+                  class="rounded border border-line px-3 py-1 text-xs disabled:opacity-50"
+                  :disabled="!!voiceJob && voiceJob.status !== 'failed'"
+                >
+                  Save and design
+                </button>
+                <button
+                  v-if="session.voice?.ref"
+                  type="button"
+                  class="rounded border border-line px-3 py-1 text-xs"
+                  :class="{ 'text-info': playing === 'voice' }"
+                  data-play-voice
+                  @click="playing === 'voice' ? stopAudio() : play(session.voice.ref, 'voice')"
+                >
+                  {{ playing === 'voice' ? 'Stop' : 'Play voice' }}
+                </button>
+                <button
+                  v-if="!voiceChanged"
+                  type="button"
+                  class="rounded border border-line px-3 py-1 text-xs disabled:opacity-50"
+                  :disabled="!!voiceJob && voiceJob.status !== 'failed'"
+                  :title="session.voice?.ref
+                    ? 'Design the voice again from this description: lines already spoken keep the old one'
+                    : 'Design the voice now'"
+                  data-new-take
+                  @click="queue('voice', 0)"
+                >
+                  {{ session.voice?.ref ? 'New take' : 'Design voice' }}
+                </button>
+              </div>
+              </div>
+              </details>
+            </form>
+            </div>
+          </template>
+          <template v-if="musicOn" #music>
+            <div data-music-panel>
+              <MusicTab
+                ref="musicTab"
+                :session="session"
+                :line="line"
+                :disabled="busy"
+                :frame="selectedFrame ?? null"
+                :directing="!!selectedFrame && hasJob(selectedFrame.index, 'direct')"
+                :track-position="music.position.value"
+                :making-music="jobs.filter((j) => (j.kind === 'music' || j.kind === 'steer') && isOpen(j)).map((j) => j.frameIndex)"
+                @saved="(s) => (session = s)"
+                @direct="(index) => queueSaved('direct', index)"
+                @take="(index) => queueSaved('music', index)"
+                @steered="(index) => queueSaved('steer', index)"
+                @go="goToMusic"
+              />
+            </div>
+          </template>
+        </SessionDrawer>
+      </div>
     </template>
 
     <p v-else class="p-6 text-muted">Loading…</p>

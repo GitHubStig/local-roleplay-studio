@@ -130,8 +130,16 @@ function held() {
   return { call, emit: (e: roleplay.RoleplayEvent) => emit(e), finish: () => finish() }
 }
 
-const buttonNamed = (wrapper: Awaited<ReturnType<typeof mountIt>>['wrapper'], name: string) =>
+type Wrapper = Awaited<ReturnType<typeof mountIt>>['wrapper']
+const buttonNamed = (wrapper: Wrapper, name: string) =>
   wrapper.findAll('button').find((b) => b.text() === name)!
+
+/** Opens a menu (`PopMenu`) by its button, unless it's open already. */
+async function openMenu(wrapper: Wrapper, button: string) {
+  if (!wrapper.find(button).element.closest('[data-open]')) {
+    await wrapper.find(button).trigger('click')
+  }
+}
 
 beforeEach(() => {
   localStorage.clear()
@@ -367,11 +375,11 @@ describe('RoleplayView', () => {
       roleplaySession([frame(0, null, 'Get inside.')]),
     )
     const { wrapper } = await mountIt()
-    await buttonNamed(wrapper, 'Undo').trigger('click')
+    await wrapper.find('[data-undo]').trigger('click')
     await flushPromises()
     expect(roleplay.undoExchanges).toHaveBeenCalledWith('r1', 1, 1)
     expect((wrapper.find('textarea').element as HTMLTextAreaElement).value).toBe('Thanks.')
-    expect(buttonNamed(wrapper, 'Undo').attributes('disabled')).toBeDefined()
+    expect(wrapper.find('[data-undo]').attributes('disabled')).toBeDefined()
   })
 
   it('keeps a half-typed message on Undo, offering the undone one beside it', async () => {
@@ -404,20 +412,22 @@ describe('RoleplayView', () => {
     )
     vi.mocked(ask).mockReset().mockResolvedValueOnce(false).mockResolvedValueOnce(true)
     const { wrapper } = await mountIt()
-    expect(wrapper.find('[data-undo]').text()).toBe('Undo')
+    const undo = () => wrapper.find('[data-undo]')
+    expect(undo().attributes('aria-label')).toBe('Undo')
     await wrapper.findAll('[data-reply]')[0].trigger('click')
-    expect(wrapper.find('[data-undo]').text()).toBe('Undo to Frame 1')
-    await wrapper.find('[data-undo]').trigger('click')
+    expect(undo().attributes('aria-label')).toBe('Undo to Frame 1')
+    expect(undo().text()).toBe('to Frame 1')
+    await undo().trigger('click')
     await flushPromises()
     expect(vi.mocked(ask).mock.calls[0][0]).toContain('Undo Frames 2–3, back to Frame 1')
     expect(roleplay.undoExchanges).not.toHaveBeenCalled()
-    await wrapper.find('[data-undo]').trigger('click')
+    await undo().trigger('click')
     await flushPromises()
     expect(roleplay.undoExchanges).toHaveBeenCalledWith('r1', 1, 2)
     expect((wrapper.find('textarea').element as HTMLTextAreaElement).value).toBe('Thanks.')
   })
 
-  it('selects the newest Frame, or the one picked in the list or the conversation', async () => {
+  it('selects the newest Frame, or the one picked in the strip or the story', async () => {
     const pictured = {
       ...frame(1, 'Thanks.', 'Sit.'),
       prompt: 'Elena by the stove.',
@@ -427,19 +437,27 @@ describe('RoleplayView', () => {
       roleplaySession([frame(0, null, 'Get inside.'), pictured, frame(2, 'Tea?', 'Sure.')]),
     )
     const { wrapper } = await mountIt()
-    const tab = () => wrapper.find('[data-detail-panel] [data-tab="frame"]').text()
+    const prompt = () => wrapper.find('[data-drawer-button="prompt"]').text()
     const current = () =>
-      wrapper.findAll('[data-reply]').map((r) => r.attributes('aria-current') === 'true')
-    expect(tab()).toBe('Frame 3')
+      wrapper.findAll('[data-exchange]').map((r) => r.attributes('aria-current') === 'true')
+    const tile = () => wrapper.findAll('[data-tile]').map((t) => t.attributes('aria-current'))
+    expect(prompt()).toBe("Frame 3's prompt")
     expect(current()).toEqual([false, false, true])
+    expect(tile()).toEqual(['false', 'false', 'true'])
+    // The newest isn't pictured: its picture's place says so.
+    expect(wrapper.find('[data-not-pictured]').text()).toContain("Frame 3 isn't pictured")
 
-    await wrapper.findAll('[data-frames-list] [data-frame]')[1].trigger('click')
-    expect(tab()).toBe('Frame 2')
+    await wrapper.findAll('[data-tile]')[1].trigger('click')
+    expect(prompt()).toBe("Frame 2's prompt")
     expect(current()).toEqual([false, true, false])
-    // Everything about the Frame is in its tab; the conversation keeps only Listen.
+    expect(wrapper.find('[data-picture-image] img').attributes('src')).toBe(
+      '/api/sessions/r1/images/frame-1.png',
+    )
+    // The Image Prompt is in the drawer, the picture's buttons on the picture; the story keeps
+    // only Listen.
     const panel = wrapper.find('[data-frame-panel]')
     expect(panel.find('[data-picture-button]').text()).toBe('Write again')
-    expect(panel.find('[data-render-button]').text()).toBe('Re-render')
+    expect(wrapper.find('[data-picture-toolbar] [data-render-button]').text()).toBe('Re-render')
     expect(panel.text()).toContain('Elena by the stove.')
     const transcript = wrapper.find('[data-transcript]')
     expect(transcript.find('[data-picture-button]').exists()).toBe(false)
@@ -449,7 +467,28 @@ describe('RoleplayView', () => {
     expect(api.queueJob).toHaveBeenCalledWith('r1', 'picture', 1)
 
     await wrapper.findAll('[data-reply]')[0].trigger('click')
-    expect(tab()).toBe('Frame 1')
+    expect(prompt()).toBe("Frame 1's prompt")
+  })
+
+  it("pictures a Frame from its picture's empty place: its Image Prompt first, then the render", async () => {
+    vi.mocked(api.getSession).mockResolvedValue(
+      roleplaySession([frame(0, null, 'Get inside.'), {
+        ...frame(1, 'Hi.', 'Sit.'),
+        prompt: 'Elena.',
+      }]),
+    )
+    const { wrapper } = await mountIt()
+    await wrapper.find('[data-picture-it]').trigger('click')
+    await flushPromises()
+    expect(vi.mocked(api.queueJob).mock.calls.map((c) => `${c[1]} ${c[2]}`)).toEqual(['render 1'])
+    vi.mocked(api.queueJob).mockClear()
+    await wrapper.findAll('[data-tile]')[0].trigger('click')
+    await wrapper.find('[data-picture-it]').trigger('click')
+    await flushPromises()
+    expect(vi.mocked(api.queueJob).mock.calls.map((c) => `${c[1]} ${c[2]}`)).toEqual([
+      'picture 0',
+      'render 0',
+    ])
   })
 
   it('makes a Chain from the selected Frame once pictured, and opens it', async () => {
@@ -469,19 +508,17 @@ describe('RoleplayView', () => {
     vi.mocked(api.chainFromFrame).mockResolvedValue({ id: 'ch', kind: 'chain' } as never)
     const { wrapper, router } = await mountIt()
     const button = () => wrapper.find('[data-continue-chain]')
-    // Beside Undo, not in the Frame's tab; the newest isn't pictured yet, so nothing to start from.
+    // In the text box's ⋯ menu, not in the drawer; the newest isn't pictured yet, so nothing to
+    // start from.
     expect(wrapper.find('[data-frame-panel] [data-continue-chain]').exists()).toBe(false)
+    await openMenu(wrapper, '[data-more]')
     expect(button().attributes('disabled')).toBeDefined()
     expect(button().attributes('title')).toContain('Picture Frame 3 first')
     expect(button().text()).toBe('Chain from Frame 3')
-    // Undo stays at the far end, this just before it.
-    const bar = [...button().element.parentElement!.children].slice(-2)
-    expect(bar.map((b) => b.hasAttribute('data-undo'))).toEqual([false, true])
-    expect(wrapper.find('[data-undo]').text()).toBe('Undo')
-    const frames = () => wrapper.findAll('[data-frames-list] [data-frame]')
-    await frames()[0].trigger('click')
+    const tiles = () => wrapper.findAll('[data-tile]')
+    await tiles()[0].trigger('click')
     expect(button().attributes('disabled')).toBeDefined()
-    await frames()[1].trigger('click')
+    await tiles()[1].trigger('click')
     expect(button().text()).toBe('Chain from Frame 2')
     await button().trigger('click')
     await flushPromises()
@@ -489,15 +526,26 @@ describe('RoleplayView', () => {
     expect(router.currentRoute.value.path).toBe('/sessions/ch')
   })
 
-  it('opens the side panel on the Look and Cast for review, and on the Frame once begun', async () => {
+  it('opens the drawer on the Look and Cast for review, and closes it once the scene begins', async () => {
     vi.mocked(api.getSession).mockResolvedValue({ ...roleplaySession(), cast })
-    const reviewing = (await mountIt()).wrapper
-    const selected = (w: typeof reviewing) =>
-      w.find('[data-detail-panel] [role="tab"][aria-selected="true"]').attributes('data-tab')
-    expect(selected(reviewing)).toBe('cast')
-    reviewing.unmount()
-    vi.mocked(api.getSession).mockResolvedValue(roleplaySession([frame(0, null, 'Get inside.')]))
-    expect(selected((await mountIt()).wrapper)).toBe('frame')
+    const { wrapper } = await mountIt()
+    const drawer = () => wrapper.find('[data-drawer]')
+    expect(drawer().attributes('data-drawer-tab')).toBe('cast')
+    expect(drawer().isVisible()).toBe(true)
+    const opened = roleplaySession([frame(0, null, 'Get inside.')])
+    vi.mocked(roleplay.beginRoleplay).mockImplementation((_id, _after, onEvent) => {
+      onEvent({ type: 'replied', frame: opened.frames[0], session: opened })
+      return Promise.resolve()
+    })
+    await wrapper.find('[data-begin]').trigger('click')
+    await flushPromises()
+    expect(drawer().attributes('data-drawer-tab')).toBeUndefined()
+    // Asked for again, it opens where it's asked, and the same button closes it.
+    await wrapper.find('[data-open-prompt]').trigger('click')
+    expect(drawer().attributes('data-drawer-tab')).toBe('prompt')
+    expect(localStorage.getItem('roleplay-drawer')).toBe('prompt')
+    await wrapper.find('[data-open-prompt]').trigger('click')
+    expect(drawer().attributes('data-drawer-tab')).toBeUndefined()
   })
 
   it('restarts back to the Cast once confirmed, to begin again', async () => {
@@ -778,12 +826,14 @@ describe('RoleplayView', () => {
         await flushPromises()
         return vi.mocked(roleplay.sendMessage).mock.calls[0][2]
       }
-      expect((wrapper.find('[data-render-replies]').element as HTMLInputElement).checked).toBe(
-        false,
-      )
+      // The switches are behind the Session's models and switches, in its bar.
+      await openMenu(wrapper, '[data-session-settings-button]')
+      expect((wrapper.find('[data-render-replies] input').element as HTMLInputElement).checked)
+        .toBe(false)
       expect(await send('Hello.')).toEqual({ speak: false, render: false, direct: false })
-      await wrapper.find('[data-render-replies]').setValue(true)
-      await wrapper.find('[data-autoplay]').setValue(true)
+      await openMenu(wrapper, '[data-session-settings-button]')
+      await wrapper.find('[data-render-replies] input').setValue(true)
+      await wrapper.find('[data-autoplay] input').setValue(true)
       expect(await send('Hello.')).toEqual({ speak: true, render: true, direct: false })
       // The page queues none of it itself (ADR 0031).
       expect(api.queueJob).not.toHaveBeenCalled()
@@ -811,7 +861,9 @@ describe('RoleplayView', () => {
         return Promise.resolve([...queued])
       })
       const { wrapper } = await mountIt()
-      expect(wrapper.find('[data-render-all]').text()).toBe('Render all (3)')
+      // In the text box's ⋯ menu, with how many it would render.
+      await openMenu(wrapper, '[data-more]')
+      expect(wrapper.find('[data-render-all] [data-render-count]').text()).toBe('3')
       await wrapper.find('[data-render-all]').trigger('click')
       await flushPromises()
       expect(vi.mocked(api.queueJob).mock.calls.map((c) => `${c[1]} ${c[2]}`)).toEqual([
@@ -820,15 +872,16 @@ describe('RoleplayView', () => {
         'render 2',
         'render 4',
       ])
+      await openMenu(wrapper, '[data-more]')
       expect(wrapper.find('[data-render-all]').attributes('disabled')).toBeDefined()
-
-      // Cancel all cancels it all at once.
-      vi.mocked(api.cancelAllJobs).mockResolvedValue([])
-      await wrapper.find('[data-tab=queue]').trigger('click')
-      await wrapper.find('[data-cancel-all]').trigger('click')
-      await flushPromises()
-      expect(api.cancelAllJobs).toHaveBeenCalledWith('r1')
-      expect(wrapper.find('[data-queue]').text()).toContain('Nothing queued')
+      // Each Frame's tile shows the work waiting on it.
+      expect(wrapper.findAll('[data-tile]').map((t) => t.attributes('data-rendering'))).toEqual([
+        undefined,
+        'queued',
+        'queued',
+        undefined,
+        'queued',
+      ])
     })
 
     it('sweeps every Frame with a job running, as jobs on different machines run at once', async () => {
@@ -836,12 +889,14 @@ describe('RoleplayView', () => {
         roleplaySession([frame(0, null, 'Get inside.'), frame(1, 'Thanks.', 'Sit.')]),
       )
       vi.mocked(api.listJobs).mockResolvedValue([
-        job({ id: 's', kind: 'speak', frameIndex: 0, status: 'running', phase: 'audio' }),
+        job({ id: 'u', kind: 'upscale', frameIndex: 0, status: 'running', phase: 'image' }),
         job({ id: 'r', kind: 'render', frameIndex: 1, status: 'running', phase: 'image' }),
       ])
       const { wrapper } = await mountIt()
-      const replies = wrapper.findAll('[data-reply]')
-      expect(replies.map((r) => r.classes().includes('render-sweep'))).toEqual([true, true])
+      const tiles = wrapper.findAll('[data-tile]')
+      expect(tiles.map((t) => t.classes().includes('render-sweep'))).toEqual([true, true])
+      // And the picture shown, the newest's.
+      expect(wrapper.find('[data-picture]').classes()).toContain('render-sweep')
     })
 
     it('cancels the render queued behind a picture with it', async () => {
@@ -850,6 +905,7 @@ describe('RoleplayView', () => {
       vi.mocked(api.listJobs).mockResolvedValue([picture, render])
       vi.mocked(api.cancelJob).mockResolvedValue([render])
       const { wrapper } = await mountIt()
+      await wrapper.find('[data-jobs-line]').trigger('click')
       const cancel = wrapper.find('[data-frame-job] [title="Cancel"]')
       await cancel.trigger('click')
       await flushPromises()
@@ -905,8 +961,8 @@ describe('RoleplayView', () => {
     await wrapper.find('[data-picture-button]').trigger('click')
     await flushPromises()
     expect(api.queueJob).toHaveBeenCalledWith('r1', 'picture', 0)
-    expect(wrapper.find('[data-reply]').classes()).toContain('render-sweep')
-    expect(wrapper.find('[data-frame-job]').text()).toContain(
+    expect(wrapper.find('[data-picture]').classes()).toContain('render-sweep')
+    expect(wrapper.find('[data-jobs-line]').text()).toContain(
       'Picture · Writing the Look, then picturing…',
     )
     expect(wrapper.find('[data-picture-button]').attributes('disabled')).toBeDefined()
@@ -930,7 +986,8 @@ describe('RoleplayView', () => {
     })
     await vi.advanceTimersByTimeAsync(1100)
     await flushPromises()
-    expect(wrapper.find('[data-reply]').classes()).not.toContain('render-sweep')
+    expect(wrapper.find('[data-picture]').classes()).not.toContain('render-sweep')
+    expect(wrapper.find('[data-jobs-line]').exists()).toBe(false)
     expect(wrapper.find('[data-image-prompt]').text()).toContain('Elena, 38. She waits.')
     expect(wrapper.findAll('[data-shown-name]').map((p) => p.text())).toEqual([
       'Elena',
@@ -954,7 +1011,7 @@ describe('RoleplayView', () => {
     expect(roleplay.saveLook).toHaveBeenCalledWith('r1', { ...look, style: 'Ink.' })
   })
 
-  it('shows rendering progress in place, and the picture beside its Reply once rendered', async () => {
+  it('shows rendering progress on the picture, and the picture once rendered', async () => {
     vi.useFakeTimers()
     const pictured = { ...frame(0, null, 'Get inside.'), prompt: 'Elena. Ink.' }
     vi.mocked(api.getSession).mockResolvedValue({ ...roleplaySession([pictured]), look })
@@ -963,10 +1020,18 @@ describe('RoleplayView', () => {
       job({ id: 'j2', kind: 'upscale' }),
     ])
     const { wrapper } = await mountIt()
+    // One line: what runs, how far along, and how many more wait; a bar along the top.
+    expect(wrapper.find('[data-jobs-line]').text()).toBe(
+      'Render · Rendering… step 2 of 4 · 1 waiting',
+    )
+    expect(wrapper.find('[data-jobs-progress] span').attributes('style')).toContain('width: 50%')
+    expect(wrapper.find('[data-not-pictured]').text()).toContain('Frame 1 is being pictured')
+    expect(wrapper.find('[data-picture-it]').exists()).toBe(false)
+    // Clicked, it lists each.
+    await wrapper.find('[data-jobs-line]').trigger('click')
     const lines = wrapper.findAll('[data-frame-job]').map((l) => l.text())
     expect(lines[0]).toContain('Render · Rendering… step 2 of 4')
     expect(lines[1]).toContain('Upscale · Queued')
-    expect(wrapper.find('[data-render-button]').attributes('disabled')).toBeDefined()
 
     vi.mocked(api.listJobs).mockResolvedValue([])
     vi.mocked(api.getSession).mockResolvedValue({
@@ -995,64 +1060,32 @@ describe('RoleplayView', () => {
     )
   })
 
-  it("takes a clip in the Queue tab to its Frame's Clip section", async () => {
-    const pictured = {
-      ...frame(1, 'Thanks.', 'Sit.'),
-      prompt: 'By the stove.',
-      pictures: [picture('frame-1.png')],
-    }
-    vi.mocked(api.getSession).mockResolvedValue(
-      roleplaySession([frame(0, null, 'Get inside.'), pictured, frame(2, 'Tea?', 'Sure.')]),
-    )
-    vi.mocked(api.listJobs).mockResolvedValue([
-      job({ kind: 'clip', frameIndex: 1, status: 'running' }),
-    ])
-    const scrolled: Element[] = []
-    vi.spyOn(Element.prototype, 'scrollIntoView').mockImplementation(function (this: Element) {
-      scrolled.push(this)
-    })
-    const { wrapper } = await mountIt()
-    expect(wrapper.find('[data-detail-panel] [data-tab="frame"]').text()).toBe('Frame 3')
-    await wrapper.find('[data-tab=queue]').trigger('click')
-    await wrapper.find('[data-queue-item] button').trigger('click')
-    await flushPromises()
-    expect(wrapper.find('[data-detail-panel] [data-tab="frame"]').text()).toBe('Frame 2')
-    expect(scrolled.at(-1)).toBe(wrapper.find('[data-frame-clips]').element)
-  })
-
-  it('lists jobs in the Queue tab: each goes to its Frame and can be cancelled', async () => {
+  it("shows a Frame's jobs on its picture: each can be cancelled, a failure retried", async () => {
     const failed = job({ id: 'j3', status: 'failed', error: "Frame 0 isn't pictured yet" })
-    vi.mocked(api.listJobs).mockResolvedValue([job({ status: 'running' }), failed])
-    vi.mocked(api.cancelJob).mockResolvedValue([failed])
+    vi.mocked(api.listJobs).mockResolvedValue([failed])
+    vi.mocked(api.retryJob).mockResolvedValue([job({ id: 'j3', status: 'running' })])
     const { wrapper } = await mountIt()
-    const tab = wrapper.find('[data-tab=queue]')
-    expect(tab.text()).toBe('Queue (1 failed)')
-    expect(tab.find('[data-tab-busy]').exists()).toBe(true)
-    await tab.trigger('click')
-    const items = wrapper.findAll('[data-queue-item]')
-    expect(items.map((i) => i.text())).toEqual([
-      expect.stringContaining('Picture · Frame 1'),
-      expect.stringContaining("Failed: Frame 0 isn't pictured yet"),
-    ])
-
-    const reply = wrapper.find('[data-frame-index="0"]').element as HTMLElement
-    reply.scrollIntoView = vi.fn()
-    await items[0].find('button').trigger('click')
-    expect(reply.scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'center' })
-    expect(wrapper.find('[data-frame-index="0"]').classes()).toContain('ring-2')
-
-    await items[0].findAll('button')[1].trigger('click')
-    await flushPromises()
-    expect(api.cancelJob).toHaveBeenCalledWith('r1', 'j1')
-    expect(wrapper.findAll('[data-queue-item]')).toHaveLength(1)
-
-    // A failed job can be retried, from the queue or from its Frame.
-    vi.mocked(api.retryJob).mockResolvedValue([job({ id: 'j3' })])
-    await wrapper.find('[data-queue-item] [data-retry]').trigger('click')
+    // A failure stays on the line with Retry.
+    expect(wrapper.find('[data-jobs-line]').text()).toBe(
+      "Picture failed: Frame 0 isn't pictured yet",
+    )
+    await wrapper.find('[data-jobs-line-retry]').trigger('click')
     await flushPromises()
     expect(api.retryJob).toHaveBeenCalledWith('r1', 'j3')
-    expect(wrapper.find('[data-queue-item]').text()).toContain('Queued')
-    expect(wrapper.find('[data-frame-job] [data-retry]').exists()).toBe(false)
+    expect(wrapper.find('[data-jobs-line-retry]').exists()).toBe(false)
+
+    // Several: Cancel all cancels this Frame's, one by one.
+    vi.mocked(api.listJobs).mockResolvedValue([
+      job({ status: 'running' }),
+      job({ id: 'j2', kind: 'render' }),
+    ])
+    vi.mocked(api.cancelJob).mockResolvedValue([])
+    const { wrapper: two } = await mountIt()
+    await two.find('[data-jobs-line]').trigger('click')
+    expect(two.findAll('[data-frame-job]')).toHaveLength(2)
+    await two.find('[data-cancel-frame-jobs]').trigger('click')
+    await flushPromises()
+    expect(vi.mocked(api.cancelJob).mock.calls.map((c) => c[1])).toEqual(['j1', 'j2'])
   })
 
   it("hides what's off: voices, pictures and SHARP here, keeping TripoSplat", async () => {
@@ -1070,6 +1103,8 @@ describe('RoleplayView', () => {
     }
     vi.mocked(api.getSession).mockResolvedValue(roleplaySession([rendered]))
     const { wrapper } = await mountIt()
+    await openMenu(wrapper, '[data-session-settings-button]')
+    await openMenu(wrapper, '[data-3d-menu-button]')
     for (
       const gone of [
         '[data-autoplay]',
@@ -1096,21 +1131,23 @@ describe('RoleplayView', () => {
     await useFeatures().refreshFeatures()
   })
 
-  it('has a Music tab only while Music is on in Settings', async () => {
-    const tabs = (wrapper: Awaited<ReturnType<typeof mountIt>>['wrapper']) =>
-      wrapper.findAll('[role="tab"], button').map((b) => b.text()).filter((t) => t === 'Music')
+  it('has Music only while Music is on in Settings', async () => {
     const off = await mountIt()
-    expect(tabs(off.wrapper)).toEqual([])
+    expect(off.wrapper.find('[data-open-music]').exists()).toBe(false)
+    expect(off.wrapper.find('[data-drawer-button="music"]').exists()).toBe(false)
     expect(off.wrapper.find('[data-music-panel]').exists()).toBe(false)
     off.wrapper.unmount()
 
     vi.mocked(api.getSettings).mockResolvedValue({ features: ALL_ON, music: true } as api.Settings)
     await useFeatures().refreshFeatures()
     const on = await mountIt()
-    // One in the narrow window's row of tabs, one beside the Frame and the Look and Cast.
-    expect(tabs(on.wrapper)).toEqual(['Music', 'Music'])
+    // A button in the Session's bar, opening the drawer at its tab.
+    await on.wrapper.find('[data-open-music]').trigger('click')
+    expect(on.wrapper.find('[data-drawer]').attributes('data-drawer-tab')).toBe('music')
+    expect(on.wrapper.find('[data-drawer-button="music"]').text()).toBe('Music')
     // Score as you play has each new Reply's music directed.
-    await on.wrapper.find('[data-score-as-you-play]').setValue(true)
+    await openMenu(on.wrapper, '[data-session-settings-button]')
+    await on.wrapper.find('[data-score-as-you-play] input').setValue(true)
     vi.mocked(roleplay.sendMessage).mockResolvedValue()
     await on.wrapper.find('textarea').setValue('Hello.')
     await buttonNamed(on.wrapper, 'Send').trigger('click')
@@ -1127,6 +1164,8 @@ describe('RoleplayView', () => {
 
   it('scores the whole Roleplay with hindsight beside Render all, once confirmed if it has Cues', async () => {
     const off = await mountIt()
+    await openMenu(off.wrapper, '[data-more]')
+    expect(off.wrapper.find('[data-render-all]').exists()).toBe(true)
     expect(off.wrapper.find('[data-score-all]').exists()).toBe(false)
     off.wrapper.unmount()
 
@@ -1142,16 +1181,19 @@ describe('RoleplayView', () => {
     ])
     vi.mocked(ask).mockReset().mockResolvedValueOnce(false).mockResolvedValueOnce(true)
     const { wrapper } = await mountIt()
+    await openMenu(wrapper, '[data-more]')
     expect(wrapper.find('[data-score-all]').text()).toBe('Score the Roleplay')
     await wrapper.find('[data-score-all]').trigger('click')
     await flushPromises()
     expect(api.queueJob).not.toHaveBeenCalled()
+    await openMenu(wrapper, '[data-more]')
     await wrapper.find('[data-score-all]').trigger('click')
     await flushPromises()
     expect(api.queueJob).toHaveBeenCalledWith('r1', 'score-roleplay', 0)
+    await openMenu(wrapper, '[data-more]')
     expect(wrapper.find('[data-score-all]').text()).toBe('Scoring…')
     // The Roleplay's job, not Frame 1's.
-    expect(wrapper.find('[data-frame-job]').exists()).toBe(false)
+    expect(wrapper.find('[data-jobs-line]').exists()).toBe(false)
     vi.mocked(api.getSettings).mockResolvedValue({ features: ALL_ON } as api.Settings)
     await useFeatures().refreshFeatures()
   })
@@ -1164,17 +1206,24 @@ describe('RoleplayView', () => {
       job({ kind: 'scene', status: 'running', phase: 'image' }),
     ])
     const { wrapper } = await mountIt()
+    // In the picture's 3D menu.
+    const menu = () => openMenu(wrapper, '[data-3d-menu-button]')
+    await menu()
     expect(wrapper.find('[data-scene-button]').text()).toBe('SHARP')
     expect(wrapper.find('[data-figure-button]').text()).toBe('TripoSplat')
     expect(wrapper.find('[data-lito-button]').text()).toBe('LiTo')
     await wrapper.find('[data-scene-button]').trigger('click')
     await flushPromises()
     expect(api.queueJob).toHaveBeenCalledWith('r1', 'scene', 0)
-    expect(wrapper.find('[data-frame-job]').text()).toContain('SHARP · Making the 2.5D scene…')
+    expect(wrapper.find('[data-jobs-line]').text()).toContain('SHARP · Making the 2.5D scene…')
+    // The menu's button says it's at work.
+    expect(wrapper.find('[data-3d-menu-button] [data-icon="spinner"]').exists()).toBe(true)
+    await menu()
     expect(wrapper.find('[data-scene-button]').attributes('disabled')).toBeDefined()
     await wrapper.find('[data-figure-button]').trigger('click')
     await flushPromises()
     expect(api.queueJob).toHaveBeenLastCalledWith('r1', 'figure', 0)
+    await menu()
     await wrapper.find('[data-lito-button]').trigger('click')
     await flushPromises()
     expect(api.queueJob).toHaveBeenLastCalledWith('r1', 'lito', 0)
@@ -1209,6 +1258,10 @@ describe('RoleplayView', () => {
     )
     vi.mocked(api.listJobs).mockResolvedValue([])
     const again = (await mountIt()).wrapper
+    const againMenu = () => openMenu(again, '[data-3d-menu-button]')
+    // Its button counts what's made.
+    expect(again.find('[data-3d-menu-button]').text()).toContain('3D3')
+    await againMenu()
     expect(again.find('[data-scene-button]').text()).toBe('SHARP again from upscale')
     expect(again.find('[data-figure-button]').exists()).toBe(false)
     await again.find('[data-view-scene]').trigger('click')
@@ -1216,16 +1269,18 @@ describe('RoleplayView', () => {
     const viewers = () => again.findAll('[data-scene-viewer]')
     expect(viewers()[0].text()).toContain('Frame 1 · SHARP, 2.5D')
     expect(viewers()[0].text()).toContain("Couldn't show the scene")
+    await againMenu()
     await again.find('[data-view-figure]').trigger('click')
     await flushPromises()
     expect(viewers()[1].text()).toContain('Frame 1 · TripoSplat, 3D')
+    await againMenu()
     expect(again.find('[data-lito-button]').exists()).toBe(false)
     await again.find('[data-view-lito]').trigger('click')
     await flushPromises()
     expect(viewers()[1].text()).toContain('Frame 1 · LiTo, 3D')
   })
 
-  it('steps through the rendered Frames in the viewer, scrolling the conversation to each', async () => {
+  it('steps through the rendered Frames in the viewer, picking each and scrolling the story to it', async () => {
     const withImage = (index: number, message: string | null) => ({
       ...frame(index, message, `Line ${index}.`),
       pictures: [picture(`frame-${index}-aaaaaaaa.png`)],
@@ -1234,9 +1289,9 @@ describe('RoleplayView', () => {
       roleplaySession([withImage(0, null), frame(1, 'Hi.', 'No picture.'), withImage(2, 'Go.')]),
     )
     const { wrapper } = await mountIt()
-    const last = wrapper.find('[data-frame-index="0"]').element as HTMLElement
-    last.scrollIntoView = vi.fn()
-    await wrapper.findAll('[data-picture-image]')[1].trigger('click')
+    const story = wrapper.find('[data-transcript]').element as HTMLElement
+    story.scrollTo = vi.fn()
+    await wrapper.find('[data-picture-image]').trigger('click')
     await flushPromises()
     const viewer = () => wrapper.find('[data-image-viewer]')
     expect(viewer().find('[data-viewer-label]').text()).toBe('Frame 3 · 2 of 2')
@@ -1250,6 +1305,7 @@ describe('RoleplayView', () => {
     expect(viewer().find('[data-image-frame] img').attributes('src')).toBe(
       '/api/sessions/r1/images/frame-0-aaaaaaaa.png',
     )
-    expect(last.scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'center' })
+    expect(story.scrollTo).toHaveBeenLastCalledWith(expect.objectContaining({ behavior: 'smooth' }))
+    expect(wrapper.find('[data-tile="0"]').attributes('aria-current')).toBe('true')
   })
 })

@@ -17,9 +17,12 @@
  *   --dark            the dark colour scheme
  *   --full            whole-page screenshots, not just the window
  *   --base URL        the app (default http://127.0.0.1:$WEB_PORT, else :5180)
+ *   --mock PATH=FILE  answer requests for PATH (a URL pattern, like /api/sessions/x/jobs) with
+ *                     FILE's JSON, which only this browser sees: a Frame with made-up jobs, say,
+ *                     without queueing real ones (repeatable)
  *
  * Steps, run in order after the page loads, each one argument (a selector is a CSS selector):
- *   click:SELECTOR              dblclick:SELECTOR
+ *   click:SELECTOR              dblclick:SELECTOR              hover:SELECTOR
  *   type:SELECTOR=TEXT          fills an input or textarea
  *   key:KEY                     presses a key ("ArrowLeft", "Enter")
  *   drag:SELECTOR=DX,DY         drags an element's centre by DX, DY px
@@ -37,7 +40,7 @@ import process from 'node:process'
 import { chromium } from 'playwright-core'
 
 /** The command line: the path, options (`--store` repeatable) and steps, in one pass. */
-const VALUED = new Set(['size', 'out', 'name', 'store', 'base'])
+const VALUED = new Set(['size', 'out', 'name', 'store', 'base', 'mock'])
 let path = '/'
 const opts: Record<string, string[]> = {}
 const steps: string[] = []
@@ -66,8 +69,37 @@ const page = await browser.newPage({
   viewport: { width, height },
   colorScheme: flag('dark') ? 'dark' : 'light',
 })
-page.on('console', (m) => m.type() === 'error' && console.log(`page error: ${m.text()}`))
+page.on(
+  'console',
+  (m) =>
+    (m.type() === 'error' || process.env.SHOT_CONSOLE) &&
+    console.log(`page ${m.type()}: ${m.text()}`),
+)
 page.on('pageerror', (e) => console.log(`page error: ${e.message}`))
+// Answered inside the page, by a fetch wrapped before the app loads: Playwright's routing let the
+// first request through now and then (2026-11-12), and the page then showed the real answer.
+const mocks: Record<string, unknown> = {}
+for (const kv of opts.mock ?? []) {
+  const at = kv.indexOf('=')
+  mocks[kv.slice(0, at)] = JSON.parse(await Deno.readTextFile(kv.slice(at + 1)))
+}
+if (Object.keys(mocks).length) {
+  await page.addInitScript((mocks) => {
+    const real = globalThis.fetch
+    globalThis.fetch = (input, init) => {
+      const url = new URL(input instanceof Request ? input.url : String(input), location.href)
+      // By the path alone, so a request with a query string is answered too.
+      if (url.pathname in mocks) {
+        return Promise.resolve(
+          new Response(JSON.stringify(mocks[url.pathname]), {
+            headers: { 'content-type': 'application/json' },
+          }),
+        )
+      }
+      return real(input, init)
+    }
+  }, mocks)
+}
 if (Object.keys(store).length) {
   await page.addInitScript((items) => {
     for (const [k, v] of Object.entries(items)) localStorage.setItem(k, v)
@@ -91,6 +123,9 @@ try {
     switch (kind) {
       case 'click':
         await page.click(rest)
+        break
+      case 'hover':
+        await page.hover(rest)
         break
       case 'dblclick':
         await page.dblclick(rest)

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import SessionBar from '../components/SessionBar.vue'
 import { ask } from '../ask'
 import { frameName, framesName } from '../frameName'
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
@@ -436,10 +437,13 @@ const promptDiff = computed(() => {
 </script>
 
 <template>
-  <div class="flex min-h-0">
+  <div class="flex min-h-0 flex-col">
     <p v-if="loadError" class="p-6 text-danger">Could not load this Session: {{ loadError }}</p>
 
     <template v-else-if="session">
+      <!-- Until stage 3 of the screens plan builds its strip view: its kind and title. -->
+      <SessionBar kind="Chain" :title="session.title ?? ''" />
+      <div class="flex min-h-0 flex-1">
       <main class="story flex min-w-0 flex-1 flex-col gap-3 p-4">
         <!-- The Chain's switches, above the picture, as a Roleplay's are above its conversation. -->
         <div class="flex flex-wrap items-center justify-end gap-x-4 gap-y-1 text-sm">
@@ -929,6 +933,7 @@ const promptDiff = computed(() => {
           </div>
         </section>
       </aside>
+      </div>
     </template>
 
     <p v-else class="p-6 text-muted">Loading…</p>

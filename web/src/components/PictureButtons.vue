@@ -2,6 +2,7 @@
 import { type JobKind, type Made3d, MADE3D_FEATURE, type Picture } from '../api'
 import { useFeatures } from '../composables/useFeatures'
 import Frame3dButtons from './Frame3dButtons.vue'
+import Icon from './Icon.vue'
 
 /**
  * What can be done with a Frame's picture, in every kind of Session: render it (where a Frame
@@ -9,6 +10,9 @@ import Frame3dButtons from './Frame3dButtons.vue'
  * versions are). Each queues a job; a button is off while that job is queued or running on the
  * Frame, and all are while `busy`, except Edit, which opens the viewer on an edit being made.
  * `part` draws only the picture's own buttons or only the 3D ones, for a panel that groups them.
+ * As a picture's toolbar (`toolbar`), each is an icon and its name (`[data-label]`, which the
+ * toolbar can hide when it's narrow), with a spinner in place of the icon while its job runs and a
+ * dot while it waits (`working`).
  */
 const props = withDefaults(
   defineProps<{
@@ -22,8 +26,12 @@ const props = withDefaults(
     busy?: string
     buttonClass?: string
     part?: 'picture' | '3d' | 'all'
+    /** Drawn for a picture's toolbar: icons with their names. */
+    toolbar?: boolean
+    /** Whether a job of this kind runs on the Frame, or waits its turn. */
+    working?: (kind: JobKind) => 'running' | 'queued' | null
   }>(),
-  { canRender: false, buttonClass: 'action', part: 'all' },
+  { canRender: false, buttonClass: 'action', part: 'all', toolbar: false, working: () => null },
 )
 defineEmits<{
   queue: [kind: JobKind]
@@ -38,6 +46,10 @@ const available = (kind: Made3d) => featureOn.value(MADE3D_FEATURE[kind])
 
 /** A picture is there, or a job already queued will make one. */
 const pictured = () => !!props.picture || props.hasJob('render') || props.hasJob('picture')
+
+/** A toolbar's button: its icon (a spinner while its job runs), name, and a dot while it waits. */
+const ICONS: Partial<Record<JobKind, string>> = { render: 'retry', upscale: 'upscale', edit: 'brush' }
+const iconOf = (kind: JobKind) => (props.working(kind) === 'running' ? 'spinner' : ICONS[kind]!)
 </script>
 
 <template>
@@ -51,7 +63,12 @@ const pictured = () => !!props.picture || props.hasJob('render') || props.hasJob
       data-render-button
       @click="$emit('queue', 'render')"
     >
-      {{ picture ? 'Re-render' : 'Render' }}
+      <template v-if="toolbar">
+        <Icon :name="iconOf('render')" :class="{ 'animate-spin': working('render') === 'running' }" />
+        <span data-label>{{ picture ? 'Re-render' : 'Render' }}</span>
+        <span v-if="working('render') === 'queued'" class="h-1.5 w-1.5 rounded-full bg-amber-400" data-waiting />
+      </template>
+      <template v-else>{{ picture ? 'Re-render' : 'Render' }}</template>
     </button>
     <button
       v-if="featureOn('upscale') && pictured()"
@@ -62,7 +79,12 @@ const pictured = () => !!props.picture || props.hasJob('render') || props.hasJob
       data-upscale-button
       @click="$emit('queue', 'upscale')"
     >
-      {{ picture?.upscaled ? 'Upscaled' : 'Upscale' }}
+      <template v-if="toolbar">
+        <Icon :name="iconOf('upscale')" :class="{ 'animate-spin': working('upscale') === 'running' }" />
+        <span data-label>{{ picture?.upscaled ? 'Upscaled' : 'Upscale' }}</span>
+        <span v-if="working('upscale') === 'queued'" class="h-1.5 w-1.5 rounded-full bg-amber-400" data-waiting />
+      </template>
+      <template v-else>{{ picture?.upscaled ? 'Upscaled' : 'Upscale' }}</template>
     </button>
     <button
       v-if="featureOn('edits') && picture"
@@ -72,7 +94,12 @@ const pictured = () => !!props.picture || props.hasJob('render') || props.hasJob
       data-edit-button
       @click="$emit('edit')"
     >
-      {{ hasJob('edit') ? 'Editing…' : 'Edit' }}
+      <template v-if="toolbar">
+        <Icon :name="iconOf('edit')" :class="{ 'animate-spin': working('edit') === 'running' }" />
+        <span data-label>{{ hasJob('edit') ? 'Editing…' : 'Edit' }}</span>
+        <span v-if="working('edit') === 'queued'" class="h-1.5 w-1.5 rounded-full bg-amber-400" data-waiting />
+      </template>
+      <template v-else>{{ hasJob('edit') ? 'Editing…' : 'Edit' }}</template>
     </button>
   </template>
   <Frame3dButtons

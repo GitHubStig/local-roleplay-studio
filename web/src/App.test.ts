@@ -143,7 +143,7 @@ describe('App navigation', () => {
     expect(wrapper.find('[data-current-kind]').text()).toBe('Chain')
     expect(wrapper.find('[data-current-title]').text()).toBe('The Tavern')
     // The screen on show is the filled tab.
-    expect(wrapper.find('nav .tab-active').text()).toBe('Settings')
+    expect(wrapper.find('nav .rail-active').text()).toBe('Settings')
 
     await currentLink(wrapper).trigger('click')
     await flushPromises()
@@ -186,10 +186,10 @@ describe('App navigation', () => {
   it('has a Home tab, and fills the tab of the screen on show', async () => {
     const { wrapper, router } = await mountApp('/sessions/s1')
     expect(wrapper.find('[data-nav-home]').attributes('href')).toBe('/')
-    expect(wrapper.find('nav .tab-active').attributes('data-current-session')).toBeDefined()
+    expect(wrapper.find('nav .rail-active').attributes('data-current-session')).toBeDefined()
     await router.push('/')
     await flushPromises()
-    expect(wrapper.find('nav .tab-active').text()).toBe('Home')
+    expect(wrapper.find('nav .rail-active').text()).toBe('Home')
   })
 
   it('keeps each Session as it was when switching between two', async () => {

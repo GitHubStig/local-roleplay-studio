@@ -164,6 +164,43 @@
   @apply border-info text-info hover:border-info hover:text-info;
 }
 
+/* A button on a picture's toolbar (`PictureToolbar`): light on the dark glass over the picture. */
+.tool-button {
+  @apply inline-flex items-center gap-1 rounded-lg px-2 py-1 transition-colors hover:bg-white/15
+    disabled:opacity-50 disabled:hover:bg-transparent;
+}
+/* A narrow picture's toolbar shows its buttons' icons alone, each named in its tooltip. */
+@container (max-width: 30rem) {
+  .picture-toolbar [data-label] {
+    display: none;
+  }
+}
+/*
+ * The floating text box (`FloatingBox`), raised off the story: a tight shadow at its edge, a wide
+ * soft one under it, and a faint light along its top. Brown-tinted in light, deeper in the dark,
+ * where a shadow shows less.
+ */
+.float-box {
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.6),
+    0 2px 4px rgb(40 25 10 / 0.12),
+    0 12px 24px -6px rgb(40 25 10 / 0.3),
+    0 32px 64px -12px rgb(40 25 10 / 0.45);
+}
+.dark .float-box {
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.07),
+    0 2px 4px rgb(0 0 0 / 0.5),
+    0 14px 28px -6px rgb(0 0 0 / 0.7),
+    0 36px 72px -12px rgb(0 0 0 / 0.85);
+}
+
+/* A row in a menu (`PopMenu`): the whole width, its words on the left. */
+.menu-row {
+  @apply flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left hover:bg-canvas
+    disabled:opacity-50 disabled:hover:bg-transparent;
+}
+
 /* A text field or dropdown in a form (dropdowns through `SelectField`, for their caret). */
 .field {
   @apply rounded-lg border border-line bg-surface px-3 py-2 disabled:opacity-50;
