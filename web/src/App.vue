@@ -207,7 +207,9 @@ useEventListener(window, 'focus', checkServer)
 .rail-item {
   @apply grid h-9 w-9 place-items-center rounded-lg text-lg text-muted transition-colors hover:text-fg;
 }
+/* The screen on show: a chip tinted with the text's colour, which stands out on the rail in
+   either theme (the surface colour was a shade off the rail's own). */
 .rail-active {
-  @apply bg-surface text-fg shadow-sm;
+  @apply bg-fg/10 text-fg;
 }
 </style>
