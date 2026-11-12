@@ -1,5 +1,5 @@
-import { flushPromises, mount } from '@vue/test-utils'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import * as api from '../api'
 import { clearScenarioDraft } from '../composables/useScenarioDraft'
@@ -64,6 +64,7 @@ async function mountAt(path: string) {
   const wrapper = mount(ScenarioView, {
     props: { id: router.currentRoute.value.params.id as string | undefined },
     global: { plugins: [router] },
+    attachTo: document.body,
   })
   await flushPromises()
   return { wrapper, router }
@@ -75,6 +76,12 @@ const suggestOf = (w: Awaited<ReturnType<typeof mountAt>>['wrapper'], field: str
     .querySelector('[data-suggest]') as HTMLButtonElement
 const fieldValue = (w: Awaited<ReturnType<typeof mountAt>>['wrapper'], field: string) =>
   (w.find(`[data-field="${field}"]`).element as HTMLTextAreaElement).value
+
+/** Opens a part folded into the line of chips. */
+async function openPart(w: Awaited<ReturnType<typeof mountAt>>['wrapper'], field: string) {
+  await w.find(`[data-open-part="${field}"]`).trigger('click')
+  await flushPromises()
+}
 
 const startButton = (w: Awaited<ReturnType<typeof mountAt>>['wrapper']) =>
   w.find('[data-start]').element as HTMLButtonElement
@@ -93,6 +100,8 @@ beforeEach(() => {
   vi.mocked(api.createSession).mockReset()
 })
 
+enableAutoUnmount(afterEach)
+
 describe('ScenarioView', () => {
   it("shows the Music only once Settings' Music is on, or the Scenario has some", async () => {
     expect((await mountAt('/scenario/tavern')).wrapper.find('[data-field=music]').exists()).toBe(
@@ -109,7 +118,8 @@ describe('ScenarioView', () => {
     )
     await useFeatures().refreshFeatures()
     clearScenarioDraft()
-    expect((await mountAt('/scenario/tavern')).wrapper.find('[data-field=music]').exists()).toBe(
+    // On, and blank: left to the Text Model, a chip to open it from.
+    expect((await mountAt('/scenario/tavern')).wrapper.find('[data-open-part=music]').exists()).toBe(
       true,
     )
     await useFeatures().refreshFeatures()
@@ -122,7 +132,13 @@ describe('ScenarioView', () => {
       'kael',
       'elara',
     ])
-    expect((wrapper.find('[data-player]').element as HTMLSelectElement).value).toBe('elara')
+    // Who plays whom is a chip beside each name.
+    expect((wrapper.find('[data-role="elara"]').element as HTMLSelectElement).value).toBe('player')
+    expect((wrapper.find('[data-role="kael"]').element as HTMLSelectElement).value).toBe('character')
+    // Blank parts fold into one line of chips; one with a suggestion waiting keeps its row.
+    expect(wrapper.find('[data-left-to-model="kael"]').text()).toContain('+ Wears')
+    expect(wrapper.find('[data-left-to-model="kael"]').text()).not.toContain('Goal')
+    expect(wrapper.find('[data-left-to-model="story"]').text()).not.toContain('Time')
     // Expand's suggestions wait in their empty parts, for Suggest to put in.
     expect(wrapper.find('[data-field=time]').attributes('placeholder')).toBe(
       'Suggested: A winter night.',
@@ -143,7 +159,7 @@ describe('ScenarioView', () => {
     // Expand's own suggestions: no call to the Text Model.
     expect(api.suggestPart).not.toHaveBeenCalled()
     // The player swapped to Kael's side: the Text Model's role clears.
-    await wrapper.find('[data-player]').setValue('kael')
+    await wrapper.find('[data-role="kael"]').setValue('player')
     await wrapper.find('[data-start]').trigger('click')
     await flushPromises()
     expect(api.createSession).toHaveBeenCalledWith({
@@ -169,6 +185,9 @@ describe('ScenarioView', () => {
       .mockResolvedValueOnce({ text: 'Revenge, and the letter.' })
     const { wrapper } = await mountAt('/scenario/tavern')
     const goal = 'people.elara.goal'
+    // Blank, it's a chip: opening it gives it a row, the focus in it.
+    await openPart(wrapper, goal)
+    expect(document.activeElement).toBe(wrapper.find(`[data-field="${goal}"]`).element)
     suggestOf(wrapper, goal).click()
     await flushPromises()
     expect(fieldValue(wrapper, goal)).toBe('A goal.')
@@ -189,6 +208,7 @@ describe('ScenarioView', () => {
   it('comes back to the Scenario as it was left, without expanding it again', async () => {
     vi.mocked(api.createSession).mockResolvedValue({ id: 'r1', kind: 'roleplay' } as api.Session)
     const first = (await mountAt('/scenario/tavern')).wrapper
+    await openPart(first, 'place')
     await first.find('[data-field=place]').setValue('A cellar.')
     first.unmount()
     const { wrapper } = await mountAt('/scenario/tavern')
@@ -206,7 +226,9 @@ describe('ScenarioView', () => {
     vi.mocked(api.saveScenario).mockResolvedValue(expandedTavern)
     vi.mocked(api.createScenario).mockResolvedValue({ ...expandedTavern, id: 'the-tavern' })
     const { wrapper, router } = await mountAt('/scenario/tavern')
+    await openPart(wrapper, 'place')
     await wrapper.find('[data-field=place]').setValue('A cellar.')
+    await wrapper.find('[data-save-menu-button]').trigger('click')
     await wrapper.find('[data-save]').trigger('click')
     await flushPromises()
     expect(api.saveScenario).toHaveBeenCalledWith('tavern', {
@@ -214,6 +236,7 @@ describe('ScenarioView', () => {
       place: 'A cellar.',
     })
     expect(wrapper.find('[data-save-status]').text()).toBe('Saved')
+    await wrapper.find('[data-save-menu-button]').trigger('click')
     await wrapper.find('[data-save-new]').trigger('click')
     await flushPromises()
     expect(router.currentRoute.value.path).toBe('/scenario/the-tavern')
@@ -239,6 +262,8 @@ describe('ScenarioView', () => {
     const { wrapper, router } = await mountAt('/scenario?brief=A%20dunk.')
     expect(api.expandScenario).toHaveBeenCalledWith({ brief: 'A dunk.' }, expect.anything())
     await wrapper.find('input[value=storyboard]').setValue()
+    // Who plays whom is a Roleplay's alone.
+    expect(wrapper.find('[data-role]').exists()).toBe(false)
     await wrapper.find('[data-frame-count]').setValue(6)
     await wrapper.find('[data-start]').trigger('click')
     await flushPromises()

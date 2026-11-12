@@ -52,8 +52,8 @@ Building began on 2026-11-12, on the `screens` branch. Each stage is a piece of 
 2. **The rail and the strip view for a Roleplay**: the rail and the tab bar at phone width; the Session's bar, the strip, the picture beside the story, the floating box, the picture's buttons, the drawer. *Built and committed 2026-11-12.*
 3. **Chain and Storyboard** in the same view, with the Beat cards for a plan. *Built and committed 2026-11-12.*
 4. **The contact sheet, and the Queue's slide-in panel** with the count on the rail. *Built 2026-11-12, waiting for the owner's look.*
-5. **Settings** as an overlay in its new shape, and the Queue page to match. *Built 2026-11-12, waiting for the owner's look.*
-6. **The Scenario page.**
+5. **Settings** as an overlay in its new shape, and the Queue page to match. *Built and committed 2026-11-12.*
+6. **The Scenario page.** *Built 2026-11-12, waiting for the owner's look.*
 7. **Home** at wide widths, and fewer boxes wherever a stage before hasn't taken them out.
 8. **The immersive view.**
 9. **A retrospective** (asked for 2026-11-12): a page with every screen before (`main`, run from a worktree of its own) and after, at each size and in both themes, and what changed on each and why. Its shots show Sessions, so ask the owner whether to use theirs or a throwaway Session from the tavern Scenario before publishing it.
@@ -145,6 +145,12 @@ What was worked out from the code while planning, to start from rather than to f
 
 - With three or more People the right column scrolls by itself.
 - Chain and Storyboard don't need who plays whom; the chips beside each name show for a Roleplay only.
+
+- Built 2026-11-12. A bar along the top: "Scenario", the title, Save in a menu (Save, Save as new), and at its right the kind of Session as three buttons, the Storyboard's Frames, and Start (on a phone the kind and Start are a bar along the foot instead, above the tab bar). Why Start can't go yet is said under the bar and on Start. Under it the story on the left (the description, then the Opening, Place, Time, Style, Music, Truths) and People on the right, each column scrolling by itself from `lg`, one column below, each column's rows at most `max-w-4xl` on a wide screen. A part is a row (`ScenarioField`, `TruthList`): its name in a column (what goes there on hover), its text with no box until it's pointed at or edited, the Truths' items the same (`ItemList`'s `bare`). A blank part with nothing suggested folds into "Left to the Text Model: + Wears + Goal" until its chip opens it, the focus in it; one with Expand's suggestion waiting keeps its row, the suggestion as its placeholder; the story's Opening and Truths always show. Who plays whom is a chip beside each name (you play, the Text Model plays, left to the Cast), for a Roleplay only, in place of the two menus under People. Suggest shows on the part pointed at or being edited, always on a touch screen. The Home link at the top went: the rail has Home.
+- Checked on the Mac, 2026-11-12, in the headless browser: a real Expand of Contact (six People, gemma-4-26b on Ollama), its suggestions keeping their rows (Mac's Goal, Dutch's Truth) and the rest folded into chips; the People column scrolling by itself (to 586 px) with the story left at the top, for Contact and The Big Bad Wolf (four People). The Big Bad Wolf's Expand was refused by the Limits, which were on, and the page said so with Retry, as it should.
+- Fixed on the owner's look (2026-11-12): Suggest sat on the row's underline, half below it, which read as too low once the part was boxed; it's in the box's bottom-right corner now, the text keeping that corner clear. The page scrolled on into blank space below everything: the screen readers' hidden labels (`sr-only`, placed absolutely) were placed by the page, below the window, as nothing in the scrolling columns was `relative`; the columns are now, and the page clips (`overflow-hidden`).
+- The rail's picked screen is a chip tinted with the text's colour (`bg-fg/10`), in place of the surface colour and a shadow, which was a shade off the rail and hard to see (the owner, 2026-11-12).
+- Not checked: a real phone; the Windows PC.
 
 **7. Home and fewer boxes** (`web/src/views/HomeView.vue`).
 

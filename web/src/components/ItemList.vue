@@ -13,6 +13,9 @@ const props = defineProps<{
   label: string
   /** What one item is, for its buttons: "Add a Truth", "Remove this Truth". */
   noun: string
+  /** The label only for screen readers, where a row names the list beside it; its items as text,
+   * boxed only while edited, as the row's other parts are. */
+  bare?: boolean
   disabled?: boolean
 }>()
 const items = defineModel<string[]>({ required: true })
@@ -33,7 +36,7 @@ async function add() {
 
 <template>
   <div class="flex flex-col gap-1 text-xs text-muted" data-items>
-    {{ label }}
+    <span :class="{ 'sr-only': bare }">{{ label }}</span>
     <ItemBox
       v-for="(item, i) in items"
       ref="boxes"
@@ -42,6 +45,7 @@ async function add() {
       :label="`${label} ${i + 1}`"
       :remove-title="`Remove this ${props.noun}`"
       :disabled="disabled"
+      :bare="bare"
       @update:model-value="set(i, $event)"
       @remove="remove(i)"
     />
