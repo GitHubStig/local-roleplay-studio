@@ -32,7 +32,7 @@ Decided by the owner. On 2026-11-12, before building began, the owner confirmed 
 - **A Frame's jobs are one line on its picture**: what's running, how far along, and how many more wait, with a thin bar along the picture's top edge; clicking it lists them, each to cancel, and Cancel all. The button that asked for the work shows a spinner while it runs and a dot while it waits. A failure stays on the line with Retry. Today each job is a boxed row near the top of the Frame tab, which the owner finds messy with several images and clips queued: with seven made-up jobs on a Frame, seven rows sat between who's shown and the Image Prompt. The list keeps the rows' wording ("Lead In clip, 5 s · Krea 2's picture"), and the light that sweeps round a rendering picture stays. A spoken line's work shows by the speaker beside the Reply.
 - **Pictures, the table that compares Image Models, becomes the second mode of the All Frames view**, beside the contact sheet, opened by the same button at the end of the strip. The models are chips in one row, on or off, opening on the Session's own and the next two; the prompts column is the Frame's name and three lines; Home's thumbnail is a star on the picture in place of a Thumbnail mode; Export is the filled button. At phone width rows become pages: one Frame at a time, its models down the screen. **Style scores** is the third mode of the same switch (today its button turns into a Pictures button to get back), the Session's own model picked out in ink and the others quieter, in place of bars in a blue that isn't the app's. The Export dialog stays as it is, its tick boxes becoming the app's switches. The exported page is built from the same table, so it takes the same changes; at phone width it shows one model's column now.
 - **The Queue inside a Session**: work running shows on its Frame's tile, and the rail's Queue button slides in a panel, this Session's jobs first, with a count on the button. This replaces the Queue tab beside Frames.
-- **Immersive is a view of its own**, with its own address: the picture fills the screen, the latest lines over its darker side, the text box, and nothing else.
+- **Immersive is a view of its own**, with its own address: the picture fills the screen, the latest lines over its darker side, the text box, and nothing else. (Moved to [open-threads.md](open-threads.md) before it was built, 2026-11-12: it needs more thought.)
 - **The Scenario page on one page, two columns**: the story on the left, People on the right, Start and the kind of Session in a bar that stays in view. Empty parts fold into one line of chips ("Left to the Text Model: + Wears + Goal"); who plays whom is a chip beside each name; Suggest shows on the part being edited.
 - **Settings and the Queue as one kind of page**: sections down the left (grouped as Models and App), rows on the right, with a new Appearance section for the theme. Settings opens as an overlay over the screen it was opened from, with its own address.
 - **At phone width** (sixteen mockups) four rules carry every screen: the rail becomes a tab bar; whatever opens beside or over a screen on a desktop (the drawer, the picture's Clip and 3D menus, the Session's models and switches) opens as a sheet from the bottom, the picture still in view; one column in the order it's used (the strip, the picture, the words, the text box); and the main button stays put (Send in the box, Start and Write Frames in a bar). Home is Sessions two across with New at the top, and starting a Session is a screen of its own; the Scenario page is one column with each Person folding closed; a Storyboard's plan is its Beats down the screen; the Queue is a screen from the tab bar; Settings is its list of sections, each opening from it. Held sideways (`short:`), the rail goes back to the side and the strip folds away.
@@ -54,8 +54,8 @@ Building began on 2026-11-12, on the `screens` branch. Each stage is a piece of 
 4. **The contact sheet, and the Queue's slide-in panel** with the count on the rail. *Built 2026-11-12, waiting for the owner's look.*
 5. **Settings** as an overlay in its new shape, and the Queue page to match. *Built and committed 2026-11-12.*
 6. **The Scenario page.** *Built and committed 2026-11-12.*
-7. **Home** at wide widths, and fewer boxes wherever a stage before hasn't taken them out. *Built 2026-11-12, waiting for the owner's look.*
-8. **The immersive view.**
+7. **Home** at wide widths, and fewer boxes wherever a stage before hasn't taken them out. *Built and committed 2026-11-12.*
+8. **The immersive view.** *Moved to [open-threads.md](open-threads.md) on 2026-11-12, before it was built: it needs more thought (the owner).*
 9. **A retrospective** (asked for 2026-11-12): a page with every screen before (`main`, run from a worktree of its own) and after, at each size and in both themes, and what changed on each and why. Its shots show Sessions, so ask the owner whether to use theirs or a throwaway Session from the tavern Scenario before publishing it.
 
 ### Notes for each stage
@@ -161,7 +161,7 @@ What was worked out from the code while planning, to start from rather than to f
 - Not changed: a Session card's Delete still shows only on hover, so a touch screen can't reach it (as before); the Cast's fields keep their boxes, as they're edited.
 - Not checked: a real phone; the Windows PC.
 
-**8. The immersive view.**
+**8. The immersive view.** Moved to [open-threads.md](open-threads.md) (the owner, 2026-11-12).
 
 - Immersive needs a picture: a Roleplay played without Pictures shows the story on a plain dark ground.
 
