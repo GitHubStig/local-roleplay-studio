@@ -27,4 +27,14 @@ describe('FrameStrip', () => {
     await first.trigger('click')
     expect(wrapper.emitted('pick')).toEqual([[0]])
   })
+  it('picks the tile before or after on ← and →', async () => {
+    const wrapper = mount(FrameStrip, {
+      props: { picked: 1, tiles: [{ index: 0 }, { index: 1 }, { index: 2 }] },
+    })
+    await wrapper.find('[data-strip]').trigger('keydown', { key: 'ArrowLeft' })
+    await wrapper.find('[data-strip]').trigger('keydown', { key: 'ArrowRight' })
+    await wrapper.setProps({ picked: 2 })
+    await wrapper.find('[data-strip]').trigger('keydown', { key: 'ArrowRight' })
+    expect(wrapper.emitted('pick')).toEqual([[0], [2]])
+  })
 })

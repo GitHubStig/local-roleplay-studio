@@ -1,5 +1,5 @@
 import { useLocalStorage } from '@vueuse/core'
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import {
   type Clip,
   CLIP_KIND_NAMES,
@@ -12,18 +12,6 @@ import {
 import { isOpen } from './jobs'
 import { useFeatures } from './composables/useFeatures'
 import { useSettingsOptions } from './composables/useSettingsOptions'
-
-/**
- * Scrolls the Frame tab to its Clip section, once it's drawn: where a clip job in the queue leads
- * (`JobQueue`'s `clip`). Found from `within`, any element of the Session's screen (which has one
- * Frame tab), whether or not that's in the document yet.
- */
-export const scrollToClips = (within: Element | null | undefined) =>
-  nextTick(() =>
-    (within?.getRootNode() as ParentNode | undefined)
-      ?.querySelector('[data-frame-clips]')
-      ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  )
 
 /**
  * A clip being made: its order, by its video model (none for Settings' default), its prompt and

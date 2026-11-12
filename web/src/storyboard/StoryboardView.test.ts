@@ -109,6 +109,14 @@ async function mountIt() {
 type Wrapper = Awaited<ReturnType<typeof mountIt>>['wrapper']
 const buttonNamed = (wrapper: Wrapper, name: string) =>
   wrapper.findAll('button').find((b) => b.text().startsWith(name))!
+/** The strip's tiles, once Frames are written: a tile per Frame. */
+const tiles = (wrapper: Wrapper) => wrapper.findAll('[data-tile]')
+/** Opens a menu (`PopMenu`) by its button, unless it's open already. */
+async function openMenu(wrapper: Wrapper, button: string) {
+  if (!wrapper.find(button).element.closest('[data-open]')) {
+    await wrapper.find(button).trigger('click')
+  }
+}
 
 /** A stream held open: `emit` sends events, `finish` ends it. */
 function held() {
@@ -154,7 +162,9 @@ describe('StoryboardView', () => {
     ])
     const { wrapper } = await mountIt()
     expect(api.listJobs).toHaveBeenCalledWith('sb')
-    expect(wrapper.find('[data-tab=queue] [data-tab-busy]').exists()).toBe(true)
+    expect(tiles(wrapper)[1].classes()).toContain('render-sweep')
+    await tiles(wrapper)[1].trigger('click')
+    expect(wrapper.find('[data-jobs-line]').text()).toContain('1 waiting')
   })
 
   it('plans a new Storyboard, listing its Beats as they arrive, for review', async () => {
@@ -175,10 +185,10 @@ describe('StoryboardView', () => {
     stream.finish()
     await flushPromises()
     expect(wrapper.find('[role=status]').exists()).toBe(false)
-    expect(wrapper.findAll('[data-status]').map((s) => s.text())).toEqual([
-      'Not written',
-      'Not written',
-      'Not written',
+    expect(wrapper.findAll('[data-frame]').map((f) => f.find('[data-beat]').text())).toEqual([
+      'Beat 1.',
+      'Beat 2.',
+      'Beat 3.',
     ])
     expect(wrapper.find('[data-write]').text()).toBe('Write 3 Frames')
     expect(wrapper.find('[data-review]').exists()).toBe(true)
@@ -199,8 +209,8 @@ describe('StoryboardView', () => {
     stream.emit({ type: 'planned-beat', index: 1, beat: 'New 2.', shown: [] })
     await flushPromises()
     expect(wrapper.findAll('[data-frame]').map((f) => f.text())).toEqual([
-      '1New 1.Planning…',
-      '2New 2.Planning…',
+      '1Planning…New 1.',
+      '2Planning…New 2.',
     ])
   })
 
@@ -215,37 +225,33 @@ describe('StoryboardView', () => {
     )
     expect(wrapper.find('[data-look] textarea').attributes('disabled')).toBeUndefined()
 
-    const shownFrame = () => wrapper.find('[data-frame][aria-current="true"]').text()
-    const sweeping = () =>
-      wrapper.findAll('[data-frame]').map((f) => f.find('[data-writing-frame]').exists())
+    const shownFrame = () => wrapper.find('[data-current-beat]').text()
+    const sweeping = () => tiles(wrapper).map((t) => t.classes().includes('render-sweep'))
     await wrapper.find('[data-write]').trigger('click')
     await flushPromises()
+    // The strip view from the first Frame written on, its tiles the Beats.
     expect(wrapper.find('[role=status]').text()).toBe('Writing Frame 1 of 3…')
     expect(sweeping()).toEqual([true, false, false])
     expect(wrapper.find('[data-write-progress]').text()).toBe('0 of 3 written')
     stream.emit({ type: 'written-frame', frame: frame(0) })
     await flushPromises()
     expect(wrapper.find('[role=status]').text()).toBe('Writing Frame 2 of 3…')
-    expect(wrapper.findAll('[data-status]').map((s) => s.text())).toEqual([
-      'Draft',
-      'Writing…',
-      'Waiting',
-    ])
-    // The Frame shown follows the writing, its picture and sentences sweeping, as the list's does.
+    // The Frame shown follows the writing, its picture and sentences sweeping, as its tile does.
     expect(sweeping()).toEqual([false, true, false])
-    expect(shownFrame()).toContain('Beat 2.')
-    expect(wrapper.find('main [data-rendering="image"]').exists()).toBe(true)
-    expect(wrapper.find('[data-prompt-panel] [data-rewriting]').exists()).toBe(true)
+    expect(shownFrame()).toBe('Beat 2.')
+    expect(wrapper.find('[data-empty]').text()).toBe('Writing its sentences…')
+    expect(wrapper.find('[data-picture]').classes()).toContain('render-sweep')
+    expect(wrapper.find('[data-rewriting]').exists()).toBe(true)
     expect(wrapper.find('[data-write-progress]').text()).toBe('1 of 3 written')
     // Until another is picked: then it stays put.
-    await wrapper.findAll('[data-frame]')[0].trigger('click')
+    await tiles(wrapper)[0].trigger('click')
     stream.emit({ type: 'written-frame', frame: frame(1) })
     await flushPromises()
-    expect(shownFrame()).toContain('Beat 1.')
+    expect(shownFrame()).toBe('Beat 1.')
     // A render now would unload the Text Model while it writes.
-    expect(wrapper.find('[data-render-button]').attributes('disabled')).toBeDefined()
+    expect(wrapper.find('[data-render-it]').attributes('disabled')).toBeDefined()
     expect(wrapper.find('[data-render-all]').attributes('disabled')).toBeDefined()
-    expect(wrapper.find('[data-render-button]').attributes('title')).toBe(
+    expect(wrapper.find('[data-render-it]').attributes('title')).toBe(
       'Wait for the writing to finish',
     )
 
@@ -253,13 +259,15 @@ describe('StoryboardView', () => {
     stream.finish()
     await flushPromises()
     expect(sweeping()).toEqual([false, false, false])
-    expect(wrapper.find('[data-render-button]').attributes('disabled')).toBeUndefined()
+    expect(wrapper.find('[data-render-it]').attributes('disabled')).toBeUndefined()
     expect(wrapper.find('[data-render-all]').attributes('disabled')).toBeUndefined()
     expect(wrapper.find('[data-write]').exists()).toBe(false)
     expect(wrapper.find('[data-field="storyboard.frame"]').element).toHaveProperty(
       'value',
       'Body 1.',
     )
+    // The Look is in the drawer now, fixed.
+    await wrapper.find('[data-open-look]').trigger('click')
     expect(wrapper.find('[data-look] textarea').attributes('disabled')).toBeDefined()
     expect(wrapper.find('[data-restart]').attributes('title')).toContain(
       'fixed now that Frames are written',
@@ -271,8 +279,9 @@ describe('StoryboardView', () => {
     const { wrapper } = await mountIt()
     expect(wrapper.find('[data-write]').text()).toBe('Write the rest (2)')
     // The plan is fixed once a Frame is written, Beats not yet written included.
-    await wrapper.findAll('[data-frame]')[1].trigger('click')
-    expect(wrapper.find('[data-field="storyboard.frame"]').attributes('disabled')).toBeDefined()
+    await tiles(wrapper)[1].trigger('click')
+    expect(wrapper.find('[data-empty]').text()).toBe('Not written yet')
+    expect(wrapper.find('[data-field="storyboard.frame"]').exists()).toBe(false)
   })
 
   it('restarts back to the plan once confirmed', async () => {
@@ -281,7 +290,8 @@ describe('StoryboardView', () => {
     )
     vi.mocked(ask).mockReset().mockResolvedValueOnce(false).mockResolvedValueOnce(true)
     const { wrapper } = await mountIt()
-    // At the right of the Look's heading.
+    // At the right of the Look's heading, in the drawer.
+    await wrapper.find('[data-open-look]').trigger('click')
     expect(wrapper.find('[data-look] summary [data-restart]').exists()).toBe(true)
     await wrapper.find('[data-restart]').trigger('click')
     await flushPromises()
@@ -308,37 +318,37 @@ describe('StoryboardView', () => {
     expect(router.currentRoute.value.fullPath).toBe('/?error=Ollama+is+down')
   })
 
-  it('moves through the Frames with ↑ and ↓ in their list', async () => {
+  it('moves through the Frames with ← and → in the strip', async () => {
     const { wrapper } = await mountIt()
-    const current = () =>
-      wrapper.findAll('[data-frame]').findIndex((f) => f.attributes('aria-current') === 'true')
+    const current = () => tiles(wrapper).findIndex((f) => f.attributes('aria-current') === 'true')
     const press = async (key: string) => {
-      await wrapper.findAll('[data-frame]')[current()].trigger('keydown', { key })
+      await wrapper.find('[data-strip]').trigger('keydown', { key })
       await flushPromises()
     }
     expect(current()).toBe(0)
-    await press('ArrowDown')
+    await press('ArrowRight')
     expect(current()).toBe(1)
-    await press('ArrowUp')
-    await press('ArrowUp')
+    await press('ArrowLeft')
+    await press('ArrowLeft')
     expect(current()).toBe(0)
   })
 
   it('queues a render of the selected Frame, and says so on it', async () => {
     const { wrapper } = await mountIt()
-    await wrapper.findAll('[data-frame]')[1].trigger('click')
-    await wrapper.find('[data-render-button]').trigger('click')
+    await tiles(wrapper)[1].trigger('click')
+    expect(wrapper.find('[data-render-it]').text()).toBe('Render Frame 2')
+    await wrapper.find('[data-render-it]').trigger('click')
     await flushPromises()
     expect(api.queueJob).toHaveBeenCalledWith('sb', 'render', 1)
-    await wrapper.find('[data-tab=queue]').trigger('click')
-    expect(wrapper.find('[data-queue]').text()).toContain('Frame 2')
-    expect(wrapper.findAll('[data-status]').map((s) => s.text())).toEqual([
-      'Draft',
-      'Render…',
-      'Draft',
+    expect(wrapper.find('[data-jobs-line]').text()).toBe('Render · waiting')
+    expect(tiles(wrapper).map((t) => t.attributes('data-rendering'))).toEqual([
+      undefined,
+      'queued',
+      undefined,
     ])
-    // Queued once: the button is off until the job is done.
-    expect(wrapper.find('[data-render-button]').attributes('disabled')).toBeDefined()
+    // Queued once: its place says so, with no button to queue it again.
+    expect(wrapper.find('[data-empty]').text()).toBe('Frame 2 is being rendered')
+    expect(wrapper.find('[data-render-it]').exists()).toBe(false)
   })
 
   it('opens the shown picture in the viewer when clicked', async () => {
@@ -357,7 +367,7 @@ describe('StoryboardView', () => {
     )
     const { wrapper } = await mountIt()
     await flushPromises()
-    await wrapper.find('main [data-frame-picture]').trigger('click')
+    await wrapper.find('main [data-picture-image]').trigger('click')
     await flushPromises()
     expect(wrapper.find('[data-image-viewer] [data-viewer-label]').text()).toBe('Frame 1 · 1 of 1')
     vi.unstubAllGlobals()
@@ -373,13 +383,25 @@ describe('StoryboardView', () => {
       frame(4, { pictures: [picture('frame-4-aaaaaaaa.png', { imageModel: 'flux2-klein-4b' })] }),
     ]))
     const { wrapper } = await mountIt()
-    expect(wrapper.findAll('[data-status]').map((s) => s.text())).toEqual([
-      'Rendered',
-      'Blocked',
-      'Changed since render',
-      'Draft',
-      'Changed since render',
+    // Each Frame's state is on its picture's label.
+    const labels = []
+    for (const i of [0, 1, 2, 3, 4]) {
+      await tiles(wrapper)[i].trigger('click')
+      await flushPromises()
+      labels.push(
+        wrapper.find('[data-picture-label]').exists()
+          ? wrapper.find('[data-picture-label]').text()
+          : wrapper.find('[data-empty]').text(),
+      )
+    }
+    expect(labels).toEqual([
+      'Frame 1 of 5 · Rendered',
+      'Crosses a limit (no minors): edit its sentences first',
+      'Frame 3 of 5 · Changed since render',
+      'Not rendered yet',
+      'Frame 5 of 5 · Changed since render',
     ])
+    expect(wrapper.find('[data-render-all]').text()).toBe('Render all (3)')
     await wrapper.find('[data-render-all]').trigger('click')
     await flushPromises()
     expect(vi.mocked(api.queueJob).mock.calls.map((c) => [c[1], c[2]])).toEqual([
@@ -402,7 +424,7 @@ describe('StoryboardView', () => {
       return Promise.resolve()
     })
     const { wrapper } = await mountIt()
-    await wrapper.find('textarea').setValue('make him twelve')
+    await wrapper.find('[data-floating-box] textarea').setValue('make him twelve')
     await buttonNamed(wrapper, 'Send').trigger('click')
     await flushPromises()
     expect(api.editStoryboardFrame).toHaveBeenCalledWith(
@@ -412,7 +434,8 @@ describe('StoryboardView', () => {
       expect.any(Function),
     )
     expect(wrapper.find('[role=alert]').text()).toBe('Declined: no minors.')
-    expect((wrapper.find('textarea').element as HTMLTextAreaElement).value).toBe('make him twelve')
+    expect((wrapper.find('[data-floating-box] textarea').element as HTMLTextAreaElement).value)
+      .toBe('make him twelve')
   })
 
   it("sweeps the Frame's sentences while an Action rewrites them", async () => {
@@ -422,7 +445,7 @@ describe('StoryboardView', () => {
     )
     const { wrapper } = await mountIt()
     expect(wrapper.find('[data-rewriting]').exists()).toBe(false)
-    await wrapper.find('textarea').setValue('he jumps')
+    await wrapper.find('[data-floating-box] textarea').setValue('he jumps')
     await buttonNamed(wrapper, 'Send').trigger('click')
     await flushPromises()
     expect(wrapper.find('[data-rewriting]').classes()).toContain('render-sweep')
@@ -434,7 +457,9 @@ describe('StoryboardView', () => {
   it('continues as a Chain from the Frame shown, and opens it', async () => {
     vi.mocked(api.chainFromFrame).mockResolvedValue({ id: 'ch', kind: 'chain' } as never)
     const { wrapper, router } = await mountIt()
-    await wrapper.findAll('[data-frame]')[1].trigger('click')
+    await tiles(wrapper)[1].trigger('click')
+    // In the text box's ⋯ menu.
+    await openMenu(wrapper, '[data-more]')
     expect(wrapper.find('[data-continue-chain]').text()).toBe('Chain from Frame 2')
     await wrapper.find('[data-continue-chain]').trigger('click')
     await flushPromises()
@@ -447,6 +472,7 @@ describe('StoryboardView', () => {
       storyboard([frame(0, { blocked: 'no nudity' }), frame(1)]),
     )
     const { wrapper } = await mountIt()
+    await openMenu(wrapper, '[data-more]')
     expect(wrapper.find('[data-continue-chain]').attributes('disabled')).toBeDefined()
   })
 
@@ -503,9 +529,10 @@ describe('StoryboardView', () => {
       storyboard([planned(0), added, { ...planned(1), index: 2 }, { ...planned(2), index: 3 }]),
     )
     const { wrapper } = await mountIt()
-    // Only in the Prompt panel, for the selected Frame: none in the list.
+    // In the picked Beat's editor, after it; the cards end with one to add at the end.
     expect(wrapper.findAll('[data-add-beat]')).toHaveLength(1)
-    expect(wrapper.find('[data-frames-panel] [data-add-beat]').exists()).toBe(false)
+    expect(wrapper.find('[data-beat-cards] [data-add-beat]').exists()).toBe(false)
+    expect(wrapper.find('[data-beat-cards] [data-add-beat-end]').exists()).toBe(true)
 
     await wrapper.find('[data-field="storyboard.frame"]').setValue('Rin dunks.')
     await wrapper.find('[data-add-beat]').trigger('click')
@@ -540,6 +567,7 @@ describe('StoryboardView', () => {
     vi.mocked(api.getSession).mockResolvedValue(storyboard([frame(0), planned(1)]))
     const written = (await mountIt()).wrapper
     expect(written.find('[data-beat-actions]').exists()).toBe(false)
+    expect(written.find('[data-add-beat-end]').exists()).toBe(false)
   })
 
   it('removes a Beat once confirmed, dropping an edit to it', async () => {
@@ -578,7 +606,7 @@ describe('StoryboardView', () => {
     expect((await mountIt()).wrapper.findAll('[data-remove-beat]')).toHaveLength(0)
   })
 
-  it('moves a Beat with ↑ and ↓ on its grip, the Frame shown going with it', async () => {
+  it('moves a Beat with ← and → on its grip, the Frame shown going with it', async () => {
     vi.mocked(api.getSession).mockResolvedValue(storyboard([planned(0), planned(1), planned(2)]))
     const beats = (order: number[]) =>
       storyboard(order.map((from, index) => ({ ...planned(from), index })))
@@ -586,21 +614,21 @@ describe('StoryboardView', () => {
     const { wrapper } = await mountIt()
     await wrapper.findAll('[data-frame]')[0].trigger('click')
 
-    await wrapper.findAll('[data-move-beat]')[0].trigger('keydown', { key: 'ArrowDown' })
+    await wrapper.findAll('[data-move-beat]')[0].trigger('keydown', { key: 'ArrowRight' })
     await flushPromises()
     expect(api.reorderBeats).toHaveBeenCalledWith('sb', [1, 0, 2], [
       'Beat 1.',
       'Beat 2.',
       'Beat 3.',
     ])
-    expect(wrapper.findAll('[data-frame]').map((f) => f.text().slice(0, 9))).toEqual([
-      '1Beat 2.N',
-      '2Beat 1.N',
-      '3Beat 3.N',
+    expect(wrapper.findAll('[data-frame]').map((f) => f.text())).toEqual([
+      '1Beat 2.',
+      '2Beat 1.',
+      '3Beat 3.',
     ])
     expect(wrapper.find('[data-frame][aria-current="true"]').text()).toContain('Beat 1.')
     // Not past either end.
-    await wrapper.findAll('[data-move-beat]')[2].trigger('keydown', { key: 'ArrowDown' })
+    await wrapper.findAll('[data-move-beat]')[2].trigger('keydown', { key: 'ArrowRight' })
     await flushPromises()
     expect(api.reorderBeats).toHaveBeenCalledTimes(1)
   })
@@ -693,7 +721,7 @@ describe('StoryboardView', () => {
     vi.mocked(api.queueJob).mockResolvedValue([])
     const { wrapper } = await mountIt()
     await wrapper.find('[data-field="storyboard.frame"]').setValue('New body.')
-    await wrapper.find('[data-render-button]').trigger('click')
+    await wrapper.find('[data-render-it]').trigger('click')
     await flushPromises()
     expect(api.queueJob).toHaveBeenCalledWith('sb', 'render', 0)
     expect(vi.mocked(api.saveFrameBody).mock.invocationCallOrder[0]).toBeLessThan(
@@ -726,12 +754,13 @@ describe('StoryboardView', () => {
     await flushPromises()
     expect(api.queueJob).toHaveBeenCalledWith('sb', 'upscale', 0)
     expect(wrapper.find('[data-upscale-button]').attributes('disabled')).toBeDefined()
+    await openMenu(wrapper, '[data-3d-menu-button]')
+    expect(wrapper.find('[data-scene-button]').exists()).toBe(true)
 
-    // A draft has no picture to upscale or make into 3D, until a render is queued.
-    await wrapper.findAll('[data-frame]')[1].trigger('click')
+    // A draft has no picture to upscale or make into 3D: its place offers a render.
+    await tiles(wrapper)[1].trigger('click')
     expect(wrapper.find('[data-upscale-button]').exists()).toBe(false)
-    await wrapper.find('[data-render-button]').trigger('click')
-    await flushPromises()
-    expect(wrapper.find('[data-upscale-button]').exists()).toBe(true)
+    expect(wrapper.find('[data-3d-menu-button]').exists()).toBe(false)
+    expect(wrapper.find('[data-render-it]').exists()).toBe(true)
   })
 })

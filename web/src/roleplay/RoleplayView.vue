@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ask } from '../ask'
 import { frameName, framesName } from '../frameName'
-import { useStoredString } from '../composables/storage'
-import { useMediaQuery, useTextareaAutosize } from '@vueuse/core'
+import { useDrawer } from '../composables/useDrawer'
+import { useTextareaAutosize } from '@vueuse/core'
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { type Activity, chainFromFrame, type Clip, getSession, imageUrl, type Look, type Made3d, pickedEdit, restartSession } from '../api'
@@ -14,7 +14,6 @@ import LookForm from '../components/LookForm.vue'
 import RestartButton from '../components/RestartButton.vue'
 import PutBackOffer from '../components/PutBackOffer.vue'
 import { usePutBack } from '../composables/usePutBack'
-import ClipOverlay from '../components/ClipOverlay.vue'
 import FoldedPrompt from '../components/FoldedPrompt.vue'
 import ShownPills from '../components/ShownPills.vue'
 import { clipCount, clipsMaking, usePlayingClip } from '../clips'
@@ -22,15 +21,15 @@ import FrameClips from '../components/FrameClips.vue'
 import FrameStrip, { type StripTile } from '../components/FrameStrip.vue'
 import FloatingBox from '../components/FloatingBox.vue'
 import FrameJobs from '../components/FrameJobs.vue'
-import FrameJobsLine from '../components/FrameJobsLine.vue'
-import PictureToolbar from '../components/PictureToolbar.vue'
 import PopMenu from '../components/PopMenu.vue'
 import SessionBar from '../components/SessionBar.vue'
+import SessionPicture from '../components/SessionPicture.vue'
+import SessionSettings from '../components/SessionSettings.vue'
+import SessionStage from '../components/SessionStage.vue'
+import { imageRatioOf } from '../components/sessionPictureRatio'
 import SessionDrawer from '../components/SessionDrawer.vue'
 import ToggleSwitch from '../components/ToggleSwitch.vue'
 import Icon from '../components/Icon.vue'
-import ImageModelPicker from '../components/ImageModelPicker.vue'
-import TextModelPicker from '../components/TextModelPicker.vue'
 import ModelComparison from '../components/ModelComparison.vue'
 import { useImageModels } from '../composables/useSettingsOptions'
 import UndirectedNote from './UndirectedNote.vue'
@@ -41,7 +40,6 @@ import { CAST_SECTION_IDS, type CastField, castSectionsOf, isList, LIST_NOUNS } 
 import CastFieldBox from './CastFieldBox.vue'
 import ItemList from '../components/ItemList.vue'
 import Frame3dViewers from '../components/Frame3dViewers.vue'
-import EditedChip from '../components/EditedChip.vue'
 import FrameViewer from '../components/FrameViewer.vue'
 import { useJobs } from '../composables/useJobs'
 import { useJobLink } from '../composables/useJobLink'
@@ -110,7 +108,7 @@ const suggesting = computed(() => pending.value?.kind === 'suggest')
 const writingCast = computed(() => pending.value?.kind === 'cast')
 // --- Background work: pictures, renders, upscales, voices and 3D, queued on the server.
 
-const { jobs, runningJobs, runningJob, runningOn, jobsFor, hasJob, queue, queueEdit, queueClip, queueAll, dropJob, retry, refreshJobs } = useJobs(
+const { jobs, runningJobs, runningJob, runningOn, jobsFor, hasJob, workOn, workOf, dropEach, queue, queueEdit, queueClip, queueAll, dropJob, retry, refreshJobs } = useJobs(
   props.id,
   {
     onSettled: () => reload(),
@@ -206,12 +204,6 @@ const frameJobs = (index: number) =>
     j.kind !== 'voice' && j.kind !== 'score-roleplay' && !SPOKEN.includes(j.kind)
   )
 const speakJobs = (index: number) => jobsFor(index).filter((j) => SPOKEN.includes(j.kind))
-/** Cancels a Frame's jobs one by one, skipping any a cancel before took with it. */
-async function dropAll(list: Job[]) {
-  for (const job of list) {
-    if (jobs.value.some((j) => j.id === job.id && isOpen(j))) await drop(job)
-  }
-}
 const voiceJob = computed(() => jobs.value.find((j) => j.kind === 'voice' && j.status !== 'done') ?? null)
 /** The voice is being designed, or waits its turn to be. */
 const designingVoice = computed(() =>
@@ -384,19 +376,11 @@ function pickFromStrip(index: number) {
  * reviewed, before the scene begins.
  */
 type DrawerTab = 'prompt' | 'cast' | 'music'
-const storedDrawer = useStoredString('roleplay-drawer')
-/** A screen wide enough for the drawer beside a full-height picture and the story. */
-const wide = useMediaQuery('(min-width: 2560px)')
-const drawer = computed<DrawerTab | null>({
-  get: () => {
-    // Never opened or closed yet: open on a wide screen, as there's room.
-    const tab = (storedDrawer.value ?? (wide.value ? 'prompt' : 'closed')) as DrawerTab | 'closed'
-    return tab === 'closed' || (tab === 'music' && !musicOn.value) ? null : tab
-  },
-  set: (tab) => (storedDrawer.value = tab ?? 'closed'),
-})
-/** Opens the drawer at a tab, or closes it if that tab is open already. */
-const toggleDrawer = (tab: DrawerTab) => (drawer.value = drawer.value === tab ? null : tab)
+const { tab: drawer, toggle: toggleDrawer } = useDrawer<DrawerTab>(
+  'roleplay-drawer',
+  'prompt',
+  (tab) => tab !== 'music' || musicOn.value,
+)
 watch(reviewing, (now, was) => {
   if (now) drawer.value = 'cast'
   // Begun: the drawer it opened for the review steps aside for the picture.
@@ -742,15 +726,7 @@ async function saveLookDraft(draft: Look): Promise<Look> {
 // --- The strip and the picture beside the story.
 
 /** What a Frame's tile and picture show of the work on it: running, or waiting its turn. */
-function workingOn(index: number): 'running' | 'queued' | null {
-  const open = frameJobs(index).filter(isOpen)
-  return open.some((j) => j.status === 'running') ? 'running' : open.length ? 'queued' : null
-}
-/** Whether a job of this kind runs on Frame `index`, or waits. */
-const workingOf = (index: number) => (kind: JobKind) => {
-  const job = jobsFor(index).find((j) => j.kind === kind && isOpen(j))
-  return job ? (job.status === 'running' ? 'running' : 'queued') : null
-}
+const workingOn = (index: number) => workOn(index, frameJobs(index))
 const tiles = computed<StripTile[]>(() =>
   shownFrames.value.map((f) => ({
     index: f.index,
@@ -778,15 +754,11 @@ const canPicture = computed(() =>
   !!selectedFrame.value && !selectedFrame.value.blocked && featureOn.value('images') &&
   !hasJob(selectedFrame.value.index, 'picture') && !hasJob(selectedFrame.value.index, 'render')
 )
-/**
- * The picture's shape, from the image once it's loaded (3:2 until then): its box keeps it while
- * growing to the height there is, so the toolbar and corners sit on the picture itself.
- */
-const pictureRatio = ref(1.5)
-function onPictureLoad(e: Event) {
-  const img = e.target as HTMLImageElement
-  if (img.naturalWidth && img.naturalHeight) pictureRatio.value = img.naturalWidth / img.naturalHeight
-}
+/** The picture's side shows once the scene has begun, where there are pictures, or work on one. */
+const pictureShown = computed(() =>
+  begun.value && !!selectedFrame.value &&
+  (featureOn.value('images') || !!selectedPicture.value || frameJobs(selectedFrame.value.index).length > 0)
+)
 
 async function pictureIt(index: number) {
   if (!(await flushEdits('pictured'))) return
@@ -866,49 +838,22 @@ const lookSavingText = computed(() =>
           @changed="reload(); refreshJobs()"
           one-style
         /></span>
-        <!-- The Roleplay's models and switches, its Image Model named. -->
-        <PopMenu align="end" panel-class="w-[26rem] p-4 text-sm" data-session-settings>
-          <template #button="{ open, toggle }">
-            <button
-              type="button"
-              class="flex items-center gap-1.5 rounded-md px-2 py-1 hover:bg-surface hover:text-fg"
-              :class="{ 'bg-surface text-fg': open }"
-              title="This Roleplay's models and switches"
-              data-session-settings-button
-              @click="toggle"
-            >
-              <Icon name="sliders" />
-              <span v-if="featureOn('images')" class="max-w-40 truncate max-md:hidden">{{ labelOf(session.settings.imageModel) }}</span>
-            </button>
-          </template>
-          <div class="flex flex-col gap-3">
-            <h2 class="font-semibold">This Roleplay</h2>
-            <TextModelPicker
-              class="justify-between"
-              :session="session"
-              @switched="onSwitched"
-              @failed="(text) => (notice = { kind: 'error', text })"
-            />
-            <ImageModelPicker
-              v-if="featureOn('images')"
-              class="flex-wrap justify-between"
-              :session="session"
-              @switched="onSwitched"
-              @failed="(text) => (notice = { kind: 'error', text })"
-            />
-            <div class="flex flex-col gap-3 border-t border-line pt-3">
-              <ToggleSwitch v-if="featureOn('images')" v-model="renderReplies" title="Render replies" data-render-replies>
-                Each new Reply's picture is rendered as its Image Prompt is written (slower)
-              </ToggleSwitch>
-              <ToggleSwitch v-if="featureOn('voices')" v-model="autoplay" title="Speak replies" data-autoplay>
-                Each new Reply is spoken in {{ characterName }}'s voice
-              </ToggleSwitch>
-              <ToggleSwitch v-if="musicOn" v-model="scoreAsYouPlay" title="Score as you play" data-score-as-you-play>
-                Each new Reply's music is directed: it continues, changes or falls silent
-              </ToggleSwitch>
-            </div>
-          </div>
-        </PopMenu>
+        <SessionSettings
+          :session="session"
+          title="This Roleplay"
+          @switched="onSwitched"
+          @failed="(text) => (notice = { kind: 'error', text })"
+        >
+          <ToggleSwitch v-if="featureOn('images')" v-model="renderReplies" title="Render replies" data-render-replies>
+            Each new Reply's picture is rendered as its Image Prompt is written (slower)
+          </ToggleSwitch>
+          <ToggleSwitch v-if="featureOn('voices')" v-model="autoplay" title="Speak replies" data-autoplay>
+            Each new Reply is spoken in {{ characterName }}'s voice
+          </ToggleSwitch>
+          <ToggleSwitch v-if="musicOn" v-model="scoreAsYouPlay" title="Score as you play" data-score-as-you-play>
+            Each new Reply's music is directed: it continues, changes or falls silent
+          </ToggleSwitch>
+        </SessionSettings>
       </SessionBar>
 
       <FrameStrip v-if="begun" :tiles="tiles" :picked="selectedIndex" @pick="pickFromStrip">
@@ -925,154 +870,73 @@ const lookSavingText = computed(() =>
       <div class="flex min-h-0 flex-1">
         <!-- The story: the picked Frame's picture on the left (above, on a phone), the exchanges
              beside it, the text box at its foot. -->
-        <main class="story relative flex min-w-0 flex-1 flex-col">
-          <!-- On a wide screen the picture grows to the height there is and the story keeps a
-               book-page width beside it, the two centred rather than drifting to either edge. -->
-          <div
-            class="mx-auto flex min-h-0 w-full flex-1 flex-col gap-3 px-4 pt-3 pb-24 lg:pb-[6.5rem] lg:max-w-[calc((100dvh-14rem)*var(--ratio)+44rem)] lg:flex-row lg:gap-6 lg:px-6 lg:pt-4"
-            :style="{ '--ratio': pictureRatio }"
-          >
-            <section
-              v-if="begun && selectedFrame && (featureOn('images') || selectedPicture || frameJobs(selectedFrame.index).length)"
-              class="flex shrink-0 justify-center lg:min-w-0 lg:flex-1 lg:items-start lg:justify-end lg:[container-type:size]"
-              data-picture-side
-            >
-              <div
-                class="group/picture relative max-w-full rounded-xl"
-                :class="{
-                  'w-full lg:max-w-[48rem]': !selectedPicture && !previewOn(selectedFrame.index),
-                  'aspect-(--ratio) w-[min(100%,calc(38dvh*var(--ratio)))] lg:w-[min(100cqw,calc(100cqh*var(--ratio)))]': selectedPicture || previewOn(selectedFrame.index),
-                  'render-sweep': runningOn(selectedFrame.index) && runningOn(selectedFrame.index)!.kind !== 'voice' }"
-                :data-rendering="runningOn(selectedFrame.index)?.phase === 'queued' ? 'queued' : undefined"
-                data-picture
+        <SessionStage :ratio="imageRatioOf(session)" :pictured="!!pictureShown">
+          <template #picture>
+              <SessionPicture
+                v-if="selectedFrame"
+                :name="frameName(selectedFrame.index)"
+                :label="selectedPicture ? `${frameName(selectedFrame.index)} of ${shownFrames.length}${changed(selectedFrame) ? ` · changed since render ${byOf(selectedPicture)}` : ''}` : undefined"
+                :src="selectedPicture ? imageUrl(session.id, selectedPicture.image) : null"
+                :picture="selectedPicture"
+                :dimmed="changed(selectedFrame)"
+                :preview="previewOn(selectedFrame.index) ? shownPreview : null"
+                :sweep="runningOn(selectedFrame.index) && runningOn(selectedFrame.index)!.kind !== 'voice' ? (runningOn(selectedFrame.index)!.phase === 'queued' ? 'queued' : 'running') : null"
+                :jobs="frameJobs(selectedFrame.index)"
+                :describe="describeJob"
+                :has-job="(kind) => hasJob(selectedFrame!.index, kind)"
+                :working="workOf(selectedFrame.index)"
+                :can-render="!!selectedFrame.prompt && !selectedFrame.blocked"
+                :clips="clipsMenu"
+                :playing="playingClip && playingClip.index === selectedFrame.index ? { src: imageUrl(session.id, playingClip.clip.file), clip: playingClip.clip } : null"
+                @queue="(kind) => queueSaved(kind, selectedFrame!.index)"
+                @view="(kind) => (open3d = { index: selectedFrame!.index, kind })"
+                @edit="startEdit(selectedFrame!.index)"
+                @open="viewing = selectedFrame.index"
+                @prompt="toggleDrawer('prompt')"
+                @retry="retry"
+                @drop="drop"
+                @cancel-all="(list) => dropEach(list, drop)"
+                @stop-clip="playingClip = null"
               >
-                <template v-if="selectedPicture || previewOn(selectedFrame.index)">
-                  <button
-                    type="button"
-                    class="block h-full w-full"
-                    :title="`Look closer at ${frameName(selectedFrame.index)}'s picture`"
-                    data-picture-image
-                    @click="selectedPicture && (viewing = selectedFrame.index)"
-                  >
-                    <img
-                      v-if="selectedPicture"
-                      :src="imageUrl(session.id, selectedPicture.image)"
-                      :alt="`Picture of ${frameName(selectedFrame.index)}`"
-                      class="block h-full w-full rounded-xl object-cover"
-                      :class="{ 'opacity-50': changed(selectedFrame) }"
-                      @load="onPictureLoad"
-                    />
-                    <!-- The picture forming: over the old one, or alone for a first render. -->
-                    <img
-                      v-if="previewOn(selectedFrame.index)"
-                      :src="shownPreview!.src"
-                      alt=""
-                      class="block h-full w-full rounded-xl object-cover transition-opacity duration-500"
-                      :class="{ 'absolute inset-0': selectedPicture }"
-                      :style="{ opacity: selectedPicture ? shownPreview!.opacity : 1 }"
-                      data-preview
-                    />
-                  </button>
-                  <ClipOverlay
-                    v-if="playingClip && playingClip.index === selectedFrame.index"
-                    class="rounded-xl"
-                    :src="imageUrl(session.id, playingClip.clip.file)"
-                    :clip="playingClip.clip"
-                    @close="playingClip = null"
-                    @click.stop
+                <template #clip>
+                  <p v-if="!ownPicture" class="text-xs text-muted" data-clips-other-model>
+                    Clips are made of a picture by {{ labelOf(session.settings.imageModel) }}: render this Frame with it first.
+                  </p>
+                  <FrameClips
+                    v-else-if="selectedPicture"
+                    :session-id="session.id"
+                    :index="selectedFrame.index"
+                    :clips="(pickedEdit(selectedPicture) ?? selectedPicture).clips"
+                    :next-pictured="!!session.frames[selectedFrame.index + 1] && !!pictureOf(session.frames[selectedFrame.index + 1])"
+                    :next-name="frameName(selectedFrame.index + 1)"
+                    :making="clipsMaking(jobsFor(selectedFrame.index), selectedPicture.imageModel)"
+                    :playing="playingClip?.index === selectedFrame.index ? playingClip.clip.file : undefined"
+                    @make="(order) => queueClip(selectedFrame!.index, order)"
+                    @play="(clip) => playClip(selectedFrame!.index, clip)"
+                    @stop="playingClip = null"
                   />
-                  <PictureToolbar
-                    v-if="selectedPicture"
-                    :picture="selectedPicture"
-                    :has-job="(kind) => hasJob(selectedFrame!.index, kind)"
-                    :working="workingOf(selectedFrame.index)"
-                    :can-render="!!selectedFrame.prompt && !selectedFrame.blocked"
-                    :clips="clipsMenu"
-                    @queue="(kind) => queueSaved(kind, selectedFrame!.index)"
-                    @view="(kind) => (open3d = { index: selectedFrame!.index, kind })"
-                    @edit="startEdit(selectedFrame!.index)"
-                    @expand="viewing = selectedFrame.index"
-                  >
-                    <template #clip>
-                      <p v-if="!ownPicture" class="text-xs text-muted" data-clips-other-model>
-                        Clips are made of a picture by {{ labelOf(session.settings.imageModel) }}: render this Frame with it first.
-                      </p>
-                      <FrameClips
-                        v-else
-                        :session-id="session.id"
-                        :index="selectedFrame.index"
-                        :clips="(pickedEdit(selectedPicture) ?? selectedPicture).clips"
-                        :next-pictured="!!session.frames[selectedFrame.index + 1] && !!pictureOf(session.frames[selectedFrame.index + 1])"
-                        :next-name="frameName(selectedFrame.index + 1)"
-                        :making="clipsMaking(jobsFor(selectedFrame.index), selectedPicture.imageModel)"
-                        :playing="playingClip?.index === selectedFrame.index ? playingClip.clip.file : undefined"
-                        @make="(order) => queueClip(selectedFrame!.index, order)"
-                        @play="(clip) => playClip(selectedFrame!.index, clip)"
-                        @stop="playingClip = null"
-                      />
-                    </template>
-                  </PictureToolbar>
                 </template>
-                <!-- Not pictured: a frame in the picture's place, to picture it from. -->
-                <div
-                  v-else
-                  class="grid aspect-[4/3] w-full max-h-[38dvh] place-items-center rounded-xl border-2 border-dashed border-line p-4 text-center lg:max-h-[100cqh]"
-                  data-not-pictured
-                >
-                  <div class="flex flex-col items-center gap-2">
-                    <span class="text-muted">
-                      <template v-if="workingOn(selectedFrame.index)">{{ frameName(selectedFrame.index) }} is being pictured</template>
-                      <template v-else-if="selectedFrame.blocked">{{ frameName(selectedFrame.index) }}'s Image Prompt crosses a limit ({{ selectedFrame.blocked }})</template>
-                      <template v-else>{{ frameName(selectedFrame.index) }} isn't pictured</template>
-                    </span>
-                    <button
-                      v-if="canPicture"
-                      type="button"
-                      class="rounded-lg bg-fg px-3 py-1.5 text-sm font-medium text-canvas"
-                      :title="selectedFrame.prompt ? 'Render its Image Prompt' : 'The Art Agent writes its Image Prompt, then it\'s rendered'"
-                      data-picture-it
-                      @click="pictureIt(selectedFrame.index)"
-                    >
-                      Picture it
-                    </button>
-                  </div>
-                </div>
-                <!-- Over the picture's top: which Frame, its work, and its Image Prompt. -->
-                <div class="pointer-events-none absolute inset-x-2 top-2 z-20 flex items-start gap-1.5">
-                  <span
-                    v-if="selectedPicture"
-                    class="pointer-events-auto shrink-0 rounded-md bg-black/55 px-2 py-0.5 text-xs text-white backdrop-blur-sm"
-                    data-picture-label
-                  >
-                    {{ frameName(selectedFrame.index) }} of {{ shownFrames.length }}<template v-if="changed(selectedFrame)"> · changed since render {{ byOf(selectedPicture) }}</template>
+                <template #empty>
+                  <span class="text-muted">
+                    <template v-if="workingOn(selectedFrame.index)">{{ frameName(selectedFrame.index) }} is being pictured</template>
+                    <template v-else-if="selectedFrame.blocked">{{ frameName(selectedFrame.index) }}'s Image Prompt crosses a limit ({{ selectedFrame.blocked }})</template>
+                    <template v-else>{{ frameName(selectedFrame.index) }} isn't pictured</template>
                   </span>
-                  <span class="pointer-events-auto min-w-0">
-                    <FrameJobsLine
-                      :jobs="frameJobs(selectedFrame.index)"
-                      :describe="describeJob"
-                      @retry="retry"
-                      @drop="drop"
-                      @cancel-all="dropAll"
-                    />
-                  </span>
-                  <EditedChip :picture="selectedPicture" class="pointer-events-auto ml-auto" />
                   <button
+                    v-if="canPicture"
                     type="button"
-                    class="pointer-events-auto flex shrink-0 items-center gap-1 rounded-md px-2 py-0.5 text-xs backdrop-blur-sm"
-                    :class="[
-                      selectedPicture ? 'bg-black/55 text-white hover:bg-black/75' : 'border border-line bg-surface text-muted hover:text-fg',
-                      { 'ml-auto': !selectedPicture?.edits?.length },
-                    ]"
-                    title="The Image Prompt, who's shown, and the timings"
-                    data-open-prompt
-                    @click="toggleDrawer('prompt')"
+                    class="rounded-lg bg-fg px-3 py-1.5 text-sm font-medium text-canvas"
+                    :title="selectedFrame.prompt ? 'Render its Image Prompt' : 'The Art Agent writes its Image Prompt, then it\'s rendered'"
+                    data-picture-it
+                    @click="pictureIt(selectedFrame.index)"
                   >
-                    <Icon name="prompt" />Prompt
+                    Picture it
                   </button>
-                </div>
-              </div>
-            </section>
+                </template>
+              </SessionPicture>
+          </template>
 
+          <template #side>
             <ol
               ref="transcript"
               @scroll.passive="onTranscriptScroll"
@@ -1081,7 +945,6 @@ const lookSavingText = computed(() =>
               @pointerdown="playerScrolls"
               @keydown="playerScrolls"
               class="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pb-2"
-              :class="{ 'lg:w-[38rem] lg:flex-none': begun && selectedFrame && (featureOn('images') || selectedPicture) }"
               data-transcript
             >
               <template v-for="frame in shownFrames" :key="frame.index">
@@ -1234,11 +1097,9 @@ const lookSavingText = computed(() =>
                 </li>
               </template>
             </ol>
-          </div>
+          </template>
 
-          <!-- Floating over the foot of the story: the picture and the story end just above it at
-               one line, and as it grows it rises over them. -->
-          <div class="pointer-events-none absolute inset-x-0 bottom-0 z-30 mx-auto w-full max-w-3xl px-3 pb-4 *:pointer-events-auto lg:pb-6">
+          <template #box>
             <FloatingBox
               v-model="draft"
               :placeholder="`What ${personaName} says or does…`"
@@ -1351,8 +1212,8 @@ const lookSavingText = computed(() =>
                 </PopMenu>
               </template>
             </FloatingBox>
-          </div>
-        </main>
+          </template>
+        </SessionStage>
 
         <SessionDrawer v-model="drawer" :tabs="drawerTabs">
           <template #prompt>

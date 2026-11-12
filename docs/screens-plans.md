@@ -48,9 +48,9 @@ Dropped along the way: starting in Light rather than following the system (the o
 
 Building began on 2026-11-12, on the `screens` branch. Each stage is a piece of its own, shown to the owner with before-and-after screenshots at phone, desktop and wide sizes before it's committed. On 2026-11-12 the owner moved the colours, light and dark, to the start, so every later stage is built and judged in the final look, and joined the rail with the Roleplay's strip view, so a Session's title is never left with nowhere to show.
 
-1. **The colours**, light and dark: the soft split's tokens. *Built 2026-11-12, waiting for the owner's look.*
-2. **The rail and the strip view for a Roleplay**: the rail and the tab bar at phone width; the Session's bar, the strip, the picture beside the story, the floating box, the picture's buttons, the drawer. *Built 2026-11-12, waiting for the owner's look.*
-3. **Chain and Storyboard** in the same view, with the Beat cards for a plan.
+1. **The colours**, light and dark: the soft split's tokens. *Built and committed 2026-11-12.*
+2. **The rail and the strip view for a Roleplay**: the rail and the tab bar at phone width; the Session's bar, the strip, the picture beside the story, the floating box, the picture's buttons, the drawer. *Built and committed 2026-11-12.*
+3. **Chain and Storyboard** in the same view, with the Beat cards for a plan. *Built 2026-11-12, waiting for the owner's look.*
 4. **The contact sheet, and the Queue's slide-in panel** with the count on the rail.
 5. **Settings** as an overlay in its new shape, and the Queue page to match.
 6. **The Scenario page.**
@@ -107,6 +107,13 @@ What was worked out from the code while planning, to start from rather than to f
 - A Chain: the Action and Narration beside the picture; the prompt with its changes marked in the drawer.
 - A Storyboard: the Beat, who it shows and the Frame's seven sentences beside the picture; Render all in the Session's bar; an unrendered Frame's empty picture holds its own Render button.
 - A plan being reviewed: the strip as Beat cards (the drag is `useDragReorder`), the picked Beat's editor and the Look below, Write Frames in a docked bar.
+
+- Built 2026-11-12. All three screens now share `SessionStage` (the picture beside the side, the box over its foot, sized by the picture's shape), `SessionPicture` (the picture with its toolbar, label, jobs line, Prompt and an empty frame to picture it from; it loads a new picture before showing it, keeps the forming preview until the finished one is in, and shows the pixel size on its label on hover, as `FrameImage` did), `SessionSettings` (the models popover), and `useDrawer` (the drawer's tab, remembered, open at first on a 2560 px screen); `useJobs` gained `workOn`, `workOf` and `dropEach`. The Roleplay was moved onto them with no change in what it does.
+- A Chain: the Action and what it changed beside the picture, the Image Prompt with its changes and Edit in the drawer, the Frame being written as a spinning tile at the strip's end (its Action and thinking beside its empty picture), Render each Frame in the models popover, Render all and Delete a Frame in the ⋯ menu, Undo by the box. An earlier Frame shows "Back to the latest" on its picture, and the box says it can't send from there, in place of the old read-only Action.
+- A Storyboard: written, the Beat, who it shows and its seven sentences beside the picture; Render all and Look in the bar; an unrendered Frame's empty picture holds Render Frame 3; Chain from a Frame in the ⋯ menu; the full prompt and the Look (with Restart) in the drawer. Its plan, while it's written and reviewed: the Beats as cards to drag along the strip (or ← and → on a grip), a "+ Beat" card at the end, the picked Beat's editor with the Look beside it, and Write Frames in a bar along the foot, which also shows the writing's progress and Cancel.
+- Changed from before, and why: ← and → step through the strip, in place of ↑ and ↓ in the old lists. A Frame with work only waiting names it on its line ("Render · waiting"), where it said "1 waiting". A Storyboard Frame's state (Rendered, Changed since render) is on its picture's label, not in a list; a draft's Upscale and 3D wait for its picture, as the toolbar is on the picture. A Chain opened afresh still starts at its latest Frame, where the next Action goes from (a Roleplay starts at its first).
+- Removed as no longer used: `FrameTab`, `FrameListItem`, `PanelTabs`, `RenderAllButton`, `useFrameKeys`, `scrollToClips`. `JobQueue` stays for stage 4's panel; `FrameImage` stays for the picture viewer.
+- Not checked: a Storyboard actually planned and written in the new screen (seen with a copy of one answered in the headless browser, and in the tests); a real phone; the Windows PC.
 
 **4. The contact sheet and the Queue panel.**
 

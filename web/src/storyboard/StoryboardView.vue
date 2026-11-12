@@ -11,6 +11,7 @@ import {
   editStoryboardFrame,
   imageUrl,
   insertBeat,
+  pickedEdit,
   isWritten,
   type Job,
   type JobKind,
@@ -32,34 +33,31 @@ import {
   writeStoryboard,
 } from '../api'
 import CollapsibleTextarea from '../components/CollapsibleTextarea.vue'
-import FoldedPrompt from '../components/FoldedPrompt.vue'
 import ShownPills from '../components/ShownPills.vue'
-import ComposeBox from '../components/ComposeBox.vue'
 import Frame3dViewers from '../components/Frame3dViewers.vue'
-import FrameImage from '../components/FrameImage.vue'
-import EditedChip from '../components/EditedChip.vue'
 import FrameViewer from '../components/FrameViewer.vue'
 import Icon from '../components/Icon.vue'
-import JobQueue from '../components/JobQueue.vue'
 import LookForm from '../components/LookForm.vue'
-import FrameTab from '../components/FrameTab.vue'
-import ClipOverlay from '../components/ClipOverlay.vue'
-import { clipCount, clipsMaking, scrollToClips, usePlayingClip } from '../clips'
-import FrameListItem from '../components/FrameListItem.vue'
-import ImageModelPicker from '../components/ImageModelPicker.vue'
-import TextModelPicker from '../components/TextModelPicker.vue'
+import { clipCount, clipsMaking, usePlayingClip } from '../clips'
+import FloatingBox from '../components/FloatingBox.vue'
+import FrameClips from '../components/FrameClips.vue'
+import FrameStrip, { type StripTile } from '../components/FrameStrip.vue'
 import ModelComparison from '../components/ModelComparison.vue'
-import RenderAllButton from '../components/RenderAllButton.vue'
-import PanelTabs from '../components/PanelTabs.vue'
+import PopMenu from '../components/PopMenu.vue'
 import RestartButton from '../components/RestartButton.vue'
+import SessionDrawer from '../components/SessionDrawer.vue'
+import SessionPicture from '../components/SessionPicture.vue'
+import SessionSettings from '../components/SessionSettings.vue'
+import SessionStage from '../components/SessionStage.vue'
+import { imageRatioOf } from '../components/sessionPictureRatio'
+import { useDrawer } from '../composables/useDrawer'
 import { useImageModels, writtenPart } from '../composables/useSettingsOptions'
 import { useFeatures } from '../composables/useFeatures'
 import { useJobs } from '../composables/useJobs'
 import { useJobLink } from '../composables/useJobLink'
 import { usePictureEditing } from '../composables/usePictureEditing'
 import { useDragReorder } from '../composables/useDragReorder'
-import { showPickedFrame, useFrameKeys } from '../composables/useFrameKeys'
-import { JOB_NAMES, jobForming, jobStatus, queueTab, sweepOf } from '../jobs'
+import { jobForming, sweepOf } from '../jobs'
 import { useSessionScreen } from '../composables/useSessionScreen'
 import { saveLine, useAutosave } from '../composables/useAutosave'
 import SaveStatus from '../components/SaveStatus.vue'
@@ -70,27 +68,10 @@ const router = useRouter()
 
 /** The Frame shown in the main panel and edited in the Prompt panel. */
 const selected = ref(0)
+/** The plan's Beat cards, while it's reviewed: what scrolls, and what a dragged Beat moves among. */
 const frameList = useTemplateRef<HTMLElement>('frameList')
-const panel = ref<'frames' | 'queue' | 'prompt'>('frames')
-/**
- * Which tab the detail panel shows: the selected Frame, or the Look. Until picked, the Look while
- * the plan is reviewed (where the review starts), and the Frame once Frames are written.
- */
-const detailPicked = ref<'frame' | 'look' | null>(null)
-const detail = computed({
-  get: () => detailPicked.value ?? (writingStarted.value ? 'frame' : 'look'),
-  set: (tab) => (detailPicked.value = tab),
-})
-/** A narrow window's one row of tabs: the Frame and the Look are two of them. */
-const narrowTab = computed({
-  get: () => (panel.value === 'prompt' ? detail.value : panel.value),
-  set: (tab: 'frames' | 'queue' | 'frame' | 'look') => {
-    if (tab === 'frame' || tab === 'look') {
-      panel.value = 'prompt'
-      detail.value = tab
-    } else panel.value = tab
-  },
-})
+/** The drawer beside the story, once Frames are written: the Frame's full prompt, or the Look. */
+const { tab: drawer, toggle: toggleDrawer } = useDrawer<'prompt' | 'look'>('storyboard-drawer', 'prompt')
 const message = ref<{ kind: 'error' | Outcome; text: string } | null>(null)
 
 /**
@@ -214,7 +195,6 @@ let following = false
 function followWriting(index: number) {
   if (!following || index >= frames.value.length) return
   selected.value = index
-  showPickedFrame(frameList)
 }
 async function writeFrames() {
   if (busy.value || !planned.value || allWritten.value) return
@@ -254,7 +234,7 @@ async function restart() {
 
 // --- Queued work: renders, upscales and 3D, each on its Frame.
 
-const { jobs, runningJobs, jobsFor, hasJob, queue, queueEdit, queueClip, queueAll, dropJob, cancelAll, dismissFinished, retry, refreshJobs } = useJobs(props.id, {
+const { jobs, runningJobs, jobsFor, hasJob, workOn, workOf, dropEach, queue, queueEdit, queueClip, queueAll, dropJob, retry, refreshJobs } = useJobs(props.id, {
   onSettled: async () => {
     await load()
   },
@@ -265,12 +245,7 @@ const { jobs, runningJobs, jobsFor, hasJob, queue, queueEdit, queueClip, queueAl
   },
   imageModel: () => session.value?.settings.imageModel,
 })
-/** A Frame's running job, if any, else the next queued one: what its status says it's doing. */
-const frameJob = (index: number) => {
-  const open = jobsFor(index).filter((j) => j.status !== 'failed')
-  return open.find((j) => j.status === 'running') ?? open[0] ?? null
-}
-/** The selected Frame's running job, if any: its picture sweeps while it works. */
+/** The picked Frame's running job, if any: its picture sweeps while it works. */
 const selectedJob = computed(() =>
   jobsFor(selected.value).find((j) => j.status === 'running') ?? null
 )
@@ -463,7 +438,7 @@ function moved(order: number[], from: number, to: number): number[] {
 const { dragging: draggingBeat, grip: beatGrip } = useDragReorder({
   scroller: frameList,
   items: '[data-frame-row]',
-  axis: 'y',
+  axis: 'x',
   move: (from, to) => (dragOrder.value = moved(dragOrder.value ?? inPlan(), from, to)),
   end: () => dragOrder.value && saveOrder(dragOrder.value),
 })
@@ -503,7 +478,7 @@ async function saveOrder(order: number[]) {
 /** Saves what's edited by hand, before work that reads it; false, saying why, if it can't. */
 async function flushEdits(what: string): Promise<boolean> {
   if ((await (lookForm.value?.flush() ?? true)) && (await flushFrame())) return true
-  message.value = { kind: 'error', text: `Not ${what}: an edit isn't saved (see the Prompt panel)` }
+  message.value = { kind: 'error', text: `Not ${what}: an edit isn't saved (see the Frame or the Look)` }
   return false
 }
 async function queueSaved(kind: JobKind, index: number) {
@@ -569,7 +544,7 @@ const writingHere = computed(() => writingIndex.value !== null && writingIndex.v
 const waitingToWrite = (f: { index: number }) =>
   writingIndex.value !== null && f.index > writingIndex.value
 
-const { renderedParts, jobName } = useImageModels()
+const { renderedParts, labelOf } = useImageModels()
 /** Writing the Frame, then rendering the picture it shows, once it has one, and by which model. */
 const timingsLabel = (f: StoryboardFrame) => {
   // Both are written with its sentences; none before.
@@ -586,14 +561,12 @@ const viewingPicture = ref<number | null>(null)
 async function openClip(job: Job) {
   await onClipsModel(job, (text) => (message.value = { kind: 'error', text }))
   pick(job.frameIndex)
-  narrowTab.value = 'frame'
-  scrollToClips(frameList.value)
 }
 const { painting: paintingPicture, startEdit, showEdit, pick: pickVersion, deleteEdit, deleteUpscale } =
   usePictureEditing(props.id, session, viewingPicture, (text) => (message.value = { kind: 'error', text }))
 // A job linked to from the queue page opens as this Session's Queue tab opens it.
 useJobLink(() => sessionPath(props.id, 'storyboard'), () => !!session.value, jobs, refreshJobs, {
-  go: goToFrame,
+  go: (index) => pick(index),
   edit: showEdit,
   clip: openClip,
   drop: dropJob,
@@ -606,391 +579,195 @@ function pick(index: number) {
   following = false
   selected.value = index
 }
-/** From the Queue tab: picks the Frame and shows it in the Frames list. */
-function goToFrame(index: number) {
-  pick(index)
-  panel.value = 'frames'
-  showPickedFrame(frameList)
-}
-/** ↑ and ↓ in the Frames list. */
-const onFrameKey = useFrameKeys(frameList, {
-  count: () => frames.value.length,
-  current: () => selected.value,
-  pick,
-})
 /** Rendering needs pictures on; off, a Storyboard's plan can still be read and edited. */
 const { on: featureOn } = useFeatures()
 const imagesOn = computed(() => featureOn.value('images'))
+
+/**
+ * The plan, as it's written and then reviewed: the Beats as cards to drag, the picked one's editor
+ * and the Look beside it, Write Frames below. Once Frames are being written, the strip view.
+ */
+const planMode = computed(() => !writingStarted.value && work.value?.kind !== 'write')
+/** The Frames as the strip shows them: each picture, or its Beat, and the work on it. */
+const tiles = computed<StripTile[]>(() =>
+  (session.value?.frames ?? []).map((f) => ({
+    index: f.index,
+    thumb: pictureOf(f) ? imageUrl(props.id, pictureOf(f)!.image) : null,
+    words: f.beat,
+    working: writingIndex.value === f.index ? 'running' : workOn(f.index),
+    dimmed: changed(f),
+    clips: clipCount(pictureOf(f), session.value!.settings.imageModel),
+  }))
+)
+/** The picture shown is by the Storyboard's Image Model, so it can have clips. */
+const ownPicture = computed(() =>
+  !!picture.value && picture.value.imageModel === session.value?.settings.imageModel
+)
+/** How many clips the Clip menu says the picture has, or null for no Clip menu. */
+const clipsMenu = computed(() =>
+  picture.value && featureOn.value('video')
+    ? (pickedEdit(picture.value) ?? picture.value).clips?.length ?? 0
+    : null
+)
+/** How the picked picture's edge sweeps: while a job renders it, slower while that waits. */
+const sweep = computed(() =>
+  writingHere.value ? 'running' : renderingHere.value === 'queued' ? 'queued' : renderingHere.value ? 'running' : null
+)
+/** The bar along the foot, in place of the text box: Write Frames, or the writing's progress. */
+const writeBar = computed(() =>
+  (planned.value && !allWritten.value && !busy.value) ||
+  (busy.value && work.value?.kind !== 'edit' && !work.value?.detached)
+)
 </script>
 
 <template>
-  <div class="flex min-h-0 flex-col">
+  <div class="flex min-h-0 min-w-0 flex-col">
     <p v-if="loadError" class="p-6 text-danger">Could not load this Storyboard: {{ loadError }}</p>
 
     <template v-else-if="session">
-      <!-- Until stage 3 of the screens plan builds its strip view: its kind and title. -->
-      <SessionBar kind="Storyboard" :title="session.title ?? ''" />
-      <div class="flex min-h-0 flex-1">
-      <main class="story flex min-w-0 flex-1 flex-col gap-3 p-4">
-        <div class="flex flex-wrap items-center justify-end gap-x-4 gap-y-1 text-sm">
-          <TextModelPicker
-            :session="session"
-            @switched="onSwitched"
-            @failed="(text) => (message = { kind: 'error', text })"
-          />
-          <template v-if="featureOn('images')">
-            <ImageModelPicker
-              :session="session"
-              @switched="onSwitched"
-              @failed="(text) => (message = { kind: 'error', text })"
-            />
-            <ModelComparison
-              :session-id="session.id"
-              :frames="session.frames"
-              :image-model="session.settings.imageModel"
-              :thumbnail="session.thumbnail"
-              :name="frameTitle"
-              :caption="(f) => f.beat"
-              @changed="load(); refreshJobs()"
-              one-style
-            />
-          </template>
-        </div>
-        <FrameImage
-          :src="picture ? imageUrl(session.id, picture.upscaled ?? picture.image) : null"
-          :alt="current?.prompt"
-          :rendering="writingHere ? 'image' : renderingHere"
-          :preview="forming"
-          :hide-size="busy"
-          :empty-text="!current ? 'Planning…' : writingHere ? 'Writing its sentences…' : !currentWritten ? 'Not written yet' : current.blocked ? 'Blocked: edit this Frame first' : 'Not rendered yet'"
-          :expected-size="session.imageSize"
-          @open="viewingPicture = current!.index"
-        >
-          <EditedChip :picture="picture" class="absolute right-3 top-12" />
-          <ClipOverlay
-            v-if="playingClip && playingClip.index === current?.index"
-            :src="imageUrl(session.id, playingClip.clip.file)"
-            :clip="playingClip.clip"
-            @close="playingClip = null"
-          />
-          <div
-            v-if="busy || selectedJob"
-            class="absolute left-3 top-3 rounded-full bg-black/70 px-3 py-1 text-sm text-white"
-            role="status"
+      <SessionBar kind="Storyboard" :title="session.title ?? ''" :status="busy ? statusLabel : undefined">
+        <span
+          v-if="planMode && planned && !busy"
+          class="rounded-full border border-line px-2 py-0.5 text-xs max-md:hidden"
+        >The plan · not written yet</span>
+        <template v-if="!planMode">
+          <button
+            v-if="imagesOn"
+            type="button"
+            class="rounded-md border border-line px-2 py-1 whitespace-nowrap hover:text-fg disabled:opacity-50"
+            :disabled="!toRender.length || !!waitForText"
+            :title="waitForText ?? 'Queue a render of every Frame not rendered yet, or changed since'"
+            data-render-all
+            @click="renderAll"
           >
-            <span class="animate-pulse">{{
-              busy ? statusLabel : `${jobName(selectedJob!)} · ${jobStatus(selectedJob!)}`
-            }}</span>
-          </div>
-          <div
-            v-if="frames.length"
-            class="absolute right-3 top-3 rounded-full bg-black/70 px-3 py-1 text-sm text-white"
-            data-frame-badge
+            Render all<span v-if="toRender.length" data-render-count> ({{ toRender.length }})</span>
+          </button>
+          <button
+            type="button"
+            class="rounded-md px-2 py-1 hover:bg-surface hover:text-fg"
+            :class="{ 'bg-surface text-fg': drawer === 'look' }"
+            title="The Look: who the Frames show, and the art style"
+            data-open-look
+            @click="toggleDrawer('look')"
           >
-            Frame {{ selected + 1 }} of {{ frames.length }}
-            <template v-if="current"> · {{ status(current).label }}</template>
-          </div>
-          <div
-            v-if="frames[selected]?.beat"
-            class="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/80 via-black/60 to-transparent px-5 pb-4 pt-12 text-sm text-white"
-            data-beat
-          >
-            {{ frames[selected].beat }}
-          </div>
-        </FrameImage>
+            Look
+          </button>
+          <!-- Until the All Frames view takes it (stage 4 of the screens plan). -->
+          <span v-if="imagesOn" class="max-md:hidden"><ModelComparison
+            :session-id="session.id"
+            :frames="session.frames"
+            :image-model="session.settings.imageModel"
+            :thumbnail="session.thumbnail"
+            :name="frameTitle"
+            :caption="(f) => f.beat"
+            @changed="load(); refreshJobs()"
+            one-style
+          /></span>
+        </template>
+        <SessionSettings
+          :session="session"
+          title="This Storyboard"
+          @switched="onSwitched"
+          @failed="(text) => (message = { kind: 'error', text })"
+        />
+      </SessionBar>
 
-        <div class="flex shrink-0 flex-col gap-2">
-          <div
-            class="flex rounded-lg"
-            :class="{ 'render-sweep': editingHere }"
-            :data-writing="editingHere ? '' : undefined"
+      <!-- The plan: its Beats as cards, dragged to reorder while it's reviewed. -->
+      <template v-if="planMode">
+        <ol
+          ref="frameList"
+          class="flex shrink-0 gap-2 overflow-x-auto border-b border-line px-4 py-3 [scrollbar-width:thin]"
+          aria-label="The plan's Beats"
+          data-beat-cards
+        >
+          <li
+            v-for="(f, position) in listed"
+            :key="f.index"
+            class="flex w-36 shrink-0"
+            :class="{ 'opacity-60': draggingBeat === position }"
+            data-frame-row
           >
-            <ComposeBox
-              v-model="draft"
-              :placeholder="currentWritten
-              ? `What to change in Frame ${current!.index + 1}… (Enter to send, Shift+Enter for a new line)`
-              : 'Frames can be edited by Action once they\'re written.'"
-              :disabled="busy || !currentWritten"
-              @send="sendAction"
-            />
-          </div>
-          <div class="flex flex-wrap items-center gap-2">
-            <template v-if="!busy">
-              <button
-                v-if="currentWritten"
-                type="button"
-                class="rounded-lg bg-fg px-4 py-2 font-medium text-canvas disabled:opacity-50"
-                :disabled="!draft.trim()"
-                @click="sendAction"
-              >
-                Send
-              </button>
-            </template>
             <button
-              v-if="busy && !work?.detached"
               type="button"
-              class="rounded-lg border border-danger px-4 py-2 font-medium text-danger disabled:opacity-50"
-              :disabled="work?.cancelling"
-              @click="cancel"
+              class="flex h-20 min-w-0 flex-1 flex-col gap-1 rounded-lg border bg-surface p-2 text-left text-xs"
+              :class="selected === f.index ? 'border-fg ring-1 ring-fg' : 'border-line hover:border-muted'"
+              :aria-current="selected === f.index"
+              data-frame
+              @click="pick(f.index)"
             >
-              Cancel
+              <span class="flex items-center justify-between text-muted">
+                <span>{{ f.index + 1 }}</span>
+                <span v-if="'pending' in f" class="animate-pulse">Planning…</span>
+              </span>
+              <span class="line-clamp-2 text-fg" data-beat>{{ f.beat }}</span>
             </button>
-            <RenderAllButton
-              v-if="imagesOn && writingStarted"
-              :count="toRender.length"
-              :busy="waitForText"
-              title="Queue a render of every Frame not rendered yet, or changed since"
-              @render="renderAll"
-            />
-            <p
-              v-if="message"
-              class="min-w-0 flex-1 truncate text-sm"
-              :class="{
-                'text-danger': message.kind === 'error',
-                'text-warn': message.kind === 'declined',
-                'text-info': message.kind === 'unclear',
-                'text-muted': message.kind === 'done',
-              }"
-              :title="message.text"
-              role="alert"
-            >
-              {{ message.text }}
-            </p>
-            <!-- At the far end, away from Send and Render: it opens a new Session. -->
+            <!-- Its grip, to drag the Beat along the plan (or ← and →). -->
             <button
-              v-if="current && currentWritten && !busy"
+              v-if="canMoveBeats"
               type="button"
-              class="ml-auto rounded-lg border border-line px-3 py-2 text-sm disabled:opacity-50"
-              :disabled="!!current.blocked || copying"
-              :title="current.blocked
-              ? 'Edit this Frame first: it crosses a limit'
-              : `A new Chain of Frames 1 to ${current.index + 1}, with their pictures, to carry on from this Frame by Actions. This Storyboard stays as it is.`"
-              data-continue-chain
-              @click="continueAsChain(current.index)"
+              class="-ml-6 mt-1.5 flex h-6 w-5 shrink-0 cursor-grab touch-none items-center justify-center self-start rounded text-muted hover:text-fg active:cursor-grabbing"
+              :aria-label="`Move Frame ${f.index + 1}'s Beat (drag, or ← and →)`"
+              :title="`Drag to move Frame ${f.index + 1}'s Beat`"
+              data-move-beat
+              v-on="beatGrip(position)"
+              @keydown.left.prevent.stop="moveBeat(position, position - 1)"
+              @keydown.right.prevent.stop="moveBeat(position, position + 1)"
             >
-              {{ copying ? 'Making…' : `Chain from ${frameName(current.index)}` }}
+              <Icon name="grip" />
             </button>
-          </div>
-        </div>
-      </main>
-
-      <aside class="flex w-80 flex-col border-l border-line xl:w-auto xl:flex-row">
-        <!-- Narrow windows: one panel at a time. From xl up: the Prompt beside the others. -->
-        <div class="xl:hidden">
-          <PanelTabs
-            v-model="narrowTab"
-            :tabs="[
-              { id: 'frames', label: 'Frames' },
-              { id: 'queue', ...queueTab(jobs) },
-              { id: 'frame', label: 'Frame' },
-              { id: 'look', label: 'Look' },
-            ]"
-          />
-        </div>
-
-        <section
-          class="min-h-0 flex-1 flex-col xl:w-72 xl:flex-none xl:border-r xl:border-line"
-          :class="panel === 'prompt' ? 'hidden xl:flex' : 'flex'"
-          data-frames-panel
-        >
-          <div class="hidden xl:block">
-            <PanelTabs
-              v-model="panel"
-              :tabs="[{ id: 'frames', label: 'Frames' }, { id: 'queue', ...queueTab(jobs) }]"
-            />
-          </div>
-          <!-- The queue: what's running, queued and failed; click one to go to its Frame. -->
-          <div v-if="panel === 'queue'" class="min-h-0 flex-1 overflow-y-auto" data-queue>
-            <JobQueue
-              :jobs="jobs"
-              empty="Nothing queued. Render, Render all and Upscale add work here, to run while you carry on."
-              :name="frameTitle"
-              @go="goToFrame"
-              @clip="openClip"
-              @edit="showEdit"
-              @retry="retry"
-              @drop="dropJob"
-              @cancel-all="cancelAll"
-              @dismiss-finished="dismissFinished"
-            />
-          </div>
-          <ol
-            v-show="panel !== 'queue'"
-            ref="frameList"
-            class="flex-1 overflow-y-auto"
-            role="tabpanel"
-            @keydown="onFrameKey"
-          >
-            <li
-              v-for="(f, position) in listed"
-              :key="f.index"
-              class="flex"
-              :class="{ 'opacity-60': draggingBeat === position }"
-              data-frame-row
+          </li>
+          <li v-if="canAddBeat" class="shrink-0">
+            <button
+              type="button"
+              class="grid h-20 w-24 place-items-center rounded-lg border border-dashed border-line text-xs text-muted hover:border-muted hover:text-fg"
+              title="Add a Beat at the end of the plan"
+              data-add-beat-end
+              @click="pick(session.frames.length - 1); startAdding(session.frames.length)"
             >
-              <!-- While the plan is reviewed: its grip, to drag the Beat up or down the list. -->
-              <button
-                v-if="canMoveBeats"
-                type="button"
-                class="flex shrink-0 cursor-grab touch-none items-center border-b border-line pl-1.5 text-muted hover:text-fg active:cursor-grabbing"
-                :aria-label="`Move Frame ${f.index + 1}'s Beat (drag, or ↑ and ↓)`"
-                :title="`Drag to move Frame ${f.index + 1}'s Beat`"
-                data-move-beat
-                v-on="beatGrip(position)"
-                @keydown.up.prevent.stop="moveBeat(position, position - 1)"
-                @keydown.down.prevent.stop="moveBeat(position, position + 1)"
-              >
-                <Icon name="grip" />
-              </button>
-              <FrameListItem
-                class="flex-1"
-                :thumb="'pictures' in f && pictureOf(f) ? imageUrl(session.id, pictureOf(f)!.image) : null"
-                :number="f.index + 1"
-                :current="selected === f.index"
-                :dimmed="'pictures' in f && changed(f)"
-                :writing="writingIndex === f.index"
-                :clips="'pictures' in f ? clipCount(pictureOf(f), session.settings.imageModel) : 0"
-                data-frame
-                @click="pick(f.index)"
-              >
-                  <span class="line-clamp-3">{{ f.beat }}</span>
-                  <span v-if="'pending' in f" class="animate-pulse text-xs text-muted">Planning…</span>
-                  <span
-                    v-else-if="writingIndex === f.index"
-                    class="animate-pulse text-xs text-info"
-                    data-status
-                  >
-                    Writing…
-                  </span>
-                  <span v-else-if="waitingToWrite(f) && !isWritten(f)" class="text-xs text-muted" data-status>
-                    Waiting
-                  </span>
-                  <span v-else class="text-xs font-medium" :class="status(f).tone" data-status>
-                    {{ frameJob(f.index) ? `${JOB_NAMES[frameJob(f.index)!.kind]}…` : status(f).label }}
-                  </span>
-              </FrameListItem>
-            </li>
-          </ol>
-        </section>
+              + Beat
+            </button>
+          </li>
+        </ol>
 
-        <section
-          class="min-h-0 flex-1 flex-col xl:w-[28rem] xl:flex-none"
-          :class="panel === 'prompt' ? 'flex' : 'hidden xl:flex'"
-          data-prompt-panel
-        >
-          <div class="hidden xl:block">
-            <PanelTabs
-              v-model="detail"
-              :tabs="[{ id: 'frame', label: current ? `Frame ${current.index + 1}` : 'Frame' }, { id: 'look', label: 'Look' }]"
-            />
-          </div>
-          <div class="flex flex-1 flex-col gap-4 overflow-y-auto p-4 text-sm" role="tabpanel">
-            <p v-if="!look" class="text-muted">The Look and Frames appear as the plan is written.</p>
-
-            <LookForm
-              v-else
-              v-show="detail === 'look'"
-              ref="lookForm"
-              :look="look"
-              :save="saveLookDraft"
-              :line="line"
-              id-prefix="storyboard.look"
-              every="every Frame"
-              :disabled="busy || !planned || writingStarted"
-              :fixed="writingStarted"
-            >
-              <template #actions>
-                <RestartButton
-                  v-if="writingStarted"
-                  :disabled="busy"
-                  title="The Look and Beats are fixed now that Frames are written. Restart to go back to the plan: every Frame's sentences and pictures are deleted, and the Look and Beats can be edited again"
-                  @restart="restart"
-                />
-              </template>
-            </LookForm>
-
-            <FrameTab
-              v-if="current"
-              v-show="detail === 'frame'"
-              :picture="picture"
-              :has-job="(kind) => hasJob(current!.index, kind)"
-              :can-render="currentWritten && !current.blocked"
-              :busy="waitForText"
-              @queue="(kind) => queueSaved(kind, current!.index)"
-              @view="(kind) => (open3d = { index: current!.index, kind })"
-              @edit="startEdit(current!.index)"
-              :clips="currentWritten
-                ? {
-                  sessionId: session.id,
-                  index: current.index,
-                  nextPictured: !!session.frames[current.index + 1] && 'pictures' in session.frames[current.index + 1] && !!pictureOf(session.frames[current.index + 1]),
-                  nextName: `Frame ${current.index + 2}`,
-                  imageModel: session.settings.imageModel,
-                  making: clipsMaking(jobsFor(current.index), pictureOf(current)?.imageModel),
-                  playing: playingClip?.index === current.index ? playingClip.clip.file : undefined,
-                }
-                : undefined"
-              @clip="(order) => queueClip(current!.index, order)"
-              @play="(clip) => (playingClip = { index: current!.index, clip })"
-              @stop="playingClip = null"
-            >
+        <!-- The picked Beat, and the Look beside it. -->
+        <div class="story grid min-h-0 flex-1 content-start gap-x-10 gap-y-6 overflow-y-auto p-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] lg:px-8 lg:py-6">
+          <section class="flex min-w-0 flex-col gap-4 text-sm" data-beat-editor>
+            <p v-if="!current" class="text-muted">{{ busy ? 'The Beats appear as the plan is written.' : 'No Beats yet.' }}</p>
             <form
-              v-if="frameDraft"
-              class="flex min-w-0 flex-col gap-2"
+              v-if="frameDraft && current"
+              class="flex min-w-0 flex-col gap-3"
               data-frame-editor
               @submit.prevent="flushFrame"
               @focusout="onFrameFocusout"
             >
-              <h3 class="text-base font-semibold">
-                Frame {{ current.index + 1 }}
-                <span v-if="currentWritten" class="text-sm font-normal text-muted">· {{ current.beat }}</span>
-              </h3>
-              <p v-if="current.timings" class="text-xs text-muted" data-timings>
-                {{ timingsLabel(current) }}
-              </p>
-              <p v-if="current.blocked" class="text-xs text-danger">
-                Crosses a limit ({{ current.blocked }}): edit it before rendering.
-              </p>
-              <ShownPills
-                v-if="look?.subjects.length"
-                :names="look.subjects.map((s) => s.name)"
-                :shown="frameDraft.shown"
-                editable
-                :disabled="busy || renderingSelected || !frameEditable"
-                @toggle="toggleShown"
-              >
-                <span v-if="frameDraft.shown.length > MAX_SHOWN" class="text-muted">
-                  · only the first {{ MAX_SHOWN }} are described
-                </span>
-              </ShownPills>
-              <!-- Its border sweeps while an Action rewrites them, as the Action box's does. -->
-              <div
-                class="rounded-md"
-                :class="{ 'render-sweep': editingHere || writingHere }"
-                :data-rewriting="editingHere || writingHere ? '' : undefined"
-              >
-                <CollapsibleTextarea
-                  id="storyboard.frame"
-                  v-model="frameDraft.text"
-                  :label="currentWritten ? 'The Frame\'s seven sentences' : 'Its Beat'"
+              <CollapsibleTextarea
+                id="storyboard.frame"
+                v-model="frameDraft.text"
+                :label="`Beat ${current.index + 1}`"
+                :disabled="busy || !frameEditable"
+              />
+              <div class="flex flex-col gap-1">
+                <ShownPills
+                  v-if="look?.subjects.length"
+                  :names="look.subjects.map((s) => s.name)"
+                  :shown="frameDraft.shown"
+                  editable
                   :disabled="busy || renderingSelected || !frameEditable"
-                />
+                  @toggle="toggleShown"
+                >
+                  <span v-if="frameDraft.shown.length > MAX_SHOWN" class="text-muted">
+                    · only the first {{ MAX_SHOWN }} are described
+                  </span>
+                </ShownPills>
               </div>
-              <p v-if="renderingSelected" class="text-xs text-muted">
-                Read-only while it renders, so its picture is of what it says.
-              </p>
               <SaveStatus
-                v-else
                 :status="frameStatus"
                 :can-revert="frameCanRevert"
                 :disabled="busy"
                 @revert="revertFrame"
               />
-              <FoldedPrompt v-if="currentWritten" label="Full prompt" :preview="current.prompt">
-                <p class="text-xs leading-relaxed text-muted" data-prompt-text>{{ current.prompt }}</p>
-              </FoldedPrompt>
             </form>
-            <!-- While the plan is reviewed: a Beat added after the selected Frame, or it removed. -->
+            <!-- While the plan is reviewed: a Beat added after this one, or it removed. -->
             <div v-if="reviewing && current" class="flex flex-col gap-2 text-xs" data-beat-actions>
               <form v-if="adding" class="flex flex-col gap-2" data-adding-beat @submit.prevent="addBeat">
                 <label for="storyboard.new-beat" class="text-muted">
@@ -1025,84 +802,349 @@ const imagesOn = computed(() => featureOn.value('images'))
                   </button>
                 </div>
               </form>
-              <div v-else class="flex gap-2">
+              <div v-else class="flex gap-4">
                 <button
                   v-if="canAddBeat"
                   type="button"
-                  class="flex items-center gap-1 rounded border border-line px-2 py-1 text-muted hover:text-fg"
+                  class="flex items-center gap-1 text-muted hover:text-fg"
                   :title="`Add a Beat after Frame ${current.index + 1}`"
                   data-add-beat
                   @click="startAdding(current.index + 1)"
                 >
-                  <Icon name="plus" /> Beat after
+                  <Icon name="plus" /> A Beat after this
                 </button>
                 <button
                   v-if="session.frames.length > 1"
                   type="button"
-                  class="rounded border border-line px-2 py-1 text-muted hover:text-danger disabled:opacity-50"
+                  class="text-danger hover:underline disabled:opacity-50"
                   :disabled="removing"
                   title="Remove this Beat from the plan"
                   data-remove-beat
                   @click="removeFrameBeat(current)"
                 >
-                  Remove Beat
+                  Remove this Beat
                 </button>
               </div>
             </div>
-            </FrameTab>
-          </div>
-          <!-- Below the Look and Beats, where the review ends: write the Frames, or stop the plan or writing. -->
-          <div
-            v-if="(planned && !allWritten && !busy) || (busy && work?.kind !== 'edit' && !work?.detached)"
-            class="flex shrink-0 flex-wrap items-center gap-2 border-t border-line p-4 text-sm"
-            data-prompt-footer
-          >
-            <p v-if="!busy && !writingStarted" class="w-full text-xs text-muted" data-review>
-              Review the Look, and each Frame's Beat and who it shows, then write the Frames.
-            </p>
-            <button
-              v-if="!busy"
-              type="button"
-              class="rounded-lg bg-fg px-4 py-2 font-medium text-canvas"
-              :title="writingStarted
-              ? 'Write the Frames not written yet, carrying on from those that are'
-              : 'Write each Frame\'s sentences from the Look and Beats as they are now. They are fixed after.'"
-              data-write
-              @click="writeFrames"
-            >
-              {{ writingStarted
-                ? `Write the rest (${session.frames.length - writtenCount})`
-                : `Write ${session.frames.length} Frames` }}
-            </button>
-            <button
-              v-else
-              type="button"
-              class="rounded-lg border border-danger px-4 py-2 font-medium text-danger disabled:opacity-50"
-              :disabled="work?.cancelling"
-              data-prompt-cancel
-              @click="cancel"
-            >
-              Cancel
-            </button>
-            <div
-              v-if="work?.kind === 'write'"
-              class="flex min-w-0 flex-1 items-center gap-2 text-xs text-muted"
-              role="progressbar"
-              :aria-valuenow="writtenCount"
-              :aria-valuemax="session.frames.length"
-              data-write-progress
-            >
-              <div class="h-1.5 flex-1 overflow-hidden rounded-full bg-line">
-                <div
-                  class="h-full rounded-full bg-info transition-[width] duration-500"
-                  :style="{ width: `${(100 * writtenCount) / session.frames.length}%` }"
-                />
+          </section>
+          <section class="min-w-0 text-sm" data-plan-look>
+            <p v-if="!look" class="text-muted">The Look appears as the plan is written.</p>
+            <LookForm
+                v-else
+                ref="lookForm"
+                :look="look"
+                :save="saveLookDraft"
+                :line="line"
+                id-prefix="storyboard.look"
+                every="every Frame"
+                :disabled="busy || !planned || writingStarted"
+                :fixed="writingStarted"
+              >
+                <template #actions>
+                  <RestartButton
+                    v-if="writingStarted"
+                    :disabled="busy"
+                    title="The Look and Beats are fixed now that Frames are written. Restart to go back to the plan: every Frame's sentences and pictures are deleted, and the Look and Beats can be edited again"
+                    @restart="restart"
+                  />
+                </template>
+              </LookForm>
+          </section>
+        </div>
+      </template>
+
+      <!-- Written: the strip view, as a Chain's and a Roleplay's. -->
+      <template v-else>
+        <FrameStrip :tiles="tiles" :picked="selected" @pick="pick" />
+        <div class="flex min-h-0 flex-1">
+          <SessionStage :ratio="imageRatioOf(session)" :pictured="imagesOn || !!picture">
+            <template #picture>
+              <SessionPicture
+                v-if="current"
+                :name="frameName(current.index)"
+                :label="`${frameName(current.index)} of ${frames.length} · ${status(current).label}`"
+                :src="picture ? imageUrl(session.id, picture.upscaled ?? picture.image) : null"
+                :picture="picture"
+                :dimmed="changed(current)"
+                :preview="forming"
+                :sweep="sweep"
+                :jobs="jobsFor(current.index)"
+                :has-job="(kind) => hasJob(current!.index, kind)"
+                :working="workOf(current.index)"
+                :can-render="currentWritten && !current.blocked"
+                :busy="waitForText"
+                :clips="clipsMenu"
+                :playing="playingClip && playingClip.index === current.index ? { src: imageUrl(session.id, playingClip.clip.file), clip: playingClip.clip } : null"
+                @queue="(kind) => queueSaved(kind, current!.index)"
+                @view="(kind) => (open3d = { index: current!.index, kind })"
+                @edit="startEdit(current!.index)"
+                @open="viewingPicture = current!.index"
+                @prompt="toggleDrawer('prompt')"
+                @retry="retry"
+                @drop="dropJob"
+                @cancel-all="(list) => dropEach(list)"
+                @stop-clip="playingClip = null"
+              >
+                <template #clip>
+                  <p v-if="!ownPicture" class="text-xs text-muted" data-clips-other-model>
+                    Clips are made of a picture by {{ labelOf(session.settings.imageModel) }}: render this Frame with it first.
+                  </p>
+                  <FrameClips
+                    v-else-if="picture"
+                    :session-id="session.id"
+                    :index="current.index"
+                    :clips="(pickedEdit(picture) ?? picture).clips"
+                    :next-pictured="!!session.frames[current.index + 1] && !!pictureOf(session.frames[current.index + 1])"
+                    :next-name="frameName(current.index + 1)"
+                    :making="clipsMaking(jobsFor(current.index), picture.imageModel)"
+                    :playing="playingClip?.index === current.index ? playingClip.clip.file : undefined"
+                    @make="(order) => queueClip(current!.index, order)"
+                    @play="(clip) => (playingClip = { index: current!.index, clip })"
+                    @stop="playingClip = null"
+                  />
+                </template>
+                <template #empty>
+                  <span class="text-muted" data-empty>
+                    <template v-if="writingHere">Writing its sentences…</template>
+                    <template v-else-if="!currentWritten">{{ waitingToWrite(current) ? 'Waiting to be written' : 'Not written yet' }}</template>
+                    <template v-else-if="current.blocked">Crosses a limit ({{ current.blocked }}): edit its sentences first</template>
+                    <template v-else-if="workOn(current.index)">{{ frameName(current.index) }} is being rendered</template>
+                    <template v-else>Not rendered yet</template>
+                  </span>
+                  <button
+                    v-if="imagesOn && currentWritten && !current.blocked && !workOn(current.index)"
+                    type="button"
+                    class="rounded-lg bg-fg px-3 py-1.5 text-sm font-medium text-canvas disabled:opacity-50"
+                    :disabled="!!waitForText"
+                    :title="waitForText"
+                    data-render-it
+                    @click="queueSaved('render', current.index)"
+                  >
+                    Render {{ frameName(current.index) }}
+                  </button>
+                </template>
+              </SessionPicture>
+            </template>
+
+            <!-- Beside the picture: its Beat, who it shows, and its seven sentences. -->
+            <template #side>
+              <div class="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pb-2 text-sm" data-storyboard-side>
+                <template v-if="current">
+                  <section>
+                    <h3 class="text-xs font-semibold uppercase tracking-wide text-muted">Beat {{ current.index + 1 }}</h3>
+                    <p class="mt-1 text-lg font-medium" data-current-beat>{{ current.beat }}</p>
+                  </section>
+                  <form
+                    v-if="frameDraft"
+                    class="flex min-w-0 flex-col gap-3"
+                    data-frame-editor
+                    @submit.prevent="flushFrame"
+                    @focusout="onFrameFocusout"
+                  >
+                    <ShownPills
+                      v-if="look?.subjects.length"
+                      :names="look.subjects.map((s) => s.name)"
+                      :shown="frameDraft.shown"
+                      editable
+                      :disabled="busy || renderingSelected || !frameEditable"
+                      @toggle="toggleShown"
+                    >
+                      <span v-if="frameDraft.shown.length > MAX_SHOWN" class="text-muted">
+                        · only the first {{ MAX_SHOWN }} are described
+                      </span>
+                    </ShownPills>
+                    <p v-if="current.blocked" class="text-xs text-danger">
+                      Crosses a limit ({{ current.blocked }}): edit it before rendering.
+                    </p>
+                    <!-- Its border sweeps while an Action rewrites them, as the Action box's does. -->
+                    <div
+                      class="rounded-md"
+                      :class="{ 'render-sweep': editingHere || writingHere }"
+                      :data-rewriting="editingHere || writingHere ? '' : undefined"
+                    >
+                      <CollapsibleTextarea
+                        v-if="currentWritten"
+                        id="storyboard.frame"
+                        v-model="frameDraft.text"
+                        label="The Frame's seven sentences"
+                        :disabled="busy || renderingSelected || !frameEditable"
+                      />
+                      <p v-else class="text-muted">{{ writingHere ? 'Writing its sentences…' : 'Its sentences are written from its Beat.' }}</p>
+                    </div>
+                    <p v-if="renderingSelected" class="text-xs text-muted">
+                      Read-only while it renders, so its picture is of what it says.
+                    </p>
+                    <SaveStatus
+                      v-else-if="currentWritten"
+                      :status="frameStatus"
+                      :can-revert="frameCanRevert"
+                      :disabled="busy"
+                      @revert="revertFrame"
+                    />
+                  </form>
+                </template>
               </div>
-              <span class="shrink-0">{{ writtenCount }} of {{ session.frames.length }} written</span>
-            </div>
+            </template>
+
+            <template v-if="!writeBar" #box>
+              <FloatingBox
+                v-model="draft"
+                :placeholder="currentWritten ? `What to change in ${frameName(current!.index)}…` : 'Frames can be changed by Action once they\'re written'"
+                :disabled="!currentWritten"
+                :busy="busy"
+                :detached="work?.detached"
+                :cancelling="work?.cancelling"
+                :working="editingHere"
+                :data-writing="editingHere ? '' : undefined"
+                @send="sendAction"
+                @cancel="cancel"
+              >
+                <template #notice>
+                  <p
+                    v-if="message"
+                    class="truncate px-2 text-sm"
+                    :class="{
+                      'text-danger': message.kind === 'error',
+                      'text-warn': message.kind === 'declined',
+                      'text-info': message.kind === 'unclear',
+                      'text-muted': message.kind === 'done',
+                    }"
+                    :title="message.text"
+                    role="alert"
+                  >
+                    {{ message.text }}
+                  </p>
+                </template>
+                <PopMenu v-if="!busy && current && currentWritten" align="end" side="above" panel-class="w-80 p-1 text-sm" data-more-menu>
+                  <template #button="{ open, toggle }">
+                    <button
+                      type="button"
+                      class="rounded-lg px-2 py-1.5 hover:bg-canvas hover:text-fg"
+                      :class="{ 'bg-canvas text-fg': open }"
+                      title="More"
+                      aria-label="More"
+                      data-more
+                      @click="toggle"
+                    >
+                      <Icon name="dots" />
+                    </button>
+                  </template>
+                  <template #default="{ close }">
+                    <button
+                      type="button"
+                      class="menu-row"
+                      :disabled="!!current.blocked || copying"
+                      :title="current.blocked
+                      ? 'Edit this Frame first: it crosses a limit'
+                      : `A new Chain of Frames 1 to ${current.index + 1}, with their pictures, to carry on from this Frame by Actions. This Storyboard stays as it is.`"
+                      data-continue-chain
+                      @click="continueAsChain(current.index); close()"
+                    >
+                      {{ copying ? 'Making…' : `Chain from ${frameName(current.index)}` }}
+                    </button>
+                  </template>
+                </PopMenu>
+              </FloatingBox>
+            </template>
+          </SessionStage>
+
+          <SessionDrawer
+            v-model="drawer"
+            :tabs="[
+              { id: 'prompt', label: current ? `${frameName(current.index)}'s prompt` : 'Prompt' },
+              { id: 'look', label: 'Look' },
+            ]"
+          >
+            <template #prompt>
+              <div class="flex flex-col gap-3 p-4 text-sm" data-prompt-panel>
+                <template v-if="current">
+                  <p v-if="current.timings" class="text-xs text-muted" data-timings>{{ timingsLabel(current) }}</p>
+                  <p v-if="currentWritten" class="leading-relaxed" data-prompt-text>{{ current.prompt }}</p>
+                  <p v-else class="text-muted">Its prompt is written with its sentences.</p>
+                </template>
+              </div>
+            </template>
+            <template #look>
+              <div class="p-4 text-sm" data-look-panel>
+                <LookForm
+                v-if="look"
+                ref="lookForm"
+                :look="look"
+                :save="saveLookDraft"
+                :line="line"
+                id-prefix="storyboard.look"
+                every="every Frame"
+                :disabled="busy || !planned || writingStarted"
+                :fixed="writingStarted"
+              >
+                <template #actions>
+                  <RestartButton
+                    v-if="writingStarted"
+                    :disabled="busy"
+                    title="The Look and Beats are fixed now that Frames are written. Restart to go back to the plan: every Frame's sentences and pictures are deleted, and the Look and Beats can be edited again"
+                    @restart="restart"
+                  />
+                </template>
+              </LookForm>
+              </div>
+            </template>
+          </SessionDrawer>
+        </div>
+      </template>
+
+      <!-- In place of the text box while the plan isn't all written: write it, or watch it written. -->
+      <div
+        v-if="writeBar"
+        class="flex shrink-0 flex-wrap items-center gap-3 border-t border-line bg-canvas px-4 py-3 text-sm"
+        data-prompt-footer
+      >
+        <p v-if="message" class="w-full truncate text-sm" :class="message.kind === 'error' ? 'text-danger' : 'text-muted'" :title="message.text" role="alert">
+          {{ message.text }}
+        </p>
+        <p v-if="!busy && !writingStarted" class="min-w-0 flex-1 text-muted" data-review>
+          Drag the Beats to reorder; nothing is written or rendered yet.
+        </p>
+        <div
+          v-else-if="work?.kind === 'write'"
+          class="flex min-w-0 flex-1 items-center gap-2 text-xs text-muted"
+          role="progressbar"
+          :aria-valuenow="writtenCount"
+          :aria-valuemax="session.frames.length"
+          data-write-progress
+        >
+          <div class="h-1.5 flex-1 overflow-hidden rounded-full bg-line">
+            <div
+              class="h-full rounded-full bg-fg transition-[width] duration-500"
+              :style="{ width: `${(100 * writtenCount) / session.frames.length}%` }"
+            />
           </div>
-        </section>
-      </aside>
+          <span class="shrink-0">{{ writtenCount }} of {{ session.frames.length }} written</span>
+        </div>
+        <span v-else class="min-w-0 flex-1" />
+        <button
+          v-if="!busy"
+          type="button"
+          class="ml-auto rounded-lg bg-fg px-4 py-2 font-medium text-canvas"
+          :title="writingStarted
+          ? 'Write the Frames not written yet, carrying on from those that are'
+          : 'Write each Frame\'s sentences from the Look and Beats as they are now. They are fixed after.'"
+          data-write
+          @click="writeFrames"
+        >
+          {{ writingStarted
+            ? `Write the rest (${session.frames.length - writtenCount})`
+            : `Write ${session.frames.length} Frames` }}
+        </button>
+        <button
+          v-else
+          type="button"
+          class="ml-auto rounded-lg border border-danger px-4 py-2 font-medium text-danger disabled:opacity-50"
+          :disabled="work?.cancelling"
+          data-prompt-cancel
+          @click="cancel"
+        >
+          Cancel
+        </button>
       </div>
     </template>
 

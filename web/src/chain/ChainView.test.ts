@@ -1,7 +1,7 @@
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ask } from '../ask'
-import FrameTab from '../components/FrameTab.vue'
+import FrameClips from '../components/FrameClips.vue'
 import ImageModelPicker from '../components/ImageModelPicker.vue'
 import ModelComparison from '../components/ModelComparison.vue'
 import { createMemoryHistory, createRouter } from 'vue-router'
@@ -101,8 +101,19 @@ const loadImages = async () => {
   await flushPromises()
 }
 
-const buttonNamed = (wrapper: Awaited<ReturnType<typeof mountIt>>['wrapper'], name: string) =>
+type Wrapper = Awaited<ReturnType<typeof mountIt>>['wrapper']
+const buttonNamed = (wrapper: Wrapper, name: string) =>
   wrapper.findAll('button').find((b) => b.text() === name)!
+/** The strip's tiles, a tile per Frame. */
+const tiles = (wrapper: Wrapper) => wrapper.findAll('[data-tile]')
+/** Opens a menu (`PopMenu`) by its button, unless it's open already. */
+async function openMenu(wrapper: Wrapper, button: string) {
+  if (!wrapper.find(button).element.closest('[data-open]')) {
+    await wrapper.find(button).trigger('click')
+  }
+}
+/** Opens the drawer at the shown Frame's Image Prompt. */
+const openPrompt = (wrapper: Wrapper) => wrapper.find('[data-see-changes]').trigger('click')
 
 beforeEach(async () => {
   vi.mocked(api.getSettingsOptions).mockResolvedValue(
@@ -168,7 +179,7 @@ describe('ChainView', () => {
     await flushPromises()
     expect(api.streamFrame).toHaveBeenCalledWith('s1', 'Sit down', expect.any(Function), true)
     expect((textarea.element as HTMLTextAreaElement).value).toBe('')
-    expect(wrapper.findAll('aside li')).toHaveLength(2)
+    expect(tiles(wrapper)).toHaveLength(2)
   })
 
   it('makes no Frame for an unclear Action: it stays in the box, with the question in blue', async () => {
@@ -181,7 +192,7 @@ describe('ChainView', () => {
     await buttonNamed(wrapper, 'Send').trigger('click')
     await flushPromises()
     expect((wrapper.find('textarea').element as HTMLTextAreaElement).value).toBe('make it weird')
-    expect(wrapper.findAll('aside li')).toHaveLength(1)
+    expect(tiles(wrapper)).toHaveLength(1)
     const notice = wrapper.find('[data-frame-notice]')
     expect([notice.text(), notice.classes()]).toEqual([
       'Which backdrop do you mean?',
@@ -199,7 +210,7 @@ describe('ChainView', () => {
     await buttonNamed(wrapper, 'Send').trigger('click')
     await flushPromises()
     expect((wrapper.find('textarea').element as HTMLTextAreaElement).value).toBe('wait a moment')
-    expect(wrapper.findAll('aside li')).toHaveLength(1)
+    expect(tiles(wrapper)).toHaveLength(1)
     const notice = wrapper.find('[data-frame-notice]')
     expect([notice.text(), notice.classes()]).toEqual([
       'Nothing in the picture changed.',
@@ -218,7 +229,7 @@ describe('ChainView', () => {
     await buttonNamed(wrapper, 'Send').trigger('click')
     await flushPromises()
     expect((wrapper.find('textarea').element as HTMLTextAreaElement).value).toBe('make her topless')
-    expect(wrapper.findAll('aside li')).toHaveLength(1)
+    expect(tiles(wrapper)).toHaveLength(1)
     const notice = wrapper.find('[data-frame-notice]')
     expect([notice.text(), notice.classes()]).toEqual([
       'Declined: no sexual or nude imagery.',
@@ -232,7 +243,7 @@ describe('ChainView', () => {
     await wrapper.find('textarea').setValue('sit down')
     await buttonNamed(wrapper, 'Send').trigger('click')
     await flushPromises()
-    expect(wrapper.find('[data-frame-notice]').text()).toBe('')
+    expect(wrapper.find('[data-frame-notice]').exists()).toBe(false)
   })
 
   it('keeps the Direction and shows the error when a Frame fails', async () => {
@@ -270,7 +281,7 @@ describe('ChainView', () => {
     expect(router.currentRoute.value.query.error).toBe('Ollama: model not found')
   })
 
-  it('puts a new Frame in the Frames at once, shown blank while it is written', async () => {
+  it('puts a new Frame in the strip at once, shown blank while it is written', async () => {
     vi.mocked(api.getSession).mockResolvedValue(session([frame(0, null)]))
     vi.mocked(api.streamFrame).mockImplementation(() => new Promise(() => {}))
     const { wrapper } = await mountIt()
@@ -278,15 +289,15 @@ describe('ChainView', () => {
     await buttonNamed(wrapper, 'Send').trigger('click')
     await flushPromises()
     const entry = wrapper.find('[data-pending-frame]')
-    expect(entry.text()).toContain('Sit down')
-    // Numbered as the Frames list numbers them, from 1: the second.
-    expect(entry.text()).toMatch(/^2/)
+    // Named as the strip numbers its tiles, from 1: the second.
+    expect(entry.attributes('title')).toMatch(/^Frame 2: /)
     expect(entry.attributes('aria-current')).toBe('true')
-    // The Opening's picture is gone from the main panel: the new Frame has none yet.
+    // Its Action beside the picture's place; the Opening's picture is gone: the new Frame has none.
+    expect(wrapper.find('[data-pending-action]').text()).toBe('Sit down')
     expect(wrapper.find('main [data-frame-picture]').exists()).toBe(false)
 
     // An earlier Frame can be looked at meanwhile, and the new one picked again.
-    await wrapper.findAll('aside [data-frame]')[0].trigger('click')
+    await tiles(wrapper)[0].trigger('click')
     await loadImages()
     expect(wrapper.find('main [data-frame-picture]').attributes('src')).toContain('frame-0.png')
     expect(wrapper.find('[data-pending-frame]').attributes('aria-current')).toBe('false')
@@ -294,21 +305,20 @@ describe('ChainView', () => {
     expect(wrapper.find('[data-pending-frame]').attributes('aria-current')).toBe('true')
   })
 
-  it('moves through the Frames with ↑ and ↓ in their list', async () => {
+  it('moves through the Frames with ← and → in the strip', async () => {
     vi.mocked(api.getSession).mockResolvedValue(session([frame(0, null), frame(1, 'Sit')]))
     const { wrapper } = await mountIt()
-    const current = () =>
-      wrapper.findAll('[data-frame]').findIndex((f) => f.attributes('aria-current') === 'true')
+    const current = () => tiles(wrapper).findIndex((f) => f.attributes('aria-current') === 'true')
     const press = async (key: string) => {
-      await wrapper.findAll('[data-frame]')[current()].trigger('keydown', { key })
+      await wrapper.find('[data-strip]').trigger('keydown', { key })
       await flushPromises()
     }
     expect(current()).toBe(1)
-    await press('ArrowUp')
+    await press('ArrowLeft')
     expect(current()).toBe(0)
-    await press('ArrowUp')
+    await press('ArrowLeft')
     expect(current()).toBe(0)
-    await press('ArrowDown')
+    await press('ArrowRight')
     expect(current()).toBe(1)
   })
 
@@ -316,21 +326,21 @@ describe('ChainView', () => {
     vi.mocked(api.getSession).mockResolvedValue(session([frame(0, null), frame(1, 'Sit')]))
     const { wrapper } = await mountIt()
     expect(wrapper.find('main img').attributes('src')).toContain('frame-1.png')
-    await wrapper.findAll('aside [data-frame]')[0].trigger('click')
+    await tiles(wrapper)[0].trigger('click')
     // The old image stays until the new one has loaded, then crossfades.
     expect(wrapper.find('main img').attributes('src')).toContain('frame-1.png')
     await loadImages()
     expect(wrapper.find('main img').attributes('src')).toContain('frame-0.png')
   })
 
-  it('shows the Narration as a caption over the image, which can be hidden', async () => {
+  it('shows the Action and its Narration beside the picture', async () => {
+    vi.mocked(api.getSession).mockResolvedValue(session([frame(0, null), frame(1, 'Sit')]))
     const { wrapper } = await mountIt()
+    expect(wrapper.find('[data-action]').text()).toBe('Sit')
+    expect(wrapper.find('[data-caption]').text()).toBe('Narration 1.')
+    await tiles(wrapper)[0].trigger('click')
+    expect(wrapper.find('[data-action]').text()).toBe('Opening')
     expect(wrapper.find('[data-caption]').text()).toBe('Narration 0.')
-    await wrapper.findAll('main button').find((b) => b.text() === 'Hide')!.trigger('click')
-    expect(wrapper.find('[data-caption]').exists()).toBe(false)
-    expect(localStorage.getItem('caption-hidden')).toBe('1')
-    await wrapper.findAll('main button').find((b) => b.text() === 'Show caption')!.trigger('click')
-    expect(wrapper.find('[data-caption]').exists()).toBe(true)
   })
 
   it("shows the viewed Frame's Image Prompt as a word diff against the Frame before", async () => {
@@ -341,7 +351,8 @@ describe('ChainView', () => {
       ]),
     )
     const { wrapper } = await mountIt()
-    await wrapper.findAll('[role=tab]')[1].trigger('click')
+    await openPrompt(wrapper)
+    expect(wrapper.find('[data-drawer]').attributes('data-drawer-tab')).toBe('prompt')
     const panel = wrapper.find('[data-prompt-panel]')
     expect(panel.text()).toContain('Frame 2 · Sit')
     expect(panel.findAll('[data-diff=removed]').map((d) => d.text())).toEqual(['0, calm,'])
@@ -357,7 +368,7 @@ describe('ChainView', () => {
       ]),
     )
     const { wrapper } = await mountIt()
-    await wrapper.findAll('[role=tab]')[1].trigger('click')
+    await openPrompt(wrapper)
     expect(wrapper.findAll('[data-diff=removed]')).toHaveLength(1)
 
     await wrapper.find('[data-show-removed]').setValue(false)
@@ -381,43 +392,21 @@ describe('ChainView', () => {
       ]),
     )
     const { wrapper } = await mountIt()
-    await wrapper.findAll('[role=tab]')[1].trigger('click')
     // Not rendered yet.
     expect(wrapper.find('[data-timings]').text()).toBe('Text 3.0 s by x')
-    await wrapper.findAll('[role=tab]')[0].trigger('click')
-    await wrapper.findAll('aside [data-frame]')[0].trigger('click')
-    await wrapper.findAll('[role=tab]')[1].trigger('click')
+    await tiles(wrapper)[0].trigger('click')
     expect(wrapper.find('[data-timings]').text()).toBe(
       'Text 9.8 s by x · Waited 12.3 s · Image 5.1 s · by Qwen-Image 2.1',
     )
   })
 
-  it('shows Frames and Prompt together on wide windows, as tabs on narrow ones', async () => {
-    const { wrapper } = await mountIt()
-    const log = () => wrapper.find('[data-log-panel]').classes()
-    const prompt = () => wrapper.find('[data-prompt-panel]').classes()
-    // Both are always in the page; below xl only the selected tab's panel is displayed.
-    expect(log()).toContain('flex')
-    expect(prompt()).toEqual(expect.arrayContaining(['hidden', 'xl:flex']))
-    await wrapper.find('[data-tab=prompt]').trigger('click')
-    expect(log()).toEqual(expect.arrayContaining(['hidden', 'xl:flex']))
-    expect(prompt()).toContain('flex')
-    expect(wrapper.find('[role=tablist]').element.parentElement!.classList).toContain('xl:hidden')
-    // The queue takes the Frames' place, on any window.
-    await wrapper.find('[data-tab=queue]').trigger('click')
-    expect(log()).toContain('flex')
-    expect(wrapper.find('[data-queue]').text()).toContain('Nothing queued')
-    expect(wrapper.find('[data-log-panel] > ol').attributes('style')).toContain('display: none')
-  })
-
   it('shows the Opening prompt without any diff', async () => {
     const { wrapper } = await mountIt()
-    await wrapper.findAll('[role=tab]')[1].trigger('click')
     expect(wrapper.findAll('[data-diff=added], [data-diff=removed]')).toHaveLength(0)
     expect(wrapper.find('[data-prompt]').text()).toBe(promptFor(0))
   })
 
-  it('labels declined and unclear Frames in the caption and the Frames', async () => {
+  it('labels declined and unclear Frames beside the picture', async () => {
     vi.mocked(api.getSession).mockResolvedValue(
       session([
         frame(0, null),
@@ -427,10 +416,9 @@ describe('ChainView', () => {
     )
     const { wrapper } = await mountIt()
     expect(wrapper.find('[data-outcome]').text()).toBe("Didn't understand")
-    const log = wrapper.find('aside').text()
-    expect(log).toContain('Declined')
-    expect(log).toContain("Didn't understand")
-    await wrapper.findAll('aside [data-frame]')[0].trigger('click')
+    await tiles(wrapper)[1].trigger('click')
+    expect(wrapper.find('[data-outcome]').text()).toBe('Declined')
+    await tiles(wrapper)[0].trigger('click')
     expect(wrapper.find('[data-outcome]').exists()).toBe(false)
   })
 
@@ -441,7 +429,7 @@ describe('ChainView', () => {
     })
     vi.mocked(api.streamFrame).mockImplementation(() => new Promise(() => {}))
     const { wrapper } = await mountIt()
-    expect(wrapper.find('[data-image-frame]').attributes('data-aspect')).toBe('1.000')
+    expect(wrapper.find('[data-stage]').attributes('data-ratio')).toBe('1.000')
   })
 
   it('opens the picture in the viewer when clicked, stepping through the Frames', async () => {
@@ -452,9 +440,7 @@ describe('ChainView', () => {
       ]),
     )
     const { wrapper } = await mountIt()
-    // The stage doesn't zoom; the viewer does.
-    expect(wrapper.find('main [data-zoom-layer]').attributes('style') ?? '').not.toContain('scale')
-    await wrapper.find('main [data-frame-picture]').trigger('click')
+    await wrapper.find('main [data-picture-image]').trigger('click')
     await flushPromises()
     const viewer = () => wrapper.find('[data-image-viewer]')
     expect(viewer().find('[data-viewer-label]').text()).toBe('Frame 2 · 2 of 2')
@@ -471,15 +457,17 @@ describe('ChainView', () => {
       Promise.resolve([job({ kind, frameIndex, status: 'running', phase: 'image' })])
     )
     const { wrapper } = await mountIt()
+    // In the picture's 3D menu.
+    await openMenu(wrapper, '[data-3d-menu-button]')
     await wrapper.find('[data-lito-button]').trigger('click')
     await flushPromises()
     expect(api.queueJob).toHaveBeenCalledWith('s1', 'lito', 0)
-    // It runs beside the Chain: the button waits, the queue shows it, and the next Action can go.
+    // It runs beside the Chain: the menu's button and the picture's line say so, and the next
+    // Action can go.
+    expect(wrapper.find('[data-3d-menu-button] [data-icon="spinner"]').exists()).toBe(true)
+    expect(wrapper.find('[data-jobs-line]').text()).toContain('LiTo · Making the 3D figure…')
+    await openMenu(wrapper, '[data-3d-menu-button]')
     expect(wrapper.find('[data-lito-button]').attributes('disabled')).toBeDefined()
-    expect(wrapper.find('main [data-frame-job]').exists()).toBe(false)
-    await wrapper.find('[data-tab=queue]').trigger('click')
-    expect(wrapper.find('[data-queue]').text()).toContain('LiTo · Frame 1 · Opening')
-    expect(wrapper.find('[data-queue]').text()).toContain('Making the 3D figure…')
     expect(wrapper.find('textarea').attributes('disabled')).toBeUndefined()
 
     // Once done, the Chain is reloaded with the figure on it.
@@ -495,6 +483,7 @@ describe('ChainView', () => {
     // The queue is checked every second; the job is gone, so the Chain is reloaded.
     await vi.advanceTimersByTimeAsync(1100)
     await flushPromises()
+    await openMenu(wrapper, '[data-3d-menu-button]')
     expect(wrapper.find('[data-view-lito]').exists()).toBe(true)
     expect(wrapper.find('[data-figure-button]').exists()).toBe(true)
   })
@@ -504,12 +493,16 @@ describe('ChainView', () => {
     chain.settings = { ...chain.settings, steps: 25 }
     vi.mocked(api.getSession).mockResolvedValue(chain)
     const { wrapper } = await mountIt()
-    const select = wrapper.find('[data-image-model]')
-    expect((select.element as HTMLSelectElement).value).toBe('mflux/qwen-image-2.1')
+    // Named in the bar; switched behind it.
+    expect(wrapper.find('[data-session-settings-button]').text()).toBe('Qwen-Image 2.1')
+    await openMenu(wrapper, '[data-session-settings-button]')
+    const select = () => wrapper.find('[data-image-model]')
+    const label = () => wrapper.find('[data-picture-label]').text()
+    expect((select().element as HTMLSelectElement).value).toBe('mflux/qwen-image-2.1')
     // Up to date, it can still render again: with Settings' size and the rest as they are now.
-    expect(wrapper.find('[data-changed]').exists()).toBe(false)
+    expect(label()).toBe('Frame 2 of 2')
     expect(wrapper.find('[data-render-button]').text()).toBe('Re-render')
-    expect(select.findAll('option').map((o) => o.text()).sort()).toEqual([
+    expect(select().findAll('option').map((o) => o.text()).sort()).toEqual([
       'FLUX.2 Klein 4B · mflux',
       'Qwen-Image 2.1 · mflux',
     ])
@@ -520,15 +513,16 @@ describe('ChainView', () => {
       ...chain,
       settings: { ...chain.settings, imageModel: 'flux2-klein-4b', steps: 4 },
     })
-    await select.setValue('mflux/flux2-klein-4b')
+    await select().setValue('mflux/flux2-klein-4b')
     await flushPromises()
     expect(api.setImageModel).toHaveBeenCalledWith('s1', 'flux2-klein-4b', 'mflux')
-    expect((select.element as HTMLSelectElement).value).toBe('mflux/flux2-klein-4b')
+    await openMenu(wrapper, '[data-session-settings-button]')
+    expect((select().element as HTMLSelectElement).value).toBe('mflux/flux2-klein-4b')
     expect(wrapper.find('[data-image-steps]').text()).toBe('· 4 steps')
-    expect(wrapper.find('[data-changed]').text()).toBe('Changed since render · by Qwen-Image 2.1')
+    expect(label()).toBe('Frame 2 of 2 · changed since render by Qwen-Image 2.1')
     expect(wrapper.find('[data-render-button]').text()).toBe('Re-render')
 
-    // Re-rendering it shows the render's progress instead, as a new Frame does.
+    // Re-rendering it shows the render's progress on the picture.
     vi.mocked(api.queueJob).mockResolvedValue([
       job({
         kind: 'render',
@@ -540,14 +534,15 @@ describe('ChainView', () => {
     ])
     await wrapper.find('[data-render-button]').trigger('click')
     await flushPromises()
-    expect(wrapper.find('[data-changed]').exists()).toBe(false)
-    expect(wrapper.find('[data-rerendering]').text()).toBe('Rendering the image… step 2 of 4')
+    expect(wrapper.find('[data-jobs-line]').text()).toContain('Rendering… step 2 of 4')
 
     // A failed switch puts the select back, and says why.
     vi.mocked(api.setImageModel).mockRejectedValue(new Error('No Backend renders x'))
-    await select.setValue('mflux/qwen-image-2.1')
+    await openMenu(wrapper, '[data-session-settings-button]')
+    await select().setValue('mflux/qwen-image-2.1')
     await flushPromises()
-    expect((select.element as HTMLSelectElement).value).toBe('mflux/flux2-klein-4b')
+    await openMenu(wrapper, '[data-session-settings-button]')
+    expect((select().element as HTMLSelectElement).value).toBe('mflux/flux2-klein-4b')
     expect(wrapper.find('[data-frame-notice]').text()).toBe('No Backend renders x')
   })
 
@@ -580,12 +575,15 @@ describe('ChainView', () => {
     ])
     vi.mocked(api.getSession).mockResolvedValue(chain)
     const { wrapper } = await mountIt()
+    await openMenu(wrapper, '[data-session-settings-button]')
     const select = wrapper.find('[data-image-model]')
     // The Session hasn't picked a kind, so its model shows where Settings send it.
     expect((select.element as HTMLSelectElement).value).toBe('comfyui/qwen-image-2.1')
     // Its picture says where it was made.
-    expect(wrapper.find('[data-changed]').exists()).toBe(false)
-    expect(wrapper.text()).toContain('Text 3.0 s by x · by Qwen-Image 2.1 · mflux')
+    expect(wrapper.find('[data-picture-label]').text()).toBe('Frame 2 of 2')
+    expect(wrapper.find('[data-timings]').text()).toBe(
+      'Text 3.0 s by x · by Qwen-Image 2.1 · mflux',
+    )
 
     // Picked on mflux, the Session keeps that kind; the same model's picture stays up to date.
     vi.mocked(api.setImageModel).mockResolvedValue({
@@ -595,8 +593,7 @@ describe('ChainView', () => {
     await select.setValue('mflux/qwen-image-2.1')
     await flushPromises()
     expect(api.setImageModel).toHaveBeenCalledWith('s1', 'qwen-image-2.1', 'mflux')
-    expect((select.element as HTMLSelectElement).value).toBe('mflux/qwen-image-2.1')
-    expect(wrapper.find('[data-changed]').exists()).toBe(false)
+    expect(wrapper.find('[data-picture-label]').text()).toBe('Frame 2 of 2')
     vi.mocked(api.getSettingsOptions).mockResolvedValue(
       {
         features: ALL_AVAILABLE,
@@ -611,10 +608,10 @@ describe('ChainView', () => {
     vi.mocked(api.getSession).mockResolvedValue(session([frame(0, null), frame(1, 'Sit down')]))
     vi.mocked(api.undoFrames).mockResolvedValue(session([frame(0, null)]))
     const { wrapper } = await mountIt()
-    await buttonNamed(wrapper, 'Undo').trigger('click')
+    await wrapper.find('[data-undo-main]').trigger('click')
     await loadImages()
     expect(api.undoFrames).toHaveBeenCalledWith('s1', 1, 1)
-    expect(wrapper.findAll('aside [data-frame]')).toHaveLength(1)
+    expect(tiles(wrapper)).toHaveLength(1)
     expect((wrapper.find('textarea').element as HTMLTextAreaElement).value).toBe('Sit down')
     expect(wrapper.find('main img').attributes('src')).toContain('frame-0.png')
   })
@@ -626,18 +623,19 @@ describe('ChainView', () => {
     vi.mocked(api.undoFrames).mockResolvedValue(session([frame(0, null), frame(1, 'Sit')]))
     vi.mocked(ask).mockReset().mockResolvedValueOnce(false).mockResolvedValueOnce(true)
     const { wrapper } = await mountIt()
-    expect(wrapper.find('[data-undo-main]').text()).toBe('Undo')
-    await wrapper.findAll('aside [data-frame]')[1].trigger('click')
-    expect(wrapper.find('[data-undo-main]').text()).toBe('Undo to Frame 2')
-    await wrapper.find('[data-undo-main]').trigger('click')
+    const undo = () => wrapper.find('[data-undo-main]')
+    expect(undo().attributes('aria-label')).toBe('Undo')
+    await tiles(wrapper)[1].trigger('click')
+    expect(undo().attributes('aria-label')).toBe('Undo to Frame 2')
+    await undo().trigger('click')
     await flushPromises()
     expect(vi.mocked(ask).mock.calls[0][0]).toContain('Undo Frames 3–4')
     expect(api.undoFrames).not.toHaveBeenCalled()
-    await wrapper.find('[data-undo-main]').trigger('click')
+    await undo().trigger('click')
     await flushPromises()
     expect(api.undoFrames).toHaveBeenCalledWith('s1', 2, 3)
     expect((wrapper.find('textarea').element as HTMLTextAreaElement).value).toBe('Stand')
-    expect(wrapper.find('[data-undo-main]').text()).toBe('Undo')
+    expect(undo().attributes('aria-label')).toBe('Undo')
   })
 
   it('keeps a half-typed Direction on Undo, offering the undone one beside it', async () => {
@@ -645,7 +643,7 @@ describe('ChainView', () => {
     vi.mocked(api.undoFrames).mockResolvedValue(session([frame(0, null)]))
     const { wrapper } = await mountIt()
     await wrapper.find('textarea').setValue('Kneel')
-    await wrapper.find('[data-undo]').trigger('click')
+    await wrapper.find('[data-undo-main]').trigger('click')
     await flushPromises()
     expect((wrapper.find('textarea').element as HTMLTextAreaElement).value).toBe('Kneel')
     // The undone Action is offered beside it, to swap in.
@@ -657,28 +655,30 @@ describe('ChainView', () => {
     expect(wrapper.find('[data-put-back]').exists()).toBe(false)
   })
 
-  it('offers Undo only after the Opening Frame, on the latest Frame', async () => {
+  it('offers Undo only after the Opening Frame', async () => {
     const { wrapper } = await mountIt()
-    expect(buttonNamed(wrapper, 'Undo').attributes('disabled')).toBeDefined()
-    expect(wrapper.find('[data-undo]').exists()).toBe(false)
+    expect(wrapper.find('[data-undo-main]').attributes('disabled')).toBeDefined()
 
     vi.mocked(api.getSession).mockResolvedValue(
       session([frame(0, null), frame(1, 'Sit'), frame(2, 'Stand')]),
     )
     const { wrapper: longer } = await mountIt()
-    expect(buttonNamed(longer, 'Undo').attributes('disabled')).toBeUndefined()
-    expect(longer.findAll('[data-undo]')).toHaveLength(1)
-    expect(longer.findAll('aside li')[2].find('[data-undo]').exists()).toBe(true)
+    expect(longer.find('[data-undo-main]').attributes('disabled')).toBeUndefined()
   })
 
-  it('offers Delete on the Frames between the Opening and the latest', async () => {
+  it('offers Delete on the Frames between the Opening and the latest, in the ⋯ menu', async () => {
     vi.mocked(api.getSession).mockResolvedValue(
       session([frame(0, null), frame(1, 'Sit'), frame(2, 'Stand')]),
     )
     const { wrapper } = await mountIt()
-    const items = wrapper.findAll('aside li')
-    expect(items.map((li) => li.find('[data-delete-frame]').exists())).toEqual([false, true, false])
-    expect(items[2].find('[data-undo]').exists()).toBe(true)
+    const offered = []
+    for (const i of [0, 1, 2]) {
+      await tiles(wrapper)[i].trigger('click')
+      await openMenu(wrapper, '[data-more]')
+      offered.push(wrapper.find('[data-delete-frame]').exists())
+    }
+    // The latest has Undo instead.
+    expect(offered).toEqual([false, true, false])
   })
 
   it('deletes a Frame once confirmed, as it saw the Chain, and shows the one in its place', async () => {
@@ -692,16 +692,18 @@ describe('ChainView', () => {
     vi.mocked(ask).mockReset().mockResolvedValueOnce(false).mockResolvedValueOnce(true)
     const { wrapper } = await mountIt()
     // Looking at the Frame to delete.
-    await wrapper.findAll('aside [data-frame]')[1].trigger('click')
+    await tiles(wrapper)[1].trigger('click')
 
+    await openMenu(wrapper, '[data-more]')
     await wrapper.find('[data-delete-frame]').trigger('click')
     await flushPromises()
     expect(api.deleteChainFrame).not.toHaveBeenCalled()
+    await openMenu(wrapper, '[data-more]')
     await wrapper.find('[data-delete-frame]').trigger('click')
     await flushPromises()
     expect(ask).toHaveBeenCalledTimes(2)
     expect(api.deleteChainFrame).toHaveBeenCalledWith('s1', 1, { frames: 3, createdAt: made })
-    expect(wrapper.findAll('aside [data-frame]')).toHaveLength(2)
+    expect(tiles(wrapper)).toHaveLength(2)
     expect(wrapper.find('main img').attributes('src')).toContain('frame-2.png')
   })
 
@@ -710,11 +712,13 @@ describe('ChainView', () => {
     const chain = session([frame(0, null)])
     vi.mocked(api.getSession).mockResolvedValue(chain)
     const { wrapper } = await mountIt()
-    wrapper.findComponent(FrameTab).vm.$emit('play', clip)
+    await openMenu(wrapper, '[data-clip-menu-button]')
+    wrapper.findComponent(FrameClips).vm.$emit('play', clip)
     await flushPromises()
     expect(wrapper.find('[data-clip-overlay]').exists()).toBe(true)
 
     const switched = { ...chain, settings: { imageModel: 'krea-2' } as api.Settings }
+    await openMenu(wrapper, '[data-session-settings-button]')
     wrapper.findComponent(ImageModelPicker).vm.$emit('switched', switched)
     await flushPromises()
     expect(wrapper.find('[data-clip-overlay]').exists()).toBe(false)
@@ -755,8 +759,8 @@ describe('ChainView', () => {
     // Shown as a diff against Frame 0 again, the new words marked.
     const added = wrapper.findAll('[data-prompt] [data-diff=added]').map((w) => w.text()).join(' ')
     expect(added).toBe('garden at dawn.')
-    expect(wrapper.find('[data-changed]').text()).toContain('Changed since render')
-    expect(buttonNamed(wrapper, 'Re-render').exists()).toBe(true)
+    expect(wrapper.find('[data-picture-label]').text()).toContain('changed since render')
+    expect(wrapper.find('[data-render-button]').text()).toBe('Re-render')
   })
 
   it('drops an edit of the prompt on Cancel, or on showing another Frame', async () => {
@@ -766,34 +770,9 @@ describe('ChainView', () => {
     await buttonNamed(wrapper, 'Cancel').trigger('click')
     expect(wrapper.find('[data-prompt-editor]').exists()).toBe(false)
     await wrapper.find('[data-edit-prompt]').trigger('click')
-    await wrapper.findAll('aside [data-frame]')[0].trigger('click')
+    await tiles(wrapper)[0].trigger('click')
     expect(wrapper.find('[data-prompt-editor]').exists()).toBe(false)
     expect(api.saveChainPrompt).not.toHaveBeenCalled()
-  })
-
-  it('goes from the Queue tab to its Frame, scrolled into view rather than to the latest', async () => {
-    vi.mocked(api.getSession).mockResolvedValue(
-      session([frame(0, null), frame(1, 'Sit'), frame(2, 'Stand')]),
-    )
-    vi.mocked(api.listJobs).mockResolvedValue([
-      job({ kind: 'render', frameIndex: 1, status: 'running' }),
-    ])
-    const scrolled: Element[] = []
-    const scrollIntoView = Element.prototype.scrollIntoView
-    Element.prototype.scrollIntoView = function (this: Element) {
-      scrolled.push(this)
-    }
-    const { wrapper } = await mountIt()
-    const tab = (name: string) =>
-      wrapper.findAll('[role=tab]').find((t) => t.text().startsWith(name))!
-    await tab('Queue').trigger('click')
-    await wrapper.find('[data-queue-item] button').trigger('click')
-    await flushPromises()
-    expect(wrapper.find('aside [aria-current=true] [data-action]').text()).toBe('Sit')
-    expect(scrolled.map((el) => el.querySelector('[data-action]')?.textContent?.trim())).toEqual([
-      'Sit',
-    ])
-    Element.prototype.scrollIntoView = scrollIntoView
   })
 
   it('shows why an Undo was refused', async () => {
@@ -802,7 +781,7 @@ describe('ChainView', () => {
       new api.ApiError('Frame 1 is not the latest Frame', 409),
     )
     const { wrapper } = await mountIt()
-    await buttonNamed(wrapper, 'Undo').trigger('click')
+    await wrapper.find('[data-undo-main]').trigger('click')
     await flushPromises()
     expect(wrapper.find('[role=alert]').text()).toBe('Frame 1 is not the latest Frame')
   })
@@ -849,24 +828,23 @@ describe('ChainView', () => {
 
     await wrapper.find('textarea').setValue('my draft')
 
-    await wrapper.findAll('aside [data-frame]')[1].trigger('click')
-    expect(wrapper.find('[data-viewing]').text()).toContain('Viewing Frame 2 of 5')
-    const past = wrapper.find('[data-past-action]')
-    expect((past.element as HTMLTextAreaElement).value).toBe('Sit')
-    expect(past.attributes('readonly')).toBeDefined()
-    expect(buttonNamed(wrapper, 'Send').attributes('disabled')).toBeDefined()
-    // Enter in the read-only box must not send the hidden draft.
-    await past.trigger('keydown', { key: 'Enter' })
-    expect(api.streamFrame).not.toHaveBeenCalled()
-
-    await wrapper.findAll('aside [data-frame]')[0].trigger('click')
-    expect(wrapper.find('[data-viewing]').text()).toContain('Viewing the Opening of 5')
-    expect((wrapper.find('[data-past-action]').element as HTMLTextAreaElement).value).toBe('')
-    expect(wrapper.find('[data-past-action]').attributes('placeholder')).toBe(
-      'The Opening Frame has no Action.',
+    await tiles(wrapper)[1].trigger('click')
+    await loadImages()
+    expect(wrapper.find('[data-picture-label]').text()).toBe('Frame 2 of 5')
+    expect(wrapper.find('[data-viewing]').text()).toBe('Back to the latest')
+    // Its Action is beside the picture; the box can't send from here.
+    expect(wrapper.find('[data-action]').text()).toBe('Sit')
+    const box = wrapper.find('textarea')
+    expect(box.attributes('placeholder')).toBe(
+      'Viewing Frame 2: go back to the latest to change it',
     )
+    expect(box.attributes('disabled')).toBeDefined()
+    expect(buttonNamed(wrapper, 'Send').attributes('disabled')).toBeDefined()
 
-    await buttonNamed(wrapper, 'Back to latest').trigger('click')
+    await tiles(wrapper)[0].trigger('click')
+    expect(wrapper.find('textarea').attributes('placeholder')).toContain('Viewing the Opening')
+
+    await wrapper.find('[data-viewing]').trigger('click')
     await loadImages()
     expect(wrapper.find('[data-viewing]').exists()).toBe(false)
     expect(wrapper.find('main img').attributes('src')).toContain('frame-4.png')
@@ -874,7 +852,7 @@ describe('ChainView', () => {
     expect(buttonNamed(wrapper, 'Send').attributes('disabled')).toBeUndefined()
   })
 
-  it('streams the thinking in the caption area until the Narration arrives', async () => {
+  it('streams the thinking beside the picture until the Narration arrives', async () => {
     let emit!: (e: api.FrameEvent) => void
     vi.mocked(api.streamFrame).mockImplementation((_id, _action, onEvent) => {
       emit = onEvent
@@ -899,17 +877,14 @@ describe('ChainView', () => {
     expect(wrapper.find('[data-caption]').text()).toBe('Kael sits.')
   })
 
-  it("shows a Frame's saved thinking in the Prompt tab", async () => {
+  it("shows a Frame's saved thinking with its prompt", async () => {
     vi.mocked(api.getSession).mockResolvedValue(
       session([frame(0, null), frame(1, 'Sit', { thinking: 'The stool is free.' })]),
     )
     const { wrapper } = await mountIt()
-    await wrapper.findAll('[role=tab]')[1].trigger('click')
     expect(wrapper.find('[data-frame-thinking]').text()).toBe('The stool is free.')
     // The Opening had no thinking.
-    await wrapper.findAll('[role=tab]')[0].trigger('click')
-    await wrapper.findAll('aside [data-frame]')[0].trigger('click')
-    await wrapper.findAll('[role=tab]')[1].trigger('click')
+    await tiles(wrapper)[0].trigger('click')
     expect(wrapper.find('[data-frame-thinking]').exists()).toBe(false)
   })
 
@@ -938,15 +913,16 @@ describe('ChainView', () => {
     vi.mocked(api.queueJob).mockResolvedValue([job({ kind: 'render' })])
     vi.mocked(api.streamFrame).mockImplementation(() => Promise.resolve())
     const { wrapper } = await mountIt()
-    expect(wrapper.find('main').text()).toContain('Not rendered yet')
-    // Nothing to upscale or make 3D of yet; Render queues the picture.
+    expect(wrapper.find('[data-empty]').text()).toBe("Frame 1 isn't rendered")
+    // Nothing to upscale or make 3D of yet; Render it queues the picture.
     expect(wrapper.find('[data-upscale-button]').exists()).toBe(false)
-    await wrapper.find('[data-render-button]').trigger('click')
+    await wrapper.find('[data-render-it]').trigger('click')
     await flushPromises()
     expect(api.queueJob).toHaveBeenCalledWith('s1', 'render', 0)
 
     // On unless this browser switched it off; sent with each Action.
-    const box = wrapper.find('[data-render-frames]')
+    await openMenu(wrapper, '[data-session-settings-button]')
+    const box = wrapper.find('[data-render-frames] input')
     expect((box.element as HTMLInputElement).checked).toBe(true)
     await box.setValue(false)
     expect(localStorage.getItem('chain-render-frames')).toBe('0')
@@ -970,7 +946,9 @@ describe('ChainView', () => {
       return Promise.resolve([...queued])
     })
     const { wrapper } = await mountIt()
-    expect(wrapper.find('[data-render-all]').text()).toBe('Render all (2)')
+    // In the text box's ⋯ menu, with how many it would render.
+    await openMenu(wrapper, '[data-more]')
+    expect(wrapper.find('[data-render-all] [data-render-count]').text()).toBe('2')
     await wrapper.find('[data-render-all]').trigger('click')
     await flushPromises()
     expect(vi.mocked(api.queueJob).mock.calls.map((c) => [c[1], c[2]])).toEqual([
@@ -978,6 +956,7 @@ describe('ChainView', () => {
       ['render', 2],
     ])
     // All queued: nothing left to add.
+    await openMenu(wrapper, '[data-more]')
     expect(wrapper.find('[data-render-all]').attributes('disabled')).toBeDefined()
   })
 
@@ -990,9 +969,8 @@ describe('ChainView', () => {
     await wrapper.find('[data-upscale-button]').trigger('click')
     await flushPromises()
     expect(api.queueJob).toHaveBeenCalledWith('s1', 'upscale', 0)
-    await wrapper.find('[data-tab=queue]').trigger('click')
-    expect(wrapper.find('[data-queue]').text()).toContain('Upscaling to 2048 px… step 1 of 1')
-    expect(wrapper.find('[data-image-frame]').attributes('data-rendering')).toBe('image')
+    expect(wrapper.find('[data-jobs-line]').text()).toContain('Upscaling to 2048 px… step 1 of 1')
+    expect(wrapper.find('[data-picture]').classes()).toContain('render-sweep')
 
     vi.mocked(api.getSession).mockResolvedValue(
       session([
@@ -1010,13 +988,13 @@ describe('ChainView', () => {
     expect([button.text(), button.attributes('disabled')]).toEqual(['Upscaled', ''])
   })
 
-  it('shows the pixel size of the image on screen in a chip', async () => {
+  it("shows the picture's pixel size on its label", async () => {
     const { wrapper } = await mountIt()
     expect(wrapper.find('[data-size]').exists()).toBe(false)
     const img = wrapper.find('main img')
     Object.defineProperty(img.element, 'naturalWidth', { value: 768 })
     Object.defineProperty(img.element, 'naturalHeight', { value: 512 })
     await img.trigger('load')
-    expect(wrapper.find('[data-size]').text()).toBe('768×512')
+    expect(wrapper.find('[data-size]').text()).toBe('· 768×512')
   })
 })

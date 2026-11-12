@@ -173,9 +173,33 @@ export function useJobs(
     }
   }
 
+  /** Whether work on Frame `index` (of `jobs`, its own by default) runs, or only waits its turn. */
+  const workOn = (
+    index: number,
+    of: readonly Job[] = jobsFor(index),
+  ): 'running' | 'queued' | null => {
+    const open = of.filter(isOpen)
+    return open.some((j) => j.status === 'running') ? 'running' : open.length ? 'queued' : null
+  }
+  /** For a Frame's buttons: whether a job of each kind on Frame `index` runs, or waits. */
+  const workOf = (index: number) => (kind: JobKind) =>
+    workOn(index, jobsFor(index).filter((j) => j.kind === kind))
+  /**
+   * Cancels a Frame's jobs one by one (by `drop`, `dropJob` unless the Session's own does more),
+   * skipping any a cancel before took with it.
+   */
+  async function dropEach(list: readonly Job[], drop: (job: Job) => Promise<void> = dropJob) {
+    for (const job of list) {
+      if (jobs.value.some((j) => j.id === job.id && isOpen(j))) await drop(job)
+    }
+  }
+
   return {
     jobs,
     openJobs,
+    workOn,
+    workOf,
+    dropEach,
     runningJobs,
     runningJob,
     runningOn,

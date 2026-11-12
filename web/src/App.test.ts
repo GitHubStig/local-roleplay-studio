@@ -234,10 +234,12 @@ describe('App navigation', () => {
     expect(router.currentRoute.value.path).toBe('/settings')
     await router.push('/sessions/s1')
     await flushPromises()
-    expect(wrapper.find('main [role=status]').text()).toContain('Waiting for another render')
+    expect(wrapper.find('[data-session-bar] [role=status]').text()).toContain(
+      'Waiting for another render',
+    )
     emit({ type: 'phase', phase: 'text' })
     await flushPromises()
-    expect(wrapper.find('main [role=status]').text()).toContain('Writing the prompt')
+    expect(wrapper.find('[data-session-bar] [role=status]').text()).toContain('Writing the prompt')
   })
 
   it('writes the Opening Frame exactly once for a new Session', async () => {
@@ -292,16 +294,18 @@ describe('App navigation', () => {
       vi.mocked(api.getSession).mockResolvedValueOnce(running).mockResolvedValueOnce(running)
         .mockResolvedValue(done)
       const { wrapper } = await mountApp('/sessions/s1')
-      expect(wrapper.find('main [role=status]').text()).toContain('Writing the prompt')
+      expect(wrapper.find('[data-session-bar] [role=status]').text()).toContain(
+        'Writing the prompt',
+      )
       expect(wrapper.find('textarea').attributes('disabled')).toBeDefined()
       await wrapper.findAll('button').find((b) => b.text() === 'Cancel')!.trigger('click')
       expect(api.cancelFrame).toHaveBeenCalledWith('s1')
 
       await vi.advanceTimersByTimeAsync(1500)
-      expect(wrapper.find('main [role=status]').exists()).toBe(true)
+      expect(wrapper.find('[data-session-bar] [role=status]').exists()).toBe(true)
       await vi.advanceTimersByTimeAsync(1500)
-      expect(wrapper.find('main [role=status]').exists()).toBe(false)
-      expect(wrapper.findAll('aside [data-frame]')).toHaveLength(2)
+      expect(wrapper.find('[data-session-bar] [role=status]').exists()).toBe(false)
+      expect(wrapper.findAll('[data-tile]')).toHaveLength(2)
     } finally {
       vi.useRealTimers()
     }

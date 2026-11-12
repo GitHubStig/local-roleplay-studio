@@ -26,13 +26,19 @@ const running = computed(() => props.jobs.find((j) => j.status === 'running'))
 const waiting = computed(() => props.jobs.filter((j) => j.status === 'queued').length)
 const failed = computed(() => props.jobs.find((j) => j.status === 'failed'))
 const open = computed(() => props.jobs.filter(isOpen))
-/** The line's words: the job running, then how many wait; else a failure, else what waits. */
+/**
+ * The line's words: the job running, then how many wait; else a failure; else the next to run,
+ * then how many more wait behind it.
+ */
 const words = computed(() => {
   const r = running.value
-  const more = waiting.value ? `${waiting.value} waiting` : ''
-  if (r) return [`${jobName(r)} · ${jobStatus(r, props.describe)}`, more].filter(Boolean).join(' · ')
+  if (r) {
+    const more = waiting.value ? `${waiting.value} waiting` : ''
+    return [`${jobName(r)} · ${jobStatus(r, props.describe)}`, more].filter(Boolean).join(' · ')
+  }
   if (failed.value) return `${jobName(failed.value)} ${jobStatus(failed.value).replace(/^Failed/, 'failed')}`
-  return more
+  const next = props.jobs.find((j) => j.status === 'queued')!
+  return `${jobName(next)} · waiting` + (waiting.value > 1 ? ` · ${waiting.value - 1} more` : '')
 })
 const progress = computed(() => {
   const p = running.value?.progress

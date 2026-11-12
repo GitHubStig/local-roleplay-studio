@@ -20,12 +20,24 @@ export interface StripTile {
 /**
  * A Session's Frames as a strip of tiles under its bar, in every kind of Session: the strip is the
  * Frames list. The picked tile is ringed and kept in view; clicking a tile picks it. A short window
- * folds the tiles to a thin line of numbers, and a phone on its side hides the strip. What follows
+ * folds the tiles to a thin line of numbers, and a phone on its side hides the strip. ← and → pick
+ * the tile before or after, the focus going with it, so holding a key runs through them. What follows
  * the tiles (a Frame being written) is the `end` slot's.
  */
 const props = defineProps<{ tiles: readonly StripTile[]; picked: number | null }>()
-defineEmits<{ pick: [index: number] }>()
+const emit = defineEmits<{ pick: [index: number] }>()
 const strip = useTemplateRef<HTMLElement>('strip')
+
+async function onKey(e: KeyboardEvent) {
+  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+  e.preventDefault()
+  const at = props.tiles.findIndex((t) => t.index === props.picked)
+  const next = props.tiles[at + (e.key === 'ArrowLeft' ? -1 : 1)]
+  if (!next) return
+  emit('pick', next.index)
+  await nextTick()
+  strip.value?.querySelector<HTMLElement>('[aria-current="true"]')?.focus()
+}
 
 // The first time straight there, so the strip doesn't glide past (and load) every tile on the way;
 // then gliding, as the pick moves.
@@ -45,6 +57,7 @@ watch(() => [props.picked, props.tiles.length], async () => {
     class="flex shrink-0 items-center gap-1.5 overflow-x-auto border-b border-line px-4 py-2 [scrollbar-width:thin] short:hidden"
     aria-label="Frames"
     data-strip
+    @keydown="onKey"
   >
     <button
       v-for="tile in tiles"
@@ -60,7 +73,7 @@ watch(() => [props.picked, props.tiles.length], async () => {
       :aria-current="tile.index === picked"
       :title="tile.words"
       :data-tile="tile.index"
-      @click="$emit('pick', tile.index)"
+      @click="emit('pick', tile.index)"
     >
       <img
         v-if="tile.thumb"

@@ -3,32 +3,32 @@ import SessionBar from '../components/SessionBar.vue'
 import { ask } from '../ask'
 import { frameName, framesName } from '../frameName'
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
-import ComposeBox from '../components/ComposeBox.vue'
-import FrameImage from '../components/FrameImage.vue'
 import CollapsibleTextarea from '../components/CollapsibleTextarea.vue'
 import FoldedPrompt from '../components/FoldedPrompt.vue'
-import FrameTab from '../components/FrameTab.vue'
-import ClipOverlay from '../components/ClipOverlay.vue'
-import { clipCount, clipsMaking, scrollToClips, usePlayingClip } from '../clips'
-import FrameListItem from '../components/FrameListItem.vue'
+import { clipCount, clipsMaking, usePlayingClip } from '../clips'
+import FloatingBox from '../components/FloatingBox.vue'
+import FrameClips from '../components/FrameClips.vue'
+import FrameStrip, { type StripTile } from '../components/FrameStrip.vue'
+import Icon from '../components/Icon.vue'
+import PopMenu from '../components/PopMenu.vue'
 import PutBackOffer from '../components/PutBackOffer.vue'
+import SessionDrawer from '../components/SessionDrawer.vue'
+import SessionPicture from '../components/SessionPicture.vue'
+import SessionSettings from '../components/SessionSettings.vue'
+import SessionStage from '../components/SessionStage.vue'
+import { imageRatioOf } from '../components/sessionPictureRatio'
+import ToggleSwitch from '../components/ToggleSwitch.vue'
 import { usePutBack } from '../composables/usePutBack'
-import ImageModelPicker from '../components/ImageModelPicker.vue'
-import TextModelPicker from '../components/TextModelPicker.vue'
+import { useDrawer } from '../composables/useDrawer'
 import ModelComparison from '../components/ModelComparison.vue'
-import RenderAllButton from '../components/RenderAllButton.vue'
-import PanelTabs from '../components/PanelTabs.vue'
 import { useImageModels, writtenPart } from '../composables/useSettingsOptions'
 import Frame3dViewers from '../components/Frame3dViewers.vue'
-import EditedChip from '../components/EditedChip.vue'
 import FrameViewer from '../components/FrameViewer.vue'
-import JobQueue from '../components/JobQueue.vue'
 import { useJobs } from '../composables/useJobs'
 import { useJobLink } from '../composables/useJobLink'
 import { sessionPath } from '../sessionPath'
 import { usePictureEditing } from '../composables/usePictureEditing'
-import { showPickedFrame, useFrameKeys } from '../composables/useFrameKeys'
-import { jobForming, jobStatus, queueTab, sweepOf } from '../jobs'
+import { jobForming, sweepOf } from '../jobs'
 import { useStoredFlag } from '../composables/useStoredFlag'
 import { useSessionScreen } from '../composables/useSessionScreen'
 import { diffWords } from '../diff'
@@ -38,6 +38,7 @@ import {
   deleteChainFrame,
   saveChainPrompt,
   imageUrl,
+  pickedEdit,
   type Outcome,
   type Job,
   streamFrame,
@@ -83,11 +84,10 @@ const frameError = ref('')
 const notice = ref<{ kind: 'declined' | 'unclear' | 'unchanged'; text: string } | null>(null)
 /** Index of the Frame shown in the main panel; null follows the latest. */
 const viewing = ref<number | null>(null)
-const log = useTemplateRef<HTMLElement>('log')
-const panel = ref<'log' | 'queue' | 'prompt'>('log')
+/** The drawer beside the story: the shown Frame's Image Prompt, its changes marked. */
+const { tab: drawer, toggle: toggleDrawer } = useDrawer<'prompt'>('chain-drawer', 'prompt')
 
 /** Viewing preferences, remembered per browser. */
-const captionHidden = useStoredFlag('caption-hidden')
 /** Render each new Frame as it's made (on), or only write its prompt: this browser's choice. */
 const renderFrames = useStoredFlag('chain-render-frames', true)
 const removedHidden = useStoredFlag('diff-removed-hidden')
@@ -124,24 +124,11 @@ const viewingOlder = computed(() =>
 const pick = (index: number) => {
   viewing.value = index === (session.value?.frames.length ?? 0) - 1 && !busy.value ? null : index
 }
-/** ↑ and ↓ in the Frames list; from the Frame in progress, ↑ goes to the latest. */
-const onFrameKey = useFrameKeys(log, {
-  count: () => session.value?.frames.length ?? 0,
-  current: () => shown.value?.index ?? session.value?.frames.length ?? 0,
-  pick,
-})
 /** What a Frame is called in a sentence: the Opening, or its number (`frameName`). */
 const frameProse = (index: number) => (index === 0 ? 'the Opening' : frameName(index))
 /** Its title, in the Frames list's places and the viewers' labels: "Frame 1 · Opening". */
 const frameTitle = (index: number) => (index === 0 ? `${frameName(0)} · Opening` : frameName(index))
 
-// Back on the Frames, or with a new one: down to the latest while following it, or else to the
-// Frame picked (from the Queue tab, say).
-watch([() => session.value?.frames.length, panel], async () => {
-  if (viewing.value !== null) return showPickedFrame(log)
-  await nextTick()
-  log.value?.scrollTo({ top: log.value.scrollHeight, behavior: 'smooth' })
-})
 
 function onEvent(event: FrameEvent) {
   const s = session.value!
@@ -208,7 +195,7 @@ function submit() {
 /** Pictures on: a Chain can render as it goes; off, it only writes each Frame's prompt. */
 const { on: featureOn } = useFeatures()
 
-const { jobs, jobsFor, hasJob, queue, queueEdit, queueClip, queueAll, dropJob, cancelAll, dismissFinished, retry, refreshJobs } = useJobs(props.id, {
+const { jobs, jobsFor, hasJob, workOn, workOf, dropEach, queue, queueEdit, queueClip, queueAll, dropJob, retry, refreshJobs } = useJobs(props.id, {
   onSettled: async () => {
     await load()
   },
@@ -234,13 +221,26 @@ const shownJob = computed(() =>
   jobsFor(shown.value?.index ?? -1).find((j) => j.status === 'running') ?? null
 )
 
-/**
- * A render of the shown Frame, queued or running: its picture's badge follows it, as a new Frame's
- * does, in place of "Changed since render".
- */
-const shownRender = computed(() =>
-  jobsFor(shown.value?.index ?? -1).find((j) => j.kind === 'render' && j.status !== 'failed') ??
-    null
+/** The Frames as the strip shows them: each picture, or its Action, and the work on it. */
+const tiles = computed<StripTile[]>(() =>
+  (session.value?.frames ?? []).map((f) => ({
+    index: f.index,
+    thumb: pictureOf(f) ? imageUrl(props.id, pictureOf(f)!.image) : null,
+    words: f.action ?? 'Opening',
+    working: workOn(f.index),
+    dimmed: !!pictureOf(f) && changedSinceRender(pictureOf(f)!, session.value!.settings.imageModel),
+    clips: clipCount(pictureOf(f), session.value!.settings.imageModel),
+  }))
+)
+/** The picture shown is by the Chain's Image Model, so it can have clips. */
+const ownPicture = computed(() =>
+  !!picture.value && picture.value.imageModel === session.value?.settings.imageModel
+)
+/** How many clips the Clip menu says the picture has, or null for no Clip menu. */
+const clipsMenu = computed(() =>
+  picture.value && featureOn.value('video')
+    ? (pickedEdit(picture.value) ?? picture.value).clips?.length ?? 0
+    : null
 )
 
 // --- Looking closer: the picture viewer, and 3D by model (experimental; PictureButtons).
@@ -251,14 +251,11 @@ const viewingPicture = ref<number | null>(null)
 /** A queued job's Frame, from the Queue tab or a link to it. */
 function goToJobFrame(index: number) {
   pick(index)
-  panel.value = 'log'
 }
 /** A clip's Frame, at its Clip section on the picture it's made from. */
 async function openClip(job: Job) {
   await onClipsModel(job, (m) => (frameError.value = m))
   pick(job.frameIndex)
-  panel.value = 'prompt'
-  scrollToClips(log.value)
 }
 const { painting: paintingPicture, startEdit, showEdit, pick: pickVersion, deleteEdit, deleteUpscale } =
   usePictureEditing(props.id, session, viewingPicture, (m) => (frameError.value = m))
@@ -383,14 +380,10 @@ const phaseLabel = computed(() => {
   return 'Writing the prompt…'
 })
 
-/** A picture rendering, a new Frame's or a re-render's, with its step once it has one. */
-function renderingLabel(p: { step: number; total: number } | undefined) {
-  const doing = 'Rendering the image…'
-  return p ? `${doing} step ${p.step} of ${p.total}` : doing
-}
-/** A re-render's status, worded as a new Frame's. */
-const rerenderLabel = (job: Job) =>
-  jobStatus(job, (j) => (j.phase === 'image' ? renderingLabel(j.progress) : undefined))
+/** How the shown picture's edge sweeps: while a job renders it, slower while that waits its turn. */
+const sweep = computed(() =>
+  renderingPhase.value === 'queued' ? 'queued' : renderingPhase.value ? 'running' : null
+)
 
 /** The Frame in progress's index and Action, for its place in the Frames and the Prompt tab. */
 const pendingIndex = computed(() => session.value?.frames.length ?? 0)
@@ -437,403 +430,278 @@ const promptDiff = computed(() => {
 </script>
 
 <template>
-  <div class="flex min-h-0 flex-col">
+  <div class="flex min-h-0 min-w-0 flex-col">
     <p v-if="loadError" class="p-6 text-danger">Could not load this Session: {{ loadError }}</p>
 
     <template v-else-if="session">
-      <!-- Until stage 3 of the screens plan builds its strip view: its kind and title. -->
-      <SessionBar kind="Chain" :title="session.title ?? ''" />
-      <div class="flex min-h-0 flex-1">
-      <main class="story flex min-w-0 flex-1 flex-col gap-3 p-4">
-        <!-- The Chain's switches, above the picture, as a Roleplay's are above its conversation. -->
-        <div class="flex flex-wrap items-center justify-end gap-x-4 gap-y-1 text-sm">
-          <TextModelPicker
-            :session="session"
-            @switched="onSwitched"
-            @failed="(message) => (frameError = message)"
-          />
-          <template v-if="featureOn('images')">
-            <ImageModelPicker
-              :session="session"
-              @switched="onSwitched"
-              @failed="(message) => (frameError = message)"
-            />
-            <ModelComparison
-              :session-id="session.id"
-              :frames="session.frames"
-              :image-model="session.settings.imageModel"
-              :thumbnail="session.thumbnail"
-              :name="frameTitle"
-              :caption="(f) => f.narration"
-              @changed="load(); refreshJobs()"
-            />
-            <label
-              class="flex cursor-pointer items-center gap-1.5 text-muted"
-              title="Off: each Action writes only the new prompt, and you render the Frames you want"
-            >
-              <input v-model="renderFrames" type="checkbox" data-render-frames />
-              Render each Frame
-            </label>
-          </template>
-        </div>
-        <FrameImage
-          :src="picture ? imageUrl(session.id, picture.upscaled ?? picture.image) : null"
-          :alt="shown?.prompt"
-          :rendering="renderingPhase"
-          :preview="forming"
-          :hide-size="busy || pictureChanged"
-          :empty-text="busy ? undefined : shown ? 'Not rendered yet' : 'No image yet'"
-          :expected-size="session.imageSize"
-          @open="viewingPicture = shown!.index"
+      <SessionBar kind="Chain" :title="session.title ?? ''" :status="busy ? phaseLabel : undefined">
+        <!-- Until the All Frames view takes it (stage 4 of the screens plan). -->
+        <span v-if="featureOn('images')" class="max-md:hidden"><ModelComparison
+          :session-id="session.id"
+          :frames="session.frames"
+          :image-model="session.settings.imageModel"
+          :thumbnail="session.thumbnail"
+          :name="frameTitle"
+          :caption="(f) => f.narration"
+          @changed="load(); refreshJobs()"
+        /></span>
+        <SessionSettings
+          :session="session"
+          title="This Chain"
+          @switched="onSwitched"
+          @failed="(message) => (frameError = message)"
         >
-          <EditedChip
-            :picture="picture"
-            class="absolute right-3"
-            :class="viewingOlder ? 'top-14' : 'top-3'"
-          />
-          <ClipOverlay
-            v-if="playingClip && playingClip.index === shown?.index"
-            :src="imageUrl(session.id, playingClip.clip.file)"
-            :clip="playingClip.clip"
-            @close="playingClip = null"
-          />
-          <div
-            v-if="viewingOlder"
-            class="absolute right-3 top-3 flex items-center gap-2 rounded-full bg-black/70 py-1 pl-3 pr-1 text-sm text-white"
-            data-viewing
-          >
-            <span>Viewing {{ frameProse(shown!.index) }} of {{ (busy ? pendingIndex : latest!.index) + 1 }}</span>
-            <button
-              type="button"
-              class="rounded-full bg-white/15 px-2.5 py-0.5 hover:bg-white/25"
-              @click="viewing = null"
-            >
-              Back to latest
-            </button>
-          </div>
+          <ToggleSwitch v-if="featureOn('images')" v-model="renderFrames" title="Render each Frame" data-render-frames>
+            Off: each Action writes only the new prompt, and you render the Frames you want
+          </ToggleSwitch>
+        </SessionSettings>
+      </SessionBar>
 
-          <div
+      <FrameStrip
+        v-if="session.frames.length || busy"
+        :tiles="tiles"
+        :picked="onPending ? null : shown?.index ?? null"
+        @pick="pick"
+      >
+        <template #end>
+          <!-- The Frame in progress, in its place at the end: picked to show it again. -->
+          <button
             v-if="busy"
-            class="absolute left-3 top-3 rounded-full bg-black/70 px-3 py-1 text-sm text-white"
-            role="status"
-          >
-            <span class="animate-pulse">{{ phaseLabel }}</span>
-          </div>
-          <div
-            v-else-if="shownRender"
-            class="absolute left-3 top-3 rounded-full bg-black/70 px-3 py-1 text-sm text-white"
-            role="status"
-            data-rerendering
-          >
-            <span class="animate-pulse">{{ rerenderLabel(shownRender) }}</span>
-          </div>
-          <div
-            v-else-if="pictureChanged"
-            class="absolute left-3 top-3 rounded-full bg-black/70 px-3 py-1 text-sm text-white"
-            data-changed
-          >
-            Changed since render · {{ byOf(picture!) }}
-          </div>
+            type="button"
+            class="grid h-12 w-20 shrink-0 place-items-center rounded border border-dashed border-line text-muted render-sweep [@media(max-height:640px)]:h-6 [@media(max-height:640px)]:w-9"
+            :class="{ 'ring-2 ring-fg ring-offset-1 ring-offset-canvas': onPending }"
+            :title="`${frameName(pendingIndex)}: ${phaseLabel}`"
+            :aria-current="onPending"
+            data-pending-frame
+            @click="viewing = null"
+          ><Icon name="spinner" class="animate-spin" /></button>
+        </template>
+      </FrameStrip>
 
-          <div
-            v-if="liveThinking && !captionHidden"
-            class="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/80 via-black/60 to-transparent px-5 pb-4 pt-12 text-white"
-            data-thinking
-          >
-            <span class="mb-1 inline-block animate-pulse text-xs font-medium text-white/80">
-              Thinking…
-            </span>
-            <p
-              ref="thinkingBox"
-              class="max-h-28 overflow-y-auto whitespace-pre-line text-xs italic leading-relaxed text-white/70"
-            >
-              {{ liveThinking }}
-            </p>
-          </div>
-
-          <template v-else-if="captionText">
-            <div
-              v-if="!captionHidden"
-              class="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/80 via-black/60 to-transparent px-5 pb-4 pt-12 text-white"
-            >
-              <span
-                v-if="captionOutcome && OUTCOME_LABELS[captionOutcome]"
-                class="mb-1 inline-block rounded-full px-2 py-0.5 text-xs font-medium"
-                :class="captionOutcome === 'declined'
-                ? 'bg-amber-300/20 text-amber-300'
-                : 'bg-sky-300/20 text-sky-300'"
-                data-outcome
-              >
-                {{ OUTCOME_LABELS[captionOutcome] }}
-              </span>
-              <p
-                class="max-h-24 overflow-y-auto pr-10 text-sm leading-relaxed"
-                :class="{
-                  'text-amber-300': captionOutcome === 'declined',
-                  'text-sky-300': captionOutcome === 'unclear',
-                }"
-                data-caption
-              >
-                {{ captionText }}
-              </p>
-              <button
-                type="button"
-                class="absolute bottom-3 right-3 rounded px-1.5 text-xs text-white/70 hover:text-white"
-                title="Hide caption"
-                @click="captionHidden = true"
-              >
-                Hide
-              </button>
-            </div>
-            <button
-              v-else
-              type="button"
-              class="absolute bottom-3 right-3 rounded-full bg-black/70 px-3 py-1 text-xs text-white"
-              @click="captionHidden = false"
-            >
-              Show caption
-            </button>
-          </template>
-        </FrameImage>
-
-        <div class="flex shrink-0 flex-col gap-2">
-          <!-- The sweep shows here while the Text Model writes, then moves to the image. -->
-          <div
-            class="flex rounded-lg"
-            :class="{ 'render-sweep': writing }"
-            :data-writing="writing ? '' : undefined"
-          >
-            <!-- An earlier Frame shows the Action that made it, read-only (still selectable to copy). -->
-            <textarea
-              v-if="viewingOlder"
-              :value="shown!.action ?? ''"
-              rows="3"
-              class="flex-1 cursor-default resize-none rounded-lg border border-dashed border-line bg-canvas p-3 text-muted"
-              placeholder="The Opening Frame has no Action."
-              readonly
-              :aria-label="`The Action sent on ${frameProse(shown!.index)}`"
-              data-past-action
-            />
-            <ComposeBox
-              v-else
-              v-model="draft"
-              placeholder="What to change… (Enter to send, Shift+Enter for a new line)"
-              :disabled="busy"
-              @send="submit"
-            />
-          </div>
-          <div class="flex items-center gap-2">
-            <button
-              v-if="!busy"
-              type="button"
-              class="rounded-lg bg-fg px-4 py-2 font-medium text-canvas disabled:opacity-50"
-              :disabled="!draft.trim() || viewingOlder"
-              @click="submit"
-            >
-              Send
-            </button>
-            <button
-              v-else
-              type="button"
-              class="rounded-lg border border-danger px-4 py-2 font-medium text-danger disabled:opacity-50"
-              :disabled="pending?.cancelling"
-              @click="cancel"
-            >
-              Cancel
-            </button>
-            <RenderAllButton
-              v-if="featureOn('images') && session.frames.length"
-              :count="toRender.length"
-              title="Queue a render of every Frame not rendered yet by this Image Model"
-              @render="queueAll('render', toRender.map((f) => f.index))"
-            />
-            <PutBackOffer
-              v-if="offered && !frameError && !notice"
-              :offered="offered"
-              @use="usePutBackText"
-              @dismiss="dismissPutBack"
-            />
-            <p
-              v-else
-              class="min-w-0 flex-1 truncate text-sm"
-              :class="frameError ? 'text-danger' : notice?.kind === 'declined' ? 'text-warn' : 'text-info'"
-              :title="frameError || notice?.text"
-              role="alert"
-              data-frame-notice
-            >
-              {{ frameError || notice?.text }}
-            </p>
-            <button
-              type="button"
-              class="rounded-lg border border-line px-3 py-2 text-sm disabled:opacity-50"
-              :disabled="!canUndo || undoing"
-              :title="viewingOlder
-                ? `Undo every Frame after ${frameProse(shown!.index)}, back to it, and put the next Action back in the box`
-                : 'Undo the latest Frame and put its Action back in the box'"
-              data-undo-main
-              @click="undo(undoFrom!, viewingOlder)"
-            >
-              {{ viewingOlder ? `Undo to ${frameName(shown!.index)}` : 'Undo' }}
-            </button>
-          </div>
-        </div>
-
-      </main>
-
-      <aside class="flex w-80 flex-col border-l border-line xl:w-auto xl:flex-row">
-        <!-- Narrow windows: one panel at a time. From xl up: the Prompt beside the others. -->
-        <div class="xl:hidden">
-          <PanelTabs
-            v-model="panel"
-            :tabs="[
-              { id: 'log', label: 'Frames' },
-              { id: 'queue', ...queueTab(jobs) },
-              { id: 'prompt', label: 'Frame' },
-            ]"
-          />
-        </div>
-
-        <section
-          class="min-h-0 flex-1 flex-col xl:w-72 xl:flex-none xl:border-r xl:border-line"
-          :class="panel === 'prompt' ? 'hidden xl:flex' : 'flex'"
-          data-log-panel
-        >
-          <div class="hidden xl:block">
-            <PanelTabs
-              v-model="panel"
-              :tabs="[{ id: 'log', label: 'Frames' }, { id: 'queue', ...queueTab(jobs) }]"
-            />
-          </div>
-          <!-- The queue: what's running, queued and failed; click one to go to its Frame. -->
-          <div v-if="panel === 'queue'" class="min-h-0 flex-1 overflow-y-auto" data-queue>
-            <JobQueue
-              :jobs="jobs"
-              empty="Nothing queued. Render, Render all and Upscale add work here, to run while you carry on."
-              :name="frameTitle"
-              @go="goToJobFrame"
-              @clip="openClip"
-              @edit="showEdit"
+      <div class="flex min-h-0 flex-1">
+        <SessionStage :ratio="imageRatioOf(session)" :pictured="featureOn('images') || !!picture">
+          <template #picture>
+            <SessionPicture
+              :name="shown ? frameName(shown.index) : frameName(pendingIndex)"
+              :label="shown ? `${frameName(shown.index)} of ${(busy ? pendingIndex : latest!.index) + 1}${pictureChanged ? ` · changed since render ${byOf(picture!)}` : ''}` : undefined"
+              :src="picture ? imageUrl(session.id, picture.upscaled ?? picture.image) : null"
+              :picture="picture"
+              :dimmed="pictureChanged"
+              :preview="forming"
+              :sweep="sweep"
+              :jobs="shown ? jobsFor(shown.index) : []"
+              :has-job="(kind) => !!shown && hasJob(shown.index, kind)"
+              :working="shown ? workOf(shown.index) : undefined"
+              :can-render="!!shown"
+              :clips="clipsMenu"
+              :playing="playingClip && playingClip.index === shown?.index ? { src: imageUrl(session.id, playingClip.clip.file), clip: playingClip.clip } : null"
+              @queue="(kind) => queue(kind, shown!.index)"
+              @view="(kind) => (open3d = { index: shown!.index, kind })"
+              @edit="startEdit(shown!.index)"
+              @open="viewingPicture = shown!.index"
+              @prompt="toggleDrawer('prompt')"
               @retry="retry"
               @drop="dropJob"
-              @cancel-all="cancelAll"
-              @dismiss-finished="dismissFinished"
-            />
-          </div>
-          <ol
-            v-show="panel !== 'queue'"
-            ref="log"
-            class="flex-1 overflow-y-auto"
-            role="tabpanel"
-            @keydown="onFrameKey"
-          >
-          <li v-for="frame in session.frames" :key="frame.index" class="group relative">
-            <FrameListItem
-              :thumb="pictureOf(frame) && imageUrl(session.id, pictureOf(frame)!.image)"
-              :number="frame.index + 1"
-              :current="shown?.index === frame.index"
-              :clips="clipCount(pictureOf(frame), session.settings.imageModel)"
-              data-frame
-              @click="pick(frame.index)"
+              @cancel-all="(list) => dropEach(list)"
+              @stop-clip="playingClip = null"
             >
-                <!-- Capped here; the Prompt tab and the text box show it in full. -->
-                <span class="line-clamp-2 font-medium" :title="frame.action ?? undefined" data-action>
-                  {{ frame.action ?? 'Opening' }}
+              <template #clip>
+                <p v-if="!ownPicture" class="text-xs text-muted" data-clips-other-model>
+                  Clips are made of a picture by the Chain's Image Model: render this Frame with it first.
+                </p>
+                <FrameClips
+                  v-else-if="shown && picture"
+                  :session-id="session.id"
+                  :index="shown.index"
+                  :clips="(pickedEdit(picture) ?? picture).clips"
+                  :next-pictured="!!session.frames[shown.index + 1] && !!pictureOf(session.frames[shown.index + 1])"
+                  :next-name="frameName(shown.index + 1)"
+                  :making="clipsMaking(jobsFor(shown.index), picture.imageModel)"
+                  :playing="playingClip?.index === shown.index ? playingClip.clip.file : undefined"
+                  @make="(order) => queueClip(shown!.index, order)"
+                  @play="(clip) => (playingClip = { index: shown!.index, clip })"
+                  @stop="playingClip = null"
+                />
+              </template>
+              <template #empty>
+                <span class="text-muted" data-empty>
+                  <template v-if="onPending">{{ phaseLabel }}</template>
+                  <template v-else-if="shown && workOn(shown.index)">{{ frameName(shown.index) }} is being rendered</template>
+                  <template v-else-if="shown">{{ frameName(shown.index) }} isn't rendered</template>
+                  <template v-else>No picture yet</template>
                 </span>
-                <span
-                  v-if="OUTCOME_LABELS[frame.outcome]"
-                  class="text-xs font-medium"
-                  :class="frame.outcome === 'declined' ? 'text-warn' : 'text-info'"
+                <button
+                  v-if="shown && !workOn(shown.index) && featureOn('images')"
+                  type="button"
+                  class="rounded-lg bg-fg px-3 py-1.5 text-sm font-medium text-canvas"
+                  data-render-it
+                  @click="queue('render', shown.index)"
                 >
-                  {{ OUTCOME_LABELS[frame.outcome] }}
-                </span>
-                <span
-                  class="line-clamp-3 text-muted"
-                  :class="{
-                    'text-warn': frame.outcome === 'declined',
-                    'text-info': frame.outcome === 'unclear',
-                  }"
+                  Render it
+                </button>
+              </template>
+              <template #overlay>
+                <button
+                  v-if="viewingOlder"
+                  type="button"
+                  class="shrink-0 rounded-md bg-black/55 px-2 py-0.5 text-xs text-white backdrop-blur-sm hover:bg-black/75"
+                  :title="`Back to ${busy ? 'the Frame in progress' : `the latest, ${frameName(latest!.index)}`}`"
+                  data-viewing
+                  @click="viewing = null"
                 >
-                  {{ frame.narration }}
-                </span>
-            </FrameListItem>
-            <button
-              v-if="canUndo && frame.index === session.frames.at(-1)?.index"
-              type="button"
-              class="absolute right-2 top-2 rounded border border-line bg-canvas px-2 py-0.5 text-xs text-muted opacity-0 hover:text-fg focus:opacity-100 group-hover:opacity-100 disabled:opacity-50"
-              :disabled="undoing"
-              title="Undo this Frame"
-              data-undo
-              @click="undo(frame.index, false)"
-            >
-              Undo
-            </button>
-            <button
-              v-else-if="!busy && frame.index > 0"
-              type="button"
-              class="absolute right-2 top-2 rounded border border-line bg-canvas px-2 py-0.5 text-xs text-muted opacity-0 hover:text-danger focus:opacity-100 group-hover:opacity-100 disabled:opacity-50"
-              :disabled="deleting"
-              title="Delete this Frame and its pictures"
-              data-delete-frame
-              @click="deleteFrame(frame)"
-            >
-              Delete
-            </button>
-          </li>
-          <!-- The Frame in progress, in its place from the start: picked to show it again. -->
-          <li v-if="busy">
-            <button
-              type="button"
-              class="flex w-full gap-3 border-b border-line p-3 text-left text-sm hover:bg-surface"
-              :class="{ 'bg-surface': onPending }"
-              :aria-current="onPending"
-              data-pending-frame
-              @click="viewing = null"
-            >
-              <span
-                class="flex h-20 w-14 shrink-0 animate-pulse items-center justify-center rounded border border-dashed border-line text-xs text-muted"
-              >
-                {{ pendingIndex + 1 }}
-              </span>
-              <span class="flex min-w-0 flex-col gap-1">
-                <span class="line-clamp-2 font-medium">{{ pendingAction }}</span>
-                <span class="animate-pulse text-xs text-info">{{ phaseLabel }}</span>
-              </span>
-            </button>
-          </li>
-          </ol>
-        </section>
+                  Back to the latest
+                </button>
+              </template>
+            </SessionPicture>
+          </template>
 
-        <section
-          class="min-h-0 flex-1 flex-col xl:w-[28rem] xl:flex-none"
-          :class="panel === 'prompt' ? 'flex' : 'hidden xl:flex'"
-          data-prompt-panel
+          <!-- Beside the picture: the Action that made it, and what it changed. -->
+          <template #side>
+            <div class="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pb-2" data-chain-side>
+              <template v-if="onPending">
+                <section>
+                  <h3 class="text-xs font-semibold uppercase tracking-wide text-muted">Action</h3>
+                  <p class="mt-1 text-lg font-medium" data-pending-action>{{ pendingAction }}</p>
+                </section>
+                <p class="animate-pulse text-sm text-muted">{{ phaseLabel }}</p>
+                <section v-if="liveThinking" data-thinking>
+                  <h3 class="text-xs font-semibold uppercase tracking-wide text-muted">Thinking</h3>
+                  <p
+                    ref="thinkingBox"
+                    class="mt-1 max-h-[50dvh] overflow-y-auto whitespace-pre-line text-xs italic leading-relaxed text-muted"
+                  >{{ liveThinking }}</p>
+                </section>
+              </template>
+              <template v-else-if="shown">
+                <section>
+                  <h3 class="text-xs font-semibold uppercase tracking-wide text-muted">Action</h3>
+                  <p class="mt-1 text-lg font-medium" data-action>{{ shown.action ?? 'Opening' }}</p>
+                </section>
+                <section v-if="captionText">
+                  <h3 class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted">
+                    What changed
+                    <span
+                      v-if="captionOutcome && OUTCOME_LABELS[captionOutcome]"
+                      class="rounded-full px-2 py-0.5 normal-case tracking-normal"
+                      :class="captionOutcome === 'declined' ? 'bg-warn/15 text-warn' : 'bg-info/15 text-info'"
+                      data-outcome
+                    >{{ OUTCOME_LABELS[captionOutcome] }}</span>
+                  </h3>
+                  <p
+                    class="mt-1 whitespace-pre-line text-sm leading-relaxed"
+                    :class="{ 'text-warn': captionOutcome === 'declined', 'text-info': captionOutcome === 'unclear' }"
+                    data-caption
+                  >{{ captionText }}</p>
+                </section>
+                <button
+                  type="button"
+                  class="w-fit text-sm text-muted underline underline-offset-2 hover:text-fg"
+                  data-see-changes
+                  @click="drawer = 'prompt'"
+                >
+                  {{ shown.index > 0 ? "See the prompt's changes" : 'See the prompt' }}
+                </button>
+              </template>
+            </div>
+          </template>
+
+          <template #box>
+            <FloatingBox
+              v-model="draft"
+              :placeholder="viewingOlder
+                ? `Viewing ${frameProse(shown!.index)}: go back to the latest to change it`
+                : 'What to change…'"
+              :disabled="viewingOlder"
+              :busy="busy"
+              :cancelling="pending?.cancelling"
+              :working="writing"
+              :data-writing="writing ? '' : undefined"
+              @send="submit"
+              @cancel="cancel"
+            >
+              <template #notice>
+                <PutBackOffer
+                  v-if="offered && !frameError && !notice"
+                  :offered="offered"
+                  @use="usePutBackText"
+                  @dismiss="dismissPutBack"
+                />
+                <p
+                  v-else-if="frameError || notice"
+                  class="truncate px-2 text-sm"
+                  :class="frameError ? 'text-danger' : notice?.kind === 'declined' ? 'text-warn' : 'text-info'"
+                  :title="frameError || notice?.text"
+                  role="alert"
+                  data-frame-notice
+                >
+                  {{ frameError || notice?.text }}
+                </p>
+              </template>
+              <template v-if="!busy">
+                <button
+                  type="button"
+                  class="flex items-center gap-1 rounded-lg px-2 py-1.5 hover:bg-canvas hover:text-fg disabled:opacity-50"
+                  :disabled="!canUndo || undoing"
+                  :title="viewingOlder
+                    ? `Undo every Frame after ${frameProse(shown!.index)}, back to it, and put the next Action back in the box`
+                    : 'Undo the latest Frame and put its Action back in the box'"
+                  :aria-label="viewingOlder ? `Undo to ${frameName(shown!.index)}` : 'Undo'"
+                  data-undo-main
+                  @click="undo(undoFrom!, viewingOlder)"
+                >
+                  <Icon name="undo" /><span v-if="viewingOlder" class="max-sm:hidden">to {{ frameName(shown!.index) }}</span>
+                </button>
+                <PopMenu v-if="session.frames.length" align="end" side="above" panel-class="w-72 p-1 text-sm" data-more-menu>
+                  <template #button="{ open, toggle }">
+                    <button
+                      type="button"
+                      class="rounded-lg px-2 py-1.5 hover:bg-canvas hover:text-fg"
+                      :class="{ 'bg-canvas text-fg': open }"
+                      title="More"
+                      aria-label="More"
+                      data-more
+                      @click="toggle"
+                    >
+                      <Icon name="dots" />
+                    </button>
+                  </template>
+                  <template #default="{ close }">
+                    <button
+                      v-if="featureOn('images')"
+                      type="button"
+                      class="menu-row"
+                      :disabled="!toRender.length"
+                      title="Queue a render of every Frame not rendered yet by this Image Model"
+                      data-render-all
+                      @click="queueAll('render', toRender.map((f) => f.index)); close()"
+                    >
+                      Render all<span v-if="toRender.length" class="ml-auto text-muted tabular-nums" data-render-count>{{ toRender.length }}</span>
+                    </button>
+                    <!-- Between the Opening and the latest, which has Undo. -->
+                    <button
+                      v-if="viewingOlder && shown!.index > 0"
+                      type="button"
+                      class="menu-row text-danger"
+                      :disabled="deleting"
+                      :title="`Delete ${frameName(shown!.index)} and its pictures; the Frames after it are numbered down`"
+                      data-delete-frame
+                      @click="deleteFrame(shown!); close()"
+                    >
+                      Delete {{ frameName(shown!.index) }}
+                    </button>
+                  </template>
+                </PopMenu>
+              </template>
+            </FloatingBox>
+          </template>
+        </SessionStage>
+
+        <SessionDrawer
+          v-model="drawer"
+          :tabs="[{ id: 'prompt', label: promptIndex !== undefined ? `${frameName(promptIndex)}'s prompt` : 'Prompt' }]"
         >
-          <h2 class="hidden border-b border-line px-4 py-2 text-sm font-medium xl:block">
-            Frame
-          </h2>
-          <div class="flex-1 overflow-y-auto p-4 text-sm" role="tabpanel">
-          <FrameTab
-            :picture="picture"
-            :has-job="(kind) => !!shown && hasJob(shown.index, kind)"
-            :can-render="!!shown && !onPending"
-            @queue="(kind) => queue(kind, shown!.index)"
-            @view="(kind) => (open3d = { index: shown!.index, kind })"
-            @edit="startEdit(shown!.index)"
-            :clips="shown && !onPending
-              ? {
-                sessionId: session.id,
-                index: shown.index,
-                nextPictured: !!session.frames[shown.index + 1] && !!pictureOf(session.frames[shown.index + 1]),
-                nextName: frameName(shown.index + 1),
-                imageModel: session.settings.imageModel,
-                making: clipsMaking(jobsFor(shown.index), pictureOf(shown)?.imageModel),
-                playing: playingClip?.index === shown.index ? playingClip.clip.file : undefined,
-              }
-              : undefined"
-            @clip="(order) => queueClip(shown!.index, order)"
-            @play="(clip) => (playingClip = { index: shown!.index, clip })"
-            @stop="playingClip = null"
-          >
+          <template #prompt>
+            <div class="p-4 text-sm" data-prompt-panel>
           <template v-if="shown">
             <div class="mb-1 flex items-start gap-2">
               <p class="flex-1 text-muted">
@@ -929,10 +797,9 @@ const promptDiff = computed(() => {
           </template>
           <p v-else-if="onPending" class="animate-pulse text-muted">Writing the prompt…</p>
           <p v-else class="text-muted">No prompt yet.</p>
-          </FrameTab>
-          </div>
-        </section>
-      </aside>
+            </div>
+          </template>
+        </SessionDrawer>
       </div>
     </template>
 
