@@ -82,16 +82,17 @@ async function pick(v: string) {
 </script>
 
 <template>
-  <div class="flex items-center gap-1.5 text-muted">
+  <!-- A row of the Session's models (`SessionSettings`): its name in the first column, the menu
+       filling the second, the steps under it. -->
+  <div class="grid grid-cols-[6.5rem_minmax(0,1fr)] items-center gap-x-3 gap-y-1 text-muted">
     <label
-      class="flex items-center gap-1.5"
-      title="The Image Model this Session renders with, and where its renders go now (Settings' Machines and Images tabs); Settings has the one new Sessions start with"
+      class="contents"
+      title="The Image Model this Session renders with, and where its renders go now (Settings' Machines and Images sections); Settings has the one new Sessions start with"
     >
       <span class="whitespace-nowrap">Image Model</span>
       <SelectField
         v-model="selected"
-        compact
-        class="rounded border border-line bg-surface py-0.5 pl-1.5 text-fg"
+        class="rounded-md border border-line bg-surface py-1 pl-2 text-fg"
         :disabled="switching"
         data-image-model
       >
@@ -101,8 +102,8 @@ async function pick(v: string) {
         </optgroup>
       </SelectField>
     </label>
-    <span class="whitespace-nowrap" title="The steps each render takes with this model" data-image-steps>
-      · {{ steps }} {{ steps === 1 ? 'step' : 'steps' }}
+    <span class="col-start-2 text-xs" title="The steps each render takes with this model" data-image-steps>
+      {{ steps }} {{ steps === 1 ? 'step' : 'steps' }} a render
     </span>
   </div>
 </template>

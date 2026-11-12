@@ -85,6 +85,6 @@ describe('ImageModelPicker', () => {
 
   it('shows the steps the model renders at', async () => {
     const wrapper = await mountIt(session({ imageModel: 'flux2-klein-4b', steps: 4 }))
-    expect(wrapper.find('[data-image-steps]').text()).toBe('· 4 steps')
+    expect(wrapper.find('[data-image-steps]').text()).toBe('4 steps a render')
   })
 })

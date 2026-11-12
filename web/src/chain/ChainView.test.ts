@@ -506,7 +506,7 @@ describe('ChainView', () => {
       'FLUX.2 Klein 4B · mflux',
       'Qwen-Image 2.1 · mflux',
     ])
-    expect(wrapper.find('[data-image-steps]').text()).toBe('· 25 steps')
+    expect(wrapper.find('[data-image-steps]').text()).toBe('25 steps a render')
 
     // The picture then shows as changed since render, and can render again.
     vi.mocked(api.setImageModel).mockResolvedValue({
@@ -518,7 +518,7 @@ describe('ChainView', () => {
     expect(api.setImageModel).toHaveBeenCalledWith('s1', 'flux2-klein-4b', 'mflux')
     await openMenu(wrapper, '[data-session-settings-button]')
     expect((select().element as HTMLSelectElement).value).toBe('mflux/flux2-klein-4b')
-    expect(wrapper.find('[data-image-steps]').text()).toBe('· 4 steps')
+    expect(wrapper.find('[data-image-steps]').text()).toBe('4 steps a render')
     expect(label()).toBe('Frame 2 of 2 · changed since render by Qwen-Image 2.1')
     expect(wrapper.find('[data-render-button]').text()).toBe('Re-render')
 

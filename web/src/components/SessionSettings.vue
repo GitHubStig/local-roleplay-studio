@@ -36,14 +36,12 @@ const { labelOf } = useImageModels()
     <div class="flex flex-col gap-3">
       <h2 class="font-semibold">{{ title }}</h2>
       <TextModelPicker
-        class="justify-between"
         :session="session"
         @switched="(s) => emit('switched', s as S)"
         @failed="(m) => emit('failed', m)"
       />
       <ImageModelPicker
         v-if="featureOn('images')"
-        class="flex-wrap justify-between"
         :session="session"
         @switched="(s) => emit('switched', s)"
         @failed="(m) => emit('failed', m)"

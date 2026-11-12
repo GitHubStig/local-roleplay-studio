@@ -42,15 +42,15 @@ async function switchTo(model: string) {
 </script>
 
 <template>
+  <!-- A row of the Session's models (`SessionSettings`), as the Image Model's. -->
   <label
-    class="flex items-center gap-1.5 text-muted"
+    class="grid grid-cols-[6.5rem_minmax(0,1fr)] items-center gap-x-3 text-muted"
     title="The Text Model this Session writes with; Settings has the one new Sessions start with. Switching to a model that isn't loaded loads it, which takes a while the first time"
   >
     <span class="whitespace-nowrap">Text Model</span>
     <SelectField
       v-model="selected"
-      compact
-      class="rounded border border-line bg-surface py-0.5 pl-1.5 text-fg"
+      class="rounded-md border border-line bg-surface py-1 pl-2 text-fg"
       :disabled="switching"
       data-text-model
     >
