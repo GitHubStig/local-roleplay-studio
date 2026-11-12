@@ -31,6 +31,8 @@ const props = defineProps<{
   labelOf: (model: string) => string
   /** Every Frame shares one style (a Storyboard's, a Roleplay's): see `StyleMeasure`. */
   oneStyle?: boolean
+  /** The Session's own Image Model, picked out in the charts. */
+  current?: string
 }>()
 
 const { on } = useFeatures()
@@ -166,6 +168,6 @@ const scoring = computed(() => !!job.value && job.value.status !== 'failed')
       <template v-else>Style scores are off: switch them on in Settings (Images).</template>
     </p>
 
-    <StyleScoresView v-if="scores" :scores :label-of="labelOf" :frames :one-style />
+    <StyleScoresView v-if="scores" :scores :label-of="labelOf" :frames :one-style :current />
   </div>
 </template>

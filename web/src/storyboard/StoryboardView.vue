@@ -42,7 +42,7 @@ import { clipCount, clipsMaking, usePlayingClip } from '../clips'
 import FloatingBox from '../components/FloatingBox.vue'
 import FrameClips from '../components/FrameClips.vue'
 import FrameStrip, { type StripTile } from '../components/FrameStrip.vue'
-import ModelComparison from '../components/ModelComparison.vue'
+import AllFrames from '../components/AllFrames.vue'
 import PopMenu from '../components/PopMenu.vue'
 import RestartButton from '../components/RestartButton.vue'
 import SessionDrawer from '../components/SessionDrawer.vue'
@@ -618,6 +618,10 @@ const writeBar = computed(() =>
   (planned.value && !allWritten.value && !busy.value) ||
   (busy.value && work.value?.kind !== 'edit' && !work.value?.detached)
 )
+
+/** The All Frames view, over the screen; a Frame picked there is shown here. */
+const allFrames = ref(false)
+const pickFromAll = (index: number) => pick(index)
 </script>
 
 <template>
@@ -652,17 +656,6 @@ const writeBar = computed(() =>
           >
             Look
           </button>
-          <!-- Until the All Frames view takes it (stage 4 of the screens plan). -->
-          <span v-if="imagesOn" class="max-md:hidden"><ModelComparison
-            :session-id="session.id"
-            :frames="session.frames"
-            :image-model="session.settings.imageModel"
-            :thumbnail="session.thumbnail"
-            :name="frameTitle"
-            :caption="(f) => f.beat"
-            @changed="load(); refreshJobs()"
-            one-style
-          /></span>
         </template>
         <SessionSettings
           :session="session"
@@ -855,7 +848,7 @@ const writeBar = computed(() =>
 
       <!-- Written: the strip view, as a Chain's and a Roleplay's. -->
       <template v-else>
-        <FrameStrip :tiles="tiles" :picked="selected" @pick="pick" />
+        <FrameStrip :tiles="tiles" :picked="selected" @pick="pick" @all="allFrames = true" />
         <div class="flex min-h-0 flex-1">
           <SessionStage :ratio="imageRatioOf(session)" :pictured="imagesOn || !!picture">
             <template #picture>
@@ -1149,6 +1142,22 @@ const writeBar = computed(() =>
     </template>
 
     <p v-else class="p-6 text-muted">Loading…</p>
+    <AllFrames
+      v-if="session"
+      v-model:open="allFrames"
+      :session-id="session.id"
+      :frames="session.frames"
+      :tiles="tiles"
+      :text="(f) => `${f.beat} ${f.body}`"
+      :picked="selected"
+      :image-model="session.settings.imageModel"
+      :thumbnail="session.thumbnail"
+      :name="frameTitle"
+      :caption="(f) => f.beat"
+      one-style
+      @pick="pickFromAll"
+      @changed="load(); refreshJobs()"
+    />
     <FrameViewer
       v-if="session"
       v-model:open="viewingPicture"

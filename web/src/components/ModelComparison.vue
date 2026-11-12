@@ -1,6 +1,6 @@
 <script setup lang="ts" generic="F extends PicturedFrame">
 import { frameName } from '../frameName'
-import { computed, ref, useTemplateRef, watch } from 'vue'
+import { computed, ref, useTemplateRef } from 'vue'
 import {
   asPicked,
   deleteModelPictures,
@@ -27,11 +27,12 @@ import StyleScoresPanel from './StyleScoresPanel.vue'
 
 /**
  * A Session's pictures side by side (ComparisonTable), a row per Frame and a column per Image
- * Model that rendered any, opened by its Pictures button (shown once there's a picture). Thumbnail
- * mode chooses the one that shows the Session on Home, starred. With two models or more, Export
- * writes the same as a page of its own, on the server, and Style scores shows, in place of the
- * table, how varied each shown model's art style is (StyleScoresPanel). A hidden column can have
- * all its model's pictures deleted, but the Session's own model's; `changed` says so.
+ * Model that rendered any: the All Frames view's Compare mode, and with `scores` its Style scores
+ * mode in place of the table, how varied each shown model's art style is (StyleScoresPanel). A
+ * picture's star makes it what shows the Session on Home. Until the player picks, the Session's
+ * own model shows, with the next two that rendered. With two models or more, Export writes the
+ * same as a page of its own, on the server. A model that's off can have all its pictures deleted,
+ * but the Session's own model's; `changed` says so.
  */
 const props = withDefaults(
   defineProps<{
@@ -50,6 +51,8 @@ const props = withDefaults(
      * read lower as steadier.
      */
     oneStyle?: boolean
+    /** The style scores, in place of the table. */
+    scores?: boolean
   }>(),
   { name: frameName },
 )
@@ -102,17 +105,25 @@ const rows = computed(() =>
 )
 
 /**
- * The columns as arranged in the table (indexes into `models`), kept while the Session is open,
+ * The columns as arranged in the table (indexes into `models`), kept by the All Frames view while
+ * the Session is open (`order`),
  * and those hidden, remembered per Session in this browser by their models: what Export and the
  * style scores take, in that order and without the hidden ones.
  */
-const order = ref<number[]>()
+const order = defineModel<number[]>('order')
 const hiddenIds = useStoredString(`compare-hidden:${props.sessionId}`)
+/** Until the player picks, all but the Session's own model and the next two that rendered. */
+const hiddenAtFirst = () => {
+  const own = modelIds.value.indexOf(props.imageModel)
+  const first = [own, ...modelIds.value.keys()].filter((i, at, all) => i >= 0 && all.indexOf(i) === at)
+    .slice(0, 3)
+  return modelIds.value.filter((_, i) => !first.includes(i))
+}
 const hidden = computed<number[]>({
   get: () => {
     let ids: unknown
     try {
-      ids = JSON.parse(hiddenIds.value ?? '[]')
+      ids = hiddenIds.value === null ? hiddenAtFirst() : JSON.parse(hiddenIds.value)
     } catch {
       ids = []
     }
@@ -122,7 +133,7 @@ const hidden = computed<number[]>({
   },
   set: (indexes) => {
     const ids = indexes.map((i) => modelIds.value[i]).filter(Boolean)
-    hiddenIds.value = ids.length ? JSON.stringify(ids) : null
+    hiddenIds.value = JSON.stringify(ids)
   },
 })
 const exportedColumns = computed(() =>
@@ -153,30 +164,8 @@ const picturedCounts = computed(() =>
     ]),
   )
 )
-/** The style scores in place of the table. */
-const showScores = ref(false)
-
-const open = ref(false)
-const dialog = useTemplateRef<HTMLDialogElement>('dialog')
-const showStar = () =>
-  dialog.value?.querySelector('[data-thumbnail]')?.scrollIntoView({ block: 'center' })
-watch(open, (now) => {
-  if (now) {
-    dialog.value?.showModal()
-    if (props.thumbnail) showStar()
-  } else {
-    choosing.value = false
-    if (dialog.value?.open) dialog.value.close()
-  }
-}, { flush: 'post' })
-
-/** Thumbnail mode: a click on a picture chooses it, and on the one chosen, goes back to the newest. */
-const choosing = ref(false)
+/** A star chooses its picture to show the Session on Home; on the one chosen, back to the newest. */
 const thumbnailError = ref('')
-watch(choosing, (now) => {
-  thumbnailError.value = ''
-  if (now) showStar()
-}, { flush: 'post' })
 async function choose(picture: ComparisonPicture) {
   thumbnailError.value = ''
   try {
@@ -232,7 +221,7 @@ const styleBaseName = computed(() =>
  * how many of them have an upscale or 3D made from them, which go too.
  */
 const deleting = useTemplateRef<HTMLDialogElement>('deleting')
-useCloseOnLeave(dialog, asking, deleting)
+useCloseOnLeave(asking, deleting)
 const doomed = ref<
   {
     model: string
@@ -300,204 +289,152 @@ async function exportPage() {
 </script>
 
 <template>
-  <button
-    v-if="models.length"
-    type="button"
-    class="rounded border border-line px-2 py-0.5 text-muted hover:text-fg"
-    title="This Session's pictures side by side, a column per Image Model, and its thumbnail on Home"
-    data-compare-models
-    @click="open = true"
+  <p v-if="!models.length" class="p-6 text-muted" data-no-pictures>No pictures yet: once a Frame is rendered, its pictures show here, a column per Image Model.</p>
+  <ComparisonTable
+    v-else
+    v-model:order="order"
+    v-model:hidden="hidden"
+    :models
+    :rows
+    :hideable="models.length > 1"
+    starrable
+    @choose="choose"
   >
-    Pictures
-  </button>
-
-  <dialog
-    v-if="models.length"
-    ref="dialog"
-    class="m-0 h-full max-h-none w-full max-w-none bg-canvas p-0 text-fg backdrop:bg-black/60"
-    data-model-comparison
-    @close="open = false"
+    <template #hidden="{ index }">
+      <button
+        v-if="!models[index].current"
+        type="button"
+        class="text-xs text-danger hover:underline"
+        :title="`Delete every picture ${models[index].label} made in this Session`"
+        :aria-label="`Delete ${models[index].label}'s pictures`"
+        data-delete-model-pictures
+        @click="askToDelete(index)"
+      >
+        Delete…
+      </button>
+    </template>
+    <template v-if="scores && models.length > 1" #instead>
+      <StyleScoresPanel
+        :session-id="sessionId"
+        :models="shownModels"
+        :frames="pictureFrames"
+        :shared="sharedFrames"
+        :pictured="picturedCounts"
+        :label-of="labelOf"
+        :one-style
+        :current="imageModel"
+      />
+    </template>
+    <template #actions>
+      <span v-if="thumbnailError" class="text-danger" data-thumbnail-problem>{{ thumbnailError }}</span>
+      <span v-if="exported?.folder" class="text-ok" data-export-done>
+        Exported to {{ exported.folder }}
+      </span>
+      <span v-else-if="exported?.error" class="text-danger">{{ exported.error }}</span>
+      <button
+        v-if="models.length > 1"
+        type="button"
+        class="rounded-lg bg-fg px-3 py-1 font-medium text-canvas disabled:opacity-50"
+        title="Write this as a page of its own, its pictures as WebP, to open or host anywhere"
+        :disabled="exported === null || !exportedColumns.length"
+        data-export
+        @click="askToExport"
+      >
+        {{ exported === null ? 'Exporting…' : 'Export' }}
+      </button>
+    </template>
+  </ComparisonTable>
+    <dialog
+    v-if="models.length > 1"
+    ref="asking"
+    class="m-auto w-full max-w-md rounded-lg border border-line bg-surface p-6 text-fg backdrop:bg-black/60"
+    data-export-options
   >
-    <ComparisonTable
-      v-if="open"
-      v-model:order="order"
-      v-model:hidden="hidden"
-      title="Pictures"
-      :models
-      :rows
-      :hideable="models.length > 1"
-      :choosing
-      @choose="choose"
-    >
-      <template #hidden="{ index }">
-        <button
-          v-if="!models[index].current"
-          type="button"
-          class="mt-1 text-xs text-danger hover:underline"
-          :title="`Delete every picture ${models[index].label} made in this Session`"
-          data-delete-model-pictures
-          @click="askToDelete(index)"
-        >
-          Delete pictures…
-        </button>
-      </template>
-      <template v-if="showScores && models.length > 1" #instead>
-        <StyleScoresPanel
-          :session-id="sessionId"
-          :models="shownModels"
-          :frames="pictureFrames"
-          :shared="sharedFrames"
-          :pictured="picturedCounts"
-          :label-of="labelOf"
-          :one-style
-        />
-      </template>
-      <template v-if="choosing" #actions>
-        <span class="text-muted" data-thumbnail-hint>Click a picture to use it as the thumbnail</span>
-        <span v-if="thumbnailError" class="text-danger" data-thumbnail-problem>{{ thumbnailError }}</span>
-        <button
-          type="button"
-          class="rounded bg-fg px-2 py-0.5 font-medium text-canvas"
-          data-thumbnail-done
-          @click="choosing = false"
-        >
-          Done
-        </button>
-      </template>
-      <template v-else #actions>
-        <button
-          v-if="!showScores"
-          type="button"
-          class="rounded border border-line px-2 py-0.5 text-muted hover:text-fg"
-          title="Choose the picture that shows this Session on Home"
-          data-choose-thumbnail
-          @click="choosing = true"
-        >
-          Thumbnail
-        </button>
-        <button
-          v-if="models.length > 1"
-          type="button"
-          class="rounded border border-line px-2 py-0.5 text-muted hover:text-fg"
-          :aria-pressed="showScores"
-          title="How much each shown model's art style varies across the Frames"
-          data-show-style-scores
-          @click="showScores = !showScores"
-        >
-          {{ showScores ? 'Pictures' : 'Style scores' }}
-        </button>
-        <span v-if="exported?.folder" class="text-ok" data-export-done>
-          Exported to {{ exported.folder }}
+    <form method="dialog" class="flex flex-col gap-4" @submit.prevent="exportPage">
+      <h3 class="text-lg font-medium">Export as a page</h3>
+      <label class="flex items-start gap-2">
+        <input v-model="adultsOnly" type="checkbox" class="mt-1" data-adults-only />
+        <span class="flex flex-col gap-0.5">
+          <span>Ask visitors to confirm they're 18 or older</span>
+          <span class="text-sm text-muted">
+            The page opens blurred behind this notice, on every visit, until they confirm.
+          </span>
         </span>
-        <span v-else-if="exported?.error" class="text-danger">{{ exported.error }}</span>
+      </label>
+      <label v-if="adultsOnly" class="flex flex-col gap-1">
+        <span class="text-sm text-muted">Notice</span>
+        <textarea
+          v-model="notice"
+          rows="3"
+          maxlength="500"
+          class="rounded-lg border border-line bg-canvas px-3 py-2"
+          :placeholder="NOTICE"
+          data-notice
+        />
+        <span class="text-sm text-muted">Followed by "Continue only if you're 18 or older."</span>
+      </label>
+      <label v-if="styles" class="flex items-start gap-2">
+        <input v-model="exportStyles" type="checkbox" class="mt-1" data-export-styles />
+        <span class="flex flex-col gap-0.5">
+          <span>Include the style scores</span>
+          <span class="text-sm text-muted">
+            Their charts, as a tab of the page, against {{ styleBaseName }}.
+          </span>
+        </span>
+      </label>
+      <div class="flex justify-end gap-3">
         <button
-          v-if="models.length > 1"
           type="button"
-          class="rounded border border-line px-2 py-0.5 text-muted hover:text-fg disabled:opacity-50"
-          title="Write this as a page of its own, its pictures as WebP, to open or host anywhere"
-          :disabled="exported === null || !exportedColumns.length"
-          data-export
-          @click="askToExport"
+          class="rounded-lg border border-line px-4 py-2"
+          @click="asking?.close()"
         >
-          {{ exported === null ? 'Exporting…' : 'Export' }}
+          Cancel
         </button>
-        <button type="button" class="text-muted hover:text-fg" @click="open = false">
-          Close ✕
+        <button
+          type="submit"
+          class="rounded-lg bg-fg px-4 py-2 font-medium text-canvas"
+          data-export-now
+        >
+          Export
         </button>
-      </template>
-    </ComparisonTable>
-    <dialog
-      v-if="models.length > 1"
-      ref="asking"
-      class="m-auto w-full max-w-md rounded-lg border border-line bg-surface p-6 text-fg backdrop:bg-black/60"
-      data-export-options
-    >
-      <form method="dialog" class="flex flex-col gap-4" @submit.prevent="exportPage">
-        <h3 class="text-lg font-medium">Export as a page</h3>
-        <label class="flex items-start gap-2">
-          <input v-model="adultsOnly" type="checkbox" class="mt-1" data-adults-only />
-          <span class="flex flex-col gap-0.5">
-            <span>Ask visitors to confirm they're 18 or older</span>
-            <span class="text-sm text-muted">
-              The page opens blurred behind this notice, on every visit, until they confirm.
-            </span>
-          </span>
-        </label>
-        <label v-if="adultsOnly" class="flex flex-col gap-1">
-          <span class="text-sm text-muted">Notice</span>
-          <textarea
-            v-model="notice"
-            rows="3"
-            maxlength="500"
-            class="rounded-lg border border-line bg-canvas px-3 py-2"
-            :placeholder="NOTICE"
-            data-notice
-          />
-          <span class="text-sm text-muted">Followed by "Continue only if you're 18 or older."</span>
-        </label>
-        <label v-if="styles" class="flex items-start gap-2">
-          <input v-model="exportStyles" type="checkbox" class="mt-1" data-export-styles />
-          <span class="flex flex-col gap-0.5">
-            <span>Include the style scores</span>
-            <span class="text-sm text-muted">
-              Their charts, as a tab of the page, against {{ styleBaseName }}.
-            </span>
-          </span>
-        </label>
-        <div class="flex justify-end gap-3">
-          <button
-            type="button"
-            class="rounded-lg border border-line px-4 py-2"
-            @click="asking?.close()"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            class="rounded-lg bg-fg px-4 py-2 font-medium text-canvas"
-            data-export-now
-          >
-            Export
-          </button>
-        </div>
-      </form>
-    </dialog>
-    <dialog
-      ref="deleting"
-      class="m-auto w-full max-w-md rounded-lg border border-line bg-surface p-6 text-fg backdrop:bg-black/60"
-      data-delete-model-dialog
-      @close="doomed = null"
-    >
-      <form v-if="doomed" method="dialog" class="flex flex-col gap-4" @submit.prevent="deleteNow">
-        <h3 class="text-lg font-medium">Delete {{ doomed.label }}'s pictures?</h3>
-        <p>
-          All {{ doomed.pictures }} {{ doomed.pictures === 1 ? 'picture' : 'pictures' }}
-          {{ doomed.label }} made in this Session<template v-if="doomed.extras">, with the upscales
-          and 3D made from {{ doomed.extras }} of them</template>, from every Frame. Anything
-          queued or running on them is cancelled too. This can't be undone.
-        </p>
-        <p v-if="doomed.scoring" class="text-warn" data-delete-scoring>
-          Style scores are being worked out: wait for them to finish first.
-        </p>
-        <p v-if="doomed.problem" class="text-danger" data-delete-problem>{{ doomed.problem }}</p>
-        <div class="flex justify-end gap-3">
-          <button
-            type="button"
-            class="rounded-lg border border-line px-4 py-2"
-            @click="deleting?.close()"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            class="rounded-lg bg-danger px-4 py-2 font-medium text-canvas disabled:opacity-50"
-            :disabled="doomed.busy || doomed.scoring"
-            data-delete-now
-          >
-            {{ doomed.busy ? 'Deleting…' : 'Delete' }}
-          </button>
-        </div>
-      </form>
-    </dialog>
+      </div>
+    </form>
+  </dialog>
+  <dialog
+    ref="deleting"
+    class="m-auto w-full max-w-md rounded-lg border border-line bg-surface p-6 text-fg backdrop:bg-black/60"
+    data-delete-model-dialog
+    @close="doomed = null"
+  >
+    <form v-if="doomed" method="dialog" class="flex flex-col gap-4" @submit.prevent="deleteNow">
+      <h3 class="text-lg font-medium">Delete {{ doomed.label }}'s pictures?</h3>
+      <p>
+        All {{ doomed.pictures }} {{ doomed.pictures === 1 ? 'picture' : 'pictures' }}
+        {{ doomed.label }} made in this Session<template v-if="doomed.extras">, with the upscales
+        and 3D made from {{ doomed.extras }} of them</template>, from every Frame. Anything
+        queued or running on them is cancelled too. This can't be undone.
+      </p>
+      <p v-if="doomed.scoring" class="text-warn" data-delete-scoring>
+        Style scores are being worked out: wait for them to finish first.
+      </p>
+      <p v-if="doomed.problem" class="text-danger" data-delete-problem>{{ doomed.problem }}</p>
+      <div class="flex justify-end gap-3">
+        <button
+          type="button"
+          class="rounded-lg border border-line px-4 py-2"
+          @click="deleting?.close()"
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          class="rounded-lg bg-danger px-4 py-2 font-medium text-canvas disabled:opacity-50"
+          :disabled="doomed.busy || doomed.scoring"
+          data-delete-now
+        >
+          {{ doomed.busy ? 'Deleting…' : 'Delete' }}
+        </button>
+      </div>
+    </form>
   </dialog>
 </template>

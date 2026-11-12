@@ -25,7 +25,8 @@ export interface StripTile {
  * the tiles (a Frame being written) is the `end` slot's.
  */
 const props = defineProps<{ tiles: readonly StripTile[]; picked: number | null }>()
-const emit = defineEmits<{ pick: [index: number] }>()
+/** `all`: the ▦ at its end, which opens every Frame at once (`AllFrames`). */
+const emit = defineEmits<{ pick: [index: number]; all: [] }>()
 const strip = useTemplateRef<HTMLElement>('strip')
 
 async function onKey(e: KeyboardEvent) {
@@ -98,5 +99,15 @@ watch(() => [props.picked, props.tiles.length], async () => {
       ><Icon name="play" />{{ tile.clips }}</span>
     </button>
     <slot name="end" />
+    <button
+      type="button"
+      class="sticky right-0 ml-auto grid h-9 w-9 shrink-0 place-items-center rounded-md border border-line bg-canvas text-muted shadow-[-8px_0_8px_var(--canvas)] hover:text-fg [@media(max-height:640px)]:h-6 [@media(max-height:640px)]:w-6"
+      title="All Frames: search them, and compare their pictures by each Image Model"
+      aria-label="All Frames"
+      data-all-frames-button
+      @click="emit('all')"
+    >
+      <Icon name="grid" />
+    </button>
   </nav>
 </template>

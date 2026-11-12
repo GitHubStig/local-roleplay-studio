@@ -8,29 +8,31 @@ import Icon from './Icon.vue'
 import ImageViewer from './ImageViewer.vue'
 
 /**
- * Pictures side by side, a row per Frame headed by its Image Prompt and a column per Image Model:
- * the Pictures dialog's (under a header, given a `title`), and the whole of its exported page. A
- * picture opens in the viewer, where ← and → (or a swipe sideways) step through that Frame's
- * pictures by the other models, and ↑ and ↓ (or a swipe up or down) through the Frames that model
- * rendered, each Frame's caption under its picture. A column moves by dragging its
- * header's grip (or with ← and → on it). With `hideable`, each column has a checkbox: unticked, it
- * moves to the right end, folded to its header. The arrangement is `order` and `hidden`, which the
- * Pictures dialog keeps (and exports by); otherwise it lasts until the table is next opened. An
- * `instead` slot shows in place of the table, under the same header (the dialog's style scores),
- * and a `hidden` slot follows each hidden column's name (given its index into `models`).
+ * Pictures side by side, a row per Frame headed by its name and Image Prompt and a column per Image
+ * Model: the All Frames view's Compare mode, and the whole of its exported page. Above it, with
+ * `hideable`, the models as chips in one row, each on or off: off, its column leaves the table.
+ * The arrangement is `order` and `hidden`, which the app keeps (and exports by); on the exported
+ * page it lasts until the page is reloaded. A picture opens in the viewer, where ← and → (or a
+ * swipe sideways) step through that Frame's pictures by the other models, and ↑ and ↓ (or a swipe
+ * up or down) through the Frames that model rendered, each Frame's caption under its picture. A
+ * column moves by dragging its header's grip (or with ← and → on it). A prompt shows its first
+ * three lines, with Show all. With `starrable`, each picture has a star to make it what Home shows
+ * (`choose`), filled on the one chosen. At phone width the rows become pages: one Frame at a time,
+ * its models down the screen. The `actions` slot ends the chips' row; a `hidden` slot follows each
+ * model that's off (given its index into `models`).
  */
 const props = defineProps<Comparison & {
-  title?: string
   hideable?: boolean
-  /** Thumbnail mode: a click on a picture chooses it, rather than opening the viewer. */
-  choosing?: boolean
+  /** Each picture has a star, to make it Home's thumbnail. */
+  starrable?: boolean
 }>()
 defineEmits<{ choose: [picture: ComparisonPicture] }>()
 
 /** What a picture's star says. */
 const STARS = {
-  chosen: "This Session's thumbnail on Home, as you chose it",
-  automatic: "This Session's thumbnail on Home for now, as its newest picture",
+  chosen: "This Session's thumbnail on Home, as you chose it: click to stop using it",
+  automatic: "This Session's thumbnail on Home for now, as its newest picture: click to keep it",
+  none: "Use it as this Session's thumbnail on Home",
 }
 
 /**
@@ -53,7 +55,6 @@ const models = computed(() => shownOrder.value.map((i) => props.models[i]))
 const rows = computed(() =>
   props.rows.map((row) => ({ ...row, pictures: shownOrder.value.map((i) => row.pictures[i]) }))
 )
-/** The hidden columns, folded at the right end, each with the index to show it again by. */
 /** What a picture's tooltip says: that it's an edit, and of what; or that it's out of date. */
 function pictureTitle(picture: ComparisonPicture): string | undefined {
   const notes = [
@@ -63,11 +64,10 @@ function pictureTitle(picture: ComparisonPicture): string | undefined {
   return notes.length ? notes.join('. ') : undefined
 }
 
-const hiddenModels = computed(() =>
-  (order.value ?? []).filter((i) => hidden.value.includes(i)).map((i) => ({
-    index: i,
-    ...props.models[i],
-  }))
+/** Every model as a chip, those on first in the columns' order, each with whether it's on. */
+const chips = computed(() =>
+  [...shownOrder.value, ...(order.value ?? []).filter((i) => hidden.value.includes(i))]
+    .map((i) => ({ index: i, on: !hidden.value.includes(i), ...props.models[i] }))
 )
 
 /** Hides a shown column (at `column`, as shown): it moves to the right end. */
@@ -109,6 +109,18 @@ const { dragging, grip } = useDragReorder({
 const narrow = useMediaQuery('(max-width: 1023px)')
 const promptsShown = ref(!narrow.value)
 watch(narrow, (now) => (promptsShown.value = !now))
+/** The rows whose prompt shows in full, not its first three lines. */
+const opened = ref(new Set<number>())
+function toggleOpened(r: number) {
+  const next = new Set(opened.value)
+  if (!next.delete(r)) next.add(r)
+  opened.value = next
+}
+
+/** At phone width, one Frame at a time: which. */
+const paged = useMediaQuery('(max-width: 639px)')
+const page = ref(0)
+watch(() => rows.value.length, (n) => (page.value = Math.min(page.value, Math.max(0, n - 1))))
 const anyPrompt = computed(() => props.rows.some((r) => r.prompt))
 /** With any caption, every picture keeps room for one in the viewer, so none jumps in size. */
 const anyCaption = computed(() => props.rows.some((r) => r.caption))
@@ -163,18 +175,73 @@ usePageKeys(() => instead.value ?? scroller.value, () => viewing.value !== null)
 
 <template>
   <div class="flex h-full flex-col">
-    <div v-if="title" class="flex items-center gap-3 border-b border-line px-4 py-2 text-sm">
-      <h2 class="font-medium">{{ title }}</h2>
-      <span class="text-muted">
-        {{ rows.length }} {{ rows.length === 1 ? 'Frame' : 'Frames' }} · {{ models.length }} {{ models.length === 1 ? 'model' : 'models' }}
-        <template v-if="hiddenModels.length">({{ hiddenModels.length }} hidden)</template>
-      </span>
-      <div class="ml-auto flex items-center gap-3">
-        <slot name="actions" />
+    <!-- The models, each on or off, and what the screen adds at the end (Export). -->
+    <div
+      v-if="hideable || $slots.actions"
+      class="flex shrink-0 items-center gap-2 border-b border-line px-4 py-2 text-sm"
+      data-model-chips
+    >
+      <div class="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto [scrollbar-width:none]">
+        <template v-if="hideable">
+          <span v-for="m in chips" :key="m.label" class="group/chip flex shrink-0 items-center gap-1">
+            <button
+              type="button"
+              class="flex items-center gap-1 rounded-full border px-2.5 py-0.5 whitespace-nowrap"
+              :class="m.on ? 'border-fg bg-surface text-fg' : 'border-dashed border-line text-muted hover:text-fg'"
+              :aria-pressed="m.on"
+              :title="m.on ? `Hide ${m.label}${$slots.hidden ? ', and leave it out of Export' : ''}` : `Show ${m.label}`"
+              data-show-model
+              @click="m.on ? hide(shownOrder.indexOf(m.index)) : show(m.index)"
+            >
+              <span v-if="m.on" aria-hidden="true">✓</span>{{ m.label }}<span v-if="m.current" class="text-muted">· this Session's</span>
+            </button>
+            <!-- What can be done to a model that's off: shown while the pointer is over it. -->
+            <span
+              v-if="!m.on && $slots.hidden"
+              class="hidden group-hover/chip:inline focus-within:inline touch:inline"
+            ><slot name="hidden" :index="m.index" /></span>
+          </span>
+        </template>
       </div>
+      <div v-if="$slots.actions" class="flex shrink-0 items-center gap-3"><slot name="actions" /></div>
     </div>
     <div v-if="$slots.instead" ref="instead" class="min-h-0 flex-1 overflow-auto">
       <slot name="instead" />
+    </div>
+    <!-- At phone width: one Frame at a time, its models down the screen. -->
+    <div v-else-if="paged" class="min-h-0 flex-1 overflow-y-auto px-4 py-3 text-sm" data-compare-pages>
+      <template v-if="rows[page]">
+        <div class="flex items-center gap-2">
+          <h3 class="min-w-0 flex-1 truncate font-medium" data-page-name>{{ rows[page].name }}</h3>
+          <span class="shrink-0 text-xs text-muted tabular-nums">{{ page + 1 }} of {{ rows.length }}</span>
+          <button type="button" class="rounded-md p-1.5 text-muted hover:text-fg disabled:opacity-40" :disabled="page === 0" aria-label="The Frame before" data-page-previous @click="page--">
+            <Icon name="chevron-left" />
+          </button>
+          <button type="button" class="rounded-md p-1.5 text-muted hover:text-fg disabled:opacity-40" :disabled="page === rows.length - 1" aria-label="The Frame after" data-page-next @click="page++">
+            <Icon name="chevron-right" />
+          </button>
+        </div>
+        <p v-if="rows[page].prompt" class="mt-1 line-clamp-2 text-xs text-muted">{{ rows[page].prompt }}</p>
+        <div class="mt-3 flex flex-col gap-3">
+          <figure v-for="(picture, c) in rows[page].pictures" :key="models[c].label" data-page-picture>
+            <figcaption class="mb-1 text-xs text-muted">
+              {{ models[c].label }}<template v-if="models[c].current"> · this Session's</template>
+            </figcaption>
+            <button
+              v-if="picture"
+              type="button"
+              class="relative block w-full"
+              :title="pictureTitle(picture)"
+              @click="viewing = { row: page, column: c }"
+            >
+              <img :src="picture.thumb" :alt="`${rows[page].name} by ${models[c].label}`" class="w-full rounded" :class="{ 'opacity-50': picture.stale }" />
+            </button>
+            <div v-else class="flex h-24 items-center justify-center rounded border border-dashed border-line text-muted">
+              Not rendered
+            </div>
+          </figure>
+        </div>
+      </template>
     </div>
     <div v-else ref="scroller" class="min-h-0 flex-1 overflow-auto">
       <table class="border-separate border-spacing-2 text-sm">
@@ -212,36 +279,9 @@ usePageKeys(() => instead.value ?? scroller.value, () => viewing.value !== null)
                 >
                   <Icon name="grip" />
                 </button>
-                <input
-                  v-if="hideable"
-                  type="checkbox"
-                  checked
-                  :aria-label="`Show ${m.label}`"
-                  :title="`Untick to hide ${m.label}${$slots.hidden ? ', and leave it out of Export' : ''}`"
-                  data-show-model
-                  @change="hide(c)"
-                />
                 {{ m.label }}
-                <span v-if="m.current" class="font-normal text-muted">· current</span>
+                <span v-if="m.current" class="font-normal text-muted">· this Session's</span>
               </span>
-            </th>
-            <th
-              v-for="m in hiddenModels"
-              :key="m.label"
-              class="sticky top-0 z-10 bg-canvas px-1 py-1 text-left font-normal whitespace-nowrap text-muted"
-              data-hidden-column
-            >
-              <label class="flex cursor-pointer items-center gap-1">
-                <input
-                  type="checkbox"
-                  :aria-label="`Show ${m.label}`"
-                  :title="`Tick to show ${m.label}`"
-                  data-show-model
-                  @change="show(m.index)"
-                />
-                {{ m.label }}
-              </label>
-              <slot name="hidden" :index="m.index" />
             </th>
           </tr>
         </thead>
@@ -249,38 +289,60 @@ usePageKeys(() => instead.value ?? scroller.value, () => viewing.value !== null)
           <tr v-for="(row, r) in rows" :key="row.name" data-compare-row>
             <th
               class="sticky left-0 z-10 bg-canvas pr-2 text-left align-top font-normal"
-              :class="promptsShown ? 'w-72 min-w-72' : 'whitespace-nowrap'"
+              :class="promptsShown ? 'w-52 min-w-52' : 'whitespace-nowrap'"
             >
-              <div class="text-muted">{{ row.name }}</div>
-              <p
-                v-if="row.prompt && promptsShown"
-                class="mt-1 max-h-56 overflow-y-auto text-xs leading-relaxed whitespace-pre-wrap"
-                data-compare-prompt
-              >
-                {{ row.prompt }}
-              </p>
+              <div class="font-medium">{{ row.name }}</div>
+              <template v-if="row.prompt && promptsShown">
+                <p
+                  class="mt-1 text-xs leading-relaxed whitespace-pre-wrap text-muted"
+                  :class="{ 'line-clamp-3': !opened.has(r) }"
+                  data-compare-prompt
+                >
+                  {{ row.prompt }}
+                </p>
+                <button
+                  type="button"
+                  class="mt-0.5 text-xs text-muted underline underline-offset-2 hover:text-fg"
+                  data-show-prompt
+                  @click="toggleOpened(r)"
+                >
+                  {{ opened.has(r) ? 'Show less' : 'Show all' }}
+                </button>
+              </template>
             </th>
             <td v-for="(picture, c) in row.pictures" :key="models[c].label" class="align-top">
+              <div v-if="picture" class="group/cell relative">
+              <!-- Home's thumbnail: shown on the one Home shows, and on hover to choose another. -->
               <button
-                v-if="picture"
+                v-if="starrable"
+                type="button"
+                class="absolute top-1 right-1 z-1 flex rounded bg-canvas/85 p-1 touch:opacity-100"
+                :class="[
+                  picture.star === 'chosen' ? 'text-warn' : 'text-muted hover:text-fg',
+                  picture.star ? '' : 'opacity-0 group-hover/cell:opacity-100 focus-visible:opacity-100',
+                ]"
+                :title="STARS[picture.star ?? 'none']"
+                :aria-label="STARS[picture.star ?? 'none']"
+                :data-thumbnail="picture.star"
+                data-star
+                @click="$emit('choose', picture)"
+              >
+                <Icon :name="picture.star === 'chosen' ? 'star-filled' : 'star'" />
+              </button>
+              <span
+                v-else-if="picture.star"
+                class="absolute top-1 right-1 z-1 flex rounded bg-canvas/85 p-1 text-muted"
+                :data-thumbnail="picture.star"
+              >
+                <Icon :name="picture.star === 'chosen' ? 'star-filled' : 'star'" />
+              </span>
+              <button
                 type="button"
                 class="relative block rounded"
-                :class="{ 'hover:outline-2 hover:outline-fg': choosing }"
-                :title="choosing
-                  ? picture.star === 'chosen' ? 'Stop using it as the thumbnail' : 'Use it as the thumbnail'
-                  : pictureTitle(picture)"
+                :title="pictureTitle(picture)"
                 data-compare-picture
-                @click="choosing ? $emit('choose', picture) : (viewing = { row: r, column: c })"
+                @click="viewing = { row: r, column: c }"
               >
-                <span
-                  v-if="picture.star"
-                  class="absolute top-1 right-1 z-1 flex rounded bg-canvas/85 p-1"
-                  :class="picture.star === 'chosen' ? 'text-warn' : 'text-muted'"
-                  :title="choosing ? undefined : STARS[picture.star]"
-                  :data-thumbnail="picture.star"
-                >
-                  <Icon :name="picture.star === 'chosen' ? 'star-filled' : 'star'" />
-                </span>
                 <span
                   v-if="picture.edited"
                   class="absolute top-1 left-1 rounded bg-canvas/85 px-1.5 text-xs"
@@ -298,6 +360,7 @@ usePageKeys(() => instead.value ?? scroller.value, () => viewing.value !== null)
                   :class="{ 'opacity-50': picture.stale }"
                 />
               </button>
+              </div>
               <div
                 v-else
                 class="flex h-[min(16rem,calc(100dvh-8rem))] w-full min-w-48 items-center justify-center rounded border border-dashed border-line text-muted"
@@ -305,7 +368,6 @@ usePageKeys(() => instead.value ?? scroller.value, () => viewing.value !== null)
                 Not rendered
               </div>
             </td>
-            <td v-if="hiddenModels.length" :colspan="hiddenModels.length" />
           </tr>
         </tbody>
       </table>

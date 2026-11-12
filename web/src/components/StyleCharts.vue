@@ -8,8 +8,9 @@ import { STYLE_MEASURES, type StyleScores } from '../styleScores'
 /**
  * The style scores as charts (Observable Plot), each under what it measures: a ranked bar chart per
  * measure, each model's distance from the base Frame Frame by Frame, and which pictures match
- * their Frame's caption. One hue throughout (the app's `--info`), so nine models need no palette:
- * the models are named on the axis, not told apart by colour. On a phone upright, the names go
+ * their Frame's caption. In the app's ink, so nine models need no palette: the models are named on
+ * the axis, not told apart by colour; the Session's own (`current`) in ink and the others in the
+ * quieter muted colour, so it stands out. On a phone upright, the names go
  * above the bars and the heatmap turns on its side. Loaded only when the scores show.
  */
 const props = defineProps<{
@@ -20,8 +21,13 @@ const props = defineProps<{
   frames: readonly { index: number; name: string; caption?: string }[]
   /** Every Frame shares one style (a Storyboard's, a Roleplay's): steadiness is the aim. */
   oneStyle?: boolean
+  /** The Session's own Image Model, picked out; without it, every model in ink. */
+  current?: string
 }>()
 
+/** A model's colour: ink for the Session's own (or every one, without it), else muted. */
+const shade = (id: string) =>
+  !props.current || id === props.current ? colors.value.fg : colors.value.muted
 const frameOf = (index: number) => props.frames.find((f) => f.index === index)
 const frameName = (index: number) => frameOf(index)?.name ?? numbered(index)
 
@@ -35,7 +41,7 @@ const colors = computed(() => {
   void theme.value
   const get = (name: string) => rgbOf(`var(${name})`)
   return {
-    data: get('--info'),
+    data: get('--fg'),
     fg: get('--fg'),
     muted: get('--muted'),
     line: get('--line'),
@@ -127,7 +133,7 @@ function bars(id: (typeof STYLE_MEASURES)[number]['id']) {
       Plot.barX(data, {
         x: 'score',
         y: 'model',
-        fill: colors.value.data,
+        fill: (d) => shade(d.id),
         insetTop: above ? 20 : 5,
         insetBottom: above ? 4 : 5,
         rx2: 4,
@@ -221,7 +227,7 @@ function byFrame() {
       Plot.lineY(data, {
         x: 'frame',
         y: 'd',
-        stroke: colors.value.data,
+        stroke: (p) => shade(p.id),
         strokeWidth: 2,
         ariaLabel: (p) => keyOf(p),
       }),
@@ -229,7 +235,7 @@ function byFrame() {
         x: 'frame',
         y: 'd',
         r: 3,
-        fill: colors.value.data,
+        fill: (p) => shade(p.id),
         stroke: colors.value.surface,
         strokeWidth: 1,
         ariaLabel: (p) => keyOf(p),

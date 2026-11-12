@@ -20,7 +20,7 @@ import { imageRatioOf } from '../components/sessionPictureRatio'
 import ToggleSwitch from '../components/ToggleSwitch.vue'
 import { usePutBack } from '../composables/usePutBack'
 import { useDrawer } from '../composables/useDrawer'
-import ModelComparison from '../components/ModelComparison.vue'
+import AllFrames from '../components/AllFrames.vue'
 import { useImageModels, writtenPart } from '../composables/useSettingsOptions'
 import Frame3dViewers from '../components/Frame3dViewers.vue'
 import FrameViewer from '../components/FrameViewer.vue'
@@ -427,6 +427,10 @@ const promptDiff = computed(() => {
   const before = session.value?.frames[promptIndex.value - 1]
   return before ? diffWords(before.prompt, prompt) : [{ kind: 'same' as const, text: prompt }]
 })
+
+/** The All Frames view, over the screen; a Frame picked there is shown here. */
+const allFrames = ref(false)
+const pickFromAll = (index: number) => pick(index)
 </script>
 
 <template>
@@ -435,16 +439,6 @@ const promptDiff = computed(() => {
 
     <template v-else-if="session">
       <SessionBar kind="Chain" :title="session.title ?? ''" :status="busy ? phaseLabel : undefined">
-        <!-- Until the All Frames view takes it (stage 4 of the screens plan). -->
-        <span v-if="featureOn('images')" class="max-md:hidden"><ModelComparison
-          :session-id="session.id"
-          :frames="session.frames"
-          :image-model="session.settings.imageModel"
-          :thumbnail="session.thumbnail"
-          :name="frameTitle"
-          :caption="(f) => f.narration"
-          @changed="load(); refreshJobs()"
-        /></span>
         <SessionSettings
           :session="session"
           title="This Chain"
@@ -462,6 +456,7 @@ const promptDiff = computed(() => {
         :tiles="tiles"
         :picked="onPending ? null : shown?.index ?? null"
         @pick="pick"
+        @all="allFrames = true"
       >
         <template #end>
           <!-- The Frame in progress, in its place at the end: picked to show it again. -->
@@ -805,6 +800,21 @@ const promptDiff = computed(() => {
 
     <p v-else class="p-6 text-muted">Loading…</p>
 
+    <AllFrames
+      v-if="session"
+      v-model:open="allFrames"
+      :session-id="session.id"
+      :frames="session.frames"
+      :tiles="tiles"
+      :text="(f) => `${f.action ?? 'Opening'} ${f.narration}`"
+      :picked="onPending ? null : shown?.index ?? null"
+      :image-model="session.settings.imageModel"
+      :thumbnail="session.thumbnail"
+      :name="frameTitle"
+      :caption="(f) => f.narration"
+      @pick="pickFromAll"
+      @changed="load(); refreshJobs()"
+    />
     <FrameViewer
       v-if="session"
       v-model:open="viewingPicture"

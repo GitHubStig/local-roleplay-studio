@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { useIntervalFn } from '@vueuse/core'
-import { computed, ref } from 'vue'
-import { cancelJob, getQueue, KIND_LABELS, type Queue } from '../api'
+import { computed, watch } from 'vue'
+import { cancelJob, KIND_LABELS } from '../api'
+import { useQueue } from '../composables/useQueue'
 import { useImageModels } from '../composables/useSettingsOptions'
 import { frameName } from '../frameName'
 import { isOpen, jobLink, jobStatus } from '../jobs'
@@ -22,28 +22,19 @@ import { sessionPath } from '../sessionPath'
  * Model's calls among it), and what's finished, with how long each waited and took, across every
  * Session. A job opens in its Session as that Session's Queue tab opens it.
  */
-const queue = ref<Queue | null>(null)
-const error = ref('')
-const now = ref(Date.now())
+const { queue, error, now, refresh } = useQueue()
 const machines = computed(() => (queue.value ? machineQueues(queue.value) : []))
 const { jobName } = useImageModels()
 /** A Session's queue done here notifies as on its own screen, which isn't open meanwhile. */
 const notifyDone = useDoneNotice()
 
-async function refresh() {
-  try {
-    const before = queue.value
-    queue.value = await getQueue()
-    error.value = ''
-    for (const { sessionId, failed } of before ? sessionsDone(before.jobs, queue.value.jobs) : []) {
-      notifyDone(sessionId, failed, queue.value.sessions.find((s) => s.id === sessionId)?.title)
-    }
-  } catch (err) {
-    error.value = (err as Error).message
+// The poll is shared (`useQueue`); a Session's work finishing notifies only from here.
+watch(queue, (after, before) => {
+  if (!after || !before) return
+  for (const { sessionId, failed } of sessionsDone(before.jobs, after.jobs)) {
+    notifyDone(sessionId, failed, after.sessions.find((s) => s.id === sessionId)?.title)
   }
-  now.value = Date.now()
-}
-useIntervalFn(refresh, 2000, { immediateCallback: true })
+})
 
 /** Cancels a queued or running job, or dismisses a finished one. */
 async function drop(job: QueueJob) {

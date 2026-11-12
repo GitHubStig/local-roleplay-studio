@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ask } from '../ask'
 import FrameClips from '../components/FrameClips.vue'
 import ImageModelPicker from '../components/ImageModelPicker.vue'
-import ModelComparison from '../components/ModelComparison.vue'
+import AllFrames from '../components/AllFrames.vue'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import * as api from '../api'
 import { ALL_AVAILABLE, IMAGE_MODELS, promptFor } from '../testing'
@@ -729,7 +729,7 @@ describe('ChainView', () => {
     const { wrapper } = await mountIt()
     vi.mocked(api.getSession).mockClear()
     vi.mocked(api.listJobs).mockClear()
-    wrapper.findComponent(ModelComparison).vm.$emit('changed')
+    wrapper.findComponent(AllFrames).vm.$emit('changed')
     await flushPromises()
     expect(api.getSession).toHaveBeenCalledWith('s1')
     expect(api.listJobs).toHaveBeenCalledWith('s1')

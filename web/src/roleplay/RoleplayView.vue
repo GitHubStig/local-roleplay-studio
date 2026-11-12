@@ -30,7 +30,7 @@ import { imageRatioOf } from '../components/sessionPictureRatio'
 import SessionDrawer from '../components/SessionDrawer.vue'
 import ToggleSwitch from '../components/ToggleSwitch.vue'
 import Icon from '../components/Icon.vue'
-import ModelComparison from '../components/ModelComparison.vue'
+import AllFrames from '../components/AllFrames.vue'
 import { useImageModels } from '../composables/useSettingsOptions'
 import UndirectedNote from './UndirectedNote.vue'
 import MusicTab from './MusicTab.vue'
@@ -773,6 +773,10 @@ const lookSavingText = computed(() =>
     ? 'Saving once the picture rendering is done…'
     : undefined
 )
+
+/** The All Frames view, over the screen; a Frame picked there is shown here. */
+const allFrames = ref(false)
+const pickFromAll = (index: number) => pickFromStrip(index)
 </script>
 
 <template>
@@ -828,16 +832,6 @@ const lookSavingText = computed(() =>
         >
           <span class="max-sm:hidden">Look & Cast</span><Icon name="cast" class="sm:hidden" /><span class="sr-only sm:hidden">Look & Cast</span>
         </button>
-        <!-- Until the All Frames view takes it (stage 4 of the screens plan). -->
-        <span v-if="featureOn('images')" class="max-md:hidden"><ModelComparison
-          :session-id="session.id"
-          :frames="session.frames"
-          :image-model="session.settings.imageModel"
-          :thumbnail="session.thumbnail"
-          :caption="(f) => f.reply.actions"
-          @changed="reload(); refreshJobs()"
-          one-style
-        /></span>
         <SessionSettings
           :session="session"
           title="This Roleplay"
@@ -856,7 +850,7 @@ const lookSavingText = computed(() =>
         </SessionSettings>
       </SessionBar>
 
-      <FrameStrip v-if="begun" :tiles="tiles" :picked="selectedIndex" @pick="pickFromStrip">
+      <FrameStrip v-if="begun" :tiles="tiles" :picked="selectedIndex" @pick="pickFromStrip" @all="allFrames = true">
         <template #end>
           <span
             v-if="replying"
@@ -1510,6 +1504,21 @@ const lookSavingText = computed(() =>
 
     <p v-else class="p-6 text-muted">Loading…</p>
 
+    <AllFrames
+      v-if="session"
+      v-model:open="allFrames"
+      :session-id="session.id"
+      :frames="session.frames"
+      :tiles="tiles"
+      :text="(f) => [f.message, f.reply.internal, f.reply.actions, f.reply.dialogue].filter(Boolean).join(' ')"
+      :picked="selectedIndex"
+      :image-model="session.settings.imageModel"
+      :thumbnail="session.thumbnail"
+      :caption="(f) => f.reply.actions"
+      one-style
+      @pick="pickFromAll"
+      @changed="reload(); refreshJobs()"
+    />
     <FrameViewer
       v-if="session"
       v-model:open="viewing"

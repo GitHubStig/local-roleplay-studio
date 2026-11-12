@@ -9,6 +9,9 @@ import { sessionPath } from './sessionPath'
 import ConfirmDialog from './components/ConfirmDialog.vue'
 import ThemeButton from './components/ThemeButton.vue'
 import Icon from './components/Icon.vue'
+import QueuePanel from './components/QueuePanel.vue'
+import { useQueue } from './composables/useQueue'
+import { isOpen } from './jobs'
 
 const serverOnline = ref<boolean | null>(null)
 const route = useRoute()
@@ -31,6 +34,13 @@ const scenarioTitle = computed(() => {
 const onSession = computed(() =>
   route.name === 'session' || route.name === 'storyboard' || route.name === 'roleplay'
 )
+
+/** The Queue sliding in from the rail, and how many jobs run or wait, on its button. */
+const queueOpen = ref(false)
+const { queue } = useQueue()
+const queueCount = computed(() => queue.value?.jobs.filter(isOpen).length ?? 0)
+/** The Session on screen, whose jobs the panel lists first. */
+const sessionOnScreen = computed(() => (onSession.value ? String(route.params.id) : null))
 
 async function checkServer() {
   try {
@@ -82,10 +92,25 @@ useEventListener(window, 'focus', checkServer)
         <Icon name="scenario" />
         <span class="sr-only">Scenario: {{ scenarioTitle }}</span>
       </RouterLink>
-      <RouterLink to="/queue" class="rail-item" active-class="rail-active" title="Queue: every machine's work, across Sessions" data-nav-queue>
+      <!-- On a phone the Queue's page; beside a rail, its panel, sliding in over the screen. -->
+      <RouterLink to="/queue" class="rail-item relative sm:hidden! short:hidden!" active-class="rail-active" title="Queue: every machine's work, across Sessions" data-nav-queue-page>
         <Icon name="queue" />
         <span class="sr-only">Queue</span>
+        <span v-if="queueCount" class="absolute -top-0.5 -right-0.5 min-w-4 rounded-full bg-fg px-1 text-[0.6rem] leading-4 text-canvas tabular-nums">{{ queueCount }}</span>
       </RouterLink>
+      <button
+        type="button"
+        class="rail-item relative hidden! sm:grid! short:grid!"
+        :class="{ 'rail-active': queueOpen || route.name === 'queue' }"
+        :title="`Queue: ${queueCount ? `${queueCount} running or waiting` : 'nothing running'}`"
+        :aria-expanded="queueOpen"
+        data-nav-queue
+        @click="queueOpen = !queueOpen"
+      >
+        <Icon name="queue" />
+        <span class="sr-only">Queue</span>
+        <span v-if="queueCount" class="absolute -top-0.5 -right-0.5 min-w-4 rounded-full bg-fg px-1 text-[0.6rem] leading-4 text-canvas tabular-nums" data-queue-count>{{ queueCount }}</span>
+      </button>
       <!-- What's set once in a while, at the rail's foot: not on a phone's tab bar but Settings. -->
       <span
         class="hidden h-9 w-9 place-items-center sm:mt-auto sm:grid short:mt-auto short:grid"
@@ -124,6 +149,7 @@ useEventListener(window, 'focus', checkServer)
         </KeepAlive>
       </RouterView>
     </div>
+    <QueuePanel v-model:open="queueOpen" :session-id="sessionOnScreen" />
     <ConfirmDialog />
   </div>
 </template>

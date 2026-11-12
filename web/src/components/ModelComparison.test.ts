@@ -1,6 +1,5 @@
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { defineComponent, h, KeepAlive, ref } from 'vue'
 import {
   deleteModelPictures,
   exportComparison,
@@ -44,47 +43,57 @@ const mountIt = (shown = frames, thumbnail?: string) =>
   })
 
 describe('ModelComparison', () => {
-  it('offers Pictures once there is a picture, with Export and Style scores from two models', async () => {
-    expect(mountIt([frames[2]]).find('[data-compare-models]').exists()).toBe(false)
+  it('says when there are no pictures yet, and offers Export and the chips from two models', async () => {
+    expect(mountIt([frames[2]]).find('[data-no-pictures]').exists()).toBe(true)
     const one = mountIt([frames[1]])
-    expect(one.find('[data-compare-models]').text()).toBe('Pictures')
-    await one.find('[data-compare-models]').trigger('click')
     await flushPromises()
     expect(one.findAll('[data-compare-row]')).toHaveLength(1)
-    expect(one.find('[data-choose-thumbnail]').exists()).toBe(true)
     expect(one.find('[data-export]').exists()).toBe(false)
-    expect(one.find('[data-show-style-scores]').exists()).toBe(false)
     expect(one.find('[data-show-model]').exists()).toBe(false)
 
     const two = mountIt()
-    await two.find('[data-compare-models]').trigger('click')
     await flushPromises()
     expect(two.find('[data-export]').exists()).toBe(true)
-    expect(two.find('[data-show-style-scores]').exists()).toBe(true)
+    expect(two.findAll('[data-show-model]').map((c) => c.text())).toEqual([
+      '✓a',
+      "✓b· this Session's",
+    ])
   })
 
-  it('closes when its screen is left, so it is not inline over the screen on coming back', async () => {
-    const shown = ref(true)
-    const Screen = defineComponent({
-      name: 'RoleplayView',
-      setup: () => () => h(ModelComparison, { sessionId: 's1', frames, imageModel: 'b' }),
+  it("shows the style scores in the table's place", async () => {
+    const wrapper = mount(ModelComparison, {
+      props: { sessionId: 's1', frames, imageModel: 'b', scores: true },
+      attachTo: document.body,
     })
-    const wrapper = mount(
-      defineComponent(() => () => h(KeepAlive, null, [shown.value ? h(Screen) : h('p', 'Home')])),
-      { attachTo: document.body },
-    )
-    await wrapper.find('[data-compare-models]').trigger('click')
     await flushPromises()
-    const dialog = document.querySelector<HTMLDialogElement>('[data-model-comparison]')!
-    expect(dialog.open).toBe(true)
-
-    shown.value = false
-    await flushPromises()
-    expect(dialog.open).toBe(false)
-    shown.value = true
-    await flushPromises()
-    expect(dialog.open).toBe(false)
     expect(wrapper.find('[data-compare-row]').exists()).toBe(false)
+    expect(wrapper.findComponent({ name: 'StyleScoresPanel' }).exists()).toBe(true)
+  })
+
+  it("opens on the Session's own model and the next two that rendered, until the player picks", async () => {
+    localStorage.clear()
+    const many: PicturedFrame[] = [{
+      index: 0,
+      pictures: ['a', 'b', 'c', 'd', 'e'].map((m) => picture(`f0-${m}.png`, m)),
+    }]
+    const wrapper = mount(ModelComparison, {
+      props: { sessionId: 's1', frames: many, imageModel: 'd' },
+      attachTo: document.body,
+    })
+    await flushPromises()
+    expect(wrapper.findAll('[data-model-column]').map((c) => c.text().slice(0, 1))).toEqual([
+      'a',
+      'b',
+      'd',
+    ])
+    expect(wrapper.findAll('[data-show-model]').map((c) => c.attributes('aria-pressed'))).toEqual([
+      'true',
+      'true',
+      'true',
+      'false',
+      'false',
+    ])
+    localStorage.clear()
   })
 
   it('stars what Home shows: the newest picture, outlined, until one is chosen', async () => {
@@ -94,64 +103,49 @@ describe('ModelComparison', () => {
         s.element.parentElement!.querySelector('img')!.getAttribute('src'),
       ])
     const auto = mountIt()
-    await auto.find('[data-compare-models]').trigger('click')
     await flushPromises()
     expect(stars(auto)).toEqual([['automatic', '/api/sessions/s1/images/f1-a.png']])
 
     // By another model than the Session's: it stays.
     const chosen = mountIt(frames, 'f0-a.png')
-    await chosen.find('[data-compare-models]').trigger('click')
     await flushPromises()
     expect(stars(chosen)).toEqual([['chosen', '/api/sessions/s1/images/f0-a.png']])
 
     // Its file gone: back to the newest.
     const gone = mountIt(frames, 'deleted.png')
-    await gone.find('[data-compare-models]').trigger('click')
     await flushPromises()
     expect(stars(gone)).toEqual([['automatic', '/api/sessions/s1/images/f1-a.png']])
   })
 
-  it('chooses a thumbnail only in its mode, and unchooses it the same way', async () => {
+  it("chooses a thumbnail by a picture's star, and unchooses it the same way", async () => {
     vi.mocked(setThumbnail).mockClear()
     const wrapper = mountIt(frames, 'f0-a.png')
-    await wrapper.find('[data-compare-models]').trigger('click')
     await flushPromises()
     const pictures = () => wrapper.findAll('[data-compare-picture]')
+    const stars = () => wrapper.findAll('[data-star]')
 
-    // Out of the mode, a click views it.
+    // A click on the picture views it.
     await pictures()[1].trigger('click')
     expect(setThumbnail).not.toHaveBeenCalled()
     wrapper.findComponent({ name: 'ImageViewer' }).vm.$emit('close')
     await flushPromises()
 
-    await wrapper.find('[data-choose-thumbnail]').trigger('click')
-    await flushPromises()
-    expect(wrapper.find('[data-thumbnail-hint]').exists()).toBe(true)
-    expect(wrapper.find('[data-export]').exists()).toBe(false)
-
-    await pictures()[1].trigger('click')
+    await stars()[1].trigger('click')
     await flushPromises()
     expect(setThumbnail).toHaveBeenLastCalledWith('s1', 'f0-b.png')
     expect(wrapper.emitted('changed')).toHaveLength(1)
 
-    await pictures()[0].trigger('click')
+    // The chosen one's star unchooses it.
+    await stars()[0].trigger('click')
     await flushPromises()
     expect(setThumbnail).toHaveBeenLastCalledWith('s1', null)
-    expect(wrapper.find('[data-thumbnail-hint]').exists()).toBe(true)
-
-    await wrapper.find('[data-thumbnail-done]').trigger('click')
-    await flushPromises()
-    expect(wrapper.find('[data-thumbnail-hint]').exists()).toBe(false)
   })
 
   it('says why a thumbnail could not be chosen', async () => {
     vi.mocked(setThumbnail).mockRejectedValueOnce(new Error('That picture no longer exists'))
     const wrapper = mountIt()
-    await wrapper.find('[data-compare-models]').trigger('click')
     await flushPromises()
-    await wrapper.find('[data-choose-thumbnail]').trigger('click')
-    await flushPromises()
-    await wrapper.findAll('[data-compare-picture]')[0].trigger('click')
+    await wrapper.findAll('[data-star]')[0].trigger('click')
     await flushPromises()
     expect(wrapper.find('[data-thumbnail-problem]').text()).toBe('That picture no longer exists')
     expect(wrapper.emitted('changed')).toBeUndefined()
@@ -159,12 +153,10 @@ describe('ModelComparison', () => {
 
   it('shows a row per pictured Frame and a column per model, gaps where none rendered', async () => {
     const wrapper = mountIt()
-    await wrapper.find('[data-compare-models]').trigger('click')
     await flushPromises()
-    expect((wrapper.find('[data-model-comparison]').element as HTMLDialogElement).open).toBe(true)
     expect(wrapper.findAll('[data-model-column]').map((c) => c.text())).toEqual([
       'a',
-      'b · current',
+      "b · this Session's",
     ])
     const rows = wrapper.findAll('[data-compare-row]')
     expect(rows).toHaveLength(2)
@@ -185,20 +177,18 @@ describe('ModelComparison', () => {
       picked: 1,
     }
     const wrapper = mountIt([{ ...frames[0], pictures: [frames[0].pictures[0], edited] }])
-    await wrapper.find('[data-compare-models]').trigger('click')
     await flushPromises()
     const cells = wrapper.find('[data-compare-row]').findAll('td')
     expect(cells[1].find('img').attributes('src')).toBe('/api/sessions/s1/images/edit-0-b.png')
     expect(cells[1].find('[data-edited]').exists()).toBe(true)
-    expect(cells[1].find('button').attributes('title')).toBe('Edited: A hand')
+    expect(cells[1].find('[data-compare-picture]').attributes('title')).toBe('Edited: A hand')
     expect(cells[0].find('[data-edited]').exists()).toBe(false)
   })
 
   it('steps through one Frame’s pictures by each model in the viewer', async () => {
     const wrapper = mountIt()
-    await wrapper.find('[data-compare-models]').trigger('click')
     await flushPromises()
-    await wrapper.find('[data-compare-row] button').trigger('click')
+    await wrapper.find('[data-compare-row] [data-compare-picture]').trigger('click')
     await flushPromises()
     const label = () => wrapper.find('[data-viewer-label]').text()
     expect(label()).toBe('Frame 1 · a')
@@ -217,9 +207,8 @@ describe('ModelComparison', () => {
       },
       attachTo: document.body,
     })
-    await wrapper.find('[data-compare-models]').trigger('click')
     await flushPromises()
-    await wrapper.find('[data-compare-row] button').trigger('click')
+    await wrapper.find('[data-compare-row] [data-compare-picture]').trigger('click')
     await flushPromises()
     const caption = () => wrapper.find('[data-viewer-caption]')
     expect(caption().text()).toBe('The tavern, at dusk.')
@@ -236,9 +225,8 @@ describe('ModelComparison', () => {
 
   it('shows no caption in the viewer when no Frame has one', async () => {
     const wrapper = mountIt()
-    await wrapper.find('[data-compare-models]').trigger('click')
     await flushPromises()
-    await wrapper.find('[data-compare-row] button').trigger('click')
+    await wrapper.find('[data-compare-row] [data-compare-picture]').trigger('click')
     await flushPromises()
     expect(wrapper.find('[data-viewer-caption]').exists()).toBe(false)
   })
@@ -249,10 +237,9 @@ describe('ModelComparison', () => {
       { index: 2, pictures: [picture('f2-a.png', 'a'), picture('f2-b.png', 'b')] },
     ]
     const wrapper = mountIt(shown)
-    await wrapper.find('[data-compare-models]').trigger('click')
     await flushPromises()
     // Frame 0 by b.
-    await wrapper.findAll('[data-compare-row] button')[1].trigger('click')
+    await wrapper.findAll('[data-compare-row] [data-compare-picture]')[1].trigger('click')
     await flushPromises()
     const label = () => wrapper.find('[data-viewer-label]').text()
     const press = async (key: string) => {
@@ -279,7 +266,6 @@ describe('ModelComparison', () => {
       frames[1],
     ]
     const wrapper = mountIt(shown)
-    await wrapper.find('[data-compare-models]').trigger('click')
     await flushPromises()
     await wrapper.find('[data-export]').trigger('click')
     // It asks first: no 18+ notice unless ticked.
@@ -313,7 +299,6 @@ describe('ModelComparison', () => {
     ]
     const exportOnce = async () => {
       const wrapper = mountIt(shown)
-      await wrapper.find('[data-compare-models]').trigger('click')
       await flushPromises()
       await wrapper.find('[data-export]').trigger('click')
       return wrapper
@@ -321,6 +306,7 @@ describe('ModelComparison', () => {
     const sent = () => vi.mocked(exportComparison).mock.lastCall![1].notice
 
     let wrapper = await exportOnce()
+    await flushPromises()
     await wrapper.find('[data-adults-only]').setValue(true)
     const box = wrapper.find('[data-notice]').element as HTMLTextAreaElement
     expect(box.value).toBe('Some of these pictures show nude figures, as in classical painting.')
@@ -342,7 +328,6 @@ describe('ModelComparison', () => {
 
   it('folds the prompts away and back, from the table’s corner', async () => {
     const wrapper = mountIt()
-    await wrapper.find('[data-compare-models]').trigger('click')
     await flushPromises()
     const toggle = wrapper.find('[data-toggle-prompts]')
     expect(toggle.text()).toBe('‹ Hide prompts')
@@ -352,15 +337,18 @@ describe('ModelComparison', () => {
     expect(toggle.text()).toBe('Prompts ›')
     await toggle.trigger('click')
     expect(wrapper.find('[data-compare-prompt]').text()).toBe('A tavern at dusk.')
+    // Its first three lines, with Show all.
+    expect(wrapper.find('[data-compare-prompt]').classes()).toContain('line-clamp-3')
+    await wrapper.find('[data-show-prompt]').trigger('click')
+    expect(wrapper.find('[data-compare-prompt]').classes()).not.toContain('line-clamp-3')
   })
 
   it('moves a column from its grip, and the viewer steps in the new order', async () => {
     const wrapper = mountIt()
-    await wrapper.find('[data-compare-models]').trigger('click')
     await flushPromises()
     await wrapper.findAll('[data-move-column]')[1].trigger('keydown', { key: 'ArrowLeft' })
     expect(wrapper.findAll('[data-model-column]').map((c) => c.text())).toEqual([
-      'b · current',
+      "b · this Session's",
       'a',
     ])
     const row = wrapper.find('[data-compare-row]')
@@ -368,7 +356,7 @@ describe('ModelComparison', () => {
       '/api/sessions/s1/images/f0-b.png',
       '/api/sessions/s1/images/f0-a.png',
     ])
-    await row.find('button').trigger('click')
+    await row.find('[data-compare-picture]').trigger('click')
     await flushPromises()
     const label = () => wrapper.find('[data-viewer-label]').text()
     expect(label()).toBe('Frame 1 · b')
@@ -376,21 +364,21 @@ describe('ModelComparison', () => {
     expect(label()).toBe('Frame 1 · a')
   })
 
-  it('exports the columns as arranged, without the hidden ones, and keeps them on reopening', async () => {
+  it('exports the columns as arranged, without those switched off', async () => {
+    localStorage.clear()
     const wrapper = mountIt()
-    const open = async () => {
-      await wrapper.find('[data-compare-models]').trigger('click')
-      await flushPromises()
-    }
+    await flushPromises()
     const columns = () => wrapper.findAll('[data-model-column]').map((c) => c.text())
-    await open()
+    const chip = (name: string) =>
+      wrapper.findAll('[data-show-model]').find((c) => c.text().includes(name))!
     await wrapper.findAll('[data-move-column]')[1].trigger('keydown', { key: 'ArrowLeft' })
-    expect(columns()).toEqual(['b · current', 'a'])
+    expect(columns()).toEqual(["b · this Session's", 'a'])
+    expect(wrapper.emitted('update:order')!.at(-1)).toEqual([[1, 0]])
 
-    // Hiding b moves it to the right end, folded to its header.
-    await wrapper.findAll('[data-show-model]')[0].setValue(false)
+    // Switching b off takes its column out.
+    await chip('b').trigger('click')
     expect(columns()).toEqual(['a'])
-    expect(wrapper.find('[data-hidden-column]').text()).toBe('b')
+    expect(chip('b').attributes('aria-pressed')).toBe('false')
     expect(wrapper.find('[data-compare-row]').findAll('img')).toHaveLength(1)
 
     await wrapper.find('[data-export]').trigger('click')
@@ -401,20 +389,10 @@ describe('ModelComparison', () => {
       rows: [{ pictures: [{ image: 'f0-a.png' }] }, { pictures: [{ image: 'f1-a.png' }] }],
     })
 
-    // Shown again, it comes back after the shown ones; the arrangement outlasts closing.
-    await wrapper.find('[data-hidden-column] input').setValue(true)
-    expect(columns()).toEqual(['a', 'b · current'])
-    wrapper.find('dialog').element.dispatchEvent(new Event('close'))
-    await flushPromises()
-    await open()
-    expect(columns()).toEqual(['a', 'b · current'])
-    await wrapper.find('[data-export]').trigger('click')
-    await wrapper.find('[data-export-options] form').trigger('submit')
-    await flushPromises()
-    expect(vi.mocked(exportComparison).mock.lastCall![1].models).toEqual([
-      { label: 'a' },
-      { label: 'b' },
-    ])
+    // On again, it comes back after the shown ones.
+    await chip('b').trigger('click')
+    expect(columns()).toEqual(['a', "b · this Session's"])
+    localStorage.clear()
   })
 
   it('won’t delete a hidden model’s pictures while style scores are being worked out', async () => {
@@ -423,7 +401,6 @@ describe('ModelComparison', () => {
     vi.mocked(listJobs).mockResolvedValueOnce([running])
     vi.mocked(deleteModelPictures).mockClear()
     const wrapper = mountIt()
-    await wrapper.find('[data-compare-models]').trigger('click')
     await flushPromises()
     await wrapper.find('[data-delete-model-pictures]').trigger('click')
     await flushPromises()
@@ -440,23 +417,21 @@ describe('ModelComparison', () => {
     localStorage.clear()
   })
 
-  it('remembers hidden columns for the Session, and deletes a hidden model’s pictures when asked', async () => {
+  it('remembers which models are off for the Session, and deletes their pictures when asked', async () => {
     localStorage.clear()
-    const open = async (wrapper: ReturnType<typeof mountIt>) => {
-      await wrapper.find('[data-compare-models]').trigger('click')
-      await flushPromises()
-    }
+    const chip = (w: ReturnType<typeof mountIt>, name: string) =>
+      w.findAll('[data-show-model]').find((c) => c.text().includes(name))!
     let wrapper = mountIt()
-    await open(wrapper)
-    await wrapper.findAll('[data-show-model]')[0].setValue(false)
+    await flushPromises()
+    await chip(wrapper, 'a').trigger('click')
     expect(localStorage.getItem('compare-hidden:s1')).toBe('["a"]')
 
-    // Still hidden on the Session's next visit, and only a model other than the Session's own
+    // Still off on the Session's next visit, and only a model other than the Session's own
     // offers to delete its pictures.
     wrapper.unmount()
     wrapper = mountIt()
-    await open(wrapper)
-    expect(wrapper.find('[data-hidden-column]').text()).toContain('a')
+    await flushPromises()
+    expect(chip(wrapper, 'a').attributes('aria-pressed')).toBe('false')
     await wrapper.find('[data-delete-model-pictures]').trigger('click')
     expect(wrapper.find('[data-delete-model-dialog]').text()).toContain('All 2 pictures a made')
     await wrapper.find('[data-delete-model-dialog] form').trigger('submit')
@@ -464,10 +439,9 @@ describe('ModelComparison', () => {
     expect(deleteModelPictures).toHaveBeenCalledWith('s1', 'a')
     expect(wrapper.emitted('changed')).toHaveLength(1)
 
-    await wrapper.find('[data-hidden-column] input').setValue(true)
-    const columnB = wrapper.findAll('[data-model-column]').find((c) => c.text().startsWith('b'))!
-    await columnB.find('[data-show-model]').setValue(false)
-    expect(wrapper.find('[data-hidden-column]').text()).toBe('b')
+    await chip(wrapper, 'a').trigger('click')
+    await chip(wrapper, 'b').trigger('click')
+    expect(chip(wrapper, 'b').attributes('aria-pressed')).toBe('false')
     expect(wrapper.find('[data-delete-model-pictures]').exists()).toBe(false)
     localStorage.clear()
   })

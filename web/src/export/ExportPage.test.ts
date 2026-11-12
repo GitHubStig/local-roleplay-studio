@@ -20,7 +20,7 @@ describe('ExportPage', () => {
     expect(wrapper.find('[data-export-table]').attributes('inert')).toBeUndefined()
   })
 
-  it('lets a visitor hide a column, moving it to the right end', async () => {
+  it("lets a visitor switch a model's column off and on, from its chip", async () => {
     const two = {
       models: [{ label: 'a' }, { label: 'b' }],
       rows: [{
@@ -32,9 +32,15 @@ describe('ExportPage', () => {
       }],
     }
     const wrapper = mount(ExportPage, { props: two })
-    await wrapper.find('[data-model-column] [data-show-model]').trigger('change')
+    const chips = () => wrapper.findAll('[data-show-model]')
+    await chips()[0].trigger('click')
     expect(wrapper.findAll('[data-model-column]').map((c) => c.text())).toEqual(['b'])
-    expect(wrapper.find('[data-hidden-column]').text()).toBe('a')
+    expect(chips().map((c) => [c.text(), c.attributes('aria-pressed')])).toEqual([
+      ['✓b', 'true'],
+      ['a', 'false'],
+    ])
+    await chips()[1].trigger('click')
+    expect(wrapper.findAll('[data-model-column]').map((c) => c.text())).toEqual(['b', 'a'])
   })
 
   it('keeps the table out of reach behind its notice until the visitor confirms', async () => {

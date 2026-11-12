@@ -50,8 +50,8 @@ Building began on 2026-11-12, on the `screens` branch. Each stage is a piece of 
 
 1. **The colours**, light and dark: the soft split's tokens. *Built and committed 2026-11-12.*
 2. **The rail and the strip view for a Roleplay**: the rail and the tab bar at phone width; the Session's bar, the strip, the picture beside the story, the floating box, the picture's buttons, the drawer. *Built and committed 2026-11-12.*
-3. **Chain and Storyboard** in the same view, with the Beat cards for a plan. *Built 2026-11-12, waiting for the owner's look.*
-4. **The contact sheet, and the Queue's slide-in panel** with the count on the rail.
+3. **Chain and Storyboard** in the same view, with the Beat cards for a plan. *Built and committed 2026-11-12.*
+4. **The contact sheet, and the Queue's slide-in panel** with the count on the rail. *Built 2026-11-12, waiting for the owner's look.*
 5. **Settings** as an overlay in its new shape, and the Queue page to match.
 6. **The Scenario page.**
 7. **Home** at wide widths, and fewer boxes wherever a stage before hasn't taken them out.
@@ -121,6 +121,11 @@ What was worked out from the code while planning, to start from rather than to f
 - The panel lists this Session's jobs first, then the rest by machine, and links to the full page. A Session's own Queue tab goes once it's in.
 - Pictures (`ModelComparison`, `ComparisonTable`) moves in as the All Frames view's second mode, with its phone layout; the `Pictures` button above a Session goes.
 - The contact sheet's search reads Messages and Replies (a Roleplay), Actions and Narrations (a Chain), Beats (a Storyboard), all of which the page already holds.
+
+- Built 2026-11-12. `AllFrames`, opened by the ▦ at the strip's end, over the whole screen: All Frames (every tile with its number and first words, a search across what the Frames say marking the matches and fading the rest, a click picking the Frame), Compare once there's a picture, Scores once two models made some. `ModelComparison` is the Compare and Scores modes' content, without a button or dialog of its own; the bar's Pictures button is gone. `ComparisonTable`, shared with the exported page: the models as chips in a row, on first, a Delete beside one that's off on hover; the prompts column the name and three lines with Show all; a star on each picture making it Home's thumbnail (Thumbnail mode gone); Export the filled button; at phone width a Frame at a time with ‹ and ›, its models down the screen. Compare opens on the Session's own model and the next two that rendered until the player picks, remembered per Session as before; the columns' order lasts while the Session is open. The style charts put the Session's own model in ink and the others in the muted colour, in place of the blue; on the exported page, where there's no own model, all in ink.
+- The Queue: `useQueue`, one poll of `/api/queue` every 2 s for the rail's count (jobs running or waiting), `QueuePanel` (sliding in from the rail beside it: this Session's jobs first, then the others', each going to its Frame and cancelled by its ✕, Dismiss and Cancel all, Full page) and the Queue page, which keeps the notice when a Session's work is done. On a phone the tab bar's Queue goes to the page, with the count. `JobQueue`, the old Queue tab's list, is gone.
+- Changed from the plan, and why: phone swipes between Compare's pages aren't built, only ‹ and ›. Compare's pictures keep their fixed height (16rem), as before, which leaves an ultrawide screen mostly empty with three models on; worth a look with stage 7's wide layouts.
+- Not checked: an export made from the new Compare (its page's table was checked in its test, and the page itself not rebuilt and opened); a real phone; the Windows PC; the Queue panel with real jobs (made-up ones in the headless browser, and the tests).
 
 **5. Settings and the Queue page** (`web/src/views/SettingsView.vue`, `QueueView.vue`, `router.ts`).
 
