@@ -2,10 +2,11 @@
 import { type Backend, BACKEND_NAMES, type ComfyStatus, type ComfyUses } from '../api'
 import ComfyStatusLine from './ComfyStatusLine.vue'
 import SelectField from './SelectField.vue'
+import SettingRow from './SettingRow.vue'
 
 /**
- * Which Backend a kind of work prefers, on its Settings tab (ADR 0022), and where it goes as
- * things stand: there, or the next on the Machines tab that can, with a ComfyUI's check.
+ * Which Backend a kind of work prefers, as a row in its Settings section (ADR 0022), and where it
+ * goes as things stand: there, or the next under Machines that can, with a ComfyUI's check.
  */
 defineProps<{
   label: string
@@ -27,26 +28,27 @@ const named = (b: Backend) =>
 </script>
 
 <template>
-  <label class="flex flex-col gap-1">
-    <span class="text-sm text-muted">{{ label }}</span>
+  <SettingRow :label="label">
     <SelectField
       v-model="preferred"
       :disabled="choices.length < 2"
     >
       <option v-if="!choices.some((b) => b.id === preferred)" :value="preferred" disabled>
-        None: add one on the Machines tab
+        None: add one under Machines
       </option>
       <option v-for="b in choices" :key="b.id" :value="b.id">{{ named(b) }}</option>
     </SelectField>
-    <span v-if="$slots.default" class="text-sm text-muted"><slot /></span>
-    <span v-if="goesTo && goesTo.id !== preferred" class="text-sm text-warn" data-goes-to>
-      That can't run the model chosen, so it goes to {{ named(goesTo) }}.
-    </span>
-    <ComfyStatusLine
-      v-if="goesTo?.kind === 'comfyui'"
-      :status="status ?? null"
-      :uses="uses"
-      @check="$emit('check', goesTo)"
-    />
-  </label>
+    <template v-if="$slots.default" #note><slot /></template>
+    <template #after>
+      <span v-if="goesTo && goesTo.id !== preferred" class="text-sm text-warn" data-goes-to>
+        That can't run the model chosen, so it goes to {{ named(goesTo) }}.
+      </span>
+      <ComfyStatusLine
+        v-if="goesTo?.kind === 'comfyui'"
+        :status="status ?? null"
+        :uses="uses"
+        @check="$emit('check', goesTo)"
+      />
+    </template>
+  </SettingRow>
 </template>

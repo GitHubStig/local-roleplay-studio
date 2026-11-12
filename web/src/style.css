@@ -71,7 +71,20 @@
   --muted: #b49d77;
 }
 
-/* An ultrawide window: room for Home's two columns, or three Settings cards abreast. */
+/*
+ * A panel raised over the screen (Settings). In the light the shadow and the dimmed screen behind
+ * show its edge; in the dark they don't, so there it's a step lighter, with a lighter edge and a
+ * faint highlight along its top.
+ */
+.dark .raised {
+  --canvas: #1f1c19;
+  --surface: #2a2622;
+  --line: #3b342d;
+  background: var(--canvas);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06), 0 24px 48px -12px rgb(0 0 0 / 0.7);
+}
+
+/* An ultrawide window: room for Home's two columns. */
 @theme {
   --breakpoint-wide: 140rem;
   /* The dark tools' ground, and what a full-screen viewer shows behind a clip in either theme. */

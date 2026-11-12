@@ -57,6 +57,28 @@ describe('QueueView', () => {
     expect(api.cancelJob).toHaveBeenCalledWith('s1', 'j1')
   })
 
+  it('lists the machines down the left, opening on the first with work, and shows the one picked', async () => {
+    localStorage.clear()
+    vi.mocked(api.getQueue).mockResolvedValue({
+      ...queue,
+      machines: [{ key: 'here', backends: [] }, { key: 'pc', backends: ['ComfyUI'] }],
+      jobs: [{ ...queue.jobs[0], machine: 'pc' }],
+      text: [],
+    })
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: '/:p(.*)', component: { render: () => null } }],
+    })
+    const wrapper = mount(QueueView, { global: { plugins: [router] } })
+    await flushPromises()
+    const tabs = wrapper.findAll('[data-machine-tab]')
+    expect(tabs.map((t) => t.text())).toEqual(['This machineIdle', 'pc1 running'])
+    expect(wrapper.find('[data-machine-name]').text()).toBe('pc')
+    await tabs[0].trigger('click')
+    expect(wrapper.find('[data-machine-name]').text()).toBe('This machine')
+    expect(wrapper.find('[data-machine]').text()).toContain('Idle.')
+  })
+
   it('cancels a machine’s running and waiting jobs at once, waiting first, and dismisses its finished', async () => {
     const at = '2026-11-02T10:00:00.000Z'
     const base = { frameIndex: 0, createdAt: at, machine: 'here', sessionId: 's1' } as const

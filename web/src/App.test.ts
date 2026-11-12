@@ -53,7 +53,7 @@ async function mountApp(path: string) {
       { path: '/', name: 'home', component: HomeView },
       { path: '/sessions/:id', name: 'session', component: ChainView, props: true },
       { path: '/storyboards/:id', name: 'storyboard', component: StoryboardView, props: true },
-      { path: '/settings', name: 'settings', component: SettingsView },
+      { path: '/settings/:section?', name: 'settings', component: SettingsView, props: true },
     ],
   })
   await router.push(path)
@@ -138,7 +138,9 @@ describe('App navigation', () => {
 
     await router.push('/settings')
     await flushPromises()
-    expect(wrapper.find('textarea').exists()).toBe(false)
+    // Settings is over the Session, which stays behind it, out of reach.
+    expect(wrapper.find('[data-settings-overlay]').exists()).toBe(true)
+    expect(wrapper.find('textarea').element.closest('[inert]')).not.toBeNull()
     expect(currentLink(wrapper).attributes('href')).toBe('/sessions/s1')
     expect(wrapper.find('[data-current-kind]').text()).toBe('Chain')
     expect(wrapper.find('[data-current-title]').text()).toBe('The Tavern')
@@ -153,6 +155,29 @@ describe('App navigation', () => {
     )
     // Loaded once, then re-checked on return; the screen itself was kept, not rebuilt.
     expect(api.getSession).toHaveBeenCalledTimes(2)
+  })
+
+  it('opens Settings over the screen it was opened from, and Esc or ✕ goes back to it', async () => {
+    const { wrapper, router } = await mountApp('/sessions/s1')
+    await router.push('/settings/images')
+    await flushPromises()
+    expect(wrapper.find('[data-settings-overlay] [data-section-title]').text()).toBe('Images')
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    await flushPromises()
+    expect(router.currentRoute.value.path).toBe('/sessions/s1')
+    expect(wrapper.find('[data-settings-overlay]').exists()).toBe(false)
+
+    await router.push('/settings')
+    await flushPromises()
+    await wrapper.find('[data-settings-close]').trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.path).toBe('/sessions/s1')
+  })
+
+  it('opens Settings over Home when its address is opened straight away', async () => {
+    const { wrapper } = await mountApp('/settings/text')
+    expect(wrapper.find('[data-settings-overlay]').exists()).toBe(true)
+    expect(wrapper.findComponent(HomeView).exists()).toBe(true)
   })
 
   it('returns to a Storyboard in progress from Settings', async () => {

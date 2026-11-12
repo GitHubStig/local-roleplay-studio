@@ -7,6 +7,7 @@ import {
   onMounted,
   type Ref,
   ref,
+  watch,
 } from 'vue'
 import { useRouter } from 'vue-router'
 import {
@@ -68,15 +69,19 @@ export function useSessionScreen<K extends SessionKind, W extends ScreenWork>(
   const { work } = opts
   const busy = computed(() => work.value !== null)
 
-  // A kept-alive screen keeps running in the background; it must only navigate while on screen.
-  let onScreen = true
+  // A kept-alive screen keeps running in the background, or behind Settings (drawn over it at its
+  // own address, the screen still active); it navigates only while it's active and its own
+  // address is the one open.
+  const ownPath = sessionPath(id, kind)
+  let active = true
+  const onScreen = () => active && router.currentRoute.value.path === ownPath
   /** Where to go once back on screen, if the Session went away while in the background. */
   let leaveOnReturn: { path: string; query: Record<string, string> } | null = null
 
   function leave(query: Record<string, string> = {}) {
     clearCurrentSession(id)
     draft.value = ''
-    if (onScreen) router.replace({ path: '/', query })
+    if (onScreen()) router.replace({ path: '/', query })
     else leaveOnReturn = { path: '/', query }
   }
 
@@ -122,19 +127,30 @@ export function useSessionScreen<K extends SessionKind, W extends ScreenWork>(
   }
   onMounted(start)
 
-  // Coming back to a kept-alive Session: pick up changes made elsewhere (another tab, a delete
-  // from Home), unless work is running here. Retries if the first load failed. Vue also calls
-  // this right after the first mount, which `start` already covers.
-  let firstActivation = true
-  onActivated(async () => {
-    onScreen = true
-    if (firstActivation) return (firstActivation = false)
-    if (leaveOnReturn) return router.replace(leaveOnReturn)
+  // Coming back to a kept-alive Session, or from Settings over it: pick up changes made elsewhere
+  // (another tab, a delete from Home), unless work is running here. Retries if the first load
+  // failed. Vue also activates it right after the first mount, which `start` already covers.
+  async function cameBack() {
+    if (leaveOnReturn) {
+      router.replace(leaveOnReturn)
+      leaveOnReturn = null
+      return
+    }
     if (!started) return start()
     opts.refreshJobs?.()
     if (!busy.value && (await load()) && session.value!.activity) follow()
+  }
+  let firstActivation = true
+  onActivated(() => {
+    active = true
+    if (firstActivation) return (firstActivation = false)
+    cameBack()
   })
-  onDeactivated(() => (onScreen = false))
+  onDeactivated(() => (active = false))
+  // Back from Settings it was never deactivated: its own address coming back is the cue.
+  watch(() => router.currentRoute.value.path, (now, before) => {
+    if (active && now === ownPath && before !== ownPath) cameBack()
+  })
 
   // --- Work this screen didn't start (page reloaded, another tab): show it and allow Cancel.
   let followTimer: ReturnType<typeof setTimeout> | undefined

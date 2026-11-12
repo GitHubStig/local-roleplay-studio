@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Quantize } from '../api'
 import SelectField from './SelectField.vue'
+import SettingRow from './SettingRow.vue'
 
 /** Quantize, for a model mflux runs: converted as it loads. The note under it is its slot. */
 const value = defineModel<Quantize>({ required: true })
@@ -13,13 +14,12 @@ const choices = [
 </script>
 
 <template>
-  <label class="flex flex-col gap-1">
-    <span class="text-sm text-muted">Quantize</span>
+  <SettingRow label="Quantize">
     <SelectField v-model="value">
       <option v-for="q in choices" :key="String(q.value)" :value="q.value">
         {{ q.label }}
       </option>
     </SelectField>
-    <span class="text-sm text-muted"><slot /></span>
-  </label>
+    <template #note><slot /></template>
+  </SettingRow>
 </template>

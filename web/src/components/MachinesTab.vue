@@ -13,8 +13,8 @@ import ComfyStatusLine from './ComfyStatusLine.vue'
 import Icon from './Icon.vue'
 
 /**
- * Settings' Machines tab (ADR 0022): the Backends there are, this machine's own first until moved,
- * each with its address and whether it answers. Each tab chooses which one its work prefers; a job
+ * Settings' Machines section (ADR 0022): the Backends there are, this machine's own first until moved,
+ * each with its address and whether it answers. Each section chooses which one its work prefers; a job
  * goes to the next listed that can do it when that one can't, so the order matters.
  */
 const props = defineProps<{
@@ -102,14 +102,14 @@ function keyTyped(id: string) {
 <template>
   <div class="flex flex-col gap-4">
     <p class="text-sm text-muted">
-      Where the work runs. Each tab chooses which of these its work prefers; when that one can't do a
-      job (it hasn't the model), the job goes to the next one listed here that can.
+      Each section chooses which of these its work prefers; when that one can't do a job (it hasn't
+      the model), the job goes to the next one listed here that can.
     </p>
-    <ol class="flex flex-col gap-3">
+    <ol class="flex flex-col">
       <li
         v-for="(b, i) in backends"
         :key="b.id"
-        class="flex flex-col gap-2 rounded-lg border border-line bg-surface/40 p-3"
+        class="flex flex-col gap-2 border-t border-line py-3.5 first:border-t-0 first:pt-0"
         :data-backend="b.id"
       >
         <div class="flex items-center gap-2">

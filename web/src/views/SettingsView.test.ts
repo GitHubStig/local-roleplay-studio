@@ -1,5 +1,7 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { h } from 'vue'
+import { createMemoryHistory, createRouter, RouterView } from 'vue-router'
 import * as api from '../api'
 import SettingsView from './SettingsView.vue'
 import { ALL_AVAILABLE, ALL_ON } from '../testing'
@@ -132,6 +134,27 @@ const options: api.SettingsOptions = {
   here: ALL_AVAILABLE,
 }
 
+/** Settings at `path`, as the app opens it: under a router, its section in the address. */
+async function mountSettings(opts: { attachTo?: HTMLElement } = {}, path = '/settings') {
+  const router = createRouter({
+    history: createMemoryHistory(),
+    routes: [
+      { path: '/', component: { render: () => null } },
+      { path: '/settings/:section?', component: SettingsView, props: true },
+    ],
+  })
+  await router.push(path)
+  const wrapper = mount({ render: () => h(RouterView) }, { ...opts, global: { plugins: [router] } })
+  await flushPromises()
+  return Object.assign(wrapper, { router })
+}
+
+/** Opens a section from the list, as a click does, and waits for its address. */
+async function openSection(wrapper: ReturnType<typeof mount>, id: string) {
+  await wrapper.find(`[data-tab="${id}"]`).trigger('click')
+  await flushPromises()
+}
+
 beforeEach(() => {
   // The tab shown is remembered: each test starts on Text.
   localStorage.clear()
@@ -152,7 +175,7 @@ describe('SettingsView', () => {
     kind: 'comfyui' | 'ollama' | 'openai',
     address?: string,
   ) {
-    await wrapper.find('[data-tab="machines"]').trigger('click')
+    await openSection(wrapper, 'machines')
     await wrapper.find(`[data-add-backend="${kind}"]`).trigger('click')
     if (address) {
       await wrapper.find(`[data-backend="${kind}"] [data-backend-address]`).setValue(address)
@@ -176,7 +199,7 @@ describe('SettingsView', () => {
       features: here,
       here,
     })
-    const wrapper = mount(SettingsView)
+    const wrapper = await mountSettings()
     await flushPromises()
     // Nowhere to render yet: the Pictures switch says why, and its options are hidden.
     expect(wrapper.find('[data-feature="images"] [data-unavailable]').text()).toContain(
@@ -246,10 +269,10 @@ describe('SettingsView', () => {
       device: 'cuda:0 NVIDIA GeForce RTX 4070',
       missing: {},
     })
-    const wrapper = mount(SettingsView)
+    const wrapper = await mountSettings()
     await flushPromises()
     await addBackend(wrapper, 'comfyui', 'http://192.0.2.20:8188')
-    await wrapper.find('[data-tab="images"]').trigger('click')
+    await openSection(wrapper, 'images')
     await wrapper.find('[data-run-on="upscale"] select').setValue('comfyui')
     await vi.advanceTimersByTimeAsync(600)
     await flushPromises()
@@ -291,7 +314,7 @@ describe('SettingsView', () => {
         videoModel: "ComfyUI doesn't have LTX 2.5's files",
       },
     })
-    const wrapper = mount(SettingsView)
+    const wrapper = await mountSettings()
     await flushPromises()
     const voices = () => wrapper.find('[data-feature="voices"]')
     expect(voices().find('[data-unavailable]').exists()).toBe(true)
@@ -324,9 +347,9 @@ describe('SettingsView', () => {
       backends: [...settings.backends, { id: 'pc', kind: 'comfyui', address: 'http://pc:8188' }],
       runOn: { ...settings.runOn, upscale: 'pc', voices: 'pc' },
     })
-    const wrapper = mount(SettingsView)
+    const wrapper = await mountSettings()
     await flushPromises()
-    await wrapper.find('[data-tab="machines"]').trigger('click')
+    await openSection(wrapper, 'machines')
     const order = () => wrapper.findAll('[data-backend]').map((b) => b.attributes('data-backend'))
     expect(order()).toEqual(['here', 'ollama', 'pc'])
     // This machine's own can't be taken off.
@@ -343,7 +366,7 @@ describe('SettingsView', () => {
   })
 
   it("hides an extra's options while its switch is off, and every image option with Pictures", async () => {
-    const wrapper = mount(SettingsView)
+    const wrapper = await mountSettings()
     await flushPromises()
     const shown = (selector: string) => wrapper.find(selector).exists()
     expect(wrapper.find('[data-feature="images"] input').attributes('role')).toBe('switch')
@@ -363,7 +386,7 @@ describe('SettingsView', () => {
   })
 
   it('offers the step cache only for models that take it', async () => {
-    const wrapper = mount(SettingsView)
+    const wrapper = await mountSettings()
     await flushPromises()
     expect(wrapper.find('[data-step-cache]').exists()).toBe(false)
     await wrapper.find('[data-image-model]').setValue('qwen-image-2.1')
@@ -373,7 +396,7 @@ describe('SettingsView', () => {
   })
 
   it('offers only the steps a model has presets for, picked from a list', async () => {
-    const wrapper = mount(SettingsView)
+    const wrapper = await mountSettings()
     await flushPromises()
     await wrapper.find('[data-image-model]').setValue('ideogram-4')
     const choices = () => wrapper.find('[data-step-choices]')
@@ -393,7 +416,7 @@ describe('SettingsView', () => {
 
   it('offers the picture forming only where renders go to a ComfyUI, and saves it off', async () => {
     withComfyUI()
-    const wrapper = mount(SettingsView)
+    const wrapper = await mountSettings()
     await flushPromises()
     expect(wrapper.find('[data-previews]').exists()).toBe(false)
     await wrapper.find('[data-run-on="images"] select').setValue('pc')
@@ -404,7 +427,7 @@ describe('SettingsView', () => {
   })
 
   it('offers float16 for models that take it, Automatic by default, and saves it off', async () => {
-    const wrapper = mount(SettingsView)
+    const wrapper = await mountSettings()
     await flushPromises()
     const select = wrapper.find('[data-float16] select')
     expect((select.element as HTMLSelectElement).value).toBe('auto')
@@ -416,7 +439,7 @@ describe('SettingsView', () => {
 
   it('offers float16 only where renders go to mflux, which takes it', async () => {
     withComfyUI()
-    const wrapper = mount(SettingsView)
+    const wrapper = await mountSettings()
     await flushPromises()
     expect(wrapper.find('[data-float16]').exists()).toBe(true)
     await wrapper.find('[data-run-on="images"] select').setValue('pc')
@@ -424,7 +447,7 @@ describe('SettingsView', () => {
   })
 
   it('resets steps to the chosen Image Model default', async () => {
-    const wrapper = mount(SettingsView)
+    const wrapper = await mountSettings()
     await flushPromises()
     await wrapper.find('[data-image-model]').setValue('flux2-klein-4b')
     expect((wrapper.find('input[type=number]').element as HTMLInputElement).value).toBe('4')
@@ -441,15 +464,15 @@ describe('SettingsView', () => {
         },
       },
     })
-    const wrapper = mount(SettingsView, { attachTo: document.body })
+    const wrapper = await mountSettings({ attachTo: document.body })
     await flushPromises()
     const panel = (id: string) => wrapper.find(`[data-tab-panel="${id}"]`)
-    expect(wrapper.find('[data-settings-status]').classes()).toContain('top-0')
-    expect(wrapper.find('[data-settings-status]').classes()).toContain('pb-4')
-    expect(wrapper.find('[data-settings-status] [data-settings-tabs]').exists()).toBe(true)
+    // The sections down the left, the one shown named over its rows.
+    expect(wrapper.findAll('[data-settings-tabs] [data-tab]')).toHaveLength(10)
+    expect(wrapper.find('[data-settings-status] [data-section-title]').text()).toBe('Text Model')
     expect(panel('text').isVisible()).toBe(true)
     expect(panel('3d').isVisible()).toBe(false)
-    await wrapper.find('[data-tab="3d"]').trigger('click')
+    await openSection(wrapper, '3d')
     expect(panel('3d').isVisible()).toBe(true)
 
     // LiTo can't run here: its switch is off and greyed out, with the reason.
@@ -479,9 +502,9 @@ describe('SettingsView', () => {
         video: { available: false, reason: 'Clips are made on a ComfyUI with LTX 2.5' },
       },
     })
-    const unavailable = mount(SettingsView, { attachTo: document.body })
+    const unavailable = await mountSettings({ attachTo: document.body })
     await flushPromises()
-    await unavailable.find('[data-tab="clips"]').trigger('click')
+    await openSection(unavailable, 'clips')
     expect(unavailable.find('[data-tab-panel="clips"]').isVisible()).toBe(true)
     expect(unavailable.find('[data-feature="video"] [data-unavailable]').text()).toContain(
       'a ComfyUI with LTX 2.5',
@@ -489,9 +512,9 @@ describe('SettingsView', () => {
     unavailable.unmount()
 
     vi.mocked(api.getSettingsOptions).mockResolvedValue(options)
-    const wrapper = mount(SettingsView, { attachTo: document.body })
+    const wrapper = await mountSettings({ attachTo: document.body })
     await flushPromises()
-    await wrapper.find('[data-tab="clips"]').trigger('click')
+    await openSection(wrapper, 'clips')
     // Its video model, chosen from those the server lists.
     const model = wrapper.find<HTMLSelectElement>(
       '[data-video-model] select, select[data-video-model]',
@@ -511,9 +534,9 @@ describe('SettingsView', () => {
 
   it("sets each video model's clip size, its own kept as none", async () => {
     vi.mocked(api.getSettingsOptions).mockResolvedValue(options)
-    const wrapper = mount(SettingsView, { attachTo: document.body })
+    const wrapper = await mountSettings({ attachTo: document.body })
     await flushPromises()
-    await wrapper.find('[data-tab="clips"]').trigger('click')
+    await openSection(wrapper, 'clips')
     const size = wrapper.find<HTMLSelectElement>('select[data-video-size="ltx-2.5"]')
     expect(size.element.value).toBe('large')
     expect(size.findAll('option').map((o) => o.text())).toEqual(['Small', 'Large (its own)'])
@@ -546,9 +569,9 @@ describe('SettingsView', () => {
       device: 'cuda:0',
       missing: {},
     })
-    const wrapper = mount(SettingsView, { attachTo: document.body })
+    const wrapper = await mountSettings({ attachTo: document.body })
     await flushPromises()
-    await wrapper.find('[data-tab="clips"]').trigger('click')
+    await openSection(wrapper, 'clips')
     const on = wrapper.find<HTMLSelectElement>('[data-run-on="video"] select')
     // Until chosen, the first ComfyUI (pictures go to this machine's mflux).
     expect(on.element.value).toBe('mac')
@@ -583,9 +606,9 @@ describe('SettingsView', () => {
       device: 'cuda:0',
       missing: {},
     })
-    const wrapper = mount(SettingsView, { attachTo: document.body })
+    const wrapper = await mountSettings({ attachTo: document.body })
     await flushPromises()
-    await wrapper.find('[data-tab="music"]').trigger('click')
+    await openSection(wrapper, 'music')
     const on = wrapper.find<HTMLSelectElement>('[data-run-on="music"] select')
     expect(on.element.value).toBe('mac')
     await on.setValue('pc')
@@ -602,22 +625,43 @@ describe('SettingsView', () => {
   })
 
   it('comes back to the tab it was on, after a reload', async () => {
-    const first = mount(SettingsView, { attachTo: document.body })
+    const first = await mountSettings({ attachTo: document.body })
     await flushPromises()
     expect(first.find('[data-tab-panel="text"]').isVisible()).toBe(true)
-    await first.find('[data-tab="clips"]').trigger('click')
+    await openSection(first, 'clips')
     first.unmount()
-    const again = mount(SettingsView, { attachTo: document.body })
+    const again = await mountSettings({ attachTo: document.body })
     await flushPromises()
     expect(again.find('[data-tab-panel="clips"]').isVisible()).toBe(true)
     expect(again.find('[data-tab-panel="text"]').isVisible()).toBe(false)
     again.unmount()
     // A tab that's gone (renamed, say) falls back to Text.
     localStorage.setItem('settings-tab', 'video')
-    const gone = mount(SettingsView, { attachTo: document.body })
+    const gone = await mountSettings({ attachTo: document.body })
     await flushPromises()
     expect(gone.find('[data-tab-panel="text"]').isVisible()).toBe(true)
     gone.unmount()
+  })
+
+  it('opens the section its address names, and keeps it in the address as another is picked', async () => {
+    const wrapper = await mountSettings({ attachTo: document.body }, '/settings/music')
+    expect(wrapper.find('[data-tab-panel="music"]').isVisible()).toBe(true)
+    expect(wrapper.find('[data-tab="music"]').attributes('aria-current')).toBe('page')
+    await openSection(wrapper, '3d')
+    expect(wrapper.router.currentRoute.value.path).toBe('/settings/3d')
+    expect(wrapper.find('[data-section-title]').text()).toBe('3D')
+    // On a phone a section has a way back to the list.
+    expect(wrapper.find('[data-settings-back]').attributes('href')).toBe('/settings')
+    wrapper.unmount()
+  })
+
+  it('picks the theme under Appearance', async () => {
+    const wrapper = await mountSettings({ attachTo: document.body }, '/settings/appearance')
+    const dark = wrapper.findAll('[data-theme-choice] button').find((b) => b.text() === 'Dark')!
+    await dark.trigger('click')
+    expect(dark.attributes('aria-pressed')).toBe('true')
+    expect(wrapper.find('[data-tab="appearance"]').text()).toContain('Dark')
+    wrapper.unmount()
   })
 
   it('keeps the seed in Advanced, there even where pictures cannot be made', async () => {
@@ -626,12 +670,12 @@ describe('SettingsView', () => {
       features: { ...ALL_AVAILABLE, images: { available: false, reason: 'No mflux here' } },
       here: { ...ALL_AVAILABLE, images: { available: false, reason: 'No mflux here' } },
     })
-    const wrapper = mount(SettingsView, { attachTo: document.body })
+    const wrapper = await mountSettings({ attachTo: document.body })
     await flushPromises()
     const seed = wrapper.find('[data-tab-panel="advanced"]')
     expect(wrapper.find('[data-tab-panel="images"] input[value="fixed"]').exists()).toBe(false)
     expect(seed.isVisible()).toBe(false)
-    await wrapper.find('[data-tab="advanced"]').trigger('click')
+    await openSection(wrapper, 'advanced')
     expect(seed.isVisible()).toBe(true)
     // With the Limits, the call log and the style scores, which aren't one model's either.
     for (
@@ -657,7 +701,7 @@ describe('SettingsView', () => {
 
   it('offers the edit models that run here, each saying where it would go, and keeps one that no longer does', async () => {
     withComfyUI()
-    const wrapper = mount(SettingsView)
+    const wrapper = await mountSettings()
     await flushPromises()
     const labels = () => wrapper.findAll('[data-edit-model] option').map((o) => o.text()).sort()
     // Edits go to this machine, so Qwen-Image 2.1 Edit runs on mflux; FLUX.3 only on ComfyUI.
@@ -680,7 +724,7 @@ describe('SettingsView', () => {
         prompting: '',
       }],
     })
-    const pc = mount(SettingsView)
+    const pc = await mountSettings()
     await flushPromises()
     expect(pc.findAll('[data-edit-model] option').map((o) => o.text())).toEqual([
       'qwen-image-2.1-edit (not available here)',
@@ -690,7 +734,7 @@ describe('SettingsView', () => {
 
   it('sorts the default Image Model and the default edit model by name, not as the lists have them', async () => {
     withComfyUI()
-    const wrapper = mount(SettingsView)
+    const wrapper = await mountSettings()
     await flushPromises()
     const labelsOf = (selector: string) =>
       wrapper.findAll(`${selector} option`).map((o) => o.text())
@@ -706,7 +750,7 @@ describe('SettingsView', () => {
   })
 
   it("shows music's defaults only while Music is on, and saves them", async () => {
-    const wrapper = mount(SettingsView)
+    const wrapper = await mountSettings()
     await flushPromises()
     const panel = wrapper.find('[data-tab-panel="music"]')
     expect(panel.find('[data-music-behaviour]').exists()).toBe(false)
@@ -723,7 +767,7 @@ describe('SettingsView', () => {
   })
 
   it('saves each control into its own field', async () => {
-    const wrapper = mount(SettingsView)
+    const wrapper = await mountSettings()
     await flushPromises()
     expect((wrapper.find('[data-limits] input').element as HTMLInputElement).checked).toBe(true)
     await wrapper.find('[data-text-model]').setValue('gemma4:31b-mlx')
@@ -745,7 +789,7 @@ describe('SettingsView', () => {
       ...options,
       thinkingModels: ['gemma4:31b-mlx'],
     })
-    const wrapper = mount(SettingsView)
+    const wrapper = await mountSettings()
     await flushPromises()
     const toggle = () => wrapper.find('input[type=checkbox]')
     expect(toggle().attributes('disabled')).toBeDefined()
@@ -775,7 +819,7 @@ describe('SettingsView', () => {
       }
       return Promise.resolve({ ...s, apiKeysSet: [...saved] })
     })
-    const wrapper = mount(SettingsView)
+    const wrapper = await mountSettings()
     await flushPromises()
     expect(wrapper.find('[data-api-key]').exists()).toBe(false)
 
@@ -791,7 +835,7 @@ describe('SettingsView', () => {
     expect(key.value).toBe('')
     expect(key.placeholder).toContain('saved')
     // The Text Model runs there: its models are listed, with the saved key.
-    await wrapper.find('[data-tab="text"]').trigger('click')
+    await openSection(wrapper, 'text')
     await wrapper.find('[data-run-on="text"] select').setValue('openai')
     await vi.advanceTimersByTimeAsync(600) // the listing waits for typing to stop
     await flushPromises()
@@ -815,7 +859,7 @@ describe('SettingsView', () => {
     }))
 
     // Removing the key saves at once.
-    await wrapper.find('[data-tab="machines"]').trigger('click')
+    await openSection(wrapper, 'machines')
     await wrapper.find('[data-remove-api-key]').trigger('click')
     await flushPromises()
     expect(api.saveSettings).toHaveBeenLastCalledWith(
@@ -824,9 +868,9 @@ describe('SettingsView', () => {
   })
 
   it('saves each change by itself once typing pauses, and says so at the top', async () => {
-    const wrapper = mount(SettingsView)
+    const wrapper = await mountSettings()
     await flushPromises()
-    await wrapper.find('[data-tab="machines"]').trigger('click')
+    await openSection(wrapper, 'machines')
     const address = () => wrapper.find('[data-backend="ollama"] [data-backend-address]')
     const ollamaAt = (address: string) =>
       expect.objectContaining({
@@ -870,7 +914,7 @@ describe('SettingsView', () => {
       textModels: [],
       textModelsError: 'Could not reach Ollama: connection refused',
     })
-    const wrapper = mount(SettingsView)
+    const wrapper = await mountSettings()
     await flushPromises()
     expect(wrapper.text()).toContain('Could not reach Ollama')
     expect(wrapper.findAll('option').map((o) => o.text())).toContain('llama3:latest')

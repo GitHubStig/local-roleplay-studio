@@ -52,7 +52,7 @@ Building began on 2026-11-12, on the `screens` branch. Each stage is a piece of 
 2. **The rail and the strip view for a Roleplay**: the rail and the tab bar at phone width; the Session's bar, the strip, the picture beside the story, the floating box, the picture's buttons, the drawer. *Built and committed 2026-11-12.*
 3. **Chain and Storyboard** in the same view, with the Beat cards for a plan. *Built and committed 2026-11-12.*
 4. **The contact sheet, and the Queue's slide-in panel** with the count on the rail. *Built 2026-11-12, waiting for the owner's look.*
-5. **Settings** as an overlay in its new shape, and the Queue page to match.
+5. **Settings** as an overlay in its new shape, and the Queue page to match. *Built 2026-11-12, waiting for the owner's look.*
 6. **The Scenario page.**
 7. **Home** at wide widths, and fewer boxes wherever a stage before hasn't taken them out.
 8. **The immersive view.**
@@ -134,6 +134,12 @@ What was worked out from the code while planning, to start from rather than to f
 - As an overlay with its own address, Settings is a route drawn over the Session kept alive behind it (`KeepAlive` already keeps it), closed by Esc.
 - At phone width the list is the first screen and each section opens from it.
 - Images and Music use three columns of cards at ultrawide widths now; decide then whether two sections side by side is worth keeping.
+
+- Built 2026-11-12. Settings is at `/settings/:section?`, drawn by `App` over the screen it was opened from (a `RouterView` given the route behind, the screen there kept on the page and `inert`), or over Home when its address is opened straight away; the ✕, Esc or a click on the dimmed edge go back (a step back in the browser's history when that's where it was, as picking a section replaces the address). On a phone it fills the screen: `/settings` is the list of sections, saying the Text Model, the Image Model, how many machines and the theme beside theirs, and each section has "‹ Settings" back. A setting is a row (`SettingRow`: what it is and its note on the left, its control on the right, one under the other on a phone), with lines between rows and no cards; `RunOn` and `QuantizeField` are rows, and the Machines list lost its boxes. Appearance holds the theme (`ThemeToggle`, as on the exported page); the rail's button stays. The list's group names (Models, App) are small and quiet, with a line between the groups, as at first they read as sections to click (the owner, 2026-11-12). In the dark the panel is raised (`.raised` in `style.css`: a step lighter, a lighter edge, a faint highlight along its top) over a near-black dimming, as at first it blended into the screen behind (the owner, 2026-11-12).
+- The Queue page in the same shape: the machines down the left, each with what runs and waits there, and the one picked (remembered; at first the first with work) on the right, its rows as before without the box. On a phone it's the rail panel's list, the Session opened last first (`QueueList`, shared with `QueuePanel`).
+- Decided: Images and Music no longer go to three columns on an ultrawide screen; in the overlay (at most about 1000 px wide) a section is one column of rows.
+- Changed beyond the screens, and why: a Session behind Settings is no longer left, so it isn't deactivated: `useSessionScreen` now goes Home (if the Session went away) and catches up (a failed load retried, changes made elsewhere loaded) when its own address comes back, as well as on activation. Its music and a clip playing carry on behind Settings, where leaving the screen stopped them.
+- Not checked: a real phone; the Windows PC; Settings with a ConfirmDialog asked from inside it (Esc should close the question first; only the code's check was read).
 
 **6. The Scenario page** (`web/src/scenario/ScenarioView.vue`, `ScenarioField`, `SuggestButton`, `TruthList`).
 

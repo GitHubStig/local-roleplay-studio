@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { useEventListener, useIntervalFn } from '@vueuse/core'
-import { computed, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { onKeyStroke, useEventListener, useIntervalFn } from '@vueuse/core'
+import { computed, ref, shallowRef, watch } from 'vue'
+import { type RouteLocationNormalizedLoaded, useRoute, useRouter } from 'vue-router'
 import { getHealth, KIND_LABELS } from './api'
 import { useCurrentSession } from './composables/useCurrentSession'
 import { scenarioPagePath, useScenarioDraft } from './composables/useScenarioDraft'
@@ -10,11 +10,43 @@ import ConfirmDialog from './components/ConfirmDialog.vue'
 import ThemeButton from './components/ThemeButton.vue'
 import Icon from './components/Icon.vue'
 import QueuePanel from './components/QueuePanel.vue'
+import SettingsView from './views/SettingsView.vue'
 import { useQueue } from './composables/useQueue'
 import { isOpen } from './jobs'
 
 const serverOnline = ref<boolean | null>(null)
 const route = useRoute()
+const router = useRouter()
+
+/**
+ * Settings is drawn over the screen it was opened from, which stays on screen behind it (inert)
+ * rather than being left; opened at its own address straight away (a link, a reload), it's over
+ * Home. The ✕, Esc or a click beside it go back to that screen.
+ */
+const settingsOpen = computed(() => route.name === 'settings')
+const behind = shallowRef<RouteLocationNormalizedLoaded | null>(null)
+watch(() => router.currentRoute.value, (r) => {
+  if (r.name !== 'settings') behind.value = r
+}, { immediate: true })
+const shownRoute = computed(() =>
+  settingsOpen.value
+    // Home, resolved: all `RouterView` reads of it is what it matches.
+    ? (behind.value ?? (router.resolve('/') as unknown as RouteLocationNormalizedLoaded))
+    : router.currentRoute.value
+)
+function closeSettings() {
+  const to = behind.value?.fullPath ?? '/'
+  // Back where the browser's history has it (a section's change replaces, so it's one step);
+  // straight to it otherwise.
+  if (window.history.state?.back === to) router.back()
+  else router.replace(to)
+}
+onKeyStroke('Escape', (e) => {
+  if (!settingsOpen.value || e.defaultPrevented) return
+  // A menu or a question open over it closes first.
+  if (document.querySelector('[data-pop-panel], dialog[open]:not([data-settings-overlay])')) return
+  closeSettings()
+})
 const { currentSessionId, currentSessionKind, currentSessionTitle } = useCurrentSession()
 
 /**
@@ -130,7 +162,7 @@ useEventListener(window, 'focus', checkServer)
         <span class="sr-only">Settings</span>
       </RouterLink>
     </nav>
-    <div class="flex min-h-0 min-w-0 flex-1 flex-col">
+    <div class="relative flex min-h-0 min-w-0 flex-1 flex-col">
       <!-- The rail has no room to say it: a line across the top while the server is down. -->
       <p
         v-if="serverOnline === false"
@@ -143,11 +175,26 @@ useEventListener(window, 'focus', checkServer)
       <!-- The last Session screen stays alive while you visit Home, the Queue or Settings, so its
            draft, the viewed Frame and running Frames survive going there and back. Opening another
            Session replaces it, as only one is in progress at a time. -->
-      <RouterView v-slot="{ Component, route: r }">
+      <RouterView v-slot="{ Component, route: r }" :route="shownRoute">
         <KeepAlive :include="['ChainView', 'StoryboardView', 'RoleplayView']" :max="1">
-          <component :is="Component" :key="r.path" class="min-h-0 flex-1" />
+          <component :is="Component" :key="r.path" class="min-h-0 flex-1" :inert="settingsOpen || undefined" />
         </KeepAlive>
       </RouterView>
+      <!-- Settings over the screen beside the rail; the whole screen on a phone. -->
+      <dialog
+        v-if="settingsOpen"
+        open
+        class="absolute inset-0 z-40 m-0 flex h-full max-h-none w-full max-w-none bg-canvas p-0 text-fg sm:bg-[rgb(30_20_10/0.35)] sm:p-5 short:bg-[rgb(30_20_10/0.35)] short:p-3 dark:sm:bg-black/60 dark:short:bg-black/60"
+        aria-label="Settings"
+        data-settings-overlay
+        @click.self="closeSettings"
+      >
+        <SettingsView
+          :section="typeof route.params.section === 'string' ? route.params.section : undefined"
+          class="mx-auto min-h-0 w-full min-w-0 max-w-5xl flex-1"
+          @close="closeSettings"
+        />
+      </dialog>
     </div>
     <QueuePanel v-model:open="queueOpen" :session-id="sessionOnScreen" />
     <ConfirmDialog />

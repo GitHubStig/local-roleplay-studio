@@ -17,6 +17,7 @@ export const router = createRouter({
     { path: '/storyboards/:id', name: 'storyboard', component: StoryboardView, props: true },
     { path: '/roleplay/:id', name: 'roleplay', component: RoleplayView, props: true },
     { path: '/queue', name: 'queue', component: QueueView },
-    { path: '/settings', name: 'settings', component: SettingsView },
+    // Drawn over the screen it was opened from (`App`), at a section's address: `/settings/images`.
+    { path: '/settings/:section?', name: 'settings', component: SettingsView, props: true },
   ],
 })

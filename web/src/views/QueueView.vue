@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { cancelJob, KIND_LABELS } from '../api'
+import QueueList from '../components/QueueList.vue'
+import { useStoredString } from '../composables/storage'
+import { useCurrentSession } from '../composables/useCurrentSession'
 import { useQueue } from '../composables/useQueue'
 import { useImageModels } from '../composables/useSettingsOptions'
 import { frameName } from '../frameName'
@@ -18,12 +22,31 @@ import { useDoneNotice } from '../composables/useDoneNotice'
 import { sessionPath } from '../sessionPath'
 
 /**
- * Every machine's queue at once: what runs on each, what waits in the order it will go (the Text
- * Model's calls among it), and what's finished, with how long each waited and took, across every
- * Session. A job opens in its Session as that Session's Queue tab opens it.
+ * Every machine's queue, in the same shape as Settings: the machines down the left, each saying
+ * what runs and waits there, and the one picked on the right: what runs, what waits in the order it
+ * will go (the Text Model's calls among it), and what's finished, with how long each waited and
+ * took, across every Session. A job opens in its Session at its Frame. On a phone it's the short
+ * list the rail's Queue panel shows (`QueueList`), the Session opened last first.
  */
 const { queue, error, now, refresh } = useQueue()
 const machines = computed(() => (queue.value ? machineQueues(queue.value) : []))
+/** The machine picked, remembered per browser; else the first with work, else the first. */
+const storedMachine = useStoredString('queue-machine')
+const machine = computed(() =>
+  machines.value.find((m) => m.key === storedMachine.value) ??
+    machines.value.find((m) => m.running.length || m.waiting.length) ?? machines.value[0]
+)
+/** What a machine has running and waiting, beside its name. */
+function countOf(m: MachineQueue): string {
+  const parts = [m.running.length && `${m.running.length} running`, m.waiting.length && `${m.waiting.length} waiting`]
+  return parts.filter(Boolean).join(' · ') || 'Idle'
+}
+const { currentSessionId } = useCurrentSession()
+const router = useRouter()
+function go(job: QueueJob) {
+  const s = queue.value?.sessions.find((x) => x.id === job.sessionId)
+  if (s) router.push(jobLink(sessionPath(s.id, s.kind), job))
+}
 const { jobName } = useImageModels()
 /** A Session's queue done here notifies as on its own screen, which isn't open meanwhile. */
 const notifyDone = useDoneNotice()
@@ -100,53 +123,75 @@ const SECTIONS = [
 </script>
 
 <template>
-  <div class="overflow-y-auto">
-    <div class="mx-auto max-w-7xl px-6 py-6">
-      <h2 class="mb-1 text-xl font-semibold">Queue</h2>
-      <p class="mb-4 text-sm text-muted">
-        Every Session's jobs, and the Text Model's calls, on each machine. One heavy job runs on a
-        machine at a time; text calls go next, ahead of the jobs waiting.
+  <div class="flex min-h-0">
+    <!-- On a phone: the short list, the Session opened last first. -->
+    <div class="flex min-h-0 flex-1 flex-col sm:hidden short:hidden" data-queue-phone>
+      <h2 class="px-4 pb-1 pt-4 text-xl font-semibold">Queue</h2>
+      <QueueList class="min-h-0 flex-1 px-1" :session-id="currentSessionId" @go="go" />
+    </div>
+
+    <!-- Beside a rail: the machines down the left. -->
+    <nav
+      class="hidden w-60 shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-line p-3 sm:flex short:flex"
+      aria-label="Machines"
+      data-queue-machines
+    >
+      <h2 class="mb-1 px-2 text-lg font-semibold">Queue</h2>
+      <p class="mb-3 px-2 text-xs text-muted">
+        One heavy job runs on a machine at a time; the Text Model's calls go next, ahead of the jobs
+        waiting.
       </p>
-      <p v-if="error" class="mb-4 text-sm text-danger" data-queue-error>{{ error }}</p>
-      <!-- The machines side by side, as many abreast as fit. -->
-      <div class="grid items-start gap-4 [grid-template-columns:repeat(auto-fit,minmax(20rem,1fr))]">
-      <section
+      <p class="border-t border-line px-2 pb-1 pt-3 text-[0.68rem] font-medium uppercase tracking-wider text-muted/75">Machines</p>
+      <button
         v-for="m in machines"
         :key="m.key"
-        class="min-w-0 rounded border border-line"
-        data-machine
+        type="button"
+        class="flex flex-col rounded-md px-2 py-1.5 text-left text-muted hover:text-fg"
+        :class="{ 'bg-surface text-fg shadow-sm': machine?.key === m.key }"
+        :aria-current="machine?.key === m.key ? 'true' : undefined"
+        :data-machine-tab="m.key"
+        @click="storedMachine = m.key"
       >
-        <header class="flex items-baseline gap-2 border-b border-line px-3 py-2">
-          <h3 class="font-medium" data-machine-name>{{ m.name }}</h3>
-          <span v-if="m.backends.length" class="text-xs text-muted">{{ m.backends.join(', ') }}</span>
+        <span :class="{ 'font-medium': machine?.key === m.key }">{{ m.name }}</span>
+        <span class="text-xs text-muted">{{ countOf(m) }}</span>
+      </button>
+    </nav>
+
+    <!-- The machine picked: its jobs, a row each. -->
+    <div class="hidden min-w-0 flex-1 flex-col overflow-y-auto sm:flex short:flex">
+      <p v-if="error" class="px-6 pt-4 text-sm text-danger" data-queue-error>{{ error }}</p>
+      <section v-if="machine" class="w-full max-w-4xl px-6 py-4" data-machine>
+        <header class="mb-3 flex items-baseline gap-2">
+          <h3 class="text-lg font-semibold" data-machine-name>{{ machine.name }}</h3>
+          <span v-if="machine.backends.length" class="text-sm text-muted">{{ machine.backends.join(', ') }}</span>
         </header>
         <p
-          v-if="!m.running.length && !m.waiting.length && !m.finished.length"
-          class="px-3 py-2 text-sm text-muted"
+          v-if="!machine.running.length && !machine.waiting.length && !machine.finished.length"
+          class="text-sm text-muted"
         >
           Idle.
         </p>
         <template v-for="section in SECTIONS" :key="section.key">
-          <template v-if="m[section.key].length">
-            <div class="flex items-baseline justify-between gap-2 bg-surface px-3 py-1">
-              <h4 class="text-xs uppercase tracking-wide text-muted">{{ section.title }}</h4>
+          <template v-if="machine[section.key].length">
+            <div class="mt-4 flex items-baseline justify-between gap-2 border-b border-line pb-1">
+              <h4 class="text-xs font-semibold uppercase tracking-wide text-muted">{{ section.title }}</h4>
               <button
-                v-if="actionOf(m, section.key)"
+                v-if="actionOf(machine, section.key)"
                 type="button"
                 class="text-xs underline-offset-2 hover:underline"
-                :class="actionOf(m, section.key)!.danger ? 'text-danger' : 'text-fg'"
-                :title="actionOf(m, section.key)!.title"
+                :class="actionOf(machine, section.key)!.danger ? 'text-danger' : 'text-fg'"
+                :title="actionOf(machine, section.key)!.title"
                 :data-section-action="section.key"
-                @click="dropAll(actionOf(m, section.key)!.jobs)"
+                @click="dropAll(actionOf(machine, section.key)!.jobs)"
               >
-                {{ actionOf(m, section.key)!.label }}
+                {{ actionOf(machine, section.key)!.label }}
               </button>
             </div>
             <ol :data-section="section.key">
               <li
-                v-for="row in m[section.key]"
+                v-for="row in machine[section.key]"
                 :key="row.type === 'job' ? row.job.id : `${row.call.job} ${row.call.since}`"
-                class="flex items-start gap-2 border-t border-line px-3 py-2 text-sm"
+                class="flex items-start gap-2 border-b border-line py-2.5 text-sm"
                 data-queue-row
               >
                 <component
@@ -196,7 +241,6 @@ const SECTIONS = [
           </template>
         </template>
       </section>
-      </div>
     </div>
   </div>
 </template>

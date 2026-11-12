@@ -68,7 +68,7 @@ const apply = () =>
 </script>
 
 <template>
-  <div class="card">
+  <div class="flex min-w-0 flex-col gap-3">
     <div class="flex flex-col gap-1">
       <label for="sessions-folder" class="font-medium">Session folder</label>
       <div class="flex gap-2">
@@ -148,11 +148,3 @@ const apply = () =>
     <p v-if="problem" class="text-sm text-danger" data-folder-error>{{ problem }}</p>
   </div>
 </template>
-
-<style scoped>
-@reference "../style.css";
-
-.card {
-  @apply flex min-w-0 flex-col gap-5 rounded-lg border border-line bg-surface/40 p-4;
-}
-</style>
