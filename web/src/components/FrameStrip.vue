@@ -27,10 +27,15 @@ const props = defineProps<{ tiles: readonly StripTile[]; picked: number | null }
 defineEmits<{ pick: [index: number] }>()
 const strip = useTemplateRef<HTMLElement>('strip')
 
+// The first time straight there, so the strip doesn't glide past (and load) every tile on the way;
+// then gliding, as the pick moves.
+let placed = false
 watch(() => [props.picked, props.tiles.length], async () => {
   await nextTick()
-  strip.value?.querySelector('[aria-current="true"]')
-    ?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' })
+  const tile = strip.value?.querySelector('[aria-current="true"]')
+  if (!tile) return
+  tile.scrollIntoView({ behavior: placed ? 'smooth' : 'instant', block: 'nearest', inline: 'nearest' })
+  placed = true
 }, { immediate: true })
 </script>
 

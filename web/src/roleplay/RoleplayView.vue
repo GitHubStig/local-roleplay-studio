@@ -499,6 +499,8 @@ async function begin() {
 async function send() {
   const text = draft.value.trim()
   if (!text || busy.value || !begun.value || !(await flushEdits('sent'))) return
+  // The reply to it is the one to see.
+  picked.value = null
   run({ kind: 'message', message: text, reply: {} }, () => sendMessage(props.id, text, afterOf(), onEvent))
 }
 
@@ -571,14 +573,29 @@ async function restart() {
   }
 }
 
+/**
+ * Opened afresh (not come back to, which keeps the screen as it was), a Roleplay starts at its
+ * start: Frame 1 picked, the story at its top, the strip at its first tile. Until then, nothing
+ * else here scrolls it.
+ */
+let opened = false
+watch(session, async (s) => {
+  if (!s || opened) return
+  opened = true
+  if (s.frames.length > 1) picked.value = s.frames[0].index
+  await nextTick()
+  transcript.value?.scrollTo({ top: 0, behavior: 'auto' })
+}, { immediate: true })
+
 // Keep the newest exchange in view as the conversation grows (not while picturing a Frame).
 watch([
   () => session.value?.frames.length,
   () => (replying.value ? pending.value!.reply : null),
   () => (replying.value ? pending.value!.message : null),
-], async () => {
+], async (_now, before) => {
+  // The first load is the opening's, above.
+  if (before[0] === undefined) return
   await nextTick()
-  // Jump on opening; glide while a reply comes in.
   transcript.value?.scrollTo({
     top: transcript.value.scrollHeight,
     behavior: pending.value ? 'smooth' : 'auto',

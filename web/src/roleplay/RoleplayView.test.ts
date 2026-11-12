@@ -134,6 +134,9 @@ type Wrapper = Awaited<ReturnType<typeof mountIt>>['wrapper']
 const buttonNamed = (wrapper: Wrapper, name: string) =>
   wrapper.findAll('button').find((b) => b.text() === name)!
 
+/** Picks the newest Frame in the strip: a Roleplay opened afresh starts at its first. */
+const toNewest = (wrapper: Wrapper) => wrapper.findAll('[data-tile]').at(-1)!.trigger('click')
+
 /** Opens a menu (`PopMenu`) by its button, unless it's open already. */
 async function openMenu(wrapper: Wrapper, button: string) {
   if (!wrapper.find(button).element.closest('[data-open]')) {
@@ -375,6 +378,7 @@ describe('RoleplayView', () => {
       roleplaySession([frame(0, null, 'Get inside.')]),
     )
     const { wrapper } = await mountIt()
+    await toNewest(wrapper)
     await wrapper.find('[data-undo]').trigger('click')
     await flushPromises()
     expect(roleplay.undoExchanges).toHaveBeenCalledWith('r1', 1, 1)
@@ -390,6 +394,7 @@ describe('RoleplayView', () => {
       roleplaySession([frame(0, null, 'Get inside.')]),
     )
     const { wrapper } = await mountIt()
+    await toNewest(wrapper)
     await wrapper.find('textarea').setValue('Hello?')
     await wrapper.find('[data-undo]').trigger('click')
     await flushPromises()
@@ -412,6 +417,7 @@ describe('RoleplayView', () => {
     )
     vi.mocked(ask).mockReset().mockResolvedValueOnce(false).mockResolvedValueOnce(true)
     const { wrapper } = await mountIt()
+    await toNewest(wrapper)
     const undo = () => wrapper.find('[data-undo]')
     expect(undo().attributes('aria-label')).toBe('Undo')
     await wrapper.findAll('[data-reply]')[0].trigger('click')
@@ -427,7 +433,7 @@ describe('RoleplayView', () => {
     expect((wrapper.find('textarea').element as HTMLTextAreaElement).value).toBe('Thanks.')
   })
 
-  it('selects the newest Frame, or the one picked in the strip or the story', async () => {
+  it('opens at the first Frame, then picks the one picked in the strip or the story', async () => {
     const pictured = {
       ...frame(1, 'Thanks.', 'Sit.'),
       prompt: 'Elena by the stove.',
@@ -441,8 +447,12 @@ describe('RoleplayView', () => {
     const current = () =>
       wrapper.findAll('[data-exchange]').map((r) => r.attributes('aria-current') === 'true')
     const tile = () => wrapper.findAll('[data-tile]').map((t) => t.attributes('aria-current'))
+    // Opened afresh, it starts at the start.
+    expect(prompt()).toBe("Frame 1's prompt")
+    expect(current()).toEqual([true, false, false])
+    expect(tile()).toEqual(['true', 'false', 'false'])
+    await toNewest(wrapper)
     expect(prompt()).toBe("Frame 3's prompt")
-    expect(current()).toEqual([false, false, true])
     expect(tile()).toEqual(['false', 'false', 'true'])
     // The newest isn't pictured: its picture's place says so.
     expect(wrapper.find('[data-not-pictured]').text()).toContain("Frame 3 isn't pictured")
@@ -478,17 +488,18 @@ describe('RoleplayView', () => {
       }]),
     )
     const { wrapper } = await mountIt()
-    await wrapper.find('[data-picture-it]').trigger('click')
-    await flushPromises()
-    expect(vi.mocked(api.queueJob).mock.calls.map((c) => `${c[1]} ${c[2]}`)).toEqual(['render 1'])
-    vi.mocked(api.queueJob).mockClear()
-    await wrapper.findAll('[data-tile]')[0].trigger('click')
+    // Frame 1, with no Image Prompt yet: it's written, then rendered.
     await wrapper.find('[data-picture-it]').trigger('click')
     await flushPromises()
     expect(vi.mocked(api.queueJob).mock.calls.map((c) => `${c[1]} ${c[2]}`)).toEqual([
       'picture 0',
       'render 0',
     ])
+    vi.mocked(api.queueJob).mockClear()
+    await toNewest(wrapper)
+    await wrapper.find('[data-picture-it]').trigger('click')
+    await flushPromises()
+    expect(vi.mocked(api.queueJob).mock.calls.map((c) => `${c[1]} ${c[2]}`)).toEqual(['render 1'])
   })
 
   it('makes a Chain from the selected Frame once pictured, and opens it', async () => {
@@ -507,6 +518,7 @@ describe('RoleplayView', () => {
     )
     vi.mocked(api.chainFromFrame).mockResolvedValue({ id: 'ch', kind: 'chain' } as never)
     const { wrapper, router } = await mountIt()
+    await toNewest(wrapper)
     const button = () => wrapper.find('[data-continue-chain]')
     // In the text box's ⋯ menu, not in the drawer; the newest isn't pictured yet, so nothing to
     // start from.
@@ -1289,6 +1301,7 @@ describe('RoleplayView', () => {
       roleplaySession([withImage(0, null), frame(1, 'Hi.', 'No picture.'), withImage(2, 'Go.')]),
     )
     const { wrapper } = await mountIt()
+    await toNewest(wrapper)
     const story = wrapper.find('[data-transcript]').element as HTMLElement
     story.scrollTo = vi.fn()
     await wrapper.find('[data-picture-image]').trigger('click')
