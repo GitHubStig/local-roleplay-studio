@@ -47,6 +47,28 @@ async function mountIt() {
   return { wrapper, router }
 }
 
+/** Home measures itself (`useElementSize`): every element observed reports this width. */
+function homeIs(width: number) {
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      report: ResizeObserverCallback
+      constructor(report: ResizeObserverCallback) {
+        this.report = report
+      }
+      observe(el: Element) {
+        const box = [{ inlineSize: width, blockSize: 900 }]
+        this.report(
+          [{ target: el, contentRect: { width, height: 900 }, contentBoxSize: box, borderBoxSize: box } as unknown as ResizeObserverEntry],
+          this as unknown as ResizeObserver,
+        )
+      }
+      unobserve() {}
+      disconnect() {}
+    },
+  )
+}
+
 beforeEach(() => {
   localStorage.clear()
   sessionStorage.clear()
@@ -58,13 +80,8 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals())
 
 describe('HomeView', () => {
-  it('splits an ultrawide window in two, New Session open without its button; the splitter resets on a double-click', async () => {
-    vi.stubGlobal('matchMedia', (query: string) => ({
-      matches: query === '(min-width: 140rem)',
-      media: query,
-      addEventListener: () => {},
-      removeEventListener: () => {},
-    }))
+  it('splits Home in two once it is 1000 px wide, New Session open without its button; the splitter resets on a double-click', async () => {
+    homeIs(1900)
     localStorage.setItem('home.start-width', '1000')
     const { wrapper } = await mountIt()
     const pane = () => (wrapper.find('[data-start-pane]').element as HTMLElement).style.width
@@ -72,8 +89,62 @@ describe('HomeView', () => {
     expect(wrapper.find('[data-brief]').exists()).toBe(true)
     expect(pane()).toBe('1000px')
     await wrapper.find('[data-split-handle]').trigger('dblclick')
-    expect(pane()).toBe('704px')
+    // A third of Home, within 360 and 704 px.
+    expect(pane()).toBe('633px')
     expect(localStorage.getItem('home.start-width')).toBeNull()
+  })
+
+  it('folds Start something new to a strip at the edge by its caret, and remembers it', async () => {
+    homeIs(1400)
+    const first = (await mountIt()).wrapper
+    await first.find('[data-start-fold]').trigger('click')
+    expect(first.find('[data-start-pane]').exists()).toBe(false)
+    expect(first.find('[data-split-handle]').exists()).toBe(false)
+    first.unmount()
+    const { wrapper } = await mountIt()
+    expect(wrapper.find('[data-start-pane]').exists()).toBe(false)
+    await wrapper.find('[data-start-unfold]').trigger('click')
+    expect(wrapper.find('[data-brief]').exists()).toBe(true)
+  })
+
+  it('keeps one column just short of 1000 px, Start something new always laid flat above the Sessions', async () => {
+    homeIs(990)
+    const { wrapper } = await mountIt()
+    expect(wrapper.find('[data-split-handle]').exists()).toBe(false)
+    // No button to open it: it's there, and no caret to fold it.
+    expect(wrapper.find('[data-new-session]').exists()).toBe(false)
+    expect(wrapper.find('[data-own-brief]').exists()).toBe(true)
+    expect(wrapper.find('[data-start-fold]').exists()).toBe(false)
+    const html = wrapper.html()
+    expect(html.indexOf('data-brief')).toBeLessThan(html.indexOf('Your Sessions'))
+  })
+
+  it('finds a Session by a part of its title, or its kind', async () => {
+    vi.mocked(api.listSessions).mockResolvedValue([
+      { ...summary('a'), title: 'The Tavern', kind: 'roleplay' },
+      { ...summary('b'), title: 'A ship', kind: 'chain' },
+    ])
+    const { wrapper } = await mountIt()
+    const titles = () => wrapper.findAll('[data-session]').map((s) => s.find('a').text())
+    await wrapper.find('[data-session-search]').setValue('tav')
+    expect(titles()).toHaveLength(1)
+    expect(titles()[0]).toContain('The Tavern')
+    await wrapper.find('[data-session-search]').setValue('chain')
+    expect(titles()[0]).toContain('A ship')
+    await wrapper.find('[data-session-search]').setValue('nothing')
+    expect(wrapper.find('[data-no-match]').exists()).toBe(true)
+  })
+
+  it('opens New Session as a screen of its own on a phone, with a way back', async () => {
+    homeIs(390)
+    const { wrapper } = await mountIt()
+    await wrapper.find('[data-new-session]').trigger('click')
+    expect(wrapper.find('[data-brief]').exists()).toBe(true)
+    const hidden = () => !!wrapper.find('[data-session]').element.closest('[style*="display: none"]')
+    expect(hidden()).toBe(true)
+    await wrapper.find('[data-new-session]').trigger('click')
+    expect(wrapper.find('[data-brief]').exists()).toBe(false)
+    expect(hidden()).toBe(false)
   })
 
   it('lists saved Sessions linking to each, with the latest image', async () => {
@@ -88,21 +159,15 @@ describe('HomeView', () => {
     expect(cards[0].find('[data-kind]').text()).toBe('Chain')
   })
 
-  it('keeps Start a new Session closed under its button while there are Sessions', async () => {
+  it('keeps New Session closed behind its button on a phone while there are Sessions', async () => {
+    homeIs(390)
     const { wrapper } = await mountIt()
-    const button = wrapper.find('[data-new-session]')
-    expect(button.attributes('aria-expanded')).toBe('false')
+    expect(wrapper.find('[data-new-session]').attributes('aria-expanded')).toBe('false')
     expect(wrapper.find('[data-brief]').exists()).toBe(false)
-    await button.trigger('click')
-    await flushPromises()
-    expect(button.attributes('aria-expanded')).toBe('true')
-    expect(wrapper.find('[data-brief]').exists()).toBe(true)
-    // Above Your Sessions, so it pushes them down.
-    const html = wrapper.html()
-    expect(html.indexOf('data-brief')).toBeLessThan(html.indexOf('Your Sessions'))
   })
 
-  it('remembers Start a new Session opened or closed, for this tab', async () => {
+  it('remembers New Session opened or closed on a phone, for this tab', async () => {
+    homeIs(390)
     const first = (await mountIt()).wrapper
     await first.find('[data-new-session]').trigger('click')
     first.unmount()
@@ -179,7 +244,6 @@ describe('HomeView', () => {
     const { wrapper, router } = await mountIt()
     await router.replace({ path: '/', query: { error: 'Ollama: model not found' } })
     await flushPromises()
-    expect(wrapper.find('[data-new-session]').attributes('aria-expanded')).toBe('true')
     expect(wrapper.text()).toContain("Couldn't start the Session: Ollama: model not found")
   })
 
@@ -212,8 +276,6 @@ describe('HomeView', () => {
       errors: [],
     })
     const { wrapper, router } = await mountIt()
-    await wrapper.find('[data-new-session]').trigger('click')
-    await flushPromises()
     await wrapper.find('[data-scenario=tavern]').trigger('click')
     await flushPromises()
     expect(router.currentRoute.value.path).toBe('/scenario/tavern')

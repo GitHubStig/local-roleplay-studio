@@ -36,7 +36,7 @@ Decided by the owner. On 2026-11-12, before building began, the owner confirmed 
 - **The Scenario page on one page, two columns**: the story on the left, People on the right, Start and the kind of Session in a bar that stays in view. Empty parts fold into one line of chips ("Left to the Text Model: + Wears + Goal"); who plays whom is a chip beside each name; Suggest shows on the part being edited.
 - **Settings and the Queue as one kind of page**: sections down the left (grouped as Models and App), rows on the right, with a new Appearance section for the theme. Settings opens as an overlay over the screen it was opened from, with its own address.
 - **At phone width** (sixteen mockups) four rules carry every screen: the rail becomes a tab bar; whatever opens beside or over a screen on a desktop (the drawer, the picture's Clip and 3D menus, the Session's models and switches) opens as a sheet from the bottom, the picture still in view; one column in the order it's used (the strip, the picture, the words, the text box); and the main button stays put (Send in the box, Start and Write Frames in a bar). Home is Sessions two across with New at the top, and starting a Session is a screen of its own; the Scenario page is one column with each Person folding closed; a Storyboard's plan is its Beats down the screen; the Queue is a screen from the tab bar; Settings is its list of sections, each opening from it. Held sideways (`short:`), the rail goes back to the side and the strip folds away.
-- **Home's two columns from about 1800 px of Home's own width** by a container query rather than the window's width, as a maximised window on a 1920 screen is often a few pixels short.
+- **Home's two columns from about 1800 px of Home's own width** by a container query rather than the window's width, as a maximised window on a 1920 screen is often a few pixels short. (Built from 1000 px of Home's own width instead, with a caret to fold the second column: see stage 7's notes.)
 - **The look is the soft split, flush.** The story is the full parchment; the tools around it (the rail, the Session's bar, the strip, the drawer, Settings, the Queue) are the same paper, paler and quieter. No sheet edge, margin or shadow around the story: the tone changes and nothing else. Fewer boxes everywhere: lines between things rather than cards inside cards.
 - **Dark mode is the soft split's dark**: brown-tinted charcoal tools and a lamplit brown story with parchment-coloured text, in place of today's neutral greys. The app keeps following the system's theme until the player picks one.
 
@@ -53,8 +53,8 @@ Building began on 2026-11-12, on the `screens` branch. Each stage is a piece of 
 3. **Chain and Storyboard** in the same view, with the Beat cards for a plan. *Built and committed 2026-11-12.*
 4. **The contact sheet, and the Queue's slide-in panel** with the count on the rail. *Built 2026-11-12, waiting for the owner's look.*
 5. **Settings** as an overlay in its new shape, and the Queue page to match. *Built and committed 2026-11-12.*
-6. **The Scenario page.** *Built 2026-11-12, waiting for the owner's look.*
-7. **Home** at wide widths, and fewer boxes wherever a stage before hasn't taken them out.
+6. **The Scenario page.** *Built and committed 2026-11-12.*
+7. **Home** at wide widths, and fewer boxes wherever a stage before hasn't taken them out. *Built 2026-11-12, waiting for the owner's look.*
 8. **The immersive view.**
 9. **A retrospective** (asked for 2026-11-12): a page with every screen before (`main`, run from a worktree of its own) and after, at each size and in both themes, and what changed on each and why. Its shots show Sessions, so ask the owner whether to use theirs or a throwaway Session from the tavern Scenario before publishing it.
 
@@ -155,6 +155,11 @@ What was worked out from the code while planning, to start from rather than to f
 **7. Home and fewer boxes** (`web/src/views/HomeView.vue`).
 
 - Home's `wide:` classes become a container query at about 1800 px; the resizable split between its two panes stays.
+
+- Built 2026-11-12. Home measures its own width (`useElementSize`), not the window's, and has two panes from 1000 px of it: the Sessions, and "Start something new" a third of Home at first (360 to 704 px), resizable as before. The plan's 1800 px changed on the owner's look (2026-11-12): below it, Start something new had to be a button that opened and closed it above the Sessions, which the owner didn't like, then a strip along the top that pushed the Sessions half a screen down; two panes from 1000 px keep one layout at every desktop width. A caret by its heading folds it to a strip at the edge with its name down it, the Sessions taking the room, remembered per browser (the owner, 2026-11-12). Between 640 and 1000 px it's along the top, the Brief beside the Scenarios once the strip is 44rem wide (a container query on `StartSession`, so nothing on Home goes by the window's width), under each other before (`StartSession`'s `flat`). It's measured in the script rather than by a CSS container query, as the script also decides whether New Session's button shows. Start something new is your own Brief first, then "Or a Scenario" as a list, a line each, Import… beside its heading, in place of cards and a boxed Brief; the same words and look at every width. Your Sessions has a search over titles and kinds, and its cards lost their border (a ring when pointed at, and around the Session in progress). On a phone (Home under 640 px, measured with its padding) the Sessions are as many across as fit at 10rem or more, two on a phone, under a full-width New Session, which opens Start something new as a screen of its own with "‹ Your Sessions" back.
+- Fewer boxes: what's left on the other screens is mostly fields and buttons, which keep their edges. The Music tab's Cue strip and track bar were in the info blue, the last colour outside the app's own: they're in ink now. Its stinger is a quote with a line down its side, and the Frame's Cue sits under a line, where both were boxes.
+- Not changed: a Session card's Delete still shows only on hover, so a touch screen can't reach it (as before); the Cast's fields keep their boxes, as they're edited.
+- Not checked: a real phone; the Windows PC.
 
 **8. The immersive view.**
 

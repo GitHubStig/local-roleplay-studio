@@ -253,7 +253,7 @@ defineExpose({ flush })
             class="relative h-full min-w-0 basis-0 overflow-hidden rounded-sm px-1.5 text-xs tabular-nums transition-colors"
             :class="
               frameCue?.id === cue.id
-                ? 'bg-info font-semibold text-canvas ring-2 ring-info ring-offset-1 ring-offset-canvas'
+                ? 'bg-fg font-semibold text-canvas ring-2 ring-fg ring-offset-1 ring-offset-canvas'
                 : cue.values
                 ? 'bg-fg/20 text-muted hover:bg-fg/35'
                 : 'border border-dashed border-line text-muted hover:bg-fg/10'
@@ -285,7 +285,7 @@ defineExpose({ flush })
         data-track-position
       >
         <div
-          class="absolute inset-y-0 left-0 bg-info"
+          class="absolute inset-y-0 left-0 bg-fg"
           :style="{ width: `${(trackPosition.at / trackPosition.length) * 100}%` }"
           data-track-played
         />
@@ -347,14 +347,14 @@ defineExpose({ flush })
           {{ frame.music.line }}
         </blockquote>
         <p v-if="frame.music.reading" class="leading-relaxed" data-reading>{{ frame.music.reading }}</p>
-        <div v-if="frame.music.stinger" class="flex flex-col gap-1 rounded border border-line p-2" data-stinger>
+        <div v-if="frame.music.stinger" class="flex flex-col gap-1 border-l-2 border-line pl-3" data-stinger>
           <p class="font-medium">A stinger here, over the music</p>
           <blockquote v-if="frame.music.stinger.line" class="border-l-2 border-line pl-2 italic">
             {{ frame.music.stinger.line }}
           </blockquote>
           <p class="leading-relaxed">{{ frame.music.stinger.reading }}</p>
         </div>
-        <div v-if="frameCue" class="rounded border border-line p-2" data-frame-cue>
+        <div v-if="frameCue" class="border-t border-line pt-3" data-frame-cue>
           <p class="text-xs text-muted">
             Cue from {{ frameName(frameCue.start) }}<template v-if="frameCue.start !== frame.index">
               · <button type="button" class="underline hover:text-fg" @click="emit('go', frameCue.start)">go there</button></template>

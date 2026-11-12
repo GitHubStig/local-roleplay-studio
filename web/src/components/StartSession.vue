@@ -19,7 +19,11 @@ import { useTextModelReady } from '../composables/useTextModelReady'
 import { ago } from '../ago'
 import { ask } from '../ask'
 
-defineProps<{ error?: string }>()
+/**
+ * Starting a Session: your own Brief, or a Scenario. A column on a wide Home; laid `flat` along the
+ * top of a narrower one, always there, the Brief beside the Scenarios.
+ */
+defineProps<{ error?: string; flat?: boolean }>()
 
 /** The Brief's length limit, as the server enforces it. */
 const BRIEF_MAX = 4000
@@ -78,7 +82,7 @@ const scenarios = computed(() =>
 
 const fullDate = (iso: string) =>
   new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
-/** A card's tooltip: its description, then when it was made and last edited. */
+/** A Scenario's tooltip: its description, then when it was made and last edited. */
 const cardTitle = (s: ScenarioSummary) =>
   [
     s.description,
@@ -110,19 +114,49 @@ async function open(from: ScenarioSource) {
 </script>
 
 <template>
-  <section class="flex flex-col gap-6" aria-label="Start a new Session">
+  <section class="@container flex flex-col" :class="flat ? 'gap-3' : 'gap-6'" aria-label="Start a new Session">
     <p v-if="loadError" class="text-danger">Could not load Scenarios: {{ loadError }}</p>
     <p v-else-if="!list || !loaded" class="text-muted">Loading…</p>
 
     <template v-else>
       <p v-if="textModelBlocker" class="text-sm text-warn" data-blocker>{{ textModelBlocker }}</p>
 
-      <div class="flex flex-col gap-3">
-        <div class="flex items-baseline justify-between gap-3">
-          <h3 class="text-sm text-muted">Start from a Scenario, or write your own Brief</h3>
+      <!-- Laid flat, the Brief beside the Scenarios once it has room (by its own width, as the rest
+           of Home goes by Home's, not the window's), under each other before; else one above the
+           other. -->
+      <div class="grid items-start gap-6" :class="{ '@min-[44rem]:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] @min-[44rem]:gap-10': flat }">
+      <!-- Your own Brief first, as typing one is the quickest way in; then the Scenarios, a line
+           each, the one edited last first. -->
+      <div class="flex flex-col gap-2" data-own-brief>
+        <h3 class="text-xs font-semibold uppercase tracking-wide text-muted">Your own Brief</h3>
+        <textarea
+          v-model="brief"
+          class="field resize-y text-sm"
+          :class="flat ? 'h-20' : 'h-24'"
+          placeholder="Who's in it, where, and what's happening, e.g. a lighthouse keeper in a winter storm; I wash up at her door."
+          :maxlength="BRIEF_MAX"
+          data-brief
+        />
+        <div class="flex items-center gap-4">
           <button
             type="button"
-            class="rounded border border-line px-2 py-0.5 text-xs text-muted hover:border-fg hover:text-fg"
+            class="rounded-lg bg-fg px-4 py-1.5 text-sm font-medium text-canvas disabled:opacity-50"
+            :disabled="briefBlocker !== null || !!textModelBlocker"
+            data-open-brief
+            @click="open({ brief: brief.trim() })"
+          >
+            Open
+          </button>
+          <span v-if="brief && briefBlocker" class="text-sm text-warn">{{ briefBlocker }}</span>
+        </div>
+      </div>
+
+      <div class="flex flex-col">
+        <div class="flex items-baseline justify-between gap-3 border-b border-line pb-1">
+          <h3 class="text-xs font-semibold uppercase tracking-wide text-muted">Or a Scenario</h3>
+          <button
+            type="button"
+            class="text-xs text-muted underline-offset-2 hover:text-fg hover:underline"
             title="Add a Scenario's Markdown file to yours"
             data-import
             @click="picker.open()"
@@ -130,62 +164,42 @@ async function open(from: ScenarioSource) {
             Import…
           </button>
         </div>
-        <p v-if="fileError" class="text-sm text-danger" role="alert">{{ fileError }}</p>
-        <div class="grid grid-cols-[repeat(auto-fill,minmax(14rem,1fr))] gap-3">
-          <div v-for="s in scenarios" :key="s.id" class="group relative flex">
+        <p v-if="fileError" class="py-2 text-sm text-danger" role="alert">{{ fileError }}</p>
+        <ul class="grid grid-cols-[repeat(auto-fill,minmax(18rem,1fr))] gap-x-6">
+          <li v-for="s in scenarios" :key="s.id" class="group relative flex border-b border-line">
             <button
               type="button"
-              class="flex min-w-0 flex-1 flex-col gap-0.5 rounded-lg border border-line bg-surface p-3 text-left hover:border-fg disabled:cursor-not-allowed disabled:opacity-60"
+              class="flex min-w-0 flex-1 flex-col gap-0.5 py-2.5 pr-14 text-left hover:text-fg disabled:cursor-not-allowed disabled:opacity-60"
               :title="cardTitle(s)"
               :disabled="!!textModelBlocker"
               :data-scenario="s.id"
               @click="open({ scenarioId: s.id })"
             >
-              <span class="text-sm font-medium">{{ s.title }}</span>
+              <span class="text-sm font-medium group-hover:underline group-hover:underline-offset-2">{{ s.title }}</span>
               <span class="line-clamp-2 text-xs text-muted">{{ s.description }}</span>
-              <span v-if="s.modified" class="mt-1 text-xs text-muted/80" data-edited>
+              <span v-if="s.modified" class="text-xs text-muted/80" data-edited>
                 Edited {{ ago(s.modified) }}
               </span>
             </button>
             <button
               v-if="s.own"
               type="button"
-              class="absolute right-2 top-2 rounded border border-line bg-canvas/90 px-2 py-0.5 text-xs text-danger opacity-0 focus:opacity-100 group-hover:opacity-100"
+              class="absolute right-0 top-2.5 rounded px-1.5 py-0.5 text-xs text-danger opacity-0 hover:bg-surface focus:opacity-100 group-hover:opacity-100"
               title="Delete this Scenario of yours"
               data-delete-scenario
               @click="remove(s)"
             >
               Delete
             </button>
-          </div>
-        </div>
-        <div class="flex flex-col gap-2 rounded-lg border border-line bg-surface p-4">
-          <span class="font-medium">Your own Brief</span>
-          <textarea
-            v-model="brief"
-            class="h-28 resize-y rounded border border-line bg-canvas p-2 text-sm"
-            placeholder="Who's in it, where, and what's happening, e.g. a lighthouse keeper in a winter storm; I wash up at her door."
-            :maxlength="BRIEF_MAX"
-            data-brief
-          />
-          <div class="flex items-center gap-4">
-            <button
-              type="button"
-              class="rounded-lg bg-fg px-4 py-2 text-sm font-medium text-canvas disabled:opacity-50"
-              :disabled="briefBlocker !== null || !!textModelBlocker"
-              data-open-brief
-              @click="open({ brief: brief.trim() })"
-            >
-              Open
-            </button>
-            <span v-if="brief && briefBlocker" class="text-sm text-warn">{{ briefBlocker }}</span>
-          </div>
-        </div>
+          </li>
+        </ul>
+      </div>
+
       </div>
 
       <div
         v-if="list.errors.length"
-        class="rounded-lg border border-line p-4 text-sm text-warn"
+        class="border-l-2 border-warn pl-3 text-sm text-warn"
         role="alert"
       >
         <p class="mb-1 font-medium">Some Scenario files couldn't be loaded:</p>
