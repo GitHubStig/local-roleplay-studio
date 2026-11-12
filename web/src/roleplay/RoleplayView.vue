@@ -958,13 +958,15 @@ const lookSavingText = computed(() =>
                   :data-exchange="frame.index"
                   @click="pick(frame.index)"
                 >
-                  <div v-if="frame.message !== null" class="flex flex-col items-end gap-1" data-message>
+                  <!-- The player's Message to the right and the Reply to the left, each leaving a margin on
+                       the other side, as a chat's do. -->
+                  <div v-if="frame.message !== null" class="flex flex-col items-end gap-1 pl-[12%]" data-message>
                     <span class="text-xs text-muted">{{ personaName }}</span>
                     <p class="max-w-prose whitespace-pre-wrap rounded-2xl rounded-br-md bg-fg px-3 py-2 text-canvas">
                       {{ frame.message }}
                     </p>
                   </div>
-                  <div :data-frame-index="frame.index" data-reply>
+                  <div class="pr-[12%]" :data-frame-index="frame.index" data-reply>
                     <div class="flex min-w-0 flex-1 flex-col gap-1.5">
                       <span class="text-xs text-muted">{{ characterName }}</span>
                       <p
@@ -1074,13 +1076,13 @@ const lookSavingText = computed(() =>
 
               <!-- The exchange in progress. -->
               <template v-if="pending && replying">
-                <li v-if="pending.message" class="flex flex-col items-end gap-1" data-pending-message>
+                <li v-if="pending.message" class="flex flex-col items-end gap-1 pl-[12%]" data-pending-message>
                   <span class="text-xs text-muted">{{ personaName }}</span>
                   <p class="max-w-prose whitespace-pre-wrap rounded-lg bg-fg/80 px-3 py-2 text-canvas">
                     {{ pending.message }}
                   </p>
                 </li>
-                <li class="flex flex-col gap-1.5 opacity-80" data-pending-reply>
+                <li class="flex flex-col gap-1.5 pr-[12%] opacity-80" data-pending-reply>
                   <span class="text-xs text-muted">{{ characterName }}</span>
                   <p v-if="pending.reply.internal" class="max-w-prose text-sm italic text-muted">
                     {{ pending.reply.internal }}
