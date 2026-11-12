@@ -12,7 +12,7 @@ import SaveStatus from './SaveStatus.vue'
  * the art style. Saved once the focus leaves the form, or a Subject is removed (`useAutosave`); the
  * screen calls `flush` before work that reads it. It collapses to its heading and who's in it by
  * clicking the heading, remembered per browser by `idPrefix`. Shared by Storyboards and Roleplays
- * (ADR 0012).
+ * (ADR 0012). In a page with room (`cards`), each Subject is a container in a grid.
  */
 const props = defineProps<{
   /** The Look as saved; the draft starts again from it whenever it changes elsewhere. */
@@ -38,6 +38,8 @@ const props = defineProps<{
   savingText?: string
   /** The Session's line of saves, shared with its other drafts. */
   line?: SaveLine
+  /** Each Subject a container in a grid, for a page with the room (a Storyboard's plan); else a column. */
+  cards?: boolean
 }>()
 
 const trimmed = (l: Look): Look => ({
@@ -87,13 +89,14 @@ defineExpose({ flush })
       @toggle="collapsed = !($event.target as HTMLDetailsElement).open"
     >
       <summary class="flex cursor-pointer select-none items-baseline gap-1.5 hover:text-fg">
-        <span class="shrink-0 text-muted transition-transform group-open/look:rotate-90">›</span>
+        <span class="fold-caret group-open/look:rotate-90">›</span>
         <h3 class="shrink-0 text-base font-semibold">Look</h3>
         <span class="min-w-0 truncate text-muted">· {{ collapsed && preview ? preview : every }}</span>
         <!-- At the right of the heading, e.g. a Storyboard's Restart… -->
         <slot name="actions" />
       </summary>
       <div class="mt-3 flex flex-col gap-3">
+        <div :class="cards ? 'grid grid-cols-[repeat(auto-fit,minmax(18rem,1fr))] items-start gap-3' : 'contents'" data-look-subjects>
         <LookSubject
           v-for="(subject, i) in draft.subjects"
           :id="`${idPrefix}.subject.${i}`"
@@ -103,23 +106,27 @@ defineExpose({ flush })
           :disabled="disabled"
           :name-fixed="!!kept || fixed"
           :kept="fixed || kept?.includes(subject.name)"
+          :class="{ 'rounded-lg border border-line bg-surface/60 p-3': cards }"
           @remove="remove(i)"
         />
         <button
           v-if="!kept && !fixed"
           type="button"
-          class="w-fit text-xs text-muted hover:text-fg disabled:opacity-50"
+          class="text-xs text-muted hover:text-fg disabled:opacity-50"
+          :class="cards ? 'min-h-24 rounded-lg border border-dashed border-line hover:border-fg' : 'w-fit'"
           :disabled="disabled"
           data-add-subject
           @click="draft.subjects.push({ name: '', identity: '' })"
         >
           + Add a subject
         </button>
+        </div>
         <CollapsibleTextarea
           :id="`${idPrefix}.style`"
           v-model="draft.style"
           label="Art style and medium"
           heading
+          always-open
           :disabled="disabled"
         />
       </div>

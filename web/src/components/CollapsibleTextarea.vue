@@ -16,8 +16,10 @@ const props = defineProps<{
   /** Shown while it's empty. */
   placeholder?: string
   alwaysOpen?: boolean
-  /** Its label in the heading font, for a box that stands as a part of its own (a Look's art style). */
+  /** Its label as a part's title, for a box that stands as a part of its own (a Look's art style). */
   heading?: boolean
+  /** Its label as a section's heading, as the Look's and the Cast's are (a Storyboard's Beat). */
+  section?: boolean
 }>()
 const value = defineModel<string>({ required: true })
 
@@ -37,7 +39,7 @@ const preview = computed(() => value.value.replace(/\s+/g, ' ').trim())
        padding about half a line tall: small ones (18 px) fit it, overlapping only the space below
        the last line's letters. -->
   <div v-if="alwaysOpen" class="flex flex-col gap-1 text-xs text-muted">
-    <label :for="boxId">{{ label }}</label>
+    <label :for="boxId" :class="{ 'text-sm font-medium text-fg': heading }">{{ label }}</label>
     <!-- The box and an invisible copy of its placeholder share one grid cell, so an empty box is
          as tall as its placeholder: a browser sizes it by what's typed, and a long placeholder ran
          on under the buttons. -->
@@ -74,8 +76,11 @@ const preview = computed(() => value.value.replace(/\s+/g, ' ').trim())
     @toggle="collapsed = !($event.target as HTMLDetailsElement).open"
   >
     <summary class="flex cursor-pointer select-none items-baseline gap-1.5 py-0.5 hover:text-fg">
-      <span class="shrink-0 transition-transform group-open/field:rotate-90">›</span>
-      <span class="shrink-0" :class="{ 'text-sm font-medium text-fg': heading }">{{ label }}</span>
+      <span class="fold-caret group-open/field:rotate-90">›</span>
+      <span
+        class="shrink-0"
+        :class="section ? 'text-base font-semibold text-fg' : heading ? 'text-sm font-medium text-fg' : ''"
+      >{{ label }}</span>
       <span v-if="collapsed" class="min-w-0 truncate text-muted/80" data-preview>· {{ preview }}</span>
     </summary>
     <textarea

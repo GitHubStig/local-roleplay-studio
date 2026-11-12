@@ -726,8 +726,9 @@ const pickFromAll = (index: number) => pick(index)
           </li>
         </ol>
 
-        <!-- The picked Beat, and the Look beside it. -->
-        <div class="story grid min-h-0 flex-1 content-start gap-x-10 gap-y-6 overflow-y-auto p-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] lg:px-8 lg:py-6">
+        <!-- The picked Beat, then the Look under it: who's in the Storyboard, a container each, and
+             its art style. -->
+        <div class="story flex min-h-0 flex-1 flex-col gap-8 overflow-y-auto p-4 lg:px-8 lg:py-6">
           <section class="flex min-w-0 flex-col gap-4 text-sm" data-beat-editor>
             <p v-if="!current" class="text-muted">{{ busy ? 'The Beats appear as the plan is written.' : 'No Beats yet.' }}</p>
             <form
@@ -740,6 +741,7 @@ const pickFromAll = (index: number) => pick(index)
               <CollapsibleTextarea
                 id="storyboard.frame"
                 v-model="frameDraft.text"
+                section
                 :label="`Beat ${current.index + 1}`"
                 :disabled="busy || !frameEditable"
               />
@@ -824,7 +826,7 @@ const pickFromAll = (index: number) => pick(index)
               </div>
             </div>
           </section>
-          <section class="min-w-0 text-sm" data-plan-look>
+          <section class="min-w-0 border-t border-line pt-6 text-sm" data-plan-look>
             <p v-if="!look" class="text-muted">The Look appears as the plan is written.</p>
             <LookForm
                 v-else
@@ -836,6 +838,7 @@ const pickFromAll = (index: number) => pick(index)
                 every="every Frame"
                 :disabled="busy || !planned || writingStarted"
                 :fixed="writingStarted"
+                cards
               >
                 <template #actions>
                   <RestartButton

@@ -167,6 +167,12 @@
     p-1
     text-sm transition-colors hover:border-current;
 }
+/* The caret before a heading that folds what's under it: one size and colour whatever the
+   heading's, so a section's and a part's line up (it turns as it opens, by the details' group). */
+.fold-caret {
+  @apply inline-block w-3 shrink-0 text-center text-sm leading-none text-muted transition-transform;
+}
+
 /* An icon button that's only its icon until hovered or focused (a running job's spinner, which turns
    into Cancel); as any other on a screen that can't hover. */
 .icon-button.quiet {
