@@ -627,7 +627,7 @@ const imagesOn = computed(() => featureOn.value('images'))
     <p v-if="loadError" class="p-6 text-danger">Could not load this Storyboard: {{ loadError }}</p>
 
     <template v-else-if="session">
-      <main class="flex min-w-0 flex-1 flex-col gap-3 p-4">
+      <main class="story flex min-w-0 flex-1 flex-col gap-3 p-4">
         <div class="flex flex-wrap items-center justify-end gap-x-4 gap-y-1 text-sm">
           <TextModelPicker
             :session="session"

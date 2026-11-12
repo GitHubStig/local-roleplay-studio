@@ -15,16 +15,25 @@
   summary {
     cursor: pointer;
   }
+  /* The browser's own tick boxes, radios and sliders in the app's ink, not its default blue. */
+  input {
+    accent-color: var(--fg);
+  }
 }
 
+/*
+ * The soft split: the story is parchment (`.story`), and the tools around it (the rail, the
+ * panels, Settings, the Queue) are the same paper, paler and quieter. In the dark, the tools are
+ * brown-tinted charcoal and the story lamplit brown, with parchment-coloured text. Only the tone
+ * changes between them: no edge, margin or shadow.
+ */
 :root {
-  /* Parchment: aged paper backgrounds, sepia ink text. */
   color-scheme: light;
-  --canvas: #ede0bf;
-  --surface: #f6ecd2;
-  --line: #d2bf93;
+  --canvas: #f4eedd;
+  --surface: #faf6ea;
+  --line: #ddd2b5;
   --fg: #3a2817;
-  --muted: #6e573b;
+  --muted: #75644c;
   --ok: #3f6b2a;
   --warn: #8f520c;
   --info: #2c5a86;
@@ -33,20 +42,40 @@
 
 :root.dark {
   color-scheme: dark;
-  --canvas: var(--color-neutral-950);
-  --surface: var(--color-neutral-900);
-  --line: var(--color-neutral-800);
-  --fg: var(--color-neutral-100);
-  --muted: var(--color-neutral-400);
-  --ok: var(--color-emerald-400);
-  --warn: var(--color-amber-400);
-  --info: var(--color-sky-400);
-  --danger: var(--color-red-400);
+  --canvas: var(--color-charcoal);
+  --surface: #1e1b19;
+  --line: #2f2a25;
+  --fg: #e9e2d3;
+  --muted: #9c9283;
+  --ok: #8fbf6a;
+  --warn: #e3a547;
+  --info: #86aed6;
+  --danger: #e07a62;
+}
+
+/* The story's own tokens, so everything inside it takes them without knowing. */
+.story {
+  --canvas: #ede0bf;
+  --surface: #f6ecd2;
+  --line: #d2bf93;
+  --muted: #6e573b;
+  background: var(--canvas);
+  color: var(--fg);
+}
+
+.dark .story {
+  --canvas: #241a10;
+  --surface: #2f2317;
+  --line: #453421;
+  --fg: #f1e4c6;
+  --muted: #b49d77;
 }
 
 /* An ultrawide window: room for Home's two columns, or three Settings cards abreast. */
 @theme {
   --breakpoint-wide: 140rem;
+  /* The dark tools' ground, and what a full-screen viewer shows behind a clip in either theme. */
+  --color-charcoal: #151312;
 }
 
 @theme inline {

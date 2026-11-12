@@ -702,7 +702,7 @@ const lookSavingText = computed(() =>
     <p v-if="loadError" class="p-6 text-danger">Could not load this Roleplay: {{ loadError }}</p>
 
     <template v-else-if="session">
-      <main class="flex min-w-0 flex-1 flex-col gap-3 p-4">
+      <main class="story flex min-w-0 flex-1 flex-col gap-3 p-4">
         <div class="flex flex-wrap items-center justify-between gap-3 text-sm">
           <p class="min-w-0 flex-1 basis-40 truncate text-muted" role="status">
             <span v-if="busy" class="animate-pulse">{{ statusLabel }}</span>

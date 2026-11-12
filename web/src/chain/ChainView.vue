@@ -440,7 +440,7 @@ const promptDiff = computed(() => {
     <p v-if="loadError" class="p-6 text-danger">Could not load this Session: {{ loadError }}</p>
 
     <template v-else-if="session">
-      <main class="flex min-w-0 flex-1 flex-col gap-3 p-4">
+      <main class="story flex min-w-0 flex-1 flex-col gap-3 p-4">
         <!-- The Chain's switches, above the picture, as a Roleplay's are above its conversation. -->
         <div class="flex flex-wrap items-center justify-end gap-x-4 gap-y-1 text-sm">
           <TextModelPicker

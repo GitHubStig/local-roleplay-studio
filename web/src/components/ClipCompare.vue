@@ -111,7 +111,7 @@ onBeforeUnmount(pause)
 <template>
   <dialog
     ref="dialog"
-    class="m-0 h-full max-h-none w-full max-w-none bg-neutral-950 p-0 backdrop:bg-black"
+    class="m-0 h-full max-h-none w-full max-w-none bg-charcoal p-0 backdrop:bg-charcoal"
     data-clip-compare
     @close="pause(), emit('close')"
   >
