@@ -64,7 +64,7 @@ watch(() => [props.picked, props.tiles.length], async () => {
       v-for="tile in tiles"
       :key="tile.index"
       type="button"
-      class="relative h-12 w-20 shrink-0 overflow-hidden rounded text-left [@media(max-height:640px)]:h-6 [@media(max-height:640px)]:w-9"
+      class="relative h-12 w-20 shrink-0 overflow-hidden rounded text-left lg:h-16 lg:w-28 [@media(max-height:640px)]:h-6 [@media(max-height:640px)]:w-9"
       :class="[
         tile.index === picked ? 'ring-2 ring-fg ring-offset-1 ring-offset-canvas' : 'hover:ring-1 hover:ring-muted',
         tile.thumb ? '' : 'border border-dashed border-line bg-surface',
@@ -84,13 +84,15 @@ watch(() => [props.picked, props.tiles.length], async () => {
         :class="{ 'opacity-50': tile.dimmed }"
         loading="lazy"
       />
-      <span
-        v-else
-        class="line-clamp-2 p-1 text-[0.6rem] leading-tight text-fg [@media(max-height:640px)]:hidden"
-      >{{ tile.words }}</span>
+      <!-- No picture: its number over its words, as a plan's Beat cards have it, the padding
+           outside what's clamped (inside, a third line showed through it). -->
+      <span v-else class="flex h-full flex-col gap-0.5 px-1.5 py-1 [@media(max-height:640px)]:hidden">
+        <span class="text-[0.6rem] leading-none tabular-nums text-muted">{{ tile.index + 1 }}</span>
+        <span class="line-clamp-2 text-[0.6rem] leading-tight text-fg lg:line-clamp-3 lg:text-[0.65rem]">{{ tile.words }}</span>
+      </span>
       <span
         class="absolute bottom-0 left-1 text-[0.6rem] tabular-nums [@media(max-height:640px)]:inset-0 [@media(max-height:640px)]:grid [@media(max-height:640px)]:place-items-center [@media(max-height:640px)]:text-muted"
-        :class="tile.thumb ? 'text-white [text-shadow:0_0_3px_black]' : 'text-muted'"
+        :class="tile.thumb ? 'text-white [text-shadow:0_0_3px_black]' : 'hidden text-muted [@media(max-height:640px)]:grid'"
       >{{ tile.index + 1 }}</span>
       <span
         v-if="tile.clips"

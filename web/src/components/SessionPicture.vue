@@ -112,9 +112,8 @@ const shown = () => !!displayed.value || !!forming.value
   <div
     class="group/picture relative max-w-full rounded-xl"
     :class="[
-      shown()
-        ? 'aspect-(--ratio) w-[min(100%,calc(38dvh*var(--ratio)))] lg:w-[min(100cqw,calc(100cqh*var(--ratio)))]'
-        : 'w-full lg:max-w-[48rem]',
+      // Pictured or not, the picture's shape and size, so rendering it doesn't move the page.
+      'aspect-(--ratio) w-[min(100%,calc(38dvh*var(--ratio)))] lg:w-[min(100cqw,calc(100cqh*var(--ratio)))]',
       { 'render-sweep': sweep },
     ]"
     :data-rendering="sweep === 'queued' ? 'queued' : undefined"
@@ -175,7 +174,7 @@ const shown = () => !!displayed.value || !!forming.value
     <!-- No picture: a frame in its place, saying why, to picture it from. -->
     <div
       v-else
-      class="grid aspect-[4/3] w-full max-h-[38dvh] place-items-center rounded-xl border-2 border-dashed border-line p-4 text-center lg:max-h-[100cqh]"
+      class="grid h-full w-full place-items-center rounded-xl border-2 border-dashed border-line p-4 text-center"
       data-not-pictured
     >
       <div class="flex flex-col items-center gap-2"><slot name="empty" /></div>

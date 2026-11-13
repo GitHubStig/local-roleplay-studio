@@ -857,7 +857,7 @@ const pickFromAll = (index: number) => pick(index)
       <template v-else>
         <FrameStrip :tiles="tiles" :picked="selected" @pick="pick" @all="allFrames = true" />
         <div class="flex min-h-0 flex-1">
-          <SessionStage :ratio="imageRatioOf(session)" :pictured="imagesOn || !!picture">
+          <SessionStage side="notes" :ratio="imageRatioOf(session)" :pictured="imagesOn || !!picture">
             <template #picture>
               <SessionPicture
                 v-if="current"

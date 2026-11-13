@@ -478,7 +478,7 @@ const pickFromAll = (index: number) => pick(index)
       </FrameStrip>
 
       <div class="flex min-h-0 flex-1">
-        <SessionStage :ratio="imageRatioOf(session)" :pictured="featureOn('images') || !!picture">
+        <SessionStage side="notes" :ratio="imageRatioOf(session)" :pictured="featureOn('images') || !!picture">
           <template #picture>
             <SessionPicture
               :name="shown ? frameName(shown.index) : frameName(pendingIndex)"

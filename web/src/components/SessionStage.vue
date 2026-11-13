@@ -15,7 +15,12 @@ const props = withDefaults(defineProps<{
   ratio?: number
   /** Whether the picture's side shows. */
   pictured?: boolean
-}>(), { ratio: 1.5, pictured: true })
+  /**
+   * What's beside the picture: a story to read (a Roleplay's), kept at a book-page width, or notes
+   * (a Chain's Action, a Storyboard's Beat), narrower on a smaller screen, so the picture has the room.
+   */
+  side?: 'story' | 'notes'
+}>(), { ratio: 1.5, pictured: true, side: 'story' })
 
 const ratio = ref(props.ratio)
 watch(() => props.ratio, (r) => (ratio.value = r))
@@ -25,9 +30,9 @@ provide(PICTURE_RATIO, ratio)
 <template>
   <main class="story relative flex min-w-0 flex-1 flex-col">
     <div
-      class="mx-auto flex min-h-0 w-full flex-1 flex-col gap-3 px-4 pt-3 lg:max-w-[calc((100dvh-14rem)*var(--ratio)+44rem)] lg:flex-row lg:gap-6 lg:px-6 lg:pt-4"
+      class="mx-auto flex min-h-0 w-full flex-1 flex-col gap-3 px-4 pt-3 lg:max-w-[calc((100dvh-14rem)*var(--ratio)+var(--side)+6rem)] lg:flex-row lg:gap-6 lg:px-6 lg:pt-4"
       :class="$slots.box ? 'pb-24 lg:pb-[6.5rem]' : 'pb-4'"
-      :style="{ '--ratio': ratio }"
+      :style="{ '--ratio': ratio, '--side': side === 'story' ? '38rem' : 'clamp(20rem, 28vw, 34rem)' }"
       :data-ratio="ratio.toFixed(3)"
       data-stage
     >
@@ -40,7 +45,7 @@ provide(PICTURE_RATIO, ratio)
       </section>
       <div
         class="flex min-h-0 flex-1 flex-col"
-        :class="{ 'lg:w-[38rem] lg:flex-none': pictured && $slots.picture }"
+        :class="{ 'lg:w-(--side) lg:flex-none': pictured && $slots.picture }"
         data-stage-side
       >
         <slot name="side" />
