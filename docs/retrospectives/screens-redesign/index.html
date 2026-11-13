@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Screens Before and After</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600&display=swap">
+<style>
+/* Layout: one reading column for words, the screenshots breaking out to the page's full width,
+   before and after side by side, stacked when narrow. The app's own soft-split colours. */
+:root {
+  --tools: #f4eedd;
+  --story: #ede0bf;
+  --surface: #faf6ea;
+  --line: #ddd2b5;
+  --fg: #2b2117;
+  --muted: #7a6a52;
+  --ink: #3a2a1a;
+  --ink-fg: #f4eedd;
+  --ok: #4f7a2e;
+  --warn: #9a6512;
+  --display: "Space Grotesk", "Inter", system-ui, sans-serif;
+  --text: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --tools: #151312; --story: #241a10; --surface: #1e1b19; --line: #2f2a25;
+    --fg: #e9e2d3; --muted: #9c9283; --ink: #e9e2d3; --ink-fg: #151312;
+    --ok: #8fbf6a; --warn: #e3a547; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --tools: #151312; --story: #241a10; --surface: #1e1b19; --line: #2f2a25;
+  --fg: #e9e2d3; --muted: #9c9283; --ink: #e9e2d3; --ink-fg: #151312;
+  --ok: #8fbf6a; --warn: #e3a547; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--tools); color: var(--fg); font: 15px/1.6 var(--text);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 64px;
+}
+.wrap { max-width: 1640px; margin-inline: auto; }
+.col { max-width: 68ch; }
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; line-height: 1.2; }
+h1 { font-size: clamp(2rem, 4vw, 3rem); margin: 0; letter-spacing: -0.01em; }
+h2 { font-size: 1.6rem; margin: 0; }
+h3 { font-size: 1rem; margin: 0 0 .4rem; }
+a { color: inherit; }
+.eyebrow { font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.muted { color: var(--muted); }
+header.top { padding-block: 48px 24px; display: grid; gap: 14px; border-bottom: 1px solid var(--line); }
+.facts { display: flex; flex-wrap: wrap; gap: 8px 22px; font-size: .9rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.facts b { color: var(--fg); font-weight: 600; }
+nav.toc { display: flex; flex-wrap: wrap; gap: 6px; padding-block: 16px; }
+nav.toc a { text-decoration: none; font-size: .85rem; padding: 3px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); }
+nav.toc a:hover { border-color: var(--fg); }
+section.screen, section.part { padding-block: 40px; border-bottom: 1px solid var(--line); display: grid; gap: 18px; }
+.head { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; }
+.views { display: flex; border: 1px solid var(--line); border-radius: 8px; padding: 2px; background: var(--surface); }
+.views button { font: inherit; font-size: .82rem; border: 0; background: none; color: var(--muted); padding: 4px 12px; border-radius: 6px; cursor: pointer; }
+.views button[aria-pressed="true"] { background: var(--tools); color: var(--fg); box-shadow: 0 1px 2px rgb(0 0 0 / .12); }
+.views button:focus-visible { outline: 2px solid var(--fg); outline-offset: 1px; }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+.pair.narrow { grid-template-columns: repeat(2, minmax(0, 390px)); justify-content: start; }
+@media (max-width: 900px) { .pair, .pair.narrow { grid-template-columns: minmax(0, 1fr); } }
+figure { margin: 0; min-width: 0; display: grid; gap: 6px; }
+figure a { display: block; border-radius: 8px; overflow: hidden; border: 1px solid var(--line); background: var(--story); }
+figure img { display: block; width: 100%; height: auto; max-width: 100%; }
+figcaption { font-size: .78rem; color: var(--muted); display: flex; gap: 8px; align-items: baseline; }
+figcaption .tag { font-weight: 600; letter-spacing: .06em; text-transform: uppercase; font-size: .7rem; }
+figure.after figcaption .tag { color: var(--ok); }
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 24px 40px; }
+.notes > div { min-width: 0; }
+.notes ul { margin: 0; padding-left: 1.1em; display: grid; gap: 6px; }
+.notes li { max-width: 70ch; }
+.phones { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); gap: 24px 16px; }
+.phones .duo { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.phones h3 { margin-bottom: 8px; }
+table { border-collapse: collapse; width: 100%; font-size: .88rem; }
+.table { overflow-x: auto; }
+td, th { text-align: left; padding: 7px 12px 7px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-weight: 600; color: var(--muted); font-size: .75rem; letter-spacing: .06em; text-transform: uppercase; }
+code { font-size: .86em; background: var(--surface); padding: 1px 5px; border-radius: 4px; border: 1px solid var(--line); }
+td.h { font-family: ui-monospace, Menlo, monospace; font-size: .8rem; color: var(--muted); white-space: nowrap; }
+.lists { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 24px 40px; }
+.lists ul { margin: 0; padding-left: 1.1em; display: grid; gap: 6px; }
+.stat { font-variant-numeric: tabular-nums; font-weight: 600; }
+@media (prefers-reduced-motion: no-preference) { figure img { transition: opacity .15s; } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <span class="eyebrow">Local Roleplay Studio · the <code>screens</code> branch · 11–13 Nov 2026 · on the Mac</span>
+    <h1>Every screen, before and after</h1>
+    <p class="col muted" style="margin:0">The app as it was on <code>main</code>, beside the <code>screens</code> branch, with the same Sessions at the same sizes. Each screen says what changed, why, and what else was weighed on the way. Click a screenshot to open it full size. For publishing, the screenshots show the local network address as <code>pc.local</code> and the Text Model without its variant's name, and one Session's picture on Home is cropped to its top.</p>
+    <div class="facts">
+      <span><b>105</b> files changed</span>
+      <span><b>+6,419 / −4,181</b> lines</span>
+      <span><b>11</b> screens shot at <b>4</b> sizes, <b>52</b> screenshots</span>
+    </div>
+  </header>
+
+  <nav class="toc" aria-label="Screens">
+    <a href="#found">What was found</a>
+    <a href="#home">Home</a>
+    <a href="#roleplay">Roleplay</a>
+    <a href="#clips">Clips</a>
+    <a href="#chain">Chain</a>
+    <a href="#storyboard">Storyboard</a>
+    <a href="#plan">Storyboard plan</a>
+    <a href="#allframes">All Frames</a>
+    <a href="#compare">Compare</a>
+    <a href="#settings">Settings</a>
+    <a href="#queue">Queue</a>
+    <a href="#scenario">Scenario page</a>
+    <a href="#phone">At phone width</a>
+    <a href="#checked">Checked and not</a>
+  </nav>
+
+  <section class="part" id="found">
+    <h2>What was found</h2>
+    <div class="col">
+      <p style="margin-top:0">Screenshots of every screen at 390, 1440, 1920, 2560 and 3440 px, taken on 11 Nov, showed screens that had grown a control at a time:</p>
+      <ul>
+        <li>The story or the picture got the space left over: a row of settings above it and a row of equal buttons below, though the settings rarely change.</li>
+        <li>The Frames list sat as a sidebar in the middle, making every Session three columns of the same weight.</li>
+        <li>The Frame panel was one long column, and the buttons acting on a picture sat away from it.</li>
+        <li>The Scenario page was one long form, with Start at the very bottom and about twenty Suggest buttons in view.</li>
+        <li>Settings and the Queue were two different kinds of page.</li>
+        <li>At phone width the Session screens squashed instead of stacking, and the header ran over itself.</li>
+        <li>The "old game" feel came from boxes inside boxes, not from the parchment. Dark mode was plain grey, with none of the app's character.</li>
+      </ul>
+      <p>A page of mockups was drawn from that, and the owner picked from it. The colours came first, so every later stage was built and judged in the final look.</p>
+    </div>
+  </section>
+
+  <!-- Each screen: its views, the pair, then what changed and what was considered. -->
+  <section class="screen" id="home" data-shot="home" data-views="desk phone dark wide">
+    <div class="head"><div><span class="eyebrow">Stage 7</span><h2>Home</h2></div></div>
+    <div class="notes">
+      <div><h3>What changed</h3><ul>
+        <li>Two columns by Home's own width, from 1000 px, not the window's 2240 px. A maximised 1920 window now gets both: your Sessions, and Start something new.</li>
+        <li>A caret folds Start something new into a strip at the edge, the Sessions taking the room. Home remembers it.</li>
+        <li>Start something new is your own Brief first, then the Scenarios as a list, a line each, where they were cards and a boxed Brief.</li>
+        <li>Your Sessions gained a search over titles and kinds; the cards lost their border.</li>
+        <li>On a phone the cards are two across, and New Session opens a screen of its own with a way back.</li>
+      </ul></div>
+      <div><h3>Considered</h3><ul>
+        <li>The plan said two columns from 1800 px. Below that, Start something new was a button that opened and closed it above the Sessions, which you didn't like.</li>
+        <li>Then a strip along the top, always open, its Scenarios as a row of names with a ✕ each. Its words and look differed from the wide column, and it pushed the Sessions half a screen down.</li>
+        <li>Four options were drawn for the button's place: the strip, a sheet over Home, a screen of its own, or under the Sessions.</li>
+        <li>Two layouts only (two columns, or the phone's) was suggested, and the three were kept but smoothed: every breakpoint on Home now goes by Home's own width.</li>
+      </ul></div>
+    </div>
+  </section>
+
+  <section class="screen" id="roleplay" data-shot="roleplay" data-views="desk phone dark wide">
+    <div class="head"><div><span class="eyebrow">Stages 1–2</span><h2>Roleplay</h2></div></div>
+    <div class="notes">
+      <div><h3>What changed</h3><ul>
+        <li>A rail in place of the header: Home, the Session in progress, the Scenario being set up and the Queue, then the server's dot, the theme and Settings. A tab bar on a phone.</li>
+        <li>The strip view: the Session's bar, a strip of Frames, the picked Frame's picture large beside the story, and a floating text box. The strip is the Frames list.</li>
+        <li>The picture's buttons are on the picture: Re-render, Upscale, Edit, Clip and 3D, shown on hover, always on a touch screen.</li>
+        <li>The Frame panel became a drawer, closed until asked for: the Image Prompt, Clips, Look &amp; Cast, Music.</li>
+        <li>The Session's models and switches went into one popover behind the Image Model's name in the bar.</li>
+        <li>A Frame's jobs are one line on its picture, with a sweep along its edge.</li>
+        <li>The soft split's colours: the story is parchment, the tools around it the same paper, paler. Dark mode is lamplit brown, not grey.</li>
+      </ul></div>
+      <div><h3>Considered</h3><ul>
+        <li>Scrolling the story picks the exchange nearest a line a quarter of the way down, not the one at the top or only what's clicked.</li>
+        <li>A Frame with no picture shows a dashed frame with Picture it, not the picture before it dimmed, or the story taking the whole width.</li>
+        <li>For the models: a bare icon, the models' names, or a tab in the drawer. The Image Model's name was picked, as it's the one to see.</li>
+        <li>Dropped along the way: a Sessions sidebar, Frames as a list down the left, a split with neutral grey tools, a sheet with corners around the story.</li>
+        <li>An immersive view, the picture filling the screen, was drawn and moved to an open thread before it was built.</li>
+      </ul></div>
+    </div>
+  </section>
+
+  <section class="screen" id="clips" data-shot="clips" data-views="desk">
+    <div class="head"><div><span class="eyebrow">Stage 4, then a fix</span><h2>A picture's clips</h2></div></div>
+    <div class="notes">
+      <div><h3>What changed</h3><ul>
+        <li>The Clip button on the picture opens a Clips tab in the drawer beside it, with the count, spinner and waiting dot on the button.</li>
+        <li>While a clip plays, the picture's buttons, label, jobs line and Prompt step aside, so only the clip's own controls are on it.</li>
+      </ul></div>
+      <div><h3>Considered</h3><ul>
+        <li>Stage 2 first put the clip's form in a menu over the picture. It covered the picture, stayed over a playing clip, and the picture's buttons covered the clip's seek bar.</li>
+        <li><code>deno task shot</code> gained <code>--touch</code> to check it as a phone sees it.</li>
+      </ul></div>
+    </div>
+  </section>
+
+  <section class="screen" id="chain" data-shot="chain" data-views="desk phone dark">
+    <div class="head"><div><span class="eyebrow">Stage 3</span><h2>Chain</h2></div></div>
+    <div class="notes">
+      <div><h3>What changed</h3><ul>
+        <li>The same strip view: the Action and what it changed beside the picture, the Image Prompt with its changes marked in the drawer.</li>
+        <li>An earlier Frame shows "Back to the latest" on its picture, in place of the old read-only Action.</li>
+        <li>Beside an Action or a Beat the side is narrower than a Roleplay's story, so the picture has the room: at 1440×900 a Storyboard's went from <span class="stat">712×534</span> to <span class="stat">917×627</span>, at 1920×1080 from <span class="stat">768×576</span> to <span class="stat">1244×851</span>.</li>
+        <li>The strip's tiles are larger on a desktop, 112×64 from 80×48.</li>
+      </ul></div>
+      <div><h3>Considered</h3><ul>
+        <li>A setting for the strip's size was weighed and left out: the right size follows the screen.</li>
+        <li>A Chain opened afresh still starts at its latest Frame, where the next Action goes from; a Roleplay starts at its first.</li>
+      </ul></div>
+    </div>
+  </section>
+
+  <section class="screen" id="storyboard" data-shot="storyboard" data-views="desk phone">
+    <div class="head"><div><span class="eyebrow">Stage 3</span><h2>Storyboard</h2></div></div>
+    <div class="notes">
+      <div><h3>What changed</h3><ul>
+        <li>Written: the Beat, who it shows and its seven sentences beside the picture; Render all and Look in the bar; an unrendered Frame's empty picture holds its own Render button.</li>
+        <li>A Frame not pictured keeps the picture's own shape and size, so rendering it doesn't move the page.</li>
+        <li>A Frame without a picture shows its number and words in the strip.</li>
+      </ul></div>
+      <div><h3>Considered</h3><ul>
+        <li>← and → step through the strip, in place of ↑ and ↓ in the old lists.</li>
+        <li>A Frame's state (Rendered, Changed since render) moved onto its picture's label.</li>
+      </ul></div>
+    </div>
+  </section>
+
+  <section class="screen" id="plan" data-shot="plan" data-views="desk phone">
+    <div class="head"><div><span class="eyebrow">Stage 3, then on your look</span><h2>A Storyboard's plan</h2></div></div>
+    <div class="notes">
+      <div><h3>What changed</h3><ul>
+        <li>The Beats are cards along the strip, dragged to reorder (or ← and → on a grip), with "+ Beat" at the end and Write Frames in a bar along the foot.</li>
+        <li>The Look runs under the Beat, across the page: each person a container, side by side, the art style below.</li>
+        <li>The headings match: the Beat and the Look are sections, the people and the art style parts, every fold's caret one size. The art style no longer folds.</li>
+        <li>A dragged Beat no longer sticks: reordering moved the grip in the page and it lost the pointer. All 10 quick drags stuck before the fix, none after.</li>
+      </ul></div>
+      <div><h3>Considered</h3><ul>
+        <li>The Look first sat in a narrow column beside the Beat, leaving most of the screen empty.</li>
+        <li>Offered and not taken for now: every Beat as a row down the page, a grid of bigger cards, or the editor filling its room with the Beats around it.</li>
+      </ul></div>
+    </div>
+  </section>
+
+  <section class="screen" id="allframes" data-shot="allframes" data-views="desk">
+    <div class="head"><div><span class="eyebrow">Stage 4</span><h2>All Frames</h2></div></div>
+    <div class="notes">
+      <div><h3>What changed</h3><ul>
+        <li>New: every Frame at once, opened from the end of the strip, with a search across what the Frames say. It has three modes: All Frames, Compare and Scores.</li>
+        <li>It opens over the Session's own area, the rail still beside it.</li>
+        <li>A star on a picture, on hover, makes it Home's thumbnail, as the old Thumbnail mode could.</li>
+      </ul></div>
+      <div><h3>Considered</h3><ul>
+        <li>It first covered the whole screen, rail and all.</li>
+        <li>Stars shown faint on every picture were tried and dropped as cluttered. A right-click menu on a picture is an open thread.</li>
+      </ul></div>
+    </div>
+  </section>
+
+  <section class="screen" id="compare" data-shot="compare" data-views="desk phone">
+    <div class="head"><div><span class="eyebrow">Stage 4</span><h2>Compare</h2></div></div>
+    <div class="notes">
+      <div><h3>What changed</h3><ul>
+        <li>The Pictures dialog became Compare, a mode of All Frames. The models are chips in a row, on or off, opening on the Session's own and the next two.</li>
+        <li>The prompts column is the Frame's name and three lines, with Show all; Export is the filled button.</li>
+        <li>On a phone, a Frame at a time with ‹ and ›, its models down the screen.</li>
+        <li>The style scores put the Session's own model in ink, in place of a blue that isn't the app's.</li>
+        <li>An export is refused while another of the same Session is being written: the second cleared the folder the first was writing into.</li>
+      </ul></div>
+      <div><h3>Considered</h3><ul>
+        <li>Swipes between Frames on a phone aren't built, only ‹ and ›.</li>
+        <li>Export as a job in the queue is an open thread.</li>
+      </ul></div>
+    </div>
+  </section>
+
+  <section class="screen" id="settings" data-shot="settings" data-views="desk phone dark">
+    <div class="head"><div><span class="eyebrow">Stage 5</span><h2>Settings</h2></div></div>
+    <div class="notes">
+      <div><h3>What changed</h3><ul>
+        <li>Settings opens over the screen it was opened from, at its own address (<code>/settings/images</code>); ✕, Esc or a click beside it goes back.</li>
+        <li>Nine tabs became sections down the left, grouped as Models and App, with a new Appearance section for the theme.</li>
+        <li>A setting is a row: what it is on the left, its control on the right, lines between, no cards.</li>
+        <li>On a phone the list of sections is the first screen, each opening from it.</li>
+        <li>In the dark the panel is raised a step lighter over a near-black dimming.</li>
+      </ul></div>
+      <div><h3>Considered</h3><ul>
+        <li>The group names first read as buttons; they're small and quiet now, with a line between groups.</li>
+        <li>Images and Music no longer spread into three columns on a wide screen.</li>
+        <li>A Session behind Settings keeps running (its music, a clip), where going to Settings used to stop them.</li>
+      </ul></div>
+    </div>
+  </section>
+
+  <section class="screen" id="queue" data-shot="queue" data-views="desk phone">
+    <div class="head"><div><span class="eyebrow">Stages 4–5</span><h2>Queue</h2></div></div>
+    <div class="notes">
+      <div><h3>What changed</h3><ul>
+        <li>The Queue page takes Settings' shape: machines down the left, each saying what runs and waits there, the one picked on the right.</li>
+        <li>Inside a Session, the rail's Queue slides in a panel beside it, this Session's jobs first, with a count on the button. It replaces the Queue tab beside Frames.</li>
+        <li>On a phone the page is the panel's short list.</li>
+      </ul></div>
+      <div><h3>Considered</h3><ul>
+        <li>These shots use a made-up queue answered in the browser, so they show work. You've since checked real jobs.</li>
+      </ul></div>
+    </div>
+  </section>
+
+  <section class="screen" id="scenario" data-shot="scenario" data-views="desk phone">
+    <div class="head"><div><span class="eyebrow">Stage 6</span><h2>Scenario page</h2></div></div>
+    <div class="notes">
+      <div><h3>What changed</h3><ul>
+        <li>One page in two columns: the story on the left, the People on the right, each scrolling by itself.</li>
+        <li>The title, Save, the kind of Session and Start sit in a bar that stays in view; on a phone the kind and Start sit along the foot.</li>
+        <li>A part is a row, its name in a column and its text unboxed until edited.</li>
+        <li>A blank part with nothing suggested folds into "Left to the Text Model: + Wears + Goal".</li>
+        <li>Who plays whom is a chip beside each name, for a Roleplay only. Suggest shows on the part being edited.</li>
+      </ul></div>
+      <div><h3>Considered</h3><ul>
+        <li>Dropped before building: the page as sections to click through, or as a document.</li>
+        <li>Found on the way: the page scrolled into blank space, as the screen readers' hidden labels sat below the window.</li>
+        <li>These shots answer Expand with a stand-in; a real Expand of Contact was checked too.</li>
+      </ul></div>
+    </div>
+  </section>
+
+  <section class="part" id="phone">
+    <div><span class="eyebrow">Every stage</span><h2>At phone width</h2></div>
+    <p class="col" style="margin:0">Before, the Session screens squashed their three columns into 390 px and the header ran over itself. Now one rule set carries every screen: the rail becomes a tab bar; what opens beside a screen on a desktop opens as a sheet from the bottom; one column in the order it's used; and the main button stays put. These were seen in a headless browser as a touch screen, not on a real phone.</p>
+    <div class="phones">
+      <div><h3>Roleplay</h3><div class="duo">
+        <figure class="before"><a href="img/roleplay-phone-before.jpg" target="_blank"><img src="img/roleplay-phone-before.jpg" alt="Roleplay at phone width on main" loading="lazy" width="390" height="844"></a><figcaption><span class="tag">Before</span></figcaption></figure>
+        <figure class="after"><a href="img/roleplay-phone-after.jpg" target="_blank"><img src="img/roleplay-phone-after.jpg" alt="Roleplay at phone width now" loading="lazy" width="390" height="844"></a><figcaption><span class="tag">After</span></figcaption></figure>
+      </div></div>
+      <div><h3>Chain</h3><div class="duo">
+        <figure class="before"><a href="img/chain-phone-before.jpg" target="_blank"><img src="img/chain-phone-before.jpg" alt="Chain at phone width on main" loading="lazy" width="390" height="844"></a><figcaption><span class="tag">Before</span></figcaption></figure>
+        <figure class="after"><a href="img/chain-phone-after.jpg" target="_blank"><img src="img/chain-phone-after.jpg" alt="Chain at phone width now" loading="lazy" width="390" height="844"></a><figcaption><span class="tag">After</span></figcaption></figure>
+      </div></div>
+      <div><h3>Settings</h3><div class="duo">
+        <figure class="before"><a href="img/settings-phone-before.jpg" target="_blank"><img src="img/settings-phone-before.jpg" alt="Settings at phone width on main" loading="lazy" width="390" height="844"></a><figcaption><span class="tag">Before</span></figcaption></figure>
+        <figure class="after"><a href="img/settings-phone-after.jpg" target="_blank"><img src="img/settings-phone-after.jpg" alt="Settings at phone width now" loading="lazy" width="390" height="844"></a><figcaption><span class="tag">After</span></figcaption></figure>
+      </div></div>
+      <div><h3>Scenario page</h3><div class="duo">
+        <figure class="before"><a href="img/scenario-phone-before.jpg" target="_blank"><img src="img/scenario-phone-before.jpg" alt="Scenario page at phone width on main" loading="lazy" width="390" height="844"></a><figcaption><span class="tag">Before</span></figcaption></figure>
+        <figure class="after"><a href="img/scenario-phone-after.jpg" target="_blank"><img src="img/scenario-phone-after.jpg" alt="Scenario page at phone width now" loading="lazy" width="390" height="844"></a><figcaption><span class="tag">After</span></figcaption></figure>
+      </div></div>
+    </div>
+  </section>
+
+  <section class="part" id="checked">
+    <h2>What was checked, and what wasn't</h2>
+    <div class="lists">
+      <div><h3>Checked</h3><ul>
+        <li>Every stage by before-and-after screenshots at phone, desktop and wide sizes, light and dark, on the Mac.</li>
+        <li>A real Expand of a six-Person Scenario, the People column scrolling by itself.</li>
+        <li>Clips playing over a real picture, and in a Chain and a Storyboard with a stand-in clip.</li>
+        <li>A Storyboard's real plan, laid out and its Beats dragged, the saves answered in the browser.</li>
+        <li>A fresh export, which names its Frames as the app does.</li>
+        <li>A Frame with real jobs queued (you, 13 Nov).</li>
+      </ul></div>
+      <div><h3>Not checked yet</h3><ul>
+        <li>A real phone: touch, the on-screen keyboard over the text box, the notch. Before this work the app was only ever seen in a browser's phone view.</li>
+        <li>Dragging a Beat with touch.</li>
+      </ul></div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+// Each screen's views: a switch over its pair, the images swapped together.
+const NAMES = { desk: 'Desktop 1440', phone: 'Phone 390', dark: 'Dark 1440', wide: 'Wide 2560' }
+const SIZES = { desk: [1440, 900], phone: [390, 844], dark: [1440, 900], wide: [2560, 1440] }
+for (const section of document.querySelectorAll('section.screen')) {
+  const id = section.dataset.shot
+  const views = section.dataset.views.split(' ')
+  const pair = document.createElement('div')
+  pair.className = 'pair'
+  const figures = ['before', 'after'].map((v) => {
+    const fig = document.createElement('figure')
+    fig.className = v
+    fig.innerHTML = `<a target="_blank"><img loading="lazy" alt=""></a><figcaption><span class="tag">${v === 'before' ? 'Before · main' : 'After · screens'}</span><span class="size"></span></figcaption>`
+    pair.append(fig)
+    return fig
+  })
+  function show(view) {
+    pair.classList.toggle('narrow', view === 'phone')
+    for (const fig of figures) {
+      const v = fig.className
+      const src = `img/${id}-${view}-${v}.jpg`
+      const img = fig.querySelector('img')
+      img.src = src
+      img.width = SIZES[view][0]
+      img.height = SIZES[view][1]
+      img.alt = `${section.querySelector('h2').textContent}, ${NAMES[view]}, ${v === 'before' ? 'on main' : 'now'}`
+      fig.querySelector('a').href = src
+      fig.querySelector('.size').textContent = NAMES[view]
+    }
+    for (const b of buttons) b.setAttribute('aria-pressed', String(b.dataset.view === view))
+  }
+  let buttons = []
+  if (views.length > 1) {
+    const switcher = document.createElement('div')
+    switcher.className = 'views'
+    switcher.setAttribute('role', 'group')
+    switcher.setAttribute('aria-label', 'Size')
+    buttons = views.map((view) => {
+      const b = document.createElement('button')
+      b.type = 'button'
+      b.dataset.view = view
+      b.textContent = NAMES[view].replace(/ \d+$/, '')
+      b.addEventListener('click', () => show(view))
+      switcher.append(b)
+      return b
+    })
+    section.querySelector('.head').append(switcher)
+  }
+  section.querySelector('.head').after(pair)
+  show(views[0])
+}
+</script>
+</body>
+</html>

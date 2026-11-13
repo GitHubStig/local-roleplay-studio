@@ -33,7 +33,7 @@ One model does every text job ([docs/models.md](docs/models.md) has the comparis
 
 ### Pictures (optional)
 
-The default Image Model is **Qwen-Image 2.1**. Choose a backend on the Images tab of Settings:
+The default Image Model is **Qwen-Image 2.1**. Choose a backend in Settings, under Images:
 
 - [**mflux**](https://github.com/mflux-community/mflux) (Apple Silicon Macs; mflux 0.23+): FLUX.2 Klein 4B and 9B, FLUX.3 Klein, Z-Image Turbo and Z-Image, Krea 2 and Krea 2 + LoRA, ERNIE-Image Turbo, Boogu Image Turbo, Qwen-Image 2.1, Qwen-Image 2.1 Turbo, Qwen-Image 2.1 Viggle Turbo, Ming-Image 0.1 Design, MOSS-Image (needs a release after mflux 0.24.0, which renders black from long prompts), FIBO 2.0 Dev and Turbo, and Ideogram 4.
 - [**ComfyUI**](https://www.comfy.org) (any machine): Qwen-Image 2.1, Qwen-Image 2.1 Turbo, FLUX.2 Klein 4B, FLUX.3 Klein, Ming-Image 0.1 Design, MOSS-Image, FIBO 2.0 Dev and Turbo, Z-Image Turbo, and Krea 2 and Krea 2 + LoRA. ComfyUI must be installed and running; it can be on another machine.
@@ -48,24 +48,24 @@ mflux downloads model files the first time you render with a model. ComfyUI mode
 
 ### Pictures and sharing
 
-**Pictures** lays out a Session's pictures by Frame, with a column per Image Model, so you can view the results side by side, and choose the **Thumbnail** that shows the Session on Home (without one, Home shows the newest picture). Starred is what Home shows now. **Export** makes a standalone page with the comparison and its pictures that you can open locally or publish on a static host. If you include Style scores, the exported page can switch between the pictures and the scores.
+**Compare**, in a Session's All Frames view (the button at the end of its strip), lays out its pictures by Frame, with a column per Image Model, so you can view the results side by side. A picture's star, on hover, makes it the **thumbnail** that shows the Session on Home (without one, Home shows the newest picture); the filled star is what Home shows now. **Export** makes a standalone page with the comparison and its pictures that you can open locally or publish on a static host. If you include Style scores, the exported page can switch between the pictures and the scores.
 
 Examples: [image comparison](https://vivid-sorbet-76fq.here.now/) · [style scores](https://vivid-sorbet-76fq.here.now/?view=scores)
 
 ### Voices (optional)
 
-For Roleplay Characters, two models: Qwen3-TTS VoiceDesign designs a voice from its description, and Higgs TTS 3 clones it for every line. "Speak with" on the Voice tab of Settings says what runs them:
+For Roleplay Characters, two models: Qwen3-TTS VoiceDesign designs a voice from its description, and Higgs TTS 3 clones it for every line. "Speak with" in Settings, under Voice, says what runs them:
 
 - **The voice service** (a Mac): uv runs `python/voice/serve.py` (mlx-audio), and the two models (about 12 GB) download the first time each is needed; `uv run python/voice/serve.py --download` fetches both ahead of time. mlx-audio is MLX, so Apple Silicon only.
 - **ComfyUI** (a PC with an NVIDIA card of 12 GB, or any machine), at the same address as for pictures, with [TTS Audio Suite](https://github.com/diodiogod/TTS-Audio-Suite)'s custom nodes, version 5.9.3 or later. Installing them on Windows takes a few steps: [docs/setup.md](docs/setup.md#voices-through-comfyui).
 
 ### Clips (optional)
 
-A Frame's picture made into a few seconds of video, from its Frame tab (ADR 0025). Three video models run on a ComfyUI with an NVIDIA card: **LTX 2.5**, the Default video model (Settings, Clips tab), with its own sound; **Wan 2.2 14B**, silent, nearest the picture; and **MiniMax H3 (turbo)**, with its own sound. They run on the ComfyUI chosen under **Clips on**, so a Mac can send its clips to a PC's. Installing each model's files, the sizes and how long a clip takes: [docs/setup.md](docs/setup.md#clips).
+A Frame's picture made into a few seconds of video, from the Clip button on its picture (ADR 0025). Three video models run on a ComfyUI with an NVIDIA card: **LTX 2.5**, the Default video model (Settings, Clips), with its own sound; **Wan 2.2 14B**, silent, nearest the picture; and **MiniMax H3 (turbo)**, with its own sound. They run on the ComfyUI chosen under **Clips on**, so a Mac can send its clips to a PC's. Installing each model's files, the sizes and how long a clip takes: [docs/setup.md](docs/setup.md#clips).
 
 ### Music (optional)
 
-A Roleplay's music, following the story as it's played (Settings, Music tab; off by default). **ACE-Step 1.5** (the XL turbo with its 4B planner) makes each track on a ComfyUI, with ComfyUI's own nodes: the one chosen under **Music on**, or else the one pictures go to. Install its files from ComfyUI's ACE-Step 1.5 template. A minute of music takes about 20 s on an RTX 4070 and about 170 s on a Mac, where a Reply arriving meanwhile waits for the track, so send music to a PC where there is one ([docs/models.md](docs/models.md#music)).
+A Roleplay's music, following the story as it's played (Settings, Music; off by default). **ACE-Step 1.5** (the XL turbo with its 4B planner) makes each track on a ComfyUI, with ComfyUI's own nodes: the one chosen under **Music on**, or else the one pictures go to. Install its files from ComfyUI's ACE-Step 1.5 template. A minute of music takes about 20 s on an RTX 4070 and about 170 s on a Mac, where a Reply arriving meanwhile waits for the track, so send music to a PC where there is one ([docs/models.md](docs/models.md#music)).
 
 ### 3D (optional)
 
@@ -81,7 +81,7 @@ With two Image Models or more, Pictures' **Style scores** measure how much each 
 
 ### Two machines
 
-The app finds ComfyUI and Ollama by address, so any machine can use another's on the local network, either way round. A common case is a Mac rendering and upscaling on a Windows PC's ComfyUI. On Settings' Machines tab, add a ComfyUI at the PC's address (`http://<its IP>:8188`), and choose it under "Render on" and "Upscale on" (Images tab). On the tested pair, a picture took ~21 s instead of 56–97 s with mflux, and an upscale 14 s instead of ~66 s. The Text Model can live on the other machine the same way (an Ollama or a server at its address, chosen under "Text Model runs on"), e.g. to keep the Mac's memory for mflux. What runs as a local program can't be shared yet: mflux, the voice service, SHARP, TripoSplat and LiTo run where the app runs (ADR 0022).
+The app finds ComfyUI and Ollama by address, so any machine can use another's on the local network, either way round. A common case is a Mac rendering and upscaling on a Windows PC's ComfyUI. Under Settings' Machines, add a ComfyUI at the PC's address (`http://<its IP>:8188`), and choose it under "Render on" and "Upscale on" (Images tab). On the tested pair, a picture took ~21 s instead of 56–97 s with mflux, and an upscale 14 s instead of ~66 s. The Text Model can live on the other machine the same way (an Ollama or a server at its address, chosen under "Text Model runs on"), e.g. to keep the Mac's memory for mflux. What runs as a local program can't be shared yet: mflux, the voice service, SHARP, TripoSplat and LiTo run where the app runs (ADR 0022).
 
 For another machine to reach ComfyUI, it must listen beyond its own machine: in Comfy Desktop, add `--listen 0.0.0.0` to the installation's launch arguments, and let the firewall allow TCP 8188 on the private network (Windows Firewall on a PC). ComfyUI has no login, so anything on that network can use it. Ollama likewise needs `OLLAMA_HOST=0.0.0.0` set where it runs.
 
@@ -93,7 +93,7 @@ ollama serve        # if Ollama isn't already running
 deno task dev       # starts the API on :8787 and the web app on :5180
 ```
 
-The same on Windows, in PowerShell. Open <http://localhost:5180>, go to **Settings**, choose a Text Model (on another machine: add it on the Machines tab first) and, for pictures, an Image Model (on Windows, add your ComfyUI on the Machines tab first; it must be running), then go **Home** (click **Local Roleplay Studio**) and press **Start Session**. Your Sessions are listed on Home; open one to carry on, or delete it.
+The same on Windows, in PowerShell. Open <http://localhost:5180>, go to **Settings**, choose a Text Model (on another machine: add it under Machines first) and, for pictures, an Image Model (on Windows, add your ComfyUI on the Machines tab first; it must be running), then go **Home** (click **Local Roleplay Studio**) and press **Start Session**. Your Sessions are listed on Home; open one to carry on, or delete it.
 
 ## Tasks
 
@@ -121,7 +121,7 @@ The web app's dev server is pinned to port **5180** (or `WEB_PORT`) and fails, r
 
 To run a second checkout beside the first (a `git worktree`, say), give it other ports, and a Sessions folder of its own in its own `settings.json`, so the two never write to the same Sessions: `PORT=8797 WEB_PORT=5190 VOICE_PORT=8792 deno task dev`, and `deno task replay … --server http://127.0.0.1:8797`. The two don't take turns on a machine, so keep heavy work to one at a time.
 
-Everything else is chosen on the Settings page (in tabs: Machines, Text, Images, Voice, Music, Clips, 3D, Sessions, Advanced) and saved to `settings.json`, including each Backend's API key (never sent back to the browser).
+Everything else is chosen in Settings (in sections: Text, Images, Voice, Music, Clips and 3D for the models; Machines, Sessions, Appearance and Advanced for the app) and saved to `settings.json`, including each Backend's API key (never sent back to the browser).
 
 **What runs where.** Only a Text backend is required: Ollama, or a server with the OpenAI chat API. At startup the server works out which extras this machine can run, and says so in its log and on the Settings page:
 
@@ -145,7 +145,7 @@ scenarios/        Your own Scenarios (gitignored)
 settings.json     Your Settings (gitignored; created on first save)
 queue.json        The job queue, kept across restarts (gitignored)
 sessions/<id>/    Each Session: session.json plus its pictures, voices and 3D files (gitignored)
-exports/<id>/     A Session's Pictures table exported as a page, with its pictures (gitignored)
+exports/<id>/     A Session's Compare table exported as a page, with its pictures (gitignored)
 server/           Deno API: the app, Sessions, Settings, the job queue, what all kinds of Session share
   chain/          a Chain's Frames and jobs
   storyboard/     a Storyboard's plan and edits
@@ -161,21 +161,21 @@ server/           Deno API: the app, Sessions, Settings, the job queue, what all
                   comfyui/workflows/)
   music/          a Roleplay's music: comfyui/ (ACE-Step 1.5, its workflow in comfyui/workflows/)
   3d/             SHARP scenes, TripoSplat and LiTo figures
-  style/          Pictures' style scores: the embedder, the measures and the job
-  export/         the Pictures table as a page of its own, its pictures as WebP
+  style/          Compare's style scores: the embedder, the measures and the job
+  export/         the Compare table as a page of its own, its pictures as WebP
   replay/         `deno task replay`: a test Session rebuilt through the API from a replay file
   prompts/        what the Text Model is told, one Markdown file each: chain/, storyboard/,
                   roleplay/, scenario/, and shared/ for what more than one uses
 shared/           Types and plain values the server and the web app both use (no code that needs Deno
                   or a browser)
-web/              Vue 3 + Vite + Tailwind 4 web app; export.html is the exported Pictures page
+web/              Vue 3 + Vite + Tailwind 4 web app; export.html is the exported Compare page
 python/           What uv runs, each in its own folder, its packages in the file and locked beside it
                   (`make.py.lock`), so both machines run the same versions:
   voice/          the voice service (mlx-audio, so Mac only)
   sharp/          Apple's SHARP: a picture as a 2.5D scene
   triposplat/     TripoSplat: the person in a picture as a 3D figure (VAST's code in vendor/)
   lito/           Apple's LiTo, through mlx-spatial: the same, another way
-  style/          CSD and CLIP: the pictures as vectors, for Pictures' style scores
+  style/          CSD and CLIP: the pictures as vectors, for Compare's style scores
 docs/             Design, models, research, Scenario format, ADRs and open threads
 CONTEXT.md        Glossary of the game's terms
 ```
