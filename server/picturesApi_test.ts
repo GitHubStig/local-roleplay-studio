@@ -48,6 +48,27 @@ Deno.test('The Compare dialog exports to a folder per Session', () =>
     assertEquals((await off('POST', '/api/sessions/s1/export', comparison)).status, 404)
   }))
 
+Deno.test("A Session's export is refused while another of it is being written", () =>
+  withTempDir(async (root) => {
+    const page = '<script id="comparison" type="application/json">{}</script>'
+    let open!: () => void
+    const held = new Promise<void>((r) => (open = r))
+    const exports = {
+      dir: join(root, 'exports'),
+      // The first export waits here, mid-way, until the second has been asked for.
+      page: async () => (await held, { html: page, plot: '' }),
+    }
+    const { call } = await chainOfTwo(root, { exports })
+    const comparison = { models: [], rows: [{ name: 'Frame 0', pictures: [] }] }
+    const first = call('POST', '/api/sessions/s1/export', comparison)
+    const second = await call('POST', '/api/sessions/s1/export', comparison)
+    assertEquals(second.status, 409)
+    open()
+    assertEquals((await first).status, 200)
+    // Done, another may start.
+    assertEquals((await call('POST', '/api/sessions/s1/export', comparison)).status, 200)
+  }))
+
 Deno.test('Home shows the thumbnail chosen until its file goes, and else the newest picture', () =>
   withTempDir(async (root) => {
     const { call } = await chainOfTwo(root)

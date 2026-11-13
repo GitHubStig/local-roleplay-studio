@@ -17,10 +17,13 @@ import {
   switchImageModel,
 } from './pictures.ts'
 import type { AppContext } from './appContext.ts'
+import { Refusal } from './refusal.ts'
 
 export function pictureRoutes(ctx: AppContext): Route[] {
   const { deps, jobs, loadSession, heavyBackend } = ctx
 
+  /** The Sessions whose export is being written now. */
+  const exporting = new Set<string>()
   return [
     // Switches the Session's Image Model: `{ imageModel, imageBackend? }`, by name, and the kind of
     // backend it would rather render on, if picked (ADR 0022): one a Backend listed can render.
@@ -155,14 +158,24 @@ export function pictureRoutes(ctx: AppContext): Route[] {
       if (typeof comparison === 'string') return error(comparison, 400)
       const session = await loadSession(p.id!)
       const folder = join(deps.exports.dir, p.id!)
-      const { pictures } = await writeComparison(
-        deps.sessions.dir(p.id!),
-        folder,
-        await deps.exports.page(),
-        comparison,
-        comparisonTitle(new Date(), session.seed),
-      )
-      return json({ folder, pictures })
+      // One at a time per Session: a second, from another tab or the view opened again, started by
+      // clearing the folder the first was writing into.
+      if (exporting.has(session.id)) {
+        throw new Refusal("This Session's export is still being written: wait for it to finish")
+      }
+      exporting.add(session.id)
+      try {
+        const { pictures } = await writeComparison(
+          deps.sessions.dir(p.id!),
+          folder,
+          await deps.exports.page(),
+          comparison,
+          comparisonTitle(new Date(), session.seed),
+        )
+        return json({ folder, pictures })
+      } finally {
+        exporting.delete(session.id)
+      }
     }],
   ]
 }
