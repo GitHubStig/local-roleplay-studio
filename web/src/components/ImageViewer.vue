@@ -234,8 +234,6 @@ onClickOutside(
           </span>
           <span class="mr-auto" :class="{ 'sm:hidden': label }" />
         </template>
-        <!-- More controls, for what's being viewed (a picture's versions, Edit). -->
-        <slot name="controls" />
         <a :href="src" target="_blank" class="shrink-0 whitespace-nowrap hover:text-white hover:underline">
           Open full size
         </a>
@@ -252,9 +250,6 @@ onClickOutside(
         ref="image"
         :src="src"
         :alt="alt"
-        bare
-        instant
-        zoom
         :rendering="rendering"
         class="short:col-start-1 short:row-span-2 short:row-start-1"
       >

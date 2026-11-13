@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Job } from './api'
-import { formingOf, jobForming, queueTab } from './jobs'
+import { formingOf, jobForming } from './jobs'
 
 const session = { id: 's1' }
 
@@ -31,20 +31,3 @@ describe('formingOf', () => {
   })
 })
 
-describe('queueTab', () => {
-  const job = (status: Job['status']) => ({ status }) as Job
-
-  it('counts the failed jobs, and is busy while any is open', () => {
-    expect(queueTab([])).toEqual({ label: 'Queue', busy: false })
-    expect(queueTab([job('running'), job('queued')])).toEqual({ label: 'Queue', busy: true })
-    expect(queueTab([job('failed'), job('failed')])).toEqual({
-      label: 'Queue (2 failed)',
-      busy: false,
-    })
-    expect(queueTab([job('running'), job('failed'), job('done')])).toEqual({
-      label: 'Queue (1 failed)',
-      busy: true,
-    })
-    expect(queueTab([job('done')]).busy).toBe(false)
-  })
-})

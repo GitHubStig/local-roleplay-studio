@@ -1,86 +1,33 @@
 <script setup lang="ts">
 import { computed, ref, useTemplateRef, watch } from 'vue'
 import { usePinchZoom } from '../composables/usePinchZoom'
-import { type Preview, useShownPreview } from '../composables/useShownPreview'
 
+/**
+ * The picture in the full-screen viewer (`ImageViewer`): as large as the room allows in its own
+ * shape, pinched to zoom and dragged to pan, a new picture shown at once; its pixel size on hover.
+ * What's drawn on it zooms with it (the `layer` slot); what's over it (the default slot) and beside
+ * it (`side`) doesn't.
+ */
 const props = defineProps<{
   /** The image to show; null for none. */
   src: string | null
   alt?: string
   /** The border sweeps while an image renders, slower and dimmer while it waits in the queue. */
   rendering?: 'image' | 'queued' | null
-  /** Shown when there's no image. */
-  emptyText?: string
-  /**
-   * Hide the size chip, which otherwise shows the image's pixel size in the top-left corner on
-   * hover; screens hide it while their status pill is there.
-   */
-  hideSize?: boolean
-  /** No panel around the image (border and background), e.g. inside a dialog. */
-  bare?: boolean
-  /** Show a new image at once, without waiting for it to load first, e.g. in a viewer. */
-  instant?: boolean
-  /** Pinch to zoom and drag to pan, as in the viewer; otherwise a click on the image opens it. */
-  zoom?: boolean
-  /** The size the images render at, to shape the frame before the first one loads. */
-  expectedSize?: { width: number; height: number }
-  /**
-   * The picture forming while it renders (`formingOf`): its latest preview, laid over the image
-   * at this opacity, so the old picture dissolves into the new one as the steps go.
-   */
-  preview?: Preview | null
 }>()
-/** The image was clicked, to look closer (only without `zoom`). */
-const emit = defineEmits<{ open: [] }>()
 
-/** The image on screen; it only changes once the next one has loaded, so it never goes blank. */
-const displayed = ref<{ src: string; alt: string } | null>(null)
+/** The image on screen, shown at once as another is asked for. */
+const displayed = computed(() => (props.src ? { src: props.src, alt: props.alt ?? '' } : null))
 
-watch(
-  () => props.src,
-  (src) => {
-    if (!src) {
-      displayed.value = null
-      return
-    }
-    if (src === displayed.value?.src) return
-    if (props.instant) {
-      displayed.value = { src, alt: props.alt ?? '' }
-      return
-    }
-    const img = new Image()
-    // Skip if another image was asked for meanwhile.
-    const show = () => {
-      if (props.src === src) displayed.value = { src, alt: props.alt ?? '' }
-    }
-    img.onload = show
-    img.onerror = show
-    img.src = src
-  },
-  { immediate: true },
-)
-
-/** The picture forming, over the image on screen. */
-const shownPreview = useShownPreview(() => props.preview, () => displayed.value?.src)
-
-/** Pinch to zoom the image, not the page, when `zoom`; each new image starts unzoomed. */
+/** Pinch to zoom the image, not the page; each new image starts unzoomed. */
 const frame = useTemplateRef<HTMLElement>('frame')
-const { zoomed, layerStyle, view, reset } = usePinchZoom(props.zoom ? frame : ref(null))
+const { zoomed, layerStyle, view, reset } = usePinchZoom(frame)
 watch(() => displayed.value?.src, reset)
 /** Whether it's zoomed in: a drag then pans it (the viewer's swipes wait till it's back). */
 defineExpose({ zoomed })
 
-/** Width ÷ height of the images shown; the expected size's until the first one loads. */
-const aspect = ref(
-  props.expectedSize ? props.expectedSize.width / props.expectedSize.height : 832 / 1216,
-)
-// Known only once the Session has loaded: follow it until an image shows the real shape.
-watch(
-  () => props.expectedSize,
-  (size) => {
-    if (size && !displayed.value) aspect.value = size.width / size.height
-  },
-)
+/** Width ÷ height of the image shown, once loaded; a portrait's until then. */
+const aspect = ref(832 / 1216)
 /** Pixel size of the image on screen, once loaded. */
 const size = ref<{ width: number; height: number } | null>(null)
 
@@ -104,7 +51,7 @@ const frameStyle = computed(() => ({
        frame inside is sized to the image's proportions, so overlays sit on the image itself. -->
   <section
     class="flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-lg [container-type:size]"
-    :class="{ 'border border-line bg-surface': !bare, 'sm:px-48': $slots.side }"
+    :class="{ 'sm:px-48': $slots.side }"
   >
     <!-- What sits beside the image (a column of buttons), on as wide a screen as has room: the same
          room is kept on the other side, so the image stays centred. -->
@@ -119,41 +66,21 @@ const frameStyle = computed(() => ({
     >
       <!-- The zoomed layer: only the image scales, not what's drawn over it. -->
       <div class="absolute inset-0 origin-top-left" :style="layerStyle" data-zoom-layer>
-      <!-- The next image is preloaded, then replaces the last one at once: no blank, no fade. -->
         <img
           v-if="displayed"
           :key="displayed.src"
           :src="displayed.src"
           :alt="displayed.alt"
           class="absolute inset-0 h-full w-full object-contain"
-          :class="{ 'cursor-zoom-in': !zoom }"
-          :title="zoom ? undefined : 'Look closer'"
           draggable="false"
           data-frame-picture
           @load="onImageLoad"
-          @click="!zoom && emit('open')"
-        />
-        <img
-          v-if="shownPreview"
-          :src="shownPreview.src"
-          alt=""
-          class="pointer-events-none absolute inset-0 h-full w-full object-contain transition-opacity duration-500"
-          :style="{ opacity: displayed ? shownPreview.opacity : 1 }"
-          draggable="false"
-          data-preview
         />
         <!-- Drawn on the image itself, zoomed and panned with it (a paint layer), at its size. -->
         <slot v-if="displayed && size" name="layer" :size="size" />
       </div>
-      <!-- Not over a picture forming, which fills the empty frame. -->
       <span
-        v-if="!displayed && !shownPreview && emptyText"
-        class="absolute inset-0 flex items-center justify-center px-6 text-center text-muted"
-      >
-        {{ emptyText }}
-      </span>
-      <span
-        v-if="displayed && size && !hideSize"
+        v-if="displayed && size"
         class="pointer-events-none absolute left-3 top-3 rounded-full bg-black/70 px-3 py-1 text-sm tabular-nums text-white opacity-0 transition-opacity group-hover:opacity-100"
         data-size
       >

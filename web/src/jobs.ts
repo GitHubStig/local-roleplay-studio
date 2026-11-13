@@ -25,15 +25,6 @@ export const isOpen = (job: Pick<Job, 'status'>) =>
   job.status === 'queued' || job.status === 'running'
 
 /**
- * The Queue tab: its label says how many jobs failed (the counts of the rest are in the queue's
- * buttons), and `busy` that something is running or queued, shown as a spinner.
- */
-export const queueTab = (jobs: readonly Job[]) => {
-  const failed = jobs.filter((j) => j.status === 'failed').length
-  return { label: failed ? `Queue (${failed} failed)` : 'Queue', busy: jobs.some(isOpen) }
-}
-
-/**
  * What a job is doing, in a few words. A Roleplay says more about its own work (voices, pictures)
  * through `special`, which answers first when it has something to say.
  */
@@ -56,7 +47,7 @@ export function jobStatus(job: Job, special?: (job: Job) => string | undefined):
 }
 
 /**
- * How a picture's frame shows work on it (`FrameImage`'s `rendering`): waiting for another render,
+ * How a picture shows work on it (its edge's sweep): waiting for another render,
  * or rendering (and downloading a model first); nothing for other phases.
  */
 export function sweepOf(phase: string | null | undefined): 'queued' | 'image' | null {
@@ -65,9 +56,9 @@ export function sweepOf(phase: string | null | undefined): 'queued' | 'image' | 
 }
 
 /**
- * The picture forming, for `FrameImage`'s `preview`: the latest preview of a render on ComfyUI
- * (`imageBackend`, as the render said when it started; mflux sends none), more opaque as the steps
- * go, since the first ones are dark smudges. Null while it isn't rendering, or before the first
+ * The picture forming, over a Frame's picture (`SessionPicture`'s `preview`): the latest preview of
+ * a render on ComfyUI (`imageBackend`, as the render said when it started; mflux sends none), more
+ * opaque as the steps go, since the first ones are dark smudges. Null while it isn't rendering, or before the first
  * step.
  */
 export function formingOf(
