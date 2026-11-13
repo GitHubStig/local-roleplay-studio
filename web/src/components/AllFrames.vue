@@ -1,6 +1,7 @@
 <script setup lang="ts" generic="F extends PicturedFrame">
+import { onKeyStroke } from '@vueuse/core'
 import { computed, onMounted, ref, useTemplateRef, watch } from 'vue'
-import type { PicturedFrame } from '../api'
+import { asPicked, hasVersion, homeImage, type PicturedFrame, setThumbnail, shownPicture } from '../api'
 import { useCloseOnLeave } from '../composables/useCloseOnLeave'
 import type { StripTile } from './FrameStrip.vue'
 import Icon from './Icon.vue'
@@ -12,7 +13,7 @@ import ModelComparison from './ModelComparison.vue'
  * Frames say (`text`), the matches marked and the rest faded, a click picking one; Compare, its
  * pictures by each Image Model side by side (`ModelComparison`); and Scores, how varied each
  * model's art style is. Compare shows once there's a picture, Scores once two models have made
- * some. Over the whole screen, closed by its ✕ or Esc.
+ * some. Over the Session's own area, the rail beside it, closed by its ✕ or Esc.
  */
 const props = withDefaults(
   defineProps<{
@@ -49,6 +50,40 @@ const modes = computed(() => [
   ...(modelCount.value > 1 ? [{ id: 'scores' as const, label: 'Scores' }] : []),
 ])
 
+const STARS = {
+  chosen: "This Session's thumbnail on Home, as you chose it: click to stop using it",
+  automatic: "This Session's thumbnail on Home for now, as its newest picture: click to keep it",
+  none: "Use it as this Session's thumbnail on Home",
+}
+/**
+ * Home's thumbnail, starred on a Frame's picture by the Session's Image Model, as Compare's stars:
+ * on the one Home shows, and on hover to choose another; on the one chosen, back to the newest.
+ */
+const home = computed(() => homeImage(props.frames, props.imageModel, props.thumbnail))
+function starOf(index: number) {
+  const frame = props.frames.find((f) => f.index === index)
+  const picture = frame && shownPicture(frame, props.imageModel)
+  if (!picture) return null
+  const shown = !!home.value && hasVersion(picture, home.value)
+  const star: keyof typeof STARS | undefined = shown
+    ? (home.value === props.thumbnail ? 'chosen' : 'automatic')
+    : undefined
+  return { picture, star }
+}
+const thumbnailError = ref('')
+async function star(index: number) {
+  const s = starOf(index)
+  if (!s) return
+  thumbnailError.value = ''
+  try {
+    // The version shown, as Compare's star stars it.
+    await setThumbnail(props.sessionId, s.star === 'chosen' ? null : asPicked(s.picture).image)
+    emit('changed')
+  } catch (err) {
+    thumbnailError.value = (err as Error).message
+  }
+}
+
 const query = ref('')
 /** The Frames whose words hold every word searched for, by index; all of them with no search. */
 const matches = computed(() => {
@@ -68,13 +103,20 @@ useCloseOnLeave(dialog)
 function follow(now: boolean) {
   if (now) {
     mode.value = 'frames'
-    dialog.value?.showModal()
+    // Not modal: over the Session's own area, the rail beside it still to hand.
+    dialog.value?.show()
     // At the Frame picked on the screen, which a long Session would otherwise scroll past.
     const tile = sheet.value?.querySelector<HTMLElement>('[aria-current="true"]')
     if (tile && sheet.value) sheet.value.scrollTop = tile.offsetTop - sheet.value.clientHeight / 2
   } else if (dialog.value?.open) dialog.value.close()
 }
 watch(open, follow, { flush: 'post' })
+onKeyStroke('Escape', (e) => {
+  if (!open.value || e.defaultPrevented) return
+  // A menu or a dialog open over it (Export, Delete) closes first.
+  if (document.querySelector('[data-pop-panel], dialog[open]:not([data-all-frames]):not([data-settings-overlay])')) return
+  open.value = false
+})
 onMounted(() => open.value && follow(true))
 
 function pick(index: number) {
@@ -86,7 +128,7 @@ function pick(index: number) {
 <template>
   <dialog
     ref="dialog"
-    class="m-0 h-full max-h-none w-full max-w-none overflow-hidden bg-canvas p-0 text-fg backdrop:bg-black/60"
+    class="fixed inset-0 z-30 m-0 h-auto max-h-none w-auto max-w-none overflow-hidden bg-canvas p-0 text-fg max-sm:bottom-14 sm:left-12 short:left-12 short:bottom-0"
     aria-label="All Frames"
     data-all-frames
     @close="open = false"
@@ -146,7 +188,8 @@ function pick(index: number) {
         class="grid min-h-0 flex-1 grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] content-start gap-x-3 gap-y-4 overflow-y-auto p-4 sm:grid-cols-[repeat(auto-fill,minmax(11rem,1fr))]"
         data-sheet
       >
-        <li v-for="tile in tiles" :key="tile.index">
+        <li v-if="thumbnailError" class="col-span-full text-sm text-danger" role="alert">{{ thumbnailError }}</li>
+        <li v-for="tile in tiles" :key="tile.index" class="group/tile relative">
           <button
             type="button"
             class="flex w-full flex-col gap-1 text-left transition-opacity"
@@ -178,6 +221,22 @@ function pick(index: number) {
             <span class="line-clamp-1 text-xs" :class="matches?.has(tile.index) ? 'text-fg' : 'text-muted'">
               {{ tile.index + 1 }} · {{ tile.words }}
             </span>
+          </button>
+          <button
+            v-if="tile.thumb && starOf(tile.index)"
+            type="button"
+            class="absolute top-1.5 right-1.5 flex rounded bg-canvas/85 p-1"
+            :class="[
+              starOf(tile.index)!.star === 'chosen' ? 'text-warn' : 'text-muted hover:text-fg',
+              starOf(tile.index)!.star ? '' : 'opacity-0 group-hover/tile:opacity-100 focus-visible:opacity-100 touch:opacity-100',
+            ]"
+            :title="STARS[starOf(tile.index)!.star ?? 'none']"
+            :aria-label="STARS[starOf(tile.index)!.star ?? 'none']"
+            :data-thumbnail="starOf(tile.index)!.star"
+            data-sheet-star
+            @click="star(tile.index)"
+          >
+            <Icon :name="starOf(tile.index)!.star === 'chosen' ? 'star-filled' : 'star'" />
           </button>
         </li>
         <li v-if="matches && !matches.size" class="col-span-full text-muted" data-no-match>
