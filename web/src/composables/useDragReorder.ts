@@ -1,4 +1,4 @@
-import { useRafFn } from '@vueuse/core'
+import { tryOnScopeDispose, useRafFn } from '@vueuse/core'
 import { type Ref, ref } from 'vue'
 
 export interface DragReorderOptions {
@@ -18,7 +18,10 @@ export interface DragReorderOptions {
  * Moving the items of a list by dragging a grip: the item follows the pointer over the others,
  * and the list scrolls while the pointer is near its edge. Pointer events rather than HTML drag
  * and drop, which phones don't all do; only the grip takes the touch, so a swipe still scrolls.
- * `dragging` is where the dragged item is now. Spread `grip(index)` onto the grip's `v-on`.
+ * Once a drag starts, the pointer is followed on the whole window, not only on the grip: the list
+ * re-orders as it goes by moving its items in the page, and a moved grip loses the pointer (its
+ * capture), so a drag stopped where it was and was never let go. `dragging` is where the dragged
+ * item is now. Spread `grip(index)` onto the grip's `v-on`.
  */
 export function useDragReorder(opts: DragReorderOptions) {
   const dragging = ref<number | null>(null)
@@ -55,23 +58,38 @@ export function useDragReorder(opts: DragReorderOptions) {
     dragTo(pointer)
   }, { immediate: false })
 
+  /** The pointer dragging, followed on the window while the drag lasts. */
+  let pointerId: number | null = null
+  const onMove = (e: PointerEvent) => e.pointerId === pointerId && dragTo(along(e))
+  const onEnd = (e: PointerEvent) => e.pointerId === pointerId && end()
+  function follow(on: boolean) {
+    const method = on ? 'addEventListener' : 'removeEventListener'
+    globalThis[method]('pointermove', onMove as EventListener)
+    globalThis[method]('pointerup', onEnd as EventListener)
+    globalThis[method]('pointercancel', onEnd as EventListener)
+  }
+
   function end() {
     if (dragging.value === null) return
     dragging.value = null
+    pointerId = null
+    follow(false)
     edgeScroll.pause()
     opts.end?.()
   }
+  tryOnScopeDispose(() => follow(false))
 
   const grip = (index: number) => ({
     pointerdown(e: PointerEvent) {
+      if (dragging.value !== null) return
+      // Captured too, so a touch on the grip isn't taken for a scroll of the page.
       ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+      pointerId = e.pointerId
       dragging.value = index
       pointer = start = along(e)
+      follow(true)
       edgeScroll.resume()
     },
-    pointermove: (e: PointerEvent) => dragTo(along(e)),
-    pointerup: end,
-    pointercancel: end,
   })
 
   return { dragging, grip }

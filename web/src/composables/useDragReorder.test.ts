@@ -17,6 +17,12 @@ function list() {
 
 const pointer = (clientY: number) =>
   ({ clientY, pointerId: 1, currentTarget: { setPointerCapture() {} } }) as unknown as PointerEvent
+/** A pointer event sent to the window, as the browser sends what a captured pointer does. */
+function to(type: string, clientY: number, pointerId = 1) {
+  const e = new Event(type) as PointerEvent
+  Object.assign(e, { clientY, pointerId })
+  globalThis.dispatchEvent(e)
+}
 
 describe('useDragReorder', () => {
   it('moves the dragged item over each it passes, then lets it go', () => {
@@ -37,18 +43,23 @@ describe('useDragReorder', () => {
 
     grip(0).pointerdown(pointer(20))
     expect(dragging.value).toBe(0)
-    grip(0).pointermove(pointer(30)) // Still over itself.
+    // Followed on the window, not the grip: re-ordering moves the grip in the page, and a moved
+    // grip loses the pointer.
+    to('pointermove', 30) // Still over itself.
     expect(move).not.toHaveBeenCalled()
-    grip(0).pointermove(pointer(70))
-    grip(0).pointermove(pointer(120))
+    to('pointermove', 70)
+    to('pointermove', 120)
     expect(move.mock.calls).toEqual([[0, 1], [1, 2]])
     expect([order.value, dragging.value]).toEqual([[1, 2, 0], 2])
+    // Another pointer (a second finger) is ignored.
+    to('pointermove', 20, 2)
+    expect(move.mock.calls.length).toBe(2)
 
-    grip(0).pointerup()
+    to('pointerup', 120)
     expect([dragging.value, end.mock.calls.length]).toEqual([null, 1])
     // Not dragging: nothing moves, and it's not let go again.
-    grip(0).pointermove(pointer(20))
-    grip(0).pointercancel()
+    to('pointermove', 20)
+    to('pointercancel', 20)
     expect([move.mock.calls.length, end.mock.calls.length]).toEqual([2, 1])
   })
 })
