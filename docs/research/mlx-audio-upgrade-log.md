@@ -2,6 +2,22 @@
 
 Newest first. The procedure is in [mlx-audio-upgrade.md](../mlx-audio-upgrade.md). mlx-audio runs the voice service (`python/voice/serve.py`) on the Apple Silicon Mac only; the Windows PC speaks through ComfyUI.
 
+## 0.6.6 — Mac, 2026-11-17
+
+From 0.6.5. mlx stays 0.32.4, transformers 5.20.2 and torch 2.14.1. mlx-audio now sets security floors on its HTTP and Hugging Face dependencies (#1199), which added requests 2.34.2, urllib3 2.8.0, certifi 2026.10.23 and charset-normalizer 3.5.2 to the lock, and raised its own Python minimum to 3.11, below the service's 3.14. Read for the voice service's two models:
+
+- **Higgs** (speaking): its audio tokenizer resamples the reference clip from 24 to 16 kHz for its semantic encoder with a shared MLX `sinc_resample` in place of its own NumPy one (#1126, listed under fish-drama3). On this check's reference clip the two agree to within 9×10⁻⁸ (−140 dB), but that's enough for the cloned lines to come out as other takes. It also ends the known divide warning in Higgs's codec, which came from the old function. The top-k change (#1152) only touches a `top_k` at or above the vocabulary, not the service's 30.
+- **Qwen3-TTS** (designing): nothing changed.
+- The rest add models (ZONOS3-Mini, Stable Audio 3 small and medium, SOV-Transcribe-1, Fluid Speech Pro, Haru-4B, FastDialogueSidon) and fix others, the mlx-audio server and its CLI's reference transcription (#1182, `tts/generate.py`, which `serve.py` doesn't call; it passes `ref_text`). MiniMax Music 3 now vocodes each chunk as it's made (#1172), if music ever runs through mlx-audio.
+
+The same check as for 0.6.5, rerun on both versions: one voice designed from a fixed description (seed 7) and four lines cloned from it (seed 3: plain, slow with a sigh, fast, and a whispered thought), with tavern-style text:
+
+- **Speaking gives other takes**: cloned from 0.6.5's clip on 0.6.6, none of the four lines is byte for byte the same, because of the resampling above. Their median pitch stays in the reference's range (109 Hz): 107, 106, 120 and 101 Hz against 110, 118, 119 and 93 Hz on 0.6.5, with three of the four a little shorter (3.9–4.0 s against 4.3). So a Character's saved voice should still sound like the same voice, though not the identical take. Not judged by ear yet.
+- **Designing is byte for byte the same**.
+- **The same time and memory**: 3.1–4.3 s a line (3.4–4.3 on 0.6.5), 2.3 s to design (2.8), with 4.6 GB held while designing and 8.8 GB while speaking.
+- Two of the three known warnings remain (transformers on the `qwen3_tts` type, the leaked semaphore at shutdown), and none is new.
+- Not run: the app itself (step 6). `serve.py` is unchanged, and the check went through the service's own HTTP routes.
+
 ## 0.6.5 — Mac, 2026-11-10
 
 From 0.6.4. Only mlx-audio moved in the lock: 0.6.5 lets mlx be later than 0.32.4 (#1128) rather than pinning it, but `--upgrade-package mlx-audio` leaves it at 0.32.4, with transformers 5.20.2 and torch 2.14.1. The project has moved from `Blaizzy/mlx-audio` to `Neywa-Labs/mlx-audio` (the old address redirects). Read for the voice service's two models:
