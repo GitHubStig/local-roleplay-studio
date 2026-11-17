@@ -62,6 +62,13 @@ const wide = computed(() => homeWidth.value >= WIDE_PX)
 /** A phone's width: Sessions as many across as fit at 10rem or more (two on a phone), and starting one a screen of its own. */
 const phone = computed(() => homeWidth.value > 0 && homeWidth.value < 640)
 /**
+ * No Sessions yet (as loaded, not while loading or failing): starting one is all there is, one
+ * column in the middle, without the split, the fold or a phone's way back to the Sessions.
+ */
+const empty = computed(() => sessions.value?.length === 0 && !listError.value)
+/** Two panes side by side: wide enough, and Sessions to show beside starting one. */
+const split = computed(() => wide.value && !empty.value)
+/**
  * There, the New Session pane's width in px, set by the splitter and remembered per browser;
  * double-clicking the splitter forgets it, back to the default.
  */
@@ -162,15 +169,16 @@ const ACTIVITY_LABELS = {
 <template>
   <!-- Wide enough (Home's own width), two panes that scroll on their own, a splitter between them:
        the Sessions on the left, starting one on the right. Narrower, one column, New Session
-       opening under its button; on a phone, opening as a screen of its own. -->
+       opening under its button; on a phone, opening as a screen of its own. With no Sessions yet,
+       starting one alone, in the middle. -->
   <div
     ref="home"
     class="overflow-y-auto"
-    :class="wide ? 'flex flex-row-reverse overflow-hidden' : 'p-6 max-sm:px-4 max-sm:pt-4'"
+    :class="split ? 'flex flex-row-reverse overflow-hidden' : empty ? 'p-6 max-sm:px-4 max-sm:pt-4 sm:pt-[12vh]' : 'p-6 max-sm:px-4 max-sm:pt-4'"
   >
     <!-- Wide and folded: a strip at the edge, its name down it, to open it again. -->
     <button
-      v-if="wide && startFolded"
+      v-if="split && startFolded"
       type="button"
       class="flex w-10 shrink-0 flex-col items-center gap-2 border-l border-line py-6 text-sm text-muted hover:bg-surface hover:text-fg"
       title="Open Start something new"
@@ -183,21 +191,22 @@ const ACTIVITY_LABELS = {
     </button>
     <div
       v-else
-      :class="wide ? 'shrink-0 overflow-y-auto p-6' : phone ? '' : 'border-b border-line pb-6'"
-      :style="wide ? { width: `${startWidth}px` } : undefined"
+      :class="split ? 'shrink-0 overflow-y-auto p-6' : phone || empty ? '' : 'border-b border-line pb-6'"
+      :style="split ? { width: `${startWidth}px` } : undefined"
       data-start-pane
     >
       <!-- Wide: a column of its own. Narrower: laid flat along the top, always there. On a phone:
-           a New button, opening it as a screen of its own. -->
+           a New button, opening it as a screen of its own. With no Sessions, a column in the middle. -->
       <div
         class="flex w-full max-w-full flex-col gap-4"
-        :class="{ 'mx-auto': !wide }"
-        :style="!wide && !phone ? { width: sessionsWidth } : undefined"
+        :class="{ 'mx-auto': !split, 'max-w-2xl!': empty }"
+        :style="!wide && !phone && !empty ? { width: sessionsWidth } : undefined"
+        data-start-column
       >
-        <div v-if="!phone" class="flex items-center gap-2">
-          <h2 class="text-lg font-semibold">Start something new</h2>
+        <div v-if="!phone || empty" class="flex items-center gap-2">
+          <h2 class="font-semibold" :class="empty ? 'text-2xl' : 'text-lg'">Start something new</h2>
           <button
-            v-if="wide"
+            v-if="split"
             type="button"
             class="ml-auto rounded-md p-1 text-muted hover:bg-surface hover:text-fg"
             title="Fold it away, the Sessions taking the room"
@@ -231,11 +240,11 @@ const ACTIVITY_LABELS = {
           <Icon name="plus" />
           New Session
         </button>
-        <StartSession v-if="!phone || startOpen" :error="startError" :flat="!wide && !phone" class="w-full" />
+        <StartSession v-if="!phone || empty || startOpen" :error="startError" :flat="!wide && !phone && !empty" class="w-full" />
       </div>
     </div>
     <SplitHandle
-      v-if="wide && !startFolded"
+      v-if="split && !startFolded"
       v-model="startWidth"
       :min="START_MIN"
       :leave="SESSIONS_MIN"
@@ -244,9 +253,9 @@ const ACTIVITY_LABELS = {
       @dblclick="storedWidth = null"
     />
     <div
-      v-show="!(phone && startOpen)"
+      v-show="!(phone && startOpen) && !empty"
       ref="sessionsArea"
-      :class="wide ? 'min-w-0 flex-1 overflow-y-auto p-6' : 'mx-auto mt-6 max-w-[104rem]'"
+      :class="split ?'min-w-0 flex-1 overflow-y-auto p-6' : 'mx-auto mt-6 max-w-[104rem]'"
     >
       <section
         v-if="listError || sessions?.length"

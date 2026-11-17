@@ -113,15 +113,14 @@ describe('ScenarioView', () => {
       suggestions: [],
     })
     expect(fieldValue((await mountAt('/scenario/tavern')).wrapper, 'music')).toBe('A lone fiddle.')
-    vi.mocked(api.getSettings).mockResolvedValueOnce(
-      { textModel: 'x', music: true } as api.Settings,
-    )
-    await useFeatures().refreshFeatures()
+    // Settings saved with Music on, as the page reads them again when it opens.
+    vi.mocked(api.getSettings).mockResolvedValue({ textModel: 'x', music: true } as api.Settings)
     clearScenarioDraft()
     // On, and blank: left to the Text Model, a chip to open it from.
     expect((await mountAt('/scenario/tavern')).wrapper.find('[data-open-part=music]').exists()).toBe(
       true,
     )
+    vi.mocked(api.getSettings).mockResolvedValue({ textModel: 'x' } as api.Settings)
     await useFeatures().refreshFeatures()
   })
 

@@ -1,9 +1,11 @@
 import { computed, ref } from 'vue'
 import { type Feature, getSettings, type Settings } from '../api'
-import { loadSettingsOptions, useSettingsOptions } from './useSettingsOptions'
+import { loadSettingsOptions, settingsOptionsError, useSettingsOptions } from './useSettingsOptions'
 
 /** Settings as they are now, with the Features switched on; loaded once, shared. */
 const settings = ref<Settings | null>(null)
+/** Why Settings last failed to load, or '' once they have. */
+const settingsError = ref('')
 let loading: Promise<void> | null = null
 
 /** Loads them again, e.g. once Settings are saved: what's switched on, and what can run. */
@@ -11,8 +13,10 @@ async function refreshFeatures() {
   try {
     const [, loaded] = await Promise.all([loadSettingsOptions(), getSettings()])
     settings.value = loaded
-  } catch {
+    settingsError.value = ''
+  } catch (err) {
     // Until they load, everything shows, and the server says if something's off.
+    settingsError.value = (err as Error).message
   }
 }
 
@@ -29,5 +33,7 @@ export function useFeatures() {
     (options.value?.features?.[feature]?.available ?? true) &&
     (settings.value?.features?.[feature] ?? true)
   )
-  return { on, refreshFeatures, settings }
+  /** Why Settings or their options couldn't be loaded, or '' while they could. */
+  const loadError = computed(() => settingsError.value || settingsOptionsError.value)
+  return { on, refreshFeatures, settings, options, loadError }
 }

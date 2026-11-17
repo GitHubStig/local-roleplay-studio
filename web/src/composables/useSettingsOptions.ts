@@ -14,14 +14,18 @@ import { JOB_NAMES } from '../jobs'
 /** What Settings can be set to (Image Models, Features…), loaded once and shared. */
 const options = ref<SettingsOptions | null>(null)
 let loading: Promise<void> | null = null
+/** Why they last failed to load, or '' once they have. */
+export const settingsOptionsError = ref('')
 
 /** Loads them again, e.g. once Settings are saved. */
 export function loadSettingsOptions(): Promise<void> {
   loading = (async () => {
     try {
       options.value = await getSettingsOptions()
-    } catch {
+      settingsOptionsError.value = ''
+    } catch (err) {
       // Until they load, screens make do without them, and the server says if something's off.
+      settingsOptionsError.value = (err as Error).message
     }
   })()
   return loading

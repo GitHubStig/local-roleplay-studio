@@ -182,6 +182,26 @@ describe('HomeView', () => {
     expect(wrapper.find('[data-brief]').exists()).toBe(true)
   })
 
+  it('starts the first Session in one column in the middle, without the split or the fold', async () => {
+    vi.mocked(api.listSessions).mockResolvedValue([])
+    homeIs(1900)
+    const { wrapper } = await mountIt()
+    expect(wrapper.find('[data-split-handle]').exists()).toBe(false)
+    expect(wrapper.find('[data-start-fold]').exists()).toBe(false)
+    expect(wrapper.find('[data-start-column]').classes()).toContain('mx-auto')
+    expect(wrapper.find('[data-brief]').exists()).toBe(true)
+  })
+
+  it('offers no way back to the Sessions on a phone when there are none', async () => {
+    vi.mocked(api.listSessions).mockResolvedValue([])
+    homeIs(390)
+    // Even closed before, in this tab, while there were Sessions.
+    sessionStorage.setItem('home.new-session-open', '0')
+    const { wrapper } = await mountIt()
+    expect(wrapper.find('[data-new-session]').exists()).toBe(false)
+    expect(wrapper.find('[data-brief]').exists()).toBe(true)
+  })
+
   it("shows a Roleplay's latest line in place of an image", async () => {
     vi.mocked(api.listSessions).mockResolvedValue([
       summary('r', { kind: 'roleplay', thumbnail: null, excerpt: 'Sit down.' }),

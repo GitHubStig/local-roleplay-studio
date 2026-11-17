@@ -31,7 +31,12 @@ const BRIEF_MAX = 4000
 const router = useRouter()
 const list = ref<ScenarioList | null>(null)
 const listError = ref('')
-const { loaded, loadError: settingsError, blocker: textModelBlocker } = useTextModelReady()
+const {
+  loaded,
+  loadError: settingsError,
+  blocker: textModelBlocker,
+  picturesBlocker,
+} = useTextModelReady()
 const brief = ref('')
 const { scenarioDraft } = useScenarioDraft()
 
@@ -119,7 +124,16 @@ async function open(from: ScenarioSource) {
     <p v-else-if="!list || !loaded" class="text-muted">Loading…</p>
 
     <template v-else>
-      <p v-if="textModelBlocker" class="text-sm text-warn" data-blocker>{{ textModelBlocker }}</p>
+      <!-- What's missing to start (a Text Model), or to picture what's started, with the way to
+           Settings to set it up: until then, the first thing to do. -->
+      <p v-if="textModelBlocker" class="border-l-2 border-warn pl-3 text-sm text-warn" role="alert">
+        <span data-blocker>{{ textModelBlocker }}</span>{{ ' ' }}
+        <RouterLink to="/settings/text" class="font-medium underline underline-offset-2 hover:text-fg">Open Settings</RouterLink>
+      </p>
+      <p v-if="picturesBlocker" class="border-l-2 border-warn pl-3 text-sm text-warn" data-pictures-blocker>
+        Frames won't be pictured yet: {{ picturesBlocker }}. Or switch Pictures off.
+        <RouterLink to="/settings/images" class="font-medium underline underline-offset-2 hover:text-fg">Open Settings</RouterLink>
+      </p>
 
       <!-- Laid flat, the Brief beside the Scenarios once it has room (by its own width, as the rest
            of Home goes by Home's, not the window's), under each other before; else one above the
