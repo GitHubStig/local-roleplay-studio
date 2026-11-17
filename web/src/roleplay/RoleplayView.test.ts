@@ -1280,7 +1280,8 @@ describe('RoleplayView', () => {
     await flushPromises()
     const viewers = () => again.findAll('[data-scene-viewer]')
     expect(viewers()[0].text()).toContain('Frame 1 · SHARP, 2.5D')
-    expect(viewers()[0].text()).toContain("Couldn't show the scene")
+    // No WebGL here, so it fails, once three and Spark have loaded: a wait of its own on a cold start.
+    await vi.waitFor(() => expect(viewers()[0].text()).toContain("Couldn't show the scene"))
     await againMenu()
     await again.find('[data-view-figure]').trigger('click')
     await flushPromises()

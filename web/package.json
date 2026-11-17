@@ -12,27 +12,27 @@
     "build:export": "vite build --config vite.export.config.ts && vite build --config vite.export-plot.config.ts"
   },
   "dependencies": {
-    "@observablehq/plot": "^0.6.17",
+    "@observablehq/plot": "^0.6.19",
     "@sparkjsdev/spark": "^2.4.0",
     "@vueuse/core": "^15.0.0",
-    "three": "^0.186.1",
-    "vue": "^3.5.44",
-    "vue-router": "^5.4.0"
+    "three": "^0.187.0",
+    "vue": "^3.5.45",
+    "vue-router": "^5.5.1"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.3.3",
+    "@tailwindcss/vite": "^4.3.5",
     "@types/node": "^24.19.2",
-    "@types/three": "^0.186.0",
-    "@vitejs/plugin-vue": "^6.0.10",
-    "@vue/test-utils": "^2.5.1",
+    "@types/three": "^0.187.0",
+    "@vitejs/plugin-vue": "^6.0.11",
+    "@vue/test-utils": "^2.6.0",
     "@vue/tsconfig": "^0.9.1",
     "happy-dom": "^21.0.4",
-    "playwright-core": "^1.65.0",
-    "tailwindcss": "^4.3.3",
+    "playwright-core": "^1.65.1",
+    "tailwindcss": "^4.3.5",
     "typescript": "~6.0.3",
-    "vite": "^8.3.4",
+    "vite": "^8.3.8",
     "vite-plugin-singlefile": "^2.3.4",
     "vitest": "^5.1.0",
-    "vue-tsc": "^3.3.13"
+    "vue-tsc": "^3.3.14"
   }
 }
