@@ -36,6 +36,8 @@ import CollapsibleTextarea from '../components/CollapsibleTextarea.vue'
 import ShownPills from '../components/ShownPills.vue'
 import Frame3dViewers from '../components/Frame3dViewers.vue'
 import FrameViewer from '../components/FrameViewer.vue'
+import PictureMenu from '../components/PictureMenu.vue'
+import { providePictureMenu } from '../composables/usePictureMenu'
 import Icon from '../components/Icon.vue'
 import LookForm from '../components/LookForm.vue'
 import { clipCount, clipsMaking, usePlayingClip } from '../clips'
@@ -568,6 +570,28 @@ async function openClip(job: Job) {
 }
 const { painting: paintingPicture, startEdit, showEdit, pick: pickVersion, deleteEdit, deleteUpscale } =
   usePictureEditing(props.id, session, viewingPicture, (text) => (message.value = { kind: 'error', text }))
+/** A picture's menu, from a right-click or a long press on it, wherever it shows. */
+const pictureMenu = providePictureMenu(() =>
+  session.value && {
+    sessionId: session.value.id,
+    frames: session.value.frames,
+    imageModel: session.value.settings.imageModel,
+    thumbnail: session.value.thumbnail,
+    hasJob,
+    canRender: (index) => {
+      const frame = session.value!.frames.find((f) => f.index === index)
+      return !!frame && isWritten(frame) && !frame.blocked
+    },
+    busy: waitForText.value,
+    queue: queueSaved,
+    edit: startEdit,
+    look: (index) => (viewingPicture.value = index),
+    changed: () => {
+      load()
+      refreshJobs()
+    },
+  }
+)
 // A job linked to from the queue page opens as this Session's Queue tab opens it.
 useJobLink(() => sessionPath(props.id, 'storyboard'), () => !!session.value, jobs, refreshJobs, {
   go: (index) => pick(index),
@@ -861,6 +885,7 @@ const pickFromAll = (index: number) => pick(index)
             <template #picture>
               <SessionPicture
                 v-if="current"
+                :index="current.index"
                 :name="frameName(current.index)"
                 :label="`${frameName(current.index)} of ${frames.length} · ${status(current).label}`"
                 :src="picture ? imageUrl(session.id, picture.upscaled ?? picture.image) : null"
@@ -1172,6 +1197,7 @@ const pickFromAll = (index: number) => pick(index)
       @pick="pickFromAll"
       @changed="load(); refreshJobs()"
     />
+    <PictureMenu :menu="pictureMenu" />
     <FrameViewer
       v-if="session"
       v-model:open="viewingPicture"

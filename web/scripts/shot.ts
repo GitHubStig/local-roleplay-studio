@@ -24,6 +24,7 @@
  *
  * Steps, run in order after the page loads, each one argument (a selector is a CSS selector):
  *   click:SELECTOR              dblclick:SELECTOR              hover:SELECTOR
+ *   rightclick:SELECTOR         opens its own menu (a picture's)
  *   type:SELECTOR=TEXT          fills an input or textarea
  *   key:KEY                     presses a key ("ArrowLeft", "Enter")
  *   drag:SELECTOR=DX,DY         drags an element's centre by DX, DY px
@@ -128,6 +129,9 @@ try {
         break
       case 'hover':
         await page.hover(rest)
+        break
+      case 'rightclick':
+        await page.click(rest, { button: 'right' })
         break
       case 'dblclick':
         await page.dblclick(rest)

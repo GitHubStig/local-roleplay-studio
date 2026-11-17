@@ -2,6 +2,8 @@
 import { useMediaQuery } from '@vueuse/core'
 import { computed, ref, useTemplateRef, watch } from 'vue'
 import type { Comparison, ComparisonPicture } from '../comparison'
+import { contextMenus, type MenuAt } from '../contextMenu'
+import { STARS } from '../thumbnail'
 import { useDragReorder } from '../composables/useDragReorder'
 import { usePageKeys } from '../composables/usePageKeys'
 import Icon from './Icon.vue'
@@ -25,15 +27,11 @@ const props = defineProps<Comparison & {
   hideable?: boolean
   /** Each picture has a star, to make it Home's thumbnail. */
   starrable?: boolean
+  /** Opens a picture's menu, from a right-click or a long press on it (none on the exported page). */
+  menu?: (picture: ComparisonPicture, at: MenuAt) => void
 }>()
 defineEmits<{ choose: [picture: ComparisonPicture] }>()
-
-/** What a picture's star says. */
-const STARS = {
-  chosen: "This Session's thumbnail on Home, as you chose it: click to stop using it",
-  automatic: "This Session's thumbnail on Home for now, as its newest picture: click to keep it",
-  none: "Use it as this Session's thumbnail on Home",
-}
+const menuOn = contextMenus()
 
 /**
  * The models' columns as arranged: indexes into `models`, the hidden ones last; a model rendering
@@ -338,9 +336,10 @@ usePageKeys(() => instead.value ?? scroller.value, () => viewing.value !== null)
               </span>
               <button
                 type="button"
-                class="relative block rounded"
+                class="relative block rounded [-webkit-touch-callout:none]"
                 :title="pictureTitle(picture)"
                 data-compare-picture
+                v-on="menu ? menuOn((at) => menu!(picture, at)) : {}"
                 @click="viewing = { row: r, column: c }"
               >
                 <span

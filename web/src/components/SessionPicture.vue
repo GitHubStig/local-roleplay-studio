@@ -7,6 +7,7 @@ import FrameJobsLine from './FrameJobsLine.vue'
 import Icon from './Icon.vue'
 import PictureToolbar from './PictureToolbar.vue'
 import { PICTURE_RATIO } from './pictureRatio'
+import { usePictureMenu } from '../composables/usePictureMenu'
 import { useShownPreview } from '../composables/useShownPreview'
 
 /**
@@ -21,6 +22,8 @@ import { useShownPreview } from '../composables/useShownPreview'
  */
 const props = withDefaults(
   defineProps<{
+    /** Its Frame's index, for the picture's menu (`usePictureMenu`). */
+    index?: number
     /** What it's called in a sentence: "Frame 3". */
     name: string
     /** Over its top-left while it has a picture: "Frame 3 of 12", and anything to say of it. */
@@ -51,6 +54,7 @@ const props = withDefaults(
     playing?: { src: string; clip: Clip } | null
   }>(),
   {
+    index: undefined,
     label: undefined,
     src: null,
     picture: undefined,
@@ -106,6 +110,8 @@ function onLoad(e: Event) {
   size.value = { width: img.naturalWidth, height: img.naturalHeight }
 }
 const shown = () => !!displayed.value || !!forming.value
+/** The picture's menu, from a right-click or a long press on it. */
+const pictureMenu = usePictureMenu()
 </script>
 
 <template>
@@ -122,9 +128,10 @@ const shown = () => !!displayed.value || !!forming.value
     <template v-if="shown()">
       <button
         type="button"
-        class="block h-full w-full"
+        class="block h-full w-full [-webkit-touch-callout:none]"
         :title="`Look closer at ${name}'s picture`"
         data-picture-image
+        v-on="picture && index !== undefined && pictureMenu ? pictureMenu.on(index) : {}"
         @click="displayed && emit('open')"
       >
         <img

@@ -13,9 +13,11 @@ import {
   pickedEdit,
   type Picture,
   type PicturedFrame,
-  setThumbnail,
 } from '../api'
 import type { ComparisonModel, ComparisonPicture } from '../comparison'
+import type { MenuAt } from '../contextMenu'
+import { usePictureMenu } from '../composables/usePictureMenu'
+import { starOf, toggleThumbnail } from '../thumbnail'
 import { useStoredString } from '../composables/storage'
 import { useStoredFlag } from '../composables/useStoredFlag'
 import { useStyleBase } from '../composables/useStyleBase'
@@ -74,9 +76,13 @@ const models = computed<ComparisonModel[]>(() =>
 )
 /** What Home shows, starred on the picture it's a version of. */
 const home = computed(() => homeImage(props.frames, props.imageModel, props.thumbnail))
-function starOf(picture: Picture): ComparisonPicture['star'] {
-  if (!home.value || !hasVersion(picture, home.value)) return undefined
-  return home.value === props.thumbnail ? 'chosen' : 'automatic'
+const starred = (picture: Picture) => starOf(picture, home.value, props.thumbnail)
+
+/** A picture's menu (`usePictureMenu`), on the Frame whose picture it is. */
+const pictureMenu = usePictureMenu()
+function openMenu(picture: ComparisonPicture, at: MenuAt) {
+  const frame = props.frames.find((f) => f.pictures.some((p) => hasVersion(p, picture.id!)))
+  if (frame) pictureMenu?.open(at, frame.index, picture.id)
 }
 /** The Frames with any picture, each with its picture by each model (or none). */
 const pictured = computed(() =>
@@ -89,7 +95,7 @@ const pictured = computed(() =>
       // Each as its picked version: an edit is compared as the picture it now is, and marked.
       pictures: modelIds.value.map((m) => {
         const picture = f.pictures.find((p) => p.imageModel === m)
-        return picture ? { ...asPicked(picture), star: starOf(picture) } : null
+        return picture ? { ...asPicked(picture), star: starred(picture) } : null
       }),
     }))
 )
@@ -174,7 +180,7 @@ const thumbnailError = ref('')
 async function choose(picture: ComparisonPicture) {
   thumbnailError.value = ''
   try {
-    await setThumbnail(props.sessionId, picture.star === 'chosen' ? null : picture.id!)
+    await toggleThumbnail(props.sessionId, picture.id!, picture.star)
     emit('changed')
   } catch (err) {
     thumbnailError.value = (err as Error).message
@@ -313,6 +319,7 @@ async function exportPage() {
     :rows
     :hideable="models.length > 1"
     starrable
+    :menu="pictureMenu ? openMenu : undefined"
     @choose="choose"
   >
     <template #hidden="{ index }">

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { nextTick, useTemplateRef, watch } from 'vue'
+import { usePictureMenu } from '../composables/usePictureMenu'
 import Icon from './Icon.vue'
 
 /** One Frame's tile: its picture small, or its words where it has none. */
@@ -28,6 +29,8 @@ const props = defineProps<{ tiles: readonly StripTile[]; picked: number | null }
 /** `all`: the ▦ at its end, which opens every Frame at once (`AllFrames`). */
 const emit = defineEmits<{ pick: [index: number]; all: [] }>()
 const strip = useTemplateRef<HTMLElement>('strip')
+/** A picture's menu, from a right-click or a long press on its tile. */
+const pictureMenu = usePictureMenu()
 
 async function onKey(e: KeyboardEvent) {
   if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
@@ -64,7 +67,7 @@ watch(() => [props.picked, props.tiles.length], async () => {
       v-for="tile in tiles"
       :key="tile.index"
       type="button"
-      class="relative h-12 w-20 shrink-0 overflow-hidden rounded text-left lg:h-16 lg:w-28 [@media(max-height:640px)]:h-6 [@media(max-height:640px)]:w-9"
+      class="relative h-12 w-20 shrink-0 overflow-hidden rounded text-left [-webkit-touch-callout:none] lg:h-16 lg:w-28 [@media(max-height:640px)]:h-6 [@media(max-height:640px)]:w-9"
       :class="[
         tile.index === picked ? 'ring-2 ring-fg ring-offset-1 ring-offset-canvas' : 'hover:ring-1 hover:ring-muted',
         tile.thumb ? '' : 'border border-dashed border-line bg-surface',
@@ -74,6 +77,7 @@ watch(() => [props.picked, props.tiles.length], async () => {
       :aria-current="tile.index === picked"
       :title="tile.words"
       :data-tile="tile.index"
+      v-on="tile.thumb && pictureMenu ? pictureMenu.on(tile.index) : {}"
       @click="emit('pick', tile.index)"
     >
       <img

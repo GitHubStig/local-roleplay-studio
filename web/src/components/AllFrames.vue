@@ -1,8 +1,10 @@
 <script setup lang="ts" generic="F extends PicturedFrame">
 import { onKeyStroke } from '@vueuse/core'
 import { computed, onMounted, ref, useTemplateRef, watch } from 'vue'
-import { asPicked, hasVersion, homeImage, type PicturedFrame, setThumbnail, shownPicture } from '../api'
+import { homeImage, type PicturedFrame, shownPicture } from '../api'
 import { useCloseOnLeave } from '../composables/useCloseOnLeave'
+import { usePictureMenu } from '../composables/usePictureMenu'
+import { STARS, starOf as starred, toggleThumbnail } from '../thumbnail'
 import type { StripTile } from './FrameStrip.vue'
 import Icon from './Icon.vue'
 import ModelComparison from './ModelComparison.vue'
@@ -50,11 +52,6 @@ const modes = computed(() => [
   ...(modelCount.value > 1 ? [{ id: 'scores' as const, label: 'Scores' }] : []),
 ])
 
-const STARS = {
-  chosen: "This Session's thumbnail on Home, as you chose it: click to stop using it",
-  automatic: "This Session's thumbnail on Home for now, as its newest picture: click to keep it",
-  none: "Use it as this Session's thumbnail on Home",
-}
 /**
  * Home's thumbnail, starred on a Frame's picture by the Session's Image Model, as Compare's stars:
  * on the one Home shows, and on hover to choose another; on the one chosen, back to the newest.
@@ -62,13 +59,10 @@ const STARS = {
 const home = computed(() => homeImage(props.frames, props.imageModel, props.thumbnail))
 function starOf(index: number) {
   const frame = props.frames.find((f) => f.index === index)
+  // The version shown, as Compare's star stars it.
   const picture = frame && shownPicture(frame, props.imageModel)
   if (!picture) return null
-  const shown = !!home.value && hasVersion(picture, home.value)
-  const star: keyof typeof STARS | undefined = shown
-    ? (home.value === props.thumbnail ? 'chosen' : 'automatic')
-    : undefined
-  return { picture, star }
+  return { picture, star: starred(picture, home.value, props.thumbnail) }
 }
 const thumbnailError = ref('')
 async function star(index: number) {
@@ -76,13 +70,15 @@ async function star(index: number) {
   if (!s) return
   thumbnailError.value = ''
   try {
-    // The version shown, as Compare's star stars it.
-    await setThumbnail(props.sessionId, s.star === 'chosen' ? null : asPicked(s.picture).image)
+    await toggleThumbnail(props.sessionId, s.picture.image, s.star)
     emit('changed')
   } catch (err) {
     thumbnailError.value = (err as Error).message
   }
 }
+
+/** A picture's menu, from a right-click or a long press on its tile. */
+const pictureMenu = usePictureMenu()
 
 const query = ref('')
 /** The Frames whose words hold every word searched for, by index; all of them with no search. */
@@ -192,11 +188,12 @@ function pick(index: number) {
         <li v-for="tile in tiles" :key="tile.index" class="group/tile relative">
           <button
             type="button"
-            class="flex w-full flex-col gap-1 text-left transition-opacity"
+            class="flex w-full flex-col gap-1 text-left transition-opacity [-webkit-touch-callout:none]"
             :class="{ 'opacity-35': matches && !matches.has(tile.index) }"
             :aria-current="tile.index === picked"
             :data-match="matches?.has(tile.index) || undefined"
             :data-sheet-tile="tile.index"
+            v-on="tile.thumb && pictureMenu ? pictureMenu.on(tile.index) : {}"
             @click="pick(tile.index)"
           >
             <span
