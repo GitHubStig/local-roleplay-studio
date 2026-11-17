@@ -243,3 +243,31 @@ Deno.test('An export can carry the style scores, into the page as they are', () 
     }, 'T')
     assertEquals(await Deno.stat(join(dir, 'out', 'plot.js')).catch(() => null), null)
   }))
+
+Deno.test('An export says each picture file it writes, of how many, and stops when told', () =>
+  withTempDir(async (dir) => {
+    const session = join(dir, 'session')
+    await Deno.mkdir(session)
+    for (const file of ['frame-0-a.png', 'frame-0-a-2048.png', 'frame-0-b.png']) {
+      await Deno.writeFile(join(session, file), await png(8, 8))
+    }
+    await Deno.writeTextFile(join(session, 'frame-1-a.svg'), '<svg/>')
+    // Frame 0's A: its own thumbnail and its upscale; B's one picture as both; Frame 1's SVG too.
+    const counts: [number, number][] = []
+    await writeComparison(session, join(dir, 'out'), PAGE, comparison, 'x', {
+      written: (done, total) => counts.push([done, total]),
+    })
+    assertEquals(counts, [[1, 6], [2, 6], [3, 6], [4, 6], [5, 6], [6, 6]])
+
+    const stop = new AbortController()
+    stop.abort(new Error('Cancelled by player'))
+    await assertRejects(
+      () =>
+        writeComparison(session, join(dir, 'stopped'), PAGE, comparison, 'x', {
+          signal: stop.signal,
+        }),
+      Error,
+      'Cancelled by player',
+    )
+    assertEquals(await Deno.stat(join(dir, 'stopped', 'index.html')).catch(() => null), null)
+  }))

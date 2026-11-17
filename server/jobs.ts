@@ -285,7 +285,7 @@ export class SessionJobs {
    * its Text Model is still loaded, not after a batch of renders that each unload it. `machine` is
    * where it runs (`machineKey`), `image` a render's Image Model (`Job.image`), `edit` an
    * edit's order and `clip` a clip's; `text` the Session's Text Model, kept by a job of a kind that
-   * asks it (`TEXT_JOBS`).
+   * asks it (`TEXT_JOBS`); `exported` an export's folder.
    */
   enqueue(
     sessionId: string,
@@ -296,6 +296,7 @@ export class SessionJobs {
     edit?: EditOrder,
     clip?: ClipOrder,
     text?: TextChoiceKept,
+    exported?: Job['export'],
   ): Job {
     const jobs = this.#jobs.get(sessionId) ?? []
     const same = jobs.find((j) => sameWork(j, kind, frameIndex, image, clip) && isOpen(j))
@@ -311,6 +312,7 @@ export class SessionJobs {
       ...(edit && { edit }),
       ...(clip && { clip }),
       ...(text && TEXT_JOBS.includes(kind) && { text }),
+      ...(exported && { export: exported }),
     }
     const ahead = kind === 'picture'
       ? jobs.findIndex((j) => j.status === 'queued' && IMAGE_JOBS.includes(j.kind))

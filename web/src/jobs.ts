@@ -18,6 +18,7 @@ export const JOB_NAMES: Record<JobKind, string> = {
   'score-roleplay': 'Score the Roleplay',
   music: 'Music track',
   steer: 'Steer the music',
+  export: 'Export',
 }
 
 /** Whether a job is still queued or running, rather than failed or done. */
@@ -30,7 +31,7 @@ export const isOpen = (job: Pick<Job, 'status'>) =>
  */
 export function jobStatus(job: Job, special?: (job: Job) => string | undefined): string {
   if (job.status === 'failed') return `Failed: ${job.error}`
-  if (job.status === 'done') return 'Done'
+  if (job.status === 'done') return job.export ? `Exported to ${job.export.folder}` : 'Done'
   if (job.status === 'queued') return 'Queued'
   if (job.phase === 'download') return DOWNLOADING
   const said = special?.(job)
@@ -38,8 +39,8 @@ export function jobStatus(job: Job, special?: (job: Job) => string | undefined):
   if (job.phase === 'queued') return 'Waiting for another render…'
   if (job.kind === 'scene') return 'Making the 2.5D scene…'
   if (job.kind === 'figure' || job.kind === 'lito') return 'Making the 3D figure…'
-  if (job.kind === 'style') {
-    const doing = 'Embedding the pictures…'
+  if (job.kind === 'style' || job.kind === 'export') {
+    const doing = job.kind === 'style' ? 'Embedding the pictures…' : 'Writing the pictures…'
     return job.progress ? `${doing} ${job.progress.step} of ${job.progress.total}` : doing
   }
   const doing = job.kind === 'upscale' ? 'Upscaling to 2048 px…' : 'Rendering…'

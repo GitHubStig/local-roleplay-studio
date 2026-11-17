@@ -48,6 +48,7 @@ import { checkChainJob, runChainJob } from './chain/jobs.ts'
 import { checkStoryboardJob, runStoryboardJob } from './storyboard/jobs.ts'
 import { GoneError, removeSession, updateSession } from './update.ts'
 import type { ExportPage } from './export/comparison.ts'
+import { removeExportOrder, runExport } from './export/job.ts'
 import { removeFiles } from './pictures.ts'
 import {
   backendOf,
@@ -434,11 +435,12 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
           ),
       )
     },
-    // An edit cancelled or dismissed: the area painted for it, saved as it was queued, goes too.
-    // A clip cut off by a restart, cancelled before it picked up its result: what it left on
-    // ComfyUI is cleaned up.
+    // An edit cancelled or dismissed: the area painted for it, saved as it was queued, goes too, as
+    // does what an export was to write. A clip cut off by a restart, cancelled before it picked up
+    // its result: what it left on ComfyUI is cleaned up.
     async (id, job) => {
       if (job.edit?.mask) await removeFiles(deps.sessions.dir(id), [job.edit.mask])
+      if (job.kind === 'export') await removeExportOrder(deps.sessions.dir(id))
       if (job.resume && !job.startedAt) {
         await clearTraces(job.resume).catch((err) =>
           console.warn(`Couldn't clean up after a clip on ComfyUI: ${err.message}`)
@@ -464,6 +466,11 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
         emit,
         signal,
       )
+    }
+    if (session && job.kind === 'export') {
+      if (!deps.exports) throw new Error("Exporting isn't set up")
+      const exportDeps = { sessionDir: deps.sessions.dir(id), page: deps.exports.page }
+      return runExport(exportDeps, session, job, emit, signal)
     }
     // The same in every kind of Session (ADR 0021).
     if (session && job.kind === 'edit') {
@@ -596,6 +603,8 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       backendOf: jobBackendOf,
       videoModel,
       check: async (session, kind, index, pending, edit, clip) => {
+        // Queued with what it writes, by its own route.
+        if (kind === 'export') return error('Export from the Compare dialog', 400)
         const feature = JOB_FEATURE[kind]
         const name = frameName(index)
         // A clip is of the Frame's picture by the Session's model, there or coming; Into Next ends

@@ -68,6 +68,11 @@ export interface Job {
   /** A clip's order. */
   clip?: ClipOrder
   /**
+   * An export's folder, where its page is written (`exports/` and the Session's id): said once
+   * it's done. What it writes was saved in the Session's folder as it was queued (`export.json`).
+   */
+  export?: { folder: string }
+  /**
    * While it runs: what it has left on a ComfyUI, which it cleans up itself as it ends, and a
    * restart cleans up after it if it can't (`restore`).
    */

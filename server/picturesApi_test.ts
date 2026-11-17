@@ -14,24 +14,38 @@ import {
   type setup,
 } from './appTesting.ts'
 
-Deno.test('The Compare dialog exports to a folder per Session', () =>
+/** Every job of Session `s1`, done ones too. */
+const jobsOf = async (call: ReturnType<typeof setup>['call']): Promise<Job[]> =>
+  await (await call('GET', '/api/sessions/s1/jobs')).json()
+
+/** A stand-in for the built export page, which waits for `held` before it's read, if given. */
+const exportsIn = (root: string, held?: Promise<void>) => ({
+  dir: join(root, 'exports'),
+  page: async () => {
+    await held
+    return { html: '<script id="comparison" type="application/json">{}</script>', plot: '' }
+  },
+})
+
+Deno.test("The Compare dialog's export is queued, and written to a folder per Session", () =>
   withTempDir(async (root) => {
-    const page = '<script id="comparison" type="application/json">{}</script>'
-    const exports = {
-      dir: join(root, 'exports'),
-      page: () => Promise.resolve({ html: page, plot: '' }),
-    }
-    const { call } = await chainOfTwo(root, { exports })
-    const comparison = {
-      models: [],
-      rows: [{ name: 'Frame 0', pictures: [] }],
-    }
+    const { call } = await chainOfTwo(root, { exports: exportsIn(root) })
+    const comparison = { models: [], rows: [{ name: 'Frame 0', pictures: [] }] }
     const exported = await call('POST', '/api/sessions/s1/export', comparison)
-    assertEquals(await exported.json(), { folder: join(root, 'exports', 's1'), pictures: 0 })
+    assertEquals(exported.status, 201)
+    const folder = join(root, 'exports', 's1')
+    assertEquals((await exported.json()).map((j: Job) => [j.kind, j.export]), [
+      ['export', { folder }],
+    ])
+    assertEquals(await settled(call), [])
+    const [done] = await jobsOf(call)
+    assertEquals([done.status, done.export], ['done', { folder }])
     assertMatch(
-      await Deno.readTextFile(join(root, 'exports', 's1', 'index.html')),
+      await Deno.readTextFile(join(folder, 'index.html')),
       /"title":"\d{1,2} [A-Z][a-z]{2,3} \d{4} · Seed \d+"/,
     )
+    // What it wrote, saved as it was queued, is gone once it's done.
+    assertEquals(await Deno.stat(join(root, 's1', 'export.json')).catch(() => null), null)
 
     const picture = { name: 'Frame 0', pictures: [{ image: '../s2/frame-0.png' }] }
     const outside = await call('POST', '/api/sessions/s1/export', {
@@ -43,30 +57,51 @@ Deno.test('The Compare dialog exports to a folder per Session', () =>
       400,
       'Pictures must be files in the Session',
     ])
+    // Not as a job on its own, which would have nothing to write.
+    const bare = await call('POST', '/api/sessions/s1/jobs', { kind: 'export', frameIndex: 0 })
+    assertEquals(bare.status, 400)
     assertEquals((await call('POST', '/api/sessions/nope/export', comparison)).status, 404)
     const off = (await chainOfTwo(join(root, 'off'))).call
     assertEquals((await off('POST', '/api/sessions/s1/export', comparison)).status, 404)
   }))
 
-Deno.test("A Session's export is refused while another of it is being written", () =>
+Deno.test("A Session's export asked for again replaces one queued, and is refused while one is written", () =>
   withTempDir(async (root) => {
-    const page = '<script id="comparison" type="application/json">{}</script>'
-    let open!: () => void
-    const held = new Promise<void>((r) => (open = r))
-    const exports = {
-      dir: join(root, 'exports'),
-      // The first export waits here, mid-way, until the second has been asked for.
-      page: async () => (await held, { html: page, plot: '' }),
+    let release!: () => void
+    const held = new Promise<void>((r) => (release = r))
+    // The style scores run here first, so the export waits its turn behind them.
+    const style: StyleEmbedder = {
+      async embed() {
+        await held
+        return { images: {}, texts: {} }
+      },
     }
-    const { call } = await chainOfTwo(root, { exports })
-    const comparison = { models: [], rows: [{ name: 'Frame 0', pictures: [] }] }
-    const first = call('POST', '/api/sessions/s1/export', comparison)
-    const second = await call('POST', '/api/sessions/s1/export', comparison)
-    assertEquals(second.status, 409)
+    let open!: () => void
+    const page = new Promise<void>((r) => (open = r))
+    const { call } = await chainOfTwo(root, { style, exports: exportsIn(root, page) })
+    await call('POST', '/api/sessions/s1/jobs', { kind: 'style', frameIndex: 0 })
+    const asked = (name: string) => ({ models: [], rows: [{ name, pictures: [] }] })
+    const first = await (await call('POST', '/api/sessions/s1/export', asked('Frame 0'))).json()
+    const again = await (await call('POST', '/api/sessions/s1/export', asked('Frame 1'))).json()
+    const exportOf = (jobs: Job[]) => jobs.find((j) => j.kind === 'export')!
+    assertEquals(exportOf(again).id, exportOf(first).id)
+    assertEquals(exportOf(again).status, 'queued')
+
+    release()
+    while (exportOf(await jobsOf(call)).status !== 'running') {
+      await new Promise((r) => setTimeout(r, 5))
+    }
+    const refused = await call('POST', '/api/sessions/s1/export', asked('Frame 2'))
+    assertEquals([refused.status, (await refused.json()).error], [
+      409,
+      "This Session's export is still being written: wait for it to finish",
+    ])
     open()
-    assertEquals((await first).status, 200)
-    // Done, another may start.
-    assertEquals((await call('POST', '/api/sessions/s1/export', comparison)).status, 200)
+    assertEquals(await settled(call), [])
+    const html = await Deno.readTextFile(join(root, 'exports', 's1', 'index.html'))
+    assertEquals([html.includes('"Frame 1"'), html.includes('"Frame 0"')], [true, false])
+    // Done, another may be asked for.
+    assertEquals((await call('POST', '/api/sessions/s1/export', asked('Frame 0'))).status, 201)
   }))
 
 Deno.test('Home shows the thumbnail chosen until its file goes, and else the newest picture', () =>

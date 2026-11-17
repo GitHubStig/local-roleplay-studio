@@ -9,7 +9,8 @@ import { IMAGE_BACKEND_NAMES, IMAGE_BACKENDS, type ImageBackendKind } from '../s
 import { deleteNewestEdit, deleteUpscale, pickVersion } from './pictureEdits.ts'
 import { loadStyleCache, styleScores, unembedded } from './style/scores.ts'
 import { isOpen, onModelPictures } from './jobs.ts'
-import { comparisonTitle, parseComparisonExport, writeComparison } from './export/comparison.ts'
+import { parseComparisonExport } from './export/comparison.ts'
+import { saveExportOrder } from './export/job.ts'
 import {
   chooseThumbnail,
   deleteModelPictures,
@@ -21,9 +22,6 @@ import { Refusal } from './refusal.ts'
 
 export function pictureRoutes(ctx: AppContext): Route[] {
   const { deps, jobs, loadSession, heavyBackend } = ctx
-
-  /** The Sessions whose export is being written now. */
-  const exporting = new Set<string>()
   return [
     // Switches the Session's Image Model: `{ imageModel, imageBackend? }`, by name, and the kind of
     // backend it would rather render on, if picked (ADR 0022): one a Backend listed can render.
@@ -150,32 +148,28 @@ export function pictureRoutes(ctx: AppContext): Route[] {
       })
     }],
 
-    // The Compare dialog as a page of its own, with its pictures as WebP, in a folder under
-    // `exports/` named for the Session: `ComparisonExport`. It says where the folder went.
+    // Queues the Compare dialog as a page of its own, with its pictures as WebP, in a folder under
+    // `exports/` named for the Session: `ComparisonExport`. One export per Session at a time: asked
+    // for again before it starts, the newer replaces what it writes; while it's being written, it's
+    // refused, as a second would clear the folder the first writes into. Sends back the jobs.
     ['POST', new URLPattern({ pathname: '/api/sessions/:id/export' }), async (req, p) => {
       if (!deps.exports) return error("Exporting isn't set up", 404)
       const comparison = parseComparisonExport(await readJson(req))
       if (typeof comparison === 'string') return error(comparison, 400)
       const session = await loadSession(p.id!)
-      const folder = join(deps.exports.dir, p.id!)
-      // One at a time per Session: a second, from another tab or the view opened again, started by
-      // clearing the folder the first was writing into.
-      if (exporting.has(session.id)) {
-        throw new Refusal("This Session's export is still being written: wait for it to finish")
-      }
-      exporting.add(session.id)
-      try {
-        const { pictures } = await writeComparison(
-          deps.sessions.dir(p.id!),
-          folder,
-          await deps.exports.page(),
-          comparison,
-          comparisonTitle(new Date(), session.seed),
-        )
-        return json({ folder, pictures })
-      } finally {
-        exporting.delete(session.id)
-      }
+      const folder = join(deps.exports.dir, session.id)
+      // Held, so an export queued already doesn't start while what it writes is replaced.
+      await jobs.holding(session.id, async () => {
+        const writing = jobs.list(session.id)
+          .some((j) => j.kind === 'export' && j.status === 'running')
+        if (writing) {
+          throw new Refusal("This Session's export is still being written: wait for it to finish")
+        }
+        await saveExportOrder(deps.sessions.dir(session.id), comparison)
+        const none = undefined
+        jobs.enqueue(session.id, 'export', 0, 'here', none, none, none, none, { folder })
+      })
+      return json(jobs.list(session.id), 201)
     }],
   ]
 }

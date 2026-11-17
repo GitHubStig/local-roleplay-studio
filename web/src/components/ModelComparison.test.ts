@@ -10,10 +10,23 @@ import {
 } from '../api'
 import ModelComparison from './ModelComparison.vue'
 
+/** The export as it's queued: a job of the Session's, which says where its folder is. */
+const { exportJob } = vi.hoisted(() => ({
+  exportJob: {
+    id: 'e1',
+    kind: 'export',
+    frameIndex: 0,
+    status: 'queued',
+    createdAt: '2026-11-17T00:00:00Z',
+    machine: 'here',
+    export: { folder: '/exports/s1' },
+  } as Job,
+}))
+
 vi.mock('../api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../api')>()),
   getSettingsOptions: vi.fn(() => new Promise(() => {})),
-  exportComparison: vi.fn(() => Promise.resolve({ folder: '/exports/s1', pictures: 3 })),
+  exportComparison: vi.fn(() => Promise.resolve([exportJob])),
   // Not scored: an export carries no style scores.
   getStyleScores: vi.fn(() => Promise.reject(new Error('Not scored yet'))),
   deleteModelPictures: vi.fn(() => Promise.resolve({ session: {}, deleted: 2 })),
@@ -254,7 +267,8 @@ describe('ModelComparison', () => {
     expect(label()).toBe('Frame 1 · b')
   })
 
-  it('exports what it shows, by the pictures’ files, and says where it went', async () => {
+  it('exports what it shows, by the pictures’ files, and says where it went once done', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
     const shown: PicturedFrame[] = [
       {
         ...frames[0],
@@ -290,7 +304,25 @@ describe('ModelComparison', () => {
         },
       ],
     })
+    expect(wrapper.find('[data-export-status]').text()).toBe('Queued')
+    expect(wrapper.find('[data-export]').text()).toBe('Exporting…')
+    expect(wrapper.emitted('changed')).toHaveLength(1)
+
+    // Followed in the queue until it's done, which says where it went.
+    vi.mocked(listJobs).mockResolvedValue([{ ...exportJob, status: 'done' }])
+    await vi.advanceTimersByTimeAsync(1000)
     expect(wrapper.find('[data-export-done]').text()).toBe('Exported to /exports/s1')
+    expect(wrapper.find('[data-export]').text()).toBe('Export')
+    vi.useRealTimers()
+  })
+
+  it('shows an export still being written, from before the dialog was opened', async () => {
+    const running = { ...exportJob, status: 'running' as const, progress: { step: 3, total: 8 } }
+    vi.mocked(listJobs).mockResolvedValueOnce([running])
+    const wrapper = mountIt()
+    await flushPromises()
+    expect(wrapper.find('[data-export-status]').text()).toBe('Writing the pictures… 3 of 8')
+    expect(wrapper.find('[data-export]').attributes('disabled')).toBeDefined()
   })
 
   it('exports behind an 18+ notice when asked, remembering it for the Session', async () => {
@@ -398,7 +430,8 @@ describe('ModelComparison', () => {
   it('won’t delete a hidden model’s pictures while style scores are being worked out', async () => {
     localStorage.setItem('compare-hidden:s1', '["a"]')
     const running = { kind: 'style', status: 'running' } as Job
-    vi.mocked(listJobs).mockResolvedValueOnce([running])
+    // The export looks at the jobs as the dialog opens; the Delete dialog, as it opens.
+    vi.mocked(listJobs).mockResolvedValueOnce([]).mockResolvedValueOnce([running])
     vi.mocked(deleteModelPictures).mockClear()
     const wrapper = mountIt()
     await flushPromises()

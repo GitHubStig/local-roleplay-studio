@@ -12,7 +12,8 @@
  * repaints a picture as told (ADR 0021); `direct` directs the music at a Roleplay Frame (the
  * Music Director, docs/design.md), `score-roleplay` scores a whole Roleplay's with
  * hindsight, `music` makes the track of the Cue that begins on a Frame, and `steer` writes that Cue
- * again as the player asked.
+ * again as the player asked; `export` writes the Compare dialog as a page of its own, in a
+ * folder of its own under `exports/` (`server/export/`).
  */
 export type JobKind =
   | 'picture'
@@ -31,3 +32,4 @@ export type JobKind =
   | 'score-roleplay'
   | 'music'
   | 'steer'
+  | 'export'

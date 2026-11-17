@@ -20,6 +20,8 @@ import { useStoredString } from '../composables/storage'
 import { useStoredFlag } from '../composables/useStoredFlag'
 import { useStyleBase } from '../composables/useStyleBase'
 import { useCloseOnLeave } from '../composables/useCloseOnLeave'
+import { useJobOf } from '../composables/useJobOf'
+import { isOpen, jobStatus } from '../jobs'
 import type { ExportedStyles } from '../styleScores'
 import { useImageModels } from '../composables/useSettingsOptions'
 import ComparisonTable from './ComparisonTable.vue'
@@ -31,7 +33,7 @@ import StyleScoresPanel from './StyleScoresPanel.vue'
  * mode in place of the table, how varied each shown model's art style is (StyleScoresPanel). A
  * picture's star makes it what shows the Session on Home. Until the player picks, the Session's
  * own model shows, with the next two that rendered. With two models or more, Export writes the
- * same as a page of its own, on the server. A model that's off can have all its pictures deleted,
+ * same as a page of its own, on the server, as a job in the Session's queue. A model that's off can have all its pictures deleted,
  * but the Session's own model's; `changed` says so.
  */
 const props = withDefaults(
@@ -56,7 +58,10 @@ const props = withDefaults(
   }>(),
   { name: frameName },
 )
-/** The Session changed here (a thumbnail chosen, a model's pictures deleted): its screen loads it again. */
+/**
+ * The Session changed here (a thumbnail chosen, a model's pictures deleted) or an export was
+ * queued: its screen loads it and its jobs again.
+ */
 const emit = defineEmits<{ changed: [] }>()
 const { labelOf } = useImageModels()
 
@@ -264,13 +269,21 @@ async function deleteNow() {
   }
 }
 
-/** Where the last export went, or why it failed; null while exporting. */
-const exported = ref<{ folder?: string; error?: string } | null | undefined>()
+/**
+ * The export, a job in the Session's queue, so it carries on with the dialog closed: while it's
+ * queued or written, and once it's done (where its folder is) or has failed, until dismissed.
+ */
+const { job: exportJob, follow: followExport } = useJobOf(props.sessionId, 'export', {
+  followed: isOpen,
+})
+const exporting = computed(() => !!exportJob.value && isOpen(exportJob.value))
+/** Why the export couldn't be queued. */
+const exportProblem = ref('')
 async function exportPage() {
   asking.value?.close()
-  exported.value = null
+  exportProblem.value = ''
   try {
-    const { folder } = await exportComparison(props.sessionId, {
+    const jobs = await exportComparison(props.sessionId, {
       ...(adultsOnly.value ? { notice: notice.value.trim() || NOTICE } : {}),
       models: exportedColumns.value.map((i) => ({ label: models.value[i].label })),
       rows: pictured.value.map((row) => ({
@@ -281,9 +294,11 @@ async function exportPage() {
       })),
       ...(styles.value && exportStyles.value ? { styles: styles.value } : {}),
     })
-    exported.value = { folder }
+    followExport(jobs)
+    // The Session's screen follows it too, in its Queue.
+    emit('changed')
   } catch (e) {
-    exported.value = { error: e instanceof Error ? e.message : String(e) }
+    exportProblem.value = e instanceof Error ? e.message : String(e)
   }
 }
 </script>
@@ -327,20 +342,25 @@ async function exportPage() {
     </template>
     <template #actions>
       <span v-if="thumbnailError" class="text-danger" data-thumbnail-problem>{{ thumbnailError }}</span>
-      <span v-if="exported?.folder" class="text-ok" data-export-done>
-        Exported to {{ exported.folder }}
+      <span v-if="exportProblem" class="text-danger" data-export-problem>{{ exportProblem }}</span>
+      <span
+        v-else-if="exportJob"
+        :class="exportJob.status === 'done' ? 'text-ok' : exportJob.status === 'failed' ? 'text-danger' : 'text-muted'"
+        :data-export-done="exportJob.status === 'done' ? '' : undefined"
+        data-export-status
+      >
+        {{ jobStatus(exportJob) }}
       </span>
-      <span v-else-if="exported?.error" class="text-danger">{{ exported.error }}</span>
       <button
         v-if="models.length > 1"
         type="button"
         class="rounded-lg bg-fg px-3 py-1 font-medium text-canvas disabled:opacity-50"
-        title="Write this as a page of its own, its pictures as WebP, to open or host anywhere"
-        :disabled="exported === null || !exportedColumns.length"
+        title="Write this as a page of its own, its pictures as WebP, to open or host anywhere. It carries on with this closed, in the Queue"
+        :disabled="exporting || !exportedColumns.length"
         data-export
         @click="askToExport"
       >
-        {{ exported === null ? 'Exporting…' : 'Export' }}
+        {{ exporting ? 'Exporting…' : 'Export' }}
       </button>
     </template>
   </ComparisonTable>

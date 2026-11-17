@@ -120,7 +120,8 @@ const DATA_SLOT = /<script id="comparison" type="application\/json">[\s\S]*?<\/s
  * Writes the export to `outDir`, replacing what an earlier export left there: `index.html` (from
  * `page`, the built `web/export.html`), `images/` for the viewer and `thumbs/` for the table, and
  * with style scores, `plot.js` for their charts. Anything else in the folder stays, such as a
- * host's deploy state (here.now's `.herenow/`).
+ * host's deploy state (here.now's `.herenow/`). `written` hears of each picture file written, out
+ * of how many; `signal` stops it between two, leaving what's written so far.
  */
 export async function writeComparison(
   sessionDir: string,
@@ -128,8 +129,15 @@ export async function writeComparison(
   page: ExportPage,
   comparison: ComparisonExport,
   title: string,
+  opts: { written?: (done: number, total: number) => void; signal?: AbortSignal } = {},
 ): Promise<{ pictures: number }> {
   if (!DATA_SLOT.test(page.html)) throw new Error('The export page has no slot for its comparison')
+  const files = new Set(
+    comparison.rows.flatMap((r) => r.pictures).filter((p) => !!p).flatMap((p) => [
+      `thumbs/${p.image}`,
+      `images/${p.upscaled ?? p.image}`,
+    ]),
+  )
   for (const written of ['index.html', 'plot.js', 'images', 'thumbs']) {
     await Deno.remove(join(outDir, written), { recursive: true }).catch((err) => {
       if (!(err instanceof Deno.errors.NotFound)) throw err
@@ -148,6 +156,7 @@ export async function writeComparison(
     const key = `${folder}/${file}`
     const done = written.get(key)
     if (done) return done
+    opts.signal?.throwIfAborted()
     const data = await Deno.readFile(join(sessionDir, file))
     let out: Written
     if (extname(file) === '.svg') {
@@ -169,6 +178,7 @@ export async function writeComparison(
       await Deno.writeFile(join(outDir, out.path), webp.data)
     }
     written.set(key, out)
+    opts.written?.(written.size, files.size)
     return out
   }
 

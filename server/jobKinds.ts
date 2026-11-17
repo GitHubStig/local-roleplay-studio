@@ -93,6 +93,8 @@ export const JOBS: Record<JobKind, JobKindInfo> = {
   'score-roleplay': { feature: null, text: true, ofSession: true, needs: [] },
   music: { feature: null, image: true, late: true, resumed: true, needs: [] },
   steer: { feature: null, text: true, needs: [] },
+  // The pictures the Compare dialog showed as it was asked: it waits for nothing.
+  export: { feature: null, ofSession: true, needs: [] },
 }
 
 export const JOB_KINDS = Object.keys(JOBS) as JobKind[]

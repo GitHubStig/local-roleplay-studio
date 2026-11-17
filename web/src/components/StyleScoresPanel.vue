@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { useIntervalFn } from '@vueuse/core'
 import { computed, onMounted, ref, watch } from 'vue'
-import { ApiError, getStyleScores, type Job, listJobs, queueJob } from '../api'
+import { ApiError, getStyleScores, queueJob } from '../api'
+import { useJobOf } from '../composables/useJobOf'
 import { useStyleBase } from '../composables/useStyleBase'
 import { useFeatures } from '../composables/useFeatures'
 import { jobStatus } from '../jobs'
@@ -91,27 +91,17 @@ const shownProblem = computed(() =>
   props.models.length >= 2 && props.shared.length < 2 ? tooFew.value : problem.value
 )
 
-/** The scoring job, while it's queued, running, or failed. */
-const job = ref<Job | null>(null)
-async function refreshJob() {
-  const was = job.value
-  job.value = (await listJobs(props.sessionId).catch(() => [])).find((j) => j.kind === 'style') ??
-    null
-  if (was && !job.value) await load()
-  if (!job.value || job.value.status === 'failed') pause()
-}
-const { pause, resume } = useIntervalFn(refreshJob, 1000, { immediate: false })
-onMounted(async () => {
-  await Promise.all([load(), refreshJob()])
-  if (job.value && job.value.status !== 'failed') resume()
+/** The scoring job, while it's queued, running, or failed; once it's gone, the scores load. */
+const { job, follow } = useJobOf(props.sessionId, 'style', {
+  followed: (j) => j.status !== 'failed',
+  gone: load,
 })
+onMounted(load)
 
 async function score() {
   problem.value = null
   try {
-    const queued = await queueJob(props.sessionId, 'style', 0)
-    job.value = queued.find((j) => j.kind === 'style') ?? null
-    resume()
+    follow(await queueJob(props.sessionId, 'style', 0))
   } catch (err) {
     problem.value = (err as Error).message
   }

@@ -540,9 +540,12 @@ export async function cancelFrame(id: string): Promise<void> {
 export const imageUrl = (sessionId: string, file: string) =>
   `/api/sessions/${sessionId}/images/${file}`
 
-/** Exports a Session's comparison as a page; it says where on the server the folder went. */
+/**
+ * Queues a Session's comparison to be written as a page (an `export` job, which says where on the
+ * server its folder is); sends back the Session's jobs.
+ */
 export const exportComparison = (id: string, comparison: ComparisonExport) =>
-  post<{ folder: string; pictures: number }>(`/api/sessions/${id}/export`, comparison)
+  post<Job[]>(`/api/sessions/${id}/export`, comparison)
 
 /**
  * The Compare dialog's style scores against Frame `base`, for these Image Models (ids), from the
