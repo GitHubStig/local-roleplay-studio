@@ -2,28 +2,36 @@
 
 Newest first. The procedure is in [comfyui-upgrade.md](../comfyui-upgrade.md). ComfyUI runs on both machines: the Windows PC renders through it, and the Mac can.
 
-## 0.46.0 — the Windows PC, 2026-11-19
+## 0.46.0 — both machines, 2026-11-19
 
-Reviewed against the [v0.46.0 release notes](https://github.com/Comfy-Org/ComfyUI/releases/tag/v0.46.0) (which list everything since v0.45.0), from 0.45.2.
+Reviewed against the [v0.46.0 release notes](https://github.com/Comfy-Org/ComfyUI/releases/tag/v0.46.0) (which list everything since v0.45.0), from 0.45.2 on the PC and 0.45.5 on the Mac. 0.45.3 to 0.45.5, tags without release notes on a branch of their own, carry only partner (paid API) nodes and template bumps (`git log v0.45.2..v0.45.5`), all in 0.46.0 too.
 
-**Versions**: the owner upgraded the Windows PC from 0.45.2 to **0.46.0** on 2026-11-19 (Comfy Desktop). The local API reports ComfyUI 0.46.0, frontend 1.59.6, workflow templates 0.11.111 (`comfyui-workflow-templates-json` 0.1.137), comfy-aimdo 0.6.0 and comfy-kitchen 0.2.41 (both unchanged), PyTorch 2.13.0+cu130, RTX 4070 12 GB. The Mac hasn't been upgraded or reviewed.
+**Versions**: the owner upgraded the Windows PC from 0.45.2 to **0.46.0** on 2026-11-19 (Comfy Desktop). The local API reports ComfyUI 0.46.0, frontend 1.59.6, workflow templates 0.11.111 (`comfyui-workflow-templates-json` 0.1.137), comfy-aimdo 0.6.0 and comfy-kitchen 0.2.41 (both unchanged), PyTorch 2.13.0+cu130, RTX 4070 12 GB. The owner upgraded the Mac (M5 Pro, 48 GB) from 0.45.5 to **0.46.0** on 2026-11-19 (Comfy Desktop 1.1.10); it reports the same frontend, templates, comfy-aimdo and comfy-kitchen as the PC, PyTorch 2.13.0 on MPS. The Mac's earlier steps, 0.44.2 (2026-11-07), 0.45.2 (2026-11-11) and 0.45.5 (2026-11-17), had no review of their own (from its install's git reflog).
 
 ### Release items relevant to the app
 
 - **The Qwen 3.5 text encoder's tokenizer**, which MOSS-Image's encoder (Qwen 3.5 9B, type `moss_image`) goes through: a checkpoint can now carry its own tokenizer, for vocabulary-pruned ones ([#17633](https://github.com/Comfy-Org/ComfyUI/pull/17633)), and the video token's id is read from the tokenizer rather than hard-coded ([#17759](https://github.com/Comfy-Org/ComfyUI/pull/17759); the same id, 248057, with the stock tokenizer). No change expected for the app's text-only prompts; a MOSS-Image render came out normal (below).
 
-No other change touches a node the app's workflows use. Every template they come from is byte for byte the same in `comfyui-workflow-templates-json` 0.1.137 (installed) as in 0.1.132, so no workflow changes needed.
+No other change touches a node the app's workflows use. Nothing in it is for MPS or the Mac: the rest of `comfy/model_management.py`'s change takes out DirectML ([#17711](https://github.com/Comfy-Org/ComfyUI/pull/17711)) and adds a CUDA 13 warning, and none of it reaches ACE-Step 1.5, the only model on the Mac's ComfyUI (`comfy/ldm/ace`, `comfy/text_encoders/ace15.py` and the ACE nodes are unchanged). Every template they come from is byte for byte the same in `comfyui-workflow-templates-json` 0.1.137 (installed) as in 0.1.132, so no workflow changes needed.
 
 ### Candidates the release made possible
 
 - **PAN2** (MBZUAI; [#17755](https://github.com/Comfy-Org/ComfyUI/pull/17755), [Comfy-Org/PAN2](https://huggingface.co/Comfy-Org/PAN2), original [IFM/PAN2](https://huggingface.co/IFM/PAN2)): a 29B MMDiT for text-to-video and image-to-video, on the Wan 2.2 VAE and a Qwen 3.5 9B text encoder. The PR gives the int8 DiT as 26.7 GB; the repo's file list didn't load here, so other variants and the licence are unchecked. A clip model, not an Image Model; on the 4070 it would rest on Dynamic VRAM streaming as H3 does. No template in 0.1.137.
 - **SenseNova U1.6** ([#16032](https://github.com/Comfy-Org/ComfyUI/pull/16032)): thinking before a picture or an edit, and self-correction (a second, corrected picture), on top of the U1.5 support ComfyUI has had since September ([#15922](https://github.com/Comfy-Org/ComfyUI/pull/15922); an 8B MoT, text-to-image and editing with 1–10 references, an 8-step LoRA). No U1.6 checkpoint was found on Hugging Face (2026-11-19), so nothing to try yet; U1.5 hasn't been reviewed here either.
 
+**On the Mac**, neither is worth trying now: PAN2's int8 DiT alone is 26.7 GB, and the Mac's ComfyUI loads models whole, likely widened to bf16 (comfyui.md, "Memory and speed"), so with its 9B encoder it would swap as H3 did; and there's no U1.6 checkpoint. Pictures on the Mac stay with mflux.
+
 ### Windows PC check — 2026-11-19
 
 **Smoke check**, through the app's `comfyuiImageGenerator` with the public tavern still-life prompt and Settings' landscape size: Qwen-Image 2.1 (22.6 s), a FLUX.3 Klein edit of the whole picture (the candle made an oil lamp, the rest unchanged; 17.2 s), SeedVR2 7B from that render (15.2 s), and MOSS-Image, 25 steps at CFG 2.5 (26.6 s), all correct by eye; after each of the first three, VRAM free back to within 0.1 GiB of before (`/free`), and `GET /history` empty at the end. Times are from one run each, not a bench.
 
-Not checked: the other Image Models, masked edits, clips, voices, music; the Mac.
+Not checked: the other Image Models, masked edits, clips, voices, music.
+
+### Mac check — 2026-11-19
+
+**Smoke check**, through the app's `comfyuiMusicGenerator`: one 30 s Track of ACE-Step 1.5 XL turbo with the 4B planner (a made-up tavern folk caption, 110 BPM, D major, seed 4300), from cold, in 114.5 s, all 8 steps reported; a whole FLAC, 30.0 s, 48 kHz stereo, mean −14.5 dB (not listened to). After it, `GET /history` empty, ComfyUI's temp copy overwritten with an empty stub, nothing in its output folder, and the Mac's free memory as ComfyUI reports it 33 GB, against 23 GB before. One run, not a bench; [music-models.md](music-models.md) has the 60 s Tracks at 167–202 s.
+
+Not checked: pictures, as the Mac renders with mflux and its ComfyUI has no Image Model; clips; a Track through a Roleplay.
 
 ## 0.45.2 — the Windows PC, 2026-11-11
 
