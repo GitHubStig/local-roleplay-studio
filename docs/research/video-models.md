@@ -2,6 +2,26 @@
 
 Measurements behind clips ([ADR 0025](../adr/0025-clips-by-kind.md)); what's still to do is in [open-threads.md](../open-threads.md), "Clips". Newest first.
 
+## Wan 2.2 past 5 s: the Idle Loop swells and snaps back (2026-11-19, Windows PC)
+
+The owner saw the colour change over Wan 2.2 clips longer than about 8 s. Measured: the same picture (`docs/bench/video-ltx/kael.png`), seed 4300, at Small (640²'s pixels), as an Idle Loop (the picture at both ends) and a Play out (at the start only), each at 5, 8 and 10 s (81, 129, 161 frames; Wan 2.2 14B is trained on 81), through the app's `comfyuiVideoGenerator` on ComfyUI 0.46.0. Per frame, ffmpeg's `signalstats`: mean luma, mean saturation, and the mean luma change from the frame before.
+
+| Clip | Time | Peak VRAM | Luma by fifths of the clip | Saturation by fifths | Largest change between frames |
+|---|---:|---:|---|---|---:|
+| Idle Loop 5 s | 95 s | 11.2 GB | 54, 59, 59, 59, 61 | 10, 11, 11, 11, 11 | 2.1 |
+| Idle Loop 8 s | 159 s | 11.6 GB | 54, 57, 63, **75**, 72 | 10, 12, 14, **19**, 16 | **10.9** |
+| Idle Loop 10 s | 209 s | 11.8 GB | 59, 64, 59, 53, 66 | 11, 13, 12, 10, 13 | **8.9** |
+| Play out 5 s | 92 s | 11.0 GB | 53, 56, 55, 55, 55 | 10, 10, 10, 10, 10 | 3.8 |
+| Play out 8 s | 158 s | 11.3 GB | 51, 54, 54, 53, 53 | 9, 10, 10, 10, 10 | 4.0 |
+| Play out 10 s | 211 s | 11.8 GB | 50, 52, 52, 51, 52 | 9, 10, 10, 10, 10 | 4.0 |
+
+- **Only the Idle Loop goes wrong past 5 s.** At 8 s it grows warmer, brighter and more saturated through the middle (luma 51 → 78 by frame 104, saturation nearly doubled), then is pulled back toward the picture in the last few frames, with jumps of 8.8 and 10.9 at frames 125 and 128 against under 2.1 anywhere in the 5 s loop: a visible pop. At 10 s it swings both ways (up, down, up) and jumps 7.7 and 8.9 in its last four frames. By eye, frame 100 of the 8 s loop is plainly oranger than the picture; the content (the barman, the letter, the room) holds.
+- **Play out holds at every length**: luma within 2–3 of itself throughout, and its frame-to-frame change (2–4, the barman moving) no larger at 10 s than at 5 s.
+- **Likely why**: past its trained 81 frames, Wan holds the picture at both ends less well, and the last frames are forced back onto it. A colour and contrast build-up with grey flicker when the first and last frames are the same image is reported for Wan in ComfyUI-WanVideoWrapper's issues; not confirmed here which part is length and which is the loop. This matches the 10 s Idle Loop of 2026-10-31 (above), whose start and end differed, seam 0.74.
+- **The whole frame brightens, not the lamps**: in a 4×3 grid of regions, frame 100 of the 8 s loop is 20–30 levels brighter than the picture in every one, the door far from any lamp (25 → 51) as much as the lamp's corner (70 → 88); and it climbs over ~60 frames, too slowly for a lamp's flicker. Play out, with the same lamps, stays flat.
+- **Mild by eye**: the owner, watching the clips, found it not too bad; the climb is slow, and this dark, busy picture hides it more than a lighter one would. No change made: Wan's Idle Loop still goes to 10 s at Small, for a future Wan model to fix.
+- **ComfyUI's Video Deflicker** (0.46, [#17754](https://github.com/Comfy-Org/ComfyUI/pull/17754)) isn't the fix: it smooths quick flicker between frames, not a slow swell, and the pop back to the picture is what makes the loop meet itself.
+
 ## Sol-H3-VAE against H3's own VAE (2026-11-04, Windows PC)
 
 ComfyUI 0.44.0 can load Sol-H3-VAE ([PR #17411](https://github.com/comfy-org/ComfyUI/pull/17411)): a 24-layer decoder distilled from MiniMax H3's video decoder, which decodes a clip whole rather than in tiles and temporal chunks. Comfy-Org's int8 file (`minimax_h3_sol_vae_int8_convrot.safetensors`, 2.0 GB, in [Comfy-Org/MiniMax-H3](https://huggingface.co/Comfy-Org/MiniMax-H3)) was tried against the int8 stock VAE the PC had, on the app's H3 workflow sent straight to ComfyUI from a scratch script. To compare decoders on the same latent, a clip was sampled and decoded with the stock VAE, then the decode alone was run again with each VAE in turn (ComfyUI kept the sampled latent), timed per node from ComfyUI's WebSocket messages; VRAM sampled by `nvidia-smi` every 250 ms, Ollama unloaded. Two clips: an Idle-Loop-like 5 s at Small (864×480, 124 frames) from the bench's painted tavern picture (`docs/bench/video-ltx/kael.png`), and the app's worst case for memory, 10 s at Large (1280×704, 243 frames), from a photographic picture with smooth skin made for it (Z-Image Turbo), as the PR's issue [#17429](https://github.com/comfy-org/ComfyUI/issues/17429) reports faint seams on smooth skin. Seed 4300.
