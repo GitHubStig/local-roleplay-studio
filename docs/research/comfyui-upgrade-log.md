@@ -2,6 +2,29 @@
 
 Newest first. The procedure is in [comfyui-upgrade.md](../comfyui-upgrade.md). ComfyUI runs on both machines: the Windows PC renders through it, and the Mac can.
 
+## 0.46.0 — the Windows PC, 2026-11-19
+
+Reviewed against the [v0.46.0 release notes](https://github.com/Comfy-Org/ComfyUI/releases/tag/v0.46.0) (which list everything since v0.45.0), from 0.45.2.
+
+**Versions**: the owner upgraded the Windows PC from 0.45.2 to **0.46.0** on 2026-11-19 (Comfy Desktop). The local API reports ComfyUI 0.46.0, frontend 1.59.6, workflow templates 0.11.111 (`comfyui-workflow-templates-json` 0.1.137), comfy-aimdo 0.6.0 and comfy-kitchen 0.2.41 (both unchanged), PyTorch 2.13.0+cu130, RTX 4070 12 GB. The Mac hasn't been upgraded or reviewed.
+
+### Release items relevant to the app
+
+- **The Qwen 3.5 text encoder's tokenizer**, which MOSS-Image's encoder (Qwen 3.5 9B, type `moss_image`) goes through: a checkpoint can now carry its own tokenizer, for vocabulary-pruned ones ([#17633](https://github.com/Comfy-Org/ComfyUI/pull/17633)), and the video token's id is read from the tokenizer rather than hard-coded ([#17759](https://github.com/Comfy-Org/ComfyUI/pull/17759); the same id, 248057, with the stock tokenizer). No change expected for the app's text-only prompts; a MOSS-Image render came out normal (below).
+
+No other change touches a node the app's workflows use. Every template they come from is byte for byte the same in `comfyui-workflow-templates-json` 0.1.137 (installed) as in 0.1.132, so no workflow changes needed.
+
+### Candidates the release made possible
+
+- **PAN2** (MBZUAI; [#17755](https://github.com/Comfy-Org/ComfyUI/pull/17755), [Comfy-Org/PAN2](https://huggingface.co/Comfy-Org/PAN2), original [IFM/PAN2](https://huggingface.co/IFM/PAN2)): a 29B MMDiT for text-to-video and image-to-video, on the Wan 2.2 VAE and a Qwen 3.5 9B text encoder. The PR gives the int8 DiT as 26.7 GB; the repo's file list didn't load here, so other variants and the licence are unchecked. A clip model, not an Image Model; on the 4070 it would rest on Dynamic VRAM streaming as H3 does. No template in 0.1.137.
+- **SenseNova U1.6** ([#16032](https://github.com/Comfy-Org/ComfyUI/pull/16032)): thinking before a picture or an edit, and self-correction (a second, corrected picture), on top of the U1.5 support ComfyUI has had since September ([#15922](https://github.com/Comfy-Org/ComfyUI/pull/15922); an 8B MoT, text-to-image and editing with 1–10 references, an 8-step LoRA). No U1.6 checkpoint was found on Hugging Face (2026-11-19), so nothing to try yet; U1.5 hasn't been reviewed here either.
+
+### Windows PC check — 2026-11-19
+
+**Smoke check**, through the app's `comfyuiImageGenerator` with the public tavern still-life prompt and Settings' landscape size: Qwen-Image 2.1 (22.6 s), a FLUX.3 Klein edit of the whole picture (the candle made an oil lamp, the rest unchanged; 17.2 s), SeedVR2 7B from that render (15.2 s), and MOSS-Image, 25 steps at CFG 2.5 (26.6 s), all correct by eye; after each of the first three, VRAM free back to within 0.1 GiB of before (`/free`), and `GET /history` empty at the end. Times are from one run each, not a bench.
+
+Not checked: the other Image Models, masked edits, clips, voices, music; the Mac.
+
 ## 0.45.2 — the Windows PC, 2026-11-11
 
 Reviewed against the [v0.45.0 release notes](https://github.com/Comfy-Org/ComfyUI/releases/tag/v0.45.0) and the commits of v0.44.1, v0.44.2, v0.45.1 and v0.45.2, tags without release notes (`gh api repos/Comfy-Org/ComfyUI/compare/…`), from 0.44.0. The point releases carry only partner (paid API) nodes, template bumps and, in 0.45.2, a `none` choice for `CreateVideo`'s chroma subsampling, which the app's clip workflows leave at its default; everything below is in 0.45.0.
