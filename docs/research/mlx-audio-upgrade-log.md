@@ -2,6 +2,17 @@
 
 Newest first. The procedure is in [mlx-audio-upgrade.md](../mlx-audio-upgrade.md). mlx-audio runs the voice service (`python/voice/serve.py`) on the Apple Silicon Mac only; the Windows PC speaks through ComfyUI.
 
+## 0.6.7 — Mac, 2026-11-20
+
+From 0.6.6. Only mlx-audio moved in the lock: mlx stays 0.32.4, transformers 5.20.2 and torch 2.14.1, and its own requirements and Python range are unchanged. Nothing in the release touches the voice service's two models: the code diff from 0.6.6 leaves Qwen3-TTS, Higgs and `generate` alone, and `load_model` only gains a mapping for the new Reverb TTS. The rest add Reverb, speed up Whisper, Parakeet and Kokoro, load speech-recognition packages only when their model is used (#1201), fix text normalizers (MeloTTS, Soprano), let the mlx-audio server take a seed (#1221) and make its CLI exit nonzero when generation fails (#1218); `serve.py` uses none of them.
+
+The same check as for 0.6.6, rerun on both versions through the service's own HTTP routes: one voice designed from a fixed description (seed 7) and four lines cloned from 0.6.6's clip (seed 3: plain, slow with a sigh, fast, and a whispered thought), with tavern-style text:
+
+- **Everything is byte for byte the same**, the designed voice and all four cloned lines. A Character's saved voice sounds exactly as before.
+- **The same time**: 2.6–4.9 s a line (2.7–5.0 on 0.6.6), 2.4 s to design (2.7). Memory, polled from `/health` during the runs this time rather than read once, peaked at 4.6 GB designing and 10.3 GB speaking (7.7 and 9.7 on 0.6.6; the 7.7 likely caught Qwen3-TTS mid-generation, as the outputs are identical).
+- The same two known warnings (transformers on the `qwen3_tts` type, the leaked semaphore at shutdown), none new.
+- Not run: the app itself (step 6). `serve.py` is unchanged and the service's outputs are identical.
+
 ## 0.6.6 — Mac, 2026-11-17
 
 From 0.6.5. mlx stays 0.32.4, transformers 5.20.2 and torch 2.14.1. mlx-audio now sets security floors on its HTTP and Hugging Face dependencies (#1199), which added requests 2.34.2, urllib3 2.8.0, certifi 2026.10.23 and charset-normalizer 3.5.2 to the lock, and raised its own Python minimum to 3.11, below the service's 3.14. Read for the voice service's two models:

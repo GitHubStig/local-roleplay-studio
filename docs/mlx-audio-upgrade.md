@@ -32,7 +32,7 @@ uv lock --script python/voice/serve.py --upgrade-package mlx-audio
    - **Time** per line and **memory** (`/health` reports the memory the service holds), and any new warning in the log (three are known: transformers on the `qwen3_tts` type, a divide in Higgs's codec, a leaked semaphore at shutdown).
 6. **Run the app**: design a voice and speak a few lines in a test Roleplay made from the tavern Scenario, then delete it.
 7. **Benchmarks are scheduled, not run.** A longer comparison (the 29-line Kael conversation, pitch over several seeds, as in [research/voices.md](./research/voices.md)) is GPU time: say what will run and how long, and wait for the owner to pick a time.
-8. **Record the result.** Add a dated section to [research/mlx-audio-upgrade-log.md](./research/mlx-audio-upgrade-log.md) (newest first): versions from and to (mlx-audio, mlx, transformers), what was checked, what changed, and what wasn't tested. Update `models.md` if the version it names or a number changed.
+8. **Record the result.** Add a dated section to [research/mlx-audio-upgrade-log.md](./research/mlx-audio-upgrade-log.md) (newest first): versions from and to (mlx-audio, mlx, transformers), what was checked, what changed, and what wasn't tested. Update `models.md` only if a number there changed: it names no version, which is the lock's to say.
 9. **Commit the lock with the log**, as `build(voice): mlx-audio <version>`, after the owner's yes.
 
 ## Review prompt
