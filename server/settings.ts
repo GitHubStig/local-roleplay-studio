@@ -108,10 +108,13 @@ export const DEFAULT_SETTINGS: Settings = {
 
 /**
  * The defaults on this machine: where mflux or the voice service can't run (a PC), a ComfyUI here
- * for pictures, Upscale, edits and voices, so a fresh install there starts on what it has.
+ * for pictures, Upscale, edits and voices, so a clone there starts on what it has. An installed
+ * app lists none: it needs only a Text Model, and the player adds a ComfyUI they have.
  */
-export function machineDefaults(here: { mflux: boolean; voiceService: boolean }): Settings {
-  if (here.mflux && here.voiceService) return DEFAULT_SETTINGS
+export function machineDefaults(
+  here: { mflux: boolean; voiceService: boolean; installed: boolean },
+): Settings {
+  if (here.installed || (here.mflux && here.voiceService)) return DEFAULT_SETTINGS
   const comfyui: Backend = { id: 'comfyui', kind: 'comfyui', address: '' }
   const images = here.mflux ? 'here' : comfyui.id
   return {

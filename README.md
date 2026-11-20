@@ -136,7 +136,7 @@ Everything else is chosen in Settings (in sections: Text, Images, Voice, Music, 
 | SHARP, TripoSplat | yes (uv) | yes (uv) |
 | LiTo | yes (uv) | no |
 
-Where mflux or the voice service can't run (a PC), Settings start on ComfyUI for pictures, Upscale and voices, and the log says whether ComfyUI answers at its address and has what they need. ComfyUI can be on another machine, so a Mac can use a PC's ([Two machines](#two-machines)). One that can't run is off and its buttons are hidden, with the reason in Settings; one that can is on, and can be switched off there. Without pictures, every kind of Session still runs on the Text Model alone: a Roleplay is a conversation, a Chain writes each Frame's prompt and a Storyboard plans and edits, ready to render on a machine that can.
+Where mflux or the voice service can't run (a PC), Settings start on ComfyUI for pictures, Upscale and voices (run from a clone; an installed app starts with none, for the player to add), and the log says whether ComfyUI answers at its address and has what they need. ComfyUI can be on another machine, so a Mac can use a PC's ([Two machines](#two-machines)). One that can't run is off and its buttons are hidden, with the reason in Settings; one that can is on, and can be switched off there. Without pictures, every kind of Session still runs on the Text Model alone: a Roleplay is a conversation, a Chain writes each Frame's prompt and a Storyboard plans and edits, ready to render on a machine that can.
 
 ## Where things live
 

@@ -61,7 +61,11 @@ const features = await detectFeatures(thisMachine(), { placeholderImages })
 // Where mflux or the voice service can't run (a PC), Settings default to a ComfyUI here.
 const settings = fileSettingsStore(
   data.settings,
-  machineDefaults({ mflux: features.images.available, voiceService: features.voices.available }),
+  machineDefaults({
+    mflux: features.images.available,
+    voiceService: features.voices.available,
+    installed: Deno.build.standalone,
+  }),
 )
 // The Session folder Settings keep; one that isn't a folder is passed over for the default.
 const sessionsDir = await (async () => {

@@ -203,7 +203,7 @@ Deno.test('validateSettings checks the Backends, and always lists this machine',
 })
 
 Deno.test('Where mflux and the voice service cannot run, Settings default to a ComfyUI here', () => {
-  const pc = machineDefaults({ mflux: false, voiceService: false })
+  const pc = machineDefaults({ mflux: false, voiceService: false, installed: false })
   assertEquals(pc.backends.map((b) => [b.kind, b.address]), [
     ['here', ''],
     ['ollama', ''],
@@ -218,7 +218,16 @@ Deno.test('Where mflux and the voice service cannot run, Settings default to a C
   })
   assertEquals([pc.editModel, pc.imageModel], ['qwen-image-2.1-edit', 'qwen-image-2.1'])
   assertEquals(validateSettings(pc).ok, true)
-  assertEquals(machineDefaults({ mflux: true, voiceService: true }), DEFAULT_SETTINGS)
+  assertEquals(
+    machineDefaults({ mflux: true, voiceService: true, installed: false }),
+    DEFAULT_SETTINGS,
+  )
+})
+
+Deno.test('An installed app lists no ComfyUI, which may not be there', () => {
+  const installed = machineDefaults({ mflux: false, voiceService: false, installed: true })
+  assertEquals(installed, DEFAULT_SETTINGS)
+  assertEquals(validateSettings(installed).ok, true)
 })
 
 Deno.test('Clips may name a ComfyUI to go to, one on the Machines tab', () => {
