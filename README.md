@@ -116,6 +116,7 @@ The same on Windows, in PowerShell. Open <http://localhost:5180>, go to **Settin
 | `VOICE_PORT` | `8791` | The Mac's voice service port (`python/voice/serve.py`) |
 | `OLLAMA_HOST` | `http://localhost:11434` | Where Ollama listens |
 | `IMAGE_GENERATOR` | (Settings' backend) | Set to `placeholder` to render SVG cards instead, for working without a GPU |
+| `DATA_DIR` | the repo's folder | One folder for Settings, the queue, Scenarios, Sessions and exports ([Storage](docs/design/settings-and-storage.md#storage)) |
 
 The web app's dev server is pinned to port **5180** (or `WEB_PORT`) and fails, rather than picking another port, if something else is using it.
 
@@ -138,6 +139,8 @@ Everything else is chosen in Settings (in sections: Text, Images, Voice, Music, 
 Where mflux or the voice service can't run (a PC), Settings start on ComfyUI for pictures, Upscale and voices, and the log says whether ComfyUI answers at its address and has what they need. ComfyUI can be on another machine, so a Mac can use a PC's ([Two machines](#two-machines)). One that can't run is off and its buttons are hidden, with the reason in Settings; one that can is on, and can be switched off there. Without pictures, every kind of Session still runs on the Text Model alone: a Roleplay is a conversation, a Chain writes each Frame's prompt and a Storyboard plans and edits, ready to render on a machine that can.
 
 ## Where things live
+
+Run from a clone, the player's data is kept in the repo's folder, as below (or in `DATA_DIR`); an installed app keeps it in the system's folders instead ([Storage](docs/design/settings-and-storage.md#storage)).
 
 ```
 example-scenarios/  The example Scenarios, one Markdown file each (see docs/scenarios.md)

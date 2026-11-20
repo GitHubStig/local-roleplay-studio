@@ -1,4 +1,3 @@
-import { fromFileUrl } from '@std/path'
 import { createHandler } from './app.ts'
 import { backendAddress } from './backends.ts'
 import { type Backend, BACKEND_NAMES, BACKEND_WORK } from '../shared/backends.ts'
@@ -32,6 +31,7 @@ import { loggedChat, loggedEmbedder, loggedImages, loggedMaker, loggedVoice } fr
 import { litoFigureMaker, tripoFigureMaker } from './3d/figure.ts'
 import { sharpSceneMaker } from './3d/scene.ts'
 import { checkFolder } from './sessionsFolder.ts'
+import { makeDataDirs, thisRunsDataDirs } from './dataDirs.ts'
 import { pickFolder } from './folderPicker.ts'
 import { uvStyleEmbedder } from './style/embedder.ts'
 import { buildComparisonPage } from './export/page.ts'
@@ -45,7 +45,10 @@ import { detectFeatures, FEATURE_NAMES, thisMachine, withBackends } from './feat
 import { type Feature, FEATURES } from '../shared/features.ts'
 
 const port = Number(Deno.env.get('PORT') ?? 8787)
-const defaultSessionsDir = fromFileUrl(new URL('../sessions/', import.meta.url))
+// The player's data: in the repo from a clone, in the OS's folders from an install (`dataDirs.ts`).
+const data = thisRunsDataDirs()
+await makeDataDirs(data)
+const defaultSessionsDir = data.sessions
 
 // What this machine can run, worked out once: a backend it can't run isn't set up at all, and
 // Settings says why (`features.ts`). IMAGE_GENERATOR=placeholder renders SVG cards instead of
@@ -55,7 +58,7 @@ const features = await detectFeatures(thisMachine(), { placeholderImages })
 
 // Where mflux or the voice service can't run (a PC), Settings default to a ComfyUI here.
 const settings = fileSettingsStore(
-  new URL('../settings.json', import.meta.url),
+  data.settings,
   machineDefaults({ mflux: features.images.available, voiceService: features.voices.available }),
 )
 // The Session folder Settings keep; one that isn't a folder is passed over for the default.
@@ -162,10 +165,14 @@ const mlxVoice = features.voices.available
  * the examples are copied in when there's no such folder yet, so they're the player's to keep or
  * delete.
  */
-const scenariosDir = new URL('../scenarios/', import.meta.url)
-const seeded = await seedScenarios(scenariosDir, new URL('../example-scenarios/', import.meta.url))
-if (seeded.length) console.log(`Copied the example Scenarios into scenarios/: ${seeded.join(', ')}`)
-const ownScenarios = dirScenarioFolder(scenariosDir)
+const seeded = await seedScenarios(
+  data.scenarios,
+  new URL('../example-scenarios/', import.meta.url),
+)
+if (seeded.length) {
+  console.log(`Copied the example Scenarios into ${data.scenarios}: ${seeded.join(', ')}`)
+}
+const ownScenarios = dirScenarioFolder(data.scenarios)
 
 const handler = createHandler({
   settings,
@@ -184,7 +191,7 @@ const handler = createHandler({
     },
   },
   pickFolder,
-  exports: { dir: fromFileUrl(new URL('../exports/', import.meta.url)), page: buildComparisonPage },
+  exports: { dir: data.exports, page: buildComparisonPage },
   textModel: (c) => chatTextModel(chat(c)),
   roleplayModel: (c) => chatRoleplayModel(chat(c)),
   // Each render, upscale and edit goes to the Backend Settings send it to: this machine's mflux
@@ -198,7 +205,7 @@ const handler = createHandler({
   ),
   features,
   renderQueue,
-  queue: fileQueueStore(new URL('../queue.json', import.meta.url)),
+  queue: fileQueueStore(data.queue),
   // Voices on the Backend Settings send them to: this machine's voice service where it runs (a
   // Mac), or a ComfyUI with TTS Audio Suite's nodes.
   voice: voiceBackends({

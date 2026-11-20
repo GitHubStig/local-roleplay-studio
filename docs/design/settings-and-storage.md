@@ -10,6 +10,8 @@ Hand edits (a Look, a Cast, a Storyboard Frame) save themselves when the focus l
 
 ## Storage
 
+Where the player's data goes is worked out once at startup (`server/dataDirs.ts`, [ADR 0040](../adr/0040-the-players-data-in-the-systems-folders.md)). Run from a clone, it's the repo's folder, as in the table. A `deno compile` binary (`Deno.build.standalone`), whose own files are read-only, uses the system's folders, each under `Local Roleplay Studio`: on a Mac, `~/Library/Application Support/`; on Windows, `%APPDATA%` for `settings.json` and `%LOCALAPPDATA%` for the rest, so pictures don't roam; on Linux, `$XDG_CONFIG_HOME` for Settings, `$XDG_STATE_HOME` for the queue and `$XDG_DATA_HOME` for the rest. An install puts exports in `~/Documents/Local Roleplay Studio/`. `DATA_DIR` puts it all in one folder, from a clone or an install. What ships with the app (`web/`, `python/`, `example-scenarios/`, the prompts and workflows) is only read, from beside the code.
+
 | What | Where | Notes |
 |---|---|---|
 | Settings | `settings.json` | Missing, corrupt or invalid → defaults; missing fields filled from defaults |
