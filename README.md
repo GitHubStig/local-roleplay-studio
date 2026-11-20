@@ -111,7 +111,7 @@ The same on Windows, in PowerShell. Open <http://localhost:5180>, go to **Settin
 
 | Environment variable | Default | Purpose |
 |---|---|---|
-| `PORT` | `8787` | API server port, and where the web app's dev server sends `/api` |
+| `PORT` | `8787` | API server port, and where the web app's dev server sends `/api`. `DENO_SERVE_ADDRESS` (`tcp:127.0.0.1:8787`), where it's set, wins over it, as `deno desktop` sets it |
 | `WEB_PORT` | `5180` | The web app's dev server port |
 | `VOICE_PORT` | `8791` | The Mac's voice service port (`python/voice/serve.py`) |
 | `OLLAMA_HOST` | `http://localhost:11434` | Where Ollama listens |

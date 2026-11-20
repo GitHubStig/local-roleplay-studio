@@ -232,6 +232,8 @@ const handler = createHandler({
   style: features.style.available ? loggedEmbedder(uvStyleEmbedder()) : undefined,
 })
 
+// DENO_SERVE_ADDRESS, where it's set, wins over the port: `deno desktop` sets it to the port its
+// window opens.
 Deno.serve({ port }, handler)
 
 /**
