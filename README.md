@@ -101,7 +101,7 @@ The same on Windows, in PowerShell. Open <http://localhost:5180>, go to **Settin
 |---|---|
 | `deno task dev` | API server (auto-restarts on change) plus the Vite dev server |
 | `deno task test` | Server tests (`deno test --parallel`, a file per worker) and web tests (Vitest), side by side |
-| `deno task check` | Lints both (`deno lint`), then type-checks the server with Deno and the web app with `vue-tsc` |
+| `deno task check` | Checks the formatting (`deno fmt --check`), lints both (`deno lint`), then type-checks the server with Deno and the web app with `vue-tsc` |
 | `deno task replay <file>` | Rebuilds a test Session from a replay file (`server/replay/replays/`) through the running app |
 | `deno task shot <path>` | Screenshots the running app in a headless browser (`web/scripts/shot.ts`) |
 | `deno task build` | Production build of the web app into `web/dist`, which the API server then serves too, at <http://localhost:8787>, with no Vite |
