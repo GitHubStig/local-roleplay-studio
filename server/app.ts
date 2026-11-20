@@ -121,6 +121,8 @@ export interface AppDeps {
    * into (`buildComparisonPage`); without it, there's no export.
    */
   exports?: { dir: string; page: () => Promise<ExportPage> }
+  /** The web app's pages and files (`webApp`); left out, the server answers only the API. */
+  web?: (req: Request) => Promise<Response>
   /**
    * Where heavy jobs, and the Text Model's calls, take turns on each machine (`RenderQueue`), which
    * frees memory before each heavy job. Left out, one that runs every job here and frees nothing.
@@ -708,6 +710,9 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
         throw err
       }
     }
+    // Anything else read is the web app's (`webApp.ts`), but never an unknown API address.
+    const reading = req.method === 'GET' || req.method === 'HEAD'
+    if (deps.web && reading && !new URL(req.url).pathname.startsWith('/api/')) return deps.web(req)
     return error('Not found', 404)
   }
 }

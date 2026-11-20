@@ -64,6 +64,7 @@ export interface SetupOptions {
   /** What this "machine" can run; left out, whatever backends are given. */
   features?: Availabilities
   exports?: AppDeps['exports']
+  web?: AppDeps['web']
 }
 
 /** The app's handler over fakes, Sessions under `root`, and a `call` that sends it a request. */
@@ -96,6 +97,7 @@ export function setup(opts: SetupOptions = {}) {
     music: opts.music,
     features: opts.features,
     exports: opts.exports,
+    web: opts.web,
     newSessionId: () => `s${++sessionCount}`,
     randomSeed: () => 1234,
   })

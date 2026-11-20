@@ -1,3 +1,4 @@
+import { fromFileUrl } from '@std/path'
 import { createHandler } from './app.ts'
 import { backendAddress } from './backends.ts'
 import { type Backend, BACKEND_NAMES, BACKEND_WORK } from '../shared/backends.ts'
@@ -31,6 +32,7 @@ import { loggedChat, loggedEmbedder, loggedImages, loggedMaker, loggedVoice } fr
 import { litoFigureMaker, tripoFigureMaker } from './3d/figure.ts'
 import { sharpSceneMaker } from './3d/scene.ts'
 import { checkFolder } from './sessionsFolder.ts'
+import { webApp } from './webApp.ts'
 import { makeDataDirs, thisRunsDataDirs } from './dataDirs.ts'
 import { pickFolder } from './folderPicker.ts'
 import { uvStyleEmbedder } from './style/embedder.ts'
@@ -192,6 +194,8 @@ const handler = createHandler({
   },
   pickFolder,
   exports: { dir: data.exports, page: buildComparisonPage },
+  // The built web app, so the server alone is the app; `deno task dev` serves it from Vite instead.
+  web: webApp(fromFileUrl(new URL('../web/dist/', import.meta.url))),
   textModel: (c) => chatTextModel(chat(c)),
   roleplayModel: (c) => chatRoleplayModel(chat(c)),
   // Each render, upscale and edit goes to the Backend Settings send it to: this machine's mflux

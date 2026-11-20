@@ -104,7 +104,7 @@ The same on Windows, in PowerShell. Open <http://localhost:5180>, go to **Settin
 | `deno task check` | Lints both (`deno lint`), then type-checks the server with Deno and the web app with `vue-tsc` |
 | `deno task replay <file>` | Rebuilds a test Session from a replay file (`server/replay/replays/`) through the running app |
 | `deno task shot <path>` | Screenshots the running app in a headless browser (`web/scripts/shot.ts`) |
-| `deno task build` | Production build of the web app into `web/dist` |
+| `deno task build` | Production build of the web app into `web/dist`, which the API server then serves too, at <http://localhost:8787>, with no Vite |
 | `deno fmt` | Formats the TypeScript files |
 
 ## Configuration
