@@ -15,6 +15,11 @@ export interface DataDirs {
   sessions: string
   /** Pages exported from Compare, where the player can find them. */
   exports: string
+  /**
+   * Where an installed app copies its Python tools for `uv` to run (`pythonTools.ts`), beside the
+   * Sessions; a clone runs them from its own `python/`.
+   */
+  python?: string
 }
 
 /** What the folders are worked out from: this run's, or a test's. */
@@ -27,13 +32,14 @@ export interface DataPlace {
   root: string
 }
 
-/** One folder holding it all, as a clone keeps it. */
-const inOne = (dir: string): DataDirs => ({
+/** One folder holding it all, as a clone keeps it; an install's Python tools too. */
+const inOne = (dir: string, installed: boolean): DataDirs => ({
   settings: join(dir, 'settings.json'),
   queue: join(dir, 'queue.json'),
   scenarios: join(dir, 'scenarios'),
   sessions: join(dir, 'sessions'),
   exports: join(dir, 'exports'),
+  ...(installed ? { python: join(dir, 'python') } : {}),
 })
 
 /**
@@ -43,26 +49,26 @@ const inOne = (dir: string): DataDirs => ({
  */
 export function dataDirs({ standalone, os, env, root }: DataPlace): DataDirs {
   const override = env('DATA_DIR')
-  if (override) return inOne(override)
-  if (!standalone) return inOne(root)
+  if (override) return inOne(override, standalone)
+  if (!standalone) return inOne(root, false)
   const home = env(os === 'windows' ? 'USERPROFILE' : 'HOME')
   if (!home) throw new Error(`Set DATA_DIR: there's no home folder to keep the data in`)
   const exports = join(home, 'Documents', APP_FOLDER)
   if (os === 'darwin') {
-    return { ...inOne(join(home, 'Library', 'Application Support', APP_FOLDER)), exports }
+    return { ...inOne(join(home, 'Library', 'Application Support', APP_FOLDER), true), exports }
   }
   if (os === 'windows') {
-    // Settings roam with the account; Sessions, the queue and Scenarios stay on this PC, so
-    // pictures don't.
+    // Settings roam with the account; Sessions, the queue, Scenarios and the Python tools stay on
+    // this PC, so pictures don't.
     const roaming = join(env('APPDATA') ?? join(home, 'AppData', 'Roaming'), APP_FOLDER)
     const local = join(env('LOCALAPPDATA') ?? join(home, 'AppData', 'Local'), APP_FOLDER)
-    return { ...inOne(local), settings: join(roaming, 'settings.json'), exports }
+    return { ...inOne(local, true), settings: join(roaming, 'settings.json'), exports }
   }
   const xdg = (name: string, fallback: string) =>
     join(env(name) || join(home, fallback), APP_FOLDER)
   const data = xdg('XDG_DATA_HOME', '.local/share')
   return {
-    ...inOne(data),
+    ...inOne(data, true),
     settings: join(xdg('XDG_CONFIG_HOME', '.config'), 'settings.json'),
     queue: join(xdg('XDG_STATE_HOME', '.local/state'), 'queue.json'),
     exports,

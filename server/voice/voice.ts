@@ -3,7 +3,7 @@
  * from a description, then each line spoken by cloning it. The service is a Python process the
  * server starts the first time a voice is needed and keeps until it stops.
  */
-import { fromFileUrl } from '@std/path'
+import { pythonScript, SHIPPED_PYTHON } from '../pythonTools.ts'
 import type { Backend } from '../../shared/backends.ts'
 import { track } from '../children.ts'
 import type { Delivery } from '../../shared/voice.ts'
@@ -61,9 +61,9 @@ export interface VoiceServiceOptions {
   checkEveryMs?: number
   /** The command that starts it, given the port; `uv run python/voice/serve.py` unless a test says. */
   command?: (port: number) => string[]
+  /** The folder the Python tools run from (`pythonTools.ts`); the shipped one unless given. */
+  python?: string
 }
-
-const SCRIPT = fromFileUrl(new URL('../../python/voice/serve.py', import.meta.url))
 
 /** The voice service, started on first use. */
 export function voiceService(
@@ -82,7 +82,16 @@ export function voiceService(
   async function start(): Promise<void> {
     if (await healthy()) return
     const [cmd, ...args] = opts.command?.(port) ??
-      ['uv', 'run', '--quiet', SCRIPT, '--port', String(port), '--root', root]
+      [
+        'uv',
+        'run',
+        '--quiet',
+        pythonScript(opts.python ?? SHIPPED_PYTHON, 'voice', 'serve.py'),
+        '--port',
+        String(port),
+        '--root',
+        root,
+      ]
     const started = child = track(
       new Deno.Command(cmd, {
         args,

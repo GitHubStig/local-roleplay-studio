@@ -4,7 +4,8 @@
  * also embeds each Frame's caption, so a picture can be checked against what it was meant to show.
  * Run through uv (`python/style/make.py`), once per scoring, with only what isn't embedded yet.
  */
-import { fromFileUrl, join } from '@std/path'
+import { join } from '@std/path'
+import { pythonScript, SHIPPED_PYTHON, type ToolOptions } from '../pythonTools.ts'
 import { runModelScript } from '../modelScript.ts'
 
 /** Unit-length vectors, as base64 of little-endian float32. */
@@ -28,10 +29,8 @@ export interface StyleEmbedder {
   ): Promise<Embeddings>
 }
 
-const SCRIPT = fromFileUrl(new URL('../../python/style/make.py', import.meta.url))
-
 /** Runs `python/style/make.py` through uv; `command` replaces `uv run …` in tests. */
-export function uvStyleEmbedder(opts: { command?: string[] } = {}): StyleEmbedder {
+export function uvStyleEmbedder(opts: ToolOptions = {}): StyleEmbedder {
   return {
     async embed(req, signal, onProgress, onDownload) {
       const dir = await Deno.makeTempDir({ prefix: 'style-' })
@@ -39,7 +38,8 @@ export function uvStyleEmbedder(opts: { command?: string[] } = {}): StyleEmbedde
         const [request, out] = [join(dir, 'request.json'), join(dir, 'embeddings.json')]
         await Deno.writeTextFile(request, JSON.stringify(req))
         await runModelScript(
-          opts.command ?? ['uv', 'run', '--quiet', SCRIPT],
+          opts.command ??
+            ['uv', 'run', '--quiet', pythonScript(opts.python ?? SHIPPED_PYTHON, 'style')],
           ['--in', request, '--out', out],
           'CSD and CLIP',
           signal,

@@ -20,6 +20,21 @@ Deno.test('a clone keeps its data in the repo', () => {
   })
 })
 
+Deno.test('An install copies its Python tools beside its Sessions; a clone runs its own', () => {
+  assertEquals(dataDirs(place({ standalone: false }, { DATA_DIR: '/data' })).python, undefined)
+  assertEquals(dataDirs(place({}, { DATA_DIR: '/data' })).python, join('/data', 'python'))
+  const support = join('/Users/p', 'Library', 'Application Support', 'Local Roleplay Studio')
+  assertEquals(dataDirs(place({}, { HOME: '/Users/p' })).python, join(support, 'python'))
+  const windows = dataDirs(place({ os: 'windows' }, {
+    USERPROFILE: 'C:\\Users\\p',
+    LOCALAPPDATA: 'C:\\Users\\p\\AppData\\Local',
+  }))
+  assertEquals(
+    windows.python,
+    join('C:\\Users\\p\\AppData\\Local', 'Local Roleplay Studio', 'python'),
+  )
+})
+
 Deno.test('DATA_DIR puts it all in one folder, from a clone or an install', () => {
   for (const standalone of [false, true]) {
     const dirs = dataDirs(place({ standalone }, { DATA_DIR: '/data', HOME: '/Users/p' }))

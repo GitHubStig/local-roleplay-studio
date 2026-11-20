@@ -33,6 +33,7 @@ import { litoFigureMaker, tripoFigureMaker } from './3d/figure.ts'
 import { sharpSceneMaker } from './3d/scene.ts'
 import { checkFolder } from './sessionsFolder.ts'
 import { webApp } from './webApp.ts'
+import { copyPythonTools, SHIPPED_PYTHON } from './pythonTools.ts'
 import { makeDataDirs, thisRunsDataDirs } from './dataDirs.ts'
 import { pickFolder } from './folderPicker.ts'
 import { uvStyleEmbedder } from './style/embedder.ts'
@@ -50,6 +51,8 @@ const port = Number(Deno.env.get('PORT') ?? 8787)
 // The player's data: in the repo from a clone, in the OS's folders from an install (`dataDirs.ts`).
 const data = thisRunsDataDirs()
 await makeDataDirs(data)
+// The Python tools, run by uv: an install copies its own out of the executable first.
+const python = data.python ? await copyPythonTools(data.python) : SHIPPED_PYTHON
 const defaultSessionsDir = data.sessions
 
 // What this machine can run, worked out once: a backend it can't run isn't set up at all, and
@@ -163,7 +166,7 @@ const sessionStore = dirSessionStore(sessionsDir)
 // Sessions folder.
 const voicePort = Deno.env.get('VOICE_PORT')
 const mlxVoice = features.voices.available
-  ? voiceService({ root: sessionsDir, port: voicePort ? Number(voicePort) : undefined })
+  ? voiceService({ root: sessionsDir, port: voicePort ? Number(voicePort) : undefined, python })
   : undefined
 
 /**
@@ -232,12 +235,16 @@ const handler = createHandler({
     backend: () => backendNow({ kind: 'music' }),
   }),
   // Logged like the Text and Image Models' calls (`calls.ts`).
-  scene: features.scenes.available ? loggedMaker(sharpSceneMaker(), 'scene', 'SHARP') : undefined,
-  figure: features.figures.available
-    ? loggedMaker(tripoFigureMaker(), 'figure', 'TripoSplat')
+  scene: features.scenes.available
+    ? loggedMaker(sharpSceneMaker({ python }), 'scene', 'SHARP')
     : undefined,
-  lito: features.lito.available ? loggedMaker(litoFigureMaker(), 'lito', 'LiTo') : undefined,
-  style: features.style.available ? loggedEmbedder(uvStyleEmbedder()) : undefined,
+  figure: features.figures.available
+    ? loggedMaker(tripoFigureMaker({ python }), 'figure', 'TripoSplat')
+    : undefined,
+  lito: features.lito.available
+    ? loggedMaker(litoFigureMaker({ python }), 'lito', 'LiTo')
+    : undefined,
+  style: features.style.available ? loggedEmbedder(uvStyleEmbedder({ python })) : undefined,
 })
 
 // DENO_SERVE_ADDRESS, where it's set, wins over the port: `deno desktop` sets it to the port its

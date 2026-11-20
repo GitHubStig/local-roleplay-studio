@@ -3,7 +3,7 @@
  * (`python/triposplat/make.py`): it cuts the person out and builds them in Gaussian splats. Run once per
  * figure, like SHARP once per scene, so the memory it peaks at (~11 GB) is freed when it's done.
  */
-import { fromFileUrl } from '@std/path'
+import { pythonScript, SHIPPED_PYTHON, type ToolOptions } from '../pythonTools.ts'
 import { runModelScript } from '../modelScript.ts'
 
 export interface FigureRequest {
@@ -22,16 +22,13 @@ export interface FigureMaker {
   ): Promise<{ splats: number }>
 }
 
-const SCRIPT = fromFileUrl(new URL('../../python/triposplat/make.py', import.meta.url))
-
-const LITO = fromFileUrl(new URL('../../python/lito/make.py', import.meta.url))
-
 /** Runs Apple's LiTo once per figure (`python/lito/make.py`); `command` replaces it in tests. */
-export function litoFigureMaker(opts: { command?: string[] } = {}): FigureMaker {
+export function litoFigureMaker(opts: ToolOptions = {}): FigureMaker {
   return {
     async make(req, signal, onDownload) {
       const result = await runModelScript(
-        opts.command ?? ['uv', 'run', '--quiet', LITO],
+        opts.command ??
+          ['uv', 'run', '--quiet', pythonScript(opts.python ?? SHIPPED_PYTHON, 'lito')],
         ['--image', req.image, '--out', req.out],
         'LiTo',
         signal,
@@ -43,11 +40,12 @@ export function litoFigureMaker(opts: { command?: string[] } = {}): FigureMaker 
 }
 
 /** Runs TripoSplat once per figure; `command` replaces `uv run python/triposplat/make.py` in tests. */
-export function tripoFigureMaker(opts: { command?: string[] } = {}): FigureMaker {
+export function tripoFigureMaker(opts: ToolOptions = {}): FigureMaker {
   return {
     async make(req, signal, onDownload) {
       const result = await runModelScript(
-        opts.command ?? ['uv', 'run', '--quiet', SCRIPT],
+        opts.command ??
+          ['uv', 'run', '--quiet', pythonScript(opts.python ?? SHIPPED_PYTHON, 'triposplat')],
         ['--image', req.image, '--out', req.out],
         'TripoSplat',
         signal,
