@@ -3,7 +3,7 @@ import type { ClipOrder } from './clips.ts'
 import type { ComfyTraces } from './comfyui.ts'
 import type { EditModel, ImageBackendKind } from './images.ts'
 import type { JobKind } from './jobKinds.ts'
-import type { Phase } from './session.ts'
+import type { Phase, SessionKind } from './session.ts'
 import type { SessionSettings } from './settings.ts'
 
 /**
@@ -82,4 +82,23 @@ export interface Job {
    * cut it off: run again, it picks up the result there, or cleans up and starts anew.
    */
   resume?: ComfyTraces
+}
+
+/** Every machine's queue, for the queue page (`GET /api/queue`). */
+export interface Queue {
+  /** The machines Settings list, `here` for the server's, with the kinds of Backend on each. */
+  machines: { key: string; backends: string[] }[]
+  /** The Sessions with jobs or text calls listed. */
+  sessions: { id: string; kind: SessionKind; title: string }[]
+  /** Every Session's jobs, each in its Session's order. */
+  jobs: (Job & { sessionId: string })[]
+  /** The Text Model's calls running, then waiting, on each machine, in the order they go. */
+  text: {
+    machine: string
+    session?: string
+    /** What it's for, as the call log names it (`reply`, `cast`…). */
+    job: string
+    status: 'running' | 'waiting'
+    since: string
+  }[]
 }

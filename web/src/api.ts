@@ -27,7 +27,7 @@ import type {
   StoryboardEvent as StoredStoryboardEvent,
 } from '../../shared/events.ts'
 export { type Availability, type Feature, FEATURES } from '../../shared/features.ts'
-import type { Availability, Feature } from '../../shared/features.ts'
+import type { Feature } from '../../shared/features.ts'
 export {
   type EditModel,
   IMAGE_BACKEND_NAMES,
@@ -35,18 +35,13 @@ export {
   type ImagePrompt,
   type Upscaler,
 } from '../../shared/images.ts'
-import type {
-  EditModel,
-  ImageBackendKind,
-  ImageModelOption,
-  ImagePrompt,
-} from '../../shared/images.ts'
+import type { ImageBackendKind, ImagePrompt } from '../../shared/images.ts'
 export { type JobKind } from '../../shared/jobKinds.ts'
 import type { JobKind } from '../../shared/jobKinds.ts'
 export { type EditOrder } from '../../shared/jobs.ts'
 import type { EditOrder, Job as StoredJob } from '../../shared/jobs.ts'
-export { type Picture, type PictureEdit } from '../../shared/pictures.ts'
-import type { Picture, PictureEdit } from '../../shared/pictures.ts'
+export { type Picture, type PictureEdit, type PicturesDeleted } from '../../shared/pictures.ts'
+import type { Picture, PictureEdit, PicturesDeleted } from '../../shared/pictures.ts'
 export {
   type Person,
   type Scenario,
@@ -54,12 +49,7 @@ export {
   type ScenarioSummary,
   type Suggestion,
 } from '../../shared/scenario.ts'
-import type {
-  Scenario,
-  ScenarioLoadError,
-  ScenarioSummary,
-  Suggestion,
-} from '../../shared/scenario.ts'
+import type { Scenario } from '../../shared/scenario.ts'
 export {
   type ChainFrame,
   type Look,
@@ -86,54 +76,22 @@ export {
   type SessionSettings,
   type SizePreset,
 } from '../../shared/settings.ts'
-import type { Settings as StoredSettings, SizePreset } from '../../shared/settings.ts'
+import type { SavedSettings, SentSettings } from '../../shared/settings.ts'
+import type { ErrorBody } from '../../shared/errors.ts'
+export type { SettingsOptions, TextModelList } from '../../shared/settings.ts'
+export type { Expansion, ScenarioList, Suggested } from '../../shared/scenario.ts'
+export type { Health, Loaded, SessionSummary } from '../../shared/session.ts'
+export type { Queue } from '../../shared/jobs.ts'
+export type { PickedFolder, SessionsFolderInfo } from '../../shared/sessionsFolder.ts'
+import type { Health, Loaded, SessionSummary } from '../../shared/session.ts'
+import type { Queue } from '../../shared/jobs.ts'
+import type { Expansion, ScenarioList, Suggested } from '../../shared/scenario.ts'
+import type { SettingsOptions, TextModelList } from '../../shared/settings.ts'
+import type { PickedFolder, SessionsFolderInfo } from '../../shared/sessionsFolder.ts'
 export { type Figure, type Scene } from '../../shared/threeD.ts'
 import type { StyleScores } from './styleScores'
-export interface Health {
-  ok: boolean
-}
-
 /** Where pictures are made: mflux (Apple Silicon Macs) or a ComfyUI server (any machine). */
 export type ImageBackend = ImageBackendKind
-
-/** A Text backend's models, or why it couldn't list them. */
-export interface TextModelList {
-  textModels: string[]
-  /** The Text Models that can reason before answering. */
-  thinkingModels: string[]
-  textModelsError?: string
-}
-
-export interface SettingsOptions extends TextModelList {
-  /** Each backend's Image Models. */
-  imageModels: Record<ImageBackend, ImageModelOption[]>
-  /** The kinds of backend whose models a Session can switch to: mflux here, ComfyUI if listed. */
-  imageBackends: ImageBackend[]
-  /** The kind of backend each Image Model's renders go to now, by name; none for one nowhere. */
-  imageModelsOn?: Record<string, ImageBackend>
-  sizePresets: SizePreset[]
-  upscalers: { id: string; label: string }[]
-  /**
-   * Each video model, whether it makes sound (Wan 2.2 doesn't), the size it makes unless Settings say
-   * otherwise, and its longest clip at each size, in seconds.
-   */
-  videoModels: {
-    id: string
-    label: string
-    sound: boolean
-    size: ClipSize
-    longest: Record<ClipSize, number>
-  }[]
-  /** The models that can edit a picture here, each on its backend. */
-  /** Each with how it likes to be told what to paint. */
-  editModels: { id: EditModel; label: string; backends: ImageBackend[]; prompting: string }[]
-  /** The kind of backend each edit model's edits go to now, by name; none for one nowhere. */
-  editModelsOn?: Record<string, ImageBackend>
-  /** Which Features can run, here or on a Backend listed (a ComfyUI). */
-  features: Record<Feature, Availability>
-  /** Which Features this machine runs itself, worked out when the server started. */
-  here: Record<Feature, Availability>
-}
 
 export class ApiError extends Error {
   readonly status: number
@@ -149,7 +107,7 @@ export class ApiError extends Error {
 export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, init)
   if (!res.ok) {
-    const body = await res.json().catch(() => ({}))
+    const body: Partial<ErrorBody> = await res.json().catch(() => ({}))
     throw new ApiError(body.error ?? `Request failed: ${res.status}`, res.status, body.issues)
   }
   return res.status === 204 ? (undefined as T) : res.json()
@@ -159,18 +117,11 @@ export const getHealth = () => request<Health>('/api/health')
 
 export const getSettings = () => request<Settings>('/api/settings')
 
-/** The folder Sessions are kept in, the default, and how many Sessions are in use. */
-export interface SessionsFolderInfo {
-  inUse: string
-  default: string
-  count: number
-}
-
 export const getSessionsFolder = () => request<SessionsFolderInfo>('/api/sessions-folder')
 
 /** Opens the folder dialog on the machine the server runs on; null if the player cancels. */
 export const pickSessionsFolder = () =>
-  request<{ path: string | null }>('/api/sessions-folder/pick', {
+  request<PickedFolder>('/api/sessions-folder/pick', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
   })
@@ -217,11 +168,6 @@ export const saveSettings = (settings: Settings) =>
     body: JSON.stringify(settings),
   })
 
-export interface ScenarioList {
-  scenarios: ScenarioSummary[]
-  errors: ScenarioLoadError[]
-}
-
 export const getScenarios = () => request<ScenarioList>('/api/scenarios')
 
 export const getScenario = (id: string) => request<Scenario>(`/api/scenarios/${id}`)
@@ -246,7 +192,7 @@ export const deleteScenario = (id: string) =>
  * another each time it's asked.
  */
 export const suggestPart = (scenario: Scenario, field: string, notes = '') =>
-  post<{ text: string }>('/api/scenarios/suggest', { scenario, field, notes })
+  post<Suggested>('/api/scenarios/suggest', { scenario, field, notes })
 
 /**
  * Expand, as the Scenario page opens: names the People and who's who, and suggests for blanks. Sent
@@ -256,7 +202,7 @@ export const expandScenario = (
   from: { scenario: Scenario } | { scenarioId: string } | { brief: string },
   signal?: AbortSignal,
 ) =>
-  request<{ scenario: Scenario; suggestions: Suggestion[] }>('/api/scenarios/expand', {
+  request<Expansion>('/api/scenarios/expand', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(from),
@@ -420,31 +366,10 @@ export const setThumbnail = (id: string, image: string | null) =>
  * hidden columns); not the Session's own model. It comes back with how many pictures went.
  */
 export const deleteModelPictures = (id: string, imageModel: string) =>
-  request<{ session: Session; deleted: number }>(
+  request<PicturesDeleted>(
     `/api/sessions/${id}/pictures?imageModel=${encodeURIComponent(imageModel)}`,
     { method: 'DELETE' },
   )
-
-/** A saved Session as listed on Home. */
-export interface SessionSummary {
-  id: string
-  kind: SessionKind
-  scenarioId: string | null
-  /** The Scenario's title, or the start of the typed Brief. */
-  title: string
-  frames: number
-  /** The image that shows it here: the one chosen, or else the newest picture. */
-  thumbnail: string | null
-  /**
-   * Shown on its card in place of a picture until there is one: a Roleplay's latest line, a
-   * Chain's latest Narration, a Storyboard's first Beat.
-   */
-  excerpt?: string | null
-  createdAt: string
-  updatedAt: string
-  /** What a Frame in progress is doing, or null when idle. */
-  activity: Activity | 'audio' | null
-}
 
 export const listSessions = () => request<SessionSummary[]>('/api/sessions')
 
@@ -651,25 +576,6 @@ export const editStoryboardFrame = (
 
 // --- Background work, queued per Session: every kind's.
 
-/** Every machine's queue, for the queue page (`GET /api/queue`). */
-export interface Queue {
-  /** The machines Settings list, `here` for the server's, with the kinds of Backend on each. */
-  machines: { key: string; backends: string[] }[]
-  /** The Sessions with jobs or text calls listed. */
-  sessions: { id: string; kind: SessionKind; title: string }[]
-  /** Every Session's jobs, each in its Session's order. */
-  jobs: (Job & { sessionId: string })[]
-  /** The Text Model's calls running, then waiting, on each machine, in the order they go. */
-  text: {
-    machine: string
-    session?: string
-    /** What it's for, as the call log names it (`reply`, `cast`…). */
-    job: string
-    status: 'running' | 'waiting'
-    since: string
-  }[]
-}
-
 export const getQueue = () => request<Queue>('/api/queue')
 
 /** A Session's jobs (a Roleplay's or a Chain's), in the order queued; several may run, one per machine. */
@@ -733,28 +639,20 @@ export const cancelAllJobs = (id: string) =>
 export const dismissFinishedJobs = (id: string) =>
   request<Job[]>(`/api/sessions/${id}/jobs/finished`, { method: 'DELETE' })
 
-/** Settings as the browser has them: what's stored, and the API keys' two one-way fields. */
-export type Settings = StoredSettings & {
-  /** From the server: the Backends with an API key saved (the keys are never sent back). */
-  apiKeysSet?: string[]
-  /** Sent only to replace Backends' saved API keys, by id; '' removes one. */
-  apiKeys?: Record<string, string>
-}
+/**
+ * Settings as the browser has them: what's stored, and the API keys' two one-way fields: those with
+ * a key saved, as sent (`SentSettings`), and keys to replace, as saved (`SavedSettings`).
+ */
+export type Settings = SavedSettings & Partial<Pick<SentSettings, 'apiKeysSet'>>
 
-/** What loading a Session adds to what's stored (only from `getSession`). */
-export interface Loaded {
-  /** Its Scenario's title, or the start of its typed Brief. */
-  title?: string
-  /** What work in progress is doing (speaking a line is `audio`), or null when idle. */
-  activity?: Phase | null
-  /** Which Frame that work is on, for Storyboards. */
-  activeFrame?: number | null
-  /** The size its pictures render at, from its Settings. */
-  imageSize?: { width: number; height: number }
-}
-export type SessionBase = StoredSessionBase & Loaded
-export type ChainSession = StoredChainSession & Loaded
-export type StoryboardSession = StoredStoryboardSession & Loaded
+/**
+ * What loading a Session adds to what's stored (`Loaded`): only `getSession` sends it, so a Session
+ * the screens hold may be without it.
+ */
+export type LoadedPart = Partial<Loaded>
+export type SessionBase = StoredSessionBase & LoadedPart
+export type ChainSession = StoredChainSession & LoadedPart
+export type StoryboardSession = StoredStoryboardSession & LoadedPart
 export type Session = ChainSession | StoryboardSession | RoleplaySession
 
 /** A job as the browser is sent it. */

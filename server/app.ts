@@ -8,7 +8,7 @@ import { type Backend, BACKEND_NAMES } from '../shared/backends.ts'
 import type { TextChoice, TextModelInfo } from './text/backend.ts'
 import type { ScenarioFolder, ScenarioLibrary } from './scenario.ts'
 import type { SessionStore } from './session.ts'
-import type { Phase, Session } from '../shared/session.ts'
+import type { Health, Phase, Session } from '../shared/session.ts'
 import type { SettingsStore } from './settings.ts'
 import type { TextModel } from './textModel.ts'
 import type { RoleplayModel } from './roleplay/model.ts'
@@ -38,7 +38,7 @@ import {
   SessionJobs,
   textChoiceOf,
 } from './jobs.ts'
-import type { EditOrder, Job } from '../shared/jobs.ts'
+import type { EditOrder, Job, Queue } from '../shared/jobs.ts'
 import { JOB_FEATURE, SESSION_JOBS } from './jobKinds.ts'
 import type { JobKind } from '../shared/jobKinds.ts'
 import { logCalls } from './calls.ts'
@@ -678,15 +678,21 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       const sessions = (await Promise.all([...ids].map((id) => deps.sessions.load(id))))
         .filter((s) => !!s)
         .map((s) => ({ id: s.id, kind: s.kind, title: titleOf(s) }))
-      return json({
-        machines: [...machines].map(([key, kinds]) => ({ key, backends: [...new Set(kinds)] })),
-        sessions,
-        jobs: jobs.all().flatMap(({ sessionId, jobs }) => jobs.map((j) => ({ ...j, sessionId }))),
-        text,
-      })
+      return json(
+        {
+          machines: [...machines].map(([key, kinds]) => ({ key, backends: [...new Set(kinds)] })),
+          sessions,
+          jobs: jobs.all().flatMap(({ sessionId, jobs }) => jobs.map((j) => ({ ...j, sessionId }))),
+          text,
+        } satisfies Queue,
+      )
     }],
 
-    ['GET', new URLPattern({ pathname: '/api/health' }), () => Promise.resolve(json({ ok: true }))],
+    [
+      'GET',
+      new URLPattern({ pathname: '/api/health' }),
+      () => Promise.resolve(json({ ok: true } satisfies Health)),
+    ],
   ]
 
   return async (req) => {

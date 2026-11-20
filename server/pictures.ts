@@ -5,7 +5,7 @@ import type { SessionStore } from './session.ts'
 import type { Session } from '../shared/session.ts'
 import { updateSession } from './update.ts'
 import { Refusal } from './refusal.ts'
-import type { Picture, PictureEdit, PictureVersion } from '../shared/pictures.ts'
+import type { Picture, PictureEdit, PicturesDeleted, PictureVersion } from '../shared/pictures.ts'
 
 /** The version of a picture that is the picture: its picked edit, or its render. */
 export const pickedVersion = (p: Picture): PictureVersion =>
@@ -249,7 +249,7 @@ export async function deleteModelPictures(
   store: SessionStore,
   session: Session,
   model: string,
-): Promise<{ session: Session; deleted: number }> {
+): Promise<PicturesDeleted> {
   let files: string[] = []
   let deleted = 0
   const updated = await updateSession(store, session.id, session.kind, (latest: Session) => {

@@ -9,16 +9,23 @@ import { fakeImageGenerator, withTempDir } from './testing.ts'
 import {
   chainFrames,
   chainOfTwo,
+  deletedIn,
+  getOptions,
   getSession,
+  jobsIn,
+  listJobs,
+  listSessions,
   pictureOf,
   readEvents,
+  refusalIn,
+  sessionFrom,
   settled,
   type setup,
 } from './appTesting.ts'
 
 /** Every job of Session `s1`, done ones too. */
 const jobsOf = async (call: ReturnType<typeof setup>['call']): Promise<Job[]> =>
-  await (await call('GET', '/api/sessions/s1/jobs')).json()
+  await listJobs(call)
 
 /** A stand-in for the built export page, which waits for `held` before it's read, if given. */
 const exportsIn = (root: string, held?: Promise<void>) => ({
@@ -36,7 +43,7 @@ Deno.test("The Compare dialog's export is queued, and written to a folder per Se
     const exported = await call('POST', '/api/sessions/s1/export', comparison)
     assertEquals(exported.status, 201)
     const folder = join(root, 'exports', 's1')
-    assertEquals((await exported.json()).map((j: Job) => [j.kind, j.export]), [
+    assertEquals((await jobsIn(exported)).map((j) => [j.kind, j.export]), [
       ['export', { folder }],
     ])
     assertEquals(await settled(call), [])
@@ -58,7 +65,7 @@ Deno.test("The Compare dialog's export is queued, and written to a folder per Se
       models: [{ label: 'A' }],
       rows: [picture],
     })
-    assertEquals([outside.status, (await outside.json()).error], [
+    assertEquals([outside.status, (await refusalIn(outside)).error], [
       400,
       'Pictures must be files in the Session',
     ])
@@ -86,8 +93,8 @@ Deno.test("A Session's export asked for again replaces one queued, and is refuse
     const { call } = await chainOfTwo(root, { style, exports: exportsIn(root, page) })
     await call('POST', '/api/sessions/s1/jobs', { kind: 'style', frameIndex: 0 })
     const asked = (name: string) => ({ models: [], rows: [{ name, pictures: [] }] })
-    const first = await (await call('POST', '/api/sessions/s1/export', asked('Frame 0'))).json()
-    const again = await (await call('POST', '/api/sessions/s1/export', asked('Frame 1'))).json()
+    const first = await jobsIn(await call('POST', '/api/sessions/s1/export', asked('Frame 0')))
+    const again = await jobsIn(await call('POST', '/api/sessions/s1/export', asked('Frame 1')))
     const exportOf = (jobs: Job[]) => jobs.find((j) => j.kind === 'export')!
     assertEquals(exportOf(again).id, exportOf(first).id)
     assertEquals(exportOf(again).status, 'queued')
@@ -97,7 +104,7 @@ Deno.test("A Session's export asked for again replaces one queued, and is refuse
       await new Promise((r) => setTimeout(r, 5))
     }
     const refused = await call('POST', '/api/sessions/s1/export', asked('Frame 2'))
-    assertEquals([refused.status, (await refused.json()).error], [
+    assertEquals([refused.status, (await refusalIn(refused)).error], [
       409,
       "This Session's export is still being written: wait for it to finish",
     ])
@@ -115,7 +122,7 @@ Deno.test('Home shows the thumbnail chosen until its file goes, and else the new
   withTempDir(async (root) => {
     const { call } = await chainOfTwo(root)
     const session = async () => await getSession(call, 'chain')
-    const card = async () => (await (await call('GET', '/api/sessions')).json())[0].thumbnail
+    const card = async () => (await listSessions(call))[0].thumbnail
     const choose = (image: unknown) => call('PUT', '/api/sessions/s1/thumbnail', { image })
     const frames = (await session()).frames
     const [first, newest] = frames.map((f: { pictures: { file: string }[] }) => f.pictures[0].file)
@@ -125,7 +132,7 @@ Deno.test('Home shows the thumbnail chosen until its file goes, and else the new
     assertEquals((await call('PUT', '/api/sessions/nope/thumbnail', { image: first })).status, 404)
     assertEquals((await call('DELETE', '/api/sessions/nope/thumbnail')).status, 404)
     const unknown = await choose('elsewhere.png')
-    assertEquals([unknown.status, (await unknown.json()).error], [
+    assertEquals([unknown.status, (await refusalIn(unknown)).error], [
       409,
       'That picture no longer exists',
     ])
@@ -151,7 +158,7 @@ Deno.test('A Session switches Image Model, and a Chain Frame by the old one rend
 
     assertEquals((await switchTo(42)).status, 400)
     const unknown = await switchTo('dall-e')
-    assertEquals([unknown.status, (await unknown.json()).error], [
+    assertEquals([unknown.status, (await refusalIn(unknown)).error], [
       400,
       'There\'s no Image Model "dall-e"',
     ])
@@ -160,7 +167,7 @@ Deno.test('A Session switches Image Model, and a Chain Frame by the old one rend
       404,
     )
 
-    const switched = await (await switchTo('flux2-klein-4b')).json()
+    const switched = await sessionFrom(await switchTo('flux2-klein-4b'))
     assertEquals([switched.settings.imageModel, switched.settings.steps], ['flux2-klein-4b', 4])
     const [, before] = (await chainFrames(call)).map(pictureOf)
     assertEquals((await render()).status, 201)
@@ -176,10 +183,10 @@ Deno.test('A Session switches Image Model by name, to one a Backend listed can r
       call('PUT', '/api/sessions/s1/image-model', { imageModel })
     // A Mac with no ComfyUI listed: mflux's models only.
     const { call } = await chainOfTwo(join(root, 'mac'))
-    const options = await (await call('GET', '/api/settings/options')).json()
+    const options = await getOptions(call)
     assertEquals(options.imageBackends, ['mflux'])
     assertEquals((await switchTo(call, 'dall-e')).status, 400)
-    const qwen = await (await switchTo(call, 'qwen-image-2.1')).json()
+    const qwen = await sessionFrom(await switchTo(call, 'qwen-image-2.1'))
     assertEquals([qwen.settings.imageModel, qwen.settings.steps], ['qwen-image-2.1', 25])
     // A Session keeps only what decides what it makes (its models, its music's settings); where
     // they run is Settings'.
@@ -192,10 +199,12 @@ Deno.test('A Session switches Image Model by name, to one a Backend listed can r
       'thinking',
     ])
     // Picked on a kind of backend, the Session keeps it, as where it would rather render.
-    const onMflux = await (await call('PUT', '/api/sessions/s1/image-model', {
-      imageModel: 'qwen-image-2.1',
-      imageBackend: 'mflux',
-    })).json()
+    const onMflux = await sessionFrom(
+      await call('PUT', '/api/sessions/s1/image-model', {
+        imageModel: 'qwen-image-2.1',
+        imageBackend: 'mflux',
+      }),
+    )
     assertEquals([onMflux.settings.imageModel, onMflux.settings.imageBackend], [
       'qwen-image-2.1',
       'mflux',
@@ -204,7 +213,7 @@ Deno.test('A Session switches Image Model by name, to one a Backend listed can r
       imageModel: 'boogu-image-turbo',
       imageBackend: 'comfyui',
     })
-    assertEquals([wrongKind.status, (await wrongKind.json()).error], [
+    assertEquals([wrongKind.status, (await refusalIn(wrongKind)).error], [
       400,
       'ComfyUI has no Image Model "boogu-image-turbo"',
     ])
@@ -235,7 +244,7 @@ Deno.test('A Session switches Image Model by name, to one a Backend listed can r
         video: off,
       },
     })).call
-    assertEquals((await (await pc('GET', '/api/settings/options')).json()).imageBackends, [
+    assertEquals((await getOptions(pc)).imageBackends, [
       'comfyui',
     ])
     assertEquals((await switchTo(pc, 'fibo-2.0')).status, 200)
@@ -262,7 +271,7 @@ Deno.test("Every picture by one Image Model is deleted, with its files, but not 
     const own = await call('DELETE', '/api/sessions/s1/pictures?imageModel=flux2-klein-4b')
     assertEquals(own.status, 409)
     const deleted = await call('DELETE', '/api/sessions/s1/pictures?imageModel=qwen-image-2.1')
-    assertEquals((await deleted.json()).deleted, 2)
+    assertEquals((await deletedIn(deleted)).deleted, 2)
     assertEquals(await frames(), [[], ['flux2-klein-4b']])
     assertEquals(await Deno.stat(file).catch(() => null), null)
   }))
@@ -291,7 +300,7 @@ Deno.test("Deleting a model's pictures cancels the work on them, and only that",
     const queue = (kind: string, frameIndex: number) =>
       call('POST', '/api/sessions/s1/jobs', { kind, frameIndex })
     const jobs = async () =>
-      ((await (await call('GET', '/api/sessions/s1/jobs')).json()) as Job[]).map((
+      ((await listJobs(call)) as Job[]).map((
         j,
       ) => [j.kind, j.frameIndex, j.image?.imageModel ?? null])
 
@@ -327,7 +336,7 @@ Deno.test("Deleting a model's pictures cancels the work on them, and only that",
     assertEquals(await jobs(), all)
 
     const deleted = await call('DELETE', `/api/sessions/s1/pictures?imageModel=${old}`)
-    assertEquals((await deleted.json()).deleted, 2)
+    assertEquals((await deletedIn(deleted)).deleted, 2)
     assertEquals((await jobs()).filter(([, , model]) => model === old), [])
     await settled(call)
     assertEquals(await jobs(), [['upscale', 1, null], ['render', 0, other]])
@@ -355,7 +364,7 @@ Deno.test("A model's pictures aren't deleted while style scores are being worked
     await call('PUT', '/api/sessions/s1/image-model', { imageModel: 'flux2-klein-4b' })
     await call('POST', '/api/sessions/s1/jobs', { kind: 'style', frameIndex: 0 })
     const refused = await call('DELETE', `/api/sessions/s1/pictures?imageModel=${old}`)
-    assertEquals([refused.status, (await refused.json()).error], [
+    assertEquals([refused.status, (await refusalIn(refused)).error], [
       409,
       'Style scores are being worked out: wait for them to finish first',
     ])
@@ -365,5 +374,5 @@ Deno.test("A model's pictures aren't deleted while style scores are being worked
     release()
     await settled(call)
     const deleted = await call('DELETE', `/api/sessions/s1/pictures?imageModel=${old}`)
-    assertEquals((await deleted.json()).deleted, 2)
+    assertEquals((await deletedIn(deleted)).deleted, 2)
   }))

@@ -1,7 +1,7 @@
 import { assertEquals, assertMatch, assertNotMatch } from '@std/assert'
 import { replyOf, scriptedRoleplayModel, testCast, testScore } from '../testing.ts'
 import { withTempDir } from '../../testing.ts'
-import { readEvents, settled, setup } from '../../appTesting.ts'
+import { getSession, readEvents, settled, setup } from '../../appTesting.ts'
 import type { Scenario } from '../../../shared/scenario.ts'
 import {
   chunksOf,
@@ -54,7 +54,7 @@ async function played(root: string, script: Parameters<typeof scriptedRoleplayMo
   return { ...harness, model }
 }
 const roleplay = async (call: ReturnType<typeof setup>['call']) =>
-  (await (await call('GET', '/api/sessions/s1')).json()) as RoleplaySession
+  await getSession(call, 'roleplay')
 
 Deno.test("The request names the course, then each turn's parts in the order of their schema, and says how it ends", async () => {
   const session = { ...sessionOf(), score: testScore() }

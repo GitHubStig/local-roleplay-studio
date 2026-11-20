@@ -167,3 +167,44 @@ export interface StoryboardSession extends SessionBase {
 }
 
 export type Session = ChainSession | StoryboardSession | RoleplaySession
+
+/** A saved Session as Home lists it (`GET /api/sessions`). */
+export interface SessionSummary {
+  id: string
+  kind: SessionKind
+  scenarioId: string | null
+  /** The Scenario's title, or the start of the typed Brief. */
+  title: string
+  frames: number
+  /** The image that shows it there: the one chosen, or else the newest picture. */
+  thumbnail: string | null
+  /**
+   * Shown on its card in place of a picture until there is one: a Roleplay's latest line, a
+   * Chain's latest Narration, a Storyboard's first Beat.
+   */
+  excerpt: string | null
+  createdAt: string
+  updatedAt: string
+  /** What work in progress is doing (speaking a line is `audio`), or null when idle. */
+  activity: Phase | null
+}
+
+/** The server's answer to a health check (`GET /api/health`). */
+export interface Health {
+  ok: boolean
+}
+
+/**
+ * What the server adds to a stored Session as it sends one (`GET /api/sessions/:id`), for the
+ * screens; the routes that answer with a Session after changing it send it as stored.
+ */
+export interface Loaded {
+  /** Its Scenario's title, or the start of its typed Brief. */
+  title: string
+  /** What work in progress is doing (speaking a line is `audio`), or null when idle. */
+  activity: Phase | null
+  /** Which Frame that work is on, for Storyboards. */
+  activeFrame: number | null
+  /** The size its pictures render at, from its Settings. */
+  imageSize: { width: number; height: number }
+}

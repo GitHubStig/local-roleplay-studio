@@ -10,7 +10,7 @@ import { crossedLimit } from './limits.ts'
 import { scenarioFrom, scenarioText } from './scenario.ts'
 import type { Scenario } from '../shared/scenario.ts'
 import { excerpt } from './session.ts'
-import type { Session } from '../shared/session.ts'
+import type { Loaded, Session, SessionSummary } from '../shared/session.ts'
 import { MAX_SEED, sessionSettingsOf, SIZE_PRESETS } from './settings.ts'
 import { roleplayExcerpt } from './roleplay/prompt.ts'
 import { restartRoleplay } from './roleplay/engine.ts'
@@ -165,7 +165,7 @@ export function sessionRoutes(ctx: AppContext): Route[] {
 
     ['GET', new URLPattern({ pathname: '/api/sessions' }), async () => {
       const sessions = await deps.sessions.list()
-      const summaries = sessions.map((s) => {
+      const summaries = sessions.map((s): SessionSummary => {
         const updatedAt = s.frames.reduce(
           (latest, f) => f.createdAt > latest ? f.createdAt : latest,
           s.createdAt,
@@ -184,7 +184,7 @@ export function sessionRoutes(ctx: AppContext): Route[] {
             : excerpt(s.kind === 'chain' ? s.frames.at(-1)?.narration : s.frames[0]?.beat),
           createdAt: s.createdAt,
           updatedAt,
-          activity: active.get(s.id)?.phase ?? jobs.activity(s.id),
+          activity: active.get(s.id)?.phase ?? jobs.activity(s.id) ?? null,
         }
       })
       summaries.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
@@ -210,13 +210,15 @@ export function sessionRoutes(ctx: AppContext): Route[] {
       // before the first arrives.
       const { size } = await deps.settings.load()
       const { width, height } = SIZE_PRESETS.find((p) => p.id === size) ?? SIZE_PRESETS[0]
-      return json({
-        ...session,
-        title: titleOf(session),
-        activity: work?.phase ?? null,
-        activeFrame: work?.frameIndex ?? null,
-        imageSize: { width, height },
-      })
+      return json(
+        {
+          ...session,
+          title: titleOf(session),
+          activity: work?.phase ?? null,
+          activeFrame: work?.frameIndex ?? null,
+          imageSize: { width, height },
+        } satisfies Session & Loaded,
+      )
     }],
 
     // Switches the Session's Text Model: `{ textModel }`, by name (ADR 0037). Its Thinking stays as it

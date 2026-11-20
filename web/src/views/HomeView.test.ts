@@ -25,6 +25,7 @@ const summary = (id: string, extra: Partial<api.SessionSummary> = {}): api.Sessi
   title: 'The Rain-Soaked Tavern',
   frames: 3,
   thumbnail: 'frame-2-abcdef12.png',
+  excerpt: null,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
   activity: null,

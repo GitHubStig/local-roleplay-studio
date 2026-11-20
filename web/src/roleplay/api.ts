@@ -1,7 +1,7 @@
 import {
   type EndEvent,
   type Figure,
-  type Loaded,
+  type LoadedPart,
   type Look,
   put,
   request,
@@ -117,6 +117,6 @@ export const saveMusicSettings = (id: string, music: MusicSettings) =>
   put<RoleplaySession>(`${base(id)}/music`, music)
 
 /** A Roleplay as loaded: what's stored, and what loading adds. */
-export type RoleplaySession = StoredRoleplaySession & Loaded
+export type RoleplaySession = StoredRoleplaySession & LoadedPart
 
 export type RoleplayEvent = StoredRoleplayEvent | EndEvent

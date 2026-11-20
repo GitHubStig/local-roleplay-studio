@@ -1,7 +1,7 @@
 import { assert, assertEquals, assertFalse, assertMatch, assertThrows } from '@std/assert'
 import { scriptedRoleplayModel, testCast, testScore } from '../testing.ts'
 import { withTempDir } from '../../testing.ts'
-import { eventOf, readEvents, setup } from '../../appTesting.ts'
+import { eventOf, ofKind, readEvents, sessionFrom, setup } from '../../appTesting.ts'
 import { cleanScore, ScoreError, scoreMessages, scoreSchema } from './score.ts'
 import type { Scenario } from '../../../shared/scenario.ts'
 import type { RoleplaySession } from '../../../shared/roleplay.ts'
@@ -94,7 +94,7 @@ Deno.test("A Roleplay's Score is written while Music is on, edited, and its musi
       ...testScore(),
       palette: [' harp ', 'harp'],
     })
-    assertEquals((await edited.json()).score.palette, ['harp'])
+    assertEquals(ofKind(await sessionFrom(edited), 'roleplay').score?.palette, ['harp'])
     const blank = await call('PUT', '/api/sessions/s1/roleplay/score', {
       ...testScore(),
       genre: '',
@@ -104,7 +104,7 @@ Deno.test("A Roleplay's Score is written while Music is on, edited, and its musi
     assertEquals((await call('PUT', '/api/sessions/s1/roleplay/score', crossing)).status, 422)
 
     const own = { behaviour: 'cinematic', taste: ' Choirs. ' }
-    const changed = await (await call('PUT', '/api/sessions/s1/roleplay/music', own)).json()
+    const changed = await sessionFrom(await call('PUT', '/api/sessions/s1/roleplay/music', own))
     assertEquals(
       [changed.settings.musicBehaviour, changed.settings.musicTaste],
       ['cinematic', 'Choirs.'],

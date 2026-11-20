@@ -1,7 +1,7 @@
 import { assertEquals, assertMatch } from '@std/assert'
 import { replyOf, scriptedRoleplayModel, testCast } from './testing.ts'
 import { withTempDir } from '../testing.ts'
-import { readEvents, setup } from '../appTesting.ts'
+import { getSession, listSessions, ofKind, readEvents, sessionFrom, setup } from '../appTesting.ts'
 
 Deno.test("A Roleplay's Cast is written and reviewed, then it begins, is talked to, undone and edited", () =>
   withTempDir(async (root) => {
@@ -13,10 +13,15 @@ Deno.test("A Roleplay's Cast is written and reviewed, then it begins, is talked 
         replies: [replyOf('You are late.'), replyOf('Take the wheel.')],
       }),
     })
-    const created = await (await call('POST', '/api/sessions', {
-      kind: 'roleplay',
-      brief: 'A storm at sea.',
-    })).json()
+    const created = ofKind(
+      await sessionFrom(
+        await call('POST', '/api/sessions', {
+          kind: 'roleplay',
+          brief: 'A storm at sea.',
+        }),
+      ),
+      'roleplay',
+    )
     assertEquals([created.kind, created.cast, created.frames], ['roleplay', null, []])
     assertEquals(
       (await call('POST', '/api/sessions/s1/roleplay/messages', { text: 'Hi' })).status,
@@ -59,8 +64,9 @@ Deno.test("A Roleplay's Cast is written and reviewed, then it begins, is talked 
       'replied',
     ])
 
-    const undone = await (await call('DELETE', '/api/sessions/s1/roleplay/frames/1?latest=1'))
-      .json()
+    const undone = await sessionFrom(
+      await call('DELETE', '/api/sessions/s1/roleplay/frames/1?latest=1'),
+    )
     assertEquals(undone.frames.length, 1)
     assertEquals((await call('DELETE', '/api/sessions/s1/roleplay/frames/0?latest=0')).status, 409)
 
@@ -69,10 +75,13 @@ Deno.test("A Roleplay's Cast is written and reviewed, then it begins, is talked 
     const renamed = { ...testCast, persona: { ...testCast.persona, name: 'Alex' } }
     assertEquals((await call('PUT', '/api/sessions/s1/roleplay/cast', renamed)).status, 400)
     const steered = { ...testCast, character: { ...testCast.character, goal: 'Leave town.' } }
-    const edited = await (await call('PUT', '/api/sessions/s1/roleplay/cast', steered)).json()
-    assertEquals(edited.cast.character.goal, 'Leave town.')
+    const edited = ofKind(
+      await sessionFrom(await call('PUT', '/api/sessions/s1/roleplay/cast', steered)),
+      'roleplay',
+    )
+    assertEquals(edited.cast?.character.goal, 'Leave town.')
 
-    const [summary] = await (await call('GET', '/api/sessions')).json()
+    const [summary] = await listSessions(call)
     assertEquals([summary.kind, summary.frames, summary.thumbnail], ['roleplay', 1, null])
     assertEquals(summary.excerpt, 'You are late.')
   }))
@@ -106,7 +115,7 @@ Deno.test('Suggest streams a Message for the player, from their draft, and saves
     ])
     assertEquals(events.at(-1)![1].text, 'I ask about the cargo.')
     assertMatch(model.suggested[0][1].content, /cargo\?/)
-    const session = await (await call('GET', '/api/sessions/s1')).json()
+    const session = await getSession(call, 'roleplay')
     assertEquals(session.frames.length, 1)
 
     // Out of suggestions: the stream reports the failure, and the Roleplay is free again.

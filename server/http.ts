@@ -1,5 +1,6 @@
 /** Small HTTP helpers shared by the app's routes and each Session kind's own routes. */
 import { Refusal } from './refusal.ts'
+import type { ErrorBody } from '../shared/errors.ts'
 
 export type Params = Record<string, string | undefined>
 export type Route = [
@@ -9,8 +10,8 @@ export type Route = [
 ]
 
 export const json = (body: unknown, status = 200) => Response.json(body, { status })
-export const error = (message: string, status: number, extra: object = {}) =>
-  json({ error: message, ...extra }, status)
+export const error = (message: string, status: number, extra: Omit<ErrorBody, 'error'> = {}) =>
+  json({ error: message, ...extra } satisfies ErrorBody, status)
 
 /** Whether the request says its body is JSON. */
 export const isJson = (req: Request) =>

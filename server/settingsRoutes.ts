@@ -8,7 +8,13 @@ import { imageKindOf } from './backends.ts'
 import { type Backend, BACKEND_NAMES, BACKEND_WORK, type BackendKind } from '../shared/backends.ts'
 import type { TextModelInfo } from './text/backend.ts'
 import { SIZE_PRESETS, validateSettings } from './settings.ts'
-import type { Settings } from '../shared/settings.ts'
+import type {
+  SavedSettings,
+  SentSettings,
+  Settings,
+  SettingsOptions,
+  TextModelList,
+} from '../shared/settings.ts'
 import { editModelsHere } from './images/editModels.ts'
 import { backendOf, editJob } from './machine.ts'
 import type { AppContext } from './appContext.ts'
@@ -17,7 +23,7 @@ export function settingsRoutes(ctx: AppContext): Route[] {
   const { deps, detected, availability, imageBackends } = ctx
 
   /** Settings as the browser sees them: which Backends have an API key, never the keys. */
-  const shownSettings = async (settings: Settings) => ({
+  const shownSettings = async (settings: Settings): Promise<SentSettings> => ({
     ...settings,
     apiKeysSet: (await Promise.all(
       settings.backends.map(async (b) => (await deps.settings.loadApiKey(b.id)) ? [b.id] : []),
@@ -25,7 +31,10 @@ export function settingsRoutes(ctx: AppContext): Route[] {
   })
 
   /** A text Backend's models for Settings to offer, or why it couldn't list them. */
-  async function textModelOptions(backend: Backend | undefined, apiKey?: string) {
+  async function textModelOptions(
+    backend: Backend | undefined,
+    apiKey?: string,
+  ): Promise<TextModelList> {
     let models: TextModelInfo[] = []
     let textModelsError: string | undefined
     try {
@@ -60,7 +69,7 @@ export function settingsRoutes(ctx: AppContext): Route[] {
       const { sessionsFolder } = await deps.settings.load()
       result.settings.sessionsFolder = sessionsFolder
       await deps.settings.save(result.settings)
-      const { apiKeys } = body as { apiKeys?: unknown }
+      const { apiKeys } = body as Partial<SavedSettings>
       if (typeof apiKeys === 'object' && apiKeys !== null) {
         for (const [id, key] of Object.entries(apiKeys)) {
           const listed = result.settings.backends.some((b) => b.id === id)
@@ -123,42 +132,46 @@ export function settingsRoutes(ctx: AppContext): Route[] {
 
     ['GET', new URLPattern({ pathname: '/api/settings/options' }), async () => {
       const now = await deps.settings.load()
-      return json({
-        ...await textModelOptions(now.backends.find((b) => b.id === now.runOn.text)),
-        // Every backend's, so Settings can switch between them.
-        imageModels: Object.fromEntries(IMAGE_BACKENDS.map((b) => [b, imageModelsOf(b)])),
-        imageBackends: await imageBackends(),
-        // Where each Image Model's renders go now, for the Session's picker to say (ADR 0022).
-        imageModelsOn: Object.fromEntries(
-          IMAGE_BACKENDS.flatMap((kind) => imageModelsOf(kind).map((m) => m.id))
-            .map((id) => [id, backendOf({ kind: 'render', model: id }, now, detected)] as const)
-            .flatMap(([id, backend]) => {
+      return json(
+        {
+          ...await textModelOptions(now.backends.find((b) => b.id === now.runOn.text)),
+          // Every backend's, so Settings can switch between them.
+          imageModels: Object.fromEntries(
+            IMAGE_BACKENDS.map((b) => [b, imageModelsOf(b)]),
+          ) as SettingsOptions['imageModels'],
+          imageBackends: await imageBackends(),
+          // Where each Image Model's renders go now, for the Session's picker to say (ADR 0022).
+          imageModelsOn: Object.fromEntries(
+            IMAGE_BACKENDS.flatMap((kind) => imageModelsOf(kind).map((m) => m.id))
+              .map((id) => [id, backendOf({ kind: 'render', model: id }, now, detected)] as const)
+              .flatMap(([id, backend]) => {
+                const kind = backend && imageKindOf(backend)
+                return kind ? [[id, kind]] : []
+              }),
+          ),
+          sizePresets: SIZE_PRESETS,
+          upscalers: UPSCALERS,
+          videoModels: COMFYUI_VIDEO_MODELS.map(({ id, label, sound, size, longest }) => ({
+            id,
+            label,
+            sound,
+            size,
+            longest,
+          })),
+          editModels: editModelsHere(await imageBackends()),
+          // Where each edit model's edits go now, for the Edit dialog to say.
+          editModelsOn: Object.fromEntries(
+            EDIT_MODELS.flatMap((m) => {
+              const backend = backendOf(editJob(m.id), now, detected)
               const kind = backend && imageKindOf(backend)
-              return kind ? [[id, kind]] : []
+              return kind ? [[m.id, kind]] : []
             }),
-        ),
-        sizePresets: SIZE_PRESETS,
-        upscalers: UPSCALERS,
-        videoModels: COMFYUI_VIDEO_MODELS.map(({ id, label, sound, size, longest }) => ({
-          id,
-          label,
-          sound,
-          size,
-          longest,
-        })),
-        editModels: editModelsHere(await imageBackends()),
-        // Where each edit model's edits go now, for the Edit dialog to say.
-        editModelsOn: Object.fromEntries(
-          EDIT_MODELS.flatMap((m) => {
-            const backend = backendOf(editJob(m.id), now, detected)
-            const kind = backend && imageKindOf(backend)
-            return kind ? [[m.id, kind]] : []
-          }),
-        ),
-        features: await availability(),
-        // What this machine's own Backend runs, whatever else is listed.
-        here: detected,
-      })
+          ),
+          features: await availability(),
+          // What this machine's own Backend runs, whatever else is listed.
+          here: detected,
+        } satisfies SettingsOptions,
+      )
     }],
   ]
 }

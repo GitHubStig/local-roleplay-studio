@@ -1,7 +1,7 @@
 import { assertEquals, assertMatch, assertStringIncludes } from '@std/assert'
 import { join } from '@std/path'
 import { withTempDir } from '../testing.ts'
-import { chainFrames, chainOfTwo, pictureOf, settled } from '../appTesting.ts'
+import { chainFrames, chainOfTwo, jobsIn, pictureOf, refusalIn, settled } from '../appTesting.ts'
 import { fakeVideoGenerator } from './testing.ts'
 import { makeClip } from './makeClip.ts'
 import type { SessionStore } from '../session.ts'
@@ -21,10 +21,10 @@ Deno.test('A Lead In is made from a Frame’s picture, kept on it, served, and u
     const queued = await queueClip(call, 1, leadIn)
     assertEquals(queued.status, 201)
     // It keeps the Image Model of the picture it's made from.
-    const [job] = await queued.json()
+    const [job] = await jobsIn(queued)
     assertEquals(await settled(call), [])
     const [opening, second] = (await chainFrames(call)).map(pictureOf)
-    assertEquals(job.image.imageModel, second.imageModel)
+    assertEquals(job.image?.imageModel, second.imageModel)
     const [clip] = second.clips!
     assertMatch(clip.file, /^clip-1-lead-in-[0-9a-f]{8}\.mp4$/)
     assertEquals(
@@ -97,7 +97,7 @@ Deno.test('Each video model keeps its own clip of a kind, at its size, and repla
     assertEquals(video.made.map((m) => m.size), [undefined, 'large', 'large'])
     const unknown = await queueClip(call, 1, { ...leadIn, model: 'wan-9' })
     assertEquals(unknown.status, 400)
-    assertStringIncludes((await unknown.json()).error, 'model must be one of')
+    assertStringIncludes((await refusalIn(unknown)).error, 'model must be one of')
   }))
 
 Deno.test('Into Next ends on the next Frame’s picture, and the last Frame has none', () =>
@@ -107,7 +107,7 @@ Deno.test('Into Next ends on the next Frame’s picture, and the last Frame has 
     const intoNext = { ...leadIn, kind: 'into-next' }
     const last = await queueClip(call, 1, intoNext)
     assertEquals(last.status, 409)
-    assertStringIncludes((await last.json()).error, 'to end on')
+    assertStringIncludes((await refusalIn(last)).error, 'to end on')
     assertEquals((await queueClip(call, 0, intoNext)).status, 201)
     await settled(call)
     const [opening, second] = (await chainFrames(call)).map(pictureOf)
@@ -130,7 +130,7 @@ Deno.test('A clip’s order is checked before it’s queued', () =>
     ) {
       const res = await queueClip(call, 1, clip)
       assertEquals(res.status, 400)
-      assertStringIncludes((await res.json()).error, why)
+      assertStringIncludes((await refusalIn(res)).error, why)
     }
   }))
 
@@ -139,7 +139,7 @@ Deno.test('Without a video generator, a clip is refused, saying why', () =>
     const { call } = await chainOfTwo(root)
     const res = await queueClip(call, 1, leadIn)
     assertEquals(res.status, 409)
-    assertStringIncludes((await res.json()).error, "Clips isn't available")
+    assertStringIncludes((await refusalIn(res)).error, "Clips isn't available")
   }))
 
 Deno.test('A failed clip leaves the picture as it was, and no file behind', () =>
@@ -211,7 +211,7 @@ Deno.test('A clip is refused for a picture by another Image Model than the Sessi
     assertEquals(switched.status, 200)
     const refused = await queueClip(call, 1, leadIn)
     assertEquals(refused.status, 409)
-    assertStringIncludes((await refused.json()).error, 'has no picture by Z-Image Turbo')
+    assertStringIncludes((await refusalIn(refused)).error, 'has no picture by Z-Image Turbo')
   }))
 
 Deno.test('A clip cut off by a restart is picked up from its ComfyUI, else made again', () =>

@@ -1,12 +1,7 @@
 import { JsonStreamReader } from './jsonStream.ts'
 import { type Chat, within } from './text/chat.ts'
-import {
-  expanded,
-  type ExpandFrom,
-  expandMessages,
-  expandSchema,
-  type Expansion,
-} from './scenario/expand.ts'
+import { expanded, type ExpandFrom, expandMessages, expandSchema } from './scenario/expand.ts'
+import type { Expansion } from '../shared/scenario.ts'
 import { cleanSuggestion, suggestMessages, type SuggestRequest } from './scenario/suggest.ts'
 import {
   type FrameRequest,

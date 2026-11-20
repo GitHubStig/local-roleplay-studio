@@ -7,9 +7,13 @@ import { replyOf, scriptedRoleplayModel, testCast, testLook } from './testing.ts
 import { fakeImageGenerator, withTempDir } from '../testing.ts'
 import {
   getSession,
+  jobsIn,
+  listJobs,
+  listSessions,
   ofKind,
   pictureOf,
   readEvents,
+  refusalIn,
   sessionFrom,
   settled,
   setup,
@@ -53,7 +57,7 @@ Deno.test('Picturing, rendering and upscaling a Roleplay Frame are queued jobs, 
     assertEquals((await enqueue('paint')).status, 400)
 
     // Queued back to back: the render waits for the picture, the upscale for the render.
-    const queued = await (await enqueue('picture')).json()
+    const queued = await jobsIn(await enqueue('picture'))
     await enqueue('render')
     await enqueue('upscale')
     assertEquals(queued.length, 1)
@@ -71,7 +75,7 @@ Deno.test('Picturing, rendering and upscaling a Roleplay Frame are queued jobs, 
       testLook('Watercolour.', 'Mira Vance, 34.', 'Sam Reyes, 25.'),
     )
     assertEquals(pictureOf((await sessionFrom(look)).frames[0]).stale, true)
-    const [card] = await (await call('GET', '/api/sessions')).json()
+    const [card] = await listSessions(call)
     assertEquals(card.thumbnail, picture.file)
   }))
 
@@ -155,7 +159,7 @@ Deno.test('A picture goes ahead of queued renders, and Clear empties the queue',
     // Frame 0's render holds the queue; Frame 1's is queued behind it, then its picture.
     await enqueue('render', 0)
     await enqueue('render', 1)
-    const jobs = await (await enqueue('picture', 1)).json()
+    const jobs = await jobsIn(await enqueue('picture', 1))
     assertEquals(
       jobs.map((j: { kind: string; frameIndex: number }) => `${j.kind} ${j.frameIndex}`),
       ['picture 0', 'render 0', 'picture 1', 'render 1'],
@@ -169,7 +173,7 @@ Deno.test('A picture goes ahead of queued renders, and Clear empties the queue',
     const session = await getSession(call, 'roleplay')
     assertEquals(session.frames.map((f: { pictures: unknown[] }) => f.pictures.length), [0, 0])
     assertEquals(session.frames[1].image, undefined)
-    const left = await (await call('GET', '/api/sessions/s1/jobs')).json()
+    const left = await listJobs(call)
     assertEquals(left.map((j: { kind: string; status: string }) => `${j.kind} ${j.status}`), [
       'picture done',
     ])
@@ -179,16 +183,16 @@ Deno.test('A done job stays listed until dismissed, and is no work in progress',
   withTempDir(async (root) => {
     const { call } = await roleplayWithArt(root, [artBody, artBody])
     const enqueue = () => call('POST', '/api/sessions/s1/jobs', { kind: 'picture', frameIndex: 0 })
-    const first = (await (await enqueue()).json())[0]
+    const first = (await jobsIn(await enqueue()))[0]
     await settled(call)
-    const listed = await (await call('GET', '/api/sessions/s1/jobs')).json()
+    const listed = await listJobs(call)
     assertEquals([listed[0].id, listed[0].status], [first.id, 'done'])
     // Asked for again, it's made again: a new job beside the done one.
-    const again = await (await enqueue()).json()
+    const again = await jobsIn(await enqueue())
     assertEquals(again.length, 2)
     await settled(call)
     const dismissed = await call('DELETE', '/api/sessions/s1/jobs/finished')
-    assertEquals(await dismissed.json(), [])
+    assertEquals(await jobsIn(dismissed), [])
   }))
 
 Deno.test('A failed job stays listed to retry or dismiss', () =>
@@ -205,13 +209,13 @@ Deno.test('A failed job stays listed to retry or dismiss', () =>
     assertEquals([again.id, again.status], [failed.id, 'failed'])
     assertEquals((await call('POST', '/api/sessions/s1/jobs/nope/retry')).status, 404)
     // Cancel all leaves it, to retry; Dismiss finished takes it.
-    const cancelled = await (await call('DELETE', '/api/sessions/s1/jobs')).json()
+    const cancelled = await jobsIn(await call('DELETE', '/api/sessions/s1/jobs'))
     assertEquals(cancelled.map((j: { id: string }) => j.id), [failed.id])
-    assertEquals(await (await call('DELETE', '/api/sessions/s1/jobs/finished')).json(), [])
+    assertEquals(await jobsIn(await call('DELETE', '/api/sessions/s1/jobs/finished')), [])
     await call('POST', '/api/sessions/s1/jobs', { kind: 'render', frameIndex: 0 })
     const [last] = await settled(call)
     const dismissed = await call('DELETE', `/api/sessions/s1/jobs/${last.id}`)
-    assertEquals(await dismissed.json(), [])
+    assertEquals(await jobsIn(dismissed), [])
     assertEquals((await call('DELETE', '/api/sessions/s1/jobs/nope')).status, 404)
   }))
 
@@ -226,7 +230,7 @@ Deno.test('A Roleplay Frame is pictured with Pictures off, but not rendered', ()
     assertEquals((await queue('picture')).status, 201)
     assertEquals(await settled(call), [])
     const render = await queue('render')
-    assertEquals([render.status, (await render.json()).error], [
+    assertEquals([render.status, (await refusalIn(render)).error], [
       409,
       'Pictures is switched off in Settings',
     ])
@@ -386,7 +390,7 @@ Deno.test('Without a voice service, speaking fails with a reason', () =>
   withTempDir(async (root) => {
     const { call } = await roleplayWithArt(root, [])
     const res = await call('POST', '/api/sessions/s1/jobs', { kind: 'speak', frameIndex: 0 })
-    assertEquals([res.status, (await res.json()).error], [
+    assertEquals([res.status, (await refusalIn(res)).error], [
       409,
       "Voices isn't available here: No voice service was set up; or add a ComfyUI in Settings, on the Machines tab",
     ])
@@ -490,7 +494,7 @@ Deno.test('Without SHARP, making a scene fails with a reason', () =>
       await settled(call)
     }
     const res = await call('POST', '/api/sessions/s1/jobs', { kind: 'scene', frameIndex: 0 })
-    assertEquals((await res.json()).error, "SHARP isn't available here: No SHARP was set up")
+    assertEquals((await refusalIn(res)).error, "SHARP isn't available here: No SHARP was set up")
   }))
 
 Deno.test('A voice is designed while the Cast is reviewed, before the scene begins', () =>
@@ -527,7 +531,7 @@ Deno.test('A Reply’s picture, and its render as the switches ask, are queued a
     await call('POST', '/api/sessions', { kind: 'roleplay', brief: 'A storm at sea.' })
     await readEvents(await call('POST', '/api/sessions/s1/roleplay/cast'))
     const kinds = async () =>
-      (await (await call('GET', '/api/sessions/s1/jobs')).json()).map((j: {
+      (await listJobs(call)).map((j: {
         kind: string
         frameIndex: number
       }) => `${j.kind} ${j.frameIndex}`)

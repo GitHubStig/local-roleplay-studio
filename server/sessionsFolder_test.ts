@@ -1,3 +1,4 @@
+import { folderCheckIn, getSessionsFolder, pickedIn, sessionsFolderIn } from './appTesting.ts'
 import { assertEquals } from '@std/assert'
 import { join } from '@std/path'
 import { dirSessionStore } from './session.ts'
@@ -37,7 +38,7 @@ async function fixture(busy = false) {
 
 Deno.test('The Session folder is shown with how many Sessions it holds', async () => {
   const f = await fixture()
-  const shown = await (await f.call('GET', '/api/sessions-folder')).json()
+  const shown = await getSessionsFolder(f.call)
   assertEquals(shown, { inUse: f.old, default: f.old, count: 1 })
   await f.done()
 })
@@ -46,7 +47,13 @@ Deno.test('Checking a folder counts its Sessions and changes nothing', async () 
   const f = await fixture()
   const missing = join(f.root, 'new')
   const res = await f.call('POST', '/api/sessions-folder/check', { path: missing })
-  assertEquals(await res.json(), { ok: true, path: missing, count: 0, exists: false, same: false })
+  assertEquals(await folderCheckIn(res), {
+    ok: true,
+    path: missing,
+    count: 0,
+    exists: false,
+    same: false,
+  })
   assertEquals(f.store.root(), f.old)
   const relative = await f.call('POST', '/api/sessions-folder/check', { path: 'Sessions' })
   assertEquals(relative.status, 400)
@@ -63,7 +70,8 @@ Deno.test('The folder in use is the same however its path is written', async () 
   const f = await fixture()
   for (const path of [f.old, `${f.old}/`, '']) {
     const res = await f.call('POST', '/api/sessions-folder/check', { path })
-    assertEquals((await res.json()).same, true, path)
+    const check = await folderCheckIn(res)
+    assertEquals(check.ok && check.same, true, path)
   }
   await f.done()
 })
@@ -72,7 +80,7 @@ Deno.test('Moving applies at once, keeps the choice, and an empty path is the de
   const f = await fixture()
   const next = join(f.root, 'new')
   const moved = await f.call('PUT', '/api/sessions-folder', { path: next })
-  assertEquals(await moved.json(), { inUse: next, default: f.old, count: 0 })
+  assertEquals(await sessionsFolderIn(moved), { inUse: next, default: f.old, count: 0 })
   assertEquals(f.store.dir('b'), join(next, 'b'))
   await (await f.call('PUT', '/api/sessions-folder', { path: '' })).body?.cancel()
   assertEquals([f.store.root(), f.kept], [f.old, [next, '']])
@@ -122,6 +130,6 @@ Deno.test('Moving is refused while work is running', async () => {
 Deno.test('The folder dialog gives the path chosen', async () => {
   const f = await fixture()
   const res = await f.call('POST', '/api/sessions-folder/pick')
-  assertEquals(await res.json(), { path: '/picked' })
+  assertEquals(await pickedIn(res), { path: '/picked' })
   await f.done()
 })

@@ -1,10 +1,9 @@
 import { assert, assertEquals, assertMatch } from '@std/assert'
 import { join } from '@std/path'
-import { readEvents, settled, setup } from '../../appTesting.ts'
+import { getSession, listJobs, readEvents, refusalIn, settled, setup } from '../../appTesting.ts'
 import type { MusicGenerator, MusicRequest } from '../../music/musicGenerator.ts'
 import { withTempDir } from '../../testing.ts'
 import { replyOf, scriptedRoleplayModel, testCast, testScore } from '../testing.ts'
-import type { RoleplaySession } from '../../../shared/roleplay.ts'
 
 const COMFY = { id: 'pc', kind: 'comfyui' as const, address: 'http://192.0.2.20:8188' }
 const direction = (decision: string) => ({
@@ -70,7 +69,7 @@ async function played(root: string, script: Parameters<typeof scriptedRoleplayMo
   return { ...harness, asked, model }
 }
 const roleplay = async (call: ReturnType<typeof setup>['call']) =>
-  (await (await call('GET', '/api/sessions/s1')).json()) as RoleplaySession
+  await getSession(call, 'roleplay')
 const direct = async (call: ReturnType<typeof setup>['call'], frameIndex: number) => {
   await call('POST', '/api/sessions/s1/jobs', { kind: 'direct', frameIndex })
   await settled(call)
@@ -92,8 +91,8 @@ Deno.test('A Cue the Director begins gets its track, made from its words', () =>
     assertEquals(asked[0].lyrics, '[Intro - fiddle]')
     assertEquals(asked[0].key, 'A minor')
     assertEquals(asked[0].bpm, track.bpm)
-    const jobs = await (await call('GET', '/api/sessions/s1/jobs')).json()
-    assertEquals(jobs.find((j: { kind: string }) => j.kind === 'music').machine, '192.0.2.20')
+    const jobs = await listJobs(call)
+    assertEquals(jobs.find((j) => j.kind === 'music')!.machine, '192.0.2.20')
     // The page can fetch it.
     const res = await call('GET', `/api/sessions/s1/images/${track.file}`)
     assertEquals(res.status, 200)
@@ -223,5 +222,5 @@ Deno.test("A track can't be made without Music on, a Cue there, or a ComfyUI", (
     await settings.save({ ...on, backends: [{ id: 'here', kind: 'here', address: '' }] })
     const none = await queue()
     assertEquals(none.status, 409)
-    assertMatch((await none.json()).error, /Machines tab/)
+    assertMatch((await refusalIn(none)).error, /Machines tab/)
   }))

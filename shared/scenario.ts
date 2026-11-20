@@ -79,3 +79,20 @@ export interface Scenario {
   /** When it was last saved, likewise. */
   modified?: string
 }
+
+/** The Scenarios Home lists, and the files that couldn't be read (`GET /api/scenarios`). */
+export interface ScenarioList {
+  scenarios: ScenarioSummary[]
+  errors: ScenarioLoadError[]
+}
+
+/** Expand's answer, on the Scenario page: the Scenario sorted and named, and suggestions for what's blank (`POST /api/scenarios/expand`). */
+export interface Expansion {
+  scenario: Scenario
+  suggestions: Suggestion[]
+}
+
+/** Suggest's answer, on the Scenario page: one suggestion for one part (`POST /api/scenarios/suggest`). */
+export interface Suggested {
+  text: string
+}

@@ -3,8 +3,8 @@
  */
 import type { Backend, Work } from './backends.ts'
 import type { ClipSize } from './clips.ts'
-import type { Feature } from './features.ts'
-import type { EditModel, ImageBackendKind, Upscaler } from './images.ts'
+import type { Availability, Feature } from './features.ts'
+import type { EditModel, ImageBackendKind, ImageModelOption, Upscaler } from './images.ts'
 
 export type SeedMode = 'random' | 'fixed'
 
@@ -153,3 +153,60 @@ export type SessionSettings =
      */
     imageBackend?: ImageBackendKind
   }
+
+/** A text Backend's models, or why it couldn't list them (`/api/settings/text-models`). */
+export interface TextModelList {
+  textModels: string[]
+  /** The Text Models that can reason before answering. */
+  thinkingModels: string[]
+  textModelsError?: string
+}
+
+/** What Settings and the screens can choose from (`GET /api/settings/options`). */
+export interface SettingsOptions extends TextModelList {
+  /** Each backend's Image Models. */
+  imageModels: Record<ImageBackendKind, ImageModelOption[]>
+  /** The kinds of backend whose models a Session can switch to: mflux here, ComfyUI if listed. */
+  imageBackends: ImageBackendKind[]
+  /** The kind of backend each Image Model's renders go to now, by name; none for one nowhere. */
+  imageModelsOn?: Record<string, ImageBackendKind>
+  sizePresets: readonly SizePreset[]
+  upscalers: readonly { id: string; label: string }[]
+  /**
+   * Each video model, whether it makes sound (Wan 2.2 doesn't), the size it makes unless Settings say
+   * otherwise, and its longest clip at each size, in seconds.
+   */
+  videoModels: {
+    id: string
+    label: string
+    sound: boolean
+    size: ClipSize
+    longest: Record<ClipSize, number>
+  }[]
+  /** The models that can edit a picture here, each on its backend, with how it likes to be told. */
+  editModels: {
+    id: EditModel
+    label: string
+    backends: readonly ImageBackendKind[]
+    prompting: string
+  }[]
+  /** The kind of backend each edit model's edits go to now, by name; none for one nowhere. */
+  editModelsOn?: Record<string, ImageBackendKind>
+  /** Which Features can run, here or on a Backend listed (a ComfyUI). */
+  features: Record<Feature, Availability>
+  /** Which Features this machine runs itself, worked out when the server started. */
+  here: Record<Feature, Availability>
+}
+
+/** Settings as the server sends them (`GET`/`PUT /api/settings`): which Backends have an API key saved, never the keys. */
+export interface SentSettings extends Settings {
+  apiKeysSet: string[]
+}
+
+/**
+ * Settings as the page saves them (`PUT /api/settings`): and API keys to replace, by Backend id; ''
+ * removes one, and one left out is kept while its Backend is.
+ */
+export interface SavedSettings extends Settings {
+  apiKeys?: Record<string, string>
+}

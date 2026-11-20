@@ -1,7 +1,7 @@
 import { assertEquals, assertMatch } from '@std/assert'
 import { fakeFigureMaker, fakeSceneMaker } from './3d/testing.ts'
 import { fakeImageGenerator, withTempDir } from './testing.ts'
-import { chainFrames, chainOfTwo, pictureOf, settled } from './appTesting.ts'
+import { chainFrames, chainOfTwo, pictureOf, refusalIn, settled } from './appTesting.ts'
 
 Deno.test('A Chain queues an upscale of one Frame, once', () =>
   withTempDir(async (root) => {
@@ -68,7 +68,7 @@ Deno.test('A Chain job whose Feature is off is refused, saying why', () =>
     const { call, settings } = await chainOfTwo(root, { figure: fakeFigureMaker() })
     const queue = async (kind: string) => {
       const res = await call('POST', '/api/sessions/s1/jobs', { kind, frameIndex: 0 })
-      return [res.status, (await res.json()).error]
+      return [res.status, (await refusalIn(res)).error]
     }
     // Not set up here (on Windows, say).
     assertEquals(await queue('lito'), [409, "LiTo isn't available here: No LiTo was set up"])

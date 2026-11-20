@@ -2,6 +2,7 @@ import { assertEquals, assertMatch } from '@std/assert'
 import { planOf, scriptedTextModel, withTempDir } from '../testing.ts'
 import {
   eventOf,
+  getSession,
   ofKind,
   pictureOf,
   readEvents,
@@ -15,19 +16,28 @@ import {
 Deno.test('POST /api/sessions makes a Storyboard with a Frame count', () =>
   withTempDir(async (root) => {
     const { call } = setup({ root, settings: { textModel: 'x' } })
-    const board = await (await call('POST', '/api/sessions', {
-      kind: 'storyboard',
-      brief: 'A dunk.',
-      frameCount: 5,
-    })).json()
+    const board = ofKind(
+      await sessionFrom(
+        await call('POST', '/api/sessions', {
+          kind: 'storyboard',
+          brief: 'A dunk.',
+          frameCount: 5,
+        }),
+      ),
+      'storyboard',
+    )
     assertEquals([board.kind, board.frameCount, board.look, board.frames], [
       'storyboard',
       5,
       null,
       [],
     ])
-    const byDefault =
-      await (await call('POST', '/api/sessions', { kind: 'storyboard', brief: 'x' })).json()
+    const byDefault = ofKind(
+      await sessionFrom(
+        await call('POST', '/api/sessions', { kind: 'storyboard', brief: 'x' }),
+      ),
+      'storyboard',
+    )
     assertEquals(byDefault.frameCount, 8)
     for (const frameCount of [0, 33, 2.5]) {
       assertEquals(
@@ -116,9 +126,13 @@ Deno.test('A Storyboard is planned, reviewed, written, rendered and edited over 
     const past = await call('POST', '/api/sessions/s1/jobs', { kind: 'render', frameIndex: 9 })
     assertEquals(past.status, 404)
 
-    const byHand = await (await call('PUT', '/api/sessions/s1/frames/2', { body: 'He lands.' }))
-      .json()
-    assertEquals([byHand.frames[2].image.body, pictureOf(byHand.frames[2]).stale], [
+    const byHand = ofKind(
+      await sessionFrom(
+        await call('PUT', '/api/sessions/s1/frames/2', { body: 'He lands.' }),
+      ),
+      'storyboard',
+    )
+    assertEquals([byHand.frames[2].image?.body, pictureOf(byHand.frames[2]).stale], [
       'He lands.',
       true,
     ])
@@ -266,7 +280,7 @@ Deno.test('Cancelling a plan discards the Storyboard', () =>
     const res = await call('POST', '/api/sessions/s1/plan')
     const reader = res.body!.pipeThrough(new TextDecoderStream()).getReader()
     await readUntil(reader, '"phase":"text"')
-    assertEquals((await (await call('GET', '/api/sessions/s1')).json()).activity, 'text')
+    assertEquals((await getSession(call, 'storyboard')).activity, 'text')
     await call('POST', '/api/sessions/s1/cancel')
     const rest = await readUntil(reader, 'event: cancelled')
     assertEquals(rest.includes('"sessionDiscarded":true'), true)

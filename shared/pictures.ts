@@ -2,6 +2,7 @@
 import type { Clip } from './clips.ts'
 import type { ImageBackendKind } from './images.ts'
 import type { Figure, Scene } from './threeD.ts'
+import type { Session } from './session.ts'
 
 /** A picture's image and what was made from it: its render, or an edit of it (ADR 0021). */
 export interface PictureVersion {
@@ -62,4 +63,10 @@ export interface Picture extends PictureVersion {
   edits?: PictureEdit[]
   /** The version that is the picture everywhere: 0 (or none) for the render, n for `edits[n - 1]`. */
   picked?: number
+}
+
+/** A model's pictures deleted from a Session: the Session after, and how many went (`DELETE /api/sessions/:id/pictures`). */
+export interface PicturesDeleted {
+  session: Session
+  deleted: number
 }

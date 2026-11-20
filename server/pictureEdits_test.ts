@@ -2,7 +2,7 @@ import { assertEquals, assertMatch, assertNotEquals, assertRejects } from '@std/
 import { join } from '@std/path'
 import type { ImageGenerator } from './images/imageGenerator.ts'
 import { fakeImageGenerator, withTempDir } from './testing.ts'
-import { chainFrames, chainOfTwo, pictureOf, settled } from './appTesting.ts'
+import { chainFrames, chainOfTwo, jobsIn, pictureOf, settled } from './appTesting.ts'
 
 /** A PNG's bytes in base64, standing in for a painted area. */
 const MASK = btoa('\x89PNG painted')
@@ -19,8 +19,8 @@ Deno.test('An edit repaints a picture as a new version, made from its model’s 
     const queued = await edit({ instruction: 'A hand with five fingers', mask: MASK })
     assertEquals(queued.status, 201)
     // The painted area is saved as it's queued, and the job names it, for the page to show.
-    const { mask } = (await queued.json())[0].edit
-    assertMatch(mask, /^mask-1-[0-9a-f]{8}\.png$/)
+    const { mask } = (await jobsIn(queued))[0].edit!
+    assertMatch(mask!, /^mask-1-[0-9a-f]{8}\.png$/)
     assertEquals(await settled(call), [])
     const [, first] = (await chainFrames(call)).map(pictureOf)
     const [one] = first.edits!
@@ -97,11 +97,11 @@ Deno.test("An edit waits for the one before, and its painted area goes if it's c
     const { call } = await chainOfTwo(root, { imageGenerator: images })
     const edit = (body: object) =>
       call('POST', '/api/sessions/s1/jobs', { kind: 'edit', frameIndex: 1, edit: body })
-    const [job] = await (await edit({ instruction: 'A hand', mask: MASK })).json()
+    const [job] = await jobsIn(await edit({ instruction: 'A hand', mask: MASK }))
     // Another, or a retry, would be made from what this one is making.
     assertEquals((await edit({ instruction: 'A cup' })).status, 409)
     assertEquals((await edit({ instruction: 'A cup', retry: true })).status, 409)
-    const masked = join(root, 's1', job.edit.mask)
+    const masked = join(root, 's1', job.edit!.mask!)
     assertEquals((await Deno.stat(masked)).isFile, true)
     await call('DELETE', `/api/sessions/s1/jobs/${job.id}`)
     assertEquals(await settled(call), [])

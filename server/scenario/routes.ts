@@ -9,7 +9,7 @@ import {
   scenarioText,
   summarise,
 } from '../scenario.ts'
-import type { Scenario } from '../../shared/scenario.ts'
+import type { Scenario, ScenarioList, Suggested } from '../../shared/scenario.ts'
 import type { TextModel } from '../textModel.ts'
 import { partOf } from './suggest.ts'
 import { withRetry } from '../frames.ts'
@@ -61,7 +61,12 @@ export function scenarioRoutes(ctx: AppContext): Route[] {
     ['GET', new URLPattern({ pathname: '/api/scenarios' }), async () => {
       const { scenarios, errors } = await deps.scenarios.list()
       const own = new Set((await deps.ownScenarios?.list())?.scenarios.map((s) => s.id))
-      return json({ scenarios: scenarios.map((s) => summarise(s, own.has(s.id))), errors })
+      return json(
+        {
+          scenarios: scenarios.map((s) => summarise(s, own.has(s.id))),
+          errors,
+        } satisfies ScenarioList,
+      )
     }],
 
     // Saves the Scenario page's Scenario over its file in the player's `scenarios/`.
@@ -171,7 +176,7 @@ export function scenarioRoutes(ctx: AppContext): Route[] {
         const text = await model.suggestForScenario({ scenario, field, notes }, req.signal)
         const crossed = crossedLimit(text)?.message
         if (crossed) return error(`The suggestion crossed a limit (${crossed}); ask again`, 422)
-        return json({ text })
+        return json({ text } satisfies Suggested)
       } catch (err) {
         return error(`Suggest failed: ${(err as Error).message}`, 502)
       }

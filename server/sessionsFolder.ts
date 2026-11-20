@@ -1,7 +1,7 @@
 import { dirname, isAbsolute, join, resolve } from '@std/path'
 import { error, json, readJson, type Route } from './http.ts'
 import { dirSessionStore } from './session.ts'
-import type { FolderCheck } from '../shared/sessionsFolder.ts'
+import type { FolderCheck, PickedFolder, SessionsFolderInfo } from '../shared/sessionsFolder.ts'
 
 /** The folder the Sessions are kept in, which the player can move to another while the app runs. */
 export interface SessionsFolder {
@@ -65,7 +65,7 @@ export interface SessionsFolderRouteContext {
 }
 
 export function sessionsFolderRoutes(ctx: SessionsFolderRouteContext): Route[] {
-  const shown = async () => ({
+  const shown = async (): Promise<SessionsFolderInfo> => ({
     inUse: resolve(ctx.folder.inUse()),
     default: resolve(ctx.folder.default),
     count: (await dirSessionStore(ctx.folder.inUse()).list()).length,
@@ -81,7 +81,7 @@ export function sessionsFolderRoutes(ctx: SessionsFolderRouteContext): Route[] {
     ['POST', new URLPattern({ pathname: '/api/sessions-folder/pick' }), async () => {
       if (!ctx.pick) return error("This machine can't open a folder dialog", 409)
       try {
-        return json({ path: await ctx.pick() })
+        return json({ path: await ctx.pick() } satisfies PickedFolder)
       } catch (err) {
         return error((err as Error).message, 500)
       }

@@ -11,11 +11,31 @@ import {
   testScenario,
   withTempDir,
 } from './testing.ts'
-import { eventOf, madeFrame, readEvents, setup } from './appTesting.ts'
+import {
+  comfyStatusIn,
+  eventOf,
+  expansionIn,
+  getOptions,
+  getSession,
+  getSettings,
+  healthIn,
+  listJobs,
+  listScenarios,
+  listSessions,
+  madeFrame,
+  readEvents,
+  refusalIn,
+  scenarioIn,
+  sessionFrom,
+  settingsIn,
+  setup,
+  suggestedIn,
+  textModelsIn,
+} from './appTesting.ts'
 
 Deno.test('GET /api/health reports ok', async () => {
   const res = await setup().call('GET', '/api/health')
-  assertEquals(await res.json(), { ok: true })
+  assertEquals(await healthIn(res), { ok: true })
 })
 
 Deno.test('unknown routes return 404', async () => {
@@ -25,7 +45,7 @@ Deno.test('unknown routes return 404', async () => {
 
 Deno.test('GET /api/settings returns stored settings', async () => {
   const res = await setup().call('GET', '/api/settings')
-  assertEquals(await res.json(), { ...DEFAULT_SETTINGS, apiKeysSet: [] })
+  assertEquals(await settingsIn(res), { ...DEFAULT_SETTINGS, apiKeysSet: [] })
 })
 
 /** Settings with OpenRouter listed, as the Text Model's Backend. */
@@ -41,14 +61,14 @@ const withOpenRouter = {
 Deno.test("A Backend's API key is saved apart from Settings, and never sent back", async () => {
   const { settings, call } = setup()
   const next = { ...withOpenRouter, apiKeys: { openrouter: ' sk-secret ', nowhere: 'sk-lost' } }
-  const saved = await (await call('PUT', '/api/settings', next)).json()
+  const saved = await settingsIn(await call('PUT', '/api/settings', next))
   // Only for a Backend that's listed.
   assertEquals(settings.apiKeys, { openrouter: 'sk-secret' })
   assertEquals('apiKeys' in settings.current, false)
   assertEquals(saved.apiKeysSet, ['openrouter'])
   assertEquals(JSON.stringify(saved).includes('sk-secret'), false)
   assertEquals(
-    JSON.stringify(await (await call('GET', '/api/settings')).json()).includes('sk-secret'),
+    JSON.stringify(await getSettings(call)).includes('sk-secret'),
     false,
   )
 
@@ -71,10 +91,12 @@ Deno.test('An OpenAI-compatible server needs an address', async () => {
 Deno.test('Each kind of work is sent to a listed Backend that can do it', async () => {
   const { call } = setup()
   const issues = async (runOn: object) =>
-    (await (await call('PUT', '/api/settings', {
-      ...DEFAULT_SETTINGS,
-      runOn: { ...DEFAULT_SETTINGS.runOn, ...runOn },
-    })).json()).issues
+    (await refusalIn(
+      await call('PUT', '/api/settings', {
+        ...DEFAULT_SETTINGS,
+        runOn: { ...DEFAULT_SETTINGS.runOn, ...runOn },
+      }),
+    )).issues
   assertEquals(await issues({ images: 'pc' }), ['runOn.images must be a Backend that can do it'])
   assertEquals(await issues({ text: 'here' }), ['runOn.text must be a Backend that can do it'])
   assertEquals(await issues({ voices: 'ollama' }), [
@@ -90,12 +112,14 @@ Deno.test('POST /api/settings/text-models lists a Backend not saved yet', async 
       return Promise.reject(new Error('401 Unauthorized'))
     },
   })
-  const body = await (await call('POST', '/api/settings/text-models', {
-    id: 'lm',
-    kind: 'openai',
-    address: ' http://localhost:1234/v1 ',
-    apiKey: 'sk-new',
-  })).json()
+  const body = await textModelsIn(
+    await call('POST', '/api/settings/text-models', {
+      id: 'lm',
+      kind: 'openai',
+      address: ' http://localhost:1234/v1 ',
+      apiKey: 'sk-new',
+    }),
+  )
   assertEquals(asked, [[
     { id: 'lm', kind: 'openai', address: 'http://localhost:1234/v1' },
     'sk-new',
@@ -121,7 +145,7 @@ Deno.test("A POST that isn't JSON is refused, as another site could send it", as
       body: JSON.stringify({ kind: 'openai', address: 'http://elsewhere/v1' }),
     }),
   )
-  assertEquals([res.status, (await res.json()).error, listed], [415, 'Send JSON', false])
+  assertEquals([res.status, (await refusalIn(res)).error, listed], [415, 'Send JSON', false])
 })
 
 Deno.test('PUT /api/settings saves valid settings', async () => {
@@ -135,7 +159,7 @@ Deno.test('PUT /api/settings rejects invalid settings without saving', async () 
   const { settings, call } = setup()
   const res = await call('PUT', '/api/settings', { ...DEFAULT_SETTINGS, imageModel: 'x', steps: 0 })
   assertEquals(res.status, 400)
-  assertEquals((await res.json()).issues.length, 2)
+  assertEquals((await refusalIn(res)).issues!.length, 2)
   assertEquals(settings.current, DEFAULT_SETTINGS)
 })
 
@@ -144,12 +168,12 @@ Deno.test('PUT /api/settings rejects a non-JSON body', async () => {
 })
 
 Deno.test('GET /api/settings/options lists Text and Image Models', async () => {
-  const body = await (await setup().call('GET', '/api/settings/options')).json()
+  const body = await getOptions(setup().call)
   assertEquals(body.textModels, ['llama3:latest', 'qwen3.8:27b-mlx'])
   assertEquals(body.thinkingModels, ['qwen3.8:27b-mlx'])
   assertEquals(body.imageModels.mflux[0].id, 'flux2-klein-4b')
   // Where each model's renders go now: here on mflux, with no ComfyUI listed.
-  assertEquals(body.imageModelsOn['qwen-image-2.1'], 'mflux')
+  assertEquals(body.imageModelsOn?.['qwen-image-2.1'], 'mflux')
   // And each edit model's: every one runs on mflux too.
   assertEquals(body.editModelsOn, {
     'qwen-image-2.1-edit': 'mflux',
@@ -195,7 +219,8 @@ Deno.test('POST /api/settings/comfyui checks an address not saved yet', async ()
     address: ' http://192.0.2.20:8188 ',
     imageModel: 'qwen-image-2.1',
   })
-  assertEquals((await res.json()).device, 'cuda:0 NVIDIA GeForce RTX 4070')
+  const status = await comfyStatusIn(res)
+  assertEquals(status.up && status.device, 'cuda:0 NVIDIA GeForce RTX 4070')
   // A Mac rendering with mflux checks only the upscaler it sends there.
   await call('POST', '/api/settings/comfyui', {
     address: 'http://192.0.2.20:8188',
@@ -236,12 +261,12 @@ Deno.test('Adding a ComfyUI makes pictures, Upscale, voices and clips available 
       video: off,
     },
   })
-  const before = (await (await call('GET', '/api/settings/options')).json()).features
-  for (const extra of ['images', 'upscale', 'edits', 'voices', 'video']) {
+  const before = (await getOptions(call)).features
+  for (const extra of ['images', 'upscale', 'edits', 'voices', 'video'] as const) {
     assertEquals(before[extra].available, false)
-    assertStringIncludes(before[extra].reason, 'or add a ComfyUI in Settings')
+    assertStringIncludes(before[extra].reason!, 'or add a ComfyUI in Settings')
   }
-  const settings = await (await call('GET', '/api/settings')).json()
+  const settings = await getSettings(call)
   const saved = await call('PUT', '/api/settings', {
     ...settings,
     backends: [...settings.backends, { id: 'pc', kind: 'comfyui', address: '' }],
@@ -250,8 +275,8 @@ Deno.test('Adding a ComfyUI makes pictures, Upscale, voices and clips available 
     imageModel: 'qwen-image-2.1',
   })
   assertEquals(saved.status, 200)
-  const after = (await (await call('GET', '/api/settings/options')).json()).features
-  for (const extra of ['images', 'upscale', 'edits', 'voices', 'video']) {
+  const after = (await getOptions(call)).features
+  for (const extra of ['images', 'upscale', 'edits', 'voices', 'video'] as const) {
     assertEquals(after[extra].available, true)
   }
   // An Image Model must be one some backend has.
@@ -261,13 +286,13 @@ Deno.test('Adding a ComfyUI makes pictures, Upscale, voices and clips available 
 
 Deno.test('GET /api/settings/options still answers when Ollama is down', async () => {
   const { call } = setup({ listTextModels: () => Promise.reject(new Error('connection refused')) })
-  const body = await (await call('GET', '/api/settings/options')).json()
+  const body = await getOptions(call)
   assertEquals(body.textModels, [])
   assertEquals(body.textModelsError, 'Could not reach Ollama: connection refused')
 })
 
 Deno.test('GET /api/scenarios lists summaries and load errors', async () => {
-  assertEquals(await (await setup().call('GET', '/api/scenarios')).json(), {
+  assertEquals(await listScenarios(setup().call), {
     scenarios: [{ id: 'test', title: 'Test Shoot', description: 'A short test.', own: false }],
     errors: [{ file: 'broken.md', message: 'title must be a non-empty string' }],
   })
@@ -278,7 +303,7 @@ Deno.test("The player's Scenarios are saved, imported and deleted", () =>
     const ownScenarios = dirScenarioFolder(join(root, 'scenarios'))
     const { call } = setup({ ownScenarios, scenarios: ownScenarios })
     const ids = async () =>
-      (await (await call('GET', '/api/scenarios')).json()).scenarios.map(
+      (await listScenarios(call)).scenarios.map(
         (s: { id: string; own: boolean }) => `${s.id}${s.own ? ' (own)' : ''}`,
       )
     // Saved over its file (made, the first time).
@@ -292,18 +317,18 @@ Deno.test("The player's Scenarios are saved, imported and deleted", () =>
     assertEquals(second?.created, first?.created)
     assertEquals(second!.modified! >= first!.modified!, true)
     // A new one never takes another's id: its title's, made unique.
-    const copy = await (await call('POST', '/api/scenarios', { scenario: edited })).json()
+    const copy = await scenarioIn(await call('POST', '/api/scenarios', { scenario: edited }))
     assertEquals(copy.id, 'test-shoot')
-    const again = await (await call('POST', '/api/scenarios', { scenario: edited })).json()
+    const again = await scenarioIn(await call('POST', '/api/scenarios', { scenario: edited }))
     assertEquals(again.id, 'test-shoot-2')
     // An import keeps the dates its file gives.
     const dated = scenarioText.replace(
       'title: Test Shoot',
       'title: Test Shoot\ncreated: 2020-01-01T00:00:00Z',
     )
-    const imported =
-      await (await call('POST', '/api/scenarios', { markdown: dated, name: 'Test.md' }))
-        .json()
+    const imported = await scenarioIn(
+      await call('POST', '/api/scenarios', { markdown: dated, name: 'Test.md' }),
+    )
     assertEquals([imported.id, imported.created], ['test-2', '2020-01-01T00:00:00.000Z'])
     // A file that wouldn't load back isn't saved, nor one outside the folder.
     const broken = await call('POST', '/api/scenarios', { markdown: '# no frontmatter' })
@@ -319,7 +344,7 @@ Deno.test('POST /api/sessions snapshots settings and resolves the seed', () =>
     const { call } = setup({ root, settings: { textModel: 'llama3:latest' } })
     const res = await call('POST', '/api/sessions', { scenarioId: 'test' })
     assertEquals(res.status, 201)
-    const session = await res.json()
+    const session = await sessionFrom(res)
     assertEquals(session.id, 's1')
     assertEquals(session.kind, 'chain')
     assertEquals(session.seed, 1234)
@@ -343,9 +368,9 @@ Deno.test('A Session keeps its own copy of its Scenario, to work without the fil
       scenarios: gone,
       textModel: scriptedTextModel([reply('standing')]),
     })
-    assertEquals((await (await call('GET', '/api/sessions/s1')).json()).title, 'Test Shoot')
+    assertEquals((await getSession(call, 'chain')).title, 'Test Shoot')
     await madeFrame(call)
-    assertEquals((await (await call('GET', '/api/sessions/s1')).json()).frames.length, 1)
+    assertEquals((await getSession(call, 'chain')).frames.length, 1)
   }))
 
 Deno.test('POST /api/sessions uses a fixed seed when set', () =>
@@ -355,7 +380,7 @@ Deno.test('POST /api/sessions uses a fixed seed when set', () =>
       settings: { textModel: 'x', seedMode: 'fixed', seed: 99 },
     })
     assertEquals(
-      (await (await call('POST', '/api/sessions', { scenarioId: 'test' })).json()).seed,
+      (await sessionFrom(await call('POST', '/api/sessions', { scenarioId: 'test' }))).seed,
       99,
     )
   }))
@@ -367,8 +392,8 @@ Deno.test('POST /api/sessions takes a seed of its own over Settings', () =>
       settings: { textModel: 'x', seedMode: 'fixed', seed: 99 },
     })
     const create = (seed: unknown) => call('POST', '/api/sessions', { scenarioId: 'test', seed })
-    assertEquals((await (await create(7)).json()).seed, 7)
-    assertEquals((await (await create(0)).json()).seed, 0)
+    assertEquals((await sessionFrom(await create(7))).seed, 7)
+    assertEquals((await sessionFrom(await create(0))).seed, 0)
     assertEquals((await create(-1)).status, 400)
     assertEquals((await create(1.5)).status, 400)
     assertEquals((await create('7')).status, 400)
@@ -389,7 +414,7 @@ Deno.test('GET /api/sessions lists Sessions newest first with their activity', (
       settings: { textModel: 'x' },
       textModel: scriptedTextModel([reply('standing'), reply('sitting'), reply('kneeling')]),
     })
-    assertEquals(await (await call('GET', '/api/sessions')).json(), [])
+    assertEquals(await listSessions(call), [])
     await call('POST', '/api/sessions', { scenarioId: 'test' })
     await madeFrame(call)
     await call('POST', '/api/sessions', { scenarioId: 'test' })
@@ -398,13 +423,13 @@ Deno.test('GET /api/sessions lists Sessions newest first with their activity', (
     await new Promise((r) => setTimeout(r, 5))
     await madeFrame(call, 'Sit')
 
-    const list = await (await call('GET', '/api/sessions')).json()
+    const list = await listSessions(call)
     assertEquals(list.map((s: { id: string }) => s.id), ['s1', 's2'])
     assertEquals(list[0].title, 'Test Shoot')
     // A Session on its own carries its title too, for the screen's tab.
-    assertEquals((await (await call('GET', '/api/sessions/s1')).json()).title, 'Test Shoot')
+    assertEquals((await getSession(call, 'chain')).title, 'Test Shoot')
     assertEquals(list[0].frames, 2)
-    assertMatch(list[0].thumbnail, /^frame-1-/)
+    assertMatch(list[0].thumbnail!, /^frame-1-/)
     assertEquals(list[0].activity, null)
   }))
 
@@ -425,7 +450,7 @@ Deno.test('DELETE /api/sessions/:id removes a Session and its images', () =>
 
 Deno.test('GET /api/scenarios/:id returns the whole Scenario', async () => {
   const { call } = setup()
-  assertEquals(await (await call('GET', '/api/scenarios/test')).json(), testScenario)
+  assertEquals(await scenarioIn(await call('GET', '/api/scenarios/test')), testScenario)
   assertEquals((await call('GET', '/api/scenarios/nope')).status, 404)
 })
 
@@ -442,20 +467,23 @@ Deno.test('POST /api/scenarios/expand expands a Scenario, as filed or as edited,
       ],
     })
     const { call, sessions } = setup({ root, settings: { textModel: 'x' }, textModel })
-    const fromFile = await (await call('POST', '/api/scenarios/expand', { scenarioId: 'test' }))
-      .json()
+    const fromFile = await expansionIn(
+      await call('POST', '/api/scenarios/expand', { scenarioId: 'test' }),
+    )
     assertEquals(fromFile.scenario.people.map((p: { name: string }) => p.name), ['Ann'])
     assertEquals(fromFile.suggestions, [{ field: 'time', text: 'Dusk.' }])
-    const fromBrief = await (await call('POST', '/api/scenarios/expand', { brief: 'A knight.' }))
-      .json()
+    const fromBrief = await expansionIn(
+      await call('POST', '/api/scenarios/expand', { brief: 'A knight.' }),
+    )
     assertEquals([fromBrief.scenario.title, fromBrief.scenario.opening], [
       'Fog',
       'Ann rides into fog.',
     ])
     // As edited on the page: its edits stand.
     const edited = { ...testScenario, place: 'A cellar.', people: [{ id: 'p1', name: 'Ann' }] }
-    const fromPage = await (await call('POST', '/api/scenarios/expand', { scenario: edited }))
-      .json()
+    const fromPage = await expansionIn(
+      await call('POST', '/api/scenarios/expand', { scenario: edited }),
+    )
     assertEquals([fromPage.scenario.place, fromPage.scenario.player], ['A cellar.', 'p1'])
     assertEquals((await call('POST', '/api/scenarios/expand', {})).status, 400)
     assertEquals((await call('POST', '/api/scenarios/expand', { scenarioId: 'nope' })).status, 404)
@@ -467,7 +495,7 @@ Deno.test('POST /api/scenarios/suggest suggests for one part of the Scenario as 
   const { call } = setup({ settings: { textModel: 'x' }, textModel })
   const ask = (field: string, scenario: object = testScenario) =>
     call('POST', '/api/scenarios/suggest', { scenario, field })
-  assertEquals(await (await ask('time')).json(), { text: 'A winter night.' })
+  assertEquals(await suggestedIn(await ask('time')), { text: 'A winter night.' })
   assertEquals(textModel.suggestRequests, [{ scenario: testScenario, field: 'time', notes: '' }])
   assertEquals((await ask('people.nobody.goal')).status, 400)
   assertEquals((await ask('time', { ...testScenario, opening: '' })).status, 400)
@@ -487,12 +515,12 @@ Deno.test('POST /api/sessions keeps the Scenario as the Scenario page sends it',
       scenarioId: 'test',
       scenario: sent,
     })
-    const session = await res.json()
-    assertEquals([session.scenarioId, session.scenario.id], ['test', 'test'])
-    assertEquals([session.scenario.player, session.scenario.people[0].looks], ['p2', 'Tall.'])
+    const session = await sessionFrom(res)
+    assertEquals([session.scenarioId, session.scenario?.id], ['test', 'test'])
+    assertEquals([session.scenario?.player, session.scenario?.people[0].looks], ['p2', 'Tall.'])
     const brief = { brief: 'A knight.', scenario: { ...sent, title: 'Fog' } }
-    const fromBrief = await (await call('POST', '/api/sessions', brief)).json()
-    assertEquals([fromBrief.brief, fromBrief.scenario.title], ['A knight.', 'Fog'])
+    const fromBrief = await sessionFrom(await call('POST', '/api/sessions', brief))
+    assertEquals([fromBrief.brief, fromBrief.scenario?.title], ['A knight.', 'Fog'])
     const incomplete = { scenarioId: 'test', scenario: { ...sent, opening: '' } }
     assertEquals((await call('POST', '/api/sessions', incomplete)).status, 400)
   }))
@@ -500,7 +528,9 @@ Deno.test('POST /api/sessions keeps the Scenario as the Scenario page sends it',
 Deno.test('POST /api/sessions starts from a typed Brief or a Scenario, not both', () =>
   withTempDir(async (root) => {
     const { call } = setup({ root, settings: { textModel: 'x' } })
-    const chain = await (await call('POST', '/api/sessions', { brief: 'A knight in fog.' })).json()
+    const chain = await sessionFrom(
+      await call('POST', '/api/sessions', { brief: 'A knight in fog.' }),
+    )
     assertEquals([chain.kind, chain.brief, chain.scenarioId], ['chain', 'A knight in fog.', null])
     assertEquals(
       (await call('POST', '/api/sessions', { brief: 'x', scenarioId: 'test' })).status,
@@ -541,14 +571,14 @@ Deno.test('Without pictures every kind starts; a Chain writes its Frames without
     assertStringIncludes(frame.image.prompt, 'standing')
     assertEquals(images.prompts.length, 0)
     // Rendering needs pictures: none is queued with the Frame, nor can one be asked for.
-    assertEquals(await (await call('GET', '/api/sessions/s1/jobs')).json(), [])
+    assertEquals(await listJobs(call), [])
     const job = await call('POST', '/api/sessions/s1/jobs', { kind: 'render', frameIndex: 0 })
     assertEquals(job.status, 409)
 
     // Home shows the Chain's Narration in place of a picture (a Storyboard its first Beat).
-    const cards = await (await call('GET', '/api/sessions')).json()
+    const cards = await listSessions(call)
     const chainCard = cards.find((c: { id: string }) => c.id === 's1')
-    assertEquals([chainCard.thumbnail, chainCard.excerpt], [null, 'Pose: standing.'])
+    assertEquals([chainCard!.thumbnail, chainCard!.excerpt], [null, 'Pose: standing.'])
   }))
 
 Deno.test('Turning the Limits off in Settings disables all Limits at once', () =>

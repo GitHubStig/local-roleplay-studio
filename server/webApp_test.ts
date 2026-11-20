@@ -1,6 +1,6 @@
 import { assertEquals } from '@std/assert'
 import { join } from '@std/path'
-import { setup } from './appTesting.ts'
+import { healthIn, refusalIn, setup } from './appTesting.ts'
 import { withTempDir } from './testing.ts'
 import { webApp } from './webApp.ts'
 
@@ -45,8 +45,8 @@ Deno.test('An unknown API address is still a 404 of its own', () =>
   withTempDir(async (dir) => {
     const { call } = await built(dir)
     const res = await call('GET', '/api/nope')
-    assertEquals([res.status, await res.json()], [404, { error: 'Not found' }])
-    assertEquals(await (await call('GET', '/api/health')).json(), { ok: true })
+    assertEquals([res.status, await refusalIn(res)], [404, { error: 'Not found' }])
+    assertEquals(await healthIn(await call('GET', '/api/health')), { ok: true })
   }))
 
 Deno.test('Without a build, a page says how to make one', () =>

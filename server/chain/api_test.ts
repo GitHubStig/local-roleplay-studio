@@ -9,6 +9,7 @@ import {
 import {
   eventOf,
   getSession,
+  listJobs,
   ofKind,
   pictureOf,
   readEvents,
@@ -38,7 +39,7 @@ Deno.test('Frames stream progress and commit, then their render jobs serve their
     const opening = await readEvents(await call('POST', '/api/sessions/s1/frames', {}))
     assertEquals(opening.map(([e]) => e), ['phase', 'committed'])
     // Its picture comes from a render job, queued as it was saved (ADR 0030).
-    const [render] = await (await call('GET', '/api/sessions/s1/jobs')).json()
+    const [render] = await listJobs(call)
     assertEquals([render.kind, render.frameIndex], ['render', 0])
 
     assertEquals((await call('POST', '/api/sessions/s1/frames', {})).status, 400)
@@ -122,10 +123,10 @@ Deno.test('A render in progress serves its latest preview while Settings show it
     assertEquals((await call('GET', '/api/sessions/s1/preview')).status, 404)
     await readEvents(await call('POST', '/api/sessions/s1/frames', {}))
     // The Opening's render job: its phase comes just before it renders and sends its first preview.
-    let job = (await (await call('GET', '/api/sessions/s1/jobs')).json())[0]
+    let job = (await listJobs(call))[0]
     while (job.phase !== 'image') {
       await new Promise((r) => setTimeout(r, 5))
-      job = (await (await call('GET', '/api/sessions/s1/jobs')).json())[0]
+      job = (await listJobs(call))[0]
     }
     let preview = await call('GET', '/api/sessions/s1/preview?step=1')
     while (preview.status === 404) {
@@ -191,8 +192,7 @@ Deno.test('Chain Frames render one at a time across Sessions; a waiting render i
       textModel: scriptedTextModel([reply('standing'), reply('sitting')]),
       imageGenerator: fakeImageGenerator({ hang: true }),
     })
-    const renderOf = async (id: string) =>
-      (await (await call('GET', `/api/sessions/${id}/jobs`)).json())[0]
+    const renderOf = async (id: string) => (await listJobs(call, id))[0]
     const phaseOf = async (id: string, phase: string) => {
       let job = await renderOf(id)
       while (job.phase !== phase) {

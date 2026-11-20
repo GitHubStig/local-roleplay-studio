@@ -14,10 +14,12 @@ import {
   eventOf,
   getSession,
   latestPicture,
+  listJobs,
   madeFrame,
   ofKind,
   pictureOf,
   readEvents,
+  refusalIn,
   sessionFrom,
   settled,
   setup,
@@ -60,9 +62,12 @@ Deno.test('A Chain Frame other than the Opening is deleted, and those after it n
     // Asked again, it names a Frame no longer there, not the one that took its place (made the same
     // millisecond here, so its count tells them apart).
     const again = await remove(1)
-    assertEquals([again.status, (await again.json()).error], [409, 'That Frame is no longer there'])
+    assertEquals([again.status, (await refusalIn(again)).error], [
+      409,
+      'That Frame is no longer there',
+    ])
     const opening = await remove(0, after.length)
-    assertEquals([opening.status, (await opening.json()).error], [
+    assertEquals([opening.status, (await refusalIn(opening)).error], [
       409,
       "The Opening Frame can't be deleted",
     ])
@@ -96,7 +101,7 @@ Deno.test('Deleting a Chain Frame waits for no job on it, and the queue follows'
         frames: frames.length,
         createdAt: frames[index].createdAt,
       })
-    const listed = async () => (await (await call('GET', '/api/sessions/s1/jobs')).json()) as Job[]
+    const listed = async () => (await listJobs(call)) as Job[]
     const jobs = async () => (await listed()).map((j) => [j.frameIndex, j.status])
     const upscale = (frameIndex: number) =>
       call('POST', '/api/sessions/s1/jobs', { kind: 'upscale', frameIndex })
@@ -111,7 +116,7 @@ Deno.test('Deleting a Chain Frame waits for no job on it, and the queue follows'
     for (const index of [2, 3, 1]) await upscale(index)
     assertEquals(await jobs(), [[2, 'running'], [3, 'queued'], [1, 'queued']])
     const refused = await remove(2)
-    assertEquals([refused.status, (await refused.json()).error], [
+    assertEquals([refused.status, (await refusalIn(refused)).error], [
       409,
       'Frame 3 has a job running: wait for it, or cancel it, then delete',
     ])

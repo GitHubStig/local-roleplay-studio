@@ -6,7 +6,14 @@ import { type AppDeps, createHandler } from './app.ts'
 import type { ImageGenerator } from './images/imageGenerator.ts'
 import { dirSessionStore } from './session.ts'
 import type { Picture } from '../shared/pictures.ts'
-import type { Session } from '../shared/session.ts'
+import type { Health, Loaded, Session, SessionSummary } from '../shared/session.ts'
+import type { ErrorBody } from '../shared/errors.ts'
+import type { Job, Queue } from '../shared/jobs.ts'
+import type { Expansion, Scenario, ScenarioList, Suggested } from '../shared/scenario.ts'
+import type { SentSettings, SettingsOptions, TextModelList } from '../shared/settings.ts'
+import type { FolderCheck, PickedFolder, SessionsFolderInfo } from '../shared/sessionsFolder.ts'
+import type { PicturesDeleted } from '../shared/pictures.ts'
+import type { ComfyStatus } from '../shared/comfyui.ts'
 import type {
   ClipPromptEvent,
   EndEvent,
@@ -176,18 +183,88 @@ export async function sessionFrom(res: Response): Promise<Session> {
   return await res.json() as Session
 }
 
+/**
+ * A response's JSON as `shared/` declares it for its route; fails the test on a refusal. Used only
+ * by the readers below, one per route, so each route's type is named in one place.
+ */
+async function bodyOf<T>(res: Response): Promise<T> {
+  if (!res.ok) throw new Error(`${res.status} ${res.url}: ${await res.text()}`)
+  return await res.json() as T
+}
+
+type Call = ReturnType<typeof setup>['call']
+
+/** A refusal's body: why (and Settings' issues); fails the test if the request wasn't refused. */
+export async function refusalIn(res: Response): Promise<ErrorBody> {
+  if (res.ok) throw new Error(`${res.status} ${res.url} wasn't refused: ${await res.text()}`)
+  return await res.json() as ErrorBody
+}
+
+/** A Session's jobs, as listed or as a job queued answers with them. */
+export const jobsIn = (res: Response) => bodyOf<Job[]>(res)
+export const listJobs = async (call: Call, id = 's1') =>
+  jobsIn(await call('GET', `/api/sessions/${id}/jobs`))
+
+/** Home's Sessions, newest first. */
+export const listSessions = async (call: Call) =>
+  bodyOf<SessionSummary[]>(await call('GET', '/api/sessions'))
+
+/** Every machine's queue, for the queue page. */
+export const getQueue = async (call: Call) => bodyOf<Queue>(await call('GET', '/api/queue'))
+
+/** Settings as the server sends them, with the Backends that have an API key saved. */
+export const settingsIn = (res: Response) => bodyOf<SentSettings>(res)
+export const getSettings = async (call: Call) => settingsIn(await call('GET', '/api/settings'))
+
+/** What Settings and the screens can choose from. */
+export const getOptions = async (call: Call) =>
+  bodyOf<SettingsOptions>(await call('GET', '/api/settings/options'))
+
+/** A text Backend's models, as listed for Settings. */
+export const textModelsIn = (res: Response) => bodyOf<TextModelList>(res)
+
+/** The Scenarios Home lists, and the files that couldn't be read. */
+export const listScenarios = async (call: Call) =>
+  bodyOf<ScenarioList>(await call('GET', '/api/scenarios'))
+
+/** A Scenario, as read, saved or imported. */
+export const scenarioIn = (res: Response) => bodyOf<Scenario>(res)
+
+/** The Sessions folder, and a folder checked to move to. */
+export const getSessionsFolder = async (call: Call) =>
+  bodyOf<SessionsFolderInfo>(await call('GET', '/api/sessions-folder'))
+export const folderCheckIn = (res: Response) => bodyOf<FolderCheck>(res)
+export const sessionsFolderIn = (res: Response) => bodyOf<SessionsFolderInfo>(res)
+
+/** Expand's and Suggest's answers, on the Scenario page. */
+export const expansionIn = (res: Response) => bodyOf<Expansion>(res)
+export const suggestedIn = (res: Response) => bodyOf<Suggested>(res)
+
+/** The folder the machine's own dialog picked. */
+export const pickedIn = (res: Response) => bodyOf<PickedFolder>(res)
+
+/** A model's pictures deleted from a Session. */
+export const deletedIn = (res: Response) => bodyOf<PicturesDeleted>(res)
+
+/** Whether a ComfyUI answers, and what it's missing for what Settings send it. */
+export const comfyStatusIn = (res: Response) => bodyOf<ComfyStatus>(res)
+
+/** The server's health check. */
+export const healthIn = (res: Response) => bodyOf<Health>(res)
+
 /** `session` as the kind it must be; throws if it's another. */
 export function ofKind<K extends Session['kind']>(session: Session, kind: K): SessionOf<K> {
   if (session.kind !== kind) throw new Error(`${session.id} is a ${session.kind}, not a ${kind}`)
   return session as SessionOf<K>
 }
 
-/** A Session as saved now, of the kind it must be. */
+/** A Session as saved now, of the kind it must be, with what loading it adds (`Loaded`). */
 export const getSession = async <K extends Session['kind']>(
   call: ReturnType<typeof setup>['call'],
   kind: K,
   id = 's1',
-) => ofKind(await sessionFrom(await call('GET', `/api/sessions/${id}`)), kind)
+): Promise<SessionOf<K> & Loaded> =>
+  ofKind(await sessionFrom(await call('GET', `/api/sessions/${id}`)), kind) as SessionOf<K> & Loaded
 
 /** The picture a Frame shows in these tests, which keep to one Image Model unless they switch. */
 export const latestPicture = (frame: { pictures: Picture[] }): Picture | undefined =>

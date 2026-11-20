@@ -1,6 +1,6 @@
 import { assert, assertEquals, assertStringIncludes } from '@std/assert'
 import { reply, scriptedTextModel, withTempDir } from '../testing.ts'
-import { chainFrames, chainOfTwo, pictureOf, readEvents } from '../appTesting.ts'
+import { chainFrames, chainOfTwo, pictureOf, readEvents, refusalIn } from '../appTesting.ts'
 import { loadPrompt } from '../promptFiles.ts'
 import type { Session } from '../../shared/session.ts'
 import { cleanClipPrompt, frameStory } from './clipPrompt.ts'
@@ -48,7 +48,7 @@ Deno.test('Into Next’s prompt is told the next picture, and refused on the las
     const intoNext = { ...ask, kind: 'into-next', speech: true }
     const last = await writePrompt(call, 1, intoNext)
     assertEquals(last.status, 409)
-    assertStringIncludes((await last.json()).error, 'to end on')
+    assertStringIncludes((await refusalIn(last)).error, 'to end on')
     await readEvents(await writePrompt(call, 0, intoNext))
     const [, second] = await chainFrames(call)
     const [{ system, user }] = model.clipRequests

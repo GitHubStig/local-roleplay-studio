@@ -1,7 +1,7 @@
 import { assertEquals, assertMatch, assertThrows } from '@std/assert'
 import { replyOf, scriptedRoleplayModel, testCast, testScore } from '../testing.ts'
 import { withTempDir } from '../../testing.ts'
-import { readEvents, settled, setup } from '../../appTesting.ts'
+import { getSession, readEvents, settled, setup } from '../../appTesting.ts'
 import {
   bpmOf,
   cleanCue,
@@ -247,7 +247,7 @@ async function scored(
   return { ...harness, model }
 }
 const roleplay = async (call: ReturnType<typeof setup>['call']) =>
-  (await (await call('GET', '/api/sessions/s1')).json()) as RoleplaySession
+  await getSession(call, 'roleplay')
 
 Deno.test('With Score as you play, each Reply is directed: the Score first, a Cue begun, held, then changed', () =>
   withTempDir(async (root) => {
