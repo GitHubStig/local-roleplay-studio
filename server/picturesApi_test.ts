@@ -102,6 +102,8 @@ Deno.test("A Session's export asked for again replaces one queued, and is refuse
     assertEquals([html.includes('"Frame 1"'), html.includes('"Frame 0"')], [true, false])
     // Done, another may be asked for.
     assertEquals((await call('POST', '/api/sessions/s1/export', asked('Frame 0'))).status, 201)
+    // Written before the folder goes.
+    assertEquals(await settled(call), [])
   }))
 
 Deno.test('Home shows the thumbnail chosen until its file goes, and else the newest picture', () =>
