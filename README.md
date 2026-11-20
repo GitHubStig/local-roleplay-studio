@@ -105,7 +105,7 @@ The same on Windows, in PowerShell. Open <http://localhost:5180>, go to **Settin
 | `deno task replay <file>` | Rebuilds a test Session from a replay file (`server/replay/replays/`) through the running app |
 | `deno task shot <path>` | Screenshots the running app in a headless browser (`web/scripts/shot.ts`) |
 | `deno task build` | Production build of the web app into `web/dist`, which the API server then serves too, at <http://localhost:8787>, with no Vite |
-| `deno task compile` | The app as one executable, `dist/local-roleplay-studio`, with the web app, the export page and the Python tools inside ([installing.md](docs/research/installing.md)) |
+| `deno task compile` | The app as one executable, `dist/local-roleplay-studio`, with the web app, the export page and the Python tools inside; `--target <triple>` for another system ([installing.md](docs/research/installing.md)) |
 | `deno fmt` | Formats the TypeScript files |
 
 ## Configuration
