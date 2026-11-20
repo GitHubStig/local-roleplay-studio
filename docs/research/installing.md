@@ -24,7 +24,19 @@ Each was run from outside the repo with `HOME` in a scratch folder, so its data 
 
 - **The Python tools run from a copy.** Each is a script in `python/` run as `uv run <path>`, and a path inside the executable exists only to Deno: with `python/` included, Deno read `python/style/make.py` from it, but `uv run` on the same path failed with "No such file or directory". Piping it to `uv run -` worked (the script's `--help`), but a script from stdin has no lock beside it, so its versions float, and TripoSplat imports its `vendor/` code from beside its script. So an install copies `python/` beside its Sessions at every start (`server/pythonTools.ts`). The 14 files were copied out with their locks and `vendor/`, and a Roleplay's first Reply was spoken (the Character's voice designed, then spoken, 39 s) by the voice service the app started from the copy; stopping the app stopped it too. The copy is a new path to uv, so it builds an environment of its own the first time (1.1 GB in uv's cache here, mostly hard links).
 - **Exports.** A Compare export of a PNG and a placeholder SVG wrote the page, built with the app (`web/dist-export`), and the PNG as WebP in full and as a thumbnail (`@jsquash` inside the binary); the page showed both in a browser.
-- **Not tried:** Windows; a clean Mac; signing beyond ad-hoc; `Deno.autoUpdate()`.
+- **Not tried:** a clean Mac; signing beyond ad-hoc; `Deno.autoUpdate()`.
+
+## On Windows (2026-11-20, the PC, Deno 2.9.8)
+
+`deno task compile` built `dist/local-roleplay-studio.exe` in about 20 s, 91 MB. It ran from a folder outside the repo with `USERPROFILE`, `APPDATA` and `LOCALAPPDATA` pointed at a scratch folder, so its data couldn't touch the real one, and with `IMAGE_GENERATOR=placeholder`.
+
+- **The data went where ADR 0040 says:** `settings.json` in `%APPDATA%\Local Roleplay Studio\` (once saved), and the queue, the Sessions, the Scenarios (the examples copied in) and the copied Python tools in `%LOCALAPPDATA%\Local Roleplay Studio\`.
+- **The tavern Chain ran** on Gemma 4 12B Heretic through Ollama (the Opening Frame and four Actions, 48 s), its prompts read from inside the executable; Home and the Chain's page showed it in a headless browser.
+- **An export** of a PNG wrote the page, built with the app, and the PNG as WebP in full and as a thumbnail (`@jsquash` inside the executable) to `Documents\Local Roleplay Studio\`; the page showed it in a browser.
+- **With the PC's own Settings** (ComfyUI Desktop 0.46.1 on 127.0.0.1:8188, so every ComfyUI feature on): a Frame of the same Chain rendered on Qwen-Image 2.1 through ComfyUI in 26 s, its workflow read from inside the executable.
+- **The Python tools ran from the copy** in `%LOCALAPPDATA%`, each on that picture: SHARP (a 66 MB scene, 245 s), TripoSplat (a 36 MB figure, 159 s) and the style embedding (`style.json`, 135 s). Each first run builds the copy's own environment with uv, which is most of those times.
+- Stopping the executable left nothing of its own running.
+- **Not tried on Windows:** a clean PC (this one has uv, Ollama and ComfyUI, and Windows 11 Home has no Windows Sandbox).
 
 ## A clean Linux machine, in Apple's `container` (2026-11-20, on the Mac)
 
