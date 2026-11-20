@@ -116,7 +116,9 @@ describe('StartSession', () => {
     }
     pictures(true)
     const on = (await mountIt()).wrapper
-    expect(on.find('[data-pictures-blocker]').text()).toContain('mflux runs only on Apple Silicon Macs')
+    expect(on.find('[data-pictures-blocker]').text()).toContain(
+      'mflux runs only on Apple Silicon Macs',
+    )
     // Starting still works: Frames are written, to picture later.
     expect(on.find('[data-scenario=tavern]').attributes('disabled')).toBeUndefined()
     pictures(false)

@@ -30,4 +30,3 @@ describe('formingOf', () => {
     expect(jobForming(session, null)).toBeNull()
   })
 })
-

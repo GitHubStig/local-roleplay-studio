@@ -83,7 +83,8 @@ export function useDragReorder(opts: DragReorderOptions) {
     pointerdown(e: PointerEvent) {
       if (dragging.value !== null) return
       // Captured too, so a touch on the grip isn't taken for a scroll of the page.
-      ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+      const target = e.currentTarget as HTMLElement
+      target.setPointerCapture(e.pointerId)
       pointerId = e.pointerId
       dragging.value = index
       pointer = start = along(e)

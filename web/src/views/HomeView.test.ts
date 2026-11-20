@@ -59,7 +59,12 @@ function homeIs(width: number) {
       observe(el: Element) {
         const box = [{ inlineSize: width, blockSize: 900 }]
         this.report(
-          [{ target: el, contentRect: { width, height: 900 }, contentBoxSize: box, borderBoxSize: box } as unknown as ResizeObserverEntry],
+          [{
+            target: el,
+            contentRect: { width, height: 900 },
+            contentBoxSize: box,
+            borderBoxSize: box,
+          } as unknown as ResizeObserverEntry],
           this as unknown as ResizeObserver,
         )
       }
@@ -140,7 +145,8 @@ describe('HomeView', () => {
     const { wrapper } = await mountIt()
     await wrapper.find('[data-new-session]').trigger('click')
     expect(wrapper.find('[data-brief]').exists()).toBe(true)
-    const hidden = () => !!wrapper.find('[data-session]').element.closest('[style*="display: none"]')
+    const hidden = () =>
+      !!wrapper.find('[data-session]').element.closest('[style*="display: none"]')
     expect(hidden()).toBe(true)
     await wrapper.find('[data-new-session]').trigger('click')
     expect(wrapper.find('[data-brief]').exists()).toBe(false)

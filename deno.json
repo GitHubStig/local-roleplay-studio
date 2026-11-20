@@ -49,6 +49,7 @@
       "**/*.md",
       "docs/bench/",
       "docs/screens-mockups.html",
+      "docs/retrospectives/",
       "web/index.html",
       "web/export.html",
       "web/public/",

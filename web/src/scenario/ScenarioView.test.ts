@@ -117,9 +117,10 @@ describe('ScenarioView', () => {
     vi.mocked(api.getSettings).mockResolvedValue({ textModel: 'x', music: true } as api.Settings)
     clearScenarioDraft()
     // On, and blank: left to the Text Model, a chip to open it from.
-    expect((await mountAt('/scenario/tavern')).wrapper.find('[data-open-part=music]').exists()).toBe(
-      true,
-    )
+    expect((await mountAt('/scenario/tavern')).wrapper.find('[data-open-part=music]').exists())
+      .toBe(
+        true,
+      )
     vi.mocked(api.getSettings).mockResolvedValue({ textModel: 'x' } as api.Settings)
     await useFeatures().refreshFeatures()
   })
@@ -133,7 +134,9 @@ describe('ScenarioView', () => {
     ])
     // Who plays whom is a chip beside each name.
     expect((wrapper.find('[data-role="elara"]').element as HTMLSelectElement).value).toBe('player')
-    expect((wrapper.find('[data-role="kael"]').element as HTMLSelectElement).value).toBe('character')
+    expect((wrapper.find('[data-role="kael"]').element as HTMLSelectElement).value).toBe(
+      'character',
+    )
     // Blank parts fold into one line of chips; one with a suggestion waiting keeps its row.
     expect(wrapper.find('[data-left-to-model="kael"]').text()).toContain('+ Wears')
     expect(wrapper.find('[data-left-to-model="kael"]').text()).not.toContain('Goal')
