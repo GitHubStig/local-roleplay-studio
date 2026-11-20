@@ -32,6 +32,10 @@
       "command": "deno run --allow-all web/scripts/shot.ts"
     },
     "build": "cd web && deno task build",
+    "compile": {
+      "description": "Build the app as one executable, dist/local-roleplay-studio (docs/research/installing.md)",
+      "command": "cd web && deno task build && deno task build:export && cd ../server && deno compile --allow-net --allow-read --allow-write --allow-run --allow-env --allow-sys=hostname,networkInterfaces --include ../web/dist --include ../web/dist-export --include ../python --include ../example-scenarios --include prompts --include images/comfyui/workflows --include voice/comfyui/workflows --include video/comfyui/workflows --include music/comfyui/workflows --exclude-unused-npm --node-modules-dir=none -o ../dist/local-roleplay-studio main.ts"
+    },
     "check": {
       "description": "Lint everything (deno lint), then type-check the server and the web app",
       "command": "deno lint && cd server && deno check . && cd ../web && deno task typecheck"

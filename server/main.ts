@@ -37,7 +37,7 @@ import { copyPythonTools, SHIPPED_PYTHON } from './pythonTools.ts'
 import { makeDataDirs, thisRunsDataDirs } from './dataDirs.ts'
 import { pickFolder } from './folderPicker.ts'
 import { uvStyleEmbedder } from './style/embedder.ts'
-import { buildComparisonPage } from './export/page.ts'
+import { buildComparisonPage, builtComparisonPage } from './export/page.ts'
 import { voiceBackends, voiceService } from './voice/voice.ts'
 import { comfyuiVoiceEngine } from './voice/comfyui/comfyui.ts'
 import { videoBackends } from './video/videoGenerator.ts'
@@ -200,7 +200,11 @@ const handler = createHandler({
     },
   },
   pickFolder,
-  exports: { dir: data.exports, page: buildComparisonPage },
+  // Built fresh from a clone, so it matches the Compare dialog; an install reads the one it shipped.
+  exports: {
+    dir: data.exports,
+    page: Deno.build.standalone ? () => builtComparisonPage() : buildComparisonPage,
+  },
   // The built web app, so the server alone is the app; `deno task dev` serves it from Vite instead.
   web: webApp(fromFileUrl(new URL('../web/dist/', import.meta.url))),
   textModel: (c) => chatTextModel(chat(c)),
