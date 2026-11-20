@@ -5,11 +5,12 @@ What it takes to ship the app as something a player installs rather than clones:
 ## Trying both on the Mac (2026-11-20, Deno 2.9.8)
 
 ```sh
-deno task compile   # dist/local-roleplay-studio: the web app, the export page, then the binary
-# deno desktop: the compile task's flags, -o <a name without .app>
+deno task compile                                    # dist/local-roleplay-studio, for this machine
+deno task compile --target aarch64-unknown-linux-gnu # for Linux, as in Apple's containers
+# deno desktop: the flags in server/compile.ts, -o <a name without .app>
 ```
 
-The task (in `deno.json`) builds the web app and the export page, then compiles `server/main.ts` with the dev task's permissions, `--include` for what the server reads beside its code (`web/dist`, `web/dist-export`, `python/`, `example-scenarios/`, the prompts and the workflows), and `--exclude-unused-npm --node-modules-dir=none`.
+The task (`server/compile.ts`) builds the web app and the export page, then compiles `server/main.ts` with the dev task's permissions, `--include` for what the server reads beside its code (`web/dist`, `web/dist-export`, `python/`, `example-scenarios/`, the prompts and the workflows), and `--exclude-unused-npm --node-modules-dir=none`.
 
 Each was run from outside the repo with `HOME` in a scratch folder, so its data couldn't touch the real one, and checked with the tavern Chain replay (`deno task replay server/replay/replays/tavern-chain.yaml --server …`) on Gemma 4 26B through Ollama.
 
@@ -23,4 +24,19 @@ Each was run from outside the repo with `HOME` in a scratch folder, so its data 
 
 - **The Python tools run from a copy.** Each is a script in `python/` run as `uv run <path>`, and a path inside the executable exists only to Deno: with `python/` included, Deno read `python/style/make.py` from it, but `uv run` on the same path failed with "No such file or directory". Piping it to `uv run -` worked (the script's `--help`), but a script from stdin has no lock beside it, so its versions float, and TripoSplat imports its `vendor/` code from beside its script. So an install copies `python/` beside its Sessions at every start (`server/pythonTools.ts`). The 14 files were copied out with their locks and `vendor/`, and a Roleplay's first Reply was spoken (the Character's voice designed, then spoken, 39 s) by the voice service the app started from the copy; stopping the app stopped it too. The copy is a new path to uv, so it builds an environment of its own the first time (1.1 GB in uv's cache here, mostly hard links).
 - **Exports.** A Compare export of a PNG and a placeholder SVG wrote the page, built with the app (`web/dist-export`), and the PNG as WebP in full and as a thumbnail (`@jsquash` inside the binary); the page showed both in a browser.
-- **Not tried:** Windows and Linux builds; a clean machine (no `uv`, mflux or ComfyUI); signing beyond ad-hoc; `Deno.autoUpdate()`.
+- **Not tried:** Windows; a clean Mac; signing beyond ad-hoc; `Deno.autoUpdate()`.
+
+## A clean Linux machine, in Apple's `container` (2026-11-20, on the Mac)
+
+Apple's [`container`](https://github.com/apple/container) (1.7.1; a signed `.pkg` from its releases, then `container system start --enable-kernel-install` once) runs Linux images in lightweight VMs on Apple silicon, so a fresh `debian:bookworm-slim` is a machine with nothing on it: no `uv`, mflux, ComfyUI or Python. The Linux build (`--target aarch64-unknown-linux-gnu`, 117 MB) ran in it, shared in from `dist/`, with its port published to the Mac and Ollama reached on the container network's gateway:
+
+```sh
+container run -d --rm --name lrs-clean -v "$PWD/dist:/app" -p 127.0.0.1:8799:8787 \
+  -e OLLAMA_HOST=http://192.168.64.1:11434 debian:bookworm-slim \
+  /app/local-roleplay-studio-aarch64-unknown-linux-gnu
+container logs lrs-clean; container stop lrs-clean   # --rm deletes it on stop
+```
+
+- Every optional feature said it was off, with its reason (mflux and mlx-audio only on Apple silicon, `uv` not installed, a ComfyUI to add); Settings listed only this machine and Ollama, and Settings → Images showed Pictures off with that reason.
+- The data went to the XDG folders: `~/.config/Local Roleplay Studio/` (Settings, once saved), `~/.local/state/…/queue.json`, and `~/.local/share/…/` for the Scenarios (the examples copied in) and the copied Python tools.
+- Settings listed Ollama's models from inside the container, and the tavern Chain ran on Gemma 4 26B (the Opening Frame and four Actions, 28 s), with the pages and API answering on the Mac's 127.0.0.1:8799.
