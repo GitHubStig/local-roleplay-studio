@@ -2,6 +2,7 @@ import { extract } from '@std/front-matter/yaml'
 import { stringify } from '@std/yaml'
 import { basename, extname, fromFileUrl, join } from '@std/path'
 import type { Person, Scenario, ScenarioLoadError, ScenarioSummary } from '../shared/scenario.ts'
+import { scenarioFile } from './migrations/scenario/index.ts'
 
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === 'object' && v !== null && !Array.isArray(v)
@@ -103,16 +104,33 @@ function parsePerson(name: string, text: string, issues: string[]): Person {
   return person
 }
 
-/** Parses a Scenario file's text; throws an Error listing every problem found. */
+/**
+ * A Scenario file as its migrations see it (`migrations/scenario/`): its frontmatter, but its
+ * `version`, and its Markdown body; `parseScenario` checks both.
+ */
+export interface ScenarioSource {
+  front: Record<string, unknown>
+  body: string
+}
+
+/**
+ * Parses a Scenario file's text, migrated to the latest version first (ADR 0041; a file that
+ * doesn't say its `version` is from before versions); throws an Error listing every problem found.
+ */
 export function parseScenario(id: string, text: string): Scenario {
-  let attrs: unknown
-  let body: string
+  let file: unknown
+  let content: string
   try {
-    ;({ attrs, body } = extract(text))
+    ;({ attrs: file, body: content } = extract(text))
   } catch (err) {
     throw new Error(`frontmatter: ${(err as Error).message}`)
   }
-  if (!isRecord(attrs)) throw new Error('frontmatter must be a YAML mapping')
+  if (!isRecord(file)) throw new Error('frontmatter must be a YAML mapping')
+  const { version, ...front } = file
+  const { front: attrs, body } = scenarioFile.migrate(
+    { ...(version !== undefined && { version }), front, body: content },
+    `${id}.md`,
+  )
 
   const issues: string[] = []
   const str = (key: string, required: boolean) => {
@@ -280,10 +298,23 @@ export const scenarioText = (s: Scenario): string =>
     ...s.people.flatMap((p) => [p.name, ...PERSON_FIELDS.map((f) => p[f]), ...p.truths]),
   ].filter(Boolean).join('\n')
 
-/** A Scenario as its file: `parseScenario` reads back what this writes. */
-export function scenarioMarkdown(s: Scenario): string {
+/**
+ * A Scenario as Markdown, as its file has it without its `version`: what a Text Model is shown
+ * (Expand, Suggest). `parseScenario` reads it back.
+ */
+export const scenarioMarkdown = (s: Scenario): string => markdownOf(s, {})
+
+/** A Scenario as its file, saying its `version` first: what the app writes (ADR 0041). */
+export const scenarioFileText = (s: Scenario): string =>
+  markdownOf(s, { version: scenarioFile.latest })
+
+function markdownOf(s: Scenario, first: Record<string, number>): string {
   const nameOf = (id?: string) => s.people.find((p) => p.id === id)?.name
-  const front: Record<string, string> = { title: s.title, description: s.description }
+  const front: Record<string, string | number> = {
+    ...first,
+    title: s.title,
+    description: s.description,
+  }
   if (nameOf(s.player)) front.player = nameOf(s.player)!
   if (nameOf(s.character)) front.character = nameOf(s.character)!
   if (s.created) front.created = s.created

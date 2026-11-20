@@ -1,4 +1,5 @@
 ---
+version: 1
 title: Contact in the Jungle
 description: >-
   A five-man commando squad opens fire on an unseen enemy and shreds the jungle around them, until the guns run dry. Written for a Storyboard: several people, Frames about one of them, and Frames of the jungle alone.

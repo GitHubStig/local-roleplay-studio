@@ -5,7 +5,7 @@ import {
   parseScenario,
   personId,
   SCENARIO_ID,
-  scenarioMarkdown,
+  scenarioFileText,
   scenarioText,
   summarise,
 } from '../scenario.ts'
@@ -44,7 +44,7 @@ export function scenarioRoutes(ctx: AppContext): Route[] {
   async function saveScenario(id: string, sent: Scenario, status = 200): Promise<Response> {
     if (!deps.ownScenarios) return error("This server can't save Scenarios", 501)
     if (!SCENARIO_ID.test(id)) return error(`"${id}" isn't a Scenario id`, 400)
-    const markdown = scenarioMarkdown(sent)
+    const markdown = scenarioFileText(sent)
     let scenario: Scenario
     try {
       scenario = parseScenario(id, markdown)

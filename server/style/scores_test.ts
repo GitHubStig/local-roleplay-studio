@@ -1,8 +1,13 @@
 import { assertAlmostEquals, assertEquals, assertThrows } from '@std/assert'
 import type { ChainSession } from '../../shared/session.ts'
-import { promptWith } from '../testing.ts'
+import { promptWith, withTempDir } from '../testing.ts'
+import { join } from '@std/path'
 import {
   captionOf,
+  loadStyleCache,
+  saveStyleCache,
+  STYLE_CACHE_VERSION,
+  STYLE_FILE,
   type StyleCache,
   StyleScoreError,
   styleScores,
@@ -123,3 +128,22 @@ Deno.test('unembedded lists the pictures and captions the cache lacks, and withE
   assertEquals(unembedded(session, cache), { images: ['frame-1-m.png'], texts: ['Pixel art'] })
   assertEquals(captionOf(session, 1), 'Pixel art')
 })
+
+Deno.test('The style cache says its version; one of another version is made again', () =>
+  withTempDir(async (dir) => {
+    const session = chain(['A tavern.'], ['a'])
+    const cache: StyleCache = {
+      csd: { 'frame-0-a.png': encode([1, 0]) },
+      clip: { 'frame-0-a.png': encode([0, 1]) },
+      texts: { [captionOf(session, 0)!]: encode([1, 1]) },
+    }
+    await saveStyleCache(dir, session, cache)
+    const path = join(dir, STYLE_FILE)
+    assertEquals(Object.keys(JSON.parse(await Deno.readTextFile(path)))[0], 'version')
+    assertEquals(await loadStyleCache(dir), cache)
+    // From before versions: today's shape, kept.
+    await Deno.writeTextFile(path, JSON.stringify(cache))
+    assertEquals(await loadStyleCache(dir), cache)
+    await Deno.writeTextFile(path, JSON.stringify({ version: STYLE_CACHE_VERSION + 1, ...cache }))
+    assertEquals(await loadStyleCache(dir), null)
+  }))

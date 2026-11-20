@@ -1,4 +1,5 @@
 ---
+version: 1
 title: The Rain-Soaked Tavern
 description: An 18th-century tavern on a stormy night. Kael, a retired smuggler, runs it and is rattled by a letter just slipped under the door; you're Elara, a well-off young traveller who might solve his troubles, for a price.
 player: Elara

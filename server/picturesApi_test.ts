@@ -1,6 +1,7 @@
 import { assertEquals, assertMatch } from '@std/assert'
 import { join } from '@std/path'
 import type { Job } from '../shared/jobs.ts'
+import type { ComparisonExport } from '../shared/comparison.ts'
 import type { StyleEmbedder } from './style/embedder.ts'
 import type { Picture } from '../shared/pictures.ts'
 import { DEFAULT_SETTINGS } from './settings.ts'
@@ -31,7 +32,7 @@ const exportsIn = (root: string, held?: Promise<void>) => ({
 Deno.test("The Compare dialog's export is queued, and written to a folder per Session", () =>
   withTempDir(async (root) => {
     const { call } = await chainOfTwo(root, { exports: exportsIn(root) })
-    const comparison = { models: [], rows: [{ name: 'Frame 0', pictures: [] }] }
+    const comparison: ComparisonExport = { models: [], rows: [{ name: 'Frame 0', pictures: [] }] }
     const exported = await call('POST', '/api/sessions/s1/export', comparison)
     assertEquals(exported.status, 201)
     const folder = join(root, 'exports', 's1')
@@ -48,7 +49,10 @@ Deno.test("The Compare dialog's export is queued, and written to a folder per Se
     // What it wrote, saved as it was queued, is gone once it's done.
     assertEquals(await Deno.stat(join(root, 's1', 'export.json')).catch(() => null), null)
 
-    const picture = { name: 'Frame 0', pictures: [{ file: '../s2/frame-0.png' }] }
+    const picture: ComparisonExport['rows'][number] = {
+      name: 'Frame 0',
+      pictures: [{ image: '../s2/frame-0.png' }],
+    }
     const outside = await call('POST', '/api/sessions/s1/export', {
       ...comparison,
       models: [{ label: 'A' }],

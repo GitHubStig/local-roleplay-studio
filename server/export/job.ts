@@ -23,9 +23,19 @@ import {
  */
 export const EXPORT_ORDER = 'export.json'
 
+/**
+ * The version of `export.json`'s shape (ADR 0041). An order lives only while its export is queued,
+ * so one of another version isn't migrated: its job fails, saying to export again. One that doesn't
+ * say is today's shape, version 1, queued before versions.
+ */
+export const EXPORT_ORDER_VERSION = 1
+
 /** Saves what an export of the Session in `sessionDir` writes, for its job to read. */
 export const saveExportOrder = (sessionDir: string, comparison: ComparisonExport) =>
-  Deno.writeTextFile(join(sessionDir, EXPORT_ORDER), JSON.stringify(comparison))
+  Deno.writeTextFile(
+    join(sessionDir, EXPORT_ORDER),
+    JSON.stringify({ version: EXPORT_ORDER_VERSION, ...comparison }),
+  )
 
 /** Deletes what an export was to write, once it's done or dropped. */
 export const removeExportOrder = (sessionDir: string) => removeFiles(sessionDir, [EXPORT_ORDER])
@@ -48,7 +58,11 @@ export async function runExport(
     }
     throw err
   })
-  const comparison = parseComparisonExport(JSON.parse(text))
+  const { version = 1, ...order } = JSON.parse(text)
+  if (version !== EXPORT_ORDER_VERSION) {
+    throw new Error('What to export was saved by another version of the app: export again')
+  }
+  const comparison = parseComparisonExport(order)
   if (typeof comparison === 'string') throw new Error(comparison)
   emit({ type: 'phase', phase: 'image' })
   await writeComparison(

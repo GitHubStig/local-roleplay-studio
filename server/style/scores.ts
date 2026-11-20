@@ -22,13 +22,24 @@ export interface StyleCache {
 
 export const STYLE_FILE = 'style.json'
 
+/**
+ * The version of `style.json`'s shape (ADR 0041). A cache needs no migrations: one of another
+ * version is made again, as if there were none. One that doesn't say is today's shape, version 1,
+ * from before versions, so its embeddings aren't made again for nothing.
+ */
+export const STYLE_CACHE_VERSION = 1
+
+/** A Session's embeddings so far; null for none, or for a cache of another version. */
 export async function loadStyleCache(dir: string): Promise<StyleCache | null> {
+  let text: string
   try {
-    return JSON.parse(await Deno.readTextFile(join(dir, STYLE_FILE)))
+    text = await Deno.readTextFile(join(dir, STYLE_FILE))
   } catch (err) {
     if (err instanceof Deno.errors.NotFound) return null
     throw err
   }
+  const { version = 1, ...cache } = JSON.parse(text)
+  return version === STYLE_CACHE_VERSION ? cache : null
 }
 
 /** Saves the cache with only what the Session still has: a picture made again drops the old. */
@@ -43,7 +54,7 @@ export async function saveStyleCache(dir: string, session: Session, cache: Style
     texts: keep(cache.texts, texts),
   }
   const path = join(dir, STYLE_FILE)
-  await Deno.writeTextFile(`${path}.tmp`, JSON.stringify(kept))
+  await Deno.writeTextFile(`${path}.tmp`, JSON.stringify({ version: STYLE_CACHE_VERSION, ...kept }))
   await Deno.rename(`${path}.tmp`, path)
 }
 

@@ -1,4 +1,5 @@
 ---
+version: 1
 title: Knocking on Heaven's Door
 description: 'After passing from the mortal coil, a soul arrives at the entrance to paradise to be met by a celestial guardian.'
 player: Elias

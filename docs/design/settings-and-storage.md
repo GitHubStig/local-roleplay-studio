@@ -20,7 +20,7 @@ Where the player's data goes is worked out once at startup (`server/dataDirs.ts`
 | Sessions | `<Session folder>/<id>/session.json` + its files | Id is `YYYYMMDD-HHMMSS-xxxx`; files are written to a temp file, then renamed, and carry a random suffix, so a Frame made after an Undo never reuses a file name; one that can't be read is left out of Home, saying why |
 | Call log | `<id>/calls/frame-N.json`, `calls/setup.json` | Only with Settings' call log on |
 
-**Versions.** `settings.json`, `queue.json` and each `session.json` say their `version`, first in the file; one without is from before versions (version 0). Each is migrated to the latest version in memory as it's read, by the steps in `server/migrations/<file>/`, one per version, and written at the latest when the app next saves it; one from a newer app is refused ([ADR 0041](../adr/0041-data-files-are-versioned-and-migrated.md)).
+**Versions.** `settings.json`, `queue.json`, each `session.json` and each Scenario file (in its frontmatter) say their `version`, first in the file; one without is from before versions (version 0). Each is migrated to the latest version in memory as it's read, by the steps in `server/migrations/<file>/`, one per version, and written at the latest when the app next saves it; one from a newer app is refused ([ADR 0041](../adr/0041-data-files-are-versioned-and-migrated.md)). A Session's `style.json` (a cache of embeddings) and `export.json` (an export's order) say their version too, but aren't migrated: a cache of another version is made again, and an order of another is refused.
 
 Frames are numbered from 1 on every screen and in the server's messages (`frameName`); `session.json`, the API and the file names count from 0.
 

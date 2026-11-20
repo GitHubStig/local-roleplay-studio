@@ -1,4 +1,5 @@
 ---
+version: 1
 title: The Buffet of Souls
 description: 'After a sudden death, a soul finds themselves in a peaceful waiting area filled with others, guided by a familiar face toward an unknown destination.'
 player: Elias

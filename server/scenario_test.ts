@@ -1,10 +1,12 @@
 import { assertEquals, assertStringIncludes, assertThrows } from '@std/assert'
 import { join } from '@std/path'
+import { scenarioFile } from './migrations/scenario/index.ts'
 import {
   briefScenario,
   dirScenarioLibrary,
   factsOf,
   parseScenario,
+  scenarioFileText,
   scenarioFrom,
   scenarioMarkdown,
   seedScenarios,
@@ -99,6 +101,30 @@ Deno.test('scenarioMarkdown writes what parseScenario reads back', () => {
   assertEquals(parseScenario('tavern', unquoted).created, '2026-11-01T09:00:00.000Z')
   const min = parseScenario('min', `---\ntitle: T\ndescription: D\n---\n## Opening\nGo.\n`)
   assertEquals(scenarioMarkdown(min), `---\ntitle: T\ndescription: D\n---\n\n## Opening\n\nGo.\n`)
+})
+
+Deno.test('A Scenario file says its version first; what a Text Model is shown leaves it out', () => {
+  const s = parseScenario('tavern', valid)
+  const file = scenarioFileText(s)
+  assertEquals(file.split('\n').slice(0, 2), ['---', `version: ${scenarioFile.latest}`])
+  assertEquals(parseScenario('tavern', file), s)
+  assertEquals(scenarioMarkdown(s).includes('version'), false)
+})
+
+Deno.test('parseScenario reads a file from before versions, and refuses one from a newer app', () => {
+  // `valid` says no version: from before versions, as a file written by hand may be.
+  assertEquals(parseScenario('tavern', valid).title, 'The Tavern')
+  const newer = valid.replace('---\n', `---\nversion: ${scenarioFile.latest + 1}\n`)
+  assertThrows(
+    () => parseScenario('tavern', newer),
+    Error,
+    `tavern.md is version ${scenarioFile.latest + 1}, from a newer app`,
+  )
+  assertThrows(
+    () => parseScenario('tavern', valid.replace('---\n', '---\nversion: one\n')),
+    Error,
+    'version must be a whole number',
+  )
 })
 
 Deno.test('parseScenario lists every problem at once', () => {

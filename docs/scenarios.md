@@ -10,6 +10,7 @@ A **Scenario** is a story a Session starts from, in one Markdown file: who's in 
 
 ```markdown
 ---
+version: 1
 title: The Rain-Soaked Tavern
 description: One or two sentences for its card on Home.
 player: Elara
@@ -64,6 +65,7 @@ Write each paragraph or line on one line, and put a blank line between paragraph
 
 | Part | What it is |
 |---|---|
+| `version` | Which version of this layout the file is written in; the app writes it as it saves. Left out, the file is read as one from before versions (2026-11-20), which version 1 is the same as. A file from an older app is read as it was written ([ADR 0041](adr/0041-data-files-are-versioned-and-migrated.md)), so keep the `version` a file says, and copy it from an example when writing one |
 | `title`, `description` | Its card on Home |
 | `player`, `character` | In a Roleplay, who you play and who the Text Model plays, by name |
 | `created`, `modified` | When it was first and last saved, written by the app as it saves (an import keeps its own); Home shows when it was last edited, and lists the latest first. Left out, the file's own dates on disk |
