@@ -69,7 +69,7 @@ function copiedPicture(picture: Picture, index: number, files: [string, string][
     const { upscaled, scene, figure, lito, clips: _, ...rest } = version
     return {
       ...rest as V,
-      image: rename(version.image),
+      file: rename(version.file),
       ...(upscaled ? { upscaled: rename(upscaled) } : {}),
       ...(scene ? { scene: { ...scene, file: rename(scene.file) } } : {}),
       ...(figure ? { figure: { ...figure, file: rename(figure.file) } } : {}),
@@ -107,30 +107,35 @@ export async function chainFromStoryboard(
 ): Promise<ChainSession> {
   const last = storyboard.frames[upTo]
   if (!storyboard.look || !last) throw new CopyError('No such Frame')
-  if (storyboard.frames.slice(0, upTo + 1).some((f) => !f.body)) {
+  if (storyboard.frames.slice(0, upTo + 1).some((f) => !f.image)) {
     throw new CopyError(`Write the Frames up to ${frameName(upTo)} first`)
   }
-  if (last.blocked) {
-    throw new CopyError(`${frameName(upTo)} crosses a limit (${last.blocked}): edit it first`)
+  const blocked = last.image?.blocked
+  if (blocked) {
+    throw new CopyError(`${frameName(upTo)} crosses a limit (${blocked}): edit it first`)
   }
   const files: [string, string][] = []
-  const frames = storyboard.frames.slice(0, upTo + 1).filter((f) => !f.blocked).map(
-    (f, index): ChainFrame => {
-      const prompt = chainPrompt(storyboard.look!, f)
-      return {
-        index,
-        action: index === 0 ? null : f.beat,
-        narration: index === 0 ? f.beat : `From the Storyboard's ${frameName(f.index)}.`,
-        outcome: 'done',
-        prompt,
-        pictures: matching(prompt, f.prompt, f.pictures.map((p) => copiedPicture(p, index, files))),
-        // Written (its body is checked above), so it has both.
-        timings: f.timings!,
-        textModel: f.textModel!,
-        createdAt: chain.createdAt,
-      }
-    },
-  )
+  const frames = storyboard.frames.slice(0, upTo + 1)
+    .flatMap((f) => (f.image && !f.image.blocked ? [{ ...f, image: f.image }] : []))
+    .map(
+      (f, index): ChainFrame => {
+        const prompt = chainPrompt(storyboard.look!, { body: f.image.body, shown: f.shown })
+        return {
+          index,
+          action: index === 0 ? null : f.beat,
+          narration: index === 0 ? f.beat : `From the Storyboard's ${frameName(f.index)}.`,
+          outcome: 'done',
+          image: { prompt },
+          pictures: matching(
+            prompt,
+            f.image.prompt,
+            f.pictures.map((p) => copiedPicture(p, index, files)),
+          ),
+          written: f.image.written,
+          createdAt: chain.createdAt,
+        }
+      },
+    )
   return await saveCopy(store, storyboard, frames, files, chain)
 }
 
@@ -148,25 +153,25 @@ export async function chainFromRoleplay(
 ): Promise<ChainSession> {
   const frame = roleplay.frames[index]
   if (!frame) throw new CopyError('No such Frame')
-  if (!roleplay.look || frame.body === undefined || !frame.prompt) {
+  const image = frame.image
+  if (!roleplay.look || !image) {
     throw new CopyError(`Picture ${frameName(index)} first: a Chain starts from its Image Prompt`)
   }
-  if (frame.blocked) {
+  if (image.blocked) {
     throw new CopyError(
-      `${frameName(index)} crosses a limit (${frame.blocked}): picture it again first`,
+      `${frameName(index)} crosses a limit (${image.blocked}): picture it again first`,
     )
   }
   const files: [string, string][] = []
-  const prompt = chainPrompt(roleplay.look, { body: frame.body, shown: frame.shown ?? [] })
+  const prompt = chainPrompt(roleplay.look, image)
   const opening: ChainFrame = {
     index: 0,
     action: null,
     narration: `From the Roleplay's ${frameName(index)}.`,
     outcome: 'done',
-    prompt,
-    pictures: matching(prompt, frame.prompt, frame.pictures.map((p) => copiedPicture(p, 0, files))),
-    timings: frame.pictureTimings ?? { text: 0 },
-    textModel: frame.pictureModel ?? frame.textModel,
+    image: { prompt },
+    pictures: matching(prompt, image.prompt, frame.pictures.map((p) => copiedPicture(p, 0, files))),
+    written: image.written,
     createdAt: chain.createdAt,
   }
   return await saveCopy(store, roleplay, [opening], files, chain)

@@ -40,7 +40,7 @@ enableAutoUnmount(afterEach)
 afterEach(() => vi.unstubAllGlobals())
 
 const edit = (n: number) => ({
-  image: `edit-0-0000000${n}.png`,
+  file: `edit-0-0000000${n}.png`,
   instructions: [`Paint ${n}`],
   editModel: 'qwen-image-2.1-edit',
   seed: n,
@@ -50,7 +50,7 @@ const edit = (n: number) => ({
 const frames: PicturedFrame[] = [{
   index: 0,
   pictures: [{
-    image: 'frame-0.png',
+    file: 'frame-0.png',
     upscaled: 'frame-0-2048.png',
     imageModel: 'qwen',
     edits: [edit(1), edit(2)],
@@ -375,7 +375,7 @@ describe('FrameViewer', () => {
     }
     const other = [{
       index: 0,
-      pictures: [{ image: 'frame-0.png', imageModel: 'krea-2', clips: [clip] }],
+      pictures: [{ file: 'frame-0.png', imageModel: 'krea-2', clips: [clip] }],
     }]
     const wrapper = mountIt({ frames: other })
     await flushPromises()

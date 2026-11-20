@@ -6,6 +6,7 @@ import type { Person } from '../../shared/scenario.ts'
 import { lookForModel } from '../frameBody.ts'
 import {
   artFrameMessages,
+  imageOf,
   lastWorn,
   parseRoleplayLook,
   parseWho,
@@ -15,7 +16,8 @@ import {
   withNewcomers,
 } from './art.ts'
 import { replyOf, testCast } from './testing.ts'
-import type { RoleplaySession } from '../../shared/roleplay.ts'
+import type { RoleplayFrame, RoleplaySession } from '../../shared/roleplay.ts'
+import type { Look } from '../../shared/session.ts'
 
 const MIRA = 'Mira Vance'
 const SAM = 'Sam Reyes'
@@ -26,6 +28,13 @@ const look = {
   ],
   style: 'An oil painting.',
 }
+
+/** A Frame pictured as the Art Agent would, from its sentences, who it shows and what they wear. */
+const picture = (frame: RoleplayFrame, l: Look, body: string, shown: string[], clothing = '') =>
+  pictured(frame, {
+    ...imageOf(l, { body, shown, clothing }),
+    written: { model: 'art', seconds: 1 },
+  })
 
 const session: RoleplaySession = {
   id: 'r1',
@@ -44,8 +53,7 @@ const session: RoleplaySession = {
       message: null,
       reply: replyOf('You are late.', { internal: 'He looks lost.' }),
       pictures: [],
-      timings: { text: 1 },
-      textModel: 'scripted',
+      written: { model: 'scripted', seconds: 1 },
       createdAt: '2026-09-27T00:00:00.000Z',
     },
     {
@@ -53,8 +61,7 @@ const session: RoleplaySession = {
       message: 'I grab the rail.',
       reply: replyOf('', { actions: 'Mira steadies him.' }),
       pictures: [],
-      timings: { text: 1 },
-      textModel: 'scripted',
+      written: { model: 'scripted', seconds: 1 },
       createdAt: '2026-09-27T00:00:00.000Z',
     },
   ],
@@ -83,21 +90,21 @@ Deno.test('Undressed people are covered in pictures only while the Limits are on
 })
 
 Deno.test('pictured composes the Image Prompt and blocks the remaining Limits', () => {
-  const frame = pictured(session.frames[1], look, 'She stands at the rail.', [MIRA])
+  const frame = picture(session.frames[1], look, 'She stands at the rail.', [MIRA])
   assertEquals(
-    frame.prompt,
+    frame.image?.prompt,
     'Mira Vance, a tall woman of 34. She stands at the rail. An oil painting.',
   )
-  assertEquals(frame.shown, [MIRA])
+  assertEquals(frame.image?.shown, [MIRA])
   assertEquals(
-    pictured(session.frames[1], look, 'They talk.', ['mira', 'Sam']).prompt,
+    picture(session.frames[1], look, 'They talk.', ['mira', 'Sam']).image?.prompt,
     'Mira Vance, a tall woman of 34. Sam Reyes, a slight man of 25. They talk. An oil painting.',
   )
-  assertEquals(frame.blocked, undefined)
-  const bare = pictured(session.frames[1], look, 'She wears only a towel.', [MIRA])
-  assertEquals(bare.blocked, 'no sexual or nude imagery')
+  assertEquals(frame.image?.blocked, undefined)
+  const bare = picture(session.frames[1], look, 'She wears only a towel.', [MIRA])
+  assertEquals(bare.image?.blocked, 'no sexual or nude imagery')
   assertEquals(
-    pictured(session.frames[1], look, 'A child at the rail.', [MIRA]).blocked,
+    picture(session.frames[1], look, 'A child at the rail.', [MIRA]).image?.blocked,
     undefined,
   )
   assertEquals(
@@ -151,17 +158,17 @@ Deno.test('Newcomers join the Look, unless already in it or crossing another Lim
   assertEquals(withNewcomers(look, []), look)
   // Shown with the others, with their own identity.
   assertEquals(
-    pictured(session.frames[1], grown, 'They talk.', ['Barkeep', MIRA]).prompt,
+    picture(session.frames[1], grown, 'They talk.', ['Barkeep', MIRA]).image?.prompt,
     'The barkeep, a stout man of 60. Mira Vance, a tall woman of 34. They talk. An oil painting.',
   )
 })
 
 Deno.test('While the Limits are on, a picture of two or more people must name what each wears', () => {
   const frame = session.frames[1]
-  const both = (clothing: string) => pictured(frame, look, 'They talk.', [MIRA, SAM], clothing)
-  assertEquals(both('Mira wears a coat; Sam wears oilskins.').blocked, undefined)
+  const both = (clothing: string) => picture(frame, look, 'They talk.', [MIRA, SAM], clothing)
+  assertEquals(both('Mira wears a coat; Sam wears oilskins.').image?.blocked, undefined)
   assertEquals(
-    both('Mira wears a heavy coat.').blocked,
+    both('Mira wears a heavy coat.').image?.blocked,
     "everyone shown must be dressed (name each person's clothes)",
   )
   // People dressed together are named by the plural ("the two men" for "the first man").
@@ -170,35 +177,35 @@ Deno.test('While the Limits are on, a picture of two or more people must name wh
     { name: 'the second man', identity: 'A short man.' },
   ])
   assertEquals(
-    pictured(
+    picture(
       frame,
       withMen,
       'They talk.',
       [MIRA, 'the first man', 'the second man'],
       'Mira wears a coat. The two men wear tunics.',
-    ).blocked,
+    ).image?.blocked,
     undefined,
   )
   // One person shown: "She wears…" is fine. Someone named by a role is named by its word.
   const withBarkeep = withNewcomers(look, [{ name: 'the barkeep', identity: 'A stout man.' }])
   assertEquals(
-    pictured(
+    picture(
       frame,
       withBarkeep,
       'They talk.',
       [MIRA, 'the barkeep'],
       'Mira wears a coat; the barkeep an apron.',
     )
-      .blocked,
+      .image?.blocked,
     undefined,
   )
   assertEquals(
-    pictured(frame, look, 'She waits.', [MIRA], 'She wears a coat.').blocked,
+    picture(frame, look, 'She waits.', [MIRA], 'She wears a coat.').image?.blocked,
     undefined,
   )
   setLimitsEnabled(false)
   try {
-    assertEquals(both('Mira wears a heavy coat.').blocked, undefined)
+    assertEquals(both('Mira wears a heavy coat.').image?.blocked, undefined)
   } finally {
     setLimitsEnabled(true)
   }
@@ -206,30 +213,36 @@ Deno.test('While the Limits are on, a picture of two or more people must name wh
 
 Deno.test('A rendered picture whose Image Prompt changes is marked stale, by any model', () => {
   const rendered = {
-    ...pictured(session.frames[1], look, 'She waits.', [MIRA]),
+    ...picture(session.frames[1], look, 'She waits.', [MIRA]),
     pictures: [
-      { image: 'frame-1-aaaaaaaa.png', imageModel: 'qwen-image-2.1' },
-      { image: 'frame-1-bbbbbbbb.png', imageModel: 'flux2-klein-4b' },
+      { file: 'frame-1-aaaaaaaa.png', imageModel: 'qwen-image-2.1' },
+      { file: 'frame-1-bbbbbbbb.png', imageModel: 'flux2-klein-4b' },
     ],
   }
-  const same = pictured(rendered, look, 'She waits.', [MIRA])
+  const same = picture(rendered, look, 'She waits.', [MIRA])
   assertEquals(same.pictures.map((p) => p.stale), [undefined, undefined])
-  const changed = pictured(rendered, look, 'She runs.', [MIRA])
+  const changed = picture(rendered, look, 'She runs.', [MIRA])
   assertEquals(changed.pictures.map((p) => p.stale), [true, true])
 })
 
 Deno.test('A picture of no one has no identity sentences', () => {
-  const empty = pictured(session.frames[1], look, 'The door stands closed.', [])
-  assertEquals(empty.prompt, 'The door stands closed. An oil painting.')
-  assertEquals(empty.blocked, undefined)
+  const empty = picture(session.frames[1], look, 'The door stands closed.', [])
+  assertEquals(empty.image?.prompt, 'The door stands closed. An oil painting.')
+  assertEquals(empty.image?.blocked, undefined)
 })
 
 Deno.test('lastWorn gives each person the clothing of the latest earlier picture showing them', () => {
-  const at = (index: number, shown: string[], clothing?: string) => ({
+  const at = (index: number, shown: string[], clothing?: string): RoleplayFrame => ({
     ...session.frames[0],
     index,
-    shown,
-    ...(clothing ? { clothing } : {}),
+    ...(clothing
+      ? {
+        image: {
+          ...imageOf(look, { body: 'They wait.', shown, clothing }),
+          written: { model: 'art', seconds: 1 },
+        },
+      }
+      : {}),
   })
   const story = {
     ...session,
@@ -274,7 +287,16 @@ Deno.test("lastWorn starts a Person not pictured yet from the Scenario's Wears",
         person('Ada', 'Ada wears a cap.'),
       ],
     },
-    frames: [{ ...session.frames[0], shown: ['mira vance'], clothing: 'Mira wears a robe.' }],
+    frames: [{
+      ...session.frames[0],
+      image: {
+        body: 'She waits.',
+        prompt: 'She waits.',
+        shown: ['mira vance'],
+        clothing: 'Mira wears a robe.',
+        written: { model: 'scripted', seconds: 1 },
+      },
+    }],
   }
   assertEquals(
     lastWorn(story, 0),

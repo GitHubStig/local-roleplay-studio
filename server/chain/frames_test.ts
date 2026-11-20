@@ -70,7 +70,11 @@ Deno.test('runChainFrame commits the Opening Frame with its image prompt, its pi
       (e) => events.push(e),
       signal(),
     )
-    assertEquals([frame!.index, frame!.prompt, frame!.pictures], [0, promptWith('standing'), []])
+    assertEquals([frame!.index, frame!.image.prompt, frame!.pictures], [
+      0,
+      promptWith('standing'),
+      [],
+    ])
     // Its render is a job of its own (ADR 0030).
     assertEquals(images.prompts, [])
     assertEquals(events.map((e) => e.type), ['phase', 'committed'])
@@ -111,7 +115,7 @@ Deno.test('runChainFrame retries a failed Text Model reply once', () =>
       signal(),
     )
     assertEquals(textModel.calls, 2)
-    assertEquals(frame!.prompt, promptWith('standing'))
+    assertEquals(frame!.image.prompt, promptWith('standing'))
   }))
 
 Deno.test('runChainFrame gives up after the retry and leaves the Session untouched', () =>
@@ -288,10 +292,10 @@ Deno.test('undoFrames restores the previous Scene and deletes the image', () =>
     const { store, session } = await sessionWithFrames(root, [reply('standing'), reply('sitting')])
     const undone = session.frames[1]
     const updated = await undoFrames(store, session, 1, 1)
-    assertEquals(updated.frames.map((t) => t.prompt), [promptWith('standing')])
+    assertEquals(updated.frames.map((t) => t.image.prompt), [promptWith('standing')])
     assertEquals((await store.load('s1'))?.frames.length, 1)
-    assertEquals(await imageExists(root, undone.pictures[0].image), false)
-    assertEquals(await imageExists(root, session.frames[0].pictures[0].image), true)
+    assertEquals(await imageExists(root, undone.pictures[0].file), false)
+    assertEquals(await imageExists(root, session.frames[0].pictures[0].file), true)
   }))
 
 Deno.test("undoFrames deletes the undone Frame's upscale too", () =>
@@ -340,9 +344,9 @@ Deno.test('undoFrames undoes every Frame from the one asked for, with their pict
     assertEquals(updated.frames.map((f) => f.index), [0, 1])
     assertEquals((await store.load('s1'))?.frames.length, 2)
     for (const f of before.frames.slice(2)) {
-      assertEquals(await imageExists(root, f.pictures[0].image), false)
+      assertEquals(await imageExists(root, f.pictures[0].file), false)
     }
-    assertEquals(await imageExists(root, before.frames[1].pictures[0].image), true)
+    assertEquals(await imageExists(root, before.frames[1].pictures[0].file), true)
   }))
 
 Deno.test('a Frame after an Undo gets a fresh image name', () =>
@@ -351,12 +355,12 @@ Deno.test('a Frame after an Undo gets a fresh image name', () =>
       reply('standing'),
       reply('sitting'),
     ])
-    const undoneImage = session.frames[1].pictures[0].image
+    const undoneImage = session.frames[1].pictures[0].file
     const updated = await undoFrames(store, session, 1, 1)
     deps.textModel = scriptedTextModel([reply('kneeling')])
     const redo = await runChainFrame(deps, updated, testScenario, 'Kneel', () => {}, signal())
     assertEquals(redo!.index, 1)
-    assertNotEquals((await rendered(deps, updated, 1)).pictures[0].image, undoneImage)
+    assertNotEquals((await rendered(deps, updated, 1)).pictures[0].file, undoneImage)
   }))
 
 async function openedSession(
@@ -458,7 +462,7 @@ Deno.test("runChainFrame streams the Text Model's thinking and saves it with the
       thinking.map((e) => e.type === 'thinking' && e.text).join(''),
       'She should stand. Done.',
     )
-    assertEquals(frame!.thinking, 'She should stand. Done.')
+    assertEquals(frame!.written.thinking, 'She should stand. Done.')
   }))
 
 Deno.test('runChainFrame marks thinking from a retry as a restart, and saves no thinking when off', () =>
@@ -498,7 +502,7 @@ Deno.test('A Chain Frame records how long its text and its render took', () =>
       },
     }
     const opening = await runChainFrame(deps, session, testScenario, null, () => {}, signal())
-    assertEquals(typeof opening!.timings!.text, 'number')
+    assertEquals(typeof opening!.written.seconds, 'number')
     const { timings } = (await rendered(deps, session, 0)).pictures[0]
     assertEquals(timings!.image >= 0.1, true)
     assertEquals('queued' in timings!, false)

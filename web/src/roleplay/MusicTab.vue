@@ -313,8 +313,8 @@ defineExpose({ flush })
       </p>
       <details v-if="session.hindsight" class="text-xs text-muted" data-hindsight>
         <summary class="cursor-pointer select-none">
-          Last scored with hindsight in {{ session.hindsight.timings.text.toFixed(0) }} s by
-          {{ session.hindsight.model }}, in {{ session.hindsight.chunks }}
+          Last scored with hindsight in {{ session.hindsight.written.seconds.toFixed(0) }} s by
+          {{ session.hindsight.written.model }}, in {{ session.hindsight.chunks }}
           part{{ session.hindsight.chunks === 1 ? '' : 's' }}
         </summary>
         <p
@@ -438,11 +438,11 @@ defineExpose({ flush })
           <p v-else class="mt-1 text-muted">Silence</p>
         </div>
         <p v-if="frame.music.hindsight" class="text-xs text-muted" data-direct-timings>
-          Scored with hindsight by {{ frame.music.model }}<template v-if="frame.music.timings.text">,
-            its Cue written in {{ frame.music.timings.text.toFixed(1) }} s</template>
+          Scored with hindsight by {{ frame.music.written.model }}<template v-if="frame.music.written.seconds">,
+            its Cue written in {{ frame.music.written.seconds.toFixed(1) }} s</template>
         </p>
         <p v-else class="text-xs text-muted" data-direct-timings>
-          Directed in {{ frame.music.timings.text.toFixed(1) }} s by {{ frame.music.model }}
+          Directed in {{ frame.music.written.seconds.toFixed(1) }} s by {{ frame.music.written.model }}
         </p>
       </template>
       <p v-else-if="!directing" class="text-muted">
@@ -476,9 +476,8 @@ defineExpose({ flush })
           </button>
         </summary>
         <div class="mt-3 flex flex-col gap-3">
-          <p v-if="session.score && session.scoreTimings" class="text-xs text-muted" data-score-timings>
-            Written in {{ session.scoreTimings.text.toFixed(1) }} s<template v-if="session.scoreModel">
-              by {{ session.scoreModel }}</template>
+          <p v-if="session.score && session.scoreWritten" class="text-xs text-muted" data-score-timings>
+            Written in {{ session.scoreWritten.seconds.toFixed(1) }} s by {{ session.scoreWritten.model }}
           </p>
           <p v-if="failed" class="text-danger" role="alert">{{ failed }}</p>
           <p v-if="writing" class="animate-pulse text-muted">Writing the Score…</p>
@@ -549,9 +548,9 @@ defineExpose({ flush })
               @revert="score.revert"
             />
           </form>
-          <details v-if="writing ? thinking : session.scoreThinking" class="text-xs text-muted">
+          <details v-if="writing ? thinking : session.scoreWritten?.thinking" class="text-xs text-muted">
             <summary class="cursor-pointer select-none">Reasoning</summary>
-            <p class="mt-1 whitespace-pre-wrap leading-relaxed">{{ writing ? thinking : session.scoreThinking }}</p>
+            <p class="mt-1 whitespace-pre-wrap leading-relaxed">{{ writing ? thinking : session.scoreWritten?.thinking }}</p>
           </details>
         </div>
       </details>

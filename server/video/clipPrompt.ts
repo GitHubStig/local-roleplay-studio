@@ -36,7 +36,7 @@ export function frameStory(session: Session, index: number): string {
 }
 
 /** What Frame `index`'s picture shows: its Image Prompt. */
-const pictureOf = (session: Session, index: number) => session.frames[index]?.prompt ?? ''
+const pictureOf = (session: Session, index: number) => session.frames[index]?.image?.prompt ?? ''
 
 /**
  * What comes after the picture, as a clip of `kind` is told it: Into Next, the next picture it ends

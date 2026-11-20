@@ -252,8 +252,7 @@ export async function scoreRoleplay(
       decision: begins ? (cue.values ? 'transition' : 'silence') : 'continue',
       entry: begins ? cue.entry : 'gentle',
       line: begins ? cue.line : '',
-      model: deps.model.name,
-      timings: { text: cueSeconds.get(index) ?? 0 },
+      written: { model: deps.model.name, seconds: cueSeconds.get(index) ?? 0 },
       hindsight: true,
       ...(stinger && { stinger }),
     }
@@ -270,10 +269,9 @@ export async function scoreRoleplay(
       ...latest,
       cues: all,
       hindsight: {
-        model: deps.model.name,
         chunks: chunks.length,
         courses,
-        timings: { text: secondsSince(started) },
+        written: { model: deps.model.name, seconds: secondsSince(started) },
       },
       frames: latest.frames.map((f) =>
         f.index < count

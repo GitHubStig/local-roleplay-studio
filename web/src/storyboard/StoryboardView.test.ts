@@ -57,18 +57,30 @@ const look: api.Look = {
 }
 
 /** A picture by the Storyboard's Image Model. */
-const picture = (image: string, extra: Partial<api.Picture> = {}): api.Picture => ({
-  image,
+const picture = (file: string, extra: Partial<api.Picture> = {}): api.Picture => ({
+  file,
   imageModel: 'qwen-image-2.1',
   ...extra,
 })
 
-const frame = (index: number, extra: Partial<api.StoryboardFrame> = {}): api.StoryboardFrame => ({
+/** A written Frame; its sentences, and whether they cross a Limit, can be given ('' for none). */
+const frame = (
+  index: number,
+  { body = `Body ${index + 1}.`, blocked, ...extra }:
+    & Partial<api.StoryboardFrame>
+    & { body?: string; blocked?: string } = {},
+): api.StoryboardFrame => ({
   index,
   beat: `Beat ${index + 1}.`,
-  body: `Body ${index + 1}.`,
   shown: ['Rin'],
-  prompt: promptFor(index),
+  ...(body !== '' && {
+    image: {
+      body,
+      prompt: promptFor(index),
+      ...(blocked && { blocked }),
+      written: { model: 'x', seconds: 1 },
+    },
+  }),
   pictures: [],
   createdAt: '2026-09-25T00:00:00.000Z',
   ...extra,
@@ -76,7 +88,7 @@ const frame = (index: number, extra: Partial<api.StoryboardFrame> = {}): api.Sto
 
 /** A Frame of the plan, its sentences not written yet. */
 const planned = (index: number, extra: Partial<api.StoryboardFrame> = {}) =>
-  frame(index, { body: '', prompt: '', ...extra })
+  frame(index, { body: '', ...extra })
 
 const storyboard = (frames: api.StoryboardFrame[] = []): api.StoryboardSession => ({
   id: 'sb',

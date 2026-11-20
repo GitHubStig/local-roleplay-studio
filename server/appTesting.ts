@@ -139,16 +139,17 @@ export async function readUntil(reader: ReadableStreamDefaultReader<string>, mar
 }
 
 /** A Frame as the API sends it. */
-export type JsonFrame = { pictures: Picture[] } & Record<string, unknown>
+/** A Frame as the API sends it, loosely: every kind has its pictures, and its Image Prompt once written. */
+export type JsonFrame = { pictures: Picture[]; image: { prompt: string } } & Record<string, unknown>
 
 /**
- * A Frame with the picture it shows spread onto it (`image` null for none): its latest, as these
+ * A Frame with the picture it shows spread onto it (`file` null for none): its latest, as these
  * tests keep to one Image Model unless they switch. Loose, as the API's JSON is.
  */
 // deno-lint-ignore no-explicit-any
 export const shown = (frame: JsonFrame): any => ({
   ...frame,
-  image: null,
+  file: null,
   ...frame.pictures.at(-1),
 })
 

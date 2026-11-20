@@ -90,7 +90,7 @@ const pictured = computed(() =>
     .filter((f) => f.pictures.length)
     .map((f) => ({
       name: props.name(f.index),
-      prompt: f.prompt,
+      prompt: f.image?.prompt,
       caption: props.caption?.(f) || undefined,
       // Each as its picked version: an edit is compared as the picture it now is, and marked.
       pictures: modelIds.value.map((m) => {
@@ -104,11 +104,11 @@ const rows = computed(() =>
     ...row,
     pictures: row.pictures.map((p) =>
       p && {
-        thumb: imageUrl(props.sessionId, p.image),
-        full: imageUrl(props.sessionId, p.upscaled ?? p.image),
+        thumb: imageUrl(props.sessionId, p.file),
+        full: imageUrl(props.sessionId, p.upscaled ?? p.file),
         stale: p.stale,
         edited: pickedEdit(p)?.instructions,
-        id: p.image,
+        id: p.file,
         star: p.star,
       }
     ),
@@ -295,7 +295,7 @@ async function exportPage() {
       rows: pictured.value.map((row) => ({
         ...row,
         pictures: exportedColumns.value.map((i) => row.pictures[i]).map((p) =>
-          p && { image: p.image, upscaled: p.upscaled, stale: p.stale, edited: pickedEdit(p)?.instructions }
+          p && { image: p.file, upscaled: p.upscaled, stale: p.stale, edited: pickedEdit(p)?.instructions }
         ),
       })),
       ...(styles.value && exportStyles.value ? { styles: styles.value } : {}),

@@ -41,7 +41,7 @@ export function storyboardRoutes(ctx: AppContext): Route[] {
           if (!needsStoryboard(session)) return error('Only a Storyboard writes its Frames', 409)
           const scenario = scenarioFor(session)
           // Refused up front, before the stream: nothing to write, or not planned yet.
-          if (!session.look || session.frames.every((f) => f.body)) {
+          if (!session.look || session.frames.every((f) => f.image)) {
             return error(
               session.look ? 'Every Frame is written already' : 'Plan the Storyboard first',
               409,

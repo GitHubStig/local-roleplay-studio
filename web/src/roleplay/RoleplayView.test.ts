@@ -65,8 +65,8 @@ const reply = (dialogue: string, extra: Partial<roleplay.Reply> = {}): roleplay.
 })
 
 /** A picture by the Roleplay's Image Model. */
-const picture = (image: string, extra: Partial<api.Picture> = {}): api.Picture => ({
-  image,
+const picture = (file: string, extra: Partial<api.Picture> = {}): api.Picture => ({
+  file,
   imageModel: 'qwen-image-2.1',
   ...extra,
 })
@@ -79,10 +79,22 @@ const frame = (
   index,
   message,
   reply: reply(dialogue),
-  timings: { text: 1 },
-  textModel: 'x',
+  written: { model: 'x', seconds: 1 },
   pictures: [],
   createdAt: '2026-09-27T00:00:00.000Z',
+})
+
+/** A Frame's image, as the Art Agent writes it, with its Image Prompt. */
+const imageOf = (
+  prompt: string,
+  extra: Partial<roleplay.RoleplayImage> = {},
+): roleplay.RoleplayImage => ({
+  body: '',
+  prompt,
+  shown: [],
+  clothing: '',
+  written: { model: 'x', seconds: 1 },
+  ...extra,
 })
 
 const roleplaySession = (frames: roleplay.RoleplayFrame[] = []): roleplay.RoleplaySession => ({
@@ -436,7 +448,7 @@ describe('RoleplayView', () => {
   it('opens at the first Frame, then picks the one picked in the strip or the story', async () => {
     const pictured = {
       ...frame(1, 'Thanks.', 'Sit.'),
-      prompt: 'Elena by the stove.',
+      image: imageOf('Elena by the stove.'),
       pictures: [picture('frame-1.png')],
     }
     vi.mocked(api.getSession).mockResolvedValue(
@@ -484,7 +496,7 @@ describe('RoleplayView', () => {
     vi.mocked(api.getSession).mockResolvedValue(
       roleplaySession([frame(0, null, 'Get inside.'), {
         ...frame(1, 'Hi.', 'Sit.'),
-        prompt: 'Elena.',
+        image: imageOf('Elena.'),
       }]),
     )
     const { wrapper } = await mountIt()
@@ -505,13 +517,13 @@ describe('RoleplayView', () => {
   it('makes a Chain from the selected Frame once pictured, and opens it', async () => {
     const pictured = (index: number, extra = {}) => ({
       ...frame(index, index ? 'Thanks.' : null, 'Sit.'),
-      prompt: 'Elena by the stove.',
+      image: imageOf('Elena by the stove.'),
       pictures: [picture(`frame-${index}.png`)],
       ...extra,
     })
     vi.mocked(api.getSession).mockResolvedValue(
       roleplaySession([
-        pictured(0, { blocked: 'no nudity' }),
+        pictured(0, { image: imageOf('Elena by the stove.', { blocked: 'no nudity' }) }),
         pictured(1),
         frame(2, 'Tea?', 'Sure.'),
       ]),
@@ -854,14 +866,14 @@ describe('RoleplayView', () => {
     it('renders all that need it, picturing first the Frames without an Image Prompt', async () => {
       const pictured = (index: number, extra: Partial<roleplay.RoleplayFrame> = {}) => ({
         ...frame(index, index ? 'Hello.' : null, 'Sit.'),
-        prompt: `Prompt ${index}.`,
+        image: imageOf(`Prompt ${index}.`),
         ...extra,
       })
       vi.mocked(api.getSession).mockResolvedValue(roleplaySession([
         pictured(0, { pictures: [picture('frame-0-aaaaaaaa.png')] }),
         pictured(1),
         frame(2, 'Hello.', 'Sit.'),
-        pictured(3, { blocked: 'restraint' }),
+        pictured(3, { image: imageOf('Prompt 3.', { blocked: 'restraint' }) }),
         // By another Image Model than the Roleplay's.
         pictured(4, {
           pictures: [picture('frame-4-aaaaaaaa.png', { imageModel: 'flux2-klein-4b' })],
@@ -989,10 +1001,10 @@ describe('RoleplayView', () => {
     vi.mocked(api.getSession).mockResolvedValue({
       ...roleplaySession([{
         ...frame(0, null, 'Get inside.'),
-        prompt: 'Elena, 38. She waits. Oil painting.',
-        shown: ['Elena', 'the barkeep'],
-        pictureTimings: { text: 24.6 },
-        pictureModel: 'gemma4',
+        image: imageOf('Elena, 38. She waits. Oil painting.', {
+          shown: ['Elena', 'the barkeep'],
+          written: { model: 'gemma4', seconds: 24.6 },
+        }),
       }]),
       look,
     })
@@ -1025,7 +1037,7 @@ describe('RoleplayView', () => {
 
   it('shows rendering progress on the picture, and the picture once rendered', async () => {
     vi.useFakeTimers()
-    const pictured = { ...frame(0, null, 'Get inside.'), prompt: 'Elena. Ink.' }
+    const pictured = { ...frame(0, null, 'Get inside.'), image: imageOf('Elena. Ink.') }
     vi.mocked(api.getSession).mockResolvedValue({ ...roleplaySession([pictured]), look })
     vi.mocked(api.listJobs).mockResolvedValue([
       job({ kind: 'render', status: 'running', phase: 'image', progress: { step: 2, total: 4 } }),

@@ -6,7 +6,7 @@ import type { Figure, Scene } from './threeD.ts'
 /** A picture's image and what was made from it: its render, or an edit of it (ADR 0021). */
 export interface PictureVersion {
   /** File name of the image inside the Session directory. */
-  image: string
+  file: string
   /** The image upscaled to 2048 px, once upscaled. */
   upscaled?: string
   /** The picture made into a 2.5D scene (SHARP), once asked for. */

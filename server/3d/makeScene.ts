@@ -40,9 +40,8 @@ export async function makeScene<S extends Session>(
   if (!deps.scene) throw new SceneError(SCENES_OFF)
   const picture = shownVersionOf(session, index)
   if (!picture) throw new SceneError(`${frameName(index)} has no picture yet`)
-  const { image } = picture
   // SHARP works at 1536 px: the 2048 px upscale has more to give it than a 1024 px original.
-  const from = picture.upscaled ?? image
+  const from = picture.upscaled ?? picture.file
   const dir = deps.store.dir(session.id)
   const file = `scene-${index}-${crypto.randomUUID().slice(0, 8)}.ply`
   const start = performance.now()
@@ -70,7 +69,7 @@ export async function makeScene<S extends Session>(
     let replaced: string | undefined
     // Onto the picture it was made from, if the Frame still has it.
     const updated = await save((latest) =>
-      changeFramePicture(latest, image, (p) => {
+      changeFramePicture(latest, picture.file, (p) => {
         replaced = p.scene?.file
         return { ...p, scene }
       })

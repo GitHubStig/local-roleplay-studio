@@ -13,7 +13,7 @@ Deno.test('A Chain queues an upscale of one Frame, once', () =>
     const [opening, second] = await chainFrames(call)
     assertMatch(second.upscaled!, /^frame-1-[0-9a-f]{8}-2048\.png$/)
     assertEquals(opening.upscaled, undefined)
-    assertEquals(images.upscaled, [second.image])
+    assertEquals(images.upscaled, [second.file])
     assertEquals((await call('GET', `/api/sessions/s1/images/${second.upscaled}`)).status, 200)
     const again = await call('POST', '/api/sessions/s1/jobs', { kind: 'upscale', frameIndex: 1 })
     assertEquals(again.status, 409)
@@ -22,9 +22,9 @@ Deno.test('A Chain queues an upscale of one Frame, once', () =>
     const upscale = (path = '/api/sessions/s1/pictures/1/upscale') => call('DELETE', path)
     assertEquals((await upscale()).status, 200)
     const [, after] = await chainFrames(call)
-    assertEquals([after.upscaled, after.image], [undefined, second.image])
+    assertEquals([after.upscaled, after.file], [undefined, second.file])
     assertEquals((await call('GET', `/api/sessions/s1/images/${second.upscaled}`)).status, 404)
-    assertEquals((await call('GET', `/api/sessions/s1/images/${second.image}`)).status, 200)
+    assertEquals((await call('GET', `/api/sessions/s1/images/${second.file}`)).status, 200)
     assertEquals((await upscale()).status, 409)
     const redo = await call('POST', '/api/sessions/s1/jobs', { kind: 'upscale', frameIndex: 1 })
     assertEquals(redo.status, 201)
@@ -48,7 +48,7 @@ Deno.test('A Chain queues SHARP, TripoSplat and LiTo for one Frame', () =>
     assertMatch(second.figure!.file, /^figure-1-[0-9a-f]{8}\.ply$/)
     assertMatch(second.lito!.file, /^lito-1-[0-9a-f]{8}\.ply$/)
     assertEquals([opening.scene, opening.figure, opening.lito], [undefined, undefined, undefined])
-    assertEquals(second.scene!.from, second.image)
+    assertEquals(second.scene!.from, second.file)
     assertEquals((await call('GET', `/api/sessions/s1/images/${second.lito!.file}`)).status, 200)
     // A Chain has no Roleplay jobs.
     const picture = await call('POST', '/api/sessions/s1/jobs', { kind: 'picture', frameIndex: 0 })
@@ -57,7 +57,7 @@ Deno.test('A Chain queues SHARP, TripoSplat and LiTo for one Frame', () =>
     // Undoing the Frame deletes them with its picture.
     await call('DELETE', '/api/sessions/s1/frames/1?latest=1')
     for (
-      const file of [second.image!, second.scene!.file, second.figure!.file, second.lito!.file]
+      const file of [second.file!, second.scene!.file, second.figure!.file, second.lito!.file]
     ) {
       assertEquals((await call('GET', `/api/sessions/s1/images/${file}`)).status, 404)
     }

@@ -32,17 +32,17 @@ const KLEIN = 'flux2-klein-4b'
 const KREA = 'krea-2'
 const signal = () => new AbortController().signal
 
-const picture = (image: string, imageModel: string, extra: Partial<Picture> = {}): Picture => ({
-  image,
+const picture = (file: string, imageModel: string, extra: Partial<Picture> = {}): Picture => ({
+  file,
   imageModel,
   ...extra,
 })
 
 Deno.test("A Frame shows its picture by the Session's model, or else its latest", () => {
   const frame = { index: 0, pictures: [picture('q.png', QWEN), picture('k.png', KLEIN)] }
-  assertEquals(shownPicture(frame, QWEN)?.image, 'q.png')
-  assertEquals(shownPicture(frame, KLEIN)?.image, 'k.png')
-  assertEquals(shownPicture(frame, KREA)?.image, 'k.png')
+  assertEquals(shownPicture(frame, QWEN)?.file, 'q.png')
+  assertEquals(shownPicture(frame, KLEIN)?.file, 'k.png')
+  assertEquals(shownPicture(frame, KREA)?.file, 'k.png')
   assertEquals(shownPicture({ index: 0, pictures: [] }, QWEN), undefined)
 })
 
@@ -126,19 +126,19 @@ Deno.test("A render on the new model keeps the old one's picture, shown again on
     assertEquals([kept, made.imageModel], [old, KLEIN])
     assertEquals(shownPicture(rendered.frames[1], KLEIN), made)
     assertEquals(images.prompts.length, 3)
-    assertEquals(await exists(old.image), true)
+    assertEquals(await exists(old.file), true)
     // Rendered again by the Chain's model, it replaces only that model's picture.
     const again = await renderChainFrame(deps, rendered, 1, () => {}, signal())
     const [stillKept, remade] = again.frames[1].pictures
     assertEquals([stillKept, remade.imageModel], [old, KLEIN])
-    assertEquals(await exists(made.image), false)
+    assertEquals(await exists(made.file), false)
 
     const back = await switchImageModel(store, again, QWEN)
     assertEquals(shownPicture(back.frames[1], QWEN), old)
 
     // Undo deletes every model's picture.
     await undoFrames(store, back as ChainSession, 1, 1)
-    assertEquals([await exists(old.image), await exists(remade.image)], [false, false])
+    assertEquals([await exists(old.file), await exists(remade.file)], [false, false])
   }))
 
 Deno.test("The same model's pictures stay wherever it renders, each saying the backend that made it", () =>
@@ -205,19 +205,19 @@ Deno.test("A render runs as Settings are now, keeping the Session's model, steps
 
 Deno.test("A picture is its picked version, and is made of every version's files", () => {
   const edit = (n: number) => ({
-    image: `edit-${n}.png`,
+    file: `edit-${n}.png`,
     instructions: ['Paint'],
     editModel: 'qwen-image-2.1-edit',
     seed: 1,
     mask: `mask-${n}.png`,
   })
   const picture = {
-    image: 'r.png',
+    file: 'r.png',
     imageModel: QWEN,
     upscaled: 'r-2048.png',
     edits: [edit(1), { ...edit(2), upscaled: 'e2-2048.png' }],
   }
-  assertEquals(pickedVersion(picture).image, 'r.png')
+  assertEquals(pickedVersion(picture).file, 'r.png')
   assertEquals(pickedVersion({ ...picture, picked: 2 }).upscaled, 'e2-2048.png')
   assertEquals(pictureFiles(picture), [
     'r.png',
@@ -240,11 +240,11 @@ Deno.test("A picture is its picked version, and is made of every version's files
 Deno.test('A chosen thumbnail survives another model and a newer picture, until its file goes', () => {
   const frame = (index: number, pictures: Picture[]) => ({ index, pictures })
   const picture = (image: string, imageModel: string, more: Partial<Picture> = {}) =>
-    ({ image, imageModel, ...more }) as Picture
+    ({ file: image, imageModel, ...more }) as Picture
   const session = (frames: { index: number; pictures: Picture[] }[], thumbnail?: string) =>
     ({ frames, thumbnail, settings: { imageModel: 'a' } }) as unknown as Session
   const edited = picture('render.png', 'a', {
-    edits: [{ image: 'edit.png' } as PictureEdit],
+    edits: [{ file: 'edit.png' } as PictureEdit],
     picked: 1,
   })
   const frames = [

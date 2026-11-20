@@ -80,11 +80,11 @@ export async function makeClip<S extends Session>(
   const refused = clipRefusal(session, index, order.kind, frameName(index), by)
   if (refused) throw new ClipError(refused)
   const picture = versionBy(session, index, by)!
-  const next = order.kind === 'into-next' ? versionBy(session, index + 1, by)!.image : undefined
+  const next = order.kind === 'into-next' ? versionBy(session, index + 1, by)!.file : undefined
   const ends = CLIP_ENDS[order.kind]
   const videoModel = order.model ?? await deps.videoModel()
   const size = await deps.videoSize(videoModel)
-  const pictureAt = (end?: 'still' | 'next') => end === 'still' ? picture.image : end && next
+  const pictureAt = (end?: 'still' | 'next') => end === 'still' ? picture.file : end && next
   const dir = deps.store.dir(session.id)
   const name = `clip-${index}-${order.kind}-${crypto.randomUUID().slice(0, 8)}`
   const start = performance.now()
@@ -129,7 +129,7 @@ export async function makeClip<S extends Session>(
     }
     let replaced: string | undefined
     const updated = await save((latest) =>
-      changeFramePicture(latest, picture.image, (p) => {
+      changeFramePicture(latest, picture.file, (p) => {
         const same = (c: Clip) => c.kind === clip.kind && c.model === clip.model
         replaced = p.clips?.find(same)?.file
         return { ...p, clips: [...(p.clips ?? []).filter((c) => !same(c)), clip] }

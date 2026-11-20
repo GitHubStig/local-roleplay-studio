@@ -14,7 +14,7 @@ vi.mock('../api', async (importOriginal) => ({
 enableAutoUnmount(afterEach)
 
 type Frame = PicturedFrame & { says: string }
-const picture = (image: string, imageModel: string) => ({ image, imageModel })
+const picture = (image: string, imageModel: string) => ({ file: image, imageModel })
 const frames: Frame[] = [
   {
     index: 0,
@@ -28,7 +28,7 @@ const tiles = (of: Frame[]) =>
   of.map((f) => ({
     index: f.index,
     words: f.says,
-    thumb: f.pictures[0] ? `/p/${f.pictures[0].image}` : null,
+    thumb: f.pictures[0] ? `/p/${f.pictures[0].file}` : null,
   }))
 
 const mountIt = (of = frames) =>

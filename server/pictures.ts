@@ -47,7 +47,7 @@ export const shownVersionOf = (session: Session, index: number): PictureVersion 
 
 /** `image` is a version of this picture: its render, or one of its edits. */
 const hasVersion = (p: Picture, image: string): boolean =>
-  p.image === image || !!p.edits?.some((e) => e.image === image)
+  p.file === image || !!p.edits?.some((e) => e.file === image)
 
 const inSession = (session: Session, image: string): boolean =>
   (session.frames as PicturedFrame[]).some((f) => f.pictures.some((p) => hasVersion(p, image)))
@@ -61,7 +61,7 @@ export function homeImage(session: Session): string | null {
   if (chosen && inSession(session, chosen)) return chosen
   return (session.frames as PicturedFrame[]).map((f) => {
     const picture = shownPicture(f, session.settings.imageModel)
-    return picture && pickedVersion(picture).image
+    return picture && pickedVersion(picture).file
   }).findLast((image) => image) ?? null
 }
 
@@ -108,7 +108,7 @@ export function withPicture(
 
 /** Whether `image` is one of a picture's versions: its render or an edit. */
 const hasImage = (p: Picture, image: string) =>
-  p.image === image || !!p.edits?.some((e) => e.image === image)
+  p.file === image || !!p.edits?.some((e) => e.file === image)
 
 /**
  * `pictures` with the version whose image is `image` (a render or an edit) changed by `change`.
@@ -124,10 +124,10 @@ export function changePicture(
     throw new PictureGoneError('That picture changed')
   }
   return pictures.map((p) =>
-    p.image === image
+    p.file === image
       ? change(p)
-      : p.edits?.some((e) => e.image === image)
-      ? { ...p, edits: p.edits.map((e) => (e.image === image ? change(e) : e)) }
+      : p.edits?.some((e) => e.file === image)
+      ? { ...p, edits: p.edits.map((e) => (e.file === image ? change(e) : e)) }
       : p
   )
 }
@@ -163,9 +163,9 @@ export function changeRenderedPicture<S extends Session>(
   image: string,
   change: (p: Picture) => Picture,
 ): S {
-  const frame = session.frames.find((f) => f.pictures.some((p) => p.image === image))
+  const frame = session.frames.find((f) => f.pictures.some((p) => p.file === image))
   if (!frame) throw new PictureGoneError('That picture no longer exists')
-  const pictures = frame.pictures.map((p) => (p.image === image ? change(p) : p))
+  const pictures = frame.pictures.map((p) => (p.file === image ? change(p) : p))
   return {
     ...session,
     frames: session.frames.map((f) => (f === frame ? { ...f, pictures } : f)),
@@ -179,7 +179,7 @@ export const allStale = (pictures: Picture[]): Picture[] =>
 /** The files a version of a picture is made of: the image, its upscale, scene, figures and clips. */
 export const versionFiles = (v: PictureVersion): string[] =>
   [
-    v.image,
+    v.file,
     v.upscaled,
     v.scene?.file,
     v.figure?.file,

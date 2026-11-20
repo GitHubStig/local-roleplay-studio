@@ -44,7 +44,7 @@ Deno.test('Frames stream progress and commit, then their render jobs serve their
 
     assertEquals(await settled(call), [])
     const session = await (await call('GET', '/api/sessions/s1')).json()
-    const [firstImage, secondImage] = session.frames.map((t: JsonFrame) => shown(t).image)
+    const [firstImage, secondImage] = session.frames.map((t: JsonFrame) => shown(t).file)
     assertMatch(firstImage, /^frame-0-[0-9a-f]{8}\.png$/)
 
     const image = await call('GET', `/api/sessions/s1/images/${secondImage}`)
@@ -257,7 +257,7 @@ Deno.test('Undo and a Frame sent at once never bring back the undone Frame', () 
     const session = await (await call('GET', '/api/sessions/s1')).json()
     session.frames.forEach((t: { index: number }, i: number) => assertEquals(t.index, i))
     for (const t of session.frames as JsonFrame[]) {
-      assertEquals((await call('GET', `/api/sessions/s1/images/${shown(t).image}`)).status, 200)
+      assertEquals((await call('GET', `/api/sessions/s1/images/${shown(t).file}`)).status, 200)
     }
   }))
 

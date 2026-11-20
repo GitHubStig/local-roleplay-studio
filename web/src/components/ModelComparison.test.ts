@@ -36,13 +36,13 @@ vi.mock('../api', async (importOriginal) => ({
 
 enableAutoUnmount(afterEach)
 
-const picture = (image: string, imageModel: string) => ({ image, imageModel })
+const picture = (image: string, imageModel: string) => ({ file: image, imageModel })
 
 /** Frame 0 (with its Image Prompt) by both models, Frame 1 by the first only, Frame 2 not rendered. */
 const frames: PicturedFrame[] = [
   {
     index: 0,
-    prompt: 'A tavern at dusk.',
+    image: { prompt: 'A tavern at dusk.' },
     pictures: [picture('f0-a.png', 'a'), picture('f0-b.png', 'b')],
   },
   { index: 1, pictures: [picture('f1-a.png', 'a')] },
@@ -186,7 +186,7 @@ describe('ModelComparison', () => {
   it('compares an edited picture as its picked edit, marked with what it was told', async () => {
     const edited = {
       ...picture('f0-b.png', 'b'),
-      edits: [{ image: 'edit-0-b.png', instructions: ['A hand'], editModel: 'e', seed: 1 }],
+      edits: [{ file: 'edit-0-b.png', instructions: ['A hand'], editModel: 'e', seed: 1 }],
       picked: 1,
     }
     const wrapper = mountIt([{ ...frames[0], pictures: [frames[0].pictures[0], edited] }])

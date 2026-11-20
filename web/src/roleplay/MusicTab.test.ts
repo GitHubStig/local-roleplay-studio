@@ -55,7 +55,7 @@ enableAutoUnmount(afterEach)
 
 describe('MusicTab', () => {
   it('writes the Score when asked, and shows it to edit', async () => {
-    const written = session({ score, scoreTimings: { text: 2.5 }, scoreModel: 'gemma' })
+    const written = session({ score, scoreWritten: { model: 'gemma', seconds: 2.5 } })
     vi.mocked(roleplay.writeScore).mockImplementation((_id, onEvent) => {
       onEvent({ type: 'score', score, session: written })
       return Promise.resolve()
@@ -149,15 +149,13 @@ describe('MusicTab', () => {
       decision,
       entry: 'sharp' as const,
       line,
-      model: 'gemma',
-      timings: { text: 1.25 },
+      written: { model: 'gemma', seconds: 1.25 },
     })
     const frame = (index: number, m: ReturnType<typeof music>): roleplay.RoleplayFrame => ({
       index,
       message: index ? 'Hi.' : null,
       reply: { internal: '', actions: '', dialogue: '' },
-      timings: { text: 1 },
-      textModel: 'x',
+      written: { model: 'x', seconds: 1 },
       pictures: [],
       createdAt: '',
       music: m,
@@ -262,8 +260,7 @@ describe('MusicTab', () => {
         decision: 'continue',
         entry: 'gentle',
         line: '',
-        model: 'x',
-        timings: { text: 1 },
+        written: { model: 'x', seconds: 1 },
       },
     })) as unknown as roleplay.RoleplayFrame[]
     const s = session({
@@ -301,8 +298,7 @@ describe('MusicTab', () => {
         decision: 'continue',
         entry: 'gentle',
         line: '',
-        model: 'x',
-        timings: { text: 1 },
+        written: { model: 'x', seconds: 1 },
       },
     })) as unknown as roleplay.RoleplayFrame[]
     const cues = [{ id: 'a', start: 0, entry: 'gentle', reading: '', line: '', values }]
@@ -331,8 +327,7 @@ describe('MusicTab', () => {
         decision: 'continue',
         entry: 'gentle',
         line: '',
-        model: 'x',
-        timings: { text: 1 },
+        written: { model: 'x', seconds: 1 },
       },
     })) as unknown as roleplay.RoleplayFrame[]
     const s = session({
@@ -352,8 +347,7 @@ describe('MusicTab', () => {
       index: 1,
       message: 'Hi.',
       reply: { internal: '', actions: '', dialogue: '' },
-      timings: { text: 1 },
-      textModel: 'x',
+      written: { model: 'x', seconds: 1 },
       pictures: [],
       createdAt: '',
       music: {
@@ -362,8 +356,7 @@ describe('MusicTab', () => {
         decision: 'continue',
         entry: 'gentle',
         line: '',
-        model: 'gemma',
-        timings: { text: 0 },
+        written: { model: 'gemma', seconds: 0 },
         hindsight: true,
         stinger: { reading: 'The blade comes out.', line: 'Hold still.' },
       },
@@ -373,10 +366,9 @@ describe('MusicTab', () => {
       frames: [frame],
       cues: [{ id: 'a', start: 0, entry: 'gentle', reading: '', line: '' }],
       hindsight: {
-        model: 'gemma',
         chunks: 1,
         courses: ['Small talk, then trust.'],
-        timings: { text: 12 },
+        written: { model: 'gemma', seconds: 12 },
       },
     })
     const wrapper = mount(MusicTab, { props: { session: s, line: saveLine(), frame } })

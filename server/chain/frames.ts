@@ -4,7 +4,7 @@ import type { ImagePrompt } from '../../shared/images.ts'
 import { crossedLimit, LimitError } from '../limits.ts'
 import type { Scenario } from '../../shared/scenario.ts'
 import type { SessionStore } from '../session.ts'
-import type { ChainFrame, ChainSession, FrameTimings, Outcome } from '../../shared/session.ts'
+import type { ChainFrame, ChainSession, Outcome } from '../../shared/session.ts'
 import type { FrameText } from './text.ts'
 import { GoneError, updateSession } from '../update.ts'
 import { allPictureFiles, allStale, removeFiles } from '../pictures.ts'
@@ -46,16 +46,18 @@ export async function runChainFrame(
   if (previous && actionLimit) {
     outcome = 'declined'
     narration = `Declined: ${actionLimit}.`
-    nextPrompt = previous.prompt
+    nextPrompt = previous.image.prompt
   } else {
     const text: FrameText = await withRetry(
       (onThinking) =>
         deps.textModel.write(
           {
             scenario,
-            prompt: previous?.prompt ?? null,
+            prompt: previous?.image.prompt ?? null,
             action,
-            away: previous ? peopleAway(session.frames.map((f) => f.prompt), previous.prompt) : [],
+            away: previous
+              ? peopleAway(session.frames.map((f) => f.image.prompt), previous.image.prompt)
+              : [],
           },
           signal,
           onThinking,
@@ -74,11 +76,11 @@ export async function runChainFrame(
     } else if (text.outcome !== 'done') {
       outcome = text.outcome
       narration = text.narration
-      nextPrompt = previous.prompt
+      nextPrompt = previous.image.prompt
     } else if (promptLimit) {
       outcome = 'declined'
       narration = `Declined: ${promptLimit.message}.`
-      nextPrompt = previous.prompt
+      nextPrompt = previous.image.prompt
     } else {
       outcome = 'done'
       narration = text.narration
@@ -93,23 +95,21 @@ export async function runChainFrame(
   }
   // Nor does a done Action that left the Image Prompt as it was (often a Narration claiming a
   // change the prompt doesn't have): there'd be nothing new to see.
-  if (previous && equal(nextPrompt, previous.prompt)) {
+  if (previous && equal(nextPrompt, previous.image.prompt)) {
     emit({ type: 'unchanged', message: UNCHANGED })
     return null
   }
-  const timings: FrameTimings = { text: secondsSince(textStart) }
+  const seconds = secondsSince(textStart)
   signal.throwIfAborted()
 
   const frame: ChainFrame = {
     index,
     action,
-    prompt: nextPrompt,
+    image: { prompt: nextPrompt },
     narration,
     outcome,
-    ...(thinking ? { thinking } : {}),
     pictures: [],
-    timings,
-    textModel: deps.textModel.name,
+    written: { model: deps.textModel.name, seconds, ...(thinking ? { thinking } : {}) },
     createdAt: new Date().toISOString(),
   }
   // Onto the Chain as it is now: a job may have upscaled or made 3D of a picture meanwhile.
@@ -139,7 +139,7 @@ export async function renderChainFrame(
     deps,
     session,
     index,
-    frame.prompt,
+    frame.image.prompt,
     emit,
     signal,
     (change) => updateSession(deps.store, session.id, 'chain', change),
@@ -229,8 +229,8 @@ export async function setFramePrompt(
   return await updateSession(store, session.id, 'chain', (now) => {
     const frame = now.frames[index]
     if (!frame) throw new GoneError('That Frame is no longer there')
-    if (frame.prompt === text) return now
-    const edited = { ...frame, prompt: text, pictures: allStale(frame.pictures) }
+    if (frame.image.prompt === text) return now
+    const edited = { ...frame, image: { prompt: text }, pictures: allStale(frame.pictures) }
     return { ...now, frames: now.frames.map((f) => (f.index === index ? edited : f)) }
   })
 }

@@ -8,6 +8,7 @@ import {
   type Job,
   type Picture,
   type SettingsOptions,
+  type Written,
 } from '../api'
 import { JOB_NAMES } from '../jobs'
 
@@ -41,8 +42,8 @@ export function useSettingsOptions() {
  * "Text 9.8 s by gemma4:26b": how long writing a Frame took, and by which Text Model (a Session can
  * switch: ADR 0037).
  */
-export const writtenPart = (frame: { timings: { text: number }; textModel: string }) =>
-  `Text ${frame.timings.text.toFixed(1)} s by ${frame.textModel}`
+export const writtenPart = (written: Written) =>
+  `Text ${written.seconds.toFixed(1)} s by ${written.model}`
 
 /** Each Image backend's models, by name. */
 export function useImageModels() {

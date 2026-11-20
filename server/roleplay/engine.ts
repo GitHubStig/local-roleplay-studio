@@ -16,7 +16,15 @@ import { GoneError, updateSession } from './update.ts'
 import { allPictureFiles, removeFiles } from '../pictures.ts'
 import { CastError, openingMessages, parseCast, roleplayMessages } from './prompt.ts'
 import { judgeMessages } from './judge.ts'
-import { artFrameMessages, artLookMessages, isLook, pictured, withNewcomers } from './art.ts'
+import {
+  artFrameMessages,
+  artLookMessages,
+  imageOf,
+  isLook,
+  pictured,
+  repictured,
+  withNewcomers,
+} from './art.ts'
 import { cleanLook, lookLimit, renameShown } from '../look.ts'
 import { withoutCuesFrom } from './music/director.ts'
 import type { Cast, Reply, RoleplayFrame, RoleplaySession } from '../../shared/roleplay.ts'
@@ -141,9 +149,11 @@ async function commit(
       message,
       reply: fields,
       ...(outcome ? { outcome } : {}),
-      ...(thinking ? { thinking } : {}),
-      timings: { text: secondsSince(start) },
-      textModel: deps.roleplayModel.name,
+      written: {
+        model: deps.roleplayModel.name,
+        seconds: secondsSince(start),
+        ...(thinking ? { thinking } : {}),
+      },
       pictures: [],
       createdAt: new Date().toISOString(),
     }
@@ -233,21 +243,21 @@ export async function pictureFrame(
       signal,
       emit,
     )
-    const { lookThinking: _, ...rest } = current
     current = {
-      ...rest,
+      ...current,
       look,
-      lookTimings: { text: secondsSince(start) },
-      lookModel: art.name,
-      ...(thinking ? { lookThinking: thinking } : {}),
+      lookWritten: {
+        model: art.name,
+        seconds: secondsSince(start),
+        ...(thinking ? { thinking } : {}),
+      },
       // Frames pictured with an older Look take the new one.
-      frames: current.frames.map((f) => (f.body ? pictured(f, look, f.body) : f)),
+      frames: current.frames.map((f) => repictured(f, look)),
     }
     emit({ type: 'look', look })
   }
   const start = performance.now()
   const written = current.look as Look
-  const { pictureThinking: _, ...previous } = current.frames[index]
   const messages = await artFrameMessages(current, index)
   // Anyone the picture brings in joins the Look, so they look the same next time.
   let look = written
@@ -259,9 +269,9 @@ export async function pictureFrame(
     )
     signal.throwIfAborted()
     look = withNewcomers(written, newcomers)
-    return { frame: pictured(previous, look, body, shown, clothing), thinking }
+    return { drawn: imageOf(look, { body, shown, clothing }), thinking }
   }
-  let { frame: drawn, thinking } = await draw()
+  let { drawn, thinking } = await draw()
   // A picture that crosses a Limit gets one more try, told which; the second is kept either way.
   if (drawn.blocked) {
     messages[1] = {
@@ -269,7 +279,7 @@ export async function pictureFrame(
       content: `${messages[1].content}\n\nYour last picture of this Frame crossed a limit ` +
         `(${drawn.blocked}). Picture it again, within the Limits.`,
     }
-    ;({ frame: drawn, thinking } = await draw())
+    ;({ drawn, thinking } = await draw())
   }
   // Saved onto the Roleplay as it is now: the conversation may have moved on meanwhile.
   const wroteLook = look !== session.look
@@ -277,22 +287,17 @@ export async function pictureFrame(
   const updated = await updateSession(deps.store, session.id, (latest) => {
     const now = latest.frames[index]
     if (!now) throw new GoneError(`${frameName(index)} no longer exists`)
-    const { pictureThinking: _, ...kept } = now
-    frame = {
-      ...pictured(kept, look, drawn.body!, drawn.shown, drawn.clothing),
-      pictureTimings: { text: secondsSince(start) },
-      pictureModel: art.name,
-      ...(thinking ? { pictureThinking: thinking } : {}),
-    }
+    frame = pictured(now, {
+      ...imageOf(look, drawn),
+      written: { model: art.name, seconds: secondsSince(start), ...(thinking ? { thinking } : {}) },
+    })
     const withLook: RoleplaySession = wroteLook
       ? {
         ...latest,
         look,
-        lookTimings: current.lookTimings,
-        lookModel: current.lookModel,
-        ...(current.lookThinking ? { lookThinking: current.lookThinking } : {}),
+        ...(current.lookWritten && { lookWritten: current.lookWritten }),
         // Frames pictured with an older Look take the new one.
-        frames: latest.frames.map((f) => (f.body ? pictured(f, look, f.body) : f)),
+        frames: latest.frames.map((f) => repictured(f, look)),
       }
       : latest
     return { ...withLook, frames: withLook.frames.map((f) => (f.index === index ? frame : f)) }
@@ -325,7 +330,7 @@ export async function setLook(
       ...latest,
       look,
       frames: latest.frames.map((f) =>
-        f.body ? pictured(f, look, f.body, renameShown(before, look.subjects, f.shown ?? [])) : f
+        repictured(f, look, f.image && renameShown(before, look.subjects, f.image.shown))
       ),
     }
   })
@@ -343,16 +348,16 @@ export async function renderRoleplayFrame(
   emit: (event: RoleplayEvent) => void,
   signal: AbortSignal,
 ): Promise<RoleplaySession> {
-  const frame = session.frames[index]
-  if (!frame?.prompt) throw new RoleplayError(`${frameName(index)} isn't pictured yet`)
-  if (frame.blocked) {
-    throw new RoleplayLimitError(`${frameName(index)} crosses a limit: ${frame.blocked}`)
+  const image = session.frames[index]?.image
+  if (!image) throw new RoleplayError(`${frameName(index)} isn't pictured yet`)
+  if (image.blocked) {
+    throw new RoleplayLimitError(`${frameName(index)} crosses a limit: ${image.blocked}`)
   }
   const { session: updated, frame: rendered } = await replacePicture(
     deps,
     session,
     index,
-    frame.prompt,
+    image.prompt,
     emit,
     signal,
     (change) => updateSession(deps.store, session.id, change),

@@ -20,10 +20,9 @@ const session = (frames: number): Session => ({
     action: null,
     narration: `Style ${index}`,
     outcome: 'done' as const,
-    timings: { text: 1 },
-    textModel: 'scripted',
-    prompt: promptWith('standing'),
-    pictures: [{ image: `frame-${index}-1a2b3c4d.png`, imageModel: 'qwen-image-2.1' }],
+    written: { model: 'scripted', seconds: 1 },
+    image: { prompt: promptWith('standing') },
+    pictures: [{ file: `frame-${index}-1a2b3c4d.png`, imageModel: 'qwen-image-2.1' }],
     createdAt: '2026-10-14T00:00:00.000Z',
   })),
 })
@@ -72,7 +71,7 @@ Deno.test('embedStyles embeds only what is new, and keeps it in style.json', () 
     assertEquals(Object.keys(cache!.csd).length, 3)
     // A picture gone from the Session goes from the cache when something new is embedded.
     const remade = session(1)
-    remade.frames[0].pictures[0].image = 'frame-0-5e6f7a8b.png'
+    remade.frames[0].pictures[0].file = 'frame-0-5e6f7a8b.png'
     await store.save(remade)
     await embedStyles(deps, remade, () => {}, signal)
     assertEquals(Object.keys((await loadStyleCache(dir))!.csd), ['frame-0-5e6f7a8b.png'])

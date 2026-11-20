@@ -47,7 +47,7 @@ export function providePictureMenu(session: () => PictureMenuSession | null) {
     open(at: MenuAt, index: number, image?: string) {
       const s = session()
       const frame = s?.frames.find((f) => f.index === index)
-      const file = image ?? (frame && shownPicture(frame, s!.imageModel)?.image)
+      const file = image ?? (frame && shownPicture(frame, s!.imageModel)?.file)
       target.value = file ? { index, image: file, at } : null
     },
     close: () => (target.value = null),

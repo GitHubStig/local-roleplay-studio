@@ -3,7 +3,7 @@
  * values only.
  */
 import type { Picture } from './pictures.ts'
-import type { Look, SessionBase } from './session.ts'
+import type { FrameImage, Look, SessionBase, Written } from './session.ts'
 import type { Delivery } from './voice.ts'
 
 /** Who the Text Model plays. */
@@ -112,12 +112,11 @@ export interface FrameMusic {
   entry: Entry
   /** The line that caused a change, quoted; '' when the music continues. */
   line: string
-  /** The model that directed it, and seconds it took (the cue writer's too, on a change). */
-  model: string
-  timings: { text: number }
+  /** Its direction (and the cue writer's, on a change). */
+  written: Written
   /**
    * Directed by Score the Roleplay, with hindsight (`hindsight.ts`), rather than as it was played;
-   * its timings are then the cue writer's alone, as the pass reads many Frames at once.
+   * its seconds are then the cue writer's alone, as the pass reads many Frames at once.
    */
   hindsight?: true
   /**
@@ -241,31 +240,10 @@ export interface RoleplayFrame {
    * the Character was told it with the Message.
    */
   outcome?: string
-  /** The Text Model's reasoning, when thinking was on. */
-  thinking?: string
-  /** Seconds the reply took. */
-  timings: { text: number }
-  /** The Text Model that wrote the Reply, as a Session can switch Text Model (ADR 0037). */
-  textModel: string
-  /**
-   * Once pictured by the Art Agent: the Frame's seven sentences, and its Image Prompt (the Look's
-   * subject, these, then the Look's style), exactly what the Image Model renders.
-   */
-  body?: string
-  prompt?: string
-  /** Why the picture can't be rendered: its Image Prompt crosses a Limit. */
-  blocked?: string
-  /**
-   * Who the picture shows, by their names in the Look, the most prominent first; none for a
-   * picture of the place alone.
-   */
-  shown?: string[]
-  /** The picture's clothing sentence, checked to dress everyone shown while the Limits are on. */
-  clothing?: string
-  /** For debugging: seconds the latest picture took, the model that wrote it, and its reasoning. */
-  pictureTimings?: { text: number }
-  pictureModel?: string
-  pictureThinking?: string
+  /** Its Reply. */
+  written: Written
+  /** Its image, once the Art Agent has pictured it; none until then. */
+  image?: RoleplayImage
   /** One per Image Model it was rendered with (`pictures.ts`); none until rendered. */
   pictures: Picture[]
   /** The Character's line, spoken; out of date when its voice isn't the Roleplay's voice now. */
@@ -275,6 +253,17 @@ export interface RoleplayFrame {
   /** How the music was directed at this Frame, once it has been (`director.ts`). */
   music?: FrameMusic
   createdAt: string
+}
+
+/** A Roleplay Frame's image: a Storyboard Frame's, with who it shows, chosen as it's pictured. */
+export interface RoleplayImage extends FrameImage {
+  /**
+   * Who the picture shows, by their names in the Look, the most prominent first; none for a
+   * picture of the place alone.
+   */
+  shown: string[]
+  /** The picture's clothing sentence, checked to dress everyone shown while the Limits are on. */
+  clothing: string
 }
 
 /**
@@ -304,10 +293,8 @@ export interface RoleplaySession extends SessionBase {
    * Cast when a Frame is first pictured, and joined by anyone the story brings into a picture.
    */
   look: Look | null
-  /** For debugging: seconds the Look took to write, the model that wrote it, and its reasoning. */
-  lookTimings?: { text: number }
-  lookModel?: string
-  lookThinking?: string
+  /** Its Look, when the Art Agent wrote it. */
+  lookWritten?: Written
   /** The Character's voice; written the first time a line is spoken. */
   voice?: RoleplayVoice
   /**
@@ -316,19 +303,16 @@ export interface RoleplaySession extends SessionBase {
    * directed; editable. Absent until then, and while Music is off.
    */
   score?: Score
-  /** For debugging: seconds the Score took to write, the model that wrote it, and its reasoning. */
-  scoreTimings?: { text: number }
-  scoreModel?: string
-  scoreThinking?: string
+  /** Its Score, when the Text Model wrote it. */
+  scoreWritten?: Written
   /** The music's Cues, in the order of the Frames they began on (`director.ts`). */
   cues: Cue[]
   /** For debugging: the last time the whole Roleplay was scored with hindsight (`hindsight.ts`). */
   hindsight?: {
-    model: string
     chunks: number
     /** How each chunk heard the course between them, written before its turns. */
     courses: string[]
-    timings: { text: number }
+    written: Written
   }
   frames: RoleplayFrame[]
 }

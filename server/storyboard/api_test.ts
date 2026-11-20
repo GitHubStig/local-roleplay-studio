@@ -98,14 +98,14 @@ Deno.test('A Storyboard is planned, reviewed, written, rendered and edited over 
     const render = await call('POST', '/api/sessions/s1/jobs', { kind: 'render', frameIndex: 2 })
     assertEquals(render.status, 201)
     assertEquals(await settled(call), [])
-    const image = (await storyboardFrames(call))[2].image!
+    const image = (await storyboardFrames(call))[2].file!
     assertMatch(image, /^frame-2-[0-9a-f]{8}\.png$/)
     const past = await call('POST', '/api/sessions/s1/jobs', { kind: 'render', frameIndex: 9 })
     assertEquals(past.status, 404)
 
     const byHand = await (await call('PUT', '/api/sessions/s1/frames/2', { body: 'He lands.' }))
       .json()
-    assertEquals([byHand.frames[2].body, shown(byHand.frames[2]).stale], ['He lands.', true])
+    assertEquals([byHand.frames[2].image.body, shown(byHand.frames[2]).stale], ['He lands.', true])
     assertEquals((await call('PUT', '/api/sessions/s1/frames/0', { body: 'Nude.' })).status, 422)
     const nobody = await call('PUT', '/api/sessions/s1/frames/1', { body: 'A hoop.', shown: [] })
     assertEquals((await nobody.json()).frames[1].shown, [])
@@ -122,7 +122,7 @@ Deno.test('A Storyboard is planned, reviewed, written, rendered and edited over 
     assertEquals([
       edited.type,
       edited.outcome,
-      (edited.session as { frames: { body: string }[] }).frames[0].body,
+      (edited.session as { frames: { image: { body: string } }[] }).frames[0].image.body,
     ], [
       'edited',
       'done',
@@ -131,7 +131,11 @@ Deno.test('A Storyboard is planned, reviewed, written, rendered and edited over 
 
     // Restarted: back to the reviewed plan, the pictures gone.
     const restarted = await (await call('POST', '/api/sessions/s1/restart')).json()
-    assertEquals(restarted.frames.map((f: { body: string }) => f.body), ['', '', ''])
+    assertEquals(restarted.frames.map((f: { image?: unknown }) => f.image), [
+      undefined,
+      undefined,
+      undefined,
+    ])
     assertEquals(restarted.frames[1].beat, 'Ace jumps.')
     assertEquals((await call('GET', `/api/sessions/s1/images/${image}`)).status, 404)
     assertEquals((await call('PUT', '/api/sessions/s1/look', newLook)).status, 200)

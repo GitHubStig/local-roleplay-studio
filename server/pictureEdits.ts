@@ -118,7 +118,7 @@ export async function editFrame<S extends Session>(
       {
         model,
         ...(backend && { backend }),
-        image: from.image,
+        image: from.file,
         mask,
         instruction,
         seed,
@@ -132,7 +132,7 @@ export async function editFrame<S extends Session>(
     )
     signal.throwIfAborted()
     const edit: PictureEdit = {
-      image,
+      file: image,
       instructions: [instruction],
       editModel: model,
       ...(kind && { imageBackend: kind }),
@@ -142,13 +142,13 @@ export async function editFrame<S extends Session>(
     }
     let replaced: PictureEdit | undefined
     const updated = await save((latest) =>
-      changeRenderedPicture(latest, picture.image, (p) => {
-        if (editSource(p, model).image !== (redo ?? from).image) {
+      changeRenderedPicture(latest, picture.file, (p) => {
+        if (editSource(p, model).file !== (redo ?? from).file) {
           throw new PictureGoneError('That picture changed while it was being edited')
         }
         const now = p.edits ?? []
         // A retry takes its edit's place, so every other edit keeps its number.
-        const at = redo ? now.findIndex((e) => e.image === redo.image) : now.length
+        const at = redo ? now.findIndex((e) => e.file === redo.file) : now.length
         if (redo) replaced = now[at]
         const edits = now.toSpliced(at, redo ? 1 : 0, edit)
         return { ...p, edits, picked: at + 1 }
@@ -190,7 +190,7 @@ export function pickVersion(
     if (!Number.isInteger(picked) || picked < 0 || picked > count) {
       throw new VersionError(`${frameName(index)}'s picture has no version ${picked}`)
     }
-    return changeRenderedPicture(latest, picture.image, (p) => ({ ...p, picked }))
+    return changeRenderedPicture(latest, picture.file, (p) => ({ ...p, picked }))
   })
 }
 
@@ -216,7 +216,7 @@ export async function deleteNewestEdit(
     if (line.at(-1) !== gone) {
       throw new VersionError(`Only the newest edit by ${gone.editModel} can be deleted`)
     }
-    return changeRenderedPicture(latest, picture.image, (p) => {
+    return changeRenderedPicture(latest, picture.file, (p) => {
       const at = version - 1
       const edits = p.edits!.toSpliced(at, 1)
       const before = line.at(-2)
@@ -252,7 +252,7 @@ export async function deleteUpscale(
     const version = picture && pickedVersion(picture)
     if (!version?.upscaled) throw new VersionError(`${frameName(index)}'s picture isn't upscaled`)
     gone = version.upscaled
-    return changeFramePicture(latest, version.image, (v) => {
+    return changeFramePicture(latest, version.file, (v) => {
       const { upscaled: _, ...rest } = v
       return rest as typeof v
     })

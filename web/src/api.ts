@@ -62,15 +62,16 @@ import type {
 } from '../../shared/scenario.ts'
 export {
   type ChainFrame,
-  type FrameTimings,
   type Look,
   type Outcome,
   type SessionKind,
   type StoryboardFrame,
   type Subject,
+  type Written,
 } from '../../shared/session.ts'
 import type {
   ChainSession as StoredChainSession,
+  FrameImage,
   Look,
   Phase,
   SessionBase as StoredSessionBase,
@@ -295,15 +296,15 @@ export const pickedEdit = (picture: Picture): PictureEdit | undefined =>
 export function asPicked(picture: Picture): Picture {
   const edit = pickedEdit(picture)
   if (!edit) return picture
-  const { image, upscaled, scene, figure, lito, clips } = edit
-  return { ...picture, image, upscaled, scene, figure, lito, clips }
+  const { file, upscaled, scene, figure, lito, clips } = edit
+  return { ...picture, file, upscaled, scene, figure, lito, clips }
 }
 
 /** A Frame of any kind, as far as its pictures go. */
 export interface PicturedFrame {
   index: number
-  /** Its Image Prompt, once written. */
-  prompt?: ImagePrompt
+  /** Its Image Prompt, once written (a Chain Frame's always is). */
+  image?: { prompt: ImagePrompt }
   /** One per Image Model it was rendered with, oldest first; none until rendered. */
   pictures: Picture[]
 }
@@ -323,7 +324,7 @@ export function shownPicture(frame: PicturedFrame, model: string): Picture | und
 
 /** `image` is a version of this picture: its render, or one of its edits. */
 export const hasVersion = (picture: Picture, image: string): boolean =>
-  picture.image === image || !!picture.edits?.some((e) => e.image === image)
+  picture.file === image || !!picture.edits?.some((e) => e.file === image)
 
 /**
  * The image that shows a Session on Home: `thumbnail`, for as long as it exists, or else the
@@ -337,7 +338,7 @@ export function homeImage(
   if (thumbnail && frames.some((f) => f.pictures.some((p) => hasVersion(p, thumbnail)))) {
     return thumbnail
   }
-  return frames.map((f) => shownPicture(f, model)?.image).filter(Boolean).at(-1) ?? null
+  return frames.map((f) => shownPicture(f, model)?.file).filter(Boolean).at(-1) ?? null
 }
 
 /** A picture's edits by edit model `model`, oldest first: a line of its own from the Original. */
@@ -366,8 +367,10 @@ export type Activity = Phase
 /** What the screens say while a model downloads. */
 export const DOWNLOADING = 'Downloading the model (first use only)…'
 
-/** A Storyboard Frame's sentences are written: it has a prompt, and can be edited and rendered. */
-export const isWritten = (frame: StoryboardFrame) => frame.body !== ''
+/** A Storyboard Frame's sentences are written: it has an image, and can be edited and rendered. */
+export const isWritten = (
+  frame: StoryboardFrame,
+): frame is StoryboardFrame & { image: FrameImage } => frame.image !== undefined
 
 /** An upscale's stream: ends with the Session, the Frame now upscaled. */
 

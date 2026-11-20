@@ -231,7 +231,7 @@ const shownJob = computed(() =>
 const tiles = computed<StripTile[]>(() =>
   (session.value?.frames ?? []).map((f) => ({
     index: f.index,
-    thumb: pictureOf(f) ? imageUrl(props.id, pictureOf(f)!.image) : null,
+    thumb: pictureOf(f) ? imageUrl(props.id, pictureOf(f)!.file) : null,
     words: f.action ?? 'Opening',
     working: workOn(f.index),
     dimmed: !!pictureOf(f) && changedSinceRender(pictureOf(f)!, session.value!.settings.imageModel),
@@ -365,7 +365,7 @@ async function deleteFrame(frame: ChainFrame) {
  */
 function timingsLabel(frame: ChainFrame): string {
   const picture = pictureOf(frame)
-  return [writtenPart(frame), ...(picture ? renderedParts(picture) : [])]
+  return [writtenPart(frame.written), ...(picture ? renderedParts(picture) : [])]
     .join(' · ')
 }
 
@@ -446,10 +446,10 @@ async function savePrompt() {
 
 /** The shown Frame's Image Prompt, word-diffed against the Frame before it (none for the Opening). */
 const promptDiff = computed(() => {
-  const prompt = onPending.value ? undefined : shown.value?.prompt
+  const prompt = onPending.value ? undefined : shown.value?.image.prompt
   if (!prompt || promptIndex.value === undefined) return []
   const before = session.value?.frames[promptIndex.value - 1]
-  return before ? diffWords(before.prompt, prompt) : [{ kind: 'same' as const, text: prompt }]
+  return before ? diffWords(before.image.prompt, prompt) : [{ kind: 'same' as const, text: prompt }]
 })
 
 /** The All Frames view, over the screen; a Frame picked there is shown here. */
@@ -504,7 +504,7 @@ const pickFromAll = (index: number) => pick(index)
               :index="shown?.index"
               :name="shown ? frameName(shown.index) : frameName(pendingIndex)"
               :label="shown ? `${frameName(shown.index)} of ${(busy ? pendingIndex : latest!.index) + 1}${pictureChanged ? ` · changed since render ${byOf(picture!)}` : ''}` : undefined"
-              :src="picture ? imageUrl(session.id, picture.upscaled ?? picture.image) : null"
+              :src="picture ? imageUrl(session.id, picture.upscaled ?? picture.file) : null"
               :picture="picture"
               :dimmed="pictureChanged"
               :preview="forming"
@@ -720,7 +720,7 @@ const pickFromAll = (index: number) => pick(index)
                 class="shrink-0 rounded border border-line px-2 py-0.5 text-xs text-muted hover:text-fg"
                 title="Edit this Frame's Image Prompt by hand; its pictures are then out of date"
                 data-edit-prompt
-                @click="promptDraft = shown.prompt"
+                @click="promptDraft = shown.image.prompt"
               >
                 Edit
               </button>
@@ -744,7 +744,7 @@ const pickFromAll = (index: number) => pick(index)
                 <button
                   type="submit"
                   class="rounded border border-line px-3 py-1 text-xs disabled:opacity-50"
-                  :disabled="busy || savingPrompt || promptDraft.trim() === shown?.prompt"
+                  :disabled="busy || savingPrompt || promptDraft.trim() === shown?.image.prompt"
                   :title="busy ? 'Wait for the Frame in progress' : undefined"
                 >
                   Save
@@ -758,7 +758,7 @@ const pickFromAll = (index: number) => pick(index)
                 </button>
               </div>
             </form>
-            <FoldedPrompt v-else :preview="shown.prompt">
+            <FoldedPrompt v-else :preview="shown.image.prompt">
               <div
                 v-if="promptIndex! > 0"
                 class="flex flex-col gap-1 text-xs text-muted"
@@ -795,10 +795,10 @@ const pickFromAll = (index: number) => pick(index)
                 </template>
               </p>
             </FoldedPrompt>
-            <details v-if="shown?.thinking" :key="`thinking-${shown.index}`" class="mt-4 text-muted">
+            <details v-if="shown?.written.thinking" :key="`thinking-${shown.index}`" class="mt-4 text-muted">
               <summary class="cursor-pointer select-none">Thinking</summary>
               <p class="mt-1 whitespace-pre-line text-xs leading-relaxed" data-frame-thinking>
-                {{ shown.thinking }}
+                {{ shown.written.thinking }}
               </p>
             </details>
           </template>

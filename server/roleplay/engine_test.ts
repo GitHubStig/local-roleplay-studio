@@ -367,17 +367,20 @@ Deno.test('pictureFrame writes the Look once, then each Frame from the story up 
     const first = await pictureFrame(art, two, scenario, 1, (e) => events.push(e), signal())
     assertEquals(events.map((e) => e.type), ['phase', 'look', 'pictured'])
     assertEquals(first.look, look)
-    assertStringIncludes(first.frames[1].prompt!, 'Mira Vance, a tall woman of 34.')
+    assertStringIncludes(first.frames[1].image!.prompt, 'Mira Vance, a tall woman of 34.')
     assertStringIncludes(scripted.art[1][1].content, 'Picture Frame 2.')
     // Kept for debugging: how long each call took, and any reasoning.
-    assertEquals(typeof first.lookTimings?.text, 'number')
-    assertEquals(typeof first.frames[1].pictureTimings?.text, 'number')
-    assertEquals(first.frames[1].pictureThinking, 'Kael first, then the bar.')
+    assertEquals(typeof first.lookWritten?.seconds, 'number')
+    assertEquals(typeof first.frames[1].image?.written.seconds, 'number')
+    assertEquals(first.frames[1].image?.written.thinking, 'Kael first, then the bar.')
 
     const second = await pictureFrame(art, first, scenario, 0, () => {}, signal())
     assertEquals(scripted.art.length, 3) // the Look is written only once
-    assertStringIncludes(second.frames[0].prompt!, 'Mira points ahead.')
-    assertEquals(((await store.load('r1')) as RoleplaySession).frames[1].body, first.frames[1].body)
+    assertStringIncludes(second.frames[0].image!.prompt, 'Mira points ahead.')
+    assertEquals(
+      ((await store.load('r1')) as RoleplaySession).frames[1].image?.body,
+      first.frames[1].image?.body,
+    )
   }))
 
 Deno.test('setLook rewrites every pictured Frame, and refuses an incomplete Look', () =>
@@ -396,7 +399,7 @@ Deno.test('setLook rewrites every pictured Frame, and refuses an incomplete Look
       signal(),
     )
     const restyled = await setLook(store, pictured, testLook('Watercolour.', 'Mira.', 'Sam.'))
-    assertStringIncludes(restyled.frames[0].prompt!, 'Watercolour.')
+    assertStringIncludes(restyled.frames[0].image!.prompt, 'Watercolour.')
     await assertRejects(
       () => setLook(store, pictured, { subjects: [{ name: 'Mira', identity: '' }], style: 'Ink.' }),
       CastError,
@@ -406,7 +409,7 @@ Deno.test('setLook rewrites every pictured Frame, and refuses an incomplete Look
       subjects: [{ name: 'Mira V', identity: 'Mira.' }, { name: 'Sam Reyes', identity: 'Sam.' }],
       style: 'Watercolour.',
     })
-    assertEquals(renamed.frames[0].shown, ['Mira V', 'Sam Reyes'])
+    assertEquals(renamed.frames[0].image?.shown, ['Mira V', 'Sam Reyes'])
 
     // A Look from before it listed people is replaced by the next picture.
     const old = {
@@ -456,14 +459,14 @@ Deno.test('Someone the story brings into a picture joins the Look, and looks the
       'Sam Reyes',
       'the barkeep',
     ])
-    assertEquals(first.frames[0].shown, ['Mira Vance', 'the barkeep'])
-    assertStringIncludes(first.frames[0].prompt!, 'Mira. The barkeep, a stout man of 60.')
+    assertEquals(first.frames[0].image?.shown, ['Mira Vance', 'the barkeep'])
+    assertStringIncludes(first.frames[0].image!.prompt, 'Mira. The barkeep, a stout man of 60.')
 
     const again = await pictureFrame(art, first, scenario, 0, () => {}, signal())
     // The next picture reads him in the Look.
     assertStringIncludes(scripted.art[2][1].content, 'name: the barkeep')
     assertEquals(again.look!.subjects.length, 3)
-    assertStringIncludes(again.frames[0].prompt!, 'The barkeep, a stout man of 60.')
+    assertStringIncludes(again.frames[0].image!.prompt, 'The barkeep, a stout man of 60.')
   }))
 
 Deno.test('A picture that crosses a Limit is tried once more, told which', () =>
@@ -481,8 +484,8 @@ Deno.test('A picture that crosses a Limit is tried once more, told which', () =>
       () => {},
       signal(),
     )
-    assertEquals(done.frames[0].blocked, undefined)
-    assertStringIncludes(done.frames[0].body!, 'a robe')
+    assertEquals(done.frames[0].image?.blocked, undefined)
+    assertStringIncludes(done.frames[0].image!.body, 'a robe')
     assertStringIncludes(scripted.art[2][1].content, 'crossed a limit (no sexual or nude imagery)')
   }))
 
@@ -504,13 +507,13 @@ Deno.test('renderRoleplayFrame renders a pictured Frame, replacing any earlier i
     const events: RoleplayEvent[] = []
     const first = await renderRoleplayFrame(art, pictured, 0, (e) => events.push(e), signal())
     assertEquals(events.at(-1)!.type, 'rendered')
-    assertEquals(images.prompts, [pictured.frames[0].prompt])
-    const firstImage = first.frames[0].pictures[0].image
+    assertEquals(images.prompts, [pictured.frames[0].image?.prompt])
+    const firstImage = first.frames[0].pictures[0].file
     assertEquals(await Deno.stat(`${store.dir('r1')}/${firstImage}`).then(() => true), true)
 
     // Pictured again: the image is kept but stale, until rendered again.
     const repictured = await pictureFrame(art, first, scenario, 0, () => {}, signal())
-    assertEquals(repictured.frames[0].pictures.map((p) => [p.image, p.stale]), [[firstImage, true]])
+    assertEquals(repictured.frames[0].pictures.map((p) => [p.file, p.stale]), [[firstImage, true]])
     const second = await renderRoleplayFrame(art, repictured, 0, () => {}, signal())
     assertEquals(second.frames[0].pictures.map((p) => p.stale), [undefined])
     assertEquals(
@@ -535,7 +538,7 @@ Deno.test('Undoing an exchange deletes its picture', () =>
       () => {},
       signal(),
     )
-    const { image } = rendered.frames[1].pictures[0]
+    const { file: image } = rendered.frames[1].pictures[0]
     await undoExchanges(store, rendered, 1, 1)
     assertEquals(
       await Deno.stat(`${store.dir('r1')}/${image}`).then(() => true, () => false),
@@ -559,7 +562,7 @@ Deno.test('restartRoleplay deletes every exchange and its pictures, keeping the 
       () => {},
       signal(),
     )
-    const { image } = rendered.frames[1].pictures[0]
+    const { file: image } = rendered.frames[1].pictures[0]
     assertEquals(await Deno.stat(`${store.dir('r1')}/${image}`).then(() => true, () => false), true)
     const restarted = await restartRoleplay(store, rendered)
     assertEquals(restarted.frames, [])

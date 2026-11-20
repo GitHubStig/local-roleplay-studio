@@ -112,7 +112,7 @@ const jobModel = (job: Job) => job.edit?.model ?? settings.value?.editModel ?? '
  */
 function sourceOf(p: Picture, model: string, retry?: boolean): string {
   const line = editLine(p, model)
-  return ((retry ? line.at(-2) : line.at(-1)) ?? p).image
+  return ((retry ? line.at(-2) : line.at(-1)) ?? p).file
 }
 const fileUrl = (file: string) => imageUrl(props.sessionId, file)
 
@@ -249,7 +249,7 @@ const shown = computed(() => {
   const version = edit ?? p
   const plain = !!version.upscaled && seeingPlain.value
   return {
-    src: fileUrl(plain ? version.image : version.upscaled ?? version.image),
+    src: fileUrl(plain ? version.file : version.upscaled ?? version.file),
     alt: `Picture of ${name}`,
     label,
     caption: edit

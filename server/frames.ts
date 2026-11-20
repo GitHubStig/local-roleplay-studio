@@ -166,7 +166,7 @@ export async function renderImage(
       deps.previews && ((jpeg) => deps.previews!.set(session.id, jpeg)),
     )
     return {
-      image,
+      file: image,
       imageModel: settings.imageModel,
       ...(kind && { imageBackend: kind }),
       timings: { ...(queued !== undefined && { queued }), image: secondsSince(imageStart) },
@@ -204,7 +204,7 @@ export async function replacePicture<S extends Session>(
     const updated = await save((latest) => {
       const old = followFrame<S['frames'][number]>(latest.frames, index, createdAt)
       if (!old) throw new GoneError('That Frame no longer exists')
-      const picture = old.prompt === prompt ? rendered : { ...rendered, stale: true }
+      const picture = old.image?.prompt === prompt ? rendered : { ...rendered, stale: true }
       const next = withPicture(old.pictures, picture)
       replaced = next.replaced
       frame = { ...old, pictures: next.pictures }
@@ -245,7 +245,7 @@ export async function upscaleFrame(
   const picture = shownVersionOf(session, index)
   if (!picture) throw new UpscaleError(`${frameName(index)} has no image to upscale`)
   if (picture.upscaled) throw new UpscaleError(`${frameName(index)} is already upscaled`)
-  const { image } = picture
+  const image = picture.file
 
   const name = `${image.replace(/\.\w+$/, '')}-2048`
   const dir = deps.store.dir(session.id)

@@ -21,6 +21,7 @@ export {
   type Persona,
   type Reply,
   type RoleplayFrame,
+  type RoleplayImage,
   type RoleplayVoice,
   type Score,
   type Setting,

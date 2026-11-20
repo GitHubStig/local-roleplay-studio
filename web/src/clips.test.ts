@@ -34,7 +34,7 @@ describe('usePlayingClip', () => {
 
 describe('clipCount', () => {
   it("counts a picture's clips only when it's by the Session's Image Model", () => {
-    const picture = { image: 'a.png', imageModel: 'krea-2', clips: [{}, {}] } as Picture
+    const picture = { file: 'a.png', imageModel: 'krea-2', clips: [{}, {}] } as Picture
     expect(clipCount(picture, 'krea-2')).toBe(2)
     // Shown only until the Session's model renders the Frame: its clips aren't counted.
     expect(clipCount(picture, 'qwen-image-2.1-turbo')).toBe(0)
@@ -43,14 +43,14 @@ describe('clipCount', () => {
 
   it("counts the picked edit's clips, not the Original's", () => {
     const edit = {
-      image: 'e.png',
+      file: 'e.png',
       instructions: ['x'],
       editModel: 'q',
       seed: 1,
       clips: [{} as Clip],
     }
     const picture = {
-      image: 'a.png',
+      file: 'a.png',
       imageModel: 'moss-image',
       edits: [edit],
       picked: 1,

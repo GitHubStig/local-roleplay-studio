@@ -50,8 +50,7 @@ export async function liftFigure<S extends Session>(
   if (!maker) throw new FigureError(off)
   const picture = shownVersionOf(session, index)
   if (!picture) throw new FigureError(`${frameName(index)} has no picture yet`)
-  const { image } = picture
-  const from = picture.upscaled ?? image
+  const from = picture.upscaled ?? picture.file
   const dir = deps.store.dir(session.id)
   const file = `${prefix}-${index}-${crypto.randomUUID().slice(0, 8)}.ply`
   const start = performance.now()
@@ -79,7 +78,7 @@ export async function liftFigure<S extends Session>(
     let replaced: string | undefined
     // Onto the picture it was made from, if the Frame still has it.
     const updated = await save((latest) =>
-      changeFramePicture(latest, image, (p) => {
+      changeFramePicture(latest, picture.file, (p) => {
         replaced = p[key]?.file
         return { ...p, [key]: figure }
       })

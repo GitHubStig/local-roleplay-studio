@@ -42,14 +42,14 @@ Deno.test('A Chain Frame other than the Opening is deleted, and those after it n
     const after = (await deleted.json()).frames as JsonFrame[]
     assertEquals(after.map((f) => [f.index, f.action]), [[0, null], [1, 'Kneel']])
     // The Frame after it keeps its Image Prompt and pictures, as written from the deleted one's.
-    assertEquals(after[1].prompt, before[2].prompt)
-    assertEquals(shown(after[1]).image, shown(before[2]).image)
+    assertEquals(after[1].image.prompt, before[2].image.prompt)
+    assertEquals(shown(after[1]).file, shown(before[2]).file)
     assertEquals(
-      (await call('GET', `/api/sessions/s1/images/${shown(before[1]).image}`)).status,
+      (await call('GET', `/api/sessions/s1/images/${shown(before[1]).file}`)).status,
       404,
     )
     assertEquals(
-      (await call('GET', `/api/sessions/s1/images/${shown(after[1]).image}`)).status,
+      (await call('GET', `/api/sessions/s1/images/${shown(after[1]).file}`)).status,
       200,
     )
 
@@ -152,10 +152,10 @@ Deno.test('A render running on a later Chain Frame lands on it after an earlier 
     await settled(call)
 
     const after = await chainFrames(call)
-    assertEquals(after.map((f) => f.prompt), [0, 2, 3].map((i) => before[i].prompt))
+    assertEquals(after.map((f) => f.image.prompt), [0, 2, 3].map((i) => before[i].image.prompt))
     // The new picture is on the Frame it was rendered for, now Frame 2, and nowhere else.
     assertEquals(after[2].pictures.length, 1)
-    assertNotEquals(after[2].pictures[0].image, before[3].pictures[0].image)
+    assertNotEquals(after[2].pictures[0].file, before[3].pictures[0].file)
     assertEquals([after[0], after[1]].map((f) => f.pictures), [0, 2].map((i) => before[i].pictures))
   }))
 
@@ -171,10 +171,13 @@ Deno.test('A Chain Frame’s Image Prompt is edited by hand, its pictures out of
     })
     assertEquals(edited.status, 200)
     const frames = (await edited.json()).frames as JsonFrame[]
-    assertEquals(frames[0].prompt, 'A person, standing, in a garden.')
+    assertEquals(frames[0].image.prompt, 'A person, standing, in a garden.')
     assertEquals(shown(frames[0]).stale, true)
     // The Frames after it keep their own prompts and pictures.
-    assertEquals([frames[1].prompt, shown(frames[1]).stale], [promptWith('sitting'), undefined])
+    assertEquals([frames[1].image.prompt, shown(frames[1]).stale], [
+      promptWith('sitting'),
+      undefined,
+    ])
 
     // Rendered again from the new prompt, it's up to date.
     assertEquals((await render()).status, 201)
@@ -184,7 +187,7 @@ Deno.test('A Chain Frame’s Image Prompt is edited by hand, its pictures out of
       undefined,
       'A person, standing, in a garden.',
     ])
-    assertEquals(opening.image === before[0].image, false)
+    assertEquals(opening.file === before[0].file, false)
 
     const put = (index: number, body: unknown) =>
       call('PUT', `/api/sessions/s1/frames/${index}`, body)
@@ -206,9 +209,9 @@ Deno.test('A Chain Frame with an up-to-date picture renders again, replacing it'
     const [, after] = await chainFrames(call)
     // One picture by the Chain's Image Model, the new one; the old file is gone.
     assertEquals([images.prompts.length, after.pictures.length], [rendered + 1, 1])
-    assertEquals(after.image === before.image, false)
+    assertEquals(after.file === before.file, false)
     const image = (name: string) => call('GET', `/api/sessions/s1/images/${name}`)
-    assertEquals([(await image(before.image)).status, (await image(after.image)).status], [
+    assertEquals([(await image(before.file)).status, (await image(after.file)).status], [
       404,
       200,
     ])
@@ -261,17 +264,17 @@ Deno.test('A Chain with rendering off writes prompts, and renders a Frame when a
     await readEvents(
       await call('POST', '/api/sessions/s1/frames', { action: 'Sit', render: false }),
     )
-    assertEquals((await chainFrames(call)).map((f) => f.image), [null, null])
+    assertEquals((await chainFrames(call)).map((f) => f.file), [null, null])
     assertEquals(images.prompts.length, 0)
 
     await call('POST', '/api/sessions/s1/jobs', { kind: 'render', frameIndex: 1 })
     assertEquals(await settled(call), [])
     const [opening, second] = await chainFrames(call)
-    assertMatch(second.image!, /^frame-1-[0-9a-f]{8}\.png$/)
-    assertEquals(opening.image, null)
+    assertMatch(second.file!, /^frame-1-[0-9a-f]{8}\.png$/)
+    assertEquals(opening.file, null)
 
     // Switched back on (the default), the next Frame renders as it's made.
     await madeFrame(call, 'Kneel')
-    assertMatch((await chainFrames(call))[2].image!, /^frame-2-[0-9a-f]{8}\.png$/)
+    assertMatch((await chainFrames(call))[2].file!, /^frame-2-[0-9a-f]{8}\.png$/)
     assertEquals(images.prompts.length, 2)
   }))

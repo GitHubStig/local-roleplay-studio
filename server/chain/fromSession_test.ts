@@ -26,15 +26,30 @@ const look: Look = {
 }
 const body = 'They stand. They smile. Eye level. Coats. A dock. Dusk. Blues.'
 
-const frame = (index: number, shown: string[], extra: Partial<StoryboardFrame> = {}) => ({
+/** A written Storyboard Frame; `blocked` if it crosses a Limit, or not written with `written: false`. */
+const frame = (
+  index: number,
+  shown: string[],
+  { blocked, written = true, pictures }: {
+    blocked?: string
+    written?: boolean
+    pictures?: StoryboardFrame['pictures']
+  } = {},
+): StoryboardFrame => ({
   index,
   beat: `Beat ${index + 1}`,
-  body,
   shown,
-  prompt: composePrompt(look, body, shown),
-  pictures: [{ image: `frame-${index}-0000000${index}.png`, imageModel: 'qwen' }],
+  ...(written && {
+    image: {
+      body,
+      prompt: composePrompt(look, body, shown),
+      ...(blocked && { blocked }),
+      written: { model: 'fake', seconds: 2 },
+    },
+  }),
+  pictures: pictures ??
+    (written ? [{ file: `frame-${index}-0000000${index}.png`, imageModel: 'qwen' }] : []),
   createdAt: '2026-10-16T00:00:00.000Z',
-  ...extra,
 })
 
 const storyboard = (frames: StoryboardFrame[]): StoryboardSession => ({
@@ -85,17 +100,17 @@ Deno.test('chainFromStoryboard copies the Frames up to one, as nine-sentence pro
       [1, 'Beat 2', 'done'],
     ])
     // One person: the prompt is the Storyboard's as it was.
-    assertEquals(made.frames[0].prompt, board.frames[0].prompt)
+    assertEquals(made.frames[0].image.prompt, board.frames[0].image!.prompt)
     // Two: one subject sentence for both, then the seven, then the style.
-    const two = made.frames[1].prompt
+    const two = made.frames[1].image.prompt
     assertEquals(sentences(two).length, 9)
     assertEquals(subjectSentence(two), oneSubject(look.subjects.map((p) => p.identity)))
     // Only where sentences end changed, so the pictures still show the prompts.
     assertEquals(made.frames.flatMap((f) => f.pictures.map((p) => p.stale)), [undefined, undefined])
 
     // Each picture is a copy under a new name; the Storyboard's stay where they were.
-    const copied = made.frames[1].pictures[0].image
-    assertNotEquals(copied, board.frames[1].pictures[0].image)
+    const copied = made.frames[1].pictures[0].file
+    assertNotEquals(copied, board.frames[1].pictures[0].file)
     assertEquals(copied.startsWith('frame-1-'), true)
     assertEquals(await Deno.readTextFile(join(store.dir('chain'), copied)), 'frame-1-00000001.png')
     assertEquals((await store.load('board'))?.kind, 'storyboard')
@@ -105,14 +120,14 @@ Deno.test('chainFromStoryboard copies the Frames up to one, as nine-sentence pro
 Deno.test('chainFromStoryboard copies a picture with its picked edit, the rest left behind', () =>
   withTempDir(async (root) => {
     const edit = (n: number) => ({
-      image: `edit-0-0000000${n}.png`,
+      file: `edit-0-0000000${n}.png`,
       instructions: [`Paint ${n}`],
       editModel: 'qwen-image-2.1-edit',
       seed: 42,
       mask: `mask-0-0000000${n}.png`,
     })
     const pictures = [{
-      image: 'frame-0-00000000.png',
+      file: 'frame-0-00000000.png',
       imageModel: 'qwen',
       edits: [edit(1), { ...edit(2), upscaled: 'edit-0-00000002-2048.png' }, edit(3)],
       picked: 2,
@@ -129,8 +144,8 @@ Deno.test('chainFromStoryboard copies a picture with its picked edit, the rest l
       undefined,
     ])
     const read = (file: string) => Deno.readTextFile(join(store.dir('chain'), file))
-    assertEquals(await read(render.image), 'frame-0-00000000.png')
-    assertEquals(await read(picked.image), 'edit-0-00000002.png')
+    assertEquals(await read(render.file), 'frame-0-00000000.png')
+    assertEquals(await read(picked.file), 'edit-0-00000002.png')
     assertEquals(await read(picked.upscaled!), 'edit-0-00000002-2048.png')
     // The render picked: it alone is copied.
     const plain = storyboard([frame(0, ['Mara'], { pictures: [{ ...pictures[0], picked: 0 }] })])
@@ -145,8 +160,8 @@ Deno.test('chainFromStoryboard gives a Frame of no one a subject, its pictures o
   withTempDir(async (root) => {
     const board = storyboard([frame(0, [])])
     const made = await chainFromStoryboard(await saved(root, board), board, 0, chain)
-    assertEquals(subjectSentence(made.frames[0].prompt), NO_ONE)
-    assertEquals(sentences(made.frames[0].prompt).length, 9)
+    assertEquals(subjectSentence(made.frames[0].image.prompt), NO_ONE)
+    assertEquals(sentences(made.frames[0].image.prompt).length, 9)
     assertEquals(made.frames[0].pictures[0].stale, true)
   }))
 
@@ -173,7 +188,7 @@ Deno.test('chainFromStoryboard refuses Frames not written yet', () =>
   withTempDir(async (root) => {
     const board = storyboard([
       frame(0, ['Mara']),
-      frame(1, ['Mara'], { body: '', prompt: '', pictures: [] }),
+      frame(1, ['Mara'], { written: false }),
     ])
     const store = await saved(root, board)
     assertEquals((await chainFromStoryboard(store, board, 0, chain)).frames.length, 1)
@@ -211,22 +226,24 @@ const exchange = (index: number, extra: Partial<RoleplayFrame> = {}): RoleplayFr
   index,
   message: index ? `Message ${index}` : null,
   reply: replyOf(`Reply ${index}`),
-  timings: { text: 1 },
-  textModel: 'fake',
+  written: { model: 'fake', seconds: 1 },
   pictures: [],
   createdAt: '2026-11-11T00:00:00.000Z',
   ...extra,
 })
 
-const pictured = (index: number, shown: string[], extra: Partial<RoleplayFrame> = {}) =>
+const pictured = (index: number, shown: string[], blocked?: string) =>
   exchange(index, {
-    body,
-    shown,
-    prompt: composePrompt(look, body, shown),
-    pictureTimings: { text: 3.5 },
-    pictureModel: 'artist',
+    image: {
+      body,
+      shown,
+      clothing: '',
+      prompt: composePrompt(look, body, shown),
+      ...(blocked && { blocked }),
+      written: { model: 'artist', seconds: 3.5 },
+    },
     pictures: [{
-      image: `frame-${index}-0000000${index}.png`,
+      file: `frame-${index}-0000000${index}.png`,
       imageModel: 'qwen',
       clips: [{
         kind: 'idle-loop',
@@ -239,7 +256,6 @@ const pictured = (index: number, shown: string[], extra: Partial<RoleplayFrame> 
         timings: { clip: 30 },
       }],
     }],
-    ...extra,
   })
 
 /** Saves `talk` with a file for each of its pictures. */
@@ -265,15 +281,18 @@ Deno.test('chainFromRoleplay opens a Chain on one pictured Frame, its picture co
     const [opening] = made.frames
     assertEquals([opening.index, opening.action, opening.outcome], [0, null, 'done'])
     assertEquals(opening.narration, "From the Roleplay's Frame 3.")
-    assertEquals([opening.timings, opening.textModel], [{ text: 3.5 }, 'artist'])
+    assertEquals(opening.written, { model: 'artist', seconds: 3.5 })
     // Nine sentences, both people in one subject sentence, the picture still matching it.
-    assertEquals(sentences(opening.prompt).length, 9)
-    assertEquals(subjectSentence(opening.prompt), oneSubject(look.subjects.map((p) => p.identity)))
+    assertEquals(sentences(opening.image.prompt).length, 9)
+    assertEquals(
+      subjectSentence(opening.image.prompt),
+      oneSubject(look.subjects.map((p) => p.identity)),
+    )
     const [picture] = opening.pictures
     assertEquals([picture.stale, picture.clips], [undefined, undefined])
-    assertEquals(picture.image.startsWith('frame-0-'), true)
+    assertEquals(picture.file.startsWith('frame-0-'), true)
     assertEquals(
-      await Deno.readTextFile(join(store.dir('chain'), picture.image)),
+      await Deno.readTextFile(join(store.dir('chain'), picture.file)),
       'frame-2-00000002.png',
     )
     assertEquals((await store.load('talk'))?.frames.length, 3)
@@ -282,7 +301,7 @@ Deno.test('chainFromRoleplay opens a Chain on one pictured Frame, its picture co
 Deno.test('chainFromRoleplay refuses a Frame not pictured, or one crossing a limit', () =>
   withTempDir(async (root) => {
     const talk = roleplay([
-      pictured(0, ['Mara'], { blocked: 'no nudity' }),
+      pictured(0, ['Mara'], 'no nudity'),
       exchange(1),
     ])
     const store = await savedRoleplay(root, talk)

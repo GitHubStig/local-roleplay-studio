@@ -31,8 +31,8 @@ vi.mock('../api', async (importOriginal) => ({
 }))
 
 /** A picture by the Chain's Image Model. */
-const picture = (image: string, extra: Partial<api.Picture> = {}): api.Picture => ({
-  image,
+const picture = (file: string, extra: Partial<api.Picture> = {}): api.Picture => ({
+  file,
   imageModel: 'qwen-image-2.1',
   ...extra,
 })
@@ -44,11 +44,10 @@ const frame = (
 ): api.ChainFrame => ({
   index,
   action,
-  prompt: promptFor(index),
+  image: { prompt: promptFor(index) },
   narration: `Narration ${index}.`,
   outcome: 'done',
-  timings: { text: 1 },
-  textModel: 'x',
+  written: { model: 'x', seconds: 1 },
   pictures: [picture(`frame-${index}.png`)],
   createdAt: '2026-09-24T00:00:00.000Z',
   ...extra,
@@ -347,7 +346,7 @@ describe('ChainView', () => {
     vi.mocked(api.getSession).mockResolvedValue(
       session([
         frame(0, null),
-        frame(1, 'Sit', { prompt: promptFor(1).replace('calm', 'scared') }),
+        frame(1, 'Sit', { image: { prompt: promptFor(1).replace('calm', 'scared') } }),
       ]),
     )
     const { wrapper } = await mountIt()
@@ -364,7 +363,7 @@ describe('ChainView', () => {
     vi.mocked(api.getSession).mockResolvedValue(
       session([
         frame(0, null),
-        frame(1, 'Sit', { prompt: promptFor(1).replace('calm', 'scared') }),
+        frame(1, 'Sit', { image: { prompt: promptFor(1).replace('calm', 'scared') } }),
       ]),
     )
     const { wrapper } = await mountIt()
@@ -385,10 +384,10 @@ describe('ChainView', () => {
     vi.mocked(api.getSession).mockResolvedValue(
       session([
         frame(0, null, {
-          timings: { text: 9.8 },
+          written: { model: 'x', seconds: 9.8 },
           pictures: [picture('frame-0.png', { timings: { queued: 12.3, image: 5.1 } })],
         }),
-        frame(1, 'Stay', { pictures: [], timings: { text: 3 } }),
+        frame(1, 'Stay', { pictures: [], written: { model: 'x', seconds: 3 } }),
       ]),
     )
     const { wrapper } = await mountIt()
@@ -569,8 +568,8 @@ describe('ChainView', () => {
     const chain = session([
       frame(0, null),
       frame(1, 'Sit', {
-        timings: { text: 3 },
-        pictures: [{ image: 'frame-1.png', imageModel: 'qwen-image-2.1', imageBackend: 'mflux' }],
+        written: { model: 'x', seconds: 3 },
+        pictures: [{ file: 'frame-1.png', imageModel: 'qwen-image-2.1', imageBackend: 'mflux' }],
       }),
     ])
     vi.mocked(api.getSession).mockResolvedValue(chain)
@@ -746,7 +745,7 @@ describe('ChainView', () => {
       session([
         frame(0, null),
         frame(1, 'Sit', {
-          prompt: 'A garden at dawn.',
+          image: { prompt: 'A garden at dawn.' },
           pictures: [picture('frame-1.png', { stale: true })],
         }),
       ]),
@@ -884,7 +883,10 @@ describe('ChainView', () => {
 
   it("shows a Frame's saved thinking with its prompt", async () => {
     vi.mocked(api.getSession).mockResolvedValue(
-      session([frame(0, null), frame(1, 'Sit', { thinking: 'The stool is free.' })]),
+      session([
+        frame(0, null),
+        frame(1, 'Sit', { written: { model: 'x', seconds: 1, thinking: 'The stool is free.' } }),
+      ]),
     )
     const { wrapper } = await mountIt()
     expect(wrapper.find('[data-frame-thinking]').text()).toBe('The stool is free.')

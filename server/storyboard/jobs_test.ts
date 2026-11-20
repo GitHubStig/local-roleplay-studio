@@ -1,7 +1,7 @@
 import { assertEquals, assertMatch } from '@std/assert'
 import { fakeFigureMaker, fakeSceneMaker } from '../3d/testing.ts'
 import { fakeImageGenerator, planOf, scriptedTextModel, withTempDir } from '../testing.ts'
-import { readEvents, settled, setup, storyboardFrames } from '../appTesting.ts'
+import { type JsonFrame, readEvents, settled, setup, storyboardFrames } from '../appTesting.ts'
 
 Deno.test('A Storyboard Frame upscales once rendered; a re-render replaces the upscale', () =>
   withTempDir(async (root) => {
@@ -65,8 +65,11 @@ Deno.test('A Restart cancels the renders, waits for the one running, and clears 
     assertEquals((await restart).status, 200)
     assertEquals(await settled(call), [])
     assertEquals(prompts.length, 1)
-    const frames = await storyboardFrames(call)
-    assertEquals(frames.map((f) => [f.body, f.image]), [['', null], ['', null]])
+    const { frames } = await (await call('GET', '/api/sessions/s1')).json()
+    assertEquals(frames.map((f: JsonFrame) => [f.image, f.pictures]), [[undefined, []], [
+      undefined,
+      [],
+    ]])
   }))
 
 Deno.test('A Storyboard queues SHARP, TripoSplat and LiTo; a re-render drops them', () =>

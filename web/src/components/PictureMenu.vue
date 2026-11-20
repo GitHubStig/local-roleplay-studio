@@ -28,7 +28,7 @@ const picture = computed(() => {
 /** It's the picture the Frame shows, which its jobs and the viewer act on. */
 const shown = computed(() => {
   const s = frame.value && shownPicture(frame.value, session.value!.imageModel)
-  return s && s.image === picture.value?.image ? s : undefined
+  return s && s.file === picture.value?.file ? s : undefined
 })
 const star = computed(() => {
   const s = session.value
@@ -36,7 +36,7 @@ const star = computed(() => {
   return starOf(picture.value, homeImage(s.frames, s.imageModel, s.thumbnail), s.thumbnail)
 })
 const full = computed(() =>
-  session.value && picture.value && imageUrl(session.value.sessionId, picture.value.upscaled ?? picture.value.image)
+  session.value && picture.value && imageUrl(session.value.sessionId, picture.value.upscaled ?? picture.value.file)
 )
 
 const panel = useTemplateRef<HTMLElement>('panel')
@@ -72,14 +72,14 @@ watch(() => target.value?.at, async (at) => {
 const problem = ref('')
 const { copy } = useClipboard({ legacy: true })
 async function copyPrompt() {
-  await copy(frame.value?.prompt ?? '')
+  await copy(frame.value?.image?.prompt ?? '')
   close()
 }
 async function chooseThumbnail() {
   const s = session.value
   if (!s || !picture.value) return
   try {
-    await toggleThumbnail(s.sessionId, picture.value.image, star.value)
+    await toggleThumbnail(s.sessionId, picture.value.file, star.value)
     s.changed()
     close()
   } catch (err) {
@@ -124,7 +124,7 @@ function act(then: () => void) {
       <a :href="full!" target="_blank" rel="noopener" class="menu-row" data-menu-full-size @click="close">
         <Icon name="external" />Open full size in a new tab
       </a>
-      <button v-if="frame?.prompt" type="button" class="menu-row" data-menu-copy-prompt @click="copyPrompt">
+      <button v-if="frame?.image" type="button" class="menu-row" data-menu-copy-prompt @click="copyPrompt">
         <Icon name="prompt" />Copy the Image Prompt
       </button>
       <button

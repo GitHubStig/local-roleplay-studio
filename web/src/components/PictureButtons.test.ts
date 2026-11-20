@@ -11,7 +11,7 @@ vi.mock('../api', async (importOriginal) => ({
   getSettingsOptions: vi.fn(),
 }))
 
-const picture: api.Picture = { image: 'frame-0.png', imageModel: 'qwen-image-2.1' }
+const picture: api.Picture = { file: 'frame-0.png', imageModel: 'qwen-image-2.1' }
 
 /** The buttons, with these Features switched on in Settings and able to run here. */
 async function mountIt(

@@ -47,7 +47,7 @@ Deno.test("The Compare dialog's export is queued, and written to a folder per Se
     // What it wrote, saved as it was queued, is gone once it's done.
     assertEquals(await Deno.stat(join(root, 's1', 'export.json')).catch(() => null), null)
 
-    const picture = { name: 'Frame 0', pictures: [{ image: '../s2/frame-0.png' }] }
+    const picture = { name: 'Frame 0', pictures: [{ file: '../s2/frame-0.png' }] }
     const outside = await call('POST', '/api/sessions/s1/export', {
       ...comparison,
       models: [{ label: 'A' }],
@@ -113,9 +113,7 @@ Deno.test('Home shows the thumbnail chosen until its file goes, and else the new
     const card = async () => (await (await call('GET', '/api/sessions')).json())[0].thumbnail
     const choose = (image: unknown) => call('PUT', '/api/sessions/s1/thumbnail', { image })
     const frames = (await session()).frames
-    const [first, newest] = frames.map((f: { pictures: { image: string }[] }) =>
-      f.pictures[0].image
-    )
+    const [first, newest] = frames.map((f: { pictures: { file: string }[] }) => f.pictures[0].file)
     assertEquals(await card(), newest)
 
     assertEquals((await choose(42)).status, 400)
@@ -163,7 +161,7 @@ Deno.test('A Session switches Image Model, and a Chain Frame by the old one rend
     assertEquals((await render()).status, 201)
     assertEquals(await settled(call), [])
     const [, after] = await chainFrames(call)
-    assertEquals(after.pictures.map((p: Picture) => p.image), [before.image, after.image])
+    assertEquals(after.pictures.map((p: Picture) => p.file), [before.file, after.file])
     assertEquals(images.prompts.length, 3)
   }))
 
@@ -251,7 +249,7 @@ Deno.test("Every picture by one Image Model is deleted, with its files, but not 
         f.pictures.map((p: Picture) => p.imageModel)
       )
     assertEquals(await frames(), [['qwen-image-2.1'], ['qwen-image-2.1', 'flux2-klein-4b']])
-    const old = (await (await call('GET', '/api/sessions/s1')).json()).frames[0].pictures[0].image
+    const old = (await (await call('GET', '/api/sessions/s1')).json()).frames[0].pictures[0].file
     const file = join(root, 's1', old)
     assertEquals((await Deno.stat(file)).isFile, true)
 

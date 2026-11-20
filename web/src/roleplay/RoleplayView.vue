@@ -136,7 +136,7 @@ const pictureMenu = providePictureMenu(() =>
     hasJob,
     canRender: (index) => {
       const frame = session.value!.frames.find((f) => f.index === index)
-      return !!frame?.prompt && !frame.blocked
+      return !!frame?.image && !frame.image.blocked
     },
     queue: queueSaved,
     edit: startEdit,
@@ -171,7 +171,7 @@ const { byOf, labelOf, renderedParts } = useImageModels()
  */
 const toRender = computed(() =>
   (session.value?.frames ?? []).filter((f) =>
-    !f.blocked && (!pictureOf(f) || changed(f)) && !hasJob(f.index, 'render')
+    !f.image?.blocked && (!pictureOf(f) || changed(f)) && !hasJob(f.index, 'render')
   )
 )
 /**
@@ -184,7 +184,7 @@ async function renderAll() {
   const frames = toRender.value.slice()
   await queueAll(
     'picture',
-    frames.filter((f) => !f.prompt && !hasJob(f.index, 'picture')).map((f) => f.index),
+    frames.filter((f) => !f.image && !hasJob(f.index, 'picture')).map((f) => f.index),
   )
   await queueAll('render', frames.map((f) => f.index))
 }
@@ -192,7 +192,7 @@ const shownPreview = useShownPreview(
   () => forming.value,
   () => {
     const frame = session.value?.frames.find((f) => f.index === formingIndex.value)
-    return frame && pictureOf(frame)?.image
+    return frame && pictureOf(frame)?.file
   },
 )
 const previewOn = (index: number) => shownPreview.value && formingIndex.value === index
@@ -754,7 +754,7 @@ const workingOn = (index: number) => workOn(index, frameJobs(index))
 const tiles = computed<StripTile[]>(() =>
   shownFrames.value.map((f) => ({
     index: f.index,
-    thumb: pictureOf(f) ? imageUrl(props.id, pictureOf(f)!.image) : null,
+    thumb: pictureOf(f) ? imageUrl(props.id, pictureOf(f)!.file) : null,
     words: f.message ?? 'Opening',
     working: workingOn(f.index),
     dimmed: changed(f),
@@ -775,7 +775,7 @@ const clipsMenu = computed(() =>
 )
 /** The picked Frame can be pictured now: Picture it writes its Image Prompt if need be, then renders. */
 const canPicture = computed(() =>
-  !!selectedFrame.value && !selectedFrame.value.blocked && featureOn.value('images') &&
+  !!selectedFrame.value && !selectedFrame.value.image?.blocked && featureOn.value('images') &&
   !hasJob(selectedFrame.value.index, 'picture') && !hasJob(selectedFrame.value.index, 'render')
 )
 /** The picture's side shows once the scene has begun, where there are pictures, or work on one. */
@@ -788,7 +788,7 @@ async function pictureIt(index: number) {
   if (!(await flushEdits('pictured'))) return
   const frame = session.value?.frames[index]
   if (!frame) return
-  if (!frame.prompt) await queueAll('picture', [index])
+  if (!frame.image) await queueAll('picture', [index])
   await queueAll('render', [index])
 }
 
@@ -895,7 +895,7 @@ const pickFromAll = (index: number) => pickFromStrip(index)
                 :index="selectedFrame.index"
                 :name="frameName(selectedFrame.index)"
                 :label="selectedPicture ? `${frameName(selectedFrame.index)} of ${shownFrames.length}${changed(selectedFrame) ? ` · changed since render ${byOf(selectedPicture)}` : ''}` : undefined"
-                :src="selectedPicture ? imageUrl(session.id, selectedPicture.image) : null"
+                :src="selectedPicture ? imageUrl(session.id, selectedPicture.file) : null"
                 :picture="selectedPicture"
                 :dimmed="changed(selectedFrame)"
                 :preview="previewOn(selectedFrame.index) ? shownPreview : null"
@@ -904,7 +904,7 @@ const pickFromAll = (index: number) => pickFromStrip(index)
                 :describe="describeJob"
                 :has-job="(kind) => hasJob(selectedFrame!.index, kind)"
                 :working="workOf(selectedFrame.index)"
-                :can-render="!!selectedFrame.prompt && !selectedFrame.blocked"
+                :can-render="!!selectedFrame.image?.prompt && !selectedFrame.image?.blocked"
                 :clips="clipsMenu"
                 :clips-open="drawer === 'clip'"
                 :playing="playingClip && playingClip.index === selectedFrame.index ? { src: imageUrl(session.id, playingClip.clip.file), clip: playingClip.clip } : null"
@@ -922,14 +922,14 @@ const pickFromAll = (index: number) => pickFromStrip(index)
                 <template #empty>
                   <span class="text-muted">
                     <template v-if="workingOn(selectedFrame.index)">{{ frameName(selectedFrame.index) }} is being pictured</template>
-                    <template v-else-if="selectedFrame.blocked">{{ frameName(selectedFrame.index) }}'s Image Prompt crosses a limit ({{ selectedFrame.blocked }})</template>
+                    <template v-else-if="selectedFrame.image?.blocked">{{ frameName(selectedFrame.index) }}'s Image Prompt crosses a limit ({{ selectedFrame.image?.blocked }})</template>
                     <template v-else>{{ frameName(selectedFrame.index) }} isn't pictured</template>
                   </span>
                   <button
                     v-if="canPicture"
                     type="button"
                     class="rounded-lg bg-fg px-3 py-1.5 text-sm font-medium text-canvas"
-                    :title="selectedFrame.prompt ? 'Render its Image Prompt' : 'The Art Agent writes its Image Prompt, then it\'s rendered'"
+                    :title="selectedFrame.image?.prompt ? 'Render its Image Prompt' : 'The Art Agent writes its Image Prompt, then it\'s rendered'"
                     data-picture-it
                     @click="pictureIt(selectedFrame.index)"
                   >
@@ -1202,10 +1202,10 @@ const pickFromAll = (index: number) => pickFromStrip(index)
                       v-if="selectedFrame"
                       type="button"
                       class="menu-row"
-                      :disabled="!selectedFrame.prompt || !!selectedFrame.blocked || copying"
-                      :title="!selectedFrame.prompt
+                      :disabled="!selectedFrame.image?.prompt || !!selectedFrame.image?.blocked || copying"
+                      :title="!selectedFrame.image?.prompt
                       ? `Picture ${frameName(selectedFrame.index)} first: a Chain starts from its Image Prompt`
-                      : selectedFrame.blocked
+                      : selectedFrame.image?.blocked
                       ? `Picture ${frameName(selectedFrame.index)} again first: it crosses a limit`
                       : `A new Chain opening on ${frameName(selectedFrame.index)}'s Image Prompt and picture, to carry on from it by Actions. This Roleplay stays as it is.`"
                       data-continue-chain
@@ -1227,24 +1227,22 @@ const pickFromAll = (index: number) => pickFromStrip(index)
                 <h3 class="text-base font-semibold">{{ frameName(selectedFrame.index) }}</h3>
                 <!-- Under the heading, as on a Chain's and a Storyboard's, whether the prompt is folded. -->
                 <p class="text-xs text-muted" data-reply-timings>
-                  Replied in {{ selectedFrame.timings.text.toFixed(1) }} s by {{ selectedFrame.textModel }}
+                  Replied in {{ selectedFrame.written.seconds.toFixed(1) }} s by {{ selectedFrame.written.model }}
                 </p>
-                <p v-if="selectedFrame.prompt && selectedFrame.pictureTimings" class="text-xs text-muted" data-picture-timings>
-                  Pictured in {{ selectedFrame.pictureTimings.text.toFixed(1) }} s<template
-                    v-if="selectedFrame.pictureModel"
-                  > by {{ selectedFrame.pictureModel }}</template>
+                <p v-if="selectedFrame.image" class="text-xs text-muted" data-picture-timings>
+                  Pictured in {{ selectedFrame.image.written.seconds.toFixed(1) }} s by {{ selectedFrame.image.written.model }}
                 </p>
                 <p v-if="pictureOf(selectedFrame)" class="text-xs text-muted" data-render-timings>
                   Rendered: {{ renderedParts(pictureOf(selectedFrame)!).join(' · ') }}
                 </p>
                 <ShownPills
-                  v-if="selectedFrame.prompt"
-                  :names="selectedFrame.shown ?? []"
-                  :shown="selectedFrame.shown ?? []"
+                  v-if="selectedFrame.image"
+                  :names="selectedFrame.image.shown"
+                  :shown="selectedFrame.image.shown"
                 />
-                <FoldedPrompt :preview="selectedFrame.prompt">
-                  <template v-if="selectedFrame.blocked" #note>
-                    <span class="shrink-0 text-warn">· crosses a limit ({{ selectedFrame.blocked }})</span>
+                <FoldedPrompt :preview="selectedFrame.image?.prompt">
+                  <template v-if="selectedFrame.image?.blocked" #note>
+                    <span class="shrink-0 text-warn">· crosses a limit ({{ selectedFrame.image?.blocked }})</span>
                   </template>
                   <template #actions>
                       <button
@@ -1254,14 +1252,14 @@ const pickFromAll = (index: number) => pickFromStrip(index)
                         data-picture-button
                         @click="queueSaved('picture', selectedFrame.index)"
                       >
-                        {{ selectedFrame.prompt ? 'Write again' : 'Write prompt' }}
+                        {{ selectedFrame.image?.prompt ? 'Write again' : 'Write prompt' }}
                       </button>
                   </template>
-                  <template v-if="selectedFrame.prompt">
-                    <p class="leading-relaxed">{{ selectedFrame.prompt }}</p>
-                    <details v-if="selectedFrame.pictureThinking" class="text-xs text-muted">
+                  <template v-if="selectedFrame.image?.prompt">
+                    <p class="leading-relaxed">{{ selectedFrame.image?.prompt }}</p>
+                    <details v-if="selectedFrame.image?.written.thinking" class="text-xs text-muted">
                       <summary class="cursor-pointer select-none">Reasoning</summary>
-                      <p class="mt-1 whitespace-pre-wrap leading-relaxed">{{ selectedFrame.pictureThinking }}</p>
+                      <p class="mt-1 whitespace-pre-wrap leading-relaxed">{{ selectedFrame.image.written.thinking }}</p>
                     </details>
                   </template>
                   <p v-else class="text-xs text-muted">

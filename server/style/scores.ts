@@ -84,7 +84,7 @@ export function picturesOf(session: Session) {
       frame: f.index,
       model,
       // The version it shows (ADR 0021): an edit is scored as the picture it now is.
-      image: pickedVersion(f.pictures.find((p) => p.imageModel === model)!).image,
+      image: pickedVersion(f.pictures.find((p) => p.imageModel === model)!).file,
     }))
   )
 }

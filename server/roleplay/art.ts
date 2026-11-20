@@ -15,7 +15,7 @@ import { personId } from '../scenario.ts'
 import type { Scenario } from '../../shared/scenario.ts'
 import { frameSchema, lookForModel, lookSchema, parseLook } from '../frameBody.ts'
 import type { Look, Subject } from '../../shared/session.ts'
-import type { RoleplayFrame, RoleplaySession } from '../../shared/roleplay.ts'
+import type { RoleplayFrame, RoleplayImage, RoleplaySession } from '../../shared/roleplay.ts'
 import { allStale } from '../pictures.ts'
 
 /**
@@ -160,8 +160,8 @@ export function exchangeText(session: RoleplaySession, index: number): string {
 export function lastWorn(session: RoleplaySession, index: number): string {
   const lastFrame = new Map<string, RoleplayFrame>()
   for (const f of session.frames.slice(0, index)) {
-    if (!f.clothing) continue
-    for (const name of f.shown ?? []) lastFrame.set(name, f)
+    if (!f.image?.clothing) continue
+    for (const name of f.image.shown) lastFrame.set(name, f)
   }
   const byFrame = new Map<RoleplayFrame, string[]>()
   for (const [name, f] of lastFrame) byFrame.set(f, [...(byFrame.get(f) ?? []), name])
@@ -172,7 +172,7 @@ export function lastWorn(session: RoleplaySession, index: number): string {
   return [
     ...atStart,
     ...[...byFrame].sort(([a], [b]) => a.index - b.index)
-      .map(([f, names]) => `- ${frameName(f.index)}, ${names.join(' and ')}: ${f.clothing}`),
+      .map(([f, names]) => `- ${frameName(f.index)}, ${names.join(' and ')}: ${f.image?.clothing}`),
   ].join('\n')
 }
 
@@ -241,11 +241,8 @@ export async function artFrameMessages(
  * counts as named by any word of their name ("the barkeep" by "barkeep"), or its plural, as
  * people dressed together are ("the first man" by "the two men wear…").
  */
-export function undressed(
-  people: Subject[],
-  clothing: string | undefined,
-): string | undefined {
-  if (!limitsEnabled() || people.length < 2 || clothing === undefined) return undefined
+export function undressed(people: Subject[], clothing: string): string | undefined {
+  if (!limitsEnabled() || people.length < 2) return undefined
   const text = clothing.toLowerCase()
   const plural = (w: string) => w.endsWith('man') ? `${w.slice(0, -3)}men` : `${w}s`
   const named = (name: string) =>
@@ -255,29 +252,39 @@ export function undressed(
   return missing ? "everyone shown must be dressed (name each person's clothes)" : undefined
 }
 
-/**
- * A Frame with its picture's sentences, its Image Prompt, and whether it crosses a Limit. A
- * Frame's pictures, by every Image Model, are marked stale when its Image Prompt changes, until
- * rendered again.
- */
-export function pictured(
-  frame: RoleplayFrame,
-  look: Look,
-  body: string,
-  shown: string[] = frame.shown ?? [],
-  clothing = frame.clothing,
-): RoleplayFrame {
-  const { blocked: _, ...rest } = frame
-  shown = matchShown(look.subjects, shown)
-  const prompt = composePrompt(look, body, shown)
-  const blocked = crossedLimit(prompt)?.message ?? undressed(shownSubjects(look, shown), clothing)
+/** What the Art Agent writes of a picture: its sentences, who it shows and what they wear. */
+export type Drawn = Pick<RoleplayImage, 'body' | 'shown' | 'clothing'>
+
+/** A picture's image without who wrote it: its Image Prompt, and whether it crosses a Limit. */
+export function imageOf(look: Look, drawn: Drawn): Omit<RoleplayImage, 'written'> {
+  const shown = matchShown(look.subjects, drawn.shown)
+  const prompt = composePrompt(look, drawn.body, shown)
+  const blocked = crossedLimit(prompt)?.message ??
+    undressed(shownSubjects(look, shown), drawn.clothing)
   return {
-    ...rest,
-    pictures: prompt === frame.prompt ? frame.pictures : allStale(frame.pictures),
-    body,
-    shown,
-    ...(clothing !== undefined ? { clothing } : {}),
+    body: drawn.body,
     prompt,
+    shown,
+    clothing: drawn.clothing,
     ...(blocked ? { blocked } : {}),
   }
+}
+
+/**
+ * A Frame with its image. A Frame's pictures, by every Image Model, are marked stale when its
+ * Image Prompt changes, until rendered again.
+ */
+export function pictured(frame: RoleplayFrame, image: RoleplayImage): RoleplayFrame {
+  const same = image.prompt === frame.image?.prompt
+  return { ...frame, image, pictures: same ? frame.pictures : allStale(frame.pictures) }
+}
+
+/**
+ * A pictured Frame's image made again with a new Look, its sentences and who wrote them kept, and
+ * who it shows (`shown`, when people were renamed); a Frame not pictured stays as it is.
+ */
+export function repictured(frame: RoleplayFrame, look: Look, shown?: string[]): RoleplayFrame {
+  if (!frame.image) return frame
+  const drawn = { ...frame.image, shown: shown ?? frame.image.shown }
+  return pictured(frame, { ...imageOf(look, drawn), written: frame.image.written })
 }

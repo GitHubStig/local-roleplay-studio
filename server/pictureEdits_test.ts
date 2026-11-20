@@ -24,7 +24,7 @@ Deno.test('An edit repaints a picture as a new version, made from its model’s 
     assertEquals(await settled(call), [])
     const [, first] = await chainFrames(call)
     const [one] = first.edits
-    assertMatch(one.image, /^edit-1-[0-9a-f]{8}\.png$/)
+    assertMatch(one.file, /^edit-1-[0-9a-f]{8}\.png$/)
     assertEquals(one.mask, mask)
     // Made here, on mflux: Qwen-Image 2.1 Edit runs on both, and Settings send edits here.
     assertEquals([one.instructions, one.editModel, one.imageBackend, first.picked], [
@@ -40,7 +40,7 @@ Deno.test('An edit repaints a picture as a new version, made from its model’s 
     // Quantized as Settings say: 8-bit by default.
     assertEquals(
       [images.edits[0].image, images.edits[0].mask, images.edits[0].quantize],
-      [first.image, one.mask, 8],
+      [first.file, one.mask, 8],
     )
 
     // A second, of the whole picture, uses the model selected in the Edit dialog: a line of its
@@ -51,7 +51,7 @@ Deno.test('An edit repaints a picture as a new version, made from its model’s 
     )
     assertEquals(await settled(call), [])
     const [, second] = await chainFrames(call)
-    assertEquals([images.edits[1].image, images.edits[1].mask], [first.image, undefined])
+    assertEquals([images.edits[1].image, images.edits[1].mask], [first.file, undefined])
     assertEquals([images.edits[1].model, second.edits[1].editModel, second.edits[1].imageBackend], [
       'flux3-klein-edit',
       'flux3-klein-edit',
@@ -61,20 +61,20 @@ Deno.test('An edit repaints a picture as a new version, made from its model’s 
     // Qwen's next carries on from Qwen's newest.
     await edit({ instruction: 'A ring on it', model: 'qwen-image-2.1-edit' })
     assertEquals(await settled(call), [])
-    assertEquals(images.edits[2].image, one.image)
+    assertEquals(images.edits[2].image, one.file)
 
     // What's made from the picture is made from the picked version.
     await call('POST', '/api/sessions/s1/jobs', { kind: 'upscale', frameIndex: 1 })
     assertEquals(await settled(call), [])
     const [, third] = await chainFrames(call)
     assertEquals(third.picked, 3)
-    assertEquals(images.upscaled, [third.edits[2].image])
+    assertEquals(images.upscaled, [third.edits[2].file])
     const [, upscaled] = await chainFrames(call)
     assertMatch(upscaled.edits[2].upscaled, /-2048\.png$/)
     assertEquals(upscaled.upscaled, undefined)
     // Edits and their upscales are served, as the render is.
     const served = (name: string) => call('GET', `/api/sessions/s1/images/${name}`)
-    for (const name of [one.image, one.mask, upscaled.edits[2].image, upscaled.edits[2].upscaled]) {
+    for (const name of [one.file, one.mask, upscaled.edits[2].file, upscaled.edits[2].upscaled]) {
       assertEquals((await served(name)).status, 200)
     }
   }))
@@ -125,18 +125,18 @@ Deno.test('An edit can be made again in its place, as told now, picked, and the 
     const [, again] = await chainFrames(call)
     // In its place, from the render, with the next seed, as told now.
     assertEquals(again.edits.length, 1)
-    assertNotEquals(again.edits[0].image, made.edits[0].image)
+    assertNotEquals(again.edits[0].file, made.edits[0].file)
     assertEquals([again.edits[0].seed, again.edits[0].instructions], [
       made.edits[0].seed + 1,
       ['An open hand'],
     ])
-    assertEquals([images.edits[1].image, images.edits[1].instruction], [made.image, 'An open hand'])
+    assertEquals([images.edits[1].image, images.edits[1].instruction], [made.file, 'An open hand'])
     const file = (name: string) => call('GET', `/api/sessions/s1/images/${name}`)
     // The edit it replaced goes, its painted area too.
-    for (const name of [made.edits[0].image, made.edits[0].mask]) {
+    for (const name of [made.edits[0].file, made.edits[0].mask]) {
       assertEquals((await file(name)).status, 404)
     }
-    assertEquals((await file(again.edits[0].image)).status, 200)
+    assertEquals((await file(again.edits[0].file)).status, 200)
 
     // The render picked again, then the edit deleted: its files go, the render stays picked.
     const pick = (picked: unknown) => call('PUT', '/api/sessions/s1/pictures/1/picked', { picked })
@@ -148,8 +148,8 @@ Deno.test('An edit can be made again in its place, as told now, picked, and the 
     assertEquals(deleted.status, 200)
     const [, after] = await chainFrames(call)
     assertEquals([after.edits, after.picked], [undefined, undefined])
-    assertEquals((await file(again.edits[0].image)).status, 404)
-    assertEquals((await file(again.image)).status, 200)
+    assertEquals((await file(again.edits[0].file)).status, 404)
+    assertEquals((await file(again.file)).status, 200)
     assertEquals(
       (await call('DELETE', '/api/sessions/s1/pictures/1/edits/1')).status,
       409,
@@ -179,7 +179,7 @@ Deno.test('Each edit model’s line is retried and deleted on its own, the other
       'F1 again',
       'Q2',
     ])
-    assertEquals([retried.picked, images.edits[3].image], [2, made.image])
+    assertEquals([retried.picked, images.edits[3].image], [2, made.file])
     const remove = (version: number) =>
       call('DELETE', `/api/sessions/s1/pictures/1/edits/${version}`)
     // Only a line's newest goes.

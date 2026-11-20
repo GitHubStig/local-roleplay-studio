@@ -148,16 +148,15 @@ export async function writeScore(
   signal.throwIfAborted()
   const limit = crossedLimit(scoreText(score))
   if (limit) throw new Error(`The Score crossed a limit: ${limit.message}`)
-  const updated = await updateSession(deps.store, session.id, (latest) => {
-    const { scoreThinking: _, ...rest } = latest
-    return {
-      ...rest,
-      score,
-      scoreTimings: { text: secondsSince(start) },
-      scoreModel: deps.model.name,
-      ...(thinking ? { scoreThinking: thinking } : {}),
-    }
-  })
+  const updated = await updateSession(deps.store, session.id, (latest) => ({
+    ...latest,
+    score,
+    scoreWritten: {
+      model: deps.model.name,
+      seconds: secondsSince(start),
+      ...(thinking ? { thinking } : {}),
+    },
+  }))
   emit({ type: 'score', score, session: updated })
   return updated
 }

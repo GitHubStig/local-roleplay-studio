@@ -391,8 +391,7 @@ export async function directFrame(
     cue: cue?.id ?? playing!.id,
     ...direction,
     line: decision === 'continue' ? '' : direction.line,
-    model: deps.model.name,
-    timings: { text: secondsSince(start) },
+    written: { model: deps.model.name, seconds: secondsSince(start) },
   }
   let frame!: RoleplayFrame
   const updated = await updateSession(deps.store, session.id, (latest) => {

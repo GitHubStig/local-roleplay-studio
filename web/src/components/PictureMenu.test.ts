@@ -24,13 +24,13 @@ enableAutoUnmount(afterEach)
 const frames: api.PicturedFrame[] = [
   {
     index: 0,
-    prompt: 'A letter on the bar',
-    pictures: [{ image: 'f0-a.png', imageModel: 'a' }, { image: 'f0-b.png', imageModel: 'b' }],
+    image: { prompt: 'A letter on the bar' },
+    pictures: [{ file: 'f0-a.png', imageModel: 'a' }, { file: 'f0-b.png', imageModel: 'b' }],
   },
   {
     index: 1,
-    prompt: 'The storm',
-    pictures: [{ image: 'f1-a.png', imageModel: 'a', upscaled: 'f1-a-up.png' }],
+    image: { prompt: 'The storm' },
+    pictures: [{ file: 'f1-a.png', imageModel: 'a', upscaled: 'f1-a-up.png' }],
   },
 ]
 
@@ -56,7 +56,7 @@ function mountIt(session: Partial<PictureMenuSession> = {}) {
     }))
     return () => [
       h(FrameStrip, {
-        tiles: frames.map((f) => ({ index: f.index, thumb: `/p/${f.pictures[0].image}` })),
+        tiles: frames.map((f) => ({ index: f.index, thumb: `/p/${f.pictures[0].file}` })),
         picked: 0,
         onPick: calls.pick,
       }),

@@ -16,11 +16,17 @@ import type { SessionSettings } from './settings.ts'
 export type Outcome = 'done' | 'declined' | 'unclear'
 
 /**
- * How long writing a Frame took, in seconds (one decimal place): the new Image Prompt, including
- * the Limits check. Each picture keeps its own render's timings.
+ * Who wrote something with the Text Model, how long it took and its reasoning: a Frame's text, a
+ * picture's sentences, a Look, a Score, the music's direction. Shown for debugging and comparing
+ * models.
  */
-export interface FrameTimings {
-  text: number
+export interface Written {
+  /** The Text Model, as a Session can switch Text Model (ADR 0037). */
+  model: string
+  /** Seconds it took, to one decimal place, including the Limits check. */
+  seconds: number
+  /** The Text Model's reasoning, when thinking was on. */
+  thinking?: string
 }
 
 /**
@@ -55,27 +61,50 @@ export type SessionKind = 'chain' | 'storyboard' | 'roleplay'
 
 export type Phase = 'text' | 'queued' | 'image' | 'audio' | 'download'
 
-/** What every Frame has, in a Chain or a Storyboard. */
+/** What every Frame has, of every kind. */
 export interface FrameBase {
   index: number
-  /** One paragraph describing the image: exactly what the Image Model renders. */
-  prompt: ImagePrompt
   /** One per Image Model it was rendered with (`pictures.ts`); none until rendered. */
   pictures: Picture[]
   createdAt: string
 }
 
+/** A Chain Frame's image: its Image Prompt, written with the Frame. */
+export interface ChainImage {
+  /** One paragraph describing the image: exactly what the Image Model renders. */
+  prompt: ImagePrompt
+}
+
+/**
+ * A Storyboard Frame's image, once its sentences are written; a Roleplay Frame's adds who it shows
+ * and what they wear (`RoleplayImage`).
+ */
+export interface FrameImage {
+  /**
+   * The seven sentences only this Frame has (pose, expression, camera, clothing, environment,
+   * lighting, color).
+   */
+  body: string
+  /**
+   * Exactly what the Image Model renders: the identities of the Subjects shown, the body, then the
+   * Look's style sentence.
+   */
+  prompt: ImagePrompt
+  /** Why it can't be rendered: it crossed a Limit and must be edited first. */
+  blocked?: string
+  /** Its sentences, the last time they were written; editing them by hand keeps it. */
+  written: Written
+}
+
 /** A committed Chain Frame. The Opening Frame has index 0 and no Action. */
 export interface ChainFrame extends FrameBase {
-  timings: FrameTimings
-  /** The Text Model that wrote it, as a Session can switch Text Model (ADR 0037). */
-  textModel: string
+  image: ChainImage
+  /** Its new Image Prompt, narration and outcome, written together. */
+  written: Written
   action: string | null
   /** A terse list of what changed, for the player; never fed back to the Text Model. */
   narration: string
   outcome: Outcome
-  /** The Text Model's reasoning for this Frame, when thinking was on. */
-  thinking?: string
 }
 
 /**
@@ -83,25 +112,15 @@ export interface ChainFrame extends FrameBase {
  * and edited and rendered on its own.
  */
 export interface StoryboardFrame extends FrameBase {
-  /** How long its sentences took to write, and the Text Model that wrote them (ADR 0037), last
-   * time they were written; none until written. */
-  timings?: FrameTimings
-  textModel?: string
   /** What happens in this Frame, from the Storyboard's plan. */
   beat: string
   /**
-   * The seven sentences only this Frame has (pose, expression, camera, clothing, environment,
-   * lighting, color); the prompt is the identities of the Subjects it shows, these, then the Look's
-   * style sentence. Empty, with an empty prompt, until the Frame is written.
-   */
-  body: string
-  /**
-   * The names of the Look's Subjects this Frame shows, the most prominent first; empty for a
-   * picture of the place alone.
+   * The names of the Look's Subjects this Frame shows, the most prominent first, from the plan;
+   * empty for a picture of the place alone.
    */
   shown: string[]
-  /** Why the Frame can't be rendered: it crossed a Limit and must be edited first. */
-  blocked?: string
+  /** Its image, once its sentences are written; none until then. */
+  image?: FrameImage
 }
 
 export type Frame = ChainFrame | StoryboardFrame

@@ -83,7 +83,7 @@ Deno.test("A Roleplay's Score is written while Music is on, edited, and its musi
     assertEquals(written.map(([e]) => e), ['phase', 'score'])
     const [, { session }] = written.at(-1)! as [string, { session: RoleplaySession }]
     assertEquals(session.score, testScore())
-    assertEquals(session.scoreModel, 'scripted')
+    assertEquals(session.scoreWritten?.model, 'scripted')
     // The Session's own taste, kept as it started.
     assertMatch(model.scored[0][1].content, /No synths\./)
 

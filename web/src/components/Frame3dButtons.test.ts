@@ -6,7 +6,7 @@ import Frame3dButtons from './Frame3dButtons.vue'
 const scene = { file: 'scene-0-1a2b3c4d.ply', from: 'frame-0.png' } as Scene
 const figure = { file: 'figure-0-1a2b3c4d.ply', from: 'frame-0.png' } as Figure
 const picture = (extra: Partial<Picture> = {}): Picture => ({
-  image: 'frame-0.png',
+  file: 'frame-0.png',
   imageModel: 'qwen-image-2.1',
   ...extra,
 })

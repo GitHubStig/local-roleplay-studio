@@ -259,7 +259,7 @@ const selectedJob = computed(() =>
 /** Frames that still need an image: never rendered, or changed since. Blocked ones are skipped. */
 const toRender = computed(() =>
   (session.value?.frames ?? []).filter((f) =>
-    isWritten(f) && !f.blocked && (!pictureOf(f) || changed(f)) && !hasJob(f.index, 'render')
+    isWritten(f) && !f.image.blocked && (!pictureOf(f) || changed(f)) && !hasJob(f.index, 'render')
   )
 )
 
@@ -312,7 +312,7 @@ const {
 } = useAutosave<FrameDraft>({
   source: () => {
     const f = current.value
-    return f ? { text: isWritten(f) ? f.body : f.beat, shown: f.shown } : null
+    return f ? { text: isWritten(f) ? f.image.body : f.beat, shown: f.shown } : null
   },
   key: () => current.value && draftKey(current.value.index, isWritten(current.value)),
   async save(draft, key) {
@@ -322,7 +322,7 @@ const {
       ? await saveFrameBody(props.id, index, text, draft.shown)
       : await saveBeat(props.id, index, text, draft.shown)
     const saved = session.value.frames[index]
-    return { text: isWritten(saved) ? saved.body : saved.beat, shown: saved.shown }
+    return { text: isWritten(saved) ? saved.image.body : saved.beat, shown: saved.shown }
   },
   hold: (draft) =>
     draft.text.trim() ? null : currentWritten.value ? 'the Frame needs its sentences' : 'the Beat needs a line',
@@ -515,7 +515,7 @@ async function renderAll() {
 /** Draft, Stale, Blocked or Rendered, for a Frame in the list and on the image. */
 function status(f: StoryboardFrame): { label: string; tone: string } {
   if (!isWritten(f)) return { label: 'Not written', tone: 'text-muted' }
-  if (f.blocked) return { label: 'Blocked', tone: 'text-danger' }
+  if (f.image.blocked) return { label: 'Blocked', tone: 'text-danger' }
   if (!pictureOf(f)) return { label: 'Draft', tone: 'text-muted' }
   if (changed(f)) return { label: 'Changed since render', tone: 'text-warn' }
   if (pictureOf(f)!.upscaled) return { label: 'Upscaled', tone: 'text-ok' }
@@ -553,10 +553,10 @@ const waitingToWrite = (f: { index: number }) =>
 const { renderedParts, labelOf } = useImageModels()
 /** Writing the Frame, then rendering the picture it shows, once it has one, and by which model. */
 const timingsLabel = (f: StoryboardFrame) => {
-  // Both are written with its sentences; none before.
-  if (!f.timings || !f.textModel) return ''
+  // Written with its sentences; none before.
+  if (!f.image) return ''
   const picture = pictureOf(f)
-  return [writtenPart({ timings: f.timings, textModel: f.textModel }), ...(picture ? renderedParts(picture) : [])]
+  return [writtenPart(f.image.written), ...(picture ? renderedParts(picture) : [])]
     .join(' · ')
 }
 
@@ -580,7 +580,7 @@ const pictureMenu = providePictureMenu(() =>
     hasJob,
     canRender: (index) => {
       const frame = session.value!.frames.find((f) => f.index === index)
-      return !!frame && isWritten(frame) && !frame.blocked
+      return !!frame && isWritten(frame) && !frame.image.blocked
     },
     busy: waitForText.value,
     queue: queueSaved,
@@ -620,7 +620,7 @@ const planMode = computed(() => !writingStarted.value && work.value?.kind !== 'w
 const tiles = computed<StripTile[]>(() =>
   (session.value?.frames ?? []).map((f) => ({
     index: f.index,
-    thumb: pictureOf(f) ? imageUrl(props.id, pictureOf(f)!.image) : null,
+    thumb: pictureOf(f) ? imageUrl(props.id, pictureOf(f)!.file) : null,
     words: f.beat,
     working: writingIndex.value === f.index ? 'running' : workOn(f.index),
     dimmed: changed(f),
@@ -888,7 +888,7 @@ const pickFromAll = (index: number) => pick(index)
                 :index="current.index"
                 :name="frameName(current.index)"
                 :label="`${frameName(current.index)} of ${frames.length} · ${status(current).label}`"
-                :src="picture ? imageUrl(session.id, picture.upscaled ?? picture.image) : null"
+                :src="picture ? imageUrl(session.id, picture.upscaled ?? picture.file) : null"
                 :picture="picture"
                 :dimmed="changed(current)"
                 :preview="forming"
@@ -896,7 +896,7 @@ const pickFromAll = (index: number) => pick(index)
                 :jobs="jobsFor(current.index)"
                 :has-job="(kind) => hasJob(current!.index, kind)"
                 :working="workOf(current.index)"
-                :can-render="currentWritten && !current.blocked"
+                :can-render="currentWritten && !current.image?.blocked"
                 :busy="waitForText"
                 :clips="clipsMenu"
                 :clips-open="drawer === 'clip'"
@@ -916,12 +916,12 @@ const pickFromAll = (index: number) => pick(index)
                   <span class="text-muted" data-empty>
                     <template v-if="writingHere">Writing its sentences…</template>
                     <template v-else-if="!currentWritten">{{ waitingToWrite(current) ? 'Waiting to be written' : 'Not written yet' }}</template>
-                    <template v-else-if="current.blocked">Crosses a limit ({{ current.blocked }}): edit its sentences first</template>
+                    <template v-else-if="current.image?.blocked">Crosses a limit ({{ current.image?.blocked }}): edit its sentences first</template>
                     <template v-else-if="workOn(current.index)">{{ frameName(current.index) }} is being rendered</template>
                     <template v-else>Not rendered yet</template>
                   </span>
                   <button
-                    v-if="imagesOn && currentWritten && !current.blocked && !workOn(current.index)"
+                    v-if="imagesOn && currentWritten && !current.image?.blocked && !workOn(current.index)"
                     type="button"
                     class="rounded-lg bg-fg px-3 py-1.5 text-sm font-medium text-canvas disabled:opacity-50"
                     :disabled="!!waitForText"
@@ -962,8 +962,8 @@ const pickFromAll = (index: number) => pick(index)
                         · only the first {{ MAX_SHOWN }} are described
                       </span>
                     </ShownPills>
-                    <p v-if="current.blocked" class="text-xs text-danger">
-                      Crosses a limit ({{ current.blocked }}): edit it before rendering.
+                    <p v-if="current.image?.blocked" class="text-xs text-danger">
+                      Crosses a limit ({{ current.image?.blocked }}): edit it before rendering.
                     </p>
                     <!-- Its border sweeps while an Action rewrites them, as the Action box's does. -->
                     <div
@@ -1042,8 +1042,8 @@ const pickFromAll = (index: number) => pick(index)
                     <button
                       type="button"
                       class="menu-row"
-                      :disabled="!!current.blocked || copying"
-                      :title="current.blocked
+                      :disabled="!!current.image?.blocked || copying"
+                      :title="current.image?.blocked
                       ? 'Edit this Frame first: it crosses a limit'
                       : `A new Chain of Frames 1 to ${current.index + 1}, with their pictures, to carry on from this Frame by Actions. This Storyboard stays as it is.`"
                       data-continue-chain
@@ -1068,8 +1068,8 @@ const pickFromAll = (index: number) => pick(index)
             <template #prompt>
               <div class="flex flex-col gap-3 p-4 text-sm" data-prompt-panel>
                 <template v-if="current">
-                  <p v-if="current.timings" class="text-xs text-muted" data-timings>{{ timingsLabel(current) }}</p>
-                  <p v-if="currentWritten" class="leading-relaxed" data-prompt-text>{{ current.prompt }}</p>
+                  <p v-if="current.image" class="text-xs text-muted" data-timings>{{ timingsLabel(current) }}</p>
+                  <p v-if="currentWritten" class="leading-relaxed" data-prompt-text>{{ current.image?.prompt }}</p>
                   <p v-else class="text-muted">Its prompt is written with its sentences.</p>
                 </template>
               </div>
@@ -1187,7 +1187,7 @@ const pickFromAll = (index: number) => pick(index)
       :session-id="session.id"
       :frames="session.frames"
       :tiles="tiles"
-      :text="(f) => `${f.beat} ${f.body}`"
+      :text="(f) => `${f.beat} ${f.image?.body ?? ''}`"
       :picked="selected"
       :image-model="session.settings.imageModel"
       :thumbnail="session.thumbnail"

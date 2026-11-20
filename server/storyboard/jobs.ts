@@ -28,8 +28,8 @@ export function checkStoryboardJob(
   const frame = session.frames[index]
   if (!isWritten(frame)) return error(`${frameName(index)} isn't written yet`, 409)
   if (kind === 'render') {
-    return frame.blocked
-      ? error(`${frameName(index)} crosses a limit: ${frame.blocked}`, 422)
+    return frame.image.blocked
+      ? error(`${frameName(index)} crosses a limit: ${frame.image.blocked}`, 422)
       : null
   }
   if (!PICTURE_JOB_KINDS.includes(kind)) return error(`A Storyboard has no ${kind} jobs`, 409)

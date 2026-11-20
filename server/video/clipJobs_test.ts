@@ -35,7 +35,7 @@ Deno.test('A Lead In is made from a Frame’s picture, kept on it, served, and u
     // By the video model Settings choose, as made with.
     assertEquals([video.made[0].model, clip.model], ['ltx-2.5', 'ltx-2.5'])
     // The picture is the clip's last frame only.
-    assertEquals([video.made[0].first, video.made[0].last], [undefined, second.image])
+    assertEquals([video.made[0].first, video.made[0].last], [undefined, second.file])
     const served = await call('GET', `/api/sessions/s1/images/${clip.file}`)
     assertEquals(served.headers.get('content-type'), 'video/mp4')
     await served.body?.cancel()
@@ -71,7 +71,7 @@ Deno.test('A kind made again replaces its clip; another kind sits beside it', ()
     )
     assertEquals((await call('GET', `/api/sessions/s1/images/${first}`)).status, 404)
     // An Idle Loop's picture is at both ends.
-    assertEquals([video.made[2].first, video.made[2].last], [second.image, second.image])
+    assertEquals([video.made[2].first, video.made[2].last], [second.file, second.file])
   }))
 
 Deno.test('Each video model keeps its own clip of a kind, at its size, and replaces only its own', () =>
@@ -111,8 +111,8 @@ Deno.test('Into Next ends on the next Frame’s picture, and the last Frame has 
     assertEquals((await queueClip(call, 0, intoNext)).status, 201)
     await settled(call)
     const [opening, second] = await chainFrames(call)
-    assertEquals([video.made[0].first, video.made[0].last], [opening.image, second.image])
-    assertEquals(opening.clips[0].next, second.image)
+    assertEquals([video.made[0].first, video.made[0].last], [opening.file, second.file])
+    assertEquals(opening.clips[0].next, second.file)
   }))
 
 Deno.test('A clip’s order is checked before it’s queued', () =>
@@ -166,8 +166,8 @@ Deno.test('A clip is made from the picture of the Image Model it was queued for'
       frames: [0, 1].map((index) => ({
         index,
         pictures: [
-          { image: `krea-${index}.png`, imageModel: 'krea-2' },
-          { image: `klein-${index}.png`, imageModel: 'flux2-klein' },
+          { file: `krea-${index}.png`, imageModel: 'krea-2' },
+          { file: `klein-${index}.png`, imageModel: 'flux2-klein' },
         ],
       })),
     } as unknown as Session
@@ -220,7 +220,7 @@ Deno.test('A clip cut off by a restart is picked up from its ComfyUI, else made 
       id: 's1',
       seed: 3,
       settings: { imageModel: 'krea-2' },
-      frames: [{ index: 0, pictures: [{ image: 'krea-0.png', imageModel: 'krea-2' }] }],
+      frames: [{ index: 0, pictures: [{ file: 'krea-0.png', imageModel: 'krea-2' }] }],
     } as unknown as Session
     await Deno.mkdir(join(root, 's1'))
     const left = { prompts: [{ base: 'http://pc', promptId: 'p1' }], uploads: [] }

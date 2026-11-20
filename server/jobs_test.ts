@@ -365,7 +365,7 @@ Deno.test("The work on a model's pictures is what would act on them, there or st
       settings: { imageModel: 'own' },
       frames: frames.map((models, index) => ({
         index,
-        pictures: models.map((imageModel) => ({ image: `${imageModel}.png`, imageModel })),
+        pictures: models.map((imageModel) => ({ file: `${imageModel}.png`, imageModel })),
       })),
     }) as unknown as Session
   const upscale = job('up', 'upscale', 0)

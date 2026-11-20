@@ -36,12 +36,11 @@ const session: api.Session = {
   frames: [{
     index: 0,
     action: null,
-    prompt: promptFor(0),
+    image: { prompt: promptFor(0) },
     narration: 'Kael looks up.',
     outcome: 'done',
-    timings: { text: 1 },
-    textModel: 'x',
-    pictures: [{ image: 'frame-0.png', imageModel: 'qwen-image-2.1' }],
+    written: { model: 'x', seconds: 1 },
+    pictures: [{ file: 'frame-0.png', imageModel: 'qwen-image-2.1' }],
     createdAt: '2026-09-24T00:00:00.000Z',
   }],
 }
@@ -194,9 +193,8 @@ describe('App navigation', () => {
       frames: [{
         index: 0,
         beat: 'The dunk.',
-        body: 'Body.',
         shown: ['Rin'],
-        prompt: promptFor(0),
+        image: { body: 'Body.', prompt: promptFor(0), written: { model: 'x', seconds: 1 } },
         pictures: [],
         createdAt: '2026-09-25T00:00:00.000Z',
       }],

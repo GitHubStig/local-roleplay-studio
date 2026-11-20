@@ -94,10 +94,10 @@ Deno.test('planStoryboard streams the Look and Beats, then saves them unwritten'
     ])
     assertEquals(session.look, planOf(2).look)
     assertEquals(
-      session.frames.map(({ beat, body, shown, prompt }) => ({ beat, body, shown, prompt })),
+      session.frames.map(({ beat, shown, image }) => ({ beat, shown, image })),
       [
-        { beat: 'Beat 1', body: '', shown: ['Ace'], prompt: '' },
-        { beat: 'Beat 2', body: '', shown: ['Ace'], prompt: '' },
+        { beat: 'Beat 1', shown: ['Ace'], image: undefined },
+        { beat: 'Beat 2', shown: ['Ace'], image: undefined },
       ],
     )
     assertEquals((await deps.store.load('s1'))!.frames.length, 2)
@@ -145,11 +145,11 @@ Deno.test('writeStoryboard writes each Frame from the plan and the Frames before
     ])
     assertEquals(textModel.writeRequests[0].beats[2], { beat: 'Beat 3', shown: ['Ace'] })
     const [first] = session.frames
-    assertEquals(first.body, writtenBody(0))
-    assertEquals(first.prompt, composePrompt(planOf(3).look, writtenBody(0), ['Ace']))
-    assertEquals(typeof first.timings!.text, 'number')
+    assertEquals(first.image?.body ?? '', writtenBody(0))
+    assertEquals(first.image?.prompt, composePrompt(planOf(3).look, writtenBody(0), ['Ace']))
+    assertEquals(typeof first.image!.written.seconds, 'number')
     assertEquals(
-      ((await deps.store.load('s1')) as StoryboardSession).frames[2].body,
+      ((await deps.store.load('s1')) as StoryboardSession).frames[2].image?.body ?? '',
       writtenBody(2),
     )
     await assertRejects(
@@ -166,12 +166,12 @@ Deno.test('writeStoryboard keeps the Frames written when one fails, and carries 
     }, false)
     await assertRejects(() => writeStoryboard(deps, plan, scenario, () => {}, signal()))
     const saved = (await deps.store.load('s1')) as StoryboardSession
-    assertEquals(saved.frames.map((f) => f.body), ['He dribbles.', '', ''])
+    assertEquals(saved.frames.map((f) => f.image?.body ?? ''), ['He dribbles.', '', ''])
 
     const { deps: again, textModel } = depsFor(root)
     const session = await writeStoryboard(again, saved, scenario, () => {}, signal())
     assertEquals(textModel.writeRequests.map((r) => r.index), [1, 2])
-    assertEquals(session.frames.map((f) => f.body), [
+    assertEquals(session.frames.map((f) => f.image?.body ?? ''), [
       'He dribbles.',
       writtenBody(1),
       writtenBody(2),
@@ -197,7 +197,7 @@ Deno.test('writeStoryboard refuses Beats across a Limit, and blocks a Frame that
       writes: [{ body: 'Stands.' }, { body: 'Stands, wrists bound.' }, { body: 'Sits.' }],
     })
     const session = await writeStoryboard(deps2, plan, scenario, () => {}, signal())
-    assertEquals(session.frames.map((f) => f.blocked), [
+    assertEquals(session.frames.map((f) => f.image?.blocked), [
       undefined,
       'no restraint, captivity or non-consent',
       undefined,
@@ -228,15 +228,15 @@ Deno.test('renderStoryboardFrame renders one Frame, and a re-render replaces its
   withTempDir(async (root) => {
     const { deps, images, session } = await planned(root)
     const [first] = (await renderStoryboardFrame(deps, session, 1, () => {}, signal())).pictures
-    assertMatch(first.image, /^frame-1-[0-9a-f]{8}\.png$/)
+    assertMatch(first.file, /^frame-1-[0-9a-f]{8}\.png$/)
     assertEquals(first.imageModel, 'qwen-image-2.1')
-    assertEquals(images.prompts, [session.frames[1].prompt])
+    assertEquals(images.prompts, [session.frames[1].image?.prompt])
     assertEquals(typeof first.timings!.image, 'number')
 
     const [second] = (await renderStoryboardFrame(deps, session, 1, () => {}, signal())).pictures
     const files = (await Array.fromAsync(Deno.readDir(join(root, 's1')))).map((f) => f.name)
-    assertEquals(files.includes(first.image), false)
-    assertEquals(files.includes(second.image), true)
+    assertEquals(files.includes(first.file), false)
+    assertEquals(files.includes(second.file), true)
     assertEquals((await deps.store.load('s1'))!.frames[1].pictures, [second])
   }))
 
@@ -252,7 +252,7 @@ Deno.test("A re-render keeps another Image Model's picture, and an edit marks it
     assertEquals(second.map((p) => p.imageModel), ['qwen-image-2.1', 'flux2-klein-4b'])
     assertEquals(second[0], qwen)
     const files = (await Array.fromAsync(Deno.readDir(join(root, 's1')))).map((f) => f.name)
-    assertEquals([first.image, qwen.image, second[1].image].map((f) => files.includes(f)), [
+    assertEquals([first.file, qwen.file, second[1].file].map((f) => files.includes(f)), [
       false,
       true,
       true,
@@ -267,8 +267,11 @@ Deno.test('setFrameBody rewrites one Frame, marks it stale if rendered, and refu
     const { deps, session } = await planned(root)
     await renderStoryboardFrame(deps, session, 0, () => {}, signal())
     const edited = await setFrameBody(deps, session, 0, 'He leaps.\n- Lighting: dusk.')
-    assertEquals(edited.frames[0].body, 'He leaps. dusk.')
-    assertEquals(edited.frames[0].prompt, composePrompt(edited.look!, 'He leaps. dusk.', ['Ace']))
+    assertEquals(edited.frames[0].image?.body ?? '', 'He leaps. dusk.')
+    assertEquals(
+      edited.frames[0].image?.prompt,
+      composePrompt(edited.look!, 'He leaps. dusk.', ['Ace']),
+    )
     assertEquals(edited.frames[0].pictures.map((p) => p.stale), [true])
     assertEquals(edited.frames[1].pictures, [])
     await assertRejects(() => setFrameBody(deps, edited, 1, 'Fully nude.'), LimitError)
@@ -276,7 +279,7 @@ Deno.test('setFrameBody rewrites one Frame, marks it stale if rendered, and refu
     // Who it shows can change with it: no one, here.
     const empty = await setFrameBody(deps, edited, 2, 'An empty court.', [])
     assertEquals(empty.frames[2].shown, [])
-    assertEquals(empty.frames[2].prompt, 'An empty court. A pencil sketch.')
+    assertEquals(empty.frames[2].image?.prompt, 'An empty court. A pencil sketch.')
   }))
 
 Deno.test('setBeat and setLook edit the plan until a Frame is written, then refuse', () =>
@@ -342,7 +345,7 @@ Deno.test('insertBeat adds a Beat anywhere in the plan until a Frame is written'
       [2, 'Beat 2'],
       [3, 'Beat 3'],
     ])
-    assertEquals([between.frames[1].body, between.frames[1].shown], ['', []])
+    assertEquals([between.frames[1].image?.body ?? '', between.frames[1].shown], ['', []])
     // Without who it shows, it shows whoever the Frame before it does; at the start, the one after.
     const last = await insertBeat(deps, between, 4, 'Ace bows.')
     assertEquals([last.frames[4].beat, last.frames[4].shown], ['Ace bows.', ['Ace']])
@@ -356,7 +359,7 @@ Deno.test('insertBeat adds a Beat anywhere in the plan until a Frame is written'
 
     // Written out like any other Beat, then fixed.
     const written = await writeStoryboard(deps, first, scenario, () => {}, signal())
-    assertEquals(written.frames.every((f) => f.body !== ''), true)
+    assertEquals(written.frames.every((f) => f.image !== undefined), true)
     await assertRejects(() => insertBeat(deps, written, 0, 'Ace waves.'), StageError, 'restart')
   }))
 
@@ -446,24 +449,12 @@ Deno.test('restartStoryboard takes it back to its plan, deleting the pictures', 
       (await deps.store.load('s1')) as StoryboardSession,
     )
     assertEquals(
-      restarted.frames.map(({ beat, body, prompt, pictures, timings }) => ({
-        beat,
-        body,
-        prompt,
-        pictures,
-        timings,
-      })),
-      ['Beat 1', 'Beat 2', 'Beat 3'].map((beat) => ({
-        beat,
-        body: '',
-        prompt: '',
-        pictures: [],
-        timings: undefined,
-      })),
+      restarted.frames.map(({ beat, pictures, image }) => ({ beat, pictures, image })),
+      ['Beat 1', 'Beat 2', 'Beat 3'].map((beat) => ({ beat, pictures: [], image: undefined })),
     )
     assertEquals(restarted.frames[1].shown, ['Ace'])
     const files = (await Array.fromAsync(Deno.readDir(join(root, 's1')))).map((f) => f.name)
-    assertEquals(files.includes(rendered.pictures[0].image), false)
+    assertEquals(files.includes(rendered.pictures[0].file), false)
     // The plan can be edited again.
     const edited = await setBeat(deps, restarted, 0, 'Ace warms up.')
     assertEquals(edited.frames[0].beat, 'Ace warms up.')
@@ -497,16 +488,16 @@ Deno.test('a Frame shows only the Subjects its Beat names, at most three, and no
     assertEquals(beats.frames[0].shown, ['Ben'])
     const session = await writeStoryboard(deps, beats, scenario, () => {}, signal())
     assertEquals(
-      session.frames[0].prompt,
+      session.frames[0].image?.prompt,
       'Ben, an adult sailor. Ben raises a lantern. Film still.',
     )
     assertEquals(MAX_SHOWN, 3)
     assertEquals(
-      session.frames[1].prompt,
+      session.frames[1].image?.prompt,
       'Ana, an adult sailor. Ben, an adult sailor. Cal, an adult sailor. ' +
         'The crew hauls a rope. Film still.',
     )
-    assertEquals(session.frames[2].prompt, 'Rain on an empty street. Film still.')
+    assertEquals(session.frames[2].image?.prompt, 'Rain on an empty street. Film still.')
   }))
 
 Deno.test('editFrameByAction rewrites only its Frame, from the Look as it is', () =>
@@ -527,7 +518,7 @@ Deno.test('editFrameByAction rewrites only its Frame, from the Look as it is', (
       signal(),
     )
     assertEquals(first.outcome, 'done')
-    assertEquals(first.session.frames[1].body, 'He soars.')
+    assertEquals(first.session.frames[1].image?.body ?? '', 'He soars.')
     assertEquals(first.session.frames[0], session.frames[0])
     assertEquals(first.session.look, session.look)
 
@@ -541,7 +532,7 @@ Deno.test('editFrameByAction rewrites only its Frame, from the Look as it is', (
       signal(),
     )
     assertEquals(second.session.frames[1].shown, [])
-    assertEquals(second.session.frames[1].prompt, 'An empty hoop. A pencil sketch.')
+    assertEquals(second.session.frames[1].image?.prompt, 'An empty hoop. A pencil sketch.')
     assertEquals(textModel.calls, 1 + 3 + 2) // the plan, three Frames written, two edits
   }))
 

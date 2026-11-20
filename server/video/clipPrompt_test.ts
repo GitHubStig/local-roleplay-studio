@@ -34,7 +34,7 @@ Deno.test('A Lead In’s prompt is written from the picture and the story, strea
     const [opening, second] = await chainFrames(call)
     assertStringIncludes(system, await loadPrompt('video/lead-in'))
     assertStringIncludes(system, await loadPrompt('video/without-speech'))
-    assertStringIncludes(user, `The picture: ${second.prompt}`)
+    assertStringIncludes(user, `The picture: ${second.image.prompt}`)
     assertStringIncludes(user, `Sit\n${second.narration}`)
     assertStringIncludes(user, `Just before it:\n${opening.narration}`)
     assertStringIncludes(user, 'a 5-second Lead In clip')
@@ -53,7 +53,7 @@ Deno.test('Into Next’s prompt is told the next picture, and refused on the las
     const [, second] = await chainFrames(call)
     const [{ system, user }] = model.clipRequests
     assertStringIncludes(system, await loadPrompt('video/with-speech'))
-    assertStringIncludes(user, `The clip ends on the next picture: ${second.prompt}`)
+    assertStringIncludes(user, `The clip ends on the next picture: ${second.image.prompt}`)
     assertStringIncludes(user, 'Just before it:\nnone')
   }))
 

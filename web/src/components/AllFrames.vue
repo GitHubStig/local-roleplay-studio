@@ -70,7 +70,7 @@ async function star(index: number) {
   if (!s) return
   thumbnailError.value = ''
   try {
-    await toggleThumbnail(props.sessionId, s.picture.image, s.star)
+    await toggleThumbnail(props.sessionId, s.picture.file, s.star)
     emit('changed')
   } catch (err) {
     thumbnailError.value = (err as Error).message

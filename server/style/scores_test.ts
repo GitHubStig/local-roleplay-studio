@@ -34,11 +34,10 @@ function chain(captions: string[], models: string[]): ChainSession {
       action: index ? narration : null,
       narration,
       outcome: 'done' as const,
-      timings: { text: 1 },
-      textModel: 'scripted',
-      prompt: promptWith(`pose ${index}`),
+      written: { model: 'scripted', seconds: 1 },
+      image: { prompt: promptWith(`pose ${index}`) },
       pictures: models.map((imageModel) => ({
-        image: `frame-${index}-${imageModel}.png`,
+        file: `frame-${index}-${imageModel}.png`,
         imageModel,
       })),
       createdAt: '2026-10-14T00:00:00.000Z',
@@ -98,7 +97,7 @@ Deno.test('styleScores compares only the Frames every model pictured, and needs 
   session.frames[2].pictures = session.frames[2].pictures.slice(0, 1)
   const v = encode([1, 0])
   const pictures = Object.fromEntries(
-    session.frames.flatMap((f) => f.pictures.map((p) => [p.image, v])),
+    session.frames.flatMap((f) => f.pictures.map((p) => [p.file, v])),
   )
   const cache: StyleCache = { csd: pictures, clip: pictures, texts: {} }
   const scores = styleScores(session, cache, 1)
