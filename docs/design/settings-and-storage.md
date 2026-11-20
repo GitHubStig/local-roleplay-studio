@@ -14,11 +14,13 @@ Where the player's data goes is worked out once at startup (`server/dataDirs.ts`
 
 | What | Where | Notes |
 |---|---|---|
-| Settings | `settings.json` | Missing, corrupt or invalid → defaults; missing fields filled from defaults |
-| The job queue | `queue.json` | Every Session's jobs; written through a temp file, then renamed; missing → empty |
+| Settings | `settings.json` | Missing → this machine's defaults; corrupt, invalid or from a newer app → the server says so and stops, rather than replace it |
+| The job queue | `queue.json` | Every Session's jobs; written through a temp file, then renamed; missing → empty; unreadable → empty, saying why |
 | Scenarios | `scenarios/*.md` (the player's, gitignored) | Read fresh on every request, so edits need no restart. The examples (`example-scenarios/*.md`) are copied in at startup when there's no such folder yet (a fresh install, a new worktree), then the player's to keep or delete; an emptied folder stays empty. A Session keeps its own copy in `session.json` (`scenario`), as the Scenario page left it, so editing or deleting the file leaves it alone ([ADR 0032](../adr/0032-scenarios-are-stories-kept-in-each-session.md)) |
-| Sessions | `<Session folder>/<id>/session.json` + its files | Id is `YYYYMMDD-HHMMSS-xxxx`; files are written to a temp file, then renamed, and carry a random suffix, so a Frame made after an Undo never reuses a file name |
+| Sessions | `<Session folder>/<id>/session.json` + its files | Id is `YYYYMMDD-HHMMSS-xxxx`; files are written to a temp file, then renamed, and carry a random suffix, so a Frame made after an Undo never reuses a file name; one that can't be read is left out of Home, saying why |
 | Call log | `<id>/calls/frame-N.json`, `calls/setup.json` | Only with Settings' call log on |
+
+**Versions.** `settings.json`, `queue.json` and each `session.json` say their `version`, first in the file; one without is from before versions (version 0). Each is migrated to the latest version in memory as it's read, by the steps in `server/migrations/<file>/`, one per version, and written at the latest when the app next saves it; one from a newer app is refused ([ADR 0041](../adr/0041-data-files-are-versioned-and-migrated.md)).
 
 Frames are numbered from 1 on every screen and in the server's messages (`frameName`); `session.json`, the API and the file names count from 0.
 

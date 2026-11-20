@@ -1,4 +1,4 @@
-import { assertEquals } from '@std/assert'
+import { assertEquals, assertRejects } from '@std/assert'
 import { join, toFileUrl } from '@std/path'
 import {
   DEFAULT_SETTINGS,
@@ -8,6 +8,7 @@ import {
   sessionSettingsOf,
   validateSettings,
 } from './settings.ts'
+import { settingsFile } from './migrations/settings/index.ts'
 
 async function withTempDir(fn: (dir: string) => Promise<void>) {
   const dir = await Deno.makeTempDir()
@@ -32,14 +33,27 @@ Deno.test('fileSettingsStore round-trips saved settings', () =>
     assertEquals(await store.load(), next)
   }))
 
-Deno.test('fileSettingsStore fills fields missing from an older file', () =>
+Deno.test('fileSettingsStore refuses a file missing a field, naming it, rather than filling it in', () =>
   withTempDir(async (dir) => {
     const path = join(dir, 'settings.json')
-    await Deno.writeTextFile(path, JSON.stringify({ textModel: 'llama3:latest' }))
-    assertEquals(await fileSettingsStore(path).load(), {
-      ...DEFAULT_SETTINGS,
-      textModel: 'llama3:latest',
-    })
+    const { musicTaste: _, ...missing } = DEFAULT_SETTINGS
+    await Deno.writeTextFile(path, JSON.stringify(missing))
+    await assertRejects(() => fileSettingsStore(path).load(), Error, 'musicTaste must be text')
+  }))
+
+Deno.test('fileSettingsStore reads a file from before versions, and saves the latest version', () =>
+  withTempDir(async (dir) => {
+    const path = join(dir, 'settings.json')
+    const text = JSON.stringify({ ...DEFAULT_SETTINGS, textModel: 'llama3:latest' })
+    await Deno.writeTextFile(path, text)
+    const store = fileSettingsStore(path)
+    const settings = await store.load()
+    assertEquals(settings, { ...DEFAULT_SETTINGS, textModel: 'llama3:latest' })
+    assertEquals(await Deno.readTextFile(path), text) // read, not rewritten
+    await store.save(settings)
+    const saved = JSON.parse(await Deno.readTextFile(path))
+    assertEquals(Object.keys(saved)[0], 'version')
+    assertEquals(saved.version, settingsFile.latest)
   }))
 
 Deno.test('fileSettingsStore swaps an Image Model no longer in the app for the default', () =>
@@ -47,7 +61,12 @@ Deno.test('fileSettingsStore swaps an Image Model no longer in the app for the d
     const path = join(dir, 'settings.json')
     await Deno.writeTextFile(
       path,
-      JSON.stringify({ textModel: 'llama3:latest', imageModel: 'fibo-1.5', steps: 6 }),
+      JSON.stringify({
+        ...DEFAULT_SETTINGS,
+        textModel: 'llama3:latest',
+        imageModel: 'fibo-1.5',
+        steps: 6,
+      }),
     )
     const warn = console.warn
     console.warn = () => {}
@@ -100,11 +119,16 @@ Deno.test('fileSettingsStore keeps both Settings and an API key saved at the sam
     assertEquals(await store.loadApiKey('lm'), 'sk-secret')
   }))
 
-Deno.test('fileSettingsStore falls back to defaults on a corrupt file', () =>
+Deno.test('fileSettingsStore refuses a corrupt file, and a newer one, rather than overwrite it', () =>
   withTempDir(async (dir) => {
     const path = join(dir, 'settings.json')
     await Deno.writeTextFile(path, '{ nope')
-    assertEquals(await fileSettingsStore(path).load(), DEFAULT_SETTINGS)
+    const store = fileSettingsStore(path)
+    await assertRejects(() => store.load(), Error, "isn't valid JSON")
+    await assertRejects(() => store.save(DEFAULT_SETTINGS), Error, "isn't valid JSON")
+    assertEquals(await Deno.readTextFile(path), '{ nope')
+    await Deno.writeTextFile(path, JSON.stringify({ version: settingsFile.latest + 1 }))
+    await assertRejects(() => store.load(), Error, 'from a newer app')
   }))
 
 Deno.test('fileSettingsStore saves to a file URL whose path has spaces', () =>

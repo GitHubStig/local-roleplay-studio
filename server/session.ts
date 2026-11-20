@@ -1,5 +1,6 @@
 import { fromFileUrl, join } from '@std/path'
 import type { Outcome, Session } from '../shared/session.ts'
+import { sessionFile } from './migrations/session/index.ts'
 
 export const OUTCOMES: readonly Outcome[] = ['done', 'declined', 'unclear']
 
@@ -14,7 +15,7 @@ export interface SessionStore {
   /** Absolute directory holding a Session's JSON and images. */
   dir(id: string): string
   load(id: string): Promise<Session | undefined>
-  /** Every saved Session; unreadable ones are skipped. */
+  /** Every saved Session; unreadable ones are left out, saying why. */
   list(): Promise<Session[]>
   save(session: Session): Promise<void>
   remove(id: string): Promise<void>
@@ -42,8 +43,10 @@ export function dirSessionStore(root: string | URL): DirSessionStore {
     dir,
     async load(id) {
       if (!SESSION_ID.test(id)) return undefined
+      const path = join(dir(id), 'session.json')
       try {
-        return JSON.parse(await Deno.readTextFile(join(dir(id), 'session.json')))
+        // Migrated in memory; the file is written at the latest version when next saved.
+        return sessionFile.migrate(JSON.parse(await Deno.readTextFile(path)), path)
       } catch (err) {
         if (err instanceof Deno.errors.NotFound) return undefined
         throw err
@@ -60,7 +63,12 @@ export function dirSessionStore(root: string | URL): DirSessionStore {
       const sessions = await Promise.all(
         entries
           .filter((e) => e.isDirectory && SESSION_ID.test(e.name))
-          .map((e) => this.load(e.name).catch(() => undefined)),
+          .map((e) =>
+            this.load(e.name).catch((err) => {
+              console.warn(`Leaving out the Session ${e.name}: ${(err as Error).message}`)
+              return undefined
+            })
+          ),
       )
       return sessions.filter((s): s is Session => s !== undefined)
     },
@@ -68,7 +76,10 @@ export function dirSessionStore(root: string | URL): DirSessionStore {
       const d = dir(session.id)
       await Deno.mkdir(d, { recursive: true })
       const path = join(d, 'session.json')
-      await Deno.writeTextFile(`${path}.tmp`, JSON.stringify(session, null, 2) + '\n')
+      await Deno.writeTextFile(
+        `${path}.tmp`,
+        JSON.stringify(sessionFile.stamp(session), null, 2) + '\n',
+      )
       await Deno.rename(`${path}.tmp`, path)
     },
     async remove(id) {

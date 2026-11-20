@@ -30,6 +30,7 @@ import {
 } from '../shared/settings.ts'
 import { type Feature, FEATURES } from '../shared/features.ts'
 import { HERE } from './backends.ts'
+import { settingsFile } from './migrations/settings/index.ts'
 import {
   type Backend,
   BACKEND_KINDS,
@@ -317,36 +318,46 @@ export interface SettingsStore {
   saveApiKey(backend: string, key: string): Promise<void>
 }
 
-/** The API keys a settings file holds, by Backend id. */
-function apiKeysOf(raw: Record<string, unknown>): Record<string, string> {
-  const keys = raw.apiKeys
-  if (typeof keys !== 'object' || keys === null) return {}
-  return Object.fromEntries(Object.entries(keys).filter(([, k]) => typeof k === 'string'))
-}
+/** `settings.json`: Settings, and the API keys by Backend id, kept out of them (`SettingsStore`). */
+export type SettingsFile = Settings & { apiKeys?: Record<string, string> }
 
 /**
- * Stores Settings as JSON at `path`, falling back to `defaults` (this machine's: `machineDefaults`)
- * when missing or invalid, and filling in from them what an older file lacks. The API keys are in
- * the same file (gitignored), as `apiKeys` by Backend id.
+ * Stores Settings as JSON at `path`, migrated to the latest version as it's read (ADR 0041); this
+ * machine's `defaults` (`machineDefaults`) while there's no file. A file that can't be read fails,
+ * saying why, rather than giving the defaults, which the next save would write over it. The API
+ * keys are in the same file (gitignored).
  */
 export function fileSettingsStore(
   path: string | URL,
   defaults: Settings = DEFAULT_SETTINGS,
 ): SettingsStore {
   const file = path instanceof URL ? fromFileUrl(path) : path
-  async function readRaw(): Promise<Record<string, unknown>> {
+  /** The file, migrated in memory; null while there's none. */
+  async function read(): Promise<SettingsFile | null> {
+    let text: string
     try {
-      const parsed = JSON.parse(await Deno.readTextFile(file))
-      return typeof parsed === 'object' && parsed !== null ? parsed : {}
-    } catch {
-      return {}
+      text = await Deno.readTextFile(file)
+    } catch (err) {
+      if (err instanceof Deno.errors.NotFound) return null
+      throw err
     }
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(text)
+    } catch (err) {
+      throw new Error(`${file} isn't valid JSON: ${(err as Error).message}`)
+    }
+    return settingsFile.migrate(parsed, file)
   }
-  async function write(raw: object) {
+  async function write(doc: SettingsFile) {
     const tmp = `${file}.tmp`
-    await Deno.writeTextFile(tmp, JSON.stringify(raw, null, 2) + '\n', { mode: 0o600 })
+    await Deno.writeTextFile(tmp, JSON.stringify(settingsFile.stamp(doc), null, 2) + '\n', {
+      mode: 0o600,
+    })
     await Deno.rename(tmp, file)
   }
+  const withKeys = (settings: Settings, apiKeys: Record<string, string>): SettingsFile =>
+    Object.keys(apiKeys).length ? { ...settings, apiKeys } : settings
   let changing: Promise<unknown> = Promise.resolve()
   /**
    * Changes the file one change at a time: Settings and the API key share it, so two at once could
@@ -359,57 +370,38 @@ export function fileSettingsStore(
   }
   return {
     async load() {
-      let raw: string
-      try {
-        raw = await Deno.readTextFile(path)
-      } catch (err) {
-        if (err instanceof Deno.errors.NotFound) return { ...defaults }
-        throw err
-      }
-      let parsed: unknown
-      try {
-        parsed = JSON.parse(raw)
-      } catch {
-        console.warn(`Ignoring unreadable settings file ${path}; using defaults`)
-        return { ...defaults }
-      }
-      const merged = { ...defaults, ...(parsed as object) } as Record<string, unknown>
+      const stored = await read()
+      if (!stored) return { ...defaults }
+      const { apiKeys: _, ...settings } = stored
       // An Image Model since removed from the app falls back to the default, with its steps, rather
-      // than failing the file and losing every other setting.
-      if (typeof merged.imageModel === 'string' && !anyImageModel(merged.imageModel)) {
+      // than failing the file.
+      let kept: Settings = settings
+      if (!anyImageModel(settings.imageModel)) {
         console.warn(
-          `${path}: the Image Model "${merged.imageModel}" is no longer in the app; ` +
+          `${file}: the Image Model "${settings.imageModel}" is no longer in the app; ` +
             `using ${defaults.imageModel}`,
         )
-        merged.imageModel = defaults.imageModel
-        merged.steps = defaults.steps
+        kept = { ...settings, imageModel: defaults.imageModel, steps: defaults.steps }
       }
-      const result = validateSettings(merged)
-      if (!result.ok) {
-        console.warn(`Ignoring invalid settings file ${path}: ${result.issues.join('; ')}`)
-        return { ...defaults }
-      }
+      const result = validateSettings(kept)
+      if (!result.ok) throw new Error(`${file} is invalid: ${result.issues.join('; ')}`)
       return result.settings
     },
     save: (settings) =>
       inTurn(async () => {
-        const keys = apiKeysOf(await readRaw())
-        // Only the keys of Backends still listed.
-        const kept = Object.fromEntries(
-          Object.entries(keys).filter(([id]) => settings.backends.some((b) => b.id === id)),
-        )
-        await write(Object.keys(kept).length ? { ...settings, apiKeys: kept } : settings)
+        // Only the keys of Backends still listed; a file with none has none.
+        const keys = Object.entries((await read())?.apiKeys ?? {})
+          .filter(([id]) => settings.backends.some((b) => b.id === id))
+        await write(withKeys(settings, Object.fromEntries(keys)))
       }),
     async loadApiKey(backend) {
-      return apiKeysOf(await readRaw())[backend] ?? ''
+      return (await read())?.apiKeys?.[backend] ?? ''
     },
     saveApiKey: (backend, key) =>
       inTurn(async () => {
-        const raw = await readRaw()
-        const { apiKeys: _, ...rest } = raw
-        const { [backend]: _old, ...others } = apiKeysOf(raw)
-        const apiKeys = key ? { ...others, [backend]: key } : others
-        await write(Object.keys(apiKeys).length ? { ...rest, apiKeys } : rest)
+        const { apiKeys = {}, ...settings } = (await read()) ?? { ...defaults }
+        const { [backend]: _old, ...others } = apiKeys
+        await write(withKeys(settings, key ? { ...others, [backend]: key } : others))
       }),
   }
 }
