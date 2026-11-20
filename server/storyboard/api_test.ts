@@ -1,6 +1,16 @@
 import { assertEquals, assertMatch } from '@std/assert'
 import { planOf, scriptedTextModel, withTempDir } from '../testing.ts'
-import { readEvents, readUntil, settled, setup, shown, storyboardFrames } from '../appTesting.ts'
+import {
+  eventOf,
+  ofKind,
+  pictureOf,
+  readEvents,
+  readUntil,
+  sessionFrom,
+  settled,
+  setup,
+  storyboardFrames,
+} from '../appTesting.ts'
 
 Deno.test('POST /api/sessions makes a Storyboard with a Frame count', () =>
   withTempDir(async (root) => {
@@ -61,12 +71,15 @@ Deno.test('A Storyboard is planned, reviewed, written, rendered and edited over 
     assertEquals((await call('POST', '/api/sessions/s1/plan')).status, 409)
 
     // Reviewed: the Look and a Beat edited by hand; nothing renders until written.
-    const look = await (await call('PUT', '/api/sessions/s1/look', newLook)).json()
+    const look = ofKind(
+      await sessionFrom(await call('PUT', '/api/sessions/s1/look', newLook)),
+      'storyboard',
+    )
     assertEquals(look.look, newLook)
     const oldShape = { subject: 'A man.', style: 'Ink.' }
     assertEquals((await call('PUT', '/api/sessions/s1/look', oldShape)).status, 400)
     const beat = await call('PUT', '/api/sessions/s1/frames/1', { beat: 'Ace jumps.', shown: [] })
-    assertEquals((await beat.json()).frames[1], {
+    assertEquals(ofKind(await sessionFrom(beat), 'storyboard').frames[1], {
       ...look.frames[1],
       beat: 'Ace jumps.',
       shown: [],
@@ -98,17 +111,20 @@ Deno.test('A Storyboard is planned, reviewed, written, rendered and edited over 
     const render = await call('POST', '/api/sessions/s1/jobs', { kind: 'render', frameIndex: 2 })
     assertEquals(render.status, 201)
     assertEquals(await settled(call), [])
-    const image = (await storyboardFrames(call))[2].file!
+    const image = pictureOf((await storyboardFrames(call))[2]).file!
     assertMatch(image, /^frame-2-[0-9a-f]{8}\.png$/)
     const past = await call('POST', '/api/sessions/s1/jobs', { kind: 'render', frameIndex: 9 })
     assertEquals(past.status, 404)
 
     const byHand = await (await call('PUT', '/api/sessions/s1/frames/2', { body: 'He lands.' }))
       .json()
-    assertEquals([byHand.frames[2].image.body, shown(byHand.frames[2]).stale], ['He lands.', true])
+    assertEquals([byHand.frames[2].image.body, pictureOf(byHand.frames[2]).stale], [
+      'He lands.',
+      true,
+    ])
     assertEquals((await call('PUT', '/api/sessions/s1/frames/0', { body: 'Nude.' })).status, 422)
     const nobody = await call('PUT', '/api/sessions/s1/frames/1', { body: 'A hoop.', shown: [] })
-    assertEquals((await nobody.json()).frames[1].shown, [])
+    assertEquals(ofKind(await sessionFrom(nobody), 'storyboard').frames[1].shown, [])
     const badShown = await call('PUT', '/api/sessions/s1/frames/1', {
       body: 'A hoop.',
       shown: 'Ace',
@@ -118,20 +134,16 @@ Deno.test('A Storyboard is planned, reviewed, written, rendered and edited over 
     const edit = await readEvents(
       await call('POST', '/api/sessions/s1/frames/0/edit', { action: 'soar' }),
     )
-    const [, edited] = edit.at(-1)!
-    assertEquals([
-      edited.type,
-      edited.outcome,
-      (edited.session as { frames: { image: { body: string } }[] }).frames[0].image.body,
-    ], [
-      'edited',
-      'done',
-      'He soars.',
-    ])
+    assertEquals(edit.at(-1)![0], 'edited')
+    const edited = eventOf(edit, 'edited')
+    assertEquals([edited.outcome, edited.session.frames[0].image?.body], ['done', 'He soars.'])
 
     // Restarted: back to the reviewed plan, the pictures gone.
-    const restarted = await (await call('POST', '/api/sessions/s1/restart')).json()
-    assertEquals(restarted.frames.map((f: { image?: unknown }) => f.image), [
+    const restarted = ofKind(
+      await sessionFrom(await call('POST', '/api/sessions/s1/restart')),
+      'storyboard',
+    )
+    assertEquals(restarted.frames.map((f) => f.image), [
       undefined,
       undefined,
       undefined,
@@ -155,7 +167,7 @@ Deno.test("Beats are added, removed and moved in a Storyboard's plan over the AP
 
     const added = await call('POST', '/api/sessions/s1/beats', { at: 1, beat: 'Ace pivots.' })
     assertEquals(added.status, 201)
-    const frames = (await added.json()).frames as {
+    const frames = ofKind(await sessionFrom(added), 'storyboard').frames as {
       index: number
       beat: string
       shown: string[]
@@ -167,7 +179,7 @@ Deno.test("Beats are added, removed and moved in a Storyboard's plan over the AP
       [2, 'Beat 2', ['Ace']],
     ])
     const end = await call('POST', '/api/sessions/s1/beats', { at: 3, beat: 'A hoop.', shown: [] })
-    assertEquals((await end.json()).frames[3].shown, [])
+    assertEquals(ofKind(await sessionFrom(end), 'storyboard').frames[3].shown, [])
     for (const bad of [{ at: 5, beat: 'x' }, { at: 0, beat: ' ' }, { at: '1', beat: 'x' }]) {
       assertEquals((await call('POST', '/api/sessions/s1/beats', bad)).status, 400)
     }
@@ -179,11 +191,14 @@ Deno.test("Beats are added, removed and moved in a Storyboard's plan over the AP
     // And one removed, as the plan was seen; sent again, it's gone already.
     const seen = { frames: 4, createdAt: frames[1].createdAt }
     const removed = await call('POST', '/api/sessions/s1/frames/1/delete', seen)
-    assertEquals((await removed.json()).frames.map((f: { beat: string }) => f.beat), [
-      'Beat 1',
-      'Beat 2',
-      'A hoop.',
-    ])
+    assertEquals(
+      ofKind(await sessionFrom(removed), 'storyboard').frames.map((f) => f.beat),
+      [
+        'Beat 1',
+        'Beat 2',
+        'A hoop.',
+      ],
+    )
     assertEquals((await call('POST', '/api/sessions/s1/frames/1/delete', seen)).status, 409)
     assertEquals((await call('POST', '/api/sessions/s1/frames/1/delete', {})).status, 400)
 
@@ -191,11 +206,14 @@ Deno.test("Beats are added, removed and moved in a Storyboard's plan over the AP
     const order = (body: unknown) => call('PUT', '/api/sessions/s1/beats/order', body)
     const beatsSeen = ['Beat 1', 'Beat 2', 'A hoop.']
     const moved = await order({ order: [2, 0, 1], seen: beatsSeen })
-    assertEquals((await moved.json()).frames.map((f: { beat: string }) => f.beat), [
-      'A hoop.',
-      'Beat 1',
-      'Beat 2',
-    ])
+    assertEquals(
+      ofKind(await sessionFrom(moved), 'storyboard').frames.map((f) => f.beat),
+      [
+        'A hoop.',
+        'Beat 1',
+        'Beat 2',
+      ],
+    )
     assertEquals((await order({ order: [2, 0, 1], seen: beatsSeen })).status, 409)
     for (const bad of [{ order: [0, 1], seen: beatsSeen }, { order: [0, 0, 1], seen: beatsSeen }]) {
       assertEquals((await order(bad)).status, 400)

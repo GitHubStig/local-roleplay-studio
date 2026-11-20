@@ -5,7 +5,16 @@ import { fakeFigureMaker, fakeSceneMaker } from '../3d/testing.ts'
 import { fakeVoiceEngine } from '../voice/testing.ts'
 import { replyOf, scriptedRoleplayModel, testCast, testLook } from './testing.ts'
 import { fakeImageGenerator, withTempDir } from '../testing.ts'
-import { readEvents, settled, setup, type SetupOptions, shown } from '../appTesting.ts'
+import {
+  getSession,
+  ofKind,
+  pictureOf,
+  readEvents,
+  sessionFrom,
+  settled,
+  setup,
+  type SetupOptions,
+} from '../appTesting.ts'
 
 /** A begun Roleplay whose Art Agent will write `bodies` in turn. */
 async function roleplayWithArt(
@@ -50,20 +59,20 @@ Deno.test('Picturing, rendering and upscaling a Roleplay Frame are queued jobs, 
     assertEquals(queued.length, 1)
     assertEquals(await settled(call), [])
 
-    const session = await (await call('GET', '/api/sessions/s1')).json()
-    const frame = shown(session.frames[0])
-    assertEquals(frame.image.prompt, `Mira Vance, 34. Sam Reyes, 25. ${artBody} Ink.`)
-    assertEquals((await call('GET', `/api/sessions/s1/images/${frame.file}`)).status, 200)
-    assertMatch(frame.upscaled, /-2048\.png$/)
+    const session = await getSession(call, 'roleplay')
+    const picture = pictureOf(session.frames[0])
+    assertEquals(session.frames[0].image?.prompt, `Mira Vance, 34. Sam Reyes, 25. ${artBody} Ink.`)
+    assertEquals((await call('GET', `/api/sessions/s1/images/${picture.file}`)).status, 200)
+    assertMatch(picture.upscaled!, /-2048\.png$/)
 
     const look = await call(
       'PUT',
       '/api/sessions/s1/roleplay/look',
       testLook('Watercolour.', 'Mira Vance, 34.', 'Sam Reyes, 25.'),
     )
-    assertEquals(shown((await look.json()).frames[0]).stale, true)
+    assertEquals(pictureOf((await sessionFrom(look)).frames[0]).stale, true)
     const [card] = await (await call('GET', '/api/sessions')).json()
-    assertEquals(card.thumbnail, frame.file)
+    assertEquals(card.thumbnail, picture.file)
   }))
 
 Deno.test('A Roleplay switches Text Model: what it writes next is by the new one, and says so', () =>
@@ -95,13 +104,16 @@ Deno.test('A Roleplay switches Text Model: what it writes next is by the new one
       404,
     )
     const switched = await switchTo({ textModel: 'qwen3.8:27b-mlx' })
-    assertEquals((await switched.json()).settings.textModel, 'qwen3.8:27b-mlx')
+    assertEquals(
+      ofKind(await sessionFrom(switched), 'roleplay').settings.textModel,
+      'qwen3.8:27b-mlx',
+    )
 
     await readEvents(
       await call('POST', '/api/sessions/s1/roleplay/messages', { text: 'Sorry.', picture: true }),
     )
     assertEquals(await settled(call), [])
-    const session = await (await call('GET', '/api/sessions/s1')).json()
+    const session = await getSession(call, 'roleplay')
     // Thinking stays as the Session started.
     assertEquals(session.settings.thinking, false)
     assertEquals(session.frames.map((f: { written: { model: string } }) => f.written.model), [
@@ -109,7 +121,7 @@ Deno.test('A Roleplay switches Text Model: what it writes next is by the new one
       'qwen3.8:27b-mlx',
     ])
     // The new model wrote the Look and pictured the Reply; the old one asked nothing after.
-    assertEquals([session.lookWritten.model, session.frames[1].image.written.model], [
+    assertEquals([session.lookWritten!.model, session.frames[1].image!.written.model], [
       'qwen3.8:27b-mlx',
       'qwen3.8:27b-mlx',
     ])
@@ -154,7 +166,7 @@ Deno.test('A picture goes ahead of queued renders, and Clear empties the queue',
     assertEquals((await call('DELETE', '/api/sessions/s1/jobs')).status, 200)
     release()
     assertEquals(await settled(call), [])
-    const session = await (await call('GET', '/api/sessions/s1')).json()
+    const session = await getSession(call, 'roleplay')
     assertEquals(session.frames.map((f: { pictures: unknown[] }) => f.pictures.length), [0, 0])
     assertEquals(session.frames[1].image, undefined)
     const left = await (await call('GET', '/api/sessions/s1/jobs')).json()
@@ -218,8 +230,8 @@ Deno.test('A Roleplay Frame is pictured with Pictures off, but not rendered', ()
       409,
       'Pictures is switched off in Settings',
     ])
-    const session = await (await call('GET', '/api/sessions/s1')).json()
-    assertMatch(session.frames[0].image.prompt, /Mira waits\./)
+    const session = await getSession(call, 'roleplay')
+    assertMatch(session.frames[0].image!.prompt, /Mira waits\./)
   }))
 
 Deno.test('The conversation carries on while a job runs, and neither overwrites the other', () =>
@@ -247,9 +259,9 @@ Deno.test('The conversation carries on while a job runs, and neither overwrites 
     assertEquals(talk.at(-1)![0], 'replied')
     release()
     await settled(call)
-    const session = await (await call('GET', '/api/sessions/s1')).json()
+    const session = await getSession(call, 'roleplay')
     assertEquals(session.frames.length, 2)
-    assertMatch(shown(session.frames[0]).file, /^frame-0-/)
+    assertMatch(pictureOf(session.frames[0]).file, /^frame-0-/)
   }))
 
 Deno.test('Undoing an exchange cancels its jobs; deleting the Roleplay cancels them all', () =>
@@ -273,11 +285,14 @@ Deno.test('Restarting a Roleplay takes it back to its Cast, deleting every excha
     await call('POST', '/api/sessions/s1/jobs', { kind: 'picture', frameIndex: 0 })
     await call('POST', '/api/sessions/s1/jobs', { kind: 'render', frameIndex: 0 })
     await settled(call)
-    const before = await (await call('GET', '/api/sessions/s1')).json()
-    const { file: image } = shown(before.frames[0])
+    const before = await getSession(call, 'roleplay')
+    const { file: image } = pictureOf(before.frames[0])
     assertEquals(await Deno.stat(`${root}/s1/${image}`).then(() => true, () => false), true)
 
-    const restarted = await (await call('POST', '/api/sessions/s1/restart')).json()
+    const restarted = ofKind(
+      await sessionFrom(await call('POST', '/api/sessions/s1/restart')),
+      'roleplay',
+    )
     assertEquals(restarted.frames, [])
     assertEquals(restarted.cast, before.cast)
     assertEquals(restarted.look, before.look)
@@ -313,28 +328,28 @@ Deno.test("Speaking a Frame designs the Character's voice first, and serves the 
 
     assertEquals((await job('speak', 0)).status, 201)
     assertEquals(await settled(call), [])
-    let session = await (await call('GET', '/api/sessions/s1')).json()
-    const { ref } = session.voice
+    let session = await getSession(call, 'roleplay')
+    const { ref } = session.voice!
     assertEquals(session.voice, {
       description: 'A low, husky woman.',
       model: 'scripted',
       ref,
       takes: 1,
     })
-    assertEquals(session.frames[0].speech.ref, ref)
-    const audio = await call('GET', `/api/sessions/s1/images/${session.frames[0].speech.file}`)
+    assertEquals(session.frames[0].speech!.ref, ref)
+    const audio = await call('GET', `/api/sessions/s1/images/${session.frames[0].speech!.file}`)
     assertEquals([audio.status, audio.headers.get('Content-Type')], [200, 'audio/mpeg'])
-    assertMatch(session.frames[0].speech.file, /^speech-0-[0-9a-f]{8}\.mp3$/)
+    assertMatch(session.frames[0].speech!.file, /^speech-0-[0-9a-f]{8}\.mp3$/)
     assertMatch(await audio.text(), /fake speak: You are late\./)
 
     // A new description drops the voice; the next take designs it from that description.
     const put = await call('PUT', '/api/sessions/s1/roleplay/voice', { description: 'A deep man.' })
-    assertEquals((await put.json()).voice, { description: 'A deep man.' })
+    assertEquals(ofKind(await sessionFrom(put), 'roleplay').voice, { description: 'A deep man.' })
     assertEquals((await call('PUT', '/api/sessions/s1/roleplay/voice', {})).status, 400)
     await job('voice', 0)
     assertEquals(await settled(call), [])
-    session = await (await call('GET', '/api/sessions/s1')).json()
-    assertEquals(session.voice.description, 'A deep man.')
+    session = await getSession(call, 'roleplay')
+    assertEquals(session.voice!.description, 'A deep man.')
     assertEquals(voice.calls.map((c) => c.kind), ['design', 'speak', 'design'])
     assertEquals((voice.calls[2].req as { description: string }).description, 'A deep man.')
   }))
@@ -390,26 +405,26 @@ Deno.test('A rendered Frame makes a 3D scene, served; a re-render or Undo remove
     assertEquals(await settled(call), [])
     await job('scene', 0)
     assertEquals(await settled(call), [])
-    let frame = shown((await (await call('GET', '/api/sessions/s1')).json()).frames[0])
-    assertEquals(scene.made.map((m) => m.image), [join(root, 's1', frame.file)])
-    assertMatch(frame.scene.file, /^scene-0-[0-9a-f]{8}\.ply$/)
-    assertEquals([frame.scene.splats, frame.scene.pivot, frame.scene.fov], [4, 1.5, 51.3])
-    assertEquals(frame.scene.from, frame.file)
-    const ply = await call('GET', `/api/sessions/s1/images/${frame.scene.file}`)
+    let picture = pictureOf((await getSession(call, 'roleplay')).frames[0])
+    assertEquals(scene.made.map((m) => m.image), [join(root, 's1', picture.file)])
+    assertMatch(picture.scene!.file, /^scene-0-[0-9a-f]{8}\.ply$/)
+    assertEquals([picture.scene!.splats, picture.scene!.pivot, picture.scene!.fov], [4, 1.5, 51.3])
+    assertEquals(picture.scene!.from, picture.file)
+    const ply = await call('GET', `/api/sessions/s1/images/${picture.scene!.file}`)
     assertEquals([ply.status, await ply.text()], [200, `ply fake scene of ${scene.made[0].image}`])
 
     // Made again, it replaces the old file; a re-render drops it.
-    const first = frame.scene.file
+    const first = picture.scene!.file
     await job('scene', 0)
     await settled(call)
-    frame = shown((await (await call('GET', '/api/sessions/s1')).json()).frames[0])
-    assertNotEquals(frame.scene.file, first)
+    picture = pictureOf((await getSession(call, 'roleplay')).frames[0])
+    assertNotEquals(picture.scene!.file, first)
     assertEquals((await call('GET', `/api/sessions/s1/images/${first}`)).status, 404)
-    const second = frame.scene.file
+    const second = picture.scene!.file
     await job('render', 0)
     await settled(call)
-    frame = shown((await (await call('GET', '/api/sessions/s1')).json()).frames[0])
-    assertEquals(frame.scene, undefined)
+    picture = pictureOf((await getSession(call, 'roleplay')).frames[0])
+    assertEquals(picture.scene, undefined)
     assertEquals((await call('GET', `/api/sessions/s1/images/${second}`)).status, 404)
 
     // Undoing an exchange removes its scene.
@@ -419,9 +434,9 @@ Deno.test('A rendered Frame makes a 3D scene, served; a re-render or Undo remove
     await settled(call)
     await job('scene', 1)
     await settled(call)
-    frame = shown((await (await call('GET', '/api/sessions/s1')).json()).frames[1])
+    picture = pictureOf((await getSession(call, 'roleplay')).frames[1])
     await call('DELETE', '/api/sessions/s1/roleplay/frames/1?latest=1')
-    assertEquals((await call('GET', `/api/sessions/s1/images/${frame.scene.file}`)).status, 404)
+    assertEquals((await call('GET', `/api/sessions/s1/images/${picture.scene!.file}`)).status, 404)
   }))
 
 Deno.test('A scene is made from the upscale when there is one', () =>
@@ -432,10 +447,10 @@ Deno.test('A scene is made from the upscale when there is one', () =>
       await call('POST', '/api/sessions/s1/jobs', { kind, frameIndex: 0 })
       assertEquals(await settled(call), [])
     }
-    const frame = shown((await (await call('GET', '/api/sessions/s1')).json()).frames[0])
-    assertMatch(frame.upscaled, /-2048\.png$/)
-    assertEquals(frame.scene.from, frame.upscaled)
-    assertEquals(scene.made[0].image, join(root, 's1', frame.upscaled))
+    const picture = pictureOf((await getSession(call, 'roleplay')).frames[0])
+    assertMatch(picture.upscaled!, /-2048\.png$/)
+    assertEquals(picture.scene!.from, picture.upscaled!)
+    assertEquals(scene.made[0].image, join(root, 's1', picture.upscaled!))
   }))
 
 Deno.test('A TripoSplat figure and a LiTo one are kept side by side, served, and go with a re-render', () =>
@@ -449,19 +464,19 @@ Deno.test('A TripoSplat figure and a LiTo one are kept side by side, served, and
       await job(kind)
       assertEquals(await settled(call), [])
     }
-    let frame = shown((await (await call('GET', '/api/sessions/s1')).json()).frames[0])
-    assertEquals(frame.figure.from, frame.file)
-    assertMatch(frame.figure.file, /^figure-0-[0-9a-f]{8}\.ply$/)
-    assertMatch(frame.lito.file, /^lito-0-[0-9a-f]{8}\.ply$/)
+    let picture = pictureOf((await getSession(call, 'roleplay')).frames[0])
+    assertEquals(picture.figure!.from, picture.file)
+    assertMatch(picture.figure!.file, /^figure-0-[0-9a-f]{8}\.ply$/)
+    assertMatch(picture.lito!.file, /^lito-0-[0-9a-f]{8}\.ply$/)
     assertEquals([figure.made.length, lito.made.length], [1, 1])
-    const files = [frame.figure.file, frame.lito.file]
+    const files = [picture.figure!.file, picture.lito!.file]
     for (const file of files) {
       assertEquals((await call('GET', `/api/sessions/s1/images/${file}`)).status, 200)
     }
     await job('render')
     await settled(call)
-    frame = shown((await (await call('GET', '/api/sessions/s1')).json()).frames[0])
-    assertEquals([frame.figure, frame.lito], [undefined, undefined])
+    picture = pictureOf((await getSession(call, 'roleplay')).frames[0])
+    assertEquals([picture.figure, picture.lito], [undefined, undefined])
     for (const file of files) {
       assertEquals((await call('GET', `/api/sessions/s1/images/${file}`)).status, 404)
     }
@@ -492,8 +507,8 @@ Deno.test('A voice is designed while the Cast is reviewed, before the scene begi
     assertEquals((await job('speak', 0)).status, 404)
     assertEquals((await job('voice', 1)).status, 404)
     assertEquals(await settled(call), [])
-    const session = await (await call('GET', '/api/sessions/s1')).json()
-    assertEquals([session.frames.length, session.voice.description], [0, 'A low, husky woman.'])
+    const session = await getSession(call, 'roleplay')
+    assertEquals([session.frames.length, session.voice!.description], [0, 'A low, husky woman.'])
     assertEquals(voice.calls.map((c) => c.kind), ['design'])
   }))
 

@@ -6,7 +6,16 @@ import {
   scriptedTextModel,
   withTempDir,
 } from '../testing.ts'
-import { type JsonFrame, readEvents, settled, setup, shown } from '../appTesting.ts'
+import {
+  eventOf,
+  getSession,
+  ofKind,
+  pictureOf,
+  readEvents,
+  sessionFrom,
+  settled,
+  setup,
+} from '../appTesting.ts'
 
 /** A Text Model whose Frames never come: each waits until its call is cancelled. */
 const hangingTextModel = () => ({
@@ -36,15 +45,12 @@ Deno.test('Frames stream progress and commit, then their render jobs serve their
     const second = await readEvents(
       await call('POST', '/api/sessions/s1/frames', { action: 'Sit' }),
     )
-    assertEquals(second.at(-1)![1].frame, {
-      ...(second.at(-1)![1].frame as object),
-      index: 1,
-      action: 'Sit',
-    })
+    const { frame } = eventOf(second, 'committed')
+    assertEquals([frame.index, frame.action], [1, 'Sit'])
 
     assertEquals(await settled(call), [])
-    const session = await (await call('GET', '/api/sessions/s1')).json()
-    const [firstImage, secondImage] = session.frames.map((t: JsonFrame) => shown(t).file)
+    const session = await getSession(call, 'chain')
+    const [firstImage, secondImage] = session.frames.map((t) => pictureOf(t).file)
     assertMatch(firstImage, /^frame-0-[0-9a-f]{8}\.png$/)
 
     const image = await call('GET', `/api/sessions/s1/images/${secondImage}`)
@@ -78,7 +84,7 @@ Deno.test('A failed Opening Frame discards the Session; a failed render of it le
     await readEvents(await rendering.call('POST', '/api/sessions/s1/frames', {}))
     const [failed] = await settled(rendering.call)
     assertEquals([failed.kind, failed.error], ['render', 'mflux crashed'])
-    const session = await (await rendering.call('GET', '/api/sessions/s1')).json()
+    const session = await getSession(rendering.call, 'chain')
     assertEquals(session.frames.length, 1)
   }))
 
@@ -154,7 +160,7 @@ Deno.test('DELETE /api/sessions/:id/frames/:index undoes from a Frame on, as the
     assertEquals((await call('DELETE', '/api/sessions/s1/frames/1')).status, 400)
     const res = await call('DELETE', '/api/sessions/s1/frames/1?latest=1')
     assertEquals(res.status, 200)
-    assertEquals((await res.json()).frames.length, 1)
+    assertEquals(ofKind(await sessionFrom(res), 'chain').frames.length, 1)
     assertEquals((await call('DELETE', '/api/sessions/s1/frames/1?latest=1')).status, 409)
     assertEquals((await call('DELETE', '/api/sessions/s1/frames/0?latest=0')).status, 409)
     await settled(call)
@@ -229,7 +235,7 @@ Deno.test('Two Frames sent at once for one Session: only one runs', () =>
     await (a.status === 200 ? b : a).body?.cancel()
 
     await settled(call)
-    const session = await (await call('GET', '/api/sessions/s1')).json()
+    const session = await getSession(call, 'chain')
     assertEquals(session.frames.map((t: { index: number }) => t.index), [0, 1])
   }))
 
@@ -254,10 +260,10 @@ Deno.test('Undo and a Frame sent at once never bring back the undone Frame', () 
 
     // Whatever won, every Frame is numbered in order and its image exists.
     await settled(call)
-    const session = await (await call('GET', '/api/sessions/s1')).json()
+    const session = await getSession(call, 'chain')
     session.frames.forEach((t: { index: number }, i: number) => assertEquals(t.index, i))
-    for (const t of session.frames as JsonFrame[]) {
-      assertEquals((await call('GET', `/api/sessions/s1/images/${shown(t).file}`)).status, 200)
+    for (const t of session.frames) {
+      assertEquals((await call('GET', `/api/sessions/s1/images/${pictureOf(t).file}`)).status, 200)
     }
   }))
 

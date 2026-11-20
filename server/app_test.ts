@@ -11,7 +11,7 @@ import {
   testScenario,
   withTempDir,
 } from './testing.ts'
-import { type JsonFrame, madeFrame, readEvents, setup } from './appTesting.ts'
+import { eventOf, madeFrame, readEvents, setup } from './appTesting.ts'
 
 Deno.test('GET /api/health reports ok', async () => {
   const res = await setup().call('GET', '/api/health')
@@ -536,7 +536,7 @@ Deno.test('Without pictures every kind starts; a Chain writes its Frames without
       assertEquals(res.status, 201)
     }
     const opening = await readEvents(await call('POST', '/api/sessions/s1/frames', {}))
-    const frame = opening.at(-1)![1].frame as JsonFrame
+    const frame = eventOf(opening, 'committed').frame
     assertEquals(frame.pictures, [])
     assertStringIncludes(frame.image.prompt, 'standing')
     assertEquals(images.prompts.length, 0)

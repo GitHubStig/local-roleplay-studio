@@ -1,7 +1,14 @@
 import { assertEquals, assertMatch } from '@std/assert'
 import { fakeFigureMaker, fakeSceneMaker } from '../3d/testing.ts'
 import { fakeImageGenerator, planOf, scriptedTextModel, withTempDir } from '../testing.ts'
-import { type JsonFrame, readEvents, settled, setup, storyboardFrames } from '../appTesting.ts'
+import {
+  getSession,
+  pictureOf,
+  readEvents,
+  settled,
+  setup,
+  storyboardFrames,
+} from '../appTesting.ts'
 
 Deno.test('A Storyboard Frame upscales once rendered; a re-render replaces the upscale', () =>
   withTempDir(async (root) => {
@@ -20,12 +27,12 @@ Deno.test('A Storyboard Frame upscales once rendered; a re-render replaces the u
     await settled(call)
     assertEquals((await job('upscale')).status, 201)
     await settled(call)
-    const upscaled = (await storyboardFrames(call))[0].upscaled!
+    const upscaled = pictureOf((await storyboardFrames(call))[0]).upscaled!
     assertMatch(upscaled, /-2048\.png$/)
 
     await job('render')
     await settled(call)
-    assertEquals((await storyboardFrames(call))[0].upscaled, undefined)
+    assertEquals(pictureOf((await storyboardFrames(call))[0]).upscaled, undefined)
     assertEquals((await call('GET', `/api/sessions/s1/images/${upscaled}`)).status, 404)
   }))
 
@@ -65,8 +72,8 @@ Deno.test('A Restart cancels the renders, waits for the one running, and clears 
     assertEquals((await restart).status, 200)
     assertEquals(await settled(call), [])
     assertEquals(prompts.length, 1)
-    const { frames } = await (await call('GET', '/api/sessions/s1')).json()
-    assertEquals(frames.map((f: JsonFrame) => [f.image, f.pictures]), [[undefined, []], [
+    const { frames } = await getSession(call, 'storyboard')
+    assertEquals(frames.map((f) => [f.image, f.pictures]), [[undefined, []], [
       undefined,
       [],
     ]])
@@ -91,18 +98,18 @@ Deno.test('A Storyboard queues SHARP, TripoSplat and LiTo; a re-render drops the
     await job('render')
     for (const kind of ['scene', 'figure', 'lito']) assertEquals((await job(kind)).status, 201)
     assertEquals(await settled(call), [])
-    const made = (await storyboardFrames(call))[1]
+    const made = pictureOf((await storyboardFrames(call))[1])
     assertMatch(made.scene!.file, /^scene-1-[0-9a-f]{8}\.ply$/)
     assertMatch(made.figure!.file, /^figure-1-[0-9a-f]{8}\.ply$/)
     assertMatch(made.lito!.file, /^lito-1-[0-9a-f]{8}\.ply$/)
 
     // Edited by hand, the picture and what was made from it stay (stale) until rendered again.
     await call('PUT', '/api/sessions/s1/frames/1', { body: 'He lands.' })
-    const edited = (await storyboardFrames(call))[1]
+    const edited = pictureOf((await storyboardFrames(call))[1])
     assertEquals([edited.stale, edited.scene, edited.lito], [true, made.scene, made.lito])
     await job('render')
     await settled(call)
-    const rerendered = (await storyboardFrames(call))[1]
+    const rerendered = pictureOf((await storyboardFrames(call))[1])
     assertEquals([rerendered.stale, rerendered.scene, rerendered.figure], [
       undefined,
       undefined,

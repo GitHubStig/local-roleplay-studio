@@ -1,7 +1,7 @@
 import { assert, assertEquals, assertFalse, assertMatch, assertThrows } from '@std/assert'
 import { scriptedRoleplayModel, testCast, testScore } from '../testing.ts'
 import { withTempDir } from '../../testing.ts'
-import { readEvents, setup } from '../../appTesting.ts'
+import { eventOf, readEvents, setup } from '../../appTesting.ts'
 import { cleanScore, ScoreError, scoreMessages, scoreSchema } from './score.ts'
 import type { Scenario } from '../../../shared/scenario.ts'
 import type { RoleplaySession } from '../../../shared/roleplay.ts'
@@ -81,14 +81,14 @@ Deno.test("A Roleplay's Score is written while Music is on, edited, and its musi
 
     const written = await readEvents(await call('POST', '/api/sessions/s1/roleplay/score'))
     assertEquals(written.map(([e]) => e), ['phase', 'score'])
-    const [, { session }] = written.at(-1)! as [string, { session: RoleplaySession }]
+    const { session } = eventOf(written, 'score')
     assertEquals(session.score, testScore())
     assertEquals(session.scoreWritten?.model, 'scripted')
     // The Session's own taste, kept as it started.
     assertMatch(model.scored[0][1].content, /No synths\./)
 
     const again = await readEvents(await call('POST', '/api/sessions/s1/roleplay/score'))
-    assertEquals((again.at(-1)![1].session as RoleplaySession).score!.genre, 'jazz')
+    assertEquals(eventOf(again, 'score').session.score!.genre, 'jazz')
 
     const edited = await call('PUT', '/api/sessions/s1/roleplay/score', {
       ...testScore(),

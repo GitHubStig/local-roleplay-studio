@@ -1,7 +1,7 @@
 import { assertEquals, assertMatch } from '@std/assert'
 import { fakeFigureMaker, fakeSceneMaker } from './3d/testing.ts'
 import { fakeImageGenerator, withTempDir } from './testing.ts'
-import { chainFrames, chainOfTwo, settled } from './appTesting.ts'
+import { chainFrames, chainOfTwo, pictureOf, settled } from './appTesting.ts'
 
 Deno.test('A Chain queues an upscale of one Frame, once', () =>
   withTempDir(async (root) => {
@@ -10,7 +10,7 @@ Deno.test('A Chain queues an upscale of one Frame, once', () =>
     const queued = await call('POST', '/api/sessions/s1/jobs', { kind: 'upscale', frameIndex: 1 })
     assertEquals(queued.status, 201)
     assertEquals(await settled(call), [])
-    const [opening, second] = await chainFrames(call)
+    const [opening, second] = (await chainFrames(call)).map(pictureOf)
     assertMatch(second.upscaled!, /^frame-1-[0-9a-f]{8}-2048\.png$/)
     assertEquals(opening.upscaled, undefined)
     assertEquals(images.upscaled, [second.file])
@@ -21,7 +21,7 @@ Deno.test('A Chain queues an upscale of one Frame, once', () =>
     // Deleting the upscale keeps the picture, and it can be upscaled again.
     const upscale = (path = '/api/sessions/s1/pictures/1/upscale') => call('DELETE', path)
     assertEquals((await upscale()).status, 200)
-    const [, after] = await chainFrames(call)
+    const [, after] = (await chainFrames(call)).map(pictureOf)
     assertEquals([after.upscaled, after.file], [undefined, second.file])
     assertEquals((await call('GET', `/api/sessions/s1/images/${second.upscaled}`)).status, 404)
     assertEquals((await call('GET', `/api/sessions/s1/images/${second.file}`)).status, 200)
@@ -29,7 +29,7 @@ Deno.test('A Chain queues an upscale of one Frame, once', () =>
     const redo = await call('POST', '/api/sessions/s1/jobs', { kind: 'upscale', frameIndex: 1 })
     assertEquals(redo.status, 201)
     assertEquals(await settled(call), [])
-    assertMatch((await chainFrames(call))[1].upscaled!, /-2048\.png$/)
+    assertMatch(pictureOf((await chainFrames(call))[1]).upscaled!, /-2048\.png$/)
   }))
 
 Deno.test('A Chain queues SHARP, TripoSplat and LiTo for one Frame', () =>
@@ -43,7 +43,7 @@ Deno.test('A Chain queues SHARP, TripoSplat and LiTo for one Frame', () =>
       )
     }
     assertEquals(await settled(call), [])
-    const [opening, second] = await chainFrames(call)
+    const [opening, second] = (await chainFrames(call)).map(pictureOf)
     assertMatch(second.scene!.file, /^scene-1-[0-9a-f]{8}\.ply$/)
     assertMatch(second.figure!.file, /^figure-1-[0-9a-f]{8}\.ply$/)
     assertMatch(second.lito!.file, /^lito-1-[0-9a-f]{8}\.ply$/)
@@ -89,7 +89,7 @@ Deno.test('A failed upscale leaves the Frame as it was', () =>
     await call('POST', '/api/sessions/s1/jobs', { kind: 'upscale', frameIndex: 0 })
     const [failed] = await settled(call)
     assertEquals(failed.error, 'SeedVR2 upscaler failed: out of memory')
-    assertEquals((await chainFrames(call))[0].upscaled, undefined)
+    assertEquals(pictureOf((await chainFrames(call))[0]).upscaled, undefined)
   }))
 
 Deno.test('Upscale uses the upscaler chosen in Settings now, even mid-Session', () =>

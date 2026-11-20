@@ -1,7 +1,7 @@
 import { assertEquals, assertMatch, assertStringIncludes } from '@std/assert'
 import { join } from '@std/path'
 import { withTempDir } from '../testing.ts'
-import { chainFrames, chainOfTwo, settled } from '../appTesting.ts'
+import { chainFrames, chainOfTwo, pictureOf, settled } from '../appTesting.ts'
 import { fakeVideoGenerator } from './testing.ts'
 import { makeClip } from './makeClip.ts'
 import type { SessionStore } from '../session.ts'
@@ -23,15 +23,15 @@ Deno.test('A Lead In is made from a Frame’s picture, kept on it, served, and u
     // It keeps the Image Model of the picture it's made from.
     const [job] = await queued.json()
     assertEquals(await settled(call), [])
-    const [opening, second] = await chainFrames(call)
+    const [opening, second] = (await chainFrames(call)).map(pictureOf)
     assertEquals(job.image.imageModel, second.imageModel)
-    const [clip] = second.clips
+    const [clip] = second.clips!
     assertMatch(clip.file, /^clip-1-lead-in-[0-9a-f]{8}\.mp4$/)
     assertEquals(
       [clip.kind, clip.prompt, clip.seconds, clip.speech, clip.seed],
       ['lead-in', 'She walks in.', 5, false, 1234],
     )
-    assertEquals(opening.clips, undefined)
+    assertEquals(opening.clips!, undefined)
     // By the video model Settings choose, as made with.
     assertEquals([video.made[0].model, clip.model], ['ltx-2.5', 'ltx-2.5'])
     // The picture is the clip's last frame only.
@@ -60,13 +60,13 @@ Deno.test('A kind made again replaces its clip; another kind sits beside it', ()
     const { call } = await chainOfTwo(root, { video })
     await queueClip(call, 1, leadIn)
     await settled(call)
-    const first = (await chainFrames(call))[1].clips[0].file
+    const first = pictureOf((await chainFrames(call))[1]).clips![0].file
     await queueClip(call, 1, { ...leadIn, prompt: 'She runs in.' })
     await queueClip(call, 1, { ...leadIn, kind: 'idle-loop', seconds: 4 })
     await settled(call)
-    const [, second] = await chainFrames(call)
+    const [, second] = (await chainFrames(call)).map(pictureOf)
     assertEquals(
-      second.clips.map((c: { kind: string; prompt: string }) => [c.kind, c.prompt]),
+      second.clips!.map((c: { kind: string; prompt: string }) => [c.kind, c.prompt]),
       [['lead-in', 'She runs in.'], ['idle-loop', 'She walks in.']],
     )
     assertEquals((await call('GET', `/api/sessions/s1/images/${first}`)).status, 404)
@@ -86,9 +86,9 @@ Deno.test('Each video model keeps its own clip of a kind, at its size, and repla
     await settled(call)
     await queueClip(call, 1, { ...leadIn, prompt: 'She runs in.', model: 'wan-2.2' })
     await settled(call)
-    const [, second] = await chainFrames(call)
+    const [, second] = (await chainFrames(call)).map(pictureOf)
     assertEquals(
-      second.clips.map((c: { model: string; prompt: string }) => [c.model, c.prompt]),
+      second.clips!.map((c: { model: string; prompt: string }) => [c.model, c.prompt]),
       [['ltx-2.5', 'She walks in.'], ['wan-2.2', 'She runs in.']],
     )
     // Made by the model each was queued with; one without took Settings' default.
@@ -110,9 +110,9 @@ Deno.test('Into Next ends on the next Frame’s picture, and the last Frame has 
     assertStringIncludes((await last.json()).error, 'to end on')
     assertEquals((await queueClip(call, 0, intoNext)).status, 201)
     await settled(call)
-    const [opening, second] = await chainFrames(call)
+    const [opening, second] = (await chainFrames(call)).map(pictureOf)
     assertEquals([video.made[0].first, video.made[0].last], [opening.file, second.file])
-    assertEquals(opening.clips[0].next, second.file)
+    assertEquals(opening.clips![0].next, second.file)
   }))
 
 Deno.test('A clip’s order is checked before it’s queued', () =>
@@ -150,7 +150,7 @@ Deno.test('A failed clip leaves the picture as it was, and no file behind', () =
     await queueClip(call, 1, leadIn)
     const [job] = await settled(call)
     assertEquals([job.status, job.error], ['failed', 'out of memory'])
-    assertEquals((await chainFrames(call))[1].clips, undefined)
+    assertEquals(pictureOf((await chainFrames(call))[1]).clips, undefined)
     const files = [...Deno.readDirSync(join(root, 's1'))].map((e) => e.name)
     assertEquals(files.filter((f) => f.startsWith('clip-')), [])
   }))

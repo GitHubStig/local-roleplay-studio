@@ -1,6 +1,6 @@
 import { assert, assertEquals, assertStringIncludes } from '@std/assert'
 import { reply, scriptedTextModel, withTempDir } from '../testing.ts'
-import { chainFrames, chainOfTwo, readEvents } from '../appTesting.ts'
+import { chainFrames, chainOfTwo, pictureOf, readEvents } from '../appTesting.ts'
 import { loadPrompt } from '../promptFiles.ts'
 import type { Session } from '../../shared/session.ts'
 import { cleanClipPrompt, frameStory } from './clipPrompt.ts'
@@ -39,7 +39,7 @@ Deno.test('A Lead In’s prompt is written from the picture and the story, strea
     assertStringIncludes(user, `Just before it:\n${opening.narration}`)
     assertStringIncludes(user, 'a 5-second Lead In clip')
     // Nothing is saved.
-    assertEquals((await chainFrames(call))[1].clips, undefined)
+    assertEquals(pictureOf((await chainFrames(call))[1]).clips, undefined)
   }))
 
 Deno.test('Into Next’s prompt is told the next picture, and refused on the last Frame', () =>

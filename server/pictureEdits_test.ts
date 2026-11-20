@@ -2,7 +2,7 @@ import { assertEquals, assertMatch, assertNotEquals, assertRejects } from '@std/
 import { join } from '@std/path'
 import type { ImageGenerator } from './images/imageGenerator.ts'
 import { fakeImageGenerator, withTempDir } from './testing.ts'
-import { chainFrames, chainOfTwo, settled } from './appTesting.ts'
+import { chainFrames, chainOfTwo, pictureOf, settled } from './appTesting.ts'
 
 /** A PNG's bytes in base64, standing in for a painted area. */
 const MASK = btoa('\x89PNG painted')
@@ -22,8 +22,8 @@ Deno.test('An edit repaints a picture as a new version, made from its model’s 
     const { mask } = (await queued.json())[0].edit
     assertMatch(mask, /^mask-1-[0-9a-f]{8}\.png$/)
     assertEquals(await settled(call), [])
-    const [, first] = await chainFrames(call)
-    const [one] = first.edits
+    const [, first] = (await chainFrames(call)).map(pictureOf)
+    const [one] = first.edits!
     assertMatch(one.file, /^edit-1-[0-9a-f]{8}\.png$/)
     assertEquals(one.mask, mask)
     // Made here, on mflux: Qwen-Image 2.1 Edit runs on both, and Settings send edits here.
@@ -34,7 +34,7 @@ Deno.test('An edit repaints a picture as a new version, made from its model’s 
       1,
     ])
     assertEquals(
-      await Deno.readFile(join(root, 's1', one.mask)),
+      await Deno.readFile(join(root, 's1', one.mask!)),
       Uint8Array.from(atob(MASK), (c) => c.charCodeAt(0)),
     )
     // Quantized as Settings say: 8-bit by default.
@@ -50,14 +50,17 @@ Deno.test('An edit repaints a picture as a new version, made from its model’s 
       201,
     )
     assertEquals(await settled(call), [])
-    const [, second] = await chainFrames(call)
+    const [, second] = (await chainFrames(call)).map(pictureOf)
     assertEquals([images.edits[1].image, images.edits[1].mask], [first.file, undefined])
-    assertEquals([images.edits[1].model, second.edits[1].editModel, second.edits[1].imageBackend], [
-      'flux3-klein-edit',
-      'flux3-klein-edit',
-      'mflux',
-    ])
-    assertEquals([second.edits.length, second.picked], [2, 2])
+    assertEquals(
+      [images.edits[1].model, second.edits![1].editModel, second.edits![1].imageBackend],
+      [
+        'flux3-klein-edit',
+        'flux3-klein-edit',
+        'mflux',
+      ],
+    )
+    assertEquals([second.edits!.length, second.picked], [2, 2])
     // Qwen's next carries on from Qwen's newest.
     await edit({ instruction: 'A ring on it', model: 'qwen-image-2.1-edit' })
     assertEquals(await settled(call), [])
@@ -66,15 +69,17 @@ Deno.test('An edit repaints a picture as a new version, made from its model’s 
     // What's made from the picture is made from the picked version.
     await call('POST', '/api/sessions/s1/jobs', { kind: 'upscale', frameIndex: 1 })
     assertEquals(await settled(call), [])
-    const [, third] = await chainFrames(call)
+    const [, third] = (await chainFrames(call)).map(pictureOf)
     assertEquals(third.picked, 3)
-    assertEquals(images.upscaled, [third.edits[2].file])
-    const [, upscaled] = await chainFrames(call)
-    assertMatch(upscaled.edits[2].upscaled, /-2048\.png$/)
+    assertEquals(images.upscaled, [third.edits![2].file])
+    const [, upscaled] = (await chainFrames(call)).map(pictureOf)
+    assertMatch(upscaled.edits![2].upscaled!, /-2048\.png$/)
     assertEquals(upscaled.upscaled, undefined)
     // Edits and their upscales are served, as the render is.
     const served = (name: string) => call('GET', `/api/sessions/s1/images/${name}`)
-    for (const name of [one.file, one.mask, upscaled.edits[2].file, upscaled.edits[2].upscaled]) {
+    for (
+      const name of [one.file, one.mask!, upscaled.edits![2].file, upscaled.edits![2].upscaled!]
+    ) {
       assertEquals((await served(name)).status, 200)
     }
   }))
@@ -119,36 +124,36 @@ Deno.test('An edit can be made again in its place, as told now, picked, and the 
 
     await edit({ instruction: 'A hand', mask: MASK })
     assertEquals(await settled(call), [])
-    const [, made] = await chainFrames(call)
+    const [, made] = (await chainFrames(call)).map(pictureOf)
     await edit({ retry: true, instruction: 'An open hand', mask: btoa('\x89PNG wider') })
     assertEquals(await settled(call), [])
-    const [, again] = await chainFrames(call)
+    const [, again] = (await chainFrames(call)).map(pictureOf)
     // In its place, from the render, with the next seed, as told now.
-    assertEquals(again.edits.length, 1)
-    assertNotEquals(again.edits[0].file, made.edits[0].file)
-    assertEquals([again.edits[0].seed, again.edits[0].instructions], [
-      made.edits[0].seed + 1,
+    assertEquals(again.edits!.length, 1)
+    assertNotEquals(again.edits![0].file, made.edits![0].file)
+    assertEquals([again.edits![0].seed, again.edits![0].instructions], [
+      made.edits![0].seed + 1,
       ['An open hand'],
     ])
     assertEquals([images.edits[1].image, images.edits[1].instruction], [made.file, 'An open hand'])
     const file = (name: string) => call('GET', `/api/sessions/s1/images/${name}`)
     // The edit it replaced goes, its painted area too.
-    for (const name of [made.edits[0].file, made.edits[0].mask]) {
+    for (const name of [made.edits![0].file, made.edits![0].mask!]) {
       assertEquals((await file(name)).status, 404)
     }
-    assertEquals((await file(again.edits[0].file)).status, 200)
+    assertEquals((await file(again.edits![0].file)).status, 200)
 
     // The render picked again, then the edit deleted: its files go, the render stays picked.
     const pick = (picked: unknown) => call('PUT', '/api/sessions/s1/pictures/1/picked', { picked })
     assertEquals((await pick(2)).status, 409)
     assertEquals((await pick(0)).status, 200)
-    assertEquals((await chainFrames(call))[1].picked, 0)
+    assertEquals(pictureOf((await chainFrames(call))[1]).picked, 0)
     assertEquals((await pick(1)).status, 200)
     const deleted = await call('DELETE', '/api/sessions/s1/pictures/1/edits/1')
     assertEquals(deleted.status, 200)
-    const [, after] = await chainFrames(call)
-    assertEquals([after.edits, after.picked], [undefined, undefined])
-    assertEquals((await file(again.edits[0].file)).status, 404)
+    const [, after] = (await chainFrames(call)).map(pictureOf)
+    assertEquals([after.edits!, after.picked], [undefined, undefined])
+    assertEquals((await file(again.edits![0].file)).status, 404)
     assertEquals((await file(again.file)).status, 200)
     assertEquals(
       (await call('DELETE', '/api/sessions/s1/pictures/1/edits/1')).status,
@@ -166,7 +171,7 @@ Deno.test('Each edit model’s line is retried and deleted on its own, the other
     const edit = async (body: object) => {
       await call('POST', '/api/sessions/s1/jobs', { kind: 'edit', frameIndex: 1, edit: body })
       assertEquals(await settled(call), [])
-      return (await chainFrames(call))[1]
+      return pictureOf((await chainFrames(call))[1])
     }
     const qwen = 'qwen-image-2.1-edit', flux = 'flux3-klein-edit'
     await edit({ instruction: 'Q1', model: qwen })
@@ -174,7 +179,7 @@ Deno.test('Each edit model’s line is retried and deleted on its own, the other
     const made = await edit({ instruction: 'Q2', model: qwen })
     // A retry of FLUX.3's stays second, made again from the Original.
     const retried = await edit({ instruction: 'F1 again', model: flux, retry: true })
-    assertEquals(retried.edits.map((e: { instructions: string[] }) => e.instructions[0]), [
+    assertEquals(retried.edits!.map((e: { instructions: string[] }) => e.instructions[0]), [
       'Q1',
       'F1 again',
       'Q2',
@@ -187,9 +192,9 @@ Deno.test('Each edit model’s line is retried and deleted on its own, the other
     await call('PUT', '/api/sessions/s1/pictures/1/picked', { picked: 3 })
     // Q2 picked and deleted: Q1, the one before it in its line, is picked.
     assertEquals((await remove(3)).status, 200)
-    const [, after] = await chainFrames(call)
+    const [, after] = (await chainFrames(call)).map(pictureOf)
     assertEquals([
-      after.edits.map((e: { instructions: string[] }) => e.instructions[0]),
+      after.edits!.map((e: { instructions: string[] }) => e.instructions[0]),
       after.picked,
     ], [
       ['Q1', 'F1 again'],
@@ -198,6 +203,10 @@ Deno.test('Each edit model’s line is retried and deleted on its own, the other
     // Q1 deleted while the FLUX.3 edit after it is picked: that stays picked, now first.
     await call('PUT', '/api/sessions/s1/pictures/1/picked', { picked: 2 })
     assertEquals((await remove(1)).status, 200)
-    const [, last] = await chainFrames(call)
-    assertEquals([last.edits.length, last.edits[0].instructions, last.picked], [1, ['F1 again'], 1])
+    const [, last] = (await chainFrames(call)).map(pictureOf)
+    assertEquals([last.edits!.length, last.edits![0].instructions, last.picked], [
+      1,
+      ['F1 again'],
+      1,
+    ])
   }))

@@ -8,7 +8,8 @@ import { fakeImageGenerator, withTempDir } from './testing.ts'
 import {
   chainFrames,
   chainOfTwo,
-  type JsonFrame,
+  getSession,
+  pictureOf,
   readEvents,
   settled,
   type setup,
@@ -109,7 +110,7 @@ Deno.test("A Session's export asked for again replaces one queued, and is refuse
 Deno.test('Home shows the thumbnail chosen until its file goes, and else the newest picture', () =>
   withTempDir(async (root) => {
     const { call } = await chainOfTwo(root)
-    const session = async () => await (await call('GET', '/api/sessions/s1')).json()
+    const session = async () => await getSession(call, 'chain')
     const card = async () => (await (await call('GET', '/api/sessions')).json())[0].thumbnail
     const choose = (image: unknown) => call('PUT', '/api/sessions/s1/thumbnail', { image })
     const frames = (await session()).frames
@@ -157,11 +158,11 @@ Deno.test('A Session switches Image Model, and a Chain Frame by the old one rend
 
     const switched = await (await switchTo('flux2-klein-4b')).json()
     assertEquals([switched.settings.imageModel, switched.settings.steps], ['flux2-klein-4b', 4])
-    const [, before] = await chainFrames(call)
+    const [, before] = (await chainFrames(call)).map(pictureOf)
     assertEquals((await render()).status, 201)
     assertEquals(await settled(call), [])
-    const [, after] = await chainFrames(call)
-    assertEquals(after.pictures.map((p: Picture) => p.file), [before.file, after.file])
+    const [, frame] = await chainFrames(call)
+    assertEquals(frame.pictures.map((p) => p.file), [before.file, pictureOf(frame).file])
     assertEquals(images.prompts.length, 3)
   }))
 
@@ -245,11 +246,11 @@ Deno.test("Every picture by one Image Model is deleted, with its files, but not 
     await call('POST', '/api/sessions/s1/jobs', { kind: 'render', frameIndex: 1 })
     await settled(call)
     const frames = async () =>
-      ((await (await call('GET', '/api/sessions/s1')).json()).frames as JsonFrame[]).map((f) =>
+      (await getSession(call, 'chain')).frames.map((f) =>
         f.pictures.map((p: Picture) => p.imageModel)
       )
     assertEquals(await frames(), [['qwen-image-2.1'], ['qwen-image-2.1', 'flux2-klein-4b']])
-    const old = (await (await call('GET', '/api/sessions/s1')).json()).frames[0].pictures[0].file
+    const old = (await getSession(call, 'chain')).frames[0].pictures[0].file
     const file = join(root, 's1', old)
     assertEquals((await Deno.stat(file)).isFile, true)
 
@@ -326,8 +327,8 @@ Deno.test("Deleting a model's pictures cancels the work on them, and only that",
     assertEquals((await jobs()).filter(([, , model]) => model === old), [])
     await settled(call)
     assertEquals(await jobs(), [['upscale', 1, null], ['render', 0, other]])
-    const { frames } = await (await call('GET', '/api/sessions/s1')).json()
-    assertEquals(frames.map((f: JsonFrame) => f.pictures.map((p: Picture) => p.imageModel)), [
+    const { frames } = await getSession(call, 'chain')
+    assertEquals(frames.map((f) => f.pictures.map((p) => p.imageModel)), [
       [other],
       [other],
       [],
@@ -354,8 +355,8 @@ Deno.test("A model's pictures aren't deleted while style scores are being worked
       409,
       'Style scores are being worked out: wait for them to finish first',
     ])
-    const { frames } = await (await call('GET', '/api/sessions/s1')).json()
-    assertEquals(frames.map((f: JsonFrame) => f.pictures.length), [1, 1])
+    const { frames } = await getSession(call, 'chain')
+    assertEquals(frames.map((f) => f.pictures.length), [1, 1])
 
     release()
     await settled(call)

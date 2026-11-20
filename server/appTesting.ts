@@ -6,6 +6,14 @@ import { type AppDeps, createHandler } from './app.ts'
 import type { ImageGenerator } from './images/imageGenerator.ts'
 import { dirSessionStore } from './session.ts'
 import type { Picture } from '../shared/pictures.ts'
+import type { Session } from '../shared/session.ts'
+import type {
+  ClipPromptEvent,
+  EndEvent,
+  FrameEvent,
+  RoleplayEvent,
+  StoryboardEvent,
+} from '../shared/events.ts'
 import { DEFAULT_SETTINGS, type SettingsStore } from './settings.ts'
 import type { Settings } from '../shared/settings.ts'
 import type { TextModel } from './textModel.ts'
@@ -127,6 +135,22 @@ export async function readEvents(res: Response): Promise<[string, Record<string,
   })
 }
 
+/** Any event a stream sends, as `shared/events.ts` declares it. */
+export type AnyEvent = FrameEvent | StoryboardEvent | RoleplayEvent | ClipPromptEvent | EndEvent
+
+/**
+ * The last event of `type` among those a stream sent (`readEvents`), typed as it's declared, so
+ * what a test reads of it (a Frame, a Session) is type-checked; throws if there's none.
+ */
+export function eventOf<T extends AnyEvent['type']>(
+  events: [string, Record<string, unknown>][],
+  type: T,
+): Extract<AnyEvent, { type: T }> {
+  const found = events.findLast(([name]) => name === type)
+  if (!found) throw new Error(`No ${type} event among ${events.map(([name]) => name).join(', ')}`)
+  return found[1] as Extract<AnyEvent, { type: T }>
+}
+
 /** Reads SSE text from a stream until `marker` appears; returns everything read so far. */
 export async function readUntil(reader: ReadableStreamDefaultReader<string>, marker: string) {
   let seen = ''
@@ -138,20 +162,43 @@ export async function readUntil(reader: ReadableStreamDefaultReader<string>, mar
   return seen
 }
 
-/** A Frame as the API sends it. */
-/** A Frame as the API sends it, loosely: every kind has its pictures, and its Image Prompt once written. */
-export type JsonFrame = { pictures: Picture[]; image: { prompt: string } } & Record<string, unknown>
+/** A Session of one kind. */
+export type SessionOf<K extends Session['kind']> = Extract<Session, { kind: K }>
 
 /**
- * A Frame with the picture it shows spread onto it (`file` null for none): its latest, as these
- * tests keep to one Image Model unless they switch. Loose, as the API's JSON is.
+ * The Session a response answers with, typed as `shared/` declares it: the one place these tests
+ * take the API's JSON on trust, so every read after it is type-checked, and a field renamed in
+ * `shared/` fails `deno task check` here rather than only when the test runs (or never, comparing
+ * `undefined` with `undefined`). What the server adds as it sends one (its `activity`) isn't read.
  */
-// deno-lint-ignore no-explicit-any
-export const shown = (frame: JsonFrame): any => ({
-  ...frame,
-  file: null,
-  ...frame.pictures.at(-1),
-})
+export async function sessionFrom(res: Response): Promise<Session> {
+  if (!res.ok) throw new Error(`${res.status} ${res.url}: ${await res.text()}`)
+  return await res.json() as Session
+}
+
+/** `session` as the kind it must be; throws if it's another. */
+export function ofKind<K extends Session['kind']>(session: Session, kind: K): SessionOf<K> {
+  if (session.kind !== kind) throw new Error(`${session.id} is a ${session.kind}, not a ${kind}`)
+  return session as SessionOf<K>
+}
+
+/** A Session as saved now, of the kind it must be. */
+export const getSession = async <K extends Session['kind']>(
+  call: ReturnType<typeof setup>['call'],
+  kind: K,
+  id = 's1',
+) => ofKind(await sessionFrom(await call('GET', `/api/sessions/${id}`)), kind)
+
+/** The picture a Frame shows in these tests, which keep to one Image Model unless they switch. */
+export const latestPicture = (frame: { pictures: Picture[] }): Picture | undefined =>
+  frame.pictures.at(-1)
+
+/** The same, for a Frame a test has pictured: throws if it has none. */
+export function pictureOf(frame: { index: number; pictures: Picture[] }): Picture {
+  const picture = latestPicture(frame)
+  if (!picture) throw new Error(`Frame ${frame.index + 1} has no picture`)
+  return picture
+}
 
 /** A Chain with an Opening Frame and a second Frame, and a reply left for a third. */
 export async function chainOfTwo(root: string, opts: Partial<Parameters<typeof setup>[0]> = {}) {
@@ -186,14 +233,11 @@ export async function madeFrame(
 
 /** A Chain's Frames as saved now. */
 export const chainFrames = async (call: ReturnType<typeof setup>['call']) =>
-  ((await (await call('GET', '/api/sessions/s1')).json()).frames as JsonFrame[]).map(shown)
+  (await getSession(call, 'chain')).frames
 
 /** A Storyboard's Frames as saved now. */
-export async function storyboardFrames(call: ReturnType<typeof setup>['call'], id = 's1') {
-  return ((await (await call('GET', `/api/sessions/${id}`)).json()).frames as JsonFrame[]).map(
-    shown,
-  )
-}
+export const storyboardFrames = async (call: ReturnType<typeof setup>['call'], id = 's1') =>
+  (await getSession(call, 'storyboard', id)).frames
 
 /**
  * Waits until a Session's queue has no queued or running jobs, and returns what's left: the failed
