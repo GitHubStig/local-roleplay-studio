@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, useTemplateRef, watch } from 'vue'
-import { usePinchZoom } from '../composables/usePinchZoom'
+import { unzoomed, usePinchZoom, type ZoomView } from '../composables/usePinchZoom'
 
 /**
  * The picture in the full-screen viewer (`ImageViewer`): as large as the room allows in its own
@@ -21,7 +21,9 @@ const displayed = computed(() => (props.src ? { src: props.src, alt: props.alt ?
 
 /** Pinch to zoom the image, not the page; each new image starts unzoomed. */
 const frame = useTemplateRef<HTMLElement>('frame')
-const { zoomed, layerStyle, view, reset } = usePinchZoom(frame)
+/** The zoom, which pictures of one size side by side share, to zoom and pan together. */
+const zoom = defineModel<ZoomView>('zoom', { default: unzoomed })
+const { zoomed, layerStyle, view, reset } = usePinchZoom(frame, zoom)
 watch(() => displayed.value?.src, reset)
 /** Whether it's zoomed in: a drag then pans it (the viewer's swipes wait till it's back). */
 defineExpose({ zoomed })

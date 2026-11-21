@@ -328,6 +328,28 @@ describe('FrameViewer', () => {
     expect(side(wrapper).find('[data-same-edit]').exists()).toBe(false)
   })
 
+  it('compares the edit models side by side, from edits by two or more', async () => {
+    // One edit model's edits: nothing to compare.
+    const wrapper = mountIt()
+    await flushPromises()
+    expect(side(wrapper).find('[data-compare-edits]').exists()).toBe(false)
+    const flux = { ...edit(3), editModel: 'flux3-klein-edit' }
+    await wrapper.setProps({
+      frames: [{
+        ...frames[0],
+        pictures: [{ ...frames[0].pictures[0], edits: [edit(1), edit(2), flux] }],
+      }],
+    })
+    await side(wrapper).find('[data-compare-edits]').trigger('click')
+    await flushPromises()
+    const compare = wrapper.findComponent({ name: 'EditCompare' })
+    expect(compare.findAll('[data-compared-edit]').map((p) => p.attributes('data-compared-edit')))
+      .toEqual(['0', '2', '3'])
+    // Picked there, as from the versions beside the picture.
+    await compare.findAll('[data-pick-edit]')[2].trigger('click')
+    expect(wrapper.emitted('pick')).toEqual([[0, 3]])
+  })
+
   it('opens on an edit being made, and offers one that failed to redo or delete', async () => {
     const wrapper = mountIt({ jobs: [editJob('queued')] })
     await flushPromises()

@@ -26,6 +26,7 @@ import { useFeatures } from '../composables/useFeatures'
 import { editChoices, useSettingsOptions } from '../composables/useSettingsOptions'
 import ClipCompare from './ClipCompare.vue'
 import ClipOverlay from './ClipOverlay.vue'
+import EditCompare from './EditCompare.vue'
 import ImageViewer from './ImageViewer.vue'
 import PaintLayer, { type Sketch } from './PaintLayer.vue'
 import PictureVersions, { type VersionEntry } from './PictureVersions.vue'
@@ -457,6 +458,14 @@ useEventListener(document, 'keydown', (e: KeyboardEvent) => {
   else history.undo()
 })
 
+/** Edits by two edit models or more, to compare side by side (`EditCompare`). */
+const editsComparable = computed(() => new Set(edits.value.map((e) => e.editModel)).size > 1)
+const comparingEdits = ref(false)
+watch(() => current.value?.index, () => (comparingEdits.value = false))
+function pickCompared(version: number) {
+  const frame = current.value
+  if (frame && version !== (frame.picture.picked ?? 0)) emit('pick', frame.index, version)
+}
 /** The edit shown, when it's a picked one rather than an edit being made. */
 const pickedShown = computed(() => {
   const p = picture.value
@@ -564,6 +573,16 @@ const action =
         >
           Same edit with…
         </button>
+        <button
+          v-if="editsComparable"
+          type="button"
+          :class="action"
+          title="Each edit model's newest edit side by side, with the Original"
+          data-compare-edits
+          @click="playing = null, comparingEdits = true"
+        >
+          Compare edits
+        </button>
         <template v-if="upscale">
           <button
             type="button"
@@ -638,7 +657,7 @@ const action =
         </button>
       </PictureVersions>
     </template>
-    <template v-if="playing || comparable" #over>
+    <template v-if="playing || comparable || editsComparable" #over>
       <ClipOverlay
         v-if="playing"
         :src="fileUrl(playing.file)"
@@ -653,6 +672,14 @@ const action =
         :clips="clips"
         :kind="comparing"
         @close="comparing = null"
+      />
+      <EditCompare
+        v-if="editsComparable"
+        :session-id="sessionId"
+        :picture="comparingEdits ? picture ?? null : null"
+        :name="current ? props.name(current.index) : undefined"
+        @close="comparingEdits = false"
+        @pick="pickCompared"
       />
     </template>
     <template v-if="painting && draft" #layer="{ size }">

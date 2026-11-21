@@ -9,6 +9,18 @@ interface GestureEvent extends UIEvent {
 }
 
 const MAX_SCALE = 8
+
+/**
+ * A zoom: its scale, and the zoomed layer's offset from the frame's top-left corner, as a share of
+ * the frame's width and height, so frames of slightly different sizes can share one.
+ */
+export interface ZoomView {
+  scale: number
+  x: number
+  y: number
+}
+/** Not zoomed. */
+export const unzoomed = (): ZoomView => ({ scale: 1, x: 0, y: 0 })
 /** How much one notch of a mouse wheel zooms. */
 const WHEEL_STEP = 1.25
 
@@ -33,23 +45,30 @@ function wheelNotches(e: WheelEvent): number {
  * event with `ctrlKey` set (Chrome, Firefox) or as `gesture*` events (Safari), or a mouse wheel
  * (Windows has no pinch on a mouse); all are cancelled so the page stays put. While zoomed in,
  * two-finger scrolling or dragging pans, and the image always covers the frame. Returns the
- * transform for the zoomed layer.
+ * transform for the zoomed layer. Frames given the same `view` zoom and pan together.
  */
-export function usePinchZoom(frame: Readonly<Ref<HTMLElement | null>>) {
-  /** Scale, and the layer's offset in px from the frame's top-left corner. */
-  const view = ref({ scale: 1, x: 0, y: 0 })
+export function usePinchZoom(
+  frame: Readonly<Ref<HTMLElement | null>>,
+  view: Ref<ZoomView> = ref(unzoomed()),
+) {
   const zoomed = computed(() => view.value.scale > 1)
 
-  /** Keeps the scaled layer covering the frame: no gaps at the edges. */
+  /** The frame's size in px. */
+  const sizeOf = () => ({ w: frame.value?.clientWidth ?? 0, h: frame.value?.clientHeight ?? 0 })
+  /** The layer's offset in px. */
+  const offset = () => {
+    const { w, h } = sizeOf()
+    return { x: view.value.x * w, y: view.value.y * h }
+  }
+
+  /** Sets the zoom from an offset in px, keeping the scaled layer covering the frame: no gaps. */
   function set(scale: number, x: number, y: number) {
-    const el = frame.value
+    const { w, h } = sizeOf()
     const s = Math.min(MAX_SCALE, Math.max(1, scale))
-    const w = el?.clientWidth ?? 0
-    const h = el?.clientHeight ?? 0
     view.value = {
       scale: s,
-      x: Math.min(0, Math.max(w * (1 - s), x)),
-      y: Math.min(0, Math.max(h * (1 - s), y)),
+      x: w ? Math.min(0, Math.max(w * (1 - s), x)) / w : 0,
+      y: h ? Math.min(0, Math.max(h * (1 - s), y)) / h : 0,
     }
   }
 
@@ -58,12 +77,13 @@ export function usePinchZoom(frame: Readonly<Ref<HTMLElement | null>>) {
     const rect = frame.value!.getBoundingClientRect()
     const px = clientX - rect.left
     const py = clientY - rect.top
-    const { scale: s, x, y } = view.value
+    const s = view.value.scale
+    const { x, y } = offset()
     const next = Math.min(MAX_SCALE, Math.max(1, scale))
     set(next, px - (px - x) * (next / s), py - (py - y) * (next / s))
   }
 
-  const reset = () => (view.value = { scale: 1, x: 0, y: 0 })
+  const reset = () => (view.value = unzoomed())
 
   /**
    * When a wheel event last looked like a touchpad's. Its scroll's later events follow it for a
@@ -87,7 +107,8 @@ export function usePinchZoom(frame: Readonly<Ref<HTMLElement | null>>) {
       zoomAt(view.value.scale * Math.exp(-e.deltaY * 0.01), e.clientX, e.clientY)
     } else if (zoomed.value) {
       e.preventDefault()
-      set(view.value.scale, view.value.x - e.deltaX, view.value.y - e.deltaY)
+      const { x, y } = offset()
+      set(view.value.scale, x - e.deltaX, y - e.deltaY)
     }
   }
 
@@ -112,26 +133,42 @@ export function usePinchZoom(frame: Readonly<Ref<HTMLElement | null>>) {
   }
   function onPointerMove(e: PointerEvent) {
     if (drag?.id !== e.pointerId) return
-    set(view.value.scale, view.value.x + e.clientX - drag.x, view.value.y + e.clientY - drag.y)
+    const { x, y } = offset()
+    set(view.value.scale, x + e.clientX - drag.x, y + e.clientY - drag.y)
     drag = { ...drag, x: e.clientX, y: e.clientY }
   }
   const onPointerUp = () => (drag = null)
 
+  /**
+   * Only what happens in the frame's own dialog: one opened over it from inside it (Compare edits
+   * in the viewer's picture) is inside it in the page, and its pinches, drags and double-clicks
+   * bubbling out zoomed the picture behind, which then took the pointer, so the double-click that
+   * should reset the one in front reset the one behind (2026-11-21).
+   */
+  const own = <E extends Event>(handle: (e: E) => void) => (e: E) => {
+    const target = e.target as Element | null
+    if (target?.closest?.('dialog') === (frame.value?.closest('dialog') ?? null)) handle(e)
+  }
+
   // Not Vue's listeners: those can't be made non-passive, and a passive one can't cancel the page
   // zoom.
   const cancellable = { passive: false }
-  useEventListener(frame, 'wheel', onWheel, cancellable)
-  useEventListener(frame, 'gesturestart', onGestureStart, cancellable)
-  useEventListener(frame, 'gesturechange', onGestureChange, cancellable)
-  useEventListener(frame, 'gestureend', (e: Event) => e.preventDefault(), cancellable)
-  useEventListener(frame, 'pointerdown', onPointerDown)
+  useEventListener(frame, 'wheel', own(onWheel), cancellable)
+  useEventListener(frame, 'gesturestart', own(onGestureStart), cancellable)
+  useEventListener(frame, 'gesturechange', own(onGestureChange), cancellable)
+  useEventListener(frame, 'gestureend', own((e: Event) => e.preventDefault()), cancellable)
+  useEventListener(frame, 'pointerdown', own(onPointerDown))
   useEventListener(frame, 'pointermove', onPointerMove)
   useEventListener(frame, ['pointerup', 'pointercancel'], onPointerUp)
-  useEventListener(frame, 'dblclick', reset)
+  useEventListener(frame, 'dblclick', own(reset))
 
   const layerStyle = computed(() =>
     zoomed.value
-      ? { transform: `translate(${view.value.x}px, ${view.value.y}px) scale(${view.value.scale})` }
+      ? {
+        transform: `translate(${view.value.x * 100}%, ${
+          view.value.y * 100
+        }%) scale(${view.value.scale})`,
+      }
       : {}
   )
 

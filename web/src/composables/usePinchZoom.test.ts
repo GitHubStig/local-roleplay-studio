@@ -39,6 +39,7 @@ function wheel(
     deltaY: init.deltaY ?? 0,
     deltaMode: init.deltaMode ?? 0,
     cancelable: true,
+    bubbles: true,
   })
   for (
     const [key, value] of [['ctrlKey', !!init.ctrlKey], ['clientX', init.x ?? 0], [
@@ -63,8 +64,8 @@ describe('usePinchZoom', () => {
     expect(e.defaultPrevented).toBe(true)
     const { scale, x, y } = zoom().view.value
     expect(scale).toBeCloseTo(2)
-    // The centre stays under the pointer: 200 - (200 - 0) × 2.
-    expect([x, y].map((n) => Math.round(n))).toEqual([-200, -150])
+    // The centre stays under the pointer: 200 - (200 - 0) × 2, a share of the frame's size.
+    expect([x * 400, y * 300].map((n) => Math.round(n))).toEqual([-200, -150])
   })
 
   it('never zooms out below 1× or in past 8×, and lets ordinary scrolling through when not zoomed', async () => {
@@ -80,7 +81,7 @@ describe('usePinchZoom', () => {
     const { el, zoom } = await mountFrame()
     pinch(el, -100 * Math.log(2), 0, 0) // 2× anchored at the top-left
     wheel(el, { deltaX: 50, deltaY: 1000 })
-    expect(zoom().view.value).toMatchObject({ x: -50, y: -300 })
+    expect(zoom().view.value).toMatchObject({ x: -50 / 400, y: -300 / 300 })
   })
 
   it('zooms a step a notch on a mouse wheel, around the pointer, which Windows needs (no pinch)', async () => {
@@ -141,5 +142,17 @@ describe('usePinchZoom', () => {
     pinch(el, -100)
     el.dispatchEvent(new MouseEvent('dblclick'))
     expect(zoom().view.value).toEqual({ scale: 1, x: 0, y: 0 })
+  })
+
+  it('leaves what happens in a dialog opened over it, inside it in the page, to that dialog', async () => {
+    const { el, zoom } = await mountFrame()
+    // Compare edits, opened from inside the viewer's picture.
+    const dialog = el.appendChild(document.createElement('dialog'))
+    const inner = dialog.appendChild(document.createElement('div'))
+    const e = pinch(inner, -100)
+    expect([e.defaultPrevented, zoom().view.value.scale]).toEqual([false, 1])
+    pinch(el, -100)
+    inner.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }))
+    expect(zoom().view.value.scale).toBeGreaterThan(1)
   })
 })
