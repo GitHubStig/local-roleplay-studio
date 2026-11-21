@@ -55,6 +55,20 @@ function onCancel(e: Event) {
   emit('stopPainting')
 }
 const dialog = useTemplateRef<HTMLDialogElement>('dialog')
+/**
+ * Esc while painting is taken at its keydown, which then asks the dialog for nothing: Edge lets a
+ * page refuse a dialog's `cancel` only so often, and closed the viewer on the third Edit's Esc
+ * (2026-11-21). Listened for on the document, as Edit's button goes when painting starts and the
+ * focus falls to the body. `onCancel` stays for a close asked for another way.
+ */
+useEventListener(document, 'keydown', (e: KeyboardEvent) => {
+  if (e.key !== 'Escape' || !dialog.value?.open || !props.painting || e.defaultPrevented) return
+  // Not for a dialog opened over it, which closes itself.
+  const over = (e.target as HTMLElement).closest?.('dialog')
+  if (over && over !== dialog.value) return
+  e.preventDefault()
+  emit('stopPainting')
+})
 useCloseOnLeave(dialog)
 
 /** Asks for the image that way, if there is one. */

@@ -176,13 +176,30 @@ describe('FrameViewer', () => {
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }))
     expect(wrapper.emitted('step')).toBeUndefined()
     await wrapper.find('[data-edit-instruction]').setValue('A cup')
+    // Taken at its keydown, so the dialog isn't asked to close, as Edge lets a page refuse that
+    // only so often: from the box, and from the body, where the focus falls when Edit's button goes.
+    for (
+      const target of [
+        wrapper.find('[data-edit-instruction]').element,
+        document.body,
+        document.body,
+      ]
+    ) {
+      const esc = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })
+      target.dispatchEvent(esc)
+      expect(esc.defaultPrevented).toBe(true)
+      await flushPromises()
+      expect(wrapper.find('[data-paint-tools]').exists()).toBe(false)
+      expect((wrapper.find('dialog').element as HTMLDialogElement).open).toBe(true)
+      await side(wrapper).find('[data-edit]').trigger('click')
+    }
+    const box = wrapper.find('[data-edit-instruction]').element as HTMLTextAreaElement
+    expect(box.value).toBe('A cup')
+    // A close asked for another way is still a step back while painting.
     wrapper.find('dialog').element.dispatchEvent(new Event('cancel', { cancelable: true }))
     await flushPromises()
     expect(wrapper.find('[data-paint-tools]').exists()).toBe(false)
-    expect((wrapper.find('dialog').element as HTMLDialogElement).open).toBe(true)
     await side(wrapper).find('[data-edit]').trigger('click')
-    const box = wrapper.find('[data-edit-instruction]').element as HTMLTextAreaElement
-    expect(box.value).toBe('A cup')
     await wrapper.find('[data-send-edit]').trigger('click')
     expect(wrapper.emitted('edit')).toEqual([
       [0, { instruction: 'A cup', model: 'flux3-klein-edit', backend: 'comfyui' }],
