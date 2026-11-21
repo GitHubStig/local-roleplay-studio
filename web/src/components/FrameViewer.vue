@@ -38,7 +38,8 @@ import { CAMERA_GROUPS } from '../cameraMoves'
  * step through the Frames that have a picture, showing each one's upscale if it has one. A picture
  * shows as its picked version (ADR 0021); its versions, beside it, by edit model, pick another.
  * Edit paints the area to repaint over the newest version by the edit model chosen (the Original,
- * for its first), and says what to paint there; the edit then shows among the versions while it's
+ * for its first), and says what to paint there; Same edit with… starts one from the shown edit's
+ * area and instruction on another edit model. The edit then shows among the versions while it's
  * made, over what it's made from, with its progress, until it lands. The
  * shown version's clips, under its versions, play over it.
  */
@@ -107,13 +108,15 @@ const inProgress = computed(() => editJobs.value.find(isOpen))
 /** The edit model a job's edit is made with: the one it names, or else Settings'. */
 const jobModel = (job: Job) => job.edit?.model ?? settings.value?.editModel ?? ''
 /**
- * The image an edit by `model` is made from: that model's newest version (the Original, for its
- * first), or for a retry the one before it.
+ * The edit an edit by `model` is made from: that model's newest, or for a retry the one before it;
+ * none for its first, made from the Original.
  */
-function sourceOf(p: Picture, model: string, retry?: boolean): string {
+function sourceEdit(p: Picture, model: string, retry?: boolean): PictureEdit | undefined {
   const line = editLine(p, model)
-  return ((retry ? line.at(-2) : line.at(-1)) ?? p).file
+  return retry ? line.at(-2) : line.at(-1)
 }
+/** The image an edit by `model` is made from (`sourceEdit`, or the Original). */
+const sourceOf = (p: Picture, model: string, retry?: boolean) => (sourceEdit(p, model, retry) ?? p).file
 const fileUrl = (file: string) => imageUrl(props.sessionId, file)
 
 // --- Painting an edit: what it's told, and the area, kept while the dialog stays on the Frame.
@@ -357,6 +360,27 @@ function redoNewest() {
     backend: newest.imageBackend,
   })
 }
+/**
+ * The edit shown, painted again with another edit model: its area and instruction, to change
+ * first (models are told in their own ways), made from that model's own newest or the Original.
+ * It starts on Settings' edit model, or the first other one there is.
+ */
+function sameEditWith() {
+  const edit = pickedShown.value
+  if (!edit) return
+  const settingsModel = settings.value?.editModel
+  const other = settingsModel && settingsModel !== edit.editModel
+    ? { model: settingsModel }
+    : editModels.value.choices.find((c) => c.model !== edit.editModel)
+  if (!other) return
+  startDraft({
+    retry: false,
+    base: edit.mask,
+    instruction: edit.instructions.join('; '),
+    model: other.model,
+    backend: 'backend' in other ? other.backend : undefined,
+  })
+}
 /** A failed edit asked for again, as it was, to change before it's sent. */
 function redoFailed(job: Job) {
   const { instruction, model, backend, mask, retry } = job.edit!
@@ -433,11 +457,30 @@ useEventListener(document, 'keydown', (e: KeyboardEvent) => {
   else history.undo()
 })
 
+/** The edit shown, when it's a picked one rather than an edit being made. */
+const pickedShown = computed(() => {
+  const p = picture.value
+  return p && !viewedJob.value ? pickedEdit(p) : undefined
+})
 /** The edit shown, when it's the newest by its edit model: Redo and Delete act on it. */
 const newestShown = computed(() => {
+  const edit = pickedShown.value
+  return edit && editLine(picture.value!, edit.editModel).at(-1) === edit ? edit : undefined
+})
+/** Another edit model to paint the shown edit again with, if one runs here. */
+const canSameEditWith = computed(() => {
+  const edit = pickedShown.value
+  return !!edit && !edit.copied && editModels.value.choices.some((c) => c.model !== edit.editModel)
+})
+/**
+ * What the draft's edit is made from, said beside its edit model, as each edit model's edits are
+ * a line of their own (ADR 0021) and changing the model can change it.
+ */
+const madeFrom = computed(() => {
   const p = picture.value
-  const edit = p && !viewedJob.value ? pickedEdit(p) : undefined
-  return edit && editLine(p!, edit.editModel).at(-1) === edit ? edit : undefined
+  const d = draft.value
+  const source = p && d && sourceEdit(p, d.model, d.retry)
+  return source ? editName(p!, source) : 'the Original'
 })
 /** How the draft's edit model likes to be told what to paint. */
 const prompting = computed(() =>
@@ -511,6 +554,16 @@ const action =
             Delete edit
           </button>
         </template>
+        <button
+          v-if="featureOn('edits') && canSameEditWith && !inProgress"
+          type="button"
+          :class="action"
+          title="Paint this edit again with another edit model: its area and instruction, to change first"
+          data-same-edit
+          @click="sameEditWith"
+        >
+          Same edit with…
+        </button>
         <template v-if="upscale">
           <button
             type="button"
@@ -632,7 +685,7 @@ const action =
               v-model="draftChoice"
               compact
               :disabled="draft.retry"
-              :title="draft.retry ? 'A redo is made by the model that made the edit' : 'Each model edits from its own newest version, or the Original'"
+              :title="draft.retry ? 'A redo is made by the model that made the edit' : 'Each edit model edits its own newest version, or the Original for its first'"
               class="rounded-lg border border-white/30 bg-black/40 p-1.5 text-white"
               data-edit-model
             >
@@ -641,6 +694,7 @@ const action =
               </option>
             </SelectField>
           </label>
+          <span class="text-white/60" data-edit-source>From {{ madeFrom }}</span>
           <SelectField
             v-model="cameraPick"
             compact

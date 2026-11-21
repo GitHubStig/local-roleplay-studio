@@ -168,9 +168,12 @@ describe('FrameViewer', () => {
     ])
     expect((model.element as HTMLSelectElement).value).toBe('comfyui/qwen-image-2.1-edit')
     expect(wrapper.find('[data-edit-prompting]').text()).toBe('An instruction.')
+    // It says what it's made from, which the model chosen decides.
+    expect(wrapper.find('[data-edit-source]').text()).toBe('From Qwen-Image 2.1 Edit, Edit 2')
     // FLUX.3 has no edits here: its first is painted over the Original, as it likes to be told.
     await model.setValue('comfyui/flux3-klein-edit')
     expect(shownSrc(wrapper)).toBe(url('frame-0.png'))
+    expect(wrapper.find('[data-edit-source]').text()).toBe('From the Original')
     expect(wrapper.find('[data-edit-prompting]').text()).toBe('A caption.')
     // The arrow keys don't step while painting; Esc goes back to the picture, the draft kept.
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }))
@@ -281,6 +284,7 @@ describe('FrameViewer', () => {
     await flushPromises()
     expect(shownSrc(wrapper)).toBe(url('frame-0.png'))
     expect((wrapper.find('[data-edit-model]').element as HTMLSelectElement).disabled).toBe(true)
+    expect(wrapper.find('[data-edit-source]').text()).toBe('From the Original')
     expect(wrapper.find('[data-paint-tools]').text()).toContain(
       'It replaces FLUX.3 Klein Edit, Edit 1.',
     )
@@ -291,6 +295,37 @@ describe('FrameViewer', () => {
       frames: [{ ...lines[0], pictures: [{ ...lines[0].pictures[0], picked: 1 }] }],
     })
     expect(side(wrapper).find('[data-delete-edit]').exists()).toBe(false)
+  })
+
+  it("paints the shown edit's area and instruction again with another edit model", async () => {
+    // Edit 1 is picked, Qwen's, and Settings start edits on Qwen: so on FLUX.3, the other one here.
+    const wrapper = mountIt()
+    await flushPromises()
+    await side(wrapper).find('[data-same-edit]').trigger('click')
+    await flushPromises()
+    const model = wrapper.find('[data-edit-model]').element as HTMLSelectElement
+    expect([model.value, model.disabled]).toEqual(['comfyui/flux3-klein-edit', false])
+    // FLUX.3's first, from the Original, the instruction to change as FLUX.3 likes to be told.
+    expect(shownSrc(wrapper)).toBe(url('frame-0.png'))
+    expect(wrapper.find('[data-edit-source]').text()).toBe('From the Original')
+    expect((wrapper.find('[data-edit-instruction]').element as HTMLTextAreaElement).value).toBe(
+      'Paint 1',
+    )
+    await wrapper.find('[data-send-edit]').trigger('click')
+    expect(wrapper.emitted('edit')).toEqual([
+      [0, { instruction: 'Paint 1', model: 'flux3-klein-edit', backend: 'comfyui' }],
+    ])
+
+    // Not for the Original, nor an edit copied from another Session.
+    const original = [{ ...frames[0], pictures: [{ ...frames[0].pictures[0], picked: 0 }] }]
+    await wrapper.setProps({ frames: original })
+    expect(side(wrapper).find('[data-same-edit]').exists()).toBe(false)
+    const copied = [{
+      ...frames[0],
+      pictures: [{ ...frames[0].pictures[0], edits: [{ ...edit(1), copied: true }], picked: 1 }],
+    }]
+    await wrapper.setProps({ frames: copied })
+    expect(side(wrapper).find('[data-same-edit]').exists()).toBe(false)
   })
 
   it('opens on an edit being made, and offers one that failed to redo or delete', async () => {
