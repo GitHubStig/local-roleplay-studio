@@ -168,6 +168,7 @@ server/           Deno API: the app, Sessions, Settings, the job queue, what all
   style/          Compare's style scores: the embedder, the measures and the job
   export/         the Compare table as a page of its own, its pictures as WebP
   replay/         `deno task replay`: a test Session rebuilt through the API from a replay file
+  migrations/     each data file's versions, and the steps that bring an older one up to date
   prompts/        what the Text Model is told, one Markdown file each: chain/, storyboard/,
                   roleplay/, scenario/, and shared/ for what more than one uses
 shared/           Types and plain values the server and the web app both use (no code that needs Deno
@@ -185,6 +186,8 @@ CONTEXT.md        Glossary of the game's terms
 ```
 
 Sessions stay on disk until you delete them from Home (or remove their folder in `sessions/` while no Frame is running).
+
+`session.json`, `settings.json`, `queue.json` and each Scenario file say which version they are. One from an older app is brought up to date as it's read, and saved at the new version when the app next writes it, so it can't then be opened by the older app; one from a newer app is refused rather than misread ([ADR 0041](docs/adr/0041-data-files-are-versioned-and-migrated.md)).
 
 ## Writing a new Scenario
 
