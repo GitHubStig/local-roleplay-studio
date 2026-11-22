@@ -3,7 +3,7 @@
 # without and with portraits made from the Look; then a blink by auto-mask on Frame 6.
 S=$(cd "$(dirname "$0")" && pwd)/out
 mkdir -p "$S"
-cd "$(dirname "$0")/../../.."
+cd "$(dirname "$0")/../../../.."
 P=docs/bench/art-tags/prompts/gemma4-31b.json
 prompt() { python3 -c "import json;print([e['prompt'] for e in json.load(open('$P')) if e['style']=='prose' and e['index']==$1][0])"; }
 KAEL="Kael, a 42-year-old man with a lean, rigid build, weathered tanned skin marked by old scars, short unkempt brown hair, and a scarred, angular face with tired, piercing eyes."
