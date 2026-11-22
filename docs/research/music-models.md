@@ -1,6 +1,6 @@
 # Music models: findings
 
-The evidence behind the music pick in [models.md](../models.md#music) and [ADR 0035](../adr/0035-music-from-ace-step-through-comfyui.md): which model makes a Roleplay's Cues, how it's prompted, and what it can't do. Stage 2 of [the music plan](../music-plans.md). The numbers are from the Mac (M5 Pro, 48 GB), 2026-11-07 and -08, except [on the PC](#on-the-pc-2026-11-09-windows-pc) (RTX 4070, 12 GB, 16 GB of RAM), 2026-11-09. The tables, the captions and every clip are in the bench, [bench/music-models/](../bench/music-models/README.md); this is what was concluded from it. How the Music Director decides when the music changes is in [music-director.md](music-director.md) and its own bench.
+The evidence behind the music pick in [models.md](../models.md#music) and [ADR 0035](../adr/0035-music-from-ace-step-through-comfyui.md): which model makes a Roleplay's Cues, how it's prompted, and what it can't do. The numbers are from the Mac (M5 Pro, 48 GB), 2026-11-07 and -08, except [on the PC](#on-the-pc-2026-11-09-windows-pc) (RTX 4070, 12 GB, 16 GB of RAM), 2026-11-09. The tables, the captions and every clip are in the bench, [bench/music-models/](../bench/music-models/README.md); this is what was concluded from it. How the Music Director decides when the music changes is in [music-director.md](music-director.md) and its own bench.
 
 ## Two models
 

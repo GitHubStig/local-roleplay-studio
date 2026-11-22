@@ -1,6 +1,6 @@
 # The Music Director's bench (2026-11-06, Mac)
 
-Does the Music Director (`server/roleplay/music/director.ts`, docs/music-plans.md) change the music where a story turns, and hold it where it doesn't? The bench replays (`server/replay/replays/music-*.yaml`) each give a course, a step per Frame (begin, hold, gentle, sharp, change, silence, any), and the Director's decisions are scored against it.
+Does the Music Director (`server/roleplay/music/director.ts`) change the music where a story turns, and hold it where it doesn't? The bench replays (`server/replay/replays/music-*.yaml`) each give a course, a step per Frame (begin, hold, gentle, sharp, change, silence, any), and the Director's decisions are scored against it.
 
 ## What was run
 

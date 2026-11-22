@@ -1,5 +1,5 @@
 /**
- * The Music Director's bench (README.md, docs/music-plans.md): the bench replays
+ * The Music Director's bench (README.md): the bench replays
  * (`server/replay/replays/music-*.yaml`), each over several seeds, their music directed under
  * variants and scored against each replay's course, a change a Frame either side counting as kept.
  *

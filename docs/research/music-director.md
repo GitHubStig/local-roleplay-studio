@@ -1,6 +1,6 @@
 # The Music Director
 
-What the Music Director and the cue writer do in play, measured on the bench replays (`server/replay/replays/music-*.yaml`, docs/music-plans.md). Each replay's `course` gives what the music should do at each Frame; `deno task replay` prints each decision against it.
+What the Music Director and the cue writer do in play, measured on the bench replays (`server/replay/replays/music-*.yaml`). Each replay's `course` gives what the music should do at each Frame; `deno task replay` prints each decision against it.
 
 ## First run of the replays (2026-11-06, Mac)
 
