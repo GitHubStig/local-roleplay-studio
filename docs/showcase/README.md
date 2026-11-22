@@ -10,6 +10,12 @@ Three things, the last as important as the others:
 2. **What was built, and how we got there**: the benches, retrospectives, ADRs and research behind each part.
 3. **What was tried and dropped, and why**: the experiments that didn't generalise, didn't scale or were overtaken by something better.
 
+## How it started
+
+The owner's own account, moved from [design.md](../design.md) on 2026-11-22, as it was written:
+
+> The original aim was to make it easy to iterate on Image Prompts and test them across image-generation models. I found [Draw Things](https://drawthings.ai) and [ComfyUI](https://www.comfy.org) hard to learn and overwhelming when all I wanted was to iterate on prompts; discovering [mflux](https://github.com/mflux-community/mflux) and Qwen-Image 2.1 led me to a simpler, more playful interface. Chain began as one-step-at-a-time prompt editing; Storyboard grew from wanting to build a short comic more quickly, and Roleplay added prompt-making to an ongoing character conversation.
+
 ## Pictures in the README
 
 The repo's README has no pictures or videos of the app, on purpose: the owner didn't want to show the screens before the redesign ([ADR 0039](../adr/0039-every-session-screen-has-one-shape.md)). Since it, they're happy to add some, once more of the app's features are settled. What shows each part best can be noted here as it's found.
