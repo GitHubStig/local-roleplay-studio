@@ -2,7 +2,7 @@ import { assertEquals, assertMatch, assertNotEquals, assertRejects } from '@std/
 import { join } from '@std/path'
 import type { ImageGenerator } from './images/imageGenerator.ts'
 import { fakeImageGenerator, withTempDir } from './testing.ts'
-import { chainFrames, chainOfTwo, jobsIn, pictureOf, settled } from './appTesting.ts'
+import { chainFrames, chainOfTwo, getSession, jobsIn, pictureOf, settled } from './appTesting.ts'
 
 /** A PNG's bytes in base64, standing in for a painted area. */
 const MASK = btoa('\x89PNG painted')
@@ -82,6 +82,26 @@ Deno.test('An edit repaints a picture as a new version, made from its model’s 
     ) {
       assertEquals((await served(name)).status, 200)
     }
+  }))
+
+Deno.test('An edit never has the seed of the picture it’s made from', () =>
+  withTempDir(async (root) => {
+    // The same seed at the same size is the same starting noise on ComfyUI, and an edit started
+    // from its own picture's noise redraws that picture and ignores the instruction ("noise
+    // replay", docs/research/image-models.md).
+    const images = fakeImageGenerator()
+    const { call } = await chainOfTwo(root, { imageGenerator: images })
+    const edit = (body: object) =>
+      call('POST', '/api/sessions/s1/jobs', { kind: 'edit', frameIndex: 1, edit: body })
+    const { seed } = await getSession(call, 'chain')
+    await edit({ instruction: 'A hand' })
+    assertEquals(await settled(call), [])
+    await edit({ instruction: 'A ring on it' })
+    assertEquals(await settled(call), [])
+    await edit({ instruction: 'A gold ring on it', retry: true })
+    assertEquals(await settled(call), [])
+    // Made from the render, then from that edit; the retry, from the first edit again.
+    assertEquals(images.edits.map((e) => e.seed), [seed + 1, seed + 2, seed + 3])
   }))
 
 Deno.test("An edit waits for the one before, and its painted area goes if it's cancelled", () =>

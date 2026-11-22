@@ -99,7 +99,12 @@ export async function editFrame<S extends Session>(
   const dir = deps.store.dir(session.id)
   const name = `edit-${index}-${crypto.randomUUID().slice(0, 8)}`
   const { instruction, mask } = order
-  const seed = redo ? redo.seed + 1 : session.seed
+  // Never the seed its source was made with: on ComfyUI the same seed at the same size is the
+  // same starting noise, and an edit started from its own picture's noise, with that picture as
+  // its reference, redraws the picture over-sharpened and ignores the instruction ("noise replay",
+  // docs/research/image-models.md). The render is made with the Session's seed, and each edit is
+  // one on from what it's made from; a retry, one on from the edit it replaces.
+  const seed = redo ? redo.seed + 1 : ('seed' in from ? from.seed : session.seed) + 1
   // Found once, so the edit records where it was made.
   const backend = await deps.backendOf?.(editJob(model, order.backend))
   const kind = backend && imageKindOf(backend)
