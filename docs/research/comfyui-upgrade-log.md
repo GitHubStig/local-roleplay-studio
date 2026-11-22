@@ -95,7 +95,7 @@ Not checked: MOSS, Ming, Krea 2, Anima, FIBO 2.0 Dev, Z-Image Turbo, FLUX.2 Klei
 - **New Image Models**: FIBO 2.0 Dev, Dev Edit and Edit Turbo (2026-10-27) and FIBO 2.0 Turbo (2026-10-28), from 0.43.0's native support; Anima Turbo and Aesthetic (2026-11-02). Measured in [image-models.md](image-models.md).
 - **Clips**: LTX 2.5 (2026-10-29), Wan 2.2 and MiniMax H3 (2026-10-31) as video models, on 0.43.1 and 0.43.2 ([video-models.md](video-models.md)).
 - **Comfy Kitchen's int8 attention** on every Image Model, edit and video workflow (2026-11-01, the PC, 0.43.2), from Ming-Image's template: 8–19% off sampling for text-to-image, 23–29% for edits ([image-models.md](image-models.md#comfy-kitchen-attention-on-every-comfyui-image-model-2026-11-01-windows-pc)).
-- **Not taken up**: `QwenImage21Cache` (no gain at 1024², below); MOSS-Image's colour/depth control is noted as the PC's route for posing ([open-threads.md](../open-threads.md), "Posing a Character with a ControlNet"), and its edit LoRA passed over (instruction edits with up to four reference images, no masks, which FLUX.3 Klein and FIBO 2.0 Edit Turbo already cover; the weights' licence isn't stated). Neither tried.
+- **Not taken up**: `QwenImage21Cache` (no gain at 1024², below); MOSS-Image's edit LoRA passed over (instruction edits with up to four reference images, no masks, which FLUX.3 Klein and FIBO 2.0 Edit Turbo already cover; the weights' licence isn't stated). Not tried.
 
 ### The v0.43.0 release review (the Windows PC, 2026-10-27)
 

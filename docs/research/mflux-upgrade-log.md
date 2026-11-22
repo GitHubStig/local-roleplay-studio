@@ -139,7 +139,7 @@ Prompted by the Anima PR (mflux #931), which says float16 is about 20% slower th
 
 Upgraded from 0.22 with `uv tool upgrade mflux`. That pulled in Pillow 13.0.0, which fails to import on uv's Python 3.14.4 (`cannot import name '_IntegralLike' from 'numbers'`), so every mflux command failed. Reinstalled with `uv tool install --managed-python --python 3.14 mflux --with 'pillow<13'` (Pillow 12.3.0); FLUX.2 Klein 4B then rendered again: 512², 4 steps, float16, 10.1 s including the load, 10.2 GB peak. 0.23 pins each built-in model to a Hugging Face commit; Klein 4B's cache needed nothing fetched.
 
-New in 0.23, which the app uses: FLUX.3 Klein and Qwen-Image 2.1 Turbo as mflux Image Models (measured in [image-models.md](image-models.md#mflux-023-flux3-klein-and-qwen-image-21-turbo-on-the-mac-2026-10-17)). `mflux-generate-flux3-edit` became FLUX.3 Klein Edit's mflux command on 2026-11-02 (0.24.0). Not used yet: FLUX.3 LoRAs, and the Z-Image and Krea 2 ControlNets ([open-threads.md](../open-threads.md), "Posing a Character with a ControlNet").
+New in 0.23, which the app uses: FLUX.3 Klein and Qwen-Image 2.1 Turbo as mflux Image Models (measured in [image-models.md](image-models.md#mflux-023-flux3-klein-and-qwen-image-21-turbo-on-the-mac-2026-10-17)). `mflux-generate-flux3-edit` became FLUX.3 Klein Edit's mflux command on 2026-11-02 (0.24.0). Not used yet: FLUX.3 LoRAs.
 
 Moved here from models.md on 2026-10-27; the earlier releases were not logged at the time.
 
