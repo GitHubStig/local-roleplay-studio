@@ -14,12 +14,13 @@ The vocabulary (Scenario, Session, Image Prompt, Frame, Action, …) is defined 
 
 ## Requirements
 
-**On every machine:**
+**To run the app:**
 
-- **[Deno](https://deno.com) 2.9+** runs the server, the web app's tooling and the tests.
-- **Node.js 24+**, only for the Vue type check (see [Known quirks](#known-quirks)).
+- **[Deno](https://deno.com) 2.9+** runs the server and builds the web app. It's one command to install: `curl -fsSL https://deno.land/install.sh | sh` on a Mac or Linux, `irm https://deno.land/install.ps1 | iex` in PowerShell on Windows (or `brew install deno`, `winget install DenoLand.Deno`).
 - **A Text backend**: [Ollama](https://ollama.com) with a Text Model (below), or any server with the OpenAI chat API (LM Studio, llama.cpp's server, vLLM, or a cloud service such as OpenRouter), added on the Machines tab of Settings with its address and API key; see [ADR 0008](docs/adr/0008-own-text-client.md) for what it can't do that Ollama can.
 - **[uv](https://docs.astral.sh/uv/)** for the optional Python extras (voices, SHARP, TripoSplat, LiTo): each installs its own Python packages on first use.
+
+**To work on it**, add **Node.js 24+**, only for the Vue type check in `deno task check` (see [Known quirks](#known-quirks)).
 
 Everything else is optional: what a machine can run is worked out at startup and shown on the Settings page ([What runs where](#configuration)).
 
