@@ -1,7 +1,6 @@
 # Reference portraits and auto-mask edits (2026-10-06)
 
-The trial behind "Reference images and edits for Subject consistency" and the idle-animation blink
-in [open-threads.md](../../open-threads.md). Qwen-Image 2.1 through mflux 0.21, on the full weights
+The trial behind reference portraits ([research/people-in-pictures.md](../../research/people-in-pictures.md#reference-portraits-for-subject-consistency-open-thread)) and the idle-animation blink ([idle-animation](../idle-animation/README.md)). Qwen-Image 2.1 through mflux 0.21, on the full weights
 (`Qwen/Qwen-Image-2.1`, 33 GB: the saved 8-bit copy can't take reference images), 1024×1024,
 25 steps, seed 7, no step cache, on a 48 GB M5 Pro with Ollama unloaded.
 
