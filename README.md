@@ -212,4 +212,5 @@ Save one from the Scenario page, import a file with *Import…* on Home, or add 
 - [docs/research/](docs/research/): the evidence and history, dated: every Text, Image Model and voice trial, Ollama, the upgrade logs, and surveys (ComfyUI, image to 3D, LLM libraries)
 - [docs/adr/](docs/adr/): architecture decisions and why they were made
 - [docs/open-threads.md](docs/open-threads.md): ideas deliberately deferred
+- [docs/showcase/](docs/showcase/README.md): material for a public page about the app: what was built, how, and what was tried and dropped
 - [CONTEXT.md](CONTEXT.md): glossary
