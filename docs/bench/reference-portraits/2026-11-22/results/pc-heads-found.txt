@@ -1,0 +1,6 @@
+lrs-bench-sc-cry-8.png 2 s [{"label": "woman", "bbox_2d": [357, 93, 620, 397]}]
+lrs-bench-sc-cry-9.png 2 s [{"label": "woman", "bbox_2d": [359, 52, 632, 387]}]
+lrs-bench-sc-profile-8.png 2 s [{"label": "man on the left", "bbox_2d": [367, 39, 777, 483]}]
+lrs-bench-sc-far-8.png 3 s [{"label": "man on the left", "bbox_2d": [200, 53, 462, 320]}, {"label": "woman on the right", "bbox_2d": [575, 227, 785, 447]}]
+lrs-bench-sc-far-9.png 3 s [{"label": "man on the left", "bbox_2d": [153, 93, 362, 327]}, {"label": "woman on the right", "bbox_2d": [500, 207, 700, 427]}]
+lrs-bench-plain-9.png 3 s [{"label": "man on the left", "bbox_2d": [300, 187, 430, 300]}, {"label": "woman on the right", "bbox_2d": [575, 33, 698, 140]}]

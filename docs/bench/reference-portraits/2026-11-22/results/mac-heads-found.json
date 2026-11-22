@@ -1,0 +1,86 @@
+{
+ "sc-cry-plain-8": {
+  "one": [
+   [
+    362,
+    92,
+    612,
+    398
+   ]
+  ],
+  "list": "```json\n[\n    {\"label\": \"woman\", \"bbox_2d\": [362, 98, 612, 402]}\n]\n```"
+ },
+ "sc-cry-plain-9": {
+  "one": [
+   [
+    359,
+    48,
+    625,
+    382
+   ]
+  ],
+  "list": "[{\"label\": \"woman\", \"bbox_2d\": [357, 48, 625, 388]}]"
+ },
+ "sc-profile-plain-8": {
+  "one": [
+   [
+    370,
+    38,
+    787,
+    482
+   ]
+  ],
+  "list": "```json\n[\n    {\"label\": \"man on the left\", \"bbox_2d\": [372, 41, 789, 484]}\n]\n```"
+ },
+ "sc-far-plain-8": {
+  "one": [
+   [
+    217,
+    62,
+    462,
+    345
+   ],
+   [
+    575,
+    231,
+    775,
+    462
+   ]
+  ],
+  "list": "```json\n[\n    {\"label\": \"man on the left\", \"bbox_2d\": [213, 62, 462, 345]},\n    {\"label\": \"woman on the right\", \"bbox_2d\": [575, 231, 775, 462]}\n]\n```"
+ },
+ "sc-far-plain-9": {
+  "one": [
+   [
+    154,
+    96,
+    362,
+    342
+   ],
+   [
+    534,
+    205,
+    714,
+    405
+   ]
+  ],
+  "list": "```json\n[\n    {\"label\": \"man on the left\", \"bbox_2d\": [154, 96, 362, 342]},\n    {\"label\": \"woman on the right\", \"bbox_2d\": [536, 206, 707, 398]}\n]\n```"
+ },
+ "plain-9": {
+  "one": [
+   [
+    330,
+    192,
+    440,
+    288
+   ],
+   [
+    582,
+    31,
+    671,
+    125
+   ]
+  ],
+  "list": "```json\n[\n    {\"label\": \"man on the left\", \"bbox_2d\": [330, 192, 442, 288]},\n    {\"label\": \"woman on the right\", \"bbox_2d\": [582, 31, 675, 122]}\n]\n```"
+ }
+}

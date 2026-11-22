@@ -1,0 +1,13 @@
+m-cry-plain-8: exit 0, 545 s, peak 39.2 GB
+m-cry-refs-8: exit 0, 122 s, peak 38.8 GB
+m-profile-plain-8: exit 0, 86 s, peak 39.0 GB
+m-profile-refs-8: exit 0, 117 s, peak 38.9 GB
+m-cry-plain-9: exit 0, 87 s, peak 39.3 GB
+m-cry-refs-9: exit 0, 116 s, peak 38.9 GB
+m-profile-plain-9: exit 0, 87 s, peak 39.3 GB
+m-profile-refs-9: exit 0, 116 s, peak 38.9 GB
+m-fe-cry-8: exit 0, 139 s, peak 39.6 GB
+m-fe-profile-8: exit 0, 138 s, peak 39.2 GB
+m-fe-cry-9: exit 0, 138 s, peak 39.4 GB
+m-fe-profile-9: exit 0, 134 s, peak 39.2 GB
+done

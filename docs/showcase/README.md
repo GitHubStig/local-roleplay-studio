@@ -47,6 +47,10 @@ A line each: what it was, why it went, and what took its place.
 - **Thumbnails as a file per picture.** Dropped for the files they add; a sprite sheet is the idea now (open threads).
 - **A Frame all or nothing** ([ADR 0003](../adr/0003-turns-are-all-or-nothing.md), replaced by [ADR 0030](../adr/0030-a-chain-frame-renders-as-a-job.md)), and **a Storyboard in one call** ([ADR 0006](../adr/0006-storyboards-plan-in-one-call.md), replaced by [ADR 0019](../adr/0019-storyboards-plan-review-write.md)): designs replaced as the app grew.
 
+## Tried, not built yet
+
+- **Reference portraits** (2026-10-06 on the Mac; a day of trials on 2026-11-22, both machines). A portrait of each person to keep faces the same: in the render it holds faces but pulls expressions and poses; repainting only the faces after the render keeps the moment, with the faces found by the vision model already loaded. The collages, full-size crops, and four conclusions that turned out wrong, three overturned by the owner's questions (a ComfyUI "regression" that was a seed, "one face per edit" that was wording, "prompt order" that was a prompt with no looks in it) and one by a closer look (a "dark band" that was a seam): [bench/reference-portraits/2026-11-22/](../bench/reference-portraits/2026-11-22/README.md). On the way it found a real bug, edits reusing their picture's seed, fixed the same day.
+
 ## Hosting, and what's kept for it
 
 GitHub Pages could host the page and its static files, as here.now hosts the exported Compare page. The artifacts kept for it can be listed here.
