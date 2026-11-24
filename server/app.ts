@@ -558,8 +558,9 @@ export function createHandler(
       ? sessionsFolderRoutes({
         folder: deps.sessionsFolder,
         pick: deps.pickFolder,
-        keep: async (path) =>
-          deps.settings.save({ ...await deps.settings.load(), sessionsFolder: path }),
+        remembered: async () => (await deps.settings.load()).sessionsFolders,
+        keep: async (sessionsFolder, sessionsFolders) =>
+          deps.settings.save({ ...await deps.settings.load(), sessionsFolder, sessionsFolders }),
         busy: async () =>
           active.size > 0 ||
           (await deps.sessions.list()).some((s) => jobs.list(s.id).some(isOpen)),

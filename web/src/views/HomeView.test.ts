@@ -1,16 +1,12 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ask } from '../ask'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import * as api from '../api'
-import { setCurrentSession, useCurrentSession } from '../composables/useCurrentSession'
 import HomeView from './HomeView.vue'
 
-vi.mock('../ask', () => ({ ask: vi.fn() }))
 vi.mock('../api', async (importOriginal) => ({
   ...(await importOriginal<typeof api>()),
   listSessions: vi.fn(),
-  deleteSession: vi.fn(),
   getScenarios: vi.fn(() => Promise.resolve({ scenarios: [], errors: [] })),
   getSettings: vi.fn(() => Promise.resolve({ textModel: 'x' })),
   getSettingsOptions: vi.fn(() =>
@@ -37,6 +33,7 @@ async function mountIt() {
     history: createMemoryHistory(),
     routes: [
       { path: '/', component: HomeView },
+      { path: '/sessions', component: {} },
       { path: '/sessions/:id', component: {} },
       { path: '/storyboards/:id', component: {} },
       { path: '/scenario/:id?', name: 'scenario', component: {} },
@@ -79,8 +76,6 @@ beforeEach(() => {
   localStorage.clear()
   sessionStorage.clear()
   vi.mocked(api.listSessions).mockReset().mockResolvedValue([summary('a'), summary('b')])
-  vi.mocked(api.deleteSession).mockReset().mockResolvedValue()
-  vi.mocked(ask).mockReset().mockResolvedValue(true)
 })
 
 afterEach(() => vi.unstubAllGlobals())
@@ -239,32 +234,20 @@ describe('HomeView', () => {
     expect(wrapper.text()).not.toContain('Your Sessions')
   })
 
-  it('deletes a Session after confirming, forgetting it as current', async () => {
-    setCurrentSession('a')
-    localStorage.setItem('draft:a', 'half typed')
-    const { wrapper } = await mountIt()
-    vi.mocked(api.listSessions).mockResolvedValue([summary('b')])
-    await wrapper.findAll('[data-delete]')[0].trigger('click')
+  it("opens the Session manager at a card's Session from its Manage, and deletes nothing here", async () => {
+    const { wrapper, router } = await mountIt()
+    expect(wrapper.find('[data-delete]').exists()).toBe(false)
+    const manage = wrapper.findAll('[data-manage]')[0]
+    expect(manage.attributes('href')).toBe('/sessions?id=a')
+    await manage.trigger('click')
     await flushPromises()
-    expect(api.deleteSession).toHaveBeenCalledWith('a')
-    expect(useCurrentSession().currentSessionId.value).toBeNull()
-    expect(localStorage.getItem('draft:a')).toBeNull()
-    expect(wrapper.findAll('[data-session]')).toHaveLength(1)
+    expect(router.currentRoute.value.fullPath).toBe('/sessions?id=a')
   })
 
-  it('does nothing if the delete is not confirmed', async () => {
-    vi.mocked(ask).mockResolvedValue(false)
-    const { wrapper } = await mountIt()
-    await wrapper.findAll('[data-delete]')[0].trigger('click')
-    await flushPromises()
-    expect(api.deleteSession).not.toHaveBeenCalled()
-  })
-
-  it("shows what a busy Session is doing and won't delete it", async () => {
+  it('shows what a busy Session is doing', async () => {
     vi.mocked(api.listSessions).mockResolvedValue([summary('a', { activity: 'queued' })])
     const { wrapper } = await mountIt()
     expect(wrapper.find('[data-activity]').text()).toBe('Waiting for another render…')
-    expect(wrapper.find('[data-delete]').attributes('disabled')).toBeDefined()
   })
 
   it('shows an Opening failure that arrives while already on Home', async () => {

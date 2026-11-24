@@ -83,7 +83,21 @@ export type { SettingsOptions, TextModelList } from '../../shared/settings.ts'
 export type { Expansion, ScenarioList, Suggested } from '../../shared/scenario.ts'
 export type { Health, Loaded, SessionSummary } from '../../shared/session.ts'
 export type { Queue } from '../../shared/jobs.ts'
-export type { PickedFolder, SessionsFolderInfo } from '../../shared/sessionsFolder.ts'
+export type {
+  KnownFolder,
+  PickedFolder,
+  ServerOs,
+  SessionsFolderInfo,
+} from '../../shared/sessionsFolder.ts'
+export {
+  PART_LABELS,
+  SESSION_PARTS,
+  type SessionContents,
+  type SessionCounts,
+  type SessionPart,
+  type SessionSizes,
+} from '../../shared/sessionContents.ts'
+import type { SessionContents, SessionSizes } from '../../shared/sessionContents.ts'
 import type { Health, Loaded, SessionSummary } from '../../shared/session.ts'
 import type { Queue } from '../../shared/jobs.ts'
 import type { Expansion, ScenarioList, Suggested } from '../../shared/scenario.ts'
@@ -140,6 +154,10 @@ export const checkSessionsFolder = (path: string) =>
 /** Keeps Sessions in the folder from now on; '' for the default. */
 export const moveSessionsFolder = (path: string) =>
   request<SessionsFolderInfo>('/api/sessions-folder', withPath('PUT', path))
+
+/** Stops offering a folder used before; its Sessions stay where they are. */
+export const forgetSessionsFolder = (path: string) =>
+  request<SessionsFolderInfo>('/api/sessions-folder/forget', withPath('POST', path))
 
 export const getSettingsOptions = () => request<SettingsOptions>('/api/settings/options')
 
@@ -384,6 +402,21 @@ export const renameSession = <S>(id: string, title: string) =>
 
 export const deleteSession = (id: string) =>
   request<void>(`/api/sessions/${id}`, { method: 'DELETE' })
+
+/** Each Session's size on disk, by id, worked out as asked. */
+export const getSessionSizes = () => request<SessionSizes>('/api/session-sizes')
+
+/** What a Session holds: its size by part, and its counts. */
+export const getSessionContents = (id: string) =>
+  request<SessionContents>(`/api/sessions/${id}/contents`)
+
+/** Shows a Session's folder in the server machine's file manager (only from that machine). */
+export const openSessionFolder = (id: string) =>
+  request<void>(`/api/sessions/${id}/open-folder`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: '{}',
+  })
 
 /**
  * Undoes a Chain's Frames from `from` on, as the player saw it with Frame `latest` the latest, so a

@@ -105,6 +105,7 @@ export const DEFAULT_SETTINGS: Settings = {
   musicBehaviour: 'story',
   musicTaste: '',
   sessionsFolder: '',
+  sessionsFolders: [],
 }
 
 /**
@@ -230,6 +231,12 @@ export function validateSettings(input: unknown): ValidationResult {
   else if (s.sessionsFolder.trim() && !isAbsolute(s.sessionsFolder.trim())) {
     issues.push('sessionsFolder must be a full path, like /Users/you/Sessions, or empty')
   }
+  if (
+    !Array.isArray(s.sessionsFolders) ||
+    !s.sessionsFolders.every((f) => typeof f === 'string' && isAbsolute(f))
+  ) {
+    issues.push('sessionsFolders must be a list of full paths')
+  }
   const features = s.features as Record<string, unknown> | undefined
   if (
     typeof features !== 'object' || features === null ||
@@ -303,6 +310,7 @@ export function validateSettings(input: unknown): ValidationResult {
       musicBehaviour: s.musicBehaviour as MusicBehaviour,
       musicTaste: (s.musicTaste as string).trim(),
       sessionsFolder: (s.sessionsFolder as string).trim(),
+      sessionsFolders: s.sessionsFolders as string[],
     },
   }
 }

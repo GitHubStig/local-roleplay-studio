@@ -146,6 +146,16 @@ useEventListener(window, 'focus', checkServer)
         <span class="sr-only">Queue</span>
         <span v-if="queueCount" class="absolute -top-0.5 -right-0.5 min-w-4 rounded-full bg-fg px-1 text-[0.6rem] leading-4 text-canvas tabular-nums" data-queue-count>{{ queueCount }}</span>
       </button>
+      <RouterLink
+        to="/sessions"
+        class="rail-item"
+        :class="{ 'rail-active': route.name === 'session-manager' }"
+        title="Session manager: what each Session holds, its size, renaming and deleting"
+        data-nav-sessions
+      >
+        <Icon name="folder" />
+        <span class="sr-only">Session manager</span>
+      </RouterLink>
       <!-- What's set once in a while, at the rail's foot: not on a phone's tab bar but Settings. -->
       <span
         class="hidden h-9 w-9 place-items-center sm:mt-auto sm:grid short:mt-auto short:grid"

@@ -19,7 +19,6 @@ import FeatureSwitch from '../components/FeatureSwitch.vue'
 import MachinesTab from '../components/MachinesTab.vue'
 import NotifyWhenDone from '../components/NotifyWhenDone.vue'
 import QuantizeField from '../components/QuantizeField.vue'
-import SessionsFolderTab from '../components/SessionsFolderTab.vue'
 import RunOn from '../components/RunOn.vue'
 import SelectField from '../components/SelectField.vue'
 import SettingRow from '../components/SettingRow.vue'
@@ -749,7 +748,12 @@ function saveNow() {
 
           <section v-show="tab === 'sessions'" data-tab-panel="sessions">
             <div class="rows">
-              <SessionsFolderTab />
+              <SettingRow label="Session folder" as="div">
+                <template #note>Chosen on the Session manager, with the folders used before.</template>
+                <RouterLink to="/sessions" class="self-start rounded border border-line px-3 py-1 text-sm hover:border-fg sm:self-end" data-to-session-manager>
+                  Open the Session manager
+                </RouterLink>
+              </SettingRow>
               <NotifyWhenDone />
             </div>
           </section>

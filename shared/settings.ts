@@ -120,11 +120,16 @@ export interface Settings {
   musicTaste: string
   /**
    * Where the Sessions are kept: an absolute path, or '' for the `sessions/` folder in the app's
-   * own. Read when the server starts; changed from the Sessions tab (`sessionsFolder.ts`), which
-   * moves to the new folder at once, so `PUT /api/settings` leaves it as saved. Sessions already
-   * made stay in the old folder.
+   * own. Read when the server starts; changed from the Session manager (`sessionsFolder.ts`),
+   * which moves to the new folder at once, so `PUT /api/settings` leaves it as saved. Sessions
+   * already made stay in the old folder.
    */
   sessionsFolder: string
+  /**
+   * The Session folders used besides the app's own, the latest first, for the Session manager to
+   * offer again until the player forgets one. Changed only there, like `sessionsFolder`.
+   */
+  sessionsFolders: string[]
 }
 
 /**

@@ -102,6 +102,7 @@ beforeEach(() => {
     musicBehaviour: 'story',
     musicTaste: '',
     sessionsFolder: '',
+    sessionsFolders: [],
     features: ALL_ON,
   })
   vi.mocked(api.getSettingsOptions).mockResolvedValue({
@@ -219,6 +220,9 @@ describe('App navigation', () => {
   it('has a Home tab, and fills the tab of the screen on show', async () => {
     const { wrapper, router } = await mountApp('/sessions/s1')
     expect(wrapper.find('[data-nav-home]').attributes('href')).toBe('/')
+    expect(wrapper.find('[data-nav-sessions]').attributes('href')).toBe('/sessions')
+    // A Chain's address is under /sessions too, and isn't the Session manager.
+    expect(wrapper.findAll('nav .rail-active')).toHaveLength(1)
     expect(wrapper.find('nav .rail-active').attributes('data-current-session')).toBeDefined()
     await router.push('/')
     await flushPromises()

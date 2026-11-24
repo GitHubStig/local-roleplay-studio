@@ -2,21 +2,15 @@
 import { useElementSize } from '@vueuse/core'
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import {
-  deleteSession,
-  imageUrl,
-  KIND_LABELS,
-  type SessionSummary,
-} from '../api'
+import { imageUrl, KIND_LABELS } from '../api'
 import { ago } from '../ago'
-import { ask } from '../ask'
 import Icon from '../components/Icon.vue'
 import SplitHandle from '../components/SplitHandle.vue'
 import StartSession from '../components/StartSession.vue'
 import { tabStorage, useStoredString } from '../composables/storage'
 import { useStoredFlag } from '../composables/useStoredFlag'
-import { clearCurrentSession, useCurrentSession } from '../composables/useCurrentSession'
-import { forgetSession, loadSessions, useSessionList } from '../composables/useSessionList'
+import { useCurrentSession } from '../composables/useCurrentSession'
+import { loadSessions, useSessionList } from '../composables/useSessionList'
 import { sessionPath } from '../sessionPath'
 
 const route = useRoute()
@@ -38,7 +32,6 @@ const sessionsWidth = computed(() => {
   if (columns < 1) return undefined
   return `${columns * CARD_REM + (columns - 1) * GAP_REM}rem`
 })
-const deleteError = ref('')
 /** What's typed in the search over Your Sessions: a part of a title, or a kind. */
 const search = ref('')
 const shownSessions = computed(() => {
@@ -128,26 +121,6 @@ watch(
   },
   { immediate: true },
 )
-
-async function remove(s: SessionSummary) {
-  const what = `${s.title}, ${s.frames} ${s.frames === 1 ? 'Frame' : 'Frames'}`
-  const question = `Delete this Session (${what}) and its images? This can't be undone.`
-  if (!(await ask(question, { action: 'Delete', danger: true }))) return
-  deleteError.value = ''
-  try {
-    await deleteSession(s.id)
-    forgetSession(s.id)
-    clearCurrentSession(s.id)
-    try {
-      localStorage.removeItem(`draft:${s.id}`)
-    } catch {
-      // Nothing stored.
-    }
-  } catch (err) {
-    deleteError.value = (err as Error).message
-  }
-  await load()
-}
 
 const ACTIVITY_LABELS = {
   text: 'Writing…',
@@ -270,7 +243,6 @@ const ACTIVITY_LABELS = {
           </label>
         </div>
         <p v-if="listError" class="text-danger">Could not load your Sessions: {{ listError }}</p>
-        <p v-if="deleteError" class="text-sm text-danger" role="alert">{{ deleteError }}</p>
         <p v-if="sessions?.length && !shownSessions.length" class="text-sm text-muted" data-no-match>
           No Session matches “{{ search.trim() }}”.
         </p>
@@ -313,16 +285,16 @@ const ACTIVITY_LABELS = {
                 <span v-else-if="s.id === currentSessionId" class="text-muted">Current</span>
               </div>
             </RouterLink>
-            <button
-              type="button"
-              class="absolute right-2 top-2 rounded border border-line bg-canvas/90 px-2 py-0.5 text-xs text-danger opacity-0 focus:opacity-100 group-hover:opacity-100 disabled:cursor-not-allowed disabled:text-muted"
-              :disabled="s.activity !== null"
-              :title="s.activity ? 'A Frame is running in this Session' : 'Delete this Session'"
-              data-delete
-              @click="remove(s)"
+            <!-- Shown while pointed at, and always on a touch screen, which can't point. -->
+            <RouterLink
+              :to="{ path: '/sessions', query: { id: s.id } }"
+              class="absolute right-2 top-2 flex items-center gap-1 rounded-md bg-surface/95 px-2 py-1 text-xs font-medium text-fg opacity-0 shadow-sm focus:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100"
+              title="Manage this Session: its size, renaming, deleting"
+              data-manage
             >
-              Delete
-            </button>
+              <Icon name="folder" />
+              Manage
+            </RouterLink>
           </li>
         </ul>
       </section>

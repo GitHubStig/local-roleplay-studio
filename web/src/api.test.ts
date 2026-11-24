@@ -38,6 +38,7 @@ const settings: Settings = {
   musicBehaviour: 'story',
   musicTaste: '',
   sessionsFolder: '',
+  sessionsFolders: [],
   features: ALL_ON,
 }
 

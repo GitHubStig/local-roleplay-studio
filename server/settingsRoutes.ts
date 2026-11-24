@@ -65,9 +65,9 @@ export function settingsRoutes(ctx: AppContext): Route[] {
       if (body === undefined) return error('Body must be JSON', 400)
       const result = validateSettings(body)
       if (!result.ok) return error('Invalid settings', 400, { issues: result.issues })
-      // The Session folder is moved from its own tab, which also moves the Sessions in use.
-      const { sessionsFolder } = await deps.settings.load()
-      result.settings.sessionsFolder = sessionsFolder
+      // The Session folder is moved on the Session manager, which also moves the Sessions in use.
+      const { sessionsFolder, sessionsFolders } = await deps.settings.load()
+      Object.assign(result.settings, { sessionsFolder, sessionsFolders })
       await deps.settings.save(result.settings)
       const { apiKeys } = body as Partial<SavedSettings>
       if (typeof apiKeys === 'object' && apiKeys !== null) {
