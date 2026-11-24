@@ -1,4 +1,7 @@
-/** The machine's own folder dialog, for choosing a folder by its full path. */
+/**
+ * The machine's own folder windows: its dialog, for choosing a folder by its full path, and its file
+ * manager, showing one.
+ */
 
 const PROMPT = 'Choose the folder to keep Sessions in'
 
@@ -36,4 +39,24 @@ export async function pickFolder(os = Deno.build.os): Promise<string | null> {
   const said = new TextDecoder().decode(out.stderr).trim()
   if (!said || /cancel/i.test(said)) return null
   throw new Error(`The folder dialog failed: ${said.split('\n').at(-1)}`)
+}
+
+/** The command that shows a folder in the machine's file manager. */
+function opener(os: typeof Deno.build.os): string {
+  return os === 'darwin' ? 'open' : os === 'windows' ? 'explorer' : 'xdg-open'
+}
+
+/** Shows folder `path` in the machine's file manager: Finder, Explorer, or the desktop's own. */
+export async function openFolder(path: string, os = Deno.build.os): Promise<void> {
+  const cmd = opener(os)
+  let out: Deno.CommandOutput
+  try {
+    out = await new Deno.Command(cmd, { args: [path], stdout: 'null', stderr: 'piped' }).output()
+  } catch {
+    throw new Error(`Couldn't open the folder (${cmd} is missing)`)
+  }
+  // Explorer ends with 1 even when it opened the folder.
+  if (out.success || os === 'windows') return
+  const said = new TextDecoder().decode(out.stderr).trim()
+  throw new Error(`Couldn't open the folder: ${said.split('\n').at(-1) || `${cmd} failed`}`)
 }

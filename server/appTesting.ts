@@ -7,6 +7,7 @@ import type { ImageGenerator } from './images/imageGenerator.ts'
 import { dirSessionStore } from './session.ts'
 import type { Picture } from '../shared/pictures.ts'
 import type { Health, Loaded, Session, SessionSummary } from '../shared/session.ts'
+import type { SessionContents, SessionSizes } from '../shared/sessionContents.ts'
 import type { ErrorBody } from '../shared/errors.ts'
 import type { Job, Queue } from '../shared/jobs.ts'
 import type { Expansion, Scenario, ScenarioList, Suggested } from '../shared/scenario.ts'
@@ -80,6 +81,9 @@ export interface SetupOptions {
   features?: Availabilities
   exports?: AppDeps['exports']
   web?: AppDeps['web']
+  openFolder?: AppDeps['openFolder']
+  /** The address requests come from; left out, none is known, as from nowhere on this machine. */
+  client?: string
 }
 
 /** The app's handler over fakes, Sessions under `root`, and a `call` that sends it a request. */
@@ -113,6 +117,7 @@ export function setup(opts: SetupOptions = {}) {
     features: opts.features,
     exports: opts.exports,
     web: opts.web,
+    openFolder: opts.openFolder,
     newSessionId: () => `s${++sessionCount}`,
     randomSeed: () => 1234,
   })
@@ -128,6 +133,9 @@ export function setup(opts: SetupOptions = {}) {
           ? body
           : JSON.stringify(body),
       }),
+      opts.client
+        ? { remoteAddr: { transport: 'tcp', hostname: opts.client, port: 50000 } }
+        : undefined,
     )
   return { settings, sessions, handler, call }
 }
@@ -239,6 +247,12 @@ export const sessionsFolderIn = (res: Response) => bodyOf<SessionsFolderInfo>(re
 /** Expand's and Suggest's answers, on the Scenario page. */
 export const expansionIn = (res: Response) => bodyOf<Expansion>(res)
 export const suggestedIn = (res: Response) => bodyOf<Suggested>(res)
+
+/** What a Session holds, and every Session's size, for the Session manager. */
+export const getContents = async (call: Call, id = 's1') =>
+  bodyOf<SessionContents>(await call('GET', `/api/sessions/${id}/contents`))
+export const getSizes = async (call: Call) =>
+  bodyOf<SessionSizes>(await call('GET', '/api/session-sizes'))
 
 /** The folder the machine's own dialog picked. */
 export const pickedIn = (res: Response) => bodyOf<PickedFolder>(res)

@@ -5,7 +5,8 @@
  */
 import { extname, join } from '@std/path'
 import { serveFile } from '@std/http/file-server'
-import { error, json, readJson, type Route } from './http.ts'
+import { error, fromThisMachine, json, readJson, type Route } from './http.ts'
+import { contentsOf, servedFile, sizeOf } from './sessionParts.ts'
 import { crossedLimit } from './limits.ts'
 import { scenarioFrom, scenarioText } from './scenario.ts'
 import type { Scenario } from '../shared/scenario.ts'
@@ -16,6 +17,7 @@ import {
   SESSION_TITLE_LENGTH,
   type SessionSummary,
 } from '../shared/session.ts'
+import type { SessionContents, SessionSizes } from '../shared/sessionContents.ts'
 import { MAX_SEED, sessionSettingsOf, SIZE_PRESETS } from './settings.ts'
 import { roleplayExcerpt } from './roleplay/prompt.ts'
 import { restartRoleplay } from './roleplay/engine.ts'
@@ -41,28 +43,6 @@ import {
   startingTitle,
 } from './appContext.ts'
 
-/**
- * Frame images: `frame-3-1a2b3c4d.png`, or `frame-3.png` without the unique suffix, edits of them
- * (`edit-3-1a2b3c4d.png`, ADR 0021) and the areas painted for them (`mask-3-1a2b3c4d.png`);
- * `-2048` marks an upscaled one.
- */
-const IMAGE_FILE = /^(frame|edit|mask)-\d+(-[0-9a-f]{8})?(-2048)?\.(png|svg)$/
-/**
- * A Roleplay's audio: its Character's voice (`voice-1a2b3c4d.wav`, lossless; FLAC from ComfyUI),
- * spoken lines (`speech-3-…`) and spoken thoughts (`thought-3-…`): MP3 (FLAC from ComfyUI), or WAV
- * from before 2026-10-02.
- */
-const AUDIO_FILE =
-  /^(voice-[0-9a-f]{8}\.(wav|flac)|(speech|thought)-\d+-[0-9a-f]{8}\.(mp3|wav|flac))$/
-/**
- * A Roleplay Frame's 2.5D scene (`scene-3-1a2b3c4d.ply`, SHARP) or 3D figure (`figure-3-…`,
- * TripoSplat; `lito-3-…`, LiTo).
- */
-const SCENE_FILE = /^(scene|figure|lito)-\d+-[0-9a-f]{8}\.ply$/
-/** A clip made from a Frame's picture (`clip-3-lead-in-1a2b3c4d.mp4`, `video/makeClip.ts`). */
-const CLIP_FILE = /^clip-\d+-[a-z-]+-[0-9a-f]{8}\.mp4$/
-/** A Cue's track (`music-cue-1a2b3c4d-5e6f7a8b.flac`, `roleplay/music/tracks.ts`). */
-const MUSIC_FILE = /^music-cue-[0-9a-f]{8}-[0-9a-f]{8}\.flac$/
 const CONTENT_TYPES: Record<string, string> = {
   '.png': 'image/png',
   '.svg': 'image/svg+xml',
@@ -195,6 +175,39 @@ export function sessionRoutes(ctx: AppContext): Route[] {
       })
       summaries.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
       return json(summaries)
+    }],
+
+    // Each Session's size on disk, for the Session manager: worked out each time it's asked.
+    ['GET', new URLPattern({ pathname: '/api/session-sizes' }), async () => {
+      const sessions = await deps.sessions.list()
+      const sizes = await Promise.all(sessions.map((s) => sizeOf(deps.sessions.dir(s.id))))
+      return json(
+        Object.fromEntries(sessions.map((s, i) => [s.id, sizes[i]])) satisfies SessionSizes,
+      )
+    }],
+
+    // What a Session holds, by part (`sessionParts.ts`): its size on disk and its counts.
+    ['GET', new URLPattern({ pathname: '/api/sessions/:id/contents' }), async (_req, p) => {
+      const session = await loadSession(p.id!)
+      return json(
+        (await contentsOf(session, deps.sessions.dir(session.id))) satisfies SessionContents,
+      )
+    }],
+
+    // Shows the Session's folder in the machine's file manager: only for a browser on that
+    // machine, which is where it opens.
+    ['POST', new URLPattern({ pathname: '/api/sessions/:id/open-folder' }), async (req, p) => {
+      if (!deps.openFolder) return error("This machine can't open a folder", 409)
+      if (!fromThisMachine(req)) {
+        return error("The folder opens on the server's machine, not this one", 409)
+      }
+      const session = await loadSession(p.id!)
+      try {
+        await deps.openFolder(deps.sessions.dir(session.id))
+      } catch (err) {
+        return error((err as Error).message, 500)
+      }
+      return new Response(null, { status: 204 })
     }],
 
     [
@@ -396,11 +409,7 @@ export function sessionRoutes(ctx: AppContext): Route[] {
 
     // Served by byte ranges where asked: Safari won't seek in a video (a clip) without them.
     ['GET', new URLPattern({ pathname: '/api/sessions/:id/images/:file' }), async (req, p) => {
-      if (
-        ![IMAGE_FILE, AUDIO_FILE, SCENE_FILE, CLIP_FILE, MUSIC_FILE].some((f) => f.test(p.file!))
-      ) {
-        return error('Not found', 404)
-      }
+      if (!servedFile(p.file!)) return error('Not found', 404)
       const res = await serveFile(req, join(deps.sessions.dir(p.id!), p.file!))
       if (res.status === 404) return error('Not found', 404)
       res.headers.set('Content-Type', CONTENT_TYPES[extname(p.file!)])

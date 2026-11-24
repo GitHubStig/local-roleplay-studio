@@ -14,7 +14,9 @@ export default defineConfig({
     // What the server and the web app share (`shared/`) is beside this folder, not in it.
     fs: { allow: ['..'] },
     proxy: {
-      '/api': `http://localhost:${env?.PORT ?? 8787}`,
+      // Saying who it's for (`X-Forwarded-For`), so the server can tell a browser on its own
+      // machine from one elsewhere (`fromThisMachine`).
+      '/api': { target: `http://localhost:${env?.PORT ?? 8787}`, xfwd: true },
     },
   },
   test: {

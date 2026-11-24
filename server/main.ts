@@ -35,7 +35,7 @@ import { checkFolder } from './sessionsFolder.ts'
 import { webApp } from './webApp.ts'
 import { copyPythonTools, SHIPPED_PYTHON } from './pythonTools.ts'
 import { makeDataDirs, thisRunsDataDirs } from './dataDirs.ts'
-import { pickFolder } from './folderPicker.ts'
+import { openFolder, pickFolder } from './folderPicker.ts'
 import { uvStyleEmbedder } from './style/embedder.ts'
 import { buildComparisonPage, builtComparisonPage } from './export/page.ts'
 import { voiceBackends, voiceService } from './voice/voice.ts'
@@ -200,6 +200,7 @@ const handler = createHandler({
     },
   },
   pickFolder,
+  openFolder,
   // Built fresh from a clone, so it matches the Compare dialog; an install reads the one it shipped.
   exports: {
     dir: data.exports,

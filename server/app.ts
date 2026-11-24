@@ -1,5 +1,5 @@
 import { Refusal } from './refusal.ts'
-import { error, isJson, json, type Route } from './http.ts'
+import { error, isJson, json, noteClient, type Route } from './http.ts'
 import type { ImageGenerator } from './images/imageGenerator.ts'
 import { IMAGE_BACKENDS, type ImageBackendKind } from '../shared/images.ts'
 import type { ComfyStatus, ComfyUses } from '../shared/comfyui.ts'
@@ -92,6 +92,8 @@ export interface AppDeps {
   sessionsFolder?: SessionsFolder
   /** Asks the player for a folder with the machine's dialog; left out, they type the path. */
   pickFolder?: () => Promise<string | null>
+  /** Shows a folder in the machine's file manager (Finder, Explorer); left out, it can't. */
+  openFolder?: (path: string) => Promise<void>
   /** The Text Model as a Chain or Storyboard uses it. */
   textModel: (choice: TextChoice) => TextModel
   imageGenerator: ImageGenerator
@@ -159,7 +161,9 @@ export type LockKind =
   | 'clip-prompt'
   | 'score'
 
-export function createHandler(deps: AppDeps): (req: Request) => Promise<Response> {
+export function createHandler(
+  deps: AppDeps,
+): (req: Request, info?: { remoteAddr: Deno.Addr }) => Promise<Response> {
   const newSessionId = deps.newSessionId ?? defaultSessionId
   const randomSeed = deps.randomSeed ?? defaultSeed
   /**
@@ -695,7 +699,8 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
     ],
   ]
 
-  return async (req) => {
+  return async (req, info) => {
+    noteClient(req, info?.remoteAddr)
     // Any web page can POST here without asking first, but only as a form or plain text: JSON
     // needs a preflight, which gets no CORS headers. So another site can't use the saved API key
     // (text-models), make Sessions or queue jobs.
