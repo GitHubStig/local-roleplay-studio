@@ -136,7 +136,7 @@ Deno.test('Voices, 3D and style scores are logged: files by name, embeddings cou
     const voice = loggedVoice({
       profile: () => Promise.resolve({ ref: 'wav', speech: 'mp3', heavy: false }),
       design: () => Promise.resolve(),
-      speak: () => Promise.resolve(),
+      speak: () => Promise.resolve({ ranOn: false }),
     }, 'comfyui')
     const scene = loggedMaker<SceneMaker>(
       {
@@ -150,7 +150,14 @@ Deno.test('Voices, 3D and style scores are logged: files by name, embeddings cou
     })
     await logCalls(true, dir, 1, async () => {
       await voice.speak(
-        { text: 'Hello.', ref: '/s/voice.wav', refText: 'Hi.', seed: 1, out: '/s/frame-1.mp3' },
+        {
+          text: 'Hello.',
+          ref: '/s/voice.wav',
+          refText: 'Hi.',
+          seed: 1,
+          out: '/s/frame-1.mp3',
+          maxFrames: 100,
+        },
         signal,
       )
       await scene.make({ image: '/s/frame-1-aaaa.png', out: '/s/scene-1.ply' }, signal)
@@ -162,7 +169,13 @@ Deno.test('Voices, 3D and style scores are logged: files by name, embeddings cou
       ['scene', 'SHARP'],
       ['style', 'style embedder'],
     ])
-    assertEquals(calls[0].request, { text: 'Hello.', refText: 'Hi.', seed: 1, ref: 'voice.wav' })
+    assertEquals(calls[0].request, {
+      text: 'Hello.',
+      refText: 'Hi.',
+      seed: 1,
+      ref: 'voice.wav',
+      maxFrames: 100,
+    })
     assertEquals(calls[0].response, { file: 'frame-1.mp3' })
     assertEquals(calls[1].response, {
       file: 'scene-1.ply',

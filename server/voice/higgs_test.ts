@@ -1,5 +1,12 @@
 import { assertEquals } from '@std/assert'
-import { higgsText } from './higgs.ts'
+import {
+  exactSecondsOf,
+  FLOOR_SECONDS,
+  higgsText,
+  maxFrames,
+  SECONDS_A_CHARACTER,
+  secondsOf,
+} from './higgs.ts'
 
 Deno.test("Higgs's tags: a sound, then a whisper, then the pace", () => {
   assertEquals(higgsText({ text: 'Fine.' }), 'Fine.')
@@ -20,4 +27,14 @@ Deno.test('A slow line pauses between sentences, but not after a one-word one', 
     higgsText({ text: 'Wait… what? No.', pace: 'normal' }),
     'Wait… what? No.',
   )
+})
+
+Deno.test('A line may take frames by its length, past the longest a line of that length took', () => {
+  // 25 frames a second, and 7 for the codebooks' delay.
+  assertEquals(exactSecondsOf(maxFrames('')), FLOOR_SECONDS)
+  assertEquals(
+    exactSecondsOf(maxFrames('x'.repeat(100))),
+    FLOOR_SECONDS + 100 * SECONDS_A_CHARACTER,
+  )
+  assertEquals(secondsOf(2048), 82)
 })

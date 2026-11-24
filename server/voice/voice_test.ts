@@ -1,7 +1,9 @@
 import { assertEquals, assertRejects } from '@std/assert'
 import { join } from '@std/path'
 import { withTempDir } from '../testing.ts'
-import { voiceService } from './voice.ts'
+import { type SpeakRequest, speakToEnd, voiceService } from './voice.ts'
+import { maxFrames, secondsOf } from './higgs.ts'
+import { fakeVoiceEngine } from './testing.ts'
 
 /**
  * A stand-in voice service: answers health checks, takes only JSON as the real one does, and goes
@@ -51,7 +53,14 @@ Deno.test(
         command: (p) => (started.push(p), ['deno', 'run', '--allow-net', stub, String(p)]),
       })
       const signal = new AbortController().signal
-      const req = { text: 'Hi.', ref: '/r.wav', refText: 'Ref.', seed: 1, out: '/o.wav' }
+      const req = {
+        text: 'Hi.',
+        ref: '/r.wav',
+        refText: 'Ref.',
+        seed: 1,
+        out: '/o.wav',
+        maxFrames: 100,
+      }
 
       await voice.speak(req, signal)
       assertEquals(started.length, 1)
@@ -64,6 +73,7 @@ Deno.test(
         refText: 'Ref.',
         seed: 1,
         out: '/o.wav',
+        maxFrames: 100,
       })
 
       // It goes away (here: stopped); the next call starts it again and succeeds.
@@ -106,7 +116,14 @@ Deno.test(
         command: (p) => ['deno', 'run', '--allow-net', stub, String(p)],
       })
       const seen: boolean[] = []
-      const req = { text: 'Hi.', ref: '/r.wav', refText: 'Ref.', seed: 1, out: '/o.wav' }
+      const req = {
+        text: 'Hi.',
+        ref: '/r.wav',
+        refText: 'Ref.',
+        seed: 1,
+        out: '/o.wav',
+        maxFrames: 100,
+      }
       await voice.speak(req, new AbortController().signal, (d) => seen.push(d))
       assertEquals(seen, [true, false])
       await stop(port)
@@ -148,7 +165,14 @@ Deno.test(
         startLimitMs: 20_000,
         command: (p) => (started++, ['deno', 'run', '--allow-net', stub, String(p)]),
       })
-      const req = { text: 'Hi.', ref: '/r.wav', refText: 'Ref.', seed: 1, out: '/o.wav' }
+      const req = {
+        text: 'Hi.',
+        ref: '/r.wav',
+        refText: 'Ref.',
+        seed: 1,
+        out: '/o.wav',
+        maxFrames: 100,
+      }
       const health = () => fetch(`http://127.0.0.1:${port}/health`).then((r) => r.json())
 
       const job = new AbortController()
@@ -167,3 +191,34 @@ Deno.test(
       await assertRejects(() => again)
     }),
 )
+
+Deno.test('A line that runs on is spoken again, once, at a new seed; twice, it fails', () =>
+  withTempDir(async (dir) => {
+    const req = {
+      text: 'Hi there.',
+      ref: '/r.wav',
+      refText: 'Ref.',
+      seed: 7,
+      out: join(dir, 'o.mp3'),
+    }
+    const signal = new AbortController().signal
+
+    const once = fakeVoiceEngine({ ranOn: [true] })
+    await speakToEnd(once, req, signal)
+    const [first, second] = once.calls.map((c) => c.req as SpeakRequest)
+    assertEquals([once.calls.length, first.seed, first.maxFrames], [2, 7, maxFrames('Hi there.')])
+    assertEquals(second.seed === 7, false)
+
+    const fine = fakeVoiceEngine()
+    await speakToEnd(fine, req, signal)
+    assertEquals(fine.calls.length, 1)
+
+    const twice = fakeVoiceEngine({ ranOn: [true, true] })
+    await assertRejects(
+      () => speakToEnd(twice, req, signal),
+      Error,
+      `The voice didn't finish the line, twice: it ran on past ${
+        secondsOf(maxFrames('Hi there.'))
+      } s`,
+    )
+  }))

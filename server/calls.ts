@@ -321,7 +321,7 @@ export function loggedVoice(engine: VoiceEngine, name: string): VoiceEngine {
         name,
         { ...sent, ref: basename(ref) },
         () => engine.speak(req, signal, onDownload),
-        () => ({ file: basename(out) }),
+        ({ ranOn }) => ({ file: basename(out), ...(ranOn ? { ranOn } : {}) }),
       )
     },
   }

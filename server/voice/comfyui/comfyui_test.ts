@@ -3,7 +3,7 @@ import { join } from '@std/path'
 import { withTempDir } from '../../testing.ts'
 import { fillWorkflow, loadWorkflow } from '../../comfyui/client.ts'
 import { fakeComfyUI } from '../../comfyui/testing.ts'
-import { comfyuiText, comfyuiVoiceEngine } from './comfyui.ts'
+import { comfyuiText, comfyuiVoiceEngine, flacSeconds } from './comfyui.ts'
 
 const CLIP = {
   filename: 'ComfyUI_temp_abcde_00001_.flac',
@@ -55,6 +55,7 @@ Deno.test('A line spoken through ComfyUI clones the reference clip from temp, bl
           refText: 'Sit down.',
           seed: 2 ** 32 + 6,
           out,
+          maxFrames: 200,
         },
         new AbortController().signal,
       )
@@ -69,6 +70,7 @@ Deno.test('A line spoken through ComfyUI clones the reference clip from temp, bl
         '<|sfx:sigh|>Uh <|prosody:speed_slow|>Third door on the left. <|prosody:pause|>Mind the step.',
       )
       assertEquals(workflow.speak.inputs.seed, 8)
+      assertEquals(workflow.engine.inputs.max_new_tokens, 200)
       assertEquals(
         [workflow.engine.inputs.temperature, workflow.engine.inputs.top_k],
         [0.5, 30],
@@ -112,10 +114,25 @@ Deno.test('On ComfyUI a whisper is held low, and square brackets go', () => {
 Deno.test('Both voice workflows load, and fill with nothing left over', async () => {
   const fills = {
     design: { description: 'd', text: 't', seed: 1 },
-    speak: { ref: 'r.flac [temp]', refText: 't', text: 'x', seed: 1 },
+    speak: { ref: 'r.flac [temp]', refText: 't', text: 'x', seed: 1, maxFrames: 100 },
   }
   for (const [id, values] of Object.entries(fills)) {
     const workflow = await loadWorkflow(new URL(`./workflows/${id}.json`, import.meta.url))
     assertEquals(JSON.stringify(fillWorkflow(workflow, values)).includes('"$'), false)
   }
+})
+
+Deno.test("A FLAC clip's length is read from its header", () => {
+  // "fLaC", a STREAMINFO header, then its block sizes and frame sizes (10 bytes), and 24 kHz,
+  // mono, 16-bit, 60 000 samples: 2.5 s.
+  const info = new Uint8Array(18)
+  const rate = 24000, samples = 60000
+  info[10] = rate >> 12
+  info[11] = (rate >> 4) & 0xff
+  info[12] = ((rate & 0x0f) << 4) | (0 << 1) | 0
+  info[13] = (15 << 4) | 0
+  new DataView(info.buffer).setUint32(14, samples)
+  const file = new Uint8Array([102, 76, 97, 67, 0, 0, 0, 34, ...info])
+  assertEquals(flacSeconds(file), 2.5)
+  assertEquals(flacSeconds(new Uint8Array([102, 76, 97, 67])), 0)
 })

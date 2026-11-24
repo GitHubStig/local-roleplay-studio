@@ -3,7 +3,12 @@ import type { DesignRequest, SpeakRequest, VoiceEngine, VoiceProfile } from './v
 
 /** Stands in for the voice service in tests: writes a tiny WAV naming what it would say. */
 export function fakeVoiceEngine(
-  opts: { fail?: string; profile?: VoiceProfile } = {},
+  opts: {
+    fail?: string
+    profile?: VoiceProfile
+    /** Whether each line spoken runs on, in turn; none does after these. */
+    ranOn?: boolean[]
+  } = {},
 ): VoiceEngine & {
   calls: { kind: 'design' | 'speak'; req: DesignRequest | SpeakRequest }[]
 } {
@@ -22,6 +27,9 @@ export function fakeVoiceEngine(
     calls,
     profile: () => Promise.resolve(opts.profile ?? { ref: 'wav', speech: 'mp3', heavy: false }),
     design: (req, signal) => write('design', req, signal),
-    speak: (req, signal) => write('speak', req, signal),
+    speak: async (req, signal) => {
+      await write('speak', req, signal)
+      return { ranOn: opts.ranOn?.shift() ?? false }
+    },
   }
 }

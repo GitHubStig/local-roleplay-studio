@@ -40,3 +40,37 @@ export function higgsText(
   const pace = req.pace === 'slow' || req.pace === 'fast' ? PACES[req.pace] : ''
   return before + (req.whisper ? whisper : '') + pace + text
 }
+
+/** Higgs's audio frames a second, and the frames its codebooks' delay adds to every line. */
+const FRAMES_A_SECOND = 25
+const DELAY_FRAMES = 7
+
+/**
+ * Seconds of speech a line may take: a floor, and so much a character. Of 201 lines spoken from the
+ * voice bench's texts on the Mac (2026-11-24: two voices, 45 of 67 slow, up to 411 characters), the
+ * slowest took 0.12 s a character and none more than 44% of this; the two that ran on, into
+ * silence, took 40 s at 114 characters (still going) and 26 s at 55 (ended by itself), past their
+ * 27 and 15 (docs/research/voices.md).
+ */
+export const FLOOR_SECONDS = 4
+export const SECONDS_A_CHARACTER = 0.2
+
+/** The most ComfyUI's Higgs node takes. */
+const MOST_FRAMES = 8192
+
+/**
+ * The most frames a line may take: about twice the longest a line of its length came out, so one
+ * that takes them all ran on rather than ran long. Higgs's own cap is 2048 frames, 82 s, a
+ * minute's work.
+ */
+export const maxFrames = (text: string) =>
+  Math.min(
+    Math.ceil((FLOOR_SECONDS + SECONDS_A_CHARACTER * text.length) * FRAMES_A_SECOND) + DELAY_FRAMES,
+    MOST_FRAMES,
+  )
+
+/** How long a line of `frames` frames lasts. */
+export const exactSecondsOf = (frames: number) => (frames - DELAY_FRAMES) / FRAMES_A_SECOND
+
+/** The same, in whole seconds, to tell the player. */
+export const secondsOf = (frames: number) => Math.round(exactSecondsOf(frames))

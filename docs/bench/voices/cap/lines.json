@@ -1,0 +1,538 @@
+[
+ {
+  "id": "conv-0",
+  "plain": "We’re closed.",
+  "tagged": "<|prosody:speed_slow|>We’re closed.",
+  "pace": "slow",
+  "sound": "none",
+  "whisper": false
+ },
+ {
+  "id": "conv-1",
+  "plain": "Drink. It’s bitter. Like my mood.",
+  "tagged": "Drink. It’s bitter. Like my mood.",
+  "pace": "normal",
+  "sound": "none",
+  "whisper": false
+ },
+ {
+  "id": "conv-2",
+  "plain": "Nice trinket. Heavy.",
+  "tagged": "Nice trinket. Heavy.",
+  "pace": "normal",
+  "sound": "none",
+  "whisper": false
+ },
+ {
+  "id": "conv-3",
+  "plain": "Keep it buttoned.",
+  "tagged": "<|prosody:speed_slow|>Keep it buttoned.",
+  "pace": "slow",
+  "sound": "none",
+  "whisper": false
+ },
+ {
+  "id": "conv-4",
+  "plain": "Third door on the left. Don't knock on the other two.",
+  "tagged": "Third door on the left. Don't knock on the other two.",
+  "pace": "normal",
+  "sound": "none",
+  "whisper": false
+ },
+ {
+  "id": "conv-5",
+  "plain": "It’s late.",
+  "tagged": "<|prosody:speed_slow|>It’s late.",
+  "pace": "slow",
+  "sound": "none",
+  "whisper": false
+ },
+ {
+  "id": "conv-6",
+  "plain": "Don’t break the pipes.",
+  "tagged": "<|prosody:speed_slow|>Don’t break the pipes.",
+  "pace": "slow",
+  "sound": "none",
+  "whisper": false
+ },
+ {
+  "id": "conv-7",
+  "plain": "Sleep tight.",
+  "tagged": "<|prosody:speed_slow|>Sleep tight.",
+  "pace": "slow",
+  "sound": "none",
+  "whisper": false
+ },
+ {
+  "id": "conv-8",
+  "plain": "Massage is a service. Not a conversation.",
+  "tagged": "<|prosody:speed_slow|>Massage is a service. <|prosody:pause|>Not a conversation.",
+  "pace": "slow",
+  "sound": "none",
+  "whisper": false
+ },
+ {
+  "id": "conv-9",
+  "plain": "Pick it up.",
+  "tagged": "<|prosody:speed_slow|>Pick it up.",
+  "pace": "slow",
+  "sound": "none",
+  "whisper": false
+ },
+ {
+  "id": "conv-10",
+  "plain": "Not me. You.",
+  "tagged": "<|prosody:speed_slow|>Not me. <|prosody:pause|>You.",
+  "pace": "slow",
+  "sound": "none",
+  "whisper": false
+ },
+ {
+  "id": "conv-11",
+  "plain": "Done?",
+  "tagged": "<|prosody:speed_slow|>Done?",
+  "pace": "slow",
+  "sound": "none",
+  "whisper": false
+ },
+ {
+  "id": "conv-12",
+  "plain": "Knew it wasn’t for the rain.",
+  "tagged": "<|sfx:cough|>Ahem <|prosody:speed_slow|>Knew it wasn’t for the rain.",
+  "pace": "slow",
+  "sound": "cough",
+  "whisper": false
+ },
+ {
+  "id": "conv-13",
+  "plain": "Debt?",
+  "tagged": "<|prosody:speed_slow|>Debt?",
+  "pace": "slow",
+  "sound": "none",
+  "whisper": false
+ },
+ {
+  "id": "conv-14",
+  "plain": "Who?",
+  "tagged": "<|prosody:speed_slow|>Who?",
+  "pace": "slow",
+  "sound": "none",
+  "whisper": false
+ },
+ {
+  "id": "conv-15",
+  "plain": "Took you long enough.",
+  "tagged": "<|prosody:speed_slow|>Took you long enough.",
+  "pace": "slow",
+  "sound": "none",
+  "whisper": false
+ },
+ {
+  "id": "conv-16",
+  "plain": "Tight. Make it tight.",
+  "tagged": "<|prosody:speed_slow|>Tight. Make it tight.",
+  "pace": "slow",
+  "sound": "none",
+  "whisper": false
+ },
+ {
+  "id": "conv-17",
+  "plain": "You’re mine. They’re tools.",
+  "tagged": "<|prosody:speed_slow|>You’re mine. <|prosody:pause|>They’re tools.",
+  "pace": "slow",
+  "sound": "none",
+  "whisper": false
+ },
+ {
+  "id": "conv-18",
+  "plain": "Debt is paid in coin. Not skin.",
+  "tagged": "<|prosody:speed_slow|>Debt is paid in coin. <|prosody:pause|>Not skin.",
+  "pace": "slow",
+  "sound": "none",
+  "whisper": false
+ },
+ {
+  "id": "conv-19",
+  "plain": "Choke on the letter.",
+  "tagged": "<|prosody:speed_slow|>Choke on the letter.",
+  "pace": "slow",
+  "sound": "none",
+  "whisper": false
+ },
+ {
+  "id": "conv-20",
+  "plain": "Don’t break her. She’s the only one who knows the rest.",
+  "tagged": "<|prosody:speed_slow|>Don’t break her. <|prosody:pause|>She’s the only one who knows the rest.",
+  "pace": "slow",
+  "sound": "none",
+  "whisper": false
+ },
+ {
+  "id": "conv-21",
+  "plain": "Tie her up. Not to the bed. To the door.",
+  "tagged": "<|prosody:speed_slow|>Tie her up. <|prosody:pause|>Not to the bed. <|prosody:pause|>To the door.",
+  "pace": "slow",
+  "sound": "none",
+  "whisper": false
+ },
+ {
+  "id": "conv-22",
+  "plain": "Good.",
+  "tagged": "<|prosody:speed_slow|>Good.",
+  "pace": "slow",
+  "sound": "none",
+  "whisper": false
+ },
+ {
+  "id": "conv-23",
+  "plain": "Stay away from her.",
+  "tagged": "<|prosody:speed_slow|>Stay away from her.",
+  "pace": "slow",
+  "sound": "none",
+  "whisper": false
+ },
+ {
+  "id": "conv-24",
+  "plain": "You’re not a traveler.",
+  "tagged": "<|prosody:speed_slow|>You’re not a traveler.",
+  "pace": "slow",
+  "sound": "none",
+  "whisper": false
+ },
+ {
+  "id": "conv-25",
+  "plain": "Who did it?",
+  "tagged": "<|prosody:speed_slow|>Who did it?",
+  "pace": "slow",
+  "sound": "none",
+  "whisper": false
+ },
+ {
+  "id": "conv-26",
+  "plain": "Don’t come back.",
+  "tagged": "<|prosody:speed_slow|>Don’t come back.",
+  "pace": "slow",
+  "sound": "none",
+  "whisper": false
+ },
+ {
+  "id": "conv-27",
+  "plain": "Quiet.",
+  "tagged": "<|prosody:speed_slow|>Quiet.",
+  "pace": "slow",
+  "sound": "none",
+  "whisper": false
+ },
+ {
+  "id": "conv-28",
+  "plain": "I did.",
+  "tagged": "<|prosody:speed_slow|>I did.",
+  "pace": "slow",
+  "sound": "none",
+  "whisper": false
+ },
+ {
+  "id": "expr-kael-07ac-1",
+  "plain": "Drink. It’s bitter. Like my mood.",
+  "tagged": "Drink. It’s bitter. Like my mood.",
+  "pace": "normal",
+  "sound": "none",
+  "whisper": false
+ },
+ {
+  "id": "expr-kael-07ac-4",
+  "plain": "Third door on the left. Don't knock on the other two.",
+  "tagged": "Third door on the left. Don't knock on the other two.",
+  "pace": "normal",
+  "sound": "none",
+  "whisper": false
+ },
+ {
+  "id": "expr-kael-07ac-13",
+  "plain": "Debt?",
+  "tagged": "<|sfx:cough|>Ahem <|prosody:speed_slow|>Debt?",
+  "pace": "slow",
+  "sound": "cough",
+  "whisper": false
+ },
+ {
+  "id": "expr-kael-07ac-17",
+  "plain": "You’re mine. They’re tools.",
+  "tagged": "<|prosody:speed_slow|>You’re mine. <|prosody:pause|>They’re tools.",
+  "pace": "slow",
+  "sound": "none",
+  "whisper": false
+ },
+ {
+  "id": "expr-kael-07ac-20",
+  "plain": "Don’t break her. She’s the only one who knows the rest.",
+  "tagged": "<|sfx:sigh|>Uh <|prosody:speed_slow|>Don’t break her. <|prosody:pause|>She’s the only one who knows the rest.",
+  "pace": "slow",
+  "sound": "sigh",
+  "whisper": false
+ },
+ {
+  "id": "expr-kael-07ac-25",
+  "plain": "You’re not a traveler.",
+  "tagged": "<|prosody:speed_slow|>You’re not a traveler.",
+  "pace": "slow",
+  "sound": "none",
+  "whisper": false
+ },
+ {
+  "id": "expr-elara-b215-0",
+  "plain": "It’s a long trek from the capital just to find a seat this dreary, Master Kael. I trust the storm hasn't dampened your hospitality along with my hemline?",
+  "tagged": "It’s a long trek from the capital just to find a seat this dreary, Master Kael. I trust the storm hasn't dampened your hospitality along with my hemline?",
+  "pace": "normal",
+  "sound": "none",
+  "whisper": false
+ },
+ {
+  "id": "expr-elara-b215-5",
+  "plain": "No great endeavor comes without its share of ink and parchment, darling. The catch is simply that we expect results. In return for our influence, we require access to those hidden veins of trade you once navigated so expertly. It isn't a trap; it's a partnership. Or are you afraid you can't handle the responsibility of being important again?",
+  "tagged": "<|sfx:laughter|>Heh No great endeavor comes without its share of ink and parchment, darling. The catch is simply that we expect results. In return for our influence, we require access to those hidden veins of trade you once navigated so expertly. It isn't a trap; it's a partnership. Or are you afraid you can't handle the responsibility of being important again?",
+  "pace": "normal",
+  "sound": "laughter",
+  "whisper": false
+ },
+ {
+  "id": "expr-elara-b215-12",
+  "plain": "Because unlike the old days, we aren't flying blind under a single lantern. We bring intelligence, coordination, and a scale of power that makes a slaughter nearly impossible. You won't be leading a group of desperate boys into a trap; you'll be directing a disciplined machine. Tell me, Kael... don't you miss having the power to tilt the scales in your favor?",
+  "tagged": "<|prosody:speed_slow|>Because unlike the old days, we aren't flying blind under a single lantern. <|prosody:pause|>We bring intelligence, coordination, and a scale of power that makes a slaughter nearly impossible. <|prosody:pause|>You won't be leading a group of desperate boys into a trap; you'll be directing a disciplined machine. <|prosody:pause|>Tell me, Kael... <|prosody:pause|>don't you miss having the power to tilt the scales in your favor?",
+  "pace": "slow",
+  "sound": "none",
+  "whisper": false
+ },
+ {
+  "id": "expr-elara-e211-3",
+  "plain": "Weight implies importance, wouldn't you agree? Some things are much harder to carry than others—certain memories, certain debts... even a piece of silver. But tell me, Kael, do you find yourself interested in the cost of things, or just their shine?",
+  "tagged": "<|prosody:speed_slow|>Weight implies importance, wouldn't you agree? <|prosody:pause|>Some things are much harder to carry than others—certain memories, certain debts... <|prosody:pause|>even a piece of silver. <|prosody:pause|>But tell me, Kael, do you find yourself interested in the cost of things, or just their shine?",
+  "pace": "slow",
+  "sound": "none",
+  "whisper": false
+ },
+ {
+  "id": "expr-elara-e211-11",
+  "plain": "If I pick up the cloth, Kael, it won't be to serve you. It will be to wipe the blood off the floor once we're done negotiating. So, tell me... what exactly do you think you're buying with this little display of strength?",
+  "tagged": "<|prosody:speed_slow|>If I pick up the cloth, Kael, it won't be to serve you. <|prosody:pause|>It will be to wipe the blood off the floor once we're done negotiating. <|prosody:pause|>So, tell me... <|prosody:pause|>what exactly do you think you're buying with this little display of strength?",
+  "pace": "slow",
+  "sound": "none",
+  "whisper": false
+ },
+ {
+  "id": "expr-elara-e211-14",
+  "plain": "Yes, a debt. A very large, very overdue debt. And if you don't start answering my questions correctly, Kael, I might find that interest becomes far more painful than a mere puncture wound.",
+  "tagged": "Yes, a debt. A very large, very overdue debt. And if you don't start answering my questions correctly, Kael, I might find that interest becomes far more painful than a mere puncture wound.",
+  "pace": "normal",
+  "sound": "none",
+  "whisper": false
+ },
+ {
+  "id": "expr-elara-e211-23",
+  "plain": "Good'? Is that all you have left to say, Kael? Just 'good' while the world falls apart around us? Look at me! Tell me there's more to this story than a pile of useless gold and a broken man!",
+  "tagged": "<|prosody:speed_fast|>Good'? Is that all you have left to say, Kael? Just 'good' while the world falls apart around us? Look at me! Tell me there's more to this story than a pile of useless gold and a broken man!",
+  "pace": "fast",
+  "sound": "none",
+  "whisper": false
+ },
+ {
+  "id": "expr-elara-e211-25",
+  "plain": "Don't you dare fade away on me! If you fall asleep now, Kael, you'll wake up to find everything you ever protected has been stripped away. Wake up and fight for something besides a pocketful of worthless coin!",
+  "tagged": "<|prosody:speed_fast|>Don't you dare fade away on me! If you fall asleep now, Kael, you'll wake up to find everything you ever protected has been stripped away. Wake up and fight for something besides a pocketful of worthless coin!",
+  "pace": "fast",
+  "sound": "none",
+  "whisper": false
+ },
+ {
+  "id": "expr-elara-e211-26",
+  "plain": "No. Travelers are easy to understand, Kael. They arrive, they stay for a night, and they leave. I am much more permanent than that. Now, are you going to use that locket to bribe your way out of this, or are you going to realize it's the only thing in this room that still has a purpose?",
+  "tagged": "<|sfx:laughter|>Heh <|prosody:speed_slow|>No. Travelers are easy to understand, Kael. <|prosody:pause|>They arrive, they stay for a night, and they leave. <|prosody:pause|>I am much more permanent than that. <|prosody:pause|>Now, are you going to use that locket to bribe your way out of this, or are you going to realize it's the only thing in this room that still has a purpose?",
+  "pace": "slow",
+  "sound": "laughter",
+  "whisper": false
+ },
+ {
+  "id": "expr-elara-e211-29",
+  "plain": "Quiet. Yes, Kael. Everything is quiet now. Except for the sound of the truth, which is still screaming in my ears.",
+  "tagged": "<|prosody:speed_slow|>Quiet. Yes, Kael. <|prosody:pause|>Everything is quiet now. <|prosody:pause|>Except for the sound of the truth, which is still screaming in my ears.",
+  "pace": "slow",
+  "sound": "none",
+  "whisper": false
+ },
+ {
+  "id": "thought-0",
+  "plain": "She keeps her eyes on the door, not on me. A habit of the hunted. Or the hunter. That locket is a lie made of metal.",
+  "tagged": "<|style:whispering|>She keeps her eyes on the door, not on me. A habit of the hunted. Or the hunter. That locket is a lie made of metal.",
+  "pace": "normal",
+  "sound": "none",
+  "whisper": true
+ },
+ {
+  "id": "thought-1",
+  "plain": "She’s wet. She’s cold. She’s standing on the landing like she owns the air in my lungs. And she’s asking for a massage. I know what she’s asking for. I know exactly what that cold is hiding.",
+  "tagged": "<|style:whispering|><|prosody:speed_slow|>She’s wet. <|prosody:pause|>She’s cold. <|prosody:pause|>She’s standing on the landing like she owns the air in my lungs. <|prosody:pause|>And she’s asking for a massage. <|prosody:pause|>I know what she’s asking for. <|prosody:pause|>I know exactly what that cold is hiding.",
+  "pace": "slow",
+  "sound": "none",
+  "whisper": true
+ },
+ {
+  "id": "thought-2",
+  "plain": "Pain is a clear line in the dark. I see the letter. I see the debt. I see that she isn’t here to pay. She’s here to collect. I’m the bill.",
+  "tagged": "<|sfx:cough|>Ahem <|style:whispering|><|prosody:speed_slow|>Pain is a clear line in the dark. <|prosody:pause|>I see the letter. <|prosody:pause|>I see the debt. <|prosody:pause|>I see that she isn’t here to pay. <|prosody:pause|>She’s here to collect. <|prosody:pause|>I’m the bill.",
+  "pace": "slow",
+  "sound": "cough",
+  "whisper": true
+ },
+ {
+  "id": "thought-3",
+  "plain": "She’s buying her freedom with her skin. And I’m the merchant. I don’t sell. I lend. And I always collect with interest.",
+  "tagged": "<|style:whispering|><|prosody:speed_slow|>She’s buying her freedom with her skin. <|prosody:pause|>And I’m the merchant. <|prosody:pause|>I don’t sell. <|prosody:pause|>I lend. <|prosody:pause|>And I always collect with interest.",
+  "pace": "slow",
+  "sound": "none",
+  "whisper": true
+ },
+ {
+  "id": "thought-4",
+  "plain": "The silence is louder than the rain. I didn't hear the ropes come loose. I didn't hear the knives move. I’m not dead. I’m just... still. I’m counting the breaths again. Two men. Two silent breaths. It’s done. I paid the price. I didn’t know the price was blood.",
+  "tagged": "<|style:whispering|><|prosody:speed_slow|>The silence is louder than the rain. <|prosody:pause|>I didn't hear the ropes come loose. <|prosody:pause|>I didn't hear the knives move. <|prosody:pause|>I’m not dead. <|prosody:pause|>I’m just... <|prosody:pause|>still. I’m counting the breaths again. <|prosody:pause|>Two men. <|prosody:pause|>Two silent breaths. <|prosody:pause|>It’s done. <|prosody:pause|>I paid the price. <|prosody:pause|>I didn’t know the price was blood.",
+  "pace": "slow",
+  "sound": "none",
+  "whisper": true
+ },
+ {
+  "id": "thought-5",
+  "plain": "A parting gift. A little poison in the quiet. She’s not gone. She’s just… lingering. And I’m the one who’s suffering. And I didn’t even know I was the one who did it. I just bought a tavern. And I lost it. And she’s the one who lived. And I’m the one who’s broken. And the rain is still falling. And the gold is still in my pocket. And the locket is on the floor. And I’m still alive. And that’s the worst part.",
+  "tagged": "<|style:whispering|><|prosody:speed_slow|>A parting gift. <|prosody:pause|>A little poison in the quiet. <|prosody:pause|>She’s not gone. <|prosody:pause|>She’s just… <|prosody:pause|>lingering. And I’m the one who’s suffering. <|prosody:pause|>And I didn’t even know I was the one who did it. <|prosody:pause|>I just bought a tavern. <|prosody:pause|>And I lost it. <|prosody:pause|>And she’s the one who lived. <|prosody:pause|>And I’m the one who’s broken. <|prosody:pause|>And the rain is still falling. <|prosody:pause|>And the gold is still in my pocket. <|prosody:pause|>And the locket is on the floor. <|prosody:pause|>And I’m still alive. <|prosody:pause|>And that’s the worst part.",
+  "pace": "slow",
+  "sound": "none",
+  "whisper": true
+ },
+ {
+  "id": "thought-6",
+  "plain": "He's cautious, testing the waters to see if I'm another local headache or a real threat. Time to dangle the carrot without revealing the whole feast.",
+  "tagged": "<|style:whispering|>He's cautious, testing the waters to see if I'm another local headache or a real threat. Time to dangle the carrot without revealing the whole feast.",
+  "pace": "normal",
+  "sound": "none",
+  "whisper": true
+ },
+ {
+  "id": "thought-7",
+  "plain": "His distrust is thick as this harbor fog. I need to show him that his survival is intrinsically tied to my success.",
+  "tagged": "<|style:whispering|><|prosody:speed_slow|>His distrust is thick as this harbor fog. <|prosody:pause|>I need to show him that his survival is intrinsically tied to my success.",
+  "pace": "slow",
+  "sound": "none",
+  "whisper": true
+ },
+ {
+  "id": "thought-8",
+  "plain": "He's haunted by the memory of a massacre. He needs to know that this isn't just a game of logistics, but a commitment to his safety.",
+  "tagged": "<|style:whispering|><|prosody:speed_slow|>He's haunted by the memory of a massacre. <|prosody:pause|>He needs to know that this isn't just a game of logistics, but a commitment to his safety.",
+  "pace": "slow",
+  "sound": "none",
+  "whisper": true
+ },
+ {
+  "id": "thought-9",
+  "plain": "His fingers are like ice. He isn't even looking at me as a woman anymore—just as another variable in his equation.",
+  "tagged": "<|style:whispering|><|prosody:speed_slow|>His fingers are like ice. <|prosody:pause|>He isn't even looking at me as a woman anymore—just as another variable in his equation.",
+  "pace": "slow",
+  "sound": "none",
+  "whisper": true
+ },
+ {
+  "id": "thought-10",
+  "plain": "He's given up. The man who fought the world is just... resting. And I'm stuck here, lashed to a rotting door like a piece of cargo.",
+  "tagged": "<|style:whispering|><|prosody:speed_slow|>He's given up. <|prosody:pause|>The man who fought the world is just... <|prosody:pause|>resting. And I'm stuck here, lashed to a rotting door like a piece of cargo.",
+  "pace": "slow",
+  "sound": "none",
+  "whisper": true
+ },
+ {
+  "id": "thought-11",
+  "plain": "The click of that latch sounded far too much like a coffin lid. He's alone again, and I'm out here in the storm with nothing but my secrets and a grudge.",
+  "tagged": "<|style:whispering|><|prosody:speed_slow|>The click of that latch sounded far too much like a coffin lid. <|prosody:pause|>He's alone again, and I'm out here in the storm with nothing but my secrets and a grudge.",
+  "pace": "slow",
+  "sound": "none",
+  "whisper": true
+ },
+ {
+  "id": "elara-p0",
+  "plain": "It’s a long trek from the capital just to find a seat this dreary, Master Kael. I trust the storm hasn't dampened your hospitality along with my hemline?",
+  "tagged": "It’s a long trek from the capital just to find a seat this dreary, Master Kael. I trust the storm hasn't dampened your hospitality along with my hemline?",
+  "pace": "normal",
+  "sound": "none",
+  "whisper": false
+ },
+ {
+  "id": "elara-p5",
+  "plain": "No great endeavor comes without its share of ink and parchment, darling. The catch is simply that we expect results. In return for our influence, we require access to those hidden veins of trade you once navigated so expertly. It isn't a trap; it's a partnership. Or are you afraid you can't handle the responsibility of being important again?",
+  "tagged": "No great endeavor comes without its share of ink and parchment, darling. The catch is simply that we expect results. In return for our influence, we require access to those hidden veins of trade you once navigated so expertly. It isn't a trap; it's a partnership. Or are you afraid you can't handle the responsibility of being important again?",
+  "pace": "normal",
+  "sound": "none",
+  "whisper": false
+ },
+ {
+  "id": "elara-p12",
+  "plain": "Because unlike the old days, we aren't flying blind under a single lantern. We bring intelligence, coordination, and a scale of power that makes a slaughter nearly impossible. You won't be leading a group of desperate boys into a trap; you'll be directing a disciplined machine. Tell me, Kael... don't you miss having the power to tilt the scales in your favor?",
+  "tagged": "Because unlike the old days, we aren't flying blind under a single lantern. We bring intelligence, coordination, and a scale of power that makes a slaughter nearly impossible. You won't be leading a group of desperate boys into a trap; you'll be directing a disciplined machine. Tell me, Kael... don't you miss having the power to tilt the scales in your favor?",
+  "pace": "normal",
+  "sound": "none",
+  "whisper": false
+ },
+ {
+  "id": "elara-s3",
+  "plain": "Weight implies importance, wouldn't you agree? Some things are much harder to carry than others—certain memories, certain debts... even a piece of silver. But tell me, Kael, do you find yourself interested in the cost of things, or just their shine?",
+  "tagged": "Weight implies importance, wouldn't you agree? Some things are much harder to carry than others—certain memories, certain debts... even a piece of silver. But tell me, Kael, do you find yourself interested in the cost of things, or just their shine?",
+  "pace": "normal",
+  "sound": "none",
+  "whisper": false
+ },
+ {
+  "id": "elara-s11",
+  "plain": "If I pick up the cloth, Kael, it won't be to serve you. It will be to wipe the blood off the floor once we're done negotiating. So, tell me... what exactly do you think you're buying with this little display of strength?",
+  "tagged": "If I pick up the cloth, Kael, it won't be to serve you. It will be to wipe the blood off the floor once we're done negotiating. So, tell me... what exactly do you think you're buying with this little display of strength?",
+  "pace": "normal",
+  "sound": "none",
+  "whisper": false
+ },
+ {
+  "id": "elara-s14",
+  "plain": "Yes, a debt. A very large, very overdue debt. And if you don't start answering my questions correctly, Kael, I might find that interest becomes far more painful than a mere puncture wound.",
+  "tagged": "Yes, a debt. A very large, very overdue debt. And if you don't start answering my questions correctly, Kael, I might find that interest becomes far more painful than a mere puncture wound.",
+  "pace": "normal",
+  "sound": "none",
+  "whisper": false
+ },
+ {
+  "id": "elara-s23",
+  "plain": "Good'? Is that all you have left to say, Kael? Just 'good' while the world falls apart around us? Look at me! Tell me there's more to this story than a pile of useless gold and a broken man!",
+  "tagged": "Good'? Is that all you have left to say, Kael? Just 'good' while the world falls apart around us? Look at me! Tell me there's more to this story than a pile of useless gold and a broken man!",
+  "pace": "normal",
+  "sound": "none",
+  "whisper": false
+ },
+ {
+  "id": "elara-s25",
+  "plain": "Don't you dare fade away on me! If you fall asleep now, Kael, you'll wake up to find everything you ever protected has been stripped away. Wake up and fight for something besides a pocketful of worthless coin!",
+  "tagged": "Don't you dare fade away on me! If you fall asleep now, Kael, you'll wake up to find everything you ever protected has been stripped away. Wake up and fight for something besides a pocketful of worthless coin!",
+  "pace": "normal",
+  "sound": "none",
+  "whisper": false
+ },
+ {
+  "id": "elara-s26",
+  "plain": "No. Travelers are easy to understand, Kael. They arrive, they stay for a night, and they leave. I am much more permanent than that. Now, are you going to use that locket to bribe your way out of this, or are you going to realize it's the only thing in this room that still has a purpose?",
+  "tagged": "No. Travelers are easy to understand, Kael. They arrive, they stay for a night, and they leave. I am much more permanent than that. Now, are you going to use that locket to bribe your way out of this, or are you going to realize it's the only thing in this room that still has a purpose?",
+  "pace": "normal",
+  "sound": "none",
+  "whisper": false
+ },
+ {
+  "id": "elara-s29",
+  "plain": "Quiet. Yes, Kael. Everything is quiet now. Except for the sound of the truth, which is still screaming in my ears.",
+  "tagged": "Quiet. Yes, Kael. Everything is quiet now. Except for the sound of the truth, which is still screaming in my ears.",
+  "pace": "normal",
+  "sound": "none",
+  "whisper": false
+ }
+]

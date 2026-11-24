@@ -30,6 +30,7 @@ pitch.
   pitch, breathiness (harmonics-to-noise) and brightness (spectral centroid), what speech-to-text
   heard, and the voices the fixed prompt describes.
 
+- `cap/`: how long a line runs, by its length, for the cap on its frames (2026-11-24): every line above, in Kael's voice and a tavern keeper's (`keeper-ref.wav`, designed from a description), slow lines and all; `results.jsonl` has each one's length and frames. [research/voices.md](../../research/voices.md#a-cap-on-a-lines-frames-and-one-retry) has what was found.
 - `expression/`: Round 6 (2026-10-01), four ways to add expression on Higgs TTS 3, on Kael's six
   lines and Elara's ten: `clips/` has each line untagged and with pace and sounds (the one the
   app uses), `moods/` each Character's mood clips, `thoughts/` Round 7's thoughts plain and

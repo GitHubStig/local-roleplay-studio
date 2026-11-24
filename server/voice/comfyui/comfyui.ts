@@ -10,7 +10,7 @@ import {
 } from '../../comfyui/client.ts'
 import type { ComfyFile } from '../../../shared/comfyui.ts'
 import type { SpeakRequest, VoiceEngine } from '../voice.ts'
-import { higgsText, WHISPER } from '../higgs.ts'
+import { exactSecondsOf, higgsText, WHISPER } from '../higgs.ts'
 
 /**
  * Voices from a ComfyUI server with TTS Audio Suite's custom nodes (installed through ComfyUI's
@@ -35,13 +35,15 @@ export function comfyuiVoiceEngine(opts: {
   const checkEveryMs = opts.checkEveryMs ?? 15_000
   const base = comfyBase(opts.address ?? '')
 
-  /** Runs a workflow and saves the clip it made to `out`, blanking ComfyUI's copy. */
+  /** Runs a workflow and saves the clip it made to `out`, blanking ComfyUI's copy; gives the clip. */
   async function clip(base: string, workflow: Workflow, out: string, signal: AbortSignal) {
     const { outputs } = await runWorkflow(base, workflow, signal, checkEveryMs)
     const file = (outputs.out?.audio as ComfyFile[] | undefined)?.[0]
     if (!file) throw new Error('ComfyUI finished without the voice clip')
     try {
-      await Deno.writeFile(out, await download(base, file))
+      const bytes = await download(base, file)
+      await Deno.writeFile(out, bytes)
+      return bytes
     } finally {
       await upload(base, file.filename, new Uint8Array(), file.subfolder).catch(() => {})
     }
@@ -68,8 +70,11 @@ export function comfyuiVoiceEngine(opts: {
           refText: req.refText,
           text: comfyuiText(req),
           seed: nodeSeed(req.seed),
+          maxFrames: req.maxFrames,
         })
-        await clip(base, workflow, req.out, signal)
+        // The node doesn't say how many frames it took, so it's told by the clip's length.
+        const seconds = flacSeconds(await clip(base, workflow, req.out, signal))
+        return { ranOn: seconds >= exactSecondsOf(req.maxFrames) - RAN_ON_LEEWAY }
       } finally {
         await upload(base, uploaded, new Uint8Array()).catch(() => {})
       }
@@ -105,3 +110,19 @@ const WHISPER_LOW = `${WHISPER}<|prosody:pitch_low|>`
  */
 export const comfyuiText = (req: Pick<SpeakRequest, 'text' | 'pace' | 'sound' | 'whisper'>) =>
   higgsText({ ...req, text: req.text.replace(/[[\]]/g, '') }, WHISPER_LOW)
+
+/** How far short of its cap's length a clip may be and still have run on: the node trims its ends. */
+const RAN_ON_LEEWAY = 0.5
+
+/**
+ * A FLAC file's length in seconds, from its STREAMINFO block, which comes first: after "fLaC" and
+ * the block's 4-byte header, a 20-bit sample rate at its byte 10 and a 36-bit count of samples
+ * at its byte 13.
+ */
+export function flacSeconds(bytes: Uint8Array): number {
+  const d = bytes.subarray(8)
+  const rate = (d[10] << 12) | (d[11] << 4) | (d[12] >> 4)
+  const samples = (d[13] & 0x0f) * 2 ** 32 + ((d[14] << 24) >>> 0) + (d[15] << 16) + (d[16] << 8) +
+    d[17]
+  return rate ? samples / rate : 0
+}

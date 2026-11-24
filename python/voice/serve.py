@@ -94,7 +94,8 @@ def unload():
 def generate(m, out, seed, **kwargs):
     mx.random.seed(seed)
     start = time.time()
-    audio = np.concatenate([np.asarray(r.audio) for r in m.generate(**kwargs)])
+    results = list(m.generate(**kwargs))
+    audio = np.concatenate([np.asarray(r.audio) for r in results])
     if out.endswith('.mp3'):
         # Spoken lines: 96 kbps mono, a quarter of the WAV, encoded in milliseconds by libsndfile
         # (bundled with soundfile; mlx-audio's own MP3 needs ffmpeg). Compression level 0.4 is
@@ -105,7 +106,8 @@ def generate(m, out, seed, **kwargs):
     else:
         # The reference clip stays lossless: every line is cloned from it.
         write_audio(out, audio, m.sample_rate)
-    return {'seconds': round(time.time() - start, 2), 'duration': round(len(audio) / m.sample_rate, 2)}
+    return {'seconds': round(time.time() - start, 2), 'duration': round(len(audio) / m.sample_rate, 2),
+            'frames': sum(r.token_count for r in results)}
 
 
 ROOT = None
@@ -129,9 +131,11 @@ def speak(req):
     ref_path, out = under_root(req['ref']), under_root(req['out'])
     m = model(SPEAK_MODEL)
     ref = load_audio(ref_path, sample_rate=m.sample_rate)
-    # The text comes with Higgs's tags for its pace, sound and whisper (server/voice/higgs.ts).
-    return generate(m, out, req.get('seed', 0), text=req['text'], ref_audio=ref,
-                    ref_text=req['refText'], **SPEAK_SAMPLING)
+    # The text comes with Higgs's tags for its pace, sound and whisper, and the most frames it may
+    # take: a line that reaches them ran on, in a loop Higgs doesn't end (server/voice/higgs.ts).
+    result = generate(m, out, req.get('seed', 0), text=req['text'], ref_audio=ref,
+                      ref_text=req['refText'], max_new_tokens=req['maxFrames'], **SPEAK_SAMPLING)
+    return {**result, 'ranOn': result['frames'] >= req['maxFrames']}
 
 
 busy = threading.Event()

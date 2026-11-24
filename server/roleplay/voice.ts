@@ -13,7 +13,7 @@ import type { ChatMessage } from '../text/chat.ts'
 import { loadPrompt } from '../promptFiles.ts'
 import { RenderQueue } from '../renderQueue.ts'
 import type { SessionStore } from '../session.ts'
-import type { OnDownload, VoiceEngine } from '../voice/voice.ts'
+import { type OnDownload, speakToEnd, type VoiceEngine } from '../voice/voice.ts'
 import type { Delivery } from '../../shared/voice.ts'
 import type { RoleplayModel } from './model.ts'
 import type {
@@ -273,7 +273,8 @@ export async function speakFrame(
       profile.heavy,
       async (onDownload) => {
         const start = performance.now()
-        await voice.speak(
+        await speakToEnd(
+          voice,
           {
             text,
             ...delivery,

@@ -133,9 +133,24 @@ The renders below were cloned in-process from the same reference clip (a designe
 So there are two triggers, and both need the slow pace:
 
 - **A pause after a lone interjection.** The service paused after every sentence of a slow line, "Ah." included. With no pause after a one-word sentence, the "Ah." and "Hm." lines ran on in 0 of 24 renders (6 of 24 before). That's now how pauses are placed (`server/voice/higgs.ts`, for both engines). On the PC's ComfyUI, the slow "Ah." line came out 6.6 s long at seed 3 (one render, 2026-11-24); the seeds there aren't the Mac's, so the 12-seed runs weren't repeated.
-- **The sigh's "Uh" straight before "Ah."** (`<|sfx:sigh|>Uh <|prosody:speed_slow|>Ah. …`), with or without pauses: 2–4 of 12. Moving the speed tag in front of the sigh didn't help, and made the cellar line worse. Not fixed.
+- **The sigh's "Uh" straight before "Ah."** (`<|sfx:sigh|>Uh <|prosody:speed_slow|>Ah. …`), with or without pauses: 2–4 of 12. Moving the speed tag in front of the sigh didn't help, and made the cellar line worse. Not fixed by a tag: the cap below catches it.
 
-Not known: how often either comes up in play, since one reference clip and two lines were tried, and none of the run-ons was listened to.
+### A cap on a line's frames, and one retry
+
+Since a run-on can come from tags no one has tried, every line now has a cap on its frames, by its length, and is spoken again once if it reaches it (`maxFrames` in `server/voice/higgs.ts`, `speakToEnd` in `server/voice/voice.ts`, for both engines).
+
+**How long lines run** ([bench/voices/cap/](../bench/voices/cap/README.md), Mac, 2026-11-24): the bench's 67 lines (Kael's conversation, the expression lines, the whispered thoughts and Elara's lines, with the deliveries chosen for them: 45 slow, 2 fast, 6 with a sound, 12 whispered, 4 to 411 characters) in two voices, Kael's and a tavern keeper's, 201 renders in 21 min, capped at 40 s. Over 30 characters, a line took a median 0.071 s a character, 0.119 at the most. Two ran on, both slow, both a few seconds of speech and then digital silence: a 114-character line to the 40 s cap, and a 55-character one for 25.6 s, when it did end by itself, after 21 s of silence. Each is a run-on as far as the player is concerned, so the cap should catch both.
+
+**The cap**: 4 s and 0.2 s a character (Higgs makes 25 frames a second, plus 7 for its codebooks' delay). No good line came within half of its cap (the closest: 13.9 s at 138 characters, against 31.6), and both run-ons passed theirs (39.7 s against 26.8; 25.6 against 15.0). A 411-character line may run to 86 s, past Higgs's own default of 82 s, so the cap replaces it rather than sitting under it; ComfyUI's node takes 8192 frames at most.
+
+**The retry** is at a random seed: a line's seed is fixed by its Frame, so a second fixed one would loop the same way every time the player asked again. If that runs on too, the line fails, saying so, and the player can ask again.
+
+Checked on both machines (2026-11-24):
+
+- **Mac**: the "Ah." line slow with a sigh at seed 3, which loops in a buzz, reached its 18 s cap in 15.8 s, and the retry made a 7.0 s line in 5.2 s: 21 s in all, where it took a minute and gave 82 s of buzz before.
+- **PC** (ComfyUI, TTS Audio Suite): the node stops at its `max_new_tokens` exactly (a 64-frame cap gave a 2.28 s clip, as 57 frames at 25 a second), and the clip's FLAC header gives its length, which is how a run-on is told there, as the node doesn't count frames. A real loop wasn't caught on the PC, as its seeds aren't the Mac's.
+
+Not known: how often a line runs on in play. Every retry is in the Session's call log (`ranOn` on the try that ran on). Check the cap again when Higgs or its sampling changes: run the bench and see that no good line comes near it.
 
 ## Audio format (2026-10-02)
 

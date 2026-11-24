@@ -6,6 +6,7 @@ import { DEFAULT_SETTINGS } from '../settings.ts'
 import { withTempDir } from '../testing.ts'
 import type { SpeakRequest } from '../voice/voice.ts'
 import { fakeVoiceEngine } from '../voice/testing.ts'
+import { maxFrames } from '../voice/higgs.ts'
 import { replyOf, scriptedRoleplayModel, testCast } from './testing.ts'
 import type { RoleplaySession } from '../../shared/roleplay.ts'
 import {
@@ -107,6 +108,7 @@ Deno.test('Speaking a line first describes and designs the voice, then clones it
       refText: REF_TEXT,
       seed: 100,
       out: join(root, 'r1', speech.file),
+      maxFrames: maxFrames('Hold the wheel.'),
     })
     assertEquals(events.map((e) => e.type === 'phase' ? e.phase : e.type), [
       'text',
@@ -283,4 +285,17 @@ Deno.test('A line with nothing to say, a missing voice service or a failed one f
       'boom',
     )
     assertEquals(await files(), [])
+  }))
+
+Deno.test('A line that runs on twice fails, saying so, and keeps no speech', () =>
+  withTempDir(async (root) => {
+    const { session, deps, files } = await setup(root)
+    const voice = fakeVoiceEngine({ ranOn: [true, true] })
+    await assertRejects(
+      () => speakFrame({ ...deps, voice }, session, 0, () => {}, signal),
+      Error,
+      "The voice didn't finish the line, twice",
+    )
+    assertEquals(voice.calls.map((c) => c.kind), ['design', 'speak', 'speak'])
+    assertEquals((await files()).filter((f) => f.startsWith('speech')), [])
   }))

@@ -1,5 +1,5 @@
 {
-  "_note": "A line spoken by cloning a reference clip: Higgs TTS 3 (TTS Audio Suite), $text in the voice of $ref (uploaded to temp), whose words are $refText. Sampling as the voice service's (temperature 0.5, top-k 30), which held the voice. PreviewAudio leaves the line in ComfyUI's temp folder, not its output.",
+  "_note": "A line spoken by cloning a reference clip: Higgs TTS 3 (TTS Audio Suite), $text in the voice of $ref (uploaded to temp), whose words are $refText, in at most $maxFrames frames (a line that takes them all ran on). Sampling as the voice service's (temperature 0.5, top-k 30), which held the voice. PreviewAudio leaves the line in ComfyUI's temp folder, not its output.",
   "ref": {
     "class_type": "LoadAudio",
     "inputs": { "audio": "$ref" }
@@ -25,7 +25,7 @@
       "temperature": 0.5,
       "top_p": 0.95,
       "top_k": 30,
-      "max_new_tokens": 2048
+      "max_new_tokens": "$maxFrames"
     }
   },
   "speak": {

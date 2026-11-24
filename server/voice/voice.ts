@@ -7,7 +7,7 @@ import { pythonScript, SHIPPED_PYTHON } from '../pythonTools.ts'
 import type { Backend } from '../../shared/backends.ts'
 import { track } from '../children.ts'
 import type { Delivery } from '../../shared/voice.ts'
-import { higgsText } from './higgs.ts'
+import { higgsText, maxFrames, secondsOf } from './higgs.ts'
 
 export interface DesignRequest {
   /** The voice, in words: age, pitch, texture, manner. */
@@ -28,6 +28,14 @@ export interface SpeakRequest extends Partial<Delivery> {
   refText: string
   seed: number
   out: string
+  /** The most frames Higgs may take for it (`maxFrames` in `higgs.ts`): one that takes them ran on. */
+  maxFrames: number
+}
+
+/** How a line came out. */
+export interface Spoken {
+  /** It took every frame it was allowed: Higgs looped, in buzz or silence, rather than end it. */
+  ranOn: boolean
 }
 
 /** Called with true when a model starts downloading (its first use), and false when it's done. */
@@ -49,7 +57,7 @@ export interface VoiceEngine {
   /** Speaks `text` in a new voice built from `description`. */
   design(req: DesignRequest, signal: AbortSignal, onDownload?: OnDownload): Promise<void>
   /** Speaks `text` in the voice of the reference clip. */
-  speak(req: SpeakRequest, signal: AbortSignal, onDownload?: OnDownload): Promise<void>
+  speak(req: SpeakRequest, signal: AbortSignal, onDownload?: OnDownload): Promise<Spoken>
 }
 
 export interface VoiceServiceOptions {
@@ -166,7 +174,7 @@ export function voiceService(
     body: object,
     signal: AbortSignal,
     onDownload?: OnDownload,
-  ): Promise<void> {
+  ): Promise<{ ranOn?: boolean }> {
     await ready()
     const send = () => {
       const sent = post(path, body, signal)
@@ -192,6 +200,7 @@ export function voiceService(
       if (!(await healthy())) starting = null
       throw new Error(`Voice: ${reply.error ?? res.status}`)
     }
+    return reply
   }
 
   return {
@@ -215,11 +224,38 @@ export function voiceService(
     },
     // Lines as MP3 (96 kbps, a quarter of the WAV); light enough to run beside the Text Model.
     profile: () => Promise.resolve({ ref: 'wav', speech: 'mp3', heavy: false }),
-    design: (req, signal, onDownload) => call('/design', req, signal, onDownload),
-    // The service speaks the text as it comes, tags and all.
-    speak: ({ ref, refText, seed, out, ...line }, signal, onDownload) =>
-      call('/speak', { text: higgsText(line), ref, refText, seed, out }, signal, onDownload),
+    design: async (req, signal, onDownload) => void await call('/design', req, signal, onDownload),
+    // The service speaks the text as it comes, tags and all, and counts the frames it took.
+    speak: async ({ ref, refText, seed, out, maxFrames, ...line }, signal, onDownload) => {
+      const body = { text: higgsText(line), ref, refText, seed, out, maxFrames }
+      const { ranOn } = await call('/speak', body, signal, onDownload)
+      return { ranOn: ranOn === true }
+    },
   }
+}
+
+/**
+ * Speaks a line to its end. Now and then Higgs doesn't end a line: it loops, in a buzz or in
+ * silence, until it's stopped (docs/research/voices.md). So a line may take only so many frames, by
+ * its length (`maxFrames`), and one that takes them all is spoken again, once, at a seed of its own:
+ * a line's seed is fixed by its Frame, so a retry at a fixed seed would loop the same way every time
+ * the player asked again. Fails, with why, if that one runs on too.
+ */
+export async function speakToEnd(
+  voice: VoiceEngine,
+  req: Omit<SpeakRequest, 'maxFrames'>,
+  signal: AbortSignal,
+  onDownload?: OnDownload,
+): Promise<void> {
+  const most = maxFrames(req.text)
+  for (const seed of [req.seed, crypto.getRandomValues(new Uint32Array(1))[0]]) {
+    const { ranOn } = await voice.speak({ ...req, seed, maxFrames: most }, signal, onDownload)
+    if (!ranOn) return
+    signal.throwIfAborted()
+  }
+  throw new Error(
+    `The voice didn't finish the line, twice: it ran on past ${secondsOf(most)} s. Try again`,
+  )
 }
 
 /**
@@ -242,6 +278,6 @@ export function voiceBackends(backends: {
   return {
     profile: async () => (await pick()).profile(),
     design: async (req, signal, onDownload) => (await pick()).design(req, signal, onDownload),
-    speak: async (req, signal, onDownload) => (await pick()).speak(req, signal, onDownload),
+    speak: async (req, signal, onDownload) => await (await pick()).speak(req, signal, onDownload),
   }
 }
