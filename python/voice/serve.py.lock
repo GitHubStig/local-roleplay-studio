@@ -463,7 +463,7 @@ wheels = [
 
 [[package]]
 name = "mlx-audio"
-version = "0.6.7"
+version = "0.6.8"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -483,9 +483,9 @@ dependencies = [
     { name = "transformers", extra = ["chat-template"] },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/89/41/27f00f70ed41426b357695ee007a6aee4306c8555af0bd33bdd6e98a4eaa/mlx_audio-0.6.7.tar.gz", hash = "sha256:5b22c94a7ffd4512a90f533e062b8344469a5f35d8ecd0a8467c27ef9cd162f1", size = 2321084, upload-time = "2026-11-19T16:51:43.49Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/1c/3f/4e6556969fe43848761e893f97f5b385df2d431965b57d9a1f02e8f3780c/mlx_audio-0.6.8.tar.gz", hash = "sha256:bb933528d7e1ec4d3c26de2bc5ba7dc3af9e2f40123902cfd9996591399be597", size = 2332168, upload-time = "2026-11-23T20:22:59.026Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/7d/fd/45df0ef1d0709bb3b69881d62cbeea6ca1dca65a1c54cb831de031c8e52b/mlx_audio-0.6.7-py3-none-any.whl", hash = "sha256:ed7c2abc5d20d9eadf33086e222ce51bf3c4be77384dc55a8c5729485bbc1b56", size = 2790482, upload-time = "2026-11-19T16:51:41.347Z" },
+    { url = "https://files.pythonhosted.org/packages/58/17/13693b5b9cf46fcf059b15be5ec752d8c0d150b2d77b6aebeaf1eaa8cc18/mlx_audio-0.6.8-py3-none-any.whl", hash = "sha256:65b85dae7f42440253674db6db9ffa6b64c3f76a67214144a3a3d426474730d9", size = 2803225, upload-time = "2026-11-23T20:22:57.418Z" },
 ]
 
 [[package]]

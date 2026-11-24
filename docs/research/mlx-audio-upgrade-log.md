@@ -2,6 +2,23 @@
 
 Newest first. The procedure is in [mlx-audio-upgrade.md](../mlx-audio-upgrade.md). mlx-audio runs the voice service (`python/voice/serve.py`) on the Apple Silicon Mac only; the Windows PC speaks through ComfyUI.
 
+## 0.6.8 — Mac, 2026-11-24
+
+From 0.6.7. Only mlx-audio moved in the lock: mlx stays 0.32.4, transformers 5.20.2 and torch 2.14.1, and its requirements and Python range are unchanged. Read for the voice service:
+
+- **Qwen3-TTS** (designing): the one change (#1118) keeps one KV cache across steps in `continuous_batching.py`, its batched path, which `serve.py` doesn't use.
+- **Loading**: `load_model` now warns when non-strict loading leaves parameters at their initial values (#1138). Neither model set it off, so both load every weight.
+- **Audio files**: ffmpeg decoding now reads the first audio track that has samples (#1214). `serve.py` reads its WAV reference clips with `load_audio`, which doesn't go through ffmpeg for a WAV.
+- The rest are speech recognition (Qwen3-ASR, Nemotron, SOV-Transcribe, FireRedASR2, MiMo), the mlx-audio server's seeded transcriptions (#1226), and fixes to other text-to-speech models (Kokoro, Ming Tiny, MeloTTS, Maya-2, MOSS-TTS-Nano, LingV3). `serve.py` uses none of them.
+
+The same check as for 0.6.7, run on both versions through the service's own HTTP routes: one voice designed from a fixed description (seed 7) and four lines cloned from 0.6.7's clip (seed 3: plain, slow with a sigh, fast, and a whispered thought), with tavern-style text:
+
+- **Everything is byte for byte the same**, the designed voice and all four cloned lines. A Character's saved voice sounds exactly as before.
+- **The same time**: 2.9–4.2 s a line for the three that end (2.8–4.1 on 0.6.7), 2.3 s to design (2.7). Memory polled from `/health` peaked at 6.6 GB designing and 13.3 GB speaking (7.8 and 12.2 on 0.6.7), with the outputs identical.
+- **The slow line with a sigh ran on to 81.6 s** (60 s to render) on both versions alike, as one did at 0.6.5's check (48 s): Higgs didn't end the line. It isn't a regression: the line is a buzz loop with no words, which 0.6.7 made too. What sets it off is in [voices.md](voices.md#lines-that-dont-end-2026-11-24-mac).
+- The same two known warnings (transformers on the `qwen3_tts` type, the leaked semaphore at shutdown), none new.
+- Not run: the app itself (step 6). `serve.py` is unchanged and the service's outputs are identical.
+
 ## 0.6.7 — Mac, 2026-11-20
 
 From 0.6.6. Only mlx-audio moved in the lock: mlx stays 0.32.4, transformers 5.20.2 and torch 2.14.1, and its own requirements and Python range are unchanged. Nothing in the release touches the voice service's two models: the code diff from 0.6.6 leaves Qwen3-TTS, Higgs and `generate` alone, and `load_model` only gains a mapping for the new Reverb TTS. The rest add Reverb, speed up Whisper, Parakeet and Kokoro, load speech-recognition packages only when their model is used (#1201), fix text normalizers (MeloTTS, Soprano), let the mlx-audio server take a seed (#1221) and make its CLI exit nonzero when generation fails (#1218); `serve.py` uses none of them.
