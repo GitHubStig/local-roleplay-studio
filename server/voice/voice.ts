@@ -147,6 +147,20 @@ export function voiceService(
     }
   }
 
+  /**
+   * Stops what a cancelled call left the service making. It can't stop part-way, so it quits
+   * (`cancel` in `serve.py`), and is started again on next use; waits until it's gone, so that use
+   * doesn't find it still answering.
+   */
+  async function stopWork() {
+    const res = await post('/cancel', {}, AbortSignal.timeout(5000)).catch(() => undefined)
+    const { cancelled } = await res?.json().catch(() => ({})) ?? {}
+    if (!cancelled) return
+    starting = null
+    const deadline = Date.now() + 5000
+    while (Date.now() < deadline && await healthy()) await new Promise((r) => setTimeout(r, 50))
+  }
+
   async function call(
     path: string,
     body: object,
@@ -163,7 +177,10 @@ export function voiceService(
     try {
       res = await send()
     } catch (err) {
-      if (signal.aborted) throw err
+      if (signal.aborted) {
+        await stopWork()
+        throw err
+      }
       // Gone since it started (it crashed, ran out of memory, or was stopped): start it again.
       starting = null
       await ready()

@@ -134,6 +134,23 @@ def speak(req):
                     ref_text=req['refText'], **SPEAK_SAMPLING)
 
 
+busy = threading.Event()
+
+
+def cancel(handler):
+    """
+    Stops the voice or line being made, by quitting: mlx-audio's `generate` can't be stopped
+    part-way, and a Higgs line that loops runs on to its 82 s cap (a minute's work), writing its
+    file after the job that asked for it has gone. The server starts the service again on next use.
+    Idle, it does nothing.
+    """
+    if not busy.is_set():
+        return handler.reply(200, {'cancelled': False})
+    handler.reply(200, {'cancelled': True})
+    handler.wfile.flush()
+    os._exit(0)
+
+
 class Handler(BaseHTTPRequestHandler):
     def reply(self, status, body):
         data = json.dumps(body).encode()
@@ -151,17 +168,21 @@ class Handler(BaseHTTPRequestHandler):
         self.reply(404, {'error': 'Not found'})
 
     def do_POST(self):
-        work = {'/design': design, '/speak': speak}.get(self.path)
+        work = {'/design': design, '/speak': speak, '/cancel': cancel}.get(self.path)
         if not work:
             return self.reply(404, {'error': 'Not found'})
         if self.headers.get_content_type() != 'application/json':
             return self.reply(415, {'error': 'Send JSON'})
+        if work is cancel:
+            return cancel(self)
         try:
             req = json.loads(self.rfile.read(int(self.headers.get('Content-Length', 0))) or b'{}')
             with lock:
+                busy.set()
                 try:
                     result = work(req)
                 finally:
+                    busy.clear()
                     mx.clear_cache()
             self.reply(200, result)
         except Exception as err:  # Reported to the server, which shows it on the job.

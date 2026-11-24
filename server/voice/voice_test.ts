@@ -1,4 +1,4 @@
-import { assertEquals } from '@std/assert'
+import { assertEquals, assertRejects } from '@std/assert'
 import { join } from '@std/path'
 import { withTempDir } from '../testing.ts'
 import { voiceService } from './voice.ts'
@@ -110,5 +110,60 @@ Deno.test(
       await voice.speak(req, new AbortController().signal, (d) => seen.push(d))
       assertEquals(seen, [true, false])
       await stop(port)
+    }),
+)
+
+/**
+ * A stand-in that makes nothing until cancelled: busy from a /speak until /cancel, which quits it
+ * then, as the real one does; idle, /cancel does nothing.
+ */
+const BUSY_STUB = `
+const port = Number(Deno.args[0])
+let busy = false
+Deno.serve({ port, hostname: '127.0.0.1', onListen() {} }, async (req) => {
+  const path = new URL(req.url).pathname
+  if (path === '/quit') return (setTimeout(() => Deno.exit(0), 50), new Response())
+  if (path === '/health') return Response.json({ ok: true, busy })
+  if (path === '/cancel') {
+    if (busy) setTimeout(() => Deno.exit(0), 50)
+    return Response.json({ cancelled: busy })
+  }
+  busy = true
+  await new Promise(() => {})
+})
+`
+
+Deno.test(
+  'A cancelled line stops the voice service, which starts again for the next',
+  unix,
+  () =>
+    withTempDir(async (dir) => {
+      const stub = join(dir, 'stub.ts')
+      await Deno.writeTextFile(stub, BUSY_STUB)
+      const port = 18800 + Math.floor(Math.random() * 500)
+      let started = 0
+      const voice = voiceService({
+        root: dir,
+        port,
+        startLimitMs: 20_000,
+        command: (p) => (started++, ['deno', 'run', '--allow-net', stub, String(p)]),
+      })
+      const req = { text: 'Hi.', ref: '/r.wav', refText: 'Ref.', seed: 1, out: '/o.wav' }
+      const health = () => fetch(`http://127.0.0.1:${port}/health`).then((r) => r.json())
+
+      const job = new AbortController()
+      const speaking = voice.speak(req, job.signal)
+      while (!(await health().catch(() => ({}))).busy) await new Promise((r) => setTimeout(r, 20))
+      job.abort()
+      await assertRejects(() => speaking)
+      // Gone once the call has ended, so the next line doesn't find it still making the last.
+      assertEquals(await health().catch(() => 'gone'), 'gone')
+
+      const next = new AbortController()
+      const again = voice.speak(req, next.signal)
+      while (!(await health().catch(() => ({}))).busy) await new Promise((r) => setTimeout(r, 20))
+      assertEquals(started, 2)
+      next.abort()
+      await assertRejects(() => again)
     }),
 )
