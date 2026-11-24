@@ -204,3 +204,15 @@ Deno.test("The folder dialog is refused to a browser away from the server's mach
   assertEquals((await getSessionsFolder(f.call)).here, false)
   await f.done()
 })
+
+Deno.test('A folder remembered twice, written two ways, is offered once', async () => {
+  const f = await fixture()
+  const one = join(f.root, 'one')
+  await (await f.call('PUT', '/api/sessions-folder', { path: one })).body?.cancel()
+  await (await f.call('PUT', '/api/sessions-folder', { path: '' })).body?.cancel()
+  // As if settings.json were edited by hand.
+  f.remembered().push(`${one}/`)
+  const shown = await getSessionsFolder(f.call)
+  assertEquals(shown.folders.map((k) => k.path), [f.old, one])
+  await f.done()
+})

@@ -87,6 +87,25 @@ export function importedTitle(title: string, taken: Iterable<string>): string {
   return `${title.slice(0, SESSION_TITLE_LENGTH - mark.length).trimEnd()}${mark}`
 }
 
+/** What an import leaves beside the Sessions while it runs: its upload, and the folder it unpacks into. */
+const IMPORT_LEFTOVER = /^\.import-[a-z0-9-]+(\.zip)?$/
+
+/**
+ * Removes what imports cut off (the server stopped or restarted mid-import) left in Session folder
+ * `root`; run at startup, before an import can begin. What was removed, by name.
+ */
+export async function clearImportLeftovers(root: string): Promise<string[]> {
+  let entries: Deno.DirEntry[]
+  try {
+    entries = await Array.fromAsync(Deno.readDir(root))
+  } catch {
+    return []
+  }
+  const left = entries.map((e) => e.name).filter((name) => IMPORT_LEFTOVER.test(name))
+  for (const name of left) await Deno.remove(join(root, name), { recursive: true }).catch(() => {})
+  return left
+}
+
 /** Unpacks the zip at `zipPath` as a new Session; it's refused, leaving nothing, if it can't be. */
 export async function importZip(zipPath: string, deps: ImportDeps): Promise<Session> {
   const file = await Deno.open(zipPath)

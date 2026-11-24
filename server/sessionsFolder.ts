@@ -85,7 +85,9 @@ export function sessionsFolderRoutes(ctx: SessionsFolderRouteContext): Route[] {
   const shown = async (req: Request): Promise<SessionsFolderInfo> => {
     const inUse = resolve(ctx.folder.inUse())
     const fallback = resolve(ctx.folder.default)
-    const others = (await ctx.remembered()).map((p) => resolve(p)).filter((p) => p !== fallback)
+    // Each once, however its path was written (a trailing slash in a settings.json edited by hand).
+    const others = [...new Set((await ctx.remembered()).map((p) => resolve(p)))]
+      .filter((p) => p !== fallback)
     const folders = await Promise.all(
       [fallback, ...others].map(async (path) => ({
         path,

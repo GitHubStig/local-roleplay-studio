@@ -87,7 +87,7 @@ export interface KeepOptions {
 export interface KeepPreview {
   kept: number
   leftOut: number
-  /** The options as they'd be after the pictures' ticks alone. */
+  /** The options as they'd be after the pictures' ticks alone (its calls left uncounted, as 0). */
   after: KeepOptions
 }
 

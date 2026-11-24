@@ -32,6 +32,7 @@ import { loggedChat, loggedEmbedder, loggedImages, loggedMaker, loggedVoice } fr
 import { litoFigureMaker, tripoFigureMaker } from './3d/figure.ts'
 import { sharpSceneMaker } from './3d/scene.ts'
 import { checkFolder } from './sessionsFolder.ts'
+import { clearImportLeftovers } from './manager/unzip.ts'
 import { webApp } from './webApp.ts'
 import { copyPythonTools, SHIPPED_PYTHON } from './pythonTools.ts'
 import { makeDataDirs, thisRunsDataDirs } from './dataDirs.ts'
@@ -162,6 +163,9 @@ const chat = (c: TextChoice) => {
 }
 
 const sessionStore = dirSessionStore(sessionsDir)
+// An import cut off by the last stop (a restart under `deno task dev`, say) left its upload behind.
+const leftovers = await clearImportLeftovers(sessionsDir)
+if (leftovers.length) console.log(`Removed what cut-off imports left: ${leftovers.join(', ')}`)
 // A port of its own for a second checkout, which would otherwise use the first's service and its
 // Sessions folder.
 const voicePort = Deno.env.get('VOICE_PORT')

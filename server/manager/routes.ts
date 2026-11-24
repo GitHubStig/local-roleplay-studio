@@ -81,12 +81,12 @@ export function managerRoutes(ctx: AppContext): Route[] {
       const total = (await exportedFiles(dir)).reduce((n, f) => n + f.size, 0)
       // The pictures' ticks alone, for what's left of what was made from them.
       const after = goneWith(session, { ...KEEP_ALL, ...picturesOf(left) }, [], sizes).after
-      const { counts } = await contentsOf(session, dir)
       return json(
         {
           kept: total - size,
           leftOut: size,
-          after: keepOptions(after, sizes, counts.calls),
+          // The calls aren't counted again (each log read whole): no picture's tick changes them.
+          after: keepOptions(after, sizes, 0),
         } satisfies KeepPreview,
       )
     }],
