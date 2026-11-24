@@ -462,7 +462,7 @@ const pickFromAll = (index: number) => pick(index)
     <p v-if="loadError" class="p-6 text-danger">Could not load this Session: {{ loadError }}</p>
 
     <template v-else-if="session">
-      <SessionBar kind="Chain" :title="session.title ?? ''" :status="busy ? phaseLabel : undefined">
+      <SessionBar :id="session.id" v-model:title="session.title" kind="Chain" :status="busy ? phaseLabel : undefined">
         <SessionSettings
           :session="session"
           title="This Chain"

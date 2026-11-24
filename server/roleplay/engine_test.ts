@@ -29,6 +29,7 @@ const scenario = briefScenario('A storm at sea; the player is the new first mate
 const newSession = (): RoleplaySession => ({
   id: 'r1',
   kind: 'roleplay',
+  title: 'A test roleplay',
   brief: 'A storm at sea; the player is the new first mate.',
   scenarioId: null,
   settings: DEFAULT_SETTINGS,

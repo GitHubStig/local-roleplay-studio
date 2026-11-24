@@ -20,6 +20,7 @@ import type { RoleplaySession } from '../../shared/roleplay.ts'
 const session = (frames: RoleplaySession['frames']): RoleplaySession => ({
   id: 'r1',
   kind: 'roleplay',
+  title: 'A test roleplay',
   brief: 'A storm at sea.',
   scenarioId: null,
   settings: DEFAULT_SETTINGS,

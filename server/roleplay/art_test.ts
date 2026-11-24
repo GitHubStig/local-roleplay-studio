@@ -39,6 +39,7 @@ const picture = (frame: RoleplayFrame, l: Look, body: string, shown: string[], c
 const session: RoleplaySession = {
   id: 'r1',
   kind: 'roleplay',
+  title: 'A test roleplay',
   brief: 'A storm at sea.',
   scenarioId: null,
   settings: DEFAULT_SETTINGS,

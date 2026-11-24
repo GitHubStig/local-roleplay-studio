@@ -22,6 +22,7 @@ const score: roleplay.Score = {
 const session = (extra: Partial<roleplay.RoleplaySession> = {}): roleplay.RoleplaySession => ({
   id: 'r1',
   kind: 'roleplay',
+  title: 'A test roleplay',
   brief: 'A lighthouse in a storm.',
   scenarioId: null,
   settings: {

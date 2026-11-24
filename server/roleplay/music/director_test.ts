@@ -40,6 +40,7 @@ const cueValues = (mood = 'guarded, hushed', extra: Record<string, unknown> = {}
 const session = (extra: Partial<RoleplaySession> = {}): RoleplaySession => ({
   id: 's1',
   kind: 'roleplay',
+  title: 'A test roleplay',
   brief: 'A storm at sea.',
   scenarioId: null,
   settings: {

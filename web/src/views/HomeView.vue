@@ -5,7 +5,6 @@ import { useRoute, useRouter } from 'vue-router'
 import {
   deleteSession,
   imageUrl,
-  listSessions,
   KIND_LABELS,
   type SessionSummary,
 } from '../api'
@@ -17,14 +16,14 @@ import StartSession from '../components/StartSession.vue'
 import { tabStorage, useStoredString } from '../composables/storage'
 import { useStoredFlag } from '../composables/useStoredFlag'
 import { clearCurrentSession, useCurrentSession } from '../composables/useCurrentSession'
+import { forgetSession, loadSessions, useSessionList } from '../composables/useSessionList'
 import { sessionPath } from '../sessionPath'
 
 const route = useRoute()
 const router = useRouter()
 const { currentSessionId } = useCurrentSession()
 
-const sessions = ref<SessionSummary[] | null>(null)
-const listError = ref('')
+const { sessions, listError } = useSessionList()
 const CARD_REM = 12
 const GAP_REM = 1
 /** Where the Sessions go: the page's width, or its left column in an ultrawide window. */
@@ -105,16 +104,9 @@ let alive = true
 /** Loads the list; while any Session has a Frame running, refreshes every 2 s to track it. */
 async function load() {
   clearTimeout(poll)
-  try {
-    const list = await listSessions()
-    if (!alive) return
-    sessions.value = list
-    listError.value = ''
-  } catch (err) {
-    if (alive) listError.value = (err as Error).message
-    return
-  }
-  if (sessions.value.some((s) => s.activity)) poll = setTimeout(load, 2000)
+  await loadSessions()
+  if (!alive || listError.value) return
+  if (sessions.value?.some((s) => s.activity)) poll = setTimeout(load, 2000)
 }
 
 onMounted(load)
@@ -144,6 +136,7 @@ async function remove(s: SessionSummary) {
   deleteError.value = ''
   try {
     await deleteSession(s.id)
+    forgetSession(s.id)
     clearCurrentSession(s.id)
     try {
       localStorage.removeItem(`draft:${s.id}`)

@@ -1,6 +1,6 @@
 import { flushPromises } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { Job } from '../api'
+import type { Job, SessionSummary } from '../api'
 
 const listJobs = vi.fn()
 const queueJob = vi.fn()
@@ -69,7 +69,9 @@ describe('useJobs', () => {
     const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden')
     const { useJobs } = await import('./useJobs')
     const { setCurrentSession } = await import('./useCurrentSession')
-    setCurrentSession('s1', 'roleplay', 'The Tavern')
+    const { useSessionList } = await import('./useSessionList')
+    useSessionList().sessions.value = [{ id: 's1', title: 'The Tavern' } as SessionSummary]
+    setCurrentSession('s1', 'roleplay')
     const run = async (on: boolean, ...lists: Job[][]) => {
       localStorage.setItem('notify-when-done', on ? '1' : '0')
       const jobs = useJobs('s1', { onSettled: () => {}, onError: () => {} })

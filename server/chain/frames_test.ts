@@ -22,6 +22,7 @@ import { updateSession } from '../update.ts'
 const newSession = (): ChainSession => ({
   id: 's1',
   kind: 'chain',
+  title: 'A test chain',
   brief: null,
   scenarioId: 'test',
   settings: { ...DEFAULT_SETTINGS, textModel: 'fake' },

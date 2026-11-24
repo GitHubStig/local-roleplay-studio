@@ -65,7 +65,7 @@ import { notingTraces } from './comfyui/traces.ts'
 import { clearTraces } from './comfyui/files.ts'
 import { type FrameDeps, frameName } from './frames.ts'
 
-import { type AppContext, scenarioFor, titleOf } from './appContext.ts'
+import { type AppContext, scenarioFor } from './appContext.ts'
 import { settingsRoutes } from './settingsRoutes.ts'
 import { scenarioRoutes } from './scenario/routes.ts'
 import { sessionRoutes } from './sessionRoutes.ts'
@@ -677,7 +677,7 @@ export function createHandler(deps: AppDeps): (req: Request) => Promise<Response
       ])
       const sessions = (await Promise.all([...ids].map((id) => deps.sessions.load(id))))
         .filter((s) => !!s)
-        .map((s) => ({ id: s.id, kind: s.kind, title: titleOf(s) }))
+        .map((s) => ({ id: s.id, kind: s.kind, title: s.title }))
       return json(
         {
           machines: [...machines].map(([key, kinds]) => ({ key, backends: [...new Set(kinds)] })),

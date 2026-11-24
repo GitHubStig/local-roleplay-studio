@@ -62,10 +62,10 @@ export interface AppContext {
 export const isStringList = (value: unknown): value is string[] =>
   Array.isArray(value) && value.every((v) => typeof v === 'string')
 
-/** A Session's title: its Scenario's, or the start of its typed Brief. */
-export const titleOf = (session: Session) =>
-  session.scenario?.title ??
-    (session.brief ? briefScenario(session.brief).title : session.scenarioId ?? '')
+/** A new Session's title, until the player renames it: its Scenario's, or the start of its Brief. */
+export const startingTitle = (
+  { scenario, brief, scenarioId }: Pick<Session, 'scenario' | 'brief' | 'scenarioId'>,
+) => scenario?.title ?? (brief ? briefScenario(brief).title : scenarioId ?? '')
 
 export const needsChain = (s: Session): s is ChainSession => s.kind === 'chain'
 export const needsStoryboard = (s: Session): s is StoryboardSession => s.kind === 'storyboard'

@@ -70,6 +70,7 @@ async function chainOfTwo(root: string) {
   const session: ChainSession = {
     id: 's1',
     kind: 'chain',
+    title: 'A test chain',
     brief: null,
     scenarioId: 'test',
     settings: { ...DEFAULT_SETTINGS, textModel: 'fake', imageModel: QWEN },

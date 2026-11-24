@@ -55,6 +55,7 @@ const frame = (
 const storyboard = (frames: StoryboardFrame[]): StoryboardSession => ({
   id: 'board',
   kind: 'storyboard',
+  title: 'A test storyboard',
   brief: 'Two old friends meet on a dock.',
   scenarioId: null,
   settings: { ...DEFAULT_SETTINGS, textModel: 'fake' },
@@ -211,6 +212,7 @@ Deno.test('chainFromStoryboard saves nothing when a picture file is missing', ()
 const roleplay = (frames: RoleplayFrame[]): RoleplaySession => ({
   id: 'talk',
   kind: 'roleplay',
+  title: 'A test roleplay',
   brief: 'Two old friends meet on a dock.',
   scenarioId: null,
   settings: { ...DEFAULT_SETTINGS, textModel: 'fake' },

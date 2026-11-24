@@ -808,7 +808,7 @@ const pickFromAll = (index: number) => pickFromStrip(index)
     <p v-if="loadError" class="p-6 text-danger">Could not load this Roleplay: {{ loadError }}</p>
 
     <template v-else-if="session">
-      <SessionBar kind="Roleplay" :title="session.title ?? ''" :status="busy ? statusLabel : undefined">
+      <SessionBar :id="session.id" v-model:title="session.title" kind="Roleplay" :status="busy ? statusLabel : undefined">
         <template v-if="musicOn">
           <span v-if="hasTracks" class="flex items-center gap-1" data-music-player>
             <button

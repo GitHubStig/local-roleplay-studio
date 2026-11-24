@@ -17,6 +17,7 @@ Deno.test('dirSessionStore works in a directory whose path has spaces', () =>
     await store.save({
       id: 's1',
       kind: 'chain',
+      title: 'A test chain',
       brief: null,
       scenarioId: 'test',
       settings: DEFAULT_SETTINGS,
@@ -32,6 +33,7 @@ Deno.test('dirSessionStore works in a directory whose path has spaces', () =>
 const chain = {
   id: 's1',
   kind: 'chain' as const,
+  title: 'A test chain',
   brief: null,
   scenarioId: 'test',
   settings: DEFAULT_SETTINGS,
@@ -54,9 +56,11 @@ Deno.test('dirSessionStore migrates a file from before versions without rewritin
   withTempDir(async (root) => {
     const path = join(root, 's1', 'session.json')
     await Deno.mkdir(join(root, 's1'))
-    const text = JSON.stringify(chain)
+    // From before titles were kept: it's titled as the app showed it, by its Scenario's id here.
+    const { title: _, ...untitled } = chain
+    const text = JSON.stringify(untitled)
     await Deno.writeTextFile(path, text)
-    assertEquals(await dirSessionStore(root).load('s1'), chain)
+    assertEquals(await dirSessionStore(root).load('s1'), { ...chain, title: 'test' })
     assertEquals(await Deno.readTextFile(path), text)
   }))
 

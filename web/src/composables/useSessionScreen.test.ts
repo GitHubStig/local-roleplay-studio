@@ -20,6 +20,7 @@ interface Work {
 const chain = (extra: Partial<api.ChainSession> = {}): api.ChainSession => ({
   id: 's1',
   kind: 'chain',
+  title: 'A test chain',
   brief: null,
   scenarioId: 'tavern',
   settings: { imageModel: 'qwen-image-2.1' } as api.Settings,

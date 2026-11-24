@@ -29,6 +29,7 @@ function chain(captions: string[], models: string[]): ChainSession {
   return {
     id: 'style-test',
     kind: 'chain',
+    title: 'A test chain',
     brief: 'A tavern',
     scenarioId: null,
     settings: {} as ChainSession['settings'],

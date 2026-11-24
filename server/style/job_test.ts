@@ -10,6 +10,7 @@ import { loadStyleCache } from './scores.ts'
 const session = (frames: number): Session => ({
   id: 'style-job',
   kind: 'chain',
+  title: 'A test chain',
   brief: 'A tavern',
   scenarioId: null,
   settings: {} as Session['settings'],

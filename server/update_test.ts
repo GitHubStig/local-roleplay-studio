@@ -8,6 +8,7 @@ import { GoneError, removeSession, updateSession } from './update.ts'
 const chain = (): Session => ({
   id: 'c1',
   kind: 'chain',
+  title: 'A test chain',
   brief: 'A lighthouse in a storm.',
   scenarioId: null,
   settings: DEFAULT_SETTINGS,

@@ -105,7 +105,7 @@ export function useSessionScreen<K extends SessionKind, W extends ScreenWork>(
     }
     loadError.value = ''
     // Current Session leads back to the Session opened last.
-    setCurrentSession(id, kind, session.value?.title)
+    setCurrentSession(id, kind)
     return true
   }
 

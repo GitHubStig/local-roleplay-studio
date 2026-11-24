@@ -213,6 +213,7 @@ function sessionOf(): RoleplaySession {
   return {
     id: 's1',
     kind: 'roleplay',
+    title: 'A test roleplay',
     brief: 'A storm at sea.',
     scenarioId: null,
     settings: {

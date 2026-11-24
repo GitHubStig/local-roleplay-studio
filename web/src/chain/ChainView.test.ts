@@ -66,6 +66,7 @@ const job = (extra: Partial<api.Job>): api.Job => ({
 const session = (frames: api.ChainFrame[] = []): api.ChainSession => ({
   id: 's1',
   kind: 'chain',
+  title: 'A test chain',
   brief: null,
   scenarioId: 'tavern',
   settings: { imageModel: 'qwen-image-2.1' } as api.Settings,

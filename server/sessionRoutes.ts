@@ -10,7 +10,12 @@ import { crossedLimit } from './limits.ts'
 import { scenarioFrom, scenarioText } from './scenario.ts'
 import type { Scenario } from '../shared/scenario.ts'
 import { excerpt } from './session.ts'
-import type { Loaded, Session, SessionSummary } from '../shared/session.ts'
+import {
+  type Loaded,
+  type Session,
+  SESSION_TITLE_LENGTH,
+  type SessionSummary,
+} from '../shared/session.ts'
 import { MAX_SEED, sessionSettingsOf, SIZE_PRESETS } from './settings.ts'
 import { roleplayExcerpt } from './roleplay/prompt.ts'
 import { restartRoleplay } from './roleplay/engine.ts'
@@ -33,7 +38,7 @@ import {
   isStringList,
   needsChain,
   needsStoryboard,
-  titleOf,
+  startingTitle,
 } from './appContext.ts'
 
 /**
@@ -146,6 +151,7 @@ export function sessionRoutes(ctx: AppContext): Route[] {
       if (!settings.textModel) return error('Choose a Text Model in Settings first', 400)
       const base = {
         id: newSessionId(),
+        title: startingTitle({ scenario, brief, scenarioId }),
         brief,
         scenarioId,
         ...scenario && { scenario },
@@ -174,7 +180,7 @@ export function sessionRoutes(ctx: AppContext): Route[] {
           id: s.id,
           kind: s.kind,
           scenarioId: s.scenarioId,
-          title: titleOf(s),
+          title: s.title,
           frames: s.frames.length,
           thumbnail: homeImage(s),
           // Shown in place of a picture until there is one: a Roleplay's latest line, a Chain's
@@ -213,7 +219,6 @@ export function sessionRoutes(ctx: AppContext): Route[] {
       return json(
         {
           ...session,
-          title: titleOf(session),
           activity: work?.phase ?? null,
           activeFrame: work?.frameIndex ?? null,
           imageSize: { width, height },
@@ -239,6 +244,26 @@ export function sessionRoutes(ctx: AppContext): Route[] {
             latest.settings.textModel === textModel
               ? latest
               : { ...latest, settings: { ...latest.settings, textModel } } as Session,
+        ),
+      )
+    }],
+
+    // Renames the Session: `{ title }`. Allowed while work runs on it, as it changes nothing else,
+    // and saved over the latest, so a Frame written meanwhile is kept.
+    ['PATCH', new URLPattern({ pathname: '/api/sessions/:id' }), async (req, p) => {
+      const body = await readJson(req) as { title?: unknown } | undefined
+      const title = typeof body?.title === 'string' ? body.title.trim() : ''
+      if (!title) return error('title must be some text', 400)
+      if (title.length > SESSION_TITLE_LENGTH) {
+        return error(`title must be at most ${SESSION_TITLE_LENGTH} characters`, 400)
+      }
+      const session = await loadSession(p.id!)
+      return json(
+        await updateSession(
+          deps.sessions,
+          session.id,
+          session.kind,
+          (latest: Session) => latest.title === title ? latest : { ...latest, title },
         ),
       )
     }],

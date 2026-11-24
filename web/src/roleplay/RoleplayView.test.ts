@@ -100,6 +100,7 @@ const imageOf = (
 const roleplaySession = (frames: roleplay.RoleplayFrame[] = []): roleplay.RoleplaySession => ({
   id: 'r1',
   kind: 'roleplay',
+  title: 'A test roleplay',
   brief: 'A lighthouse in a storm.',
   scenarioId: null,
   settings: {

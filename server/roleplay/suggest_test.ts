@@ -23,6 +23,7 @@ const frame = (index: number, message: string | null, dialogue: string): Rolepla
 const session = (frames: RoleplayFrame[]): RoleplaySession => ({
   id: 'r1',
   kind: 'roleplay',
+  title: 'A test roleplay',
   brief: 'A storm at sea.',
   scenarioId: null,
   settings: DEFAULT_SETTINGS,

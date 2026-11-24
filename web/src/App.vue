@@ -4,6 +4,7 @@ import { computed, ref, shallowRef, watch } from 'vue'
 import { type RouteLocationNormalizedLoaded, useRoute, useRouter } from 'vue-router'
 import { getHealth, KIND_LABELS } from './api'
 import { useCurrentSession } from './composables/useCurrentSession'
+import { loadSessions } from './composables/useSessionList'
 import { scenarioPagePath, useScenarioDraft } from './composables/useScenarioDraft'
 import { sessionPath } from './sessionPath'
 import ConfirmDialog from './components/ConfirmDialog.vue'
@@ -48,6 +49,8 @@ onKeyStroke('Escape', (e) => {
   closeSettings()
 })
 const { currentSessionId, currentSessionKind, currentSessionTitle } = useCurrentSession()
+// The Session list, for Current Session's title (Home loads it again as it opens).
+void loadSessions()
 
 /**
  * Current Session leads back to the Session opened last, saying which kind it is; there's no link

@@ -39,6 +39,7 @@ const signal = () => new AbortController().signal
 const newStoryboard = (frameCount = 3): StoryboardSession => ({
   id: 's1',
   kind: 'storyboard',
+  title: 'A test storyboard',
   brief: 'A player dribbles and dunks, sketch style.',
   scenarioId: null,
   settings: { ...DEFAULT_SETTINGS, textModel: 'fake' },

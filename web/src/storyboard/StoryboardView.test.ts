@@ -93,6 +93,7 @@ const planned = (index: number, extra: Partial<api.StoryboardFrame> = {}) =>
 const storyboard = (frames: api.StoryboardFrame[] = []): api.StoryboardSession => ({
   id: 'sb',
   kind: 'storyboard',
+  title: 'A test storyboard',
   brief: 'A first dunk.',
   scenarioId: null,
   settings: { imageModel: 'qwen-image-2.1' } as api.Settings,

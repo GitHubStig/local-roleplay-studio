@@ -67,6 +67,7 @@ const currentLink = (w: Awaited<ReturnType<typeof mountApp>>['wrapper']) =>
 beforeEach(() => {
   localStorage.clear()
   clearCurrentSession('s1')
+  vi.mocked(api.listSessions).mockResolvedValue([])
   vi.mocked(api.getSession).mockReset().mockResolvedValue(structuredClone(session))
   vi.mocked(api.streamFrame).mockReset()
   vi.mocked(api.cancelFrame).mockReset()
@@ -132,6 +133,10 @@ describe('App navigation', () => {
   })
 
   it('returns to the Session in progress from Settings, keeping the typed Direction', async () => {
+    // The rail's title comes from the Session list.
+    vi.mocked(api.listSessions).mockResolvedValue([
+      { id: 's1', kind: 'chain', title: 'The Tavern' } as api.SessionSummary,
+    ])
     const { wrapper, router } = await mountApp('/sessions/s1')
     await wrapper.find('textarea').setValue('Sit on the stool')
 
@@ -183,6 +188,7 @@ describe('App navigation', () => {
     vi.mocked(api.getSession).mockResolvedValue({
       id: 'sb',
       kind: 'storyboard',
+      title: 'A test storyboard',
       brief: 'A first dunk.',
       scenarioId: null,
       settings: {} as api.Settings,

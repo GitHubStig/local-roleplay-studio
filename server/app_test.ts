@@ -1,5 +1,6 @@
 import { assertEquals, assertMatch, assertStringIncludes } from '@std/assert'
 import type { Backend } from '../shared/backends.ts'
+import { SESSION_TITLE_LENGTH } from '../shared/session.ts'
 import { DEFAULT_SETTINGS } from './settings.ts'
 import { join } from '@std/path'
 import { dirScenarioFolder } from './scenario.ts'
@@ -431,6 +432,30 @@ Deno.test('GET /api/sessions lists Sessions newest first with their activity', (
     assertEquals(list[0].frames, 2)
     assertMatch(list[0].thumbnail!, /^frame-1-/)
     assertEquals(list[0].activity, null)
+  }))
+
+Deno.test("PATCH /api/sessions/:id renames a Session, leaving its Scenario's title alone", () =>
+  withTempDir(async (root) => {
+    const { call } = setup({ root, settings: { textModel: 'x' } })
+    await call('POST', '/api/sessions', { scenarioId: 'test' })
+    const renamed = await sessionFrom(
+      await call('PATCH', '/api/sessions/s1', { title: '  The shoot, take two ' }),
+    )
+    assertEquals(renamed.title, 'The shoot, take two')
+    assertEquals(renamed.scenario?.title, 'Test Shoot')
+    assertEquals((await getSession(call, 'chain')).title, 'The shoot, take two')
+    assertEquals((await listSessions(call))[0].title, 'The shoot, take two')
+  }))
+
+Deno.test('PATCH /api/sessions/:id refuses a title that is blank, too long or not text', () =>
+  withTempDir(async (root) => {
+    const { call } = setup({ root, settings: { textModel: 'x' } })
+    await call('POST', '/api/sessions', { scenarioId: 'test' })
+    for (const title of ['', '   ', 'x'.repeat(SESSION_TITLE_LENGTH + 1), 7, null]) {
+      assertEquals((await call('PATCH', '/api/sessions/s1', { title })).status, 400)
+    }
+    assertEquals((await getSession(call, 'chain')).title, 'Test Shoot')
+    assertEquals((await call('PATCH', '/api/sessions/none', { title: 'A' })).status, 404)
   }))
 
 Deno.test('DELETE /api/sessions/:id removes a Session and its images', () =>

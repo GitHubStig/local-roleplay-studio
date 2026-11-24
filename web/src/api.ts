@@ -54,6 +54,7 @@ export {
   type ChainFrame,
   type Look,
   type Outcome,
+  SESSION_TITLE_LENGTH,
   type SessionKind,
   type StoryboardFrame,
   type Subject,
@@ -372,6 +373,14 @@ export const deleteModelPictures = (id: string, imageModel: string) =>
   )
 
 export const listSessions = () => request<SessionSummary[]>('/api/sessions')
+
+/** Renames a Session (`SESSION_TITLE_LENGTH` at most, once trimmed); it comes back as saved. */
+export const renameSession = <S>(id: string, title: string) =>
+  request<S>(`/api/sessions/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title }),
+  })
 
 export const deleteSession = (id: string) =>
   request<void>(`/api/sessions/${id}`, { method: 'DELETE' })

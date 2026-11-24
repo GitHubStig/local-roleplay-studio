@@ -125,8 +125,16 @@ export interface StoryboardFrame extends FrameBase {
 
 export type Frame = ChainFrame | StoryboardFrame
 
+/** The longest a Session's title may be, once trimmed. */
+export const SESSION_TITLE_LENGTH = 100
+
 export interface SessionBase {
   id: string
+  /**
+   * Its name, shown wherever it's listed: its Scenario's title, or the start of its Brief, when it
+   * starts (`sessionTitle`), and the player's after that, as they rename it.
+   */
+  title: string
   /** The typed Brief this Session started from; null when it started from a Scenario. */
   brief: string | null
   /** The Scenario file it started from; null when started from a typed Brief. */
@@ -199,8 +207,6 @@ export interface Health {
  * screens; the routes that answer with a Session after changing it send it as stored.
  */
 export interface Loaded {
-  /** Its Scenario's title, or the start of its typed Brief. */
-  title: string
   /** What work in progress is doing (speaking a line is `audio`), or null when idle. */
   activity: Phase | null
   /** Which Frame that work is on, for Storyboards. */

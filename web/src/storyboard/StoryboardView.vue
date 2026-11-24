@@ -657,7 +657,7 @@ const pickFromAll = (index: number) => pick(index)
     <p v-if="loadError" class="p-6 text-danger">Could not load this Storyboard: {{ loadError }}</p>
 
     <template v-else-if="session">
-      <SessionBar kind="Storyboard" :title="session.title ?? ''" :status="busy ? statusLabel : undefined">
+      <SessionBar :id="session.id" v-model:title="session.title" kind="Storyboard" :status="busy ? statusLabel : undefined">
         <span
           v-if="planMode && planned && !busy"
           class="rounded-full border border-line px-2 py-0.5 text-xs max-md:hidden"

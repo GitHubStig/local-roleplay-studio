@@ -195,6 +195,7 @@ async function saveCopy(
   const session: ChainSession = {
     id: chain.id,
     kind: 'chain',
+    title: from.title,
     brief: from.brief,
     scenarioId: from.scenarioId,
     ...from.scenario && { scenario: from.scenario },
