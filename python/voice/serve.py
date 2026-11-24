@@ -135,9 +135,15 @@ def directed(text, pace=None, sound=None, whisper=False):
     The line with Higgs's tags for its pace and sound; a slow line also pauses between sentences.
     A whispered one (a Character's thought) is hushed and breathy, still in their voice: tested on
     twelve thoughts, it stayed in each Character's pitch range, unlike the emotion tags.
+
+    No pause follows a one-word sentence: on a slow line, "Ah." or "Hm." and then a pause sent
+    Higgs into a loop of buzz or silence until its 82 s cap in 6 of 24 seeds, and in none without
+    that pause (2026-11-24, docs/research/voices.md).
     """
     if pace == 'slow':
-        text = re.sub(r'([.!?…]) (?=\S)', r'\1 <|prosody:pause|>', text)
+        sentences = re.split(r'(?<=[.!?…]) (?=\S)', text)
+        text = ''.join(s + (' ' if len(s.split()) == 1 else ' <|prosody:pause|>')
+                       for s in sentences[:-1]) + sentences[-1]
     before = f'<|sfx:{sound}|>{SOUNDS[sound]} ' if sound in SOUNDS else ''
     return before + ('<|style:whispering|>' if whisper else '') + PACES.get(pace, '') + text
 

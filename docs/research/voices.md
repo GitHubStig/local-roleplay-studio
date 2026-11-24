@@ -111,6 +111,32 @@ Other notes:
 - mlx-audio doesn't map Higgs's renamed repo (`bosonai/higgs-tts-3-4b`) to its model by itself:
   load it with `model_type='higgs_audio_v3'`. Its codec needs torch.
 
+## Lines that don't end (2026-11-24, Mac)
+
+In the mlx-audio 0.6.8 check, a slow line with a sigh ("Ah. You want the room upstairs. It's yours, but mind the third step.", seed 3) came out 81.6 s long and took 60 s to make, on 0.6.7 as on 0.6.8. It has no words at all: from 0.2 s it's a steady buzz on a 200 Hz fundamental (harmonics at 400, 600 and 1200 Hz) that repeats almost exactly (0.999 correlation 5 s apart). Higgs makes 25 frames a second and stops at mlx-audio's default cap of 2048 frames (81.9 s). Its sampler has no guard against repeats, so once it falls into a loop nothing ends it before the cap. The other kind of run-on, seen in the renders below, is under a second of sound followed by digital silence (−89 dB) to the cap. The 48 s line in 0.6.5's check ([log](mlx-audio-upgrade-log.md#065--mac-2026-11-10)) was likely the same thing.
+
+The renders below were cloned in-process from the same reference clip (a designed tavern keeper's voice), at the service's sampling (temperature 0.5, top-k 30) and seeds 1–12, capped at 400 frames (16 s) so a loop cost seconds. A render "ran on" if it reached the cap. The line ends normally in 5–8 s.
+
+| Line (rest: "You want the room upstairs. It's yours, but mind the third step.") | Ran on |
+|---|---|
+| "Ah." + rest, slow (speed tag and a pause after each sentence) | 4/12 |
+| the same, speed tag only, or pauses only | 0/12, 0/12 |
+| "Hm." + rest, slow | 2/12 |
+| "Oh.", "Mm.", "Well." or "No." + rest, slow; "Ah," with a comma; the rest alone | 0/12 each |
+| another line ("The cellar door sticks in winter. Lean on it…"), slow, with or without a sigh | 0/12, 0/12 |
+| "Ah." + rest, slow with a sigh | 2/12, then 2/12 with the fix below |
+| "Ah." + rest, sigh and speed tag, no pauses | 4/12 |
+| "Ah." + rest, sigh alone | 0/12 |
+| "Hm." or "Well." + rest, slow with a sigh | 0/12 each |
+| speed tag moved before the sigh: "Ah." + rest; the cellar line | 1/12; 3/12 |
+
+So there are two triggers, and both need the slow pace:
+
+- **A pause after a lone interjection.** The service paused after every sentence of a slow line, "Ah." included. With no pause after a one-word sentence, the "Ah." and "Hm." lines ran on in 0 of 24 renders (6 of 24 before). That's now how `serve.py` places pauses.
+- **The sigh's "Uh" straight before "Ah."** (`<|sfx:sigh|>Uh <|prosody:speed_slow|>Ah. …`), with or without pauses: 2–4 of 12. Moving the speed tag in front of the sigh didn't help, and made the cellar line worse. Not fixed.
+
+Not known: how often either comes up in play, since one reference clip and two lines were tried, and none of the run-ons was listened to.
+
 ## Audio format (2026-10-02)
 
 Spoken lines and thoughts are saved as **MP3 at 96 kbps** (24 kHz mono, what Higgs speaks); the
