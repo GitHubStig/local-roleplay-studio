@@ -16,6 +16,10 @@ vi.mock('../api', async (importOriginal) => ({
   deleteSession: vi.fn(),
   renameSession: vi.fn(),
   listSessions: vi.fn(() => Promise.resolve([])),
+  getKeepOptions: vi.fn(),
+  previewKeep: vi.fn(),
+  removeLeftOut: vi.fn(),
+  getSettingsOptions: vi.fn(() => Promise.resolve({ imageModels: {}, videoModels: [] })),
 }))
 
 const session = (extra: Partial<api.SessionSummary> = {}): api.SessionSummary => ({
@@ -55,9 +59,37 @@ const contents: api.SessionContents = {
   },
 }
 
+const options: api.KeepOptions = {
+  imageModel: 'qwen',
+  imageModels: [
+    { model: 'qwen', count: 3, size: 900_000_000, pictures: 300_000_000 },
+    { model: 'krea', count: 1, size: 500_000_000, pictures: 100_000_000 },
+  ],
+  upscales: { count: 1, size: 50_000_000 },
+  edits: { count: 1, size: 20_000_000 },
+  chosen: { count: 3, size: 800_000_000 },
+  clips: [{ model: 'ltx', kinds: [{ kind: 'lead-in', count: 2, size: 520_000_000 }] }],
+  threeD: [{ kind: 'scene', count: 1, size: 180_000_000 }],
+  sound: [{ kind: 'speech', count: 5, size: 4_000_000 }, {
+    kind: 'voices',
+    count: 1,
+    size: 1_000_000,
+  }],
+  calls: { count: 0, size: 0 },
+}
+
 beforeEach(() => {
   vi.resetAllMocks()
   localStorage.clear()
+  vi.mocked(api.getSettingsOptions).mockResolvedValue(
+    { imageModels: {}, videoModels: [] } as unknown as api.SettingsOptions,
+  )
+  vi.mocked(api.getKeepOptions).mockResolvedValue(options)
+  vi.mocked(api.previewKeep).mockResolvedValue({
+    kept: 1_700_000_000,
+    leftOut: 500_000_000,
+    after: options,
+  })
   vi.mocked(api.getSessionContents).mockResolvedValue(contents)
   vi.mocked(api.deleteSession).mockResolvedValue()
   vi.mocked(ask).mockResolvedValue(true)
@@ -167,9 +199,13 @@ describe('SessionPane', () => {
     })
     const wrapper = await shown()
     await wrapper.find('[data-export-start]').trigger('click')
-    expect(vi.mocked(exportSession).mock.calls[0].slice(0, 2)).toEqual([
+    // Every tick on: all of it.
+    expect(vi.mocked(exportSession).mock.calls[0]).toEqual([
       'a',
       'the-rain-soaked-tavern-a.zip',
+      expect.any(Function),
+      expect.any(AbortSignal),
+      undefined,
     ])
     written(1_100_000_000)
     await flushPromises()
@@ -194,5 +230,104 @@ describe('SessionPane', () => {
     await wrapper.find('[data-export-start]').trigger('click')
     await flushPromises()
     expect(wrapper.text()).toContain("Couldn't export it: Work is running")
+  })
+
+  /** Lets the ticks' preview, asked once they settle, come back. */
+  const settle = async () => {
+    await new Promise((r) => setTimeout(r, 250))
+    await flushPromises()
+  }
+
+  it('leaves out what is unticked, saying what that keeps, and exports only what is ticked', async () => {
+    const wrapper = await shown()
+    expect(wrapper.find('[data-keeping]').text()).toContain('All of it, 2.2 GB')
+    expect(wrapper.find('[data-remove-rest]').attributes('disabled')).toBeDefined()
+    await wrapper.find('[data-keep-model="krea"]').setValue(false)
+    await settle()
+    const left = { ...api.KEEP_ALL, imageModels: ['krea'] }
+    expect(vi.mocked(api.previewKeep).mock.calls[0].slice(0, 2)).toEqual(['a', left])
+    expect(wrapper.find('[data-keeping]').text()).toBe('Keeping about 1.7 GB · leaving out 500 MB')
+    expect(wrapper.find('[data-export-start]').text()).toBe('Export ticked')
+    vi.mocked(exportSession).mockResolvedValue('saved')
+    await wrapper.find('[data-export-start]').trigger('click')
+    expect(vi.mocked(exportSession).mock.calls[0][4]).toEqual(left)
+  })
+
+  it('shows every row of What to keep folded, each with a caret that says it opens', async () => {
+    const wrapper = await shown()
+    const rows = wrapper.findAll('[data-keep-row]')
+    expect(rows.map((r) => r.attributes('data-keep-row'))).toEqual([
+      'pictures',
+      'clips',
+      '3d',
+      'sound',
+    ])
+    for (const row of rows) {
+      expect(row.element.tagName).toBe('DETAILS')
+      expect(row.find('summary [data-keep-caret]').exists()).toBe(true)
+    }
+  })
+
+  it("Chosen picture only greys out the Image Models' ticks; leaving out voices warns", async () => {
+    const wrapper = await shown()
+    await wrapper.find('[data-keep-chosen]').setValue(true)
+    expect(wrapper.find('[data-keep-model="krea"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.find('[data-keep-voice-warning]').exists()).toBe(false)
+    await wrapper.find('[data-keep-sound="voices"]').setValue(false)
+    expect(wrapper.find('[data-keep-voice-warning]').text()).toContain("can't speak")
+  })
+
+  it('greys out what has nothing left once the pictures have taken theirs', async () => {
+    vi.mocked(api.previewKeep).mockResolvedValue({
+      kept: 1,
+      leftOut: 1,
+      after: {
+        ...options,
+        clips: [{ model: 'ltx', kinds: [{ kind: 'lead-in', count: 0, size: 0 }] }],
+        threeD: [],
+      },
+    })
+    const wrapper = await shown()
+    await wrapper.find('[data-keep-model="qwen"]').setValue(false)
+    await settle()
+    expect(wrapper.find('[data-keep-clip="ltx lead-in"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.find('[data-keep-3d="scene"]').attributes('disabled')).toBeDefined()
+  })
+
+  it('removes the rest once confirmed, naming it and its size, then shows the Session as it is', async () => {
+    vi.mocked(api.removeLeftOut).mockResolvedValue({
+      session: {} as api.Session,
+      freed: 500_000_000,
+    })
+    const wrapper = await shown()
+    await wrapper.find('[data-keep-model="krea"]').setValue(false)
+    await wrapper.find('[data-keep-sound="speech"]').setValue(false)
+    await settle()
+    await wrapper.find('[data-remove-rest]').trigger('click')
+    await flushPromises()
+    const [question, how] = vi.mocked(ask).mock.calls[0]
+    expect(question).toContain(
+      'the pictures by krea; the speech and thoughts from this Session (500 MB)',
+    )
+    expect(how).toEqual({ action: 'Remove', danger: true })
+    expect(api.removeLeftOut).toHaveBeenCalledWith('a', {
+      ...api.KEEP_ALL,
+      imageModels: ['krea'],
+      sound: ['speech'],
+    })
+    expect(api.getSessionContents).toHaveBeenCalledTimes(2)
+    expect(wrapper.emitted('changed')).toHaveLength(1)
+    expect(wrapper.find('[data-keep-model="krea"]').element).toHaveProperty('checked', true)
+  })
+
+  it('removes nothing when not confirmed', async () => {
+    vi.mocked(ask).mockResolvedValue(false)
+    const wrapper = await shown()
+    await wrapper.find('[data-keep-calls]').exists()
+    await wrapper.find('[data-keep-model="krea"]').setValue(false)
+    await settle()
+    await wrapper.find('[data-remove-rest]').trigger('click')
+    await flushPromises()
+    expect(api.removeLeftOut).not.toHaveBeenCalled()
   })
 })

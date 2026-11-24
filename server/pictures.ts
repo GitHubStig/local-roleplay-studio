@@ -5,7 +5,7 @@ import type { SessionStore } from './session.ts'
 import type { Session } from '../shared/session.ts'
 import { updateSession } from './update.ts'
 import { Refusal } from './refusal.ts'
-import type { Picture, PictureEdit, PicturesDeleted, PictureVersion } from '../shared/pictures.ts'
+import type { Picture, PictureEdit, PictureVersion } from '../shared/pictures.ts'
 
 /** The version of a picture that is the picture: its picked edit, or its render. */
 export const pickedVersion = (p: Picture): PictureVersion =>
@@ -245,26 +245,3 @@ export async function switchImageModel(
  * many pictures went. A render by that model still under way (started before a switch) would add
  * its picture back when it finishes.
  */
-export async function deleteModelPictures(
-  store: SessionStore,
-  session: Session,
-  model: string,
-): Promise<PicturesDeleted> {
-  let files: string[] = []
-  let deleted = 0
-  const updated = await updateSession(store, session.id, session.kind, (latest: Session) => {
-    refuseOwnModel(latest, model)
-    const gone = latest.frames.flatMap((f) => f.pictures.filter((p) => p.imageModel === model))
-    files = gone.flatMap(pictureFiles)
-    deleted = gone.length
-    return {
-      ...latest,
-      frames: latest.frames.map((f) => ({
-        ...f,
-        pictures: f.pictures.filter((p) => p.imageModel !== model),
-      })),
-    } as Session
-  })
-  await removeFiles(store.dir(session.id), files)
-  return { session: updated, deleted }
-}

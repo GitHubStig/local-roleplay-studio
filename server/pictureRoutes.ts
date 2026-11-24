@@ -11,12 +11,8 @@ import { loadStyleCache, styleScores, unembedded } from './style/scores.ts'
 import { isOpen, onModelPictures } from './jobs.ts'
 import { parseComparisonExport } from './export/comparison.ts'
 import { saveExportOrder } from './export/job.ts'
-import {
-  chooseThumbnail,
-  deleteModelPictures,
-  refuseOwnModel,
-  switchImageModel,
-} from './pictures.ts'
+import { chooseThumbnail, refuseOwnModel, switchImageModel } from './pictures.ts'
+import { deleteModelPictures } from './keep.ts'
 import type { AppContext } from './appContext.ts'
 import { Refusal } from './refusal.ts'
 

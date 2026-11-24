@@ -9,6 +9,7 @@ import type { Picture } from '../shared/pictures.ts'
 import type { Health, Loaded, Session, SessionSummary } from '../shared/session.ts'
 import type { SessionContents, SessionSizes } from '../shared/sessionContents.ts'
 import type { ImportedSession } from '../shared/sessionZip.ts'
+import type { KeepOptions, KeepPreview, Removed } from '../shared/keep.ts'
 import type { ErrorBody } from '../shared/errors.ts'
 import type { Job, Queue } from '../shared/jobs.ts'
 import type { Expansion, Scenario, ScenarioList, Suggested } from '../shared/scenario.ts'
@@ -256,6 +257,11 @@ export const getContents = async (call: Call, id = 's1') =>
   bodyOf<SessionContents>(await call('GET', `/api/sessions/${id}/contents`))
 export const getSizes = async (call: Call) =>
   bodyOf<SessionSizes>(await call('GET', '/api/session-sizes'))
+
+/** What there is to keep, what a choice keeps, and what Remove the rest left. */
+export const keepOptionsIn = (res: Response) => bodyOf<KeepOptions>(res)
+export const previewIn = (res: Response) => bodyOf<KeepPreview>(res)
+export const removedIn = (res: Response) => bodyOf<Removed>(res)
 
 /** The Session a zip was imported as. */
 export const importedIn = (res: Response) => bodyOf<ImportedSession>(res)

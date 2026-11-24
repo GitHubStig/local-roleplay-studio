@@ -52,12 +52,12 @@ export async function exportedFiles(dir: string): Promise<{ path: string; size: 
 }
 
 /**
- * `files` from folder `dir`, zipped as the stream is read. Cancelling the stream (a download
+ * `files` from folder `dir` (or given whole, as `data`), zipped as the stream is read. Cancelling the stream (a download
  * dropped) stops it; `done` settles once it's all written, or it stopped.
  */
 export function zipFiles(
   dir: string,
-  files: { path: string }[],
+  files: { path: string; data?: Uint8Array<ArrayBuffer> }[],
   options: ZipOptions,
 ): { stream: ReadableStream<Uint8Array>; done: Promise<void> } {
   const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>()
@@ -73,8 +73,11 @@ export function zipFiles(
     try {
       for (const f of files) {
         if (stopped.signal.aborted) throw stopped.signal.reason
-        const file = await Deno.open(join(dir, f.path))
-        const entry = await zip.add(f.path, file.readable, { level: levelOf(f.path) })
+        // A file given whole (a Session's text as an export leaves it), or read from the folder.
+        const source = f.data
+          ? new Blob([f.data]).stream()
+          : (await Deno.open(join(dir, f.path))).readable
+        const entry = await zip.add(f.path, source, { level: levelOf(f.path) })
         options.onEntry?.(f.path, entry.compressedSize ?? 0)
       }
       await zip.close()

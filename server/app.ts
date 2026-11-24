@@ -164,6 +164,7 @@ export type LockKind =
   | 'clip-prompt'
   | 'score'
   | 'export'
+  | 'remove'
 
 export function createHandler(
   deps: AppDeps,
@@ -204,6 +205,7 @@ export function createHandler(
     'clip-prompt': "A clip's prompt is being written",
     score: 'The Score is being written',
     export: 'This Session is being exported: wait for the download to finish, or cancel it',
+    remove: 'Parts of this Session are being removed',
   }
 
   /** Takes the Session's lock, or returns a 409 saying what holds it. */

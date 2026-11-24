@@ -83,7 +83,7 @@ export function useImageModels() {
         (job.image
           ? ` ${byOf({ imageModel: job.image.imageModel, imageBackend: job.imageBackend })}`
           : '')
-  return { modelsOf, find, labelOf, byOf, renderedParts, jobName }
+  return { modelsOf, find, labelOf, videoLabelOf, byOf, renderedParts, jobName }
 }
 
 /**

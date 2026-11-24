@@ -1,9 +1,20 @@
 <script setup lang="ts">
+import { watchDebounced } from '@vueuse/core'
 import { computed, ref, useTemplateRef, watch } from 'vue'
 import {
   bytes,
+  CLIP_KIND_NAMES,
   exportName,
+  getKeepOptions,
   getSessionContents,
+  KEEP_ALL,
+  type KeepOptions,
+  type KeepPreview,
+  type LeftOut,
+  previewKeep,
+  removeLeftOut,
+  SOUND_LABELS,
+  THREE_D_LABELS,
   imageUrl,
   KIND_LABELS,
   openSessionFolder,
@@ -20,6 +31,9 @@ import { deleteSessionAsked } from '../composables/useDeleteSession'
 import { sessionPath } from '../sessionPath'
 import { canPickFile, exportSession } from '../sessionExport'
 import Icon from './Icon.vue'
+import KeepTicks from './KeepTicks.vue'
+import { ask } from '../ask'
+import { useImageModels } from '../composables/useSettingsOptions'
 
 /**
  * A Session on the Session manager: its picture (the one Home shows), which plays it; its title,
@@ -33,7 +47,7 @@ const props = defineProps<{
   here: boolean
   os: ServerOs
 }>()
-const emit = defineEmits<{ deleted: [] }>()
+const emit = defineEmits<{ deleted: []; changed: [] }>()
 
 const title = ref(props.session.title)
 watch(() => props.session.title, (t) => (title.value = t))
@@ -45,16 +59,87 @@ const { editing, draft, failed, edit, save, cancel } = useRename(
 
 const contents = ref<SessionContents | null>(null)
 const problem = ref('')
-watch(() => props.session.id, async (id) => {
-  contents.value = null
+/** What there is to keep or leave out, the ticks taken off, and what they'd keep. */
+const options = ref<KeepOptions | null>(null)
+const leftOut = ref<LeftOut>({ ...KEEP_ALL })
+const preview = ref<KeepPreview | null>(null)
+/** Every tick on: an export is all of it, and Remove has nothing to remove. */
+const keepsAll = computed(() => JSON.stringify(leftOut.value) === JSON.stringify(KEEP_ALL))
+
+async function loadContents(id: string) {
   problem.value = ''
   try {
-    const got = await getSessionContents(id)
-    if (id === props.session.id) contents.value = got
+    const [got, keep] = await Promise.all([getSessionContents(id), getKeepOptions(id)])
+    if (id !== props.session.id) return
+    contents.value = got
+    options.value = keep
   } catch (err) {
     problem.value = `Couldn't work out what it holds: ${(err as Error).message}`
   }
+}
+watch(() => props.session.id, (id) => {
+  contents.value = null
+  options.value = null
+  preview.value = null
+  leftOut.value = { ...KEEP_ALL }
+  void loadContents(id)
 }, { immediate: true })
+
+/** What the ticks keep, asked of the server as they settle; the last asked wins. */
+let asking: AbortController | null = null
+watchDebounced(leftOut, async (left) => {
+  asking?.abort()
+  if (keepsAll.value) return (preview.value = null)
+  const mine = (asking = new AbortController())
+  try {
+    preview.value = await previewKeep(props.session.id, left, mine.signal)
+  } catch (err) {
+    if (!mine.signal.aborted) problem.value = (err as Error).message
+  }
+}, { debounce: 200, deep: true })
+
+const keeping = computed(() => (keepsAll.value ? contents.value?.size ?? 0 : preview.value?.kept ?? 0))
+
+/** What the ticks leave out, in words, for Remove's question. */
+const { labelOf, videoLabelOf } = useImageModels()
+function leftOutWords(left: LeftOut): string[] {
+  const words: string[] = []
+  if (left.chosenOnly) words.push('every picture but the one each Frame shows')
+  if (left.imageModels.length && !left.chosenOnly) {
+    words.push(`the pictures by ${left.imageModels.map(labelOf).join(' and ')}`)
+  }
+  if (left.upscales) words.push('the upscales')
+  if (left.edits) words.push('the edits and their painted areas')
+  for (const [model, kinds] of Object.entries(left.clips)) {
+    words.push(`${videoLabelOf(model)}'s ${kinds.map((k) => CLIP_KIND_NAMES[k]).join(', ')} clips`)
+  }
+  for (const k of left.threeD) words.push(`the ${THREE_D_LABELS[k]}`)
+  for (const k of left.sound) words.push(`the ${SOUND_LABELS[k].toLowerCase()}`)
+  if (left.calls) words.push('the call logs')
+  return words
+}
+
+const removing = ref(false)
+async function removeRest() {
+  const p = preview.value
+  if (!p) return
+  const question = `Remove ${leftOutWords(leftOut.value).join('; ')} from this Session (${
+    bytes(p.leftOut)
+  })? What's made from them goes too; its Frames and their text stay. This can't be undone.`
+  if (!(await ask(question, { action: 'Remove', danger: true }))) return
+  problem.value = ''
+  removing.value = true
+  try {
+    await removeLeftOut(props.session.id, leftOut.value)
+    leftOut.value = { ...KEEP_ALL }
+    await loadContents(props.session.id)
+    emit('changed')
+  } catch (err) {
+    problem.value = `Couldn't remove it: ${(err as Error).message}`
+  } finally {
+    removing.value = false
+  }
+}
 
 const openLabel = computed(() =>
   props.os === 'mac' ? 'Open in Finder' : props.os === 'windows' ? 'Open in Explorer' : 'Open folder'
@@ -83,6 +168,7 @@ async function startExport() {
       exportName(title.value, props.session.id),
       (written) => exporting.value && (exporting.value.written = written),
       stop.signal,
+      keepsAll.value ? undefined : leftOut.value,
     )
     exported.value = end === 'saved'
       ? 'Saved.'
@@ -214,7 +300,7 @@ const counts = computed(() => {
             class="grid h-10 w-10 place-items-center rounded-lg border border-danger/40 text-lg text-danger hover:border-danger disabled:cursor-not-allowed disabled:border-line disabled:text-muted"
             :title="session.activity ? 'Work is running in this Session: wait for it, or cancel it, to delete it' : 'Delete Session…'"
             aria-label="Delete Session…"
-            :disabled="session.activity !== null || exporting !== null"
+            :disabled="session.activity !== null || exporting !== null || removing"
             data-delete
             @click="remove"
           >
@@ -251,41 +337,62 @@ const counts = computed(() => {
       </li>
     </ul>
 
-    <!-- The whole Session as a zip, streamed: into the file picked where the browser has a Save
-         dialog, with how far it's got; elsewhere a plain download. -->
-    <div class="flex flex-col gap-2 rounded-lg border border-line p-3" data-export>
-      <div v-if="exporting" role="status" class="flex flex-col gap-2" data-exporting>
+    <!-- What to keep: the ticks, then what they keep, Remove the rest… and Export ticked. An export
+         streams, into the file picked where the browser has a Save dialog, with how far it's got;
+         elsewhere it's a plain download. -->
+    <section aria-label="What to keep" class="flex flex-col rounded-lg border border-line" data-export>
+      <div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 border-b border-line px-4 py-3">
+        <strong>What to keep</strong>
+        <span class="text-sm text-muted">Export writes what's ticked. Remove deletes what isn't.</span>
+      </div>
+      <KeepTicks v-if="options" v-model="leftOut" :options="options" :preview="preview" />
+      <div v-if="exporting" role="status" class="flex flex-col gap-2 bg-canvas px-4 py-3" data-exporting>
         <div class="flex items-center gap-3 text-sm">
           <span class="min-w-0 flex-1">
-            Zipping into your file · {{ bytes(exporting.written) }}<template v-if="contents"> of about {{ bytes(contents.size) }}</template>
+            Zipping into your file · {{ bytes(exporting.written) }}<template v-if="keeping"> of about {{ bytes(keeping) }}</template>
           </span>
           <button type="button" class="rounded border border-line px-2.5 py-1 hover:border-fg" data-export-cancel @click="exporting.stop.abort()">
             Cancel
           </button>
         </div>
-        <span class="h-1.5 overflow-hidden rounded-full bg-canvas">
+        <span class="h-1.5 overflow-hidden rounded-full bg-surface">
           <span
             class="block h-full bg-info transition-[width]"
-            :style="{ width: `${contents?.size ? Math.min(100, (exporting.written / contents.size) * 100) : 0}%` }"
+            :style="{ width: `${keeping ? Math.min(100, (exporting.written / keeping) * 100) : 0}%` }"
           />
         </span>
         <span class="text-xs text-muted">Nothing is kept on the server: it's zipped as it downloads. The Session can't change until it's done.</span>
       </div>
-      <div v-else class="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <button
-          type="button"
-          class="rounded-lg bg-fg px-4 py-2 text-sm font-semibold text-canvas disabled:cursor-not-allowed disabled:opacity-50"
-          :disabled="session.activity !== null"
-          :title="session.activity ? 'Work is running in this Session: wait for it, or cancel it, to export it' : undefined"
-          data-export-start
-          @click="startExport"
-        >
-          Export as a zip
-        </button>
-        <span class="text-sm text-muted">
-          {{ exported || (canPickFile() ? 'All of it, into a file you pick, to import here or on another machine.' : 'All of it, as a download, to import here or on another machine.') }}
+      <div v-else class="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-3">
+        <span class="text-sm text-muted" data-keeping>
+          <template v-if="exported">{{ exported }}</template>
+          <template v-else-if="keepsAll">All of it, {{ contents ? bytes(contents.size) : '' }}, {{ canPickFile() ? 'into a file you pick' : 'as a download' }}, to import here or on another machine.</template>
+          <template v-else-if="preview">Keeping about {{ bytes(preview.kept) }} · leaving out {{ bytes(preview.leftOut) }}</template>
+          <template v-else>Working out what that keeps…</template>
         </span>
+        <div class="flex gap-2">
+          <button
+            type="button"
+            class="rounded-lg border border-danger/40 px-3 py-2 text-sm text-danger hover:border-danger disabled:cursor-not-allowed disabled:border-line disabled:text-muted"
+            :disabled="keepsAll || !preview || session.activity !== null || removing"
+            :title="keepsAll ? 'Untick what to remove first' : session.activity ? 'Work is running in this Session: wait for it, or cancel it' : 'Delete what isn\'t ticked from this Session'"
+            data-remove-rest
+            @click="removeRest"
+          >
+            Remove the rest…
+          </button>
+          <button
+            type="button"
+            class="rounded-lg bg-fg px-4 py-2 text-sm font-semibold text-canvas disabled:cursor-not-allowed disabled:opacity-50"
+            :disabled="session.activity !== null || removing || (!keepsAll && !preview)"
+            :title="session.activity ? 'Work is running in this Session: wait for it, or cancel it, to export it' : undefined"
+            data-export-start
+            @click="startExport"
+          >
+            {{ keepsAll ? 'Export' : 'Export ticked' }}
+          </button>
+        </div>
       </div>
-    </div>
+    </section>
   </section>
 </template>

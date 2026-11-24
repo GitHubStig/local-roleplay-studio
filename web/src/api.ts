@@ -99,6 +99,21 @@ export {
 } from '../../shared/sessionContents.ts'
 import type { SessionContents, SessionSizes } from '../../shared/sessionContents.ts'
 export { bytes } from '../../shared/bytes.ts'
+export {
+  type Amount,
+  KEEP_ALL,
+  type KeepOptions,
+  type KeepPreview,
+  type LeftOut,
+  type Removed,
+  SOUND_KINDS,
+  SOUND_LABELS,
+  type SoundKind,
+  THREE_D_KINDS,
+  THREE_D_LABELS,
+  type ThreeDKind,
+} from '../../shared/keep.ts'
+import type { KeepOptions, KeepPreview, LeftOut, Removed } from '../../shared/keep.ts'
 export { exportName, type ImportedSession } from '../../shared/sessionZip.ts'
 import type { ImportedSession } from '../../shared/sessionZip.ts'
 import type { Health, Loaded, SessionSummary } from '../../shared/session.ts'
@@ -413,8 +428,33 @@ export const getSessionSizes = () => request<SessionSizes>('/api/session-sizes')
 export const getSessionContents = (id: string) =>
   request<SessionContents>(`/api/sessions/${id}/contents`)
 
-/** Where a Session export downloads from: its zip, written as it's read. */
-export const exportUrl = (id: string) => `/api/sessions/${id}/export`
+/**
+ * Where a Session export downloads from: its zip, written as it's read; with `leftOut`, only
+ * what's ticked.
+ */
+export const exportUrl = (id: string, leftOut?: LeftOut) =>
+  `/api/sessions/${id}/export` +
+  (leftOut ? `?leave=${encodeURIComponent(JSON.stringify(leftOut))}` : '')
+
+/** What there is to keep or leave out of a Session, each with its size on its own. */
+export const getKeepOptions = (id: string) => request<KeepOptions>(`/api/sessions/${id}/keep`)
+
+/** What a choice of ticks keeps and leaves out; nothing changes. */
+export const previewKeep = (id: string, leftOut: LeftOut, signal?: AbortSignal) =>
+  request<KeepPreview>(`/api/sessions/${id}/keep`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ leftOut }),
+    signal,
+  })
+
+/** Remove the rest: leaves out of the Session itself what isn't ticked, for good. */
+export const removeLeftOut = (id: string, leftOut: LeftOut) =>
+  request<Removed>(`/api/sessions/${id}/remove`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ leftOut }),
+  })
 
 /**
  * Uploads a Session export to be imported as a new Session, saying how much is sent as it goes

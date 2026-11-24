@@ -1,12 +1,14 @@
 /**
- * The parts of a Session's folder, declared in one place: which files each part owns, and what it
- * holds. The Session manager counts and sizes a Session by it; what's served from a Session's
- * folder is what a part owns there. (Exporting a part and clearing it from a Session are to come,
- * here too: docs/session-manager-plans.md.)
+ * The parts of a Session's folder, declared in one place: which files each part owns, what it
+ * holds, the files its records name, and how what's left out of it goes from a Session's records.
+ * The Session manager counts and sizes a Session by it, and its ticks keep or leave out by it
+ * (`keep.ts`): an export of what's ticked, Remove the rest, and deleting an Image Model's pictures.
+ * What's served from a Session's folder is what a part owns there.
  */
 import { join } from '@std/path'
 import type { Session } from '../shared/session.ts'
-import type { Picture, PictureVersion } from '../shared/pictures.ts'
+import type { Picture, PictureEdit, PictureVersion } from '../shared/pictures.ts'
+import type { LeftOut } from '../shared/keep.ts'
 import {
   SESSION_PARTS,
   type SessionContents,
@@ -27,6 +29,15 @@ interface PartDeclaration {
     paths: string[],
     read: (path: string) => Promise<string>,
   ): Promise<Partial<SessionCounts>>
+  /** The files of it a Session's records name. */
+  files(session: Session): string[]
+  /**
+   * The Session without what's left out of this part, its records changed (the files they no
+   * longer name go with them, `keep.ts`).
+   */
+  leaveOut(session: Session, left: LeftOut): Session
+  /** Whether every file it owns goes, named by records or not (the call logs). */
+  allGone?(left: LeftOut): boolean
 }
 
 /**
@@ -60,9 +71,91 @@ const picturesOf = (session: Session): Picture[] => session.frames.flatMap((f) =
 const versionsOf = (session: Session): PictureVersion[] =>
   picturesOf(session).flatMap((p) => [p, ...(p.edits ?? [])])
 
+/** The Session with each picture changed by `change`. */
+const changePictures = (session: Session, change: (p: Picture) => Picture | null): Session =>
+  ({
+    ...session,
+    frames: session.frames.map((f) => ({
+      ...f,
+      pictures: f.pictures.map(change).filter((p): p is Picture => p !== null),
+    })),
+  }) as Session
+
+/** The Session with every version of every picture (each render and edit) changed by `change`. */
+const changeVersions = (
+  session: Session,
+  change: <V extends PictureVersion>(v: V) => V,
+): Session =>
+  changePictures(session, (p) => {
+    const changed = change(p)
+    return p.edits ? { ...changed, edits: p.edits.map((e) => change(e) as PictureEdit) } : changed
+  })
+
+/** The picture as it shows now, made its Original: its picked version's files, its history gone. */
+function asChosen(p: Picture): Picture {
+  const { edits: _, picked, ...render } = p
+  const edit = picked ? p.edits?.[picked - 1] : undefined
+  if (!edit) return render
+  const { file, upscaled, scene, figure, lito, clips } = edit
+  const { timings: __, ...kept } = render
+  return {
+    imageModel: kept.imageModel,
+    ...kept.imageBackend && { imageBackend: kept.imageBackend },
+    ...kept.stale && { stale: kept.stale },
+    file,
+    ...upscaled && { upscaled },
+    ...scene && { scene },
+    ...figure && { figure },
+    ...lito && { lito },
+    ...clips && { clips },
+  }
+}
+
+/** The files a picture's records name as pictures: each version's image, upscale and painted area. */
+export const pictureImages = (p: Picture): string[] =>
+  [p, ...(p.edits ?? [])].flatMap((v) => [
+    v.file,
+    v.upscaled,
+    'mask' in v ? (v as PictureEdit).mask : undefined,
+  ]).filter((f): f is string => !!f)
+
+/** A version's 3D, by kind. */
+const THREE_D_FIELDS = { scene: 'scene', figure: 'figure', lito: 'lito' } as const
+
 export const PARTS: Record<SessionPart, PartDeclaration> = {
   pictures: {
     owns: (path) => IMAGE_FILE.test(path),
+    files: (session) => picturesOf(session).flatMap(pictureImages),
+    leaveOut: (session, left) => {
+      let s = session
+      if (left.chosenOnly) {
+        const model = s.settings.imageModel
+        s = {
+          ...s,
+          frames: s.frames.map((f) => {
+            const shown = f.pictures.find((p) => p.imageModel === model)
+            return { ...f, pictures: shown ? [asChosen(shown)] : [] }
+          }),
+        } as Session
+      }
+      if (left.imageModels.length) {
+        s = changePictures(s, (p) => left.imageModels.includes(p.imageModel) ? null : p)
+      }
+      if (left.edits) s = changePictures(s, ({ edits: _, picked: __, ...p }) => p)
+      if (left.upscales) {
+        s = changeVersions(s, (v) => {
+          const kept = { ...v }
+          delete kept.upscaled
+          return kept
+        })
+      }
+      // The picture chosen for Home goes if it did.
+      if (s.thumbnail && !picturesOf(s).some((p) => pictureImages(p).includes(s.thumbnail!))) {
+        const { thumbnail: _, ...rest } = s
+        s = rest as Session
+      }
+      return s
+    },
     count: (session) => {
       const pictures = picturesOf(session)
       return Promise.resolve({
@@ -74,6 +167,14 @@ export const PARTS: Record<SessionPart, PartDeclaration> = {
   },
   clips: {
     owns: (path) => CLIP_FILE.test(path),
+    files: (session) => versionsOf(session).flatMap((v) => (v.clips ?? []).map((c) => c.file)),
+    leaveOut: (session, left) =>
+      Object.keys(left.clips).length === 0 ? session : changeVersions(session, (v) => {
+        if (!v.clips) return v
+        const { clips, ...rest } = v
+        const kept = clips.filter((c) => !left.clips[c.model]?.includes(c.kind))
+        return (kept.length ? { ...rest, clips: kept } : rest) as typeof v
+      }),
     count: (session) =>
       Promise.resolve({
         clips: versionsOf(session).reduce((n, v) => n + (v.clips?.length ?? 0), 0),
@@ -81,6 +182,15 @@ export const PARTS: Record<SessionPart, PartDeclaration> = {
   },
   '3d': {
     owns: (path) => SCENE_FILE.test(path),
+    files: (session) =>
+      versionsOf(session).flatMap((v) => [v.scene?.file, v.figure?.file, v.lito?.file])
+        .filter((f): f is string => !!f),
+    leaveOut: (session, left) =>
+      left.threeD.length === 0 ? session : changeVersions(session, (v) => {
+        const kept = { ...v }
+        for (const kind of left.threeD) delete kept[THREE_D_FIELDS[kind]]
+        return kept
+      }),
     count: (session) =>
       Promise.resolve({
         threeD: versionsOf(session).reduce(
@@ -91,6 +201,26 @@ export const PARTS: Record<SessionPart, PartDeclaration> = {
   },
   sound: {
     owns: (path) => AUDIO_FILE.test(path) || MUSIC_FILE.test(path),
+    // A line's `ref` names the voice it was spoken in, not a file of its own.
+    files: (session) =>
+      session.kind !== 'roleplay' ? [] : [
+        ...session.frames.flatMap((f) => [f.speech?.file, f.thoughtSpeech?.file]),
+        session.voice?.ref,
+        ...session.cues.map((c) => c.track?.file),
+      ].filter((f): f is string => !!f),
+    leaveOut: (session, left) => {
+      if (session.kind !== 'roleplay' || left.sound.length === 0) return session
+      let s = session
+      if (left.sound.includes('speech')) {
+        s = { ...s, frames: s.frames.map(({ speech: _, thoughtSpeech: __, ...f }) => f) }
+      }
+      if (left.sound.includes('voices') && s.voice?.ref) {
+        const { ref: _, ...voice } = s.voice
+        s = { ...s, voice }
+      }
+      if (left.sound.includes('cues')) s = { ...s, cues: s.cues.map(({ track: _, ...c }) => c) }
+      return s
+    },
     count: (session) =>
       Promise.resolve(
         session.kind === 'roleplay'
@@ -106,6 +236,10 @@ export const PARTS: Record<SessionPart, PartDeclaration> = {
   },
   calls: {
     owns: (path) => CALL_LOG.test(path),
+    // No record names a call log: they go together, or not at all.
+    files: () => [],
+    leaveOut: (session) => session,
+    allGone: (left) => left.calls,
     // Each log is a JSON array of calls; one that can't be read counts none.
     count: async (_session, paths, read) => {
       const logs = paths.filter((p) => CALL_LOG.test(p))

@@ -3,20 +3,45 @@
  * exporting a Session as a zip and importing one (`zip.ts`, `unzip.ts`).
  */
 import { dirname, join } from '@std/path'
-import { error, fromThisMachine, json, type Route } from '../http.ts'
-import { contentsOf, sizeOf } from '../sessionParts.ts'
+import { error, fromThisMachine, json, readJson, type Route } from '../http.ts'
+import { contentsOf, filesIn, sizeOf } from '../sessionParts.ts'
+import { goneWith, keepOptions, leftOutFrom, removeLeftOut, sizesIn } from '../keep.ts'
+import { sessionFile } from '../migrations/session/index.ts'
+import type { Session } from '../../shared/session.ts'
+import {
+  KEEP_ALL,
+  type KeepOptions,
+  type KeepPreview,
+  type LeftOut,
+  type Removed,
+} from '../../shared/keep.ts'
 import type { AppContext } from '../appContext.ts'
 import { isOpen } from '../jobs.ts'
 import { Refusal } from '../refusal.ts'
 import type { SessionContents, SessionSizes } from '../../shared/sessionContents.ts'
 import { exportName, type ImportedSession } from '../../shared/sessionZip.ts'
-import { EXPORT_ZIP, exportedFiles, zipFiles } from './zip.ts'
+import { EXPORT_ZIP, exportedFiles, SESSION_FILE, zipFiles } from './zip.ts'
 import { importZip } from './unzip.ts'
 import { freeSpace as osFreeSpace } from './freeSpace.ts'
 
 export function managerRoutes(ctx: AppContext): Route[] {
   const { deps, jobs, active, loadSession } = ctx
   const freeSpace = deps.freeSpace ?? osFreeSpace
+  /** Refused while work runs in the Session: what it saves could be left out, or vanish. */
+  const refuseWhileWorking = (session: Session, doing: string) => {
+    if (active.has(session.id) || jobs.list(session.id).some(isOpen)) {
+      throw new Refusal(
+        `Work is running in this Session: wait for it, or cancel it, to ${doing}`,
+        409,
+      )
+    }
+  }
+  /** What the ticks leave out of a Session now: its files, and what goes and its bytes. */
+  async function choice(session: Session, left: LeftOut) {
+    const files = await filesIn(deps.sessions.dir(session.id))
+    const sizes = sizesIn(files)
+    return { sizes, ...goneWith(session, left, files.map((f) => f.path), sizes) }
+  }
 
   return [
     // Each Session's size on disk: worked out each time it's asked.
@@ -34,6 +59,48 @@ export function managerRoutes(ctx: AppContext): Route[] {
       return json(
         (await contentsOf(session, deps.sessions.dir(session.id))) satisfies SessionContents,
       )
+    }],
+
+    // What there is to keep or leave out of the Session, each with its size on its own.
+    ['GET', new URLPattern({ pathname: '/api/sessions/:id/keep' }), async (_req, p) => {
+      const session = await loadSession(p.id!)
+      const dir = deps.sessions.dir(session.id)
+      const { counts } = await contentsOf(session, dir)
+      return json(
+        keepOptions(session, sizesIn(await filesIn(dir)), counts.calls) satisfies KeepOptions,
+      )
+    }],
+
+    // What a choice of ticks (`{ leftOut }`) would keep and leave out; nothing changes.
+    ['POST', new URLPattern({ pathname: '/api/sessions/:id/keep' }), async (req, p) => {
+      const body = await readJson(req) as { leftOut?: unknown } | undefined
+      const left = leftOutFrom(body?.leftOut)
+      const session = await loadSession(p.id!)
+      const dir = deps.sessions.dir(session.id)
+      const { sizes, size } = await choice(session, left)
+      const total = (await exportedFiles(dir)).reduce((n, f) => n + f.size, 0)
+      // The pictures' ticks alone, for what's left of what was made from them.
+      const after = goneWith(session, { ...KEEP_ALL, ...picturesOf(left) }, [], sizes).after
+      const { counts } = await contentsOf(session, dir)
+      return json(
+        {
+          kept: total - size,
+          leftOut: size,
+          after: keepOptions(after, sizes, counts.calls),
+        } satisfies KeepPreview,
+      )
+    }],
+
+    // Remove the rest: leaves out of the Session itself what `{ leftOut }` names, its records and
+    // its files, for good. Refused while work runs in it.
+    ['POST', new URLPattern({ pathname: '/api/sessions/:id/remove' }), async (req, p) => {
+      const body = await readJson(req) as { leftOut?: unknown } | undefined
+      const left = leftOutFrom(body?.leftOut)
+      return await ctx.locked(p.id!, 'remove', async (session) => {
+        refuseWhileWorking(session, 'remove from it')
+        const files = await filesIn(deps.sessions.dir(session.id))
+        return json((await removeLeftOut(deps.sessions, session, left, files)) satisfies Removed)
+      })
     }],
 
     // Shows the Session's folder in the machine's file manager: only for a browser on that
@@ -54,19 +121,36 @@ export function managerRoutes(ctx: AppContext): Route[] {
 
     // The Session as a zip, written as it downloads. Refused while work runs on it; its lock is
     // held until the download ends or is dropped, so nothing changes mid-zip.
-    ['GET', new URLPattern({ pathname: '/api/sessions/:id/export' }), async (_req, p) => {
-      const session = await loadSession(p.id!)
-      if (active.has(session.id) || jobs.list(session.id).some(isOpen)) {
-        return error(
-          'Work is running in this Session: wait for it, or cancel it, to export it',
-          409,
-        )
+    // `?leave=`, what's left out (`LeftOut`, as JSON), exports what's ticked: its text as it would
+    // be left, and only the files kept.
+    ['GET', new URLPattern({ pathname: '/api/sessions/:id/export' }), async (req, p) => {
+      const leave = new URL(req.url).searchParams.get('leave')
+      let left: LeftOut | null = null
+      if (leave !== null) {
+        let parsed: unknown
+        try {
+          parsed = JSON.parse(leave)
+        } catch {
+          throw new Refusal("What's left out isn't JSON", 400)
+        }
+        left = leftOutFrom(parsed)
       }
+      const session = await loadSession(p.id!)
+      refuseWhileWorking(session, 'export it')
       const busy = ctx.lock(session.id, 'export')
       if (busy) return busy
       try {
         const dir = deps.sessions.dir(session.id)
-        const { stream, done } = zipFiles(dir, await exportedFiles(dir), EXPORT_ZIP)
+        let files: { path: string; data?: Uint8Array<ArrayBuffer> }[] = await exportedFiles(dir)
+        if (left) {
+          const { after, gone } = await choice(session, left)
+          const goes = new Set(gone)
+          const text = JSON.stringify(sessionFile.stamp(after), null, 2) + '\n'
+          files = files.filter((f) => !goes.has(f.path)).map((f) =>
+            f.path === SESSION_FILE ? { ...f, data: new TextEncoder().encode(text) } : f
+          )
+        }
+        const { stream, done } = zipFiles(dir, files, EXPORT_ZIP)
         done.finally(() => ctx.unlock(session.id))
         const name = exportName(session.title, session.id)
         return new Response(stream, {
@@ -119,3 +203,11 @@ export function managerRoutes(ctx: AppContext): Route[] {
     }],
   ]
 }
+
+/** The pictures' ticks of a choice, alone. */
+const picturesOf = ({ imageModels, upscales, edits, chosenOnly }: LeftOut): Partial<LeftOut> => ({
+  imageModels,
+  upscales,
+  edits,
+  chosenOnly,
+})

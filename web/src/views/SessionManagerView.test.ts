@@ -17,6 +17,8 @@ vi.mock('../api', async (importOriginal) => ({
   getSessionsFolder: vi.fn(),
   getSessionContents: vi.fn(),
   importSession: vi.fn(),
+  getKeepOptions: vi.fn(),
+  getSettingsOptions: vi.fn(),
 }))
 
 const summary = (id: string, extra: Partial<api.SessionSummary> = {}): api.SessionSummary => ({
@@ -54,6 +56,20 @@ beforeEach(() => {
     folders: [{ path: '/app/sessions', count: 3, default: true }],
     here: true,
     os: 'mac',
+  })
+  vi.mocked(api.getSettingsOptions).mockResolvedValue(
+    { imageModels: {}, videoModels: [] } as unknown as api.SettingsOptions,
+  )
+  vi.mocked(api.getKeepOptions).mockResolvedValue({
+    imageModel: 'qwen',
+    imageModels: [],
+    upscales: { count: 0, size: 0 },
+    edits: { count: 0, size: 0 },
+    chosen: { count: 0, size: 0 },
+    clips: [],
+    threeD: [],
+    sound: [],
+    calls: { count: 0, size: 0 },
   })
   vi.mocked(api.getSessionContents).mockResolvedValue({
     size: 1,

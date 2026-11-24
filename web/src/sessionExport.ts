@@ -1,4 +1,4 @@
-import { ApiError, exportUrl } from './api'
+import { ApiError, exportUrl, type LeftOut } from './api'
 
 /** The browser's Save dialog for a file it then writes into (Chrome and Edge have it). */
 interface SavePicker {
@@ -18,7 +18,7 @@ export const canPickFile = () => 'showSaveFilePicker' in globalThis
 export type ExportEnd = 'saved' | 'download' | 'cancelled'
 
 /**
- * Exports Session `id` as a zip named `name`. Where the browser has a Save dialog, the zip is
+ * Exports Session `id` as a zip named `name`, all of it, or without what `leftOut` names. Where the browser has a Save dialog, the zip is
  * streamed into the file picked, saying how much is written (`onWritten`), and `signal` stops it,
  * the file left as it was; elsewhere it's a plain download, which the browser shows itself.
  */
@@ -27,9 +27,11 @@ export async function exportSession(
   name: string,
   onWritten: (bytes: number) => void,
   signal: AbortSignal,
+  leftOut?: LeftOut,
 ): Promise<ExportEnd> {
+  const url = exportUrl(id, leftOut)
   if (!canPickFile()) {
-    const link = Object.assign(document.createElement('a'), { href: exportUrl(id), download: name })
+    const link = Object.assign(document.createElement('a'), { href: url, download: name })
     link.click()
     return 'download'
   }
@@ -43,7 +45,7 @@ export async function exportSession(
     if ((err as Error).name === 'AbortError') return 'cancelled'
     throw err
   }
-  const res = await fetch(exportUrl(id), { signal })
+  const res = await fetch(url, { signal })
   if (!res.ok || !res.body) {
     const body = await res.json().catch(() => ({}))
     throw new ApiError(body.error ?? `The export failed: ${res.status}`, res.status)

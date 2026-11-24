@@ -13,13 +13,17 @@ import {
   getSession,
   getSizes,
   importedIn,
+  keepOptionsIn,
   pictureOf,
+  previewIn,
   refusalIn,
+  removedIn,
   settled,
   setup,
 } from '../appTesting.ts'
 import { fakeImageGenerator, withTempDir } from '../testing.ts'
 import { sessionFile } from '../migrations/session/index.ts'
+import { KEEP_ALL } from '../../shared/keep.ts'
 
 /** A zip made by hand: each entry's name and text, or its text and Unix mode (a link). */
 async function handMade(entries: Record<string, string | { text: string; unixMode: number }>) {
@@ -254,5 +258,64 @@ Deno.test('An export is refused while work runs in the Session', () =>
     const res = await app.call('GET', '/api/sessions/s1/export')
     assertEquals(res.status, 409)
     assertEquals((await refusalIn(res)).error.startsWith('Work is running'), true)
+    await (await app.call('DELETE', `/api/sessions/s1/jobs/${job.id}`)).body?.cancel()
+  }))
+
+Deno.test('An export of what is ticked leaves out the files, and its text, of what is not', () =>
+  withTempDir(async (root) => {
+    const app = await chainOfTwo(root)
+    await Deno.mkdir(join(root, 's1', 'calls'))
+    await Deno.writeTextFile(join(root, 's1', 'calls', 'frame-1.json'), '[{}]')
+    const session = await getSession(app.call, 'chain')
+    const model = session.settings.imageModel
+    const leave = { ...KEEP_ALL, imageModels: [model], calls: true }
+    const res = await app.call(
+      'GET',
+      `/api/sessions/s1/export?leave=${encodeURIComponent(JSON.stringify(leave))}`,
+    )
+    const zip = await exported(res)
+    assertEquals(await namesIn(zip), ['session.json'])
+    const imported = await importedIn(await sendZip(app.handler, zip))
+    const copy = await getSession(app.call, 'chain', imported.id)
+    assertEquals(copy.frames.map((f) => f.pictures), [[], []])
+    // The Session itself is as it was.
+    assertEquals((await getSession(app.call, 'chain')).frames, session.frames)
+    const bad = await app.call('GET', '/api/sessions/s1/export?leave=nope')
+    assertEquals(bad.status, 400)
+    await bad.body?.cancel()
+  }))
+
+Deno.test('A preview says what a choice keeps and leaves out, and Remove the rest frees just that', () =>
+  withTempDir(async (root) => {
+    const app = await chainOfTwo(root)
+    const options = await keepOptionsIn(await app.call('GET', '/api/sessions/s1/keep'))
+    assertEquals(options.imageModels.length, 1)
+    const [only] = options.imageModels
+    const leftOut = { ...KEEP_ALL, imageModels: [only.model] }
+    const preview = await previewIn(await app.call('POST', '/api/sessions/s1/keep', { leftOut }))
+    assertEquals(preview.leftOut, only.size)
+    assertEquals(preview.after.imageModels, [])
+    const before = (await getContents(app.call)).parts.pictures
+    const removed = await removedIn(await app.call('POST', '/api/sessions/s1/remove', { leftOut }))
+    assertEquals(removed.freed, only.size)
+    assertEquals(removed.session.frames.map((f) => f.pictures), [[], []])
+    // Its pictures' bytes went, all of them; the text shrank too, by the records that went.
+    assertEquals([before, (await getContents(app.call)).parts.pictures], [only.size, 0])
+    const bad = await app.call('POST', '/api/sessions/s1/remove', { leftOut: { edits: true } })
+    assertEquals(bad.status, 400)
+    await bad.body?.cancel()
+  }))
+
+Deno.test('Remove the rest is refused while work runs in the Session', () =>
+  withTempDir(async (root) => {
+    await chainOfTwo(root)
+    const app = setup({ root, imageGenerator: fakeImageGenerator({ hang: true }) })
+    const jobs = await app.call('POST', '/api/sessions/s1/jobs', { kind: 'render', frameIndex: 0 })
+    const [job] = await jobs.json()
+    const res = await app.call('POST', '/api/sessions/s1/remove', {
+      leftOut: { ...KEEP_ALL, calls: true },
+    })
+    assertEquals(res.status, 409)
+    await res.body?.cancel()
     await (await app.call('DELETE', `/api/sessions/s1/jobs/${job.id}`)).body?.cancel()
   }))
