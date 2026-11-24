@@ -25,8 +25,20 @@ A fact of a Scenario that holds whatever anyone does: about one Person (who is s
 _Avoid_: Rule, Limit, constraint, lore
 
 **Session**:
-One piece of work: a sequence of Frames started from a Brief, as a Chain, a Storyboard or a Roleplay. It can be left and returned to at any time, and lasts until deleted.
+One piece of work: a sequence of Frames started from a Brief, as a Chain, a Storyboard or a Roleplay. It has a title of its own, from its Scenario or the start of its Brief, which the player can rename. It can be left and returned to at any time, and lasts until deleted.
 _Avoid_: Game, run, project
+
+**Session manager**:
+The page for keeping Sessions: what each holds and how big it is, renaming, deleting, exporting and importing, removing parts of one in place, and the Session folder they're kept in.
+_Avoid_: Library, file manager, browser
+
+**Session export**:
+A zip of one Session, all of it or the parts ticked, which can always be imported. Unlike Compare's export, a page of pictures to look at, it's for the app to read back.
+_Avoid_: Backup, archive, download
+
+**Session import**:
+A Session export unpacked into the Session folder as a new Session, with an id of its own.
+_Avoid_: Restore, upload
 
 **Chain**:
 A kind of Session in which each new Frame is made from the previous Frame's Image Prompt by an Action.

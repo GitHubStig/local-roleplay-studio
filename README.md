@@ -94,7 +94,7 @@ ollama serve        # if Ollama isn't already running
 deno task dev       # starts the API on :8787 and the web app on :5180
 ```
 
-The same on Windows, in PowerShell. Open <http://localhost:5180>, go to **Settings**, choose a Text Model (on another machine: add it under Machines first) and, for pictures, an Image Model (on Windows, add your ComfyUI on the Machines tab first; it must be running), then go **Home** (click **Local Roleplay Studio**) and press **Start Session**. Your Sessions are listed on Home; open one to carry on, or delete it.
+The same on Windows, in PowerShell. Open <http://localhost:5180>, go to **Settings**, choose a Text Model (on another machine: add it under Machines first) and, for pictures, an Image Model (on Windows, add your ComfyUI on the Machines tab first; it must be running), then go **Home** (click **Local Roleplay Studio**) and press **Start Session**. Your Sessions are listed on Home; open one to carry on. The Session manager (the folder in the rail) shows how big each is, and renames, deletes, exports and imports them.
 
 ## Tasks
 
@@ -186,7 +186,7 @@ docs/             Design, models, research, Scenario format, ADRs and open threa
 CONTEXT.md        Glossary of the game's terms
 ```
 
-Sessions stay on disk until you delete them from Home (or remove their folder in `sessions/` while no Frame is running).
+Sessions stay on disk until you delete them on the Session manager (or remove their folder in `sessions/` while no Frame is running). A Session exported there as a zip can be imported on another machine.
 
 `session.json`, `settings.json`, `queue.json` and each Scenario file say which version they are. One from an older app is brought up to date as it's read, and saved at the new version when the app next writes it, so it can't then be opened by the older app; one from a newer app is refused rather than misread ([ADR 0041](docs/adr/0041-data-files-are-versioned-and-migrated.md)).
 
