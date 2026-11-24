@@ -56,5 +56,4 @@ ComfyUI. Settings' ComfyUI check also looks for the pack's nodes (`/object_info`
 - Its "unload" moves Higgs to the CPU: ~8 GB of ComfyUI's RAM until it restarts, which a 16 GB PC
   feels. Its whispering style pulls a man's voice up to a woman's pitch, so the ComfyUI backend
   whispers with `pitch_low` (docs/research/comfyui.md).
-- Higgs's tags are written in two places, `directed()` in the voice service and `higgsText` in
-  `voice/comfyui/`; a change to one belongs in the other.
+- Higgs's tags are written once, in `server/voice/higgs.ts`, for both engines (since 2026-11-24): the voice service speaks the text as the server sends it, and ComfyUI adds its low whisper and drops square brackets (`comfyuiText`). Before, they were written twice, in `serve.py` and in `voice/comfyui/`, and a fix to one was missed in the other.

@@ -10,6 +10,7 @@ import {
 } from '../../comfyui/client.ts'
 import type { ComfyFile } from '../../../shared/comfyui.ts'
 import type { SpeakRequest, VoiceEngine } from '../voice.ts'
+import { higgsText, WHISPER } from '../higgs.ts'
 
 /**
  * Voices from a ComfyUI server with TTS Audio Suite's custom nodes (installed through ComfyUI's
@@ -65,7 +66,7 @@ export function comfyuiVoiceEngine(opts: {
         const workflow = fillWorkflow(await voiceWorkflow('speak'), {
           ref: `${uploaded} [temp]`,
           refText: req.refText,
-          text: higgsText(req),
+          text: comfyuiText(req),
           seed: nodeSeed(req.seed),
         })
         await clip(base, workflow, req.out, signal)
@@ -91,27 +92,16 @@ const voiceWorkflow = (id: 'design' | 'speak') =>
 /** A seed the nodes take: 1 to 2³²−1, as 0 means "random" to them. */
 const nodeSeed = (seed: number) => (Math.abs(Math.trunc(seed)) % 0xffffffff) + 1
 
-// A sound is its tag followed at once by the sound itself, as Higgs's model card says.
-const SOUNDS = { sigh: 'Uh', laughter: 'Heh', cough: 'Ahem' } as const
-const PACES = { slow: '<|prosody:speed_slow|>', fast: '<|prosody:speed_fast|>' } as const
 /**
  * A whisper, held low: through TTS Audio Suite (PyTorch), the whispering style alone took a man's
  * voice up to a woman's pitch on every seed (198–213 Hz against 81–102 plain, 2026-10-08), unlike
  * mlx-audio's Higgs on the Mac; with `pitch_low` it stayed his (72–73 Hz).
  */
-const WHISPER = '<|style:whispering|><|prosody:pitch_low|>'
+const WHISPER_LOW = `${WHISPER}<|prosody:pitch_low|>`
 
 /**
- * The line with Higgs's tags for its pace and sound, as the voice service writes them
- * (`directed` in `python/voice/serve.py`): a slow line also pauses between sentences, and a
- * whispered one (a thought) is hushed, still in the voice (`WHISPER`: held low here). Square
- * brackets go: TTS Audio Suite reads `[Name]` as a change of speaker.
+ * The line with Higgs's tags (`higgs.ts`), its whisper held low, and without square brackets:
+ * TTS Audio Suite reads `[Name]` as a change of speaker.
  */
-export function higgsText(req: Pick<SpeakRequest, 'text' | 'pace' | 'sound' | 'whisper'>): string {
-  let text = req.text.replace(/[[\]]/g, '')
-  if (req.pace === 'slow') text = text.replace(/([.!?…]) (?=\S)/g, '$1 <|prosody:pause|>')
-  const sound = req.sound && req.sound !== 'none' ? req.sound : undefined
-  const before = sound ? `<|sfx:${sound}|>${SOUNDS[sound]} ` : ''
-  const pace = req.pace === 'slow' || req.pace === 'fast' ? PACES[req.pace] : ''
-  return before + (req.whisper ? WHISPER : '') + pace + text
-}
+export const comfyuiText = (req: Pick<SpeakRequest, 'text' | 'pace' | 'sound' | 'whisper'>) =>
+  higgsText({ ...req, text: req.text.replace(/[[\]]/g, '') }, WHISPER_LOW)

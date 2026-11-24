@@ -3,7 +3,7 @@ import { join } from '@std/path'
 import { withTempDir } from '../../testing.ts'
 import { fillWorkflow, loadWorkflow } from '../../comfyui/client.ts'
 import { fakeComfyUI } from '../../comfyui/testing.ts'
-import { comfyuiVoiceEngine, higgsText } from './comfyui.ts'
+import { comfyuiText, comfyuiVoiceEngine } from './comfyui.ts'
 
 const CLIP = {
   filename: 'ComfyUI_temp_abcde_00001_.flac',
@@ -100,16 +100,13 @@ Deno.test("ComfyUI's error fails the voice, and leaves no file", () =>
     }
   }))
 
-Deno.test("Higgs's tags, as the voice service writes them: pace, sound, whisper", () => {
-  assertEquals(higgsText({ text: 'Fine.' }), 'Fine.')
-  assertEquals(higgsText({ text: 'Fine.', pace: 'fast' }), '<|prosody:speed_fast|>Fine.')
+Deno.test('On ComfyUI a whisper is held low, and square brackets go', () => {
   assertEquals(
-    higgsText({ text: 'Stay away from her.', whisper: true, pace: 'normal', sound: 'none' }),
+    comfyuiText({ text: 'Stay away from her.', whisper: true, pace: 'normal', sound: 'none' }),
     '<|style:whispering|><|prosody:pitch_low|>Stay away from her.',
   )
-  assertEquals(higgsText({ text: 'Heavy.', sound: 'laughter' }), '<|sfx:laughter|>Heh Heavy.')
   // TTS Audio Suite reads [Name] as a change of speaker.
-  assertEquals(higgsText({ text: 'Ask [the keeper].' }), 'Ask the keeper.')
+  assertEquals(comfyuiText({ text: 'Ask [the keeper].' }), 'Ask the keeper.')
 })
 
 Deno.test('Both voice workflows load, and fill with nothing left over', async () => {

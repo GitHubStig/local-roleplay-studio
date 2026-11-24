@@ -132,7 +132,7 @@ The renders below were cloned in-process from the same reference clip (a designe
 
 So there are two triggers, and both need the slow pace:
 
-- **A pause after a lone interjection.** The service paused after every sentence of a slow line, "Ah." included. With no pause after a one-word sentence, the "Ah." and "Hm." lines ran on in 0 of 24 renders (6 of 24 before). That's now how `serve.py` places pauses.
+- **A pause after a lone interjection.** The service paused after every sentence of a slow line, "Ah." included. With no pause after a one-word sentence, the "Ah." and "Hm." lines ran on in 0 of 24 renders (6 of 24 before). That's now how pauses are placed (`server/voice/higgs.ts`, for both engines). On the PC's ComfyUI, the slow "Ah." line came out 6.6 s long at seed 3 (one render, 2026-11-24); the seeds there aren't the Mac's, so the 12-seed runs weren't repeated.
 - **The sigh's "Uh" straight before "Ah."** (`<|sfx:sigh|>Uh <|prosody:speed_slow|>Ah. …`), with or without pauses: 2–4 of 12. Moving the speed tag in front of the sigh didn't help, and made the cellar line worse. Not fixed.
 
 Not known: how often either comes up in play, since one reference clip and two lines were tried, and none of the run-ons was listened to.

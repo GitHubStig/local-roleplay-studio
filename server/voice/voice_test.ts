@@ -9,13 +9,17 @@ import { voiceService } from './voice.ts'
  */
 const STUB = `
 const port = Number(Deno.args[0])
-Deno.serve({ port, hostname: '127.0.0.1', onListen() {} }, (req) => {
+let last = null
+Deno.serve({ port, hostname: '127.0.0.1', onListen() {} }, async (req) => {
   const path = new URL(req.url).pathname
   if (path === '/quit') setTimeout(() => Deno.exit(0), 50)
   if (path === '/health') return Response.json({ ok: true })
-  return req.headers.get('content-type') === 'application/json'
-    ? Response.json({ seconds: 0 })
-    : Response.json({ error: 'Send JSON' }, { status: 415 })
+  if (path === '/last') return Response.json(last)
+  if (req.headers.get('content-type') !== 'application/json') {
+    return Response.json({ error: 'Send JSON' }, { status: 415 })
+  }
+  last = await req.json()
+  return Response.json({ seconds: 0 })
 })
 `
 
@@ -51,8 +55,16 @@ Deno.test(
 
       await voice.speak(req, signal)
       assertEquals(started.length, 1)
-      await voice.speak(req, signal)
+      // The line goes with Higgs's tags written in, and nothing else of how it's spoken.
+      await voice.speak({ ...req, pace: 'slow', sound: 'sigh', whisper: false }, signal)
       assertEquals(started.length, 1)
+      assertEquals(await (await fetch(`http://127.0.0.1:${port}/last`)).json(), {
+        text: '<|sfx:sigh|>Uh <|prosody:speed_slow|>Hi.',
+        ref: '/r.wav',
+        refText: 'Ref.',
+        seed: 1,
+        out: '/o.wav',
+      })
 
       // It goes away (here: stopped); the next call starts it again and succeeds.
       await stop(port)

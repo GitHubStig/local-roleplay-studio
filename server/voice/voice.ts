@@ -7,6 +7,7 @@ import { pythonScript, SHIPPED_PYTHON } from '../pythonTools.ts'
 import type { Backend } from '../../shared/backends.ts'
 import { track } from '../children.ts'
 import type { Delivery } from '../../shared/voice.ts'
+import { higgsText } from './higgs.ts'
 
 export interface DesignRequest {
   /** The voice, in words: age, pitch, texture, manner. */
@@ -198,7 +199,9 @@ export function voiceService(
     // Lines as MP3 (96 kbps, a quarter of the WAV); light enough to run beside the Text Model.
     profile: () => Promise.resolve({ ref: 'wav', speech: 'mp3', heavy: false }),
     design: (req, signal, onDownload) => call('/design', req, signal, onDownload),
-    speak: (req, signal, onDownload) => call('/speak', req, signal, onDownload),
+    // The service speaks the text as it comes, tags and all.
+    speak: ({ ref, refText, seed, out, ...line }, signal, onDownload) =>
+      call('/speak', { text: higgsText(line), ref, refText, seed, out }, signal, onDownload),
   }
 }
 

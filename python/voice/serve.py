@@ -14,7 +14,8 @@ localhost. Measured 2026-09-30 (docs/research/voices.md):
 - speak: Higgs TTS 3 clones that clip for each line. Without emotion or style tags and with
   steadier sampling it held the voice in 24 renders of 24; with emotion tags, in 6, drifting up
   to a woman's pitch. A line can come with a pace and a sound (a sigh, a laugh, a cough), which
-  held the voice too, and sounded better than plain to the player.
+  held the voice too, and sounded better than plain to the player. The server writes their tags
+  into the text (`server/voice/higgs.ts`, shared with ComfyUI), which is spoken as it comes.
 
 One model is loaded at a time, and unloaded after a while unused, so it doesn't sit on 7-10 GB of
 memory next to the Text Model and the Image Model. MLX keeps the working memory of each generation
@@ -31,7 +32,6 @@ import argparse
 import gc
 import json
 import os
-import re
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -125,35 +125,12 @@ def design(req):
                     text=req['text'], instruct=req['description'])
 
 
-# A sound is its tag followed at once by the sound itself, as Higgs's model card says.
-SOUNDS = {'sigh': 'Uh', 'laughter': 'Heh', 'cough': 'Ahem'}
-PACES = {'slow': '<|prosody:speed_slow|>', 'fast': '<|prosody:speed_fast|>'}
-
-
-def directed(text, pace=None, sound=None, whisper=False):
-    """
-    The line with Higgs's tags for its pace and sound; a slow line also pauses between sentences.
-    A whispered one (a Character's thought) is hushed and breathy, still in their voice: tested on
-    twelve thoughts, it stayed in each Character's pitch range, unlike the emotion tags.
-
-    No pause follows a one-word sentence: on a slow line, "Ah." or "Hm." and then a pause sent
-    Higgs into a loop of buzz or silence until its 82 s cap in 6 of 24 seeds, and in none without
-    that pause (2026-11-24, docs/research/voices.md).
-    """
-    if pace == 'slow':
-        sentences = re.split(r'(?<=[.!?…]) (?=\S)', text)
-        text = ''.join(s + (' ' if len(s.split()) == 1 else ' <|prosody:pause|>')
-                       for s in sentences[:-1]) + sentences[-1]
-    before = f'<|sfx:{sound}|>{SOUNDS[sound]} ' if sound in SOUNDS else ''
-    return before + ('<|style:whispering|>' if whisper else '') + PACES.get(pace, '') + text
-
-
 def speak(req):
     ref_path, out = under_root(req['ref']), under_root(req['out'])
     m = model(SPEAK_MODEL)
     ref = load_audio(ref_path, sample_rate=m.sample_rate)
-    text = directed(req['text'], req.get('pace'), req.get('sound'), req.get('whisper', False))
-    return generate(m, out, req.get('seed', 0), text=text, ref_audio=ref,
+    # The text comes with Higgs's tags for its pace, sound and whisper (server/voice/higgs.ts).
+    return generate(m, out, req.get('seed', 0), text=req['text'], ref_audio=ref,
                     ref_text=req['refText'], **SPEAK_SAMPLING)
 
 
