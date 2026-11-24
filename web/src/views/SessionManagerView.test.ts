@@ -16,6 +16,7 @@ vi.mock('../api', async (importOriginal) => ({
   getSessionSizes: vi.fn(),
   getSessionsFolder: vi.fn(),
   getSessionContents: vi.fn(),
+  importSession: vi.fn(),
 }))
 
 const summary = (id: string, extra: Partial<api.SessionSummary> = {}): api.SessionSummary => ({
@@ -134,5 +135,64 @@ describe('SessionManagerView', () => {
     expect(wrapper.find('[data-session-list]').exists()).toBe(false)
     expect(wrapper.find('[data-session-pane]').exists()).toBe(true)
     expect(wrapper.find('[data-back-to-list]').attributes('href')).toBe('/sessions')
+  })
+
+  /** Picks a zip in the page's file input, as the player would. */
+  async function pickZip(
+    wrapper: Awaited<ReturnType<typeof shown>>['wrapper'],
+    name = 'night-train.zip',
+  ) {
+    const input = wrapper.find<HTMLInputElement>('[data-import-file]')
+    Object.defineProperty(input.element, 'files', {
+      value: [new File(['zip'], name)],
+      configurable: true,
+    })
+    await input.trigger('change')
+  }
+
+  it('imports a zip, saying how much is sent, then lists the new Session and selects it', async () => {
+    let sent!: (n: number, total: number) => void
+    let answer!: (s: api.ImportedSession) => void
+    vi.mocked(api.importSession).mockImplementation((_zip, onSent) => {
+      sent = onSent
+      return new Promise((r) => (answer = r))
+    })
+    const { wrapper, router } = await shown()
+    await pickZip(wrapper)
+    sent(400_000_000, 1_100_000_000)
+    await flushPromises()
+    expect(wrapper.find('[data-importing]').text()).toContain('uploading · 400 MB of 1.1 GB')
+    sent(1_100_000_000, 1_100_000_000)
+    await flushPromises()
+    expect(wrapper.find('[data-importing]').text()).toContain('unpacking')
+    vi.mocked(api.listSessions).mockResolvedValue([summary('Night train', { kind: 'roleplay' })])
+    answer({ id: 'Night train', kind: 'roleplay', title: 'Night train' })
+    await flushPromises()
+    expect(wrapper.find('[data-importing]').exists()).toBe(false)
+    expect(router.currentRoute.value.query.id).toBe('Night train')
+    expect(wrapper.find('[data-session-pane] [data-session-title]').text()).toBe('Night train')
+  })
+
+  it('says why an import was refused, and says nothing when it was cancelled', async () => {
+    vi.mocked(api.importSession).mockRejectedValueOnce(
+      new api.ApiError("This isn't a Session export", 400),
+    )
+    const { wrapper } = await shown()
+    await pickZip(wrapper, 'holiday.zip')
+    await flushPromises()
+    expect(wrapper.find('[data-import-error]').text()).toBe(
+      "Couldn't import holiday.zip: This isn't a Session export",
+    )
+    vi.mocked(api.importSession).mockImplementationOnce((_zip, _sent, signal) =>
+      new Promise((_r, reject) =>
+        signal.addEventListener('abort', () => reject(new DOMException('cancelled', 'AbortError')))
+      )
+    )
+    await pickZip(wrapper)
+    await flushPromises()
+    await wrapper.find('[data-import-cancel]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-importing]').exists()).toBe(false)
+    expect(wrapper.find('[data-import-error]').exists()).toBe(false)
   })
 })

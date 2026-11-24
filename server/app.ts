@@ -1,5 +1,6 @@
 import { Refusal } from './refusal.ts'
-import { error, isJson, json, noteClient, type Route } from './http.ts'
+import { error, isJson, isZip, json, noteClient, type Route } from './http.ts'
+import { managerRoutes } from './manager/routes.ts'
 import type { ImageGenerator } from './images/imageGenerator.ts'
 import { IMAGE_BACKENDS, type ImageBackendKind } from '../shared/images.ts'
 import type { ComfyStatus, ComfyUses } from '../shared/comfyui.ts'
@@ -94,6 +95,8 @@ export interface AppDeps {
   pickFolder?: () => Promise<string | null>
   /** Shows a folder in the machine's file manager (Finder, Explorer); left out, it can't. */
   openFolder?: (path: string) => Promise<void>
+  /** Bytes free on the drive holding a folder (`manager/freeSpace.ts` unless given). */
+  freeSpace?: (path: string) => Promise<number | null>
   /** The Text Model as a Chain or Storyboard uses it. */
   textModel: (choice: TextChoice) => TextModel
   imageGenerator: ImageGenerator
@@ -160,6 +163,7 @@ export type LockKind =
   | 'copy'
   | 'clip-prompt'
   | 'score'
+  | 'export'
 
 export function createHandler(
   deps: AppDeps,
@@ -199,6 +203,7 @@ export function createHandler(
     copy: 'This Storyboard is being made into a Chain',
     'clip-prompt': "A clip's prompt is being written",
     score: 'The Score is being written',
+    export: 'This Session is being exported: wait for the download to finish, or cancel it',
   }
 
   /** Takes the Session's lock, or returns a 409 saying what holds it. */
@@ -535,6 +540,8 @@ export function createHandler(
   /** What each part's routes are lent (`appContext.ts`). */
   const ctx: AppContext = {
     deps,
+    lock,
+    unlock,
     jobs,
     active,
     previews,
@@ -566,6 +573,7 @@ export function createHandler(
           (await deps.sessions.list()).some((s) => jobs.list(s.id).some(isOpen)),
       })
       : []),
+    ...managerRoutes(ctx),
     ...clipRoutes({
       locked,
       stream,
@@ -610,6 +618,8 @@ export function createHandler(
       backendOf: jobBackendOf,
       videoModel,
       check: async (session, kind, index, pending, edit, clip) => {
+        // An export zips the Session as it is: nothing is queued on it meanwhile.
+        if (locks.get(session.id) === 'export') return error(BUSY_MESSAGES.export, 409)
         // Queued with what it writes, by its own route.
         if (kind === 'export') return error('Export from the Compare dialog', 400)
         const feature = JOB_FEATURE[kind]
@@ -705,7 +715,8 @@ export function createHandler(
     // Any web page can POST here without asking first, but only as a form or plain text: JSON
     // needs a preflight, which gets no CORS headers. So another site can't use the saved API key
     // (text-models), make Sessions or queue jobs.
-    if (req.method === 'POST' && !isJson(req)) return error('Send JSON', 415)
+    // A Session import is the one POST that sends a zip; its type needs a preflight too.
+    if (req.method === 'POST' && !isJson(req) && !isZip(req)) return error('Send JSON', 415)
     // The Limits switch follows Settings, so turning it off applies at once, mid-Session too.
     if (new URL(req.url).pathname.startsWith('/api/sessions')) {
       setLimitsEnabled((await deps.settings.load()).limits)

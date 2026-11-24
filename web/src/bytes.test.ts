@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bytes } from './bytes'
+import { bytes } from './api'
 
 describe('bytes', () => {
   it('reads as a size on disk, in thousands', () => {

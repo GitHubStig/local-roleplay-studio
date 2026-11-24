@@ -17,6 +17,10 @@ export const error = (message: string, status: number, extra: Omit<ErrorBody, 'e
 export const isJson = (req: Request) =>
   req.headers.get('content-type')?.split(';')[0].trim().toLowerCase() === 'application/json'
 
+/** Whether the request says its body is a zip (a Session import). */
+export const isZip = (req: Request) =>
+  req.headers.get('content-type')?.split(';')[0].trim().toLowerCase() === 'application/zip'
+
 /** The request's JSON body, or undefined if it has none or it isn't JSON. */
 export async function readJson(req: Request): Promise<unknown> {
   try {

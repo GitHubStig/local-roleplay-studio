@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { useMediaQuery } from '@vueuse/core'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, useTemplateRef } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
+  bytes,
   getSessionSizes,
+  importSession,
   getSessionsFolder,
   imageUrl,
   KIND_LABELS,
@@ -12,7 +14,6 @@ import {
   type SessionSummary,
 } from '../api'
 import { ago } from '../ago'
-import { bytes } from '../bytes'
 import Icon from '../components/Icon.vue'
 import SelectField from '../components/SelectField.vue'
 import SessionPane from '../components/SessionPane.vue'
@@ -96,6 +97,36 @@ async function deleted() {
   sizes.value = await getSessionSizes().catch(() => sizes.value)
 }
 
+/** An import under way: the zip's name, how much is sent, and how to stop it. */
+const importing = ref<{ name: string; sent: number; total: number; stop: AbortController } | null>(
+  null,
+)
+const importProblem = ref('')
+const zipPicker = useTemplateRef<HTMLInputElement>('zipPicker')
+
+/** Uploads the zip picked; once it's unpacked, the new Session is listed and selected. */
+async function startImport() {
+  const zip = zipPicker.value?.files?.[0]
+  if (zipPicker.value) zipPicker.value.value = ''
+  if (!zip) return
+  importProblem.value = ''
+  const stop = new AbortController()
+  importing.value = { name: zip.name, sent: 0, total: zip.size, stop }
+  try {
+    const made = await importSession(zip, (sent, total) => {
+      if (importing.value) Object.assign(importing.value, { sent, total })
+    }, stop.signal)
+    await load()
+    await select(made.id)
+  } catch (err) {
+    if ((err as Error).name !== 'AbortError') {
+      importProblem.value = `Couldn't import ${zip.name}: ${(err as Error).message}`
+    }
+  } finally {
+    importing.value = null
+  }
+}
+
 const sessionsLabel = (n: number) => `${n} ${n === 1 ? 'Session' : 'Sessions'}`
 </script>
 
@@ -117,7 +148,31 @@ const sessionsLabel = (n: number) => `${n} ${n === 1 ? 'Session' : 'Sessions'}`
         <h1 class="text-xl font-semibold">Session manager</h1>
         <SessionsFolderControl v-model:info="folder" class="min-w-0 flex-[1_1_28rem]" @moved="moved" />
         <span v-if="sessions?.length" class="text-sm text-muted" data-folder-total>{{ bytes(total) }} in this folder</span>
+        <input ref="zipPicker" type="file" accept=".zip,application/zip" class="hidden" data-import-file @change="startImport" />
+        <button
+          type="button"
+          class="rounded-lg bg-fg px-4 py-2 text-sm font-semibold text-canvas disabled:opacity-50 max-sm:w-full"
+          :disabled="importing !== null"
+          title="Import a Session export as a new Session in this folder"
+          data-import
+          @click="zipPicker?.click()"
+        >
+          Import a zip…
+        </button>
       </header>
+      <div v-if="importing" role="status" class="flex flex-wrap items-center gap-3 rounded-lg border border-line bg-surface px-3.5 py-2.5 text-sm" data-importing>
+        <span class="min-w-0 truncate">Importing <b>{{ importing.name }}</b></span>
+        <span class="h-1.5 min-w-24 flex-1 overflow-hidden rounded-full bg-canvas">
+          <span class="block h-full bg-info transition-[width]" :style="{ width: `${importing.total ? (importing.sent / importing.total) * 100 : 0}%` }" />
+        </span>
+        <span class="text-muted tabular-nums">
+          {{ importing.sent < importing.total ? `uploading · ${bytes(importing.sent)} of ${bytes(importing.total)}` : 'unpacking…' }}
+        </span>
+        <button type="button" class="rounded border border-line px-2.5 py-1 hover:border-fg" data-import-cancel @click="importing.stop.abort()">
+          Cancel
+        </button>
+      </div>
+      <p v-if="importProblem" class="text-sm text-danger" role="alert" data-import-error>{{ importProblem }}</p>
       <p v-if="listError || problem" class="text-danger" role="alert">Couldn't load the Sessions: {{ listError || problem }}</p>
 
       <div class="flex flex-wrap items-start gap-4">

@@ -8,6 +8,7 @@ import { dirSessionStore } from './session.ts'
 import type { Picture } from '../shared/pictures.ts'
 import type { Health, Loaded, Session, SessionSummary } from '../shared/session.ts'
 import type { SessionContents, SessionSizes } from '../shared/sessionContents.ts'
+import type { ImportedSession } from '../shared/sessionZip.ts'
 import type { ErrorBody } from '../shared/errors.ts'
 import type { Job, Queue } from '../shared/jobs.ts'
 import type { Expansion, Scenario, ScenarioList, Suggested } from '../shared/scenario.ts'
@@ -82,6 +83,7 @@ export interface SetupOptions {
   exports?: AppDeps['exports']
   web?: AppDeps['web']
   openFolder?: AppDeps['openFolder']
+  freeSpace?: AppDeps['freeSpace']
   /** The address requests come from; left out, none is known, as from nowhere on this machine. */
   client?: string
 }
@@ -118,6 +120,7 @@ export function setup(opts: SetupOptions = {}) {
     exports: opts.exports,
     web: opts.web,
     openFolder: opts.openFolder,
+    freeSpace: opts.freeSpace,
     newSessionId: () => `s${++sessionCount}`,
     randomSeed: () => 1234,
   })
@@ -253,6 +256,9 @@ export const getContents = async (call: Call, id = 's1') =>
   bodyOf<SessionContents>(await call('GET', `/api/sessions/${id}/contents`))
 export const getSizes = async (call: Call) =>
   bodyOf<SessionSizes>(await call('GET', '/api/session-sizes'))
+
+/** The Session a zip was imported as. */
+export const importedIn = (res: Response) => bodyOf<ImportedSession>(res)
 
 /** The folder the machine's own dialog picked. */
 export const pickedIn = (res: Response) => bodyOf<PickedFolder>(res)

@@ -5,8 +5,8 @@
  */
 import { extname, join } from '@std/path'
 import { serveFile } from '@std/http/file-server'
-import { error, fromThisMachine, json, readJson, type Route } from './http.ts'
-import { contentsOf, servedFile, sizeOf } from './sessionParts.ts'
+import { error, json, readJson, type Route } from './http.ts'
+import { servedFile } from './sessionParts.ts'
 import { crossedLimit } from './limits.ts'
 import { scenarioFrom, scenarioText } from './scenario.ts'
 import type { Scenario } from '../shared/scenario.ts'
@@ -17,7 +17,6 @@ import {
   SESSION_TITLE_LENGTH,
   type SessionSummary,
 } from '../shared/session.ts'
-import type { SessionContents, SessionSizes } from '../shared/sessionContents.ts'
 import { MAX_SEED, sessionSettingsOf, SIZE_PRESETS } from './settings.ts'
 import { roleplayExcerpt } from './roleplay/prompt.ts'
 import { restartRoleplay } from './roleplay/engine.ts'
@@ -175,39 +174,6 @@ export function sessionRoutes(ctx: AppContext): Route[] {
       })
       summaries.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
       return json(summaries)
-    }],
-
-    // Each Session's size on disk, for the Session manager: worked out each time it's asked.
-    ['GET', new URLPattern({ pathname: '/api/session-sizes' }), async () => {
-      const sessions = await deps.sessions.list()
-      const sizes = await Promise.all(sessions.map((s) => sizeOf(deps.sessions.dir(s.id))))
-      return json(
-        Object.fromEntries(sessions.map((s, i) => [s.id, sizes[i]])) satisfies SessionSizes,
-      )
-    }],
-
-    // What a Session holds, by part (`sessionParts.ts`): its size on disk and its counts.
-    ['GET', new URLPattern({ pathname: '/api/sessions/:id/contents' }), async (_req, p) => {
-      const session = await loadSession(p.id!)
-      return json(
-        (await contentsOf(session, deps.sessions.dir(session.id))) satisfies SessionContents,
-      )
-    }],
-
-    // Shows the Session's folder in the machine's file manager: only for a browser on that
-    // machine, which is where it opens.
-    ['POST', new URLPattern({ pathname: '/api/sessions/:id/open-folder' }), async (req, p) => {
-      if (!deps.openFolder) return error("This machine can't open a folder", 409)
-      if (!fromThisMachine(req)) {
-        return error("The folder opens on the server's machine, not this one", 409)
-      }
-      const session = await loadSession(p.id!)
-      try {
-        await deps.openFolder(deps.sessions.dir(session.id))
-      } catch (err) {
-        return error((err as Error).message, 500)
-      }
-      return new Response(null, { status: 204 })
     }],
 
     [

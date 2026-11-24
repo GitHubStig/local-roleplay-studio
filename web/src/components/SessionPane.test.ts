@@ -5,8 +5,10 @@ import * as api from '../api'
 import { ask } from '../ask'
 import { setCurrentSession, useCurrentSession } from '../composables/useCurrentSession'
 import SessionPane from './SessionPane.vue'
+import { exportSession } from '../sessionExport'
 
 vi.mock('../ask', () => ({ ask: vi.fn() }))
+vi.mock('../sessionExport', () => ({ exportSession: vi.fn(), canPickFile: () => true }))
 vi.mock('../api', async (importOriginal) => ({
   ...(await importOriginal<typeof api>()),
   getSessionContents: vi.fn(),
@@ -151,5 +153,46 @@ describe('SessionPane', () => {
     expect(api.deleteSession).not.toHaveBeenCalled()
     const busy = await shown({ session: session({ activity: 'image' }) })
     expect(busy.find('[data-delete]').attributes('disabled')).toBeDefined()
+  })
+
+  it('exports the Session under its name, saying how far it has got, and stops on Cancel', async () => {
+    let written!: (n: number) => void
+    let finish!: (end: 'saved' | 'cancelled') => void
+    vi.mocked(exportSession).mockImplementation((_id, _name, onWritten, signal) => {
+      written = onWritten
+      return new Promise((r) => {
+        finish = r
+        signal.addEventListener('abort', () => r('cancelled'))
+      })
+    })
+    const wrapper = await shown()
+    await wrapper.find('[data-export-start]').trigger('click')
+    expect(vi.mocked(exportSession).mock.calls[0].slice(0, 2)).toEqual([
+      'a',
+      'the-rain-soaked-tavern-a.zip',
+    ])
+    written(1_100_000_000)
+    await flushPromises()
+    expect(wrapper.find('[data-exporting]').text()).toContain('1.1 GB of about 2.2 GB')
+    expect(wrapper.find('[data-delete]').attributes('disabled')).toBeDefined()
+    await wrapper.find('[data-export-cancel]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-exporting]').exists()).toBe(false)
+    expect(wrapper.find('[data-export]').text()).not.toContain('Saved')
+
+    await wrapper.find('[data-export-start]').trigger('click')
+    finish('saved')
+    await flushPromises()
+    expect(wrapper.find('[data-export]').text()).toContain('Saved.')
+  })
+
+  it("won't export while work runs, and says why it failed", async () => {
+    const busy = await shown({ session: session({ activity: 'image' }) })
+    expect(busy.find('[data-export-start]').attributes('disabled')).toBeDefined()
+    vi.mocked(exportSession).mockRejectedValue(new Error('Work is running'))
+    const wrapper = await shown()
+    await wrapper.find('[data-export-start]').trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain("Couldn't export it: Work is running")
   })
 })

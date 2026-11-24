@@ -1,3 +1,5 @@
+/** Sizes on disk as people read them. Shared by the server and the web app: a plain function, no imports. */
+
 const UNITS = ['bytes', 'KB', 'MB', 'GB', 'TB'] as const
 
 /** A size on disk as people read it: "640 MB", "2.3 GB", in thousands, as Finder and Explorer's own. */

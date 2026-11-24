@@ -1,0 +1,18 @@
+import { assertEquals } from '@std/assert'
+import { freeSpace, parseFree } from './freeSpace.ts'
+
+Deno.test("Free space is read from df's table, or from the number Windows prints", () => {
+  const df = 'Filesystem 1024-blocks Used Available Capacity Mounted on\n' +
+    '/dev/disk3s5 971350180 512 43000000 52% /System/Volumes/Data\n'
+  assertEquals(parseFree(df, 'darwin'), 43000000 * 1024)
+  assertEquals(parseFree('44031000576\r\n', 'windows'), 44031000576)
+  assertEquals(parseFree('', 'windows'), null)
+  assertEquals(parseFree('nonsense', 'linux'), null)
+})
+
+Deno.test("This machine says how much room its temp folder's drive has", async () => {
+  const dir = await Deno.makeTempDir()
+  const free = await freeSpace(dir)
+  await Deno.remove(dir)
+  assertEquals(typeof free === 'number' && free > 0, true)
+})

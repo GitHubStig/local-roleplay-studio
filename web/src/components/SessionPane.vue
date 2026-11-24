@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, useTemplateRef, watch } from 'vue'
 import {
+  bytes,
+  exportName,
   getSessionContents,
   imageUrl,
   KIND_LABELS,
@@ -13,10 +15,10 @@ import {
   type SessionSummary,
 } from '../api'
 import { ago } from '../ago'
-import { bytes } from '../bytes'
 import { useRename } from '../composables/useRename'
 import { deleteSessionAsked } from '../composables/useDeleteSession'
 import { sessionPath } from '../sessionPath'
+import { canPickFile, exportSession } from '../sessionExport'
 import Icon from './Icon.vue'
 
 /**
@@ -63,6 +65,34 @@ async function openFolder() {
     await openSessionFolder(props.session.id)
   } catch (err) {
     problem.value = (err as Error).message
+  }
+}
+
+/** The export under way: bytes written so far, and how to stop it. */
+const exporting = ref<{ written: number; stop: AbortController } | null>(null)
+/** What the last export came to, said under its button. */
+const exported = ref('')
+async function startExport() {
+  problem.value = ''
+  exported.value = ''
+  const stop = new AbortController()
+  exporting.value = { written: 0, stop }
+  try {
+    const end = await exportSession(
+      props.session.id,
+      exportName(title.value, props.session.id),
+      (written) => exporting.value && (exporting.value.written = written),
+      stop.signal,
+    )
+    exported.value = end === 'saved'
+      ? 'Saved.'
+      : end === 'download'
+      ? 'Downloading: your browser shows how far it has got.'
+      : ''
+  } catch (err) {
+    problem.value = `Couldn't export it: ${(err as Error).message}`
+  } finally {
+    exporting.value = null
   }
 }
 
@@ -184,7 +214,7 @@ const counts = computed(() => {
             class="grid h-10 w-10 place-items-center rounded-lg border border-danger/40 text-lg text-danger hover:border-danger disabled:cursor-not-allowed disabled:border-line disabled:text-muted"
             :title="session.activity ? 'Work is running in this Session: wait for it, or cancel it, to delete it' : 'Delete Session…'"
             aria-label="Delete Session…"
-            :disabled="session.activity !== null"
+            :disabled="session.activity !== null || exporting !== null"
             data-delete
             @click="remove"
           >
@@ -220,5 +250,42 @@ const counts = computed(() => {
         <div class="text-xs text-muted">{{ c.label }}</div>
       </li>
     </ul>
+
+    <!-- The whole Session as a zip, streamed: into the file picked where the browser has a Save
+         dialog, with how far it's got; elsewhere a plain download. -->
+    <div class="flex flex-col gap-2 rounded-lg border border-line p-3" data-export>
+      <div v-if="exporting" role="status" class="flex flex-col gap-2" data-exporting>
+        <div class="flex items-center gap-3 text-sm">
+          <span class="min-w-0 flex-1">
+            Zipping into your file · {{ bytes(exporting.written) }}<template v-if="contents"> of about {{ bytes(contents.size) }}</template>
+          </span>
+          <button type="button" class="rounded border border-line px-2.5 py-1 hover:border-fg" data-export-cancel @click="exporting.stop.abort()">
+            Cancel
+          </button>
+        </div>
+        <span class="h-1.5 overflow-hidden rounded-full bg-canvas">
+          <span
+            class="block h-full bg-info transition-[width]"
+            :style="{ width: `${contents?.size ? Math.min(100, (exporting.written / contents.size) * 100) : 0}%` }"
+          />
+        </span>
+        <span class="text-xs text-muted">Nothing is kept on the server: it's zipped as it downloads. The Session can't change until it's done.</span>
+      </div>
+      <div v-else class="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <button
+          type="button"
+          class="rounded-lg bg-fg px-4 py-2 text-sm font-semibold text-canvas disabled:cursor-not-allowed disabled:opacity-50"
+          :disabled="session.activity !== null"
+          :title="session.activity ? 'Work is running in this Session: wait for it, or cancel it, to export it' : undefined"
+          data-export-start
+          @click="startExport"
+        >
+          Export as a zip
+        </button>
+        <span class="text-sm text-muted">
+          {{ exported || (canPickFile() ? 'All of it, into a file you pick, to import here or on another machine.' : 'All of it, as a download, to import here or on another machine.') }}
+        </span>
+      </div>
+    </div>
   </section>
 </template>

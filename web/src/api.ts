@@ -98,6 +98,9 @@ export {
   type SessionSizes,
 } from '../../shared/sessionContents.ts'
 import type { SessionContents, SessionSizes } from '../../shared/sessionContents.ts'
+export { bytes } from '../../shared/bytes.ts'
+export { exportName, type ImportedSession } from '../../shared/sessionZip.ts'
+import type { ImportedSession } from '../../shared/sessionZip.ts'
 import type { Health, Loaded, SessionSummary } from '../../shared/session.ts'
 import type { Queue } from '../../shared/jobs.ts'
 import type { Expansion, ScenarioList, Suggested } from '../../shared/scenario.ts'
@@ -409,6 +412,43 @@ export const getSessionSizes = () => request<SessionSizes>('/api/session-sizes')
 /** What a Session holds: its size by part, and its counts. */
 export const getSessionContents = (id: string) =>
   request<SessionContents>(`/api/sessions/${id}/contents`)
+
+/** Where a Session export downloads from: its zip, written as it's read. */
+export const exportUrl = (id: string) => `/api/sessions/${id}/export`
+
+/**
+ * Uploads a Session export to be imported as a new Session, saying how much is sent as it goes
+ * (`onSent`); a fetch can't tell an upload's progress, so it's an XMLHttpRequest. Aborting `signal`
+ * stops it, rejecting with an AbortError, and the server keeps nothing of it.
+ */
+export function importSession(
+  zip: Blob,
+  onSent: (sent: number, total: number) => void,
+  signal: AbortSignal,
+): Promise<ImportedSession> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    xhr.open('POST', '/api/sessions/import')
+    xhr.setRequestHeader('Content-Type', 'application/zip')
+    xhr.upload.onprogress = (e) => onSent(e.loaded, e.total || zip.size)
+    xhr.onload = () => {
+      let body: Partial<ErrorBody> & Partial<ImportedSession> = {}
+      try {
+        body = JSON.parse(xhr.responseText)
+      } catch {
+        // No JSON: said below by its status.
+      }
+      if (xhr.status >= 200 && xhr.status < 300) resolve(body as ImportedSession)
+      else reject(new ApiError(body.error ?? `The import failed: ${xhr.status}`, xhr.status))
+    }
+    xhr.onerror = () =>
+      reject(new ApiError("The upload failed: can the app's server be reached?", 0))
+    xhr.onabort = () => reject(new DOMException('The import was cancelled', 'AbortError'))
+    if (signal.aborted) return reject(new DOMException('The import was cancelled', 'AbortError'))
+    signal.addEventListener('abort', () => xhr.abort(), { once: true })
+    xhr.send(zip)
+  })
+}
 
 /** Shows a Session's folder in the server machine's file manager (only from that machine). */
 export const openSessionFolder = (id: string) =>

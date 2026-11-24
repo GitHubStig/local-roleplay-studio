@@ -20,6 +20,12 @@ import type { Scenario } from '../shared/scenario.ts'
 
 export interface AppContext {
   deps: AppDeps
+  /**
+   * Takes the Session's lock, or returns a 409 saying what holds it; for work that ends after its
+   * route answers (an export's download), which releases it with `unlock`. Otherwise `locked`.
+   */
+  lock(id: string, kind: LockKind): Response | null
+  unlock(id: string): void
   /** Every Session's background work. */
   jobs: SessionJobs
   /** The streamed work in progress per Session: the step it has reached, and its Frame. */

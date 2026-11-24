@@ -1,6 +1,5 @@
 import { assertEquals } from '@std/assert'
 import { join } from '@std/path'
-import { chainOfTwo, getContents, getSizes, pictureOf, refusalIn, setup } from './appTesting.ts'
 import { contentsOf, partOf, servedFile } from './sessionParts.ts'
 import { fromThisMachine, noteClient, ownAddress } from './http.ts'
 import { withTempDir } from './testing.ts'
@@ -84,39 +83,6 @@ Deno.test('What a Session holds: its size by part, and its counts', () =>
       cues: 1,
       calls: 3,
     })
-  }))
-
-Deno.test('GET /api/sessions/:id/contents and /api/session-sizes size what is on disk', () =>
-  withTempDir(async (root) => {
-    const { call, sessions } = await chainOfTwo(root)
-    const contents = await getContents(call)
-    assertEquals([contents.counts.frames, contents.counts.pictures], [2, 2])
-    assertEquals(contents.parts.pictures > 0, true)
-    const session = await sessions.load('s1')
-    const image = pictureOf(session!.frames[1]).file
-    const { size } = await Deno.stat(join(root, 's1', image))
-    await Deno.remove(join(root, 's1', image))
-    assertEquals((await getContents(call)).size, contents.size - size)
-    assertEquals(await getSizes(call), { s1: contents.size - size })
-    assertEquals((await call('GET', '/api/sessions/none/contents')).status, 404)
-  }))
-
-Deno.test("Open folder opens the Session's folder only for a browser on the server's machine", () =>
-  withTempDir(async (root) => {
-    const opened: string[] = []
-    const openFolder = (path: string) => Promise.resolve(void opened.push(path))
-    const local = setup({ root, settings: { textModel: 'x' }, openFolder, client: '127.0.0.1' })
-    await local.call('POST', '/api/sessions', { scenarioId: 'test' })
-    assertEquals((await local.call('POST', '/api/sessions/s1/open-folder', {})).status, 204)
-    assertEquals(opened, [join(root, 's1')])
-    const away = setup({ root, openFolder, client: '192.0.2.7' })
-    const refused = await away.call('POST', '/api/sessions/s1/open-folder', {})
-    assertEquals(refused.status, 409)
-    assertEquals(
-      (await refusalIn(refused)).error,
-      "The folder opens on the server's machine, not this one",
-    )
-    assertEquals(opened.length, 1)
   }))
 
 const lan = () =>
