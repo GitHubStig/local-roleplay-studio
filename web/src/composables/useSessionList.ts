@@ -10,10 +10,20 @@ const sessions = ref<SessionSummary[] | null>(null)
 /** Why the last load failed, or ''. */
 const listError = ref('')
 
-/** Loads the list again; one load at a time, a call while one runs waiting for it. */
+/**
+ * Loads the list again, one load at a time. A call while one runs gets the load after it (calls
+ * meanwhile share it), so a list asked for after a change (an import, say) is never from before it.
+ */
 let loading: Promise<void> | null = null
+let next: Promise<void> | null = null
 export function loadSessions(): Promise<void> {
-  loading ??= listSessions()
+  if (loading) {
+    return (next ??= loading.then(() => {
+      next = null
+      return loadSessions()
+    }))
+  }
+  loading = listSessions()
     .then((list) => {
       sessions.value = list
       listError.value = ''

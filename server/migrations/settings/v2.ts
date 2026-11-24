@@ -76,8 +76,11 @@ interface SettingsFile {
 
 export type V2 = SettingsFile
 
-/** Version 1 to 2: the Session folder in use is the one remembered, unless it's the app's own. */
-export const v2 = (doc: V1): V2 => ({
-  ...doc,
-  sessionsFolders: doc.sessionsFolder.trim() ? [doc.sessionsFolder.trim()] : [],
-})
+/**
+ * Version 1 to 2: the Session folder in use is the one remembered, unless it's the app's own. A file
+ * last saved before it had a Session folder has none to remember.
+ */
+export const v2 = (doc: V1): V2 => {
+  const inUse = typeof doc.sessionsFolder === 'string' ? doc.sessionsFolder.trim() : ''
+  return { ...doc, sessionsFolders: inUse ? [inUse] : [] }
+}

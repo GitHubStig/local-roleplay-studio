@@ -62,7 +62,15 @@ const problem = ref('')
 /** What there is to keep or leave out, the ticks taken off, and what they'd keep. */
 const options = ref<KeepOptions | null>(null)
 const leftOut = ref<LeftOut>({ ...KEEP_ALL })
-const preview = ref<KeepPreview | null>(null)
+/** The server's last answer, and the ticks it was for. */
+const answered = ref<{ for: string; preview: KeepPreview } | null>(null)
+/**
+ * What the ticks as they are now keep: none while the answer for them is on its way, so Remove
+ * never asks with the size of an earlier choice.
+ */
+const preview = computed(() =>
+  answered.value?.for === JSON.stringify(leftOut.value) ? answered.value.preview : null
+)
 /** Every tick on: an export is all of it, and Remove has nothing to remove. */
 const keepsAll = computed(() => JSON.stringify(leftOut.value) === JSON.stringify(KEEP_ALL))
 
@@ -80,7 +88,7 @@ async function loadContents(id: string) {
 watch(() => props.session.id, (id) => {
   contents.value = null
   options.value = null
-  preview.value = null
+  answered.value = null
   leftOut.value = { ...KEEP_ALL }
   void loadContents(id)
 }, { immediate: true })
@@ -89,10 +97,11 @@ watch(() => props.session.id, (id) => {
 let asking: AbortController | null = null
 watchDebounced(leftOut, async (left) => {
   asking?.abort()
-  if (keepsAll.value) return (preview.value = null)
+  if (keepsAll.value) return (answered.value = null)
   const mine = (asking = new AbortController())
   try {
-    preview.value = await previewKeep(props.session.id, left, mine.signal)
+    const asked = JSON.stringify(left)
+    answered.value = { for: asked, preview: await previewKeep(props.session.id, left, mine.signal) }
   } catch (err) {
     if (!mine.signal.aborted) problem.value = (err as Error).message
   }
@@ -345,7 +354,7 @@ const counts = computed(() => {
         <strong>What to keep</strong>
         <span class="text-sm text-muted">Export writes what's ticked. Remove deletes what isn't.</span>
       </div>
-      <KeepTicks v-if="options" v-model="leftOut" :options="options" :preview="preview" />
+      <KeepTicks v-if="options" v-model="leftOut" :options="options" :preview="answered?.preview ?? null" />
       <div v-if="exporting" role="status" class="flex flex-col gap-2 bg-canvas px-4 py-3" data-exporting>
         <div class="flex items-center gap-3 text-sm">
           <span class="min-w-0 flex-1">

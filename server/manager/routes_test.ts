@@ -37,6 +37,17 @@ async function handMade(entries: Record<string, string | { text: string; unixMod
   return await zip.close()
 }
 
+/** A zip whose picture's data has one byte changed after it was written, so its CRC-32 fails. */
+async function damaged(text: string) {
+  const zip = new ZipWriter(new Uint8ArrayWriter(), { level: 0 })
+  await zip.add('session.json', new TextReader(text))
+  await zip.add('frame-0-aaaaaaaa.png', new TextReader('PICTUREDATA'))
+  const bytes = await zip.close()
+  const at = new TextDecoder('latin1').decode(bytes).indexOf('PICTUREDATA')
+  bytes[at] ^= 0xff
+  return bytes
+}
+
 /** Sends a zip to be imported, as the web app does. */
 const sendZip = (
   handler: ReturnType<typeof setup>['handler'],
@@ -168,6 +179,7 @@ Deno.test('An import is refused whole, leaving nothing, for a zip that is no Ses
       ['a newer version', await handMade({ 'session.json': newer }), 'newer version of the app'],
       ['not JSON', await handMade({ 'session.json': '{' }), "can't be read"],
       ['not a zip', 'hello', "isn't a zip"],
+      ['damaged', await damaged(text), "can't be unpacked"],
     ]
     for (const [what, zip, says] of cases) {
       const res = await sendZip(app.handler, zip)

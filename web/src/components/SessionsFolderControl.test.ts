@@ -133,4 +133,17 @@ describe('SessionsFolderControl', () => {
     expect(api.forgetSessionsFolder).toHaveBeenCalledWith('/Volumes/USB/Private')
     expect(folder.value?.folders).toHaveLength(2)
   })
+
+  it('shows the folder in use again when a switch is refused', async () => {
+    vi.mocked(api.moveSessionsFolder).mockRejectedValue(
+      new api.ApiError('Wait for running and queued work to finish, or cancel it', 409),
+    )
+    const { wrapper } = shown()
+    await wrapper.find('[data-sessions-folder]').setValue('/Volumes/Archive')
+    await flushPromises()
+    expect(wrapper.find('[data-folder-error]').text()).toContain('Wait for running')
+    expect(wrapper.find<HTMLSelectElement>('[data-sessions-folder]').element.value).toBe(
+      '/app/sessions',
+    )
+  })
 })

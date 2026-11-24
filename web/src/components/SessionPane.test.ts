@@ -320,6 +320,19 @@ describe('SessionPane', () => {
     expect(wrapper.find('[data-keep-model="krea"]').element).toHaveProperty('checked', true)
   })
 
+  it("won't remove until it knows what the ticks as they are now leave out", async () => {
+    const wrapper = await shown()
+    await wrapper.find('[data-keep-model="krea"]').setValue(false)
+    await settle()
+    expect(wrapper.find('[data-remove-rest]').attributes('disabled')).toBeUndefined()
+    // A tick changed: the size known is for the last choice, so Remove waits for the new one.
+    await wrapper.find('[data-keep-sound="speech"]').setValue(false)
+    expect(wrapper.find('[data-remove-rest]').attributes('disabled')).toBeDefined()
+    expect(wrapper.find('[data-keeping]').text()).toBe('Working out what that keeps…')
+    await settle()
+    expect(wrapper.find('[data-remove-rest]').attributes('disabled')).toBeUndefined()
+  })
+
   it('removes nothing when not confirmed', async () => {
     vi.mocked(ask).mockResolvedValue(false)
     const wrapper = await shown()

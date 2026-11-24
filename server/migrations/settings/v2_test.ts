@@ -18,3 +18,7 @@ Deno.test('v2 leaves the rest of Settings as they were', () => {
   const { sessionsFolders: _, ...rest } = v2(settings('/Sessions'))
   assertEquals(rest, settings('/Sessions'))
 })
+
+Deno.test('v2 remembers none from a file last saved before it had a Session folder', () => {
+  assertEquals(v2({ textModel: 'gemma' } as V1).sessionsFolders, [])
+})

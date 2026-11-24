@@ -1,5 +1,5 @@
 import { assertEquals } from '@std/assert'
-import { freeSpace, parseFree } from './freeSpace.ts'
+import { freeSpace, freeSpaceCommand, parseFree } from './freeSpace.ts'
 
 Deno.test("Free space is read from df's table, or from the number Windows prints", () => {
   const df = 'Filesystem 1024-blocks Used Available Capacity Mounted on\n' +
@@ -15,4 +15,17 @@ Deno.test("This machine says how much room its temp folder's drive has", async (
   const free = await freeSpace(dir)
   await Deno.remove(dir)
   assertEquals(typeof free === 'number' && free > 0, true)
+})
+
+Deno.test("A path never enters PowerShell's script, so a space can't split it nor a `;` run", () => {
+  const path = 'D:\\My Sessions;calc'
+  const [cmd, args, env] = freeSpaceCommand(path, 'windows')
+  assertEquals(cmd, 'powershell')
+  assertEquals(args.some((a) => a.includes(path)), false)
+  assertEquals(env, { LRS_FREE_PATH: path })
+  assertEquals(freeSpaceCommand('/Volumes/A b', 'darwin'), [
+    'df',
+    ['-Pk', '--', '/Volumes/A b'],
+    {},
+  ])
 })

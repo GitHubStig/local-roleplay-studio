@@ -26,6 +26,9 @@ export class NoRoomRefusal extends Refusal {
   static override status = 507
 }
 
+/** The most a Session's text may be: a 100-Frame Roleplay's is under 1 MB. */
+const MAX_SESSION_TEXT = 64 * 1024 * 1024
+
 /** A zip read from a file, at the offsets zip.js asks for, never all in memory. */
 class FileReader extends Reader<Deno.FsFile> {
   constructor(private file: Deno.FsFile) {
@@ -87,7 +90,11 @@ export function importedTitle(title: string, taken: Iterable<string>): string {
 /** Unpacks the zip at `zipPath` as a new Session; it's refused, leaving nothing, if it can't be. */
 export async function importZip(zipPath: string, deps: ImportDeps): Promise<Session> {
   const file = await Deno.open(zipPath)
-  const zip = new ZipReader(new FileReader(file), { filenameValidation: 'tolerant' })
+  // Every entry's CRC-32 is checked as it's read, so a damaged zip is refused, not unpacked.
+  const zip = new ZipReader(new FileReader(file), {
+    filenameValidation: 'tolerant',
+    checkCrc32: true,
+  })
   const id = deps.newSessionId()
   const target = deps.store.dir(id)
   const temp = join(dirname(target), `.import-${id}`)
@@ -123,7 +130,17 @@ export async function importZip(zipPath: string, deps: ImportDeps): Promise<Sess
       throw new NoRoomRefusal(`It unpacks to ${bytes(size)}, and the drive has ${bytes(free)} free`)
     }
 
-    // Its text, checked before any file is unpacked: a newer version can't be read here.
+    // Its text, checked before any file is unpacked: a newer version can't be read here. It's read
+    // whole, so one declared bigger than any Session's text is refused first.
+    if (text.uncompressedSize > MAX_SESSION_TEXT) {
+      throw new ImportRefusal(
+        `Its ${SESSION_FILE} is ${bytes(text.uncompressedSize)}: it isn't a Session export`,
+      )
+    }
+    const twice = kept.find((e, i) => kept.findIndex((o) => o.filename === e.filename) !== i)
+    if (twice) {
+      throw new ImportRefusal(`It holds ${twice.filename} twice: it isn't a Session export`)
+    }
     let doc: unknown
     try {
       doc = JSON.parse(await text.getData(new TextWriter()))
@@ -150,7 +167,12 @@ export async function importZip(zipPath: string, deps: ImportDeps): Promise<Sess
       }
       await Deno.mkdir(dirname(path), { recursive: true })
       const out = await Deno.open(path, { write: true, createNew: true })
-      await entry.getData(capped(out.writable, entry.uncompressedSize, entry.filename))
+      try {
+        await entry.getData(capped(out.writable, entry.uncompressedSize, entry.filename))
+      } catch (err) {
+        if (err instanceof Refusal) throw err
+        throw new ImportRefusal(`${entry.filename} can't be unpacked: ${(err as Error).message}`)
+      }
     }
     const titles = (await deps.store.list()).map((s) => s.title)
     const imported = { ...session, id, title: importedTitle(session.title, titles) } as Session
