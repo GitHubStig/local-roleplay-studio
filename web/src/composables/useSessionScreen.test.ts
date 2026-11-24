@@ -9,6 +9,8 @@ vi.mock('../api', async (importOriginal) => ({
   ...(await importOriginal<typeof api>()),
   getSession: vi.fn(),
   cancelFrame: vi.fn(),
+  // For the Image Models' names; the screen makes do without them.
+  getSettingsOptions: vi.fn(() => new Promise(() => {})),
 }))
 
 interface Work {

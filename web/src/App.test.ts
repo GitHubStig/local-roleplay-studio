@@ -19,6 +19,10 @@ vi.mock('./api', async (importOriginal) => ({
   getScenarios: vi.fn(() => Promise.resolve({ scenarios: [], errors: [] })),
   listSessions: vi.fn(() => Promise.resolve([])),
   listJobs: vi.fn(() => Promise.resolve([])),
+  getQueue: vi.fn(() => Promise.resolve({ machines: [], sessions: [], jobs: [], text: [] })),
+  getSessionsFolder: vi.fn(() =>
+    Promise.resolve({ inUse: '/sessions', default: '/sessions', count: 0 })
+  ),
   listTextModels: vi.fn(() => Promise.resolve({ textModels: [], thinkingModels: [] })),
   streamFrame: vi.fn(),
   cancelFrame: vi.fn(),

@@ -26,6 +26,7 @@ const { exportJob } = vi.hoisted(() => ({
 vi.mock('../api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../api')>()),
   getSettingsOptions: vi.fn(() => new Promise(() => {})),
+  getSettings: vi.fn(() => new Promise(() => {})),
   exportComparison: vi.fn(() => Promise.resolve([exportJob])),
   // Not scored: an export carries no style scores.
   getStyleScores: vi.fn(() => Promise.reject(new Error('Not scored yet'))),

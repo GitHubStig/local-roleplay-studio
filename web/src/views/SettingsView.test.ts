@@ -15,6 +15,9 @@ vi.mock('../api', async (importOriginal) => ({
   listTextModels: vi.fn(() => Promise.resolve({ textModels: [], thinkingModels: [] })),
   checkComfyUI: vi.fn(() => Promise.resolve({ up: false as const, error: 'not running' })),
   saveSettings: vi.fn(),
+  getSessionsFolder: vi.fn(() =>
+    Promise.resolve({ inUse: '/sessions', default: '/sessions', count: 0 })
+  ),
 }))
 
 const settings: api.Settings = {
