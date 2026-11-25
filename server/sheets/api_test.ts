@@ -5,6 +5,7 @@ import {
   clonedIn,
   getContents,
   getSession,
+  importedIn,
   listJobs,
   readEvents,
   refusalIn,
@@ -125,7 +126,7 @@ Deno.test("A Roleplay's sheets are made from its Look in the Cast review, and se
 Deno.test("A Storyboard's sheets are made as it's planned; a Session without sheets makes none", () =>
   withTempDir(async (root) => {
     const images = fakeImageGenerator()
-    const { call } = setup({
+    const { call, handler } = setup({
       root,
       settings: { textModel: 'x', features: SHEETS_ON },
       features,
@@ -156,6 +157,19 @@ Deno.test("A Storyboard's sheets are made as it's planned; a Session without she
     assertEquals((await getContents(call, clone.id)).parts.sheets, contents.parts.sheets)
     const cloned = await getSession(call, 'storyboard', clone.id)
     assertEquals(cloned.sheets[0].made, made)
+    // And by an export, imported.
+    const zip = await (await call('GET', '/api/sessions/s1/export')).arrayBuffer()
+    const imported = await importedIn(
+      await handler(
+        new Request('http://localhost/api/sessions/import', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/zip' },
+          body: zip,
+        }),
+      ),
+    )
+    assertEquals((await getContents(call, imported.id)).parts.sheets, contents.parts.sheets)
+    assertEquals((await getSession(call, 'storyboard', imported.id)).sheets[0].made, made)
 
     const { id } = await sessionFrom(
       await call('POST', '/api/sessions', {

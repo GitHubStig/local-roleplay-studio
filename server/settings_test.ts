@@ -291,3 +291,10 @@ Deno.test('Each video model may have a clip size, Small or Large; one not given 
     assertEquals(bad.ok ? [] : bad.issues, ['videoSizes must map video models to small or large'])
   }
 })
+
+Deno.test('The face pass takes only an edit model that repaints faces from a sheet', () => {
+  const ok = validateSettings({ ...DEFAULT_SETTINGS, faceEditModel: 'qwen-image-2.1-edit' })
+  assertEquals(ok.ok, true)
+  const bad = validateSettings({ ...DEFAULT_SETTINGS, faceEditModel: 'flux3-klein-edit' })
+  assertEquals(bad.ok ? [] : bad.issues, ['faceEditModel must be one of: qwen-image-2.1-edit'])
+})

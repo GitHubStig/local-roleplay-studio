@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import type { Job } from './api'
-import { formingOf, jobForming } from './jobs'
+import { formingOf, jobForming, openJob } from './jobs'
 
 const session = { id: 's1' }
 
@@ -28,5 +28,23 @@ describe('formingOf', () => {
     expect(jobForming(session, job('render', 'mflux'))).toBeNull()
     expect(jobForming(session, job('upscale'))).toBeNull()
     expect(jobForming(session, null)).toBeNull()
+  })
+})
+
+describe('openJob', () => {
+  it("opens a reference sheet's job on the Look where a screen has one, else on its Frame", () => {
+    const sheet = {
+      id: 'j',
+      kind: 'sheet',
+      frameIndex: 0,
+      status: 'running',
+      sheet: { subject: 'Kael' },
+    } as Job
+    const places = { go: vi.fn(), edit: vi.fn(), clip: vi.fn(), drop: vi.fn(), look: vi.fn() }
+    openJob(sheet, places)
+    expect([places.look.mock.calls.length, places.go.mock.calls.length]).toEqual([1, 0])
+    const { look: _, ...noLook } = places
+    openJob(sheet, noLook)
+    expect(places.go).toHaveBeenCalledWith(0)
   })
 })

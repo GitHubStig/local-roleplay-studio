@@ -100,6 +100,36 @@ describe("LookForm's reference sheets", () => {
     })
   })
 
+  it("shows a sheet's open job over a failed one, and a failure only while there's no sheet", () => {
+    const job = (status: api.Job['status'], id: string) =>
+      ({
+        id,
+        kind: 'sheet',
+        frameIndex: 0,
+        status,
+        sheet: { subject: 'Kael' },
+        error: 'mflux quit',
+      }) as api.Job
+    const redone = shown({ jobs: [job('failed', 'a'), job('running', 'b')] })
+    expect(redone.wrapper.find('[data-sheet="Kael"] [data-sheet-making]').exists()).toBe(true)
+    const failed = shown({ jobs: [job('failed', 'a')] })
+    expect(failed.wrapper.find('[data-sheet="Kael"] [data-sheet-failed]').exists()).toBe(true)
+    const madeSince = shown({
+      list: [{
+        ...sheet('Kael'),
+        made: {
+          file: 'sheet-kael-1.png',
+          views: ['a', 'b', 'c'],
+          mirrored: ['d', 'e', 'f'],
+          imageModel: 'q',
+          createdAt: '',
+        },
+      }, sheet('Elara')],
+      jobs: [job('failed', 'a')],
+    })
+    expect(madeSince.wrapper.find('[data-sheet="Kael"] [data-sheet-failed]').exists()).toBe(false)
+  })
+
   it('once settled, shows the sheets alone: no ticks, an unticked one left out', () => {
     const { wrapper } = shown({ settled: true })
     expect(wrapper.find('[data-sheet-tick]').exists()).toBe(false)

@@ -56,7 +56,8 @@ async function drop(list: readonly QueueJob[]) {
               <button type="button" class="flex min-w-0 flex-1 items-start gap-1.5 text-left hover:text-fg" @click="emit('go', job)">
                 <Icon v-if="job.status === 'running'" name="spinner" class="mt-0.5 animate-spin text-muted" />
                 <span class="min-w-0">
-                  <span class="block truncate">{{ frameName(job.frameIndex) }} · {{ jobName(job) }}</span>
+                  <!-- A sheet is the Session's, not its Frame's, though it's queued on Frame 0. -->
+                  <span class="block truncate"><template v-if="!job.sheet">{{ frameName(job.frameIndex) }} · </template>{{ jobName(job) }}</span>
                   <!-- One line, but a failure wraps: its reason is what's worth reading. -->
                   <span class="block text-xs" :class="job.status === 'failed' ? 'text-danger wrap-break-word' : 'truncate text-muted'">
                     <template v-if="part.key === 'elsewhere'">{{ sessionOf(job.sessionId)?.title }} · </template>{{ machineName(job.machine) }} · {{ jobStatus(job) }}

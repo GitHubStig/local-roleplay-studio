@@ -96,18 +96,21 @@ export interface JobPlaces {
   clip: (job: Job) => void
   /** The music's work: its Frame, on the Music tab, where a screen has one. */
   music?: (index: number) => void
+  /** A reference sheet: the Look it's shown in, where a screen keeps the Look apart from its Frames. */
+  look?: () => void
   /** Dismisses it. */
   drop: (job: Job) => void
 }
 
 /**
  * Shows a job where it's seen: an edit in the viewer, a clip in its Frame's Clip section, the music's
- * work on the Music tab, any other on its Frame; a done one has been seen by then, so it's dismissed.
+ * work on the Music tab, a reference sheet on the Look, any other on its Frame; a done one has been seen by then, so it's dismissed.
  */
 export function openJob(job: Job, to: JobPlaces) {
   if (job.kind === 'edit') to.edit(job.frameIndex)
   else if (job.kind === 'clip') to.clip(job)
   else if (to.music && MUSIC_JOBS.includes(job.kind)) to.music(job.frameIndex)
+  else if (to.look && job.sheet) to.look()
   else to.go(job.frameIndex)
   if (job.status === 'done') to.drop(job)
 }

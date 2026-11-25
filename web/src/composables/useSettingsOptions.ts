@@ -72,10 +72,12 @@ export function useImageModels() {
   /**
    * A job as the queue names it: "Render by Krea 2 · mflux"; a clip by its kind and length, its video
    * model (when ordered with one) and whose picture it's made from, "Lead In clip, 5 s by LTX 2.5 ·
-   * Krea 2's picture".
+   * Krea 2's picture"; a reference sheet by whose it is, "Kael's reference sheet".
    */
   const jobName = (job: Job) =>
-    job.kind === 'clip' && job.clip
+    job.sheet
+      ? `${job.sheet.subject}'s reference sheet`
+      : job.kind === 'clip' && job.clip
       ? `${CLIP_KIND_NAMES[job.clip.kind]} clip, ${job.clip.seconds} s` +
         (job.clip.model ? ` by ${videoLabelOf(job.clip.model)}` : '') +
         (job.image ? ` · ${labelOf(job.image.imageModel)}'s picture` : '')

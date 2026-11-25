@@ -95,7 +95,14 @@ function remove(i: number) {
 // --- Reference sheets: one per Subject as saved, by its name.
 
 const sheetOf = (name: string) => props.sheets?.list.find((s) => s.subject === name.trim())
-const sheetJobOf = (name: string) => props.sheets?.jobs.find((j) => j.sheet?.subject === name.trim())
+/**
+ * A Subject's sheet job to show: one queued or running, else a failed one while there's still no
+ * sheet (a failure stays in the queue until dismissed, though a Redo has made the sheet since).
+ */
+function sheetJobOf(name: string): Job | undefined {
+  const of = props.sheets?.jobs.filter((j) => j.sheet?.subject === name.trim()) ?? []
+  return of.find((j) => j.status !== 'failed') ?? (sheetOf(name)?.made ? undefined : of[0])
+}
 const savedIdentity = (name: string) =>
   props.look.subjects.find((p) => p.name === name.trim())?.identity ?? ''
 

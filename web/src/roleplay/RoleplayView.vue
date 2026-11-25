@@ -153,6 +153,7 @@ useJobLink(() => sessionPath(props.id, 'roleplay'), () => !!session.value, jobs,
   edit: showEdit,
   clip: openClip,
   music: goToMusic,
+  look: () => (drawer.value = 'cast'),
   drop: drop,
 })
 /**

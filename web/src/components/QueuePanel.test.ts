@@ -35,6 +35,7 @@ async function mountIt(sessionId: string | null) {
     jobs: [
       job({ id: 'a', frameIndex: 3, status: 'running' }),
       job({ id: 'b', sessionId: 's2', kind: 'upscale' }),
+      job({ id: 's', sessionId: 's2', kind: 'sheet', sheet: { subject: 'Kael' } }),
       job({ id: 'c', status: 'done' }),
     ],
     text: [],
@@ -58,6 +59,8 @@ describe('QueuePanel', () => {
     expect(parts.map((p) => p.attributes('data-queue-part'))).toEqual(['here', 'elsewhere'])
     expect(parts[0].text()).toContain('Frame 4 · Render')
     expect(parts[1].text()).toContain('The tavern')
+    // A sheet is the Session's, by whose it is, not Frame 1's.
+    expect(parts[1].findAll('[data-queue-job]')[1].text()).toMatch(/^Kael's reference sheet/)
     expect(wrapper.text()).toContain('1 finished')
   })
 
