@@ -11,14 +11,20 @@ function command(os: typeof Deno.build.os): string[] | undefined {
     return ['osascript', '-e', `POSIX path of (choose folder with prompt "${PROMPT}")`]
   }
   if (os === 'windows') {
+    // Windows keeps a background process's window behind the browser the player just clicked in,
+    // so the dialog is shown over an invisible window of its own, made topmost once the dialog is
+    // open (by a timer, which ticks in the dialog's loop): that makes the windows it owns topmost too.
     return [
       'powershell',
       '-NoProfile',
       '-STA',
       '-Command',
       'Add-Type -AssemblyName System.Windows.Forms; ' +
+      '$o = New-Object System.Windows.Forms.Form -Property @{ Opacity = 0; ShowInTaskbar = $false }; ' +
+      '$o.Show(); $t = New-Object System.Windows.Forms.Timer -Property @{ Interval = 200 }; ' +
+      '$t.add_Tick({ $t.Stop(); $o.TopMost = $true; $o.Activate() }); $t.Start(); ' +
       `$d = New-Object System.Windows.Forms.FolderBrowserDialog; $d.Description = '${PROMPT}'; ` +
-      'if ($d.ShowDialog() -eq "OK") { $d.SelectedPath }',
+      'if ($d.ShowDialog($o) -eq "OK") { $d.SelectedPath }',
     ]
   }
   return ['zenity', '--file-selection', '--directory', `--title=${PROMPT}`]
