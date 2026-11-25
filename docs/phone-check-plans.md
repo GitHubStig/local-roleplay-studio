@@ -1,0 +1,56 @@
+# Phone check: plan
+
+Every screen of the app on a phone, in iOS Safari, after the redesign (ADR 0039) had been seen at phone width only in a headless browser. The owner asked for it on 2026-11-25. This file is the plan and where it stands, so a new session can pick it up; when it's done, the findings go into the docs (the open thread "The screens on a real phone", `docs/research/`, the showcase list) and this file is deleted.
+
+## How it's run (Mac)
+
+- **The iPhone 17 simulator**, iOS 27.2 (24B8117), from Xcode 27.2: `xcrun simctl` boots it, opens a URL (`xcrun simctl openurl <udid> http://127.0.0.1:5180/`) and takes screenshots (`xcrun simctl io <udid> screenshot`). The simulator shares the Mac's network, so the owner's `deno task dev` (Vite on 127.0.0.1:5180) is reached as it is.
+- **Real touches through XCUITest**, from a small Xcode project outside the repo (in the agent's scratchpad, not committed): a UI test that reads steps from a file (`tap`, `press` for a long press, `drag`, `type` on the on-screen keyboard, `tapid` by accessibility label, `tree` for the page's accessibility tree, `shot`) and runs them against Safari, about 15 s a run. Rebuilt with `xcodebuild build-for-testing`, run with `xcodebuild test-without-building` and `TEST_RUNNER_DRIVE_STEPS=<file>`.
+- **Not safaridriver**: on iOS 27.2 the simulator's Safari has no Remote Automation setting, and safaridriver finds no simulator to drive ("Could not find any session hosts"). Nor `idb`: the owner preferred nothing installed beyond Xcode.
+- **Pictures, clips and music on the PC's ComfyUI** over the network, voices on the Mac (the owner, 2026-11-25). A few Frames per Session are pictured and voiced, to see them on the phone, not every one.
+- Test Sessions are made through the app and named so they're easy to find; when done, ask the owner before deleting them.
+
+## Stages
+
+1. **Every screen, looked at**: the Session list (Home), the Scenario page, the Session manager, the Queue, Settings (each section: Machines, Text, Images, Voice, Music, Clips, Sessions, Appearance, Advanced), and a Chain, a Storyboard and a Roleplay, each with its strip, drawer and picture view. What's cut off, crowded, too small to tap, or out of reach.
+2. **Settings, changed on the phone**: each control, and that it holds after a reload. Put back as they were after.
+3. **A Roleplay played** (the tavern Scenario): Messages, a Reply regenerated, Undo, Suggest, a Frame pictured and voiced, music.
+4. **A Chain played**: Actions, a hand edit, Undo.
+5. **A Storyboard played**: a Brief, the plan's Beats reviewed and dragged by touch, Frames written and rendered.
+6. **The four from the open thread**: the on-screen keyboard over the text box (it should ride above, the strip folding away), dragging a Beat by touch, a long press on a picture opening the app's menu (not a tap, nor Safari's own image menu), touch in general.
+7. **Write up**: findings, dated and marked as the Mac's simulator, in the open thread and `docs/research/`; fixes as their own pieces of work.
+
+## Where it stands
+
+- 2026-11-25: the simulator and XCUITest steps run. Stage 1: every page and Settings section screenshotted; the Roleplay's drawer (Prompt, Look & Cast, Music), its settings, All Frames and the long press done. Then the Storyboard's and Chain's panels, Home scrolled, and the Scenario page: stage 1 done. Stages 3–5 done in a first pass, all three kept at the owner's word: a Roleplay from the owner's Star Wars Scenario ("The Princess and the Dark Lord", `20261125-033011-f1e5`, 4 Frames, music on), a Chain from its Frame 4 (1 Frame, after an Action and its Undo), and a Storyboard from "Contact in the Jungle" (8 Frames written, Frame 8 rendered then rewritten). Stage 6's checks are done too (keyboard, Beat drag, long press). Then stage 2 (a switch, a radio, a text box and the theme, each held across a reload and put back), the Session manager's export and import (the import, "The Princess and the Dark Lord (imported)", `20261125-041446-534a`, is the agent's: ask before deleting it), Look closer, a clip on the PC, a SHARP scene, landscape and the iPhone 17e: the pass is done. Not done: renaming in the manager, the Queue with jobs waiting, swiping between a Frame's pictures, TripoSplat and LiTo, Upscale and edits on the phone. Next: the fixes, each a piece of its own (the keyboard, audio from a tap, the plan's tiles, the small ones), then stage 7.
+
+## Findings
+
+Sizes are in points (the iPhone 17 is 402 × 874); Apple's least touch target is 44 × 44.
+
+- **Works**: every page fits the width; the rail at the bottom; the drawer's tabs; Settings' sections; All Frames; the Roleplay's settings sheet. A **long press on the picture** (1.2 s, a real touch through iOS) opens the app's picture menu as a sheet, and not Safari's image menu.
+- **The Queue: a failed job's line runs off the right edge**, cut with no ellipsis or wrap ("Failed: Couldn't reach Com…").
+- **Small touch targets**: the picture's toolbar buttons 28 × 21, the Listen button beside each line 14–19 square, the header's buttons about 30 × 25, the text box's Suggest, Undo and More 31 × 26, Prompt on the picture 75 × 20.
+- **The picture toolbar's first button (Re-render) has no label** for VoiceOver; the others have one.
+- **The on-screen keyboard hides the text box** (the main one). Nothing in the app follows the keyboard: the screen is `h-dvh` and the strip folds by a CSS height query, and in iOS Safari the keyboard shrinks only the visual viewport, so neither changes. What's seen depends on how iOS scrolls the page to the caret: the first time, the box sat wholly behind the keyboard (box at 572–656 pt, keyboard from about 553 pt); another time iOS pushed the whole page up so the box showed above Safari's bar (˄ ˅ ✓), with the rail between them and the strip and stage scrolled off the top. The strip never folds. A fix would size the screen to the visual viewport (VueUse's `useWindowSize({ type: 'visual' })`), hide the rail and fold the strip while typing.
+- **Return sends** a Message, as on a computer (a real tap on the keyboard's Return; the keydown is `Enter`, `shiftKey` false). In XCUITest, `typeText` leaves Shift reported as held, so the next Return makes a new line: tap a real key first.
+- **Listen doesn't play a line that's spoken first, on a freshly loaded page**: the voice is made (10 s) but the clip never plays, and the button stays at Listen, with no word why. iOS lets audio start only from a tap, and `useListening` calls `play()` when the speak job ends. Once anything has played from a tap, later lines do play when ready, and a line already spoken plays at once. Likely the same for Speak replies. A fix: call `play()` on the player within the tap, to unlock it.
+- **The last line's Listen hides under a long draft**: the text box grows with what's typed (Suggest's Message: four lines) and the story's space under it doesn't, so the newest Reply's last words and its Listen stay under the box.
+- **The text box's text wraps at half its width**, its buttons beside it rather than under it; Suggest's Message took four lines.
+- **A tap on the Session's title starts renaming it**, all of it selected, so the next key replaces it; easy by accident when closing a menu (here a tap meant to close ⋯). Nothing was saved until Done; the title was put back.
+- **"Frame N isn't pictured"** shows on a Frame whose Image Prompt is written but not rendered (Render replies off): in CONTEXT.md's terms it's pictured, not rendered. Not a phone matter.
+- **Works**: Begin, the Reply streaming in, Suggest, ⋯ (Render all, Score the Roleplay, Chain from Frame N), Picture it rendering on the PC's ComfyUI in seconds, the keyboard closing on Send, a draft kept across a reload.
+- **Speak replies doesn't play on iOS** (the same cause as Listen's): with it on, a new Reply was spoken (10 s) and never played in the next minute.
+- **Dragging a Beat selects its tile's text**: the drag itself works by touch (Beat 1 held 0.6 s and moved past Beat 2, the plan reordered), but iOS also starts a text selection on the tile, blue handles over its words. The plan's tiles want `select-none` and `[-webkit-touch-callout:none]`, as the Frames strip's tiles have the callout one.
+- **The strip's ▦ (All Frames) covers part of the last tile** when the strip is scrolled to its end.
+- **Music plays**: Score as you play directed a Cue (the Mac's Text Model, 10 s), its Track was made on the PC's ComfyUI (21 s), and with the header's music switch on it played (the position moving, Safari's speaker in the address bar); after a reload it played again once the page was touched. Which touch event started it wasn't told apart (`useMusicPlayer` resumes on `pointerdown`, which by the HTML spec isn't a user activation for a touch; `pointerup` is).
+- **Works in a Chain and a Storyboard**: Chain from a Roleplay Frame, an Action (Writing the prompt, Cancel while it runs, the render, What changed), Undo putting the Action back, the Prompt panel's added and removed words; a Storyboard planned (8 Beats and a Look), written (under 2 min), a Frame rendered on the PC and rewritten by an Action ("Changed since render").
+- **Undo in a Roleplay** takes back the newest exchange at once and puts its Message back in the box; with an earlier Frame selected it reads "Undo to Frame N" and asks first. A Roleplay opened afresh starts at Frame 1, so its Undo reads "Undo to Frame 1" until the newest is picked.
+- **Landscape (iPhone 17) leaves the story a sliver**: Safari's bars (and its tab bar, with several tabs open) take most of the 402 pt height, and under the header and above the text box the story is a strip about a line high, its text cut to dots, the picture small. A Roleplay can't be read on its side.
+- **The 3D viewer turns far too fast by touch** (a 100 pt drag turned a SHARP scene 142° across and 43° up), and its help line is a mouse's ("scroll to zoom, right-drag to move"): zoom and move have no touch gesture said, if any.
+- **Look closer and the 3D viewer let the page show through** their dark backdrop, and Look closer's Close is 9 × 20 pt, its ← → 22 × 28.
+- **A clip plays inline**, over the picture, with iOS's own video controls on it (pause, ±10 s); the drawer stays open over most of it.
+- **The 3D menu opens in place** over the picture, where the picture's other menus open as a sheet from the bottom.
+- **The Session manager's folder button is "Open in Finder"**, which opens Finder on the Mac running the app, not on the phone.
+- **Works**: Settings changed on the phone hold across a reload (Thinking, music's behaviour and taste; the theme, Dark reading well); export (Safari asks, then downloads the zip) and import (the Files picker offers it, and it comes in as "(imported)"); a clip written and made on the PC (1 min 43 s) and played; a SHARP scene made on the Mac (14 s) and turned; the iPhone 17e's 390 pt width.
+- **Settings → Sessions**: "This browser can't show notifications" on iOS Safari, as expected (Safari gives notifications only to a web app added to the Home Screen).
