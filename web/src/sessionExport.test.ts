@@ -4,26 +4,36 @@ import { importSession } from './api'
 
 afterEach(() => vi.unstubAllGlobals())
 
-/** A Save dialog whose file collects what's written, or which the player closes. */
-function pickerSaving(closed = false) {
-  const written: Uint8Array[] = []
+/**
+ * A Save dialog whose file (holding `size` bytes when picked) collects what's written, and says
+ * whether it was removed; or which the player closes.
+ */
+function pickerSaving(closed = false, size = 0) {
+  const file = { written: [] as Uint8Array[], removed: false }
   vi.stubGlobal(
     'showSaveFilePicker',
     vi.fn(() =>
       closed
         ? Promise.reject(Object.assign(new Error('closed'), { name: 'AbortError' }))
         : Promise.resolve({
+          getFile: () => Promise.resolve({ size }),
           createWritable: () =>
-            Promise.resolve(new WritableStream<Uint8Array>({ write: (c) => void written.push(c) })),
+            Promise.resolve(
+              new WritableStream<Uint8Array>({ write: (c) => void file.written.push(c) }),
+            ),
+          remove: () => {
+            file.removed = true
+            return Promise.resolve()
+          },
         })
     ),
   )
-  return written
+  return file
 }
 
 describe('exportSession', () => {
   it('streams the zip into the file picked, saying how much is written', async () => {
-    const written = pickerSaving()
+    const file = pickerSaving()
     vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response(new Uint8Array([1, 2, 3, 4])))))
     const seen: number[] = []
     const end = await exportSession(
@@ -34,8 +44,37 @@ describe('exportSession', () => {
     )
     expect(end).toBe('saved')
     expect(fetch).toHaveBeenCalledWith('/api/sessions/s1/export', expect.anything())
-    expect(written.flatMap((c) => [...c])).toEqual([1, 2, 3, 4])
+    expect(file.written.flatMap((c) => [...c])).toEqual([1, 2, 3, 4])
     expect(seen.at(-1)).toBe(4)
+    expect(file.removed).toBe(false)
+  })
+
+  it('removes the empty file the dialog made when the export is cancelled or refused', async () => {
+    const stop = new AbortController()
+    const cancelled = pickerSaving()
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => {
+        stop.abort()
+        return Promise.reject(new DOMException('aborted', 'AbortError'))
+      }),
+    )
+    expect(await exportSession('s1', 'x.zip', () => {}, stop.signal)).toBe('cancelled')
+    expect(cancelled.removed).toBe(true)
+
+    const refused = pickerSaving()
+    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(Response.json({}, { status: 409 }))))
+    await expect(exportSession('s1', 'x.zip', () => {}, new AbortController().signal)).rejects
+      .toThrow()
+    expect(refused.removed).toBe(true)
+  })
+
+  it('leaves a file that had something in it as it was', async () => {
+    const kept = pickerSaving(false, 10)
+    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(Response.json({}, { status: 409 }))))
+    await expect(exportSession('s1', 'x.zip', () => {}, new AbortController().signal)).rejects
+      .toThrow()
+    expect(kept.removed).toBe(false)
   })
 
   it('does nothing when the Save dialog is closed', async () => {

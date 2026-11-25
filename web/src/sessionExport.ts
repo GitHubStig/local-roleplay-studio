@@ -1,11 +1,18 @@
 import { ApiError, exportUrl, type LeftOut } from './api'
 
+/** A file picked in the Save dialog. `remove` is Chrome's and Edge's own (since 110). */
+interface PickedFile {
+  getFile(): Promise<{ size: number }>
+  createWritable(): Promise<WritableStream<Uint8Array>>
+  remove?(): Promise<void>
+}
+
 /** The browser's Save dialog for a file it then writes into (Chrome and Edge have it). */
 interface SavePicker {
   showSaveFilePicker(options: {
     suggestedName: string
     types: { description: string; accept: Record<string, string[]> }[]
-  }): Promise<{ createWritable(): Promise<WritableStream<Uint8Array>> }>
+  }): Promise<PickedFile>
 }
 
 /** Whether this browser can save into a file the player picks, as the export streams. */
@@ -20,7 +27,8 @@ export type ExportEnd = 'saved' | 'download' | 'cancelled'
 /**
  * Exports Session `id` as a zip named `name`, all of it, or without what `leftOut` names. Where the browser has a Save dialog, the zip is
  * streamed into the file picked, saying how much is written (`onWritten`), and `signal` stops it,
- * the file left as it was; elsewhere it's a plain download, which the browser shows itself.
+ * the file left as it was (a new one, which the dialog makes empty, removed); elsewhere it's a
+ * plain download, which the browser shows itself.
  */
 export async function exportSession(
   id: string,
@@ -45,6 +53,25 @@ export async function exportSession(
     if ((err as Error).name === 'AbortError') return 'cancelled'
     throw err
   }
+  // Picking a new name makes an empty file, which an export that doesn't finish removes; one that
+  // had something in it is left as it was, as a write that doesn't finish never replaces it.
+  const startedEmpty = (await file.getFile()).size === 0
+  let end: ExportEnd | undefined
+  try {
+    end = await streamInto(file, url, onWritten, signal)
+    return end
+  } finally {
+    if (end !== 'saved' && startedEmpty) await file.remove?.().catch(() => {})
+  }
+}
+
+/** Streams the export at `url` into `file`: `saved`, or `cancelled` when `signal` stops it. */
+async function streamInto(
+  file: PickedFile,
+  url: string,
+  onWritten: (bytes: number) => void,
+  signal: AbortSignal,
+): Promise<ExportEnd> {
   // Cancel shows while the Save dialog is open, so the export can be stopped before it's asked for.
   let res
   try {
