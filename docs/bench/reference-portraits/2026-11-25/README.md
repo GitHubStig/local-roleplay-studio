@@ -57,3 +57,34 @@ Kael's sheet by FLUX.3 Klein (11 s) and FIBO 2.0 Turbo (9 s), and the face edits
 
 ![](10-sheets-klein-and-fibo.jpg)
 ![](11-sheets-from-other-models-face-edits.jpg)
+
+## Full size
+
+The collages shrink whole pictures; these are at the pictures' own resolution, where faces, brushwork and tears show.
+
+Kael's face: the scene, then the edits with the turned portrait, the whole sheet and its profile view (the PC, seed 9).
+
+![](detail/d1-kael-turned-portrait-vs-sheet.jpg)
+
+One pass, whole pictures: without a reference, with the portrait, with the sheet (the PC, seed 8).
+
+![](detail/d2-one-pass-kael.jpg)
+![](detail/d3-one-pass-elara.jpg)
+
+A photograph portrait, repainted in the scene's oil (the Mac).
+
+![](detail/d4-photograph-repainted-in-oil.jpg)
+
+A FLUX.3 Klein Frame, its face repainted from a Qwen-Image 2.1 portrait (the Mac).
+
+![](detail/d5-klein-frame-qwen-portrait.jpg)
+
+The face edit with the Qwen, FLUX.3 Klein and FIBO 2.0 Turbo sheets (the PC, seed 9), and the other two sheets whole.
+
+![](detail/d6-sheets-from-other-models.jpg)
+![](detail/d8-sheet-kael-flux3-klein.jpg)
+![](detail/d9-sheet-kael-fibo2-turbo.jpg)
+
+Elara: the scene, and the edits with her portrait and sheet; still crying, the face hardly changed (the PC, seed 9).
+
+![](detail/d7-elara-face-barely-moves.jpg)
