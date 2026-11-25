@@ -15,3 +15,11 @@ On the Windows PC with an RTX 4070 12 GB, updated uv from 0.13.7 to 0.13.9 with 
 The release's lockfile changes (factoring repeated marker conditions, and `--locked` accepting equivalent platform markers) were the ones to watch: all five checked-in Python script lockfiles passed `uv lock --script … --check` with uv 0.13.9, and no lockfile or script changed. `--help` passed for SHARP, TripoSplat and style scoring.
 
 With dependencies and weights already cached, SHARP made one 1,179,648-splat scene from `docs/bench/backends/seed7-mac.webp` (16.4 s load, 10.4 s make), TripoSplat made one 524,288-splat figure from `docs/bench/reference-portraits/blink-6.jpg` (15.3 s load, 31.8 s make), and the style embedder returned 768-dimensional CSD and CLIP vectors for that scene and one caption (11.7 s load, 0.7 s embed). These are smoke runs, not a full test of the scripts or their download paths.
+
+## 2026-11-25 — uv 0.13.10
+
+On the Windows PC with an RTX 4070 12 GB, updated uv from 0.13.9 to 0.13.10 with `uv self update`. The release fixes a security advisory (GHSA-vjvj-3m3f-fgmm) and rebuilds the managed CPython builds at the same patch versions, so `uv python upgrade 3.14` and `3.13` reinstalled 3.14.10 (now OpenSSL 3.5.9) and 3.13.18 in place; no older patches were left to remove.
+
+The release tightens how `uv.lock` is checked: dependency requirements have to match the locked versions, and a missing package entry is reported. All five checked-in Python script lockfiles passed `uv lock --script … --check` with uv 0.13.10, and no lockfile or script changed. `--help` passed for SHARP, TripoSplat and style scoring.
+
+With dependencies and weights already cached, SHARP made one 1,179,648-splat scene from `docs/bench/backends/seed7-mac.webp` (13.7 s load, 10.6 s make), TripoSplat made one 524,288-splat figure from `docs/bench/reference-portraits/2026-10-06/blink-6.jpg` (16.0 s load, 31.8 s make), and the style embedder returned CSD and CLIP vectors for that scene and one caption (12.0 s load, 0.6 s embed). `deno task test` (634 server, 475 web) and `deno task check` passed. These are smoke runs, not a full test of the scripts or their download paths.

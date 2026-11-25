@@ -104,5 +104,5 @@ Python 3.15 is not enabled for these scripts yet. As checked on 2026-10-27, PyTo
 
 - [uv installation and upgrades](https://docs.astral.sh/uv/getting-started/installation/)
 - [uv-managed Python versions](https://docs.astral.sh/uv/concepts/python-versions/)
-- [uv 0.13.9 release notes](https://github.com/astral-sh/uv/releases/tag/0.13.9)
+- [uv 0.13.10 release notes](https://github.com/astral-sh/uv/releases/tag/0.13.10)
 - [Python 3.15 porting guide](https://docs.python.org/3.15/whatsnew/3.15.html#porting-to-python-3-15)
