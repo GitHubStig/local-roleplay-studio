@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onClickOutside } from '@vueuse/core'
+import { onClickOutside, useMediaQuery } from '@vueuse/core'
 import { onBeforeUnmount, ref, useTemplateRef, watch } from 'vue'
 import { useCloseOnLeave } from '../composables/useCloseOnLeave'
 
@@ -8,8 +8,8 @@ import { useCloseOnLeave } from '../composables/useCloseOnLeave'
  * little, not all the way round), or at a
  * person as a 3D figure (TripoSplat), drawn with Spark on three.js, which load only when one is
  * first opened. A scene opens on the picture's own view; a figure from the front, turning all the
- * way round. Drag to turn, scroll to zoom, right-drag to move, and the buttons turn a set angle or
- * go back. Both invent what the picture never showed, so the further it turns, the more is made up.
+ * way round. Drag to turn, scroll (or pinch) to zoom, right-drag (or two fingers) to move, and
+ * the buttons turn a set angle or go back. Both invent what the picture never showed, so the further it turns, the more is made up.
  */
 const props = defineProps<{
   /** The scene's `.ply`; null keeps the viewer closed. */
@@ -41,6 +41,8 @@ const status = ref<'loading' | 'ready' | 'failed'>('loading')
 const failure = ref('')
 /** How far the camera has turned from the picture's view, in whole degrees. */
 const turned = ref({ across: 0, up: 0 })
+/** A screen that can't hover, a phone's: its help says what fingers do. */
+const touch = useMediaQuery('(hover: none)')
 
 /** What's drawing now, to stop and free when the viewer closes. */
 let stop: (() => void) | null = null
@@ -93,6 +95,9 @@ async function open(src: string) {
       const { clientWidth: w, clientHeight: h } = stage.value!
       const width = Math.min(w, h * aspect)
       renderer.setSize(width, width / aspect)
+      // A drag the canvas's height turns it once round, far too quick on a phone's short one: it
+      // turns as on a canvas 600 px tall at the least.
+      controls.rotateSpeed = Math.min(1, width / aspect / 600)
     }
     const observer = new ResizeObserver(fit)
     observer.observe(stage.value)
@@ -201,7 +206,7 @@ const FIGURE_TURNS = [
         </p>
       </div>
       <p class="text-white/60">
-        Drag to turn, scroll to zoom, right-drag to move.
+        {{ touch ? 'Drag to turn, pinch to zoom, drag two fingers to move.' : 'Drag to turn, scroll to zoom, right-drag to move.' }}
         {{ figure
           ? `${model === 'lito' ? 'LiTo' : 'TripoSplat'} invents their back and sides from one picture.`
           : 'SHARP fills in what the picture never showed, so the further you turn, the more it invents.' }}
