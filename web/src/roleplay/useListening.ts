@@ -3,6 +3,10 @@ import { type Ref, ref, watch } from 'vue'
 import { imageUrl, type Job, type JobKind } from '../api'
 import type { Reply, RoleplayFrame, RoleplaySession, Speech } from './api'
 
+/** A twentieth of a second of silence, a WAV of 80 zero samples. */
+const SILENCE =
+  'data:audio/wav;base64,UklGRsQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YaAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
+
 /** What of a Reply is spoken: its dialogue, or the Character's thought (whispered). */
 export type Part = 'dialogue' | 'thought'
 const SPEAK_JOB = { dialogue: 'speak', thought: 'speak-thought' } as const
@@ -51,6 +55,21 @@ export function useListening(opts: {
     playing.value = null
   }
   useEventListener(player, 'ended', () => (playing.value = null))
+  /**
+   * iOS lets an audio element play by itself (a line once it's spoken, a Reply with Speak replies)
+   * only once it has played from a tap or a key, so the first of either on the page plays a moment
+   * of silence on it. Until then, a line that wasn't ready when Listen was tapped never played.
+   */
+  let unlocked = false
+  function unlock() {
+    if (unlocked || playing.value) return
+    unlocked = true
+    player.src = SILENCE
+    Promise.resolve(player.play()).catch(() => (unlocked = false))
+  }
+  for (const type of ['click', 'keydown']) {
+    useEventListener(document, type, unlock, { capture: true, passive: true })
+  }
   function play(file: string, what: string) {
     stopAudio()
     player.src = imageUrl(opts.sessionId, file)
