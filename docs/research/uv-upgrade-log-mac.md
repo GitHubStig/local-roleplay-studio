@@ -1,5 +1,21 @@
 # uv upgrade log: Apple Silicon Mac
 
+## 2026-11-25 — uv 0.13.10
+
+On the Mac (Apple silicon, 48 GB), updated the standalone uv at `~/.local/bin/uv` from 0.13.9 to 0.13.10 with `uv self update 0.13.10`. The [release notes](https://github.com/astral-sh/uv/releases/tag/0.13.10) fix a low-severity advisory (GHSA-vjvj-3m3f-fgmm: wheels whose ZIP data descriptor and central directory disagree on the compressed size are now rejected), check `uv.lock` dependency requirements against the locked versions more strictly, and rebuild the managed CPython builds at the same patch versions. `uv python upgrade 3.14 3.13` reinstalled 3.14.10 and 3.13.18 (for LiTo) as the rebuilt builds; no older patch was left behind to remove.
+
+All five checked-in Python script lockfiles passed `uv lock --script … --check`, and no lockfile or script changed. `--help` passed for all five: voice, SHARP, TripoSplat and style scoring on 3.14, LiTo on 3.13.
+
+With dependencies and weights already cached, every script's real inference path ran, one job each:
+
+- SHARP made a 1,179,648-splat scene (66 MB) from `docs/bench/backends/seed7-mac.webp` (4.6 s load, 6.5 s make).
+- The style embedder returned CSD and CLIP vectors for that image and one caption (5.0 s load, 0.3 s embed).
+- TripoSplat made a 524,288-splat figure (36 MB) from `docs/bench/reference-portraits/2026-10-06/blink-6.jpg` (4.6 s load, 81.2 s make), its first run recorded on this Mac.
+- LiTo made a 230,144-splat figure (57 MB) from the same portrait (257.8 s), its first run recorded on this Mac.
+- The voice service, started by hand on a spare port, designed a 5.6 s reference clip with Qwen3-TTS VoiceDesign (2.1 s) and cloned it for a 2.7 s line with Higgs TTS 3 (2.4 s, not run on), with 8.8 GB in use while Higgs was loaded.
+
+`deno task test` (642 server, 475 web) and `deno task check` passed.
+
 ## 2026-11-17 — uv 0.13.8, then 0.13.9
 
 On the Mac (Apple silicon, 48 GB), updated the standalone uv at `~/.local/bin/uv` from 0.13.7 to 0.13.8 with `uv self update 0.13.8` (0.13.7 had been installed without an entry here), then to 0.13.9, released the same day, with `uv self update 0.13.9`.
