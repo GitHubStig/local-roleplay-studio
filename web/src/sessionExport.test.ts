@@ -47,6 +47,21 @@ describe('exportSession', () => {
     expect(fetch).not.toHaveBeenCalled()
   })
 
+  it('is cancelled, not failed, when Cancel comes before the server answers', async () => {
+    pickerSaving()
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((_url: string, { signal }: RequestInit) =>
+        signal?.aborted
+          ? Promise.reject(new DOMException('signal is aborted without reason', 'AbortError'))
+          : Promise.resolve(new Response(new Uint8Array([1])))
+      ),
+    )
+    const stop = new AbortController()
+    stop.abort()
+    expect(await exportSession('s1', 'x.zip', () => {}, stop.signal)).toBe('cancelled')
+  })
+
   it('says why the server refused it', async () => {
     pickerSaving()
     vi.stubGlobal(

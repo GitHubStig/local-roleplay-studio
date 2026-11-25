@@ -45,7 +45,14 @@ export async function exportSession(
     if ((err as Error).name === 'AbortError') return 'cancelled'
     throw err
   }
-  const res = await fetch(url, { signal })
+  // Cancel shows while the Save dialog is open, so the export can be stopped before it's asked for.
+  let res
+  try {
+    res = await fetch(url, { signal })
+  } catch (err) {
+    if (signal.aborted) return 'cancelled'
+    throw err
+  }
   if (!res.ok || !res.body) {
     const body = await res.json().catch(() => ({}))
     throw new ApiError(body.error ?? `The export failed: ${res.status}`, res.status)
