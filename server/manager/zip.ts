@@ -26,18 +26,22 @@ export interface ZipOptions {
   onEntry?: (path: string, compressedSize: number) => void
 }
 
-/** Files already compressed, which deflate makes barely smaller: pictures, clips, MP3 and FLAC. */
-const COMPRESSED = /\.(png|webp|jpg|mp4|mp3|flac)$/
+/**
+ * Files deflate makes barely smaller: pictures, clips, MP3 and FLAC, compressed already, and 3D
+ * (`.ply`), which it left at 93% for 17 times the time of storing it.
+ */
+const COMPRESSED = /\.(png|webp|jpg|mp4|mp3|flac|ply)$/
 
-/** Deflates only what isn't compressed already (the text, call logs, 3D, WAV); stores the rest. */
+/** Deflates only what deflate makes smaller (the text, call logs, WAV); stores the rest. */
 export const deflateUncompressed = (level: number) => (path: string) =>
   COMPRESSED.test(path) ? 0 : level
 
 /**
  * The compression a Session export uses, picked by the bench (`docs/bench/session-zip/`): a Session
  * is mostly pictures, clips and sound, compressed already, which deflate made 0–4% smaller at 20 to
- * 60 times the time; so they're stored, and the rest (its text, call logs, 3D) deflated by the
- * runtime, twice as fast as zip.js's own at any level.
+ * 60 times the time, and 3D, which it made 7% smaller at 15 MB/s on the PC; so they're stored, and
+ * the rest (its text, call logs, WAV) deflated by the runtime, twice as fast as zip.js's own on the
+ * Mac (a little slower on the PC, but what's left to deflate is small).
  */
 export const EXPORT_ZIP: ZipOptions = { level: deflateUncompressed(6), native: true }
 

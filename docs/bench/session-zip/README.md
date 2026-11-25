@@ -32,7 +32,7 @@ A Chain of pictures alone (1,029 MB):
 
 ## What was picked
 
-**What's already compressed stored, the rest deflated by the runtime** (`deflateUncompressed`, native). A Session is mostly PNGs, MP4s, MP3s and FLACs, which deflate leaves at 96–100%: deflating every entry saved 3% of the Roleplay and 0.4% of the Chain, for 20 to 60 times the time. What does shrink is the text (`session.json` and call logs, to 8–22%) and a little of the 3D (93%), and those are deflated. zip.js's level 1 was no faster than its level 6 (its JavaScript deflate is the cost, not the level), and the runtime's deflate did the same work twice as fast, so the level doesn't matter and the runtime's is used. At 200 MB/s and up it zips faster than a gigabit network carries it, so the download sets the pace.
+**What's already compressed stored, the rest deflated by the runtime** (`deflateUncompressed`, native). A Session is mostly PNGs, MP4s, MP3s and FLACs, which deflate leaves at 96–100%: deflating every entry saved 3% of the Roleplay and 0.4% of the Chain, for 20 to 60 times the time. What does shrink is the text (`session.json` and call logs, to 8–22%), and that is deflated; the 3D shrinks a little (93%) and was deflated too, until the PC showed what that costs there (below), so it is stored since 2026-11-25. zip.js's level 1 was no faster than its level 6 (its JavaScript deflate is the cost, not the level), and the runtime's deflate did the same work twice as fast, so the level doesn't matter and the runtime's is used. At 200 MB/s and up it zips faster than a gigabit network carries it, so the download sets the pace.
 
 This departs from the plan's "every entry compressed, at a fast level": the numbers show compressing every entry costs time for nothing.
 
@@ -72,6 +72,6 @@ What it shows:
 
 - **Deflate is 4 to 6 times slower here than on the Mac**, and the runtime's is slower than zip.js's (15–17 MB/s against 18–24), where on the Mac it was twice as fast.
 - **The pick only just keeps up with a gigabit network here** (119 MB/s for the Roleplay's mix, against about 110), and falls far behind it as a Session's share of 3D grows: a Session that's mostly SHARP scenes zips at 15 MB/s, as 3D is deflated, to 93% of its size.
-- Proposed, not changed: store `.ply` too, as deflate leaves it at 93% for 17 times the time on the PC (and the 3D in the Mac's Roleplay at 93–94%). The pick then deflates only the text and call logs, and zips at about the speed of storing on both machines.
+- So `.ply` is stored too since 2026-11-25, as deflate leaves it at 93% for 17 times the time on the PC (and the 3D in the Mac's Roleplay at 93–94%). Only the text, call logs and WAV are deflated now, which are small, so a Session zips at about the speed of storing on both machines. Deflate saves more time than it costs only where the zip goes slower than about 14 MB/s. Run again with it, the 400 MB of 3D zips in 1.3 s (313 MB/s), not 26 s.
 
 A real download, measured the same day: the export of the 959 MB stand-in streamed at 96 MB/s from the server over loopback (`curl`), and Edge wrote it to a file in OneDrive's Documents at about 30 MB/s in its first second (cancelled then).
