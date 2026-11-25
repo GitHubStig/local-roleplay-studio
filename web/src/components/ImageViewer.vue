@@ -173,7 +173,7 @@ onClickOutside(
 <template>
   <dialog
     ref="dialog"
-    class="m-0 h-full max-h-none w-full max-w-none touch-pinch-zoom overscroll-contain bg-transparent p-0 outline-none backdrop:bg-black/85"
+    class="m-0 h-full max-h-none w-full max-w-none touch-pinch-zoom overscroll-contain bg-transparent p-0 outline-none backdrop:bg-black/85 touch:backdrop:bg-black"
     tabindex="-1"
     data-image-viewer
     @close="emit('close')"
@@ -253,7 +253,7 @@ onClickOutside(
         </a>
         <button
           type="button"
-          class="shrink-0 whitespace-nowrap hover:text-white"
+          class="tap-around shrink-0 whitespace-nowrap hover:text-white"
           aria-label="Close"
           @click="dialog?.close()"
         >

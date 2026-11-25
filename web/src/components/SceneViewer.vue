@@ -170,7 +170,7 @@ const FIGURE_TURNS = [
 <template>
   <dialog
     ref="dialog"
-    class="m-0 h-full max-h-none w-full max-w-none bg-transparent p-0 backdrop:bg-black/90"
+    class="m-0 h-full max-h-none w-full max-w-none bg-transparent p-0 backdrop:bg-black/90 touch:backdrop:bg-black"
     data-scene-viewer
     @close="close(), emit('close')"
   >
