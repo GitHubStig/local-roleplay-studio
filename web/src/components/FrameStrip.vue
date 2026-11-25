@@ -20,8 +20,9 @@ export interface StripTile {
 
 /**
  * A Session's Frames as a strip of tiles under its bar, in every kind of Session: the strip is the
- * Frames list. The picked tile is ringed and kept in view; clicking a tile picks it. A short window
- * folds the tiles to a thin line of numbers, and a phone on its side hides the strip. ← and → pick
+ * Frames list. The picked tile is ringed and kept in view; clicking a tile picks it. A short window,
+ * or the on-screen keyboard up, folds the tiles to a thin line of numbers (`fold:`), and a phone on
+ * its side hides the strip. ← and → pick
  * the tile before or after, the focus going with it, so holding a key runs through them. What follows
  * the tiles (a Frame being written) is the `end` slot's.
  */
@@ -67,7 +68,7 @@ watch(() => [props.picked, props.tiles.length], async () => {
       v-for="tile in tiles"
       :key="tile.index"
       type="button"
-      class="relative h-12 w-20 shrink-0 overflow-hidden rounded text-left [-webkit-touch-callout:none] lg:h-16 lg:w-28 [@media(max-height:640px)]:h-6 [@media(max-height:640px)]:w-9"
+      class="relative h-12 w-20 shrink-0 overflow-hidden rounded text-left [-webkit-touch-callout:none] lg:h-16 lg:w-28 fold:h-6 fold:w-9"
       :class="[
         tile.index === picked ? 'ring-2 ring-fg ring-offset-1 ring-offset-canvas' : 'hover:ring-1 hover:ring-muted',
         tile.thumb ? '' : 'border border-dashed border-line bg-surface',
@@ -84,30 +85,30 @@ watch(() => [props.picked, props.tiles.length], async () => {
         v-if="tile.thumb"
         :src="tile.thumb"
         alt=""
-        class="h-full w-full object-cover [@media(max-height:640px)]:hidden"
+        class="h-full w-full object-cover fold:hidden"
         :class="{ 'opacity-50': tile.dimmed }"
         loading="lazy"
       />
       <!-- No picture: its number over its words, as a plan's Beat cards have it, the padding
            outside what's clamped (inside, a third line showed through it). -->
-      <span v-else class="flex h-full flex-col gap-0.5 px-1.5 py-1 [@media(max-height:640px)]:hidden">
+      <span v-else class="flex h-full flex-col gap-0.5 px-1.5 py-1 fold:hidden">
         <span class="text-[0.6rem] leading-none tabular-nums text-muted">{{ tile.index + 1 }}</span>
         <span class="line-clamp-2 text-[0.6rem] leading-tight text-fg lg:line-clamp-3 lg:text-[0.65rem]">{{ tile.words }}</span>
       </span>
       <span
-        class="absolute bottom-0 left-1 text-[0.6rem] tabular-nums [@media(max-height:640px)]:inset-0 [@media(max-height:640px)]:grid [@media(max-height:640px)]:place-items-center [@media(max-height:640px)]:text-muted"
-        :class="tile.thumb ? 'text-white [text-shadow:0_0_3px_black]' : 'hidden text-muted [@media(max-height:640px)]:grid'"
+        class="absolute bottom-0 left-1 text-[0.6rem] tabular-nums fold:inset-0 fold:grid fold:place-items-center fold:text-muted"
+        :class="tile.thumb ? 'text-white [text-shadow:0_0_3px_black]' : 'hidden text-muted fold:grid'"
       >{{ tile.index + 1 }}</span>
       <span
         v-if="tile.clips"
-        class="absolute right-0.5 top-0.5 flex items-center gap-0.5 rounded bg-black/70 px-0.5 text-[0.55rem] leading-3 text-white [@media(max-height:640px)]:hidden"
+        class="absolute right-0.5 top-0.5 flex items-center gap-0.5 rounded bg-black/70 px-0.5 text-[0.55rem] leading-3 text-white fold:hidden"
         :title="tile.clips === 1 ? '1 clip' : `${tile.clips} clips`"
       ><Icon name="play" />{{ tile.clips }}</span>
     </button>
     <slot name="end" />
     <button
       type="button"
-      class="sticky right-0 ml-auto grid h-9 w-9 shrink-0 place-items-center rounded-md border border-line bg-canvas text-muted shadow-[-8px_0_8px_var(--canvas)] hover:text-fg [@media(max-height:640px)]:h-6 [@media(max-height:640px)]:w-6"
+      class="sticky right-0 ml-auto grid h-9 w-9 shrink-0 place-items-center rounded-md border border-line bg-canvas text-muted shadow-[-8px_0_8px_var(--canvas)] hover:text-fg fold:h-6 fold:w-6"
       title="All Frames: search them, and compare their pictures by each Image Model"
       aria-label="All Frames"
       data-all-frames-button

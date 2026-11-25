@@ -487,7 +487,7 @@ const pickFromAll = (index: number) => pick(index)
           <button
             v-if="busy"
             type="button"
-            class="grid h-12 w-20 shrink-0 place-items-center rounded border border-dashed border-line text-muted render-sweep [@media(max-height:640px)]:h-6 [@media(max-height:640px)]:w-9"
+            class="grid h-12 w-20 shrink-0 place-items-center rounded border border-dashed border-line text-muted render-sweep fold:h-6 fold:w-9"
             :class="{ 'ring-2 ring-fg ring-offset-1 ring-offset-canvas': onPending }"
             :title="`${frameName(pendingIndex)}: ${phaseLabel}`"
             :aria-current="onPending"

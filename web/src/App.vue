@@ -14,6 +14,7 @@ import QueuePanel from './components/QueuePanel.vue'
 import SettingsView from './views/SettingsView.vue'
 import { useQueue } from './composables/useQueue'
 import { isOpen } from './jobs'
+import { useOnScreenKeyboard } from './composables/useOnScreenKeyboard'
 
 const serverOnline = ref<boolean | null>(null)
 const route = useRoute()
@@ -85,6 +86,17 @@ async function checkServer() {
   }
 }
 
+/**
+ * While the on-screen keyboard is up, the screen is pinned to what's seen above it, so the text box
+ * sits on the keyboard; the rail goes and the strip folds (`typing:`, `fold:`) to leave room.
+ */
+const { visible: aboveKeyboard } = useOnScreenKeyboard()
+const keyboardStyle = computed(() =>
+  aboveKeyboard.value
+    ? { position: 'fixed' as const, insetInline: 0, top: `${aboveKeyboard.value.top}px`, height: `${aboveKeyboard.value.height}px` }
+    : undefined
+)
+
 // Re-checked every 15 s and whenever the window regains focus.
 useIntervalFn(checkServer, 15000, { immediateCallback: true })
 useEventListener(window, 'focus', checkServer)
@@ -92,9 +104,13 @@ useEventListener(window, 'focus', checkServer)
 
 <template>
   <!-- The rail down the left (along the bottom on a phone held upright), the screen beside it. -->
-  <div class="flex h-dvh flex-col bg-canvas text-fg sm:flex-row short:flex-row">
+  <div
+    class="flex h-dvh flex-col bg-canvas text-fg sm:flex-row short:flex-row"
+    :style="keyboardStyle"
+    :data-typing="aboveKeyboard ? '' : undefined"
+  >
     <nav
-      class="order-last flex shrink-0 items-center justify-around border-t border-line px-2 py-1 sm:order-first sm:w-12 sm:flex-col sm:justify-start sm:gap-2 sm:border-t-0 sm:border-r sm:px-0 sm:py-3 short:order-first short:w-12 short:flex-col short:justify-start short:gap-2 short:border-t-0 short:border-r short:px-0 short:py-3"
+      class="order-last flex shrink-0 items-center typing:hidden! justify-around border-t border-line px-2 py-1 sm:order-first sm:w-12 sm:flex-col sm:justify-start sm:gap-2 sm:border-t-0 sm:border-r sm:px-0 sm:py-3 short:order-first short:w-12 short:flex-col short:justify-start short:gap-2 short:border-t-0 short:border-r short:px-0 short:py-3"
       aria-label="Screens"
       data-rail
     >

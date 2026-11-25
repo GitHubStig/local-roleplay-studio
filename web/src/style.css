@@ -6,6 +6,19 @@
 /* `short:` is a phone on its side, where height is what runs out: side columns, not rows. */
 @custom-variant short (@media (orientation: landscape) and (max-height: 500px));
 
+/* `typing:` is while the on-screen keyboard is up (`data-typing` on the app, `useOnScreenKeyboard`). */
+@custom-variant typing (&:where([data-typing], [data-typing] *));
+
+/* `fold:` is where height runs short, a short window or the keyboard up: the strip folds to numbers. */
+@custom-variant fold {
+  @media (max-height: 640px) {
+    @slot;
+  }
+  &:where([data-typing] *) {
+    @slot;
+  }
+}
+
 /* `touch:` is a screen that can't hover, where what hovering shows has to be there already. */
 @custom-variant touch (@media (hover: none));
 

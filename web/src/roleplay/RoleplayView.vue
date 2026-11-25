@@ -2,7 +2,7 @@
 import { ask } from '../ask'
 import { frameName, framesName } from '../frameName'
 import { useDrawer } from '../composables/useDrawer'
-import { useTextareaAutosize } from '@vueuse/core'
+import { useResizeObserver, useTextareaAutosize } from '@vueuse/core'
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { type Activity, chainFromFrame, type Clip, getSession, imageUrl, type Look, type Made3d, pickedEdit, restartSession } from '../api'
@@ -612,6 +612,12 @@ watch([
 
 /** The story is scrolled to its end, where it stays as Replies come in. */
 let atEnd = true
+// The story narrowing or shortening (the on-screen keyboard coming up, the text box growing) keeps
+// its end in view, if that's where it was.
+useResizeObserver(transcript, () => {
+  const list = transcript.value
+  if (atEnd && list) list.scrollTop = list.scrollHeight
+})
 /**
  * Until then, the player is scrolling the story themselves (a wheel, a touch, the scrollbar, a
  * key): only that picks. Scrolling for them (to a Frame, to the end) and the story narrowing as
@@ -878,7 +884,7 @@ const pickFromAll = (index: number) => pickFromStrip(index)
         <template #end>
           <span
             v-if="replying"
-            class="grid h-12 w-20 shrink-0 place-items-center rounded border border-dashed border-line text-muted render-sweep [@media(max-height:640px)]:h-6 [@media(max-height:640px)]:w-9"
+            class="grid h-12 w-20 shrink-0 place-items-center rounded border border-dashed border-line text-muted render-sweep fold:h-6 fold:w-9"
             title="The next exchange, being written"
             data-strip-next
           ><Icon name="spinner" class="animate-spin" /></span>
