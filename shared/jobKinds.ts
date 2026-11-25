@@ -4,7 +4,8 @@
  */
 
 /**
- * `picture` writes a Roleplay Frame's Image Prompt and `render` renders it; `upscale` takes a
+ * `look` writes a Roleplay's Look from its Cast, while the Cast is reviewed (ADR 0044); `picture`
+ * writes a Roleplay Frame's Image Prompt and `render` renders it; `upscale` takes a
  * picture to 2048 px; `voice` designs a new take of the Character's voice, `speak` voices one
  * Frame's dialogue, and `speak-thought` its thought; `scene` makes a picture into a 2.5D scene
  * (SHARP); `figure` lifts the person in it out as a 3D figure (TripoSplat), and `lito` does so with
@@ -16,6 +17,7 @@
  * folder of its own under `exports/` (`server/export/`).
  */
 export type JobKind =
+  | 'look'
   | 'picture'
   | 'render'
   | 'upscale'

@@ -36,7 +36,7 @@ interface JobKindInfo {
   onShownPicture?: true
   /**
    * What it waits for, when queued earlier on its Frame (or, for the Session's own jobs, on any
-   * Frame): a render for its Image Prompt, an upscale for its render, 3D for its upscale, a spoken
+   * Frame): a Roleplay's Look for a picture, a render for its Image Prompt, an upscale for its render, 3D for its upscale, a spoken
    * line for its voice, the style scores for every picture; an edit for the render or edit it's
    * made from, and what's made from a picture for its edits (a clip too). Not work on another
    * Image Model's picture (a render by it, ahead of a clip of this one's): both record theirs
@@ -46,7 +46,8 @@ interface JobKindInfo {
 }
 
 export const JOBS: Record<JobKind, JobKindInfo> = {
-  picture: { feature: null, text: true, needs: [] },
+  look: { feature: null, text: true, ofSession: true, needs: [] },
+  picture: { feature: null, text: true, needs: ['look'] },
   render: { feature: 'images', image: true, needs: ['picture'] },
   upscale: {
     feature: 'upscale',

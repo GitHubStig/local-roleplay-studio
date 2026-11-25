@@ -142,7 +142,7 @@ export function sessionRoutes(ctx: AppContext): Route[] {
       const session: Session = kind === 'chain'
         ? { ...base, kind, frames: [] }
         : kind === 'roleplay'
-        ? { ...base, kind, cast: null, look: null, cues: [], frames: [] }
+        ? { ...base, kind, cast: null, look: null, lookBehindCast: false, cues: [], frames: [] }
         : { ...base, kind, frameCount, look: null, frames: [] }
       await deps.sessions.save(session)
       return json(session, 201)
@@ -309,7 +309,9 @@ export function sessionRoutes(ctx: AppContext): Route[] {
             found ? 409 : 404,
           )
         }
-        const cancelled = (job: Job) => found.kind === 'storyboard' || job.kind !== 'voice'
+        // A Roleplay's voice and Look stay, as its Cast does.
+        const cancelled = (job: Job) =>
+          found.kind === 'storyboard' || (job.kind !== 'voice' && job.kind !== 'look')
         jobs.cancelWhere(p.id!, cancelled)
         return jobs.betweenRenders(p.id!, () =>
           locked(p.id!, 'edit', async (session) => {

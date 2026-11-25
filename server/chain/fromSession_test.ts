@@ -212,6 +212,7 @@ Deno.test('chainFromStoryboard saves nothing when a picture file is missing', ()
 const roleplay = (frames: RoleplayFrame[]): RoleplaySession => ({
   id: 'talk',
   kind: 'roleplay',
+  lookBehindCast: false,
   title: 'A test roleplay',
   brief: 'Two old friends meet on a dock.',
   scenarioId: null,

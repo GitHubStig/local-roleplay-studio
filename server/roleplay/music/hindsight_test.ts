@@ -228,6 +228,7 @@ function sessionOf(): RoleplaySession {
     createdAt: '',
     cast: testCast,
     look: null,
+    lookBehindCast: false,
     cues: [],
     frames: [
       {

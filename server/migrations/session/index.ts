@@ -9,9 +9,11 @@ import { type Migrations, migrations } from '../migrate.ts'
 import { v1 } from './v1.ts'
 import { v2 } from './v2.ts'
 import { v3 } from './v3.ts'
+import { v4 } from './v4.ts'
 
 export const sessionFile: Migrations<Session> = migrations()
   .then(v1)
   .then(v2)
   .then(v3)
+  .then(v4)
   .done((doc): Session => doc)

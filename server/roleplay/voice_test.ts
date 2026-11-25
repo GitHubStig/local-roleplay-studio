@@ -31,6 +31,7 @@ const roleplay = (): RoleplaySession => ({
   createdAt: '2026-10-01T00:00:00.000Z',
   cast: testCast,
   look: null,
+  lookBehindCast: false,
   cues: [],
   frames: [
     {

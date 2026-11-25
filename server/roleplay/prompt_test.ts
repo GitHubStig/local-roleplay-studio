@@ -28,6 +28,7 @@ const session = (frames: RoleplaySession['frames']): RoleplaySession => ({
   createdAt: '2026-09-27T00:00:00.000Z',
   cast: testCast,
   look: null,
+  lookBehindCast: false,
   cues: [],
   frames,
 })

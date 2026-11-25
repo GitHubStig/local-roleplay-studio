@@ -86,6 +86,12 @@ export interface RoleplayRouteContext {
     session: RoleplaySession,
     after: AfterReply,
   ): Promise<(frame: RoleplayFrame) => void>
+  /**
+   * Queues the Look's writing as the Cast is saved, in place of any still queued or running, so the
+   * page that hears of the Cast finds it in the queue (ADR 0044). Resolves, once it knows where it
+   * runs, with what queues it.
+   */
+  queuesLook(session: RoleplaySession): Promise<() => void>
   /** Background work (pictures, renders, upscales…), to cancel what an Undo leaves behind. */
   jobs: SessionJobs
   store: SessionStore
@@ -125,9 +131,15 @@ export function roleplayRoutes(ctx: RoleplayRouteContext): Route[] {
         const scenario = ctx.scenarioFor(session)
         // A Roleplay whose first Cast was never written never started, like a Chain's Opening
         // Frame; a failed rewrite keeps the Cast it had.
-        return ctx.stream(session, null, !session.cast, async (send, signal) => {
-          await writeCast(ctx.deps(session), session, scenario, send, signal)
-        })
+        return ctx.queuesLook(session).then((queueLook) =>
+          ctx.stream(session, null, !session.cast, async (send, signal) => {
+            // Its Look is written next, while the Text Model is loaded and the player reads it.
+            await writeCast(ctx.deps(session), session, scenario, (event) => {
+              if (event.type === 'cast') queueLook()
+              send(event)
+            }, signal)
+          })
+        )
       })],
 
     ['POST', path('begin'), (req, p) =>

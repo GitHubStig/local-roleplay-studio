@@ -45,11 +45,19 @@ Found missing on review, then benched the same day (the PC's ComfyUI sent from t
 
 Reordered 2026-11-25 (the owner allowed it, once everything was raised), so each stage can be built and checked on its own, in the order they depend on each other.
 
-### 1. A Roleplay's Look in the Cast review
+### 1. A Roleplay's Look in the Cast review: done (2026-11-25)
 
 On its own, before anything of sheets: it's worth having without them, and everything after needs the Look to exist before the story begins.
 
-- **A Roleplay's Look is written in the Cast review** (the owner, 2026-11-25: "might be better moving forward"), not at the first picture, so its sheets are made while the player reads the Cast and are usually ready by the first picture. Whether for every Roleplay or only one with sheets, and what happens to the Look when the Cast is edited after it's written (written again, or asked), is decided when stage 1 starts.
+- **A Roleplay's Look is written in the Cast review** (the owner, 2026-11-25: "might be better moving forward"), not at the first picture, so its sheets are made while the player reads the Cast and are usually ready by the first picture.
+
+**Decided** (the owner, 2026-11-25; [ADR 0044](adr/0044-a-roleplays-look-is-written-in-the-cast-review.md)):
+
+- **Every Roleplay**, sheets or not, for consistency. **No fallback** at the first picture: a picture is refused until the Look exists. The one Session on the Mac without a Look (still in review) was deleted; the PC's are cleared regularly.
+- **A `look` job**, queued by the server as the Cast is saved (as ADR 0031 queues what follows a Reply), not written in the Cast's stream, which would hold the lock against Begin and edits. Begin doesn't wait; the first picture does (`needs`). A failed or cancelled one leaves the Cast, and Look & Cast offers Write the Look.
+- **A rewritten Cast writes the Look again**; **a hand edit to the Cast's start** (what's fixed once begun: names, the Character's age and looks, the Persona, the Setting) marks the Look behind it (`lookBehindCast`, `session.json` v4), and Look & Cast asks: Write it again, or Keep it (which saves it). An edit to what only steers the Character doesn't ask.
+
+**Found** (2026-11-25, this Mac, gemma-4-26b-heretic nvfp4, Thinking off, the tavern Scenario through the running app): the Cast took 8.7 s, and its `look` job was running before the Cast's stream had closed; the Look took 2.2 s (2.0–2.4 s in the three earlier Sessions that had one). Writing it again after Kael's age was edited took 2.0 s and gave the new age; the opening was then pictured from it (4.3 s). The Look's prompt and request are unchanged, so its schema wasn't rechecked over seeds. Not tested on the PC.
 
 ### 2. The data and the jobs (the server, no screens)
 

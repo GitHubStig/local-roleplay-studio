@@ -1,5 +1,5 @@
 /**
- * What a Roleplay's background work does (see `SessionJobs` in jobs.ts): pictures and renders its
+ * What a Roleplay's background work does (see `SessionJobs` in jobs.ts): writes its Look, pictures and renders its
  * Frames, directs their music (or scores it all with hindsight), upscales them, designs and speaks the Character's voice, and makes
  * its pictures into 3D.
  */
@@ -13,7 +13,7 @@ import type { ClipSize } from '../../shared/clips.ts'
 import type { Scenario } from '../../shared/scenario.ts'
 import type { SessionStore } from '../session.ts'
 import type { Session } from '../../shared/session.ts'
-import { pictureFrame, renderRoleplayFrame, type RoleplayDeps } from './engine.ts'
+import { pictureFrame, renderRoleplayFrame, type RoleplayDeps, writeLook } from './engine.ts'
 import { directFrame, steerCue } from './music/director.ts'
 import { scoreRoleplay } from './music/hindsight.ts'
 import { makeCueTrack, type MusicDeps, musicRefusal } from './music/tracks.ts'
@@ -43,6 +43,12 @@ export function checkRoleplayJob(
   index: number,
   pending: readonly JobKind[],
 ): Response | null {
+  if (kind === 'look') {
+    if (!session.cast) return error('This Roleplay has no Cast yet', 409)
+    // Once begun, a Look is edited by hand: written again, it would repicture every Frame.
+    if (session.frames.length && session.look) return error('The scene has already begun', 409)
+    return null
+  }
   if (kind === 'steer' && !session.cues.some((c) => c.start === index && c.values && c.steer)) {
     return error(`Nothing to steer on ${frameName(index)}`, 409)
   }
@@ -97,9 +103,10 @@ export async function runRoleplayJob(
       signal,
       job.resume,
     )
+  } else if (job.kind === 'look') {
+    await writeLook(withDeps, session, ctx.scenarioFor(session), emit, signal)
   } else if (job.kind === 'picture') {
-    const scenario = ctx.scenarioFor(session)
-    await pictureFrame(withDeps, session, scenario, job.frameIndex, emit, signal)
+    await pictureFrame(withDeps, session, job.frameIndex, emit, signal)
   } else if (job.kind === 'voice' || job.kind === 'speak' || job.kind === 'speak-thought') {
     const voiceDeps = { ...withDeps, model: withDeps.roleplayModel }
     if (job.kind === 'voice') await designVoice(voiceDeps, session, emit, signal)

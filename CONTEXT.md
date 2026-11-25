@@ -101,7 +101,7 @@ The Character's answer to a Message: a brief thought, what they do, and what the
 _Avoid_: Response, completion, output, narration
 
 **Art Agent**:
-The Text Model's job of turning a Roleplay Frame into an Image Prompt: the Roleplay's Look, written once, then each pictured Frame's sentences from the story up to it.
+The Text Model's job of turning a Roleplay Frame into an Image Prompt: the Roleplay's Look, written while the Cast is reviewed, then each pictured Frame's sentences from the story up to it.
 _Avoid_: Illustrator, image agent, art bot
 
 **Image Prompt**:

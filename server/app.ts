@@ -613,6 +613,14 @@ export function createHandler(
           }
         }
       },
+      queuesLook: async (session) => {
+        const machine = machineOf(await jobBackendOf(session, 'look'))
+        const text = textChoiceOf(session)
+        return () => {
+          jobs.cancelWhere(session.id, (job) => job.kind === 'look')
+          jobs.enqueue(session.id, 'look', 0, machine, undefined, undefined, undefined, text)
+        }
+      },
       jobs,
       store: deps.sessions,
     }),

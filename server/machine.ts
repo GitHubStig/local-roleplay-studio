@@ -176,6 +176,7 @@ export function jobBackend(
   opts: { editModel?: EditModel; editBackend?: ImageBackendKind; text?: Backend },
 ): Backend | undefined {
   switch (kind) {
+    case 'look':
     case 'picture':
     case 'direct':
     case 'score-roleplay':

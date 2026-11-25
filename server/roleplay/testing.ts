@@ -60,6 +60,7 @@ export function scriptedRoleplayModel(
   script: {
     casts?: (Cast | Error)[]
     replies?: (Reply | Error)[]
+    /** Each Look written; a plain `testLook()` each time unless scripted. */
     looks?: (Look | Error)[]
     scores?: (Score | Error)[]
     /** Each Director's reply and each Cue's values, as the model would write them. */
@@ -113,7 +114,8 @@ export function scriptedRoleplayModel(
     async writeLook(messages: ChatMessage[], signal: AbortSignal) {
       model.art.push(messages)
       signal.throwIfAborted()
-      return { look: await next(script.looks, 'Look') }
+      // The `look` job follows every Cast: a plain Look unless scripted.
+      return { look: script.looks ? await next(script.looks, 'Look') : testLook() }
     },
     /** The messages each Score call was given. */
     scored: [] as ChatMessage[][],

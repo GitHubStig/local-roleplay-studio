@@ -95,8 +95,13 @@ export async function writeCast(
   }
   const limit = crossedLimit(castText(cast))
   if (limit) throw new Error(`The Cast crossed a limit: ${limit.message}`)
-  // Onto the Roleplay as it is now: a voice may have been designed while the Cast was written.
-  const updated = await updateSession(deps.store, session.id, (latest) => ({ ...latest, cast }))
+  // Onto the Roleplay as it is now: a voice may have been designed while the Cast was written. A
+  // Look it had is behind the new Cast until the `look` job queued after it writes it again.
+  const updated = await updateSession(deps.store, session.id, (latest) => ({
+    ...latest,
+    cast,
+    lookBehindCast: !!latest.look,
+  }))
   emit({ type: 'cast', cast, session: updated })
   return updated
 }
@@ -215,15 +220,55 @@ export async function sendMessage(
 }
 
 /**
- * Pictures Frame `index` with the Art Agent: writes the Roleplay's Look first if it has none,
- * then the Frame's seven sentences from the story up to it, and saves its Image Prompt. Picturing
- * a Frame again replaces its picture. The Image Prompt is checked against the Limits in force; one
- * that crosses them is saved as blocked, like a Storyboard Frame.
+ * Writes the Roleplay's Look from its Cast and Brief (the `look` job), queued as the Cast is written
+ * so the player can read and edit it while reviewing the Cast (ADR 0044): an identity for the
+ * Character, the Persona and anyone else the Brief names, and an art style. Written again, it
+ * replaces the Look, and every pictured Frame takes the new one.
+ */
+export async function writeLook(
+  deps: RoleplayDeps,
+  session: RoleplaySession,
+  scenario: Scenario,
+  emit: (event: RoleplayEvent) => void,
+  signal: AbortSignal,
+): Promise<RoleplaySession> {
+  if (!session.cast) throw new RoleplayError('This Roleplay has no Cast yet')
+  emit({ type: 'phase', phase: 'text' })
+  const start = performance.now()
+  const from = castStart(session.cast)
+  const messages = await artLookMessages(session, scenario)
+  const { look, thinking } = await withRetry(
+    (onThinking) => deps.roleplayModel.writeLook(messages, signal, onThinking),
+    signal,
+    emit,
+  )
+  signal.throwIfAborted()
+  const updated = await updateSession(deps.store, session.id, (latest) => ({
+    ...latest,
+    look,
+    lookWritten: {
+      model: deps.roleplayModel.name,
+      seconds: secondsSince(start),
+      ...(thinking ? { thinking } : {}),
+    },
+    // The Cast's start edited while it was written leaves it behind already.
+    lookBehindCast: !latest.cast || castStart(latest.cast) !== from,
+    // Frames pictured with an older Look take the new one.
+    frames: latest.frames.map((f) => repictured(f, look)),
+  }))
+  emit({ type: 'look', look })
+  return updated
+}
+
+/**
+ * Pictures Frame `index` with the Art Agent: the Frame's seven sentences from the story up to it,
+ * saved as its Image Prompt with the Look's identities and style. Refused before the Look is
+ * written. Picturing a Frame again replaces its picture. The Image Prompt is checked against the
+ * Limits in force; one that crosses them is saved as blocked, like a Storyboard Frame.
  */
 export async function pictureFrame(
   deps: RoleplayDeps,
   session: RoleplaySession,
-  scenario: Scenario,
   index: number,
   emit: (event: RoleplayEvent) => void,
   signal: AbortSignal,
@@ -231,34 +276,14 @@ export async function pictureFrame(
   if (!session.cast || !session.frames[index]) {
     throw new RoleplayError(`There is no ${frameName(index)}`)
   }
+  if (!session.look) {
+    throw new RoleplayError('This Roleplay has no Look yet: write it in Look & Cast first')
+  }
   const art = deps.roleplayModel
   emit({ type: 'phase', phase: 'text' })
-  let current = session
-  // No Look yet (or one from before it listed its Subjects): write one.
-  if (!isLook(current.look)) {
-    const start = performance.now()
-    const messages = await artLookMessages(current, scenario)
-    const { look, thinking } = await withRetry(
-      (onThinking) => art.writeLook(messages, signal, onThinking),
-      signal,
-      emit,
-    )
-    current = {
-      ...current,
-      look,
-      lookWritten: {
-        model: art.name,
-        seconds: secondsSince(start),
-        ...(thinking ? { thinking } : {}),
-      },
-      // Frames pictured with an older Look take the new one.
-      frames: current.frames.map((f) => repictured(f, look)),
-    }
-    emit({ type: 'look', look })
-  }
   const start = performance.now()
-  const written = current.look as Look
-  const messages = await artFrameMessages(current, index)
+  const written = session.look
+  const messages = await artFrameMessages(session, index)
   // Anyone the picture brings in joins the Look, so they look the same next time.
   let look = written
   const draw = async () => {
@@ -295,7 +320,6 @@ export async function pictureFrame(
       ? {
         ...latest,
         look,
-        ...(current.lookWritten && { lookWritten: current.lookWritten }),
         // Frames pictured with an older Look take the new one.
         frames: latest.frames.map((f) => repictured(f, look)),
       }
@@ -325,10 +349,12 @@ export async function setLook(
   const limit = lookLimit(look)
   if (limit) throw new RoleplayLimitError(`That crosses a limit: ${limit}`)
   return await updateSession(store, session.id, (latest) => {
-    const before = isLook(latest.look) ? latest.look.subjects : []
+    const before = latest.look?.subjects ?? []
     return {
       ...latest,
       look,
+      // Saved by the player with the Cast as it is now.
+      lookBehindCast: false,
       frames: latest.frames.map((f) =>
         repictured(f, look, f.image && renameShown(before, look.subjects, f.image.shown))
       ),
@@ -428,10 +454,16 @@ export async function setCast(
   const limit = crossedLimit(castText(cast))
   if (limit) throw new RoleplayLimitError(`That crosses a limit: ${limit.message}`)
   return await updateSession(store, session.id, (latest) => {
-    if (latest.frames.length && latest.cast && castStart(cast) !== castStart(latest.cast)) {
+    const started = latest.cast && castStart(cast) !== castStart(latest.cast)
+    if (latest.frames.length && started) {
       throw new CastError("How the scene started can't change once it has begun: restart it first")
     }
-    return { ...latest, cast }
+    // A Look written from the start as it was may not fit it now: the player is asked.
+    return {
+      ...latest,
+      cast,
+      lookBehindCast: latest.lookBehindCast || (!!started && !!latest.look),
+    }
   })
 }
 

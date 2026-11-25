@@ -8,6 +8,7 @@ import {
   pictureFrame,
   renderRoleplayFrame,
   restartRoleplay,
+  type RoleplayDeps,
   RoleplayError,
   RoleplayLimitError,
   sendMessage,
@@ -15,11 +16,11 @@ import {
   setLook,
   undoExchanges,
   writeCast,
+  writeLook,
 } from './engine.ts'
 import type { RoleplayEvent } from '../../shared/events.ts'
 import { CastError } from './prompt.ts'
 import { replyOf, scriptedRoleplayModel, testCast, testLook } from './testing.ts'
-import type { Look } from '../../shared/session.ts'
 import { updateSession } from './update.ts'
 import type { RoleplaySession } from '../../shared/roleplay.ts'
 
@@ -37,6 +38,7 @@ const newSession = (): RoleplaySession => ({
   createdAt: '2026-09-27T00:00:00.000Z',
   cast: null,
   look: null,
+  lookBehindCast: false,
   cues: [],
   frames: [],
 })
@@ -116,6 +118,59 @@ Deno.test('beginRoleplay writes the opening from the Cast as edited, and only on
       RoleplayError,
       'already begun',
     )
+  }))
+
+Deno.test("Editing the Cast's start leaves the Look behind it, until it's written or saved", () =>
+  withTempDir(async (root) => {
+    const store = dirSessionStore(root)
+    const roleplayModel = scriptedRoleplayModel({
+      casts: [testCast, testCast],
+      looks: [testLook(), testLook('Ink.')],
+    })
+    const deps = { store, roleplayModel, imageGenerator: fakeImageGenerator() }
+    const cast = await writeCast(deps, await savedSession(store), scenario, () => {}, signal())
+    assertEquals(cast.lookBehindCast, false) // no Look yet to be behind
+    const looked = await writeLook(deps, cast, scenario, () => {}, signal())
+    // A steer isn't how it started: the Look still fits.
+    const steered = { ...testCast, character: { ...testCast.character, goal: 'Leave town.' } }
+    assertEquals((await setCast(store, looked, steered)).lookBehindCast, false)
+    const aged = { ...testCast, character: { ...testCast.character, age: 50 } }
+    const behind = await setCast(store, looked, aged)
+    assertEquals(behind.lookBehindCast, true)
+    // Saved as it is, it's taken to fit; written again, it does.
+    assertEquals((await setLook(store, behind, behind.look)).lookBehindCast, false)
+    await setCast(store, behind, testCast)
+    const rewritten = await writeCast(
+      deps,
+      (await store.load('r1')) as RoleplaySession,
+      scenario,
+      () => {},
+      signal(),
+    )
+    assertEquals(rewritten.lookBehindCast, true) // a new Cast, until its Look is written
+    const again = await writeLook(deps, rewritten, scenario, () => {}, signal())
+    assertEquals([again.lookBehindCast, again.look?.style], [false, 'Ink.'])
+  }))
+
+Deno.test('writeLook, written from a Cast edited meanwhile, is behind it', () =>
+  withTempDir(async (root) => {
+    const store = dirSessionStore(root)
+    const roleplayModel = scriptedRoleplayModel({ casts: [testCast], looks: [testLook()] })
+    const deps = { store, roleplayModel, imageGenerator: fakeImageGenerator() }
+    const cast = await writeCast(deps, await savedSession(store), scenario, () => {}, signal())
+    const renamed = { ...testCast, persona: { ...testCast.persona, name: 'Alex' } }
+    const editing = {
+      ...deps,
+      roleplayModel: {
+        ...roleplayModel,
+        async writeLook(...args: Parameters<typeof roleplayModel.writeLook>) {
+          await setCast(store, cast, renamed)
+          return await roleplayModel.writeLook(...args)
+        },
+      },
+    }
+    const looked = await writeLook(editing, cast, scenario, () => {}, signal())
+    assertEquals([looked.cast?.persona.name, looked.lookBehindCast], ['Alex', true])
   }))
 
 Deno.test('writeCast keeps a voice designed while the Cast was written', () =>
@@ -354,7 +409,11 @@ Deno.test('setCast saves an edited Cast, keeping the start once begun, and refus
 const body = (pose: string) =>
   `${pose} She frowns. A wide shot. A navy coat. The bridge. Lamplight. Deep blues.`
 
-Deno.test('pictureFrame writes the Look once, then each Frame from the story up to it', () =>
+/** The Roleplay with its Look written, as the `look` job writes it while the Cast is reviewed. */
+const withLook = (deps: RoleplayDeps, session: RoleplaySession) =>
+  writeLook(deps, session, scenario, () => {}, signal())
+
+Deno.test('writeLook writes the Look from the Cast, and pictureFrame each Frame from the story', () =>
   withTempDir(async (root) => {
     const { deps, session, store } = await setUp(root, [replyOf('Take the wheel.')])
     const look = testLook('Oil.', 'Mira Vance, a tall woman of 34.', 'Sam.')
@@ -364,9 +423,17 @@ Deno.test('pictureFrame writes the Look once, then each Frame from the story up 
     })
     const art = { ...deps, roleplayModel: scripted }
     const two = (await sendMessage(deps, session, 'Sorry.', () => {}, signal()))!
+    await assertRejects(
+      () => pictureFrame(art, two, 1, () => {}, signal()),
+      RoleplayError,
+      'no Look',
+    )
     const events: RoleplayEvent[] = []
-    const first = await pictureFrame(art, two, scenario, 1, (e) => events.push(e), signal())
-    assertEquals(events.map((e) => e.type), ['phase', 'look', 'pictured'])
+    const looked = await writeLook(art, two, scenario, (e) => events.push(e), signal())
+    assertEquals(looked.look, look)
+    assertEquals(looked.lookBehindCast, false)
+    const first = await pictureFrame(art, looked, 1, (e) => events.push(e), signal())
+    assertEquals(events.map((e) => e.type), ['phase', 'look', 'phase', 'pictured'])
     assertEquals(first.look, look)
     assertStringIncludes(first.frames[1].image!.prompt, 'Mira Vance, a tall woman of 34.')
     assertStringIncludes(scripted.art[1][1].content, 'Picture Frame 2.')
@@ -375,7 +442,7 @@ Deno.test('pictureFrame writes the Look once, then each Frame from the story up 
     assertEquals(typeof first.frames[1].image?.written.seconds, 'number')
     assertEquals(first.frames[1].image?.written.thinking, 'Kael first, then the bar.')
 
-    const second = await pictureFrame(art, first, scenario, 0, () => {}, signal())
+    const second = await pictureFrame(art, first, 0, () => {}, signal())
     assertEquals(scripted.art.length, 3) // the Look is written only once
     assertStringIncludes(second.frames[0].image!.prompt, 'Mira points ahead.')
     assertEquals(
@@ -393,8 +460,7 @@ Deno.test('setLook rewrites every pictured Frame, and refuses an incomplete Look
     })
     const pictured = await pictureFrame(
       { ...deps, roleplayModel: scripted },
-      session,
-      scenario,
+      await withLook({ ...deps, roleplayModel: scripted }, session),
       0,
       () => {},
       signal(),
@@ -411,25 +477,6 @@ Deno.test('setLook rewrites every pictured Frame, and refuses an incomplete Look
       style: 'Watercolour.',
     })
     assertEquals(renamed.frames[0].image?.shown, ['Mira V', 'Sam Reyes'])
-
-    // A Look from before it listed people is replaced by the next picture.
-    const old = {
-      ...restyled,
-      look: { character: 'Mira.', persona: 'Sam.', style: 'Ink.' } as unknown as Look,
-    }
-    const again = scriptedRoleplayModel({
-      looks: [testLook('Pastel.', 'Mira.', 'Sam.')],
-      bodies: [body('Mira waits.')],
-    })
-    const renewed = await pictureFrame(
-      { ...deps, roleplayModel: again },
-      old,
-      scenario,
-      0,
-      () => {},
-      signal(),
-    )
-    assertEquals(renewed.look, testLook('Pastel.', 'Mira.', 'Sam.'))
   }))
 
 Deno.test('Someone the story brings into a picture joins the Look, and looks the same later', () =>
@@ -454,7 +501,7 @@ Deno.test('Someone the story brings into a picture joins the Look, and looks the
       ],
     })
     const art = { ...deps, roleplayModel: scripted }
-    const first = await pictureFrame(art, session, scenario, 0, () => {}, signal())
+    const first = await pictureFrame(art, await withLook(art, session), 0, () => {}, signal())
     assertEquals(first.look!.subjects.map((p) => p.name), [
       'Mira Vance',
       'Sam Reyes',
@@ -463,7 +510,7 @@ Deno.test('Someone the story brings into a picture joins the Look, and looks the
     assertEquals(first.frames[0].image?.shown, ['Mira Vance', 'the barkeep'])
     assertStringIncludes(first.frames[0].image!.prompt, 'Mira. The barkeep, a stout man of 60.')
 
-    const again = await pictureFrame(art, first, scenario, 0, () => {}, signal())
+    const again = await pictureFrame(art, first, 0, () => {}, signal())
     // The next picture reads him in the Look.
     assertStringIncludes(scripted.art[2][1].content, 'name: the barkeep')
     assertEquals(again.look!.subjects.length, 3)
@@ -479,8 +526,7 @@ Deno.test('A picture that crosses a Limit is tried once more, told which', () =>
     })
     const done = await pictureFrame(
       { ...deps, roleplayModel: scripted },
-      session,
-      scenario,
+      await withLook({ ...deps, roleplayModel: scripted }, session),
       0,
       () => {},
       signal(),
@@ -504,7 +550,7 @@ Deno.test('renderRoleplayFrame renders a pictured Frame, replacing any earlier i
       RoleplayError,
     )
 
-    const pictured = await pictureFrame(art, session, scenario, 0, () => {}, signal())
+    const pictured = await pictureFrame(art, await withLook(art, session), 0, () => {}, signal())
     const events: RoleplayEvent[] = []
     const first = await renderRoleplayFrame(art, pictured, 0, (e) => events.push(e), signal())
     assertEquals(events.at(-1)!.type, 'rendered')
@@ -513,7 +559,7 @@ Deno.test('renderRoleplayFrame renders a pictured Frame, replacing any earlier i
     assertEquals(await Deno.stat(`${store.dir('r1')}/${firstImage}`).then(() => true), true)
 
     // Pictured again: the image is kept but stale, until rendered again.
-    const repictured = await pictureFrame(art, first, scenario, 0, () => {}, signal())
+    const repictured = await pictureFrame(art, first, 0, () => {}, signal())
     assertEquals(repictured.frames[0].pictures.map((p) => [p.file, p.stale]), [[firstImage, true]])
     const second = await renderRoleplayFrame(art, repictured, 0, () => {}, signal())
     assertEquals(second.frames[0].pictures.map((p) => p.stale), [undefined])
@@ -534,7 +580,7 @@ Deno.test('Undoing an exchange deletes its picture', () =>
     const two = (await sendMessage(deps, session, 'Sorry.', () => {}, signal()))!
     const rendered = await renderRoleplayFrame(
       art,
-      await pictureFrame(art, two, scenario, 1, () => {}, signal()),
+      await pictureFrame(art, await withLook(art, two), 1, () => {}, signal()),
       1,
       () => {},
       signal(),
@@ -558,7 +604,7 @@ Deno.test('restartRoleplay deletes every exchange and its pictures, keeping the 
     const two = (await sendMessage(deps, session, 'Sorry.', () => {}, signal()))!
     const rendered = await renderRoleplayFrame(
       art,
-      await pictureFrame(art, two, scenario, 1, () => {}, signal()),
+      await pictureFrame(art, await withLook(art, two), 1, () => {}, signal()),
       1,
       () => {},
       signal(),

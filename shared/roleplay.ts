@@ -290,11 +290,18 @@ export interface RoleplaySession extends SessionBase {
   cast: Cast | null
   /**
    * Each Subject's identity and the art style, shared by every picture (ADR 0012): written from the
-   * Cast when a Frame is first pictured, and joined by anyone the story brings into a picture.
+   * Cast while the player reviews it (the `look` job, ADR 0044), and joined by anyone the story
+   * brings into a picture. Null until written.
    */
   look: Look | null
   /** Its Look, when the Art Agent wrote it. */
   lookWritten?: Written
+  /**
+   * The Cast's start (names, the Character's age and looks, the Persona, the Setting) was edited
+   * after the Look was written, so the Look may not fit it: the player is asked whether to write it
+   * again. Cleared when the Look is written or saved.
+   */
+  lookBehindCast: boolean
   /** The Character's voice; written the first time a line is spoken. */
   voice?: RoleplayVoice
   /**

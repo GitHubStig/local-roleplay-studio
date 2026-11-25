@@ -40,6 +40,9 @@ async function roleplayWithArt(
   const { call } = harness
   await call('POST', '/api/sessions', { kind: 'roleplay', brief: 'A storm at sea.' })
   await readEvents(await call('POST', '/api/sessions/s1/roleplay/cast'))
+  // The Look, written while the Cast is reviewed; its job dismissed, for each test's own.
+  await settled(call)
+  await call('DELETE', '/api/sessions/s1/jobs/finished')
   // Unpictured: each test asks for what it needs.
   await readEvents(await call('POST', '/api/sessions/s1/roleplay/begin', { picture: false }))
   return harness
@@ -50,7 +53,9 @@ const artBody = 'Mira waits. She frowns. A wide shot. A navy coat. The bridge. L
 Deno.test('Picturing, rendering and upscaling a Roleplay Frame are queued jobs, run in order', () =>
   withTempDir(async (root) => {
     const { call } = await roleplayWithArt(root, [artBody])
-    assertEquals((await call('PUT', '/api/sessions/s1/roleplay/look', {})).status, 409)
+    // Written in the Cast review, before any picture.
+    const begun = await getSession(call, 'roleplay')
+    assertEquals(begun.look, testLook('Ink.', 'Mira Vance, 34.', 'Sam Reyes, 25.'))
     const enqueue = (kind: string, frameIndex = 0) =>
       call('POST', '/api/sessions/s1/jobs', { kind, frameIndex })
     assertEquals((await enqueue('picture', 5)).status, 404)
@@ -85,11 +90,11 @@ Deno.test('A Roleplay switches Text Model: what it writes next is by the new one
       name: 'gemma4:26b',
       casts: [testCast],
       replies: [replyOf('You are late.')],
+      looks: [testLook('Ink.', 'Mira Vance, 34.', 'Sam Reyes, 25.')],
     })
     const after = scriptedRoleplayModel({
       name: 'qwen3.8:27b-mlx',
       replies: [replyOf('Take the wheel.')],
-      looks: [testLook('Ink.', 'Mira Vance, 34.', 'Sam Reyes, 25.')],
       bodies: [artBody],
     })
     const { call } = setup({
@@ -124,12 +129,12 @@ Deno.test('A Roleplay switches Text Model: what it writes next is by the new one
       'gemma4:26b',
       'qwen3.8:27b-mlx',
     ])
-    // The new model wrote the Look and pictured the Reply; the old one asked nothing after.
+    // The old model wrote the Look in the Cast review; the new one pictured the Reply.
     assertEquals([session.lookWritten!.model, session.frames[1].image!.written.model], [
-      'qwen3.8:27b-mlx',
+      'gemma4:26b',
       'qwen3.8:27b-mlx',
     ])
-    assertEquals(before.art.length, 0)
+    assertEquals([before.art.length, after.art.length], [1, 1])
   }))
 
 Deno.test('A picture goes ahead of queued renders, and Clear empties the queue', () =>
@@ -535,15 +540,17 @@ Deno.test('A Reply’s picture, and its render as the switches ask, are queued a
         kind: string
         frameIndex: number
       }) => `${j.kind} ${j.frameIndex}`)
+    // The Look is queued as the Cast is written, so the first picture waits for it.
+    assertEquals(await kinds(), ['look 0'])
     // Queued by the time the page hears of the Reply: the stream's last event.
     await readEvents(await call('POST', '/api/sessions/s1/roleplay/begin', { render: true }))
-    assertEquals(await kinds(), ['picture 0', 'render 0'])
+    assertEquals(await kinds(), ['look 0', 'picture 0', 'render 0'])
     await settled(call)
     // Without the switch, the picture alone.
     const message = (body: object) =>
       call('POST', '/api/sessions/s1/roleplay/messages', { text: 'Sorry.', ...body })
     await readEvents(await message({}))
-    assertEquals((await kinds()).slice(2), ['picture 1'])
+    assertEquals((await kinds()).slice(3), ['picture 1'])
     await settled(call)
     // Pictures off in Settings: the switch can't render it.
     settings.current = {
@@ -551,6 +558,27 @@ Deno.test('A Reply’s picture, and its render as the switches ask, are queued a
       features: { ...settings.current.features, images: false },
     }
     await readEvents(await message({ render: true }))
-    assertEquals((await kinds()).slice(3), ['picture 2'])
+    assertEquals((await kinds()).slice(4), ['picture 2'])
     assertEquals(await settled(call), [])
+  }))
+
+Deno.test('The Cast queues its Look; a rewrite writes it again, and a begun Roleplay keeps it', () =>
+  withTempDir(async (root) => {
+    const model = scriptedRoleplayModel({
+      casts: [testCast, testCast],
+      replies: [replyOf('You are late.')],
+      looks: [testLook('Ink.'), testLook('Watercolour.')],
+    })
+    const { call } = setup({ root, settings: { textModel: 'x' }, roleplayModel: model })
+    await call('POST', '/api/sessions', { kind: 'roleplay', brief: 'A storm at sea.' })
+    await readEvents(await call('POST', '/api/sessions/s1/roleplay/cast'))
+    assertEquals(await settled(call), [])
+    assertEquals((await getSession(call, 'roleplay')).look?.style, 'Ink.')
+    await readEvents(await call('POST', '/api/sessions/s1/roleplay/cast'))
+    assertEquals(await settled(call), [])
+    const rewritten = await getSession(call, 'roleplay')
+    assertEquals([rewritten.look?.style, rewritten.lookBehindCast], ['Watercolour.', false])
+    await readEvents(await call('POST', '/api/sessions/s1/roleplay/begin', { picture: false }))
+    const look = await call('POST', '/api/sessions/s1/jobs', { kind: 'look', frameIndex: 0 })
+    assertEquals((await refusalIn(look)).error, 'The scene has already begun')
   }))

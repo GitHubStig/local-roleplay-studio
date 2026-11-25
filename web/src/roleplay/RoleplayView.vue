@@ -224,10 +224,14 @@ const SPOKEN: readonly JobKind[] = ['speak', 'speak-thought']
  */
 const frameJobs = (index: number) =>
   jobsFor(index).filter((j) =>
-    j.kind !== 'voice' && j.kind !== 'score-roleplay' && !SPOKEN.includes(j.kind)
+    j.kind !== 'voice' && j.kind !== 'look' && j.kind !== 'score-roleplay' && !SPOKEN.includes(j.kind)
   )
 const speakJobs = (index: number) => jobsFor(index).filter((j) => SPOKEN.includes(j.kind))
 const voiceJob = computed(() => jobs.value.find((j) => j.kind === 'voice' && j.status !== 'done') ?? null)
+/** The Look's job, written as the Cast is (ADR 0044): open, or failed to retry. */
+const lookJob = computed(() => jobs.value.find((j) => j.kind === 'look' && j.status !== 'done') ?? null)
+/** The Look is being written, or waits its turn to be. */
+const writingLook = computed(() => !!lookJob.value && isOpen(lookJob.value))
 /** The voice is being designed, or waits its turn to be. */
 const designingVoice = computed(() =>
   voiceJob.value?.status === 'running' || voiceJob.value?.status === 'queued'
@@ -247,9 +251,10 @@ function describeJob(job: Job): string | undefined {
   if (job.kind === 'direct' && job.phase !== 'queued') {
     return session.value?.score ? 'Directing the music…' : 'Writing the Score, then directing…'
   }
-  if (job.kind === 'picture' && job.phase !== 'queued') {
-    return currentLook.value ? 'Picturing this moment…' : 'Writing the Look, then picturing…'
+  if (job.kind === 'look' && job.phase !== 'queued') {
+    return currentLook.value ? 'Writing the Look again…' : 'Writing the Look…'
   }
+  if (job.kind === 'picture' && job.phase !== 'queued') return 'Picturing this moment…'
 }
 
 /** Reloads the Roleplay after background work, without disturbing a reply in progress. */
@@ -455,6 +460,8 @@ function onEvent(event: RoleplayEvent) {
       break
     case 'cast':
       session.value = event.session
+      // Its Look is queued as it's saved.
+      refreshJobs()
       break
     case 'replied':
       session.value = event.session
@@ -741,11 +748,14 @@ function setField(f: CastField, value: string) {
 
 // --- The Look, editable by hand once written.
 
-/** The Look to edit; one from before it listed Subjects isn't shown, since the next picture replaces it. */
-const currentLook = computed(() => {
-  const look = session.value?.look
-  return look && Array.isArray(look.subjects) ? look : null
-})
+/** The Look to edit, once written. */
+const currentLook = computed(() => session.value?.look ?? null)
+
+/** Keeps the Look as it is, though the Cast's start changed: saved, it's taken to fit. */
+async function keepLook() {
+  if (!(await (lookForm.value?.flush() ?? true)) || !currentLook.value) return
+  await saveLookDraft(currentLook.value)
+}
 
 /** "Kael, Elara Vance and the barkeep", "no one": who a picture shows. */
 async function saveLookDraft(draft: Look): Promise<Look> {
@@ -1059,8 +1069,8 @@ const pickFromAll = (index: number) => pickFromStrip(index)
               <!-- The Cast is written: review it, then begin. -->
               <li v-if="reviewing && !busy" class="m-auto flex max-w-md flex-col items-center gap-3 text-center" data-review>
                 <p class="text-muted">
-                  Review the Cast in Look & Cast: who {{ characterName }} is, who you play, and where it
-                  starts. Edit anything you like, then begin; {{ characterName }} speaks first.
+                  Review the Cast in Look & Cast: who {{ characterName }} is, who you play, where it
+                  starts, and how each of them looks. Edit anything you like, then begin; {{ characterName }} speaks first.
                 </p>
                 <div class="flex gap-2">
                   <button
@@ -1391,19 +1401,81 @@ const pickFromAll = (index: number) => pickFromStrip(index)
             </form>
             </details>
             </section>
-            <LookForm
-              v-if="currentLook"
-              ref="lookForm"
-              class="border-b border-line p-4 text-sm"
-              :look="currentLook"
-              :save="saveLookDraft"
-              :line="line"
-              id-prefix="roleplay.look"
-              every="for every picture"
-              :kept="[characterName, personaName]"
-              :disabled="busy"
-              :saving-text="lookSavingText"
-            />
+            <!-- Written as the Cast is (ADR 0044); its border sweeps while it's written, slower while that waits its turn. -->
+            <div
+              v-if="cast"
+              class="flex flex-col gap-2 border-b border-line p-4 text-sm"
+              :class="{ 'render-sweep': writingLook }"
+              :data-rendering="lookJob?.status === 'queued' ? 'queued' : undefined"
+              data-look-section
+            >
+              <LookForm
+                v-if="currentLook"
+                ref="lookForm"
+                :look="currentLook"
+                :save="saveLookDraft"
+                :line="line"
+                id-prefix="roleplay.look"
+                every="for every picture"
+                :kept="[characterName, personaName]"
+                :disabled="busy || writingLook"
+                :saving-text="lookSavingText"
+              />
+              <p v-else-if="!lookJob" class="text-muted">
+                <span class="font-semibold text-fg">Look</span> · not written yet: how each of them looks, and the art style, for every picture.
+              </p>
+              <p v-if="lookJob" class="flex items-center gap-2 text-xs" data-look-job>
+                <span
+                  :class="{
+                    'animate-pulse text-info': lookJob.status === 'running',
+                    'text-muted': lookJob.status === 'queued',
+                    'text-danger': lookJob.status === 'failed',
+                  }"
+                >{{ jobStatus(lookJob, describeJob) }}</span>
+                <button
+                  type="button"
+                  class="text-danger underline-offset-2 hover:underline"
+                  @click="drop(lookJob)"
+                >
+                  {{ lookJob.status === 'failed' ? 'Dismiss' : 'Cancel' }}
+                </button>
+              </p>
+              <!-- The Cast's start was edited after the Look was written: the player says whether it follows. -->
+              <p v-else-if="currentLook && session.lookBehindCast" class="flex flex-wrap items-center gap-2 text-xs" data-look-behind>
+                <span class="text-muted">The Cast has changed since the Look was written.</span>
+                <button
+                  type="button"
+                  class="rounded border border-line px-2 py-0.5 disabled:opacity-50"
+                  :disabled="busy"
+                  title="Write the Look again from the Cast as it is now, replacing it and any edits to it"
+                  data-write-look
+                  @click="queueSaved('look', 0)"
+                >
+                  Write it again
+                </button>
+                <button
+                  type="button"
+                  class="rounded border border-line px-2 py-0.5 disabled:opacity-50"
+                  :disabled="busy"
+                  title="Keep the Look as it is"
+                  data-keep-look
+                  @click="keepLook"
+                >
+                  Keep it
+                </button>
+              </p>
+              <p v-if="!currentLook && (!lookJob || lookJob.status === 'failed')">
+                <button
+                  type="button"
+                  class="rounded border border-line px-3 py-1 text-xs disabled:opacity-50"
+                  :disabled="busy"
+                  data-write-look
+                  @click="queueSaved('look', 0)"
+                >
+                  Write the Look
+                </button>
+              </p>
+            </div>
             <!-- Its border sweeps while the voice is designed, slower while that waits its turn. -->
             <form
               v-if="cast && featureOn('voices')"

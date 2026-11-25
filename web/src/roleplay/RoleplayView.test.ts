@@ -112,6 +112,7 @@ const roleplaySession = (frames: roleplay.RoleplayFrame[] = []): roleplay.Rolepl
   createdAt: '2026-09-27T00:00:00.000Z',
   cast: frames.length ? cast : null,
   look: null,
+  lookBehindCast: false,
   cues: [],
   frames,
 })
@@ -710,6 +711,58 @@ describe('RoleplayView', () => {
     ...extra,
   })
 
+  describe('the Look in the Cast review', () => {
+    const reviewing = (extra: Partial<roleplay.RoleplaySession> = {}) => ({
+      ...roleplaySession(),
+      cast,
+      ...extra,
+    })
+
+    it("shows the Look being written while the Cast is reviewed, and Begin needn't wait", async () => {
+      vi.mocked(api.getSession).mockResolvedValue(reviewing())
+      vi.mocked(api.listJobs).mockResolvedValue([
+        job({ kind: 'look', status: 'running', phase: 'text' }),
+      ])
+      const { wrapper } = await mountIt()
+      const section = wrapper.find('[data-look-section]')
+      expect(section.classes()).toContain('render-sweep')
+      expect(section.find('[data-look-job]').text()).toContain('Writing the Look…')
+      expect(section.find('[data-write-look]').exists()).toBe(false)
+      expect(wrapper.find('[data-begin]').attributes('disabled')).toBeUndefined()
+    })
+
+    it('offers to write the Look when it has none and none is being written', async () => {
+      vi.mocked(api.getSession).mockResolvedValue(reviewing())
+      vi.mocked(api.listJobs).mockResolvedValue([
+        job({ kind: 'look', status: 'failed', error: 'Ollama is not running' }),
+      ])
+      const { wrapper } = await mountIt()
+      const section = wrapper.find('[data-look-section]')
+      expect(section.classes()).not.toContain('render-sweep')
+      expect(section.find('[data-look-job]').text()).toContain('Dismiss')
+      await section.find('[data-write-look]').trigger('click')
+      await flushPromises()
+      expect(api.queueJob).toHaveBeenCalledWith('r1', 'look', 0)
+    })
+
+    it("asks whether the Look follows when the Cast's start changed after it was written", async () => {
+      vi.mocked(api.getSession).mockResolvedValue(reviewing({ look, lookBehindCast: true }))
+      vi.mocked(roleplay.saveLook).mockResolvedValue(reviewing({ look }))
+      const { wrapper } = await mountIt()
+      expect(wrapper.find('[data-look-behind]').text()).toContain(
+        'The Cast has changed since the Look was written.',
+      )
+      await wrapper.find('[data-look-behind] [data-write-look]').trigger('click')
+      await flushPromises()
+      expect(api.queueJob).toHaveBeenCalledWith('r1', 'look', 0)
+      // Kept as it is: saved, it's taken to fit, and the question goes.
+      await wrapper.find('[data-keep-look]').trigger('click')
+      await flushPromises()
+      expect(roleplay.saveLook).toHaveBeenCalledWith('r1', look)
+      expect(wrapper.find('[data-look-behind]').exists()).toBe(false)
+    })
+  })
+
   describe('voices', () => {
     const voice = { description: 'A gruff woman of forty.', ref: 'voice-aaaaaaaa.wav' }
     const spoken = (ref = voice.ref) => ({
@@ -988,7 +1041,7 @@ describe('RoleplayView', () => {
     expect(api.queueJob).toHaveBeenCalledWith('r1', 'picture', 0)
     expect(wrapper.find('[data-picture]').classes()).toContain('render-sweep')
     expect(wrapper.find('[data-jobs-line]').text()).toContain(
-      'Picture · Writing the Look, then picturing…',
+      'Picture · Picturing this moment…',
     )
     expect(wrapper.find('[data-picture-button]').attributes('disabled')).toBeDefined()
     // The conversation carries on meanwhile: the text box and Send stay usable.

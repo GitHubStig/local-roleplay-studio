@@ -37,6 +37,7 @@ const session = (extra: Partial<roleplay.RoleplaySession> = {}): roleplay.Rolepl
   createdAt: '2026-11-06T00:00:00.000Z',
   cast: {} as roleplay.Cast,
   look: null,
+  lookBehindCast: false,
   cues: [],
   frames: [],
   ...extra,
