@@ -1,0 +1,243 @@
+sheet-kael: 16 s
+sheet-elara: 16 s
+kael: 16 s
+elara: 16 s
+kael-low: 22 s
+kael-high: 22 s
+kael-face: 22 s
+find kael | the man | 5.8 s | [372, 37, 787, 487] | [{"label": "man", "bbox_2d": [372, 37, 787, 487]}]
+kael-fp-hard: 30 s
+find kael | the man | 5.7 s | [372, 37, 787, 487] | [{"label": "man", "bbox_2d": [372, 37, 787, 487]}]
+kael-fp-soft: 28 s
+find kael-low | the man | 5.3 s | [432, 113, 628, 312] | [{"label": "man", "bbox_2d": [432, 113, 628, 312]}]
+kael-low-fp-hard: 27 s
+find kael-low | the man | 5.8 s | [432, 113, 628, 312] | [{"label": "man", "bbox_2d": [432, 113, 628, 312]}]
+kael-low-fp-soft: 27 s
+find kael-high | the man | 5.3 s | [417, 152, 678, 427] | [{"label": "man", "bbox_2d": [417, 152, 678, 427]}]
+kael-high-fp-hard: 27 s
+find kael-high | the man | 5.3 s | [417, 152, 678, 427] | [{"label": "man", "bbox_2d": [417, 152, 678, 427]}]
+kael-high-fp-soft: 27 s
+find kael-face | the man | 5.8 s | [87, 0, 925, 657] | [{"label": "man", "bbox_2d": [87, 0, 925, 657]}]
+kael-face-fp-hard: 27 s
+find kael-face | the man | 5.2 s | [87, 0, 925, 657] | [{"label": "man", "bbox_2d": [87, 0, 925, 657]}]
+kael-face-fp-soft: 27 s
+elara-low: 22 s
+elara-high: 23 s
+elara-face: 23 s
+find elara | the woman | 5.2 s | [362, 93, 620, 400] | [{"label": "woman", "bbox_2d": [362, 93, 620, 400]}]
+elara-fp-hard: 29 s
+find elara | the woman | 5.8 s | [362, 93, 620, 400] | [{"label": "woman", "bbox_2d": [362, 93, 620, 400]}]
+elara-fp-soft: 29 s
+find elara-low | the woman | 5.8 s | [402, 98, 570, 287] | [{"label": "woman", "bbox_2d": [402, 98, 570, 287]}]
+elara-low-fp-hard: 29 s
+find elara-low | the woman | 5.3 s | [402, 98, 570, 287] | [{"label": "woman", "bbox_2d": [402, 98, 570, 287]}]
+elara-low-fp-soft: 27 s
+find elara-high | the woman | 5.8 s | [398, 173, 592, 400] | [{"label": "woman", "bbox_2d": [398, 173, 592, 400]}]
+elara-high-fp-hard: 27 s
+find elara-high | the woman | 5.3 s | [398, 173, 592, 400] | [{"label": "woman", "bbox_2d": [398, 173, 592, 400]}]
+elara-high-fp-soft: 27 s
+find elara-face | the woman | 5.3 s | [117, 0, 825, 687] | [{"label": "woman", "bbox_2d": [117, 0, 825, 687]}]
+elara-face-fp-hard: 27 s
+find elara-face | the woman | 5.3 s | [117, 0, 825, 687] | [{"label": "woman", "bbox_2d": [117, 0, 825, 687]}]
+elara-face-fp-soft: 27 s
+sheet-grax: 16 s
+grax: 17 s
+find grax | the troll | 4.8 s | [372, 87, 722, 496] | [{"label": "troll", "bbox_2d": [372, 87, 722, 496]}]
+grax-fp-soft: 27 s
+sheet-lantern: 16 s
+lantern: 17 s
+find lantern | the lantern | 4.3 s | None | []
+done
+find elara | the woman | 2.3 s | [362, 93, 620, 400] | [{"label": "woman", "bbox_2d": [362, 93, 620, 400]}]
+elara-fp-named: 27 s
+find elara-high | the woman | 5.3 s | [398, 173, 592, 400] | [{"label": "woman", "bbox_2d": [398, 173, 592, 400]}]
+elara-high-fp-named: 27 s
+find elara-face | the woman | 5.3 s | [117, 0, 825, 687] | [{"label": "woman", "bbox_2d": [117, 0, 825, 687]}]
+elara-face-fp-view: 27 s
+find lantern | the lantern | 6.4 s | [335, 0, 682, 787] | ```json
+[
+    {"label": "lantern", "bbox_2d": [335, 0, 682, 787]}
+]
+```
+lantern-fp-soft: 27 s
+followup done
+quay: 17 s
+find quay | each person | 5.3 s | [200, 53, 432, 320] | [{"label": "man", "bbox_2d": [200, 53, 432, 320]}, {"label": "woman", "bbox_2d": [575, 207, 788, 450]}]
+angles kael | 2.7 s | [{"label": "man", "bbox_2d": [372, 37, 787, 487], "facing": "profile left"}]
+angles kael | 0.6 s | [{"label": "man", "bbox_2d": [372, 37, 787, 487], "facing": "profile left"}]
+kael-fp-view: 27 s
+kael-fp-view used sheet-kael-v2
+angles kael-low | 5.3 s | [{"label": "man", "bbox_2d": [430, 113, 625, 312], "facing": "profile right"}]
+kael-low-fp-view: 27 s
+kael-low-fp-view used sheet-kael-v2m
+angles kael-high | 5.8 s | [{"label": "man", "bbox_2d": [417, 152, 678, 432], "facing": "profile right"}]
+kael-high-fp-view: 27 s
+kael-high-fp-view used sheet-kael-v2m
+angles kael-face | 5.3 s | [{"label": "man", "bbox_2d": [85, 0, 856, 657], "facing": "profile left"}]
+kael-face-fp-view: 26 s
+kael-face-fp-view used sheet-kael-v2
+angles elara | 5.3 s | [{"label": "woman", "bbox_2d": [362, 93, 620, 400], "facing": "three-quarter left"}]
+elara-fp-view: 27 s
+elara-fp-view used sheet-elara-v1
+angles elara-low | 5.8 s | [{"label": "woman", "bbox_2d": [403, 97, 570, 287], "facing": "front"}]
+elara-low-fp-view: 27 s
+elara-low-fp-view used sheet-elara-v0
+angles elara-high | 5.8 s | [{"label": "woman", "bbox_2d": [402, 173, 592, 397], "facing": "three-quarter left"}]
+elara-high-fp-view: 27 s
+elara-high-fp-view used sheet-elara-v1
+angles elara-face | 5.3 s | [{"label": "woman", "bbox_2d": [117, 0, 827, 683], "facing": "three-quarter left"}]
+elara-face-fp-view used sheet-elara-v1
+angles grax | 2.1 s | [{"label": "troll", "bbox_2d": [372, 87, 707, 500], "facing": "three-quarter left"}]
+grax-fp-view: 27 s
+grax-fp-view used sheet-grax-v1
+angles quay | 6.4 s | [{"label": "man", "bbox_2d": [200, 53, 437, 325], "facing": "front"}, {"label": "woman", "bbox_2d": [575, 207, 787, 452], "facing": "front"}]
+quay-fp-view: 35 s
+quay-fp-view used sheet-kael-v0, sheet-elara-v0
+views done
+elara-fp-three: 48 s
+elara-high-fp-three: 40 s
+elara-face-fp-three: 39 s
+kael-face-fp-three: 39 s
+three done
+elara-face-fp-d60: 26 s
+kael-face-fp-d60: 26 s
+elara-fp-d60: 26 s
+elara-face-fp-d75: 26 s
+kael-face-fp-d75: 27 s
+elara-fp-d75: 27 s
+denoise done
+elara-face-fp-d85: 26 s
+kael-face-fp-d85: 26 s
+elara-face-fp-d90: 26 s
+kael-face-fp-d90: 26 s
+denoise done
+lantern-fp-glow: 26 s
+angles kael-fp-soft | 7.2 s | [{"label": "man", "bbox_2d": [372, 43, 787, 500], "facing": "profile right"}]
+angles kael | 2.1 s | [{"label": "man", "bbox_2d": [367, 39, 788, 487], "facing": "profile right"}]
+count kael-fp-soft: 1 before, 1 after
+angles kael-low-fp-soft | 2.1 s | [{"label": "man", "bbox_2d": [432, 113, 637, 307], "facing": "profile right"}]
+angles kael-low | 2.1 s | [{"label": "man", "bbox_2d": [432, 114, 627, 312], "facing": "profile right"}]
+count kael-low-fp-soft: 1 before, 1 after
+angles kael-high-fp-soft | 3.2 s | [{"label": "man", "bbox_2d": [423, 144, 677, 437], "facing": "profile right"}, {"label": "person", "bbox_2d": [732, 353, 832, 500], "facing": "profile left"}]
+angles kael-high | 3.2 s | [{"label": "man", "bbox_2d": [420, 152, 678, 430], "facing": "profile right"}, {"label": "man", "bbox_2d": [733, 352, 833, 480], "facing": "profile left"}]
+count kael-high-fp-soft: 2 before, 2 after
+angles kael-face-fp-soft | 2.1 s | [{"label": "man", "bbox_2d": [77, 0, 943, 657], "facing": "profile left"}]
+angles kael-face | 2.1 s | [{"label": "person", "bbox_2d": [78, 0, 927, 667], "facing": "profile left"}]
+count kael-face-fp-soft: 1 before, 1 after
+angles elara-fp-named | 2.2 s | [{"label": "woman", "bbox_2d": [357, 93, 630, 412], "facing": "three-quarter left"}]
+angles elara | 2.1 s | [{"label": "a woman", "bbox_2d": [357, 93, 620, 407], "facing": "three-quarter left"}]
+count elara-fp-named: 1 before, 1 after
+angles elara-low-fp-soft | 2.1 s | [{"label": "woman", "bbox_2d": [412, 103, 572, 287], "facing": "front"}]
+angles elara-low | 2.1 s | [{"label": "woman", "bbox_2d": [402, 98, 572, 287], "facing": "front"}]
+count elara-low-fp-soft: 1 before, 1 after
+angles elara-high-fp-named | 2.2 s | [{"label": "woman", "bbox_2d": [400, 162, 600, 400], "facing": "front"}]
+angles elara-high | 2.2 s | [{"label": "woman", "bbox_2d": [403, 173, 592, 397], "facing": "three-quarter left"}]
+count elara-high-fp-named: 1 before, 1 after
+angles elara-face-fp-soft | 3.7 s | [{"label": "person 1", "bbox_2d": [22, 63, 312, 422], "facing": "front"}, {"label": "person 2", "bbox_2d": [342, 63, 650, 422], "facing": "three-quarter left"}, {"label": "person 3", "bbox_2d": [698, 63, 998, 422], "facing": "profile right"}]
+angles elara-face | 2.2 s | [{"label": "person", "bbox_2d": [117, 0, 827, 687], "facing": "three-quarter left"}]
+count elara-face-fp-soft: 1 before, 3 after  <-- redo
+angles grax-fp-soft | 2.2 s | [{"label": "orc", "bbox_2d": [353, 113, 718, 500], "facing": "three-quarter left"}]
+angles grax | 2.2 s | [{"label": "ogre", "bbox_2d": [372, 87, 728, 500], "facing": "three-quarter left"}]
+count grax-fp-soft: 1 before, 1 after
+angles quay-fp-view | 2.7 s | [{"label": "man", "bbox_2d": [200, 53, 425, 330], "facing": "front"}, {"label": "woman", "bbox_2d": [567, 205, 782, 457], "facing": "front"}]
+angles quay | 2.7 s | [{"label": "man", "bbox_2d": [200, 53, 437, 327], "facing": "front"}, {"label": "woman", "bbox_2d": [575, 207, 797, 457], "facing": "front"}]
+count quay-fp-view: 2 before, 2 after
+kael-above: 17 s
+angles kael-above | 4.8 s | [{"label": "man", "bbox_2d": [320, 78, 612, 487], "facing": "front"}]
+kael-above-fp: 27 s
+angles kael-above-fp | 5.8 s | [{"label": "man", "bbox_2d": [312, 53, 620, 397], "facing": "three-quarter left"}]
+count kael-above-fp: 1 before, 1 after
+kael-below: 17 s
+angles kael-below | 4.8 s | [{"label": "man", "bbox_2d": [382, 53, 628, 312], "facing": "three-quarter left"}]
+kael-below-fp: 27 s
+angles kael-below-fp | 5.3 s | [{"label": "man", "bbox_2d": [382, 53, 638, 325], "facing": "three-quarter left"}]
+count kael-below-fp: 1 before, 1 after
+elara-above: 17 s
+angles elara-above | 4.8 s | [{"label": "woman", "bbox_2d": [370, 270, 600, 500], "facing": "three-quarter left"}]
+elara-above-fp: 27 s
+angles elara-above-fp | 5.8 s | [{"label": "person", "bbox_2d": [370, 270, 600, 500], "facing": "three-quarter left"}]
+count elara-above-fp: 1 before, 1 after
+elara-below: 19 s
+angles elara-below | 5.3 s | [{"label": "woman", "bbox_2d": [250, 64, 725, 578], "facing": "three-quarter left"}]
+elara-below-fp: 28 s
+angles elara-below-fp | 5.8 s | [{"label": "person", "bbox_2d": [250, 63, 700, 575], "facing": "three-quarter left"}]
+count elara-below-fp: 1 before, 1 after
+steep done
+kael-s9: 18 s
+elara-s9: 18 s
+kael-above-s9: 18 s
+kael-below-s9: 18 s
+elara-above-s9: 18 s
+elara-below-s9: 18 s
+grax-s9: 18 s
+quay-s9: 18 s
+lantern-s9: 18 s
+kael-s9-low: 23 s
+kael-s9-high: 23 s
+kael-s9-face: 23 s
+elara-s9-low: 23 s
+elara-s9-high: 23 s
+elara-s9-face: 23 s
+angles kael-s9 | 5.3 s | [{"label": "man", "bbox_2d": [387, 24, 807, 478], "facing": "three-quarter left"}]
+kael-s9-fp: 28 s
+angles kael-s9-fp | 5.9 s | [{"label": "man", "bbox_2d": [392, 22, 787, 472], "facing": "three-quarter left"}]
+count kael-s9-fp: 1 before, 1 after
+angles kael-s9-low | 2.2 s | [{"label": "man", "bbox_2d": [472, 148, 666, 357], "facing": "three-quarter left"}]
+kael-s9-low-fp: 28 s
+angles kael-s9-low-fp | 5.9 s | [{"label": "man", "bbox_2d": [476, 143, 677, 343], "facing": "three-quarter left"}]
+count kael-s9-low-fp: 1 before, 1 after
+angles kael-s9-high | 2.2 s | [{"label": "man", "bbox_2d": [472, 168, 700, 437], "facing": "three-quarter left"}]
+kael-s9-high-fp: 28 s
+angles kael-s9-high-fp | 5.8 s | [{"label": "man", "bbox_2d": [488, 178, 700, 407], "facing": "three-quarter left"}]
+count kael-s9-high-fp: 1 before, 1 after
+angles kael-s9-face | 2.2 s | [{"label": "man", "bbox_2d": [347, 0, 999, 787], "facing": "three-quarter left"}]
+kael-s9-face-fp: 28 s
+angles kael-s9-face-fp | 5.9 s | [{"label": "man", "bbox_2d": [347, 0, 999, 787], "facing": "three-quarter left"}]
+count kael-s9-face-fp: 1 before, 1 after
+angles kael-above-s9 | 2.2 s | [{"label": "man", "bbox_2d": [337, 37, 620, 400], "facing": "front"}]
+kael-above-s9-fp: 28 s
+angles kael-above-s9-fp | 5.9 s | [{"label": "man", "bbox_2d": [330, 31, 630, 347], "facing": "three-quarter left"}]
+count kael-above-s9-fp: 1 before, 1 after
+angles kael-below-s9 | 2.2 s | [{"label": "man", "bbox_2d": [359, 31, 630, 337], "facing": "three-quarter left"}]
+kael-below-s9-fp: 28 s
+angles kael-below-s9-fp | 5.9 s | [{"label": "man", "bbox_2d": [357, 31, 630, 342], "facing": "three-quarter left"}]
+count kael-below-s9-fp: 1 before, 1 after
+angles elara-s9 | 2.2 s | [{"label": "woman", "bbox_2d": [359, 53, 630, 387], "facing": "three-quarter left"}]
+elara-s9-fp: 28 s
+angles elara-s9-fp | 5.9 s | [{"label": "woman", "bbox_2d": [357, 48, 630, 377], "facing": "three-quarter left"}]
+count elara-s9-fp: 1 before, 1 after
+angles elara-s9-low | 2.2 s | [{"label": "woman", "bbox_2d": [412, 123, 586, 320], "facing": "three-quarter left"}]
+elara-s9-low-fp: 28 s
+angles elara-s9-low-fp | 5.9 s | [{"label": "woman", "bbox_2d": [407, 123, 586, 320], "facing": "three-quarter left"}]
+count elara-s9-low-fp: 1 before, 1 after
+angles elara-s9-high | 2.2 s | [{"label": "woman", "bbox_2d": [392, 119, 607, 407], "facing": "three-quarter left"}]
+elara-s9-high-fp: 28 s
+angles elara-s9-high-fp | 5.8 s | [{"label": "woman", "bbox_2d": [383, 120, 604, 400], "facing": "three-quarter left"}]
+count elara-s9-high-fp: 1 before, 1 after
+angles elara-s9-face | 2.2 s | [{"label": "person", "bbox_2d": [67, 0, 937, 745], "facing": "three-quarter left"}]
+elara-s9-face-fp: 28 s
+angles elara-s9-face-fp | 5.9 s | [{"label": "person", "bbox_2d": [100, 0, 900, 740], "facing": "three-quarter left"}]
+count elara-s9-face-fp: 1 before, 1 after
+angles elara-above-s9 | 2.2 s | [{"label": "person", "bbox_2d": [396, 150, 672, 475], "facing": "three-quarter left"}]
+elara-above-s9-fp: 29 s
+angles elara-above-s9-fp | 5.9 s | [{"label": "a woman", "bbox_2d": [398, 152, 678, 487], "facing": "three-quarter left"}]
+count elara-above-s9-fp: 1 before, 1 after
+angles elara-below-s9 | 2.1 s | [{"label": "person", "bbox_2d": [347, 29, 630, 347], "facing": "three-quarter left"}]
+elara-below-s9-fp: 27 s
+angles elara-below-s9-fp | 5.8 s | [{"label": "person", "bbox_2d": [337, 27, 637, 347], "facing": "three-quarter left"}]
+count elara-below-s9-fp: 1 before, 1 after
+angles grax-s9 | 2.2 s | [{"label": "giant", "bbox_2d": [337, 103, 718, 457], "facing": "three-quarter left"}]
+grax-s9-fp: 27 s
+angles grax-s9-fp | 5.8 s | [{"label": "orc", "bbox_2d": [342, 87, 668, 457], "facing": "three-quarter left"}]
+count grax-s9-fp: 1 before, 1 after
+angles quay-s9 | 2.7 s | [{"label": "man", "bbox_2d": [277, 44, 517, 342], "facing": "front"}, {"label": "woman", "bbox_2d": [556, 178, 777, 437], "facing": "front"}]
+quay-s9-fp: 34 s
+angles quay-s9-fp | 6.9 s | [{"label": "man", "bbox_2d": [282, 48, 512, 327], "facing": "front"}, {"label": "woman", "bbox_2d": [582, 181, 787, 417], "facing": "three-quarter left"}]
+count quay-s9-fp: 2 before, 2 after
+find lantern-s9 | the lantern | 2.2 s | [277, 0, 666, 777] | ```json
+[
+    {"label": "lantern", "bbox_2d": [277, 0, 666, 777]}
+]
+```
+lantern-s9-fp: 27 s
+seed2 done
