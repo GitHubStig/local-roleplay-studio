@@ -453,7 +453,9 @@ export function createHandler(
     const loaded = await deps.sessions.load(id)
     if (!loaded || loaded.kind === 'chain' || !loaded.settings.sheets) return
     let session = loaded
-    if (!sheetsSettled(session)) {
+    // Settled once the story begins; but the first Look's sheets are made even then, as Begin
+    // doesn't wait for the Look (a newcomer to it after that gets none).
+    if (!sheetsSettled(session) || !session.sheets.length) {
       let remade: string[] = []
       let dropped: SheetPicture[] = []
       session = await updateSession(deps.sessions, id, session.kind, (latest) => {

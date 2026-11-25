@@ -141,3 +141,34 @@ Deno.test("A Storyboard's sheets are made as it's planned; a Session without she
     assertEquals((await listJobs(call, 's2')).length, 0)
     assertEquals(images.sizes.length, 1)
   }))
+
+Deno.test("A Roleplay begun before its Look is written still gets that Look's sheets", () =>
+  withTempDir(async (root) => {
+    let release!: () => void
+    const held = new Promise<void>((r) => (release = r))
+    const model = scriptedRoleplayModel({
+      casts: [testCast],
+      replies: [replyOf('You are late.')],
+      looks: [testLook('Ink.', 'Mira Vance, 34.', 'Sam Reyes, 25.')],
+    })
+    const holding = {
+      ...model,
+      async writeLook(...args: Parameters<typeof model.writeLook>) {
+        await held
+        return await model.writeLook(...args)
+      },
+    }
+    const { call } = setup({
+      root,
+      settings: { textModel: 'x', features: SHEETS_ON },
+      features,
+      imageGenerator: fakeImageGenerator(),
+      roleplayModel: holding,
+    })
+    await call('POST', '/api/sessions', { kind: 'roleplay', brief: 'A storm at sea.' })
+    await readEvents(await call('POST', '/api/sessions/s1/roleplay/cast'))
+    await readEvents(await call('POST', '/api/sessions/s1/roleplay/begin', { picture: false }))
+    release()
+    assertEquals(await settled(call), [])
+    assertEquals(await sheetJobs(call), ['Mira Vance done', 'Sam Reyes done'])
+  }))

@@ -59,7 +59,7 @@ On its own, before anything of sheets: it's worth having without them, and every
 
 **Found** (2026-11-25, this Mac, gemma-4-26b-heretic nvfp4, Thinking off, the tavern Scenario through the running app): the Cast took 8.7 s, and its `look` job was running before the Cast's stream had closed; the Look took 2.2 s (2.0–2.4 s in the three earlier Sessions that had one). Writing it again after Kael's age was edited took 2.0 s and gave the new age; the opening was then pictured from it (4.3 s). The Look's prompt and request are unchanged, so its schema wasn't rechecked over seeds. Not tested on the PC.
 
-### 2. The data and the jobs (the server, no screens)
+### 2. The data and the jobs (the server, no screens): done (2026-11-25)
 
 - **Stored in the Session**: a migration for `session.json` (the sheets, per Subject, with their seed, whether ticked, and which identity they were made from) and `settings.json` (the section's settings).
 - **Sessions made before sheets** can't have them, as sheets are settled before the story begins; a Roleplay's Restart, back to its Cast review, may offer them.
@@ -89,7 +89,9 @@ Built in steps, each reviewed and committed on its own:
 - **2d. Finding heads: done (2026-11-25).** `server/heads/`: a `HeadFinder` (`find` a Subject by its identity: its head, or a thing whole, with which way it's turned; `count` every head), its questions as prompt files (`prompts/heads/find.md`, `count.md`, the bench's words), and one parser for both runtimes, which reads each complete head object on its own so a reply cut off at its token cap keeps those before the cut. Each question goes where the face pass's edits go (`faceEditModel`), and is logged in the call log. On a ComfyUI: Qwen-Image 2.1's text encoder (`CLIPLoader`) into `TextGenerate`, greedy (`heads/workflows/ask.json`). On mflux: `python/heads/make.py`, run once per question through uv, as MLX loads lazily and reads only the text encoder: no service holding the model. The sheets Feature is available in the app's tests only where a head finder is given. The face pass's instruction moves to stage 4, where it can be tried.
   - **On mflux** (this Mac, 0.24.0, 8-bit): 7–13 s an answer, about 21 s with Python starting and the model loading; MLX's peak 10.8 GB. "For a thing, all of it" boxed the lantern whole in each panel.
   - **Both runtimes through the app's code** (the PC's ComfyUI sent from this Mac, and this Mac's mflux): counting the bench's quay collage (two panels of two people) found 4 heads on each; finding Kael on his sheet found his 3 views on each, the profile called "right" (it faces left) on both, as stage 0 found; boxes within a few thousandths. 7.5–8.8 s a question on the PC, 11–14 s on the Mac. The real lookups found a bug the stand-in ComfyUI couldn't: `LoadImage` must be told an upload is in temp (`name [temp]`).
-- **2e. The replay**: a Session with sheets made on both runtimes.
+- **2e. The replay: done (2026-11-25).** A replay file can ask for sheets (`sheets: true`), and `deno task replay` takes `--image-model` and `--on mflux|comfyui`, to make one on each runtime; it waits for the sheets and prints each (`replays/tavern-sheets.yaml`). On the way it found that a Roleplay begun before its Look is written got no sheets (settled at Begin): the first Look's sheets are now made even then, and only a newcomer to the Look after that gets none.
+  - **Run** (2026-11-25, `--no-pictures`, Qwen-Image 2.1 on each): on the PC's ComfyUI, sent from this Mac, Kael's and Elara's sheets in 18–20 s each; on this Mac's mflux, 53–56 s each, and the Message sent meanwhile took 112 s, as on one machine the Reply waits for the sheets' renders (the PC's ran beside it). Both runtimes' sheets usable: three views of one person, no writing.
+  - **The Look's style brings its scene in**: the tavern's style sentence ("the warm, flickering light of oil lamps") put an oil lamp or a candle beside the face in every view of all four sheets; mflux's also framed each view in grey. "With nothing else in them" took Kael's lamp out at the same seed, not Elara's (open questions).
 
 ### 3. Sheets on screen
 
@@ -142,6 +144,8 @@ The rest of the app (the owner, 2026-11-25: the Session manager wasn't in any st
 - **Many people in one Frame**: an edit each is ~28 s a person on the PC, ~140 s on the Mac. Repaint only the most prominent few (as a Storyboard's identities put them first)?
 - **A back of a head**: Qwen3-VL doesn't say "away" (stage 0b), so the pass can't skip one by that; what it does to one is untried. Watch for it in play, or ask Qwen3-VL whether a face shows.
 - Whether a Chain gets sheets: it has no Look, only nine sentences per Frame. Left out for now.
+- **The style's scene in a sheet** (2e): a style sentence that names its light's source ("oil lamps") puts that source beside the face in a sheet's views. Whether it harms the face pass is untried (stage 4); if it does, a sheet could take only the style's medium, or stage 6's check of a sheet could catch it.
+- **Sheets on the Mac hold up the Cast review's Text Model** (2e): on one machine a Reply waits for the sheets' renders (112 s for two). Fine while the player reads the Cast; a Begin right away waits.
 - **Some faces barely move**: Elara's hardly changed in the face edits of the portrait and sheet trials, and Mira's (stage 0b); with the expression named Elara's moved more (stage 0), but less than Kael's; and a FLUX.3 Klein Kael kept most of his own (stage 0b). Watch for it in play.
 
 ## Ideas for later

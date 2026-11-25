@@ -52,10 +52,11 @@ Deno.test('a Session is created with the Scenario or Brief, and the seed, of the
     scenarioId: 'tavern',
     seed: 0,
   })
-  assertEquals(createBody({ kind: 'storyboard', brief: 'b', frameCount: 4 }), {
+  assertEquals(createBody({ kind: 'storyboard', brief: 'b', frameCount: 4, sheets: true }), {
     kind: 'storyboard',
     brief: 'b',
     frameCount: 4,
+    sheets: true,
   })
 })
 
@@ -85,17 +86,33 @@ Deno.test('a Storyboard plans, then writes', () => {
   assertEquals(stepsOf({ kind: 'storyboard', brief: 'b' }).map((s) => s.path), ['plan', 'write'])
 })
 
-Deno.test('the command line takes a file, a server and --no-pictures', () => {
+Deno.test('the command line takes a file, a server, --no-pictures, and an Image Model and runtime', () => {
   assertEquals(argsOf(['r.yaml']), {
     file: 'r.yaml',
     server: 'http://127.0.0.1:8787',
     pictures: true,
+    imageModel: undefined,
+    on: undefined,
   })
-  assertEquals(argsOf(['--server', 'http://h:1', '--no-pictures', 'r.yaml']), {
-    file: 'r.yaml',
-    server: 'http://h:1',
-    pictures: false,
-  })
+  assertEquals(
+    argsOf([
+      '--server',
+      'http://h:1',
+      '--no-pictures',
+      'r.yaml',
+      '--image-model',
+      'qwen-image-2.1',
+      '--on',
+      'mflux',
+    ]),
+    {
+      file: 'r.yaml',
+      server: 'http://h:1',
+      pictures: false,
+      imageModel: 'qwen-image-2.1',
+      on: 'mflux',
+    },
+  )
 })
 
 const events = (...list: object[]) =>

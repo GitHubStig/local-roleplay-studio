@@ -1,0 +1,10 @@
+# The public tavern Scenario as a Roleplay with reference sheets (docs/reference-sheets-plans.md):
+# its Cast, then its Look and a sheet of each of its Subjects, made as the scene begins. Run with
+# --no-pictures to make only the sheets, and with --on mflux or --on comfyui (and --image-model)
+# to make them on one runtime.
+kind: roleplay
+seed: 7
+scenario: tavern
+sheets: true
+messages:
+  - I push the door shut behind me against the wind and shake the rain from my cloak. "Is the kitchen still open, or only the bar?"

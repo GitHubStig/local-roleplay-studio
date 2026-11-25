@@ -4,6 +4,10 @@
  * Messages with the same seed (the file's, or else a fixed one in Settings) give the same Replies.
  *
  *   deno task replay server/replay/replays/tavern-arrival.yaml [--server <url>] [--no-pictures]
+ *     [--image-model <id>] [--on mflux|comfyui]
+ *
+ * `--image-model` and `--on` switch the Session's Image Model, and the kind of backend it renders
+ * on, before anything is made: one replay on each runtime (its reference sheets too).
  *
  * A Roleplay with `music` is played with Score as you play (Music must be on in Settings), and its
  * `course` says what the music should do at each Frame: how it went is printed at the end.
@@ -26,6 +30,11 @@ export interface Replay {
   seed?: number
   /** Whether to picture and render every Frame afterwards (true unless said otherwise). */
   pictures?: boolean
+  /**
+   * Reference sheets, made from the Look (docs/reference-sheets-plans.md): asked for, or not, as
+   * the Session starts; left out, as Settings say.
+   */
+  sheets?: boolean
   /**
    * A Roleplay's music, directed after each Reply (Score as you play), with its own settings; any
    * left out are Settings'.
@@ -95,6 +104,7 @@ export const createBody = (replay: Replay) => ({
   ...(replay.scenario ? { scenarioId: replay.scenario } : { brief: replay.brief }),
   ...(replay.frameCount ? { frameCount: replay.frameCount } : {}),
   ...(replay.seed !== undefined ? { seed: replay.seed } : {}),
+  ...(replay.sheets !== undefined ? { sheets: replay.sheets } : {}),
 })
 
 /**
@@ -146,16 +156,23 @@ export async function follow(response: Response): Promise<void> {
   }
 }
 
-/** The command line: a replay file, `--server <url>` and `--no-pictures`. */
+/**
+ * The command line: a replay file, `--server <url>`, `--no-pictures`, and the Image Model and the
+ * kind of backend to render with (`--image-model <id>`, `--on mflux|comfyui`).
+ */
 export function argsOf(argv: string[]) {
   const args = {
     file: undefined as string | undefined,
     server: 'http://127.0.0.1:8787',
     pictures: true,
+    imageModel: undefined as string | undefined,
+    on: undefined as string | undefined,
   }
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === '--server') args.server = argv[++i]
     else if (argv[i] === '--no-pictures') args.pictures = false
+    else if (argv[i] === '--image-model') args.imageModel = argv[++i]
+    else if (argv[i] === '--on') args.on = argv[++i]
     else args.file = argv[i]
   }
   return args
@@ -165,7 +182,10 @@ async function main() {
   const args = argsOf(Deno.args)
   const file = args.file
   if (!file) {
-    console.error('Usage: deno task replay <replay.yaml> [--server <url>] [--no-pictures]')
+    console.error(
+      'Usage: deno task replay <replay.yaml> [--server <url>] [--no-pictures] ' +
+        '[--image-model <id>] [--on mflux|comfyui]',
+    )
     Deno.exit(1)
   }
   const replay = parseReplay(await Deno.readTextFile(file))
@@ -184,10 +204,20 @@ async function main() {
     body: JSON.stringify(createBody(replay)),
   })
   if (!created.ok) throw new Error((await created.json()).error)
-  const { id } = await created.json()
+  const { id, settings: started } = await created.json()
   console.log(`Session ${id}`)
   const session = (path: string, body?: unknown) =>
     api(`sessions/${id}/${path}`, { method: 'POST', body: JSON.stringify(body ?? {}) })
+  if (args.imageModel || args.on) {
+    const switched = await api(`sessions/${id}/image-model`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        imageModel: args.imageModel ?? started.imageModel,
+        ...(args.on && { imageBackend: args.on }),
+      }),
+    })
+    if (!switched.ok) throw new Error((await switched.json()).error)
+  }
   if (replay.music) {
     if (!(await (await api('settings')).json()).music) {
       throw new Error('This replay directs its music: switch Music on in Settings first')
@@ -219,15 +249,51 @@ async function main() {
       if (!queued.ok) console.warn(`render ${frameIndex}: ${(await queued.json()).error}`)
     }
   }
-  if (pictures || replay.music) {
+  const sheets = started.sheets as boolean
+  if (pictures || replay.music || sheets) {
     await jobsDone(
       api,
       id,
-      [pictures && 'picture and render', replay.music && 'music'].filter(Boolean).join(', '),
+      [pictures && 'picture and render', replay.music && 'music', sheets && 'reference sheet']
+        .filter(Boolean).join(', '),
+    )
+  }
+  if (sheets) {
+    printSheets(
+      await (await api(`sessions/${id}`)).json(),
+      await (await api(`sessions/${id}/jobs`)).json(),
     )
   }
   if (replay.course) printCourse(await (await api(`sessions/${id}`)).json(), replay.course)
   console.log(`Done: ${args.server.replace(/\/$/, '')} → Session ${id}`)
+}
+
+/** Each reference sheet made: whose, by which Image Model, and how long it took to make. */
+function printSheets(
+  session: {
+    sheets: { subject: string; seed: number; made?: { file: string; imageModel: string } }[]
+  },
+  jobs: {
+    kind: string
+    sheet?: { subject: string }
+    startedAt?: string
+    endedAt?: string
+    imageBackend?: string
+  }[],
+) {
+  for (const sheet of session.sheets) {
+    const job = jobs.findLast((j) => j.kind === 'sheet' && j.sheet?.subject === sheet.subject)
+    const took = job?.startedAt && job.endedAt
+      ? `${((Date.parse(job.endedAt) - Date.parse(job.startedAt)) / 1000).toFixed(0)} s`
+      : '?'
+    console.log(
+      sheet.made
+        ? `Sheet of ${sheet.subject}: ${sheet.made.file}, by ${sheet.made.imageModel} on ${
+          job?.imageBackend ?? '?'
+        }, seed ${sheet.seed}, ${took}`
+        : `Sheet of ${sheet.subject}: not made`,
+    )
+  }
 }
 
 /** Each Frame's decision beside its course step, and how many kept to it. */
