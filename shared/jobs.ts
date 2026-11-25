@@ -67,6 +67,8 @@ export interface Job {
   edit?: EditOrder
   /** A clip's order. */
   clip?: ClipOrder
+  /** A reference sheet's: whose, by the Subject's name in the Look. */
+  sheet?: { subject: string }
   /**
    * An export's folder, where its page is written (`exports/` and the Session's id): said once
    * it's done. What it writes was saved in the Session's folder as it was queued (`export.json`).

@@ -51,6 +51,8 @@ import { GoneError, removeSession, updateSession } from './update.ts'
 import type { ExportPage } from './export/comparison.ts'
 import { removeExportOrder, runExport } from './export/job.ts'
 import { removeFiles } from './pictures.ts'
+import { makeSheet, reconcileSheets, sheetFiles, sheetsSettled, sheetsToMake } from './sheets.ts'
+import type { SheetPicture } from '../shared/session.ts'
 import {
   backendOf,
   editJob,
@@ -71,6 +73,7 @@ import { settingsRoutes } from './settingsRoutes.ts'
 import { scenarioRoutes } from './scenario/routes.ts'
 import { sessionRoutes } from './sessionRoutes.ts'
 import { pictureRoutes } from './pictureRoutes.ts'
+import { sheetRoutes } from './sheetRoutes.ts'
 import { chainRoutes } from './chain/routes.ts'
 import { storyboardRoutes } from './storyboard/routes.ts'
 
@@ -432,6 +435,41 @@ export function createHandler(
     }
   }
 
+  /**
+   * Brings a Session's reference sheets in line with its Look while they can still change
+   * (`reconcileSheets`), and the queue with them: a `sheet` job for each ticked sheet not made yet,
+   * none for one unticked, gone, or made again from a new identity. Called whenever its Look or
+   * its sheets change.
+   */
+  async function queueSheets(id: string) {
+    const loaded = await deps.sessions.load(id)
+    if (!loaded || loaded.kind === 'chain' || !loaded.settings.sheets) return
+    let session = loaded
+    if (!sheetsSettled(session)) {
+      let remade: string[] = []
+      let dropped: SheetPicture[] = []
+      session = await updateSession(deps.sessions, id, session.kind, (latest) => {
+        const reconciled = reconcileSheets(latest)
+        remade = reconciled.remade
+        dropped = reconciled.dropped
+        return { ...latest, sheets: reconciled.sheets }
+      })
+      await removeFiles(deps.sessions.dir(id), dropped.flatMap(sheetFiles))
+      jobs.cancelWhere(
+        id,
+        (j) => j.kind === 'sheet' && isOpen(j) && remade.includes(j.sheet!.subject),
+      )
+    }
+    const wanted = new Set(sheetsToMake(session).map((s) => s.subject))
+    jobs.cancelWhere(id, (j) => j.kind === 'sheet' && isOpen(j) && !wanted.has(j.sheet!.subject))
+    if (!wanted.size) return
+    const machine = machineOf(await jobBackendOf(session, 'sheet'))
+    for (const subject of wanted) {
+      const none = undefined
+      jobs.enqueue(id, 'sheet', 0, machine, none, none, none, none, none, { subject })
+    }
+  }
+
   /** Every Session's background work, run as its kind says: a Roleplay's or a Chain's. */
   const jobs: SessionJobs = new SessionJobs(
     async (id, job, emit, signal) => {
@@ -489,6 +527,12 @@ export function createHandler(
       const exportDeps = { sessionDir: deps.sessions.dir(id), page: deps.exports.page }
       return runExport(exportDeps, session, job, emit, signal)
     }
+    // A Storyboard's or a Roleplay's, alike.
+    if (session && job.kind === 'sheet') {
+      if (session.kind === 'chain') throw new Error('A Chain has no sheets')
+      await makeSheet(frameDeps(session), session, job.sheet!.subject, emit, signal)
+      return
+    }
     // The same in every kind of Session (ADR 0021).
     if (session && job.kind === 'edit') {
       const save = (change: (s: Session) => Session) =>
@@ -517,6 +561,8 @@ export function createHandler(
       if (job.kind === 'direct' || job.kind === 'score-roleplay') await queueMusic(id)
       // A steered Cue has a track, which plays on until its new one is made.
       if (job.kind === 'steer') await queueMusic(id, job.frameIndex)
+      // Its sheets are made from the Look just written.
+      if (job.kind === 'look') await queueSheets(id)
       return
     }
     if (session?.kind === 'chain' || session?.kind === 'storyboard') {
@@ -564,6 +610,7 @@ export function createHandler(
     imageBackends,
     heavyBackend,
     jobBackendOf,
+    queueSheets,
   }
 
   const routes: Route[] = [
@@ -594,6 +641,7 @@ export function createHandler(
       // Thinking off, as for pictures: a suggestion is a draft, and it should come quickly.
       suggestModel: (session) => deps.roleplayModel(textChoice(session, undefined, false)),
       settings: () => deps.settings.load(),
+      queueSheets,
       queuesAfterReply: async (session, after) => {
         const machine = async (kind: JobKind) => machineOf(await jobBackendOf(session, kind))
         const speak = after.speak && !(await featureOff('voices')) && await machine('speak')
@@ -634,6 +682,8 @@ export function createHandler(
       check: async (session, kind, index, pending, edit, clip) => {
         // An export zips the Session as it is: nothing is queued on it meanwhile.
         if (locks.get(session.id) === 'export') return error(BUSY_MESSAGES.export, 409)
+        // Queued from the Look, or by its own routes (Redo, the tick).
+        if (kind === 'sheet') return error('A sheet is made from its Subject in the Look', 400)
         // Queued with what it writes, by its own route.
         if (kind === 'export') return error('Export from the Compare dialog', 400)
         const feature = JOB_FEATURE[kind]
@@ -687,6 +737,7 @@ export function createHandler(
     ...scenarioRoutes(ctx),
     ...sessionRoutes(ctx),
     ...pictureRoutes(ctx),
+    ...sheetRoutes(ctx),
     ...chainRoutes(ctx),
     ...storyboardRoutes(ctx),
 

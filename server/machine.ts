@@ -162,6 +162,12 @@ export const machineKey = (address: string | undefined, own: Set<string> = ownNa
 export const machineOf = (backend: Backend | undefined, own?: Set<string>): string =>
   machineKey(backend && backendAddress(backend), own)
 
+/** The Image Model that makes a Session's reference sheets: Settings' choice, or its own. */
+export const sheetImageModel = (
+  session: Pick<SessionSettings, 'imageModel'>,
+  now: Pick<Settings, 'sheetImageModel'>,
+) => now.sheetImageModel || session.imageModel
+
 /**
  * Where a Session's queued job runs: a picture with the Text Model (it writes an Image Prompt), a
  * render by the Session's Image Model, an edit by its edit model (the one it was told, or Settings'
@@ -185,6 +191,11 @@ export function jobBackend(
     case 'render': {
       const on = session.imageBackend
       return backendOf({ kind: 'render', model: session.imageModel, ...(on && { on }) }, now, here)
+    }
+    case 'sheet': {
+      const model = sheetImageModel(session, now)
+      const on = model === session.imageModel ? session.imageBackend : undefined
+      return backendOf({ kind: 'render', model, ...(on && { on }) }, now, here)
     }
     case 'edit':
       return backendOf(editJob(opts.editModel ?? now.editModel, opts.editBackend), now, here)

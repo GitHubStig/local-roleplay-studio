@@ -9,7 +9,8 @@ import {
   withPicture,
 } from './pictures.ts'
 import type { Picture } from '../shared/pictures.ts'
-import type { ImageGenerator } from './images/imageGenerator.ts'
+import type { ImageGenerator, ImageSize } from './images/imageGenerator.ts'
+import { anyImageModel } from './images/imageModels.ts'
 import type { Upscaler } from '../shared/images.ts'
 import type { TextModel } from './textModel.ts'
 import type { Previews } from './previews.ts'
@@ -123,6 +124,16 @@ export async function withRetry<T>(
   throw lastError
 }
 
+/** What a render may have of its own, rather than its Session's: a reference sheet's. */
+export interface RenderOwn {
+  /** Its seed; the Session's otherwise. */
+  seed?: number
+  /** Its size; Settings' otherwise. */
+  size?: ImageSize
+  /** Its Image Model, at that model's own steps; the Session's otherwise. */
+  imageModel?: string
+}
+
 /**
  * Renders `prompt` into `<dir>/<name>.png` with the Session's Image Model, through the shared
  * render queue, run as Settings are now (`renderSettings`). Returns the picture, with how long it
@@ -135,13 +146,22 @@ export async function renderImage(
   name: string,
   emit: (event: ProgressEvent) => void,
   signal: AbortSignal,
+  own: RenderOwn = {},
 ): Promise<Picture> {
-  const settings = renderSettings(
+  const sessions = renderSettings(
     session.settings,
     deps.settings ? await deps.settings() : DEFAULT_SETTINGS,
   )
+  const other = own.imageModel && own.imageModel !== sessions.imageModel
+  const settings = other
+    ? {
+      ...sessions,
+      imageModel: own.imageModel!,
+      steps: anyImageModel(own.imageModel!)?.defaultSteps ?? sessions.steps,
+    }
+    : sessions
   // Found once, so the picture records where it was made.
-  const on = session.settings.imageBackend
+  const on = other ? undefined : session.settings.imageBackend
   const job: HeavyJob = { kind: 'render', model: settings.imageModel, ...(on && { on }) }
   const backend = await deps.backendOf?.(job)
   const kind = backend && imageKindOf(backend)
@@ -159,7 +179,15 @@ export async function renderImage(
     await Deno.mkdir(dir, { recursive: true })
     const { onProgress, onDownload } = imageProgress(emit)
     const image = await deps.imageGenerator.generate(
-      { prompt, seed: session.seed, settings, dir, name, ...(backend && { backend }) },
+      {
+        prompt,
+        seed: own.seed ?? session.seed,
+        settings,
+        dir,
+        name,
+        ...(backend && { backend }),
+        ...(own.size && { size: own.size }),
+      },
       signal,
       onProgress,
       onDownload,

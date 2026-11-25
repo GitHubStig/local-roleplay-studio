@@ -45,7 +45,7 @@ Deno.test('unknown routes return 404', async () => {
 })
 
 Deno.test('GET /api/settings returns stored settings', async () => {
-  const res = await setup().call('GET', '/api/settings')
+  const res = await setup({ settings: DEFAULT_SETTINGS }).call('GET', '/api/settings')
   assertEquals(await settingsIn(res), { ...DEFAULT_SETTINGS, apiKeysSet: [] })
 })
 
@@ -157,7 +157,7 @@ Deno.test('PUT /api/settings saves valid settings', async () => {
 })
 
 Deno.test('PUT /api/settings rejects invalid settings without saving', async () => {
-  const { settings, call } = setup()
+  const { settings, call } = setup({ settings: DEFAULT_SETTINGS })
   const res = await call('PUT', '/api/settings', { ...DEFAULT_SETTINGS, imageModel: 'x', steps: 0 })
   assertEquals(res.status, 400)
   assertEquals((await refusalIn(res)).issues!.length, 2)
@@ -642,7 +642,11 @@ Deno.test('A Session has sheets as Settings say, or as asked when it starts; a C
       video: on,
       sheets: on,
     }
-    const { call, settings } = setup({ root, settings: { textModel: 'x' }, features })
+    const { call, settings } = setup({
+      root,
+      settings: { textModel: 'x', features: DEFAULT_SETTINGS.features },
+      features,
+    })
     const start = async (kind: string, sheets?: boolean) =>
       await call('POST', '/api/sessions', { kind, brief: 'A rainy street.', sheets })
     const sheetsOf = async (res: Response) => (await sessionFrom(res)).settings.sheets

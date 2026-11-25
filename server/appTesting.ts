@@ -96,7 +96,13 @@ export interface SetupOptions {
 /** The app's handler over fakes, Sessions under `root`, and a `call` that sends it a request. */
 export function setup(opts: SetupOptions = {}) {
   let sessionCount = 0
-  const settings = memoryStore({ ...DEFAULT_SETTINGS, ...opts.settings })
+  // Sheets off unless a test turns them on: wherever they're available (a ComfyUI listed), their
+  // jobs would run beside every Storyboard's and Roleplay's, and could outlast the test.
+  const settings = memoryStore({
+    ...DEFAULT_SETTINGS,
+    features: { ...DEFAULT_SETTINGS.features, sheets: false },
+    ...opts.settings,
+  })
   const sessions = dirSessionStore(opts.root ?? '/nonexistent')
   const handler = createHandler({
     settings,

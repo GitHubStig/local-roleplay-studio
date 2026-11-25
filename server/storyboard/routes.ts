@@ -13,7 +13,7 @@ import type { AppContext } from '../appContext.ts'
 import { frameIndexOf, isStringList, needsStoryboard } from '../appContext.ts'
 
 export function storyboardRoutes(ctx: AppContext): Route[] {
-  const { deps, locked, stream, frameDeps } = ctx
+  const { deps, locked, stream, frameDeps, queueSheets } = ctx
 
   return [
     [
@@ -27,6 +27,8 @@ export function storyboardRoutes(ctx: AppContext): Route[] {
           // A Storyboard that never got planned never started, like a Chain's Opening Frame.
           return stream(session, null, true, async (send, signal) => {
             await planStoryboard(frameDeps(session), session, scenario, send, signal)
+            // Its sheets are made from the Look, while the player reviews the plan.
+            await queueSheets(session.id)
           })
         }),
     ],
@@ -154,9 +156,10 @@ export function storyboardRoutes(ctx: AppContext): Route[] {
           ) {
             return error('subjects (each with a name and identity) and style are required', 400)
           }
-          return json(
-            await setLook({ store: deps.sessions }, session, { subjects, style: body.style }),
-          )
+          await setLook({ store: deps.sessions }, session, { subjects, style: body.style })
+          // Its sheets follow: a changed identity, a new one.
+          await queueSheets(session.id)
+          return json(await deps.sessions.load(session.id))
         }),
     ],
   ]

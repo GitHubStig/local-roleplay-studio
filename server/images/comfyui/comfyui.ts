@@ -1,6 +1,10 @@
 import { join } from '@std/path'
-import { type ImageGenerator, type OnPreview, UPSCALED_EDGE } from '../imageGenerator.ts'
-import { SIZE_PRESETS } from '../../settings.ts'
+import {
+  type ImageGenerator,
+  type OnPreview,
+  requestSize,
+  UPSCALED_EDGE,
+} from '../imageGenerator.ts'
 import { comfyBase, fillWorkflow, runWorkflow, type Workflow } from '../../comfyui/client.ts'
 import { editPrompt } from '../editPrompt.ts'
 import { modelPrompt } from '../modelPrompt.ts'
@@ -50,7 +54,7 @@ export function comfyuiImageGenerator(opts: {
     async generate(req, signal, onProgress, _onDownload, onPreview) {
       const model = findComfyModel(req.settings.imageModel)
       if (!model) throw new Error(`ComfyUI has no Image Model "${req.settings.imageModel}" here`)
-      const size = SIZE_PRESETS.find((p) => p.id === req.settings.size) ?? SIZE_PRESETS[0]
+      const size = requestSize(req)
 
       const workflow = fillWorkflow(await loadModelWorkflow(model.id), {
         ...await modelFiles(base, model, signal),

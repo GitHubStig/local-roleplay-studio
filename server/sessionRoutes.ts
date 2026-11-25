@@ -328,22 +328,29 @@ export function sessionRoutes(ctx: AppContext): Route[] {
             found ? 409 : 404,
           )
         }
-        // A Roleplay's voice and Look stay, as its Cast does.
+        // A Roleplay's voice, Look and sheets stay, as its Cast does.
         const cancelled = (job: Job) =>
-          found.kind === 'storyboard' || (job.kind !== 'voice' && job.kind !== 'look')
+          found.kind === 'storyboard' ||
+          (job.kind !== 'voice' && job.kind !== 'look' && job.kind !== 'sheet')
         jobs.cancelWhere(p.id!, cancelled)
         return jobs.betweenRenders(p.id!, () =>
           locked(p.id!, 'edit', async (session) => {
             if (session.kind === 'roleplay') {
               if (!session.frames.length) return error('The scene has not begun yet', 409)
               jobs.cancelWhere(session.id, cancelled)
-              return json(await restartRoleplay(deps.sessions, session))
+              await restartRoleplay(deps.sessions, session)
+              // Back in its Cast review, its sheets can change again.
+              await ctx.queueSheets(session.id)
+              return json(await deps.sessions.load(session.id))
             }
             if (!needsStoryboard(session) || !session.look) {
               return error('Only a planned Storyboard restarts', 409)
             }
             jobs.cancelWhere(session.id, cancelled)
-            return json(await restartStoryboard({ store: deps.sessions }, session))
+            await restartStoryboard({ store: deps.sessions }, session)
+            // Back in its plan review, its sheets can change again: those not made are queued.
+            await ctx.queueSheets(session.id)
+            return json(await deps.sessions.load(session.id))
           }))
       },
     ],

@@ -47,6 +47,7 @@ interface JobKindInfo {
 
 export const JOBS: Record<JobKind, JobKindInfo> = {
   look: { feature: null, text: true, ofSession: true, needs: [] },
+  sheet: { feature: 'sheets', image: true, ofSession: true, needs: [] },
   picture: { feature: null, text: true, needs: ['look'] },
   render: { feature: 'images', image: true, needs: ['picture'] },
   upscale: {

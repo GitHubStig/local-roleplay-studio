@@ -6,6 +6,7 @@ import {
   type ImageGenerator,
   type ImageRequest,
   type OnProgress,
+  requestSize,
   UPSCALED_EDGE,
   type UpscaleRequest,
 } from '../imageGenerator.ts'
@@ -15,7 +16,6 @@ import { modelPrompt } from '../modelPrompt.ts'
 import { pasteBack } from '../pasteBack.ts'
 import { float16On } from './chip.ts'
 import { findMfluxModel, type Lora, MFLUX_MODELS, type MfluxModel } from './models.ts'
-import { SIZE_PRESETS } from '../../settings.ts'
 
 /** `--lora` for a LoRA, its `./` or `../` path resolved from the repo's root. */
 export function loraArgs(lora: Lora): string[] {
@@ -38,7 +38,7 @@ export function mfluxArgs(
   chip?: number | null,
 ): string[] {
   const { settings } = req
-  const size = SIZE_PRESETS.find((p) => p.id === settings.size) ?? SIZE_PRESETS[0]
+  const size = requestSize(req)
   const quantize = settings.quantize && !model.preQuantized
   const presets = model.stepPresets
   const preset = presets &&

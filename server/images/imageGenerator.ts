@@ -2,6 +2,7 @@ import { join } from '@std/path'
 import type { Backend } from '../../shared/backends.ts'
 import type { Quantize, Settings } from '../../shared/settings.ts'
 import type { EditModel } from '../../shared/images.ts'
+import { SIZE_PRESETS } from '../settings.ts'
 
 export interface ImageRequest {
   prompt: string
@@ -13,7 +14,19 @@ export interface ImageRequest {
   dir: string
   /** File name without extension; the generator picks the extension. */
   name: string
+  /** Its size, when not Settings' (`size`): a reference sheet's 1536×640. */
+  size?: ImageSize
 }
+
+/** A picture's width and height, in pixels. */
+export interface ImageSize {
+  width: number
+  height: number
+}
+
+/** The size a render is made at: its own, or Settings' preset. */
+export const requestSize = (req: Pick<ImageRequest, 'size' | 'settings'>): ImageSize =>
+  req.size ?? SIZE_PRESETS.find((p) => p.id === req.settings.size) ?? SIZE_PRESETS[0]
 
 export interface UpscaleRequest {
   /** Which upscaler model, e.g. `seedvr2-7b`. */

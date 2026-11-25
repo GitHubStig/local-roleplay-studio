@@ -3,6 +3,7 @@ import { DOWNLOADING, type ImageBackend, type Job, type JobKind, previewUrl } fr
 /** What each job is called, on its Frame and in the queue. */
 export const JOB_NAMES: Record<JobKind, string> = {
   look: 'Look',
+  sheet: 'Reference sheet',
   picture: 'Picture',
   render: 'Render',
   upscale: 'Upscale',

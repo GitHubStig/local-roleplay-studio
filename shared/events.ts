@@ -6,6 +6,7 @@ import type {
   Look,
   Outcome,
   Phase,
+  Sheet,
   StoryboardFrame,
   StoryboardSession,
 } from './session.ts'
@@ -47,6 +48,11 @@ export type StoryboardEvent =
   | { type: 'rendered'; frame: StoryboardFrame }
   /** A Frame edited by Action: how the Action was received, and the Storyboard after it. */
   | { type: 'edited'; outcome: Outcome; narration: string; session: StoryboardSession }
+
+/** Progress of a reference sheet being made, from its job: rendered, then `sheet` once saved. */
+export type SheetEvent =
+  | ProgressEvent
+  | { type: 'sheet'; subject: string; sheet: Sheet }
 
 export type ClipPromptEvent =
   | { type: 'phase'; phase: Phase }

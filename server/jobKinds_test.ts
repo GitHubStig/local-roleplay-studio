@@ -21,10 +21,17 @@ Deno.test('Each list of job kinds is read from the one table', () => {
   ])
   assertEquals(
     [...IMAGE_JOBS].sort(),
-    ['clip', 'edit', 'figure', 'lito', 'music', 'render', 'scene', 'upscale'],
+    ['clip', 'edit', 'figure', 'lito', 'music', 'render', 'scene', 'sheet', 'upscale'],
   )
   assertEquals([...LATE_JOBS].sort(), ['clip', 'music'])
   assertEquals([...RESUMED].sort(), ['clip', 'music'])
-  assertEquals([...SESSION_JOBS].sort(), ['export', 'look', 'score-roleplay', 'style', 'voice'])
+  assertEquals([...SESSION_JOBS].sort(), [
+    'export',
+    'look',
+    'score-roleplay',
+    'sheet',
+    'style',
+    'voice',
+  ])
   assertEquals([...ON_SHOWN_PICTURE].sort(), ['edit', 'figure', 'lito', 'scene', 'upscale'])
 })

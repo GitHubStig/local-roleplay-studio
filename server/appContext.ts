@@ -63,6 +63,11 @@ export interface AppContext {
   heavyBackend(job: HeavyJob): Promise<Backend | undefined>
   /** Which Backend a job of `kind` would go to for `session` now. */
   jobBackendOf(session: Session, kind: JobKind, edit?: EditOrder): Promise<Backend | undefined>
+  /**
+   * Brings a Session's reference sheets in line with its Look, and queues what's to make
+   * (`reconcileSheets`); call whenever its Look or its sheets change.
+   */
+  queueSheets(id: string): Promise<void>
 }
 
 export const isStringList = (value: unknown): value is string[] =>

@@ -139,10 +139,11 @@ const sameWork = (
   frameIndex: number,
   image?: ImageChoice,
   clip?: ClipOrder,
+  sheet?: Job['sheet'],
 ) =>
   kind !== 'edit' && job.kind === kind && job.frameIndex === frameIndex &&
   job.image?.imageModel === image?.imageModel && job.clip?.kind === clip?.kind &&
-  job.clip?.model === clip?.model
+  job.clip?.model === clip?.model && job.sheet?.subject === sheet?.subject
 
 /**
  * Where image work on Frame `frameIndex` goes ahead of queued clips and music, which take minutes:
@@ -297,9 +298,10 @@ export class SessionJobs {
     clip?: ClipOrder,
     text?: TextChoiceKept,
     exported?: Job['export'],
+    sheet?: Job['sheet'],
   ): Job {
     const jobs = this.#jobs.get(sessionId) ?? []
-    const same = jobs.find((j) => sameWork(j, kind, frameIndex, image, clip) && isOpen(j))
+    const same = jobs.find((j) => sameWork(j, kind, frameIndex, image, clip, sheet) && isOpen(j))
     if (same) return { ...same }
     const job: Job = {
       id: crypto.randomUUID().slice(0, 8),
@@ -313,6 +315,7 @@ export class SessionJobs {
       ...(clip && { clip }),
       ...(text && TEXT_JOBS.includes(kind) && { text }),
       ...(exported && { export: exported }),
+      ...(sheet && { sheet }),
     }
     const ahead = kind === 'picture'
       ? jobs.findIndex((j) => j.status === 'queued' && IMAGE_JOBS.includes(j.kind))
@@ -359,7 +362,8 @@ export class SessionJobs {
     if (!failed) return false
     const rest = jobs.filter((j) => j.id !== jobId)
     const again = rest.some((j) =>
-      sameWork(j, failed.kind, failed.frameIndex, failed.image, failed.clip) && isOpen(j)
+      sameWork(j, failed.kind, failed.frameIndex, failed.image, failed.clip, failed.sheet) &&
+      isOpen(j)
     )
     const { error: _, startedAt: _s, endedAt: _e, ...job } = failed
     this.#jobs.set(sessionId, again ? rest : [...rest, { ...job, status: 'queued' }])

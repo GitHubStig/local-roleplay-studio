@@ -1,5 +1,11 @@
 import encodePng from '@jsquash/png/encode.js'
-import type { EditRequest, ImageGenerator, OnPreview, OnProgress } from './images/imageGenerator.ts'
+import type {
+  EditRequest,
+  ImageGenerator,
+  ImageSize,
+  OnPreview,
+  OnProgress,
+} from './images/imageGenerator.ts'
 import { parseScenario, type ScenarioLibrary } from './scenario.ts'
 import { expanded, type ExpandFrom } from './scenario/expand.ts'
 import type { SuggestRequest } from './scenario/suggest.ts'
@@ -209,11 +215,19 @@ export const reply = (pose: string, extra: Partial<FrameText> = {}): FrameText =
 })
 
 /** Writes a tiny file per image; can be told to fail or to wait for an abort. */
+/** A PNG of `width`×`height`, each pixel's red its column, for checking how it's cut. */
+export async function testPng(width: number, height: number): Promise<Uint8Array<ArrayBuffer>> {
+  const data = new Uint8ClampedArray(width * height * 4)
+  for (let i = 0; i < width * height; i++) data.set([i % width, 0, 0, 255], i * 4)
+  return new Uint8Array(await encodePng(new ImageData(data, width, height)))
+}
+
 export function fakeImageGenerator(
   opts: { fail?: boolean; hang?: boolean } = {},
 ): ImageGenerator & {
   prompts: string[]
   settings: Settings[]
+  sizes: (ImageSize | undefined)[]
   upscaled: string[]
   upscalers: string[]
   edits: EditRequest[]
@@ -228,8 +242,10 @@ export function fakeImageGenerator(
     upscalers: [] as string[],
     /** What each edit was asked. */
     edits: [] as EditRequest[],
+    /** The size each image was asked for, when not Settings' (a sheet's). */
+    sizes: [] as (ImageSize | undefined)[],
     async generate(
-      req: { prompt: string; settings: Settings; dir: string; name: string },
+      req: { prompt: string; settings: Settings; dir: string; name: string; size?: ImageSize },
       signal: AbortSignal,
       _onProgress?: OnProgress,
       _onDownload?: () => void,
@@ -237,6 +253,7 @@ export function fakeImageGenerator(
     ) {
       gen.prompts.push(req.prompt)
       gen.settings.push(req.settings)
+      gen.sizes.push(req.size)
       signal.throwIfAborted()
       if (opts.fail) throw new Error('mflux crashed')
       if (opts.hang) {
@@ -247,7 +264,14 @@ export function fakeImageGenerator(
         )
       }
       const file = `${req.name}.png`
-      await Deno.writeTextFile(`${req.dir}/${file}`, req.prompt)
+      // A picture of its own size is a real one, a 32nd of it (a sheet, to be cut apart); else the
+      // prompt stands in for it.
+      if (req.size) {
+        await Deno.writeFile(
+          `${req.dir}/${file}`,
+          await testPng(req.size.width / 32, req.size.height / 32),
+        )
+      } else await Deno.writeTextFile(`${req.dir}/${file}`, req.prompt)
       return file
     },
     async upscale(

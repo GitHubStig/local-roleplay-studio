@@ -77,6 +77,8 @@ export interface RoleplayRouteContext {
   suggestModel(session: Session): RoleplayModel
   /** Settings as they are now. */
   settings(): Promise<Settings>
+  /** Brings its sheets in line with its Look, and queues what's to make (`AppContext`). */
+  queueSheets(id: string): Promise<void>
   /**
    * Queues what follows a Reply as it's saved, as `after` asks, so the page that hears of it finds
    * it in the queue: its line spoken, its picture, its render, in that order. Resolves, once it
@@ -202,7 +204,10 @@ export function roleplayRoutes(ctx: RoleplayRouteContext): Route[] {
         ctx.jobs.betweenRenders(p.id!, () =>
           withRoleplay(p.id!, 'edit', async (session) => {
             if (!session.look) return error('This Roleplay has no Look yet', 409)
-            return json(await setLook(ctx.deps(session).store, session, await readJson(req)))
+            await setLook(ctx.deps(session).store, session, await readJson(req))
+            // Its sheets follow, while the Cast is reviewed: a changed identity, a new one.
+            await ctx.queueSheets(session.id)
+            return json(await ctx.store.load(session.id))
           })),
     ],
 
