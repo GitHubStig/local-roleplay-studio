@@ -1,0 +1,19 @@
+p-klein-kael: exit 0, 40 s, peak 15.4 GB
+p-klein-elara: exit 0, 41 s, peak 15.5 GB
+p-photo-kael: exit 0, 40 s, peak 15.5 GB
+p-photo-elara: exit 0, 40 s, peak 15.5 GB
+s-klein-cry: exit 0, 40 s, peak 15.5 GB
+s-klein-profile: exit 0, 39 s, peak 15.5 GB
+p-qwen-kael: exit 0, 86 s, peak 39.3 GB
+p-qwen-elara: exit 0, 86 s, peak 39.2 GB
+s-qwen-cry: exit 0, 86 s, peak 39.2 GB
+s-qwen-profile: exit 0, 86 s, peak 39.2 GB
+e-qwen-cry-qwen: exit 0, 143 s, peak 39.0 GB
+e-qwen-profile-qwen: exit 0, 144 s, peak 38.8 GB
+e-qwen-cry-klein: exit 0, 143 s, peak 39.1 GB
+e-qwen-profile-klein: exit 0, 141 s, peak 39.5 GB
+e-qwen-cry-photo: exit 0, 149 s, peak 39.0 GB
+e-qwen-profile-photo: exit 0, 148 s, peak 38.8 GB
+e-klein-cry-qwen: exit 0, 142 s, peak 39.3 GB
+e-klein-profile-qwen: exit 0, 144 s, peak 39.0 GB
+done
