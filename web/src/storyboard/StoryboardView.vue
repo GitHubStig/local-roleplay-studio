@@ -704,7 +704,7 @@ const pickFromAll = (index: number) => pick(index)
           <li
             v-for="(f, position) in listed"
             :key="f.index"
-            class="flex w-36 shrink-0"
+            class="flex w-36 shrink-0 select-none [-webkit-touch-callout:none]"
             :class="{ 'opacity-60': draggingBeat === position }"
             data-frame-row
           >
@@ -722,7 +722,8 @@ const pickFromAll = (index: number) => pick(index)
               </span>
               <span class="line-clamp-2 text-fg" data-beat>{{ f.beat }}</span>
             </button>
-            <!-- Its grip, to drag the Beat along the plan (or ← and →). -->
+            <!-- Its grip, to drag the Beat along the plan (or ← and →); a long press on a phone selects
+                 no text, nor opens Safari's menu, on the way. -->
             <button
               v-if="canMoveBeats"
               type="button"
