@@ -39,6 +39,7 @@ await run(join(root, 'server'), [
     'voice/comfyui/workflows',
     'video/comfyui/workflows',
     'music/comfyui/workflows',
+    'heads/workflows',
   ].flatMap((path) => ['--include', path]),
   // Only the npm packages the server imports, not the whole node_modules (79 MB, not 381).
   '--exclude-unused-npm',

@@ -23,7 +23,11 @@ export interface ComfyModel {
   files: ModelFiles['files']
 }
 
-const QWEN_IMAGE_2_1_CLIP = { folder: 'text_encoders', patterns: [/^qwen3vl_8b.*\.safetensors$/] }
+/** Qwen-Image 2.1's text encoder, a Qwen3-VL-8B, which also reads pictures (`server/heads/`). */
+export const QWEN_IMAGE_2_1_CLIP = {
+  folder: 'text_encoders',
+  patterns: [/^qwen3vl_8b.*\.safetensors$/],
+}
 const QWEN_IMAGE_2_1_VAE = { folder: 'vae', patterns: [/^qwen_image_2\.1_vae.*\.safetensors$/] }
 const FLUX2_VAE = { folder: 'vae', patterns: [/^flux2-vae.*\.safetensors$/] }
 const FIBO_CLIP = {

@@ -50,6 +50,7 @@ import { checkStoryboardJob, runStoryboardJob } from './storyboard/jobs.ts'
 import { GoneError, removeSession, updateSession } from './update.ts'
 import type { ExportPage } from './export/comparison.ts'
 import { removeExportOrder, runExport } from './export/job.ts'
+import type { HeadFinder } from './heads/heads.ts'
 import { removeFiles } from './pictures.ts'
 import {
   makeSheet,
@@ -125,6 +126,8 @@ export interface AppDeps {
   music?: MusicGenerator
   /** Embeds pictures for the Compare dialog's style scores; without it, there are none. */
   style?: StyleEmbedder
+  /** Finds and counts heads in a picture, for reference sheets' face pass; without it, no sheets. */
+  headFinder?: HeadFinder
   /**
    * Which extras this machine can run (`detectFeatures`, at startup). Left out, those whose
    * backend is given are available, the rest not: what tests want.
@@ -370,8 +373,7 @@ export function createHandler(
     lito: given(deps.lito, 'LiTo'),
     style: given(deps.style, 'style embedder'),
     video: given(deps.video, 'video generator'),
-    // Until there's a head finder to give (docs/reference-sheets-plans.md, step 2d).
-    sheets: given(undefined, 'head finder'),
+    sheets: given(deps.headFinder, 'head finder'),
   }
   /**
    * The kinds of Image backend whose models a Session can switch to: mflux where it's installed,

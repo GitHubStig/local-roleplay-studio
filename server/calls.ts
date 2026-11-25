@@ -16,6 +16,7 @@ import type { ImageGenerator } from './images/imageGenerator.ts'
 import type { FigureMaker } from './3d/figure.ts'
 import type { SceneMaker, SceneRequest } from './3d/scene.ts'
 import type { StyleEmbedder } from './style/embedder.ts'
+import type { HeadFinder } from './heads/heads.ts'
 import type { VoiceEngine } from './voice/voice.ts'
 import { RENDER_SETTINGS } from './settings.ts'
 import { imageKindOf } from './backends.ts'
@@ -356,6 +357,31 @@ export function loggedEmbedder(embedder: StyleEmbedder): StyleEmbedder {
         { images: req.images.map((p) => basename(p)), texts: req.texts },
         () => embedder.embed(req, signal, onProgress, onDownload),
         (e) => ({ images: Object.keys(e.images).length, texts: Object.keys(e.texts).length }),
+      )
+    },
+  }
+}
+
+/** `finder`, with each question logged (`logCalls`): the picture, whom it looked for, what it found. */
+export function loggedHeads(finder: HeadFinder): HeadFinder {
+  const found = (heads: Awaited<ReturnType<HeadFinder['count']>>) => ({ heads })
+  return {
+    find(req, signal) {
+      return logged(
+        'find heads',
+        'Qwen-Image 2.1',
+        { image: req.image, who: req.who.name },
+        () => finder.find(req, signal),
+        found,
+      )
+    },
+    count(req, signal) {
+      return logged(
+        'count heads',
+        'Qwen-Image 2.1',
+        { image: req.image },
+        () => finder.count(req, signal),
+        found,
       )
     },
   }

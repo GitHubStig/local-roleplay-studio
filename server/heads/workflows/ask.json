@@ -1,0 +1,19 @@
+{
+  "_note": "Asks Qwen-Image 2.1's Qwen3-VL (its text encoder) about a picture: greedy, as the bench did (docs/bench/reference-sheets/2026-11-25/scripts/stage0.py). The answer comes back as PreviewAny's text.",
+  "clip": {
+    "class_type": "CLIPLoader",
+    "inputs": { "clip_name": "$clip", "type": "qwen_image", "device": "default" }
+  },
+  "image": { "class_type": "LoadImage", "inputs": { "image": "$image" } },
+  "ask": {
+    "class_type": "TextGenerate",
+    "inputs": {
+      "clip": ["clip", 0],
+      "prompt": "$question",
+      "max_length": 400,
+      "sampling_mode": "off",
+      "image": ["image", 0]
+    }
+  },
+  "answer": { "class_type": "PreviewAny", "inputs": { "source": ["ask", 0] } }
+}

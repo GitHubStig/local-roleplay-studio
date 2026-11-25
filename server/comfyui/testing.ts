@@ -2,7 +2,8 @@
  * A stand-in ComfyUI for tests: lists `files`, takes a workflow, reports `steps` over the WebSocket,
  * then `finish` ('success', or an error message, or 'hang' until interrupted), sending a picture
  * (`SaveImageWebsocket`) and, with `audio`, an output node's clip (`PreviewAudio`, served by `/view`), or
- * with `video`, its video (`SaveVideo`, in the output folder).
+ * with `video`, its video (`SaveVideo`, in the output folder), or with `text`, a node's answer
+ * (`PreviewAny`).
  */
 export function fakeComfyUI(
   opts: {
@@ -15,6 +16,8 @@ export function fakeComfyUI(
     audio?: { filename: string; bytes: Uint8Array<ArrayBuffer> }
     /** A video the workflow's `out` node made, in the output folder. */
     video?: { filename: string; bytes: Uint8Array<ArrayBuffer> }
+    /** Text a node answered (`PreviewAny`), as `{ text: [text] }`. */
+    text?: { node: string; text: string }
     /** The custom nodes it has (`/object_info/<node>`). */
     nodes?: string[]
     /** What `/system_stats` says is free on the GPU, one per ask; the last one stays. */
@@ -109,6 +112,9 @@ export function fakeComfyUI(
               node: 'out',
               output: { audio: [{ filename: opts.audio.filename, subfolder: '', type: 'temp' }] },
             })
+          }
+          if (opts.text) {
+            send('executed', { node: opts.text.node, output: { text: [opts.text.text] } })
           }
           if (opts.video) {
             send('executed', {

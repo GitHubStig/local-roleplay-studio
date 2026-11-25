@@ -28,7 +28,17 @@ import type { Chat } from './text/chat.ts'
 import { routedChat } from './text/routed.ts'
 import { seededChat } from './text/seeded.ts'
 import { turnTakingChat } from './text/turns.ts'
-import { loggedChat, loggedEmbedder, loggedImages, loggedMaker, loggedVoice } from './calls.ts'
+import {
+  loggedChat,
+  loggedEmbedder,
+  loggedHeads,
+  loggedImages,
+  loggedMaker,
+  loggedVoice,
+} from './calls.ts'
+import { headBackends, headFinder } from './heads/heads.ts'
+import { mfluxAskPicture } from './heads/mflux.ts'
+import { comfyuiAskPicture } from './heads/comfyui.ts'
 import { litoFigureMaker, tripoFigureMaker } from './3d/figure.ts'
 import { sharpSceneMaker } from './3d/scene.ts'
 import { checkFolder } from './sessionsFolder.ts'
@@ -223,6 +233,15 @@ const handler = createHandler({
       backendOf: backendNow,
     }),
   ),
+  // Finds heads for reference sheets' face pass, where its edits go: Qwen-Image 2.1's Qwen3-VL on
+  // this machine's mflux, or on a ComfyUI.
+  headFinder: loggedHeads(headFinder(headBackends({
+    mflux: features.images.available
+      ? mfluxAskPicture({ quantize: async () => (await settings.load()).editQuantize })
+      : undefined,
+    comfyui: (address) => comfyuiAskPicture({ address }),
+    backendOf: async () => backendNow(editJob((await settings.load()).faceEditModel)),
+  }))),
   features,
   renderQueue,
   queue: fileQueueStore(data.queue),
