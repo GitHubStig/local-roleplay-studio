@@ -119,9 +119,16 @@ const options: api.SettingsOptions = {
       id: 'qwen-image-2.1-edit',
       label: 'Qwen-Image 2.1 Edit',
       backends: ['mflux', 'comfyui'],
+      faces: true,
       prompting: '',
     },
-    { id: 'flux3-klein-edit', label: 'FLUX.3 Klein Edit', backends: ['comfyui'], prompting: '' },
+    {
+      id: 'flux3-klein-edit',
+      label: 'FLUX.3 Klein Edit',
+      backends: ['comfyui'],
+      faces: 'repainted faces worse in the bench',
+      prompting: '',
+    },
   ],
   videoModels: [
     {
@@ -244,6 +251,8 @@ describe('SettingsView', () => {
       upscaler: 'seedvr2-7b',
       voices: undefined,
       videoModel: 'ltx-2.5',
+      // Edits go there too, and with them the face pass.
+      faceEditModel: 'qwen-image-2.1-edit',
     })
     // This machine stays preferred, but can't: the Images tab says where they go.
     expect(wrapper.find('[data-run-on="images"] [data-goes-to]').text()).toContain('ComfyUI')
@@ -474,7 +483,7 @@ describe('SettingsView', () => {
     await flushPromises()
     const panel = (id: string) => wrapper.find(`[data-tab-panel="${id}"]`)
     // The sections down the left, the one shown named over its rows.
-    expect(wrapper.findAll('[data-settings-tabs] [data-tab]')).toHaveLength(10)
+    expect(wrapper.findAll('[data-settings-tabs] [data-tab]')).toHaveLength(11)
     expect(wrapper.find('[data-settings-status] [data-section-title]').text()).toBe('Text Model')
     expect(panel('text').isVisible()).toBe(true)
     expect(panel('3d').isVisible()).toBe(false)
@@ -727,6 +736,7 @@ describe('SettingsView', () => {
         id: 'flux3-klein-edit',
         label: 'FLUX.3 Klein Edit',
         backends: ['comfyui'],
+        faces: 'repainted faces worse in the bench',
         prompting: '',
       }],
     })
@@ -770,6 +780,68 @@ describe('SettingsView', () => {
       musicBehaviour: 'cinematic',
       musicTaste: 'Orchestral.',
     }))
+  })
+
+  it("has a section of its own for reference sheets: on for new Sessions, the face pass, the sheets' model", async () => {
+    const wrapper = await mountSettings()
+    await openSection(wrapper, 'sheets')
+    const panel = wrapper.find('[data-tab-panel="sheets"]')
+    expect(panel.find('[data-feature="sheets"]').text()).toContain('about 3× as long')
+    // Only an edit model that can repaint faces is offered; the others greyed, saying why.
+    const faces = panel.findAll('[data-face-edit-model] option')
+    expect(faces.map((o) => [o.text(), o.attributes('disabled') !== undefined])).toEqual([
+      ['FLUX.3 Klein Edit (repainted faces worse in the bench)', true],
+      ['Qwen-Image 2.1 Edit · mflux', false],
+    ])
+    expect(panel.find('[data-faces-mflux]').text()).toContain('downloads the first time')
+    // The Session's own Image Model by default, or any other.
+    const sheets = panel.find<HTMLSelectElement>('[data-sheet-image-model]')
+    expect(sheets.element.value).toBe('')
+    expect(sheets.find('option').text()).toBe("The Session's Image Model")
+    await sheets.setValue('qwen-image-2.1')
+    await panel.find('[data-feature="sheets"] input').setValue(false)
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+    expect(api.saveSettings).toHaveBeenLastCalledWith({
+      ...settings,
+      sheetImageModel: 'qwen-image-2.1',
+      features: { ...settings.features, sheets: false },
+    })
+    // Off, its rows go.
+    expect(panel.find('[data-face-edit-model]').exists()).toBe(false)
+  })
+
+  it('checks the ComfyUI the face pass goes to for its files, and says sheets need pictures', async () => {
+    withComfyUI()
+    vi.mocked(api.getSettings).mockResolvedValue({
+      ...structuredClone(settings),
+      backends: [{ id: 'pc', kind: 'comfyui', address: '' }, ...settings.backends],
+      runOn: { ...settings.runOn, edits: 'pc' },
+    })
+    vi.mocked(api.checkComfyUI).mockResolvedValue({
+      up: true,
+      version: '0.43.1',
+      device: 'cuda:0',
+      missing: { faceEditModel: "ComfyUI doesn't have Qwen-Image 2.1's files: vae/" },
+    })
+    const wrapper = await mountSettings()
+    await vi.runAllTimersAsync()
+    await flushPromises()
+    expect(api.checkComfyUI).toHaveBeenCalledWith(
+      '',
+      expect.objectContaining({ faceEditModel: 'qwen-image-2.1-edit' }),
+    )
+    await openSection(wrapper, 'sheets')
+    expect(wrapper.find('[data-tab-panel="sheets"] [data-comfy-status]').text()).toContain(
+      "doesn't have Qwen-Image 2.1's files",
+    )
+    // Pictures off: no sheets, saying why.
+    await openSection(wrapper, 'images')
+    await wrapper.find('[data-feature="images"] input').setValue(false)
+    await openSection(wrapper, 'sheets')
+    expect(wrapper.find('[data-feature="sheets"] [data-unavailable]').text()).toContain(
+      'pictures are off',
+    )
   })
 
   it('saves each control into its own field', async () => {

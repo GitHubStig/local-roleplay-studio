@@ -108,3 +108,18 @@ Deno.test("Settings' check for clips: the video model's files, naming those miss
     await noAudio.close()
   }
 })
+
+Deno.test("Settings' check for reference sheets: the face pass's edit model's files", async () => {
+  const ready = fakeComfyUI({ files: MAC_FILES })
+  const noEncoder = fakeComfyUI({ files: { ...MAC_FILES, text_encoders: [] } })
+  try {
+    const faces = { faceEditModel: 'qwen-image-2.1-edit' }
+    const fine = await comfyuiStatus(ready.url, faces)
+    assertEquals(fine.up && fine.missing, {})
+    const status = await comfyuiStatus(noEncoder.url, faces)
+    assertStringIncludes(status.up ? status.missing.faceEditModel ?? '' : '', 'text_encoders/')
+  } finally {
+    await ready.close()
+    await noEncoder.close()
+  }
+})

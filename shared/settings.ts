@@ -208,6 +208,8 @@ export interface SettingsOptions extends TextModelList {
     id: EditModel
     label: string
     backends: readonly ImageBackendKind[]
+    /** Whether it repaints faces from a reference sheet, or why not (`EDIT_MODELS`). */
+    faces: true | string
     prompting: string
   }[]
   /** The kind of backend each edit model's edits go to now, by name; none for one nowhere. */

@@ -86,6 +86,11 @@ export function useBackends(
       voices: goes('voices') || undefined,
       videoModel: clipsTo.value?.id === backend.id ? form.value.videoModel : undefined,
       music: (form.value.music && musicTo.value?.id === backend.id) || undefined,
+      // The face pass goes where edits go, by its own edit model.
+      faceEditModel: form.value.features.sheets &&
+          whereTo('edits', form.value.faceEditModel)?.id === backend.id
+        ? form.value.faceEditModel
+        : undefined,
     }).catch((err) => ({ up: false as const, error: (err as Error).message }))
   }
   const comfyuis = computed(() => form.value?.backends.filter((b) => b.kind === 'comfyui') ?? [])
@@ -102,6 +107,8 @@ export function useBackends(
         form.value.videoOn,
         form.value.musicOn,
         form.value.music,
+        form.value.faceEditModel,
+        form.value.features.sheets,
       ]),
     () => Promise.all(comfyuis.value.map(checkComfy)),
     { debounce: 500, immediate: true },

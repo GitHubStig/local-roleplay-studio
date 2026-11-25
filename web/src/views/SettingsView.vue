@@ -24,6 +24,7 @@ import SelectField from '../components/SelectField.vue'
 import SettingRow from '../components/SettingRow.vue'
 import ThemeToggle from '../components/ThemeToggle.vue'
 import Icon from '../components/Icon.vue'
+import ComfyStatusLine from '../components/ComfyStatusLine.vue'
 import ToggleSwitch from '../components/ToggleSwitch.vue'
 import { useBackends } from '../composables/useBackends'
 import { useFeatures } from '../composables/useFeatures'
@@ -65,7 +66,7 @@ const status = ref<{ kind: 'saved' | 'error'; message: string; issues?: string[]
 const props = defineProps<{ section?: string }>()
 defineEmits<{ close: [] }>()
 
-type SectionId = 'text' | 'images' | 'voice' | 'music' | 'clips' | '3d' | 'machines' | 'sessions' | 'appearance' | 'advanced'
+type SectionId = 'text' | 'images' | 'sheets' | 'voice' | 'music' | 'clips' | '3d' | 'machines' | 'sessions' | 'appearance' | 'advanced'
 interface Section {
   id: SectionId
   /** In the list. */
@@ -81,6 +82,13 @@ const GROUPS: readonly { label: string; sections: readonly Section[] }[] = [
     sections: [
       { id: 'text', label: 'Text', title: 'Text Model', about: 'Writes every Reply, Image Prompt and suggestion.' },
       { id: 'images', label: 'Images', title: 'Images', about: 'Pictures of each Frame, and editing and upscaling them.' },
+      {
+        id: 'sheets',
+        label: 'Reference sheets',
+        title: 'Reference sheets',
+        about:
+          'A sheet of each one in the Look, front, three-quarter and profile, made before the story begins. After each picture renders, their faces are repainted from it, so they stay the same from Frame to Frame.',
+      },
       { id: 'voice', label: 'Voice', title: 'Voice', about: "The Character's lines, spoken." },
       { id: 'music', label: 'Music', title: 'Music', about: "Music for a Roleplay that follows the story." },
       { id: 'clips', label: 'Clips', title: 'Clips', about: "A Frame's picture made into a short clip." },
@@ -115,6 +123,7 @@ function summary(id: SectionId): string {
   if (!form.value) return ''
   if (id === 'text') return form.value.textModel
   if (id === 'images') return picturesOn.value ? imageModels.value.find((m) => m.id === form.value!.imageModel)?.label ?? '' : 'Off'
+  if (id === 'sheets') return sheetsOn.value ? 'On' : 'Off'
   if (id === 'machines') return String(form.value.backends.length)
   if (id === 'appearance') return THEME_NAMES[theme.value]
   return ''
@@ -237,6 +246,28 @@ const picturesOn = computed(() => isOn('images', imagesAvailability.value))
 const upscaleOn = computed(() => picturesOn.value && isOn('upscale', upscaleAvailability.value))
 const editsOn = computed(() => picturesOn.value && isOn('edits', editsAvailability.value))
 const voicesOn = computed(() => isOn('voices', voicesAvailability.value))
+/**
+ * Whether reference sheets can be had as the form stands: their sheet is a render and the face pass
+ * an edit, so with pictures on, where edits can go.
+ */
+const sheetsAvailability = computed(() =>
+  !picturesOn.value
+    ? { available: false, reason: 'pictures are off, under Images' }
+    : choicesFor('edits').length
+    ? { available: true }
+    : options.value?.features.sheets ?? { available: false }
+)
+const sheetsOn = computed(() => !!form.value?.features.sheets && sheetsAvailability.value.available)
+/** The edit models for the face pass: those that can't do it greyed, saying why. */
+const faceEditModels = computed(() =>
+  editModelsSorted.value.map((c) => {
+    const faces = options.value?.editModels.find((m) => m.id === c.id)?.faces ?? true
+    return { ...c, why: faces === true ? '' : faces }
+  })
+)
+/** Where the face pass goes: where edits go, by its own edit model. */
+const facesTo = computed(() => form.value && whereTo('edits', form.value.faceEditModel))
+
 /** Whether the default edit model's edits go to mflux, where Quantize applies to them. */
 const editsOnMflux = computed(() =>
   !!form.value && imageKindOf(whereTo('edits', form.value.editModel)) === 'mflux'
@@ -567,6 +598,54 @@ function saveNow() {
                   faster PC (SeedVR2 7B: 9.5 s on an RTX 4070 against ~46 s on the Mac), with
                   Comfy-Org's SeedVR2 files there.
                 </RunOn>
+              </template>
+            </div>
+          </section>
+
+          <section v-show="tab === 'sheets'" data-tab-panel="sheets">
+            <div class="rows">
+              <FeatureSwitch
+                v-model="form.features.sheets"
+                :availability="sheetsAvailability"
+                title="For new Sessions"
+                data-feature="sheets"
+              >
+                Each picture takes about 3× as long (~54 s instead of 17 on an RTX 4070, ~4 min
+                instead of 1.5 on an M5 Pro Mac). Asked again when a Session starts.
+              </FeatureSwitch>
+              <template v-if="sheetsOn">
+                <SettingRow label="Faces repainted by">
+                  <SelectField v-model="form.faceEditModel" data-face-edit-model>
+                    <option v-if="!faceEditModels.some((m) => m.id === form?.faceEditModel)" :value="form.faceEditModel">
+                      {{ form.faceEditModel }} (not available here)
+                    </option>
+                    <option v-for="m in faceEditModels" :key="m.id" :value="m.id" :disabled="!!m.why">
+                      {{ m.label }}{{ m.why ? ` (${m.why})` : '' }}
+                    </option>
+                  </SelectField>
+                  <template #note>
+                    An edit model that takes a reference picture: Qwen-Image 2.1, for now. Its
+                    Qwen3-VL finds the heads. It runs where edits go (Images).
+                  </template>
+                  <template #after>
+                    <ComfyStatusLine
+                      v-if="facesTo?.kind === 'comfyui'"
+                      :status="comfy[facesTo.id] ?? null"
+                      :uses="['faceEditModel']"
+                      @check="checkComfy(facesTo)"
+                    />
+                    <span v-else-if="facesTo" class="text-sm text-muted" data-faces-mflux>
+                      On mflux, Qwen-Image 2.1 downloads the first time it's used.
+                    </span>
+                  </template>
+                </SettingRow>
+                <SettingRow label="Sheets made by">
+                  <SelectField v-model="form.sheetImageModel" data-sheet-image-model>
+                    <option value="">The Session's Image Model</option>
+                    <option v-for="m in imageModels" :key="m.id" :value="m.id">{{ m.label }}</option>
+                  </SelectField>
+                  <template #note>Any Image Model; a sheet is one render.</template>
+                </SettingRow>
               </template>
             </div>
           </section>

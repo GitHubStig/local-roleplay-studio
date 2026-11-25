@@ -255,8 +255,9 @@ export function validateSettings(input: unknown): ValidationResult {
   if (!EDIT_MODELS.some((m) => m.id === s.editModel)) {
     issues.push(`editModel must be one of: ${EDIT_MODELS.map((m) => m.id).join(', ')}`)
   }
-  if (!EDIT_MODELS.some((m) => m.id === s.faceEditModel)) {
-    issues.push(`faceEditModel must be one of: ${EDIT_MODELS.map((m) => m.id).join(', ')}`)
+  const faceEditors = EDIT_MODELS.filter((m) => m.faces === true)
+  if (!faceEditors.some((m) => m.id === s.faceEditModel)) {
+    issues.push(`faceEditModel must be one of: ${faceEditors.map((m) => m.id).join(', ')}`)
   }
   if (
     typeof s.sheetImageModel !== 'string' ||

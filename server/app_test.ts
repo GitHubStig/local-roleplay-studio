@@ -1,4 +1,5 @@
 import { assertEquals, assertMatch, assertStringIncludes } from '@std/assert'
+import type { ComfyUses } from '../shared/comfyui.ts'
 import type { Backend } from '../shared/backends.ts'
 import { SESSION_TITLE_LENGTH } from '../shared/session.ts'
 import { DEFAULT_SETTINGS } from './settings.ts'
@@ -203,7 +204,7 @@ Deno.test('GET /api/settings/options lists Text and Image Models', async () => {
 Deno.test('POST /api/settings/comfyui checks an address not saved yet', async () => {
   const asked: [
     string,
-    { imageModel?: string; upscaler?: string; voices?: boolean; videoModel?: string },
+    ComfyUses,
   ][] = []
   const { call } = setup({
     comfyuiStatus: (url, uses) => {
@@ -232,17 +233,24 @@ Deno.test('POST /api/settings/comfyui checks an address not saved yet', async ()
     address: 'http://192.0.2.20:8188',
     videoModel: 'ltx-2.5',
   })
+  // And the face pass's edit model, where edits go.
+  await call('POST', '/api/settings/comfyui', {
+    address: 'http://192.0.2.20:8188',
+    faceEditModel: 'qwen-image-2.1-edit',
+  })
   const none = {
     imageModel: undefined,
     upscaler: undefined,
     voices: undefined,
     videoModel: undefined,
     music: undefined,
+    faceEditModel: undefined,
   }
   assertEquals(asked, [
     ['http://192.0.2.20:8188', { ...none, imageModel: 'qwen-image-2.1' }],
     ['http://192.0.2.20:8188', { ...none, upscaler: 'seedvr2-7b' }],
     ['http://192.0.2.20:8188', { ...none, videoModel: 'ltx-2.5' }],
+    ['http://192.0.2.20:8188', { ...none, faceEditModel: 'qwen-image-2.1-edit' }],
   ])
 })
 

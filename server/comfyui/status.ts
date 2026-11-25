@@ -1,6 +1,11 @@
 import { comfyBase, getJson } from './client.ts'
 import { modelFiles } from './files.ts'
-import { type ComfyModel, findComfyModel, findComfyUpscaler } from '../images/comfyui/models.ts'
+import {
+  type ComfyModel,
+  findComfyEditor,
+  findComfyModel,
+  findComfyUpscaler,
+} from '../images/comfyui/models.ts'
 import { VOICE_NODES } from '../voice/comfyui/comfyui.ts'
 import { findComfyVideoModel } from '../video/comfyui/models.ts'
 import { ACE_STEP } from '../music/comfyui/comfyui.ts'
@@ -8,8 +13,8 @@ import type { ComfyStatus, ComfyUses } from '../../shared/comfyui.ts'
 
 /**
  * Asks the ComfyUI at `baseUrl` ('' for its default) what it is (`GET /system_stats`), and whether it
- * has what will run there: the Image Model's, the upscaler's, the video model's and music's files (any
- * may be left out), and for voices the custom nodes they need. Never throws: what's wrong is in the answer.
+ * has what will run there: the Image Model's, the upscaler's, the video model's, the face pass's and
+ * music's files (any may be left out), and for voices the custom nodes they need. Never throws: what's wrong is in the answer.
  */
 export async function comfyuiStatus(
   baseUrl: string,
@@ -30,7 +35,7 @@ export async function comfyuiStatus(
   }
   const missing: { [use in keyof ComfyUses]?: string } = {}
   const check = async (
-    use: 'imageModel' | 'upscaler' | 'videoModel',
+    use: 'imageModel' | 'upscaler' | 'videoModel' | 'faceEditModel',
     find: (id: string) => Pick<ComfyModel, 'label' | 'files'> | undefined,
     what: string,
   ) => {
@@ -43,6 +48,11 @@ export async function comfyuiStatus(
   await check('imageModel', findComfyModel, 'Image Model')
   await check('upscaler', findComfyUpscaler, 'upscaler')
   await check('videoModel', findComfyVideoModel, 'video model')
+  // The face pass's edit, and the Qwen3-VL that finds the heads: its Image Model's files.
+  await check('faceEditModel', (id) => {
+    const editor = findComfyEditor(id)
+    return editor && (editor.files ?? findComfyModel(editor.model))
+  }, 'edit model')
   if (uses.music) {
     await modelFiles(base, ACE_STEP, signal).catch((err) => missing.music = (err as Error).message)
   }

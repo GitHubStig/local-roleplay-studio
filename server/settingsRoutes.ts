@@ -90,22 +90,23 @@ export function settingsRoutes(ctx: AppContext): Route[] {
           voices?: unknown
           videoModel?: unknown
           music?: unknown
+          faceEditModel?: unknown
         }
         | undefined
       const optional = (v: unknown) => v === undefined || typeof v === 'string'
       if (
         typeof body?.address !== 'string' || !optional(body.imageModel) ||
-        !optional(body.upscaler) || !optional(body.videoModel) ||
+        !optional(body.upscaler) || !optional(body.videoModel) || !optional(body.faceEditModel) ||
         (body.voices !== undefined && typeof body.voices !== 'boolean') ||
         (body.music !== undefined && typeof body.music !== 'boolean')
       ) {
         return error(
-          'Give an address, and an imageModel, an upscaler, voices, a videoModel or music to check',
+          'Give an address, and an imageModel, an upscaler, voices, a videoModel, music or a faceEditModel to check',
           400,
         )
       }
       if (!deps.comfyuiStatus) return error("ComfyUI isn't set up on this server", 409)
-      const { imageModel, upscaler, voices, videoModel, music } = body as ComfyUses
+      const { imageModel, upscaler, voices, videoModel, music, faceEditModel } = body as ComfyUses
       return json(
         await deps.comfyuiStatus(body.address.trim(), {
           imageModel,
@@ -113,6 +114,7 @@ export function settingsRoutes(ctx: AppContext): Route[] {
           voices,
           videoModel,
           music,
+          faceEditModel,
         }),
       )
     }],

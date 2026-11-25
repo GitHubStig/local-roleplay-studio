@@ -10,6 +10,8 @@ export interface ComfyUses {
   voices?: boolean
   videoModel?: string
   music?: boolean
+  /** The face pass's edit model (`faceEditModel`), whose Image Model's files it uses. */
+  faceEditModel?: string
 }
 
 /**
