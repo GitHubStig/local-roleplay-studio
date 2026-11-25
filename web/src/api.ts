@@ -366,10 +366,10 @@ export const post = <T>(path: string, body?: unknown) =>
 
 /**
  * What a new Session starts from: a saved Scenario or a typed Brief, and the Scenario as the
- * Scenario page left it.
+ * Scenario page left it; whether it has reference sheets, when not as Settings have it.
  */
 export type SessionStart =
-  & { kind: SessionKind; frameCount?: number; scenario?: Scenario }
+  & { kind: SessionKind; frameCount?: number; scenario?: Scenario; sheets?: boolean }
   & ({ scenarioId: string; brief?: never } | { brief: string; scenarioId?: never })
 
 export const createSession = (start: SessionStart) => post<Session>('/api/sessions', start)

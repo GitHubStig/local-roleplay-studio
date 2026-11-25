@@ -20,6 +20,7 @@ import Icon from '../components/Icon.vue'
 import SaveStatus from '../components/SaveStatus.vue'
 import type { AutosaveStatus } from '../composables/useAutosave'
 import PopMenu from '../components/PopMenu.vue'
+import ToggleSwitch from '../components/ToggleSwitch.vue'
 import { useStoredString } from '../composables/storage'
 import {
   clearScenarioDraft,
@@ -343,6 +344,23 @@ const kind = computed<SessionKind>({
 })
 const frameCount = ref(8)
 
+/**
+ * Reference sheets, asked again as the Session starts (Start's menu), set from Settings' switch as
+ * they load: a player may not remember how it was. A Chain has no Look, so none.
+ */
+const { on: featureOn, options: featureOptions } = useFeatures()
+const sheetsSetting = computed(() => featureOn.value('sheets'))
+const sheets = ref(sheetsSetting.value)
+watch(sheetsSetting, (on) => (sheets.value = on))
+/** Why this Session can't have sheets, or null when it can. */
+const sheetsBlocker = computed(() => {
+  if (kind.value === 'chain') return 'A Chain has no Look, so no sheets.'
+  const can = featureOptions.value?.features?.sheets
+  if (can && !can.available) return `Not available here: ${can.reason}.`
+  if (!featureOn.value('images')) return 'Pictures are off, in Settings.'
+  return null
+})
+
 /** Why the Session can't start yet, or null when it can. */
 const blocker = computed(() => {
   if (textModelBlocker.value) return textModelBlocker.value
@@ -373,6 +391,7 @@ async function start() {
   const start: SessionStart = {
     kind: kind.value,
     ...(kind.value === 'storyboard' && { frameCount: frameCount.value }),
+    ...(kind.value !== 'chain' && { sheets: sheets.value && !sheetsBlocker.value }),
     ...(draft.value && { scenario: draft.value }),
     ...from,
   }
@@ -476,16 +495,58 @@ async function start() {
         />
         Frames
       </label>
-      <button
-        type="button"
-        class="ml-auto shrink-0 rounded-lg bg-fg px-3 py-1.5 text-sm font-medium text-canvas disabled:opacity-50"
-        :disabled="blocker !== null || starting"
-        :title="blocker ?? undefined"
-        data-start
-        @click="start"
-      >
-        Start {{ KINDS.find((k) => k.id === kind)!.label }}
-      </button>
+      <!-- Start, and from its caret a menu of what's asked as the Session starts: a sheet from the
+           bottom on a phone, with Start in it too. -->
+      <PopMenu align="end" panel-class="w-72 p-3" class="ml-auto shrink-0" data-start-menu>
+        <template #button="{ open, toggle }">
+          <div class="flex rounded-lg bg-fg text-sm font-medium text-canvas" :class="{ 'opacity-50': blocker !== null || starting }">
+            <button
+              type="button"
+              class="rounded-l-lg py-1.5 pl-3 pr-2 disabled:cursor-not-allowed"
+              :disabled="blocker !== null || starting"
+              :title="blocker ?? undefined"
+              data-start
+              @click="start"
+            >
+              Start {{ KINDS.find((k) => k.id === kind)!.label }}
+            </button>
+            <button
+              type="button"
+              class="rounded-r-lg border-l border-canvas/25 px-1.5"
+              :class="{ 'bg-canvas/15': open }"
+              aria-label="Start's options"
+              data-start-options
+              @click="toggle"
+            >
+              <Icon name="chevron-down" />
+            </button>
+          </div>
+        </template>
+        <template #default="{ close }">
+          <ToggleSwitch
+            title="Reference sheets"
+            :disabled="!!sheetsBlocker"
+            :model-value="sheets && !sheetsBlocker"
+            @update:model-value="sheets = $event"
+            class="text-sm"
+            data-start-sheets
+          >
+            The same faces from Frame to Frame; about 3× as long a picture.
+            <template v-if="sheetsBlocker" #after>
+              <span class="text-sm text-muted" data-sheets-blocker>{{ sheetsBlocker }}</span>
+            </template>
+          </ToggleSwitch>
+          <button
+            type="button"
+            class="mt-3 w-full rounded-lg bg-fg py-2.5 text-sm font-medium text-canvas disabled:opacity-50 sm:hidden"
+            :disabled="blocker !== null || starting"
+            data-start-in-menu
+            @click="close(); start()"
+          >
+            Start {{ KINDS.find((k) => k.id === kind)!.label }}
+          </button>
+        </template>
+      </PopMenu>
     </div>
 
     <!-- The page: the story on the left, the People on the right, each scrolling by itself on a

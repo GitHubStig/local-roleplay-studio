@@ -167,6 +167,8 @@ describe('ScenarioView', () => {
     expect(api.createSession).toHaveBeenCalledWith({
       kind: 'roleplay',
       scenarioId: 'tavern',
+      // As Settings have it (on, unless they say otherwise).
+      sheets: true,
       scenario: {
         ...expandedTavern,
         time: 'A winter night.',
@@ -272,6 +274,7 @@ describe('ScenarioView', () => {
     expect(api.createSession).toHaveBeenCalledWith({
       kind: 'storyboard',
       frameCount: 6,
+      sheets: true,
       brief: 'A dunk.',
       scenario: expandedTavern,
     })
@@ -285,6 +288,33 @@ describe('ScenarioView', () => {
     expect(wrapper.text()).toContain("Couldn't expand it: Ollama is down")
     expect(wrapper.find('[data-retry-expand]').exists()).toBe(true)
     await wrapper.find('[data-start]').trigger('click')
-    expect(api.createSession).toHaveBeenCalledWith({ kind: 'roleplay', brief: 'A dunk.' })
+    expect(api.createSession).toHaveBeenCalledWith({
+      kind: 'roleplay',
+      sheets: true,
+      brief: 'A dunk.',
+    })
+  })
+
+  it("asks again in Start's menu whether to have reference sheets, set from Settings; none for a Chain", async () => {
+    vi.mocked(api.createSession).mockResolvedValue({ id: 'r1', kind: 'roleplay' } as api.Session)
+    vi.mocked(api.getSettings).mockResolvedValue({
+      textModel: 'x',
+      features: { sheets: false },
+    } as unknown as api.Settings)
+    await useFeatures().refreshFeatures()
+    const { wrapper } = await mountAt('/scenario/tavern')
+    await wrapper.find('[data-start-options]').trigger('click')
+    const sheets = wrapper.find<HTMLInputElement>('[data-start-sheets] input')
+    expect(sheets.element.checked).toBe(false)
+    await sheets.setValue(true)
+    await wrapper.find('[data-start]').trigger('click')
+    await flushPromises()
+    expect(vi.mocked(api.createSession).mock.lastCall?.[0].sheets).toBe(true)
+    // A Chain: greyed, saying why, and not sent.
+    await wrapper.find('input[value=chain]').setValue()
+    expect(sheets.element.disabled).toBe(true)
+    expect(wrapper.find('[data-sheets-blocker]').text()).toContain('A Chain has no Look')
+    vi.mocked(api.getSettings).mockResolvedValue({ textModel: 'x' } as api.Settings)
+    await useFeatures().refreshFeatures()
   })
 })
