@@ -3,7 +3,7 @@ import { effectScope, nextTick, ref } from 'vue'
 import { musicAt, useMusicPlayer } from './useMusicPlayer'
 
 /** The engine's sound, stood in for: what it's asked to play, and whether it's stopped. */
-const engine = vi.hoisted(() => ({ played: [] as (string | null)[], stopped: 0 }))
+const engine = vi.hoisted(() => ({ played: [] as (string | null)[], stopped: 0, left: 0 }))
 vi.mock('./musicEngine', () => ({
   MusicEngine: class {
     play(file: string | null) {
@@ -12,7 +12,9 @@ vi.mock('./musicEngine', () => ({
     stop() {
       engine.stopped++
     }
-    leave() {}
+    leave() {
+      engine.left++
+    }
     setVolume() {}
     setDucked() {}
     setHushed() {}
@@ -92,6 +94,40 @@ describe('useMusicPlayer', () => {
     expect(engine.stopped).toBe(1)
     expect(engine.played).toEqual(['a.flac'])
     allowed.value = true
+    await nextTick()
+    expect(engine.played).toEqual(['a.flac', 'a.flac'])
+    scope.stop()
+  })
+
+  it('fades out while its tab is hidden, and plays again when it is back', async () => {
+    vi.stubGlobal(
+      'AudioContext',
+      class {
+        state = 'running'
+        close() {}
+      },
+    )
+    localStorage.setItem('roleplay-music-playing', '1')
+    Object.assign(engine, { played: [], left: 0 })
+    let state: DocumentVisibilityState = 'visible'
+    vi.spyOn(document, 'visibilityState', 'get').mockImplementation(() => state)
+    const scope = effectScope()
+    scope.run(() =>
+      useMusicPlayer({
+        sessionId: 'r1',
+        session: ref({ cues: [cue('playing', { values, track })] } as never),
+        frame: ref(at('playing')),
+        speaking: ref(false),
+        allowed: ref(true),
+      })
+    )
+    expect(engine.played).toEqual(['a.flac'])
+    state = 'hidden'
+    document.dispatchEvent(new Event('visibilitychange'))
+    await nextTick()
+    expect(engine.left).toBe(1)
+    state = 'visible'
+    document.dispatchEvent(new Event('visibilitychange'))
     await nextTick()
     expect(engine.played).toEqual(['a.flac', 'a.flac'])
     scope.stop()

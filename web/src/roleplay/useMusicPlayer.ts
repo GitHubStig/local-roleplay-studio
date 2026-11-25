@@ -1,4 +1,4 @@
-import { useEventListener, useIntervalFn } from '@vueuse/core'
+import { useDocumentVisibility, useEventListener, useIntervalFn } from '@vueuse/core'
 import { computed, onActivated, onDeactivated, onScopeDispose, type Ref, ref, watch } from 'vue'
 import { useStoredFlag } from '../composables/useStoredFlag'
 import { useStoredString } from '../composables/storage'
@@ -69,8 +69,13 @@ export function useMusicPlayer(opts: {
     return decoding
   }
 
-  /** The page is behind another: the music waits to come back. */
+  /**
+   * The page is behind another, or its tab is (each tab of a Roleplay has its own player, and the
+   * switch isn't shared between tabs): the music waits to come back.
+   */
   let away = false
+  let screenAway = false
+  const visibility = useDocumentVisibility()
   /**
    * The videos that have played and are still on the page. One paused or at its last frame may be
    * played again, so the music waits until it's closed (the owner).
@@ -127,14 +132,23 @@ export function useMusicPlayer(opts: {
   useEventListener(document, 'pointerdown', () => {
     if (playing.value && ctx?.state === 'suspended' && !hushed.value) ctx.resume()
   })
-  onDeactivated(() => {
+  function goAway() {
     away = true
     engine?.leave()
+  }
+  function comeBack() {
+    away = screenAway || visibility.value === 'hidden'
+    if (!away) follow()
+  }
+  onDeactivated(() => {
+    screenAway = true
+    goAway()
   })
   onActivated(() => {
-    away = false
-    follow()
+    screenAway = false
+    comeBack()
   })
+  watch(visibility, (now) => (now === 'hidden' ? goAway() : comeBack()))
   onScopeDispose(() => {
     engine?.stop()
     setTimeout(() => ctx?.close(), 200)
