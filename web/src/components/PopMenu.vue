@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { onClickOutside, onKeyStroke } from '@vueuse/core'
-import { onDeactivated, ref, useTemplateRef } from 'vue'
+import { onClickOutside, onKeyStroke, useMediaQuery } from '@vueuse/core'
+import { onDeactivated, onMounted, ref, shallowRef, useTemplateRef } from 'vue'
 
 /**
  * A button and the panel it opens over the screen: a menu (the picture's Clip and 3D, the text
  * box's ⋯), the Session's models and switches, a Frame's jobs. Closed by the button again, Esc, a
  * click outside, or leaving the screen. On a phone the panel opens as a sheet from the bottom, the
- * screen still in view above it. The button is the `button` slot's, given `open` and `toggle`; the
+ * screen still in view above it, moved out to the story (or the page) it's in, so nothing over the
+ * button's own layer (a picture's toolbar under the text box) covers it. The button is the `button` slot's, given `open` and `toggle`; the
  * panel is the default slot's, given `close`.
  */
 withDefaults(
@@ -22,9 +23,15 @@ withDefaults(
 )
 const open = ref(false)
 const root = useTemplateRef<HTMLElement>('root')
+const panel = useTemplateRef<HTMLElement>('panel')
 const toggle = () => (open.value = !open.value)
 const close = () => (open.value = false)
-onClickOutside(root, close)
+onClickOutside(root, close, { ignore: [panel] })
+/** A phone's width (Tailwind's `max-sm:`), where the panel is a sheet. */
+const sheet = useMediaQuery('(max-width: 39.99rem)')
+/** Where a sheet goes: the story it's in, whose colours it keeps, or else the page. */
+const sheetTo = shallowRef<HTMLElement | null>(null)
+onMounted(() => (sheetTo.value = root.value?.closest<HTMLElement>('.story') ?? document.body))
 onKeyStroke('Escape', () => open.value && close())
 onDeactivated(close)
 defineExpose({ close })
@@ -33,8 +40,10 @@ defineExpose({ close })
 <template>
   <div ref="root" class="relative" :data-open="open || undefined">
     <slot name="button" :open="open" :toggle="toggle" />
+    <Teleport :to="sheetTo ?? 'body'" :disabled="!sheet || !sheetTo">
     <div
       v-if="open"
+      ref="panel"
       class="z-40 overflow-y-auto rounded-xl border border-line bg-surface text-fg shadow-lg max-sm:fixed max-sm:inset-x-0 max-sm:bottom-0 max-sm:max-h-[70dvh] max-sm:w-auto! max-sm:rounded-b-none max-sm:pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:absolute sm:max-h-[min(70dvh,36rem)]"
       :class="[
         panelClass,
@@ -46,5 +55,6 @@ defineExpose({ close })
     >
       <slot :close="close" />
     </div>
+    </Teleport>
   </div>
 </template>
