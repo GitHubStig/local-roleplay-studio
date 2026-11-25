@@ -36,6 +36,42 @@ A Chain of pictures alone (1,029 MB):
 
 This departs from the plan's "every entry compressed, at a fast level": the numbers show compressing every entry costs time for nothing.
 
-## The PC
+## The PC (Windows 11, RTX 4070, 16 GB), 2026-11-25
 
-Not run yet: `deno run --allow-read --allow-sys docs/bench/session-zip/bench.ts <a big Session's folder>` on the PC, its table added here with the date. The pick stands unless storing and deflating natively turn out slower than its network there.
+The biggest Session on the PC is a Roleplay of one Frame (2 files, 2.4 MB: `session.json` and a picture), too small to time:
+
+| Setting | Seconds | MB/s | CPU seconds | Zip MB | Of the files | By part (zip / files) |
+|---|---|---|---|---|---|---|
+| stored | 0.0 | 161 | 0.0 | 2.4 | 100.0% | text 100%, pictures 100% |
+| deflate 1 (zip.js) | 0.1 | 19 | 0.1 | 2.3 | 95.8% | text 37%, pictures 96% |
+| deflate 6 (zip.js) | 0.1 | 17 | 0.2 | 2.3 | 96.5% | text 33%, pictures 97% |
+| deflate (native) | 0.2 | 14 | 0.2 | 2.3 | 96.5% | text 33%, pictures 97% |
+| stored, the rest deflated (native) | 0.0 | 219 | 0.0 | 2.4 | 99.8% | text 33%, pictures 100% |
+
+So it was also run on a stand-in Session built in a temporary folder, mixed like the Mac's Roleplay (313 files, 1,027 MB): 200 copies of that picture, 20 clips, 30 music cues and 40 speech MP3s of random bytes (as incompressible as the real ones), two `.ply` of float data and 20 call logs:
+
+| Setting | Seconds | MB/s | CPU seconds | Zip MB | Of the files | By part (zip / files) |
+|---|---|---|---|---|---|---|
+| stored | 3.4 | 304 | 4.1 | 1026.9 | 100.0% | text 100%, calls 100%, clips 100%, pictures 100%, sound 100%, 3d 100% |
+| deflate 1 (zip.js) | 42.7 | 24 | 43.3 | 934.7 | 91.0% | text 37%, calls 1%, clips 100%, pictures 96%, sound 100%, 3d 58% |
+| deflate 6 (zip.js) | 49.7 | 21 | 49.8 | 936.1 | 91.2% | text 33%, calls 1%, clips 100%, pictures 97%, sound 100%, 3d 56% |
+| deflate (native) | 60.1 | 17 | 60.5 | 943.3 | 91.9% | text 33%, calls 1%, clips 100%, pictures 97%, sound 100%, 3d 62% |
+| stored, the rest deflated (native) | 8.6 | 119 | 8.9 | 958.7 | 93.4% | text 33%, calls 1%, clips 100%, pictures 100%, sound 100%, 3d 62% |
+
+Its `.ply` were more regular than a real scene's (62% against the Mac's 93%), so 3D alone was run again with four `.ply` of random floats (400 MB), which deflate to 93% as the Mac's real scenes did:
+
+| Setting | Seconds | MB/s | CPU seconds | Zip MB | Of the files | By part (zip / files) |
+|---|---|---|---|---|---|---|
+| stored | 1.5 | 260 | 1.7 | 400.0 | 100.0% | text 100%, 3d 100% |
+| deflate 1 (zip.js) | 20.2 | 20 | 20.5 | 374.0 | 93.5% | text 37%, 3d 94% |
+| deflate 6 (zip.js) | 22.4 | 18 | 22.3 | 373.0 | 93.3% | text 33%, 3d 93% |
+| deflate (native) | 26.2 | 15 | 26.1 | 372.7 | 93.2% | text 33%, 3d 93% |
+| stored, the rest deflated (native) | 26.0 | 15 | 26.2 | 372.7 | 93.2% | text 33%, 3d 93% |
+
+What it shows:
+
+- **Deflate is 4 to 6 times slower here than on the Mac**, and the runtime's is slower than zip.js's (15–17 MB/s against 18–24), where on the Mac it was twice as fast.
+- **The pick only just keeps up with a gigabit network here** (119 MB/s for the Roleplay's mix, against about 110), and falls far behind it as a Session's share of 3D grows: a Session that's mostly SHARP scenes zips at 15 MB/s, as 3D is deflated, to 93% of its size.
+- Proposed, not changed: store `.ply` too, as deflate leaves it at 93% for 17 times the time on the PC (and the 3D in the Mac's Roleplay at 93–94%). The pick then deflates only the text and call logs, and zips at about the speed of storing on both machines.
+
+A real download, measured the same day: the export of the 959 MB stand-in streamed at 96 MB/s from the server over loopback (`curl`), and Edge wrote it to a file in OneDrive's Documents at about 30 MB/s in its first second (cancelled then).
