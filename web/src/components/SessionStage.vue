@@ -7,7 +7,7 @@ import { PICTURE_RATIO } from './pictureRatio'
  * picture (`picture` slot) beside what goes with it (`side`: a Roleplay's story, a Chain's Action,
  * a Storyboard's Beat), and the floating text box over its foot (`box`). On a wide screen the
  * picture grows to the height there is and the side keeps a book-page width beside it, the two
- * centred; on a phone they stack. The picture's shape (`SessionPicture` sets it once loaded,
+ * centred; on a phone they stack, and on a phone on its side (`short:`) they're side by side again. The picture's shape (`SessionPicture` sets it once loaded,
  * `ratio` until then) sizes both.
  */
 const props = withDefaults(defineProps<{
@@ -30,7 +30,7 @@ provide(PICTURE_RATIO, ratio)
 <template>
   <main class="story relative flex min-w-0 flex-1 flex-col">
     <div
-      class="mx-auto flex min-h-0 w-full flex-1 flex-col gap-3 px-4 pt-3 lg:max-w-[calc((100dvh-14rem)*var(--ratio)+var(--side)+6rem)] lg:flex-row lg:gap-6 lg:px-6 lg:pt-4"
+      class="mx-auto flex min-h-0 w-full flex-1 flex-col gap-3 px-4 pt-3 short:flex-row short:gap-4 lg:max-w-[calc((100dvh-14rem)*var(--ratio)+var(--side)+6rem)] lg:flex-row lg:gap-6 lg:px-6 lg:pt-4"
       :class="$slots.box ? 'pb-24 lg:pb-[6.5rem]' : 'pb-4'"
       :style="{ '--ratio': ratio, '--side': side === 'story' ? '38rem' : 'clamp(20rem, 28vw, 34rem)' }"
       :data-ratio="ratio.toFixed(3)"
@@ -38,14 +38,14 @@ provide(PICTURE_RATIO, ratio)
     >
       <section
         v-if="pictured && $slots.picture"
-        class="flex shrink-0 justify-center lg:min-w-0 lg:flex-1 lg:items-start lg:justify-end lg:[container-type:size]"
+        class="flex shrink-0 justify-center short:min-w-0 short:flex-1 short:items-start short:justify-end short:[container-type:size] lg:min-w-0 lg:flex-1 lg:items-start lg:justify-end lg:[container-type:size]"
         data-picture-side
       >
         <slot name="picture" />
       </section>
       <div
         class="flex min-h-0 flex-1 flex-col"
-        :class="{ 'lg:w-(--side) lg:flex-none': pictured && $slots.picture }"
+        :class="{ 'short:w-[45%] short:flex-none lg:w-(--side) lg:flex-none': pictured && $slots.picture }"
         data-stage-side
       >
         <slot name="side" />

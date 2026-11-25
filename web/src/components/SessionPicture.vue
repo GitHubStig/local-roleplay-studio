@@ -120,7 +120,7 @@ const pictureMenu = usePictureMenu()
     :class="[
       // Pictured or not, the picture's shape and size, so rendering it doesn't move the page. Gone
       // while the on-screen keyboard is up, so what's being written to has the room above it.
-      'aspect-(--ratio) w-[min(100%,calc(38dvh*var(--ratio)))] typing:hidden lg:w-[min(100cqw,calc(100cqh*var(--ratio)))]',
+      'aspect-(--ratio) w-[min(100%,calc(38dvh*var(--ratio)))] typing:hidden short:w-[min(100cqw,calc(100cqh*var(--ratio)))] lg:w-[min(100cqw,calc(100cqh*var(--ratio)))]',
       { 'render-sweep': sweep },
     ]"
     :data-rendering="sweep === 'queued' ? 'queued' : undefined"

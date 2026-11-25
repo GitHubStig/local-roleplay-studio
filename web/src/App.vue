@@ -110,7 +110,7 @@ useEventListener(window, 'focus', checkServer)
     :data-typing="aboveKeyboard ? '' : undefined"
   >
     <nav
-      class="order-last flex shrink-0 items-center typing:hidden! justify-around border-t border-line px-2 py-1 sm:order-first sm:w-12 sm:flex-col sm:justify-start sm:gap-2 sm:border-t-0 sm:border-r sm:px-0 sm:py-3 short:order-first short:w-12 short:flex-col short:justify-start short:gap-2 short:border-t-0 short:border-r short:px-0 short:py-3"
+      class="order-last flex shrink-0 items-center typing:hidden! justify-around border-t border-line px-2 py-1 sm:order-first sm:w-12 sm:flex-col sm:justify-start sm:gap-2 sm:border-t-0 sm:border-r sm:px-0 sm:py-3 short:order-first short:w-12 short:flex-col short:justify-start short:gap-2 short:overflow-y-auto short:border-t-0 short:border-r short:px-0 short:py-3"
       aria-label="Screens"
       data-rail
     >
