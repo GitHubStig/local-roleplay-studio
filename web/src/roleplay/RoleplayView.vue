@@ -987,7 +987,7 @@ const pickFromAll = (index: number) => pickFromStrip(index)
                         <button
                           v-if="canSpeak(frame, 'thought') && canListen(frame.thoughtSpeech)"
                           type="button"
-                          class="ml-1 inline-flex align-[-0.1em] text-muted not-italic hover:text-fg disabled:opacity-50"
+                          class="tap-around ml-1 inline-flex align-[-0.1em] text-muted not-italic hover:text-fg disabled:opacity-50"
                           :class="{ 'text-info': playing === partKey(frame.index, 'thought') }"
                           :disabled="hasJob(frame.index, 'speak-thought')"
                           :aria-label="playing === partKey(frame.index, 'thought') ? 'Stop' : 'Listen'"
@@ -1019,7 +1019,7 @@ const pickFromAll = (index: number) => pickFromStrip(index)
                         <button
                           v-if="canSpeak(frame) && canListen(frame.speech)"
                           type="button"
-                          class="ml-1 inline-flex align-[-0.1em] text-muted not-italic hover:text-fg disabled:opacity-50"
+                          class="tap-around ml-1 inline-flex align-[-0.1em] text-muted not-italic hover:text-fg disabled:opacity-50"
                           :class="{ 'text-info': playing === partKey(frame.index, 'dialogue') }"
                           :disabled="hasJob(frame.index, 'speak')"
                           :aria-label="playing === partKey(frame.index, 'dialogue') ? 'Stop' : 'Listen'"

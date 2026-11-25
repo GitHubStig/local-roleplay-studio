@@ -196,6 +196,13 @@
   @apply border-info text-info hover:border-info hover:text-info;
 }
 
+/* A small button in running text (Listen), whose tap area reaches 44 pt round it on a touch screen,
+   unseen, so the line doesn't move. */
+@utility tap-around {
+  @apply relative touch:after:absolute touch:after:top-1/2 touch:after:left-1/2 touch:after:size-11
+    touch:after:-translate-1/2 touch:after:content-[''];
+}
+
 /* A button on a picture's toolbar (`PictureToolbar`): light on the dark glass over the picture. */
 .tool-button {
   @apply inline-flex items-center gap-1 rounded-lg px-2 py-1 transition-colors hover:bg-white/15
