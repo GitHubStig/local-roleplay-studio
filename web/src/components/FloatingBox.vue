@@ -4,7 +4,8 @@ import ComposeBox from './ComposeBox.vue'
 /**
  * The floating text box at the foot of a Session's story, in every kind of Session: what's typed,
  * the buttons the kind adds beside it (the default slot: Suggest, Undo, the ⋯ menu), and Send, which
- * stays put; Cancel in its place while the Text Model works. Its border sweeps while the Text Model
+ * stays put; Cancel in its place while the Text Model works. On a phone the buttons go on a row under
+ * what's typed, which has the box's whole width. Its border sweeps while the Text Model
  * writes into the story or the box (`working`). It floats over what's behind it, which shows
  * through, blurred. Above it, what the last send said (the `notice` slot: a Limit crossed, an
  * error, a message put back).
@@ -29,18 +30,19 @@ const draft = defineModel<string>({ required: true })
   <div class="flex w-full flex-col gap-1.5" data-floating-box>
     <slot name="notice" />
     <div
-      class="flex items-end gap-1 rounded-2xl border border-line bg-surface/90 p-1.5 float-box backdrop-blur-md"
+      class="flex items-end gap-1 rounded-2xl border border-line bg-surface/90 p-1.5 float-box backdrop-blur-md max-sm:flex-wrap"
       :class="{ 'render-sweep': working && !cancelling }"
       :data-working="working ? '' : undefined"
     >
       <ComposeBox
         v-model="draft"
         floating
+        class="max-sm:basis-full"
         :placeholder="placeholder"
         :disabled="disabled || busy"
         @send="emit('send')"
       />
-      <div class="flex shrink-0 items-center gap-0.5 text-sm text-muted">
+      <div class="flex shrink-0 items-center gap-0.5 text-sm text-muted max-sm:ml-auto">
         <slot />
         <button
           v-if="!busy"
