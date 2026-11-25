@@ -111,4 +111,23 @@ describe('useJobs', () => {
     model = 'flux2-klein'
     expect(jobs.hasJob(0, 'render')).toBe(false)
   })
+
+  it("leaves a reference sheet's job off Frame 1, though it's queued on Frame 0", async () => {
+    const { useJobs } = await import('./useJobs')
+    const jobs = useJobs('s1', { onSettled: () => {}, onError: () => {} })
+    queueJob.mockResolvedValueOnce([
+      upscale('queued'),
+      {
+        id: 'j2',
+        kind: 'sheet',
+        frameIndex: 0,
+        status: 'running',
+        createdAt: '',
+        sheet: { subject: 'Kael' },
+      },
+    ])
+    await jobs.queue('upscale', 0)
+    expect(jobs.jobsFor(0).map((j) => j.kind)).toEqual(['upscale'])
+    expect(jobs.runningOn(0)).toBeNull()
+  })
 })

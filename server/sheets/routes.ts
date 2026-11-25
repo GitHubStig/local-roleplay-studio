@@ -30,7 +30,7 @@ export function sheetRoutes(ctx: AppContext): Route[] {
 
   return [
     // Change…: `{ note }`, the identity rewritten with it by the Text Model (streamed: its phase and
-    // thinking, then `identity`), then the sheet made again from it.
+    // thinking, then `identity`), not saved: saved in the Look, the sheet is made again from it.
     ['POST', path('/change'), async (req, p) => {
       const body = await readJson(req) as { note?: unknown } | undefined
       if (typeof body?.note !== 'string') return error('note must be text', 400)
@@ -42,7 +42,6 @@ export function sheetRoutes(ctx: AppContext): Route[] {
         if (off) return off
         return stream(session, null, false, async (send, signal) => {
           await changeSheet(frameDeps(session), session, subject, note, send, signal)
-          await queueSheets(session.id)
         })
       })
     }],

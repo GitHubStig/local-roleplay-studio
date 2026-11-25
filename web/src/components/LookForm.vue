@@ -1,11 +1,30 @@
 <script setup lang="ts">
-import type { Look } from '../api'
+import { type Job, type Look, redoSheet, type Sheet, type StoryboardSession, tickSheet } from '../api'
+import type { RoleplaySession } from '../roleplay/api'
 import { computed } from 'vue'
 import { type SaveLine, useAutosave } from '../composables/useAutosave'
 import { useStoredFlag } from '../composables/useStoredFlag'
 import CollapsibleTextarea from './CollapsibleTextarea.vue'
 import LookSubject from './LookSubject.vue'
 import SaveStatus from './SaveStatus.vue'
+import SubjectSheet from './SubjectSheet.vue'
+
+/** A Session's reference sheets, for the Look to show under each Subject's identity. */
+export interface LookSheets {
+  sessionId: string
+  /** One per Subject of the Look as saved, by name. */
+  list: Sheet[]
+  /** The Session's open or failed sheet jobs. */
+  jobs: Job[]
+  /** The story has begun: they're shown, no longer changed. */
+  settled: boolean
+  /** How to change them once settled. */
+  settledText: string
+  /** The Session as the server answers a tick or a Redo. */
+  saved: (session: StoryboardSession | RoleplaySession) => void
+  /** Why a tick or a Redo was refused. */
+  failed: (message: string) => void
+}
 
 /**
  * A Look edited by hand: a card per Subject (name and identity), Subjects added or removed, and
@@ -40,6 +59,8 @@ const props = defineProps<{
   line?: SaveLine
   /** Each Subject a container in a grid, for a page with the room (a Storyboard's plan); else a column. */
   cards?: boolean
+  /** Its reference sheets, when the Session has them. */
+  sheets?: LookSheets
 }>()
 
 const trimmed = (l: Look): Look => ({
@@ -68,6 +89,34 @@ const preview = computed(() => draft.value?.subjects.map((p) => p.name.trim()).f
 
 function remove(i: number) {
   draft.value!.subjects.splice(i, 1)
+  flush()
+}
+
+// --- Reference sheets: one per Subject as saved, by its name.
+
+const sheetOf = (name: string) => props.sheets?.list.find((s) => s.subject === name.trim())
+const sheetJobOf = (name: string) => props.sheets?.jobs.find((j) => j.sheet?.subject === name.trim())
+const savedIdentity = (name: string) =>
+  props.look.subjects.find((p) => p.name === name.trim())?.identity ?? ''
+
+async function onSheet(act: () => Promise<StoryboardSession | RoleplaySession>) {
+  try {
+    props.sheets!.saved(await act())
+  } catch (err) {
+    props.sheets!.failed((err as Error).message)
+  }
+}
+async function tick(name: string, ticked: boolean) {
+  if (await flush()) onSheet(() => tickSheet(props.sheets!.sessionId, name, ticked))
+}
+async function redo(name: string) {
+  if (await flush()) onSheet(() => redoSheet(props.sheets!.sessionId, name))
+}
+/** Change…'s rewritten identity, saved in the Look, which makes the sheet again from it. */
+function changeIdentity(name: string, identity: string) {
+  const subject = draft.value?.subjects.find((p) => p.name.trim() === name)
+  if (!subject) return
+  subject.identity = identity
   flush()
 }
 
@@ -108,7 +157,38 @@ defineExpose({ flush })
           :kept="fixed || kept?.includes(subject.name)"
           :class="{ 'rounded-lg border border-line bg-surface/60 p-3': cards }"
           @remove="remove(i)"
-        />
+        >
+          <template v-if="sheets && sheetOf(subject.name)" #tick>
+            <input
+              v-if="!sheets.settled"
+              type="checkbox"
+              class="self-center"
+              :checked="sheetOf(subject.name)!.ticked"
+              :disabled="disabled"
+              :aria-label="`A reference sheet for ${subject.name}`"
+              :title="sheetOf(subject.name)!.ticked ? 'Their face is repainted from the sheet: untick to leave it as rendered' : 'Tick to repaint their face from a sheet'"
+              data-sheet-tick
+              @click.stop
+              @change="tick(subject.name, ($event.target as HTMLInputElement).checked)"
+            >
+          </template>
+          <template v-if="sheets && sheetOf(subject.name)" #after-name>
+            · {{ sheetOf(subject.name)!.ticked ? 'reference sheet' : 'no sheet: the face is left as rendered' }}
+          </template>
+          <SubjectSheet
+            v-if="sheets && sheetOf(subject.name) && (sheetOf(subject.name)!.ticked || !sheets.settled)"
+            :session-id="sheets.sessionId"
+            :subject="subject.name.trim()"
+            :identity="savedIdentity(subject.name)"
+            :sheet="sheetOf(subject.name)!"
+            :job="sheetJobOf(subject.name)"
+            :settled="sheets.settled"
+            :settled-text="sheets.settledText"
+            :disabled="disabled"
+            @redo="redo(subject.name.trim())"
+            @change="changeIdentity(subject.name.trim(), $event)"
+          />
+        </LookSubject>
         <button
           v-if="!kept && !fixed"
           type="button"

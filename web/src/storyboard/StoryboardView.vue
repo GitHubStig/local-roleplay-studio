@@ -39,7 +39,7 @@ import FrameViewer from '../components/FrameViewer.vue'
 import PictureMenu from '../components/PictureMenu.vue'
 import { providePictureMenu } from '../composables/usePictureMenu'
 import Icon from '../components/Icon.vue'
-import LookForm from '../components/LookForm.vue'
+import LookForm, { type LookSheets } from '../components/LookForm.vue'
 import { clipCount, clipsMaking, usePlayingClip } from '../clips'
 import FloatingBox from '../components/FloatingBox.vue'
 import FrameClips from '../components/FrameClips.vue'
@@ -291,8 +291,28 @@ const line = saveLine()
 const lookForm = useTemplateRef<InstanceType<typeof LookForm>>('lookForm')
 async function saveLookDraft(draft: Look): Promise<Look> {
   session.value = await saveLook(props.id, draft)
+  // A changed identity has its sheet made again.
+  if (session.value.settings.sheets) refreshJobs()
   return session.value.look!
 }
+
+/** The Look's reference sheets, where the Storyboard has them: settled once a Frame is written. */
+const lookSheets = computed<LookSheets | undefined>(() => {
+  const s = session.value
+  if (!s?.settings.sheets) return undefined
+  return {
+    sessionId: props.id,
+    list: s.sheets,
+    jobs: jobs.value.filter((j) => j.sheet && j.status !== 'done'),
+    settled: writingStarted.value,
+    settledText: 'Settled when the Frames were written. Restart to change it.',
+    saved: (updated) => {
+      if (updated.kind === 'storyboard') session.value = updated
+      refreshJobs()
+    },
+    failed: (text) => (message.value = { kind: 'error', text }),
+  }
+})
 
 /** The selected Frame's text and who it shows: its Beat until it's written, then its sentences. */
 interface FrameDraft {
@@ -863,6 +883,7 @@ const pickFromAll = (index: number) => pick(index)
                 every="every Frame"
                 :disabled="busy || !planned || writingStarted"
                 :fixed="writingStarted"
+                :sheets="lookSheets"
                 cards
               >
                 <template #actions>
@@ -1136,6 +1157,7 @@ const pickFromAll = (index: number) => pick(index)
         </p>
         <p v-if="!busy && !writingStarted" class="min-w-0 flex-1 text-muted" data-review>
           Drag the Beats to reorder; nothing is written or rendered yet.
+          <template v-if="session.settings.sheets">The sheets are settled when the Frames are written.</template>
         </p>
         <div
           v-else-if="work?.kind === 'write'"

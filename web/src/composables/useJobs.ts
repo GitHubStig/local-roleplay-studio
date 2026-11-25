@@ -49,10 +49,13 @@ export function useJobs(
   const runningJob = computed(() => mainJob(runningJobs.value))
   /** A Frame's running job to show, as `runningJob` picks it. */
   const runningOn = (index: number) =>
-    mainJob(runningJobs.value.filter((j) => j.frameIndex === index))
-  /** A Frame's queued, running and failed jobs, in queue order (a done one's work is on the Frame). */
+    mainJob(runningJobs.value.filter((j) => j.frameIndex === index && !j.sheet))
+  /**
+   * A Frame's queued, running and failed jobs, in queue order (a done one's work is on the Frame).
+   * A reference sheet's is the Session's, shown on its Look, though it's queued on Frame 0.
+   */
   const jobsFor = (index: number) =>
-    jobs.value.filter((j) => j.frameIndex === index && j.status !== 'done')
+    jobs.value.filter((j) => j.frameIndex === index && j.status !== 'done' && !j.sheet)
   /**
    * A job of this kind is already queued or running on this Frame; for a render, by the Session's
    * Image Model.

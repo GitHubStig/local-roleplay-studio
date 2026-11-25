@@ -237,18 +237,20 @@ export function tickSheet(
 export const MAX_CHANGE_NOTE = 500
 
 /**
- * Change…: rewrites Subject `subject`'s identity in the Look with the player's `note` ("green
- * eyes"), by the Text Model, so its sheet is made again from it and the two agree. A note or an
- * identity that crosses a Limit is refused; so is a change once the story has begun.
+ * Change…: rewrites Subject `subject`'s identity with the player's `note` ("green eyes"), by the
+ * Text Model, and answers it (`identity`) without saving it: the player reads it first, and saving
+ * it in the Look makes the sheet again from it, at the same seed, so the two agree and only what
+ * the note asked for changes. A note or an identity that crosses a Limit is refused; so is a change
+ * once the story has begun.
  */
 export async function changeSheet(
-  deps: { store: RenderDeps['store']; textModel: TextModel },
+  deps: { textModel: TextModel },
   session: WithSheets,
   subject: string,
   note: string,
   emit: (event: SheetEvent) => void,
   signal: AbortSignal,
-): Promise<WithSheets> {
+): Promise<string> {
   const asked = note.trim()
   if (!asked) throw new SheetError('Say what to change', 400)
   if (asked.length > MAX_CHANGE_NOTE) {
@@ -269,13 +271,8 @@ export async function changeSheet(
   signal.throwIfAborted()
   const limit = crossedLimit(identity)
   if (limit) throw new SheetError(`The changed identity crosses a limit: ${limit.message}`, 422)
-  const updated = await updateSession(deps.store, session.id, session.kind, (latest) => {
-    checkChangeable(latest, subject)
-    const subjects = latest.look!.subjects.map((p) => (p.name === subject ? { ...p, identity } : p))
-    return { ...latest, look: { ...latest.look!, subjects } }
-  })
-  emit({ type: 'identity', subject, identity, session: updated })
-  return updated
+  emit({ type: 'identity', subject, identity })
+  return identity
 }
 
 /** Subject `subject`'s sheet, while it can still change; refused otherwise. */

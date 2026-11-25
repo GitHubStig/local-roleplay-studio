@@ -6,7 +6,9 @@ import { useStoredFlag } from '../composables/useStoredFlag'
 /**
  * One Subject of a Look (a person, creature, animal or object): its name as a heading, and its
  * identity. It collapses to the name and a one-line preview by clicking its header; whether
- * it's collapsed is remembered per browser, by `id`.
+ * it's collapsed is remembered per browser, by `id`. Its reference sheet, where it has one, goes
+ * under the identity (the default slot), with its tick before the name (`tick`) and a word after
+ * it (`after-name`).
  */
 const props = defineProps<{
   /** Remembers this card's collapsed state, e.g. `storyboard.look.subject.0`. */
@@ -38,7 +40,9 @@ const preview = computed(() => identity.value.replace(/\s+/g, ' ').trim())
   >
     <summary class="flex cursor-pointer select-none items-baseline gap-1.5 hover:text-fg">
       <span class="fold-caret group-open/subject:rotate-90">›</span>
+      <slot name="tick" />
       <span class="shrink-0 text-sm font-medium text-fg">{{ name.trim() || 'New subject' }}</span>
+      <span v-if="!collapsed && $slots['after-name']" class="min-w-0 truncate text-muted"><slot name="after-name" /></span>
       <span v-if="collapsed" class="min-w-0 flex-1 truncate text-muted/80" data-preview>
         · {{ preview }}
       </span>
@@ -76,6 +80,7 @@ const preview = computed(() => identity.value.replace(/\s+/g, ' ').trim())
           :disabled="disabled"
         />
       </label>
+      <slot />
     </div>
   </details>
 </template>

@@ -24,6 +24,7 @@ import type {
   ClipPromptEvent,
   EndEvent,
   FrameEvent as StoredFrameEvent,
+  SheetEvent,
   StoryboardEvent as StoredStoryboardEvent,
 } from '../../shared/events.ts'
 export { type Availability, type Feature, FEATURES } from '../../shared/features.ts'
@@ -56,6 +57,7 @@ export {
   type Outcome,
   SESSION_TITLE_LENGTH,
   type SessionKind,
+  type Sheet,
   type StoryboardFrame,
   type Subject,
   type Written,
@@ -583,6 +585,29 @@ export const chainFromFrame = (id: string, index: number) =>
 /** Replaces a Chain Frame's Image Prompt, typed by hand; its pictures are then out of date. */
 export const saveChainPrompt = (id: string, index: number, prompt: string) =>
   put<ChainSession>(`/api/sessions/${id}/frames/${index}`, { prompt })
+
+/** A Storyboard's or a Roleplay's sheet of `subject`, by the Subject's name. */
+const sheetPath = (id: string, subject: string, rest = '') =>
+  `/api/sessions/${id}/sheets/${encodeURIComponent(subject)}${rest}`
+
+/** Makes a reference sheet again with the next seed; only before the story begins. */
+export const redoSheet = (id: string, subject: string) =>
+  post<StoryboardSession | RoleplaySession>(sheetPath(id, subject, '/redo'))
+
+/** Ticks a Subject's sheet (its face repainted from it) or unticks it; only before the story begins. */
+export const tickSheet = (id: string, subject: string, ticked: boolean) =>
+  put<StoryboardSession | RoleplaySession>(sheetPath(id, subject), { ticked })
+
+/**
+ * Change…: the Subject's identity rewritten by the Text Model with `note` ("green eyes"), answered
+ * (`identity`) but not saved: saved in the Look, its sheet is made again from it.
+ */
+export const changeSheet = (
+  id: string,
+  subject: string,
+  note: string,
+  onEvent: (event: SheetEvent | EndEvent) => void,
+) => streamEvents<SheetEvent>(sheetPath(id, subject, '/change'), { note }, ['identity'], onEvent)
 
 /** Replaces a Storyboard's Look; only before its Frames are written. */
 export const saveLook = (id: string, look: Look) =>

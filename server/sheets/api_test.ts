@@ -47,7 +47,7 @@ Deno.test("A Roleplay's sheets are made from its Look in the Cast review, and se
       settings: { textModel: 'x', features: SHEETS_ON },
       features,
       imageGenerator: images,
-      textModel: scriptedTextModel([], { changes: ['Mira Vance, 34, green eyes.'] }),
+      textModel: scriptedTextModel([], { changes: ['Mira Vance, 34, green eyes, short hair.'] }),
       roleplayModel: scriptedRoleplayModel({
         casts: [testCast],
         replies: [replyOf('You are late.')],
@@ -90,18 +90,27 @@ Deno.test("A Roleplay's sheets are made from its Look in the Cast review, and se
     assertEquals(await sheetJobs(call), ['Mira Vance done'])
     assertEquals((await getSession(call, 'roleplay')).sheets[0].seed, looked.seed + 1)
 
-    // Change…: the identity rewritten, shown in the Look, and the sheet made again from it.
+    // Change…: the identity rewritten and answered, not saved; saved in the Look, the sheet is
+    // made again from it, at the same seed.
     const change = await readEvents(
-      await call('POST', '/api/sessions/s1/sheets/Mira%20Vance/change', { note: 'green eyes' }),
+      await call('POST', '/api/sessions/s1/sheets/Mira%20Vance/change', { note: 'short hair' }),
     )
-    assertEquals(change.some(([type]) => type === 'identity'), true)
+    const answered = change.find(([type]) => type === 'identity')?.[1]
+    assertEquals(answered?.identity, 'Mira Vance, 34, green eyes, short hair.')
+    const unsaved = await getSession(call, 'roleplay')
+    assertEquals(unsaved.look?.subjects[0].identity, 'Mira Vance, 34, green eyes.')
+    await call(
+      'PUT',
+      '/api/sessions/s1/roleplay/look',
+      testLook('Ink.', 'Mira Vance, 34, green eyes, short hair.', 'Sam Reyes, 25.'),
+    )
     assertEquals(await settled(call), [])
     const changed = await getSession(call, 'roleplay')
-    assertEquals(changed.look?.subjects[0].identity, 'Mira Vance, 34, green eyes.')
     assertEquals([changed.sheets[0].identity, !!changed.sheets[0].made], [
-      'Mira Vance, 34, green eyes.',
+      'Mira Vance, 34, green eyes, short hair.',
       true,
     ])
+    assertEquals(changed.sheets[0].seed, unsaved.sheets[0].seed)
 
     // Queued only from the Look and these routes.
     const queued = await call('POST', '/api/sessions/s1/jobs', { kind: 'sheet', frameIndex: 0 })

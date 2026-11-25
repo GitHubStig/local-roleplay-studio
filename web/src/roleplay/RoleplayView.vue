@@ -10,7 +10,7 @@ import { useSessionScreen } from '../composables/useSessionScreen'
 import { useStoredFlag } from '../composables/useStoredFlag'
 import { saveLine, useAutosave } from '../composables/useAutosave'
 import SaveStatus from '../components/SaveStatus.vue'
-import LookForm from '../components/LookForm.vue'
+import LookForm, { type LookSheets } from '../components/LookForm.vue'
 import RestartButton from '../components/RestartButton.vue'
 import PutBackOffer from '../components/PutBackOffer.vue'
 import { usePutBack } from '../composables/usePutBack'
@@ -760,8 +760,28 @@ async function keepLook() {
 /** "Kael, Elara Vance and the barkeep", "no one": who a picture shows. */
 async function saveLookDraft(draft: Look): Promise<Look> {
   session.value = await saveLook(props.id, draft)
+  // A changed identity has its sheet made again.
+  if (session.value.settings.sheets) refreshJobs()
   return session.value.look!
 }
+
+/** The Look's reference sheets, where the Roleplay has them: settled at Begin. */
+const lookSheets = computed<LookSheets | undefined>(() => {
+  const s = session.value
+  if (!s?.settings.sheets) return undefined
+  return {
+    sessionId: props.id,
+    list: s.sheets,
+    jobs: jobs.value.filter((j) => j.sheet && j.status !== 'done'),
+    settled: begun.value,
+    settledText: 'Settled when the story began. Restart to change it.',
+    saved: (updated) => {
+      if (updated.kind === 'roleplay') session.value = updated
+      refreshJobs()
+    },
+    failed: (text) => (notice.value = { kind: 'error', text }),
+  }
+})
 /** A Look saved while a picture renders waits for it, so the renders queued behind it have it. */
 // --- The strip and the picture beside the story.
 
@@ -1071,6 +1091,9 @@ const pickFromAll = (index: number) => pickFromStrip(index)
                 <p class="text-muted">
                   Review the Cast in Look & Cast: who {{ characterName }} is, who you play, where it
                   starts, and how each of them looks. Edit anything you like, then begin; {{ characterName }} speaks first.
+                </p>
+                <p v-if="session.settings.sheets" class="text-sm text-muted" data-sheets-settle>
+                  The sheets are settled when you begin: Restart brings you back to them.
                 </p>
                 <div class="flex gap-2">
                   <button
@@ -1420,6 +1443,7 @@ const pickFromAll = (index: number) => pickFromStrip(index)
                 :kept="[characterName, personaName]"
                 :disabled="busy || writingLook"
                 :saving-text="lookSavingText"
+                :sheets="lookSheets"
               />
               <p v-else-if="!lookJob" class="text-muted">
                 <span class="font-semibold text-fg">Look</span> · not written yet: how each of them looks, and the art style, for every picture.
