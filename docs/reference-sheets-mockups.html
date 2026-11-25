@@ -1,0 +1,569 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Reference sheets: mockups</title>
+    <!-- Mockups for docs/reference-sheets-plans.md: where reference sheets show in the app, with
+         alternatives to pick from. Drawn in the app's light colours with the public tavern's Kael and
+         Elara (docs/bench/reference-portraits/2026-11-25/). Deleted with the plan once built. -->
+    <style>
+    :root {
+      --canvas: #f4eedd;
+      --surface: #faf6ea;
+      --line: #ddd2b5;
+      --fg: #3a2817;
+      --muted: #75644c;
+      --ok: #3f6b2a;
+      --warn: #8f520c;
+      --info: #2c5a86;
+      --danger: #962a1c;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      background: #e9e1cc;
+      color: var(--fg);
+      font: 14px/1.45 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+    main {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 32px 24px 80px;
+    }
+    h1 {
+      font-size: 26px;
+      margin: 0 0 6px;
+    }
+    h2 {
+      font-size: 20px;
+      margin: 48px 0 6px;
+      padding-top: 18px;
+      border-top: 2px solid var(--line);
+    }
+    h3 {
+      font-size: 15px;
+      margin: 0 0 8px;
+    }
+    p.lede {
+      color: var(--muted);
+      max-width: 820px;
+      margin: 0 0 16px;
+    }
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 24px;
+      align-items: flex-start;
+    }
+    .board {
+      background: var(--canvas);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 16px;
+      flex: 1 1 360px;
+      min-width: 340px;
+    }
+    .board > .tag {
+      display: inline-block;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: var(--fg);
+      color: var(--canvas);
+      margin-bottom: 8px;
+    }
+    .board > .tag.alt {
+      background: transparent;
+      color: var(--fg);
+      border: 1px solid var(--fg);
+    }
+    .board > .why {
+      color: var(--muted);
+      font-size: 13px;
+      margin: 10px 0 0;
+    }
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+    }
+    .pad {
+      padding: 14px;
+    }
+    .muted {
+      color: var(--muted);
+    }
+    .small {
+      font-size: 12px;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      border-radius: 8px;
+      padding: 5px 10px;
+      font-size: 13px;
+      color: var(--fg);
+    }
+    .btn.dark {
+      background: var(--fg);
+      color: var(--canvas);
+      border-color: var(--fg);
+      font-weight: 600;
+    }
+    .field {
+      border: 1px solid var(--line);
+      background: var(--surface);
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 13px;
+    }
+    .field.ph {
+      color: var(--muted);
+    }
+    .toggle {
+      width: 52px;
+      height: 22px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      font-size: 11px;
+      display: flex;
+      align-items: center;
+      padding: 0 8px;
+      background: var(--surface);
+    }
+    .toggle.on {
+      background: var(--ok);
+      color: #fff;
+      border-color: var(--ok);
+      justify-content: flex-end;
+    }
+    .sec {
+      display: flex;
+      gap: 6px;
+      align-items: baseline;
+      font-weight: 600;
+      margin: 4px 0 8px;
+    }
+    .sec .caret {
+      color: var(--muted);
+      font-weight: 400;
+    }
+    .sec .sub {
+      color: var(--muted);
+      font-weight: 400;
+      font-size: 13px;
+    }
+    .sheet {
+      width: 100%;
+      aspect-ratio: 1536/640;
+      border-radius: 6px;
+      background-size: cover;
+      background-position: center;
+      border: 1px solid var(--line);
+    }
+    .kael {
+      background-image: url(bench/reference-portraits/2026-11-25/05-sheet-kael.jpg);
+    }
+    .elara {
+      background-image: url(bench/reference-portraits/2026-11-25/06-sheet-elara.jpg);
+    }
+    .klein {
+      background-image: url(bench/reference-portraits/2026-11-25/detail/d8-sheet-kael-flux3-klein.jpg);
+    }
+    .fibo {
+      background-image: url(bench/reference-portraits/2026-11-25/detail/d9-sheet-kael-fibo2-turbo.jpg);
+    }
+    .pic {
+      border-radius: 8px;
+      background-size: 302% 104%;
+      background-position: 0 60% !important;
+      aspect-ratio: 1;
+      border: 1px solid var(--line);
+      position: relative;
+    }
+    .pic.after {
+      background-image: url(bench/reference-portraits/2026-11-25/detail/d2-one-pass-kael.jpg);
+      background-position: 0 0;
+    }
+    .chip {
+      position: absolute;
+      font-size: 12px;
+      background: rgba(250,246,234,.95);
+      border-radius: 999px;
+      padding: 3px 9px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.25);
+    }
+    .head {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background-size: 300% 100%;
+      background-position: 0 30%;
+      border: 2px solid var(--surface);
+      box-shadow: 0 0 0 1px var(--line);
+      display: inline-block;
+      vertical-align: middle;
+    }
+    .head.k {
+      background-image: url(bench/reference-portraits/2026-11-25/05-sheet-kael.jpg);
+      background-size: 600% 230%;
+      background-position: 4% 20%;
+    }
+    .head.e {
+      background-image: url(bench/reference-portraits/2026-11-25/06-sheet-elara.jpg);
+      background-size: 600% 230%;
+      background-position: 4% 20%;
+    }
+    .bar {
+      height: 6px;
+      border-radius: 99px;
+      background: var(--canvas);
+      overflow: hidden;
+    }
+    .bar > span {
+      display: block;
+      height: 100%;
+      background: var(--info);
+    }
+    .spin {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border: 2px solid var(--line);
+      border-top-color: var(--info);
+      border-radius: 50%;
+    }
+    .tabs {
+      display: flex;
+      gap: 14px;
+      border-bottom: 1px solid var(--line);
+      padding: 0 12px;
+      font-size: 13px;
+    }
+    .tabs span {
+      padding: 8px 2px;
+      color: var(--muted);
+    }
+    .tabs span.on {
+      color: var(--fg);
+      border-bottom: 2px solid var(--fg);
+    }
+    .grid3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    .pick {
+      outline: 3px solid var(--fg);
+      outline-offset: 2px;
+    }
+    .note {
+      background: #fff8e2;
+      border: 1px dashed var(--warn);
+      color: var(--warn);
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 13px;
+    }
+    ol.q li {
+      margin: 6px 0;
+    }
+    .setrow {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .setrow:last-child {
+      border-bottom: 0;
+    }
+    .setrow .l {
+      max-width: 70%;
+    }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Reference sheets: where they'd show</h1>
+      <p
+        class="lede">Mockups for <a href="reference-sheets-plans.md">reference-sheets-plans.md</a>. Each section has options; the first is the one I'd pick. Drawn with the tavern's Kael and Elara and the sheets from the 2026-11-25 bench; a Roleplay's screens, as a Storyboard's plan review works the same way (section 6).</p>
+
+      <!-- 1 -->
+      <h2>1. Turning it on</h2>
+      <p
+        class="lede">Settings say whether new Sessions start with sheets; each Session can turn them on or off for itself, as it can Render replies.</p>
+      <div class="row">
+        <div class="board">
+          <span class="tag">A · Settings section of its own</span> <b style="font-size:12px;color:var(--ok)">✓ Picked</b>
+          <div class="panel pad">
+            <h3>Reference sheets</h3>
+            <p class="muted small"
+              style="margin:0 0 6px">A sheet of each person, front, three-quarter and profile, made once from the Look. After each picture renders, their faces are repainted from it, so they stay the same from Frame to Frame.</p>
+            <div class="setrow">
+              <div
+                class="l"><b>For new Sessions</b><div class="muted small">Each picture takes about 2.6× as long: ~4 min instead of ~1.5 on this Mac. Turn it on or off in a Session from its model menu.</div></div>
+              <div class="toggle on">On</div>
+            </div>
+            <div class="setrow">
+              <div
+                class="l"><b>Faces repainted by</b><div class="muted small">Only edit models that take a reference picture.</div></div>
+              <div class="field" style="min-width:170px">Qwen-Image 2.1 ⌄</div>
+            </div>
+            <div class="setrow">
+              <div
+                class="l"><b>Sheets made by</b><div class="muted small">Any Image Model; a sheet takes one render.</div></div>
+              <div class="field" style="min-width:170px">The Session's Image Model ⌄</div>
+            </div>
+          </div>
+          <p
+            class="why">Its own section in the models' group (Text, Images, Voice, Music, Clips, 3D, <b>Reference sheets</b>), as it has three settings and a cost to explain.</p>
+        </div>
+        <div class="board">
+          <span class="tag">A · and in the Session's model menu</span> <b style="font-size:12px;color:var(--muted)">Not chosen</b>
+          <div class="panel pad">
+            <b>This Roleplay</b>
+            <div class="setrow">
+              <div class="l">Image Model</div>
+              <div class="field">Qwen-Image 2.1 · mflux ⌄</div>
+            </div>
+            <div class="setrow">
+              <div
+                class="l"><b>Render replies</b><div class="muted small">Each new Reply's picture is rendered as its Image Prompt is written (slower)</div></div>
+              <div class="toggle">Off</div>
+            </div>
+            <div class="setrow">
+              <div
+                class="l"><b>Reference sheets</b><div class="muted small">Faces repainted from each person's sheet after every picture: about 2.6× as long</div></div>
+              <div class="toggle on">On</div>
+            </div>
+            <div class="setrow">
+              <div
+                class="l"><b>Speak replies</b><div class="muted small">Each new Reply is spoken in Kael's voice</div></div>
+              <div class="toggle">Off</div>
+            </div>
+          </div>
+          <p
+            class="why">Beside Render replies, where the Session's other switches are. Turned on mid-Session: sheets are made, and Frames pictured before aren't redone unless re-rendered.</p>
+        </div>
+        <div class="board">
+          <span class="tag alt">B · also when starting a Session</span> <b style="font-size:12px;color:var(--ok)">✓ Picked</b>
+          <div class="panel pad">
+            <b>Start a Roleplay</b>
+            <div class="muted small"
+              style="margin:4px 0 10px">The Rain-Soaked Tavern · Kael and Elara Vance</div>
+            <div class="setrow">
+              <div
+                class="l"><b>Reference sheets</b><div class="muted small">Keep faces the same: slower pictures</div></div>
+              <div class="toggle on">On</div>
+            </div>
+            <div style="text-align:right;margin-top:10px"><span class="btn dark">Start</span></div>
+          </div>
+          <p
+            class="why">One more choice before playing. Only worth it if the Settings default is often wrong for a Session; the model menu can change it in the first minute anyway.</p>
+        </div>
+      </div>
+
+      <!-- 2 -->
+      <h2>2. Where the sheets show in a Session</h2>
+      <p
+        class="lede">A sheet belongs to a Subject of the Look, and is made from its identity, so the words and the picture should sit together.</p>
+      <div class="row">
+        <div class="board">
+          <span class="tag">A · in the Look, under each identity</span> <b style="font-size:12px;color:var(--ok)">✓ Picked</b>
+          <div class="panel">
+            <div
+              class="tabs"><span>Frame 3's prompt</span><span>Clips</span><span class="on">Look &amp; Cast</span><span>Music</span></div>
+            <div class="pad">
+              <div
+                class="sec"><span class="caret">⌄</span>Look<span class="sub">· for every picture</span></div>
+              <div class="sec small"><span class="caret">⌄</span>Kael</div>
+              <div class="field"
+                style="margin-bottom:8px">a 42-year-old man with a lean, rigid build, weathered tanned skin marked by old scars, short unkempt brown hair…</div>
+              <div class="sheet kael"></div>
+              <div
+                style="display:flex;gap:6px;margin:6px 0 14px"><span class="btn">↻ Redo</span><span class="btn">✎ Change…</span><span class="muted small" style="margin-left:auto;align-self:center">used by 6 Frames</span></div>
+              <div class="sec small"><span class="caret">⌄</span>Elara Vance</div>
+              <div class="field"
+                style="margin-bottom:8px">a 20-year-old woman with a slender build, pale skin flushed by the cold, dark hair pulled back neatly…</div>
+              <div class="sheet"
+                style="display:grid;place-items:center;background:var(--canvas)"><span class="muted small"><span class="spin"></span> Making Elara's sheet · 2nd in the queue</span></div>
+            </div>
+          </div>
+          <p
+            class="why">No new place to learn: the sheet is right under the words it's drawn from, and editing them offers a new one. It makes the Look section taller; each Subject already folds.</p>
+        </div>
+        <div class="board">
+          <span class="tag alt">B · a tab of its own</span> <b style="font-size:12px;color:var(--muted)">Not chosen</b>
+          <div class="panel">
+            <div
+              class="tabs"><span>Frame 3's prompt</span><span>Clips</span><span>Look &amp; Cast</span><span class="on">Sheets</span><span>Music</span></div>
+            <div class="pad">
+              <b>Kael</b>
+              <div class="sheet kael" style="margin:6px 0"></div>
+              <div
+                style="display:flex;gap:6px;margin-bottom:14px"><span class="btn">↻ Redo</span><span class="btn">✎ Change…</span></div>
+              <b>Elara Vance</b>
+              <div class="sheet elara" style="margin:6px 0"></div>
+              <div
+                style="display:flex;gap:6px"><span class="btn">↻ Redo</span><span class="btn">✎ Change…</span></div>
+            </div>
+          </div>
+          <p
+            class="why">Bigger and easier to compare, but away from the identity it's made from, and one more tab (there are four already).</p>
+        </div>
+        <div class="board">
+          <span class="tag alt">C · faces in the header, opening the sheet</span> <b style="font-size:12px;color:var(--muted)">Not chosen</b>
+          <div class="panel pad" style="display:flex;flex-wrap:wrap;align-items:center;gap:10px">
+      <span class="small muted">ROLEPLAY</span><b style="white-space:nowrap">The Rain-Soaked Tavern</b>
+      <span style="margin-left:auto"><span class="head k"></span><span class="head e" style="margin-left:-8px"></span></span>
+      <span class="btn" style="white-space:nowrap">Music</span><span class="btn" style="white-space:nowrap">Look &amp; Cast</span>
+    </div>
+          <div class="panel pad" style="margin-top:8px;width:78%;margin-left:auto">
+      <b>Kael</b> <span class="muted small">· sheet</span>
+      <div class="sheet kael" style="margin:6px 0"></div>
+      <div style="display:flex;gap:6px"><span class="btn" style="white-space:nowrap">↻ Redo</span><span class="btn" style="white-space:nowrap">✎ Change…</span><span class="btn" style="margin-left:auto;white-space:nowrap">In the Look</span></div>
+    </div>
+          <p
+            class="why">Always in sight, and shows at a glance whose faces are held. Could go with A rather than instead of it.</p>
+        </div>
+      </div>
+
+      <!-- 3 -->
+      <h2>3. Redo and change a sheet</h2>
+      <p
+        class="lede">The sheet holds for the whole Session, so it's worth getting right. A change goes through the identity, so the words and the sheet always agree.</p>
+      <div class="row">
+        <div class="board">
+          <span class="tag">A · Change… asks what's different</span> <b style="font-size:12px;color:var(--ok)">✓ Picked</b>
+          <div class="panel pad">
+            <b>Change Kael's sheet</b>
+            <div class="sheet kael" style="margin:8px 0"></div>
+            <div class="field" style="margin-bottom:6px">fewer scars, and grey at the temples</div>
+            <div class="muted small" style="margin-bottom:8px">His identity becomes:</div>
+            <div class="field"
+              style="margin-bottom:10px">a 42-year-old man with a lean, rigid build, weathered tanned skin with a single old scar on his cheek, short unkempt brown hair <u>greying at the temples</u>…</div>
+            <div
+              style="display:flex;gap:6px;justify-content:flex-end"><span class="btn">Cancel</span><span class="btn dark">Make the sheet</span></div>
+          </div>
+          <p
+            class="why">The Text Model rewrites the identity from the note, shown before the sheet is made, so the player sees what will change in every Frame's prompt too.</p>
+        </div>
+        <div class="board">
+          <span class="tag alt">B · three to pick from</span> <b style="font-size:12px;color:var(--muted)">Not chosen</b>
+          <div class="panel pad">
+      <b>Kael's sheet</b> <span class="muted small">· pick one</span>
+      <div style="display:flex;flex-direction:column;gap:8px;margin:8px 0">
+        <div class="sheet kael pick"></div>
+        <div class="sheet klein"></div>
+        <div class="sheet fibo"></div>
+      </div>
+      <div style="display:flex;gap:6px"><span class="btn">↻ Three more</span><span class="btn">✎ Change…</span><span class="btn dark" style="margin-left:auto">Use this one</span></div>
+    </div>
+          <p
+            class="why">Three renders for the price of one choice (about 4 min on the Mac, 1 on the PC), at the start, when the player is reviewing anyway. Could be just the first time, with Redo making one after.</p>
+        </div>
+      </div>
+
+      <!-- 4 -->
+      <h2>4. On a picture: what the face pass did</h2>
+      <p
+        class="lede">The render without the face pass is kept, so the player can see what changed and drop it if it made things worse.</p>
+      <div class="row">
+        <div class="board">
+          <span class="tag">A · a chip, held to see before</span> <b style="font-size:12px;color:var(--ok)">✓ Picked</b>
+          <div class="pic after"
+            style="max-width:380px"><span class="chip" style="left:10px;top:10px">Frame 3 of 8</span><span class="chip" style="right:10px;top:10px"><span class="head k" style="width:16px;height:16px"></span> Faces from sheets</span></div>
+          <div class="panel pad small" style="margin-top:8px">
+      <b>Faces from sheets</b> · Kael<br>
+      <span class="muted">Hold to see the picture before. </span><span class="btn" style="margin-top:6px">Without the face pass</span>
+    </div>
+          <p
+            class="why">Like the Edited chip a picture shows now. Clicking it opens what was done, holding shows the render before; Without the face pass uses the render for this Frame.</p>
+        </div>
+        <div class="board">
+          <span class="tag alt">B · a version in the Versions list</span> <b style="font-size:12px;color:var(--muted)">Not chosen</b>
+          <div class="panel pad">
+            <b>Versions</b>
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <div style="flex:1">
+                <div class="pic"
+                  style="background-image:url(bench/reference-portraits/2026-11-25/detail/d2-one-pass-kael.jpg);background-position:0 0"></div>
+                <div class="small muted">Render</div>
+              </div>
+              <div style="flex:1">
+                <div class="pic pick"
+                  style="background-image:url(bench/reference-portraits/2026-11-25/detail/d2-one-pass-kael.jpg);background-position:0 0"></div>
+                <div class="small"><b>Faces from sheets</b></div>
+              </div>
+              <div style="flex:1">
+                <div class="pic"
+                  style="background-image:url(bench/reference-portraits/2026-11-25/detail/d2-one-pass-kael.jpg);background-position:0 0"></div>
+                <div class="small muted">Edit: smiling</div>
+              </div>
+            </div>
+          </div>
+          <p
+            class="why">Uses what's there (ADR 0021's versions and Compare), but every Frame then has an edit, and the face pass after a player's edit makes two versions per edit.</p>
+        </div>
+      </div>
+
+      <!-- 5 -->
+      <h2>5. While it works</h2>
+      <p class="lede">A picture is now two steps; the queue and the picture say which.</p>
+      <div class="row">
+        <div class="board">
+          <span class="tag">A · two steps in one job</span> <b style="font-size:12px;color:var(--ok)">✓ Picked</b>
+          <div class="panel pad">
+            <div
+              style="display:flex;justify-content:space-between"><b>Frame 4 · picture</b><span class="muted small">2 min 10 s</span></div>
+            <div class="small" style="margin:6px 0 2px">✓ Rendered · Qwen-Image 2.1</div>
+            <div class="small"
+              style="margin-bottom:6px"><span class="spin"></span> Faces · Kael, Elara Vance</div>
+            <div class="bar"><span style="width:62%"></span></div>
+          </div>
+          <div class="panel pad" style="margin-top:8px">
+            <div
+              style="display:flex;justify-content:space-between"><b>Frame 5 · picture</b><span class="muted small">Faces skipped</span></div>
+            <div class="small muted">No one with a sheet was found in it: saved as rendered.</div>
+          </div>
+          <p
+            class="why">One job, so Cancel and the queue's order stay as they are; the render shows on the stage as soon as it's made, and the faces change when the pass is done.</p>
+        </div>
+      </div>
+
+      <!-- 6 -->
+      <h2>6. A Storyboard: in the plan review</h2>
+      <div class="row">
+        <div class="board">
+          <span class="tag">A · sheets made while the player reviews</span> <b style="font-size:12px;color:var(--ok)">✓ Picked</b>
+          <div class="panel pad">
+            <div class="sec">Look <span class="sub">· for every Frame</span></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <div><b class="small">Kael</b><div class="field small" style="margin:4px 0">a 42-year-old man with a lean, rigid build…</div><div class="sheet kael"></div><div style="display:flex;gap:6px;margin-top:6px"><span class="btn">↻</span><span class="btn">✎ Change…</span></div></div>
+              <div><b class="small">Elara Vance</b><div class="field small" style="margin:4px 0">a 20-year-old woman with a slender build…</div><div class="sheet" style="display:grid;place-items:center;background:var(--canvas)"><span class="muted small"><span class="spin"></span> Making…</span></div></div>
+            </div>
+            <div
+              style="display:flex;justify-content:space-between;align-items:center;margin-top:12px"><span class="muted small">Write Frames waits for the sheets it needs.</span><span class="btn dark">Write Frames</span></div>
+          </div>
+          <p
+            class="why">The plan review is where the Look is checked before anything renders, so the sheets are made in the time the player spends reading the Beats.</p>
+        </div>
+      </div>
+
+      <h2>Decided (the owner, 2026-11-25)</h2>
+      <ol class="q">
+        <li>Turning it on: its own Settings section (1A), and asked again at the start of a Session (1B); not in the model menu.</li>
+        <li>Where sheets show: in the Look, under each identity (2A).</li>
+        <li>Making one: Redo, and Change… through the identity (3A).</li>
+        <li>On a picture: the chip (4A). The picture's job in two steps (5A), and the Storyboard's plan review (6A).</li>
+      </ol>
+    </main>
+  </body>
+</html>
