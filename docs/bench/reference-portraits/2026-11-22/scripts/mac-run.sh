@@ -18,7 +18,7 @@ R1E="Image 1 is Elara Vance. Keep her face, hair and build exactly as in image 1
 R1="Image 1 is Kael. Keep his face, hair and build exactly as in image 1."
 EL="Give the woman in image 1 the face and hair of the woman in image 2, Elara Vance, but keep her expression exactly as it is in image 1: crying, tears running down her cheeks, her face crumpled with grief. Change nothing else."
 KA="Give the man in image 1 the face and hair of the man in image 2, Kael, but keep him exactly as he is in image 1: seen in profile facing left, half his face in shadow, lit by the candle. Change nothing else."
-run() { local name=$1; shift; local t0=$(date +%s); /usr/bin/time -l "$@" --model qwen-image-2.1 --steps 25 --width 1024 --height 1024 --output "$O/$name.png" > "$O/$name.log" 2>&1; local c=$?; local peak=$(grep "peak memory footprint" "$O/$name.log" | awk '{printf "%.1f", $1/1e9}'); echo "$name: exit $c, $(( $(date +%s) - t0 )) s, peak ${peak} GB" | tee -a results.txt; [ $c -ne 0 ] && tail -3 "$O/$name.log"; }
+run() { local name=$1; shift; local t0=$(date +%s); /usr/bin/time -l "$@" --model mflux-community/qwen-image-2-1-mflux-bf16 --base-model qwen-image-2.1 --steps 25 --width 1024 --height 1024 --output "$O/$name.png" > "$O/$name.log" 2>&1; local c=$?; local peak=$(grep "peak memory footprint" "$O/$name.log" | awk '{printf "%.1f", $1/1e9}'); echo "$name: exit $c, $(( $(date +%s) - t0 )) s, peak ${peak} GB" | tee -a results.txt; [ $c -ne 0 ] && tail -3 "$O/$name.log"; }
 : > results.txt
 for s in 8 9; do
   run m-cry-plain-$s mflux-generate-qwen-2.1 --seed $s --prompt "$CRY"

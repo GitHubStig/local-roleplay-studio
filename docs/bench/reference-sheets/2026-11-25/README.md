@@ -79,3 +79,19 @@ The scenes at seed 9, the camera moves at 10, the face passes at 11 (`scripts/se
 The quay, before and after (Elara turned aside), and the lantern, its glow kept.
 
 ![](13-second-seed-quay-lantern.jpg)
+
+## Stage 0b
+
+What stage 0 hadn't tried (`scripts/b0.py`, `away.py`, `mac-q.sh`; `results/b0.log`, `mac-results.txt`).
+
+Two people alike, before, one edit for both, an edit each, and their sheets' front views: no face went to the wrong sheet; one edit turned Kael to the viewer and lost his scowl, an edit each kept them.
+
+![](14-0b-two-alike.jpg)
+
+The face pass on the Mac's mflux at full weights and at 8-bit (the app's default), beside the PC's: the same face.
+
+![](15-0b-mflux-8-bit.jpg)
+
+Other sizes; "from behind", which Qwen-Image 2.1 drew in profile or over the shoulder; a FLUX.3 Klein render, whose Kael kept most of his own face after the pass.
+
+![](16-0b-sizes-away-klein.jpg)

@@ -1,0 +1,3 @@
+mac-fp-full: exit 0, 222 s, peak 39.3 GB
+mac-fp-8: exit 143, 65 s, peak  GB
+mac-fp-8: exit 0, 138 s, peak 40.0 GB

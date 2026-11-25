@@ -10,7 +10,7 @@ CRY="$ELARA Elara Vance sits on a narrow bed in a small attic room, crying, tear
 PROFILE="$KAEL Kael seen in profile, facing left, half his face in deep shadow, as he stands at a rain-streaked window holding a guttering candle, from the chest up, in a dark tavern at night. $STYLE"
 EL="Give the woman in image 1 the face and hair of the woman in image 2, Elara Vance, but keep her expression exactly as it is in image 1: crying, tears running down her cheeks, her face crumpled with grief. Change nothing else."
 KA="Give the man in image 1 the face and hair of the man in image 2, Kael, but keep him exactly as he is in image 1: seen in profile facing left, half his face in shadow, lit by the candle. Change nothing else."
-QWEN=(--model qwen-image-2.1 --steps 25)
+QWEN=(--model mflux-community/qwen-image-2-1-mflux-bf16 --base-model qwen-image-2.1 --steps 25)
 KLEIN=(--model mflux-community/flux-3-image-klein-mflux-bf16 --base-model flux3-image-klein --steps 16)
 run() { local name=$1; shift; [ -f "$name.png" ] && return; local t0=$(date +%s); /usr/bin/time -l "$@" --width 1024 --height 1024 --output "$O/$name.png" > "$name.log" 2>&1; local c=$?; local peak=$(grep "peak memory footprint" "$name.log" | awk '{printf "%.1f", $1/1e9}'); echo "$name: exit $c, $(( $(date +%s) - t0 )) s, peak ${peak} GB" | tee -a results.txt; [ $c -ne 0 ] && tail -3 "$name.log"; }
 # Klein first: portraits in the Look's style and photoreal, and the two scenes.

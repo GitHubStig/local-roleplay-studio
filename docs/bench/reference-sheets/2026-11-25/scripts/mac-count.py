@@ -4,9 +4,11 @@ import sys, time, json, re
 from PIL import Image
 from mflux.models.common.resolution.config_resolution import ConfigResolution
 from mflux.models.qwen21.variants.edit.qwen_image_21_edit import QwenImage21Edit
+# The app's copy (server/images/mflux/models.ts): the short name would fetch Qwen's own repo, 31 GB more.
+REPO = 'mflux-community/qwen-image-2-1-mflux-bf16'
 t0 = time.time()
-cfg = ConfigResolution.resolve_restricted('qwen-image-2.1', 'qwen-image-2.1', model_path=None, extra_keys=('qwen-image-2.1-turbo',), base_model=None)
-model = QwenImage21Edit(quantize=None, model_path=None, model_config=cfg)
+cfg = ConfigResolution.resolve_restricted(None, 'qwen-image-2.1', model_path=REPO, extra_keys=('qwen-image-2.1-turbo',), base_model=None)
+model = QwenImage21Edit(quantize=None, model_path=REPO, model_config=cfg)
 print(f'loaded in {time.time()-t0:.0f} s', flush=True)
 ASK = ('Locate the head of every person or creature in the picture: the face and the hair only, not the neck, shoulders or body. '
        'Answer with JSON only: a list, one object per head, each {"label": who it is, "bbox_2d": [x1, y1, x2, y2]} in coordinates from 0 to 1000.')

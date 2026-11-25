@@ -274,3 +274,5 @@ mflux 0.21 adds a step cache for Qwen-Image 2.1 (`--step-cache-ratio`, TeaCache-
   Z-Image Turbo render. A service keeping the model loaded could bring it under 10 s, but on
   48 GB it would have to unload before every Reply, so it would help only back-to-back renders
   (Render all); dropped 2026-10-08.
+
+**Qwen's own Qwen-Image 2.1 came back, and went again** (2026-11-25, the Mac). The cache held `Qwen/Qwen-Image-2.1` (31 GB) beside the app's `mflux-community/qwen-image-2-1-mflux-bf16`, though it was removed on 2026-10-31: the reference-portrait bench of 2026-11-22 called mflux with the short name (`--model qwen-image-2.1`, and `resolve_restricted('qwen-image-2.1', …)` in Python), which mflux resolves to Qwen's own repo, and fetched it again. Removed (the owner); the shared `hub/blobs` store had nothing left behind. The bench scripts now name the app's copy (`--model mflux-community/qwen-image-2-1-mflux-bf16 --base-model qwen-image-2.1`, `model_path=` in Python). A script that names an mflux model by its short name may fetch a second copy of one the app already has.
