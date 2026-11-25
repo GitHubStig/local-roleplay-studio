@@ -17,6 +17,11 @@ Deno.test("This machine says how much room its temp folder's drive has", async (
   assertEquals(typeof free === 'number' && free > 0, true)
 })
 
+Deno.test('A relative path is read as from the current folder', async () => {
+  const free = await freeSpace('.')
+  assertEquals(typeof free === 'number' && free > 0, true)
+})
+
 Deno.test("A path never enters PowerShell's script, so a space can't split it nor a `;` run", () => {
   const path = 'D:\\My Sessions;calc'
   const [cmd, args, env] = freeSpaceCommand(path, 'windows')

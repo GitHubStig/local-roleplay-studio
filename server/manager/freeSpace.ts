@@ -1,4 +1,5 @@
 /** How much room is left on a drive, which Deno has no call for: asked of the OS. */
+import { resolve } from '@std/path'
 
 /**
  * The command that prints the free bytes (Windows) or a `df` table (elsewhere) for `path`, and the
@@ -34,7 +35,8 @@ export function parseFree(out: string, os: typeof Deno.build.os): number | null 
 
 /** Bytes free on the drive holding `path` (a folder that exists), or null if the OS won't say. */
 export async function freeSpace(path: string, os = Deno.build.os): Promise<number | null> {
-  const [cmd, args, env] = freeSpaceCommand(path, os)
+  // Windows finds the drive from the path's root, which a relative path hasn't.
+  const [cmd, args, env] = freeSpaceCommand(resolve(path), os)
   try {
     const out = await new Deno.Command(cmd, { args, env, stdout: 'piped', stderr: 'null' }).output()
     return out.success ? parseFree(new TextDecoder().decode(out.stdout), os) : null

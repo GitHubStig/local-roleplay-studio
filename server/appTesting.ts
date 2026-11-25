@@ -84,6 +84,10 @@ export interface SetupOptions {
   exports?: AppDeps['exports']
   web?: AppDeps['web']
   openFolder?: AppDeps['openFolder']
+  /**
+   * Bytes free where an import goes; left out, unknown (null), so no test asks the OS, which
+   * starts PowerShell on Windows, slow when tests run in parallel. `freeSpace_test.ts` asks it.
+   */
   freeSpace?: AppDeps['freeSpace']
   /** The address requests come from; left out, none is known, as from nowhere on this machine. */
   client?: string
@@ -121,7 +125,7 @@ export function setup(opts: SetupOptions = {}) {
     exports: opts.exports,
     web: opts.web,
     openFolder: opts.openFolder,
-    freeSpace: opts.freeSpace,
+    freeSpace: opts.freeSpace ?? (() => Promise.resolve(null)),
     newSessionId: () => `s${++sessionCount}`,
     randomSeed: () => 1234,
   })
