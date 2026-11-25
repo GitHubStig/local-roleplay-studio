@@ -125,7 +125,7 @@ const SECTIONS = [
 <template>
   <div class="flex min-h-0">
     <!-- On a phone: the short list, the Session opened last first. -->
-    <div class="flex min-h-0 flex-1 flex-col sm:hidden short:hidden" data-queue-phone>
+    <div class="flex min-h-0 min-w-0 flex-1 flex-col sm:hidden short:hidden" data-queue-phone>
       <h2 class="px-4 pb-1 pt-4 text-xl font-semibold">Queue</h2>
       <QueueList class="min-h-0 flex-1 px-1" :session-id="currentSessionId" @go="go" />
     </div>

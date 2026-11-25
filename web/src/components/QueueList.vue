@@ -57,7 +57,8 @@ async function drop(list: readonly QueueJob[]) {
                 <Icon v-if="job.status === 'running'" name="spinner" class="mt-0.5 animate-spin text-muted" />
                 <span class="min-w-0">
                   <span class="block truncate">{{ frameName(job.frameIndex) }} · {{ jobName(job) }}</span>
-                  <span class="block truncate text-xs" :class="job.status === 'failed' ? 'text-danger' : 'text-muted'">
+                  <!-- One line, but a failure wraps: its reason is what's worth reading. -->
+                  <span class="block text-xs" :class="job.status === 'failed' ? 'text-danger wrap-break-word' : 'truncate text-muted'">
                     <template v-if="part.key === 'elsewhere'">{{ sessionOf(job.sessionId)?.title }} · </template>{{ machineName(job.machine) }} · {{ jobStatus(job) }}
                   </span>
                 </span>

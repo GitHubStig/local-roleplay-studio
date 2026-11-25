@@ -59,7 +59,7 @@ const iconOf = (kind: JobKind) => (props.working(kind) === 'running' ? 'spinner'
       type="button"
       :class="buttonClass"
       :disabled="!!busy || hasJob('render')"
-      :title="busy"
+      :title="busy || (picture ? 'Re-render' : 'Render')"
       data-render-button
       @click="$emit('queue', 'render')"
     >

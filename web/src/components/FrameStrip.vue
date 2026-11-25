@@ -59,11 +59,13 @@ watch(() => [props.picked, props.tiles.length], async () => {
 <template>
   <nav
     ref="strip"
-    class="flex shrink-0 items-center gap-1.5 overflow-x-auto border-b border-line px-4 py-2 [scrollbar-width:thin] short:hidden"
+    class="flex shrink-0 items-center border-b border-line pr-4 short:hidden"
     aria-label="Frames"
     data-strip
     @keydown="onKey"
   >
+    <!-- The tiles scroll; the ▦ stays beside them, so it never covers one. -->
+    <div class="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto scroll-px-1 py-2 pl-4 pr-2 [scrollbar-width:thin]">
     <button
       v-for="tile in tiles"
       :key="tile.index"
@@ -106,9 +108,10 @@ watch(() => [props.picked, props.tiles.length], async () => {
       ><Icon name="play" />{{ tile.clips }}</span>
     </button>
     <slot name="end" />
+    </div>
     <button
       type="button"
-      class="sticky right-0 ml-auto grid h-9 w-9 shrink-0 place-items-center rounded-md border border-line bg-canvas text-muted shadow-[-8px_0_8px_var(--canvas)] hover:text-fg fold:h-6 fold:w-6"
+      class="grid h-9 w-9 shrink-0 place-items-center rounded-md border border-line bg-canvas text-muted hover:text-fg fold:h-6 fold:w-6"
       title="All Frames: search them, and compare their pictures by each Image Model"
       aria-label="All Frames"
       data-all-frames-button
