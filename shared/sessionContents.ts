@@ -7,12 +7,13 @@
  * The parts a Session's files belong to (`server/sessionParts.ts`), in the order the size bar shows
  * them. Its text (`session.json`) and the caches the app makes again belong to none.
  */
-export const SESSION_PARTS = ['pictures', 'clips', '3d', 'sound', 'calls'] as const
+export const SESSION_PARTS = ['pictures', 'sheets', 'clips', '3d', 'sound', 'calls'] as const
 
 export type SessionPart = (typeof SESSION_PARTS)[number]
 
 export const PART_LABELS: Record<SessionPart, string> = {
   pictures: 'Pictures',
+  sheets: 'Reference sheets',
   clips: 'Clips',
   '3d': '3D',
   sound: 'Sound',
@@ -27,6 +28,8 @@ export interface SessionCounts {
   /** How many Image Models made them. */
   imageModels: number
   edits: number
+  /** A Storyboard's or a Roleplay's reference sheets, made. */
+  sheets: number
   /** Video clips, of every kind and video model. */
   clips: number
   /** A Roleplay's spoken lines and spoken thoughts. */

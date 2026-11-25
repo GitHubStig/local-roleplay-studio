@@ -24,6 +24,18 @@ const roleplay = () =>
     thumbnail: 'frame-1-bbbbbbbb.png',
     voice: { description: 'gruff', ref: 'voice-11111111.wav' },
     cues: [{ id: 'c1', track: { file: 'music-cue-11111111-22222222.flac' } }, { id: 'c2' }],
+    sheets: [{
+      subject: 'Kael',
+      ticked: true,
+      identity: 'a lean man',
+      seed: 1,
+      made: {
+        file: 'sheet-kael-12345678.png',
+        views: [1, 2, 3].map((i) => `sheet-kael-12345678-view${i}.png`),
+        mirrored: [1, 2, 3].map((i) => `sheet-kael-12345678-view${i}-mirrored.png`),
+        imageModel: 'qwen',
+      },
+    }],
     frames: [
       {
         index: 0,
@@ -74,6 +86,11 @@ const every = () => {
     'thought-0-eeeeeeee.mp3',
     'voice-11111111.wav',
     'music-cue-11111111-22222222.flac',
+    'sheet-kael-12345678.png',
+    ...[1, 2, 3].flatMap((i) => [
+      `sheet-kael-12345678-view${i}.png`,
+      `sheet-kael-12345678-view${i}-mirrored.png`,
+    ]),
     'calls/frame-0.json',
     'calls/setup.json',
   ]
@@ -134,6 +151,21 @@ Deno.test('Upscales, a kind of clip, a kind of 3D, each sound and the call logs 
   assertEquals(quiet.cues.map((c) => c.track), [undefined, undefined])
   const still = leaving(roleplay(), { ...KEEP_ALL, clips: { ltx: ['lead-in', 'idle-loop'] } })
   assertEquals(still.frames[0].pictures[0].clips, undefined)
+})
+
+Deno.test('The reference sheets are never left out, as later pictures need them', () => {
+  const nothing: LeftOut = {
+    imageModels: ['qwen', 'krea'],
+    upscales: true,
+    edits: true,
+    chosenOnly: true,
+    clips: { ltx: ['lead-in', 'idle-loop'] },
+    threeD: ['scene'],
+    sound: ['speech', 'voices', 'cues'],
+    calls: true,
+  }
+  assertEquals(goes(nothing).filter((f) => f.startsWith('sheet-')), [])
+  assertEquals((leaving(roleplay(), nothing) as RoleplaySession).sheets, roleplay().sheets)
 })
 
 Deno.test("Chosen picture only keeps each Frame's picture by the Session's model as it shows, a picked edit as its Original", () => {

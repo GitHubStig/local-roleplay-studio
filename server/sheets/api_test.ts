@@ -2,6 +2,8 @@ import { assertEquals } from '@std/assert'
 import { fakeImageGenerator, planOf, scriptedTextModel, withTempDir } from '../testing.ts'
 import { replyOf, scriptedRoleplayModel, testCast, testLook } from '../roleplay/testing.ts'
 import {
+  clonedIn,
+  getContents,
   getSession,
   listJobs,
   readEvents,
@@ -130,15 +132,33 @@ Deno.test("A Storyboard's sheets are made as it's planned; a Session without she
     assertEquals(await settled(call), [])
     assertEquals(await sheetJobs(call), ['Ace done'])
 
-    await call('POST', '/api/sessions', {
-      kind: 'storyboard',
-      brief: 'A first dunk.',
-      frameCount: 2,
-      sheets: false,
-    })
-    await readEvents(await call('POST', '/api/sessions/s2/plan'))
-    assertEquals(await settled(call, 's2'), [])
-    assertEquals((await listJobs(call, 's2')).length, 0)
+    // A part of the Session: served, counted, sized, and carried by Clone.
+    const { made } = (await getSession(call, 'storyboard')).sheets[0]
+    for (const file of [made!.file, made!.views[1], made!.mirrored[2]]) {
+      const served = await call('GET', `/api/sessions/s1/images/${file}`)
+      await served.body?.cancel()
+      assertEquals(served.status, 200, file)
+    }
+    const contents = await getContents(call)
+    assertEquals(contents.counts.sheets, 1)
+    assertEquals(contents.parts.sheets > 0, true)
+    await call('DELETE', '/api/sessions/s1/jobs/finished')
+    const clone = await clonedIn(await call('POST', '/api/sessions/s1/clone', {}))
+    assertEquals((await getContents(call, clone.id)).parts.sheets, contents.parts.sheets)
+    const cloned = await getSession(call, 'storyboard', clone.id)
+    assertEquals(cloned.sheets[0].made, made)
+
+    const { id } = await sessionFrom(
+      await call('POST', '/api/sessions', {
+        kind: 'storyboard',
+        brief: 'A first dunk.',
+        frameCount: 2,
+        sheets: false,
+      }),
+    )
+    await readEvents(await call('POST', `/api/sessions/${id}/plan`))
+    assertEquals(await settled(call, id), [])
+    assertEquals((await listJobs(call, id)).length, 0)
     assertEquals(images.sizes.length, 1)
   }))
 

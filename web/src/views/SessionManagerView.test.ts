@@ -73,13 +73,14 @@ beforeEach(() => {
   })
   vi.mocked(api.getSessionContents).mockResolvedValue({
     size: 1,
-    parts: { pictures: 1, clips: 0, '3d': 0, sound: 0, calls: 0 },
+    parts: { pictures: 1, sheets: 0, clips: 0, '3d': 0, sound: 0, calls: 0 },
     rest: 0,
     counts: {
       frames: 2,
       pictures: 1,
       imageModels: 1,
       edits: 0,
+      sheets: 0,
       clips: 0,
       speech: 0,
       threeD: 0,

@@ -231,6 +231,7 @@ const started = computed(() =>
 /** The size bar's pieces, each part's colour, and what's in none (its text and caches) last. */
 const COLOURS: Record<(typeof SESSION_PARTS)[number] | 'rest', string> = {
   pictures: 'bg-fg',
+  sheets: 'bg-fg/50',
   clips: 'bg-info',
   '3d': 'bg-warn',
   sound: 'bg-ok',
@@ -258,6 +259,7 @@ const counts = computed(() => {
       label: `${plural(c.pictures, 'Picture')}${c.imageModels ? ` · ${c.imageModels} ${plural(c.imageModels, 'Image Model')}` : ''}`,
     },
     { n: c.edits, label: plural(c.edits, 'Edit') },
+    ...(props.session.kind !== 'chain' ? [{ n: c.sheets, label: plural(c.sheets, 'Reference sheet') }] : []),
     { n: c.clips, label: plural(c.clips, 'Video clip') },
     ...(roleplay ? [{ n: c.speech, label: 'Speech and thoughts' }] : []),
     { n: c.threeD, label: '3D' },
@@ -384,6 +386,9 @@ const counts = computed(() => {
         <span class="text-sm text-muted">Export and Clone take what's ticked. Remove deletes what isn't.</span>
       </div>
       <KeepTicks v-if="options" v-model="leftOut" :options="options" :preview="answered?.preview ?? null" />
+      <p v-if="contents?.counts.sheets" class="border-t border-line px-4 py-2.5 text-sm text-muted" data-sheets-kept>
+        Reference sheets are always kept: later pictures need them.
+      </p>
       <div v-if="exporting" role="status" class="flex flex-col gap-2 bg-canvas px-4 py-3" data-exporting>
         <div class="flex items-center gap-3 text-sm">
           <span class="min-w-0 flex-1">

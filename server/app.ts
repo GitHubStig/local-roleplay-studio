@@ -52,13 +52,8 @@ import type { ExportPage } from './export/comparison.ts'
 import { removeExportOrder, runExport } from './export/job.ts'
 import type { HeadFinder } from './heads/heads.ts'
 import { removeFiles } from './pictures.ts'
-import {
-  makeSheet,
-  reconcileSheets,
-  sheetFiles,
-  sheetsSettled,
-  sheetsToMake,
-} from './sheets/sheets.ts'
+import { sheetFiles } from './sessionParts.ts'
+import { makeSheet, reconcileSheets, sheetsSettled, sheetsToMake } from './sheets/sheets.ts'
 import type { SheetPicture } from '../shared/session.ts'
 import {
   backendOf,

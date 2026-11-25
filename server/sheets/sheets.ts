@@ -16,6 +16,7 @@ import { changeMessages } from './text.ts'
 import { crossedLimit } from '../limits.ts'
 import { sheetImageModel } from '../machine.ts'
 import { removeFiles } from '../pictures.ts'
+import { sheetFiles } from '../sessionParts.ts'
 import { loadPrompt } from '../promptFiles.ts'
 import { Refusal } from '../refusal.ts'
 import { DEFAULT_SETTINGS } from '../settings.ts'
@@ -37,10 +38,6 @@ export class SheetError extends Refusal {}
  */
 export const sheetsSettled = (session: WithSheets): boolean =>
   session.kind === 'roleplay' ? session.frames.length > 0 : session.frames.some((f) => f.image)
-
-/** The files a made sheet keeps: the sheet, its views and their mirrors. */
-export const sheetFiles = (made: SheetPicture | undefined): string[] =>
-  made ? [made.file, ...made.views, ...made.mirrored] : []
 
 /**
  * A Session's sheets brought in line with its Look: one per Subject, in its order. A Subject's

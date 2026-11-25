@@ -16,11 +16,11 @@ import {
   redoSheet,
   SHEET_SIZE,
   SheetError,
-  sheetFiles,
   sheetsSettled,
   sheetsToMake,
   tickSheet,
 } from './sheets.ts'
+import { sheetFiles } from '../sessionParts.ts'
 
 const signal = () => new AbortController().signal
 

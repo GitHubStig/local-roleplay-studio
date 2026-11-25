@@ -41,6 +41,7 @@ const contents: api.SessionContents = {
   size: 2_200_000_000,
   parts: {
     pictures: 1_400_000_000,
+    sheets: 6_000_000,
     clips: 520_000_000,
     '3d': 180_000_000,
     sound: 94_000_000,
@@ -52,6 +53,7 @@ const contents: api.SessionContents = {
     pictures: 4,
     imageModels: 2,
     edits: 1,
+    sheets: 2,
     clips: 2,
     speech: 5,
     threeD: 1,
@@ -124,6 +126,7 @@ describe('SessionPane', () => {
     expect(wrapper.find('[data-session-size] strong').text()).toBe('2.2 GB on disk')
     expect(wrapper.findAll('[data-part]').map((p) => p.text())).toEqual([
       'Pictures 1.4 GB',
+      'Reference sheets 6 MB',
       'Clips 520 MB',
       '3D 180 MB',
       'Sound 94 MB',
@@ -131,12 +134,15 @@ describe('SessionPane', () => {
     ])
     expect(wrapper.find('[data-session-counts]').text()).toContain('Pictures · 2 Image Models')
     expect(wrapper.find('[data-session-counts]').text()).toContain('Speech and thoughts')
+    expect(wrapper.find('[data-session-counts]').text()).toContain('2Reference sheets')
+    expect(wrapper.find('[data-sheets-kept]').text()).toContain('always kept')
   })
 
   it("leaves out a Roleplay's counts for a Chain", async () => {
     const wrapper = await shown({ session: session({ kind: 'chain' }) })
     expect(wrapper.find('[data-session-counts]').text()).not.toContain('Speech')
     expect(wrapper.find('[data-session-counts]').text()).not.toContain('Music')
+    expect(wrapper.find('[data-session-counts]').text()).not.toContain('Reference sheet')
   })
 
   it("names the folder button for the machine's file manager, and shows it only on that machine", async () => {

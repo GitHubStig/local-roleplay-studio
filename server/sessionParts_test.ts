@@ -11,6 +11,9 @@ Deno.test('Each file in a Session folder belongs to its part, or to none', () =>
     ['frame-3-1a2b3c4d-2048.png', 'pictures'],
     ['edit-3-1a2b3c4d.png', 'pictures'],
     ['mask-3-1a2b3c4d.png', 'pictures'],
+    ['sheet-kael-1a2b3c4d.png', 'sheets'],
+    ['sheet-the-lantern-of-vael-1a2b3c4d-view2.png', 'sheets'],
+    ['sheet-kael-1a2b3c4d-view3-mirrored.png', 'sheets'],
     ['clip-3-lead-in-1a2b3c4d.mp4', 'clips'],
     ['scene-3-1a2b3c4d.ply', '3d'],
     ['lito-3-1a2b3c4d.ply', '3d'],
@@ -26,6 +29,7 @@ Deno.test('Each file in a Session folder belongs to its part, or to none', () =>
   for (const [path, part] of cases) assertEquals(partOf(path), part, path)
   // Served: what the app shows, not its call logs or text.
   assertEquals(servedFile('frame-3-1a2b3c4d.png'), true)
+  assertEquals(servedFile('sheet-kael-1a2b3c4d-view1.png'), true)
   assertEquals(servedFile('calls/frame-3.json'), false)
   assertEquals(servedFile('session.json'), false)
 })
@@ -45,6 +49,16 @@ Deno.test('What a Session holds: its size by part, and its counts', () =>
     const session = {
       kind: 'roleplay',
       cues: [{ track: { file: 'music-cue-11111111-22222222.flac' } }, {}],
+      sheets: [
+        {
+          made: {
+            file: 'sheet-kael-99999999.png',
+            views: ['sheet-kael-99999999-view1.png', 'b', 'c'],
+            mirrored: ['d', 'e', 'f'],
+          },
+        },
+        {},
+      ],
       frames: [
         {
           pictures: [picture('a', 'frame-0-aaaaaaaa.png'), picture('b', 'frame-0-bbbbbbbb.png')],
@@ -61,6 +75,8 @@ Deno.test('What a Session holds: its size by part, and its counts', () =>
     await write('frame-0-aaaaaaaa.png', 100)
     await write('frame-0-bbbbbbbb.png', 100)
     await write('clip-0-lead-in-aaaaaaaa.mp4', 40)
+    await write('sheet-kael-99999999.png', 8)
+    await write('sheet-kael-99999999-view1.png', 2)
     await write('scene-0-dddddddd.ply', 30)
     await write('speech-0-eeeeeeee.mp3', 5)
     await write('music-cue-11111111-22222222.flac', 15)
@@ -69,14 +85,22 @@ Deno.test('What a Session holds: its size by part, and its counts', () =>
     await Deno.writeTextFile(join(dir, 'calls', 'frame-1.json'), '[{}, {}]')
     await Deno.writeTextFile(join(dir, 'calls', 'setup.json'), '[{}]')
     const contents = await contentsOf(session, dir)
-    assertEquals(contents.parts, { pictures: 200, clips: 40, '3d': 30, sound: 20, calls: 12 })
+    assertEquals(contents.parts, {
+      pictures: 200,
+      sheets: 10,
+      clips: 40,
+      '3d': 30,
+      sound: 20,
+      calls: 12,
+    })
     assertEquals(contents.rest, 10)
-    assertEquals(contents.size, 312)
+    assertEquals(contents.size, 322)
     assertEquals(contents.counts, {
       frames: 2,
       pictures: 2,
       imageModels: 2,
       edits: 2,
+      sheets: 1,
       clips: 2,
       speech: 2,
       threeD: 2,

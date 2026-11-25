@@ -6,7 +6,7 @@
  * What's served from a Session's folder is what a part owns there.
  */
 import { join } from '@std/path'
-import type { Session } from '../shared/session.ts'
+import type { Session, SheetPicture } from '../shared/session.ts'
 import type { Picture, PictureEdit, PictureVersion } from '../shared/pictures.ts'
 import type { LeftOut } from '../shared/keep.ts'
 import {
@@ -46,6 +46,15 @@ interface PartDeclaration {
  * `-2048` marks an upscaled one.
  */
 const IMAGE_FILE = /^(frame|edit|mask)-\d+(-[0-9a-f]{8})?(-2048)?\.(png|svg)$/
+/**
+ * A reference sheet (`sheet-kael-1a2b3c4d.png`, `sheets/sheets.ts`), and each of its three views
+ * cut from it, and mirrored (`…-view1.png`, `…-view1-mirrored.png`).
+ */
+const SHEET_FILE = /^sheet-[a-z0-9-]+-[0-9a-f]{8}(-view[123](-mirrored)?)?\.(png|svg)$/
+/** The files a made sheet keeps: the sheet, its views and their mirrors. */
+export const sheetFiles = (made: SheetPicture | undefined): string[] =>
+  made ? [made.file, ...made.views, ...made.mirrored] : []
+
 /** A clip made from a Frame's picture (`clip-3-lead-in-1a2b3c4d.mp4`, `video/makeClip.ts`). */
 const CLIP_FILE = /^clip-\d+-[a-z-]+-[0-9a-f]{8}\.mp4$/
 /**
@@ -165,6 +174,17 @@ export const PARTS: Record<SessionPart, PartDeclaration> = {
       })
     },
   },
+  // Never left out: every later picture's face pass needs them, and they're small.
+  sheets: {
+    owns: (path) => SHEET_FILE.test(path),
+    files: (session) =>
+      session.kind === 'chain' ? [] : session.sheets.flatMap((s) => sheetFiles(s.made)),
+    leaveOut: (session) => session,
+    count: (session) =>
+      Promise.resolve({
+        sheets: session.kind === 'chain' ? 0 : session.sheets.filter((s) => s.made).length,
+      }),
+  },
   clips: {
     owns: (path) => CLIP_FILE.test(path),
     files: (session) => versionsOf(session).flatMap((v) => (v.clips ?? []).map((c) => c.file)),
@@ -261,8 +281,8 @@ export const partOf = (path: string): SessionPart | null =>
   SESSION_PARTS.find((part) => PARTS[part].owns(path)) ?? null
 
 /**
- * Whether a file at the top of a Session's folder is one it serves: a picture, clip, 3D, audio or
- * music file (not its text, its call logs or a cache).
+ * Whether a file at the top of a Session's folder is one it serves: a picture, reference sheet,
+ * clip, 3D, audio or music file (not its text, its call logs or a cache).
  */
 export const servedFile = (file: string): boolean =>
   !file.includes('/') && partOf(file) !== null && partOf(file) !== 'calls'
@@ -313,6 +333,7 @@ export async function contentsOf(session: Session, dir: string): Promise<Session
     pictures: 0,
     imageModels: 0,
     edits: 0,
+    sheets: 0,
     clips: 0,
     speech: 0,
     threeD: 0,
