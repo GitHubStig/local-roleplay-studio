@@ -1,14 +1,15 @@
 import { assertEquals, assertRejects, assertStringIncludes } from '@std/assert'
 import { join } from '@std/path'
 import decodePng from '@jsquash/png/decode.js'
-import { dirSessionStore } from './session.ts'
-import { DEFAULT_SETTINGS } from './settings.ts'
-import { fakeImageGenerator, testPng, withTempDir } from './testing.ts'
-import { replyOf, testCast, testLook } from './roleplay/testing.ts'
-import type { RoleplaySession } from '../shared/roleplay.ts'
-import type { Sheet } from '../shared/session.ts'
-import type { SheetEvent } from '../shared/events.ts'
+import { dirSessionStore } from '../session.ts'
+import { DEFAULT_SETTINGS } from '../settings.ts'
+import { fakeImageGenerator, scriptedTextModel, testPng, withTempDir } from '../testing.ts'
+import { replyOf, testCast, testLook } from '../roleplay/testing.ts'
+import type { RoleplaySession } from '../../shared/roleplay.ts'
+import type { Sheet } from '../../shared/session.ts'
+import type { SheetEvent } from '../../shared/events.ts'
 import {
+  changeSheet,
   cutSheet,
   makeSheet,
   reconcileSheets,
@@ -215,4 +216,45 @@ Deno.test('Redo and the tick change a sheet until the story begins, then are ref
     assertEquals(sheetsSettled(begun), true)
     await assertRejects(() => redoSheet(store, begun, 'Mira Vance'), SheetError, 'settled')
     await assertRejects(() => tickSheet(store, begun, 'Sam Reyes', true), SheetError, 'settled')
+  }))
+
+Deno.test("Change… rewrites a Subject's identity in the Look with the note, refusing what crosses a Limit", () =>
+  withTempDir(async (root) => {
+    const store = dirSessionStore(root)
+    const fresh = reviewing()
+    const session = { ...fresh, sheets: reconcileSheets(fresh).sheets }
+    await store.save(session)
+    const textModel = scriptedTextModel([], {
+      changes: ['Mira Vance, 34, a grey braid, green eyes.', 'Mira Vance, nude.'],
+    })
+    const events: SheetEvent[] = []
+    const changed = await changeSheet(
+      { store, textModel },
+      session,
+      'Mira Vance',
+      ' green eyes ',
+      (e) => events.push(e),
+      signal(),
+    )
+    assertEquals(changed.look?.subjects[0].identity, 'Mira Vance, 34, a grey braid, green eyes.')
+    assertEquals(changed.look?.subjects[1], session.look!.subjects[1])
+    assertEquals(events.at(-1), {
+      type: 'identity',
+      subject: 'Mira Vance',
+      identity: 'Mira Vance, 34, a grey braid, green eyes.',
+      session: changed,
+    })
+    // The model is told the identity as it is, and the note.
+    const asked = textModel.changeRequests[0][1].content
+    assertStringIncludes(asked, 'Mira Vance, 34, a grey braid.')
+    assertStringIncludes(asked, 'green eyes')
+    // Its sheet is made again from it.
+    assertEquals(reconcileSheets(changed).remade, ['Mira Vance'])
+
+    const change = (note: string) =>
+      changeSheet({ store, textModel }, changed, 'Mira Vance', note, () => {}, signal())
+    await assertRejects(() => change('  '), SheetError, 'Say what to change')
+    await assertRejects(() => change('make her nude'), SheetError, 'Declined')
+    await assertRejects(() => change('older'), SheetError, 'crosses a limit')
+    assertEquals(textModel.changeRequests.length, 2)
   }))

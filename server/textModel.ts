@@ -1,5 +1,6 @@
 import { JsonStreamReader } from './jsonStream.ts'
-import { type Chat, within } from './text/chat.ts'
+import { type Chat, type ChatMessage, within } from './text/chat.ts'
+import { changeSchema, parseChange } from './sheets/text.ts'
 import { expanded, type ExpandFrom, expandMessages, expandSchema } from './scenario/expand.ts'
 import type { Expansion } from '../shared/scenario.ts'
 import { cleanSuggestion, suggestMessages, type SuggestRequest } from './scenario/suggest.ts'
@@ -72,6 +73,12 @@ export interface TextModel {
   ): Promise<Expansion>
   /** Suggest, on the Scenario page: one suggestion for one part (`scenario/suggest.ts`). */
   suggestForScenario(req: SuggestRequest, signal: AbortSignal): Promise<string>
+  /** Change…, on a reference sheet: a Subject's identity rewritten (`sheets/text.ts`). */
+  changeIdentity(
+    messages: ChatMessage[],
+    signal: AbortSignal,
+    onThinking?: (chunk: string) => void,
+  ): Promise<{ identity: string; thinking?: string }>
 }
 
 /**
@@ -84,6 +91,8 @@ const MAX_TOKENS = {
   clip: 600,
   expand: 2048,
   suggestion: 200,
+  /** An identity is a sentence, about 40 tokens. */
+  identity: 300,
 }
 const TIME_LIMIT_MS = {
   answer: 2 * 60_000,
@@ -277,6 +286,18 @@ export function chatTextModel(chat: Chat, opts: TextModelOptions = {}): TextMode
         return expanded(from, value)
       }),
     // Plain text: no schema.
+    changeIdentity: (messages, signal, onThinking) =>
+      within(signal, answerLimit(), async (s) => {
+        const { content, thinking } = await chat.stream({
+          messages,
+          schema: changeSchema,
+          maxTokens: MAX_TOKENS.identity,
+          job: 'change',
+          signal: s,
+          onThinking,
+        })
+        return { identity: parseChange(content), ...(thinking ? { thinking } : {}) }
+      }),
     suggestForScenario: (req, signal) =>
       within(signal, answerLimit(), async (s) => {
         const { content } = await chat.stream({

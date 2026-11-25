@@ -1,6 +1,6 @@
 import { assertEquals } from '@std/assert'
-import { fakeImageGenerator, planOf, scriptedTextModel, withTempDir } from './testing.ts'
-import { replyOf, scriptedRoleplayModel, testCast, testLook } from './roleplay/testing.ts'
+import { fakeImageGenerator, planOf, scriptedTextModel, withTempDir } from '../testing.ts'
+import { replyOf, scriptedRoleplayModel, testCast, testLook } from '../roleplay/testing.ts'
 import {
   getSession,
   listJobs,
@@ -9,9 +9,9 @@ import {
   sessionFrom,
   settled,
   setup,
-} from './appTesting.ts'
-import type { Availabilities } from '../shared/features.ts'
-import { DEFAULT_SETTINGS } from './settings.ts'
+} from '../appTesting.ts'
+import type { Availabilities } from '../../shared/features.ts'
+import { DEFAULT_SETTINGS } from '../settings.ts'
 
 const on = { available: true }
 /** Everything available, sheets too. */
@@ -45,6 +45,7 @@ Deno.test("A Roleplay's sheets are made from its Look in the Cast review, and se
       settings: { textModel: 'x', features: SHEETS_ON },
       features,
       imageGenerator: images,
+      textModel: scriptedTextModel([], { changes: ['Mira Vance, 34, green eyes.'] }),
       roleplayModel: scriptedRoleplayModel({
         casts: [testCast],
         replies: [replyOf('You are late.')],
@@ -86,6 +87,19 @@ Deno.test("A Roleplay's sheets are made from its Look in the Cast review, and se
     assertEquals(await settled(call), [])
     assertEquals(await sheetJobs(call), ['Mira Vance done'])
     assertEquals((await getSession(call, 'roleplay')).sheets[0].seed, looked.seed + 1)
+
+    // Change…: the identity rewritten, shown in the Look, and the sheet made again from it.
+    const change = await readEvents(
+      await call('POST', '/api/sessions/s1/sheets/Mira%20Vance/change', { note: 'green eyes' }),
+    )
+    assertEquals(change.some(([type]) => type === 'identity'), true)
+    assertEquals(await settled(call), [])
+    const changed = await getSession(call, 'roleplay')
+    assertEquals(changed.look?.subjects[0].identity, 'Mira Vance, 34, green eyes.')
+    assertEquals([changed.sheets[0].identity, !!changed.sheets[0].made], [
+      'Mira Vance, 34, green eyes.',
+      true,
+    ])
 
     // Queued only from the Look and these routes.
     const queued = await call('POST', '/api/sessions/s1/jobs', { kind: 'sheet', frameIndex: 0 })

@@ -7,17 +7,19 @@
 import decodePng from '@jsquash/png/decode.js'
 import encodePng from '@jsquash/png/encode.js'
 import { join } from '@std/path'
-import type { RoleplaySession } from '../shared/roleplay.ts'
-import type { Sheet, SheetPicture, StoryboardSession } from '../shared/session.ts'
-import type { SheetEvent } from '../shared/events.ts'
-import { type RenderDeps, renderImage } from './frames.ts'
-import { crossedLimit } from './limits.ts'
-import { sheetImageModel } from './machine.ts'
-import { removeFiles } from './pictures.ts'
-import { loadPrompt } from './promptFiles.ts'
-import { Refusal } from './refusal.ts'
-import { DEFAULT_SETTINGS } from './settings.ts'
-import { GoneError, updateSession } from './update.ts'
+import type { RoleplaySession } from '../../shared/roleplay.ts'
+import type { Sheet, SheetPicture, StoryboardSession } from '../../shared/session.ts'
+import type { SheetEvent } from '../../shared/events.ts'
+import { type RenderDeps, renderImage, withRetry } from '../frames.ts'
+import type { TextModel } from '../textModel.ts'
+import { changeMessages } from './text.ts'
+import { crossedLimit } from '../limits.ts'
+import { sheetImageModel } from '../machine.ts'
+import { removeFiles } from '../pictures.ts'
+import { loadPrompt } from '../promptFiles.ts'
+import { Refusal } from '../refusal.ts'
+import { DEFAULT_SETTINGS } from '../settings.ts'
+import { GoneError, updateSession } from '../update.ts'
 
 /** A Session that can have sheets: one with a Look. */
 export type WithSheets = StoryboardSession | RoleplaySession
@@ -232,6 +234,51 @@ export function tickSheet(
       sheets: latest.sheets.map((s) => (s === sheet ? { ...sheet, ticked } : s)),
     }
   })
+}
+
+/** The longest note Change… takes. */
+export const MAX_CHANGE_NOTE = 500
+
+/**
+ * Change…: rewrites Subject `subject`'s identity in the Look with the player's `note` ("green
+ * eyes"), by the Text Model, so its sheet is made again from it and the two agree. A note or an
+ * identity that crosses a Limit is refused; so is a change once the story has begun.
+ */
+export async function changeSheet(
+  deps: { store: RenderDeps['store']; textModel: TextModel },
+  session: WithSheets,
+  subject: string,
+  note: string,
+  emit: (event: SheetEvent) => void,
+  signal: AbortSignal,
+): Promise<WithSheets> {
+  const asked = note.trim()
+  if (!asked) throw new SheetError('Say what to change', 400)
+  if (asked.length > MAX_CHANGE_NOTE) {
+    throw new SheetError(`A change can be at most ${MAX_CHANGE_NOTE} characters`, 400)
+  }
+  const noteLimit = crossedLimit(asked)
+  if (noteLimit) throw new SheetError(`Declined: ${noteLimit.message}`, 422)
+  checkChangeable(session, subject)
+  const person = session.look?.subjects.find((p) => p.name === subject)
+  if (!person) throw new SheetError(`${subject} isn't in the Look`, 404)
+  emit({ type: 'phase', phase: 'text' })
+  const messages = await changeMessages(person, asked)
+  const { identity } = await withRetry(
+    (onThinking) => deps.textModel.changeIdentity(messages, signal, onThinking),
+    signal,
+    emit,
+  )
+  signal.throwIfAborted()
+  const limit = crossedLimit(identity)
+  if (limit) throw new SheetError(`The changed identity crosses a limit: ${limit.message}`, 422)
+  const updated = await updateSession(deps.store, session.id, session.kind, (latest) => {
+    checkChangeable(latest, subject)
+    const subjects = latest.look!.subjects.map((p) => (p.name === subject ? { ...p, identity } : p))
+    return { ...latest, look: { ...latest.look!, subjects } }
+  })
+  emit({ type: 'identity', subject, identity, session: updated })
+  return updated
 }
 
 /** Subject `subject`'s sheet, while it can still change; refused otherwise. */

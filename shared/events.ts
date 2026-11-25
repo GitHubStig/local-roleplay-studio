@@ -53,6 +53,13 @@ export type StoryboardEvent =
 export type SheetEvent =
   | ProgressEvent
   | { type: 'sheet'; subject: string; sheet: Sheet }
+  /** Change…: the Subject's identity rewritten, saved in the Look; its sheet is made again. */
+  | {
+    type: 'identity'
+    subject: string
+    identity: string
+    session: StoryboardSession | RoleplaySession
+  }
 
 export type ClipPromptEvent =
   | { type: 'phase'; phase: Phase }

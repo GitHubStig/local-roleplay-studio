@@ -20,6 +20,7 @@ import type {
   StoryboardWriteRequest,
 } from './storyboard/text.ts'
 import type { TextModel } from './textModel.ts'
+import type { ChatMessage } from './text/chat.ts'
 
 export const scenarioText = `---
 title: Test Shoot
@@ -90,6 +91,8 @@ export interface Scripts {
   expansions?: (object | Error)[]
   /** Each suggestion for a Scenario's part. */
   suggestions?: (string | Error)[]
+  /** Each identity Change… writes. */
+  changes?: (string | Error)[]
 }
 
 /** A reply as a test scripts it: its expression sentence left out unless it matters. */
@@ -118,6 +121,7 @@ export function scriptedTextModel(
   calls: number
   requests: FrameRequest[]
   writeRequests: StoryboardWriteRequest[]
+  changeRequests: ChatMessage[][]
   clipRequests: { system: string; user: string }[]
   suggestRequests: SuggestRequest[]
 } {
@@ -186,6 +190,14 @@ export function scriptedTextModel(
       model.calls++
       signal.throwIfAborted()
       return expanded(from, await next(scripts.expansions, 'expansion'))
+    },
+    /** The messages each Change… was given. */
+    changeRequests: [] as ChatMessage[][],
+    async changeIdentity(messages: ChatMessage[], signal: AbortSignal) {
+      model.calls++
+      model.changeRequests.push(messages)
+      signal.throwIfAborted()
+      return { identity: await next(scripts.changes, 'change') }
     },
     suggestForScenario(req: SuggestRequest, signal: AbortSignal) {
       model.calls++

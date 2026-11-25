@@ -51,7 +51,13 @@ import { GoneError, removeSession, updateSession } from './update.ts'
 import type { ExportPage } from './export/comparison.ts'
 import { removeExportOrder, runExport } from './export/job.ts'
 import { removeFiles } from './pictures.ts'
-import { makeSheet, reconcileSheets, sheetFiles, sheetsSettled, sheetsToMake } from './sheets.ts'
+import {
+  makeSheet,
+  reconcileSheets,
+  sheetFiles,
+  sheetsSettled,
+  sheetsToMake,
+} from './sheets/sheets.ts'
 import type { SheetPicture } from '../shared/session.ts'
 import {
   backendOf,
@@ -73,7 +79,7 @@ import { settingsRoutes } from './settingsRoutes.ts'
 import { scenarioRoutes } from './scenario/routes.ts'
 import { sessionRoutes } from './sessionRoutes.ts'
 import { pictureRoutes } from './pictureRoutes.ts'
-import { sheetRoutes } from './sheetRoutes.ts'
+import { sheetRoutes } from './sheets/routes.ts'
 import { chainRoutes } from './chain/routes.ts'
 import { storyboardRoutes } from './storyboard/routes.ts'
 

@@ -4,13 +4,13 @@
  * has begun; the sheets to make are queued after (`queueSheets`). The sheets themselves are made
  * from the Look, as it's written and edited.
  */
-import { error, json, readJson, type Route } from './http.ts'
-import type { AppContext } from './appContext.ts'
-import type { Session } from '../shared/session.ts'
-import { redoSheet, tickSheet, type WithSheets } from './sheets.ts'
+import { error, json, readJson, type Route } from '../http.ts'
+import type { AppContext } from '../appContext.ts'
+import type { Session } from '../../shared/session.ts'
+import { changeSheet, redoSheet, tickSheet, type WithSheets } from './sheets.ts'
 
 export function sheetRoutes(ctx: AppContext): Route[] {
-  const { deps, locked, featureOff, queueSheets } = ctx
+  const { deps, locked, stream, frameDeps, featureOff, queueSheets } = ctx
   const path = (rest = '') =>
     new URLPattern({ pathname: `/api/sessions/:id/sheets/:subject${rest}` })
 
@@ -29,6 +29,24 @@ export function sheetRoutes(ctx: AppContext): Route[] {
     })
 
   return [
+    // Change…: `{ note }`, the identity rewritten with it by the Text Model (streamed: its phase and
+    // thinking, then `identity`), then the sheet made again from it.
+    ['POST', path('/change'), async (req, p) => {
+      const body = await readJson(req) as { note?: unknown } | undefined
+      if (typeof body?.note !== 'string') return error('note must be text', 400)
+      const note = body.note
+      const subject = decodeURIComponent(p.subject!)
+      return await locked(p.id!, 'edit', async (session: Session) => {
+        if (session.kind === 'chain') return error('A Chain has no sheets', 409)
+        const off = await featureOff('sheets')
+        if (off) return off
+        return stream(session, null, false, async (send, signal) => {
+          await changeSheet(frameDeps(session), session, subject, note, send, signal)
+          await queueSheets(session.id)
+        })
+      })
+    }],
+
     // Made again with the next seed, its old picture gone.
     [
       'POST',
