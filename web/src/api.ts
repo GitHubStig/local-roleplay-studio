@@ -114,8 +114,8 @@ export {
   type ThreeDKind,
 } from '../../shared/keep.ts'
 import type { KeepOptions, KeepPreview, LeftOut, Removed } from '../../shared/keep.ts'
-export { exportName, type ImportedSession } from '../../shared/sessionZip.ts'
-import type { ImportedSession } from '../../shared/sessionZip.ts'
+export { type ClonedSession, exportName, type ImportedSession } from '../../shared/sessionZip.ts'
+import type { ClonedSession, ImportedSession } from '../../shared/sessionZip.ts'
 import type { Health, Loaded, SessionSummary } from '../../shared/session.ts'
 import type { Queue } from '../../shared/jobs.ts'
 import type { Expansion, ScenarioList, Suggested } from '../../shared/scenario.ts'
@@ -454,6 +454,14 @@ export const removeLeftOut = (id: string, leftOut: LeftOut) =>
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ leftOut }),
+  })
+
+/** Clones a Session as a new one: all of it, or what `leftOut` doesn't leave out. */
+export const cloneSession = (id: string, leftOut?: LeftOut) =>
+  request<ClonedSession>(`/api/sessions/${id}/clone`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(leftOut ? { leftOut } : {}),
   })
 
 /**

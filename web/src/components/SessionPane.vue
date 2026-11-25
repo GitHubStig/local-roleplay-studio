@@ -4,6 +4,7 @@ import { computed, ref, useTemplateRef, watch } from 'vue'
 import {
   bytes,
   CLIP_KIND_NAMES,
+  cloneSession,
   exportName,
   getKeepOptions,
   getSessionContents,
@@ -38,7 +39,8 @@ import { useImageModels } from '../composables/useSettingsOptions'
 /**
  * A Session on the Session manager: its picture (the one Home shows), which plays it; its title,
  * renamed by clicking it; a folder button that shows its folder in the file manager (only when the
- * browser is on the server's machine, `here`) and a bin that deletes it; then its size on disk,
+ * browser is on the server's machine, `here`), Clone, which makes a new Session of what's ticked, and
+ * a bin that deletes it; then its size on disk,
  * split by part, and how many of each thing it holds, worked out by the server as it's shown.
  */
 const props = defineProps<{
@@ -47,7 +49,7 @@ const props = defineProps<{
   here: boolean
   os: ServerOs
 }>()
-const emit = defineEmits<{ deleted: []; changed: [] }>()
+const emit = defineEmits<{ deleted: []; changed: []; cloned: [id: string] }>()
 
 const title = ref(props.session.title)
 watch(() => props.session.title, (t) => (title.value = t))
@@ -191,6 +193,22 @@ async function startExport() {
   }
 }
 
+/** Clone: a new Session of what's ticked, as an export imported again would be; then it's shown. */
+const cloning = ref(false)
+const cloneLabel = computed(() => (keepsAll.value ? 'Clone Session' : "Clone what's ticked"))
+async function clone() {
+  problem.value = ''
+  cloning.value = true
+  try {
+    const made = await cloneSession(props.session.id, keepsAll.value ? undefined : leftOut.value)
+    emit('cloned', made.id)
+  } catch (err) {
+    problem.value = `Couldn't clone it: ${(err as Error).message}`
+  } finally {
+    cloning.value = false
+  }
+}
+
 async function remove() {
   problem.value = ''
   try {
@@ -306,10 +324,21 @@ const counts = computed(() => {
           </button>
           <button
             type="button"
+            class="grid h-10 w-10 place-items-center rounded-lg border border-line text-lg hover:border-fg disabled:cursor-not-allowed disabled:text-muted"
+            :title="session.activity ? 'Work is running in this Session: wait for it, or cancel it, to clone it' : cloneLabel"
+            :aria-label="cloneLabel"
+            :disabled="session.activity !== null || exporting !== null || removing || cloning || (!keepsAll && !preview)"
+            data-clone
+            @click="clone"
+          >
+            <Icon :name="cloning ? 'spinner' : 'clone'" :class="{ 'animate-spin': cloning }" />
+          </button>
+          <button
+            type="button"
             class="grid h-10 w-10 place-items-center rounded-lg border border-danger/40 text-lg text-danger hover:border-danger disabled:cursor-not-allowed disabled:border-line disabled:text-muted"
             :title="session.activity ? 'Work is running in this Session: wait for it, or cancel it, to delete it' : 'Delete Session…'"
             aria-label="Delete Session…"
-            :disabled="session.activity !== null || exporting !== null || removing"
+            :disabled="session.activity !== null || exporting !== null || removing || cloning"
             data-delete
             @click="remove"
           >
@@ -352,7 +381,7 @@ const counts = computed(() => {
     <section aria-label="What to keep" class="flex flex-col rounded-lg border border-line" data-export>
       <div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 border-b border-line px-4 py-3">
         <strong>What to keep</strong>
-        <span class="text-sm text-muted">Export writes what's ticked. Remove deletes what isn't.</span>
+        <span class="text-sm text-muted">Export and Clone take what's ticked. Remove deletes what isn't.</span>
       </div>
       <KeepTicks v-if="options" v-model="leftOut" :options="options" :preview="answered?.preview ?? null" />
       <div v-if="exporting" role="status" class="flex flex-col gap-2 bg-canvas px-4 py-3" data-exporting>

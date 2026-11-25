@@ -165,6 +165,7 @@ export type LockKind =
   | 'score'
   | 'export'
   | 'remove'
+  | 'clone'
 
 export function createHandler(
   deps: AppDeps,
@@ -206,6 +207,7 @@ export function createHandler(
     score: 'The Score is being written',
     export: 'This Session is being exported: wait for the download to finish, or cancel it',
     remove: 'Parts of this Session are being removed',
+    clone: 'This Session is being cloned',
   }
 
   /** Takes the Session's lock, or returns a 409 saying what holds it. */

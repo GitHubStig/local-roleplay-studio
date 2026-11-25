@@ -97,6 +97,12 @@ async function changed() {
   await load()
 }
 
+/** A clone made: listed with its size, and selected. */
+async function cloned(id: string) {
+  await load()
+  await select(id)
+}
+
 async function deleted() {
   await router.replace({ query: {} })
   sizes.value = await getSessionSizes().catch(() => sizes.value)
@@ -145,7 +151,7 @@ const sessionsLabel = (n: number) => `${n} ${n === 1 ? 'Session' : 'Sessions'}`
           Session manager
         </RouterLink>
       </div>
-      <SessionPane :session="selected" :here="folder?.here ?? false" :os="folder?.os ?? 'other'" class="p-4" @deleted="deleted" @changed="changed" />
+      <SessionPane :session="selected" :here="folder?.here ?? false" :os="folder?.os ?? 'other'" class="p-4" @deleted="deleted" @changed="changed" @cloned="cloned" />
     </div>
 
     <div v-else class="mx-auto flex max-w-[96rem] flex-col gap-4 p-6 max-sm:p-4">
@@ -235,6 +241,7 @@ const sessionsLabel = (n: number) => `${n} ${n === 1 ? 'Session' : 'Sessions'}`
           class="min-w-0 flex-[999_1_34rem] rounded-xl border border-line bg-surface p-5"
           @deleted="deleted"
           @changed="changed"
+          @cloned="cloned"
         />
       </div>
     </div>

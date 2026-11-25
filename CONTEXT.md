@@ -29,7 +29,7 @@ One piece of work: a sequence of Frames started from a Brief, as a Chain, a Stor
 _Avoid_: Game, run, project
 
 **Session manager**:
-The page for keeping Sessions: what each holds and how big it is, renaming, deleting, exporting and importing, removing parts of one in place, and the Session folder they're kept in.
+The page for keeping Sessions: what each holds and how big it is, renaming, cloning, deleting, exporting and importing, removing parts of one in place, and the Session folder they're kept in.
 _Avoid_: Library, file manager, browser
 
 **Session export**:
@@ -39,6 +39,10 @@ _Avoid_: Backup, archive, download
 **Session import**:
 A Session export unpacked into the Session folder as a new Session, with an id of its own.
 _Avoid_: Restore, upload
+
+**Session clone**:
+A new Session made from one in the Session folder, all of it or the parts ticked, as exporting it and importing the zip would make it, without the zip.
+_Avoid_: Fork, duplicate, copy
 
 **Chain**:
 A kind of Session in which each new Frame is made from the previous Frame's Image Prompt by an Action.

@@ -8,7 +8,7 @@ import { dirSessionStore } from './session.ts'
 import type { Picture } from '../shared/pictures.ts'
 import type { Health, Loaded, Session, SessionSummary } from '../shared/session.ts'
 import type { SessionContents, SessionSizes } from '../shared/sessionContents.ts'
-import type { ImportedSession } from '../shared/sessionZip.ts'
+import type { ClonedSession, ImportedSession } from '../shared/sessionZip.ts'
 import type { KeepOptions, KeepPreview, Removed } from '../shared/keep.ts'
 import type { ErrorBody } from '../shared/errors.ts'
 import type { Job, Queue } from '../shared/jobs.ts'
@@ -269,6 +269,9 @@ export const removedIn = (res: Response) => bodyOf<Removed>(res)
 
 /** The Session a zip was imported as. */
 export const importedIn = (res: Response) => bodyOf<ImportedSession>(res)
+
+/** The Session a clone made. */
+export const clonedIn = (res: Response) => bodyOf<ClonedSession>(res)
 
 /** The folder the machine's own dialog picked. */
 export const pickedIn = (res: Response) => bodyOf<PickedFolder>(res)

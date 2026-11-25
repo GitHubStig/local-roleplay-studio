@@ -1,6 +1,6 @@
 /**
  * The Session manager's routes: what each Session holds and how big it is, opening its folder, and
- * exporting a Session as a zip and importing one (`zip.ts`, `unzip.ts`).
+ * exporting a Session as a zip and importing one (`zip.ts`, `unzip.ts`), and cloning one (`clone.ts`).
  */
 import { dirname, join } from '@std/path'
 import { error, fromThisMachine, json, readJson, type Route } from '../http.ts'
@@ -19,9 +19,10 @@ import type { AppContext } from '../appContext.ts'
 import { isOpen } from '../jobs.ts'
 import { Refusal } from '../refusal.ts'
 import type { SessionContents, SessionSizes } from '../../shared/sessionContents.ts'
-import { exportName, type ImportedSession } from '../../shared/sessionZip.ts'
+import { type ClonedSession, exportName, type ImportedSession } from '../../shared/sessionZip.ts'
 import { EXPORT_ZIP, exportedFiles, SESSION_FILE, zipFiles } from './zip.ts'
 import { importZip } from './unzip.ts'
+import { cloneSession } from './clone.ts'
 import { freeSpace as osFreeSpace } from './freeSpace.ts'
 
 export function managerRoutes(ctx: AppContext): Route[] {
@@ -41,6 +42,17 @@ export function managerRoutes(ctx: AppContext): Route[] {
     const files = await filesIn(deps.sessions.dir(session.id))
     const sizes = sizesIn(files)
     return { sizes, ...goneWith(session, left, files.map((f) => f.path), sizes) }
+  }
+  /**
+   * What an export or a clone of the Session holds: its text as the ticks leave it (`null` leaves
+   * nothing out), and the files kept, its text's first.
+   */
+  async function kept(session: Session, left: LeftOut | null) {
+    const files = await exportedFiles(deps.sessions.dir(session.id))
+    if (!left) return { session, files }
+    const { after, gone } = await choice(session, left)
+    const goes = new Set(gone)
+    return { session: after, files: files.filter((f) => !goes.has(f.path)) }
   }
 
   return [
@@ -141,15 +153,13 @@ export function managerRoutes(ctx: AppContext): Route[] {
       if (busy) return busy
       try {
         const dir = deps.sessions.dir(session.id)
-        let files: { path: string; data?: Uint8Array<ArrayBuffer> }[] = await exportedFiles(dir)
-        if (left) {
-          const { after, gone } = await choice(session, left)
-          const goes = new Set(gone)
-          const text = JSON.stringify(sessionFile.stamp(after), null, 2) + '\n'
-          files = files.filter((f) => !goes.has(f.path)).map((f) =>
+        const keep = await kept(session, left)
+        const text = JSON.stringify(sessionFile.stamp(keep.session), null, 2) + '\n'
+        const files = left
+          ? keep.files.map((f) =>
             f.path === SESSION_FILE ? { ...f, data: new TextEncoder().encode(text) } : f
           )
-        }
+          : keep.files
         const { stream, done } = zipFiles(dir, files, EXPORT_ZIP)
         done.finally(() => ctx.unlock(session.id))
         const name = exportName(session.title, session.id)
@@ -164,6 +174,28 @@ export function managerRoutes(ctx: AppContext): Route[] {
         ctx.unlock(session.id)
         throw err
       }
+    }],
+
+    // Clone: a new Session made from this one, as exporting it and importing the zip would make it
+    // (what's ticked, if `{ leftOut }` leaves something out), without the zip. Refused while work
+    // runs in it; its lock is held until the copy is all there.
+    ['POST', new URLPattern({ pathname: '/api/sessions/:id/clone' }), async (req, p) => {
+      const body = await readJson(req) as { leftOut?: unknown } | undefined
+      const left = body?.leftOut === undefined ? null : leftOutFrom(body.leftOut)
+      return await ctx.locked(p.id!, 'clone', async (session) => {
+        refuseWhileWorking(session, 'clone it')
+        const keep = await kept(session, left)
+        const made = await cloneSession(
+          deps.sessions.dir(session.id),
+          keep.session,
+          keep.files.filter((f) => f.path !== SESSION_FILE),
+          { store: deps.sessions, newSessionId: ctx.newSessionId, freeSpace },
+        )
+        return json(
+          { id: made.id, kind: made.kind, title: made.title } satisfies ClonedSession,
+          201,
+        )
+      })
     }],
 
     // A Session export, sent as the request's body (`application/zip`), unpacked as a new

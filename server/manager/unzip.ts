@@ -80,14 +80,43 @@ export interface ImportDeps {
   freeSpace(path: string): Promise<number | null>
 }
 
-/** The title an imported Session takes: its own, marked "(imported)" if a Session here has it. */
-export function importedTitle(title: string, taken: Iterable<string>): string {
+/** The title a new Session takes: its own, marked (" (imported)") if a Session here has it. */
+export function markedTitle(title: string, taken: Iterable<string>, mark: string): string {
   if (!new Set(taken).has(title)) return title
-  const mark = ' (imported)'
   return `${title.slice(0, SESSION_TITLE_LENGTH - mark.length).trimEnd()}${mark}`
 }
 
-/** What an import leaves beside the Sessions while it runs: its upload, and the folder it unpacks into. */
+/** The title an imported Session takes: its own, marked "(imported)" if a Session here has it. */
+export const importedTitle = (title: string, taken: Iterable<string>) =>
+  markedTitle(title, taken, ' (imported)')
+
+/**
+ * The folder a new Session is filled in beside the Sessions, by an import or a clone, before it's
+ * moved into place; startup clears any left (`clearImportLeftovers`).
+ */
+export const fillingDir = (target: string, id: string) => join(dirname(target), `.import-${id}`)
+
+/**
+ * Writes `session`'s text, as Session `id` titled `title`, into the folder filled (`temp`) and moves
+ * it into place as that Session: the last step of an import or a clone.
+ */
+export async function placeSession(
+  temp: string,
+  target: string,
+  session: Session,
+  id: string,
+  title: string,
+): Promise<Session> {
+  const placed = { ...session, id, title } as Session
+  await Deno.writeTextFile(
+    join(temp, SESSION_FILE),
+    JSON.stringify(sessionFile.stamp(placed), null, 2) + '\n',
+  )
+  await Deno.rename(temp, target)
+  return placed
+}
+
+/** What an import or a clone leaves beside the Sessions while it runs: an upload, and the folder it fills. */
 const IMPORT_LEFTOVER = /^\.import-[a-z0-9-]+(\.zip)?$/
 
 /**
@@ -116,7 +145,7 @@ export async function importZip(zipPath: string, deps: ImportDeps): Promise<Sess
   })
   const id = deps.newSessionId()
   const target = deps.store.dir(id)
-  const temp = join(dirname(target), `.import-${id}`)
+  const temp = fillingDir(target, id)
   try {
     let entries: Entry[]
     try {
@@ -194,13 +223,7 @@ export async function importZip(zipPath: string, deps: ImportDeps): Promise<Sess
       }
     }
     const titles = (await deps.store.list()).map((s) => s.title)
-    const imported = { ...session, id, title: importedTitle(session.title, titles) } as Session
-    await Deno.writeTextFile(
-      join(temp, SESSION_FILE),
-      JSON.stringify(sessionFile.stamp(imported), null, 2) + '\n',
-    )
-    await Deno.rename(temp, target)
-    return imported
+    return await placeSession(temp, target, session, id, importedTitle(session.title, titles))
   } catch (err) {
     await Deno.remove(temp, { recursive: true }).catch(() => {})
     throw err

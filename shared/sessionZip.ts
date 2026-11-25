@@ -1,4 +1,4 @@
-/** A Session export's name, and what an import answers. Shared by the server and the web app: types and plain values only. */
+/** A Session export's name, and what an import or a clone answers. Shared by the server and the web app: types and plain values only. */
 
 /**
  * A Session export's file name, from its title and id: `the-rain-soaked-tavern-20261011-083126-79c6.zip`.
@@ -16,3 +16,6 @@ export interface ImportedSession {
   kind: 'chain' | 'storyboard' | 'roleplay'
   title: string
 }
+
+/** The Session a clone made (`POST /api/sessions/:id/clone`): as an import's, a new id. */
+export type ClonedSession = ImportedSession

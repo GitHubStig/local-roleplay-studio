@@ -19,6 +19,7 @@ vi.mock('../api', async (importOriginal) => ({
   getKeepOptions: vi.fn(),
   previewKeep: vi.fn(),
   removeLeftOut: vi.fn(),
+  cloneSession: vi.fn(),
   getSettingsOptions: vi.fn(() => Promise.resolve({ imageModels: {}, videoModels: [] })),
 }))
 
@@ -251,6 +252,29 @@ describe('SessionPane', () => {
     vi.mocked(exportSession).mockResolvedValue('saved')
     await wrapper.find('[data-export-start]').trigger('click')
     expect(vi.mocked(exportSession).mock.calls[0][4]).toEqual(left)
+  })
+
+  it('clones all of it, or what is ticked, saying it in its label, and says why it failed', async () => {
+    vi.mocked(api.cloneSession).mockResolvedValue({ id: 'b', kind: 'roleplay', title: 'x (copy)' })
+    const wrapper = await shown()
+    expect(wrapper.find('[data-clone]').attributes('aria-label')).toBe('Clone Session')
+    await wrapper.find('[data-clone]').trigger('click')
+    await flushPromises()
+    expect(vi.mocked(api.cloneSession).mock.calls[0]).toEqual(['a', undefined])
+    expect(wrapper.emitted('cloned')).toEqual([['b']])
+
+    await wrapper.find('[data-keep-model="krea"]').setValue(false)
+    await settle()
+    expect(wrapper.find('[data-clone]').attributes('aria-label')).toBe("Clone what's ticked")
+    vi.mocked(api.cloneSession).mockRejectedValue(new Error('The drive is full'))
+    await wrapper.find('[data-clone]').trigger('click')
+    await flushPromises()
+    expect(vi.mocked(api.cloneSession).mock.calls[1]).toEqual([
+      'a',
+      { ...api.KEEP_ALL, imageModels: ['krea'] },
+    ])
+    expect(wrapper.text()).toContain("Couldn't clone it: The drive is full")
+    expect(wrapper.emitted('cloned')).toHaveLength(1)
   })
 
   it('shows every row of What to keep folded, each with a caret that says it opens', async () => {
