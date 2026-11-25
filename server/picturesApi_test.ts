@@ -188,12 +188,13 @@ Deno.test('A Session switches Image Model by name, to one a Backend listed can r
     assertEquals((await switchTo(call, 'dall-e')).status, 400)
     const qwen = await sessionFrom(await switchTo(call, 'qwen-image-2.1'))
     assertEquals([qwen.settings.imageModel, qwen.settings.steps], ['qwen-image-2.1', 25])
-    // A Session keeps only what decides what it makes (its models, its music's settings); where
-    // they run is Settings'.
+    // A Session keeps only what decides what it makes (its models, its music's settings, whether
+    // it has sheets); where they run is Settings'.
     assertEquals(Object.keys(qwen.settings).sort(), [
       'imageModel',
       'musicBehaviour',
       'musicTaste',
+      'sheets',
       'steps',
       'textModel',
       'thinking',
@@ -242,6 +243,7 @@ Deno.test('A Session switches Image Model by name, to one a Backend listed can r
         lito: off,
         style: off,
         video: off,
+        sheets: off,
       },
     })).call
     assertEquals((await getOptions(pc)).imageBackends, [

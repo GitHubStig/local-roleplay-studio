@@ -35,9 +35,18 @@ Deno.test('parseFrameBody joins the seven fields into one paragraph, in order', 
       environment: 'An empty indoor court',
       lighting: 'Hard spotlight',
     }),
-    'He leaps. Fierce focus. Low angle, 24mm. White jersey. An empty indoor court. Hard spotlight. Grey tones.',
+    {
+      body:
+        'He leaps. Fierce focus. Low angle, 24mm. White jersey. An empty indoor court. Hard spotlight. Grey tones.',
+      // Kept apart for the face pass, as it reads in the body.
+      expression: 'Fierce focus.',
+    },
   )
-  assertEquals(parseFrameBody({ body: 'Already a paragraph.' }), 'Already a paragraph.')
+  // A plain body has no expression sentence apart.
+  assertEquals(parseFrameBody({ body: 'Already a paragraph.' }), {
+    body: 'Already a paragraph.',
+    expression: '',
+  })
   assertThrows(() => parseFrameBody({ pose: 'x' }), Error, 'missing: expression, camera')
 })
 

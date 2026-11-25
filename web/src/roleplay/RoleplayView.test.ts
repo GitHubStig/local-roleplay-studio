@@ -90,6 +90,7 @@ const imageOf = (
   extra: Partial<roleplay.RoleplayImage> = {},
 ): roleplay.RoleplayImage => ({
   body: '',
+  expression: '',
   prompt,
   shown: [],
   clothing: '',
@@ -107,12 +108,13 @@ const roleplaySession = (frames: roleplay.RoleplayFrame[] = []): roleplay.Rolepl
     imageModel: 'qwen-image-2.1',
     musicBehaviour: 'story',
     musicTaste: '',
-  } as api.Settings,
+  } as api.SessionSettings,
   seed: 1,
   createdAt: '2026-09-27T00:00:00.000Z',
   cast: frames.length ? cast : null,
   look: null,
   lookBehindCast: false,
+  sheets: [],
   cues: [],
   frames,
 })

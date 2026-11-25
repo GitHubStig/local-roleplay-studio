@@ -69,7 +69,7 @@ const session = (frames: api.ChainFrame[] = []): api.ChainSession => ({
   title: 'A test chain',
   brief: null,
   scenarioId: 'tavern',
-  settings: { imageModel: 'qwen-image-2.1' } as api.Settings,
+  settings: { imageModel: 'qwen-image-2.1' } as api.SessionSettings,
   seed: 1,
   createdAt: '2026-09-24T00:00:00.000Z',
   frames,

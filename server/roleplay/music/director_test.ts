@@ -45,6 +45,7 @@ const session = (extra: Partial<RoleplaySession> = {}): RoleplaySession => ({
   scenarioId: null,
   settings: {
     textModel: 'x',
+    sheets: false,
     thinking: false,
     imageModel: 'qwen-image-2.1',
     steps: 8,
@@ -56,6 +57,7 @@ const session = (extra: Partial<RoleplaySession> = {}): RoleplaySession => ({
   cast: testCast,
   look: null,
   lookBehindCast: false,
+  sheets: [],
   cues: [],
   score: testScore(),
   frames: [

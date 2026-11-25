@@ -31,6 +31,8 @@ export interface PlannedBeat {
 /** One Frame as the Text Model edits it: its seven own sentences, and who it shows. */
 export interface PlannedFrame {
   body: string
+  /** Its expression sentence, kept apart (`parseFrameBody`). */
+  expression: string
   /** Names of the Look's Subjects, as written: the engine matches them to the Look. */
   shown: string[]
 }
@@ -65,6 +67,8 @@ export interface StoryboardWriteRequest {
 
 export interface StoryboardWrite {
   body: string
+  /** Its expression sentence, kept apart (`parseFrameBody`). */
+  expression: string
   thinking?: string
 }
 
@@ -171,7 +175,7 @@ export async function storyboardWriteMessages(req: StoryboardWriteRequest) {
 export function parsePlannedFrame(value: unknown): PlannedFrame {
   const shown = (value as { shown?: unknown } | null)?.shown
   return {
-    body: parseFrameBody(value),
+    ...parseFrameBody(value),
     shown: Array.isArray(shown) ? shown.filter((n) => typeof n === 'string' && n.trim()) : [],
   }
 }
@@ -206,7 +210,7 @@ export function parseStoryboardPlan(content: string, frameCount: number): Storyb
 /** Checks one Frame's Write; throws with a reason if it can't be used. */
 export function parseStoryboardWrite(content: string): StoryboardWrite {
   try {
-    return { body: parseFrameBody(JSON.parse(content)) }
+    return parseFrameBody(JSON.parse(content))
   } catch (err) {
     throw err instanceof SyntaxError ? new Error('Text Model reply was not valid JSON') : err
   }

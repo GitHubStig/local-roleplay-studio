@@ -361,6 +361,8 @@ export function createHandler(
     lito: given(deps.lito, 'LiTo'),
     style: given(deps.style, 'style embedder'),
     video: given(deps.video, 'video generator'),
+    // Until there's a head finder to give (docs/reference-sheets-plans.md, step 2d).
+    sheets: given(undefined, 'head finder'),
   }
   /**
    * The kinds of Image backend whose models a Session can switch to: mflux where it's installed,

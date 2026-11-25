@@ -42,6 +42,7 @@ const frame = (
   ...(written && {
     image: {
       body,
+      expression: '',
       prompt: composePrompt(look, body, shown),
       ...(blocked && { blocked }),
       written: { model: 'fake', seconds: 2 },
@@ -58,11 +59,12 @@ const storyboard = (frames: StoryboardFrame[]): StoryboardSession => ({
   title: 'A test storyboard',
   brief: 'Two old friends meet on a dock.',
   scenarioId: null,
-  settings: { ...DEFAULT_SETTINGS, textModel: 'fake' },
+  settings: { ...DEFAULT_SETTINGS, sheets: false, textModel: 'fake' },
   seed: 42,
   createdAt: '2026-10-16T00:00:00.000Z',
   frameCount: frames.length,
   look,
+  sheets: [],
   frames,
 })
 
@@ -213,10 +215,11 @@ const roleplay = (frames: RoleplayFrame[]): RoleplaySession => ({
   id: 'talk',
   kind: 'roleplay',
   lookBehindCast: false,
+  sheets: [],
   title: 'A test roleplay',
   brief: 'Two old friends meet on a dock.',
   scenarioId: null,
-  settings: { ...DEFAULT_SETTINGS, textModel: 'fake' },
+  settings: { ...DEFAULT_SETTINGS, sheets: false, textModel: 'fake' },
   seed: 7,
   createdAt: '2026-11-11T00:00:00.000Z',
   cast: testCast,
@@ -239,6 +242,7 @@ const pictured = (index: number, shown: string[], blocked?: string) =>
   exchange(index, {
     image: {
       body,
+      expression: '',
       shown,
       clothing: '',
       prompt: composePrompt(look, body, shown),

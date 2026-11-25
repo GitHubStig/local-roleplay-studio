@@ -26,12 +26,13 @@ const roleplay = (): RoleplaySession => ({
   title: 'A test roleplay',
   brief: 'A storm at sea.',
   scenarioId: null,
-  settings: DEFAULT_SETTINGS,
+  settings: { ...DEFAULT_SETTINGS, sheets: false },
   seed: 100,
   createdAt: '2026-10-01T00:00:00.000Z',
   cast: testCast,
   look: null,
   lookBehindCast: false,
+  sheets: [],
   cues: [],
   frames: [
     {

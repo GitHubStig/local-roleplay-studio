@@ -12,6 +12,7 @@ export const FEATURE_NAMES: Record<Feature, string> = {
   lito: 'LiTo',
   style: 'Style scores',
   video: 'Clips',
+  sheets: 'Reference sheets',
 }
 
 /** What `detectFeatures` looks at; the real machine by default, a fake one in tests. */
@@ -70,11 +71,15 @@ export async function detectFeatures(
     style: uv ? yes : noUv,
     // LTX 2.5 runs only through a ComfyUI (`withBackends`).
     video: no('Clips are made on a ComfyUI with LTX 2.5'),
+    // Qwen-Image 2.1's edit repaints the faces and its Qwen3-VL finds the heads: through mflux, or
+    // a ComfyUI when Settings list one. Whether its files are there is found when it runs, as for
+    // an edit.
+    sheets: withMflux,
   }
 }
 
 /**
- * What can run now: as detected at startup, but with pictures, Upscale, edits, voices and clips
+ * What can run now: as detected at startup, but with pictures, Upscale, edits, voices, clips and sheets
  * available wherever Settings list a ComfyUI, which a running server provides rather than this machine (ADR
  * 0022). One that isn't says one could be added.
  */
@@ -83,7 +88,7 @@ export function withBackends(
   settings: { backends: readonly { kind: string }[] },
 ): Availabilities {
   const comfyui = settings.backends.some((b) => b.kind === 'comfyui')
-  const viaComfyUI = (feature: 'images' | 'upscale' | 'edits' | 'voices' | 'video') =>
+  const viaComfyUI = (feature: 'images' | 'upscale' | 'edits' | 'voices' | 'video' | 'sheets') =>
     comfyui ? yes : detected[feature].available ? detected[feature] : {
       available: false,
       reason: `${detected[feature].reason}; or add a ComfyUI in Settings, on the Machines tab`,
@@ -95,6 +100,7 @@ export function withBackends(
     upscale: viaComfyUI('upscale'),
     voices: viaComfyUI('voices'),
     video: viaComfyUI('video'),
+    sheets: viaComfyUI('sheets'),
   }
 }
 

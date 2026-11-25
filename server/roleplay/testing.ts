@@ -74,7 +74,13 @@ export function scriptedRoleplayModel(
      */
     bodies?: (
       | string
-      | { body: string; shown?: string[]; newcomers?: Subject[]; clothing?: string }
+      | {
+        body: string
+        expression?: string
+        shown?: string[]
+        newcomers?: Subject[]
+        clothing?: string
+      }
       | Error
     )[]
     suggestions?: (string | Error)[]
@@ -151,12 +157,14 @@ export function scriptedRoleplayModel(
       const drawn = await next(script.bodies, 'picture')
       const {
         body,
+        expression = '',
         shown = ['Mira Vance', 'Sam Reyes'],
         newcomers = [],
         clothing = 'Mira wears a navy coat; Sam wears oilskins.',
       } = typeof drawn === 'string' ? { body: drawn } : drawn
       return {
         body,
+        expression,
         shown,
         newcomers,
         clothing,

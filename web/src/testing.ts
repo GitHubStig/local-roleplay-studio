@@ -15,6 +15,7 @@ export const ALL_ON: Record<Feature, boolean> = {
   lito: true,
   style: true,
   video: true,
+  sheets: true,
 }
 
 /** Every Feature available on this "machine", as on an Apple Silicon Mac with everything set up. */
@@ -28,6 +29,7 @@ export const ALL_AVAILABLE: Record<Feature, Availability> = {
   lito: { available: true },
   style: { available: true },
   video: { available: true },
+  sheets: { available: true },
 }
 
 /** Two mflux Image Models, as the Settings options list them. */

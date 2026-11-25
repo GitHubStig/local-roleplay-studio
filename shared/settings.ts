@@ -83,6 +83,16 @@ export interface Settings {
    * the full weights were no faster and took near twice the memory (docs/research/mflux-upgrade-log.md).
    */
   editQuantize: Quantize
+  /**
+   * The edit model that repaints faces from their reference sheets (the face pass): one that takes
+   * a reference picture. Read when it runs, so it applies mid-Session too.
+   */
+  faceEditModel: EditModel
+  /**
+   * The Image Model that makes reference sheets, by name; '' for each Session's own. Read when one
+   * is made.
+   */
+  sheetImageModel: string
   /** The video model clips are made with (`video/comfyui/models.ts`), on a ComfyUI. */
   videoModel: string
   /** Each video model's clip size, by its id; one not listed makes clips at its own (`size`). */
@@ -157,6 +167,11 @@ export type SessionSettings =
      * rendered wherever it's opened. Left out, Settings say.
      */
     imageBackend?: ImageBackendKind
+    /**
+     * Whether it has reference sheets: Settings' `sheets` Feature as it started (a Chain never),
+     * kept, as its models are, since its sheets are settled before the story begins.
+     */
+    sheets: boolean
   }
 
 /** A text Backend's models, or why it couldn't list them (`/api/settings/text-models`). */

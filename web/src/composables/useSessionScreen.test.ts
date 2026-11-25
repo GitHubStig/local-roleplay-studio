@@ -25,7 +25,7 @@ const chain = (extra: Partial<api.ChainSession> = {}): api.ChainSession => ({
   title: 'A test chain',
   brief: null,
   scenarioId: 'tavern',
-  settings: { imageModel: 'qwen-image-2.1' } as api.Settings,
+  settings: { imageModel: 'qwen-image-2.1' } as api.SessionSettings,
   seed: 1,
   createdAt: '2026-10-21T00:00:00.000Z',
   frames: [],

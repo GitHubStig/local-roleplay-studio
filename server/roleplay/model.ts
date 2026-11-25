@@ -81,6 +81,8 @@ export interface RoleplayModel {
     onThinking?: (chunk: string) => void,
   ): Promise<{
     body: string
+    /** Its expression sentence, kept apart (`parseFrameBody`). */
+    expression: string
     shown: string[]
     newcomers: Subject[]
     clothing: string
@@ -247,7 +249,7 @@ export function chatRoleplayModel(chat: Chat, opts: RoleplayModelOptions = {}): 
         const fields = trimFields(parseJson(content) as Record<string, unknown>)
         return withThinking(
           {
-            body: parseFrameBody(fields),
+            ...parseFrameBody(fields),
             ...parseWho(fields),
             clothing: String(fields.clothing ?? ''),
           },

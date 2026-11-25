@@ -218,6 +218,7 @@ function sessionOf(): RoleplaySession {
     scenarioId: null,
     settings: {
       textModel: 'x',
+      sheets: false,
       thinking: false,
       imageModel: 'qwen-image-2.1',
       steps: 8,
@@ -229,6 +230,7 @@ function sessionOf(): RoleplaySession {
     cast: testCast,
     look: null,
     lookBehindCast: false,
+    sheets: [],
     cues: [],
     frames: [
       {

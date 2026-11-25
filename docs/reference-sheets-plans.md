@@ -74,6 +74,16 @@ On its own, before anything of sheets: it's worth having without them, and every
 
 Checked by the server's tests (the fakes) and a replay (`deno task replay`) that makes a Session with sheets on both runtimes.
 
+**Decided** (the owner, 2026-11-25): the sheets are **a list beside the Look** (`sheets`, one per Subject, by its name), not inside it, so a Look saved from the browser can't overwrite them, and a renamed Subject renames its sheet; **Storyboards and Roleplays both**, now; and whether a Session has sheets is **in its own settings** (`sheets`), set from Settings as it starts and kept, as its Image Model is (ADR 0015), false for every Session before.
+
+Built in steps, each reviewed and committed on its own:
+
+- **2a. The data: done (2026-11-25).** `session.json` v5: a Session's `settings.sheets` (false for every Session before, and always for a Chain), a Storyboard's or a Roleplay's `sheets` (none yet: nothing makes them until 2b), and each written Frame's `expression` sentence. `settings.json` v3: the `sheets` Feature (on, as every Feature starts; its switch is the section's "For new Sessions"), `faceEditModel` (Qwen-Image 2.1 Edit) and `sheetImageModel` ('' for each Session's own). A Session takes `sheets` from Settings as it starts, or as the start request asks (`sheets: true` refused for a Chain, or where the Feature is off). The Feature is available wherever edits are (mflux, or a listed ComfyUI); whether Qwen-Image 2.1's files are there is found when a job runs, as for an edit. **The expression sentence**: kept when the Text Model writes the seven sentences (a Storyboard's Write and edit, the Art Agent); a hand edit keeps it only while the body still holds it word for word, else it's '' (not known), as is every Frame's from before v5. Checked on this Mac's 13 Sessions through the running app: all read as v5, sheets off.
+- **2b. The sheet job**: its prompt, the render at 1536×640, its seed, the views cut and mirrored, its events; queued once the Look exists, cancelled when unticked.
+- **2c. Change…**: the identity rewritten by the Text Model, then the sheet made again; its prompt and schema, checked over seeds 1–8.
+- **2d. Finding heads**: the `HeadFinder` service, its fake, Qwen3-VL through ComfyUI and mflux; the find, count and face-pass prompts.
+- **2e. The replay**: a Session with sheets made on both runtimes.
+
 ### 3. Sheets on screen
 
 As [reference-sheets-mockups.html](reference-sheets-mockups.html) draws them (redrawn 2026-11-25 with every decision, phone and dark included).

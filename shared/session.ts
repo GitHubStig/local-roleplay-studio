@@ -54,6 +54,38 @@ export interface Look {
 }
 
 /**
+ * A reference sheet of one Subject of a Look: three head-and-shoulders views of it (front,
+ * three-quarter, profile) in one render, for the face pass to repaint its face from in every
+ * picture (docs/reference-sheets-plans.md). Made in a Storyboard's plan review or a Roleplay's Cast
+ * review, and fixed once the story begins.
+ */
+export interface Sheet {
+  /** The Subject's name in the Look; renamed with it. */
+  subject: string
+  /** Whether its face is repainted from it; every Subject starts ticked. */
+  ticked: boolean
+  /** The identity it's made from, word for word, so a sheet and the Look always agree. */
+  identity: string
+  /** Its seed: the Session's plus the Subject's index, one more for each Redo (ADR 0011). */
+  seed: number
+  /** The picture, once made; none until then. */
+  made?: SheetPicture
+}
+
+/** A sheet as made: the render, and its three views cut from it, each mirrored too. */
+export interface SheetPicture {
+  /** The whole sheet, as rendered. */
+  file: string
+  /** Its three views, cut from it, left to right: front, three-quarter, profile. */
+  views: [string, string, string]
+  /** Each view mirrored, in the same order, for a head turned the other way. */
+  mirrored: [string, string, string]
+  /** The Image Model that rendered it. */
+  imageModel: string
+  createdAt: string
+}
+
+/**
  * What kind of Session: a Chain makes each Frame from the previous one by an Action; a
  * Storyboard plans all its Frames together from the Brief.
  */
@@ -85,6 +117,12 @@ export interface FrameImage {
    * lighting, color).
    */
   body: string
+  /**
+   * Its expression sentence (each person's facial expression and where they look), kept apart for
+   * the face pass to name (docs/reference-sheets-plans.md): '' when not known, for a Frame written
+   * before it was kept, or whose sentences were edited by hand and no longer hold it word for word.
+   */
+  expression: string
   /**
    * Exactly what the Image Model renders: the identities of the Subjects shown, the body, then the
    * Look's style sentence.
@@ -171,6 +209,8 @@ export interface StoryboardSession extends SessionBase {
    * is written.
    */
   look: Look | null
+  /** A reference sheet per Subject of its Look, when it has sheets (`settings.sheets`); else none. */
+  sheets: Sheet[]
   frames: StoryboardFrame[]
 }
 

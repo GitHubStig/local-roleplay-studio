@@ -76,6 +76,7 @@ const frame = (
   ...(body !== '' && {
     image: {
       body,
+      expression: '',
       prompt: promptFor(index),
       ...(blocked && { blocked }),
       written: { model: 'x', seconds: 1 },
@@ -96,11 +97,12 @@ const storyboard = (frames: api.StoryboardFrame[] = []): api.StoryboardSession =
   title: 'A test storyboard',
   brief: 'A first dunk.',
   scenarioId: null,
-  settings: { imageModel: 'qwen-image-2.1' } as api.Settings,
+  settings: { imageModel: 'qwen-image-2.1' } as api.SessionSettings,
   seed: 1,
   createdAt: '2026-09-25T00:00:00.000Z',
   frameCount: 3,
   look: frames.length ? look : null,
+  sheets: [],
   frames,
 })
 

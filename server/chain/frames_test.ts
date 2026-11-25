@@ -25,7 +25,7 @@ const newSession = (): ChainSession => ({
   title: 'A test chain',
   brief: null,
   scenarioId: 'test',
-  settings: { ...DEFAULT_SETTINGS, textModel: 'fake' },
+  settings: { ...DEFAULT_SETTINGS, sheets: false, textModel: 'fake' },
   seed: 7,
   createdAt: '2026-09-24T00:00:00.000Z',
   frames: [],

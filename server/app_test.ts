@@ -246,7 +246,7 @@ Deno.test('POST /api/settings/comfyui checks an address not saved yet', async ()
   ])
 })
 
-Deno.test('Adding a ComfyUI makes pictures, Upscale, voices and clips available where mflux is not', async () => {
+Deno.test('Adding a ComfyUI makes pictures, Upscale, voices, clips and sheets available where mflux is not', async () => {
   const off = { available: false, reason: 'mflux runs only on Apple Silicon Macs' }
   const on = { available: true }
   const { call } = setup({
@@ -260,10 +260,11 @@ Deno.test('Adding a ComfyUI makes pictures, Upscale, voices and clips available 
       lito: off,
       style: off,
       video: off,
+      sheets: off,
     },
   })
   const before = (await getOptions(call)).features
-  for (const extra of ['images', 'upscale', 'edits', 'voices', 'video'] as const) {
+  for (const extra of ['images', 'upscale', 'edits', 'voices', 'video', 'sheets'] as const) {
     assertEquals(before[extra].available, false)
     assertStringIncludes(before[extra].reason!, 'or add a ComfyUI in Settings')
   }
@@ -277,7 +278,7 @@ Deno.test('Adding a ComfyUI makes pictures, Upscale, voices and clips available 
   })
   assertEquals(saved.status, 200)
   const after = (await getOptions(call)).features
-  for (const extra of ['images', 'upscale', 'edits', 'voices', 'video'] as const) {
+  for (const extra of ['images', 'upscale', 'edits', 'voices', 'video', 'sheets'] as const) {
     assertEquals(after[extra].available, true)
   }
   // An Image Model must be one some backend has.
@@ -584,6 +585,7 @@ Deno.test('Without pictures every kind starts; a Chain writes its Frames without
         lito: off,
         style: off,
         video: off,
+        sheets: off,
       },
     })
     for (const kind of ['chain', 'storyboard', 'roleplay']) {
@@ -622,5 +624,47 @@ Deno.test('Turning the Limits off in Settings disables all Limits at once', () =
     assertEquals(
       (await call('POST', '/api/sessions', { brief: 'A nude figure study.' })).status,
       422,
+    )
+  }))
+
+Deno.test('A Session has sheets as Settings say, or as asked when it starts; a Chain never', () =>
+  withTempDir(async (root) => {
+    const on = { available: true }
+    const features = {
+      images: on,
+      upscale: on,
+      edits: on,
+      voices: on,
+      scenes: on,
+      figures: on,
+      lito: on,
+      style: on,
+      video: on,
+      sheets: on,
+    }
+    const { call, settings } = setup({ root, settings: { textModel: 'x' }, features })
+    const start = async (kind: string, sheets?: boolean) =>
+      await call('POST', '/api/sessions', { kind, brief: 'A rainy street.', sheets })
+    const sheetsOf = async (res: Response) => (await sessionFrom(res)).settings.sheets
+    // On in Settings, as every Feature starts.
+    assertEquals(await sheetsOf(await start('roleplay')), true)
+    assertEquals(await sheetsOf(await start('storyboard', false)), false)
+    assertEquals(await sheetsOf(await start('chain')), false)
+    assertEquals((await refusalIn(await start('chain', true))).error, 'A Chain has no sheets')
+    const notBoolean = await call('POST', '/api/sessions', {
+      kind: 'roleplay',
+      brief: 'A rainy street.',
+      sheets: 'yes',
+    })
+    assertEquals(notBoolean.status, 400)
+    // Switched off in Settings: none, unless asked for, which is refused saying why.
+    settings.current = {
+      ...settings.current,
+      features: { ...settings.current.features, sheets: false },
+    }
+    assertEquals(await sheetsOf(await start('storyboard')), false)
+    assertEquals(
+      (await refusalIn(await start('storyboard', true))).error,
+      'Reference sheets is switched off in Settings',
     )
   }))

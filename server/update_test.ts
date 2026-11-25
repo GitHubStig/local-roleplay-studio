@@ -11,7 +11,7 @@ const chain = (): Session => ({
   title: 'A test chain',
   brief: 'A lighthouse in a storm.',
   scenarioId: null,
-  settings: DEFAULT_SETTINGS,
+  settings: { ...DEFAULT_SETTINGS, sheets: false },
   seed: 1,
   createdAt: '2026-10-21T00:00:00.000Z',
   frames: [],

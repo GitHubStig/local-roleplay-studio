@@ -89,6 +89,7 @@ export function sessionRoutes(ctx: AppContext): Route[] {
           scenario?: unknown
           frameCount?: unknown
           seed?: unknown
+          sheets?: unknown
         }
         | undefined
       const kind = body?.kind ?? 'chain'
@@ -128,13 +129,22 @@ export function sessionRoutes(ctx: AppContext): Route[] {
       }
       const settings = await deps.settings.load()
       if (!settings.textModel) return error('Choose a Text Model in Settings first', 400)
+      // Reference sheets, as asked when it starts, or else as Settings have them; a Chain has no
+      // Look to make them from.
+      if (body?.sheets !== undefined && typeof body.sheets !== 'boolean') {
+        return error('sheets must be true or false', 400)
+      }
+      if (body?.sheets === true && kind === 'chain') return error('A Chain has no sheets', 400)
+      const sheetsOff = kind === 'chain' || await ctx.featureOff('sheets')
+      if (body?.sheets === true && sheetsOff) return sheetsOff as Response
+      const sheets = body?.sheets !== false && !sheetsOff
       const base = {
         id: newSessionId(),
         title: startingTitle({ scenario, brief, scenarioId }),
         brief,
         scenarioId,
         ...scenario && { scenario },
-        settings: sessionSettingsOf(settings),
+        settings: sessionSettingsOf(settings, sheets),
         seed: (seed as number | undefined) ??
           (settings.seedMode === 'fixed' ? settings.seed : randomSeed()),
         createdAt: new Date().toISOString(),
@@ -142,8 +152,17 @@ export function sessionRoutes(ctx: AppContext): Route[] {
       const session: Session = kind === 'chain'
         ? { ...base, kind, frames: [] }
         : kind === 'roleplay'
-        ? { ...base, kind, cast: null, look: null, lookBehindCast: false, cues: [], frames: [] }
-        : { ...base, kind, frameCount, look: null, frames: [] }
+        ? {
+          ...base,
+          kind,
+          cast: null,
+          look: null,
+          lookBehindCast: false,
+          sheets: [],
+          cues: [],
+          frames: [],
+        }
+        : { ...base, kind, frameCount, look: null, sheets: [], frames: [] }
       await deps.sessions.save(session)
       return json(session, 201)
     }],

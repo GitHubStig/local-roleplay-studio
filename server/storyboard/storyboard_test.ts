@@ -31,6 +31,7 @@ import {
   scriptedTextModel,
   withTempDir,
   writtenBody,
+  writtenExpression,
 } from '../testing.ts'
 
 const scenario = briefScenario('A player dribbles and dunks, sketch style.')
@@ -42,11 +43,12 @@ const newStoryboard = (frameCount = 3): StoryboardSession => ({
   title: 'A test storyboard',
   brief: 'A player dribbles and dunks, sketch style.',
   scenarioId: null,
-  settings: { ...DEFAULT_SETTINGS, textModel: 'fake' },
+  settings: { ...DEFAULT_SETTINGS, sheets: false, textModel: 'fake' },
   seed: 7,
   createdAt: '2026-09-25T00:00:00.000Z',
   frameCount,
   look: null,
+  sheets: [],
   frames: [],
 })
 
@@ -281,6 +283,18 @@ Deno.test('setFrameBody rewrites one Frame, marks it stale if rendered, and refu
     const empty = await setFrameBody(deps, edited, 2, 'An empty court.', [])
     assertEquals(empty.frames[2].shown, [])
     assertEquals(empty.frames[2].image?.prompt, 'An empty court. A pencil sketch.')
+  }))
+
+Deno.test('A Frame keeps its expression sentence apart, and loses it to a hand edit without it', () =>
+  withTempDir(async (root) => {
+    const { deps, session } = await planned(root)
+    // Written: its expression sentence kept beside its body, for the face pass to name.
+    assertEquals(session.frames[0].image?.expression, writtenExpression)
+    const body = session.frames[0].image!.body
+    const kept = await setFrameBody(deps, session, 0, `${body} Rain.`)
+    assertEquals(kept.frames[0].image?.expression, writtenExpression)
+    const lost = await setFrameBody(deps, kept, 0, 'He leaps. Wide shot.')
+    assertEquals(lost.frames[0].image?.expression, '')
   }))
 
 Deno.test('setBeat and setLook edit the plan until a Frame is written, then refuse', () =>

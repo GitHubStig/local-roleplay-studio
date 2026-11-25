@@ -32,7 +32,7 @@ const look = {
 /** A Frame pictured as the Art Agent would, from its sentences, who it shows and what they wear. */
 const picture = (frame: RoleplayFrame, l: Look, body: string, shown: string[], clothing = '') =>
   pictured(frame, {
-    ...imageOf(l, { body, shown, clothing }),
+    ...imageOf(l, { body, expression: '', shown, clothing }),
     written: { model: 'art', seconds: 1 },
   })
 
@@ -40,10 +40,11 @@ const session: RoleplaySession = {
   id: 'r1',
   kind: 'roleplay',
   lookBehindCast: false,
+  sheets: [],
   title: 'A test roleplay',
   brief: 'A storm at sea.',
   scenarioId: null,
-  settings: DEFAULT_SETTINGS,
+  settings: { ...DEFAULT_SETTINGS, sheets: false },
   seed: 1,
   createdAt: '2026-09-27T00:00:00.000Z',
   cast: testCast,
@@ -240,7 +241,7 @@ Deno.test('lastWorn gives each person the clothing of the latest earlier picture
     ...(clothing
       ? {
         image: {
-          ...imageOf(look, { body: 'They wait.', shown, clothing }),
+          ...imageOf(look, { body: 'They wait.', expression: '', shown, clothing }),
           written: { model: 'art', seconds: 1 },
         },
       }
@@ -293,6 +294,7 @@ Deno.test("lastWorn starts a Person not pictured yet from the Scenario's Wears",
       ...session.frames[0],
       image: {
         body: 'She waits.',
+        expression: '',
         prompt: 'She waits.',
         shown: ['mira vance'],
         clothing: 'Mira wears a robe.',

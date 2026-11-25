@@ -73,7 +73,7 @@ async function chainOfTwo(root: string) {
     title: 'A test chain',
     brief: null,
     scenarioId: 'test',
-    settings: { ...DEFAULT_SETTINGS, textModel: 'fake', imageModel: QWEN },
+    settings: { ...DEFAULT_SETTINGS, sheets: false, textModel: 'fake', imageModel: QWEN },
     seed: 7,
     createdAt: '2026-10-10T00:00:00.000Z',
     frames: [],

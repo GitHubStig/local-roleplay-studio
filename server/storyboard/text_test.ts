@@ -28,6 +28,8 @@ Deno.test('parsePlannedFrame leaves out "N/A" sentences, and reads who the Frame
   assertEquals(parsePlannedFrame(frame), {
     body:
       'Leaves blow across the square. Wide shot. A town square. Street lamps. Green and orange.',
+    // It had nothing to say: none to name.
+    expression: '',
     shown: ['Ana'],
   })
   assertEquals(parsePlannedFrame({ ...frame, shown: undefined }).shown, [])

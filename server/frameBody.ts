@@ -128,22 +128,41 @@ export function parseLook(value: unknown): Look {
 const NOT_APPLICABLE =
   /^\W*(?:(?:n\/a|none|not applicable)\b|no (?:people|one|person|humans?|figures?)(?: (?:are |is )?(?:visible|present|shown|in (?:the )?(?:frame|picture|shot)))?\W*$)/i
 
+/** A Frame's seven sentences joined, and its expression sentence kept apart for the face pass. */
+export interface FrameBody {
+  body: string
+  /** '' when the reply didn't give it apart (a plain `body`), or had nothing to say. */
+  expression: string
+}
+
 /**
- * A Frame's seven sentences from the reply, joined into one paragraph. Accepts the seven fields,
- * or a plain `body` string.
+ * A Frame's seven sentences from the reply, joined into one paragraph, and its expression sentence
+ * as it appears there. Accepts the seven fields, or a plain `body` string.
  */
-export function parseFrameBody(value: unknown): string {
+export function parseFrameBody(value: unknown): FrameBody {
   const v = (value ?? {}) as Record<string, unknown>
-  if (typeof v.body === 'string' && v.body.trim()) return plainSentences(v.body)
+  if (typeof v.body === 'string' && v.body.trim()) {
+    return { body: plainSentences(v.body), expression: '' }
+  }
   const missing = BODY_FIELDS.filter(([key]) =>
     typeof v[key] !== 'string' || !String(v[key]).trim()
   )
   if (missing.length > 0) {
     throw new Error(`A Frame in the reply is missing: ${missing.map(([key]) => key).join(', ')}`)
   }
-  return BODY_FIELDS
-    .map(([key]) => String(v[key]))
-    .filter((text) => !NOT_APPLICABLE.test(text))
-    .map(asSentence)
-    .join(' ')
+  const sentence = (key: string) => {
+    const text = String(v[key])
+    return NOT_APPLICABLE.test(text) ? '' : asSentence(text)
+  }
+  return {
+    body: BODY_FIELDS.map(([key]) => sentence(key)).filter(Boolean).join(' '),
+    expression: sentence('expression'),
+  }
 }
+
+/**
+ * A Frame's expression sentence after its body changed by hand: kept while the body still holds it
+ * word for word, else not known ('').
+ */
+export const keptExpression = (expression: string, body: string) =>
+  expression && body.includes(expression) ? expression : ''

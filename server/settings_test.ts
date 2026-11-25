@@ -147,7 +147,7 @@ Deno.test('A Session keeps only its models, and renders with them and the rest a
     steps: 4,
     musicTaste: 'Orchestral.',
   }
-  const session = sessionSettingsOf(started)
+  const session = sessionSettingsOf(started, true)
   assertEquals(session, {
     textModel: 'gemma4',
     thinking: false,
@@ -155,6 +155,7 @@ Deno.test('A Session keeps only its models, and renders with them and the rest a
     steps: 4,
     musicBehaviour: 'story',
     musicTaste: 'Orchestral.',
+    sheets: true,
   })
   const now = {
     ...DEFAULT_SETTINGS,

@@ -7,7 +7,8 @@
  * The extras beyond the Text Model, each needing its own backend: pictures (mflux, or a ComfyUI
  * server), upscaling (SeedVR2 through mflux), editing pictures (Qwen through mflux or ComfyUI, and
  * FLUX.3 through ComfyUI), voices (the mlx-audio service), 3D (SHARP, TripoSplat, LiTo), and the
- * Compare dialog's style scores (CSD and CLIP). Which of them this machine can run is worked out
+ * Compare dialog's style scores (CSD and CLIP), and reference sheets (Qwen-Image 2.1's edit and its
+ * Qwen3-VL, through mflux or ComfyUI). Which of them this machine can run is worked out
  * once at startup (`detectFeatures`); Settings can switch off any that can. Pictures are also
  * available wherever Settings choose ComfyUI (`app.ts`), which this can't know at startup.
  */
@@ -21,6 +22,7 @@ export const FEATURES = [
   'lito',
   'style',
   'video',
+  'sheets',
 ] as const
 
 export type Feature = (typeof FEATURES)[number]

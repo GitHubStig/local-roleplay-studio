@@ -72,9 +72,12 @@ export function pngHeader(width: number, height: number): Uint8Array<ArrayBuffer
 /** Scripted Storyboard replies for `scriptedTextModel`. */
 export interface Scripts {
   plans?: (StoryboardPlan | Error)[]
-  /** Each Frame's Write; with none scripted, a Frame is written as `writtenBody` says. */
-  writes?: (StoryboardWrite | Error)[]
-  edits?: (StoryboardEdit | Error)[]
+  /**
+   * Each Frame's Write; with none scripted, a Frame is written as `writtenBody` says, and the
+   * expression sentence as `writtenExpression`. A Write or an edit without one has none ('').
+   */
+  writes?: (WithoutExpression<StoryboardWrite> | Error)[]
+  edits?: (WithoutExpression<StoryboardEdit> | Error)[]
   /** Each clip prompt written. */
   clips?: (string | Error)[]
   /** Each Expand's reply, as the model would write it (`scenario/expand.ts`). */
@@ -83,9 +86,21 @@ export interface Scripts {
   suggestions?: (string | Error)[]
 }
 
+/** A reply as a test scripts it: its expression sentence left out unless it matters. */
+type WithoutExpression<T> = Omit<T, 'expression'> & { expression?: string }
+
 /** The sentences the scripted Text Model writes for Frame `index` when none are scripted. */
 export const writtenBody = (index: number) =>
   `Pose ${index + 1}. Calm. Wide shot. Kit. Court. Light. Grey.`
+
+/** Their expression sentence, kept apart. */
+export const writtenExpression = 'Calm.'
+
+/** A scripted reply with its expression sentence, '' unless scripted. */
+const withExpression = async <T>(reply: Promise<WithoutExpression<T>>) => {
+  const r = await reply
+  return { ...r, expression: r.expression ?? '' } as T
+}
 
 /**
  * A Text Model that replies from queues; an Error in a queue is thrown instead.
@@ -139,13 +154,15 @@ export function scriptedTextModel(
       model.calls++
       model.writeRequests.push(req)
       signal.throwIfAborted()
-      if (scripts.writes === undefined) return Promise.resolve({ body: writtenBody(req.index) })
-      return next(scripts.writes, 'write')
+      if (scripts.writes === undefined) {
+        return Promise.resolve({ body: writtenBody(req.index), expression: writtenExpression })
+      }
+      return withExpression<StoryboardWrite>(next(scripts.writes, 'write'))
     },
     editStoryboardFrame(_req: unknown, signal: AbortSignal) {
       model.calls++
       signal.throwIfAborted()
-      return next(scripts.edits, 'edit')
+      return withExpression<StoryboardEdit>(next(scripts.edits, 'edit'))
     },
     async writeClip(
       messages: { system: string; user: string },

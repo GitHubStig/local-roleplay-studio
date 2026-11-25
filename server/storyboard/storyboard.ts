@@ -21,7 +21,7 @@ import type {
   StoryboardSession,
   Written,
 } from '../../shared/session.ts'
-import { plainSentences } from '../frameBody.ts'
+import { type FrameBody, keptExpression, plainSentences } from '../frameBody.ts'
 import type { PlannedBeat } from './text.ts'
 import { Refusal } from '../refusal.ts'
 
@@ -59,7 +59,7 @@ function plannedFrame(look: Look, index: number, beat: string, shown: string[]):
 function makeFrame(
   look: Look,
   frame: StoryboardFrame,
-  body: string,
+  { body, expression }: FrameBody,
   shown: string[],
   written: Written,
 ): WrittenFrame {
@@ -69,7 +69,7 @@ function makeFrame(
   return {
     ...frame,
     shown: names,
-    image: { body, prompt, ...(blocked ? { blocked } : {}), written },
+    image: { body, expression, prompt, ...(blocked ? { blocked } : {}), written },
   }
 }
 
@@ -80,7 +80,7 @@ function makeFrame(
 function recompose(
   frame: WrittenFrame,
   look: Look,
-  body = frame.image.body,
+  body: FrameBody = frame.image,
   shown = frame.shown,
   written = frame.image.written,
 ): WrittenFrame {
@@ -195,7 +195,7 @@ export async function writeStoryboard(
     const start = performance.now()
     // Every Frame before this one is written: those before `from`, and those this has written.
     const before = latest.frames.slice(0, index).map((f) => f.image?.body ?? '')
-    const { body } = await logCallsUnder(index, () =>
+    const body = await logCallsUnder(index, () =>
       withRetry(
         (onThinking) =>
           deps.textModel.writeStoryboardFrame(
@@ -293,7 +293,9 @@ export async function setFrameBody(
   // Onto the Storyboard as it is now: a queued render may have finished meanwhile.
   return await updateSession(deps.store, session.id, 'storyboard', (latest) => {
     const frame = checkWritten(latest, index)
-    const edited = recompose(frame, latest.look!, text, shown ?? frame.shown)
+    // Typed by hand: its expression sentence is kept only if it's still there.
+    const typed = { body: text, expression: keptExpression(frame.image.expression, text) }
+    const edited = recompose(frame, latest.look!, typed, shown ?? frame.shown)
     if (edited.image.blocked) throw new LimitError(`That crosses a limit: ${edited.image.blocked}`)
     return { ...latest, frames: latest.frames.map((f) => f.index === index ? edited : f) }
   })
@@ -498,14 +500,14 @@ export async function editFrameByAction(
   )
   if (edit.outcome !== 'done') return unchanged(edit.outcome, edit.narration)
 
-  const edited = recompose(frame, look, edit.body, edit.shown)
+  const edited = recompose(frame, look, edit, edit.shown)
   if (edited.image.blocked) return unchanged('declined', `Declined: ${edited.image.blocked}.`)
   signal.throwIfAborted()
   const written = { model: deps.textModel.name, seconds: secondsSince(start) }
   // Onto the Storyboard as it is now: a queued render may have finished meanwhile.
   const updated = await updateSession(deps.store, session.id, 'storyboard', (latest) => {
     const now = checkWritten(latest, index)
-    const changed = recompose(now, look, edit.body, edit.shown, written)
+    const changed = recompose(now, look, edit, edit.shown, written)
     return { ...latest, frames: latest.frames.map((f) => (f.index === index ? changed : f)) }
   })
   return { outcome: 'done', narration: edit.narration, session: updated }

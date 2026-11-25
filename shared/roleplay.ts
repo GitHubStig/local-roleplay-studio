@@ -3,7 +3,7 @@
  * values only.
  */
 import type { Picture } from './pictures.ts'
-import type { FrameImage, Look, SessionBase, Written } from './session.ts'
+import type { FrameImage, Look, SessionBase, Sheet, Written } from './session.ts'
 import type { Delivery } from './voice.ts'
 
 /** Who the Text Model plays. */
@@ -302,6 +302,8 @@ export interface RoleplaySession extends SessionBase {
    * again. Cleared when the Look is written or saved.
    */
   lookBehindCast: boolean
+  /** A reference sheet per Subject of its Look, when it has sheets (`settings.sheets`); else none. */
+  sheets: Sheet[]
   /** The Character's voice; written the first time a line is spoken. */
   voice?: RoleplayVoice
   /**

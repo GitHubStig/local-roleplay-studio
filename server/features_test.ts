@@ -20,6 +20,7 @@ Deno.test('detectFeatures: an Apple Silicon Mac with mflux and uv runs everythin
     'figures',
     'lito',
     'style',
+    'sheets',
   ])
 })
 

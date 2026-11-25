@@ -40,6 +40,8 @@ const settings: api.Settings = {
   upscaler: 'seedvr2-7b',
   editModel: 'qwen-image-2.1-edit',
   editQuantize: 8,
+  faceEditModel: 'qwen-image-2.1-edit',
+  sheetImageModel: '',
   videoModel: 'ltx-2.5',
   limits: true,
   callLog: false,

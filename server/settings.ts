@@ -49,14 +49,15 @@ export const SIZE_PRESETS: readonly SizePreset[] = [
   { id: 'landscape-small', label: 'Small landscape 768×512 (faster)', width: 768, height: 512 },
 ]
 
-/** What a new Session keeps of Settings (`SESSION_SETTINGS`). */
-export const sessionSettingsOf = (settings: Settings): SessionSettings => ({
+/** What a new Session keeps of Settings (`SESSION_SETTINGS`), and whether it has sheets. */
+export const sessionSettingsOf = (settings: Settings, sheets: boolean): SessionSettings => ({
   textModel: settings.textModel,
   thinking: settings.thinking,
   imageModel: settings.imageModel,
   steps: settings.steps,
   musicBehaviour: settings.musicBehaviour,
   musicTaste: settings.musicTaste,
+  sheets,
 })
 
 /** How a render runs, as Settings are at each render; logged with each (`calls.ts`). */
@@ -97,6 +98,9 @@ export const DEFAULT_SETTINGS: Settings = {
   upscaler: UPSCALERS[0].id,
   editModel: EDIT_MODELS[0].id,
   editQuantize: 8,
+  // The best face edit of 2026-11-22's; sheets by each Session's own Image Model.
+  faceEditModel: 'qwen-image-2.1-edit',
+  sheetImageModel: '',
   videoModel: DEFAULT_VIDEO_MODEL,
   features: Object.fromEntries(FEATURES.map((f) => [f, true])) as Record<Feature, boolean>,
   limits: true,
@@ -251,6 +255,15 @@ export function validateSettings(input: unknown): ValidationResult {
   if (!EDIT_MODELS.some((m) => m.id === s.editModel)) {
     issues.push(`editModel must be one of: ${EDIT_MODELS.map((m) => m.id).join(', ')}`)
   }
+  if (!EDIT_MODELS.some((m) => m.id === s.faceEditModel)) {
+    issues.push(`faceEditModel must be one of: ${EDIT_MODELS.map((m) => m.id).join(', ')}`)
+  }
+  if (
+    typeof s.sheetImageModel !== 'string' ||
+    (s.sheetImageModel !== '' && !anyImageModel(s.sheetImageModel))
+  ) {
+    issues.push("sheetImageModel must be '' (each Session's own) or an Image Model")
+  }
 
   if (
     s.videoOn !== undefined &&
@@ -299,6 +312,8 @@ export function validateSettings(input: unknown): ValidationResult {
       upscaler: s.upscaler as Upscaler,
       editModel: s.editModel as EditModel,
       editQuantize: s.editQuantize as Quantize,
+      faceEditModel: s.faceEditModel as EditModel,
+      sheetImageModel: s.sheetImageModel as string,
       videoModel: s.videoModel as string,
       ...(sizes !== undefined && { videoSizes: sizes as Record<string, ClipSize> }),
       ...(s.videoOn !== undefined && { videoOn: s.videoOn as string }),

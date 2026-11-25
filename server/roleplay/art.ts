@@ -253,7 +253,7 @@ export function undressed(people: Subject[], clothing: string): string | undefin
 }
 
 /** What the Art Agent writes of a picture: its sentences, who it shows and what they wear. */
-export type Drawn = Pick<RoleplayImage, 'body' | 'shown' | 'clothing'>
+export type Drawn = Pick<RoleplayImage, 'body' | 'expression' | 'shown' | 'clothing'>
 
 /** A picture's image without who wrote it: its Image Prompt, and whether it crosses a Limit. */
 export function imageOf(look: Look, drawn: Drawn): Omit<RoleplayImage, 'written'> {
@@ -263,6 +263,7 @@ export function imageOf(look: Look, drawn: Drawn): Omit<RoleplayImage, 'written'
     undressed(shownSubjects(look, shown), drawn.clothing)
   return {
     body: drawn.body,
+    expression: drawn.expression,
     prompt,
     shown,
     clothing: drawn.clothing,

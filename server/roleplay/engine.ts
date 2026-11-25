@@ -287,14 +287,14 @@ export async function pictureFrame(
   // Anyone the picture brings in joins the Look, so they look the same next time.
   let look = written
   const draw = async () => {
-    const { body, shown, newcomers, clothing, thinking } = await withRetry(
+    const { body, expression, shown, newcomers, clothing, thinking } = await withRetry(
       (onThinking) => art.pictureFrame(messages, signal, onThinking),
       signal,
       emit,
     )
     signal.throwIfAborted()
     look = withNewcomers(written, newcomers)
-    return { drawn: imageOf(look, { body, shown, clothing }), thinking }
+    return { drawn: imageOf(look, { body, expression, shown, clothing }), thinking }
   }
   let { drawn, thinking } = await draw()
   // A picture that crosses a Limit gets one more try, told which; the second is kept either way.
