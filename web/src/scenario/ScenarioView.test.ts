@@ -16,6 +16,7 @@ vi.mock('../api', async (importOriginal) => ({
   createScenario: vi.fn(),
   getSettings: vi.fn(() => Promise.resolve({ textModel: 'x' })),
   getSettingsOptions: vi.fn(() => Promise.resolve({ textModels: ['x'] })),
+  checkComfyUI: vi.fn(),
 }))
 
 const person = (id: string, name: string, extra: Partial<api.Person> = {}): api.Person => ({
@@ -315,6 +316,43 @@ describe('ScenarioView', () => {
     expect(sheets.element.disabled).toBe(true)
     expect(wrapper.find('[data-sheets-blocker]').text()).toContain('A Chain has no Look')
     vi.mocked(api.getSettings).mockResolvedValue({ textModel: 'x' } as api.Settings)
+    await useFeatures().refreshFeatures()
+  })
+
+  it("greys the sheets when the ComfyUI the face pass goes to lacks its edit model's files, as Settings' check finds", async () => {
+    vi.mocked(api.getSettings).mockResolvedValue({
+      textModel: 'x',
+      faceEditModel: 'qwen-image-2.1-edit',
+      backends: [{ id: 'pc', kind: 'comfyui', address: 'http://pc:8188' }],
+      runOn: { edits: 'pc' },
+    } as unknown as api.Settings)
+    vi.mocked(api.getSettingsOptions).mockResolvedValue({
+      textModels: ['x'],
+      here: {},
+      features: { sheets: { available: true } },
+      editModels: [{ id: 'qwen-image-2.1-edit', backends: ['comfyui', 'mflux'] }],
+    } as unknown as api.SettingsOptions)
+    vi.mocked(api.checkComfyUI).mockResolvedValue({
+      up: true,
+      version: '0.46.3',
+      device: 'cuda',
+      missing: { faceEditModel: "ComfyUI doesn't have Qwen-Image 2.1's files: qwen.safetensors" },
+    })
+    await useFeatures().refreshFeatures()
+    const { wrapper } = await mountAt('/scenario/tavern')
+    await wrapper.find('[data-start-options]').trigger('click')
+    await flushPromises()
+    expect(vi.mocked(api.checkComfyUI)).toHaveBeenLastCalledWith('http://pc:8188', {
+      faceEditModel: 'qwen-image-2.1-edit',
+    })
+    expect(wrapper.find<HTMLInputElement>('[data-start-sheets] input').element.disabled).toBe(true)
+    expect(wrapper.find('[data-sheets-blocker]').text()).toContain(
+      "The ComfyUI the face pass goes to doesn't have its files",
+    )
+    vi.mocked(api.getSettings).mockResolvedValue({ textModel: 'x' } as api.Settings)
+    vi.mocked(api.getSettingsOptions).mockResolvedValue(
+      { textModels: ['x'] } as api.SettingsOptions,
+    )
     await useFeatures().refreshFeatures()
   })
 })

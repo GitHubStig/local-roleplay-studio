@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { useTextareaAutosize } from '@vueuse/core'
+import { computedAsync, useTextareaAutosize } from '@vueuse/core'
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, useTemplateRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
+  checkComfyUI,
   createScenario,
   createSession,
   expandScenario,
@@ -30,6 +31,7 @@ import {
   useScenarioDraft,
 } from '../composables/useScenarioDraft'
 import { useFeatures } from '../composables/useFeatures'
+import { useWhereTo } from '../composables/useWhereTo'
 import { useTextModelReady } from '../composables/useTextModelReady'
 import { sessionPath } from '../sessionPath'
 import ScenarioField from './ScenarioField.vue'
@@ -348,16 +350,37 @@ const frameCount = ref(8)
  * Reference sheets, asked again as the Session starts (Start's menu), set from Settings' switch as
  * they load: a player may not remember how it was. A Chain has no Look, so none.
  */
-const { on: featureOn, options: featureOptions } = useFeatures()
+const { on: featureOn, options: featureOptions, settings: featureSettings } = useFeatures()
 const sheetsSetting = computed(() => featureOn.value('sheets'))
 const sheets = ref(sheetsSetting.value)
 watch(sheetsSetting, (on) => (sheets.value = on))
+/**
+ * Whether the ComfyUI the face pass goes to (where edits go, by its own edit model) lacks that
+ * model's files, as Settings' check finds: else the first sheet would fail. Not where it goes to
+ * this machine, or the ComfyUI doesn't answer (Settings says so). Settings lists the files.
+ */
+const { whereTo } = useWhereTo(featureSettings, featureOptions)
+const facesTo = computed(() => {
+  const model = featureSettings.value?.faceEditModel
+  const backend = model && featureOptions.value?.features?.sheets?.available &&
+    whereTo('edits', model)
+  return backend && backend.kind === 'comfyui' ? { address: backend.address, model } : undefined
+})
+const faceFilesMissing = computedAsync(async () => {
+  const to = facesTo.value
+  if (!to) return false
+  const status = await checkComfyUI(to.address, { faceEditModel: to.model }).catch(() => null)
+  return !!(status?.up && status.missing.faceEditModel)
+}, false)
 /** Why this Session can't have sheets, or null when it can. */
 const sheetsBlocker = computed(() => {
   if (kind.value === 'chain') return 'A Chain has no Look, so no sheets.'
   const can = featureOptions.value?.features?.sheets
   if (can && !can.available) return `Not available here: ${can.reason}.`
   if (!featureOn.value('images')) return 'Pictures are off, in Settings.'
+  if (faceFilesMissing.value) {
+    return "The ComfyUI the face pass goes to doesn't have its files: Settings, Reference sheets, says which."
+  }
   return null
 })
 

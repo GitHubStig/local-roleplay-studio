@@ -2,16 +2,15 @@ import { computed, type Ref, ref } from 'vue'
 import { watchDebounced } from '@vueuse/core'
 import {
   type Backend,
-  BACKEND_WORK,
   checkComfyUI,
   type ComfyStatus,
-  type EditModel,
   listTextModels,
   type Settings,
   type SettingsOptions,
   type TextModelList,
   type Work,
 } from '../api'
+import { useWhereTo } from './useWhereTo'
 
 /**
  * The Backends as Settings' form stands (ADR 0022): which can do each kind of work, where each
@@ -24,43 +23,10 @@ export function useBackends(
   /** New API keys typed, by Backend id, to list a text Backend's models with before they're saved. */
   apiKeys: Ref<Record<string, string>>,
 ) {
-  /** Whether a Backend can do a kind of work at all: this machine only what it runs itself. */
-  const does = (backend: Backend, work: Work) =>
-    BACKEND_WORK[backend.kind].includes(work) &&
-    (backend.kind !== 'here' || work === 'text' || !!options.value?.here[work]?.available)
+  const { does, whereTo } = useWhereTo(form, options)
 
   /** The Backends that can do a kind of work, for its tab to choose from. */
   const choicesFor = (work: Work) => (form.value?.backends ?? []).filter((b) => does(b, work))
-
-  /**
-   * Whether a Backend can do this job: a render where its kind of Backend has the Image Model, an
-   * edit on its edit model's kind (Settings', unless `editModel` says another).
-   */
-  function can(backend: Backend, work: Work, editModel = form.value?.editModel): boolean {
-    if (!does(backend, work)) return false
-    const kind = backend.kind === 'here' ? 'mflux' : 'comfyui'
-    if (work === 'images') {
-      return !!options.value?.imageModels[kind]?.some((m) => m.id === form.value?.imageModel)
-    }
-    if (work === 'edits') {
-      const model = options.value?.editModels.find((m) => m.id === editModel)
-      return !model || model.backends.includes(kind)
-    }
-    return true
-  }
-
-  /**
-   * Where a kind of work goes: the preferred Backend if it can, else the next listed that can; an
-   * edit by Settings' edit model, unless `editModel` says another.
-   */
-  function whereTo(work: Work, editModel?: EditModel): Backend | undefined {
-    if (!form.value) return undefined
-    const { backends, runOn } = form.value
-    return [
-      ...backends.filter((b) => b.id === runOn[work]),
-      ...backends.filter((b) => b.id !== runOn[work]),
-    ].find((b) => can(b, work, editModel ?? form.value?.editModel))
-  }
 
   /** Each ComfyUI listed, up or down, with what would go there. */
   const comfy = ref<Record<string, ComfyStatus | 'checking'>>({})
