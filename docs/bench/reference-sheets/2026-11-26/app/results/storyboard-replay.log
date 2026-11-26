@@ -1,0 +1,9 @@
+Task replay deno run --allow-net --allow-read server/replay/replay.ts 'server/replay/replays/tavern-storyboard-sheets.yaml'
+Session 20261126-074629-4460
+the plan: 9 s
+the Frames: 86 s
+every picture and render, reference sheet: 373 s
+Sheet of Kael: sheet-kael-dc85e7c9.png, by krea-2-lora on comfyui, seed 7, 35 s
+Sheet of Elara: sheet-elara-afa75cec.png, by krea-2-lora on comfyui, seed 8, 35 s
+Done: http://127.0.0.1:8787 → Session 20261126-074629-4460
+exit 0

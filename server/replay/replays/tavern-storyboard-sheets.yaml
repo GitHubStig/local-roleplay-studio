@@ -1,0 +1,10 @@
+# The public tavern Scenario as a four-Frame Storyboard with reference sheets (ADR 0045): its plan,
+# then its Look and a sheet of each Subject, made while the plan is reviewed; Write Frames waits
+# for them, and each Frame's render then has its face pass. Run with --no-pictures to stop after
+# the Frames are written, and with --on mflux or --on comfyui (and --image-model) to make them on
+# one runtime.
+kind: storyboard
+seed: 7
+scenario: tavern
+frameCount: 4
+sheets: true

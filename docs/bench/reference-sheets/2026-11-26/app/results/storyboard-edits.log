@@ -1,0 +1,11 @@
+== painted: a cut, Frame 1
+job 60d4e8f3
+0s running image null  2026-11-26T07:54:42.844Z None
+29s running faces {"subjects": ["Kael"]}  2026-11-26T07:54:42.844Z None
+86s done None {"subjects": ["Kael"]}  2026-11-26T07:54:42.844Z 2026-11-26T07:56:08.369Z
+== camera: low angle, Frame 4
+job 3f9daa6b
+0s running image null  2026-11-26T07:56:08.479Z None
+18s running faces {"subjects": ["Elara", "Kael"]}  2026-11-26T07:56:08.479Z None
+141s done None {"subjects": ["Elara", "Kael"]}  2026-11-26T07:56:08.479Z 2026-11-26T07:58:28.344Z
+exit 0
